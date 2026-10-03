@@ -18,6 +18,17 @@
 #import "LynxGlobalObserver+Internal.h"
 #import "LynxTraceEventDef.h"
 
+static NSString *LynxExposureTraceDataSetValue(NSDictionary *dataSet,
+                                               NSArray<NSString *> *candidateKeys) {
+  for (NSString *key in candidateKeys) {
+    id value = dataSet[key];
+    if (value != nil && value != [NSNull null]) {
+      return [NSString stringWithFormat:@"%@", value];
+    }
+  }
+  return @"";
+}
+
 @interface LynxUIExposureDetail : NSObject
 @property(nonatomic, copy) NSString *exposureScene;
 @property(nonatomic, copy) NSString *exposureID;
@@ -609,6 +620,28 @@
             LynxDetailEvent *event = [[LynxDetailEvent alloc] initWithName:transEventName
                                                                 targetSign:ui.sign
                                                                     params:[detail toDictionary]];
+            NSString *pageRootID = LynxExposureTraceDataSetValue(
+                detail.dataSet, @[ @"pageRootId", @"page-root-id", @"page_root_id" ]);
+            if (pageRootID.length > 0) {
+              NSDictionary *traceInfo = @{
+                @"renderer" : @"native",
+                @"event_name" : transEventName,
+                @"sign" : @(ui.sign),
+                @"exposure_id" : detail.exposureID ?: @"",
+                @"exposure_scene" : detail.exposureScene ?: @"",
+                @"page_view_id" : LynxExposureTraceDataSetValue(
+                    detail.dataSet, @[ @"pageViewId", @"page-view-id", @"page_view_id" ]),
+                @"route_id" : LynxExposureTraceDataSetValue(
+                    detail.dataSet, @[ @"routeId", @"route-id", @"route_id" ]),
+                @"page_root_id" : pageRootID,
+                @"square_root_id" : LynxExposureTraceDataSetValue(
+                    detail.dataSet, @[ @"squareRootId", @"square-root-id", @"square_root_id" ]),
+                @"run_id" : LynxExposureTraceDataSetValue(detail.dataSet,
+                                                          @[ @"runId", @"run-id", @"run_id" ]),
+              };
+              LYNX_TRACE_INSTANT_WITH_DEBUG_INFO(LYNX_TRACE_CATEGORY_WRAPPER,
+                                                 UI_EXPOSURE_DISPATCH_CUSTOM_EVENT, traceInfo);
+            }
             [ui.context.eventEmitter sendCustomEvent:event];
           }
           continue;
