@@ -383,6 +383,12 @@ void TasmMediator::RequestVsync(
   vsync_monitor_->ScheduleVSyncSecondaryCallback(id, std::move(callback));
 }
 
+std::weak_ptr<base::VSyncMonitor>
+TasmMediator::GetAnimationFrameVSyncMonitor() {
+  InitVSyncMonitorIfNeeded();
+  return vsync_monitor_;
+}
+
 std::string TasmMediator::TranslateResourceForTheme(
     const std::string& res_id, const std::string& theme_key) {
   return tasm_platform_invoker_->TranslateResourceForTheme(res_id, theme_key);

@@ -25,7 +25,7 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
   VSyncMonitor(bool is_on_ui_thread = false,
                bool is_vsync_post_task_by_emergency = true);
   explicit VSyncMonitor(
-      const std::shared_ptr<VSyncMonitorPlatformImpl> &platform_impl,
+      const std::shared_ptr<VSyncMonitorPlatformImpl>& platform_impl,
       bool is_on_ui_thread = false,
       bool is_vsync_post_task_by_emergency = true);
   virtual ~VSyncMonitor() = default;
@@ -35,6 +35,10 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
   virtual void Init() {}
 
   virtual void SetHighRefreshRate() {}
+
+  // Track an rAF client's active batch, including callback execution.
+  // Platforms without an explicit refresh-rate preference can ignore this hint.
+  virtual void SetAnimationFrameRate(uintptr_t client_id, bool active) {}
 
   // TODO(heshan):invoke this method in Init.
   // after initialization, VSyncMonitor needs to bind
@@ -50,13 +54,13 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
   // frame_start_time/frame_target_time is in nanoseconds
   void OnVSync(int64_t frame_start_time, int64_t frame_target_time);
 
-  void BindTaskRunner(const fml::RefPtr<fml::TaskRunner> &runner);
+  void BindTaskRunner(const fml::RefPtr<fml::TaskRunner>& runner);
 
   void StopVSync();
 
-  virtual void RequestVSyncOnUIThread(Callback callback){};
+  virtual void RequestVSyncOnUIThread(Callback callback) {};
 
-  virtual void RequestVSyncOnUIThread(){};
+  virtual void RequestVSyncOnUIThread() {};
 
  protected:
   virtual void RequestVSync();
@@ -77,8 +81,8 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
   std::shared_ptr<VSyncMonitorPlatformImpl> platform_impl_;
 
   // disallow copy&assign
-  VSyncMonitor(const VSyncMonitor &) = delete;
-  VSyncMonitor &operator==(const VSyncMonitor &) = delete;
+  VSyncMonitor(const VSyncMonitor&) = delete;
+  VSyncMonitor& operator==(const VSyncMonitor&) = delete;
 };
 
 }  // namespace base

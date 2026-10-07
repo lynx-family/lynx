@@ -11,6 +11,9 @@
 #include "base/include/value/base_value.h"
 
 namespace lynx {
+namespace base {
+class VSyncMonitor;
+}  // namespace base
 namespace tasm {
 class TemplateAssembler;
 
@@ -24,6 +27,7 @@ class AnimationFrameManager {
   void DoFrame(int64_t time_stamp);
   void Destroy();
   bool HasPendingRequest();
+  void SetVSyncMonitor(const std::weak_ptr<base::VSyncMonitor>& monitor);
 
  private:
   class FrameTask {
@@ -33,6 +37,7 @@ class AnimationFrameManager {
 
     void Execute(int64_t time_stamp);
     void Cancel();
+    bool IsCancelled() const { return cancelled_; }
 
    private:
     std::unique_ptr<lepus::Value> callback_closure_;
@@ -43,6 +48,10 @@ class AnimationFrameManager {
 
   TaskMap& CurrentFrameTaskMap();
   TaskMap& NextFrameTaskMap();
+  void UpdateFrameRate();
+
+  std::weak_ptr<base::VSyncMonitor> vsync_monitor_;
+  bool frame_rate_active_{false};
 
   int64_t current_index_;
 

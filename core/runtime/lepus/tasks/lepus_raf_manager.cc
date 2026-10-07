@@ -4,10 +4,12 @@
 
 #include "core/runtime/lepus/tasks/lepus_raf_manager.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "base/include/value/base_value.h"
 #include "base/trace/native/trace_event.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 
@@ -52,6 +54,7 @@ int64_t AnimationFrameManager::RequestAnimationFrame(
   } else {
     CurrentFrameTaskMap().insert(std::make_pair(task_id, std::move(task)));
   }
+  UpdateFrameRate();
   return task_id;
 }
 
@@ -60,12 +63,14 @@ void AnimationFrameManager::CancelAnimationFrame(int64_t id) {
   auto itr = task_map_first_.find(id);
   if (itr != task_map_first_.end()) {
     itr->second->Cancel();
+    UpdateFrameRate();
     return;
   }
 
   itr = task_map_second_.find(id);
   if (itr != task_map_second_.end()) {
     itr->second->Cancel();
+    UpdateFrameRate();
   }
 }
 
@@ -81,15 +86,50 @@ void AnimationFrameManager::DoFrame(int64_t time_stamp) {
   // swap current task map and pending task map.
   first_map_is_the_current_ = !(first_map_is_the_current_);
   doing_frame_ = false;
+  UpdateFrameRate();
 }
 
 void AnimationFrameManager::Destroy() {
   task_map_first_.clear();
   task_map_second_.clear();
+  UpdateFrameRate();
 }
 
 bool AnimationFrameManager::HasPendingRequest() {
-  return !task_map_first_.empty() || !task_map_second_.empty();
+  const auto has_pending = [](const TaskMap& tasks) {
+    return std::any_of(tasks.begin(), tasks.end(), [](const auto& task) {
+      return !task.second->IsCancelled();
+    });
+  };
+  return has_pending(task_map_first_) || has_pending(task_map_second_);
+}
+
+void AnimationFrameManager::SetVSyncMonitor(
+    const std::weak_ptr<base::VSyncMonitor>& monitor) {
+  auto previous = vsync_monitor_.lock();
+  auto current = monitor.lock();
+  if (previous == current) {
+    return;
+  }
+  const auto client_id = reinterpret_cast<uintptr_t>(this);
+  if (previous && frame_rate_active_) {
+    previous->SetAnimationFrameRate(client_id, false);
+  }
+  vsync_monitor_ = monitor;
+  if (current && frame_rate_active_) {
+    current->SetAnimationFrameRate(client_id, true);
+  }
+}
+
+void AnimationFrameManager::UpdateFrameRate() {
+  // Keep the preference throughout the batch, including reentrant requests.
+  const bool active = doing_frame_ || HasPendingRequest();
+  if (active != frame_rate_active_) {
+    frame_rate_active_ = active;
+    if (auto monitor = vsync_monitor_.lock()) {
+      monitor->SetAnimationFrameRate(reinterpret_cast<uintptr_t>(this), active);
+    }
+  }
 }
 
 AnimationFrameManager::TaskMap& AnimationFrameManager::CurrentFrameTaskMap() {

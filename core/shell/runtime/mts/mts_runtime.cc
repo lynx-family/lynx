@@ -30,7 +30,13 @@ namespace runtime {
 MTSContextHolder::MTSContextHolder(std::unique_ptr<MTSContext> mts_context)
     : mts_context_(std::move(mts_context)) {}
 
-MTSRuntime::~MTSRuntime() { DestroyInspector(); }
+MTSRuntime::~MTSRuntime() {
+  // A queued VSync callback can retain the manager beyond this runtime.
+  if (animate_frame_manager_) {
+    animate_frame_manager_->Destroy();
+  }
+  DestroyInspector();
+}
 
 lepus::VMContext* MTSRuntime::ToVMContext(MTSRuntime* context) {
   DCHECK(context->IsVMContext());

@@ -3,12 +3,16 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/base/darwin/vsync_monitor_darwin.h"
+
+#include <unordered_set>
+
 #include "base/trace/native/trace_event.h"
 #include "core/base/trace/trace_event_def.h"
 #include "core/renderer/utils/lynx_env.h"
 
 #import <Foundation/Foundation.h>
 #import <QuartzCore/CADisplayLink.h>
+#import <UIKit/UIKit.h>
 
 @interface LynxVSyncPulse : NSObject
 @property(atomic) CADisplayLink *displayLink;
@@ -18,6 +22,8 @@
 
 - (void)requestPulse;
 
+- (void)setAnimationFrameRate:(uintptr_t)clientId active:(BOOL)active;
+
 - (void)invalidate;
 
 @end
@@ -25,6 +31,8 @@
 @implementation LynxVSyncPulse {
   lynx::base::VSyncMonitor::Callback _callback;
   CADisplayLink *_displayLink;
+  std::unordered_set<uintptr_t> _animationFrameClients;
+  BOOL _explicitHighRefreshRate;
 }
 
 - (instancetype)initWithCallback:(lynx::base::VSyncMonitor::Callback)callback {
@@ -60,11 +68,28 @@
 }
 
 - (void)SetHighRefreshRate {
+  _explicitHighRefreshRate = YES;
   if (@available(iOS 15.0, tvOS 15.0, *)) {
     CAFrameRateRange frameRateRange = CAFrameRateRangeMake(30, 120, 120);
     _displayLink.preferredFrameRateRange = frameRateRange;
   } else if (@available(iOS 10.0, tvOS 10.0, *)) {
     _displayLink.preferredFramesPerSecond = 120;
+  }
+}
+
+- (void)setAnimationFrameRate:(uintptr_t)clientId active:(BOOL)active {
+  BOOL changed = active ? _animationFrameClients.insert(clientId).second
+                        : _animationFrameClients.erase(clientId) != 0;
+  if (changed && !_explicitHighRefreshRate) {
+    if (@available(iOS 15.0, *)) {
+      float maximum = UIScreen.mainScreen.maximumFramesPerSecond;
+      if (maximum > 60) {
+        _displayLink.preferredFrameRateRange =
+            _animationFrameClients.empty()
+                ? CAFrameRateRangeDefault
+                : CAFrameRateRangeMake(MIN(80, maximum), maximum, maximum);
+      }
+    }
   }
 }
 
@@ -112,6 +137,9 @@ class LynxVSyncPulsePuppet {
   ~LynxVSyncPulsePuppet() { [delegate invalidate]; }
   void RequestPulse() { [delegate requestPulse]; }
   void SetHighRefreshRate() { [delegate SetHighRefreshRate]; }
+  void SetAnimationFrameRate(uintptr_t client_id, bool active) {
+    [delegate setAnimationFrameRate:client_id active:active];
+  }
 
  private:
   LynxVSyncPulse *delegate = nullptr;
@@ -136,6 +164,23 @@ void VSyncMonitorIOS::SetHighRefreshRate() {
     Init();
   }
   delegate_->SetHighRefreshRate();
+}
+
+void VSyncMonitorIOS::SetAnimationFrameRate(uintptr_t client_id, bool active) {
+  if (![NSThread isMainThread]) {
+    std::weak_ptr<VSyncMonitorIOS> weak_self =
+        std::static_pointer_cast<VSyncMonitorIOS>(shared_from_this());
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (auto self = weak_self.lock()) {
+        self->SetAnimationFrameRate(client_id, active);
+      }
+    });
+    return;
+  }
+  if (!delegate_) {
+    Init();
+  }
+  delegate_->SetAnimationFrameRate(client_id, active);
 }
 
 VSyncMonitorIOS::~VSyncMonitorIOS() {}

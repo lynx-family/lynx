@@ -55,6 +55,10 @@
 
 namespace lynx {
 
+namespace base {
+class VSyncMonitor;
+}  // namespace base
+
 namespace runtime {
 
 namespace js {
@@ -103,13 +107,13 @@ class AirTouchEventHandlerBase {
                                 const std::string& page_name,
                                 const std::string& name, int tag, float x,
                                 float y, float client_x, float client_y,
-                                float page_x, float page_y){};
+                                float page_x, float page_y) {};
 
   // HandleCustomEvent customEvent for example: x-element's custom event
   virtual void HandleCustomEvent(TemplateAssembler* tasm,
                                  const std::string& name, int tag,
                                  const lepus::Value& params,
-                                 const std::string& pname){};
+                                 const std::string& pname) {};
 
   // SendPageEvent air life function and global event
   virtual void SendPageEvent(TemplateAssembler* tasm,
@@ -121,7 +125,7 @@ class AirTouchEventHandlerBase {
                                   const std::string& event_name,
                                   const int component_id,
                                   const lepus::Value& params,
-                                  const std::string& param_name){};
+                                  const std::string& param_name) {};
   // Only for the situation when child component needs to send message to parent
   virtual size_t TriggerComponentEvent(TemplateAssembler* tasm,
                                        const std::string& event_name,
@@ -172,7 +176,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
     virtual void SetTiming(tasm::Timing timing) = 0;
 
     virtual void ReportElementMemoryInfo(int64_t mem_size_bytes,
-                                         int element_count){};
+                                         int element_count) {};
 
     virtual void BindPipelineIDWithTimingFlag(
         const tasm::PipelineID& pipeline_id,
@@ -206,6 +210,9 @@ class TemplateAssembler final : public TemplateEntryHolder,
     virtual void RequestVsync(
         uintptr_t id,
         base::MoveOnlyClosure<void, int64_t, int64_t> callback) = 0;
+    virtual std::weak_ptr<base::VSyncMonitor> GetAnimationFrameVSyncMonitor() {
+      return {};
+    }
     virtual lepus::Value TriggerLepusMethod(const std::string& method_name,
                                             const lepus::Value& arguments) = 0;
     virtual void TriggerLepusMethodAsync(const std::string& method_name,
