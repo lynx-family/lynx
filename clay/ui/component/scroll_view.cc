@@ -359,7 +359,8 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
     }
     OnScrollUpdate(0);
     SetScrollDirection(direction);
-  } else if (kw == KeywordID::kInitialScrollIndex) {
+  } else if (kw == KeywordID::kInitialScrollIndex ||
+             kw == KeywordID::kInitialScrollToIndex) {
     size_t index = attribute_utils::GetInt(value);
     if (!initial_scroll_index_set_ && index >= 0) {
       initial_scroll_index_set_ = true;
