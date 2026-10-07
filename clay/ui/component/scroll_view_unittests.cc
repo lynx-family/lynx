@@ -445,7 +445,7 @@ TEST_F_UI(ScrollViewTest, InitialScrollIndexWaitsForScrollableLayout) {
       std::make_unique<ScrollView>(-1, ScrollDirection::kVertical, page_.get());
   scroll_view->SetBound(0, 0, 100, 100);
   page_->AddChild(scroll_view.get());
-  scroll_view->SetAttribute("initial-scroll-index", clay::Value(2));
+  scroll_view->SetAttribute("initial-scroll-to-index", clay::Value(2));
 
   auto view0 = std::make_unique<View>(-1, page_.get());
   auto view1 = std::make_unique<View>(-1, page_.get());

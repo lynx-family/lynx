@@ -215,6 +215,7 @@ send-composing-input
 min-height
 max-height
 initial-scroll-index
+initial-scroll-to-index
 loop
 speed
 low-quality
