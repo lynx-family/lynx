@@ -91,6 +91,38 @@ TEST(GradientTest, CreateLinearGradient) {
   }
 }
 
+TEST(GradientTest, CreateLinearGradientFromArray) {
+  clay::Value::Array colors;
+  colors.emplace_back(0xffff0000u);
+  colors.emplace_back(0xff0000ffu);
+  clay::Value::Array positions;
+  positions.emplace_back(0.f);
+  positions.emplace_back(100.f);
+  clay::Value::Array linear_array;
+  linear_array.emplace_back(45.f);
+  linear_array.emplace_back(std::move(colors));
+  linear_array.emplace_back(std::move(positions));
+  linear_array.emplace_back(
+      static_cast<int>(LinearGradientDirection::kToTopRight));
+  auto parsed_gradient = Gradient::CreateLinear(linear_array);
+  ASSERT_TRUE(parsed_gradient.has_value());
+  EXPECT_EQ(parsed_gradient->Direction(), LinearGradientDirection::kToTopRight);
+
+  clay::Value::Array legacy_colors;
+  legacy_colors.emplace_back(0xffff0000u);
+  legacy_colors.emplace_back(0xff0000ffu);
+  clay::Value::Array legacy_positions;
+  legacy_positions.emplace_back(0.f);
+  legacy_positions.emplace_back(100.f);
+  clay::Value::Array legacy_linear_array;
+  legacy_linear_array.emplace_back(45.f);
+  legacy_linear_array.emplace_back(std::move(legacy_colors));
+  legacy_linear_array.emplace_back(std::move(legacy_positions));
+  auto legacy_gradient = Gradient::CreateLinear(legacy_linear_array);
+  ASSERT_TRUE(legacy_gradient.has_value());
+  EXPECT_EQ(legacy_gradient->Direction(), LinearGradientDirection::kAngle);
+}
+
 TEST(GradientTest, DirectionToPoints) {
   Gradient gradient;
   gradient.type_ = GradientType::kLinear;
