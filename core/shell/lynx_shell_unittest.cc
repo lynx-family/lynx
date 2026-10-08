@@ -14,6 +14,7 @@
 
 #include "base/include/debug/lynx_error.h"
 #include "base/include/value/base_value.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "core/public/pub_value.h"
 #include "core/renderer/tasm/testing/event_tracker_mock.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -30,6 +31,74 @@
 
 namespace lynx {
 namespace shell {
+
+namespace {
+
+class FrameRateTestPlatformInvoker : public TasmPlatformInvoker {
+ public:
+  void OnPageConfigDecoded(
+      const std::shared_ptr<tasm::PageConfig>& config) override {}
+  void OnRunPipelineFinished() override {}
+  lepus::Value TriggerLepusMethod(const std::string& method_name,
+                                  const lepus::Value& args) override {
+    return lepus::Value();
+  }
+  void TriggerLepusMethodAsync(const std::string& method_name,
+                               const lepus::Value& args) override {}
+  std::string TranslateResourceForTheme(const std::string& res_id,
+                                        const std::string& theme_key) override {
+    return {};
+  }
+  void GetI18nResource(const std::string& channel,
+                       const std::string& fallback_url) override {}
+};
+
+class FrameRateTestVSyncMonitor : public base::VSyncMonitor {
+ public:
+  void SetHighRefreshRate() override { ++high_refresh_rate_requests; }
+
+  int high_refresh_rate_requests{0};
+};
+
+}  // namespace
+
+TEST(TasmMediatorTest, PreferredFpsHighWithoutBackgroundRuntime) {
+  TasmMediator mediator(nullptr, nullptr, nullptr,
+                        std::make_unique<FrameRateTestPlatformInvoker>(),
+                        nullptr);
+  auto monitor = std::make_shared<FrameRateTestVSyncMonitor>();
+  mediator.vsync_monitor_ = monitor;
+  auto config = std::make_shared<tasm::PageConfig>();
+  config->SetPreferredFps("high");
+
+  mediator.OnPageConfigDecoded(config);
+
+  EXPECT_EQ(monitor->high_refresh_rate_requests, 1);
+}
+
+TEST(TasmMediatorTest, PreferredFpsAutoDoesNotRequestHighRefreshRate) {
+  TasmMediator mediator(nullptr, nullptr, nullptr,
+                        std::make_unique<FrameRateTestPlatformInvoker>(),
+                        nullptr);
+  auto monitor = std::make_shared<FrameRateTestVSyncMonitor>();
+  mediator.vsync_monitor_ = monitor;
+
+  mediator.OnPageConfigDecoded(std::make_shared<tasm::PageConfig>());
+
+  EXPECT_EQ(monitor->high_refresh_rate_requests, 0);
+}
+
+TEST(TasmMediatorTest, PreferredFpsHighKeepsMTSMonitorLazy) {
+  TasmMediator mediator(nullptr, nullptr, nullptr,
+                        std::make_unique<FrameRateTestPlatformInvoker>(),
+                        nullptr);
+  auto config = std::make_shared<tasm::PageConfig>();
+  config->SetPreferredFps("high");
+
+  mediator.OnPageConfigDecoded(config);
+
+  EXPECT_EQ(mediator.vsync_monitor_, nullptr);
+}
 
 class LynxShellTest : public ::testing::Test {
  protected:
