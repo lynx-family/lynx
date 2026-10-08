@@ -16,7 +16,17 @@ namespace image {
 inline constexpr const char* const kModeAspectFit = "aspectFit";
 inline constexpr const char* const kModeAspectFill = "aspectFill";
 inline constexpr const char* const kModeScaleToFill = "scaleToFill";
+inline constexpr const char* const kModeWidthFix = "widthFix";
+inline constexpr const char* const kModeHeightFix = "heightFix";
 inline constexpr const char* const kModeCenter = "center";
+inline constexpr const char* const kModeTop = "top";
+inline constexpr const char* const kModeBottom = "bottom";
+inline constexpr const char* const kModeLeft = "left";
+inline constexpr const char* const kModeRight = "right";
+inline constexpr const char* const kModeTopLeft = "top left";
+inline constexpr const char* const kModeTopRight = "top right";
+inline constexpr const char* const kModeBottomLeft = "bottom left";
+inline constexpr const char* const kModeBottomRight = "bottom right";
 
 // image path protocol
 inline constexpr const char* const kBase64Scheme = "data:image";

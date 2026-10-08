@@ -152,6 +152,7 @@ public class LynxImageManager implements Drawable.Callback {
   private String mBlurRadius;
 
   private boolean mAutoSize;
+  private boolean mFixedSizeMode;
 
   private int mLoopCount = 0;
 
@@ -573,6 +574,7 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void setMode(@Nullable String mode) {
     setMode(getMode(mode));
+    mFixedSizeMode = "widthFix".equals(mode) || "heightFix".equals(mode);
   }
 
   public void setMode(int mode) {
@@ -598,6 +600,10 @@ public class LynxImageManager implements Drawable.Callback {
       mAutoSize = autoSize;
       dirtyFlags |= AUTO_SIZE_CHANGED;
     }
+  }
+
+  private boolean usesAutoSize() {
+    return mAutoSize || mFixedSizeMode;
   }
 
   public void setLoopCount(int count) {
@@ -961,7 +967,7 @@ public class LynxImageManager implements Drawable.Callback {
     } else if (mPreFetchWidth > 0 && mPreFetchHeight > 0) {
       width = mPreFetchWidth;
       height = mPreFetchHeight;
-    } else if (!mAutoSize) {
+    } else if (!usesAutoSize()) {
       needRequest = false;
     }
     if (needRequest) {
@@ -1016,7 +1022,7 @@ public class LynxImageManager implements Drawable.Callback {
     // null ensures we only intercept duplicate requests, preventing accidental drops of the
     // deferred first request missing layout size.
     if (isDirty(DOWN_SAMPLING_SCALE_CHANGED)
-        && (mDisableDefaultResize || mAutoSize || mEnableResourceHint)
+        && (mDisableDefaultResize || usesAutoSize() || mEnableResourceHint)
         && mCurImageRequest != null) {
       dirtyFlags &= ~DOWN_SAMPLING_SCALE_CHANGED;
     }
@@ -1077,7 +1083,7 @@ public class LynxImageManager implements Drawable.Callback {
 
     if (mNeedRetryAutoSize) {
       mNeedRetryAutoSize = false;
-      if (mAutoSize) {
+      if (usesAutoSize()) {
         justSizeIfNeeded();
       }
     }
@@ -1107,7 +1113,7 @@ public class LynxImageManager implements Drawable.Callback {
         .setLoopCount(mLoopCount)
         .setCallerContext(mImageCallerContext)
         .setEnableAnimationAutoPlay(mAutoPlay)
-        .setEnableDownSampling(!mDisableDefaultResize && !mAutoSize)
+        .setEnableDownSampling(!mDisableDefaultResize && !usesAutoSize())
         .setEnableAsyncRequest(mEnableAsyncRequest)
         .setEnableGifLiteDecoder(mEnableCustomGifDecoder)
         .setSkipContentLengthCheck(mSkipContentLengthCheck)
@@ -1409,8 +1415,12 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   ScalingUtils.ScaleType getMode(String prop) {
+    ScalingUtils.ScaleType alignment = ScalingUtils.getAlignmentScaleType(prop);
+    if (alignment != null) {
+      return alignment;
+    }
     ScalingUtils.ScaleType mode;
-    if ("aspectFit".equals(prop)) {
+    if ("aspectFit".equals(prop) || "widthFix".equals(prop) || "heightFix".equals(prop)) {
       mode = ScalingUtils.ScaleType.FIT_CENTER;
     } else if ("aspectFill".equals(prop)) {
       mode = ScalingUtils.ScaleType.CENTER_CROP;
@@ -1499,7 +1509,7 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   public void justSizeIfNeeded() {
-    if (mImageWidth == 0 || mImageHeight == 0 || !mAutoSize) {
+    if (mImageWidth == 0 || mImageHeight == 0 || !usesAutoSize()) {
       return;
     }
     if (mUI == null) {
@@ -1523,7 +1533,8 @@ public class LynxImageManager implements Drawable.Callback {
       return;
     }
     ((AutoSizeImage) mAutoSizeShadowNode)
-        .justSizeIfNeeded(mAutoSize, mImageWidth, mImageHeight, mUI.getWidth(), mUI.getHeight());
+        .justSizeIfNeeded(
+            usesAutoSize(), mImageWidth, mImageHeight, mUI.getWidth(), mUI.getHeight());
   }
 
   private void sendCustomEvent(String eventName) {

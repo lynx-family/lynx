@@ -42,6 +42,28 @@ bool SupportsImageMatrix() {
   return kSupportsImageMatrix;
 }
 
+struct ImageAlignment {
+  std::string_view mode;
+  float x;
+  float y;
+};
+
+const ImageAlignment* GetImageAlignment(std::string_view mode) {
+  static constexpr ImageAlignment kAlignments[] = {
+      {image::kModeCenter, 0.5f, 0.5f},    {image::kModeTop, 0.5f, 0.f},
+      {image::kModeBottom, 0.5f, 1.f},     {image::kModeLeft, 0.f, 0.5f},
+      {image::kModeRight, 1.f, 0.5f},      {image::kModeTopLeft, 0.f, 0.f},
+      {image::kModeTopRight, 1.f, 0.f},    {image::kModeBottomLeft, 0.f, 1.f},
+      {image::kModeBottomRight, 1.f, 1.f},
+  };
+  for (const auto& alignment : kAlignments) {
+    if (alignment.mode == mode) {
+      return &alignment;
+    }
+  }
+  return nullptr;
+}
+
 class SvgResourceFetcherImpl final : public SvgResourceFetcher {
  public:
   explicit SvgResourceFetcherImpl(
@@ -146,7 +168,7 @@ void UINewImage::OnOverlayDraw(OH_Drawing_Canvas* canvas,
 void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
   image_width_ = image_width;
   image_height_ = image_height;
-  UpdateCenterMatrix();
+  UpdateImageMatrix();
   if (context_) {
     context_->PostTaskOnUIThread([weak_self = weak_from_this()] {
       auto self = weak_self.lock();
@@ -278,15 +300,16 @@ UINewImage::UINewImage(LynxContext* context, int sign, const std::string& tag)
 }
 
 ArkUI_ObjectFit UINewImage::ConvertMode(const std::string& mode) {
-  if (mode == image::kModeAspectFit) {
+  if (mode == image::kModeAspectFit || mode == image::kModeWidthFix ||
+      mode == image::kModeHeightFix) {
     return ARKUI_OBJECT_FIT_CONTAIN;
   }
   if (mode == image::kModeAspectFill) {
     return ARKUI_OBJECT_FIT_COVER;
   }
-  if (mode == image::kModeCenter) {
-    return UsesCenterMatrix() ? ARKUI_OBJECT_FIT_NONE_MATRIX
-                              : ARKUI_OBJECT_FIT_NONE;
+  if (GetImageAlignment(mode)) {
+    return SupportsImageMatrix() ? ARKUI_OBJECT_FIT_NONE_MATRIX
+                                 : ARKUI_OBJECT_FIT_NONE;
   }
   return ARKUI_OBJECT_FIT_FILL;
 }
@@ -348,7 +371,7 @@ void UINewImage::UpdateLayout(float left, float top, float width, float height,
     image_view_height_ = height;
     dirty_flags_ |= image::kFlagFrameSizeChanged;
   }
-  UpdateCenterMatrix();
+  UpdateImageMatrix();
 }
 
 UINewImage::~UINewImage() {
@@ -361,12 +384,19 @@ UINewImage::~UINewImage() {
   }
 }
 
+bool UINewImage::UsesAutoSize() const {
+  // Fixed modes reuse auto-size; callers should specify only the fixed
+  // dimension.
+  return auto_size_ || mode_ == image::kModeWidthFix ||
+         mode_ == image::kModeHeightFix;
+}
+
 void UINewImage::AutoSizeIfNeeded() {
-  if (image_width_ == 0.f || image_height_ == 0 || !auto_size_) {
+  if (image_width_ == 0.f || image_height_ == 0 || !UsesAutoSize()) {
     return;
   }
   context_->FindShadowNodeAndRunTask(
-      Sign(), [auto_size = auto_size_, image_width = image_width_,
+      Sign(), [auto_size = UsesAutoSize(), image_width = image_width_,
                image_height = image_height_, width = width_,
                height = height_](ShadowNode* shadow_node) {
         if (!shadow_node) {
@@ -468,7 +498,7 @@ bool UINewImage::LoadImage() {
   // When using a processor, the view size is used as the cache key.
   // Requests can be deferred until the size is available to avoid the processor
   // returning an empty pixelmap.
-  if (effect_flags_ != 0 && (width_ <= 0 || height_ <= 0) && !auto_size_) {
+  if (effect_flags_ != 0 && (width_ <= 0 || height_ <= 0) && !UsesAutoSize()) {
     LOGE("LoadImage empty size, src: " << src_);
     return true;
   }
@@ -732,8 +762,8 @@ void UINewImage::LoadImageFromService(const std::string& url,
     processors.emplace_back(std::make_unique<LynxImageEffectProcessor>(
         ImageEffect::kDropShadow, shadow_params));
   }
-  info.downsampling = downsampling_ && !auto_size_;
-  if (UsesCenterMatrix()) {
+  info.downsampling = downsampling_ && !UsesAutoSize();
+  if (UsesImageMatrix()) {
     info.downsampling = false;
   }
   info.mode = ConvertMode(mode_);
@@ -805,13 +835,17 @@ void UINewImage::UpdateEnableReportInfo(const lepus::Value& value) {
   enable_report_info_ = value.Bool();
 }
 
-bool UINewImage::UsesCenterMatrix() const {
-  return mode_ == image::kModeCenter && SupportsImageMatrix();
+bool UINewImage::UsesImageMatrix() const {
+  return SupportsImageMatrix() && GetImageAlignment(mode_) != nullptr;
 }
 
-void UINewImage::UpdateCenterMatrix() {
-  if (!UsesCenterMatrix() || !context_ || image_width_ <= 0.f ||
+void UINewImage::UpdateImageMatrix() {
+  if (!SupportsImageMatrix() || !context_ || image_width_ <= 0.f ||
       image_height_ <= 0.f) {
+    return;
+  }
+  const auto* alignment = GetImageAlignment(mode_);
+  if (!alignment) {
     return;
   }
 
@@ -826,10 +860,11 @@ void UINewImage::UpdateCenterMatrix() {
   if (content_width <= 0.f || content_height <= 0.f) {
     return;
   }
-  const float translate_x =
-      std::round((content_width * density - image_width_ * density) * 0.5f);
-  const float translate_y =
-      std::round((content_height * density - image_height_ * density) * 0.5f);
+  // Preserve pixel scale; negative offsets crop images larger than the content.
+  const float translate_x = std::round(
+      (content_width * density - image_width_ * density) * alignment->x);
+  const float translate_y = std::round(
+      (content_height * density - image_height_ * density) * alignment->y);
   ArkUI_NumberValue values[16] = {};
   values[0].f32 = density;
   values[5].f32 = density;

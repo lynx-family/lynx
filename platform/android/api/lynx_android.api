@@ -9939,6 +9939,7 @@ public interface com::lynx::tasm::image::ScalingUtils::ScaleType {
 }
 
 public class com::lynx::tasm::image::ScalingUtils :  {
+  public static ScaleType com.lynx.tasm.image.ScalingUtils.getAlignmentScaleType(String mode);
 }
 
 public interface com::lynx::devtoolwrapper::ScreenshotBitmapHandler {

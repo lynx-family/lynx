@@ -114,6 +114,30 @@ public class LynxImageManagerTest {
   }
 
   @Test
+  public void fixedModesPreserveExplicitAutoSize() throws Exception {
+    LynxImageManager manager = new LynxImageManager(mContext);
+    java.lang.reflect.Method autoSize = LynxImageManager.class.getDeclaredMethod("usesAutoSize");
+    autoSize.setAccessible(true);
+    assertSame(ScalingUtils.ScaleType.FIT_CENTER, manager.getMode("widthFix"));
+    assertSame(ScalingUtils.ScaleType.FIT_CENTER, manager.getMode("heightFix"));
+
+    manager.setMode("widthFix");
+    manager.setAutoSize(false);
+    assertTrue((boolean) autoSize.invoke(manager));
+    manager.setMode("heightFix");
+    assertTrue((boolean) autoSize.invoke(manager));
+    manager.setMode("aspectFit");
+    assertFalse((boolean) autoSize.invoke(manager));
+
+    manager.setAutoSize(true);
+    manager.setMode("widthFix");
+    manager.setMode("aspectFill");
+    assertTrue((boolean) autoSize.invoke(manager));
+    manager.setAutoSize(false);
+    assertFalse((boolean) autoSize.invoke(manager));
+  }
+
+  @Test
   public void updateInnerClipPathForBorderRadius() {
     RectF rectF = new RectF(1.1f, 1.1f, 10.2f, 10.2f);
     float[] borders = new float[8];
