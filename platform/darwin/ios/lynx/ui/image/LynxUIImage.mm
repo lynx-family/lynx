@@ -43,10 +43,50 @@ static NSString* const LynxSVGImageDataPrefix = @"data:image/svg+xml;base64";
 static NSString* const LynxSVGImageErrorDomain = @"LynxSVGImageErrorDomain";
 static NSString* const LynxImageEventLoad = @"load";
 
+@interface LynxConverter (ImageModeConversion)
++ (UIViewContentMode)toUIViewContentMode:(id)value;
+@end
+
 static NSError* LynxSVGImageError(NSString* description) {
   return [NSError errorWithDomain:LynxSVGImageErrorDomain
                              code:ECLynxResourceImageException
                          userInfo:@{NSLocalizedDescriptionKey : description}];
+}
+
+static CGPoint LynxImageAlignmentForContentMode(UIViewContentMode mode) {
+  static constexpr struct {
+    UIViewContentMode mode;
+    CGPoint alignment;
+  } kAlignments[] = {
+      {UIViewContentModeTopLeft, {0, 0}},     {UIViewContentModeTop, {0.5, 0}},
+      {UIViewContentModeTopRight, {1, 0}},    {UIViewContentModeLeft, {0, 0.5}},
+      {UIViewContentModeCenter, {0.5, 0.5}},  {UIViewContentModeRight, {1, 0.5}},
+      {UIViewContentModeBottomLeft, {0, 1}},  {UIViewContentModeBottom, {0.5, 1}},
+      {UIViewContentModeBottomRight, {1, 1}},
+  };
+  for (const auto& entry : kAlignments) {
+    if (entry.mode == mode) {
+      return entry.alignment;
+    }
+  }
+  return CGPointMake(0.5, 0.5);
+}
+
+static BOOL LynxImageUsesIntrinsicSize(UIViewContentMode mode) {
+  switch (mode) {
+    case UIViewContentModeCenter:
+    case UIViewContentModeTop:
+    case UIViewContentModeBottom:
+    case UIViewContentModeLeft:
+    case UIViewContentModeRight:
+    case UIViewContentModeTopLeft:
+    case UIViewContentModeTopRight:
+    case UIViewContentModeBottomLeft:
+    case UIViewContentModeBottomRight:
+      return YES;
+    default:
+      return NO;
+  }
 }
 
 typedef NS_ENUM(NSInteger, LynxResizeMode) {
@@ -245,6 +285,7 @@ typedef NS_ENUM(NSInteger, LynxImagePlayState) {
 @property(nonatomic, readwrite) CGFloat preFetchHeight;
 @property(nonatomic, assign) BOOL downsampling;
 @property(nonatomic, assign) BOOL autoSize;
+@property(nonatomic, assign) BOOL fixedSizeMode;
 @property(nonatomic, assign) BOOL isOffScreen;
 @property(nonatomic) BOOL deferSrcInvalidation;
 @property(nonatomic, assign) NSInteger logBoxSizeWarningThreshold;
@@ -472,7 +513,7 @@ LYNX_REGISTER_UI("image")
       transition.type = kCATransitionFade;
       [strongSelf.view.layer addAnimation:transition forKey:@"LynxImageFadeAnimation"];
     }
-    if (strongSelf.autoSize &&
+    if ([strongSelf usesAutoSize] &&
         UIEdgeInsetsEqualToEdgeInsets(strongSelf.capInsets, UIEdgeInsetsZero)) {
       if (strongSelf.enableImageAsyncLayout) {
         CGSize size = requestURL.imageSize;
@@ -538,10 +579,10 @@ LYNX_REGISTER_UI("image")
     return YES;
   }
   // for auto-size image
-  if (self.autoSize && (self.frame.size.width <= 0 || self.frame.size.height <= 0)) {
+  if ([self usesAutoSize] && (self.frame.size.width <= 0 || self.frame.size.height <= 0)) {
     return YES;
   }
-  if (_resizeMode == UIViewContentModeCenter) {
+  if (LynxImageUsesIntrinsicSize(_resizeMode)) {
     return NO;
   }
   //  When an image has neither padding nor irregular corner radii, use UIView's corner radius
@@ -812,7 +853,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
       _preFetchHeight <= 0) {
     return;
   }
-  if (_autoSize && self.frame.size.width <= 0 && self.frame.size.height <= 0) {
+  if ([self usesAutoSize] && self.frame.size.width <= 0 && self.frame.size.height <= 0) {
     return;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_IMAGE_REQUEST_IMAGE, "url", [url.absoluteString UTF8String],
@@ -856,7 +897,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
         UIEdgeInsetsEqualToEdgeInsets(self.backgroundManager.borderWidth, UIEdgeInsetsZero) &&
         UIEdgeInsetsEqualToEdgeInsets(self.padding, UIEdgeInsetsZero) &&
         !LynxHasBorderRadii(self.backgroundManager.borderRadius);
-    if (!hasNoBorderRadii || _resizeMode == UIViewContentModeCenter) {
+    if (!hasNoBorderRadii || LynxImageUsesIntrinsicSize(_resizeMode)) {
       // FIXME(linxs): is it necessary to process radius like this?
       [processors addObject:[[LynxBorderRadiusImageProcessor alloc]
                                 initWithDrawParameter:self.drawParameter]];
@@ -989,7 +1030,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
     [strongSelf notifyImageLoadedIfNeeded:requestUrl error:error];
   };
   _startRequestTime = [NSDate date];
-  BOOL downsampling = (_downsampling || self.getEnableImageDownsampling) && !_autoSize;
+  BOOL downsampling = (_downsampling || self.getEnableImageDownsampling) && ![self usesAutoSize];
   requestUrl.lastRequestUrl = url;
   [self initResourceLoaderInformation];
   [requestUrl initResourceInformation];
@@ -1444,15 +1485,17 @@ LYNX_PROP_SETTER("defer-src-invalidation", setDeferSrcInvalidation, BOOL) {
   _deferSrcInvalidation = value;
 }
 
-LYNX_PROP_SETTER("mode", setMode, UIViewContentMode) {
+LYNX_PROP_SETTER("mode", setMode, NSString*) {
   [self markAsDirty];
-  if (requestReset) {
-    value = UIViewContentModeScaleToFill;
-  }
-  if (_resizeMode != value || self.view.contentMode != value) {
-    _resizeMode = value;
+  _fixedSizeMode = !requestReset &&
+                   ([value isEqualToString:@"widthFix"] || [value isEqualToString:@"heightFix"]);
+  UIViewContentMode mode = requestReset     ? UIViewContentModeScaleToFill
+                           : _fixedSizeMode ? UIViewContentModeScaleAspectFit
+                                            : [LynxConverter toUIViewContentMode:value];
+  if (_resizeMode != mode || self.view.contentMode != mode) {
+    _resizeMode = mode;
     [self.propsDidUpdateBlockArray addObject:^(LynxUI* ui) {
-      ((LynxUIImage*)ui).view.contentMode = value;
+      ((LynxUIImage*)ui).view.contentMode = mode;
     }];
   }
 }
@@ -1611,6 +1654,11 @@ LYNX_PROP_SETTER("use-new-image", setUseNewImage, BOOL) {
     value = NO;
   }
   _useNewImage = value;
+}
+
+- (BOOL)usesAutoSize {
+  // Keep the explicit auto-size prop independent of fixed-dimension modes.
+  return _autoSize || _fixedSizeMode;
 }
 
 LYNX_PROP_SETTER("auto-size", setAutoSize, BOOL) {
@@ -1989,12 +2037,13 @@ LYNX_UI_METHOD(stopAnimation) {
   } else if (param.resizeMode == UIViewContentModeScaleToFill) {
     borderBounds = CGRectMake(borderWidth.left + padding.left, borderWidth.top + padding.top,
                               initialBoundsWidth, initialBoundsHeight);
-  } else {  // "center"
+  } else {  // Intrinsic-size alignment, including center.
     CGSize sourceSize = [LynxUIImage sourcePixelSizeForImage:param.image];
-    borderBounds =
-        CGRectMake(borderWidth.left + padding.left + initialBoundsWidth / 2 - sourceSize.width / 2,
-                   borderWidth.top + padding.top + initialBoundsHeight / 2 - sourceSize.height / 2,
-                   sourceSize.width, sourceSize.height);
+    CGPoint alignment = LynxImageAlignmentForContentMode(param.resizeMode);
+    borderBounds = CGRectMake(
+        borderWidth.left + padding.left + (initialBoundsWidth - sourceSize.width) * alignment.x,
+        borderWidth.top + padding.top + (initialBoundsHeight - sourceSize.height) * alignment.y,
+        sourceSize.width, sourceSize.height);
   }
 
   LynxBorderRadii radius = borderRadius;
@@ -2084,7 +2133,7 @@ LYNX_UI_METHOD(stopAnimation) {
             widthMode:(LynxMeasureMode)widthMode
                height:(CGFloat)height
            heightMode:(LynxMeasureMode)heightMode {
-  if (!_autoSize) {
+  if (![self usesAutoSize]) {
     return CGSizeMake((widthMode == LynxMeasureModeDefinite) ? width : 0,
                       (heightMode == LynxMeasureModeDefinite) ? height : 0);
   }
@@ -2165,6 +2214,22 @@ LYNX_UI_METHOD(stopAnimation) {
     return UIViewContentModeScaleToFill;
   } else if ([valueStr isEqualToString:@"center"]) {
     return UIViewContentModeCenter;
+  } else if ([valueStr isEqualToString:@"top"]) {
+    return UIViewContentModeTop;
+  } else if ([valueStr isEqualToString:@"bottom"]) {
+    return UIViewContentModeBottom;
+  } else if ([valueStr isEqualToString:@"left"]) {
+    return UIViewContentModeLeft;
+  } else if ([valueStr isEqualToString:@"right"]) {
+    return UIViewContentModeRight;
+  } else if ([valueStr isEqualToString:@"top left"]) {
+    return UIViewContentModeTopLeft;
+  } else if ([valueStr isEqualToString:@"top right"]) {
+    return UIViewContentModeTopRight;
+  } else if ([valueStr isEqualToString:@"bottom left"]) {
+    return UIViewContentModeBottomLeft;
+  } else if ([valueStr isEqualToString:@"bottom right"]) {
+    return UIViewContentModeBottomRight;
   } else {
     return UIViewContentModeScaleAspectFill;
   }

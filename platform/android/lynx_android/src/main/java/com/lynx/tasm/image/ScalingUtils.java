@@ -10,6 +10,54 @@ import com.lynx.tasm.utils.PixelUtils;
 
 /** Performs scale type calculations. */
 public class ScalingUtils {
+  private static final ScaleType[] ALIGNMENT_TYPES = {
+      new ScaleTypeAligned("top", 0.5f, 0f),
+      new ScaleTypeAligned("bottom", 0.5f, 1f),
+      new ScaleTypeAligned("left", 0f, 0.5f),
+      new ScaleTypeAligned("right", 1f, 0.5f),
+      new ScaleTypeAligned("top left", 0f, 0f),
+      new ScaleTypeAligned("top right", 1f, 0f),
+      new ScaleTypeAligned("bottom left", 0f, 1f),
+      new ScaleTypeAligned("bottom right", 1f, 1f),
+  };
+
+  public static ScaleType getAlignmentScaleType(String mode) {
+    for (ScaleType scaleType : ALIGNMENT_TYPES) {
+      if (scaleType.toString().equals(mode)) {
+        return scaleType;
+      }
+    }
+    return null;
+  }
+
+  private static class ScaleTypeAligned extends AbstractScaleType {
+    private final String mMode;
+    private final float mAlignmentX;
+    private final float mAlignmentY;
+
+    ScaleTypeAligned(String mode, float x, float y) {
+      mMode = mode;
+      mAlignmentX = x;
+      mAlignmentY = y;
+    }
+
+    @Override
+    public String toString() {
+      return mMode;
+    }
+
+    @Override
+    public void getTransformImpl(Matrix matrix, float availableWidth, float availableHeight,
+        float sourceWidth, float sourceHeight, float offsetStartX, float offsetStartY) {
+      // Match CENTER's density conversion while preserving the drawable bounds origin.
+      float scale = PixelUtils.dipToPx(1.0f);
+      matrix.setScale(scale, scale);
+      matrix.postTranslate(
+          offsetStartX + Math.round((availableWidth - sourceWidth * scale) * mAlignmentX),
+          offsetStartY + Math.round((availableHeight - sourceHeight * scale) * mAlignmentY));
+    }
+  }
+
   public interface ScaleType {
     ScaleType FIT_XY = ScaleTypeFitXY.INSTANCE;
 

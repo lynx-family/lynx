@@ -12,6 +12,8 @@
 - (void)requestImage;
 - (void)requestImage:(LynxURL*)url;
 - (void)onImageReady:(UIImage*)image withRequest:(LynxURL*)url;
+- (BOOL)needSyncDisplay;
+- (BOOL)usesAutoSize;
 @end
 
 @interface LynxUIImageRequestProbe : LynxUIImage
@@ -31,6 +33,52 @@
 @end
 
 @implementation LynxUIImageUnitTest
+
+- (void)testFixedSizeModeReset {
+  [LynxPropsProcessor updateProp:@"widthFix" withKey:@"mode" forUI:_UIImage];
+  [LynxPropsProcessor updateProp:nil withKey:@"mode" forUI:_UIImage];
+  XCTAssertFalse([_UIImage usesAutoSize]);
+  XCTAssertEqual([[_UIImage valueForKey:@"resizeMode"] integerValue], UIViewContentModeScaleToFill);
+}
+
+- (void)testFixedSizeModes {
+  for (NSString* mode in @[ @"widthFix", @"heightFix" ]) {
+    [LynxPropsProcessor updateProp:@NO withKey:@"auto-size" forUI:_UIImage];
+    [LynxPropsProcessor updateProp:mode withKey:@"mode" forUI:_UIImage];
+    XCTAssertTrue([_UIImage usesAutoSize]);
+    XCTAssertEqual([[_UIImage valueForKey:@"resizeMode"] integerValue],
+                   UIViewContentModeScaleAspectFit);
+
+    [LynxPropsProcessor updateProp:@NO withKey:@"auto-size" forUI:_UIImage];
+    XCTAssertTrue([_UIImage usesAutoSize]);
+    [LynxPropsProcessor updateProp:@"aspectFit" withKey:@"mode" forUI:_UIImage];
+    XCTAssertFalse([_UIImage usesAutoSize]);
+
+    [LynxPropsProcessor updateProp:mode withKey:@"mode" forUI:_UIImage];
+    [LynxPropsProcessor updateProp:@YES withKey:@"auto-size" forUI:_UIImage];
+    [LynxPropsProcessor updateProp:@"aspectFit" withKey:@"mode" forUI:_UIImage];
+    XCTAssertTrue([_UIImage usesAutoSize]);
+  }
+}
+
+- (void)testIntrinsicSizeModes {
+  NSArray<NSString*>* modes = @[
+    @"top left", @"top", @"top right", @"left", @"center", @"right", @"bottom left", @"bottom",
+    @"bottom right"
+  ];
+  UIViewContentMode expected[] = {
+      UIViewContentModeTopLeft,    UIViewContentModeTop,    UIViewContentModeTopRight,
+      UIViewContentModeLeft,       UIViewContentModeCenter, UIViewContentModeRight,
+      UIViewContentModeBottomLeft, UIViewContentModeBottom, UIViewContentModeBottomRight};
+  for (NSUInteger i = 0; i < modes.count; ++i) {
+    [LynxPropsProcessor updateProp:modes[i] withKey:@"mode" forUI:_UIImage];
+    XCTAssertEqual([[_UIImage valueForKey:@"resizeMode"] integerValue], expected[i]);
+    XCTAssertFalse([_UIImage needSyncDisplay]);
+  }
+  [LynxPropsProcessor updateProp:@"aspectFit" withKey:@"mode" forUI:_UIImage];
+  XCTAssertEqual([[_UIImage valueForKey:@"resizeMode"] integerValue],
+                 UIViewContentModeScaleAspectFit);
+}
 
 - (void)setUp {
   _UIImage = [[LynxUIImage alloc] init];

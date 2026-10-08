@@ -115,9 +115,10 @@ class UINewImage : public UIBase,
   void UpdateDropShadow(const lepus::Value& value);
   void UpdateDownsampling(const lepus::Value& value);
   void UpdateEnableReportInfo(const lepus::Value& value);
-  bool UsesCenterMatrix() const;
-  void UpdateCenterMatrix();
+  bool UsesImageMatrix() const;
+  void UpdateImageMatrix();
   void AutoSizeIfNeeded();
+  bool UsesAutoSize() const;
   // Synchronously calls ArkTS functions (e.g., GetResourceLoader), which may
   // destroy `this`. Returns true if the instance remains valid, or false if
   // destroyed. Callers must abort immediately if false is returned to prevent
