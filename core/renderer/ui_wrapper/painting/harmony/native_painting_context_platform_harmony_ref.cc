@@ -9,6 +9,7 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
@@ -92,6 +93,45 @@ bool NativePaintingCtxPlatformHarmonyRef::IsPlatformRendererScrollable(
   }
   auto* ui = ui_owner->FindUIBySign(sign);
   return ui != nullptr && ui->IsScrollable();
+}
+
+PlatformTextEventTargetRegions
+NativePaintingCtxPlatformHarmonyRef::GetTextEventTargetRegions(
+    int32_t text_id) {
+  PlatformTextEventTargetRegions regions;
+  const auto* ranges = GetTextEventTargetRanges(text_id);
+  auto renderer_context = renderer_context_.lock();
+  auto context =
+      renderer_context ? renderer_context->GetLynxContext() : nullptr;
+  auto paragraph =
+      renderer_context ? renderer_context->GetTextBundle(text_id) : nullptr;
+  if (ranges == nullptr || context == nullptr || paragraph == nullptr) {
+    return regions;
+  }
+  const float density = context->ScaledDensity();
+  if (density <= 0.f) {
+    return regions;
+  }
+  for (const auto& range : *ranges) {
+    if (range.start < 0 || range.end <= range.start) {
+      continue;
+    }
+    auto rects = paragraph->GetRectsForRange(range.start, range.end);
+    for (uint32_t i = 0; i < rects.GetCount(); ++i) {
+      const float width = rects.GetRight(i) - rects.GetLeft(i);
+      const float height = rects.GetBottom(i) - rects.GetTop(i);
+      if (width <= 0.f || height <= 0.f) {
+        continue;
+      }
+      // Typography uses physical pixels; event targets use logical units.
+      // The text target already accounts for the text content's origin.
+      regions.push_back(PlatformTextEventTargetRegion{
+          range.sign,
+          (rects.GetLeft(i) + paragraph->GetTranslateLeftOffset()) / density,
+          rects.GetTop(i) / density, width / density, height / density});
+    }
+  }
+  return regions;
 }
 
 void NativePaintingCtxPlatformHarmonyRef::InvokePlatformViewUIMethod(
