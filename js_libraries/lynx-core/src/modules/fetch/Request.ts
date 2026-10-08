@@ -53,6 +53,7 @@ export class Request extends BodyMixin {
       }
       this._method = input.method;
       this._signal = (input.signal as any) as AbortSignal;
+      this._lynxExtension = input.lynxExtension;
       this.setBody(input._arrayBuffer);
     } else {
       this._url = String(input);
@@ -73,7 +74,7 @@ export class Request extends BodyMixin {
     }
     this._signal = this._signal || AbortSignal.__create();
 
-    this._lynxExtension = options.lynxExtension || {};
+    this._lynxExtension = options.lynxExtension || this._lynxExtension || {};
 
     if (!this._headers.get('Content-Type')) {
       if (typeof options.body === 'string') {
