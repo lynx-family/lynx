@@ -9,7 +9,10 @@
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxTextRenderManager.h>
 
+#include <vector>
+
 #include "core/public/text_layout_impl.h"
+#include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
 
 namespace lynx {
@@ -47,6 +50,7 @@ class TextLayoutDarwin : public TextLayoutImpl {
 
   void AlignChildrenRecursively(Element* element, NSDictionary* offsetDic);
 
+  std::vector<PlatformTextEventTargetRange> event_target_ranges_;
   LynxTextRenderManager* _textRenderManager;
   LynxFontFaceContext* _fontFaceContext;
 };

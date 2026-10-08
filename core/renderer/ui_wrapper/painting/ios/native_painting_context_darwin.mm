@@ -345,6 +345,16 @@ void NativePaintingCtxDarwin::UpdateTextBundle(int id, intptr_t bundle) {
   });
 }
 
+void NativePaintingCtxDarwin::UpdateTextEventTargetRanges(
+    int id, std::vector<PlatformTextEventTargetRange> ranges) {
+  Enqueue([ref = platform_ref_, id, ranges = std::move(ranges)]() mutable {
+    if (ref) {
+      std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref)
+          ->UpdateTextEventTargetRanges(id, std::move(ranges));
+    }
+  });
+}
+
 void NativePaintingCtxDarwin::DestroyTextBundle(int id) {
   Enqueue([ref = platform_ref_, id]() {
     auto darwin_ref = std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(ref);
