@@ -17,6 +17,10 @@
 #import <Lynx/LynxUnitUtils.h>
 #import <Lynx/LynxView+Internal.h>
 
+@interface LynxTextRenderer (LynxInlineEventTarget)
+- (nullable NSNumber *)inlineTextEventTargetAtPoint:(CGPoint)point;
+@end
+
 @interface LynxUITextDrawParameter : NSObject
 
 @property(nonatomic) LynxTextRenderer *renderer;
@@ -638,6 +642,14 @@ LYNX_PROPS_GROUP_DECLARE(
   }
   CGPoint pointInTextRect = CGPointMake(point.x - self.padding.left - self.border.left,
                                         point.y - self.padding.top - self.border.top);
+  if ([self.context.uiOwner isLayoutInElementModeOn] &&
+      !self.context.lynxContext.isFragmentLayerRenderOn) {
+    NSNumber *sign = [self.renderer inlineTextEventTargetAtPoint:pointInTextRect];
+    if (sign != nil && sign.integerValue != self.sign) {
+      return [self textServiceEventTargetWithSign:sign.integerValue
+                                        eventMask:LynxTextServiceEventTargetTap];
+    }
+  }
   for (LynxEventTargetSpan *span in _renderer.subSpan) {
     if ([span containsPoint:pointInTextRect]) {
       [span setParentEventTarget:self];

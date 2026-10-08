@@ -6,6 +6,10 @@
 #import <Lynx/LynxTextRenderer.h>
 #import <XCTest/XCTest.h>
 
+@interface LynxTextRenderer (LynxInlineEventTarget)
+- (nullable NSNumber *)inlineTextEventTargetAtPoint:(CGPoint)point;
+@end
+
 @interface LynxTextRendererUnitTest : XCTestCase {
   LynxTextRenderer *textRender;
 }
@@ -47,6 +51,61 @@
   // Put teardown code here. This method is called after the invocation of each test method in the
   // class.
   textRender = NULL;
+}
+
+- (void)testInlineEventTargetsWithoutShadowNodes {
+  NSAttributedStringKey key = @"LynxInlineTextEventTargetSignKey";
+  NSTextStorage *storage = textRender.textStorage;
+  [storage removeAttribute:LynxInlineTextShadowNodeSignKey range:NSMakeRange(0, storage.length)];
+  [storage addAttribute:key value:@101 range:NSMakeRange(0, 17)];
+  [storage addAttribute:key value:@102 range:NSMakeRange(5, 2)];
+  [textRender ensureTextRenderLayout];
+
+  NSLayoutManager *layout = textRender.layoutManager;
+  NSTextContainer *container = layout.textContainers.firstObject;
+  for (NSNumber *index in @[ @0, @5 ]) {
+    NSRange glyphs = [layout glyphRangeForCharacterRange:NSMakeRange(index.unsignedIntegerValue, 1)
+                                    actualCharacterRange:NULL];
+    CGRect rect = [layout boundingRectForGlyphRange:glyphs inTextContainer:container];
+    CGPoint point =
+        CGPointMake(CGRectGetMidX(rect) + textRender.textContentOffsetX, CGRectGetMidY(rect));
+    XCTAssertEqualObjects([textRender inlineTextEventTargetAtPoint:point],
+                          index.integerValue == 0 ? @101 : @102);
+    [storage removeAttribute:key range:NSMakeRange(index.unsignedIntegerValue, 1)];
+    XCTAssertNil([textRender inlineTextEventTargetAtPoint:point]);
+  }
+  XCTAssertNil([textRender inlineTextEventTargetAtPoint:CGPointMake(-100, -100)]);
+}
+
+- (void)testInlineAttachmentDoesNotHitInheritedTextTarget {
+  NSTextAttachment *attachment = [NSTextAttachment new];
+  attachment.bounds = CGRectMake(0, 0, 24, 24);
+  NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:@"A"];
+  [text appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+  [text appendAttributedString:[[NSAttributedString alloc] initWithString:@"B"]];
+  [text addAttributes:@{
+    NSFontAttributeName : [UIFont systemFontOfSize:25],
+    @"LynxInlineTextEventTargetSignKey" : @101
+  }
+                range:NSMakeRange(0, text.length)];
+  [textRender.textStorage setAttributedString:text];
+  [textRender ensureTextRenderLayout];
+
+  NSLayoutManager *layout = textRender.layoutManager;
+  for (NSUInteger index = 0; index < 3; ++index) {
+    NSRange glyphs = [layout glyphRangeForCharacterRange:NSMakeRange(index, 1)
+                                    actualCharacterRange:NULL];
+    CGRect rect = [layout boundingRectForGlyphRange:glyphs
+                                    inTextContainer:layout.textContainers.firstObject];
+    CGPoint point =
+        CGPointMake(CGRectGetMidX(rect) + textRender.textContentOffsetX, CGRectGetMidY(rect));
+    NSNumber *target = [textRender inlineTextEventTargetAtPoint:point];
+    if (index == 1) {
+      XCTAssertNil(target);
+    } else {
+      XCTAssertEqualObjects(target, @101);
+    }
+  }
 }
 
 - (void)disable_testGenSubSpan {

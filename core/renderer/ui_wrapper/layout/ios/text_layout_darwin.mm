@@ -5,6 +5,7 @@
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "base/include/string/unicode_decode_utils.h"
@@ -14,6 +15,7 @@
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 
 #import <Lynx/LynxBaseTextShadowNode.h>
 #import <Lynx/LynxConverter+UI.h>
@@ -23,6 +25,8 @@
 namespace lynx {
 namespace tasm {
 namespace {
+
+NSAttributedStringKey const kLynxInlineTextEventTargetSignKey = @"LynxInlineTextEventTargetSignKey";
 
 NSArray<NSNumber*>* AutoFontSizePresetSizesToNSArray(
     const base::InlineVector<float, 6>& preset_sizes) {
@@ -126,6 +130,7 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
   NSMutableAttributedString* attributedString = [[NSMutableAttributedString alloc] init];
   NSMutableSet* inlineElementSigns = [[NSMutableSet alloc] init];
   Boolean hasViewOrImage = NO;
+  event_target_ranges_.clear();
   [attributedString beginEditing];
   GenerateAttributedString(attributedString, element, baseAttributes, inlineElementSigns,
                            &hasViewOrImage);
@@ -143,6 +148,12 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
   textBundle.inlineElementSigns = inlineElementSigns;
   textBundle.textStyle = textStyle;
   [_textRenderManager putAttributedTextBundle:element->impl_id() textBundle:textBundle];
+  if (element->EnableFragmentLayerRender()) {
+    if (auto* manager = element->element_manager(); manager && manager->painting_context()) {
+      manager->painting_context()->impl()->CastToNativeCtx()->UpdateTextEventTargetRanges(
+          element->impl_id(), std::move(event_target_ranges_));
+    }
+  }
 }
 
 void TextLayoutDarwin::HandleParagraphStyle(TextElement* text_element, LynxTextStyle* textStyle,
@@ -213,6 +224,14 @@ void TextLayoutDarwin::GenerateAttributedString(
     NSMutableAttributedString* attributedString, Element* element,
     NSDictionary<NSAttributedStringKey, id>* baseAttributes, NSMutableSet* inlineElementSigns,
     Boolean* hasViewOrImage) {
+  const NSUInteger start = attributedString.length;
+  if (!element->EnableFragmentLayerRender() && element->is_inline_element() &&
+      element->HasEventListener("tap")) {
+    // Inherit the outer target until a nested clickable text overrides it.
+    NSMutableDictionary* attributes = [baseAttributes mutableCopy];
+    attributes[kLynxInlineTextEventTargetSignKey] = @(element->impl_id());
+    baseAttributes = attributes;
+  }
   // handle no raw-text
   if (element->is_text()) {
     TextElement* text_element = static_cast<TextElement*>(element);
@@ -227,6 +246,12 @@ void TextLayoutDarwin::GenerateAttributedString(
   for (auto* child = element->first_render_child(); child; child = child->next_render_sibling()) {
     ProcessChildAttribute(attributedString, child, baseAttributes, inlineElementSigns,
                           hasViewOrImage);
+  }
+  if (element->EnableFragmentLayerRender() && element->is_inline_element() &&
+      element->HasEventListener("tap") && attributedString.length > start) {
+    // Post-order preserves the common event tree's innermost target priority.
+    event_target_ranges_.push_back({element->impl_id(), static_cast<int32_t>(start),
+                                    static_cast<int32_t>(attributedString.length)});
   }
 }
 
