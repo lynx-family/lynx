@@ -85,11 +85,11 @@ deps = {
         "condition": system in ['linux', 'darwin', 'windows']
     },
     'buildtools/gperf': {
-        "type": "git",
-        "url": "https://chromium.googlesource.com/chromium/deps/gperf",
-        "commit": "e9eeea862a18e77b945d98eff7e1bf065d3daf8e",
+        "type": "http",
+        "url": "https://downloads.sourceforge.net/project/gnuwin32/gperf/3.0.1/gperf-3.0.1-bin.zip",
+        "sha256": "413d9f5562c39c2fcac1e48b3e2155838680a0aec1ddcb95b23cb2f092962dcc",
         "ignore_in_git": True,
-        "condition": system == "windows" and machine in ["x86", "i386", "i686", "x86_64"],
+        "condition": system == "windows" and machine == "x86_64",
     },
     'buildtools/gperf-linux.zip': {
         "type": "http",
