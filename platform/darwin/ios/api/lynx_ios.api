@@ -1546,6 +1546,7 @@ public class LynxEnv : NSObject {
   public NSDictionary< NSString *, NSString * > * LynxEnv::platformEnvDebugDescription();
   public BOOL LynxEnv()::enableAnimationSyncTimeOpt();
   public BOOL LynxEnv()::enableTextStrokeInheritanceFix();
+  public BOOL LynxEnv()::enableTextGradientFontFix();
   public NSString * LynxEnv()::_stringFromExternalEnv:(NSString *key);
   public void LynxEnv()::updateExternalEnvCacheForKey:withValue:(NSString *key, [withValue] NSString *value);
   public instancetype LynxEnv::sharedInstance();
@@ -6730,6 +6731,7 @@ public enum LynxEnvKey {
   LynxEnvEnableTextStrokeInheritanceFix
   LynxEnvEnablePlatformThreadSchedulingPolicy
   LynxEnvEnableImageLoadSVG
+  LynxEnvEnableTextGradientFontFix
   LynxEnvKeyEndMark
 }
 

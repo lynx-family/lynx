@@ -705,6 +705,16 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
   return enableTextStrokeInheritanceFix;
 }
 
+- (BOOL)enableTextGradientFontFix {
+  static dispatch_once_t onceToken;
+  static BOOL enableTextGradientFontFix = YES;
+  dispatch_once(&onceToken, ^{
+    enableTextGradientFontFix = [self boolFromExternalEnv:LynxEnvEnableTextGradientFontFix
+                                             defaultValue:YES];
+  });
+  return enableTextGradientFontFix;
+}
+
 - (int)memoryAcquisitionDelaySec {
   static dispatch_once_t onceToken;
   static int delaySecond = 0;
@@ -884,6 +894,7 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
     @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
     @(LynxEnvEnableTextFontCascadeOpt) : @"lynx_text_font_cascade_opt",
     @(LynxEnvEnableTextStrokeInheritanceFix) : @"enable_text_stroke_inheritance_fix",
+    @(LynxEnvEnableTextGradientFontFix) : @"enable_text_gradient_font_fix",
     @(LynxEnvGlobalMemoryReportThresholdMB) : @"global_memory_report_threshold_mb",
     @(LynxEnvFSPEnable) : @"enable_fsp",
     @(LynxEnvFSPConfigJsonString) : @"fsp_config_json_string",
