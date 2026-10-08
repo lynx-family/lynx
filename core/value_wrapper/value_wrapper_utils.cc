@@ -284,6 +284,7 @@ bool ValueUtils::ConvertBigIntToStringIfNecessary(
 // static
 std::unique_ptr<uint8_t[]> ValueUtils::ConvertPiperToArrayBuffer(
     runtime::js::Runtime& rt, const runtime::js::Object& o, size_t& length) {
+  length = 0;
   auto buf = o.getArrayBuffer(rt);
   length = buf.size(rt);
   uint8_t* buffer = buf.data(rt);
@@ -338,9 +339,13 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
         }
         result->PushValueToArray(std::move(sub_arr_result));
       } else if (o.isArrayBuffer(rt)) {
-        size_t length;
-        result->PushArrayBufferToArray(ConvertPiperToArrayBuffer(rt, o, length),
-                                       length);
+        // Evaluate the buffer conversion (which sets |length| as an out-param)
+        // before reading |length| as an argument: argument evaluation order is
+        // unspecified in C++, so passing both in one call would risk reading an
+        // uninitialized |length|.
+        size_t length = 0;
+        auto buffer = ConvertPiperToArrayBuffer(rt, o, length);
+        result->PushArrayBufferToArray(std::move(buffer), length);
       } else if (o.isFunction(rt)) {
         LOGW("not support function");
         result->PushNullToArray();
@@ -421,9 +426,13 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperObjectToPubValue(
         }
         result->PushValueToMap(key, std::move(sub_arr_result));
       } else if (o.isArrayBuffer(rt)) {
-        size_t length;
-        result->PushArrayBufferToMap(
-            key, ConvertPiperToArrayBuffer(rt, o, length), length);
+        // Evaluate the buffer conversion (which sets |length| as an out-param)
+        // before reading |length| as an argument: argument evaluation order is
+        // unspecified in C++, so passing both in one call would risk reading an
+        // uninitialized |length|.
+        size_t length = 0;
+        auto buffer = ConvertPiperToArrayBuffer(rt, o, length);
+        result->PushArrayBufferToMap(key, std::move(buffer), length);
       } else if (o.isFunction(rt)) {
         LOGW("not support function");
         result->PushNullToMap(key);
