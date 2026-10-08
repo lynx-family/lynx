@@ -32,6 +32,8 @@ class NativePaintingCtxPlatformHarmonyRef
   void GetScreenSize(float size[2]) override;
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override;
   bool IsPlatformRendererScrollable(int32_t sign) override;
+  PlatformTextEventTargetRegions GetTextEventTargetRegions(
+      int32_t text_id) override;
   void InvokePlatformViewUIMethod(
       int32_t id, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback)

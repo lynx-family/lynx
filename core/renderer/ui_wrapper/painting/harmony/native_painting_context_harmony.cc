@@ -323,6 +323,17 @@ void NativePaintingCtxHarmony::UpdateTextBundle(int id, intptr_t bundle) {
   });
 }
 
+void NativePaintingCtxHarmony::UpdateTextEventTargetRanges(
+    int id, std::vector<PlatformTextEventTargetRange> ranges) {
+  auto ref =
+      std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_);
+  Enqueue([ref = std::move(ref), id, ranges = std::move(ranges)]() mutable {
+    if (ref) {
+      ref->UpdateTextEventTargetRanges(id, std::move(ranges));
+    }
+  });
+}
+
 void NativePaintingCtxHarmony::DestroyTextBundle(int id) {
   Enqueue([renderer_context = renderer_context_, id]() {
     renderer_context->DestroyTextBundle(id);

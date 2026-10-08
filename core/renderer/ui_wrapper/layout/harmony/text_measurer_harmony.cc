@@ -16,9 +16,11 @@
 #include "base/include/string/unicode_decode_utils.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/starlight/layout/layout_global.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/style/color.h"
 #include "core/style/default_computed_style.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/font/font_face_manager.h"
@@ -347,11 +349,13 @@ void AppendInlineElement(harmony::ParagraphBuilderHarmony& builder,
 }
 
 template <typename PlaceholderInfoList>
-void AppendTextSubtree(harmony::ParagraphBuilderHarmony& builder,
-                       TextElement* element, float density,
-                       harmony::LynxContext* context,
-                       const InlineElementSizeList& inline_sizes,
-                       PlaceholderInfoList& placeholder_infos) {
+void AppendTextSubtree(
+    harmony::ParagraphBuilderHarmony& builder, TextElement* element,
+    float density, harmony::LynxContext* context,
+    const InlineElementSizeList& inline_sizes,
+    PlaceholderInfoList& placeholder_infos,
+    std::vector<PlatformTextEventTargetRange>& event_ranges) {
+  const int32_t start = builder.GetCharCount();
   harmony::TextStyleHarmony text_style;
   ApplyTextStyle(element, density, context, text_style);
   builder.PushTextStyle(text_style);
@@ -369,7 +373,8 @@ void AppendTextSubtree(harmony::ParagraphBuilderHarmony& builder,
                           DecodePropertyForTextElement(inherited_text));
       } else if (child->is_text()) {
         AppendTextSubtree(builder, static_cast<TextElement*>(child), density,
-                          context, inline_sizes, placeholder_infos);
+                          context, inline_sizes, placeholder_infos,
+                          event_ranges);
       } else if (child->is_image() || child->is_view()) {
         AppendInlineElement(builder, child, inherited_text, inline_sizes,
                             density, placeholder_infos);
@@ -380,6 +385,12 @@ void AppendTextSubtree(harmony::ParagraphBuilderHarmony& builder,
   };
   append_children(append_children, element, element);
   builder.PopTextStyle();
+  const int32_t end = builder.GetCharCount();
+  if (element->is_inline_element() && element->HasEventListener("tap") &&
+      end > start) {
+    // Post-order matches the common event tree's nested target priority.
+    event_ranges.push_back({element->impl_id(), start, end});
+  }
 }
 
 template <typename PlaceholderInfo>
@@ -519,8 +530,9 @@ LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
   harmony::ParagraphBuilderHarmony builder(&paragraph_style,
                                            font_collection_.get());
   std::vector<InlinePlaceholderInfo> placeholder_infos;
+  std::vector<PlatformTextEventTargetRange> event_ranges;
   AppendTextSubtree(builder, text_element, density, context_, inline_sizes,
-                    placeholder_infos);
+                    placeholder_infos, event_ranges);
 
   auto paragraph = builder.CreateParagraph(font_collection_, width);
   const auto measure_width_mode = static_cast<SLMeasureMode>(width_mode);
@@ -581,6 +593,15 @@ LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
   if (element->EnableFragmentLayerRender()) {
     text_element->SetTextBundle(
         reinterpret_cast<intptr_t>(stored_paragraph.get()));
+    if (auto* manager = element->element_manager();
+        manager && manager->painting_context()) {
+      // Send empty ranges too, to remove targets after text or listeners
+      // change.
+      manager->painting_context()
+          ->impl()
+          ->CastToNativeCtx()
+          ->UpdateTextEventTargetRanges(id, std::move(event_ranges));
+    }
   }
   return result;
 }

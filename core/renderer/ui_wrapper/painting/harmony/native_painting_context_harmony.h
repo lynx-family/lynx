@@ -98,6 +98,8 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
       float height, int32_t event_mask = 0,
       bool disable_default_resize = false) override;
   void UpdateTextBundle(int id, intptr_t bundle) override;
+  void UpdateTextEventTargetRanges(
+      int id, std::vector<PlatformTextEventTargetRange> ranges) override;
   void DestroyTextBundle(int id) override;
   void UpdatePlatformEventBundle(int id, PlatformEventBundle bundle) override;
 
