@@ -159,6 +159,13 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
         vsync_monitor, js_runner_, runtime_actor);
   }
 
+  void SetVSyncHighRefreshRate() {
+    if (vsync_observer_) {
+      static_cast<VSyncObserverImpl*>(vsync_observer_.get())
+          ->SetHighRefreshRate();
+    }
+  }
+
   std::shared_ptr<runtime::IVSyncObserver> GetVSyncObserver() override {
     return vsync_observer_;
   }

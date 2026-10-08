@@ -44,6 +44,8 @@ class VSyncObserverImpl : public runtime::IVSyncObserver {
   void RegisterAfterAnimationFrameListener(
       base::MoveOnlyClosure<void, int64_t, int64_t> callback) override;
 
+  void SetHighRefreshRate();
+
  private:
   using VSyncCallback = base::MoveOnlyClosure<void, int64_t, int64_t>;
   using VSyncCallbackMap = std::unordered_map<uintptr_t, VSyncCallback>;

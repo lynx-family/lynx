@@ -9,6 +9,12 @@
 namespace lynx {
 namespace shell {
 
+void VSyncObserverImpl::SetHighRefreshRate() {
+  if (vsync_monitor_) {
+    vsync_monitor_->SetHighRefreshRate();
+  }
+}
+
 void VSyncObserverImpl::RequestVSync() {
   if (has_pending_vsync_request_) {
     return;
