@@ -181,6 +181,7 @@ class UIOwner {
   std::shared_ptr<GestureArenaManager> GetGestureArenaManager() const;
   void InitGestureArenaManager(LynxContext* context);
   void SetEnableSyncXElementRegistry();
+  void GetWindowScale(float scale[2]) const;
 
   void DispatchTouchEventToGestureArena(
       const std::string& type, const std::shared_ptr<TouchEvent>& touch_event,

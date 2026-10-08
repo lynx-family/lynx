@@ -1627,6 +1627,39 @@ void UIOwner::SetEnableSyncXElementRegistry() {
                      &result);
 }
 
+void UIOwner::GetWindowScale(float scale[2]) const {
+  scale[0] = scale[1] = 1.f;
+  if (!js_this_) {
+    return;
+  }
+  base::NapiHandleScope scope(env_);
+  napi_value receiver = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
+  napi_value callback;
+  napi_valuetype type;
+  if (!receiver ||
+      napi_get_named_property(env_, receiver, "getWindowScale", &callback) !=
+          napi_ok ||
+      napi_typeof(env_, callback, &type) != napi_ok || type != napi_function) {
+    return;
+  }
+  napi_value result;
+  if (napi_call_function(env_, receiver, callback, 0, nullptr, &result) !=
+      napi_ok) {
+    return;
+  }
+  double values[2];
+  for (uint32_t i = 0; i < 2; ++i) {
+    napi_value value;
+    if (napi_get_element(env_, result, i, &value) != napi_ok ||
+        napi_get_value_double(env_, value, &values[i]) != napi_ok ||
+        !std::isfinite(values[i]) || values[i] <= 0) {
+      return;
+    }
+  }
+  scale[0] = values[0];
+  scale[1] = values[1];
+}
+
 void UIOwner::PostTaskOnUIThread(base::closure task) const {
   context_->PostTaskOnUIThread(std::move(task));
 }

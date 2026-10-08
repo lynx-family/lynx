@@ -206,6 +206,22 @@ void UIExposure::ExecExposureCheck() {
   std::set<UIExposureDetail> disappear_ui_set;
   float offset_screen[2] = {0};
   ui_owner_->Root()->GetOffsetToScreen(offset_screen);
+  float window_scale[2];
+  ui_owner_->GetWindowScale(window_scale);
+  float screen_size[2] = {0};
+  ui_owner_->Context()->ScreenSize(screen_size);
+  // Exposure rectangles contain unscaled root-relative coordinates plus the
+  // root's screen offset. Invert the host window scale on the screen clip so
+  // both rectangles use the same coordinates, including in floating windows.
+  auto& screen_rect = common_ancestor_ui_rect_map_[-10];
+  for (int i = 0; i < 2; ++i) {
+    screen_rect.ui_rect[i] =
+        offset_screen[i] - offset_screen[i] / window_scale[i];
+    screen_rect.ui_rect[i + 2] =
+        offset_screen[i] +
+        (screen_size[i] - offset_screen[i]) / window_scale[i];
+  }
+  screen_rect.ui_rect_updated = true;
   for (auto& it : exposed_ui_map_) {
     auto ui = ui_owner_->FindUIBySign(it.second.ID());
     if (ui &&
@@ -392,11 +408,17 @@ bool UIExposure::IsLynxViewChanged() {
   float top = page_offset.y / scaled_density;
   float right = left + root->width_;
   float bottom = top + root->height_;
+  float window_scale[2];
+  ui_owner_->GetWindowScale(window_scale);
 
   bool res = base::FloatsNotEqual(left, old_lynx_origin_rect_[0]) ||
              base::FloatsNotEqual(right, old_lynx_origin_rect_[2]) ||
              base::FloatsNotEqual(top, old_lynx_origin_rect_[1]) ||
-             base::FloatsNotEqual(bottom, old_lynx_origin_rect_[3]);
+             base::FloatsNotEqual(bottom, old_lynx_origin_rect_[3]) ||
+             base::FloatsNotEqual(window_scale[0], old_window_scale_[0]) ||
+             base::FloatsNotEqual(window_scale[1], old_window_scale_[1]);
+  old_window_scale_[0] = window_scale[0];
+  old_window_scale_[1] = window_scale[1];
   old_lynx_origin_rect_[0] = left;
   old_lynx_origin_rect_[1] = top;
   old_lynx_origin_rect_[2] = right;
