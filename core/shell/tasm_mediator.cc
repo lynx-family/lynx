@@ -150,6 +150,20 @@ void TasmMediator::OnPageConfigDecoded(
     const std::shared_ptr<tasm::PageConfig>& config) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_MEDIATOR_CALL_ON_PAGE_CONFIG_DECODED);
   tasm_platform_invoker_->OnPageConfigDecoded(config);
+  // MTS and BTS rAF use separate VSync monitors. The MTS monitor may not
+  // exist yet, so retain the preference for its lazy initialization.
+  enable_high_refresh_rate_ = config->GetPreferredFps() == "high";
+  if (enable_high_refresh_rate_ && vsync_monitor_) {
+    vsync_monitor_->SetHighRefreshRate();
+  }
+  if (runtime_actor_ && enable_high_refresh_rate_) {
+    runtime_actor_->Act([](auto& runtime) {
+      auto* mediator = static_cast<BTSRuntimeMediator*>(runtime->GetDelegate());
+      if (mediator) {
+        mediator->SetVSyncHighRefreshRate();
+      }
+    });
+  }
   should_enable_air_performance_callback_ =
       config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_STRICT ||
       config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_FIBER;
@@ -336,6 +350,9 @@ void TasmMediator::InitVSyncMonitorIfNeeded() {
     vsync_monitor_->BindTaskRunner(GetLepusTimedTaskRunner());
     vsync_monitor_->BindToCurrentThread();
     vsync_monitor_->Init();
+    if (enable_high_refresh_rate_) {
+      vsync_monitor_->SetHighRefreshRate();
+    }
   }
 }
 

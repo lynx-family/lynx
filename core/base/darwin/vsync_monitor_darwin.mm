@@ -78,7 +78,13 @@
   TRACE_EVENT(LYNX_TRACE_CATEGORY, VSYNC_MONITOR_DARWIN_ON_MAIN_DISPLAY);
   if (_callback) {
     CFTimeInterval timestamp = _displayLink.timestamp;
-    _callback(timestamp * 1e+9, (timestamp + _displayLink.duration) * 1e+9);
+    CFTimeInterval frameEnd;
+    if (@available(iOS 15.0, *)) {
+      frameEnd = _displayLink.targetTimestamp;
+    } else {
+      frameEnd = timestamp + _displayLink.duration;
+    }
+    _callback(timestamp * 1e+9, frameEnd * 1e+9);
   }
 }
 
