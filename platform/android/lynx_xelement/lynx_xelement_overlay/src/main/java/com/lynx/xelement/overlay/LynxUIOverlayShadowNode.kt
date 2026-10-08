@@ -16,7 +16,7 @@ open class LynxUIOverlayShadowNode : ShadowNode(), CustomMeasureFunc {
     if (childCount > 0) {
       val firstChild = getChildAt(0)
       if (firstChild is NativeLayoutNodeRef) {
-        val metrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(mContext)
+        val metrics = mContext?.screenMetrics ?: DisplayMetricsHolder.getRealScreenDisplayMetrics(mContext)
         val childParam = MeasureParam().apply {
           mHeight = metrics.heightPixels.toFloat()
           mWidth = metrics.widthPixels.toFloat()
