@@ -295,6 +295,7 @@ class TasmMediator : public LynxEngine::Delegate {
   // TODO(songshourui.null): Provide requesAnimationFrame capability to
   // ElementWorklet later by this vsync_monitor_;
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_;
+  bool enable_high_refresh_rate_{false};
 
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_;
 
