@@ -356,6 +356,15 @@ void AppendTextSubtree(
     PlaceholderInfoList& placeholder_infos,
     std::vector<PlatformTextEventTargetRange>& event_ranges) {
   const int32_t start = builder.GetCharCount();
+  const bool native_inline_target = !element->EnableFragmentLayerRender() &&
+                                    element->is_inline_element() &&
+                                    element->HasEventListener("tap");
+  if (native_inline_target) {
+    builder.PushTextEventTarget(element->impl_id(),
+                                harmony::LynxEventPropStatus::kUndefined,
+                                harmony::LynxEventPropStatus::kUndefined,
+                                harmony::LynxPointerEventsValue::kUnset);
+  }
   harmony::TextStyleHarmony text_style;
   ApplyTextStyle(element, density, context, text_style);
   builder.PushTextStyle(text_style);
@@ -385,6 +394,9 @@ void AppendTextSubtree(
   };
   append_children(append_children, element, element);
   builder.PopTextStyle();
+  if (native_inline_target) {
+    builder.PopTextEventTarget();
+  }
   const int32_t end = builder.GetCharCount();
   if (element->is_inline_element() && element->HasEventListener("tap") &&
       end > start) {
