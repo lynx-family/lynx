@@ -15,6 +15,7 @@ unittest_set("tasks_testset") {
   sources = [
     "../../../renderer/dom/air/testing/air_lepus_context_mock.h",
     "lepus_callback_manager_unittest.cc",
+    "lepus_raf_manager_unittest.cc",
   ]
   public_deps = [
     ":tasks",
@@ -30,10 +31,10 @@ unittest_exec("task_unittests_exec") {
     ":tasks_testset",
     "../:lepus",
     "../../../renderer:tasm",
-    "../../../renderer/dom:dom",
-    "../../../renderer/ui_wrapper:ui_wrapper",
+    "../../../renderer/dom",
+    "../../../renderer/ui_wrapper",
     "../../../renderer/utils:renderer_utils",
-    "../../../value_wrapper:value_wrapper",
-    "../bindings:bindings",
+    "../../../value_wrapper",
+    "../bindings",
   ]
 }

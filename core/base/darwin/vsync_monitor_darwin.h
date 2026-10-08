@@ -24,6 +24,8 @@ class VSyncMonitorIOS : public VSyncMonitor {
 
   void SetHighRefreshRate() override;
 
+  void SetAnimationFrameRate(uintptr_t client_id, bool active) override;
+
   void RequestVSync() override;
 
   void RequestVSyncOnUIThread(Callback callback) override;

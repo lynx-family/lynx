@@ -187,6 +187,8 @@ class TasmMediator : public LynxEngine::Delegate {
       uintptr_t id,
       base::MoveOnlyClosure<void, int64_t, int64_t> callback) override;
 
+  std::weak_ptr<base::VSyncMonitor> GetAnimationFrameVSyncMonitor() override;
+
   std::unordered_map<int32_t, tasm::LayoutInfoArray> GetSubTreeLayoutInfo(
       int32_t root_id, tasm::Viewport viewport = tasm::Viewport{}) override;
 
