@@ -101,6 +101,7 @@ class UIExposure : public UIObserverCallback,
   long long last_lynxview_check_time_{0};
   int time_interval_for_lynxview_check_{50};
   float old_lynx_origin_rect_[4] = {0};
+  float old_window_scale_[2] = {1.f, 1.f};
   bool exposure_check_flag_{false};
   bool exposure_vsync_scheduled_{false};
   bool observer_registered_{false};

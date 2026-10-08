@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import lynx, { NativeContent } from 'liblynx.so';
-import { UIContext } from '@kit.ArkUI';
+import { UIContext, window } from '@kit.ArkUI';
 import { BehaviorRegistryMap, NodeType } from './Behavior';
 import { NodeContent } from '@ohos.arkui.node';
 import { TraceCategory, TraceEvent } from '../../base/TraceEvent';
@@ -74,6 +74,23 @@ export class UIOwner {
 
   getId(): string {
     return this.id;
+  }
+
+  getWindowScale(): number[] {
+    try {
+      const name = this.uiContext.getWindowName();
+      if (name !== undefined) {
+        const win = window.findWindow(name);
+        const layout = win.getWindowProperties().windowRect;
+        const global = win.getGlobalRect();
+        if (layout.width > 0 && layout.height > 0 && global.width > 0 && global.height > 0) {
+          return [global.width / layout.width, global.height / layout.height];
+        }
+      }
+    } catch (_) {
+      // Keep the unscaled behavior if the window API is unavailable.
+    }
+    return [1, 1];
   }
 
   getNodeType(tag: string): NodeType {
