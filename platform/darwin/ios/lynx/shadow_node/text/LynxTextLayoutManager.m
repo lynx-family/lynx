@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <CoreText/CoreText.h>
+#import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxTextLayoutManager.h>
 #import <Lynx/LynxTextStyle.h>
 #import <Lynx/LynxTraceEvent.h>
@@ -22,7 +23,14 @@
                             size:(const CGSize *)size
                       textMatrix:(const CGAffineTransform *)textMatrix
                     adjustOffset:(const CGPoint *)adjustOffset {
+  // Preserve existing masks when the font name is resolvable.
   CGFontRef fontRef = CGFontCreateWithFontName((CFStringRef)font.fontName);
+  if (!fontRef && [[LynxEnv sharedInstance] enableTextGradientFontFix]) {
+    fontRef = CTFontCopyGraphicsFont((__bridge CTFontRef)font, NULL);
+  }
+  if (!fontRef) {
+    return;
+  }
   CGContextSetFont(maskContext, fontRef);
   CGContextSetTextMatrix(maskContext, *textMatrix);
   CGContextTranslateCTM(maskContext, 0, size->height);
