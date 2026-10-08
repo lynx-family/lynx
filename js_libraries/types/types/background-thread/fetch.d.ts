@@ -102,6 +102,10 @@ export declare var Request: {
 
 export interface LynxExtension {
   useStreaming?: boolean;
+  /**
+   * @description Sets the total request timeout in milliseconds for internal TTNet builds. The value must be an integer from 1,000 through 600,000. If omitted or invalid, the network stack's default timeout behavior is preserved.
+   */
+  requestTimeoutMs?: number;
 }
 
 /**
@@ -126,7 +130,7 @@ export interface RequestInit {
    */
   method?: string;
   /**
-   * @description Lynx extension, currently used for requesting chunk streaming
+   * @description Lynx-specific fetch options.
    * @since 3.4
    */
   lynxExtension?: LynxExtension;
