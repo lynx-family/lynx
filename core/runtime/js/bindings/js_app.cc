@@ -2093,6 +2093,9 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
           *rt, runtime::kEnableReuseLoadScriptExports,
           card_bundle_.enable_reuse_load_script_exports) ||
       !page_config_subset.setProperty(
+          *rt, runtime::kEnableReloadCardOnAppReload,
+          card_bundle_.enable_reload_card_on_app_reload) ||
+      !page_config_subset.setProperty(
           *rt, runtime::kEnableFetchAPIStandardStreaming,
           card_bundle_.enable_fetch_api_standard_streaming)) {
     HandleLoadAppFailed(" App::LoadApp error! page_config_subset init fail.");

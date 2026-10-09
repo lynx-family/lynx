@@ -83,6 +83,16 @@ TEST_F(LynxBinaryConfigDecoderTest, ReadEnableAsyncResolveSubtree) {
               TernaryBool::TRUE_VALUE);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest, ReadEnableReloadCardOnAppReload) {
+  EXPECT_FALSE(page_config_->GetEnableReloadCardOnAppReload());
+  config_decoder_->DecodePageConfig(
+      "{\"enableReloadCardOnAppReload\":true}", page_config_);
+  EXPECT_TRUE(page_config_->GetEnableReloadCardOnAppReload());
+  config_decoder_->DecodePageConfig(
+      "{\"enableReloadCardOnAppReload\":false}", page_config_);
+  EXPECT_FALSE(page_config_->GetEnableReloadCardOnAppReload());
+}
+
 TEST_F(LynxBinaryConfigDecoderTest, ReadEnableParseIntFlex) {
   EXPECT_FALSE(page_config_->GetEnableParseIntFlex());
   EXPECT_FALSE(page_config_->GetCSSParserConfigs().enable_parse_int_flex);

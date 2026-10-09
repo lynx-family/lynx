@@ -851,6 +851,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableReuseLoadScriptExports].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableReloadCardOnAppReload) &&
+        doc[config::kEnableReloadCardOnAppReload].IsBool()) {
+      page_config->SetEnableReloadCardOnAppReload(
+          doc[config::kEnableReloadCardOnAppReload].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableCSSInlineVariables) &&
         doc[config::kEnableCSSInlineVariables].IsBool()) {
       page_config->SetEnableCSSInlineVariables(

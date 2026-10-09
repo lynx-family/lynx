@@ -35,6 +35,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableNewGesture').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableNewTransformOrigin').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableParseIntFlex').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableReloadCardOnAppReload').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableReloadLifecycle').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableSimultaneousTap').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableTextOverflow').toEqualTypeOf<boolean | undefined>();

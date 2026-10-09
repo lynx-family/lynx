@@ -312,6 +312,19 @@ export interface Config {
   enableParseIntFlex?: boolean;
 
   /**
+   * Controls whether Lynx core installs a default `onAppReload` handler that reloads the card by evaluating its entry again. When disabled, frameworks keep their existing reload behavior.
+   *
+   * @Android
+   * @Harmony
+   * @iOS
+   *
+   * Since: LynxSDK 4.3
+   *
+   * @defaultValue false
+   */
+  enableReloadCardOnAppReload?: boolean;
+
+  /**
    * Controls whether reload patching triggers the LynxUI onNodeReload lifecycle on affected elements. When enabled, refresh patching walks reloaded elements and calls onNodeReload; when disabled, reload updates skip that lifecycle callback.
    *
    * @Android

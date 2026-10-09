@@ -18,7 +18,7 @@ describe('type-config index', () => {
     expect(compilerOptionsKeys).toEqual([]);
   });
   it('should have correct configKeys', () => {
-    expect(configKeys.length).toBe(35);
+    expect(configKeys.length).toBe(36);
     expect(configKeys).toEqual([
       'alignMouseEventWithW3C',
       'disableLongpressAfterScroll',
@@ -44,6 +44,7 @@ describe('type-config index', () => {
       'enableNewGesture',
       'enableNewTransformOrigin',
       'enableParseIntFlex',
+      'enableReloadCardOnAppReload',
       'enableReloadLifecycle',
       'enableSimultaneousTap',
       'enableTextOverflow',

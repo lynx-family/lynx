@@ -30,6 +30,7 @@ struct TasmRuntimeBundle {
       bool enable_js_binding_api_throw_exception, bool enable_bind_icu,
       bool enable_microtask_promise_polyfill,
       bool enable_reuse_load_script_exports,
+      bool enable_reload_card_on_app_reload,
       bool enable_fetch_api_standard_streaming,
       const lepus::Value& custom_sections)
       : name(name),
@@ -45,6 +46,7 @@ struct TasmRuntimeBundle {
         enable_bind_icu(enable_bind_icu),
         enable_microtask_promise_polyfill(enable_microtask_promise_polyfill),
         enable_reuse_load_script_exports(enable_reuse_load_script_exports),
+        enable_reload_card_on_app_reload(enable_reload_card_on_app_reload),
         enable_fetch_api_standard_streaming(
             enable_fetch_api_standard_streaming),
         custom_sections(custom_sections) {}
@@ -69,6 +71,7 @@ struct TasmRuntimeBundle {
   bool enable_bind_icu;
   bool enable_microtask_promise_polyfill;
   bool enable_reuse_load_script_exports;
+  bool enable_reload_card_on_app_reload;
   bool enable_fetch_api_standard_streaming;
 
   lepus::Value custom_sections{};

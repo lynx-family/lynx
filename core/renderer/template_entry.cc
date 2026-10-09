@@ -269,6 +269,8 @@ bool TemplateEntry::InitWithPageConfigger(PageConfigger* configger,
       TernaryBool::TRUE_VALUE);
   SetEnableReuseLoadScriptExports(
       page_config->GetEnableReuseLoadScriptExports());
+  SetEnableReloadCardOnAppReload(
+      page_config->GetEnableReloadCardOnAppReload());
 
   auto page_config_val = page_config->GetEnableFetchAPIStandardStreaming();
   SetEnableFetchApiStandard(
@@ -577,6 +579,7 @@ TasmRuntimeBundle TemplateEntry::CreateTasmRuntimeBundle() {
           enable_bind_icu_,
           enable_microtask_promise_polyfill_,
           enable_reuse_load_script_exports_,
+          enable_reload_card_on_app_reload_,
           enable_fetch_api_standard_,
           template_bundle().custom_sections_};
 }

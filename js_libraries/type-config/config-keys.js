@@ -31,6 +31,7 @@ const configKeys = [
   'enableNewGesture',
   'enableNewTransformOrigin',
   'enableParseIntFlex',
+  'enableReloadCardOnAppReload',
   'enableReloadLifecycle',
   'enableSimultaneousTap',
   'enableTextOverflow',

@@ -1813,6 +1813,19 @@ enableReuseLoadScriptExports:
     - Android
     - HarmonyOS
     - iOS
+enableReloadCardOnAppReload:
+  description: Controls whether Lynx core installs a default `onAppReload` handler that reloads the card by evaluating its entry again. When disabled, frameworks keep their existing reload behavior.
+  defaultValue: 'false'
+  valueType: bool
+  syncTo:
+    - script
+  author: upupming
+  since: '4.3'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+  export: true
 enableCSSInlineVariables:
   description: Controls whether runtime treats inline style values as CSS variables and resolves them through the inline-variable path. When enabled, decoded page config turns on inline CSS variable support for runtime CSS readers and style resolution; when disabled, inline style values are handled as ordinary static styles. If the field is omitted, the setting can still be driven by native or settings fallback.
   defaultValue: 'false'

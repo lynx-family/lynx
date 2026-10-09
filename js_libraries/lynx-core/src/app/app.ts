@@ -1034,7 +1034,7 @@ export abstract class BaseApp<
     );
   }
 
-  private __removeInternalEventListeners = () => {
+  __removeInternalEventListeners = () => {
     this.removeInternalEventListenersCallbacks.forEach((f) => {
       f();
     });
@@ -1102,6 +1102,22 @@ export abstract class BaseApp<
       }
     ]
   ): void {}
+
+  /**
+   * Tear down what this app registered on anything it shares with the next app
+   * of the same page. Set by the framework.
+   */
+  callDestroyLifetimeFun!: () => void;
+
+  /**
+   * Called by native when the template is reloaded. If enabled by page config,
+   * {@link loadCard} installs a default that evaluates the card entry again; a
+   * framework may override it.
+   */
+  onAppReload!: (
+    updateData?: object,
+    options?: { processorName?: string }
+  ) => void;
 
   /**
    *  override by subclass

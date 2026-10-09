@@ -118,6 +118,9 @@ constexpr const char kEnableMicrotaskPromisePolyfill[] =
 constexpr const char kEnableReuseLoadScriptExports[] =
     "enableReuseLoadScriptExports";
 
+constexpr const char kEnableReloadCardOnAppReload[] =
+    "enableReloadCardOnAppReload";
+
 /**
  * @name: enableFetchAPIStandardStreaming
  * @description: Make the Lynx Fetch-API support standard http streaming.

@@ -50,6 +50,33 @@ export function loadCard(
       return true;
     }
 
+    if (params.pageConfigSubset?.enableReloadCardOnAppReload) {
+      tt.onAppReload = (
+        updateData?: object,
+        options?: { processorName?: string }
+      ): void => {
+        alog(`reload card native app id: ${tt.nativeAppId}`);
+        tt.callDestroyLifetimeFun?.();
+        tt.__removeInternalEventListeners();
+
+        const cache = tt.lynx.requireModule.cache;
+        for (const path of Object.keys(cache)) {
+          delete cache[path];
+        }
+
+        loadCard(
+          tt.nativeApp,
+          {
+            ...tt.params,
+            updateData,
+            processorName: options?.processorName,
+            isReload: true,
+          },
+          tt.lynx.getNativeLynx()
+        );
+      };
+    }
+
     alog(
       `load card native app load app-service.js params.bundleSupportLoadScript ${params.bundleSupportLoadScript}`
     );
