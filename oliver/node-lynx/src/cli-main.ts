@@ -6,6 +6,8 @@ import {
   WindowedOpenCardManager,
 } from './open-card-manager';
 import { HeadlessLynxView } from './headless-lynx-view';
+import { TemplateAllowlist } from './template-allowlist';
+import { REQUIRE_TEMPLATE_ALLOWLIST } from './open-card-defaults';
 import { LynxEnv, LynxLogLevel } from './lynx-env';
 import { WindowedLynxView } from './windowed-lynx-view';
 
@@ -19,6 +21,9 @@ type LynxView = HeadlessLynxView | WindowedLynxView;
 type CliOptions = {
   mode: 'render' | 'preview';
   initialTemplate?: TemplateInput;
+  templateAllowlist: string[];
+  templateAccess?: TemplateAllowlist;
+  unsafeAllowAnyTemplate: boolean;
   outputPath: string;
   width: number;
   height: number;
@@ -54,12 +59,23 @@ Options:
   --height <number>                View height in CSS px. Defaults to ${DEFAULT_HEIGHT}.
   --dpr, --device-pixel-ratio <n>  Device pixel ratio. Defaults to ${DEFAULT_DPR}.
   --title <text>                   Preview window title.
+  --allow-template <path|url>       Allow a template directory or URL path prefix. Repeatable.
+  --unsafe-allow-any-template      Disable OpenCard template restrictions (unsafe).
   --debug-router-schema <schema>   Connect debug-router with the given schema.
   --no-debug-router                Disable preview debug-router startup. Requires a template input.
   --log-level <level>              Lynx log level: verbose, debug, info, warning, error, fatal, or silent.
   --timeout <ms>                   Load and frame timeout. Defaults to ${DEFAULT_TIMEOUT_MS}.
   --screenshot-delay <ms>          Delay after first frame before screenshot. Defaults to ${DEFAULT_SCREENSHOT_DELAY_MS}.
-  -h, --help                       Show this help message.`);
+  -h, --help                       Show this help message.${
+    REQUIRE_TEMPLATE_ALLOWLIST
+      ? `
+
+Provide --allow-template or explicitly choose --unsafe-allow-any-template.
+Allowlist entries do not load templates or open an initial page.
+An initial template, if provided, must also be in the allowlist.
+This does not restrict CDP navigation, scripts, or subresource access.`
+      : ''
+  }`);
 }
 
 function writeStdoutLine(message: string): Promise<void> {
@@ -142,6 +158,8 @@ function parseArgs(argv: string[]): CliOptions | undefined {
   }
 
   let initialTemplate: TemplateInput | undefined;
+  const templateAllowlist: string[] = [];
+  let unsafeAllowAnyTemplate = false;
   let outputPath = 'screenshot.png';
   let width = DEFAULT_WIDTH;
   let height = DEFAULT_HEIGHT;
@@ -229,6 +247,15 @@ function parseArgs(argv: string[]): CliOptions | undefined {
       if (result.consumed) {
         index++;
       }
+    } else if (
+      arg === '--allow-template' ||
+      arg.startsWith('--allow-template=')
+    ) {
+      const result = readOptionValue(args, index, arg);
+      templateAllowlist.push(result.value);
+      if (result.consumed) index++;
+    } else if (arg === '--unsafe-allow-any-template') {
+      unsafeAllowAnyTemplate = true;
     } else if (arg === '--no-debug-router') {
       debugRouter = false;
     } else if (arg === '--log-level' || arg.startsWith('--log-level=')) {
@@ -268,9 +295,26 @@ function parseArgs(argv: string[]): CliOptions | undefined {
     throw new Error('missing Lynx bundle path or URL');
   }
 
+  if (unsafeAllowAnyTemplate && templateAllowlist.length > 0) {
+    throw new Error(
+      '--allow-template cannot be combined with --unsafe-allow-any-template'
+    );
+  }
+  if (
+    REQUIRE_TEMPLATE_ALLOWLIST &&
+    !unsafeAllowAnyTemplate &&
+    templateAllowlist.length === 0
+  ) {
+    throw new Error(
+      'provide --allow-template or explicitly choose --unsafe-allow-any-template'
+    );
+  }
+
   return {
     mode,
     initialTemplate,
+    templateAllowlist,
+    unsafeAllowAnyTemplate,
     outputPath,
     width,
     height,
@@ -380,6 +424,11 @@ async function loadTemplateIntoView(
   if (!options.initialTemplate) {
     throw new Error('missing Lynx bundle path or URL');
   }
+  if (options.templateAccess) {
+    const url = toOpenCardLoadUrl(options.initialTemplate);
+    await view.loadTemplate(await options.templateAccess.read(url), { url });
+    return;
+  }
   await loadTemplateSourceIntoView(
     view,
     options.initialTemplate.templateKind,
@@ -392,6 +441,10 @@ function registerDebugRouterWindowedOpenCardHandlers(
   closeView: () => void
 ): () => void {
   const openCards = new WindowedOpenCardManager({
+    templateAllowlist: options.templateAllowlist.length
+      ? options.templateAllowlist
+      : undefined,
+    unsafeAllowAnyTemplate: options.unsafeAllowAnyTemplate,
     view: {
       width: options.width,
       height: options.height,
@@ -449,6 +502,10 @@ function registerDebugRouterHeadlessOpenCardHandlers(
   closeView: () => void
 ): () => void {
   const openCards = new HeadlessOpenCardManager({
+    templateAllowlist: options.templateAllowlist.length
+      ? options.templateAllowlist
+      : undefined,
+    unsafeAllowAnyTemplate: options.unsafeAllowAnyTemplate,
     view: {
       width: options.width,
       height: options.height,
@@ -515,6 +572,25 @@ export async function runNodeLynxCli(): Promise<void> {
 
   if (options.logLevel) {
     LynxEnv.setLogLevel(options.logLevel);
+  }
+
+  if (options.unsafeAllowAnyTemplate) {
+    console.warn(
+      'WARNING: --unsafe-allow-any-template disables OpenCard restrictions. Connected clients can request arbitrary template URLs and local files.'
+    );
+  } else if (
+    REQUIRE_TEMPLATE_ALLOWLIST ||
+    options.templateAllowlist.length > 0
+  ) {
+    options.templateAccess = new TemplateAllowlist(
+      options.templateAllowlist,
+      options.timeoutMs
+    );
+    if (options.initialTemplate) {
+      options.templateAccess.assertAllowed(
+        toOpenCardLoadUrl(options.initialTemplate)
+      );
+    }
   }
 
   if (options.mode === 'preview') {

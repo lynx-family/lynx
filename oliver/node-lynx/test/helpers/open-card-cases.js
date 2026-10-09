@@ -62,9 +62,12 @@ function createWindowedManager(WindowedOpenCardManager, options = {}) {
 
 async function testSingleCardReplacesOldView(
   HeadlessOpenCardManager,
-  fixtureUrl
+  fixtureUrl,
+  prepareAllowlist
 ) {
-  const manager = createHeadlessManager(HeadlessOpenCardManager);
+  const manager = createHeadlessManager(HeadlessOpenCardManager, {
+    templateAllowlist: prepareAllowlist(fixtureUrl),
+  });
   try {
     const first = await manager.open(fixtureUrl);
     const second = await manager.open(fixtureUrl);
@@ -87,11 +90,13 @@ async function testSingleCardReplacesOldView(
 
 async function testReplacingLoadingCardIgnoresClosedResult(
   HeadlessOpenCardManager,
-  fixtureUrl
+  fixtureUrl,
+  prepareAllowlist
 ) {
   const loaded = [];
   const errors = [];
   const manager = createHeadlessManager(HeadlessOpenCardManager, {
+    templateAllowlist: prepareAllowlist(fixtureUrl),
     onCardLoaded(card) {
       loaded.push(card.id);
     },
@@ -122,17 +127,24 @@ async function testReplacingLoadingCardIgnoresClosedResult(
   }
 }
 
-async function testInvalidTemplateRejectsAndCleansUp(HeadlessOpenCardManager) {
+async function testInvalidTemplateRejectsAndCleansUp(
+  HeadlessOpenCardManager,
+  prepareAllowlist
+) {
   const errors = [];
-  const manager = createHeadlessManager(HeadlessOpenCardManager, {
-    onCardError(error, card) {
-      errors.push({ error, card });
-    },
-  });
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'node-lynx-open-card-'));
+  let manager;
   try {
     const invalidTemplate = path.join(tempDir, 'invalid-template.lynx.bundle');
     await writeFile(invalidTemplate, Buffer.from('not a lynx template'));
+    manager = createHeadlessManager(HeadlessOpenCardManager, {
+      templateAllowlist: prepareAllowlist(
+        pathToFileURL(invalidTemplate).href
+      ),
+      onCardError(error, card) {
+        errors.push({ error, card });
+      },
+    });
     await assert.rejects(
       () => manager.open(pathToFileURL(invalidTemplate).href),
       /Lynx render error 10204|Decode error|unknown Decode Error/
@@ -143,19 +155,22 @@ async function testInvalidTemplateRejectsAndCleansUp(HeadlessOpenCardManager) {
     assert.strictEqual(errors[0].card.state, 'failed');
     assert.ok(errors[0].error instanceof Error);
   } finally {
-    await disposeOpenCardManager(manager);
+    if (manager) await disposeOpenCardManager(manager);
     await rm(tempDir, { recursive: true, force: true });
   }
 }
 
 async function testWindowedSingleCardReplacesOldWindow(
   WindowedOpenCardManager,
-  fixtureUrl
+  fixtureUrl,
+  prepareAllowlist
 ) {
   if (process.platform !== 'darwin' || !WindowedOpenCardManager) {
     return;
   }
-  const manager = createWindowedManager(WindowedOpenCardManager);
+  const manager = createWindowedManager(WindowedOpenCardManager, {
+    templateAllowlist: prepareAllowlist(fixtureUrl),
+  });
   try {
     const first = await manager.open(fixtureUrl);
     const second = await manager.open(fixtureUrl);
@@ -181,17 +196,27 @@ async function runOpenCardManagerTests({
   LynxEnv,
   WindowedOpenCardManager,
   fixtureUrl,
+  prepareAllowlist = () => undefined,
 }) {
   initTestLynxEnv(LynxEnv);
-  await testSingleCardReplacesOldView(HeadlessOpenCardManager, fixtureUrl);
+  await testSingleCardReplacesOldView(
+    HeadlessOpenCardManager,
+    fixtureUrl,
+    prepareAllowlist
+  );
   await testReplacingLoadingCardIgnoresClosedResult(
     HeadlessOpenCardManager,
-    fixtureUrl
+    fixtureUrl,
+    prepareAllowlist
   );
-  await testInvalidTemplateRejectsAndCleansUp(HeadlessOpenCardManager);
+  await testInvalidTemplateRejectsAndCleansUp(
+    HeadlessOpenCardManager,
+    prepareAllowlist
+  );
   await testWindowedSingleCardReplacesOldWindow(
     WindowedOpenCardManager,
-    fixtureUrl
+    fixtureUrl,
+    prepareAllowlist
   );
 }
 

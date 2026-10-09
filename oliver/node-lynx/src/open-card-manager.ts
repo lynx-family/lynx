@@ -4,6 +4,8 @@ import {
   LoadTemplateOptions,
 } from './headless-lynx-view';
 import { LynxEnv } from './lynx-env';
+import { TemplateAllowlist } from './template-allowlist';
+import { REQUIRE_TEMPLATE_ALLOWLIST } from './open-card-defaults';
 import {
   WindowedLynxView,
   WindowedLynxViewOptions,
@@ -13,6 +15,7 @@ export type OpenCardState = 'loading' | 'loaded' | 'failed' | 'closed';
 export type HeadlessOpenCardState = OpenCardState;
 
 type OpenCardView = {
+  loadTemplate(template: Buffer, options?: LoadTemplateOptions): Promise<void>;
   loadTemplateFromUrl(
     url: string,
     options?: Omit<LoadTemplateOptions, 'url'>
@@ -33,6 +36,10 @@ export type HeadlessOpenCard = OpenCard<HeadlessLynxView>;
 export type WindowedOpenCard = OpenCard<WindowedLynxView>;
 
 interface OpenCardManagerOptions<TView extends OpenCardView, TViewOptions> {
+  /** Allowed template directories and HTTP(S) URL path prefixes. */
+  templateAllowlist?: readonly string[];
+  /** Explicitly allow OpenCard to read any template URL or local file. */
+  unsafeAllowAnyTemplate?: boolean;
   view?: TViewOptions;
   load?: Omit<LoadTemplateOptions, 'url'>;
   onCardLoaded?: (card: OpenCard<TView>) => void;
@@ -53,15 +60,37 @@ function normalizeError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-class OpenCardManager<TView extends OpenCardView, TViewOptions> {
+class OpenCardManager<
+  TView extends OpenCardView,
+  TViewOptions extends { timeoutMs?: number }
+> {
   private currentCard?: OpenCard<TView>;
   private nextId = 1;
   private installed = false;
+  private readonly templateAccess?: TemplateAllowlist;
 
   constructor(
     private readonly options: OpenCardManagerOptions<TView, TViewOptions> = {},
     private readonly createView: (options?: TViewOptions) => TView
-  ) {}
+  ) {
+    if (
+      options.unsafeAllowAnyTemplate &&
+      options.templateAllowlist !== undefined
+    ) {
+      throw new Error(
+        'unsafeAllowAnyTemplate cannot be combined with templateAllowlist'
+      );
+    }
+    if (
+      !options.unsafeAllowAnyTemplate &&
+      (REQUIRE_TEMPLATE_ALLOWLIST || options.templateAllowlist !== undefined)
+    ) {
+      this.templateAccess = new TemplateAllowlist(
+        options.templateAllowlist ?? [],
+        options.view?.timeoutMs
+      );
+    }
+  }
 
   install(): void {
     if (this.installed) {
@@ -90,6 +119,13 @@ class OpenCardManager<TView extends OpenCardView, TViewOptions> {
     if (!url) {
       throw new Error('open card url must not be empty');
     }
+    try {
+      this.templateAccess?.assertAllowed(url);
+    } catch (error) {
+      // No card exists for this rejection; keep the current card intact.
+      console.error(normalizeError(error).message);
+      throw error;
+    }
     this.closeCurrentCard();
 
     const view = this.createView(this.options.view);
@@ -103,7 +139,14 @@ class OpenCardManager<TView extends OpenCardView, TViewOptions> {
     this.currentCard = card;
 
     try {
-      await view.loadTemplateFromUrl(url, this.options.load);
+      if (this.templateAccess) {
+        await view.loadTemplate(await this.templateAccess.read(url), {
+          ...this.options.load,
+          url,
+        });
+      } else {
+        await view.loadTemplateFromUrl(url, this.options.load);
+      }
       if (this.currentCard === card && card.state !== 'closed') {
         card.state = 'loaded';
         this.options.onCardLoaded?.(card);
