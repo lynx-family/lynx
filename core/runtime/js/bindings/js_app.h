@@ -344,14 +344,16 @@ class App {
   void Init();
   std::optional<Value> SendPageEvent(const std::string& page_name,
                                      const std::string& handler,
-                                     const lepus::Value& info);
+                                     const lepus::Value& info,
+                                     uint64_t dispatch_id = 0);
   void CallJSFunctionInLepusEvent(const std::string& component_id,
                                   const std::string& name,
                                   const lepus::Value& params);
   void SendGlobalEvent(const std::string& name, const lepus::Value& arguments);
   std::optional<Value> PublishComponentEvent(const std::string& component_id,
                                              const std::string& handler,
-                                             const lepus::Value& info);
+                                             const lepus::Value& info,
+                                             uint64_t dispatch_id = 0);
   enum class State {
     kNotStarted,     // only app created
     kStarted,        // app started loadApp

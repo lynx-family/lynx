@@ -31,9 +31,11 @@
 
 #include "core/runtime/common/bindings/event/message_event.h"
 
+#include <atomic>
 #include <chrono>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/runtime/common/bindings/event/runtime_constants.h"
 #include "core/value_wrapper/value_impl_lepus.h"
@@ -65,6 +67,15 @@ MessageEvent::MessageEvent(const std::string& type, int64_t time_stamp,
       target_(target),
       message_(std::move(message)) {}
 
+void MessageEvent::EnableDispatchDiagnostics() {
+  static std::atomic<uint64_t> next_dispatch_id{0};
+  dispatch_id_ = next_dispatch_id.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+
+void MessageEvent::LogDispatch(uint64_t dispatch_id, const char* stage) {
+  LOGO("EventDispatch event_id=" << dispatch_id << " stage=" << stage);
+}
+
 fml::RefPtr<MessageEvent> MessageEvent::ShallowCopy(const MessageEvent& event) {
   if (event.message_ != nullptr &&
       event.message_->backend_type() ==
@@ -74,6 +85,9 @@ fml::RefPtr<MessageEvent> MessageEvent::ShallowCopy(const MessageEvent& event) {
         std::make_unique<pub::ValueImplLepus>(lepus::Value::ShallowCopy(
             pub::ValueUtils::ConvertValueToLepusValue(*event.message_))));
     message_event->SetTraceFlowId(event.TraceFlowId());
+    if (LOGO_IS_ON()) {
+      message_event->dispatch_id_ = event.dispatch_id_;
+    }
     return message_event;
   }
 
@@ -82,6 +96,9 @@ fml::RefPtr<MessageEvent> MessageEvent::ShallowCopy(const MessageEvent& event) {
       std::make_unique<pub::ValueImplLepus>(
           pub::ValueUtils::ConvertValueToLepusValue(*event.message_)));
   message_event->SetTraceFlowId(event.TraceFlowId());
+  if (LOGO_IS_ON()) {
+    message_event->dispatch_id_ = event.dispatch_id_;
+  }
   return message_event;
 }
 
@@ -94,6 +111,9 @@ fml::RefPtr<MessageEvent> MessageEvent::ShallowCopy(MessageEvent& event) {
         std::make_unique<pub::ValueImplLepus>(lepus::Value::ShallowCopy(
             pub::ValueUtils::ConvertValueToLepusValue(*event.message_))));
     message_event->SetTraceFlowId(event.TraceFlowId());
+    if (LOGO_IS_ON()) {
+      message_event->dispatch_id_ = event.dispatch_id_;
+    }
     return message_event;
   }
   auto message_event = fml::MakeRefCounted<MessageEvent>(
@@ -101,6 +121,9 @@ fml::RefPtr<MessageEvent> MessageEvent::ShallowCopy(MessageEvent& event) {
       std::make_unique<pub::ValueImplLepus>(
           pub::ValueUtils::ConvertValueToLepusValue(*event.message_)));
   message_event->SetTraceFlowId(event.TraceFlowId());
+  if (LOGO_IS_ON()) {
+    message_event->dispatch_id_ = event.dispatch_id_;
+  }
   return message_event;
 }
 

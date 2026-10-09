@@ -5,12 +5,15 @@
 #include "core/shell/runtime/bts/bts_runtime_mediator.h"
 
 #include "base/include/debug/lynx_assert.h"
+#include "base/include/string/string_utils.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/template_assembler.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lazy_bundle/lazy_bundle_request.h"
+#include "core/runtime/common/bindings/event/runtime_constants.h"
 #include "core/runtime/js/js_bundle_holder.h"
+#include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/services/recorder/record.h"
 #include "core/services/timing_handler/timing_mediator.h"
 #include "core/shared_data/white_board_delegate.h"
@@ -18,6 +21,41 @@
 
 namespace lynx {
 namespace shell {
+
+void BTSRuntimeMediator::DispatchMessageEventToRuntime(
+    const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor,
+    fml::RefPtr<runtime::MessageEvent> event) {
+  const auto event_id = LOGO_IS_ON() ? event->DispatchId() : 0;
+  if (!runtime_actor) {
+    return;
+  }
+  const auto enqueue_info =
+      tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
+  if (event_id != 0) {
+    const auto instance_id = runtime_actor->GetInstanceId();
+    std::string target;
+    std::string handler;
+    if (event->type() == runtime::kMessageEventTypeSendPageEvent ||
+        event->type() == runtime::kMessageEventTypePublishComponentEvent) {
+      target = event->message()->GetValueAtIndex(0)->str();
+      handler = event->message()->GetValueAtIndex(1)->str();
+    }
+    LOGO(base::FormatString(
+        "EventDispatch event_id=%llu instance_id=%lld stage=enqueue type=%s "
+        "target=%s handler=%s",
+        static_cast<unsigned long long>(event_id),
+        static_cast<long long>(instance_id), event->type().c_str(),
+        target.c_str(), handler.c_str()));
+  }
+  runtime_actor->Act(
+      [event = std::move(event), enqueue_info](auto& runtime) mutable {
+        if (LOGO_IS_ON() && event->DispatchId() != 0) {
+          runtime::MessageEvent::LogDispatch(event->DispatchId(), "receive");
+        }
+        runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+        runtime->OnReceiveMessageEvent(std::move(event));
+      });
+}
 
 void BTSRuntimeMediator::AttachToLynxShell(
     const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,

@@ -15,8 +15,10 @@
 #include "core/renderer/dom/vdom/radon/radon_dispatch_option.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -61,6 +63,67 @@ void TouchEventHandlerTest::SetUp() {
 }
 
 void TouchEventHandlerTest::TearDown() {}
+
+TEST_F(TouchEventHandlerTest, DispatchDiagnosticsFollowObservationLevel) {
+  class CapturingDelegate : public MockTasmDelegate {
+   public:
+    event::DispatchEventResult DispatchMessageEvent(
+        fml::RefPtr<runtime::MessageEvent> message) override {
+      event_ = std::move(message);
+      return {};
+    }
+    fml::RefPtr<runtime::MessageEvent> event_;
+  } delegate;
+  TouchEventHandler handler(
+      tasm_->page_proxy()->element_manager()->node_manager(), delegate, true,
+      true, "2.12");
+  const int original_level =
+      base::logging::ParseLogLevel(base::logging::GetMinLogLevelName());
+  for (int level :
+       {base::logging::LOG_INFO, base::logging::detail::LOG_OBSERVE}) {
+    base::logging::SetMinLogLevel(level);
+    ::testing::internal::CaptureStdout();
+    handler.PublishComponentEvent(EventType::kComponent, "component", "tap",
+                                  "handler", lepus::Value(), 0);
+    auto output = ::testing::internal::GetCapturedStdout();
+    EXPECT_NE(output.find("PublishComponentEvent ComponentEvent: tap with "
+                          "function: handler\n"),
+              std::string::npos);
+    EXPECT_EQ(output.find("event_id="), std::string::npos);
+    EXPECT_EQ(delegate.event_->DispatchId() != 0, LOGO_IS_ON());
+    handler.PublishComponentEvent(EventType::kComponent, "component",
+                                  "touchmove", "handler", lepus::Value(), 0);
+    EXPECT_EQ(delegate.event_->DispatchId(), 0u);
+    ::testing::internal::CaptureStdout();
+    handler.SendPageEvent(EventType::kComponent, "page", "click", "handler",
+                          lepus::Value(), 0);
+    output = ::testing::internal::GetCapturedStdout();
+    EXPECT_NE(output.find("SendPageEvent ComponentEvent: click with function: "
+                          "handler\n"),
+              std::string::npos);
+    EXPECT_EQ(output.find("event_id="), std::string::npos);
+    EXPECT_EQ(delegate.event_->DispatchId() != 0, LOGO_IS_ON());
+  }
+  base::logging::SetMinLogLevel(original_level);
+}
+
+TEST(ClosureEventListenerTest, MessageCallbackReceivesDispatchMetadata) {
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+      runtime::ContextProxy::Type::kCoreContext,
+      runtime::ContextProxy::Type::kJSContext,
+      std::make_unique<pub::ValueImplLepus>(lepus::Value(42)));
+  event->EnableDispatchDiagnostics();
+  bool invoked = false;
+  event::ClosureEventListener listener(
+      [&invoked, expected_id = event->DispatchId()](
+          lepus::Value args, const runtime::MessageEvent& message) {
+        invoked = true;
+        EXPECT_EQ(args.Int32(), 42);
+        EXPECT_EQ(message.DispatchId(), expected_id);
+      });
+  listener.Invoke(event);
+  EXPECT_TRUE(invoked);
+}
 
 TEST_F(TouchEventHandlerTest, DestroyedAssemblerIgnoresObservedEvents) {
   const int min_level = base::logging::GetMinLogLevel();
