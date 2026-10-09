@@ -1016,6 +1016,21 @@
   }
 }
 
+- (void)takeBTSHeapSnapshot:(NSString*)outputPath callback:(void (^)(BOOL success))callback {
+  NSString* path = [outputPath copy];
+  [LynxThreadManager runBlockInMainQueueImmediately:^{
+    if ([self->_templateRender takeBTSHeapSnapshot:path callback:callback]) {
+      return;
+    }
+    _LogE(@"Failed to take BTS heap snapshot.");
+    if (callback) {
+      dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        callback(NO);
+      });
+    }
+  }];
+}
+
 - (NSDictionary*)getAllJsSource {
   if (_templateRender != nil) {
     return [_templateRender getAllJsSource];

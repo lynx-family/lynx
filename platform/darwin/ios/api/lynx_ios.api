@@ -4094,6 +4094,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public BOOL LynxTemplateRender()::onLynxEvent:(LynxEvent *event);
   public void LynxTemplateRender()::onErrorOccurred:(LynxError *error);
   public int32_t LynxTemplateRender()::instanceId();
+  public BOOL LynxTemplateRender()::takeBTSHeapSnapshot:callback:(nonnull NSString *outputPath, [callback] void(^_Nullable callback)(BOOL success));
   public LynxGestureArenaManager * LynxTemplateRender()::getGestureArenaManager();
   public LynxEngineProxy * LynxTemplateRender()::getEngineProxy();
   public void LynxTemplateRender()::markDirty();
@@ -5774,6 +5775,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public NSDictionary *_Nullable LynxView::getCurrentData();
   public float LynxView::rootWidth();
   public float LynxView::rootHeight();
+  public void LynxView::takeBTSHeapSnapshot:callback:(nonnull NSString *outputPath,[callback] void(^_Nullable callback)(BOOL success));
   public void LynxView::setExtraTiming:(LynxExtraTiming *_Nonnull timing);
   public nullable NSDictionary * LynxView::getAllTimingInfo();
   public void LynxView::setExtraTimingWithDictionary:(NSDictionary *_Nonnull timing);

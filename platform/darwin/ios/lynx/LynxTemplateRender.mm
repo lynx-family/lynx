@@ -1970,6 +1970,27 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return dict;
 }
 
+- (BOOL)takeBTSHeapSnapshot:(NSString*)outputPath callback:(void (^)(BOOL success))callback {
+  if (![outputPath hasPrefix:@"/"] || shell_ == nullptr || shell_->IsDestroyed()) {
+    return NO;
+  }
+
+  const char* utf8Path = outputPath.UTF8String;
+  if (utf8Path == nullptr) {
+    return NO;
+  }
+  std::string path(utf8Path, [outputPath lengthOfBytesUsingEncoding:NSUTF8StringEncoding]);
+  // fopen uses a NUL-terminated path; reject embedded NULs instead of truncating it.
+  if (path.find('\0') != std::string::npos) {
+    return NO;
+  }
+  return shell_->TakeBTSHeapSnapshotToFileAsync(std::move(path), [callback](bool success) {
+    if (callback) {
+      callback(success);
+    }
+  });
+}
+
 - (nullable NSNumber*)getLynxRuntimeId {
   if (_context != nil) {
     return [_context getLynxRuntimeId];
