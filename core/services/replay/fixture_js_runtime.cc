@@ -9,8 +9,11 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/fml/message_loop.h"
+#include "base/include/log/logging.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_api.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.h"
 #include "quickjs/include/quickjs.h"
 
 namespace lynx {
@@ -97,6 +100,29 @@ std::string FixtureValueToJson(Runtime& runtime, const Value& value,
   return json->getString(runtime).utf8(runtime);
 }
 
+bool CheckFixtureJsonForEmbeddedNull(const std::string& json,
+                                     const std::string& source) {
+  // Work around QuickJS JSON.parse using NUL-terminated strings for decoded
+  // values and property names. Remove this guard and its call sites once
+  // QuickJS preserves embedded NUL in both. This is not JSON validation;
+  // skipping escaped characters distinguishes "\u0000" from "\\u0000".
+  bool has_null = json.find('\0') != std::string::npos;
+  bool in_string = false;
+  for (size_t i = 0; !has_null && i < json.size(); ++i) {
+    if (in_string && json[i] == '\\') {
+      ++i;
+      has_null = json.compare(i, 5, "u0000") == 0;
+    } else if (json[i] == '"') {
+      in_string = !in_string;
+    }
+  }
+  if (has_null) {
+    LOGE("Fixture JSON rejected: embedded NUL is unsupported by QuickJS: "
+         << source);
+  }
+  return !has_null;
+}
+
 Function CreateFixtureReadAssetFunction(Runtime& runtime,
                                         const std::string& fixture_directory,
                                         size_t max_bytes) {
@@ -119,6 +145,10 @@ Function CreateFixtureReadAssetFunction(Runtime& runtime,
             bool is_json =
                 path.size() >= 5 && path.substr(path.size() - 5) == ".json";
             if (is_json) {
+              if (!CheckFixtureJsonForEmbeddedNull(content, path)) {
+                return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                    "Fixture JSON asset contains embedded NUL: " + path));
+              }
               auto value = Value::createFromJsonUtf8(
                   current_runtime,
                   reinterpret_cast<const uint8_t*>(content.data()),
@@ -180,8 +210,13 @@ std::unique_ptr<FixtureJsRuntime> CreateQuickJsFixtureRuntime(
   if (!js_runtime) {
     return nullptr;
   }
-  runtime::js::StartupData startup_data{};
-  auto vm = js_runtime->createVM(&startup_data);
+  // The tracing-GC interpreter does not poll the interrupt handler on loop
+  // back edges. Use a private reference-counted VM so fixture deadlines remain
+  // effective regardless of the application's engine settings.
+  // Memory tracking requires a task runner, including on evaluator workers.
+  fml::MessageLoop::EnsureInitializedForCurrentThread();
+  auto vm = std::make_shared<runtime::js::QuickjsRuntimeInstance>();
+  vm->InitQuickjsRuntime(true, 0, true);
   auto context = js_runtime->createContext(vm);
   js_runtime->InitRuntime(context);
   // Reject budgets that cannot hold even the initialized engine. In particular,

@@ -183,6 +183,39 @@ ctx.register('Asset', 'read', function(args) { return ctx.readAsset(args[0]); })
   EXPECT_TRUE(escape.return_value_json.empty());
 }
 
+TEST_F(FixtureContextTest, RejectsEmbeddedNullAtJsonBoundaries) {
+  WriteAsset("invalid.json", R"({"key\u0000suffix":"value"})");
+  WriteAsset("literal.json", R"({"text":"\\u0000"})");
+  WriteFixture(R"(
+ctx.register('Null', 'echo', function(args) { return args[0]; });
+ctx.register('Null', 'asset', function(args) { return ctx.readAsset(args[0]); });
+ctx.register('Null', 'output', function(args, callbacks) {
+  callbacks[0]('valid');
+  if (args[1]) return {nested:['a\u0000b']};
+  callbacks[0]({'a\u0000b':1});
+});
+)");
+  FixtureContext context;
+  ASSERT_TRUE(context.Initialize(fixture_directory_));
+  EXPECT_FALSE(context.Dispatch("Null", "echo", R"(["a\u0000b"])", {}).handled);
+  EXPECT_FALSE(
+      context.Dispatch("Null", "asset", R"(["invalid.json"])", {}).handled);
+  for (const char* args : {"[null,true]", "[null,false]"}) {
+    auto result = context.Dispatch("Null", "output", args, {0});
+    EXPECT_FALSE(result.handled);
+    EXPECT_TRUE(result.callbacks.empty());
+    EXPECT_TRUE(result.return_value_json.empty());
+  }
+  auto literal = context.Dispatch("Null", "echo", R"(["\\u0000"])", {});
+  ASSERT_TRUE(literal.handled);
+  ExpectJson(literal.return_value_json, R"("\\u0000")");
+  auto asset = context.Dispatch("Null", "asset", R"(["literal.json"])", {});
+  ASSERT_TRUE(asset.handled);
+  ExpectJson(asset.return_value_json, R"({"text":"\\u0000"})");
+  WriteFixture("ctx.sharedData('data', ctx.readAsset('invalid.json'));");
+  EXPECT_FALSE(EvaluateFixture(fixture_directory_).has_value());
+}
+
 TEST_F(FixtureContextTest, NonFiniteCallbackDelayIsNormalized) {
   WriteFixture(R"(
 ctx.register('Delay', 'call', function(args, callbacks) {

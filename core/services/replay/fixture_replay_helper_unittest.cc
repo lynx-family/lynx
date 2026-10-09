@@ -9,8 +9,10 @@
 #include <fstream>
 #include <limits>
 #include <string>
+#include <thread>
 #include <unordered_set>
 
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/replay/fixture_common.h"
 #include "core/services/replay/fixture_js_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -141,6 +143,37 @@ TEST_F(FixtureReplayHelperTest, ReadsFilesWithinByteBudgets) {
   WriteAsset("data.bin", "");
   EXPECT_TRUE(ReadFixtureScript(directory).empty());
   EXPECT_TRUE(ReadFixtureAsset(directory, "data.bin").empty());
+}
+
+TEST(FixtureReplayCommonTest, InitializesMemoryTrackingOnWorkerThread) {
+  auto& settings = const_cast<performance::MemoryMonitor::Settings&>(
+      performance::MemoryMonitor::GetSettings());
+  const auto previous_settings = settings;
+  performance::MemoryMonitor::ForceEnableForTesting(
+      performance::MemoryMonitor::ForceEnableMode::kCurrentProcess);
+  std::thread worker([] {
+    auto runtime = CreateQuickJsFixtureRuntime(FixtureRuntimeLimits{});
+    EXPECT_NE(runtime, nullptr);
+  });
+  worker.join();
+  settings = previous_settings;
+}
+
+TEST(FixtureReplayCommonTest, RejectsEmbeddedNullWithoutRejectingEscapedText) {
+  for (const char* json : {R"("\u0000first")", R"("mid\u0000dle")",
+                           R"("last\u0000")", R"({"key\u0000suffix":1})",
+                           R"({"nested":["a\u0000b"]})", R"("\\\u0000")"}) {
+    SCOPED_TRACE(json);
+    EXPECT_FALSE(CheckFixtureJsonForEmbeddedNull(json, "test"));
+  }
+  EXPECT_FALSE(
+      CheckFixtureJsonForEmbeddedNull(std::string("\"a\0b\"", 5), "test"));
+  for (const char* json :
+       {"", "null", R"("\\u0000")", R"({"\\u0000":"ok"})",
+        R"("quote\" and slash\\ and \u0001")", R"("\u005cu0000")"}) {
+    SCOPED_TRACE(json);
+    EXPECT_TRUE(CheckFixtureJsonForEmbeddedNull(json, "test"));
+  }
 }
 
 TEST(FixtureReplayCommonTest, NormalizesDelayBoundaries) {

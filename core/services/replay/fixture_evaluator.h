@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/include/expected.h"
+#include "core/base/lynx_export.h"
 #include "core/services/replay/fixture_common.h"
 
 namespace lynx {
@@ -47,11 +48,11 @@ struct FixtureEvaluationLimits {
 // Evaluates <fixture_directory>/fixture.js in an isolated runtime and returns
 // the initial replay actions and shared data declared by the script. The input
 // directory must already be downloaded and extracted by the platform adapter.
-base::expected<FixtureEvaluationResult, std::string> EvaluateFixture(
-    const std::string& fixture_directory);
-base::expected<FixtureEvaluationResult, std::string> EvaluateFixture(
-    const std::string& fixture_directory,
-    const FixtureEvaluationLimits& limits);
+LYNX_EXPORT_FOR_DEVTOOL base::expected<FixtureEvaluationResult, std::string>
+EvaluateFixture(const std::string& fixture_directory);
+LYNX_EXPORT_FOR_DEVTOOL base::expected<FixtureEvaluationResult, std::string>
+EvaluateFixture(const std::string& fixture_directory,
+                const FixtureEvaluationLimits& limits);
 
 }  // namespace replay
 }  // namespace tasm

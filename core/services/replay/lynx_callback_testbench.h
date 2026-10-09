@@ -4,6 +4,9 @@
 
 #ifndef CORE_SERVICES_REPLAY_LYNX_CALLBACK_TESTBENCH_H_
 #define CORE_SERVICES_REPLAY_LYNX_CALLBACK_TESTBENCH_H_
+#include <memory>
+#include <string>
+
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "third_party/rapidjson/document.h"
@@ -15,7 +18,10 @@ class ModuleCallbackTestBench : public ModuleCallback {
  public:
   ModuleCallbackTestBench(int64_t callback_id);
   ~ModuleCallbackTestBench() override = default;
-  rapidjson::Value argument;
+  rapidjson::Document argument;
+  std::string fixture_json;
+  bool guarded = false;
+  std::weak_ptr<void> lifetime;
   void Invoke(Runtime *runtime, ModuleCallbackFunctionHolder *holder) override;
 };
 }  // namespace js
