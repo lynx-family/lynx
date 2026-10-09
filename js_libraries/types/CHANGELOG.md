@@ -3,6 +3,7 @@
 ## 4.4.2
 
 - Add `requestTimeoutMs` to `RequestInit.lynxExtension` for configuring the Fetch request timeout in milliseconds.
+- Add the cross-platform `consume-gesture` property to `<scroll-coordinator-header>`. Keep `android-consume-gesture` as a deprecated Android property.
 
 ## 4.4.1
 

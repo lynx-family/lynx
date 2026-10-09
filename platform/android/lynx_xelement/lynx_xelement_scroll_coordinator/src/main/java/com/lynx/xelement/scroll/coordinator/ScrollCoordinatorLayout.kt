@@ -18,6 +18,7 @@ import androidx.core.view.ViewCompat
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.lynx.tasm.base.LLog
+import com.lynx.xelement.scroll.coordinator.childitem.ScrollCoordinatorHeaderView
 import java.lang.reflect.Method
 import kotlin.math.abs
 
@@ -111,6 +112,37 @@ class ScrollCoordinatorLayout(
         invalidateSlotScrollCache()
         clampNonScrollableSlotBoundary()
       }
+    }
+  }
+
+  fun headerConsumesGesture(target: View): Boolean {
+    var current: View? = target
+    while (current != null && current !== this) {
+      if (current is ScrollCoordinatorHeaderView) {
+        return current.consumeGesture
+      }
+      current = current.parent as? View
+    }
+    return false
+  }
+
+  fun consumeHeaderNestedScroll(
+    dxConsumed: Int,
+    dyConsumed: Int,
+    dxUnconsumed: Int,
+    dyUnconsumed: Int,
+    type: Int,
+    consumed: IntArray?,
+  ) {
+    val headerConsumed = if (scrollEnabledFlag) scrollSelf(dyUnconsumed) else 0
+    if (consumed != null) {
+      consumed[1] += headerConsumed
+    }
+    if (nestedScrollAsChild && appBarLayoutView.topAndBottomOffset == 0) {
+      childHelper.dispatchNestedScroll(
+        dxConsumed, dyConsumed + headerConsumed,
+        dxUnconsumed, dyUnconsumed - headerConsumed, null, type, consumed,
+      )
     }
   }
 
@@ -651,6 +683,9 @@ class ScrollCoordinatorLayout(
   }
 
   override fun onNestedPreScroll(target: View, dx: Int, dy: Int, consumed: IntArray, type: Int) {
+    if (headerConsumesGesture(target)) {
+      return
+    }
     val slotScrollRange =
       if (dy > 0) getNonScrollableSlotScrollRange(target) else NO_SLOT_BOUNDARY
     val preScrollDy = getNestedPreScrollDy(dy, slotScrollRange)
@@ -684,6 +719,9 @@ class ScrollCoordinatorLayout(
   }
 
   override fun onNestedPreScroll(target: View, dx: Int, dy: Int, consumed: IntArray) {
+    if (headerConsumesGesture(target)) {
+      return
+    }
     val slotScrollRange =
       if (dy > 0) getNonScrollableSlotScrollRange(target) else NO_SLOT_BOUNDARY
     val preScrollDy = getNestedPreScrollDy(dy, slotScrollRange)
@@ -724,8 +762,9 @@ class ScrollCoordinatorLayout(
     dyUnconsumed: Int,
     type: Int,
   ) {
+    val forwardToAncestor = dyUnconsumed == 0 || !headerConsumesGesture(target)
     super.onNestedScroll(target, dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, type)
-    if (nestedScrollAsChild && appBarLayoutView.topAndBottomOffset == 0) {
+    if (forwardToAncestor && nestedScrollAsChild && appBarLayoutView.topAndBottomOffset == 0) {
       dispatchNestedScroll(dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, null, type)
     }
   }
@@ -737,6 +776,9 @@ class ScrollCoordinatorLayout(
     dxUnconsumed: Int,
     dyUnconsumed: Int,
   ) {
+    if (headerConsumesGesture(target)) {
+      return onNestedScroll(target, dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, ViewCompat.TYPE_TOUCH)
+    }
     super.onNestedScroll(target, dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed)
     if (nestedScrollAsChild && appBarLayoutView.topAndBottomOffset == 0) {
       dispatchNestedScroll(dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, null)

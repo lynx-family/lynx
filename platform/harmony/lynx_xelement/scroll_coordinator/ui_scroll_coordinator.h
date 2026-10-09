@@ -107,6 +107,7 @@ class UIScrollCoordinatorHeader : public UIView {
     return new UIScrollCoordinatorHeader(context, sign, tag);
   }
   void GetOriginRect(float origin_rect[4]) override;
+  bool HeaderConsumesGesture() const { return consume_header_gesture_; }
   UIScrollCoordinatorHeader(LynxContext* context, int sign, const std::string& tag);
   UIScrollCoordinator* fold_view_{nullptr};
   void UpdateLayout(float left, float top, float width, float height, const float* paddings,
@@ -115,7 +116,11 @@ class UIScrollCoordinatorHeader : public UIView {
   ~UIScrollCoordinatorHeader() override;
 
  protected:
+  void OnPropUpdate(const std::string& name, const lepus::Value& value) override;
   bool DefaultOverflowValue() override { return false; }
+
+ private:
+  bool consume_header_gesture_{false};
 };
 
 class UIScrollCoordinatorSlot : public UIView {
