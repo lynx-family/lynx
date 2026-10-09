@@ -423,7 +423,7 @@ void PaintingContextClay::SetAttribute(clay::ViewContext* view_context,
     }
   }
 
-  if (!pda || pda->map().empty()) {
+  if (!pda || (pda->map().empty() && !pda->GestureDetectorMap())) {
     view_context->DidUpdateAttributes(sign);
     return;
   }
@@ -467,7 +467,7 @@ void PaintingContextClay::SetAttribute(clay::ViewContext* view_context,
   }
 
   const auto& gesture_detector_map = pda->GestureDetectorMap();
-  if (gesture_detector_map && gesture_detector_map->size() > 0) {
+  if (gesture_detector_map) {
     view_context->SetGestureDetectorMap(sign, gesture_detector_map.value());
   }
   view_context->DidUpdateAttributes(sign);

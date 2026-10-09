@@ -34,7 +34,7 @@ class FloatPoint {
     Move(float_size.width(), float_size.height());
   }
   void MoveBy(const FloatPoint& offset) { Move(offset.x(), offset.y()); }
-  void Move(int dx, float dy) {
+  void Move(float dx, float dy) {
     x_ += dx;
     y_ += dy;
   }

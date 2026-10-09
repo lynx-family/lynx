@@ -5,47 +5,73 @@
 #include "clay/ui/gesture_handler/gesture_handler_dispatcher.h"
 
 #include <memory>
+#include <utility>
 
-#include "clay/fml/logging.h"
-#include "clay/gfx/geometry/float_point.h"
-#include "clay/gfx/geometry/float_size.h"
-#include "clay/ui/component/page_view.h"
-#include "clay/ui/event/gesture_event.h"
-#include "clay/ui/gesture/gesture_manager.h"
-#include "clay/ui/gesture_handler/gesture_arena_member.h"
+#include "clay/ui/gesture_handler/unified_gesture_handler.h"
 
 namespace clay {
 
 GestureHandlerDispatcher::GestureHandlerDispatcher(PageView* page_view)
-    : gesture_arena_manager_(
-          std::make_unique<GestureArenaManager>(true, page_view)),
-      velocity_tracker_(std::make_unique<VelocityTracker>()) {}
+    : unified_gesture_handler_(
+          std::make_shared<UnifiedGestureHandler>(page_view)) {}
 
-void GestureHandlerDispatcher::HandlePointerDown(
-    const PointerEvent& pointer_event, HitTestResult& hit_test_result) {
-  if (hit_test_result.empty()) return;
+GestureHandlerDispatcher::~GestureHandlerDispatcher() {
+  auto handler = std::move(unified_gesture_handler_);
+  handler->Reset();
+}
+
+int GestureHandlerDispatcher::ReplaceUnifiedMember(
+    BaseView* view, const GestureMap& detectors) {
+  auto handler = unified_gesture_handler_;
+  return handler ? handler->ReplaceMember(view, detectors) : 0;
+}
+
+void GestureHandlerDispatcher::RemoveMember(int member_id) {
+  if (auto handler = unified_gesture_handler_) {
+    handler->RemoveMember(member_id);
+  }
+}
+
+void GestureHandlerDispatcher::SetGestureState(int member_id,
+                                               uint32_t gesture_id, int state) {
+  if (auto handler = unified_gesture_handler_) {
+    handler->SetGestureState(member_id, gesture_id, state);
+  }
+}
+
+bool GestureHandlerDispatcher::CanControlGesture(int member_id,
+                                                 uint32_t gesture_id) const {
+  auto handler = unified_gesture_handler_;
+  return handler && handler->ContainsGesture(member_id, gesture_id);
+}
+
+void GestureHandlerDispatcher::HandlePointerDown(const PointerEvent& event,
+                                                 HitTestResult& hits) {
   gesture_recognized_target_set_.clear();
-  gesture_arena_manager_->SetActiveUIToArenaAtDownEvent(hit_test_result);
-  gesture_arena_manager_->DispatchTouchEventToArena(pointer_event);
+  if (auto handler = unified_gesture_handler_) {
+    handler->HandlePointerEvent(event, hits);
+  }
 }
-void GestureHandlerDispatcher::HandlePointerMove(
-    const PointerEvent& pointer_event, HitTestResult& hit_test_result) {
-  if (hit_test_result.empty()) return;
-  velocity_tracker_->AddPosition(pointer_event.position,
-                                 pointer_event.timestamp);
-  gesture_arena_manager_->DispatchTouchEventToArena(pointer_event);
+
+void GestureHandlerDispatcher::HandlePointerMove(const PointerEvent& event,
+                                                 HitTestResult& hits) {
+  if (auto handler = unified_gesture_handler_) {
+    handler->HandlePointerEvent(event, hits);
+  }
 }
-void GestureHandlerDispatcher::HandlePointerUp(
-    const PointerEvent& pointer_event, HitTestResult& hit_test_result) {
-  if (hit_test_result.empty()) return;
-  FloatSize v = velocity_tracker_->GetVelocityEstimate().pixels_per_second;
-  gesture_arena_manager_->SetVelocity(v.width(), v.height());
-  gesture_arena_manager_->DispatchTouchEventToArena(pointer_event);
+
+void GestureHandlerDispatcher::HandlePointerUp(const PointerEvent& event,
+                                               HitTestResult& hits) {
+  if (auto handler = unified_gesture_handler_) {
+    handler->HandlePointerEvent(event, hits);
+  }
 }
-void GestureHandlerDispatcher::HandlePointerCancel(
-    const PointerEvent& pointer_event, HitTestResult& hit_test_result) {
-  if (hit_test_result.empty()) return;
-  gesture_arena_manager_->DispatchTouchEventToArena(pointer_event);
+
+void GestureHandlerDispatcher::HandlePointerCancel(const PointerEvent& event,
+                                                   HitTestResult& hits) {
+  if (auto handler = unified_gesture_handler_) {
+    handler->HandlePointerEvent(event, hits);
+  }
 }
 
 void GestureHandlerDispatcher::OnGestureRecognizedWithSign(int sign) {
@@ -53,10 +79,9 @@ void GestureHandlerDispatcher::OnGestureRecognizedWithSign(int sign) {
 }
 
 void GestureHandlerDispatcher::SetVelocity(FloatPoint velocity) {
-  gesture_arena_manager_->SetVelocity(velocity.x(), velocity.y());
+  if (auto handler = unified_gesture_handler_) {
+    handler->SetVelocity(velocity);
+  }
 }
-
-void GestureHandlerDispatcher::DispatchSingleTouchEvent(
-    const std::string& name, const PointerEvent* pointer_event) {}
 
 }  // namespace clay

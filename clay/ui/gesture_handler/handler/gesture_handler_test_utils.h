@@ -102,12 +102,10 @@ class TestTaskRunner : public fml::TaskRunner {
 
 class MockEventDelegate : public EventDelegate {
  public:
-  MOCK_METHOD(void, OnGestureHandlerEvent,
+  MOCK_METHOD(void, OnUnifiedGestureHandlerEvent,
               (const std::string& event_name, int view_id, uint32_t gesture_id,
-               float x, float y, float page_x, float page_y, int64_t timestamp,
-               Value& additional_params),
+               Value params),
               (override));
-
   void OnTouchEvent(const std::string&, int, float, float, float,
                     float) override {}
   void OnMouseEvent(const std::string&, int, int, int, float, float, float,
@@ -135,88 +133,6 @@ class MockEventDelegate : public EventDelegate {
   void CallJSIntersectionObserver(int, int, clay::Value) override {}
 };
 
-class TestGestureArenaMember : public GestureArenaMember {
- public:
-  explicit TestGestureArenaMember(int sign)
-      : sign_(sign), member_id_(sign), weak_factory_(this) {}
-
-  fml::WeakPtr<TestGestureArenaMember> GetWeakPtr() {
-    return weak_factory_.GetWeakPtr();
-  }
-
-  void SetCanConsume(bool can_consume) { can_consume_ = can_consume; }
-  void SetShouldConsume(bool should_consume) {
-    SetShouldConsumeGesture(should_consume);
-  }
-  void SetScrollContainerDirection(int8_t direction) {
-    scroll_container_direction_ = direction;
-  }
-  void SetBorder(bool is_start, bool at_border) {
-    if (is_start) {
-      at_start_ = at_border;
-    } else {
-      at_end_ = at_border;
-    }
-  }
-  void SetScroll(float x, float y) {
-    scroll_x_ = x;
-    scroll_y_ = y;
-  }
-  void SetGestureDetectorMap(GestureMap detectors) {
-    detectors_ = std::move(detectors);
-  }
-  void SetGestureHandlers(GestureHandlerMap handlers) {
-    handlers_ = std::move(handlers);
-  }
-
-  std::vector<std::pair<float, float>> TakeScrollCalls() {
-    return std::exchange(scroll_calls_, {});
-  }
-
-  std::vector<float> GestureScrollBy(float delta_x, float delta_y) override {
-    scroll_calls_.push_back({delta_x, delta_y});
-    scroll_x_ += delta_x;
-    scroll_y_ += delta_y;
-    return {scroll_x_, scroll_y_};
-  }
-
-  bool CanConsumeGesture(float, float) override { return can_consume_; }
-
-  int Sign() const override { return sign_; }
-
-  int GestureArenaMemberId() override { return member_id_; }
-
-  float ScrollX() override { return scroll_x_; }
-
-  int8_t GetScrollContainerDirection() override {
-    return scroll_container_direction_;
-  }
-
-  bool IsAtBorder(bool is_start) override {
-    return is_start ? at_start_ : at_end_;
-  }
-
-  float ScrollY() override { return scroll_y_; }
-
-  const GestureMap& GetGestureDetectorMap() override { return detectors_; }
-
-  const GestureHandlerMap& GetGestureHandlers() override { return handlers_; }
-
- private:
-  int sign_;
-  int member_id_;
-  bool can_consume_ = true;
-  int8_t scroll_container_direction_ = 0;
-  bool at_start_ = false;
-  bool at_end_ = false;
-  float scroll_x_ = 0;
-  float scroll_y_ = 0;
-  std::vector<std::pair<float, float>> scroll_calls_;
-  GestureMap detectors_;
-  GestureHandlerMap handlers_;
-  fml::WeakPtrFactory<TestGestureArenaMember> weak_factory_;
-};
-
 inline PointerEvent MakePointerEvent(PointerEvent::EventType type,
                                      FloatPoint position,
                                      uint64_t timestamp = 0) {
@@ -227,13 +143,14 @@ inline PointerEvent MakePointerEvent(PointerEvent::EventType type,
 }
 }  // namespace testing
 
-inline std::shared_ptr<GestureDetector> MakeDetector(
-    uint32_t id, GestureHandlerType type,
-    std::vector<std::string> callbacks = {},
-    std::unordered_map<std::string, std::vector<uint32_t>> relation_map = {},
-    Value config = {}) {
-  return std::make_shared<GestureDetector>(id, type, callbacks, relation_map,
-                                           std::move(config));
+inline lynx::tasm::gesture::GestureDefinition MakeDetector(
+    uint32_t id, lynx::tasm::GestureType type,
+    std::vector<lynx::tasm::gesture::GestureCallbackType> callbacks = {}) {
+  lynx::tasm::gesture::GestureDefinition definition;
+  definition.gesture_id = id;
+  definition.gesture_type = type;
+  definition.callbacks = std::move(callbacks);
+  return definition;
 }
 
 inline std::unique_ptr<PageView> MakeTestPageView(

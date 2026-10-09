@@ -26,6 +26,8 @@
 #import "LynxUI+Gesture.h"
 #import "LynxUI+Private.h"
 #import "LynxUIContext+Internal.h"
+#import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 
 static const CGFloat LynxUICollectionCompareLayoutUpdateEpsilon = 0.001;
 static const NSTimeInterval LynxUICollectionCellUpdateAnimationDefaultTime = 1.;
@@ -627,6 +629,31 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
     return;
   }
   [super gestureDidSet];
+
+  if (self.context.enableUnifiedGestureHandler) {
+    LynxUnifiedGestureArena *arena = self.context.uiOwner.unifiedGestureArena;
+    if (![arena containsMember:self.sign]) {
+      ((LynxUICollectionView *)self.view).gestureEnabled = NO;
+      self.gestureConsumer = nil;
+      self.view.scrollEnabled = YES;
+      return;
+    }
+
+    __block BOOL hasNativeGesture = NO;
+    [self.gestureMap enumerateKeysAndObjectsUsingBlock:^(
+                         NSNumber *_Nonnull key, LynxGestureDetectorDarwin *_Nonnull detector,
+                         BOOL *_Nonnull stop) {
+      if (detector.gestureType == LynxGestureTypeNative && [arena containsGesture:detector.gestureID
+                                                                         memberId:self.sign]) {
+        hasNativeGesture = YES;
+        *stop = YES;
+      }
+    }];
+    if (!hasNativeGesture) {
+      self.gestureConsumer = nil;
+    }
+  }
+
   ((LynxUICollectionView *)self.view).gestureEnabled = YES;
   [self enableIncreaseFrequencyIfNecessary];
 
@@ -648,7 +675,10 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
   [self.gestureMap
       enumerateKeysAndObjectsUsingBlock:^(
           NSNumber *_Nonnull key, LynxGestureDetectorDarwin *_Nonnull obj, BOOL *_Nonnull stop) {
-        if (obj.gestureType == LynxGestureTypeNative) {
+        if (obj.gestureType == LynxGestureTypeNative &&
+            (!self.context.enableUnifiedGestureHandler ||
+             [self.context.uiOwner.unifiedGestureArena containsGesture:obj.gestureID
+                                                              memberId:self.sign])) {
           if (!self.gestureConsumer) {
             self.gestureConsumer = [[LynxGestureConsumer alloc] init];
           }

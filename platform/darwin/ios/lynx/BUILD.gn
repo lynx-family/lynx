@@ -138,6 +138,7 @@ subspec_target("Framework") {
 }
 
 subspec_target("lynx") {
+  deps = [ "../../../../core/gesture:gesture" ]
   sources = [
     "LUIConfigAdapter.h",
     "LUIConfigAdapter.mm",
@@ -245,6 +246,8 @@ subspec_target("lynx") {
     "gesture/LynxNativeGestureHandler.m",
     "gesture/LynxPanGestureHandler.m",
     "gesture/LynxTapGestureHandler.m",
+    "gesture/LynxUnifiedGestureArena.h",
+    "gesture/LynxUnifiedGestureArena.mm",
     "hero_transitions/CALayer+LynxHeroTransition.m",
     "hero_transitions/LynxHeroAnimator.m",
     "hero_transitions/LynxHeroModifiers.m",

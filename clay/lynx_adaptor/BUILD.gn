@@ -26,6 +26,8 @@ if (enable_unittests) {
     ]
 
     public_deps = [
+      "../../base/src:base_values",
+      "../../base/src:base_values_extended",
       "../fml:fml",
       "../ui:ui",
     ]

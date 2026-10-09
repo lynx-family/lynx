@@ -11,6 +11,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class LynxUnifiedGestureArena;
+
 // Indicate that whether LynxUIOwner supports specific tagName, there are currently only three
 // states: root tag, supported tag, and unsupported tag.
 typedef enum : NSInteger {
@@ -26,43 +28,48 @@ typedef struct LynxExternalMemorySnapshot {
 
 @interface LynxUIOwner (Private)
 
+@property(nonatomic, strong, nullable) LynxUnifiedGestureArena *unifiedGestureArena;
+
+- (void)initNewGestureInUIThread:(BOOL)enableNewGesture
+     enableUnifiedGestureHandler:(BOOL)enableUnifiedGestureHandler;
+
 // Try to get the container view for the current LynxUIOwner.
-- (UIView<LUIBodyView>*)tryGetContainerView;
+- (UIView<LUIBodyView> *)tryGetContainerView;
 
 // Given a specific tagName and props, return the corresponding Class and whether the tag is
 // supported or not.
-- (Class)getTargetClass:(NSString*)tagName
-                  props:(NSDictionary*)props
-         supportedState:(TagSupportedState*)state;
+- (Class)getTargetClass:(NSString *)tagName
+                  props:(NSDictionary *)props
+         supportedState:(TagSupportedState *)state;
 
 // Given a specific tagName, return whether the corresponding platform node need direction related
 // prop
-- (BOOL)needProcessDirection:(NSString*)tagName;
+- (BOOL)needProcessDirection:(NSString *)tagName;
 
 // Create the corresponding LynxUI instance on the main thread.
-- (LynxUI*)createUIWithClass:(Class)clazz supportedState:(TagSupportedState)state;
+- (LynxUI *)createUIWithClass:(Class)clazz supportedState:(TagSupportedState)state;
 
 // Create LynxUI for a resolved class on the main thread.
 - (void)createUISyncWithSign:(NSInteger)sign
-                     tagName:(NSString*)tagName
+                     tagName:(NSString *)tagName
                        clazz:(Class)clazz
               supportedState:(TagSupportedState)state
-                    eventSet:(NSSet<NSString*>*)eventSet
-               lepusEventSet:(NSSet<NSString*>*)lepusEventSet
-                       props:(NSDictionary*)props
+                    eventSet:(NSSet<NSString *> *)eventSet
+               lepusEventSet:(NSSet<NSString *> *)lepusEventSet
+                       props:(NSDictionary *)props
                    nodeIndex:(uint32_t)nodeIndex
-          gestureDetectorSet:(NSSet<LynxGestureDetectorDarwin*>*)gestureDetectorSet;
+          gestureDetectorSet:(NSSet<LynxGestureDetectorDarwin *> *)gestureDetectorSet;
 
-- (void)processUIOnMainThread:(LynxUI*)ui
+- (void)processUIOnMainThread:(LynxUI *)ui
                      withSign:(NSInteger)sign
-                      tagName:(NSString*)tagName
-                        props:(NSDictionary*)props;
+                      tagName:(NSString *)tagName
+                        props:(NSDictionary *)props;
 
 - (void)cleanupCreatedUIWithSign:(NSInteger)sign;
 
 - (LynxThreadStrategyForRender)getThreadStrategyForRender;
 
-- (void)setFrameAppBundle:(LynxTemplateBundle*)bundle withTag:(NSInteger)sign;
+- (void)setFrameAppBundle:(LynxTemplateBundle *)bundle withTag:(NSInteger)sign;
 
 - (LynxExternalMemorySnapshot)getExternalMemorySnapshot;
 - (void)cacheRemovedUIId:(NSInteger)removeId;

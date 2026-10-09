@@ -30,4 +30,6 @@
 - (void)setupNativeGestureRecognizerIfNeeded:
     (NSDictionary<NSNumber *, LynxGestureDetectorDarwin *> *)gestureMap;
 
+- (void)setNativeGestureRecognizerEnabled:(BOOL)enabled;
+
 @end  // LynxScrollView

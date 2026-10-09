@@ -104,6 +104,7 @@ source_set("ui") {
   }
 
   public_deps = [
+    "../../core/gesture:gesture",
     "../fml:fml",
     "../net:net",
     "../third_party/txt",
@@ -211,16 +212,8 @@ if (enable_unittests) {
       "gesture/gesture_manager_unittests.cc",
       "gesture/mouse_region_manager_unittests.cc",
       "gesture/velocity_tracker_unittests.cc",
-      "gesture_handler/handler/base_gesture_handler_unittests.cc",
-      "gesture_handler/handler/default_gesture_handler_unittests.cc",
-      "gesture_handler/handler/fling_gesture_handler_unittests.cc",
       "gesture_handler/handler/fling_scroller_unittests.cc",
-      "gesture_handler/handler/gesture_handler_baseline_unittests.cc",
-      "gesture_handler/handler/gesture_handler_trigger_unittests.cc",
-      "gesture_handler/handler/longpress_gesture_handler_unittests.cc",
-      "gesture_handler/handler/native_gesture_handler_unittests.cc",
-      "gesture_handler/handler/pan_gesture_handler_unittests.cc",
-      "gesture_handler/handler/tap_gesture_handler_unittests.cc",
+      "gesture_handler/unified_gesture_handler_unittests.cc",
       "lynx_module/lynx_module_unittests.cc",
       "lynx_module/lynx_ui_method_unittests.cc",
       "painter/box_painter_unittests.cc",
@@ -269,6 +262,9 @@ if (enable_unittests) {
       "../testing:skia",
       "//third_party/skia/modules/skparagraph:skparagraph",
     ]
+    if (is_mac && !enable_clay_standalone) {
+      sources += [ "../shell/common/services/initialize_service.cc" ]
+    }
     if ((is_mac || is_win) && !is_oliver_node_lynx) {
       public_deps += [
         "../shell/common:platform_overlay_service_fallback",

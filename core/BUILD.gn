@@ -214,6 +214,7 @@ group("lynx_native") {
     "base",
     "build:build",
     "event",
+    "gesture",
     "renderer:tasm_group",
     "renderer/css",
     "renderer/data:data",

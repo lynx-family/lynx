@@ -61,6 +61,8 @@
 #import "LynxOffsetCalculator.h"
 #import "LynxUI+Gesture.h"
 #import "LynxUIIntersectionObserver.h"
+#import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 #import "list/container/LynxUIListContainer+Internal.h"
 
 static const short OVERFLOW_X_VAL = 0x01;
@@ -1240,6 +1242,12 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 #pragma mark - LynxNewGesture
 
 - (void)setGestureDetectorState:(NSInteger)gestureId state:(LynxGestureState)state {
+  if (self.context.enableUnifiedGestureHandler) {
+    [self.context.uiOwner.unifiedGestureArena setGestureDetectorState:gestureId
+                                                             memberId:self.sign
+                                                                state:state];
+    return;
+  }
   [[self getGestureArenaManager] setGestureDetectorState:gestureId
                                                 memberId:[self getGestureArenaMemberId]
                                                    state:state];
@@ -1248,6 +1256,10 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 // Handle whether internal lynxUI of the current gesture node consume the gesture and whether
 // native view outside the current node (outside of lynxView) consume the gesture.
 - (void)consumeGesture:(NSInteger)gestureId params:(NSDictionary*)params {
+  if (self.context.enableUnifiedGestureHandler &&
+      ![self.context.uiOwner.unifiedGestureArena containsGesture:gestureId memberId:self.sign]) {
+    return;
+  }
   BOOL inner = [(params[@"inner"] ?: @(YES)) boolValue];
   BOOL consume = [(params[@"consume"] ?: @(YES)) boolValue];
   if (inner) {
@@ -1285,7 +1297,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
     gestureMap[key] = detector;
   }
 
-  if (self.context.enableNewGesture) {
+  if (self.context.enableNewGesture && !self.context.enableUnifiedGestureHandler) {
     LynxGestureArenaManager* manager = [self getGestureArenaManager];
     if ([manager isMemberExist:[self getGestureArenaMemberId]]) {
       [manager unregisterGestureDetectors:[self getGestureArenaMemberId] detectorMap:_gestureMap];
@@ -1293,6 +1305,14 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   }
 
   _gestureMap = gestureMap;
+  if (!self.context.enableUnifiedGestureHandler) {
+    for (LynxBaseGestureHandler* handler in _gestureHandlers.allValues) {
+      if (handler.status == LynxGestureHandlerStateBegin ||
+          handler.status == LynxGestureHandlerStateActive) {
+        [handler fail];
+      }
+    }
+  }
   _gestureHandlers = nil;
   [self gestureDidSet];
 }
@@ -1302,6 +1322,16 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
 
 - (void)gestureDidSet {
   if (!self.context.enableNewGesture) {
+    return;
+  }
+
+  if (self.context.enableUnifiedGestureHandler) {
+    LynxUnifiedGestureArena* arena = self.context.uiOwner.unifiedGestureArena;
+    if (_gestureMap.count == 0) {
+      [arena removeMember:self.sign];
+    } else {
+      [arena replaceGestureDetectors:_gestureMap forMember:self.sign];
+    }
     return;
   }
 

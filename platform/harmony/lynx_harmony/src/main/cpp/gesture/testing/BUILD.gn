@@ -22,6 +22,7 @@ unittest_set("harmony_gesture_baseline_testset") {
     "gesture_handler_baseline_unittest.cc",
     "stubs/arkui/native_type.h",
     "stubs/arkui/ui_input_event.h",
+    "stubs/platform/harmony/lynx_harmony/src/main/cpp/gesture/unified_gesture_handler.h",
     "stubs/platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h",
   ]
   include_dirs = [ "stubs" ]

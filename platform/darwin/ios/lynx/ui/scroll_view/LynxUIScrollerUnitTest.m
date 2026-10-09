@@ -3,16 +3,22 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxBounceView.h>
+#import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxScrollView.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIScroller.h>
 #import <Lynx/LynxUIView.h>
+#import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 #import "LynxUI+Gesture.h"
+#import "LynxUIContext+Internal.h"
+#import "LynxUIOwner+Private.h"
 #import "LynxUIScrollerUnitTestUtils.h"
+#import "LynxUnifiedGestureArena.h"
 
 @interface LynxUIContext (NewStickyScrollerUnitTest)
 - (void)setEnableNewSticky:(BOOL)enable;
@@ -26,6 +32,40 @@
 @end
 
 @implementation LynxUIScrollerUnitTest
+
+- (void)testUnifiedUnsupportedGestureReleasesNativeScrolling {
+  LynxUIScroller *scroller = [[LynxUIScroller alloc] init];
+  LynxUIMockContext *mockContext = [LynxUIUnitTestUtils initUIMockContextWithUI:scroller];
+  [mockContext.mockUIContext setEnableNewGesture:YES];
+  [mockContext.mockUIContext setEnableUnifiedGestureHandler:YES];
+
+  LynxUIOwner *uiOwner = OCMClassMock(LynxUIOwner.class);
+  LynxUnifiedGestureArena *arena = [[LynxUnifiedGestureArena alloc] initWithUIOwner:uiOwner];
+  OCMStub([uiOwner unifiedGestureArena]).andReturn(arena);
+  mockContext.mockUIContext.uiOwner = uiOwner;
+
+  LynxGestureDetectorDarwin *nativeDetector =
+      [[LynxGestureDetectorDarwin alloc] initWithGestureID:1
+                                               gestureType:LynxGestureTypeNative
+                                      gestureCallbackNames:@[]
+                                               relationMap:@{}];
+  [scroller setGestureDetectors:[NSSet setWithObject:nativeDetector]];
+  LynxScrollView *scrollView = scroller.view;
+  XCTAssertNotNil(scrollView.nativeGesturePanRecognizer);
+  XCTAssertNotNil(scrollView.gestureConsumer);
+
+  LynxGestureDetectorDarwin *rotationDetector =
+      [[LynxGestureDetectorDarwin alloc] initWithGestureID:2
+                                               gestureType:LynxGestureTypeRotation
+                                      gestureCallbackNames:@[]
+                                               relationMap:@{}];
+  [scroller setGestureDetectors:[NSSet setWithObject:rotationDetector]];
+  XCTAssertFalse([arena containsMember:scroller.sign]);
+  XCTAssertNil(scrollView.nativeGesturePanRecognizer);
+  XCTAssertNil(scrollView.gestureConsumer);
+  XCTAssertTrue(scrollView.scrollEnabled);
+  [arena invalidate];
+}
 
 - (void)testScrollX {
   LynxUIMockContext *mockContext =

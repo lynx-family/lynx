@@ -36,6 +36,7 @@ class PropBundleImpl : public tasm::PropBundle {
   bool Contains(const char* key) const override;
   void SetEventHandler(const pub::Value& event) override;
   void SetGestureDetector(const tasm::GestureDetector& detector) override;
+  void ResetGestureDetector() override;
   void ResetEventHandler() override;
 
   void SetNullPropsByID(tasm::CSSPropertyID id) override;

@@ -548,6 +548,13 @@ bool LynxEnv::EnableUnifiedPixelPipeline() {
   return GetBoolEnv(Key::ENABLE_UNIFIED_PIXEL_PIPELINE, false);
 }
 
+bool LynxEnv::EnableUnifiedGestureHandler() {
+  // New pages must observe settings updates even when a template is reused.
+  auto value = LynxTrailHub::GetInstance().GetStringForTrailKey(
+      GetEnvKeyString(Key::ENABLE_UNIFIED_GESTURE_HANDLER));
+  return !value.has_value() || value->empty() || ConvertToBool(*value);
+}
+
 bool LynxEnv::EnableEventHandleRefactor() {
   return GetBoolEnv(Key::ENABLE_EVENT_HANDLE_REFACTOR, false);
 }

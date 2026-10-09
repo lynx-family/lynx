@@ -35,6 +35,8 @@
 #import "LynxScrollViewContentScreenshotHelper.h"
 #import "LynxTraceEventDef.h"
 #import "LynxUI+Gesture.h"
+#import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 
 const NSInteger kScrollEdgeThreshold = 1;
 const NSInteger kInvalidBounceDistance = -1;
@@ -2025,17 +2027,49 @@ LYNX_UI_METHOD(autoScroll) {
     return;
   }
   [super gestureDidSet];
+
+  if (self.context.enableUnifiedGestureHandler) {
+    LynxUnifiedGestureArena *arena = self.context.uiOwner.unifiedGestureArena;
+    if (![arena containsMember:self.sign]) {
+      ((LynxScrollView *)self.view).gestureEnabled = NO;
+      [self.view setNativeGestureRecognizerEnabled:NO];
+      self.view.gestureConsumer = nil;
+      self.view.scrollEnabled = YES;
+      return;
+    }
+
+    __block BOOL hasNativeGesture = NO;
+    [self.gestureMap enumerateKeysAndObjectsUsingBlock:^(
+                         NSNumber *_Nonnull key, LynxGestureDetectorDarwin *_Nonnull detector,
+                         BOOL *_Nonnull stop) {
+      if (detector.gestureType == LynxGestureTypeNative && [arena containsGesture:detector.gestureID
+                                                                         memberId:self.sign]) {
+        hasNativeGesture = YES;
+        *stop = YES;
+      }
+    }];
+    [self.view setNativeGestureRecognizerEnabled:hasNativeGesture];
+    if (!hasNativeGesture) {
+      self.view.gestureConsumer = nil;
+    }
+  }
+
   ((LynxScrollView *)self.view).gestureEnabled = YES;
   [self enableIncreaseFrequencyIfNecessary];
   [self ensureGestureConsumer];
-  [self.view setupNativeGestureRecognizerIfNeeded:self.gestureMap];
+  if (!self.context.enableUnifiedGestureHandler) {
+    [self.view setupNativeGestureRecognizerIfNeeded:self.gestureMap];
+  }
 }
 
 - (void)ensureGestureConsumer {
   [self.gestureMap
       enumerateKeysAndObjectsUsingBlock:^(
           NSNumber *_Nonnull key, LynxGestureDetectorDarwin *_Nonnull obj, BOOL *_Nonnull stop) {
-        if (obj.gestureType == LynxGestureTypeNative) {
+        if (obj.gestureType == LynxGestureTypeNative &&
+            (!self.context.enableUnifiedGestureHandler ||
+             [self.context.uiOwner.unifiedGestureArena containsGesture:obj.gestureID
+                                                              memberId:self.sign])) {
           if (!self.view.gestureConsumer) {
             self.view.gestureConsumer = [[LynxGestureConsumer alloc] init];
           }

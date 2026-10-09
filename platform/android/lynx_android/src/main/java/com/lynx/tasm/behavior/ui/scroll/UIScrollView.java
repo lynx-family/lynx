@@ -1473,6 +1473,11 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   }
 
   @Override
+  public boolean shouldConsumeGesture() {
+    return mView != null && mView.shouldConsumeGesture();
+  }
+
+  @Override
   public boolean isAtBorder(boolean isStart) {
     // Cannot consume gesture if new gestures are disabled or mView is null
     if (!isEnableNewGesture() || mView == null) {

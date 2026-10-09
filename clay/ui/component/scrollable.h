@@ -41,7 +41,9 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
              ScrollDirection direction);
 
   virtual void SetScrollEnabled(bool enabled) { scroll_enabled_ = enabled; }
-  bool IsScrollEnabled() const { return scroll_enabled_; }
+  bool IsScrollEnabled() const {
+    return scroll_enabled_ && gesture_scroll_enabled_;
+  }
   void SetUpperOverscrollEnabled(bool enabled) {
     upper_overscroll_enabled_ = enabled;
   }
@@ -123,6 +125,7 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
  private:
   std::forward_list<Listener*> listeners_;
   bool scroll_enabled_ = true;
+  bool gesture_scroll_enabled_ = true;
   bool upper_overscroll_enabled_ = false;
   bool lower_overscroll_enabled_ = false;
   FloatPoint overscroll_offset_ = {0, 0};
