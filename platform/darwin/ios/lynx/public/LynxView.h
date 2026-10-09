@@ -465,6 +465,23 @@
 
 - (float)rootHeight;
 
+/**
+ * @apidoc
+ * @brief Queues a BTS heap snapshot and writes it to the specified file.
+ * Supported only by the QuickJS runtime. Capturing the snapshot pauses BTS execution;
+ * file writing runs on a background thread. This method may be called from any thread.
+ * Calls from background threads are first queued on the main thread to synchronize with
+ * view destruction. A view destroyed before submission causes the request to fail.
+ * @param outputPath Absolute, writable destination file whose parent directory already exists.
+ * The path must start with '/'; '~' is not expanded. Existing file content is replaced.
+ * @param callback Receives whether capture and writing succeeded, asynchronously on a
+ * background thread. Dispatch to the main thread before updating UI from this callback.
+ * The callback may also be released on a background thread; use weak references when
+ * capturing UI objects.
+ */
+- (void)takeBTSHeapSnapshot:(nonnull NSString*)outputPath
+                   callback:(void (^_Nullable)(BOOL success))callback;
+
 #pragma mark - Timing & Report
 
 /**

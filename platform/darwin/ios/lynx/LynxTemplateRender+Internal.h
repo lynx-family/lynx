@@ -41,6 +41,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// instanceId is a value greater than or equal to 0, the initial value is -1.
 - (int32_t)instanceId;
 
+// Main-thread only. NO means the request was rejected and the caller owns failure notification.
+- (BOOL)takeBTSHeapSnapshot:(nonnull NSString *)outputPath
+                   callback:(void (^_Nullable)(BOOL success))callback;
+
 - (LynxGestureArenaManager *)getGestureArenaManager;
 
 - (LynxEngineProxy *)getEngineProxy;
