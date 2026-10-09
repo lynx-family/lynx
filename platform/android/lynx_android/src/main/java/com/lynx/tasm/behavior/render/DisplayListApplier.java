@@ -851,8 +851,6 @@ public class DisplayListApplier implements Drawable.Callback {
     final RectF tilingRect = tilingBox.getRectF();
     final float width = tilingRect.width();
     final float height = tilingRect.height();
-    final float left = tilingRect.left;
-    final float top = tilingRect.top;
 
     PointF center = mReusablePointF1;
     center.set(width / 2.f, height / 2.f);
@@ -862,12 +860,13 @@ public class DisplayListApplier implements Drawable.Callback {
     float tan = (float) Math.tan(radial);
 
     PointF m = mReusablePointF2;
+    // drawGradient translates the canvas to the tile origin, so use tile-local coordinates.
     if (sin >= 0 && cos >= 0) {
-      m.set(width, top);
+      m.set(width, 0);
     } else if (sin >= 0 && cos < 0) {
       m.set(width, height);
     } else if (sin < 0 && cos < 0) {
-      m.set(left, height);
+      m.set(0, height);
     } else {
       m.set(0, 0);
     }

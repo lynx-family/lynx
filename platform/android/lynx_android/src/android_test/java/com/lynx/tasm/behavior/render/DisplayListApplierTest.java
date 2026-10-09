@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 
 import android.app.Application;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
@@ -486,6 +487,43 @@ public class DisplayListApplierTest {
     verify(mockCanvas, times(3)).restore();
     verify(mockCanvas).drawRect(anyFloat(), anyFloat(), anyFloat(), anyFloat(), any(Paint.class));
     assertNotNull(capturedShader.get());
+  }
+
+  @Test
+  public void testOpLinearGradientIsIndependentOfTileOrigin() {
+    // A padding or content origin moves the tile without changing its gradient.
+    for (float angle : new float[] {60f, 150f, 240f, 330f}) {
+      for (int repeat : new int[] {0, 1}) {
+        Bitmap reference = drawLinearGradientTile(angle, 0, 0, repeat);
+        Bitmap translated = drawLinearGradientTile(angle, 11, 17, repeat);
+        try {
+          for (int y = 0; y < 50; y++) {
+            for (int x = 0; x < 70; x++) {
+              assertEquals(
+                  "Gradient at angle " + angle + ", repeat " + repeat + " and pixel " + x + "," + y,
+                  reference.getPixel(x, y), translated.getPixel(x + 11, y + 17));
+            }
+          }
+        } finally {
+          reference.recycle();
+          translated.recycle();
+        }
+      }
+    }
+  }
+
+  private Bitmap drawLinearGradientTile(float angle, int left, int top, int repeat) {
+    NativeDisplayListBuilder displayList = createDisplayList();
+    displayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 100f)
+        .recordBox(left, top, 35f, 35f)
+        .recordBox(left, top, 70f, 50f)
+        .linearGradient(new int[] {0xFFFF0000, 0xFFFFFF00, 0xFFFF0000}, new float[] {0f, 0.5f, 1f},
+            0, 1, repeat, repeat, angle)
+        .end();
+    Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+    setDisplayList(displayList);
+    displayListApplier.drawTillNextView(new Canvas(bitmap));
+    return bitmap;
   }
 
   @Test
