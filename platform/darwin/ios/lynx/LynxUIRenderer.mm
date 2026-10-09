@@ -64,6 +64,8 @@ static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorBlockNativeEvent) =
               lynx::tasm::kEventBehaviorBlockNativeEvent);
 static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorEnableSimultaneousTouch) ==
               lynx::tasm::kEventBehaviorEnableSimultaneousTouch);
+static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorHasConsumeSlideEvent) ==
+              lynx::tasm::kEventBehaviorHasConsumeSlideEvent);
 
 lynx::tasm::NativePaintingCtxPlatformDarwinRef *CastToNativePaintingCtxPlatformRef(
     const std::shared_ptr<lynx::tasm::PaintingCtxPlatformRef> &platform_ref) {
@@ -464,6 +466,18 @@ static id<LynxServiceTextProtocol> getTextService() {
                                                            point.y));
   }
   return LynxPlatformEventBehaviorNone;
+}
+
+- (NSArray<NSNumber *> *)GetCachedConsumeSlideEventAngles {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    const auto &angles = platform_ref->GetCachedConsumeSlideEventAngles();
+    NSMutableArray<NSNumber *> *result = [NSMutableArray arrayWithCapacity:angles.size()];
+    for (float angle : angles) {
+      [result addObject:@(angle)];
+    }
+    return result;
+  }
+  return @[];
 }
 
 - (LynxGestureArenaManager *)getGestureArenaManager {
