@@ -144,25 +144,28 @@ enum class PlatformEventPropName : int32_t {
   kExposureId = 2,
   kExposureScene = 3,
   kExposureArea = 4,
-  kUserInteractionEnabled = 5,
-  kNativeInteractionEnabled = 6,
-  kEventThrough = 7,
-  kBlockNativeEvent = 8,
-  kIgnoreFocus = 9,
-  kEventsPassThrough = 10,
-  kEnableSimultaneousTouch = 11,
-  kEnableTouchPseudoPropagation = 12,
-  kBlockNativeEventAreas = 13,
-  kExposureScreenMarginLeft = 14,
-  kExposureScreenMarginRight = 15,
-  kExposureScreenMarginTop = 16,
-  kExposureScreenMarginBottom = 17,
-  kExposureUIMarginLeft = 18,
-  kExposureUIMarginRight = 19,
-  kExposureUIMarginTop = 20,
-  kExposureUIMarginBottom = 21,
-  kEnableExposureUIClip = 22,
-  kEventThroughActiveRegions = 23,
+  kPointerEvents = 5,
+  kUserInteractionEnabled = 6,
+  kNativeInteractionEnabled = 7,
+  kEventThrough = 8,
+  kBlockNativeEvent = 9,
+  kConsumeSlideEvent = 10,
+  kIgnoreFocus = 11,
+  kHitSlop = 12,
+  kEventsPassThrough = 13,
+  kEnableSimultaneousTouch = 14,
+  kEnableTouchPseudoPropagation = 15,
+  kBlockNativeEventAreas = 16,
+  kExposureScreenMarginLeft = 17,
+  kExposureScreenMarginRight = 18,
+  kExposureScreenMarginTop = 19,
+  kExposureScreenMarginBottom = 20,
+  kExposureUIMarginLeft = 21,
+  kExposureUIMarginRight = 22,
+  kExposureUIMarginTop = 23,
+  kExposureUIMarginBottom = 24,
+  kEnableExposureUIClip = 25,
+  kEventThroughActiveRegions = 26,
 };
 
 inline PlatformEventPropName PlatformEventPropNameFromString(
@@ -182,6 +185,9 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   if (name == "exposure-area") {
     return PlatformEventPropName::kExposureArea;
   }
+  if (name == "pointer-events") {
+    return PlatformEventPropName::kPointerEvents;
+  }
   if (name == "user-interaction-enabled") {
     return PlatformEventPropName::kUserInteractionEnabled;
   }
@@ -194,8 +200,14 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   if (name == "block-native-event") {
     return PlatformEventPropName::kBlockNativeEvent;
   }
+  if (name == "consume-slide-event") {
+    return PlatformEventPropName::kConsumeSlideEvent;
+  }
   if (name == "ignore-focus") {
     return PlatformEventPropName::kIgnoreFocus;
+  }
+  if (name == "hit-slop") {
+    return PlatformEventPropName::kHitSlop;
   }
   if (name == "events-pass-through") {
     return PlatformEventPropName::kEventsPassThrough;

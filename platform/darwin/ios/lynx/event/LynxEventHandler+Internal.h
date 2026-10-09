@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)dispatchPanEvent:(UIPanGestureRecognizer *)sender;
 - (void)needCheckConsumeSlideEvent;
 - (BOOL)hasConsumeSlideEvent;
+- (void)updatePlatformConsumeSlideEventAngles:(nullable NSArray<NSNumber *> *)angles;
 
 - (id<LynxEventTarget>)hitTestInner:(CGPoint)point withEvent:(nullable UIEvent *)event;
 - (NSInteger)checkCanRespondTapOrClick:(id<LynxEventTarget>)ui withSet:(NSSet *)set;

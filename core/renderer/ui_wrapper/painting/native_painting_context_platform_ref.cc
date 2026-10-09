@@ -201,8 +201,8 @@ void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
     const auto &element_manager =
         engine_actor_->Impl()->GetTasm()->page_proxy()->element_manager();
     if (element_manager != nullptr) {
-      layouts_unit_per_px =
-          element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
+      const auto &config = element_manager->GetLynxEnvConfig();
+      layouts_unit_per_px = config.LayoutsUnitPerPx();
     }
   }
   event_target_helper_->SetDevicePixelRatio(layouts_unit_per_px);

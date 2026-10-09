@@ -123,6 +123,9 @@ class EventDispatcher {
 
   ConsumeSlideDirection ShouldConsumeSlideEvent();
 
+  static ConsumeSlideDirection ConsumeSlideDirectionFromAngleRanges(
+      const std::vector<float>& ranges);
+
   void AttachGesturesToRoot(UIBase* root);
   void AttachGesturesToOverlayRoot(UIBase* root, int32_t level);
   void DetachGesturesFromRoot(UIBase* root);
@@ -138,6 +141,8 @@ class EventDispatcher {
 
  private:
   enum class ChildLynxPageEventType { kTouch, kClick, kTap, kLongPress };
+
+  void CacheConsumeSlideDirection(const NativePaintingCtxPlatformRef& context);
 
   struct EmulatedTouchPoint {
     float page_point[2] = {0.f, 0.f};
@@ -342,6 +347,9 @@ class EventDispatcher {
   // Root coordinates for Fragment Layer rendering; target coordinates
   // otherwise.
   float first_finger_down_point_[2]{0.f};
+  ConsumeSlideDirection cached_consume_slide_direction_{
+      ConsumeSlideDirection::kNone};
+  bool platform_touch_active_{false};
   ArkUI_GestureRecognizer* long_press_gesture_{nullptr};
   ArkUI_GestureRecognizer* tap_gesture_{nullptr};
   ArkUI_GestureRecognizer* block_outer_pan_gesture_{nullptr};
