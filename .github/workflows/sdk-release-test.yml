@@ -99,11 +99,24 @@ jobs:
           python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
       - name: Test SwiftPM publishing helpers
         run: python3 -m unittest tools.ios_tools.spm_publish_helper_test
-      - name: Inspect iPhoneOS SDK zlib headers
+      - name: Inspect zlib headers
         run: |-
           sdk_path="$(xcrun --sdk iphoneos --show-sdk-path)"
+          developer_dir="$(xcode-select -p)"
           echo "iPhoneOS SDK path: $sdk_path"
+          echo "Xcode developer directory: $developer_dir"
+          echo "zlib headers in iPhoneOS SDK:"
           find "$sdk_path" -name zlib.h -print
+          echo "zlib headers in Xcode developer directory:"
+          find "$developer_dir" -name zlib.h -print
+          echo "zlib headers in Homebrew directories:"
+          find /opt/homebrew /usr/local -name zlib.h -print \
+            2>/dev/null || true
+          if zlib_prefix="$(brew --prefix zlib 2>/dev/null)"; then
+            echo "Homebrew zlib prefix: $zlib_prefix"
+          else
+            echo "Homebrew zlib formula is not installed"
+          fi
       - name: Build SwiftPM XCFramework artifacts
         run: |-
           source tools/envsetup.sh
