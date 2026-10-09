@@ -20,6 +20,10 @@
 namespace lynx {
 namespace shell {
 
+// Android runtime availability follows the loaded debug engine. Other
+// platforms retain their existing DevTool admission policy.
+bool IsHostScriptRuntimeEnabled();
+
 // One source context owns its Promise callbacks. Copied source and native
 // results cross runners; no JSI handles leave their owning runtime.
 class HostScriptThreadBindings final
@@ -35,10 +39,11 @@ class HostScriptThreadBindings final
       runtime::js::Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner,
       Executor executor);
 
-  // Installs the low-level __hostScriptThread source-execution binding.
-  // Promises resolve to copied JS values and reject on execution errors.
+  // Installs runOn* and __hostScriptThread function/source bindings.
+  // Same-domain functions keep their closure; cross-domain functions must use
+  // target globals or local variables. Only copied source crosses runners.
   // Install and Detach must run on the owning runner, before engine teardown.
-  bool Install();
+  bool Install(const std::string& domain = "bts");
   void Detach();
 
  private:
@@ -56,7 +61,7 @@ class HostScriptThreadBindings final
                            Executor executor);
   CallResult Run(Domain domain, const Value* args, size_t count);
   bool DefineProperty(runtime::js::Object& target, const char* name,
-                      Value value);
+                      Value value, bool mutable_export = true);
   void Complete(uint64_t request, const Result& result);
   void Reject(Pending pending, const char* code, const char* message);
 
@@ -70,6 +75,11 @@ class HostScriptThreadBindings final
   std::optional<Function> parse_json_;
   std::optional<Function> define_property_;
   std::optional<Function> create_object_;
+  std::optional<Function> get_prototype_;
+  std::optional<Function> function_source_;
+  std::optional<Function> invoke_sync_;
+  std::optional<runtime::js::Object> function_prototype_;
+  std::string domain_;
   uint64_t next_request_ = 0;
   std::unordered_map<uint64_t, Pending> pending_;
 };
