@@ -308,6 +308,8 @@ def create_podfile(work_dir, repo_root, component_specs):
         "    target.build_configurations.each do |config|",
         "      config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'",
         "      config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'",
+        "      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = "
+        f"'{IOS_DEPLOYMENT_TARGET}'",
         "      config.build_settings['GCC_TREAT_WARNINGS_AS_ERRORS'] = 'NO'",
         "    end",
         "  end",

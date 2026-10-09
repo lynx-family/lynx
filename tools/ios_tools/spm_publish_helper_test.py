@@ -106,6 +106,10 @@ class SpmPublishHelperTest(unittest.TestCase):
         self.assertIn('pod "Lynx/Framework", :path => "/repo/lynx"', podfile)
         self.assertNotIn("UnitTests", podfile)
         self.assertIn("platform :ios, '12.0'", podfile)
+        self.assertIn(
+            "config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'",
+            podfile,
+        )
         self.assertIn("use_frameworks! :linkage => :static", podfile)
         self.assertIn("installer.pod_targets", podfile)
         self.assertIn(helper.RESOLVED_SPECS_FILE, podfile)
