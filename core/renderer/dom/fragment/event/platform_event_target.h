@@ -47,6 +47,7 @@ enum PlatformEventBehavior : uint32_t {
   kEventBehaviorEventThrough = 1 << 1,
   kEventBehaviorBlockNativeEvent = 1 << 2,
   kEventBehaviorEnableSimultaneousTouch = 1 << 3,
+  kEventBehaviorHasConsumeSlideEvent = 1 << 4,
 };
 
 enum class LynxPointerEventsValue {
@@ -54,17 +55,6 @@ enum class LynxPointerEventsValue {
   kNone,
   // add new type before kUnset
   kUnset,
-};
-
-enum class LynxConsumeSlideDirection {
-  kNone,
-  kHorizontal,
-  kVertical,
-  kUp,
-  kRight,
-  kDown,
-  kLeft,
-  kAll,
 };
 
 enum class LynxPseudoStatus {
@@ -95,8 +85,6 @@ class PlatformEventTarget
     float value{0.f};
   };
   using EventRegion = std::array<EventRegionSizeValue, 4>;
-  using EventThroughSizeValue = EventRegionSizeValue;
-  using EventThroughRegion = EventRegion;
 
   struct HitTestRegion {
     float left{0.f};
@@ -156,7 +144,14 @@ class PlatformEventTarget
     return GetOptionalValueOrDefault(event_set_);
   }
   bool UserInteractionEnabled() const { return user_interaction_enabled_; }
-  bool NativeInteractionEnabled() const { return native_interaction_enabled_; }
+  bool NativeInteractionEnabled(bool default_enabled = true) const {
+    return native_interaction_enabled_ == LynxEventPropStatus::kUndefined
+               ? default_enabled
+               : native_interaction_enabled_ == LynxEventPropStatus::kEnable;
+  }
+  LynxEventPropStatus NativeInteractionStatus() const {
+    return native_interaction_enabled_;
+  }
   float ExposureScreenMarginLeft() const {
     return exposure_screen_margin_left_;
   }
@@ -227,7 +222,12 @@ class PlatformEventTarget
   bool EnableSimultaneousTouch() const { return enable_simultaneous_touch_; }
   LynxPointerEventsValue PointerEvents() const;
   bool BlockNativeEvent(float point[2]) const;
-  LynxConsumeSlideDirection ConsumeSlideEvent() const;
+  const std::vector<std::array<float, 2>>& ConsumeSlideEventAngles() const {
+    return GetOptionalValueOrDefault(consume_slide_event_angles_);
+  }
+  bool ConsumeSlideEvent(float angle) const;
+  void SetHitSlop(EventRegion hit_slop) { *hit_slop_ = std::move(hit_slop); }
+  void ResetHitSlop() { hit_slop_.reset(); }
 
   void SetEventSet(base::Vector<PlatformEventName> event_set) {
     if (event_set.empty()) {
@@ -240,7 +240,7 @@ class PlatformEventTarget
   void SetUserInteractionEnabled(bool enabled) {
     user_interaction_enabled_ = enabled;
   }
-  void SetNativeInteractionEnabled(bool enabled) {
+  void SetNativeInteractionEnabled(LynxEventPropStatus enabled) {
     native_interaction_enabled_ = enabled;
   }
   void SetExposureScreenMarginLeft(float value) {
@@ -336,6 +336,16 @@ class PlatformEventTarget
   void SetEnableSimultaneousTouch(bool value) {
     enable_simultaneous_touch_ = value;
   }
+  void SetPointerEvents(LynxPointerEventsValue value) {
+    pointer_events_ = value;
+  }
+  void SetConsumeSlideEventAngles(std::vector<std::array<float, 2>> angles) {
+    if (angles.empty()) {
+      consume_slide_event_angles_.reset();
+      return;
+    }
+    *consume_slide_event_angles_ = std::move(angles);
+  }
   void AddHitTestRegion(HitTestRegion region) {
     hit_test_regions_->push_back(std::move(region));
   }
@@ -385,7 +395,8 @@ class PlatformEventTarget
   float offset_y_for_calc_position_{0.f};
   base::auto_create_optional<base::Vector<PlatformEventName>> event_set_;
   bool user_interaction_enabled_{true};
-  bool native_interaction_enabled_{true};
+  LynxEventPropStatus native_interaction_enabled_{
+      LynxEventPropStatus::kUndefined};
   float exposure_screen_margin_left_{0.f};
   float exposure_screen_margin_right_{0.f};
   float exposure_screen_margin_top_{0.f};
@@ -404,6 +415,11 @@ class PlatformEventTarget
       event_through_active_regions_;
   bool block_native_event_{false};
   bool enable_simultaneous_touch_{false};
+  LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
+  // left, top, right, bottom
+  base::auto_create_optional<EventRegion> hit_slop_;
+  base::auto_create_optional<std::vector<std::array<float, 2>>>
+      consume_slide_event_angles_;
   base::auto_create_optional<std::vector<EventRegion>>
       block_native_event_areas_;
   base::auto_create_optional<base::Vector<HitTestRegion>> hit_test_regions_;

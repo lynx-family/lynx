@@ -28,6 +28,7 @@ public class NativePaintingContext implements IPaintingContext {
   private long mNativePtr = 0;
   private int mEventBehavior = EVENT_BEHAVIOR_NONE;
   @Nullable private int[] mPlatformEventTargetInfo;
+  @Nullable private float[] mPlatformConsumeSlideEventAngles;
 
   @NonNull private final PlatformRendererContext mPlatformRendererContext;
   private boolean mDestroyed = false;
@@ -53,6 +54,7 @@ public class NativePaintingContext implements IPaintingContext {
     mDestroyed = true;
     mEventBehavior = EVENT_BEHAVIOR_NONE;
     mPlatformEventTargetInfo = null;
+    mPlatformConsumeSlideEventAngles = null;
 
     if (mNativePtr != 0) {
       nativeDestroy(mNativePtr);
@@ -99,6 +101,7 @@ public class NativePaintingContext implements IPaintingContext {
     if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
       mEventBehavior = EVENT_BEHAVIOR_NONE;
       mPlatformEventTargetInfo = null;
+      mPlatformConsumeSlideEventAngles = null;
     }
     if (mNativePtr == 0 || mDestroyed) {
       return false;
@@ -129,6 +132,9 @@ public class NativePaintingContext implements IPaintingContext {
     if (actionMasked == MotionEvent.ACTION_DOWN) {
       if (consumed) {
         mPlatformEventTargetInfo = nativeGetPlatformEventTargetInfo(mNativePtr);
+        if ((eventBehavior & EVENT_BEHAVIOR_HAS_CONSUME_SLIDE_EVENT) != 0) {
+          mPlatformConsumeSlideEventAngles = nativeGetPlatformConsumeSlideEventAngles(mNativePtr);
+        }
       }
     }
     return consumed;
@@ -140,9 +146,15 @@ public class NativePaintingContext implements IPaintingContext {
   }
 
   @Override
+  public float[] getPlatformConsumeSlideEventAngles() {
+    return mPlatformConsumeSlideEventAngles;
+  }
+
+  @Override
   public int hitTestAndCachePlatformEventBehavior(int rootSign, float pointX, float pointY) {
     mEventBehavior = EVENT_BEHAVIOR_NONE;
     mPlatformEventTargetInfo = null;
+    mPlatformConsumeSlideEventAngles = null;
     if (mNativePtr == 0 || mDestroyed) {
       return mEventBehavior;
     }
@@ -241,6 +253,8 @@ public class NativePaintingContext implements IPaintingContext {
   native void nativeDispatchPlatformTap(long nativePtr);
 
   native int[] nativeGetPlatformEventTargetInfo(long nativePtr);
+
+  native float[] nativeGetPlatformConsumeSlideEventAngles(long nativePtr);
 
   native int nativeHitTestAndCachePlatformEventBehavior(
       long nativePtr, int rootSign, float pointX, float pointY);
