@@ -7,7 +7,7 @@ import("../test.gni")
 if (is_android) {
   group("lynx_test_jni_files") {
     exec_script(
-        "//tools_shared/jni_generator/generate_and_register_jni_files.py",
+        "//buildtools/tools_shared/tools_shared/jni_generator/generate_and_register_jni_files.py",
         [
           "-root",
           rebase_path("../.."),
