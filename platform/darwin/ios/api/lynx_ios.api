@@ -1718,6 +1718,7 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler()::dispatchPanEvent:(UIPanGestureRecognizer *sender);
   public void LynxEventHandler()::needCheckConsumeSlideEvent();
   public BOOL LynxEventHandler()::hasConsumeSlideEvent();
+  public void LynxEventHandler()::updatePlatformConsumeSlideEventAngles:(nullable NSArray< NSNumber * > *angles);
   public id< LynxEventTarget > LynxEventHandler()::hitTestInner:withEvent:(CGPoint point, [withEvent] nullable UIEvent *event);
   public NSInteger LynxEventHandler()::checkCanRespondTapOrClick:withSet:(id< LynxEventTarget > ui, [withSet] NSSet *set);
   public void LynxEventHandler()::removeEventGestures();
@@ -4039,6 +4040,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public void LynxTemplateRender()::SetPlatformEventRootOffset:offsetX:offsetY:(NSInteger rootSign, [offsetX] CGFloat offsetX, [offsetY] CGFloat offsetY);
   public BOOL LynxTemplateRender()::IsPlatformEventTargetEventThrough:point:(NSInteger rootSign, [point] CGPoint point);
   public BOOL LynxTemplateRender()::IsPlatformEventTargetIgnoreFocus:point:(NSInteger rootSign, [point] CGPoint point);
+  public NSArray< NSNumber * > * LynxTemplateRender()::GetCachedConsumeSlideEventAngles();
   public lynx::runtime::js::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
   public LynxLifecycleDispatcher * LynxTemplateRender()::getLifecycleDispatcher();
   public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder, [screenSize] CGSize screenSize);
@@ -4422,6 +4424,7 @@ public class LynxTouchHandler : UIGestureRecognizer {
   public NSMutableArray<LynxWeakProxy *>* LynxTouchHandler()::touchDeque touchDeque;
   public int32_t LynxTouchHandler()::tapSlop tapSlop;
   public BOOL LynxTouchHandler()::hasMultiTouch hasMultiTouch;
+  public BOOL LynxTouchHandler()::hasActivePlatformTouches hasActivePlatformTouches;
   public LynxGestureArenaManager* _Nullable LynxTouchHandler()::gestureArenaManager gestureArenaManager;
   public instancetype LynxTouchHandler::initWithEventHandler:(LynxEventHandler *eventHandler);
   public void LynxTouchHandler::onGestureRecognized();
@@ -5364,6 +5367,7 @@ public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
   public void LynxUIRenderer::SetPlatformEventRootOffset:offsetX:offsetY:(NSInteger rootSign,[offsetX] CGFloat offsetX,[offsetY] CGFloat offsetY);
   public BOOL LynxUIRenderer::IsPlatformEventTargetEventThrough:point:(NSInteger rootSign,[point] CGPoint point);
   public BOOL LynxUIRenderer::IsPlatformEventTargetIgnoreFocus:point:(NSInteger rootSign,[point] CGPoint point);
+  public NSArray< NSNumber * > * LynxUIRenderer::GetCachedConsumeSlideEventAngles();
 }
 
 public class LynxUIRendererCreator : NSObject, <LynxUIRendererCreatorProtocol> {
