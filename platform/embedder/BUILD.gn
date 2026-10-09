@@ -277,8 +277,10 @@ if (enable_unittests) {
     deps = [
       ":embedder",
       "../../base/src:base_static",
+      "../../core/template_bundle/template_codec/binary_encoder",
       "../../testing/utils:gtest_custom_init",
       "../../testing/utils:gtest_main",
+      "../../third_party/aes",
       "./fetcher:fetcher_unittests",
       "./lynx_service:lynx_service_unittests",
     ]
