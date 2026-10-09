@@ -10,6 +10,8 @@ let a: unknown;
   <scroll-coordinator />;
   <scroll-coordinator enable-scroll={true} bounces={true} enable-scroll-bar={true} android-adapt-to-empty-slot={true} />;
   <scroll-coordinator-header />;
+  <scroll-coordinator-header consume-gesture={true} />;
+  <scroll-coordinator-header android-consume-gesture={true} />;
   <scroll-coordinator-slot />;
   <scroll-coordinator-slot-drag enable-drag={true} />;
   <scroll-coordinator-toolbar />;
@@ -25,6 +27,7 @@ let a: unknown;
   assertType<number | undefined>(a as IntrinsicElements['scroll-coordinator']['granularity']);
   assertType<'none' | 'page' | 'fold' | undefined>(a as IntrinsicElements['scroll-coordinator']['refresh-mode']);
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-coordinator-slot-drag']['enable-drag']);
+  assertType<boolean | undefined>(a as IntrinsicElements['scroll-coordinator-header']['consume-gesture']);
 }
 
 function noop() {}

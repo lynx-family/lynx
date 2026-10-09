@@ -64,6 +64,15 @@ UIScrollCoordinatorHeader::UIScrollCoordinatorHeader(LynxContext* context,
   overflow_ = {false, false};
 }
 
+void UIScrollCoordinatorHeader::OnPropUpdate(const std::string& name,
+                                             const lepus::Value& value) {
+  UIView::OnPropUpdate(name, value);
+  if (name == "consume-gesture") {
+    consume_header_gesture_ =
+        value.IsString() ? value.StringView() == "true" : value.Bool();
+  }
+}
+
 void UIScrollCoordinatorHeader::UpdateLayout(
     float left, float top, float width, float height, const float* paddings,
     const float* margins, const float* sticky, float max_height,
@@ -436,9 +445,14 @@ EventTarget* UIScrollCoordinator::HitTest(float point[2]) {
   }
 
   if (first_vertical_child != nullptr) {
+    const bool consume_header_gesture =
+        target == header_ && static_cast<UIScrollCoordinatorHeader*>(header_)
+                                 ->HeaderConsumesGesture();
     NodeManager::Instance().SetAttributeWithNumberValue(
         first_vertical_child->Node(), NODE_SCROLL_NESTED_SCROLL,
-        static_cast<int32_t>(ARKUI_SCROLL_NESTED_MODE_PARENT_FIRST),
+        static_cast<int32_t>(consume_header_gesture
+                                 ? ARKUI_SCROLL_NESTED_MODE_SELF_FIRST
+                                 : ARKUI_SCROLL_NESTED_MODE_PARENT_FIRST),
         static_cast<int32_t>(ARKUI_SCROLL_NESTED_MODE_SELF_FIRST));
   }
 

@@ -132,8 +132,17 @@ export interface ScrollCoordinatorHeaderProps extends StandardProps {
    * Keep gestures in the header with its children instead of allowing the parent to intercept them.
    * @Android 3.9
    * @defaultValue false
+   * @deprecated Use consume-gesture instead.
    */
   'android-consume-gesture'?: boolean;
+  /**
+   * Allow header children to consume gestures before the parent.
+   * On Harmony, vertical scrolling children hand remaining scroll to the parent at their boundary.
+   * @Android 4.4
+   * @Harmony 4.4
+   * @defaultValue false
+   */
+  'consume-gesture'?: boolean;
 }
 
 export interface ScrollCoordinatorSlotProps extends StandardProps {}
