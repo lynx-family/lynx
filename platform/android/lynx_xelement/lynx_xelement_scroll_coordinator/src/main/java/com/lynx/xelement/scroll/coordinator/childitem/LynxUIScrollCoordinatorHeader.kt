@@ -60,6 +60,11 @@ open class LynxUIScrollCoordinatorHeader(
   fun setHandleGesture(value: Boolean) {
     mView.handleGesture = value
   }
+
+  @LynxProp(name = "consume-gesture", defaultBoolean = false)
+  fun setConsumeGesture(value: Boolean) {
+    setHandleGesture(value)
+  }
 }
 
 class ScrollCoordinatorHeaderView(context: Context?) : AndroidView(context) {
