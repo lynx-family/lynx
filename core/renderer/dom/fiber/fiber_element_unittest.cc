@@ -22477,6 +22477,130 @@ TEST_P(FiberElementTest, SetComposeModifierRejectsInvalidEventNodes) {
   base::ErrorStorage::GetInstance().Reset();
 }
 
+TEST_P(FiberElementTest, ParallelResolvePreparesRadonDataset) {
+  auto runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  runtime->Initialize();
+  lepus::BytecodeGenerator::GenerateBytecode(
+      runtime->GetMTSContext(), "let payload = {items: ['dataset-value']};",
+      runtime->GetSdkVersion(), "");
+  ASSERT_TRUE(runtime->Execute(nullptr));
+
+  for (bool parallel : {false, true}) {
+    SCOPED_TRACE(parallel);
+    manager->SetEnableParallelElement(parallel);
+    auto payload = runtime->GetGlobalData("payload");
+    ASSERT_TRUE(payload.IsJSValue());
+    auto outer = lepus::Dictionary::Create();
+    outer->SetValue("nested", payload);
+    auto node = std::make_unique<RadonNode>(tasm->page_proxy(), "view", 123);
+    node->SetDataSet("payload", lepus::Value(outer));
+    ASSERT_TRUE(node->CreateElementIfNeeded());
+    node->DispatchFirstTime();
+
+    const auto& dataset = node->element()->data_model()->dataset();
+    auto stored = dataset.find("payload");
+    ASSERT_NE(stored, dataset.end());
+    auto nested = stored->second.GetProperty("nested");
+    EXPECT_EQ(nested.IsJSValue(), !parallel);
+    auto items = nested.GetProperty("items");
+    EXPECT_EQ(items.IsJSValue(), !parallel);
+    auto text = items.GetProperty(0);
+    EXPECT_EQ(text.IsJSValue(), !parallel);
+    EXPECT_EQ(text.StdString(), "dataset-value");
+    EXPECT_TRUE(node->element()->dirty_ & Element::kDirtyDataset);
+  }
+}
+
+TEST_P(FiberElementTest, ParallelResolvePreparesBulkProperties) {
+  auto runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  runtime->Initialize();
+  runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  lepus::BytecodeGenerator::GenerateBytecode(
+      runtime->GetMTSContext(),
+      "let styles = {width: '42px'};"
+      "let payload = {items: ['attribute-value']};"
+      "let callback = () => 42;",
+      runtime->GetSdkVersion(), "");
+  ASSERT_TRUE(runtime->Execute(nullptr));
+
+  auto styles = runtime->GetGlobalData("styles");
+  auto payload = runtime->GetGlobalData("payload");
+  auto callback = runtime->GetGlobalData("callback");
+  ASSERT_TRUE(styles.GetProperty("width").IsJSValue());
+  ASSERT_TRUE(payload.IsJSValue());
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue("payload", payload);
+  auto event = lepus::Dictionary::Create();
+  event->SetValue("type", lepus::Value("bindEvent"));
+  event->SetValue("name", lepus::Value("tap"));
+  event->SetValue("function", callback);
+  auto events = lepus::CArray::Create();
+  events->emplace_back(lepus::Value(event));
+  auto properties = lepus::CArray::Create();
+  properties->emplace_back(lepus::Value());
+  properties->emplace_back(lepus::Value());
+  properties->emplace_back(lepus::Value());
+  properties->emplace_back(lepus::Value(events));
+  properties->emplace_back(styles);
+  properties->emplace_back(lepus::Value(attributes));
+  properties->emplace_back(lepus::Value());
+  lepus::Value args[] = {lepus::Value("view"), lepus::Value(properties),
+                         lepus::Value()};
+  auto result =
+      RendererFunctions::FiberCreateElementWithProperties(ctx, args, 3);
+  ASSERT_TRUE(result.IsRefCounted());
+  auto element = fml::static_ref_ptr_cast<Element>(result.RefCounted());
+
+  ASSERT_TRUE(element->GetCurrentRawInlineStyles().has_value());
+  const auto& width =
+      element->GetCurrentRawInlineStyles()->at(kPropertyIDWidth);
+  EXPECT_FALSE(width.IsJSValue());
+  EXPECT_EQ(width.StdString(), "42px");
+  const auto& stored = element->updated_attr_map_.at("payload");
+  EXPECT_FALSE(stored.IsJSValue());
+  EXPECT_FALSE(stored.GetProperty("items").IsJSValue());
+  auto text = stored.GetProperty("items").GetProperty(0);
+  EXPECT_FALSE(text.IsJSValue());
+  EXPECT_EQ(text.StdString(), "attribute-value");
+  auto stored_callback = lepus::Value(event).GetProperty("function");
+  EXPECT_TRUE(stored_callback.IsCallable());
+  EXPECT_EQ(runtime->CallClosure(stored_callback).Number(), 42);
+}
+
+TEST_P(FiberElementTest, ParallelResolvePreparesNativeBuiltinConfig) {
+  auto runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  runtime->Initialize();
+  lepus::BytecodeGenerator::GenerateBytecode(
+      runtime->GetMTSContext(),
+      "let payload = {items: ['config-value']}; let callback = () => 42;",
+      runtime->GetSdkVersion(), "");
+  ASSERT_TRUE(runtime->Execute(nullptr));
+  auto payload = runtime->GetGlobalData("payload");
+  ASSERT_TRUE(payload.IsJSValue());
+  auto config = lepus::Dictionary::Create();
+  config->SetValue("nested", payload);
+  config->SetValue("callback", runtime->GetGlobalData("callback"));
+  auto element = manager->CreateFiberView();
+  element->SetBuiltinAttribute(ElementBuiltInAttributeEnum::CONFIG,
+                               lepus::Value(config));
+
+  auto stored = element->config().GetProperty("nested");
+  EXPECT_FALSE(stored.IsJSValue());
+  EXPECT_FALSE(stored.GetProperty("items").IsJSValue());
+  auto text = stored.GetProperty("items").GetProperty(0);
+  EXPECT_FALSE(text.IsJSValue());
+  EXPECT_EQ(text.StdString(), "config-value");
+  auto callback = element->config().GetProperty("callback");
+  EXPECT_TRUE(callback.IsCallable());
+  EXPECT_EQ(runtime->CallClosure(callback).Number(), 42);
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 
