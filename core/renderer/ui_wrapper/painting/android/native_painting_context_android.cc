@@ -220,6 +220,30 @@ jintArray GetPlatformEventTargetInfo(JNIEnv *env, jobject /*jcaller*/,
   return result;
 }
 
+jfloatArray GetPlatformConsumeSlideEventAngles(JNIEnv *env, jobject /*jcaller*/,
+                                               jlong nativePtr) {
+  if (nativePtr == 0) {
+    return nullptr;
+  }
+  auto *context =
+      reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
+  auto platform_ref =
+      std::static_pointer_cast<lynx::tasm::NativePaintingCtxAndroidRef>(
+          context->GetPlatformRef());
+  if (platform_ref == nullptr) {
+    return nullptr;
+  }
+
+  const auto &angles = platform_ref->GetCachedConsumeSlideEventAngles();
+  auto result = env->NewFloatArray(static_cast<jsize>(angles.size()));
+  if (result == nullptr || angles.empty()) {
+    return result;
+  }
+  env->SetFloatArrayRegion(result, 0, static_cast<jsize>(angles.size()),
+                           angles.data());
+  return result;
+}
+
 jboolean CanRespondPlatformFocus(JNIEnv *env, jobject /*jcaller*/,
                                  jlong nativePtr) {
   if (nativePtr == 0) {

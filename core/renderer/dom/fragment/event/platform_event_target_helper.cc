@@ -70,8 +70,7 @@ void SetUserInteractionEnabled(PlatformEventTarget* target,
 
 void SetNativeInteractionEnabled(PlatformEventTarget* target,
                                  const lepus::Value& value) {
-  target->SetNativeInteractionEnabled(
-      !base::IsZero(EventPropValueToFloat(value)));
+  target->SetNativeInteractionEnabled(EventPropValueToStatus(value));
 }
 
 void SetExposureScreenMarginLeft(PlatformEventTarget* target,
@@ -189,6 +188,29 @@ bool ParseEventRegionSizeValue(
   return true;
 }
 
+void SetHitSlop(PlatformEventTarget* target, const lepus::Value& value) {
+  PlatformEventTarget::EventRegion hit_slop{};
+  bool has_valid_value = false;
+  if (value.IsObject()) {
+    const char* names[] = {"left", "top", "right", "bottom"};
+    for (size_t i = 0; i < hit_slop.size(); ++i) {
+      has_valid_value |= ParseEventRegionSizeValue(
+          value.GetProperty(base::String(names[i])), &hit_slop[i]);
+    }
+  } else {
+    PlatformEventTarget::EventRegionSizeValue uniform;
+    if (ParseEventRegionSizeValue(value, &uniform)) {
+      hit_slop.fill(uniform);
+      has_valid_value = true;
+    }
+  }
+  if (has_valid_value) {
+    target->SetHitSlop(std::move(hit_slop));
+  } else {
+    target->ResetHitSlop();
+  }
+}
+
 void ParseEventRegions(const lepus::Value& value,
                        std::vector<PlatformEventTarget::EventRegion>* regions) {
   if (regions == nullptr || !value.IsArray()) {
@@ -245,6 +267,43 @@ void SetEnableSimultaneousTouch(PlatformEventTarget* target,
                                 const lepus::Value& value) {
   target->SetEnableSimultaneousTouch(
       !base::IsZero(EventPropValueToFloat(value)));
+}
+
+void SetPointerEvents(PlatformEventTarget* target, const lepus::Value& value) {
+  auto pointer_events = LynxPointerEventsValue::kUnset;
+  if (value.IsNumber()) {
+    const int int_value = static_cast<int>(value.Number());
+    if (int_value >= static_cast<int>(LynxPointerEventsValue::kAuto) &&
+        int_value < static_cast<int>(LynxPointerEventsValue::kUnset)) {
+      pointer_events = static_cast<LynxPointerEventsValue>(int_value);
+    }
+  }
+  target->SetPointerEvents(pointer_events);
+}
+
+void SetConsumeSlideEvent(PlatformEventTarget* target,
+                          const lepus::Value& value) {
+  std::vector<std::array<float, 2>> angles;
+  if (value.IsArrayOrJSArray()) {
+    for (int i = 0; i < value.GetLength(); ++i) {
+      const auto& range = value.GetProperty(static_cast<uint32_t>(i));
+      if (!range.IsArrayOrJSArray() || range.GetLength() != 2) {
+        continue;
+      }
+      const auto& begin = range.GetProperty(0);
+      const auto& end = range.GetProperty(1);
+      if (begin.IsNumber() && end.IsNumber() && std::isfinite(begin.Number()) &&
+          std::isfinite(end.Number())) {
+        const float begin_angle = static_cast<float>(begin.Number());
+        const float end_angle = static_cast<float>(end.Number());
+        if (std::isfinite(begin_angle) && std::isfinite(end_angle) &&
+            begin_angle <= end_angle) {
+          angles.push_back({begin_angle, end_angle});
+        }
+      }
+    }
+  }
+  target->SetConsumeSlideEventAngles(std::move(angles));
 }
 
 void SetEventsPassThrough(PlatformEventTarget* target,
@@ -321,6 +380,7 @@ GetEventPropSetterMap() {
            &SetEventThroughActiveRegions},
           {PlatformEventPropName::kEventsPassThrough, &SetEventsPassThrough},
           {PlatformEventPropName::kIgnoreFocus, &SetIgnoreFocus},
+          {PlatformEventPropName::kHitSlop, &SetHitSlop},
           {PlatformEventPropName::kEnableTouchPseudoPropagation,
            &SetTouchPseudoPropagation},
           {PlatformEventPropName::kBlockNativeEvent, &SetBlockNativeEvent},
@@ -328,6 +388,8 @@ GetEventPropSetterMap() {
            &SetBlockNativeEventAreas},
           {PlatformEventPropName::kEnableSimultaneousTouch,
            &SetEnableSimultaneousTouch},
+          {PlatformEventPropName::kPointerEvents, &SetPointerEvents},
+          {PlatformEventPropName::kConsumeSlideEvent, &SetConsumeSlideEvent},
       };
   return map;
 }
