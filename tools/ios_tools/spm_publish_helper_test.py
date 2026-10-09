@@ -112,8 +112,17 @@ class SpmPublishHelperTest(unittest.TestCase):
         )
         self.assertIn("if target.name == 'SSZipArchive'", podfile)
         self.assertIn(
-            "config.build_settings['HEADER_SEARCH_PATHS'] = "
-            "'$(inherited) $(SDKROOT)/usr/include'",
+            "config.build_settings['HEADER_SEARCH_PATHS[sdk=iphoneos*]'] = "
+            "'$(inherited) $(DEVELOPER_DIR)/Platforms/"
+            "iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include'",
+            podfile,
+        )
+        self.assertIn(
+            "config.build_settings"
+            "['HEADER_SEARCH_PATHS[sdk=iphonesimulator*]'] = "
+            "'$(inherited) $(DEVELOPER_DIR)/Platforms/"
+            "iPhoneSimulator.platform/Developer/SDKs/"
+            "iPhoneSimulator.sdk/usr/include'",
             podfile,
         )
         self.assertIn("use_frameworks! :linkage => :static", podfile)
