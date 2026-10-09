@@ -20,6 +20,17 @@ using runtime::js::Scope;
 using runtime::js::String;
 using runtime::js::Value;
 
+// Catch in JavaScript: some JSI backends report user errors through a delegate
+// while returning a populated value from property access.
+constexpr char kInvokeSynchronous[] = R"JS(((Error, String) => function(fn) {
+  try {
+    const value = fn();
+    if (value != null && typeof value.then === 'function')
+      throw new Error('ASYNC_RESULT_UNSUPPORTED');
+    return [true, value];
+  } catch (error) { return [false, String(error)]; }
+})(Error, String))JS";
+
 bool IsFunction(Runtime& runtime, const Value& value) {
   return value.isObject() && value.getObject(runtime).isFunction(runtime);
 }
@@ -38,7 +49,8 @@ HostScriptThreadBindings::HostScriptThreadBindings(
       runner_(std::move(runner)),
       executor_(std::move(executor)) {}
 
-bool HostScriptThreadBindings::Install() {
+bool HostScriptThreadBindings::Install(const std::string& domain) {
+  if (domain != "bts" && domain != "mts" && domain != "ui") return false;
   if (attached_ || !executor_ || !runner_->RunsTasksOnCurrentThread())
     return false;
   promise_ = runtime_.global().getPropertyAsFunction(runtime_, "Promise");
@@ -50,9 +62,25 @@ bool HostScriptThreadBindings::Install() {
   if (!parse_json_) return false;
   define_property_ = object->getPropertyAsFunction(runtime_, "defineProperty");
   create_object_ = object->getPropertyAsFunction(runtime_, "create");
-  if (!define_property_ || !create_object_) return false;
+  get_prototype_ = object->getPropertyAsFunction(runtime_, "getPrototypeOf");
+  auto function = runtime_.global().getPropertyAsObject(runtime_, "Function");
+  if (!define_property_ || !create_object_ || !get_prototype_ || !function)
+    return false;
+  function_prototype_ = function->getPropertyAsObject(runtime_, "prototype");
+  if (!function_prototype_) return false;
+  function_source_ =
+      function_prototype_->getPropertyAsFunction(runtime_, "toString");
+  if (!function_source_) return false;
+  auto invoke = runtime_.evaluateJavaScript(
+      std::make_shared<runtime::js::StringBuffer>(kInvokeSynchronous),
+      "host-script://synchronous-function");
+  if (!invoke.has_value() || !IsFunction(runtime_, *invoke)) return false;
+  invoke_sync_ = invoke->getObject(runtime_).getFunction(runtime_);
 
   Object target(runtime_);
+  if (!DefineProperty(target, "thread",
+                      String::createFromUtf8(runtime_, domain), false))
+    return false;
   const std::pair<const char*, Domain> methods[] = {
       {"runOnMainThread", Domain::kMTS},
       {"runOnBackgroundThread", Domain::kBTS},
@@ -70,27 +98,32 @@ bool HostScriptThreadBindings::Install() {
           }
           return self->Run(domain, args, count);
         });
-    if (!DefineProperty(target, method.first, Value(std::move(function))))
+    auto global = runtime_.global();
+    if (!DefineProperty(global, method.first, Value(runtime_, function)) ||
+        !DefineProperty(target, method.first, Value(std::move(function))))
       return false;
   }
   auto global = runtime_.global();
   if (!DefineProperty(global, "__hostScriptThread", Value(std::move(target))))
     return false;
+  domain_ = domain;
   attached_ = true;
   return true;
 }
 
 bool HostScriptThreadBindings::DefineProperty(Object& target, const char* name,
-                                              Value value) {
+                                              Value value,
+                                              bool mutable_export) {
   // Define exports explicitly instead of assigning through user-defined
-  // setters. Function::call reports descriptor failures uniformly via JSI.
+  // setters. Mutable exports allow assignment and redefinition; the thread
+  // identity allows neither. JSI reports descriptor failures uniformly.
   auto created = create_object_->call(runtime_, Value::null());
   if (!created || !created->isObject()) return false;
   auto descriptor = created->getObject(runtime_);
   descriptor.setProperty(runtime_, "value", std::move(value));
-  descriptor.setProperty(runtime_, "writable", true);
+  descriptor.setProperty(runtime_, "writable", mutable_export);
   descriptor.setProperty(runtime_, "enumerable", true);
-  descriptor.setProperty(runtime_, "configurable", true);
+  descriptor.setProperty(runtime_, "configurable", mutable_export);
   return define_property_
       ->call(runtime_, target, String::createFromUtf8(runtime_, name),
              descriptor)
@@ -126,23 +159,95 @@ HostScriptThreadBindings::CallResult HostScriptThreadBindings::Run(
     return base::unexpected(
         BUILD_JSI_NATIVE_EXCEPTION("Cannot create Host Script Promise"));
   }
-  auto reject = [&](const char* message) -> CallResult {
-    auto pending = std::move(found->second);
-    pending_.erase(found);
-    Reject(std::move(pending), "INVALID_ARGUMENT", message);
+  auto reject = [&](const char* message,
+                    const char* code = "INVALID_ARGUMENT") -> CallResult {
+    auto current = pending_.find(request);
+    if (current != pending_.end()) {
+      auto pending = std::move(current->second);
+      pending_.erase(current);
+      Reject(std::move(pending), code, message);
+    }
     return std::move(*promise);
   };
-  if (count < 1 || count > 2 || !args[0].isString() ||
+  if (count < 1 || count > 2 ||
+      (!args[0].isString() && !IsFunction(runtime_, args[0])) ||
       (count == 2 && !args[1].isUndefined() && !args[1].isString())) {
     return reject(
-        "Thread execution expects script and optional source URL strings");
+        "Thread execution expects a function or source and optional source "
+        "URL");
   }
-  auto source = args[0].getString(runtime_).utf8(runtime_);
   auto url =
       count < 2 || args[1].isUndefined()
           ? std::string("host-script://") + ProcessRuntime::DomainName(domain)
           : args[1].getString(runtime_).utf8(runtime_);
   if (url.empty()) return reject("Source URL must be non-empty");
+  if (!IsHostScriptRuntimeEnabled())
+    return reject("HSR_DEBUG_DISABLED", "INVALID_STATE");
+  std::string source;
+  if (args[0].isString()) {
+    source = args[0].getString(runtime_).utf8(runtime_);
+  } else {
+    const bool local = domain_ == ProcessRuntime::DomainName(domain);
+    std::optional<Value> value;
+    std::string failure;
+    {
+      // User functions and prototype traps may reenter or throw. Isolate the
+      // exception collector before settling the source Promise.
+      JSINativeExceptionCollector::Scope exceptions;
+      auto prototype = get_prototype_->call(runtime_, &args[0], size_t{1});
+      if (!prototype || !prototype->isObject() ||
+          !Object::strictEquals(runtime_, prototype->getObject(runtime_),
+                                *function_prototype_)) {
+        failure = "Thread functions must be ordinary synchronous functions";
+      } else if (local) {
+        auto outcome = invoke_sync_->call(runtime_, &args[0], size_t{1});
+        if (outcome && outcome->isObject() &&
+            outcome->getObject(runtime_).isArray(runtime_)) {
+          auto result = outcome->getObject(runtime_).getArray(runtime_);
+          auto success = result.getValueAtIndex(runtime_, 0);
+          value = result.getValueAtIndex(runtime_, 1);
+          if (!success || !success->isBool() || !success->getBool()) {
+            failure = value && value->isString()
+                          ? value->getString(runtime_).utf8(runtime_)
+                          : "JAVASCRIPT_CALL_FAILED";
+            if (failure.empty()) failure = "JAVASCRIPT_CALL_FAILED";
+          }
+        }
+        if (!value && failure.empty()) failure = "JAVASCRIPT_CALL_FAILED";
+      } else {
+        auto text = function_source_->callWithThis(
+            runtime_, args[0].getObject(runtime_), {});
+        if (!text || !text->isString()) {
+          failure = "Cannot read function source";
+        } else {
+          // No function handle or lexical environment leaves this runtime.
+          source = "\"use strict\";((Error)=>{const result=" +
+                   std::string(kInvokeSynchronous) + "(" +
+                   text->getString(runtime_).utf8(runtime_) +
+                   "\n);if(!result[0])throw new Error(result[1]);"
+                   "return result[1];})(Error)";
+        }
+      }
+      const auto& error =
+          JSINativeExceptionCollector::Instance()->GetException();
+      if (error)
+        failure = error->message().empty() ? "JAVASCRIPT_CALL_FAILED"
+                                           : error->message();
+    }
+    if (!failure.empty()) return reject(failure.c_str(), "PLATFORM_ERROR");
+    if (local) {
+      // Nested runOn* may rehash pending_; never reuse the old iterator.
+      auto current = pending_.find(request);
+      if (current != pending_.end() && attached_) {
+        auto pending = std::move(current->second);
+        pending_.erase(current);
+        JSINativeExceptionCollector::Scope exceptions;
+        pending.resolve->call(runtime_, static_cast<const Value*>(&*value),
+                              size_t{1});
+      }
+      return std::move(*promise);
+    }
+  }
   const auto weak = weak_from_this();
   // This callback can run on any target thread. It never retains or accesses
   // an engine handle, including when shutdown drops a queued completion.
@@ -219,6 +324,11 @@ void HostScriptThreadBindings::Detach() {
   parse_json_.reset();
   define_property_.reset();
   create_object_.reset();
+  get_prototype_.reset();
+  function_source_.reset();
+  invoke_sync_.reset();
+  function_prototype_.reset();
+  domain_.clear();
   executor_ = {};
 }
 

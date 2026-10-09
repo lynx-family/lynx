@@ -19,36 +19,40 @@ namespace shell {
 namespace {
 std::atomic<bool> ui_initialized{false};
 std::atomic<bool> view_created{false};
-}  // namespace
-
-void EvaluateHostScriptRuntime(ProcessRuntime::Domain domain,
-                               std::string source, std::string url,
-                               ProcessRuntime::Completion completion) {
-  ProcessRuntime::GetInstance().Evaluate(domain, std::move(source),
-                                         std::move(url), std::move(completion));
+// UI setup is published once and stays valid for the process lifetime.
+bool CheckUIInitialized(const ProcessRuntime::Completion& completion) {
+  if (ui_initialized.load(std::memory_order_acquire)) return true;
+  ProcessRuntime::Result result;
+  result.error = "RUNTIME_NOT_RUNNING";
+  if (completion) completion(std::move(result));
+  return false;
 }
+}  // namespace
 
 void LoadHostScriptRuntime(std::string source, std::string url,
                            ProcessRuntime::Completion completion) {
-  if (!ui_initialized.load(std::memory_order_acquire)) {
-    ProcessRuntime::Result result;
-    result.error = "RUNTIME_NOT_RUNNING";
-    if (completion) completion(std::move(result));
-    return;
-  }
+  // GetRunner waits until UI setup; reject before asking for that runner.
+  if (!CheckUIInitialized(completion)) return;
   fml::TaskRunner::RunNowOrPostTask(
       base::UIThread::GetRunner(),
       [source = std::move(source), url = std::move(url),
        completion = std::move(completion)]() mutable {
+        PrepareHostScriptRuntime();
         ProcessRuntime::GetInstance().LoadScript(
             std::move(source), std::move(url), std::move(completion));
       });
 }
 
+void EvaluateHostScriptRuntime(ProcessRuntime::Domain domain,
+                               std::string source, std::string url,
+                               ProcessRuntime::Completion completion) {
+  if (!CheckUIInitialized(completion)) return;
+  ProcessRuntime::GetInstance().Evaluate(domain, std::move(source),
+                                         std::move(url), std::move(completion));
+}
+
 void PrepareHostScriptRuntime() {
   ui_initialized.store(true, std::memory_order_release);
-  // Android LynxEnv.isLynxDebugEnabled() delegates to this same lifecycle.
-  if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return;
   base::TaskRunnerManufactor runners(base::MOST_ON_TASM, false, false);
   DCHECK(runners.GetUITaskRunner()->RunsTasksOnCurrentThread());
   InstallHostScriptViewObserver();
@@ -62,26 +66,20 @@ void PrepareHostScriptRuntime() {
 
 void OnHostScriptViewCreated() {
   view_created.store(true, std::memory_order_release);
-  if (!ui_initialized.load(std::memory_order_acquire) ||
-      !tasm::DevToolLifecycle::GetInstance().IsEnabled())
-    return;
+  if (!ui_initialized.load(std::memory_order_acquire)) return;
   fml::TaskRunner::RunNowOrPostTask(base::UIThread::GetRunner(),
                                     [] { PrepareHostScriptRuntime(); });
 }
 
-void UpdateHostScriptDebugState(bool enabled) {
-  // GetRunner can wait before UI setup. LynxEnv handles that initial case.
+void UpdateHostScriptDebugState(bool) {
   if (!ui_initialized.load(std::memory_order_acquire)) return;
-  auto ui = base::UIThread::GetRunner();
-  auto prepare = [ui] { ui->PostTask([] { PrepareHostScriptRuntime(); }); };
-  if (enabled) {
-    prepare();
-  } else {
-    fml::TaskRunner::RunNowOrPostTask(
-        ui, [] { UninstallHostScriptViewObserver(); });
-    ProcessRuntime::GetInstance().Shutdown(
-        [prepare](ProcessRuntime::Result) { prepare(); });
-  }
+  fml::TaskRunner::RunNowOrPostTask(base::UIThread::GetRunner(), [] {
+    if (tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+      PrepareHostScriptRuntime();
+    } else {
+      UninstallHostScriptViewObserver();
+    }
+  });
 }
 
 }  // namespace shell
