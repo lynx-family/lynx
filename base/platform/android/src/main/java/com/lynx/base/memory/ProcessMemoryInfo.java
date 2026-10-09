@@ -10,6 +10,7 @@ import android.util.Log;
 import com.lynx.base.CalledByNative;
 import java.util.Map;
 
+@Keep
 public final class ProcessMemoryInfo {
   private static final String TAG = "ProcessMemoryInfo";
 
