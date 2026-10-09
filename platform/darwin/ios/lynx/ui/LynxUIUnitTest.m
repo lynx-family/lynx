@@ -200,6 +200,19 @@ void printAllIvarDetails(Class cls) {
   }
 }
 
+- (void)testUnifiedGestureHandlerSelectionIsImmutable {
+  LynxScreenMetrics *screenMetrics = [LynxScreenMetrics getDefaultLynxScreenMetrics];
+  LynxUIContext *enabledContext = [[LynxUIContext alloc] initWithScreenMetrics:screenMetrics];
+  [enabledContext setEnableUnifiedGestureHandler:YES];
+  [enabledContext setEnableUnifiedGestureHandler:NO];
+  XCTAssertTrue(enabledContext.enableUnifiedGestureHandler);
+
+  LynxUIContext *disabledContext = [[LynxUIContext alloc] initWithScreenMetrics:screenMetrics];
+  [disabledContext setEnableUnifiedGestureHandler:NO];
+  [disabledContext setEnableUnifiedGestureHandler:YES];
+  XCTAssertFalse(disabledContext.enableUnifiedGestureHandler);
+}
+
 - (void)testNewStickyCalculateTranslateClampsToParentRange {
   LynxUIView *sticky = [[LynxUIView alloc] init];
   LynxUIMockContext *mockContext = [LynxUIUnitTestUtils initUIMockContextWithUI:sticky];

@@ -114,8 +114,8 @@ class RecordingEventDelegate final : public EventDelegate {
   void OnWheelEvent(const std::string&, int, float, float, float, float, float,
                     float) override {}
   void OnKeyEvent(const std::string&, int, const char*, bool) override {}
-  void OnGestureHandlerEvent(const std::string&, int, uint32_t, float, float,
-                             float, float, int64_t, Value&) override {}
+  void OnUnifiedGestureHandlerEvent(const std::string&, int, uint32_t,
+                                    Value) override {}
   void OnAnimationEvent(const std::string&, const char*, int) override {}
   void OnTransitionEvent(const std::string&, const char*, int,
                          ClayAnimationPropertyType) override {}

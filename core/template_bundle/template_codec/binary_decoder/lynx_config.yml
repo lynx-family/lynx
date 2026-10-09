@@ -1296,6 +1296,16 @@ enableNewGesture:
     - HarmonyOS
     - iOS
   export: true
+enableUnifiedGestureHandler:
+  description: Selects the shared C++ gesture handler for this page. Defaults to true. Setting it to false uses the existing platform gesture handler. A global setting can disable the shared implementation regardless of this page value. Does not apply to Clay.
+  defaultValue: 'true'
+  valueType: bool
+  author: AdrianLCA
+  since: '4.4'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
 enablePlatformGesture:
   description: Controls whether Lynx sets up the platform-gesture bridge for gesture-conflict handling. When enabled, the event handler installs custom platform gestures and delegates; when disabled, that platform-gesture layer is removed.
   defaultValue: 'false'

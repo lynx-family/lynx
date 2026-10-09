@@ -5,6 +5,8 @@
 #ifndef CLAY_UI_GESTURE_HANDLER_HANDLER_FLING_SCROLLER_H_
 #define CLAY_UI_GESTURE_HANDLER_HANDLER_FLING_SCROLLER_H_
 
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -14,7 +16,6 @@
 #include "clay/gfx/animation/animator_listener.h"
 #include "clay/gfx/animation/value_animator.h"
 #include "clay/public/value.h"
-#include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 
 namespace clay {
 

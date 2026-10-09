@@ -48,7 +48,6 @@
 #include "clay/ui/event/event_utils.h"
 #include "clay/ui/gesture/mouse_region_manager.h"
 #include "clay/ui/gesture_handler/gesture_detector.h"
-#include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/painter/gradient.h"
 #include "clay/ui/resource/image_resource_fetcher.h"
@@ -284,10 +283,7 @@ void BaseView::Destroy() {
   if (gesture_arena_member_id_ > 0 && page_view_ && page_view_ != this) {
     auto* dispatcher = page_view_->GetGestureHandlerDispatcher();
     if (dispatcher) {
-      auto* arena_manager = dispatcher->gesture_arena_manager();
-      if (arena_manager) {
-        arena_manager->RemoveMember(gesture_arena_member_id_);
-      }
+      dispatcher->RemoveMember(gesture_arena_member_id_);
     }
     gesture_arena_member_id_ = 0;
   }
@@ -3451,24 +3447,24 @@ void BaseView::AddEventCallback(const char* event_c) {
 }
 
 void BaseView::SetGestureDetectorMap(const GestureMap& gesture_detector_map) {
-  if (gesture_detector_map.size() == 0) {
-    return;
-  }
   gesture_detector_map_ = gesture_detector_map;
   GestureDetectorDidSet();
 }
 
 void BaseView::GestureDetectorDidSet() {
-  auto* gesture_arena_manager =
-      page_view_->GetGestureHandlerDispatcher()->gesture_arena_manager();
-  if (!gesture_arena_manager) return;
-  if (!gesture_arena_manager->IsMemberExist(gesture_arena_member_id_)) {
-    gesture_arena_member_id_ = gesture_arena_manager->AddMember(GetWeakPtr());
+  gesture_arena_member_id_ =
+      page_view_->GetGestureHandlerDispatcher()->ReplaceUnifiedMember(
+          this, gesture_detector_map_);
+}
+
+void BaseView::ResetGestureHandlerState() {
+  if (gesture_arena_member_id_ > 0 && page_view_) {
+    if (auto* dispatcher = page_view_->GetGestureHandlerDispatcher()) {
+      dispatcher->RemoveMember(gesture_arena_member_id_);
+    }
   }
-  if (gesture_handler_map_.empty() && gesture_arena_member_id_ > 0) {
-    gesture_handler_map_ = BaseGestureHandler::ConvertToGestureHandler(
-        id_, page_view_, GetWeakPtr(), gesture_detector_map_);
-  }
+  gesture_arena_member_id_ = 0;
+  gesture_detector_map_.clear();
 }
 
 std::vector<float> BaseView::GestureScrollBy(float delta_x, float delta_y) {
@@ -3476,16 +3472,15 @@ std::vector<float> BaseView::GestureScrollBy(float delta_x, float delta_y) {
 }
 
 void BaseView::SetGestureDetectorState(int gesture_id, int state) {
-  auto* gesture_arena_manager =
-      page_view_->GetGestureHandlerDispatcher()->gesture_arena_manager();
-  if (!gesture_arena_manager ||
-      !gesture_arena_manager->IsMemberExist(gesture_arena_member_id_))
-    return;
-  gesture_arena_manager->SetGestureDetectorState(gesture_arena_member_id_,
-                                                 gesture_id, state);
+  page_view_->GetGestureHandlerDispatcher()->SetGestureState(
+      gesture_arena_member_id_, gesture_id, state);
 }
 
 void BaseView::ConsumeGesture(int gesture_id, const Value& params) {
+  if (!page_view_->GetGestureHandlerDispatcher()->CanControlGesture(
+          gesture_arena_member_id_, gesture_id)) {
+    return;
+  }
   if (!params.IsMap()) return;
   const Value::Map& map = params.GetMap();
   bool inner = true;

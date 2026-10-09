@@ -28,6 +28,8 @@ lynx_core_source_set("build") {
     "gen/EnvUtils_register_jni.h",
     "gen/FluencySample_jni.h",
     "gen/FluencySample_register_jni.h",
+    "gen/GestureArenaManager_jni.h",
+    "gen/GestureArenaManager_register_jni.h",
     "gen/GradientUtils_jni.h",
     "gen/GradientUtils_register_jni.h",
     "gen/ICURegister_jni.h",

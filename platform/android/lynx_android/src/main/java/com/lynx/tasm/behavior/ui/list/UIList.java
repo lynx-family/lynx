@@ -221,6 +221,12 @@ public class UIList extends AbsLynxList<RecyclerView> {
   }
 
   @Override
+  public boolean shouldConsumeGesture() {
+    return mView instanceof PrivateRecyclerView
+        && ((PrivateRecyclerView) mView).shouldConsumeGesture();
+  }
+
+  @Override
   public boolean isAtBorder(boolean isStart) {
     // Check if the new gesture feature is enabled and if the event manager is available
     if (!isEnableNewGesture()) {
@@ -584,6 +590,10 @@ public class UIList extends AbsLynxList<RecyclerView> {
       if (consume) {
         mIsDownEventHandled = false;
       }
+    }
+
+    public boolean shouldConsumeGesture() {
+      return !Boolean.TRUE.equals(mConsumeGesture) && !Boolean.TRUE.equals(mInterceptGesture);
     }
 
     public void interceptGesture(boolean intercept) {
