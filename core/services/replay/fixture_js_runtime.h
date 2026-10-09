@@ -22,6 +22,11 @@ std::string FixtureValueToJson(runtime::js::Runtime& runtime,
                                const runtime::js::Value& value,
                                const char* fallback);
 
+// Temporary QuickJS JSON.parse compatibility check. Logs the source and rejects
+// embedded NUL in JSON string values or keys before conversion can truncate it.
+bool CheckFixtureJsonForEmbeddedNull(const std::string& json,
+                                     const std::string& source);
+
 // Owns a copy of the directory and budget. JSON assets are parsed; malformed
 // JSON falls back to text. Unreadable/empty/oversized assets return undefined.
 runtime::js::Function CreateFixtureReadAssetFunction(

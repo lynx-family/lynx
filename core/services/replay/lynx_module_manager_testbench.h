@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "core/services/replay/fixture_context.h"
 #include "core/services/replay/lynx_module_binding_testbench.h"
 #include "core/services/replay/lynx_module_testbench.h"
 #include "third_party/rapidjson/document.h"
@@ -43,8 +44,15 @@ class ModuleManagerTestBench {
       const std::shared_ptr<ModuleDelegate> &delegate);
 
  private:
+  enum class FixtureInitResult { kNotEnabled, kReady, kFailed };
+  FixtureInitResult InitFixture(Runtime *rt);
   ModuleTestBenchPtr getModule(const std::string &name,
                                const std::shared_ptr<ModuleDelegate> &delegate);
+  std::weak_ptr<ModuleManagerTestBench> weak_self_;
+  bool destroyed_ = false;
+  std::shared_ptr<tasm::replay::FixtureContext> fixture_context_;
+  std::unique_ptr<Function> release_fixture_;
+  Runtime *fixture_runtime_ = nullptr;
   rapidjson::Document recordData;
   std::unordered_map<std::string, ModuleTestBenchPtr> moduleMap;
   void syncToPlatform(const rapidjson::Value &sync_attrs, Runtime *rt,

@@ -4,6 +4,7 @@
 
 #include "core/services/replay/lynx_module_testbench.h"
 
+#include <algorithm>
 #include <cmath>
 #include <utility>
 #include <vector>
@@ -198,7 +199,7 @@ void ModuleTestBench::InvokeJsbCallback(Function callback_function,
       delegate_->RegisterJSCallbackFunction(std::move(callback_function));
   std::shared_ptr<ModuleDelegate> delegate(delegate_);
   auto wrapper = std::make_shared<ModuleCallbackTestBench>(callback_id);
-  wrapper->argument = value;
+  wrapper->argument.CopyFrom(value, wrapper->argument.GetAllocator());
   if (delay < 0) {
     testbench_thread_.GetTaskRunner()->PostTask(
         [deg = delegate, wap = wrapper]() { deg->CallJSCallback(wap); });
@@ -207,6 +208,22 @@ void ModuleTestBench::InvokeJsbCallback(Function callback_function,
         [deg = delegate, wap = wrapper]() { deg->CallJSCallback(wap); },
         fml::TimeDelta::FromMilliseconds(static_cast<int64_t>(delay)));
   }
+}
+
+void ModuleTestBench::InvokeJsbCallbackJson(Function callback_function,
+                                            const std::string &json,
+                                            int64_t delay,
+                                            std::weak_ptr<void> lifetime) {
+  auto wrapper = std::make_shared<ModuleCallbackTestBench>(
+      delegate_->RegisterJSCallbackFunction(std::move(callback_function)));
+  wrapper->fixture_json = json;
+  wrapper->guarded = true;
+  wrapper->lifetime = std::move(lifetime);
+  const auto now = fml::TimePoint::Now();
+  const auto max_delay = (fml::TimePoint::Max() - now).ToMilliseconds();
+  testbench_thread_.GetTaskRunner()->PostTaskForTime(
+      [delegate = delegate_, wrapper]() { delegate->CallJSCallback(wrapper); },
+      now + fml::TimeDelta::FromMilliseconds(std::min(delay, max_delay)));
 }
 
 void ModuleTestBench::ActionsForJsbMatchFailed(Runtime *rt, const Value *args,

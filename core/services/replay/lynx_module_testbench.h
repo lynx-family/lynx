@@ -70,6 +70,10 @@ class ModuleTestBench : public LynxJSIModule {
   Value invokeMethodKernel(const MethodMetadata& method, Runtime* rt,
                            const Value* args, size_t count);
 
+  void InvokeJsbCallbackJson(Function callback_function,
+                             const std::string& json, int64_t delay,
+                             std::weak_ptr<void> lifetime);
+
   Value getAttributeValue(Runtime* rt, std::string propName) override;
 
  private:

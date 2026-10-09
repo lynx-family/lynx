@@ -117,9 +117,10 @@ LepusIdContainer& QuickjsRuntimeInstance::GetFunctionIdContainer() {
 }
 
 void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
-                                                uint32_t runtime_mode) {
+                                                uint32_t runtime_mode,
+                                                bool force_reference_counting) {
   LEPUSRuntime* rt;
-  bool gc_mode = LEPUS_IsGCModeDefault() &&
+  bool gc_mode = !force_reference_counting && LEPUS_IsGCModeDefault() &&
                  !tasm::LynxEnv::GetInstance().IsDisableTracingGC();
 
   per_instance_memory_track_ = tasm::performance::MemoryMonitor::Enable();
