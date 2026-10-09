@@ -66,12 +66,7 @@ std::optional<Gradient> Gradient::CreateLinear(
   gradient.position_types = types.data();
   SetColorAndStop(utils::GetArray(linear_array[1]),
                   utils::GetArray(linear_array[2]), gradient);
-  auto result = CreateLinear(gradient);
-  if (result.has_value() && linear_array.size() > 3) {
-    result->direction_ =
-        static_cast<LinearGradientDirection>(utils::GetInt(linear_array[3]));
-  }
-  return result;
+  return CreateLinear(gradient);
 }
 
 // static
