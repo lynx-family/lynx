@@ -295,9 +295,6 @@ def create_podfile(work_dir, repo_root, component_specs):
         "target 'LynxSPMHost' do",
     ]
     quoted_root = json.dumps(str(repo_root))
-    zlib_header_paths = json.dumps(
-        f"$(inherited) {repo_root / 'third_party' / 'zlib'}"
-    )
     for component, spec in component_specs.items():
         subspecs = sorted(set(iter_subspec_names(spec, component)))
         selected_specs = subspecs or [component]
@@ -314,10 +311,6 @@ def create_podfile(work_dir, repo_root, component_specs):
         "      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = "
         f"'{IOS_DEPLOYMENT_TARGET}'",
         "      config.build_settings['GCC_TREAT_WARNINGS_AS_ERRORS'] = 'NO'",
-        "      if target.name == 'SSZipArchive'",
-        "        config.build_settings['HEADER_SEARCH_PATHS'] = "
-        f"{zlib_header_paths}",
-        "      end",
         "    end",
         "  end",
         "  resolved_specs = installer.pod_targets.each_with_object({}) do |pod_target, specs|",
@@ -329,6 +322,26 @@ def create_podfile(work_dir, repo_root, component_specs):
         "",
     ])
     (work_dir / "Podfile").write_text("\n".join(lines), encoding="utf-8")
+
+
+def copy_ssziparchive_zlib_headers(repo_root, work_dir):
+    source_dir = repo_root / "third_party" / "zlib"
+    destination = (
+        work_dir
+        / "Pods"
+        / "SSZipArchive"
+        / "SSZipArchive"
+        / "minizip"
+    )
+    if not destination.is_dir():
+        raise FileNotFoundError(
+            f"SSZipArchive minizip directory does not exist: {destination}"
+        )
+    for name in ("zlib.h", "zconf.h"):
+        source = source_dir / name
+        if not source.is_file():
+            raise FileNotFoundError(f"Vendored zlib header does not exist: {source}")
+        shutil.copy2(source, destination / name)
 
 
 def build_host(work_dir, sdk, architectures):
@@ -403,6 +416,7 @@ def create_xcframeworks(repo_root, work_dir, output_dir, version):
         cwd=repo_root,
         env=environment,
     )
+    copy_ssziparchive_zlib_headers(repo_root, work_dir)
 
     device_products = build_host(work_dir, "iphoneos", ("arm64",))
     simulator_products = build_host(

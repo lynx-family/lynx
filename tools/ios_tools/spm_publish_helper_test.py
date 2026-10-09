@@ -110,15 +110,41 @@ class SpmPublishHelperTest(unittest.TestCase):
             "config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'",
             podfile,
         )
-        self.assertIn("if target.name == 'SSZipArchive'", podfile)
-        self.assertIn(
-            "config.build_settings['HEADER_SEARCH_PATHS'] = "
-            '"$(inherited) /repo/lynx/third_party/zlib"',
-            podfile,
-        )
+        self.assertNotIn("HEADER_SEARCH_PATHS", podfile)
         self.assertIn("use_frameworks! :linkage => :static", podfile)
         self.assertIn("installer.pod_targets", podfile)
         self.assertIn(helper.RESOLVED_SPECS_FILE, podfile)
+
+    def test_copy_ssziparchive_zlib_headers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "repo" / "third_party" / "zlib"
+            destination = (
+                root
+                / "work"
+                / "Pods"
+                / "SSZipArchive"
+                / "SSZipArchive"
+                / "minizip"
+            )
+            source.mkdir(parents=True)
+            destination.mkdir(parents=True)
+            (source / "zlib.h").write_text("zlib", encoding="utf-8")
+            (source / "zconf.h").write_text("zconf", encoding="utf-8")
+
+            helper.copy_ssziparchive_zlib_headers(
+                root / "repo",
+                root / "work",
+            )
+
+            self.assertEqual(
+                (destination / "zlib.h").read_text(encoding="utf-8"),
+                "zlib",
+            )
+            self.assertEqual(
+                (destination / "zconf.h").read_text(encoding="utf-8"),
+                "zconf",
+            )
 
     def test_installed_specs_reads_cocoapods_resolved_export(self):
         with tempfile.TemporaryDirectory() as directory:
