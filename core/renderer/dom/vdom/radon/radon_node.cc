@@ -198,6 +198,13 @@ void RadonNode::DispatchFirstTime() {
 
   // Data set
   if (!data_set().empty()) {
+    if (should_convert_to_lepus_value) {
+      // The element shares this dataset with the Radon node. Convert nested
+      // values before a resolve worker assembles the dataset prop bundle.
+      for (const auto& entry : data_set()) {
+        entry.second.ToLepusValue();
+      }
+    }
     element->MarkDirty(Element::kDirtyDataset);
   }
 
