@@ -395,7 +395,13 @@ def copy_resource_bundles(products_dir, destination):
     destination.mkdir(parents=True)
     seen = set()
     for bundle in sorted(products_dir.rglob("*.bundle")):
-        if "XCFrameworkIntermediates" in bundle.parts or bundle.name in seen:
+        relative_parents = bundle.relative_to(products_dir).parents
+        if (
+            not bundle.is_dir()
+            or any(parent.suffix == ".bundle" for parent in relative_parents)
+            or "XCFrameworkIntermediates" in bundle.parts
+            or bundle.name in seen
+        ):
             continue
         shutil.copytree(bundle, destination / bundle.name, symlinks=True)
         seen.add(bundle.name)

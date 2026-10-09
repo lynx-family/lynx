@@ -324,6 +324,38 @@ class SpmPublishHelperTest(unittest.TestCase):
                     "fedcba9876543210fedcba9876543210fedcba98",
                 )
 
+    def test_copy_resource_bundles_keeps_nested_bundle_assets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            products = root / "Products"
+            resources = products / "LynxDebugResources.bundle"
+            nested_file = (
+                resources / "switchPage" / "devtoolSwitch.lynx.bundle"
+            )
+            nested_directory = resources / "nested.bundle"
+            nested_file.parent.mkdir(parents=True)
+            nested_file.write_text("template", encoding="utf-8")
+            nested_directory.mkdir()
+            (nested_directory / "asset").write_text("asset", encoding="utf-8")
+
+            copied = helper.copy_resource_bundles(
+                products,
+                root / "Output",
+            )
+
+            self.assertEqual(copied, ["LynxDebugResources.bundle"])
+            copied_resources = root / "Output" / resources.name
+            self.assertEqual(
+                (copied_resources / nested_file.relative_to(resources))
+                .read_text(encoding="utf-8"),
+                "template",
+            )
+            self.assertTrue(
+                (copied_resources / nested_directory.relative_to(resources))
+                .is_dir()
+            )
+            self.assertFalse((root / "Output" / nested_directory.name).exists())
+
     def test_generate_package_copies_resources_and_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "repo"
