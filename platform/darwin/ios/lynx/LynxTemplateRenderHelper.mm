@@ -587,6 +587,7 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
 
 - (void)setUpUIRendererWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
   _context = [[LynxContext alloc] initWithContainerView:_containerView];
+  _context.hasLynxViewGroup = builder.lynxViewGroup != nil;
   _context.enableJSRuntime = _enableJSRuntime;
   [_context setEmbeddedMode:_embeddedMode];
   [self setUpResourceProviderWithBuilder:builder];
