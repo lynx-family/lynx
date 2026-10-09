@@ -28,8 +28,8 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   NIGHTLY_BASE_VERSION: '4.4.0'
-  SPM_WRAPPER_REPOSITORY: ${{ vars.SPM_WRAPPER_REPOSITORY || 'lynx-family/lynx-spm' }}
-  SPM_WRAPPER_BRANCH: ${{ vars.SPM_WRAPPER_BRANCH || 'main' }}
+  SPM_WRAPPER_REPOSITORY: 'gongfeng98/lynx-spm'
+  SPM_WRAPPER_BRANCH: 'master'
 
 concurrency:
   group: publish-release-${{ github.event.inputs.tag || github.ref }}
@@ -37,7 +37,7 @@ concurrency:
 
 jobs:
   get-version:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       EVENT_NAME: ${{ github.event_name }}
@@ -159,7 +159,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   prepare-release-ref:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: ubuntu-22.04
     needs: get-version
     timeout-minutes: 15
     permissions:
@@ -362,18 +362,22 @@ jobs:
       contents: read
     steps:
       - name: Validate wrapper configuration
-        env:
-          SPM_WRAPPER_TOKEN: ${{ secrets.SPM_WRAPPER_TOKEN }}
         run: |-
-          if [ -z "$SPM_WRAPPER_TOKEN" ]; then
-            echo "SPM_WRAPPER_TOKEN is required to publish the SwiftPM wrapper."
-            exit 1
-          fi
           if ! [[ "$SPM_WRAPPER_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
             echo "Invalid SPM_WRAPPER_REPOSITORY: $SPM_WRAPPER_REPOSITORY"
             exit 1
           fi
           git check-ref-format --branch "$SPM_WRAPPER_BRANCH" > /dev/null
+
+      - name: Create SwiftPM wrapper GitHub App token
+        id: spm_wrapper_app_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ vars.SPM_WRAPPER_APP_ID }}
+          private-key: ${{ secrets.SPM_WRAPPER_APP_PRIVATE_KEY }}
+          owner: gongfeng98
+          repositories: lynx-spm
+          permission-contents: write
 
       - name: Download Lynx source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -388,7 +392,7 @@ jobs:
         with:
           repository: ${{ env.SPM_WRAPPER_REPOSITORY }}
           ref: ${{ env.SPM_WRAPPER_BRANCH }}
-          token: ${{ secrets.SPM_WRAPPER_TOKEN }}
+          token: ${{ steps.spm_wrapper_app_token.outputs.token }}
           path: lynx-spm
           fetch-depth: 0
 
@@ -461,7 +465,7 @@ jobs:
     timeout-minutes: 60
     runs-on: lynx-ubuntu-22.04-large
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     steps:
       - name: Download Source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -487,7 +491,7 @@ jobs:
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     strategy:
       matrix:
         arch: [arm64, x86_64]
@@ -520,7 +524,7 @@ jobs:
         username: lynx-family
         password: ${{ secrets.GITHUB_TOKEN }}
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     defaults:
       run:
         working-directory: ${{ github.workspace }}
@@ -547,7 +551,7 @@ jobs:
   android-sdk-release:
     runs-on: ubuntu-22.04
     needs: [get-version, prepare-release-ref]
-    if: ${{ needs.get-version.outputs.release_mode != 'nightly' }}
+    if: ${{ false }}
     timeout-minutes: 240
     steps:
       - name: Download Source
@@ -599,7 +603,7 @@ jobs:
   android-sdk-snapshot-release:
     runs-on: lynx-ubuntu-22.04-large
     needs: [get-version, prepare-release-ref]
-    if: ${{ needs.get-version.outputs.release_mode == 'nightly' }}
+    if: ${{ false }}
     timeout-minutes: 240
     steps:
       - name: Download Source
@@ -636,6 +640,7 @@ jobs:
     timeout-minutes: 120
     runs-on: macos-14
     needs: [get-version, prepare-release-ref]
+    if: ${{ false }}
     permissions:
       contents: write
     env:
@@ -704,6 +709,7 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-22.04
     needs: [get-version, prepare-release-ref]
+    if: ${{ false }}
     environment: rubygems
     permissions:
       contents: read
@@ -788,6 +794,7 @@ jobs:
       run:
         shell: bash
     needs: [get-version, prepare-release-ref]
+    if: ${{ false }}
     strategy:
       matrix:
         include:
@@ -855,7 +862,7 @@ jobs:
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     strategy:
       matrix:
         arch: [arm64, x64]
@@ -883,7 +890,7 @@ jobs:
   linux-sdk-release:
     timeout-minutes: 60
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
@@ -920,7 +927,7 @@ jobs:
     timeout-minutes: 60
     runs-on: lynx-windows-2022-large
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     strategy:
       matrix:
         arch: [x86, x64]
