@@ -4,11 +4,12 @@ import platform
 system = platform.system().lower()
 
 deps = {
-    "./tools_shared": {
+    "buildtools/tools_shared": {
         "type": "git",
-        "url": "https://github.com/lynx-family/tools-shared.git",
-        "commit": "bdea62f7b500026aab237b271abc7eff279a5c2d",
+        "url": "https://github.com/lynx-family/buildtools.git",
+        "commit": "97d59e99bb4c35c404e463ddcdf3081dadd12ff1",
         "ignore_in_git": True,
+        "paths": ["tools_shared"]
     },
     'buildtools/checkstyle/checkstyle.jar':{
         "type": "http",

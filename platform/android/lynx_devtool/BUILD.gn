@@ -66,13 +66,14 @@ group("lynxdevtool_lib") {
 }
 
 group("devtool_jni_files") {
-  exec_script("//tools_shared/jni_generator/generate_and_register_jni_files.py",
-              [
-                "-root",
-                rebase_path("../../../"),
-                "-path",
-                rebase_path("./src/main/jni/jni_configs.yml"),
-              ])
+  exec_script(
+      "//buildtools/tools_shared/tools_shared/jni_generator/generate_and_register_jni_files.py",
+      [
+        "-root",
+        rebase_path("../../../"),
+        "-path",
+        rebase_path("./src/main/jni/jni_configs.yml"),
+      ])
   public_deps = [ "src/main/jni:build" ]
 }
 
