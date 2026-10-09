@@ -29,6 +29,7 @@
 @property(nonatomic, weak) LynxPerformanceController* _Nullable perfController;
 @property(nonatomic, readonly) bool isLayoutInElementModeOn;
 @property(nonatomic, readonly) bool isTextServiceModeOn;
+@property(nonatomic, readwrite) BOOL hasLynxViewGroup;
 
 // Generated in the LynxShell, id of template instance.
 // instanceId is a value greater than or equal to 0, the initial value is -1.
