@@ -1,8 +1,8 @@
 # Memory Monitor Documentation
 
-This directory documents the Lynx memory monitoring module. The 
+This directory documents the Lynx memory monitoring module. The
 documents separate implementation design, event contracts, and
-data-analysis guidance so that each concern can evolve without 
+data-analysis guidance so that each concern can evolve without
 mixing collection details with query recipes.
 
 ## Documents
@@ -31,6 +31,15 @@ For data analysis:
 3. Consult the reporting designs when timing, sampling, ownership, or cache
    freshness affects interpretation.
 
+## Simulation Validation
+
+The [deterministic simulation guide](../testing/SIMULATION.md), maintained
+alongside the memory-monitor test fixtures, defines the synthetic workload
+format, generator, independent query oracles, and replay procedure. The
+documents in this directory remain authoritative for runtime semantics, event
+fields, and supported query formulas.
+
 The C++ implementation is authoritative for runtime behavior. When event
 schemas or collection semantics change, update the relevant design, property
-reference, and query guidance together.
+reference, query guidance, and corresponding simulation fixtures and assertions
+together.
