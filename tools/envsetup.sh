@@ -28,14 +28,24 @@ function android_env_setup() {
   local TOOLS_REAL_PATH=$(dirname $SCRIPT_REAL_PATH)
   echo $TOOLS_REAL_PATH
   if [ "$ANDROID_HOME" ]; then
-    export ANDROID_NDK=$ANDROID_HOME/ndk/21.1.6352462
-    export ANDROID_NDK_21=$ANDROID_HOME/ndk/21.1.6352462
-    export ANDROID_SDK=$ANDROID_HOME
+    local android_sdk="${ANDROID_SDK:-$ANDROID_HOME}"
+    local android_ndk
+    local ndk_property=()
+    if [[ -n "${ANDROID_NDK_PATH:-}" ]]; then
+      android_ndk="${ANDROID_NDK_PATH}"
+      ndk_property=(ndk.dir="${android_ndk}")
+    elif [[ -n "${ANDROID_NDK:-}" ]]; then
+      android_ndk="${ANDROID_NDK}"
+    else
+      android_ndk="${ANDROID_HOME}/ndk/21.1.6352462"
+    fi
+    export ANDROID_SDK="${android_sdk}"
+    export ANDROID_NDK="${android_ndk}"
     
     local local_properties_file1="${LYNX_DIR}/platform/android/local.properties"
     local local_properties_file2="${LYNX_DIR}/explorer/android/local.properties"
     local CMAKE_DIR="${LYNX_DIR}/buildtools/cmake"
-    python3 $LYNX_DIR/tools/android_tools/update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$ANDROID_NDK" sdk.dir="$ANDROID_SDK" cmake.dir="$CMAKE_DIR"
+    python3 $LYNX_DIR/tools/android_tools/update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p "${ndk_property[@]}" sdk.dir="$ANDROID_SDK" cmake.dir="$CMAKE_DIR"
   else
     echo "Please setup ANDROID_HOME for android build first."
   fi

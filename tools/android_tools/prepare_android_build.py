@@ -4,12 +4,14 @@
 # LICENSE file in the root directory of this source tree.
 
 import sys
+import argparse
 import os
 import subprocess
 import platform
 system = platform.system().lower()
 
-ndk_version = '21.1.6352462'
+ndk_version_21 = '21.1.6352462'
+ndk_version_27 = '27.3.13750724'
 android_platform = 'android-33'
 sdk_build_tools_version = '33.0.1'
 
@@ -32,7 +34,7 @@ def install_sdk_component(sdk_path, sdk_manager, component, version):
     return -1
   return 0
 
-def install_android_sdk(root_path):
+def install_android_sdk(root_path, ndk_version=ndk_version_21):
   sdk_path = os.getenv("ANDROID_HOME")
   if not sdk_path:
     print("Error: Please configure the ANDROID_HOME environment variable first.")
@@ -63,11 +65,15 @@ def install_android_sdk(root_path):
   print("Now you can run `cd explorer/android` and `./gradlew :LynxExplorer:assembleNoAsanDebug` to build LynxExplorer APP.")
 
 def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--ndk27', action='store_true', default=False,
+                      help='Install NDK r27 instead of the default r21')
+  args = parser.parse_args()
   root_path = os.path.join(os.path.dirname(__file__), '..', '..')
   tools_dir = os.path.join(root_path, 'tools')
   hab_path = os.path.join(tools_dir, 'hab') if system !='windows' else os.path.join(tools_dir, 'hab.ps1')
   run_command(f'{hab_path} sync . -f --target dev --target-only')
-  install_android_sdk(root_path)
+  install_android_sdk(root_path, ndk_version_27 if args.ndk27 else ndk_version_21)
 
 if __name__ == "__main__":
   sys.exit(main())
