@@ -217,7 +217,7 @@ lynx_oss_env_setup_android() {
     export ANDROID_NDK="${ANDROID_HOME}/ndk/${LYNX_OSS_ENV_ANDROID_NDK_VERSION}"
   fi
 
-  export ANDROID_NDK_21="${ANDROID_HOME}/ndk/${LYNX_OSS_ENV_ANDROID_NDK_VERSION}"
+  export ANDROID_NDK_21="${ANDROID_NDK_21:-${ANDROID_HOME}/ndk/${LYNX_OSS_ENV_ANDROID_NDK_VERSION}}"
 }
 
 lynx_oss_env_setup_harmony() {

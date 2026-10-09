@@ -1,0 +1,26 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+import org.gradle.process.ExecSpec
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+def ndk27Value = rootProject.findProperty('ndk27')?.toString()
+def useNdk27 = ndk27Value != null && ndk27Value.equalsIgnoreCase('true')
+def ndkVersionOverride = rootProject.findProperty('ndk_version')?.toString()
+rootProject.ext.ndkVersion = ndkVersionOverride ?:
+        (useNdk27 ? '27.3.13750724' : '21.1.6352462')
+
+// GN must use the same NDK as AGP, including a custom NDK selected by ndk.dir.
+// Call after evaluating the Android modules, when AGP can resolve the directory.
+rootProject.ext.configureGnExec = { ExecSpec execSpec, Object... pythonArgs ->
+    def ndkDirectory = rootProject.project(':LynxAndroid').android.ndkDirectory
+    def gnArgsFile = rootProject.file('../../out/android/gn_args/gn_args.json')
+    def gnArgs = new JsonSlurper().parse(gnArgsFile)
+    gnArgs.values().each { variantArgs ->
+        variantArgs.overlay_ndk_dir = ndkDirectory.absolutePath.replace('\\', '/')
+    }
+    gnArgsFile.text = JsonOutput.toJson(gnArgs)
+    rootProject.ext.configurePythonExec(execSpec, *pythonArgs)
+}
