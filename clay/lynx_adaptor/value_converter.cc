@@ -97,7 +97,8 @@ clay::Value ValueConverter::CreateClayValue(const uint32_t* data, size_t size) {
   return clay::Value(std::move(array));
 }
 
-#if OS_WIN || OS_MAC || OS_LINUX || OS_HARMONY
+#if OS_WIN || OS_MAC || OS_LINUX || OS_HARMONY || \
+    (OS_ANDROID && defined(ENABLE_WINDOWLESS))
 namespace {
 bool GetLynxValueString(lynx_api_env env, lynx_value val, std::string& str) {
   size_t length = 0;
@@ -176,7 +177,8 @@ clay::Value ValueConverter::CreateClayValue(lynx_api_env env, lynx_value val) {
       break;
   }
 
-  FML_LOG(ERROR) << "unsupported lynx_value type: " << val.type;
+  FML_LOG(ERROR) << "unsupported lynx_value type: "
+                 << static_cast<int>(val.type);
   return clay::Value();
 }
 

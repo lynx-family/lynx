@@ -4,6 +4,7 @@
 
 #include "core/services/event_report/event_tracker_platform_impl.h"
 
+#include "base/include/platform/android/jni_utils.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/java_only_array.h"
 #include "core/base/android/java_only_map.h"
@@ -14,6 +15,16 @@
 
 namespace lynx {
 namespace jni {
+bool InitializeJNIForLynxEventReporter(JNIEnv* env) {
+  static base::android::ScopedGlobalJavaRef<jclass> cached_class;
+  if (!g_LynxEventReporter_clazz) {
+    auto clazz = base::android::GetClass(env, kLynxEventReporterClassPath);
+    cached_class.Reset(env, clazz.Get());
+    g_LynxEventReporter_clazz = cached_class.Get();
+  }
+  return g_LynxEventReporter_clazz != nullptr;
+}
+
 bool RegisterJNIForLynxEventReporter(JNIEnv* env) {
   return RegisterNativesImpl(env);
 }

@@ -4,12 +4,14 @@
 
 #include "core/renderer/utils/android/lynx_env_android.h"
 
+#include <mutex>
 #include <string>
 #include <utility>
 
 #include "base/include/log/logging.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/notification_center.h"
+#include "base/include/platform/android/jni_utils.h"
 #include "core/base/android/jni_helper.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/lynx_global_pool.h"
@@ -22,6 +24,24 @@
 #include "core/shell/host_script/android/runtime/process_runtime_init_android.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxEnv_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxEnv_register_jni.h"
+
+namespace {
+
+void EnsureLynxEnvJavaClass(JNIEnv* env) {
+  static lynx::base::android::ScopedGlobalJavaRef<jclass> cached_class;
+  static std::once_flag initialized;
+  std::call_once(initialized, [env]() {
+    // Windowless hosts call Java methods without registering Lynx's native
+    // methods again. Cache the class in this library as well.
+    if (!g_LynxEnv_clazz) {
+      auto clazz = lynx::base::android::GetClass(env, kLynxEnvClassPath);
+      cached_class.Reset(env, clazz.Get());
+      g_LynxEnv_clazz = cached_class.Get();
+    }
+  });
+}
+
+}  // namespace
 
 namespace lynx {
 namespace jni {
@@ -152,6 +172,7 @@ void LynxEnvAndroid::onPiperInvoked(const std::string& module_name,
                                     const std::string& param_str,
                                     const std::string& url) {
   JNIEnv* env = base::android::AttachCurrentThread();
+  EnsureLynxEnvJavaClass(env);
   auto j_module =
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, module_name);
   auto j_method =
@@ -166,6 +187,7 @@ void LynxEnvAndroid::onPiperInvoked(const std::string& module_name,
 std::optional<std::string> LynxEnvAndroid::GetStringFromExternalEnv(
     const std::string& key) {
   JNIEnv* env = base::android::AttachCurrentThread();
+  EnsureLynxEnvJavaClass(env);
   auto j_key = base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
   auto value = lynxenv::Java_LynxEnv_getStringFromExternalEnv(env, j_key.Get());
   if (value.Get() == nullptr) {

@@ -24,6 +24,7 @@
 #elif OS_ANDROID
 #include "clay/gfx/shared_image/android/android_hardwarebuffer_utils.h"
 #include "clay/gfx/shared_image/android_hardwarebuffer_image_backing.h"
+#include "clay/gfx/shared_image/android_surface_texture_image_backing.h"
 #include "clay/gfx/shared_image/egl_image_backing.h"
 #elif OS_HARMONY
 #include "clay/gfx/shared_image/native_image_image_backing.h"
@@ -112,15 +113,24 @@ fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
     }
   }
 #elif OS_ANDROID
-  if (type == BackingType::kAHardwareBuffer) {
+  if (type == BackingType::kAHardwareBuffer ||
+      type == BackingType::kAHardwareBufferReadback) {
     if (AHardwareBufferUtils::GetInstance().IsSupportAvailable()) {
       return fml::MakeRefCounted<AHardwareBufferImageBacking>(
-          pixel_format, size, std::nullopt);
+          pixel_format, size, std::nullopt,
+          type == BackingType::kAHardwareBufferReadback);
+    }
+    if (type == BackingType::kAHardwareBufferReadback) {
+      FML_LOG(ERROR) << "CPU-readable hardware buffers require Android API 26";
+      return nullptr;
     }
     FML_LOG(INFO) << "Fallback to EGLImageBacking because AHardwareBuffer is "
                      "not supported.";
     return fml::MakeRefCounted<EGLImageBacking>(pixel_format, size,
                                                 std::nullopt);
+  } else if (type == BackingType::kSurfaceTexture) {
+    return fml::MakeRefCounted<SurfaceTextureImageBacking>(pixel_format, size,
+                                                           gfx_handle);
   } else if (type == BackingType::kEGLImage) {
     return fml::MakeRefCounted<EGLImageBacking>(pixel_format, size,
                                                 std::nullopt);

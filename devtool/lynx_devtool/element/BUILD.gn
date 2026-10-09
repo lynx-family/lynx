@@ -23,19 +23,8 @@ devtool_source_set("element") {
 
   deps = [ "../../../base/src:base_log_headers" ]
   if (is_android) {
-    # liblynx.so does not export symbols in following two files
-    if (!is_headless) {
-      sources += [
-        "../../../core/renderer/css/css_color.cc",
-        "../../../core/renderer/css/css_color.h",
-      ]
-      deps += [ "../../../core/renderer/css:css_keywords" ]
-    } else {
-      not_needed([
-                   "../../../core/renderer/css/css_color.cc",
-                   "../../../core/renderer/css/css_color.h",
-                 ])
-    }
+    # Share the implementation when Clay also links the windowless embedder.
+    deps += [ "../../../core/renderer/css:css_color" ]
   }
 }
 

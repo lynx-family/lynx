@@ -60,7 +60,7 @@ if (enable_unittests) {
   ]
 }
 if (is_android && !enable_unittests) {
-  if (!is_headless) {
+  if (!is_headless || is_android) {
     base_devtool_shared_sources += [
       "android/devtool_global_slot_android.cc",
       "android/devtool_slot_android.cc",
@@ -128,7 +128,7 @@ base_devtool_source_set("base_devtool") {
     "../../../third_party/jsoncpp/include/",
     "//",
   ]
-  if (is_android && !enable_unittests && !is_headless) {
+  if (is_android && !enable_unittests) {
     deps += [
       ":android_jni",
       "../../../core/build:build",
@@ -153,9 +153,9 @@ subspec_target("base_devtool_subspec") {
 }
 
 base_devtool_source_set("android_jni") {
-  sources = [
-    "../../../core/base/android/android_jni.cc",
-    "../../../core/base/android/callstack_util_android.cc",
-  ]
-  deps = [ "../../../base/src:base_log_headers" ]
+  sources = []
+  deps = []
+  if (is_android) {
+    deps += [ "../../../core/base:android_jni" ]
+  }
 }

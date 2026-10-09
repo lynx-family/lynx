@@ -22,10 +22,23 @@ lynx_core_source_set("css_keywords") {
   deps = [ ":generate_css_keywords" ]
 }
 
+lynx_core_source_set("css_color") {
+  sources = [
+    "css_color.cc",
+    "css_color.h",
+  ]
+  public_deps = [ ":css_keywords" ]
+}
+
 lynx_core_source_set("css") {
   check_includes = false
 
   sources = lynx_css_core_sources_path + lynx_css_runtime_sources_path
+  sources -= get_path_info([
+                             "css_color.cc",
+                             "css_color.h",
+                           ],
+                           "abspath")
 
   exec_script("../../../tools/css_generator/css_parser_generator.py")
 
@@ -39,6 +52,7 @@ lynx_core_source_set("css") {
               "list lines")
 
   public_deps = [
+    ":css_color",
     ":css_keywords",
     "../../../gfx:gfx",
     "../../../third_party/rapidjson",

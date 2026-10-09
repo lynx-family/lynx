@@ -134,7 +134,7 @@ source_set("trace") {
   }
 
   if (is_android) {
-    if (!is_headless) {
+    if (!is_headless || is_android) {
       public_deps += [ "../android:trace_jni_files" ]
     } else {
       not_needed([ "../android:trace_jni_files" ])

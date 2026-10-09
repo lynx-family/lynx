@@ -26,7 +26,8 @@ class SurfaceTextureImageBacking final : public SharedImageBackingUnmanaged {
  public:
   SurfaceTextureImageBacking(
       PixelFormat pixel_format, skity::Vec2 size,
-      std::optional<GraphicsMemoryHandle> gfx_handle = {});
+      std::optional<GraphicsMemoryHandle> gfx_handle = {},
+      bool output_surface = false);
   ~SurfaceTextureImageBacking() override;
 
   const skity::Vec2 GetSize() const override;
@@ -58,6 +59,8 @@ class SurfaceTextureImageBacking final : public SharedImageBackingUnmanaged {
   void DetachGLContext();
 
  private:
+  friend class SurfaceTextureEGLImageRepresentation;
+
   struct FrameCallbackState {
     std::mutex mutex;
     fml::closure callback;
@@ -70,6 +73,7 @@ class SurfaceTextureImageBacking final : public SharedImageBackingUnmanaged {
 
   fml::RefPtr<SurfaceTexture> surface_texture_;
   GLuint texture_ = 0;
+  bool output_surface_ = false;
   bool uses_internal_frame_listener_ = false;
   std::shared_ptr<FrameCallbackState> frame_callback_state_;
 };

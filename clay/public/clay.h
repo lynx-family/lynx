@@ -83,12 +83,14 @@ typedef enum {
 } ClaySharedImageBackingPixelFormat;
 
 typedef enum {
-  kClaySharedImageBackingTypeIOSurface,      /// Darwin
-  kClaySharedImageBackingTypeCVPixelBuffer,  /// Darwin
-  kClaySharedImageBackingTypeD3DTexture,     /// Windows
-  kClaySharedImageBackingTypeNativeImage,    /// Harmony
-  kClaySharedImageBackingTypeShmImage,       /// Linux
-  kClaySharedImageBackingTypeAngleShmImage,  /// Linux software rendering
+  kClaySharedImageBackingTypeIOSurface,        /// Darwin
+  kClaySharedImageBackingTypeCVPixelBuffer,    /// Darwin
+  kClaySharedImageBackingTypeD3DTexture,       /// Windows
+  kClaySharedImageBackingTypeNativeImage,      /// Harmony
+  kClaySharedImageBackingTypeShmImage,         /// Linux
+  kClaySharedImageBackingTypeAngleShmImage,    /// Linux software rendering
+  kClaySharedImageBackingTypeAHardwareBuffer,  /// Android, CPU-readable
+  kClaySharedImageBackingTypeSurfaceTexture,  /// Android SurfaceTexture jobject
 } ClaySharedImageBackingType;
 
 typedef enum {

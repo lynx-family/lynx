@@ -36,7 +36,7 @@ config("devtool_common_config") {
   configs = [ "../../third_party/rapidjson:rapidjson_config" ]
   defines = []
 
-  if (is_headless) {
+  if (is_headless && !is_android) {
     defines += [ "ENABLE_HEADLESS" ]
   }
 

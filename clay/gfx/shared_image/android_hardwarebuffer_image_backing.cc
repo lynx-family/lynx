@@ -20,7 +20,7 @@ namespace clay {
 
 AHardwareBufferImageBacking::AHardwareBufferImageBacking(
     PixelFormat pixel_format, skity::Vec2 size,
-    std::optional<GraphicsMemoryHandle> gfx_handle)
+    std::optional<GraphicsMemoryHandle> gfx_handle, bool cpu_readable)
     : SharedImageBacking(pixel_format, size) {
   FML_DCHECK(AHardwareBufferUtils::GetInstance().IsSupportAvailable());
   AHardwareBuffer_Desc desc = {
@@ -33,6 +33,9 @@ AHardwareBufferImageBacking::AHardwareBufferImageBacking(
       0,
       0,
       0};
+  if (cpu_readable) {
+    desc.usage |= AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN;
+  }
   int error = AHardwareBufferUtils::GetInstance().Allocate(&desc, &buffer_);
   if (error != 0) {
     FML_LOG(ERROR) << "AHardwareBuffer allocate error: " << error;

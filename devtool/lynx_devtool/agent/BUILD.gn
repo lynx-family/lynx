@@ -109,7 +109,7 @@ devtool_agent_ng_sources = [
 ]
 
 if (is_android) {
-  if (!is_headless) {
+  if (!is_headless || is_android) {
     devtool_agent_shared_sources += [
       "../android/cdp_event_listener_sender_android.cc",
       "../android/cdp_event_listener_sender_android.h",

@@ -91,9 +91,8 @@ _is_oliver_node_lynx = defined(is_oliver_node_lynx) && is_oliver_node_lynx
 _is_oliver_tasm = defined(is_oliver_tasm) && is_oliver_tasm
 
 use_clay_lynx_trail_hub_impl =
-    enable_clay && (is_mac || is_win || (is_android && is_headless)) &&
-    !enable_unittests && !_is_oliver_ssr && !_is_oliver_node_lynx &&
-    !_is_oliver_tasm && !is_encoder_ut
+    enable_clay && (is_mac || is_win) && !enable_unittests && !_is_oliver_ssr &&
+    !_is_oliver_node_lynx && !_is_oliver_tasm && !is_encoder_ut
 
 # feature_defines_list ---------------------------------------------------------
 
@@ -151,8 +150,7 @@ if (use_accessbility) {
   feature_defines_list += [ "ENABLE_ACCESSIBILITY" ]
 }
 
-# On iOS the flag controls packaging, preserving the UIView service paths.
-if (is_headless && !is_ios) {
+if (is_headless && !is_ios && is_android) {
   feature_defines_list += [ "ENABLE_HEADLESS" ]
 }
 

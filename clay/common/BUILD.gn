@@ -28,7 +28,7 @@ source_set("common") {
     "trail_settings.h",
   ]
 
-  if (!is_android || is_headless) {
+  if (!is_android) {
     sources += [ "sys_info.cc" ]
   }
 

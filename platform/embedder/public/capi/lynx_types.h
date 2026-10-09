@@ -734,10 +734,25 @@ typedef enum lynx_color_type_e {
   kLynxColorTypeBGRA_8888,
 } lynx_color_type_e;
 
+typedef enum lynx_accelerated_backing_type_e {
+  kLynxAcceleratedBackingTypePlatform,
+  kLynxAcceleratedBackingTypeAHardwareBuffer,
+  kLynxAcceleratedBackingTypeSurfaceTexture,
+} lynx_accelerated_backing_type_e;
+
 typedef struct lynx_accelerated_paint_info_t {
   /// The size of this struct. Must be sizeof(lynx_accelerated_paint_info_t).
   size_t struct_size;
   /// The handle to the shared texture.
+  /// On Android with hardware-buffer support this is a borrowed AHardwareBuffer
+  /// pointer, valid until
+  /// the next successful paint-info acquisition or renderer release. Otherwise
+  /// on Android it is a borrowed SurfaceTexture jobject, valid until renderer
+  /// release. The consumer attaches it to its own GL context and calls
+  /// updateTexImage() after a frame notification. That call synchronizes with
+  /// the producer and latches the latest buffer. Apply getTransformMatrix()
+  /// when sampling the external texture, and detach before releasing the
+  /// renderer.
   void* shared_texture_handle;
   /// The color type of the shared texture.
   lynx_color_type_e color_type;
@@ -745,6 +760,9 @@ typedef struct lynx_accelerated_paint_info_t {
   uint32_t width;
   /// The height of the shared texture in pixels.
   uint32_t height;
+  /// Identifies the Android handle. Set struct_size before requesting paint
+  /// info.
+  lynx_accelerated_backing_type_e backing_type;
 } lynx_accelerated_paint_info_t;
 
 #endif  // PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_TYPES_H_
