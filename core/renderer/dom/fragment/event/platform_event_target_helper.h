@@ -17,6 +17,9 @@ namespace tasm {
 class PlatformRendererImpl;
 class NativePaintingCtxPlatformRef;
 
+// Shared conversion for event-target state and native host synchronization.
+LynxEventPropStatus EventPropValueToStatus(const lepus::Value& value);
+
 class PlatformEventTargetHelper {
  public:
   explicit PlatformEventTargetHelper(NativePaintingCtxPlatformRef* platform_ref)
