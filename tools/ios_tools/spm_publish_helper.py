@@ -35,6 +35,7 @@ COMPONENTS = (
     "XElement",
 )
 EXCLUDED_SUBSPEC_SEGMENTS = frozenset(("replay", "unittests", "unittestresource"))
+IOS_DEPLOYMENT_TARGET = "12.0"
 MANIFEST_SCHEMA_VERSION = 1
 PACKAGE_SUPPORT_TARGET = "LynxPackageSupport"
 RESOLVED_SPECS_FILE = "ResolvedPodspecs.json"
@@ -262,7 +263,9 @@ def create_host_project(work_dir):
     script.write_text(
         "require 'xcodeproj'\n"
         "project = Xcodeproj::Project.new('LynxSPMHost.xcodeproj')\n"
-        "target = project.new_target(:application, 'LynxSPMHost', :ios, '10.0')\n"
+        "target = project.new_target("
+        ":application, 'LynxSPMHost', :ios, "
+        f"'{IOS_DEPLOYMENT_TARGET}')\n"
         "group = project.main_group.new_group('Sources')\n"
         "source = group.new_file('Sources/main.m')\n"
         "target.add_file_references([source])\n"
@@ -286,7 +289,7 @@ def create_podfile(work_dir, repo_root, component_specs):
     lines = [
         "require 'json'",
         "source 'https://cdn.cocoapods.org/'",
-        "platform :ios, '10.0'",
+        f"platform :ios, '{IOS_DEPLOYMENT_TARGET}'",
         "use_frameworks! :linkage => :static",
         "project 'LynxSPMHost.xcodeproj'",
         "target 'LynxSPMHost' do",
@@ -469,7 +472,7 @@ def create_xcframeworks(repo_root, work_dir, output_dir, version):
     manifest = {
         "schema_version": MANIFEST_SCHEMA_VERSION,
         "version": version,
-        "deployment_target": "10.0",
+        "deployment_target": IOS_DEPLOYMENT_TARGET,
         "artifacts": artifacts,
         "products": products,
         "system_frameworks": collect_string_field(resolved_specs, "frameworks"),

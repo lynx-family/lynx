@@ -105,6 +105,7 @@ class SpmPublishHelperTest(unittest.TestCase):
 
         self.assertIn('pod "Lynx/Framework", :path => "/repo/lynx"', podfile)
         self.assertNotIn("UnitTests", podfile)
+        self.assertIn("platform :ios, '12.0'", podfile)
         self.assertIn("use_frameworks! :linkage => :static", podfile)
         self.assertIn("installer.pod_targets", podfile)
         self.assertIn(helper.RESOLVED_SPECS_FILE, podfile)
@@ -132,6 +133,7 @@ class SpmPublishHelperTest(unittest.TestCase):
             script = (work_dir / "create_project.rb").read_text(encoding="utf-8")
 
         self.assertTrue(script.startswith("require 'xcodeproj'\n"))
+        self.assertIn(":ios, '12.0'", script)
         self.assertIn("project.save\n", script)
         self.assertNotIn('\n"\n', script)
         run.assert_called_once_with(
@@ -144,7 +146,7 @@ class SpmPublishHelperTest(unittest.TestCase):
 
         package = helper.render_package(manifest)
 
-        self.assertIn("platforms: [.iOS(.v10)]", package)
+        self.assertIn("platforms: [.iOS(.v12)]", package)
         self.assertIn('name: "Lynx-Framework"', package)
         self.assertIn('name: "Lynx"', package)
         self.assertIn('url: "https://example.com/Lynx.zip"', package)
@@ -334,7 +336,7 @@ class SpmPublishHelperTest(unittest.TestCase):
         return {
             "schema_version": 1,
             "version": "1.2.3",
-            "deployment_target": "10.0",
+            "deployment_target": helper.IOS_DEPLOYMENT_TARGET,
             "artifacts": [
                 {
                     "pod": "Lynx",
