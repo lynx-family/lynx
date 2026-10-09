@@ -9,7 +9,7 @@
 #include <cstring>
 #include <string>
 
-#include "core/base/android/jni_helper.h"
+#include "base/include/platform/android/jni_utils.h"
 #include "platform/android/lynx_starlight/src/main/jni/gen/StarlightNode_jni.h"
 #include "platform/android/lynx_starlight/src/main/jni/gen/StarlightNode_register_jni.h"
 

@@ -67,8 +67,6 @@ if (is_android) {
       "../../../../base/observer/observer.h",
       "../../../../base/observer/observer_list.cc",
       "../../../../base/observer/observer_list.h",
-      "../../../../build/gen/lynx_sub_error_code.cc",
-      "../../../../build/gen/lynx_sub_error_code.h",
       "../../bindings/modules/android/jni_v8_bridge.cc",
     ]
     if (enable_napi_binding) {
@@ -79,6 +77,9 @@ if (is_android) {
     } else {
       cflags = [ "-Oz" ]
     }
-    deps = [ "../../../../../base/src:base_log_headers" ]
+    deps = [
+      "../../../../../base/src:base_log_headers",
+      "../../../../build:build",
+    ]
   }
 }

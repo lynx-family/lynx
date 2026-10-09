@@ -10,6 +10,7 @@ import("//${lynx_dir}/build_overrides/core.gni")
 #
 import("../config.gni")
 import("../oliver/oliver.gni")
+import("native_codegen.gni")
 
 # This target defines a source_set which contains some common configs and deps needed by
 # all targets in the source tree of Lynx
@@ -32,6 +33,13 @@ template("lynx_core_source_set") {
                              "public_configs",
                            ])
 
+    if (!defined(include_dirs)) {
+      include_dirs = []
+    }
+    source_include_dirs = include_dirs
+    include_dirs = []
+    include_dirs = lynx_native_codegen_include_dirs + source_include_dirs
+
     if (defined(sources) && lynx_core_source_overrides != []) {
       original_sources = sources
       sources = []
@@ -49,6 +57,11 @@ template("lynx_core_source_set") {
     if (!defined(deps)) {
       deps = []
     }
+
+    if (!defined(public_deps)) {
+      public_deps = []
+    }
+    public_deps += [ lynx_native_generated_headers ]
 
     if (!defined(configs)) {
       configs = []

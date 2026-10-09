@@ -83,9 +83,9 @@ class GeneratorGroup(BaseGenerator):
             c.on_next_sub_code(code, behavior, section)
 
 class PlatformGenerator(GeneratorGroup):
-    def write(self):
+    def write(self, output_root=None):
         for c in self._child_generators:
-            c.write()
+            c.write(output_root)
 
 class FileGenerator(GeneratorGroup):
     def __init__(self, relative_path, file_name):
@@ -96,9 +96,9 @@ class FileGenerator(GeneratorGroup):
         self._format_off = CLANG_OFF
         self._format_on = CLANG_ON
 
-    def write(self):
+    def write(self, output_root=None):
         current_path = os.path.dirname(os.path.abspath(__file__))
-        project_root_path = os.path.join(current_path, "../../../")
+        project_root_path = output_root or os.path.join(current_path, "../../../")
         parent_path = os.path.join(project_root_path, self._relative_path)
         if not os.path.exists(parent_path):
             os.makedirs(parent_path)

@@ -35,7 +35,8 @@ source_set("lepus_debug") {
     "../../../base/src:base_log_headers",
     "../../fundamentals/js_inspect:js_inspect_interface",
   ]
-  include_dirs = [ "../../../third_party" ]
+  include_dirs = lynx_native_codegen_include_dirs + [ "../../../third_party" ]
+  public_deps = [ lynx_native_generated_headers ]
   deps += [ "../../../third_party/rapidjson:rapidjson" ]
   public_configs = [ "../../../third_party/quickjs:quickjs_public_config" ]
   configs += [ ":lepus_debug_config" ]

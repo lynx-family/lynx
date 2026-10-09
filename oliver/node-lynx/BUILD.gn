@@ -3,6 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import("../../config.gni")
+import("../../core/native_codegen.gni")
 import("../../oliver/oliver.gni")
 
 if (is_mac) {
@@ -50,15 +51,16 @@ source_set("node_lynx_native") {
 
   configs += [ "../../oliver:lynx_oliver_config" ]
 
-  include_dirs = [
-    "../..",
-    "../../third_party/debug_router/src",
-  ]
+  include_dirs = lynx_native_codegen_include_dirs + [
+                   "../..",
+                   "../../third_party/debug_router/src",
+                 ]
 
   deps = [
     "../../base/src:base_group",
     "../../clay/fml:fml",
     "../../clay/lynx_adaptor:lynx_adaptor",
+    "../../core:native_generated_headers",
     "../../core/build:build",
     "../../platform/embedder:embedder",
     "../../third_party/debug_router/src/debug_router/common:debug_router_source",

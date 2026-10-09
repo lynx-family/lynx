@@ -1,0 +1,19 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+# Resolve generation roots in the consumer's current toolchain.
+lynx_feature_count_gen_dir =
+    get_label_info("services/feature_count:gen_feature_count", "target_gen_dir")
+lynx_error_code_gen_dir =
+    get_label_info("build:gen_error_code", "target_gen_dir")
+lynx_error_code_generated_sources = [
+  "$lynx_error_code_gen_dir/core/build/gen/lynx_sub_error_code.cc",
+  "$lynx_error_code_gen_dir/core/build/gen/lynx_sub_error_code.h",
+]
+lynx_native_generated_headers = rebase_path(":native_generated_headers")
+lynx_native_codegen_include_dirs = [
+  lynx_feature_count_gen_dir,
+  lynx_error_code_gen_dir,
+  "$lynx_error_code_gen_dir/core/build/gen",
+]
