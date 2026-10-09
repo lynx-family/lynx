@@ -295,6 +295,9 @@ def create_podfile(work_dir, repo_root, component_specs):
         "target 'LynxSPMHost' do",
     ]
     quoted_root = json.dumps(str(repo_root))
+    zlib_header_paths = json.dumps(
+        f"$(inherited) {repo_root / 'third_party' / 'zlib'}"
+    )
     for component, spec in component_specs.items():
         subspecs = sorted(set(iter_subspec_names(spec, component)))
         selected_specs = subspecs or [component]
@@ -312,15 +315,8 @@ def create_podfile(work_dir, repo_root, component_specs):
         f"'{IOS_DEPLOYMENT_TARGET}'",
         "      config.build_settings['GCC_TREAT_WARNINGS_AS_ERRORS'] = 'NO'",
         "      if target.name == 'SSZipArchive'",
-        "        config.build_settings"
-        "['HEADER_SEARCH_PATHS[sdk=iphoneos*]'] = "
-        "'$(inherited) $(DEVELOPER_DIR)/Platforms/"
-        "iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include'",
-        "        config.build_settings"
-        "['HEADER_SEARCH_PATHS[sdk=iphonesimulator*]'] = "
-        "'$(inherited) $(DEVELOPER_DIR)/Platforms/"
-        "iPhoneSimulator.platform/Developer/SDKs/"
-        "iPhoneSimulator.sdk/usr/include'",
+        "        config.build_settings['HEADER_SEARCH_PATHS'] = "
+        f"{zlib_header_paths}",
         "      end",
         "    end",
         "  end",
