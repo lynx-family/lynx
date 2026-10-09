@@ -470,26 +470,4 @@ deps = {
         "ignore_in_git": True,
         "commit": revision.GLM,
     },
-    "../third_party/skity": {
-        "type": "solution",
-        "url": "https://github.com/lynx-family/skity.git",
-        "commit": revision.SKITY,
-        "deps_file": "hab/DEPS",
-        "ignore_in_git": True,
-        "enable_lfs": False,
-    },
-    "../third_party/textlayout": {
-        "type": "git",
-        "url": "https://github.com/lynx-family/lynx-textra.git",
-        "commit": revision.TEXTRA,
-        "deps_file": "DEPS",
-        "ignore_in_git": True,
-        "enable_lfs": False,
-    },
-    "../third_party/ServalKit": {
-        "type": "git",
-        "url": "https://github.com/lynx-family/serval-kit.git",
-        "commit": revision.SERVALKIT,
-        "ignore_in_git": True,
-    },
 }
