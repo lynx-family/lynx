@@ -61,6 +61,7 @@ podspec_target("lynx_podspec") {
     }
     prepare_command = [
       css_keywords_prepare_command,
+      "python3 gfx/animation/capabilities/generate_animation_capabilities.py --input gfx/animation/capabilities/ios.json --output gfx/animation/capabilities/ios_animation_capabilities_generated.h",
       "if [ -f \"./tools/js_tools/build.py\" ]; then",
       "  python3 tools/js_tools/build.py --platform ios --release_output platform/darwin/ios/JSAssets/release/lynx_core.js --dev_output platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js",
       "fi",
