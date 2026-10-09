@@ -51,6 +51,7 @@
   auto *shell = [view.templateRender shellForTest];
   XCTAssertTrue(view.templateRender.enableJSRuntime);
   XCTAssertTrue([view getLynxContext].enableJSRuntime);
+  XCTAssertTrue([view getLynxContext].hasLynxViewGroup);
   XCTAssertTrue(shell->IsRuntimeEnabled());
   XCTAssertTrue(shell->GetTasm()->GetPageOptions().HasLogicExecutor());
   XCTAssertFalse(shell->GetTasm()->ShouldSendEventToMainThread());
@@ -75,6 +76,7 @@
     [builder setEmbeddedMode:static_cast<LynxEmbeddedMode>(5)];
   }];
   auto *shell = [view.templateRender shellForTest];
+  XCTAssertFalse([view getLynxContext].hasLynxViewGroup);
   XCTAssertTrue(view.templateRender.enableJSRuntime);
   XCTAssertTrue(shell->IsRuntimeEnabled());
   XCTAssertFalse(shell->GetTasm()->GetPageOptions().HasLogicExecutor());
@@ -92,6 +94,7 @@
     builder.enableJSRuntime = YES;
   }];
   auto *shell = [view.templateRender shellForTest];
+  XCTAssertFalse([view getLynxContext].hasLynxViewGroup);
   XCTAssertTrue(view.templateRender.enableJSRuntime);
   XCTAssertTrue(shell->IsRuntimeEnabled());
   XCTAssertFalse(shell->GetTasm()->GetPageOptions().HasLogicExecutor());

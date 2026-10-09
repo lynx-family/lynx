@@ -48,6 +48,9 @@ FOUNDATION_EXPORT NSString *const kDefaultComponentID;
 - (bool)isEmbeddedModeOn;
 - (bool)isFragmentLayerRenderOn;
 
+// Captured during initialization, before the LynxView setup callback.
+@property(nonatomic, readonly) BOOL hasLynxViewGroup;
+
 @end
 
 NS_ASSUME_NONNULL_END
