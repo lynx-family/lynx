@@ -110,6 +110,12 @@ class SpmPublishHelperTest(unittest.TestCase):
             "config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'",
             podfile,
         )
+        self.assertIn("if target.name == 'SSZipArchive'", podfile)
+        self.assertIn(
+            "config.build_settings['HEADER_SEARCH_PATHS'] = "
+            "'$(inherited) $(SDKROOT)/usr/include'",
+            podfile,
+        )
         self.assertIn("use_frameworks! :linkage => :static", podfile)
         self.assertIn("installer.pod_targets", podfile)
         self.assertIn(helper.RESOLVED_SPECS_FILE, podfile)

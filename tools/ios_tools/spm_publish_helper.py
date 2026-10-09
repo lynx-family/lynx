@@ -311,6 +311,10 @@ def create_podfile(work_dir, repo_root, component_specs):
         "      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = "
         f"'{IOS_DEPLOYMENT_TARGET}'",
         "      config.build_settings['GCC_TREAT_WARNINGS_AS_ERRORS'] = 'NO'",
+        "      if target.name == 'SSZipArchive'",
+        "        config.build_settings['HEADER_SEARCH_PATHS'] = "
+        "'$(inherited) $(SDKROOT)/usr/include'",
+        "      end",
         "    end",
         "  end",
         "  resolved_specs = installer.pod_targets.each_with_object({}) do |pod_target, specs|",
