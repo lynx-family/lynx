@@ -107,7 +107,7 @@ ext.getFlavorNamesAndBuildTypes = { Project project ->
 ext.writeGnArgs = { String gnArgs ->
     exec {
         workingDir "../../"
-        rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/write_gn_args.py", "--gn-args", gnArgs.replaceAll('"', '#'))
+        rootProject.ext.configurePythonExec(delegate, "buildtools/tools_shared/tools_shared/android_tools/write_gn_args.py", "--gn-args", gnArgs.replaceAll('"', '#'))
     }
 }
 
@@ -202,7 +202,7 @@ task generateAllGnCmakeTargets {
     doLast {
         exec {
             workingDir "../../"
-            rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
+            rootProject.ext.configurePythonExec(delegate, "buildtools/tools_shared/tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
             println commandLine
         }
         injectNDebugToGeneratedGnCMake()
@@ -318,7 +318,7 @@ task clean(type: Delete) {
     doLast {
         exec {
             workingDir "../../"
-            rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py", "--clean")
+            rootProject.ext.configurePythonExec(delegate, "buildtools/tools_shared/tools_shared/android_tools/generate_cmake_scripts_from_gn.py", "--clean")
             println commandLine
         }
     }
