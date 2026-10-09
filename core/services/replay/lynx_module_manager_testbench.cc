@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include "core/services/replay/lynx_module_fixture_replay.h"
+
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -13,10 +15,51 @@ ModuleManagerTestBench::ModuleManagerTestBench() {
   moduleMap = std::unordered_map<std::string, ModuleTestBenchPtr>();
 }
 
-void ModuleManagerTestBench::Destroy() {}
+void ModuleManagerTestBench::Destroy() {
+  destroyed_ = true;
+  for (auto &entry : moduleMap) entry.second->Destroy();
+  moduleMap.clear();
+  if (fixture_context_) fixture_context_->Destroy();
+  fixture_context_.reset();
+  if (release_fixture_) {
+    Scope scope(*fixture_runtime_);
+    release_fixture_->call(*fixture_runtime_);
+    release_fixture_.reset();
+  }
+  fixture_runtime_ = nullptr;
+}
+
+void ModuleManagerTestBench::InitFixture(Runtime *rt) {
+  // Platforms opt in through the replay data module's getFixtureDirectory().
+  // Keep its assets alive until the optional releaseFixture() call in Destroy,
+  // after all module handlers and their Fixture context have been released.
+  auto module = bindingPtr->getLynxModuleManagerPtr()->get(
+      rt, PropNameID::forAscii(*rt, "LynxRecorderReplayDataModule"));
+  if (!module.isObject()) return;
+  auto getter = module.getObject(*rt).getProperty(*rt, "getFixtureDirectory");
+  if (!getter || !getter->isObject() || !getter->getObject(*rt).isFunction(*rt))
+    return;
+  auto directory = getter->getObject(*rt).getFunction(*rt).call(*rt);
+  if (!directory || !directory->isString()) return;
+  auto path = directory->getString(*rt).utf8(*rt);
+  if (path.empty()) return;
+  auto release = module.getObject(*rt).getProperty(*rt, "releaseFixture");
+  if (release && release->isObject() &&
+      release->getObject(*rt).isFunction(*rt)) {
+    release_fixture_ =
+        std::make_unique<Function>(release->getObject(*rt).getFunction(*rt));
+    fixture_runtime_ = rt;
+  }
+  fixture_context_ = std::make_shared<tasm::replay::FixtureContext>();
+  if (!fixture_context_->Initialize(path)) {
+    LOGE("Failed to initialize fixture replay context");
+  }
+}
 
 void ModuleManagerTestBench::initRecordModuleData(
     Runtime *rt, InitRecordModuleDataCallback callback) {
+  InitFixture(rt);
+  if (fixture_context_) return;
   PropNameID module_name =
       PropNameID::forAscii(*rt, "LynxRecorderReplayDataModule");
   Value module = bindingPtr->getLynxModuleManagerPtr()->get(rt, module_name);
@@ -30,19 +73,27 @@ void ModuleManagerTestBench::initRecordModuleData(
 
   Value inlineCallback = Function::createFromHostFunction(
       *rt, PropNameID::forAscii(*rt, "getData"), 1,
-      [this, callback](
+      [weak = weak_self_, callback](
           Runtime &rt, const Value &thisVal, const Value *args,
           size_t count) -> base::expected<Value, JSINativeException> {
-        if (count < 1) {
+        auto self = weak.lock();
+        if (!self || self->destroyed_) return Value::undefined();
+        if (count < 1 || !args[0].isString()) {
           return base::unexpected(
               BUILD_JSI_NATIVE_EXCEPTION("loadScript arg count must > 0"));
         }
         std::string data_str = args[0].getString(rt).utf8(rt);
         rapidjson::Document data;
         data.Parse(data_str.c_str());
-        recordData.Parse(data["RecordData"].GetString());
-        jsb_settings_.Parse(data["JsbSettings"].GetString());
-        jsb_ignored_info_.Parse(data["JsbIgnoredInfo"].GetString());
+        if (!data.IsObject() || !data.HasMember("RecordData") ||
+            !data["RecordData"].IsString() || !data.HasMember("JsbSettings") ||
+            !data["JsbSettings"].IsString() ||
+            !data.HasMember("JsbIgnoredInfo") ||
+            !data["JsbIgnoredInfo"].IsString())
+          return Value::undefined();
+        self->recordData.Parse(data["RecordData"].GetString());
+        self->jsb_settings_.Parse(data["JsbSettings"].GetString());
+        self->jsb_ignored_info_.Parse(data["JsbIgnoredInfo"].GetString());
         if (callback) {
           callback();
         }
@@ -57,6 +108,7 @@ void ModuleManagerTestBench::initBindingPtr(
     std::weak_ptr<ModuleManagerTestBench> weak_manager,
     const std::shared_ptr<ModuleDelegate> &delegate,
     LynxJSIModuleBindingPtr lynxPtr) {
+  weak_self_ = weak_manager;
   bindingPtr = std::make_shared<LynxJSIModuleBindingTestBench>(
       BindingFunc(weak_manager, delegate));
   // be used to call modules from Lynx SDK.
@@ -66,9 +118,9 @@ void ModuleManagerTestBench::initBindingPtr(
 LynxModuleProviderFunction ModuleManagerTestBench::BindingFunc(
     std::weak_ptr<ModuleManagerTestBench> weak_manager,
     const std::shared_ptr<ModuleDelegate> &delegate) {
-  return [weak_manager, &delegate](const std::string &name) {
+  return [weak_manager, delegate](const std::string &name) {
     auto manager = weak_manager.lock();
-    if (manager) {
+    if (manager && !manager->destroyed_) {
       auto ptr = manager->getModule(name, delegate);
       if (ptr.get() != nullptr) {
         return ptr;
@@ -160,6 +212,12 @@ ModuleTestBenchPtr ModuleManagerTestBench::getModule(
   auto p = moduleMap.find(name);
   if (p != moduleMap.end()) {
     return p->second;
+  }
+  if (fixture_context_) {
+    auto module =
+        std::make_shared<ModuleFixtureReplay>(name, delegate, fixture_context_);
+    moduleMap.emplace(name, module);
+    return module;
   }
   // step 2. try to find correct module from recordData
   ModuleTestBenchPtr module = std::make_shared<ModuleTestBench>(name, delegate);

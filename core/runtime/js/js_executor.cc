@@ -42,6 +42,12 @@ JSExecutor::~JSExecutor() { LOGI(GetLogContext() << " lynx ~JSExecutor"); }
 
 void JSExecutor::Destroy() {
   LOGI(GetLogContext() << " JSExecutor::Destroy");
+#if ENABLE_TESTBENCH_REPLAY
+  if (module_manager_testBench_) {
+    module_manager_testBench_->Destroy();
+    module_manager_testBench_.reset();
+  }
+#endif
   // Destroy module objects before their runtime.
   module_manager_.reset();
   if (auto* runtime = GetJSRuntime().Lock()) {
@@ -122,6 +128,7 @@ base::UnsafeOwningPtr<App> JSExecutor::createNativeAppInstance(
   Value module = module_manager_->bindingPtr->get(
       runtime, PropNameID::forAscii(*runtime, "LynxRecorderReplayDataModule"));
   if (!module.isNull()) {
+    if (module_manager_testBench_) module_manager_testBench_->Destroy();
     module_manager_testBench_ = std::make_shared<ModuleManagerTestBench>();
     module_manager_testBench_->SetGroupInterceptor(
         module_manager_->GetGroupInterceptor());

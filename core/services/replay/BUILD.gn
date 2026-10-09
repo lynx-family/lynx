@@ -21,6 +21,8 @@ replay_shared_sources = [
   "lynx_callback_testbench.cc",
   "lynx_callback_testbench.h",
   "lynx_module_binding_testbench.cc",
+  "lynx_module_fixture_replay.cc",
+  "lynx_module_fixture_replay.h",
   "lynx_module_manager_testbench.cc",
   "lynx_module_manager_testbench.h",
   "lynx_module_testbench.cc",
