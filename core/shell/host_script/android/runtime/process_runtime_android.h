@@ -5,6 +5,7 @@
 #ifndef CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_PROCESS_RUNTIME_ANDROID_H_
 #define CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_PROCESS_RUNTIME_ANDROID_H_
 
+#include <cstdint>
 #include <string>
 
 #include "core/shell/host_script/runtime/process_runtime.h"
@@ -25,6 +26,18 @@ LYNX_EXPORT_FOR_DEVTOOL void EvaluateHostScriptRuntime(
 
 LYNX_EXPORT_FOR_DEVTOOL void LoadHostScriptRuntime(
     std::string source, std::string url, ProcessRuntime::Completion completion);
+
+// Captured before transport queueing; retained through source fetching.
+LYNX_EXPORT_FOR_DEVTOOL uint64_t HostScriptDebugEpoch();
+
+// Request admission is checked on UI against the original debug lifecycle.
+// Existing entry signatures remain available for native callers.
+LYNX_EXPORT_FOR_DEVTOOL void LoadHostScriptRuntime(
+    std::string source, std::string url, uint64_t epoch,
+    ProcessRuntime::Completion completion);
+LYNX_EXPORT_FOR_DEVTOOL void EvaluateHostScriptRuntime(
+    ProcessRuntime::Domain domain, std::string source, std::string url,
+    uint64_t epoch, ProcessRuntime::Completion completion);
 
 }  // namespace shell
 }  // namespace lynx

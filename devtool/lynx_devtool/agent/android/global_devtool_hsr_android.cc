@@ -22,6 +22,7 @@ using Callback = GlobalDevToolPlatformFacade::HSRScriptCallback;
 // after timeout, without passing native callback pointers through Java.
 struct PendingLoad {
   uint64_t id = 0;
+  uint64_t epoch = 0;
   bool fetching = false;
   std::string url;
   Callback callback;
@@ -36,9 +37,10 @@ auto DevToolRunner() {
   return LynxDevToolMediatorBase::GetDevToolsThread().GetTaskRunner();
 }
 
-void FinishLoad(uint64_t id, const std::string& error) {
+void FinishLoad(uint64_t id, std::string error) {
   auto& load = Load();
   if (load.id != id || !load.callback) return;
+  if (load.epoch != shell::HostScriptDebugEpoch()) error = "HSR_DEBUG_DISABLED";
   auto callback = std::move(load.callback);
   load.fetching = false;
   load.url.clear();
@@ -54,7 +56,8 @@ void SourceLoaded(uint64_t id, std::string source, const std::string& error) {
     return;
   }
   shell::LoadHostScriptRuntime(
-      std::move(source), load.url, [id](const ProcessRuntime::Result& result) {
+      std::move(source), load.url, load.epoch,
+      [id](const ProcessRuntime::Result& result) {
         std::string error = result.error;
         if (!result.success && error.empty()) error = "HSR_LOAD_FAILED";
         DevToolRunner()->PostTask(
@@ -62,13 +65,16 @@ void SourceLoaded(uint64_t id, std::string source, const std::string& error) {
       });
 }
 
-void StartLoad(HSRScriptRequest request, Callback callback) {
+void StartLoad(HSRScriptRequest request, Callback callback, uint64_t epoch) {
   auto& load = Load();
+  if (load.callback && load.epoch != epoch)
+    FinishLoad(load.id, "HSR_DEBUG_DISABLED");
   if (load.callback) {
     std::move(callback)(Json::Value(), "HSR_LOAD_IN_PROGRESS");
     return;
   }
   const auto id = ++load.id;
+  load.epoch = epoch;
   load.fetching = true;
   load.callback = std::move(callback);
   load.url = request.source_type == HSRScriptRequest::SourceType::kUrl
@@ -106,7 +112,7 @@ ProcessRuntime::Domain RuntimeDomain(HSRScriptRequest::Thread thread) {
   return ProcessRuntime::Domain::kBTS;
 }
 
-void Evaluate(HSRScriptRequest request, Callback callback) {
+void Evaluate(HSRScriptRequest request, Callback callback, uint64_t epoch) {
   const auto domain = RuntimeDomain(request.thread);
   constexpr const char* kSourceUrls[] = {"host-script://cdp-bts.js",
                                          "host-script://cdp-mts.js",
@@ -114,7 +120,7 @@ void Evaluate(HSRScriptRequest request, Callback callback) {
   auto completion = std::make_shared<Callback>(std::move(callback));
   shell::EvaluateHostScriptRuntime(
       domain, request.source.empty() ? "void 0;" : std::move(request.source),
-      kSourceUrls[static_cast<size_t>(domain)],
+      kSourceUrls[static_cast<size_t>(domain)], epoch,
       [completion](const ProcessRuntime::Result& result) mutable {
         std::string error = result.error;
         Json::Value response(Json::objectValue);
@@ -137,17 +143,19 @@ void Evaluate(HSRScriptRequest request, Callback callback) {
 void GlobalDevToolPlatformAndroid::HandleHSRScript(HSRScriptRequest request,
                                                    HSRScriptCallback callback) {
   if (!callback) return;
+  const auto epoch = shell::HostScriptDebugEpoch();
   // Schema callers may arrive from a platform thread. CDP already runs here.
   fml::TaskRunner::RunNowOrPostTask(
-      DevToolRunner(),
-      [request = std::move(request), callback = std::move(callback)]() mutable {
-        if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+      DevToolRunner(), [request = std::move(request),
+                        callback = std::move(callback), epoch]() mutable {
+        if (epoch != shell::HostScriptDebugEpoch() ||
+            !tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
           std::move(callback)(Json::Value(), "HSR_DEBUG_DISABLED");
         } else if (request.operation ==
                    HSRScriptRequest::Operation::kLoadScript) {
-          StartLoad(std::move(request), std::move(callback));
+          StartLoad(std::move(request), std::move(callback), epoch);
         } else {
-          Evaluate(std::move(request), std::move(callback));
+          Evaluate(std::move(request), std::move(callback), epoch);
         }
       });
 }

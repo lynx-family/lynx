@@ -126,8 +126,10 @@ if (is_android) {
       "android/global_devtool_platform_android.cc",
       "android/global_devtool_platform_android.h",
     ]
-    if (lynx_in_debug && enable_inspector && !enable_unittests &&
-        !is_oliver_ssr) {
+
+    # Only transport conversion is linked here. Runtime control is linked
+    # by the engine debug flavor; ordinary engines provide an empty entry.
+    if (enable_inspector && !enable_unittests && !is_oliver_ssr) {
       devtool_agent_shared_sources +=
           [ "android/global_devtool_hsr_android.cc" ]
     } else {
@@ -165,6 +167,11 @@ devtool_source_set("agent") {
     "//third_party/modp_b64",
     "//third_party/zlib",
   ]
+  if (is_android && enable_inspector && !enable_unittests && !is_oliver_ssr) {
+    deps += [
+      "../../../core/shell/host_script/android:host_script_runtime_headers",
+    ]
+  }
   public_configs = [ ":common_config" ]
 }
 

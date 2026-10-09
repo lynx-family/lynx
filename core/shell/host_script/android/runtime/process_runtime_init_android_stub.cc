@@ -28,5 +28,20 @@ void EvaluateHostScriptRuntime(ProcessRuntime::Domain, std::string, std::string,
   if (completion) completion(std::move(result));
 }
 
+uint64_t HostScriptDebugEpoch() { return 0; }
+
+void LoadHostScriptRuntime(std::string source, std::string url, uint64_t,
+                           ProcessRuntime::Completion completion) {
+  LoadHostScriptRuntime(std::move(source), std::move(url),
+                        std::move(completion));
+}
+
+void EvaluateHostScriptRuntime(ProcessRuntime::Domain domain,
+                               std::string source, std::string url, uint64_t,
+                               ProcessRuntime::Completion completion) {
+  EvaluateHostScriptRuntime(domain, std::move(source), std::move(url),
+                            std::move(completion));
+}
+
 }  // namespace shell
 }  // namespace lynx
