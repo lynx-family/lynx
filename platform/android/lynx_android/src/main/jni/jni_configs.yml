@@ -78,6 +78,7 @@ jni_class_configs:
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/utils/EnvUtils.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/PiperData.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/LynxUIRenderer.java
+    - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/gesture/arena/GestureArenaManager.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/TemplateBundle.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/fluency/FluencySample.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/icu/ICURegister.java

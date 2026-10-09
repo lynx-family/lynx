@@ -5,6 +5,7 @@
 #define private public
 #define protected public
 
+#include "core/renderer/utils/lynx_trail_hub.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_config_decoder.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -80,6 +81,53 @@ TEST(PageConfigTest, EnableParallelParseElementTemplate) {
 
 TEST(PageConfigTest, EnableUseContextPool) {
   CHECK_CONFIG_VALUE(EnableUseContextPool, true, true, false);
+}
+
+TEST(PageConfigTest, UnifiedGestureHandlerPageOverride) {
+  auto config = std::make_shared<PageConfig>();
+  rapidjson::Document defaults;
+  defaults.Parse("{}");
+  LynxConfigDecoder::DecodePageConfig(config, defaults, "");
+  EXPECT_TRUE(config->GetEnableUnifiedGestureHandler());
+
+  rapidjson::Document disabled;
+  disabled.Parse(R"({"enableUnifiedGestureHandler":false})");
+  LynxConfigDecoder::DecodePageConfig(config, disabled, "");
+  EXPECT_FALSE(config->GetEnableUnifiedGestureHandler());
+
+  rapidjson::Document enabled;
+  enabled.Parse(R"({"enableUnifiedGestureHandler":true})");
+  LynxConfigDecoder::DecodePageConfig(config, enabled, "");
+  EXPECT_TRUE(config->GetEnableUnifiedGestureHandler());
+}
+
+TEST(PageConfigTest, UnifiedGestureHandlerReadsUpdatedSettings) {
+  class GestureTrail final : public LynxTrailHub::TrailImpl {
+   public:
+    std::optional<std::string> value;
+
+    std::optional<std::string> GetStringForTrailKey(
+        const std::string& key) override {
+      EXPECT_EQ(key, "enable_unified_gesture_handler");
+      return value;
+    }
+  };
+
+  auto& hub = LynxTrailHub::GetInstance();
+  auto original = std::move(hub.impl_);
+  auto trail = std::make_unique<GestureTrail>();
+  auto* settings = trail.get();
+  hub.impl_ = std::move(trail);
+  auto& env = LynxEnv::GetInstance();
+
+  EXPECT_TRUE(env.EnableUnifiedGestureHandler());
+  settings->value = "false";
+  EXPECT_FALSE(env.EnableUnifiedGestureHandler());
+  settings->value = "true";
+  EXPECT_TRUE(env.EnableUnifiedGestureHandler());
+  settings->value = std::nullopt;
+  EXPECT_TRUE(env.EnableUnifiedGestureHandler());
+  hub.impl_ = std::move(original);
 }
 
 TEST(PageConfigTest, EnableFrameNativeData) {

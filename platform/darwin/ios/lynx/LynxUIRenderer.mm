@@ -27,6 +27,7 @@
 #import "LynxTouchHandler+Internal.h"
 #import "LynxUIExposure+Internal.h"
 #import "LynxUIIntersectionObserver.h"
+#import "LynxUIOwner+Private.h"
 
 #include "base/include/lynx_actor.h"
 #include "core/public/painting_ctx_platform_impl.h"
@@ -34,6 +35,10 @@
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/shell/lynx_engine.h"
+
+@interface LUIConfigAdapter (UnifiedGestureHandler)
+- (bool)enableUnifiedGestureHandler;
+@end
 
 typedef NS_ENUM(NSUInteger, BoxModelOffset) {
   PAD_LEFT = 0,
@@ -244,6 +249,11 @@ static id<LynxServiceTextProtocol> getTextService() {
 }
 
 - (void)onPageConfigUpdate:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig {
+  LynxUIContext *uiContext = _uiOwner.uiContext;
+  LUIConfigAdapter *configAdapter = [[LUIConfigAdapter alloc] initWithConfig:pageConfig.get()];
+  [uiContext setUIConfig:configAdapter];
+  [uiContext setEnableUnifiedGestureHandler:configAdapter.enableUnifiedGestureHandler];
+
   // Since page config is a C++ class and Event Handler is a pure OC class, the set methods must be
   // called here.
   [_eventHandler setEnableSimultaneousTap:pageConfig->GetEnableSimultaneousTap()];
@@ -255,7 +265,8 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_eventHandler.touchRecognizer
       setEnableEndGestureAtLastFingerUp:pageConfig->GetEnableEndGestureAtLastFingerUp()];
   _eventHandler.touchRecognizer.enableNewGesture = pageConfig->GetEnableNewGesture();
-  [_uiOwner initNewGestureInUIThread:pageConfig->GetEnableNewGesture()];
+  [_uiOwner initNewGestureInUIThread:pageConfig->GetEnableNewGesture()
+         enableUnifiedGestureHandler:uiContext.enableUnifiedGestureHandler];
   // Enable support multi-finger events.
   [_eventHandler.touchRecognizer setEnableMultiTouch:pageConfig->GetEnableMultiTouch()];
 
@@ -266,11 +277,6 @@ static id<LynxServiceTextProtocol> getTextService() {
       setEnableCheckExposureOptimize:pageConfig->GetEnableCheckExposureOptimize()];
   [_uiOwner.uiContext.uiExposure
       setEnableDisexposureWhenBackground:pageConfig->GetEnableDisexposureWhenBackground()];
-
-  // Set config to LynxUIContext;
-  LynxUIContext *uiContext = _uiOwner.uiContext;
-  LUIConfigAdapter *configAdapter = [[LUIConfigAdapter alloc] initWithConfig:pageConfig.get()];
-  [uiContext setUIConfig:configAdapter];
 
   if (pageConfig->GetSyncXElementRegistry()) {
     [_uiOwner setEnableSyncXelementRegistry];

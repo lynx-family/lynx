@@ -11,24 +11,52 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/detector/gesture_detector_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/gesture_arena_member.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/gesture_handler_trigger.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/gesture/unified_gesture_handler.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
-GestureArenaManager::GestureArenaManager(bool enable, LynxContext* context)
+GestureArenaManager::GestureArenaManager(bool enable, LynxContext* context,
+                                         bool unified)
     : context_(context), is_enable_new_gesture_(false) {
   is_enable_new_gesture_ = enable;
   if (!IsEnableNewGesture()) {
     return;
   }
 
+  if (unified) {
+    unified_handler_ = std::make_shared<UnifiedGestureHandler>(context);
+  }
   arena_member_map_.clear();
   compete_chain_candidates_.clear();
   bubble_candidate_.clear();
 }
 
+bool GestureArenaManager::UsesUnifiedGestureHandler() const {
+  return unified_handler_ != nullptr;
+}
+
+bool GestureArenaManager::CanControlGesture(int member_id,
+                                            uint32_t gesture_id) const {
+  return !unified_handler_ ||
+         unified_handler_->ContainsGesture(member_id, gesture_id);
+}
+
+void GestureArenaManager::RemoveUnifiedMember(int member_id) {
+  if (auto handler = unified_handler_) {
+    handler->RemoveMember(member_id);
+  }
+}
+
+void GestureArenaManager::CancelUnifiedGesture() {
+  if (auto handler = unified_handler_) {
+    handler->CancelInteraction();
+  }
+}
+
 void GestureArenaManager::EnsureGestureDetectorAndHandler() {
+  if (unified_handler_) return;
   if ((gesture_detector_manager_ && gesture_handler_trigger_) || !context_) {
     return;
   }
@@ -47,6 +75,10 @@ bool GestureArenaManager::IsEnableNewGesture() const {
 void GestureArenaManager::DispatchTouchEventToArena(
     const ArkUI_UIInputEvent* event,
     std::shared_ptr<TouchEvent> lynx_touch_event) {
+  if (auto handler = unified_handler_) {
+    handler->HandleInput(event);
+    return;
+  }
   if (!IsEnableNewGesture()) {
     return;
   }
@@ -73,6 +105,10 @@ void GestureArenaManager::DispatchBubbleTouchEvent(
 }
 
 void GestureArenaManager::SetVelocity(float velocity_x, float velocity_y) {
+  if (auto handler = unified_handler_) {
+    handler->SetVelocity(velocity_x, velocity_y);
+    return;
+  }
   EnsureGestureDetectorAndHandler();
   if (!gesture_handler_trigger_) {
     return;
@@ -82,6 +118,10 @@ void GestureArenaManager::SetVelocity(float velocity_x, float velocity_y) {
 
 void GestureArenaManager::SetActiveUIToArenaAtDownEvent(
     std::weak_ptr<EventTarget> target) {
+  if (auto handler = unified_handler_) {
+    handler->SetResponseChain(target);
+    return;
+  }
   if (!IsEnableNewGesture()) {
     return;
   }
@@ -124,6 +164,9 @@ void GestureArenaManager::ClearCurrentGesture() {
 
 int GestureArenaManager::AddMember(
     std::weak_ptr<GestureArenaMember> arena_member) {
+  if (auto handler = unified_handler_) {
+    return handler->ReplaceMember(arena_member);
+  }
   auto member = arena_member.lock();
   if (!IsEnableNewGesture() || !member) {
     return 0;
@@ -134,6 +177,7 @@ int GestureArenaManager::AddMember(
 }
 
 bool GestureArenaManager::IsMemberExist(int member_id) {
+  if (unified_handler_) return unified_handler_->ContainsMember(member_id);
   if (!IsEnableNewGesture()) {
     return false;
   }
@@ -142,6 +186,10 @@ bool GestureArenaManager::IsMemberExist(int member_id) {
 
 void GestureArenaManager::SetGestureDetectorState(int member_id, int gesture_id,
                                                   int state) {
+  if (auto handler = unified_handler_) {
+    handler->SetGestureState(member_id, gesture_id, state);
+    return;
+  }
   if (!IsEnableNewGesture()) {
     return;
   }
@@ -179,6 +227,7 @@ std::weak_ptr<GestureArenaMember> GestureArenaManager::GetMemberById(int id) {
 GestureArenaManager::~GestureArenaManager() { OnDestroy(); }
 
 void GestureArenaManager::OnDestroy() {
+  if (auto handler = unified_handler_) handler->Reset();
   arena_member_map_.clear();
   compete_chain_candidates_.clear();
   bubble_candidate_.clear();

@@ -11,6 +11,7 @@
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView.h>
 #import <XCTest/XCTest.h>
+#import "LynxUIContext+Internal.h"
 
 #import "LynxUI+Private.h"
 #import "LynxUIOwner+Private.h"
@@ -180,6 +181,31 @@
 
   [self waitForExpectations:@[ context.reportExpectation ] timeout:0.1];
   XCTAssertEqual(context.reportCount, 0U);
+}
+
+- (void)testResetAllowsGestureHandlerImplementationReselectionForNextPage {
+  self.uiOwner =
+      [[LynxUIOwner alloc] initWithContainerView:nil
+                               componentRegistry:[LynxComponentScopeRegistry new]
+                                   screenMetrics:[LynxScreenMetrics getDefaultLynxScreenMetrics]];
+  LynxUIContext *uiContext = self.uiOwner.uiContext;
+
+  [uiContext setEnableUnifiedGestureHandler:YES];
+  [uiContext setEnableUnifiedGestureHandler:NO];
+  [self.uiOwner initNewGestureInUIThread:YES
+             enableUnifiedGestureHandler:uiContext.enableUnifiedGestureHandler];
+  XCTAssertTrue(uiContext.enableUnifiedGestureHandler);
+  XCTAssertNotNil(self.uiOwner.unifiedGestureArena);
+  XCTAssertNil(self.uiOwner.gestureArenaManager);
+
+  [self.uiOwner reset];
+  [uiContext setEnableUnifiedGestureHandler:NO];
+  [uiContext setEnableUnifiedGestureHandler:YES];
+  [self.uiOwner initNewGestureInUIThread:YES
+             enableUnifiedGestureHandler:uiContext.enableUnifiedGestureHandler];
+  XCTAssertFalse(uiContext.enableUnifiedGestureHandler);
+  XCTAssertNil(self.uiOwner.unifiedGestureArena);
+  XCTAssertNotNil(self.uiOwner.gestureArenaManager);
 }
 
 @end

@@ -1,0 +1,41 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../testing/test.gni")
+import("../Lynx.gni")
+
+lynx_core_source_set("gesture") {
+  sources = [
+    "gesture_arena.cc",
+    "gesture_arena.h",
+    "gesture_arena_delegate.h",
+    "gesture_config.cc",
+    "gesture_config.h",
+    "gesture_handler.h",
+    "gesture_types.cc",
+    "gesture_types.h",
+  ]
+  if (is_android) {
+    sources += [
+      "android/gesture_arena_android.cc",
+      "android/gesture_arena_android.h",
+    ]
+  }
+  public_deps = [ "../public" ]
+}
+
+unittest_set("gesture_testset") {
+  sources = [ "gesture_arena_unittest.cc" ]
+  public_deps = [ ":gesture" ]
+}
+
+unittest_exec("gesture_unittests_exec") {
+  sources = []
+  deps = [ ":gesture_testset" ]
+}
+
+group("gesture_tests") {
+  testonly = true
+  deps = [ ":gesture_unittests_exec" ]
+}

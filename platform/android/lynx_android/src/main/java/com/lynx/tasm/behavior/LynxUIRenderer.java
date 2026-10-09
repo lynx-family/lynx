@@ -99,6 +99,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   private String mTapSlop = TouchEventDispatcher.mTapSlopDefault;
   private boolean mEnableMultiTouch;
   private boolean mEnableNewGesture;
+  private boolean mEnableUnifiedGestureHandler = true;
   private boolean mEnablePlatformGesture;
   private boolean mHasInited;
 
@@ -239,9 +240,10 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     mEnableMultiTouch = config.getEnableMultiTouch();
     mEnablePlatformGesture = config.isEnablePlatformGesture();
     mEnableNewGesture = config.isEnableNewGesture();
+    mEnableUnifiedGestureHandler = config.isEnableUnifiedGestureHandler();
     if (mEnableNewGesture && LynxLiteConfigs.enableNewGesture()) {
       LynxContext lynxContext = (mLynxContext != null) ? mLynxContext.get() : null;
-      mLynxUIOwner.initGestureArenaManager(lynxContext);
+      mLynxUIOwner.initGestureArenaManager(lynxContext, mEnableUnifiedGestureHandler);
     }
     if ((mLynxUIOwner != null) && (mLynxUIOwner.getRootUI() != null)) {
       mLynxUIOwner.getRootUI().onPageConfigDecoded(config);

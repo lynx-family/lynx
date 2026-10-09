@@ -5,10 +5,9 @@
 #ifndef CLAY_UI_GESTURE_HANDLER_GESTURE_ARENA_MEMBER_H_
 #define CLAY_UI_GESTURE_HANDLER_GESTURE_ARENA_MEMBER_H_
 
-#include <memory>
 #include <vector>
 
-#include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
+#include "clay/ui/gesture_handler/gesture_detector.h"
 
 namespace clay {
 
@@ -82,26 +81,9 @@ class GestureArenaMember {
    * @return The map of gesture detectors, or null if not available.
    */
   virtual const GestureMap& GetGestureDetectorMap() = 0;
-  /**
-   * Retrieves the map of gesture handler associated with the member.
-   *
-   * @return The map of gesture handlers, or null if not available.
-   * @see GestureDetector key — GestureDetector type value — gesture handler
-   */
-  virtual const GestureHandlerMap& GetGestureHandlers() = 0;
 
  private:
   bool should_consume_gesture_ = true;
-};
-
-struct GestureArenaMemberCompare {
-  bool operator()(const fml::WeakPtr<GestureArenaMember>& lhs,
-                  const fml::WeakPtr<GestureArenaMember>& rhs) const {
-    if (!lhs || !rhs) {
-      return lhs ? true : false;
-    }
-    return lhs->GestureArenaMemberId() < rhs->GestureArenaMemberId();
-  }
 };
 
 }  // namespace clay

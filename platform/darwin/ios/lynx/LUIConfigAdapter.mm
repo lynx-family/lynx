@@ -4,6 +4,8 @@
 #import <Lynx/LUIConfigAdapter.h>
 #import <Lynx/LynxEnv+Internal.h>
 
+#include "core/renderer/utils/lynx_env.h"
+
 @implementation LUIConfigAdapter {
   lynx::tasm::PageConfig* _config;
 }
@@ -62,6 +64,11 @@
 
 - (bool)enableNewGesture {
   return _config->GetEnableNewGesture();
+}
+
+- (bool)enableUnifiedGestureHandler {
+  return _config->GetEnableUnifiedGestureHandler() &&
+         lynx::tasm::LynxEnv::GetInstance().EnableUnifiedGestureHandler();
 }
 
 - (bool)enablePlatformGesture {

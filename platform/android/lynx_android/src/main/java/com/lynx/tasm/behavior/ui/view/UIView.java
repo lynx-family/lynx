@@ -163,6 +163,11 @@ public class UIView extends UISimpleView<AndroidView> {
   }
 
   @Override
+  public boolean shouldConsumeGesture() {
+    return mView != null && mView.shouldConsumeGesture();
+  }
+
+  @Override
   public int getMemberScrollX() {
     // always zero if it's not a scrolling container
     return 0;

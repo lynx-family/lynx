@@ -210,6 +210,10 @@ public class AndroidView extends ViewGroup
     mInterceptGesture = interceptGesture;
   }
 
+  public boolean shouldConsumeGesture() {
+    return !Boolean.TRUE.equals(mInterceptGesture);
+  }
+
   private boolean isInterceptGestureNotNull() {
     return mInterceptGesture != null;
   }

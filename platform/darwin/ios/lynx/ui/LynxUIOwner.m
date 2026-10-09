@@ -39,10 +39,12 @@
 #import <Lynx/UIView+Lynx.h>
 #import "LynxFeatureCounter.h"
 #import "LynxGestureArenaManager.h"
+#import "LynxTouchHandler+Internal.h"
 #import "LynxTraceEventDef.h"
 #import "LynxUIIntersectionObserver.h"
 #import "LynxUIOwner+Accessibility.h"
 #import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 #import "list/container/LynxUIListContainer+Internal.h"
 
 // TODO(zhengsenyao): For white-screen problem investigation of preLayout, remove it later.
@@ -100,6 +102,7 @@ extern NSString* const kDefaultComponentID;
 @property(nonatomic) CGSize oldRootSize;
 @property(nonatomic) BOOL hasRootAttached;
 @property(nonatomic, assign) BOOL enableNewGesture;
+@property(nonatomic, strong) LynxUnifiedGestureArena* unifiedGestureArena;
 @property(nonatomic, weak) UIView<LUIBodyView>* containerView;
 @property(nonatomic) NSMutableDictionary<NSString*, LynxWeakProxy*>* nameLynxUIMap;
 @property(nonatomic) NSMutableDictionary<NSNumber*, LynxUI*>* uiHolder;
@@ -122,6 +125,8 @@ extern NSString* const kDefaultComponentID;
 @property(nonatomic) NSMutableSet<NSNumber*>* externalMemoryReportCandidateIds;
 @property(nonatomic) BOOL externalMemoryReportPending;
 - (int64_t)externalMemoryUsageRecursively:(LynxUI*)ui;
+- (void)configureNewGesture:(BOOL)enableNewGesture
+    enableUnifiedGestureHandler:(BOOL)enableUnifiedGestureHandler;
 @end
 
 @implementation LynxUIOwner {
@@ -817,6 +822,9 @@ extern NSString* const kDefaultComponentID;
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
                      [UI_OWNER_REMOVE stringByAppendingString:node.tagName ?: @""])
 
+  if (_uiContext.enableUnifiedGestureHandler) {
+    [_unifiedGestureArena removeMember:node.sign];
+  }
   [_uiHolder removeObjectForKey:@(node.sign)];
   [_externalMemoryReportCandidateIds removeObject:@(node.sign)];
   [self removeLynxUIFromNameLynxUIMap:node];
@@ -836,8 +844,10 @@ extern NSString* const kDefaultComponentID;
     [self unRegisterForegroundListener:(id<LynxForegroundProtocol>)node];
   }
 
-  [[node getGestureArenaManager] removeMember:(id<LynxGestureArenaMember>)node
-                                  detectorMap:node.gestureMap];
+  if (!_uiContext.enableUnifiedGestureHandler) {
+    [[node getGestureArenaManager] removeMember:(id<LynxGestureArenaMember>)node
+                                    detectorMap:node.gestureMap];
+  }
 
   [_textRenderManager releaseTextRender:node.sign];
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
@@ -1088,6 +1098,7 @@ extern NSString* const kDefaultComponentID;
   _uiContext.fetcher = nil;
   // reset gesture manager in main thread
   [self resetGestureArenaInUIThread];
+  [_uiContext resetGestureHandlerImplementationSelection];
 
   // we will dereference LynxUIOwner to LynxUI after calling reset.
   [self releaseUI];
@@ -1482,35 +1493,67 @@ extern NSString* const kDefaultComponentID;
 #pragma mark gesture
 
 - (void)initNewGestureInUIThread:(BOOL)enableNewGesture {
+  [self initNewGestureInUIThread:enableNewGesture enableUnifiedGestureHandler:NO];
+}
+
+- (void)initNewGestureInUIThread:(BOOL)enableNewGesture
+     enableUnifiedGestureHandler:(BOOL)enableUnifiedGestureHandler {
   if ([NSThread isMainThread]) {
-    _enableNewGesture = enableNewGesture;
-    if (enableNewGesture && !_gestureArenaManager) {
-      _gestureArenaManager = [[LynxGestureArenaManager alloc] init];
-      [_uiContext.eventHandler setGestureArenaManagerAndGetIndex:_gestureArenaManager];
-    }
+    [self configureNewGesture:enableNewGesture
+        enableUnifiedGestureHandler:enableUnifiedGestureHandler];
   } else {
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
       __strong typeof(weakSelf) strongSelf = weakSelf;
       if (strongSelf) {
-        strongSelf->_enableNewGesture = enableNewGesture;
-        if (strongSelf->_enableNewGesture && !strongSelf->_gestureArenaManager) {
-          strongSelf->_gestureArenaManager = [[LynxGestureArenaManager alloc] init];
-          [strongSelf->_uiContext.eventHandler
-              setGestureArenaManagerAndGetIndex:strongSelf->_gestureArenaManager];
-        }
+        [strongSelf configureNewGesture:enableNewGesture
+            enableUnifiedGestureHandler:enableUnifiedGestureHandler];
       }
     });
   }
 }
 
+- (void)configureNewGesture:(BOOL)enableNewGesture
+    enableUnifiedGestureHandler:(BOOL)enableUnifiedGestureHandler {
+  _enableNewGesture = enableNewGesture;
+  if (!enableNewGesture) {
+    [_unifiedGestureArena invalidate];
+    _unifiedGestureArena = nil;
+    _gestureArenaManager = nil;
+    _uiContext.eventHandler.touchRecognizer.unifiedGestureArena = nil;
+    return;
+  }
+  if (enableUnifiedGestureHandler) {
+    _gestureArenaManager = nil;
+    if (!_unifiedGestureArena) {
+      _unifiedGestureArena = [[LynxUnifiedGestureArena alloc] initWithUIOwner:self];
+    }
+    _uiContext.eventHandler.touchRecognizer.unifiedGestureArena = _unifiedGestureArena;
+    return;
+  }
+  [_unifiedGestureArena invalidate];
+  _unifiedGestureArena = nil;
+  _uiContext.eventHandler.touchRecognizer.unifiedGestureArena = nil;
+  if (!_gestureArenaManager) {
+    _gestureArenaManager = [[LynxGestureArenaManager alloc] init];
+    [_uiContext.eventHandler setGestureArenaManagerAndGetIndex:_gestureArenaManager];
+  }
+}
+
 - (void)resetGestureArenaInUIThread {
   if ([NSThread isMainThread]) {
+    [_unifiedGestureArena invalidate];
+    _uiContext.eventHandler.touchRecognizer.unifiedGestureArena = nil;
+    _unifiedGestureArena = nil;
     _gestureArenaManager = nil;
   } else {
     // Keep reference count until ui thread execution
     __block LynxGestureArenaManager* gestureManager = _gestureArenaManager;
+    __block LynxUnifiedGestureArena* unifiedGestureArena = _unifiedGestureArena;
+    _unifiedGestureArena = nil;
     dispatch_async(dispatch_get_main_queue(), ^{
+      [unifiedGestureArena invalidate];
+      unifiedGestureArena = nil;
       gestureManager = nil;
     });
   }

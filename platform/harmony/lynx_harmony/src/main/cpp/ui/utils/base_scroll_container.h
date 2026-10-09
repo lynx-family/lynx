@@ -24,6 +24,7 @@ static constexpr const char* const kScrollEdgeEffect = "harmony-scroll-edge-effe
 class BaseScrollContainer : public UIView {
  public:
   void OnNodeReady() override;
+  void SetGestureDetectors(const GestureMap& detectors) override;
   void ScrollTo(float x, float y, bool smooth);
   std::pair<float, float> GetScrollOffset() const;
   float GetScrollDistance() const;
@@ -57,6 +58,9 @@ class BaseScrollContainer : public UIView {
   bool DefaultOverflowValue() override { return false; }
 
  private:
+  void UpdateGestureScrollInteraction();
+  bool scroll_interaction_enabled_ = true;
+  bool gesture_allows_native_scroll_ = true;
   void SetNestedScroll(ArkUI_ScrollNestedMode nested_scroll_forward_mode,
                        ArkUI_ScrollNestedMode nested_scroll_backward_mode);
   void SetScrollDirection(ArkUI_ScrollDirection direction);

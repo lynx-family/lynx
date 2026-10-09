@@ -8,6 +8,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class LynxGestureArenaManager;
+@class LynxUnifiedGestureArena;
 
 @interface LynxTouchHandler ()
 
@@ -17,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) LynxPlatformEventBehavior platformEventBehavior;
 @property(nonatomic, readonly) BOOL hasActivePlatformTouches;
 @property(nonatomic, weak) LynxGestureArenaManager *_Nullable gestureArenaManager;
+@property(nonatomic, weak) LynxUnifiedGestureArena *_Nullable unifiedGestureArena;
 
 - (void)setupVelocityTracker:(UIView *)rootView;
 - (void)setEnableEndGestureAtLastFingerUp:(BOOL)enable;

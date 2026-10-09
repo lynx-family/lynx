@@ -248,6 +248,11 @@ void UIBase::ConsumeGesture(int gesture_id, const lepus::Value& params) {
   if (!IsEnableNewGesture()) {
     return;
   }
+  auto manager = GetGestureArenaManager();
+  if (manager &&
+      !manager->CanControlGesture(GestureArenaMemberId(), gesture_id)) {
+    return;
+  }
   bool inner = params.GetProperty("inner").Bool();
   bool consume = params.GetProperty("consume").Bool();
   if (inner) {
@@ -510,7 +515,11 @@ void UIBase::Destroy() {
   auto manager = GetGestureArenaManager();
   // remove arena member if destroy
   if (manager != nullptr) {
-    manager->RemoveMember(weak_from_this());
+    if (manager->UsesUnifiedGestureHandler()) {
+      manager->RemoveUnifiedMember(sign_);
+    } else {
+      manager->RemoveMember(weak_from_this());
+    }
   }
 }
 
@@ -521,6 +530,10 @@ void UIBase::SetGestureDetectors(const GestureMap& gesture_detectors) {
   }
   auto manager = GetGestureArenaManager();
   if (manager == nullptr) {
+    return;
+  }
+  if (manager->UsesUnifiedGestureHandler()) {
+    gesture_arena_member_id_ = manager->AddMember(weak_from_this());
     return;
   }
   if (manager->IsMemberExist(GestureArenaMemberId())) {
@@ -558,6 +571,11 @@ void UIBase::SetGestureDetectorState(int gesture_id, int state) {
 }
 
 const GestureHandlerMap& UIBase::GetGestureHandlers() {
+  auto manager = GetGestureArenaManager();
+  if (manager && manager->UsesUnifiedGestureHandler()) {
+    static const GestureHandlerMap empty_map;
+    return empty_map;
+  }
   // Check if the new gesture feature is enabled
   if (!IsEnableNewGesture()) {
     static const GestureHandlerMap empty_map;

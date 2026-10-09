@@ -48,6 +48,7 @@ group("lynx_android_lib") {
     "../../../core/base:base",
     "../../../core/build:build",
     "../../../core/event",
+    "../../../core/gesture",
     "../../../core/renderer:tasm",
     "../../../core/renderer/css:css",
     "../../../core/renderer/data:data",

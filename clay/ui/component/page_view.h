@@ -489,11 +489,6 @@ class PageView : public BaseView,
                            const std::string& scroll_monitor_tag);
   void EndFluencyMonitor(uintptr_t id);
 
-  void OnGestureRecognizedWithSign(int sign);
-  void HandleGestureEvent(int sign, uint32_t gesture_id,
-                          const std::string& event_name,
-                          const PointerEvent* pointer_event,
-                          Value& additional_params);
   GestureHandlerDispatcher* GetGestureHandlerDispatcher() const {
     return gesture_handler_dispatcher_.get();
   }

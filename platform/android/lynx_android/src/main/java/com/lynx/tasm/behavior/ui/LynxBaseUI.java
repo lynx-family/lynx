@@ -717,13 +717,39 @@ public abstract class LynxBaseUI
   public void setGestureDetectors(Map<Integer, GestureDetector> gestureDetectors) {
     this.mGestureDetectors = gestureDetectors;
 
-    // Check if gesture detectors are not available
-    if (gestureDetectors == null || gestureDetectors.isEmpty()) {
+    GestureArenaManager manager = getGestureArenaManager();
+    if (manager == null) {
       return;
     }
 
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager == null) {
+    if (manager.isUsingUnifiedGestureHandler() && this instanceof GestureArenaMember) {
+      if (mGestureHandlers != null) {
+        mGestureHandlers.clear();
+        mGestureHandlers = null;
+      }
+      mIncludeNativeGesture = false;
+      if (gestureDetectors != null) {
+        for (GestureDetector detector : gestureDetectors.values()) {
+          if (detector != null
+              && detector.getGestureType() == GestureDetector.GESTURE_TYPE_NATIVE) {
+            mIncludeNativeGesture = true;
+            break;
+          }
+        }
+      }
+      if (!hasSupportedUnifiedGesture(gestureDetectors)) {
+        if (manager.isMemberExist(getGestureArenaMemberId())) {
+          manager.removeMember((GestureArenaMember) this);
+          mGestureArenaMemberId = 0;
+        }
+      } else if (manager.isMemberExist(getGestureArenaMemberId())) {
+        manager.replaceGestureDetectors(getGestureArenaMemberId(), gestureDetectors);
+      }
+      return;
+    }
+
+    // Check if gesture detectors are not available
+    if (gestureDetectors == null || gestureDetectors.isEmpty()) {
       return;
     }
 
@@ -2793,14 +2819,37 @@ public abstract class LynxBaseUI
     if (mContext != null) {
       mContext.addUIToExposedMap(this);
     }
-    if (mGestureHandlers != null && this instanceof GestureArenaMember) {
-      GestureArenaManager manager = getGestureArenaManager();
+    GestureArenaManager manager = getGestureArenaManager();
+    boolean hasUnifiedGestures = manager != null && manager.isUsingUnifiedGestureHandler()
+        && hasSupportedUnifiedGesture(mGestureDetectors);
+    if ((mGestureHandlers != null || hasUnifiedGestures) && this instanceof GestureArenaMember) {
       // Check if the current UIList instance is already a member of the gesture arena
       if (manager != null && !manager.isMemberExist(getGestureArenaMemberId())) {
         // If not a member, add the UIList instance as a new member to the gesture arena
         mGestureArenaMemberId = manager.addMember((GestureArenaMember) this);
       }
     }
+  }
+
+  private static boolean hasSupportedUnifiedGesture(
+      @Nullable Map<Integer, GestureDetector> gestureDetectors) {
+    if (gestureDetectors == null) {
+      return false;
+    }
+    for (GestureDetector detector : gestureDetectors.values()) {
+      if (detector == null) {
+        continue;
+      }
+      int type = detector.getGestureType();
+      if (type == GestureDetector.GESTURE_TYPE_PAN || type == GestureDetector.GESTURE_TYPE_FLING
+          || type == GestureDetector.GESTURE_TYPE_DEFAULT
+          || type == GestureDetector.GESTURE_TYPE_TAP
+          || type == GestureDetector.GESTURE_TYPE_LONG_PRESS
+          || type == GestureDetector.GESTURE_TYPE_NATIVE) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public void onBeforeAnimation(int left, int top, int width, int height, int paddingLeft,

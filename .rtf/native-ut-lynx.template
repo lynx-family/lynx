@@ -104,6 +104,12 @@ targets({
         "builder":"builder_for_encode_ut",
         "enable":options.get_bool('enable_encode_ut', False),
     },
+    "gesture_unittests_exec": {
+        "cwd": ".",
+        "owners": ["AdrianLCA"],
+        "coverage": True,
+        "enable_parallel": True,
+    },
     "base_unittests_exec":{
         "cwd": ".",
         "owners":["ZhaoSongGOO"],

@@ -60,18 +60,23 @@
     (NSDictionary<NSNumber *, LynxGestureDetectorDarwin *> *)gestureMap {
   for (NSNumber *key in gestureMap) {
     LynxGestureDetectorDarwin *detector = gestureMap[key];
-    // Check if a native gesture type exists.
     if (detector.gestureType == LynxGestureTypeNative) {
-      // If found, ensure the native pan recognizer is set up on the scrollview.
-      if (!self.nativeGesturePanRecognizer) {
-        self.nativeGesturePanRecognizer =
-            [[UIPanGestureRecognizer alloc] initWithTarget:self
-                                                    action:@selector(handlePanGesture:)];
-        self.nativeGesturePanRecognizer.delegate = self;
-        [self addGestureRecognizer:self.nativeGesturePanRecognizer];
-      }
+      [self setNativeGestureRecognizerEnabled:YES];
       break;
     }
+  }
+}
+
+- (void)setNativeGestureRecognizerEnabled:(BOOL)enabled {
+  if (enabled && !self.nativeGesturePanRecognizer) {
+    self.nativeGesturePanRecognizer =
+        [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanGesture:)];
+    self.nativeGesturePanRecognizer.delegate = self;
+    [self addGestureRecognizer:self.nativeGesturePanRecognizer];
+  } else if (!enabled && self.nativeGesturePanRecognizer) {
+    self.nativeGesturePanRecognizer.delegate = nil;
+    [self removeGestureRecognizer:self.nativeGesturePanRecognizer];
+    self.nativeGesturePanRecognizer = nil;
   }
 }
 
@@ -102,12 +107,7 @@
 }
 
 - (void)dealloc {
-  // Remove the gesture recognizer from the view
-  if (_nativeGesturePanRecognizer) {
-    _nativeGesturePanRecognizer.delegate = nil;
-    [self removeGestureRecognizer:_nativeGesturePanRecognizer];
-    _nativeGesturePanRecognizer = nil;
-  }
+  [self setNativeGestureRecognizerEnabled:NO];
 }
 
 @end  // LynxScrollView

@@ -1005,8 +1005,7 @@ bool ScrollView::CanConsumeGesture(float delta_x, float delta_y) {
 float ScrollView::ScrollX() { return scroll_offset_.x(); }
 
 int8_t ScrollView::GetScrollContainerDirection() {
-  return CanScrollX() ? GestureConstants::DIRECTION_HORIZONTAL
-                      : GestureConstants::DIRECTION_VERTICAL;
+  return CanScrollX() ? -1 : 1;
 }
 
 bool ScrollView::IsAtBorder(bool is_start) {

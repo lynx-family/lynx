@@ -23,6 +23,7 @@
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/services/fluency/fluency_tracer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -371,6 +372,9 @@ void UIOwner::DestroyTarget(UIBase* target) {
   if (target == root_.get()) {
     root_ui_created_ = false;
   }
+  if (gesture_arena_manager_) {
+    gesture_arena_manager_->RemoveUnifiedMember(target->Sign());
+  }
   target->OnDestroy();
   target->RemoveFromParent();
   AddOrRemoveUIFromExclusiveSet(target->Sign(), false);
@@ -650,6 +654,7 @@ UIOwner::~UIOwner() {
     position_change_dispatch_state_->owner = nullptr;
     position_change_dispatch_state_->pending = false;
   }
+  if (gesture_arena_manager_) gesture_arena_manager_->OnDestroy();
 }
 
 void UIOwner::AttachPageRoot(NativeNodeContent* content) {
@@ -980,6 +985,7 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   napi_status status =
       napi_remove_wrap(env, js_this, reinterpret_cast<void**>(&obj));
   NAPI_THROW_IF_FAILED_NULL(env, status, "UIOwner napi_remove_wrap failed!");
+  if (obj->gesture_arena_manager_) obj->gesture_arena_manager_->OnDestroy();
   obj->context_->ResetUIOwner();
   obj->accessibility_exclusive_.clear();
   obj->ui_holder_.clear();
@@ -1574,8 +1580,14 @@ void UIOwner::SetVelocityToGestureArena(float velocity_x, float velocity_y) {
   }
 }
 
-void UIOwner::InitGestureArenaManager(LynxContext* context) {
-  gesture_arena_manager_ = std::make_shared<GestureArenaManager>(true, context);
+void UIOwner::InitGestureArenaManager(LynxContext* context, bool unified,
+                                      bool enabled) {
+  auto previous = std::move(gesture_arena_manager_);
+  if (previous) previous->OnDestroy();
+  if (!enabled) return;
+  gesture_arena_manager_ = std::make_shared<GestureArenaManager>(
+      true, context,
+      unified && LynxEnv::GetInstance().EnableUnifiedGestureHandler());
 }
 
 void UIOwner::SetEnableSyncXElementRegistry() {
