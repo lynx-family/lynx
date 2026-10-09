@@ -26,6 +26,7 @@
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRenderDelegate.h>
 #import <Lynx/LynxThreadManager.h>
+#import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxUIOwner.h>
@@ -442,9 +443,14 @@
     id<LynxUIRendererProtocol> uiRenderer = _templateRender.lynxUIRenderer;
     LynxEventHandler* eventHandler = uiRenderer.uiOwner.uiContext.eventHandler;
     if (uiRenderer.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn) {
+      LynxTouchHandler* touchHandler = eventHandler.touchRecognizer;
       BOOL ignoreFocus =
           eventHandler != nil &&
           [_templateRender IsPlatformEventTargetIgnoreFocus:eventHandler.eventRootSign point:point];
+      if (eventHandler != nil && !touchHandler.hasActivePlatformTouches) {
+        [eventHandler updatePlatformConsumeSlideEventAngles:[_templateRender
+                                                                GetCachedConsumeSlideEventAngles]];
+      }
       [eventHandler handleFocusOnView:view
                         withContainer:self
                              andPoint:point

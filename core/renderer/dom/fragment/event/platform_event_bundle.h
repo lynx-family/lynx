@@ -170,35 +170,71 @@ inline std::string_view PlatformEventNameToString(PlatformEventName name) {
 
 enum class PlatformEventPropName : int32_t {
   kUnknown = -1,
-  kUserInteractionEnabled = 0,
-  kNativeInteractionEnabled = 1,
-  kExposureScreenMarginLeft = 2,
-  kExposureScreenMarginRight = 3,
-  kExposureScreenMarginTop = 4,
-  kExposureScreenMarginBottom = 5,
-  kExposureUIMarginLeft = 6,
-  kExposureUIMarginRight = 7,
-  kExposureUIMarginTop = 8,
-  kExposureUIMarginBottom = 9,
-  kExposureArea = 10,
-  kEnableExposureUIClip = 11,
-  kIDSelector = 12,
-  kExposureId = 13,
-  kExposureScene = 14,
-  kDataset = 15,
-  kEventThrough = 16,
-  kEventThroughActiveRegions = 17,
-  kEventsPassThrough = 18,
-  kIgnoreFocus = 19,
+  kIDSelector = 0,
+  kDataset = 1,
+  kExposureId = 2,
+  kExposureScene = 3,
+  kExposureArea = 4,
+  kPointerEvents = 5,
+  kUserInteractionEnabled = 6,
+  kNativeInteractionEnabled = 7,
+  kEventThrough = 8,
+  kConsumeSlideEvent = 9,
+  kIgnoreFocus = 10,
+  kHitSlop = 11,
+  kEventsPassThrough = 12,
+  kExposureScreenMarginLeft = 13,
+  kExposureScreenMarginRight = 14,
+  kExposureScreenMarginTop = 15,
+  kExposureScreenMarginBottom = 16,
+  kExposureUIMarginLeft = 17,
+  kExposureUIMarginRight = 18,
+  kExposureUIMarginTop = 19,
+  kExposureUIMarginBottom = 20,
+  kEnableExposureUIClip = 21,
+  kEventThroughActiveRegions = 22,
 };
 
 inline PlatformEventPropName PlatformEventPropNameFromString(
     std::string_view name) {
+  if (name == "idSelector") {
+    return PlatformEventPropName::kIDSelector;
+  }
+  if (name == "dataset") {
+    return PlatformEventPropName::kDataset;
+  }
+  if (name == "exposure-id") {
+    return PlatformEventPropName::kExposureId;
+  }
+  if (name == "exposure-scene") {
+    return PlatformEventPropName::kExposureScene;
+  }
+  if (name == "exposure-area") {
+    return PlatformEventPropName::kExposureArea;
+  }
+  if (name == "pointer-events") {
+    return PlatformEventPropName::kPointerEvents;
+  }
   if (name == "user-interaction-enabled") {
     return PlatformEventPropName::kUserInteractionEnabled;
   }
   if (name == "native-interaction-enabled") {
     return PlatformEventPropName::kNativeInteractionEnabled;
+  }
+  if (name == "event-through") {
+    return PlatformEventPropName::kEventThrough;
+  }
+  if (name == "consume-slide-event") {
+    return PlatformEventPropName::kConsumeSlideEvent;
+  }
+  if (name == "ignore-focus") {
+    return PlatformEventPropName::kIgnoreFocus;
+  }
+  if (name == "hit-slop") {
+    return PlatformEventPropName::kHitSlop;
+  }
+  if (name == "events-pass-through") {
+    return PlatformEventPropName::kEventsPassThrough;
   }
   if (name == "exposure-screen-margin-left") {
     return PlatformEventPropName::kExposureScreenMarginLeft;
@@ -224,46 +260,55 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   if (name == "exposure-ui-margin-bottom") {
     return PlatformEventPropName::kExposureUIMarginBottom;
   }
-  if (name == "exposure-area") {
-    return PlatformEventPropName::kExposureArea;
-  }
   if (name == "enable-exposure-ui-clip") {
     return PlatformEventPropName::kEnableExposureUIClip;
   }
-  if (name == "idSelector") {
-    return PlatformEventPropName::kIDSelector;
-  }
-  if (name == "exposure-id") {
-    return PlatformEventPropName::kExposureId;
-  }
-  if (name == "exposure-scene") {
-    return PlatformEventPropName::kExposureScene;
-  }
-  if (name == "dataset") {
-    return PlatformEventPropName::kDataset;
-  }
-  if (name == "event-through") {
-    return PlatformEventPropName::kEventThrough;
-  }
   if (name == "event-through-active-regions") {
     return PlatformEventPropName::kEventThroughActiveRegions;
-  }
-  if (name == "events-pass-through") {
-    return PlatformEventPropName::kEventsPassThrough;
-  }
-  if (name == "ignore-focus") {
-    return PlatformEventPropName::kIgnoreFocus;
   }
   return PlatformEventPropName::kUnknown;
 }
 
 inline std::string_view PlatformEventPropNameToString(
     PlatformEventPropName name) {
+  if (name == PlatformEventPropName::kIDSelector) {
+    return "idSelector";
+  }
+  if (name == PlatformEventPropName::kDataset) {
+    return "dataset";
+  }
+  if (name == PlatformEventPropName::kExposureId) {
+    return "exposure-id";
+  }
+  if (name == PlatformEventPropName::kExposureScene) {
+    return "exposure-scene";
+  }
+  if (name == PlatformEventPropName::kExposureArea) {
+    return "exposure-area";
+  }
+  if (name == PlatformEventPropName::kPointerEvents) {
+    return "pointer-events";
+  }
   if (name == PlatformEventPropName::kUserInteractionEnabled) {
     return "user-interaction-enabled";
   }
   if (name == PlatformEventPropName::kNativeInteractionEnabled) {
     return "native-interaction-enabled";
+  }
+  if (name == PlatformEventPropName::kEventThrough) {
+    return "event-through";
+  }
+  if (name == PlatformEventPropName::kConsumeSlideEvent) {
+    return "consume-slide-event";
+  }
+  if (name == PlatformEventPropName::kIgnoreFocus) {
+    return "ignore-focus";
+  }
+  if (name == PlatformEventPropName::kHitSlop) {
+    return "hit-slop";
+  }
+  if (name == PlatformEventPropName::kEventsPassThrough) {
+    return "events-pass-through";
   }
   if (name == PlatformEventPropName::kExposureScreenMarginLeft) {
     return "exposure-screen-margin-left";
@@ -289,35 +334,11 @@ inline std::string_view PlatformEventPropNameToString(
   if (name == PlatformEventPropName::kExposureUIMarginBottom) {
     return "exposure-ui-margin-bottom";
   }
-  if (name == PlatformEventPropName::kExposureArea) {
-    return "exposure-area";
-  }
   if (name == PlatformEventPropName::kEnableExposureUIClip) {
     return "enable-exposure-ui-clip";
   }
-  if (name == PlatformEventPropName::kIDSelector) {
-    return "idSelector";
-  }
-  if (name == PlatformEventPropName::kExposureId) {
-    return "exposure-id";
-  }
-  if (name == PlatformEventPropName::kExposureScene) {
-    return "exposure-scene";
-  }
-  if (name == PlatformEventPropName::kDataset) {
-    return "dataset";
-  }
-  if (name == PlatformEventPropName::kEventThrough) {
-    return "event-through";
-  }
   if (name == PlatformEventPropName::kEventThroughActiveRegions) {
     return "event-through-active-regions";
-  }
-  if (name == PlatformEventPropName::kEventsPassThrough) {
-    return "events-pass-through";
-  }
-  if (name == PlatformEventPropName::kIgnoreFocus) {
-    return "ignore-focus";
   }
   return "";
 }

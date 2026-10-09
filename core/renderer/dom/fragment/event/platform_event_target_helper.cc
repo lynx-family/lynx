@@ -5,6 +5,7 @@
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <stack>
 #include <string_view>
@@ -13,6 +14,7 @@
 #include <vector>
 
 #include "base/include/float_comparison.h"
+#include "base/include/string/string_number_convert.h"
 #include "base/include/value/array.h"
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
@@ -30,6 +32,8 @@ struct PlatformEventPropNameHash {
 
 using EventPropValueSetter = void (*)(PlatformEventTarget*,
                                       const lepus::Value&);
+
+LynxEventPropStatus EventPropValueToStatus(const lepus::Value& value);
 
 bool IsOverlayRenderer(const fml::RefPtr<PlatformRendererImpl>& renderer) {
   return renderer != nullptr && renderer->IsOverlay();
@@ -69,8 +73,7 @@ void SetUserInteractionEnabled(PlatformEventTarget* target,
 
 void SetNativeInteractionEnabled(PlatformEventTarget* target,
                                  const lepus::Value& value) {
-  target->SetNativeInteractionEnabled(
-      !base::IsZero(EventPropValueToFloat(value)));
+  target->SetNativeInteractionEnabled(EventPropValueToStatus(value));
 }
 
 void SetExposureScreenMarginLeft(PlatformEventTarget* target,
@@ -150,47 +153,62 @@ void SetIgnoreFocus(PlatformEventTarget* target, const lepus::Value& value) {
   target->SetIgnoreFocus(EventPropValueToStatus(value));
 }
 
-bool ParseEventThroughSizeValue(
+bool ParseEventRegionSizeValue(
     const lepus::Value& value,
-    PlatformEventTarget::EventThroughSizeValue* result) {
-  if (result == nullptr) {
-    return false;
-  }
-  if (!value.IsString()) {
+    PlatformEventTarget::EventRegionSizeValue* result) {
+  if (result == nullptr || !value.IsString()) {
     return false;
   }
 
-  const std::string string_value = value.StdString();
-  const std::string_view string_view = string_value;
-  if (string_view.size() >= 2 &&
-      string_view.rfind("px") == string_view.size() - 2) {
-    int32_t number = 0;
-    if (!ParseIntStrict(string_view.substr(0, string_view.size() - 2),
-                        &number)) {
-      return false;
-    }
-    result->type = PlatformEventTarget::EventThroughSizeValue::Type::kDevicePx;
-    result->value = static_cast<float>(number);
-    return true;
+  const auto string_value = value.StdString();
+  const bool percentage = !string_value.empty() && string_value.back() == '%';
+  const bool pixel =
+      string_value.size() >= 2 &&
+      string_value.compare(string_value.size() - 2, 2, "px") == 0;
+  if (!percentage && !pixel) {
+    return false;
   }
-  if (!string_view.empty() &&
-      string_view.rfind("%") == string_view.size() - 1) {
-    int32_t number = 0;
-    if (!ParseIntStrict(string_view.substr(0, string_view.size() - 1),
-                        &number)) {
-      return false;
-    }
-    result->type =
-        PlatformEventTarget::EventThroughSizeValue::Type::kPercentage;
-    result->value = static_cast<float>(number) / 100.f;
-    return true;
+
+  const auto number_string =
+      string_value.substr(0, string_value.size() - (percentage ? 1 : 2));
+  float number = 0.f;
+  if (!base::StringToFloat(number_string, number, true) ||
+      !std::isfinite(number)) {
+    return false;
   }
-  return false;
+
+  result->type =
+      percentage ? PlatformEventTarget::EventRegionSizeValue::Type::kPercentage
+                 : PlatformEventTarget::EventRegionSizeValue::Type::kDevicePx;
+  result->value = percentage ? number / 100.f : number;
+  return true;
 }
 
-void ParseEventThroughRegions(
-    const lepus::Value& value,
-    std::vector<PlatformEventTarget::EventThroughRegion>* regions) {
+void SetHitSlop(PlatformEventTarget* target, const lepus::Value& value) {
+  PlatformEventTarget::EventRegion hit_slop{};
+  bool has_valid_value = false;
+  if (value.IsObject()) {
+    const char* names[] = {"left", "top", "right", "bottom"};
+    for (size_t i = 0; i < hit_slop.size(); ++i) {
+      has_valid_value |= ParseEventRegionSizeValue(
+          value.GetProperty(base::String(names[i])), &hit_slop[i]);
+    }
+  } else {
+    PlatformEventTarget::EventRegionSizeValue uniform;
+    if (ParseEventRegionSizeValue(value, &uniform)) {
+      hit_slop.fill(uniform);
+      has_valid_value = true;
+    }
+  }
+  if (has_valid_value) {
+    target->SetHitSlop(std::move(hit_slop));
+  } else {
+    target->ResetHitSlop();
+  }
+}
+
+void ParseEventRegions(const lepus::Value& value,
+                       std::vector<PlatformEventTarget::EventRegion>* regions) {
   if (regions == nullptr || !value.IsArray()) {
     return;
   }
@@ -208,10 +226,10 @@ void ParseEventThroughRegions(
     if (!region_array || region_array->size() != 4) {
       continue;
     }
-    PlatformEventTarget::EventThroughRegion region;
+    PlatformEventTarget::EventRegion region;
     bool valid_region = true;
     for (size_t j = 0; j < region.size(); ++j) {
-      if (!ParseEventThroughSizeValue(region_array->get(j), &region[j])) {
+      if (!ParseEventRegionSizeValue(region_array->get(j), &region[j])) {
         valid_region = false;
         break;
       }
@@ -224,9 +242,46 @@ void ParseEventThroughRegions(
 
 void SetEventThroughActiveRegions(PlatformEventTarget* target,
                                   const lepus::Value& value) {
-  std::vector<PlatformEventTarget::EventThroughRegion> regions;
-  ParseEventThroughRegions(value, &regions);
+  std::vector<PlatformEventTarget::EventRegion> regions;
+  ParseEventRegions(value, &regions);
   target->SetEventThroughActiveRegions(std::move(regions));
+}
+
+void SetPointerEvents(PlatformEventTarget* target, const lepus::Value& value) {
+  auto pointer_events = LynxPointerEventsValue::kUnset;
+  if (value.IsNumber()) {
+    const int int_value = static_cast<int>(value.Number());
+    if (int_value >= static_cast<int>(LynxPointerEventsValue::kAuto) &&
+        int_value < static_cast<int>(LynxPointerEventsValue::kUnset)) {
+      pointer_events = static_cast<LynxPointerEventsValue>(int_value);
+    }
+  }
+  target->SetPointerEvents(pointer_events);
+}
+
+void SetConsumeSlideEvent(PlatformEventTarget* target,
+                          const lepus::Value& value) {
+  std::vector<std::array<float, 2>> angles;
+  if (value.IsArrayOrJSArray()) {
+    for (int i = 0; i < value.GetLength(); ++i) {
+      const auto& range = value.GetProperty(static_cast<uint32_t>(i));
+      if (!range.IsArrayOrJSArray() || range.GetLength() != 2) {
+        continue;
+      }
+      const auto& begin = range.GetProperty(0);
+      const auto& end = range.GetProperty(1);
+      if (begin.IsNumber() && end.IsNumber() && std::isfinite(begin.Number()) &&
+          std::isfinite(end.Number())) {
+        const float begin_angle = static_cast<float>(begin.Number());
+        const float end_angle = static_cast<float>(end.Number());
+        if (std::isfinite(begin_angle) && std::isfinite(end_angle) &&
+            begin_angle <= end_angle) {
+          angles.push_back({begin_angle, end_angle});
+        }
+      }
+    }
+  }
+  target->SetConsumeSlideEventAngles(std::move(angles));
 }
 
 void SetEventsPassThrough(PlatformEventTarget* target,
@@ -303,6 +358,9 @@ GetEventPropSetterMap() {
            &SetEventThroughActiveRegions},
           {PlatformEventPropName::kEventsPassThrough, &SetEventsPassThrough},
           {PlatformEventPropName::kIgnoreFocus, &SetIgnoreFocus},
+          {PlatformEventPropName::kHitSlop, &SetHitSlop},
+          {PlatformEventPropName::kPointerEvents, &SetPointerEvents},
+          {PlatformEventPropName::kConsumeSlideEvent, &SetConsumeSlideEvent},
       };
   return map;
 }

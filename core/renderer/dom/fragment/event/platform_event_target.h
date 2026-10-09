@@ -41,17 +41,6 @@ enum class LynxPointerEventsValue {
   kUnset,
 };
 
-enum class LynxConsumeSlideDirection {
-  kNone,
-  kHorizontal,
-  kVertical,
-  kUp,
-  kRight,
-  kDown,
-  kLeft,
-  kAll,
-};
-
 enum class LynxPseudoStatus {
   kNone = 0,
   kHover = 1,
@@ -70,7 +59,7 @@ class PlatformEventTarget
       base::InlineVector<fml::RefPtr<PlatformEventTarget>, 4>;
 
  public:
-  struct EventThroughSizeValue {
+  struct EventRegionSizeValue {
     enum class Type {
       kDevicePx,
       kPercentage,
@@ -79,7 +68,7 @@ class PlatformEventTarget
     Type type{Type::kDevicePx};
     float value{0.f};
   };
-  using EventThroughRegion = std::array<EventThroughSizeValue, 4>;
+  using EventRegion = std::array<EventRegionSizeValue, 4>;
 
   struct HitTestRegion {
     float left{0.f};
@@ -138,7 +127,14 @@ class PlatformEventTarget
   bool IsPageRoot() const { return IsRoot() && root_id_ == kRootId; }
   const base::Vector<PlatformEventName>& EventSet() const { return event_set_; }
   bool UserInteractionEnabled() const { return user_interaction_enabled_; }
-  bool NativeInteractionEnabled() const { return native_interaction_enabled_; }
+  bool NativeInteractionEnabled(bool default_enabled = true) const {
+    return native_interaction_enabled_ == LynxEventPropStatus::kUndefined
+               ? default_enabled
+               : native_interaction_enabled_ == LynxEventPropStatus::kEnable;
+  }
+  LynxEventPropStatus NativeInteractionStatus() const {
+    return native_interaction_enabled_;
+  }
   float ExposureScreenMarginLeft() const {
     return exposure_screen_margin_left_;
   }
@@ -201,7 +197,12 @@ class PlatformEventTarget
   bool IgnoreFocus() const;
   LynxPointerEventsValue PointerEvents() const;
   bool BlockNativeEvent(float point[2]) const;
-  LynxConsumeSlideDirection ConsumeSlideEvent() const;
+  const std::vector<std::array<float, 2>>& ConsumeSlideEventAngles() const {
+    return consume_slide_event_angles_;
+  }
+  bool ConsumeSlideEvent(float angle) const;
+  void SetHitSlop(EventRegion hit_slop) { *hit_slop_ = std::move(hit_slop); }
+  void ResetHitSlop() { hit_slop_.reset(); }
 
   void SetEventSet(base::Vector<PlatformEventName> event_set) {
     event_set_ = std::move(event_set);
@@ -210,7 +211,7 @@ class PlatformEventTarget
   void SetUserInteractionEnabled(bool enabled) {
     user_interaction_enabled_ = enabled;
   }
-  void SetNativeInteractionEnabled(bool enabled) {
+  void SetNativeInteractionEnabled(LynxEventPropStatus enabled) {
     native_interaction_enabled_ = enabled;
   }
   void SetExposureScreenMarginLeft(float value) {
@@ -259,14 +260,19 @@ class PlatformEventTarget
   void SetLayoutOnly(bool is_layout_only) { is_layout_only_ = is_layout_only; }
   void SetTransform(const float transform[16]);
   void SetEventThrough(LynxEventPropStatus value) { event_through_ = value; }
-  void SetEventThroughActiveRegions(
-      std::vector<EventThroughRegion> event_through_active_regions) {
-    event_through_active_regions_ = std::move(event_through_active_regions);
+  void SetEventThroughActiveRegions(std::vector<EventRegion> regions) {
+    event_through_active_regions_ = std::move(regions);
   }
   void SetEventsPassThrough(LynxEventPropStatus value) {
     events_pass_through_ = value;
   }
   void SetIgnoreFocus(LynxEventPropStatus value) { ignore_focus_ = value; }
+  void SetPointerEvents(LynxPointerEventsValue value) {
+    pointer_events_ = value;
+  }
+  void SetConsumeSlideEventAngles(std::vector<std::array<float, 2>> angles) {
+    consume_slide_event_angles_ = std::move(angles);
+  }
   void AddHitTestRegion(HitTestRegion region) {
     hit_test_regions_->push_back(std::move(region));
   }
@@ -275,9 +281,10 @@ class PlatformEventTarget
   void UpdateScrollOffsetIfNeeded();
   bool EventThroughInternal(float point[2], bool include_events_pass_through,
                             bool enable_inherit_from_page) const;
-  bool HitEventThroughActiveRegions(float point[2]) const;
-  float ConvertEventThroughSizeValue(const EventThroughSizeValue& value,
-                                     bool is_horizontal) const;
+  bool HitEventRegions(const std::vector<EventRegion>& regions,
+                       float point[2]) const;
+  float ConvertEventRegionSizeValue(const EventRegionSizeValue& value,
+                                    bool is_horizontal) const;
 
   void GetOrUpdateTargetScreenRect(
       std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
@@ -305,7 +312,8 @@ class PlatformEventTarget
   float offset_y_for_calc_position_{0.f};
   base::Vector<PlatformEventName> event_set_;
   bool user_interaction_enabled_{true};
-  bool native_interaction_enabled_{true};
+  LynxEventPropStatus native_interaction_enabled_{
+      LynxEventPropStatus::kUndefined};
   float exposure_screen_margin_left_{0.f};
   float exposure_screen_margin_right_{0.f};
   float exposure_screen_margin_top_{0.f};
@@ -319,7 +327,11 @@ class PlatformEventTarget
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus events_pass_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
-  std::vector<EventThroughRegion> event_through_active_regions_;
+  std::vector<EventRegion> event_through_active_regions_;
+  LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
+  // left, top, right, bottom
+  base::auto_create_optional<EventRegion> hit_slop_;
+  std::vector<std::array<float, 2>> consume_slide_event_angles_;
   base::auto_create_optional<base::Vector<HitTestRegion>> hit_test_regions_;
   std::string id_selector_;
   std::string exposure_id_;

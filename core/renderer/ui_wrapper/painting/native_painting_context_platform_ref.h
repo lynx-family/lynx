@@ -82,6 +82,9 @@ class NativePaintingCtxPlatformRef
   bool DispatchPlatformInputEvent(int int_event_data[],
                                   float float_event_data[],
                                   int32_t event_target_root_id);
+  const std::vector<float> &GetCachedConsumeSlideEventAngles() const {
+    return event_handler_->ConsumeSlideEventAngles();
+  }
   // Dispatch a longpress recognized by the platform layer. The event payload is
   // derived from the active platform pointer state in PlatformEventHandler.
   void DispatchPlatformLongPress();

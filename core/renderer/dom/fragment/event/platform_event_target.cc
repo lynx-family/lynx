@@ -109,7 +109,9 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
   if (hit_target) {
     return hit_target;
   }
-  return is_layout_only_ ? nullptr : fml::RefPtr<PlatformEventTarget>(this);
+  return is_layout_only_ || PointerEvents() == LynxPointerEventsValue::kNone
+             ? nullptr
+             : fml::RefPtr<PlatformEventTarget>(this);
 }
 
 bool PlatformEventTarget::ShouldHitTest() const {
@@ -136,13 +138,23 @@ bool PlatformEventTarget::ContainsPoint(float point[2]) {
     }
     return false;
   }
-  if (x >= 0.f && x <= Width() && y >= 0.f && y <= Height()) {
+  float left = 0.f;
+  float top = 0.f;
+  float right = Width();
+  float bottom = Height();
+  if (hit_slop_) {
+    left = -ConvertEventRegionSizeValue((*hit_slop_)[0], true);
+    top = -ConvertEventRegionSizeValue((*hit_slop_)[1], false);
+    right = Width() + ConvertEventRegionSizeValue((*hit_slop_)[2], true);
+    bottom = Height() + ConvertEventRegionSizeValue((*hit_slop_)[3], false);
+  }
+  if (x >= left && x <= right && y >= top && y <= bottom) {
     return true;
   }
-  if (overflow_x_ && !overflow_y_ && (y < 0.f || y > Height())) {
+  if (overflow_x_ && !overflow_y_ && (y < top || y > bottom)) {
     return false;
   }
-  if (overflow_y_ && !overflow_x_ && (x < 0.f || x > Width())) {
+  if (overflow_y_ && !overflow_x_ && (x < left || x > right)) {
     return false;
   }
   if (overflow_x_ || overflow_y_) {
@@ -312,8 +324,9 @@ bool PlatformEventTarget::EventThroughInternal(
   }
 
   if (!event_through_active_regions_.empty()) {
-    is_event_through = HitEventThroughActiveRegions(point) ? is_event_through
-                                                           : !is_event_through;
+    is_event_through = HitEventRegions(event_through_active_regions_, point)
+                           ? is_event_through
+                           : !is_event_through;
   }
 
   if (include_events_pass_through &&
@@ -323,12 +336,13 @@ bool PlatformEventTarget::EventThroughInternal(
   return is_event_through;
 }
 
-bool PlatformEventTarget::HitEventThroughActiveRegions(float point[2]) const {
-  for (const auto& region : event_through_active_regions_) {
-    const float left = ConvertEventThroughSizeValue(region[0], true);
-    const float top = ConvertEventThroughSizeValue(region[1], false);
-    const float right = left + ConvertEventThroughSizeValue(region[2], true);
-    const float bottom = top + ConvertEventThroughSizeValue(region[3], false);
+bool PlatformEventTarget::HitEventRegions(
+    const std::vector<EventRegion>& regions, float point[2]) const {
+  for (const auto& region : regions) {
+    const float left = ConvertEventRegionSizeValue(region[0], true);
+    const float top = ConvertEventRegionSizeValue(region[1], false);
+    const float right = left + ConvertEventRegionSizeValue(region[2], true);
+    const float bottom = top + ConvertEventRegionSizeValue(region[3], false);
     if (point[0] >= left && point[0] < right && point[1] >= top &&
         point[1] < bottom) {
       return true;
@@ -337,12 +351,13 @@ bool PlatformEventTarget::HitEventThroughActiveRegions(float point[2]) const {
   return false;
 }
 
-float PlatformEventTarget::ConvertEventThroughSizeValue(
-    const EventThroughSizeValue& value, bool is_horizontal) const {
-  if (value.type == EventThroughSizeValue::Type::kPercentage) {
+float PlatformEventTarget::ConvertEventRegionSizeValue(
+    const EventRegionSizeValue& value, bool is_horizontal) const {
+  if (value.type == EventRegionSizeValue::Type::kPercentage) {
     return value.value * (is_horizontal ? Width() : Height());
   }
-  return value.value;
+  return target_helper_ ? value.value * target_helper_->GetDevicePixelRatio()
+                        : value.value;
 }
 
 bool PlatformEventTarget::IgnoreFocus() const {
@@ -367,15 +382,25 @@ bool PlatformEventTarget::IgnoreFocus() const {
 }
 
 LynxPointerEventsValue PlatformEventTarget::PointerEvents() const {
-  return LynxPointerEventsValue::kAuto;
+  if (pointer_events_ != LynxPointerEventsValue::kUnset) {
+    return pointer_events_;
+  }
+  auto parent = ParentTarget();
+  return parent && parent.get() != this ? parent->PointerEvents()
+                                        : LynxPointerEventsValue::kAuto;
 }
 
 bool PlatformEventTarget::BlockNativeEvent(float point[2]) const {
   return false;
 }
 
-LynxConsumeSlideDirection PlatformEventTarget::ConsumeSlideEvent() const {
-  return LynxConsumeSlideDirection::kNone;
+bool PlatformEventTarget::ConsumeSlideEvent(float angle) const {
+  for (const auto& range : ConsumeSlideEventAngles()) {
+    if (angle >= range[0] && angle <= range[1]) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace tasm

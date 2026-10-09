@@ -56,6 +56,12 @@ class PlatformEventHandler {
   int32_t HitTargetSign() const { return hit_target_sign_; }
   int32_t RendererHostSign() const { return renderer_host_sign_; }
   bool IgnoreFocus() const { return ignore_focus_; }
+  const std::vector<float>& ConsumeSlideEventAngles() const {
+    return consume_slide_event_angles_;
+  }
+  void CacheConsumeSlideEventAngles(
+      const fml::RefPtr<PlatformEventTarget>& target_tree,
+      const fml::RefPtr<PlatformEventTarget>& hit_target);
   bool CanRespondFocus();
 
   void SetTapSlop(const std::string& tap_slop);
@@ -105,6 +111,8 @@ class PlatformEventHandler {
   int32_t hit_target_sign_{-1};
   int32_t renderer_host_sign_{-1};
   bool ignore_focus_{false};
+  // The response chain's consume-slide-event angles, captured at hit test/DOWN.
+  std::vector<float> consume_slide_event_angles_;
   bool has_pointer_moved_{false};
   bool first_pointer_moved_{false};
   bool first_pointer_outside_{false};
