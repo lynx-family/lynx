@@ -856,22 +856,12 @@ bool EditableView::HandleSynthesizedKeyEvent(const KeyEvent* key_event) {
   return false;
 }
 
+// TODO(wangyanyi): Currently, rtl language input zwj is not supported and
+// using the getwordboundary method is a more trick method.
 TextRange EditableView::FindNextOrPrevCharacterSelection(bool is_forward) {
   auto text_editing_value = GetTextEditingValue();
   const auto& text = text_editing_value.GetU16Text();
   auto current_selection = TextRange(text_editing_value.selection());
-#if defined(CLAY_ENABLE_TTTEXT)
-  const size_t position = current_selection.extent();
-  if ((is_forward && position == 0) ||
-      (!is_forward && position == text.length())) {
-    return current_selection;
-  }
-
-  const size_t character_position = is_forward ? position - 1 : position;
-  const auto grapheme = static_cast<txt::ParagraphTTText*>(paragraph_.get())
-                            ->GetGraphemeBoundary(character_position);
-  return TextRange(grapheme.start, grapheme.end);
-#else
   if (is_forward) {
     if (TextUtils::JudgeIfZWJCharacter(text_editing_value.GetU16Text(),
                                        current_selection.extent(), true)) {
@@ -904,7 +894,6 @@ TextRange EditableView::FindNextOrPrevCharacterSelection(bool is_forward) {
     }
   }
   return text_editing_value.selection();
-#endif
 }
 
 void EditableView::MoveCaret(KeyCode keycode) {

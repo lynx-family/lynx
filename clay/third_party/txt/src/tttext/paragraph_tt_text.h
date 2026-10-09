@@ -16,7 +16,6 @@
 #else
 #include "third_party/textlayout/textra/public/textra/platform/skia/skia_painter.h"
 #endif
-#include "clay/third_party/txt/src/tttext/tttext_index_mapper.h"
 #include "lynx/clay/third_party/txt/src/txt/paragraph.h"
 
 namespace ttoffice {
@@ -86,8 +85,6 @@ class ParagraphTTText : public Paragraph {
 
   Range<size_t> GetWordBoundary(size_t offset) override;
 
-  Range<size_t> GetGraphemeBoundary(size_t offset) const;
-
 #ifdef ENABLE_SKITY
   void UpdateForegroundPaint(size_t text_size, skity::Paint paint);
   void UpdateForegroundPaint(size_t start, size_t end, skity::Paint paint);
@@ -115,7 +112,6 @@ class ParagraphTTText : public Paragraph {
   std::unique_ptr<tttext::LayoutRegion> region_;
   std::vector<LineMetrics> line_metrics_;
   std::vector<size_t> placeholder_pos_;
-  TTTextIndexMapper index_mapper_;
   bool need_trim_space_ = false;
 #ifdef ENABLE_SKITY
   skity::Paint sk_paint_;

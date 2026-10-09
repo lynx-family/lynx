@@ -265,8 +265,6 @@ source_set("txt") {
       "src/tttext/paragraph_builder_tt_text.h",
       "src/tttext/paragraph_tt_text.cc",
       "src/tttext/paragraph_tt_text.h",
-      "src/tttext/tttext_index_mapper.cc",
-      "src/tttext/tttext_index_mapper.h",
       "src/tttext/tttext_headers.h",
     ]
 
@@ -443,33 +441,6 @@ if (enable_unittests) {
     if (enable_skity) {
       sources += [ "tests/font_variation_skity_unittests.cc" ]
       deps += [ "../../third_party/skity:skity_lib" ]
-      if (is_mac) {
-        frameworks = [
-          "AppKit.framework",
-          "ApplicationServices.framework",
-          "CoreGraphics.framework",
-          "CoreText.framework",
-          "Metal.framework",
-        ]
-      }
-    }
-  }
-
-  if (clay_enable_tttext) {
-    executable("paragraph_tt_text_unittests") {
-      testonly = true
-      sources = [ "tests/paragraph_tt_text_unittests.cc" ]
-      deps = [
-               ":txt",
-               "../../testing:testing_lib",
-             ] + txt_common_executable_deps
-
-      if (enable_skity) {
-        deps += [ "../../third_party/skity:skity_lib" ]
-      } else {
-        deps += [ "//third_party/skia" ]
-      }
-
       if (is_mac) {
         frameworks = [
           "AppKit.framework",
