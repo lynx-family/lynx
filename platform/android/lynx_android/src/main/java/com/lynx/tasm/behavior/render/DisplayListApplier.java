@@ -237,12 +237,6 @@ public class DisplayListApplier implements Drawable.Callback {
     return host != null ? host.getView() : null;
   }
 
-  private boolean shouldKeepOverlayRootHorizontalOffset() {
-    IRendererHost host = getRendererHost();
-    Renderer renderer = host != null ? host.getRenderer() : null;
-    return renderer != null && renderer.getUIHost() != null && renderer.getUIHost().isOverlay();
-  }
-
   private boolean shouldNormalizeRootGeometry() {
     IRendererHost hostLayer = getRendererHost();
     return mFragmentDepth == 1 && hostLayer != null && hostLayer.getRendererHostWidth() > 0
@@ -591,9 +585,7 @@ public class DisplayListApplier implements Drawable.Callback {
       switch (op) {
         case OP_BEGIN: {
           boolean isRoot = mFragmentDepth == 0;
-          float x = isRoot && !shouldKeepOverlayRootHorizontalOffset()
-              ? .0f
-              : getFloatAt(itemByteOffset + BEGIN_X_OFFSET);
+          float x = isRoot ? .0f : getFloatAt(itemByteOffset + BEGIN_X_OFFSET);
           float y = isRoot ? .0f : getFloatAt(itemByteOffset + BEGIN_Y_OFFSET);
           canvas.save();
           canvas.translate(x, y);

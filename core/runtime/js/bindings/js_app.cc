@@ -166,6 +166,12 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
       return Value::undefined();
     }
     return Value(*rt, String::createFromUtf8(*rt, native_app->GetPageUrl()));
+  } else if (methodName == "isFragmentLayerRender") {
+    auto* native_app = native_app_.Lock();
+    if (!native_app || native_app->IsDestroying()) {
+      return Value::undefined();
+    }
+    return Value(native_app->GetPageOptions().IsFragmentLayerRender());
   } else if (methodName == "loadScript") {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "loadScript"), 1,
@@ -1776,6 +1782,7 @@ std::vector<PropNameID> AppProxy::getPropertyNames(Runtime& rt) {
   static const char* kProps[] = {
       "id",
       "__pageUrl",
+      "isFragmentLayerRender",
       "loadScript",
       "readScript",
       "readDynamicComponentScripts",
