@@ -18,6 +18,10 @@ on:
         description: 'source commit SHA (optional; defaults to the selected ref)'
         required: false
         type: string
+      spmWrapperRecoveryRunId:
+        description: 'existing workflow run ID containing the SwiftPM wrapper artifact'
+        required: false
+        type: string
 
   schedule:
     - cron: '0 22 * * *'
@@ -28,8 +32,8 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   NIGHTLY_BASE_VERSION: '4.4.0'
-  SPM_WRAPPER_REPOSITORY: ${{ vars.SPM_WRAPPER_REPOSITORY || 'lynx-family/lynx-spm' }}
-  SPM_WRAPPER_BRANCH: ${{ vars.SPM_WRAPPER_BRANCH || 'main' }}
+  SPM_WRAPPER_REPOSITORY: 'gongfeng98/lynx-spm'
+  SPM_WRAPPER_BRANCH: 'master'
 
 concurrency:
   group: publish-release-${{ github.event.inputs.tag || github.ref }}
@@ -37,7 +41,7 @@ concurrency:
 
 jobs:
   get-version:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       EVENT_NAME: ${{ github.event_name }}
@@ -159,8 +163,9 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   prepare-release-ref:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: ubuntu-22.04
     needs: get-version
+    if: ${{ inputs.spmWrapperRecoveryRunId == '' }}
     timeout-minutes: 15
     permissions:
       contents: write
@@ -222,7 +227,7 @@ jobs:
   publish-spm-artifacts:
     runs-on: macos-14
     needs: [get-version, prepare-release-ref]
-    if: ${{ needs.get-version.outputs.release_mode == 'manual_release' }}
+    if: ${{ needs.get-version.outputs.release_mode == 'manual_release' && inputs.spmWrapperRecoveryRunId == '' }}
     timeout-minutes: 120
     permissions:
       contents: write
@@ -354,26 +359,30 @@ jobs:
           retention-days: 30
 
   publish-spm-wrapper:
-    runs-on: macos-14
+    runs-on: macos-15
     needs: [get-version, prepare-release-ref, publish-spm-artifacts]
-    if: ${{ needs.get-version.outputs.release_mode == 'manual_release' }}
+    if: ${{ needs.get-version.outputs.release_mode == 'manual_release' && inputs.spmWrapperRecoveryRunId == '' }}
     timeout-minutes: 30
     permissions:
       contents: read
     steps:
       - name: Validate wrapper configuration
-        env:
-          SPM_WRAPPER_TOKEN: ${{ secrets.SPM_WRAPPER_TOKEN }}
         run: |-
-          if [ -z "$SPM_WRAPPER_TOKEN" ]; then
-            echo "SPM_WRAPPER_TOKEN is required to publish the SwiftPM wrapper."
-            exit 1
-          fi
           if ! [[ "$SPM_WRAPPER_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
             echo "Invalid SPM_WRAPPER_REPOSITORY: $SPM_WRAPPER_REPOSITORY"
             exit 1
           fi
           git check-ref-format --branch "$SPM_WRAPPER_BRANCH" > /dev/null
+
+      - name: Create SwiftPM wrapper GitHub App token
+        id: spm_wrapper_app_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ vars.SPM_WRAPPER_APP_ID }}
+          private-key: ${{ secrets.SPM_WRAPPER_APP_PRIVATE_KEY }}
+          owner: gongfeng98
+          repositories: lynx-spm
+          permission-contents: write
 
       - name: Download Lynx source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -388,7 +397,7 @@ jobs:
         with:
           repository: ${{ env.SPM_WRAPPER_REPOSITORY }}
           ref: ${{ env.SPM_WRAPPER_BRANCH }}
-          token: ${{ secrets.SPM_WRAPPER_TOKEN }}
+          token: ${{ steps.spm_wrapper_app_token.outputs.token }}
           path: lynx-spm
           fetch-depth: 0
 
@@ -457,11 +466,129 @@ jobs:
             "HEAD:refs/heads/$SPM_WRAPPER_BRANCH" \
             "refs/tags/$VERSION"
 
+  recover-spm-wrapper:
+    runs-on: macos-15
+    needs: get-version
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.spmWrapperRecoveryRunId != '' && needs.get-version.outputs.release_mode == 'manual_release' }}
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Validate wrapper recovery configuration
+        env:
+          RECOVERY_RUN_ID: ${{ inputs.spmWrapperRecoveryRunId }}
+        run: |-
+          if ! [[ "$RECOVERY_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "spmWrapperRecoveryRunId must be a numeric workflow run ID."
+            exit 1
+          fi
+          if ! [[ "$SPM_WRAPPER_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "Invalid SPM_WRAPPER_REPOSITORY: $SPM_WRAPPER_REPOSITORY"
+            exit 1
+          fi
+          git check-ref-format --branch "$SPM_WRAPPER_BRANCH" > /dev/null
+
+      - name: Create SwiftPM wrapper GitHub App token
+        id: spm_wrapper_app_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ vars.SPM_WRAPPER_APP_ID }}
+          private-key: ${{ secrets.SPM_WRAPPER_APP_PRIVATE_KEY }}
+          owner: gongfeng98
+          repositories: lynx-spm
+          permission-contents: write
+
+      - name: Download Lynx source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          path: lynx
+          ref: ${{ needs.get-version.outputs.checkout_ref }}
+          fetch-depth: 1
+
+      - name: Download SwiftPM wrapper repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: ${{ env.SPM_WRAPPER_REPOSITORY }}
+          ref: ${{ env.SPM_WRAPPER_BRANCH }}
+          token: ${{ steps.spm_wrapper_app_token.outputs.token }}
+          path: lynx-spm
+          fetch-depth: 0
+
+      - name: Download generated wrapper payload
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: ios-spm-wrapper-${{ needs.get-version.outputs.version }}
+          path: generated-wrapper
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.spmWrapperRecoveryRunId }}
+
+      - name: Install and validate wrapper payload
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
+        run: |-
+          test -f generated-wrapper/Package.swift
+          test -f generated-wrapper/spm/PackageArtifacts.json
+          rm -rf \
+            lynx-spm/Sources/LynxPackageSupport \
+            lynx-spm/spm
+          mkdir -p lynx-spm/Sources
+          cp generated-wrapper/Package.swift lynx-spm/Package.swift
+          cp -R \
+            generated-wrapper/Sources/LynxPackageSupport \
+            lynx-spm/Sources/LynxPackageSupport
+          cp -R generated-wrapper/spm lynx-spm/spm
+
+          source_revision="$(git -C lynx rev-parse HEAD)"
+          python3 lynx/tools/ios_tools/spm_publish_helper.py validate-manifest \
+            --manifest lynx-spm/spm/PackageArtifacts.json \
+            --version "$VERSION" \
+            --repository "$GITHUB_REPOSITORY" \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --source-revision "$source_revision"
+          python3 lynx/tools/ios_tools/spm_publish_helper.py verify-remote \
+            --manifest lynx-spm/spm/PackageArtifacts.json \
+            --version "$VERSION"
+          swift package --package-path lynx-spm dump-package > /dev/null
+
+      - name: Publish wrapper branch and tag atomically
+        working-directory: lynx-spm
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
+        run: |-
+          git config user.name "lynx.authors"
+          git config user.email "lynx.authors@users.noreply.github.com"
+          git add --all \
+            Package.swift \
+            Sources/LynxPackageSupport \
+            spm
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" > /dev/null; then
+            git fetch --force origin "refs/tags/$VERSION:refs/tags/$VERSION"
+            tag_revision="$(git rev-list -n 1 "$VERSION")"
+            if ! git diff --cached --quiet || [ "$tag_revision" != "$(git rev-parse HEAD)" ]; then
+              echo "SwiftPM wrapper tag $VERSION exists with different content."
+              exit 1
+            fi
+            echo "SwiftPM wrapper $VERSION is already published."
+            exit 0
+          fi
+          if git diff --cached --quiet; then
+            echo "The generated SwiftPM wrapper contains no changes."
+            exit 1
+          fi
+          git commit -m "release: SwiftPM $VERSION"
+          git tag -a "$VERSION" -m "SwiftPM Release $VERSION"
+          git push --atomic origin \
+            "HEAD:refs/heads/$SPM_WRAPPER_BRANCH" \
+            "refs/tags/$VERSION"
+
   android-explorer-build:
     timeout-minutes: 60
     runs-on: lynx-ubuntu-22.04-large
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     steps:
       - name: Download Source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -487,7 +614,7 @@ jobs:
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     strategy:
       matrix:
         arch: [arm64, x86_64]
@@ -520,7 +647,7 @@ jobs:
         username: lynx-family
         password: ${{ secrets.GITHUB_TOKEN }}
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     defaults:
       run:
         working-directory: ${{ github.workspace }}
@@ -547,7 +674,7 @@ jobs:
   android-sdk-release:
     runs-on: ubuntu-22.04
     needs: [get-version, prepare-release-ref]
-    if: ${{ needs.get-version.outputs.release_mode != 'nightly' }}
+    if: ${{ false }}
     timeout-minutes: 240
     steps:
       - name: Download Source
@@ -599,7 +726,7 @@ jobs:
   android-sdk-snapshot-release:
     runs-on: lynx-ubuntu-22.04-large
     needs: [get-version, prepare-release-ref]
-    if: ${{ needs.get-version.outputs.release_mode == 'nightly' }}
+    if: ${{ false }}
     timeout-minutes: 240
     steps:
       - name: Download Source
@@ -636,6 +763,7 @@ jobs:
     timeout-minutes: 120
     runs-on: macos-14
     needs: [get-version, prepare-release-ref]
+    if: ${{ false }}
     permissions:
       contents: write
     env:
@@ -704,6 +832,7 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-22.04
     needs: [get-version, prepare-release-ref]
+    if: ${{ false }}
     environment: rubygems
     permissions:
       contents: read
@@ -788,6 +917,7 @@ jobs:
       run:
         shell: bash
     needs: [get-version, prepare-release-ref]
+    if: ${{ false }}
     strategy:
       matrix:
         include:
@@ -855,7 +985,7 @@ jobs:
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     strategy:
       matrix:
         arch: [arm64, x64]
@@ -883,7 +1013,7 @@ jobs:
   linux-sdk-release:
     timeout-minutes: 60
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
@@ -920,7 +1050,7 @@ jobs:
     timeout-minutes: 60
     runs-on: lynx-windows-2022-large
     needs: [get-version, prepare-release-ref]
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ false }}
     strategy:
       matrix:
         arch: [x86, x64]
