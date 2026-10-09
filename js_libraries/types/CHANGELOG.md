@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.1
+
+- Add `requestTimeoutMs` to `RequestInit.lynxExtension` for configuring the Fetch request timeout in milliseconds.
+
 ## 4.4.0
 
 - Add `experimental-use-new-update-animation` and `experimental-new-update-animation` to `<list>` typings.
