@@ -960,9 +960,8 @@ void Element::SetBuiltinAttribute(ElementBuiltInAttributeEnum key,
       MarkPartElement(value.String());
       break;
     case ElementBuiltInAttributeEnum::CONFIG:
-      if (value.IsTable()) {
-        config_ = value.Table();
-      } else if (value.IsJSTable()) {
+      if (value.IsTable() || value.IsJSTable()) {
+        // Native containers can still contain values owned by the JS runtime.
         config_ = value.ToLepusValue().Table();
       } else {
         DCHECK(false);
