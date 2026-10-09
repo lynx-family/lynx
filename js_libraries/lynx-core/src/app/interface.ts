@@ -258,6 +258,12 @@ export interface NativeApp {
   id: string;
 
   /**
+   * Whether the current page uses Fragment Layer Renderer.
+   * This property is optional for compatibility with older native versions.
+   */
+  readonly isFragmentLayerRender?: boolean;
+
+  /**
    * Support from Lynx 2.8
    * @param timing_flag
    * @param key

@@ -18,6 +18,8 @@ import android.view.View;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.behavior.StyleConstants;
+import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.PlatformRendererContext;
 import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.utils.BorderRadius;
@@ -40,6 +42,46 @@ public class AndroidScrollViewFragmentLayerTest {
     void dispatchDrawForTest(Canvas canvas) {
       dispatchDraw(canvas);
     }
+  }
+
+  private static class TestRendererHostView extends View implements IRendererHost {
+    private Renderer mRenderer;
+
+    TestRendererHostView(Context context) {
+      super(context);
+    }
+
+    @Override
+    public void setRenderer(Renderer renderer) {
+      mRenderer = renderer;
+    }
+
+    @Override
+    public Renderer getRenderer() {
+      return mRenderer;
+    }
+
+    @Override
+    public View getView() {
+      return this;
+    }
+
+    @Override
+    public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+      return new Renderer(platformRendererContext, sign);
+    }
+  }
+
+  @Test
+  public void layoutIgnoresRendererHostWithoutRenderer() {
+    Context context = ApplicationProvider.getApplicationContext();
+    TestAndroidScrollView scrollView = new TestAndroidScrollView(context);
+    scrollView.setRenderer(mock(Renderer.class));
+    scrollView.getLinearLayout().addView(new TestRendererHostView(context));
+
+    scrollView.measure(View.MeasureSpec.makeMeasureSpec(VIEWPORT_SIZE, View.MeasureSpec.EXACTLY),
+        View.MeasureSpec.makeMeasureSpec(VIEWPORT_SIZE, View.MeasureSpec.EXACTLY));
+    scrollView.layout(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE);
   }
 
   @Test

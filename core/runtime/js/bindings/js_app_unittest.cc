@@ -663,6 +663,41 @@ function getEnv(nativeApp, key) {
   EXPECT_TRUE(result->isUndefined());
 }
 
+TEST_P(AppTest, IsFragmentLayerRenderTest) {
+  constexpr auto kEmbeddedLayoutMode = static_cast<tasm::EmbeddedMode>(5);
+  constexpr auto kFragmentLayerRenderMode = static_cast<tasm::EmbeddedMode>(13);
+  constexpr auto kFragmentLayerRenderWithTextServiceMode =
+      static_cast<tasm::EmbeddedMode>(29);
+
+  auto native_app = Object::createFromHostObject(
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
+  auto js_function = function(R"--(
+function isFragmentLayerRender(nativeApp) {
+  return nativeApp.isFragmentLayerRender;
+}
+)--");
+
+  auto read_is_fragment_layer_render = [&]() {
+    auto result = js_function.call(rt, native_app);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_TRUE(result->isBool());
+    return result->getBool();
+  };
+
+  tasm::PageOptions options;
+  options.SetEmbeddedMode(kEmbeddedLayoutMode);
+  app->SetPageOptions(options);
+  EXPECT_FALSE(read_is_fragment_layer_render());
+
+  options.SetEmbeddedMode(kFragmentLayerRenderMode);
+  app->SetPageOptions(options);
+  EXPECT_TRUE(read_is_fragment_layer_render());
+
+  options.SetEmbeddedMode(kFragmentLayerRenderWithTextServiceMode);
+  app->SetPageOptions(options);
+  EXPECT_TRUE(read_is_fragment_layer_render());
+}
+
 TEST_P(AppTest, GetEnvArgsCheckTest) {
   auto native_app = Object::createFromHostObject(
       rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
