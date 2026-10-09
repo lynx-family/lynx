@@ -4,6 +4,7 @@
 
 #include "core/runtime/js/bindings/js_app.h"
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -11,10 +12,13 @@
 #include "base/include/debug/lynx_error.h"
 #include "base/include/fml/message_loop.h"
 #include "base/include/fml/synchronization/waitable_event.h"
+#include "base/include/log/logging.h"
 #include "base/include/to_underlying.h"
+#include "base/include/value/array.h"
 #include "core/public/jsb/native_module_factory.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/event/context_proxy_in_js.h"
 #include "core/runtime/js/bindings/js_object_destruction_observer.h"
 #include "core/runtime/js/bindings/lynx.h"
@@ -32,6 +36,7 @@
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 #include "lynx_sub_error_code.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -317,6 +322,7 @@ class MockJsApp : public HostObject {
                    const Value& value) override;
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
 
+  std::function<void()> on_call;
   size_t call_count{0};
   std::vector<size_t> count_ary{0};
   std::vector<std::vector<Value>> args_ary;
@@ -334,6 +340,9 @@ Value MockJsApp::get(Runtime* rt, const PropNameID& name) {
       *rt, PropNameID::forAscii(*rt, "allFunctions"), 1,
       [this](Runtime& rt, const Value& thisVal, const Value* args,
              size_t count) {
+        if (on_call) {
+          on_call();
+        }
         this->call_count++;
         this->count_ary.emplace_back(count);
         std::vector<Value> temp_args;
@@ -407,6 +416,68 @@ class AppTest : public JSITestBase {
   std::shared_ptr<LynxModuleManager> module_manager_;
   std::shared_ptr<MockModuleDelegate> module_delegate_;
 };
+
+TEST_P(AppTest, DiagnosedEventsKeepJSArgumentsUnchanged) {
+  ASSERT_TRUE(eval("globalThis.loadCard = function() { return true; }"));
+  tasm::TasmRuntimeBundle bundle{};
+  bundle.support_component_js = true;
+  app->LoadApp(std::move(bundle), lepus::Value(), tasm::PackageInstanceDSL::TT,
+               tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "", 0);
+  const int original_level =
+      base::logging::ParseLogLevel(base::logging::GetMinLogLevelName());
+  for (int level :
+       {base::logging::LOG_INFO, base::logging::detail::LOG_OBSERVE}) {
+    for (int final_level :
+         {base::logging::LOG_INFO, base::logging::detail::LOG_OBSERVE}) {
+      for (bool component : {false, true}) {
+        auto args = lepus::CArray::Create();
+        args->emplace_back("page");
+        args->emplace_back("handleTap");
+        args->emplace_back(42);
+        auto event = fml::MakeRefCounted<MessageEvent>(
+            component ? kMessageEventTypePublishComponentEvent
+                      : kMessageEventTypeSendPageEvent,
+            ContextProxy::Type::kCoreContext, ContextProxy::Type::kJSContext,
+            std::make_unique<pub::ValueImplLepus>(
+                lepus::Value(std::move(args))));
+        event->EnableDispatchDiagnostics();
+        const auto dispatch_id = event->DispatchId();
+        const auto initial_call_count = mock_js_app_->call_count;
+        mock_js_app_->on_call = [final_level] {
+          base::logging::SetMinLogLevel(final_level);
+        };
+        base::logging::SetMinLogLevel(level);
+        ::testing::internal::CaptureStdout();
+        app->GetOrCreateContextProxyImpl(ContextProxy::Type::kCoreContext)
+            ->DispatchEvent(std::move(event));
+        const auto output = ::testing::internal::GetCapturedStdout();
+        mock_js_app_->on_call = nullptr;
+        base::logging::SetMinLogLevel(original_level);
+        for (const char* stage : {"call_begin", "call_end"}) {
+          const auto record =
+              "EventDispatch event_id=" + std::to_string(dispatch_id) +
+              " stage=" + stage;
+          EXPECT_EQ(output.find(record) != std::string::npos,
+                    level == base::logging::detail::LOG_OBSERVE &&
+                        (std::string(stage) == "call_begin" ||
+                         final_level == base::logging::detail::LOG_OBSERVE));
+        }
+        ASSERT_EQ(mock_js_app_->call_count, initial_call_count + 1);
+        ASSERT_EQ(mock_js_app_->args_ary.back().size(), 3u);
+        const auto& js_args = mock_js_app_->args_ary.back();
+        if (component) {
+          EXPECT_EQ(js_args[0].getString(rt).utf8(rt), "page");
+          EXPECT_EQ(js_args[1].getString(rt).utf8(rt), "handleTap");
+          EXPECT_EQ(js_args[2].getNumber(), 42);
+        } else {
+          EXPECT_EQ(js_args[0].getString(rt).utf8(rt), "handleTap");
+          EXPECT_EQ(js_args[1].getNumber(), 42);
+          EXPECT_EQ(js_args[2].getNumber(), 0);
+        }
+      }
+    }
+  }
+}
 
 TEST_P(AppTest, CreateAppTest) { EXPECT_TRUE(app); }
 

@@ -12,12 +12,21 @@
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
+#include "base/include/log/logging.h"
+#include "base/include/value/array.h"
+#include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/js_bundle_holder_impl.h"
 #include "core/renderer/template_entry_holder.h"
 #include "core/resource/external_resource/external_resource_loader.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
+#include "core/runtime/common/bindings/event/runtime_constants.h"
 #include "core/runtime/common/bindings/resource/response_promise.h"
+#include "core/runtime/js/bindings/event/context_proxy_in_js.h"
 #include "core/runtime/js/js_bundle.h"
+#include "core/runtime/js/jsi/jsi_unittest.h"
+#include "core/runtime/js/mock_template_delegate.h"
+#include "core/shell/runtime/bts/bts_runtime.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -29,6 +38,102 @@ class ImmediateTaskRunner : public fml::TaskRunner {
   bool RunsTasksOnCurrentThread() override { return true; }
   void PostTask(base::closure task) override { task(); }
 };
+
+class PausedDispatchTaskRunner : public fml::TaskRunner {
+ public:
+  PausedDispatchTaskRunner() : fml::TaskRunner(nullptr) {}
+  bool RunsTasksOnCurrentThread() override { return false; }
+  void PostTask(base::closure task) override {
+    tasks.emplace_back(std::move(task));
+  }
+  std::vector<base::closure> tasks;
+};
+
+TEST(BTSRuntimeMediatorTest, DispatchLoggingPreservesQueuedTasks) {
+  const auto original_level =
+      base::logging::ParseLogLevel(base::logging::GetMinLogLevelName());
+  for (int level :
+       {base::logging::LOG_INFO, base::logging::detail::LOG_OBSERVE}) {
+    auto runner = fml::MakeRefCounted<PausedDispatchTaskRunner>();
+    auto actor = std::make_shared<LynxActor<BTSRuntime>>(
+        std::unique_ptr<BTSRuntime>(), runner);
+    auto args = lepus::CArray::Create();
+    args->emplace_back("component");
+    args->emplace_back("handler");
+    args->emplace_back(42);
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+        runtime::kMessageEventTypePublishComponentEvent,
+        runtime::ContextProxy::Type::kCoreContext,
+        runtime::ContextProxy::Type::kJSContext,
+        std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+    event->EnableDispatchDiagnostics();
+    base::logging::SetMinLogLevel(level);
+    ::testing::internal::CaptureStdout();
+    BTSRuntimeMediator::DispatchMessageEventToRuntime(actor, std::move(event));
+    const auto output = ::testing::internal::GetCapturedStdout();
+    base::logging::SetMinLogLevel(original_level);
+    EXPECT_EQ(runner->tasks.size(), 1u);
+    EXPECT_EQ(output.find("stage=enqueue type=") != std::string::npos,
+              level == base::logging::detail::LOG_OBSERVE);
+    if (level == base::logging::detail::LOG_OBSERVE) {
+      EXPECT_NE(output.find("target=component handler=handler"),
+                std::string::npos);
+    }
+  }
+}
+
+TEST(BTSRuntimeMediatorTest, CachedDispatchReplaysAcrossLogLevelChanges) {
+  const auto original_level =
+      base::logging::ParseLogLevel(base::logging::GetMinLogLevelName());
+  for (int level :
+       {base::logging::LOG_INFO, base::logging::detail::LOG_OBSERVE}) {
+    fml::MessageLoop::EnsureInitializedForCurrentThread();
+    base::UnsafeOwningPtr<runtime::js::Runtime> js_runtime(
+        runtime::js::test::MakeRuntimeFactory<runtime::js::QuickjsRuntime>(
+            nullptr)
+            .release());
+    BTSRuntime bts_runtime(
+        "", {}, 1, std::make_unique<runtime::test::MockTemplateDelegate>(), "",
+        0, {});
+    bts_runtime.app_ = runtime::js::App::Create(
+        1, js_runtime.GetWeakPtr(), bts_runtime.GetDelegate(), nullptr,
+        runtime::js::Object(*js_runtime), nullptr, "", {});
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
+        "cached_dispatch", runtime::ContextProxy::Type::kCoreContext,
+        runtime::ContextProxy::Type::kJSContext,
+        std::make_unique<pub::ValueImplLepus>(lepus::Value(42)));
+    event->EnableDispatchDiagnostics();
+    int calls = 0;
+    bts_runtime.app_
+        ->GetOrCreateContextProxyImpl(runtime::ContextProxy::Type::kCoreContext)
+        ->AddEventListener("cached_dispatch",
+                           std::make_unique<event::ClosureEventListener>(
+                               [&calls](lepus::Value args) {
+                                 ++calls;
+                                 EXPECT_EQ(args.Int32(), 42);
+                               }));
+    base::logging::SetMinLogLevel(level);
+    ::testing::internal::CaptureStdout();
+    bts_runtime.OnReceiveMessageEvent(std::move(event));
+    const auto output = ::testing::internal::GetCapturedStdout();
+    base::logging::SetMinLogLevel(original_level);
+    EXPECT_EQ(output.find("stage=cached state=") != std::string::npos,
+              level == base::logging::detail::LOG_OBSERVE);
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(bts_runtime.cached_tasks_.size(), 1u);
+    base::logging::SetMinLogLevel(level == base::logging::LOG_INFO
+                                      ? base::logging::detail::LOG_OBSERVE
+                                      : base::logging::LOG_INFO);
+    bts_runtime.state_ = BTSRuntime::State::kRuntimeReady;
+    bts_runtime.OnRuntimeReady();
+    base::logging::SetMinLogLevel(original_level);
+    EXPECT_EQ(calls, 1);
+    EXPECT_TRUE(bts_runtime.cached_tasks_.empty());
+    bts_runtime.app_->Destroy();
+    bts_runtime.app_ = nullptr;
+    bts_runtime.state_ = BTSRuntime::State::kNotStarted;
+  }
+}
 
 // Count engine dispatches without executing them on the calling JS thread.
 class CountingEngineTaskRunner : public fml::TaskRunner {

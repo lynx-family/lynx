@@ -32,6 +32,7 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/common/bindings/event/context_proxy.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/common/bindings/event/runtime_constants.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/js/bindings/api_call_back.h"
@@ -1953,26 +1954,30 @@ void App::Init() {
           [this](lepus::Value args) { PauseAnimationFrame(); }));
   core_context_proxy->AddEventListener(
       runtime::kMessageEventTypeSendPageEvent,
-      std::make_unique<event::ClosureEventListener>([this](lepus::Value args) {
-        auto args_array = args.Array();
-        if (args.IsArray() && args_array->size() == 3) {
-          const auto& page_name = args_array->get(0).StdString();
-          const auto& handler = args_array->get(1).StdString();
-          const auto& info = args_array->get(2);
-          SendPageEvent(page_name, handler, info);
-        }
-      }));
+      std::make_unique<event::ClosureEventListener>(
+          [this](lepus::Value args, const runtime::MessageEvent& event) {
+            auto args_array = args.Array();
+            if (args.IsArray() && args_array->size() == 3) {
+              const auto& page_name = args_array->get(0).StdString();
+              const auto& handler = args_array->get(1).StdString();
+              const auto& info = args_array->get(2);
+              SendPageEvent(page_name, handler, info,
+                            LOGO_IS_ON() ? event.DispatchId() : 0);
+            }
+          }));
   core_context_proxy->AddEventListener(
       runtime::kMessageEventTypePublishComponentEvent,
-      std::make_unique<event::ClosureEventListener>([this](lepus::Value args) {
-        auto args_array = args.Array();
-        if (args.IsArray() && args_array->size() == 3) {
-          const auto& component_id = args_array->get(0).StdString();
-          const auto& handler = args_array->get(1).StdString();
-          const auto& info = args_array->get(2);
-          PublishComponentEvent(component_id, handler, info);
-        }
-      }));
+      std::make_unique<event::ClosureEventListener>(
+          [this](lepus::Value args, const runtime::MessageEvent& event) {
+            auto args_array = args.Array();
+            if (args.IsArray() && args_array->size() == 3) {
+              const auto& component_id = args_array->get(0).StdString();
+              const auto& handler = args_array->get(1).StdString();
+              const auto& info = args_array->get(2);
+              PublishComponentEvent(component_id, handler, info,
+                                    LOGO_IS_ON() ? event.DispatchId() : 0);
+            }
+          }));
   core_context_proxy->AddEventListener(
       runtime::kMessageEventTypeCallJSFunctionInLepusEvent,
       std::make_unique<event::ClosureEventListener>([this](lepus::Value args) {
@@ -2365,7 +2370,8 @@ void App::CallJSFunctionInLepusEvent(const std::string& component_id,
 
 std::optional<Value> App::SendPageEvent(const std::string& page_name,
                                         const std::string& handler,
-                                        const lepus::Value& info) {
+                                        const lepus::Value& info,
+                                        uint64_t dispatch_id) {
   auto rt = rt_.Lock();
   if (rt && IsJsAppStateValid()) {
     tasm::timing::LongTaskMonitor::Scope long_task_scope(
@@ -2399,7 +2405,14 @@ std::optional<Value> App::SendPageEvent(const std::string& page_name,
     const Object& thisObj = js_app;
     TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNNING_IN_JS, "name", "publishEvent",
                 "event", handler);
+    const bool observe_dispatch = LOGO_IS_ON() && dispatch_id != 0;
+    if (observe_dispatch) {
+      MessageEvent::LogDispatch(dispatch_id, "call_begin");
+    }
     auto res = publishEvent->callWithThis(*rt, thisObj, args, count);
+    if (observe_dispatch) {
+      MessageEvent::LogDispatch(dispatch_id, "call_end");
+    }
     // get js function return value
     return res;
   }
@@ -3290,7 +3303,8 @@ void App::OnIntersectionObserverEvent(int32_t observer_id, int32_t callback_id,
 
 std::optional<Value> App::PublishComponentEvent(const std::string& component_id,
                                                 const std::string& handler,
-                                                const lepus::Value& info) {
+                                                const lepus::Value& info,
+                                                uint64_t dispatch_id) {
   auto rt = rt_.Lock();
   if (rt && IsJsAppStateValid() && card_bundle_.support_component_js) {
     tasm::timing::LongTaskMonitor::Scope long_task_scope(
@@ -3327,7 +3341,14 @@ std::optional<Value> App::PublishComponentEvent(const std::string& component_id,
     const Object& thisObj = js_app;
     TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNNING_IN_JS, "name",
                 "publicComponentEvent", "component_id", component_id);
+    const bool observe_dispatch = LOGO_IS_ON() && dispatch_id != 0;
+    if (observe_dispatch) {
+      MessageEvent::LogDispatch(dispatch_id, "call_begin");
+    }
     auto res = publish_component_event->callWithThis(*rt, thisObj, args, count);
+    if (observe_dispatch) {
+      MessageEvent::LogDispatch(dispatch_id, "call_end");
+    }
     return res;
   }
   return std::nullopt;

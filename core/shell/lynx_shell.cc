@@ -620,6 +620,11 @@ void LynxShell::InitRuntime(
   }
   fml::RefPtr<fml::TaskRunner> js_task_runner;
   js_task_runner = runners_.GetJSTaskRunner();
+  if ((runtime_flags & LynxRuntimeFlags::PENDING_JS_TASK) != 0) {
+    LOGO(GetLogContextSnapshot()
+         << " RuntimeLifecycle instance_id=" << instance_id_
+         << " stage=pending_js group_id=" << group_id);
+  }
   auto external_resource_loader =
       std::make_unique<ExternalResourceLoader>(resource_loader);
   auto external_resource_loader_ptr = external_resource_loader.get();
@@ -1994,15 +1999,8 @@ void LynxShell::DispatchMessageEvent(fml::RefPtr<runtime::MessageEvent> event) {
       engine->OnReceiveMessageEvent(std::move(event));
     });
   } else if (event->IsSendingToJSThread()) {
-    if (runtime_actor_) {
-      auto enqueue_info =
-          tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-      runtime_actor_->Act([event = std::move(event),
-                           enqueue_info](auto& runtime) mutable {
-        runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-        runtime->OnReceiveMessageEvent(std::move(event));
-      });
-    }
+    BTSRuntimeMediator::DispatchMessageEventToRuntime(runtime_actor_,
+                                                      std::move(event));
   }
 }
 

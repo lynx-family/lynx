@@ -12,7 +12,13 @@
 #include "core/event/event_listener.h"
 
 namespace lynx {
+namespace runtime {
+class MessageEvent;
+}
+
 namespace event {
+using MessageClosureListener =
+    base::MoveOnlyClosure<void, lepus::Value, const runtime::MessageEvent&>;
 using ClosureListener = base::MoveOnlyClosure<void, lepus::Value>;
 
 class ClosureEventListener : public event::EventListener {
@@ -29,6 +35,7 @@ class ClosureEventListener : public event::EventListener {
       const EventListener::Options& options = EventListener::Options(),
       ClosureType closure_type = ClosureType::kNone,
       const lepus::Value& lepus_object = lepus::Value());
+  explicit ClosureEventListener(MessageClosureListener&& closure);
   ~ClosureEventListener() override = default;
 
   void Invoke(fml::RefPtr<event::Event> event) override;
@@ -41,6 +48,7 @@ class ClosureEventListener : public event::EventListener {
 
  private:
   ClosureListener closure_;
+  MessageClosureListener message_closure_;
   ClosureType closure_type_{ClosureType::kNone};
   lepus::Value lepus_object_{};
 };
