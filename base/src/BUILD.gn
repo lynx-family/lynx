@@ -135,6 +135,11 @@ config("base_log_public_config") {
   }
 }
 
+# Share declarations without pulling base implementation objects into consumers.
+lynx_base_source_set("base_public_headers") {
+  sources = base_public_headers
+}
+
 lynx_base_source_set("base_log_headers") {
   public_configs = [ ":base_log_public_config" ]
   sources = base_log_public_headers

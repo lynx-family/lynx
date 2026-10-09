@@ -4,10 +4,22 @@
 
 import("../../../Lynx.gni")
 
+# Runtime declarations only; init consumers do not link engine objects.
+lynx_core_source_set("host_script_runtime_headers") {
+  sources = [
+    "../../../base/lynx_export.h",
+    "../../../base/memory/unsafe_owning_ptr.h",
+    "../runtime/process_runtime.h",
+    "runtime/process_runtime_android.h",
+  ]
+  public_deps = [ "../../../../base/src:base_public_headers" ]
+}
+
 # LynxEnv only needs the startup declaration. The Android library links the
 # runtime implementation, avoiding a renderer-utils -> JS-runtime cycle.
 lynx_core_source_set("host_script_init") {
   sources = [ "runtime/process_runtime_init_android.h" ]
+  public_deps = [ ":host_script_runtime_headers" ]
 
   # Regular libraries and standalone test/SSR binaries keep empty entry points.
   if (!is_android || !lynx_in_debug || !enable_napi_binding ||
@@ -30,8 +42,8 @@ if (is_android && is_debug && enable_napi_binding) {
   }
 }
 
-# Use the existing debugMode library flavor, including optimized debug libraries.
-# Runtime admission still requires the host to enable the DevTool lifecycle.
+# Compile the process runtime only into the engine debugMode library flavor,
+# including optimized liblynx_debug.so builds.
 if (is_android && lynx_in_debug && enable_napi_binding) {
   lynx_core_source_set("process_runtime_android") {
     sources = [

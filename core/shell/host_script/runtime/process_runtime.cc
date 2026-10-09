@@ -22,6 +22,16 @@
 
 namespace lynx {
 namespace shell {
+
+bool IsHostScriptRuntimeEnabled() {
+#if defined(OS_ANDROID)
+  // Only the Android debug engine links the real process runtime.
+  return true;
+#else
+  return tasm::DevToolLifecycle::GetInstance().IsEnabled();
+#endif
+}
+
 namespace {
 
 using Domain = ProcessRuntime::Domain;
@@ -84,7 +94,7 @@ class DomainRuntime final {
 
   Result Initialize() {
     DCHECK(runner_->RunsTasksOnCurrentThread());
-    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled())
+    if (!IsHostScriptRuntimeEnabled())
       return WithError(Identity(), "HSR_DEBUG_DISABLED");
     identity_.owner_thread = CurrentThread();
     executor_ =
@@ -120,7 +130,7 @@ class DomainRuntime final {
               domain, std::move(source), std::move(url), std::move(completion),
               std::move(guard));
         });
-    if (!thread_bindings_ || !thread_bindings_->Install())
+    if (!thread_bindings_ || !thread_bindings_->Install(identity_.domain))
       return WithError(Identity(), "HOST_SCRIPT_THREAD_BINDINGS_ATTACH_FAILED");
     auto result = Identity();
     result.success = true;
@@ -158,8 +168,8 @@ class DomainRuntime final {
   Result Execute(const std::string& source, const std::string& url,
                  CompletionValue completion_value = CompletionValue::kJSON) {
     DCHECK(runner_->RunsTasksOnCurrentThread());
-    // Recheck on the owner: the host can disable debugging after submission.
-    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled())
+    // Recheck owner admission on platforms with a revocable lifecycle.
+    if (!IsHostScriptRuntimeEnabled())
       return WithError(Identity(), "HSR_DEBUG_DISABLED");
     if (executing_) return WithError(Identity(), "REENTRANT_EVALUATION");
     executing_ = true;
@@ -320,8 +330,7 @@ class DomainState final {
 
   void NotifyEvent(const ProcessRuntime::Event& event) {
     AssertOwner();
-    if (tasm::DevToolLifecycle::GetInstance().IsEnabled() && IsRunning() &&
-        runtime_)
+    if (IsHostScriptRuntimeEnabled() && IsRunning() && runtime_)
       runtime_->NotifyEvent(event);
   }
 
@@ -512,7 +521,7 @@ class ProcessRuntime::Impl {
   bool Initialize(Runners runners, Completion ready,
                   BindingFactory binding_factory, std::string bootstrap,
                   InitializationMode mode) {
-    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return false;
+    if (!IsHostScriptRuntimeEnabled()) return false;
     if (!bootstrap.empty() && !NormalizeScriptSource(bootstrap)) return false;
     if (!runners.bts || !runners.mts || !runners.ui) return false;
     std::lock_guard<std::mutex> lock(lifecycle_mutex_);
@@ -533,16 +542,14 @@ class ProcessRuntime::Impl {
   }
 
   void InitializeBindings() {
-    if (!tasm::DevToolLifecycle::GetInstance().IsEnabled() || loading_.load())
-      return;
+    if (!IsHostScriptRuntimeEnabled() || loading_.load()) return;
     if (auto generation = Current()) generation->InitializeBindings();
   }
 
   bool IsReady(Domain domain) const {
     auto generation = Current();
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
-    return tasm::DevToolLifecycle::GetInstance().IsEnabled() &&
-           !loading_.load() && generation &&
+    return IsHostScriptRuntimeEnabled() && !loading_.load() && generation &&
            generation->State() == ProcessState::kRunning && endpoint &&
            endpoint->publication->ready.load(std::memory_order_acquire);
   }
@@ -552,8 +559,7 @@ class ProcessRuntime::Impl {
     auto generation = Current();
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
     const char* error =
-        !tasm::DevToolLifecycle::GetInstance().IsEnabled()
-            ? "HSR_DEBUG_DISABLED"
+        !IsHostScriptRuntimeEnabled()      ? "HSR_DEBUG_DISABLED"
         : loading_.load() && !from_binding ? "RUNTIME_LOADING"
         : !IsValidDomain(domain)           ? "INVALID_DOMAIN"
         : !generation || generation->State() != ProcessState::kRunning
@@ -638,9 +644,8 @@ class ProcessRuntime::Impl {
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
       generation = Current();
-      error = !tasm::DevToolLifecycle::GetInstance().IsEnabled()
-                  ? "HSR_DEBUG_DISABLED"
-              : load_ ? "RUNTIME_LOADING"
+      error = !IsHostScriptRuntimeEnabled() ? "HSR_DEBUG_DISABLED"
+              : load_                       ? "RUNTIME_LOADING"
               : !runners_.bts || !generation ||
                       generation->State() == ProcessState::kStopping
                   ? "RUNTIME_NOT_RUNNING"
@@ -672,8 +677,7 @@ class ProcessRuntime::Impl {
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
       if (load_ != load) return;
-      if (!load->cancelled &&
-          tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
+      if (!load->cancelled && IsHostScriptRuntimeEnabled()) {
         next = std::make_shared<RuntimeGeneration>(
             std::array<fml::RefPtr<fml::TaskRunner>, 3>{
                 runners_.bts, runners_.mts, runners_.ui},
@@ -741,9 +745,8 @@ class ProcessRuntime::Impl {
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
       if (load_ != load) return;
-      cleanup = result.success &&
-                (load->cancelled ||
-                 !tasm::DevToolLifecycle::GetInstance().IsEnabled());
+      cleanup =
+          result.success && (load->cancelled || !IsHostScriptRuntimeEnabled());
       if (load->cancelled)
         result = WithError(std::move(result), "RUNTIME_SHUTDOWN");
       else if (cleanup)
