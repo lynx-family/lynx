@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxLogicExecutor.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
 #import <XCTest/XCTest.h>
@@ -36,6 +37,153 @@
 @end
 
 @implementation LynxTemplateRenderRuntimeUnitTest
+
+- (void)testHeapSnapshotWritesFileAfterDestroy {
+  NSString *path = [NSTemporaryDirectory()
+      stringByAppendingPathComponent:[NSUUID.UUID.UUIDString
+                                         stringByAppendingString:@".heapsnapshot"]];
+  NSError *error = nil;
+  XCTAssertTrue([@"previous file content" writeToFile:path
+                                           atomically:NO
+                                             encoding:NSUTF8StringEncoding
+                                                error:&error]);
+  XCTAssertNil(error);
+  [self addTeardownBlock:^{
+    [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+  }];
+
+  dispatch_semaphore_t allowCapture = dispatch_semaphore_create(0);
+  XCTestExpectation *completion = [self expectationWithDescription:@"Snapshot saved"];
+  @autoreleasepool {
+    LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+      builder.enableJSRuntime = YES;
+      builder.enablePendingJSTaskOnLayout = NO;
+      builder.backgroundJsRuntimeType = LynxBackgroundJsRuntimeTypeQuickjs;
+      builder.debuggable = NO;
+    }];
+    // Queue capture behind a gate. Initialization, capture, and runtime
+    // destruction retain their actor order even after the shell is deleted.
+    auto *shell = [view.templateRender shellForTest];
+    shell->GetRuntimeActor()->ActAsync([allowCapture, self](auto &) {
+      XCTAssertEqual(dispatch_semaphore_wait(allowCapture,
+                                             dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC)),
+                     0);
+    });
+    [view takeBTSHeapSnapshot:path
+                     callback:^(BOOL success) {
+                       XCTAssertFalse([NSThread isMainThread]);
+                       XCTAssertTrue(success);
+                       NSData *data = [NSData dataWithContentsOfFile:path];
+                       XCTAssertNotNil(data);
+                       if (data != nil) {
+                         NSError *parseError = nil;
+                         NSDictionary *snapshot =
+                             [NSJSONSerialization JSONObjectWithData:data
+                                                             options:0
+                                                               error:&parseError];
+                         XCTAssertNil(parseError);
+                         XCTAssertNotNil(snapshot[@"snapshot"]);
+                         XCTAssertNotNil(snapshot[@"nodes"]);
+                       }
+                       [completion fulfill];
+                     }];
+    [view clearForDestroy];
+  }
+  // The renderer enqueues shell deletion on main during dealloc. Release the
+  // gate on the same serial queue after that deletion has completed.
+  dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_semaphore_signal(allowCapture);
+  });
+  [self waitForExpectationsWithTimeout:15 handler:nil];
+}
+
+- (void)testHeapSnapshotRejectsEmbeddedNULWithoutReplacingFile {
+  LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+    builder.enableJSRuntime = YES;
+    builder.enablePendingJSTaskOnLayout = NO;
+    builder.backgroundJsRuntimeType = LynxBackgroundJsRuntimeTypeQuickjs;
+    builder.debuggable = NO;
+  }];
+  NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
+  XCTAssertTrue([@"unchanged" writeToFile:path
+                               atomically:NO
+                                 encoding:NSUTF8StringEncoding
+                                    error:nil]);
+  [self addTeardownBlock:^{
+    [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+  }];
+  const unichar suffix[] = {0, 'x'};
+  NSString *invalidPath = [path stringByAppendingString:[NSString stringWithCharacters:suffix
+                                                                                length:2]];
+  XCTestExpectation *completion = [self expectationWithDescription:@"Embedded NUL rejected"];
+  [view takeBTSHeapSnapshot:invalidPath
+                   callback:^(BOOL success) {
+                     XCTAssertFalse(success);
+                     XCTAssertFalse([NSThread isMainThread]);
+                     [completion fulfill];
+                   }];
+  [self waitForExpectationsWithTimeout:5 handler:nil];
+  XCTAssertEqualObjects([NSString stringWithContentsOfFile:path
+                                                  encoding:NSUTF8StringEncoding
+                                                     error:nil],
+                        @"unchanged");
+}
+
+- (void)testHeapSnapshotRejectsInvalidPathsOnBackgroundThread {
+  LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+    builder.enableJSRuntime = YES;
+    builder.enablePendingJSTaskOnLayout = NO;
+    builder.backgroundJsRuntimeType = LynxBackgroundJsRuntimeTypeQuickjs;
+    builder.debuggable = NO;
+  }];
+  for (NSString *path in @[
+         @"", @"relative.heapsnapshot", @"~/snapshot.heapsnapshot", @"~user/snapshot.heapsnapshot"
+       ]) {
+    XCTAssertFalse([view.templateRender takeBTSHeapSnapshot:path callback:nil]);
+    XCTestExpectation *completion = [self expectationWithDescription:@"Invalid snapshot path"];
+    [view takeBTSHeapSnapshot:path
+                     callback:^(BOOL success) {
+                       XCTAssertFalse(success);
+                       XCTAssertFalse([NSThread isMainThread]);
+                       [completion fulfill];
+                     }];
+  }
+  [self waitForExpectationsWithTimeout:5 handler:nil];
+}
+
+- (void)testHeapSnapshotRejectsDisabledRuntime {
+  LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+    builder.enableJSRuntime = NO;
+  }];
+  XCTestExpectation *completion = [self expectationWithDescription:@"Disabled runtime"];
+  NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"disabled.heapsnapshot"];
+  [view takeBTSHeapSnapshot:path
+                   callback:^(BOOL success) {
+                     XCTAssertFalse(success);
+                     XCTAssertFalse([NSThread isMainThread]);
+                     [completion fulfill];
+                   }];
+  [self waitForExpectationsWithTimeout:5 handler:nil];
+}
+
+- (void)testHeapSnapshotFromBackgroundThreadAfterDestroy {
+  LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+    builder.enableJSRuntime = NO;
+  }];
+  [view clearForDestroy];
+  XCTestExpectation *completion = [self expectationWithDescription:@"Destroyed view"];
+  dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+    [view takeBTSHeapSnapshot:@"/unused.heapsnapshot"
+                     callback:^(BOOL success) {
+                       XCTAssertFalse(success);
+                       XCTAssertFalse([NSThread isMainThread]);
+                       [completion fulfill];
+                     }];
+    // A completion is optional, including on the failure path.
+    [view takeBTSHeapSnapshot:@"/unused.heapsnapshot" callback:nil];
+  });
+  [self waitForExpectationsWithTimeout:5 handler:nil];
+}
 
 - (void)testLogicExecutorPreservesGlobalEventsWithoutPerViewRuntime {
   RuntimeTestLogicExecutor *executor = [RuntimeTestLogicExecutor new];
