@@ -10,6 +10,7 @@
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView.h>
+#import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 
 #import "LynxUI+Private.h"
@@ -180,6 +181,171 @@
 
   [self waitForExpectations:@[ context.reportExpectation ] timeout:0.1];
   XCTAssertEqual(context.reportCount, 0U);
+}
+
+- (void)testInitialPositionChangeListenerRegistration {
+  LynxComponentScopeRegistry *registry = [LynxComponentScopeRegistry new];
+  [LynxComponentScopeRegistry registerBuiltInBehaviors:registry];
+  LynxUIOwner *owner = [[LynxUIOwner alloc] initWithContainerView:[LynxView new]
+                                                componentRegistry:registry
+                                                    screenMetrics:nil];
+  id rectCache = OCMStrictClassMock([NSMapTable class]);
+  [owner setValue:rectCache forKey:@"lastPositionChangeRects"];
+  NSSet<NSString *> *responseChainEvents = [NSSet setWithObject:@"positionchange(bindEvent)"];
+  NSSet<NSString *> *globalBindEvents = [NSSet setWithObject:@"positionchange(global-bindEvent)"];
+
+  [owner createUIWithSign:1
+                  tagName:@"view"
+                 eventSet:responseChainEvents
+            lepusEventSet:nil
+                    props:nil
+                nodeIndex:0
+       gestureDetectorSet:nil];
+  [owner createUIWithSign:2
+                  tagName:@"view"
+                 eventSet:globalBindEvents
+            lepusEventSet:nil
+                    props:nil
+                nodeIndex:0
+       gestureDetectorSet:nil];
+  [owner createUIWithSign:3
+                  tagName:@"view"
+                 eventSet:nil
+            lepusEventSet:[NSSet setWithObject:@"positionchange(catchEvent)"]
+                    props:nil
+                nodeIndex:0
+       gestureDetectorSet:nil];
+  [owner createUIWithSign:4
+                  tagName:@"view"
+                 eventSet:nil
+            lepusEventSet:nil
+                    props:nil
+                nodeIndex:0
+       gestureDetectorSet:nil];
+
+  NSSet<NSNumber *> *listeners = [owner valueForKey:@"positionChangeListeners"];
+  XCTAssertTrue([listeners containsObject:@1]);
+  XCTAssertFalse([listeners containsObject:@2]);
+  XCTAssertTrue([listeners containsObject:@3]);
+  XCTAssertFalse([listeners containsObject:@4]);
+}
+
+- (void)testResolvedClassCreationRegistersPositionChangeListener {
+  LynxUIOwner *owner = [[LynxUIOwner alloc] initWithContainerView:[LynxView new]
+                                                componentRegistry:nil
+                                                    screenMetrics:nil];
+  id rectCache = OCMStrictClassMock([NSMapTable class]);
+  [owner setValue:rectCache forKey:@"lastPositionChangeRects"];
+
+  [owner createUISyncWithSign:1
+                      tagName:@"view"
+                        clazz:[LynxUIView class]
+               supportedState:LynxSupportedTag
+                     eventSet:[NSSet setWithObject:@"positionchange(bindEvent)"]
+                lepusEventSet:nil
+                        props:nil
+                    nodeIndex:0
+           gestureDetectorSet:nil];
+
+  [owner createUISyncWithSign:2
+                      tagName:@"view"
+                        clazz:[LynxUIView class]
+               supportedState:LynxSupportedTag
+                     eventSet:nil
+                lepusEventSet:nil
+                        props:nil
+                    nodeIndex:0
+           gestureDetectorSet:nil];
+
+  NSSet<NSNumber *> *listeners = [owner valueForKey:@"positionChangeListeners"];
+  XCTAssertTrue([listeners containsObject:@1]);
+  XCTAssertFalse([listeners containsObject:@2]);
+}
+
+- (void)testPositionChangeListenerUpdateRemovesDynamicUnbind {
+  LynxComponentScopeRegistry *registry = [LynxComponentScopeRegistry new];
+  [LynxComponentScopeRegistry registerBuiltInBehaviors:registry];
+  LynxUIOwner *owner = [[LynxUIOwner alloc] initWithContainerView:[LynxView new]
+                                                componentRegistry:registry
+                                                    screenMetrics:nil];
+  [owner createUIWithSign:1
+                  tagName:@"view"
+                 eventSet:[NSSet setWithObject:@"positionchange(bindEvent)"]
+            lepusEventSet:nil
+                    props:nil
+                nodeIndex:0
+       gestureDetectorSet:nil];
+
+  LynxUI *ui = [owner findUIBySign:1];
+  NSMapTable<LynxUI *, NSValue *> *rectCache = [owner valueForKey:@"lastPositionChangeRects"];
+  [rectCache setObject:[NSValue valueWithCGRect:CGRectMake(1, 2, 3, 4)] forKey:ui];
+  XCTAssertNotNil([owner valueForKey:@"positionChangeObserver"]);
+
+  [owner updateUIWithSign:1
+                    props:nil
+                 eventSet:[NSSet set]
+            lepusEventSet:nil
+       gestureDetectorSet:nil];
+
+  NSSet<NSNumber *> *listeners = [owner valueForKey:@"positionChangeListeners"];
+  XCTAssertFalse([listeners containsObject:@1]);
+  XCTAssertNil([rectCache objectForKey:ui]);
+  XCTAssertNil([owner valueForKey:@"positionChangeObserver"]);
+  XCTAssertFalse([[owner valueForKey:@"positionChangeDispatchPending"] boolValue]);
+}
+
+- (void)testUnregisteredPositionChangeListenerSkipsCleanup {
+  LynxComponentScopeRegistry *registry = [LynxComponentScopeRegistry new];
+  [LynxComponentScopeRegistry registerBuiltInBehaviors:registry];
+  LynxUIOwner *owner = [[LynxUIOwner alloc] initWithContainerView:[LynxView new]
+                                                componentRegistry:registry
+                                                    screenMetrics:nil];
+  [owner createUIWithSign:1
+                  tagName:@"view"
+                 eventSet:nil
+            lepusEventSet:nil
+                    props:nil
+                nodeIndex:0
+       gestureDetectorSet:nil];
+  id rectCache = OCMStrictClassMock([NSMapTable class]);
+  [owner setValue:rectCache forKey:@"lastPositionChangeRects"];
+
+  [owner updateUIWithSign:1
+                    props:nil
+                 eventSet:[NSSet setWithObject:@"positionchange(global-bindEvent)"]
+            lepusEventSet:nil
+       gestureDetectorSet:nil];
+  [owner recycleNode:1];
+
+  XCTAssertEqual([[owner valueForKey:@"positionChangeListeners"] count], 0U);
+  XCTAssertNil([owner valueForKey:@"positionChangeObserver"]);
+  XCTAssertNil([owner findUIBySign:1]);
+}
+
+- (void)testRecycledPositionChangeListenerClearsRectCache {
+  LynxComponentScopeRegistry *registry = [LynxComponentScopeRegistry new];
+  [LynxComponentScopeRegistry registerBuiltInBehaviors:registry];
+  LynxUIOwner *owner = [[LynxUIOwner alloc] initWithContainerView:[LynxView new]
+                                                componentRegistry:registry
+                                                    screenMetrics:nil];
+  [owner createUIWithSign:1
+                  tagName:@"view"
+                 eventSet:[NSSet setWithObject:@"positionchange(bindEvent)"]
+            lepusEventSet:nil
+                    props:nil
+                nodeIndex:0
+       gestureDetectorSet:nil];
+  LynxUI *ui = [owner findUIBySign:1];
+  NSMapTable<LynxUI *, NSValue *> *rectCache = [owner valueForKey:@"lastPositionChangeRects"];
+  [rectCache setObject:[NSValue valueWithCGRect:CGRectMake(1, 2, 3, 4)] forKey:ui];
+
+  [owner recycleNode:1];
+
+  XCTAssertNil([owner findUIBySign:1]);
+  XCTAssertNil([rectCache objectForKey:ui]);
+  XCTAssertEqual([[owner valueForKey:@"positionChangeListeners"] count], 0U);
+  XCTAssertNil([owner valueForKey:@"positionChangeObserver"]);
+  XCTAssertFalse([[owner valueForKey:@"positionChangeDispatchPending"] boolValue]);
 }
 
 @end

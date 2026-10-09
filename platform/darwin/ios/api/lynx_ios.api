@@ -4506,6 +4506,7 @@ public class LynxTouchEvent : LynxEvent {
   public NSDictionary* LynxTouchEvent::touchMap touchMap;
   public NSMutableDictionary* LynxTouchEvent::uiTouchMap uiTouchMap;
   public NSMutableDictionary<NSString *, id<LynxEventTargetBase> >* LynxTouchEvent::activeUIMap activeUIMap;
+  public NSDictionary<NSNumber *, NSValue *>* LynxTouchEvent::currentTargetPointMap currentTargetPointMap;
   public instancetype LynxTouchEvent::initWithName:targetTag:(NSString *name,[targetTag] NSInteger target);
   public instancetype LynxTouchEvent::initWithName:targetTag:touchPoint:(NSString *name,[targetTag] NSInteger target,[touchPoint] CGPoint point);
   public instancetype LynxTouchEvent::initWithName:targetTag:clientPoint:pagePoint:viewPoint:(NSString *name,[targetTag] NSInteger tag,[clientPoint] CGPoint clientPoint,[pagePoint] CGPoint pagePoint,[viewPoint] CGPoint viewPoint);

@@ -7,6 +7,7 @@
 #import <Lynx/LynxContext+Private.h>
 #import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxEvent.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxFontFaceManager.h>
@@ -39,6 +40,7 @@
 #import <Lynx/UIView+Lynx.h>
 #import "LynxFeatureCounter.h"
 #import "LynxGestureArenaManager.h"
+#import "LynxGlobalObserver+Internal.h"
 #import "LynxTraceEventDef.h"
 #import "LynxUIIntersectionObserver.h"
 #import "LynxUIOwner+Accessibility.h"
@@ -48,6 +50,11 @@
 // TODO(zhengsenyao): For white-screen problem investigation of preLayout, remove it later.
 // constant defined in LynxContext.m
 extern NSString* const kDefaultComponentID;
+static NSString* const kPositionChangeEvent = @"positionchange";
+
+@interface LynxUI (ResponseChainEvent)
+- (BOOL)hasResponseChainEvent:(NSString*)eventName;
+@end
 
 #pragma mark LynxUIContext (Internal)
 
@@ -127,6 +134,10 @@ extern NSString* const kDefaultComponentID;
 @implementation LynxUIOwner {
   BOOL _enableDetailLog;
   LynxEmbeddedMode _embeddedMode;
+  NSMutableSet<NSNumber*>* _positionChangeListeners;
+  NSMapTable<LynxUI*, NSValue*>* _lastPositionChangeRects;
+  callback _positionChangeObserver;
+  BOOL _positionChangeDispatchPending;
 }
 
 - (void)attachContainerView:(UIView<LUIBodyView>* _Nonnull)containerView {
@@ -175,6 +186,8 @@ extern NSString* const kDefaultComponentID;
     _externalMemoryReportCandidateIds = [[NSMutableSet alloc] init];
     _a11yMutationList = [[NSMutableArray alloc] init];
     _foregroundListeners = [[NSMutableArray alloc] init];
+    _positionChangeListeners = [[NSMutableSet alloc] init];
+    _lastPositionChangeRects = [NSMapTable weakToStrongObjectsMapTable];
     // make sure singleton `LynxEnv` is already initialized
     // for registry of some LynxUI
     [LynxEnv sharedInstance];
@@ -245,6 +258,7 @@ extern NSString* const kDefaultComponentID;
 }
 
 - (void)dealloc {
+  [self stopPositionChangeObservation];
   [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -470,6 +484,9 @@ extern NSString* const kDefaultComponentID;
          gestureDetectorSet:gestureDetectorSet];
 
     [_uiHolder setObject:ui forKey:[NSNumber numberWithInteger:sign]];
+    if ([ui hasResponseChainEvent:kPositionChangeEvent]) {
+      [self addPositionChangeListener:sign];
+    }
     // Report the usage of the component.
     [self componentStatistic:tagName];
     [self updateComponentIdToUiIdMapIfNeedWithSign:sign tagName:tagName props:props];
@@ -573,6 +590,9 @@ extern NSString* const kDefaultComponentID;
     return;
   }
   [_uiHolder setObject:ui forKey:[NSNumber numberWithInteger:sign]];
+  if ([ui hasResponseChainEvent:kPositionChangeEvent]) {
+    [self addPositionChangeListener:sign];
+  }
   // Report the usage of the component.
   [self componentStatistic:tagName];
   [self updateComponentIdToUiIdMapIfNeedWithSign:sign tagName:tagName props:props];
@@ -722,6 +742,7 @@ extern NSString* const kDefaultComponentID;
                  eventSet:eventSet
             lepusEventSet:lepusEventSet
        gestureDetectorSet:gestureDetectorSet];
+  [self updatePositionChangeListener:ui];
 
   [self updatePropsWithUI:ui props:props isCreateUI:NO];
   [ui propsDidUpdateForUIOwner];
@@ -817,6 +838,7 @@ extern NSString* const kDefaultComponentID;
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
                      [UI_OWNER_REMOVE stringByAppendingString:node.tagName ?: @""])
 
+  [self removePositionChangeListener:node.sign];
   [_uiHolder removeObjectForKey:@(node.sign)];
   [_externalMemoryReportCandidateIds removeObject:@(node.sign)];
   [self removeLynxUIFromNameLynxUIMap:node];
@@ -1078,6 +1100,9 @@ extern NSString* const kDefaultComponentID;
 }
 
 - (void)reset {
+  [_positionChangeListeners removeAllObjects];
+  [_lastPositionChangeRects removeAllObjects];
+  [self stopPositionChangeObservation];
   [_uiContext.uiExposure destroyExposure];
   [_uiContext.intersectionManager destroyIntersectionObserver];
   [_componentIdToUiIdHolder removeAllObjects];
@@ -1330,7 +1355,127 @@ extern NSString* const kDefaultComponentID;
   [_uiContext.intersectionManager didMoveToWindow:windowIsNil];
   if (!windowIsNil) {
     [self resumeAnimation];
+    [self requestPositionChangeEvents];
   }
+}
+
+- (void)updatePositionChangeListener:(LynxUI*)ui {
+  if ([ui hasResponseChainEvent:kPositionChangeEvent]) {
+    [self addPositionChangeListener:ui.sign];
+    [_lastPositionChangeRects removeObjectForKey:ui];
+  } else {
+    [self removePositionChangeListener:ui.sign];
+  }
+}
+
+- (void)addPositionChangeListener:(NSInteger)sign {
+  if (![_positionChangeListeners containsObject:@(sign)]) {
+    [_positionChangeListeners addObject:@(sign)];
+    [self startPositionChangeObservation];
+  }
+  [self requestPositionChangeEvents];
+}
+
+- (void)removePositionChangeListener:(NSInteger)sign {
+  NSNumber* key = @(sign);
+  if (![_positionChangeListeners containsObject:key]) {
+    return;
+  }
+  LynxUI* ui = _uiHolder[key];
+  if (ui != nil) {
+    [_lastPositionChangeRects removeObjectForKey:ui];
+  }
+  [_positionChangeListeners removeObject:key];
+  if (_positionChangeListeners.count == 0) {
+    [self stopPositionChangeObservation];
+  }
+}
+
+- (void)startPositionChangeObservation {
+  if (_positionChangeObserver != nil) {
+    return;
+  }
+  __weak typeof(self) weakSelf = self;
+  _positionChangeObserver = ^(NSDictionary* options) {
+    [weakSelf requestPositionChangeEvents];
+  };
+  [_uiContext.observer addLayoutObserver:_positionChangeObserver];
+  [_uiContext.observer addScrollObserver:_positionChangeObserver];
+}
+
+- (void)stopPositionChangeObservation {
+  _positionChangeDispatchPending = NO;
+  if (_positionChangeObserver == nil) {
+    return;
+  }
+  [_uiContext.observer removeLayoutObserver:_positionChangeObserver];
+  [_uiContext.observer removeScrollObserver:_positionChangeObserver];
+  _positionChangeObserver = nil;
+}
+
+- (void)requestPositionChangeEvents {
+  if (_positionChangeListeners.count == 0 || _positionChangeDispatchPending) {
+    return;
+  }
+  _positionChangeDispatchPending = YES;
+  __weak typeof(self) weakSelf = self;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (strongSelf == nil || !strongSelf->_positionChangeDispatchPending) {
+      return;
+    }
+    [strongSelf dispatchPositionChangeEventsNow];
+  });
+}
+
+- (void)dispatchPositionChangeEventsNow {
+  _positionChangeDispatchPending = NO;
+  if (_positionChangeListeners.count == 0) {
+    return;
+  }
+  if (_rootUI.view.window == nil) {
+    return;
+  }
+  for (NSNumber* sign in [_positionChangeListeners copy]) {
+    LynxUI* ui = _uiHolder[sign];
+    if (ui == nil || ![self isUIAttachedToRoot:ui]) {
+      continue;
+    }
+    if (![ui hasResponseChainEvent:kPositionChangeEvent]) {
+      [self removePositionChangeListener:sign.integerValue];
+      continue;
+    }
+    UIWindow* window = ui.view.window;
+    if (window == nil) {
+      continue;
+    }
+    CGRect rect = [ui.view convertRect:ui.view.bounds toView:window];
+    NSValue* lastRect = [_lastPositionChangeRects objectForKey:ui];
+    if (lastRect != nil && CGRectEqualToRect(lastRect.CGRectValue, rect)) {
+      continue;
+    }
+    [_lastPositionChangeRects setObject:[NSValue valueWithCGRect:rect] forKey:ui];
+    NSMutableDictionary* detail = [[ui buildLayoutChangeEventDetail] mutableCopy];
+    detail[@"windowX"] = @(rect.origin.x);
+    detail[@"windowY"] = @(rect.origin.y);
+    detail[@"width"] = @(rect.size.width);
+    detail[@"height"] = @(rect.size.height);
+    LynxCustomEvent* event = [[LynxDetailEvent alloc] initWithName:kPositionChangeEvent
+                                                        targetSign:ui.sign
+                                                            detail:detail];
+    [ui.context.eventEmitter sendCustomEvent:event];
+  }
+  if (_positionChangeListeners.count == 0) {
+    [self stopPositionChangeObservation];
+  }
+}
+
+- (BOOL)isUIAttachedToRoot:(LynxUI*)ui {
+  LynxUI* current = ui;
+  while (current != nil && current != _rootUI) {
+    current = current.parent;
+  }
+  return current == _rootUI;
 }
 
 #pragma mark - property: nameLynxUIMap related
