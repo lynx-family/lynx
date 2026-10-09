@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) NSMutableArray<LynxWeakProxy *> *touchDeque;
 @property(nonatomic) int32_t tapSlop;
 @property(nonatomic) BOOL hasMultiTouch;
+@property(nonatomic, readonly) BOOL hasActivePlatformTouches;
 @property(nonatomic, weak) LynxGestureArenaManager *_Nullable gestureArenaManager;
 
 - (void)setupVelocityTracker:(UIView *)rootView;

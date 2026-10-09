@@ -83,6 +83,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)IsPlatformEventTargetIgnoreFocus:(NSInteger)rootSign point:(CGPoint)point;
 
+- (NSArray<NSNumber *> *)GetCachedConsumeSlideEventAngles;
+
 @end
 
 NS_ASSUME_NONNULL_END

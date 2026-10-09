@@ -28,6 +28,7 @@ public class NativePaintingContext implements IPaintingContext {
   private static final int PLATFORM_FOCUS_CAN_RESPOND_INDEX = 3;
 
   private long mNativePtr = 0;
+  @Nullable private float[] mPlatformConsumeSlideEventAngles;
 
   @NonNull private final PlatformRendererContext mPlatformRendererContext;
   private boolean mDestroyed = false;
@@ -51,6 +52,7 @@ public class NativePaintingContext implements IPaintingContext {
       return;
     }
     mDestroyed = true;
+    mPlatformConsumeSlideEventAngles = null;
 
     if (mNativePtr != 0) {
       nativeDestroy(mNativePtr);
@@ -94,6 +96,9 @@ public class NativePaintingContext implements IPaintingContext {
 
   @Override
   public boolean dispatchPlatformMotionEvent(MotionEvent ev, int rootSign) {
+    if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
+      mPlatformConsumeSlideEventAngles = null;
+    }
     if (mNativePtr == 0 || mDestroyed) {
       return false;
     }
@@ -115,7 +120,11 @@ public class NativePaintingContext implements IPaintingContext {
       fEventData[base + 1] = ev.getX(pointerIndex);
       fEventData[base + 2] = ev.getY(pointerIndex);
     }
-    return nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
+    boolean consumed = nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
+    if (actionMasked == MotionEvent.ACTION_DOWN && consumed) {
+      mPlatformConsumeSlideEventAngles = nativeGetPlatformConsumeSlideEventAngles(mNativePtr);
+    }
+    return consumed;
   }
 
   @Override
@@ -127,6 +136,11 @@ public class NativePaintingContext implements IPaintingContext {
     return focusInfo != null && focusInfo.length >= PLATFORM_FOCUS_INFO_SIZE
         ? focusInfo[PLATFORM_FOCUS_TARGET_SIGN_INDEX]
         : -1;
+  }
+
+  @Override
+  public float[] getPlatformConsumeSlideEventAngles() {
+    return mPlatformConsumeSlideEventAngles;
   }
 
   @Override
@@ -222,6 +236,8 @@ public class NativePaintingContext implements IPaintingContext {
   native void nativeDispatchPlatformTap(long nativePtr);
 
   native int[] nativeGetPlatformFocusInfo(long nativePtr);
+
+  native float[] nativeGetPlatformConsumeSlideEventAngles(long nativePtr);
 
   native void nativeSetPlatformEventRootActive(long nativePtr, int rootSign, boolean active);
 

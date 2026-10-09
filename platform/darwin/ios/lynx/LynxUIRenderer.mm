@@ -472,6 +472,18 @@ static id<LynxServiceTextProtocol> getTextService() {
   return NO;
 }
 
+- (NSArray<NSNumber *> *)GetCachedConsumeSlideEventAngles {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    const auto &angles = platform_ref->GetCachedConsumeSlideEventAngles();
+    NSMutableArray<NSNumber *> *result = [NSMutableArray arrayWithCapacity:angles.size()];
+    for (float angle : angles) {
+      [result addObject:@(angle)];
+    }
+    return result;
+  }
+  return @[];
+}
+
 - (LynxGestureArenaManager *)getGestureArenaManager {
   return _uiOwner.gestureArenaManager;
 }

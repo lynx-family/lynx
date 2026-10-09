@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
                            offsetY:(CGFloat)offsetY;
 - (BOOL)IsPlatformEventTargetEventThrough:(NSInteger)rootSign point:(CGPoint)point;
 - (BOOL)IsPlatformEventTargetIgnoreFocus:(NSInteger)rootSign point:(CGPoint)point;
+- (NSArray<NSNumber*>*)GetCachedConsumeSlideEventAngles;
 
 @end
 

@@ -216,6 +216,7 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
     int32_t event_target_root_id) {
   auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
   if (event_target_tree == nullptr) {
+    event_handler_->CacheConsumeSlideEventAngles(nullptr, nullptr);
     return false;
   }
   return event_handler_->OnInputEvent(event_target_tree, int_event_data,
@@ -255,11 +256,13 @@ bool NativePaintingCtxPlatformRef::IsPlatformEventTargetIgnoreFocus(
     int32_t event_target_root_id, float point_x, float point_y) {
   auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
   if (event_target_tree == nullptr) {
+    event_handler_->CacheConsumeSlideEventAngles(nullptr, nullptr);
     return false;
   }
 
   float root_point[2] = {point_x, point_y};
   auto hit_target = event_target_tree->HitTest(root_point);
+  event_handler_->CacheConsumeSlideEventAngles(event_target_tree, hit_target);
   return hit_target != nullptr && hit_target->IgnoreFocus();
 }
 

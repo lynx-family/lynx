@@ -1312,6 +1312,10 @@
   return [gesture.view isDescendantOfView:_eventHandler.rootView];
 }
 
+- (BOOL)hasActivePlatformTouches {
+  return _platformUITouches.count > 0;
+}
+
 - (BOOL)blockNativeEvent:(UIGestureRecognizer*)gestureRecognizer {
   id<LynxEventTarget> target = _eventHandler.touchTarget;
   BOOL res = NO;

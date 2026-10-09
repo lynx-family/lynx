@@ -5,6 +5,7 @@
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxView+Internal.h>
 #import <XElement/LynxOverlayContainer.h>
 
@@ -186,6 +187,11 @@
     NSInteger eventRootSign = [self.uiDelegate getSign];
     LynxTemplateRender *templateRender = ((LynxView *)rootView).templateRender;
     BOOL ignoreFocus = [templateRender IsPlatformEventTargetIgnoreFocus:eventRootSign point:point];
+    LynxTouchHandler *touchHandler = self.eventHandler.touchRecognizer;
+    if (!touchHandler.hasActivePlatformTouches) {
+      [self.eventHandler
+          updatePlatformConsumeSlideEventAngles:[templateRender GetCachedConsumeSlideEventAngles]];
+    }
     [self.eventHandler handleFocusOnView:view
                            withContainer:self
                                 andPoint:point

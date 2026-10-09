@@ -351,6 +351,11 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @Override
+  public float[] getPlatformConsumeSlideEventAngles() {
+    return null;
+  }
+
+  @Override
   public void dispatchPlatformLongPress() {}
 
   @Override

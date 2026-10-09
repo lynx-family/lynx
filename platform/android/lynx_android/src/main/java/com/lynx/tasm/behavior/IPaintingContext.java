@@ -25,6 +25,9 @@ public interface IPaintingContext {
   // Returns the native hit target sign, or -1 when no platform touch target is available.
   int getPlatformTouchTargetSign();
 
+  // Returns consume-slide-event angle intervals cached on the first pointer DOWN.
+  float[] getPlatformConsumeSlideEventAngles();
+
   void dispatchPlatformLongPress();
 
   void dispatchPlatformTap();

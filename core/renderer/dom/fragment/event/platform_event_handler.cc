@@ -188,7 +188,32 @@ void PlatformEventHandler::SetHasPointerPseudo(bool has_pointer_pseudo) {
   has_pointer_pseudo_ = has_pointer_pseudo_ || has_pointer_pseudo;
 }
 
+void PlatformEventHandler::CacheConsumeSlideEventAngles(
+    const fml::RefPtr<PlatformEventTarget>& target_tree,
+    const fml::RefPtr<PlatformEventTarget>& hit_target) {
+  consume_slide_event_angles_.clear();
+  if (!target_tree || !hit_target ||
+      hit_target->RootId() != target_tree->Sign()) {
+    return;
+  }
+
+  auto current = hit_target;
+  while (current && current->RootId() == target_tree->Sign()) {
+    for (const auto& range : current->ConsumeSlideEventAngles()) {
+      consume_slide_event_angles_.push_back(range[0]);
+      consume_slide_event_angles_.push_back(range[1]);
+    }
+    auto parent = current->ParentTarget();
+    if (current->IsRoot() || !parent || parent == current ||
+        parent->RootId() != target_tree->Sign()) {
+      break;
+    }
+    current = std::move(parent);
+  }
+}
+
 void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
+  const bool starts_pointer_sequence = target_pointer_map_.empty();
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
     int pointer_id = event.PointerID()[i];
@@ -200,9 +225,10 @@ void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
          " y:" + std::to_string(pointer_y) + " target:" +
          (hit_target ? std::to_string(hit_target->Sign()) : "null"))
     float down_point[2] = {pointer_x, pointer_y};
-    if (pointer_id == 0) {
+    if (starts_pointer_sequence && pointer_id == 0) {
       ResetFocusInfo();
       first_target_ = hit_target;
+      CacheConsumeSlideEventAngles(target_tree_, hit_target);
       memcpy(first_pointer_down_point_, down_point, sizeof(float) * 2);
       if (hit_target != nullptr) {
         hit_target_sign_ = hit_target->Sign();
