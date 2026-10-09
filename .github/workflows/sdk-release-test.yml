@@ -99,6 +99,11 @@ jobs:
           python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
       - name: Test SwiftPM publishing helpers
         run: python3 -m unittest tools.ios_tools.spm_publish_helper_test
+      - name: Inspect iPhoneOS SDK zlib headers
+        run: |-
+          sdk_path="$(xcrun --sdk iphoneos --show-sdk-path)"
+          echo "iPhoneOS SDK path: $sdk_path"
+          find "$sdk_path" -name zlib.h -print
       - name: Build SwiftPM XCFramework artifacts
         run: |-
           source tools/envsetup.sh
