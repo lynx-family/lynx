@@ -111,6 +111,11 @@ class SpmPublishHelperTest(unittest.TestCase):
             podfile,
         )
         self.assertNotIn("HEADER_SEARCH_PATHS", podfile)
+        self.assertIn(
+            "config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = "
+            "'$(inherited) CHROMIUM_ZLIB_NO_CHROMECONF=1'",
+            podfile,
+        )
         self.assertIn("use_frameworks! :linkage => :static", podfile)
         self.assertIn("installer.pod_targets", podfile)
         self.assertIn(helper.RESOLVED_SPECS_FILE, podfile)
