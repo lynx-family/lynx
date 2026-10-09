@@ -22,10 +22,28 @@ static NSString* const kCoreDebugJS = @"lynx_core_dev";
 static NSString* const kAssetsScheme = @"assets://";
 static NSString* const kLynxAssetsScheme = @"lynx_assets://";
 static NSString* const kAssetsCoreScheme = @"assets://lynx_core.js";
+static NSString* const kSwiftPackageResourceBundle = @"Lynx_LynxPackageSupport";
 
 static NSString* const kLoadScriptMethodName = @"LoadScript";
 static NSString* const kLoadLocalScriptMethodName = @"LoadLocalScript";
 static NSString* const kNullDataMsg = @"response with null data";
+
+NSURL* FindResourceBundle(NSString* name, NSBundle* framework_bundle) {
+  NSURL* bundle_url = [framework_bundle URLForResource:name withExtension:@"bundle"];
+  if (bundle_url) {
+    return bundle_url;
+  }
+  bundle_url = [[NSBundle mainBundle] URLForResource:name withExtension:@"bundle"];
+  if (bundle_url) {
+    return bundle_url;
+  }
+  NSURL* package_url = [[NSBundle mainBundle] URLForResource:kSwiftPackageResourceBundle
+                                               withExtension:@"bundle"];
+  if (!package_url) {
+    return nil;
+  }
+  return [[NSBundle bundleWithURL:package_url] URLForResource:name withExtension:@"bundle"];
+}
 
 void ReportError(__weak id<LynxErrorReceiverProtocol> weakErrorReceiver, NSString* methodName,
                  NSString* url, NSInteger code, NSString* errorMsg, NSString* rootCause) {
@@ -393,8 +411,7 @@ NSData* LynxResourceLoaderDarwin::LoadJSSource(const std::string& name) {
   NSBundle* devtoolFrameworkBundle = [NSBundle bundleForClass:inspectorOwnerClass];
   if ([kAssetsCoreScheme isEqualToString:str]) {
     str = [str componentsSeparatedByString:@"."][0];
-    NSURL* debugBundleUrl = [devtoolFrameworkBundle URLForResource:@"LynxDebugResources"
-                                                     withExtension:@"bundle"];
+    NSURL* debugBundleUrl = FindResourceBundle(@"LynxDebugResources", devtoolFrameworkBundle);
     if (path == nil && debugBundleUrl && LynxEnv.sharedInstance.devtoolEnabled) {
       NSBundle* bundle = [NSBundle bundleWithURL:debugBundleUrl];
       path = [bundle pathForResource:kCoreDebugJS ofType:@"js"];
@@ -404,7 +421,7 @@ NSData* LynxResourceLoaderDarwin::LoadJSSource(const std::string& name) {
     }
 
     if (path == nil) {
-      NSURL* bundleUrl = [frameworkBundle URLForResource:@"LynxResources" withExtension:@"bundle"];
+      NSURL* bundleUrl = FindResourceBundle(@"LynxResources", frameworkBundle);
       if (bundleUrl) {
         NSBundle* bundle = [NSBundle bundleWithURL:bundleUrl];
         path = [bundle pathForResource:[str substringFromIndex:[kAssetsScheme length]]
@@ -428,9 +445,8 @@ NSData* LynxResourceLoaderDarwin::LoadJSSource(const std::string& name) {
                             stringByAppendingString:[str substringFromIndex:[kAssetsScheme length]]]
                  ofType:@"js"];
   } else if ([str hasPrefix:kLynxAssetsScheme]) {
-    NSURL* bundleUrl = [frameworkBundle URLForResource:@"LynxResources" withExtension:@"bundle"];
-    NSURL* debugBundleUrl = [frameworkBundle URLForResource:@"LynxDebugResources"
-                                              withExtension:@"bundle"];
+    NSURL* bundleUrl = FindResourceBundle(@"LynxResources", frameworkBundle);
+    NSURL* debugBundleUrl = FindResourceBundle(@"LynxDebugResources", frameworkBundle);
     return LoadLynxJSAsset(name, *bundleUrl, *debugBundleUrl);
   }
   NSError* error = nil;
