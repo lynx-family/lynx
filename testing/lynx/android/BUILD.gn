@@ -8,6 +8,8 @@ source_set("build") {
   sources = [
     "gen/DisplayListItemBufferTest_jni.h",
     "gen/DisplayListItemBufferTest_register_jni.h",
+    "gen/FSPReportDispatcherTestHelper_jni.h",
+    "gen/FSPReportDispatcherTestHelper_register_jni.h",
     "gen/NativeDisplayListBuilder_jni.h",
     "gen/NativeDisplayListBuilder_register_jni.h",
   ]
