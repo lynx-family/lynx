@@ -350,6 +350,33 @@ export abstract class BaseApp<
     this._nativeApp = nativeApp;
   }
 
+  /**
+   * Re-evaluate this card's entry using its existing native loading context.
+   * The framework must retire its previous lifetime before calling this method.
+   * Module result caches are cleared; compiled factories remain reusable.
+   * @param updateData - Data passed to the new card's reload initialization.
+   * @param options - Options received from the native reload callback.
+   * @returns Whether the new card loaded successfully.
+   */
+  reloadCard(updateData?: object, options?: Record<string, unknown>): boolean {
+    this.__removeInternalEventListeners();
+    const cache = this.lynx.requireModule.cache;
+    for (const path of Object.keys(cache)) {
+      delete cache[path];
+    }
+    this.lynx.loadScript.cache = {};
+    return nativeGlobal.loadCard(
+      this.nativeApp,
+      {
+        ...this.params,
+        updateData,
+        processorName: options?.processorName as loadCardParams['processorName'],
+        isReload: true,
+      },
+      this.lynx.getNativeLynx()
+    );
+  }
+
   get params(): loadCardParams {
     return this._params;
   }

@@ -67,8 +67,10 @@ export class Lynx {
   private init(getApp?: () => BaseApp) {
     if (getApp) {
       this.getApp = getApp;
-      // TODO(liyanbo): merge or replace? now is replace.
-      this.__globalProps = this.getNativeLynx().__globalProps || {};
+      // Reload keeps the latest JS props; native only exposes initial props.
+      if (!getApp().params.isReload) {
+        this.__globalProps = this.getNativeLynx().__globalProps || {};
+      }
       this.__presetData = this.getNativeLynx().__presetData || {};
     } else {
       const cache = {};
@@ -124,8 +126,9 @@ export class Lynx {
       return;
     }
     // TODO(wangqingyu): deal with cyclic requireModule
-    this.getApp().requireModuleAsync<T>(path, (error, exports) => {
-      if (!error) {
+    const ownerApp = this.getApp();
+    ownerApp.requireModuleAsync<T>(path, (error, exports) => {
+      if (!error && this.getApp() === ownerApp) {
         // Only cache the exports when no error happends.
         this.requireModuleAsync.cache[path] = exports;
       }
