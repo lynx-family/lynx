@@ -10,6 +10,7 @@
 
 #include "base/include/debug/lynx_error.h"
 #include "base/include/fml/message_loop.h"
+#include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/to_underlying.h"
 #include "core/public/jsb/native_module_factory.h"
 #include "core/renderer/utils/base/tasm_constants.h"
@@ -28,6 +29,9 @@
 #include "core/runtime/js/mock_template_delegate.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/js/utils.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "lynx_sub_error_code.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -46,6 +50,13 @@ const int ERROR_CODE[ERROR_CODE_SIZE] = {
     error::E_NATIVE_MODULES_COMMON_AUTHORIZATION_ERROR,
     error::E_NATIVE_MODULES_COMMON_RETURN_ERROR,
     error::E_NATIVE_MODULES_EXCEPTION};
+
+void WaitForReportTasks() {
+  fml::AutoResetWaitableEvent done;
+  tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask(
+      [&done] { done.Signal(); });
+  done.Wait();
+}
 
 class MockVSyncObserver : public runtime::IVSyncObserver {
  public:
@@ -398,6 +409,77 @@ class AppTest : public JSITestBase {
 };
 
 TEST_P(AppTest, CreateAppTest) { EXPECT_TRUE(app); }
+
+TEST_P(AppTest, GetMemoryUsageReturnsQueryStatus) {
+  auto& settings = const_cast<tasm::performance::MemoryMonitor::Settings&>(
+      tasm::performance::MemoryMonitor::GetSettings());
+  const auto global_enabled = settings.global.enabled;
+  auto get_memory_usage = function(R"--(
+    function(nativeApp, callback) {
+      nativeApp.getMemoryUsage(callback);
+    }
+  )--");
+  auto run_query = [&] {
+    EXPECT_TRUE(
+        rt.global().setProperty(rt, "memoryUsageResult", Value::undefined()));
+    auto callback = function(R"--(
+      function(result) {
+        globalThis.memoryUsageResult = result;
+      }
+    )--");
+    auto native_app = Object::createFromHostObject(
+        rt,
+        std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
+    get_memory_usage.call(rt, {native_app, callback});
+    WaitForReportTasks();
+    fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  };
+  auto number = [&](const char* property) {
+    const auto code = std::string("globalThis.memoryUsageResult.") + property;
+    auto result = eval(code.c_str());
+    EXPECT_TRUE(result->isNumber());
+    return result->getNumber();
+  };
+
+  settings.global.enabled = 0;
+  run_query();
+  EXPECT_EQ(
+      number("status"),
+      static_cast<int32_t>(
+          tasm::performance::MemoryUsageQueryStatus::kMonitoringDisabled));
+  EXPECT_EQ(number("totalBytes"), 0);
+
+  settings.global.enabled = 1;
+  run_query();
+  EXPECT_EQ(number("status"),
+            static_cast<int32_t>(
+                tasm::performance::MemoryUsageQueryStatus::kInvalidInstance));
+  EXPECT_EQ(number("totalBytes"), 0);
+
+  const auto instance_id = static_cast<int32_t>(runtime->getRuntimeId());
+  auto& monitor = tasm::performance::GlobalMemoryMonitor::GetInstance();
+  monitor.OnInstanceCreated(instance_id, tasm::performance::MemoryNowMs(),
+                            [](auto& state) {
+                              state.usage.total_bytes = 42;
+                              state.usage.element_bytes = 12;
+                              state.usage.element_count = 2;
+                              state.usage.mts_bytes = 10;
+                              state.usage.bts_bytes = 8;
+                              state.usage.ui_bytes = 12;
+                            });
+  WaitForReportTasks();
+  run_query();
+  EXPECT_EQ(
+      number("status"),
+      static_cast<int32_t>(tasm::performance::MemoryUsageQueryStatus::kOk));
+  EXPECT_EQ(number("totalBytes"), 42);
+  EXPECT_EQ(number("elementCount"), 2);
+  EXPECT_EQ(number("btsHeapBytes"), 8);
+
+  monitor.OnInstanceDestroyed(instance_id, tasm::performance::MemoryNowMs());
+  WaitForReportTasks();
+  settings.global.enabled = global_enabled;
+}
 
 TEST_P(AppTest, DestroyKeepsNativeBindingsAliveUntilOwnerReset) {
   auto weak_app = app->GetWeakPtr();
