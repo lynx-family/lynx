@@ -618,6 +618,7 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
 
 - (void)setUpUIRendererWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
   _context = [[LynxContext alloc] initWithContainerView:_containerView];
+  _context.hasLynxViewGroup = builder.lynxViewGroup != nil;
   _context.engineProxy = _lynxEngineProxy;
   _context.enableJSRuntime = _enableJSRuntime;
   [_context setEmbeddedMode:_embeddedMode];
