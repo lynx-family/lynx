@@ -298,6 +298,7 @@ subspec_target("js_debug") {
   dependency = js_debug_dependency
   if (defined(enable_rts_runtime) && enable_rts_runtime && is_debug &&
       !use_flatten_deps) {
+    # Keep the header search path aligned with the selected RTS runtime pod.
     pod_target_xcconfig.HEADER_SEARCH_PATHS += [ "//PODS_ROOT/PrimTS/src/" ]
     deps += [
       "../../../../../devtool/js_inspect/rts:rts_debug",
