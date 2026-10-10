@@ -4,6 +4,7 @@
 #ifndef CORE_RUNTIME_JS_BINDINGS_API_CALL_BACK_H_
 #define CORE_RUNTIME_JS_BINDINGS_API_CALL_BACK_H_
 
+#include <cstdint>
 #include <memory>
 #include <unordered_map>
 
@@ -60,15 +61,18 @@ class ApiCallBackManager {
 
 class CallBackHolder {
  public:
-  CallBackHolder(Function func);
+  CallBackHolder(Function func, int32_t alloc_slot);
 
   ~CallBackHolder() = default;
 
   template <typename... Args>
   void InvokeWithValue(Runtime* rt, Args&&... values);
 
+  int32_t alloc_slot() const { return alloc_slot_; }
+
  private:
   Function function_;
+  int32_t alloc_slot_;
 };
 
 }  // namespace js
