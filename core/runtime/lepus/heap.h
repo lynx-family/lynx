@@ -4,6 +4,8 @@
 #ifndef CORE_RUNTIME_LEPUS_HEAP_H_
 #define CORE_RUNTIME_LEPUS_HEAP_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "core/runtime/lepus/op_code.h"
@@ -13,9 +15,31 @@ namespace lynx {
 namespace lepus {
 class Heap {
  public:
-  Heap() : heap_(kBaseHeapSize) { top_ = &heap_[0]; }
+  Heap() : heap_(kBaseHeapSize) { top_ = heap_.data(); }
+
+  bool ContainsRange(const RestrictedValue* begin, size_t slot_count) const {
+    const auto heap_begin = reinterpret_cast<uintptr_t>(heap_.data());
+    const auto heap_end = heap_begin + heap_.size() * sizeof(RestrictedValue);
+    const auto range_begin = reinterpret_cast<uintptr_t>(begin);
+    if (range_begin < heap_begin || range_begin > heap_end ||
+        (range_begin - heap_begin) % sizeof(RestrictedValue) != 0) {
+      return false;
+    }
+    return slot_count <= (heap_end - range_begin) / sizeof(RestrictedValue);
+  }
+
+  RestrictedValue* Allocate(size_t slot_count) {
+    if (!ContainsRange(top_, slot_count)) {
+      return nullptr;
+    }
+    auto* result = top_;
+    top_ += slot_count;
+    return result;
+  }
+
+  size_t capacity() const { return heap_.size(); }
   RestrictedValue* top_;
-  RestrictedValue* base() { return &heap_[0]; }
+  RestrictedValue* base() { return heap_.data(); }
 
  private:
   friend class ContextBinaryWriter;
