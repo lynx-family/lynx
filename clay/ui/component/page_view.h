@@ -554,6 +554,19 @@ class PageView : public BaseView,
   void PlatformHideSoftInput() override;
 
   void SetupIsolatedGestures();
+  virtual bool ReadTouchTapMovementSetting() const;
+  void TrackTouchTapMovementForPointerDown(const PointerEvent& event,
+                                           const HitTestResult& result);
+  void UpdateTouchTapMovementTargets(const std::vector<PointerEvent>& events);
+  void SuppressTouchTapMovementForGesture(int pointer_id,
+                                          GestureRecognizerType type);
+  bool AllowsTouchTapMovement(int pointer_id) const;
+  bool CanExtendTouchTapMovementAtTarget(BaseView* target) const;
+  BaseView* ResolveTouchTapMovementTarget(const PointerEvent& event,
+                                          BaseView* target) const;
+  bool DispatchPointerEventBatch(std::vector<PointerEvent> events);
+  void ClearTouchTapMovementForEndedEvents(
+      const std::vector<PointerEvent>& events);
   bool HasActiveFling() const;
   void MarkTapSuppressedPointersForFlingStop(
       const std::vector<PointerEvent>& events);
@@ -656,6 +669,17 @@ class PageView : public BaseView,
   // view, regardless of whether the touch point remains within the view's
   // boundaries.
   std::unordered_map<int, int> touch_view_map_;
+  struct TouchTapMovementState {
+    fml::WeakPtr<BaseView> target;
+    FloatPoint down_position;
+    GestureRecognizerType accepted_gesture = GestureRecognizerType::kNone;
+    bool extended = false;
+    bool target_changed = false;
+    bool suppressed = false;
+  };
+  // Weak identity prevents a deleted view or reused numeric ID from receiving
+  // the extended-movement tap. Suppression is sticky until the sequence ends.
+  std::unordered_map<int, TouchTapMovementState> touch_tap_movement_states_;
   // Only the initial touch drives :active. Its pointer ID prevents unrelated
   // touch end or cancel events from clearing the active view chain.
   std::optional<int> active_touch_pointer_id_;

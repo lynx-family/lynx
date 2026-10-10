@@ -20,6 +20,7 @@
 #include "base/include/fml/time/time_delta.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/screenshot.h"
+#include "clay/common/trail_settings.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/fml/logging.h"
@@ -322,6 +323,7 @@ void PageView::InitManagers() {
       [this](const PointerEvent& event, const HitTestResult& result) {
         isolated_gesture_detector_.TrackScrollTapSuppressionForPointerDown(
             event, result);
+        TrackTouchTapMovementForPointerDown(event, result);
 #if defined(OS_WIN) || defined(OS_MAC)
         if (IsTouchLikePointerDevice(event.device)) {
 #else
@@ -338,6 +340,10 @@ void PageView::InitManagers() {
           return;
         }
         ResignFirstResponderIfNeeded(GetFirstNonAnonymousHitTestTarget(result));
+      });
+  gesture_manager_->SetListenerForGestureAccepted(
+      [this](int pointer_id, GestureRecognizerType type) {
+        SuppressTouchTapMovementForGesture(pointer_id, type);
       });
   gesture_manager_->SetGestureHandlerDispatcher(
       gesture_handler_dispatcher_.get());
@@ -959,6 +965,26 @@ void PageView::SetEnablePointerEvents(bool enabled) {
 }
 
 bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
+  // Complete each movement-compatible touch pipeline before the next
+  // event. Otherwise a later down can overwrite an earlier sequence in a batch.
+  // Split before physical-pixel conversion; the OFF path keeps batch ordering.
+  if (events.size() > 1 &&
+      (!touch_tap_movement_states_.empty() ||
+       (std::any_of(events.begin(), events.end(),
+                    [](const auto& event) {
+                      return event.device == PointerEvent::DeviceType::kTouch;
+                    }) &&
+        ReadTouchTapMovementSetting()))) {
+    bool consumed = false;
+    for (const auto& event : events) {
+      consumed |= DispatchPointerEventBatch({event});
+    }
+    return consumed;
+  }
+  return DispatchPointerEventBatch(std::move(events));
+}
+
+bool PageView::DispatchPointerEventBatch(std::vector<PointerEvent> events) {
 #if defined(OS_WIN) || defined(OS_MAC)
   // Pen compatibility historically completes each input before the next one.
   if (events.size() > 1 &&
@@ -1031,6 +1057,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
 #endif
 
   // For Lynx event&gesture report
+  UpdateTouchTapMovementTargets(legacy_events);
   if (consumed) {
     // if not consumed by clay elements, it should not be consumed by lynx as
     // well.
@@ -1052,6 +1079,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
   isolated_gesture_detector_.ClearScrollTapSuppressionForEndedEvents(
       legacy_events);
   ClearTapSuppressedPointersForEndedEvents(legacy_events);
+  ClearTouchTapMovementForEndedEvents(legacy_events);
   for (const auto& event : legacy_events) {
     if (event.type == PointerEvent::EventType::kUpEvent ||
         event.type == PointerEvent::EventType::kCancel) {
@@ -1320,6 +1348,17 @@ void PageView::SetupIsolatedGestures() {
   auto tap_recognizer = std::make_unique<TapGestureRecognizer>(
       isolated_gesture_detector_.gesture_manager());
   tap_recognizer->SetTaskRunner(GetTaskRunner());
+  tap_recognizer->SetAllowTouchMovementCallback(
+      [this](const PointerEvent& event) {
+        return AllowsTouchTapMovement(event.pointer_id);
+      });
+  tap_recognizer->SetTouchMovementBeyondToleranceCallback(
+      [this](int pointer_id) {
+        const auto it = touch_tap_movement_states_.find(pointer_id);
+        if (it != touch_tap_movement_states_.end()) {
+          it->second.extended = true;
+        }
+      });
   tap_recognizer->SetTapUpCallback([this](const PointerEvent& event) {
     if (isolated_gesture_detector_.ShouldSuppressTapForScrollDrag(
             event.pointer_id)) {
@@ -1370,6 +1409,160 @@ void PageView::SetupIsolatedGestures() {
   long_press_recognizer->SetTaskRunner(GetTaskRunner());
   long_press_gesture_recognizer_ = long_press_recognizer.get();
   isolated_gesture_detector_.AddRecognizer(std::move(long_press_recognizer));
+}
+
+bool PageView::ReadTouchTapMovementSetting() const {
+  return __is_target_os(ios) &&
+         setting::CLAY_IOS_ALLOW_TOUCH_TAP_AFTER_MOVEMENT.value();
+}
+
+void PageView::TrackTouchTapMovementForPointerDown(
+    const PointerEvent& event, const HitTestResult& result) {
+  if (event.device != PointerEvent::DeviceType::kTouch) {
+    return;
+  }
+  touch_tap_movement_states_.erase(event.pointer_id);
+  // A second touch cannot turn a multi-pointer gesture into an extended tap.
+  for (auto& [_, state] : touch_tap_movement_states_) {
+    state.suppressed = true;
+  }
+  if (!ReadTouchTapMovementSetting()) {
+    return;
+  }
+  auto* target = GetFirstNonAnonymousHitTestTarget(result);
+  if (!target || !target->attach_to_tree() || target->Is<NativeView>()) {
+    return;
+  }
+  for (const auto& hit_target : result) {
+    auto* view = static_cast<BaseView*>(hit_target.get());
+    if (view && (view->Is<NativeView>() || view->ShouldPassEventToNative() ||
+                 view->HasDragGestureRecognizerWithNonDefaultSlop() ||
+                 !view->GetGestureDetectorMap().empty() ||
+                 view->HasConsumeSlideEventAngles() ||
+                 view->ShouldInterceptGesture())) {
+      // Gesture API, native mediation, and consume-slide paths retain their
+      // original movement threshold rather than bypassing their ownership.
+      return;
+    }
+  }
+  touch_tap_movement_states_.emplace(
+      event.pointer_id,
+      TouchTapMovementState{target->GetWeakPtr(), event.position,
+                            GestureRecognizerType::kNone, false, false,
+                            active_touch_pointer_id_.has_value() &&
+                                *active_touch_pointer_id_ != event.pointer_id});
+}
+
+void PageView::UpdateTouchTapMovementTargets(
+    const std::vector<PointerEvent>& events) {
+  for (const auto& event : events) {
+    if (event.device != PointerEvent::DeviceType::kTouch) {
+      continue;
+    }
+    const auto it = touch_tap_movement_states_.find(event.pointer_id);
+    if (it == touch_tap_movement_states_.end()) {
+      continue;
+    }
+    if (event.type == PointerEvent::EventType::kCancel) {
+      it->second.suppressed = true;
+      continue;
+    }
+    if (event.type != PointerEvent::EventType::kMoveEvent) {
+      continue;
+    }
+    auto* down_target = it->second.target.get();
+    FloatPoint unused;
+    it->second.target_changed =
+        !down_target || !down_target->attach_to_tree() ||
+        down_target != GetTopViewToAcceptEvent(event.position, &unused);
+    // A sole drag recognizer may win by default on down. Only actual movement
+    // in its accepted axis makes this sequence a drag rather than a tap.
+    const auto delta = event.position - it->second.down_position;
+    const float slop = ConvertFrom<kPixelTypeLogical>(kTouchSlop);
+    const auto type = it->second.accepted_gesture;
+    if ((type == GestureRecognizerType::kDragGesture &&
+         delta.distance() > slop) ||
+        (type == GestureRecognizerType::kHorizontalDrag &&
+         std::abs(delta.x()) > slop) ||
+        (type == GestureRecognizerType::kVerticalDrag &&
+         std::abs(delta.y()) > slop)) {
+      it->second.suppressed = true;
+    }
+  }
+}
+
+void PageView::SuppressTouchTapMovementForGesture(int pointer_id,
+                                                  GestureRecognizerType type) {
+  if (type != GestureRecognizerType::kDragGesture &&
+      type != GestureRecognizerType::kHorizontalDrag &&
+      type != GestureRecognizerType::kVerticalDrag &&
+      type != GestureRecognizerType::kLongPress) {
+    return;
+  }
+  const auto it = touch_tap_movement_states_.find(pointer_id);
+  if (it != touch_tap_movement_states_.end()) {
+    it->second.accepted_gesture = type;
+    if (type == GestureRecognizerType::kLongPress) {
+      it->second.suppressed = true;
+    }
+  }
+}
+
+bool PageView::AllowsTouchTapMovement(int pointer_id) const {
+  const auto it = touch_tap_movement_states_.find(pointer_id);
+  return it != touch_tap_movement_states_.end() && !it->second.suppressed;
+}
+
+bool PageView::CanExtendTouchTapMovementAtTarget(BaseView* target) const {
+  for (auto* view = target; view; view = view->Parent()) {
+    if (view->Is<NativeView>() || view->ShouldPassEventToNative() ||
+        view->HasDragGestureRecognizerWithNonDefaultSlop() ||
+        !view->GetGestureDetectorMap().empty() ||
+        view->HasConsumeSlideEventAngles() || view->ShouldInterceptGesture()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+BaseView* PageView::ResolveTouchTapMovementTarget(
+    const PointerEvent& event, BaseView* current_target) const {
+  if (event.device != PointerEvent::DeviceType::kTouch) {
+    return current_target;
+  }
+  const auto it = touch_tap_movement_states_.find(event.pointer_id);
+  if (it == touch_tap_movement_states_.end()) {
+    return current_target;
+  }
+  const bool extended = it->second.extended ||
+                        (event.position - it->second.down_position).distance() >
+                            ConvertFrom<kPixelTypeLogical>(kTouchSlop);
+  if (!extended) {
+    // Preserve the old slop-limited behavior, including bubbling across small
+    // child seams. The stricter identity guard covers newly eligible taps only.
+    return current_target;
+  }
+  auto* target = it->second.target.get();
+  // Native iOS samples target-chain changes only from touchmove. A terminal
+  // coordinate outside the down target still clicks when UIKit reports no
+  // intervening move. Resolve an extended tap back to the down target while
+  // retaining sticky move-time, lifetime, and gesture-policy guards.
+  if (it->second.suppressed || it->second.target_changed || !target ||
+      !target->attach_to_tree() || !CanExtendTouchTapMovementAtTarget(target)) {
+    return nullptr;
+  }
+  return target;
+}
+
+void PageView::ClearTouchTapMovementForEndedEvents(
+    const std::vector<PointerEvent>& events) {
+  for (const auto& event : events) {
+    if (event.device == PointerEvent::DeviceType::kTouch &&
+        (event.type == PointerEvent::EventType::kUpEvent ||
+         event.type == PointerEvent::EventType::kCancel)) {
+      touch_tap_movement_states_.erase(event.pointer_id);
+    }
+  }
 }
 
 bool PageView::HitTest(const PointerEvent& event, HitTestResult& result) {
@@ -1459,6 +1652,14 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
     transformed_position.Move(-view_pos.x(), -view_pos.y());
   } else {
     top_view = GetTopViewToAcceptEvent(position, &transformed_position);
+  }
+
+  if (type == kClayEventTypeTap) {
+    top_view = ResolveTouchTapMovementTarget(event, top_view);
+    if (!top_view) {
+      return;
+    }
+    transformed_position = top_view->GetPointBySelf(position);
   }
 
   if (!top_view || top_view->IsAnonymousView()) {
@@ -2150,6 +2351,7 @@ void PageView::ResetPageView(bool recycle) {
   animation_handler_->ClearCallbacks();
   SetupAnimationCallback();
   touch_view_map_.clear();
+  touch_tap_movement_states_.clear();
   active_touch_pointer_id_.reset();
   active_touch_views_.clear();
 #if defined(OS_WIN) || defined(OS_MAC)
