@@ -12,9 +12,11 @@
 namespace lynx {
 namespace tasm {
 
+// Returns nullptr for values other than an Element or Compose handle.
 fml::RefPtr<Element> GetComposeContentOrFiberElementFromValue(
     const lepus::Value& value);
 
+// Returns nullptr for values other than an Element or Compose handle.
 fml::RefPtr<Element> GetComposeMountRootOrFiberElementFromValue(
     const lepus::Value& value);
 

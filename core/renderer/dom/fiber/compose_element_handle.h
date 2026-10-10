@@ -17,19 +17,24 @@ namespace tasm {
 
 class ComposeModifierApplicator;
 class ElementManager;
+class TemplateAssembler;
 
 enum class ComposeElementKind : int32_t {
   kView = 1,
   kText = 2,
   kImage = 3,
+  kList = 4,
 };
 
 // Stable, opaque identity for one Compose-owned Fiber subtree. The concrete
-// Element always owns view/text/image behavior; mount_root_ only describes the
-// physical node that should be inserted into its external parent.
+// Element always owns view/text/image/list behavior; mount_root_ only describes
+// the physical node that should be inserted into its external parent.
 class ComposeElementHandle final : public lepus::RefCounted {
  public:
-  ComposeElementHandle(ElementManager* manager, ComposeElementKind kind);
+  ComposeElementHandle(ElementManager* manager, ComposeElementKind kind,
+                       TemplateAssembler* tasm = nullptr);
+
+  void visitor(void* rt, void* mark_func, uint64_t trace_tool) override;
 
   void ReleaseSelf() const override { delete this; }
   lepus::RefType GetRefType() const override {
