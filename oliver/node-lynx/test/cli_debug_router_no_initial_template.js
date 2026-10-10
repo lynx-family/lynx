@@ -187,7 +187,7 @@ function assertDebugRouterInitialized(result) {
 }
 
 async function testRenderWaitsForOpenCardWithoutInitialView() {
-  const result = await runCli(['render']);
+  const result = await runCli(['render', '--allow-template', PACKAGE_ROOT]);
 
   assert.strictEqual(result.code, 0, result.stderr);
   assert.match(
@@ -203,7 +203,7 @@ async function testRenderWaitsForOpenCardWithoutInitialView() {
 }
 
 async function testImplicitRenderWaitsForOpenCardWithoutInitialView() {
-  const result = await runCli([]);
+  const result = await runCli(['--allow-template', PACKAGE_ROOT]);
 
   assert.strictEqual(result.code, 0, result.stderr);
   assert.match(
@@ -219,7 +219,7 @@ async function testImplicitRenderWaitsForOpenCardWithoutInitialView() {
 }
 
 async function testPreviewWaitsForOpenCardWithoutInitialWindow() {
-  const result = await runCli(['preview']);
+  const result = await runCli(['preview', '--allow-template', PACKAGE_ROOT]);
 
   assert.strictEqual(result.code, 0, result.stderr);
   assert.match(
@@ -275,6 +275,8 @@ async function testRenderPassesScreenshotDelay() {
     const result = await runCli([
       'render',
       '--no-debug-router',
+      '--allow-template',
+      PACKAGE_ROOT,
       '--template',
       path.join(PACKAGE_ROOT, 'package.json'),
       '--output',
@@ -302,6 +304,8 @@ async function testSetsNativeLogLevel() {
     const result = await runCli([
       'render',
       '--no-debug-router',
+      '--allow-template',
+      PACKAGE_ROOT,
       '--template',
       path.join(PACKAGE_ROOT, 'package.json'),
       '--output',
@@ -322,7 +326,16 @@ async function testSetsNativeLogLevel() {
   }
 }
 
+async function testMissingAllowlistRejectsBeforeInitialization() {
+  const result = await runCli([]);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /provide --allow-template/);
+  assert.strictEqual(result.state.initCalls, 0);
+  assertNoInitialView(result);
+}
+
 async function main() {
+  await testMissingAllowlistRejectsBeforeInitialization();
   await testRenderWaitsForOpenCardWithoutInitialView();
   await testImplicitRenderWaitsForOpenCardWithoutInitialView();
   await testPreviewWaitsForOpenCardWithoutInitialWindow();

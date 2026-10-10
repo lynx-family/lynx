@@ -568,12 +568,14 @@ async function runDebugRouterProtocolSmoke({
   templateUrl,
   port = 8901,
   clientId = port,
+  cliArgs = [],
 }) {
   const child = spawn(process.execPath, [
     cliPath,
     'render',
     '--timeout',
     String(REQUEST_TIMEOUT_MS),
+    ...cliArgs,
   ], {
     cwd: packageRoot,
     stdio: ['ignore', 'pipe', 'pipe'],

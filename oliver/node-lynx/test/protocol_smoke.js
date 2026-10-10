@@ -9,11 +9,13 @@ const {
 
 const PACKAGE_ROOT = path.resolve(__dirname, '..');
 const CLI_PATH = path.join(PACKAGE_ROOT, 'dist', 'cli.js');
+const TEMPLATE_URL = getHelloWorldTemplateUrl();
 
 runDebugRouterProtocolSmoke({
   packageRoot: PACKAGE_ROOT,
   cliPath: CLI_PATH,
-  templateUrl: getHelloWorldTemplateUrl(),
+  templateUrl: TEMPLATE_URL,
+  cliArgs: ['--allow-template', new URL('.', TEMPLATE_URL).href],
 })
   .then(() => {
     console.log('node-lynx DebugRouter protocol smoke finished successfully.');

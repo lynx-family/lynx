@@ -16,6 +16,7 @@ async function main() {
     LynxEnv,
     WindowedOpenCardManager,
     fixtureUrl: getHelloWorldTemplateUrl(),
+    prepareAllowlist: (url) => [new URL('.', url).href],
   });
 }
 
