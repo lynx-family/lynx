@@ -57,8 +57,10 @@ class TextRender {
 
   TextAlignment EffectAlign();
 
-  // Support the vertical-align attribute.
+#ifndef CLAY_ENABLE_TTTEXT
+  // support vertical-align attribute (only in skia)
   void ReprocessAttributeIfNeeded(double layout_width);
+#endif
   std::shared_ptr<txt::Paragraph> LayoutXCharacter(double layout_width,
                                                    const TextStyle& style);
   float GetMaxFontSize();
