@@ -87,6 +87,9 @@ class NativePaintingCtxPlatformRef
   uint32_t GetCachedPlatformEventBehavior() const {
     return event_handler_->EventBehavior();
   }
+  const std::vector<float> &GetCachedConsumeSlideEventAngles() const {
+    return event_handler_->ConsumeSlideEventAngles();
+  }
   // Dispatch a longpress recognized by the platform layer. The event payload is
   // derived from the active platform pointer state in PlatformEventHandler.
   void DispatchPlatformLongPress();

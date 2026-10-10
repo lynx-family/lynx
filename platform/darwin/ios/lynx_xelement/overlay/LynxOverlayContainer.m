@@ -190,10 +190,19 @@
     NSInteger eventRootSign = [self.uiDelegate getSign];
     LynxTemplateRender *templateRender = ((LynxView *)rootView).templateRender;
     LynxTouchHandler *touchHandler = self.eventHandler.touchRecognizer;
-    LynxPlatformEventBehavior eventBehavior =
-        touchHandler.hasActivePlatformTouches
-            ? touchHandler.platformEventBehavior
-            : [templateRender HitTestAndCachePlatformEventBehavior:eventRootSign point:point];
+    LynxPlatformEventBehavior eventBehavior;
+    if (touchHandler.hasActivePlatformTouches) {
+      eventBehavior = touchHandler.platformEventBehavior;
+    } else {
+      eventBehavior = [templateRender HitTestAndCachePlatformEventBehavior:eventRootSign
+                                                                     point:point];
+      [self.eventHandler
+          updatePlatformConsumeSlideEventAngles:(eventBehavior &
+                                                 LynxPlatformEventBehaviorHasConsumeSlideEvent)
+                                                    ? [templateRender
+                                                          GetCachedConsumeSlideEventAngles]
+                                                    : nil];
+    }
     touchHandler.platformEventBehavior = eventBehavior;
     [self.eventHandler
         handleFocusOnView:view

@@ -1576,12 +1576,12 @@ TEST_F(FragmentTest,
       platform_ref.GetEventTargetHelper(), kRootId, kRootId, 0.f, 0.f, 100.f,
       100.f);
   auto device_px = [](float value) {
-    PlatformEventTarget::EventThroughSizeValue result;
+    PlatformEventTarget::EventRegionSizeValue result;
     result.value = value;
     return result;
   };
-  PlatformEventTarget::EventThroughRegion region{
-      device_px(0.f), device_px(0.f), device_px(50.f), device_px(100.f)};
+  PlatformEventTarget::EventRegion region{device_px(0.f), device_px(0.f),
+                                          device_px(50.f), device_px(100.f)};
   root_target->SetEventThroughActiveRegions({region});
 
   PlatformEventThroughConfig config;
