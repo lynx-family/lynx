@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.ui.text;
 
-import static com.lynx.tasm.behavior.shadow.text.TextHelper.EVENT_LAYOUT;
 import static com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper.ACCESSIBILITY_ELEMENT_TRUE;
 import static com.lynx.tasm.behavior.ui.text.AndroidText.SELECTION_CHANGE_EVENT;
 
@@ -23,7 +22,6 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.*;
 import com.lynx.tasm.behavior.event.EventTarget;
-import com.lynx.tasm.behavior.shadow.text.TextHelper;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
@@ -122,7 +120,6 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
       if (mEvents != null) {
         mView.setBindSelectionChange(mEvents.containsKey(SELECTION_CHANGE_EVENT), getSign());
       }
-      dispatchLayoutEventIfNeeded();
     } else if (data instanceof Page) {
       mTextUpdateBundle = null;
       mTextraPage = (Page) data;
@@ -187,18 +184,6 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
 
   public CharSequence getOriginText() {
     return mView == null ? "" : mView.getOriginText();
-  }
-
-  private void dispatchLayoutEventIfNeeded() {
-    if (!mContext.isLayoutInElementModeOn() || mTextUpdateBundle == null) {
-      return;
-    }
-
-    if (mEvents == null || !mEvents.containsKey(EVENT_LAYOUT)) {
-      return;
-    }
-
-    TextHelper.dispatchLayoutEvent(mContext, getSign(), mTextUpdateBundle);
   }
 
   @Override

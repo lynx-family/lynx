@@ -6,6 +6,8 @@ package com.lynx.tasm.behavior.ui.text;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -18,9 +20,12 @@ import android.text.Layout;
 import android.text.SpannableStringBuilder;
 import android.text.StaticLayout;
 import android.text.TextPaint;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
+import com.lynx.tasm.event.EventsListener;
 import com.lynx.testing.base.TestingUtils;
+import java.util.Collections;
 import java.util.HashSet;
 import org.junit.After;
 import org.junit.Before;
@@ -95,5 +100,51 @@ public class FlattenUITextTest {
     TextPaint textPaint = new TextPaint();
     textPaint.setTextSize(30);
     return new StaticLayout(span, textPaint, width, Layout.Alignment.ALIGN_NORMAL, 1, 0, false);
+  }
+
+  @Test
+  public void flattenedTextInstallationDoesNotDispatchCoreLayoutEvent() {
+    LynxContext context = spy(mContext);
+    doReturn(true).when(context).isLayoutInElementModeOn();
+    EventEmitter emitter = mock(EventEmitter.class);
+    doReturn(emitter).when(context).getEventEmitter();
+    FlattenUIText text = new FlattenUIText(context);
+    text.setEvents(Collections.singletonMap(
+        "layout", new EventsListener("layout", "bindEvent", "onLayout", null, null)));
+    TextUpdateBundle bundle = buildEventBundle();
+
+    text.updateExtraData(bundle);
+    text.updateExtraData(bundle);
+
+    assertSame(bundle, text.getTextBundle());
+    assertFalse(bundle.hasDispatchedLayoutEvent());
+    verify(emitter, never()).sendCustomEvent(any());
+  }
+
+  @Test
+  public void textViewInstallationDoesNotDispatchCoreLayoutEvent() {
+    LynxContext context = spy(mContext);
+    doReturn(true).when(context).isLayoutInElementModeOn();
+    EventEmitter emitter = mock(EventEmitter.class);
+    doReturn(emitter).when(context).getEventEmitter();
+    UIText text = new UIText(context);
+    text.setEvents(Collections.singletonMap(
+        "layout", new EventsListener("layout", "bindEvent", "onLayout", null, null)));
+    TextUpdateBundle bundle = buildEventBundle();
+
+    text.updateExtraData(bundle);
+    text.updateExtraData(bundle);
+
+    assertSame(bundle.getTextLayout(), text.getView().mTextLayout);
+    assertFalse(bundle.hasDispatchedLayoutEvent());
+    verify(emitter, never()).sendCustomEvent(any());
+  }
+
+  private TextUpdateBundle buildEventBundle() {
+    Layout layout = buildTextLayout("test", 200);
+    TextUpdateBundle bundle = new TextUpdateBundle(layout, false, new HashSet<>(), false);
+    bundle.setTextTranslateOffset(new PointF());
+    bundle.setLayoutEventParams(0, 1, 0, 4, 200, true);
+    return bundle;
   }
 }

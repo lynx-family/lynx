@@ -635,9 +635,11 @@ public class TextMeasurer {
 
     // Build result with line information for layout event
     // Format: [width, height, baseline, lineCount, line1_start, line1_end, line1_ellipsisCount,
-    // ...]
+    // ..., eventWidth, eventHeight]. Event dimensions use DIP, while the layout
+    // result retains its existing units and constraint-dependent dimensions.
     int lineCount = renderer.getLineCount();
-    result = new float[4 + lineCount * 3];
+    int eventSizeOffset = 4 + lineCount * 3;
+    result = new float[eventSizeOffset + 2];
     result[0] = measuredWidth;
     result[1] = measuredHeight;
     result[2] = baseline;
@@ -674,6 +676,12 @@ public class TextMeasurer {
       result[lastLineEndIndex] = spannableStringLength;
     }
 
+    float textLayoutWidth = renderer.calculateMaxWidth();
+    if (lineCount > 0) {
+      result[eventSizeOffset] = PixelUtils.pxToDip(textLayoutWidth);
+      result[eventSizeOffset + 1] = PixelUtils.pxToDip(textLayout.getLineBottom(lineCount - 1));
+    }
+
     TextUpdateBundle bundle = new TextUpdateBundle(textLayout,
         attributedTextBundle.getTextAttributes().hasImageSpan(), null,
         false
@@ -685,7 +693,7 @@ public class TextMeasurer {
 
     bundle.setLayoutEventParams(attributedTextBundle.getTextAttributes().getTextOverflow(),
         renderer.getLineCount(), renderer.getEllipsisCount(),
-        attributedTextBundle.getSpan().length(), renderer.calculateMaxWidth(), true);
+        attributedTextBundle.getSpan().length(), textLayoutWidth, true);
 
     mExtraDatas.put(sign, bundle);
 

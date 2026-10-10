@@ -5,6 +5,7 @@
 #include "core/renderer/dom/fiber/text_element.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "base/include/value/base_string.h"
@@ -285,6 +286,40 @@ void TextElement::DispatchLayoutBefore() {
   }
 
   element_manager_->DispatchLayoutBefore(this);
+}
+
+void TextElement::DispatchLayoutAfter() {
+  if (!EnableLayoutInElementMode()) {
+    Element::DispatchLayoutAfter();
+  } else if (!is_inline_element() && has_pending_layout_event_) {
+    // Position-only updates must not resend an event for the same measurement.
+    has_pending_layout_event_ = false;
+    if (!EnableFragmentLayerRender()) {
+      TextFragmentBehavior::DispatchLayoutEvent(
+          this, text_layout_event_size_.width_,
+          text_layout_event_size_.height_);
+    }
+  }
+}
+
+void TextElement::OnEventHandlersChanged(const base::String& name) {
+  if (name.empty() || name.IsEquals("layout")) {
+    UpdateLayoutEventState();
+  }
+}
+
+void TextElement::UpdateLayoutEventState() {
+  BASE_STATIC_STRING_DECL(kLayoutEvent, "layout");
+  const bool has_layout_event = event_map().count(kLayoutEvent) > 0 ||
+                                lepus_event_map().count(kLayoutEvent) > 0;
+  const bool had_layout_event = has_layout_event_;
+  has_layout_event_ = has_layout_event;
+  if (EnableLayoutInElementMode() && !is_inline_element() && has_layout_event &&
+      !had_layout_event) {
+    // A new layout handler needs a fresh measured result before UI
+    // installation.
+    MarkLayoutDirtyLite();
+  }
 }
 
 LayoutResult TextElement::Measure(float width, int32_t width_mode, float height,
