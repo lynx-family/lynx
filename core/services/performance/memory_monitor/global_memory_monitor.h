@@ -154,8 +154,6 @@ class GlobalMemoryMonitor {
   static const char* RuntimeName(runtime::js::JSRuntimeType type);
 
   using WithInstanceCallback = base::MoveOnlyClosure<void, InstanceState&>;
-  using InstanceMemoryUsageCallback =
-      base::MoveOnlyClosure<void, InstanceMemoryUsageResult>;
   using GlobalMemoryUsageCallback =
       base::MoveOnlyClosure<void, GlobalMemoryUsage>;
 
@@ -186,11 +184,10 @@ class GlobalMemoryMonitor {
                               int64_t created_at_ms, uint64_t runtime_count,
                               int64_t heap_bytes);
   void OnMTSRuntimePoolDestroy(int32_t pool_instance_id);
-  // Runs the query and callback on the reporter thread. Invalid, missing, and
-  // destroyed instances share one status. Unsupported or failed source reads
-  // still return kOk; callers determine field validity from positive values.
-  void GetInstanceMemoryUsage(int32_t id,
-                              InstanceMemoryUsageCallback&& callback);
+  // Reporter-thread-only query. Invalid, missing, and destroyed instances
+  // share one status. Unsupported or failed source reads still return kOk;
+  // callers determine field validity from positive values.
+  InstanceMemoryUsageResult GetInstanceMemoryUsage(int32_t id);
   // Refreshes every active page and returns a process-wide snapshot on the
   // reporter thread. Shared BTS heaps are counted once by VM identity.
   void GetGlobalMemoryUsage(GlobalMemoryUsageCallback&& callback);
