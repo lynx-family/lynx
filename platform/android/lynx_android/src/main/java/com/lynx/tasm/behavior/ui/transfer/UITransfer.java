@@ -11,11 +11,14 @@ import androidx.annotation.NonNull;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxProp;
+import com.lynx.tasm.behavior.TouchEventDispatcher;
 import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.utils.UnitUtils;
 
 public class UITransfer extends UIGroup<TransferHostView> {
+  private TouchEventDispatcher mEventDispatcher;
   private TransferWrapperView mWrapperView;
   private boolean mHasHostConstraints;
   private String mTransferId;
@@ -37,7 +40,33 @@ public class UITransfer extends UIGroup<TransferHostView> {
   @Override
   protected TransferHostView createView(Context context) {
     mWrapperView = new TransferWrapperView(context, this);
+    getTouchEventDispatcher().setTouchEventSource(mWrapperView);
     return new TransferHostView(context, mWrapperView);
+  }
+
+  private void syncEventDispatcherConfig(@NonNull TouchEventDispatcher dispatcher) {
+    if (mWrapperView != null) {
+      dispatcher.setTouchEventSource(mWrapperView);
+    }
+    dispatcher.setHasTouchPseudo(mContext.getLynxUIOwner().getHasTouchPseudo());
+    dispatcher.setHasTouchPseudo(mContext.getEnableFiberArch());
+    dispatcher.setEnableMultiTouch(mContext.getEnableMultiTouch());
+    dispatcher.setEnablePlatformGesture(mContext.isEnablePlatformGesture());
+
+    String tapSlop = mContext.getTapSlop();
+    if (tapSlop != null && !tapSlop.equals(TouchEventDispatcher.mTapSlopDefault)) {
+      dispatcher.setTapSlop(
+          UnitUtils.toPxWithDisplayMetrics(tapSlop, 0, 0, 0, 0, 0, 0, mContext.getScreenMetrics()));
+    }
+  }
+
+  @Override
+  public TouchEventDispatcher getTouchEventDispatcher() {
+    if (mEventDispatcher == null) {
+      mEventDispatcher = new TouchEventDispatcher(mContext.getLynxUIOwner());
+    }
+    syncEventDispatcherConfig(mEventDispatcher);
+    return mEventDispatcher;
   }
 
   @LynxProp(name = "transfer-id")
