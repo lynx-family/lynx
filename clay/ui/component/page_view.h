@@ -528,6 +528,15 @@ class PageView : public BaseView,
   void PlatformHideSoftInput() override;
 
   void SetupIsolatedGestures();
+  virtual bool IsTouchTapTargetCheckEnabled() const;
+  virtual float ReadTouchTapBoundaryTolerance() const;
+  void RecordTouchTapTarget(const PointerEvent& event);
+  void CancelTouchTapTargetForGesture(int pointer_id,
+                                      GestureRecognizerType type);
+  BaseView* ValidateTouchTapTarget(const PointerEvent& event,
+                                   BaseView* current_target);
+  void ClearTouchTapTarget();
+  void ClearTouchTapTargets(const std::vector<PointerEvent>& events);
   bool HasActiveFling() const;
   void MarkTapSuppressedPointersForFlingStop(
       const std::vector<PointerEvent>& events);
@@ -538,7 +547,8 @@ class PageView : public BaseView,
   // Report the deepest leaf view in the position to lynx.
   void ReportTopViewRawEvents(const std::vector<PointerEvent>& events);
   // Report pointer event with specified type
-  void ReportTopViewEvent(const PointerEvent& event, ClayEventType type);
+  void ReportTopViewEvent(const PointerEvent& event, ClayEventType type,
+                          bool validate_touch_tap_target = true);
   // Report pointer event with the type deduced by event.device and
   // event.type
   void ReportTopViewEvent(const PointerEvent& event);
@@ -616,6 +626,11 @@ class PageView : public BaseView,
   // view, regardless of whether the touch point remains within the view's
   // boundaries.
   std::unordered_map<int, int> touch_view_map_;
+  float tap_slop_ = 8.f;
+  int touch_tap_pointer_id_ = -1;
+  fml::WeakPtr<BaseView> touch_tap_target_;
+  bool touch_tap_target_cancelled_ = false;
+  float touch_tap_boundary_tolerance_ = 0.f;
   std::unordered_set<int> fling_stop_tap_suppressed_pointer_ids_;
   int active_fling_count_ = 0;
 
