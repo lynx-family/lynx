@@ -15,9 +15,12 @@ import android.os.SystemClock;
 import android.view.MotionEvent;
 import com.lynx.react.bridge.DynamicFromArray;
 import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxEventEmitter;
 import com.lynx.tasm.LynxTemplateRender;
+import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.event.EventTargetBase;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -26,11 +29,13 @@ import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxEventDetail;
+import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -333,6 +338,63 @@ public class TouchEventDispatcherTest {
   }
 
   @Test
+  public void testExternalTouchSourcePreservesCurrentTargetCoordinates() throws Exception {
+    mContext.onPageConfigDecoded(
+        new PageConfig(JavaOnlyMap.of("enableCurrentTargetTouchPosition", true)));
+    assertTrue(mContext.getEnableCurrentTargetTouchPosition());
+    mContext.setEventEmitter(mock(EventEmitter.class));
+    TouchEventDispatcher dispatcher = new TouchEventDispatcher(mOwner);
+
+    AndroidView host = new AndroidView(mContext);
+    host.addView(mOwner.getRootUI().getView());
+    mOwner.getRootUI().getView().layout(40, 60, 540, 560);
+    AndroidView source = new AndroidView(mContext);
+    host.addView(source);
+    source.layout(200, 300, 700, 800);
+    UIView target = new UIView(mContext);
+    target.setSign(42, "view");
+    target.setParent(mOwner.getRootUI());
+    source.addView(target.getView());
+    target.getView().layout(10, 20, 110, 120);
+    Map<String, EventsListener> events = new HashMap<>();
+    events.put("tap", new EventsListener("tap", "bindEvent", "onTap", null, null));
+    events.put(
+        "touchstart", new EventsListener("touchstart", "bindEvent", "onTouchStart", null, null));
+    target.setEvents(events);
+    dispatcher.setTouchEventSource(source);
+    Field activeUI = TouchEventDispatcher.class.getDeclaredField("mActiveUI");
+    activeUI.setAccessible(true);
+    activeUI.set(dispatcher, target);
+
+    MotionEvent motionEvent = MotionEvent.obtain(
+        SystemClock.uptimeMillis(), SystemClock.uptimeMillis(), MotionEvent.ACTION_DOWN, 25, 45, 0);
+    try {
+      for (String eventName : new String[] {"touchstart", "tap"}) {
+        LynxTouchEvent event;
+        if ("touchstart".equals(eventName)) {
+          Method initialEvent = TouchEventDispatcher.class.getDeclaredMethod(
+              "initialFirstLynxTouchEvent", EventTarget.class, String.class, MotionEvent.class);
+          initialEvent.setAccessible(true);
+          event = (LynxTouchEvent) initialEvent.invoke(dispatcher, target, eventName, motionEvent);
+        } else {
+          Method dispatchEvent = TouchEventDispatcher.class.getDeclaredMethod(
+              "dispatchEvent", EventTarget.class, String.class, MotionEvent.class);
+          dispatchEvent.setAccessible(true);
+          dispatchEvent.invoke(dispatcher, target, eventName, motionEvent);
+          Field firstEvent = TouchEventDispatcher.class.getDeclaredField("mFirstLynxTouchEvent");
+          firstEvent.setAccessible(true);
+          event = (LynxTouchEvent) firstEvent.get(dispatcher);
+        }
+        assertEquals(new LynxTouchEvent.Point(185, 285), event.getPagePoint());
+        assertEquals(new LynxTouchEvent.Point(225, 345), event.getClientPoint());
+        assertEquals(new LynxTouchEvent.Point(15, 25), event.getCurrentTargetPointMap().get(42));
+      }
+    } finally {
+      motionEvent.recycle();
+    }
+  }
+
+  @Test
   public void testOnActionMove() {
     try {
       LinkedList<EventTarget> pre = new LinkedList<>();
@@ -354,6 +416,61 @@ public class TouchEventDispatcherTest {
     } catch (Throwable e) {
       e.printStackTrace();
       assertEquals(1, 0, 0);
+    }
+  }
+
+  @Test
+  public void testConsumeSlideEventHonorsExternalEventRoot() throws Exception {
+    JavaOnlyArray allAngles = JavaOnlyArray.of(JavaOnlyArray.of(-180, 180));
+    mOwner.getRootUI().setConsumeSlideEvent(allAngles);
+    ArrayList<Boolean> disallowInterceptRequests = new ArrayList<>();
+    AndroidView parentView = new AndroidView(mContext) {
+      @Override
+      public void requestDisallowInterceptTouchEvent(boolean disallowIntercept) {
+        disallowInterceptRequests.add(disallowIntercept);
+        super.requestDisallowInterceptTouchEvent(disallowIntercept);
+      }
+    };
+    parentView.addView(mOwner.getRootUI().getView());
+
+    Field activeUI = TouchEventDispatcher.class.getDeclaredField("mActiveUI");
+    activeUI.setAccessible(true);
+    Field activeEventRoot = TouchEventDispatcher.class.getDeclaredField("mActiveEventRootUI");
+    activeEventRoot.setAccessible(true);
+    for (String scope : new String[] {"outside", "nonmatching-root", "root", "child", "ordinary"}) {
+      UIView eventRoot = new UIView(mContext);
+      eventRoot.setParent(mOwner.getRootUI());
+      UIView target = new UIView(mContext);
+      target.setParent(eventRoot);
+      if ("nonmatching-root".equals(scope)) {
+        eventRoot.setConsumeSlideEvent(JavaOnlyArray.of(JavaOnlyArray.of(80, 100)));
+      } else if ("root".equals(scope)) {
+        eventRoot.setConsumeSlideEvent(allAngles);
+      } else if ("child".equals(scope)) {
+        target.setConsumeSlideEvent(allAngles);
+      }
+      TouchEventDispatcher dispatcher = new TouchEventDispatcher(mOwner);
+      if (!"ordinary".equals(scope)) {
+        dispatcher.setTouchEventSource(new AndroidView(mContext));
+      }
+      activeUI.set(dispatcher, target);
+      activeEventRoot.set(dispatcher, eventRoot);
+      disallowInterceptRequests.clear();
+
+      long downTime = SystemClock.uptimeMillis();
+      MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, 0, 0, 0);
+      MotionEvent move =
+          MotionEvent.obtain(downTime, downTime + 20, MotionEvent.ACTION_MOVE, 1000, 0, 0);
+      try {
+        assertFalse(dispatcher.consumeSlideEvent(down));
+        assertEquals(scope, !"outside".equals(scope), disallowInterceptRequests.contains(true));
+        boolean shouldConsume =
+            "root".equals(scope) || "child".equals(scope) || "ordinary".equals(scope);
+        assertEquals(scope, shouldConsume, dispatcher.consumeSlideEvent(move));
+      } finally {
+        down.recycle();
+        move.recycle();
+      }
     }
   }
 
