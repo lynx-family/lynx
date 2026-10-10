@@ -30,6 +30,11 @@ LYNX_SETTING_KEY(CLAY_DISABLE_IMAGE_MEM_CACHE, bool,
                  "clay_disable_image_mem_cache", false);
 LYNX_SETTING_KEY(CLAY_IOS_USE_TT_VIDEO_ENGINE, bool,
                  "clay_ios_use_tt_video_engine", false);
+// Keep page-level touch taps eligible after movement on iOS. Scroll, gesture
+// ownership, cancellation, and target identity are still checked separately.
+LYNX_SETTING_KEY(CLAY_IOS_ALLOW_TOUCH_TAP_AFTER_MOVEMENT, bool,
+                 "clay_ios_allow_touch_tap_after_movement",
+                 __is_target_os(ios));
 // Reuse eligible single-line AtMost layouts with TTText.
 LYNX_SETTING_KEY(CLAY_ENABLE_TEXT_AT_MOST_LAYOUT_REUSE, bool,
                  "clay_enable_text_at_most_layout_reuse", false);

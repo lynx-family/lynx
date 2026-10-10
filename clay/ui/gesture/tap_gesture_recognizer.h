@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <utility>
 
 #include "clay/ui/gesture/gesture_recognizer.h"
 
@@ -18,6 +19,20 @@ class TapGestureRecognizer : public PrimaryPointerGestureRecognizer {
  public:
   explicit TapGestureRecognizer(GestureManager* gesture_manager)
       : super(gesture_manager, std::nullopt) {}
+
+  void HandleEvent(const PointerEvent& event) override;
+
+  // Evaluated only for the primary touch down, not during an active gesture.
+  // The owner must retain cancellation and target/gesture ownership checks.
+  void SetAllowTouchMovementCallback(
+      std::function<bool(const PointerEvent&)> callback) {
+    allow_touch_movement_callback_ = std::move(callback);
+  }
+
+  void SetTouchMovementBeyondToleranceCallback(
+      std::function<void(int)> callback) {
+    touch_movement_beyond_tolerance_callback_ = std::move(callback);
+  }
 
   void SetTapUpCallback(OnTapUpCallback&& callback) { on_tap_up_ = callback; }
   void SetTapCallback(OnTapCallback&& callback) { on_tap_ = callback; }
@@ -69,6 +84,9 @@ class TapGestureRecognizer : public PrimaryPointerGestureRecognizer {
   // competes together. So record accept state and check state when pointer up.
   bool accepted_ = false;
   bool sent_tap_down_ = false;
+  bool allow_touch_movement_ = false;
+  std::function<bool(const PointerEvent&)> allow_touch_movement_callback_;
+  std::function<void(int)> touch_movement_beyond_tolerance_callback_;
   std::unique_ptr<PointerEvent> down_event_;
   std::unique_ptr<PointerEvent> up_event_;
   OnTapUpCallback on_tap_up_;

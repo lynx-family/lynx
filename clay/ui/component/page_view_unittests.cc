@@ -11,6 +11,7 @@
 #include "clay/shell/common/pointer_data_to_event.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view.h"
+#include "clay/ui/gesture/drag_gesture_recognizer.h"
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "clay/ui/testing/ui_test.h"
 #include "clay/ui/window/pointer_data_packet.h"
@@ -48,6 +49,261 @@ class RecordingEventDelegate : public testing::MockEventDelegate {
 };
 
 }  // namespace
+
+namespace {
+
+class TouchMovementPageView : public PageView {
+ public:
+  TouchMovementPageView(fml::RefPtr<fml::TaskRunner> runner,
+                        const bool* enabled)
+      : PageView(0, nullptr, std::move(runner)), enabled_(enabled) {}
+
+ protected:
+  bool ReadTouchTapMovementSetting() const override { return *enabled_; }
+
+ private:
+  const bool* enabled_;
+};
+
+class TouchTapMovementTest : public UITest {
+ protected:
+  std::unique_ptr<PageView> CreatePageView() override {
+    return std::make_unique<TouchMovementPageView>(ui_task_runner(), &enabled_);
+  }
+
+  void UISetUp() override {
+    page_->SetTapSlop(8);
+    target_ = AddTarget(1, {0, 0}, {100, 100});
+    find_view_by_id_callback_ = [this](int id) -> BaseView* {
+      if (id == 0) {
+        return page_.get();
+      }
+      const auto it = targets_.find(id);
+      return it == targets_.end() ? nullptr : it->second;
+    };
+    touch_event_callback_ = [this](const std::string& name, int id) {
+      if (name == "tap") {
+        tap_targets_.push_back(id);
+      }
+    };
+  }
+
+  View* AddTarget(int id, FloatPoint position, FloatSize size) {
+    auto* target = new View(id, page_.get());
+    target->SetBound(position.x(), position.y(), size.width(), size.height());
+    page_->AddChild(target);
+    targets_[id] = target;
+    return target;
+  }
+
+  void DispatchMovement(
+      int id, FloatPoint from, FloatPoint to,
+      PointerEvent::DeviceType device = PointerEvent::kTouch) {
+    auto down = CreatePointer(id, PointerEvent::EventType::kDownEvent, from);
+    auto move = CreatePointer(id, PointerEvent::EventType::kMoveEvent, to);
+    auto up = CreatePointer(id, PointerEvent::EventType::kUpEvent, to);
+    down.device = move.device = up.device = device;
+    page_->DispatchPointerEvent({down, move, up});
+  }
+
+  bool enabled_ = true;
+  View* target_ = nullptr;
+  std::unordered_map<int, BaseView*> targets_;
+  std::vector<int> tap_targets_;
+};
+
+}  // namespace
+
+TEST_F_UI(TouchTapMovementTest, OnAllowsSameTargetMovementAndOffKeepsSlop) {
+  DispatchMovement(1, {10, 10}, {30, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+  enabled_ = false;
+  DispatchMovement(2, {10, 10}, {30, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+  DispatchMovement(3, {10, 10}, {12, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1, 1}));
+}
+
+TEST_F_UI(TouchTapMovementTest, SettingIsSnapshotAtDown) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  enabled_ = false;
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {30, 10}),
+       CreatePointer(1, PointerEvent::EventType::kUpEvent, {30, 10})});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(TouchTapMovementTest, SmallChildSeamMovementKeepsNormalTap) {
+  auto* left = new View(2, page_.get());
+  left->SetBound(0, 0, 50, 100);
+  target_->AddChild(left);
+  targets_[2] = left;
+  auto* right = new View(3, page_.get());
+  right->SetBound(50, 0, 50, 100);
+  target_->AddChild(right);
+  targets_[3] = right;
+  DispatchMovement(1, {49, 10}, {51, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({3}));
+}
+
+TEST_F_UI(TouchTapMovementTest, ExtendedTapUsesLastReportedMoveTarget) {
+  AddTarget(2, {100, 0}, {100, 100});
+  DispatchMovement(1, {10, 10}, {110, 10});
+  EXPECT_TRUE(tap_targets_.empty());
+  page_->DispatchPointerEvent(
+      {CreatePointer(2, PointerEvent::EventType::kDownEvent, {10, 10}),
+       CreatePointer(2, PointerEvent::EventType::kMoveEvent, {110, 10}),
+       CreatePointer(2, PointerEvent::EventType::kMoveEvent, {10, 10}),
+       CreatePointer(2, PointerEvent::EventType::kUpEvent, {10, 10})});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(TouchTapMovementTest, OutsideUpWithoutMoveKeepsNativeIosDownTarget) {
+  AddTarget(2, {100, 0}, {100, 100});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10}),
+       CreatePointer(1, PointerEvent::EventType::kUpEvent, {110, 10})});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(TouchTapMovementTest,
+          DeletedTargetAndReusedIdDoNotReceiveExtendedTap) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10}),
+       CreatePointer(1, PointerEvent::EventType::kMoveEvent, {30, 10})});
+  page_->RemoveChild(target_);
+  delete target_;
+  target_ = AddTarget(1, {0, 0}, {100, 100});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kUpEvent, {30, 10})});
+  EXPECT_TRUE(tap_targets_.empty());
+  DispatchTapEvent({10, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(TouchTapMovementTest,
+          RawTouchEndTreeMutationKeepsNativeIosDownTarget) {
+  touch_event_callback_ = [this](const std::string& name, int id) {
+    if (name == "touchend") {
+      AddTarget(2, {0, 0}, {100, 100});
+    } else if (name == "tap") {
+      tap_targets_.push_back(id);
+    }
+  };
+  DispatchMovement(1, {10, 10}, {30, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(TouchTapMovementTest,
+          SequentialBatchAndReusedPointerEndIndependently) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10}),
+       CreatePointer(1, PointerEvent::EventType::kMoveEvent, {30, 10}),
+       CreatePointer(1, PointerEvent::EventType::kUpEvent, {30, 10}),
+       CreatePointer(2, PointerEvent::EventType::kDownEvent, {10, 10}),
+       CreatePointer(2, PointerEvent::EventType::kMoveEvent, {30, 10}),
+       CreatePointer(2, PointerEvent::EventType::kUpEvent, {30, 10}),
+       CreatePointer(2, PointerEvent::EventType::kDownEvent, {10, 10}),
+       CreatePointer(2, PointerEvent::EventType::kMoveEvent, {30, 10}),
+       CreatePointer(2, PointerEvent::EventType::kUpEvent, {30, 10})});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1, 1, 1}));
+}
+
+TEST_F_UI(TouchTapMovementTest, SecondTouchDoesNotBecomeExtendedTap) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10}),
+       CreatePointer(2, PointerEvent::EventType::kDownEvent, {20, 10}),
+       CreatePointer(1, PointerEvent::EventType::kMoveEvent, {30, 10}),
+       CreatePointer(1, PointerEvent::EventType::kUpEvent, {30, 10}),
+       CreatePointer(2, PointerEvent::EventType::kCancel, {20, 10})});
+  EXPECT_TRUE(tap_targets_.empty());
+  DispatchTapEvent({10, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(TouchTapMovementTest, CancelAndFlingStopDoNotBecomeExtendedTap) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10}),
+       CreatePointer(1, PointerEvent::EventType::kMoveEvent, {30, 10}),
+       CreatePointer(1, PointerEvent::EventType::kCancel, {30, 10})});
+  page_->OnFlingStart();
+  page_->DispatchPointerEvent(
+      {CreatePointer(2, PointerEvent::EventType::kDownEvent, {10, 10})});
+  page_->OnFlingEnd();
+  page_->DispatchPointerEvent(
+      {CreatePointer(2, PointerEvent::EventType::kMoveEvent, {30, 10}),
+       CreatePointer(2, PointerEvent::EventType::kUpEvent, {30, 10})});
+  EXPECT_TRUE(tap_targets_.empty());
+  DispatchTapEvent({10, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(TouchTapMovementTest, MouseKeepsOriginalMovementThreshold) {
+  DispatchMovement(1, {10, 10}, {30, 10}, PointerEvent::kMouse);
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(TouchTapMovementTest, DefaultDragAcceptanceOnDownKeepsStationaryTap) {
+  auto drag = std::make_unique<DragGestureRecognizer>(page_->gesture_manager());
+  target_->AddGestureRecognizer(std::move(drag));
+  DispatchTapEvent({10, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+  DispatchMovement(1, {10, 10}, {30, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(TouchTapMovementTest, CustomDragSlopKeepsOriginalTapThreshold) {
+  for (float slop : {-1.f, 1.f, 20.f}) {
+    SCOPED_TRACE(slop);
+    target_->ClearGestureRecognizers();
+    auto drag = std::make_unique<VerticalDragGestureRecognizer>(
+        page_->gesture_manager());
+    drag->SetTouchSlop(slop);
+    target_->AddGestureRecognizer(std::move(drag));
+    DispatchMovement(1, {10, 10}, {30, 12});
+    EXPECT_TRUE(tap_targets_.empty());
+  }
+}
+
+TEST_F_UI(TouchTapMovementTest, DragPolicyChangeDuringGestureFailsClosed) {
+  auto drag = std::make_unique<DragGestureRecognizer>(page_->gesture_manager());
+  auto* raw_drag = drag.get();
+  target_->AddGestureRecognizer(std::move(drag));
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  raw_drag->SetTouchSlop(-1);
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {30, 10}),
+       CreatePointer(1, PointerEvent::EventType::kUpEvent, {30, 10})});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(TouchTapMovementTest, LongPressRemainsSeparateFromTap) {
+  target_->AddEventCallback("longpress");
+  page_->SetLongPressDuration(1);
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  AsyncStart();
+  ui_task_runner()->PostDelayedTask(
+      [this]() {
+        page_->DispatchPointerEvent(
+            {CreatePointer(1, PointerEvent::EventType::kUpEvent, {10, 10})});
+        EXPECT_TRUE(tap_targets_.empty());
+        AsyncEnd();
+      },
+      fml::TimeDelta::FromMilliseconds(20));
+}
+
+TEST(PageViewTest, NonIosProductionSettingCannotEnableTouchMovement) {
+  class ProductionSettingPageView : public PageView {
+   public:
+    using PageView::PageView;
+    using PageView::ReadTouchTapMovementSetting;
+  };
+  ProductionSettingPageView page(0, nullptr, nullptr);
+  EXPECT_EQ(page.ReadTouchTapMovementSetting(), __is_target_os(ios));
+}
 
 TEST(PageViewTest, EmptyKeyframesData) {
   std::unique_ptr<PageView> page_view =
