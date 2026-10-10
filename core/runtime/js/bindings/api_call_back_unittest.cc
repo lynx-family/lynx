@@ -4,6 +4,8 @@
 
 #include "core/runtime/js/bindings/api_call_back.h"
 
+#include "base/include/fml/memory/js_memory_track_scope.h"
+#include "base/include/fml/message_loop.h"
 #include "core/runtime/js/jsi/jsi_unittest.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -15,6 +17,10 @@ namespace test {
 
 class ApiCallBackTest : public JSITestBase {
  protected:
+  void SetUp() override {
+    fml::MessageLoop::EnsureInitializedForCurrentThread();
+  }
+
   ApiCallBackManager manager_;
 };
 
@@ -88,6 +94,39 @@ TEST_P(ApiCallBackTest, CallWithLepusValueTest) {
   const lepus::Value nil_value = lepus::Value();
   manager_.InvokeWithValue(&rt, callback, nil_value);
   EXPECT_TRUE(eval("globalThis.result")->isNull());
+}
+
+TEST_P(ApiCallBackTest, InvokeUsesCreationAllocSlot) {
+  auto runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
+  EXPECT_EQ(runner->GetCurrentAllocSlot(), fml::JSMemoryTrackSlotType::Unknown);
+
+  int32_t observed_slot = -1;
+  int32_t invoke_count = 0;
+  ApiCallBack callback;
+  {
+    fml::JSMemoryTrackSlot creation_scope(runner.get(), 37);
+    auto func = Function::createFromHostFunction(
+        rt, PropNameID::forAscii(rt, "callback"), 0,
+        [&observed_slot, &invoke_count, runner](Runtime&, const Value&,
+                                                const Value*, size_t) {
+          observed_slot = runner->GetCurrentAllocSlot();
+          ++invoke_count;
+          return Value::undefined();
+        });
+    callback = manager_.createCallbackImpl(std::move(func));
+  }
+
+  EXPECT_EQ(runner->GetCurrentAllocSlot(), fml::JSMemoryTrackSlotType::Unknown);
+  manager_.InvokeWithValuePersist(&rt, callback);
+  EXPECT_EQ(observed_slot, 37);
+  EXPECT_EQ(invoke_count, 1);
+  EXPECT_EQ(runner->GetCurrentAllocSlot(), fml::JSMemoryTrackSlotType::Unknown);
+
+  observed_slot = -1;
+  manager_.InvokeWithValue(&rt, callback);
+  EXPECT_EQ(observed_slot, 37);
+  EXPECT_EQ(invoke_count, 2);
+  EXPECT_EQ(runner->GetCurrentAllocSlot(), fml::JSMemoryTrackSlotType::Unknown);
 }
 
 INSTANTIATE_TEST_SUITE_P(

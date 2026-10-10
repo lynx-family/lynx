@@ -7,6 +7,7 @@ import {
   Performance as IPerformance,
   TimingListener,
   PerformanceCallback,
+  MemoryUsage,
 } from '@lynx-js/types';
 import { NativeApp } from '../../app';
 import { TraceOption } from '@lynx-js/types/types/common/performance';
@@ -38,6 +39,7 @@ export default class Performance implements IPerformance {
   _profileMark: (traceName: string, option?: TraceOption) => void;
   _profileFlowId: () => number;
   _isProfileRecording: () => boolean;
+  _getMemoryUsage: (callback: (usage: MemoryUsage) => void) => void;
   _bindPipelineIdWithTimingFlag: (
     pipeline_id: string,
     timing_flag: string
@@ -52,6 +54,7 @@ export default class Performance implements IPerformance {
     this._profileMark = nativeApp.profileMark;
     this._profileFlowId = nativeApp.profileFlowId;
     this._isProfileRecording = nativeApp.isProfileRecording;
+    this._getMemoryUsage = nativeApp.getMemoryUsage;
     this._bindPipelineIdWithTimingFlag = nativeApp.bindPipelineIdWithTimingFlag;
   }
 
@@ -77,6 +80,10 @@ export default class Performance implements IPerformance {
 
   isProfileRecording() {
     return this._isProfileRecording();
+  }
+
+  getMemoryUsage(callback: (usage: MemoryUsage) => void): void {
+    this._getMemoryUsage(callback);
   }
 
   addTimingListener(listener: TimingListener): void {

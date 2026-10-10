@@ -525,31 +525,33 @@ PageMemoryUsage GlobalMemoryMonitor::RefreshInstanceMemoryUsage(
   return page.usage;
 }
 
-void GlobalMemoryMonitor::GetInstanceMemoryUsage(
-    int32_t id, InstanceMemoryUsageCallback&& callback) {
-  fml::TaskRunner::RunNowOrPostTask(
-      ReportRunner(), [this, id, callback = std::move(callback)]() mutable {
-        InstanceMemoryUsageResult result;
-        if (!MemoryMonitor::Enable()) {
-          result.status = MemoryUsageQueryStatus::kMonitoringDisabled;
-          callback(std::move(result));
-          return;
-        }
-        auto it = instance_state_.find(id);
-        if (it == instance_state_.end() || it->second.destroyed) {
-          result.status = MemoryUsageQueryStatus::kInvalidInstance;
-          callback(std::move(result));
-          return;
-        }
-        Snapshot snapshot;
-        RefreshInstanceMemoryUsage(it->second);
-        if (auto* vm = FindVM(it->second.bts_vm)) {
-          RefreshVmHeap(*vm, snapshot, true);
-        }
-        result.usage =
-            BuildInstanceMemoryUsage(id, it->second, snapshot.failed_heap_vms);
-        callback(std::move(result));
-      });
+InstanceMemoryUsageResult GlobalMemoryMonitor::GetInstanceMemoryUsage(
+    int32_t id) {
+  assert(ReportRunner()->RunsTasksOnCurrentThread());
+  InstanceMemoryUsageResult result;
+  if (!MemoryMonitor::Enable()) {
+    result.status = MemoryUsageQueryStatus::kMonitoringDisabled;
+    return result;
+  }
+  auto it = instance_state_.find(id);
+  if (it == instance_state_.end() || it->second.destroyed) {
+    result.status = MemoryUsageQueryStatus::kInvalidInstance;
+    return result;
+  }
+  Snapshot snapshot;
+  RefreshInstanceMemoryUsage(it->second);
+  if (auto* vm = FindVM(it->second.bts_vm)) {
+    RefreshVmHeap(*vm, snapshot, true);
+    if (IsHeapAvailable(*vm, snapshot.failed_heap_vms) &&
+        vm->heap_size <=
+            static_cast<size_t>(std::numeric_limits<int64_t>::max())) {
+      result.bts_heap_bytes = static_cast<int64_t>(vm->heap_size);
+    }
+  } else {
+    result.bts_heap_bytes = it->second.usage.bts_bytes;
+  }
+  result.page = it->second.usage;
+  return result;
 }
 
 void GlobalMemoryMonitor::GetGlobalMemoryUsage(

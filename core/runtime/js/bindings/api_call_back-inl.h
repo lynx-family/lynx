@@ -7,6 +7,7 @@
 
 #include <utility>
 
+#include "base/include/fml/memory/js_memory_track_scope.h"
 #include "base/trace/native/trace_event.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 
@@ -35,6 +36,8 @@ inline void ApiCallBackManager::InvokeWithValuePersist(Runtime *rt,
 
   auto &holder = iter->second;
   DCHECK(holder);
+  auto runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
+  fml::JSMemoryTrackSlot alloc_slot_scope(runner.get(), holder->alloc_slot());
   holder->InvokeWithValue(rt, std::forward<Args>(values)...);
 }
 
