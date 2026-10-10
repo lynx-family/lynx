@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <string>
@@ -15,6 +16,7 @@
 
 #include "base/include/debug/lynx_error.h"
 #include "base/include/expected.h"
+#include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/to_underlying.h"
@@ -41,8 +43,10 @@
 #include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/js/utils.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/recorder/record.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
@@ -74,6 +78,32 @@ inline tasm::PageOptions GetPageOptions(base::UnsafeWeakPtr<App> native_app) {
     return tasm::PageOptions();
   }
   return app->GetPageOptions();
+}
+
+Value BuildMemoryUsageResult(
+    Runtime& rt,
+    const tasm::performance::InstanceMemoryUsageResult& usage_result) {
+  static constexpr char kNumberKeys[] =
+      "status\0totalBytes\0elementBytes\0elementCount\0mtsBytes\0btsBytes\0"
+      "btsHeapBytes\0uiBytes";
+  static constexpr uint8_t kNumberKeyOffsets[] = {0, 7, 18, 31, 44, 53, 62, 75};
+  const double values[] = {
+      static_cast<double>(static_cast<int32_t>(usage_result.status)),
+      static_cast<double>(usage_result.page.total_bytes),
+      static_cast<double>(usage_result.page.element_bytes),
+      static_cast<double>(usage_result.page.element_count),
+      static_cast<double>(usage_result.page.mts_bytes),
+      static_cast<double>(usage_result.page.bts_bytes),
+      static_cast<double>(usage_result.bts_heap_bytes),
+      static_cast<double>(usage_result.page.ui_bytes),
+  };
+  Object result(rt);
+  for (size_t i = 0; i < sizeof(kNumberKeyOffsets); ++i) {
+    result.setProperty(rt, kNumberKeys + kNumberKeyOffsets[i],
+                       Value(values[i]));
+  }
+  result.setProperty(rt, "btsShared", Value(usage_result.page.bts_shared));
+  return Value(std::move(result));
 }
 
 // default resource loader timeout is 5 seconds.
@@ -365,6 +395,43 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             native_app->SetJsAppObj(args[0].getObject(rt));
           }
 
+          return Value::undefined();
+        });
+  } else if (methodName == "getMemoryUsage") {
+    return Function::createFromHostFunction(
+        *rt, PropNameID::forAscii(*rt, "getMemoryUsage"), 1,
+        [this](Runtime& rt, const Value& thisVal, const Value* args,
+               size_t count) -> base::expected<Value, JSINativeException> {
+          if (count != 1 || !args[0].isObject() ||
+              !args[0].getObject(rt).isFunction(rt)) {
+            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                "getMemoryUsage expects one callback"));
+          }
+          auto* native_app = native_app_.Lock();
+          if (!native_app || native_app->IsDestroying()) {
+            return Value::undefined();
+          }
+          const auto instance_id = static_cast<int32_t>(rt.getRuntimeId());
+          auto js_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
+          auto callback =
+              native_app->CreateCallBack(args[0].getObject(rt).getFunction(rt));
+          tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()
+              ->PostTask([weak_app = native_app->GetWeakPtr(), js_runner,
+                          callback, instance_id]() mutable {
+                auto usage_result =
+                    tasm::performance::GlobalMemoryMonitor::GetInstance()
+                        .GetInstanceMemoryUsage(instance_id);
+                js_runner->PostTask(
+                    [weak_app = std::move(weak_app), callback,
+                     usage_result = std::move(usage_result)]() mutable {
+                      auto* app = weak_app.Lock();
+                      if (!app || app->IsDestroying()) return;
+                      auto* rt = app->GetRuntimeWeak().Lock();
+                      if (!rt) return;
+                      app->InvokeApiCallBackWithValue(
+                          callback, BuildMemoryUsageResult(*rt, usage_result));
+                    });
+              });
           return Value::undefined();
         });
   } else if (methodName == "setTimeout") {
@@ -1813,6 +1880,7 @@ std::vector<PropNameID> AppProxy::getPropertyNames(Runtime& rt) {
       "onPipelineStart",
       "bindPipelineIdWithTimingFlag",
       "markPipelineTiming",
+      "getMemoryUsage",
       "__SetSourceMapRelease",
       "__GetSourceMapRelease",
       "requestAnimationFrame",
