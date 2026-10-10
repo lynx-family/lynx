@@ -1267,9 +1267,6 @@ public class LynxImageManager implements Drawable.Callback {
     if (mInnerClipPathForBorderRadius != null && mInnerClipPathForBorderRadius.path != null) {
       canvas.clipPath(mInnerClipPathForBorderRadius.path);
     }
-    if (mPlaceholderDrawable != null) {
-      mPlaceholderDrawable.draw(canvas);
-    }
     drawImageWithTransition(canvas);
     canvas.restore();
   }
@@ -1284,6 +1281,9 @@ public class LynxImageManager implements Drawable.Callback {
 
   private void drawImageWithTransition(Canvas canvas) {
     if (mImageDrawable == null) {
+      if (mPlaceholderDrawable != null) {
+        mPlaceholderDrawable.draw(canvas);
+      }
       return;
     }
     if (mImageFadeStartTimeMs < 0 || mFadeDurationMs <= 0) {
@@ -1299,6 +1299,10 @@ public class LynxImageManager implements Drawable.Callback {
       return;
     }
 
+    // Keep the placeholder only during the fade, not behind a loaded transparent image.
+    if (mPlaceholderDrawable != null) {
+      mPlaceholderDrawable.draw(canvas);
+    }
     int alpha = (int) (255 * elapsedMs / mFadeDurationMs);
     mImageDrawable.setAlpha(alpha);
     mImageDrawable.draw(canvas);
