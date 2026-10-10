@@ -3,7 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxBaseTextShadowNode.h>
+#import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTextRenderer.h>
+#import <Lynx/LynxTextUtils.h>
+#import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUIText.h>
+#import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 
 @interface LynxTextRenderer (LynxInlineEventTarget)
@@ -149,4 +155,59 @@
   XCTAssertEqualWithAccuracy(resolvedStrokeWidth.doubleValue, -strokeWidth / childFontSize * 100,
                              0.0001);
 }
+
+- (LynxTextRenderManager *)measuredTextManager:(NSString *)text {
+  LynxTextRenderManager *manager = [LynxTextRenderManager new];
+  LynxAttributedTextBundle *bundle = [LynxAttributedTextBundle new];
+  bundle.textStyle = [LynxTextStyle new];
+  bundle.maxLineNum = -1;
+  bundle.attributedString = [[NSAttributedString alloc]
+      initWithString:text
+          attributes:@{NSFontAttributeName : [UIFont systemFontOfSize:20]}];
+  [manager putAttributedTextBundle:1 textBundle:bundle];
+  [self measureTextManager:manager width:100];
+  return manager;
+}
+
+- (void)measureTextManager:(LynxTextRenderManager *)manager width:(CGFloat)width {
+  [manager measureTextWithSign:1
+                         width:width
+                     widthMode:LynxMeasureModeDefinite
+                        height:1000
+                    heightMode:LynxMeasureModeIndefinite
+               childrenSizeDic:nil];
+}
+
+- (void)testFrameUpdateInstallsRendererWithoutPreparingLayoutEvent {
+  LynxTextRenderManager *manager = [self measuredTextManager:@"text"];
+  LynxTextRenderer *renderer = [manager takeTextRender:1];
+  id owner = OCMClassMock(LynxUIOwner.class);
+  OCMStub([owner isLayoutInElementModeOn]).andReturn(YES);
+  OCMStub([owner textRenderManager]).andReturn(manager);
+  id context = OCMClassMock(LynxUIContext.class);
+  OCMStub([context uiOwner]).andReturn(owner);
+  OCMReject([context lynxContext]);
+  id utils = OCMClassMock(LynxTextUtils.class);
+  OCMReject(ClassMethod([utils computeLayoutEventInfoWithRenderer:[OCMArg any]
+                                                 attributedString:[OCMArg any]
+                                                       maxLineNum:-1]));
+  LynxUIText *text = [[LynxUIText alloc] initWithView:[LynxTextView new]];
+  text.context = context;
+  text.sign = 1;
+  [text setRawEvents:[NSSet setWithObject:@"layout(bindEvent)"] andLepusRawEvents:[NSSet set]];
+  XCTAssertNil(text.renderer);
+  for (NSUInteger i = 0; i < 3; i++) {
+    [text updateFrame:CGRectMake(i, 0, 100, 100)
+                withPadding:UIEdgeInsetsZero
+                     border:UIEdgeInsetsZero
+                     margin:UIEdgeInsetsZero
+        withLayoutAnimation:NO];
+    XCTAssertEqual(text.renderer, renderer);
+    XCTAssertEqual(text.view.textRenderer, renderer);
+  }
+  [utils stopMocking];
+  [context stopMocking];
+  [owner stopMocking];
+}
+
 @end

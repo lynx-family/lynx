@@ -283,7 +283,6 @@ static NSDictionary<NSString *, LynxEventSpec *> *LynxTextServiceBuildEventSet(
   BOOL _isHasSubSpan;
   BOOL _isDirty;
   BOOL _textGradientOptExperiment;
-  BOOL _didDispatchLayoutEvent;
   NSMutableDictionary<NSString *, LynxTextServiceEventTarget *> *_textServiceEventTargetCache;
 }
 
@@ -360,14 +359,6 @@ LYNX_PROPS_GROUP_DECLARE(
   if ([self.context.uiOwner isLayoutInElementModeOn]) {
     LynxTextRenderer *renderer = [self.context.uiOwner.textRenderManager takeTextRender:self.sign];
     [self onReceiveUIOperation:renderer];
-    if (renderer && !_didDispatchLayoutEvent && [self.eventSet objectForKey:@"layout"] &&
-        self.context.eventEmitter) {
-      [self.context.uiOwner.textRenderManager
-          dispatchLayoutEventWithRenderer:renderer
-                                     sign:self.sign
-                             eventEmitter:self.context.eventEmitter];
-      _didDispatchLayoutEvent = YES;
-    }
   }
   [super updateFrame:frame
               withPadding:padding
@@ -418,7 +409,6 @@ LYNX_PROPS_GROUP_DECLARE(
   if (value && [value isKindOfClass:LynxTextRenderer.class]) {
     LynxTextRenderer *renderer = (LynxTextRenderer *)value;
     if (renderer != _renderer) {
-      _didDispatchLayoutEvent = NO;
       [_textServiceEventTargetCache removeAllObjects];
     }
     _isHasSubSpan = false;

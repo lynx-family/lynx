@@ -1089,6 +1089,7 @@ void Element::SetJSEventHandler(const base::String& name,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_JS_EVENT_HANDLER);
 
   data_model_->SetStaticEvent(type, name, callback);
+  OnEventHandlersChanged(name);
   MarkDirty(kDirtyEvent);
 }
 
@@ -1099,6 +1100,7 @@ void Element::SetLepusEventHandler(const base::String& name,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_LEPUS_EVENT_HANDLER);
 
   data_model_->SetLepusEvent(type, name, script, callback);
+  OnEventHandlersChanged(name);
   MarkDirty(kDirtyEvent);
 }
 
@@ -1109,6 +1111,7 @@ void Element::SetWorkletEventHandler(const base::String& name,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_WORKLET_EVENT_HANDLER);
 
   data_model_->SetWorkletEvent(type, name, worklet_info, ctx);
+  OnEventHandlersChanged(name);
   MarkDirty(kDirtyEvent);
 }
 
@@ -1135,11 +1138,13 @@ event::DispatchEventResult Element::DispatchMessageEvent(
 
 void Element::RemoveEvent(const base::String& name, const base::String& type) {
   data_model_->RemoveEvent(name, type);
+  OnEventHandlersChanged(name);
   MarkDirty(kDirtyEvent);
 }
 
 void Element::RemoveAllEvents() {
   data_model_->RemoveAllEvents();
+  OnEventHandlersChanged(base::String());
   MarkDirty(kDirtyEvent);
 }
 
