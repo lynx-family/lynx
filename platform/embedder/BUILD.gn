@@ -137,7 +137,15 @@ lynx_core_source_set("embedder") {
       sources += [ "lynx_ui_renderer_mock.cc" ]
     }
   } else {
-    sources += [ "lynx_ui_renderer_mock.cc" ]
+    if (enable_unittests) {
+      sources += [
+        "testing/lynx_ui_renderer_test.cc",
+        "testing/lynx_ui_renderer_test.h",
+      ]
+      deps += [ "../../core/renderer/ui_wrapper/common" ]
+    } else {
+      sources += [ "lynx_ui_renderer_mock.cc" ]
+    }
     if (!(is_harmony && is_headless)) {
       sources += [ "../../clay/lynx_adaptor/native_platform_view_mock.cc" ]
     }
@@ -269,8 +277,12 @@ if (enable_unittests) {
       "lynx_view_builder_unittests.cc",
       "lynx_view_client_unittests.cc",
       "lynx_view_event_simulation_proxy_unittest.cc",
-      "lynx_view_unittests.cc",
     ]
+
+    # The test host uses a desktop FML message loop for view initialization.
+    if (is_mac || is_win || is_linux) {
+      sources += [ "lynx_view_unittests.cc" ]
+    }
 
     if (enable_napi_binding) {
       sources += [ "module/extension_module_factory_impl_unittest.cc" ]
@@ -278,6 +290,7 @@ if (enable_unittests) {
 
     deps = [
       ":embedder",
+      ":lynx_embedder_cxxapi",
       "../../base/src:base_static",
       "../../core/template_bundle/template_codec/binary_encoder",
       "../../testing/utils:gtest_custom_init",
