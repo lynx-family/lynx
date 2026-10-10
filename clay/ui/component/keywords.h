@@ -232,6 +232,7 @@ enum class KeywordID {
   kMinHeight,
   kMaxHeight,
   kInitialScrollIndex,
+  kInitialScrollToIndex,
   kLoop,
   kSpeed,
   kLowQuality,
