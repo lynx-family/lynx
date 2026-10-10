@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/vector.h"
 #include "core/runtime/js/bindings/modules/lynx_module.h"
@@ -34,6 +35,23 @@ struct ModuleInterceptorResult {
  */
 class ModuleInterceptor {
  public:
+  // Return per-call state only when needed; otherwise reuse this interceptor.
+  virtual std::shared_ptr<ModuleInterceptor> CreateInvocation(
+      const std::string& module, const std::string& method,
+      base::LynxEntityId view) {
+    return nullptr;
+  }
+  // Runs before native argument conversion. Replacement keeps the argument
+  // count.
+  virtual void RewriteArguments(Runtime& rt, const Value* args, size_t count,
+                                std::vector<Value>& replacement) {}
+  // An early decision that bypasses native preparation and legacy before hooks.
+  virtual bool HandlesCall() const { return false; }
+  // Returns true when the effective result should be captured again.
+  virtual bool RewriteResult(Runtime& rt, Value& result) { return false; }
+  virtual void BeforeCallback(int argument_index,
+                              std::unique_ptr<pub::Value>& args) {}
+
   virtual ModuleInterceptorResult InterceptModuleMethod(
       const std::shared_ptr<LynxModule>& module,
       const LynxModule::MethodMetadata& method, Runtime* rt,
@@ -54,6 +72,30 @@ class ModuleInterceptor {
 
 class GroupInterceptor : public ModuleInterceptor {
  public:
+  // Implicit native Promise callbacks inherit only the invocation hooks.
+  class Scope {
+   public:
+    explicit Scope(std::shared_ptr<GroupInterceptor> current);
+    ~Scope();
+    Scope(const Scope&) = delete;
+    Scope& operator=(const Scope&) = delete;
+
+   private:
+    std::shared_ptr<GroupInterceptor> previous_;
+  };
+  static std::shared_ptr<GroupInterceptor> Current();
+  // Returns nullptr without allocating when every interceptor is stateless.
+  // Existing interceptors remain shared; per-call instances live with
+  // callbacks.
+  std::shared_ptr<GroupInterceptor> CreateInvocationGroup(
+      const std::string& module, const std::string& method,
+      base::LynxEntityId view) const;
+  void RewriteArguments(Runtime& rt, const Value* args, size_t count,
+                        std::vector<Value>& replacement) override;
+  bool HandlesCall() const override;
+  bool RewriteResult(Runtime& rt, Value& result) override;
+  void BeforeCallback(int argument_index,
+                      std::unique_ptr<pub::Value>& args) override;
   ModuleInterceptorResult InterceptModuleMethod(
       const std::shared_ptr<LynxModule>& module,
       const LynxModule::MethodMetadata& method, Runtime* rt,
@@ -70,10 +112,11 @@ class GroupInterceptor : public ModuleInterceptor {
                          ModuleCallback* callback) override;
   void SetTemplateUrl(const std::string& url) override;
 
-  void AddInterceptor(std::unique_ptr<ModuleInterceptor> interceptor);
+  void AddInterceptor(std::unique_ptr<ModuleInterceptor> interceptor,
+                      bool prepend = false);
 
  private:
-  base::InlineVector<std::unique_ptr<ModuleInterceptor>, 4> interceptors_;
+  base::InlineVector<std::shared_ptr<ModuleInterceptor>, 4> interceptors_;
 };
 
 }  // namespace js

@@ -76,9 +76,16 @@ class ModuleCallback : public LynxModuleCallback {
 
   void SetArgs(std::unique_ptr<pub::Value> args) override;
 
-  void SetModuleInterceptor(std::shared_ptr<GroupInterceptor> interceptor) {
+  void SetModuleInterceptor(std::shared_ptr<GroupInterceptor> interceptor,
+                            int index = -1) {
     group_interceptor_ = std::move(interceptor);
+    interception_argument_index_ = index;
+    notify_callback_invoked_ = true;
   }
+
+  // Copy invocation metadata, never delivery arguments or JS handles.
+  std::shared_ptr<ModuleCallback> CloneForMockDelivery(
+      int64_t callback_id) const;
 
   void SetNativeModuleInvocationContext(
       std::shared_ptr<NativeModuleInvocationContext> context) {
@@ -107,6 +114,9 @@ class ModuleCallback : public LynxModuleCallback {
   std::shared_ptr<NativeModuleInvocationContext> invocation_context_ = nullptr;
 
  private:
+  // Implicit Promise and mock callbacks do not notify legacy network hooks.
+  bool notify_callback_invoked_ = false;
+  int interception_argument_index_ = -1;
   std::unique_ptr<pub::Value> args_ = nullptr;
   std::function<std::unique_ptr<pub::Value>(Runtime* rt,
                                             ModuleCallback* callback)>
