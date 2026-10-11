@@ -3262,6 +3262,31 @@ bool ComputedCSSStyle::SetZIndex(const tasm::CSSValue& value,
   return value_changed || (old_has_z_index != has_z_index_);
 }
 
+bool ComputedCSSStyle::SetCornerShape(const tasm::CSSValue& value,
+                                      const bool reset) {
+  return false;
+}
+
+bool ComputedCSSStyle::SetCornerTopLeftShape(const tasm::CSSValue& value,
+                                             const bool reset) {
+  return false;
+}
+
+bool ComputedCSSStyle::SetCornerTopRightShape(const tasm::CSSValue& value,
+                                              const bool reset) {
+  return false;
+}
+
+bool ComputedCSSStyle::SetCornerBottomRightShape(const tasm::CSSValue& value,
+                                                 const bool reset) {
+  return false;
+}
+
+bool ComputedCSSStyle::SetCornerBottomLeftShape(const tasm::CSSValue& value,
+                                                const bool reset) {
+  return false;
+}
+
 bool ComputedCSSStyle::SetBorderRadius(const tasm::CSSValue& value,
                                        const bool reset) {
   CSSStyleUtils::PrepareOptional(

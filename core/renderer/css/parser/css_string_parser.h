@@ -201,6 +201,7 @@ class CSSStringParser final {
   CSSValue ParseListGap();
 
   CSSValue ParseSingleBorderRadius();
+  bool ParseCornerShape(CSSValue shapes[4], bool shorthand);
   CSSValue ParseAspectRatio();
   bool ParseTextStroke(CSSValue& result_width, CSSValue& result_color);
   std::pair<CSSValue, CSSValue> ParseGap();
@@ -418,6 +419,7 @@ class CSSStringParser final {
 
   /// <length-percentage>{1,4} [/ <length-percentage>{1,4}]?
   bool BorderRadius(CSSValue horizontal_radii[4], CSSValue vertical_radii[4]);
+  CSSValue CornerShape();
 
   void PushValue(const StackValue& value);
   void PushValue(StackValue&& value);

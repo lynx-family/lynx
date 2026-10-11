@@ -186,34 +186,29 @@ Token Scanner::FunctionExpression(TokenType type) {
 }
 
 Token Scanner::Numeric(bool begin_with_dot) {
-  // in case is negative number
-  if ((Peek() == '-' || Peek() == '+') &&
-      (IsDigit(PeekNext() || PeekNext() == '.'))) {
-    Advance();
-  }
   while (IsDigit(Peek())) {
     Advance();
-  }
-  if (begin_with_dot && Peek() == '.') {
-    return MakeToken(TokenType::NUMBER);
   }
   // support float number
-  if (Peek() == '.' && IsDigit(PeekNext())) {
+  if (!begin_with_dot && Peek() == '.' && IsDigit(PeekNext())) {
     // consume the dot
     Advance();
+    while (IsDigit(Peek())) {
+      Advance();
+    }
   }
 
-  while (IsDigit(Peek())) {
-    Advance();
-  }
-
-  // <number> ,e , -, <number> like '3e-5'
-  if (Peek() == 'e' && PeekNext() == '-' && IsDigit(PeekNextNext())) {
-    Advance();  // e
-    Advance();  // -
-  }
-  while (IsDigit(Peek())) {
-    Advance();
+  // An exponent requires at least one digit after the optional sign.
+  if ((Peek() == 'e' || Peek() == 'E') &&
+      (IsDigit(PeekNext()) ||
+       ((PeekNext() == '+' || PeekNext() == '-') && IsDigit(PeekNextNext())))) {
+    Advance();  // e or E
+    if (Peek() == '+' || Peek() == '-') {
+      Advance();
+    }
+    while (IsDigit(Peek())) {
+      Advance();
+    }
   }
 
   Token number = MakeToken(TokenType::NUMBER);
