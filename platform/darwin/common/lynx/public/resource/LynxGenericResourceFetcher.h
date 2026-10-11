@@ -5,6 +5,7 @@
 #ifndef DARWIN_COMMON_LYNX_RESOURCE_LYNXGENERICRESOURCEFETCHER_H_
 #define DARWIN_COMMON_LYNX_RESOURCE_LYNXGENERICRESOURCEFETCHER_H_
 
+#import <Lynx/LynxResourceHandle.h>
 #import <Lynx/LynxResourceRequest.h>
 #import <Lynx/LynxResourceResponse.h>
 
@@ -14,6 +15,8 @@ typedef void (^LynxGenericResourceCompletionBlock)(NSData *_Nullable data,
                                                    NSError *_Nullable error);
 typedef void (^LynxGenericResourcePathCompletionBlock)(NSString *_Nullable path,
                                                        NSError *_Nullable error);
+typedef void (^LynxGenericResourceHandleCompletionBlock)(LynxResourceHandle *_Nullable handle,
+                                                         NSError *_Nullable error);
 
 @protocol LynxResourceStreamLoadDelegate <NSObject>
 @required
@@ -82,6 +85,24 @@ typedef void (^LynxGenericResourcePathCompletionBlock)(NSString *_Nullable path,
 @optional
 - (dispatch_block_t)fetchBytecode:(nonnull LynxResourceRequest *)request
                        onComplete:(LynxGenericResourceCompletionBlock _Nonnull)callback;
+
+/**
+ * @apidoc
+ * @brief `LynxEngine` calls this method to obtain bytecode through a reusable resource handle.
+ *
+ * Returning `NO` declines the request and must not invoke `callback`; Lynx then calls
+ * `fetchBytecode:onComplete:`. Returning `YES` accepts the request and requires exactly one
+ * callback. Lynx shares ownership of a successful handle during the callback, so the provider may
+ * invalidate or reuse its handle after the callback returns.
+ *
+ * @param request Request for the requiring resource.
+ * @param callback Resource handle for the requiring resource.
+ * @return Whether this method accepted responsibility for the request.
+ * @note This method is optional to be implemented.
+ */
+@optional
+- (BOOL)fetchBytecodeHandle:(nonnull LynxResourceRequest *)request
+                 onComplete:(LynxGenericResourceHandleCompletionBlock _Nonnull)callback;
 
 /**
  * @apidoc

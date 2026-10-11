@@ -103,14 +103,18 @@ class BaseStringBuffer : public Buffer {
 
 class ByteBuffer : public Buffer {
  public:
-  explicit ByteBuffer(std::vector<uint8_t>&& data) : data_(std::move(data)) {}
-  size_t size() const override { return data_.size(); }
+  explicit ByteBuffer(std::vector<uint8_t>&& data)
+      : data_(std::make_shared<const std::vector<uint8_t>>(std::move(data))) {}
+  explicit ByteBuffer(std::shared_ptr<const std::vector<uint8_t>> data)
+      : data_(data == nullptr ? std::make_shared<const std::vector<uint8_t>>()
+                              : std::move(data)) {}
+  size_t size() const override { return data_->size(); }
   const uint8_t* data() const override {
-    return reinterpret_cast<const uint8_t*>(data_.data());
+    return reinterpret_cast<const uint8_t*>(data_->data());
   }
 
  private:
-  std::vector<uint8_t> data_;
+  std::shared_ptr<const std::vector<uint8_t>> data_;
 };
 
 class JSRuntimeDelegate;
