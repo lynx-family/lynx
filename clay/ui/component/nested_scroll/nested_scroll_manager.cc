@@ -226,6 +226,7 @@ void NestedScrollManager::StartFling(float velocity, bool try_raster_fling) {
     fling_animator_->SetAnimationHandler(page_view_->GetAnimationHandler());
     fling_animator_->AddListener(this);
     fling_animator_->SetFriction(1.0f);
+    fling_animator_->SetDevicePixelRatio(page_view_->DevicePixelRatio());
     fling_animator_->SetDensity(
         page_view_->GetPixelRatio<kPixelTypeLogical, kPixelTypeClay>());
   } else {
