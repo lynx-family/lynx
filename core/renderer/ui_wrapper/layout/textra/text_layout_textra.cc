@@ -5,6 +5,7 @@
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -13,6 +14,7 @@
 
 #include "base/include/string/string_utils.h"
 #include "base/include/string/unicode_decode_utils.h"
+#include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/text_attributes.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
@@ -50,6 +52,98 @@ std::vector<text::AutoFontSizeLineRange> AutoFontSizeLineRangesToVector(
         {range.start_line, range.end_line, range.min_size, range.max_size});
   }
   return result;
+}
+
+// Keep Lepus values on the core side of the TextLayoutAPI boundary.
+bool ConvertTextGradient(const lepus::Value& value,
+                         text::TextGradient& result) {
+  if (!value.IsArray() || value.Array()->size() < 2 ||
+      !value.Array()->get(0).IsNumber() || !value.Array()->get(1).IsArray()) {
+    return false;
+  }
+  result.type = static_cast<starlight::BackgroundImageType>(
+      value.Array()->get(0).Number());
+  const auto& params = *value.Array()->get(1).Array();
+  size_t color_index = 1;
+  switch (result.type) {
+    case starlight::BackgroundImageType::kLinearGradient:
+      if (params.size() < 4 || !params.get(0).IsNumber() ||
+          !params.get(3).IsNumber()) {
+        return false;
+      }
+      result.geometry = {static_cast<float>(params.get(0).Number()),
+                         static_cast<float>(params.get(3).Number())};
+      break;
+    case starlight::BackgroundImageType::kRadialGradient: {
+      if (params.size() < 3 || !params.get(0).IsArray()) {
+        return false;
+      }
+      const auto& shape = *params.get(0).Array();
+      if (shape.size() < 6 || !shape.get(1).IsNumber() ||
+          (shape.get(1).Number() ==
+               static_cast<int>(starlight::RadialGradientSizeType::kLength) &&
+           shape.size() < 14)) {
+        return false;
+      }
+      result.geometry.resize(14, 0);
+      for (size_t i = 0; i < 14; ++i) {
+        // Slots 6..9 hold source CSS lengths, not platform geometry.
+        if (i < shape.size() && (i < 6 || i >= 10)) {
+          if (!shape.get(i).IsNumber()) {
+            return false;
+          }
+          result.geometry[i] = static_cast<float>(shape.get(i).Number());
+        }
+      }
+      break;
+    }
+    case starlight::BackgroundImageType::kConicGradient: {
+      color_index = 2;
+      if (params.size() < 4 || !params.get(0).IsNumber() ||
+          !params.get(1).IsArray() || params.get(1).Array()->size() != 4) {
+        return false;
+      }
+      result.geometry.push_back(static_cast<float>(params.get(0).Number()));
+      const auto& center = *params.get(1).Array();
+      for (size_t i = 0; i < center.size(); ++i) {
+        if (!center.get(i).IsNumber()) {
+          return false;
+        }
+        result.geometry.push_back(static_cast<float>(center.get(i).Number()));
+      }
+      break;
+    }
+    default:
+      return false;
+  }
+  for (float component : result.geometry) {
+    if (!std::isfinite(component)) {
+      return false;
+    }
+  }
+  if (params.size() <= color_index + 1 || !params.get(color_index).IsArray() ||
+      !params.get(color_index + 1).IsArray()) {
+    return false;
+  }
+  const auto& colors = *params.get(color_index).Array();
+  const auto& stops = *params.get(color_index + 1).Array();
+  if (colors.size() < 2 ||
+      (stops.size() != 0 && stops.size() != colors.size())) {
+    return false;
+  }
+  for (size_t i = 0; i < colors.size(); ++i) {
+    if (!colors.get(i).IsNumber()) {
+      return false;
+    }
+    result.colors.push_back(colors.get(i).UInt32());
+  }
+  for (size_t i = 0; i < stops.size(); ++i) {
+    if (!stops.get(i).IsNumber()) {
+      return false;
+    }
+    result.stops.push_back(static_cast<float>(stops.get(i).Number()));
+  }
+  return true;
 }
 
 uint32_t GetTextEventTargetMask(const base::String& event_name) {
@@ -282,7 +376,32 @@ void TextLayoutTextra::ApplyTextStyle(Element* element,
         case kPropertyIDColor: {
           if (text_attributes->text_gradient.has_value() &&
               text_attributes->text_gradient->IsArray()) {
-            // TODO: gradient
+            // Resolve platform lengths on a copy: computed style retains the
+            // CSS values for later layout and font-size changes.
+            auto gradient =
+                lepus::Value::Clone(*text_attributes->text_gradient);
+            auto array = gradient.Array();
+            if (array->size() >= 2 && array->get(0).IsNumber() &&
+                array->get(1).IsArray()) {
+              auto type = static_cast<starlight::BackgroundImageType>(
+                  array->get(0).Number());
+              const auto& context = computed_css_style->GetMeasureContext();
+              const auto& configs =
+                  element->element_manager()->GetCSSParserConfigs();
+              if (type == starlight::BackgroundImageType::kRadialGradient) {
+                starlight::CSSStyleUtils::ComputeRadialGradient(
+                    array->get(1), context, configs);
+              } else if (type ==
+                         starlight::BackgroundImageType::kConicGradient) {
+                starlight::CSSStyleUtils::ComputeConicGradient(
+                    array->get(1), context, configs);
+              }
+              text::TextGradient typed;
+              if (ConvertTextGradient(gradient, typed)) {
+                paragraph_builder_->SetTextStyle(kTextPropTextGradient, &typed,
+                                                 sizeof(typed));
+              }
+            }
           } else {
             int color = static_cast<int>(
                 text_attributes->color.has_value()
