@@ -81,9 +81,10 @@ std::vector<std::string> FontResourceManagerTest::GetLocalFilePath() {
   std::string ttf_path;
   if (directory.first) {
     auto dir = directory.second;
-    auto pos = dir.find_last_of('/');
-    if (pos != std::string::npos && dir.substr(pos + 1) == "exe.unstripped") {
-      dir = dir.substr(0, pos);
+    auto parent_dir = fml::paths::GetDirectoryName(dir);
+    if (!parent_dir.empty() &&
+        fml::paths::JoinPaths({parent_dir, "exe.unstripped"}) == dir) {
+      dir = std::move(parent_dir);
     }
     ttf_path = fml::paths::JoinPaths({dir, test_file});
   } else {
