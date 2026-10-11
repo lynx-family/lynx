@@ -10,12 +10,32 @@
 
 namespace clay {
 
+void TapGestureRecognizer::HandleEvent(const PointerEvent& event) {
+  // When the click tracker owns the sequence, suppress the inherited drift
+  // reject on move. The tracker's up-time inside check and policy recheck are
+  // what gate the actual tap dispatch. Non-touch devices and sequences without
+  // tracker ownership keep the original PrimaryPointerGestureRecognizer slop.
+  if (allow_touch_movement_ &&
+      recognizer_state_ == GestureRecognizerState::kPossible &&
+      event.pointer_id == primary_pointer() &&
+      event.device == PointerEvent::DeviceType::kTouch &&
+      event.type == PointerEvent::EventType::kMoveEvent &&
+      !IsWithinDriftTolerance(event.position)) {
+    return;
+  }
+  super::HandleEvent(event);
+}
+
 void TapGestureRecognizer::AddAllowedPointer(const PointerEvent& pointer) {
   if (recognizer_state_ == GestureRecognizerState::kReady) {
     if (down_event_ || up_event_) {
       Reset();
     }
     down_event_ = std::make_unique<PointerEvent>(pointer);
+    allow_touch_movement_ =
+        pointer.device == PointerEvent::DeviceType::kTouch &&
+        allow_touch_movement_callback_ &&
+        allow_touch_movement_callback_(pointer);
   }
   super::AddAllowedPointer(pointer);
 }
@@ -26,6 +46,7 @@ void TapGestureRecognizer::Reset() {
   up_event_.reset();
   accepted_ = false;
   sent_tap_down_ = false;
+  allow_touch_movement_ = false;
 }
 
 void TapGestureRecognizer::HandlePrimaryPointerEvent(

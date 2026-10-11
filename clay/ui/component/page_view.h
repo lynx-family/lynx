@@ -554,6 +554,23 @@ class PageView : public BaseView,
   void PlatformHideSoftInput() override;
 
   void SetupIsolatedGestures();
+  virtual bool ReadClickTrackerSetting() const;
+  void BeginClickTracking(const PointerEvent& event,
+                          const HitTestResult& result);
+  void UpdateClickTrackingForEvents(const std::vector<PointerEvent>& events);
+  void CancelClickTrackingForGesture(int pointer_id,
+                                     GestureRecognizerType type);
+  bool IsClickTracking(int pointer_id) const;
+  // Resolves the dispatch target when a tap recognizer fires. Writes the
+  // owner-relative position when the click tracker accepts an owner-rooted tap.
+  // Returns nullptr for either "no tracker, legacy semantics" or "tracker
+  // cancelled, suppress tap". The caller must distinguish via HasClickTracker.
+  BaseView* ResolveClickTrackingTapTarget(const PointerEvent& event,
+                                          BaseView* current_top_view,
+                                          FloatPoint* owner_relative) const;
+  bool HasClickTracker(int pointer_id) const;
+  bool DispatchPointerEventBatch(std::vector<PointerEvent> events);
+  void EndClickTrackingForEndedEvents(const std::vector<PointerEvent>& events);
   bool HasActiveFling() const;
   void MarkTapSuppressedPointersForFlingStop(
       const std::vector<PointerEvent>& events);
@@ -656,6 +673,19 @@ class PageView : public BaseView,
   // view, regardless of whether the touch point remains within the view's
   // boundaries.
   std::unordered_map<int, int> touch_view_map_;
+  // Per-pointer click tracker. Once a touch down is bound to a clickable owner,
+  // movement no longer rejects the isolated tap; instead the up-time inside
+  // test and policy recheck decide whether to dispatch tap to that owner.
+  // Cancellation (scroll / long press / second pointer / policy change) is
+  // sticky for the remainder of the pointer sequence.
+  enum class ClickTrackerMode : uint8_t { kLegacyTap, kTracking, kCancelled };
+  struct ClickTrackerState {
+    fml::WeakPtr<BaseView> owner;
+    FloatPoint down_position;
+    GestureRecognizerType accepted_gesture = GestureRecognizerType::kNone;
+    ClickTrackerMode mode = ClickTrackerMode::kLegacyTap;
+  };
+  std::unordered_map<int, ClickTrackerState> click_trackers_;
   // Only the initial touch drives :active. Its pointer ID prevents unrelated
   // touch end or cancel events from clearing the active view chain.
   std::optional<int> active_touch_pointer_id_;
