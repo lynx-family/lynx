@@ -239,6 +239,10 @@ FixtureDispatchResult FixtureContext::Dispatch(
   // The running handler may replace itself or register another handler.
   auto handler = found->second;
   registration_failed_ = false;
+  const std::string source = module + "." + method;
+  if (!CheckFixtureJsonForEmbeddedNull(args_json, source + " arguments")) {
+    return {};
+  }
   auto parsed = Value::createFromJsonUtf8(
       runtime, reinterpret_cast<const uint8_t*>(args_json.data()),
       args_json.size());
@@ -298,6 +302,17 @@ FixtureDispatchResult FixtureContext::Dispatch(
       return_json.size() > limits_.max_result_bytes - sink->bytes) {
     LOGE("FixtureContext dispatch limit exceeded");
     return {};
+  }
+  // Validate the whole result before publishing any callbacks to the caller.
+  if (!CheckFixtureJsonForEmbeddedNull(return_json, source + " return value")) {
+    return {};
+  }
+  for (const auto& call : sink->calls) {
+    if (!CheckFixtureJsonForEmbeddedNull(
+            call.value_json,
+            source + " callback " + std::to_string(call.index))) {
+      return {};
+    }
   }
   FixtureDispatchResult out;
   out.handled = true;
