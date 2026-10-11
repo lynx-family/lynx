@@ -220,22 +220,22 @@ class ListEventManagerTest : public ::testing::Test {
                       static_cast<double>(top_value->Number()),
                       (item_holder->top() - scroll_top) / layouts_unit_per_px));
       auto bottom_value = cell_info.GetValueForKey(kCellInfoBottom);
-      EXPECT_TRUE(
-          bottom_value && bottom_value->IsNumber() &&
-          base::FloatsEqual(static_cast<double>(bottom_value->Number()),
-                            (item_holder->top() + item_holder->height()) /
-                                layouts_unit_per_px));
+      EXPECT_TRUE(bottom_value && bottom_value->IsNumber() &&
+                  base::FloatsEqual(static_cast<double>(bottom_value->Number()),
+                                    (item_holder->top() +
+                                     item_holder->height() - scroll_top) /
+                                        layouts_unit_per_px));
       auto left_value = cell_info.GetValueForKey(kCellInfoLeft);
       EXPECT_TRUE(left_value && left_value->IsNumber() &&
                   base::FloatsEqual(static_cast<double>(left_value->Number()),
                                     (item_holder->left() - scroll_left) /
                                         layouts_unit_per_px));
       auto right_value = cell_info.GetValueForKey(kCellInfoRight);
-      EXPECT_TRUE(
-          right_value && right_value->IsNumber() &&
-          base::FloatsEqual(static_cast<double>(right_value->Number()),
-                            (item_holder->left() + item_holder->width()) /
-                                layouts_unit_per_px));
+      EXPECT_TRUE(right_value && right_value->IsNumber() &&
+                  base::FloatsEqual(static_cast<double>(right_value->Number()),
+                                    (item_holder->left() +
+                                     item_holder->width() - scroll_left) /
+                                        layouts_unit_per_px));
       auto position_value = cell_info.GetValueForKey(kCellInfoPosition);
       EXPECT_TRUE(position_value && position_value->IsInt32() &&
                   position_value->Int32() == item_holder->index());
@@ -370,6 +370,17 @@ TEST_F(ListEventManagerTest, SendCustomScrollEvent) {
       });
   list_event_manager_->SendCustomScrollEvent(kEventScroll, distance,
                                              EventSource::kScroll);
+}
+
+TEST_F(ListEventManagerTest, VisibleCellBoundsAreViewportRelative) {
+  InitFiberDataSourceAndLayout(1, false, true);
+
+  constexpr float kScrollLeft = 40.f;
+  constexpr float kScrollTop = 240.f;
+  auto visible_cell_info = list_event_manager_->GenerateVisibleCellsInfo(
+      kScrollLeft, kScrollTop, true);
+
+  CheckAllVisibleCellInfo(visible_cell_info, kScrollLeft, kScrollTop, true);
 }
 
 TEST_F(ListEventManagerTest, SendAnchorDebugInfoIfNeeded) {

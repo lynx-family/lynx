@@ -515,13 +515,15 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateVisibleCellsInfo(
                       kCellInfoTop, (top - scroll_top) / layouts_unit_per_px);
                   item_info->PushDoubleToMap(
                       kCellInfoBottom,
-                      (top + item_holder->height()) / layouts_unit_per_px);
+                      (top + item_holder->height() - scroll_top) /
+                          layouts_unit_per_px);
                   item_info->PushDoubleToMap(
                       kCellInfoLeft,
                       (left - scroll_left) / layouts_unit_per_px);
                   item_info->PushDoubleToMap(
                       kCellInfoRight,
-                      (left + item_holder->width()) / layouts_unit_per_px);
+                      (left + item_holder->width() - scroll_left) /
+                          layouts_unit_per_px);
                   // for legacy API
                   item_info->PushInt32ToMap(kCellInfoPosition,
                                             item_holder->index());
