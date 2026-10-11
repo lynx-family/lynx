@@ -6071,7 +6071,6 @@ RENDERER_FUNCTION_CC(FiberCreateElementWithProperties) {
   }
   auto* tasm_pointer = GET_TASM_POINTER();
   auto& manager = tasm_pointer->page_proxy()->element_manager();
-  const bool deep_convert = manager->GetEnableParallelElement();
   auto element = manager->CreateFiberElement(enum_tag);
   if (element->is_component() || element->is_page()) {
     element->set_style_sheet_manager(
@@ -6178,7 +6177,7 @@ RENDERER_FUNCTION_CC(FiberCreateElementWithProperties) {
           auto id = CSSProperty::GetPropertyID(
               base::CamelCaseToDashCase(key.String().str()));
           if (CSSProperty::IsPropertyValid(id)) {
-            element->SetStyle(id, value.ToLepusValue());
+            element->SetStyle(id, value);
           }
         });
       } else if (param_4.IsString()) {
@@ -6192,14 +6191,12 @@ RENDERER_FUNCTION_CC(FiberCreateElementWithProperties) {
       // Handle 6th param: attribute.
       auto param_5 = arg1->GetProperty(5);
       if (param_5.IsObject()) {
-        tasm::ForEachLepusValue(
-            param_5, [&element, deep_convert](const lepus::Value& key,
-                                              const lepus::Value& value) {
-              if (key.IsString()) {
-                element->SetAttribute(key.String(),
-                                      value.ToLepusValue(deep_convert));
-              }
-            });
+        tasm::ForEachLepusValue(param_5, [&element](const lepus::Value& key,
+                                                    const lepus::Value& value) {
+          if (key.IsString()) {
+            element->SetAttribute(key.String(), value);
+          }
+        });
       } else if (!param_5.IsEmpty()) {
         RenderWarning("param_bundle[5] is attribute, need an Object or null.");
         RETURN_UNDEFINED();
