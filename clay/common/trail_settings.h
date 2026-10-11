@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "build/build_config.h"
 #include "service_api/services/trail/trail_service.h"
 
 namespace clay {
@@ -30,6 +31,15 @@ LYNX_SETTING_KEY(CLAY_DISABLE_IMAGE_MEM_CACHE, bool,
                  "clay_disable_image_mem_cache", false);
 LYNX_SETTING_KEY(CLAY_IOS_USE_TT_VIDEO_ENGINE, bool,
                  "clay_ios_use_tt_video_engine", false);
+// Keep page-level touch taps eligible after movement on iOS. Scroll, gesture
+// ownership, cancellation, and target identity are still checked separately.
+#if OS_IOS
+LYNX_SETTING_KEY(CLAY_IOS_ALLOW_TOUCH_TAP_AFTER_MOVEMENT, bool,
+                 "clay_ios_allow_touch_tap_after_movement", true);
+#else
+LYNX_SETTING_KEY(CLAY_IOS_ALLOW_TOUCH_TAP_AFTER_MOVEMENT, bool,
+                 "clay_ios_allow_touch_tap_after_movement", false);
+#endif
 // Reuse eligible single-line AtMost layouts with TTText.
 LYNX_SETTING_KEY(CLAY_ENABLE_TEXT_AT_MOST_LAYOUT_REUSE, bool,
                  "clay_enable_text_at_most_layout_reuse", false);

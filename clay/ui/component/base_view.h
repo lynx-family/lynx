@@ -367,6 +367,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
                                HitTestResult& result);
   void HandleEvent(const PointerEvent& event) override;
   bool HasDragGestureRecognizer(ScrollDirection direction) const override;
+  bool HasDragGestureRecognizerWithNonDefaultSlop() const;
   bool HasTapGestureRecognizer() const override;
   bool HasLongPressGestureRecognizer() const override;
   bool HasTapEvent() const override;
