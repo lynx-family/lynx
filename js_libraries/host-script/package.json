@@ -1,0 +1,30 @@
+{
+  "name": "@lynx-js/host-script",
+  "version": "0.1.0",
+  "description": "JavaScript APIs for Lynx Host Script Runtime capabilities",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lynx-family/lynx.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Lynx Authors",
+  "devDependencies": {
+    "typescript": "5.8.3"
+  }
+}
