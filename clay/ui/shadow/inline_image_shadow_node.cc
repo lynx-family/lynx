@@ -33,10 +33,11 @@ void InlineImageShadowNode::TextLayout(LayoutContext* context) {
       Width(), Height() + MarginTop() + MarginBottom(),
       txt::PlaceholderAlignment::kBaseline, txt::TextBaseline::kAlphabetic,
       Height() + MarginTop() + MarginBottom() + baseline_offset_);
-  auto* text_context = static_cast<LayoutContextText*>(context);
-  start_glyph_ = text_context->TextSizeIncludingPlaceholders();
+  start_glyph_ =
+      static_cast<LayoutContextText*>(context)->TextSizeIncludingPlaceholders();
   end_glyph_ = start_glyph_ + 1;
-  placeholder_index_ = text_context->AddPlaceholder(placeholder);
+  placeholder_index_ =
+      static_cast<LayoutContextText*>(context)->AddPlaceholder(placeholder);
   builder->Pop();
 }
 
