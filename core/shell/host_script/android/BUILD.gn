@@ -4,10 +4,24 @@
 
 import("../../../Lynx.gni")
 
+# Transport declarations only; never link engine or stub objects into DevTool.
+lynx_core_source_set("host_script_runtime_headers") {
+  sources = [
+    "../../../base/lynx_export.h",
+    "../../../base/memory/unsafe_owning_ptr.h",
+    "../../../renderer/utils/devtool_lifecycle.h",
+    "../../../renderer/utils/devtool_state.h",
+    "../runtime/process_runtime.h",
+    "runtime/process_runtime_android.h",
+  ]
+  public_deps = [ "../../../../base/src:base_public_headers" ]
+}
+
 # LynxEnv only needs the startup declaration. The Android library links the
 # runtime implementation, avoiding a renderer-utils -> JS-runtime cycle.
 lynx_core_source_set("host_script_init") {
   sources = [ "runtime/process_runtime_init_android.h" ]
+  public_deps = [ ":host_script_runtime_headers" ]
 
   # Regular libraries and standalone test/SSR binaries keep empty entry points.
   if (!is_android || !lynx_in_debug || enable_unittests || is_oliver_ssr) {
@@ -43,6 +57,7 @@ if (is_android && lynx_in_debug) {
       ":host_script_init",
       "../../../../third_party/rapidjson:rapidjson",
       "../../../base:base",
+      "../../../renderer/utils:renderer_utils",
       "../runtime:process_runtime",
     ]
     if (!enable_unittests && !is_oliver_ssr) {
