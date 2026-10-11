@@ -113,6 +113,8 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
     // TODO(zhoupeng.z): all info from request should be moved to
     // LynxLazyBundleRequest
     lazy_bundle::LynxLazyBundleRequest request;
+    // for js dynamic component loading through ExternalResourceLoader.
+    std::unique_ptr<LazyBundleLifecycleOption> lifecycle_option{nullptr};
 
    private:
     void HandleStatus(std::optional<StatusInfo> status);

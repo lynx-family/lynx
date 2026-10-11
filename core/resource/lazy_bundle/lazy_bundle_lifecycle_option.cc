@@ -6,17 +6,96 @@
 
 #include <utility>
 
+#include "base/include/lynx_actor.h"
 #include "core/renderer/template_assembler.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/services/timing_handler/timing_constants.h"
 
 namespace lynx {
 namespace tasm {
 
-LazyBundleLifecycleOption::LazyBundleLifecycleOption(const std::string& url,
-                                                     int instance_id,
-                                                     bool enable_event_reporter)
-    : component_url(url), instance_id(instance_id){};
+LazyBundleLifecycleOption::LazyBundleLifecycleOption(
+    const std::string& url, int instance_id, bool enable_event_reporter,
+    LazyBundleEntryOrigin entry_origin)
+    : component_url(url),
+      instance_id(instance_id),
+      entry_origin_(entry_origin){};
+
+void LazyBundleLifecycleOption::SetPerfControllerActor(
+    std::weak_ptr<shell::LynxActor<performance::PerformanceController>> actor) {
+  perf_controller_actor_ = std::move(actor);
+}
+
+void LazyBundleLifecycleOption::RecordRequireStart(int64_t timestamp) {
+  start_require_time = timestamp;
+}
+
+void LazyBundleLifecycleOption::RecordRequireEnd(int64_t timestamp,
+                                                 bool is_sync,
+                                                 int64_t resource_size) {
+  end_require_time = timestamp;
+  sync = is_sync;
+  binary_size = resource_size;
+}
+
+void LazyBundleLifecycleOption::RecordDecodeStart(int64_t timestamp) {
+  start_decode_time = timestamp;
+}
+
+void LazyBundleLifecycleOption::RecordDecodeEnd(int64_t timestamp) {
+  end_decode_time = timestamp;
+}
+
+void LazyBundleLifecycleOption::SetLoadResult(bool success) {
+  is_success = success;
+  if (mode != LazyBundleState::STATE_CACHE &&
+      mode != LazyBundleState::STATE_PRELOAD) {
+    mode =
+        success ? LazyBundleState::STATE_SUCCESS : LazyBundleState::STATE_FAIL;
+  }
+}
+
+void LazyBundleLifecycleOption::MarkMTSLazyBundleUrl() {
+  if (entry_origin_ != LazyBundleEntryOrigin::kMTS) {
+    return;
+  }
+  auto perf_controller_actor = perf_controller_actor_.lock();
+  if (!perf_controller_actor) {
+    return;
+  }
+  perf_controller_actor->ActAsync(
+      [url = component_url](auto& performance) mutable {
+        performance->MarkMTSLazyBundleUrl(url);
+      });
+}
+
+void LazyBundleLifecycleOption::ReportLazyBundleEntry() {
+  if (lazy_bundle_entry_reported_) {
+    return;
+  }
+  lazy_bundle_entry_reported_ = true;
+
+  auto perf_controller_actor = perf_controller_actor_.lock();
+  if (!perf_controller_actor) {
+    return;
+  }
+  auto lazy_bundle_entry = GetLazyBundleEntry();
+  if (!lazy_bundle_entry) {
+    return;
+  }
+  perf_controller_actor->ActAsync(
+      [url = component_url, entry_origin = entry_origin_,
+       entry = std::move(lazy_bundle_entry)](auto& performance) mutable {
+        if (entry_origin == LazyBundleEntryOrigin::kMTS) {
+          performance->OnMTSLazyBundlePerformanceEvent(
+              url, std::move(entry), tasm::performance::kEventTypeAll);
+        } else {
+          performance->OnBTSLazyBundlePerformanceEvent(
+              url, std::move(entry), tasm::performance::kEventTypeAll);
+        }
+      });
+}
 
 bool LazyBundleLifecycleOption::HandleLoadFailure(TemplateAssembler* tasm) {
   if (sync && component_instance) {

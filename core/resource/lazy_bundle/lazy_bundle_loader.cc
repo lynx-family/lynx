@@ -139,6 +139,8 @@ void LazyBundleLoader::MarkComponentLoading(const std::string& url) {
 void LazyBundleLoader::AppendUrlToLifecycleOptionMap(
     const std::string& url,
     std::unique_ptr<LazyBundleLifecycleOption> lifecycle_option) {
+  lifecycle_option->SetPerfControllerActor(perf_controller_actor_);
+  lifecycle_option->MarkMTSLazyBundleUrl();
   auto& options = url_to_lifecycle_option_map_[url];
   // sync some information of previous options if need
   if (!options.empty()) {
@@ -164,17 +166,7 @@ bool LazyBundleLoader::DispatchOnComponentLoaded(TemplateAssembler* tasm,
   bool need_dispatch = false;
   for (const auto& option : option_handle.mapped()) {
     need_dispatch = option->OnLazyBundleLifecycleEnd(tasm) || need_dispatch;
-    // send LazyBundleEntry
-    if (perf_controller_actor_ != nullptr) {
-      auto lazyBundleEntry = option->GetLazyBundleEntry();
-      if (lazyBundleEntry != nullptr) {
-        perf_controller_actor_->ActAsync(
-            [entry = std::move(lazyBundleEntry)](auto& performance) mutable {
-              performance->OnPerformanceEvent(std::move(entry),
-                                              tasm::performance::kEventTypeAll);
-            });
-      }
-    }
+    option->ReportLazyBundleEntry();
   }
 
   return need_dispatch;
@@ -320,7 +312,7 @@ void LazyBundleLoader::StartRecordRequireTime(const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
   uint64_t time = base::CurrentSystemTimeMilliseconds();
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
-    option->start_require_time = time;
+    option->RecordRequireStart(time);
   }
 }
 
@@ -329,11 +321,11 @@ void LazyBundleLoader::EndRecordRequireTime(const CallBackInfo& callback_info) {
   std::string url = callback_info.component_url;
   uint64_t time = base::CurrentSystemTimeMilliseconds();
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
-    option->sync = callback_info.sync;
-    option->end_require_time = time;
-    if (callback_info.Success()) {
-      option->binary_size = callback_info.data.size();
-    }
+    option->RecordRequireEnd(
+        time, callback_info.sync,
+        callback_info.Success()
+            ? static_cast<int64_t>(callback_info.SourceSize())
+            : 0);
   }
 }
 
@@ -341,7 +333,7 @@ void LazyBundleLoader::StartRecordDecodeTime(const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
   uint64_t time = base::CurrentSystemTimeMilliseconds();
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
-    option->start_decode_time = time;
+    option->RecordDecodeStart(time);
   }
 }
 
@@ -349,7 +341,7 @@ void LazyBundleLoader::EndRecordDecodeTime(const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
   uint64_t time = base::CurrentSystemTimeMilliseconds();
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
-    option->end_decode_time = time;
+    option->RecordDecodeEnd(time);
   }
 }
 
@@ -357,7 +349,7 @@ void LazyBundleLoader::MarkComponentLoadedFailed(
     const std::string& url, int32_t error_code, const lepus::Value& error_msg) {
   DCHECK(engine_actor_->CanRunNow());
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
-    option->is_success = false;
+    option->SetLoadResult(false);
     option->error_code = error_code;
     option->message = error_msg;
   }
@@ -367,7 +359,7 @@ void LazyBundleLoader::MarkComponentLoadedSuccess(
     const std::string& url, const lepus::Value& success_msg) {
   DCHECK(engine_actor_->CanRunNow());
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
-    option->is_success = true;
+    option->SetLoadResult(true);
     option->message = success_msg;
   }
 }
