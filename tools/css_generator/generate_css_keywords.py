@@ -9,45 +9,19 @@ import argparse
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import sys
 
-
-def find_gperf(buildtools_dir):
-    if sys.platform == "darwin":
-        return "/usr/bin/gperf"
-    executable = "gperf.exe" if sys.platform == "win32" else "gperf"
-    packaged = Path(buildtools_dir) / "gperf" / "bin" / executable
-    if packaged.is_file():
-        return str(packaged.resolve())
-    installed = shutil.which(executable)
-    if installed:
-        return installed
-    raise FileNotFoundError(
-        "gperf was not found. Sync the build tools or set gperf_executable "
-        "to the host gperf binary in args.gn.")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from gperf.gperf import find_gperf, run_gperf, write_if_changed
 
 
 def generate(gperf, template, output):
-    template = Path(template).resolve()
-    generated = subprocess.check_output(
-        [gperf, "-D", "-t", template.name], cwd=template.parent,
-        text=True, encoding="utf-8")
-    # gperf 3.0.x (macOS and Windows) emits the removed C++17 keyword.
-    generated = re.sub(r"\bregister\s+", "", generated)
-    # Newer gperf releases already emit fallthrough attributes.
-    if "__fallthrough__" not in generated and "[[fallthrough]]" not in generated:
-        generated = generated.replace("/*FALLTHROUGH*/", "[[fallthrough]];")
+    generated = run_gperf(gperf, template, ["-D", "-t"])
     generated = re.sub(r"^/\* Command-line: .*\*/$",
                        "/* Generated from css_keywords.tmpl. Do not edit. */",
                        generated, flags=re.MULTILINE)
-    output = Path(output)
-    if output.exists() and output.read_text(encoding="utf-8") == generated:
-        return
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("w", encoding="utf-8", newline="\n") as destination:
-        destination.write(generated)
+    write_if_changed(output, generated)
 
 
 def main():

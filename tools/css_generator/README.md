@@ -30,8 +30,8 @@ On macOS, generation calls `/usr/bin/gperf` directly. On Windows x86/x64 and
 Linux x86_64, dependency sync installs the host tool under
 `buildtools/gperf/bin`. Other hosts can install gperf on `PATH`. Set
 `gperf_executable` in `args.gn` to an absolute path to override tool discovery.
-Cross builds always use a host executable. The generator supports gperf 3.0.x
-and newer and normalizes legacy output for C++17.
+Cross builds always use a host executable. Tool discovery and C++17 output
+normalization are shared through `tools/gperf`.
 
 CocoaPods generation also creates the table while exporting the Podspec, and
 the Podspec's prepare command regenerates it when a source pod is downloaded.

@@ -2,10 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
-declare_args() {
-  # Path to a gperf executable for the build host, including cross builds.
-  gperf_executable = ""
-}
+import("../gperf/gperf.gni")
 
 css_keywords_generator = get_path_info("generate_css_keywords.py", "abspath")
 css_keywords_template =
@@ -13,15 +10,6 @@ css_keywords_template =
 css_keywords_generated =
     get_label_info("../../core/renderer/css:generate_css_keywords",
                    "target_gen_dir") + "/css_keywords.cc"
-
-if (gperf_executable == "") {
-  gperf_executable = exec_script(css_keywords_generator,
-                                 [
-                                   "--find-gperf",
-                                   rebase_path("//buildtools"),
-                                 ],
-                                 "trim string")
-}
 
 css_keywords_generator_args = [
   "--gperf",
