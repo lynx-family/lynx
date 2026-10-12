@@ -23,6 +23,23 @@ namespace tasm {
 namespace harmony {
 static const float kBLUR_SIGMA_SCALE = 0.57735f;
 static const float kBLUR_OUTSET_SIGMA_MULTIPLIER = 3.0f;
+float BoxShadowLayer::BlurRadiusToSigma(float blur_radius, float density) {
+  return blur_radius > 0.f ? kBLUR_SIGMA_SCALE * blur_radius * density + 0.5f
+                           : 0.f;
+}
+
+OH_Drawing_MaskFilter* BoxShadowLayer::CreateBlurMaskFilter(float blur_radius,
+                                                            float density) {
+  return OH_Drawing_MaskFilterCreateBlur(
+      NORMAL, BlurRadiusToSigma(blur_radius, density), true);
+}
+
+void BoxShadowLayer::DestroyBlurMaskFilter(OH_Drawing_MaskFilter* mask_filter) {
+  if (mask_filter) {
+    OH_Drawing_MaskFilterDestroy(mask_filter);
+  }
+}
+
 void BoxShadowLayer::DrawInsetLayer(OH_Drawing_Canvas* canvas) {
   for (int i = shadow_list_.size() - 1; i >= 0; --i) {
     if (shadow_list_.at(i)->is_inset) {
@@ -81,8 +98,7 @@ std::array<float, 4> BoxShadowLayer::GetOutset(float scale_density) const {
     }
     float blur_outset = 0.f;
     if (shadow->blur_radius > 0.f) {
-      float blur_sigma =
-          kBLUR_SIGMA_SCALE * shadow->blur_radius * scale_density + 0.5f;
+      float blur_sigma = BlurRadiusToSigma(shadow->blur_radius, scale_density);
       blur_outset = kBLUR_OUTSET_SIGMA_MULTIPLIER * blur_sigma / scale_density;
     }
     float extent = blur_outset + shadow->spread_radius;
@@ -111,15 +127,11 @@ void BoxShadowLayer::UpdateShadowDrawer(float left, float top, float width,
       shadow->shadow_path = OH_Drawing_PathCreate();
     }
     if (shadow->mask_filter) {
-      OH_Drawing_MaskFilterDestroy(shadow->mask_filter);
+      DestroyBlurMaskFilter(shadow->mask_filter);
       shadow->mask_filter = nullptr;
     }
-    auto blur_radius =
-        shadow->blur_radius > 0
-            ? kBLUR_SIGMA_SCALE * shadow->blur_radius * scale_density + 0.5f
-            : 0.0f;
     shadow->mask_filter =
-        OH_Drawing_MaskFilterCreateBlur(NORMAL, blur_radius, true);
+        CreateBlurMaskFilter(shadow->blur_radius, scale_density);
     float inset = shadow->spread_radius * scale_density;
     float inset_max = shadow->is_inset ? std::min(width, height) / 2
                                        : std::numeric_limits<float>::max();
@@ -224,7 +236,7 @@ void BoxShadowLayer::ClearShadowDrawStruct() {
       OH_Drawing_PathDestroy(shadow->shadow_path);
     }
     if (shadow->mask_filter) {
-      OH_Drawing_MaskFilterDestroy(shadow->mask_filter);
+      DestroyBlurMaskFilter(shadow->mask_filter);
     }
   }
   shadow_list_.clear();
