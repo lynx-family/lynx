@@ -31,10 +31,6 @@
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
 #include "platform/embedder/public/lynx_event_simulation_proxy.h"
-#include "third_party/jsoncpp/include/json/json.h"
-#if ENABLE_INSPECTOR
-#include "devtool/embedder/common/devtools_embedder.h"
-#endif  // ENABLE_INSPECTOR
 
 namespace lynx {
 namespace tasm {
@@ -196,7 +192,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 #if ENABLE_INSPECTOR
   void InvokeCDPFromSDK(const std::string& cdp_msg,
                         std::function<void(const std::string&)>&& callback);
-  void OnReceiveMessageEvent(const Json::Value& event);
+  void OnReceiveMessageEvent(const runtime::MessageEvent& event);
 #endif  // ENABLE_INSPECTOR
 
   void AddClient(TemplateRendererClient* client);
@@ -334,7 +330,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::list<TemplateRendererClient*> clients_;
 
 #if ENABLE_INSPECTOR
-  std::unique_ptr<devtool::DevtoolsEmbedder> devtools_;
+  std::shared_ptr<devtool::LynxInspectorOwner> devtools_;
 #endif  // ENABLE_INSPECTOR
   std::shared_ptr<pub::LynxEventSimulationProxy> event_proxy_;
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;

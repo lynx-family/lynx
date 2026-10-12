@@ -9,6 +9,7 @@
 #include <service_api/testing/b/b_service.h>
 #endif
 
+#include <service_api/services/devtool/embedder_devtool_service.h>
 #include <service_api/services/security/security_service.h>
 #include <service_api/services/trail/trail_service.h>
 

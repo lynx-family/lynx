@@ -4,7 +4,6 @@
 
 #include "platform/embedder/core/native_facade_impl.h"
 
-#include "core/renderer/utils/base/tasm_constants.h"
 #include "platform/embedder/core/lynx_template_renderer.h"
 
 namespace lynx {
@@ -63,16 +62,7 @@ void NativeFacadeImpl::OnReceiveMessageEvent(
     return;
   }
 
-  Json::Value message;
-  message[lynx::tasm::kType] = event->type();
-  message[lynx::tasm::kTimestamp] = event->time_stamp();
-  message[lynx::tasm::kTarget] = event->GetTargetString();
-  message[lynx::tasm::kOrigin] = event->GetOriginString();
-
-  const auto* msg = event->message();
-  message[lynx::tasm::kData] = msg ? msg->str() : "";
-
-  renderer_->OnReceiveMessageEvent(message);
+  renderer_->OnReceiveMessageEvent(*event);
 #endif
 }
 

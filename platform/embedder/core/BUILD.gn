@@ -27,14 +27,13 @@ lynx_core_source_set("renderer") {
       sources += [ "../../../core/services/event_report/embedder/event_tracker_platform_embedder_impl.cc" ]
     }
   }
-  deps = [
-    "../../../core:lynx_native",
-    "../../../third_party/jsoncpp:jsoncpp",
-  ]
+  deps = [ "../../../core:lynx_native" ]
   if (!enable_unittests) {
     deps += [ "../lynx_service:lynx_service" ]
   }
-  if (enable_inspector) {
+  if (is_ios || !enable_inspector) {
+    public_deps = [ "../lynx_service:devtool_service" ]
+  } else {
     public_deps = [ "../lynx_devtool:lynx_devtool" ]
   }
 

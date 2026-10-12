@@ -59,6 +59,16 @@ subspec_target("devtool") {
       "../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory_stub",
     ]
   }
+  if (is_headless) {
+    deps += [
+      "../../../../devtool/embedder/common:lynx_devtool_embedder_common",
+      "../../../../devtool/embedder/core:lynx_devtool_embedder_core",
+      "../../../../third_party/debug_router/src/debug_router/common:debug_router_cpp_interface",
+      "../../../embedder:devtool_settings_embedder",
+      "../../../embedder/lynx_devtool:lynx_devtool",
+      "//third_party/httplib:httplib",
+    ]
+  }
 }
 
 podspec_target("devtool_podspec") {
@@ -156,6 +166,7 @@ subspec_target("Framework") {
     "-Wno-deprecated",
   ]
   pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [ "../../../.." ]
     GCC_PREPROCESSOR_DEFINITIONS = [
       "RAPIDJSON_HAS_STDSTRING=1",
       "RAPIDJSON_NAMESPACE=lynx::rapidjson",
@@ -186,6 +197,28 @@ subspec_target("Framework") {
         "DebugRouter",
         ">= 5.0.15",
       ] ]
+  if (is_headless) {
+    pod_target_xcconfig.HEADER_SEARCH_PATHS += [
+      "../../../../third_party/debug_router/src",
+      "//PODS_ROOT/DebugRouter",
+      "//PODS_ROOT/boringssl/include",
+      "//PODS_ROOT/Lynx/lynx",
+      "//PODS_ROOT/LynxServiceAPI/lynx",
+      "//PODS_ROOT/LynxServiceAPI",
+      "//PODS_ROOT/BaseDevtool/lynx/third_party/jsoncpp/include",
+    ]
+    pod_target_xcconfig.GCC_PREPROCESSOR_DEFINITIONS += [
+      "LYNX_ENABLE_HEADLESS_DEVTOOL=1",
+      "CPPHTTPLIB_NO_EXCEPTIONS",
+      "CPPHTTPLIB_ZLIB_SUPPORT",
+      "CPPHTTPLIB_OPENSSL_SUPPORT",
+    ]
+    frameworks += [ "CFNetwork" ]
+    dependency += [
+      "boringssl",
+      "LynxServiceAPI/Core",
+    ]
+  }
   if (use_flatten_deps) {
     flatten_deps += [
       ":DebugResource",

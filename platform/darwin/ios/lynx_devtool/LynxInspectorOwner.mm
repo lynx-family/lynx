@@ -41,6 +41,15 @@
 #import <LynxDevtool/LynxFrameViewTrace.h>
 #endif
 
+#if defined(LYNX_ENABLE_HEADLESS_DEVTOOL)
+#include <service_api/service_api_utils.h>
+namespace lynx {
+namespace embedder {
+USE_LINK_ANCHOR(embedder_devtool_service);
+}  // namespace embedder
+}  // namespace lynx
+#endif
+
 @interface LynxInspectorOwner () <DebugRouterSlotDelegate>
 
 @end
