@@ -181,7 +181,7 @@ void QJSInspectorClientImpl::ConnectSession(int instance_id,
 void QJSInspectorClientImpl::DisconnectSession(int instance_id) {
   auto it = channels_.find(instance_id);
   if (it != channels_.end()) {
-    auto &group_id = it->second->GroupId();
+    std::string group_id = it->second->GroupId();
     channels_.erase(it);
     auto sp = delegate_wp_.lock();
     if (sp != nullptr) {

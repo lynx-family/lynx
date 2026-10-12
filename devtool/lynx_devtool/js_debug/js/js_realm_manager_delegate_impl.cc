@@ -51,15 +51,21 @@ void JSRealmManagerDelegateImpl::OnRuntimeReady(
   current_runtime.InitInspector(executor.GetRuntimeObserver());
 }
 
-void JSRealmManagerDelegateImpl::AfterSharedContextCreate(
+void JSRealmManagerDelegateImpl::EnsureSharedContextRegistered(
     const std::string& group_id, runtime::js::JSRuntimeType type) {
-  group_to_engine_type_.emplace(group_id, type);
+  auto [it, inserted] = group_to_engine_type_.emplace(group_id, type);
+  LOGI("js debug: EnsureSharedContextRegistered, group_id: "
+       << group_id << ", requested_engine_type: " << static_cast<int>(type)
+       << ", registered_engine_type: " << static_cast<int>(it->second)
+       << ", inserted: " << inserted);
 }
 
 void JSRealmManagerDelegateImpl::OnRelease(const std::string& group_id) {
   auto engine_it = group_to_engine_type_.find(group_id);
   if (engine_it != group_to_engine_type_.end()) {
-    auto callback_it = release_context_callback_.find(engine_it->second);
+    auto engine_type = engine_it->second;
+    group_to_engine_type_.erase(engine_it);
+    auto callback_it = release_context_callback_.find(engine_type);
     if (callback_it != release_context_callback_.end()) {
       (callback_it->second)(group_id);
     }
