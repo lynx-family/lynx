@@ -16,6 +16,10 @@ if (is_win) {
 config("config") {
   defines = feature_defines_list
 
+  if (is_ios || enable_unittests) {
+    defines += [ "CLAY_ENABLE_CLICK_TRACKER" ]
+  }
+
   if (enable_non_builtin_views) {
     defines += [ "ENABLE_NON_BUILTIN_VIEWS=1" ]
   }

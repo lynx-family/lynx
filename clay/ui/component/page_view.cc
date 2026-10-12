@@ -20,6 +20,9 @@
 #include "base/include/fml/time/time_delta.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/screenshot.h"
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+#include "clay/common/trail_settings.h"
+#endif
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/fml/logging.h"
@@ -79,6 +82,30 @@
 
 namespace clay {
 namespace {
+
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+class PageTapGestureRecognizer final : public TapGestureRecognizer {
+ public:
+  PageTapGestureRecognizer(GestureManager* manager,
+                           std::function<bool(int)> allow_touch_movement)
+      : TapGestureRecognizer(manager),
+        allow_touch_movement_(std::move(allow_touch_movement)) {}
+
+  void HandleEvent(const PointerEvent& event) override {
+    if (event.type == PointerEvent::EventType::kMoveEvent &&
+        event.device == PointerEvent::DeviceType::kTouch &&
+        recognizer_state_ == GestureRecognizerState::kPossible &&
+        event.pointer_id == primary_pointer() &&
+        allow_touch_movement_(event.pointer_id)) {
+      return;
+    }
+    TapGestureRecognizer::HandleEvent(event);
+  }
+
+ private:
+  std::function<bool(int)> allow_touch_movement_;
+};
+#endif
 
 clay::Value CreateExposeArray(
     ExposureDataList& data_arr,
@@ -307,6 +334,10 @@ void PageView::OnDestroy() {
   active_pointer_ids_.clear();
   mouse_region_manager_->Reset();
 #endif
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  click_tracking_touch_pointer_ids_.clear();
+  click_tracker_.reset();
+#endif
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
@@ -322,6 +353,9 @@ void PageView::InitManagers() {
       [this](const PointerEvent& event, const HitTestResult& result) {
         isolated_gesture_detector_.TrackScrollTapSuppressionForPointerDown(
             event, result);
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+        BeginClickTracking(event, result);
+#endif
 #if defined(OS_WIN) || defined(OS_MAC)
         if (IsTouchLikePointerDevice(event.device)) {
 #else
@@ -339,6 +373,12 @@ void PageView::InitManagers() {
         }
         ResignFirstResponderIfNeeded(GetFirstNonAnonymousHitTestTarget(result));
       });
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  gesture_manager_->SetListenerForGestureRecognized(
+      [this](int pointer_id, GestureRecognizerType type) {
+        CancelClickTrackingForGesture(pointer_id, type);
+      });
+#endif
   gesture_manager_->SetGestureHandlerDispatcher(
       gesture_handler_dispatcher_.get());
 
@@ -973,6 +1013,20 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
     return consumed;
   }
 #endif
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  if (events.size() > 1 &&
+      (click_tracker_ ||
+       (ReadClickTrackerSetting() &&
+        std::any_of(events.begin(), events.end(), [](const auto& event) {
+          return event.device == PointerEvent::DeviceType::kTouch;
+        })))) {
+    bool consumed = false;
+    for (const auto& event : events) {
+      consumed |= DispatchPointerEvent({event});
+    }
+    return consumed;
+  }
+#endif
   // The events data is in physical pixels, we need to convert them to clay
   // pixels.
   for (PointerEvent& event : events) {
@@ -1052,6 +1106,9 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
   isolated_gesture_detector_.ClearScrollTapSuppressionForEndedEvents(
       legacy_events);
   ClearTapSuppressedPointersForEndedEvents(legacy_events);
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  EndClickTrackingForEndedEvents(legacy_events);
+#endif
   for (const auto& event : legacy_events) {
     if (event.type == PointerEvent::EventType::kUpEvent ||
         event.type == PointerEvent::EventType::kCancel) {
@@ -1317,8 +1374,14 @@ void PageView::ReportPointerEvent(const PointerEvent& event) {
 #endif
 
 void PageView::SetupIsolatedGestures() {
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  auto tap_recognizer = std::make_unique<PageTapGestureRecognizer>(
+      isolated_gesture_detector_.gesture_manager(),
+      [this](int pointer_id) { return IsClickTracking(pointer_id); });
+#else
   auto tap_recognizer = std::make_unique<TapGestureRecognizer>(
       isolated_gesture_detector_.gesture_manager());
+#endif
   tap_recognizer->SetTaskRunner(GetTaskRunner());
   tap_recognizer->SetTapUpCallback([this](const PointerEvent& event) {
     if (isolated_gesture_detector_.ShouldSuppressTapForScrollDrag(
@@ -1346,7 +1409,11 @@ void PageView::SetupIsolatedGestures() {
       // simulate primary mouse click as touch tap to adapt front-end code
       auto tap_event = event;
       tap_event.device = PointerEvent::DeviceType::kTouch;
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+      ReportTopViewEvent(tap_event, kClayEventTypeTap, false);
+#else
       ReportTopViewEvent(tap_event, kClayEventTypeTap);
+#endif
     }
   });
   tap_gesture_recognizer_ = tap_recognizer.get();
@@ -1372,6 +1439,127 @@ void PageView::SetupIsolatedGestures() {
   isolated_gesture_detector_.AddRecognizer(std::move(long_press_recognizer));
 }
 
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+bool PageView::ReadClickTrackerSetting() const {
+#ifdef OS_IOS
+  return setting::CLAY_IOS_ALLOW_TOUCH_TAP_AFTER_MOVEMENT.value();
+#else
+  return false;
+#endif
+}
+
+namespace {
+
+bool AncestorClaimsPointer(BaseView* view) {
+  for (auto* v = view; v; v = v->Parent()) {
+    if (v->Is<NativeView>() || v->ShouldPassEventToNative() ||
+        !v->GetGestureDetectorMap().empty() ||
+        v->HasConsumeSlideEventAngles() || v->ShouldInterceptGesture() ||
+        v->HasDragGestureRecognizer(ScrollDirection::kVertical) ||
+        v->HasDragGestureRecognizer(ScrollDirection::kHorizontal)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+BaseView* FindClickTrackerOwner(const HitTestResult& result) {
+  for (const auto& hit : result) {
+    auto* view = static_cast<BaseView*>(hit.get());
+    if (view && AncestorClaimsPointer(view)) {
+      return nullptr;
+    }
+    if (view && !view->IsAnonymousView() &&
+        (view->HasTapEvent() || view->HasTapGestureRecognizer())) {
+      return view;
+    }
+  }
+  return nullptr;
+}
+
+}  // namespace
+
+void PageView::BeginClickTracking(const PointerEvent& event,
+                                  const HitTestResult& result) {
+  if (event.device != PointerEvent::DeviceType::kTouch) {
+    return;
+  }
+  const bool is_first_touch = click_tracking_touch_pointer_ids_.empty();
+  click_tracking_touch_pointer_ids_.insert(event.pointer_id);
+  if (!is_first_touch) {
+    if (click_tracker_) {
+      click_tracker_->mode = ClickTrackerMode::kCancelled;
+    }
+    return;
+  }
+  if (!ReadClickTrackerSetting()) {
+    return;
+  }
+  auto* owner = FindClickTrackerOwner(result);
+  if (!owner || !owner->attach_to_tree()) {
+    return;
+  }
+  click_tracker_.emplace(
+      ClickTrackerState{event.pointer_id, owner->GetWeakPtr()});
+}
+
+void PageView::CancelClickTrackingForGesture(int pointer_id,
+                                             GestureRecognizerType type) {
+  if (type == GestureRecognizerType::kNone ||
+      type == GestureRecognizerType::kTap) {
+    return;
+  }
+  if (HasClickTracker(pointer_id)) {
+    click_tracker_->mode = ClickTrackerMode::kCancelled;
+  }
+}
+
+bool PageView::IsClickTracking(int pointer_id) const {
+  return HasClickTracker(pointer_id) &&
+         click_tracker_->mode == ClickTrackerMode::kTracking;
+}
+
+bool PageView::HasClickTracker(int pointer_id) const {
+  return click_tracker_ && click_tracker_->pointer_id == pointer_id;
+}
+
+BaseView* PageView::ResolveClickTrackingTapTarget(
+    int pointer_id, const FloatPoint& hit_position, BaseView* current_top_view,
+    FloatPoint* owner_relative) const {
+  if (!IsClickTracking(pointer_id)) {
+    return nullptr;
+  }
+  auto* owner = click_tracker_->owner.get();
+  if (!owner || !owner->attach_to_tree() || !owner->CanAcceptEvent() ||
+      AncestorClaimsPointer(current_top_view)) {
+    return nullptr;
+  }
+  for (auto* v = current_top_view; v; v = v->Parent()) {
+    if (v == owner) {
+      if (owner_relative) {
+        *owner_relative = owner->GetPointBySelf(hit_position);
+      }
+      return owner;
+    }
+  }
+  return nullptr;
+}
+
+void PageView::EndClickTrackingForEndedEvents(
+    const std::vector<PointerEvent>& events) {
+  for (const auto& event : events) {
+    if (event.device == PointerEvent::DeviceType::kTouch &&
+        (event.type == PointerEvent::EventType::kUpEvent ||
+         event.type == PointerEvent::EventType::kCancel)) {
+      if (HasClickTracker(event.pointer_id)) {
+        click_tracker_.reset();
+      }
+      click_tracking_touch_pointer_ids_.erase(event.pointer_id);
+    }
+  }
+}
+#endif
+
 bool PageView::HitTest(const PointerEvent& event, HitTestResult& result) {
   PointerEvent converted_event = event;
   bool is_pass_through_from_overlay = false;
@@ -1392,11 +1580,25 @@ bool PageView::HitTest(const PointerEvent& event, HitTestResult& result) {
 BaseView* PageView::GetTopViewToAcceptEvent(const FloatPoint& position,
                                             FloatPoint* relative_position,
                                             int platform_try_hit_id) {
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  return GetTopViewToAcceptEventWithHitPosition(position, relative_position,
+                                                platform_try_hit_id, nullptr);
+}
+
+BaseView* PageView::GetTopViewToAcceptEventWithHitPosition(
+    const FloatPoint& position, FloatPoint* relative_position,
+    int platform_try_hit_id, FloatPoint* hit_position) {
+#endif
   FloatPoint converted_position = position;
   bool is_pass_through_from_overlay = false;
   auto overlay_result = overlay_manager_->GetTopViewToAcceptEvent(
       position, relative_position, is_pass_through_from_overlay,
       converted_position, platform_try_hit_id);
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  if (hit_position) {
+    *hit_position = converted_position;
+  }
+#endif
   if (overlay_result) {
     return overlay_result;
   }
@@ -1429,12 +1631,20 @@ int PageView::GetHitTestingTargetNativeViewId(const FloatPoint& position,
   return -1;
 }
 
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+void PageView::ReportTopViewEvent(const PointerEvent& event, ClayEventType type,
+                                  bool resolve_click_tracker) {
+#else
 void PageView::ReportTopViewEvent(const PointerEvent& event,
                                   ClayEventType type) {
+#endif
   overlay_manager_->OnReportTopViewEvent(event, type);
   auto position = event.position;
   BaseView* top_view = nullptr;
   FloatPoint transformed_position;
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  FloatPoint tap_hit_position = position;
+#endif
   if (type == kClayEventTypeTouchMove || type == kClayEventTypeTouchEnd ||
       type == kClayEventTypeTouchCancel) {
     auto it = touch_view_map_.find(event.pointer_id);
@@ -1458,12 +1668,33 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
     transformed_position = position;
     transformed_position.Move(-view_pos.x(), -view_pos.y());
   } else {
-    top_view = GetTopViewToAcceptEvent(position, &transformed_position);
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+    if (resolve_click_tracker && type == kClayEventTypeTap &&
+        HasClickTracker(event.pointer_id)) {
+      top_view = GetTopViewToAcceptEventWithHitPosition(
+          position, &transformed_position, -1, &tap_hit_position);
+    } else
+#endif
+    {
+      top_view = GetTopViewToAcceptEvent(position, &transformed_position);
+    }
   }
 
   if (!top_view || top_view->IsAnonymousView()) {
     return;
   }
+
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  if (resolve_click_tracker && type == kClayEventTypeTap &&
+      HasClickTracker(event.pointer_id)) {
+    BaseView* owner = ResolveClickTrackingTapTarget(
+        event.pointer_id, tap_hit_position, top_view, &transformed_position);
+    if (!owner) {
+      return;
+    }
+    top_view = owner;
+  }
+#endif
 
   switch (event.device) {
     case PointerEvent::DeviceType::kTouch:
@@ -2123,6 +2354,16 @@ void PageView::FlushUIMethodTasks() {
 }
 
 void PageView::ResetPageView(bool recycle) {
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  if (click_tracker_) {
+    std::vector<PointerEvent> cancel_events{
+        PointerEvent(PointerEvent::EventType::kCancel)};
+    auto& event = cancel_events.front();
+    event.device = PointerEvent::DeviceType::kTouch;
+    event.pointer_id = click_tracker_->pointer_id;
+    isolated_gesture_detector_.DispatchPointerEvent(cancel_events, {});
+  }
+#endif
   DestroyAllChildren();
   padding_left_ = 0.f;
   padding_top_ = 0.f;
@@ -2157,6 +2398,10 @@ void PageView::ResetPageView(bool recycle) {
   primary_pointer_ids_.clear();
   active_pointer_ids_.clear();
   mouse_region_manager_->Reset();
+#endif
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  click_tracking_touch_pointer_ids_.clear();
+  click_tracker_.reset();
 #endif
   fling_stop_tap_suppressed_pointer_ids_.clear();
   isolated_gesture_detector_.ClearScrollTapSuppressionStates();

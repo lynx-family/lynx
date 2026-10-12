@@ -5,12 +5,16 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "clay/shell/common/pointer_data_to_event.h"
+#include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view.h"
+#include "clay/ui/gesture/drag_gesture_recognizer.h"
+#include "clay/ui/gesture/long_press_gesture_recognizer.h"
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "clay/ui/testing/ui_test.h"
 #include "clay/ui/window/pointer_data_packet.h"
@@ -30,6 +34,13 @@ class TestPageView : public PageView {
 
 class RecordingEventDelegate : public testing::MockEventDelegate {
  public:
+  void OnTouchEvent(const std::string& name, int id, float x, float y, float,
+                    float) override {
+    if (name == "tap") {
+      tap_events_.emplace_back(id, FloatPoint{x, y});
+    }
+  }
+
   void OnMouseEvent(const std::string&, int, int button, int buttons, float,
                     float, float, float, float) override {
     button_ = button;
@@ -45,9 +56,443 @@ class RecordingEventDelegate : public testing::MockEventDelegate {
   int buttons_ = -1;
   int calls_ = 0;
   std::vector<std::pair<int, bool>> active_changes_;
+  std::vector<std::pair<int, FloatPoint>> tap_events_;
+};
+
+class ClickTrackerOffsetOverlay : public OverlayView {
+ public:
+  using OverlayView::OverlayView;
+  bool ShouldChangeOffset() const override { return true; }
+  Point GetTouchOffset() const override { return {20, 30}; }
+};
+
+class ClickTrackerPageView : public PageView {
+ public:
+  ClickTrackerPageView(fml::RefPtr<fml::TaskRunner> runner, const bool* enabled)
+      : PageView(0, nullptr, std::move(runner)), enabled_(enabled) {}
+
+  bool IsTracking(int pointer_id) const { return IsClickTracking(pointer_id); }
+
+ protected:
+  bool ReadClickTrackerSetting() const override { return *enabled_; }
+
+ private:
+  const bool* enabled_;
+};
+
+class ClickTrackerTest : public UITest {
+ protected:
+  std::unique_ptr<PageView> CreatePageView() override {
+    return std::make_unique<ClickTrackerPageView>(ui_task_runner(), &enabled_);
+  }
+
+  ClickTrackerPageView* tracker_page() {
+    return static_cast<ClickTrackerPageView*>(page_.get());
+  }
+
+  void UISetUp() override {
+    page_->SetTapSlop(8);
+    owner_ = AddTarget(1, {0, 0}, {100, 100});
+    owner_->AddEventCallback("tap");
+    find_view_by_id_callback_ = [this](int id) -> BaseView* {
+      const auto it = targets_.find(id);
+      return it == targets_.end() ? nullptr : it->second;
+    };
+    touch_event_callback_ = [this](const std::string& name, int id) {
+      if (name == "tap") {
+        tap_targets_.push_back(id);
+      }
+    };
+  }
+
+  View* AddTarget(int id, FloatPoint position, FloatSize size,
+                  BaseView* parent = nullptr) {
+    auto* target = new View(id, page_.get());
+    target->SetBound(position.x(), position.y(), size.width(), size.height());
+    (parent ? parent : page_.get())->AddChild(target);
+    targets_[id] = target;
+    return target;
+  }
+
+  void DeleteTarget(View*& target) {
+    target->Parent()->RemoveChild(target);
+    targets_.erase(target->id());
+    delete target;
+    target = nullptr;
+  }
+
+  void DispatchMovement(
+      int id, FloatPoint from, FloatPoint to,
+      PointerEvent::DeviceType device = PointerEvent::kTouch) {
+    auto down = CreatePointer(id, PointerEvent::EventType::kDownEvent, from);
+    auto move = CreatePointer(id, PointerEvent::EventType::kMoveEvent, to);
+    auto up = CreatePointer(id, PointerEvent::EventType::kUpEvent, to);
+    down.device = move.device = up.device = device;
+    up.buttons = 0;
+    page_->DispatchPointerEvent({down});
+    page_->DispatchPointerEvent({move});
+    page_->DispatchPointerEvent({up});
+  }
+
+  View* owner_ = nullptr;
+  bool enabled_ = true;
+  std::unordered_map<int, BaseView*> targets_;
+  std::vector<int> tap_targets_;
+  RecordingEventDelegate coordinate_event_delegate_;
 };
 
 }  // namespace
+
+TEST_F_UI(ClickTrackerTest, MovementInsideOwnerFiresTap) {
+  for (const auto& end : {FloatPoint{15, 10}, FloatPoint{80, 10}}) {
+    SCOPED_TRACE(end.x());
+    tap_targets_.clear();
+    DispatchMovement(1, {10, 10}, end);
+    EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+  }
+}
+
+TEST_F_UI(ClickTrackerTest, ReplacingChildKeepsOwner) {
+  auto* child = AddTarget(2, {0, 0}, {100, 100}, owner_);
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  DeleteTarget(child);
+  AddTarget(3, {0, 0}, {100, 100}, owner_);
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {80, 10})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kUpEvent, {80, 10})});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(ClickTrackerTest, OverlayAddedAfterDownSuppressesTap) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  AddTarget(2, {0, 0}, {100, 100})->AddEventCallback("tap");
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {80, 10})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kUpEvent, {80, 10})});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, ReplacingDeletedOwnerWithSameIdSuppressesTap) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  DeleteTarget(owner_);
+  AddTarget(1, {0, 0}, {100, 100})->AddEventCallback("tap");
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {80, 10})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kUpEvent, {80, 10})});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, DisabledTrackerKeepsOriginalMovementThreshold) {
+  enabled_ = false;
+  DispatchMovement(1, {10, 10}, {80, 10});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, TrackerSettingIsSnapshotAtDown) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  enabled_ = false;
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {80, 10})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kUpEvent, {80, 10})});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+
+  DispatchMovement(2, {10, 10}, {80, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(ClickTrackerTest, SecondTouchCancelsTrackerAfterSettingTurnsOff) {
+  auto first = CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10});
+  page_->DispatchPointerEvent({first});
+  enabled_ = false;
+  auto second = CreatePointer(2, PointerEvent::EventType::kDownEvent, {20, 10});
+  page_->DispatchPointerEvent({second});
+  first.type = second.type = PointerEvent::EventType::kUpEvent;
+  first.buttons = second.buttons = 0;
+  page_->DispatchPointerEvent({first});
+  page_->DispatchPointerEvent({second});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, EnablingTrackerDoesNotTakeOverActiveTouches) {
+  enabled_ = false;
+  auto first = CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10});
+  page_->DispatchPointerEvent({first});
+
+  enabled_ = true;
+  auto second = CreatePointer(2, PointerEvent::EventType::kDownEvent, {10, 10});
+  page_->DispatchPointerEvent({second});
+  EXPECT_FALSE(tracker_page()->IsTracking(2));
+
+  first.type = second.type = PointerEvent::EventType::kMoveEvent;
+  first.position = second.position = {80, 10};
+  page_->DispatchPointerEvent({first});
+  page_->DispatchPointerEvent({second});
+  first.type = second.type = PointerEvent::EventType::kUpEvent;
+  first.buttons = second.buttons = 0;
+  page_->DispatchPointerEvent({first});
+  page_->DispatchPointerEvent({second});
+  EXPECT_TRUE(tap_targets_.empty());
+
+  DispatchMovement(3, {10, 10}, {80, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(ClickTrackerTest, TouchWithoutOwnerKeepsOriginalMovementThreshold) {
+  auto* target = AddTarget(2, {100, 0}, {100, 100});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {110, 10})});
+  target->AddEventCallback("tap");
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {180, 10})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kUpEvent, {180, 10})});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, MouseKeepsOriginalMovementThreshold) {
+  DispatchMovement(1, {10, 10}, {80, 10}, PointerEvent::kMouse);
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, DragRecognizerKeepsOriginalMovementThreshold) {
+  auto drag = std::make_unique<DragGestureRecognizer>(page_->gesture_manager());
+  drag->SetTouchSlop(8);
+  owner_->AddGestureRecognizer(std::move(drag));
+  DispatchMovement(1, {10, 10}, {80, 10});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, ChildConsumeSlideKeepsOriginalMovementThreshold) {
+  auto* child = AddTarget(2, {0, 0}, {100, 100}, owner_);
+  Value angles{Value{Value(-180), Value(180)}};
+  child->SetConsumeSlideEventDirection(angles.GetArray());
+  DispatchMovement(1, {10, 10}, {80, 10});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, ChildClaimingPointerAfterDownSuppressesTap) {
+  auto* child = AddTarget(2, {0, 0}, {100, 100}, owner_);
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  Value angles{Value{Value(-180), Value(180)}};
+  child->SetConsumeSlideEventDirection(angles.GetArray());
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kUpEvent, {10, 10})});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, PassThroughOverlayPreservesOwnerTapCoordinates) {
+  owner_->SetBound(60, 70, 100, 100);
+  auto* overlay = new ClickTrackerOffsetOverlay(2, page_.get());
+  overlay->SetBound(0, 0, 1000, 1000);
+  page_->AddChild(overlay);
+  Layout();
+  page_->SetEventDelegate(&coordinate_event_delegate_);
+  DispatchMovement(1, {50, 50}, {80, 50});
+  EXPECT_EQ(coordinate_event_delegate_.tap_events_,
+            (std::vector<std::pair<int, FloatPoint>>{{1, {40, 10}}}));
+}
+
+TEST_F_UI(ClickTrackerTest, OverlayChildPreservesOwnerTapCoordinates) {
+  auto* overlay = new ClickTrackerOffsetOverlay(2, page_.get());
+  overlay->SetBound(0, 0, 1000, 1000);
+  page_->AddChild(overlay);
+  page_->RemoveChild(owner_);
+  overlay->AddChild(owner_);
+  AddTarget(3, {5, 6}, {80, 80}, owner_);
+  Layout();
+  page_->SetEventDelegate(&coordinate_event_delegate_);
+  DispatchMovement(1, {30, 40}, {60, 40});
+  EXPECT_EQ(coordinate_event_delegate_.tap_events_,
+            (std::vector<std::pair<int, FloatPoint>>{{1, {40, 10}}}));
+}
+
+TEST_F_UI(ClickTrackerTest, AcceptedLongPressSuppressesTap) {
+  auto long_press =
+      std::make_unique<LongPressGestureRecognizer>(page_->gesture_manager(), 1);
+  owner_->AddGestureRecognizer(std::move(long_press));
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  AsyncStart();
+  ui_task_runner()->PostDelayedTask(
+      [this]() {
+        EXPECT_EQ(page_->gesture_manager()
+                      ->GetHitTestResponsiveResult()
+                      .recognized_gesture_type,
+                  GestureRecognizerType::kNone);
+        page_->DispatchPointerEvent(
+            {CreatePointer(1, PointerEvent::EventType::kUpEvent, {10, 10})});
+        EXPECT_TRUE(tap_targets_.empty());
+        AsyncEnd();
+      },
+      fml::TimeDelta::FromMilliseconds(10));
+}
+
+TEST_F_UI(ClickTrackerTest, DisabledTrackerPreservesLongPressResponsiveState) {
+  enabled_ = false;
+  auto long_press_count = std::make_shared<int>(0);
+  auto long_press =
+      std::make_unique<LongPressGestureRecognizer>(page_->gesture_manager(), 1);
+  long_press->SetLongPressStartCallback(
+      [long_press_count](const PointerEvent&) { ++*long_press_count; });
+  owner_->AddGestureRecognizer(std::move(long_press));
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  AsyncStart();
+  ui_task_runner()->PostDelayedTask(
+      [this, long_press_count]() {
+        EXPECT_EQ(*long_press_count, 1);
+        EXPECT_EQ(page_->gesture_manager()
+                      ->GetHitTestResponsiveResult()
+                      .recognized_gesture_type,
+                  GestureRecognizerType::kNone);
+        page_->DispatchPointerEvent(
+            {CreatePointer(1, PointerEvent::EventType::kUpEvent, {10, 10})});
+        AsyncEnd();
+      },
+      fml::TimeDelta::FromMilliseconds(10));
+}
+
+TEST_F_UI(ClickTrackerTest, CancelClearsTrackingBeforePointerIdReuse) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kCancel, {10, 10})});
+  DispatchMovement(1, {10, 10}, {80, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(ClickTrackerTest, ResetPageViewCancelsActiveTrackingSequence) {
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+
+  page_->ResetPageView();
+  owner_ = nullptr;
+  targets_.clear();
+  owner_ = AddTarget(2, {0, 0}, {100, 100});
+  owner_->AddEventCallback("tap");
+
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {80, 10})});
+  auto old_up = CreatePointer(1, PointerEvent::EventType::kUpEvent, {80, 10});
+  old_up.buttons = 0;
+  page_->DispatchPointerEvent({old_up});
+  EXPECT_TRUE(tap_targets_.empty());
+
+  DispatchMovement(2, {10, 10}, {80, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({2}));
+}
+
+TEST_F_UI(ClickTrackerTest, SecondTouchCancelsClickTracking) {
+  auto first = CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10});
+  auto second = CreatePointer(2, PointerEvent::EventType::kDownEvent, {20, 10});
+  page_->DispatchPointerEvent({first});
+  page_->DispatchPointerEvent({second});
+  first.type = second.type = PointerEvent::EventType::kUpEvent;
+  first.buttons = second.buttons = 0;
+  page_->DispatchPointerEvent({first});
+  page_->DispatchPointerEvent({second});
+  EXPECT_TRUE(tap_targets_.empty());
+}
+
+TEST_F_UI(ClickTrackerTest, SecondTouchCannotTakeOverOwnerlessSequence) {
+  AddTarget(2, {100, 0}, {100, 100});
+  auto first = CreatePointer(1, PointerEvent::EventType::kDownEvent, {110, 10});
+  auto second = CreatePointer(2, PointerEvent::EventType::kDownEvent, {10, 10});
+  page_->DispatchPointerEvent({first});
+  page_->DispatchPointerEvent({second});
+  EXPECT_FALSE(tracker_page()->IsTracking(2));
+  first.type = PointerEvent::EventType::kUpEvent;
+  first.buttons = 0;
+  page_->DispatchPointerEvent({first});
+  second.type = PointerEvent::EventType::kMoveEvent;
+  second.position = {80, 10};
+  page_->DispatchPointerEvent({second});
+  second.type = PointerEvent::EventType::kUpEvent;
+  second.buttons = 0;
+  page_->DispatchPointerEvent({second});
+}
+
+TEST_F_UI(ClickTrackerTest, NewTouchCannotTakeOverUntilAllTouchesEnd) {
+  auto first = CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10});
+  auto second = CreatePointer(2, PointerEvent::EventType::kDownEvent, {20, 10});
+  page_->DispatchPointerEvent({first});
+  page_->DispatchPointerEvent({second});
+  first.type = PointerEvent::EventType::kUpEvent;
+  first.buttons = 0;
+  page_->DispatchPointerEvent({first});
+
+  auto third = CreatePointer(3, PointerEvent::EventType::kDownEvent, {10, 10});
+  page_->DispatchPointerEvent({third});
+  EXPECT_FALSE(tracker_page()->IsTracking(3));
+  third.type = PointerEvent::EventType::kMoveEvent;
+  third.position = {80, 10};
+  page_->DispatchPointerEvent({third});
+  third.type = PointerEvent::EventType::kUpEvent;
+  third.buttons = 0;
+  page_->DispatchPointerEvent({third});
+  second.type = PointerEvent::EventType::kUpEvent;
+  second.buttons = 0;
+  page_->DispatchPointerEvent({second});
+  EXPECT_TRUE(tap_targets_.empty());
+
+  auto fourth = CreatePointer(4, PointerEvent::EventType::kDownEvent, {10, 10});
+  page_->DispatchPointerEvent({fourth});
+  EXPECT_TRUE(tracker_page()->IsTracking(4));
+  fourth.type = PointerEvent::EventType::kMoveEvent;
+  fourth.position = {80, 10};
+  page_->DispatchPointerEvent({fourth});
+  fourth.type = PointerEvent::EventType::kUpEvent;
+  fourth.buttons = 0;
+  page_->DispatchPointerEvent({fourth});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(ClickTrackerTest, BatchedUpAndReusedDownKeepIndependentTracking) {
+  auto first_down =
+      CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10});
+  page_->DispatchPointerEvent({first_down});
+  auto first_up = CreatePointer(1, PointerEvent::EventType::kUpEvent, {10, 10});
+  first_up.buttons = 0;
+  auto second_down =
+      CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10});
+  page_->DispatchPointerEvent({first_up, second_down});
+  auto second_move =
+      CreatePointer(1, PointerEvent::EventType::kMoveEvent, {80, 10});
+  auto second_up =
+      CreatePointer(1, PointerEvent::EventType::kUpEvent, {80, 10});
+  second_up.buttons = 0;
+  page_->DispatchPointerEvent({second_move});
+  page_->DispatchPointerEvent({second_up});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1, 1}));
+}
+
+TEST_F_UI(ClickTrackerTest, HitSlopRemainsPartOfOwnerHitRegion) {
+  owner_->SetAttribute("hit-slop", Value("20px"));
+  DispatchMovement(1, {95, 10}, {115, 10});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
+
+TEST_F_UI(ClickTrackerTest, LeavingAndReenteringOwnerFiresTap) {
+  AddTarget(2, {100, 0}, {100, 100});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {110, 10})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kMoveEvent, {80, 10})});
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kUpEvent, {80, 10})});
+  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+}
 
 TEST(PageViewTest, EmptyKeyframesData) {
   std::unique_ptr<PageView> page_view =

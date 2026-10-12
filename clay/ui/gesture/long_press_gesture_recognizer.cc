@@ -6,6 +6,9 @@
 
 #include <memory>
 
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+#include "clay/ui/gesture/gesture_manager.h"
+#endif
 #include "clay/ui/gesture/macros.h"
 
 namespace clay {
@@ -75,6 +78,9 @@ void LongPressGestureRecognizer::OnTimeout() {
 
   state_ = LongPressState::kDetected;
 
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  gesture_manager_->NotifyGestureRecognized(primary_pointer(), getType());
+#endif
   ResolveAll(GestureDisposition::kAccept);
 
   if (on_long_press_start_ && down_event_) {

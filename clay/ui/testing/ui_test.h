@@ -77,6 +77,9 @@ class UITest : public ::testing::Test {
               (std::string event_name, const clay::Value::Map& params), ());
 
  protected:
+  virtual std::unique_ptr<PageView> CreatePageView() {
+    return std::make_unique<PageView>(0, nullptr, ui_task_runner());
+  }
   virtual void UISetUp() {}
   virtual void UITearDown() {}
   void SetUp() override;

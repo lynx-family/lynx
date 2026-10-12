@@ -278,6 +278,10 @@ void GestureManager::DispatchEventByRouter(const PointerEvent& event) {
 
 void GestureManager::OnGestureAccepted(int pointer_id,
                                        GestureRecognizerType type) {
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  // Sweep may accept after per-pointer bookkeeping has been removed.
+  NotifyGestureRecognized(pointer_id, type);
+#endif
   if (const auto& it = gesture_accepted_map_.find(pointer_id);
       it != gesture_accepted_map_.end()) {
     it->second = type;

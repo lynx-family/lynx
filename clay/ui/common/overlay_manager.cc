@@ -284,6 +284,9 @@ BaseView* OverlayManager::GetTopViewToAcceptEvent(
         continue;
       }
       // consumed by overlay child
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+      converted_position = overlay_position;
+#endif
       return view;
     }
   }

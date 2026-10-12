@@ -77,6 +77,19 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
 
   void OnGestureAccepted(int pointer_id, GestureRecognizerType type);
 
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  void SetListenerForGestureRecognized(
+      std::function<void(int, GestureRecognizerType)> callback) {
+    gesture_recognized_listener_ = std::move(callback);
+  }
+
+  void NotifyGestureRecognized(int pointer_id, GestureRecognizerType type) {
+    if (gesture_recognized_listener_) {
+      gesture_recognized_listener_(pointer_id, type);
+    }
+  }
+#endif
+
   const HitTestResponsiveResult& GetHitTestResponsiveResult() const {
     return hit_test_responsive_result_;
   }
@@ -119,6 +132,9 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
   // We need get value from map and judge if it's empty or not set.
   std::map<int, HitTestResult> hit_tests_;
   std::unordered_map<int, GestureRecognizerType> gesture_accepted_map_;
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  std::function<void(int, GestureRecognizerType)> gesture_recognized_listener_;
+#endif
   const fml::RefPtr<fml::TaskRunner> task_runner_;
 
   FloatPoint down_event_point_;

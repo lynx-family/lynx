@@ -554,6 +554,23 @@ class PageView : public BaseView,
   void PlatformHideSoftInput() override;
 
   void SetupIsolatedGestures();
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  virtual bool ReadClickTrackerSetting() const;
+  void BeginClickTracking(const PointerEvent& event,
+                          const HitTestResult& result);
+  void CancelClickTrackingForGesture(int pointer_id,
+                                     GestureRecognizerType type);
+  bool IsClickTracking(int pointer_id) const;
+  bool HasClickTracker(int pointer_id) const;
+  BaseView* ResolveClickTrackingTapTarget(int pointer_id,
+                                          const FloatPoint& hit_position,
+                                          BaseView* current_top_view,
+                                          FloatPoint* owner_relative) const;
+  BaseView* GetTopViewToAcceptEventWithHitPosition(
+      const FloatPoint& position, FloatPoint* relative_position,
+      int platform_try_hit_id, FloatPoint* hit_position);
+  void EndClickTrackingForEndedEvents(const std::vector<PointerEvent>& events);
+#endif
   bool HasActiveFling() const;
   void MarkTapSuppressedPointersForFlingStop(
       const std::vector<PointerEvent>& events);
@@ -571,7 +588,12 @@ class PageView : public BaseView,
   void ReportPointerEvent(const PointerEvent& event);
 #endif
   // Report pointer event with specified type
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  void ReportTopViewEvent(const PointerEvent& event, ClayEventType type,
+                          bool resolve_click_tracker = true);
+#else
   void ReportTopViewEvent(const PointerEvent& event, ClayEventType type);
+#endif
   // Report pointer event with the type deduced by event.device and
   // event.type
   void ReportTopViewEvent(const PointerEvent& event);
@@ -663,6 +685,16 @@ class PageView : public BaseView,
 #if defined(OS_WIN) || defined(OS_MAC)
   std::map<std::pair<PointerEvent::DeviceType, int>, fml::WeakPtr<BaseView>>
       pointer_view_map_;
+#endif
+#ifdef CLAY_ENABLE_CLICK_TRACKER
+  enum class ClickTrackerMode : uint8_t{kTracking, kCancelled};
+  struct ClickTrackerState {
+    int pointer_id;
+    fml::WeakPtr<BaseView> owner;
+    ClickTrackerMode mode = ClickTrackerMode::kTracking;
+  };
+  std::unordered_set<int> click_tracking_touch_pointer_ids_;
+  std::optional<ClickTrackerState> click_tracker_;
 #endif
   std::unordered_set<int> fling_stop_tap_suppressed_pointer_ids_;
   int active_fling_count_ = 0;
