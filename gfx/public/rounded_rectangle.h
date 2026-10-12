@@ -4,8 +4,8 @@
 
 #include "base/include/geometry/rect.h"
 
-#ifndef CORE_RENDERER_DOM_FRAGMENT_ROUNDED_RECTANGLE_H_
-#define CORE_RENDERER_DOM_FRAGMENT_ROUNDED_RECTANGLE_H_
+#ifndef GFX_PUBLIC_ROUNDED_RECTANGLE_H_
+#define GFX_PUBLIC_ROUNDED_RECTANGLE_H_
 
 namespace lynx {
 namespace tasm {
@@ -81,4 +81,4 @@ class RoundedRectangle {
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_DOM_FRAGMENT_ROUNDED_RECTANGLE_H_
+#endif  // GFX_PUBLIC_ROUNDED_RECTANGLE_H_

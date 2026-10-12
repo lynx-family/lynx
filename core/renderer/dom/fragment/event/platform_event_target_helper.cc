@@ -15,10 +15,10 @@
 #include "base/include/float_comparison.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/value/array.h"
-#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "gfx/public/display_list_reader.h"
 
 namespace lynx {
 namespace tasm {

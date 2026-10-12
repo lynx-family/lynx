@@ -19,8 +19,8 @@
 
 #include <stack>
 #include "base/include/vector.h"
-#include "core/renderer/dom/fragment/display_list_reader.h"
-#include "core/renderer/dom/fragment/rounded_rectangle.h"
+#include "gfx/public/display_list_reader.h"
+#include "gfx/public/rounded_rectangle.h"
 
 using namespace lynx;
 using namespace lynx::tasm;

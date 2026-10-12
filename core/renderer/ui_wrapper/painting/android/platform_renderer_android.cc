@@ -7,11 +7,11 @@
 #include <cstdint>
 #include <utility>
 
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/utils/base/tasm_constants.h"
+#include "gfx/public/display_list.h"
 
 namespace lynx::tasm {
 namespace {

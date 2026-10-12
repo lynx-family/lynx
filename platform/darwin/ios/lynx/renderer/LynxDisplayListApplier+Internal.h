@@ -5,7 +5,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-#include "core/renderer/dom/fragment/display_list.h"
+#include "gfx/public/display_list.h"
 
 @protocol LynxRendererHost;
 @class LynxRendererContext;

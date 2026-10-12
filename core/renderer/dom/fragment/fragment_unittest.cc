@@ -21,8 +21,6 @@
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
-#include "core/renderer/dom/fragment/display_list_builder.h"
-#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/fragment/event/platform_pointer_event.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
@@ -35,6 +33,8 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/display_list_builder.h"
+#include "gfx/public/display_list_reader.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -191,6 +191,35 @@ TEST_F(FragmentTest, FilterResetInvalidatesSubtreeAndEmitsNone) {
   EXPECT_EQ(reset_properties[0].data.filter.type,
             static_cast<int32_t>(starlight::FilterType::kNone));
   EXPECT_FLOAT_EQ(reset_properties[0].data.filter.amount, 0.f);
+}
+
+TEST_F(FragmentTest, FixedFilterAmountIsNotNormalized) {
+  auto element = manager->CreateFiberView();
+  auto* fragment = element->element_container()->CastToFragment();
+  ASSERT_NE(fragment, nullptr);
+
+  const lepus::Value filter_css("brightness(0.75)");
+  CSSParserConfigs configs;
+  auto parser = CSSStringParser::FromLepusString(filter_css, configs);
+  auto filter_value = parser.ParseFilter();
+  ASSERT_TRUE(filter_value.IsArray());
+  element->SetStyleInternal(CSSPropertyID::kPropertyIDFilter, filter_value);
+
+  const auto& filter_data = element->computed_css_style()->GetFilterData();
+  ASSERT_TRUE(filter_data.has_value());
+  ASSERT_FALSE(filter_data->amount.NumericLength().ContainsPercentage());
+  ASSERT_FLOAT_EQ(filter_data->amount.NumericLength().GetFixedPart(), 0.75f);
+
+  DisplayListBuilder builder;
+  fragment->DrawFilter(builder);
+  DisplayList list = builder.Build();
+  const SubtreeProperty* properties = list.GetSubtreePropertiesData();
+  ASSERT_NE(properties, nullptr);
+  ASSERT_EQ(list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(properties[0].type, DisplayListSubtreePropertyOpType::kFilter);
+  EXPECT_EQ(properties[0].data.filter.type,
+            static_cast<int32_t>(starlight::FilterType::kBrightness));
+  EXPECT_FLOAT_EQ(properties[0].data.filter.amount, 0.75f);
 }
 
 class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {

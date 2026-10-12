@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "core/renderer/dom/fragment/display_list.h"
+#include "gfx/public/display_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_display_list_applier.h"
 
 namespace lynx {

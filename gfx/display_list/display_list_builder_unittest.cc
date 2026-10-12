@@ -5,13 +5,11 @@
 #define private public
 #define protected public
 
-#include "core/renderer/dom/fragment/display_list_builder.h"
+#include "gfx/public/display_list_builder.h"
 
-#include "core/renderer/dom/fragment/display_list_reader.h"
-#include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
-#include "core/style/filter_data.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/display_list_reader.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -220,17 +218,8 @@ TEST_F(DisplayListBuilderTest, MethodChaining) {
 }
 
 TEST_F(DisplayListBuilderTest, BorderOperation) {
-  starlight::BordersData border;
-  border.color_top = 0xFFFF0000;
-  border.color_right = 0xFF00FF00;
-  border.color_bottom = 0xFF0000FF;
-  border.color_left = 0xFFFFFF00;
-  border.style_top = static_cast<starlight::BorderStyleType>(1);
-  border.style_right = static_cast<starlight::BorderStyleType>(2);
-  border.style_bottom = static_cast<starlight::BorderStyleType>(3);
-  border.style_left = static_cast<starlight::BorderStyleType>(4);
-
-  builder_->Border(0, 1, border);
+  builder_->Border(0, 1, {0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFFFFFF00},
+                   {1, 2, 3, 4});
 
   DisplayList display_list = builder_->Build();
 
@@ -538,10 +527,8 @@ TEST_F(DisplayListBuilderTest, OpacityOperation) {
 }
 
 TEST_F(DisplayListBuilderTest, FilterOperation) {
-  starlight::FilterData filter;
-  filter.type = starlight::FilterType::kGrayscale;
-  filter.amount = starlight::NLength::MakePercentageNLength(25.f);
-  builder_->Filter(filter);
+  constexpr int32_t kFilterType = 1;
+  builder_->Filter(kFilterType, 0.25f);
 
   DisplayList display_list = builder_->Build();
   const SubtreeProperty* subtree_properties_data =
@@ -551,9 +538,20 @@ TEST_F(DisplayListBuilderTest, FilterOperation) {
   ASSERT_EQ(display_list.GetSubtreePropertiesSize(), 1u);
   EXPECT_EQ(subtree_properties_data[0].type,
             DisplayListSubtreePropertyOpType::kFilter);
-  EXPECT_EQ(subtree_properties_data[0].data.filter.type,
-            static_cast<int32_t>(starlight::FilterType::kGrayscale));
+  EXPECT_EQ(subtree_properties_data[0].data.filter.type, kFilterType);
   EXPECT_FLOAT_EQ(subtree_properties_data[0].data.filter.amount, 0.25f);
+}
+
+TEST_F(DisplayListBuilderTest, FilterAmountIsAlreadyResolved) {
+  builder_->Filter(1, 25.f);
+
+  DisplayList display_list = builder_->Build();
+  const SubtreeProperty* properties = display_list.GetSubtreePropertiesData();
+
+  ASSERT_NE(properties, nullptr);
+  ASSERT_EQ(display_list.GetSubtreePropertiesSize(), 1u);
+  EXPECT_EQ(properties[0].data.filter.type, 1);
+  EXPECT_FLOAT_EQ(properties[0].data.filter.amount, 25.f);
 }
 
 TEST_F(DisplayListBuilderTest, MarkRootNeedClipBounds) {

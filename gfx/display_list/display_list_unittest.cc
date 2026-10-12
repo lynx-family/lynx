@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/dom/fragment/display_list.h"
+#include "gfx/public/display_list.h"
 
 #include <memory>
 #include <utility>
 
 #include "core/public/platform_renderer_type.h"
-#include "core/renderer/dom/fragment/display_list_reader.h"
+#include "gfx/public/display_list_reader.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

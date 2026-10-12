@@ -17,13 +17,13 @@
 #include "base/include/vector.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/prop_bundle.h"
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/event/platform_event_emitter.h"
 #include "core/renderer/dom/fragment/event/platform_event_handler.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
+#include "gfx/public/display_list.h"
 
 namespace lynx {
 

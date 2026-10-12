@@ -19,11 +19,21 @@ parallel operation/integer/float arrays are not part of the protocol.
 
 The implementation lives in:
 
-- `core/renderer/dom/fragment/display_list.h`
-- `core/renderer/dom/fragment/display_list.cc`
-- `core/renderer/dom/fragment/display_list_builder.h`
-- `core/renderer/dom/fragment/display_list_builder.cc`
-- `core/renderer/dom/fragment/display_list_reader.h`
+- `gfx/public/display_list.h`
+- `gfx/public/display_list_builder.h`
+- `gfx/public/display_list_reader.h`
+- `gfx/display_list/display_list.cc`
+- `gfx/display_list/display_list_builder.cc`
+- `gfx/display_list/display_list_reader.cc`
+
+`gfx/public` contains only headers; implementations and unit tests live in
+`gfx/display_list`. `RoundedRectangle` is also part of this shared surface.
+Renderer-specific `BoxModelRecorder` and `LayoutInfoForDraw` remain in
+`core/renderer/dom/fragment`.
+
+The `gfx/display_list:display_list` target does not depend on style or Starlight.
+Fragments resolve CSS border and filter values before passing drawing data to
+the builder. The display-list buffer layout is unchanged.
 
 ### 2.1 DisplayListItem
 
