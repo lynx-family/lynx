@@ -29,6 +29,24 @@ TEST_F(DisplayListTest, EmptyDisplayList) {
   EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
 }
 
+TEST_F(DisplayListTest, BackgroundImageConsumesMovedReference) {
+  auto image = fml::MakeRefCounted<PaintImage>(42);
+  const auto* image_ptr = image.get();
+
+  display_list_->AddBackgroundImage(std::move(image), 1, 2, 0, 1);
+
+  EXPECT_FALSE(image);
+  ASSERT_EQ(display_list_->Images().size(), 1u);
+  EXPECT_EQ(display_list_->Images()[0].get(), image_ptr);
+  EXPECT_TRUE(display_list_->Images()[0]->HasOneRef());
+  DisplayListReader reader(*display_list_);
+  ASSERT_TRUE(reader.HasNext());
+  const auto& item = reader.Next();
+  EXPECT_EQ(item.type, DisplayListOpType::kBackgroundImage);
+  EXPECT_EQ(item.payload.background_image.image_id, 42);
+  EXPECT_FALSE(reader.HasNext());
+}
+
 TEST_F(DisplayListTest, AddSingleItem) {
   DisplayListItem item;
   item.type = DisplayListOpType::kFill;

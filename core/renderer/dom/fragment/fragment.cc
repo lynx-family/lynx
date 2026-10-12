@@ -792,7 +792,7 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
           position_y = pos_y.IsPercent() ? pos_y.GetRawValue() / 100.f : 0.f;
         }
         display_list_builder.BackgroundImage(
-            image, tiling_index, define_image_clip_index(i_image),
+            std::move(image), tiling_index, define_image_clip_index(i_image),
             static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y),
             auto_width, auto_height, position_x, position_y);
         break;

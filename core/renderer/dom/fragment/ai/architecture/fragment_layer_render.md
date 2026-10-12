@@ -107,6 +107,12 @@ Image references are retained separately so resources remain alive while a
 display list is being consumed. Sublayer ids are also retained for platform
 renderer hierarchy updates.
 
+Image recording methods take `fml::RefPtr<PaintImage>` by value and move the
+reference into display-list storage. Passing an lvalue keeps the caller's
+reference and retains one for the list; passing an rvalue transfers its
+reference without an additional retain/release pair. Fragments move temporary
+background-image references, but keep cached image references for later redraws.
+
 ### 2.3 Variable-length gradient data
 
 Gradient colors and stops do not fit in the fixed item payload. The builder
