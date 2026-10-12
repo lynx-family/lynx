@@ -274,7 +274,7 @@ void QuickjsRuntimeInstance::ReportMemoryForTrace(bool is_full_gc) {
         ctx.event()->add_debug_annotations("ptr",
                                            static_cast<VMInstance*>(this));
 
-        if (per_instance_memory_track_) {
+        if (rt_ && per_instance_memory_track_) {
           size_t memory_size_slots[LEPUS_MEMORY_SIZE_SLOTS];
           auto max_slot = LEPUS_DumpMemorySlots(rt_, memory_size_slots);
           for (int i = 0; i <= max_slot; i++) {
