@@ -19,6 +19,7 @@
 #include "base/include/fml/macros.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/screenshot.h"
+#include "clay/common/trail_settings.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/fml/logging.h"
@@ -247,6 +248,7 @@ void PageView::OnDestroy() {
   animation_handler_->ClearCallbacks();
   DestroyAllChildren();
   touch_view_map_.clear();
+  click_trackers_.clear();
   image_resource_fetcher_ = nullptr;
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
@@ -262,11 +264,16 @@ void PageView::InitManagers() {
       [this](const PointerEvent& event, const HitTestResult& result) {
         isolated_gesture_detector_.TrackScrollTapSuppressionForPointerDown(
             event, result);
+        BeginClickTracking(event, result);
         if (event.device != PointerEvent::DeviceType::kTouch &&
             event.device != PointerEvent::DeviceType::kMouse) {
           return;
         }
         ResignFirstResponderIfNeeded(GetFirstNonAnonymousHitTestTarget(result));
+      });
+  gesture_manager_->SetListenerForGestureAccepted(
+      [this](int pointer_id, GestureRecognizerType type) {
+        CancelClickTrackingForGesture(pointer_id, type);
       });
   gesture_manager_->SetGestureHandlerDispatcher(
       gesture_handler_dispatcher_.get());
@@ -908,6 +915,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
   }
   isolated_gesture_detector_.ClearScrollTapSuppressionForEndedEvents(events);
   ClearTapSuppressedPointersForEndedEvents(events);
+  EndClickTrackingForEndedEvents(events);
 
   if (render_settings_) {
     render_settings_->SetIsTouching(true);
@@ -1011,6 +1019,10 @@ void PageView::SetupIsolatedGestures() {
   auto tap_recognizer = std::make_unique<TapGestureRecognizer>(
       isolated_gesture_detector_.gesture_manager());
   tap_recognizer->SetTaskRunner(GetTaskRunner());
+  tap_recognizer->SetAllowTouchMovementCallback(
+      [this](const PointerEvent& event) {
+        return IsClickTracking(event.pointer_id);
+      });
   tap_recognizer->SetTapUpCallback([this](const PointerEvent& event) {
     if (isolated_gesture_detector_.ShouldSuppressTapForScrollDrag(
             event.pointer_id)) {
@@ -1047,6 +1059,154 @@ void PageView::SetupIsolatedGestures() {
   long_press_recognizer->SetTaskRunner(GetTaskRunner());
   long_press_gesture_recognizer_ = long_press_recognizer.get();
   isolated_gesture_detector_.AddRecognizer(std::move(long_press_recognizer));
+}
+
+bool PageView::ReadClickTrackerSetting() const {
+#if OS_IOS
+  return setting::CLAY_IOS_ALLOW_TOUCH_TAP_AFTER_MOVEMENT.value();
+#else
+  return false;
+#endif
+}
+
+float PageView::ReadClickTrackerBoundaryTolerance() const {
+  return std::max(
+      0L, setting::CLAY_IOS_CLICK_TRACKER_BOUNDARY_TOLERANCE_PT.value());
+}
+
+namespace {
+
+// A view "claims the pointer" when its native, consume-slide, intercept,
+// gesture-handler, or drag-recognizer semantics own the touch sequence and
+// the page-level tap widening would be unsafe.
+bool AncestorClaimsPointer(BaseView* view) {
+  for (auto* v = view; v; v = v->Parent()) {
+    if (v->Is<NativeView>() || v->ShouldPassEventToNative() ||
+        !v->GetGestureDetectorMap().empty() ||
+        v->HasConsumeSlideEventAngles() || v->ShouldInterceptGesture() ||
+        v->HasDragGestureRecognizer(ScrollDirection::kVertical) ||
+        v->HasDragGestureRecognizer(ScrollDirection::kHorizontal)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Owner is the deepest hit-chain view that binds a tap event or an isolated
+// tap recognizer, so icon-to-label swaps inside the same button stay on the
+// same owner. No clickable ancestor means legacy page tap semantics apply.
+BaseView* FindClickTrackerOwner(const HitTestResult& result) {
+  for (const auto& hit : result) {
+    auto* view = static_cast<BaseView*>(hit.get());
+    if (view && !view->IsAnonymousView() &&
+        (view->HasTapEvent() || view->HasTapGestureRecognizer())) {
+      return view;
+    }
+  }
+  return nullptr;
+}
+
+}  // namespace
+
+void PageView::BeginClickTracking(const PointerEvent& event,
+                                  const HitTestResult& result) {
+  if (event.device != PointerEvent::DeviceType::kTouch) {
+    return;
+  }
+  // A second concurrent touch retires any existing trackers and prevents a
+  // new one. Lynx tap dispatch is single-finger; promoting a multi-pointer
+  // sequence to tracking is unsafe.
+  bool had_tracker = !click_trackers_.empty();
+  for (auto& [_, state] : click_trackers_) {
+    state.mode = ClickTrackerMode::kCancelled;
+  }
+  click_trackers_.erase(event.pointer_id);
+  if (had_tracker || !ReadClickTrackerSetting()) {
+    return;
+  }
+  auto* owner = FindClickTrackerOwner(result);
+  if (!owner || !owner->attach_to_tree() || AncestorClaimsPointer(owner)) {
+    return;
+  }
+  click_trackers_.emplace(
+      event.pointer_id,
+      ClickTrackerState{owner->GetWeakPtr(), ClickTrackerMode::kTracking,
+                        ReadClickTrackerBoundaryTolerance()});
+}
+
+void PageView::CancelClickTrackingForGesture(int pointer_id,
+                                             GestureRecognizerType type) {
+  // Only competing recognizers that could consume the sequence terminally
+  // mark the tracker cancelled. A plain Drag acceptance on down (sole
+  // recognizer wins by default) is left alone until the axis slop is passed,
+  // which the tap recognizer surfaces as a reject in the usual path.
+  if (type != GestureRecognizerType::kLongPress) {
+    return;
+  }
+  const auto it = click_trackers_.find(pointer_id);
+  if (it != click_trackers_.end()) {
+    it->second.mode = ClickTrackerMode::kCancelled;
+  }
+}
+
+bool PageView::IsClickTracking(int pointer_id) const {
+  const auto it = click_trackers_.find(pointer_id);
+  return it != click_trackers_.end() &&
+         it->second.mode == ClickTrackerMode::kTracking;
+}
+
+bool PageView::HasClickTracker(int pointer_id) const {
+  return click_trackers_.find(pointer_id) != click_trackers_.end();
+}
+
+BaseView* PageView::ResolveClickTrackingTapTarget(
+    const PointerEvent& event, BaseView* current_top_view,
+    FloatPoint* owner_relative) const {
+  const auto it = click_trackers_.find(event.pointer_id);
+  if (it == click_trackers_.end() ||
+      it->second.mode != ClickTrackerMode::kTracking) {
+    return nullptr;
+  }
+  auto* owner = it->second.owner.get();
+  if (!owner || !owner->attach_to_tree() || !owner->CanAcceptEvent() ||
+      AncestorClaimsPointer(owner)) {
+    return nullptr;
+  }
+  auto owner_point = owner->GetPointBySelf(event.position);
+  const float tolerance = it->second.boundary_tolerance;
+  const bool within_owner_bounds =
+      owner_point.x() >= 0 && owner_point.x() <= owner->Width() &&
+      owner_point.y() >= 0 && owner_point.y() <= owner->Height();
+  const bool within_tolerated_boundary =
+      owner_point.x() >= -tolerance &&
+      owner_point.x() <= owner->Width() + tolerance &&
+      owner_point.y() >= -tolerance &&
+      owner_point.y() <= owner->Height() + tolerance;
+  bool inside = false;
+  for (auto* v = current_top_view; v; v = v->Parent()) {
+    if (v == owner) {
+      inside = true;
+      break;
+    }
+  }
+  if (!inside && (within_owner_bounds || !within_tolerated_boundary)) {
+    return nullptr;
+  }
+  if (owner_relative) {
+    *owner_relative = owner_point;
+  }
+  return owner;
+}
+
+void PageView::EndClickTrackingForEndedEvents(
+    const std::vector<PointerEvent>& events) {
+  for (const auto& event : events) {
+    if (event.device == PointerEvent::DeviceType::kTouch &&
+        (event.type == PointerEvent::EventType::kUpEvent ||
+         event.type == PointerEvent::EventType::kCancel)) {
+      click_trackers_.erase(event.pointer_id);
+    }
+  }
 }
 
 bool PageView::HitTest(const PointerEvent& event, HitTestResult& result) {
@@ -1140,6 +1300,15 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
 
   if (!top_view || top_view->IsAnonymousView()) {
     return;
+  }
+
+  if (type == kClayEventTypeTap && HasClickTracker(event.pointer_id)) {
+    BaseView* owner =
+        ResolveClickTrackingTapTarget(event, top_view, &transformed_position);
+    if (!owner) {
+      return;
+    }
+    top_view = owner;
   }
 
   switch (event.device) {
@@ -1795,6 +1964,7 @@ void PageView::ResetPageView(bool recycle) {
   animation_handler_->ClearCallbacks();
   SetupAnimationCallback();
   touch_view_map_.clear();
+  click_trackers_.clear();
   fling_stop_tap_suppressed_pointer_ids_.clear();
   isolated_gesture_detector_.ClearScrollTapSuppressionStates();
   active_fling_count_ = 0;
