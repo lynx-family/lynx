@@ -15,9 +15,48 @@ LYNX_EXTERN_C const char* lynx_http_request_get_url(
   return request->url.c_str();
 }
 
+LYNX_EXTERN_C void lynx_http_request_set_method(lynx_http_request_t* request,
+                                                const char* method) {
+  if (!request) {
+    return;
+  }
+  request->method = method && method[0] != '\0' ? method : "GET";
+}
+
 LYNX_EXTERN_C const char* lynx_http_request_get_method(
     lynx_http_request_t* request) {
   return request->method.c_str();
+}
+
+LYNX_EXTERN_C void lynx_http_request_set_timeout_ms(
+    lynx_http_request_t* request, int32_t timeout_ms) {
+  if (!request || timeout_ms < 0) {
+    return;
+  }
+  request->timeout_ms = timeout_ms;
+}
+
+LYNX_EXTERN_C int32_t
+lynx_http_request_get_timeout_ms(lynx_http_request_t* request) {
+  return request ? request->timeout_ms : 0;
+}
+
+LYNX_EXTERN_C void lynx_http_request_set_body(lynx_http_request_t* request,
+                                              const uint8_t* data,
+                                              size_t length) {
+  if (!request) {
+    return;
+  }
+  if (length == 0) {
+    request->body.clear();
+    return;
+  }
+  if (!data) {
+    return;
+  }
+  // Copy before replacing the body so `data` may refer to the current body.
+  std::vector<uint8_t> body(data, data + length);
+  request->body.swap(body);
 }
 
 LYNX_EXTERN_C size_t lynx_http_request_get_body(lynx_http_request_t* request,
@@ -26,6 +65,15 @@ LYNX_EXTERN_C size_t lynx_http_request_get_body(lynx_http_request_t* request,
     *body = request->body.data();
   }
   return request->body.size();
+}
+
+LYNX_EXTERN_C void lynx_http_request_add_header(lynx_http_request_t* request,
+                                                const char* key,
+                                                const char* value) {
+  if (!request || !key || key[0] == '\0' || !value) {
+    return;
+  }
+  request->headers[key] = value;
 }
 
 LYNX_EXTERN_C size_t

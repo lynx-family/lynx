@@ -22,6 +22,7 @@ lynx_core_source_set("lynx_service") {
     "lynx_trail_service_priv.h",
   ]
   public_configs = [ "../:config" ]
+  deps = [ "../:lynx_embedder_capi" ]
 }
 if (enable_unittests) {
   lynx_core_source_set("lynx_service_unittests") {
@@ -31,6 +32,11 @@ if (enable_unittests) {
       "lynx_http_response_unittests.cc",
       "lynx_service_unittests.cc",
     ]
-    deps = [ "//third_party/googletest:gtest" ]
+    deps = [
+      ":lynx_service",
+      "../:lynx_embedder_capi",
+      "../:lynx_embedder_cxxapi",
+      "//third_party/googletest:gtest",
+    ]
   }
 }

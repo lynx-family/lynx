@@ -13,6 +13,7 @@
 struct lynx_http_request_t {
   std::string url;
   std::string method = "GET";
+  int32_t timeout_ms = 0;
   std::map<std::string, std::string> headers;
   std::vector<uint8_t> body;
 };
