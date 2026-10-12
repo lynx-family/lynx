@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 4.3.0
+
+### Minor Changes
+
+- Publish the LynxSDK 4.3 package line with `Config.enableEventThroughInheritFromPage` for page-level event-through inheritance and `Config.enableMouseDragScroll` for mouse drag scrolling on Clay platforms, including their runtime `configKeys` entries.
+
 ## 4.2.0
 
 ### Minor Changes
