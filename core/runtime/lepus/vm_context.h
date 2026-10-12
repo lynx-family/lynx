@@ -226,8 +226,10 @@ class VMContext : public runtime::MTSContext {
 
   Heap& heap() { return heap_; }
 
-  RestrictedValue* CallPrologue(const base::String& name);
+  RestrictedValue* CallPrologue(const base::String& name, size_t arg_count);
   RestrictedValue CallEpilogue(RestrictedValue* function, size_t arg_count);
+  int32_t SetRegisterStackOverflow();
+  void ReportUncaughtException();
 
   void RunFrame();
   bool GenerateClosure(RestrictedValue* value, long index);
