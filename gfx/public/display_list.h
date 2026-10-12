@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_H_
-#define CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_H_
+#ifndef GFX_PUBLIC_DISPLAY_LIST_H_
+#define GFX_PUBLIC_DISPLAY_LIST_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -444,4 +444,4 @@ using DisplayListUpdateBatch = base::Vector<DisplayListUpdate>;
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_H_
+#endif  // GFX_PUBLIC_DISPLAY_LIST_H_

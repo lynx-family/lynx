@@ -19,11 +19,19 @@ parallel operation/integer/float arrays are not part of the protocol.
 
 The implementation lives in:
 
-- `core/renderer/dom/fragment/display_list.h`
-- `core/renderer/dom/fragment/display_list.cc`
+- `gfx/public/display_list.h`
+- `gfx/display_list/display_list.cc`
 - `core/renderer/dom/fragment/display_list_builder.h`
 - `core/renderer/dom/fragment/display_list_builder.cc`
-- `core/renderer/dom/fragment/display_list_reader.h`
+- `gfx/public/display_list_reader.h`
+- `gfx/display_list/display_list_reader.cc`
+
+The storage and reader target, `gfx/display_list:display_list`, does not depend
+on style or Starlight. The builder, rounded-rectangle type, and renderer-specific
+layout helpers remain in `core/renderer/dom/fragment` for a later migration.
+This step changes paths and build ownership, not APIs or the buffer protocol.
+All reader consumers use `gfx/public/display_list_reader.h`. The old forwarding
+header is removed because CocoaPods copies private headers into a flat directory.
 
 ### 2.1 DisplayListItem
 

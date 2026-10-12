@@ -23,6 +23,7 @@
 /third_party/vulkan-deps
 *.profraw
 *.profdata
+/native-ut-trace-events.json
 __pycache__
 /venv
 .venv

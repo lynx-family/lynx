@@ -22,7 +22,6 @@
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
-#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/fragment/event/platform_pointer_event.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
@@ -35,6 +34,7 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/display_list_reader.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

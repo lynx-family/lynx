@@ -13,7 +13,6 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/event/event.h"
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
@@ -22,6 +21,7 @@
 #include "core/shell/lynx_engine.h"
 #include "core/shell/lynx_shell.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
+#include "gfx/public/display_list.h"
 
 namespace lynx::tasm {
 namespace {
