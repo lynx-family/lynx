@@ -550,6 +550,10 @@ public class LynxImageManager implements Drawable.Callback {
     return mSrc;
   }
 
+  void markSrcDirty() {
+    dirtyFlags |= SRC_CHANGED;
+  }
+
   public void setPlaceholder(String placeholder) {
     if (!TextUtils.equals(placeholder, mPlaceholder)) {
       mPlaceholder = placeholder;
