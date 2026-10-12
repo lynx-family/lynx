@@ -471,17 +471,36 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                     break
             if not skip_generation:
                 template_context['has_remote'] = True
+                remote_template_context = dict(template_context)
+                member_orders = self.hardcoded_includes.get(component, {}).get(
+                    'remote_dictionary_member_orders', {})
+                member_order = member_orders.get(dictionary_name)
+                if member_order is not None:
+                    members_by_name = {
+                        member['name']: member
+                        for member in template_context['members']
+                    }
+                    member_names = set(members_by_name)
+                    configured_names = set(member_order)
+                    if (len(member_order) != len(configured_names) or
+                            configured_names != member_names):
+                        raise ValueError(
+                            'Remote dictionary member order for {} must list '
+                            'every member exactly once'.format(dictionary_name))
+                    remote_template_context['members'] = [
+                        members_by_name[name] for name in member_order
+                    ]
                 remote_cpp_template_filename = 'remote_dictionary.cc.tmpl'
                 remote_cpp_template = self.jinja_env.get_template(remote_cpp_template_filename)
                 _, remote_cpp_text = self.render_templates(
-                    include_paths, remote_cpp_template, remote_cpp_template, template_context,
+                    include_paths, remote_cpp_template, remote_cpp_template, remote_template_context,
                     component)
                 _, remote_cpp_path = self.output_paths(dictionary_name, prefix='remote_')
                 out.append((remote_cpp_path, remote_cpp_text))
 
                 remote_js_template = self.jinja_env.get_template('remote_dictionary.js.tmpl')
                 _, remote_js_text = self.render_templates(
-                    include_paths, remote_js_template, remote_js_template, template_context,
+                    include_paths, remote_js_template, remote_js_template, remote_template_context,
                     component)
 
                 remote_js_outdir = self.hardcoded_includes.get(template_context['component'], {}).get('remote_js_outdir', '')
