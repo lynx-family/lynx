@@ -1179,6 +1179,10 @@ void UIBase::ApplyTransform() {
                                         0.f, 0.f, 0.f, 0.f, 0.f);
     ArkUI_AttributeItem item{.value = values, .size = 16};
     manager.SetAttribute(DrawNode(), NODE_TRANSFORM, &item);
+    // Match native transform ordering, including resetting translation to zero.
+    translation_z_ = values[Transform::kIndexTranslationZ].f32;
+    manager.SetAttributeWithNumberValue(DrawNode(), NODE_Z_INDEX,
+                                        translation_z_);
     return;
   }
 
