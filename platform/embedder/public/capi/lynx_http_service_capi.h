@@ -18,19 +18,47 @@ typedef struct lynx_http_request_t lynx_http_request_t;
 // `lynx_http_request_release` or passed to `lynx_http_service_request`, which
 // consumes it.
 LYNX_CAPI_EXPORT lynx_http_request_t* lynx_http_request_create(const char* url);
+// Configure the request before passing it to `lynx_http_service_request`.
+// That function consumes the request, so the caller must not access it after
+// submission. The setters copy their inputs and do nothing for a null request.
+
 // Retrieves the URL associated with the HTTP request. This function extracts
 // and returns the URL of the specified HTTP request. The caller should not free
-// the returned pointer.
+// the returned pointer, which remains valid until the request is released.
 LYNX_CAPI_EXPORT const char* lynx_http_request_get_url(lynx_http_request_t*);
+// Copies the HTTP method. A null or empty method resets it to "GET".
+LYNX_CAPI_EXPORT void lynx_http_request_set_method(lynx_http_request_t*,
+                                                   const char* method);
 // Retrieves the HTTP method of the specified request. This function extracts
 // and returns the HTTP method (such as "GET", "POST", "PUT", etc.) associated
-// with the given HTTP request. The caller should not free the returned pointer.
+// with the given HTTP request. The caller should not free the returned pointer;
+// it remains valid until the method is changed or the request is released.
 LYNX_CAPI_EXPORT const char* lynx_http_request_get_method(lynx_http_request_t*);
-// Retrieves the HTTP method of the specified request. This function extracts
-// and returns the HTTP method (such as "GET", "POST", "PUT", etc.) associated
-// with the given HTTP request. The caller should not free the returned pointer.
+// Sets the timeout in milliseconds before submitting the request. The default
+// value is 0, which uses the HTTP service's default timeout. Negative values
+// are ignored. A null request is ignored. The HTTP service implementation must
+// support this setting for it to take effect.
+LYNX_CAPI_EXPORT void lynx_http_request_set_timeout_ms(lynx_http_request_t*,
+                                                       int32_t timeout_ms);
+// Retrieves the timeout in milliseconds. Returns 0 for a null request.
+LYNX_CAPI_EXPORT int32_t lynx_http_request_get_timeout_ms(lynx_http_request_t*);
+// Copies exactly `length` bytes into the request, replacing the previous body.
+// A zero length clears the body. Null data with a nonzero length is ignored.
+// The caller retains ownership of `data` and may release it after this call.
+LYNX_CAPI_EXPORT void lynx_http_request_set_body(lynx_http_request_t*,
+                                                 const uint8_t* data,
+                                                 size_t length);
+// Retrieves the request body and returns its length. If `data` is non-null, it
+// receives a borrowed pointer that remains valid until the body is changed or
+// the request is released. The caller must not free the returned data.
 LYNX_CAPI_EXPORT size_t lynx_http_request_get_body(lynx_http_request_t*,
                                                    const uint8_t** data);
+// Copies a header key and value. An existing header with exactly the same key
+// (case-sensitive) is replaced. Null or empty keys and null values are ignored;
+// empty values are allowed.
+LYNX_CAPI_EXPORT void lynx_http_request_add_header(lynx_http_request_t*,
+                                                   const char* key,
+                                                   const char* value);
 // Retrieves the number of headers in the specified HTTP request. This function
 // counts and returns the number of headers associated with the given HTTP
 // request. The returned value can be used to iterate over all headers using
@@ -42,7 +70,8 @@ lynx_http_request_get_header_count(lynx_http_request_t*);
 // The index should be in the range `[0,
 // lynx_http_request_get_header_count(request))`. The caller should not free the
 // returned pointers, as their lifetimes are managed by the
-// `lynx_http_request_t` object.
+// `lynx_http_request_t` object. They remain valid until the headers are changed
+// or the request is released.
 LYNX_CAPI_EXPORT void lynx_http_request_get_header(lynx_http_request_t*,
                                                    uint32_t index,
                                                    const char** key,

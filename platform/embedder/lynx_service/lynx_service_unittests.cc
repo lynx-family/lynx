@@ -4,8 +4,10 @@
 
 #include <cstdint>
 #include <cstring>
+#include <map>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "platform/embedder/lynx_service/lynx_security_service_priv.h"
@@ -27,6 +29,9 @@ struct HttpRequestResult {
   void* response_user_data = nullptr;
   std::string request_url;
   std::string request_method;
+  int32_t request_timeout_ms = 0;
+  std::map<std::string, std::string> request_headers;
+  std::vector<uint8_t> request_body;
   std::vector<uint8_t> response_body;
   lynx_http_request_t* pending_request = nullptr;
   lynx_http_response_t* pending_response = nullptr;
@@ -54,6 +59,21 @@ void HandleHttpRequest(lynx_http_service_t* service,
   result->service_user_data = user_data;
   result->request_url = lynx_http_request_get_url(request);
   result->request_method = lynx_http_request_get_method(request);
+  result->request_timeout_ms = lynx_http_request_get_timeout_ms(request);
+  size_t header_count = lynx_http_request_get_header_count(request);
+  for (size_t i = 0; i < header_count; ++i) {
+    const char* key = nullptr;
+    const char* value = nullptr;
+    lynx_http_request_get_header(request, i, &key, &value);
+    if (key && value) {
+      result->request_headers[key] = value;
+    }
+  }
+  const uint8_t* request_body = nullptr;
+  size_t request_body_size = lynx_http_request_get_body(request, &request_body);
+  if (request_body && request_body_size > 0) {
+    result->request_body.assign(request_body, request_body + request_body_size);
+  }
 
   lynx_http_response_set_status_code(response, 200);
   uint8_t body[] = {'o', 'k'};
@@ -77,6 +97,16 @@ void DeleteHttpResponseBody(uint8_t* content, size_t, void* opaque) {
   auto* result = static_cast<HttpRequestResult*>(opaque);
   ++result->body_destructor_count;
   delete[] content;
+}
+
+void ConfigurePostRequest(lynx_http_request_t* request) {
+  lynx_http_request_set_method(request, "POST");
+  lynx_http_request_set_timeout_ms(request, 10000);
+  lynx_http_request_add_header(request, "Content-Type",
+                               "application/octet-stream");
+  lynx_http_request_add_header(request, "X-Test", "request");
+  const uint8_t body[] = {'a', 0, 'b'};
+  lynx_http_request_set_body(request, body, sizeof(body));
 }
 
 }  // namespace
@@ -116,6 +146,7 @@ TEST(LynxService, HttpService) {
   lynx_http_service_t* http_service = reinterpret_cast<lynx_http_service_t*>(
       lynx_service_get_service(service_center, kServiceTypeHttp));
   lynx_http_request_t* request = lynx_http_request_create("test_url");
+  ConfigurePostRequest(request);
   lynx_http_response_t* response =
       lynx_http_response_create(RecordHttpResponse, &result);
   lynx_http_service_request(http_service, request, response);
@@ -126,7 +157,13 @@ TEST(LynxService, HttpService) {
   EXPECT_EQ(result.service_user_data, &result);
   EXPECT_EQ(result.response_user_data, &result);
   EXPECT_EQ(result.request_url, "test_url");
-  EXPECT_EQ(result.request_method, "GET");
+  EXPECT_EQ(result.request_method, "POST");
+  EXPECT_EQ(result.request_timeout_ms, 10000);
+  EXPECT_EQ(result.request_headers,
+            (std::map<std::string, std::string>{
+                {"Content-Type", "application/octet-stream"},
+                {"X-Test", "request"}}));
+  EXPECT_EQ(result.request_body, (std::vector<uint8_t>{'a', 0, 'b'}));
   EXPECT_EQ(result.response_body, (std::vector<uint8_t>{'o', 'k'}));
 
   lynx_service_unregister_service(service_center, kServiceTypeHttp,
@@ -138,12 +175,37 @@ class TestLynxHttpService : public lynx::pub::LynxHttpService {
   void Request(std::shared_ptr<lynx::pub::LynxHttpRequest> request,
                std::shared_ptr<lynx::pub::LynxHttpResponse> response) override {
     EXPECT_STREQ(request->GetUrl().c_str(), "test_url");
+    EXPECT_EQ(request->GetMethod(), "POST");
+    EXPECT_EQ(request->GetTimeoutMs(), 10000);
+    EXPECT_EQ(request->GetHeaders(),
+              (std::unordered_map<std::string, std::string>{
+                  {"Content-Type", "application/octet-stream"},
+                  {"X-Test", "request"}}));
+    EXPECT_EQ(request->GetBody(), (std::vector<uint8_t>{'a', 0, 'b'}));
     response->SetStatusCode(200);
     uint8_t body[] = {'o', 'k'};
     response->SetBody(body, sizeof(body));
     response->Complete();
   }
 };
+
+TEST(LynxService, HttpRequestCppSnapshotsTimeout) {
+  lynx_http_request_t* request = lynx_http_request_create("test_url");
+  ASSERT_NE(request, nullptr);
+  lynx_http_request_set_timeout_ms(request, 10000);
+  lynx::pub::LynxHttpRequest snapshot(request);
+
+  lynx_http_request_set_timeout_ms(request, 20000);
+  EXPECT_EQ(lynx_http_request_get_timeout_ms(request), 20000);
+  EXPECT_EQ(snapshot.GetTimeoutMs(), 10000);
+}
+
+TEST(LynxService, HttpRequestCppUsesDefaultTimeout) {
+  lynx_http_request_t* request = lynx_http_request_create("test_url");
+  ASSERT_NE(request, nullptr);
+  lynx::pub::LynxHttpRequest snapshot(request);
+  EXPECT_EQ(snapshot.GetTimeoutMs(), 0);
+}
 
 TEST(LynxService, HttpServiceCpp) {
   auto& service_center = lynx::pub::LynxServiceCenter::GetInstance();
@@ -154,6 +216,7 @@ TEST(LynxService, HttpServiceCpp) {
   lynx_http_service_t* http_service = reinterpret_cast<lynx_http_service_t*>(
       lynx_service_get_service(c_service_center, kServiceTypeHttp));
   lynx_http_request_t* request = lynx_http_request_create("test_url");
+  ConfigurePostRequest(request);
   HttpRequestResult result;
   lynx_http_response_t* response =
       lynx_http_response_create(RecordHttpResponse, &result);
