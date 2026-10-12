@@ -435,7 +435,7 @@ JSRealmState JSRealmManager::CreateRealm(
     } else {
       realm = base::MakeUnsafeOwning<SharedJSRealm>(js_context);
       if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-        js_realm_manager_delegate_->AfterSharedContextCreate(
+        js_realm_manager_delegate_->EnsureSharedContextRegistered(
             group_id, js_runtime->type());
       }
       // Shared contexts need a separate global runtime owned by the realm.
@@ -498,6 +498,10 @@ JSRealmState JSRealmManager::CreateRealm(
     }
     // share context also need call this, because lynx_runtime is different.
     if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
+      // The shared context may have been created before JS debugging was
+      // enabled. Complete the DevTool setup that was skipped during creation.
+      js_realm_manager_delegate_->EnsureSharedContextRegistered(
+          group_id, js_runtime->type());
       js_realm_manager_delegate_->OnRuntimeReady(executor, *js_runtime,
                                                  group_id);
     }
@@ -559,8 +563,8 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
       base::MakeUnsafeOwning<SharedVMGlobalRealm>(global_context, group_id);
   // Register the engine type for the inspector release callback.
   if (IsInspectEnabled(force_use_lightweight_js_engine, page_options)) {
-    js_realm_manager_delegate_->AfterSharedContextCreate(group_id,
-                                                         global_rt_ptr->type());
+    js_realm_manager_delegate_->EnsureSharedContextRegistered(
+        group_id, global_rt_ptr->type());
   }
 #if ENABLE_TRACE_PERFETTO
   auto runtime_profiler = MakeRuntimeProfiler(

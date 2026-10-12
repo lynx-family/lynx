@@ -45,8 +45,8 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManagerDelegate {
   virtual void OnRuntimeReady(runtime::js::JSExecutor& executor,
                               runtime::js::Runtime& current_runtime,
                               const std::string& group_id) = 0;
-  virtual void AfterSharedContextCreate(const std::string& group_id,
-                                        runtime::js::JSRuntimeType type) = 0;
+  virtual void EnsureSharedContextRegistered(
+      const std::string& group_id, runtime::js::JSRuntimeType type) = 0;
   virtual void OnRelease(const std::string& group_id) = 0;
   // In production environment, we use the parameter
   // "force_use_lightweight_js_engine" to determine the type of the Runtime

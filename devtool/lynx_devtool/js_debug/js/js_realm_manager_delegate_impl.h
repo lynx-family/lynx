@@ -20,8 +20,8 @@ class JSRealmManagerDelegateImpl : public runtime::JSRealmManagerDelegate {
   void OnRuntimeReady(runtime::js::JSExecutor& executor,
                       runtime::js::Runtime& current_runtime,
                       const std::string& group_id) override;
-  void AfterSharedContextCreate(const std::string& group_id,
-                                runtime::js::JSRuntimeType type) override;
+  void EnsureSharedContextRegistered(const std::string& group_id,
+                                     runtime::js::JSRuntimeType type) override;
   void OnRelease(const std::string& group_id) override;
   std::unique_ptr<runtime::js::Runtime> MakeRuntime(
       bool force_use_lightweight_js_engine, bool use_shared_context = false,
