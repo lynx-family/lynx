@@ -66,10 +66,20 @@ NSString *const LynxEventClick = @"click";
   if (_isMultiTouch) {
     [params addObject:@[ @(_isMultiTouch), _uiTouchMap ]];
   } else {
-    [params addObject:@[
+    NSMutableArray *eventDetail = [NSMutableArray arrayWithArray:@[
       @(_isMultiTouch), @(_clientPoint.x), @(_clientPoint.y), @(_pagePoint.x), @(_pagePoint.y),
       @(_viewPoint.x), @(_viewPoint.y)
     ]];
+    if (_currentTargetPointMap != nil) {
+      NSMutableArray<NSArray<NSNumber *> *> *currentTargetPoints = [NSMutableArray array];
+      for (NSNumber *elementId in _currentTargetPointMap) {
+        CGPoint point = CGPointZero;
+        [_currentTargetPointMap[elementId] getValue:&point];
+        [currentTargetPoints addObject:@[ elementId, @(point.x), @(point.y) ]];
+      }
+      [eventDetail addObject:currentTargetPoints];
+    }
+    [params addObject:eventDetail];
   }
   return params;
 }

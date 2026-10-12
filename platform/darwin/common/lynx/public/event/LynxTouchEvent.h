@@ -27,6 +27,7 @@ extern NSString *const LynxEventClick;
 @property(nonatomic, readonly) NSDictionary *touchMap;
 @property(nonatomic, readonly) NSMutableDictionary *uiTouchMap;
 @property(nonatomic) NSMutableDictionary<NSString *, id<LynxEventTargetBase>> *activeUIMap;
+@property(nonatomic) NSDictionary<NSNumber *, NSValue *> *currentTargetPointMap;
 
 - (instancetype)initWithName:(NSString *)name targetTag:(NSInteger)target;
 

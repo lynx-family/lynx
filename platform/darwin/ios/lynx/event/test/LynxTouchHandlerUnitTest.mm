@@ -12,6 +12,7 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxTouchEvent.h>
 #import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxTouchHandler.h>
 #import <Lynx/LynxUI+Internal.h>
@@ -25,7 +26,15 @@
 @interface LynxTouchHandler ()
 
 - (void)onTouchesMoveWithTarget:(id<LynxEventTarget>)target;
+- (void)setEnableCurrentTargetTouchPosition:(BOOL)enable;
+- (NSDictionary<NSNumber*, NSValue*>*)currentTargetPointMapForTarget:(id<LynxEventTarget>)target
+                                                           pagePoint:(CGPoint)pagePoint
+                                                           eventName:(NSString*)eventName;
 
+@end
+
+@interface LynxUI (ResponseChainEvent)
+- (BOOL)hasResponseChainEvent:(NSString*)eventName;
 @end
 
 @interface MockEventTarget : NSObject <LynxEventTarget>
@@ -174,6 +183,32 @@
   // Put teardown code here. This method is called after the invocation of each test method in the
   // class.
   _handler = NULL;
+}
+
+- (void)testCurrentTargetPointCollectionRequiresPageConfig {
+  MockEventTarget* target = [[MockEventTarget alloc] init];
+  XCTAssertNil([_handler currentTargetPointMapForTarget:target
+                                              pagePoint:CGPointZero
+                                              eventName:LynxEventTap]);
+
+  [_handler setEnableCurrentTargetTouchPosition:YES];
+  XCTAssertEqual(0, [[_handler currentTargetPointMapForTarget:target
+                                                    pagePoint:CGPointZero
+                                                    eventName:LynxEventTap] count]);
+}
+
+- (void)testResponseChainEventExcludesGlobalBind {
+  LynxUIView* ui = [[LynxUIView alloc] initWithView:[UIView new]];
+  NSSet<NSString*>* globalBindEvents = [NSSet setWithObject:@"tap(global-bindEvent)"];
+
+  [ui setRawEvents:globalBindEvents andLepusRawEvents:nil];
+  XCTAssertFalse([ui hasResponseChainEvent:LynxEventTap]);
+
+  [ui setRawEvents:nil andLepusRawEvents:globalBindEvents];
+  XCTAssertFalse([ui hasResponseChainEvent:LynxEventTap]);
+
+  [ui setRawEvents:globalBindEvents andLepusRawEvents:[NSSet setWithObject:@"tap(bindEvent)"]];
+  XCTAssertTrue([ui hasResponseChainEvent:LynxEventTap]);
 }
 
 - (void)testOnTouchesMoveWithTarget {
