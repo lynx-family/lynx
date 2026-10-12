@@ -13,8 +13,16 @@ void PlatformDataDarwin::ConsumeActionsAsync(LynxTemplateData* data) {
   if (data == nil || !LynxEnv::GetInstance().EnablePlatformDataAsyncConsumeActions()) {
     return;
   }
+  __block LynxTemplateData* pendingData = data;
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    [data getDataForJSThread];
+    @try {
+      [pendingData getDataForJSThread];
+    } @finally {
+      // Release the task's reference on the main thread, even if consumption throws.
+      dispatch_async(dispatch_get_main_queue(), ^{
+        pendingData = nil;
+      });
+    }
   });
 }
 
