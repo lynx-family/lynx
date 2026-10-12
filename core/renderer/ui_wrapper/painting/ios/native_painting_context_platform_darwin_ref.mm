@@ -12,6 +12,7 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 
 #import <Lynx/LynxContext+Internal.h>
+#import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
@@ -21,6 +22,20 @@
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
 #import "LynxTimingConstants.h"
+
+@interface LynxRendererContext (ImageUIMethod)
+
+- (LynxImageManager*)imageManagerForSign:(int32_t)sign;
+
+@end
+
+@interface LynxImageManager (UIMethod)
+
+- (BOOL)invokeUIMethod:(NSString*)method
+                params:(NSDictionary*)params
+              callback:(LynxUIMethodCallbackBlock)callback;
+
+@end
 
 namespace lynx {
 namespace tasm {
@@ -228,6 +243,29 @@ void NativePaintingCtxPlatformDarwinRef::InvokePlatformViewUIMethod(
       }
       callback = std::move(*callback_holder);
     }
+  }
+
+  LynxRendererContext* renderer_context = GetRendererContext();
+  LynxImageManager* image_manager = [renderer_context imageManagerForSign:sign];
+  if (image_manager != nil) {
+    auto callback_holder =
+        std::make_shared<base::MoveOnlyClosure<void, int32_t, const pub::Value&>>(
+            std::move(callback));
+    LynxUIMethodCallbackBlock block = ^(int code, id _Nullable data) {
+      if (!callback_holder || !(*callback_holder)) {
+        return;
+      }
+      auto image_callback = std::move(*callback_holder);
+      image_callback(code, PubLepusValue(LynxConvertToLepusValue(data)));
+    };
+    BOOL handled = [image_manager invokeUIMethod:method_name params:params_dict callback:block];
+    if (handled) {
+      return;
+    }
+    if (!callback_holder || !(*callback_holder)) {
+      return;
+    }
+    callback = std::move(*callback_holder);
   }
 
   auto* factory = static_cast<PlatformRendererDarwinFactory*>(view_factory_.get());

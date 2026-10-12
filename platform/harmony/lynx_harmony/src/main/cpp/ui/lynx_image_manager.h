@@ -12,17 +12,19 @@
 #include <string>
 
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/image_drawable.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
 
 class ImageData;
-class ImageDrawable;
 class LynxContext;
 class UIBase;
 
-class LynxImageManager : public std::enable_shared_from_this<LynxImageManager> {
+class LynxImageManager final
+    : public std::enable_shared_from_this<LynxImageManager>,
+      public ImageDrawable::ImageAnimationListener {
  public:
   explicit LynxImageManager(std::weak_ptr<LynxContext> context);
   ~LynxImageManager();
@@ -35,6 +37,9 @@ class LynxImageManager : public std::enable_shared_from_this<LynxImageManager> {
   void Draw(OH_Drawing_Canvas* canvas);
   uint32_t GetImageWidth() const;
   uint32_t GetImageHeight() const;
+  void onAnimationStart() override;
+  void onAnimationRepeat() override;
+  void onAnimationStop() override;
 
  private:
   void ApplyPaintInfo();

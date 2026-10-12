@@ -12,15 +12,22 @@
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIImage.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUnitUtils.h>
 #import <QuartzCore/QuartzCore.h>
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 static const NSInteger kFlagImageLoadEvent = 1 << 0;
 static const NSInteger kFlagImageErrorEvent = 1 << 1;
+static const NSInteger kFlagImageStartPlayEvent = 1 << 2;
+static const NSInteger kFlagImageCurrentLoopEvent = 1 << 3;
+static const NSInteger kFlagImageFinalLoopEvent = 1 << 4;
 static NSString* const kBackgroundImageAnimationKey = @"lynx.backgroundImage";
 static NSString* const kLynxImageEventLoad = @"load";
 static NSString* const kLynxImageEventError = @"error";
+static NSString* const kLynxImageEventStartPlay = @"startplay";
+static NSString* const kLynxImageEventCurrentLoop = @"currentloopcomplete";
+static NSString* const kLynxImageEventFinalLoop = @"finalloopcomplete";
 
 using lynx::tasm::ImageFitMode;
 using lynx::tasm::ImagePaintInfo;
@@ -86,6 +93,16 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   return std::abs(image_ratio - layout_ratio) > kImageAspectRatioTolerance;
 }
 }  // namespace
+
+@interface LynxImageManager ()
+
+- (void)registerAnimatedImageCallbacks:(id<LynxServiceImageProtocol>)imageService;
+
+- (BOOL)invokeUIMethod:(NSString*)method
+                params:(NSDictionary*)params
+              callback:(LynxUIMethodCallbackBlock)callback;
+
+@end
 
 @implementation LynxImageManager {
   NSMutableDictionary<id, dispatch_block_t>* _cancelBlocks;
@@ -301,6 +318,14 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   if (isAnimatedImage) {
     [imageService setAutoPlay:_imageView value:_autoPlay];
   }
+  BOOL registerCallbacksBeforeSettingImage =
+      isAnimatedImage && type == LynxImageRequestSrc &&
+      [imageService
+          respondsToSelector:@selector(requiresAnimatedImageCallbackBeforeSettingImage)] &&
+      [imageService requiresAnimatedImageCallbackBeforeSettingImage];
+  if (registerCallbacksBeforeSettingImage) {
+    [self registerAnimatedImageCallbacks:imageService];
+  }
   _imageView.image = image;
   if (image != nil && _tintColor != nil && _loopCount == 0) {
     _imageView.image = [_imageView.image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
@@ -314,15 +339,51 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   }
   if (_loopCount > 0) {
     [imageService handleAnimatedImage:image view:_imageView loopCount:_loopCount];
-    return;
-  }
-  if (image.images.count > 1) {
+  } else if (image.images.count > 1) {
     _imageView.animationDuration = image.duration;
     _imageView.animationRepeatCount = 0;
     if (_autoPlay) {
       [_imageView startAnimating];
     }
   }
+  if (!registerCallbacksBeforeSettingImage) {
+    [self registerAnimatedImageCallbacks:imageService];
+  }
+}
+
+- (void)registerAnimatedImageCallbacks:(id<LynxServiceImageProtocol>)imageService {
+  const NSInteger animationEventMask =
+      kFlagImageStartPlayEvent | kFlagImageCurrentLoopEvent | kFlagImageFinalLoopEvent;
+  if ((_eventMask & animationEventMask) == 0 ||
+      ![imageService respondsToSelector:@selector
+                     (registerAnimatedImageCallback:
+                                      startCallback:currentLoopCallback:finalLoopCallback:)]) {
+    return;
+  }
+
+  __weak typeof(self) weakSelf = self;
+  dispatch_block_t startCallback = nil;
+  dispatch_block_t currentLoopCallback = nil;
+  dispatch_block_t finalLoopCallback = nil;
+  if ((_eventMask & kFlagImageStartPlayEvent) != 0) {
+    startCallback = ^{
+      [weakSelf sendCustomEvent:kLynxImageEventStartPlay withParams:@{}];
+    };
+  }
+  if ((_eventMask & kFlagImageCurrentLoopEvent) != 0) {
+    currentLoopCallback = ^{
+      [weakSelf sendCustomEvent:kLynxImageEventCurrentLoop withParams:@{}];
+    };
+  }
+  if ((_eventMask & kFlagImageFinalLoopEvent) != 0) {
+    finalLoopCallback = ^{
+      [weakSelf sendCustomEvent:kLynxImageEventFinalLoop withParams:@{}];
+    };
+  }
+  [imageService registerAnimatedImageCallback:_imageView
+                                startCallback:startCallback
+                          currentLoopCallback:currentLoopCallback
+                            finalLoopCallback:finalLoopCallback];
 }
 
 - (void)setLayerTarget:(CALayer*)layer {
@@ -350,6 +411,36 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   } else if (_images[@(LynxImageRequestPlaceholder)] != nil) {
     [self applyImage:_images[@(LynxImageRequestPlaceholder)] withType:LynxImageRequestPlaceholder];
   }
+}
+
+- (BOOL)invokeUIMethod:(NSString*)method
+                params:(NSDictionary*)params
+              callback:(LynxUIMethodCallbackBlock)callback {
+  (void)params;
+  id<LynxServiceImageProtocol> imageService = [LynxImageLoader imageService];
+  if ([method isEqualToString:@"pauseAnimation"]) {
+    [imageService pauseImage:_imageView callback:callback];
+    return YES;
+  }
+  if ([method isEqualToString:@"resumeAnimation"]) {
+    [imageService resumeImage:_imageView callback:callback];
+    return YES;
+  }
+  if ([method isEqualToString:@"stopAnimation"]) {
+    [imageService stopImage:_imageView callback:callback];
+    return YES;
+  }
+  if ([method isEqualToString:@"startAnimate"]) {
+    if (![imageService restartImageIfPossible:_imageView callback:callback]) {
+      [_imageView stopAnimating];
+      [_imageView startAnimating];
+      if (callback != nil) {
+        callback(kUIMethodSuccess, @"Animation started.");
+      }
+    }
+    return YES;
+  }
+  return NO;
 }
 
 - (void)reset {

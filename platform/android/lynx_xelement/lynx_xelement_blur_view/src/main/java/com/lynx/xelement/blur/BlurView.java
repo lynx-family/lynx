@@ -52,6 +52,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   private boolean mExperimentalUpdateBlurRadius = true;
   private boolean mPreDrawListenerDetached;
   private final Object mRenderScriptLock = new Object();
+  private boolean mHasValidBlurContent = false;
 
   private volatile RenderScript mRenderScript;
 
@@ -216,7 +217,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
     }
     View captureTargetView = mLynxUI.getCaptureTargetView();
     if (captureTargetView != null) {
-      mTargetView = captureTargetView;
+      setTargetView(captureTargetView);
       TraceEvent.endSection(TraceEventDef.BLUR_VIEW_GET_TARGET_PARENT);
       return;
     }
@@ -280,9 +281,16 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
       return;
     }
     if (rootBaseUI.isFlatten() && rootBaseUI.getDrawParent() instanceof LynxUI) {
-      mTargetView = ((LynxUI<?>) rootBaseUI.getDrawParent()).getView();
+      setTargetView(((LynxUI<?>) rootBaseUI.getDrawParent()).getView());
     } else if (rootBaseUI instanceof LynxUI) {
-      mTargetView = ((LynxUI<?>) rootBaseUI).getView();
+      setTargetView(((LynxUI<?>) rootBaseUI).getView());
+    }
+  }
+
+  private void setTargetView(@Nullable View targetView) {
+    if (mTargetView != targetView) {
+      mTargetView = targetView;
+      mHasValidBlurContent = false;
     }
   }
 
@@ -311,6 +319,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
       }
     }
     mInitialized = true;
+    mHasValidBlurContent = false;
   }
 
   private void clipRadius(Canvas canvas) {
@@ -358,6 +367,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
     mLynxUI = null;
     mBlurCanvas = null;
     mInitialized = false;
+    mHasValidBlurContent = false;
     TraceEvent.endSection(TraceEventDef.BLUR_VIEW_DESTORY);
   }
 
@@ -412,6 +422,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
       canvas.drawBitmap(mBlurBitmap, 0, 0, null);
       mRenderNode.endRecording();
     }
+    mHasValidBlurContent = mTargetView != null;
     TraceEvent.endSection(TraceEventDef.BLUR_VIEW_BLUR);
   }
 
@@ -509,6 +520,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
     }
     if (this.mBlurRadius != radius) {
       this.mBlurRadius = radius;
+      mHasValidBlurContent = false;
       postInvalidate();
     }
   }
@@ -571,7 +583,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   @Override
   public boolean onPreDraw() {
     TraceEvent.beginSection(TraceEventDef.BLUR_VIEW_UPDATE_BLUR);
-    if (mTargetView != null && mTargetView.isDirty()) {
+    if (mTargetView != null && (!mHasValidBlurContent || mTargetView.isDirty())) {
       mNeedsBlurUpdate = true;
       post(new Runnable() {
         @Override

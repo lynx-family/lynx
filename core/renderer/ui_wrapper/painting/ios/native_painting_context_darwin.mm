@@ -26,10 +26,17 @@
 #import <Foundation/Foundation.h>
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxUIOwner+Private.h>
 #import <Lynx/LynxURL.h>
 #include <cstdint>
+
+@interface LynxRendererContext (ImageUIMethod)
+
+- (void)markPrimaryImageManager:(int32_t)imageKey forSign:(int32_t)sign;
+
+@end
 
 namespace lynx {
 namespace tasm {
@@ -409,6 +416,9 @@ fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::Strin
                                            paintInfo:paint_info
                                            eventMask:event_mask
                                             imageKey:image_key];
+  if (!disable_default_resize) {
+    [context_->GetRendererContext() markPrimaryImageManager:image_key forSign:id];
+  }
   return fml::MakeRefCounted<PaintImageDarwin>(image_key, context_->GetRendererContext());
 }
 

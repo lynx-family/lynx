@@ -15,6 +15,9 @@ class Fragment;
 // Event flags for image elements (must match LynxImageManager.java)
 constexpr int32_t kFlagImageLoadEvent = 1;
 constexpr int32_t kFlagImageErrorEvent = 1 << 1;
+constexpr int32_t kFlagImageStartPlayEvent = 1 << 2;
+constexpr int32_t kFlagImageCurrentLoopEvent = 1 << 3;
+constexpr int32_t kFlagImageFinalLoopEvent = 1 << 4;
 
 class ImageFragmentBehavior : public FragmentBehavior {
  public:
@@ -29,7 +32,7 @@ class ImageFragmentBehavior : public FragmentBehavior {
 
  private:
   // Computes event mask based on element's event map.
-  // Returns a bitmask of kFlagImageLoadEvent and kFlagImageErrorEvent.
+  // Returns a bitmask of the image event flags above.
   int32_t ComputeEventMask() const;
   bool UpdateImageIfNeeded(const LayoutInfoForDraw& layout_info);
 
