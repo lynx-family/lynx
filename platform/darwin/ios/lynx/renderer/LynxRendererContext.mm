@@ -24,6 +24,8 @@ void DestroyTextBundlePointer(void *bundle) {
 
 @implementation LynxRendererContext {
   NSMutableDictionary<NSNumber *, LynxImageManager *> *_imageManagers;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_primaryImageKeysBySign;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_primaryImageSignsByKey;
   NSMutableDictionary<NSNumber *, NSValue *> *_textBundles;
 }
 
@@ -31,6 +33,8 @@ void DestroyTextBundlePointer(void *bundle) {
   self = [super init];
   if (self) {
     _imageManagers = [NSMutableDictionary new];
+    _primaryImageKeysBySign = [NSMutableDictionary new];
+    _primaryImageSignsByKey = [NSMutableDictionary new];
     _textBundles = [NSMutableDictionary new];
   }
   return self;
@@ -69,9 +73,35 @@ void DestroyTextBundlePointer(void *bundle) {
   return imageManager;
 }
 
+- (void)markPrimaryImageManager:(int32_t)imageKey forSign:(int32_t)sign {
+  @synchronized(self) {
+    NSNumber *signNumber = @(sign);
+    NSNumber *previousImageKey = _primaryImageKeysBySign[signNumber];
+    if (previousImageKey != nil) {
+      [_primaryImageSignsByKey removeObjectForKey:previousImageKey];
+    }
+    NSNumber *imageKeyNumber = @(imageKey);
+    _primaryImageKeysBySign[signNumber] = imageKeyNumber;
+    _primaryImageSignsByKey[imageKeyNumber] = signNumber;
+  }
+}
+
+- (LynxImageManager *)imageManagerForSign:(int32_t)sign {
+  @synchronized(self) {
+    NSNumber *imageKey = _primaryImageKeysBySign[@(sign)];
+    return imageKey != nil ? _imageManagers[imageKey] : nil;
+  }
+}
+
 - (void)destroyImage:(int32_t)imageKey {
   @synchronized(self) {
-    [_imageManagers removeObjectForKey:@(imageKey)];
+    NSNumber *imageKeyNumber = @(imageKey);
+    [_imageManagers removeObjectForKey:imageKeyNumber];
+    NSNumber *sign = _primaryImageSignsByKey[imageKeyNumber];
+    if (sign != nil && [_primaryImageKeysBySign[sign] isEqual:imageKeyNumber]) {
+      [_primaryImageKeysBySign removeObjectForKey:sign];
+    }
+    [_primaryImageSignsByKey removeObjectForKey:imageKeyNumber];
   }
 }
 

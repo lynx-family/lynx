@@ -203,6 +203,32 @@ typedef void (^LynxImageLoadCompletionBlock)(UIImage *_Nullable image, NSError *
 - (void)registerAnimatedImageCallback:(id)view UI:(LynxUIImage *)ui;
 
 /**
+ * Registers animated image callbacks without requiring a LynxUIImage.
+ * This allows renderers that manage image views directly to receive animation events.
+ * Registering callbacks must not change autoplay or loop-count settings.
+ * Callbacks are registered after assigning the image unless
+ * requiresAnimatedImageCallbackBeforeSettingImage returns YES.
+ *
+ * @param view The view containing the animated image.
+ * @param startCallback Called when playback starts, if requested.
+ * @param currentLoopCallback Called when a single animation loop completes, if requested.
+ * @param finalLoopCallback Called when all configured animation loops complete, if requested.
+ */
+@optional
+- (void)registerAnimatedImageCallback:(id)view
+                        startCallback:(dispatch_block_t _Nullable)startCallback
+                  currentLoopCallback:(dispatch_block_t _Nullable)currentLoopCallback
+                    finalLoopCallback:(dispatch_block_t _Nullable)finalLoopCallback;
+
+/**
+ * Returns YES if assigning an image can synchronously notify playback and callbacks must be
+ * installed first. When unimplemented or NO, callbacks are registered after assigning the image
+ * so services can bind to a newly created player.
+ */
+@optional
+- (BOOL)requiresAnimatedImageCallbackBeforeSettingImage;
+
+/**
  * Loads a image with LynxImageLoadOptions, and returns a block that can be used to cancel the
  * operation. Add this method as optional to avoid break the existing code.
  *

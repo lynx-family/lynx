@@ -55,6 +55,31 @@
   }
 }
 
+- (void)registerAnimatedImageCallback:(id)view
+                        startCallback:(dispatch_block_t _Nullable)startCallback
+                  currentLoopCallback:(dispatch_block_t _Nullable)currentLoopCallback
+                    finalLoopCallback:(dispatch_block_t _Nullable)finalLoopCallback {
+  if (![self checkImageType:view]) {
+    return;
+  }
+  SDAnimatedImageView* imageView = (SDAnimatedImageView*)view;
+  NSUInteger animationRepeatCount = (NSUInteger)imageView.animationRepeatCount;
+  if (imageView.player) {
+    if (startCallback) {
+      startCallback();
+    }
+
+    imageView.player.animationLoopHandler = ^(NSUInteger loopCount) {
+      if (currentLoopCallback) {
+        currentLoopCallback();
+      }
+      if (animationRepeatCount == loopCount && finalLoopCallback) {
+        finalLoopCallback();
+      }
+    };
+  }
+}
+
 - (void)appendExtraImageLoadDetailForEvent:(nonnull UIImage*)image
                             originalDetail:(nonnull NSMutableDictionary*)detail {
   // append custom info when enable extra-load-info

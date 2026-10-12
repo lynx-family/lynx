@@ -88,6 +88,9 @@ public class LynxImageManager implements Drawable.Callback {
 
   public static final int kFlagImageLoadEvent = 1;
   public static final int kFlagImageErrorEvent = 1 << 1;
+  private static final int kFlagImageStartPlayEvent = 1 << 2;
+  private static final int kFlagImageCurrentLoopEvent = 1 << 3;
+  private static final int kFlagImageFinalLoopEvent = 1 << 4;
 
   private long dirtyFlags = 0;
 
@@ -467,14 +470,14 @@ public class LynxImageManager implements Drawable.Callback {
   private final AnimationListener mAnimationListener = new AnimationListener() {
     @Override
     public void onAnimationStart(Drawable drawable) {
-      if (mEnableStartPlayEvent) {
+      if (shouldEmitStartPlayEvent()) {
         sendCustomEvent(EVENT_START_PLAY);
       }
     }
 
     @Override
     public void onAnimationFinalLoop(Drawable drawable) {
-      if (mEnableAllLoopEvent) {
+      if (shouldEmitFinalLoopEvent()) {
         // It needs to send EVENT_CURRENT_LOOP_COMPLETE to ensure that both ends are consistent
         sendCustomEvent(EVENT_ALL_LOOP_COMPLETE);
       }
@@ -482,7 +485,7 @@ public class LynxImageManager implements Drawable.Callback {
 
     @Override
     public void onAnimationCurrentLoop(Drawable drawable) {
-      if (mEnableCurrentLoopEvent) {
+      if (shouldEmitCurrentLoopEvent()) {
         sendCustomEvent(EVENT_CURRENT_LOOP_COMPLETE);
       }
     }
@@ -721,6 +724,27 @@ public class LynxImageManager implements Drawable.Callback {
       return (mEventMask & kFlagImageErrorEvent) != 0;
     }
     return mEnableOnError;
+  }
+
+  private boolean shouldEmitStartPlayEvent() {
+    if (mEventMask >= 0) {
+      return (mEventMask & kFlagImageStartPlayEvent) != 0;
+    }
+    return mEnableStartPlayEvent;
+  }
+
+  private boolean shouldEmitCurrentLoopEvent() {
+    if (mEventMask >= 0) {
+      return (mEventMask & kFlagImageCurrentLoopEvent) != 0;
+    }
+    return mEnableCurrentLoopEvent;
+  }
+
+  private boolean shouldEmitFinalLoopEvent() {
+    if (mEventMask >= 0) {
+      return (mEventMask & kFlagImageFinalLoopEvent) != 0;
+    }
+    return mEnableAllLoopEvent;
   }
 
   void setIsPixelated(boolean isPixelated) {
@@ -1174,7 +1198,7 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void tryFetchImageFromService(int width, int height) {
     AnimationListener animationListener =
-        (mEnableAllLoopEvent || mEnableStartPlayEvent || mEnableCurrentLoopEvent)
+        (shouldEmitFinalLoopEvent() || shouldEmitStartPlayEvent() || shouldEmitCurrentLoopEvent())
         ? mAnimationListener
         : null;
     ImageRequestInfo requestInfo = createImageRequest(width, height, mSrc, true);

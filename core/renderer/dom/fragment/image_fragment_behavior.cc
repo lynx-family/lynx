@@ -19,6 +19,9 @@ int32_t ImageFragmentBehavior::ComputeEventMask() const {
 
   BASE_STATIC_STRING_DECL(kLoadEvent, "load");
   BASE_STATIC_STRING_DECL(kErrorEvent, "error");
+  BASE_STATIC_STRING_DECL(kStartPlayEvent, "startplay");
+  BASE_STATIC_STRING_DECL(kCurrentLoopEvent, "currentloopcomplete");
+  BASE_STATIC_STRING_DECL(kFinalLoopEvent, "finalloopcomplete");
 
   if (element->HasEventListener(kLoadEvent.str())) {
     event_mask |= kFlagImageLoadEvent;
@@ -26,6 +29,18 @@ int32_t ImageFragmentBehavior::ComputeEventMask() const {
 
   if (element->HasEventListener(kErrorEvent.str())) {
     event_mask |= kFlagImageErrorEvent;
+  }
+
+  if (element->HasEventListener(kStartPlayEvent.str())) {
+    event_mask |= kFlagImageStartPlayEvent;
+  }
+
+  if (element->HasEventListener(kCurrentLoopEvent.str())) {
+    event_mask |= kFlagImageCurrentLoopEvent;
+  }
+
+  if (element->HasEventListener(kFinalLoopEvent.str())) {
+    event_mask |= kFlagImageFinalLoopEvent;
   }
 
   return event_mask;
