@@ -100,6 +100,23 @@ class CocoapodsPublishHelperTest(unittest.TestCase):
             "--tag '1.2.3; echo injected' --cache_path ."
         )
 
+    def test_prepare_build_metadata_does_not_generate_source_zip(self):
+        fake_script = os.path.join(
+            self.temp_dir.name,
+            'tools',
+            'ios_tools',
+            'cocoapods_publish_helper.py',
+        )
+        with mock.patch.object(helper, '__file__', fake_script), \
+                mock.patch.object(helper, 'replace_lynx_version') as replace, \
+                mock.patch.object(helper, 'run_command') as run_command, \
+                mock.patch.object(helper, 'generate_zip_file') as generate_zip:
+            helper.prepare_cocoapods_build_metadata('1.2.3')
+
+        replace.assert_called_once_with('1.2.3')
+        self.assertEqual(run_command.call_count, 2)
+        generate_zip.assert_not_called()
+
     def test_github_release_storage_type_accepts_empty_s3_environment(self):
         with mock.patch.dict(os.environ, {}, clear=True):
             helper.validate_storage_type_options(helper.STORAGE_TYPE_GITHUB_RELEASE)
