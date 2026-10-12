@@ -6,9 +6,12 @@ package com.lynx.xelement.markdown.adaptor;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.view.Choreographer;
+import android.view.View;
+import com.lynx.markdown.CustomDrawView;
 import com.lynx.markdown.MarkdownMeasurer;
 import com.lynx.markdown.ServalMarkdownView;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
+import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.xelement.markdown.LynxUIMarkdownShadowNode;
 
 public class LynxMarkdownView extends AndroidView {
@@ -55,7 +58,7 @@ public class LynxMarkdownView extends AndroidView {
       mMarkdownView.setMarkdownMeasurer(mMarkdownMeasurer);
       mMarkdownView.disableInternalVSync(true);
       addView(mMarkdownView);
-      setDrawableCallbackOnLayoutThread(mMarkdownView);
+      setDrawableCallbackOnLayoutThread(this);
     }
     mExposureUpdatePending = true;
     mMeasuredWidth = bundle.mMeasuredWidth;
@@ -134,5 +137,29 @@ public class LynxMarkdownView extends AndroidView {
     if (mMarkdownView != null) {
       mMarkdownView.invalidate();
     }
+  }
+
+  @Override
+  public void invalidateDrawable(Drawable who) {
+    UIThreadUtils.runOnUiThreadImmediately(() -> {
+      if (mMarkdownView != null) {
+        for (int i = 0; i < mMarkdownView.getChildCount(); i++) {
+          View child = mMarkdownView.getChildAt(i);
+          if (child instanceof CustomDrawView) {
+            child.invalidate();
+          }
+        }
+      }
+    });
+  }
+
+  @Override
+  public void scheduleDrawable(Drawable who, Runnable what, long when) {
+    UIThreadUtils.runOnUiThreadAtTime(what, who, when);
+  }
+
+  @Override
+  public void unscheduleDrawable(Drawable who, Runnable what) {
+    UIThreadUtils.removeCallbacks(what, who);
   }
 }
