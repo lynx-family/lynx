@@ -139,6 +139,25 @@ class InspectorInputAgentTest : public ::testing::Test {
     return message;
   }
 
+  Json::Value BuildPinchMessage(int64_t id, double x = 10, double y = 20,
+                                double scale_factor = 2) {
+    Json::Value message(Json::ValueType::objectValue);
+    message["id"] = id;
+    message["method"] = "Input.synthesizePinchGesture";
+    message["params"]["x"] = x;
+    message["params"]["y"] = y;
+    message["params"]["scaleFactor"] = scale_factor;
+    return message;
+  }
+
+  void EnableTwoTouchPoints() {
+    input::PointerCapabilities capabilities;
+    capabilities.default_source_type = input::PointerSourceType::kTouch;
+    capabilities.supports_touch = true;
+    capabilities.max_touch_points = 2;
+    platform_facade_->mock_input_event_target_->SetCapabilities(capabilities);
+  }
+
   void Dispatch(const Json::Value& message) {
     auto responder = std::make_shared<CDPResponder>(message_sender_,
                                                     message["id"].asInt64());
@@ -549,6 +568,119 @@ TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsExcessiveTapCount) {
             "Invalid params: tapCount exceeds 200");
   EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
             static_cast<int>(CDPErrorCode::InvalidParams));
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizePinchGestureEmitsTwoPointerSequence) {
+  EnableTwoTouchPoints();
+  Json::Value message = BuildPinchMessage(40);
+  message["params"]["relativeSpeed"] = 100000;
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  const auto events = platform_facade_->mock_input_event_target_->Events();
+  ASSERT_EQ(events.size(), 5u);
+  EXPECT_EQ(events[0].type, input::PointerEventType::kDown);
+  ASSERT_EQ(events[0].pointers.size(), 1u);
+  EXPECT_EQ(events[1].type, input::PointerEventType::kDown);
+  ASSERT_EQ(events[1].pointers.size(), 2u);
+  EXPECT_EQ(events[2].type, input::PointerEventType::kMove);
+  ASSERT_EQ(events[2].pointers.size(), 2u);
+  EXPECT_EQ(events[3].type, input::PointerEventType::kUp);
+  ASSERT_EQ(events[3].pointers.size(), 2u);
+  EXPECT_EQ(events[4].type, input::PointerEventType::kUp);
+  ASSERT_EQ(events[4].pointers.size(), 1u);
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest,
+       SynthesizePinchGestureUsesDefaultRelativeSpeed) {
+  EnableTwoTouchPoints();
+
+  Dispatch(BuildPinchMessage(41));
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  const auto events = platform_facade_->mock_input_event_target_->Events();
+  ASSERT_GE(events.size(), 5u);
+  EXPECT_GE(events.back().timestamp_us - events.front().timestamp_us, 125000);
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest,
+       SynthesizePinchGestureRejectsSinglePointerTarget) {
+  Dispatch(BuildPinchMessage(42));
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Not implemented: Input.synthesizePinchGesture requires two touch "
+            "points");
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizePinchGestureAllowsScaleOne) {
+  EnableTwoTouchPoints();
+  Dispatch(BuildPinchMessage(43, 10, 20, 1));
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizePinchGestureRejectsInvalidScale) {
+  Json::Value message = BuildPinchMessage(44);
+  message["params"]["scaleFactor"] = 0;
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Invalid params: scaleFactor must be a finite positive number");
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
+}
+
+TEST_F(InspectorInputAgentTest,
+       SynthesizePinchGestureRejectsInvalidRelativeSpeed) {
+  Json::Value message = BuildPinchMessage(45);
+  message["params"]["relativeSpeed"] = 0;
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Invalid params: relativeSpeed must be a positive integer");
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::InvalidParams));
+}
+
+TEST_F(InspectorInputAgentTest,
+       SynthesizePinchGestureRejectsUnsupportedSource) {
+  Json::Value message = BuildPinchMessage(46);
+  message["params"]["gestureSourceType"] = "mouse";
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Not implemented: Input.synthesizePinchGesture source mouse");
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizePinchReportsInjectionFailure) {
+  EnableTwoTouchPoints();
+  platform_facade_->mock_input_event_target_->SetInjectionResult(false);
+
+  Dispatch(BuildPinchMessage(47));
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Input.synthesizePinchGesture failed");
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsMissingTarget) {

@@ -154,6 +154,7 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_CDP_METHOD(DispatchMouseEvent);
   DECLARE_DEVTOOL_CDP_METHOD(InsertText);
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
+  DECLARE_DEVTOOL_CDP_METHOD(SynthesizePinchGesture);
 
   // Inspector domain -> devtools executor
   DECLARE_DEVTOOL_METHOD(InspectorEnable)

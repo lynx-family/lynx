@@ -14,6 +14,7 @@
 #include "devtool/lynx_devtool/input/input_event_target.h"
 #include "devtool/lynx_devtool/input/synthetic_gesture_controller.h"
 #include "devtool/lynx_devtool/input/synthetic_tap_gesture.h"
+#include "devtool/lynx_devtool/input/synthetic_touch_pinch_gesture.h"
 
 namespace lynx {
 namespace devtool {
@@ -24,6 +25,8 @@ constexpr int kDefaultTapDurationMs = 50;
 constexpr int kDefaultTapCount = 1;
 constexpr int kMaxSyntheticTapCount = 200;
 constexpr int64_t kMaxSyntheticTapSequenceDurationMs = 10000;
+constexpr int kDefaultPinchRelativeSpeed = 800;
+constexpr int kRequiredPinchTouchPoints = 2;
 
 std::string ButtonFromButtons(int buttons) {
   if ((buttons & 1) != 0) {
@@ -116,7 +119,7 @@ struct ValidatedTapGesture {
   input::PointerSourceType source_type = input::PointerSourceType::kDefault;
 };
 
-bool IsValidGesture(
+bool IsValidTapGesture(
     const Json::Value& params,
     const std::shared_ptr<DevToolPlatformFacade>& platform_facade,
     ValidatedTapGesture& gesture, CDPErrorCode& error_code,
@@ -191,6 +194,103 @@ bool IsValidGesture(
     return false;
   }
   return true;
+}
+
+struct ValidatedPinchGesture {
+  std::shared_ptr<input::InputEventTarget> target;
+  float x = 0.f;
+  float y = 0.f;
+  float scale_factor = 1.f;
+  int relative_speed = kDefaultPinchRelativeSpeed;
+  input::PointerSourceType source_type = input::PointerSourceType::kDefault;
+};
+
+bool IsValidPinchGesture(
+    const Json::Value& params,
+    const std::shared_ptr<DevToolPlatformFacade>& platform_facade,
+    ValidatedPinchGesture& gesture, CDPErrorCode& error_code,
+    std::string& error_message) {
+  if (!params.isObject() || !ReadFiniteFloatParam(params["x"], gesture.x) ||
+      !ReadFiniteFloatParam(params["y"], gesture.y)) {
+    error_code = CDPErrorCode::InvalidParams;
+    error_message = "Invalid params: expected finite numeric x and y";
+    return false;
+  }
+  if (!ReadFiniteFloatParam(params["scaleFactor"], gesture.scale_factor) ||
+      gesture.scale_factor <= 0.f) {
+    error_code = CDPErrorCode::InvalidParams;
+    error_message =
+        "Invalid params: scaleFactor must be a finite positive number";
+    return false;
+  }
+  if (params.isMember("relativeSpeed")) {
+    if (!ReadIntParam(params["relativeSpeed"], gesture.relative_speed) ||
+        gesture.relative_speed <= 0) {
+      error_code = CDPErrorCode::InvalidParams;
+      error_message =
+          "Invalid params: relativeSpeed must be a positive integer";
+      return false;
+    }
+  }
+
+  if (!platform_facade) {
+    error_code = CDPErrorCode::ServerError;
+    error_message = "Input target is unavailable";
+    return false;
+  }
+
+  gesture.target = platform_facade->GetInputEventTarget();
+  if (!gesture.target) {
+    error_code = CDPErrorCode::ServerError;
+    error_message = "Not implemented: Input.synthesizePinchGesture";
+    return false;
+  }
+
+  if (!ParseGestureSourceType(params, gesture.source_type)) {
+    error_code = CDPErrorCode::InvalidParams;
+    error_message =
+        "Invalid params: expected gestureSourceType default, touch, or mouse";
+    return false;
+  }
+
+  const auto capabilities = gesture.target->GetPointerCapabilities();
+  if (gesture.source_type == input::PointerSourceType::kDefault) {
+    gesture.source_type = capabilities.default_source_type;
+  }
+
+  // Pinch is dispatched per resolved source type. Only the touch (touchscreen)
+  // variant is implemented today. A mouse/touchpad pinch (gestureSourceType
+  // "mouse") is a distinct event model -- a single cursor plus ctrl-modified
+  // wheel deltas -- so it is intentionally kept as an additive seam rather than
+  // folded into the two-finger path.
+  switch (gesture.source_type) {
+    case input::PointerSourceType::kTouch:
+      if (!capabilities.Supports(input::PointerSourceType::kTouch)) {
+        break;
+      }
+      if (capabilities.max_touch_points < kRequiredPinchTouchPoints) {
+        error_code = CDPErrorCode::ServerError;
+        error_message =
+            "Not implemented: Input.synthesizePinchGesture requires two touch "
+            "points";
+        return false;
+      }
+      return true;
+    case input::PointerSourceType::kMouse:
+      // To light this up: build a SyntheticTouchpadPinchGesture that emits a
+      // single cursor with ctrl-modified PointerEventType::kScroll deltas, and
+      // gate it on a dedicated scroll/wheel-zoom capability (not
+      // supports_mouse, which is a click capability). No change to the touch
+      // path above.
+      break;
+    case input::PointerSourceType::kDefault:
+      break;
+  }
+  error_code = CDPErrorCode::ServerError;
+  error_message =
+      std::string("Not implemented: Input.synthesizePinchGesture source ") +
+      SourceTypeToString(gesture.source_type);
+  return false;
 }
 
 }  // namespace
@@ -290,8 +390,8 @@ void InputRequestHandler::SynthesizeTapGesture(
   ValidatedTapGesture gesture;
   CDPErrorCode error_code = CDPErrorCode::ServerError;
   std::string error_message;
-  if (!IsValidGesture(params, devtool_platform_facade_, gesture, error_code,
-                      error_message)) {
+  if (!IsValidTapGesture(params, devtool_platform_facade_, gesture, error_code,
+                         error_message)) {
     responder->SendError(error_code, error_message);
     return;
   }
@@ -319,6 +419,42 @@ void InputRequestHandler::SynthesizeTapGesture(
           response->OnGestureResult(result);
         });
   }
+}
+
+void InputRequestHandler::SynthesizePinchGesture(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  ValidatedPinchGesture gesture;
+  CDPErrorCode error_code = CDPErrorCode::ServerError;
+  std::string error_message;
+  if (!IsValidPinchGesture(params, devtool_platform_facade_, gesture,
+                           error_code, error_message)) {
+    responder->SendError(error_code, error_message);
+    return;
+  }
+
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  const auto task_runner =
+      devtool_mediator ? devtool_mediator->GetUITaskRunner() : nullptr;
+  if (!task_runner) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Input UI task runner is unavailable");
+    return;
+  }
+
+  EnsureSyntheticGestureController(task_runner);
+  // Mouse pinch support should route to a separate ctrl-modified scroll
+  // gesture here once the corresponding target capability is available.
+  synthetic_gesture_controller_->QueueSyntheticGesture(
+      std::make_unique<input::SyntheticTouchPinchGesture>(
+          gesture.x, gesture.y, gesture.scale_factor, gesture.relative_speed),
+      [responder](input::SyntheticGestureResult result) {
+        if (result == input::SyntheticGestureResult::kDone) {
+          responder->SendSuccess();
+          return;
+        }
+        responder->SendError(CDPErrorCode::ServerError,
+                             "Input.synthesizePinchGesture failed");
+      });
 }
 
 }  // namespace devtool
