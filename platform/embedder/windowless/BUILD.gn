@@ -13,6 +13,12 @@ lynx_core_source_set("windowless") {
     "windowless_ui_task_runner_delegate.cc",
     "windowless_ui_task_runner_delegate.h",
   ]
+  if (is_android) {
+    sources += [
+      "lynx_windowless_jni.cc",
+      "lynx_windowless_jni.h",
+    ]
+  }
   configs = [
     "../:config",
     "../../../platform/embedder:public_api",

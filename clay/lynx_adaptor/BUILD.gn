@@ -110,8 +110,8 @@ source_set("lynx_adaptor") {
     public_deps += [ ":lynx_trail_hub_impl_clay" ]
   }
 
-  if (is_win || is_mac || (is_linux && is_headless) ||
-      (is_harmony && is_headless)) {
+  if (is_win || is_mac || (is_android && is_headless) ||
+      (is_linux && is_headless) || (is_harmony && is_headless)) {
     sources += [
       "native_view_service_embedder.cc",
       "native_view_service_embedder.h",
@@ -129,6 +129,9 @@ source_set("lynx_adaptor") {
   }
 
   defines = []
+  if (is_android && is_headless) {
+    defines += [ "ENABLE_WINDOWLESS" ]
+  }
   if (is_mac || is_android || is_ios) {
     defines += [ "TRACE_EVENT_HIDE_MACROS" ]
   }

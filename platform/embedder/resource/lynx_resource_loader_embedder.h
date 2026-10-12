@@ -29,7 +29,9 @@ class LynxResourceLoaderEmbedder : public pub::LynxResourceLoader {
       override;
 
  private:
+#if !defined(OS_ANDROID)
   runtime::js::JSSourceLoaderDesktop js_source_loader_;
+#endif
   std::shared_ptr<LynxResourceFetcherHolder> resource_fetcher_holder_;
 };
 

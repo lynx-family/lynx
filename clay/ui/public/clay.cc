@@ -21,6 +21,9 @@
 #include "clay/gfx/shared_image/shared_image_sink_accessor.h"
 #include "clay/net/loader/data_image_loader.h"
 #include "clay/ui/common/isolate.h"
+#if OS_ANDROID
+#include "clay/gfx/shared_image/android_surface_texture_image_backing.h"
+#endif
 #if OS_HARMONY
 #include "clay/gfx/shared_image/native_image_image_backing.h"
 #endif
@@ -49,6 +52,10 @@ SharedImageBacking::BackingType ClaySharedImageBackingTypeToBackingType(
       return SharedImageBacking::BackingType::kShmImage;
     case kClaySharedImageBackingTypeAngleShmImage:
       return SharedImageBacking::BackingType::kAngleShmImage;
+    case kClaySharedImageBackingTypeSurfaceTexture:
+      return SharedImageBacking::BackingType::kSurfaceTexture;
+    case kClaySharedImageBackingTypeAHardwareBuffer:
+      return SharedImageBacking::BackingType::kAHardwareBufferReadback;
   }
   FML_UNREACHABLE();
 }
@@ -303,6 +310,12 @@ CLAY_EXTERN_C void ClaySharedImageGetBacking(
       case SharedImageBacking::BackingType::kAngleShmImage:
         *out_type = kClaySharedImageBackingTypeAngleShmImage;
         break;
+      case SharedImageBacking::BackingType::kSurfaceTexture:
+        *out_type = kClaySharedImageBackingTypeSurfaceTexture;
+        break;
+      case SharedImageBacking::BackingType::kAHardwareBuffer:
+        *out_type = kClaySharedImageBackingTypeAHardwareBuffer;
+        break;
       default:
         break;
     }
@@ -413,6 +426,16 @@ ClayCreateSharedImageSink(ClaySharedImageSinkBufferMode clay_buffer_mode,
                      << clay_buffer_mode;
       return nullptr;
   }
+#if OS_ANDROID
+  if (type == kClaySharedImageBackingTypeSurfaceTexture) {
+    auto sink = fml::MakeRefCounted<SharedImageSinkUnmanaged>(
+        fml::MakeRefCounted<SurfaceTextureImageBacking>(
+            ClaySharedImageBackingPixelFormatToPixelFormat(pixel_format),
+            skity::Vec2{0, 0}, std::nullopt, true));
+    sink->AddRef();
+    return reinterpret_cast<ClaySharedImageSinkRef>(sink.get());
+  }
+#endif
 #if OS_HARMONY
   if (type == kClaySharedImageBackingTypeNativeImage) {
     fml::RefPtr<SharedImageSink> sink =

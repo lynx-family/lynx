@@ -20,13 +20,14 @@ namespace clay {
 
 SurfaceTextureImageBacking::SurfaceTextureImageBacking(
     PixelFormat pixel_format, skity::Vec2 size,
-    std::optional<GraphicsMemoryHandle> gfx_handle)
+    std::optional<GraphicsMemoryHandle> gfx_handle, bool output_surface)
     : SharedImageBackingUnmanaged(pixel_format, size),
       surface_texture_(
           gfx_handle.has_value()
               ? SurfaceTexture::Retain(
                     reinterpret_cast<jobject>(gfx_handle.value()), false)
               : SurfaceTexture::Create()),
+      output_surface_(output_surface),
       uses_internal_frame_listener_(!gfx_handle.has_value()),
       frame_callback_state_(std::make_shared<FrameCallbackState>()) {
   if (uses_internal_frame_listener_) {
@@ -144,7 +145,12 @@ SurfaceTextureImageBacking::CreateSkityRepresentation(
 // So the SurfaceTextureImageBacking owner should set the size during layout (as
 // with `VideoPlayerAndroid` or `PlatformViewPlugin`).
 bool SurfaceTextureImageBacking::SetSize(skity::Vec2 size) {
-  size_ = size;
+  if (size != size_) {
+    if (output_surface_) {
+      surface_texture_->SetDefaultBufferSize(size.x, size.y);
+    }
+    size_ = size;
+  }
   return true;
 }
 
@@ -188,6 +194,10 @@ void SurfaceTextureImageBacking::SetFrameAvailableCallback(
 }
 
 bool SurfaceTextureImageBacking::UpdateFront() {
+  if (output_surface_) {
+    // The windowless consumer owns attachment and updateTexImage.
+    return true;
+  }
   if (EnsureAttachedToGLContext() == 0) {
     FML_LOG(ERROR) << "Failed to attach to GL context";
     return false;
@@ -201,7 +211,7 @@ bool SurfaceTextureImageBacking::UpdateFront() {
   return true;
 }
 
-void SurfaceTextureImageBacking::ReleaseFront() { FML_UNIMPLEMENTED(); }
+void SurfaceTextureImageBacking::ReleaseFront() {}
 
 uint32_t SurfaceTextureImageBacking::AcquireBack() {
   // No need to call any functions, since eglMakeCurrent automatically requires

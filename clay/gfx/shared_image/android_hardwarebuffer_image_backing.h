@@ -20,7 +20,8 @@ class AHardwareBufferImageBacking : public SharedImageBacking {
  public:
   AHardwareBufferImageBacking(
       PixelFormat pixel_format, skity::Vec2 size,
-      std::optional<GraphicsMemoryHandle> gfx_handle = {});
+      std::optional<GraphicsMemoryHandle> gfx_handle = {},
+      bool cpu_readable = false);
   ~AHardwareBufferImageBacking() override;
 
   AHardwareBuffer* GetAHardwareBuffer() const { return buffer_; }

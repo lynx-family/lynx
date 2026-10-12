@@ -66,6 +66,7 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
   void SetCursorPosition(int position) override;
 
  private:
+  void UpdateViewportMetrics();
   void SendPointerEvent(const ClayPointerEvent& event) override;
 
   lynx::fml::RefPtr<LynxWindowlessRenderer> windowless_renderer_;

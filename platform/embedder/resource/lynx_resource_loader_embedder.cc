@@ -51,6 +51,7 @@ void LynxResourceLoaderEmbedder::SetResourceFetcherHolder(
 void LynxResourceLoaderEmbedder::LoadResourceInternal(
     const pub::LynxResourceRequest& request,
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
+#if !defined(OS_ANDROID)
   if (request.type == pub::LynxResourceType::kAssets) {
     // For lynx_core.js
     auto assets = js_source_loader_.LoadJSSource(request.url);
@@ -62,6 +63,7 @@ void LynxResourceLoaderEmbedder::LoadResourceInternal(
       return;
     }
   }
+#endif
   // adapt to `lynx_generic_resource_fetcher`, see
   // platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h
   if (!resource_fetcher_holder_ ||

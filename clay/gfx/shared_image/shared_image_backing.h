@@ -79,6 +79,7 @@ class SharedImageBacking
     kShmImage,
     kAngleShmImage,
     kMocking,
+    kAHardwareBufferReadback,
   };
 
   enum class PixelFormat {

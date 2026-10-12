@@ -287,8 +287,10 @@ void NativeViewServiceEmbedder::AddViewFactory(ViewContext* view_context,
   });
 }
 
+#if !defined(OS_ANDROID)
 std::shared_ptr<NativeViewService> NativeViewService::Create() {
   return std::make_shared<NativeViewServiceEmbedder>();
 }
+#endif
 
 }  // namespace clay

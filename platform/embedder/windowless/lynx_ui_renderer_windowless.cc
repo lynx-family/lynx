@@ -22,6 +22,10 @@
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_memory_capi.h"
 
+#if defined(OS_ANDROID)
+#include "platform/embedder/windowless/lynx_windowless_jni.h"
+#endif
+
 namespace lynx {
 namespace embedder {
 
@@ -32,6 +36,9 @@ std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWindowlessUIRenderer(
 
 LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
     : LynxUIRenderer(builder) {
+#if defined(OS_ANDROID)
+  CHECK(InitializeWindowlessAndroidJNI());
+#endif
 #if !defined(OS_WIN)
   base::UIThread::Init();
 #endif
@@ -94,8 +101,14 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateClay>(
       view_context, std::move(module_factory));
 
+#if defined(OS_ANDROID)
+  // A windowless engine has no Android View or plugin context.
+  headless_engine_->GetServiceManager()
+      ->RegisterService<clay::NativeViewService>(
+          std::make_shared<clay::NativeViewServiceEmbedder>());
+#endif
 #if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX) || \
-    defined(OS_HARMONY)
+    defined(OS_HARMONY) || defined(OS_ANDROID)
   clay::NativeViewServiceEmbedder::SetViewFactories(
       view_context, std::move(builder->native_view_creators));
 #endif
@@ -130,10 +143,7 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
                       task_runner, intercept, fetcher_holder);
                 }));
   }
-  headless_engine_->SendViewportMetrics(
-      builder->frame.width * builder->screen_size.pixel_ratio,
-      builder->frame.height * builder->screen_size.pixel_ratio,
-      builder->screen_size.pixel_ratio);
+  UpdateViewportMetrics();
 }
 
 LynxUIRendererWindowless::~LynxUIRendererWindowless() {
@@ -166,8 +176,7 @@ void LynxUIRendererWindowless::PostTask(ClayTask task, uint64_t target_time) {
 void LynxUIRendererWindowless::SetPixelRatio(float pixel_ratio) {
   if (pixel_ratio_ != pixel_ratio) {
     pixel_ratio_ = pixel_ratio;
-    headless_engine_->SendViewportMetrics(width_ * pixel_ratio_,
-                                          height_ * pixel_ratio_, pixel_ratio_);
+    UpdateViewportMetrics();
   }
 }
 void LynxUIRendererWindowless::SetFrame(float x, float y, float width,
@@ -175,9 +184,15 @@ void LynxUIRendererWindowless::SetFrame(float x, float y, float width,
   if (width_ != width || height_ != height) {
     width_ = width;
     height_ = height;
-    headless_engine_->SendViewportMetrics(width_ * pixel_ratio_,
-                                          height_ * pixel_ratio_, pixel_ratio_);
+    UpdateViewportMetrics();
   }
+}
+
+void LynxUIRendererWindowless::UpdateViewportMetrics() {
+  const float frame_scale =
+      ui_delegate_->UsesLogicalPixels() ? pixel_ratio_ : 1.f;
+  headless_engine_->SendViewportMetrics(width_ * frame_scale,
+                                        height_ * frame_scale, pixel_ratio_);
 }
 
 void LynxUIRendererWindowless::Reset() {

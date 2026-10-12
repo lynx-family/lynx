@@ -314,13 +314,15 @@ std::unique_ptr<FenceSync> NativeBufferEGLImageRepresentation::ProduceFence() {
   return std::make_unique<DummyFenceSync>();
 }
 
-#ifndef ENABLE_HEADLESS
 SurfaceTextureEGLImageRepresentation::SurfaceTextureEGLImageRepresentation(
     fml::RefPtr<SurfaceTextureImageBacking> backing)
     : GLImageRepresentation(backing), backing_(backing) {}
 
 SurfaceTextureEGLImageRepresentation::~SurfaceTextureEGLImageRepresentation() {
   UnbindFrameBuffer();
+  if (surface_ != EGL_NO_SURFACE) {
+    eglDestroySurface(display_, surface_);
+  }
   ReleaseTexImage();
 }
 
@@ -357,14 +359,58 @@ bool SurfaceTextureEGLImageRepresentation::ReleaseTexImage() {
 
 std::optional<GLImageRepresentation::FramebufferInfo>
 SurfaceTextureEGLImageRepresentation::BindFrameBuffer() {
-  // TODO(youfeng) support write to Surface
-  return {};
+  EGLContext context = eglGetCurrentContext();
+  display_ = eglGetCurrentDisplay();
+  if (context == EGL_NO_CONTEXT || display_ == EGL_NO_DISPLAY) {
+    return {};
+  }
+  if (surface_ == EGL_NO_SURFACE) {
+    EGLint config_id = 0;
+    eglQueryContext(display_, context, EGL_CONFIG_ID, &config_id);
+    const EGLint attributes[] = {EGL_CONFIG_ID, config_id, EGL_NONE};
+    EGLConfig config;
+    EGLint count = 0;
+    if (!eglChooseConfig(display_, attributes, &config, 1, &count) || !count) {
+      return {};
+    }
+    window_ = backing_->surface_texture_->CreateSurface();
+    if (!window_) {
+      return {};
+    }
+    surface_ = eglCreateWindowSurface(display_, config,
+                                      window_.a_native_window(), nullptr);
+    if (surface_ == EGL_NO_SURFACE) {
+      FML_LOG(ERROR) << "Failed to create SurfaceTexture EGL surface: "
+                     << eglGetError();
+      return {};
+    }
+  }
+  previous_draw_ = eglGetCurrentSurface(EGL_DRAW);
+  previous_read_ = eglGetCurrentSurface(EGL_READ);
+  if (!eglMakeCurrent(display_, surface_, surface_, context)) {
+    return {};
+  }
+  writing_ = true;
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  return FramebufferInfo{.target = 0, .name = 0};
+}
+
+bool SurfaceTextureEGLImageRepresentation::EndWrite() {
+  if (!writing_) {
+    return false;
+  }
+  bool swapped = eglSwapBuffers(display_, surface_);
+  bool restored = UnbindFrameBuffer();
+  return swapped && restored;
 }
 
 bool SurfaceTextureEGLImageRepresentation::UnbindFrameBuffer() {
-  // TODO(youfeng) support write to Surface
-  return false;
+  if (!writing_) {
+    return true;
+  }
+  writing_ = false;
+  return eglMakeCurrent(display_, previous_draw_, previous_read_,
+                        eglGetCurrentContext());
 }
-#endif  // ENABLE_HEADLESS
 
 }  // namespace clay

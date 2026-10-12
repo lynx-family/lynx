@@ -99,13 +99,24 @@ lynx_core_source_set("embedder") {
 
   deps = [
     ":public_headers",
-    "../../base/src:base_static",
     "../../core:lynx_native",
     "../../core/renderer/data",
     "./core:renderer",
     "./lynx_service",
     "./resource",
   ]
+  if (is_android) {
+    # The Android host links and initializes the shared base library.
+    # Linking another copy here would create uninitialized JNI globals.
+    if (enable_testbench_replay) {
+      deps += [ "../../core/services/replay" ]
+    }
+    if (lynx_in_debug) {
+      deps += [ "../../core/shell/host_script/android:process_runtime_android" ]
+    }
+  } else {
+    deps += [ "../../base/src:base_static" ]
+  }
   if (enable_napi_binding) {
     public_deps = [
       ":lynx_runtime_lifecycle_observer",
@@ -146,15 +157,9 @@ lynx_core_source_set("embedder") {
     } else {
       sources += [ "lynx_ui_renderer_mock.cc" ]
     }
-    if (!(is_harmony && is_headless)) {
+    if (!((is_android || is_harmony) && is_headless)) {
       sources += [ "../../clay/lynx_adaptor/native_platform_view_mock.cc" ]
     }
-  }
-  if (!enable_unittests && is_android && is_headless) {
-    sources += [
-      "vsync_monitor_fallback.cc",
-      "vsync_monitor_fallback.h",
-    ]
   }
   if (is_win) {
     sources += [ "../../core/renderer/utils/sys_lynx_env/sys_env_default.cc" ]

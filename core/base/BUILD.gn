@@ -28,9 +28,7 @@ base_shared_sources = [
 
 if (is_android) {
   base_shared_sources += [
-    "android/android_jni.cc",
     "android/android_jni.h",
-    "android/callstack_util_android.cc",
     "android/callstack_util_android.h",
     "android/device_utils_android.cc",
     "android/device_utils_android.h",
@@ -58,7 +56,7 @@ if (is_android) {
     "threading/task_runner_vsync.cc",
     "threading/task_runner_vsync.h",
   ]
-  if (!is_headless) {
+  if (!is_headless || is_android) {
     base_shared_sources += [
       "android/vsync_monitor_android.cc",
       "android/vsync_monitor_android.h",
@@ -133,6 +131,16 @@ if (enable_unittests) {
 
 # base_shared_sources end
 
+if (is_android) {
+  lynx_core_source_set("android_jni") {
+    sources = [
+      "android/android_jni.cc",
+      "android/callstack_util_android.cc",
+    ]
+    deps = [ "../../base/src:base_log_headers" ]
+  }
+}
+
 lynx_core_source_set("base") {
   libs = []
   sources = []
@@ -152,7 +160,10 @@ lynx_core_source_set("base") {
     sources += base_shared_sources
     public_deps += [ "../../base/trace/native:trace_public_headers" ]
     if (is_android) {
-      deps += [ "../../third_party/rapidjson:rapidjson" ]
+      deps += [
+        ":android_jni",
+        "../../third_party/rapidjson:rapidjson",
+      ]
     }
     if (is_win) {
       libs += [ "user32.lib" ]

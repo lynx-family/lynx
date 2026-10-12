@@ -4,6 +4,9 @@
 
 #include "base/include/log/logging.h"
 #include "build/build_config.h"
+#if defined(OS_ANDROID)
+#include "clay/gfx/shared_image/android/android_hardwarebuffer_utils.h"
+#endif
 #include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
 #include "platform/embedder/windowless/windowless_ui_task_runner_delegate.h"
 
@@ -309,11 +312,16 @@ ClayHeadlessRendererConfig* LynxWindowlessRenderer::GetRendererConfig() {
 #endif
 #elif defined(OS_HARMONY)
       backing_type = kClaySharedImageBackingTypeNativeImage;
+#elif defined(OS_ANDROID)
+      backing_type =
+          clay::AHardwareBufferUtils::GetInstance().IsSupportAvailable()
+              ? kClaySharedImageBackingTypeAHardwareBuffer
+              : kClaySharedImageBackingTypeSurfaceTexture;
 #else
       abort();
 #endif
 
-#if defined(OS_WIN)
+#if defined(OS_WIN) || defined(OS_ANDROID)
       ClaySharedImageBackingPixelFormat pixel_format =
           kClaySharedImageBackingPixelFormatRGBA8;
 #else
@@ -337,7 +345,7 @@ ClayHeadlessRendererConfig* LynxWindowlessRenderer::GetRendererConfig() {
     renderer_config_.type = kClayRendererTypeOpenGL;
 #elif defined(OS_LINUX)
     renderer_config_.type = kClayRendererTypeOpenGL;
-#elif defined(OS_HARMONY)
+#elif defined(OS_HARMONY) || defined(OS_ANDROID)
     renderer_config_.type = kClayRendererTypeOpenGL;
 #endif
     renderer_config_.hardware.struct_size = sizeof(ClayHardwareRendererConfig);
@@ -367,6 +375,7 @@ bool LynxWindowlessRenderer::GetAcceleratedPaintInfo(
           return false;
         }
       }
+      size_t info_size = paint_info->struct_size;
       paint_info->struct_size = sizeof(lynx_accelerated_paint_info_t);
       ClaySize size;
       ClaySharedImageGetSize(shared_image, &size);
@@ -374,8 +383,18 @@ bool LynxWindowlessRenderer::GetAcceleratedPaintInfo(
       paint_info->height = size.height;
       ClaySharedImageBackingPixelFormat format =
           kClaySharedImageBackingPixelFormatNative8888;
-      ClaySharedImageGetBacking(shared_image, nullptr, &format,
+      ClaySharedImageBackingType backing_type;
+      ClaySharedImageGetBacking(shared_image, &backing_type, &format,
                                 &paint_info->shared_texture_handle);
+      if (info_size >= sizeof(lynx_accelerated_paint_info_t)) {
+        paint_info->backing_type = kLynxAcceleratedBackingTypePlatform;
+#if defined(OS_ANDROID)
+        paint_info->backing_type =
+            backing_type == kClaySharedImageBackingTypeAHardwareBuffer
+                ? kLynxAcceleratedBackingTypeAHardwareBuffer
+                : kLynxAcceleratedBackingTypeSurfaceTexture;
+#endif
+      }
       if (format == kClaySharedImageBackingPixelFormatNative8888) {
         paint_info->color_type = kLynxColorTypeBGRA_8888;
       } else {

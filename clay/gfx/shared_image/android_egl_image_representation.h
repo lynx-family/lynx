@@ -10,6 +10,7 @@
 
 #include <memory>
 
+#include "clay/gfx/shared_image/android/scoped_a_native_window.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_representation.h"
 
@@ -80,7 +81,6 @@ class NativeBufferEGLImageRepresentation final : public GLImageRepresentation {
   EGLDisplay egl_display_ = nullptr;
 };
 
-#ifndef ENABLE_HEADLESS
 class SurfaceTextureEGLImageRepresentation final
     : public GLImageRepresentation {
  public:
@@ -90,6 +90,7 @@ class SurfaceTextureEGLImageRepresentation final
   ~SurfaceTextureEGLImageRepresentation() override;
 
   ImageRepresentationType GetType() const override;
+  bool EndWrite() override;
   void ConsumeFence(std::unique_ptr<FenceSync>) override;
   std::unique_ptr<FenceSync> ProduceFence() override;
 
@@ -100,8 +101,13 @@ class SurfaceTextureEGLImageRepresentation final
   bool UnbindFrameBuffer() override;
 
   fml::RefPtr<SurfaceTextureImageBacking> backing_;
+  ScopedANativeWindow window_;
+  EGLDisplay display_ = EGL_NO_DISPLAY;
+  EGLSurface surface_ = EGL_NO_SURFACE;
+  EGLSurface previous_draw_ = EGL_NO_SURFACE;
+  EGLSurface previous_read_ = EGL_NO_SURFACE;
+  bool writing_ = false;
 };
-#endif  // ENABLE_HEADLESS
 
 }  // namespace clay
 

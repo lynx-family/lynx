@@ -78,10 +78,12 @@ void GlobalDevtoolPlatformEmbedder::GetAllMemoryUsage(
   }
 }
 
+#if !defined(OS_ANDROID)
 GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
   static GlobalDevtoolPlatformCommon instance;
   return instance;
 }
+#endif
 }  // namespace devtool
 
 }  // namespace lynx

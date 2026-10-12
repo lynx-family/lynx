@@ -19,7 +19,6 @@ devtool_source_set("lynx_devtool") {
 
   deps = [
     "../:devtool_settings_embedder",
-    "../../../devtool/base_devtool/common:base_devtool_common_sources",
     "../../../devtool/embedder/common:lynx_devtool_embedder_common",
     "../../../devtool/embedder/core:lynx_devtool_embedder_core",
     "../../../devtool/lynx_devtool:lynx_devtool_group",
@@ -29,6 +28,13 @@ devtool_source_set("lynx_devtool") {
     "../../../third_party/jsoncpp:jsoncpp",
     "//third_party/modp_b64:modp_b64",
   ]
+
+  # Android hosts link the shared base DevTool library and initialize its JNI.
+  # Do not compile a second copy of that library into the embedder.
+  if (!is_android) {
+    deps +=
+        [ "../../../devtool/base_devtool/common:base_devtool_common_sources" ]
+  }
   public_configs = [ ":lynx_devtool_config" ]
 }
 
