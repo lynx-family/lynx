@@ -655,11 +655,11 @@ void BaseTextShadowNode::MeasureInlineView(
     const MeasureConstraint& constraint) {
   for (auto* child : children_) {
     if (child->IsInlineViewShadowNode()) {
-      auto* inline_view_shadow_node = static_cast<InlineViewShadowNode*>(child);
-      auto result = inline_view_shadow_node->MeasureNativeNode(constraint);
-      inline_view_shadow_node->SetWidth(result.width);
-      inline_view_shadow_node->SetHeight(result.height);
-      inline_view_shadow_node->SetMeasuredBaseline(result.baseline);
+      auto result =
+          static_cast<InlineViewShadowNode*>(child)->MeasureNativeNode(
+              constraint);
+      child->SetWidth(result.width);
+      child->SetHeight(result.height);
     } else if (child->IsBaseTextShadowNode()) {
       static_cast<BaseTextShadowNode*>(child)->MeasureInlineView(constraint);
     }
