@@ -8,8 +8,8 @@
 #include <cstdint>
 
 #include "core/public/platform_renderer_type.h"
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
+#include "gfx/public/display_list.h"
 
 namespace lynx {
 namespace starlight {

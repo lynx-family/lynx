@@ -16,9 +16,9 @@
 #import <malloc/malloc.h>
 #include <objc/runtime.h>
 #include <utility>
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
+#include "gfx/public/display_list.h"
 
 @interface LynxRenderer (Testing)
 - (void)ensureLynxDisplayListApplier;

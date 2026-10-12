@@ -6,8 +6,8 @@
 
 #include <utility>
 
-#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
+#include "gfx/public/display_list_reader.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"

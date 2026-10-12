@@ -5,8 +5,8 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PLATFORM_RENDERER_DARWIN_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PLATFORM_RENDERER_DARWIN_H_
 
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
+#include "gfx/public/display_list.h"
 
 #import <Lynx/LynxRendererHost.h>
 #import <UIKit/UIKit.h>

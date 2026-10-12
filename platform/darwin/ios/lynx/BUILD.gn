@@ -973,6 +973,7 @@ subspec_target("tasm") {
         "../../../../core/shell",
         "../../../../core/style",
         "../../../../core/value_wrapper:value_wrapper",
+        "../../../../gfx/display_list:display_list",
       ] + tasm_extend_deps
 }
 
