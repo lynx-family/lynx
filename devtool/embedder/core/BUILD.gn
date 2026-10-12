@@ -46,4 +46,19 @@ devtool_source_set("lynx_devtool_embedder_core") {
   ]
 
   deps = [ "//third_party/httplib:httplib" ]
+
+  if (is_mac || is_win || is_linux) {
+    sources += [
+      "global_devtool_platform_embedder_memory.cc",
+      "global_devtool_platform_embedder_memory.h",
+      "global_devtool_platform_embedder_memory_desktop.cc",
+    ]
+    deps += [
+      "../../../base/src:base_group",
+      "../../../core/services/performance",
+      "../../../third_party/jsoncpp",
+    ]
+  } else {
+    sources += [ "global_devtool_platform_embedder_memory_stub.cc" ]
+  }
 }
