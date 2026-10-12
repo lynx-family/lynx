@@ -392,11 +392,11 @@ class DisplayList {
                          int32_t clip_index, int32_t repeat_x,
                          int32_t repeat_y);
 
-  void AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
-                          int32_t tiling_index, int32_t clip_index,
-                          int32_t repeat_x, int32_t repeat_y,
-                          int32_t auto_size = 0, float position_x = 0.f,
-                          float position_y = 0.f);
+  // Store an owning image reference, moving it when the caller transfers it.
+  void AddBackgroundImage(fml::RefPtr<PaintImage> image, int32_t tiling_index,
+                          int32_t clip_index, int32_t repeat_x,
+                          int32_t repeat_y, int32_t auto_size = 0,
+                          float position_x = 0.f, float position_y = 0.f);
 
   void AppendItem(const DisplayListItem& item);
 

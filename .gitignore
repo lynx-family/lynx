@@ -22,6 +22,7 @@
 /third_party/webview2
 /third_party/vulkan-deps
 *.profraw
+*.profdata
 __pycache__
 /venv
 .venv
