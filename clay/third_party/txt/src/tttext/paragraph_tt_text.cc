@@ -503,6 +503,15 @@ Paragraph::Range<size_t> ParagraphTTText::GetWordBoundary(size_t offset) {
   return Paragraph::Range<size_t>(word.first, word.second);
 }
 
+Paragraph::Range<size_t> ParagraphTTText::GetGraphemeBoundary(
+    size_t offset) const {
+  auto grapheme =
+      paragraph_->GetGraphemeBoundary(index_mapper_.ToTTTextPosition(offset));
+  return Paragraph::Range<size_t>(
+      index_mapper_.ToUTF16Position(grapheme.first),
+      index_mapper_.ToUTF16Position(grapheme.second));
+}
+
 void ParagraphTTText::UpdateForegroundPaint(size_t text_size,
 #ifdef ENABLE_SKITY
                                             skity::Paint paint) {
