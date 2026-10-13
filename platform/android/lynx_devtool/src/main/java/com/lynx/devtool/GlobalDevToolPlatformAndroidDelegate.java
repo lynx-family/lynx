@@ -15,6 +15,7 @@ import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceController;
+import com.lynx.tasm.utils.UIThreadUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -116,6 +117,31 @@ public class GlobalDevToolPlatformAndroidDelegate {
   public static String getLynxVersion() {
     return LynxEnv.inst().getLynxVersion();
   }
+
+  public interface HSRScriptCallback {
+    // Called on the UI thread. A null error means synchronous script loading completed.
+    void onResult(String error);
+  }
+
+  /** Loads decoded schema parameters through the same boundary as HSR.loadScript. */
+  public static void loadHSRScriptFromSchema(String paramsJson, HSRScriptCallback callback) {
+    if (callback == null) {
+      throw new IllegalArgumentException("HSR callback is required");
+    }
+    if (!LynxEnv.inst().isDevLibraryLoaded()) {
+      UIThreadUtils.runOnUiThread(() -> callback.onResult("HSR DevTool library is not loaded"));
+      return;
+    }
+    nativeLoadHSRScriptFromSchema(paramsJson.getBytes(StandardCharsets.UTF_8), callback);
+  }
+
+  @CalledByNative
+  private static void onHSRScriptLoaded(Object callback, byte[] error) {
+    String message = error == null ? null : new String(error, StandardCharsets.UTF_8);
+    UIThreadUtils.runOnUiThread(() -> ((HSRScriptCallback) callback).onResult(message));
+  }
+
+  private static native void nativeLoadHSRScriptFromSchema(byte[] paramsJson, Object callback);
 
   @CalledByNative
   public static void fetchHSRScript(byte[] url, long callbackId) {
