@@ -279,6 +279,11 @@ void LayoutMediator::HandlePendingLayoutTask(
   if (layout_changed) {
     catalyzer->UpdateLayoutRecursively();
     catalyzer->painting_context()->UpdateLayoutPatching();
+    TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, LAYOUT_MEDIATOR_ON_FIRST_SCREEN,
+                        "is_fragment",
+                        root && root->EnableFragmentLayerRender(), "root_id",
+                        root ? root->impl_id() : -1, "is_first_screen",
+                        options && options->is_first_screen);
     if (root && root->EnableFragmentLayerRender()) {
       root->element_container()->OnFirstScreen();
     } else {

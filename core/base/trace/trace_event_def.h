@@ -39,6 +39,151 @@ static constexpr const char* const CLAY_VIEW_CONTEXT_CREATE_SHADOW_NODE =
     "ViewContext::CreateShadowNode";
 static constexpr const char* const CLAY_VIEW_CONTEXT_SYNC_NATIVE_VIEW_TAGS =
     "ViewContext::SyncNativeViewTags";
+static constexpr const char* const CLAY_VIEW_CONTEXT_STOP_EXPOSURE =
+    "ViewContext::StopExposure";
+static constexpr const char* const CLAY_VIEW_CONTEXT_RESUME_EXPOSURE =
+    "ViewContext::ResumeExposure";
+static constexpr const char* const CLAY_VIEW_CONTEXT_SET_EXPOSURE_HOST_VISIBLE =
+    "ViewContext::SetExposureHostVisible";
+static constexpr const char* const CLAY_EXPOSE_OBSERVER_SET_HOST_VISIBLE =
+    "ExposeObserver::SetExposureHostVisible";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_SET_HOST_VISIBLE =
+        "IntersectionObserverManager::SetExposureHostVisible";
+static constexpr const char* const CLAY_EXPOSE_OBSERVER_CHECK_INTERSECTION =
+    "ExposeObserver::CheckForIntersectionWithTarget";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_STOP_EXPOSURE =
+        "IntersectionObserverManager::StopExposure";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_RESUME_EXPOSURE =
+        "IntersectionObserverManager::ResumeExposure";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_NOTIFY_EXPOSURES =
+        "IntersectionObserverManager::NotifyExposures";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_RECONCILE_TARGET =
+        "IntersectionObserverManager::ReconcileExposureForTarget";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_VISIT_EXPOSURE_OBSERVERS =
+        "IntersectionObserverManager::VisitExposureObservers";
+static constexpr const char* const CLAY_PAGE_VIEW_SEND_GLOBAL_EXPOSURE_EVENT =
+    "PageView::SendGlobalExposureEvent";
+static constexpr const char* const CLAY_PAGE_VIEW_BUILD_EXPOSURE_BATCH =
+    "PageView::BuildExposureBatch";
+static constexpr const char* const CLAY_PAGE_VIEW_DISPATCH_EXPOSURE_BATCH =
+    "PageView::DispatchExposureBatch";
+static constexpr const char* const CLAY_PAGE_VIEW_BUILD_DISEXPOSURE_BATCH =
+    "PageView::BuildDisexposureBatch";
+static constexpr const char* const CLAY_PAGE_VIEW_DISPATCH_DISEXPOSURE_BATCH =
+    "PageView::DispatchDisexposureBatch";
+static constexpr const char* const CLAY_DISPATCHER_SEND_CUSTOM_EVENT =
+    "LynxEventDispatcher::OnSendCustomEvent";
+static constexpr const char* const
+    CLAY_EVENT_DISPATCHER_CONVERT_CUSTOM_EVENT_PAYLOAD =
+        "LynxEventDispatcher::ConvertCustomEventPayload";
+static constexpr const char* const
+    CLAY_EVENT_DISPATCHER_DISPATCH_CUSTOM_EVENT_TO_ENGINE =
+        "LynxEventDispatcher::DispatchCustomEventToEngine";
+static constexpr const char* const CLAY_DISPATCHER_SEND_GLOBAL_EVENT =
+    "LynxEventDispatcher::OnSendGlobalEvent";
+static constexpr const char* const
+    CLAY_EVENT_DISPATCHER_CONVERT_GLOBAL_EVENT_PAYLOAD =
+        "LynxEventDispatcher::ConvertGlobalEventPayload";
+static constexpr const char* const
+    CLAY_EVENT_DISPATCHER_DISPATCH_GLOBAL_EVENT_TO_RUNTIME =
+        "LynxEventDispatcher::DispatchGlobalEventToRuntime";
+static constexpr const char* const CLAY_STARTUP_IOS_VIEW_PROVIDER_SETUP =
+    "ClayStartup::IOSViewProviderSetup";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_PROJECT =
+    "ClayStartup::IOSCreateProject";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_ENGINE =
+    "ClayStartup::IOSCreateEngine";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_SHELL =
+    "ClayStartup::IOSCreateShell";
+static constexpr const char* const CLAY_STARTUP_IOS_SYNC_NATIVE_VIEW_TAGS =
+    "ClayStartup::IOSSyncNativeViewTags";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_UI_DELEGATE =
+    "ClayStartup::IOSCreateUIDelegate";
+static constexpr const char* const CLAY_STARTUP_IOS_RENDERER_INIT =
+    "ClayStartup::IOSLynxUIRendererInit";
+static constexpr const char* const CLAY_STARTUP_IOS_RENDERER_SUPER_INIT =
+    "ClayStartup::IOSRendererSuperInit";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_HELPER =
+    "ClayStartup::IOSCreateClayHelper";
+static constexpr const char* const CLAY_STARTUP_IOS_LOOKUP_CLAY_SERVICE =
+    "ClayStartup::IOSLookupClayService";
+static constexpr const char* const CLAY_STARTUP_IOS_SERVICE_CREATE_HELPER =
+    "ClayStartup::IOSServiceCreateClayHelper";
+static constexpr const char* const CLAY_STARTUP_IOS_HELPER_INIT =
+    "ClayStartup::IOSClayHelperInit";
+static constexpr const char* const CLAY_STARTUP_IOS_HELPER_CREATE_VIEW =
+    "ClayStartup::IOSClayHelperCreateView";
+static constexpr const char* const CLAY_STARTUP_IOS_HELPER_SHARED_SETUP =
+    "ClayStartup::IOSClayHelperSharedSetup";
+static constexpr const char* const CLAY_STARTUP_IOS_HELPER_SET_ROOT_VIEW =
+    "ClayStartup::IOSClayHelperSetRootView";
+static constexpr const char* const CLAY_STARTUP_IOS_HELPER_ADD_OBSERVER =
+    "ClayStartup::IOSClayHelperAddObserver";
+static constexpr const char* const CLAY_STARTUP_IOS_HELPER_BIND_NET_LOADER =
+    "ClayStartup::IOSClayHelperBindNetLoader";
+static constexpr const char* const CLAY_STARTUP_IOS_VIEW_SUPER_INIT =
+    "ClayStartup::IOSClayViewSuperInit";
+static constexpr const char* const CLAY_STARTUP_IOS_VIEW_CREATE_PARAMS =
+    "ClayStartup::IOSClayViewCreateParams";
+static constexpr const char* const CLAY_STARTUP_IOS_VIEW_CREATE_PROVIDER =
+    "ClayStartup::IOSClayViewCreateProvider";
+static constexpr const char* const CLAY_STARTUP_IOS_VIEW_SETUP_SUBVIEW =
+    "ClayStartup::IOSClayViewSetupSubview";
+static constexpr const char* const CLAY_STARTUP_IOS_SET_RESOURCE_FETCHER =
+    "ClayStartup::IOSSetResourceFetcher";
+static constexpr const char* const CLAY_STARTUP_IOS_ATTACH_CONTAINER =
+    "ClayStartup::IOSAttachContainerView";
+static constexpr const char* const CLAY_STARTUP_IOS_GET_VIEW_PROVIDER =
+    "ClayStartup::IOSGetViewProvider";
+static constexpr const char* const CLAY_STARTUP_IOS_BIND_MEDIA_FETCHER =
+    "ClayStartup::IOSBindMediaResourceFetcher";
+static constexpr const char* const
+    CLAY_STARTUP_IOS_CREATE_CUSTOM_BEHAVIOR_SUPPORT =
+        "ClayStartup::IOSCreateCustomBehaviorSupport";
+static constexpr const char* const CLAY_STARTUP_IOS_SETUP_SCREEN_METRICS =
+    "ClayStartup::IOSSetupScreenMetrics";
+static constexpr const char* const CLAY_STARTUP_IOS_GET_UI_DELEGATE =
+    "ClayStartup::IOSGetUIDelegate";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_FLUTTER_VIEW =
+    "ClayStartup::IOSCreateFlutterView";
+static constexpr const char* const CLAY_STARTUP_IOS_CREATE_SERVICE_MANAGER =
+    "ClayStartup::IOSCreateServiceManager";
+static constexpr const char* const CLAY_STARTUP_IOS_COMMON_VIEW_INIT =
+    "ClayStartup::IOSCommonViewInitialization";
+static constexpr const char* const CLAY_STARTUP_IOS_LOAD_VIEW =
+    "ClayStartup::IOSLoadView";
+static constexpr const char* const CLAY_STARTUP_IOS_SETUP_VIEWPORT =
+    "ClayStartup::IOSSetupViewportMetrics";
+static constexpr const char* const CLAY_STARTUP_IOS_SET_ROOT_VIEW =
+    "ClayStartup::IOSSetRootView";
+static constexpr const char* const CLAY_STARTUP_SHELL_CREATE =
+    "ClayStartup::ShellCreate";
+static constexpr const char* const CLAY_STARTUP_CREATE_WITH_SNAPSHOT =
+    "ClayStartup::CreateWithSnapshot";
+static constexpr const char* const CLAY_STARTUP_POST_SETUP_UI_SUBSYSTEM =
+    "ClayStartup::PostSetupUISubsystem";
+static constexpr const char* const CLAY_STARTUP_SETUP_UI_SUBSYSTEM =
+    "ClayStartup::SetupUISubsystem";
+static constexpr const char* const CLAY_STARTUP_POST_SETUP_RASTER_SUBSYSTEM =
+    "ClayStartup::PostSetupRasterSubsystem";
+static constexpr const char* const CLAY_STARTUP_SETUP_RASTER_SUBSYSTEM =
+    "ClayStartup::SetupRasterSubsystem";
+static constexpr const char* const CLAY_STARTUP_PLATFORM_VIEW_CREATED =
+    "ClayStartup::PlatformViewCreated";
+static constexpr const char* const CLAY_STARTUP_PLATFORM_SURFACE_CREATED =
+    "ClayStartup::PlatformSurfaceCreated";
+static constexpr const char* const CLAY_STARTUP_SETUP_OUTPUT_SURFACE =
+    "ClayStartup::SetupOutputSurface";
+static constexpr const char* const CLAY_STARTUP_OUTPUT_SURFACE_READY =
+    "ClayStartup::OutputSurfaceReady";
+static constexpr const char* const CLAY_STARTUP_FIRST_MEANINGFUL_LAYOUT =
+    "ClayStartup::FirstMeaningfulLayout";
 static constexpr const char* const
     CLAY_VIEW_REGISTRY_CREATE_NATIVE_VIEW_IF_AVAILABLE =
         "ViewRegistry::CreateNativeViewIfAvailable";
