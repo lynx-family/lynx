@@ -25,5 +25,9 @@ gradlePlugin {
             id = 'org.lynxsdk.lynx.library-build'
             implementationClass = 'org.lynxsdk.library.LynxLibraryBuildPlugin'
         }
+        lynxLibraryPublish {
+            id = 'org.lynxsdk.lynx.library-publish'
+            implementationClass = 'org.lynxsdk.library.LynxLibraryPublishPlugin'
+        }
     }
 }
