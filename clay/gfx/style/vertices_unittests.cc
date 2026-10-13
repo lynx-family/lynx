@@ -5,12 +5,33 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <limits>
+
 #include "clay/gfx/attributes_testing.h"
 #include "clay/gfx/testing_utils.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
 namespace testing {
+
+TEST(DisplayListVertices, RejectsAllocationSizeTruncation) {
+  SkPoint point = SkPoint::Make(0, 0);
+  EXPECT_EQ(DlVertices::Make(DlVertexMode::kTriangles, 1 << 29, &point, nullptr,
+                             nullptr),
+            nullptr);
+  DlVertices::Builder builder(DlVertexMode::kTriangles, 1,
+                              DlVertices::Builder::kNone,
+                              std::numeric_limits<int>::max());
+  EXPECT_FALSE(builder.is_valid());
+  EXPECT_EQ(builder.build(), nullptr);
+}
+
+TEST(DisplayListVertices, RejectsUnallocatedOptionalArray) {
+  DlVertices::Builder builder(DlVertexMode::kTriangles, 1,
+                              DlVertices::Builder::kNone, 0);
+  DlColor color = DlColor::kRed();
+  EXPECT_DEATH(builder.store_colors(&color), "");
+}
 
 TEST(DisplayListVertices, MakeWithZeroAndNegativeVerticesAndIndices) {
   std::shared_ptr<const DlVertices> vertices1 = DlVertices::Make(

@@ -13,6 +13,8 @@
 #import "FlutterMacros.h"
 #import "FlutterPluginRegistrarMacOS.h"
 
+// maxPathLength is the UTF-8 buffer capacity in bytes, including the terminating NUL.
+// A nil result, an unencodable result, or a URL that does not fit preserves the original URL.
 typedef NSString* _Nullable (^FlutterViewShouldInterceptUrlCallback)(NSString* _Nonnull originUrl,
                                                                      BOOL shouldDecode,
                                                                      NSInteger maxPathLength);
