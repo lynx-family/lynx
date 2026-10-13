@@ -8,9 +8,9 @@
 #include <algorithm>
 
 #include "base/include/flex_optional.h"
-#include "core/renderer/dom/fragment/rounded_rectangle.h"
 #include "core/renderer/starlight/types/layout_directions.h"
 #include "core/renderer/starlight/types/layout_result.h"
+#include "gfx/public/rounded_rectangle.h"
 
 namespace lynx {
 namespace tasm {

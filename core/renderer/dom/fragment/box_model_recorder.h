@@ -8,7 +8,7 @@
 #include "base/include/flex_optional.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/layout_info.h"
-#include "core/renderer/dom/fragment/rounded_rectangle.h"
+#include "gfx/public/rounded_rectangle.h"
 
 namespace lynx {
 namespace tasm {
