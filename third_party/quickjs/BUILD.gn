@@ -30,8 +30,12 @@ config("quickjs_private_config") {
     "-Wno-unknown-warning-option",
     "-Wno-newline-eof",
     "-Wno-sign-compare",
-    "-Oz",
   ]
+  if (current_os == "linux" && !is_debug) {
+    cflags += [ "-O2" ]
+  } else {
+    cflags += [ "-Oz" ]
+  }
 
   # FIXME(): definition controlled by the args
   defines = [
