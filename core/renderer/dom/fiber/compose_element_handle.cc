@@ -53,6 +53,9 @@ std::optional<LayoutResult> ComposeElementHandle::MeasureText(
   if (!owner_thread || *owner_thread != std::this_thread::get_id()) {
     return fail("measurement requires the engine owner thread");
   }
+  if (!manager->root()) {
+    return fail("measurement requires an initialized page");
+  }
   if (!content_element_->EnableLayoutInElementMode()) {
     return fail("measurement requires layout-in-element mode");
   }

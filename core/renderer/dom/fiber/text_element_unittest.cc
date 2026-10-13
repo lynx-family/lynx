@@ -107,6 +107,8 @@ class DetachedTextMeasurementTest : public FiberElementTest {
     manager->SetConfig(config);
     manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
     manager->SetCurrentEngineThreadId(std::this_thread::get_id());
+    auto page = manager->CreateFiberPage("page", 11);
+    ASSERT_EQ(manager->root(), page.get());
     auto probe = std::make_unique<DetachedTextLayoutProbe>();
     probe_ = probe.get();
     platform_impl_->text_layout_impl_ = std::move(probe);
@@ -121,6 +123,18 @@ class DetachedTextMeasurementTest : public FiberElementTest {
 
   DetachedTextLayoutProbe* probe_{nullptr};
 };
+
+TEST_P(DetachedTextMeasurementTest, RejectsUninitializedPageWithoutNativeCalls) {
+  auto handle = CreateText();
+  auto* root = manager->root();
+  manager->SetRoot(nullptr);
+  const char* error = nullptr;
+  EXPECT_FALSE(handle->MeasureText(manager, 100, 2, 100, 2, &error));
+  ASSERT_NE(error, nullptr);
+  EXPECT_STREQ(error, "measurement requires an initialized page");
+  EXPECT_TRUE(probe_->calls.empty());
+  manager->SetRoot(root);
+}
 
 TEST_P(DetachedTextMeasurementTest, PreparesMeasuresDestroysWithoutFlush) {
   for (bool new_styling : {false, true}) {
