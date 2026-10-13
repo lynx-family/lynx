@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.0.2
+
+- Add `text-spacing-trim` CSS typings.
+
 ## 4.0.1
 - Add `pan-intercept-direction`, `pan-intercept-scope`, `pan-intercept-gesture-class`, `pan-intercept-view-class` and `pan-intercept-view-tag` properties.
 
