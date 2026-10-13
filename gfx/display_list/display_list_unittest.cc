@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/dom/fragment/display_list.h"
+#include "gfx/public/display_list.h"
 
 #include <memory>
 #include <utility>
 
 #include "core/public/platform_renderer_type.h"
-#include "core/renderer/dom/fragment/display_list_reader.h"
+#include "gfx/public/display_list_reader.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -27,6 +27,24 @@ TEST_F(DisplayListTest, EmptyDisplayList) {
   EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
   EXPECT_EQ(display_list_->GetContentDataSize(), 0u);
   EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
+}
+
+TEST_F(DisplayListTest, BackgroundImageConsumesMovedReference) {
+  auto image = fml::MakeRefCounted<PaintImage>(42);
+  const auto* image_ptr = image.get();
+
+  display_list_->AddBackgroundImage(std::move(image), 1, 2, 0, 1);
+
+  EXPECT_FALSE(image);
+  ASSERT_EQ(display_list_->Images().size(), 1u);
+  EXPECT_EQ(display_list_->Images()[0].get(), image_ptr);
+  EXPECT_TRUE(display_list_->Images()[0]->HasOneRef());
+  DisplayListReader reader(*display_list_);
+  ASSERT_TRUE(reader.HasNext());
+  const auto& item = reader.Next();
+  EXPECT_EQ(item.type, DisplayListOpType::kBackgroundImage);
+  EXPECT_EQ(item.payload.background_image.image_id, 42);
+  EXPECT_FALSE(reader.HasNext());
 }
 
 TEST_F(DisplayListTest, AddSingleItem) {

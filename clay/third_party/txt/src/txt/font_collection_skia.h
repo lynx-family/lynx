@@ -18,6 +18,7 @@
 #define CLAY_THIRD_PARTY_TXT_SRC_TXT_FONT_COLLECTION_H_
 
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -27,13 +28,13 @@
 #include "third_party/googletest/googletest/include/gtest/gtest_prod.h"  // nogncheck
 #include "third_party/skia/include/core/SkFontMgr.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
-#include "txt/asset_font_manager_skia.h"
-#include "txt/text_style.h"
+#include "clay/third_party/txt/src/txt/asset_font_manager_skia.h"
+#include "clay/third_party/txt/src/txt/text_style.h"
 
 #if CLAY_ENABLE_MINIKIN
-#include "minikin/FontCollection.h"
-#include "minikin/FontFamily.h"
-#include "minikin/Layout.h"
+#include "clay/third_party/txt/src/minikin/FontCollection.h"
+#include "clay/third_party/txt/src/minikin/FontFamily.h"
+#include "clay/third_party/txt/src/minikin/Layout.h"
 #endif
 
 #if CLAY_ENABLE_SKSHAPER
@@ -107,6 +108,8 @@ class FontCollection : public std::enable_shared_from_this<FontCollection> {
     };
   };
 
+  // Protects font-manager configuration and lazy collection publication.
+  mutable std::mutex mutex_;
   sk_sp<SkFontMgr> default_font_manager_;
   sk_sp<SkFontMgr> asset_font_manager_;
   sk_sp<SkFontMgr> dynamic_font_manager_;

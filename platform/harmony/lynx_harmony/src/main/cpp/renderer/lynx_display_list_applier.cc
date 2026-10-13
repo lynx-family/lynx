@@ -5,7 +5,9 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_display_list_applier.h"
 
 #include <native_drawing/drawing_brush.h>
+#include <native_drawing/drawing_filter.h>
 #include <native_drawing/drawing_matrix.h>
+#include <native_drawing/drawing_path.h>
 #include <native_drawing/drawing_rect.h>
 #include <native_drawing/drawing_round_rect.h>
 
@@ -21,6 +23,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/background_drawable.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/background/box_shadow_layer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/shader_effect.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/lynx_image_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
@@ -160,6 +163,83 @@ void ClipToBox(OH_Drawing_Canvas* canvas, const RoundedRectangle& clip_box,
                               OH_Drawing_CanvasClipOp::INTERSECT, true);
   }
   OH_Drawing_RectDestroy(clip_rect);
+}
+
+OH_Drawing_Path* CreateBoxPath(const RoundedRectangle& box, float density) {
+  auto* rect = OH_Drawing_RectCreate(box.GetX() * density, box.GetY() * density,
+                                     (box.GetX() + box.GetWidth()) * density,
+                                     (box.GetY() + box.GetHeight()) * density);
+  auto* round_rect = OH_Drawing_RoundRectCreate(rect, 0.f, 0.f);
+  const float radii[] = {
+      box.GetRadiusXTopLeft(),     box.GetRadiusYTopLeft(),
+      box.GetRadiusXTopRight(),    box.GetRadiusYTopRight(),
+      box.GetRadiusXBottomRight(), box.GetRadiusYBottomRight(),
+      box.GetRadiusXBottomLeft(),  box.GetRadiusYBottomLeft()};
+  constexpr OH_Drawing_CornerPos corners[] = {
+      CORNER_POS_TOP_LEFT, CORNER_POS_TOP_RIGHT, CORNER_POS_BOTTOM_RIGHT,
+      CORNER_POS_BOTTOM_LEFT};
+  for (size_t i = 0; i < 4; ++i) {
+    OH_Drawing_RoundRectSetCorner(
+        round_rect, corners[i],
+        {radii[i * 2] * density, radii[i * 2 + 1] * density});
+  }
+  auto* path = OH_Drawing_PathCreate();
+  OH_Drawing_PathAddRoundRect(path, round_rect, PATH_DIRECTION_CW);
+  OH_Drawing_RoundRectDestroy(round_rect);
+  OH_Drawing_RectDestroy(rect);
+  return path;
+}
+
+void DrawBoxShadow(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
+                   const std::vector<RoundedRectangle>& boxes, float density) {
+  const auto& shadow = item.payload.box_shadow;
+  if (shadow.shadow_box_index < 0 || shadow.clip_box_index < 0 ||
+      static_cast<size_t>(shadow.shadow_box_index) >= boxes.size() ||
+      static_cast<size_t>(shadow.clip_box_index) >= boxes.size()) {
+    return;
+  }
+  const auto& shadow_box = boxes[shadow.shadow_box_index];
+  const auto& clip_box = boxes[shadow.clip_box_index];
+  if (shadow_box.GetWidth() <= 0.f || shadow_box.GetHeight() <= 0.f ||
+      clip_box.GetWidth() <= 0.f || clip_box.GetHeight() <= 0.f) {
+    return;
+  }
+  auto* path = CreateBoxPath(shadow_box, density);
+  auto* clip_path = CreateBoxPath(clip_box, density);
+  const bool inset = shadow.clip_mode == 1;
+  if (inset) {
+    // Match BoxShadowLayer: blur the base shape minus the inset shadow shape.
+    auto* inset_path = CreateBoxPath(clip_box, density);
+    OH_Drawing_PathOp(inset_path, path, PATH_OP_MODE_DIFFERENCE);
+    OH_Drawing_PathDestroy(path);
+    path = inset_path;
+  }
+  auto* brush = OH_Drawing_BrushCreate();
+  OH_Drawing_BrushSetAntiAlias(brush, true);
+  OH_Drawing_BrushSetColor(brush, shadow.color);
+  OH_Drawing_Filter* filter = nullptr;
+  OH_Drawing_MaskFilter* mask_filter = nullptr;
+  if (shadow.blur_radius > 0.f) {
+    mask_filter =
+        BoxShadowLayer::CreateBlurMaskFilter(shadow.blur_radius, density);
+    filter = OH_Drawing_FilterCreate();
+    OH_Drawing_FilterSetMaskFilter(filter, mask_filter);
+    OH_Drawing_BrushSetFilter(brush, filter);
+  }
+  OH_Drawing_CanvasSave(canvas);
+  OH_Drawing_CanvasClipPath(canvas, clip_path, inset ? INTERSECT : DIFFERENCE,
+                            true);
+  OH_Drawing_CanvasAttachBrush(canvas, brush);
+  OH_Drawing_CanvasDrawPath(canvas, path);
+  OH_Drawing_CanvasDetachBrush(canvas);
+  OH_Drawing_CanvasRestore(canvas);
+  OH_Drawing_BrushDestroy(brush);
+  if (filter) {
+    OH_Drawing_FilterDestroy(filter);
+    BoxShadowLayer::DestroyBlurMaskFilter(mask_filter);
+  }
+  OH_Drawing_PathDestroy(clip_path);
+  OH_Drawing_PathDestroy(path);
 }
 
 bool HasGradientArea(const RoundedRectangle& tiling_box,
@@ -576,8 +656,10 @@ void LynxDisplayListApplier::ProcessContentOperations(
         // Native views separate the segments composed by LynxRenderer.
         break;
       case DisplayListOpType::kCustom:
-      case DisplayListOpType::kBoxShadow:
         // TODO: Add the remaining Harmony fragment-layer drawing operations.
+        break;
+      case DisplayListOpType::kBoxShadow:
+        DrawBoxShadow(canvas, item, boxes_, density);
         break;
       case DisplayListOpType::kLinearGradient:
         DrawLinearGradient(canvas, item, reader, boxes_, density);

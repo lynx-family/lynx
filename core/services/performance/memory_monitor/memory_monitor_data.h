@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <optional>
 #include <random>
 #include <string>
 #include <vector>
@@ -57,7 +56,8 @@ enum class MemoryUsageQueryStatus : int32_t {
 
 struct InstanceMemoryUsageResult {
   MemoryUsageQueryStatus status{MemoryUsageQueryStatus::kOk};
-  std::optional<InstanceMemoryUsage> usage;
+  PageMemoryUsage page;
+  int64_t bts_heap_bytes{0};
 };
 
 struct GlobalMemoryUsage {

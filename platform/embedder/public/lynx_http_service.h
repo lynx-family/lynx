@@ -45,6 +45,13 @@ class LynxHttpRequest {
 
   /**
    * @apidoc
+   * @brief Get the timeout of the HTTP request in milliseconds.
+   * @return The timeout in milliseconds, or 0 to use the service's default.
+   */
+  int32_t GetTimeoutMs() const { return timeout_ms_; }
+
+  /**
+   * @apidoc
    * @brief Get the headers of the HTTP request.
    * @return The headers of the HTTP request.
    */
@@ -65,6 +72,7 @@ class LynxHttpRequest {
     url_ = url ? url : "";
     const char* method = lynx_http_request_get_method(request_);
     method_ = method ? method : "";
+    timeout_ms_ = lynx_http_request_get_timeout_ms(request_);
     size_t header_count = lynx_http_request_get_header_count(request_);
     for (unsigned i = 0; i < header_count; ++i) {
       const char* key = nullptr;
@@ -84,6 +92,7 @@ class LynxHttpRequest {
   lynx_http_request_t* request_;
   std::string url_;
   std::string method_;
+  int32_t timeout_ms_ = 0;
   std::unordered_map<std::string, std::string> headers_;
   std::vector<uint8_t> body_;
 };

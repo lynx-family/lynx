@@ -9,9 +9,9 @@
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "core/renderer/utils/base/base_def.h"
+#include "gfx/public/display_list.h"
 
 constexpr const static int32_t kRootId = 10;
 

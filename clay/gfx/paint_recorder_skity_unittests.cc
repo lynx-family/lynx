@@ -42,5 +42,17 @@ TEST(PaintRecorderSkityTest, BuildsDisplayListRTree) {
   unref_queue->Drain();
 }
 
+TEST(PaintRecorderSkityTest, RadialGradientUsesPremultipliedInterpolation) {
+  constexpr Color kColors[] = {Color::kGreen(), Color::kTransparent()};
+  constexpr float kStops[] = {0.75f, 1.f};
+  auto source = ColorSource::MakeRadial(skity::Vec2(50.f, 50.f), 50.f, 2,
+                                        kColors, kStops, TileMode::kClamp);
+  skity::Shader::GradientInfo gradient_info;
+
+  ASSERT_EQ(source->gr_object()->AsGradient(&gradient_info),
+            skity::Shader::kRadial);
+  EXPECT_EQ(gradient_info.gradientFlags, 1);
+}
+
 }  // namespace testing
 }  // namespace clay

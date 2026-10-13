@@ -7,6 +7,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bindings/console.h"
+#include "core/runtime/js/js_realm.h"
 #include "core/runtime/js/js_realm_manager.h"
 #include "core/runtime/js/utils.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
@@ -41,14 +42,20 @@ JSExecutor::~JSExecutor() { LOGI(GetLogContext() << " lynx ~JSExecutor"); }
 
 void JSExecutor::Destroy() {
   LOGI(GetLogContext() << " JSExecutor::Destroy");
-  // must detroy all the runtime object before Runtime is destroyed
+  // Destroy module objects before their runtime.
   module_manager_.reset();
 
-  // Destroy the runtime in the JS thread
-  if (js_runtime_) {
-    js_runtime_->BeforeDestroy();
+  // The shell calls Destroy on the JS thread after destroying app and NAPI.
+  if (auto* runtime = GetJSRuntime().Lock()) {
+    runtime->BeforeDestroy();
   }
-  js_runtime_.Reset();
+  auto sharing =
+      realm_state_ ? realm_state_->sharing : JSRealmState::Sharing::kNone;
+  realm_state_.reset();
+  if (sharing != JSRealmState::Sharing::kNone) {
+    runtime::JSRealmManager::Instance()->ReleaseSharedRealm(
+        group_id_, sharing == JSRealmState::Sharing::kVM);
+  }
 }
 
 runtime::JSRealmManager* JSExecutor::realmManagerInstance() {
@@ -74,9 +81,10 @@ void JSExecutor::loadPreJSBundle(
     const tasm::PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_EXECUTOR_LOAD_PRE_JS_BUNDLE);
   const int64_t runtime_id = create_params.runtime_id;
-  js_runtime_ = realmManagerInstance()->CreateJSRuntime(
-      std::move(js_pre_sources_getter), force_use_light_weight_js_engine_,
-      ensure_console, *this, create_params, page_options);
+  realm_state_ =
+      std::make_unique<JSRealmState>(realmManagerInstance()->CreateRealm(
+          std::move(js_pre_sources_getter), force_use_light_weight_js_engine_,
+          ensure_console, *this, create_params, page_options));
   auto* runtime = GetJSRuntime().Lock();
   if (runtime) {
     if (runtime_observer_ng_ != nullptr) {
@@ -151,7 +159,8 @@ JSRuntimeCreatedType JSExecutor::getJSRuntimeType() {
 }
 
 base::UnsafeWeakPtr<Runtime> JSExecutor::GetJSRuntime() {
-  return js_runtime_.GetWeakPtr();
+  return realm_state_ ? realm_state_->runtime.GetWeakPtr()
+                      : base::UnsafeWeakPtr<Runtime>();
 }
 
 void JSExecutor::SetUrl(const std::string& url) {

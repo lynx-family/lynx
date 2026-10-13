@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_global_props_agent.h"
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+
 namespace lynx {
 namespace devtool {
 
@@ -17,34 +19,36 @@ InspectorGlobalPropsAgent::InspectorGlobalPropsAgent(
 }
 
 void InspectorGlobalPropsAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
   const std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
     return;
   }
-  (this->*(iter->second))(sender, message);
+  (this->*(iter->second))(responder, message["params"]);
 }
 
 void InspectorGlobalPropsAgent::Enable(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GlobalPropsEnable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GlobalPropsEnable(responder, params);
 }
 
 void InspectorGlobalPropsAgent::Disable(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GlobalPropsDisable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GlobalPropsDisable(responder, params);
 }
 
 void InspectorGlobalPropsAgent::Get(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GlobalPropsGet(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GlobalPropsGet(responder, params);
 }
 
 void InspectorGlobalPropsAgent::Replace(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GlobalPropsReplace(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GlobalPropsReplace(responder, params);
 }
 
 }  // namespace devtool

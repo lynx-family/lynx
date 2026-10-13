@@ -7,8 +7,8 @@
 #include <algorithm>
 #include <utility>
 
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/utils/base/tasm_constants.h"
+#include "gfx/public/display_list.h"
 
 namespace lynx::tasm {
 

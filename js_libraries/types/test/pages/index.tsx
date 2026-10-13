@@ -56,6 +56,7 @@ function noop() {}
       }),
       lynxExtension: {
         useStreaming: true,
+        requestTimeoutMs: 60_000,
       },
     })
     .then((response) => {

@@ -173,6 +173,7 @@ void BackgroundImageLayer::LoadImageFromService() {
         image_layer->image_drawable_->UpdateLoopCount(0);
         image_layer->image_drawable_->UpdateDrawCurrent(data);
         image_layer->image_drawable_->StartAnimation();
+        ui_base_self->NotifyInvalidationObserver();
       },
       [weak_self = weak_from_this(), url = url_](float width,
                                                  float height) mutable {
@@ -279,6 +280,7 @@ void BackgroundImageLayer::HandleImageData(
   image_height_ = pixel_map_->Height();
   src_rect_ = OH_Drawing_RectCreate(0, 0, image_width_, image_height_);
   ui_base_self->Invalidate();
+  ui_base_self->NotifyInvalidationObserver();
 }
 
 }  // namespace harmony

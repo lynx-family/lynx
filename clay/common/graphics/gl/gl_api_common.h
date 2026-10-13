@@ -23,10 +23,6 @@
 
 #import <OpenGLES/ES2/gl.h>
 
-#elif defined(OS_HARMONY)
-
-#include <GLES3/gl32.h>
-
 #elif defined(OS_LINUX)
 
 #include <epoxy/egl.h>

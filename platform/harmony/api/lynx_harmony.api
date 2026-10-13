@@ -612,6 +612,7 @@ export abstract class UIBase {
   onEnterBackground(): void;
   setSign(sign: number, tag: string): void;
   hasCustomizedLayout(): boolean;
+  invalidate(): void;
   focusable(): boolean;
   isScrollable(): boolean;
   scrollX(): number;
@@ -717,7 +718,7 @@ export class UIOwner {
 }
 
 export class UIBase {
-  constructor(ref: Object, context: number[], node: FrameNode | null, sign: number, tag: string, update: Function, layout: Function, invokeUIMethod: Function, dispose: Function, focusChange: Function, focusable: Function, onNodeReady: Function, customLayout: boolean, updateExtraData: Function, needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function, isScrollable: Function, scrollX: Function, scrollY: Function, isLayoutPlaceholder: boolean);
+  constructor(ref: Object, context: number[], node: FrameNode | null, sign: number, tag: string, update: Function, layout: Function, invokeUIMethod: Function, dispose: Function, focusChange: Function, focusable: Function, onNodeReady: Function, customLayout: boolean, updateExtraData: Function, needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function, isScrollable: Function, scrollX: Function, scrollY: Function, isLayoutPlaceholder: boolean, observeInvalidation: boolean, invalidate: Function);
   static getUIFromNativeContent(nativeContent: NativeContent): Object | undefined;
   static getContentSize(nativeContent: NativeContent): [number, number];
   getChildren(): ArrayBuffer;

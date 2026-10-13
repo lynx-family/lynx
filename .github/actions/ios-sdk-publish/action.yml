@@ -60,7 +60,10 @@ runs:
         artifacts: '${{ github.workspace }}/lynx/*.zip'
         replacesArtifacts: true
         allowUpdates: true
-        body: ''
+        updateOnlyUnreleased: true
+        omitNameDuringUpdate: true
+        omitBodyDuringUpdate: true
+        draft: true
     - name: Publish to private CocoaPods Specs Repo
       env:
         SPECS_REPO_GITHUB_APP_TOKEN: ${{ inputs.specs_repo_app_token }}

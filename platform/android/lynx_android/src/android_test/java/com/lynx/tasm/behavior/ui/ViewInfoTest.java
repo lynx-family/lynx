@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -21,6 +22,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Path;
 import android.graphics.Rect;
+import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.shapes.BasicShape;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.utils.LynxBackground;
@@ -30,8 +32,33 @@ import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.InOrder;
 
 public class ViewInfoTest {
+  @Test
+  public void testImageDrawsOnlyBeforeDispatchDrawAfterClipping() {
+    ViewInfo viewInfo = new ViewInfo(null, mock(AndroidView.class));
+    LynxImageManager manager = mock(LynxImageManager.class);
+    Canvas canvas = mock(Canvas.class);
+    Path clipPath = new Path();
+    Rect overflowClip = new Rect(0, 0, 100, 100);
+    viewInfo.setImageManagerUsedInBeforeDraw(manager);
+    viewInfo.setClipToRadius(true);
+    viewInfo.setClipPathInBeforeDispatchDraw(clipPath);
+    viewInfo.setOverflowClipRect(overflowClip);
+
+    viewInfo.beforeDraw(canvas);
+    verify(manager, never()).onDraw(canvas);
+
+    viewInfo.beforeDispatchDraw(canvas);
+
+    InOrder order = inOrder(canvas, manager);
+    order.verify(canvas).clipPath(clipPath);
+    order.verify(canvas).clipRect(overflowClip);
+    order.verify(manager).onDraw(canvas);
+    verify(manager).onDraw(canvas);
+  }
+
   @Before
   public void setUp() throws Exception {}
 

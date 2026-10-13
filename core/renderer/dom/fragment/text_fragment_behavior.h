@@ -9,6 +9,7 @@
 namespace lynx::tasm {
 
 class DisplayListBuilder;
+class TextElement;
 
 class TextFragmentBehavior : public FragmentBehavior {
  public:
@@ -22,6 +23,9 @@ class TextFragmentBehavior : public FragmentBehavior {
   }
   void SetTextBundle(intptr_t bundle) override { text_bundle_ = bundle; }
   void OnElementDestroying() override;
+
+  static void DispatchLayoutEvent(TextElement* element, float width,
+                                  float height);
 
  private:
   intptr_t text_bundle_{0};

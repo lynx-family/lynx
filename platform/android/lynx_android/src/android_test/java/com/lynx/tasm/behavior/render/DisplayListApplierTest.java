@@ -180,7 +180,7 @@ public class DisplayListApplierTest {
   /** Verifies OP_BEGIN canvas state and translation handling. */
   @Test
   public void testOpBegin() {
-    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 50f);
+    testDisplayList.begin(0, VIEW_TYPE, 10f, 20f, 100f, 50f);
 
     setDisplayList(displayListApplier, testDisplayList);
     displayListApplier.drawTillNextView(mockCanvas);
@@ -190,7 +190,7 @@ public class DisplayListApplierTest {
   }
 
   @Test
-  public void testOverlayOpBeginKeepsHorizontalOffsetOnly() {
+  public void testOverlayOpBeginNormalizesRootOffset() {
     Renderer renderer = new Renderer(mockPlatformRendererContext, 1);
     LynxBaseUI overlayUI = mock(LynxBaseUI.class);
     when(overlayUI.isOverlay()).thenReturn(true);
@@ -205,7 +205,7 @@ public class DisplayListApplierTest {
     overlayApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).save();
-    verify(mockCanvas).translate(10f, 0f);
+    verify(mockCanvas).translate(0f, 0f);
   }
 
   /** Verifies OP_END restores the canvas state. */

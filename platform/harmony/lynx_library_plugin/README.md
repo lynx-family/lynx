@@ -1,6 +1,6 @@
 <!-- cspell:ignore hvigorconfig -->
 
-# @lynx/lynx-library-plugin
+# @lynx-js/lynx-library-plugin
 
 Hvigor configuration plugin for HarmonyOS Lynx library Autolink.
 
@@ -10,7 +10,7 @@ Add the plugin to the project root `hvigor/hvigor-config.json5`:
 {
   "modelVersion": "5.0.0",
   "dependencies": {
-    "@lynx/lynx-library-plugin": "^0.1.0",
+    "@lynx-js/lynx-library-plugin": "^0.1.0",
   },
 }
 ```
@@ -19,7 +19,7 @@ Enable it once in the project root `hvigorconfig.ts`:
 
 ```ts
 import * as hvigorApi from '@ohos/hvigor';
-import { enableHarmonyLynxAutolink } from '@lynx/lynx-library-plugin';
+import { enableHarmonyLynxAutolink } from '@lynx-js/lynx-library-plugin';
 
 enableHarmonyLynxAutolink(hvigorApi, { moduleName: 'entry' });
 ```
@@ -86,8 +86,7 @@ Rerunning an already published version does not change its tags.
 
 Publishing uses npm trusted publishing from the GitHub `npm` environment.
 Before enabling automated publishing, an npm maintainer with access to the
-`@lynx` scope must publish the initial package version and configure its
-trusted publisher with these values:
+`@lynx-js` scope must configure its trusted publisher with these values:
 
 - Organization: `lynx-family`
 - Repository: `lynx`

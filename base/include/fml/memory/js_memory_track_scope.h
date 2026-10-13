@@ -18,15 +18,21 @@ namespace lynx {
 namespace fml {
 
 struct JSMemoryTrackAsCommon {
-  JSMemoryTrackAsCommon()
-      : task_runner_(MessageLoop::GetCurrent().GetTaskRunner()) {
+  JSMemoryTrackAsCommon() {
+    auto* message_loop = MessageLoop::IsInitializedForCurrentThread();
+    if (message_loop == nullptr) {
+      return;
+    }
+    task_runner_ = message_loop->GetTaskRunner();
     auto& current_slot = task_runner_->GetCurrentAllocSlot();
     previous_slot_ = current_slot;
     current_slot = JSMemoryTrackSlotType::Common;
   }
 
   ~JSMemoryTrackAsCommon() {
-    task_runner_->GetCurrentAllocSlot() = previous_slot_;
+    if (task_runner_) {
+      task_runner_->GetCurrentAllocSlot() = previous_slot_;
+    }
   }
 
   JSMemoryTrackAsCommon(const JSMemoryTrackAsCommon&) = delete;

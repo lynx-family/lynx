@@ -19,11 +19,23 @@ parallel operation/integer/float arrays are not part of the protocol.
 
 The implementation lives in:
 
-- `core/renderer/dom/fragment/display_list.h`
-- `core/renderer/dom/fragment/display_list.cc`
+- `gfx/public/display_list.h`
+- `gfx/display_list/display_list.cc`
 - `core/renderer/dom/fragment/display_list_builder.h`
 - `core/renderer/dom/fragment/display_list_builder.cc`
-- `core/renderer/dom/fragment/display_list_reader.h`
+- `gfx/public/display_list_reader.h`
+- `gfx/display_list/display_list_reader.cc`
+- `gfx/public/rounded_rectangle.h`
+
+The storage, reader, and rounded-rectangle target, `gfx/display_list:display_list`,
+does not depend on style or Starlight. The builder and renderer-specific layout
+helpers remain in `core/renderer/dom/fragment` for a later migration.
+These steps change paths and build ownership, not APIs or the buffer protocol.
+Shared-library packaging and consumer linkage remain unchanged until the related
+dependencies have migrated. A later step will place the shared implementation in
+`liblynxgfx.so` for Lynx and Clay and verify its exported symbols and linkage.
+All reader consumers use `gfx/public/display_list_reader.h`. The old forwarding
+header is removed because CocoaPods copies private headers into a flat directory.
 
 ### 2.1 DisplayListItem
 
@@ -106,6 +118,12 @@ base::auto_create_optional<base::InlineVector<SubtreeProperty, 1>>
 Image references are retained separately so resources remain alive while a
 display list is being consumed. Sublayer ids are also retained for platform
 renderer hierarchy updates.
+
+Image recording methods take `fml::RefPtr<PaintImage>` by value and move the
+reference into display-list storage. Passing an lvalue keeps the caller's
+reference and retains one for the list; passing an rvalue transfers its
+reference without an additional retain/release pair. Fragments move temporary
+background-image references, but keep cached image references for later redraws.
 
 ### 2.3 Variable-length gradient data
 

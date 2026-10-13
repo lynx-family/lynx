@@ -1,0 +1,65 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../../testing/test.gni")
+import("../../../../Lynx.gni")
+
+unittest_set("memory_monitor_testset") {
+  testonly = true
+  public_configs = [ "../../../..:lynx_public_config" ]
+  sources = [
+    "../../../../../platform/embedder/lynx_service/lynx_event_reporter_service.cc",
+    "../../../../../platform/embedder/lynx_service/lynx_event_reporter_service_priv.h",
+    "../../../../../platform/embedder/lynx_service/lynx_service_center.cc",
+    "../../../../../platform/embedder/lynx_service/lynx_service_center_priv.h",
+    "memory_monitor_unittest.cc",
+    "memory_record_unittest.cc",
+    "memory_record_unittest.h",
+    "memory_simulation_test_support.h",
+  ]
+  public_deps = [
+    "../../../../../platform/embedder/core:renderer",
+    "../../../../base",
+    "../../../../renderer:tasm",
+    "../../../../renderer/dom:dom",
+    "../../../../renderer/dom:renderer_dom",
+    "../../../../renderer/dom/selector:element_selector",
+    "../../../../runtime/lepus/bindings:bindings",
+    "../../../../shell",
+    "../../../ssr",
+  ]
+  if (enable_inspector) {
+    public_deps += [ "../../../../../devtool/lynx_devtool:lynx_devtool_group" ]
+  }
+  if (enable_trace == "perfetto") {
+    public_deps += [ "../../../../../base/trace/native:trace" ]
+  }
+}
+
+copy("memory_simulation_data") {
+  testonly = true
+  sources = [
+    "simulation_android.json",
+    "simulation_harmony.json",
+    "simulation_ios.json",
+    "simulation_pc.json",
+  ]
+  outputs = [ "$root_out_dir/{{source_file_part}}" ]
+}
+
+unittest_exec("memory_monitor_test_exec") {
+  testonly = true
+  sources = []
+  data_deps = [ ":memory_simulation_data" ]
+  data = get_target_outputs(":memory_simulation_data")
+  deps = [ ":memory_monitor_testset" ]
+}
+
+group("memory_monitor_unit_test") {
+  testonly = true
+  deps = [
+    ":memory_monitor_test_exec",
+    ":memory_monitor_testset",
+  ]
+}

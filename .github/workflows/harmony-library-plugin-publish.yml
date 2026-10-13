@@ -56,7 +56,7 @@ jobs:
         run: |
           package_name=$(node -p "require('./package.json').name")
           package_version=$(node -p "require('./package.json').version")
-          test "$package_name" = '@lynx/lynx-library-plugin'
+          test "$package_name" = '@lynx-js/lynx-library-plugin'
 
           echo "Package: $package_name@$package_version"
           registry_error=$(mktemp "$RUNNER_TEMP/harmony-plugin-npm-view.XXXXXX")

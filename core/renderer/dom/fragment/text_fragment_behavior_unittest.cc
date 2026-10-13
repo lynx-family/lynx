@@ -88,6 +88,8 @@ TEST_F(TextFragmentBehaviorTest, DispatchLayoutEventContainsSizeAndLineData) {
   text_element->SetTextLineLayoutInfo(std::move(line_infos), 2);
 
   auto listener = std::make_shared<RecordingEventListener>();
+  BASE_STATIC_STRING_DECL(kLayoutEvent, "layout");
+  element->SetJSEventHandler(kLayoutEvent, base::String(), base::String());
   ASSERT_TRUE(element->AddEventListener("layout", listener));
 
   page->InsertNode(element);

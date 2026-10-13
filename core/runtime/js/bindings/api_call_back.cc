@@ -5,6 +5,7 @@
 
 #include <utility>
 
+#include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -16,7 +17,10 @@ namespace js {
 ApiCallBack ApiCallBackManager::createCallbackImpl(Function func) {
   int id = next_timer_index_++;
   const auto &callback = ApiCallBack(id);
-  callback_map_.emplace(id, std::make_unique<CallBackHolder>(std::move(func)));
+  const auto alloc_slot =
+      fml::MessageLoop::GetCurrent().GetTaskRunner()->GetCurrentAllocSlot();
+  callback_map_.emplace(
+      id, std::make_unique<CallBackHolder>(std::move(func), alloc_slot));
   return callback;
 }
 
@@ -26,7 +30,8 @@ void ApiCallBackManager::EraseWithCallback(ApiCallBack callback) {
 
 void ApiCallBackManager::Destroy() { callback_map_.clear(); }
 
-CallBackHolder::CallBackHolder(Function func) : function_(std::move(func)) {}
+CallBackHolder::CallBackHolder(Function func, int32_t alloc_slot)
+    : function_(std::move(func)), alloc_slot_(alloc_slot) {}
 }  // namespace js
 }  // namespace runtime
 }  // namespace lynx

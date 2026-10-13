@@ -555,6 +555,13 @@ class ComputedCSSStyle {
   // Replaces this style's dirty state with |source|'s dirty state.
   void CopyDirtyBitsFrom(const ComputedCSSStyle& source);
 
+  bool HasChangedProperty(tasm::CSSPropertyID id) const {
+    return changed_bitset_.Has(id);
+  }
+  bool HasResetProperty(tasm::CSSPropertyID id) const {
+    return reset_bitset_.Has(id);
+  }
+
   template <typename Callback>
   void ForEachChangedProperty(const Callback& callback) const {
     for (const auto id : changed_bitset_) {

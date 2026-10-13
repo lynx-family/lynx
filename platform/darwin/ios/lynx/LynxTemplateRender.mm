@@ -500,6 +500,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 
   pageConfig_.reset();
+  const int32_t instanceId = shell_ ? shell_->GetInstanceId() : kUnknownInstanceId;
   // ios block cannot capture std::unique_ptr, tricky...
   auto* shell = shell_.release();
   if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
@@ -507,9 +508,15 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     // so need just release LynxShell delay, avoid crash
     dispatch_async(dispatch_get_main_queue(), ^{
       delete shell;
+      if (instanceId != kUnknownInstanceId) {
+        [LynxEventReporter clearCacheForInstanceId:instanceId];
+      }
     });
   } else {
     delete shell;
+    if (instanceId != kUnknownInstanceId) {
+      [LynxEventReporter clearCacheForInstanceId:instanceId];
+    }
   }
 }
 
@@ -1493,6 +1500,13 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                                                                             point:point];
   }
   return LynxPlatformEventBehaviorNone;
+}
+
+- (NSArray<NSNumber*>*)GetCachedConsumeSlideEventAngles {
+  if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
+    return [(LynxUIRenderer*)_lynxUIRenderer GetCachedConsumeSlideEventAngles];
+  }
+  return @[];
 }
 
 #pragma mark - Life Cycle

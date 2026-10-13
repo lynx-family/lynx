@@ -15,10 +15,7 @@
 namespace clay {
 
 std::shared_ptr<FontCollection> FontCollection::Instance() {
-  static std::shared_ptr<FontCollection> instance = nullptr;
-  if (!instance) {
-    instance = std::shared_ptr<FontCollection>(new FontCollection());
-  }
+  static const std::shared_ptr<FontCollection> instance(new FontCollection());
   return instance;
 }
 

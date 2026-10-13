@@ -1,0 +1,29 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../core/Lynx.gni")
+import("../../testing/test.gni")
+
+lynx_core_source_set("display_list") {
+  sources = [
+    "../public/display_list.h",
+    "../public/display_list_reader.h",
+    "../public/rounded_rectangle.h",
+    "display_list.cc",
+    "display_list_reader.cc",
+  ]
+  public_deps = [ "..:gfx" ]
+}
+
+unittest_set("display_list_testset") {
+  sources = [
+    "display_list_unittest.cc",
+    "rounded_rectangle_unittest.cc",
+  ]
+  public_deps = [
+    ":display_list",
+    "../../base/src:base_values",
+    "../../base/src:base_values_extended",
+  ]
+}

@@ -25,17 +25,18 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_function_loader.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "core/runtime/lepus/lepus_date.h"
+#include "gfx/public/display_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/animation_info.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_animator.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/base_gesture_handler.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
@@ -196,11 +197,17 @@ std::unordered_map<std::string, UIBase::UIMethod> UIBase::ui_method_map_ = {
 
 UIBase::UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
                const std::string& tag, bool has_customized_layout)
+    : UIBase(context, type, sign, tag, has_customized_layout, false) {}
+
+UIBase::UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
+               const std::string& tag, bool has_customized_layout,
+               bool observe_invalidation)
     : context_(context),
       node_type_(type),
       sign_(sign),
       tag_(tag),
-      has_customized_layout_(has_customized_layout) {
+      has_customized_layout_(has_customized_layout),
+      observe_invalidation_(observe_invalidation) {
   if (type != ARKUI_NODE_UNDEFINED) {
     ArkUI_NodeHandle node = NodeManager::Instance().CreateNode(type);
     InitNode(node);
@@ -438,6 +445,14 @@ void UIBase::SendPositionEvent(const char* event_name,
 }
 
 void UIBase::SetParent(UIBase* parent) { parent_ = parent; }
+
+void UIBase::NotifyInvalidationObserver() {
+  if (invalidation_observer_sign_ < 0 || !context_ || !context_->GetUIOwner()) {
+    return;
+  }
+  context_->GetUIOwner()->NotifyInvalidationObserver(
+      invalidation_observer_sign_);
+}
 
 void UIBase::AddChild(UIBase* child, int index) {
   if (index > static_cast<int>(children_.size())) {
@@ -1178,6 +1193,10 @@ void UIBase::ApplyTransform() {
                                         0.f, 0.f, 0.f, 0.f, 0.f);
     ArkUI_AttributeItem item{.value = values, .size = 16};
     manager.SetAttribute(DrawNode(), NODE_TRANSFORM, &item);
+    // Match native transform ordering, including resetting translation to zero.
+    translation_z_ = values[Transform::kIndexTranslationZ].f32;
+    manager.SetAttributeWithNumberValue(DrawNode(), NODE_Z_INDEX,
+                                        translation_z_);
     return;
   }
 
@@ -1829,162 +1848,21 @@ void UIBase::SetConsumeSlideEvent(const lepus::Value& value) {
     return;
   }
 
-  bool direction_up_left = false;
-  bool direction_up_right = false;
-  bool direction_right_top = false;
-  bool direction_right_bottom = false;
-  bool direction_down_left = false;
-  bool direction_down_right = false;
-  bool direction_left_top = false;
-  bool direction_left_bottom = false;
+  std::vector<float> ranges;
   tasm::ForEachLepusValue(
-      value, [&direction_up_left, &direction_up_right, &direction_right_top,
-              &direction_right_bottom, &direction_down_left,
-              &direction_down_right, &direction_left_top,
-              &direction_left_bottom](const auto& index, const auto& angles) {
-        if (angles.IsArrayOrJSArray() && angles.GetLength() == 2) {
-          const auto& begin = angles.GetProperty(0);
-          const auto& end = angles.GetProperty(1);
-          if (begin.IsNumber() && end.IsNumber()) {
-            float angle_begin = (begin.Number() + 180) / 45,
-                  angle_end = (end.Number() + 180) / 45;
-            if (base::FloatsLargerOrEqual(angle_end, angle_begin)) {
-              // judge down
-              if (base::FloatsLargerOrEqual(angle_begin, 1.f) &&
-                  base::FloatsLarger(2.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(8.f, angle_end)) {
-                direction_down_left = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 0.f) &&
-                  base::FloatsLarger(angle_end, 1.f) &&
-                  base::FloatsLargerOrEqual(2.f, angle_end)) {
-                direction_down_left = true;
-              }
-              if (base::FloatsLargerOrEqual(1.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(angle_end, 2.f)) {
-                direction_down_left = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 2.f) &&
-                  base::FloatsLarger(3.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(8.f, angle_end)) {
-                direction_down_right = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 0.f) &&
-                  base::FloatsLarger(angle_end, 2.f) &&
-                  base::FloatsLargerOrEqual(3.f, angle_end)) {
-                direction_down_right = true;
-              }
-              if (base::FloatsLargerOrEqual(2.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(angle_end, 3.f)) {
-                direction_down_right = true;
-              }
-              // judge right
-              if (base::FloatsLargerOrEqual(angle_begin, 4.f) &&
-                  base::FloatsLarger(5.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(8.f, angle_end)) {
-                direction_right_top = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 0.f) &&
-                  base::FloatsLarger(angle_end, 4.f) &&
-                  base::FloatsLargerOrEqual(5.f, angle_end)) {
-                direction_right_top = true;
-              }
-              if (base::FloatsLargerOrEqual(4.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(angle_end, 5.f)) {
-                direction_right_top = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 3.f) &&
-                  base::FloatsLarger(4.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(8.f, angle_end)) {
-                direction_right_bottom = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 0.f) &&
-                  base::FloatsLarger(angle_end, 3.f) &&
-                  base::FloatsLargerOrEqual(4.f, angle_end)) {
-                direction_right_bottom = true;
-              }
-              if (base::FloatsLargerOrEqual(3.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(angle_end, 4.f)) {
-                direction_right_bottom = true;
-              }
-              // judge up
-              if (base::FloatsLargerOrEqual(angle_begin, 6.f) &&
-                  base::FloatsLarger(7.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(8.f, angle_end)) {
-                direction_up_left = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 0.f) &&
-                  base::FloatsLarger(angle_end, 6.f) &&
-                  base::FloatsLargerOrEqual(7.f, angle_end)) {
-                direction_up_left = true;
-              }
-              if (base::FloatsLargerOrEqual(6.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(angle_end, 7.f)) {
-                direction_up_left = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 5.f) &&
-                  base::FloatsLarger(6.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(8.f, angle_end)) {
-                direction_up_right = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 0.f) &&
-                  base::FloatsLarger(angle_end, 5.f) &&
-                  base::FloatsLargerOrEqual(6.f, angle_end)) {
-                direction_up_right = true;
-              }
-              if (base::FloatsLargerOrEqual(5.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(angle_end, 6.f)) {
-                direction_up_right = true;
-              }
-              // judge left
-              if (base::FloatsLargerOrEqual(angle_begin, 0.f) &&
-                  base::FloatsLarger(angle_end, 7.f) &&
-                  base::FloatsLargerOrEqual(8.f, angle_end)) {
-                direction_left_top = true;
-              }
-              if (base::FloatsLargerOrEqual(angle_begin, 0.f) &&
-                  base::FloatsLarger(1.f, angle_begin) &&
-                  base::FloatsLargerOrEqual(8.f, angle_end)) {
-                direction_left_bottom = true;
-              }
-            }
-          }
+      value, [&ranges](const auto& index, const auto& angles) {
+        if (!angles.IsArrayOrJSArray() || angles.GetLength() != 2) {
+          return;
+        }
+        const auto& begin = angles.GetProperty(0);
+        const auto& end = angles.GetProperty(1);
+        if (begin.IsNumber() && end.IsNumber()) {
+          ranges.push_back(static_cast<float>(begin.Number()));
+          ranges.push_back(static_cast<float>(end.Number()));
         }
       });
-
-  bool direction_up = direction_up_left || direction_up_right;
-  bool direction_right = direction_right_top || direction_right_bottom;
-  bool direction_down = direction_down_left || direction_down_right;
-  bool direction_left = direction_left_top || direction_left_bottom;
-  if (direction_up && direction_right && direction_down && direction_left) {
-    consume_slide_event_ = ConsumeSlideDirection::kAll;
-    return;
-  }
-  if (direction_left && direction_right) {
-    consume_slide_event_ = ConsumeSlideDirection::kHorizontal;
-    return;
-  }
-  if (direction_up && direction_down) {
-    consume_slide_event_ = ConsumeSlideDirection::kVertical;
-    return;
-  }
-  if (direction_up) {
-    consume_slide_event_ = ConsumeSlideDirection::kUp;
-    return;
-  }
-  if (direction_right) {
-    consume_slide_event_ = ConsumeSlideDirection::kRight;
-    return;
-  }
-  if (direction_down) {
-    consume_slide_event_ = ConsumeSlideDirection::kDown;
-    return;
-  }
-  if (direction_left) {
-    consume_slide_event_ = ConsumeSlideDirection::kLeft;
-    return;
-  }
-  consume_slide_event_ = ConsumeSlideDirection::kNone;
+  consume_slide_event_ =
+      EventDispatcher::ConsumeSlideDirectionFromAngleRanges(ranges);
 }
 
 void UIBase::SetEnableTouchPseudoPropagation(const lepus::Value& value) {

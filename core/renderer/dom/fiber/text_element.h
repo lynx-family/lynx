@@ -72,6 +72,7 @@ class TextElement : public Element {
                                 double root_node_font_size) override;
 
   void DispatchLayoutBefore() override;
+  void DispatchLayoutAfter() override;
 
   TextProps* text_props() { return text_props_.get(); };
 
@@ -105,9 +106,17 @@ class TextElement : public Element {
 
   int GetTextLineLayoutCount() const { return line_layout_count_; }
 
+  bool HasLayoutEvent() const { return has_layout_event_; }
+
+  void SetTextLayoutEventSize(const FloatSize& size) {
+    text_layout_event_size_ = size;
+    has_pending_layout_event_ = true;
+  }
+
   void ClearTextLineLayoutInfo() {
     line_layout_info_.reset();
     line_layout_count_ = 0;
+    has_pending_layout_event_ = false;
   }
 
  protected:
@@ -116,7 +125,11 @@ class TextElement : public Element {
                             const lepus::Value& value) override;
 
   TextElement(const TextElement& element, bool clone_resolved_props)
-      : Element(element, clone_resolved_props) {}
+      : Element(element, clone_resolved_props) {
+    UpdateLayoutEventState();
+  }
+
+  void OnEventHandlersChanged(const base::String& name) override;
 
   void SetupFragmentBehavior(Fragment* fragment) override;
   void MarkLayoutInElementTextMeasurerPropertyIfNeeded(
@@ -124,6 +137,10 @@ class TextElement : public Element {
   void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) override;
 
  private:
+  bool has_layout_event_{false};
+  bool has_pending_layout_event_{false};
+  FloatSize text_layout_event_size_;
+  void UpdateLayoutEventState();
   void ResolveAndFlushFontFaces(const base::String& font_family);
   bool ProcessAttributeForLayoutInElement(const base::String& key,
                                           const lepus::Value& value,

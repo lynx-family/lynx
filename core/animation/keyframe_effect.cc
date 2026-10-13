@@ -70,6 +70,7 @@ void KeyframeEffect::SetStartTime(fml::TimePoint& time,
   if (!reset_effect_state) {
     return;
   }
+  pending_end_styles_ = false;
   custom_property_run_state_ = gfx::TimingRunState::STARTING;
   custom_property_current_iteration_count_ = 0;
 }
@@ -122,11 +123,29 @@ void KeyframeEffect::SeekTo(fml::TimeDelta current_time,
   }
 }
 
+fml::TimePoint KeyframeEffect::GetNextEventTime(
+    fml::TimePoint now, bool needs_iteration_event) const {
+  if (!keyframe_models_.empty()) {
+    // Models in one CSS effect share the same timing and iteration count.
+    return gfx::GetNextAnimationEventTime(
+        keyframe_models_.front()->gfx_model_->CreateTimingInput(), now,
+        gfx_effect_->current_iteration_count_, needs_iteration_event);
+  }
+  if (has_custom_property_keyframes_ && animation_) {
+    auto data = ToGfxAnimationData(*animation_->animation_data());
+    return gfx::GetNextAnimationEventTime(
+        CreateCustomPropertyTimingInput(*animation_, data,
+                                        custom_property_run_state_),
+        now, custom_property_current_iteration_count_, needs_iteration_event);
+  }
+  return fml::TimePoint::Max();
+}
+
 KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
-    fml::TimePoint monotonic_time) {
+    fml::TimePoint monotonic_time, bool events_only) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_EFFECT_SAMPLE_KEYFRAME_MODEL);
   KeyframeSampleResult result;
-  auto tick_result = gfx_effect_->Tick(monotonic_time);
+  auto tick_result = gfx_effect_->Tick(monotonic_time, events_only);
   if (keyframe_models_.empty() && has_custom_property_keyframes_ &&
       animation_ != nullptr) {
     auto gfx_animation_data = ToGfxAnimationData(*animation_->animation_data());
@@ -136,13 +155,15 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
                                            custom_property_run_state_);
     auto timing_input = CreateCustomPropertyTimingInput(
         *animation_, gfx_animation_data, custom_property_run_state_);
-    auto active_time = gfx::CalculateActiveTime(timing_input, monotonic_time);
-    if (active_time != fml::TimeDelta::Min()) {
-      tick_result.active_time = active_time;
+    auto elapsed_time =
+        events_only ? gfx::CalculateEventTime(timing_input, monotonic_time)
+                    : gfx::CalculateActiveTime(timing_input, monotonic_time);
+    if (elapsed_time != fml::TimeDelta::Min()) {
+      tick_result.active_time = elapsed_time;
       const int old_iteration_count = custom_property_current_iteration_count_;
       auto trimmed = gfx::TrimTimeToCurrentIteration(
           timing_input, monotonic_time,
-          custom_property_current_iteration_count_);
+          custom_property_current_iteration_count_, events_only);
       custom_property_current_iteration_count_ =
           trimmed.current_iteration_count;
       tick_result.iteration_events_due += gfx::CountIterationEventsDue(
@@ -156,6 +177,11 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
   result.should_send_start_event = tick_result.start_event_due;
   result.should_send_end_event = tick_result.end_event_due;
   result.iteration_events_due = tick_result.iteration_events_due;
+
+  if (events_only) {
+    pending_end_styles_ |= tick_result.end_event_due;
+    return result;
+  }
 
   for (const auto& sample : tick_result.samples) {
     auto* curve = static_cast<AnimationCurve*>(sample.curve);
@@ -173,7 +199,8 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
 
   const bool is_transition_effect =
       animation_ != nullptr && animation_->GetTransitionFlag();
-  if (!is_transition_effect && tick_result.end_event_due) {
+  if (!is_transition_effect &&
+      (tick_result.end_event_due || pending_end_styles_)) {
     for (const auto& keyframe_model : keyframe_models_) {
       if (!keyframe_model || !keyframe_model->is_finished() ||
           !keyframe_model->HasAnimationData()) {
@@ -195,6 +222,7 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
     }
   }
 
+  pending_end_styles_ = false;
   return result;
 }
 
@@ -213,9 +241,7 @@ void KeyframeEffect::ApplyTickResult(
   style_map.reserve(keyframe_models_.size());
 
   if (animation_ != nullptr && !suppress_animation_events) {
-    for (int i = 0; i < tick_result.iteration_events_due; ++i) {
-      animation_->SendIterationEvent();
-    }
+    animation_->SendIterationEvents(tick_result.iteration_events_due);
   }
 
   for (const auto& sample : tick_result.samples) {
@@ -231,7 +257,8 @@ void KeyframeEffect::ApplyTickResult(
     }
   }
 
-  if (!is_transition_effect && tick_result.end_event_due) {
+  if (!is_transition_effect &&
+      (tick_result.end_event_due || pending_end_styles_)) {
     for (const auto& keyframe_model : keyframe_models_) {
       if (!keyframe_model || !keyframe_model->is_finished() ||
           !keyframe_model->HasAnimationData()) {
@@ -245,6 +272,7 @@ void KeyframeEffect::ApplyTickResult(
     }
   }
 
+  pending_end_styles_ = false;
   if (animation_delegate_ != nullptr && !style_map.empty()) {
     animation_delegate_->UpdateFinalStyleMap(style_map);
   }

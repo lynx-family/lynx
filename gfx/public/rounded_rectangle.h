@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "base/include/geometry/rect.h"
+#ifndef GFX_PUBLIC_ROUNDED_RECTANGLE_H_
+#define GFX_PUBLIC_ROUNDED_RECTANGLE_H_
 
-#ifndef CORE_RENDERER_DOM_FRAGMENT_ROUNDED_RECTANGLE_H_
-#define CORE_RENDERER_DOM_FRAGMENT_ROUNDED_RECTANGLE_H_
+#include "base/include/geometry/rect.h"
 
 namespace lynx {
 namespace tasm {
@@ -81,4 +81,4 @@ class RoundedRectangle {
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_DOM_FRAGMENT_ROUNDED_RECTANGLE_H_
+#endif  // GFX_PUBLIC_ROUNDED_RECTANGLE_H_

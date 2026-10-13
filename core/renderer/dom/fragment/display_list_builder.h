@@ -8,8 +8,8 @@
 #include <cstdint>
 
 #include "core/public/platform_renderer_type.h"
-#include "core/renderer/dom/fragment/display_list.h"
-#include "core/renderer/dom/fragment/rounded_rectangle.h"
+#include "gfx/public/display_list.h"
+#include "gfx/public/rounded_rectangle.h"
 
 namespace lynx {
 namespace starlight {
@@ -58,8 +58,9 @@ class DisplayListBuilder {
   DisplayListBuilder& Opacity(float alpha);
   DisplayListBuilder& Filter(const starlight::FilterData& filter);
 
-  // Retrieve Image source and draw
-  DisplayListBuilder& DrawImage(const fml::RefPtr<PaintImage>& image_id,
+  // Record an image and retain its reference. Rvalues transfer ownership;
+  // lvalues keep the caller's reference and add one for the display list.
+  DisplayListBuilder& DrawImage(fml::RefPtr<PaintImage> image,
                                 int32_t box_index);
 
   // Retrieve text source and draw
@@ -95,13 +96,11 @@ class DisplayListBuilder {
                                      int32_t tiling_index, int32_t clip_index,
                                      int32_t repeat_x, int32_t repeat_y);
 
-  DisplayListBuilder& BackgroundImage(const fml::RefPtr<PaintImage>& image,
-                                      int32_t tiling_index, int32_t clip_index,
-                                      int32_t repeat_x, int32_t repeat_y,
-                                      bool auto_width = false,
-                                      bool auto_height = false,
-                                      float position_x = 0.f,
-                                      float position_y = 0.f);
+  // Image references follow DrawImage's ownership semantics.
+  DisplayListBuilder& BackgroundImage(
+      fml::RefPtr<PaintImage> image, int32_t tiling_index, int32_t clip_index,
+      int32_t repeat_x, int32_t repeat_y, bool auto_width = false,
+      bool auto_height = false, float position_x = 0.f, float position_y = 0.f);
 
   // Box-shadow clip mode enumeration
   // kOutset = 0 (clip to border-box for outside shadows)

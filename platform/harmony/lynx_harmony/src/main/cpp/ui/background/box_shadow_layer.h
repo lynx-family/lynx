@@ -34,6 +34,11 @@ struct Shadow {
 class BoxShadowLayer {
  public:
   explicit BoxShadowLayer() = default;
+  // Converts a logical blur radius to sigma in physical pixels.
+  static float BlurRadiusToSigma(float blur_radius, float density);
+  static OH_Drawing_MaskFilter* CreateBlurMaskFilter(float blur_radius,
+                                                     float density);
+  static void DestroyBlurMaskFilter(OH_Drawing_MaskFilter* mask_filter);
   void DrawInsetLayer(OH_Drawing_Canvas* canvas);
   void DrawOutSetLayer(OH_Drawing_Canvas* canvas);
   void Draw(Shadow* shadow, OH_Drawing_Canvas* canvas);

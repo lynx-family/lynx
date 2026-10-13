@@ -10,10 +10,10 @@
 #include <string>
 #include <vector>
 
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
+#include "gfx/public/display_list.h"
 
 namespace lynx {
 namespace tasm {

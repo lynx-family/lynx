@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_H_
-#define CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_H_
+#ifndef GFX_PUBLIC_DISPLAY_LIST_H_
+#define GFX_PUBLIC_DISPLAY_LIST_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -392,11 +392,11 @@ class DisplayList {
                          int32_t clip_index, int32_t repeat_x,
                          int32_t repeat_y);
 
-  void AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
-                          int32_t tiling_index, int32_t clip_index,
-                          int32_t repeat_x, int32_t repeat_y,
-                          int32_t auto_size = 0, float position_x = 0.f,
-                          float position_y = 0.f);
+  // Store an owning image reference, moving it when the caller transfers it.
+  void AddBackgroundImage(fml::RefPtr<PaintImage> image, int32_t tiling_index,
+                          int32_t clip_index, int32_t repeat_x,
+                          int32_t repeat_y, int32_t auto_size = 0,
+                          float position_x = 0.f, float position_y = 0.f);
 
   void AppendItem(const DisplayListItem& item);
 
@@ -444,4 +444,4 @@ using DisplayListUpdateBatch = base::Vector<DisplayListUpdate>;
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_H_
+#endif  // GFX_PUBLIC_DISPLAY_LIST_H_

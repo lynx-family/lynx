@@ -239,18 +239,21 @@ void MTSRuntimePool::ReportPoolState() {
                                 heap_bytes);
   }
 #if ENABLE_TRACE_PERFETTO
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, MTS_VM_POOL_STATE_EVENT,
-                      [&](lynx::perfetto::EventContext ctx) {
-                        ctx.event()->add_debug_annotations(
-                            "pool_instance_id",
-                            std::to_string(pool_instance_id_));
-                        int index = 0;
-                        for (const auto& runtime : mts_runtimes_) {
-                          ctx.event()->add_debug_annotations(
-                              std::string("id_") + std::to_string(index++),
-                              runtime->GetMTSContext()->GetDebugDescription());
-                        }
-                      });
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, MTS_VM_POOL_STATE_EVENT,
+      [&](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("pool_instance_id",
+                                           std::to_string(pool_instance_id_));
+        ctx.event()->add_debug_annotations("is_global_pool",
+                                           std::to_string(is_global_pool_));
+        ctx.event()->add_debug_annotations("url", template_url_);
+        int index = 0;
+        for (const auto& runtime : mts_runtimes_) {
+          ctx.event()->add_debug_annotations(
+              std::string("id_") + std::to_string(index++),
+              runtime->GetMTSContext()->GetDebugDescription());
+        }
+      });
 #endif
 }
 

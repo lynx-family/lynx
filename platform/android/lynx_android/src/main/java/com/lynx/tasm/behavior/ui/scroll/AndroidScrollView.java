@@ -348,8 +348,11 @@ public class AndroidScrollView
       for (int i = 0; i < mLinearLayout.getChildCount(); i++) {
         View child = mLinearLayout.getChildAt(i);
         if (child instanceof IRendererHost) {
-          Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
-          child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+          Renderer childRenderer = ((IRendererHost) child).getRenderer();
+          if (childRenderer != null) {
+            Rect childFrame = childRenderer.getLynxFrame();
+            child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+          }
         }
       }
     }

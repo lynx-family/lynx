@@ -890,6 +890,15 @@ class LynxConfigDecoder final {
           LynxEnv::GetInstance().EnableUnifyFixedBehavior());
     }
 
+    if (doc.HasMember(config::kEnableUnifyFixedOrderFix) &&
+        doc[config::kEnableUnifyFixedOrderFix].IsBool()) {
+      page_config->SetEnableUnifyFixedOrderFix(
+          doc[config::kEnableUnifyFixedOrderFix].GetBool());
+    } else {
+      page_config->SetEnableUnifyFixedOrderFix(
+          LynxEnv::GetInstance().EnableUnifyFixedOrderFix());
+    }
+
     if (doc.HasMember(config::kEnableTransformedTouchPosition) &&
         doc[config::kEnableTransformedTouchPosition].IsBool()) {
       page_config->SetEnableTransformedTouchPosition(

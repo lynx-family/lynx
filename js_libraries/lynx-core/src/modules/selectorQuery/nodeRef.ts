@@ -5,7 +5,7 @@
 import { uiMethodOptions } from '@lynx-js/types';
 import { NativeApp } from '../../app';
 import { NativeLynxUIModule } from '../nativeModules';
-import { ErrorCode } from './interface';
+import { ErrorCode, IdentifierType } from './interface';
 import { InvokeError, reportError } from '../report';
 
 interface NodeRefProxy {
@@ -70,6 +70,40 @@ export default class NodeRef {
       errorStack = new Error('');
     }
 
+    const callback = (res) => {
+      if (res.code === ErrorCode.SUCCESS) {
+        options.success && options.success(res.data);
+      } else {
+        if (options.fail) {
+          options.fail(res);
+        } else {
+          // enable warning in development and test
+          if (NODE_ENV === 'development' || NODE_ENV === 'test') {
+            if (!this._proxy.disableWarningWhenFailed) {
+              const errorMessage = `Failed to exec NodeRef.invoke() on NodeRef '${[
+                ...this._ancestorSelectorNames,
+                this._selectorName,
+              ]}'. Add a fail callback to suppress this warning.  Msg: ${JSON.stringify(
+                res
+              )}`;
+              nativeConsole.warn(errorMessage);
+              reportError(
+                new InvokeError(errorMessage, errorStack.stack),
+                this._proxy.nativeApp
+              );
+            }
+          }
+        }
+      }
+    };
+
+    // Fragment-layer nodes are managed by the element tree instead of the
+    // legacy LynxUI tree. Use the selector path directly for FLR pages.
+    if (this._proxy.nativeApp.isFragmentLayerRender === true) {
+      this.invokeBySelectorQuery(options, callback);
+      return;
+    }
+
     this._proxy.nativeLynxUIModule.invokeUIMethod(
       this._rootComponentId,
       [...this._ancestorSelectorNames, this._selectorName],
@@ -80,33 +114,66 @@ export default class NodeRef {
         },
         options.params
       ),
-      (res) => {
-        if (res.code === ErrorCode.SUCCESS) {
-          options.success && options.success(res.data);
-        } else {
-          if (options.fail) {
-            options.fail(res);
-          } else {
-            // enable warning in development and test
-            if (NODE_ENV === 'development' || NODE_ENV === 'test') {
-              if (!this._proxy.disableWarningWhenFailed) {
-                const errorMessage = `Failed to exec NodeRef.invoke() on NodeRef '${[
-                  ...this._ancestorSelectorNames,
-                  this._selectorName,
-                ]}'. Add a fail callback to suppress this warning.  Msg: ${JSON.stringify(
-                  res
-                )}`;
-                nativeConsole.warn(errorMessage);
-                reportError(
-                  new InvokeError(errorMessage, errorStack.stack),
-                  this._proxy.nativeApp
-                );
-              }
-            }
-          }
-        }
-      }
+      callback
     );
+  }
+
+  private invokeBySelectorQuery(
+    options: uiMethodOptions,
+    callback: Function
+  ): void {
+    const selectors = [...this._ancestorSelectorNames, this._selectorName];
+    const type = this._isCallByRefId
+      ? IdentifierType.REF_ID
+      : IdentifierType.ID_SELECTOR;
+
+    const resolveTarget = (index: number, rootUniqueId?: number): void => {
+      if (index === selectors.length - 1) {
+        this._proxy.nativeApp.invokeUIMethod(
+          type,
+          selectors[index],
+          this._rootComponentId,
+          options.method,
+          options.params ?? {},
+          callback,
+          rootUniqueId
+        );
+        return;
+      }
+
+      const selector = selectors[index];
+      this._proxy.nativeApp.getFields(
+        type,
+        selector,
+        this._rootComponentId,
+        true,
+        ['unique_id'],
+        (res: {
+          data?: { unique_id?: number };
+          status?: { code?: number; data?: string };
+        }) => {
+          const statusCode = res?.status?.code ?? ErrorCode.UNKNOWN;
+          const uniqueId = res?.data?.unique_id;
+          if (statusCode !== ErrorCode.SUCCESS || uniqueId == null) {
+            callback({
+              code:
+                statusCode === ErrorCode.SUCCESS
+                  ? ErrorCode.NODE_NOT_FOUND
+                  : statusCode,
+              data:
+                statusCode === ErrorCode.SUCCESS
+                  ? `not found ${selector}`
+                  : res?.status?.data ?? `not found ${selector}`,
+            });
+            return;
+          }
+          resolveTarget(index + 1, Number(uniqueId));
+        },
+        rootUniqueId
+      );
+    };
+
+    resolveTarget(0);
   }
 
   scrollIntoView(params: boolean | object = true): void {

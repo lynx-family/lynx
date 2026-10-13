@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxRenderer.h>
-#include "core/renderer/dom/fragment/display_list.h"
+#include "gfx/public/display_list.h"
 
 @interface LynxRenderer ()
 

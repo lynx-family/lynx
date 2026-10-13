@@ -2,9 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/dom/fragment/display_list.h"
+#include "gfx/public/display_list.h"
 
 #include <cstdint>
+#include <utility>
 
 namespace lynx {
 namespace tasm {
@@ -118,7 +119,7 @@ void DisplayList::AddRadialGradient(float center_x, float center_y,
   AppendItem(item);
 }
 
-void DisplayList::AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
+void DisplayList::AddBackgroundImage(fml::RefPtr<PaintImage> image,
                                      int32_t tiling_index, int32_t clip_index,
                                      int32_t repeat_x, int32_t repeat_y,
                                      int32_t auto_size, float position_x,
@@ -134,7 +135,7 @@ void DisplayList::AddBackgroundImage(const fml::RefPtr<PaintImage>& image,
   item.payload.background_image.position_x = position_x;
   item.payload.background_image.position_y = position_y;
   AppendItem(item);
-  Images().emplace_back(image);
+  Images().emplace_back(std::move(image));
 }
 
 }  // namespace tasm

@@ -53,15 +53,24 @@ GFX_EXPORT TimingPhase CalculatePhase(const AnimationTimingInput& input,
                                       fml::TimePoint monotonic_time);
 GFX_EXPORT fml::TimeDelta CalculateActiveTime(const AnimationTimingInput& input,
                                               fml::TimePoint monotonic_time);
+// Elapsed time since the start delay, clamped to [0, active duration]. Unlike
+// Web Animations active time, event time is independent of fill-mode.
+GFX_EXPORT fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
+                                             fml::TimePoint monotonic_time);
 GFX_EXPORT AnimationTimingStateUpdate UpdateTimingState(
     const AnimationTimingInput& input, fml::TimePoint monotonic_time);
 GFX_EXPORT bool IsInEffect(const AnimationTimingInput& input,
                            fml::TimePoint monotonic_time);
 GFX_EXPORT TrimmedAnimationTime TrimTimeToCurrentIteration(
     const AnimationTimingInput& input, fml::TimePoint monotonic_time,
-    int current_iteration_count = 0);
+    int current_iteration_count = 0, bool events_only = false);
 GFX_EXPORT int CountIterationEventsDue(int old_iteration_count,
                                        int current_iteration_count);
+
+// Max() means no lifecycle wakeup is needed. Callers exclude paused animations.
+GFX_EXPORT fml::TimePoint GetNextAnimationEventTime(
+    const AnimationTimingInput& input, fml::TimePoint now,
+    int current_iteration_count, bool needs_iteration_event);
 
 }  // namespace gfx
 }  // namespace lynx

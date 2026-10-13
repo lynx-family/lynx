@@ -867,6 +867,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     return config_ && config_->GetEnableUnifyFixedBehavior();
   }
 
+  bool GetEnableUnifyFixedOrderFix() const {
+    return config_ && config_->GetEnableUnifyFixedOrderFix();
+  }
+
   bool GetEnableAutoNonFlatten() const {
     return config_ && config_->IsAutoNonFlattenPlatformSupported() &&
            config_->GetEnableAutoNonFlatten();
@@ -933,9 +937,18 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   // Tick all element need to animated.
   void TickAllElement(fml::TimePoint &time);
+  // Query the earliest event deadline, optionally dispatching due events first.
+  // Max() means no wakeup is needed. Neither mode consumes pending style
+  // frames.
+  fml::TimePoint ProcessAnimationEvents(fml::TimePoint &time,
+                                        bool dispatch_events);
 
   // Permanently stop animation VSync when page destruction begins.
   void StopAnimationVsync();
+
+  // Pause animation and List frames without freezing animation event timelines.
+  void SetElementVsyncPaused(bool paused);
+  bool IsElementVsyncPaused() const { return element_vsync_paused_; }
 
   // Pause all element.
   void PauseAllAnimations();
@@ -1559,6 +1572,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Animation proxy class
   std::shared_ptr<ElementVsyncProxy> element_vsync_proxy_;
   bool animation_vsync_stopped_{false};
+  bool element_vsync_paused_{false};
 
   base::OrderedFlatSet<tasm::Element *> animation_element_set_;
   base::OrderedFlatSet<tasm::Element *>

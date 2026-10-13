@@ -147,8 +147,8 @@ public class ScalingUtils {
       final float sourceSizeScale = PixelUtils.dipToPx(1.0f);
       sourceWidth *= sourceSizeScale;
       sourceHeight *= sourceSizeScale;
-      float coordinateX = Math.round((availableWidth - sourceWidth) * 0.5f);
-      float coordinateY = Math.round((availableHeight - sourceHeight) * 0.5f);
+      float coordinateX = offsetStartX + Math.round((availableWidth - sourceWidth) * 0.5f);
+      float coordinateY = offsetStartY + Math.round((availableHeight - sourceHeight) * 0.5f);
       matrix.setScale(sourceSizeScale, sourceSizeScale);
       matrix.postTranslate(coordinateX, coordinateY);
     }

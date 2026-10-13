@@ -8,6 +8,8 @@ import("../Lynx.gni")
 animation_shared_sources = [
   "animation.cc",
   "animation.h",
+  "animation_backend_evaluator.cc",
+  "animation_backend_evaluator.h",
   "animation_curve.cc",
   "animation_curve.h",
   "animation_delegate.h",
@@ -51,6 +53,7 @@ unittest_set("animation_testset") {
   ]
 
   sources = [
+    "animation_backend_evaluator_unittest.cc",
     "animation_unittest.cc",
     "css_keyframe_manager_unittest.cc",
     "css_transition_manager_unittest.cc",

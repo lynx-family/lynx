@@ -46,7 +46,10 @@ class KeyframeEffect {
 
   gfx::KeyframeEffect::TickResult TickKeyframeModel(
       fml::TimePoint monotonic_time, bool suppress_animation_events = false);
-  KeyframeSampleResult SampleKeyframeModel(fml::TimePoint monotonic_time);
+  KeyframeSampleResult SampleKeyframeModel(fml::TimePoint monotonic_time,
+                                           bool events_only = false);
+  fml::TimePoint GetNextEventTime(fml::TimePoint now,
+                                  bool needs_iteration_event) const;
 
   void AddKeyframeModel(std::unique_ptr<KeyframeModel> keyframe_model);
 
@@ -109,6 +112,8 @@ class KeyframeEffect {
   std::unique_ptr<lynx::gfx::KeyframeEffect> gfx_effect_;
   AnimationDelegate* animation_delegate_;
   Animation* animation_{nullptr};
+  // Event-only background ticks defer fill-style finalization until sampling.
+  bool pending_end_styles_{false};
   bool has_custom_property_keyframes_{false};
   gfx::TimingRunState custom_property_run_state_{gfx::TimingRunState::STARTING};
   int custom_property_current_iteration_count_{0};

@@ -4,7 +4,7 @@
 
 import { Lynx, NativeLynxProxy } from '../lynx';
 import { AMDFactory } from '../common';
-import { LynxSetTimeout } from '@lynx-js/types';
+import { LynxSetTimeout, MemoryUsage } from '@lynx-js/types';
 import { BaseApp } from '.';
 import { LynxFeature } from '../common';
 import { IdentifierType } from '../modules/selectorQuery';
@@ -258,6 +258,12 @@ export interface NativeApp {
   id: string;
 
   /**
+   * Whether the current page uses Fragment Layer Renderer.
+   * This property is optional for compatibility with older native versions.
+   */
+  readonly isFragmentLayerRender?: boolean;
+
+  /**
    * Support from Lynx 2.8
    * @param timing_flag
    * @param key
@@ -323,6 +329,7 @@ export interface NativeApp {
     pipeline_options?: PipelineOptions
   ) => void;
   markPipelineTiming: (pipeline_id: string, timing_key: string) => void;
+  getMemoryUsage: (callback: (usage: MemoryUsage) => void) => void;
   bindPipelineIdWithTimingFlag: (
     pipeline_id: string,
     timing_flag: string

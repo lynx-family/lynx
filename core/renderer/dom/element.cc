@@ -353,6 +353,21 @@ void Element::AttachToElementManagerInner(
 }
 
 void Element::PushStyleToBundle() {
+  if (EnableFragmentLayerRender() && computed_css_style()) {
+    // Custom shadow nodes still flush styles to PropBundle below, clearing
+    // the dirty bits. Copy CSS hit-test state to the event bundle first.
+    auto* style = computed_css_style();
+    if (auto* fragment = fragment_impl()) {
+      if (style->HasResetProperty(kPropertyIDPointerEvents)) {
+        fragment->SetEventProp(PlatformEventPropName::kPointerEvents,
+                               lepus::Value());
+      } else if (style->HasChangedProperty(kPropertyIDPointerEvents)) {
+        fragment->SetEventProp(
+            PlatformEventPropName::kPointerEvents,
+            lepus::Value(static_cast<int32_t>(style->GetPointerEvents())));
+      }
+    }
+  }
   if (EnableFragmentLayerRender() && !IsShadowNodeCustom()) {
     // TODO(renzhongyue): After EnableFragmentLayerRender(), style changes do
     // not need to be written to the PropBundle. computed_css_style() remains
@@ -861,11 +876,14 @@ void Element::ResetAttribute(const base::String& key) {
     if (auto name = PlatformEventPropNameFromString(key.str());
         name != PlatformEventPropName::kUnknown) {
       if (auto fragment = fragment_impl()) {
-        if (name == PlatformEventPropName::kEventThrough ||
-            name == PlatformEventPropName::kEventThroughActiveRegions ||
-            name == PlatformEventPropName::kEventsPassThrough ||
+        if (name == PlatformEventPropName::kNativeInteractionEnabled ||
+            name == PlatformEventPropName::kEventThrough ||
+            name == PlatformEventPropName::kConsumeSlideEvent ||
             name == PlatformEventPropName::kIgnoreFocus ||
-            name == PlatformEventPropName::kEnableTouchPseudoPropagation) {
+            name == PlatformEventPropName::kHitSlop ||
+            name == PlatformEventPropName::kEventsPassThrough ||
+            name == PlatformEventPropName::kEnableTouchPseudoPropagation ||
+            name == PlatformEventPropName::kEventThroughActiveRegions) {
           fragment->SetEventProp(name, lepus::Value());
         } else {
           fragment->SetEventProp(name, lepus::Value(0));
@@ -1089,6 +1107,7 @@ void Element::SetJSEventHandler(const base::String& name,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_JS_EVENT_HANDLER);
 
   data_model_->SetStaticEvent(type, name, callback);
+  OnEventHandlersChanged(name);
   MarkDirty(kDirtyEvent);
 }
 
@@ -1099,6 +1118,7 @@ void Element::SetLepusEventHandler(const base::String& name,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_LEPUS_EVENT_HANDLER);
 
   data_model_->SetLepusEvent(type, name, script, callback);
+  OnEventHandlersChanged(name);
   MarkDirty(kDirtyEvent);
 }
 
@@ -1109,6 +1129,7 @@ void Element::SetWorkletEventHandler(const base::String& name,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_WORKLET_EVENT_HANDLER);
 
   data_model_->SetWorkletEvent(type, name, worklet_info, ctx);
+  OnEventHandlersChanged(name);
   MarkDirty(kDirtyEvent);
 }
 
@@ -1135,11 +1156,13 @@ event::DispatchEventResult Element::DispatchMessageEvent(
 
 void Element::RemoveEvent(const base::String& name, const base::String& type) {
   data_model_->RemoveEvent(name, type);
+  OnEventHandlersChanged(name);
   MarkDirty(kDirtyEvent);
 }
 
 void Element::RemoveAllEvents() {
   data_model_->RemoveAllEvents();
+  OnEventHandlersChanged(base::String());
   MarkDirty(kDirtyEvent);
 }
 
@@ -1991,6 +2014,12 @@ void Element::CheckNewAnimatorAttr(const base::String& key,
 #endif
 
   if (key.IsEquals("enable-new-animator")) {
+    if (EnableFragmentLayerRender()) {
+      // Fragment layer nodes cannot use the legacy platform animation backend.
+      enable_new_animator_ = true;
+      return;
+    }
+
     if (IsFiberArch()) {
       // For FiberArch.
       if (value.IsBool()) {
@@ -2323,6 +2352,20 @@ void Element::ClearTransitionPreviousEndValue(
   }
 }
 
+fml::TimePoint Element::ProcessAnimationEvents(fml::TimePoint& frame_time,
+                                               bool dispatch_events) {
+  auto next = fml::TimePoint::Max();
+  if (css_transition_manager_) {
+    next = std::min(next, css_transition_manager_->ProcessAnimationEvents(
+                              frame_time, dispatch_events));
+  }
+  if (css_keyframe_manager_) {
+    next = std::min(next, css_keyframe_manager_->ProcessAnimationEvents(
+                              frame_time, dispatch_events));
+  }
+  return next;
+}
+
 bool Element::TickAllAnimation(fml::TimePoint& frame_time,
                                std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_TICK_ALL_ANIMATION);
@@ -2386,9 +2429,7 @@ void Element::DispatchAnimationEventsForNewPipeline(
     if (event_record.send_start_event) {
       animation->SendStartEvent();
     }
-    for (int i = 0; i < event_record.iteration_events_due; ++i) {
-      animation->SendIterationEvent();
-    }
+    animation->SendIterationEvents(event_record.iteration_events_due);
     if (event_record.send_end_event) {
       animation->SendEndEvent();
     }

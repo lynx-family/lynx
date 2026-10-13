@@ -7,15 +7,28 @@
 
 #include "core/renderer/dom/fragment/display_list_builder.h"
 
-#include "core/renderer/dom/fragment/display_list_reader.h"
+#include <utility>
+
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/style/filter_data.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/display_list_reader.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace tasm {
+
+class DestructionTrackedPaintImage : public PaintImage {
+ public:
+  DestructionTrackedPaintImage(int32_t image_key, bool& destroyed)
+      : PaintImage(image_key), destroyed_(destroyed) {}
+  ~DestructionTrackedPaintImage() override { destroyed_ = true; }
+
+ private:
+  bool& destroyed_;
+};
+
 class DisplayListBuilderTest : public ::testing::Test {
  protected:
   void SetUp() override { builder_ = std::make_unique<DisplayListBuilder>(); }
@@ -151,6 +164,65 @@ TEST_F(DisplayListBuilderTest, DrawImageOperation) {
   EXPECT_FALSE(reader.HasNext());
   EXPECT_EQ(display_list.Images().size(), 1u);
   EXPECT_EQ(display_list.Images()[0].get(), image.get());
+}
+
+TEST_F(DisplayListBuilderTest, ImageOperationsConsumeMovedReferences) {
+  const bool background_cases[] = {false, true};
+  for (bool background : background_cases) {
+    SCOPED_TRACE(background);
+    bool destroyed = false;
+    {
+      DisplayListBuilder builder;
+      auto image =
+          fml::MakeRefCounted<DestructionTrackedPaintImage>(42, destroyed);
+      const auto* image_ptr = image.get();
+      if (background) {
+        builder.BackgroundImage(std::move(image), 1, 2, 0, 1);
+      } else {
+        builder.DrawImage(std::move(image), 1);
+      }
+      EXPECT_FALSE(image);
+
+      auto list = builder.Build();
+      ASSERT_EQ(list.Images().size(), 1u);
+      ASSERT_FALSE(destroyed);
+      EXPECT_EQ(list.Images()[0].get(), image_ptr);
+      EXPECT_EQ(list.Images()[0]->image_key_, 42);
+      EXPECT_TRUE(list.Images()[0]->HasOneRef());
+    }
+    EXPECT_TRUE(destroyed);
+  }
+}
+
+TEST_F(DisplayListBuilderTest, ImageOperationsRetainLvalueReferences) {
+  const bool background_cases[] = {false, true};
+  for (bool background : background_cases) {
+    SCOPED_TRACE(background);
+    bool destroyed = false;
+    auto image =
+        fml::MakeRefCounted<DestructionTrackedPaintImage>(42, destroyed);
+    const auto* image_ptr = image.get();
+    {
+      DisplayListBuilder builder;
+      if (background) {
+        builder.BackgroundImage(image, 1, 2, 0, 1);
+      } else {
+        builder.DrawImage(image, 1);
+      }
+      ASSERT_TRUE(image);
+      EXPECT_EQ(image.get(), image_ptr);
+
+      auto list = builder.Build();
+      ASSERT_EQ(list.Images().size(), 1u);
+      EXPECT_EQ(list.Images()[0].get(), image_ptr);
+      EXPECT_FALSE(image->HasOneRef());
+      EXPECT_FALSE(destroyed);
+    }
+    EXPECT_FALSE(destroyed);
+    EXPECT_TRUE(image->HasOneRef());
+    image = nullptr;
+    EXPECT_TRUE(destroyed);
+  }
 }
 
 TEST_F(DisplayListBuilderTest, DrawTextOperation) {

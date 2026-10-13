@@ -47,12 +47,16 @@ constexpr const char* kNewShareGroupCoreJSExports[] = {
 }  // namespace
 
 JSRealm::JSRealm(std::shared_ptr<js::JSIContext> context)
-    : js_context_(context),
-      js_env_prepared_(false),
-      js_core_loaded_(false),
-      global_inited_(false) {}
+    : js_context_(std::move(context)) {}
 
-JSRealm::~JSRealm() = default;
+JSRealm::~JSRealm() {
+#if ENABLE_TRACE_PERFETTO
+  // Stop profiling while the context and global runtime are still alive.
+  profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
+      runtime_profiler_);
+  runtime_profiler_.reset();
+#endif
+}
 
 void JSRealm::InitGlobalObject(
     base::UnsafeOwningPtr<js::Runtime>& runtime,
@@ -61,15 +65,16 @@ void JSRealm::InitGlobalObject(
   if (global_inited_) {
     return;
   }
-  global_ = base::MakeUnsafeOwning<js::SingleGlobal>();
-  global_->Init(runtime, post_man, page_options, install_shared_host_objects);
+  global_ = base::MakeUnsafeOwning<js::Global>();
+  global_->Init(*runtime, post_man, page_options, install_shared_host_objects);
   global_inited_ = true;
 }
 
-void JSRealm::EnsureConsole(std::shared_ptr<js::ConsoleMessagePostMan> post_man,
+void JSRealm::EnsureConsole(js::Runtime& runtime,
+                            std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                             const tasm::PageOptions& page_options) {
   if (global_) {
-    global_->EnsureConsole(post_man, page_options);
+    global_->EnsureConsole(runtime, post_man, page_options);
   }
 }
 
@@ -101,7 +106,7 @@ void JSRealm::PrepareJSEnv(
     return;
   }
 
-  // Prepare the JS env once per context wrapper.
+  // Prepare the JS env once per realm.
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_PREPARE_JS_ENV);
   bool has_core_js = js::EvaluatePreloadSources(*rt, js_preload);
   js_env_prepared_ = true;
@@ -118,39 +123,20 @@ void JSRealm::SetRuntimeProfiler(
 }
 #endif
 
-//////////////////////
-SharedJSRealm::SharedJSRealm(std::shared_ptr<js::JSIContext> context,
-                             const std::string& group_id,
-                             ReleaseListener* listener)
-    : JSRealm(context), group_id_(group_id), listener_(listener) {}
+SharedJSRealm::SharedJSRealm(std::shared_ptr<js::JSIContext> context)
+    : JSRealm(std::move(context)) {}
 
-void SharedJSRealm::Def() {
-  // global has owner the js context, when only global own the js context, can
-  // release now
-  if (js_context_.use_count() == 2) {  // TODO : be trick, global has one, and
-                                       // the Runtime call this has one...
-    // TODO : release of global_ will trigger another Def() call
-    if (global_ != nullptr) {
-      global_.Reset();
-      owned_global_runtime_.Reset();
-      if (listener_ != nullptr) {
-        listener_->OnRelease(group_id_);
-      }
-    }
+SharedJSRealm::~SharedJSRealm() {
 #if ENABLE_NAPI_BINDING
-    if (napi_environment_) {
-      LOGI("global napi detaching runtime");
+  if (napi_environment_) {
+    LOGI("global napi detaching runtime");
+    if (lifecycle_observer_) {
       lifecycle_observer_->OnRuntimeDetach();
-      napi_environment_->Detach();
-      napi_environment_.reset();
     }
-#endif
-#if ENABLE_TRACE_PERFETTO
-    profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-        runtime_profiler_);
-    runtime_profiler_ = nullptr;
-#endif
+    napi_environment_->Detach();
+    napi_environment_.reset();
   }
+#endif
 }
 
 void SharedJSRealm::InitGlobal(
@@ -201,22 +187,7 @@ void SharedJSRealm::AddLifecycleListener(
 }
 
 SingleJSRealm::SingleJSRealm(std::shared_ptr<js::JSIContext> context)
-    : JSRealm(context) {}
-
-SingleJSRealm::SingleJSRealm(std::shared_ptr<js::JSIContext> context,
-                             SharedJSRealm::ReleaseListener* listener)
-    : JSRealm(context), listener_(listener) {}
-
-void SingleJSRealm::Def() {
-  if (js_context_.use_count() == 1) {
-    global_.Reset();
-#if ENABLE_TRACE_PERFETTO
-    profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-        runtime_profiler_);
-    runtime_profiler_ = nullptr;
-#endif
-  }
-}
+    : JSRealm(std::move(context)) {}
 
 void SingleJSRealm::InitGlobal(
     base::UnsafeOwningPtr<js::Runtime>& runtime,
@@ -225,19 +196,9 @@ void SingleJSRealm::InitGlobal(
   InitGlobalObject(runtime, post_man, page_options, true);
 }
 
-// -------- New "shared Isolate/VM + per-page isolated Context" scheme --------
-
 SharedVMGlobalRealm::SharedVMGlobalRealm(
     std::shared_ptr<js::JSIContext> context, const std::string& group_id)
     : JSRealm(context), group_id_(group_id) {}
-
-SharedVMGlobalRealm::~SharedVMGlobalRealm() {
-#if ENABLE_TRACE_PERFETTO
-  profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-      runtime_profiler_);
-  runtime_profiler_ = nullptr;
-#endif
-}
 
 void SharedVMGlobalRealm::EnsureCoreJSLoaded(
     js::Runtime& js_runtime,
@@ -292,27 +253,8 @@ std::shared_ptr<js::VMInstance> SharedVMGlobalRealm::GetVM() {
   return context ? context->getVM() : nullptr;
 }
 
-SharedVMPageRealm::SharedVMPageRealm(std::shared_ptr<js::JSIContext> context,
-                                     const std::string& group_id,
-                                     SharedJSRealm::ReleaseListener* listener)
-    : JSRealm(context), group_id_(group_id), listener_(listener) {}
-
-void SharedVMPageRealm::Def() {
-  if (js_context_.use_count() == 1) {
-    global_.Reset();
-#if ENABLE_TRACE_PERFETTO
-    profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
-        runtime_profiler_);
-    runtime_profiler_ = nullptr;
-#endif
-    // A page context is 1:1 with its page runtime; releasing it means this page
-    // is gone. Notify JSRealmManager so the group's live page count can be
-    // decremented and the global context released after the last page.
-    if (listener_ != nullptr) {
-      listener_->OnRelease(group_id_);
-    }
-  }
-}
+SharedVMPageRealm::SharedVMPageRealm(std::shared_ptr<js::JSIContext> context)
+    : JSRealm(std::move(context)) {}
 
 void SharedVMPageRealm::InitGlobal(
     base::UnsafeOwningPtr<js::Runtime>& runtime,

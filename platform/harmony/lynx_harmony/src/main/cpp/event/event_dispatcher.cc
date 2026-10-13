@@ -46,6 +46,66 @@ constexpr const char* kHitTargetStyle =
 constexpr int64_t kCurrentLynxPageOnlyEventID =
     std::numeric_limits<int64_t>::min();
 
+int ConsumeSlideDirectionMaskFromAngleRanges(const std::vector<float>& ranges) {
+  bool octants[8] = {};
+  for (std::size_t i = 0; i + 1 < ranges.size(); i += 2) {
+    const float begin = (ranges[i] + 180.f) / 45.f;
+    const float end = (ranges[i + 1] + 180.f) / 45.f;
+    if (!base::FloatsLargerOrEqual(end, begin)) {
+      continue;
+    }
+
+    octants[0] |= base::FloatsLargerOrEqual(begin, 0.f) &&
+                  base::FloatsLarger(1.f, begin) &&
+                  base::FloatsLargerOrEqual(8.f, end);
+    for (int octant = 1; octant <= 6; ++octant) {
+      const float lower = static_cast<float>(octant);
+      const float upper = lower + 1.f;
+      octants[octant] |= (base::FloatsLargerOrEqual(begin, lower) &&
+                          base::FloatsLarger(upper, begin) &&
+                          base::FloatsLargerOrEqual(8.f, end)) ||
+                         (base::FloatsLargerOrEqual(begin, 0.f) &&
+                          base::FloatsLarger(end, lower) &&
+                          base::FloatsLargerOrEqual(upper, end)) ||
+                         (base::FloatsLargerOrEqual(lower, begin) &&
+                          base::FloatsLargerOrEqual(end, upper));
+    }
+    octants[7] |= base::FloatsLargerOrEqual(begin, 0.f) &&
+                  base::FloatsLarger(end, 7.f) &&
+                  base::FloatsLargerOrEqual(8.f, end);
+  }
+
+  return (octants[5] || octants[6] ? 1 : 0) |
+         (octants[3] || octants[4] ? 2 : 0) |
+         (octants[1] || octants[2] ? 4 : 0) |
+         (octants[0] || octants[7] ? 8 : 0);
+}
+
+ConsumeSlideDirection ConsumeSlideDirectionFromMask(int mask) {
+  if (mask == 15) {
+    return ConsumeSlideDirection::kAll;
+  }
+  if ((mask & (2 | 8)) == (2 | 8)) {
+    return ConsumeSlideDirection::kHorizontal;
+  }
+  if ((mask & (1 | 4)) == (1 | 4)) {
+    return ConsumeSlideDirection::kVertical;
+  }
+  if (mask & 1) {
+    return ConsumeSlideDirection::kUp;
+  }
+  if (mask & 2) {
+    return ConsumeSlideDirection::kRight;
+  }
+  if (mask & 4) {
+    return ConsumeSlideDirection::kDown;
+  }
+  if (mask & 8) {
+    return ConsumeSlideDirection::kLeft;
+  }
+  return ConsumeSlideDirection::kNone;
+}
+
 uint64_t NextRequestId(std::atomic<uint64_t>& request_id) {
   return request_id.fetch_add(1, std::memory_order_relaxed) + 1;
 }
@@ -144,6 +204,12 @@ std::optional<std::string> ExtractInlineCSSText(const std::string& response) {
 }
 
 }  // namespace
+
+ConsumeSlideDirection EventDispatcher::ConsumeSlideDirectionFromAngleRanges(
+    const std::vector<float>& ranges) {
+  return ConsumeSlideDirectionFromMask(
+      ConsumeSlideDirectionMaskFromAngleRanges(ranges));
+}
 
 struct EventDispatcher::WeakFlag {
   explicit WeakFlag(EventDispatcher* dispatcher) : dispatcher(dispatcher) {}
@@ -1565,6 +1631,8 @@ void EventDispatcher::DispatchPlatformTouchEvent(
     const ArkUI_UIInputEvent* event, UIBase* root, bool from_overlay) {
   auto context = ui_owner_->Context()->GetNativePaintingContext();
   if (!context || !root) {
+    cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
+    platform_touch_active_ = false;
     return;
   }
 
@@ -1592,6 +1660,8 @@ void EventDispatcher::DispatchPlatformTouchEvent(
 
   auto pointer_data = CollectPlatformTouchPoints(event);
   if (pointer_data.empty()) {
+    cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
+    platform_touch_active_ = false;
     return;
   }
   int event_data[] = {0, action_type,
@@ -1599,6 +1669,19 @@ void EventDispatcher::DispatchPlatformTouchEvent(
                       static_cast<int>(pointer_data.size() / 3)};
   context->DispatchPlatformInputEvent(event_data, pointer_data.data(),
                                       root->Sign());
+  if (action == UI_TOUCH_EVENT_ACTION_DOWN) {
+    if (!platform_touch_active_) {
+      CacheConsumeSlideDirection(*context);
+    }
+    platform_touch_active_ = true;
+  } else if (action == UI_TOUCH_EVENT_ACTION_UP ||
+             action == UI_TOUCH_EVENT_ACTION_CANCEL) {
+    if (action == UI_TOUCH_EVENT_ACTION_CANCEL ||
+        OH_ArkUI_PointerEvent_GetPointerCount(event) <= 1) {
+      cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
+      platform_touch_active_ = false;
+    }
+  }
 }
 
 void EventDispatcher::InitPlatformTouchEnv(
@@ -1928,6 +2011,9 @@ bool EventDispatcher::ShouldBlockNativeEvent() {
 }
 
 ConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
+  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
+    return cached_consume_slide_direction_;
+  }
   if (first_active_target_.expired()) {
     return ConsumeSlideDirection::kNone;
   }
@@ -1941,6 +2027,12 @@ ConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
     target = target->ParentTarget();
   }
   return ConsumeSlideDirection::kNone;
+}
+
+void EventDispatcher::CacheConsumeSlideDirection(
+    const NativePaintingCtxPlatformRef& context) {
+  cached_consume_slide_direction_ = ConsumeSlideDirectionFromAngleRanges(
+      context.GetCachedConsumeSlideEventAngles());
 }
 
 void EventDispatcher::UpdateRootTarget(UIBase* root) {
@@ -2005,9 +2097,12 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
     context->SetPlatformEventRootOffset(root->Sign(),
                                         page_x - root_screen_offset[0],
                                         page_y - root_screen_offset[1]);
-    const bool can_consume = !(context->HitTestAndCachePlatformEventBehavior(
-                                   root->Sign(), point[0], point[1]) &
-                               kEventBehaviorEventThrough);
+    const uint32_t behavior = context->HitTestAndCachePlatformEventBehavior(
+        root->Sign(), point[0], point[1]);
+    const bool can_consume = !(behavior & kEventBehaviorEventThrough);
+    if (can_consume && !platform_touch_active_) {
+      CacheConsumeSlideDirection(*context);
+    }
     UpdateOverlayPassThroughState(root, can_consume);
     return can_consume;
   }

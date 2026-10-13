@@ -22,7 +22,6 @@
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
-#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/fragment/event/platform_pointer_event.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
@@ -35,6 +34,7 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/display_list_reader.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -1576,12 +1576,12 @@ TEST_F(FragmentTest,
       platform_ref.GetEventTargetHelper(), kRootId, kRootId, 0.f, 0.f, 100.f,
       100.f);
   auto device_px = [](float value) {
-    PlatformEventTarget::EventThroughSizeValue result;
+    PlatformEventTarget::EventRegionSizeValue result;
     result.value = value;
     return result;
   };
-  PlatformEventTarget::EventThroughRegion region{
-      device_px(0.f), device_px(0.f), device_px(50.f), device_px(100.f)};
+  PlatformEventTarget::EventRegion region{device_px(0.f), device_px(0.f),
+                                          device_px(50.f), device_px(100.f)};
   root_target->SetEventThroughActiveRegions({region});
 
   PlatformEventThroughConfig config;

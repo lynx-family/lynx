@@ -9,11 +9,11 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
-#include "core/renderer/dom/fragment/display_list.h"
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/style/filter_data.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/display_list.h"
 
 namespace lynx {
 namespace tasm {
@@ -96,14 +96,14 @@ DisplayList DisplayListBuilder::Build() { return std::move(display_list_); }
 
 void DisplayListBuilder::Clear() { display_list_ = DisplayList(); }
 
-DisplayListBuilder& DisplayListBuilder::DrawImage(
-    const fml::RefPtr<PaintImage>& image, int32_t box_index) {
+DisplayListBuilder& DisplayListBuilder::DrawImage(fml::RefPtr<PaintImage> image,
+                                                  int32_t box_index) {
   DisplayListItem item{};
   item.type = DisplayListOpType::kImage;
   item.payload.image.image_id = image->image_key_;
   item.payload.image.box_index = box_index;
   display_list_.AppendItem(item);
-  display_list_.Images().emplace_back(image);
+  display_list_.Images().emplace_back(std::move(image));
   return *this;
 }
 
@@ -207,12 +207,13 @@ DisplayListBuilder& DisplayListBuilder::RadialGradient(
 }
 
 DisplayListBuilder& DisplayListBuilder::BackgroundImage(
-    const fml::RefPtr<PaintImage>& image, int32_t tiling_index,
-    int32_t clip_index, int32_t repeat_x, int32_t repeat_y, bool auto_width,
-    bool auto_height, float position_x, float position_y) {
+    fml::RefPtr<PaintImage> image, int32_t tiling_index, int32_t clip_index,
+    int32_t repeat_x, int32_t repeat_y, bool auto_width, bool auto_height,
+    float position_x, float position_y) {
   const int32_t auto_size = (auto_width ? 1 : 0) | (auto_height ? 2 : 0);
-  display_list_.AddBackgroundImage(image, tiling_index, clip_index, repeat_x,
-                                   repeat_y, auto_size, position_x, position_y);
+  display_list_.AddBackgroundImage(std::move(image), tiling_index, clip_index,
+                                   repeat_x, repeat_y, auto_size, position_x,
+                                   position_y);
   return *this;
 }
 

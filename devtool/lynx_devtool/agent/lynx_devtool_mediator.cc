@@ -1060,58 +1060,42 @@ void LynxDevToolMediator::SetUIStyle(
 }
 
 void LynxDevToolMediator::GlobalPropsEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [executor = element_executor_, sender, message] {
-                      executor->GlobalPropsEnable(sender, message);
-                    });
-  } else {
-    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
-                              "GlobalProps target is unavailable");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnTASMThread([executor = element_executor_, responder, params] {
+        executor->GlobalPropsEnable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "GlobalProps target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GlobalPropsDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [executor = element_executor_, sender, message] {
-                      executor->GlobalPropsDisable(sender, message);
-                    });
-  } else {
-    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
-                              "GlobalProps target is unavailable");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnTASMThread([executor = element_executor_, responder, params] {
+        executor->GlobalPropsDisable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "GlobalProps target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GlobalPropsGet(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [executor = element_executor_, sender, message] {
-                      executor->GlobalPropsGet(sender, message);
-                    });
-  } else {
-    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
-                              "GlobalProps target is unavailable");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnTASMThread([executor = element_executor_, responder, params] {
+        executor->GlobalPropsGet(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "GlobalProps target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GlobalPropsReplace(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [executor = element_executor_, sender, message] {
-                      executor->GlobalPropsReplace(sender, message);
-                    });
-  } else {
-    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
-                              "GlobalProps target is unavailable");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnTASMThread([executor = element_executor_, responder, params] {
+        executor->GlobalPropsReplace(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "GlobalProps target is unavailable");
   }
 }
 

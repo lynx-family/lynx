@@ -121,6 +121,8 @@ std::optional<LayoutResult> TextLayoutAndroid::MeasureDetached(
 std::optional<LayoutResult> TextLayoutAndroid::MeasureInternal(
     Element* element, float width, int width_mode, float height,
     int height_mode) {
+  TextElement* text_element = static_cast<TextElement*>(element);
+  text_element->ClearTextLineLayoutInfo();
   JNIEnv* env = base::android::AttachCurrentThread();
 
   base::android::ScopedLocalJavaRef<jobject> local_ref(text_layout_);
@@ -129,7 +131,6 @@ std::optional<LayoutResult> TextLayoutAndroid::MeasureInternal(
   }
 
   std::vector<float> layout_result;
-  TextElement* text_element = static_cast<TextElement*>(element);
   if (text_element->need_layout_children()) {
     starlight::Constraints constraints;
     constraints[starlight::kHorizontal] = starlight::OneSideConstraint(
@@ -177,7 +178,8 @@ std::optional<LayoutResult> TextLayoutAndroid::MeasureInternal(
 
   // Parse line layout information if available
   // Format: [width, height, baseline, lineCount, line1_start, line1_end,
-  // line1_ellipsisCount, ...]
+  // line1_ellipsisCount, ..., eventWidth, eventHeight]. Event dimensions retain
+  // the platform event's density-independent units and text-content size.
   if (array_length > 3 && text_element) {
     int line_count = static_cast<int>(result[3]);
     if (line_count > 0 &&
@@ -193,6 +195,12 @@ std::optional<LayoutResult> TextLayoutAndroid::MeasureInternal(
 
       // Store line layout info in TextElement
       text_element->SetTextLineLayoutInfo(std::move(line_infos), line_count);
+      const jsize event_size_offset = 4 + line_count * 3;
+      if (text_element->HasLayoutEvent() &&
+          array_length >= event_size_offset + 2) {
+        text_element->SetTextLayoutEventSize(FloatSize(
+            result[event_size_offset], result[event_size_offset + 1]));
+      }
     } else {
       text_element->ClearTextLineLayoutInfo();
     }

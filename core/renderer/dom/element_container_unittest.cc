@@ -75,6 +75,8 @@ class CheckedFixedPaintingContext : public MockPaintingContext {
 
 class UnifiedFixedLayoutOnlyTest : public ElementContainerTest {
  protected:
+  virtual bool EnableFixedOrderFix() const { return true; }
+
   std::unique_ptr<MockPaintingContext> CreatePaintingContext() override {
     return std::make_unique<CheckedFixedPaintingContext>();
   }
@@ -86,6 +88,7 @@ class UnifiedFixedLayoutOnlyTest : public ElementContainerTest {
     config->SetEnableZIndex(true);
     config->SetEnableFixedNew(false);
     config->SetEnableUnifyFixedBehavior(true);
+    config->SetEnableUnifyFixedOrderFix(EnableFixedOrderFix());
     manager->SetConfig(config);
 
     page_ = manager->CreateFiberPage("page", 11);
@@ -139,6 +142,360 @@ class UnifiedFixedLayoutOnlyTest : public ElementContainerTest {
   fml::RefPtr<PageElement> page_;
   fml::RefPtr<ViewElement> ancestor_;
 };
+
+class UnifiedFixedOrderSwitchTest : public UnifiedFixedLayoutOnlyTest,
+                                    public ::testing::WithParamInterface<bool> {
+ protected:
+  bool EnableFixedOrderFix() const override { return GetParam(); }
+};
+
+TEST_P(UnifiedFixedOrderSwitchTest, AppendUsesSelectedOrderPath) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto first = CreateNativeView();
+  fixed->InsertNode(first);
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  auto after = CreateNativeView();
+  page_->InsertNode(after);
+  page_->FlushActionsAsRoot();
+  auto last = CreateNativeView();
+  fixed->InsertNode(last);
+  page_->FlushActionsAsRoot();
+
+  if (GetParam()) {
+    ExpectPaintingChildren(
+        page_.get(), {ancestor_.get(), first.get(), last.get(), after.get()});
+  } else {
+    // Rollback preserves the original append behavior, including its ordering.
+    ExpectPaintingChildren(
+        page_.get(), {ancestor_.get(), first.get(), after.get(), last.get()});
+  }
+  EXPECT_EQ(page_->element_container_impl()->mounted_children_ != nullptr,
+            GetParam());
+  EXPECT_EQ(ancestor_->element_container_impl()->mounted_children_, nullptr);
+}
+
+TEST_P(UnifiedFixedOrderSwitchTest, ReinsertUsesSelectedAttachmentPath) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto child = CreateNativeView();
+  fixed->InsertNode(child);
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+
+  ancestor_->RemoveNode(fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get()});
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  if (GetParam()) {
+    ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+  } else {
+    // The legacy path reattaches the container without restoring its children.
+    ExpectPaintingChildren(page_.get(), {ancestor_.get()});
+  }
+}
+
+TEST_P(UnifiedFixedOrderSwitchTest, NativeTransitionUsesSelectedBoundaryPath) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  auto before = CreateNativeView();
+  page_->InsertNodeBefore(before, fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), before.get()});
+
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  if (GetParam()) {
+    ExpectPaintingChildren(page_.get(),
+                           {ancestor_.get(), before.get(), fixed.get()});
+  } else {
+    ExpectPaintingChildren(page_.get(),
+                           {ancestor_.get(), fixed.get(), before.get()});
+  }
+}
+
+TEST_P(UnifiedFixedOrderSwitchTest, NestedFixedUsesSelectedRemovalPath) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto nested_fixed = CreateFixedLayoutOnlyView();
+  auto child = CreateNativeView();
+  nested_fixed->InsertNode(child);
+  fixed->InsertNode(nested_fixed);
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  if (GetParam()) {
+    ExpectPaintingChildren(page_.get(),
+                           {ancestor_.get(), fixed.get(), child.get()});
+  } else {
+    ExpectPaintingChildren(page_.get(), {ancestor_.get(), fixed.get()});
+  }
+  ExpectPaintingChildren(fixed.get(), {});
+}
+
+INSTANTIATE_TEST_SUITE_P(LegacyAndFixed, UnifiedFixedOrderSwitchTest,
+                         ::testing::Bool(),
+                         [](const ::testing::TestParamInfo<bool>& info) {
+                           return info.param ? "Enabled" : "Disabled";
+                         });
+
+class UnifiedFixedZIndexTest : public UnifiedFixedOrderSwitchTest {
+ protected:
+  void FlushAndSortZIndex() {
+    page_->FlushActionsAsRoot();
+    // Complete the z-index sorting normally performed at patch finish.
+    for (const auto& context : manager->dirty_stacking_contexts_) {
+      context->UpdateZIndexList();
+    }
+    manager->dirty_stacking_contexts_.clear();
+  }
+};
+
+TEST_P(UnifiedFixedZIndexTest, DynamicChildZIndexRoundTrip) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto child = CreateNativeView();
+  fixed->InsertNode(child);
+  ancestor_->InsertNode(fixed);
+  FlushAndSortZIndex();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+
+  for (int z : {-1, 1, -2, 0}) {
+    SCOPED_TRACE(z);
+    child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(z));
+    FlushAndSortZIndex();
+    EXPECT_EQ(child->ZIndex(), z);
+    EXPECT_EQ(child->element_container_impl()->parent(),
+              page_->element_container_impl());
+    if (z < 0) {
+      ExpectPaintingChildren(page_.get(), {child.get(), ancestor_.get()});
+    } else {
+      ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+    }
+  }
+}
+
+TEST_P(UnifiedFixedZIndexTest, WrappedChildEscapesOuterStackingContext) {
+  ancestor_->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(0.5));
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto wrapper = manager->CreateFiberWrapperElement();
+  auto child = CreateNativeView();
+  wrapper->InsertNode(child);
+  fixed->InsertNode(wrapper);
+  ancestor_->InsertNode(fixed);
+  FlushAndSortZIndex();
+  ASSERT_TRUE(ancestor_->IsStackingContextNode());
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+
+  for (int z : {-1, 1, 0}) {
+    SCOPED_TRACE(z);
+    child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(z));
+    FlushAndSortZIndex();
+    EXPECT_EQ(child->element_container_impl()->parent(),
+              page_->element_container_impl());
+    ExpectPaintingChildren(ancestor_.get(), {});
+    if (z < 0) {
+      ExpectPaintingChildren(page_.get(), {child.get(), ancestor_.get()});
+    } else {
+      ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+    }
+  }
+}
+
+TEST_P(UnifiedFixedZIndexTest, NestedFixedChildZIndexRoundTrip) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto nested_fixed = CreateFixedLayoutOnlyView();
+  auto child = CreateNativeView();
+  nested_fixed->InsertNode(child);
+  fixed->InsertNode(nested_fixed);
+  ancestor_->InsertNode(fixed);
+  FlushAndSortZIndex();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(nested_fixed->IsLayoutOnly());
+
+  for (int z : {-1, 1, 0}) {
+    SCOPED_TRACE(z);
+    child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(z));
+    FlushAndSortZIndex();
+    EXPECT_EQ(child->element_container_impl()->parent(),
+              page_->element_container_impl());
+    if (z < 0) {
+      ExpectPaintingChildren(page_.get(), {child.get(), ancestor_.get()});
+    } else {
+      ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+    }
+  }
+}
+
+TEST_P(UnifiedFixedZIndexTest, InsertChildrenWithNonzeroZIndex) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  ancestor_->InsertNode(fixed);
+  FlushAndSortZIndex();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+
+  auto negative = CreateNativeView();
+  negative->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+  fixed->InsertNode(negative);
+  FlushAndSortZIndex();
+  ExpectPaintingChildren(page_.get(), {negative.get(), ancestor_.get()});
+
+  auto positive = CreateNativeView();
+  positive->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  fixed->InsertNode(positive);
+  FlushAndSortZIndex();
+  ExpectPaintingChildren(page_.get(),
+                         {negative.get(), ancestor_.get(), positive.get()});
+  EXPECT_EQ(negative->element_container_impl()->parent(),
+            page_->element_container_impl());
+  EXPECT_EQ(positive->element_container_impl()->parent(),
+            page_->element_container_impl());
+}
+
+TEST_P(UnifiedFixedZIndexTest, NativeStackingContextRetainsZChild) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto context = CreateNativeView();
+  context->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(0.5));
+  auto child = CreateNativeView();
+  auto sibling = CreateNativeView();
+  context->InsertNode(child);
+  context->InsertNode(sibling);
+  fixed->InsertNode(context);
+  ancestor_->InsertNode(fixed);
+  FlushAndSortZIndex();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(context->IsStackingContextNode());
+
+  for (int z : {-1, 1, 0}) {
+    SCOPED_TRACE(z);
+    child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(z));
+    FlushAndSortZIndex();
+    EXPECT_EQ(child->element_container_impl()->parent(),
+              context->element_container_impl());
+    ExpectPaintingChildren(page_.get(), {ancestor_.get(), context.get()});
+    if (z > 0) {
+      ExpectPaintingChildren(context.get(), {sibling.get(), child.get()});
+    } else {
+      ExpectPaintingChildren(context.get(), {child.get(), sibling.get()});
+    }
+  }
+}
+
+TEST_P(UnifiedFixedZIndexTest, FixedBecomesNativeWithNegativeZChild) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto child = CreateNativeView();
+  fixed->InsertNode(child);
+  ancestor_->InsertNode(fixed);
+  FlushAndSortZIndex();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+
+  child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+  FlushAndSortZIndex();
+  ExpectPaintingChildren(page_.get(), {child.get(), ancestor_.get()});
+
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  FlushAndSortZIndex();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  EXPECT_EQ(child->element_container_impl()->parent(),
+            fixed->element_container_impl());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), fixed.get()});
+  ExpectPaintingChildren(fixed.get(), {child.get()});
+
+  child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(0));
+  FlushAndSortZIndex();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), fixed.get()});
+  ExpectPaintingChildren(fixed.get(), {child.get()});
+}
+
+TEST_P(UnifiedFixedZIndexTest, LayoutOnlyWrapperBecomesNativeWithZChild) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto wrapper = manager->CreateFiberView();
+  wrapper->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                    lepus::Value("visible"));
+  auto child = CreateNativeView();
+  wrapper->InsertNode(child);
+  fixed->InsertNode(wrapper);
+  ancestor_->InsertNode(fixed);
+  FlushAndSortZIndex();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+
+  child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+  FlushAndSortZIndex();
+  ExpectPaintingChildren(page_.get(), {child.get(), ancestor_.get()});
+
+  wrapper->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                    lepus::Value("blue"));
+  FlushAndSortZIndex();
+  ASSERT_FALSE(wrapper->IsLayoutOnly());
+  ASSERT_FALSE(wrapper->IsStackingContextNode());
+  EXPECT_EQ(child->element_container_impl()->parent(),
+            page_->element_container_impl());
+  ExpectPaintingChildren(wrapper.get(), {});
+  ExpectPaintingChildren(page_.get(),
+                         {child.get(), ancestor_.get(), wrapper.get()});
+
+  child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  FlushAndSortZIndex();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), wrapper.get(), child.get()});
+
+  child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(0));
+  FlushAndSortZIndex();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), wrapper.get()});
+  ExpectPaintingChildren(wrapper.get(), {child.get()});
+}
+
+TEST_P(UnifiedFixedZIndexTest, RemovingInnerStackingContextMovesZChildToRoot) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto wrapper = CreateNativeView();
+  auto context = CreateNativeView();
+  auto child = CreateNativeView();
+  context->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(0.5));
+  child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+  context->InsertNode(child);
+  wrapper->InsertNode(context);
+  fixed->InsertNode(wrapper);
+  ancestor_->InsertNode(fixed);
+  FlushAndSortZIndex();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_FALSE(wrapper->IsStackingContextNode());
+  ASSERT_TRUE(context->IsStackingContextNode());
+  ExpectPaintingChildren(context.get(), {child.get()});
+
+  context->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value());
+  FlushAndSortZIndex();
+  ASSERT_FALSE(context->IsStackingContextNode());
+  EXPECT_EQ(child->element_container_impl()->parent(),
+            page_->element_container_impl());
+  ExpectPaintingChildren(page_.get(),
+                         {child.get(), ancestor_.get(), wrapper.get()});
+  ExpectPaintingChildren(wrapper.get(), {context.get()});
+  ExpectPaintingChildren(context.get(), {});
+
+  context->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(0.5));
+  FlushAndSortZIndex();
+  EXPECT_EQ(child->element_container_impl()->parent(),
+            context->element_container_impl());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), wrapper.get()});
+  ExpectPaintingChildren(wrapper.get(), {context.get()});
+  ExpectPaintingChildren(context.get(), {child.get()});
+}
+
+INSTANTIATE_TEST_SUITE_P(LegacyAndFixed, UnifiedFixedZIndexTest,
+                         ::testing::Bool(),
+                         [](const ::testing::TestParamInfo<bool>& info) {
+                           return info.param ? "Enabled" : "Disabled";
+                         });
 
 TEST_F(UnifiedFixedLayoutOnlyTest, OrdinarySiblingsAfterWrappedFixedSubtree) {
   auto content = manager->CreateFiberWrapperElement();
@@ -455,6 +812,1056 @@ TEST_F(UnifiedFixedLayoutOnlyTest, LegacyStickyKeepsStableInsertionOrder) {
   page_->element_container_impl()->UpdateZIndexList();
   ExpectPaintingChildren(page_.get(), {ancestor_.get(), head.get(), child.get(),
                                        second.get(), first.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, RootFixedRetainsPositionAfterLaterAppend) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto first = CreateNativeView();
+  fixed->InsertNode(first);
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  auto after = CreateNativeView();
+  page_->InsertNode(after);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), first.get(), after.get()});
+
+  auto last = CreateNativeView();
+  fixed->InsertNode(last);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), first.get(), last.get(), after.get()});
+
+  // An empty fixed subtree must keep its position among already mounted UIs.
+  fixed->RemoveNode(first);
+  fixed->RemoveNode(last);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), after.get()});
+  fixed->InsertNode(last);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), last.get(), after.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, EmptyWrapperDoesNotSplitFixedSiblingOrder) {
+  auto first = CreateFixedLayoutOnlyView();
+  auto wrapper = manager->CreateFiberWrapperElement();
+  first->InsertNode(wrapper);
+  auto second = CreateFixedLayoutOnlyView();
+  ancestor_->InsertNode(first);
+  ancestor_->InsertNode(second);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(first->IsLayoutOnly());
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+  ASSERT_TRUE(second->IsLayoutOnly());
+
+  auto third = CreateFixedLayoutOnlyView();
+  ancestor_->InsertNode(third);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(third->IsLayoutOnly());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get()});
+
+  // Populate empty fixed siblings in reverse order. The wrapper contributes
+  // no native child and must not separate their insertion positions.
+  auto third_child = CreateNativeView();
+  third->InsertNode(third_child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), third_child.get()});
+
+  auto second_child = CreateNativeView();
+  second->InsertNode(second_child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), second_child.get(), third_child.get()});
+
+  auto first_child = CreateNativeView();
+  wrapper->InsertNode(first_child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), first_child.get(),
+                                       second_child.get(), third_child.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, OrdinarySiblingsKeepEmptyFixedAnchor) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+
+  auto after = CreateNativeView();
+  page_->InsertNode(after);
+  page_->FlushActionsAsRoot();
+  auto before = CreateNativeView();
+  page_->InsertNodeBefore(before, fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), before.get(), after.get()});
+
+  // Append and insert-before share a UI index while fixed has no native view.
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), before.get(), fixed.get(), after.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, AppendAfterEmptyFixedWithZChildren) {
+  for (int z : {-1, 1}) {
+    SCOPED_TRACE(z);
+    auto sorted = CreateNativeView();
+    sorted->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(z));
+    page_->InsertNode(sorted);
+    page_->FlushActionsAsRoot();
+    page_->element_container_impl()->UpdateZIndexList();
+    ASSERT_EQ(sorted->ZIndex(), z);
+    auto fixed = CreateFixedLayoutOnlyView();
+    page_->InsertNode(fixed);
+    page_->FlushActionsAsRoot();
+    ASSERT_TRUE(fixed->IsLayoutOnly());
+    auto after = CreateNativeView();
+    page_->InsertNode(after);
+    page_->FlushActionsAsRoot();
+
+    fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                    lepus::Value("blue"));
+    page_->FlushActionsAsRoot();
+    ASSERT_FALSE(fixed->IsLayoutOnly());
+    if (z < 0) {
+      ExpectPaintingChildren(page_.get(), {sorted.get(), ancestor_.get(),
+                                           fixed.get(), after.get()});
+    } else {
+      ExpectPaintingChildren(page_.get(), {ancestor_.get(), fixed.get(),
+                                           after.get(), sorted.get()});
+    }
+    page_->RemoveNode(after);
+    page_->RemoveNode(fixed);
+    page_->RemoveNode(sorted);
+    page_->FlushActionsAsRoot();
+  }
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, OrdinaryInsertBeforeSharesEmptyFixedIndex) {
+  auto first = CreateFixedLayoutOnlyView();
+  auto second = CreateFixedLayoutOnlyView();
+  page_->InsertNode(first);
+  page_->InsertNode(second);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(first->IsLayoutOnly());
+  ASSERT_TRUE(second->IsLayoutOnly());
+
+  auto middle = CreateNativeView();
+  auto after = CreateNativeView();
+  auto before = CreateNativeView();
+  // Ordinary insert-before ignores fixed siblings when calculating its UI
+  // index, so either fixed reference inserts before both empty anchors.
+  page_->InsertNodeBefore(middle, second);
+  page_->InsertNode(after);
+  page_->InsertNodeBefore(before, first);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), before.get(), middle.get(), after.get()});
+
+  // Materializing in reverse order must retain both invisible boundaries.
+  second->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                   lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(),
+      {ancestor_.get(), before.get(), middle.get(), second.get(), after.get()});
+  first->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), before.get(), middle.get(), first.get(),
+                    second.get(), after.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, EmptyFixedAnchorInsideLayoutOnlyWrapper) {
+  auto wrapper = manager->CreateFiberView();
+  wrapper->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                    lepus::Value("visible"));
+  auto fixed = CreateFixedLayoutOnlyView();
+  wrapper->InsertNode(fixed);
+  page_->InsertNode(wrapper);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+
+  auto after = CreateNativeView();
+  auto before = CreateNativeView();
+  wrapper->InsertNode(after);
+  wrapper->InsertNodeBefore(before, fixed);
+  page_->FlushActionsAsRoot();
+  auto tail = CreateNativeView();
+  page_->InsertNode(tail);
+  page_->FlushActionsAsRoot();
+
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), before.get(),
+                                       fixed.get(), after.get(), tail.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, MoveOrdinarySiblingsAcrossEmptyFixedAnchor) {
+  auto before = CreateNativeView();
+  auto fixed = CreateFixedLayoutOnlyView();
+  page_->InsertNode(before);
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  auto after = CreateNativeView();
+  page_->InsertNode(after);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+
+  page_->InsertNodeBefore(after, fixed);
+  page_->InsertNode(before);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), after.get(), before.get()});
+
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), after.get(), fixed.get(), before.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, WrapperAppendUsesOuterFixedReference) {
+  auto wrapper = manager->CreateFiberView();
+  auto nested = manager->CreateFiberView();
+  wrapper->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                    lepus::Value("visible"));
+  nested->SetStyle(CSSPropertyID::kPropertyIDOverflow, lepus::Value("visible"));
+  auto first = CreateNativeView();
+  nested->InsertNode(first);
+  wrapper->InsertNode(nested);
+  page_->InsertNode(wrapper);
+  auto fixed = CreateFixedLayoutOnlyView();
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+  ASSERT_TRUE(nested->IsLayoutOnly());
+
+  // Appending inside the wrapper is an insertion before its outer sibling.
+  auto last = CreateNativeView();
+  nested->InsertNode(last);
+  page_->FlushActionsAsRoot();
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), first.get(), last.get(), fixed.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, WrapperAndNestedFixedChildren) {
+  auto z_child = AddPositiveZChild();
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto wrapper = manager->CreateFiberWrapperElement();
+  auto child = CreateNativeView();
+  wrapper->InsertNode(child);
+  fixed->InsertNode(wrapper);
+  auto nested_fixed = CreateFixedLayoutOnlyView();
+  auto nested_child = CreateNativeView();
+  nested_fixed->InsertNode(nested_child);
+  fixed->InsertNode(nested_fixed);
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+  ASSERT_TRUE(nested_fixed->IsLayoutOnly());
+  EXPECT_EQ(nested_fixed->render_parent(), fixed.get());
+  EXPECT_EQ(child->element_container_impl()->parent(),
+            page_->element_container_impl());
+  EXPECT_EQ(nested_child->element_container_impl()->parent(),
+            page_->element_container_impl());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get(),
+                                       nested_child.get(), z_child.get()});
+
+  auto head = CreateNativeView();
+  wrapper->InsertNodeBefore(head, child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), head.get(), child.get(),
+                                       nested_child.get(), z_child.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, RemoveAndReinsertChildren) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto head = CreateNativeView();
+  auto tail = CreateNativeView();
+  fixed->InsertNode(head);
+  fixed->InsertNode(tail);
+  ancestor_->InsertNode(fixed);
+  auto second = CreateFixedLayoutOnlyView();
+  auto second_child = CreateNativeView();
+  second->InsertNode(second_child);
+  ancestor_->InsertNode(second);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), head.get(), tail.get(),
+                                       second_child.get()});
+
+  fixed->RemoveNode(head);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), tail.get(), second_child.get()});
+  fixed->InsertNodeBefore(head, tail);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), head.get(), tail.get(),
+                                       second_child.get()});
+
+  fixed->InsertNodeBefore(tail, head);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), tail.get(), head.get(),
+                                       second_child.get()});
+  fixed->InsertNode(tail);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), head.get(), tail.get(),
+                                       second_child.get()});
+
+  ancestor_->RemoveNode(fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), second_child.get()});
+  ancestor_->InsertNodeBefore(fixed, second);
+  page_->FlushActionsAsRoot();
+  // Unified fixed uses reinsertion order independently of the render ref.
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), second_child.get(),
+                                       head.get(), tail.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, SortedStickyIsNotAnOrdinaryPredecessor) {
+  auto config = manager->GetConfig();
+  config->SetEnableNewSticky(true);
+  manager->SetConfig(config);
+
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto sticky = CreateNativeView();
+  sticky->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+  auto child = CreateNativeView();
+  fixed->InsertNode(sticky);
+  fixed->InsertNode(child);
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(sticky->is_sticky());
+  ASSERT_EQ(sticky->element_container_impl()->EnclosingScrollContainerNode(),
+            nullptr);
+
+  // Without a scroll ancestor, sticky falls back to the root UI parent and
+  // z-order sorting still moves it after the ordinary children.
+  page_->element_container_impl()->UpdateZIndexList();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), child.get(), sticky.get()});
+
+  auto before = CreateNativeView();
+  fixed->InsertNodeBefore(before, child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), before.get(), child.get(), sticky.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, BatchedMutationsAndCrossFixedMoves) {
+  auto first = CreateFixedLayoutOnlyView();
+  auto second = CreateFixedLayoutOnlyView();
+  auto a = CreateNativeView();
+  auto b = CreateNativeView();
+  auto c = CreateNativeView();
+  auto d = CreateNativeView();
+  first->InsertNode(a);
+  first->InsertNode(b);
+  second->InsertNode(c);
+  second->InsertNode(d);
+  ancestor_->InsertNode(first);
+  ancestor_->InsertNode(second);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), a.get(), b.get(), c.get(), d.get()});
+
+  auto head = CreateNativeView();
+  auto middle = CreateNativeView();
+  first->InsertNodeBefore(head, a);
+  first->InsertNodeBefore(middle, b);
+  first->InsertNodeBefore(b, head);
+  first->RemoveNode(a);
+  first->InsertNode(a);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), b.get(), head.get(), middle.get(), a.get(),
+                    c.get(), d.get()});
+
+  first->RemoveNode(middle);
+  second->InsertNodeBefore(middle, d);
+  second->RemoveNode(c);
+  first->InsertNode(c);
+  // Both groups change in one flush. For c, its new parent is visited before
+  // its old parent, while middle moves in the opposite direction.
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), b.get(), head.get(), a.get(), c.get(),
+                    middle.get(), d.get()});
+  ExpectPaintingChildren(ancestor_.get(), {});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, NestedFixedBeforeOrdinarySibling) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto nested_fixed = CreateFixedLayoutOnlyView();
+  auto nested_child = CreateNativeView();
+  auto tail = CreateNativeView();
+  nested_fixed->InsertNode(nested_child);
+  fixed->InsertNode(nested_fixed);
+  fixed->InsertNode(tail);
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(nested_fixed->IsLayoutOnly());
+  // Unified fixed mounts independently: the ordinary sibling initially
+  // precedes the nested fixed subtree, despite following it in the render tree.
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), tail.get(), nested_child.get()});
+
+  auto nested_head = CreateNativeView();
+  nested_fixed->InsertNodeBefore(nested_head, nested_child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), tail.get(),
+                                       nested_head.get(), nested_child.get()});
+
+  auto empty_fixed = CreateFixedLayoutOnlyView();
+  fixed->InsertNodeBefore(empty_fixed, tail);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(empty_fixed->IsLayoutOnly());
+  auto before_tail = CreateNativeView();
+  fixed->InsertNodeBefore(before_tail, tail);
+  page_->FlushActionsAsRoot();
+  // A later fixed insertion has its own root position and cannot override the
+  // ordinary sibling's explicit insertion reference.
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), before_tail.get(), tail.get(),
+                          nested_head.get(), nested_child.get()});
+
+  auto empty_child = CreateNativeView();
+  empty_fixed->InsertNode(empty_child);
+  page_->FlushActionsAsRoot();
+  // Filling the empty subtree uses its existing root anchor, even when the
+  // fixed element was inserted before tail in the render tree.
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), before_tail.get(), tail.get(),
+                    nested_head.get(), nested_child.get(), empty_child.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       InsertBeforeSiblingAfterWrappedFixedSubtree) {
+  auto wrapper = manager->CreateFiberWrapperElement();
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto button = CreateNativeView();
+  fixed->InsertNode(button);
+  wrapper->InsertNode(fixed);
+  auto ordinary = CreateNativeView();
+  wrapper->InsertNode(ordinary);
+  ancestor_->InsertNode(wrapper);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ExpectPaintingChildren(ancestor_.get(), {ordinary.get()});
+
+  auto tail = CreateNativeView();
+  ancestor_->InsertNode(tail);
+  page_->FlushActionsAsRoot();
+  auto middle = CreateNativeView();
+  ancestor_->InsertNodeBefore(middle, tail);
+  page_->FlushActionsAsRoot();
+  // Traverse the ordinary wrapper, but stop at the independent fixed subtree.
+  ExpectPaintingChildren(ancestor_.get(),
+                         {ordinary.get(), middle.get(), tail.get()});
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), button.get()});
+
+  ancestor_->RemoveNode(middle);
+  page_->FlushActionsAsRoot();
+  ancestor_->InsertNodeBefore(middle, tail);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(ancestor_.get(),
+                         {ordinary.get(), middle.get(), tail.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, EmptyFixedSiblingsAndDynamicInsertions) {
+  ASSERT_FALSE(page_->element_container_impl()->has_z_child());
+  auto first = CreateFixedLayoutOnlyView();
+  auto second = CreateFixedLayoutOnlyView();
+  ancestor_->InsertNode(first);
+  ancestor_->InsertNode(second);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(first->IsLayoutOnly());
+  ASSERT_TRUE(second->IsLayoutOnly());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get()});
+
+  // Fill the later fixed sibling first. Appending to the earlier one must
+  // still insert before it, even when there is no z-index child or ref node.
+  auto second_child = CreateNativeView();
+  second->InsertNode(second_child);
+  page_->FlushActionsAsRoot();
+  auto tail = CreateNativeView();
+  first->InsertNode(tail);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), tail.get(), second_child.get()});
+
+  auto head = CreateNativeView();
+  first->InsertNodeBefore(head, tail);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), head.get(), tail.get(),
+                                       second_child.get()});
+
+  auto middle = CreateNativeView();
+  first->InsertNodeBefore(middle, tail);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), head.get(), middle.get(), tail.get(),
+                          second_child.get()});
+
+  auto last = CreateNativeView();
+  first->InsertNode(last);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), head.get(), middle.get(), tail.get(),
+                          last.get(), second_child.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, RootInsertionBeforeExistingFixedChildren) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto tail = CreateNativeView();
+  fixed->InsertNode(tail);
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+
+  // This node is created later but painted before the fixed subtree. Its
+  // current UI position, rather than creation order, contributes to the index.
+  auto before = CreateNativeView();
+  page_->InsertNodeBefore(before, ancestor_);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {before.get(), ancestor_.get(), tail.get()});
+
+  auto head = CreateNativeView();
+  fixed->InsertNodeBefore(head, tail);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {before.get(), ancestor_.get(), head.get(), tail.get()});
+
+  auto last = CreateNativeView();
+  fixed->InsertNode(last);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {before.get(), ancestor_.get(),
+                                       head.get(), tail.get(), last.get()});
+
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  ExpectPaintingChildren(page_.get(),
+                         {before.get(), ancestor_.get(), fixed.get()});
+  ExpectPaintingChildren(fixed.get(), {head.get(), tail.get(), last.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, LegacyLayoutOnlyStickyKeepsDescendantOrder) {
+  auto config = manager->GetConfig();
+  config->SetEnableNewSticky(false);
+  manager->SetConfig(config);
+
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto sticky = manager->CreateFiberView();
+  sticky->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("sticky"));
+  sticky->SetStyle(CSSPropertyID::kPropertyIDOverflow, lepus::Value("visible"));
+  auto child = CreateNativeView();
+  sticky->InsertNode(child);
+  fixed->InsertNode(sticky);
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(sticky->IsLayoutOnly());
+  ASSERT_TRUE(sticky->is_sticky());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+
+  auto head = CreateNativeView();
+  sticky->InsertNodeBefore(head, child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), head.get(), child.get()});
+
+  // A legacy layout-only sticky contributes its native descendants when
+  // locating the insertion position of a following ordinary sibling.
+  auto tail = CreateNativeView();
+  fixed->InsertNode(tail);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), head.get(), child.get(), tail.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, ReinsertAndTransitionWithNestedFixed) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto nested_fixed = CreateFixedLayoutOnlyView();
+  auto child = CreateNativeView();
+  nested_fixed->InsertNode(child);
+  fixed->InsertNode(nested_fixed);
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(nested_fixed->IsLayoutOnly());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+
+  ancestor_->RemoveNode(fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get()});
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), child.get()});
+  EXPECT_EQ(nested_fixed->render_parent(), fixed.get());
+  EXPECT_EQ(nested_fixed->element_container_impl()->parent(),
+            page_->element_container_impl());
+
+  // Removing the outer subtree marks the nested fixed for intergenerational
+  // reattachment. Its later HandleInsertChildAction refreshes its container
+  // insertion order after the outer fixed has been reinserted.
+  EXPECT_LT(fixed->element_container_impl()->global_insertion_order_,
+            nested_fixed->element_container_impl()->global_insertion_order_);
+
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(nested_fixed->IsLayoutOnly());
+  EXPECT_EQ(fixed->render_parent(), ancestor_.get());
+  EXPECT_EQ(nested_fixed->render_parent(), fixed.get());
+  EXPECT_EQ(child->render_parent(), nested_fixed.get());
+  EXPECT_EQ(fixed->element_container_impl()->parent(),
+            page_->element_container_impl());
+  EXPECT_EQ(nested_fixed->element_container_impl()->parent(),
+            page_->element_container_impl());
+  EXPECT_EQ(child->element_container_impl()->parent(),
+            page_->element_container_impl());
+  // The independently mounted nested fixed retains its later insertion order
+  // when the outer fixed gains a native view.
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), fixed.get(), child.get()});
+  ExpectPaintingChildren(fixed.get(), {});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       NativeReferenceAfterEmptyFixedKeepsAnchorBeforeInsertion) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+
+  auto tail = CreateNativeView();
+  page_->InsertNode(tail);
+  page_->FlushActionsAsRoot();
+  auto before_tail = CreateNativeView();
+  page_->InsertNodeBefore(before_tail, tail);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), before_tail.get(), tail.get()});
+
+  // A native reference identifies the boundary after the empty fixed subtree,
+  // even though inserting before the fixed itself has the same native index.
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), fixed.get(),
+                                       before_tail.get(), tail.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       EmptyNestedFixedKeepsPositionAcrossOuterTransition) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto nested_fixed = CreateFixedLayoutOnlyView();
+  fixed->InsertNode(nested_fixed);
+  ancestor_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+
+  auto later_fixed = CreateFixedLayoutOnlyView();
+  ancestor_->InsertNode(later_fixed);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+  ASSERT_TRUE(nested_fixed->IsLayoutOnly());
+  ASSERT_TRUE(later_fixed->IsLayoutOnly());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get()});
+
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  EXPECT_EQ(nested_fixed->element_container_impl()->parent(),
+            page_->element_container_impl());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), fixed.get()});
+  ExpectPaintingChildren(fixed.get(), {});
+
+  // Reattaching the independent nested fixed must preserve its empty boundary
+  // before a later fixed subtree, rather than becoming a fresh root append.
+  auto later_child = CreateNativeView();
+  later_fixed->InsertNode(later_child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), fixed.get(), later_child.get()});
+
+  auto nested_child = CreateNativeView();
+  nested_fixed->InsertNode(nested_child);
+  page_->FlushActionsAsRoot();
+  EXPECT_EQ(nested_child->element_container_impl()->parent(),
+            page_->element_container_impl());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), fixed.get(),
+                                       nested_child.get(), later_child.get()});
+  ExpectPaintingChildren(fixed.get(), {});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       PositionChangePreservesIndependentNestedFixed) {
+  for (const char* position : {"relative", "absolute"}) {
+    SCOPED_TRACE(position);
+    auto fixed = CreateFixedLayoutOnlyView();
+    auto child = CreateNativeView();
+    auto nested_fixed = CreateFixedLayoutOnlyView();
+    auto nested_child = CreateNativeView();
+    nested_fixed->InsertNode(nested_child);
+    fixed->InsertNode(child);
+    fixed->InsertNode(nested_fixed);
+    ancestor_->InsertNode(fixed);
+    page_->FlushActionsAsRoot();
+    ASSERT_TRUE(fixed->IsLayoutOnly());
+    ASSERT_TRUE(nested_fixed->IsLayoutOnly());
+    ExpectPaintingChildren(page_.get(),
+                           {ancestor_.get(), child.get(), nested_child.get()});
+    ExpectPaintingChildren(ancestor_.get(), {});
+
+    fixed->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value(position));
+    page_->FlushActionsAsRoot();
+    ASSERT_FALSE(fixed->is_fixed());
+    ASSERT_TRUE(fixed->IsLayoutOnly());
+    EXPECT_EQ(child->render_parent(), fixed.get());
+    EXPECT_EQ(child->element_container_impl()->parent(),
+              ancestor_->element_container_impl());
+    EXPECT_EQ(nested_fixed->render_parent(), fixed.get());
+    EXPECT_EQ(nested_fixed->element_container_impl()->parent(),
+              page_->element_container_impl());
+    EXPECT_EQ(nested_child->element_container_impl()->parent(),
+              page_->element_container_impl());
+    ExpectPaintingChildren(ancestor_.get(), {child.get()});
+    ExpectPaintingChildren(page_.get(), {ancestor_.get(), nested_child.get()});
+
+    auto nested_tail = CreateNativeView();
+    nested_fixed->InsertNode(nested_tail);
+    page_->FlushActionsAsRoot();
+    ExpectPaintingChildren(
+        page_.get(), {ancestor_.get(), nested_child.get(), nested_tail.get()});
+
+    ancestor_->RemoveNode(fixed);
+    page_->FlushActionsAsRoot();
+    ExpectPaintingChildren(ancestor_.get(), {});
+    ExpectPaintingChildren(page_.get(), {ancestor_.get()});
+  }
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       InterleavedSiblingSurvivesLastChildRemovalAndAppend) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto first = CreateNativeView();
+  auto last = CreateNativeView();
+  fixed->InsertNode(first);
+  fixed->InsertNode(last);
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), first.get(), last.get()});
+
+  auto tail = CreateNativeView();
+  auto later_fixed = CreateFixedLayoutOnlyView();
+  page_->InsertNode(tail);
+  page_->InsertNode(later_fixed);
+  page_->FlushActionsAsRoot();
+  auto interleaved = CreateNativeView();
+  // Ordinary insertion before a fixed reference excludes fixed siblings from
+  // its index. The two ordinary predecessors put this between first and last.
+  page_->InsertNodeBefore(interleaved, later_fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), first.get(), interleaved.get(), last.get(),
+                    tail.get()});
+
+  auto before_last = CreateNativeView();
+  fixed->InsertNodeBefore(before_last, last);
+  page_->FlushActionsAsRoot();
+  // An explicit native reference is used directly, even when an unrelated
+  // root sibling separates it from the preceding render sibling.
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), first.get(), interleaved.get(),
+                          before_last.get(), last.get(), tail.get()});
+
+  fixed->RemoveNode(before_last);
+  fixed->RemoveNode(last);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), first.get(),
+                                       interleaved.get(), tail.get()});
+
+  auto head = CreateNativeView();
+  fixed->InsertNodeBefore(head, first);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), head.get(), first.get(),
+                                       interleaved.get(), tail.get()});
+
+  // Once the tail children are removed, append follows the last surviving
+  // ordinary descendant. The unrelated sibling does not become its predecessor.
+  auto appended = CreateNativeView();
+  fixed->InsertNode(appended);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), head.get(), first.get(), appended.get(),
+                    interleaved.get(), tail.get()});
+
+  auto before_appended = CreateNativeView();
+  fixed->InsertNodeBefore(before_appended, appended);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), head.get(), first.get(),
+                                       before_appended.get(), appended.get(),
+                                       interleaved.get(), tail.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       LayoutOnlyRootReferenceUsesMountedNativeChild) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto first = CreateNativeView();
+  auto second = CreateNativeView();
+  fixed->InsertNode(first);
+  fixed->InsertNode(second);
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+
+  auto ordinary = CreateNativeView();
+  page_->InsertNode(ordinary);
+  page_->FlushActionsAsRoot();
+  auto wrapper = manager->CreateFiberView();
+  wrapper->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                    lepus::Value("visible"));
+  auto child = CreateNativeView();
+  wrapper->InsertNode(child);
+  page_->InsertNode(wrapper);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), first.get(), second.get(), ordinary.get(),
+                    child.get()});
+
+  // The layout-only reference resolves to its mounted child. Counting only
+  // ordinary render siblings would place the insertion inside the fixed group.
+  auto before_wrapper = CreateNativeView();
+  page_->InsertNodeBefore(before_wrapper, wrapper);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(
+      page_.get(), {ancestor_.get(), first.get(), second.get(), ordinary.get(),
+                    before_wrapper.get(), child.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       LayoutOnlyFixedReferenceUsesMountedNativeChild) {
+  auto fixed = CreateFixedLayoutOnlyView();
+  auto first = CreateNativeView();
+  auto wrapper = manager->CreateFiberView();
+  wrapper->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                    lepus::Value("visible"));
+  auto child = CreateNativeView();
+  wrapper->InsertNode(child);
+  fixed->InsertNode(first);
+  fixed->InsertNode(wrapper);
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+
+  auto tail = CreateNativeView();
+  auto later_fixed = CreateFixedLayoutOnlyView();
+  page_->InsertNode(tail);
+  page_->InsertNode(later_fixed);
+  page_->FlushActionsAsRoot();
+  auto interleaved = CreateNativeView();
+  page_->InsertNodeBefore(interleaved, later_fixed);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), first.get(), interleaved.get(),
+                          child.get(), tail.get()});
+
+  // The first child's render successor is the layout-only wrapper, but its
+  // mounted child has an unrelated root sibling immediately before it.
+  auto before_wrapper = CreateNativeView();
+  fixed->InsertNodeBefore(before_wrapper, wrapper);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), first.get(), interleaved.get(),
+                          before_wrapper.get(), child.get(), tail.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest, OrdinaryAppendAfterOnlyNegativeSticky) {
+  page_->RemoveNode(ancestor_);
+  page_->FlushActionsAsRoot();
+
+  for (bool enable_new_sticky : {false, true}) {
+    SCOPED_TRACE(enable_new_sticky);
+    auto config = manager->GetConfig();
+    config->SetEnableNewSticky(enable_new_sticky);
+    manager->SetConfig(config);
+
+    auto negative_sticky = CreateNativeView();
+    negative_sticky->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                              lepus::Value("sticky"));
+    negative_sticky->SetStyle(CSSPropertyID::kPropertyIDZIndex,
+                              lepus::Value(-1));
+    page_->InsertNode(negative_sticky);
+    page_->FlushActionsAsRoot();
+    page_->element_container_impl()->UpdateZIndexList();
+    ASSERT_TRUE(negative_sticky->is_sticky());
+    ASSERT_EQ(negative_sticky->ZIndex(), -1);
+    ExpectPaintingChildren(page_.get(), {negative_sticky.get()});
+
+    // Negative sticky belongs to the negative-z prefix, not the sticky suffix
+    // used to locate the insertion boundary for ordinary children.
+    auto ordinary = CreateNativeView();
+    page_->InsertNode(ordinary);
+    page_->FlushActionsAsRoot();
+    ExpectPaintingChildren(page_.get(),
+                           {negative_sticky.get(), ordinary.get()});
+
+    page_->RemoveNode(ordinary);
+    page_->RemoveNode(negative_sticky);
+    page_->FlushActionsAsRoot();
+    ExpectPaintingChildren(page_.get(), {});
+  }
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       EmptyFixedAnchorStaysAfterNegativeFixedPrefix) {
+  page_->RemoveNode(ancestor_);
+  page_->FlushActionsAsRoot();
+  auto fixed = CreateFixedLayoutOnlyView();
+  page_->InsertNode(fixed);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+
+  auto negative_fixed = CreateNativeView();
+  negative_fixed->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                           lepus::Value("fixed"));
+  negative_fixed->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+  page_->InsertNode(negative_fixed);
+  page_->FlushActionsAsRoot();
+  page_->element_container_impl()->UpdateZIndexList();
+  ASSERT_TRUE(negative_fixed->IsFixedUnifiedOnly());
+  ASSERT_EQ(negative_fixed->ZIndex(), -1);
+  ExpectPaintingChildren(page_.get(), {negative_fixed.get()});
+
+  // Sorting a later negative-z fixed node must also place it before the
+  // earlier empty fixed boundary, which has no native view of its own.
+  auto child = CreateNativeView();
+  fixed->InsertNode(child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {negative_fixed.get(), child.get()});
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       EmptyLayoutOnlyRootReferenceUsesNextMountedSibling) {
+  for (int depth : {0, 2}) {
+    SCOPED_TRACE(depth);
+    for (bool has_tail : {false, true}) {
+      SCOPED_TRACE(has_tail);
+      auto fixed = CreateFixedLayoutOnlyView();
+      auto first = CreateNativeView();
+      auto second = CreateNativeView();
+      fixed->InsertNode(first);
+      fixed->InsertNode(second);
+      page_->InsertNode(fixed);
+      page_->FlushActionsAsRoot();
+
+      auto ordinary = CreateNativeView();
+      page_->InsertNode(ordinary);
+      page_->FlushActionsAsRoot();
+      auto wrapper = manager->CreateFiberView();
+      wrapper->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                        lepus::Value("visible"));
+      auto* last_wrapper = wrapper.get();
+      for (int i = 0; i < depth; ++i) {
+        auto nested = manager->CreateFiberView();
+        nested->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                         lepus::Value("visible"));
+        last_wrapper->InsertNode(nested);
+        last_wrapper = nested.get();
+      }
+      page_->InsertNode(wrapper);
+      auto tail = CreateNativeView();
+      if (has_tail) {
+        page_->InsertNode(tail);
+      }
+      page_->FlushActionsAsRoot();
+      ASSERT_TRUE(wrapper->IsLayoutOnly());
+      ASSERT_TRUE(last_wrapper->IsLayoutOnly());
+
+      // An empty ordinary wrapper chain contributes no native reference.
+      // Continue to its next mounted sibling, or to the current root end.
+      auto before_wrapper = CreateNativeView();
+      page_->InsertNodeBefore(before_wrapper, wrapper);
+      page_->FlushActionsAsRoot();
+      if (has_tail) {
+        ExpectPaintingChildren(
+            page_.get(), {ancestor_.get(), first.get(), second.get(),
+                          ordinary.get(), before_wrapper.get(), tail.get()});
+        page_->RemoveNode(tail);
+      } else {
+        ExpectPaintingChildren(page_.get(),
+                               {ancestor_.get(), first.get(), second.get(),
+                                ordinary.get(), before_wrapper.get()});
+      }
+
+      page_->RemoveNode(before_wrapper);
+      page_->RemoveNode(wrapper);
+      page_->RemoveNode(ordinary);
+      page_->RemoveNode(fixed);
+      page_->FlushActionsAsRoot();
+      ExpectPaintingChildren(page_.get(), {ancestor_.get()});
+    }
+  }
+}
+
+TEST_F(UnifiedFixedLayoutOnlyTest,
+       LayoutOnlyReferenceContainingEmptyFixedKeepsInsertionBoundary) {
+  auto wrapper = manager->CreateFiberView();
+  wrapper->SetStyle(CSSPropertyID::kPropertyIDOverflow,
+                    lepus::Value("visible"));
+  auto fixed = CreateFixedLayoutOnlyView();
+  wrapper->InsertNode(fixed);
+  page_->InsertNode(wrapper);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(wrapper->IsLayoutOnly());
+  ASSERT_TRUE(fixed->IsLayoutOnly());
+
+  auto tail = CreateNativeView();
+  page_->InsertNode(tail);
+  page_->FlushActionsAsRoot();
+  auto before_wrapper = CreateNativeView();
+  page_->InsertNodeBefore(before_wrapper, wrapper);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(),
+                         {ancestor_.get(), before_wrapper.get(), tail.get()});
+
+  // Unlike an empty ordinary wrapper chain, an independent fixed descendant
+  // contributes an insertion boundary even before it has a native child.
+  auto child = CreateNativeView();
+  fixed->InsertNode(child);
+  page_->FlushActionsAsRoot();
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), before_wrapper.get(),
+                                       child.get(), tail.get()});
+
+  fixed->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                  lepus::Value("blue"));
+  page_->FlushActionsAsRoot();
+  ASSERT_FALSE(fixed->IsLayoutOnly());
+  ExpectPaintingChildren(page_.get(), {ancestor_.get(), before_wrapper.get(),
+                                       fixed.get(), tail.get()});
+  ExpectPaintingChildren(fixed.get(), {child.get()});
 }
 
 TEST_F(ElementContainerTest, Create) {

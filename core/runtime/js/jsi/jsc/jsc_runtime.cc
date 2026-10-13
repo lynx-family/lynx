@@ -56,7 +56,6 @@ JSCRuntime::~JSCRuntime() {
       pair.second->Update();
     }
   }
-  ctx_->Release();
   ctx_.reset();
   ctx_group_.reset();
   LOGI("lynx ~JSCRuntime " << ctx_.use_count());

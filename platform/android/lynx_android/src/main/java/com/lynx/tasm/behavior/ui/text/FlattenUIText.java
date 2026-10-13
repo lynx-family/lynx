@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.ui.text;
 
-import static com.lynx.tasm.behavior.shadow.text.TextHelper.EVENT_LAYOUT;
 import static com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper.ACCESSIBILITY_ELEMENT_TRUE;
 
 import android.content.Context;
@@ -64,7 +63,6 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
   public void updateExtraData(Object data) {
     if (data instanceof TextUpdateBundle) {
       setTextBundle((TextUpdateBundle) data);
-      dispatchLayoutEventIfNeeded();
     } else if (data instanceof Page) {
       setTextBundle((Page) data);
     }
@@ -120,18 +118,6 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
 
   public CharSequence getOriginText() {
     return mOriginText;
-  }
-
-  private void dispatchLayoutEventIfNeeded() {
-    if (!getLynxContext().isLayoutInElementModeOn() || mTextBundle == null) {
-      return;
-    }
-
-    if (mEvents == null || !mEvents.containsKey(EVENT_LAYOUT)) {
-      return;
-    }
-
-    TextHelper.dispatchLayoutEvent(getLynxContext(), getSign(), mTextBundle);
   }
 
   @Override

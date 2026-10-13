@@ -934,6 +934,7 @@ void Element::FiberAddPiperEvent(
     const base::String &type, const base::String &name,
     std::vector<std::pair<base::String, lepus::Value>> piper_event_content) {
   data_model_->SetStaticEvent(type, name, piper_event_content);
+  OnEventHandlersChanged(name);
 
   auto *manager = element_manager();
   if (manager == nullptr || !manager->EnableEventHandleRefactor()) {
@@ -5749,8 +5750,8 @@ void Element::UpdateLayoutInfo() {
   if (IsShadowNodeCustom()) {
     element_manager_->layout_context()->OnLayout(id_, left_, top_, width_,
                                                  height_, paddings_, borders_);
-    customized_layout_node_->OnLayoutAfter();
   }
+  DispatchLayoutAfter();
   if (EnableFragmentLayerRender()) {
     static_cast<Fragment *>(element_container())->UpdateLayout(layout_result);
   }
@@ -5790,6 +5791,12 @@ void Element::DispatchLayoutBeforeRecursively() {
 void Element::DispatchLayoutBefore() {
   if (customized_layout_node_) {
     customized_layout_node_->OnLayoutBefore();
+  }
+}
+
+void Element::DispatchLayoutAfter() {
+  if (customized_layout_node_) {
+    customized_layout_node_->OnLayoutAfter();
   }
 }
 

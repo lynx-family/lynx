@@ -72,33 +72,24 @@ void TextFragmentBehavior::DispatchLayoutEvent(
     return;
   }
 
-  Element* element = fragment_->element();
-  if (!element) {
+  DispatchLayoutEvent(static_cast<TextElement*>(fragment_->element()),
+                      layout_result.GetContentBoxWidth(),
+                      layout_result.GetContentBoxHeight());
+}
+
+void TextFragmentBehavior::DispatchLayoutEvent(TextElement* element,
+                                               float width, float height) {
+  if (!element || !element->HasLayoutEvent() || !element->element_manager()) {
     return;
   }
-
-  if (!element->HasEventListener("layout")) {
-    return;
-  }
-
-  ElementManager* element_manager = element->element_manager();
-  if (!element_manager) {
-    return;
-  }
-
-  DCHECK(element->is_text());
-
-  const float width = layout_result.GetContentBoxWidth();
-  const float height = layout_result.GetContentBoxHeight();
 
   // Create layout event data with line information
   lepus::Value event_data(lepus::Dictionary::Create());
-  // Get line layout info from TextElement (null-terminated array)
-  const TextLineInfo* line_infos =
-      static_cast<TextElement*>(element)->GetTextLineLayoutInfo();
-  int line_count = static_cast<TextElement*>(element)->GetTextLineLayoutCount();
+  // A non-null array also represents a measured result with zero lines.
+  const TextLineInfo* line_infos = element->GetTextLineLayoutInfo();
+  int line_count = element->GetTextLineLayoutCount();
 
-  if (line_count > 0) {
+  if (line_infos) {
     // Add lineCount
     event_data.SetProperty(kLineCount, lepus::Value(line_count));
 
@@ -120,6 +111,14 @@ void TextFragmentBehavior::DispatchLayoutEvent(
   size_data.SetProperty(BASE_STATIC_STRING(kWidth), lepus::Value(width));
   size_data.SetProperty(BASE_STATIC_STRING(kHeight), lepus::Value(height));
   event_data.SetProperty(kSize, size_data);
+
+  if (element->EnableLayoutInElementMode() &&
+      !element->element_manager()->EnableEventHandleRefactor()) {
+    // LayoutInElement can use the legacy event handlers without core listeners.
+    element->element_manager()->SendNativeCustomEvent(
+        "layout", element->impl_id(), event_data, "detail");
+    return;
+  }
 
   int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::system_clock::now().time_since_epoch())

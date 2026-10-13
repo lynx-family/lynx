@@ -6,10 +6,10 @@
 
 #include <memory>
 
-#include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
+#include "gfx/public/display_list_reader.h"
 
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxComponentRegistry.h>

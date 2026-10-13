@@ -434,6 +434,33 @@ TEST(DisplayListColorSource, AlphaLinearGradientContents) {
   ASSERT_EQ(source->is_opaque(), false);
 }
 
+#ifdef ENABLE_SKITY
+TEST(DisplayListColorSource, GradientInterpolationPolicy) {
+  std::shared_ptr<DlColorSource> linear = DlColorSource::MakeLinear(
+      kTestPoints[0], kTestPoints[1], kTestStopCount, kTestAlphaColors,
+      kTestStops, DlTileMode::kClamp);
+  skity::Shader::GradientInfo linear_info;
+  ASSERT_EQ(linear->gr_object()->AsGradient(&linear_info),
+            skity::Shader::kLinear);
+  EXPECT_EQ(linear_info.gradientFlags, 1);
+
+  std::shared_ptr<DlColorSource> radial = DlColorSource::MakeRadial(
+      kTestPoints[0], 10.0, kTestStopCount, kTestAlphaColors, kTestStops,
+      DlTileMode::kClamp);
+  skity::Shader::GradientInfo radial_info;
+  ASSERT_EQ(radial->gr_object()->AsGradient(&radial_info),
+            skity::Shader::kRadial);
+  EXPECT_EQ(radial_info.gradientFlags, 1);
+
+  std::shared_ptr<DlColorSource> sweep = DlColorSource::MakeSweep(
+      kTestPoints[0], 0, 360, kTestStopCount, kTestAlphaColors, kTestStops,
+      DlTileMode::kClamp);
+  skity::Shader::GradientInfo sweep_info;
+  ASSERT_EQ(sweep->gr_object()->AsGradient(&sweep_info), skity::Shader::kSweep);
+  EXPECT_EQ(sweep_info.gradientFlags, 1);
+}
+#endif
+
 TEST(DisplayListColorSource, LinearGradientEquals) {
   std::shared_ptr<DlColorSource> source1 = DlColorSource::MakeLinear(
       kTestPoints[0], kTestPoints[1], kTestStopCount, kTestColors, kTestStops,

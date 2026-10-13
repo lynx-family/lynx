@@ -348,9 +348,11 @@ class Element : public lepus::RefCounted,
   // only for fiber arch, indicate current real render tree hierarchy
   Element* render_parent() { return render_parent_; }
   Element* first_render_child() { return first_render_child_; }
+  Element* last_render_child() { return last_render_child_; }
   virtual Element* first_child() const;
   virtual Element* last_child() const;
   Element* next_render_sibling() { return next_render_sibling_; }
+  Element* previous_render_sibling() { return previous_render_sibling_; }
 
   const auto& children() const { return scoped_children_; }
   const auto& logical_children() const { return logical_children_; }
@@ -1262,6 +1264,7 @@ class Element : public lepus::RefCounted,
 
   void DispatchLayoutBeforeRecursively();
   virtual void DispatchLayoutBefore();
+  virtual void DispatchLayoutAfter();
 
   virtual void set_will_destroy(bool destroy);
 
@@ -1271,6 +1274,8 @@ class Element : public lepus::RefCounted,
 
   virtual void TickElement(fml::TimePoint& time) {}
 
+  fml::TimePoint ProcessAnimationEvents(fml::TimePoint& time,
+                                        bool dispatch_events);
   bool TickAllAnimation(fml::TimePoint& time,
                         std::shared_ptr<PipelineOptions>& options);
 
@@ -1762,6 +1767,7 @@ class Element : public lepus::RefCounted,
   void HandleSelfFixedChange();
   virtual void OnNodeAdded(Element* child);
   virtual void OnNodeRemoved(Element* child);
+  virtual void OnEventHandlersChanged(const base::String& name) {}
 
   void UpdateNodeInfo(int32_t node_info);
   // Returns whether consuming the attribute should update the element.

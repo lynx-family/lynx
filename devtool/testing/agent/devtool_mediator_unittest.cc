@@ -1112,10 +1112,9 @@ TEST_F(DevToolMediatorTest, SetTag) {
 }
 
 TEST_F(DevToolMediatorTest, GlobalPropsCommandsRunOnTasmThreadCase) {
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 1;
-
-  devtool_mediator_->GlobalPropsEnable(message_sender_, message);
+  devtool_mediator_->GlobalPropsEnable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 1),
+      Json::Value());
   FlushTasmTasks();
   EXPECT_TRUE(devtool_mediator_->element_executor_->IsGlobalPropsEnabled());
   Json::Value res;
@@ -1125,12 +1124,15 @@ TEST_F(DevToolMediatorTest, GlobalPropsCommandsRunOnTasmThreadCase) {
   EXPECT_EQ(res["id"], 1);
   EXPECT_TRUE(res["result"].isObject());
 
-  devtool_mediator_->GlobalPropsDisable(message_sender_, message);
+  devtool_mediator_->GlobalPropsDisable(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 1),
+      Json::Value());
   FlushTasmTasks();
   EXPECT_FALSE(devtool_mediator_->element_executor_->IsGlobalPropsEnabled());
 
-  message["id"] = 2;
-  devtool_mediator_->GlobalPropsGet(message_sender_, message);
+  devtool_mediator_->GlobalPropsGet(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 2),
+      Json::Value());
   FlushTasmTasks();
   ASSERT_TRUE(reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, res));
@@ -1140,16 +1142,18 @@ TEST_F(DevToolMediatorTest, GlobalPropsCommandsRunOnTasmThreadCase) {
   EXPECT_TRUE(res["result"]["globalProps"].empty());
   EXPECT_EQ(res["result"]["timestamp"].asUInt64(), 0u);
 
-  Json::Value replace_message(Json::ValueType::objectValue);
-  replace_message["id"] = 3;
-  replace_message["params"]["globalProps"]["key"] = "value";
-  devtool_mediator_->GlobalPropsReplace(message_sender_, replace_message);
+  Json::Value replace_params(Json::ValueType::objectValue);
+  replace_params["globalProps"]["key"] = "value";
+  devtool_mediator_->GlobalPropsReplace(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 3),
+      replace_params);
   FlushTasmTasks();
   ASSERT_TRUE(reader.parse(
       devtool::MockReceiver::GetInstance().received_message_.second, res));
   EXPECT_EQ(res["id"], 3);
   // Fixture's executor has no tasm, so replace reports the unavailable error.
-  EXPECT_EQ(res["error"]["code"].asInt(), devtool::kServerError);
+  EXPECT_EQ(res["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
   EXPECT_EQ(res["error"]["message"], "GlobalProps.replace is unavailable");
 }
 
@@ -1157,13 +1161,27 @@ TEST_F(DevToolMediatorTest, GlobalPropsCommandsWhenTasmRunnerUnavailableCase) {
   auto runner = devtool_mediator_->tasm_task_runner_;
   devtool_mediator_->tasm_task_runner_ = nullptr;
 
-  Json::Value message(Json::ValueType::objectValue);
-  message["id"] = 7;
   std::vector<std::function<void()>> commands = {
-      [&] { devtool_mediator_->GlobalPropsEnable(message_sender_, message); },
-      [&] { devtool_mediator_->GlobalPropsDisable(message_sender_, message); },
-      [&] { devtool_mediator_->GlobalPropsGet(message_sender_, message); },
-      [&] { devtool_mediator_->GlobalPropsReplace(message_sender_, message); },
+      [&] {
+        devtool_mediator_->GlobalPropsEnable(
+            std::make_shared<devtool::CDPResponder>(message_sender_, 7),
+            Json::Value());
+      },
+      [&] {
+        devtool_mediator_->GlobalPropsDisable(
+            std::make_shared<devtool::CDPResponder>(message_sender_, 7),
+            Json::Value());
+      },
+      [&] {
+        devtool_mediator_->GlobalPropsGet(
+            std::make_shared<devtool::CDPResponder>(message_sender_, 7),
+            Json::Value());
+      },
+      [&] {
+        devtool_mediator_->GlobalPropsReplace(
+            std::make_shared<devtool::CDPResponder>(message_sender_, 7),
+            Json::Value());
+      },
   };
 
   for (auto& command : commands) {
@@ -1172,7 +1190,8 @@ TEST_F(DevToolMediatorTest, GlobalPropsCommandsWhenTasmRunnerUnavailableCase) {
     Json::Reader reader;
     ASSERT_TRUE(reader.parse(
         devtool::MockReceiver::GetInstance().received_message_.second, res));
-    EXPECT_EQ(res["error"]["code"].asInt(), devtool::kServerError);
+    EXPECT_EQ(res["error"]["code"].asInt(),
+              static_cast<int>(devtool::CDPErrorCode::ServerError));
     EXPECT_EQ(res["error"]["message"], "GlobalProps target is unavailable");
     EXPECT_EQ(res["id"], 7);
     devtool::MockReceiver::GetInstance().ResetAll();
