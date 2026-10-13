@@ -153,9 +153,13 @@ subspec_target("base_devtool_subspec") {
 }
 
 base_devtool_source_set("android_jni") {
+  include_dirs = lynx_native_codegen_include_dirs
   sources = [
     "../../../core/base/android/android_jni.cc",
     "../../../core/base/android/callstack_util_android.cc",
   ]
-  deps = [ "../../../base/src:base_log_headers" ]
+  deps = [
+    "../../../base/src:base_log_headers",
+    "../../../core:native_generated_headers",
+  ]
 }

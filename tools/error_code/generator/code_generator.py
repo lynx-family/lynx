@@ -13,10 +13,11 @@ from generator.harmony.harmony_generator import *
 __all__ = ['ErrorCodeGenerator']
 
 class ErrorCodeGenerator:
-    def __init__(self, spec, lang):
+    def __init__(self, spec, lang, output_root=None):
         if lang == None:
             lang = [LANG_TS, LANG_OC, LANG_CPP, LANG_JAVA, LANG_ETS]
         self._spec = spec
+        self._output_root = output_root
         self._child_generators = []
         meta_data_list = spec[KEY_METADATA]
         # register child generators
@@ -38,7 +39,7 @@ class ErrorCodeGenerator:
         self._traverse_sections(self._spec[KEY_SECTIONS])
         for c in self._child_generators:
             c.after_generate()
-            c.write()
+            c.write(self._output_root)
 
     def _traverse_meta_data_list(self, meta_data_list):
         for meta_data in meta_data_list:

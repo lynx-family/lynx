@@ -6,6 +6,12 @@ import("../../../../devtool/lynx_devtool/devtool.gni")
 
 assert(is_ios)
 
+devtool_native_codegen_include_dirs = []
+foreach(dir, lynx_native_codegen_include_dirs) {
+  devtool_native_codegen_include_dirs +=
+      [ "//PODS_ROOT/Lynx/" + rebase_path(dir, "//") ]
+}
+
 # Please put public headers on this _public_headers list.
 # These public headers will be added to the public_header_files variable in the podspec
 devtool_public_headers = [
@@ -244,7 +250,8 @@ subspec_target("Native") {
   ]
   libraries = [ "stdc++" ]
   pod_target_xcconfig = {
-    HEADER_SEARCH_PATHS = Devtool_Native_includes
+    HEADER_SEARCH_PATHS =
+        Devtool_Native_includes + devtool_native_codegen_include_dirs
   }
   deps = [
     "../../../../devtool/lynx_devtool/agent",
@@ -307,7 +314,8 @@ subspec_target("js_debug") {
       "LYNX_DEV",
       "LYNX_SIMPLIFY=0",
     ]
-    HEADER_SEARCH_PATHS = Devtool_Native_includes
+    HEADER_SEARCH_PATHS =
+        Devtool_Native_includes + devtool_native_codegen_include_dirs
   }
   deps = JSDebug_deps
   dependency = js_debug_dependency

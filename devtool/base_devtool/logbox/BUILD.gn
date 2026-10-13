@@ -3,6 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import("//build/config/win/win.gni")
+import("../../../core/native_codegen.gni")
 
 group("logbox") {
   deps = [ ":logbox_impl" ]
@@ -17,6 +18,7 @@ config("logbox_config") {
 }
 
 source_set("logbox_impl") {
+  include_dirs = lynx_native_codegen_include_dirs
   configs += [ ":logbox_config" ]
   sources = [
     "logbox_base.cc",
@@ -25,6 +27,7 @@ source_set("logbox_impl") {
     "logbox_notification.cc",
   ]
   deps = [
+    "../../../core:native_generated_headers",
     "../../../core/base:json_utils",
     "//third_party/modp_b64",
   ]
@@ -35,7 +38,7 @@ source_set("logbox_impl") {
       "logbox_owner_windows.cc",
     ]
     libs = [ "WebView2LoaderStatic.lib" ]
-    include_dirs = [ "//third_party/webview2/Microsoft.Web.WebView2.1.0.902.49/build/native/include" ]
+    include_dirs += [ "//third_party/webview2/Microsoft.Web.WebView2.1.0.902.49/build/native/include" ]
     lib_dirs = [ "//third_party/webview2/Microsoft.Web.WebView2.1.0.902.49/build/native/$target_cpu" ]
     deps += [ "//third_party/httplib:httplib" ]
   }

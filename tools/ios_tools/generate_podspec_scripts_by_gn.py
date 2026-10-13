@@ -16,6 +16,7 @@ import argparse
 import sys
 import os
 import re
+import subprocess
 
 root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(root_path)
@@ -71,7 +72,15 @@ def main():
               f.write(new_gni_content)
 
   try:
-      return generate_compile_products(root_path, args)
+      result = generate_compile_products(root_path, args)
+      if result:
+          return result
+      # Podspec export does not execute GN actions.
+      return subprocess.call([
+          os.path.join(root_path, 'buildtools', 'ninja', 'ninja'),
+          '-C', os.path.join(root_path, 'out', 'gn_to_podspec'),
+          'native_generated_headers',
+      ])
   finally:
       if original_gni_content is not None:
           with open(darwin_gni_path, 'w') as f:

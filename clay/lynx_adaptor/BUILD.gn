@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("../../core/native_codegen.gni")
 import("../common/config.gni")
 import("./native_module/build.gni")
 
@@ -18,6 +19,9 @@ if (enable_unittests) {
       "prop_bundle_impl.cc",
       "value_converter.cc",
     ]
+
+    include_dirs = lynx_native_codegen_include_dirs
+    deps = [ lynx_native_generated_headers ]
 
     public_configs = [
       "../../clay:config",
@@ -38,6 +42,7 @@ if (enable_unittests) {
 }
 
 source_set("resource_loader_embedder") {
+  include_dirs = lynx_native_codegen_include_dirs
   sources = [
     "resource_loader_embedder.cc",
     "resource_loader_embedder.h",
@@ -45,6 +50,7 @@ source_set("resource_loader_embedder") {
   deps = [
     "../fml:fml",
     "../ui:ui",
+    lynx_native_generated_headers,
   ]
   public_configs = [
     "../../clay:config",
@@ -88,7 +94,9 @@ source_set("lynx_adaptor") {
   sources += rebase_path(clay_native_module_sources, "", "native_module")
 
   # lynx_websocket_module.cc requires boringssl
-  include_dirs = [ "//third_party/boringssl/src/include" ]
+  include_dirs = lynx_native_codegen_include_dirs +
+                 [ "//third_party/boringssl/src/include" ]
+  deps = [ lynx_native_generated_headers ]
 
   public_configs = [
     "../../clay:config",
