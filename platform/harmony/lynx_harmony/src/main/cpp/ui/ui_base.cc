@@ -1742,7 +1742,9 @@ void UIBase::SetUserInteractionEnabled(const lepus::Value& value) {
 }
 
 void UIBase::SetNativeInteractionEnabled(const lepus::Value& value) {
-  if (value.IsBool()) {
+  if (value.IsEmpty()) {
+    native_interaction_enabled_ = true;
+  } else if (value.IsBool()) {
     native_interaction_enabled_ = value.Bool();
   }
 }

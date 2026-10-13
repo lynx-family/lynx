@@ -195,21 +195,33 @@ void NativePaintingCtxPlatformRef::RebuildSubLayers(
 void NativePaintingCtxPlatformRef::SetLynxEngineActorForPlatformContextRef(
     std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor) {
   engine_actor_ = engine_actor;
-  // Event geometry uses layout units, which may differ from physical pixels.
+  // Display-list geometry and native pointer events share layout coordinates:
+  // Android uses physical pixels; iOS/Harmony use points/vp. Convert CSS px by
+  // multiplying by LayoutsUnitPerPx, and ppx by dividing by
+  // PhysicalPixelsPerLayoutUnit. Neither ratio alone is a cross-platform DPR.
   float layouts_unit_per_px = 1.0f;
+  float physical_pixels_per_layout_unit = 1.0f;
   if (engine_actor_ != nullptr) {
     const auto &element_manager =
         engine_actor_->Impl()->GetTasm()->page_proxy()->element_manager();
     if (element_manager != nullptr) {
       const auto &config = element_manager->GetLynxEnvConfig();
       layouts_unit_per_px = config.LayoutsUnitPerPx();
+      physical_pixels_per_layout_unit =
+          static_cast<float>(config.PhysicalPixelsPerLayoutUnit());
     }
   }
-  event_target_helper_->SetDevicePixelRatio(layouts_unit_per_px);
+  event_target_helper_->SetLayoutsUnitPerPx(layouts_unit_per_px);
+  event_target_helper_->SetPhysicalPixelsPerLayoutUnit(
+      physical_pixels_per_layout_unit);
 }
 
 void NativePaintingCtxPlatformRef::SetTapSlop(const std::string &tap_slop) {
   event_handler_->SetTapSlop(tap_slop);
+}
+
+void NativePaintingCtxPlatformRef::SetEventScreenWidth(float screen_width) {
+  event_target_helper_->SetScreenWidthForRpx(screen_width);
 }
 
 void NativePaintingCtxPlatformRef::UpdateEventInfo(bool has_touch_pseudo) {
@@ -312,6 +324,7 @@ void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
     MarkEventTargetTreeDirty(id);
     return;
   }
+  MergeHitSlopEventProp(&bundle, GetPlatformEventBundle(id));
   platform_event_bundles_.insert_or_assign(id, std::move(bundle));
   MarkEventTargetTreeDirty(id);
 }

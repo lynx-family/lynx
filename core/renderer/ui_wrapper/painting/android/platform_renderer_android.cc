@@ -5,6 +5,7 @@
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
 #include "core/renderer/ui_wrapper/common/android/platform_extra_bundle_android.h"
@@ -148,6 +149,7 @@ void PlatformRendererAndroid::InitializeAndroidView(
   } else {
     // This is a standard platform renderer with a known type
     context_->CreatePlatformRenderer(GetId(), type_);
+    OnUpdateAttributes(init_data);
   }
 }
 
@@ -217,7 +219,7 @@ PlatformRendererAndroidFactory::CreateExtendedRenderer(
 
 void PlatformRendererAndroid::OnUpdateAttributes(
     const fml::RefPtr<PropBundle>& attributes) {
-  if (!context_ || !is_platform_extended_renderer_) {
+  if (!context_ || !attributes) {
     return;
   }
 
@@ -225,6 +227,22 @@ void PlatformRendererAndroid::OnUpdateAttributes(
   // The attributes should be a NativePropBundle from the pipeline
   NativePropBundle* native_bundle =
       static_cast<NativePropBundle*>(attributes.get());
+
+  NativePropBundle native_interaction_attributes;
+  if (!is_platform_extended_renderer_) {
+    static const std::string kNativeInteractionEnabled =
+        "native-interaction-enabled";
+    const auto& props = native_bundle->GetProps();
+    auto it = props.find(kNativeInteractionEnabled);
+    if (it == props.end()) {
+      return;
+    }
+    // Ordinary hosts only need this property. Keep unrelated attributes and
+    // event handlers out of the JNI bundle, including during initialization.
+    native_interaction_attributes.SetProps(it->first.c_str(),
+                                           pub::ValueImplLepus(it->second));
+    native_bundle = &native_interaction_attributes;
+  }
 
   // Create PropBundleAndroid from NativePropBundle
   PropBundleAndroid prop_bundle_android(*native_bundle);

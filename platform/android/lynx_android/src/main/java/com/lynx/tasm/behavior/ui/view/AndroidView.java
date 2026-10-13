@@ -249,7 +249,7 @@ public class AndroidView extends ViewGroup
     if (mPanInterceptSelf) {
       return false;
     }
-    if (this.nativeInteractionEnabled) {
+    if (mRenderer != null ? mRenderer.isNativeInteractionEnabled() : nativeInteractionEnabled) {
       return true;
     }
     if (isInterceptGestureNotNull()) {

@@ -155,6 +155,12 @@ void PaintingContext::SetTapSlop(const std::string& tap_slop) {
   });
 }
 
+void PaintingContext::SetEventScreenWidth(float screen_width) {
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(), screen_width]() {
+    platform_ref->SetEventScreenWidth(screen_width);
+  });
+}
+
 void PaintingContext::SetEventThroughConfig(
     bool enable_event_through, bool enable_event_through_inherit_from_page) {
   Enqueue([platform_ref = platform_impl_->GetPlatformRef(),

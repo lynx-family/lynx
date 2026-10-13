@@ -126,6 +126,59 @@ void PlatformEventTarget::GetPointInTarget(
       point);
 }
 
+void PlatformEventTarget::SetHitSlop(EventRegion hit_slop) {
+  NormalizeEventRegionUnits(&hit_slop, 1);
+  *hit_slop_ = std::move(hit_slop);
+}
+
+void PlatformEventTarget::SetEventThroughActiveRegions(
+    std::vector<EventRegion> regions) {
+  if (regions.empty()) {
+    event_through_active_regions_.reset();
+    return;
+  }
+  NormalizeEventRegionUnits(regions.data(), regions.size());
+  *event_through_active_regions_ = std::move(regions);
+}
+
+void PlatformEventTarget::SetBlockNativeEventAreas(
+    std::vector<EventRegion> areas) {
+  if (areas.empty()) {
+    block_native_event_areas_.reset();
+    return;
+  }
+  NormalizeEventRegionUnits(areas.data(), areas.size());
+  *block_native_event_areas_ = std::move(areas);
+}
+
+void PlatformEventTarget::NormalizeEventRegionUnits(EventRegion* regions,
+                                                    size_t region_count) {
+  using Type = EventRegionSizeValue::Type;
+  const float physical_pixels_per_layout_unit =
+      target_helper_ ? target_helper_->GetPhysicalPixelsPerLayoutUnit() : 1.f;
+  for (size_t i = 0; i < region_count; ++i) {
+    for (auto& value : regions[i]) {
+      switch (value.type) {
+        case Type::kPhysicalPx:
+          // ppx denotes physical pixels even when layout uses points or vp.
+          value.value /= physical_pixels_per_layout_unit;
+          value.type = Type::kLayoutUnit;
+          break;
+        case Type::kPlatformUnit:
+          // Unitless strings use native coordinates, matching pointer events
+          // and display-list geometry without any density conversion.
+          value.type = Type::kLayoutUnit;
+          break;
+        default:
+          // Keep CSS px, rpx and percentages for conversion at hit time so page
+          // metrics and target-size changes also affect existing regions.
+          // Normalized sides may be reused by partial hit-slop updates.
+          break;
+      }
+    }
+  }
+}
+
 bool PlatformEventTarget::ContainsPoint(float point[2]) {
   float x = point[0];
   float y = point[1];
@@ -265,19 +318,19 @@ bool PlatformEventTarget::IsVisibleForExposure(
 }
 
 void PlatformEventTarget::GetExposureTargetRect(float rect[4]) const {
-  float device_pixel_ratio = target_helper_->GetDevicePixelRatio();
-  rect[0] -= exposure_ui_margin_left_ * device_pixel_ratio;
-  rect[1] -= exposure_ui_margin_top_ * device_pixel_ratio;
-  rect[2] += exposure_ui_margin_right_ * device_pixel_ratio;
-  rect[3] += exposure_ui_margin_bottom_ * device_pixel_ratio;
+  float layouts_unit_per_px = target_helper_->GetLayoutsUnitPerPx();
+  rect[0] -= exposure_ui_margin_left_ * layouts_unit_per_px;
+  rect[1] -= exposure_ui_margin_top_ * layouts_unit_per_px;
+  rect[2] += exposure_ui_margin_right_ * layouts_unit_per_px;
+  rect[3] += exposure_ui_margin_bottom_ * layouts_unit_per_px;
 }
 
 void PlatformEventTarget::GetExposureWindowRect(float rect[4]) const {
-  float device_pixel_ratio = target_helper_->GetDevicePixelRatio();
-  rect[0] -= exposure_screen_margin_left_ * device_pixel_ratio;
-  rect[1] -= exposure_screen_margin_top_ * device_pixel_ratio;
-  rect[2] += exposure_screen_margin_right_ * device_pixel_ratio;
-  rect[3] += exposure_screen_margin_bottom_ * device_pixel_ratio;
+  float layouts_unit_per_px = target_helper_->GetLayoutsUnitPerPx();
+  rect[0] -= exposure_screen_margin_left_ * layouts_unit_per_px;
+  rect[1] -= exposure_screen_margin_top_ * layouts_unit_per_px;
+  rect[2] += exposure_screen_margin_right_ * layouts_unit_per_px;
+  rect[3] += exposure_screen_margin_bottom_ * layouts_unit_per_px;
 }
 
 void PlatformEventTarget::OnResponseChain() {}
@@ -357,7 +410,15 @@ float PlatformEventTarget::ConvertEventRegionSizeValue(
   if (value.type == EventRegionSizeValue::Type::kPercentage) {
     return value.value * (is_horizontal ? Width() : Height());
   }
-  return target_helper_ ? value.value * target_helper_->GetDevicePixelRatio()
+  if (value.type == EventRegionSizeValue::Type::kLayoutUnit) {
+    return value.value;
+  }
+  if (value.type == EventRegionSizeValue::Type::kRpx) {
+    // The UI-thread cache avoids platform queries in the hit-test path.
+    return target_helper_ ? value.value * target_helper_->GetLayoutsUnitPerRpx()
+                          : 0.f;
+  }
+  return target_helper_ ? value.value * target_helper_->GetLayoutsUnitPerPx()
                         : value.value;
 }
 

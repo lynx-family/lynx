@@ -495,7 +495,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
           host.setRenderer(renderer);
           mViewHolder.put(sign, host);
           host.getView().invalidate();
-          renderer.updateAttributes(initData);
+          updateRendererAttributes(host, initData);
           return;
         }
       }
@@ -527,7 +527,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         host.setWillNotDrawForRenderer(false);
         host.setClipChildrenForRenderer(false);
         host.invalidateForRenderer();
-        renderer.updateAttributes(initData);
+        updateRendererAttributes(host, initData);
         return;
       }
       owner.cleanupCreatedView(sign, tagName, initialProps);
@@ -542,6 +542,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     view.setRenderer(renderer);
     mViewHolder.put(sign, view);
     view.invalidate();
+    updateRendererAttributes(view, initData);
   }
 
   @Nullable
@@ -793,10 +794,13 @@ public class PlatformRendererContext implements TextMeasurerProvider {
           sign, false, props != null ? new StylesDiffMap(props) : null, listeners, detectors);
     }
 
-    // Get the renderer
+    updateRendererAttributes(host, propBundle);
+  }
+
+  private void updateRendererAttributes(IRendererHost host, PropBundle propBundle) {
     Renderer renderer = host.getRenderer();
     if (renderer != null) {
-      renderer.updateAttributes(propBundle);
+      renderer.applyAttributes(propBundle);
     }
   }
 

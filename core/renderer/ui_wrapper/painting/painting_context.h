@@ -236,6 +236,7 @@ class PaintingContext {
 
   void UpdateEventInfo(bool has_touch_pseudo);
   void SetTapSlop(const std::string& tap_slop);
+  void SetEventScreenWidth(float screen_width);
   void SetEventThroughConfig(bool enable_event_through,
                              bool enable_event_through_inherit_from_page);
   void UpdateFlattenStatus(int id, bool flatten);

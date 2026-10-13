@@ -56,6 +56,7 @@ void PlatformRendererHarmony::InitializePlatformRenderer(
     }
   }
   InitializeFragmentLayerRenderer();
+  OnUpdateAttributes(init_data);
 }
 
 bool PlatformRendererHarmony::InitializeUIOwnerRenderer(
@@ -126,14 +127,27 @@ void PlatformRendererHarmony::OnUpdateDisplayList(DisplayList display_list) {
 
 void PlatformRendererHarmony::OnUpdateAttributes(
     const fml::RefPtr<PropBundle>& attributes) {
-  if (!IsPlatformExtendedRenderer() || attributes == nullptr) {
+  if (attributes == nullptr) {
     return;
   }
   auto* ui_owner = context_ != nullptr ? context_->GetUIOwner() : nullptr;
-  if (ui_owner != nullptr) {
-    ui_owner->UpdateUI(GetId(),
-                       static_cast<PropBundleHarmony*>(attributes.get()));
+  if (ui_owner == nullptr) {
+    return;
   }
+  if (!IsPlatformExtendedRenderer()) {
+    auto* props = static_cast<NativePropBundle*>(attributes.get());
+    const auto& values = props->GetProps();
+    auto it = values.find("native-interaction-enabled");
+    if (it != values.end()) {
+      // Ordinary hosts only consume native interaction; visual properties
+      // continue to be applied through their display lists.
+      PropBundleHarmony native_props({{it->first, it->second}}, {});
+      ui_owner->UpdateUI(GetId(), &native_props);
+    }
+    return;
+  }
+  ui_owner->UpdateUI(GetId(),
+                     static_cast<PropBundleHarmony*>(attributes.get()));
 }
 
 void PlatformRendererHarmony::OnAddChild(PlatformRenderer* child, int index,

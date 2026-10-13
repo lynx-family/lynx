@@ -831,6 +831,11 @@ void ElementManager::UpdateScreenMetrics(float width, float height) {
   LOGI(GetLogContext() << " ElementManager::UpdateScreenMetrics width:" << width
                        << ",height:" << height);
   GetLynxEnvConfig().UpdateScreenSize(width, height);
+  if (IsFragmentLayerRenderModeOn()) {
+    // Use the final page metrics, including any screen-metrics override, rather
+    // than querying the physical display from the UI thread.
+    painting_context()->SetEventScreenWidth(GetLynxEnvConfig().ScreenWidth());
+  }
   // 0.update layout unit for computed_css_style template
   platform_computed_css_->SetLayoutUnit(
       GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit(),
@@ -1229,6 +1234,7 @@ void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
   config_ = config;
 
   if (IsFragmentLayerRenderModeOn()) {
+    painting_context()->SetEventScreenWidth(GetLynxEnvConfig().ScreenWidth());
     painting_context()->SetEventThroughConfig(
         config_ != nullptr && config_->GetEnableEventThrough(),
         config_ != nullptr && config_->GetEnableEventThroughInheritFromPage());

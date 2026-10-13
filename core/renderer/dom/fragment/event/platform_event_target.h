@@ -76,12 +76,19 @@ class PlatformEventTarget
 
  public:
   struct EventRegionSizeValue {
+    // Layout coordinates match native pointer coordinates: physical pixels on
+    // Android, points on iOS, and vp on Harmony. They are not always physical
+    // px.
     enum class Type {
-      kDevicePx,
-      kPercentage,
+      kCssPx,         // Logical CSS pixels.
+      kPercentage,    // A fraction of the target width or height.
+      kPhysicalPx,    // Physical pixels, before normalization.
+      kRpx,           // Responsive pixels, based on 1/750 of the screen width.
+      kPlatformUnit,  // Unitless input, already in layout coordinates.
+      kLayoutUnit,    // Normalized coordinates; no further scaling is needed.
     };
 
-    Type type{Type::kDevicePx};
+    Type type{Type::kCssPx};
     float value{0.f};
   };
   using EventRegion = std::array<EventRegionSizeValue, 4>;
@@ -144,14 +151,6 @@ class PlatformEventTarget
     return GetOptionalValueOrDefault(event_set_);
   }
   bool UserInteractionEnabled() const { return user_interaction_enabled_; }
-  bool NativeInteractionEnabled(bool default_enabled = true) const {
-    return native_interaction_enabled_ == LynxEventPropStatus::kUndefined
-               ? default_enabled
-               : native_interaction_enabled_ == LynxEventPropStatus::kEnable;
-  }
-  LynxEventPropStatus NativeInteractionStatus() const {
-    return native_interaction_enabled_;
-  }
   float ExposureScreenMarginLeft() const {
     return exposure_screen_margin_left_;
   }
@@ -226,7 +225,10 @@ class PlatformEventTarget
     return GetOptionalValueOrDefault(consume_slide_event_angles_);
   }
   bool ConsumeSlideEvent(float angle) const;
-  void SetHitSlop(EventRegion hit_slop) { *hit_slop_ = std::move(hit_slop); }
+  const EventRegion& HitSlop() const {
+    return GetOptionalValueOrDefault(hit_slop_);
+  }
+  void SetHitSlop(EventRegion hit_slop);
   void ResetHitSlop() { hit_slop_.reset(); }
 
   void SetEventSet(base::Vector<PlatformEventName> event_set) {
@@ -239,9 +241,6 @@ class PlatformEventTarget
 
   void SetUserInteractionEnabled(bool enabled) {
     user_interaction_enabled_ = enabled;
-  }
-  void SetNativeInteractionEnabled(LynxEventPropStatus enabled) {
-    native_interaction_enabled_ = enabled;
   }
   void SetExposureScreenMarginLeft(float value) {
     exposure_screen_margin_left_ = value;
@@ -311,13 +310,7 @@ class PlatformEventTarget
   void SetLayoutOnly(bool is_layout_only) { is_layout_only_ = is_layout_only; }
   void SetTransform(const float transform[16]);
   void SetEventThrough(LynxEventPropStatus value) { event_through_ = value; }
-  void SetEventThroughActiveRegions(std::vector<EventRegion> regions) {
-    if (regions.empty()) {
-      event_through_active_regions_.reset();
-      return;
-    }
-    *event_through_active_regions_ = std::move(regions);
-  }
+  void SetEventThroughActiveRegions(std::vector<EventRegion> regions);
   void SetEventsPassThrough(LynxEventPropStatus value) {
     events_pass_through_ = value;
   }
@@ -326,13 +319,7 @@ class PlatformEventTarget
     touch_pseudo_propagation_ = value;
   }
   void SetBlockNativeEvent(bool value) { block_native_event_ = value; }
-  void SetBlockNativeEventAreas(std::vector<EventRegion> areas) {
-    if (areas.empty()) {
-      block_native_event_areas_.reset();
-      return;
-    }
-    *block_native_event_areas_ = std::move(areas);
-  }
+  void SetBlockNativeEventAreas(std::vector<EventRegion> areas);
   void SetEnableSimultaneousTouch(bool value) {
     enable_simultaneous_touch_ = value;
   }
@@ -362,6 +349,7 @@ class PlatformEventTarget
   }
 
   void UpdateScrollOffsetIfNeeded();
+  void NormalizeEventRegionUnits(EventRegion* regions, size_t region_count);
   bool EventThroughInternal(float point[2],
                             const PlatformEventThroughConfig& config) const;
   bool HitEventRegions(const std::vector<EventRegion>& regions,
@@ -395,8 +383,6 @@ class PlatformEventTarget
   float offset_y_for_calc_position_{0.f};
   base::auto_create_optional<base::Vector<PlatformEventName>> event_set_;
   bool user_interaction_enabled_{true};
-  LynxEventPropStatus native_interaction_enabled_{
-      LynxEventPropStatus::kUndefined};
   float exposure_screen_margin_left_{0.f};
   float exposure_screen_margin_right_{0.f};
   float exposure_screen_margin_top_{0.f};

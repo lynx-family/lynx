@@ -21,6 +21,10 @@ class NativePaintingCtxPlatformRef;
 // Shared conversion for event-target state and native host synchronization.
 LynxEventPropStatus EventPropValueToStatus(const lepus::Value& value);
 
+// Keep partial hit-slop updates in the snapshot used to rebuild event targets.
+void MergeHitSlopEventProp(PlatformEventBundle* bundle,
+                           const PlatformEventBundle* previous);
+
 class PlatformEventTargetHelper {
  public:
   explicit PlatformEventTargetHelper(NativePaintingCtxPlatformRef* platform_ref)
@@ -116,13 +120,27 @@ class PlatformEventTargetHelper {
   void OffsetPoint(float point[2], const float offset[2]);
   void OffsetRect(float rect[4], const float offset[2]);
 
-  void SetDevicePixelRatio(float device_pixel_ratio) {
-    device_pixel_ratio_ = device_pixel_ratio;
+  void SetLayoutsUnitPerPx(float layouts_unit_per_px) {
+    layouts_unit_per_px_ = layouts_unit_per_px;
   }
 
-  float GetDevicePixelRatio() { return device_pixel_ratio_; }
+  float GetLayoutsUnitPerPx() const { return layouts_unit_per_px_; }
+
+  void SetPhysicalPixelsPerLayoutUnit(float physical_pixels_per_layout_unit) {
+    physical_pixels_per_layout_unit_ = physical_pixels_per_layout_unit;
+  }
+  float GetPhysicalPixelsPerLayoutUnit() const {
+    return physical_pixels_per_layout_unit_;
+  }
+
+  void SetScreenWidthForRpx(float screen_width) {
+    layouts_unit_per_rpx_ = screen_width / 750.f;
+  }
+  float GetLayoutsUnitPerRpx() const { return layouts_unit_per_rpx_; }
 
   void GetRootViewLocationOnScreen(float location[2]);
+  // Uses the same coordinate units as the display list and pointer events:
+  // physical pixels on Android, points on iOS, and vp on Harmony.
   void GetScreenSize(float size[2]);
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]);
 
@@ -159,8 +177,15 @@ class PlatformEventTargetHelper {
   // coordinates.
   std::unordered_map<int32_t, std::array<float, 2>>
       event_root_offsets_to_page_root_;
-  // device pixel ratio of the current display.
-  float device_pixel_ratio_{1.0f};
+  // Layout units per CSS px, not the device pixel ratio. Native UI rendering
+  // uses density on Android and 1 on iOS/Harmony.
+  float layouts_unit_per_px_{1.0f};
+  // Physical pixels per layout unit: 1 on Android, density on iOS/Harmony.
+  // Multiplying this by layouts_unit_per_px_ gives the device pixel ratio.
+  float physical_pixels_per_layout_unit_{1.0f};
+  // Derived from LynxEnvConfig's final page screen width, not the physical
+  // screen bounds used by exposure. Updated through the UI operation queue.
+  float layouts_unit_per_rpx_{0.f};
   // Keep platform query results across event-tree rebuilds until the renderer
   // is destroyed. Cache both scrollable and non-scrollable hosts.
   std::unordered_map<int32_t, bool> scroll_container_cache_;
