@@ -14,7 +14,7 @@ notes:
   - Success means synchronous entry execution finished. The entry completion value is ignored, including Promise values; asynchronous work is not awaited. A script exception cleans up the failed replacement without restoring the previous script; another load can retry.
   - Missing, contradictory, or incorrectly typed source fields return InvalidParams (-32602). Unsupported platform file access is an execution error.
   - Runtime failures and abandoned callbacks return ServerError (-32000); malformed completion results return InternalError (-32603).
-  - Host schema routers decode target=script with script or target=url with url into LoadHSRScriptFromSchema, sharing the same load boundary. Concrete app scheme registration is host-owned and pending integration.
+  - Host schema routers decode target=script with script or target=url with url into LoadHSRScriptFromSchema, sharing the same load boundary. Android exposes this through GlobalDevToolPlatformAndroidDelegate.loadHSRScriptFromSchema with a UI-thread completion callback. Concrete app scheme registration is host-owned.
   - Another load is rejected with HSR_LOAD_IN_PROGRESS until the current request completes. Evaluation during replacement is rejected with RUNTIME_LOADING. Disabling debugging cancels replacement. Resource loads use the debug state at execution time and are not tied to the debug lifecycle in which fetching began.
   - Client timeout does not cancel running JavaScript.
 examples:
