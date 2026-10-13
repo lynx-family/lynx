@@ -115,6 +115,8 @@ if (enable_unittests) {
       "gpu_object_unittests.cc",
       "image/image_data_cache_unittests.cc",
       "paint_unittests.cc",
+      "shared_image/utils/image_utils.cc",
+      "shared_image/utils/image_utils_unittests.cc",
       "style/color_filter_unittests.cc",
       "style/color_source_unittests.cc",
       "style/color_unittests.cc",

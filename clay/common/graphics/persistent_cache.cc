@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <future>
+#include <limits>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -249,7 +250,7 @@ PersistentCache::SkSLCache PersistentCache::LoadFile(
     FML_LOG(INFO) << "Persistent cache header is corrupt: " << file_name;
     return result;
   }
-  if (mapping->GetSize() < sizeof(CacheObjectHeader) + header->key_size) {
+  if (header->key_size > mapping->GetSize() - sizeof(CacheObjectHeader)) {
     FML_LOG(INFO) << "Persistent cache size is corrupt: " << file_name;
     return result;
   }
@@ -283,6 +284,12 @@ sk_sp<SkData> PersistentCache::load(const SkData& key) {
 
 std::unique_ptr<fml::MallocMapping> PersistentCache::BuildCacheObject(
     const SkData& key, const SkData& data) {
+  const size_t max_payload =
+      std::numeric_limits<size_t>::max() - sizeof(CacheObjectHeader);
+  if (key.size() > std::numeric_limits<uint32_t>::max() ||
+      key.size() > max_payload || data.size() > max_payload - key.size()) {
+    return nullptr;
+  }
   size_t total_size = sizeof(CacheObjectHeader) + key.size() + data.size();
   uint8_t* mapping_buf = reinterpret_cast<uint8_t*>(malloc(total_size));
   if (!mapping_buf) {

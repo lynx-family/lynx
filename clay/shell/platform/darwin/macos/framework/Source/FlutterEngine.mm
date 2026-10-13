@@ -8,6 +8,8 @@
 #import "clay/shell/platform/darwin/macos/framework/Headers/FlutterEngine.h"
 
 #include <algorithm>
+#include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <vector>
 
@@ -131,13 +133,19 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
   void SetInterceptUrlCallback(FlutterViewShouldInterceptUrlCallback callback) {
     auto intercept_callback = [callback](const char* origin_url, bool should_decode,
                                          char* intercept_url, int max_path_length) {
-      if (callback) {
+      if (callback && origin_url && intercept_url && max_path_length > 0) {
         NSString* origin_url_str = [NSString stringWithUTF8String:origin_url];
-        NSString* intercept_url_str = nil;
-        intercept_url_str = callback(origin_url_str, should_decode, max_path_length);
+        if (!origin_url_str) {
+          return;
+        }
+        NSString* intercept_url_str = callback(origin_url_str, should_decode, max_path_length);
         if (intercept_url_str) {
-          std::string temp_url = [intercept_url_str UTF8String];
-          strcpy(intercept_url, temp_url.c_str());
+          const char* utf8_url = [intercept_url_str UTF8String];
+          // Keep the original URL if the redirect does not fit, rather than truncating a URL
+          // or splitting a UTF-8 character. The capacity includes the terminating NUL.
+          if (utf8_url && std::strlen(utf8_url) < static_cast<size_t>(max_path_length)) {
+            std::snprintf(intercept_url, static_cast<size_t>(max_path_length), "%s", utf8_url);
+          }
         }
       }
     };
