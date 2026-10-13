@@ -14,12 +14,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.text.SpannableStringBuilder;
 import android.util.SparseArray;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
+import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import org.junit.Test;
@@ -78,6 +80,37 @@ public class TextMeasurerCleanupTest {
     assertTrue(secondListener.isCancelled());
     assertEquals(0, bundles.size());
     assertEquals(0, layouts.size());
+  }
+
+  @Test
+  public void realAndroidTextMeasurementChangesWithFontSizeAndReleasesResources() throws Exception {
+    TextMeasurer measurer = new TextMeasurer(TestingUtils.getLynxContext());
+    SparseArray<Object> bundles = cache(measurer, "mAttributedTextBundles");
+    SparseArray<Object> layouts = cache(measurer, "mExtraDatas");
+    float[] first = null;
+    for (float fontSize : new float[] {16, 32}) {
+      TextAttributes attributes = new TextAttributes();
+      attributes.setFontSize(fontSize);
+      bundles.put(11,
+          new AttributedTextBundle(
+              new SpannableStringBuilder("Lynx detached measurement"), attributes));
+      // Use the actual Android TextRenderer / StaticLayout backend, not a provider mock.
+      float[] size = measurer.measureText(11, 4096, 2, 0, 0, new float[0]);
+      assertTrue(size.length >= 3);
+      assertTrue(size[0] > 0);
+      assertTrue(size[1] > 0);
+      assertTrue(size[2] > 0);
+      if (first == null) {
+        first = size;
+      } else {
+        assertTrue(size[0] > first[0]);
+        assertTrue(size[1] > first[1]);
+      }
+      measurer.releaseLayoutObject(11);
+      assertEquals(0, bundles.size());
+      assertEquals(0, layouts.size());
+      assertEquals(0, cache(measurer, "mTypefaceListeners").size());
+    }
   }
 
   @Test

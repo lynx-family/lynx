@@ -21,6 +21,7 @@
 #include "core/renderer/dom/fiber/element_utils.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
+#include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_text_layout.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -178,8 +179,8 @@ TEST_P(DetachedTextMeasurementTest, PreparesMeasuresDestroysWithoutFlush) {
     EXPECT_FALSE(platform_impl_->HasFlushed());
     EXPECT_TRUE(platform_impl_->captured_create_tags_map_.empty());
     EXPECT_TRUE(platform_impl_->node_map_.empty());
-    EXPECT_EQ(platform_impl_->queue_->operations_.size(), 0u);
-    EXPECT_EQ(platform_impl_->queue_->high_priority_operations_.size(), 0u);
+    EXPECT_TRUE(platform_impl_->queue_->operations_.Empty());
+    EXPECT_TRUE(platform_impl_->queue_->high_priority_operations_.Empty());
     EXPECT_TRUE(tasm_mediator.captured_bundles_.empty());
     probe_->result = LayoutResult{37.5f, 21.25f, 16.75f};
     text->slnode()->SetSLRequestLayoutFunc(nullptr);
@@ -309,8 +310,8 @@ TEST_P(DetachedTextMeasurementTest, ResolvesFontFacesLocallyBeforeDispatch) {
             base::String("custom-font"));
   EXPECT_FALSE(manager->need_layout_);
   EXPECT_FALSE(platform_impl_->HasFlushed());
-  EXPECT_EQ(platform_impl_->queue_->operations_.size(), 0u);
-  EXPECT_EQ(platform_impl_->queue_->high_priority_operations_.size(), 0u);
+  EXPECT_TRUE(platform_impl_->queue_->operations_.Empty());
+  EXPECT_TRUE(platform_impl_->queue_->high_priority_operations_.Empty());
 }
 
 TEST_P(DetachedTextMeasurementTest, BindingRejectsWrongHandleBeforeCast) {
@@ -453,8 +454,8 @@ TEST_P(DetachedTextMeasurementTest,
     EXPECT_FALSE(platform_impl_->HasFlushed());
     EXPECT_TRUE(platform_impl_->captured_create_tags_map_.empty());
     EXPECT_TRUE(platform_impl_->node_map_.empty());
-    EXPECT_EQ(platform_impl_->queue_->operations_.size(), 0u);
-    EXPECT_EQ(platform_impl_->queue_->high_priority_operations_.size(), 0u);
+    EXPECT_TRUE(platform_impl_->queue_->operations_.Empty());
+    EXPECT_TRUE(platform_impl_->queue_->high_priority_operations_.Empty());
   }
 }
 
