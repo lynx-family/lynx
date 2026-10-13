@@ -113,7 +113,7 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
   private boolean mEnableJSRuntime = true;
 
-  private boolean mShouldSendEventToMainThread = true;
+  private volatile boolean mShouldSendEventToMainThread = true;
 
   private boolean mEnableDispatchCustomEventForUI = false;
 

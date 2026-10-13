@@ -196,7 +196,7 @@ public class LynxTemplateRender
   private String mUrl;
   private volatile boolean reload = false;
   private LynxSSRHelper mSSRHelper;
-  private boolean mHasDestroy = false;
+  private volatile boolean mHasDestroy = false;
   /**
    * Whether LynxView is destroying.
    */
@@ -301,7 +301,7 @@ public class LynxTemplateRender
   // Destory mNativeLifecycle when no reference to LynxTemplateRender.
   private CleanupReference mCleanupReference = null;
 
-  private volatile NativeFacade mNativeFacade;
+  private final NativeFacadeProxy mNativeFacadeProxy = new NativeFacadeProxy();
   private long mNativePtr = 0;
   private volatile LynxLogContext mLogContext = LynxLogContext.UNAVAILABLE;
 
@@ -627,7 +627,7 @@ public class LynxTemplateRender
     setUserModules(mMainThreadModuleFactory);
   }
 
-  private void setUpBackgroundThreadModuleFactory() {
+  private void setUpBackgroundThreadModuleFactory(NativeFacade facade) {
     // Only use shared module factory when enableSharedModule is true in
     // LynxViewGroup.
     if (mLynxViewGroup != null && mLynxViewGroup.getSharedModuleFactory() != null) {
@@ -691,7 +691,7 @@ public class LynxTemplateRender
       eventSender.setWeakContext(mLynxContext);
       mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, eventSender);
     }
-    mNativeFacade.setModuleFactory(mModuleFactory);
+    facade.setModuleFactory(mModuleFactory);
   }
 
   private void tryReuseLynxEngineFromPool() {
@@ -717,9 +717,10 @@ public class LynxTemplateRender
     mLynxUIRender = mLynxEngineRef.getLynxUIRenderer();
     mLynxUIRender.attachBodyView(mBodyView, mLynxContext, mContext);
     mLynxEngineRef.attachCurrentTemplateRender(this);
-    mTasmPlatformInvoker = new WeakReference<>(mLynxEngineRef.getTasmPlatformInvoker());
-    if (mTasmPlatformInvoker.get() != null) {
-      mTasmPlatformInvoker.get().setNativeFacade(mNativeFacade);
+    TasmPlatformInvoker invoker = mLynxEngineRef.getTasmPlatformInvoker();
+    mTasmPlatformInvoker = new WeakReference<>(invoker);
+    if (invoker != null) {
+      invoker.setNativeFacade(mNativeFacadeProxy.getNativeFacade());
     }
     setupReusedEngineConfig();
   }
@@ -745,7 +746,7 @@ public class LynxTemplateRender
   }
 
   public boolean shouldSendEventToMainThread() {
-    return !mHasDestroy && (mNativeFacade == null || mNativeFacade.shouldSendEventToMainThread());
+    return !mHasDestroy && mNativeFacadeProxy.shouldSendEventToMainThread();
   }
 
   void showErrorMessage(final LynxError error) {
@@ -1007,16 +1008,16 @@ public class LynxTemplateRender
     return new ChoreographerLayoutTick(mLynxContext);
   }
 
-  private TasmPlatformInvoker tasmPlatformInvoker() {
-    TasmPlatformInvoker tasmPlatformInvoker;
-    if (mTasmPlatformInvoker != null && mTasmPlatformInvoker.get() != null) {
-      tasmPlatformInvoker = mTasmPlatformInvoker.get();
-      tasmPlatformInvoker.setNativeFacade(mNativeFacade);
+  private TasmPlatformInvoker tasmPlatformInvoker(NativeFacade facade) {
+    WeakReference<TasmPlatformInvoker> invokerRef = mTasmPlatformInvoker;
+    TasmPlatformInvoker invoker = invokerRef != null ? invokerRef.get() : null;
+    if (invoker != null) {
+      invoker.setNativeFacade(facade);
     } else {
-      tasmPlatformInvoker = new TasmPlatformInvoker(mNativeFacade);
-      mTasmPlatformInvoker = new WeakReference<>(tasmPlatformInvoker);
+      invoker = new TasmPlatformInvoker(facade);
+      mTasmPlatformInvoker = new WeakReference<>(invoker);
     }
-    return tasmPlatformInvoker;
+    return invoker;
   }
 
   private void createLynxEngine(final int lastInstanceId) {
@@ -1045,7 +1046,9 @@ public class LynxTemplateRender
     mLoader = new LynxResourceLoader(null, mLynxViewBuilder.fetcher, this,
         mLynxContext.getTemplateResourceFetcher(), mLynxContext.getGenericResourceFetcher());
     mLynxContext.setEnableAutoExpose(mLynxViewConfigProvider.isEnableAutoExpose());
-    mNativeFacade = new NativeFacade(mLynxViewBuilder.isEnableJSRuntime(), new TASMCallback());
+    NativeFacade facade =
+        new NativeFacade(mLynxViewBuilder.isEnableJSRuntime(), new TASMCallback());
+    mNativeFacadeProxy.attach(facade);
     DisplayMetrics screenMetrics = mLynxContext.getScreenMetrics();
     long runtimeWrapperPtr = (mRuntime == null) ? 0 : mRuntime.getNativePtr();
     long whiteBoardPtr = (mGroup == null) ? 0 : mGroup.getWhiteBoardPtr();
@@ -1054,11 +1057,11 @@ public class LynxTemplateRender
     lynxUIRenderer.onCreateTemplateRenderer(mLynxContext, mPageLoadListener,
         mThreadStrategyForRendering, mLynxViewConfigProvider.getBehaviorRegistry(), layoutTick);
 
-    TasmPlatformInvoker tasmPlatformInvoker = tasmPlatformInvoker();
+    TasmPlatformInvoker tasmPlatformInvoker = tasmPlatformInvoker(facade);
     boolean enableVSyncAligned = mLynxViewConfigProvider.isEnableVSyncAlignedMessageLoop()
         || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal();
     setUpMainThreadModuleFactory();
-    mNativePtr = nativeCreate(mLogContext.viewId, runtimeWrapperPtr, mNativeFacade,
+    mNativePtr = nativeCreate(mLogContext.viewId, runtimeWrapperPtr, facade,
         mPerformanceController.isEmbeddedMode() ? null : mPerformanceController, mLoader,
         mThreadStrategyForRendering.id(), mLynxViewConfigProvider.isEnableLayoutSafepoint(),
         mLynxViewBuilder.enableLayoutOnly, screenMetrics.widthPixels, screenMetrics.heightPixels,
@@ -1074,7 +1077,7 @@ public class LynxTemplateRender
         mLynxEngineRef == null ? 0 : mLynxEngineRef.getNativePtr(),
         mMainThreadModuleFactory != null ? mMainThreadModuleFactory : null);
 
-    lynxUIRenderer.attachNativeFacade(mNativeFacade);
+    lynxUIRenderer.attachNativeFacade(facade);
     lynxUIRenderer.setLynxEngineForPlatformContextRef(mNativePtr);
     if (mEnableNativeLifecycleOptimization) {
       mNativeLifecycle = NATIVE_LIFECYCLE_LOCK_FREE;
@@ -1103,7 +1106,7 @@ public class LynxTemplateRender
     mLynxContext.setImageFetcher(mLynxViewBuilder.imageFetcher);
     mLynxContext.setLynxExtraData(mLynxViewBuilder.lynxModuleExtraData);
 
-    mNativeFacade.setLynxContext(mLynxContext);
+    facade.setLynxContext(mLynxContext);
     int instanceId = nativeGetInstanceId(mNativePtr, mNativeLifecycle);
     if (instanceId >= 0) {
       mLynxContext.setInstanceId(instanceId);
@@ -1126,7 +1129,7 @@ public class LynxTemplateRender
       // module setup will be removed. The factory is required by the JS runtime, so it
       // can only be skipped when both JS runtime and lepus module are disabled.
       if (enableJSRuntime() || mLynxViewBuilder.isEnableLepusModule()) {
-        setUpBackgroundThreadModuleFactory();
+        setUpBackgroundThreadModuleFactory(facade);
       }
       // only init LynxRuntime if enableJSRuntime is true.
       if (enableJSRuntime()) {
@@ -1139,7 +1142,7 @@ public class LynxTemplateRender
           // LynxShell. Here we don't need to init the LynxRuntime which is already
           // inited, but we
           // we need to bind it to LynxShell.
-          attachPiper(mRuntime, mModuleFactory);
+          attachPiper(facade, mRuntime, mModuleFactory);
 
           // Destruction of Runtime inside wrapper will be handled by LynxShell. Since
           // after
@@ -1148,7 +1151,7 @@ public class LynxTemplateRender
           mRuntime = null;
 
         } else {
-          initPiper();
+          initPiper(facade);
         }
         // extension dependent on piper, should init after piper init.
         setUpExtensionModules();
@@ -1162,10 +1165,10 @@ public class LynxTemplateRender
     mIntersectionObserverManager = new LynxIntersectionObserverManager(mLynxContext, mJSProxy);
     mLynxContext.setIntersectionObserverManager(mIntersectionObserverManager);
 
-    initEngineAndLayoutProxies();
+    initEngineAndLayoutProxies(facade);
 
     EventEmitter eventEmitter = new LynxEventEmitter(mEngineProxy);
-    eventEmitter.registerEventReporter(mNativeFacade);
+    eventEmitter.registerEventReporter(facade);
     eventEmitter.registerEventFallback(this);
     mLynxContext.setEventEmitter(eventEmitter);
 
@@ -1599,8 +1602,7 @@ public class LynxTemplateRender
     // rebuilt shell
     // generates a new instance ID.
     updateGenericInfoURL(mUrl);
-    if (mNativeFacade != null) {
-      mNativeFacade.setTemplateLoadClient(mClient);
+    if (mNativeFacadeProxy.setTemplateLoadClient(mClient)) {
       dispatchOnPageStart(mUrl);
       // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchOnPageStart
       // Due to lynxDevTool UI session limitations, we cannot do this yet
@@ -3274,7 +3276,8 @@ public class LynxTemplateRender
       LLog.e(TAG, "fallbackNewEngine should be called on ui thread, url: " + mUrl);
       return;
     }
-    if (mHasDestroy) {
+    NativeFacade facade = mNativeFacadeProxy.getNativeFacade();
+    if (mHasDestroy || (mNativePtr != 0 && facade == null)) {
       return;
     }
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_FALLBACK_NEW_ENGINE);
@@ -3321,20 +3324,20 @@ public class LynxTemplateRender
                                                : ThreadStrategyForRendering.ALL_ON_UI;
 
     if (mNativePtr != 0 && LynxEnv.inst().enableFallbackNewEngineRebuild()) {
-      TasmPlatformInvoker tasmPlatformInvoker = tasmPlatformInvoker();
+      TasmPlatformInvoker tasmPlatformInvoker = tasmPlatformInvoker(facade);
       LayoutTick layoutTick = createLayoutTickForCurrentStrategy();
       mLynxUIRender.onCreateTemplateRenderer(mLynxContext, mPageLoadListener,
           mThreadStrategyForRendering, mLynxViewConfigProvider.getBehaviorRegistry(), layoutTick);
 
       nativeRebuildLynxEngine(mNativePtr, mNativeLifecycle, mLynxUIRender.getUIDelegatePtr(),
           tasmPlatformInvoker, mMainThreadModuleFactory != null ? mMainThreadModuleFactory : null);
-      mLynxUIRender.attachNativeFacade(mNativeFacade);
+      mLynxUIRender.attachNativeFacade(facade);
       mLynxUIRender.setLynxEngineForPlatformContextRef(mNativePtr);
 
-      initEngineAndLayoutProxies();
+      initEngineAndLayoutProxies(facade);
 
       EventEmitter eventEmitter = new LynxEventEmitter(mEngineProxy);
-      eventEmitter.registerEventReporter(mNativeFacade);
+      eventEmitter.registerEventReporter(facade);
       eventEmitter.registerEventFallback(this);
       mLynxContext.setEventEmitter(eventEmitter);
 
@@ -3986,7 +3989,7 @@ public class LynxTemplateRender
 
   private void loadLynxMLInternal(String source, TemplateData initData, String url,
       NativeFacade.Callback callback, TimingOption timingOption) {
-    NativeFacade facade = mNativeFacade;
+    NativeFacade facade = mNativeFacadeProxy.getNativeFacade();
     long nativePtr = mNativePtr;
     long nativeLifecycle = mNativeLifecycle;
     if (facade == null || nativePtr == 0 || !isNativeLifecycleValid(nativeLifecycle)) {
@@ -4025,7 +4028,7 @@ public class LynxTemplateRender
   private void loadTemplateBundle(TemplateBundle bundle, String url, TemplateData initData,
       boolean isPrePainting, int options, NativeFacade.Callback callback,
       TimingOption timingOption) {
-    NativeFacade facade = mNativeFacade;
+    NativeFacade facade = mNativeFacadeProxy.getNativeFacade();
     long nativePtr = mNativePtr;
     long nativeLifecycle = mNativeLifecycle;
     if ((facade == null) || (nativePtr == 0) || !isNativeLifecycleValid(nativeLifecycle)) {
@@ -4071,7 +4074,7 @@ public class LynxTemplateRender
 
   private void loadSSRData(
       String url, byte[] ssr, TemplateData templateData, NativeFacade.Callback callback) {
-    NativeFacade facade = mNativeFacade;
+    NativeFacade facade = mNativeFacadeProxy.getNativeFacade();
     long nativePtr = mNativePtr;
     long nativeLifecycle = mNativeLifecycle;
     if ((facade == null) || (nativePtr == 0) || !isNativeLifecycleValid(nativeLifecycle)) {
@@ -4099,7 +4102,7 @@ public class LynxTemplateRender
   private void nativeLoadTemplate(String url, byte[] template, ByteBuffer buffer,
       boolean isPrePainting, boolean enableRecycleTemplateBundle, TemplateData templateData,
       int option, TimingOption timingOption, NativeFacade.Callback callback) {
-    NativeFacade facade = mNativeFacade;
+    NativeFacade facade = mNativeFacadeProxy.getNativeFacade();
     long nativePtr = mNativePtr;
     long nativeLifecycle = mNativeLifecycle;
     if (facade == null || nativePtr == 0 || !isNativeLifecycleValid(nativeLifecycle)) {
@@ -4175,9 +4178,7 @@ public class LynxTemplateRender
       LynxError lynxError = new LynxError(LynxSubErrorCode.E_LAZY_BUNDLE_LOAD_BAD_BUNDLE, errorMsg);
       lynxError.setRootCause(originCause);
       lynxError.addCustomInfo("component_url", url);
-      if (mNativeFacade != null) {
-        mNativeFacade.reportError(lynxError);
-      }
+      mNativeFacadeProxy.reportError(lynxError);
       return false;
     }
     return true;
@@ -4196,14 +4197,15 @@ public class LynxTemplateRender
     nativeUpdateGlobalProps(mNativePtr, mNativeLifecycle, propPtr);
   }
 
-  private void attachPiper(LynxBackgroundRuntime runtime, LynxModuleFactory moduleFactory) {
-    mNativeFacade.setModuleFactory(moduleFactory);
+  private void attachPiper(
+      NativeFacade facade, LynxBackgroundRuntime runtime, LynxModuleFactory moduleFactory) {
+    facade.setModuleFactory(moduleFactory);
 
     nativeAttachRuntime(mNativePtr, mNativeLifecycle, runtime.getNativePtr());
     String jsGroupThreadName = getJSGroupThreadNameIfNeed();
-    WeakReference<LynxContext> weakContext = mNativeFacade.getLynxContext();
+    WeakReference<LynxContext> weakContext = facade.getLynxContext();
     mJSProxy = new JSProxy(mNativePtr, weakContext, jsGroupThreadName);
-    mNativeFacade.setJSProxy(mJSProxy);
+    facade.setJSProxy(mJSProxy);
     LynxContext context = weakContext.get();
     if (context != null) {
       LLog.i(TAG, "set JSGroupThreadName to lynx context: " + jsGroupThreadName);
@@ -4215,13 +4217,13 @@ public class LynxTemplateRender
     return mEngineProxy;
   }
 
-  private void initPiper() {
+  private void initPiper(NativeFacade facade) {
     TraceEvent.beginSection(TraceEventDef.TEMPLATE_RENDER_INIT_PIPER);
-    initPiperInternal();
+    initPiperInternal(facade);
     TraceEvent.endSection(TraceEventDef.TEMPLATE_RENDER_INIT_PIPER);
   }
 
-  private void initPiperInternal() {
+  private void initPiperInternal(NativeFacade facade) {
     boolean useQuickJSEngine = mLynxRuntimeOptions.useQuickJSEngine();
     if (useQuickJSEngine) {
       LLog.i(TAG, "force use quick js engine");
@@ -4234,9 +4236,9 @@ public class LynxTemplateRender
         mLynxRuntimeOptions.calcRuntimeFlags(false, mEnablePendingJsTask),
         lynxUIRenderer().getUIDelegatePtr());
     String jsGroupThreadName = getJSGroupThreadNameIfNeed();
-    WeakReference<LynxContext> weakContext = mNativeFacade.getLynxContext();
+    WeakReference<LynxContext> weakContext = facade.getLynxContext();
     mJSProxy = new JSProxy(mNativePtr, weakContext, jsGroupThreadName);
-    mNativeFacade.setJSProxy(mJSProxy);
+    facade.setJSProxy(mJSProxy);
     if (weakContext.get() != null) {
       LLog.i(TAG, "set JSGroupThreadName to lynx context: " + jsGroupThreadName);
       weakContext.get().setJSGroupThreadName(jsGroupThreadName);
@@ -4270,9 +4272,9 @@ public class LynxTemplateRender
     }
   }
 
-  private void initEngineAndLayoutProxies() {
+  private void initEngineAndLayoutProxies(NativeFacade facade) {
     mEngineProxy = new LynxEngineProxy(mNativePtr);
-    mNativeFacade.setEngineProxy(mEngineProxy);
+    facade.setEngineProxy(mEngineProxy);
     if (mLynxContext == null) {
       LLog.e(TAG, "mLynxContext is null, can not set LayoutProxy");
     } else {
@@ -4366,18 +4368,20 @@ public class LynxTemplateRender
         return;
       }
     }
+    // Stop publishing this engine's facade before tearing down its implementation.
+    NativeFacade facade = mNativeFacadeProxy.detach();
     boolean shouldCacheLynxEngine = shouldCacheLynxEngine();
     if (mLynxUIRender != null && !shouldCacheLynxEngine) {
       mLynxUIRender.onDestroyTemplateRenderer();
     }
 
-    if (mNativeFacade != null) {
-      mNativeFacade.destroyAnyThreadPart();
+    if (facade != null) {
+      facade.destroyAnyThreadPart();
     }
 
     // need ensure destroy native on ui thread
     UIThreadUtils.runOnUiThreadImmediately(
-        new DestroyTask(mNativePtr, mNativeLifecycle, this, mNativeFacade));
+        new DestroyTask(mNativePtr, mNativeLifecycle, this, facade));
 
     if (shouldCacheLynxEngine) {
       LynxEngine lynxEngine = mLynxEngineRef;
@@ -4412,7 +4416,6 @@ public class LynxTemplateRender
       layoutProxy.destroy();
     }
     mTasmPlatformInvoker = null;
-    mNativeFacade = null;
     mNativeLifecycle = 0;
     mNativePtr = 0;
   }
