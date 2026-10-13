@@ -210,7 +210,8 @@ bool GestureManager::ConsumeSlideEvent(const PointerEvent& event) {
     can_consume_slide_event_ = false;
     if (!hit_test_result.empty()) {
       for (auto target : hit_test_result) {
-        if (target && target->HasConsumeSlideEventAngles()) {
+        if (target &&
+            target->GetConsumeSlideEventDirection() != SlideDirection::kNone) {
           can_consume_slide_event_ = true;
           break;
         }
@@ -328,22 +329,26 @@ void GestureManager::UpdateHitTestTargetResponsive(int pointer_id,
   if (is_down) {
     hit_test_responsive_result_ = HitTestResponsiveResult();
   }
-  hit_test_responsive_result_.scrollable_direction = ScrollableDirection::kNone;
+  hit_test_responsive_result_.scrollable_direction =
+      static_cast<uint32_t>(ScrollableDirection::kNone);
   for (auto target : hit_tests_[pointer_id]) {
     if (!target) {
       continue;
     }
-    hit_test_responsive_result_.scrollable_direction =
-        hit_test_responsive_result_.scrollable_direction |
-        target->GetScrollableDirection();
+    hit_test_responsive_result_.scrollable_direction |=
+        static_cast<uint32_t>(target->GetScrollableDirection());
     if (is_down) {
       // These values don't change on touch move.
       hit_test_responsive_result_.tappable |=
           target->HasTapGestureRecognizer() || target->HasTapEvent();
       hit_test_responsive_result_.should_block_native_event |=
           target->ShouldBlockNativeEvent() || target->ShouldInterceptGesture();
+      const auto consume_slide_event_direction =
+          target->GetConsumeSlideEventDirection();
       hit_test_responsive_result_.has_consume_slide_event |=
-          target->HasConsumeSlideEventAngles();
+          consume_slide_event_direction != SlideDirection::kNone;
+      hit_test_responsive_result_.AddConsumeSlideEventDirection(
+          consume_slide_event_direction);
       // Considering that longpress callback bound in the node is accomplished
       // by IsolatedGestureDetector, such node only has longpress in its
       // events_. So we don't take `HasLongPressGestureRecognizer` into
@@ -355,7 +360,8 @@ void GestureManager::UpdateHitTestTargetResponsive(int pointer_id,
 
   if (const auto& it = gesture_accepted_map_.find(pointer_id);
       it != gesture_accepted_map_.end()) {
-    hit_test_responsive_result_.recognized_gesture_type = it->second;
+    hit_test_responsive_result_.recognized_gesture_type =
+        static_cast<uint32_t>(it->second);
   }
   hit_test_responsive_result_.slide_event_consumed =
       consume_slide_event_status_ == ConsumeSlideEventStatus::kConsumed;
@@ -381,16 +387,19 @@ void GestureManager::RefreshHitTestTargetResponsive() {
   for (const auto& [_, hit_test_result] : hit_tests_) {
     for (auto target : hit_test_result) {
       if (target) {
-        hit_test_responsive_result_.scrollable_direction =
-            hit_test_responsive_result_.scrollable_direction |
-            target->GetScrollableDirection();
+        hit_test_responsive_result_.scrollable_direction |=
+            static_cast<uint32_t>(target->GetScrollableDirection());
         hit_test_responsive_result_.tappable |=
             target->HasTapGestureRecognizer() || target->HasTapEvent();
         hit_test_responsive_result_.should_block_native_event |=
             target->ShouldBlockNativeEvent() ||
             target->ShouldInterceptGesture();
+        const auto consume_slide_event_direction =
+            target->GetConsumeSlideEventDirection();
         hit_test_responsive_result_.has_consume_slide_event |=
-            target->HasConsumeSlideEventAngles();
+            consume_slide_event_direction != SlideDirection::kNone;
+        hit_test_responsive_result_.AddConsumeSlideEventDirection(
+            consume_slide_event_direction);
         hit_test_responsive_result_.has_longpress_event |=
             target->HasLongPressEvent();
       }
@@ -401,7 +410,8 @@ void GestureManager::RefreshHitTestTargetResponsive() {
     const auto it = gesture_accepted_map_.find(pointer_id);
     if (it != gesture_accepted_map_.end() &&
         it->second != GestureRecognizerType::kNone) {
-      hit_test_responsive_result_.recognized_gesture_type = it->second;
+      hit_test_responsive_result_.recognized_gesture_type =
+          static_cast<uint32_t>(it->second);
       break;
     }
   }
