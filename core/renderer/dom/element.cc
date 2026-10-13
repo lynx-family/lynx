@@ -35,6 +35,7 @@
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
+#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment.h"
@@ -1758,29 +1759,37 @@ bool Element::ShouldAvoidFlattenForView() {
 }
 
 bool Element::TendToFlatten() {
+  if constexpr (GetOSType() == OSType::kIOS) {
+    // On iOS, the current CUI platform-rendering flatten path does not
+    // preserve clip/overflow scope the same way as Android's platform
+    // renderer. To avoid clipping previously replayed
+    // border/image/text contents, only allow flatten when overflow stays
+    // visible here. Other non-flatten CSS props, including transform,
+    // are filtered earlier by CheckHasNonFlattenCSSProps.
+    //
+    // TODO(songshourui.null): Revisit this once iOS supports both CUI
+    // platform rendering and self rendering with separate clip semantics.
+    // Nodes with non-visible overflow may become flattenable again once
+    // clip is scoped to rendering content instead of the host view
+    // subtree.
+    if (!computed_css_style()->IsOverflowXY()) {
+      return false;
+    }
+  } else if constexpr (GetOSType() == OSType::kHarmony) {
+    // Preserve the native ancestor that clips independently composited
+    // children in fragment-layer rendering.
+    if (EnableFragmentLayerRender() && !computed_css_style()->IsOverflowXY()) {
+      return false;
+    }
+  }
+
   return config_flatten_ &&
          (!has_event_listener_ || EnableFragmentLayerRender()) &&
          !has_non_flatten_attrs_ && !DisableFlattenWithOpacity() &&
          !(has_z_props() && !is_image() && !is_text()) && !is_inline_element_ &&
          !ShouldAvoidFlattenForView() &&
          // Note: sticky item should not be flatten on Android platform.
-         (!element_manager_->GetEnableNewSticky() || !is_sticky_)
-#if OS_IOS
-         // On iOS, the current CUI platform-rendering flatten path does not
-         // preserve clip/overflow scope the same way as Android's platform
-         // renderer. To avoid clipping previously replayed
-         // border/image/text contents, only allow flatten when overflow stays
-         // visible here. Other non-flatten CSS props, including transform,
-         // are filtered earlier by CheckHasNonFlattenCSSProps.
-         //
-         // TODO(songshourui.null): Revisit this once iOS supports both CUI
-         // platform rendering and self rendering with separate clip semantics.
-         // Nodes with non-visible overflow may become flattenable again once
-         // clip is scoped to rendering content instead of the host view
-         // subtree.
-         && computed_css_style()->IsOverflowXY();
-#endif
-  ;
+         (!element_manager_->GetEnableNewSticky() || !is_sticky_);
 }
 
 double Element::GetFontSize() { return computed_css_style()->GetFontSize(); }

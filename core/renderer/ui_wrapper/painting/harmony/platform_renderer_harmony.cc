@@ -121,7 +121,16 @@ void PlatformRendererHarmony::OnUpdateDisplayList(DisplayList display_list) {
     return;
   }
   UpdateHostLayout(display_list_);
-  host->SetFragmentLayerClipBounds(display_list_.RootNeedClipBounds());
+  DisplayListReader reader(display_list_);
+  const auto& root = reader.Next();
+  // Overlay content is not clipped to the overlay's layout box.
+  const bool has_host_frame = !IsOverlay() &&
+                              root.type == DisplayListOpType::kBegin &&
+                              root.payload.begin.id == GetId();
+  host->SetFragmentLayerClipBounds(
+      display_list_.RootNeedClipBounds(),
+      has_host_frame ? root.payload.begin.overflow_x : true,
+      has_host_frame ? root.payload.begin.overflow_y : true);
   host->UpdateFragmentLayerDisplayList(&display_list_);
 }
 

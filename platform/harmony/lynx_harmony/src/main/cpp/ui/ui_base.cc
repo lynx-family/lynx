@@ -1463,6 +1463,7 @@ void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
 
 void UIBase::AttachFragmentLayerRenderer(
     std::shared_ptr<LynxRendererContext> context, int32_t sign) {
+  fragment_clip_bounds_.reset();
   renderer_ = std::make_unique<LynxRenderer>(std::move(context), sign,
                                              weak_from_this());
   if (!CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
@@ -1473,6 +1474,11 @@ void UIBase::AttachFragmentLayerRenderer(
 
 void UIBase::DetachFragmentLayerRenderer() {
   renderer_.reset();
+  if (fragment_clip_rect_) {
+    NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
+    fragment_clip_rect_.reset();
+  }
+  fragment_clip_bounds_.reset();
   Invalidate();
 }
 
@@ -1484,9 +1490,35 @@ void UIBase::UpdateFragmentLayerDisplayList(const DisplayList* display_list) {
   Invalidate();
 }
 
-void UIBase::SetFragmentLayerClipBounds(bool need_clip) {
-  NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP,
-                                                      need_clip ? 1 : 0);
+void UIBase::SetFragmentLayerClipBounds(bool need_clip, bool overflow_x,
+                                        bool overflow_y) {
+  auto& manager = NodeManager::Instance();
+  if (fragment_clip_bounds_ != need_clip) {
+    manager.SetAttributeWithNumberValue(Node(), NODE_CLIP, need_clip ? 1 : 0);
+    fragment_clip_bounds_ = need_clip;
+  }
+  if (overflow_x == overflow_y) {
+    if (fragment_clip_rect_) {
+      manager.ResetAttribute(Node(), NODE_CLIP_SHAPE);
+      fragment_clip_rect_.reset();
+    }
+    return;
+  }
+
+  // Match ordinary overflow clipping: expand only the visible axis.
+  float screen_size[2] = {};
+  context_->ScreenSize(screen_size);
+  const float density = context_->ScaledDensity();
+  const std::array<float, 4> rect = {
+      (overflow_x ? -screen_size[0] : 0.f) * density,
+      (overflow_y ? -screen_size[1] : 0.f) * density,
+      (width_ + (overflow_x ? 2 * screen_size[0] : 0.f)) * density,
+      (height_ + (overflow_y ? 2 * screen_size[1] : 0.f)) * density};
+  if (fragment_clip_rect_ == rect) {
+    return;
+  }
+  ApplyOverflowClipRectangle(rect[0], rect[1], rect[2], rect[3]);
+  fragment_clip_rect_ = rect;
 }
 
 void UIBase::UpdateFragmentLayerSubtreeProperties(
