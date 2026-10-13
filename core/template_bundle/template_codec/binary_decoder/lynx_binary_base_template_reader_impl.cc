@@ -12,6 +12,7 @@
 
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
+#include "core/template_bundle/compress/template_compress.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_template_reader.h"
 
@@ -35,6 +36,14 @@ void ReinterpretHeaderInfoValue(std::string& tgt,
 }  // namespace
 
 bool LynxBinaryBaseTemplateReader::Decode() {
+  error_message_.clear();
+  auto [success, replaced_stream] =
+      MaybeDecompressWholeCompressedTemplateStream(stream_.get(),
+                                                   error_message_);
+  ERROR_UNLESS(success);
+  if (replaced_stream != nullptr) {
+    stream_ = std::move(replaced_stream);
+  }
   decode_start_timestamp_ = base::CurrentSystemTimeMicroseconds();
   // Decode header
   ERROR_UNLESS(DecodeHeader());

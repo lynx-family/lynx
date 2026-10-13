@@ -8,6 +8,8 @@ import("../../../Lynx.gni")
 # binary_decoder_shared_sources
 binary_decoder_shared_sources = [
   # TODO(chenyouhui.duke): Use a better way
+  "../../compress/template_compress.cc",
+  "../../compress/template_compress.h",
   "//${lynx_dir}/core/template_bundle/template_codec/binary_decoder/lynx_binary_base_template_reader.cc",
   "//${lynx_dir}/core/template_bundle/template_codec/binary_decoder/lynx_binary_config_helper.cc",
   "binary_decoder_trace_event_def.h",
