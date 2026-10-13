@@ -327,7 +327,7 @@ JSRealmState JSRealmManager::CreateSharedVMRealm(
       page_context->GetPostMan();
   page_realm->InitGlobal(page_runtime, page_post_man, page_options);
   if (ensure_console) {
-    page_realm->EnsureConsole(page_post_man, page_options);
+    page_realm->EnsureConsole(*page_runtime, page_post_man, page_options);
   }
 
   global_realm->CopyGlobalsTo(*page_runtime);
@@ -462,9 +462,10 @@ JSRealmState JSRealmManager::CreateRealm(
       post_man = js_context->GetPostMan();
     }
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, JS_REALM_MANAGER_REALM_INIT_GLOBAL);
+    auto* global_runtime_ptr = global_runtime.get();
     realm->InitGlobal(global_runtime, post_man, page_options);
     if (ensure_console) {
-      realm->EnsureConsole(post_man, page_options);
+      realm->EnsureConsole(*global_runtime_ptr, post_man, page_options);
     }
 
     auto* initializing_realm = realm.get();
@@ -575,7 +576,7 @@ SharedVMGlobalRealm* JSRealmManager::EnsureNewShareGroupGlobalContext(
 
   // Initialize shared globals and transfer runtime ownership to the realm.
   realm->InitGlobal(global_runtime, post_man, page_options);
-  realm->EnsureConsole(post_man, page_options);
+  realm->EnsureConsole(*global_rt_ptr, post_man, page_options);
 
   // Register corejs before evaluation without attaching a page session to
   // this group-owned runtime.

@@ -5,10 +5,7 @@
 #define CORE_RUNTIME_JS_BINDINGS_GLOBAL_H_
 
 #include <memory>
-#include <mutex>
-#include <string>
 
-#include "core/base/memory/unsafe_owning_ptr.h"
 #include "core/runtime/js/jsi/jsi.h"
 
 namespace lynx {
@@ -21,31 +18,12 @@ class Global : public HostGlobal {
   Global() = default;
   ~Global() override;
 
-  void Init(base::UnsafeOwningPtr<Runtime>& js_runtime_,
-            std::shared_ptr<ConsoleMessagePostMan>& post_man,
+  void Init(Runtime& runtime, std::shared_ptr<ConsoleMessagePostMan>& post_man,
             const tasm::PageOptions& page_options,
             bool install_shared_host_objects) override;
-  void Release() override;
-  void EnsureConsole(std::shared_ptr<ConsoleMessagePostMan>& post_man,
+  void EnsureConsole(Runtime& runtime,
+                     std::shared_ptr<ConsoleMessagePostMan>& post_man,
                      const tasm::PageOptions& page_options);
-
- private:
-  virtual void SetJSRuntime(base::UnsafeOwningPtr<Runtime>& js_runtime_) = 0;
-  virtual Runtime* GetJSRuntime() = 0;
-};
-
-class SingleGlobal : public Global {
- public:
-  SingleGlobal() {}
-  virtual ~SingleGlobal();
-
-  void Release() override;
-
- private:
-  virtual void SetJSRuntime(
-      base::UnsafeOwningPtr<Runtime>& js_runtime_) override;
-  virtual Runtime* GetJSRuntime() override;
-  base::UnsafeWeakPtr<Runtime> js_runtime_;
 };
 
 }  // namespace js
