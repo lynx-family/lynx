@@ -67,7 +67,7 @@ UIScrollCoordinatorHeader::UIScrollCoordinatorHeader(LynxContext* context,
 void UIScrollCoordinatorHeader::OnPropUpdate(const std::string& name,
                                              const lepus::Value& value) {
   UIView::OnPropUpdate(name, value);
-  if (name == "consume-gesture") {
+  if (name == "experimental-consume-gesture") {
     consume_header_gesture_ =
         value.IsString() ? value.StringView() == "true" : value.Bool();
   }
