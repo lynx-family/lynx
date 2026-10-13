@@ -27,7 +27,8 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealm {
   JSRealm(std::shared_ptr<js::JSIContext>);
   virtual ~JSRealm();
 
-  void EnsureConsole(std::shared_ptr<js::ConsoleMessagePostMan> post_man,
+  void EnsureConsole(js::Runtime& runtime,
+                     std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                      const tasm::PageOptions& page_options);
   virtual void InitGlobal(base::UnsafeOwningPtr<js::Runtime>& js_runtime,
                           std::shared_ptr<js::ConsoleMessagePostMan> post_man,
@@ -64,7 +65,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealm {
   // Shared realms own this runtime; page-local globals borrow the executor
   // runtime.
   base::UnsafeOwningPtr<js::Runtime> owned_global_runtime_;
-  base::UnsafeOwningPtr<js::SingleGlobal> global_;
+  base::UnsafeOwningPtr<js::Global> global_;
   bool js_env_prepared_ = false;
   bool js_core_loaded_ = false;
   bool global_inited_ = false;

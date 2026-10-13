@@ -38,80 +38,59 @@ static Value GetSystemInfo(Runtime& rt) {
 
 Global::~Global() { LOGI("lynx ~Global()"); }
 
-void Global::Init(base::UnsafeOwningPtr<Runtime>& runtime,
+void Global::Init(Runtime& runtime,
                   std::shared_ptr<ConsoleMessagePostMan>& post_man,
                   const tasm::PageOptions& page_options,
                   bool install_shared_host_objects) {
-  SetJSRuntime(runtime);
-  auto* js_runtime_ = GetJSRuntime();
-  if (js_runtime_ == nullptr) {
-    return;
-  }
+  Scope scope(runtime);
 
-  Scope scope(*js_runtime_);
-
-  Object global = js_runtime_->global();
+  Object global = runtime.global();
   Object console_obj = Object::createFromHostObject(
-      *js_runtime_,
+      runtime,
       std::make_shared<Console>(post_man, page_options.GetDebuggable()));
-  global.setProperty(*js_runtime_, "nativeConsole", console_obj);
-  global.setProperty(*js_runtime_, "__lynxDisableModuleCache",
+  global.setProperty(runtime, "nativeConsole", console_obj);
+  global.setProperty(runtime, "__lynxDisableModuleCache",
                      page_options.GetDebuggable());
 
   // These are stateless shared host objects. For the new "shared Isolate/VM +
   // per-page isolated Context" scheme the page context copies them by reference
   // from the group's global context, so skip re-creating them here.
   if (install_shared_host_objects) {
-    Value system_info = GetSystemInfo(*js_runtime_);
-    global.setProperty(*js_runtime_, "SystemInfo", std::move(system_info));
+    Value system_info = GetSystemInfo(runtime);
+    global.setProperty(runtime, "SystemInfo", std::move(system_info));
 
     Object jsbi_obj =
-        Object::createFromHostObject(*js_runtime_, std::make_shared<JSBI>());
-    global.setProperty(*js_runtime_, "LynxJSBI", jsbi_obj);
+        Object::createFromHostObject(runtime, std::make_shared<JSBI>());
+    global.setProperty(runtime, "LynxJSBI", jsbi_obj);
 
     Object text_codec_helper_obj = Object::createFromHostObject(
-        *js_runtime_, std::make_shared<TextCodecHelper>());
-    global.setProperty(*js_runtime_, "TextCodecHelper", text_codec_helper_obj);
+        runtime, std::make_shared<TextCodecHelper>());
+    global.setProperty(runtime, "TextCodecHelper", text_codec_helper_obj);
   }
 
   if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
-    auto& group_id = js_runtime_->getGroupId();
-    global.setProperty(*js_runtime_, "groupId", group_id);
+    auto& group_id = runtime.getGroupId();
+    global.setProperty(runtime, "groupId", group_id);
   }
 
   if (tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
-    global.setProperty(*js_runtime_, "enableDebugMode", true);
+    global.setProperty(runtime, "enableDebugMode", true);
   }
 }
 
-void Global::EnsureConsole(std::shared_ptr<ConsoleMessagePostMan>& post_man,
+void Global::EnsureConsole(Runtime& runtime,
+                           std::shared_ptr<ConsoleMessagePostMan>& post_man,
                            const tasm::PageOptions& page_options) {
-  auto* js_runtime = GetJSRuntime();
-  if (js_runtime == nullptr) {
-    return;
-  }
-  Scope scope(*js_runtime);
-  Object global = js_runtime->global();
-  auto console = global.getProperty(*js_runtime, "console");
+  Scope scope(runtime);
+  Object global = runtime.global();
+  auto console = global.getProperty(runtime, "console");
   if (console && !console->isObject()) {
     Object console_obj = Object::createFromHostObject(
-        *js_runtime,
+        runtime,
         std::make_shared<Console>(post_man, page_options.GetDebuggable()));
-    global.setProperty(*js_runtime, "console", console_obj);
+    global.setProperty(runtime, "console", console_obj);
   }
 }
-
-void Global::Release() { LOGI("lynx Global::Release"); }
-
-SingleGlobal::~SingleGlobal() { LOGI("lynx ~SingleGlobal"); }
-
-void SingleGlobal::SetJSRuntime(base::UnsafeOwningPtr<Runtime>& js_runtime) {
-  js_runtime_ = js_runtime.GetWeakPtr();
-}
-
-Runtime* SingleGlobal::GetJSRuntime() { return js_runtime_.Lock(); }
-
-void SingleGlobal::Release() {}
 
 }  // namespace js
 

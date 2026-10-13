@@ -65,15 +65,16 @@ void JSRealm::InitGlobalObject(
   if (global_inited_) {
     return;
   }
-  global_ = base::MakeUnsafeOwning<js::SingleGlobal>();
-  global_->Init(runtime, post_man, page_options, install_shared_host_objects);
+  global_ = base::MakeUnsafeOwning<js::Global>();
+  global_->Init(*runtime, post_man, page_options, install_shared_host_objects);
   global_inited_ = true;
 }
 
-void JSRealm::EnsureConsole(std::shared_ptr<js::ConsoleMessagePostMan> post_man,
+void JSRealm::EnsureConsole(js::Runtime& runtime,
+                            std::shared_ptr<js::ConsoleMessagePostMan> post_man,
                             const tasm::PageOptions& page_options) {
   if (global_) {
-    global_->EnsureConsole(post_man, page_options);
+    global_->EnsureConsole(runtime, post_man, page_options);
   }
 }
 

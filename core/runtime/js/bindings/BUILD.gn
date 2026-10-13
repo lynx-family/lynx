@@ -53,6 +53,7 @@ unittest_set("bindings_unittests_testset") {
   sources = [
     "../../mock_template_delegate.h",
     "api_call_back_unittest.cc",
+    "global_unittest.cc",
     "js_app_unittest.cc",
     "js_task_adapter_unittest.cc",
     "mock_module_delegate.h",
