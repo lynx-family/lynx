@@ -15,6 +15,8 @@
 
 namespace clay {
 
+struct ExposureEventTraceInfo;
+
 enum NodeExposureUIMarginEnabled { kUndefined = 0, kEnable = 1, kDisable = 2 };
 enum ExposureState { kInit = 0, kExposed = 1, kDisExposed = 2 };
 namespace attr = attribute_utils;
@@ -65,6 +67,19 @@ class ExposeObserver : public IntersectionObserver {
 
   void CheckForIntersectionWithTarget() override;
 
+  bool HasUIAppearCallback() const {
+    return expose_attrs_.exposure_should_notify_appear_;
+  }
+
+  bool IsExposed() const {
+    return expose_attrs_.expose_state == ExposureState::kExposed;
+  }
+
+  // This is a narrowly scoped fast path for a PageView's direct child on its
+  // first insertion. It intentionally bypasses geometry computation while
+  // preserving the normal exposure state machine and event payloads.
+  bool TryNotifyAppearWithoutGeometry(const char* reason);
+
  protected:
   bool IsOfType(ObserverType type) const override {
     return type == IntersectionObserver::kExposeObserver;
@@ -73,9 +88,10 @@ class ExposeObserver : public IntersectionObserver {
  private:
   ExposeAttrs expose_attrs_ = {};
   bool exposure_host_visible_ = true;
-  void NotifyAppearEvent(bool appear);
-  void NotifyGlobalEvent(bool appear);
-  void NotifyExposureEvent(bool appear);
+  void NotifyAppearEvent(bool appear, const ExposureEventTraceInfo& trace_info);
+  void NotifyGlobalEvent(bool appear, uint64_t trace_flow_id = 0);
+  void NotifyExposureEvent(bool appear, const char* reason,
+                           double intersection_ratio);
   void AssembleDetailData();
   void NotifyTarget() override;
   std::function<void(clay::Value::Map)> custom_event_callback_ = nullptr;

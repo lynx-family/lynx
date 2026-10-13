@@ -5,6 +5,7 @@
 #ifndef CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_JSI_MODULE_CALLBACK_H_
 #define CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_JSI_MODULE_CALLBACK_H_
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -82,6 +83,14 @@ class ModuleCallback : public LynxModuleCallback {
                             Runtime* rt, ModuleCallback* callback)>
                             converter);
 
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  void SetArgsObserverForTracing(
+      std::function<void(const pub::Value&)> observer) {
+    args_observer_for_tracing_ = std::move(observer);
+  }
+  void ObserveArgsForTracingIfReady();
+#endif
+
   std::vector<base::LynxError>& GetErrorsRef() { return errors_; };
 
   Type GetType() const override { return Type::JSI; }
@@ -100,6 +109,10 @@ class ModuleCallback : public LynxModuleCallback {
   std::function<std::unique_ptr<pub::Value>(Runtime* rt,
                                             ModuleCallback* callback)>
       custom_args_converter_;
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  std::function<void(const pub::Value&)> args_observer_for_tracing_;
+  bool args_observer_invoked_for_tracing_ = false;
+#endif
 };
 
 }  // namespace js

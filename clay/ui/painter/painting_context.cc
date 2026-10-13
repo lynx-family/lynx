@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_rounded_rect.h"
 #include "clay/gfx/gpu_object.h"
@@ -24,6 +25,7 @@
 #include "clay/ui/painter/image_painter.h"
 #include "clay/ui/rendering/render_external_view.h"
 #include "clay/ui/rendering/render_object.h"
+#include "core/base/trace/trace_event_def.h"
 
 namespace clay {
 
@@ -31,6 +33,8 @@ namespace clay {
 void PaintingContext::RepaintCompositedChild(
     RenderObject* child, fml::RefPtr<GPUUnrefQueue> unref_queue,
     PaintingContext* parent_context) {
+  TRACE_EVENT("clay", CLAY_PAINTING_CONTEXT_REPAINT_COMPOSITED_CHILD, "view_id",
+              child->ID(), "render_object", child->GetName());
   PendingContainerLayer* layer = child->GetLayer();
   if (layer) {
     layer->RemoveAllChildren();
@@ -196,7 +200,11 @@ void PaintingContext::RepaintCompositedChild(
     };
   }
 
-  painter(child_context, FloatPoint());
+  {
+    TRACE_EVENT("clay", CLAY_PAINTING_CONTEXT_EXECUTE_REPAINT_PAINTER,
+                "view_id", child->ID(), "render_object", child->GetName());
+    painter(child_context, FloatPoint());
+  }
 }
 
 PaintingContext::PaintingContext(PendingContainerLayer* layer,
@@ -224,6 +232,8 @@ bool PaintingContext::IsRecording() const {
 void PaintingContext::StartRecording() {
   FML_DCHECK(render_object());
   FML_DCHECK(!IsRecording());
+  TRACE_EVENT("clay", CLAY_PAINTING_CONTEXT_START_RECORDING, "view_id",
+              render_object()->ID());
 
   current_layer_ = new PendingPictureLayer();
   current_layer_->SetCacheStrategy(strategy_);
@@ -240,6 +250,8 @@ void PaintingContext::StopRecordingIfNeeded() {
     return;
   }
 
+  TRACE_EVENT("clay", CLAY_PAINTING_CONTEXT_FINISH_RECORDING, "view_id",
+              render_object()->ID());
   auto picture = graphics_context_.FinishRecording();
   if (!picture->IsEmpty()) {
     current_layer_->set_picture(std::move(picture));

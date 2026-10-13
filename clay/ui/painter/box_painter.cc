@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/gfx/animation/picture_animation_type.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/style/borders_data.h"
@@ -23,6 +24,7 @@
 #include "clay/ui/painter/box_shadow_painter.h"
 #include "clay/ui/painter/image_painter.h"
 #include "clay/ui/painter/object_painter.h"
+#include "core/base/trace/trace_event_def.h"
 
 namespace clay {
 
@@ -381,6 +383,8 @@ void BoxPainter::PaintBoxDecorationBackground(GraphicsContext* context,
   }
 
   if (render_object_->HasBackground()) {
+    TRACE_EVENT("clay", CLAY_BOX_PAINTER_PAINT_BACKGROUND, "view_id",
+                render_object_->ID());
     GraphicsContext::AutoRestore saver(context, true);
     context->Translate(offset.x(), offset.y());
 
@@ -388,12 +392,16 @@ void BoxPainter::PaintBoxDecorationBackground(GraphicsContext* context,
   }
 
   if (render_object_->HasShadow()) {
+    TRACE_EVENT("clay", CLAY_BOX_PAINTER_PAINT_SHADOW, "view_id",
+                render_object_->ID());
     GraphicsContext::AutoRestore saver(context, true);
     context->Translate(offset.x(), offset.y());
     BoxShadowPainter(render_object_).Paint(context, box_rect);
   }
 
   if (has_border) {
+    TRACE_EVENT("clay", CLAY_BOX_PAINTER_PAINT_BORDER, "view_id",
+                render_object_->ID());
     GraphicsContext::AutoRestore saver(context, true);
     context->Translate(offset.x(), offset.y());
     if (IsBorderClip()) {
@@ -403,6 +411,8 @@ void BoxPainter::PaintBoxDecorationBackground(GraphicsContext* context,
   }
 
   if (render_object_->HasOutline()) {
+    TRACE_EVENT("clay", CLAY_BOX_PAINTER_PAINT_OUTLINE, "view_id",
+                render_object_->ID());
     GraphicsContext::AutoRestore saver(context, true);
     context->Translate(offset.x(), offset.y());
     PaintOutline(context, render_object_->Outline());

@@ -32,6 +32,11 @@ void ModuleCallback::Invoke(Runtime* runtime,
                 ctx.event()->add_terminating_flow_ids(CallbackFlowId());
                 ctx.event()->add_debug_annotations("module_name", module_name_);
                 ctx.event()->add_debug_annotations("method_name", method_name_);
+                ctx.event()->add_debug_annotations("first_arg", first_arg_);
+                ctx.event()->add_debug_annotations("callback_id",
+                                                   callback_id());
+                ctx.event()->add_debug_annotations("callback_flow_id",
+                                                   CallbackFlowId());
               });
   if ((!args_ || !args_->IsArray()) && !custom_args_converter_) {
     LOGW("NativeModule: Callback's args is invalid.");
@@ -45,6 +50,9 @@ void ModuleCallback::Invoke(Runtime* runtime,
   if (!args_ || !args_->IsArray()) {
     LOGW("NativeModule: Callback's args is invalid.");
   }
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  ObserveArgsForTracingIfReady();
+#endif
   size_t size = static_cast<size_t>(args_->Length());
   Value values[size];
   args_->ForeachArray([&values, runtime](int64_t index, const pub::Value& val) {
@@ -98,6 +106,17 @@ void ModuleCallback::SetArgsConverter(
         converter) {
   custom_args_converter_ = std::move(converter);
 }
+
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+void ModuleCallback::ObserveArgsForTracingIfReady() {
+  if (args_observer_invoked_for_tracing_ || !args_ || !args_->IsArray() ||
+      !args_observer_for_tracing_) {
+    return;
+  }
+  args_observer_for_tracing_(*args_);
+  args_observer_invoked_for_tracing_ = true;
+}
+#endif
 
 }  // namespace js
 
