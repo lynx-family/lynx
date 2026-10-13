@@ -403,6 +403,12 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
     paragraph_builder_->SetParagraphStyle(kTextPropTextAlign, &(text_align),
                                           sizeof(int));
   }
+  if (props_set.Has(kPropertyIDTextSpacingTrim)) {
+    auto text_spacing_trim =
+        static_cast<int>(text_attributes->text_spacing_trim);
+    paragraph_builder_->SetParagraphStyle(kTextPropTextSpacingTrim,
+                                          &text_spacing_trim, sizeof(int));
+  }
   if (props_set.Has(kPropertyIDXAutoFontSize)) {
     text::AutoFontSize auto_font_size{
         text_attributes->is_auto_font_size,
