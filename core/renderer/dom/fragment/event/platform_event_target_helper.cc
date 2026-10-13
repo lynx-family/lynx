@@ -68,11 +68,6 @@ void SetUserInteractionEnabled(PlatformEventTarget* target,
       !base::IsZero(EventPropValueToFloat(value)));
 }
 
-void SetNativeInteractionEnabled(PlatformEventTarget* target,
-                                 const lepus::Value& value) {
-  target->SetNativeInteractionEnabled(EventPropValueToStatus(value));
-}
-
 void SetExposureScreenMarginLeft(PlatformEventTarget* target,
                                  const lepus::Value& value) {
   target->SetExposureScreenMarginLeft(EventPropValueToFloat(value));
@@ -165,31 +160,91 @@ bool ParseEventRegionSizeValue(
   }
 
   const auto string_value = value.StdString();
-  const bool percentage = !string_value.empty() && string_value.back() == '%';
-  const bool pixel =
-      string_value.size() >= 2 &&
-      string_value.compare(string_value.size() - 2, 2, "px") == 0;
-  if (!percentage && !pixel) {
-    return false;
+  using Type = PlatformEventTarget::EventRegionSizeValue::Type;
+  Type type = Type::kPlatformUnit;
+  size_t suffix_length = 0;
+  if (string_value.size() > 3 &&
+      string_value.compare(string_value.size() - 3, 3, "rpx") == 0) {
+    type = Type::kRpx;
+    suffix_length = 3;
+  } else if (string_value.size() > 3 &&
+             string_value.compare(string_value.size() - 3, 3, "ppx") == 0) {
+    type = Type::kPhysicalPx;
+    suffix_length = 3;
+  } else if (!string_value.empty() && string_value.back() == '%') {
+    type = Type::kPercentage;
+    suffix_length = 1;
+  } else if (string_value.size() >= 2 &&
+             string_value.compare(string_value.size() - 2, 2, "px") == 0) {
+    type = Type::kCssPx;
+    suffix_length = 2;
   }
 
   const auto number_string =
-      string_value.substr(0, string_value.size() - (percentage ? 1 : 2));
+      string_value.substr(0, string_value.size() - suffix_length);
   float number = 0.f;
   if (!base::StringToFloat(number_string, number, true) ||
       !std::isfinite(number)) {
     return false;
   }
 
-  result->type =
-      percentage ? PlatformEventTarget::EventRegionSizeValue::Type::kPercentage
-                 : PlatformEventTarget::EventRegionSizeValue::Type::kDevicePx;
-  result->value = percentage ? number / 100.f : number;
+  result->type = type;
+  result->value = type == Type::kPercentage ? number / 100.f : number;
   return true;
 }
 
+void MergeHitSlopEventProp(PlatformEventBundle* bundle,
+                           const PlatformEventBundle* previous) {
+  if (bundle == nullptr || previous == nullptr) {
+    return;
+  }
+  const auto current_it =
+      bundle->EventProps().find(PlatformEventPropName::kHitSlop);
+  if (current_it == bundle->EventProps().end()) {
+    return;
+  }
+  const auto previous_it =
+      previous->EventProps().find(PlatformEventPropName::kHitSlop);
+  if (previous_it == previous->EventProps().end()) {
+    return;
+  }
+  const auto& value = current_it->second;
+  if (value.IsNil() || value.IsUndefined()) {
+    return;
+  }
+  PlatformEventTarget::EventRegionSizeValue parsed;
+  if (!value.IsObject()) {
+    if (!ParseEventRegionSizeValue(value, &parsed)) {
+      bundle->SetEventProp(PlatformEventPropName::kHitSlop,
+                           previous_it->second);
+    }
+    return;
+  }
+
+  const auto& previous_value = previous_it->second;
+  auto merged = lepus::Dictionary::Create();
+  for (const auto* name : {"left", "top", "right", "bottom"}) {
+    const base::String key(name);
+    const auto old_side = previous_value.IsObject()
+                              ? previous_value.GetProperty(key)
+                              : previous_value;
+    if (ParseEventRegionSizeValue(old_side, &parsed)) {
+      merged->SetValue(key, old_side);
+    }
+    const auto new_side = value.GetProperty(key);
+    if (ParseEventRegionSizeValue(new_side, &parsed)) {
+      merged->SetValue(key, new_side);
+    }
+  }
+  bundle->SetEventProp(PlatformEventPropName::kHitSlop, lepus::Value(merged));
+}
+
 void SetHitSlop(PlatformEventTarget* target, const lepus::Value& value) {
-  PlatformEventTarget::EventRegion hit_slop{};
+  if (value.IsNil() || value.IsUndefined()) {
+    target->ResetHitSlop();
+    return;
+  }
+  auto hit_slop = target->HitSlop();
   bool has_valid_value = false;
   if (value.IsObject()) {
     const char* names[] = {"left", "top", "right", "bottom"};
@@ -206,8 +261,6 @@ void SetHitSlop(PlatformEventTarget* target, const lepus::Value& value) {
   }
   if (has_valid_value) {
     target->SetHitSlop(std::move(hit_slop));
-  } else {
-    target->ResetHitSlop();
   }
 }
 
@@ -350,8 +403,6 @@ GetEventPropSetterMap() {
       map = {
           {PlatformEventPropName::kUserInteractionEnabled,
            &SetUserInteractionEnabled},
-          {PlatformEventPropName::kNativeInteractionEnabled,
-           &SetNativeInteractionEnabled},
           {PlatformEventPropName::kExposureScreenMarginLeft,
            &SetExposureScreenMarginLeft},
           {PlatformEventPropName::kExposureScreenMarginRight,
@@ -1135,12 +1186,13 @@ void PlatformEventTargetHelper::InvokeMethod(
       ret->SetValue(kDataset, dataset.IsEmpty()
                                   ? lepus::Value(lepus::Dictionary::Create())
                                   : dataset);
-      ret->SetValue(kLeft, result[0] / device_pixel_ratio_);
-      ret->SetValue(kTop, result[1] / device_pixel_ratio_);
-      ret->SetValue(kRight, result[2] / device_pixel_ratio_);
-      ret->SetValue(kBottom, result[3] / device_pixel_ratio_);
-      ret->SetValue(kWidth, (result[2] - result[0]) / device_pixel_ratio_);
-      ret->SetValue(kHeight, (result[3] - result[1]) / device_pixel_ratio_);
+      // Geometry is in layout units; boundingClientRect returns CSS px.
+      ret->SetValue(kLeft, result[0] / layouts_unit_per_px_);
+      ret->SetValue(kTop, result[1] / layouts_unit_per_px_);
+      ret->SetValue(kRight, result[2] / layouts_unit_per_px_);
+      ret->SetValue(kBottom, result[3] / layouts_unit_per_px_);
+      ret->SetValue(kWidth, (result[2] - result[0]) / layouts_unit_per_px_);
+      ret->SetValue(kHeight, (result[3] - result[1]) / layouts_unit_per_px_);
       callback(LynxGetUIResult::SUCCESS, lepus::Value(ret));
     } else {
       callback(LynxGetUIResult::NODE_NOT_FOUND,

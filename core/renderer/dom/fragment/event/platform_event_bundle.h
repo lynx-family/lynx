@@ -146,7 +146,7 @@ enum class PlatformEventPropName : int32_t {
   kExposureArea = 4,
   kPointerEvents = 5,
   kUserInteractionEnabled = 6,
-  kNativeInteractionEnabled = 7,
+  // Value 7 is reserved; native interaction is handled by platform hosts.
   kEventThrough = 8,
   kBlockNativeEvent = 9,
   kConsumeSlideEvent = 10,
@@ -190,9 +190,6 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   }
   if (name == "user-interaction-enabled") {
     return PlatformEventPropName::kUserInteractionEnabled;
-  }
-  if (name == "native-interaction-enabled") {
-    return PlatformEventPropName::kNativeInteractionEnabled;
   }
   if (name == "event-through") {
     return PlatformEventPropName::kEventThrough;
@@ -274,6 +271,9 @@ class PlatformEventBundle {
 
   void SetEventProps(PlatformEventPropMap event_props) {
     event_props_ = std::move(event_props);
+  }
+  void SetEventProp(PlatformEventPropName name, lepus::Value value) {
+    event_props_.insert_or_assign(name, std::move(value));
   }
   void SetEventNames(base::Vector<PlatformEventName> event_names) {
     event_names_ = std::move(event_names);

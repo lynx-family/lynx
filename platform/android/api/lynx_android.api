@@ -1382,6 +1382,7 @@ public class com::lynx::tasm::behavior::render::ContainerRenderer : ViewGroup, c
   public Renderer com.lynx.tasm.behavior.render.ContainerRenderer.getRenderer();
   public View com.lynx.tasm.behavior.render.ContainerRenderer.getView();
   public com.lynx.tasm.behavior.render.ContainerRenderer.ContainerRenderer(LynxContext context);
+  public boolean com.lynx.tasm.behavior.render.ContainerRenderer.onTouchEvent(MotionEvent event);
   public void com.lynx.tasm.behavior.render.ContainerRenderer.applyRendererHostFilter(int type, float amount);
 }
 
@@ -9779,6 +9780,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas, int viewportSaveCount);
   public void com.lynx.tasm.behavior.render.Renderer.invalidate(int invalidateMask);
   public void com.lynx.tasm.behavior.render.Renderer.updateAttributes(PropBundle props);
+  public boolean com.lynx.tasm.behavior.render.Renderer.isNativeInteractionEnabled();
   public void com.lynx.tasm.behavior.render.Renderer.updateExtraData(Object extraData);
   public void com.lynx.tasm.behavior.render.Renderer.onDestroy();
   public void com.lynx.tasm.behavior.render.Renderer.applySubtreeProperties(java.nio.ByteBuffer buffer, int count);

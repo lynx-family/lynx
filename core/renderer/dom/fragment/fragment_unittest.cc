@@ -1575,13 +1575,13 @@ TEST_F(FragmentTest,
   auto root_target = fml::MakeRefCounted<PlatformEventTarget>(
       platform_ref.GetEventTargetHelper(), kRootId, kRootId, 0.f, 0.f, 100.f,
       100.f);
-  auto device_px = [](float value) {
+  auto css_px = [](float value) {
     PlatformEventTarget::EventRegionSizeValue result;
     result.value = value;
     return result;
   };
-  PlatformEventTarget::EventRegion region{device_px(0.f), device_px(0.f),
-                                          device_px(50.f), device_px(100.f)};
+  PlatformEventTarget::EventRegion region{css_px(0.f), css_px(0.f),
+                                          css_px(50.f), css_px(100.f)};
   root_target->SetEventThroughActiveRegions({region});
 
   PlatformEventThroughConfig config;

@@ -222,7 +222,7 @@ void PlatformEventHandler::SetTapSlop(const std::string& tap_slop) {
   }
   // Pointer coordinates use layout units; tapSlop accepts logical px only.
   tap_slop_ = logical_tap_slop *
-              platform_ref_->GetEventTargetHelper()->GetDevicePixelRatio();
+              platform_ref_->GetEventTargetHelper()->GetLayoutsUnitPerPx();
 }
 
 void PlatformEventHandler::SetHasPointerPseudo(bool has_pointer_pseudo) {

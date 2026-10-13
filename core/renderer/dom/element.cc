@@ -876,8 +876,7 @@ void Element::ResetAttribute(const base::String& key) {
     if (auto name = PlatformEventPropNameFromString(key.str());
         name != PlatformEventPropName::kUnknown) {
       if (auto fragment = fragment_impl()) {
-        if (name == PlatformEventPropName::kNativeInteractionEnabled ||
-            name == PlatformEventPropName::kEventThrough ||
+        if (name == PlatformEventPropName::kEventThrough ||
             name == PlatformEventPropName::kConsumeSlideEvent ||
             name == PlatformEventPropName::kIgnoreFocus ||
             name == PlatformEventPropName::kHitSlop ||
@@ -1889,6 +1888,9 @@ void Element::CheckFlattenRelatedProp(const base::String& key,
 
   constexpr const static std::array<const char*, 4> kNonFlattenKeys = {
       "name",
+      // Native interaction semantics are implemented by each platform's real
+      // view hierarchy. Keep the element non-flatten so Android, iOS, and
+      // Harmony can preserve their native hit-test and event-consumption rules.
       "native-interaction-enabled",
       // TODO(hexionghui): remove this latter.
       "user-interaction-enabled",

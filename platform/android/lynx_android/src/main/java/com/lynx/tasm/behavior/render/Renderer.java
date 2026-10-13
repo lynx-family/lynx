@@ -11,6 +11,8 @@ import android.graphics.RectF;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.PropsConstants;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 
@@ -37,6 +39,7 @@ public class Renderer {
   private java.nio.ByteBuffer mDisplayListDataBuffer = null;
   private IRendererHost mRenderHost;
   private LynxBaseUI mUIHost;
+  private boolean mNativeInteractionEnabled;
 
   private int mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
   private float mOpacity = 1f;
@@ -76,6 +79,8 @@ public class Renderer {
   public Renderer(@NonNull PlatformRendererContext platformRendererContext, int sign) {
     mPlatformRendererContext = platformRendererContext;
     mSign = sign;
+    LynxContext context = platformRendererContext.getLynxContext();
+    mNativeInteractionEnabled = context != null && context.getEnableNativeInteraction();
   }
 
   void setRenderHost(IRendererHost renderHost) {
@@ -280,6 +285,24 @@ public class Renderer {
   }
 
   public void updateAttributes(PropBundle props) {}
+
+  // Common properties must be applied even when custom renderers do not call super.
+  final void applyAttributes(PropBundle props) {
+    if (props != null && props.contains(PropsConstants.NATIVE_INTERACTION_ENABLED)) {
+      mNativeInteractionEnabled =
+          props.getProps().getBoolean(PropsConstants.NATIVE_INTERACTION_ENABLED, false);
+    }
+    updateAttributes(props);
+  }
+
+  /**
+   * Returns the current native-interaction-enabled value without changing the host clickable
+   * state.
+   */
+  public boolean isNativeInteractionEnabled() {
+    return mNativeInteractionEnabled;
+  }
+
   public void updateExtraData(Object extraData) {}
   public void onDestroy() {
     mDisplayListApplier = null;

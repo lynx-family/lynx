@@ -70,6 +70,7 @@ class NativePaintingCtxPlatformRef
   void DestroyPaintingNode(int parent, int child, int index) override;
   void UpdateEventInfo(bool has_touch_pseudo) override;
   void SetTapSlop(const std::string &tap_slop) override;
+  void SetEventScreenWidth(float screen_width) override;
   void UpdateAttributes(int id, const fml::RefPtr<PropBundle> &attributes);
   void UpdateNodeReadyPatching(
       std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,

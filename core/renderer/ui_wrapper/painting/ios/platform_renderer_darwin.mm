@@ -29,6 +29,13 @@ bool IsOverlayRendererTag(const base::String& tag) {
   return tag.IsEqual("overlay") || tag.IsEqual("x-overlay-ng");
 }
 
+void ApplyNativeInteractionEnabled(UIView* view, NSDictionary* props) {
+  id value = props[@"native-interaction-enabled"];
+  if (value != nil) {
+    view.userInteractionEnabled = value == NSNull.null ? YES : [value boolValue];
+  }
+}
+
 UIEdgeInsets UIEdgeInsetsFromLayoutMetrics(const float* metrics) {
   if (metrics == nullptr) {
     return UIEdgeInsetsZero;
@@ -178,6 +185,7 @@ void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& a
            gestureDetectorSet:prop_bundle_darwin->gesture_detector_set()];
     }
     UIView<LynxRendererHost>* update_view = GetUIView();
+    ApplyNativeInteractionEnabled(update_view, props);
     [[update_view renderer] updateAttributes:props];
   }
 }
@@ -371,6 +379,17 @@ void PlatformRendererDarwin::InitializeUIView(const fml::RefPtr<PropBundle>& ini
   }
 
   InitializeRendererForView(GetUIView());
+  if (init_data && init_data->IsNative()) {
+    const auto& props = static_cast<NativePropBundle*>(init_data.get())->GetProps();
+    const auto it = props.find("native-interaction-enabled");
+    if (it != props.end()) {
+      // Ordinary hosts only consume this property. Do not convert unrelated
+      // props, datasets, event handlers or gestures during initialization.
+      NativePropBundle native_props({{it->first, it->second}}, {});
+      PropBundleDarwin native_interaction_props(native_props);
+      ApplyNativeInteractionEnabled(GetUIView(), native_interaction_props.dictionary());
+    }
+  }
 }
 
 bool PlatformRendererDarwin::ShouldCreatePlatformExtendedRenderer(
@@ -449,6 +468,7 @@ void PlatformRendererDarwin::InitializeRendererForView(UIView<LynxRendererHost>*
                                              andContext:context_->GetRendererContext()];
   [view setRenderer:renderer];
   if (initial_props != nil) {
+    ApplyNativeInteractionEnabled(view, initial_props);
     [renderer updateAttributes:initial_props];
   }
 }
