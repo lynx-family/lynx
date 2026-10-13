@@ -6,6 +6,7 @@
 #define CORE_RENDERER_DOM_FIBER_COMPOSE_ELEMENT_HANDLE_H_
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
@@ -40,6 +41,12 @@ class ComposeElementHandle final : public lepus::RefCounted {
     return content_element_;
   }
   const fml::RefPtr<Element>& mount_root() const { return mount_root_; }
+
+  // Engine-owner-thread only; validation failures do not prepare the node.
+  std::optional<LayoutResult> MeasureText(ElementManager* manager, double width,
+                                          double width_mode, double height,
+                                          double height_mode,
+                                          const char** error);
 
  private:
   friend class ComposeModifierApplicator;

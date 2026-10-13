@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_PAINTING_CONTEXT_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -270,6 +271,13 @@ class PaintingContext {
                            float height, int height_mode) {
     return platform_impl_->MeasureText(element, width, width_mode, height,
                                        height_mode);
+  }
+
+  std::optional<LayoutResult> MeasureDetached(Element* element, float width,
+                                              int width_mode, float height,
+                                              int height_mode) {
+    return platform_impl_->MeasureDetached(element, width, width_mode, height,
+                                           height_mode);
   }
 
   void DispatchLayoutBefore(Element* element) {

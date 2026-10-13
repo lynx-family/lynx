@@ -8,6 +8,7 @@
 #include <array>
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -276,6 +277,15 @@ class PaintingCtxPlatformImpl {
   virtual void DestroyTextBundle(int id) {}
 
   virtual NativePaintingContext* CastToNativeCtx() { return nullptr; }
+
+  virtual std::optional<LayoutResult> MeasureDetached(Element* element,
+                                                      float width,
+                                                      int width_mode,
+                                                      float height,
+                                                      int height_mode) {
+    return text_layout_impl_->MeasureDetached(element, width, width_mode,
+                                              height, height_mode);
+  }
 
   void MarkUIOperationQueueFlushForRecreateEngine(bool enable);
 

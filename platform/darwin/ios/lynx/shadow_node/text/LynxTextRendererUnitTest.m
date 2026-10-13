@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxBaseTextShadowNode.h>
+#import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTextRenderer.h>
 #import <XCTest/XCTest.h>
 
@@ -51,6 +52,33 @@
   // Put teardown code here. This method is called after the invocation of each test method in the
   // class.
   textRender = NULL;
+}
+
+- (void)testReleaseTextRenderIsPerSignAndIdempotent {
+  LynxTextRenderManager *manager = [LynxTextRenderManager new];
+  LynxAttributedTextBundle *first = [LynxAttributedTextBundle new];
+  LynxAttributedTextBundle *second = [LynxAttributedTextBundle new];
+  [manager putAttributedTextBundle:11 textBundle:first];
+  [manager putAttributedTextBundle:22 textBundle:second];
+  NSMutableDictionary *renderers = [manager valueForKey:@"textRenderDic"];
+  NSMutableDictionary *bundles = [manager valueForKey:@"attributedTextBundleDic"];
+  renderers[@11] = textRender;
+  renderers[@22] = textRender;
+
+  [manager releaseTextRender:11];
+  [manager releaseTextRender:11];
+  XCTAssertNil([manager takeTextRender:11]);
+  XCTAssertNil(bundles[@11]);
+  XCTAssertEqual([manager takeTextRender:22], textRender);
+  XCTAssertEqual(bundles[@22], second);
+
+  // A subsequent paragraph for the same sign is independent of the released one.
+  [manager putAttributedTextBundle:11 textBundle:first];
+  renderers[@11] = textRender;
+  XCTAssertEqual(bundles[@11], first);
+  [manager releaseTextRender:11];
+  XCTAssertNil(bundles[@11]);
+  XCTAssertEqual(bundles[@22], second);
 }
 
 - (void)testInlineEventTargetsWithoutShadowNodes {

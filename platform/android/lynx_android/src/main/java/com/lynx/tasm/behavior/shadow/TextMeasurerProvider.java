@@ -39,4 +39,10 @@ public interface TextMeasurerProvider {
    * @return Array containing children element's sign and alignment results [sign, left, top]
    */
   float[] align(int sign);
+
+  /**
+   * Releases cached text measurement data for one sign. Repeated calls are harmless.
+   * Custom providers that retain per-sign data should override this method.
+   */
+  default void destroyText(int sign) {}
 }

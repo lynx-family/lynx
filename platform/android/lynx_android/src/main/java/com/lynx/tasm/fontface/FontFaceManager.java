@@ -264,6 +264,9 @@ public class FontFaceManager {
 
   private void findOrLoadFontFace(LynxContext lynxContext, final FontFace fontFace, final int style,
       final TypefaceCache.TypefaceListener listener, final Handler handler) {
+    if (listener != null && listener.isCancelled()) {
+      return;
+    }
     final StyledTypeface cachedTypeface = getCacheTypeface(fontFace);
     if (cachedTypeface != null) {
       fontFace.setStyledTypeface(cachedTypeface);
@@ -288,6 +291,11 @@ public class FontFaceManager {
 
     FontFaceGroup group;
     synchronized (mLoadingLock) {
+      // Destroy can race with the IO task queued by getTypeface(). Check under
+      // the same lock used for removal so a released sign cannot be registered again.
+      if (listener != null && listener.isCancelled()) {
+        return;
+      }
       final StyledTypeface cachedTypefaceInLock = getCacheTypeface(fontFace);
       if (cachedTypefaceInLock != null) {
         fontFace.setStyledTypeface(cachedTypefaceInLock);
@@ -637,6 +645,14 @@ public class FontFaceManager {
         continue;
       }
       mLoadingFontFaceBySrc.put(srcKey(pair.first, pair.second), group);
+    }
+  }
+
+  public void removeTypefaceListener(@NonNull TypefaceCache.TypefaceListener listener) {
+    synchronized (mLoadingLock) {
+      for (FontFaceGroup group : mLoadingFontFaceBySrc.values()) {
+        group.removeListener(listener);
+      }
     }
   }
 
