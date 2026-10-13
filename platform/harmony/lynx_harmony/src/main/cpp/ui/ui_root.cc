@@ -50,6 +50,11 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
                                             this);
   NodeManager::Instance().RegisterNodeEvent(
       root_proxy_, NODE_EVENT_ON_VISIBLE_AREA_CHANGE, this);
+  // Host-side (ArkUI/Compose ancestor) scrolling moves the embedded tree
+  // without any Lynx-internal change; area changes on the root proxy are
+  // used as an exposure re-check signal for nested embeddings.
+  NodeManager::Instance().RegisterNodeEvent(root_proxy_,
+                                            NODE_EVENT_ON_AREA_CHANGE, this);
 }
 
 UIRoot::~UIRoot() {
@@ -76,6 +81,8 @@ UIRoot::~UIRoot() {
                                               NODE_EVENT_ON_DETACH);
   NodeManager::Instance().UnregisterNodeEvent(
       root_proxy_, NODE_EVENT_ON_VISIBLE_AREA_CHANGE);
+  NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
+                                              NODE_EVENT_ON_AREA_CHANGE);
   NodeManager::Instance().DisposeNode(root_proxy_);
   NodeManager::Instance().DisposeNode(normal_sibling_);
   NodeManager::Instance().DisposeNode(transparent_sibling_);
@@ -114,6 +121,12 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
     ArkUI_NodeComponentEvent* visible_event =
         OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
     is_root_visible_ = visible_event->data[0].i32;
+    context_->NotifyUIScroll();
+  } else if (event_type == NODE_EVENT_ON_AREA_CHANGE) {
+    // Host-side scrolling (e.g. an ArkUI/Compose ancestor list) moves the
+    // embedded Lynx tree without any Lynx-internal layout/scroll change.
+    // Treat root area changes as a scroll signal so exposure checks are
+    // re-evaluated in nested embeddings.
     context_->NotifyUIScroll();
   } else if (event_type == NODE_EVENT_ON_ATTACH) {
     is_root_attached_ = true;
