@@ -10,8 +10,12 @@ import shutil
 def build():
     input = sys.argv[1] if len(sys.argv) > 1 else None
     output = sys.argv[2] if len(sys.argv) > 2 else None
+    base_resource_dir = sys.argv[3] if len(sys.argv) > 3 else None
     logbox_zip = os.path.join(input, "logbox.zip") if input else None
     error_parser = os.path.join(input, "lynx-error-parser.js") if input else None
+    notification_cancel = (
+        os.path.join(input, "notification_cancel.png") if input else None
+    )
     switch_page_source = (
         os.path.join(input, "switchPage", "devtoolSwitch.lynx.bundle")
         if input
@@ -22,7 +26,12 @@ def build():
         print(f"The devtool resource directory {input} is invalid.")
         return
     if output:
-        os.makedirs(output, exist_ok=True)
+        if base_resource_dir:
+            if os.path.exists(output):
+                shutil.rmtree(output)
+            shutil.copytree(base_resource_dir, output)
+        else:
+            os.makedirs(output, exist_ok=True)
     else:
         return
 
@@ -34,6 +43,8 @@ def build():
 
     # copy
     shutil.copy2(error_parser, logbox_output)
+    if notification_cancel and os.path.exists(notification_cancel):
+        shutil.copy2(notification_cancel, output)
 
     if switch_page_source and os.path.exists(switch_page_source):
         switch_page_output_dir = os.path.join(output, "switchPage")
