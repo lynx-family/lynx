@@ -5,6 +5,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <limits>
+
 #include "clay/gfx/attributes_testing.h"
 #include "clay/gfx/testing_utils.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -13,6 +15,14 @@
 
 namespace clay {
 namespace testing {
+
+TEST(DisplayListPathEffect, RejectsNegativeDashCount) {
+  const float intervals[] = {1.0f, 2.0f};
+  EXPECT_EQ(DlDashPathEffect::Make(intervals, -1, 0), nullptr);
+  EXPECT_EQ(
+      DlDashPathEffect::Make(intervals, std::numeric_limits<int>::min(), 0),
+      nullptr);
+}
 
 TEST(DisplayListPathEffect, EffectShared) {
   const SkScalar TestDashes2[] = {1.0, 1.5};

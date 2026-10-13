@@ -367,7 +367,7 @@ class GradientColorSourceBase : public MatrixColorSourceBase {
     }
     static_assert(sizeof(colors()[0]) == 4);
     static_assert(sizeof(stops()[0]) == 4);
-    int num_bytes = stop_count_ * 4;
+    size_t num_bytes = static_cast<size_t>(stop_count_) * sizeof(Color);
     return (memcmp(colors(), other_base->colors(), num_bytes) == 0 &&
             memcmp(stops(), other_base->stops(), num_bytes) == 0);
   }

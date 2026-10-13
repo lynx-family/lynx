@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 #include <utility>
 
 #include "clay/fml/logging.h"
@@ -30,18 +31,22 @@ static void VerticesDeleter(void* p) {
 }
 
 static size_t bytes_needed(int vertex_count, Flags flags, int index_count) {
-  int needed = sizeof(Vertices);
-  // We always have vertices
-  needed += vertex_count * sizeof(SkPoint);
-  if (flags.has_texture_coordinates) {
-    needed += vertex_count * sizeof(SkPoint);
+  // Offsets are also consumed by int-based helpers. Reject sizes that cannot
+  // be represented by those helpers before allocating or initializing storage.
+  const size_t limit = std::numeric_limits<int>::max();
+  const size_t vertex_size =
+      sizeof(SkPoint) + (flags.has_texture_coordinates ? sizeof(SkPoint) : 0) +
+      (flags.has_colors ? sizeof(clay::Color) : 0);
+  size_t needed = sizeof(Vertices);
+  if (vertex_count < 0 || index_count < 0 ||
+      static_cast<size_t>(vertex_count) > (limit - needed) / vertex_size) {
+    return 0;
   }
-  if (flags.has_colors) {
-    needed += vertex_count * sizeof(clay::Color);
+  needed += static_cast<size_t>(vertex_count) * vertex_size;
+  if (static_cast<size_t>(index_count) > (limit - needed) / sizeof(uint16_t)) {
+    return 0;
   }
-  if (index_count > 0) {
-    needed += index_count * sizeof(uint16_t);
-  }
+  needed += static_cast<size_t>(index_count) * sizeof(uint16_t);
   return needed;
 }
 
@@ -71,6 +76,9 @@ std::shared_ptr<Vertices> Vertices::Make(VertexMode mode, int vertex_count,
     flags |= Builder::kHasColors;
   }
   Builder builder(mode, vertex_count, flags, index_count);
+  if (!builder.is_valid()) {
+    return nullptr;
+  }
 
   builder.store_vertices(vertices);
   if (texture_coordinates) {
@@ -212,8 +220,11 @@ Vertices::Builder::Builder(VertexMode mode, int vertex_count, Flags flags,
       needs_indices_(index_count > 0) {
   vertex_count = std::max(vertex_count, 0);
   index_count = std::max(index_count, 0);
-  void* storage =
-      ::operator new(bytes_needed(vertex_count, flags, index_count));
+  const size_t needed = bytes_needed(vertex_count, flags, index_count);
+  if (needed == 0) {
+    return;
+  }
+  void* storage = ::operator new(needed);
   vertices_.reset(new (storage)
                       Vertices(mode, vertex_count, flags, index_count),
                   VerticesDeleter);
@@ -227,8 +238,8 @@ static void store_points(char* dst, int offset, const float* src, int count) {
 }
 
 void Vertices::Builder::store_vertices(const SkPoint vertices[]) {
-  FML_DCHECK(is_valid());
-  FML_DCHECK(needs_vertices_);
+  FML_CHECK(is_valid());
+  FML_CHECK(needs_vertices_);
   char* pod = reinterpret_cast<char*>(vertices_.get());
   size_t bytes = vertices_->vertex_count_ * sizeof(vertices[0]);
   memcpy(pod + vertices_->vertices_offset_, vertices, bytes);
@@ -236,8 +247,8 @@ void Vertices::Builder::store_vertices(const SkPoint vertices[]) {
 }
 
 void Vertices::Builder::store_vertices(const float vertices[]) {
-  FML_DCHECK(is_valid());
-  FML_DCHECK(needs_vertices_);
+  FML_CHECK(is_valid());
+  FML_CHECK(needs_vertices_);
   char* pod = reinterpret_cast<char*>(vertices_.get());
   store_points(pod, vertices_->vertices_offset_, vertices,
                vertices_->vertex_count_);
@@ -245,8 +256,8 @@ void Vertices::Builder::store_vertices(const float vertices[]) {
 }
 
 void Vertices::Builder::store_texture_coordinates(const SkPoint coords[]) {
-  FML_DCHECK(is_valid());
-  FML_DCHECK(needs_texture_coords_);
+  FML_CHECK(is_valid());
+  FML_CHECK(needs_texture_coords_);
   char* pod = reinterpret_cast<char*>(vertices_.get());
   size_t bytes = vertices_->vertex_count_ * sizeof(coords[0]);
   memcpy(pod + vertices_->texture_coordinates_offset_, coords, bytes);
@@ -254,8 +265,8 @@ void Vertices::Builder::store_texture_coordinates(const SkPoint coords[]) {
 }
 
 void Vertices::Builder::store_texture_coordinates(const float coords[]) {
-  FML_DCHECK(is_valid());
-  FML_DCHECK(needs_texture_coords_);
+  FML_CHECK(is_valid());
+  FML_CHECK(needs_texture_coords_);
   char* pod = reinterpret_cast<char*>(vertices_.get());
   store_points(pod, vertices_->texture_coordinates_offset_, coords,
                vertices_->vertex_count_);
@@ -263,8 +274,8 @@ void Vertices::Builder::store_texture_coordinates(const float coords[]) {
 }
 
 void Vertices::Builder::store_colors(const clay::Color colors[]) {
-  FML_DCHECK(is_valid());
-  FML_DCHECK(needs_colors_);
+  FML_CHECK(is_valid());
+  FML_CHECK(needs_colors_);
   char* pod = reinterpret_cast<char*>(vertices_.get());
   size_t bytes = vertices_->vertex_count_ * sizeof(colors[0]);
   memcpy(pod + vertices_->colors_offset_, colors, bytes);
@@ -272,8 +283,8 @@ void Vertices::Builder::store_colors(const clay::Color colors[]) {
 }
 
 void Vertices::Builder::store_indices(const uint16_t indices[]) {
-  FML_DCHECK(is_valid());
-  FML_DCHECK(needs_indices_);
+  FML_CHECK(is_valid());
+  FML_CHECK(needs_indices_);
   char* pod = reinterpret_cast<char*>(vertices_.get());
   size_t bytes = vertices_->index_count_ * sizeof(indices[0]);
   memcpy(pod + vertices_->indices_offset_, indices, bytes);
@@ -281,7 +292,9 @@ void Vertices::Builder::store_indices(const uint16_t indices[]) {
 }
 
 std::shared_ptr<Vertices> Vertices::Builder::build() {
-  FML_DCHECK(is_valid());
+  if (!is_valid()) {
+    return nullptr;
+  }
   if (vertices_->vertex_count() <= 0) {
     // We set this to true in the constructor to make sure that they
     // call store_vertices() only once, but if there are no vertices

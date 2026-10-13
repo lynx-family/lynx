@@ -8,13 +8,16 @@
 #include "clay/ui/window/pointer_data_packet.h"
 
 #include <cstring>
+#include <limits>
 
 #include "clay/fml/logging.h"
 
 namespace clay {
 
-PointerDataPacket::PointerDataPacket(size_t count)
-    : data_(count * sizeof(PointerData)) {}
+PointerDataPacket::PointerDataPacket(size_t count) {
+  FML_CHECK(count <= std::numeric_limits<size_t>::max() / sizeof(PointerData));
+  data_.resize(count * sizeof(PointerData));
+}
 
 PointerDataPacket::PointerDataPacket(uint8_t* data, size_t num_bytes)
     : data_(data, data + num_bytes) {}
@@ -22,12 +25,12 @@ PointerDataPacket::PointerDataPacket(uint8_t* data, size_t num_bytes)
 PointerDataPacket::~PointerDataPacket() = default;
 
 void PointerDataPacket::SetPointerData(size_t i, const PointerData& data) {
-  FML_DCHECK(i < GetLength());
+  FML_CHECK(i < GetLength());
   memcpy(&data_[i * sizeof(PointerData)], &data, sizeof(PointerData));
 }
 
 PointerData PointerDataPacket::GetPointerData(size_t i) const {
-  FML_DCHECK(i < GetLength());
+  FML_CHECK(i < GetLength());
   PointerData result;
   memcpy(&result, &data_[i * sizeof(PointerData)], sizeof(PointerData));
   return result;
