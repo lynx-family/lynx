@@ -660,6 +660,8 @@ void BaseTextShadowNode::MeasureInlineView(
               constraint);
       child->SetWidth(result.width);
       child->SetHeight(result.height);
+      static_cast<InlineViewShadowNode*>(child)->SetMeasuredBaseline(
+          result.baseline);
     } else if (child->IsBaseTextShadowNode()) {
       static_cast<BaseTextShadowNode*>(child)->MeasureInlineView(constraint);
     }
