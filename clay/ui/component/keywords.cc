@@ -46,7 +46,7 @@ struct TokenValue {
   short id;
 };
 
-#define TOTAL_KEYWORDS 385
+#define TOTAL_KEYWORDS 386
 #define MIN_WORD_LENGTH 3
 #define MAX_WORD_LENGTH 37
 #define MIN_HASH_VALUE 25
@@ -491,6 +491,7 @@ struct StringPool_t {
   char StringPool_str1158[sizeof("pause-on-background")];
   char StringPool_str1177[sizeof("word-break")];
   char StringPool_str1189[sizeof("border-left-style")];
+  char StringPool_str1197[sizeof("optimize-load-key")];
   char StringPool_str1211[sizeof("border-left-color")];
   char StringPool_str1222[sizeof("border-bottom-width")];
   char StringPool_str1247[sizeof("background-clip")];
@@ -878,6 +879,7 @@ static const struct StringPool_t StringPool_contents = {
     "pause-on-background",
     "word-break",
     "border-left-style",
+    "optimize-load-key",
     "border-left-color",
     "border-bottom-width",
     "background-clip",
@@ -2463,7 +2465,8 @@ static const struct TokenValue wordlist[] = {
     {-1},
     {-1},
     {-1},
-    {-1},
+    {(short)(size_t) & ((struct StringPool_t *)0)->StringPool_str1197,
+     (short)KeywordID::kOptimizeLoadKey},
     {-1},
     {-1},
     {-1},
