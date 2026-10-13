@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lynxjs.org/schemas/element_attribute_index.schema.json",
+  "title": "Lynx Element Attribute ID Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id_type", "reserved_ranges", "attributes"],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id_type": {
+      "const": "uint16"
+    },
+    "reserved_ranges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["start", "end", "owner"],
+        "properties": {
+          "start": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65535
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65535
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "attributes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "state"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "enum": ["active", "tombstone"]
+          }
+        }
+      }
+    }
+  }
+}
