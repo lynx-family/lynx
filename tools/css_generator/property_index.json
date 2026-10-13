@@ -1,6 +1,6 @@
 [
     {
-        "count": 238
+        "count": 239
     },
     {
         "id": 1,
@@ -953,5 +953,9 @@
     {
         "id": 238,
         "name": "-x-box-match-parent-size"
+    },
+    {
+        "id": 239,
+        "name": "text-spacing-trim"
     }
 ]
