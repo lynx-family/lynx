@@ -1,0 +1,79 @@
+{
+  "name": "text-spacing-trim",
+  "id": 239,
+  "type": "enum",
+  "default_value": "normal",
+  "version": "4.0",
+  "author": "",
+  "consumption_status": "skip",
+  "desc": "Specify how spacing around CJK punctuation is trimmed according to its position and neighboring characters. The normal and auto values do not change punctuation spacing. The space-all and space-first values are not supported.",
+  "values": [
+    {
+      "value": "normal",
+      "version": "4.0",
+      "desc": "Do not change punctuation spacing."
+    },
+    {
+      "value": "space-all",
+      "version": "4.0",
+      "desc": "Not supported."
+    },
+    {
+      "value": "space-first",
+      "version": "4.0",
+      "desc": "Not supported."
+    },
+    {
+      "value": "trim-start",
+      "version": "4.0",
+      "desc": "Trim opening punctuation spacing at every line start, with normal spacing elsewhere."
+    },
+    {
+      "value": "trim-both",
+      "version": "4.0",
+      "desc": "Trim opening and closing punctuation spacing at line edges and collapse spacing between adjacent punctuation."
+    },
+    {
+      "value": "trim-all",
+      "version": "4.0",
+      "desc": "Trim full-width opening, closing, and middle-dot punctuation spacing regardless of position or neighboring characters."
+    },
+    {
+      "value": "auto",
+      "version": "4.0",
+      "desc": "Do not change punctuation spacing."
+    }
+  ],
+  "formal_syntax": "normal | space-all | space-first | trim-start | trim-both | trim-all | auto",
+  "is_shorthand": false,
+  "note": [
+    {
+      "literal": "The property maps to punctuation compression options in the Textra paragraph style. Platform text layout does not support it.",
+      "level": ["warning"]
+    }
+  ],
+  "compat_data": {
+    "text-spacing-trim": {
+      "__compat": {
+        "lynx_path": "api/css/properties/text-spacing-trim",
+        "spec_url": [
+          "https://www.w3.org/TR/css-text-4/#text-spacing-trim-property"
+        ],
+        "status": {
+          "deprecated": false,
+          "experimental": true
+        },
+        "support": {
+          "android": { "version_added": false },
+          "ios": { "version_added": false },
+          "harmony": { "version_added": false },
+          "clay_android": { "version_added": false },
+          "clay_ios": { "version_added": false },
+          "clay_macos": { "version_added": false },
+          "clay_windows": { "version_added": false },
+          "web_lynx": { "version_added": false }
+        }
+      }
+    }
+  }
+}
