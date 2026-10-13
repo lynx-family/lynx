@@ -128,18 +128,14 @@ async function renderWindowed(templateUrl, options) {
     title: 'node-lynx-windowed-screenshot-compare',
     visible: true,
   });
-  let viewClosed = false;
   try {
     await view.loadTemplateFromUrl(templateUrl);
     const png = await view.screenshot();
     view.close();
     await view.waitUntilClosed(10000);
-    viewClosed = true;
     return png;
   } finally {
-    if (!viewClosed) {
-      view.destroy();
-    }
+    view.destroy();
   }
 }
 

@@ -266,3 +266,11 @@ pnpm --filter @lynx-js/node-lynx exec tsc --noEmit
 pnpm --filter @lynx-js/node-lynx run test
 pnpm --filter @lynx-js/node-lynx run test:gallery
 ```
+
+On macOS, `node test/windowed_lifecycle.js` from the package directory checks
+rendering during close, direct destruction, pending waiters, and repeated
+destruction across 36 windows in three child processes. Set
+`NODE_LYNX_WINDOWED_LIFECYCLE_ITERATIONS` to increase the windows per child.
+Synthetic mouse and keyboard input is opt-in because it requires access to
+desktop input services. Set `NODE_LYNX_WINDOWED_INPUT_TESTS=1` to include it in
+the lifecycle test on a desktop session.

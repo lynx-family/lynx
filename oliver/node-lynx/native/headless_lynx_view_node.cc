@@ -2454,7 +2454,6 @@ class HeadlessLynxViewNode {
 
     if (window_host_) {
       window_host_->Close();
-      window_host_.reset();
     }
     if (view_ && template_client_) {
       TemplateRenderer()->RemoveClient(template_client_.get());
@@ -2464,6 +2463,9 @@ class HeadlessLynxViewNode {
     template_client_.reset();
     fetcher_.reset();
     renderer_.reset();
+    // Releasing the view stops the raster thread and drains its pending frame
+    // callbacks. Keep their window host alive until that shutdown completes.
+    window_host_.reset();
 
     if (state_ && state_->resource_fetcher_ref) {
       napi_delete_reference(env_, state_->resource_fetcher_ref);
