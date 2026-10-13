@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.3
+
+- Add the Android and Harmony `experimental-consume-gesture` property to `<scroll-coordinator-header>`. It defaults to `false` to limit rollout impact and is planned to default to `true` before removal. Keep `android-consume-gesture` as a deprecated Android property.
+
 ## 4.4.2
 
 - Add `requestTimeoutMs` to `RequestInit.lynxExtension` for configuring the Fetch request timeout in milliseconds.

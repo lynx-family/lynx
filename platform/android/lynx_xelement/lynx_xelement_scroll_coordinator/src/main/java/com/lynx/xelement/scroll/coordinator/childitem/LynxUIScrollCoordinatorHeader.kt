@@ -61,7 +61,7 @@ open class LynxUIScrollCoordinatorHeader(
     mView.handleGesture = value
   }
 
-  @LynxProp(name = "consume-gesture", defaultBoolean = false)
+  @LynxProp(name = "experimental-consume-gesture", defaultBoolean = false)
   fun setConsumeGesture(value: Boolean) {
     mView.consumeGesture = value
   }
