@@ -5,6 +5,7 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_RENDERER_LYNX_RENDERER_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_RENDERER_LYNX_RENDERER_H_
 
+#include <arkui/native_node.h>
 #include <native_drawing/drawing_canvas.h>
 
 #include <cstdint>

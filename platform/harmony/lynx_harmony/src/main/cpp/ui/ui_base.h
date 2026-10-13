@@ -126,7 +126,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
                                    int32_t sign);
   void DetachFragmentLayerRenderer();
   void UpdateFragmentLayerDisplayList(const DisplayList* display_list);
-  void SetFragmentLayerClipBounds(bool need_clip);
+  void SetFragmentLayerClipBounds(bool need_clip, bool overflow_x,
+                                  bool overflow_y);
   void UpdateFragmentLayerSubtreeProperties(const DisplayList& display_list);
   void OnAttachedToFragmentLayerTree();
   void UpdateFragmentLayerOffset(float left, float top);
@@ -415,6 +416,9 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unique_ptr<BackgroundDrawable> background_drawable_{nullptr};
   std::unique_ptr<BackgroundDrawable> mask_drawable_{nullptr};
   std::unique_ptr<LynxRenderer> renderer_;
+  std::optional<bool> fragment_clip_bounds_;
+  // Applied directional clip in physical pixels.
+  std::optional<std::array<float, 4>> fragment_clip_rect_;
   std::vector<std::string> events_;
   std::vector<std::string> response_chain_events_;
   ArkUI_NodeType node_type_;
