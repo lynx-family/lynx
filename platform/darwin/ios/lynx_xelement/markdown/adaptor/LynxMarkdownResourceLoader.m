@@ -183,6 +183,22 @@ static LynxFontStyleType LynxMarkdownToFontStyle(NSInteger style) {
   return nil;
 }
 
+- (BOOL)isAnimatedImage:(UIImage *)image {
+  return [[LynxImageLoader imageService] isAnimatedImage:image] || image.images.count > 1;
+}
+
+- (UIImageView *)loadAnimatedImage:(UIImage *)image {
+  id<LynxServiceImageProtocol> imageService = [LynxImageLoader imageService];
+  UIImageView *imageView = [imageService imageView];
+  if (imageView != nil) {
+    [imageService setAutoPlay:imageView value:YES];
+    [imageService handleAnimatedImage:image view:imageView loopCount:0];
+  } else {
+    imageView = [[UIImageView alloc] initWithImage:image];
+  }
+  return imageView;
+}
+
 - (UIFont *)loadFontByFamilyName:(NSString *)family Weight:(int)weight Style:(int)style {
   NSString *familyName = family == nil ? @"" : family;
   NSString *fontKey = [NSString stringWithFormat:@"%@_%d_%d", familyName, weight, style];
