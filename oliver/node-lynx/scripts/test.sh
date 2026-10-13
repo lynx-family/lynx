@@ -41,3 +41,7 @@ node test/shared_runtime_smoke.js
 node test/resource_root_boundaries.js
 node test/open_card_manager.js
 node test/protocol_smoke.js
+
+if [[ "${PLATFORM}" == "darwin" ]]; then
+  node test/windowed_lifecycle.js
+fi

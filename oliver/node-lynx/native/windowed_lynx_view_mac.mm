@@ -30,6 +30,7 @@ class NodeLynxWindowHostMac;
 
 @interface NodeLynxWindowDelegate : NSObject <NSWindowDelegate>
 - (instancetype)initWithHost:(lynx::node::NodeLynxWindowHostMac*)host;
+- (void)detachHost;
 @end
 
 @interface NodeLynxMetalView : NSView <NSTextInputClient>
@@ -38,6 +39,7 @@ class NodeLynxWindowHostMac;
 - (void)notifyResize;
 - (void)setTextInputActive:(BOOL)active;
 - (void)setTextInputRect:(NSRect)rect;
+- (void)detachHost;
 @end
 
 namespace {
@@ -402,7 +404,7 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
   bool IsClosed() const override { return closed_.load(); }
 
   bool PresentFrame(const lynx_accelerated_paint_info_t& info) override {
-    if (!info.shared_texture_handle || !device_ || !command_queue_) {
+    if (closed_.load() || !info.shared_texture_handle || !device_ || !command_queue_) {
       return false;
     }
     IOSurfaceRef surface = static_cast<IOSurfaceRef>(info.shared_texture_handle);
@@ -423,7 +425,7 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
   }
 
   bool PresentPixels(const uint8_t* rgba, int width, int height) override {
-    if (!rgba || width <= 0 || height <= 0 || !device_ || !command_queue_) {
+    if (closed_.load() || !rgba || width <= 0 || height <= 0 || !device_ || !command_queue_) {
       return false;
     }
     auto bgra = std::make_shared<std::vector<uint8_t>>(static_cast<size_t>(width) * height * 4);
@@ -486,11 +488,13 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
   }
 
   void SetTextInputActive(bool active) override {
+    auto state = presentation_state_;
     void (^update)() = ^{
-      if (content_view_) {
-        [content_view_ setTextInputActive:active ? YES : NO];
-        if (active && window_) {
-          [window_ makeFirstResponder:content_view_];
+      if (!state->closed.load() && state->content_view) {
+        NodeLynxMetalView* view = state->content_view;
+        [view setTextInputActive:active ? YES : NO];
+        if (active && view.window) {
+          [view.window makeFirstResponder:view];
         }
       }
     };
@@ -523,6 +527,10 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
       return;
     }
     closed_.store(true);
+    // AppKit may retain the delegate or content view past the C++ host's life.
+    [window_delegate_ detachHost];
+    [content_view_ detachHost];
+    window_.delegate = nil;
     window_ = nil;
     window_delegate_ = nil;
     content_view_ = nil;
@@ -606,6 +614,7 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
                                             styleMask:style
                                               backing:NSBackingStoreBuffered
                                                 defer:NO];
+      window_.releasedWhenClosed = NO;
       NSString* title = options_.title.empty()
                             ? @"Node Lynx"
                             : [NSString stringWithUTF8String:options_.title.c_str()];
@@ -752,15 +761,17 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
   }
 
   void SetTextInputRect(float x, float y, float width, float height) {
+    auto state = presentation_state_;
     void (^update)() = ^{
-      if (!content_view_) {
+      if (state->closed.load() || !state->content_view) {
         return;
       }
-      CGFloat view_height = content_view_.bounds.size.height;
+      NodeLynxMetalView* view = state->content_view;
+      CGFloat view_height = view.bounds.size.height;
       CGFloat rect_height = std::max(1.0f, height);
       NSRect rect =
           NSMakeRect(x, view_height - y - rect_height, std::max(1.0f, width), rect_height);
-      [content_view_ setTextInputRect:rect];
+      [view setTextInputRect:rect];
     };
     if ([NSThread isMainThread]) {
       update();
@@ -807,6 +818,10 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
   }
 }
 
+- (void)detachHost {
+  _host = nullptr;
+}
+
 @end
 
 @implementation NodeLynxMetalView {
@@ -838,6 +853,10 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
 
 - (BOOL)acceptsFirstResponder {
   return YES;
+}
+
+- (void)detachHost {
+  _host = nullptr;
 }
 
 - (CAMetalLayer*)metalLayer {
