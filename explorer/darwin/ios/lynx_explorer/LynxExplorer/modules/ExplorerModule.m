@@ -4,10 +4,8 @@
 
 #import "ExplorerModule.h"
 #import <Lynx/LynxLog.h>
+#import "../LynxExplorerSwiftInterop.h"
 #import "LynxSettingManager.h"
-#import "ScanViewController.h"
-#import "TasmDispatcher.h"
-#import "UIHelper.h"
 
 @implementation ExplorerModule
 
@@ -29,7 +27,9 @@
 + (NSDictionary<NSString *, NSString *> *)methodLookup {
   return @{
     @"openSchema" : NSStringFromSelector(@selector(openSchema:)),
+    @"openRoute" : NSStringFromSelector(@selector(openRoute:container:callback:)),
     @"openScan" : NSStringFromSelector(@selector(openScan)),
+    @"navigateBack" : NSStringFromSelector(@selector(navigateBack:)),
     @"setThreadMode" : NSStringFromSelector(@selector(setThreadMode:)),
     @"switchPreSize" : NSStringFromSelector(@selector(switchPreSize:)),
     @"getSettingInfo" : NSStringFromSelector(@selector(getSettingInfo)),
@@ -40,20 +40,64 @@
 }
 
 - (void)openSchema:(NSString *)url {
-  LLogInfo(@"openSchema %s", [url cStringUsingEncoding:[NSString defaultCStringEncoding]]);
-  dispatch_async(dispatch_get_main_queue(), ^() {
-    [[TasmDispatcher sharedInstance] openTargetUrl:url];
-  });
+  LLogInfo(@"openSchema %@", url);
+  LXRouteCoordinator *coordinator = [LXRouteCoordinator currentBridge];
+  if (coordinator == nil) {
+    LLogError(@"Unable to open route: route coordinator unavailable");
+    return;
+  }
+  [coordinator openModuleURL:url
+                   container:@"automatic"
+                    callback:^(id payload) {
+                      NSDictionary *result =
+                          [payload isKindOfClass:NSDictionary.class] ? payload : nil;
+                      if (![result[@"success"] boolValue]) {
+                        LLogError(@"Unable to open route: %@", result[@"message"]);
+                      }
+                    }];
+}
+
+- (void)openRoute:(NSString *)url
+        container:(NSString *)container
+         callback:(LynxCallbackBlock)callback {
+  LLogInfo(@"openRoute %@", url);
+  LXRouteCoordinator *coordinator = [LXRouteCoordinator currentBridge];
+  if (coordinator == nil) {
+    callback(@{
+      @"success" : @NO,
+      @"code" : @"coordinator_unavailable",
+      @"message" : @"The route coordinator is unavailable.",
+    });
+    return;
+  }
+  [coordinator openModuleURL:url container:container callback:callback];
 }
 
 - (void)openScan {
-  dispatch_async(dispatch_get_main_queue(), ^() {
-    UIViewController *vc = [UIHelper getTopViewController];
-    if (vc != nil && [vc isKindOfClass:[UINavigationController class]]) {
-      ScanViewController *scanVC = [ScanViewController new];
-      [(UINavigationController *)vc pushViewController:scanVC animated:YES];
+  LXRouteCoordinator *coordinator = [LXRouteCoordinator currentBridge];
+  if (coordinator == nil) {
+    LLogError(@"Unable to open scanner: route coordinator unavailable");
+    return;
+  }
+  [coordinator presentScannerWithCallback:^(id payload) {
+    NSDictionary *result = [payload isKindOfClass:NSDictionary.class] ? payload : nil;
+    if (![result[@"success"] boolValue]) {
+      LLogError(@"Unable to open scanner: %@", result[@"message"]);
     }
-  });
+  }];
+}
+
+- (void)navigateBack:(LynxCallbackBlock)callback {
+  LXRouteCoordinator *coordinator = [LXRouteCoordinator currentBridge];
+  if (coordinator == nil) {
+    callback(@{
+      @"success" : @NO,
+      @"code" : @"coordinator_unavailable",
+      @"message" : @"The route coordinator is unavailable.",
+    });
+    return;
+  }
+  [coordinator closeAnimated:YES callback:callback];
 }
 
 - (void)setThreadMode:(LynxThreadStrategyForRender)arg {
@@ -79,6 +123,14 @@
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
   [defaults setObject:value forKey:theme];
   [defaults synchronize];
+  if ([theme isEqualToString:@"preferredTheme"]) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [[NSNotificationCenter defaultCenter]
+          postNotificationName:@"ExplorerThemePreferenceDidChange"
+                        object:nil
+                      userInfo:@{@"preference" : value ?: @"Auto"}];
+    });
+  }
 }
 
 - (void)saveToLocalStorage:(NSString *)key value:(NSString *)value {
