@@ -9,6 +9,7 @@ lynx_core_source_set("display_list") {
   sources = [
     "../public/display_list.h",
     "../public/display_list_reader.h",
+    "../public/rounded_rectangle.h",
     "display_list.cc",
     "display_list_reader.cc",
   ]
@@ -16,7 +17,10 @@ lynx_core_source_set("display_list") {
 }
 
 unittest_set("display_list_testset") {
-  sources = [ "display_list_unittest.cc" ]
+  sources = [
+    "display_list_unittest.cc",
+    "rounded_rectangle_unittest.cc",
+  ]
   public_deps = [
     ":display_list",
     "../../base/src:base_values",

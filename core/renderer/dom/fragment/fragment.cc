@@ -20,11 +20,11 @@
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
-#include "core/renderer/dom/fragment/rounded_rectangle.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/rounded_rectangle.h"
 
 namespace lynx {
 namespace tasm {
