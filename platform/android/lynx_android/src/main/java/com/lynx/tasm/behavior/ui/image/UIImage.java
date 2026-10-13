@@ -193,8 +193,8 @@ public class UIImage extends UIView {
   }
 
   @Override
-  public void beforeDraw(Canvas canvas) {
-    super.beforeDraw(canvas);
+  public void beforeDispatchDraw(Canvas canvas) {
+    super.beforeDispatchDraw(canvas);
     // The Fragment display list owns image content when this UI hosts a Renderer.
     if (mView.getRenderer() != null) {
       return;
