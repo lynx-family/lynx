@@ -30,6 +30,7 @@ public class UIImageTest {
     image.updatePropertiesInterval(new StylesDiffMap(props));
     image.onNodeReady();
     image.beforeDraw(canvas);
+    image.beforeDispatchDraw(canvas);
 
     verify(manager, never()).updatePropertiesInterval(props);
     verify(manager, never()).onNodeReady();
@@ -37,7 +38,7 @@ public class UIImageTest {
   }
 
   @Test
-  public void ordinaryImageStillLoadsAndDraws() {
+  public void ordinaryImageDrawsOnlyBeforeDispatchDraw() {
     UIImage image = new UIImage(TestingUtils.getLynxContext());
     LynxImageManager manager = mock(LynxImageManager.class);
     image.mLynxImageManager = manager;
@@ -47,6 +48,10 @@ public class UIImageTest {
     image.beforeDraw(canvas);
 
     verify(manager).onNodeReady();
+    verify(manager, never()).onDraw(canvas);
+
+    image.beforeDispatchDraw(canvas);
+
     verify(manager).onDraw(canvas);
   }
 

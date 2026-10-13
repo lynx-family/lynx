@@ -261,10 +261,6 @@ public class ViewInfo implements IDrawChildHook {
       mProcessHook.beforeProcessViewInfo(this);
     }
 
-    if (mImageManagerUsedInBeforeDraw != null) {
-      mImageManagerUsedInBeforeDraw.onDraw(canvas);
-    }
-
     if (mSkewX != 0 || mSkewY != 0) {
       canvas.skew(mSkewX, mSkewY);
       // Put the anchor point back.
@@ -297,6 +293,9 @@ public class ViewInfo implements IDrawChildHook {
     }
     if (mOverflowClipRect != null) {
       canvas.clipRect(mOverflowClipRect);
+    }
+    if (mImageManagerUsedInBeforeDraw != null) {
+      mImageManagerUsedInBeforeDraw.onDraw(canvas);
     }
   }
 

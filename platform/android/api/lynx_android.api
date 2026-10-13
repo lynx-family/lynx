@@ -11462,7 +11462,7 @@ public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behav
   public void com.lynx.tasm.behavior.ui.image.UIImage.onPropsUpdated();
   public void com.lynx.tasm.behavior.ui.image.UIImage.onNodeReady();
   public void com.lynx.tasm.behavior.ui.image.UIImage.destroy();
-  public void com.lynx.tasm.behavior.ui.image.UIImage.beforeDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.ui.image.UIImage.beforeDispatchDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.ui.image.UIImage.beforeProcessViewInfo(ViewInfo info);
   public void com.lynx.tasm.behavior.ui.image.UIImage.onAttach();
   public void com.lynx.tasm.behavior.ui.image.UIImage.onDetach();
