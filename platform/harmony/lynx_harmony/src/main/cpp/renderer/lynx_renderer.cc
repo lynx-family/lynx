@@ -4,6 +4,8 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer.h"
 
+#include <sstream>
+#include <string>
 #include <utility>
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_display_list_applier.h"
@@ -12,15 +14,46 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/svg_path_utils.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
+namespace {
+
+std::string BuildClipPath(float x, float y, float width, float height,
+                          float density) {
+  const float left = x * density;
+  const float top = y * density;
+  const float right = (x + width) * density;
+  const float bottom = (y + height) * density;
+  std::ostringstream path;
+  SvgPathUtils::MoveTo(path, left, top);
+  SvgPathUtils::LineTo(path, right, top);
+  SvgPathUtils::LineTo(path, right, bottom);
+  SvgPathUtils::LineTo(path, left, bottom);
+  SvgPathUtils::Close(path);
+  return path.str();
+}
+
+void SetClipPath(ArkUI_NodeHandle node, float width, float height,
+                 const std::string& path) {
+  ArkUI_NumberValue values[] = {
+      {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_PATH)},
+      {.f32 = width},
+      {.f32 = height}};
+  ArkUI_AttributeItem attribute = {
+      .value = values, .size = 3, .string = path.c_str()};
+  NodeManager::Instance().SetAttribute(node, NODE_CLIP_SHAPE, &attribute);
+}
+
+}  // namespace
+
 LynxRenderer::LynxRenderer(std::shared_ptr<LynxRendererContext> context,
                            int32_t sign, std::weak_ptr<UIBase> host)
     : context_(std::move(context)), host_(std::move(host)), sign_(sign) {}
 
-LynxRenderer::~LynxRenderer() = default;
+LynxRenderer::~LynxRenderer() { ResetHostClipPath(); }
 
 void LynxRenderer::UpdateDisplayList(const DisplayList* display_list) {
   display_list_ = display_list;
@@ -28,8 +61,60 @@ void LynxRenderer::UpdateDisplayList(const DisplayList* display_list) {
     display_list_applier_ =
         std::make_unique<LynxDisplayListApplier>(context_.get(), host_);
   }
+  UpdateHostClipPath();
   segments_ = display_list_applier_->UpdateDisplayList(*display_list_);
   UpdateRenderNodeOrder();
+}
+
+void LynxRenderer::ResetHostClipPath() {
+  if (!host_has_clip_path_) {
+    return;
+  }
+  if (auto host = host_.lock()) {
+    NodeManager::Instance().ResetAttribute(host->Node(), NODE_CLIP_SHAPE);
+  }
+  host_has_clip_path_ = false;
+}
+
+void LynxRenderer::UpdateHostClipPath() {
+  auto host = host_.lock();
+  if (!host) {
+    return;
+  }
+  const float width = host->width_;
+  const float height = host->height_;
+  const float density = host->GetContext()->ScaledDensity();
+  const auto* items = reinterpret_cast<const DisplayListItem*>(
+      display_list_->GetContentItemsData());
+  int depth = 0;
+  for (size_t i = 0; i < display_list_->GetContentItemsSize(); ++i) {
+    const auto& item = items[i];
+    if (item.type == DisplayListOpType::kBegin) {
+      ++depth;
+    } else if (item.type == DisplayListOpType::kEnd) {
+      --depth;
+    } else if (depth == 1 && item.type == DisplayListOpType::kClipRect) {
+      const auto& clip = item.payload.clip_rect;
+      if (!clip.has_radii) {
+        // DrawClip extends the visible axis by the screen size. Preserve the
+        // host border on the hidden axis, as in ordinary overflow clipping.
+        const bool visible_x = clip.x < 0.f && clip.x + clip.w > width;
+        const bool visible_y = clip.y < 0.f && clip.y + clip.h > height;
+        if (visible_x != visible_y) {
+          const float x = visible_x ? clip.x : 0.f;
+          const float y = visible_y ? clip.y : 0.f;
+          const float w = visible_x ? clip.w : width;
+          const float h = visible_y ? clip.h : height;
+          SetClipPath(host->Node(), w * density, h * density,
+                      BuildClipPath(x, y, w, h, density));
+          host_has_clip_path_ = true;
+          return;
+        }
+      }
+      break;
+    }
+  }
+  ResetHostClipPath();
 }
 
 void LynxRenderer::Draw(OH_Drawing_Canvas* canvas) { DrawSegment(0, canvas); }
