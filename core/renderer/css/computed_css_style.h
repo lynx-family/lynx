@@ -821,7 +821,8 @@ class ComputedCSSStyle {
   V(XPlaceholderFontSize)                \
   V(XPlaceholderFontWeight)              \
   V(XPlaceholderFontStyle)               \
-  V(PointerEvents)
+  V(PointerEvents)                       \
+  V(TextSpacingTrim)
 
 #define GETTER_STYLE_STRING(name) lepus_value name##ToLepus();
   FOREACH_PLATFORM_PROPERTY(GETTER_STYLE_STRING)

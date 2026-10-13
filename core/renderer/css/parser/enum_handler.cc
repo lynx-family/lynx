@@ -586,6 +586,30 @@ static bool ToPointerEventsType(std::string_view str, int& result) {
   return true;
 }
 
+using starlight::TextSpacingTrimType;
+static bool ToTextSpacingTrimType(std::string_view str, int& result) {
+  TextSpacingTrimType type = TextSpacingTrimType::kNormal;
+  if (str == "normal") {
+    type = TextSpacingTrimType::kNormal;
+  } else if (str == "space-all") {
+    type = TextSpacingTrimType::kSpaceAll;
+  } else if (str == "space-first") {
+    type = TextSpacingTrimType::kSpaceFirst;
+  } else if (str == "trim-start") {
+    type = TextSpacingTrimType::kTrimStart;
+  } else if (str == "trim-both") {
+    type = TextSpacingTrimType::kTrimBoth;
+  } else if (str == "trim-all") {
+    type = TextSpacingTrimType::kTrimAll;
+  } else if (str == "auto") {
+    type = TextSpacingTrimType::kAuto;
+  } else {
+    return false;
+  }
+  result = static_cast<int>(type);
+  return true;
+}
+
 // AUTO INSERT END, DON'T CHANGE IT!
 
 using starlight::FlexAlignType;
@@ -786,6 +810,9 @@ HANDLER_IMPL() {
     case kPropertyIDPointerEvents:
       success = ToPointerEventsType(str, result);
       break;
+    case kPropertyIDTextSpacingTrim:
+      success = ToTextSpacingTrimType(str, result);
+      break;
     // AUTO INSERT END, DON'T CHANGE IT!
     case kPropertyIDLinearDirection:
       success = ToLinearOrientationType(str, result);
@@ -847,6 +874,7 @@ HANDLER_REGISTER_IMPL() {
   array[kPropertyIDXPlaceholderFontWeight] = &Handle;
   array[kPropertyIDXPlaceholderFontStyle] = &Handle;
   array[kPropertyIDPointerEvents] = &Handle;
+  array[kPropertyIDTextSpacingTrim] = &Handle;
   // AUTO INSERT END, DON'T CHANGE IT!
   array[kPropertyIDLinearDirection] = &Handle;
   array[kPropertyIDAlignItems] = &Handle;
