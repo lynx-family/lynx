@@ -25,6 +25,7 @@ export abstract class UIBase {
   builderNode?: BuilderNode<[UIBase]>;
   logicalPixels: boolean = false;
   protected param?: Object;
+  private nodeReadyBlockArray?: (() => void)[];
 
   constructor(context: IContext, param?: Object) {
     this.lynxContext = context;
@@ -181,6 +182,7 @@ export abstract class UIBase {
   }
 
   dispose() {
+    this.nodeReadyBlockArray = undefined;
     this.builderNode?.update(undefined);
     this.builderNode?.dispose();
     this.nativeUI = undefined;
@@ -189,7 +191,22 @@ export abstract class UIBase {
   focusChange(focus: boolean, isFocusTransition: boolean) {
   }
 
+  /**
+   * Queues an operation for the next node-ready callback, in insertion order.
+   * Subclasses must call super.onNodeReady() after any required initialization.
+   */
+  protected addNodeReadyBlock(block: () => void): void {
+    if (!this.nodeReadyBlockArray) {
+      this.nodeReadyBlockArray = [];
+    }
+    this.nodeReadyBlockArray.push(block);
+  }
+
   onNodeReady() {
+    const blocks = this.nodeReadyBlockArray;
+    this.nodeReadyBlockArray = undefined;
+    // Operations queued while this batch runs belong to the next callback.
+    blocks?.forEach((block: () => void) => block());
   }
 
   setFocusedUI() {
