@@ -6,8 +6,8 @@
 #define CORE_RENDERER_DOM_FRAGMENT_BOX_MODEL_RECORDER_H_
 
 #include "base/include/flex_optional.h"
-#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/layout_info.h"
+#include "gfx/public/display_list_builder.h"
 #include "gfx/public/rounded_rectangle.h"
 
 namespace lynx {

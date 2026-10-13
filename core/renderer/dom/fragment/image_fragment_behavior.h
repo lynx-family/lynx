@@ -4,9 +4,9 @@
 #ifndef CORE_RENDERER_DOM_FRAGMENT_IMAGE_FRAGMENT_BEHAVIOR_H_
 #define CORE_RENDERER_DOM_FRAGMENT_IMAGE_FRAGMENT_BEHAVIOR_H_
 
-#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "gfx/public/display_list_builder.h"
 
 namespace lynx::tasm {
 

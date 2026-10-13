@@ -2,10 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <array>
+
 #include "base/include/fml/memory/ref_ptr.h"
-#include "core/renderer/dom/fragment/display_list_builder.h"
-#include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "gfx/public/display_list_builder.h"
 #include "testing/lynx/android/gen/DisplayListItemBufferTest_jni.h"
 
 namespace {
@@ -14,15 +15,9 @@ lynx::tasm::DisplayList CreateDisplayListFixture() {
   lynx::tasm::DisplayListBuilder builder;
   builder.Reserve(13);
 
-  lynx::starlight::BordersData border;
-  border.color_top = 0xFF010203;
-  border.color_right = 0xFF111213;
-  border.color_bottom = 0xFF212223;
-  border.color_left = 0xFF313233;
-  border.style_top = static_cast<lynx::starlight::BorderStyleType>(1);
-  border.style_right = static_cast<lynx::starlight::BorderStyleType>(2);
-  border.style_bottom = static_cast<lynx::starlight::BorderStyleType>(3);
-  border.style_left = static_cast<lynx::starlight::BorderStyleType>(4);
+  const std::array<uint32_t, 4> border_colors = {0xFF010203, 0xFF111213,
+                                                 0xFF212223, 0xFF313233};
+  const std::array<int32_t, 4> border_styles = {1, 2, 3, 4};
 
   lynx::tasm::RoundedRectangle clip_rect;
   clip_rect.SetX(21.25f);
@@ -67,7 +62,7 @@ lynx::tasm::DisplayList CreateDisplayListFixture() {
       .DrawText(404, 9)
       .BackgroundImage(fml::MakeRefCounted<lynx::tasm::PaintImage>(505), 10, 11,
                        1, 2, true, true, 0.25f, 0.75f)
-      .Border(12, 13, border)
+      .Border(12, 13, border_colors, border_styles)
       .ClipRect(clip_rect)
       .RecordBoxModel(record_box, record_box_index)
       .LinearGradient(123.5f, colors, stops, 14, 15, 1, 0)

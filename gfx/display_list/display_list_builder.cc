@@ -2,16 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/dom/fragment/display_list_builder.h"
+#include "gfx/public/display_list_builder.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
-#include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
-#include "core/style/filter_data.h"
 #include "gfx/geometry/matrix44.h"
 #include "gfx/public/display_list.h"
 
@@ -119,19 +118,14 @@ DisplayListBuilder& DisplayListBuilder::DrawText(int text_id,
 
 DisplayListBuilder& DisplayListBuilder::Border(
     int32_t out_index, int32_t inner_index,
-    const starlight::BordersData& border) {
+    const std::array<uint32_t, 4>& colors,
+    const std::array<int32_t, 4>& styles) {
   DisplayListItem item{};
   item.type = DisplayListOpType::kBorder;
   item.payload.border.out_index = out_index;
   item.payload.border.inner_index = inner_index;
-  item.payload.border.colors[0] = static_cast<uint32_t>(border.color_top);
-  item.payload.border.colors[1] = static_cast<uint32_t>(border.color_right);
-  item.payload.border.colors[2] = static_cast<uint32_t>(border.color_bottom);
-  item.payload.border.colors[3] = static_cast<uint32_t>(border.color_left);
-  item.payload.border.styles[0] = static_cast<int32_t>(border.style_top);
-  item.payload.border.styles[1] = static_cast<int32_t>(border.style_right);
-  item.payload.border.styles[2] = static_cast<int32_t>(border.style_bottom);
-  item.payload.border.styles[3] = static_cast<int32_t>(border.style_left);
+  std::copy(colors.begin(), colors.end(), item.payload.border.colors);
+  std::copy(styles.begin(), styles.end(), item.payload.border.styles);
   display_list_.AppendItem(item);
   return *this;
 }
@@ -245,18 +239,13 @@ DisplayListBuilder& DisplayListBuilder::Opacity(float alpha) {
   return *this;
 }
 
-DisplayListBuilder& DisplayListBuilder::Filter(
-    const starlight::FilterData& filter) {
-  const auto& amount = filter.amount.NumericLength();
-  const float platform_amount = amount.ContainsPercentage()
-                                    ? amount.GetPercentagePart() / 100.f
-                                    : amount.GetFixedPart();
+DisplayListBuilder& DisplayListBuilder::Filter(int32_t type, float amount) {
   display_list_.AddSubtreeProperty((SubtreeProperty){
       .type = DisplayListSubtreePropertyOpType::kFilter,
       .data.filter =
           {
-              .type = static_cast<int32_t>(filter.type),
-              .amount = platform_amount,
+              .type = type,
+              .amount = amount,
           },
   });
   return *this;

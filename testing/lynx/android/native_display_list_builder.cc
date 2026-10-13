@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <array>
 #include <cstdint>
 #include <optional>
 
 #include "base/include/fml/memory/ref_ptr.h"
-#include "core/renderer/dom/fragment/display_list_builder.h"
-#include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "gfx/public/display_list_builder.h"
 #include "testing/lynx/android/gen/NativeDisplayListBuilder_jni.h"
 
 namespace {
@@ -118,20 +118,16 @@ void Border(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr, jint out_index,
   env->GetIntArrayRegion(colors, 0, 4, color_values);
   env->GetIntArrayRegion(styles, 0, 4, style_values);
 
-  lynx::starlight::BordersData border;
-  border.color_top = static_cast<uint32_t>(color_values[0]);
-  border.color_right = static_cast<uint32_t>(color_values[1]);
-  border.color_bottom = static_cast<uint32_t>(color_values[2]);
-  border.color_left = static_cast<uint32_t>(color_values[3]);
-  border.style_top =
-      static_cast<lynx::starlight::BorderStyleType>(style_values[0]);
-  border.style_right =
-      static_cast<lynx::starlight::BorderStyleType>(style_values[1]);
-  border.style_bottom =
-      static_cast<lynx::starlight::BorderStyleType>(style_values[2]);
-  border.style_left =
-      static_cast<lynx::starlight::BorderStyleType>(style_values[3]);
-  State(native_ptr)->builder.Border(out_index, inner_index, border);
+  const std::array<uint32_t, 4> border_colors = {
+      static_cast<uint32_t>(color_values[0]),
+      static_cast<uint32_t>(color_values[1]),
+      static_cast<uint32_t>(color_values[2]),
+      static_cast<uint32_t>(color_values[3]),
+  };
+  const std::array<int32_t, 4> border_styles = {
+      style_values[0], style_values[1], style_values[2], style_values[3]};
+  State(native_ptr)
+      ->builder.Border(out_index, inner_index, border_colors, border_styles);
 }
 
 void ClipRect(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr, jfloat x,

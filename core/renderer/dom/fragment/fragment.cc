@@ -5,6 +5,7 @@
 #include "core/renderer/dom/fragment/fragment.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <memory>
@@ -17,13 +18,13 @@
 #include "core/renderer/css/transforms/transform_operations_helper.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/display_list_builder.h"
 #include "gfx/public/rounded_rectangle.h"
 
 namespace lynx {
@@ -390,8 +391,21 @@ void Fragment::DrawBorder(DisplayListBuilder& display_list_builder) {
                            ->computed_css_style()
                            ->GetLayoutComputedStyle()
                            ->surround_data_.border_data_;
+  const std::array<uint32_t, 4> colors = {
+      static_cast<uint32_t>(border->color_top),
+      static_cast<uint32_t>(border->color_right),
+      static_cast<uint32_t>(border->color_bottom),
+      static_cast<uint32_t>(border->color_left),
+  };
+  const std::array<int32_t, 4> styles = {
+      static_cast<int32_t>(border->style_top),
+      static_cast<int32_t>(border->style_right),
+      static_cast<int32_t>(border->style_bottom),
+      static_cast<int32_t>(border->style_left),
+  };
   display_list_builder.Border(DefineBorderBox(display_list_builder),
-                              DefinePaddingBox(display_list_builder), *border);
+                              DefinePaddingBox(display_list_builder), colors,
+                              styles);
 }
 
 namespace {
@@ -1132,7 +1146,18 @@ void Fragment::DrawFilter(DisplayListBuilder& display_list_builder) {
   }
 
   const auto& filter = style->GetFilterData();
-  display_list_builder.Filter(filter ? *filter : starlight::FilterData());
+  if (!filter) {
+    display_list_builder.Filter(
+        static_cast<int32_t>(starlight::FilterType::kNone), 0.f);
+    return;
+  }
+
+  const auto& amount = filter->amount.NumericLength();
+  const float platform_amount = amount.ContainsPercentage()
+                                    ? amount.GetPercentagePart() / 100.f
+                                    : amount.GetFixedPart();
+  display_list_builder.Filter(static_cast<int32_t>(filter->type),
+                              platform_amount);
 }
 
 void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
