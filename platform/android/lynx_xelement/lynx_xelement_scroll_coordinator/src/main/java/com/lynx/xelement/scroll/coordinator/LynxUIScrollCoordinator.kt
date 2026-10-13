@@ -270,7 +270,7 @@ open class LynxUIScrollCoordinator(
 
   private fun isEventTargetInScrollView(target: EventTarget?): Boolean {
     if (target is UIScrollView) {
-      return true
+      return !coordinatorLayout.headerConsumesGesture(target.view)
     }
     if (target == null || target is LynxUIScrollCoordinator) {
       return false

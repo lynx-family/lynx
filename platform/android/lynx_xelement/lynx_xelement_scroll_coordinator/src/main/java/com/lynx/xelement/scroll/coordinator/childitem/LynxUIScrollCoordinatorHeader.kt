@@ -60,13 +60,19 @@ open class LynxUIScrollCoordinatorHeader(
   fun setHandleGesture(value: Boolean) {
     mView.handleGesture = value
   }
+
+  @LynxProp(name = "consume-gesture", defaultBoolean = false)
+  fun setConsumeGesture(value: Boolean) {
+    mView.consumeGesture = value
+  }
 }
 
 class ScrollCoordinatorHeaderView(context: Context?) : AndroidView(context) {
   var handleGesture = false
+  var consumeGesture = false
 
   override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-    if (ev.actionMasked == MotionEvent.ACTION_DOWN && handleGesture) {
+    if (ev.actionMasked == MotionEvent.ACTION_DOWN && (handleGesture || consumeGesture)) {
       parent?.requestDisallowInterceptTouchEvent(true)
     }
     return super.dispatchTouchEvent(ev)
