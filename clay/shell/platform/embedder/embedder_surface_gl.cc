@@ -21,6 +21,16 @@ EmbedderSurfaceGL::EmbedderSurfaceGL(GPUSurfaceGLDelegate* delegate)
 
 EmbedderSurfaceGL::~EmbedderSurfaceGL() = default;
 
+#if defined(ENABLE_GTK_HOST) && defined(ENABLE_SKITY)
+bool EmbedderSurfaceGL::ResetMainContext() {
+  auto current = GLContextMakeCurrent();
+  if (!current->GetResult()) return false;
+  main_context_.reset();
+  GLContextClearCurrent();
+  return true;
+}
+#endif
+
 // |OutputSurface|
 bool EmbedderSurfaceGL::IsValid() const { return valid_; }
 

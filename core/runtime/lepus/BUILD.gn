@@ -34,10 +34,10 @@ lynx_core_source_set("lepus") {
     "../../base",
     "../../parser",
     "../profile:profile_public_header",
-    "tasks:tasks",
+    "tasks",
   ]
 
-  if (is_mac) {
+  if (is_mac || is_linux) {
     exclude_configs = [ "//build/config/compiler:no_exceptions" ]
   }
 
@@ -60,7 +60,7 @@ shared_library("lepus_shared") {
   sources = []
   deps = [
     ":lepus",
-    "../../renderer/dom:dom",
+    "../../renderer/dom",
   ]
 }
 
@@ -96,7 +96,7 @@ unittest_set("lepus_testset") {
   deps = [
     ":lepus_unittest_sources",
     ":value_utils_sources",
-    "../../../third_party/rapidjson:rapidjson",
+    "../../../third_party/rapidjson",
     "../lepusng:lepus_ng",
     "../lepusng:lepusng_unittest_sources",
     "ir/llvh",
@@ -157,7 +157,7 @@ unittest_exec("lepus_unittests_exec") {
   sources = []
   deps = [
     ":lepus_testset",
-    "../../renderer/dom:dom",
+    "../../renderer/dom",
   ]
 }
 
@@ -165,7 +165,7 @@ unittest_exec("lepus_ir_unittests_exec") {
   sources = []
   deps = [
     ":lepus_ir_testset",
-    "../../renderer/dom:dom",
+    "../../renderer/dom",
   ]
 }
 

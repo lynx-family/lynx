@@ -1,0 +1,139 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0.
+import("//build/config/linux/pkg_config.gni")
+import("../../../clay/common/config.gni")
+import("../../../core/Lynx.gni")
+assert(is_linux, "GTK host is Linux-only")
+assert(enable_lynx_gtk, "Set enable_lynx_gtk=true to build the GTK4 host")
+pkg_config("gtk4") {
+  if (lynx_gtk_legacy_rendering_probe) {
+    packages = [
+      "gtk4 >= 4.6",
+      "epoxy",
+    ]
+  } else {
+    packages = [
+      "gtk4 >= 4.22",
+      "epoxy",
+    ]
+  }
+}
+lynx_core_source_set("gtk_view") {
+  sources = [
+    "lynx_gtk_view.cc",
+    "lynx_gtk_view.h",
+    "lynx_gtk_view_capi.h",
+  ]
+  include_dirs = [ "../../.." ]
+  configs = [
+    ":gtk4",
+    "../../embedder:config",
+    "../../../clay:config",
+  ]
+  _api_floor = "4_22"
+  if (lynx_gtk_legacy_rendering_probe) {
+    _api_floor = "4_6"
+  }
+  defines = [
+    # The full-support profile uses modern GTK/GDK APIs, including fractional
+    # surface scale. Keep historical probes restricted to the 4.6 API subset.
+    "GTK_VERSION_MIN_REQUIRED=GTK_VERSION_${_api_floor}",
+    "GTK_VERSION_MAX_ALLOWED=GTK_VERSION_${_api_floor}",
+    "GDK_VERSION_MIN_REQUIRED=GDK_VERSION_${_api_floor}",
+    "GDK_VERSION_MAX_ALLOWED=GDK_VERSION_${_api_floor}",
+  ]
+  if (lynx_gtk_legacy_rendering_probe) {
+    defines += [ "LYNX_GTK_REQUIRED_MINOR=6" ]
+  } else {
+    defines += [ "LYNX_GTK_REQUIRED_MINOR=22" ]
+  }
+  deps = [
+    "../../../clay/shell/platform/linux/gtk:gtk_surface",
+    "../../../clay/ui",
+    "../../embedder/windowless",
+  ]
+  public_configs = [
+    ":gtk4",
+    "../../embedder:public_api",
+  ]
+}
+executable("lynx_gtk_smoke") {
+  sources = [ "smoke.cc" ]
+  if (enable_skity) {
+    defines = [ "GTK_HOST_SKITY" ]
+  }
+  include_dirs = [ "../../.." ]
+  deps = [
+    ":gtk_view",
+    "..:lynx_linux_group",
+  ]
+  if (enable_skity) {
+    deps += [ "../../../clay/third_party/txt" ]
+  }
+  libs = [
+    "epoxy",
+    "rt",
+  ]
+}
+executable("gtk_task_runner_smoke") {
+  sources = [ "task_runner_smoke.cc" ]
+  include_dirs = [ "../../.." ]
+  deps = [
+    "..:lynx_linux_group",
+    "../../../clay/shell/platform/embedder",
+  ]
+  libs = [
+    "epoxy",
+    "rt",
+  ]
+}
+
+if (enable_skity) {
+  executable("gtk_shared_surface_smoke") {
+    sources = [ "shared_surface_smoke.cc" ]
+    include_dirs = [ "../../.." ]
+    configs += [ "../../../clay:config" ]
+    deps = [
+      "..:lynx_linux_group",
+      "../../../clay/third_party/skity:skity_lib",
+    ]
+    libs = [
+      "epoxy",
+      "rt",
+    ]
+  }
+  executable("skity_unit_test") {
+    testonly = true
+    sources = [ "//third_party/skity/test/ut/render/sw_canvas_test.cc" ]
+    deps = [
+      "../../../clay/third_party/skity:skity_lib",
+      "//third_party/googletest:gtest",
+      "//third_party/googletest:gtest_main",
+    ]
+  }
+}
+
+executable("gtk_lifecycle_smoke") {
+  sources = [ "lifecycle_smoke.c" ]
+  include_dirs = [ "../../.." ]
+  deps = [
+    ":gtk_view",
+    "..:lynx_linux_group",
+  ]
+  libs = [
+    "epoxy",
+    "rt",
+  ]
+}
+copy("gtk_public_headers") {
+  sources = [ "lynx_gtk_view_capi.h" ]
+  outputs =
+      [ "$root_build_dir/include/platform/linux/gtk/{{source_file_part}}" ]
+}
+
+group("gtk_sdk") {
+  deps = [
+    ":gtk_public_headers",
+    "..:linux",
+  ]
+}

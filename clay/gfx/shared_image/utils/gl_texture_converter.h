@@ -5,8 +5,12 @@
 #ifndef CLAY_GFX_SHARED_IMAGE_UTILS_GL_TEXTURE_CONVERTER_H_
 #define CLAY_GFX_SHARED_IMAGE_UTILS_GL_TEXTURE_CONVERTER_H_
 
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <epoxy/gl.h>
+#else
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#endif
 #include <stdint.h>
 
 namespace clay {

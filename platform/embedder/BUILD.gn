@@ -27,7 +27,10 @@ config("config") {
       "-Wno-vla-cxx-extension",
     ]
   }
-  if (is_headless) {
+  if (enable_lynx_gtk) {
+    defines += [ "ENABLE_GTK_HOST" ]
+  }
+  if (is_headless || enable_lynx_gtk) {
     defines += [ "ENABLE_WINDOWLESS" ]
   }
 }
@@ -113,7 +116,7 @@ lynx_core_source_set("embedder") {
       "./module",
     ]
   }
-  if (is_headless) {
+  if (is_headless || enable_lynx_gtk) {
     deps += [ "./windowless" ]
   }
   if (enable_inspector && enable_logbox) {
@@ -134,7 +137,11 @@ lynx_core_source_set("embedder") {
       "vsync_monitor_fallback.h",
     ]
     if (is_linux) {
-      sources += [ "lynx_ui_renderer_mock.cc" ]
+      if (enable_lynx_gtk) {
+        deps += [ "../linux/gtk:gtk_view" ]
+      } else {
+        sources += [ "lynx_ui_renderer_mock.cc" ]
+      }
     }
   } else {
     if (enable_unittests) {

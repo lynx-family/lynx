@@ -25,7 +25,8 @@ TextInputController::TextInputController(PageView* page_view, int client_id,
       client_(client),
       client_id_(client_id),
       weak_factory_(this) {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   auto manager = page_view_->GetInputClientManager();
   InputClientManager::TextInputCallback callback;
 
@@ -66,9 +67,20 @@ TextInputController::~TextInputController() {
 
 void TextInputController::SetClient(int client_id, KeyboardAction input_action,
                                     KeyboardInputType input_type) {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   const char* input_type_chr =
       multiline_ ? "TextInputType.multiline" : "TextInputType.text";
+#if defined(ENABLE_GTK_HOST)
+  if (input_type == KeyboardInputType::kPassword)
+    input_type_chr = "TextInputType.password";
+  else if (input_type == KeyboardInputType::kClassNumber)
+    input_type_chr = "TextInputType.number";
+  else if (input_type == KeyboardInputType::kClassPhone)
+    input_type_chr = "TextInputType.phone";
+  else if (input_type == KeyboardInputType::kEmailAddress)
+    input_type_chr = "TextInputType.emailAddress";
+#endif
   page_view_->SetTextInputClient(client_id, ToKeyboardActionType(input_action),
                                  input_type_chr);
   connect_keyboard_ = true;
@@ -76,14 +88,16 @@ void TextInputController::SetClient(int client_id, KeyboardAction input_action,
 }
 
 void TextInputController::ClearClient() {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   page_view_->ClearTextInputClient();
   connect_keyboard_ = false;
 #endif
 }
 
 void TextInputController::SetEditableTransform(const Transform& transform) {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   const auto& matrix = transform.matrix();
   float transform_matrix[16] = {
       matrix.Get(0, 0), matrix.Get(1, 0), matrix.Get(2, 0), matrix.Get(3, 0),
@@ -97,7 +111,8 @@ void TextInputController::SetEditableTransform(const Transform& transform) {
 
 void TextInputController::SetEditingState(
     const TextEditingValue& text_editing_value) {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   page_view_->SetEditingState(
       (uint64_t)text_editing_value.selection().base(),
       (uint64_t)text_editing_value.composing_range().extent(),
@@ -109,32 +124,36 @@ void TextInputController::SetEditingState(
 
 void TextInputController::UpdateCaretPosition(float x, float y, float width,
                                               float height) {
-#if defined(ENABLE_HEADLESS)
+#if (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   page_view_->UpdateCaretPosition(x, y, width, height);
 #endif
 }
 
 void TextInputController::SetCaretRect(FloatRect rect) {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   page_view_->SetCaretRect(rect.x(), rect.y(), rect.width(), rect.height());
 #endif
 }
 
 void TextInputController::SetComposingRect(FloatRect rect) {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   page_view_->setMarkedTextRect(rect.x(), rect.y(), rect.width(),
                                 rect.height());
 #endif
 }
 
 void TextInputController::Show() {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   page_view_->ShowTextInput();
 #endif
 }
 
 void TextInputController::Hide() {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   page_view_->HideTextInput();
 #endif
 }

@@ -12,6 +12,8 @@
 #include "core/public/ui_delegate.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
 
+struct lynx_view_t;
+
 namespace lynx {
 namespace embedder {
 
@@ -34,6 +36,9 @@ class LynxUIRenderer {
 
   LynxUIRenderer(const LynxUIRenderer&) = delete;
   LynxUIRenderer& operator=(const LynxUIRenderer&) = delete;
+
+  // Called after the public view and template renderer are ready.
+  virtual void OnViewCreated(lynx_view_t* view) {}
 
   virtual void SetParent(NativeWindow parent) = 0;
 

@@ -94,6 +94,12 @@ tttext::FontmgrCollection FontCollection::GetIFontCollection(
 #if OS_IOS
     collection.SetDefaultFontManager(
         std::make_shared<tttext::SkityFontManagerCoreText>());
+#elif OS_LINUX
+    // Text shaping must use the same Fontconfig manager as Clay. Skity's
+    // standalone default scans a fixed font directory, which may be empty on
+    // another distribution even when Fontconfig finds installed system fonts.
+    collection.SetDefaultFontManager(
+        std::make_shared<tttext::SkityFontManager>(default_font_manager_));
 #else
     collection.SetDefaultFontManager(
         std::make_shared<tttext::SkityFontManager>());

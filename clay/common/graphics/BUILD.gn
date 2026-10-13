@@ -38,13 +38,13 @@ source_set("graphics") {
   deps = [
     "../../../third_party/rapidjson",
     "../../assets",
-    "../../fml:fml",
+    "../../fml",
     "../../version",
   ]
 
   if (!enable_skity) {
     deps += [
-      "../../third_party/skity_geometry:skity_geometry",
+      "../../third_party/skity_geometry",
       "//third_party/skia",
     ]
   }
@@ -63,7 +63,7 @@ source_set("gl_scoped_binder") {
 
   public_configs = [ "../../:config" ]
 
-  if (is_android || is_win) {
+  if (is_android || is_win || (is_linux && enable_skity)) {
     sources += [
       "gl/gl_pipeline_helper.cc",
       "gl/gl_pipeline_helper.h",
@@ -87,7 +87,7 @@ source_set("gl_scoped_binder") {
     ]
   }
 
-  public_deps = [ "../../fml:fml" ]
+  public_deps = [ "../../fml" ]
 
   if (is_win) {
     include_dirs = [ "//third_party/angle/include" ]

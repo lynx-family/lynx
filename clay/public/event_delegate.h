@@ -75,6 +75,15 @@ class EventDelegate {
   virtual void OnCallJSApiCallback(int callback_id, clay::Value value) = 0;
   virtual void CallJSIntersectionObserver(int observer_id, int callback_id,
                                           clay::Value params) = 0;
+#if defined(ENABLE_GTK_HOST)
+  // Preserve the native contact identity through the GTK-to-Lynx touch path.
+  // Existing delegates can retain their legacy single-contact implementation.
+  virtual void OnTouchEventWithIdentifier(const std::string& event_name,
+                                          int tag, int64_t identifier, float x,
+                                          float y, float page_x, float page_y) {
+    OnTouchEvent(event_name, tag, x, y, page_x, page_y);
+  }
+#endif
   virtual void OnExternalMemoryReport(int64_t, int64_t) {}
 #if defined(OS_WIN) || defined(OS_MAC)
   virtual void OnPointerEvent(const std::string&, int, int,

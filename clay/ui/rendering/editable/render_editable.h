@@ -59,6 +59,13 @@ class RenderEditable : public RenderBox {
   TextRange GetWordBoundary(size_t offset) {
     return painter_->GetWordBoundary(offset);
   }
+#if defined(ENABLE_GTK_HOST)
+  std::optional<TextRange> GetVisualLineRange(size_t offset,
+                                              Affinity affinity) {
+    if (!painter_->CanPaint()) return std::nullopt;
+    return painter_->GetLineRangeForPosition(offset, affinity);
+  }
+#endif
 
   void SetRoughTextLineHeight(float rough_text_height) {
     rough_text_height_ = rough_text_height;

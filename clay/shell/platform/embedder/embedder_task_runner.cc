@@ -66,6 +66,10 @@ void EmbedderTaskRunner::PostDelayedTask(lynx::base::closure task,
 bool EmbedderTaskRunner::RunsTasksOnCurrentThread() {
   std::scoped_lock lock(tasks_mutex_);
   if (thread_host_destroyed_) {
+    // Expired tasks and captured service actors are released on the owning
+    // thread during shutdown. Allow their synchronous cleanup without calling
+    // the embedder dispatch table after its host has been invalidated.
+    if (shutdown_cleanup_thread_ == std::this_thread::get_id()) return true;
     FML_LOG(ERROR) << "Embedder attempted to call RunsTasksOnCurrentThread"
                       "to a destroyed thread host.";
     return false;
@@ -80,6 +84,7 @@ void EmbedderTaskRunner::OnThreadHostDestroyed() {
   {
     std::scoped_lock lock(tasks_mutex_);
     thread_host_destroyed_ = true;
+    shutdown_cleanup_thread_ = std::this_thread::get_id();
     tasks = std::move(pending_tasks_);
   }
 
@@ -90,6 +95,12 @@ void EmbedderTaskRunner::OnThreadHostDestroyed() {
     if (time <= now) {
       cb();
     }
+  }
+  // Closure destruction can itself release thread-affine service actors.
+  tasks.clear();
+  {
+    std::scoped_lock lock(tasks_mutex_);
+    shutdown_cleanup_thread_ = {};
   }
 }
 

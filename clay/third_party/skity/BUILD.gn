@@ -97,7 +97,14 @@ source_set("skity_lib") {
   ]
   if (is_linux) {
     defines = [ "JSON_USE_EXCEPTION=0" ]
-    deps += [ "../../../third_party/jsoncpp:jsoncpp" ]
+    deps += [ "../../../third_party/jsoncpp" ]
+  }
+
+  if (is_linux) {
+    deps += [
+      "//third_party/freetype2",
+      "//third_party/jsoncpp",
+    ]
   }
 
   public_configs = [ ":skity_config" ]

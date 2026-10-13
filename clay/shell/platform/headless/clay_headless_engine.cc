@@ -132,6 +132,18 @@ bool ClayHeadlessEngine::RunEngine(
       };
   platform_dispatch_table.textinput.clear_text_input_client_callback =
       [this]() { ClearTextInputClient(); };
+#if defined(ENABLE_GTK_HOST)
+  platform_dispatch_table.textinput.set_editing_state_callback =
+      [this](uint64_t selection_base, uint64_t composing_extent,
+             const std::string& affinity, const std::string& text,
+             bool directional, uint64_t selection_extent,
+             uint64_t composing_base) {
+        if (gtk_text_input_.set_state)
+          gtk_text_input_.set_state(selection_base, composing_extent, affinity,
+                                    text, directional, selection_extent,
+                                    composing_base);
+      };
+#endif
   platform_dispatch_table.textinput.set_editable_transform_callback =
       [this](const float transform[16]) { SetEditableTransform(transform); };
   platform_dispatch_table.textinput.set_marked_text_rect_callback =
@@ -284,19 +296,73 @@ void ClayHeadlessEngine::SetTextInputClient(int client_id,
                                             const char* input_action,
                                             const char* input_type) {
   client_id_ = client_id;
+#if defined(ENABLE_GTK_HOST)
+  if (gtk_text_input_.set_client)
+    gtk_text_input_.set_client(client_id, input_action, input_type);
+#endif
 }
 
-void ClayHeadlessEngine::ClearTextInputClient() { client_id_ = -1; }
+void ClayHeadlessEngine::ClearTextInputClient() {
+  client_id_ = -1;
+#if defined(ENABLE_GTK_HOST)
+  if (gtk_text_input_.clear_client) gtk_text_input_.clear_client();
+#endif
+}
+
+#if defined(ENABLE_GTK_HOST)
+bool ClayHeadlessEngine::UpdateGtkEditingState(
+    int client, const std::string& text, int selection_base,
+    int selection_extent, int composing_base, int composing_extent) {
+  if (!IsValid() || client < 0 || client != client_id_) return false;
+  engine_->GetShell().GetEngine()->GetPageView()->OnPlatformUpdateEditState(
+      client, selection_base, composing_extent, "TextAffinity.downstream",
+      text.c_str(), selection_extent, composing_base);
+  return true;
+}
+#endif
 
 bool ClayHeadlessEngine::StopEngine() {
   if (IsValid()) {
     engine_->NotifyDestroyed();
     engine_->CollectShell();
+    // Drop the wrapper reference while the engine still owns live runners.
+    service_manager_.reset();
     engine_ = nullptr;
     return true;
   }
   return false;
 }
+
+#if defined(ENABLE_GTK_HOST) && defined(ENABLE_SKITY)
+bool ClayHeadlessEngine::SuspendGLSurface() {
+#ifdef SHELL_ENABLE_GL
+  if (!IsValid() || !renderer_ || !renderer_->GetGLRendererDelegate() ||
+      !engine_->NotifyDestroyed())
+    return false;
+  auto output = engine_->GetShell().GetPlatformView()->GetOutputSurface();
+  if (!output) return false;
+  bool success = false;
+  fml::AutoResetWaitableEvent latch;
+  fml::TaskRunner::RunNowOrPostTask(
+      GetTaskRunners().GetRasterTaskRunner(), [&] {
+        success =
+            static_cast<EmbedderSurfaceGL*>(output.get())->ResetMainContext();
+        latch.Signal();
+      });
+  latch.Wait();
+  return success;
+#else
+  return false;
+#endif
+}
+bool ClayHeadlessEngine::ResumeGLSurface() {
+#ifdef SHELL_ENABLE_GL
+  return IsValid() && engine_->NotifyCreated();
+#else
+  return false;
+#endif
+}
+#endif
 
 void ClayHeadlessEngine::EnableDefaultFocusRing() {
   if (!IsValid()) {

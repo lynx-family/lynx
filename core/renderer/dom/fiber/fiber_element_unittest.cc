@@ -14350,7 +14350,9 @@ TEST_P(FiberElementTest, ElementBundleTest00) {
   config.SetProperty(base::String("hydrateID"), lepus::Value("hydrateID"));
   config.SetProperty(base::String("dirtyID"), lepus::Value("dirtyID"));
 
-  auto fiber_element = manager->CreateFiberView();
+  // ElementBundle's root is a PageElement. Casting a cloned ViewElement to
+  // PageElement below is undefined behavior and corrupts component state.
+  auto fiber_element = manager->CreateFiberPage("page", 11);
   fiber_element->SetConfig(config);
 
   auto page_node = lepus::Value(

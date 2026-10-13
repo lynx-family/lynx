@@ -108,6 +108,11 @@ LynxTemplateRenderer::LynxTemplateRenderer(
   Reset();
 }
 
+fml::RefPtr<fml::TaskRunner> LynxTemplateRenderer::GetRuntimeTaskRunner()
+    const {
+  return shell_ ? shell_->GetRunners()->GetJSTaskRunner() : nullptr;
+}
+
 LynxTemplateRenderer::~LynxTemplateRenderer() {
   auto instance_id = GetInstanceId();
   shell_.reset();

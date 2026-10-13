@@ -432,10 +432,20 @@ Shell::~Shell() {
     }
   }
 
-  task_runners_.GetIOTaskRunner()->PostTask(
-      [service_manager = service_manager_] {
+  fml::AutoResetWaitableEvent ui_latch, platform_latch, io_latch;
+
+  // IO may use a process-wide runner which is not joined by the embedder host.
+  // Release this task's manager reference before the host can invalidate UI
+  // runners; otherwise the last IO reference can destroy UI service actors
+  // late.
+  fml::TaskRunner::RunNowOrPostTask(
+      task_runners_.GetIOTaskRunner(),
+      [service_manager = service_manager_, &io_latch]() mutable {
         service_manager->Detach<clay::Owner::kIO>();
+        service_manager.reset();
+        io_latch.Signal();
       });
+  io_latch.Wait();
 
 #if defined(OS_ANDROID) || defined(OS_MAC) || defined(OS_WIN)
   memory_pressure_listener_.reset();
@@ -445,8 +455,6 @@ Shell::~Shell() {
   PersistentCache::GetCacheForProcess()->RemoveWorkerTaskRunner(
       task_runners_.GetIOTaskRunner());
 #endif  // ENABLE_SKITY
-
-  fml::AutoResetWaitableEvent ui_latch, platform_latch, io_latch;
 
   fml::TaskRunner::RunNowOrPostTask(
       task_runners_.GetPlatformTaskRunner(),

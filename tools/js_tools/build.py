@@ -63,8 +63,10 @@ def build(platform, releaseOutput, devOutput, version):
 
     except subprocess.CalledProcessError as e:
         print(f"Error occurred during build: {e}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 class VersionAction(argparse.Action):

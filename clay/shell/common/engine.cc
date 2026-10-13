@@ -147,7 +147,7 @@ void Engine::SetViewportMetrics(const ViewportMetrics& metrics) {
                 << " device_pixel_ratio: " << metrics.device_pixel_ratio;
   page_view_->SetViewportMetrics(metrics);
 #if defined(OS_MAC) || defined(OS_WIN) || defined(OS_LINUX) || \
-    defined(ENABLE_HEADLESS)
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   // If it is Macos, we have to call begin frame without PostTask().
   // Otherwise, the thread will dead locked.
   // See: FlutterThreadSynchronizer.mm - beginResize

@@ -8,6 +8,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <atomic>
+#include <cmath>
 #include <tuple>
 
 #include "angle_gl.h"
@@ -28,19 +30,31 @@ namespace {
 
 std::tuple<void*, int> CreateShmBuffer(
     SharedImageBacking::PixelFormat pixel_format, skity::Vec2 size) {
-  static size_t count = 0;
+  static std::atomic<size_t> count{0};
+  if (!std::isfinite(size.x) || !std::isfinite(size.y) || size.x <= 0 ||
+      size.y <= 0 || size.x > 8192 || size.y > 8192 ||
+      size.x != std::floor(size.x) || size.y != std::floor(size.y))
+    return {nullptr, -1};
   std::string shm_name =
       "/angle_shared_image_backing" + std::to_string(getpid()) + "_" +
       std::to_string(pthread_self()) + "_" + std::to_string(count++);
-  size_t shm_size = size.x * size.y * 4;
+  size_t shm_size =
+      static_cast<size_t>(size.x) * static_cast<size_t>(size.y) * 4;
 
   void* buffer = nullptr;
-  int shm_fd = shm_open(shm_name.c_str(), O_CREAT | O_RDWR, 0666);
-  FML_DCHECK(shm_fd != -1);
-  ftruncate(shm_fd, shm_size);
-  buffer = mmap(NULL, shm_size, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-  FML_DCHECK(buffer);
+  int shm_fd =
+      shm_open(shm_name.c_str(), O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0600);
+  if (shm_fd < 0) return {nullptr, -1};
   shm_unlink(shm_name.c_str());
+  if (ftruncate(shm_fd, shm_size) != 0) {
+    close(shm_fd);
+    return {nullptr, -1};
+  }
+  buffer = mmap(NULL, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+  if (buffer == MAP_FAILED) {
+    close(shm_fd);
+    return {nullptr, -1};
+  }
 
   return {buffer, shm_fd};
 }
@@ -105,11 +119,11 @@ void AngleSoftwareShmImageBacking::CopyPixelsToShm() {
 }
 
 AngleSoftwareShmImageBacking::~AngleSoftwareShmImageBacking() {
-  if (munmap(shm_buffer_, size_.x * size_.y * 4) == -1) {
+  if (shm_buffer_ && munmap(shm_buffer_, size_.x * size_.y * 4) == -1) {
     FML_LOG(ERROR) << "munmap failed";
   }
 
-  close(shm_fd_);
+  if (shm_fd_ >= 0) close(shm_fd_);
   shm_buffer_ = nullptr;
   shm_fd_ = 0;
 }

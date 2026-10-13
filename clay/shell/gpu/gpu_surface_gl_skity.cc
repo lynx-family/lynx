@@ -19,6 +19,10 @@
 #include "clay/shell/common/context_options.h"
 #include "skity/gpu/gpu_context_gl.hpp"
 namespace clay {
+namespace {
+thread_local GPUSurfaceGLDelegate::GLProcResolver gl_resolver;
+void* ResolveHostGL(const char* name) { return gl_resolver(name); }
+}  // namespace
 
 std::shared_ptr<skity::GPUContext> GPUSurfaceGLSkity::MakeGLContext(
     GPUSurfaceGLDelegate* delegate) {
@@ -31,6 +35,13 @@ std::shared_ptr<skity::GPUContext> GPUSurfaceGLSkity::MakeGLContext(
 #if defined(OS_OSX)
   return nullptr;
 #else
+  gl_resolver = delegate->GetGLProcResolver();
+  if (gl_resolver) {
+    auto context =
+        skity::GLContextCreate(reinterpret_cast<void*>(ResolveHostGL));
+    gl_resolver = nullptr;
+    return context;
+  }
   return skity::GLContextCreate(reinterpret_cast<void*>(eglGetProcAddress));
 #endif
 }

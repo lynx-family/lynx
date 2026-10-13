@@ -353,7 +353,8 @@ class Shell final : public PlatformView::Delegate,
     return platform_view_->GetClipboardData();
   }
 
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   // Text input related functions Begin.
   void SetTextInputClient(int client_id, const char* input_action,
                           const char* input_type) override {
