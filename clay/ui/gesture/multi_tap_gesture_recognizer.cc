@@ -149,7 +149,9 @@ void MultiTapGestureRecognizer::Reject(TapTracker* tracker) {
   Reset();
 }
 
-void MultiTapGestureRecognizer::OnGestureAccepted(int pointer_id) {}
+void MultiTapGestureRecognizer::OnGestureAccepted(int pointer_id) {
+  GestureRecognizer::OnGestureAccepted(pointer_id);
+}
 
 void MultiTapGestureRecognizer::OnGestureRejected(int pointer_id) {
   auto iter = tracking_taps_.find(pointer_id);
