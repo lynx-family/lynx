@@ -11,6 +11,7 @@ import android.view.View;
 import android.widget.OverScroller;
 import androidx.annotation.NonNull;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.view.ViewCompat;
 import com.google.android.material.appbar.AppBarLayout;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -134,8 +135,15 @@ public class ScrollCoordinatorAppBarLayout
       if (scrollListener != null) {
         scrollListener.onScrollStart();
       }
-      return super.onStartNestedScroll(
+      boolean started = super.onStartNestedScroll(
           parent, child, directTargetChild, target, nestedScrollAxes, type);
+      if ((nestedScrollAxes & ViewCompat.SCROLL_AXIS_VERTICAL) != 0
+          && parent instanceof ScrollCoordinatorLayout
+          && ((ScrollCoordinatorLayout) parent).headerConsumesGesture(target)) {
+        resetFlingStatus();
+        return true;
+      }
+      return started;
     }
 
     @Override
@@ -258,6 +266,13 @@ public class ScrollCoordinatorAppBarLayout
         int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type) {
       if (!shouldBlockNestedScroll) {
         try {
+          if (dyUnconsumed != 0 && coordinatorLayout instanceof ScrollCoordinatorLayout
+              && ((ScrollCoordinatorLayout) coordinatorLayout).headerConsumesGesture(target)) {
+            ((ScrollCoordinatorLayout) coordinatorLayout)
+                .consumeHeaderNestedScroll(
+                    dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, type, null);
+            return;
+          }
           if (getScrollEnabled(child)) {
             super.onNestedScroll(coordinatorLayout, child, target, dxConsumed, dyConsumed,
                 dxUnconsumed, dyUnconsumed, type);
@@ -273,6 +288,13 @@ public class ScrollCoordinatorAppBarLayout
         int[] consumed) {
       if (!shouldBlockNestedScroll) {
         try {
+          if (dyUnconsumed != 0 && coordinatorLayout instanceof ScrollCoordinatorLayout
+              && ((ScrollCoordinatorLayout) coordinatorLayout).headerConsumesGesture(target)) {
+            ((ScrollCoordinatorLayout) coordinatorLayout)
+                .consumeHeaderNestedScroll(
+                    dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, type, consumed);
+            return;
+          }
           if (dyUnconsumed < 0) {
             if (scrollMethod == null) {
               Class headerBehaviorClass =
