@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.7
+
+- Add `text-spacing-trim` CSS typings.
+
 ## 4.4.6
 
 - Add `lynx.pause()` and `lynx.resume()` for pausing and resuming timers, microtasks, animation frame callbacks, and animation VSync on the current page.

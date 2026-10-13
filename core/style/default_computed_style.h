@@ -53,6 +53,8 @@ struct DefaultComputedStyle {
   static constexpr VerticalAlignType DEFAULT_VERTICAL_ALIGN =
       VerticalAlignType::kDefault;
   static constexpr HyphensType DEFAULT_HYPHENS = HyphensType::kManual;
+  static constexpr TextSpacingTrimType DEFAULT_TEXT_SPACING_TRIM =
+      TextSpacingTrimType::kNormal;
   static constexpr XAnimationColorInterpolationType DEFAULT_INTERPOLATION_TYPE =
       XAnimationColorInterpolationType::kAuto;
   static constexpr uint8_t DEFAULT_TEXT_DECORATION_STYLE =
