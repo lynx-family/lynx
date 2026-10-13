@@ -14,6 +14,7 @@
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/jni_helper.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator_base.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_jni.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_register_jni.h"
@@ -67,6 +68,40 @@ bool IsMemoryUsageCallbackPending(
 }
 
 }  // namespace
+
+static void LoadHSRScriptFromSchema(JNIEnv* env, jclass, jbyteArray params_json,
+                                    jobject callback) {
+  using lynx::base::android::JNIConvertHelper;
+  using lynx::devtool::GlobalDevToolPlatformFacade;
+  auto java_callback =
+      std::make_shared<lynx::base::android::ScopedGlobalJavaRef<jobject>>(
+          env, callback);
+  GlobalDevToolPlatformFacade::HSRScriptCallback completion(
+      [java_callback](Json::Value&&, const std::string& error) {
+        auto* env = lynx::base::android::AttachCurrentThread();
+        auto bytes = JNIConvertHelper::ConvertToJNIByteArray(env, error);
+        Java_GlobalDevToolPlatformAndroidDelegate_onHSRScriptLoaded(
+            env, java_callback->Get(), error.empty() ? nullptr : bytes.Get());
+      });
+  Json::Value params;
+  if (!params_json ||
+      !Json::Reader().parse(JNIConvertHelper::ConvertToString(env, params_json),
+                            params, false)) {
+    std::move(completion)(Json::Value(), "Invalid HSR schema parameters");
+    return;
+  }
+  auto runner = lynx::devtool::LynxDevToolMediatorBase::GetDevToolsThread()
+                    .GetTaskRunner();
+  if (!runner) {
+    std::move(completion)(Json::Value(), "Cannot find DevTool task runner");
+    return;
+  }
+  runner->PostTask([params = std::move(params),
+                    completion = std::move(completion)]() mutable {
+    GlobalDevToolPlatformFacade::GetInstance().LoadHSRScriptFromSchema(
+        params, std::move(completion));
+  });
+}
 
 static void OnHSRScriptFetched(JNIEnv* env, jclass, jlong request_id,
                                jbyteArray source, jbyteArray error) {
