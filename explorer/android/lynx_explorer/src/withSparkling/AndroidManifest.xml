@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <activity
+            android:name="com.tiktok.sparkling.SparklingActivity"
+            android:exported="false"
+            android:theme="@style/LynxShellTheme"
+            android:windowSoftInputMode="adjustNothing"
+            tools:replace="android:theme">
+        </activity>
+    </application>
+</manifest>

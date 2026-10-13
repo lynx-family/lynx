@@ -10,20 +10,41 @@
  */
 
 import type { BaseEvent, StandardProps } from '@lynx-js/types';
+import type { ContainerRequest } from '@explorer/lib';
+
+interface ExplorerRouteResult {
+  success: boolean;
+  code: string;
+  message: string;
+}
 
 declare global {
   declare module '*.png?inline';
 
-  declare let NativeModules: {
+  interface NativeModulesMap {
     ExplorerModule: {
       openScan(): void;
       openSchema(url: string): void;
+      openRoute?(
+        url: string,
+        container: ContainerRequest,
+        callback: (result: ExplorerRouteResult) => void
+      ): void;
       getSettingInfo(): Record<string, unknown>;
       setThreadMode(index: number): void;
       saveThemePreferences(key: string, value: string): void;
-      navigateBack?(): void;
+      saveToLocalStorage(key: string, value: string): void;
+      readFromLocalStorage(key: string): string | undefined;
+      navigateBack?(callback: (result: ExplorerRouteResult) => void): void;
     };
-  };
+  }
+
+  declare let NativeModules: NativeModulesMap;
+
+  interface globalThis {
+    NativeModules?: NativeModulesMap;
+  }
+
 }
 
 declare module '@lynx-js/types' {
@@ -32,8 +53,15 @@ declare module '@lynx-js/types' {
     frontendTheme?: string;
     theme: string;
     isNotchScreen: boolean;
+    screenHeight?: number;
+    screenWidth?: number;
     safeAreaTop?: number;
     safeAreaBottom?: number;
+    safeAreaLeft?: number;
+    safeAreaRight?: number;
+    explorerSupportsSparklingContainer?: boolean;
+    explorerQRContainerPreference?: string;
+    explorerPreferredContainer?: 'legacy' | 'sparkling';
   }
 
   interface IntrinsicElements extends Lynx.IntrinsicElements {
