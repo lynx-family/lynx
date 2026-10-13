@@ -7,9 +7,21 @@
 
 #include "clay/gfx/style/color_source.h"
 
+#include <limits>
+
 #include "clay/fml/logging.h"
 
 namespace clay {
+
+template <typename T>
+static size_t GradientAllocationSize(uint32_t stop_count) {
+  constexpr size_t stop_size = sizeof(Color) + sizeof(float);
+  if (stop_count >
+      (std::numeric_limits<size_t>::max() - sizeof(T)) / stop_size) {
+    return 0;
+  }
+  return sizeof(T) + static_cast<size_t>(stop_count) * stop_size;
+}
 
 static void DlGradientDeleter(void* p) {
   // Some of our target environments would prefer a sized delete,
@@ -24,8 +36,11 @@ std::shared_ptr<ColorSource> ColorSource::MakeLinear(
     const skity::Vec2 start_point, const skity::Vec2 end_point,
     uint32_t stop_count, const Color* colors, const float* stops,
     TileMode tile_mode, const skity::Matrix* matrix) {
-  size_t needed = sizeof(LinearGradientColorSource) +
-                  (stop_count * (sizeof(uint32_t) + sizeof(float)));
+  const size_t needed =
+      GradientAllocationSize<LinearGradientColorSource>(stop_count);
+  if (needed == 0) {
+    return nullptr;
+  }
 
   void* storage = ::operator new(needed);
 
@@ -40,8 +55,11 @@ std::shared_ptr<ColorSource> ColorSource::MakeLinear(
 std::shared_ptr<ColorSource> ColorSource::MakeRadial(
     skity::Vec2 center, float radius, uint32_t stop_count, const Color* colors,
     const float* stops, TileMode tile_mode, const skity::Matrix* matrix) {
-  size_t needed = sizeof(RadialGradientColorSource) +
-                  (stop_count * (sizeof(uint32_t) + sizeof(float)));
+  const size_t needed =
+      GradientAllocationSize<RadialGradientColorSource>(stop_count);
+  if (needed == 0) {
+    return nullptr;
+  }
 
   void* storage = ::operator new(needed);
 
@@ -56,8 +74,11 @@ std::shared_ptr<ColorSource> ColorSource::MakeConical(
     skity::Vec2 start_center, float start_radius, skity::Vec2 end_center,
     float end_radius, uint32_t stop_count, const Color* colors,
     const float* stops, TileMode tile_mode, const skity::Matrix* matrix) {
-  size_t needed = sizeof(ConicalGradientColorSource) +
-                  (stop_count * (sizeof(uint32_t) + sizeof(float)));
+  const size_t needed =
+      GradientAllocationSize<ConicalGradientColorSource>(stop_count);
+  if (needed == 0) {
+    return nullptr;
+  }
 
   void* storage = ::operator new(needed);
 
@@ -73,8 +94,11 @@ std::shared_ptr<ColorSource> ColorSource::MakeSweep(
     skity::Vec2 center, float start, float end, uint32_t stop_count,
     const Color* colors, const float* stops, TileMode tile_mode,
     const skity::Matrix* matrix) {
-  size_t needed = sizeof(SweepGradientColorSource) +
-                  (stop_count * (sizeof(uint32_t) + sizeof(float)));
+  const size_t needed =
+      GradientAllocationSize<SweepGradientColorSource>(stop_count);
+  if (needed == 0) {
+    return nullptr;
+  }
 
   void* storage = ::operator new(needed);
 

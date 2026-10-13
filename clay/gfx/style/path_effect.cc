@@ -7,6 +7,7 @@
 
 #include "clay/gfx/style/path_effect.h"
 
+#include <limits>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -32,6 +33,12 @@ std::shared_ptr<PathEffect> PathEffect::MakeDash(const float intervals[],
 
 std::shared_ptr<PathEffect> DashPathEffect::Make(const float* intervals,
                                                  int count, float phase) {
+  const size_t max_count =
+      (std::numeric_limits<size_t>::max() - sizeof(DashPathEffect)) /
+      sizeof(float);
+  if (count < 0 || static_cast<size_t>(count) > max_count) {
+    return nullptr;
+  }
   size_t needed = sizeof(DashPathEffect) + sizeof(float) * count;
   void* storage = ::operator new(needed);
 

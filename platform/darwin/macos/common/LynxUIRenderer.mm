@@ -247,9 +247,6 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
           if (!redirectedUrl) {
             return nil;
           }
-          if (maxPathLength > 0 && redirectedUrl.length >= maxPathLength) {
-            return [redirectedUrl substringToIndex:maxPathLength - 1];
-          }
           return redirectedUrl;
         }];
     view_context->GetServiceManager()->RegisterService<clay::ResourceLoaderCreatorService>(

@@ -5,11 +5,26 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <limits>
 #include <string>
 #include <vector>
 
 #include "clay/fml/base64.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+
+TEST(Base64Test, RejectsEncodedSizeOverflow) {
+  const size_t max_length = std::numeric_limits<size_t>::max();
+  EXPECT_DEATH(fml::Base64::Encode(nullptr, max_length, nullptr), "");
+  EXPECT_DEATH(fml::Base64::Encode(nullptr, max_length / 4 * 3 + 1, nullptr),
+               "");
+  char output = 0;
+  EXPECT_DEATH(fml::Base64::Encode(nullptr, max_length, &output), "");
+}
+
+TEST(Base64Test, ComputesLargestRepresentableEncodedSize) {
+  const size_t groups = std::numeric_limits<size_t>::max() / 4;
+  EXPECT_EQ(fml::Base64::Encode(nullptr, groups * 3, nullptr), groups * 4);
+}
 
 TEST(Base64Test, CanEncodeAndDecode) {
   const std::string original = "abcdefghijklmnopqrstuvwxyz0123456789+/=";

@@ -6,6 +6,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <cstring>
+#include <limits>
 
 #include "clay/ui/window/pointer_data.h"
 #include "clay/ui/window/pointer_data_packet.h"
@@ -13,6 +14,20 @@
 
 namespace clay {
 namespace testing {
+
+TEST(PointerDataPacketTest, RejectsAllocationSizeOverflow) {
+  EXPECT_DEATH(
+      PointerDataPacket(
+          std::numeric_limits<size_t>::max() / sizeof(PointerData) + 1),
+      "");
+}
+
+TEST(PointerDataPacketTest, RejectsOutOfBoundsAccess) {
+  PointerDataPacket packet(1);
+  PointerData data{};
+  EXPECT_DEATH(packet.SetPointerData(1, data), "");
+  EXPECT_DEATH(packet.GetPointerData(1), "");
+}
 
 void CreateSimpleSimulatedPointerData(PointerData& data,  // NOLINT
                                       PointerData::Change change,

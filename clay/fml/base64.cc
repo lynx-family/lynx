@@ -12,6 +12,7 @@
 #include "clay/fml/base64.h"
 
 #include <cstdint>
+#include <limits>
 
 #include "clay/fml/logging.h"
 
@@ -104,6 +105,11 @@ goHome:
 
 size_t Base64::Encode(const void* srcv, size_t length, void* dstv,
                       const char* encodeMap) {
+  // Compute the rounded size without overflowing length + 2 or the output
+  // multiplication. The same check must apply to sizing and writing calls.
+  const size_t groups = length / 3 + (length % 3 != 0);
+  FML_CHECK(groups <= std::numeric_limits<size_t>::max() / 4);
+  const size_t encoded_length = groups * 4;
   const unsigned char* src = static_cast<const unsigned char*>(srcv);
   unsigned char* dst = static_cast<unsigned char*>(dstv);
 
@@ -144,6 +150,6 @@ size_t Base64::Encode(const void* srcv, size_t length, void* dstv,
       *dst++ = encode[EncodePad];
     }
   }
-  return (length + 2) / 3 * 4;
+  return encoded_length;
 }
 }  // namespace fml

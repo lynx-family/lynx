@@ -5,6 +5,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -16,6 +17,26 @@
 #include "third_party/skia/include/core/SkSurface.h"
 namespace clay {
 namespace testing {
+
+TEST(DisplayListColorSource, RejectsGradientAllocationOverflowOn32Bit) {
+  if constexpr (sizeof(size_t) == 4) {
+    const uint32_t count = std::numeric_limits<uint32_t>::max();
+    const Color color = Color::kRed();
+    const skity::Vec2 point{0, 0};
+    EXPECT_EQ(ColorSource::MakeLinear(point, point, count, &color, nullptr,
+                                      TileMode::kClamp, nullptr),
+              nullptr);
+    EXPECT_EQ(ColorSource::MakeRadial(point, 1, count, &color, nullptr,
+                                      TileMode::kClamp, nullptr),
+              nullptr);
+    EXPECT_EQ(ColorSource::MakeConical(point, 1, point, 2, count, &color,
+                                       nullptr, TileMode::kClamp, nullptr),
+              nullptr);
+    EXPECT_EQ(ColorSource::MakeSweep(point, 0, 1, count, &color, nullptr,
+                                     TileMode::kClamp, nullptr),
+              nullptr);
+  }
+}
 
 static fml::RefPtr<DlImage> MakeTestImage(int w, int h, SkColor color) {
   sk_sp<SkSurface> surface;
