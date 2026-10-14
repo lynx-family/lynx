@@ -31,8 +31,8 @@ angle_spirv_tools_dir = "//third_party/vulkan-deps/spirv-tools/src"
 angle_spirv_cross_dir = "//third_party/vulkan-deps/spirv-cross/src"
 angle_vulkan_memory_allocator_dir = "//third_party/vulkan_memory_allocator"
 
-# Note, this is just a placeholder, angle actullay doesn't use it
-angle_jsoncpp_dir = "//build/secondary/third_party/jsoncpp"
+# Used by the Vulkan backend, including SwiftShader software rendering.
+angle_jsoncpp_dir = "//third_party/jsoncpp"
 
 # This is a general Chromium flag, but in the Flutter build only ANGLE needs it
 # so it is defined here.

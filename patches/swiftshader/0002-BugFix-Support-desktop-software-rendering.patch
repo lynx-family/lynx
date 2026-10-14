@@ -1,0 +1,38 @@
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Subject: [PATCH] [BugFix] Support desktop software rendering
+
+diff --git a/src/Vulkan/BUILD.gn b/src/Vulkan/BUILD.gn
+--- a/src/Vulkan/BUILD.gn
++++ b/src/Vulkan/BUILD.gn
+@@ -186,6 +186,18 @@ swiftshader_shared_library("swiftshader_libvulkan") {
+       "gdi32.lib",
+       "user32.lib",
+     ]
++    if (use_flutter_cxx) {
++      import("//build/config/win/win.gni")
++      # libc++ delegates exception support to the Microsoft C++ runtime.
++      runtime_lib = "msvcprt"
++      if (windows_runtime_library_mode == "mt") {
++        runtime_lib = "libcpmt"
++      }
++      if (is_debug) {
++        runtime_lib += "d"
++      }
++      libs += [ "$runtime_lib.lib" ]
++    }
+   }
+
+   if (is_mac) {
+diff --git a/third_party/llvm-10.0/llvm/lib/IR/User.cpp b/third_party/llvm-10.0/llvm/lib/IR/User.cpp
+--- a/third_party/llvm-10.0/llvm/lib/IR/User.cpp
++++ b/third_party/llvm-10.0/llvm/lib/IR/User.cpp
+@@ -165,6 +165,9 @@ void *User::operator new(size_t Size) {
+ // Repress memory sanitization, due to use-after-destroy by operator
+ // delete. Bug report 24578 identifies this issue.
+ LLVM_NO_SANITIZE_MEMORY_ATTRIBUTE void User::operator delete(void *Usr) {
++  if (!Usr)
++    return;
++
+   // Hung off uses use a single Use* before the User, while other subclasses
+   // use a Use[] allocated prior to the user.
+   User *Obj = static_cast<User *>(Usr);

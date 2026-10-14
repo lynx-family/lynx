@@ -54,7 +54,7 @@ source_set("gpu_surface_gl") {
       "gpu_surface_gl_skity.cc",
       "gpu_surface_gl_skity.h",
     ]
-    if (is_win) {
+    if (is_win || (is_mac && is_headless && enable_software_rendering)) {
       deps = [ "//third_party/angle:includes" ]
     }
   }

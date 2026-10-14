@@ -32,16 +32,17 @@ class LynxWindowlessRenderer
           delete weak_ptr;
         });
     if (type_ == kRendererTypeSoftware) {
-      lynx_windowless_renderer_bind_on_software_present(
+      lynx_windowless_renderer_bind_on_software_present_v2(
           windowless_renderer_,
           [](lynx_windowless_renderer_t* renderer, const void* allocation,
-             size_t row_bytes, size_t height) -> bool {
+             size_t row_bytes, size_t height,
+             lynx_color_type_e color_type) -> bool {
             std::shared_ptr<LynxWindowlessRenderer> renderer_wrapper =
                 LynxWindowlessRenderer::Unwrap(
                     lynx_windowless_renderer_get_user_data(renderer));
             if (renderer_wrapper) {
-              return renderer_wrapper->OnSoftwarePresent(allocation, row_bytes,
-                                                         height);
+              return renderer_wrapper->OnSoftwarePresentV2(
+                  allocation, row_bytes, height, color_type);
             }
             return false;
           });
@@ -225,6 +226,13 @@ class LynxWindowlessRenderer
   virtual bool OnSoftwarePresent(const void* allocation, size_t row_bytes,
                                  size_t height) {
     return false;
+  }
+  // Override to consume the actual pixel format. By default, keep existing
+  // subclasses that implement OnSoftwarePresent working unchanged.
+  virtual bool OnSoftwarePresentV2(const void* allocation, size_t row_bytes,
+                                   size_t height,
+                                   lynx_color_type_e color_type) {
+    return OnSoftwarePresent(allocation, row_bytes, height);
   }
   /* ----- Callbacks for Software renderer type ----- */
 

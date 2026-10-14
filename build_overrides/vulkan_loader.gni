@@ -4,5 +4,6 @@
 
 vulkan_headers_dir = "//third_party/vulkan-deps/vulkan-headers/src"
 
-# Vulkan loader build options
-vulkan_loader_shared = true
+# Statically link the Vulkan loader on macOS to match ANGLE's default and
+# avoid shipping libvulkan.dylib. Keep shared loaders on other platforms.
+vulkan_loader_shared = !is_mac

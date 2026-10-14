@@ -1,0 +1,30 @@
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Subject: [PATCH] [BugFix] Support desktop SwiftShader rendering
+
+diff --git a/src/common/vulkan/BUILD.gn b/src/common/vulkan/BUILD.gn
+--- a/src/common/vulkan/BUILD.gn
++++ b/src/common/vulkan/BUILD.gn
+@@ -104,7 +104,9 @@ if (angle_enable_vulkan) {
+       } else {
+         public_deps = [ "$angle_vulkan_loader_dir:libvulkan" ]
+       }
+-      data_deps += [ "$angle_vulkan_tools_dir:VkICD_mock_icd" ]
++      if (angle_build_tests) {
++        data_deps += [ "$angle_vulkan_tools_dir:VkICD_mock_icd" ]
++      }
+     }
+   }
+
+diff --git a/src/libANGLE/renderer/vulkan/vk_mem_alloc_wrapper.cpp b/src/libANGLE/renderer/vulkan/vk_mem_alloc_wrapper.cpp
+--- a/src/libANGLE/renderer/vulkan/vk_mem_alloc_wrapper.cpp
++++ b/src/libANGLE/renderer/vulkan/vk_mem_alloc_wrapper.cpp
+@@ -9,6 +9,9 @@
+
+ #include "vk_mem_alloc_wrapper.h"
+
++#ifndef VMA_IMPLEMENTATION
++#define VMA_IMPLEMENTATION
++#endif
+ #include <vk_mem_alloc.h>
+
+ namespace vma
