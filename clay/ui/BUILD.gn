@@ -90,6 +90,7 @@ source_set("ui") {
   }
 
   deps = [
+    "../../service_api:lynx_service_api",
     "../common",
     "../common/graphics",
     "../fml:fml",

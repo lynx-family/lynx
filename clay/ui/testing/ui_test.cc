@@ -260,7 +260,7 @@ void UITest::SetUp() {
   font_collection->SetupDefaultFontManager(0);
   fml::AutoResetWaitableEvent latch;
   ui_task_runner()->PostTask([&]() {
-    page_ = std::make_unique<PageView>(0, nullptr, ui_thread_->GetTaskRunner());
+    page_ = CreatePageView();
     page_->SetEventDelegate(event_delegate_.get());
     page_->SetRenderDelegate(delegate_.get());
     page_->SetBound(0, 0, 1000, 1000);
