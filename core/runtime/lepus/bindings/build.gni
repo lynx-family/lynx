@@ -12,7 +12,7 @@ lynx_lepus_binding_sources = [
   "style/shared_css_fragment_wrapper.h",
 ]
 
-if (is_android && enable_lite) {
+if (is_android && enable_lite && !enable_lite_keep_lepus_vm) {
   lynx_lepus_binding_sources -= [ "renderer.h" ]
 }
 

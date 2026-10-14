@@ -14,7 +14,7 @@ declare_args() {
 if (is_android) {
   # the arg is up to enable_lite arg,
   # gradle will not pass this arg when building Android.
-  enable_just_lepusng = enable_lite
+  enable_just_lepusng = enable_lite && !enable_lite_keep_lepus_vm
 }
 
 enable_napi_binding = enable_lepusng_worklet
