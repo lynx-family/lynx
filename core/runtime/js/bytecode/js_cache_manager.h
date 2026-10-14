@@ -35,9 +35,38 @@ namespace lynx {
 namespace runtime {
 namespace js {
 namespace cache {
-using BytecodeGenerateCallback = base::MoveOnlyClosure<
-    void, std::string,
-    std::unordered_map<std::string, std::shared_ptr<Buffer>>>;
+class BytecodeGenerateCallback {
+ public:
+  using ResponseFunc = base::MoveOnlyClosure<
+      void, std::string,
+      std::unordered_map<std::string, std::shared_ptr<Buffer>>>;
+  // Consulted once per decoded js file right before its bytecode is generated,
+  // with the cache url of the file (the same key used in the response buffers)
+  // and the md5 of its source content. Returning false skips the file, e.g.
+  // when the external owner already holds its bytecode.
+  using ContinueGenerationFunc =
+      base::MoveOnlyClosure<bool, const std::string &, const std::string &>;
+
+  BytecodeGenerateCallback(ResponseFunc response,
+                           ContinueGenerationFunc continue_generation = nullptr)
+      : response_(std::move(response)),
+        continue_generation_(std::move(continue_generation)) {}
+
+  void operator()(
+      std::string error_msg,
+      std::unordered_map<std::string, std::shared_ptr<Buffer>> buffers) const {
+    response_(std::move(error_msg), std::move(buffers));
+  }
+
+  bool ContinueGeneration(const std::string &js_name,
+                          const std::string &md5) const {
+    return !continue_generation_ || continue_generation_(js_name, md5);
+  }
+
+ private:
+  ResponseFunc response_;
+  ContinueGenerationFunc continue_generation_;
+};
 
 class JsCacheManager {
  public:

@@ -17,4 +17,15 @@ NS_ASSUME_NONNULL_BEGIN
 typedef void (^LynxBytecodeResponseBlock)(NSString* _Nullable errorMsg,
                                           NSDictionary<NSString*, NSData*>* _Nullable buffers);
 
+/**
+ * block consulted once per decoded js file right before its bytecode would be generated.
+ * It is invoked on a background thread.
+ * @param jsName the name of the decoded js file, the same as its key in the buffers of
+ * LynxBytecodeResponseBlock.
+ * @param md5 the md5 of the js file's source content.
+ * @return YES to continue generating bytecode for this file; NO to skip it, e.g. when the caller
+ * already holds the bytecode for this md5.
+ */
+typedef BOOL (^LynxBytecodeContinueBlock)(NSString* jsName, NSString* md5);
+
 NS_ASSUME_NONNULL_END

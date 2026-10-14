@@ -13,6 +13,7 @@
 
 std::unique_ptr<lynx::runtime::js::cache::BytecodeGenerateCallback>
     CreateBytecodeGenerateCallback(
-        LynxBytecodeResponseBlock _Nullable callback);
+        LynxBytecodeResponseBlock _Nullable callback,
+        LynxBytecodeContinueBlock _Nullable continueGeneration = nil);
 
 #endif  // DARWIN_COMMON_LYNX_LYNX_LYNX_BYTECODE_RESPONSE_BLOCK_CONVERTER_H_

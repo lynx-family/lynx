@@ -3986,6 +3986,7 @@ public class LynxTemplateBundle : NSObject, <LynxSecurityTarget> {
   public NSData *_Nullable LynxTemplateBundle::customSectionForKey:(nonnull NSString *key);
   public void LynxTemplateBundle::postJsCacheGenerationTask:(nonnull NSString *bytecodeSourceUrl);
   public void LynxTemplateBundle::postJsCacheGenerationTask:callback:(nonnull NSString *bytecodeSourceUrl,[callback] nullable LynxBytecodeResponseBlock callback);
+  public void LynxTemplateBundle::postJsCacheGenerationTask:callback:continueGeneration:(nonnull NSString *bytecodeSourceUrl,[callback] nullable LynxBytecodeResponseBlock callback,[continueGeneration] nullable LynxBytecodeContinueBlock continueGeneration);
   public BOOL LynxTemplateBundle::preload:bytecode:callback:(nonnull NSString *url,[bytecode] nonnull NSData *bytecode,[callback] nullable dispatch_block_t callback);
   public instancetype _Nullable LynxTemplateBundle::_swiftTemplateBundleWithTemplate:(init(template:) NS_SWIFT_NAME);
   public instancetype _Nullable LynxTemplateBundle::_swiftTemplateBundleWithTemplate:option:(nonnull NSData *tem,[option] init(template:option:) NS_SWIFT_NAME);
@@ -6183,7 +6184,7 @@ public enum LynxFeature {
 }
 
 
-  public std::unique_ptr< lynx::runtime::js::cache::BytecodeGenerateCallback > CreateBytecodeGenerateCallback(LynxBytecodeResponseBlock _Nullable callback);
+  public std::unique_ptr< lynx::runtime::js::cache::BytecodeGenerateCallback > CreateBytecodeGenerateCallback(LynxBytecodeResponseBlock _Nullable callback, LynxBytecodeContinueBlock _Nullable continueGeneration=nil);
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT LynxTemplateData * LynxCreateStaticPageTemplateData(NSDictionary< NSString *, id > *dictionary);
   public FOUNDATION_EXPORT BOOL LynxTemplateDataIsForStaticPage(LynxTemplateData *_Nullable data);
@@ -6679,6 +6680,7 @@ public enum LynxPanInterceptScope {
   public FOUNDATION_EXPORT NSString* const kPropThreadMode kPropThreadMode;
   public FOUNDATION_EXPORT NSString* const kPropEnableSSR kPropEnableSSR;
 
+  typedef BOOL(^ LynxBytecodeContinueBlock) (NSString *jsName, NSString *md5)
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxBytecodeResponseBlock) (NSString *_Nullable errorMsg, NSDictionary< NSString *, NSData * > *_Nullable buffers) LynxBytecodeResponseBlock;
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT NSString* const kDefaultComponentID kDefaultComponentID;

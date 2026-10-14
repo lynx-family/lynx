@@ -40,6 +40,8 @@ std::unique_ptr<BytecodeGenerateCallback> CreateBytecodeCallback(
   std::unique_ptr<cache::BytecodeGenerateCallback> bytecode_callback = nullptr;
   if (nullptr != callback) {
     lynx::base::android::ScopedGlobalJavaRef<jobject> jni_object(env, callback);
+    lynx::base::android::ScopedGlobalJavaRef<jobject> jni_continue_object(
+        jni_object);
     bytecode_callback = std::make_unique<cache::BytecodeGenerateCallback>(
         [jni_object = std::move(jni_object)](
             std::string error_msg,
@@ -63,6 +65,19 @@ std::unique_ptr<BytecodeGenerateCallback> CreateBytecodeCallback(
           }
           cache::OnBytecodeResponse(env, std::move(jni_object),
                                     std::move(jni_error_msg), java_map);
+        },
+        [jni_object = std::move(jni_continue_object)](
+            const std::string& js_name, const std::string& md5) -> bool {
+          JNIEnv* env = lynx::base::android::AttachCurrentThread();
+          auto jni_js_name =
+              lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+                  env, js_name);
+          auto jni_md5 =
+              lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env,
+                                                                           md5);
+          return Java_LynxBytecodeCallback_continueGeneration(
+                     env, jni_object.Get(), jni_js_name.Get(), jni_md5.Get()) ==
+                 JNI_TRUE;
         });
   }
   return bytecode_callback;
