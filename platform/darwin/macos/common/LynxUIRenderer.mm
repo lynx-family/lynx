@@ -14,6 +14,7 @@
 #include "clay/shell/platform/darwin/macos/framework/Source/ClayViewProvider_Internal.h"
 #include "clay/shell/platform/darwin/macos/framework/Source/FlutterEngine_Internal.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterTextInputPlugin.h"
+#include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "platform/embedder/lynx_view_clients.h"
@@ -220,6 +221,10 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
   auto lynx_ui_renderer = [[LynxUIRendererMac alloc] init];
   auto* view_context =
       reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);
+  if (builder->default_background_color) {
+    view_context->GetPageView()->SetDefaultBackgroundColor(
+        clay::Color(*builder->default_background_color));
+  }
   auto module_factory = std::unique_ptr<lynx::runtime::NativeModuleFactory>(
       lynx::LynxModuleFactory::CreateModuleFactory(view_context));
   ui_delegate_ =

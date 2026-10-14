@@ -22,6 +22,7 @@
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/shell/common/services/instrumentation_service.h"
 #include "clay/shell/platform/windows/dpi_utils.h"
+#include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_memory_capi.h"
@@ -88,6 +89,10 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
 
   auto* view_context =
       static_cast<clay::ViewContext*>(engine_->GetViewContext());
+  if (builder->default_background_color) {
+    view_context->GetPageView()->SetDefaultBackgroundColor(
+        clay::Color(*builder->default_background_color));
+  }
   auto module_factory = std::unique_ptr<lynx::runtime::NativeModuleFactory>(
       lynx::LynxModuleFactory::CreateModuleFactory(view_context));
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateClay>(
