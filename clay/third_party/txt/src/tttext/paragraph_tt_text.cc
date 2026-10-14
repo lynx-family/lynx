@@ -4,6 +4,7 @@
 
 #include "clay/third_party/txt/src/tttext/paragraph_tt_text.h"
 
+#include <textra/fontmgr_collection.h>
 #include <textra/layout_drawer.h>
 #include <textra/layout_region.h>
 #include <textra/text_layout.h>
@@ -12,6 +13,7 @@
 #include "base/include/string/string_utils.h"
 #include "clay/third_party/txt/src/txt/placeholder_run.h"
 #ifdef ENABLE_SKITY
+#include <textra/platform/skity/skity_typeface_helper.h>
 #include "clay/third_party/txt/src/txt/font_collection_skity.h"
 #else
 #include "clay/third_party/txt/src/txt/font_collection_skia.h"
@@ -108,6 +110,68 @@ bool ParagraphTTText::DidExceedMaxLines() {
     return false;
   }
   return region_->DidExceedMaxLines();
+}
+
+std::optional<skity::Rect> ParagraphTTText::GetFirstCharacterGlyphBounds()
+    const {
+  if (!region_ || region_->GetLineCount() == 0 ||
+      paragraph_->GetCharCount() == 0) {
+    return std::nullopt;
+  }
+  const auto* line = region_->GetLine(0);
+  if (!line || line->GetStartCharPos() != 0 || line->GetEndCharPos() == 0) {
+    return std::nullopt;
+  }
+  float bounds[4] = {0};
+  line->GetTightBoundingRectByCharRange(bounds, 0, 1);
+  for (float value : bounds) {
+    if (!std::isfinite(value)) {
+      return std::nullopt;
+    }
+  }
+  if (bounds[3] <= bounds[1]) {
+    return std::nullopt;
+  }
+  const float baseline = line->GetLineBaseLine();
+  if (!std::isfinite(baseline)) {
+    return std::nullopt;
+  }
+  return skity::Rect::MakeLTRB(bounds[0], baseline + bounds[1], bounds[2],
+                               baseline + bounds[3]);
+}
+
+std::optional<float> ParagraphTTText::GetFirstCharacterXHeight() const {
+#ifdef ENABLE_SKITY
+  if (!font_collection_ || paragraph_->GetCharCount() == 0) {
+    return std::nullopt;
+  }
+  tttext::Style style;
+  paragraph_->QueryStyle(0, &style);
+  if (style.GetTextSize() <= 0.f) {
+    return std::nullopt;
+  }
+  auto collection =
+      font_collection_->GetIFontCollection(variation_font_manager_);
+  auto typefaces = collection.findTypefaces(style.GetFontDescriptor());
+  // If the selected font cannot render the reference character, use the laid
+  // out glyph bounds instead of taking metrics from a different font.
+  if (typefaces.empty() || !typefaces.front() ||
+      typefaces.front()->UnicharToGlyph('x') == 0) {
+    return std::nullopt;
+  }
+  auto typeface = static_cast<skity::textlayout::SkityTypefaceHelper*>(
+                      typefaces.front().get())
+                      ->GetTypeface();
+  skity::Font font(typeface, style.GetTextSize());
+  skity::FontMetrics metrics{};
+  font.GetMetrics(&metrics);
+  const float x_height = metrics.x_height_;
+  return std::isfinite(x_height) && x_height > 0.f
+             ? std::optional<float>(x_height)
+             : std::nullopt;
+#else
+  return std::nullopt;
+#endif
 }
 
 void ParagraphTTText::Layout(double width) {

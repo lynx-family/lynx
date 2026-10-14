@@ -13,12 +13,17 @@
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/component/text/raw_text_view.h"
 #include "clay/ui/component/text/text_paragraph_builder.h"
+#include "clay/ui/shadow/inline_image_shadow_node.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
 #include "clay/ui/shadow/inline_truncation_shadow_node.h"
 #include "clay/ui/shadow/inline_view_shadow_node.h"
 #include "clay/ui/shadow/raw_text_shadow_node.h"
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/shadow/text_shadow_node.h"
+#ifdef CLAY_ENABLE_TTTEXT
+#include "clay/third_party/txt/src/tttext/paragraph_tt_text.h"
+#include "clay/ui/shadow/text_render.h"
+#endif
 #include "clay/ui/testing/ui_test.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -35,11 +40,9 @@ class TestLayoutDelegate : public LayoutDelegate {
   }
   ClayMeasureOutput OnMeasureNativeNode(int32_t, float, int, float,
                                         int) override {
-    return {measure_width, measure_height, 0.f};
+    return {measure_width, measure_height, measure_baseline};
   }
-  ClayLayoutStyles OnGetLayoutStyles(int32_t) override {
-    return ClayLayoutStyles();
-  }
+  ClayLayoutStyles OnGetLayoutStyles(int32_t) override { return layout_styles; }
 
   void ResetAlignState() {
     align_count = 0;
@@ -48,12 +51,20 @@ class TestLayoutDelegate : public LayoutDelegate {
     last_left = -1.f;
   }
 
+  ClayLayoutStyles layout_styles{};
   float measure_width = 0.f;
   float measure_height = 0.f;
+  float measure_baseline = 0.f;
   int align_count = 0;
   int32_t last_aligned_id = 0;
   float last_top = -1.f;
   float last_left = -1.f;
+};
+
+class TestTextShadowNode : public TextShadowNode {
+ public:
+  using TextShadowNode::GetCacheParagraph;
+  using TextShadowNode::TextShadowNode;
 };
 
 class TextTest : public UITest {
@@ -62,7 +73,7 @@ class TextTest : public UITest {
     owner_ =
         new ShadowNodeOwner(fml::MessageLoop::GetCurrent().GetTaskRunner());
     text_shadow_node_ =
-        std::make_unique<TextShadowNode>(owner_, std::string("text"), -1);
+        std::make_unique<TestTextShadowNode>(owner_, std::string("text"), -1);
     raw_text_shadow_node_ = std::make_unique<RawTextShadowNode>(
         owner_, std::string("raw_text"), -1);
     inline_text_shadow_node_ = std::make_unique<InlineTextShadowNode>(
@@ -78,7 +89,7 @@ class TextTest : public UITest {
     delete owner_;
   }
   ShadowNodeOwner* owner_;
-  std::unique_ptr<TextShadowNode> text_shadow_node_;
+  std::unique_ptr<TestTextShadowNode> text_shadow_node_;
   std::unique_ptr<InlineTextShadowNode> inline_text_shadow_node_;
   std::unique_ptr<RawTextShadowNode> raw_text_shadow_node_;
 };
@@ -283,6 +294,104 @@ TEST_F_UI(TextTest, VerticalAlign) {
   auto baseline_shift = inline_text_shadow_node_->text_style_->baseline_shift;
   EXPECT_EQ(baseline_shift, 20);
 }
+
+#ifdef CLAY_ENABLE_TTTEXT
+TEST_F_UI(TextTest, NestedInlineViewAlignsOnceAndResetsAfterUpdates) {
+  TestLayoutDelegate delegate;
+  delegate.measure_width = 30.f;
+  delegate.measure_height = 50.f;
+  delegate.measure_baseline = 35.f;
+  owner_->SetLayoutDelegate(&delegate);
+  auto inline_view = std::make_unique<InlineViewShadowNode>(owner_, "view", 7);
+  inline_text_shadow_node_->AddChild(inline_view.get());
+  text_shadow_node_->SetFontSize(24.f);
+  inline_text_shadow_node_->SetFontSize(24.f);
+  raw_text_shadow_node_->SetText("x");
+  TextRender reference_render(text_shadow_node_.get());
+  auto reference =
+      reference_render.LayoutXCharacter(1000, *text_shadow_node_->text_style_);
+  const auto glyph = static_cast<txt::ParagraphTTText*>(reference.get())
+                         ->GetFirstCharacterGlyphBounds();
+  ASSERT_TRUE(glyph.has_value());
+  EXPECT_LT(glyph->Height(), reference->GetHeight());
+  MeasureConstraint constraint{1000, MeasureMode::kDefinite, 0,
+                               MeasureMode::kIndefinite};
+  for (auto type : {kVerticalAlignMiddle, kVerticalAlignLength,
+                    kVerticalAlignDefault, kVerticalAlignBaseline}) {
+    clay::Value::Array align;
+    align.emplace_back(static_cast<int>(type));
+    align.emplace_back(type == kVerticalAlignLength ? 7.f : 0.f);
+    inline_view->SetAttribute("vertical-align", clay::Value(std::move(align)));
+    text_shadow_node_->MarkNeedsUpdate(TextUpdateFlag::kUpdateFlagStyle);
+    text_shadow_node_->Measure(constraint);
+    auto* paragraph = text_shadow_node_->GetCacheParagraph();
+    ASSERT_NE(paragraph, nullptr);
+    const auto boxes = paragraph->GetRectsForRange(
+        inline_view->StartGlyph(), inline_view->EndGlyph(),
+        txt::Paragraph::RectHeightStyle::kTight,
+        txt::Paragraph::RectWidthStyle::kTight);
+    ASSERT_EQ(boxes.size(), 1u);
+    const auto& rect = boxes.front().rect;
+    const double baseline = paragraph->GetAlphabeticBaseline();
+    if (type == kVerticalAlignMiddle) {
+      EXPECT_NEAR(baseline - (rect.Top() + rect.Bottom()) / 2.f,
+                  glyph->Height() / 2.f, 0.01f);
+    } else if (type == kVerticalAlignBaseline) {
+      EXPECT_NEAR(rect.Top() + delegate.measure_baseline, baseline, 0.01f);
+    } else {
+      EXPECT_NEAR(baseline - rect.Bottom(),
+                  type == kVerticalAlignLength ? 7.f : 0.f, 0.01f);
+    }
+    EXPECT_EQ(inline_view->text_style_->align_type, type);
+  }
+  owner_->SetLayoutDelegate(nullptr);
+}
+
+TEST_F_UI(TextTest, PlaceholderMiddleCountsImageAndMeasuredViewMarginsOnce) {
+  TestLayoutDelegate delegate;
+  delegate.measure_width = 30.f;
+  delegate.measure_height = 30.f;  // Includes the view's 3 + 7 margins.
+  delegate.layout_styles.width = 30.f;
+  delegate.layout_styles.height = 20.f;
+  delegate.layout_styles.margin_top = 3.f;
+  delegate.layout_styles.margin_bottom = 7.f;
+  owner_->SetLayoutDelegate(&delegate);
+  auto inline_view = std::make_unique<InlineViewShadowNode>(owner_, "view", 7);
+  auto inline_image =
+      std::make_unique<InlineImageShadowNode>(owner_, "image", 8);
+  text_shadow_node_->AddChild(inline_view.get());
+  text_shadow_node_->AddChild(inline_image.get());
+  raw_text_shadow_node_->SetText("x");
+  inline_view->UpdateLayoutStylesFromLynx();
+  for (auto* child : {static_cast<ShadowNode*>(inline_view.get()),
+                      static_cast<ShadowNode*>(inline_image.get())}) {
+    clay::Value::Array align;
+    align.emplace_back(static_cast<int>(kVerticalAlignMiddle));
+    align.emplace_back(0.f);
+    child->SetAttribute("vertical-align", clay::Value(std::move(align)));
+  }
+  MeasureConstraint constraint{1000, MeasureMode::kDefinite, 0,
+                               MeasureMode::kIndefinite};
+  text_shadow_node_->Measure(constraint);
+  auto* paragraph = text_shadow_node_->GetCacheParagraph();
+  ASSERT_NE(paragraph, nullptr);
+  const auto view_boxes = paragraph->GetRectsForRange(
+      inline_view->StartGlyph(), inline_view->EndGlyph(),
+      txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  const auto image_boxes = paragraph->GetRectsForRange(
+      inline_image->StartGlyph(), inline_image->EndGlyph(),
+      txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(view_boxes.size(), 1u);
+  ASSERT_EQ(image_boxes.size(), 1u);
+  EXPECT_NEAR(view_boxes.front().rect.Height(), 30.f, 0.01f);
+  EXPECT_NEAR(image_boxes.front().rect.Height(), 30.f, 0.01f);
+  EXPECT_NEAR(view_boxes.front().rect.Top(), image_boxes.front().rect.Top(),
+              0.01f);
+  owner_->SetLayoutDelegate(nullptr);
+}
+#endif
 
 TEST_F_UI(TextTest, AlignInlineViewsToOriginResetsInlineViewState) {
   TestLayoutDelegate delegate;
