@@ -4,6 +4,8 @@
 #ifndef PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_BUILDER_CAPI_H_
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_BUILDER_CAPI_H_
 
+#include <stdint.h>
+
 #include "lynx_export.h"
 #include "lynx_extension_module_types_capi.h"
 #include "lynx_generic_resource_fetcher_capi.h"
@@ -49,6 +51,14 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_font_scale(lynx_view_builder_t*,
 // Controls whether the LynxView creates and runs a JavaScript runtime.
 LYNX_CAPI_EXPORT void lynx_view_builder_set_enable_js_runtime(
     lynx_view_builder_t*, bool enable);
+
+// Sets the default page background using a non-premultiplied 0xAARRGGBB color.
+// For example, 0x00000000 is transparent and 0xFFFFFFFF is opaque white.
+// Call before lynx_view_create. The color is retained across page reloads and
+// resets; an explicit page CSS background color can override it. If not set,
+// the platform's existing default background is preserved.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_default_background_color(
+    lynx_view_builder_t* builder, uint32_t color);
 
 // Sets the ICU data path for the LynxView being built. This function allows you
 // to specify the path to the ICU (International Components for Unicode) data
