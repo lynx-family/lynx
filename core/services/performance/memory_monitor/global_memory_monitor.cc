@@ -246,6 +246,7 @@ void GlobalMemoryMonitor::OnInstanceDestroyed(int32_t id, int64_t at_ms) {
     if (it == instance_state_.end() || it->second.destroyed) return;
     auto& state = it->second;
     auto* vm = FindVM(state.bts_vm);
+    if (vm) state.bts_vm_page_count_at_exit = vm->total_page_count;
     if (vm && vm->active_page_count && --vm->active_page_count == 0) {
       vm->idle_since_ms = at_ms;
     }
@@ -780,6 +781,7 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
   const InstanceState* sampled_page = nullptr;
   const InstanceState* sampled_residual = nullptr;
   double residual_bytes = 0;
+  uint64_t residual_post_exit_page_count = 0;
   MemoryReservoir page_picker, vm_picker, quickjs_picker, residual_picker,
       mts_pool_picker;
   for (const auto& entry : bts_vm_state_) {
@@ -813,8 +815,11 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
         retained += bytes;
         if (vm == sampled_quickjs) sampled_quickjs_retained += bytes;
         if (residual_picker.Consider(bytes, random_)) {
+          assert(vm->total_page_count >= page.bts_vm_page_count_at_exit);
           sampled_residual = &page;
           residual_bytes = bytes;
+          residual_post_exit_page_count =
+              vm->total_page_count - page.bts_vm_page_count_at_exit;
         }
       }
       continue;
@@ -935,6 +940,8 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     event.SetProps("shared_vm_tracked_exited_page_retained_bytes", retained);
     event.SetProps("leak_page_key", sampled_residual->page_key);
     event.SetProps("leak_page_selection_weight", retained / residual_bytes);
+    event.SetProps("leak_page_vm_post_exit_page_count",
+                   residual_post_exit_page_count);
     events.push_back(std::move(event));
   }
 
