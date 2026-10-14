@@ -127,8 +127,16 @@ typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
     }
   }
   if (consumeSourceActions) {
+    __block LynxTemplateData* pendingData = self;
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-      [self getDataForJSThread];
+      @try {
+        [pendingData getDataForJSThread];
+      } @finally {
+        // Release the task's reference on the main thread, even if consumption throws.
+        dispatch_async(dispatch_get_main_queue(), ^{
+          pendingData = nil;
+        });
+      }
     });
   }
   return array;
