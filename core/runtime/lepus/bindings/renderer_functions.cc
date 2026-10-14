@@ -6,6 +6,7 @@
 
 #include <assert.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <deque>
 #include <limits>
@@ -171,10 +172,11 @@ bool ParseComposeElementKind(const lepus::Value& value, const char* function,
     case ComposeElementKind::kView:
     case ComposeElementKind::kText:
     case ComposeElementKind::kImage:
+    case ComposeElementKind::kList:
       *result = kind;
       return true;
     default:
-      ElementAPIError("%s kind should be View, Text or Image", function);
+      ElementAPIError("%s kind should be View, Text, Image or List", function);
       return false;
   }
 }
@@ -286,21 +288,23 @@ int32_t MergeResolveTarget(TemplateAssembler* tasm,
 #define GET_TASM_POINTER() \
   static_cast<TemplateAssembler*>(LEPUS_CONTEXT()->GetDelegate())
 
+#define CHECK_FOR_ELEMENT_API(condition, ...) \
+  do {                                        \
+    if (!(condition)) {                       \
+      ElementAPIError(__VA_ARGS__);           \
+      RETURN_UNDEFINED();                     \
+    }                                         \
+  } while (0)
+
 #define CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(name, index, Type, FunName) \
   CONVERT_ARG(name, index);                                               \
-  do {                                                                    \
-    if (!name->Is##Type()) {                                              \
-      ElementAPIError(#FunName " param " #index " should be " #Type);     \
-      RETURN_UNDEFINED();                                                 \
-    }                                                                     \
-  } while (0);
+  CHECK_FOR_ELEMENT_API(name->Is##Type(),                                 \
+                        #FunName " param " #index " should be " #Type)
 
-#define CHECK_ILLEGAL_ATTRIBUTE_CONFIG(name, FunName)                 \
-  if (name->IsAsyncResolveInvoked()) {                                \
-    ElementAPIError(#name " already trigger async resolve, " #FunName \
-                          " will be aborted");                        \
-    RETURN_UNDEFINED();                                               \
-  }
+#define CHECK_ILLEGAL_ATTRIBUTE_CONFIG(name, FunName)                     \
+  CHECK_FOR_ELEMENT_API(!name->IsAsyncResolveInvoked(),                   \
+                        #name " already trigger async resolve, " #FunName \
+                              " will be aborted")
 
 #define GET_IMPL_ID_AND_KEY(id, index_id, key, index_key, FuncName) \
   CONVERT_ARG_AND_CHECK(arg_id, index_id, Number, FuncName);        \
@@ -2883,9 +2887,10 @@ RENDERER_FUNCTION_CC(FiberCreateCompose) {
   if (!ParseComposeElementKind(*arg1, "FiberCreateCompose", &kind)) {
     RETURN_UNDEFINED();
   }
-  auto& manager = GET_TASM_POINTER()->page_proxy()->element_manager();
+  auto* self = GET_TASM_POINTER();
+  auto& manager = self->page_proxy()->element_manager();
   auto handle = fml::AdoptRef<ComposeElementHandle>(
-      new ComposeElementHandle(manager.get(), kind));
+      new ComposeElementHandle(manager.get(), kind, self));
   auto content_element = handle->content_element();
   content_element->SetParentComponentUniqueIdForFiber(
       static_cast<int64_t>(arg0->Number()));
@@ -3284,10 +3289,12 @@ RENDERER_FUNCTION_CC(FiberInsertElementAt) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Number, FiberInsertElementAt);
 
   // A handle parent resolves to its Content Element, while a handle child
-  // resolves to its current physical mount root. The single RefType branch in
-  // each resolver is dispatch, not validation; callers own the reference ABI.
+  // resolves to its current physical mount root.
   auto parent = GetComposeContentOrFiberElementFromValue(*arg0);
   auto child = GetComposeMountRootOrFiberElementFromValue(*arg1);
+  CHECK_FOR_ELEMENT_API(
+      parent && child,
+      "FiberInsertElementAt requires Elements or Compose handles");
   const auto index = static_cast<int32_t>(arg2->Number());
   const int64_t child_count = static_cast<int64_t>(parent->GetChildCount());
   if (index < 0 || static_cast<int64_t>(index) > child_count) {
@@ -3315,6 +3322,8 @@ RENDERER_FUNCTION_CC(FiberRemoveElementsAt) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Number, FiberRemoveElementsAt);
 
   auto parent = GetComposeContentOrFiberElementFromValue(*arg0);
+  CHECK_FOR_ELEMENT_API(
+      parent, "FiberRemoveElementsAt requires an Element or Compose handle");
 
   const auto index = static_cast<int32_t>(arg1->Number());
   const auto count = static_cast<int32_t>(arg2->Number());
@@ -3364,6 +3373,8 @@ RENDERER_FUNCTION_CC(FiberMoveElements) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg3, 3, Number, FiberMoveElements);
 
   auto parent = GetComposeContentOrFiberElementFromValue(*arg0);
+  CHECK_FOR_ELEMENT_API(
+      parent, "FiberMoveElements requires an Element or Compose handle");
 
   const auto from = static_cast<int32_t>(arg1->Number());
   const auto to = static_cast<int32_t>(arg2->Number());
@@ -4167,8 +4178,10 @@ RENDERER_FUNCTION_CC(FiberGetElementUniqueID) {
   CONVERT_ARG(arg0, 0);
   int64_t unique_id = -1;
   if (arg0->IsRefCounted()) {
-    auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
-    unique_id = element->impl_id();
+    auto element = GetComposeContentOrFiberElementFromValue(*arg0);
+    if (element) {
+      unique_id = element->impl_id();
+    }
   }
   RETURN(lepus::Value(unique_id));
 }
@@ -4196,6 +4209,8 @@ RENDERER_FUNCTION_CC(FiberSetAttribute) {
   CHECK_ARGC_GE(FiberSetAttribute, 3);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberSetAttribute);
   auto element = GetComposeContentOrFiberElementFromValue(*arg0);
+  CHECK_FOR_ELEMENT_API(
+      element, "FiberSetAttribute requires an Element or Compose handle");
   CONVERT_ARG(arg1, 1);
   CONVERT_ARG(arg2, 2);
   uint32_t type = static_cast<uint32_t>(arg1->Number());
@@ -5152,7 +5167,7 @@ RENDERER_FUNCTION_CC(FiberUpdateComponentID) {
 RENDERER_FUNCTION_CC(FiberUpdateListCallbacks) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_UPDATE_LIST_CALLBACKS);
   // parameter size >= 3
-  // [0] RefCounted -> list element
+  // [0] RefCounted -> List Element or Compose List handle
   // [1] Function -> component_at_index callback
   // [2] Function -> enqueue_component callback
   // [3] Function -> component_at_indexes callback
@@ -5166,7 +5181,11 @@ RENDERER_FUNCTION_CC(FiberUpdateListCallbacks) {
     CONVERT_ARG(arg3, 3);
     component_at_indexes = *arg3;
   }
-  auto list_element = fml::static_ref_ptr_cast<ListElement>(arg0->RefCounted());
+  auto element = GetComposeContentOrFiberElementFromValue(*arg0);
+  CHECK_FOR_ELEMENT_API(
+      element && element->is_list(),
+      "FiberUpdateListCallbacks requires a List Element or handle");
+  auto* list_element = static_cast<ListElement*>(element.get());
   list_element->set_tasm(GET_TASM_POINTER());
   list_element->UpdateCallbacks(*arg1, *arg2, component_at_indexes);
   RETURN_UNDEFINED();
@@ -5310,7 +5329,7 @@ RENDERER_FUNCTION_CC(AddTimingListener) { RETURN_UNDEFINED(); }
 RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_FLUSH_ELEMENT_TREE);
   // parameter size >= 0
-  // [0] RefCounted -> element, flush the tree with the element as the root node
+  // [0] RefCounted -> Element or Compose handle; flush the complete subtree
   // [1] Object -> options
 
   // If argc >= 1, convert arg0 to element.
@@ -5318,7 +5337,11 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   if (argc >= 1) {
     CONVERT_ARG(arg0, 0);
     if (arg0->IsRefCounted()) {
-      element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted()).get();
+      // Include Modifier wrappers when flushing a Compose subtree.
+      element = GetComposeMountRootOrFiberElementFromValue(*arg0).get();
+      CHECK_FOR_ELEMENT_API(
+          element,
+          "FiberFlushElementTree requires an Element or Compose handle");
     }
   }
 
@@ -6731,7 +6754,7 @@ RENDERER_FUNCTION_CC(TriggerComponentEvent) {
 RENDERER_FUNCTION_CC(InvokeUIMethod) {
   CHECK_ARGC_EQ(InvokeUIMethod, 4);
 
-  // arg0 -> element id array | fiber element
+  // arg0 -> element id array | fiber element | Compose handle
   // arg1 -> method name
   // arg2 -> method params
   // arg3 -> callback
@@ -6749,7 +6772,10 @@ RENDERER_FUNCTION_CC(InvokeUIMethod) {
           }
         });
   } else if (arg0->IsRefCounted()) {
-    const auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+    // UI methods belong to the content node, not its Modifier mount root.
+    const auto element = GetComposeContentOrFiberElementFromValue(*arg0);
+    CHECK_FOR_ELEMENT_API(
+        element, "InvokeUIMethod requires an Element or Compose handle");
     element_ids.push_back(element->impl_id());
   } else {
     RETURN_UNDEFINED();

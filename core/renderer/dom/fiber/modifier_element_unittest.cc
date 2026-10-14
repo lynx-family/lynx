@@ -14,6 +14,7 @@
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
+#include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -105,6 +106,19 @@ TEST_P(ModifierElementTest, ResolvesFiberAndComposeElements) {
   EXPECT_EQ(GetComposeMountRootOrFiberElementFromValue(handle_value),
             handle->mount_root());
   EXPECT_NE(handle->mount_root(), content);
+}
+
+TEST_P(ModifierElementTest, RejectsNonElementValues) {
+  const auto invalid_reference =
+      lepus::Value(fml::MakeRefCounted<SharedCSSFragmentWrapper>(nullptr));
+  ASSERT_TRUE(invalid_reference.IsRefCounted());
+  for (const auto& value :
+       {lepus::Value(), lepus::Value(1), lepus::Value("invalid"),
+        lepus::Value(lepus::Dictionary::Create()),
+        lepus::Value(lepus::CArray::Create()), invalid_reference}) {
+    EXPECT_EQ(GetComposeContentOrFiberElementFromValue(value), nullptr);
+    EXPECT_EQ(GetComposeMountRootOrFiberElementFromValue(value), nullptr);
+  }
 }
 
 TEST_P(ModifierElementTest, MaterializesOnlyPaddingAsDetachedFrame) {
@@ -339,9 +353,9 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
   padding->SetValue("end", lepus::Value(2.0));
   padding->SetValue("bottom", lepus::Value(2.0));
 
-  const ComposeElementKind kinds[] = {ComposeElementKind::kView,
-                                      ComposeElementKind::kText,
-                                      ComposeElementKind::kImage};
+  const ComposeElementKind kinds[] = {
+      ComposeElementKind::kView, ComposeElementKind::kText,
+      ComposeElementKind::kImage, ComposeElementKind::kList};
   for (const auto kind : kinds) {
     auto handle = CreateComposeHandle(manager, kind);
     auto owner = handle->content_element();
@@ -359,6 +373,10 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
       case ComposeElementKind::kImage:
         EXPECT_TRUE(owner->is_image());
         EXPECT_TRUE(owner->GetTag().IsEqual(kElementImageTag));
+        break;
+      case ComposeElementKind::kList:
+        EXPECT_TRUE(owner->is_list());
+        EXPECT_TRUE(owner->GetTag().IsEqual("list"));
         break;
     }
     auto result = ComposeModifierApplicator::Apply(

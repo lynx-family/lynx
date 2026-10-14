@@ -36,6 +36,7 @@
 #include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
+#include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
@@ -22194,6 +22195,279 @@ TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
   EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),
                                CSSPropertyID::kPropertyIDWidth,
                                CSSValue(200, CSSValuePattern::PX)));
+}
+
+TEST_P(FiberElementTest,
+       ComposeListHandleKeepsContentAndCallbacksAcrossModifiers) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  lepus::Value bind, recycle;
+  constexpr char kBind[] =
+      "(function(node, id, index) { return index + 100; })";
+  constexpr char kRecycle[] =
+      "(function(node, id, sign) { globalThis.recycledSign = sign; })";
+  ASSERT_TRUE(context->EvalBuf(kBind, sizeof(kBind) - 1, bind, "list_bind.js"));
+  ASSERT_TRUE(context->EvalBuf(kRecycle, sizeof(kRecycle) - 1, recycle,
+                               "list_recycle.js"));
+  lepus::Value args[] = {lepus::Value(1), lepus::Value(4)};
+  auto value = RendererFunctions::FiberCreateCompose(context, args, 2);
+  lepus::Value callbacks[] = {value, bind, recycle};
+  ASSERT_TRUE(value.IsRefCounted());
+  ASSERT_EQ(value.RefCounted()->GetRefType(),
+            lepus::RefType::kComposeElementHandle);
+  auto* handle = static_cast<ComposeElementHandle*>(value.RefCounted().get());
+  auto content = handle->content_element();
+  lepus::Value attribute[] = {value, lepus::Value("custom-list-name"),
+                              lepus::Value("compose-list")};
+  RendererFunctions::FiberSetAttribute(context, attribute, 3);
+  lepus::Value read_attribute[] = {lepus::Value(content), attribute[1]};
+  ASSERT_TRUE(content->is_list());
+  auto* list = static_cast<ListElement*>(content.get());
+  EXPECT_EQ(list->tasm_, tasm.get());
+  RendererFunctions::FiberUpdateListCallbacks(context, callbacks, 3);
+  EXPECT_EQ(handle->mount_root(), content);
+  EXPECT_EQ(content->GetParentComponentUniqueIdForFiber(), 1);
+
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  lepus::Value mount[] = {lepus::Value(page), value, lepus::Value(0)};
+  RendererFunctions::FiberInsertElementAt(context, mount, 3);
+  EXPECT_EQ(list->ComponentAtIndex(7, 9, false), 107);
+  auto item = manager->CreateFiberView();
+  lepus::Value insert[] = {value, lepus::Value(item), lepus::Value(0)};
+  RendererFunctions::FiberInsertElementAt(context, insert, 3);
+  ASSERT_EQ(content->GetChildCount(), 1u);
+  EXPECT_EQ(content->GetChildAt(0), item.get());
+
+  for (double outer_padding : {10., 30.}) {
+    auto padding = lepus::Dictionary::Create();
+    padding->SetValue("op", lepus::Value(7));
+    for (auto edge : {"start", "top", "end", "bottom"}) {
+      padding->SetValue(edge, lepus::Value(outer_padding));
+    }
+    auto content_padding = lepus::Dictionary::Create();
+    content_padding->SetValue("op", lepus::Value(3));
+    content_padding->SetValue(
+        "propertyId",
+        lepus::Value(static_cast<int32_t>(kPropertyIDPaddingTop)));
+    content_padding->SetValue("value", lepus::Value("20px"));
+    content_padding->SetValue("previous", lepus::Value(padding));
+    lepus::Value modifier[] = {value, lepus::Value(content_padding)};
+    RendererFunctions::FiberSetComposeModifier(context, modifier, 2);
+    EXPECT_EQ(handle->content_element(), content);
+    auto root = handle->mount_root();
+    ASSERT_TRUE(root->is_modifier());
+    ASSERT_EQ(root->GetChildCount(), 1u);
+    EXPECT_EQ(root->GetChildAt(0), list);
+    EXPECT_EQ(page->GetChildAt(0), root.get());
+    ASSERT_TRUE(content->GetCurrentRawInlineStyles().has_value());
+    EXPECT_EQ(content->GetCurrentRawInlineStyles()->at(kPropertyIDPaddingTop),
+              lepus::Value("20px"));
+    lepus::Value raw_content(content);
+    auto children =
+        RendererFunctions::FiberGetChildren(context, &raw_content, 1);
+    ASSERT_EQ(children.GetLength(), 1u);
+    EXPECT_EQ(children.GetProperty(0).RefCounted().get(), item.get());
+    EXPECT_EQ(list->ComponentAtIndex(8, 10, false), 108);
+    EXPECT_EQ(
+        RendererFunctions::FiberGetAttributeByName(context, read_attribute, 2),
+        lepus::Value("compose-list"));
+  }
+  attribute[2] = lepus::Value();
+  RendererFunctions::FiberSetAttribute(context, attribute, 3);
+  EXPECT_TRUE(
+      RendererFunctions::FiberGetAttributeByName(context, read_attribute, 2)
+          .IsEmpty());
+  list->EnqueueComponent(107);
+  EXPECT_EQ(renderer_runtime->GetGlobalData("recycledSign"), lepus::Value(107));
+  lepus::Value remove[] = {value, lepus::Value(0), lepus::Value(1)};
+  RendererFunctions::FiberRemoveElementsAt(context, remove, 3);
+  EXPECT_EQ(content->GetChildCount(), 0u);
+
+  lepus::Value clear[] = {value, lepus::Value()};
+  RendererFunctions::FiberSetComposeModifier(context, clear, 2);
+  EXPECT_EQ(handle->mount_root(), content);
+  EXPECT_EQ(page->GetChildAt(0), list);
+}
+
+TEST_P(FiberElementTest, ComposeHandleFlushAndIdentityUseCorrectElements) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  for (auto kind : {ComposeElementKind::kView, ComposeElementKind::kList}) {
+    auto handle = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, kind, tasm.get()));
+    auto content = handle->content_element();
+    auto padding = lepus::Dictionary::Create();
+    padding->SetValue("op", lepus::Value(7));
+    for (auto edge : {"start", "top", "end", "bottom"}) {
+      padding->SetValue(edge, lepus::Value(8));
+    }
+    ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                    handle.get(), lepus::Value(padding), renderer_runtime.get())
+                    .success);
+    ASSERT_NE(handle->mount_root(), content);
+    page->InsertNode(handle->mount_root());
+    lepus::Value identity[] = {lepus::Value(handle)};
+    auto content_id =
+        RendererFunctions::FiberGetElementUniqueID(context, identity, 1);
+    EXPECT_EQ(content_id.Number(), content->impl_id());
+    auto options = std::make_shared<PipelineOptions>();
+    ASSERT_NE(tasm->CreateAndUpdateCurrentPipelineContext(options), nullptr);
+    RendererFunctions::FiberFlushElementTree(context, identity, 1);
+    EXPECT_EQ(options->target_node, handle->mount_root()->impl_id());
+
+    if (kind != ComposeElementKind::kList) continue;
+    auto item = manager->CreateFiberView();
+    content->InsertNode(item);
+    lepus::Value item_identity[] = {lepus::Value(item)};
+    auto item_id =
+        RendererFunctions::FiberGetElementUniqueID(context, item_identity, 1);
+    auto item_options = lepus::Dictionary::Create();
+    item_options->SetValue("elementID", item_id);
+    item_options->SetValue("listID", content_id);
+    item_options->SetValue("operationID",
+                           lepus::Value(static_cast<int64_t>(55834574848LL)));
+    options = std::make_shared<PipelineOptions>();
+    ASSERT_NE(tasm->CreateAndUpdateCurrentPipelineContext(options), nullptr);
+    lepus::Value flush[] = {lepus::Value(item), lepus::Value(item_options)};
+    RendererFunctions::FiberFlushElementTree(context, flush, 2);
+    EXPECT_EQ(options->target_node, item->impl_id());
+    EXPECT_EQ(options->list_comp_id_, item->impl_id());
+    EXPECT_EQ(options->list_id_, content->impl_id());
+    EXPECT_EQ(options->operation_id, 55834574848LL);
+  }
+}
+
+TEST_P(FiberElementTest, ComposeElementAPIsRejectNonElementReferences) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  const auto invalid =
+      lepus::Value(fml::MakeRefCounted<SharedCSSFragmentWrapper>(nullptr));
+  ASSERT_TRUE(invalid.IsRefCounted());
+  lepus::Value args[] = {invalid, lepus::Value(0), lepus::Value(0),
+                         lepus::Value(0)};
+  EXPECT_EQ(
+      RendererFunctions::FiberGetElementUniqueID(context, args, 1).Int64(), -1);
+  for (auto function : {RendererFunctions::FiberRemoveElementsAt,
+                        RendererFunctions::FiberMoveElements,
+                        RendererFunctions::FiberSetAttribute,
+                        RendererFunctions::FiberFlushElementTree}) {
+    base::ErrorStorage::GetInstance().Reset();
+    EXPECT_TRUE(function(context, args, 4).IsEmpty());
+    EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  }
+  auto view = manager->CreateFiberView();
+  for (bool invalid_parent : {false, true}) {
+    lepus::Value insert_args[] = {invalid_parent ? invalid : lepus::Value(view),
+                                  invalid_parent ? lepus::Value(view) : invalid,
+                                  lepus::Value(0)};
+    base::ErrorStorage::GetInstance().Reset();
+    EXPECT_TRUE(RendererFunctions::FiberInsertElementAt(context, insert_args, 3)
+                    .IsEmpty());
+    EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+    EXPECT_EQ(view->GetChildCount(), 0u);
+    EXPECT_EQ(view->parent(), nullptr);
+  }
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, UpdateListCallbacksAcceptsElementsAndComposeHandles) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  lepus::Value callback, replacement;
+  constexpr char kCallback[] = "(function() { return 123; })";
+  constexpr char kReplacement[] = "(function() { return 456; })";
+  ASSERT_TRUE(context->EvalBuf(kCallback, sizeof(kCallback) - 1, callback,
+                               "callback.js"));
+  ASSERT_TRUE(context->EvalBuf(kReplacement, sizeof(kReplacement) - 1,
+                               replacement, "replacement.js"));
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kList, tasm.get()));
+  auto* list = static_cast<ListElement*>(handle->content_element().get());
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  page->InsertNode(handle->content_element());
+  for (const auto& target :
+       {lepus::Value(handle), lepus::Value(handle->content_element())}) {
+    lepus::Value callbacks[] = {target, callback, callback, replacement};
+    RendererFunctions::FiberUpdateListCallbacks(context, callbacks, 4);
+    EXPECT_EQ(list->ComponentAtIndex(0, 0, false), 123);
+    EXPECT_TRUE(list->component_at_indexes_.IsCallable());
+    callbacks[1] = replacement;
+    RendererFunctions::FiberUpdateListCallbacks(context, callbacks, 3);
+    EXPECT_EQ(list->ComponentAtIndex(0, 0, false), 456);
+    EXPECT_TRUE(list->component_at_indexes_.IsEmpty());
+    callbacks[1] = lepus::Value();
+    callbacks[2] = lepus::Value();
+    RendererFunctions::FiberUpdateListCallbacks(context, callbacks, 3);
+    EXPECT_EQ(list->ComponentAtIndex(0, 0, false), -1);
+    EXPECT_TRUE(list->enqueue_component_.IsEmpty());
+  }
+  auto view = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView, tasm.get()));
+  for (const auto& target :
+       {lepus::Value(view), lepus::Value(view->content_element()),
+        lepus::Value(fml::MakeRefCounted<SharedCSSFragmentWrapper>(nullptr))}) {
+    lepus::Value callbacks[] = {target, callback, callback};
+    base::ErrorStorage::GetInstance().Reset();
+    RendererFunctions::FiberUpdateListCallbacks(context, callbacks, 3);
+    EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  }
+  base::ErrorStorage::GetInstance().Reset();
+}
+
+TEST_P(FiberElementTest, InvokeUIMethodTargetsComposeContentNotModifierRoot) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  tasm->page_config_->SetEnableElementInvokeUIMethodPendingTask(true);
+  lepus::Value callback;
+  constexpr char kCallback[] = "(function(result) {})";
+  ASSERT_TRUE(context->EvalBuf(kCallback, sizeof(kCallback) - 1, callback,
+                               "ui_method.js"));
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kList, tasm.get()));
+  auto content = handle->content_element();
+  auto padding = lepus::Dictionary::Create();
+  padding->SetValue("op", lepus::Value(7));
+  for (auto edge : {"start", "top", "end", "bottom"}) {
+    padding->SetValue(edge, lepus::Value(8));
+  }
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                  handle.get(), lepus::Value(padding), renderer_runtime.get())
+                  .success);
+  ASSERT_NE(handle->mount_root(), content);
+  auto ids = lepus::CArray::Create();
+  ids->emplace_back(content->impl_id());
+  for (const auto& target :
+       {lepus::Value(handle), lepus::Value(content), lepus::Value(ids)}) {
+    lepus::Value args[] = {target, lepus::Value("scrollToPosition"),
+                           lepus::Value(lepus::Dictionary::Create()), callback};
+    RendererFunctions::InvokeUIMethod(context, args, 4);
+    EXPECT_EQ(content->pending_invoke_tasks_.size(), 1u);
+    EXPECT_TRUE(handle->mount_root()->pending_invoke_tasks_.empty());
+    content->pending_invoke_tasks_.clear();
+  }
+  lepus::Value invalid_args[] = {
+      lepus::Value(fml::MakeRefCounted<SharedCSSFragmentWrapper>(nullptr)),
+      lepus::Value("scrollToPosition"),
+      lepus::Value(lepus::Dictionary::Create()), callback};
+  base::ErrorStorage::GetInstance().Reset();
+  RendererFunctions::InvokeUIMethod(context, invalid_args, 4);
+  EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_TRUE(content->pending_invoke_tasks_.empty());
+  base::ErrorStorage::GetInstance().Reset();
 }
 
 TEST_P(FiberElementTest,

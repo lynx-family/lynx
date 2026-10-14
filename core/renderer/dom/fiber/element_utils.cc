@@ -13,22 +13,36 @@ namespace tasm {
 
 fml::RefPtr<Element> GetComposeContentOrFiberElementFromValue(
     const lepus::Value& value) {
+  if (!value.IsRefCounted()) {
+    return nullptr;
+  }
   auto reference = value.RefCounted();
-  if (reference->GetRefType() == lepus::RefType::kComposeElementHandle) {
+  const auto ref_type = reference->GetRefType();
+  if (ref_type == lepus::RefType::kElement) {
+    return fml::static_ref_ptr_cast<Element>(reference);
+  }
+  if (ref_type == lepus::RefType::kComposeElementHandle) {
     return fml::static_ref_ptr_cast<ComposeElementHandle>(reference)
         ->content_element();
   }
-  return fml::static_ref_ptr_cast<Element>(reference);
+  return nullptr;
 }
 
 fml::RefPtr<Element> GetComposeMountRootOrFiberElementFromValue(
     const lepus::Value& value) {
+  if (!value.IsRefCounted()) {
+    return nullptr;
+  }
   auto reference = value.RefCounted();
-  if (reference->GetRefType() == lepus::RefType::kComposeElementHandle) {
+  const auto ref_type = reference->GetRefType();
+  if (ref_type == lepus::RefType::kElement) {
+    return fml::static_ref_ptr_cast<Element>(reference);
+  }
+  if (ref_type == lepus::RefType::kComposeElementHandle) {
     return fml::static_ref_ptr_cast<ComposeElementHandle>(reference)
         ->mount_root();
   }
-  return fml::static_ref_ptr_cast<Element>(reference);
+  return nullptr;
 }
 
 base::String ConvertTextContent(const lepus::Value& value) {
