@@ -133,6 +133,19 @@
                          callback:(nullable LynxBytecodeResponseBlock)callback;
 
 /**
+ * Post a task to generate bytecode for a given template bundle.
+ * The task will be executed in a background thread.
+ * @param bytecodeSourceUrl The source url of the template.
+ * @param callback When generate finished, this will response the result.
+ * @param continueGeneration Consulted once per decoded js file right before its bytecode would be
+ * generated, on a background thread. Return NO to skip a file whose bytecode the caller already
+ * holds; return YES to generate it. Passing nil generates every file.
+ */
+- (void)postJsCacheGenerationTask:(nonnull NSString*)bytecodeSourceUrl
+                         callback:(nullable LynxBytecodeResponseBlock)callback
+               continueGeneration:(nullable LynxBytecodeContinueBlock)continueGeneration;
+
+/**
  * @apidoc
  * @brief Asynchronously loads LepusNG bytecode into every MTSRuntime pre-created for this bundle.
  * @param url Source URL associated with the bytecode.

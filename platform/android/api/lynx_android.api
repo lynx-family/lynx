@@ -4818,6 +4818,7 @@ public enum com::lynx::tasm::LynxBooleanOption {
 
 public interface com::lynx::jsbridge::LynxBytecodeCallback {
   public void com.lynx.jsbridge.LynxBytecodeCallback.onResponse(String errorMsg, JavaOnlyMap buffers);
+  public default boolean com.lynx.jsbridge.LynxBytecodeCallback.continueGeneration(String jsName, String md5);
 }
 
 public class com::lynx::tasm::navigator::LynxCardManager : com.lynx.tasm.navigator.LynxRouteLruCache.LynxRouteCacheListener {

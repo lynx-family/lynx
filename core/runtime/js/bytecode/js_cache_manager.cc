@@ -326,6 +326,9 @@ void JsCacheManager::RunTask(TaskInfo task) {
   std::unordered_map<std::string, std::shared_ptr<Buffer>> generator_results;
   BytecodeGenerateCallback *callback_ptr =
       callback ? callback.get() : g_bytecode_generate_callback.get();
+  // Count files skipped by the callback, so a run that only skips is not
+  // misreported as a generation failure.
+  size_t skipped_count = 0;
 
   for (const auto &generator : generators) {
     std::string file_md5 = EnsureMd5(generator->SrcBuffer(), generator->Md5());
@@ -355,6 +358,20 @@ void JsCacheManager::RunTask(TaskInfo task) {
         }
         continue;
       }
+    }
+
+    // Ask the external callback whether this file still needs generation. A
+    // false return means the owner already holds the bytecode for this md5.
+    if (callback_ptr &&
+        !callback_ptr->ContinueGeneration(cache_url, file_md5)) {
+      LOGI("bytecode generation skipped by callback, url: '"
+           << cache_url << "', md5: " << file_md5);
+      ++skipped_count;
+      {
+        std::lock_guard<std::mutex> guard(task_set_lock_);
+        task_set_.erase(task_id);
+      }
+      continue;
     }
 
     LOGI("RunTask start"
@@ -405,6 +422,9 @@ void JsCacheManager::RunTask(TaskInfo task) {
   if (callback_ptr) {
     if (generator_results.size() > 0) {
       (*callback_ptr)("", std::move(generator_results));
+    } else if (skipped_count > 0 && skipped_count == generators.size()) {
+      // Every file was skipped by the callback, nothing needs to be reported.
+      (*callback_ptr)("", {});
     } else {
       (*callback_ptr)("generate failed." + template_key, {});
     }

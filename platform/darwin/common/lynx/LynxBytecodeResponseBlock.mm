@@ -6,9 +6,19 @@
 #import "LynxBytecodeResponseBlock+Converter.h"
 
 std::unique_ptr<lynx::runtime::js::cache::BytecodeGenerateCallback> CreateBytecodeGenerateCallback(
-    LynxBytecodeResponseBlock _Nullable callback) {
+    LynxBytecodeResponseBlock _Nullable callback,
+    LynxBytecodeContinueBlock _Nullable continueGeneration) {
   std::unique_ptr<lynx::runtime::js::cache::BytecodeGenerateCallback> bytecode_callback = nullptr;
   if (callback) {
+    lynx::runtime::js::cache::BytecodeGenerateCallback::ContinueGenerationFunc continue_func =
+        nullptr;
+    if (continueGeneration) {
+      continue_func = [continueGeneration](const std::string& js_name,
+                                           const std::string& md5) -> bool {
+        return continueGeneration([NSString stringWithUTF8String:js_name.c_str()],
+                                  [NSString stringWithUTF8String:md5.c_str()]);
+      };
+    }
     bytecode_callback = std::make_unique<lynx::runtime::js::cache::BytecodeGenerateCallback>(
         [callback](
             std::string error_msg,
@@ -28,7 +38,8 @@ std::unique_ptr<lynx::runtime::js::cache::BytecodeGenerateCallback> CreateByteco
             }
           }
           callback(errorInfo, dict);
-        });
+        },
+        std::move(continue_func));
   }
   return bytecode_callback;
 }

@@ -26,4 +26,19 @@ public interface LynxBytecodeCallback {
    * object directly.
    */
   @CalledByNative void onResponse(String errorMsg, JavaOnlyMap buffers);
+
+  /**
+   * Called once per decoded js file right before its bytecode would be generated.
+   * It is invoked on a background thread.
+   * @param jsName the name of the decoded js file, the same as its key in the buffers of
+   * onResponse.
+   * @param md5 the md5 of the js file's source content.
+   * @return true to continue generating bytecode for this file; false to skip it, e.g. when the
+   * caller already holds the bytecode for this md5. Defaults to true so existing implementations
+   * keep generating every file.
+   */
+  @CalledByNative
+  default boolean continueGeneration(String jsName, String md5) {
+    return true;
+  }
 }
