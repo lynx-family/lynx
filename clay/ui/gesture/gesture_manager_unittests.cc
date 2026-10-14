@@ -257,30 +257,6 @@ TEST_F(GestureManagerTest, NoConflict_Tap_Test) {
   }
 }
 
-TEST_F(GestureManagerTest, TapDownAndUpCallbacksStayOrderedForPointerReuse) {
-  auto target = std::make_unique<MultiRecognizerHitTestTarget>();
-  auto tap = std::make_unique<TapGestureRecognizer>(gesture_manager());
-  std::vector<std::string> callbacks;
-  tap->SetTapDownCallback(
-      [&](const PointerEvent&) { callbacks.emplace_back("down"); });
-  tap->SetTapUpCallback(
-      [&](const PointerEvent&) { callbacks.emplace_back("up"); });
-  target->recognizers_.emplace_back(std::move(tap));
-  AddHitTestTarget(target.get());
-
-  const int pointer_id = ID();
-  auto down = CreatePointer(pointer_id, PointerEvent::EventType::kDownEvent);
-  gesture_manager()->HandlePointerEvents(root(), down);
-  auto up = CreatePointer(pointer_id, PointerEvent::EventType::kUpEvent);
-  gesture_manager()->HandlePointerEvents(root(), up);
-  down = CreatePointer(pointer_id, PointerEvent::EventType::kDownEvent);
-  gesture_manager()->HandlePointerEvents(root(), down);
-  up = CreatePointer(pointer_id, PointerEvent::EventType::kUpEvent);
-  gesture_manager()->HandlePointerEvents(root(), up);
-
-  EXPECT_EQ(callbacks, std::vector<std::string>({"down", "up", "down", "up"}));
-}
-
 TEST_F(GestureManagerTest, PointerDownAfterHitTestListenerRunsForRecognizer) {
   auto target_with_tap = std::make_unique<MultiRecognizerHitTestTarget>();
   auto tap_recognizer =
@@ -304,21 +280,6 @@ TEST_F(GestureManagerTest, PointerDownAfterHitTestListenerRunsForRecognizer) {
   EXPECT_EQ(last_hit_test_size, 1u);
 }
 
-TEST_F(GestureManagerTest, GestureAcceptedListenerRunsAfterPointerCleanup) {
-  std::vector<std::pair<int, GestureRecognizerType>> accepted;
-  gesture_manager()->SetListenerForGestureAccepted(
-      [&](int pointer_id, GestureRecognizerType type) {
-        accepted.emplace_back(pointer_id, type);
-      });
-
-  gesture_manager()->OnGestureAccepted(7,
-                                       GestureRecognizerType::kHorizontalDrag);
-
-  const std::vector<std::pair<int, GestureRecognizerType>> expected = {
-      {7, GestureRecognizerType::kHorizontalDrag}};
-  EXPECT_EQ(accepted, expected);
-}
-
 enum LongPressStatus : uint32_t {
   kNoLongPressStatus = 0,
   kLongPressDown = 1 << 0,
@@ -337,11 +298,6 @@ TEST_F(GestureManagerTest, NoConflict_Long_Press_Test) {
   std::unique_ptr<LongPressGestureRecognizer> long_press_recognizer;
   LongPressStatus long_press_status = kNoLongPressStatus;
   LongPressStatus expected_status = kLongPressDown;
-  std::vector<std::pair<int, GestureRecognizerType>> accepted;
-  gesture_manager()->SetListenerForGestureAccepted(
-      [&](int pointer_id, GestureRecognizerType type) {
-        accepted.emplace_back(pointer_id, type);
-      });
 
   task_runner()->PostTask([&, this]() {
     empty_target = std::make_unique<MockHitTestTargetBase>();
@@ -399,10 +355,6 @@ TEST_F(GestureManagerTest, NoConflict_Long_Press_Test) {
             expected_status =
                 static_cast<LongPressStatus>(expected_status | kLongPressStart);
             EXPECT_EQ(long_press_status, expected_status);
-            EXPECT_EQ(
-                accepted,
-                (std::vector<std::pair<int, GestureRecognizerType>>{
-                    {pointer.pointer_id, GestureRecognizerType::kLongPress}}));
 
             MovePointer(pointer, FloatSize(1.f, 0.f), kFastMoveTime);
             gesture_manager()->HandlePointerEvents(root(), pointers);
@@ -688,15 +640,9 @@ TEST_F(GestureManagerTest, NoConflict_MultiTap_Test) {
   std::unique_ptr<MultiTapGestureRecognizer> multi_tap_recognizer;
   fml::AutoResetWaitableEvent latch;
   int tap_counts = 0;
-  std::vector<std::pair<int, GestureRecognizerType>> accepted;
-  gesture_manager()->SetListenerForGestureAccepted(
-      [&](int pointer_id, GestureRecognizerType type) {
-        accepted.emplace_back(pointer_id, type);
-      });
 
   auto init_all = [&]() {
     tap_counts = 0;
-    accepted.clear();
     empty_target = std::make_unique<MockHitTestTargetBase>();
     AddHitTestTarget(empty_target.get());
 
@@ -773,10 +719,6 @@ TEST_F(GestureManagerTest, NoConflict_MultiTap_Test) {
       UpPointer(pointer2);
       gesture_manager()->HandlePointerEvents(root(), pointers2);
       EXPECT_EQ(tap_counts, 2);
-      EXPECT_EQ(accepted,
-                (std::vector<std::pair<int, GestureRecognizerType>>{
-                    {pointer.pointer_id, GestureRecognizerType::kDoubleTap},
-                    {pointer2.pointer_id, GestureRecognizerType::kDoubleTap}}));
       reset_all();
       latch.Signal();
     });

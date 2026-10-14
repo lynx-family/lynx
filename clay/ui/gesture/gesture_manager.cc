@@ -278,11 +278,6 @@ void GestureManager::DispatchEventByRouter(const PointerEvent& event) {
 
 void GestureManager::OnGestureAccepted(int pointer_id,
                                        GestureRecognizerType type) {
-  // Sweep may resolve an arena after the per-pointer hit-test map was erased.
-  // Ownership listeners still need the accepted gesture to cancel stale work.
-  if (gesture_accepted_listener_) {
-    gesture_accepted_listener_(pointer_id, type);
-  }
   if (const auto& it = gesture_accepted_map_.find(pointer_id);
       it != gesture_accepted_map_.end()) {
     it->second = type;
