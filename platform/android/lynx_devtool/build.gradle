@@ -215,6 +215,8 @@ task configGnCompileParas {
             String buildType = it
             gnBuildArgs_list.put("build_lepus_compile", "false")
             gnBuildArgs_list.put("enable_lite", "\"$enable_lite\"")
+            gnBuildArgs_list.put("enable_lite_keep_lepus_vm", "\"$enable_lite_keep_lepus_vm\"")
+            gnBuildArgs_list.put("enable_lite_lepusng_worklet", "\"$enable_lite_lepusng_worklet\"")
             if (buildType == "release") {
                 gnBuildArgs_list.put("is_debug", "false")
             } else if(buildType == "debug") {
