@@ -150,6 +150,9 @@ std::tuple<FloatPoint, NestedScrollable*> NestedScrollManager::DispatchScroll(
   FloatPoint unconsumed = delta;
   if (auto overscroll_view = FindOverscrollView()) {
     unconsumed = overscroll_view->DoOverscroll(unconsumed);
+    if (unconsumed != delta) {
+      page_view_->CancelTapReturnForScroll();
+    }
   }
 
   // Capture phase
@@ -317,6 +320,7 @@ void NestedScrollManager::StopScrollForGestureInterception() {
 }
 
 void NestedScrollManager::OnScrollableScroll(NestedScrollable* scrollable) {
+  page_view_->CancelTapReturnForScroll();
   if (std::find(scrollable_chain_.begin(), scrollable_chain_.end(),
                 scrollable->GetWeakPtr()) == scrollable_chain_.end()) {
     return;
