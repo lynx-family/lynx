@@ -66,6 +66,6 @@ if (is_win) {
 
 if (enable_lite) {
   # these args are up to enable_lite arg
-  enable_just_lepusng = true
+  enable_just_lepusng = !enable_lite_keep_lepus_vm
   disable_list_platform_implementation = true
 }

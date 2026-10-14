@@ -273,6 +273,8 @@ task configGnCompileParas {
             gnBuildArgs_list.put("build_lepus_compile", "false")
             gnBuildArgs_list.put("enable_memory_tracing", "\"$enable_memory_tracing\"")
             gnBuildArgs_list.put("enable_lite", "\"$enable_lite\"")
+            gnBuildArgs_list.put("enable_lite_keep_lepus_vm", "\"$enable_lite_keep_lepus_vm\"")
+            gnBuildArgs_list.put("enable_lite_lepusng_worklet", "\"$enable_lite_lepusng_worklet\"")
             gnBuildArgs_list.put("enable_lto", "\"$enable_lto\"")
             gnBuildArgs_list.put("enable_lite_production", "\"$enable_lite_production\"")
             gnBuildArgs_list.put("disable_base_export", "\"$enable_lite_production\"")

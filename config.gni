@@ -45,6 +45,9 @@ declare_args() {
   enable_lite = false
   enable_lite_production = false
 
+  # Keep the legacy Lepus VM by default in Android Lite builds.
+  enable_lite_keep_lepus_vm = is_android
+
   # Whether enable recorder.
   enable_recorder = is_debug
 
@@ -56,6 +59,9 @@ declare_args() {
 
   # enable_lepusng_worklet corresponds the macro of ENABLE_LEPUSNG_WORKLET
   enable_lepusng_worklet = false
+
+  # Whether to enable LepusNG Worklet in Lite builds.
+  enable_lite_lepusng_worklet = true
 
   # enable_inspector corresponds the macro of ENABLE_INSPECTOR
   enable_inspector = false
@@ -135,5 +141,5 @@ if (is_android) {
 if (enable_lite) {
   # these args are up to enable_lite arg
   enable_v8 = false
-  enable_lepusng_worklet = false
+  enable_lepusng_worklet = enable_lepusng_worklet && enable_lite_lepusng_worklet
 }
