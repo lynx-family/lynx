@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 0.1.4
+1. [BugFix] Prevent macOS preview window crashes during close and destruction by retaining the window host through renderer shutdown and safely handling pending callbacks.
+
 ## 0.1.3
 1. [Feature] Support evaluating JavaScript in a view's BTS runtime with `evaluateScript`.
 2. [Feature] Support sharing a BTS runtime across views with the same non-empty `groupName`.
