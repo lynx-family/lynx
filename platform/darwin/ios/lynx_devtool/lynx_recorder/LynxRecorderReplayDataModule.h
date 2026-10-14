@@ -6,6 +6,7 @@
 #import <Lynx/LynxContextModule.h>
 
 NS_ASSUME_NONNULL_BEGIN
+@class LynxRecorderFixture;
 @protocol LynxRecorderReplayDataProvider <NSObject>
 @required
 - (NSArray *)getFunctionCall;
@@ -18,6 +19,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @required
 - (NSDictionary *)getSharedData;
+@optional
+- (nullable LynxRecorderFixture *)getFixture;
 @end
 
 @interface LynxRecorderReplayDataModule : NSObject <LynxContextModule>
