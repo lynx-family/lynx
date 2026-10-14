@@ -31,6 +31,10 @@ LYNX_SETTING_KEY(CLAY_DISABLE_IMAGE_MEM_CACHE, bool,
 LYNX_SETTING_KEY(OPT_THREAD, bool, "opt_thread");
 LYNX_SETTING_KEY(CLAY_IOS_USE_TT_VIDEO_ENGINE, bool,
                  "clay_ios_use_tt_video_engine", false);
+LYNX_SETTING_KEY(CLAY_IOS_ENABLE_TOUCH_TAP_TARGET_CHECK, bool,
+                 "clay_ios_enable_touch_tap_target_check", false);
+LYNX_SETTING_KEY(CLAY_IOS_TOUCH_TAP_BOUNDARY_TOLERANCE_PT, long,
+                 "clay_ios_touch_tap_boundary_tolerance_pt", 2);
 // Reuse eligible single-line AtMost layouts with TTText.
 LYNX_SETTING_KEY(CLAY_ENABLE_TEXT_AT_MOST_LAYOUT_REUSE, bool,
                  "clay_enable_text_at_most_layout_reuse", false);

@@ -257,6 +257,30 @@ TEST_F(GestureManagerTest, NoConflict_Tap_Test) {
   }
 }
 
+TEST_F(GestureManagerTest, TapDownAndUpCallbacksStayOrderedForPointerReuse) {
+  auto target = std::make_unique<MultiRecognizerHitTestTarget>();
+  auto tap = std::make_unique<TapGestureRecognizer>(gesture_manager());
+  std::vector<std::string> callbacks;
+  tap->SetTapDownCallback(
+      [&](const PointerEvent&) { callbacks.emplace_back("down"); });
+  tap->SetTapUpCallback(
+      [&](const PointerEvent&) { callbacks.emplace_back("up"); });
+  target->recognizers_.emplace_back(std::move(tap));
+  AddHitTestTarget(target.get());
+
+  const int pointer_id = ID();
+  auto down = CreatePointer(pointer_id, PointerEvent::EventType::kDownEvent);
+  gesture_manager()->HandlePointerEvents(root(), down);
+  auto up = CreatePointer(pointer_id, PointerEvent::EventType::kUpEvent);
+  gesture_manager()->HandlePointerEvents(root(), up);
+  down = CreatePointer(pointer_id, PointerEvent::EventType::kDownEvent);
+  gesture_manager()->HandlePointerEvents(root(), down);
+  up = CreatePointer(pointer_id, PointerEvent::EventType::kUpEvent);
+  gesture_manager()->HandlePointerEvents(root(), up);
+
+  EXPECT_EQ(callbacks, std::vector<std::string>({"down", "up", "down", "up"}));
+}
+
 TEST_F(GestureManagerTest, PointerDownAfterHitTestListenerRunsForRecognizer) {
   auto target_with_tap = std::make_unique<MultiRecognizerHitTestTarget>();
   auto tap_recognizer =
@@ -278,6 +302,21 @@ TEST_F(GestureManagerTest, PointerDownAfterHitTestListenerRunsForRecognizer) {
 
   EXPECT_EQ(pointer_down_after_hit_test_count, 1);
   EXPECT_EQ(last_hit_test_size, 1u);
+}
+
+TEST_F(GestureManagerTest, GestureAcceptedListenerRunsAfterPointerCleanup) {
+  std::vector<std::pair<int, GestureRecognizerType>> accepted;
+  gesture_manager()->SetListenerForGestureAccepted(
+      [&](int pointer_id, GestureRecognizerType type) {
+        accepted.emplace_back(pointer_id, type);
+      });
+
+  gesture_manager()->OnGestureAccepted(7,
+                                       GestureRecognizerType::kHorizontalDrag);
+
+  const std::vector<std::pair<int, GestureRecognizerType>> expected = {
+      {7, GestureRecognizerType::kHorizontalDrag}};
+  EXPECT_EQ(accepted, expected);
 }
 
 enum LongPressStatus : uint32_t {
