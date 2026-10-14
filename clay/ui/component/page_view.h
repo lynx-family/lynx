@@ -528,6 +528,21 @@ class PageView : public BaseView,
   void PlatformHideSoftInput() override;
 
   void SetupIsolatedGestures();
+  virtual bool ReadClickTrackerSetting() const;
+  virtual float ReadClickTrackerBoundaryTolerance() const;
+  void BeginClickTracking(const PointerEvent& event,
+                          const HitTestResult& result);
+  void CancelClickTrackingForGesture(int pointer_id,
+                                     GestureRecognizerType type);
+  bool IsClickTracking(int pointer_id) const;
+  bool HasClickTracker(int pointer_id) const;
+  // Returns the dispatch target when the tracker claims the pointer. Writes
+  // owner-relative coordinates into |owner_relative| on success. Returns
+  // nullptr when the tracker is cancelled or outside the owner subtree.
+  BaseView* ResolveClickTrackingTapTarget(const PointerEvent& event,
+                                          BaseView* current_top_view,
+                                          FloatPoint* owner_relative) const;
+  void EndClickTrackingForEndedEvents(const std::vector<PointerEvent>& events);
   bool HasActiveFling() const;
   void MarkTapSuppressedPointersForFlingStop(
       const std::vector<PointerEvent>& events);
@@ -616,6 +631,17 @@ class PageView : public BaseView,
   // view, regardless of whether the touch point remains within the view's
   // boundaries.
   std::unordered_map<int, int> touch_view_map_;
+  // Per-pointer click tracker state. The entry's presence means the touch
+  // down bound to a clickable owner on the hit chain and that movement past
+  // the normal tap slop should be deferred to an up-time inside check rather
+  // than an immediate recognizer reject.
+  enum class ClickTrackerMode : uint8_t { kTracking, kCancelled };
+  struct ClickTrackerState {
+    fml::WeakPtr<BaseView> owner;
+    ClickTrackerMode mode = ClickTrackerMode::kTracking;
+    float boundary_tolerance = 0.f;
+  };
+  std::unordered_map<int, ClickTrackerState> click_trackers_;
   std::unordered_set<int> fling_stop_tap_suppressed_pointer_ids_;
   int active_fling_count_ = 0;
 

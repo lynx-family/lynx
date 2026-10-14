@@ -278,6 +278,11 @@ void GestureManager::DispatchEventByRouter(const PointerEvent& event) {
 
 void GestureManager::OnGestureAccepted(int pointer_id,
                                        GestureRecognizerType type) {
+  // Notify listeners before checking bookkeeping: sweep can resolve an arena
+  // after the per-pointer hit-test map was already removed.
+  if (gesture_accepted_listener_) {
+    gesture_accepted_listener_(pointer_id, type);
+  }
   if (const auto& it = gesture_accepted_map_.find(pointer_id);
       it != gesture_accepted_map_.end()) {
     it->second = type;
