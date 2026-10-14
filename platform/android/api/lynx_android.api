@@ -11471,6 +11471,7 @@ public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behav
   public int com.lynx.tasm.behavior.ui.image.UIImage.getInitialOverflowType();
   public void com.lynx.tasm.behavior.ui.image.UIImage.onPropsUpdated();
   public void com.lynx.tasm.behavior.ui.image.UIImage.onNodeReady();
+  public void com.lynx.tasm.behavior.ui.image.UIImage.copyPropFromOldUiInUpdateFlatten(LynxBaseUI oldUI);
   public void com.lynx.tasm.behavior.ui.image.UIImage.destroy();
   public void com.lynx.tasm.behavior.ui.image.UIImage.beforeDispatchDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.ui.image.UIImage.beforeProcessViewInfo(ViewInfo info);
