@@ -70,6 +70,9 @@ struct InstanceState {
   // Monotonic times: page age uses creation, not the first-load sample anchor.
   int64_t created_at_ms{0};
   int64_t exited_at_ms{0};
+  // Reporter-owned VM binding count saved once on logical exit. Subtract
+  // from the same VM's current total when this page is sampled for residuals.
+  uint64_t bts_vm_page_count_at_exit{0};
   ResidencyObservation* residency_observation{nullptr};
   // Total is duplicated explicitly for the public sampling contract. `usage`
   // retains the BTS component used in that same total, allowing exact dedup.

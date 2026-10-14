@@ -728,6 +728,28 @@ Name the mean view “Mean post-full-GC positive residual.” Every selected row
 already has a valid full GC captured strictly after page exit. Show A, B, rows,
 and independent processes. B=0 means no mean, not zero memory.
 
+### Filter by subsequent page bindings
+
+Add the same `leak_page_vm_post_exit_page_count=N` filter to A and B to select
+residuals observed after N subsequent page bindings to that page's BTS VM.
+Use `>=N` for a minimum-reuse view, or group by this field alongside
+`leak_page_key` to compare means at different reuse counts. Keep the original
+`leak_page_selection_weight`; do not renormalize after filtering.
+
+The count is the VM's cumulative accepted binding count at residual selection
+minus its count saved on logical page exit. It includes incomplete loads and
+untracked/overflow pages. Pages bound before exit, other VMs, repeated property
+updates, and reloads on the same binding do not count. Subsequent page exits do
+not subtract from it; leaving and rebinding can add another binding.
+The exit boundary follows reporter-accepted lifecycle notification order.
+
+For example, select `N=0` for A's initial post-exit observation, then compare
+`N>=20` for observations after at least 20 subsequent bindings. Apply identical
+filters to both metrics and show both cumulative contribution A and mean A/B.
+The residual still uses the latest qualifying full-GC slot value, while N is
+captured at selection. N can increase before the next full GC, so this filter
+does not ensure that the saved GC followed all N bindings.
+
 ### Contribution versus mean
 
 For selected residual L and total confirmed residual T:

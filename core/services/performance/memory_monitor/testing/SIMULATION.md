@@ -268,6 +268,12 @@ scheduled-delivery sampling, lifecycle cleanup, shared-BTS replacement,
 runtime capability gaps, slot saturation, full-GC ordering, and sampling
 weights.
 
+Focused residual tests also verify `leak_page_vm_post_exit_page_count`: zero
+subsequent bindings, multiple loads and GCs reducing 10 MiB to 500 KiB,
+selection before the next GC, repeated lifecycle updates, other VMs,
+untracked/overflow pages, and different exit baselines for PPS candidates.
+This additive event property does not change the fixture format or inputs.
+
 This validates production event construction and event-only aggregation against
 a synthetic model. It does not validate platform memory collectors, real device
 traffic distributions, or data-platform execution.

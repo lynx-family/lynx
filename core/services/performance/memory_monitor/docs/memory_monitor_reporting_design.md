@@ -448,6 +448,23 @@ Exit notification updates lifecycle state without waiting for
 destruction; non-attributable page state can be cleared immediately. Page
 summary delivery uses saved early observations and is independent of this path.
 
+The page saves its VM's `total_page_count` once on logical exit. When selected,
+`leak_page_vm_post_exit_page_count` is the current total minus that saved value.
+It counts subsequent accepted bindings to the same VM, including untracked
+pages and loads that never complete. Existing bindings, other VMs, repeated
+property updates, and reloads on the same binding do not add to it. Leaving and
+rebinding a VM can add another binding, following `vm_total_page_count`.
+Later exits and GCs do not decrement or reset the count. Both counters are
+reporter-thread owned; the boundary follows accepted exit/binding notification
+order rather than reconstructing cross-thread lifecycle order from timestamps.
+
+This dimension is captured at residual selection, not at the saved full GC.
+For example, A can retain 10 MiB with count 0, then 500 KiB with count 20 after
+later loads and full GCs. Bindings since the most recent full GC also increase
+the count while residual bytes still come from that saved GC. A count threshold
+therefore describes VM reuse after exit; it does not guarantee a GC after those
+bindings or prove permanent leakage.
+
 Let T be the sum of all confirmed exited-slot residuals:
 
 ```text
@@ -481,6 +498,11 @@ Both sums use identical filters/grouping and require a present positive weight.
 Retain the original T/Lᵢ after all filters. A is cumulative byte-snapshot burden;
 A/B is mean positive residual per page-snapshot. Neither counts each exited
 instance only once, and the mean excludes zero residuals.
+
+Apply `leak_page_vm_post_exit_page_count=N` (or `>=N`) to both sums to study
+residuals at a chosen amount of subsequent VM reuse. Keep the original PPS
+weight; sampling still draws from the complete confirmed positive population.
+Earlier events without this additive property are unknown, not count zero.
 
 For a key's share of all residual bytes, divide its selected-row weighted SUM
 by SUM(T) over all baseline timer snapshots.
