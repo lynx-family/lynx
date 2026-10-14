@@ -156,10 +156,8 @@ void ParagraphTTText::Layout(double width) {
     metrics.width = rect_ltwh[2];
     metrics.height = text_line->GetLineBottom();
     metrics.line_number = k;
-    metrics.start_index =
-        index_mapper_.ToUTF16Position(text_line->GetStartCharPos());
-    metrics.end_index =
-        index_mapper_.ToUTF16Position(text_line->GetEndCharPos());
+    metrics.start_index = text_line->GetStartCharPos();
+    metrics.end_index = text_line->GetEndCharPos();
     metrics.hard_break =
         paragraph_->GetContentString(text_line->GetEndCharPos(), 1) == "\n";
   }
@@ -195,8 +193,6 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForRange(
     Paragraph::RectHeightStyle rect_height_style,
     Paragraph::RectWidthStyle rect_width_style) {
   std::vector<TextBox> result;
-  start = index_mapper_.ToTTTextPosition(start);
-  end = index_mapper_.ToTTTextRangeEnd(end);
   for (uint32_t k = 0; k < region_->GetLineCount(); k++) {
     auto* text_line = region_->GetLine(k);
     size_t start_index = text_line->GetStartCharPos();
@@ -267,27 +263,13 @@ Paragraph::PositionWithAffinity ParagraphTTText::GetGlyphPositionAtCoordinate(
       result += text_line->GetCharCount();
     }
   }
-  return Paragraph::PositionWithAffinity(index_mapper_.ToUTF16Position(result),
-                                         Paragraph::DOWNSTREAM);
+  return Paragraph::PositionWithAffinity(result, Paragraph::DOWNSTREAM);
 }
 Paragraph::Range<size_t> ParagraphTTText::GetWordBoundary(size_t offset) {
   if (region_ == nullptr)
     return Range<size_t>(0, 0);
-  if (index_mapper_.GetUTF16Size() == 0)
-    return Range<size_t>(0, 0);
-  auto word =
-      paragraph_->GetWordBoundary(index_mapper_.ToTTTextPosition(offset));
-  return Paragraph::Range<size_t>(index_mapper_.ToUTF16Position(word.first),
-                                  index_mapper_.ToUTF16Position(word.second));
-}
-
-Paragraph::Range<size_t> ParagraphTTText::GetGraphemeBoundary(
-    size_t offset) const {
-  auto grapheme =
-      paragraph_->GetGraphemeBoundary(index_mapper_.ToTTTextPosition(offset));
-  return Paragraph::Range<size_t>(
-      index_mapper_.ToUTF16Position(grapheme.first),
-      index_mapper_.ToUTF16Position(grapheme.second));
+  auto word = paragraph_->GetWordBoundary(offset);
+  return Paragraph::Range<size_t>(word.first, word.second);
 }
 
 void ParagraphTTText::UpdateForegroundPaint(size_t text_size,
@@ -305,7 +287,6 @@ void ParagraphTTText::UpdateForegroundPaint(size_t text_size,
 #endif
   tttext::Style style;
   style.SetForegroundPainter(&tt_painter_);
-  text_size = index_mapper_.ToTTTextRangeEnd(text_size);
   paragraph_->ApplyStyleInRange(style, 0, text_size);
 }
 
@@ -320,8 +301,6 @@ void ParagraphTTText::UpdateForegroundPaint(size_t start,
   tt_painters_.push_back(std::move(skity_painter));
   tt_painter->platform_painter_ = std::make_unique<skity::Paint>(paint);
   style.SetForegroundPainter(tt_painter);
-  start = index_mapper_.ToTTTextPosition(start);
-  end = index_mapper_.ToTTTextRangeEnd(end);
   paragraph_->ApplyStyleInRange(style, start, end - start);
 }
 #endif
@@ -331,28 +310,19 @@ void ParagraphTTText::AddPlaceholder(tttext::Style& style,
                                      bool is_float) {
   auto delegate = std::make_unique<TTShapeRun>(span, style);
   placeholder_pos_.push_back(paragraph_->GetCharCount());
-  index_mapper_.AppendText(u"\uFFFC");
   paragraph_->AddShapeRun(&style, std::move(delegate), is_float);
 }
 
 void ParagraphTTText::AddTextRun(tttext::Style& style,
                                  const std::u16string& content) {
-  const std::u16string supported_content =
-      content.substr(0, content.find(u'\0'));
-  index_mapper_.AppendText(supported_content);
-  const std::string utf8_content = lynx::base::U16StringToU8(supported_content);
-  paragraph_->AddTextRun(&style, utf8_content.data(),
-                         static_cast<uint32_t>(utf8_content.size()));
+  paragraph_->AddTextRun(&style, lynx::base::U16StringToU8(content).c_str());
 }
 void ParagraphTTText::AddTextRun(tttext::Style& style,
                                  const std::string& content) {
-  const std::string supported_content = content.substr(0, content.find('\0'));
-  index_mapper_.AppendText(lynx::base::U8StringToU16(supported_content));
-  paragraph_->AddTextRun(&style, supported_content.data(),
-                         static_cast<uint32_t>(supported_content.size()));
+  paragraph_->AddTextRun(&style, content.c_str());
 }
 uint32_t ParagraphTTText::GetTextSize() const {
-  return static_cast<uint32_t>(index_mapper_.GetUTF16Size());
+  return paragraph_->GetCharCount();
 }
 tttext::WriteDirection ParagraphTTText::GetResolvedWriteDirection() const {
   return paragraph_->GetResolvedWriteDirection();
