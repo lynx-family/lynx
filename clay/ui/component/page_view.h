@@ -382,6 +382,9 @@ class PageView : public BaseView,
   }
 
   void DispatchLynxLayout();
+  // Applies the initial background and restores it when the page is reset.
+  // Subsequent page style updates can override this color.
+  void SetDefaultBackgroundColor(const Color& color);
   virtual void ResetPageView(bool recycle = false);
 
   bool IsRasterAnimationEnabled() const {
@@ -529,6 +532,8 @@ class PageView : public BaseView,
   bool ShouldPreserveFocusForTouchTarget(BaseView* target);
 
  protected:
+  std::optional<Color> default_background_color_;
+
   void OnDestroy() override;
 
   void InitManagers();

@@ -10,6 +10,20 @@
 #include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
+TEST(LynxViewBuilder, DefaultBackgroundColor) {
+  auto* builder = lynx_view_builder_create();
+  auto* other = lynx_view_builder_create();
+  EXPECT_FALSE(builder->default_background_color.has_value());
+  lynx_view_builder_set_default_background_color(builder, 0x00000000u);
+  ASSERT_TRUE(builder->default_background_color.has_value());
+  EXPECT_EQ(*builder->default_background_color, 0x00000000u);
+  lynx_view_builder_set_default_background_color(builder, 0x80402010u);
+  EXPECT_EQ(*builder->default_background_color, 0x80402010u);
+  EXPECT_FALSE(other->default_background_color.has_value());
+  lynx_view_builder_release(other);
+  lynx_view_builder_release(builder);
+}
+
 TEST(LynxViewBuilder, Create) {
   lynx_view_builder_t* builder = lynx_view_builder_create();
 
