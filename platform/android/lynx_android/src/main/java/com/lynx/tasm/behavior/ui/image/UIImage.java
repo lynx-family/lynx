@@ -12,6 +12,7 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.StylesDiffMap;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.ViewInfo;
@@ -180,6 +181,18 @@ public class UIImage extends UIView {
       }
     }
     mLynxImageManager.onNodeReady();
+  }
+
+  @Override
+  public void copyPropFromOldUiInUpdateFlatten(LynxBaseUI oldUI) {
+    super.copyPropFromOldUiInUpdateFlatten(oldUI);
+    if (mView.getRenderer() != null) {
+      return;
+    }
+    ensureLynxImageManager();
+    // Layout has been restored, but the new image manager has not received its size.
+    mLynxImageManager.onLayoutUpdated(getWidth(), getHeight(), getPaddingLeft(), getPaddingRight(),
+        getPaddingTop(), getPaddingBottom());
   }
 
   @Override
