@@ -169,6 +169,7 @@ class PageView : public BaseView,
   void UpdateRootSize(int32_t width, int32_t height);
 
   bool DispatchPointerEvent(std::vector<PointerEvent> events);
+  void CancelTapReturnForScroll();
   virtual void DispatchKeyEvent(
       std::unique_ptr<KeyEvent> event,
       std::function<void(bool /* handled */)> callback);
@@ -559,6 +560,11 @@ class PageView : public BaseView,
   void PlatformHideSoftInput() override;
 
   void SetupIsolatedGestures();
+  class PageTapGestureRecognizer;
+  virtual bool ReadTapReturnSetting() const;
+  void BeginTapReturn(const PointerEvent& event, const HitTestResult& result);
+  void FinishTapReturn(const std::vector<PointerEvent>& events,
+                       uint64_t reset_generation);
   bool HasActiveFling() const;
   void MarkTapSuppressedPointersForFlingStop(
       const std::vector<PointerEvent>& events);
@@ -665,6 +671,15 @@ class PageView : public BaseView,
   // touch end or cancel events from clearing the active view chain.
   std::optional<int> active_touch_pointer_id_;
   std::vector<fml::WeakPtr<BaseView>> active_touch_views_;
+  struct TapReturnState {
+    int pointer_id;
+    fml::WeakPtr<BaseView> target;
+    bool cancelled = false;
+  };
+  std::optional<TapReturnState> tap_return_;
+  std::unordered_set<int> tap_return_touch_ids_;
+  uint64_t tap_return_reset_generation_ = 0;
+  bool dispatching_isolated_pointer_events_ = false;
 #if defined(OS_WIN) || defined(OS_MAC)
   std::map<std::pair<PointerEvent::DeviceType, int>, fml::WeakPtr<BaseView>>
       pointer_view_map_;
