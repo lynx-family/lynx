@@ -1,7 +1,7 @@
 # Copyright 2024 The Lynx Authors. All rights reserved.
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
-from typing import Callable
+from typing import Callable, List
 
 from core.builder.gn_builder import GnBuilder
 from core.builder.gradle_builder import GradleBuilder
@@ -21,7 +21,8 @@ def BuilderFactory(builder_meta_data: dict, silent: bool = False):
     elif builder_type == "gradle":
         args = builder_meta_data["args"]
         workspace = builder_meta_data["workspace"]
-        builder = GradleBuilder(args, workspace, silent)
+        batch_build = builder_meta_data.get("batch_build", False)
+        builder = GradleBuilder(args, workspace, silent, batch_build)
     if builder is None:
         return Err(
             Constants.BUILDER_BUILD_ERR, f"build type {builder_type} is unsupported!"
@@ -53,3 +54,19 @@ class BuilderManager:
             target.params["builder"] if "builder" in target.params else "default"
         )
         return self.builders[builder_name].build(target)
+
+    def build_all(self, targets: List[Target]):
+        grouped_targets = {}
+        for target in targets:
+            builder_name = (
+                target.params["builder"] if "builder" in target.params else "default"
+            )
+            if builder_name not in grouped_targets:
+                grouped_targets[builder_name] = []
+            grouped_targets[builder_name].append(target)
+
+        for builder_name, builder_targets in grouped_targets.items():
+            result = self.builders[builder_name].build_all(builder_targets)
+            if result.is_err():
+                return result
+        return Ok()

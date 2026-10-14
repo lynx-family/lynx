@@ -67,10 +67,12 @@ class AndroidUTContainer(Container):
                 continue
             self.targets.append(target)
 
+        # Build all targets before initializing their per-target runtime state.
+        result = self.builder_manager.build_all(self.targets)
+        if result.is_err():
+            return result
+
         for target in self.targets:
-            result = self.builder_manager.build(target)
-            if result.is_err():
-                return result
             target.insert_global_info("device_name", self.emulator.device)
             target.insert_global_info(
                 "restart_device_handler", self.restart_device_handler
