@@ -15,8 +15,11 @@ namespace tasm {
 
 namespace {
 
+constexpr char kOverlayTag[] = "overlay";
+
 fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
-                                          ComposeElementKind kind) {
+                                          ComposeElementKind kind,
+                                          const base::String& tag) {
   switch (kind) {
     case ComposeElementKind::kView:
       return manager->CreateFiberView();
@@ -24,6 +27,10 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
       return manager->CreateFiberText(BASE_STATIC_STRING(kElementTextTag));
     case ComposeElementKind::kImage:
       return manager->CreateFiberImage(BASE_STATIC_STRING(kElementImageTag));
+    case ComposeElementKind::kOverlay:
+      return manager->CreateFiberElement(BASE_STATIC_STRING(kOverlayTag));
+    case ComposeElementKind::kCustom:
+      return manager->CreateFiberElement(tag);
   }
   return nullptr;
 }
@@ -31,8 +38,9 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
 }  // namespace
 
 ComposeElementHandle::ComposeElementHandle(ElementManager* manager,
-                                           ComposeElementKind kind)
-    : content_element_(CreateContentElement(manager, kind)),
+                                           ComposeElementKind kind,
+                                           const base::String& tag)
+    : content_element_(CreateContentElement(manager, kind, tag)),
       mount_root_(content_element_) {}
 
 }  // namespace tasm

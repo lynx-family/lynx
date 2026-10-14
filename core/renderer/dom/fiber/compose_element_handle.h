@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/value/base_string.h"
 #include "base/include/value/ref_counted_class.h"
 #include "core/renderer/dom/element.h"
 
@@ -19,17 +20,22 @@ class ComposeModifierApplicator;
 class ElementManager;
 
 enum class ComposeElementKind : int32_t {
+  // Reserve zero for custom tags; positive ids are dedicated element kinds.
+  kCustom = 0,
   kView = 1,
   kText = 2,
   kImage = 3,
+  kOverlay = 6,
 };
 
 // Stable, opaque identity for one Compose-owned Fiber subtree. The concrete
-// Element always owns view/text/image behavior; mount_root_ only describes the
+// Element owns the built-in or custom-tag behavior; mount_root_ describes the
 // physical node that should be inserted into its external parent.
 class ComposeElementHandle final : public lepus::RefCounted {
  public:
-  ComposeElementHandle(ElementManager* manager, ComposeElementKind kind);
+  // tag is used only for kCustom; built-in kinds retain their original tags.
+  ComposeElementHandle(ElementManager* manager, ComposeElementKind kind,
+                       const base::String& tag = base::String());
 
   void ReleaseSelf() const override { delete this; }
   lepus::RefType GetRefType() const override {
