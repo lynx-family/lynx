@@ -359,9 +359,7 @@ std::vector<LineInfo> TextRender::GetLineInfo() {
 std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
     double layout_width) {
   TRACE_EVENT("clay", "TextRender::LayoutParagraph");
-#ifndef CLAY_ENABLE_TTTEXT
   ReprocessAttributeIfNeeded(layout_width);
-#endif
   auto text_style = measure_node_->text_style_.value();
   if (text_style.white_space == WhiteSpace::kNoWrap) {
     text_style.max_lines = 1;
@@ -475,8 +473,60 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
   prev_layout_width_ = layout_width;
 }
 
-#ifndef CLAY_ENABLE_TTTEXT
 void TextRender::ReprocessAttributeIfNeeded(double layout_width) {
+#ifdef CLAY_ENABLE_TTTEXT
+  std::vector<ShadowNode*> middle_placeholders;
+  float reference_font_size = measure_node_->text_style_->font_size.value();
+  const auto collect = [&](auto&& self, ShadowNode* node) -> void {
+    for (auto* child : node->GetChildren()) {
+      if (child->IsInlineViewShadowNode() || child->IsInlineImageShadowNode()) {
+        if (child->IsInlineViewShadowNode()) {
+          static_cast<InlineViewShadowNode*>(child)->ResetBaselineOffset();
+        } else {
+          static_cast<InlineImageShadowNode*>(child)->ResetBaselineOffset();
+        }
+        const auto align = child->GetVerticalAlign();
+        if (align && align->type == kVerticalAlignMiddle) {
+          middle_placeholders.push_back(child);
+        }
+      } else if (child->IsBaseTextShadowNode()) {
+        child->EnsureDefaultStyle();
+        reference_font_size = std::max(reference_font_size,
+                                       child->text_style_->font_size.value());
+        self(self, child);
+      }
+    }
+  };
+  collect(collect, measure_node_);
+  if (middle_placeholders.empty()) {
+    return;
+  }
+  auto style = measure_node_->text_style_.value();
+  // Preserve Clay's root-font/max-size reference convention.
+  style.font_size = reference_font_size;
+  style.align_type = kVerticalAlignBaseline;
+  style.baseline_shift = 0.f;
+  auto reference = LayoutXCharacter(layout_width, style);
+  auto* tt_paragraph = static_cast<txt::ParagraphTTText*>(reference.get());
+  auto x_height = tt_paragraph->GetFirstCharacterXHeight();
+  if (!x_height) {
+    const auto glyph = tt_paragraph->GetFirstCharacterGlyphBounds();
+    if (!glyph) {
+      return;
+    }
+    x_height = glyph->Height();
+  }
+  for (auto* child : middle_placeholders) {
+    double height = child->Height();
+    if (child->IsInlineImageShadowNode()) {
+      child->UpdateLayoutStylesFromLynx();
+      height = child->Height() + child->MarginTop() + child->MarginBottom();
+    }
+    // For middle, baseline_offset = (x_height - placeholder_height) / 2.
+    // Inline view measurement already includes its margins.
+    child->SetBaselineOffset((*x_height - height) * 0.5);
+  }
+#else
   // Determine if the baseline_shift property needs to be set
   for (auto* child : measure_node_->GetChildren()) {
     if (!child->IsRawTextShadowNode() &&
@@ -544,8 +594,8 @@ void TextRender::ReprocessAttributeIfNeeded(double layout_width) {
       }
     }
   }
-}
 #endif
+}
 
 std::shared_ptr<txt::Paragraph> TextRender::LayoutXCharacter(
     double layout_width, const TextStyle& style) {
