@@ -1908,10 +1908,11 @@ class MemoryMonitorTest : public ::testing::Test {
     }
     ASSERT_NE(residual_event, nullptr);
     const auto residual_props = residual_event->GetPropsAsMap();
-    EXPECT_EQ(residual_props.size(), 4u);
-    for (const char* field : {"schema_version", "leak_page_key",
-                              "shared_vm_tracked_exited_page_retained_bytes",
-                              "leak_page_selection_weight"}) {
+    EXPECT_EQ(residual_props.size(), 5u);
+    for (const char* field :
+         {"schema_version", "leak_page_key",
+          "shared_vm_tracked_exited_page_retained_bytes",
+          "leak_page_selection_weight", "leak_page_vm_post_exit_page_count"}) {
       EXPECT_EQ(residual_props.count(field), 1u) << field;
     }
     for (const auto invalid : {int64_t{-1}, int64_t{0}}) {
@@ -2134,6 +2135,130 @@ class MemoryMonitorTest : public ::testing::Test {
       EXPECT_DOUBLE_EQ(Number(event, "vm_heap_bytes_weighted"), 1500);
       EXPECT_EQ(Number(event, "vm_heap_selection_weight"), 3);
     }
+  }
+
+  void RunResidualPostExitPageCount() {
+    OnReporter([] {
+      GlobalMemoryMonitor monitor;
+      auto engine =
+          std::make_shared<TestVM>(runtime::js::JSRuntimeType::quickjs);
+      auto other_engine =
+          std::make_shared<TestVM>(runtime::js::JSRuntimeType::quickjs);
+      monitor.OnBtsVMCreate("shared", "", engine);
+      monitor.OnBtsVMCreate("other", "", other_engine);
+      monitor.poll_timer_->Stop();
+      auto bind = [&](int id, int slot, TestVM* owner, int64_t at) {
+        monitor.OnInstanceCreated(id, at, [&](auto& page) {
+          page.SetUrl(id == 1 ? "page_a" : "other_page");
+          page.bts_vm = owner;
+          page.slot = slot;
+        });
+      };
+      bind(1, 3, engine.get(), 100);
+      bind(2, 4, engine.get(), 100);  // Already bound when A exits.
+      monitor.OnInstanceDestroyed(1, 200);
+
+      constexpr size_t kMiB = 1024 * 1024;
+      BtsMemorySample sample;
+      sample.heap_valid = sample.slots_valid = sample.is_full_gc = true;
+      auto gc = [&](int64_t at, size_t bytes) {
+        sample.measured_at_ms = at;
+        sample.slots[3] = sample.heap_size = bytes;
+        monitor.OnBtsVMMemoryUpdate(engine.get(), sample);
+      };
+      auto check = [&](int64_t at, uint64_t count, size_t bytes) {
+        GlobalMemoryMonitor::Snapshot snapshot;
+        snapshot.started_at_ms = at;
+        auto event = BuildEvent(monitor, snapshot, at, 0,
+                                "lynxsdk_memory_page_residual");
+        ASSERT_EQ(event.GetName(), "lynxsdk_memory_page_residual");
+        UniqueKeys(event);
+        CompactSchema(event);
+        const simulation::Row row(event);
+        EXPECT_EQ(row.Text("leak_page_key"), "page_a");
+        EXPECT_EQ(row.Number("leak_page_vm_post_exit_page_count"), count);
+        EXPECT_EQ(row.Number("shared_vm_tracked_exited_page_retained_bytes"),
+                  bytes);
+        EXPECT_EQ(row.Number("leak_page_selection_weight"), 1);
+      };
+      gc(300, 10 * kMiB);
+      check(300, 0, 10 * kMiB);
+      bind(3, 5, engine.get(), 400);
+      // Count is taken at selection, even before another full GC arrives.
+      check(400, 1, 10 * kMiB);
+      gc(500, 2 * kMiB);
+      check(500, 1, 2 * kMiB);
+      monitor.WithInstance(3, [&](auto& page) { page.bts_vm = engine.get(); });
+      bind(3, 5, engine.get(), 550);  // Reload/repeated registration.
+      monitor.OnInstanceDestroyed(3, 600);
+      monitor.OnInstanceDestroyed(1, 600);  // Exit baseline is saved only once.
+      monitor.WithInstance(
+          1, [](auto&) { ADD_FAILURE() << "Exited pages cannot be rebound"; });
+      bind(4, fml::JSMemoryTrackSlotType::Overflow, engine.get(), 700);
+      bind(5, 3, other_engine.get(), 700);
+      gc(800, 500 * 1024);
+      check(800, 2, 500 * 1024);
+      gc(900, 500 * 1024);
+      check(900, 2, 500 * 1024);  // GC itself does not add pages.
+      bind(6, fml::JSMemoryTrackSlotType::Unknown, engine.get(), 1000);
+      monitor.OnInstanceDestroyed(6, 1100);
+      check(1100, 3, 500 * 1024);  // Untracked exited pages still count.
+      gc(1200, 0);
+      GlobalMemoryMonitor::Snapshot snapshot;
+      snapshot.started_at_ms = 1300;
+      EXPECT_TRUE(
+          BuildEvent(monitor, snapshot, 1300, 0, "lynxsdk_memory_page_residual")
+              .GetName()
+              .empty());
+      monitor.OnBtsVMDestroy(engine.get());
+      EXPECT_EQ(monitor.instance_state_.count(1), 0u);
+    });
+  }
+
+  void RunResidualSelectedPageCount() {
+    OnReporter([] {
+      GlobalMemoryMonitor monitor;
+      monitor.random_.seed(43);
+      auto engine =
+          std::make_shared<TestVM>(runtime::js::JSRuntimeType::quickjs);
+      monitor.OnBtsVMCreate("shared", "", engine);
+      monitor.poll_timer_->Stop();
+      auto bind = [&](int id, int64_t at) {
+        monitor.OnInstanceCreated(id, at, [&](auto& page) {
+          page.SetUrl(id == 1 ? "page_a" : "page_b");
+          page.bts_vm = engine.get();
+          page.slot = id + 2;
+        });
+      };
+      bind(1, 100);
+      monitor.OnInstanceDestroyed(1, 200);
+      bind(2, 300);
+      monitor.OnInstanceDestroyed(2, 400);
+      bind(3, 500);
+      BtsMemorySample sample;
+      sample.heap_valid = sample.slots_valid = sample.is_full_gc = true;
+      sample.heap_size = 100;
+      sample.measured_at_ms = 600;
+      sample.slots[3] = 90;
+      sample.slots[4] = 10;
+      monitor.OnBtsVMMemoryUpdate(engine.get(), sample);
+      GlobalMemoryMonitor::Snapshot snapshot;
+      snapshot.started_at_ms = 700;
+      std::unordered_set<std::string> selected;
+      for (int i = 0; i < 256; ++i) {
+        const simulation::Row row(BuildEvent(monitor, snapshot, 700, 0,
+                                             "lynxsdk_memory_page_residual"));
+        const auto key = row.Text("leak_page_key");
+        selected.insert(key);
+        EXPECT_EQ(row.Number("leak_page_vm_post_exit_page_count"),
+                  key == "page_a" ? 2 : 1);
+        EXPECT_DOUBLE_EQ(row.Number("leak_page_selection_weight"),
+                         key == "page_a" ? 100.0 / 90 : 10);
+        EXPECT_EQ(row.Number("shared_vm_tracked_exited_page_retained_bytes"),
+                  100);
+      }
+      EXPECT_EQ(selected.size(), 2u);
+    });
   }
 
   void RunPostExitFullGcResiduals() {
@@ -3474,6 +3599,13 @@ TEST_F(MemoryMonitorTest, SlotsCapacityOverflowAndResidualCleanup) {
 }
 TEST_F(MemoryMonitorTest, ResidualsRequireValidFullGcStrictlyAfterExit) {
   RunPostExitFullGcResiduals();
+}
+TEST_F(MemoryMonitorTest, ResidualCountsNewVmBindingsSincePageExit) {
+  RunResidualPostExitPageCount();
+}
+TEST_F(MemoryMonitorTest,
+       ResidualCountBelongsToSelectedPageAndPreservesWeights) {
+  RunResidualSelectedPageCount();
 }
 TEST_F(MemoryMonitorTest, SynchronousHeapQueryRunsOnOwnerThread) {
   RunSynchronousHeapCollection();
