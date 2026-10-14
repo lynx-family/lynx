@@ -171,10 +171,13 @@ bool ParseComposeElementKind(const lepus::Value& value, const char* function,
     case ComposeElementKind::kView:
     case ComposeElementKind::kText:
     case ComposeElementKind::kImage:
+    case ComposeElementKind::kOverlay:
+    case ComposeElementKind::kCustom:
       *result = kind;
       return true;
     default:
-      ElementAPIError("%s kind should be View, Text or Image", function);
+      ElementAPIError("%s kind should be View, Text, Image, Overlay or Custom",
+                      function);
       return false;
   }
 }
@@ -2883,9 +2886,24 @@ RENDERER_FUNCTION_CC(FiberCreateCompose) {
   if (!ParseComposeElementKind(*arg1, "FiberCreateCompose", &kind)) {
     RETURN_UNDEFINED();
   }
+  // Custom elements supply their tag as argument 2. Existing built-in calls
+  // continue to use only the parent id and kind.
+  base::String tag;
+  if (kind == ComposeElementKind::kCustom) {
+    if (argc < 3) {
+      ElementAPIError("FiberCreateCompose Custom requires a tag");
+      RETURN_UNDEFINED();
+    }
+    CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, String, FiberCreateCompose);
+    tag = arg2->String();
+    if (tag.empty()) {
+      ElementAPIError("FiberCreateCompose Custom tag should not be empty");
+      RETURN_UNDEFINED();
+    }
+  }
   auto& manager = GET_TASM_POINTER()->page_proxy()->element_manager();
   auto handle = fml::AdoptRef<ComposeElementHandle>(
-      new ComposeElementHandle(manager.get(), kind));
+      new ComposeElementHandle(manager.get(), kind, tag));
   auto content_element = handle->content_element();
   content_element->SetParentComponentUniqueIdForFiber(
       static_cast<int64_t>(arg0->Number()));

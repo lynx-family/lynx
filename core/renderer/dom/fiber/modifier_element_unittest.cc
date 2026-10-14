@@ -4,6 +4,7 @@
 
 #include "core/renderer/dom/fiber/modifier_element.h"
 
+#include <string>
 #include <vector>
 
 #include "core/renderer/dom/element_manager.h"
@@ -11,9 +12,14 @@
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/dom/fiber/element_utils.h"
 #include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
+#include "core/renderer/template_assembler.h"
+#include "core/runtime/lepus/bindings/renderer.h"
+#include "core/runtime/lepusng/quick_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -24,9 +30,10 @@ namespace {
 
 fml::RefPtr<ComposeElementHandle> CreateComposeHandle(
     ElementManager* manager,
-    ComposeElementKind kind = ComposeElementKind::kView) {
+    ComposeElementKind kind = ComposeElementKind::kView,
+    const base::String& tag = base::String()) {
   return fml::AdoptRef<ComposeElementHandle>(
-      new ComposeElementHandle(manager, kind));
+      new ComposeElementHandle(manager, kind, tag));
 }
 
 std::vector<ModifierElement*> CollectModifierFrames(Element* root,
@@ -331,6 +338,84 @@ TEST_P(ModifierElementTest, AcceptsComposeModifierSingletonAsChainEnd) {
             lepus::Value("40px"));
 }
 
+TEST_P(ModifierElementTest,
+       OverlayAndCustomBindingsUseNormalModifierAndChildOperations) {
+  auto runtime_ = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(runtime_, nullptr);
+  runtime_->Initialize();
+  runtime_->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto Eval = [&](const std::string& script) {
+    lepus::Value value;
+    EXPECT_TRUE(runtime::MTSRuntime::ToQuickContext(runtime_.get())
+                    ->EvalBuf(script.c_str(), script.size(), value,
+                              "compose_custom_test.js"));
+    return value;
+  };
+  auto page = manager->CreateFiberPage("page", 11);
+  Renderer::RegisterBuiltin(runtime_.get(), ArchOption::FIBER_ARCH);
+  runtime_->SetGlobalData("customPage", lepus::Value(page));
+  runtime_->SetGlobalData("customPageId", lepus::Value(page->impl_id()));
+  // Renderer validation failures return an empty lepus::Value (JS null).
+  EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0) === null").Bool());
+  EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0, '') === null").Bool());
+  EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0, null) === null").Bool());
+  EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0, 42) === null").Bool());
+  EXPECT_TRUE(
+      Eval("__CreateCompose(customPageId, 0.5, 'sample-widget') === null")
+          .Bool());
+  const struct {
+    ComposeElementKind kind;
+    const char* tag;
+  } cases[] = {{ComposeElementKind::kOverlay, "overlay"},
+               {ComposeElementKind::kCustom, "sample-widget"},
+               {ComposeElementKind::kCustom, "overlay"}};
+  for (const auto& test_case : cases) {
+    runtime_->SetGlobalData("customKind",
+                            lepus::Value(static_cast<int>(test_case.kind)));
+    runtime_->SetGlobalData("customTag", lepus::Value(test_case.tag));
+    EXPECT_TRUE(Eval(R"JS(
+    globalThis.custom = customKind === 6
+      ? __CreateCompose(customPageId, customKind)
+      : __CreateCompose(customPageId, customKind, customTag);
+    globalThis.customChild = __CreateCompose(customPageId, 1);
+    __SetComposeModifier(custom, {op:6,eventName:'ready',eventType:'bindEvent',
+      callback:function(){},previous:{op:4,name:'enabled',value:true}});
+    __InsertElementAt(custom, customChild, 0);
+    __InsertElementAt(customPage, custom, 0);
+    true;
+  )JS")
+                    .Bool());
+    auto custom_value = Eval("custom");
+    auto custom = GetComposeMountRootOrFiberElementFromValue(custom_value);
+    auto child_value = Eval("customChild");
+    auto child = GetComposeMountRootOrFiberElementFromValue(child_value);
+    ASSERT_NE(custom, nullptr);
+    ASSERT_NE(child, nullptr);
+    EXPECT_TRUE(custom->GetTag().IsEqual(test_case.tag));
+    EXPECT_EQ(custom->parent(), page.get());
+    EXPECT_EQ(child->parent(), custom.get());
+    EXPECT_TRUE(custom->HasEventListener("ready"));
+    const auto& attributes = custom->data_model()->attributes();
+    auto enabled = attributes.find(base::String("enabled"));
+    ASSERT_NE(enabled, attributes.end());
+    EXPECT_TRUE(enabled->second.Bool());
+    EXPECT_TRUE(Eval(R"JS(
+    __SetComposeModifier(custom, {op:4,name:'enabled',value:false});
+    __RemoveElementsAt(customPage, 0, 1);
+    true;
+  )JS")
+                    .Bool());
+    EXPECT_FALSE(custom->HasEventListener("ready"));
+    enabled = attributes.find(base::String("enabled"));
+    ASSERT_NE(enabled, attributes.end());
+    EXPECT_FALSE(enabled->second.Bool());
+    EXPECT_EQ(custom->parent(), nullptr);
+  }
+}
+
 TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
   auto padding = lepus::Dictionary::Create();
   padding->SetValue("op", lepus::Value(7));
@@ -339,11 +424,13 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
   padding->SetValue("end", lepus::Value(2.0));
   padding->SetValue("bottom", lepus::Value(2.0));
 
-  const ComposeElementKind kinds[] = {ComposeElementKind::kView,
-                                      ComposeElementKind::kText,
-                                      ComposeElementKind::kImage};
+  const ComposeElementKind kinds[] = {
+      ComposeElementKind::kView, ComposeElementKind::kText,
+      ComposeElementKind::kImage, ComposeElementKind::kOverlay,
+      ComposeElementKind::kCustom};
   for (const auto kind : kinds) {
-    auto handle = CreateComposeHandle(manager, kind);
+    auto handle =
+        CreateComposeHandle(manager, kind, base::String("sample-widget"));
     auto owner = handle->content_element();
     ASSERT_NE(owner, nullptr);
     EXPECT_EQ(handle->mount_root(), owner);
@@ -359,6 +446,12 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
       case ComposeElementKind::kImage:
         EXPECT_TRUE(owner->is_image());
         EXPECT_TRUE(owner->GetTag().IsEqual(kElementImageTag));
+        break;
+      case ComposeElementKind::kOverlay:
+        EXPECT_TRUE(owner->GetTag().IsEqual("overlay"));
+        break;
+      case ComposeElementKind::kCustom:
+        EXPECT_TRUE(owner->GetTag().IsEqual("sample-widget"));
         break;
     }
     auto result = ComposeModifierApplicator::Apply(
