@@ -1036,12 +1036,7 @@ void PageView::SetupIsolatedGestures() {
       ReportTopViewEvent(tap_event, kClayEventTypeTap, false);
     }
   });
-  tap_recognizer->SetTapCancelCallback([this]() {
-    if (touch_tap_pointer_id_ != -1) {
-      touch_tap_target_.reset();
-      touch_tap_target_cancelled_ = true;
-    }
-  });
+  tap_recognizer->SetTapCancelCallback([this]() { ClearTouchTapTarget(); });
   tap_gesture_recognizer_ = tap_recognizer.get();
   isolated_gesture_detector_.AddRecognizer(std::move(tap_recognizer));
 
@@ -1066,10 +1061,10 @@ void PageView::SetupIsolatedGestures() {
 }
 
 bool PageView::IsTouchTapTargetCheckEnabled() const {
-  if constexpr (__is_target_os(ios)) {
-    return setting::CLAY_IOS_ENABLE_TOUCH_TAP_TARGET_CHECK.value();
-  }
-  return false;
+  // TODO: Consider enabling this policy on Android after cross-renderer
+  // interaction experiments establish matching gesture ownership semantics.
+  return __is_target_os(ios) &&
+         setting::CLAY_IOS_ENABLE_TOUCH_TAP_TARGET_CHECK.value();
 }
 
 float PageView::ReadTouchTapBoundaryTolerance() const {
@@ -1107,10 +1102,6 @@ void PageView::RecordTouchTapTarget(const PointerEvent& event) {
 
 void PageView::CancelTouchTapTargetForGesture(int pointer_id,
                                               GestureRecognizerType type) {
-  if (touch_tap_pointer_id_ == -1) {
-    return;
-  }
-
   if (type == GestureRecognizerType::kNone ||
       type == GestureRecognizerType::kTap) {
     return;
@@ -1121,20 +1112,13 @@ void PageView::CancelTouchTapTargetForGesture(int pointer_id,
       pointer_id != touch_tap_pointer_id_) {
     return;
   }
-  touch_tap_target_.reset();
-  touch_tap_target_cancelled_ = true;
-  if (tap_gesture_recognizer_) {
-    tap_gesture_recognizer_->SetDriftTolerance(tap_slop_);
-  }
+  ClearTouchTapTarget();
 }
 
 BaseView* PageView::ValidateTouchTapTarget(const PointerEvent& event,
                                            BaseView* current_target) {
   if (!IsTouchTapTargetCheckEnabled()) {
     return current_target;
-  }
-  if (touch_tap_target_cancelled_) {
-    return nullptr;
   }
   if (!touch_tap_target_) {
     return current_target;
@@ -1158,7 +1142,6 @@ BaseView* PageView::ValidateTouchTapTarget(const PointerEvent& event,
 void PageView::ClearTouchTapTarget() {
   touch_tap_pointer_id_ = -1;
   touch_tap_target_.reset();
-  touch_tap_target_cancelled_ = false;
   touch_tap_boundary_tolerance_ = 0.f;
   if (tap_gesture_recognizer_) {
     tap_gesture_recognizer_->SetDriftTolerance(tap_slop_);
@@ -1170,12 +1153,7 @@ void PageView::ClearTouchTapTargets(const std::vector<PointerEvent>& events) {
     if (event.pointer_id == touch_tap_pointer_id_ &&
         (event.type == PointerEvent::EventType::kUpEvent ||
          event.type == PointerEvent::EventType::kCancel)) {
-      touch_tap_target_.reset();
-      touch_tap_target_cancelled_ = true;
-      touch_tap_boundary_tolerance_ = 0.f;
-      if (tap_gesture_recognizer_) {
-        tap_gesture_recognizer_->SetDriftTolerance(tap_slop_);
-      }
+      ClearTouchTapTarget();
     }
   }
 }

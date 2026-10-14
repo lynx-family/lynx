@@ -629,7 +629,6 @@ class PageView : public BaseView,
   float tap_slop_ = 8.f;
   int touch_tap_pointer_id_ = -1;
   fml::WeakPtr<BaseView> touch_tap_target_;
-  bool touch_tap_target_cancelled_ = false;
   float touch_tap_boundary_tolerance_ = 0.f;
   std::unordered_set<int> fling_stop_tap_suppressed_pointer_ids_;
   int active_fling_count_ = 0;
