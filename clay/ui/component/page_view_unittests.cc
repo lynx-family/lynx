@@ -611,6 +611,29 @@ TEST(PageViewTest, EmptyKeyframesData) {
   EXPECT_EQ(page_view->GetKeyframesMap("name"), nullptr);
 }
 
+TEST(PageViewTest, DefaultBackgroundSurvivesResetAndRecycle) {
+  auto page_view = std::make_unique<PageView>(0, nullptr, nullptr);
+  for (uint32_t value : {0x00000000u, 0x80402010u, 0xFF102030u}) {
+    const Color default_color(value);
+    page_view->SetDefaultBackgroundColor(default_color);
+    EXPECT_EQ(page_view->render_object()->Background().background_color,
+              default_color);
+
+    // Page styles override the default until the next reset.
+    page_view->SetBackgroundColor(Color(0xFFFF0000u));
+    EXPECT_EQ(page_view->render_object()->Background().background_color,
+              Color(0xFFFF0000u));
+    page_view->ResetPageView();
+    EXPECT_EQ(page_view->render_object()->Background().background_color,
+              default_color);
+
+    page_view->SetBackgroundColor(Color(0xFF00FF00u));
+    page_view->ResetPageView(true);
+    EXPECT_EQ(page_view->render_object()->Background().background_color,
+              default_color);
+  }
+}
+
 TEST(PageViewTest, KeyframesData) {
   std::unique_ptr<PageView> page_view =
       std::make_unique<PageView>(0, nullptr, nullptr);

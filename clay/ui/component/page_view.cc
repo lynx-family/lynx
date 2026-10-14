@@ -2296,6 +2296,11 @@ void PageView::FlushUIMethodTasks() {
   }
 }
 
+void PageView::SetDefaultBackgroundColor(const Color& color) {
+  default_background_color_ = color;
+  SetBackgroundColor(color);
+}
+
 void PageView::ResetPageView(bool recycle) {
   if (tap_return_) {
     ++tap_return_reset_generation_;
@@ -2369,6 +2374,9 @@ void PageView::ResetPageView(bool recycle) {
 
   exposure_event_arr_.clear();
   disexposure_event_arr_.clear();
+  if (default_background_color_) {
+    SetBackgroundColor(*default_background_color_);
+  }
   RequestPaintBase();
 }
 
