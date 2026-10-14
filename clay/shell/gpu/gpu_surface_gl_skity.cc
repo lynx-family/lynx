@@ -4,8 +4,8 @@
 
 #include "clay/shell/gpu/gpu_surface_gl_skity.h"
 
-#if defined(OS_OSX)
-#else
+#if !defined(OS_OSX) || \
+    (defined(ENABLE_HEADLESS) && defined(ENABLE_SOFTWARE_RENDERING))
 #include <EGL/egl.h>
 #endif
 
@@ -28,10 +28,22 @@ std::shared_ptr<skity::GPUContext> GPUSurfaceGLSkity::MakeGLContext(
         << "Could not make the context current to set up the GPU context.";
     return nullptr;
   }
-#if defined(OS_OSX)
-  return nullptr;
-#else
+#if !defined(OS_OSX)
   return skity::GLContextCreate(reinterpret_cast<void*>(eglGetProcAddress));
+#elif defined(ENABLE_HEADLESS) && defined(ENABLE_SOFTWARE_RENDERING)
+  // macOS headless software rendering uses ANGLE EGL. This Skity GL integration
+  // does not support native CGL contexts, so require a current EGL context
+  // before resolving GL functions through ANGLE.
+  // This checks thread-local EGL state, not ownership by the delegate. Binding
+  // CGL does not clear a previously bound ANGLE EGL context, so an unrelated
+  // EGL context left current can allow a CGL delegate to pass this check.
+  if (eglGetCurrentContext() == EGL_NO_CONTEXT) {
+    return nullptr;
+  }
+  return skity::GLContextCreate(reinterpret_cast<void*>(eglGetProcAddress));
+#else
+  // Native macOS CGL is not supported by this Skity GL integration.
+  return nullptr;
 #endif
 }
 

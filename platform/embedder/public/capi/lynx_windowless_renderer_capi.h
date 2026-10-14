@@ -66,6 +66,8 @@ LYNX_CAPI_EXPORT bool lynx_windowless_run_ui_task(lynx_task_t task);
 // The type of the windowless renderer.
 typedef enum lynx_windowless_renderer_type_e {
   // The software renderer type that renders content on CPU.
+  // Desktop Skity builds use ANGLE SwiftShader and require the software
+  // rendering build option and its Vulkan runtime libraries.
   kRendererTypeSoftware = 0,
   // The GL renderer type that renders content with host OpenGL context.
   // Unlike kRendererTypeGLDirect, this renderer type will be running as a
@@ -132,11 +134,28 @@ LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_on_gl_proc_resolver(
 // The callback function type for presenting the rendered content when the
 // renderer is in software mode. The return value indicates success of the
 // present call.
+// Pixels are 8-bit premultiplied, with the top row first. Skity with
+// SwiftShader returns RGBA on all desktop platforms; Skia returns RGBA on macOS
+// and BGRA on Windows/Linux. Use on_software_present_v2 to receive the actual
+// pixel format. row_bytes is the byte stride of a row. The engine owns
+// allocation; copy it during the callback if it is needed afterwards.
 typedef bool (*on_software_present)(lynx_windowless_renderer_t*,
                                     const void* allocation, size_t row_bytes,
                                     size_t height);
 LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_on_software_present(
     lynx_windowless_renderer_t*, on_software_present);
+
+// Like on_software_present, with the actual pixel format of this frame.
+// Rows are top-down. The allocation is valid only during the callback.
+typedef bool (*on_software_present_v2)(lynx_windowless_renderer_t*,
+                                       const void* allocation, size_t row_bytes,
+                                       size_t height,
+                                       lynx_color_type_e color_type);
+// Bind before creating the view. If both callbacks are bound, only v2 is
+// invoked, including when it returns false. Passing NULL restores the legacy
+// callback. Change bindings only when rendering is not in progress.
+LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_on_software_present_v2(
+    lynx_windowless_renderer_t*, on_software_present_v2);
 /* ----- Callbacks for Software renderer type ----- */
 
 /* ----- Callbacks for accelerated renderer type ----- */

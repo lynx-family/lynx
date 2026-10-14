@@ -66,6 +66,13 @@ LYNX_EXTERN_C void lynx_windowless_renderer_bind_on_software_present(
       ->on_software_present = on_software_present;
 }
 
+LYNX_EXTERN_C void lynx_windowless_renderer_bind_on_software_present_v2(
+    lynx_windowless_renderer_t* renderer,
+    on_software_present_v2 on_software_present_v2) {
+  reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer)
+      ->on_software_present_v2 = on_software_present_v2;
+}
+
 LYNX_EXTERN_C void lynx_windowless_renderer_bind_on_accelerated_present(
     lynx_windowless_renderer_t* renderer,
     on_accelerated_present on_accelerated_present) {
@@ -222,15 +229,25 @@ ClayHeadlessRendererConfig* LynxWindowlessRenderer::GetRendererConfig() {
   if (type == kRendererTypeSoftware) {
     renderer_config_.type = kClayRendererTypeSoftware;
     renderer_config_.software.struct_size = sizeof(ClaySoftwareRendererConfig);
-    renderer_config_.software.present_callback =
-        [](void* user_data, const void* allocation, size_t raw_bytes,
-           size_t height) -> bool {
+    renderer_config_.software.present_callback_v2 =
+        [](void* user_data, const void* allocation, size_t row_bytes,
+           size_t height,
+           ClaySharedImageBackingPixelFormat pixel_format) -> bool {
       LynxWindowlessRenderer* renderer =
           reinterpret_cast<LynxWindowlessRenderer*>(user_data);
+      if (renderer && renderer->on_software_present_v2) {
+        const auto format =
+            pixel_format == kClaySharedImageBackingPixelFormatRGBA8
+                ? kLynxColorTypeRGBA_8888
+                : kLynxColorTypeBGRA_8888;
+        return renderer->on_software_present_v2(
+            reinterpret_cast<lynx_windowless_renderer_t*>(renderer), allocation,
+            row_bytes, height, format);
+      }
       if (renderer && renderer->on_software_present) {
         return renderer->on_software_present(
             reinterpret_cast<lynx_windowless_renderer_t*>(renderer), allocation,
-            raw_bytes, height);
+            row_bytes, height);
       }
       return false;
     };

@@ -24,6 +24,7 @@ class LynxWindowlessRenderer
   on_gl_proc_resolver on_gl_proc_resolver = nullptr;
 
   on_software_present on_software_present = nullptr;
+  on_software_present_v2 on_software_present_v2 = nullptr;
 
   on_accelerated_present on_accelerated_present = nullptr;
 
