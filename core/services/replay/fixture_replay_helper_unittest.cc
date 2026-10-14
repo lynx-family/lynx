@@ -12,6 +12,7 @@
 #include <thread>
 #include <unordered_set>
 
+#include "base/include/fml/message_loop.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/replay/fixture_common.h"
 #include "core/services/replay/fixture_js_runtime.h"
@@ -145,15 +146,32 @@ TEST_F(FixtureReplayHelperTest, ReadsFilesWithinByteBudgets) {
   EXPECT_TRUE(ReadFixtureAsset(directory, "data.bin").empty());
 }
 
-TEST(FixtureReplayCommonTest, InitializesMemoryTrackingOnWorkerThread) {
+TEST(FixtureReplayCommonTest, IsolatesMemoryTrackingFromActivePageSlot) {
   auto& settings = const_cast<performance::MemoryMonitor::Settings&>(
       performance::MemoryMonitor::GetSettings());
   const auto previous_settings = settings;
   performance::MemoryMonitor::ForceEnableForTesting(
       performance::MemoryMonitor::ForceEnableMode::kCurrentProcess);
   std::thread worker([] {
+    fml::MessageLoop::EnsureInitializedForCurrentThread();
+    auto& page_slot =
+        fml::MessageLoop::GetCurrent().GetTaskRunner()->GetCurrentAllocSlot();
+    page_slot = 37;
     auto runtime = CreateQuickJsFixtureRuntime(FixtureRuntimeLimits{});
-    EXPECT_NE(runtime, nullptr);
+    ASSERT_NE(runtime, nullptr);
+    EXPECT_EQ(page_slot, 37);
+    page_slot = 38;
+    {
+      Scope scope(runtime->runtime());
+      runtime->runtime().global().setProperty(runtime->runtime(), "ctx",
+                                              Object(runtime->runtime()));
+      EXPECT_TRUE(
+          runtime->EvaluateScript("ctx.value = 'fixture';").has_value());
+    }
+    EXPECT_EQ(page_slot, 38);
+    runtime.reset();
+    EXPECT_EQ(page_slot, 38);
+    page_slot = fml::JSMemoryTrackSlotType::Unknown;
   });
   worker.join();
   settings = previous_settings;
