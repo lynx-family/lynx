@@ -6,6 +6,12 @@ import("../../../../devtool/lynx_devtool/devtool.gni")
 
 assert(is_ios)
 
+lynx_podspec_config = {
+  import("//${lynx_dir}/platform/darwin/ios/lynx/Podspecs.gni")
+  recorder_variables = filter_include(lynx_podspec_metadata.global_variables,
+                                      [ "\$enable_recorder = *" ])
+}
+
 # Please put public headers on this _public_headers list.
 # These public headers will be added to the public_header_files variable in the podspec
 devtool_public_headers = [
@@ -69,6 +75,7 @@ podspec_target("devtool_podspec") {
     "\$is_debug_version = \$package_version&.end_with?(\"-debug\") || ENV[\"version\"]&.end_with?(\"-debug\")",
     "\$enable_e2e_test = Integer(ENV[\"LYNX_ENABLE_E2E_TEST\"] || 0)",
   ]
+  global_variables += lynx_podspec_config.recorder_variables
   if (enable_trace == "perfetto") {
     global_variables += [ "\$enable_trace = 1" ]
   } else {
@@ -386,6 +393,7 @@ subspec_target("UnitTests") {
     "Helper/LynxUITreeHelperUnitTest.m",
     "LynxDevToolErrorUtilsUnitTest.m",
     "Memory/LynxMemoryControllerUnitTest.m",
+    "lynx_recorder/LynxRecorderFixtureUnitTest.mm",
     "lynx_recorder/LynxRecorderReplayConfigUnitTest.m",
   ]
   dependency = [
@@ -416,6 +424,8 @@ subspec_target("LynxRecorder") {
     "./lynx_recorder/LynxRecorderDynamicComponentFetcher.m",
     "./lynx_recorder/LynxRecorderEntranceViewController.m",
     "./lynx_recorder/LynxRecorderEnv.m",
+    "./lynx_recorder/LynxRecorderFixture.h",
+    "./lynx_recorder/LynxRecorderFixture.mm",
     "./lynx_recorder/LynxRecorderOpenUrlModule.h",
     "./lynx_recorder/LynxRecorderOpenUrlModule.m",
     "./lynx_recorder/LynxRecorderPageManager.m",
@@ -437,5 +447,87 @@ subspec_target("LynxRecorder") {
   sources += lynx_recorder_public_headers
 
   public_header_files = lynx_recorder_public_headers
+
+  # CocoaPods does not inherit the GN dependency's platform defines.
+  compiler_flags = [ "-DUSE_FILE32API" ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS =
+        [ "ENABLE_TESTBENCH_REPLAY=#{\$enable_recorder}" ]
+
+    # Other ZIP libraries may export incompatible minizip APIs under the same
+    # names. Isolate both the implementation and its callers, including tests.
+    foreach(symbol,
+            [
+              "LoadCentralDirectoryRecord",
+              "Write_EndOfCentralDirectoryRecord",
+              "Write_GlobalComment",
+              "Write_LocalFileHeader",
+              "Write_Zip64EndOfCentralDirectoryLocator",
+              "Write_Zip64EndOfCentralDirectoryRecord",
+              "call_zopen64",
+              "call_zseek64",
+              "call_ztell64",
+              "fill_fopen64_filefunc",
+              "fill_fopen_filefunc",
+              "fill_zlib_filefunc64_32_def_from_filefunc32",
+              "unzClose",
+              "unzCloseCurrentFile",
+              "unzGetCurrentFileInfo",
+              "unzGetCurrentFileInfo64",
+              "unzGetCurrentFileZStreamPos64",
+              "unzGetFilePos",
+              "unzGetFilePos64",
+              "unzGetGlobalComment",
+              "unzGetGlobalInfo",
+              "unzGetGlobalInfo64",
+              "unzGetLocalExtrafield",
+              "unzGetOffset",
+              "unzGetOffset64",
+              "unzGoToFilePos",
+              "unzGoToFilePos64",
+              "unzGoToFirstFile",
+              "unzGoToNextFile",
+              "unzLocateFile",
+              "unzOpen",
+              "unzOpen2",
+              "unzOpen2_64",
+              "unzOpen64",
+              "unzOpenCurrentFile",
+              "unzOpenCurrentFile2",
+              "unzOpenCurrentFile3",
+              "unzOpenCurrentFilePassword",
+              "unzReadCurrentFile",
+              "unzSetOffset",
+              "unzSetOffset64",
+              "unzStringFileNameCompare",
+              "unz_copyright",
+              "unzeof",
+              "unztell",
+              "unztell64",
+              "zipClose",
+              "zipCloseFileInZip",
+              "zipCloseFileInZipRaw",
+              "zipCloseFileInZipRaw64",
+              "zipOpen",
+              "zipOpen2",
+              "zipOpen2_64",
+              "zipOpen3",
+              "zipOpen64",
+              "zipOpenNewFileInZip",
+              "zipOpenNewFileInZip2",
+              "zipOpenNewFileInZip2_64",
+              "zipOpenNewFileInZip3",
+              "zipOpenNewFileInZip3_64",
+              "zipOpenNewFileInZip4",
+              "zipOpenNewFileInZip4_64",
+              "zipOpenNewFileInZip64",
+              "zipRemoveExtraInfoBlock",
+              "zipWriteInFileInZip",
+              "zip_copyright",
+            ]) {
+      GCC_PREPROCESSOR_DEFINITIONS += [ "${symbol}=lynx_recorder_${symbol}" ]
+    }
+  }
+  deps = [ "//third_party/zlib:minizip" ]
   dependency = [ "LynxDevtool/Framework" ]
 }
