@@ -25,6 +25,7 @@ Capture a headless screenshot and exit:
 ```bash
 node-lynx render \
   "https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle" \
+  --allow-template "https://lynxjs.org/lynx-examples/gallery/dist/" \
   --width 268 \
   --height 469 \
   --dpr 2 \
@@ -39,17 +40,28 @@ Open a visible macOS preview window:
 ```bash
 node-lynx preview \
   "https://lynxjs.org/lynx-examples/gallery/dist/GalleryComplete.lynx.bundle" \
+  --allow-template "https://lynxjs.org/lynx-examples/gallery/dist/" \
   --width 268 \
   --height 469 \
   --dpr 2
 ```
 
-Wait for DebugRouter OpenCard without an initial template:
+Start a daemon with allowed templates, without opening an initial page:
 
 ```bash
-node-lynx render
-node-lynx preview
+node-lynx render --allow-template ./templates
+node-lynx preview --allow-template ./templates \
+  --allow-template http://127.0.0.1:3000/templates/
 ```
+
+Explicitly opt out of OpenCard template restrictions:
+
+```bash
+node-lynx --unsafe-allow-any-template
+```
+
+This option prints a warning: connected clients can request arbitrary template
+URLs and local files. It cannot be combined with `--allow-template`.
 
 Rules:
 
@@ -73,8 +85,21 @@ Rules:
   screenshot commands that should exit immediately after writing the PNG.
 - Without `--no-debug-router`, `render` with an initial template writes the PNG
   and then waits for `SIGINT` or `SIGTERM` so DebugRouter stays available.
-- Without an initial template, `render` and `preview` wait for DebugRouter
-  OpenCard. `--no-debug-router` requires an initial template input.
+- `--allow-template <directory|url-prefix>` is repeatable. Local entries must be
+  existing directories (plain paths or `file://` URLs); files are checked against
+  their resolved directory boundary. Traversal and symlinks resolving outside an
+  allowed directory are rejected. Only ordinary files can be loaded.
+- HTTP(S) entries match the same origin (scheme, hostname and port) and a path
+  segment prefix: `/templates` allows `/templates/card.bundle`, not
+  `/templates-other/card.bundle`. Entries cannot contain credentials, queries
+  or fragments. Encoded traversal and path separators are rejected. Every HTTP
+  redirect must remain in the allowlist; at most five redirects are followed.
+- The CLI requires an allowlist unless `--unsafe-allow-any-template` is set.
+  Configuring an allowlist does not fetch templates or create a View. Templates
+  are read on demand, so updated files can be loaded without restarting.
+- An optional initial template must also be allowed. Without an initial
+  template, the daemon waits for OpenCard. `--no-debug-router` still requires an
+  initial template input.
 - Use `--debug-router-schema <schema>` to connect DebugRouter with an explicit
   schema.
 - Use `--log-level error` to hide verbose, debug, info, and warning Lynx logs,
@@ -213,10 +238,12 @@ into the focused Lynx input. `pressKey(key)` supports `Backspace`, `Delete`,
 
 ## DebugRouter OpenCard
 
-Use OpenCard managers when the page should be opened by DebugRouter instead of
-an initial CLI/API template load.
+Use OpenCard managers to let DebugRouter open templates from host-configured
+directories and URL prefixes. Allowlist entries are copied and resolved at
+construction. Both OpenCard protocols use the same checks.
 
 ```js
+const path = require('path');
 const {
   HeadlessOpenCardManager,
   WindowedOpenCardManager,
@@ -230,6 +257,10 @@ const OpenCardManager =
   process.platform === 'darwin' ? WindowedOpenCardManager : HeadlessOpenCardManager;
 
 const openCards = new OpenCardManager({
+  templateAllowlist: [
+    path.resolve('./templates'),
+    'http://127.0.0.1:3000/templates/',
+  ],
   view: { width: 268, height: 469, devicePixelRatio: 2, timeoutMs: 30000 },
   onCardLoaded(card) {
     console.log(`opened ${card.url}`);
@@ -248,7 +279,23 @@ process.once('SIGINT', () => {
 ```
 
 `install()` registers a global OpenCard callback. Call `dispose()` when the
-session ends so the callback and any current card are cleaned up.
+session ends so the callback and any current card are cleaned up. All connected
+clients share the same allowlist. A URL rejected by the initial check fails with
+`ERR_NODE_LYNX_TEMPLATE_DENIED` and is logged before creating a View or
+closing the current card. It does not invoke `onCardError`, because no card was
+created. Later read or redirect failures use `onCardError`. A protocol dispatch
+acknowledgement does not mean a page loaded.
+For programmatic opt-out, pass `unsafeAllowAnyTemplate: true` instead of
+`templateAllowlist`; this permits arbitrary template reads.
+
+This is an OpenCard entry-point mitigation, not a resource sandbox or a complete
+server-side request forgery or local-file-access fix. CDP navigation, scripts,
+and subresource loading retain their existing access. Direct View APIs are
+unchanged. URL entries authorize the named server, including its DNS resolution
+and application routing. Local directories
+must remain under trusted host control; this is not an OS sandbox against hostile
+concurrent filesystem changes. Only run trusted templates and use DebugRouter
+in a trusted environment.
 
 ## Screenshot Timing
 
