@@ -48,7 +48,8 @@ void LongPressGestureRecognizer::HandlePrimaryPointerEvent(
 }
 
 void LongPressGestureRecognizer::OnGestureAccepted(int pointer_id) {
-  // Ignore winning. We care about long press timeout.
+  GestureRecognizer::OnGestureAccepted(pointer_id);
+  // Keep the long-press lifecycle driven by its timeout.
 }
 
 void LongPressGestureRecognizer::OnResolveAll(GestureDisposition disposition) {
