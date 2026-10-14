@@ -13,6 +13,11 @@ namespace clay {
 
 class ClayHeadlessSwiftShaderManager;
 
+// Uses SwiftShader for rendering and presents CPU pixels to the embedder.
+std::unique_ptr<ClayHeadlessRenderer> CreateSwiftShaderSoftwareRenderer(
+    ClayHeadlessEngine* engine, const ClaySoftwareRendererConfig& config,
+    void* user_data);
+
 class ClayHeadlessRendererSwiftShader final
     : public ClayHeadlessRendererSharedImageGL {
  public:

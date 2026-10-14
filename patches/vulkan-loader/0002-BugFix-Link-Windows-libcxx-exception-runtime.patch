@@ -1,0 +1,25 @@
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Subject: [PATCH] [BugFix] Link Windows libcxx exception runtime
+
+diff --git a/BUILD.gn b/BUILD.gn
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -195,6 +195,18 @@ if (!is_android) {
+         cflags = [ "-Wno-incompatible-pointer-types" ]
+       }
+       libs = [ "Cfgmgr32.lib" ]
++      if (use_flutter_cxx) {
++        import("//build/config/win/win.gni")
++        # libc++ delegates exception support to the Microsoft C++ runtime.
++        runtime_lib = "msvcprt"
++        if (windows_runtime_library_mode == "mt") {
++          runtime_lib = "libcpmt"
++        }
++        if (is_debug) {
++          runtime_lib += "d"
++        }
++        libs += [ "$runtime_lib.lib" ]
++      }
+     }
+     if (is_linux || is_chromeos) {
+       sources += [
