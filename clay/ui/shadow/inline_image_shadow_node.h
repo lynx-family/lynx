@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_SHADOW_INLINE_IMAGE_SHADOW_NODE_H_
 #define CLAY_UI_SHADOW_INLINE_IMAGE_SHADOW_NODE_H_
 
+#include <optional>
 #include <string>
 
 #include "clay/ui/component/layout_controller.h"
@@ -29,13 +30,15 @@ class InlineImageShadowNode : public ShadowNode {
 
   bool IsVirtual() override { return true; }
 
+  void ResetBaselineOffset() { baseline_offset_.reset(); }
+
   void SetBaselineOffset(double baseline_offset) override {
     baseline_offset_ = baseline_offset;
   }
 
  private:
   int placeholder_index_ = -1;
-  double baseline_offset_ = 0.f;
+  std::optional<double> baseline_offset_;
   size_t start_glyph_ = 0;
   size_t end_glyph_ = 0;
 };
