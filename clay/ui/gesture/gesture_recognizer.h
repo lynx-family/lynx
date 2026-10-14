@@ -163,10 +163,10 @@ class PrimaryPointerGestureRecognizer : public OneSequenceGestureRecognizer {
 
   void Reset();
 
+  bool IsWithinDriftTolerance(const FloatPoint& position);
+
  private:
   using super = OneSequenceGestureRecognizer;
-
-  bool IsWithinDriftTolerance(const FloatPoint& position);
 
   // Tolerance of movement between down and up event.
   std::optional<float> drift_tolerance_;
