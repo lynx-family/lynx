@@ -124,6 +124,16 @@ public class LynxRecorderActionManager {
     public JSONObject jsbSettings;
 
     public JSONObject sharedData;
+    private LynxRecorderFixture fixture;
+    @Override
+    public synchronized LynxRecorderFixture acquireFixture() {
+      return fixture != null ? fixture.retain() : null;
+    }
+    synchronized void setFixture(LynxRecorderFixture value) {
+      if (fixture != null)
+        fixture.release();
+      fixture = value;
+    }
 
     public JSONArray getFunctionCall() {
       return functionCall;
@@ -201,7 +211,7 @@ public class LynxRecorderActionManager {
       Message msg = new Message();
       msg.obj = mParams;
       msg.what = mFunctionID;
-      mHandler.sendMessageDelayed(msg, mDelayTime);
+      sendReplayMessage(msg, mDelayTime);
     }
   }
 
@@ -274,6 +284,7 @@ public class LynxRecorderActionManager {
     JSONArray componentList;
     JSONArray actionList;
     JSONObject scripts;
+    LynxRecorderFixture fixture;
   }
 
   private interface RecordedInputStreamProvider {
@@ -489,6 +500,30 @@ public class LynxRecorderActionManager {
     }
   }
 
+  private ParsedRecordData parseRecord(RecordedInputStreamProvider provider)
+      throws IOException, JSONException {
+    try (InputStream input = provider.open()) {
+      if (input.read() == 'P' && input.read() == 'K' && input.read() == 3 && input.read() == 4) {
+        LynxRecorderFixture fixture;
+        try (InputStream zip = provider.open()) {
+          fixture = LynxRecorderFixture.open(zip, mContext.getCacheDir());
+        }
+        ParsedRecordData data = new ParsedRecordData();
+        data.fixture = fixture;
+        data.config = fixture.config;
+        data.jsbIgnoredInfo = fixture.config.optJSONArray("jsbIgnoredInfo");
+        data.jsbSettings = fixture.config.optJSONObject("jsbSettings");
+        data.actionList = fixture.actions;
+        data.sharedData = fixture.sharedData;
+        data.componentList = fixture.components;
+        data.functionCall = new JSONArray();
+        data.callbackData = new JSONObject();
+        return data;
+      }
+    }
+    return parseRecordedStream(provider);
+  }
+
   private static ParsedRecordData parseRecordedBody(byte[] body) throws IOException, JSONException {
     return parseRecordedStream(() -> new ByteArrayInputStream(body));
   }
@@ -508,6 +543,8 @@ public class LynxRecorderActionManager {
   private void handleParsedRecordData(ParsedRecordData parsedRecordData, int replayGeneration) {
     UIThreadUtils.runOnUiThreadImmediately(() -> {
       if (!isReplayGenerationActive(replayGeneration)) {
+        if (parsedRecordData.fixture != null)
+          parsedRecordData.fixture.release();
         return;
       }
       try {
@@ -531,6 +568,7 @@ public class LynxRecorderActionManager {
 
   private void applyParsedRecordData(ParsedRecordData parsedRecordData) throws JSONException {
     mainThreadChecker("applyParsedRecordData");
+    mDataProvider.setFixture(parsedRecordData.fixture);
 
     if (parsedRecordData.config != null) {
       mConfig = parsedRecordData.config;
@@ -645,7 +683,7 @@ public class LynxRecorderActionManager {
       mStateView.setReplayState(LynxRecorderReplayStateView.PARSING_JSON_FILE);
       ThreadUtils.getThreadPool().execute(() -> {
         try {
-          ParsedRecordData parsedRecordData = parseRecordedBody(body);
+          ParsedRecordData parsedRecordData = parseRecord(() -> new ByteArrayInputStream(body));
           handleParsedRecordData(parsedRecordData, mReplayGeneration);
         } catch (Exception e) {
           onRecordedFileParseFailed(e, mReplayGeneration);
@@ -930,6 +968,15 @@ public class LynxRecorderActionManager {
     }
   }
 
+  void prepareReplayTimeScript() {
+    mPreloadScripts.clear();
+    // The Fixture format has no absolute recording time. Its action delays
+    // cannot seed the JSON replay clock; keep the page clock in this case.
+    if (!mForbidTimeFreeze && mDataProvider.fixture == null) {
+      mPreloadScripts.add(replayTimeEnvJScript());
+    }
+  }
+
   private String replayTimeEnvJScript() {
     InputStream in = null;
     try {
@@ -1002,7 +1049,7 @@ public class LynxRecorderActionManager {
         }
 
         try {
-          ParsedRecordData parsedRecordData = parseRecordedStream(inputStreamProvider);
+          ParsedRecordData parsedRecordData = parseRecord(inputStreamProvider);
           handleParsedRecordData(parsedRecordData, replayGeneration);
         } catch (Exception e) {
           onRecordedFileParseFailed(e, replayGeneration);
@@ -1043,6 +1090,9 @@ public class LynxRecorderActionManager {
 
   private void handleActionList(JSONArray actionList) {
     long recordTime = 0;
+    final boolean fixture = mDataProvider.fixture != null;
+    // Re-parsing a package replaces the actions queued for the next first screen.
+    mReloadList.clear();
     if (mPreDecode) {
       preDecodeTemplate(mTemplateBundleParams);
     }
@@ -1067,12 +1117,12 @@ public class LynxRecorderActionManager {
           continue;
         }
 
-        if (mStartTime == 0) {
+        if (!fixture && mStartTime == 0) {
           mStartTime = recordTime;
         }
         // convert delay time from s to ms
-        long delay = recordTime - mStartTime;
-        // if this function will be called when reload, save to the ArrayList: mReloadFuncSet
+        long delay = fixture ? recordTime : recordTime - mStartTime;
+        // Both formats wait for the first screen before replaying interactions.
         if (mReloadFuncSet.contains(functionName)) {
           mReloadList.add(new ReloadAction(params, mCanMockFuncMap.get(functionName), delay));
         } else {
@@ -1081,12 +1131,23 @@ public class LynxRecorderActionManager {
         if (i == actionList.length() - 1) {
           Message completeMsg = Message.obtain();
           completeMsg.what = ON_TESTBENCH_COMPLETE;
-          mHandler.sendMessageDelayed(completeMsg, delay);
+          sendReplayMessage(completeMsg, delay);
         }
       } catch (Exception e) {
         e.printStackTrace();
       }
     }
+  }
+
+  static long replayTimeAfter(long uptime, long delay) {
+    return uptime + Math.min(Math.max(0, delay), Long.MAX_VALUE - uptime);
+  }
+
+  private void sendReplayMessage(Message message, long delay) {
+    // Saturate before passing an absolute deadline to Handler, whose relative
+    // delay API can overflow for a large script-provided delay.
+    mHandler.sendMessageAtTime(
+        message, replayTimeAfter(android.os.SystemClock.uptimeMillis(), delay));
   }
 
   public void dispatchAction(String functionName, JSONObject params, long delay) {
@@ -1097,7 +1158,7 @@ public class LynxRecorderActionManager {
     Message msg = Message.obtain();
     msg.obj = params;
     msg.what = functionID;
-    mHandler.sendMessageDelayed(msg, delay);
+    sendReplayMessage(msg, delay);
   }
 
   private void mockComponent(JSONArray componentList) {
@@ -1387,9 +1448,7 @@ public class LynxRecorderActionManager {
         if (mRawFontScale != -1) {
           builder.setFontScale(mRawFontScale);
         }
-        if (!mForbidTimeFreeze) {
-          mPreloadScripts.add(replayTimeEnvJScript());
-        }
+        prepareReplayTimeScript();
         onLynxViewWillBuild(this, builder);
         mLynxView = builder.build(mContext);
         mLynxView.getLynxContext().setLynxView(mLynxView);
@@ -1487,9 +1546,7 @@ public class LynxRecorderActionManager {
         if (mRawFontScale != -1) {
           builder.setFontScale(mRawFontScale);
         }
-        if (!mForbidTimeFreeze) {
-          mPreloadScripts.add(replayTimeEnvJScript());
-        }
+        prepareReplayTimeScript();
         onLynxViewWillBuild(this, builder);
         mLynxView = builder.build(mContext);
         mLynxView.getLynxContext().setLynxView(mLynxView);
@@ -1742,7 +1799,7 @@ public class LynxRecorderActionManager {
   }
 
   public void load() {
-    if (mCreateWhenReload) {
+    if (mCreateWhenReload || mDataProvider.fixture != null) {
       create();
     } else {
       if (mLoadTemplateURL != null && mLoadTemplateData != null) {
@@ -1777,7 +1834,7 @@ public class LynxRecorderActionManager {
       mReloadList.get(index).run();
       if (index == mReloadList.size() - 1) {
         // Exec EndTest Action at last action dealy time + 3000ms.
-        mLastDelayTime = mReloadList.get(index).getDelayTime() + mDelayEndInterval;
+        mLastDelayTime = replayTimeAfter(mReloadList.get(index).getDelayTime(), mDelayEndInterval);
       }
     }
     Message endMsg = Message.obtain();
@@ -1787,7 +1844,7 @@ public class LynxRecorderActionManager {
     if (mLastDelayTime >= 60 * 1000) {
       mLastDelayTime = 5 * 1000;
     }
-    mHandler.sendMessageDelayed(endMsg, mLastDelayTime);
+    sendReplayMessage(endMsg, mLastDelayTime);
   }
 
   public void destroy() {
@@ -1806,5 +1863,7 @@ public class LynxRecorderActionManager {
       mLynxView.destroy();
     }
     mHandler.removeCallbacksAndMessages(null);
+    if (mDataProvider != null)
+      mDataProvider.setFixture(null);
   }
 }
