@@ -71,7 +71,7 @@ instance is selected uniformly from N instances.
 | `evaluated_page_count` | double | Instances whose process completed the window. |
 | `alive_page_count` | double | Evaluated instances alive at the deadline. |
 
-## `lynxsdk_memory_page_residual` - 4 properties
+## `lynxsdk_memory_page_residual` - 5 properties
 
 Produced only for timer snapshots with a confirmed positive-residual page
 selected by probability proportional to bytes.
@@ -81,6 +81,7 @@ selected by probability proportional to bytes.
 | `shared_vm_tracked_exited_page_retained_bytes` | double | Confirmed residual total T. |
 | `leak_page_key` | string | Selected exited page key. |
 | `leak_page_selection_weight` | double | Inverse PPS probability T/L. |
+| `leak_page_vm_post_exit_page_count` | double | Accepted bindings to the selected page's BTS VM between its logical exit and residual selection; includes untracked pages and incomplete loads, excludes repeated updates/reload on the same binding. Present even when zero. |
 
 ## `lynxsdk_memory_persistence` - up to 6 properties
 
