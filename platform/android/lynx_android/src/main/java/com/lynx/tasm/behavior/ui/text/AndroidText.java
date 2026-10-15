@@ -32,8 +32,12 @@ import androidx.annotation.Keep;
 import androidx.annotation.Nullable;
 import com.lynx.R;
 import com.lynx.react.bridge.ReadableArray;
+import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.behavior.ForegroundListener;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.shadow.text.TextHelper;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
@@ -86,6 +90,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   private Drawable mSelectionLeftCursor;
   private Drawable mSelectionRightCursor;
   private ActionMode mActionMode = null;
+  private SelectionMenuListener mSelectionMenuListener;
   private int mSelectStart = -1;
   private int mSelectEnd = -1;
   private int mLastSelectStart = -1;
@@ -110,6 +115,49 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   // save weak reference of selecting AndroidText to ensure that only one AndroidText is selected at
   // a time.
   private static WeakReference<AndroidText> sWeakSelectingAndroidText;
+
+  // Allocated only while a system menu is active; the owner must not retain its text view.
+  private static final class SelectionMenuListener
+      extends WeakReference<LynxUIOwner> implements ForegroundListener, Runnable {
+    private WeakReference<AndroidText> mText;
+
+    SelectionMenuListener(AndroidText text, LynxUIOwner owner) {
+      super(owner);
+      mText = new WeakReference<>(text);
+    }
+
+    @Override
+    public void onLynxViewEnterForeground() {}
+
+    @Override
+    public void onLynxViewEnterBackground() {
+      if (mText == null) {
+        return;
+      }
+      AndroidText text = mText.get();
+      if (text != null) {
+        text.hideToolbarOnBackground();
+      } else {
+        unregister();
+      }
+    }
+
+    void unregister() {
+      if (mText != null) {
+        mText = null;
+        // Owner dispatch is synchronous; remove only after its iteration returns.
+        UIThreadUtils.runOnUiThread(this);
+      }
+    }
+
+    @Override
+    public void run() {
+      LynxUIOwner owner = get();
+      if (owner != null) {
+        owner.unregisterForegroundListener(this);
+      }
+    }
+  }
 
   private final class CheckForLongPress implements Runnable {
     private final float mX;
@@ -687,6 +735,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Override
   public void onDetachedFromWindow() {
     super.onDetachedFromWindow();
+    finishToolbar();
     dispatchDetachImageSpan();
   }
 
@@ -783,6 +832,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   }
 
   public void release() {
+    finishToolbar();
     if (mHasImage && getText() instanceof Spanned) {
       Spanned spannable = (Spanned) getText();
       AbsInlineImageSpan.possiblyUpdateInlineImageSpans(spannable, null);
@@ -869,14 +919,36 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     }
   }
 
+  void hideToolbarOnBackground() {
+    if (mActionMode != null
+        && LynxEnv.getBooleanFromExternalEnv(
+            LynxEnvKey.ENABLE_DISMISS_TEXT_SELECTION_MENU_ON_BACKGROUND, true)) {
+      finishToolbar();
+    }
+  }
+
   private void hideToolbar() {
     if (mEnableCustomContextMenu || mActionMode == null) {
       return;
     }
 
-    mActionMode.finish();
+    finishToolbar();
+  }
 
+  private void finishToolbar() {
+    ActionMode mode = mActionMode;
+    clearToolbarState();
+    if (mode != null) {
+      mode.finish();
+    }
+  }
+
+  private void clearToolbarState() {
     mActionMode = null;
+    if (mSelectionMenuListener != null) {
+      mSelectionMenuListener.unregister();
+      mSelectionMenuListener = null;
+    }
   }
 
   private void updateSelectionRange(int selectStart, int selectEnd) {
@@ -1223,6 +1295,13 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   @Override
   public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
     mActionMode = mode;
+    if (mSelectionMenuListener == null) {
+      LynxUIOwner owner = ((LynxContext) getContext()).getLynxUIOwner();
+      if (owner != null) {
+        mSelectionMenuListener = new SelectionMenuListener(this, owner);
+        owner.registerForegroundListener(mSelectionMenuListener);
+      }
+    }
     return false;
   }
 
@@ -1238,5 +1317,9 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   }
 
   @Override
-  public void onDestroyActionMode(ActionMode mode) {}
+  public void onDestroyActionMode(ActionMode mode) {
+    if (mActionMode == mode) {
+      clearToolbarState();
+    }
+  }
 }
