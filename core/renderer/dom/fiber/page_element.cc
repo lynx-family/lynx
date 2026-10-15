@@ -187,7 +187,9 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
 
   element_container()->OnFirstScreen();
 
-  element_container()->UpdateNodeReadyPatching();
+  if (!EnableFragmentLayerRender()) {
+    element_container()->UpdateNodeReadyPatching();
+  }
 
   // Must be set before FinishLayoutOperation so downstream painting/lifecycle
   // can emit layout-finished callbacks for this pipeline.

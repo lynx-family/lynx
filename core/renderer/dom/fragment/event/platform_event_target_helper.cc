@@ -51,15 +51,17 @@ void MapPointWithTransform(float point[2],
   }
 }
 
-void MapPointWithInverseTransform(
+bool MapPointWithInverseTransform(
     float point[2], const fml::RefPtr<PlatformEventTarget>& target) {
   if (target == nullptr || target->Transform() == nullptr) {
-    return;
+    return true;
   }
   gfx::Matrix44 inverse;
-  if (target->Transform()->invert(&inverse)) {
-    inverse.mapPoint(point, point);
+  if (!target->Transform()->invert(&inverse)) {
+    return false;
   }
+  inverse.mapPoint(point, point);
+  return true;
 }
 
 void SetUserInteractionEnabled(PlatformEventTarget* target,
@@ -842,12 +844,12 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetTreeRoot(
   return GetEventRootTree(root_id);
 }
 
-void PlatformEventTargetHelper::ConvertPointFromAncestorToDescendant(
+bool PlatformEventTargetHelper::ConvertPointFromAncestorToDescendant(
     float res[2], const fml::RefPtr<PlatformEventTarget>& ancestor,
     const fml::RefPtr<PlatformEventTarget>& descendant, float point[2]) {
   if (!descendant || !ancestor || descendant == ancestor) {
     CopyPoint(res, point);
-    return;
+    return true;
   }
 
   base::InlineVector<fml::RefPtr<PlatformEventTarget>, 3> target_chain;
@@ -868,9 +870,12 @@ void PlatformEventTargetHelper::ConvertPointFromAncestorToDescendant(
     res[1] -= current_target->Top();
     res[0] += current_target->OffsetXForCalcPosition();
     res[1] += current_target->OffsetYForCalcPosition();
-    MapPointWithInverseTransform(res, current_target);
+    if (!MapPointWithInverseTransform(res, current_target)) {
+      return false;
+    }
     current_ancestor = current_target;
   }
+  return true;
 }
 
 void PlatformEventTargetHelper::ConvertPointFromDescendantToAncestor(
