@@ -254,6 +254,9 @@ public class UIImage extends UIView {
     super.onLayoutUpdated();
     mLynxImageManager.onLayoutUpdated(getWidth(), getHeight(), getPaddingLeft(), getPaddingRight(),
         getPaddingTop(), getPaddingBottom());
+    if (mView.getRenderer() == null) {
+      mLynxImageManager.updateDrawingBoundsIfNeeded();
+    }
   }
 
   @Override

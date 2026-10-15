@@ -1066,17 +1066,7 @@ public class LynxImageManager implements Drawable.Callback {
       updateImageSource();
     }
     if (isDirty(LAYOUT_CHANGED) || isDirty(BORDER_CHANGED) || isDirty(BORDER_RADIUS_CHANGED)) {
-      configureBounds(mImageDrawable);
-      configureBounds(mPlaceholderDrawable);
-      if (mBorderRadius != null && mBorderRadius.length > 0) {
-        if (mInnerClipPathForBorderRadius == null) {
-          mInnerClipPathForBorderRadius = new BackgroundDrawable.RoundRectPath();
-        }
-        mInnerClipPathForBorderRadius.updateValue(
-            new Rect(mPaddingLeft, mPaddingTop, mViewWidth - mPaddingRight,
-                mViewHeight - mPaddingBottom),
-            mBorderRadius, mBorderWidthRect, 1.0f, false);
-      }
+      updateDrawingBounds();
     }
 
     if (mNeedRetryAutoSize) {
@@ -1306,6 +1296,30 @@ public class LynxImageManager implements Drawable.Callback {
     mImageDrawable.draw(canvas);
     mImageDrawable.setAlpha(255);
     invalidate();
+  }
+
+  void updateDrawingBoundsIfNeeded() {
+    if (!isDirty(LAYOUT_CHANGED)) {
+      return;
+    }
+    // Some layout updates are not followed by onNodeReady. Keep requests deferred.
+    updateDrawingBounds();
+    dirtyFlags &= ~LAYOUT_CHANGED;
+    invalidate();
+  }
+
+  private void updateDrawingBounds() {
+    configureBounds(mImageDrawable);
+    configureBounds(mPlaceholderDrawable);
+    if (mBorderRadius != null && mBorderRadius.length > 0) {
+      if (mInnerClipPathForBorderRadius == null) {
+        mInnerClipPathForBorderRadius = new BackgroundDrawable.RoundRectPath();
+      }
+      mInnerClipPathForBorderRadius.updateValue(
+          new Rect(
+              mPaddingLeft, mPaddingTop, mViewWidth - mPaddingRight, mViewHeight - mPaddingBottom),
+          mBorderRadius, mBorderWidthRect, 1.0f, false);
+    }
   }
 
   private void configureBounds(Drawable drawable) {
