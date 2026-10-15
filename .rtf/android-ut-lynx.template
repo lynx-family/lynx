@@ -10,6 +10,7 @@ builder({
             "-Penable_lynx_android_test=true",
             "-Penable_coverage=true",
         ],
+        "batch_build": True,
         "workspace": "platform/android",
         "type": "gradle",
     }
