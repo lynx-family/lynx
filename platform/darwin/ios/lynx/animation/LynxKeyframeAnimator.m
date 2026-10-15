@@ -10,6 +10,7 @@
 #import <Lynx/LynxGlobalObserver.h>
 #import <Lynx/LynxKeyframeAnimator.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxPlatformAnimation.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
@@ -66,9 +67,25 @@ static const double kAnimationIterationCountInfinite = 1E9;
 @end
 
 #pragma mark - LynxKeyframeAnimator
+@implementation LynxPlatformAnimationPlayback
+@end
+
 @interface LynxKeyframeAnimator ()
 @property(nonatomic, strong, nullable) LynxAnimationInfo* info;
 @property(nonatomic, assign) LynxKFAnimatorState state;
+@property(nonatomic, assign) uint32_t platformAnimationGeneration;
+@property(nonatomic, copy) LynxTypedKeyframesProvider typedKeyframesProvider;
+@property(nonatomic, strong) LynxPlatformAnimationPlayback* platformPlayback;
+- (BOOL)claimPlatformEvent:(NSString*)event;
+- (void)stopObservingAnimation;
+- (void)sendStartEvent:(LynxAnimationInfo*)info;
+- (void)sendEndEvent:(LynxAnimationInfo*)info finished:(BOOL)finished;
+- (void)apply:(LynxAnimationInfo*)info forceReapply:(BOOL)forceReapply;
+- (void)applyInstantAnimation:(LynxAnimationInfo*)info;
++ (nullable LynxKeyframeParsedData*)buildParsedTransformKeyframes:
+                                        (NSArray<NSArray<LynxTransformRaw*>*>*)keyframes
+                                                            times:(NSArray<NSNumber*>*)times
+                                                               ui:(LynxUI*)ui;
 @end
 
 @implementation LynxKeyframeAnimator {
@@ -78,6 +95,14 @@ static const double kAnimationIterationCountInfinite = 1E9;
   PauseTimeHelper* _pauseTimeHelper;
   LynxAnimationDelegate* _delegate;
   CADisplayLink* _displayLink;
+  // Pair this executor's observer notifications independently of JS events.
+  LynxGlobalObserver* _animationObserver;
+  // Invalidates pending instant-animation completion callbacks. For example,
+  // pausing during delay and then resuming schedules a new completion, but the
+  // old dispatch_after block still runs. Its revision must no longer match,
+  // otherwise it could finish the resumed animation before the remaining delay
+  // elapses. Checking the running state alone cannot distinguish these callbacks.
+  uint64_t _instantAnimationRevision;
 }
 
 static NSString* const kTransformStr = @"transform";
@@ -89,6 +114,7 @@ static NSString* const kBackgroundColorStr = @"backgroundColor";
 static NSString* const kTransformRotationXStr = @"transform.rotation.x";
 static NSString* const kTransformRotationYStr = @"transform.rotation.y";
 static NSString* const kTransformRotationZStr = @"transform.rotation.z";
+static NSString* const kPlatformAnimationGenerationKey = @"lynxPlatformAnimationGeneration";
 static const CATransform3D kEmptyCATransform3D = {0};
 
 + (NSString*)kTransformStr {
@@ -121,20 +147,32 @@ static const CATransform3D kEmptyCATransform3D = {0};
 
 #pragma mark - public function
 - (void)apply:(LynxAnimationInfo*)info {
+  [self apply:info forceReapply:NO];
+}
+
+- (void)reapply {
+  [self apply:_info];
+}
+
+- (void)apply:(LynxAnimationInfo*)info forceReapply:(BOOL)forceReapply {
+  if (info == nil) {
+    return;
+  }
   switch (_state) {
     case LynxKFAnimatorStateIdle:
     case LynxKFAnimatorStateCanceled:
     case LynxKFAnimatorStateCanceledLegacy: {
       if ([info isEqualToKeyframeInfo:_info] && _state == LynxKFAnimatorStateIdle &&
-          ![self shouldReInitTransform]) {
+          ![self shouldReInitTransform] && !forceReapply) {
         return;
       }
       // iOS-specific state : LynxKFAnimatorStateCanceledLegacy. In order to keep the legacy logic
       // consistent in legacy mode, we should return here.
-      if ([info isEqualToKeyframeInfo:_info] && _state == LynxKFAnimatorStateCanceledLegacy) {
+      if ([info isEqualToKeyframeInfo:_info] && _state == LynxKFAnimatorStateCanceledLegacy &&
+          !forceReapply) {
         return;
       }
-      if (info.iterationCount <= 0 || info.duration <= 0) {
+      if (_typedKeyframesProvider == nil && (info.iterationCount <= 0 || info.duration <= 0)) {
         return;
       }
       [self applyAnimationInfo:info];
@@ -143,10 +181,10 @@ static const CATransform3D kEmptyCATransform3D = {0};
 
     case LynxKFAnimatorStatePaused:
     case LynxKFAnimatorStateRunning: {
-      if ([info isEqualToKeyframeInfo:_info] && ![self shouldReInitTransform]) {
+      if ([info isEqualToKeyframeInfo:_info] && ![self shouldReInitTransform] && !forceReapply) {
         return;
       }
-      if ([info isOnlyPlayStateChanged:_info]) {
+      if ([info isOnlyPlayStateChanged:_info] && !forceReapply) {
         if (_state == LynxKFAnimatorStatePaused) {
           [self resume:info];
         } else {
@@ -154,7 +192,7 @@ static const CATransform3D kEmptyCATransform3D = {0};
         }
       } else {
         [self cancel];
-        [self apply:info];
+        [self apply:info forceReapply:forceReapply];
       }
       break;
     }
@@ -163,7 +201,49 @@ static const CATransform3D kEmptyCATransform3D = {0};
   }
 }
 
+// Both inputs use the same lifecycle. A provider retains only normalized
+// values and rebuilds frame-dependent platform matrices without parsing CSS.
+- (void)applyAnimationInfo:(LynxAnimationInfo*)info
+         keyframesProvider:(LynxTypedKeyframesProvider)provider
+            reuseKeyframes:(BOOL)reuseKeyframes
+                generation:(uint32_t)generation {
+  if (info == nil) {
+    return;
+  }
+  // Reuse commands may omit the provider, but size changes still need it.
+  if (reuseKeyframes && provider == nil) {
+    provider = _typedKeyframesProvider;
+  }
+  LynxKeyframeParsedData* parsedKeyframes =
+      reuseKeyframes && _keyframeParsedData != nil && ![self shouldReInitTransform]
+          ? _keyframeParsedData
+          : (provider ? provider(_ui) : nil);
+  if (parsedKeyframes == nil) {
+    return;
+  }
+  BOOL sameValues = [_keyframeParsedData.keyframeValues isEqual:parsedKeyframes.keyframeValues] &&
+                    [_keyframeParsedData.keyframeTimes isEqual:parsedKeyframes.keyframeTimes];
+  _typedKeyframesProvider = [provider copy];
+  _platformAnimationGeneration = generation;
+  _keyframeParsedData = parsedKeyframes;
+  NSMutableDictionary* currentStyles = [self recordLayerStyles];
+  [currentStyles addEntriesFromDictionary:_propertyOriginValue ?: @{}];
+  _propertyOriginValue = currentStyles;
+  // Resume reuses the existing CAAnimation objects, so refresh their tokens.
+  for (CAKeyframeAnimation* animation in _internalAnimators.allValues) {
+    [animation setValue:@(generation) forKey:kPlatformAnimationGenerationKey];
+  }
+  // An initial pause is deferred until the next runloop. If a running update
+  // arrives first, rebuild with the new token instead of pausing that update.
+  BOOL onlyPauseOrResume =
+      sameValues && [info isOnlyPlayStateChanged:_info] &&
+      ((_state == LynxKFAnimatorStatePaused && info.playState == LynxAnimationPlayStateRunning) ||
+       (_state == LynxKFAnimatorStateRunning && info.playState == LynxAnimationPlayStatePaused));
+  [self apply:info forceReapply:!onlyPauseOrResume];
+}
+
 - (void)dealloc {
+  [self stopObservingAnimation];
   if (_displayLink) {
     [_displayLink invalidate];
     _displayLink = nil;
@@ -174,7 +254,9 @@ static const CATransform3D kEmptyCATransform3D = {0};
   if (_autoResumeAnimation &&
       (_state == LynxKFAnimatorStateCanceled || _state == LynxKFAnimatorStateRunning ||
        _state == LynxKFAnimatorStatePaused)) {
-    [_ui.context.observer notifyAnimationEnd];
+    if (![self claimPlatformEvent:(NSString*)kAnimationEventCancel]) {
+      return;
+    }
     [LynxAnimationDelegate sendAnimationEvent:_ui
                                     eventName:(NSString*)kAnimationEventCancel
                                   eventParams:@{
@@ -185,7 +267,54 @@ static const CATransform3D kEmptyCATransform3D = {0};
   }
 }
 
+- (BOOL)claimPlatformEvent:(NSString*)event {
+  return _platformPlayback == nil || _platformPlayback.claimEvent(event);
+}
+
+- (void)stopObservingAnimation {
+  LynxGlobalObserver* observer = _animationObserver;
+  _animationObserver = nil;
+  [observer notifyAnimationEnd];
+}
+
+- (void)sendStartEvent:(LynxAnimationInfo*)info {
+  if ([self claimPlatformEvent:(NSString*)kAnimationEventStart]) {
+    [LynxAnimationDelegate sendAnimationEvent:_ui
+                                    eventName:(NSString*)kAnimationEventStart
+                                  eventParams:@{
+                                    @"animation_type" : @"keyframe-animation",
+                                    @"animation_name" : info.name
+                                  }];
+  }
+}
+
+- (void)sendEndEvent:(LynxAnimationInfo*)info finished:(BOOL)finished {
+  if ([self claimPlatformEvent:(NSString*)kAnimationEventEnd]) {
+    [LynxAnimationDelegate sendAnimationEvent:_ui
+                                    eventName:(NSString*)kAnimationEventEnd
+                                  eventParams:@{
+                                    @"animation_type" : @"keyframe-animation",
+                                    @"animation_name" : info.name,
+                                    @"finished" : @(finished)
+                                  }];
+  }
+}
+
+- (void)detachPlatformAnimation {
+  ++_instantAnimationRevision;
+  ++_platformAnimationGeneration;
+  [_displayLink invalidate];
+  _displayLink = nil;
+  _state = LynxKFAnimatorStateDestroy;
+  [self stopObservingAnimation];
+  [self removeAllAnimationFromLayer:_info];
+  _internalAnimators = nil;
+  // The next executor supplies the sampled style in this UI update. Restoring
+  // the old base style here would overwrite it, especially after a pause.
+}
+
 - (void)destroy {
+  ++_instantAnimationRevision;
   [_displayLink invalidate];
   _displayLink = nil;
   // Special case in iOS.
@@ -252,6 +381,8 @@ static const CATransform3D kEmptyCATransform3D = {0};
 
 - (void)attachToUI:(LynxUI*)ui {
   _ui = ui;
+  _pauseTimeHelper.ui = ui;
+  // Detach removed the layer animations; unchanged info still needs reapplying.
   [self applyAnimationInfo:_info];
 }
 
@@ -278,6 +409,16 @@ static const CATransform3D kEmptyCATransform3D = {0};
                    if (!strongSelf) {
                      return;
                    }
+                   if (strongSelf.platformPlayback != nil &&
+                       (!strongSelf.platformPlayback.isCurrentExecutor() ||
+                        strongSelf.state != LynxKFAnimatorStateRunning)) {
+                     return;
+                   }
+                   NSNumber* generation = [anim valueForKey:kPlatformAnimationGenerationKey];
+                   if (generation != nil &&
+                       generation.unsignedIntValue != strongSelf.platformAnimationGeneration) {
+                     return;
+                   }
 
                    // Send animation end event only if animator's state
                    // is running.
@@ -285,22 +426,14 @@ static const CATransform3D kEmptyCATransform3D = {0};
                      // send animation end event
                      if ((strongSelf.autoResumeAnimation && finished) ||
                          !strongSelf.autoResumeAnimation) {
-                       // Notify animation did stop.
-                       [strongSelf.ui.context.observer notifyAnimationEnd];
-                       [LynxAnimationDelegate
-                           sendAnimationEvent:strongSelf.ui
-                                    eventName:(NSString*)kAnimationEventEnd
-                                  eventParams:@{
-                                    @"animation_type" : @"keyframe-animation",
-                                    @"animation_name" : strongSelf.info.name,
-                                    @"finished" : [NSNumber numberWithBool:finished]
-                                  }];
+                       [strongSelf sendEndEvent:strongSelf.info finished:finished];
                      }
                    }
                    // Legacy code. When `finished` is false and autoResumeAnimation is disabled,
                    // just change state and return to avoid break change.
                    if (!finished && !strongSelf.autoResumeAnimation) {
                      strongSelf.state = LynxKFAnimatorStateCanceledLegacy;
+                     [strongSelf stopObservingAnimation];
                      return;
                    }
 
@@ -326,9 +459,15 @@ static const CATransform3D kEmptyCATransform3D = {0};
   double allDuration = info.iterationCount >= kAnimationIterationCountInfinite
                            ? DBL_MAX
                            : info.duration * info.iterationCount + info.delay;
+  if (_typedKeyframesProvider != nil && (info.duration <= 0 || info.iterationCount <= 0)) {
+    allDuration = info.delay;
+  }
 
-  return ([_ui.view.layer convertTime:getSyncedTimestamp() fromLayer:nil] - _keyframeStartTime >=
-          allDuration);
+  CFTimeInterval currentTime =
+      _platformPlayback != nil
+          ? _platformPlayback.currentTime()
+          : [_ui.view.layer convertTime:getSyncedTimestamp() fromLayer:nil] - _keyframeStartTime;
+  return currentTime >= allDuration;
 }
 
 // Check whether is percentage transform keyframe.
@@ -342,7 +481,13 @@ static const CATransform3D kEmptyCATransform3D = {0};
   return NO;
 }
 
-- (NSDictionary*)getKeyframeEndStyles {
+- (NSDictionary*)getForwardsFillStyles {
+  // With zero iterations, forwards fill uses the start of the first iteration
+  // in the playback direction, rather than always using the 100% keyframe.
+  if (_typedKeyframesProvider != nil && _info.iterationCount <= 0) {
+    return [LynxAnimationInfo isDirectionReverse:_info] ? _keyframeParsedData.endStyles
+                                                        : _keyframeParsedData.beginStyles;
+  }
   BOOL isAlternate = [LynxAnimationInfo isDirectionAlternate:_info];
   BOOL isReverse = [LynxAnimationInfo isDirectionReverse:_info];
   BOOL isIterCountOdd = ((uint64_t)_info.iterationCount % 2 != 0);
@@ -507,7 +652,26 @@ static const CATransform3D kEmptyCATransform3D = {0};
   NSAssert(info.playState == LynxAnimationPlayStatePaused, @"info.playState must be paused");
   NSAssert(_state == LynxKFAnimatorStateRunning, @"_state must be running");
 
+  ++_instantAnimationRevision;
   _state = LynxKFAnimatorStatePaused;
+  if (_typedKeyframesProvider != nil && (info.duration <= 0 || info.iterationCount <= 0)) {
+    [_pauseTimeHelper recordPauseTime];
+    _info = info;
+    return;
+  }
+  if (_platformPlayback != nil) {
+    // Freeze at logical time, including a pause transferred from New Animator.
+    // No presentation-layer snapshot from the previous executor is required.
+    for (NSString* key in _internalAnimators) {
+      CAKeyframeAnimation* animator = _internalAnimators[key];
+      animator.speed = 0;
+      animator.beginTime = 0;
+      animator.timeOffset = _platformPlayback.currentTime() - info.delay;
+      [self addAnimationToLayer:key name:info.name animator:animator];
+    }
+    _info = info;
+    return;
+  }
   NSDictionary* layerStyles = [self recordPresentationLayerStyles];
 
   [self removeAllAnimationFromLayer:info];
@@ -524,6 +688,11 @@ static const CATransform3D kEmptyCATransform3D = {0};
   NSAssert(info.playState == LynxAnimationPlayStateRunning, @"info.playState must be running");
   NSAssert(_state == LynxKFAnimatorStatePaused, @"_state must be paused");
 
+  if (_typedKeyframesProvider != nil && (info.duration <= 0 || info.iterationCount <= 0)) {
+    _state = LynxKFAnimatorStateCanceled;
+    [self applyAnimationInfo:info];
+    return;
+  }
   _state = LynxKFAnimatorStateRunning;
   NSArray<NSString*>* keys = [_internalAnimators allKeys];
   // transform's animator.beginTime must be earlier than transform.rotation.x's
@@ -535,7 +704,12 @@ static const CATransform3D kEmptyCATransform3D = {0};
   }];
 
   CFTimeInterval pauseDuration = [_pauseTimeHelper getPauseDuration];
-  _keyframeStartTime += pauseDuration;
+  if (_platformPlayback != nil) {
+    _keyframeStartTime = [_ui.view.layer convertTime:CACurrentMediaTime() fromLayer:nil] -
+                         _platformPlayback.currentTime();
+  } else {
+    _keyframeStartTime += pauseDuration;
+  }
 
   LynxAnimationDelegate* delegate = [_delegate copy];
   for (NSString* key in sortedKeys) {
@@ -544,6 +718,10 @@ static const CATransform3D kEmptyCATransform3D = {0};
       continue;
     }
     animator.beginTime = _keyframeStartTime + info.delay;
+    if (_platformPlayback != nil) {
+      animator.speed = 1;
+      animator.timeOffset = 0;
+    }
     if (delegate) {
       // We only need set delegate to one animator.
       animator.delegate = delegate;
@@ -560,7 +738,9 @@ static const CATransform3D kEmptyCATransform3D = {0};
   if (_state != LynxKFAnimatorStateRunning && _state != LynxKFAnimatorStatePaused) {
     return;
   }
+  ++_instantAnimationRevision;
   _state = LynxKFAnimatorStateCanceled;
+  [self stopObservingAnimation];
 }
 
 - (void)run {
@@ -568,6 +748,10 @@ static const CATransform3D kEmptyCATransform3D = {0};
                _state == LynxKFAnimatorStateCanceledLegacy,
            @"_state must be idle or canceled");
   _state = LynxKFAnimatorStateRunning;
+  if (_animationObserver == nil) {
+    _animationObserver = _ui.context.observer;
+    [_animationObserver notifyAnimationStart];
+  }
 }
 
 - (void)finish {
@@ -578,25 +762,11 @@ static const CATransform3D kEmptyCATransform3D = {0};
   // Restore layer's styles
   NSDictionary* endStyles;
   endStyles = [LynxAnimationInfo isFillModeRemoved:_info] ? _propertyOriginValue
-                                                          : [self getKeyframeEndStyles];
+                                                          : [self getForwardsFillStyles];
   [self restoreLayerStyles:endStyles];
   _state = LynxKFAnimatorStateIdle;
+  [self stopObservingAnimation];
 }
-
-#define SAVE_ROTATION_DATA(type, path_name)                                                        \
-  [self prepareKFValuesAndTimesContainer:path_name];                                               \
-  setRotationValues(currentRotation##type, currentMoment, previousRotation##type##Value,           \
-                    previousRotation##type##KeyTimes,                                              \
-                    _keyframeParsedData.keyframeValues[path_name],                                 \
-                    _keyframeParsedData.keyframeTimes[path_name]);                                 \
-  previousRotation##type##Value = currentRotation##type;                                           \
-  previousRotation##type##KeyTimes = currentMoment;                                                \
-  if ([currentMoment floatValue] == 0.0f) {                                                        \
-    _keyframeParsedData.beginStyles[path_name] = [NSNumber numberWithFloat:currentRotation##type]; \
-  } else if ([currentMoment floatValue] == 1.0f) {                                                 \
-    _keyframeParsedData.endStyles[path_name] = [NSNumber numberWithFloat:currentRotation##type];   \
-    ;                                                                                              \
-  }
 
 // adding rotation keyframes algorithm:
 // For all n rotations, we have moment[1], moment[2]...moment[n] and rotation[1],
@@ -626,6 +796,123 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
     [values addObject:[NSNumber numberWithFloat:currentRotation]];
     [moments addObject:currentMoment];
   }
+}
+
+// Shared by raw CSS parsing and typed keyframes construction.
+static void AppendRotationKeyframe(LynxKeyframeParsedData* parsedData, NSString* key,
+                                   NSNumber* time, BOOL hasRotation, CGFloat rotation,
+                                   CGFloat* previousRotation, NSNumber** previousTime) {
+  NSMutableArray<NSNumber*>* values = parsedData.keyframeValues[key];
+  if (values == nil) {
+    values = [[NSMutableArray alloc] init];
+    parsedData.keyframeValues[key] = values;
+  }
+  NSMutableArray<NSNumber*>* keyTimes = parsedData.keyframeTimes[key];
+  if (keyTimes == nil) {
+    keyTimes = [[NSMutableArray alloc] init];
+    parsedData.keyframeTimes[key] = keyTimes;
+  }
+
+  const CGFloat value = hasRotation ? rotation : 0;
+  if (!hasRotation || (*previousTime != nil && value == *previousRotation)) {
+    // Keep constant and identity frames at their declared offsets as well.
+    [values addObject:@(value)];
+    [keyTimes addObject:time];
+  } else {
+    setRotationValues(value, time, *previousRotation, *previousTime, values, keyTimes);
+  }
+  *previousRotation = value;
+  *previousTime = time;
+  if (time.doubleValue == 0.0) {
+    parsedData.beginStyles[key] = @(value);
+  } else if (time.doubleValue == 1.0) {
+    parsedData.endStyles[key] = @(value);
+  }
+}
+
++ (nullable LynxKeyframeParsedData*)buildParsedTransformKeyframes:
+                                        (NSArray<NSArray<LynxTransformRaw*>*>*)keyframes
+                                                            times:(NSArray<NSNumber*>*)times
+                                                               ui:(LynxUI*)ui {
+  if (keyframes.count < 2 || keyframes.count != times.count || ui == nil) {
+    return nil;
+  }
+
+  LynxKeyframeParsedData* parsedData = [[LynxKeyframeParsedData alloc] init];
+  NSMutableArray* transformValues = [[NSMutableArray alloc] init];
+  NSMutableArray<NSNumber*>* transformTimes = [[NSMutableArray alloc] init];
+
+  BOOL performRotateZInMatrix = YES;
+  CGFloat lastRotateZ = 0;
+  for (NSArray<LynxTransformRaw*>* transformRaw in keyframes) {
+    CGFloat rotateZ = [LynxTransformRaw getRotateZRad:transformRaw];
+    if (fabs(rotateZ - lastRotateZ) >= M_PI) {
+      performRotateZInMatrix = NO;
+      break;
+    }
+    lastRotateZ = rotateZ;
+  }
+
+  CGFloat previousRotationX = 0;
+  CGFloat previousRotationY = 0;
+  CGFloat previousRotationZ = 0;
+  NSNumber* previousRotationXTime = nil;
+  NSNumber* previousRotationYTime = nil;
+  NSNumber* previousRotationZTime = nil;
+
+  for (NSUInteger index = 0; index < keyframes.count; ++index) {
+    NSArray<LynxTransformRaw*>* transformRaw = keyframes[index];
+    NSNumber* time = times[index];
+    char rotationType = LynxTransformRotationNone;
+    CGFloat rotationX = 0;
+    CGFloat rotationY = 0;
+    CGFloat rotationZ = 0;
+    CATransform3D transformWithoutRotate = CATransform3DIdentity;
+    CATransform3D transformWithoutRotateXY = CATransform3DIdentity;
+    [LynxConverter toCATransform3D:transformRaw
+                                ui:ui
+                          newFrame:ui.updatedFrame
+            transformWithoutRotate:&transformWithoutRotate
+          transformWithoutRotateXY:&transformWithoutRotateXY
+                      rotationType:&rotationType
+                         rotationX:&rotationX
+                         rotationY:&rotationY
+                         rotationZ:&rotationZ];
+
+    CATransform3D matrix =
+        performRotateZInMatrix ? transformWithoutRotateXY : transformWithoutRotate;
+    [transformValues addObject:[NSValue valueWithCATransform3D:matrix]];
+    [transformTimes addObject:time];
+    if (time.doubleValue == 0.0) {
+      parsedData.beginStyles[kTransformStr] =
+          transformRaw.count > 0 ? transformRaw : [NSValue valueWithCATransform3D:matrix];
+    } else if (time.doubleValue == 1.0) {
+      parsedData.endStyles[kTransformStr] =
+          transformRaw.count > 0 ? transformRaw : [NSValue valueWithCATransform3D:matrix];
+    }
+
+    AppendRotationKeyframe(parsedData, kTransformRotationXStr, time,
+                           rotationType & LynxTransformRotationX, rotationX, &previousRotationX,
+                           &previousRotationXTime);
+    AppendRotationKeyframe(parsedData, kTransformRotationYStr, time,
+                           rotationType & LynxTransformRotationY, rotationY, &previousRotationY,
+                           &previousRotationYTime);
+    if (!performRotateZInMatrix) {
+      AppendRotationKeyframe(parsedData, kTransformRotationZStr, time,
+                             rotationType & LynxTransformRotationZ, rotationZ, &previousRotationZ,
+                             &previousRotationZTime);
+    }
+  }
+
+  parsedData.keyframeValues[kTransformStr] = transformValues;
+  parsedData.keyframeTimes[kTransformStr] = transformTimes;
+  for (NSArray<LynxTransformRaw*>* transformRaw in keyframes) {
+    if ([LynxTransformRaw hasPercent:transformRaw]) {
+      parsedData.isPercentTransform = YES;
+      break;
+    }
+  }
+  return parsedData;
 }
 
 - (void)prepareKFValuesAndTimesContainer:(NSString*)key {
@@ -742,39 +1029,16 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
           _keyframeParsedData.endStyles[kTransformStr] = transformRawArr;
         }
 
-        if (rotationType & LynxTransformRotationX) {
-          SAVE_ROTATION_DATA(X, kTransformRotationXStr);
-        } else {
-          [self prepareKFValuesAndTimesContainer:kTransformRotationXStr];
-          [_keyframeParsedData.keyframeValues[kTransformRotationXStr]
-              addObject:[NSNumber numberWithFloat:0]];
-          [_keyframeParsedData.keyframeTimes[kTransformRotationXStr] addObject:currentMoment];
-          previousRotationXValue = 0;
-          previousRotationXKeyTimes = currentMoment;
-        }
-
-        if (rotationType & LynxTransformRotationY) {
-          SAVE_ROTATION_DATA(Y, kTransformRotationYStr);
-        } else {
-          [self prepareKFValuesAndTimesContainer:kTransformRotationYStr];
-          [_keyframeParsedData.keyframeValues[kTransformRotationYStr]
-              addObject:[NSNumber numberWithFloat:0]];
-          [_keyframeParsedData.keyframeTimes[kTransformRotationYStr] addObject:currentMoment];
-          previousRotationYValue = 0;
-          previousRotationYKeyTimes = currentMoment;
-        }
-
+        AppendRotationKeyframe(_keyframeParsedData, kTransformRotationXStr, currentMoment,
+                               rotationType & LynxTransformRotationX, currentRotationX,
+                               &previousRotationXValue, &previousRotationXKeyTimes);
+        AppendRotationKeyframe(_keyframeParsedData, kTransformRotationYStr, currentMoment,
+                               rotationType & LynxTransformRotationY, currentRotationY,
+                               &previousRotationYValue, &previousRotationYKeyTimes);
         if (!performRotateZInMatrix) {
-          if (rotationType & LynxTransformRotationZ) {
-            SAVE_ROTATION_DATA(Z, kTransformRotationZStr);
-          } else {
-            [self prepareKFValuesAndTimesContainer:kTransformRotationZStr];
-            [_keyframeParsedData.keyframeValues[kTransformRotationZStr]
-                addObject:[NSNumber numberWithFloat:0]];
-            [_keyframeParsedData.keyframeTimes[kTransformRotationZStr] addObject:currentMoment];
-            previousRotationZValue = 0;
-            previousRotationZKeyTimes = currentMoment;
-          }
+          AppendRotationKeyframe(_keyframeParsedData, kTransformRotationZStr, currentMoment,
+                                 rotationType & LynxTransformRotationZ, currentRotationZ,
+                                 &previousRotationZValue, &previousRotationZKeyTimes);
         }
       } else if ([key isEqualToString:kOpacityStr]) {
         [self prepareKFValuesAndTimesContainer:kOpacityStr];
@@ -852,13 +1116,29 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
   }
 
   if (_keyframeParsedData == nil || [self shouldReInitTransform]) {
-    [self parseKeyframes:info];
+    if (_typedKeyframesProvider != nil) {
+      _keyframeParsedData = _typedKeyframesProvider(_ui);
+      if (_keyframeParsedData == nil) {
+        return;
+      }
+    } else {
+      [self parseKeyframes:info];
+    }
   }
 
   // We will use '_keyframeStartTime' to get play time later, so should update '_keyframeStartTime'
   // ahead here.
-  if (_keyframeStartTime != kTimeNotInit && info.playState == LynxAnimationPlayStateRunning) {
+  if (_platformPlayback != nil) {
+    _keyframeStartTime = [_ui.view.layer convertTime:CACurrentMediaTime() fromLayer:nil] -
+                         _platformPlayback.currentTime();
+  } else if (_keyframeStartTime != kTimeNotInit &&
+             info.playState == LynxAnimationPlayStateRunning) {
     _keyframeStartTime += [_pauseTimeHelper getPauseDuration];
+  }
+
+  if (_typedKeyframesProvider != nil && (info.duration <= 0 || info.iterationCount <= 0)) {
+    [self applyInstantAnimation:info];
+    return;
   }
 
   _internalAnimators = [[NSMutableDictionary alloc] init];
@@ -897,6 +1177,9 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
     }
     animator.values = _keyframeParsedData.keyframeValues[key];
     animator.keyTimes = _keyframeParsedData.keyframeTimes[key];
+    if (_platformAnimationGeneration != 0) {
+      [animator setValue:@(_platformAnimationGeneration) forKey:kPlatformAnimationGenerationKey];
+    }
 
     [self addAnimationToLayer:key name:info.name animator:animator];
     _internalAnimators[key] = animator;
@@ -906,14 +1189,7 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
     // Send animation start event
     // only send start event when state is IDLE.
     if (_state == LynxKFAnimatorStateIdle) {
-      // Notify animation will start.
-      [_ui.context.observer notifyAnimationStart];
-      [LynxAnimationDelegate sendAnimationEvent:_ui
-                                      eventName:(NSString*)kAnimationEventStart
-                                    eventParams:@{
-                                      @"animation_type" : @"keyframe-animation",
-                                      @"animation_name" : info.name
-                                    }];
+      [self sendStartEvent:info];
     }
 
     // Change animator state
@@ -921,16 +1197,29 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
     if (info.playState == LynxAnimationPlayStatePaused) {
       // If the initial play state is paused, we should post the pause task to next runloop in order
       // to getting correct styles from presentation layer.
-      if (firstTimeApplied) {
+      if (firstTimeApplied && _platformPlayback == nil) {
         __weak LynxKeyframeAnimator* weakSelf = self;
+        const uint32_t generation = _platformAnimationGeneration;
         dispatch_async(dispatch_get_main_queue(), ^{
           __strong LynxKeyframeAnimator* strongSelf = weakSelf;
-          [strongSelf pause:strongSelf.info];
+          if (strongSelf.platformAnimationGeneration == generation &&
+              strongSelf.state == LynxKFAnimatorStateRunning &&
+              strongSelf.info.playState == LynxAnimationPlayStatePaused) {
+            [strongSelf pause:strongSelf.info];
+          }
         });
       } else {
         [self pause:info];
       }
     }
+  } else if (_platformPlayback != nil) {
+    // The logical animation can already be finished when the UI receives a
+    // handoff. Apply its updated fill without restarting native playback.
+    _info = info;
+    [self sendStartEvent:info];
+    [self run];
+    [self finish];
+    [self sendEndEvent:info finished:YES];
   } else {
     // Special case in iOS. IOS may cancel animation sometimes, so we should try to resume animation
     // even if animation is expired when _autoResumeAnimation is enabled.
@@ -940,6 +1229,65 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
   }
 
   _info = info;
+}
+
+// CAAnimation treats a zero duration as a default duration. Complete the
+// typed effect explicitly instead, retaining delay, fill and pause semantics.
+- (void)applyInstantAnimation:(LynxAnimationInfo*)info {
+  const BOOL firstTime = _keyframeStartTime == kTimeNotInit;
+  const BOOL alreadyFinished = _platformPlayback == nil && !firstTime &&
+                               _state == LynxKFAnimatorStateIdle && [self isAnimationExpired:info];
+  const CFTimeInterval now = [_ui.view.layer
+      convertTime:(_platformPlayback != nil ? CACurrentMediaTime() : getSyncedTimestamp())
+        fromLayer:nil];
+  if (firstTime) {
+    _keyframeStartTime = now;
+  }
+  _info = info;
+  [self run];
+  if (alreadyFinished) {
+    // Reordering an effect may update its fill, but must not emit another end.
+    [self finish];
+    return;
+  }
+  if (firstTime || _platformPlayback != nil) {
+    [self sendStartEvent:info];
+  }
+  if (_platformPlayback != nil && [self isAnimationExpired:info]) {
+    // Apply completed fill even when the handoff arrives paused.
+    [self finish];
+    [self sendEndEvent:info finished:YES];
+    return;
+  }
+  if ([info.fillMode isEqualToString:kCAFillModeBackwards] ||
+      [info.fillMode isEqualToString:kCAFillModeBoth]) {
+    [self restoreLayerStyles:[LynxAnimationInfo isDirectionReverse:info]
+                                 ? _keyframeParsedData.endStyles
+                                 : _keyframeParsedData.beginStyles];
+  } else {
+    [self restoreLayerStyles:_propertyOriginValue];
+  }
+  if (info.playState == LynxAnimationPlayStatePaused) {
+    [self pause:info];
+    return;
+  }
+  const uint64_t revision = ++_instantAnimationRevision;
+  const uint32_t generation = _platformAnimationGeneration;
+  const double remainingDelay = MAX(0, _keyframeStartTime + info.delay - now);
+  __weak LynxKeyframeAnimator* weakSelf = self;
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(remainingDelay * NSEC_PER_SEC)),
+                 dispatch_get_main_queue(), ^{
+                   __strong LynxKeyframeAnimator* strongSelf = weakSelf;
+                   if (strongSelf == nil || strongSelf->_instantAnimationRevision != revision ||
+                       strongSelf.platformAnimationGeneration != generation ||
+                       strongSelf.state != LynxKFAnimatorStateRunning ||
+                       (strongSelf.platformPlayback != nil &&
+                        !strongSelf.platformPlayback.isCurrentExecutor())) {
+                     return;
+                   }
+                   [strongSelf finish];
+                   [strongSelf sendEndEvent:info finished:YES];
+                 });
 }
 
 - (void)addAnimationToLayer:(NSString*)key
@@ -1003,7 +1351,5 @@ void setRotationValues(CGFloat currentRotation, NSNumber* currentMoment, CGFloat
     }
   }
 }
-
-#undef SAVE_ROTATION_DATA
 
 @end

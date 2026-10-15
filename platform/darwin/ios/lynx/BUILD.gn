@@ -186,6 +186,7 @@ subspec_target("lynx") {
     "animation/LynxKeyframeManager.m",
     "animation/LynxKeyframes.m",
     "animation/LynxLayoutAnimationManager.m",
+    "animation/LynxPlatformAnimation.h",
     "animation/LynxTransitionAnimationManager.m",
     "base/LynxBoxShadowManager.m",
     "base/LynxConverter+Transform.m",
