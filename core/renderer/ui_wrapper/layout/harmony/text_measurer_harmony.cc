@@ -175,6 +175,15 @@ void ApplyTextStyle(TextElement* element, float density,
     text_style.SetTextDecorationColor(*attributes->text_decoration_color);
   }
   text_style.SetTextDecorationStyle(attributes->text_decoration_style);
+  if (attributes->text_shadow.has_value() &&
+      !attributes->text_shadow->empty()) {
+    const auto& shadow = attributes->text_shadow->front();
+    text_style.SetShadowLayer(
+        harmony::ShadowData{.blur_radius = shadow.blur * density,
+                            .x = shadow.h_offset * density,
+                            .y = shadow.v_offset * density,
+                            .color = shadow.color});
+  }
   text_style.UpdateTextPaint(0.f, 0.f, density);
 }
 
@@ -199,7 +208,6 @@ void ApplyParagraphStyle(TextElement* element, float density,
 
   paragraph_style.SetTextAlignToParagraphStyle(attributes->text_align);
   paragraph_style.SetWhiteSpace(attributes->white_space);
-  paragraph_style.SetTextWordBreakType(attributes->word_break);
 
   int32_t max_lines = starlight::DefaultComputedStyle::DEFAULT_TEXT_MAX_LINE;
   if (const auto* text_props = element->text_props();
@@ -209,6 +217,7 @@ void ApplyParagraphStyle(TextElement* element, float density,
   if (attributes->white_space == starlight::WhiteSpaceType::kNowrap &&
       attributes->text_overflow == starlight::TextOverflowType::kEllipsis) {
     max_lines = 1;
+    paragraph_style.SetTextWordBreakType(starlight::WordBreakType::kBreakAll);
   }
   paragraph_style.SetTextMaxLines(max_lines);
   if (attributes->text_overflow == starlight::TextOverflowType::kEllipsis) {
@@ -549,7 +558,18 @@ LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
   auto paragraph = builder.CreateParagraph(font_collection_, width);
   const auto measure_width_mode = static_cast<SLMeasureMode>(width_mode);
   const auto measure_height_mode = static_cast<SLMeasureMode>(height_mode);
-  const float max_width = IsSLIndefiniteMode(measure_width_mode)
+  const auto& attributes =
+      text_element->computed_css_style()->GetTextAttributes();
+  const auto white_space = attributes.has_value()
+                               ? attributes->white_space
+                               : starlight::WhiteSpaceType::kNormal;
+  const auto text_overflow = attributes.has_value()
+                                 ? attributes->text_overflow
+                                 : starlight::TextOverflowType::kClip;
+  // Match native text layout: nowrap with clipping must not soft-wrap.
+  const bool nowrap_clip = white_space == starlight::WhiteSpaceType::kNowrap &&
+                           text_overflow == starlight::TextOverflowType::kClip;
+  const float max_width = IsSLIndefiniteMode(measure_width_mode) || nowrap_clip
                               ? kTextMaxLayoutWidth
                               : width * density;
   paragraph->Layout(max_width);
@@ -573,14 +593,6 @@ LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
     result.height_ = std::min(result.height_, height);
   }
 
-  const auto& attributes =
-      text_element->computed_css_style()->GetTextAttributes();
-  const auto white_space = attributes.has_value()
-                               ? attributes->white_space
-                               : starlight::WhiteSpaceType::kNormal;
-  const auto text_overflow = attributes.has_value()
-                                 ? attributes->text_overflow
-                                 : starlight::TextOverflowType::kClip;
   if (!IsSLDefiniteMode(measure_width_mode) ||
       white_space == starlight::WhiteSpaceType::kNowrap) {
     float text_width = paragraph->GetLongestLine();
