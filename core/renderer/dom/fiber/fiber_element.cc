@@ -4192,13 +4192,8 @@ void Element::RecursivelyMarkChildrenCSSVariableDirty(
     const lepus::Value &css_variable_updated) {
   for (const auto &child : scoped_children_) {
     auto *fiber_child = child.get();
-    if (IsCSSInlineVariablesEnabled()) {
-      // Entering RecursivelyMarkChildrenCSSVariableDirty means current
-      // element's CSS variables changed.
-      // Mark children's custom_properties dirty so CollectCustomProperties can
-      // pick up the latest values.
-      fiber_child->MarkCustomPropertiesDirty();
-    }
+    // Queries can populate the cache even when inline variables are disabled.
+    fiber_child->MarkCustomPropertiesDirty();
     if (fiber_child->is_raw_text()) {
       continue;
     }

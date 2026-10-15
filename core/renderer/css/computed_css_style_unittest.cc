@@ -585,6 +585,38 @@ TEST(ComputedCSSStyleTest, CopyFromPreservesComputedCssStateIndependently) {
   EXPECT_EQ(unchanged_source.value().AsStdString(), "blue");
 }
 
+TEST(ComputedCSSStyleTest, InheritCustomPropertiesUsesComputedValues) {
+  starlight::ComputedCSSStyle parent{1.f, 1.f};
+  parent.SetCustomProperty(base::String("--base"),
+                           CSSValue::MakePlainString("blue"));
+  parent.SetCustomProperty(base::String("--accent"),
+                           ParseVariableValue("var(--base)"));
+  parent.FinalizeCustomProperties();
+
+  starlight::ComputedCSSStyle child{1.f, 1.f};
+  child.InheritCustomPropertiesFrom(parent);
+  child.SetCustomProperty(base::String("--base"),
+                          CSSValue::MakePlainString("green"));
+  child.SetCustomProperty(base::String("--local"),
+                          ParseVariableValue("var(--accent)"));
+  child.FinalizeCustomProperties();
+
+  const std::pair<const char*, const char*> expectations[] = {
+      {"--base", "green"},
+      {"--accent", "blue"},
+      {"--local", "blue"},
+  };
+  for (const auto& [key, expected] : expectations) {
+    SCOPED_TRACE(key);
+    auto value = child.ResolveVariable(base::String(key));
+    ASSERT_TRUE(value.has_value());
+    EXPECT_EQ(value->AsStdString(), expected);
+  }
+  auto parent_value = parent.ResolveVariable(base::String("--base"));
+  ASSERT_TRUE(parent_value.has_value());
+  EXPECT_EQ(parent_value->AsStdString(), "blue");
+}
+
 TEST(ComputedCSSStyleTest, InheritHelpersCopyOnlyRequestedState) {
   starlight::ComputedCSSStyle parent{1.f, 1.f};
   starlight::ComputedCSSStyle child{1.f, 1.f};

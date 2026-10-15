@@ -5000,7 +5000,9 @@ lepus_value ComputedCSSStyle::PointerEventsToLepus() {
 
 void ComputedCSSStyle::InheritCustomPropertiesFrom(
     const ComputedCSSStyle& from) {
-  raw_custom_properties_ = from.raw_custom_properties_;
+  // Inherit computed values so the parent's var() expressions are not
+  // re-evaluated against the child's declarations.
+  raw_custom_properties_ = from.resolved_custom_properties_;
   resolved_custom_properties_ = from.resolved_custom_properties_;
 }
 
