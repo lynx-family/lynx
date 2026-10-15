@@ -48,11 +48,12 @@ export default class EntryAbility extends UIAbility {
 
     let initProcessor: LynxInitProcessor = new LynxInitProcessor(this.context);
 
-    // Initialize LynxService first,
-    // as LynxEnv initialization depends on LynxDevToolService from LynxService
+    // Register services before initializing LynxEnv and preparing DevTool.
     initProcessor.initLynxService();
 
-    initProcessor.initLynxEnv();
+    initProcessor.initLynxEnv().catch((error: Error) => {
+      LLog.e(TAG, `Failed to prepare development DevTool support: ${error.message}`);
+    });
     AppStorage.setOrCreate('currentColorMode', this.context.config.colorMode);
   }
 

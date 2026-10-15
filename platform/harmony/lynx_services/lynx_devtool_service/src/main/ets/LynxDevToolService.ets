@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { ILynxDevToolService, LLog, LynxEnv, LynxModuleManager } from '@lynx/lynx';
+import { ILynxDevToolService, LLog, LynxModuleManager } from '@lynx/lynx';
 import { GetJSSourceCallback, ILogBox, OnErrorCallback } from '@lynx/lynx/src/main/ets/devtool_wrapper/ILogBox';
 import { LynxBaseInspectorController } from '@lynx/lynx/src/main/ets/devtool_wrapper/LynxBaseInspectorController';
 import { UIContext } from '@kit.ArkUI';
@@ -10,19 +10,23 @@ import { UIContext } from '@kit.ArkUI';
 export class LynxDevToolService implements ILynxDevToolService {
   private static TAG = 'LynxDevToolService';
   private static devtoolModule?: ESObject;
+  private readonly devtoolModuleReady: Promise<boolean>;
   static instance = new LynxDevToolService();
-  static {
-    const devtool = "@lynx/lynx_devtool";
-    import(devtool)
-      .then((ns: ESObject) => {
-        LynxDevToolService.devtoolModule = ns;
-        LynxEnv.tryInitLynxDebug();
-      }).catch((e: Error) => {
-      LLog.e(LynxDevToolService.TAG, 'load devtool error: ' + e);
-    });
-  }
 
   private constructor() {
+    const devtool = "@lynx/lynx_devtool";
+    this.devtoolModuleReady = import(devtool)
+      .then((ns: ESObject) => {
+        LynxDevToolService.devtoolModule = ns;
+        return true;
+      }).catch((e: Error) => {
+        LLog.e(LynxDevToolService.TAG, 'load devtool error: ' + e);
+        return false;
+      });
+  }
+
+  public waitForDevToolModuleLoaded(): Promise<boolean> {
+    return this.devtoolModuleReady;
   }
 
   public isDevToolModuleLoaded(): boolean {

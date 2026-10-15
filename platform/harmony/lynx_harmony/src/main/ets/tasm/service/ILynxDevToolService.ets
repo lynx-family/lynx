@@ -11,6 +11,9 @@ import { LynxBaseInspectorController } from '../../devtool_wrapper/LynxBaseInspe
 export interface ILynxDevToolService extends IServiceProvider {
   isDevToolModuleLoaded(): boolean
 
+  /** Waits for module loading without initializing DevTool. Returns false if loading fails. */
+  waitForDevToolModuleLoaded?(): Promise<boolean>
+
   connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean
 
   initDevToolSetModule(moduleManager: number[]): void
