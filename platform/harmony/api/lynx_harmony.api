@@ -105,6 +105,7 @@ export class LogBox implements ILogBox {
 }
 
 export class LynxDevToolService implements ILynxDevToolService {
+  public waitForDevToolModuleLoaded(): Promise<boolean>;
   public isDevToolModuleLoaded(): boolean;
   public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
   public initDevToolSetModule(moduleManager: number[]): void;
@@ -485,6 +486,7 @@ export const LynxEnv: LynxEnvironment {
   setAppInfo(appInfo: Map<string, string>): void;
   public enableLynxDebug(enabled: boolean): void;
   public isLynxDebugEnabled(): void;
+  public async prepareDevToolForDevelopmentAfterInit(): Promise<void>;
   public tryInitLynxDebug(): void;
   public isDevtoolComponentAttach(): void;
   public isDevtoolEnabled(): void;
@@ -1585,6 +1587,7 @@ export interface LynxExtensionModule {
 
 export interface ILynxDevToolService {
   isDevToolModuleLoaded(): boolean;
+  waitForDevToolModuleLoaded(): Promise<boolean>;
   connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean;
   initDevToolSetModule(moduleManager: number[]): void;
   initDevToolEnv(): void;

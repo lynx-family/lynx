@@ -120,10 +120,6 @@ napi_value DevToolEnvHarmony::Init(napi_env env, napi_value exports) {
   assert(status == napi_ok);
   status = napi_set_named_property(env, exports, "LynxDevToolEnvHarmony", cons);
   assert(status == napi_ok);
-  // Native module registration is the earliest reliable point where
-  // lynx_devtool is loaded, so initialize DebugRouter sessions here instead of
-  // depending on DevToolEnvHarmony's constructor being touched by a switch API.
-  InitDevToolEnv();
   return exports;
 }
 

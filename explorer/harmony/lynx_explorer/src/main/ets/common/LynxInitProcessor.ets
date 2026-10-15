@@ -18,7 +18,7 @@ export class LynxInitProcessor {
     this.context = context;
   }
 
-  public initLynxEnv() {
+  public initLynxEnv(): Promise<void> {
     LLog.useSysLog(true);
     LynxEnv.initialize(this.context);
     let options = new Map<string, string>();
@@ -26,6 +26,7 @@ export class LynxInitProcessor {
     options.set('AppVersion', '0.0.1');
     LynxEnv.setAppInfo(options);
     this.initXElement();
+    return LynxEnv.prepareDevToolForDevelopmentAfterInit();
   }
 
   public initLynxService(): void {
