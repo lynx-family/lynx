@@ -5518,6 +5518,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.FSP_CONFIG_JSON_STRING FSP_CONFIG_JSON_STRING;
   public com.lynx.tasm.LynxEnvKey.INIT_DISPLAY_METRICS_IN_ENV INIT_DISPLAY_METRICS_IN_ENV;
   public com.lynx.tasm.LynxEnvKey.SETUP_CANVAS_SURFACE_EARLIER SETUP_CANVAS_SURFACE_EARLIER;
+  public com.lynx.tasm.LynxEnvKey.ENABLE_DISMISS_TEXT_SELECTION_MENU_ON_BACKGROUND ENABLE_DISMISS_TEXT_SELECTION_MENU_ON_BACKGROUND;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE SP_KEY_ENABLE_DEBUG_MODE;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD SP_KEY_ENABLE_LAUNCH_RECORD;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_FORCE_DISABLE_QUICKJS_CACHE SP_KEY_FORCE_DISABLE_QUICKJS_CACHE;
@@ -11877,7 +11878,7 @@ public class abstract com::lynx::tasm::behavior::ui::view::UISimpleView : com::l
   public com.lynx.tasm.behavior.ui.view.UISimpleView< T extends ViewGroup >.UISimpleView(LynxContext context, Object param);
 }
 
-public class com::lynx::tasm::behavior::ui::text::UIText : com::lynx::tasm::behavior::ui::UIGroup< AndroidText >, com.lynx.tasm.behavior.ui.text.IUIText {
+public class com::lynx::tasm::behavior::ui::text::UIText : com::lynx::tasm::behavior::ui::UIGroup< AndroidText >, com.lynx.tasm.behavior.ui.text.IUIText, com.lynx.tasm.behavior.ForegroundListener {
   public com.lynx.tasm.behavior.ui.text.UIText.UIText(Context context);
   public com.lynx.tasm.behavior.ui.text.UIText.UIText(LynxContext context);
   public com.lynx.tasm.behavior.ui.text.UIText.UIText(LynxContext context, Object params);
@@ -11905,6 +11906,8 @@ public class com::lynx::tasm::behavior::ui::text::UIText : com::lynx::tasm::beha
   public void com.lynx.tasm.behavior.ui.text.UIText.setSelectionHandleSize(int size);
   public Layout com.lynx.tasm.behavior.ui.text.UIText.getTextLayout();
   public void com.lynx.tasm.behavior.ui.text.UIText.setConsumeHoverEvent(boolean value);
+  public void com.lynx.tasm.behavior.ui.text.UIText.onLynxViewEnterForeground();
+  public void com.lynx.tasm.behavior.ui.text.UIText.onLynxViewEnterBackground();
   public void com.lynx.tasm.behavior.ui.text.UIText.destroy();
   public void com.lynx.tasm.behavior.ui.text.UIText.copyPropFromOldUiInUpdateFlatten(LynxBaseUI oldUI);
   public void com.lynx.tasm.behavior.ui.text.UIText.getTextBoundingRect(ReadableMap params, Callback callback);

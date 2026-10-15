@@ -38,7 +38,7 @@ import com.lynx.tasm.service.ILynxTextService.Page;
 import java.util.ArrayList;
 import java.util.Map;
 
-public class UIText extends UIGroup<AndroidText> implements IUIText {
+public class UIText extends UIGroup<AndroidText> implements IUIText, ForegroundListener {
   // key is gesture id, value is gesture handler
   private Map<Integer, BaseGestureHandler> mGestureHandlers;
   private TextUpdateBundle mTextUpdateBundle;
@@ -294,6 +294,16 @@ public class UIText extends UIGroup<AndroidText> implements IUIText {
     super.setConsumeHoverEvent(value);
     if (mView != null) {
       mView.setConsumeHoverEvent(mConsumeHoverEvent);
+    }
+  }
+
+  @Override
+  public void onLynxViewEnterForeground() {}
+
+  @Override
+  public void onLynxViewEnterBackground() {
+    if (mView != null) {
+      mView.hideToolbarOnBackground();
     }
   }
 

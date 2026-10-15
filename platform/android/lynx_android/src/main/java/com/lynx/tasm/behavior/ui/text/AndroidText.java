@@ -32,6 +32,8 @@ import androidx.annotation.Keep;
 import androidx.annotation.Nullable;
 import com.lynx.R;
 import com.lynx.react.bridge.ReadableArray;
+import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.shadow.text.TextHelper;
@@ -866,6 +868,15 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
       startActionMode(this, ActionMode.TYPE_FLOATING);
     } else {
       startActionMode(this);
+    }
+  }
+
+  void hideToolbarOnBackground() {
+    if (mActionMode != null
+        && LynxEnv.getBooleanFromExternalEnv(
+            LynxEnvKey.ENABLE_DISMISS_TEXT_SELECTION_MENU_ON_BACKGROUND, true)) {
+      mActionMode.finish();
+      mActionMode = null;
     }
   }
 
