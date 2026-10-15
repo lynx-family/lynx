@@ -29,6 +29,9 @@ class QuickjsCacheGenerator : public CacheGenerator {
   void SetEnableStripDebugInfo(bool enable_strip) {
     enable_strip_ = enable_strip;
   }
+  void SetContextInitializer(void (*initializer)(LEPUSContext *)) {
+    context_initializer_ = initializer;
+  }
 
  private:
   bool GenerateCacheImpl(const std::string &source_url,
@@ -40,6 +43,7 @@ class QuickjsCacheGenerator : public CacheGenerator {
                        std::string &contents);
 
   bool enable_strip_{false};
+  void (*context_initializer_)(LEPUSContext *) = nullptr;
 };
 
 }  // namespace cache

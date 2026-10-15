@@ -96,6 +96,7 @@ bool QuickjsCacheGenerator::GenerateCacheImpl(
 LEPUSValue QuickjsCacheGenerator::CompileJS(
     LEPUSContext *ctx, const std::string &source_url,
     const std::shared_ptr<const Buffer> &buffer, std::string &contents) {
+  if (context_initializer_) context_initializer_(ctx);
   int eval_flags;
   LEPUSValue obj;
 

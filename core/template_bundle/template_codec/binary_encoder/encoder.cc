@@ -23,6 +23,7 @@
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser.h"
 #include "core/template_bundle/template_codec/binary_encoder/encode_tracer.h"
 #include "core/template_bundle/template_codec/binary_encoder/encode_util.h"
+#include "core/template_bundle/template_codec/binary_encoder/legacy_regexp_compiler.h"
 #include "core/template_bundle/template_codec/binary_encoder/repack_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_encoder/repack_binary_writer.h"
 #include "core/template_bundle/template_codec/binary_encoder/style_object_encoder/style_object_parser.h"
@@ -174,6 +175,7 @@ std::shared_ptr<lynx::runtime::MTSRuntime> GetVMContent(
   if (vm_context->IsLepusNGContext()) {
     lynx::lepus::QuickContext* quick_ctx =
         lynx::runtime::MTSRuntime::ToQuickContext(vm_context.get());
+    InstallLegacyRegExpCompiler(quick_ctx->context());
 
     LEPUS_SetOptLepusNGPackageSize(
         LEPUS_GetRuntime(quick_ctx->context()),

@@ -47,6 +47,8 @@ class QuickjsBytecodeProviderSrc {
   struct CompileOptions {
     // Remove debug-info from compiled quickjs bytecode.
     bool strip_debug_info = false;
+    // Configure a tool-owned compilation context before compiling source.
+    void (*context_initializer)(LEPUSContext *) = nullptr;
   };
 
   QuickjsBytecodeProviderSrc(std::string source_url,

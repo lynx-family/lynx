@@ -908,7 +908,8 @@ bool QuickContext::UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
       block_scope.PushLEPUSAtom(atom);
       LEPUSValue lepus_val = LEPUSValueHelper::ToJsValue(lepus_context_, val);
       block_scope.PushHandle(&lepus_val, HANDLE_TYPE_LEPUS_VALUE);
-      int ret = LEPUS_SetGlobalVar(context(), atom, lepus_val, 2);
+      // Page data may introduce globals that are not declared in the template.
+      int ret = LEPUS_SetGlobalVar(context(), atom, lepus_val, 0);
       if (!gc_flag_) LEPUS_FreeAtom(context(), atom);
       return ret >= 0;
     }
@@ -927,7 +928,7 @@ bool QuickContext::UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
     LEPUSValue lepus_val_new =
         LEPUSValueHelper::ToJsValue(lepus_context_, value);
     block_scope.PushHandle(&lepus_val_new, HANDLE_TYPE_LEPUS_VALUE);
-    int ret = LEPUS_SetGlobalVar(context(), atom, lepus_val_new, 2);
+    int ret = LEPUS_SetGlobalVar(context(), atom, lepus_val_new, 0);
     if (!gc_flag_) LEPUS_FreeAtom(context(), atom);
     return ret >= 0;
   }
