@@ -72,6 +72,7 @@ std::shared_ptr<Buffer> QuickjsBytecodeProviderSrc::CompileJs(
     const base::Version &target_sdk_version, const CompileOptions &options) {
   // TODO(zhenziqi) target_sdk_version not supported by primjs for now
   cache::QuickjsCacheGenerator generator(source_url_, src_);
+  generator.SetContextInitializer(options.context_initializer);
   if (info_ && info_->context_) {
     std::shared_ptr<Buffer> ret =
         generator.GenerateCache(info_->context_, info_->top_level_func_);

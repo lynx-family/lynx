@@ -1493,14 +1493,18 @@ TEST_F(LepusValueMethods, UpdateTopLevelVariable) {
   obj.SetProperty("prop1", lepus::Value("hello world"));
 
   auto path = lepus::ParseValuePath("obj");
-  ctx_.UpdateTopLevelVariableByPath(path, obj);
+  ASSERT_TRUE(ctx_.UpdateTopLevelVariableByPath(path, obj));
+
+  lepus::Value global;
+  ASSERT_TRUE(ctx_.GetTopLevelVariableByName(base::String("obj"), &global));
+  ASSERT_TRUE(global.IsEqual(obj));
 
   lepus::Value arr(lepus::CArray::Create());
 
   arr.SetProperty(0, lepus::Value("Lynx"));
 
   path = lepus::ParseValuePath("obj.array");
-  ctx_.UpdateTopLevelVariableByPath(path, arr);
+  ASSERT_TRUE(ctx_.UpdateTopLevelVariableByPath(path, arr));
 
   ASSERT_TRUE(obj.GetProperty("array") == arr);
 }
