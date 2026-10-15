@@ -5,9 +5,15 @@ package com.lynx.tasm.behavior.ui.text;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.graphics.Canvas;
 import android.graphics.PointF;
@@ -17,12 +23,32 @@ import android.text.Layout;
 import android.text.SpannableStringBuilder;
 import android.text.StaticLayout;
 import android.text.TextPaint;
+import android.view.ActionMode;
+import androidx.test.core.app.ApplicationProvider;
+import androidx.test.platform.app.InstrumentationRegistry;
+import com.lynx.react.bridge.Callback;
+import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxEnvKey;
+import com.lynx.tasm.behavior.ForegroundListener;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIMethodConstants;
+import com.lynx.tasm.behavior.LynxUIOwner;
+import com.lynx.tasm.behavior.PropsConstants;
+import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.UIShadowProxy;
 import com.lynx.tasm.service.ILynxTextService.Page;
+import com.lynx.tasm.service.ILynxTrailService;
+import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.testing.base.TestingUtils;
+import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,6 +56,8 @@ import org.junit.Test;
 public class AndroidTextTest {
   private AndroidText mAndroidText;
   private int mTextHeight = 0;
+  private ILynxTrailService mOriginalTrailService;
+  private ILynxTrailService mTrailService;
   private static final class FakeTextServicePage implements Page {
     private static final int TEXT_LENGTH = 30;
     private static final int CHARS_PER_LINE = 10;
@@ -96,6 +124,7 @@ public class AndroidTextTest {
   @Before
   public void setUp() throws Exception {
     LynxContext lynxContext = TestingUtils.getLynxContext();
+    lynxContext.setLynxUIOwner(null);
     mAndroidText = new AndroidText(lynxContext);
 
     Layout layout = buildTextLayout(
@@ -117,7 +146,609 @@ public class AndroidTextTest {
 
   @After
   public void tearDown() throws Exception {
+    if (mTrailService != null) {
+      if (mOriginalTrailService != null) {
+        LynxServiceCenter.inst().registerService(mOriginalTrailService);
+      } else {
+        LynxServiceCenter.inst().unregisterService(ILynxTrailService.class);
+      }
+      LynxEnv.inst().setSettings(new HashMap<>());
+    }
     mAndroidText = null;
+  }
+
+  private void setDismissMenuSetting(String value) {
+    if (mTrailService == null) {
+      LynxServiceCenter.inst().initialize(ApplicationProvider.getApplicationContext());
+      mOriginalTrailService = LynxServiceCenter.inst().getService(ILynxTrailService.class);
+      mTrailService = mock(ILynxTrailService.class);
+      doReturn(ILynxTrailService.class).when(mTrailService).getServiceClass();
+      LynxServiceCenter.inst().registerService(mTrailService);
+    }
+    when(mTrailService.stringValueForTrailKey(
+             LynxEnvKey.ENABLE_DISMISS_TEXT_SELECTION_MENU_ON_BACKGROUND.getDescription()))
+        .thenReturn(value);
+    LynxEnv.inst().setSettings(new HashMap<>());
+  }
+
+  private void notifyBackground() {
+    mAndroidText.hideToolbarOnBackground();
+  }
+
+  private LynxUIOwner createUIOwner() {
+    LynxContext context = TestingUtils.getLynxContext();
+    LynxUIOwner owner = spy(
+        TestingUtils.getLynxUIOwner(context, TestingUtils.getUIBody(context).getBodyView(), null));
+    context.setLynxUIOwner(owner);
+    return owner;
+  }
+
+  private UIText createTextUI(LynxUIOwner owner, int sign, StylesDiffMap props) {
+    owner.createViewInternal(sign, "text", props, null, false, 0, null);
+    LynxBaseUI node = owner.getNode(sign);
+    UIText text =
+        node instanceof UIShadowProxy ? (UIText) ((UIShadowProxy) node).getChild() : (UIText) node;
+    TextUpdateBundle bundle =
+        new TextUpdateBundle(mAndroidText.mTextLayout, false, new HashSet<>(), false);
+    bundle.setTextTranslateOffset(new PointF());
+    text.getView().setTextBundle(bundle);
+    return text;
+  }
+
+  private List<?> foregroundListeners(LynxUIOwner owner) {
+    try {
+      Field field = LynxUIOwner.class.getDeclaredField("mForegroundListeners");
+      field.setAccessible(true);
+      return (List<?>) field.get(owner);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  private int foregroundListenerCount(LynxUIOwner owner) {
+    return foregroundListeners(owner).size();
+  }
+
+  private LynxUIOwner createUIOwnerOnMainThread() {
+    LynxUIOwner[] owners = new LynxUIOwner[1];
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(
+        () -> { owners[0] = createUIOwner(); });
+    return owners[0];
+  }
+
+  private void assertListenerCountAfterIdle(LynxUIOwner owner, int count) {
+    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(
+        () -> { assertEquals(count, foregroundListenerCount(owner)); });
+  }
+
+  private ActionMode prepareToolbar(AndroidText text) {
+    ActionMode mode = mock(ActionMode.class);
+    doAnswer(invocation -> {
+      text.onDestroyActionMode(mode);
+      return null;
+    })
+        .when(mode)
+        .finish();
+    text.onPrepareActionMode(mode, null);
+    return mode;
+  }
+
+  @Test
+  public void testInactiveTextDoesNotRegisterOrUnregisterListeners() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxUIOwner owner = createUIOwner();
+      for (int i = 1; i <= 200; i++) {
+        JavaOnlyMap props = new JavaOnlyMap();
+        props.putBoolean("text-selection", i % 2 == 0);
+        createTextUI(owner, i, new StylesDiffMap(props));
+      }
+      assertEquals(0, foregroundListenerCount(owner));
+      owner.onEnterForeground();
+      owner.onEnterBackground();
+      for (int i = 1; i <= 200; i++) {
+        owner.destroy(-1, i);
+      }
+      verify(owner, never()).registerForegroundListener(any(ForegroundListener.class));
+      verify(owner, never()).unregisterForegroundListener(any(ForegroundListener.class));
+    });
+  }
+
+  @Test
+  public void testToolbarListenerFollowsMenuLifetime() {
+    setDismissMenuSetting("true");
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(
+        () -> { createTextUI(owner, 1, null); });
+    for (int i = 0; i < 20; i++) {
+      InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+        AndroidText text = ((UIText) owner.getNode(1)).getView();
+        ActionMode mode = prepareToolbar(text);
+        text.onPrepareActionMode(mode, null);
+        assertEquals(1, foregroundListenerCount(owner));
+        mode.finish();
+        // The listener is already inert, but removal must wait for this UI task to return.
+        assertEquals(1, foregroundListenerCount(owner));
+        owner.onEnterBackground();
+        owner.onEnterBackground();
+        text.release();
+        verify(mode, times(1)).finish();
+      });
+      assertListenerCountAfterIdle(owner, 0);
+    }
+    verify(owner, times(20)).unregisterForegroundListener(any(ForegroundListener.class));
+  }
+
+  @Test
+  public void testOldMenuDestructionDoesNotUnregisterNewMenu() {
+    setDismissMenuSetting("true");
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      AndroidText text = createTextUI(owner, 1, null).getView();
+      ActionMode oldMode = prepareToolbar(text);
+      ActionMode newMode = prepareToolbar(text);
+      oldMode.finish();
+      assertEquals(1, foregroundListenerCount(owner));
+      owner.onEnterBackground();
+      verify(newMode).finish();
+    });
+    assertListenerCountAfterIdle(owner, 0);
+  }
+
+  @Test
+  public void testBackgroundDefersMenuListenerRemovalUntilDispatchFinishes() {
+    setDismissMenuSetting("true");
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    ForegroundListener other = mock(ForegroundListener.class);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      ActionMode first = prepareToolbar(createTextUI(owner, 1, null).getView());
+      owner.registerForegroundListener(other);
+      ActionMode second = prepareToolbar(createTextUI(owner, 2, null).getView());
+      assertEquals(3, foregroundListenerCount(owner));
+      owner.onEnterBackground();
+      owner.onEnterForeground();
+      owner.onEnterBackground();
+      verify(first, times(1)).finish();
+      verify(second, times(1)).finish();
+      verify(other, times(2)).onLynxViewEnterBackground();
+      assertEquals(3, foregroundListenerCount(owner));
+      verify(owner, never()).unregisterForegroundListener(any(ForegroundListener.class));
+    });
+    assertListenerCountAfterIdle(owner, 1);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(
+        () -> { owner.unregisterForegroundListener(other); });
+  }
+
+  @Test
+  public void testPendingRemovalDoesNotUnregisterReopenedMenu() {
+    setDismissMenuSetting("true");
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    ActionMode[] newMode = new ActionMode[1];
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      AndroidText text = createTextUI(owner, 1, null).getView();
+      prepareToolbar(text).finish();
+      newMode[0] = prepareToolbar(text);
+      assertEquals(2, foregroundListenerCount(owner));
+    });
+    assertListenerCountAfterIdle(owner, 1);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      verify(newMode[0], never()).finish();
+      owner.onEnterBackground();
+      verify(newMode[0]).finish();
+    });
+    assertListenerCountAfterIdle(owner, 0);
+  }
+
+  @Test
+  public void testMenuCleanupSurvivesFinishFailure() {
+    setDismissMenuSetting("true");
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      AndroidText text = createTextUI(owner, 1, null).getView();
+      ActionMode mode = mock(ActionMode.class);
+      RuntimeException failure = new RuntimeException("ActionMode failure");
+      doAnswer(invocation -> { throw failure; }).when(mode).finish();
+      text.onPrepareActionMode(mode, null);
+      try {
+        owner.onEnterBackground();
+        fail("Expected ActionMode failure");
+      } catch (RuntimeException actual) {
+        assertSame(failure, actual);
+      }
+      owner.onEnterBackground();
+      verify(mode, times(1)).finish();
+    });
+    assertListenerCountAfterIdle(owner, 0);
+  }
+
+  @Test
+  public void testTextDestroyedByAnotherBackgroundListener() {
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    ForegroundListener other = mock(ForegroundListener.class);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      doAnswer(invocation -> {
+        owner.destroy(-1, 1);
+        return null;
+      })
+          .when(other)
+          .onLynxViewEnterBackground();
+      owner.registerForegroundListener(other);
+      ActionMode mode = prepareToolbar(createTextUI(owner, 1, null).getView());
+      owner.onEnterBackground();
+      verify(mode, times(1)).finish();
+      assertNull(owner.getNode(1));
+    });
+    assertListenerCountAfterIdle(owner, 1);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(
+        () -> { owner.unregisterForegroundListener(other); });
+  }
+
+  @Test
+  public void testMenuListenerSurvivesRollbackUntilSettingUpdates() {
+    setDismissMenuSetting("false");
+    LynxUIOwner[] owners = new LynxUIOwner[1];
+    ActionMode[] modes = new ActionMode[1];
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      owners[0] = createUIOwner();
+      modes[0] = prepareToolbar(createTextUI(owners[0], 1, null).getView());
+      owners[0].onEnterBackground();
+      verify(modes[0], never()).finish();
+      assertEquals(1, foregroundListenerCount(owners[0]));
+    });
+    setDismissMenuSetting("true");
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      owners[0].onEnterBackground();
+      verify(modes[0]).finish();
+    });
+    assertListenerCountAfterIdle(owners[0], 0);
+  }
+
+  @Test
+  public void testDetachFinishesMenuAndUnregistersListener() {
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      AndroidText text = createTextUI(owner, 1, null).getView();
+      ActionMode mode = prepareToolbar(text);
+      text.setCustomContextMenu(true);
+      text.onDetachedFromWindow();
+      text.release();
+      verify(mode, times(1)).finish();
+    });
+    assertListenerCountAfterIdle(owner, 0);
+  }
+
+  @Test
+  public void testOwnerDestructionReleasesMenuEvenWhenBackgroundDismissalIsDisabled() {
+    setDismissMenuSetting("false");
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      AndroidText text = createTextUI(owner, 1, null).getView();
+      ActionMode mode = prepareToolbar(text);
+      text.setCustomContextMenu(true);
+      owner.destroy();
+      verify(mode).finish();
+      owner.onEnterBackground();
+      verify(mode, times(1)).finish();
+    });
+    assertListenerCountAfterIdle(owner, 0);
+  }
+
+  @Test
+  public void testBackgroundHidesToolbarWithoutClearingSelection() {
+    setDismissMenuSetting(null);
+    mAndroidText.setTextSelection(1, 10, 10, 10, true, true);
+    String selectedText = mAndroidText.getSelectedText();
+    ActionMode mode = mock(ActionMode.class);
+    mAndroidText.onPrepareActionMode(mode, null);
+
+    notifyBackground();
+    notifyBackground();
+
+    verify(mode, times(1)).finish();
+    assertEquals(selectedText, mAndroidText.getSelectedText());
+    assertEquals(2, mAndroidText.getHandlesInfo().length);
+  }
+
+  @Test
+  public void testBackgroundToolbarSettingCanRollBackAndUpdate() {
+    setDismissMenuSetting("false");
+    mAndroidText.setTextSelection(1, 10, 10, 10, true, true);
+    ActionMode mode = mock(ActionMode.class);
+    mAndroidText.onPrepareActionMode(mode, null);
+
+    notifyBackground();
+    verify(mode, never()).finish();
+
+    setDismissMenuSetting("true");
+    notifyBackground();
+    verify(mode).finish();
+  }
+
+  @Test
+  public void testBackgroundPreservesCustomMenuSelectionWithoutSystemToolbar() {
+    setDismissMenuSetting("true");
+    mAndroidText.setCustomContextMenu(true);
+    mAndroidText.setTextSelection(1, 10, 10, 10, true, true);
+    String selectedText = mAndroidText.getSelectedText();
+
+    notifyBackground();
+
+    assertEquals(selectedText, mAndroidText.getSelectedText());
+    assertEquals(2, mAndroidText.getHandlesInfo().length);
+  }
+
+  @Test
+  public void testBackgroundHidesSystemToolbarAfterEnablingCustomMenu() {
+    setDismissMenuSetting("true");
+    mAndroidText.setTextSelection(1, 10, 10, 10, true, true);
+    String selectedText = mAndroidText.getSelectedText();
+    ActionMode mode = mock(ActionMode.class);
+    mAndroidText.onPrepareActionMode(mode, null);
+    mAndroidText.setCustomContextMenu(true);
+
+    notifyBackground();
+    notifyBackground();
+
+    verify(mode, times(1)).finish();
+    assertEquals(selectedText, mAndroidText.getSelectedText());
+    assertEquals(2, mAndroidText.getHandlesInfo().length);
+  }
+
+  @Test
+  public void testBackgroundPreservesTextServiceSelection() {
+    setDismissMenuSetting("true");
+    mAndroidText.setTextBundle(new FakeTextServicePage());
+    mAndroidText.setTextSelection(5, 5, 35, 5, true, true);
+    ActionMode mode = mock(ActionMode.class);
+    mAndroidText.onPrepareActionMode(mode, null);
+
+    notifyBackground();
+
+    verify(mode).finish();
+    assertEquals("abc", mAndroidText.getSelectedText());
+    assertEquals(2, mAndroidText.getHandlesInfo().length);
+  }
+
+  @Test
+  public void testOtherLynxViewBackgroundPreservesToolbar() {
+    setDismissMenuSetting("true");
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxUIOwner owner = createUIOwner();
+      UIText text = createTextUI(owner, 1, null);
+      text.setEnableTextSelection(true);
+      text.getView().setTextSelection(1, 10, 10, 10, true, true);
+      ActionMode mode = mock(ActionMode.class);
+      text.getView().onPrepareActionMode(mode, null);
+
+      createUIOwner().onEnterBackground();
+      verify(mode, never()).finish();
+      owner.onEnterBackground();
+      verify(mode).finish();
+    });
+  }
+
+  @Test
+  public void testUIOwnerBackgroundHidesSelectedTextToolbar() {
+    setDismissMenuSetting("true");
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxUIOwner owner = createUIOwner();
+      JavaOnlyMap props = new JavaOnlyMap();
+      props.putBoolean("text-selection", true);
+      UIText text = createTextUI(owner, 1, new StylesDiffMap(props));
+      text.getView().setTextSelection(1, 10, 10, 10, true, true);
+      ActionMode mode = mock(ActionMode.class);
+      text.getView().onPrepareActionMode(mode, null);
+
+      owner.onEnterForeground();
+      verify(mode, never()).finish();
+      owner.onEnterBackground();
+      verify(mode).finish();
+    });
+  }
+
+  @Test
+  public void testBackgroundHidesProgrammaticSelectionToolbar() {
+    setDismissMenuSetting("true");
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxUIOwner owner = createUIOwner();
+      UIText text = createTextUI(owner, 1, null);
+      Callback callback = mock(Callback.class);
+      JavaOnlyMap params = new JavaOnlyMap();
+      params.putDouble("startX", 1);
+      params.putDouble("startY", 3);
+      params.putDouble("endX", 10);
+      params.putDouble("endY", 3);
+      text.setTextSelection(params, callback);
+      verify(callback).invoke(eq(LynxUIMethodConstants.SUCCESS), any(JavaOnlyMap.class));
+      text.setTextSelection(params, callback);
+      ActionMode mode = mock(ActionMode.class);
+      text.getView().onPrepareActionMode(mode, null);
+
+      owner.onEnterBackground();
+
+      verify(mode).finish();
+    });
+  }
+
+  @Test
+  public void testDestroyedTextUnregistersBackgroundListener() {
+    setDismissMenuSetting("true");
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      UIText text = createTextUI(owner, 1, null);
+      text.setEnableTextSelection(true);
+      ActionMode mode = mock(ActionMode.class);
+      text.getView().onPrepareActionMode(mode, null);
+
+      owner.destroy(-1, 1);
+      owner.onEnterBackground();
+
+      verify(mode, times(1)).finish();
+    });
+    assertListenerCountAfterIdle(owner, 0);
+  }
+
+  @Test
+  public void testDestroyedShadowedTextUnregistersBackgroundListener() {
+    setDismissMenuSetting("true");
+    LynxUIOwner owner = createUIOwnerOnMainThread();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      JavaOnlyMap props = new JavaOnlyMap();
+      props.putDouble(PropsConstants.OUTLINE_WIDTH, 1);
+      props.putBoolean("text-selection", true);
+      UIText text = createTextUI(owner, 1, new StylesDiffMap(props));
+      assertTrue(owner.getNode(1) instanceof UIShadowProxy);
+      ActionMode mode = mock(ActionMode.class);
+      text.getView().onPrepareActionMode(mode, null);
+
+      owner.destroy(-1, 1);
+
+      assertNull(owner.getNode(1));
+      owner.onEnterBackground();
+      verify(mode, times(1)).finish();
+    });
+    assertListenerCountAfterIdle(owner, 0);
+  }
+
+  private boolean hasRetainedReference(ArrayList<WeakReference<?>> references) {
+    for (WeakReference<?> reference : references) {
+      if (reference.get() != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void assertCollected(ArrayList<WeakReference<?>> references) throws Exception {
+    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+    for (int attempt = 0; attempt < 30 && hasRetainedReference(references); attempt++) {
+      System.gc();
+      System.runFinalization();
+      Thread.sleep(100);
+    }
+    assertFalse("Text lifecycle references were retained", hasRetainedReference(references));
+  }
+
+  @Test
+  public void testUnreferencedPageIsCollectedWithoutDestroy() throws Exception {
+    ArrayList<WeakReference<?>> references = new ArrayList<>();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxContext context = TestingUtils.getLynxContext();
+      // A spy would retain component arguments in its invocation history.
+      LynxUIOwner owner =
+          TestingUtils.getLynxUIOwner(context, TestingUtils.getUIBody(context).getBodyView(), null);
+      context.setLynxUIOwner(owner);
+      references.add(new WeakReference<>(owner));
+      for (int i = 1; i <= 20; i++) {
+        UIText text = createTextUI(owner, i, null);
+        text.setEnableTextSelection(true);
+        text.getView().onPrepareActionMode(mock(ActionMode.class), null);
+        references.add(new WeakReference<>(text));
+        references.add(new WeakReference<>(text.getView()));
+      }
+    });
+    assertCollected(references);
+  }
+
+  @Test
+  public void testRemovalTaskDoesNotRetainPageOrText() throws Exception {
+    ArrayList<WeakReference<?>> references = new ArrayList<>();
+    ArrayList<Runnable> removals = new ArrayList<>();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxContext context = TestingUtils.getLynxContext();
+      LynxUIOwner owner =
+          TestingUtils.getLynxUIOwner(context, TestingUtils.getUIBody(context).getBodyView(), null);
+      context.setLynxUIOwner(owner);
+      UIText text = createTextUI(owner, 1, null);
+      text.getView().onPrepareActionMode(mock(ActionMode.class), null);
+      // Keep the cleanup task alive even after the queue drains to verify both weak references.
+      removals.add((Runnable) foregroundListeners(owner).get(0));
+      references.add(new WeakReference<>(owner));
+      references.add(new WeakReference<>(text));
+      references.add(new WeakReference<>(text.getView()));
+      text.getView().release();
+    });
+    assertCollected(references);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> { removals.get(0).run(); });
+  }
+
+  @Test
+  public void testDestroyedTextAndShadowProxyAreCollectedWhileOwnerIsAlive() throws Exception {
+    LynxUIOwner[] owners = new LynxUIOwner[1];
+    ArrayList<WeakReference<?>> references = new ArrayList<>();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxContext context = TestingUtils.getLynxContext();
+      owners[0] =
+          TestingUtils.getLynxUIOwner(context, TestingUtils.getUIBody(context).getBodyView(), null);
+      context.setLynxUIOwner(owners[0]);
+      for (int i = 1; i <= 20; i++) {
+        JavaOnlyMap props = new JavaOnlyMap();
+        if (i % 2 == 0) {
+          props.putDouble(PropsConstants.OUTLINE_WIDTH, 1);
+        }
+        UIText text = createTextUI(owners[0], i, new StylesDiffMap(props));
+        if (i % 2 == 0) {
+          assertTrue(owners[0].getNode(i) instanceof UIShadowProxy);
+          references.add(new WeakReference<>(owners[0].getNode(i)));
+        }
+        text.setEnableTextSelection(true);
+        text.getView().onPrepareActionMode(mock(ActionMode.class), null);
+        references.add(new WeakReference<>(text));
+        references.add(new WeakReference<>(text.getView()));
+        owners[0].destroy(-1, i);
+      }
+    });
+    assertCollected(references);
+    assertListenerCountAfterIdle(owners[0], 0);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      owners[0].onEnterForeground();
+      owners[0].onEnterBackground();
+    });
+  }
+
+  @Test
+  public void testMenuListenerDoesNotRetainUnownedText() throws Exception {
+    LynxUIOwner[] owners = new LynxUIOwner[1];
+    ArrayList<WeakReference<?>> references = new ArrayList<>();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxContext context = TestingUtils.getLynxContext();
+      owners[0] =
+          TestingUtils.getLynxUIOwner(context, TestingUtils.getUIBody(context).getBodyView(), null);
+      context.setLynxUIOwner(owners[0]);
+      // No UIHolder entry: the listener must not become an owner of the view.
+      AndroidText text = new AndroidText(context);
+      text.onPrepareActionMode(mock(ActionMode.class), null);
+      references.add(new WeakReference<>(text));
+      assertEquals(1, foregroundListenerCount(owners[0]));
+    });
+    assertCollected(references);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(
+        () -> { owners[0].onEnterBackground(); });
+    assertListenerCountAfterIdle(owners[0], 0);
+  }
+
+  @Test
+  public void testAsyncCreatedTextReceivesBackground() throws Exception {
+    setDismissMenuSetting("true");
+    LynxUIOwner[] owners = new LynxUIOwner[1];
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(
+        () -> { owners[0] = createUIOwner(); });
+    JavaOnlyMap props = new JavaOnlyMap();
+    props.putBoolean("text-selection", true);
+    // Prepare on the test thread, then publish through the existing UI-thread completion.
+    Runnable completion =
+        owners[0].createViewAsyncRunnable(1, "text", props, null, null, false, 0, null);
+    assertNotNull(completion);
+    assertNull(owners[0].getNode(1));
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      completion.run();
+      UIText text = (UIText) owners[0].getNode(1);
+      assertNotNull(text);
+      ActionMode mode = mock(ActionMode.class);
+      text.getView().onPrepareActionMode(mode, null);
+      owners[0].onEnterBackground();
+      verify(mode).finish();
+    });
   }
 
   @Test
