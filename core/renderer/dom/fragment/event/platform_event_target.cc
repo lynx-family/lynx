@@ -68,8 +68,10 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
     if (!child->ShouldHitTest()) {
       continue;
     }
-    child->GetPointInTarget(child_point, fml::RefPtr<PlatformEventTarget>(this),
-                            point);
+    if (!child->GetPointInTarget(
+            child_point, fml::RefPtr<PlatformEventTarget>(this), point)) {
+      continue;
+    }
     if (child->ContainsPoint(child_point)) {
       memcpy(target_point, child_point, sizeof(float) * 2);
       target_idx = i;
@@ -93,8 +95,10 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
         continue;
       }
       float sibling_point[2] = {0.f};
-      sibling_target->GetPointInTarget(
-          sibling_point, fml::RefPtr<PlatformEventTarget>(this), point);
+      if (!sibling_target->GetPointInTarget(
+              sibling_point, fml::RefPtr<PlatformEventTarget>(this), point)) {
+        continue;
+      }
       if (!sibling_target->ContainsPoint(sibling_point)) {
         continue;
       }
@@ -118,10 +122,10 @@ bool PlatformEventTarget::ShouldHitTest() const {
   return user_interaction_enabled_;
 }
 
-void PlatformEventTarget::GetPointInTarget(
+bool PlatformEventTarget::GetPointInTarget(
     float target_point[2], fml::RefPtr<PlatformEventTarget> parent_target,
     float point[2]) {
-  target_helper_->ConvertPointFromAncestorToDescendant(
+  return target_helper_->ConvertPointFromAncestorToDescendant(
       target_point, parent_target, fml::RefPtr<PlatformEventTarget>(this),
       point);
 }

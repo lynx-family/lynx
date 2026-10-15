@@ -58,7 +58,8 @@ class PlatformEventTargetHelper {
       const fml::RefPtr<PlatformEventTarget>& another);
 
   // point: [x, y]
-  void ConvertPointFromAncestorToDescendant(
+  // Returns false if a transform in the path is not invertible.
+  bool ConvertPointFromAncestorToDescendant(
       float res[2], const fml::RefPtr<PlatformEventTarget>& ancestor,
       const fml::RefPtr<PlatformEventTarget>& descendant, float point[2]);
 

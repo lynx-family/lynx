@@ -216,7 +216,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
       return;
     }
     View captureTargetView = mLynxUI.getCaptureTargetView();
-    if (captureTargetView != null) {
+    if (captureTargetView != null || getRenderer() != null) {
       setTargetView(captureTargetView);
       TraceEvent.endSection(TraceEventDef.BLUR_VIEW_GET_TARGET_PARENT);
       return;
@@ -465,11 +465,24 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   }
 
   void setRootLocation(int[] rootLocation) {
-    this.mRootLocation = rootLocation;
+    if (mRootLocation == null) {
+      mRootLocation = new int[2];
+    }
+    if (mRootLocation[0] != rootLocation[0] || mRootLocation[1] != rootLocation[1]) {
+      mHasValidBlurContent = false;
+    }
+    System.arraycopy(rootLocation, 0, mRootLocation, 0, 2);
   }
 
   void setBlurViewLocation(int[] blurViewLocation) {
-    this.mBlurViewLocation = blurViewLocation;
+    if (mBlurViewLocation == null) {
+      mBlurViewLocation = new int[2];
+    }
+    if (mBlurViewLocation[0] != blurViewLocation[0]
+        || mBlurViewLocation[1] != blurViewLocation[1]) {
+      mHasValidBlurContent = false;
+    }
+    System.arraycopy(blurViewLocation, 0, mBlurViewLocation, 0, 2);
   }
 
   void setCaptureClipBounds(int left, int top, int right, int bottom) {
@@ -583,6 +596,9 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   @Override
   public boolean onPreDraw() {
     TraceEvent.beginSection(TraceEventDef.BLUR_VIEW_UPDATE_BLUR);
+    if (getRenderer() != null) {
+      getTargetParent();
+    }
     if (mTargetView != null && (!mHasValidBlurContent || mTargetView.isDirty())) {
       mNeedsBlurUpdate = true;
       post(new Runnable() {
