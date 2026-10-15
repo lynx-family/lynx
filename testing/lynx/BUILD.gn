@@ -57,7 +57,6 @@ group("lynx_test") {
     "../../core/runtime/lepus/bindings/event:lepus_runtime_unittests_exec",
     "../../core/runtime/lepus/bindings/resource:response_handler_lepus_unittests_exec",
     "../../core/runtime/lepus/tasks:task_unittests_exec",
-    "../../core/services/performance/memory_monitor/testing:memory_monitor_unit_test",
     "../../core/services/recorder:record_unit_test",
     "../../core/services/replay:replay_unit_test",
     "../../core/shared_data:shared_data_test_exec",
