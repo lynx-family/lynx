@@ -444,13 +444,14 @@ JSUIBase::~JSUIBase() {
 }
 
 void JSUIBase::AddChild(UIBase* child, int index) {
-  if (index == -1) {
+  if (index < 0) {
+    index = static_cast<int>(children_.size());
     children_.emplace_back(child);
   } else {
     children_.insert(children_.begin() + index, child);
   }
   child->SetParent(this);
-  auto sibling = index != 0 ? Children().at(index - 1)->Node() : nullptr;
+  auto sibling = index > 0 ? Children().at(index - 1)->Node() : nullptr;
   if (!HasCustomizedLayout()) {
     NodeManager::Instance().InsertNodeAfter(node_, child->DrawNode(), sibling);
   } else {
