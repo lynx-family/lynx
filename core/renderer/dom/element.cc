@@ -3489,6 +3489,24 @@ void Element::RemoveGestureDetector(const uint32_t gesture_id) {
 }
 
 lepus::Value Element::GetComputedStyleByKey(const base::String& key) {
+  if (CSSProperty::IsCustomProperty(key.c_str(),
+                                    static_cast<uint32_t>(key.length()))) {
+    // Read inherited, substituted values from the active styling pipeline.
+    const CustomPropertiesMap* custom_properties = nullptr;
+    if (element_manager()->EnableNewStylingPipeline()) {
+      custom_properties = computed_css_style()->GetCustomProperties();
+    } else if (CollectCustomProperties(data_model())) {
+      custom_properties = &custom_properties_.Get()->Value();
+    }
+    if (custom_properties != nullptr) {
+      auto it = custom_properties->find(key);
+      if (it != custom_properties->end()) {
+        return lepus::Value(it->second.AsString());
+      }
+    }
+    return lepus::Value("");
+  }
+
   auto property_id = CSSProperty::GetPropertyID(key);
   if (property_id == tasm::CSSPropertyID::kPropertyEnd) {
     return lepus::Value("");

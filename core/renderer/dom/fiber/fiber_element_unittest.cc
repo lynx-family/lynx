@@ -19252,6 +19252,195 @@ TEST_P(FiberElementTest, TestGetComputedStyleByKey) {
   EXPECT_TRUE(page->GetComputedStyleByKey("opacity").StdString() == "0.9");
 }
 
+TEST_P(FiberElementTest, TestGetComputedStyleByKeyCustomProperties) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  CSSParserConfigs parser_configs;
+  auto token = fml::MakeRefCounted<CSSParseToken>(parser_configs);
+  token->style_variables_.insert_or_assign("--seed-color-fg-brand", "#3370ff");
+  token->sheets().emplace_back(std::make_shared<CSSSheet>(".target"));
+  CSSParserTokenMap tokens;
+  tokens.insert(std::make_pair(".target", token));
+  auto fragment = std::make_shared<SharedCSSFragment>(
+      1, std::vector<int32_t>{}, tokens, CSSKeyframesTokenMap{},
+      CSSFontFaceRuleMap{});
+
+  for (const bool enable_new_styling_pipeline : {false, true}) {
+    SCOPED_TRACE(enable_new_styling_pipeline);
+    manager->enable_new_styling_pipeline_ = enable_new_styling_pipeline;
+    auto page = manager->CreateFiberPage("page", 11);
+    manager->SetFiberPageElement(page);
+    page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+    auto view = manager->CreateFiberView();
+    view->parent_component_element_ = page.get();
+    view->SetClass("target");
+    view->SetRawInlineStyles(
+        "--alias: var(--seed-color-fg-brand);"
+        "--nested: var(--alias);"
+        "--fallback: var(--missing, var(--alias));"
+        "--unresolved: var(--missing);"
+        "--cycle: var(--cycle);"
+        "--spacing: 8px 12px;"
+        "--Mixed: 1; --mixed: 2;"
+        "opacity: 0.9;");
+    page->InsertNode(view);
+    page->FlushActionsAsRoot();
+
+    const std::pair<const char*, const char*> expectations[] = {
+        {"--seed-color-fg-brand", "#3370ff"},
+        {"--alias", "#3370ff"},
+        {"--nested", "#3370ff"},
+        {"--fallback", " #3370ff"},
+        {"--unresolved", ""},
+        {"--cycle", ""},
+        {"--spacing", "8px 12px"},
+        {"--Mixed", "1"},
+        {"--mixed", "2"},
+        {"--MIXED", ""},
+        {"--missing", ""},
+        {"--", ""},
+        {"", ""},
+        {"unknown-property", ""},
+        {"opacity", "0.9"},
+    };
+    for (const auto& [key, expected] : expectations) {
+      SCOPED_TRACE(key);
+      auto value = view->GetComputedStyleByKey(key);
+      ASSERT_TRUE(value.IsString());
+      EXPECT_EQ(value.StdString(), expected);
+    }
+    EXPECT_EQ(page->GetComputedStyleByKey("--missing").StdString(), "");
+  }
+}
+
+TEST_P(FiberElementTest, TestGetComputedStyleByKeyCustomPropertyInheritance) {
+  manager->GetConfig()->SetEnableCSSInheritance(true);
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  for (const bool enable_new_styling_pipeline : {false, true}) {
+    SCOPED_TRACE(enable_new_styling_pipeline);
+    manager->enable_new_styling_pipeline_ = enable_new_styling_pipeline;
+    auto page = manager->CreateFiberPage("page", 11);
+    manager->SetFiberPageElement(page);
+    auto parent = manager->CreateFiberView();
+    auto child = manager->CreateFiberView();
+    auto grandchild = manager->CreateFiberView();
+    parent->SetRawInlineStyles("--brand: #3370ff; --alias: var(--brand);");
+    child->SetRawInlineStyles(
+        "--brand: #ff0000; --local: var(--brand);"
+        "--inherited-ref: var(--alias);");
+    page->InsertNode(parent);
+    parent->InsertNode(child);
+    child->InsertNode(grandchild);
+    page->FlushActionsAsRoot();
+
+    EXPECT_EQ(parent->GetComputedStyleByKey("--brand").StdString(), "#3370ff");
+    EXPECT_EQ(parent->GetComputedStyleByKey("--local").StdString(), "");
+    EXPECT_EQ(child->GetComputedStyleByKey("--brand").StdString(), "#ff0000");
+    EXPECT_EQ(child->GetComputedStyleByKey("--local").StdString(), "#ff0000");
+    // Inherit the parent's computed value, not its unresolved var() expression.
+    EXPECT_EQ(child->GetComputedStyleByKey("--alias").StdString(), "#3370ff");
+    EXPECT_EQ(child->GetComputedStyleByKey("--inherited-ref").StdString(),
+              "#3370ff");
+    EXPECT_EQ(grandchild->GetComputedStyleByKey("--brand").StdString(),
+              "#ff0000");
+    EXPECT_EQ(grandchild->GetComputedStyleByKey("--alias").StdString(),
+              "#3370ff");
+  }
+}
+
+TEST_P(FiberElementTest, TestGetComputedStyleByKeyCustomPropertyUpdates) {
+  manager->GetConfig()->SetEnableCSSInheritance(true);
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  for (const bool enable_new_styling_pipeline : {false, true}) {
+    SCOPED_TRACE(enable_new_styling_pipeline);
+    manager->enable_new_styling_pipeline_ = enable_new_styling_pipeline;
+    auto page = manager->CreateFiberPage("page", 11);
+    manager->SetFiberPageElement(page);
+    auto parent = manager->CreateFiberView();
+    auto child = manager->CreateFiberView();
+    parent->SetRawInlineStyles("--brand: #3370ff;");
+    child->SetRawInlineStyles("--alias: var(--brand);");
+    page->InsertNode(parent);
+    parent->InsertNode(child);
+    page->FlushActionsAsRoot();
+
+    EXPECT_EQ(child->GetComputedStyleByKey("--brand").StdString(), "#3370ff");
+    EXPECT_EQ(child->GetComputedStyleByKey("--alias").StdString(), "#3370ff");
+
+    parent->SetRawInlineStyles("--brand: #ff0000;");
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(child->GetComputedStyleByKey("--brand").StdString(), "#ff0000");
+    EXPECT_EQ(child->GetComputedStyleByKey("--alias").StdString(), "#ff0000");
+
+    child->SetRawInlineStyles("--brand: #00ff00; --alias: var(--brand);");
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(child->GetComputedStyleByKey("--brand").StdString(), "#00ff00");
+    EXPECT_EQ(child->GetComputedStyleByKey("--alias").StdString(), "#00ff00");
+    EXPECT_EQ(parent->GetComputedStyleByKey("--brand").StdString(), "#ff0000");
+
+    child->SetRawInlineStyles("--alias: var(--brand);");
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(child->GetComputedStyleByKey("--brand").StdString(), "#ff0000");
+    EXPECT_EQ(child->GetComputedStyleByKey("--alias").StdString(), "#ff0000");
+
+    parent->SetRawInlineStyles("opacity: 1;");
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(child->GetComputedStyleByKey("--brand").StdString(), "");
+    EXPECT_EQ(child->GetComputedStyleByKey("--alias").StdString(), "");
+  }
+}
+
+TEST_P(FiberElementTest,
+       TestGetComputedStyleByKeyCustomPropertiesWithoutInlineVariables) {
+  manager->GetConfig()->SetEnableCSSInheritance(true);
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_),
+      false);
+
+  CSSParserConfigs parser_configs;
+  CSSParserTokenMap tokens;
+  const std::pair<const char*, const char*> rules[] = {{".light", "#3370ff"},
+                                                       {".dark", "#ff0000"}};
+  for (const auto& [selector, value] : rules) {
+    auto token = fml::MakeRefCounted<CSSParseToken>(parser_configs);
+    token->style_variables_.insert_or_assign("--brand", value);
+    token->style_variables_.insert_or_assign("--alias", "var(--brand)");
+    token->sheets().emplace_back(std::make_shared<CSSSheet>(selector));
+    tokens.insert(std::make_pair(selector, token));
+  }
+  auto fragment = std::make_shared<SharedCSSFragment>(
+      1, std::vector<int32_t>{}, tokens, CSSKeyframesTokenMap{},
+      CSSFontFaceRuleMap{});
+
+  for (const bool enable_new_styling_pipeline : {false, true}) {
+    SCOPED_TRACE(enable_new_styling_pipeline);
+    manager->enable_new_styling_pipeline_ = enable_new_styling_pipeline;
+    auto page = manager->CreateFiberPage("page", 11);
+    manager->SetFiberPageElement(page);
+    page->style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment.get());
+    auto parent = manager->CreateFiberView();
+    auto child = manager->CreateFiberView();
+    parent->parent_component_element_ = page.get();
+    parent->SetClass("light");
+    page->InsertNode(parent);
+    parent->InsertNode(child);
+    page->FlushActionsAsRoot();
+
+    EXPECT_EQ(child->GetComputedStyleByKey("--brand").StdString(), "#3370ff");
+    EXPECT_EQ(child->GetComputedStyleByKey("--alias").StdString(), "#3370ff");
+    parent->RemoveAllClass();
+    parent->SetClass("dark");
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(child->GetComputedStyleByKey("--brand").StdString(), "#ff0000");
+    EXPECT_EQ(child->GetComputedStyleByKey("--alias").StdString(), "#ff0000");
+  }
+}
+
 TEST_P(FiberElementTest, TestGetComputedStyleByKeyUsesCssPixels) {
   constexpr float kLayoutsUnitPerPx = 2.f;
   auto config = manager->GetConfig();
