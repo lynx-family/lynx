@@ -1779,9 +1779,14 @@ bool Element::TendToFlatten() {
          // Nodes with non-visible overflow may become flattenable again once
          // clip is scoped to rendering content instead of the host view
          // subtree.
-         && computed_css_style()->IsOverflowXY();
+         && computed_css_style()->IsOverflowXY()
+#elif OS_HARMONY
+         // Preserve the native ancestor that clips independently composited
+         // children in fragment-layer rendering.
+         &&
+         (!EnableFragmentLayerRender() || computed_css_style()->IsOverflowXY())
 #endif
-  ;
+      ;
 }
 
 double Element::GetFontSize() { return computed_css_style()->GetFontSize(); }

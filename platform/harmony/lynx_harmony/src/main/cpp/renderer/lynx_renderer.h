@@ -5,6 +5,7 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_RENDERER_LYNX_RENDERER_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_RENDERER_LYNX_RENDERER_H_
 
+#include <arkui/native_node.h>
 #include <native_drawing/drawing_canvas.h>
 
 #include <cstdint>
@@ -33,6 +34,9 @@ class LynxRenderer {
   void InvalidateRenderNodes();
 
  private:
+  void UpdateHostClipPath();
+  void ResetHostClipPath();
+
   std::shared_ptr<LynxRendererContext> context_;
   std::weak_ptr<UIBase> host_;
   int32_t sign_{0};
@@ -40,6 +44,7 @@ class LynxRenderer {
   // Owned by PlatformRendererHarmony, which detaches this renderer before
   // destroying the display list.
   const DisplayList* display_list_ = nullptr;
+  bool host_has_clip_path_{false};
   base::Vector<DisplayListSegment> segments_;
   base::Vector<std::unique_ptr<LynxRenderNode>> render_nodes_;
 };

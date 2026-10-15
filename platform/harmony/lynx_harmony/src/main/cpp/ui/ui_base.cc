@@ -1463,6 +1463,7 @@ void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
 
 void UIBase::AttachFragmentLayerRenderer(
     std::shared_ptr<LynxRendererContext> context, int32_t sign) {
+  fragment_clip_bounds_.reset();
   renderer_ = std::make_unique<LynxRenderer>(std::move(context), sign,
                                              weak_from_this());
   if (!CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
@@ -1473,6 +1474,7 @@ void UIBase::AttachFragmentLayerRenderer(
 
 void UIBase::DetachFragmentLayerRenderer() {
   renderer_.reset();
+  fragment_clip_bounds_.reset();
   Invalidate();
 }
 
@@ -1485,8 +1487,12 @@ void UIBase::UpdateFragmentLayerDisplayList(const DisplayList* display_list) {
 }
 
 void UIBase::SetFragmentLayerClipBounds(bool need_clip) {
+  if (fragment_clip_bounds_ == need_clip) {
+    return;
+  }
   NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP,
                                                       need_clip ? 1 : 0);
+  fragment_clip_bounds_ = need_clip;
 }
 
 void UIBase::UpdateFragmentLayerSubtreeProperties(

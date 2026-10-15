@@ -415,6 +415,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unique_ptr<BackgroundDrawable> background_drawable_{nullptr};
   std::unique_ptr<BackgroundDrawable> mask_drawable_{nullptr};
   std::unique_ptr<LynxRenderer> renderer_;
+  std::optional<bool> fragment_clip_bounds_;
   std::vector<std::string> events_;
   std::vector<std::string> response_chain_events_;
   ArkUI_NodeType node_type_;
