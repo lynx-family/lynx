@@ -33,11 +33,10 @@ For data analysis:
 
 ## Simulation Validation
 
-The [deterministic simulation guide](../testing/SIMULATION.md), maintained
-alongside the memory-monitor test fixtures, defines the synthetic workload
-format, generator, independent query oracles, and replay procedure. The
-documents in this directory remain authoritative for runtime semantics, event
-fields, and supported query formulas.
+Deterministic simulations validate the memory monitor with synthetic workloads,
+independent query oracles, and production event replay. The documents in this
+directory remain authoritative for runtime semantics, event fields, and
+supported query formulas.
 
 The C++ implementation is authoritative for runtime behavior. When event
 schemas or collection semantics change, update the relevant design, property
