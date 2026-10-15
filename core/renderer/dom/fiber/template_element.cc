@@ -4,9 +4,11 @@
 
 #include "core/renderer/dom/fiber/template_element.h"
 
+#include <algorithm>
 #include <functional>
 #include <future>
 #include <utility>
+#include <vector>
 
 #include "base/include/log/logging.h"
 #include "base/include/value/array.h"
@@ -117,6 +119,34 @@ lepus::Value CopyTemplateValueForStorage(const lepus::Value& value) {
   return value.IsCallable() ? value : lepus::Value::Clone(value);
 }
 
+lepus::Value CopyElementSlotsForStorage(const lepus::Value& value) {
+  if (!value.IsArrayOrJSArray()) {
+    return lepus::Value();
+  }
+
+  auto slots = lepus::CArray::Create();
+  slots->reserve(value.GetLength());
+  for (size_t slot_index = 0;
+       slot_index < static_cast<size_t>(value.GetLength()); ++slot_index) {
+    auto slot_children = value.GetProperty(static_cast<uint32_t>(slot_index));
+    if (!slot_children.IsArrayOrJSArray()) {
+      slots->emplace_back(slot_children);
+      continue;
+    }
+
+    auto copied_children = lepus::CArray::Create();
+    copied_children->reserve(slot_children.GetLength());
+    for (size_t child_index = 0;
+         child_index < static_cast<size_t>(slot_children.GetLength());
+         ++child_index) {
+      copied_children->emplace_back(
+          slot_children.GetProperty(static_cast<uint32_t>(child_index)));
+    }
+    slots->emplace_back(lepus::Value(std::move(copied_children)));
+  }
+  return lepus::Value(std::move(slots));
+}
+
 lepus::Value CopyTemplateObjectForStorage(const lepus::Value& value) {
   if (!value.IsObject()) {
     return lepus::Value();
@@ -133,12 +163,83 @@ lepus::Value CopyTemplateObjectForStorage(const lepus::Value& value) {
   return lepus::Value(std::move(object));
 }
 
+lepus::Value CopyAttributeSlotsForStorage(const lepus::Value& attribute_slots) {
+  if (!attribute_slots.IsArrayOrJSArray()) {
+    return lepus::Value();
+  }
+
+  auto copied_slots = lepus::CArray::Create();
+  copied_slots->reserve(attribute_slots.GetLength());
+  for (size_t index = 0;
+       index < static_cast<size_t>(attribute_slots.GetLength()); ++index) {
+    auto slot = attribute_slots.GetProperty(static_cast<uint32_t>(index));
+    copied_slots->emplace_back(slot.IsObject()
+                                   ? CopyTemplateObjectForStorage(slot)
+                                   : CopyTemplateValueForStorage(slot));
+  }
+  return lepus::Value(std::move(copied_slots));
+}
+
 lepus::Value CreateRootAttributeSlots(const lepus::Value& root_attributes) {
   auto attribute_slots = lepus::CArray::Create();
   attribute_slots->emplace_back(
       root_attributes.IsObject() ? CopyTemplateObjectForStorage(root_attributes)
                                  : lepus::Value());
   return lepus::Value(std::move(attribute_slots));
+}
+
+SharedTemplateAttributes CreateRootSpreadTemplateAttributes();
+
+template <typename Apply>
+void ApplyRootTemplateAttributes(FiberElement* root, Apply&& apply) {
+  if (root == nullptr) {
+    return;
+  }
+  auto compiled_attributes = root->template_attributes();
+  root->SetTemplateAttributes(CreateRootSpreadTemplateAttributes());
+  apply();
+  root->SetTemplateAttributes(compiled_attributes);
+}
+
+void ApplyRootTemplateAttributes(FiberElement* root,
+                                 const lepus::Value& previous_root_attributes,
+                                 const lepus::Value& root_attributes) {
+  if (!previous_root_attributes.IsObject() && !root_attributes.IsObject()) {
+    return;
+  }
+  ApplyRootTemplateAttributes(
+      root, [root, &previous_root_attributes, &root_attributes]() {
+        if (previous_root_attributes.IsObject()) {
+          TreeResolver::ApplyTemplateAttributesToElement(
+              root, CreateRootAttributeSlots(previous_root_attributes),
+              CreateRootAttributeSlots(root_attributes));
+          return;
+        }
+        TreeResolver::ApplyTemplateAttributesToElement(
+            root, CreateRootAttributeSlots(root_attributes));
+      });
+}
+
+void ApplyRootTemplateNonEventAttributes(FiberElement* root,
+                                         const lepus::Value& root_attributes) {
+  if (!root_attributes.IsObject()) {
+    return;
+  }
+  ApplyRootTemplateAttributes(root, [root, &root_attributes]() {
+    TreeResolver::ApplyTemplateNonEventAttributesToElement(
+        root, CreateRootAttributeSlots(root_attributes));
+  });
+}
+
+void ApplyRootTemplateEventAttributes(FiberElement* root,
+                                      const lepus::Value& root_attributes) {
+  if (!root_attributes.IsObject()) {
+    return;
+  }
+  ApplyRootTemplateAttributes(root, [root, &root_attributes]() {
+    TreeResolver::ApplyTemplateEventAttributesToElement(
+        root, CreateRootAttributeSlots(root_attributes));
+  });
 }
 
 SharedTemplateAttributes CreateRootSpreadTemplateAttributes() {
@@ -167,18 +268,49 @@ fml::RefPtr<FiberElement> CreateTypedRootElement(ElementManager* manager,
   return manager->CreateFiberElement(tag);
 }
 
+template <typename Apply>
 void ApplyInitialAttributeSlots(
     const base::Vector<fml::RefPtr<FiberElement>>& targets,
-    const lepus::Value& attribute_slots) {
+    const lepus::Value& attribute_slots, Apply apply) {
   FiberElement* previous_element = nullptr;
   for (const auto& target : targets) {
     auto* element = target.get();
     if (element == nullptr || element == previous_element) {
       continue;
     }
-    TreeResolver::ApplyTemplateAttributesToElement(element, attribute_slots);
+    apply(element, attribute_slots);
     previous_element = element;
   }
+}
+
+void ApplyInitialAttributeSlots(
+    const base::Vector<fml::RefPtr<FiberElement>>& targets,
+    const lepus::Value& attribute_slots) {
+  ApplyInitialAttributeSlots(
+      targets, attribute_slots,
+      [](FiberElement* element, const lepus::Value& slots) {
+        TreeResolver::ApplyTemplateAttributesToElement(element, slots);
+      });
+}
+
+void ApplyInitialNonEventAttributeSlots(
+    const base::Vector<fml::RefPtr<FiberElement>>& targets,
+    const lepus::Value& attribute_slots) {
+  ApplyInitialAttributeSlots(
+      targets, attribute_slots,
+      [](FiberElement* element, const lepus::Value& slots) {
+        TreeResolver::ApplyTemplateNonEventAttributesToElement(element, slots);
+      });
+}
+
+void ApplyInitialEventAttributeSlots(
+    const base::Vector<fml::RefPtr<FiberElement>>& targets,
+    const lepus::Value& attribute_slots) {
+  ApplyInitialAttributeSlots(
+      targets, attribute_slots,
+      [](FiberElement* element, const lepus::Value& slots) {
+        TreeResolver::ApplyTemplateEventAttributesToElement(element, slots);
+      });
 }
 
 void ApplyStaticEventAttributes(
@@ -189,10 +321,20 @@ void ApplyStaticEventAttributes(
 }
 
 void PrepareGeneratedElementsResult(GeneratedElementsResult* generated,
+                                    const lepus::Value& attribute_slots,
+                                    const lepus::Value& root_attributes,
+                                    uint32_t root_attributes_generation,
                                     const lepus::Value& element_slots) {
   if (generated == nullptr) {
     return;
   }
+
+  ApplyInitialNonEventAttributeSlots(generated->attribute_slot_targets_,
+                                     attribute_slots);
+  ApplyRootTemplateNonEventAttributes(generated->result_.get(),
+                                      root_attributes);
+  generated->prepared_root_attributes_ = root_attributes;
+  generated->root_attributes_generation_ = root_attributes_generation;
 
   if (!element_slots.IsArrayOrJSArray()) {
     return;
@@ -226,15 +368,36 @@ void PrepareGeneratedElementsResult(GeneratedElementsResult* generated,
   }
 }
 
+base::Vector<fml::RefPtr<FiberElement>> ResolveElementSlotChildren(
+    const lepus::Value& slot_children) {
+  base::Vector<fml::RefPtr<FiberElement>> children;
+  if (!slot_children.IsArrayOrJSArray()) {
+    return children;
+  }
+  children.reserve(slot_children.GetLength());
+  for (size_t child_index = 0;
+       child_index < static_cast<size_t>(slot_children.GetLength());
+       ++child_index) {
+    auto child = ResolveInitialElementSlotChild(
+        slot_children.GetProperty(static_cast<uint32_t>(child_index)));
+    if (child != nullptr) {
+      children.push_back(std::move(child));
+    }
+  }
+  return children;
+}
+
 GeneratedElementsResult GeneratePreparedElementsResult(
     TemplateEntry* entry, const base::String& template_key,
-    const lepus::Value& element_slots) {
+    const lepus::Value& attribute_slots, const lepus::Value& root_attributes,
+    uint32_t root_attributes_generation, const lepus::Value& element_slots) {
   GeneratedElementsResult generated;
   if (entry != nullptr) {
     auto& info = entry->GetElementTemplateInfo(template_key.str());
     generated = TreeResolver::GenerateElementsFromTemplateInfo(info);
   }
-  PrepareGeneratedElementsResult(&generated, element_slots);
+  PrepareGeneratedElementsResult(&generated, attribute_slots, root_attributes,
+                                 root_attributes_generation, element_slots);
   return generated;
 }
 
@@ -267,6 +430,7 @@ void TemplateElement::SetRootAttributes(const lepus::Value& attributes) {
   root_attributes_ = attributes.IsObject()
                          ? CopyTemplateObjectForStorage(attributes)
                          : lepus::Value();
+  ++root_attributes_generation_;
   ApplyRootAttributes(previous_root_attributes);
 }
 
@@ -314,13 +478,19 @@ TemplateElement::CreateAsyncCreateElementTreeTask(TemplateEntry* entry) {
   std::promise<GeneratedElementsResult> promise;
   auto future = promise.get_future();
   auto template_key = template_key_;
+  auto attribute_slots = CopyAttributeSlotsForStorage(attribute_slots_);
+  auto root_attributes = root_attributes_;
+  auto root_attributes_generation = root_attributes_generation_;
   auto element_slots = element_slots_;
   return fml::MakeRefCounted<base::OnceTask<GeneratedElementsResult>>(
       [entry, template_key = std::move(template_key),
+       attribute_slots = std::move(attribute_slots),
+       root_attributes = std::move(root_attributes), root_attributes_generation,
        element_slots = std::move(element_slots),
        promise = std::move(promise)]() mutable {
-        promise.set_value(
-            GeneratePreparedElementsResult(entry, template_key, element_slots));
+        promise.set_value(GeneratePreparedElementsResult(
+            entry, template_key, attribute_slots, root_attributes,
+            root_attributes_generation, element_slots));
       },
       std::move(future));
 }
@@ -330,23 +500,24 @@ void TemplateElement::ResolveGeneratedElements() {
     return;
   }
 
+  if (prepared_cached_tree_.has_value() || TryPrepareFromCache()) {
+    ConsumePreparedCachedTree();
+    return;
+  }
+
   if (IsTypedTemplate()) {
     InitTypedRoot();
     if (result_ == nullptr) {
       return;
     }
     GeneratedElementsResult generated;
-    PrepareGeneratedElementsResult(&generated, element_slots_);
+    PrepareGeneratedElementsResult(&generated, lepus::Value(), lepus::Value(),
+                                   0, element_slots_);
     prepared_element_slot_insertions_ =
         std::move(generated.prepared_element_slot_insertions_);
     ApplyRootAttributes(lepus::Value());
     ApplyInitialElementSlots();
     ApplyPendingOperations();
-    return;
-  }
-
-  if (prepared_cached_tree_.has_value() || TryPrepareFromCache()) {
-    ConsumePreparedCachedTree();
     return;
   }
 
@@ -360,8 +531,13 @@ void TemplateElement::ResolveGeneratedElements() {
   async_create_task_->Run();
   auto generated = async_create_task_->GetFuture().get();
   async_create_task_ = nullptr;
+  auto prepared_root_attributes = generated.prepared_root_attributes_;
+  auto prepared_root_attributes_generation =
+      generated.root_attributes_generation_;
   result_ = std::move(generated.result_);
   attribute_slot_targets_ = std::move(generated.attribute_slot_targets_);
+  event_attribute_slot_targets_ =
+      std::move(generated.event_attribute_slot_targets_);
   static_event_targets_ = std::move(generated.static_event_targets_);
   element_slot_targets_ = std::move(generated.element_slot_targets_);
   prepared_element_slot_insertions_ =
@@ -369,13 +545,15 @@ void TemplateElement::ResolveGeneratedElements() {
 
   // Attach generated elements and mount slot children only when the template is
   // actually materialized into the Fiber tree.
-  InitGeneratedElementTree();
-  ApplyRootAttributes(lepus::Value());
+  InitGeneratedElementTree(prepared_root_attributes,
+                           prepared_root_attributes_generation);
   ApplyInitialElementSlots();
   ApplyPendingOperations();
 }
 
-void TemplateElement::InitGeneratedElementTree() {
+void TemplateElement::InitGeneratedElementTree(
+    const lepus::Value& prepared_root_attributes,
+    uint32_t prepared_root_attributes_generation) {
   auto* manager = element_manager();
   if (result_ == nullptr || manager == nullptr || entry_ == nullptr) {
     return;
@@ -386,7 +564,24 @@ void TemplateElement::InitGeneratedElementTree() {
   // Event attributes must be applied after the generated tree is attached so
   // FiberAddEvent can sync EventListenerMap when event-refactor is enabled.
   ApplyStaticEventAttributes(static_event_targets_);
-  ApplyInitialAttributeSlots(attribute_slot_targets_, attribute_slots_);
+  ApplyInitialEventAttributeSlots(event_attribute_slot_targets_,
+                                  attribute_slots_);
+  ApplyInitialRootEventAttributes(prepared_root_attributes,
+                                  prepared_root_attributes_generation);
+}
+
+void TemplateElement::ApplyInitialRootEventAttributes(
+    const lepus::Value& prepared_root_attributes,
+    uint32_t prepared_root_attributes_generation) {
+  if (result_ == nullptr) {
+    return;
+  }
+  if (prepared_root_attributes_generation != root_attributes_generation_) {
+    ApplyRootTemplateAttributes(result_.get(), prepared_root_attributes,
+                                root_attributes_);
+    return;
+  }
+  ApplyRootTemplateEventAttributes(result_.get(), root_attributes_);
 }
 
 void TemplateElement::InitTypedRoot() {
@@ -420,6 +615,19 @@ bool TemplateElement::IsPageTemplate() const {
   return IsTypedTemplate() && typed_tag_.IsEqual(kElementPageTag);
 }
 
+TemplateElementReuseKey TemplateElement::GetReuseKey() const {
+  TemplateElementReuseKey key;
+  if (IsTypedTemplate()) {
+    key.kind_ = TemplateElementReuseKey::Kind::kTyped;
+    key.template_key_ = typed_tag_;
+    return key;
+  }
+  key.kind_ = TemplateElementReuseKey::Kind::kCompiled;
+  key.bundle_url_ = bundle_url_;
+  key.template_key_ = template_key_;
+  return key;
+}
+
 bool TemplateElement::TryPrepareFromCache() {
   if (prepared_cached_tree_.has_value()) {
     return true;
@@ -429,44 +637,35 @@ bool TemplateElement::TryPrepareFromCache() {
     return false;
   }
   CachedTemplateElementTree cached_tree;
-  if (!manager->TakeCachedTemplateElementTree(bundle_url_, template_key_,
-                                              &cached_tree)) {
+  if (!manager->TakeCachedTemplateElementTree(GetReuseKey(), &cached_tree)) {
     return false;
   }
-
-  prepared_cached_tree_.emplace(PreparedCachedTemplateElementTree{
-      std::move(cached_tree.generated_),
-      std::move(cached_tree.applied_attribute_slots_)});
+  prepared_cached_tree_.emplace(std::move(cached_tree));
   return true;
 }
 
 void TemplateElement::ConsumePreparedCachedTree() {
-  auto prepared_tree = std::move(*prepared_cached_tree_);
+  auto cached_tree = std::move(*prepared_cached_tree_);
   prepared_cached_tree_.reset();
 
-  result_ = std::move(prepared_tree.generated_.result_);
+  result_ = std::move(cached_tree.generated_.result_);
   attribute_slot_targets_ =
-      std::move(prepared_tree.generated_.attribute_slot_targets_);
+      std::move(cached_tree.generated_.attribute_slot_targets_);
+  event_attribute_slot_targets_ =
+      std::move(cached_tree.generated_.event_attribute_slot_targets_);
   static_event_targets_ =
-      std::move(prepared_tree.generated_.static_event_targets_);
+      std::move(cached_tree.generated_.static_event_targets_);
   element_slot_targets_ =
-      std::move(prepared_tree.generated_.element_slot_targets_);
+      std::move(cached_tree.generated_.element_slot_targets_);
+  prepared_element_slot_insertions_.clear();
 
-  GeneratedElementsResult generated;
-  PrepareGeneratedElementsResult(&generated, element_slots_);
-  prepared_element_slot_insertions_ =
-      std::move(generated.prepared_element_slot_insertions_);
-
-  ApplyAttributeSlotsFromPrevious(prepared_tree.applied_attribute_slots_);
-  ApplyRootAttributes(lepus::Value());
-  ApplyInitialElementSlots();
+  ApplyAttributeSlotsFromPrevious(cached_tree.applied_attribute_slots_);
+  ApplyRootAttributes(cached_tree.applied_root_attributes_);
+  ReconcileElementSlotsFromCache(cached_tree.applied_element_slots_);
   ApplyPendingOperations();
 }
 
 bool TemplateElement::MoveElementTreeToCacheIfNeeded() {
-  if (IsTypedTemplate()) {
-    return false;
-  }
   auto* manager = element_manager();
   if (manager == nullptr) {
     return false;
@@ -476,43 +675,50 @@ bool TemplateElement::MoveElementTreeToCacheIfNeeded() {
     if (!prepared_cached_tree_.has_value()) {
       return false;
     }
-    CachedTemplateElementTree cached_tree;
-    cached_tree.generated_ = std::move(prepared_cached_tree_->generated_);
-    cached_tree.applied_attribute_slots_ =
-        std::move(prepared_cached_tree_->applied_attribute_slots_);
+    auto cached_tree = std::move(*prepared_cached_tree_);
     prepared_cached_tree_.reset();
     async_create_task_ = nullptr;
-    manager->PutCachedTemplateElementTree(bundle_url_, template_key_,
-                                          std::move(cached_tree));
+    manager->PutCachedTemplateElementTree(std::move(cached_tree));
     return true;
   }
 
+  auto key = GetReuseKey();
+  if (!key.IsValid()) {
+    return false;
+  }
   if (result_->parent() != nullptr) {
     static_cast<FiberElement*>(result_->parent())->RemoveNode(result_);
   }
 
   CachedTemplateElementTree cached_tree;
+  cached_tree.key_ = std::move(key);
   cached_tree.generated_.result_ = std::move(result_);
   cached_tree.generated_.attribute_slot_targets_ =
       std::move(attribute_slot_targets_);
+  cached_tree.generated_.event_attribute_slot_targets_ =
+      std::move(event_attribute_slot_targets_);
   cached_tree.generated_.static_event_targets_ =
       std::move(static_event_targets_);
   cached_tree.generated_.element_slot_targets_ =
       std::move(element_slot_targets_);
+  cached_tree.applied_root_attributes_ =
+      CopyTemplateObjectForStorage(root_attributes_);
   cached_tree.applied_attribute_slots_ =
-      attribute_slots_.IsEmpty() ? lepus::Value()
-                                 : lepus::Value::Clone(attribute_slots_);
+      CopyAttributeSlotsForStorage(attribute_slots_);
+  cached_tree.applied_element_slots_ =
+      CopyElementSlotsForStorage(element_slots_);
 
   result_ = nullptr;
   attribute_slot_targets_.clear();
+  event_attribute_slot_targets_.clear();
   static_event_targets_.clear();
   element_slot_targets_.clear();
   prepared_element_slot_insertions_.clear();
+  pending_operations_.clear();
   prepared_cached_tree_.reset();
   async_create_task_ = nullptr;
 
-  manager->PutCachedTemplateElementTree(bundle_url_, template_key_,
-                                        std::move(cached_tree));
+  manager->PutCachedTemplateElementTree(std::move(cached_tree));
   return true;
 }
 
@@ -560,52 +766,51 @@ void TemplateElement::MarkTemplateChildrenInElementSlotsInTree() {
   }
 }
 
-void TemplateElement::DetachElementSlotChildrenForCacheRecursively() {
-  if (!element_slots_.IsArrayOrJSArray()) {
+void TemplateElement::ReuseCachedTreeFromPrevious(TemplateElement* previous) {
+  if (previous == nullptr || previous == this || result_ != nullptr ||
+      previous->result_ == nullptr ||
+      !GetReuseKey().IsEqual(previous->GetReuseKey())) {
     return;
   }
 
-  for (size_t slot_index = 0;
-       slot_index < static_cast<size_t>(element_slots_.GetLength());
-       ++slot_index) {
-    auto slot_children =
-        element_slots_.GetProperty(static_cast<uint32_t>(slot_index));
-    if (!slot_children.IsArrayOrJSArray()) {
-      continue;
+  if (prepared_cached_tree_.has_value()) {
+    auto* manager = element_manager();
+    if (manager != nullptr) {
+      auto cached_tree = std::move(*prepared_cached_tree_);
+      manager->PutCachedTemplateElementTree(std::move(cached_tree));
     }
-
-    ElementSlotMountPoint mount_point;
-    if (slot_index < element_slot_targets_.size()) {
-      mount_point = element_slot_targets_[slot_index];
-    }
-    for (size_t child_index = 0;
-         child_index < static_cast<size_t>(slot_children.GetLength());
-         ++child_index) {
-      auto child = ResolveInitialElementSlotChild(
-          slot_children.GetProperty(static_cast<uint32_t>(child_index)));
-      DetachAndMaybeCacheElementSlotChild(mount_point, child);
-    }
-  }
-}
-
-void TemplateElement::DetachAndMaybeCacheElementSlotChild(
-    const ElementSlotMountPoint& mount_point,
-    const fml::RefPtr<FiberElement>& child) {
-  if (child == nullptr) {
-    return;
+    prepared_cached_tree_.reset();
   }
 
-  TemplateElement* template_child = nullptr;
-  if (child->is_template()) {
-    template_child = static_cast<TemplateElement*>(child.get());
-    template_child->DetachElementSlotChildrenForCacheRecursively();
-  }
+  auto previous_root_attributes =
+      CopyTemplateObjectForStorage(previous->root_attributes_);
+  auto previous_attribute_slots =
+      CopyAttributeSlotsForStorage(previous->attribute_slots_);
+  auto previous_element_slots =
+      CopyElementSlotsForStorage(previous->element_slots_);
 
-  UnmountElementSlotChild(mount_point, child);
+  result_ = std::move(previous->result_);
+  attribute_slot_targets_ = std::move(previous->attribute_slot_targets_);
+  event_attribute_slot_targets_ =
+      std::move(previous->event_attribute_slot_targets_);
+  static_event_targets_ = std::move(previous->static_event_targets_);
+  element_slot_targets_ = std::move(previous->element_slot_targets_);
+  prepared_element_slot_insertions_.clear();
 
-  if (template_child != nullptr) {
-    template_child->MoveElementTreeToCacheIfNeeded();
-  }
+  previous->result_ = nullptr;
+  previous->attribute_slot_targets_.clear();
+  previous->event_attribute_slot_targets_.clear();
+  previous->static_event_targets_.clear();
+  previous->element_slot_targets_.clear();
+  previous->prepared_element_slot_insertions_.clear();
+  previous->pending_operations_.clear();
+  previous->prepared_cached_tree_.reset();
+  previous->async_create_task_ = nullptr;
+
+  ApplyAttributeSlotsFromPrevious(previous_attribute_slots);
+  ApplyRootAttributes(previous_root_attributes);
+  ReconcileElementSlotsFromCache(previous_element_slots);
+  ApplyPendingOperations();
 }
 
 void TemplateElement::ApplyAttributeSlotsFromPrevious(
@@ -629,15 +834,8 @@ void TemplateElement::ApplyRootAttributes(
     return;
   }
 
-  result_->SetTemplateAttributes(CreateRootSpreadTemplateAttributes());
-  if (previous_root_attributes.IsObject()) {
-    TreeResolver::ApplyTemplateAttributesToElement(
-        result_.get(), CreateRootAttributeSlots(previous_root_attributes),
-        CreateRootAttributeSlots(root_attributes_));
-    return;
-  }
-  TreeResolver::ApplyTemplateAttributesToElement(
-      result_.get(), CreateRootAttributeSlots(root_attributes_));
+  ApplyRootTemplateAttributes(result_.get(), previous_root_attributes,
+                              root_attributes_);
 }
 
 void TemplateElement::ApplyAttributeSlotToTarget(
@@ -651,6 +849,109 @@ void TemplateElement::ApplyAttributeSlotToTarget(
   }
   TreeResolver::ApplyTemplateAttributesToElement(
       target.get(), previous_attribute_slots, attribute_slots_);
+}
+
+void TemplateElement::ReconcileElementSlotsFromCache(
+    const lepus::Value& previous_element_slots) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ELEMENT_APPLY_INITIAL_ELEMENT_SLOTS,
+              "template_key", template_key_.str(), "bundle_url",
+              bundle_url_.str());
+  const size_t previous_length =
+      previous_element_slots.IsArrayOrJSArray()
+          ? static_cast<size_t>(previous_element_slots.GetLength())
+          : 0;
+  const size_t current_length =
+      element_slots_.IsArrayOrJSArray()
+          ? static_cast<size_t>(element_slots_.GetLength())
+          : 0;
+  const size_t slot_count = std::max(previous_length, current_length);
+
+  for (size_t slot_index = 0; slot_index < slot_count; ++slot_index) {
+    if (slot_index >= element_slot_targets_.size()) {
+      continue;
+    }
+    const auto& mount_point = element_slot_targets_[slot_index];
+    if (mount_point.parent_ == nullptr) {
+      continue;
+    }
+
+    auto previous_children =
+        ResolveElementSlotChildren(previous_element_slots.IsArrayOrJSArray()
+                                       ? previous_element_slots.GetProperty(
+                                             static_cast<uint32_t>(slot_index))
+                                       : lepus::Value());
+    auto current_children = ResolveElementSlotChildren(
+        element_slots_.IsArrayOrJSArray()
+            ? element_slots_.GetProperty(static_cast<uint32_t>(slot_index))
+            : lepus::Value());
+    std::vector<bool> used_previous(previous_children.size(), false);
+
+    for (const auto& current_child : current_children) {
+      if (current_child == nullptr) {
+        continue;
+      }
+      size_t matched_index = previous_children.size();
+      // This is type-level reconciliation for template tree reuse, not a
+      // frontend keyed diff. Same-type siblings may reuse best-effort by order.
+      if (current_child->is_template()) {
+        auto* current_template =
+            static_cast<TemplateElement*>(current_child.get());
+        auto current_key = current_template->GetReuseKey();
+        if (current_key.IsValid()) {
+          for (size_t previous_index = 0;
+               previous_index < previous_children.size(); ++previous_index) {
+            auto previous_child = previous_children[previous_index];
+            if (used_previous[previous_index] || previous_child == nullptr ||
+                !previous_child->is_template()) {
+              continue;
+            }
+            auto* previous_template =
+                static_cast<TemplateElement*>(previous_child.get());
+            auto previous_key = previous_template->GetReuseKey();
+            if (!previous_key.IsValid() || !current_key.IsEqual(previous_key)) {
+              continue;
+            }
+            matched_index = previous_index;
+            break;
+          }
+        }
+      }
+
+      if (matched_index < previous_children.size()) {
+        used_previous[matched_index] = true;
+        auto previous_child = previous_children[matched_index];
+        if (previous_child.get() != current_child.get() &&
+            previous_child->is_template() && current_child->is_template()) {
+          auto* previous_template =
+              static_cast<TemplateElement*>(previous_child.get());
+          auto* current_template =
+              static_cast<TemplateElement*>(current_child.get());
+          current_template->ReuseCachedTreeFromPrevious(previous_template);
+        }
+      }
+
+      if (current_child->is_template()) {
+        auto* current_template =
+            static_cast<TemplateElement*>(current_child.get());
+        current_template->MarkInTemplateTreeAndPrepareRecursively();
+        current_template->GetRoot();
+      }
+      MountElementSlotChild(mount_point, current_child, nullptr);
+    }
+
+    for (size_t previous_index = 0; previous_index < previous_children.size();
+         ++previous_index) {
+      if (used_previous[previous_index]) {
+        continue;
+      }
+      auto previous_child = previous_children[previous_index];
+      UnmountElementSlotChild(mount_point, previous_child);
+      if (previous_child != nullptr && previous_child->is_template()) {
+        static_cast<TemplateElement*>(previous_child.get())
+            ->MoveElementTreeToCacheIfNeeded();
+      }
+    }
+  }
 }
 
 void TemplateElement::ApplyPendingOperations() {
@@ -727,11 +1028,24 @@ void TemplateElement::MountElementSlotChild(
       mounted_ref_node = template_ref->result_;
     }
   }
+  if (mounted_ref_node == nullptr) {
+    mounted_ref_node = mount_point.ref_node_;
+  }
+
+  if (mounted_child->parent() == mount_point.parent_.get()) {
+    if (mounted_ref_node != nullptr &&
+        mounted_child->next_sibling() == mounted_ref_node.get()) {
+      return;
+    }
+    if (mounted_ref_node == nullptr &&
+        mounted_child->next_sibling() == nullptr) {
+      return;
+    }
+    mount_point.parent_->RemoveNode(mounted_child);
+  }
 
   if (mounted_ref_node != nullptr) {
     mount_point.parent_->InsertNodeBefore(mounted_child, mounted_ref_node);
-  } else if (mount_point.ref_node_ != nullptr) {
-    mount_point.parent_->InsertNodeBefore(mounted_child, mount_point.ref_node_);
   } else {
     mount_point.parent_->InsertNode(mounted_child);
   }
@@ -1058,12 +1372,11 @@ void TemplateElement::RemoveElementSlotChild(
 
   RemoveElementSlotChildFromSlot(slot_index, child.get());
   if (slot_index < element_slot_targets_.size()) {
-    DetachAndMaybeCacheElementSlotChild(element_slot_targets_[slot_index],
-                                        child);
-  } else if (child->is_template()) {
-    auto* template_child = static_cast<TemplateElement*>(child.get());
-    template_child->DetachElementSlotChildrenForCacheRecursively();
-    template_child->MoveElementTreeToCacheIfNeeded();
+    UnmountElementSlotChild(element_slot_targets_[slot_index], child);
+  }
+  if (child->is_template()) {
+    static_cast<TemplateElement*>(child.get())
+        ->MoveElementTreeToCacheIfNeeded();
   }
 }
 
