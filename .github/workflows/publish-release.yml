@@ -40,7 +40,7 @@ jobs:
       REF_NAME: ${{ github.ref_name }}
       INPUT_TAG: ${{ inputs.tag || '' }}
       CORRELATION_ID: ${{ inputs.correlationId || '' }}
-      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
     outputs:
       version: ${{ steps.resolve.outputs.VERSION }}
       ios_storage_type: ${{ steps.resolve.outputs.IOS_STORAGE_TYPE }}
@@ -57,7 +57,10 @@ jobs:
           if [ "$EVENT_NAME" = "schedule" ]; then
             release_mode="nightly"
             source_ref="$GITHUB_SHA"
-            source_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$source_ref" --jq '.sha')"
+            source_sha="$(curl --silent --show-error --fail \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$source_ref" |
+              jq --raw-output '.sha')"
             commit_short="${source_sha:0:8}"
             version="${NIGHTLY_BASE_VERSION}-nightly.$(TZ=Asia/Shanghai date +'%Y%m%d%H%M').${GITHUB_RUN_NUMBER}.g${commit_short}"
             checkout_ref="$source_sha"
@@ -77,7 +80,10 @@ jobs:
             fi
 
             version="$tag"
-            source_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$source_ref" --jq '.sha')"
+            source_sha="$(curl --silent --show-error --fail \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$source_ref" |
+              jq --raw-output '.sha')"
             checkout_ref="$source_sha"
             storage_type="github_release"
           fi
@@ -123,10 +129,19 @@ jobs:
         run: |-
           set -euo pipefail
 
-          if tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null)"; then
-            object_type="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.type')"
+          if tag_sha="$(curl --silent --fail \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" 2>/dev/null |
+            jq --raw-output '.object.sha' 2>/dev/null)"; then
+            object_type="$(curl --silent --show-error --fail \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" |
+              jq --raw-output '.object.type')"
             if [ "$object_type" = "tag" ]; then
-              tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" --jq '.object.sha')"
+              tag_sha="$(curl --silent --show-error --fail \
+                --header "Authorization: Bearer $GITHUB_TOKEN" \
+                "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" |
+                jq --raw-output '.object.sha')"
             fi
             if [ "$tag_sha" != "$SOURCE_SHA" ]; then
               echo "Tag $TAG already points to $tag_sha, expected $SOURCE_SHA."
@@ -134,11 +149,15 @@ jobs:
             fi
             echo "Reusing tag $TAG at $SOURCE_SHA."
           elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            gh api \
-              --method POST \
-              "repos/$GITHUB_REPOSITORY/git/refs" \
-              -f ref="refs/tags/$TAG" \
-              -f sha="$SOURCE_SHA" >/dev/null
+            curl --silent --show-error --fail \
+              --request POST \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data "$(jq -n \
+                --arg ref "refs/tags/$TAG" \
+                --arg sha "$SOURCE_SHA" \
+                '{ref: $ref, sha: $sha}')" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/refs" >/dev/null
             echo "Created tag $TAG at $SOURCE_SHA."
           else
             echo "Tag $TAG is missing for a tag push event."
@@ -155,14 +174,35 @@ jobs:
         run: |-
           set -euo pipefail
 
-          if release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.id' 2>/dev/null)"; then
-            is_draft="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.draft')"
-            target_commitish="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.target_commitish')"
+          release_file="$(mktemp)"
+          create_file="$(mktemp)"
+          trap 'rm -f "$release_file" "$create_file"' EXIT
+          release_status="$(curl --silent --show-error \
+            --output "$release_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" || true)"
+          if [ "$release_status" = "200" ]; then
+            release_info="$(cat "$release_file")"
+          elif [ "$release_status" = "404" ]; then
+            release_info=""
+          else
+            echo "Failed to query release for $TAG (HTTP $release_status):"
+            cat "$release_file"
+            exit 1
+          fi
+          if [ -n "$release_info" ]; then
+            release_id="$(echo "$release_info" | jq --raw-output '.id')"
+            is_draft="$(echo "$release_info" | jq --raw-output '.draft')"
+            target_commitish="$(echo "$release_info" | jq --raw-output '.target_commitish')"
             if [ "$is_draft" != "true" ]; then
               echo "Release for $TAG is already published."
               exit 1
             fi
-            target_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$target_commitish" --jq '.sha')"
+            target_sha="$(curl --silent --show-error --fail \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$target_commitish" |
+              jq --raw-output '.sha')"
             if [ "$target_sha" != "$SOURCE_SHA" ]; then
               echo "Draft release for $TAG targets $target_sha, expected $SOURCE_SHA."
               exit 1
@@ -173,16 +213,29 @@ jobs:
             if [[ "$TAG" =~ -(rc|alpha)\. ]]; then
               prerelease=true
             fi
-            release_id="$(gh api \
-              --method POST \
-              "repos/$GITHUB_REPOSITORY/releases" \
-              -f tag_name="$TAG" \
-              -f target_commitish="$SOURCE_SHA" \
-              -f name="$TAG" \
-              -F draft=true \
-              -F prerelease="$prerelease" \
-              -F generate_release_notes=true \
-              --jq '.id')"
+            echo "Creating draft release: tag=$TAG source_sha=$SOURCE_SHA prerelease=$prerelease"
+            create_status="$(curl --silent --show-error \
+              --output "$create_file" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data "$(jq -n \
+                --arg tag_name "$TAG" \
+                --arg target_commitish "$SOURCE_SHA" \
+                --arg name "$TAG" \
+                --argjson prerelease "$prerelease" \
+                '{tag_name: $tag_name, target_commitish: $target_commitish, name: $name,
+                  body: "", draft: true, prerelease: $prerelease}')" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases" || true)"
+            if [ "$create_status" != "201" ]; then
+              echo "Failed to create draft release (HTTP $create_status)."
+              jq --compact-output \
+                '{message, errors, documentation_url}' "$create_file" 2>/dev/null ||
+                cat "$create_file"
+              exit 1
+            fi
+            release_id="$(jq --exit-status --raw-output '.id' "$create_file")"
             echo "Created draft release $release_id for $TAG."
           fi
 
@@ -749,7 +802,7 @@ jobs:
     permissions:
       contents: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
       RELEASE_ID: ${{ needs.get-version.outputs.release_id }}
       ANDROID_EXPLORER_RESULT: ${{ needs.android-explorer-build.result }}
       IOS_EXPLORER_RESULT: ${{ needs.ios-explorer-build.result }}
@@ -802,8 +855,10 @@ jobs:
             exit 1
           fi
 
-          gh api \
-            --method PATCH \
-            "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
-            -F draft=false >/dev/null
+          curl --silent --show-error --fail \
+            --request PATCH \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{"draft":false}' \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" >/dev/null
           echo "Published GitHub release $RELEASE_ID."
