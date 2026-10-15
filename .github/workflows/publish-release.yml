@@ -1,13 +1,9 @@
 name: publish-release
 on:
-  push:
-    tags:
-      - '*'
-
   workflow_dispatch:
     inputs:
       tag:
-        description: 'release tag'
+        description: 'externally prepared release tag'
         required: true
         type: string
       correlationId:
@@ -45,7 +41,6 @@ jobs:
       ios_storage_type: ${{ steps.resolve.outputs.IOS_STORAGE_TYPE }}
       checkout_ref: ${{ steps.resolve.outputs.CHECKOUT_REF }}
       release_mode: ${{ steps.resolve.outputs.RELEASE_MODE }}
-      release_id: ${{ steps.prepare_release.outputs.RELEASE_ID }}
     steps:
       - name: Resolve and validate release plan
         id: resolve
@@ -119,7 +114,7 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Create or validate release tag
+      - name: Validate external release tag and draft release
         if: ${{ steps.resolve.outputs.RELEASE_MODE == 'official' }}
         shell: bash
         env:
@@ -129,137 +124,86 @@ jobs:
           set -euo pipefail
 
           tag_file="$(mktemp)"
-          create_tag_file="$(mktemp)"
-          trap 'rm -f "$tag_file" "$create_tag_file"' EXIT
+          release_file="$(mktemp)"
+          trap 'rm -f "$tag_file" "$release_file"' EXIT
+
           tag_status="$(curl --silent --show-error \
             --output "$tag_file" \
             --write-out '%{http_code}' \
             --header "Authorization: Bearer $GITHUB_TOKEN" \
             "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" || true)"
-          if [ "$tag_status" = "200" ]; then
-            tag_sha="$(jq --exit-status --raw-output '.object.sha' "$tag_file")"
-            object_type="$(jq --exit-status --raw-output '.object.type' "$tag_file")"
-            if [ "$object_type" = "tag" ]; then
-              tag_object_status="$(curl --silent --show-error \
-                --output "$tag_file" \
-                --write-out '%{http_code}' \
-                --header "Authorization: Bearer $GITHUB_TOKEN" \
-                "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" || true)"
-              if [ "$tag_object_status" != "200" ]; then
-                echo "Failed to resolve annotated tag $TAG (HTTP $tag_object_status):"
-                cat "$tag_file"
-                exit 1
-              fi
-              tag_sha="$(jq --exit-status --raw-output '.object.sha' "$tag_file")"
-            fi
-            if [ "$tag_sha" != "$SOURCE_SHA" ]; then
-              echo "Tag $TAG already points to $tag_sha, expected $SOURCE_SHA."
-              exit 1
-            fi
-            echo "Reusing tag $TAG at $SOURCE_SHA."
-          elif [ "$tag_status" = "404" ] && [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            create_tag_status="$(curl --silent --show-error \
-              --output "$create_tag_file" \
-              --write-out '%{http_code}' \
-              --request POST \
-              --header "Authorization: Bearer $GITHUB_TOKEN" \
-              --header "Content-Type: application/json" \
-              --data "$(jq -n \
-                --arg ref "refs/tags/$TAG" \
-                --arg sha "$SOURCE_SHA" \
-                '{ref: $ref, sha: $sha}')" \
-              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/refs" || true)"
-            if [ "$create_tag_status" != "201" ]; then
-              echo "Failed to create tag $TAG (HTTP $create_tag_status):"
-              cat "$create_tag_file"
-              exit 1
-            fi
-            echo "Created tag $TAG at $SOURCE_SHA."
-          elif [ "$tag_status" = "404" ]; then
-            echo "Tag $TAG is missing for a tag push event."
-            exit 1
-          else
-            echo "Failed to query tag $TAG (HTTP $tag_status):"
+          if [ "$tag_status" != "200" ]; then
+            echo "Release tag $TAG must be created externally before this workflow runs (HTTP $tag_status):"
             cat "$tag_file"
             exit 1
           fi
 
-      - name: Create or reuse draft release
-        id: prepare_release
-        if: ${{ steps.resolve.outputs.RELEASE_MODE == 'official' }}
-        shell: bash
-        env:
-          TAG: ${{ steps.resolve.outputs.TAG }}
-          SOURCE_SHA: ${{ steps.resolve.outputs.SOURCE_SHA }}
-        run: |-
-          set -euo pipefail
-
-          release_file="$(mktemp)"
-          create_file="$(mktemp)"
-          trap 'rm -f "$release_file" "$create_file"' EXIT
-          release_status="$(curl --silent --show-error \
-            --output "$release_file" \
-            --write-out '%{http_code}' \
-            --header "Authorization: Bearer $GITHUB_TOKEN" \
-            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" || true)"
-          if [ "$release_status" = "200" ]; then
-            release_info="$(cat "$release_file")"
-          elif [ "$release_status" = "404" ]; then
-            release_info=""
-          else
-            echo "Failed to query release for $TAG (HTTP $release_status):"
-            cat "$release_file"
+          tag_sha="$(jq --exit-status --raw-output '.object.sha' "$tag_file")"
+          object_type="$(jq --exit-status --raw-output '.object.type' "$tag_file")"
+          if [ "$object_type" = "tag" ]; then
+            tag_object_status="$(curl --silent --show-error \
+              --output "$tag_file" \
+              --write-out '%{http_code}' \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" || true)"
+            if [ "$tag_object_status" != "200" ]; then
+              echo "Failed to resolve annotated tag $TAG (HTTP $tag_object_status):"
+              cat "$tag_file"
+              exit 1
+            fi
+            tag_sha="$(jq --exit-status --raw-output '.object.sha' "$tag_file")"
+          fi
+          if [ "$tag_sha" != "$SOURCE_SHA" ]; then
+            echo "Tag $TAG points to $tag_sha, expected $SOURCE_SHA."
             exit 1
           fi
-          if [ -n "$release_info" ]; then
-            release_id="$(echo "$release_info" | jq --raw-output '.id')"
-            is_draft="$(echo "$release_info" | jq --raw-output '.draft')"
-            target_commitish="$(echo "$release_info" | jq --raw-output '.target_commitish')"
-            if [ "$is_draft" != "true" ]; then
-              echo "Release for $TAG is already published."
-              exit 1
-            fi
-            target_sha="$(curl --silent --show-error --fail \
-              --header "Authorization: Bearer $GITHUB_TOKEN" \
-              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$target_commitish" |
-              jq --raw-output '.sha')"
-            if [ "$target_sha" != "$SOURCE_SHA" ]; then
-              echo "Draft release for $TAG targets $target_sha, expected $SOURCE_SHA."
-              exit 1
-            fi
-            echo "Reusing draft release $release_id for $TAG."
-          else
-            prerelease=false
-            if [[ "$TAG" =~ -(rc|alpha)\. ]]; then
-              prerelease=true
-            fi
-            echo "Creating draft release: tag=$TAG source_sha=$SOURCE_SHA prerelease=$prerelease"
-            create_status="$(curl --silent --show-error \
-              --output "$create_file" \
+
+          release_info=""
+          for attempt in $(seq 1 12); do
+            release_status="$(curl --silent --show-error \
+              --output "$release_file" \
               --write-out '%{http_code}' \
-              --request POST \
               --header "Authorization: Bearer $GITHUB_TOKEN" \
-              --header "Content-Type: application/json" \
-              --data "$(jq -n \
-                --arg tag_name "$TAG" \
-                --arg target_commitish "$SOURCE_SHA" \
-                --arg name "$TAG" \
-                --argjson prerelease "$prerelease" \
-                '{tag_name: $tag_name, target_commitish: $target_commitish, name: $name,
-                  body: "", draft: true, prerelease: $prerelease}')" \
-              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases" || true)"
-            if [ "$create_status" != "201" ]; then
-              echo "Failed to create draft release (HTTP $create_status)."
-              jq --compact-output \
-                '{message, errors, documentation_url}' "$create_file" 2>/dev/null ||
-                cat "$create_file"
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases?per_page=100" || true)"
+            if [ "$release_status" != "200" ]; then
+              echo "Failed to list releases while validating externally prepared draft for $TAG (HTTP $release_status):"
+              cat "$release_file"
               exit 1
             fi
-            release_id="$(jq --exit-status --raw-output '.id' "$create_file")"
-            echo "Created draft release $release_id for $TAG."
+
+            release_info="$(jq --compact-output \
+              --arg tag "$TAG" \
+              'map(select(.draft == true and .tag_name == $tag)) | first // empty' \
+              "$release_file")"
+            if [ -n "$release_info" ]; then
+              break
+            fi
+            if [ "$attempt" -lt 12 ]; then
+              sleep 5
+            fi
+          done
+          if [ -z "$release_info" ]; then
+            echo "Draft release for $TAG must be created externally before this workflow runs."
+            exit 1
           fi
 
-          echo "RELEASE_ID=$release_id" >> "$GITHUB_OUTPUT"
+          is_draft="$(jq --exit-status --raw-output '.draft' <<<"$release_info")"
+          target_commitish="$(jq --exit-status --raw-output '.target_commitish' <<<"$release_info")"
+          if [ "$is_draft" != "true" ]; then
+            echo "Release for $TAG must remain a draft while artifacts are uploaded."
+            exit 1
+          fi
+
+          target_sha="$(curl --silent --show-error --fail \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$target_commitish" |
+            jq --raw-output '.sha')"
+          if [ "$target_sha" != "$SOURCE_SHA" ]; then
+            echo "Draft release for $TAG targets $target_sha, expected $SOURCE_SHA."
+            exit 1
+          fi
+
+          echo "Validated external tag and draft release for $TAG at $SOURCE_SHA."
 
   android-explorer-build:
     timeout-minutes: 60
@@ -270,7 +214,7 @@ jobs:
       contents: write
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
@@ -280,7 +224,7 @@ jobs:
         with:
           abi-list: armeabi-v7a,x86,x86_64,arm64-v8a
       - name: push to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -290,6 +234,7 @@ jobs:
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
           omitPrereleaseDuringUpdate: true
+          omitDraftDuringUpdate: true
           draft: true
 
   ios-explorer-build:
@@ -304,7 +249,7 @@ jobs:
         arch: [arm64, x86_64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
@@ -314,7 +259,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -324,6 +269,7 @@ jobs:
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
           omitPrereleaseDuringUpdate: true
+          omitDraftDuringUpdate: true
           draft: true
 
   harmony-explorer-build:
@@ -344,7 +290,7 @@ jobs:
         shell: bash
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
@@ -352,7 +298,7 @@ jobs:
       - name: Build Explorer App
         uses: ./lynx/.github/actions/harmony-explorer-build
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -362,6 +308,7 @@ jobs:
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
           omitPrereleaseDuringUpdate: true
+          omitDraftDuringUpdate: true
           draft: true
 
   android-sdk-release:
@@ -371,7 +318,7 @@ jobs:
     timeout-minutes: 300
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
@@ -379,7 +326,7 @@ jobs:
       - name: Free up disk space
         uses: ./lynx/.github/actions/free-android-disk
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Setup Android environment
@@ -422,13 +369,13 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -466,17 +413,17 @@ jobs:
       REPO_LYNX_ARTIFACTS_S3_PATH_PREFIX: ${{ vars.REPO_LYNX_ARTIFACTS_S3_PATH_PREFIX || 'ios-sdk' }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: '4.0.5'
       - name: Install Common Dependencies
@@ -485,7 +432,7 @@ jobs:
           cache-backend: github
       - name: Create Specs repo GitHub App token
         id: specs_app_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ vars.SPECS_REPO_APP_ID }}
           private-key: ${{ secrets.SPECS_REPO_APP_PRIVATE_KEY }}
@@ -526,13 +473,13 @@ jobs:
       contents: read
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
           path: lynx
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
         with:
           ruby-version: '3.1'
       - name: Resolve gem version
@@ -576,7 +523,7 @@ jobs:
           echo "gem_file=$gem_file" >> "$GITHUB_OUTPUT"
           ruby -rrubygems/package -e 'spec = Gem::Package.new(ARGV.fetch(0)).spec; puts "#{spec.name} #{spec.version}"; puts spec.summary' "$gem_file"
       - name: Upload gem artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: cocoapods-lynx-library-${{ steps.gem_version.outputs.version }}
           path: lynx/tools/ios_tools/cocoapods-lynx-library/${{ steps.build_gem.outputs.gem_file }}
@@ -620,7 +567,7 @@ jobs:
       packages: read
     steps:
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
         with:
           toolchain: stable
           profile: minimal
@@ -630,7 +577,7 @@ jobs:
           cargo install git-cliff --locked
           git-cliff --version
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           path: lynx
           fetch-depth: 0
@@ -683,7 +630,7 @@ jobs:
         arch: [arm64, x64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
@@ -693,7 +640,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -703,6 +650,7 @@ jobs:
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
           omitPrereleaseDuringUpdate: true
+          omitDraftDuringUpdate: true
           draft: true
 
   dynamic-lib-release:
@@ -723,13 +671,13 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -745,7 +693,7 @@ jobs:
             --platform ${{ matrix.platform }} \
             --target-cpu ${{ matrix.arch }}
       - name: push dynamic library SDK to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -755,6 +703,7 @@ jobs:
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
           omitPrereleaseDuringUpdate: true
+          omitDraftDuringUpdate: true
           draft: true
 
   windows-explorer-release:
@@ -776,13 +725,13 @@ jobs:
           git config --global http.sslBackend "schannel"
         working-directory: ./
       - name: Download Source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           path: lynx
           ref: ${{ needs.get-version.outputs.checkout_ref }}
           fetch-depth: 0
       - name: Python Setup
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -794,7 +743,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -804,83 +753,5 @@ jobs:
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
           omitPrereleaseDuringUpdate: true
+          omitDraftDuringUpdate: true
           draft: true
-
-  finalize-release:
-    runs-on: ubuntu-22.04
-    needs:
-      - get-version
-      - android-explorer-build
-      - ios-explorer-build
-      - harmony-explorer-build
-      - android-sdk-release
-      - ios-sdk-publish
-      - cocoapods-lynx-library-publish
-      - harmony-sdk-publish
-      - macos-explorer-release
-      - dynamic-lib-release
-      - windows-explorer-release
-    if: ${{ always() && needs.get-version.outputs.release_mode == 'official' }}
-    permissions:
-      contents: write
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
-      RELEASE_ID: ${{ needs.get-version.outputs.release_id }}
-      ANDROID_EXPLORER_RESULT: ${{ needs.android-explorer-build.result }}
-      IOS_EXPLORER_RESULT: ${{ needs.ios-explorer-build.result }}
-      HARMONY_EXPLORER_RESULT: ${{ needs.harmony-explorer-build.result }}
-      ANDROID_SDK_RESULT: ${{ needs.android-sdk-release.result }}
-      IOS_SDK_RESULT: ${{ needs.ios-sdk-publish.result }}
-      COCOAPODS_LIBRARY_RESULT: ${{ needs.cocoapods-lynx-library-publish.result }}
-      HARMONY_SDK_RESULT: ${{ needs.harmony-sdk-publish.result }}
-      MACOS_EXPLORER_RESULT: ${{ needs.macos-explorer-release.result }}
-      LINUX_SDK_RESULT: ${{ needs.dynamic-lib-release.result }}
-      WINDOWS_EXPLORER_RESULT: ${{ needs.windows-explorer-release.result }}
-    steps:
-      - name: Verify required release jobs
-        shell: bash
-        run: |-
-          set -euo pipefail
-
-          failed_jobs=()
-          while IFS='=' read -r job result; do
-            if [ "$result" != "success" ]; then
-              failed_jobs+=("$job=$result")
-            fi
-          done <<EOF
-          android-explorer-build=$ANDROID_EXPLORER_RESULT
-          ios-explorer-build=$IOS_EXPLORER_RESULT
-          harmony-explorer-build=$HARMONY_EXPLORER_RESULT
-          android-sdk-release=$ANDROID_SDK_RESULT
-          ios-sdk-publish=$IOS_SDK_RESULT
-          cocoapods-lynx-library-publish=$COCOAPODS_LIBRARY_RESULT
-          harmony-sdk-publish=$HARMONY_SDK_RESULT
-          macos-explorer-release=$MACOS_EXPLORER_RESULT
-          dynamic-lib-release=$LINUX_SDK_RESULT
-          windows-explorer-release=$WINDOWS_EXPLORER_RESULT
-          EOF
-
-          if [ "${#failed_jobs[@]}" -gt 0 ]; then
-            printf 'Required release jobs did not succeed:\n'
-            printf '  %s\n' "${failed_jobs[@]}"
-            echo "The GitHub release remains a draft."
-            exit 1
-          fi
-
-      - name: Publish GitHub release
-        shell: bash
-        run: |-
-          set -euo pipefail
-
-          if [ -z "$RELEASE_ID" ]; then
-            echo "Release ID is missing."
-            exit 1
-          fi
-
-          curl --silent --show-error --fail \
-            --request PATCH \
-            --header "Authorization: Bearer $GITHUB_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data '{"draft":false}' \
-            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" >/dev/null
-          echo "Published GitHub release $RELEASE_ID."
