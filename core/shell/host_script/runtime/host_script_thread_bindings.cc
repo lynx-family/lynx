@@ -37,17 +37,26 @@ bool IsFunction(Runtime& runtime, const Value& value) {
 }  // namespace
 
 std::shared_ptr<HostScriptThreadBindings> HostScriptThreadBindings::Create(
-    Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner, Executor executor) {
+    Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner, Executor executor,
+    ProcessRuntime::Guard admission_guard) {
   if (!runner || !runner->RunsTasksOnCurrentThread() || !executor) return {};
   return std::shared_ptr<HostScriptThreadBindings>(new HostScriptThreadBindings(
-      runtime, std::move(runner), std::move(executor)));
+      runtime, std::move(runner), std::move(executor),
+      std::move(admission_guard)));
 }
 
 HostScriptThreadBindings::HostScriptThreadBindings(
-    Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner, Executor executor)
+    Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner, Executor executor,
+    ProcessRuntime::Guard admission_guard)
     : runtime_(runtime),
       runner_(std::move(runner)),
-      executor_(std::move(executor)) {}
+      executor_(std::move(executor)),
+      admission_guard_(std::move(admission_guard)) {}
+
+bool HostScriptThreadBindings::Admitted() const {
+  return IsHostScriptRuntimeEnabled() &&
+         (!admission_guard_ || admission_guard_());
+}
 
 bool HostScriptThreadBindings::Install(const std::string& domain) {
   if (domain != "bts" && domain != "mts" && domain != "ui") return false;
@@ -181,8 +190,7 @@ HostScriptThreadBindings::CallResult HostScriptThreadBindings::Run(
           ? std::string("host-script://") + ProcessRuntime::DomainName(domain)
           : args[1].getString(runtime_).utf8(runtime_);
   if (url.empty()) return reject("Source URL must be non-empty");
-  if (!IsHostScriptRuntimeEnabled())
-    return reject("HSR_DEBUG_DISABLED", "INVALID_STATE");
+  if (!Admitted()) return reject("HSR_DEBUG_DISABLED", "INVALID_STATE");
   std::string source;
   if (args[0].isString()) {
     source = args[0].getString(runtime_).utf8(runtime_);
@@ -199,6 +207,8 @@ HostScriptThreadBindings::CallResult HostScriptThreadBindings::Run(
           !Object::strictEquals(runtime_, prototype->getObject(runtime_),
                                 *function_prototype_)) {
         failure = "Thread functions must be ordinary synchronous functions";
+      } else if (!Admitted()) {
+        failure = "HSR_DEBUG_DISABLED";
       } else if (local) {
         auto outcome = invoke_sync_->call(runtime_, &args[0], size_t{1});
         if (outcome && outcome->isObject() &&
@@ -234,6 +244,7 @@ HostScriptThreadBindings::CallResult HostScriptThreadBindings::Run(
         failure = error->message().empty() ? "JAVASCRIPT_CALL_FAILED"
                                            : error->message();
     }
+    if (!Admitted()) return reject("HSR_DEBUG_DISABLED", "INVALID_STATE");
     if (!failure.empty()) return reject(failure.c_str(), "PLATFORM_ERROR");
     if (local) {
       // Nested runOn* may rehash pending_; never reuse the old iterator.
@@ -262,7 +273,7 @@ HostScriptThreadBindings::CallResult HostScriptThreadBindings::Run(
       },
       [weak] {
         auto self = weak.lock();
-        return self && self->attached_.load();
+        return self && self->attached_.load() && self->Admitted();
       });
   return std::move(*promise);
 }
@@ -275,6 +286,10 @@ void HostScriptThreadBindings::Complete(uint64_t request,
   JSINativeExceptionCollector::Scope exceptions;
   auto pending = std::move(found->second);
   pending_.erase(found);
+  if (!Admitted()) {
+    Reject(std::move(pending), "INVALID_STATE", "HSR_DEBUG_DISABLED");
+    return;
+  }
   if (!result.success) {
     Reject(std::move(pending), "PLATFORM_ERROR", result.error.c_str());
     return;

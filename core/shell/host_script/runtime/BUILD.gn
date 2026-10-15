@@ -95,6 +95,7 @@ if (enable_unittests) {
         "//third_party/googletest:gtest",
       ]
       if (is_mac) {
+        deps += [ "../../../runtime/common/napi:napi_binding_jsc" ]
         ldflags = [ "-Wl,-dead_strip" ]
       } else {
         deps += [ "../../../runtime/js/jsi/quickjs:quickjs" ]
