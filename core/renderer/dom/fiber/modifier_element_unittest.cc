@@ -425,9 +425,9 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
   padding->SetValue("bottom", lepus::Value(2.0));
 
   const ComposeElementKind kinds[] = {
-      ComposeElementKind::kView, ComposeElementKind::kText,
-      ComposeElementKind::kImage, ComposeElementKind::kOverlay,
-      ComposeElementKind::kCustom};
+      ComposeElementKind::kView,    ComposeElementKind::kText,
+      ComposeElementKind::kImage,   ComposeElementKind::kList,
+      ComposeElementKind::kOverlay, ComposeElementKind::kCustom};
   for (const auto kind : kinds) {
     auto handle =
         CreateComposeHandle(manager, kind, base::String("sample-widget"));
@@ -452,6 +452,10 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
         break;
       case ComposeElementKind::kCustom:
         EXPECT_TRUE(owner->GetTag().IsEqual("sample-widget"));
+        break;
+      case ComposeElementKind::kList:
+        EXPECT_TRUE(owner->is_list());
+        EXPECT_TRUE(owner->GetTag().IsEqual(kElementListTag));
         break;
     }
     auto result = ComposeModifierApplicator::Apply(

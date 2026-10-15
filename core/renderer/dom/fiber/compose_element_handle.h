@@ -18,6 +18,7 @@ namespace tasm {
 
 class ComposeModifierApplicator;
 class ElementManager;
+class TemplateAssembler;
 
 enum class ComposeElementKind : int32_t {
   // Reserve zero for custom tags; positive ids are dedicated element kinds.
@@ -25,6 +26,7 @@ enum class ComposeElementKind : int32_t {
   kView = 1,
   kText = 2,
   kImage = 3,
+  kList = 4,
   kOverlay = 6,
 };
 
@@ -33,9 +35,10 @@ enum class ComposeElementKind : int32_t {
 // physical node that should be inserted into its external parent.
 class ComposeElementHandle final : public lepus::RefCounted {
  public:
-  // tag is used only for kCustom; built-in kinds retain their original tags.
+  // tag is used only for kCustom; tasm supplies the runtime for kList.
   ComposeElementHandle(ElementManager* manager, ComposeElementKind kind,
-                       const base::String& tag = base::String());
+                       const base::String& tag = base::String(),
+                       TemplateAssembler* tasm = nullptr);
 
   void ReleaseSelf() const override { delete this; }
   lepus::RefType GetRefType() const override {

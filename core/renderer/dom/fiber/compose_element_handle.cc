@@ -6,6 +6,7 @@
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/utils/base/tasm_constants.h"
@@ -19,7 +20,8 @@ constexpr char kOverlayTag[] = "overlay";
 
 fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
                                           ComposeElementKind kind,
-                                          const base::String& tag) {
+                                          const base::String& tag,
+                                          TemplateAssembler* tasm) {
   switch (kind) {
     case ComposeElementKind::kView:
       return manager->CreateFiberView();
@@ -27,6 +29,9 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
       return manager->CreateFiberText(BASE_STATIC_STRING(kElementTextTag));
     case ComposeElementKind::kImage:
       return manager->CreateFiberImage(BASE_STATIC_STRING(kElementImageTag));
+    case ComposeElementKind::kList:
+      return manager->CreateFiberList(tasm, BASE_STATIC_STRING(kElementListTag),
+                                      {}, {}, {});
     case ComposeElementKind::kOverlay:
       return manager->CreateFiberElement(BASE_STATIC_STRING(kOverlayTag));
     case ComposeElementKind::kCustom:
@@ -39,8 +44,9 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
 
 ComposeElementHandle::ComposeElementHandle(ElementManager* manager,
                                            ComposeElementKind kind,
-                                           const base::String& tag)
-    : content_element_(CreateContentElement(manager, kind, tag)),
+                                           const base::String& tag,
+                                           TemplateAssembler* tasm)
+    : content_element_(CreateContentElement(manager, kind, tag, tasm)),
       mount_root_(content_element_) {}
 
 }  // namespace tasm
