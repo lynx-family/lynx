@@ -40,6 +40,10 @@ devtool_source_set("lynx_devtool_embedder_core") {
     "screenshot_timer_trigger_embedder.h",
   ]
 
+  if (is_ios) {
+    sources -= [ "global_devtool_platform_embedder.cc" ]
+  }
+
   include_dirs = [
     "../../../third_party/debug_router/src/",
     "//third_party/boringssl/src/include",

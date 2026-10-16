@@ -20,7 +20,7 @@
 #include "platform/embedder/lynx_view_builder_priv.h"
 #include "platform/embedder/lynx_view_event_simulation_proxy.h"
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
-#include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
+#include "platform/embedder/lynx_service/lynx_devtool_service.h"
 #endif
 #include "platform/embedder/lynx_view_priv.h"
 #include "platform/embedder/lynx_vsync_monitor_priv.h"
@@ -35,13 +35,14 @@ extern "C" void InstallPrimJSWeakNodeApiBridgeForApple();
 namespace {
 
 void SetupLogBoxWrapper(lynx_view_t* view, NativeWindow parent) {
-  auto& devtool_env = lynx::embedder::DevToolEnvEmbedder::GetInstance();
-  if (!devtool_env.IsLynxDebugEnabled() || !devtool_env.IsLogBoxEnabled()) {
+  auto* service = lynx::embedder::GetDevToolService();
+  if (!service || !service->IsLynxDebugEnabled() ||
+      !service->IsLogBoxEnabled()) {
     return;
   }
 
   view->lynx_logbox_wrapper =
-      std::make_unique<lynx::embedder::LynxLogBoxWrapperEmbedder>(
+      std::make_shared<lynx::embedder::LynxLogBoxWrapperEmbedder>(
           view->lynx_ui_renderer->GetNativeWindow(),
           view->lynx_template_renderer.get());
   if (!view->lynx_logbox_wrapper->HasBridge()) {
