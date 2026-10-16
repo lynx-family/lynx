@@ -6,12 +6,17 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "base/include/auto_reset.h"
+#include "base/include/string/string_utils.h"
 #include "base/include/value/base_string.h"
+#include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
@@ -21,9 +26,84 @@
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/text_fragment_behavior.h"
+#include "core/renderer/utils/value_utils.h"
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+constexpr char kPunctuationTrimRuleAttr[] = "punctuation-trim-rule";
+
+bool ParsePunctuationTrimRatio(const lepus::Value& rule,
+                               const base::String& key, float& output) {
+  if (!rule.Contains(key)) {
+    return true;
+  }
+  const auto value = rule.GetProperty(key);
+  if (!value.IsNumber()) {
+    return false;
+  }
+  const double ratio = value.Number();
+  if (!(ratio >= 0.0 && ratio <= 1.0)) {
+    return false;
+  }
+  output = static_cast<float>(ratio);
+  return true;
+}
+
+base::Vector<PunctuationTrimRule> ParsePunctuationTrimRules(
+    const lepus::Value& value) {
+  base::Vector<PunctuationTrimRule> rules;
+  if (!value.IsObject()) {
+    return rules;
+  }
+  ForEachLepusValue(value, [&](const lepus::Value& key,
+                               const lepus::Value& value) {
+    const auto unicode = base::U8StringToU32(key.StringView());
+    if (unicode.size() != 1 || unicode[0] > 0x10ffff ||
+        (unicode[0] >= 0xd800 && unicode[0] <= 0xdfff) || !value.IsObject()) {
+      return;
+    }
+    BASE_STATIC_STRING_DECL(kType, "type");
+    const auto type = value.GetProperty(kType);
+    if (!type.IsString()) {
+      return;
+    }
+    PunctuationTrimRule rule{};
+    rule.unicode = unicode[0];
+    const auto& name = type.StdString();
+    if (name == "open") {
+      rule.type = PunctuationTrimRule::Type::kOpen;
+    } else if (name == "close") {
+      rule.type = PunctuationTrimRule::Type::kClose;
+    } else if (name == "middle") {
+      rule.type = PunctuationTrimRule::Type::kMiddle;
+    } else {
+      return;
+    }
+    BASE_STATIC_STRING_DECL(kDefault, "default");
+    BASE_STATIC_STRING_DECL(kEdge, "edge");
+    BASE_STATIC_STRING_DECL(kAdjacent, "adjacent");
+    if (ParsePunctuationTrimRatio(value, kDefault, rule.default_ratio) &&
+        ParsePunctuationTrimRatio(value, kEdge, rule.edge_ratio) &&
+        ParsePunctuationTrimRatio(value, kAdjacent, rule.adjacent_ratio)) {
+      rules.push_back(rule);
+    }
+  });
+  // Canonicalize rule order without instantiating a sort for this record type.
+  static_assert(std::is_trivially_copyable_v<PunctuationTrimRule>);
+  if (rules.size() > 1) {
+    std::qsort(
+        rules.data(), rules.size(), sizeof(PunctuationTrimRule),
+        [](const void* lhs, const void* rhs) {
+          const auto a = static_cast<const PunctuationTrimRule*>(lhs)->unicode;
+          const auto b = static_cast<const PunctuationTrimRule*>(rhs)->unicode;
+          return static_cast<int>(a) - static_cast<int>(b);
+        });
+  }
+  return rules;
+}
+}  // namespace
 
 TextElement::TextElement(ElementManager* manager, const base::String& tag)
     : Element(manager, tag) {
@@ -138,14 +218,7 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
     content_ = std::move(content);
     content_utf16_length_ =
         GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
-    if (!preparing_detached_measurement_) {
-      MarkLayoutDirty();
-      element_container_->InvalidateForRedraw();
-    }
-    return true;
-  }
-
-  if (key.IsEqual(kTextMaxlineAttr)) {
+  } else if (key.IsEqual(kTextMaxlineAttr)) {
     if (is_reset) {
       if (!text_props_ || !text_props_->text_max_line.has_value()) {
         return false;
@@ -160,17 +233,25 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
       EnsureTextProps();
       text_props_->text_max_line = text_max_line;
     }
-    if (!preparing_detached_measurement_) {
-      MarkLayoutDirty();
-      element_container_->InvalidateForRedraw();
+  } else if (key.IsEqual(kPunctuationTrimRuleAttr)) {
+    auto rules = ParsePunctuationTrimRules(value);
+    if (text_props_ ? text_props_->punctuation_trim_rules == rules
+                    : rules.empty()) {
+      return false;
     }
-    return true;
-  }
-  if (is_reset) {
+    EnsureTextProps();
+    text_props_->punctuation_trim_rules = std::move(rules);
+  } else if (is_reset) {
     Element::ResetAttribute(key);
     return true;
+  } else {
+    return Element::SetAttributeInternal(key, value);
   }
-  return Element::SetAttributeInternal(key, value);
+  if (!preparing_detached_measurement_) {
+    MarkLayoutDirty();
+    element_container_->InvalidateForRedraw();
+  }
+  return true;
 }
 
 bool TextElement::ProcessAttributeForNormalLayoutMode(
