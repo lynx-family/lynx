@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.5
+
+- Add `thread-strategy` to `<frame>` typings and declare the `FrameThreadStrategy` enum for rendering thread models.
+
 ## 4.4.4
 
 - Add `<transfer-view>` typings with a required string `transfer-id` for Android and iOS.
