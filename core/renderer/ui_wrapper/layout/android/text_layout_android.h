@@ -7,7 +7,9 @@
 
 #include <jni.h>
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -33,6 +35,10 @@ class TextLayoutAndroid : public TextLayoutImpl {
   LayoutResult Measure(Element* element, float width, int width_mode,
                        float height, int height_mode) override;
 
+  std::optional<LayoutResult> MeasureDetached(Element* element, float width,
+                                              int width_mode, float height,
+                                              int height_mode) override;
+
   void Align(Element* element) override;
 
   void DispatchLayoutBefore(Element* element) override;
@@ -40,6 +46,10 @@ class TextLayoutAndroid : public TextLayoutImpl {
   void Destroy(Element* element) override;
 
  private:
+  std::optional<LayoutResult> MeasureInternal(Element* element, float width,
+                                              int width_mode, float height,
+                                              int height_mode);
+
   void BuildTextPropsBuffer(TextElement* element, std::string& output,
                             size_t& current_length, bool use_utf16,
                             PropArrayAndroid* props, bool* has_inline_view);
@@ -61,6 +71,9 @@ class TextLayoutAndroid : public TextLayoutImpl {
 
   base::android::ScopedWeakGlobalJavaRef<jobject> text_layout_;
   std::vector<PlatformTextEventTargetRange> building_event_target_ranges_;
+  // Detached measurement is synchronous and non-reentrant. A size of zero
+  // cannot distinguish a valid empty paragraph from a failed preparation.
+  std::optional<int32_t> prepared_detached_id_;
 };
 }  // namespace tasm
 }  // namespace lynx

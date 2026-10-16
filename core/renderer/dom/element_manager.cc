@@ -1230,6 +1230,15 @@ LayoutResult ElementManager::MeasureText(Element *element, float width,
                                          height_mode);
 }
 
+std::optional<LayoutResult> ElementManager::MeasureDetached(Element *element,
+                                                            float width,
+                                                            int width_mode,
+                                                            float height,
+                                                            int height_mode) {
+  return painting_context()->MeasureDetached(element, width, width_mode, height,
+                                             height_mode);
+}
+
 void ElementManager::DispatchLayoutBefore(Element *element) {
   painting_context()->DispatchLayoutBefore(element);
 }
@@ -1240,6 +1249,10 @@ void ElementManager::AlignText(Element *element) {
 
 void ElementManager::DestroyText(Element *element) {
   painting_context()->DestroyText(element);
+}
+
+void ElementManager::DestroyDetachedText(Element *element) {
+  painting_context()->DestroyDetachedText(element);
 }
 
 void ElementManager::MarkLayoutDirty(int32_t id) {
