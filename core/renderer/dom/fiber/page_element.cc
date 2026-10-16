@@ -42,6 +42,8 @@ PageElement::PageElement(ElementManager* manager,
   manager->catalyzer()->set_root(this);
   manager->SetRoot(this);
   manager->SetFiberPageElement(fml::RefPtr<PageElement>(this));
+  // First-render operations may run before the page's first flush.
+  manager->SetCurrentEngineThreadId(std::this_thread::get_id());
   MarkAttached();
   // The page element is always the template element.
   MarkTemplateElement();
@@ -79,6 +81,7 @@ void PageElement::AttachToElementManager(
   MarkAsLayoutRoot();
   manager->catalyzer()->set_root(this);
   manager->SetRoot(this);
+  manager->SetCurrentEngineThreadId(std::this_thread::get_id());
   set_style_sheet_manager(style_manager);
 
   MarkAttached();
