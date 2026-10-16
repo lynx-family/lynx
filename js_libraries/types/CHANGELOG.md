@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.5
+
+- Add `XBorderRadiusMode` CSS typing for `auto`, `long-side`, and `short-side` modes in Native UI rendering.
+
 ## 4.4.4
 
 - Add `<transfer-view>` typings with a required string `transfer-id` for Android and iOS.

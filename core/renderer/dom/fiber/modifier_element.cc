@@ -150,6 +150,7 @@ bool IsBoundaryStyle(CSSPropertyID id) {
     case kPropertyIDBorderColor:
     case kPropertyIDBorderStyle:
     case kPropertyIDBorderRadius:
+    case kPropertyIDXBorderRadiusMode:
     case kPropertyIDBorderTopLeftRadius:
     case kPropertyIDBorderTopRightRadius:
     case kPropertyIDBorderBottomLeftRadius:

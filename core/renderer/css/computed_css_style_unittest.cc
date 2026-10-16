@@ -76,6 +76,39 @@ TEST(ComputedCSSStyleTest, TracksResolvedValuesOnSetAndReset) {
       style.GetResolvedValues().contains(CSSPropertyID::kPropertyIDFontSize));
 }
 
+TEST(ComputedCSSStyleTest, BorderRadiusModeCopiesResetsAndDoesNotInherit) {
+  using Mode = starlight::XBorderRadiusModeType;
+  constexpr auto id = kPropertyIDXBorderRadiusMode;
+  for (auto mode : {Mode::kShortSide, Mode::kLongSide}) {
+    starlight::ComputedCSSStyle style{1.f, 1.f};
+    EXPECT_EQ(style.GetBorderRadiusMode(), Mode::kAuto);
+    EXPECT_FALSE(style.ResetValue(id));
+    EXPECT_TRUE(style.SetValue(id, CSSValue(mode)));
+    EXPECT_FALSE(style.SetValue(id, CSSValue(mode)));
+    EXPECT_EQ(style.GetBorderRadiusMode(), mode);
+
+    starlight::ComputedCSSStyle copy{1.f, 1.f};
+    copy.CopyFrom(style);
+    EXPECT_EQ(copy.GetBorderRadiusMode(), mode);
+    auto& original_border =
+        style.GetLayoutComputedStyle()->surround_data_.border_data_;
+    auto& copied_border =
+        copy.GetLayoutComputedStyle()->surround_data_.border_data_;
+    EXPECT_EQ(*original_border, *copied_border);
+    ASSERT_TRUE(style.ResetValue(id));
+    EXPECT_EQ(style.GetBorderRadiusMode(), Mode::kAuto);
+    EXPECT_EQ(copy.GetBorderRadiusMode(), mode);
+    EXPECT_FALSE(*original_border == *copied_border);
+    copied_border->Reset();
+    EXPECT_EQ(copy.GetBorderRadiusMode(), Mode::kAuto);
+
+    style.SetValue(id, CSSValue(mode));
+    starlight::ComputedCSSStyle child{1.f, 1.f};
+    child.InheritNormalPropertiesFrom(style, {});
+    EXPECT_EQ(child.GetBorderRadiusMode(), Mode::kAuto);
+  }
+}
+
 TEST(ComputedCSSStyleTest, ResetClearsOptionalStateAndDirtyBits) {
   starlight::ComputedCSSStyle style{1.f, 1.f};
 
