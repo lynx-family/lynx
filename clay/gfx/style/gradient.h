@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_UI_PAINTER_GRADIENT_H_
-#define CLAY_UI_PAINTER_GRADIENT_H_
+#ifndef CLAY_GFX_STYLE_GRADIENT_H_
+#define CLAY_GFX_STYLE_GRADIENT_H_
 
 #include <memory>
 #include <optional>
@@ -16,7 +16,6 @@
 #include "clay/public/clay.h"
 #include "clay/public/style_types.h"
 #include "clay/public/value.h"
-#include "third_party/googletest/googletest/include/gtest/gtest_prod.h"  // nogncheck
 
 namespace clay {
 
@@ -155,7 +154,7 @@ class Gradient {
 
  private:
   friend class GradientFactory;
-  FRIEND_TEST(GradientTest, DirectionToPoints);
+  friend class GradientTest_DirectionToPoints_Test;
 
   GradientType type_;
   ColorAndStops position_colors_;
@@ -183,4 +182,4 @@ class Gradient {
 
 }  // namespace clay
 
-#endif  // CLAY_UI_PAINTER_GRADIENT_H_
+#endif  // CLAY_GFX_STYLE_GRADIENT_H_

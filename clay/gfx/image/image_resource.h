@@ -9,10 +9,10 @@
 #include <string>
 #include <unordered_set>
 
+#include "clay/gfx/image/decode_priority.h"
 #include "clay/gfx/image/skimage_holder.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/shell/common/one_shot_callback.h"
-#include "clay/ui/rendering/decode_utils.h"
 
 namespace clay {
 

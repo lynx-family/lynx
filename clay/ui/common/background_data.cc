@@ -8,8 +8,8 @@
 #include <utility>
 
 #include "clay/gfx/geometry/rect.h"
+#include "clay/gfx/style/gradient_factory.h"
 #include "clay/ui/common/isolate.h"
-#include "clay/ui/painter/gradient_factory.h"
 
 namespace clay {
 

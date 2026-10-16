@@ -6,6 +6,7 @@ import("../../common/config.gni")
 
 gfx_style_sources = [
   "blend_mode.h",
+  "border_side.h",
   "borders_data.cc",
   "borders_data.h",
   "box_data.h",
@@ -16,6 +17,10 @@ gfx_style_sources = [
   "color_gen.inl",
   "color_source.cc",
   "color_source.h",
+  "gradient.cc",
+  "gradient.h",
+  "gradient_factory.cc",
+  "gradient_factory.h",
   "image_filter.cc",
   "image_filter.h",
   "length.h",

@@ -27,6 +27,7 @@ class GraphicsContext final {
   class AutoRestore {
    public:
     AutoRestore(GraphicsContext* context, bool do_save);
+    AutoRestore(GraphicsCanvas* canvas, bool do_save);
     ~AutoRestore();
     void Restore();
 

@@ -38,6 +38,7 @@
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
 #include "clay/ui/component/scroll_wrapper.h"
 #endif
+#include "clay/gfx/style/gradient.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
@@ -50,7 +51,6 @@
 #include "clay/ui/gesture_handler/gesture_detector.h"
 #include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 #include "clay/ui/lynx_module/type_utils.h"
-#include "clay/ui/painter/gradient.h"
 #include "clay/ui/resource/image_resource_fetcher.h"
 
 #ifndef ENABLE_CLAY_LITE

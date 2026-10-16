@@ -14,6 +14,7 @@
 #include "clay/gfx/image/image_resource_client.h"
 #include "clay/ui/painter/image_painter.h"
 #include "clay/ui/painter/painting_context.h"
+#include "clay/ui/rendering/decode_utils.h"
 #include "clay/ui/rendering/render_box.h"
 #include "clay/ui/ui_rendering_backend.h"
 

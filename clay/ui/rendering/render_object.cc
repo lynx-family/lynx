@@ -18,6 +18,7 @@
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/css_property.h"
 #include "clay/ui/compositing/pending_offset_layer.h"
+#include "clay/ui/rendering/decode_utils.h"
 
 namespace clay {
 

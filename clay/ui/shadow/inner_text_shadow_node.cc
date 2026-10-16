@@ -11,11 +11,11 @@
 #include <utility>
 #include <vector>
 
+#include "clay/gfx/style/gradient_factory.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/ui/common/isolate.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/text/text_style.h"
-#include "clay/ui/painter/gradient_factory.h"
 #include "clay/ui/shadow/inner_inline_text_shadow_node.h"
 
 namespace clay {

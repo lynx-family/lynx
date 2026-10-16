@@ -11,10 +11,12 @@
 #include <memory>
 #include <vector>
 
+#include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/image/graphics_image.h"
 #include "clay/gfx/paint.h"
 #include "clay/gfx/picture.h"
 #include "clay/gfx/rendering_backend.h"
+#include "clay/gfx/style/borders_data.h"
 #include "clay/gfx/text_blob.h"
 #include "skity/geometry/rect.hpp"
 
@@ -88,6 +90,11 @@ class GraphicsCanvas {
   virtual void Clear(uint32_t color) = 0;
 
   virtual void DrawPaint(const Paint& paint) = 0;
+
+  void DrawLine(Paint paint, const FloatPoint& start, const FloatPoint& end,
+                float thickness, BorderStyleType style);
+  void FillPolygon(size_t num_points, const FloatPoint* points,
+                   const Color& color, bool antialias);
 
   virtual void DrawLine(float x0, float y0, float x1, float y1,
                         const Paint& paint) = 0;
