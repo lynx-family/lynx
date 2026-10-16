@@ -30,7 +30,6 @@ ui_common_sources = [
   "text_input_type_traits.h",
   "text_selection.h",
   "type_info.h",
-  "utils/floating_comparison.h",
   "utils/value_change_notifier.h",
   "utils/watch_dog.cc",
   "utils/watch_dog.h",

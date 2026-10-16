@@ -16,6 +16,7 @@
 #include "base/include/string/string_number_convert.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
+#include "clay/gfx/style/gradient.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/isolate.h"

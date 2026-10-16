@@ -14,11 +14,11 @@
 
 #include "clay/gfx/animation/picture_animation_type.h"
 #include "clay/gfx/geometry/float_rect.h"
+#include "clay/gfx/geometry/floating_comparison.h"
 #include "clay/gfx/style/borders_data.h"
 #include "clay/gfx/style/color.h"
 #include "clay/gfx/style/outline_data.h"
 #include "clay/ui/common/background_data.h"
-#include "clay/ui/common/utils/floating_comparison.h"
 #include "clay/ui/painter/border_side.h"
 #include "clay/ui/painter/box_shadow_painter.h"
 #include "clay/ui/painter/image_painter.h"

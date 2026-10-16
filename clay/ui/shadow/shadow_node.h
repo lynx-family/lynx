@@ -26,6 +26,7 @@ namespace clay {
 class Measurable;
 class CustomMeasurable;
 class TextUpdateBundle;
+class Value;
 
 class ShadowNode {
  public:

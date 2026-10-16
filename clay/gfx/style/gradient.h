@@ -2,10 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_UI_PAINTER_GRADIENT_H_
-#define CLAY_UI_PAINTER_GRADIENT_H_
+#ifndef CLAY_GFX_STYLE_GRADIENT_H_
+#define CLAY_GFX_STYLE_GRADIENT_H_
 
-#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -13,10 +12,8 @@
 
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/style/color.h"
-#include "clay/public/clay.h"
 #include "clay/public/style_types.h"
 #include "clay/public/value.h"
-#include "third_party/googletest/googletest/include/gtest/gtest_prod.h"  // nogncheck
 
 namespace clay {
 
@@ -112,18 +109,15 @@ class Gradient {
   static std::optional<Gradient> Create(std::string raw_data);
 
   // Linear Gradient
-  static std::optional<Gradient> CreateLinear(
-      const clay::Value::Array& linear_array);
+  static std::optional<Gradient> CreateLinear(const Value::Array& linear_array);
   static std::optional<Gradient> CreateLinear(
       const ClayLinearGradient& gradient_data);
   // Radial Gradient
-  static std::optional<Gradient> CreateRadial(
-      const clay::Value::Array& radial_array);
+  static std::optional<Gradient> CreateRadial(const Value::Array& radial_array);
   static std::optional<Gradient> CreateRadial(
       const ClayRadialGradient& gradient_data);
   // Conic Gradient
-  static std::optional<Gradient> CreateConic(
-      const clay::Value::Array& conic_array);
+  static std::optional<Gradient> CreateConic(const Value::Array& conic_array);
   static std::optional<Gradient> CreateConic(
       const ClayConicGradient& gradient_data);
 
@@ -155,7 +149,7 @@ class Gradient {
 
  private:
   friend class GradientFactory;
-  FRIEND_TEST(GradientTest, DirectionToPoints);
+  friend class GradientTest_DirectionToPoints_Test;
 
   GradientType type_;
   ColorAndStops position_colors_;
@@ -183,4 +177,4 @@ class Gradient {
 
 }  // namespace clay
 
-#endif  // CLAY_UI_PAINTER_GRADIENT_H_
+#endif  // CLAY_GFX_STYLE_GRADIENT_H_

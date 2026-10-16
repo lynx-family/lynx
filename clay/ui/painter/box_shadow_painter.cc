@@ -7,9 +7,9 @@
 #include <memory>
 #include <vector>
 
+#include "clay/gfx/geometry/floating_comparison.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/style/shadow.h"
-#include "clay/ui/common/utils/floating_comparison.h"
 #include "clay/ui/rendering/render_box.h"
 
 namespace clay {

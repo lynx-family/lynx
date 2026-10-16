@@ -15,8 +15,8 @@
 #include "clay/gfx/geometry/float_rounded_rect.h"
 #include "clay/gfx/image/image_resource.h"
 #include "clay/gfx/rendering_backend.h"
+#include "clay/gfx/style/gradient_factory.h"
 #include "clay/ui/common/background_data.h"
-#include "clay/ui/painter/gradient_factory.h"
 #include "clay/ui/rendering/decode_utils.h"
 #include "clay/ui/rendering/render_box.h"
 
@@ -614,13 +614,8 @@ void ImagePainter::PaintBackgroundImage(GraphicsContext* context,
     paint.setAntiAlias(true);
     context->DrawRRect(dst_rrect, paint);
   } else {
-    auto color_source = GradientFactory::CreateShader(bg_image.GetGradient(),
-                                                      FloatRect(src_rect));
-    Paint paint;
-    paint.setDither(true);
-    paint.setColorSource(color_source);
-    paint.setAntiAlias(true);
-    context->DrawRRect(dst_rrect, paint);
+    GradientFactory::PaintGradient(context->Canvas(), bg_image.GetGradient(),
+                                   FloatRect(src_rect), dst_rrect);
   }
 }
 

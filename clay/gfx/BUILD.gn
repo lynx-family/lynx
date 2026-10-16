@@ -49,6 +49,7 @@ source_set("gfx") {
   sources += rebase_path(gfx_style_sources, "", "style")
 
   deps = [
+    "../../base/src:base_public_headers",
     "../common",
     "../fml:fml",
   ]

@@ -16,9 +16,9 @@
 #include "clay/gfx/graphics_context.h"
 #include "clay/gfx/image/image_resource.h"
 #include "clay/gfx/style/color.h"
+#include "clay/gfx/style/gradient.h"
 #include "clay/public/clay.h"
 #include "clay/public/style_types.h"
-#include "clay/ui/painter/gradient.h"
 
 namespace clay {
 
