@@ -27,6 +27,7 @@ class GraphicsContext final {
   class AutoRestore {
    public:
     AutoRestore(GraphicsContext* context, bool do_save);
+    AutoRestore(GraphicsCanvas* canvas, bool do_save);
     ~AutoRestore();
     void Restore();
 
@@ -71,11 +72,17 @@ class GraphicsContext final {
   void DrawLine(Paint stroke_paint, const FloatPoint& point1,
                 const FloatPoint& point2, float thickness,
                 BorderStyleType style);
+  static void DrawLine(GraphicsCanvas* canvas, const Paint& stroke_paint,
+                       const FloatPoint& point1, const FloatPoint& point2,
+                       float thickness, BorderStyleType style);
 
   void DrawRect(Paint paint, const skity::Rect& rect);
 
   void FillPolygon(size_t num_points, const FloatPoint* points,
                    const Color& color, bool should_antialias);
+  static void FillPolygon(GraphicsCanvas* canvas, size_t num_points,
+                          const FloatPoint* points, const Color& color,
+                          bool should_antialias);
 
   static void SetupPaintDashPathEffect(Paint* paint, int length,
                                        float thickness, BorderStyleType style);

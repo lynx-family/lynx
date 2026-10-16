@@ -25,8 +25,9 @@ class BorderSide {
         color_(border_color),
         side_index_(TOP),
         style_(border_style) {
-    if (style_ == BorderStyleType::kDouble && border_width < 3)
+    if (style_ == BorderStyleType::kDouble && border_width < 3) {
       style_ = BorderStyleType::kSolid;
+    }
   }
 
   BorderSide(float border_width, const Color& border_color, SideIndex index,
@@ -35,8 +36,9 @@ class BorderSide {
         color_(border_color),
         side_index_(index),
         style_(border_style) {
-    if (style_ == BorderStyleType::kDouble && border_width < 3)
+    if (style_ == BorderStyleType::kDouble && border_width < 3) {
       style_ = BorderStyleType::kSolid;
+    }
   }
 
   BorderSide()
@@ -58,12 +60,14 @@ class BorderSide {
 
   bool ObscuresBackgroundEdge() const {
     if (color_.Alpha() < 255 || style_ == BorderStyleType::kHide ||
-        style_ == BorderStyleType::kNone)
+        style_ == BorderStyleType::kNone) {
       return false;
+    }
 
     if (style_ == BorderStyleType::kDotted ||
-        style_ == BorderStyleType::kDashed)
+        style_ == BorderStyleType::kDashed) {
       return false;
+    }
 
     return true;
   }
