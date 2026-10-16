@@ -48,6 +48,19 @@ export interface TextProps extends StandardProps, TextBaselineProps {
    */
   'selection-handle-size'?: number;
   /**
+   * Experimental punctuation compression rules for TextService.
+   * Each key must be one Unicode codepoint. Ratios range from 0 to 1 and
+   * default to 0. Zero edge and adjacent ratios fall back to default.
+   * The compression mode is controlled by text-spacing-trim.
+   */
+  'punctuation-trim-rule'?: Record<string, {
+    type: 'open' | 'close' | 'middle';
+    default?: number;
+    edge?: number;
+    adjacent?: number;
+  }>;
+
+  /**
    * Maximum number of lines for text display
    * @Android 1.5
    * @iOS 1.5

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.6.1
+
+- Add the `punctuation-trim-rule` attribute to `<text>` for configuring compression ratios per punctuation character.
+
 ## 4.6.0
 
 - Add the `experimental-optimize-waterfall-scroll-fill` boolean prop to `<list>`. When enabled, a scrolling C++ waterfall list uses the target viewport to select items to bind. It defaults to `false`.
