@@ -5,7 +5,7 @@
 import lynx from 'liblynx.so';
 import { BuilderNode, FrameNode, UIContext } from '@kit.ArkUI';
 import { LynxContext } from '../../LynxContext';
-import { LynxView, LynxViewBuilder } from '../../LynxView';
+import { LynxView, LynxViewBuilder, ThreadStrategyForRendering } from '../../LynxView';
 import { LynxViewClient } from '../../LynxViewClient';
 import { LynxUpdateMeta, MetaData, TemplateData } from '../../MetaData';
 import { PerformanceEntry } from '../../gen/performance/performanceobserver/PerformanceEntry';
@@ -78,6 +78,7 @@ export class FrameHost {
   private childContext?: LynxContext;
   private childBuilt: boolean = false;
   private enableMultiAsyncThread: boolean = true;
+  private threadStrategy?: ThreadStrategyForRendering;
   private readonly performanceClient: FramePerformanceClient;
 
   constructor(parentContext: LynxContext, uiContext: UIContext, nativeFrame: lynx.UIFrame) {
@@ -105,6 +106,9 @@ export class FrameHost {
     builder.backgroundRuntime = undefined;
     builder.clients = [this.performanceClient];
     builder.enableMultiAsyncThread = this.enableMultiAsyncThread;
+    if (this.threadStrategy !== undefined) {
+      builder.threadMode = this.threadStrategy;
+    }
     builder.onCreate = (context: LynxContext) => {
       this.onChildContextReady(context);
     };
@@ -114,7 +118,8 @@ export class FrameHost {
     return builder;
   }
 
-  updateConfiguration(autoWidth: boolean, autoHeight: boolean, enableMultiAsyncThread: boolean): void {
+  updateConfiguration(autoWidth: boolean, autoHeight: boolean, enableMultiAsyncThread: boolean,
+    threadStrategy?: ThreadStrategyForRendering): void {
     const changed = this.autoWidth !== autoWidth || this.autoHeight !== autoHeight;
     const needsBuild = !this.childBuilt;
     if (!changed && !needsBuild) {
@@ -124,6 +129,7 @@ export class FrameHost {
     this.autoHeight = autoHeight;
     if (needsBuild) {
       this.enableMultiAsyncThread = enableMultiAsyncThread;
+      this.threadStrategy = threadStrategy;
     }
     this.childBuilt = true;
     this.builderNode?.update(new FrameHostBuildParams(this, true, autoWidth, autoHeight));
@@ -139,6 +145,10 @@ export class FrameHost {
     if (childOwner) {
       this.native.attachChildUIOwner(childOwner.native);
     }
+  }
+
+  createTemplateBundle(): TemplateBundle {
+    return new TemplateBundle(0);
   }
 
   updateMetaData(data?: MetaInput, globalProps?: MetaInput): void {

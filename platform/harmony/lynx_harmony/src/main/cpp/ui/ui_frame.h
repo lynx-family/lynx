@@ -93,6 +93,7 @@ class UIFrame : public UIView {
   std::optional<float> preset_width_;
   std::optional<float> preset_height_;
   bool enable_multi_async_thread_{true};
+  std::optional<int32_t> thread_strategy_;
   bool props_updated_{false};
   bool child_context_ready_{false};
   bool loaded_{false};
