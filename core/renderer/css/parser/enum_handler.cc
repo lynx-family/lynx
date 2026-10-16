@@ -586,6 +586,20 @@ static bool ToPointerEventsType(std::string_view str, int& result) {
   return true;
 }
 
+using starlight::XBorderRadiusModeType;
+static bool ToXBorderRadiusModeType(std::string_view str, int& result) {
+  XBorderRadiusModeType type = XBorderRadiusModeType::kCss;
+  if (str == "css") {
+    type = XBorderRadiusModeType::kCss;
+  } else if (str == "short-side") {
+    type = XBorderRadiusModeType::kShortSide;
+  } else {
+    return false;
+  }
+  result = static_cast<int>(type);
+  return true;
+}
+
 // AUTO INSERT END, DON'T CHANGE IT!
 
 using starlight::FlexAlignType;
@@ -786,6 +800,9 @@ HANDLER_IMPL() {
     case kPropertyIDPointerEvents:
       success = ToPointerEventsType(str, result);
       break;
+    case kPropertyIDXBorderRadiusMode:
+      success = ToXBorderRadiusModeType(str, result);
+      break;
     // AUTO INSERT END, DON'T CHANGE IT!
     case kPropertyIDLinearDirection:
       success = ToLinearOrientationType(str, result);
@@ -847,6 +864,7 @@ HANDLER_REGISTER_IMPL() {
   array[kPropertyIDXPlaceholderFontWeight] = &Handle;
   array[kPropertyIDXPlaceholderFontStyle] = &Handle;
   array[kPropertyIDPointerEvents] = &Handle;
+  array[kPropertyIDXBorderRadiusMode] = &Handle;
   // AUTO INSERT END, DON'T CHANGE IT!
   array[kPropertyIDLinearDirection] = &Handle;
   array[kPropertyIDAlignItems] = &Handle;

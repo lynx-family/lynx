@@ -1,0 +1,58 @@
+{
+  "name": "-x-border-radius-mode",
+  "id": 239,
+  "type": "enum",
+  "default_value": "css",
+  "version": "preview",
+  "author": "songshourui.null",
+  "consumption_status": "skip",
+  "desc": "Selects the resolution of existing border-radius values in Native UI rendering (Fragment Layer Rendering) on Android, iOS, and Harmony. Not inherited. The css mode uses width for horizontal percentages and height for vertical percentages. The short-side mode uses min(width, height) for both axes and independently scales the left and right corner pairs to fit that shorter side, preserving ellipse proportions. Both modes then apply CSS overlap reduction. Traditional platform UI rendering does not support this property.",
+  "values": [
+    {
+      "value": "css",
+      "version": "preview"
+    },
+    {
+      "value": "short-side",
+      "version": "preview"
+    }
+  ],
+  "formal_syntax": "css | short-side",
+  "is_shorthand": false,
+  "compat_data": {
+    "-x-border-radius-mode": {
+      "__compat": {
+        "lynx_path": "api/css/properties/-x-border-radius-mode",
+        "spec_url": [],
+        "status": {
+          "deprecated": false,
+          "experimental": true
+        },
+        "support": {
+          "android": {
+            "version_added": "preview",
+            "partial_implementation": true,
+            "notes": "Requires Native UI rendering (Fragment Layer Rendering)."
+          },
+          "ios": {
+            "version_added": "preview",
+            "partial_implementation": true,
+            "notes": "Requires Native UI rendering (Fragment Layer Rendering)."
+          },
+          "clay_android": {
+            "version_added": false
+          },
+          "clay_macos": {
+            "version_added": false
+          },
+          "clay_windows": {
+            "version_added": false
+          },
+          "web_lynx": {
+            "version_added": false
+          }
+        }
+      }
+    }
+  }
+}

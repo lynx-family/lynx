@@ -1178,6 +1178,14 @@ void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
   // bounds and border.
   if (element()->computed_css_style()->IsOverflowHidden() &&
       element()->computed_css_style()->HasBorderRadius()) {
+    if (element()->computed_css_style()->GetBorderRadiusMode() ==
+        starlight::XBorderRadiusModeType::kShortSide) {
+      // Share the resolved border-box radii with background/border drawing,
+      // then inset them by the border widths to clip the padding box.
+      rect = layout_info_.GeneratePaddingRectangle();
+      display_list_builder.ClipRect(rect);
+      return;
+    }
     const auto& border = element()
                              ->computed_css_style()
                              ->GetLayoutComputedStyle()
@@ -1387,6 +1395,9 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
   }
 
   box_recorder_.Reset();
+  // Radius styles can change without a layout pass. Resolve them against the
+  // latest border box before recording backgrounds, borders and clipping.
+  UpdateBorderRadiusAccordingToLayoutInfo();
   const auto* computed_style = element()->computed_css_style();
   display_list_builder.Begin(
       id(),
@@ -1828,8 +1839,15 @@ void Fragment::UpdateBorderRadiusAccordingToLayoutInfo() {
                              ->computed_css_style()
                              ->GetLayoutComputedStyle()
                              ->surround_data_.border_data_;
-    starlight::LayoutUnit width(layout_info_.layout_result.size_.width_);
-    starlight::LayoutUnit height(layout_info_.layout_result.size_.height_);
+    const bool uses_short_side =
+        border->radius_mode == starlight::XBorderRadiusModeType::kShortSide;
+    const float short_side =
+        std::max(0.f, std::min(layout_info_.GetBorderBoxWidth(),
+                               layout_info_.GetBorderBoxHeight()));
+    starlight::LayoutUnit width(
+        uses_short_side ? short_side : layout_info_.GetBorderBoxWidth());
+    starlight::LayoutUnit height(
+        uses_short_side ? short_side : layout_info_.GetBorderBoxHeight());
 
     BorderRadiusInfo border_radius_info{
         .x_top_left =
@@ -1857,6 +1875,27 @@ void Fragment::UpdateBorderRadiusAccordingToLayoutInfo() {
             starlight::NLengthToLayoutUnit(border->radius_y_bottom_left, height)
                 .ToFloat(),
     };
+    if (uses_short_side) {
+      // Normalize the left and right pairs independently. For elliptical
+      // corners, scale both axes together to preserve their proportions.
+      auto fit_pair = [short_side](float& top_x, float& top_y, float& bottom_x,
+                                   float& bottom_y) {
+        const float sum = std::max(top_x + bottom_x, top_y + bottom_y);
+        if (sum > short_side) {
+          const float scale = short_side / sum;
+          top_x *= scale;
+          top_y *= scale;
+          bottom_x *= scale;
+          bottom_y *= scale;
+        }
+      };
+      fit_pair(border_radius_info.x_top_left, border_radius_info.y_top_left,
+               border_radius_info.x_bottom_left,
+               border_radius_info.y_bottom_left);
+      fit_pair(border_radius_info.x_top_right, border_radius_info.y_top_right,
+               border_radius_info.x_bottom_right,
+               border_radius_info.y_bottom_right);
+    }
     layout_info_.SetBorderRadiusInfo(std::move(border_radius_info));
   } else {
     layout_info_.border_radius_info = std::nullopt;

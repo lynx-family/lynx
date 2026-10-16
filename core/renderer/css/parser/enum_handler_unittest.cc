@@ -78,6 +78,24 @@ TEST(EnumHandler, DisplayXBox) {
   EXPECT_FALSE(UnitHandler::Process(id, lepus::Value("box"), output, configs));
   EXPECT_TRUE(output.empty());
 }
+
+TEST(EnumHandler, BorderRadiusMode) {
+  constexpr auto id = kPropertyIDXBorderRadiusMode;
+  CSSParserConfigs configs;
+  StyleMap output;
+  EXPECT_EQ(CSSProperty::GetPropertyID("-x-border-radius-mode"), id);
+  ASSERT_TRUE(
+      UnitHandler::Process(id, lepus::Value("short-side"), output, configs));
+  EXPECT_EQ(output.at(id).GetEnum<starlight::XBorderRadiusModeType>(),
+            starlight::XBorderRadiusModeType::kShortSide);
+  ASSERT_TRUE(UnitHandler::Process(id, lepus::Value("css"), output, configs));
+  EXPECT_EQ(output.at(id).GetEnum<starlight::XBorderRadiusModeType>(),
+            starlight::XBorderRadiusModeType::kCss);
+  output.clear();
+  EXPECT_FALSE(
+      UnitHandler::Process(id, lepus::Value("unknown"), output, configs));
+  EXPECT_TRUE(output.empty());
+}
 }  // namespace test
 
 }  // namespace tasm

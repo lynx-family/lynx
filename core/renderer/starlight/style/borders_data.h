@@ -32,6 +32,7 @@ class BordersData {
   NLength radius_y_top_right;
   NLength radius_y_bottom_right;
   NLength radius_y_bottom_left;
+  XBorderRadiusModeType radius_mode = XBorderRadiusModeType::kCss;
   unsigned int color_top;
   unsigned int color_right;
   unsigned int color_bottom;
@@ -54,10 +55,11 @@ class BordersData {
            radius_y_top_right == rhs.radius_y_top_right &&
            radius_y_bottom_right == rhs.radius_y_bottom_right &&
            radius_y_bottom_left == rhs.radius_y_bottom_left &&
-           color_top == rhs.color_top && color_right == rhs.color_right &&
-           color_bottom == rhs.color_bottom && color_left == rhs.color_left &&
-           style_top == rhs.style_top && style_right == rhs.style_right &&
-           style_bottom == rhs.style_bottom && style_left == rhs.style_left;
+           radius_mode == rhs.radius_mode && color_top == rhs.color_top &&
+           color_right == rhs.color_right && color_bottom == rhs.color_bottom &&
+           color_left == rhs.color_left && style_top == rhs.style_top &&
+           style_right == rhs.style_right && style_bottom == rhs.style_bottom &&
+           style_left == rhs.style_left;
   }
 };
 }  // namespace starlight
