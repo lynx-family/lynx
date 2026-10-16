@@ -25,6 +25,14 @@ class FontFaceGroup {
     mListeners.offer(listener);
   }
 
+  void removeListener(TypefaceCache.TypefaceListener listener) {
+    for (Pair<TypefaceCache.TypefaceListener, Integer> item : mListeners) {
+      if (item.first == listener) {
+        mListeners.remove(item);
+      }
+    }
+  }
+
   Set<FontFace> getFontFaces() {
     return mFontFaces;
   }
