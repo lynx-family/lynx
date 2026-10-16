@@ -1847,9 +1847,14 @@ void ElementManager::Repaint() {
   auto *native_context = painting_context()->impl()->CastToNativeCtx();
   DCHECK(native_context != nullptr);
   auto *root_fragment = root()->element_container()->CastToFragment();
-  NativePaintingContext::ScopedDisplayListBatch display_list_batch(
-      native_context, root_fragment->PlatformLayerCount());
-  root_fragment->Draw();
+  {
+    NativePaintingContext::ScopedDisplayListBatch display_list_batch(
+        native_context, root_fragment->PlatformLayerCount());
+    root_fragment->Draw();
+  }
+  // Native children are attached while applying display lists. Publish ready
+  // callbacks only after the complete batch has been submitted.
+  painting_context()->UpdateNodeReadyPatching();
 }
 
 void ElementManager::EnqueueLevelOrderTask(

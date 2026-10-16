@@ -246,8 +246,16 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
   int get_text_event_target_regions_call_count{0};
   std::vector<int32_t> destroyed_image_keys;
   std::vector<tasm::PipelineID> paint_end_pipeline_ids;
+  std::vector<std::pair<int32_t, size_t>> ready_child_counts;
 
  protected:
+  void NotifyNodeReady(const std::vector<int32_t>& signs) override {
+    for (int32_t sign : signs) {
+      ready_child_counts.emplace_back(
+          sign, renderers_.find(sign)->second->Children().size());
+    }
+  }
+
   void DestroyImageOnPlatformThread(int32_t image_key) override {
     destroyed_image_keys.push_back(image_key);
   }
@@ -3416,6 +3424,38 @@ TEST_F(FragmentDrawTest, FragmentLayerRenderFinishesLayoutAfterDisplayList) {
   EXPECT_THAT(native_ref->paint_end_pipeline_ids,
               ::testing::ElementsAre(options->pipeline_id,
                                      additional_options->pipeline_id));
+}
+
+TEST_F(FragmentDrawTest, NativeReadyObservesChildrenAfterDisplayListBatch) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto parent = manager->CreateFiberNode("native-parent");
+  auto child = manager->CreateFiberNode("native-child");
+  page->InsertNode(parent);
+  parent->InsertNode(child);
+  page->FlushActionsAsRoot();
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto* platform_ref = context->GetNativePlatformRef();
+  platform_ref->ready_child_counts.clear();
+  page->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_TRUE(platform_ref->ready_child_counts.empty());
+
+  manager->Repaint();
+  EXPECT_THAT(
+      platform_ref->ready_child_counts,
+      ::testing::Contains(std::make_pair(parent->impl_id(), size_t{1})));
+  EXPECT_THAT(platform_ref->ready_child_counts,
+              ::testing::Contains(std::make_pair(child->impl_id(), size_t{0})));
+
+  // A property update without layout still needs a ready callback after draw.
+  platform_ref->ready_child_counts.clear();
+  parent->fragment_impl()->MarkNodeReadyIfNeeded();
+  page->fragment_impl()->UpdateLayoutWithoutChange();
+  EXPECT_TRUE(platform_ref->ready_child_counts.empty());
+  manager->Repaint();
+  EXPECT_THAT(
+      platform_ref->ready_child_counts,
+      ::testing::ElementsAre(std::make_pair(parent->impl_id(), size_t{1})));
 }
 
 TEST_F(FragmentDrawTest, RedrawInvalidationStopsAtNearestPaintRoot) {
