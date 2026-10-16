@@ -37,6 +37,8 @@ class TextLayoutAndroid : public TextLayoutImpl {
 
   void DispatchLayoutBefore(Element* element) override;
 
+  void Destroy(Element* element) override;
+
  private:
   void BuildTextPropsBuffer(TextElement* element, std::string& output,
                             size_t& current_length, bool use_utf16,

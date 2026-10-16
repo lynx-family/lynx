@@ -58,6 +58,12 @@ NSString* DecodeTextContentToNSString(const base::String& text) {
 
 }  // namespace
 
+void TextLayoutDarwin::Destroy(Element* element) {
+  if (element != nullptr) {
+    [_textRenderManager releaseTextRender:element->impl_id()];
+  }
+}
+
 LayoutResult TextLayoutDarwin::Measure(Element* element, float width, int width_mode, float height,
                                        int height_mode) {
   TextElement* text_element = static_cast<TextElement*>(element);

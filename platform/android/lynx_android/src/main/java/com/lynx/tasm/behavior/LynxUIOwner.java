@@ -2485,4 +2485,10 @@ public class LynxUIOwner {
   public float[] align(int sign) {
     return mTextMeasurer.align(sign);
   }
+
+  public void destroyText(int sign) {
+    if (mTextMeasurer != null) {
+      mTextMeasurer.releaseLayoutObject(sign);
+    }
+  }
 }

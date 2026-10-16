@@ -85,6 +85,20 @@ TextLayoutAndroid::TextLayoutAndroid(JNIEnv* env, jobject text_layout)
 
 TextLayoutAndroid::~TextLayoutAndroid() = default;
 
+void TextLayoutAndroid::Destroy(Element* element) {
+  if (element == nullptr) {
+    return;
+  }
+  if (element->is_text()) {
+    static_cast<TextElement*>(element)->ClearTextLineLayoutInfo();
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jobject> local_ref(text_layout_);
+  if (!local_ref.IsNull()) {
+    Java_TextLayout_destroyText(env, local_ref.Get(), element->impl_id());
+  }
+}
+
 LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
                                         int width_mode, float height,
                                         int height_mode) {

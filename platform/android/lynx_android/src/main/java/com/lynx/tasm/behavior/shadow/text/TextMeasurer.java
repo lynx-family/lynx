@@ -98,6 +98,7 @@ public class TextMeasurer {
   private LynxContext mContext;
   private SparseArray<Object> mExtraDatas;
   private SparseArray<Object> mAttributedTextBundles;
+  private final SparseArray<TypefaceListener> mTypefaceListeners = new SparseArray<>();
   private long mNativePtr;
   public TextMeasurer(LynxContext context) {
     mContext = context;
@@ -153,7 +154,7 @@ public class TextMeasurer {
                 baselineShiftCalculatorSpans);
           } else {
             buildStyledSpanIfNeeded(
-                start, end, ops, textAttributes, new TypefaceListener(sign, this), false);
+                start, end, ops, textAttributes, getTypefaceListener(sign), false);
           }
           if (inlineEventTargetSign >= 0) {
             Map<String, EventsListener> events = new HashMap<>();
@@ -181,7 +182,7 @@ public class TextMeasurer {
           spannableString.append(decodedText);
 
           buildStyledSpanIfNeeded(
-              0, decodedText.length(), ops, textAttributes, new TypefaceListener(sign, this), true);
+              0, decodedText.length(), ops, textAttributes, getTypefaceListener(sign), true);
           break;
         case kTextPropFontSize:
           textAttributes = ensureTextAttributes(textAttributes);
@@ -600,9 +601,18 @@ public class TextMeasurer {
     }
 
     float[] result = measureTextInternal(sign, width, MeasureMode.fromInt(widthMode), height,
-        MeasureMode.fromInt(heightMode), new TextMeasurer.TypefaceListener(sign, this));
+        MeasureMode.fromInt(heightMode), getTypefaceListener(sign));
 
     return result;
+  }
+
+  private TypefaceListener getTypefaceListener(int sign) {
+    TypefaceListener listener = mTypefaceListeners.get(sign);
+    if (listener == null) {
+      listener = new TypefaceListener(sign, this);
+      mTypefaceListeners.put(sign, listener);
+    }
+    return listener;
   }
 
   TextAttributes ensureTextAttributes(TextAttributes attributes) {
@@ -891,11 +901,20 @@ public class TextMeasurer {
   public void releaseLayoutObject(int sign) {
     mExtraDatas.remove(sign);
     mAttributedTextBundles.remove(sign);
+    TypefaceListener listener = mTypefaceListeners.get(sign);
+    if (listener != null) {
+      listener.cancel();
+      mTypefaceListeners.remove(sign);
+    }
   }
 
   public void removeLayoutObjects() {
     mExtraDatas.clear();
     mAttributedTextBundles.clear();
+    for (int i = 0; i < mTypefaceListeners.size(); i++) {
+      mTypefaceListeners.valueAt(i).cancel();
+    }
+    mTypefaceListeners.clear();
   }
 
   public float[] align(int sign) {
@@ -946,17 +965,34 @@ public class TextMeasurer {
     return res;
   }
 
-  public class TypefaceListener implements TypefaceCache.TypefaceListener {
+  // Static so queued font tasks do not retain the entire measurer through an
+  // implicit outer-instance reference after this listener has been cancelled.
+  public static class TypefaceListener implements TypefaceCache.TypefaceListener {
     private int mSign;
     private WeakReference<TextMeasurer> mReference;
+    private volatile boolean mCancelled;
 
     TypefaceListener(int sign, TextMeasurer manager) {
       this.mSign = sign;
       this.mReference = new WeakReference<>(manager);
     }
 
+    void cancel() {
+      mCancelled = true;
+      mReference.clear();
+      FontFaceManager.getInstance().removeTypefaceListener(this);
+    }
+
+    @Override
+    public boolean isCancelled() {
+      return mCancelled;
+    }
+
     @Override
     public void onTypefaceUpdate(Typeface typeface, int style) {
+      if (mCancelled) {
+        return;
+      }
       TextMeasurer textMeasurer = mReference.get();
       if (textMeasurer != null) {
         // TODO: we need a new api from LynxEngine to mark Element do requestLayout!
