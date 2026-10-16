@@ -69,6 +69,12 @@ class LynxView {
       return *this;
     }
 
+    // Enables CPU software rendering for windowed views on Windows.
+    Builder& SetEnableSoftwareRendering(bool enable) {
+      lynx_view_builder_set_enable_software_rendering(builder_, enable);
+      return *this;
+    }
+
     // Sets the default page background in non-premultiplied 0xAARRGGBB format.
     Builder& SetDefaultBackgroundColor(uint32_t color) {
       lynx_view_builder_set_default_background_color(builder_, color);

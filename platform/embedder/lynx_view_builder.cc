@@ -48,6 +48,13 @@ LYNX_EXTERN_C void lynx_view_builder_set_enable_js_runtime(
   builder->enable_js_runtime = enable;
 }
 
+LYNX_EXTERN_C void lynx_view_builder_set_enable_software_rendering(
+    lynx_view_builder_t* builder, bool enable) {
+  if (builder) {
+    builder->enable_software_rendering = enable;
+  }
+}
+
 LYNX_EXTERN_C void lynx_view_builder_set_default_background_color(
     lynx_view_builder_t* builder, uint32_t color) {
   builder->default_background_color = color;
