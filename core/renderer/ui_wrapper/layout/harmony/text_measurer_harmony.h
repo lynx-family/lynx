@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -32,12 +33,19 @@ class TextMeasurerHarmony final {
   void DispatchLayoutBefore(Element* element);
   LayoutResult Measure(Element* element, float width, int width_mode,
                        float height, int height_mode);
+  std::optional<LayoutResult> MeasureDetached(Element* element, float width,
+                                              int width_mode, float height,
+                                              int height_mode);
   void Align(Element* element);
   void Destroy(Element* element);
 
   fml::RefPtr<harmony::ParagraphHarmony> GetParagraph(int32_t id) const;
 
  private:
+  std::optional<LayoutResult> MeasureInternal(Element* element, float width,
+                                              int width_mode, float height,
+                                              int height_mode);
+
   struct InlinePlaceholderInfo {
     int32_t sign;
     int32_t char_index;
