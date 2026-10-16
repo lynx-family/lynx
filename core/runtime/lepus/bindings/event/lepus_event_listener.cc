@@ -11,10 +11,27 @@
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/common/bindings/event/runtime_constants.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+
+lepus::Value ConvertMessageDataToReceivingContext(runtime::MTSRuntime* context,
+                                                  const pub::Value& message) {
+  auto data = pub::ValueUtils::ConvertValueToLepusValue(message);
+  if (!context->IsLepusNGContext() ||
+      (!message.IsArray() && !message.IsMap())) {
+    return data;
+  }
+
+  auto* quick_context = runtime::MTSRuntime::ToQuickContext(context);
+  return lepus::LepusValueFactory(quick_context->context()).Create(data, true);
+}
+
+}  // namespace
 
 LepusClosureEventListener::LepusClosureEventListener(
     runtime::MTSRuntime* context, lepus::Value closure,
@@ -55,9 +72,9 @@ lepus::Value LepusClosureEventListener::ConvertEventToLepusValue(
     auto message_event = fml::static_ref_ptr_cast<runtime::MessageEvent>(event);
     value.SetProperty(BASE_STATIC_STRING(runtime::kType),
                       lepus::Value(message_event->type()));
-    value.SetProperty(
-        BASE_STATIC_STRING(runtime::kData),
-        pub::ValueUtils::ConvertValueToLepusValue(*message_event->message()));
+    value.SetProperty(BASE_STATIC_STRING(runtime::kData),
+                      ConvertMessageDataToReceivingContext(
+                          context_, *message_event->message()));
     value.SetProperty(BASE_STATIC_STRING(runtime::kOrigin),
                       lepus::Value(message_event->GetOriginString()));
   }
