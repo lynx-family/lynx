@@ -257,5 +257,10 @@ public class TypefaceCache {
 
   public interface TypefaceListener {
     void onTypefaceUpdate(Typeface typeface, final int style);
+
+    // Checked before asynchronous font loading registers a listener.
+    default boolean isCancelled() {
+      return false;
+    }
   }
 }

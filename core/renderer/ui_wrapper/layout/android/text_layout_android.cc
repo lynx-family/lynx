@@ -85,16 +85,49 @@ TextLayoutAndroid::TextLayoutAndroid(JNIEnv* env, jobject text_layout)
 
 TextLayoutAndroid::~TextLayoutAndroid() = default;
 
+void TextLayoutAndroid::Destroy(Element* element) {
+  if (element == nullptr) {
+    return;
+  }
+  if (prepared_detached_id_ == element->impl_id()) {
+    prepared_detached_id_.reset();
+  }
+  if (element->is_text()) {
+    static_cast<TextElement*>(element)->ClearTextLineLayoutInfo();
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jobject> local_ref(text_layout_);
+  if (!local_ref.IsNull()) {
+    Java_TextLayout_destroyText(env, local_ref.Get(), element->impl_id());
+  }
+}
+
 LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
                                         int width_mode, float height,
                                         int height_mode) {
+  return MeasureInternal(element, width, width_mode, height, height_mode)
+      .value_or(LayoutResult{0.f, 0.f, 0.f});
+}
+
+std::optional<LayoutResult> TextLayoutAndroid::MeasureDetached(
+    Element* element, float width, int width_mode, float height,
+    int height_mode) {
+  if (element == nullptr || prepared_detached_id_ != element->impl_id()) {
+    return std::nullopt;
+  }
+  return MeasureInternal(element, width, width_mode, height, height_mode);
+}
+
+std::optional<LayoutResult> TextLayoutAndroid::MeasureInternal(
+    Element* element, float width, int width_mode, float height,
+    int height_mode) {
   TextElement* text_element = static_cast<TextElement*>(element);
   text_element->ClearTextLineLayoutInfo();
   JNIEnv* env = base::android::AttachCurrentThread();
 
   base::android::ScopedLocalJavaRef<jobject> local_ref(text_layout_);
   if (local_ref.IsNull()) {
-    return LayoutResult{0.f, 0.f, 0.f};
+    return std::nullopt;
   }
 
   std::vector<float> layout_result;
@@ -110,7 +143,7 @@ LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
   jsize result_size = static_cast<jsize>(layout_result.size());
   jfloatArray layout_result_array = env->NewFloatArray(result_size);
   if (layout_result_array == nullptr) {
-    return LayoutResult{0.f, 0.f, 0.f};
+    return std::nullopt;
   }
 
   env->SetFloatArrayRegion(layout_result_array, 0, layout_result.size(),
@@ -120,19 +153,25 @@ LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
       Java_TextLayout_measureText(env, local_ref.Get(), element->impl_id(),
                                   width, width_mode, height, height_mode,
                                   layout_result_array);
+  const bool measure_failed =
+      base::android::HasJNIException() || env->ExceptionCheck();
   env->DeleteLocalRef(layout_result_array);
-  if (!result_array.Get()) {
+  if (measure_failed || !result_array.Get()) {
     text_element->ClearTextLineLayoutInfo();
-    return LayoutResult{0.f, 0.f, 0.f};
+    return std::nullopt;
   }
 
   jsize array_length = env->GetArrayLength(result_array.Get());
   if (array_length < 3) {
     text_element->ClearTextLineLayoutInfo();
-    return LayoutResult{0.f, 0.f, 0.f};
+    return std::nullopt;
   }
 
   jfloat* result = env->GetFloatArrayElements(result_array.Get(), JNI_FALSE);
+  if (result == nullptr) {
+    text_element->ClearTextLineLayoutInfo();
+    return std::nullopt;
+  }
   float measured_width = result[0];
   float measured_height = result[1];
   float base_line = result[2];
@@ -239,6 +278,11 @@ void TextLayoutAndroid::AlignChildrenRecursively(
 }
 
 void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
+  const bool is_detached_root =
+      !element->parent() && !element->render_parent() && element->IsDetached();
+  if (is_detached_root) {
+    prepared_detached_id_.reset();
+  }
   base::android::ScopedLocalJavaRef<jobject> local_ref(text_layout_);
   if (local_ref.IsNull() || !element->is_text()) {
     return;
@@ -256,7 +300,7 @@ void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
                        props.get(), &has_inline_view);
   text_element->set_need_layout_children(has_inline_view);
 
-  if (element->EnableFragmentLayerRender()) {
+  if (element->EnableFragmentLayerRender() && !is_detached_root) {
     if (auto* manager = element->element_manager();
         manager && manager->painting_context()) {
       manager->painting_context()
@@ -279,11 +323,15 @@ void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
                                     CreateReadableCompactArrayBuffer(*text_ab)
                               : std::nullopt;
 
-  if (!j_text_props.has_value()) {
+  if (!j_text_props.has_value() || !j_text_props->Get()) {
     return;
   }
   Java_TextLayout_dispatchLayoutBefore(env, local_ref.Get(), element->impl_id(),
                                        j_text_props->Get());
+  if (is_detached_root && !base::android::HasJNIException() &&
+      !env->ExceptionCheck()) {
+    prepared_detached_id_ = element->impl_id();
+  }
 }
 
 void TextLayoutAndroid::BuildTextPropsBuffer(

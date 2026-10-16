@@ -6,20 +6,32 @@
 
 #include "core/renderer/dom/fiber/text_element.h"
 
+#include <array>
+#include <limits>
+#include <thread>
 #include <unordered_map>
 #include <variant>
 #include <vector>
 
+#include "base/include/debug/lynx_error.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/element_utils.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
+#include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_text_layout.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/renderer/utils/base/tasm_constants.h"
+#include "core/runtime/lepus/bindings/renderer_functions.h"
+#include "core/runtime/lepusng/quick_context.h"
+#include "core/shell/lynx_ui_operation_queue.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/shell/tasm_operation_queue.h"
+#include "core/shell/testing/mock_layout_platform.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -29,10 +41,455 @@ namespace testing {
 
 class TextElementTest : public FiberElementTest {};
 
+namespace {
+
+// Keep the shared mock's zero-size default unchanged. This probe exists only
+// for detached measurement tests, where native calls must be observable.
+class DetachedTextLayoutProbe : public TextLayoutMock {
+ public:
+  void DispatchLayoutBefore(Element* element) override {
+    calls.emplace_back("dispatch");
+    auto* text = static_cast<TextElement*>(element);
+    dispatched_text = text->content().str();
+    dispatched_font_size = text->computed_css_style()->GetFontSize();
+    dispatched_max_lines =
+        text->text_props() ? text->text_props()->text_max_line : std::nullopt;
+    if (text->computed_css_style()->GetTextAttributes().has_value()) {
+      dispatched_letter_spacing =
+          text->computed_css_style()->GetTextAttributes()->letter_spacing;
+    }
+    TextLayoutMock::DispatchLayoutBefore(element);
+  }
+
+  LayoutResult Measure(Element* element, float width, int width_mode,
+                       float height, int height_mode) override {
+    calls.emplace_back("measure");
+    constraints = {width, static_cast<float>(width_mode), height,
+                   static_cast<float>(height_mode)};
+    EXPECT_TRUE(text_layout_results_.count(element->impl_id()));
+    return result;
+  }
+
+  std::optional<LayoutResult> MeasureDetached(Element* element, float width,
+                                              int width_mode, float height,
+                                              int height_mode) override {
+    const auto measured =
+        Measure(element, width, width_mode, height, height_mode);
+    return native_available ? std::optional<LayoutResult>(measured)
+                            : std::nullopt;
+  }
+
+  void Align(Element*) override { calls.emplace_back("align"); }
+
+  void Destroy(Element* element) override {
+    calls.emplace_back("destroy");
+    text_layout_results_.erase(element->impl_id());
+  }
+
+  std::vector<std::string> calls;
+  std::array<float, 4> constraints{};
+  LayoutResult result{37.5f, 21.25f, 16.75f};
+  std::string dispatched_text;
+  double dispatched_font_size{0};
+  double dispatched_letter_spacing{0};
+  std::optional<int32_t> dispatched_max_lines;
+  bool native_available{true};
+};
+
+}  // namespace
+
+class DetachedTextMeasurementTest : public FiberElementTest {
+ public:
+  void SetUp() override {
+    FiberElementTest::SetUp();
+    auto config = std::make_shared<PageConfig>();
+    config->SetEnableFiberArch(true);
+    manager->SetConfig(config);
+    manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+    manager->SetCurrentEngineThreadId(std::this_thread::get_id());
+    auto page = manager->CreateFiberPage("page", 11);
+    ASSERT_EQ(manager->root(), page.get());
+    auto probe = std::make_unique<DetachedTextLayoutProbe>();
+    probe_ = probe.get();
+    platform_impl_->text_layout_impl_ = std::move(probe);
+    platform_impl_->ResetFlushFlag();
+    manager->need_layout_ = false;
+  }
+
+  fml::RefPtr<ComposeElementHandle> CreateText() {
+    return fml::AdoptRef(
+        new ComposeElementHandle(manager, ComposeElementKind::kText));
+  }
+
+  DetachedTextLayoutProbe* probe_{nullptr};
+};
+
+TEST_P(DetachedTextMeasurementTest, RejectsUninitializedPageWithoutNativeCalls) {
+  auto handle = CreateText();
+  auto* root = manager->root();
+  manager->SetRoot(nullptr);
+  const char* error = nullptr;
+  EXPECT_FALSE(handle->MeasureText(manager, 100, 2, 100, 2, &error));
+  ASSERT_NE(error, nullptr);
+  EXPECT_STREQ(error, "measurement requires an initialized page");
+  EXPECT_TRUE(probe_->calls.empty());
+  manager->SetRoot(root);
+}
+
+TEST_P(DetachedTextMeasurementTest, PreparesMeasuresDestroysWithoutFlush) {
+  for (bool new_styling : {false, true}) {
+    manager->enable_new_styling_pipeline_ = new_styling;
+    auto handle = CreateText();
+    auto* text = static_cast<TextElement*>(handle->content_element().get());
+    text->SetAttribute("text", lepus::Value("first"));
+    text->SetAttribute("text-maxline", lepus::Value(1));
+    text->SetRawInlineStyles(base::String("font-size:20px;letter-spacing:2px"));
+    // A layout request, even on the detached node, is forbidden.
+    text->EnsureSLNode();
+    int requests = 0;
+    auto* original_context = text->slnode()->GetContext();
+    text->slnode()->SetContext(&requests);
+    text->slnode()->SetSLRequestLayoutFunc(
+        [](void* context) { ++*static_cast<int*>(context); });
+    const char* error = nullptr;
+    probe_->calls.clear();
+    auto first = handle->MeasureText(manager, 120.5, 2, 80.25, 1, &error);
+    ASSERT_TRUE(first.has_value()) << (error ? error : "");
+    EXPECT_EQ(first->width_, 37.5f);
+    EXPECT_EQ(first->height_, 21.25f);
+    EXPECT_EQ(first->baseline_, 16.75f);
+    EXPECT_EQ(probe_->dispatched_text, "first");
+    EXPECT_EQ(probe_->dispatched_max_lines, 1);
+    EXPECT_DOUBLE_EQ(probe_->dispatched_font_size, 20);
+    EXPECT_EQ(probe_->constraints,
+              (std::array<float, 4>{120.5f, 2, 80.25f, 1}));
+    EXPECT_EQ(probe_->calls,
+              (std::vector<std::string>{"dispatch", "measure", "destroy"}));
+    EXPECT_TRUE(probe_->text_layout_results_.empty());
+    EXPECT_TRUE(text->updated_attr_map_.empty());
+
+    text->SetAttribute("text", lepus::Value("updated"));
+    text->SetAttribute("text-maxline", lepus::Value(2));
+    text->SetRawInlineStyles(base::String("font-size:28px"));
+    probe_->result = LayoutResult{51, 32, 23};
+    probe_->calls.clear();
+    auto second = handle->MeasureText(manager, 0, 0, 0, 0, &error);
+    ASSERT_TRUE(second.has_value());
+    EXPECT_EQ(second->width_, 51);
+    EXPECT_EQ(probe_->dispatched_text, "updated");
+    EXPECT_EQ(probe_->dispatched_max_lines, 2);
+    EXPECT_DOUBLE_EQ(probe_->dispatched_font_size, 28);
+    EXPECT_EQ(first->width_, 37.5f);  // Independent numeric snapshot.
+    EXPECT_EQ(probe_->calls,
+              (std::vector<std::string>{"dispatch", "measure", "destroy"}));
+    text->RemoveAllInlineStyles();
+    ASSERT_TRUE(handle->MeasureText(manager, 100, 2, 100, 2, &error));
+    EXPECT_DOUBLE_EQ(probe_->dispatched_font_size,
+                     manager->GetLynxEnvConfig().PageDefaultFontSize());
+    EXPECT_EQ(text->slnode()->GetCSSStyle(),
+              text->computed_css_style()->GetLayoutComputedStyle());
+    EXPECT_EQ(requests, 0);
+    EXPECT_FALSE(manager->need_layout_);
+    EXPECT_FALSE(platform_impl_->HasFlushed());
+    EXPECT_TRUE(platform_impl_->captured_create_tags_map_.empty());
+    EXPECT_TRUE(platform_impl_->node_map_.empty());
+    EXPECT_TRUE(platform_impl_->queue_->operations_.Empty());
+    EXPECT_TRUE(platform_impl_->queue_->high_priority_operations_.Empty());
+    EXPECT_TRUE(tasm_mediator.captured_bundles_.empty());
+    probe_->result = LayoutResult{37.5f, 21.25f, 16.75f};
+    text->slnode()->SetSLRequestLayoutFunc(nullptr);
+    text->slnode()->SetContext(original_context);
+  }
+}
+
+TEST_P(DetachedTextMeasurementTest, PassesEverySLModeAndRejectsInvalidNumbers) {
+  auto handle = CreateText();
+  const char* error = nullptr;
+  for (int width_mode = 0; width_mode <= 2; ++width_mode) {
+    for (int height_mode = 0; height_mode <= 2; ++height_mode) {
+      auto result = handle->MeasureText(manager, 10.5, width_mode, 20.5,
+                                        height_mode, &error);
+      ASSERT_TRUE(result.has_value());
+      EXPECT_EQ(probe_->constraints,
+                (std::array<float, 4>{10.5f, static_cast<float>(width_mode),
+                                      20.5f, static_cast<float>(height_mode)}));
+    }
+  }
+  probe_->calls.clear();
+  const double invalid_sizes[] = {-1, std::numeric_limits<double>::infinity(),
+                                  std::numeric_limits<double>::quiet_NaN(),
+                                  std::numeric_limits<double>::max()};
+  for (double size : invalid_sizes) {
+    EXPECT_FALSE(handle->MeasureText(manager, size, 0, 10, 0, &error));
+    EXPECT_FALSE(handle->MeasureText(manager, 10, 0, size, 0, &error));
+  }
+  const double invalid_modes[] = {-1,
+                                  3,
+                                  0.5,
+                                  1.5,
+                                  std::numeric_limits<double>::infinity(),
+                                  std::numeric_limits<double>::quiet_NaN()};
+  for (double mode : invalid_modes) {
+    EXPECT_FALSE(handle->MeasureText(manager, 10, mode, 10, 0, &error));
+    EXPECT_FALSE(handle->MeasureText(manager, 10, 0, 10, mode, &error));
+  }
+  EXPECT_TRUE(probe_->calls.empty());
+}
+
+TEST_P(DetachedTextMeasurementTest, RejectsWrongOwnershipKindAndTree) {
+  const char* error = nullptr;
+  auto handle = CreateText();
+  auto measure = [&](ComposeElementHandle* candidate) {
+    return candidate->MeasureText(manager, 100, 2, 100, 2, &error);
+  };
+  EXPECT_FALSE(handle->MeasureText(nullptr, 100, 2, 100, 2, &error));
+  auto view = fml::AdoptRef(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto image = fml::AdoptRef(
+      new ComposeElementHandle(manager, ComposeElementKind::kImage));
+  EXPECT_FALSE(measure(view.get()));
+  EXPECT_FALSE(measure(image.get()));
+  manager->SetCurrentEngineThreadId(std::thread::id{});
+  EXPECT_FALSE(measure(handle.get()));
+  manager->engine_thread_id_.reset();
+  EXPECT_FALSE(measure(handle.get()));
+  manager->SetCurrentEngineThreadId(std::this_thread::get_id());
+  manager->page_options_.embedded_mode_ = EmbeddedMode::UNSET;
+  EXPECT_FALSE(measure(handle.get()));
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+
+  std::optional<LayoutResult> foreign_thread_result;
+  std::thread foreign_thread(
+      [&]() { foreign_thread_result = measure(handle.get()); });
+  foreign_thread.join();
+  EXPECT_FALSE(foreign_thread_result.has_value());
+  auto other_manager = std::make_unique<ElementManager>(
+      std::make_unique<FiberMockPaintingContext>(), &tasm_mediator,
+      manager->GetLynxEnvConfig(), PageOptions(), report::kUnknownInstanceId,
+      vsync_monitor_, std::make_unique<test::MockPlatformImpl>());
+  EXPECT_FALSE(
+      handle->MeasureText(other_manager.get(), 100, 2, 100, 2, &error));
+  handle->content_element()->MarkAttached();
+  EXPECT_FALSE(measure(handle.get()));
+  handle->content_element()->MarkDetached();
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->InsertNode(handle->content_element());
+  EXPECT_FALSE(measure(handle.get()));
+  auto childless = CreateText();
+  auto child = manager->CreateFiberRawText();
+  childless->content_element()->InsertNode(child);
+  EXPECT_FALSE(measure(childless.get()));
+  auto inline_text = CreateText();
+  inline_text->content_element()->ConvertToInlineElement();
+  EXPECT_FALSE(measure(inline_text.get()));
+  auto wrapped = CreateText();
+  wrapped->SetMountRoot(manager->CreateFiberView());
+  EXPECT_FALSE(measure(wrapped.get()));
+  EXPECT_TRUE(probe_->calls.empty());
+}
+
+TEST_P(DetachedTextMeasurementTest, InvalidNativeResultStillDestroysCache) {
+  auto handle = CreateText();
+  const char* error = nullptr;
+  probe_->result.width_ = std::numeric_limits<float>::quiet_NaN();
+  EXPECT_FALSE(handle->MeasureText(manager, 100, 2, 100, 2, &error));
+  EXPECT_EQ(probe_->calls,
+            (std::vector<std::string>{"dispatch", "measure", "destroy"}));
+  EXPECT_TRUE(probe_->text_layout_results_.empty());
+}
+
+TEST_P(DetachedTextMeasurementTest, ResolvesFontFacesLocallyBeforeDispatch) {
+  CSSFontFaceRuleMap font_faces;
+  font_faces["custom-font"].push_back(std::make_shared<CSSFontFaceRule>(
+      "custom-font", CSSFontFaceAttrsMap{{"src", "url(custom-font.woff2)"}}));
+  auto fragment = std::make_unique<SharedCSSFragment>(
+      -1, std::vector<int32_t>{}, CSSParserTokenMap{}, CSSKeyframesTokenMap{},
+      std::move(font_faces));
+  auto wrapper =
+      fml::AdoptRef(new SharedCSSFragmentWrapper(std::move(fragment)));
+  manager->AdoptStyleSheet(wrapper);
+  auto handle = CreateText();
+  auto* text = static_cast<TextElement*>(handle->content_element().get());
+  text->SetAttribute("text", lepus::Value("font"));
+  text->SetRawInlineStyles(
+      base::String("font-family:custom-font;font-size:20px"));
+  ASSERT_FALSE(wrapper->HasFontFacesResolved());
+  const char* error = nullptr;
+  ASSERT_TRUE(handle->MeasureText(manager, 100, 2, 100, 2, &error));
+  EXPECT_TRUE(wrapper->HasFontFacesResolved());
+  EXPECT_TRUE(text->property_bits().Has(kPropertyIDFontFamily));
+  ASSERT_TRUE(text->computed_css_style()->GetTextAttributes().has_value());
+  EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->font_family,
+            base::String("custom-font"));
+  EXPECT_FALSE(manager->need_layout_);
+  EXPECT_FALSE(platform_impl_->HasFlushed());
+  EXPECT_TRUE(platform_impl_->queue_->operations_.Empty());
+  EXPECT_TRUE(platform_impl_->queue_->high_priority_operations_.Empty());
+}
+
+TEST_P(DetachedTextMeasurementTest, BindingRejectsWrongHandleBeforeCast) {
+  const lepus::Value wrong_handles[] = {
+      lepus::Value(), lepus::Value(1), lepus::Value("not a handle"),
+      lepus::Value(lepus::Dictionary::Create()),
+      lepus::Value(manager->CreateFiberText("text"))};
+  for (const auto& wrong : wrong_handles) {
+    lepus::Value args[] = {wrong, lepus::Value(100), lepus::Value(2),
+                           lepus::Value(100), lepus::Value(2)};
+    base::ErrorStorage::GetInstance().Reset();
+    EXPECT_TRUE(
+        RendererFunctions::FiberMeasureTextElement(nullptr, args, 5).IsEmpty());
+    EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  }
+  auto handle = CreateText();
+  lepus::Value args[] = {lepus::Value(handle), lepus::Value("100"),
+                         lepus::Value(2), lepus::Value(100), lepus::Value(2)};
+  base::ErrorStorage::GetInstance().Reset();
+  EXPECT_TRUE(
+      RendererFunctions::FiberMeasureTextElement(nullptr, args, 5).IsEmpty());
+  EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_TRUE(
+      RendererFunctions::FiberMeasureTextElement(nullptr, args, 4).IsEmpty());
+  EXPECT_TRUE(probe_->calls.empty());
+}
+
+TEST_P(DetachedTextMeasurementTest, BindingReturnsNumericSnapshotOrUndefined) {
+  auto renderer_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(renderer_runtime, nullptr);
+  renderer_runtime->Initialize();
+  renderer_runtime->SetGlobalData(
+      BASE_STATIC_STRING(kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  auto handle = CreateText();
+  lepus::Value args[] = {lepus::Value(handle), lepus::Value(100),
+                         lepus::Value(2), lepus::Value(100), lepus::Value(2)};
+  base::ErrorStorage::GetInstance().Reset();
+  auto first = RendererFunctions::FiberMeasureTextElement(context, args, 5);
+  ASSERT_TRUE(first.IsObject());
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_TRUE(first.GetProperty("width").IsNumber());
+  EXPECT_TRUE(first.GetProperty("height").IsNumber());
+  EXPECT_TRUE(first.GetProperty("baseline").IsNumber());
+  EXPECT_DOUBLE_EQ(first.GetProperty("width").Number(), 37.5);
+  EXPECT_DOUBLE_EQ(first.GetProperty("height").Number(), 21.25);
+  EXPECT_DOUBLE_EQ(first.GetProperty("baseline").Number(), 16.75);
+  probe_->result = LayoutResult{50, 30, 20};
+  auto second = RendererFunctions::FiberMeasureTextElement(context, args, 5);
+  EXPECT_DOUBLE_EQ(second.GetProperty("width").Number(), 50);
+  EXPECT_DOUBLE_EQ(first.GetProperty("width").Number(), 37.5);
+  probe_->calls.clear();
+  args[2] = lepus::Value(1.5);
+  EXPECT_TRUE(
+      RendererFunctions::FiberMeasureTextElement(context, args, 5).IsEmpty());
+  EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_TRUE(probe_->calls.empty());
+}
+
+TEST_P(DetachedTextMeasurementTest,
+       NativeFailureRecoveryAndLegalZeroThroughBindingUnderFLR) {
+  auto renderer_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(renderer_runtime, nullptr);
+  renderer_runtime->Initialize();
+  renderer_runtime->SetGlobalData(
+      BASE_STATIC_STRING(kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  for (bool fragment_layer : {false, true}) {
+    manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+        fragment_layer ? EmbeddedMode::LAYOUT_IN_ELEMENT |
+                             EmbeddedMode::FRAGMENT_LAYER_RENDER
+                       : EmbeddedMode::LAYOUT_IN_ELEMENT);
+    auto handle = CreateText();
+    handle->content_element()->SetAttribute("text", lepus::Value("IR text"));
+    auto font = lepus::Dictionary::Create();
+    font->SetValue("op", lepus::Value(3));
+    font->SetValue("propertyId",
+                   lepus::Value(static_cast<int32_t>(kPropertyIDFontSize)));
+    font->SetValue("value", lepus::Value("28px"));
+    auto spacing = lepus::Dictionary::Create();
+    spacing->SetValue("op", lepus::Value(3));
+    spacing->SetValue(
+        "propertyId",
+        lepus::Value(static_cast<int32_t>(kPropertyIDLetterSpacing)));
+    spacing->SetValue("value", lepus::Value("3px"));
+    spacing->SetValue("previous", lepus::Value(font));
+    lepus::Value modifier_args[] = {lepus::Value(handle),
+                                    lepus::Value(spacing)};
+    base::ErrorStorage::GetInstance().Reset();
+    RendererFunctions::FiberSetComposeModifier(context, modifier_args, 2);
+    ASSERT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+    ASSERT_EQ(handle->mount_root(), handle->content_element());
+
+    lepus::Value args[] = {lepus::Value(handle), lepus::Value(100),
+                           lepus::Value(2), lepus::Value(100), lepus::Value(2)};
+    probe_->calls.clear();
+    probe_->native_available = false;
+    auto failed = RendererFunctions::FiberMeasureTextElement(context, args, 5);
+    EXPECT_TRUE(failed.IsEmpty());
+    EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+    EXPECT_EQ(probe_->calls,
+              (std::vector<std::string>{"dispatch", "measure", "destroy"}));
+    EXPECT_TRUE(probe_->text_layout_results_.empty());
+
+    probe_->calls.clear();
+    probe_->native_available = true;
+    probe_->result = LayoutResult{50, 30, 20};
+    base::ErrorStorage::GetInstance().Reset();
+    auto recovered =
+        RendererFunctions::FiberMeasureTextElement(context, args, 5);
+    ASSERT_TRUE(recovered.IsObject());
+    EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+    EXPECT_DOUBLE_EQ(recovered.GetProperty("width").Number(), 50);
+    EXPECT_EQ(probe_->dispatched_text, "IR text");
+    EXPECT_DOUBLE_EQ(probe_->dispatched_font_size, 28);
+    EXPECT_DOUBLE_EQ(probe_->dispatched_letter_spacing, 3);
+    EXPECT_EQ(probe_->calls,
+              (std::vector<std::string>{"dispatch", "measure", "destroy"}));
+    EXPECT_TRUE(probe_->text_layout_results_.empty());
+
+    probe_->calls.clear();
+    probe_->result = LayoutResult{0, 0, 0};
+    auto zero = RendererFunctions::FiberMeasureTextElement(context, args, 5);
+    ASSERT_TRUE(zero.IsObject());
+    EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+    EXPECT_DOUBLE_EQ(zero.GetProperty("width").Number(), 0);
+    EXPECT_DOUBLE_EQ(zero.GetProperty("height").Number(), 0);
+    EXPECT_DOUBLE_EQ(zero.GetProperty("baseline").Number(), 0);
+    EXPECT_DOUBLE_EQ(recovered.GetProperty("width").Number(), 50);
+    EXPECT_EQ(probe_->calls,
+              (std::vector<std::string>{"dispatch", "measure", "destroy"}));
+    EXPECT_TRUE(probe_->text_layout_results_.empty());
+    EXPECT_FALSE(manager->need_layout_);
+    EXPECT_FALSE(platform_impl_->HasFlushed());
+    EXPECT_TRUE(platform_impl_->captured_create_tags_map_.empty());
+    EXPECT_TRUE(platform_impl_->node_map_.empty());
+    EXPECT_TRUE(platform_impl_->queue_->operations_.Empty());
+    EXPECT_TRUE(platform_impl_->queue_->high_priority_operations_.Empty());
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(DetachedTextMeasurementTestModule,
+                         DetachedTextMeasurementTest,
+                         ::testing::ValuesIn(fiber_element_generation_params));
+
 TEST(TextPropsTest, TextDecorationExtensionPropertiesAreWanted) {
   EXPECT_EQ(IsTextMeasurerWanted(kPropertyIDTextDecorationThickness), 1);
   EXPECT_EQ(IsTextMeasurerWanted(kPropertyIDXTextDecorationWidth), 1);
   EXPECT_EQ(IsTextMeasurerWanted(kPropertyIDXTextDecorationGap), 1);
+}
+
+TEST(TextPropsTest, DefaultDetachedMeasurementPreservesNormalZeroResult) {
+  TextLayoutMock mock;
+  auto measured = mock.MeasureDetached(nullptr, 100, 2, 100, 2);
+  ASSERT_TRUE(measured.has_value());
+  EXPECT_EQ(measured->width_, 0);
+  EXPECT_EQ(measured->height_, 0);
+  EXPECT_EQ(measured->baseline_, 0);
 }
 
 TEST_P(TextElementTest, TestInlineText) {

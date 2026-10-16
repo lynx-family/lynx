@@ -1152,6 +1152,13 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return new float[0];
   }
 
+  @Override
+  public void destroyText(int sign) {
+    if (mTextMeasurer != null) {
+      mTextMeasurer.releaseLayoutObject(sign);
+    }
+  }
+
   native long nativeCreateEmbeddedViewContext(PlatformRendererContext jThis);
 
   private native ByteBuffer nativeGetDisplayListItemsBuffer(

@@ -58,6 +58,12 @@ NSString* DecodeTextContentToNSString(const base::String& text) {
 
 }  // namespace
 
+void TextLayoutDarwin::Destroy(Element* element) {
+  if (element != nullptr) {
+    [_textRenderManager releaseTextRender:element->impl_id()];
+  }
+}
+
 LayoutResult TextLayoutDarwin::Measure(Element* element, float width, int width_mode, float height,
                                        int height_mode) {
   TextElement* text_element = static_cast<TextElement*>(element);
@@ -174,7 +180,9 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
   textBundle.inlineElementSigns = inlineElementSigns;
   textBundle.textStyle = textStyle;
   [_textRenderManager putAttributedTextBundle:element->impl_id() textBundle:textBundle];
-  if (element->EnableFragmentLayerRender()) {
+  const bool is_detached_root =
+      !element->parent() && !element->render_parent() && element->IsDetached();
+  if (element->EnableFragmentLayerRender() && !is_detached_root) {
     if (auto* manager = element->element_manager(); manager && manager->painting_context()) {
       manager->painting_context()->impl()->CastToNativeCtx()->UpdateTextEventTargetRanges(
           element->impl_id(), std::move(event_target_ranges_));

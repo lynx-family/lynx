@@ -2911,6 +2911,42 @@ RENDERER_FUNCTION_CC(FiberCreateCompose) {
   RETURN(lepus::Value(std::move(handle)));
 }
 
+RENDERER_FUNCTION_CC(FiberMeasureTextElement) {
+  if (argc != 5) {
+    ElementAPIError("__MeasureTextElement requires five arguments");
+    RETURN_UNDEFINED();
+  }
+  // Never cast an arbitrary RefCounted value to a Compose handle.
+  if (!argv[0].IsRefCounted() || argv[0].RefCounted()->GetRefType() !=
+                                     lepus::RefType::kComposeElementHandle) {
+    ElementAPIError("__MeasureTextElement requires a ComposeElementRef");
+    RETURN_UNDEFINED();
+  }
+  for (size_t i = 1; i < 5; ++i) {
+    if (!argv[i].IsNumber()) {
+      ElementAPIError("__MeasureTextElement constraints must be numbers");
+      RETURN_UNDEFINED();
+    }
+  }
+  auto handle =
+      fml::static_ref_ptr_cast<ComposeElementHandle>(argv[0].RefCounted());
+  const char* error = nullptr;
+  auto result = handle->MeasureText(
+      GET_TASM_POINTER()->page_proxy()->element_manager().get(),
+      argv[1].Number(), argv[2].Number(), argv[3].Number(), argv[4].Number(),
+      &error);
+  if (!result) {
+    ElementAPIError("__MeasureTextElement: %s", error);
+    RETURN_UNDEFINED();
+  }
+  lepus::Value snapshot(lepus::Dictionary::Create());
+  snapshot.SetProperty(base::String("width"), lepus::Value(result->width_));
+  snapshot.SetProperty(base::String("height"), lepus::Value(result->height_));
+  snapshot.SetProperty(base::String("baseline"),
+                       lepus::Value(result->baseline_));
+  RETURN(snapshot);
+}
+
 RENDERER_FUNCTION_CC(FiberCreateList) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_CREATE_LIST);
   // parameter size >= 3

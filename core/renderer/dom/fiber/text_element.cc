@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "base/include/value/base_string.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/unit_handler.h"
@@ -135,8 +136,10 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
     content_ = std::move(content);
     content_utf16_length_ =
         GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
-    MarkLayoutDirty();
-    element_container_->InvalidateForRedraw();
+    if (!preparing_detached_measurement_) {
+      MarkLayoutDirty();
+      element_container_->InvalidateForRedraw();
+    }
     return true;
   }
 
@@ -155,8 +158,10 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
       EnsureTextProps();
       text_props_->text_max_line = text_max_line;
     }
-    MarkLayoutDirty();
-    element_container_->InvalidateForRedraw();
+    if (!preparing_detached_measurement_) {
+      MarkLayoutDirty();
+      element_container_->InvalidateForRedraw();
+    }
     return true;
   }
   if (is_reset) {
@@ -286,6 +291,33 @@ void TextElement::DispatchLayoutBefore() {
   }
 
   element_manager_->DispatchLayoutBefore(this);
+}
+
+void TextElement::PrepareForDetachedMeasurement() {
+  base::AutoReset<bool> preparation_scope(&preparing_detached_measurement_,
+                                          true);
+  ConsumeAllAttributes();
+
+  // Share CSS resolution (including units, variables and attribute styles),
+  // but not the normal flush pipeline and its layout/animation side effects.
+  auto style = style_resolver_.ResolveBaseStyle(nullptr, computed_css_style());
+  for (const auto& [id, value] : computed_css_style()->GetResolvedValues()) {
+    MarkLayoutInElementTextMeasurerPropertyIfNeeded(id);
+  }
+  for (const auto& [id, value] : style->GetResolvedValues()) {
+    MarkLayoutInElementTextMeasurerPropertyIfNeeded(id);
+  }
+  if (slnode()) {
+    slnode()->SetLayoutStyle(style->GetLayoutComputedStyle());
+  }
+  platform_css_style_ = std::move(style);
+  // The platform cache is recreated for every measurement, including when the
+  // default font size is used or a previously explicit font size was removed.
+  property_bits_.Set(kPropertyIDFontSize);
+  UpdateLayoutNodeFontSize(computed_css_style()->GetFontSize(),
+                           computed_css_style()->GetRootFontSize());
+  ReplayElementSpecificStyleSideEffect(kPropertyIDFontFamily);
+  ClearCachedStylesFromAttributes();
 }
 
 void TextElement::DispatchLayoutAfter() {
