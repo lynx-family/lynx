@@ -6,7 +6,6 @@
 #define CLAY_THIRD_PARTY_TXT_SRC_TTTEXT_PARAGRAPH_TT_TEXT_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -65,14 +64,6 @@ class ParagraphTTText : public Paragraph {
   std::vector<LineMetrics>& GetLineMetrics() override;
 
   bool DidExceedMaxLines() override;
-
-  // Tight glyph bounds of the first reference character in paragraph
-  // coordinates. GetRectsForRange currently reports run metrics even for
-  // kTight.
-  std::optional<skity::Rect> GetFirstCharacterGlyphBounds() const;
-
-  // Font metric x-height, when the reference font supplies a valid value.
-  std::optional<float> GetFirstCharacterXHeight() const;
 
   void Layout(double width) override;
 
