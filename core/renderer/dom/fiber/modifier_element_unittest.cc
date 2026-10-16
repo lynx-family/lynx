@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "core/event/event.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
@@ -16,6 +17,7 @@
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
+#include "core/renderer/events/touch_event_handler.h"
 #include "core/renderer/template_assembler.h"
 #include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepusng/quick_context.h"
@@ -496,6 +498,80 @@ TEST_P(ModifierElementTest,
   handle = nullptr;
   EXPECT_FALSE(owner_weak);
   EXPECT_FALSE(root_weak);
+}
+
+TEST_P(ModifierElementTest, ComposeOverlayOwnsItsEventPaths) {
+  tasm->EnsureTouchEventHandler();
+  auto page = manager->CreateFiberPage("page", 11);
+  auto handle = CreateComposeHandle(manager, ComposeElementKind::kOverlay);
+  auto overlay = handle->content_element();
+  auto content = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  page->InsertNode(overlay);
+  overlay->InsertNode(content);
+  content->InsertNode(child);
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(overlay->parent(), page.get());
+  EXPECT_TRUE(overlay->IsEventRoot());
+  EXPECT_EQ(overlay->GetParentTarget(), nullptr);
+
+  // Both legacy response-chain entry points must include the Overlay, then
+  // stop.
+  EventOption options;
+  options.bubbles_ = true;
+  options.composed_ = true;
+  auto by_tag = tasm->touch_event_handler_->GenerateResponseChain(
+      nullptr, child->impl_id(), options);
+  auto by_element = tasm->touch_event_handler_->GenerateResponseChain(
+      nullptr, child.get(), options);
+  ASSERT_EQ(by_tag.size(), 3u);
+  ASSERT_EQ(by_element.size(), 3u);
+  EXPECT_EQ(by_tag[0], child.get());
+  EXPECT_EQ(by_tag[1], content.get());
+  EXPECT_EQ(by_tag[2], overlay.get());
+  for (size_t i = 0; i < by_tag.size(); ++i) {
+    EXPECT_EQ(by_tag[i], by_element[i]);
+  }
+
+  // Core capture and bubble dispatch use this same bounded path.
+  for (auto type : {event::Event::EventType::kTouchEvent,
+                    event::Event::EventType::kPointerEvent}) {
+    auto input = fml::MakeRefCounted<event::Event>(
+        "touchstart", type, event::Event::Capture::kYes,
+        event::Event::Bubbles::kYes, event::Event::Cancelable::kYes,
+        event::Event::ComposedMode::kComposed);
+    input->InitEventPath(*child);
+    ASSERT_EQ(input->event_path().size(), 3u);
+    EXPECT_EQ(input->event_path()[0].get(), child.get());
+    EXPECT_EQ(input->event_path()[1].get(), content.get());
+    EXPECT_EQ(input->event_path()[2].get(), overlay.get());
+  }
+
+  auto from_root = tasm->touch_event_handler_->GenerateResponseChain(
+      nullptr, overlay.get(), options);
+  ASSERT_EQ(from_root.size(), 1u);
+  EXPECT_EQ(from_root[0], overlay.get());
+
+  page->RemoveNode(overlay);
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(tasm->touch_event_handler_
+                  ->GenerateResponseChain(nullptr, child->impl_id(), options)
+                  .empty());
+}
+
+TEST_P(ModifierElementTest, OrdinaryAndCustomOverlaysKeepTheirEventParents) {
+  auto page = manager->CreateFiberPage("page", 11);
+  constexpr static char kOverlayTag[] = "overlay";
+  auto ordinary = manager->CreateFiberElement(BASE_STATIC_STRING(kOverlayTag));
+  auto custom = CreateComposeHandle(manager, ComposeElementKind::kCustom,
+                                    BASE_STATIC_STRING(kOverlayTag));
+  page->InsertNode(ordinary);
+  page->InsertNode(custom->mount_root());
+  EXPECT_FALSE(ordinary->IsEventRoot());
+  EXPECT_FALSE(custom->content_element()->IsEventRoot());
+  EXPECT_EQ(ordinary->GetParentTarget(), page.get());
+  EXPECT_EQ(custom->content_element()->GetParentTarget(), page.get());
 }
 
 INSTANTIATE_TEST_SUITE_P(ModifierElementTestModule, ModifierElementTest,

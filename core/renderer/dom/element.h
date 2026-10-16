@@ -1546,7 +1546,12 @@ class Element : public lepus::RefCounted,
     return need_process_direction_;
   }
 
-  EventTarget* GetParentTarget() override { return parent_; }
+  // Event roots retain their DOM parent, but own an independent dispatch tree.
+  void SetIsEventRoot(bool value) { is_event_root_ = value; }
+  bool IsEventRoot() const { return is_event_root_; }
+  EventTarget* GetParentTarget() override {
+    return is_event_root_ ? nullptr : parent_;
+  }
 
   bool IsEventPathCatch(event::EventTarget* target,
                         event::Event* event) override;
@@ -2166,6 +2171,7 @@ class Element : public lepus::RefCounted,
   bool fixed_changed_{false};
 
   bool has_event_listener_{false};
+  bool is_event_root_{false};
 
   bool has_transition_props_changed_{false};
   bool has_keyframe_props_changed_{false};

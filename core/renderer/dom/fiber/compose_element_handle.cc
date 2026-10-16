@@ -27,8 +27,12 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
       return manager->CreateFiberText(BASE_STATIC_STRING(kElementTextTag));
     case ComposeElementKind::kImage:
       return manager->CreateFiberImage(BASE_STATIC_STRING(kElementImageTag));
-    case ComposeElementKind::kOverlay:
-      return manager->CreateFiberElement(BASE_STATIC_STRING(kOverlayTag));
+    case ComposeElementKind::kOverlay: {
+      auto overlay =
+          manager->CreateFiberElement(BASE_STATIC_STRING(kOverlayTag));
+      overlay->SetIsEventRoot(true);
+      return overlay;
+    }
     case ComposeElementKind::kCustom:
       return manager->CreateFiberElement(tag);
   }
