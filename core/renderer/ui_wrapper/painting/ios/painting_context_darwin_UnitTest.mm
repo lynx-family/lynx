@@ -532,7 +532,7 @@ class TextLayoutTestDelegate
   XCTAssertEqual(listener->count, 3);
   text->set_will_destroy(true);
   manager->DestroyText(text.get());
-  XCTAssertNotNil([textManager takeTextRender:sign]);
+  XCTAssertNil([textManager takeTextRender:sign]);
   [textManager releaseTextRender:sign];
   manager->node_manager()->Erase(sign);
   text = nullptr;

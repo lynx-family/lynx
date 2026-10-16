@@ -35,6 +35,8 @@ class TextLayoutDarwin : public TextLayoutImpl {
 
   void DispatchLayoutBefore(Element* element) override;
 
+  void Destroy(Element* element) override;
+
  private:
   static void ApplyTextStyle(TextElement* text_element, LynxTextStyle* textStyle);
   static void HandleParagraphStyle(TextElement* text_element, LynxTextStyle* textStyle,

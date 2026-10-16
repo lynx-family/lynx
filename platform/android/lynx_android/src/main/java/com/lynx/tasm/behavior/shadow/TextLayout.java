@@ -42,6 +42,11 @@ public class TextLayout {
       public float[] align(int sign) {
         return uiOwner.align(sign);
       }
+
+      @Override
+      public void destroyText(int sign) {
+        uiOwner.destroyText(sign);
+      }
     };
   }
 
@@ -68,5 +73,10 @@ public class TextLayout {
     float[] res = mTextMeasurerProvider.align(sign);
     TraceEvent.endSection(TraceEventDef.TEXT_LAYOUT_ALIGN);
     return res;
+  }
+
+  @CalledByNative
+  public void destroyText(int sign) {
+    mTextMeasurerProvider.destroyText(sign);
   }
 }

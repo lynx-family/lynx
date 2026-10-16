@@ -2067,6 +2067,7 @@ public class com::lynx::tasm::fontface::FontFaceManager :  {
   public void com.lynx.tasm.fontface.FontFaceManager.putFontWithSettings(FontSettingsKey key, Typeface tf);
   public void com.lynx.tasm.fontface.FontFaceManager.prefetchFont(final LynxContext context, final String url, @Nullable final ReadableMap params, @Nullable final FontFacePrefetchListener listener);
   public Typeface com.lynx.tasm.fontface.FontFaceManager.getTypeface(final LynxContext context, final String fontFamily, final int style, final TypefaceCache.TypefaceListener listener);
+  public void com.lynx.tasm.fontface.FontFaceManager.removeTypefaceListener(@NonNull TypefaceCache.TypefaceListener listener);
 }
 
 public class com::lynx::tasm::utils::FontFaceParser :  {
@@ -7580,6 +7581,7 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public float[] com.lynx.tasm.behavior.LynxUIOwner.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public Object com.lynx.tasm.behavior.LynxUIOwner.takeTextLayout(int sign);
   public float[] com.lynx.tasm.behavior.LynxUIOwner.align(int sign);
+  public void com.lynx.tasm.behavior.LynxUIOwner.destroyText(int sign);
 }
 
 public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.ILynxUIRenderer {
@@ -9028,6 +9030,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.align(int sign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyText(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroy();
 }
 
@@ -10751,6 +10754,7 @@ public class com::lynx::tasm::behavior::shadow::TextLayout :  {
   public float[] com.lynx.tasm.behavior.shadow.TextLayout.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public void com.lynx.tasm.behavior.shadow.TextLayout.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
   public float[] com.lynx.tasm.behavior.shadow.TextLayout.align(int sign);
+  public void com.lynx.tasm.behavior.shadow.TextLayout.destroyText(int sign);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextLayoutWarmer : HandlerThread {
@@ -10772,6 +10776,7 @@ public interface com::lynx::tasm::behavior::shadow::TextMeasurerProvider {
   public float[] com.lynx.tasm.behavior.shadow.TextMeasurerProvider.measureText(int sign, float width, int widthMode, float height, int heightMode, float[] inlineViewLayoutResult);
   public void com.lynx.tasm.behavior.shadow.TextMeasurerProvider.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer);
   public float[] com.lynx.tasm.behavior.shadow.TextMeasurerProvider.align(int sign);
+  public default void com.lynx.tasm.behavior.shadow.TextMeasurerProvider.destroyText(int sign);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextRenderer :  {
@@ -11264,11 +11269,13 @@ public class com::lynx::tasm::behavior::shadow::text::TypefaceCache :  {
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextMeasurer::TypefaceListener : com.lynx.tasm.behavior.shadow.text.TypefaceCache.TypefaceListener {
+  public boolean com.lynx.tasm.behavior.shadow.text.TextMeasurer.TypefaceListener.isCancelled();
   public void com.lynx.tasm.behavior.shadow.text.TextMeasurer.TypefaceListener.onTypefaceUpdate(Typeface typeface, int style);
 }
 
 public interface com::lynx::tasm::behavior::shadow::text::TypefaceCache::TypefaceListener {
   public void com.lynx.tasm.behavior.shadow.text.TypefaceCache.TypefaceListener.onTypefaceUpdate(Typeface typeface, final int style);
+  public default boolean com.lynx.tasm.behavior.shadow.text.TypefaceCache.TypefaceListener.isCancelled();
 }
 
 public class com::lynx::tasm::utils::TypefaceUtils :  {
