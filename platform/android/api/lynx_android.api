@@ -659,13 +659,6 @@ public interface com::lynx::tasm::behavior::AutoGenStyleConstants {
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTSTYLE_OBLIQUE XPLACEHOLDERFONTSTYLE_OBLIQUE;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.POINTEREVENTS_AUTO POINTEREVENTS_AUTO;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.POINTEREVENTS_NONE POINTEREVENTS_NONE;
-  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.TEXTSPACINGTRIM_NORMAL TEXTSPACINGTRIM_NORMAL;
-  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.TEXTSPACINGTRIM_SPACEALL TEXTSPACINGTRIM_SPACEALL;
-  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.TEXTSPACINGTRIM_SPACEFIRST TEXTSPACINGTRIM_SPACEFIRST;
-  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.TEXTSPACINGTRIM_TRIMSTART TEXTSPACINGTRIM_TRIMSTART;
-  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.TEXTSPACINGTRIM_TRIMBOTH TEXTSPACINGTRIM_TRIMBOTH;
-  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.TEXTSPACINGTRIM_TRIMALL TEXTSPACINGTRIM_TRIMALL;
-  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.TEXTSPACINGTRIM_AUTO TEXTSPACINGTRIM_AUTO;
 }
 
 public class abstract com::lynx::tasm::behavior::ui::scroll::utils::AutoScroller :  {

@@ -11,11 +11,7 @@
 #include <utility>
 #include <variant>
 
-#include "core/renderer/css/css_decoder.h"
-#include "core/renderer/css/dynamic_css_styles_manager.h"
-#include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/parser/css_string_parser.h"
-#include "core/renderer/dom/fiber/text_props.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -63,63 +59,6 @@ CSSValue MakeTextDecorationValue(bool with_thickness, double thickness = 2.0) {
 }
 
 }  // namespace
-
-TEST(ComputedCSSStyleTest, TextSpacingTrimSetResetAndDecode) {
-  using starlight::TextSpacingTrimType;
-  const auto id = kPropertyIDTextSpacingTrim;
-  starlight::ComputedCSSStyle style{1.f, 1.f};
-
-  EXPECT_EQ(LayoutProperty::ConsumptionTest(id), SKIP);
-  EXPECT_TRUE(starlight::ComputedCSSStyle::IsPlatformProperty(id));
-  EXPECT_TRUE(IsTextMeasurerWanted(id));
-  EXPECT_EQ(DynamicCSSStylesManager::GetInheritableProps().count(id), 0u);
-  EXPECT_EQ(CSSProperty::GetPropertyID("text-spacing-trim"), id);
-  EXPECT_FALSE(
-      style.SetValue(id, CSSValue(TextSpacingTrimType::kNormal), false));
-  EXPECT_EQ(style.GetTextAttributes()->text_spacing_trim,
-            TextSpacingTrimType::kNormal);
-
-  const char* keywords[] = {"normal",     "space-all", "space-first",
-                            "trim-start", "trim-both", "trim-all",
-                            "auto"};
-  for (int value = 1; value < 7; ++value) {
-    const CSSValue css_value(static_cast<TextSpacingTrimType>(value));
-    EXPECT_TRUE(style.SetValue(id, css_value, false));
-    EXPECT_EQ(style.GetTextAttributes()->text_spacing_trim,
-              static_cast<TextSpacingTrimType>(value));
-    EXPECT_EQ(CSSDecoder::CSSValueToString(id, css_value), keywords[value]);
-    EXPECT_TRUE(style.HasChangedProperty(id));
-    style.ClearDirtyBits();
-    EXPECT_FALSE(style.SetValue(id, css_value, false));
-  }
-
-  EXPECT_TRUE(style.ResetValue(id));
-  EXPECT_EQ(style.text_attributes_->text_spacing_trim,
-            TextSpacingTrimType::kNormal);
-  EXPECT_TRUE(style.HasResetProperty(id));
-  EXPECT_EQ(
-      CSSDecoder::CSSValueToString(id, CSSValue(TextSpacingTrimType::kNormal)),
-      "normal");
-}
-
-TEST(ComputedCSSStyleTest, TextSpacingTrimCopy) {
-  using starlight::TextSpacingTrimType;
-  const auto id = kPropertyIDTextSpacingTrim;
-  starlight::ComputedCSSStyle source{1.f, 1.f};
-  source.SetValue(id, CSSValue(TextSpacingTrimType::kTrimBoth), false);
-  starlight::ComputedCSSStyle copy{1.f, 1.f};
-  copy.CopyFrom(source);
-  EXPECT_EQ(copy.text_attributes_->text_spacing_trim,
-            TextSpacingTrimType::kTrimBoth);
-  source.ResetValue(id);
-  EXPECT_EQ(copy.text_attributes_->text_spacing_trim,
-            TextSpacingTrimType::kTrimBoth);
-
-  const starlight::TextAttributes defaults{14.f};
-  auto trimmed = defaults;
-  trimmed.text_spacing_trim = TextSpacingTrimType::kTrimAll;
-  EXPECT_NE(defaults, trimmed);
-}
 
 TEST(ComputedCSSStyleTest, TracksResolvedValuesOnSetAndReset) {
   starlight::ComputedCSSStyle style{1.f, 1.f};

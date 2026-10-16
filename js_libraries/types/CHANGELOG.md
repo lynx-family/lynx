@@ -1,9 +1,5 @@
 # CHANGELOG
 
-## 4.4.5
-
-- Add `text-spacing-trim` CSS typings.
-
 ## 4.4.4
 
 - Add `<transfer-view>` typings with a required string `transfer-id` for Android and iOS.

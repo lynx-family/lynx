@@ -1423,12 +1423,4 @@ export interface Properties {
    * @see https://lynxjs.org/api/css/properties/background-position
    */
   backgroundPosition?: (number & {}) | (string & {}) | undefined;
-  /**
-   * Specify how spacing around CJK punctuation is trimmed according to its position and neighboring characters. The normal and auto values do not change punctuation spacing. The space-all and space-first values are not supported.
-   *
-   * **Syntax**: `normal | space-all | space-first | trim-start | trim-both | trim-all | auto`
-   *
-   * @see https://lynxjs.org/api/css/properties/text-spacing-trim
-   */
-  textSpacingTrim?: 'auto' | 'normal' | 'space-all' | 'space-first' | 'trim-all' | 'trim-both' | 'trim-start' | undefined;
 }

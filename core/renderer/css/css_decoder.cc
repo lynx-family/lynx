@@ -256,8 +256,6 @@ std::string CSSDecoder::CSSValueEnumToString(
       return ToImageRenderingType(value.GetEnum<ImageRenderingType>());
     case lynx::tasm::kPropertyIDHyphens:
       return ToHyphensType(value.GetEnum<HyphensType>());
-    case lynx::tasm::kPropertyIDTextSpacingTrim:
-      return ToTextSpacingTrimType(value.GetEnum<TextSpacingTrimType>());
     case lynx::tasm::kPropertyIDXAppRegion:
       return ToXAppRegionType(value.GetEnum<XAppRegionType>());
     case lynx::tasm::kPropertyIDXAnimationColorInterpolation:

@@ -793,17 +793,6 @@ void PropBundleStyleWriter::WriteWordBreak(PropBundle* bundle,
   }
 }
 
-void PropBundleStyleWriter::WriteTextSpacingTrim(
-    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
-  auto& text_attributes = style->GetTextAttributes();
-  if (text_attributes) {
-    bundle->SetPropsByID(CSSPropertyID::kPropertyIDTextSpacingTrim,
-                         static_cast<int>(text_attributes->text_spacing_trim));
-  } else {
-    bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDTextSpacingTrim);
-  }
-}
-
 void PropBundleStyleWriter::WriteFontStyle(PropBundle* bundle,
                                            starlight::ComputedCSSStyle* style) {
   auto& text_attributes = style->GetTextAttributes();

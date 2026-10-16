@@ -78,42 +78,6 @@ TEST(EnumHandler, DisplayXBox) {
   EXPECT_FALSE(UnitHandler::Process(id, lepus::Value("box"), output, configs));
   EXPECT_TRUE(output.empty());
 }
-
-TEST(EnumHandler, TextSpacingTrim) {
-  using starlight::TextSpacingTrimType;
-  const struct {
-    const char* keyword;
-    TextSpacingTrimType value;
-  } cases[] = {
-      {"normal", TextSpacingTrimType::kNormal},
-      {"space-all", TextSpacingTrimType::kSpaceAll},
-      {"space-first", TextSpacingTrimType::kSpaceFirst},
-      {"trim-start", TextSpacingTrimType::kTrimStart},
-      {"trim-both", TextSpacingTrimType::kTrimBoth},
-      {"trim-all", TextSpacingTrimType::kTrimAll},
-      {"auto", TextSpacingTrimType::kAuto},
-  };
-  CSSParserConfigs configs;
-  for (const auto& test : cases) {
-    SCOPED_TRACE(test.keyword);
-    StyleMap output;
-    ASSERT_TRUE(UnitHandler::Process(kPropertyIDTextSpacingTrim,
-                                     lepus::Value(test.keyword), output,
-                                     configs));
-    ASSERT_EQ(output.size(), 1u);
-    EXPECT_EQ(
-        output.at(kPropertyIDTextSpacingTrim).GetEnum<TextSpacingTrimType>(),
-        test.value);
-  }
-
-  for (const auto* keyword : {"none", "trim", "trim-start trim-both", ""}) {
-    SCOPED_TRACE(keyword);
-    StyleMap output;
-    EXPECT_FALSE(UnitHandler::Process(kPropertyIDTextSpacingTrim,
-                                      lepus::Value(keyword), output, configs));
-    EXPECT_TRUE(output.empty());
-  }
-}
 }  // namespace test
 
 }  // namespace tasm

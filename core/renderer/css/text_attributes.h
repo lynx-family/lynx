@@ -112,8 +112,6 @@ class TextAttributes {
   starlight::TextAlignType text_align{DefaultComputedStyle::DEFAULT_TEXT_ALIGN};
   starlight::WordBreakType word_break{DefaultComputedStyle::DEFAULT_WORD_BREAK};
   starlight::HyphensType hyphens{DefaultComputedStyle::DEFAULT_HYPHENS};
-  starlight::TextSpacingTrimType text_spacing_trim{
-      DefaultComputedStyle::DEFAULT_TEXT_SPACING_TRIM};
   bool enable_font_scaling{DefaultComputedStyle::DEFAULT_BOOLEAN};
   bool underline_decoration{DefaultComputedStyle::DEFAULT_BOOLEAN};
   bool line_through_decoration{DefaultComputedStyle::DEFAULT_BOOLEAN};
@@ -149,7 +147,6 @@ class TextAttributes {
            text_stroke_color == rhs.text_stroke_color &&
            text_shadow == rhs.text_shadow && text_align == rhs.text_align &&
            word_break == rhs.word_break && hyphens == rhs.hyphens &&
-           text_spacing_trim == rhs.text_spacing_trim &&
            enable_font_scaling == rhs.enable_font_scaling &&
            underline_decoration == rhs.underline_decoration &&
            line_through_decoration == rhs.line_through_decoration &&

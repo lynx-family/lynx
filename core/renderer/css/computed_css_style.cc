@@ -4857,23 +4857,6 @@ lepus_value ComputedCSSStyle::HyphensToLepus() {
   }
 }
 
-bool ComputedCSSStyle::SetTextSpacingTrim(const tasm::CSSValue& value,
-                                          const bool reset) {
-  PrepareOptionalForTextAttributes();
-  return CSSStyleUtils::ComputeEnumStyle<TextSpacingTrimType>(
-      value, reset, text_attributes_->text_spacing_trim,
-      DefaultComputedStyle::DEFAULT_TEXT_SPACING_TRIM,
-      "text-spacing-trim must be an enum!", parser_configs_);
-}
-
-lepus_value ComputedCSSStyle::TextSpacingTrimToLepus() {
-  if (text_attributes_) {
-    return lepus_value(static_cast<int>(text_attributes_->text_spacing_trim));
-  } else {
-    return lepus_value();
-  }
-}
-
 bool ComputedCSSStyle::SetXAppRegion(const tasm::CSSValue& value,
                                      const bool reset) {
   return CSSStyleUtils::ComputeEnumStyle<XAppRegionType>(
