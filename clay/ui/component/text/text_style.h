@@ -13,9 +13,9 @@
 #include <vector>
 
 #include "clay/gfx/style/color.h"
+#include "clay/gfx/style/gradient.h"
 #include "clay/gfx/style/shadow.h"
 #include "clay/ui/common/measure_constraint.h"
-#include "clay/ui/painter/gradient.h"
 #include "clay/ui/shadow/vertical_align_style.h"
 
 namespace clay {

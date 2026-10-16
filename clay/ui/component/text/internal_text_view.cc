@@ -10,13 +10,13 @@
 #include <locale>
 #include <utility>
 
+#include "clay/gfx/style/gradient_factory.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/text/layout_context.h"
 #include "clay/ui/component/text/unicode_util.h"
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
-#include "clay/ui/painter/gradient_factory.h"
 #include "clay/ui/rendering/text/render_text.h"
 
 namespace clay {

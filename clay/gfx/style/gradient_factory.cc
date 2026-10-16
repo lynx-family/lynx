@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "clay/ui/painter/gradient_factory.h"
+#include "clay/gfx/style/gradient_factory.h"
 
 #include <ctype.h>
 #include <math.h>
@@ -18,7 +18,8 @@
 #include "base/include/string/string_number_convert.h"
 #include "base/include/string/string_utils.h"
 #include "clay/fml/logging.h"
-#include "clay/ui/common/utils/floating_comparison.h"
+#include "clay/gfx/geometry/floating_comparison.h"
+#include "clay/gfx/graphics_canvas.h"
 
 namespace clay {
 
@@ -500,6 +501,17 @@ GradientFactory::ParseResult GradientFactory::ParseColorPositions(
   }
 
   return ParseResult::kSucceeded;
+}
+
+void GradientFactory::PaintGradient(GraphicsCanvas* canvas,
+                                    const Gradient& gradient,
+                                    const FloatRect& source,
+                                    const skity::RRect& destination) {
+  Paint paint;
+  paint.setDither(true);
+  paint.setColorSource(CreateShader(gradient, source));
+  paint.setAntiAlias(true);
+  canvas->DrawRRect(destination, paint);
 }
 
 // Support both linear-gradient and radial-gradient

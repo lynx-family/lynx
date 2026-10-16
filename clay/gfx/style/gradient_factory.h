@@ -2,20 +2,22 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_UI_PAINTER_GRADIENT_FACTORY_H_
-#define CLAY_UI_PAINTER_GRADIENT_FACTORY_H_
+#ifndef CLAY_GFX_STYLE_GRADIENT_FACTORY_H_
+#define CLAY_GFX_STYLE_GRADIENT_FACTORY_H_
 
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/style/color_source.h"
-#include "clay/ui/painter/gradient.h"
-#include "third_party/googletest/googletest/include/gtest/gtest_prod.h"  // nogncheck
+#include "clay/gfx/style/gradient.h"
 
 namespace clay {
+
+class GraphicsCanvas;
 
 class GradientFactory {
  public:
@@ -29,8 +31,12 @@ class GradientFactory {
   static std::shared_ptr<ColorSource> CreateShader(const Gradient& gradient,
                                                    const FloatRect& rect);
 
+  static void PaintGradient(GraphicsCanvas* canvas, const Gradient& gradient,
+                            const FloatRect& source,
+                            const skity::RRect& destination);
+
  private:
-  FRIEND_TEST(GradientTest, DirectionToPoints);
+  friend class GradientTest_DirectionToPoints_Test;
 
   static std::vector<std::string_view> ParseArgs(const std::string_view& args);
 
@@ -75,4 +81,4 @@ class GradientFactory {
 
 }  // namespace clay
 
-#endif  // CLAY_UI_PAINTER_GRADIENT_FACTORY_H_
+#endif  // CLAY_GFX_STYLE_GRADIENT_FACTORY_H_

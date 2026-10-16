@@ -15,6 +15,7 @@
 
 #include "base/include/fml/make_copyable.h"
 #include "clay/fml/logging.h"
+#include "clay/gfx/style/gradient_factory.h"
 #include "clay/public/value.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/isolate.h"
@@ -26,7 +27,6 @@
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view_context.h"
-#include "clay/ui/painter/gradient_factory.h"
 #include "clay/ui/rendering/text/render_text.h"
 #include "clay/ui/shadow/base_text_shadow_node.h"
 #include "clay/ui/shadow/inline_image_shadow_node.h"

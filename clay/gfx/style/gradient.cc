@@ -2,20 +2,60 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "clay/ui/painter/gradient.h"
+#include "clay/gfx/style/gradient.h"
 
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
+#include "base/include/no_destructor.h"
+#include "base/include/string/string_number_convert.h"
 #include "clay/fml/logging.h"
-#include "clay/ui/common/attribute_utils.h"
-#include "clay/ui/painter/gradient_factory.h"
+#include "clay/gfx/style/gradient_factory.h"
 
 namespace clay {
 
-namespace utils = attribute_utils;
-
 namespace {
+
+template <typename T>
+T GetNumber(const Value& value) {
+  if (value.IsNone() || value.IsNull()) {
+    return 0;
+  }
+  if (value.IsInt()) {
+    return value.GetInt();
+  } else if (value.IsUint()) {
+    return value.GetUint();
+  } else if (value.IsLong()) {
+    return value.GetLong();
+  } else if (value.IsDouble()) {
+    return value.GetDouble();
+  } else if (value.IsFloat()) {
+    return value.GetFloat();
+  } else if (value.IsString()) {
+    double number;
+    if (lynx::base::StringToDouble(value.GetString(), number)) {
+      return number;
+    }
+    FML_DLOG(ERROR) << "Failed convert " << value.GetString() << " to double";
+  } else {
+    FML_LOG(ERROR) << "Failed to convert value to number: " << value.type();
+  }
+  return 0;
+}
+
+const Value::Array& GetArray(const Value& value) {
+  // Parsing borrows arrays; the empty default must not require Value's
+  // out-of-line destructor.
+  static const lynx::base::NoDestructor<Value::Array> empty;
+  if (value.IsNone() || value.IsNull()) {
+    return *empty;
+  }
+  FML_DCHECK(value.IsArray());
+  return value.IsArray() ? value.GetArray() : *empty;
+}
+
 // These values are defined in Lynx
 constexpr int kPositionTypeNumber = 2;
 constexpr int kPositionTypePercent = 11;
@@ -25,11 +65,11 @@ void SetColorAndStop(const clay::Value::Array& color_array,
                      const clay::Value::Array& position_array, T& gradient) {
   // colors:
   for (size_t j = 0; j < color_array.size(); j++) {
-    gradient.colors[j] = utils::GetUint(color_array[j]);
+    gradient.colors[j] = GetNumber<uint32_t>(color_array[j]);
   }
   // positions (maybe empty):
   for (size_t j = 0; j < position_array.size(); j++) {
-    float value = utils::GetNum(position_array[j]) / 100;
+    float value = GetNumber<double>(position_array[j]) / 100;
     auto type = kPositionTypePercent;
     if (type == kPositionTypeNumber) {
       gradient.position_types[j] = ClayGradientPositionType::kNumber;
@@ -54,22 +94,21 @@ std::optional<Gradient> Gradient::CreateLinear(
   FML_DCHECK(linear_array.size() > 0);
   ClayLinearGradient gradient;
   // degree:
-  gradient.degree = utils::GetDouble(linear_array[0]);
-  std::vector<unsigned int> colors(utils::GetArray(linear_array[1]).size());
-  std::vector<float> positions(utils::GetArray(linear_array[2]).size());
-  std::vector<ClayGradientPositionType> types(
-      utils::GetArray(linear_array[2]).size());
+  gradient.degree = GetNumber<double>(linear_array[0]);
+  std::vector<unsigned int> colors(GetArray(linear_array[1]).size());
+  std::vector<float> positions(GetArray(linear_array[2]).size());
+  std::vector<ClayGradientPositionType> types(GetArray(linear_array[2]).size());
   gradient.colors = colors.data();
   gradient.colors_length = colors.size();
   gradient.positions = positions.data();
   gradient.positions_length = positions.size();
   gradient.position_types = types.data();
-  SetColorAndStop(utils::GetArray(linear_array[1]),
-                  utils::GetArray(linear_array[2]), gradient);
+  SetColorAndStop(GetArray(linear_array[1]), GetArray(linear_array[2]),
+                  gradient);
   auto result = CreateLinear(gradient);
   if (result.has_value() && linear_array.size() > 3) {
     result->direction_ =
-        static_cast<LinearGradientDirection>(utils::GetInt(linear_array[3]));
+        static_cast<LinearGradientDirection>(GetNumber<int>(linear_array[3]));
   }
   return result;
 }
@@ -79,45 +118,44 @@ std::optional<Gradient> Gradient::CreateRadial(
     const clay::Value::Array& radial_array) {
   FML_DCHECK(radial_array.size() > 0);
   ClayRadialGradient gradient;
-  auto& shape_size_position = utils::GetArray(radial_array[0]);
+  auto& shape_size_position = GetArray(radial_array[0]);
   // shape type and size:
   gradient.shape_type = static_cast<ClayRadialGradientShapeType>(
-      utils::GetInt(shape_size_position[0]));
+      GetNumber<int>(shape_size_position[0]));
   gradient.shape_size = static_cast<ClayRadialGradientSizeType>(
-      utils::GetInt(shape_size_position[1]));
+      GetNumber<int>(shape_size_position[1]));
   // [x-position-type, x-position, y-position-type y-position]:
   gradient.center_x = static_cast<ClayRadialGradientCenterType>(
-      utils::GetInt(shape_size_position[2]));
+      GetNumber<int>(shape_size_position[2]));
   gradient.center_x_value =
-      static_cast<float>(utils::GetDouble(shape_size_position[3]));
+      static_cast<float>(GetNumber<double>(shape_size_position[3]));
   gradient.center_y = static_cast<ClayRadialGradientCenterType>(
-      utils::GetInt(shape_size_position[4]));
+      GetNumber<int>(shape_size_position[4]));
   gradient.center_y_value =
-      static_cast<float>(utils::GetDouble(shape_size_position[5]));
+      static_cast<float>(GetNumber<double>(shape_size_position[5]));
   // For length value: [x_pattern, x_value, y_pattern, y_value]
   if (gradient.shape_size == ClayRadialGradientSizeType::kLength) {
     gradient.length_x =
-        static_cast<float>(utils::GetDouble(shape_size_position[10]));
+        static_cast<float>(GetNumber<double>(shape_size_position[10]));
     gradient.length_x_unit = static_cast<ClayPlatformLengthUnit>(
-        utils::GetInt(shape_size_position[11]));
+        GetNumber<int>(shape_size_position[11]));
     gradient.length_y =
-        static_cast<float>(utils::GetDouble(shape_size_position[12]));
+        static_cast<float>(GetNumber<double>(shape_size_position[12]));
     gradient.length_y_unit = static_cast<ClayPlatformLengthUnit>(
-        utils::GetInt(shape_size_position[13]));
+        GetNumber<int>(shape_size_position[13]));
   }
   // colors:
-  std::vector<unsigned int> colors(utils::GetArray(radial_array[1]).size());
+  std::vector<unsigned int> colors(GetArray(radial_array[1]).size());
   // positions
-  std::vector<float> positions(utils::GetArray(radial_array[2]).size());
-  std::vector<ClayGradientPositionType> types(
-      utils::GetArray(radial_array[2]).size());
+  std::vector<float> positions(GetArray(radial_array[2]).size());
+  std::vector<ClayGradientPositionType> types(GetArray(radial_array[2]).size());
   gradient.colors = colors.data();
   gradient.colors_length = colors.size();
   gradient.positions = positions.data();
   gradient.positions_length = positions.size();
   gradient.position_types = types.data();
-  SetColorAndStop(utils::GetArray(radial_array[1]),
-                  utils::GetArray(radial_array[2]), gradient);
+  SetColorAndStop(GetArray(radial_array[1]), GetArray(radial_array[2]),
+                  gradient);
   return CreateRadial(gradient);
 }
 
@@ -136,14 +174,14 @@ std::optional<Gradient> Gradient::CreateConic(
     const clay::Value::Array& conic_array) {
   FML_DCHECK(conic_array.size() > 0);
   ClayConicGradient gradient;
-  gradient.start_angle = utils::GetDouble(conic_array[0]);
-  auto& center_array = utils::GetArray(conic_array[1]);
-  gradient.center_x = static_cast<float>(utils::GetDouble(center_array[0]));
-  gradient.x_is_percent = static_cast<bool>(utils::GetInt(center_array[1]));
-  gradient.center_y = static_cast<float>(utils::GetDouble(center_array[2]));
-  gradient.y_is_percent = static_cast<bool>(utils::GetInt(center_array[3]));
-  auto& color_array = utils::GetArray(conic_array[2]);
-  auto& position_array = utils::GetArray(conic_array[3]);
+  gradient.start_angle = GetNumber<double>(conic_array[0]);
+  auto& center_array = GetArray(conic_array[1]);
+  gradient.center_x = static_cast<float>(GetNumber<double>(center_array[0]));
+  gradient.x_is_percent = static_cast<bool>(GetNumber<int>(center_array[1]));
+  gradient.center_y = static_cast<float>(GetNumber<double>(center_array[2]));
+  gradient.y_is_percent = static_cast<bool>(GetNumber<int>(center_array[3]));
+  auto& color_array = GetArray(conic_array[2]);
+  auto& position_array = GetArray(conic_array[3]);
   bool angle_pair = false;
   int factor = 1;
   if (!position_array
@@ -163,14 +201,14 @@ std::optional<Gradient> Gradient::CreateConic(
     // Flatten angle-pair array to angle pair, and also transform color array.
     FML_DCHECK(color_array.size() == position_array.size());
     for (size_t i = 0; i < color_array.size(); i++) {
-      gradient.colors[i * 2] = utils::GetUint(color_array[i]);
-      gradient.colors[i * 2 + 1] = utils::GetUint(color_array[i]);
+      gradient.colors[i * 2] = GetNumber<uint32_t>(color_array[i]);
+      gradient.colors[i * 2 + 1] = GetNumber<uint32_t>(color_array[i]);
     }
     for (size_t i = 0; i < position_array.size(); i++) {
-      auto& angles = utils::GetArray(position_array[i]);
+      auto& angles = GetArray(position_array[i]);
       FML_DCHECK(angles.size() == 2);
-      gradient.positions[i * 2] = utils::GetDouble(angles[0]);
-      gradient.positions[i * 2 + 1] = utils::GetDouble(angles[1]);
+      gradient.positions[i * 2] = GetNumber<double>(angles[0]);
+      gradient.positions[i * 2 + 1] = GetNumber<double>(angles[1]);
       gradient.position_types[i * 2] = ClayGradientPositionType::kNumber;
       gradient.position_types[i * 2 + 1] = ClayGradientPositionType::kNumber;
     }

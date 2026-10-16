@@ -5,8 +5,8 @@
 #include <cmath>
 
 #include "clay/gfx/style/color_unittests_helper.h"
-#include "clay/ui/painter/gradient.h"
-#include "clay/ui/painter/gradient_factory.h"
+#include "clay/gfx/style/gradient.h"
+#include "clay/gfx/style/gradient_factory.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
