@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -34,15 +35,25 @@ class TextLayoutTextra : public TextLayoutImpl {
   LayoutResult Measure(Element* element, float width, int width_mode,
                        float height, int height_mode) override;
 
+  std::optional<LayoutResult> MeasureDetached(Element* element, float width,
+                                              int width_mode, float height,
+                                              int height_mode) override;
+
   void Align(Element* element) override;
 
   void DispatchLayoutBefore(Element* element) override;
 
   void Destroy(Element* element) override;
 
+  void DestroyDetached(Element* element) override;
+
   void BuildParagraphRecursively(Element* element, bool& has_inline_view);
 
  private:
+  std::optional<LayoutResult> MeasureInternal(Element* element, float width,
+                                              int width_mode, float height,
+                                              int height_mode,
+                                              bool publish_text_bundle);
   void ApplyTextStyle(TextElement* element);
   void ApplyTextStyle(Element* element, const CSSIDBitset& property_bits);
   void ApplyParagraphStyle(TextElement* element);
@@ -52,6 +63,7 @@ class TextLayoutTextra : public TextLayoutImpl {
   void HandleInlineViewProps(Element* child);
   void EnsureParagraphListener(Element* element);
   void DestroyParagraph(int32_t id);
+  void ClearTextEventTargetRanges(Element* element);
   void RecordTextEventTargetRange(Element* element, int32_t start, int32_t end);
   //  void MeasureChildrenRecursively(Element* element,starlight::Constraints&
   //  constraints);

@@ -70,6 +70,7 @@
   V(FiberCreateList)                    \
   V(FiberCreateView)                    \
   V(FiberCreateCompose)                 \
+  V(FiberMeasureTextElement)            \
   V(FiberCreateScrollView)              \
   V(FiberCreateText)                    \
   V(FiberCreateImage)                   \

@@ -24,6 +24,13 @@ export enum ComposeElementKind {
   Image = 3,
 }
 
+/** A detached text measurement in Lynx logical CSS pixels. */
+export interface TextElementMeasurement {
+  width: number;
+  height: number;
+  baseline: number;
+}
+
 export interface ComponentElementRef extends ElementRef { }
 
 export interface PageElementRef extends ComponentElementRef { }
@@ -230,6 +237,20 @@ declare global {
     parentComponentUniId: number,
     kind: ComposeElementKind,
   ): ComposeElementRef;
+
+  /**
+   * Synchronously measures a detached Compose Text handle in layout-in-element mode.
+   * Width, height, and returned metrics are in logical CSS pixels, not platform layout units.
+   * Modes follow Starlight: 0 = indefinite, 1 = definite, 2 = at most.
+   * Unsupported nodes, modes, or execution contexts return undefined.
+   */
+  function __MeasureTextElement(
+    current: ComposeElementRef,
+    width: number,
+    widthMode: 0 | 1 | 2,
+    height: number,
+    heightMode: 0 | 1 | 2,
+  ): TextElementMeasurement | undefined;
 
   function __CreateScrollView(parentComponentUniId: number, info?: ElementInfo): ScrollElementRef;
 

@@ -8,6 +8,7 @@
 #include <array>
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -261,7 +262,9 @@ class PaintingCtxPlatformImpl {
   }
 
   virtual void DispatchLayoutBefore(Element* element) {
-    text_layout_impl_->DispatchLayoutBefore(element);
+    if (text_layout_impl_) {
+      text_layout_impl_->DispatchLayoutBefore(element);
+    }
   }
 
   virtual void AlignText(Element* element) {
@@ -274,11 +277,27 @@ class PaintingCtxPlatformImpl {
     }
   }
 
+  void DestroyDetachedText(Element* element) {
+    if (text_layout_impl_) {
+      text_layout_impl_->DestroyDetached(element);
+    }
+  }
+
   virtual void UpdateTextBundle(int id, intptr_t bundle) {}
 
   virtual void DestroyTextBundle(int id) {}
 
   virtual NativePaintingContext* CastToNativeCtx() { return nullptr; }
+
+  std::optional<LayoutResult> MeasureDetached(Element* element, float width,
+                                              int width_mode, float height,
+                                              int height_mode) {
+    if (!text_layout_impl_) {
+      return std::nullopt;
+    }
+    return text_layout_impl_->MeasureDetached(element, width, width_mode,
+                                              height, height_mode);
+  }
 
   void MarkUIOperationQueueFlushForRecreateEngine(bool enable);
 
