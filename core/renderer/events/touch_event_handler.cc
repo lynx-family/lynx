@@ -799,6 +799,9 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
   if (option.bubbles_) {
     while (target_node != nullptr) {
       chain.push_back(target_node);
+      if (target_node->IsEventRoot()) {
+        break;
+      }
 
       // TODO(songshourui.null): When using RadonDiff + RadonElement, the fixed
       // element must be root's child and the chain will not contain the
@@ -853,7 +856,7 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
   auto *root_component = component->GetParentComponentElement();
   auto *current_node = component;
 
-  while (current_node != nullptr) {
+  while (current_node != nullptr && !current_node->IsEventRoot()) {
     auto *next_node = current_node->parent();
     if (!next_node || current_node == next_node) {
       break;
