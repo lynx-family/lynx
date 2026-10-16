@@ -6,6 +6,7 @@
 
 #include "core/renderer/dom/fiber/text_element.h"
 
+#include <limits>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -18,6 +19,8 @@
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_text_layout.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_api.h"
+#include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -27,6 +30,43 @@ namespace tasm {
 namespace testing {
 
 class TextElementTest : public FiberElementTest {};
+
+namespace {
+
+lepus::Value MakePunctuationTrimRule(const char* type, double ratio = 0.,
+                                     double edge = 0., double adjacent = 0.) {
+  lepus::Value rule(lepus::Dictionary::Create());
+  rule.SetProperty("type", lepus::Value(type));
+  rule.SetProperty("default", lepus::Value(ratio));
+  rule.SetProperty("edge", lepus::Value(edge));
+  rule.SetProperty("adjacent", lepus::Value(adjacent));
+  return rule;
+}
+
+class MockPunctuationParagraphBuilder : public text::ParagraphBuilder {
+ public:
+  MOCK_METHOD(void, SetParagraphListener, (text::ParagraphListener*),
+              (override));
+  MOCK_METHOD(void, SetParagraphStyle, (TextPropertyKeyID, void*, size_t),
+              (override));
+  MOCK_METHOD(void, PushTextStyle, (), (override));
+  MOCK_METHOD(void, PopTextStyle, (), (override));
+  MOCK_METHOD(void, PushEventTarget, (const text::EventTargetInfo&),
+              (override));
+  MOCK_METHOD(void, PopEventTarget, (), (override));
+  MOCK_METHOD(void, SetTextStyle, (TextPropertyKeyID, void*, size_t),
+              (override));
+  MOCK_METHOD(void, AddText, (const char*, size_t), (override));
+  MOCK_METHOD(void, AddInlineView, (std::unique_ptr<text::InlineView>),
+              (override));
+  MOCK_METHOD(void, AddImage, (const char*, size_t), (override));
+  MOCK_METHOD(void, StartInlineTruncation, (), (override));
+  MOCK_METHOD(void, EndInlineTruncation, (), (override));
+  MOCK_METHOD(void, SetPlaceHolderStyle, (TextPropertyKeyID, void*, size_t),
+              (override));
+  MOCK_METHOD(text::Paragraph*, BuildParagraph, (), (override));
+};
+}  // namespace
 
 TEST_P(TextElementTest, TestInlineText) {
   auto config = std::make_shared<PageConfig>();
@@ -344,6 +384,144 @@ TEST_P(TextElementTest, TextSpacingTrimReachesTextMeasurerAndResets) {
   EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->text_spacing_trim,
             starlight::TextSpacingTrimType::kNormal);
   EXPECT_TRUE(text->property_bits_.Has(kPropertyIDTextSpacingTrim));
+}
+
+TEST_P(TextElementTest, PunctuationTrimRulesReachTextraParagraph) {
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  page->InsertNode(text);
+  text->SetAttribute("text", lepus::Value("punctuation"));
+  text->SetRawInlineStyles(base::String("text-spacing-trim:trim-both;"));
+  lepus::Value rules(lepus::Dictionary::Create());
+  rules.SetProperty("（", MakePunctuationTrimRule("open", 0., 0.5, 0.5));
+  rules.SetProperty("）", MakePunctuationTrimRule("close", 0.5, 0., 0.75));
+  rules.SetProperty("・", MakePunctuationTrimRule("middle", 0.25, 0., 0.5));
+  rules.SetProperty("\U0001f676", MakePunctuationTrimRule("open", 0.5));
+  text->SetAttribute("punctuation-trim-rule", rules);
+  page->FlushActionsAsRoot();
+
+  using Type = PunctuationTrimRule::Type;
+  const std::vector<PunctuationTrimRule> expected{
+      {U'・', Type::kMiddle, 0.25f, 0.f, 0.5f},
+      {U'（', Type::kOpen, 0.f, 0.5f, 0.5f},
+      {U'）', Type::kClose, 0.5f, 0.f, 0.75f},
+      {U'\U0001f676', Type::kOpen, 0.5f, 0.f, 0.f}};
+  ASSERT_NE(text->text_props(), nullptr);
+  EXPECT_THAT(text->text_props()->punctuation_trim_rules,
+              ::testing::ElementsAreArray(expected));
+  EXPECT_EQ(CSSProperty::GetPropertyID("punctuation-trim-rule"), kPropertyEnd);
+
+  ::testing::NiceMock<MockPunctuationParagraphBuilder> builder;
+  EXPECT_CALL(builder,
+              SetParagraphStyle(kTextPropPunctuationTrimRule, ::testing::_,
+                                expected.size() * sizeof(PunctuationTrimRule)))
+      .WillOnce([&](TextPropertyKeyID, void* data, size_t length) {
+        const auto* received = static_cast<const PunctuationTrimRule*>(data);
+        EXPECT_EQ(
+            std::vector<PunctuationTrimRule>(
+                received, received + length / sizeof(PunctuationTrimRule)),
+            expected);
+      });
+  EXPECT_CALL(builder, SetParagraphStyle(kTextPropTextSpacingTrim, ::testing::_,
+                                         sizeof(int)))
+      .WillOnce([](TextPropertyKeyID, void* data, size_t) {
+        EXPECT_EQ(*static_cast<int*>(data),
+                  static_cast<int>(starlight::TextSpacingTrimType::kTrimBoth));
+      });
+  TextLayoutTextra layout(0);
+  layout.paragraph_builder_ = &builder;
+  layout.ApplyParagraphStyle(text.get());
+  layout.paragraph_builder_ = nullptr;
+}
+
+TEST_P(TextElementTest, PunctuationTrimRulesIgnoreInvalidEntries) {
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  page->InsertNode(text);
+  lepus::Value rules(lepus::Dictionary::Create());
+  rules.SetProperty("（", MakePunctuationTrimRule("open", 0.5));
+  rules.SetProperty("", MakePunctuationTrimRule("open"));
+  rules.SetProperty("（）", MakePunctuationTrimRule("close"));
+  rules.SetProperty("\xed\xa0\x80", MakePunctuationTrimRule("open"));
+  rules.SetProperty("a", MakePunctuationTrimRule("center"));
+  rules.SetProperty("b", MakePunctuationTrimRule("close", -0.1));
+  rules.SetProperty("c", MakePunctuationTrimRule("open", 0., 1.1));
+  rules.SetProperty(
+      "d", MakePunctuationTrimRule("middle", 0., 0.,
+                                   std::numeric_limits<double>::quiet_NaN()));
+  rules.SetProperty("e", MakePunctuationTrimRule(
+                             "close", std::numeric_limits<double>::infinity()));
+  auto bad_ratio = MakePunctuationTrimRule("middle");
+  bad_ratio.SetProperty("edge", lepus::Value("0.5"));
+  rules.SetProperty("f", bad_ratio);
+  rules.SetProperty("g", lepus::Value(true));
+  rules.SetProperty("h", lepus::Value(lepus::Dictionary::Create()));
+  text->SetAttribute("punctuation-trim-rule", rules);
+  page->FlushActionsAsRoot();
+
+  ASSERT_NE(text->text_props(), nullptr);
+  const auto& parsed = text->text_props()->punctuation_trim_rules;
+  ASSERT_EQ(parsed.size(), 1u);
+  EXPECT_EQ(parsed.front().unicode, U'（');
+  EXPECT_FLOAT_EQ(parsed.front().default_ratio, 0.5f);
+}
+
+TEST_P(TextElementTest, PunctuationTrimRulesUpdateAndReset) {
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  page->InsertNode(text);
+  lepus::Value rules(lepus::Dictionary::Create());
+  rules.SetProperty("（", MakePunctuationTrimRule("open", 0., 0.5));
+  rules.SetProperty("）", MakePunctuationTrimRule("close", 0.5));
+  text->SetAttribute("punctuation-trim-rule", rules);
+  page->FlushActionsAsRoot();
+  text->EnsureSLNode();
+  text->slnode()->is_dirty_ = false;
+
+  lepus::Value updated(lepus::Dictionary::Create());
+  updated.SetProperty("（", MakePunctuationTrimRule("open", 0., 0.75));
+  text->SetAttribute("punctuation-trim-rule", updated);
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(text->slnode()->IsDirty());
+  ASSERT_EQ(text->text_props()->punctuation_trim_rules.size(), 1u);
+  EXPECT_FLOAT_EQ(text->text_props()->punctuation_trim_rules.front().edge_ratio,
+                  0.75f);
+
+  text->slnode()->is_dirty_ = false;
+  text->ResetAttribute("punctuation-trim-rule");
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(text->slnode()->IsDirty());
+  EXPECT_TRUE(text->text_props()->punctuation_trim_rules.empty());
+  text->slnode()->is_dirty_ = false;
+  text->ResetAttribute("punctuation-trim-rule");
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(text->slnode()->IsDirty());
+}
+
+TEST_P(TextElementTest, PunctuationTrimRulesInvalidValueClearsOverrides) {
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  page->InsertNode(text);
+  lepus::Value rule(lepus::Dictionary::Create());
+  rule.SetProperty("type", lepus::Value("open"));
+  lepus::Value rules(lepus::Dictionary::Create());
+  rules.SetProperty("（", rule);
+  text->SetAttribute("punctuation-trim-rule", rules);
+  page->FlushActionsAsRoot();
+  ASSERT_NE(text->text_props(), nullptr);
+  ASSERT_EQ(text->text_props()->punctuation_trim_rules.size(), 1u);
+  EXPECT_FLOAT_EQ(text->text_props()->punctuation_trim_rules.front().edge_ratio,
+                  0.f);
+  text->slnode()->is_dirty_ = false;
+
+  text->SetAttribute("punctuation-trim-rule", lepus::Value("invalid"));
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(text->slnode()->IsDirty());
+  EXPECT_TRUE(text->text_props()->punctuation_trim_rules.empty());
 }
 
 TEST_P(TextElementTest, ResetTextMaxlineClearsLayoutInElementProp) {
