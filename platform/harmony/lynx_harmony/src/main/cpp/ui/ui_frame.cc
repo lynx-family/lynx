@@ -333,6 +333,11 @@ void UIFrame::OnPropUpdate(const std::string& name, const lepus::Value& value) {
     if (value.IsBool() || value.IsString() || value.IsNumber()) {
       enable_multi_async_thread_ = ReadBool(value, enable_multi_async_thread_);
     }
+  } else if (name == "thread-strategy") {
+    thread_strategy_.reset();
+    if (value.IsNumber() && (value.Number() == 0 || value.Number() == 1)) {
+      thread_strategy_ = static_cast<int32_t>(value.Number());
+    }
   }
 }
 
@@ -490,13 +495,19 @@ void UIFrame::TryLoadBundle() {
          << src_ << ", status: " << base::NapiUtil::StatusToString(status));
     return;
   }
-  napi_value bundle =
-      lynx::harmony::LynxTemplateBundleHarmony::CreateFromNative(
-          env_, *pending_bundle_);
-  if (!bundle) {
+  // Construct the ArkTS subclass so the child can use TemplateBundle methods.
+  napi_value bundle = nullptr;
+  if (!CallHostMethod("createTemplateBundle", 0, nullptr, &bundle) || !bundle) {
     LOGE("UIFrame failed to create template bundle value, url: " << src_);
     return;
   }
+  lynx::harmony::LynxTemplateBundleHarmony* native_bundle = nullptr;
+  status = napi_unwrap(env_, bundle, reinterpret_cast<void**>(&native_bundle));
+  if (status != napi_ok || !native_bundle) {
+    LOGE("UIFrame failed to unwrap template bundle, url: " << src_);
+    return;
+  }
+  native_bundle->SetBundle(*pending_bundle_);
   napi_value argv[4] = {src, bundle,
                         CreateMetaDataValue(has_frame_data_, frame_data_),
                         CreateMetaDataValue(has_global_props_, global_props_)};
@@ -522,8 +533,15 @@ void UIFrame::UpdateHostConfiguration() {
   napi_get_boolean(env_, enable_multi_async_thread_,
                    &enable_multi_async_thread);
 
-  napi_value argv[3] = {auto_width, auto_height, enable_multi_async_thread};
-  CallHostMethod("updateConfiguration", 3, argv);
+  napi_value thread_strategy;
+  if (thread_strategy_) {
+    napi_create_int32(env_, *thread_strategy_, &thread_strategy);
+  } else {
+    napi_get_undefined(env_, &thread_strategy);
+  }
+  napi_value argv[4] = {auto_width, auto_height, enable_multi_async_thread,
+                        thread_strategy};
+  CallHostMethod("updateConfiguration", 4, argv);
 }
 
 void UIFrame::UpdateHostViewport() {

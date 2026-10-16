@@ -331,6 +331,14 @@ public final class UIFrame extends LynxUI<LynxFrameView> {
     }
   }
 
+  @LynxProp(name = "thread-strategy", defaultDouble = -1)
+  public void setThreadStrategy(double value) {
+    LynxFrameView view = getView();
+    if (view != null) {
+      view.setThreadStrategy(value);
+    }
+  }
+
   @Override
   public void onPropsUpdated() {
     super.onPropsUpdated();

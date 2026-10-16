@@ -67,6 +67,7 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
   CGFloat _presetWidth;
   CGFloat _presetHeight;
   NSNumber *_enableMultiAsyncThread;
+  NSNumber *_threadStrategy;
   LynxViewSizeMode _rootViewWidthMode;
   LynxViewSizeMode _rootViewHeightMode;
 }
@@ -227,6 +228,10 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
           if (strongSelf->_enableMultiAsyncThread != nil) {
             [builder setEnableMultiAsyncThread:strongSelf->_enableMultiAsyncThread.boolValue];
           }
+          if (strongSelf->_threadStrategy != nil) {
+            [builder setThreadStrategyForRender:(LynxThreadStrategyForRender)
+                                                    strongSelf->_threadStrategy.integerValue];
+          }
         }
       }
              containerView:self];
@@ -349,6 +354,17 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
 
 - (void)setEnableMultiAsyncThread:(NSNumber *)enableMultiAsyncThread {
   _enableMultiAsyncThread = enableMultiAsyncThread;
+}
+
+- (void)setThreadStrategy:(NSNumber *)threadStrategy {
+  if (_render) {
+    return;
+  }
+  double value = threadStrategy.doubleValue;
+  _threadStrategy =
+      threadStrategy != nil && value >= 0 && value <= 3 && value == threadStrategy.integerValue
+          ? [threadStrategy copy]
+          : nil;
 }
 
 - (void)setEmbeddedMode:(LynxEmbeddedMode)embeddedMode {
@@ -477,11 +493,11 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
 }
 
 - (void)runOnTasmThread:(dispatch_block_t)task {
+  [_render runOnTasmThread:task];
 }
 
-// TODO(zhoupeng.z):implement it by frame render
 - (LynxThreadStrategyForRender)getThreadStrategyForRender {
-  return LynxThreadStrategyForRenderAllOnUI;
+  return _render ? [_render getThreadStrategyForRender] : LynxThreadStrategyForRenderAllOnUI;
 }
 
 - (void)setAttachLynxPageUICallback:(attachLynxPageUI _Nonnull)callback {

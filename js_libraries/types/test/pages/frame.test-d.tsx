@@ -93,6 +93,21 @@ let a;
 
   type HasEmbeddedMode = 'embedded-mode' extends keyof IntrinsicElements['frame'] ? true : false;
   assertType<false>((a as unknown) as HasEmbeddedMode);
+
+  <frame src={'1'} thread-strategy={0} />;
+  <frame src={'1'} thread-strategy={1} />;
+  <frame src={'1'} thread-strategy={2} />;
+  <frame src={'1'} thread-strategy={3} />;
+  <frame src={'1'} thread-strategy={undefined} />;
+  assertType<0 | 1 | 2 | 3 | undefined>((a as unknown) as IntrinsicElements['frame']['thread-strategy']);
+  // @ts-expect-error: thread-strategy must be a supported numeric enum value
+  <frame src={'1'} thread-strategy={4} />;
+  // @ts-expect-error: thread-strategy must be an integer enum value
+  <frame src={'1'} thread-strategy={1.5} />;
+  // @ts-expect-error: thread-strategy must be numeric
+  <frame src={'1'} thread-strategy={'1'} />;
+  // @ts-expect-error: thread-strategy must be numeric
+  <frame src={'1'} thread-strategy={true} />;
 }
 
 // Events types check
