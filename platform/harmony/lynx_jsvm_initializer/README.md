@@ -3,6 +3,12 @@
 `@lynx/lynx_jsvm_initializer` provides `liblynx_jsvm_initializer.so`, a shared
 initialization entry point for Harmony JSVM users in the same process.
 
+## Installation
+
+```bash
+ohpm install @lynx/lynx_jsvm_initializer
+```
+
 ## Dependency
 
 The Lynx Harmony package declares this module as a dependency. Applications that
