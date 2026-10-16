@@ -14,11 +14,10 @@ namespace shell {
 void PrepareHostScriptRuntime();
 
 // Reuses the native View renderer creation path. Initializes each domain's
-// bindings on its owner, including after debugging is enabled later.
+// bindings on its owner. DevTool toggles do not stop the Android runtime.
 void OnHostScriptViewCreated();
 
-// Reuses the existing DevTool lifecycle notification, including late enabling.
-// Disabling closes admission immediately; disposal stays on each owner.
+// Updates View observation on UI without stopping the process runtimes.
 void UpdateHostScriptDebugState(bool enabled);
 
 }  // namespace shell

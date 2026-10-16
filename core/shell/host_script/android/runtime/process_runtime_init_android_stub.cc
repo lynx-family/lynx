@@ -12,7 +12,7 @@ namespace shell {
 
 void PrepareHostScriptRuntime() {}
 void OnHostScriptViewCreated() {}
-void UpdateHostScriptDebugState(bool enabled) {}
+void UpdateHostScriptDebugState(bool) {}
 
 void LoadHostScriptRuntime(std::string, std::string,
                            ProcessRuntime::Completion completion) {
