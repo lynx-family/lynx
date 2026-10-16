@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { assertType, it } from 'vitest';
-import { IntrinsicElements, FrameLoadEvent, FrameLoadMetricsEvent } from '../../types';
+import { IntrinsicElements, FrameLoadEvent, FrameLoadMetricsEvent, FrameThreadStrategy } from '../../types';
 
 // Props Types Check
 let a;
@@ -93,6 +93,27 @@ let a;
 
   type HasEmbeddedMode = 'embedded-mode' extends keyof IntrinsicElements['frame'] ? true : false;
   assertType<false>((a as unknown) as HasEmbeddedMode);
+
+  <frame src={'1'} thread-strategy={0} />;
+  <frame src={'1'} thread-strategy={1} />;
+  <frame src={'1'} thread-strategy={2} />;
+  <frame src={'1'} thread-strategy={3} />;
+  <frame src={'1'} thread-strategy={FrameThreadStrategy.ALL_ON_UI} />;
+  <frame src={'1'} thread-strategy={FrameThreadStrategy.MOST_ON_TASM} />;
+  <frame src={'1'} thread-strategy={FrameThreadStrategy.PART_ON_LAYOUT} />;
+  <frame src={'1'} thread-strategy={FrameThreadStrategy.MULTI_THREADS} />;
+  const strategy: FrameThreadStrategy = 1;
+  <frame src={'1'} thread-strategy={strategy} />;
+  <frame src={'1'} thread-strategy={undefined} />;
+  assertType<FrameThreadStrategy | undefined>((a as unknown) as IntrinsicElements['frame']['thread-strategy']);
+  // @ts-expect-error: thread-strategy must be a supported numeric enum value
+  <frame src={'1'} thread-strategy={4} />;
+  // @ts-expect-error: thread-strategy must be an integer enum value
+  <frame src={'1'} thread-strategy={1.5} />;
+  // @ts-expect-error: thread-strategy must be numeric
+  <frame src={'1'} thread-strategy={'1'} />;
+  // @ts-expect-error: thread-strategy must be numeric
+  <frame src={'1'} thread-strategy={true} />;
 }
 
 // Events types check
