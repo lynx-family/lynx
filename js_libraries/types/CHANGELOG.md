@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.0.3
+
+- Add the `punctuation-trim-rule` attribute to `<text>` for configuring compression ratios per punctuation character.
+
 ## 4.0.2
 
 - Add `text-spacing-trim` CSS typings.

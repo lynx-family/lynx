@@ -4,9 +4,11 @@
 
 #ifndef CORE_RENDERER_DOM_FIBER_TEXT_PROPS_H_
 #define CORE_RENDERER_DOM_FIBER_TEXT_PROPS_H_
+#include <cstdint>
 #include <optional>
 
 #include "base/include/value/base_string.h"
+#include "base/include/vector.h"
 
 namespace lynx {
 namespace tasm {
@@ -52,9 +54,27 @@ enum TextPropertyKeyID {
   kPropColorRadialGradient = 107,
   kPropColorConicGradient = 108,
   kPropImageProps = 109,
+  kTextPropPunctuationTrimRule = 115,
 
   kTextPropEnd = 0xFF,
 };
+
+struct PunctuationTrimRule {
+  enum class Type : uint8_t { kOpen, kClose, kMiddle };
+
+  char32_t unicode;
+  Type type;
+  float default_ratio{0.f};
+  float edge_ratio{0.f};
+  float adjacent_ratio{0.f};
+
+  bool operator==(const PunctuationTrimRule& rhs) const {
+    return unicode == rhs.unicode && type == rhs.type &&
+           default_ratio == rhs.default_ratio && edge_ratio == rhs.edge_ratio &&
+           adjacent_ratio == rhs.adjacent_ratio;
+  }
+};
+
 struct TextProps {
   enum class WhiteSpace { NO_WRAP = 0, NORMAL = 1 };
 
@@ -67,6 +87,7 @@ struct TextProps {
   // attributes
   std::optional<int> text_max_line;        //=-1
   std::optional<base::String> image_mode;  //""
+  base::Vector<PunctuationTrimRule> punctuation_trim_rules;
 };
 
 // A lookup table to determine the number of UTF-16 code units contributed

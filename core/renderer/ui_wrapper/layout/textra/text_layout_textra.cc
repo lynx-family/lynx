@@ -381,6 +381,12 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
       paragraph_builder_->SetParagraphStyle(kTextPropTextMaxLine,
                                             &(text_max_line), sizeof(int));
     }
+    auto& rules = text_props->punctuation_trim_rules;
+    if (!rules.empty()) {
+      paragraph_builder_->SetParagraphStyle(
+          kTextPropPunctuationTrimRule, rules.data(),
+          rules.size() * sizeof(PunctuationTrimRule));
+    }
   }
   if (props_set.Has(kPropertyIDTextOverflow)) {
     auto text_overflow = static_cast<int>(text_attributes->text_overflow);
