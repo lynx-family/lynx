@@ -11,9 +11,9 @@
 #include <utility>
 #include <vector>
 
-#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/ui_wrapper/painting/android/native_painting_context_platform_android_ref.h"
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
+#include "gfx/public/display_list_builder.h"
 
 namespace {
 

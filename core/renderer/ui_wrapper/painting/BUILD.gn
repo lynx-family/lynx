@@ -103,8 +103,8 @@ unittest_set("platform_renderer_testset") {
   public_deps = [
     "../../../../base/src:base_values",
     "../../../../base/src:base_values_extended",
+    "../../../../gfx/display_list:display_list",
     "../../../public",
-    "../../dom/fragment:display_list",
   ]
 }
 

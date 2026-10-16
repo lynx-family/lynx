@@ -25,7 +25,7 @@ if (is_android) {
     ]
     deps = [
       ":lynx_test_jni_files",
-      "../../core/renderer/dom/fragment:display_list",
+      "../../gfx/display_list:display_list",
     ]
   }
 }

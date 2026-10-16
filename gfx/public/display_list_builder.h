@@ -2,9 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_BUILDER_H_
-#define CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_BUILDER_H_
+#ifndef GFX_PUBLIC_DISPLAY_LIST_BUILDER_H_
+#define GFX_PUBLIC_DISPLAY_LIST_BUILDER_H_
 
+#include <array>
 #include <cstdint>
 
 #include "core/public/platform_renderer_type.h"
@@ -12,10 +13,6 @@
 #include "gfx/public/rounded_rectangle.h"
 
 namespace lynx {
-namespace starlight {
-class BordersData;
-struct FilterData;
-}  // namespace starlight
 namespace gfx {
 class Matrix44;
 }  // namespace gfx
@@ -56,7 +53,8 @@ class DisplayListBuilder {
   // Apply transform
   DisplayListBuilder& Transform(const gfx::Matrix44& matrix);
   DisplayListBuilder& Opacity(float alpha);
-  DisplayListBuilder& Filter(const starlight::FilterData& filter);
+  // Record a protocol filter type and its resolved numeric amount.
+  DisplayListBuilder& Filter(int32_t type, float amount);
 
   // Record an image and retain its reference. Rvalues transfer ownership;
   // lvalues keep the caller's reference and add one for the display list.
@@ -66,9 +64,10 @@ class DisplayListBuilder {
   // Retrieve text source and draw
   DisplayListBuilder& DrawText(int text_id, int32_t box_index);
 
-  // Set all border properties at once (color, width, style for all four sides)
+  // Record border colors/styles in top, right, bottom, left order.
   DisplayListBuilder& Border(int32_t out_index, int32_t inner_index,
-                             const starlight::BordersData& border);
+                             const std::array<uint32_t, 4>& colors,
+                             const std::array<int32_t, 4>& styles);
 
   // Set clip rect
   DisplayListBuilder& ClipRect(const RoundedRectangle& border);
@@ -135,4 +134,4 @@ class DisplayListBuilder {
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_BUILDER_H_
+#endif  // GFX_PUBLIC_DISPLAY_LIST_BUILDER_H_
