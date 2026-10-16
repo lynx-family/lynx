@@ -52,6 +52,13 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_font_scale(lynx_view_builder_t*,
 LYNX_CAPI_EXPORT void lynx_view_builder_set_enable_js_runtime(
     lynx_view_builder_t*, bool enable);
 
+// Enables CPU software rendering for a windowed LynxView on Windows with the
+// Skia backend. Skity builds log a warning and keep hardware rendering.
+// Disabled by default. Call before lynx_view_create. Other platforms and
+// windowless renderers do not use this setting.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_enable_software_rendering(
+    lynx_view_builder_t* builder, bool enable);
+
 // Sets the default page background using a non-premultiplied 0xAARRGGBB color.
 // For example, 0x00000000 is transparent and 0xFFFFFFFF is opaque white.
 // Call before lynx_view_create. The color is retained across page reloads and

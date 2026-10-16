@@ -33,6 +33,7 @@ struct lynx_view_builder_t {
   float font_scale = 1.0;
   std::optional<uint32_t> default_background_color;
   bool enable_js_runtime = true;
+  bool enable_software_rendering = false;
   std::string icu_data_path;
   std::string webview2_fixed_runtime_path;
   lynx_group_t* group = nullptr;

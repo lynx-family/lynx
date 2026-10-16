@@ -48,6 +48,15 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
     : LynxUIRenderer(builder),
       frame_timing_listener_(std::make_shared<FrameTimingListenerImpl>()) {
   clay::FlutterDesktopEngineProperties properties = {};
+  properties.enable_software_rendering = builder->enable_software_rendering;
+#ifdef ENABLE_SKITY
+  if (properties.enable_software_rendering) {
+    LOGW(
+        "Software rendering requires the Skia backend; using hardware "
+        "rendering.");
+    properties.enable_software_rendering = false;
+  }
+#endif
 
   const char* icu_data_path = builder->GetICUDataPath();
   std::wstring icu_wstr;
