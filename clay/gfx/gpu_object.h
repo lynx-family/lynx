@@ -42,11 +42,17 @@ class UnrefQueue : public fml::RefCountedThreadSafe<UnrefQueue<T>> {
     objects_.push_back(object);
     if (start_auto_pending_drain_) {
       TriggerPendingDrainIfNeeded();
+    } else if (!start_auto_pending_drain_scheduled_) {
+      start_auto_pending_drain_scheduled_ = true;
+      task_runner_->PostDelayedTask(
+          [strong = fml::Ref(this)]() { strong->StartAutoPendingDrain(); },
+          drain_delay_);
     }
   }
 
   void StartAutoPendingDrain() {
     std::scoped_lock lock(mutex_);
+    start_auto_pending_drain_scheduled_ = false;
     if (start_auto_pending_drain_) {
       return;
     }
@@ -120,6 +126,7 @@ class UnrefQueue : public fml::RefCountedThreadSafe<UnrefQueue<T>> {
   bool is_shared_;
   const fml::TimeDelta drain_delay_;
   bool start_auto_pending_drain_ = false;
+  bool start_auto_pending_drain_scheduled_ = false;
   bool drain_pending_ = false;
   std::recursive_mutex mutex_;
   std::deque<GPURefObject*> objects_;
