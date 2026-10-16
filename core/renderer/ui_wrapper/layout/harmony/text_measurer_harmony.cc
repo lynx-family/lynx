@@ -358,12 +358,16 @@ void AppendInlineElement(harmony::ParagraphBuilderHarmony& builder,
 }
 
 template <typename PlaceholderInfoList>
-void AppendTextSubtree(
+bool AppendTextSubtree(
     harmony::ParagraphBuilderHarmony& builder, TextElement* element,
     float density, harmony::LynxContext* context,
     const InlineElementSizeList& inline_sizes,
     PlaceholderInfoList& placeholder_infos,
     std::vector<PlatformTextEventTargetRange>& event_ranges) {
+  harmony::TextStyleHarmony text_style;
+  if (text_style.GetRawStruct() == nullptr) {
+    return false;
+  }
   const int32_t start = builder.GetCharCount();
   const bool native_inline_target = !element->EnableFragmentLayerRender() &&
                                     element->is_inline_element() &&
@@ -374,7 +378,6 @@ void AppendTextSubtree(
                                 harmony::LynxEventPropStatus::kUndefined,
                                 harmony::LynxPointerEventsValue::kUnset);
   }
-  harmony::TextStyleHarmony text_style;
   ApplyTextStyle(element, density, context, text_style);
   builder.PushTextStyle(text_style);
 
@@ -382,7 +385,7 @@ void AppendTextSubtree(
   AppendDecodedText(builder, element->content(), decode_property);
 
   auto append_children = [&](auto&& self, Element* parent,
-                             TextElement* inherited_text) -> void {
+                             TextElement* inherited_text) -> bool {
     for (auto* child = parent->first_render_child(); child != nullptr;
          child = child->next_render_sibling()) {
       if (child->is_raw_text()) {
@@ -390,18 +393,25 @@ void AppendTextSubtree(
                           static_cast<RawTextElement*>(child)->content(),
                           DecodePropertyForTextElement(inherited_text));
       } else if (child->is_text()) {
-        AppendTextSubtree(builder, static_cast<TextElement*>(child), density,
-                          context, inline_sizes, placeholder_infos,
-                          event_ranges);
+        if (!AppendTextSubtree(builder, static_cast<TextElement*>(child),
+                               density, context, inline_sizes,
+                               placeholder_infos, event_ranges)) {
+          return false;
+        }
       } else if (child->is_image() || child->is_view()) {
         AppendInlineElement(builder, child, inherited_text, inline_sizes,
                             density, placeholder_infos);
       } else if (child->is_wrapper()) {
-        self(self, child, inherited_text);
+        if (!self(self, child, inherited_text)) {
+          return false;
+        }
       }
     }
+    return true;
   };
-  append_children(append_children, element, element);
+  if (!append_children(append_children, element, element)) {
+    return false;
+  }
   builder.PopTextStyle();
   if (native_inline_target) {
     builder.PopTextEventTarget();
@@ -412,6 +422,7 @@ void AppendTextSubtree(
     // Post-order matches the common event tree's nested target priority.
     event_ranges.push_back({element->impl_id(), start, end});
   }
+  return true;
 }
 
 template <typename PlaceholderInfo>
@@ -529,9 +540,23 @@ void TextMeasurerHarmony::DispatchLayoutBefore(Element* element) {
 LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
                                           int width_mode, float height,
                                           int height_mode) {
+  return MeasureInternal(element, width, width_mode, height, height_mode)
+      .value_or(LayoutResult{});
+}
+
+std::optional<LayoutResult> TextMeasurerHarmony::MeasureDetached(
+    Element* element, float width, int width_mode, float height,
+    int height_mode) {
+  return MeasureInternal(element, width, width_mode, height, height_mode);
+}
+
+std::optional<LayoutResult> TextMeasurerHarmony::MeasureInternal(
+    Element* element, float width, int width_mode, float height,
+    int height_mode) {
   if (element == nullptr || !element->is_text() ||
-      font_collection_ == nullptr) {
-    return {};
+      element->computed_css_style() == nullptr || font_collection_ == nullptr ||
+      font_collection_->GetRawStruct() == nullptr) {
+    return std::nullopt;
   }
 
   auto* text_element = static_cast<TextElement*>(element);
@@ -547,15 +572,26 @@ LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
   }
 
   harmony::ParagraphStyleHarmony paragraph_style;
+  if (paragraph_style.GetRawStruct() == nullptr) {
+    return std::nullopt;
+  }
   ApplyParagraphStyle(text_element, density, paragraph_style);
   harmony::ParagraphBuilderHarmony builder(&paragraph_style,
                                            font_collection_.get());
+  if (builder.GetRawStruct() == nullptr) {
+    return std::nullopt;
+  }
   std::vector<InlinePlaceholderInfo> placeholder_infos;
   std::vector<PlatformTextEventTargetRange> event_ranges;
-  AppendTextSubtree(builder, text_element, density, context_, inline_sizes,
-                    placeholder_infos, event_ranges);
+  if (!AppendTextSubtree(builder, text_element, density, context_, inline_sizes,
+                         placeholder_infos, event_ranges)) {
+    return std::nullopt;
+  }
 
   auto paragraph = builder.CreateParagraph(font_collection_, width);
+  if (paragraph == nullptr || paragraph->GetRawStruct() == nullptr) {
+    return std::nullopt;
+  }
   const auto measure_width_mode = static_cast<SLMeasureMode>(width_mode);
   const auto measure_height_mode = static_cast<SLMeasureMode>(height_mode);
   const auto& attributes =
@@ -615,14 +651,19 @@ LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
   if (element->EnableFragmentLayerRender()) {
     text_element->SetTextBundle(
         reinterpret_cast<intptr_t>(stored_paragraph.get()));
-    if (auto* manager = element->element_manager();
-        manager && manager->painting_context()) {
-      // Send empty ranges too, to remove targets after text or listeners
-      // change.
-      manager->painting_context()
-          ->impl()
-          ->CastToNativeCtx()
-          ->UpdateTextEventTargetRanges(id, std::move(event_ranges));
+    const bool is_detached_root = !element->parent() &&
+                                  !element->render_parent() &&
+                                  element->IsDetached();
+    if (!is_detached_root) {
+      if (auto* manager = element->element_manager();
+          manager && manager->painting_context()) {
+        // Send empty ranges too, to remove targets after text or listeners
+        // change.
+        manager->painting_context()
+            ->impl()
+            ->CastToNativeCtx()
+            ->UpdateTextEventTargetRanges(id, std::move(event_ranges));
+      }
     }
   }
   return result;

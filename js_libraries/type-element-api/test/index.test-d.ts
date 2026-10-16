@@ -11,6 +11,7 @@ import type {
   ViewElementRef,
   ComposeElementKind,
   ComposeElementRef,
+  TextElementMeasurement,
   SerializedCompiledTemplateInstance,
   SerializedTemplateInstance,
   SerializableValue,
@@ -90,6 +91,22 @@ describe('Test Element API Types', () => {
     expectTypeOf<typeof __InsertNodeToElementTemplate>().toBeFunction();
     expectTypeOf<typeof __RemoveNodeFromElementTemplate>().toBeFunction();
     expectTypeOf<typeof __SerializeElementTemplate>().toBeFunction();
+  });
+
+  it('should type detached text measurements without accepting ordinary Elements', () => {
+    const composeNode = {} as ComposeElementRef;
+    expectTypeOf<typeof __MeasureTextElement>().toBeCallableWith(composeNode, 100, 2, 0, 0);
+    expectTypeOf<typeof __MeasureTextElement>().parameter(0).toEqualTypeOf<ComposeElementRef>();
+    expectTypeOf<typeof __MeasureTextElement>().parameter(2).toEqualTypeOf<0 | 1 | 2>();
+    expectTypeOf<typeof __MeasureTextElement>().parameter(4).toEqualTypeOf<0 | 1 | 2>();
+    expectTypeOf<typeof __MeasureTextElement>().returns.toEqualTypeOf<TextElementMeasurement | undefined>();
+    expectTypeOf<TextElementMeasurement>().toEqualTypeOf<{
+      width: number;
+      height: number;
+      baseline: number;
+    }>();
+    // @ts-expect-error ordinary Element references do not carry a Compose handle brand.
+    assertType<Parameters<typeof __MeasureTextElement>[0]>({} as ElementRef);
   });
 
   it('should test __ElementAnimate function signature', () => {

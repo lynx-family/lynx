@@ -704,12 +704,33 @@ void TextLayoutTextra::BuildInlineTruncation(Element* element,
 LayoutResult TextLayoutTextra::Measure(Element* element, float width,
                                        int width_mode, float height,
                                        int height_mode) {
-  if (!api_) {
-    return LayoutResult{0, 0, 0};
+  return MeasureInternal(element, width, width_mode, height, height_mode,
+                         /*publish_text_bundle=*/true)
+      .value_or(LayoutResult{});
+}
+
+std::optional<LayoutResult> TextLayoutTextra::MeasureDetached(Element* element,
+                                                              float width,
+                                                              int width_mode,
+                                                              float height,
+                                                              int height_mode) {
+  // Detached measurement only reports the size. The measured element never
+  // reaches OnUpdateLayout(), so the platform renderer would never take over
+  // a Page. DestroyDetached() releases only the Paragraph and listener without
+  // touching the platform's published drawing resources.
+  return MeasureInternal(element, width, width_mode, height, height_mode,
+                         /*publish_text_bundle=*/false);
+}
+
+std::optional<LayoutResult> TextLayoutTextra::MeasureInternal(
+    Element* element, float width, int width_mode, float height,
+    int height_mode, bool publish_text_bundle) {
+  if (!api_ || !element || !element->is_text()) {
+    return std::nullopt;
   }
   auto paragraph_iter = paragraphs_.find(element->impl_id());
-  if (paragraph_iter == paragraphs_.end()) {
-    return LayoutResult{0, 0, 0};
+  if (paragraph_iter == paragraphs_.end() || !paragraph_iter->second) {
+    return std::nullopt;
   }
   auto* paragraph = paragraph_iter->second;
   text::MeasureParams measure_param = {
@@ -718,19 +739,21 @@ LayoutResult TextLayoutTextra::Measure(Element* element, float width,
   text::MeasureResult result =
       api_->MeasureParagraph(paragraph, std::move(measure_param));
 
-  // update text bundle
-  auto* text_element = static_cast<TextElement*>(element);
-  text::Page* page = api_->GetPage(paragraph);
-  intptr_t bundle = reinterpret_cast<intptr_t>(page);
-  if (element->EnableFragmentLayerRender()) {
-    text_element->SetTextBundle(bundle);
-  } else if (auto* manager = element->element_manager();
-             manager && manager->painting_context()) {
-    manager->painting_context()->impl()->UpdateTextBundle(element->impl_id(),
-                                                          bundle);
+  if (publish_text_bundle) {
+    // update text bundle
+    auto* text_element = static_cast<TextElement*>(element);
+    text::Page* page = api_->GetPage(paragraph);
+    intptr_t bundle = reinterpret_cast<intptr_t>(page);
+    if (element->EnableFragmentLayerRender()) {
+      text_element->SetTextBundle(bundle);
+    } else if (auto* manager = element->element_manager();
+               manager && manager->painting_context()) {
+      manager->painting_context()->impl()->UpdateTextBundle(element->impl_id(),
+                                                            bundle);
+    }
   }
 
-  return {result.width, result.height, result.baseline};
+  return LayoutResult{result.width, result.height, result.baseline};
 }
 
 void TextLayoutTextra::Align(Element* element) {
@@ -762,16 +785,26 @@ void TextLayoutTextra::EnsureParagraphListener(Element* element) {
 }
 
 void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
-  if (!element->is_text()) {
+  if (!api_ || !element || !element->is_text()) {
     return;
   }
   auto* text_element = static_cast<TextElement*>(element);
+  if (!text_element->computed_css_style()) {
+    DestroyParagraph(element->impl_id());
+    ClearTextEventTargetRanges(element);
+    return;
+  }
 
   text_position_ = 0;
   building_event_target_ranges_.clear();
 
   // create a new ParagraphBuilder
   paragraph_builder_ = api_->CreateParagraphBuilder();
+  if (!paragraph_builder_) {
+    DestroyParagraph(element->impl_id());
+    ClearTextEventTargetRanges(element);
+    return;
+  }
 
   // Apply paragraph element's styles & props
   ApplyParagraphStyle(text_element);
@@ -789,18 +822,19 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
   text_element->set_need_layout_children(has_inline_view);
 
   auto paragraph = paragraph_builder_->BuildParagraph();
+  api_->DestroyParagraphBuilder(paragraph_builder_);
+  paragraph_builder_ = nullptr;
+  if (!paragraph) {
+    DestroyParagraph(element->impl_id());
+    ClearTextEventTargetRanges(element);
+    return;
+  }
   auto it_para = paragraphs_.find(element->impl_id());
   if (it_para != paragraphs_.end()) {
     api_->DestroyParagraph(it_para->second);
     it_para->second = paragraph;
   } else {
     paragraphs_.emplace(element->impl_id(), paragraph);
-  }
-
-  // release build builder in the end
-  if (paragraph_builder_ != nullptr) {
-    api_->DestroyParagraphBuilder(paragraph_builder_);
-    paragraph_builder_ = nullptr;
   }
 
   const int32_t id = element->impl_id();
@@ -833,15 +867,11 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
 }
 
 void TextLayoutTextra::Destroy(Element* element) {
-  if (element) {
-    auto reported =
-        std::find(reported_event_target_range_ids_.begin(),
-                  reported_event_target_range_ids_.end(), element->impl_id());
-    if (reported != reported_event_target_range_ids_.end()) {
-      reported_event_target_range_ids_.erase(reported);
-    }
+  if (!element) {
+    return;
   }
-  if (element && !element->EnableFragmentLayerRender()) {
+  ClearTextEventTargetRanges(element);
+  if (!element->EnableFragmentLayerRender()) {
     if (auto* manager = element->element_manager();
         manager && manager->painting_context()) {
       manager->painting_context()->impl()->DestroyTextBundle(
@@ -849,11 +879,31 @@ void TextLayoutTextra::Destroy(Element* element) {
     }
   }
 
-  DestroyParagraph(element->impl_id());
+  DestroyDetached(element);
+}
 
-  auto it_listener = paragraph_listeners_.find(element->impl_id());
-  if (it_listener != paragraph_listeners_.end()) {
-    paragraph_listeners_.erase(it_listener);
+void TextLayoutTextra::DestroyDetached(Element* element) {
+  if (!element) {
+    return;
+  }
+  DestroyParagraph(element->impl_id());
+  paragraph_listeners_.erase(element->impl_id());
+}
+
+void TextLayoutTextra::ClearTextEventTargetRanges(Element* element) {
+  const int32_t id = element->impl_id();
+  auto reported = std::find(reported_event_target_range_ids_.begin(),
+                            reported_event_target_range_ids_.end(), id);
+  if (reported == reported_event_target_range_ids_.end()) {
+    return;
+  }
+  reported_event_target_range_ids_.erase(reported);
+  if (auto* manager = element->element_manager();
+      manager && manager->painting_context()) {
+    manager->painting_context()
+        ->impl()
+        ->CastToNativeCtx()
+        ->UpdateTextEventTargetRanges(id, {});
   }
 }
 
