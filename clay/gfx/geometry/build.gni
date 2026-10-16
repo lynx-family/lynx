@@ -24,6 +24,7 @@ gfx_geometry_sources = [
   "float_vector2d.h",
   "float_vector3d.cc",
   "float_vector3d.h",
+  "floating_comparison.h",
   "math_util.h",
   "path.cc",
   "path.h",

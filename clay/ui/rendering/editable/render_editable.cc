@@ -15,10 +15,10 @@
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/graphics_context.h"
 #include "clay/gfx/style/color.h"
+#include "clay/gfx/style/gradient_factory.h"
 #include "clay/ui/common/utils/floating_comparison.h"
 #include "clay/ui/component/editable/text_utils.h"
 #include "clay/ui/component/text/text_style.h"
-#include "clay/ui/painter/gradient_factory.h"
 #include "clay/ui/painter/painting_context.h"
 #include "clay/ui/painter/text_painter.h"
 

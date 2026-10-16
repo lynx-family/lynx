@@ -16,12 +16,12 @@
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/float_size.h"
 #include "clay/gfx/graphics_context.h"
+#include "clay/gfx/style/gradient.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 #include "clay/third_party/txt/src/txt/placeholder_run.h"
 #include "clay/ui/common/editing_misc.h"
 #include "clay/ui/common/text_input_type_traits.h"
 #include "clay/ui/component/text/text_style.h"
-#include "clay/ui/painter/gradient.h"
 
 namespace clay {
 

@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_UI_PAINTER_BORDER_SIDE_H_
-#define CLAY_UI_PAINTER_BORDER_SIDE_H_
+#ifndef CLAY_GFX_STYLE_BORDER_SIDE_H_
+#define CLAY_GFX_STYLE_BORDER_SIDE_H_
 
 #include "clay/gfx/style/borders_data.h"
 #include "clay/gfx/style/color.h"
@@ -25,8 +25,9 @@ class BorderSide {
         color_(border_color),
         side_index_(TOP),
         style_(border_style) {
-    if (style_ == BorderStyleType::kDouble && border_width < 3)
+    if (style_ == BorderStyleType::kDouble && border_width < 3) {
       style_ = BorderStyleType::kSolid;
+    }
   }
 
   BorderSide(float border_width, const Color& border_color, SideIndex index,
@@ -35,8 +36,9 @@ class BorderSide {
         color_(border_color),
         side_index_(index),
         style_(border_style) {
-    if (style_ == BorderStyleType::kDouble && border_width < 3)
+    if (style_ == BorderStyleType::kDouble && border_width < 3) {
       style_ = BorderStyleType::kSolid;
+    }
   }
 
   BorderSide()
@@ -58,12 +60,14 @@ class BorderSide {
 
   bool ObscuresBackgroundEdge() const {
     if (color_.Alpha() < 255 || style_ == BorderStyleType::kHide ||
-        style_ == BorderStyleType::kNone)
+        style_ == BorderStyleType::kNone) {
       return false;
+    }
 
     if (style_ == BorderStyleType::kDotted ||
-        style_ == BorderStyleType::kDashed)
+        style_ == BorderStyleType::kDashed) {
       return false;
+    }
 
     return true;
   }
@@ -76,4 +80,4 @@ class BorderSide {
 
 }  // namespace clay
 
-#endif  // CLAY_UI_PAINTER_BORDER_SIDE_H_
+#endif  // CLAY_GFX_STYLE_BORDER_SIDE_H_

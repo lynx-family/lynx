@@ -2,14 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "clay/ui/painter/gradient.h"
+#include "clay/gfx/style/gradient.h"
 
 #include <optional>
 #include <string>
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/style/gradient_factory.h"
 #include "clay/ui/common/attribute_utils.h"
-#include "clay/ui/painter/gradient_factory.h"
 
 namespace clay {
 
@@ -45,8 +45,6 @@ void SetColorAndStop(const clay::Value::Array& color_array,
 }
 
 }  // namespace
-
-Gradient::Gradient() : type_(GradientType::kNotSet) {}
 
 // static
 std::optional<Gradient> Gradient::CreateLinear(
@@ -178,37 +176,6 @@ std::optional<Gradient> Gradient::CreateConic(
     SetColorAndStop(color_array, position_array, gradient);
   }
   return CreateConic(gradient);
-}
-
-// static
-std::optional<Gradient> Gradient::Create(std::string raw_data) {
-  return GradientFactory::Create(std::move(raw_data));
-}
-
-// static
-std::optional<Gradient> Gradient::CreateLinear(
-    const ClayLinearGradient& gradient_data) {
-  return GradientFactory::CreateLinear(gradient_data);
-}
-
-// static
-std::optional<Gradient> Gradient::CreateRadial(
-    const ClayRadialGradient& gradient_data) {
-  return GradientFactory::CreateRadial(gradient_data);
-}
-
-// static
-std::optional<Gradient> Gradient::CreateConic(
-    const ClayConicGradient& gradient_data) {
-  return GradientFactory::CreateConic(gradient_data);
-}
-
-bool Gradient::operator==(const Gradient& oth) const {
-  return raw_data_ == oth.raw_data_;
-}
-
-bool Gradient::operator!=(const Gradient& oth) const {
-  return raw_data_ != oth.raw_data_;
 }
 
 }  // namespace clay

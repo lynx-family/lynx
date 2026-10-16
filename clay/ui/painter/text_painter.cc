@@ -17,9 +17,9 @@
 #include "clay/gfx/paint.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/style/color.h"
+#include "clay/gfx/style/gradient_factory.h"
 #include "clay/ui/common/editing_misc.h"
 #include "clay/ui/common/isolate.h"
-#include "clay/ui/painter/gradient_factory.h"
 #include "skity/geometry/rect.hpp"
 #if defined(CLAY_ENABLE_SKSHAPER)
 #include "clay/third_party/txt/src/skia/paragraph_builder_skia.h"

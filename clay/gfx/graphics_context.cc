@@ -14,7 +14,10 @@ namespace clay {
 
 GraphicsContext::AutoRestore::AutoRestore(GraphicsContext* context,
                                           bool do_save)
-    : canvas_(context->Canvas()) {
+    : AutoRestore(context->Canvas(), do_save) {}
+
+GraphicsContext::AutoRestore::AutoRestore(GraphicsCanvas* canvas, bool do_save)
+    : canvas_(canvas) {
   if (canvas_) {
     save_count_ = canvas_->GetSaveCount();
     if (do_save) {
@@ -321,41 +324,7 @@ void GraphicsContext::DrawImageRect(const fml::RefPtr<GraphicsImage>& image,
 void GraphicsContext::DrawLine(Paint stroke_paint, const FloatPoint& point1,
                                const FloatPoint& point2, float thickness,
                                BorderStyleType style) {
-  FloatPoint p1 = point1;
-  FloatPoint p2 = point2;
-  bool is_vertical_line = (p1.x() == p2.x());
-  int width = roundf(thickness);
-
-  // We know these are vertical or horizontal lines, so the length will just
-  // be the sum of the displacement component vectors give or take 1 -
-  // probably worth the speed up of no square root, which also won't be exact.
-  FloatPoint delta = p2 - p1;
-  FloatSize disp(delta.x(), delta.y());
-
-  if (style == BorderStyleType::kDotted || style == BorderStyleType::kDashed) {
-    // Do a rect fill of our endpoints.  This ensures we always have the
-    // appearance of being a border.  We then draw the actual dotted/dashed
-    // line.
-    skity::Rect r1 =
-        skity::Rect::MakeLTRB(p1.x(), p1.y(), p1.x() + width, p1.y() + width);
-    skity::Rect r2 =
-        skity::Rect::MakeLTRB(p2.x(), p2.y(), p2.x() + width, p2.y() + width);
-
-    if (is_vertical_line) {
-      r1.Offset(-width / 2, 0);
-      r2.Offset(-width / 2, -width);
-    } else {
-      r1.Offset(0, -width / 2);
-      r2.Offset(-width, -width / 2);
-    }
-    Paint fill_paint;
-    fill_paint.setColor(stroke_paint.getColor());
-    DrawRect(fill_paint, r1);
-    DrawRect(fill_paint, r2);
-  }
-
-  AdjustLineToPixelBoundaries(&p1, &p2, width, style);
-  Canvas()->DrawLine(p1.x(), p1.y(), p2.x(), p2.y(), stroke_paint);
+  Canvas()->DrawLine(stroke_paint, point1, point2, thickness, style);
 }
 
 void GraphicsContext::DrawRect(Paint paint, const skity::Rect& rect) {
@@ -368,14 +337,7 @@ void GraphicsContext::DrawRect(Paint paint, const skity::Rect& rect) {
 
 void GraphicsContext::FillPolygon(size_t num_points, const FloatPoint* points,
                                   const Color& color, bool should_antialias) {
-  clay::GrPath path;
-  SetPathFromPoints(&path, num_points, points);
-
-  Paint paint;
-  paint.setAntiAlias(should_antialias);
-  paint.setColor(color);
-
-  Canvas()->DrawPath(path, paint);
+  Canvas()->FillPolygon(num_points, points, color, should_antialias);
 }
 
 void GraphicsContext::SetupPaintDashPathEffect(Paint* paint, int length,

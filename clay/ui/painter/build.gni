@@ -3,15 +3,11 @@
 # LICENSE file in the root directory of this source tree.
 
 ui_painter_sources = [
-  "border_side.h",
   "box_painter.cc",
   "box_painter.h",
   "box_shadow_painter.cc",
   "box_shadow_painter.h",
   "gradient.cc",
-  "gradient.h",
-  "gradient_factory.cc",
-  "gradient_factory.h",
   "image_painter.cc",
   "image_painter.h",
   "object_painter.cc",

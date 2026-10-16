@@ -14,6 +14,8 @@ import("vulkan/build.gni")
 source_set("gfx") {
   sources = [
     "attributes.h",
+    "border_painter.cc",
+    "border_painter.h",
     "comparable.h",
     "gfx_rendering_backend.h",
     "gfx_utils.cc",

@@ -7,9 +7,9 @@
 
 #include <string>
 
+#include "clay/gfx/image/decode_priority.h"
 #include "clay/gfx/image/image_animation_listener.h"
 #include "clay/shell/common/one_shot_callback.h"
-#include "clay/ui/rendering/decode_utils.h"
 
 namespace clay {
 
