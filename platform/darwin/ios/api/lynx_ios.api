@@ -6314,6 +6314,11 @@ public enum LynxPointerEventsType {
   LynxPointerEventsNone
 }
 
+public enum LynxXBorderRadiusModeType {
+  LynxXBorderRadiusModeCss
+  LynxXBorderRadiusModeShortSide
+}
+
 
   typedef NSString *(^ LynxBacktraceFunction) (NSString *message, NSUInteger skippedDepth)
   public LYNX_EXTERN void LynxSetBacktraceFunction(LynxBacktraceFunction backtraceFunction);

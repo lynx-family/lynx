@@ -3262,6 +3262,18 @@ bool ComputedCSSStyle::SetZIndex(const tasm::CSSValue& value,
   return value_changed || (old_has_z_index != has_z_index_);
 }
 
+bool ComputedCSSStyle::SetXBorderRadiusMode(const tasm::CSSValue& value,
+                                            const bool reset) {
+  auto& border = layout_computed_style_.surround_data_.border_data_;
+  if (reset && !border) {
+    return false;
+  }
+  CSSStyleUtils::PrepareOptional(border);
+  return CSSStyleUtils::ComputeEnumStyle(
+      value, reset, border->radius_mode, XBorderRadiusModeType::kCss,
+      "-x-border-radius-mode must be an enum!", parser_configs_);
+}
+
 bool ComputedCSSStyle::SetBorderRadius(const tasm::CSSValue& value,
                                        const bool reset) {
   CSSStyleUtils::PrepareOptional(

@@ -6,6 +6,16 @@ declare const cssWithLonghands: CSSPropertiesWithLonghands;
 declare const cssWithShorthands: CSSPropertiesWithShorthands;
 
 describe('CSSProperty Type Test', () => {
+  it('short-side border radius mode', () => {
+    assertType<CSSProperties>({ XBorderRadiusMode: 'short-side', borderRadius: '20%' });
+    assertType<CSSPropertiesWithLonghands>({ XBorderRadiusMode: 'css' });
+    expectTypeOf<CSSProperties['XBorderRadiusMode']>().toEqualTypeOf<'css' | 'short-side' | undefined>();
+    assertType<CSSProperties>({
+      // @ts-expect-error: only the two declared radius modes are accepted
+      XBorderRadiusMode: 'unknown',
+    });
+  });
+
   it('example', () => {
     assertType<CSSProperties>({
       // layout

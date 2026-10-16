@@ -46,6 +46,7 @@ void BordersData::Reset() {
   radius_y_top_right = DefaultLayoutStyle::SL_DEFAULT_RADIUS();
   radius_y_bottom_right = DefaultLayoutStyle::SL_DEFAULT_RADIUS();
   radius_y_bottom_left = DefaultLayoutStyle::SL_DEFAULT_RADIUS();
+  radius_mode = XBorderRadiusModeType::kCss;
   color_top = DefaultColor::DEFAULT_COLOR;
   color_right = DefaultColor::DEFAULT_COLOR;
   color_bottom = DefaultColor::DEFAULT_COLOR;
