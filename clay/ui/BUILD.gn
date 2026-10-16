@@ -165,6 +165,7 @@ source_set("ui") {
   public_deps = [
     ":keywords",
     "../fml:fml",
+    "../gfx",
     "../net:net",
     "../third_party/txt",
   ]

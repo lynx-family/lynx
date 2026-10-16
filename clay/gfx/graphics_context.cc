@@ -14,7 +14,10 @@ namespace clay {
 
 GraphicsContext::AutoRestore::AutoRestore(GraphicsContext* context,
                                           bool do_save)
-    : canvas_(context->Canvas()) {
+    : AutoRestore(context->Canvas(), do_save) {}
+
+GraphicsContext::AutoRestore::AutoRestore(GraphicsCanvas* canvas, bool do_save)
+    : canvas_(canvas) {
   if (canvas_) {
     save_count_ = canvas_->GetSaveCount();
     if (do_save) {
@@ -321,16 +324,18 @@ void GraphicsContext::DrawImageRect(const fml::RefPtr<GraphicsImage>& image,
 void GraphicsContext::DrawLine(Paint stroke_paint, const FloatPoint& point1,
                                const FloatPoint& point2, float thickness,
                                BorderStyleType style) {
+  DrawLine(Canvas(), stroke_paint, point1, point2, thickness, style);
+}
+
+void GraphicsContext::DrawLine(GraphicsCanvas* canvas,
+                               const Paint& stroke_paint,
+                               const FloatPoint& point1,
+                               const FloatPoint& point2, float thickness,
+                               BorderStyleType style) {
   FloatPoint p1 = point1;
   FloatPoint p2 = point2;
   bool is_vertical_line = (p1.x() == p2.x());
   int width = roundf(thickness);
-
-  // We know these are vertical or horizontal lines, so the length will just
-  // be the sum of the displacement component vectors give or take 1 -
-  // probably worth the speed up of no square root, which also won't be exact.
-  FloatPoint delta = p2 - p1;
-  FloatSize disp(delta.x(), delta.y());
 
   if (style == BorderStyleType::kDotted || style == BorderStyleType::kDashed) {
     // Do a rect fill of our endpoints.  This ensures we always have the
@@ -350,12 +355,16 @@ void GraphicsContext::DrawLine(Paint stroke_paint, const FloatPoint& point1,
     }
     Paint fill_paint;
     fill_paint.setColor(stroke_paint.getColor());
-    DrawRect(fill_paint, r1);
-    DrawRect(fill_paint, r2);
+    if (!r1.IsEmpty()) {
+      canvas->DrawRect(r1, fill_paint);
+    }
+    if (!r2.IsEmpty()) {
+      canvas->DrawRect(r2, fill_paint);
+    }
   }
 
   AdjustLineToPixelBoundaries(&p1, &p2, width, style);
-  Canvas()->DrawLine(p1.x(), p1.y(), p2.x(), p2.y(), stroke_paint);
+  canvas->DrawLine(p1.x(), p1.y(), p2.x(), p2.y(), stroke_paint);
 }
 
 void GraphicsContext::DrawRect(Paint paint, const skity::Rect& rect) {
@@ -368,6 +377,12 @@ void GraphicsContext::DrawRect(Paint paint, const skity::Rect& rect) {
 
 void GraphicsContext::FillPolygon(size_t num_points, const FloatPoint* points,
                                   const Color& color, bool should_antialias) {
+  FillPolygon(Canvas(), num_points, points, color, should_antialias);
+}
+
+void GraphicsContext::FillPolygon(GraphicsCanvas* canvas, size_t num_points,
+                                  const FloatPoint* points, const Color& color,
+                                  bool should_antialias) {
   clay::GrPath path;
   SetPathFromPoints(&path, num_points, points);
 
@@ -375,7 +390,7 @@ void GraphicsContext::FillPolygon(size_t num_points, const FloatPoint* points,
   paint.setAntiAlias(should_antialias);
   paint.setColor(color);
 
-  Canvas()->DrawPath(path, paint);
+  canvas->DrawPath(path, paint);
 }
 
 void GraphicsContext::SetupPaintDashPathEffect(Paint* paint, int length,

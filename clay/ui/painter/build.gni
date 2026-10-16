@@ -3,6 +3,8 @@
 # LICENSE file in the root directory of this source tree.
 
 ui_painter_sources = [
+  "border_painter.cc",
+  "border_painter.h",
   "border_side.h",
   "box_painter.cc",
   "box_painter.h",
