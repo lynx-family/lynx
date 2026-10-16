@@ -12,6 +12,7 @@
 
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/css_property.h"
+#include "clay/ui/component/page_view.h"
 #include "clay/ui/rendering/render_container.h"
 
 namespace clay {
@@ -105,14 +106,16 @@ void ScrollbarWrapper::SetAttribute(const char* attr_c,
 }
 
 void ScrollbarWrapper::ConsumeGesture(int gesture_id, const Value& params) {
-  BaseView::ConsumeGesture(gesture_id, params);
-  if (!params.IsMap()) {
+  if (!params.IsMap() ||
+      !page_view()->GetGestureHandlerDispatcher()->CanControlGesture(
+          GestureArenaMemberId(), gesture_id)) {
     return;
   }
+  BaseView::ConsumeGesture(gesture_id, params);
   const Value::Map& map = params.GetMap();
   auto inner_iter = map.find("inner");
   if (inner_iter == map.end() || inner_iter->second.GetBool()) {
-    view_->ConsumeGesture(gesture_id, params);
+    view_->SetShouldConsumeGesture(ShouldConsumeGesture());
   }
 }
 

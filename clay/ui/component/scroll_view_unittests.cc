@@ -109,6 +109,8 @@ TEST_F_UI(ScrollViewTest, NestedScrollGestureOnPC) {
 }
 
 TEST_F_UI(ScrollViewTest, NestedScrollGestureInterceptionOnPC) {
+  inner_view_->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   outer_view_->need_scroll_animation_ = false;
   inner_view_->need_scroll_animation_ = false;
   outer_view_->OnLayoutUpdated();
@@ -145,10 +147,8 @@ TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksTouchScroll) {
   outer_view_->OnLayoutUpdated();
 
   GestureMap gesture_detector_map;
-  gesture_detector_map.emplace(
-      1, std::make_shared<GestureDetector>(
-             1, GestureHandlerType::Native, std::vector<std::string>{},
-             std::unordered_map<std::string, std::vector<uint32_t>>{}));
+  gesture_detector_map.emplace(1, lynx::tasm::gesture::GestureDefinition{
+                                      1, lynx::tasm::GestureType::NATIVE});
   outer_view_->SetGestureDetectorMap(gesture_detector_map);
 
   outer_view_->ConsumeGesture(
@@ -163,6 +163,8 @@ TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksTouchScroll) {
 }
 
 TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksGestureScrollBy) {
+  outer_view_->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   outer_view_->SetBound(0, 0, 100, 100);
   box_view_->SetBound(0, 0, 100, 500);
   outer_view_->OnLayoutUpdated();
@@ -184,6 +186,8 @@ TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksGestureScrollBy) {
 }
 
 TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksMouseWheelScroll) {
+  outer_view_->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   outer_view_->SetBound(0, 0, 100, 100);
   box_view_->SetBound(0, 0, 100, 500);
   outer_view_->OnLayoutUpdated();
@@ -205,6 +209,8 @@ TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksMouseWheelScroll) {
 TEST_F_UI(ScrollViewTest, WrapperConsumeGestureBlocksTrackpadDrag) {
   auto scroll_wrapper = std::make_unique<ScrollWrapper>(
       -1, ScrollDirection::kVertical, page_.get());
+  scroll_wrapper->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   ScrollView* scroll_view = scroll_wrapper->GetScrollView();
   scroll_wrapper->SetBound(0, 0, 100, 100);
   scroll_view->SetTouchSlop(-1);
@@ -255,6 +261,8 @@ TEST_F_UI(ScrollViewTest, WrapperConsumeGestureBlocksTrackpadDrag) {
 TEST_F_UI(ScrollViewTest, WrapperConsumeGestureResumeTrackpadDrag) {
   auto scroll_wrapper = std::make_unique<ScrollWrapper>(
       -1, ScrollDirection::kVertical, page_.get());
+  scroll_wrapper->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   ScrollView* scroll_view = scroll_wrapper->GetScrollView();
   scroll_wrapper->SetBound(0, 0, 100, 100);
   scroll_view->SetTouchSlop(-1);

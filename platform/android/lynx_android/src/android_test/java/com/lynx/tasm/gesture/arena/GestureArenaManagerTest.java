@@ -4,10 +4,15 @@
 
 package com.lynx.tasm.gesture.arena;
 
+import android.app.Application;
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.MotionEvent;
 import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.PageConfig;
@@ -18,12 +23,16 @@ import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.detector.GestureDetectorManager;
 import com.lynx.tasm.gesture.handler.*;
 import com.lynx.tasm.gesture.handler.GestureConstants;
+import com.lynx.tasm.service.ILynxTrailService;
+import com.lynx.tasm.service.LynxServiceCenter;
+import com.lynx.tasm.utils.MockLynxTrailService;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -37,6 +46,11 @@ public class GestureArenaManagerTest {
   private LynxContext mContext;
   private LynxView mLynxView;
   private GestureArenaManager mGestureArenaManager;
+
+  @BeforeClass
+  public static void loadNativeLibrary() {
+    System.loadLibrary("lynx");
+  }
 
   /**
    * Concrete implementation of GestureArenaMember used for testing purposes.
@@ -101,6 +115,45 @@ public class GestureArenaManagerTest {
     @Override
     public Map<Integer, BaseGestureHandler> getGestureHandlers() {
       return null;
+    }
+  }
+
+  class RecordingArenaMember extends ConcreteArenaMember {
+    private final int mMemberId;
+    private Map<Integer, GestureDetector> mDetectors;
+    private final List<Integer> mStates = Collections.synchronizedList(new ArrayList<>());
+
+    RecordingArenaMember(int memberId, Map<Integer, GestureDetector> detectors) {
+      mMemberId = memberId;
+      mDetectors = detectors;
+    }
+
+    @Override
+    public int getSign() {
+      return mMemberId;
+    }
+
+    @Override
+    public int getGestureArenaMemberId() {
+      return mMemberId;
+    }
+
+    @Override
+    public Map<Integer, GestureDetector> getGestureDetectorMap() {
+      return mDetectors;
+    }
+
+    @Override
+    public void onPlatformGestureStatusChanged(int status) {
+      mStates.add(status);
+    }
+
+    void setDetectors(Map<Integer, GestureDetector> detectors) {
+      mDetectors = detectors;
+    }
+
+    List<Integer> getStates() {
+      return mStates;
     }
   }
 
@@ -235,23 +288,278 @@ public class GestureArenaManagerTest {
     Assert.assertNotNull(manager);
   }
 
+  @Test
+  public void testUnifiedInit() {
+    mGestureArenaManager.onDestroy();
+    mGestureArenaManager.init(true, true, mContext);
+    try {
+      Assert.assertTrue(mGestureArenaManager.isUsingUnifiedGestureHandler());
+      Assert.assertNull(getGestureDetectorManager());
+
+      ConcreteArenaMember unsupportedMember = new ConcreteArenaMember() {
+        @Override
+        public int getSign() {
+          return 4;
+        }
+
+        @Override
+        public int getGestureArenaMemberId() {
+          return 4;
+        }
+
+        @Override
+        public Map<Integer, GestureDetector> getGestureDetectorMap() {
+          Map<Integer, GestureDetector> detectors = new HashMap<>();
+          detectors.put(
+              4, new GestureDetector(4, GestureDetector.GESTURE_TYPE_ROTATION, null, null));
+          return detectors;
+        }
+      };
+      Assert.assertEquals(0, mGestureArenaManager.addMember(unsupportedMember));
+      Assert.assertFalse(mGestureArenaManager.isMemberExist(4));
+    } finally {
+      mGestureArenaManager.onDestroy();
+    }
+  }
+
+  @Test
+  public void testUnifiedPageConfigDefaultAndOverride() {
+    Assert.assertTrue(new PageConfig(new JavaOnlyMap()).isEnableUnifiedGestureHandler());
+
+    JavaOnlyMap configMap = new JavaOnlyMap();
+    configMap.putBoolean("enableUnifiedGestureHandler", false);
+    Assert.assertFalse(new PageConfig(configMap).isEnableUnifiedGestureHandler());
+  }
+
+  @Test
+  public void testUnifiedGlobalSettingIsReadForEachNewArena() {
+    Application application = (Application) InstrumentationRegistry.getInstrumentation()
+                                  .getTargetContext()
+                                  .getApplicationContext();
+    Map<String, Object> settings = new HashMap<>();
+    settings.put("enable_unified_gesture_handler", "true");
+    LynxServiceCenter.inst().initialize(application);
+    LynxServiceCenter.inst().registerService(new MockLynxTrailService(settings));
+    LynxEnv.inst().setSettings(new HashMap<>());
+
+    JavaOnlyMap pageConfigMap = new JavaOnlyMap();
+    pageConfigMap.putBoolean("enableUnifiedGestureHandler", true);
+    PageConfig pageConfig = new PageConfig(pageConfigMap);
+    JavaOnlyMap disabledPageConfigMap = new JavaOnlyMap();
+    disabledPageConfigMap.putBoolean("enableUnifiedGestureHandler", false);
+    PageConfig disabledPageConfig = new PageConfig(disabledPageConfigMap);
+    GestureArenaManager firstPageManager = new GestureArenaManager();
+    GestureArenaManager secondPageManager = new GestureArenaManager();
+    GestureArenaManager thirdPageManager = new GestureArenaManager();
+    GestureArenaManager fourthPageManager = new GestureArenaManager();
+    try {
+      firstPageManager.init(true, pageConfig.isEnableUnifiedGestureHandler(), mContext);
+      Assert.assertTrue(firstPageManager.isUsingUnifiedGestureHandler());
+
+      settings.put("enable_unified_gesture_handler", "false");
+      LynxEnv.inst().setSettings(new HashMap<>());
+      Assert.assertTrue(firstPageManager.isUsingUnifiedGestureHandler());
+
+      secondPageManager.init(true, pageConfig.isEnableUnifiedGestureHandler(), mContext);
+      Assert.assertFalse(secondPageManager.isUsingUnifiedGestureHandler());
+      Assert.assertNotNull(getGestureDetectorManager(secondPageManager));
+
+      thirdPageManager.init(true, disabledPageConfig.isEnableUnifiedGestureHandler(), mContext);
+      Assert.assertFalse(thirdPageManager.isUsingUnifiedGestureHandler());
+      Assert.assertNotNull(getGestureDetectorManager(thirdPageManager));
+
+      settings.put("enable_unified_gesture_handler", "true");
+      LynxEnv.inst().setSettings(new HashMap<>());
+      fourthPageManager.init(true, disabledPageConfig.isEnableUnifiedGestureHandler(), mContext);
+      Assert.assertFalse(fourthPageManager.isUsingUnifiedGestureHandler());
+      Assert.assertNotNull(getGestureDetectorManager(fourthPageManager));
+    } finally {
+      firstPageManager.onDestroy();
+      secondPageManager.onDestroy();
+      thirdPageManager.onDestroy();
+      fourthPageManager.onDestroy();
+      LynxServiceCenter.inst().unregisterService(ILynxTrailService.class);
+      LynxEnv.inst().setSettings(new HashMap<>());
+    }
+  }
+
+  @Test
+  public void testUnifiedGestureReplacementAndClearReachNative() throws Exception {
+    mGestureArenaManager.onDestroy();
+    mGestureArenaManager.init(true, true, mContext);
+    Map<Integer, GestureDetector> initialDetectors = new HashMap<>();
+    initialDetectors.put(20, new GestureDetector(20, GestureDetector.GESTURE_TYPE_TAP, null, null));
+    RecordingArenaMember member = new RecordingArenaMember(20, initialDetectors);
+    Assert.assertEquals(20, mGestureArenaManager.addMember(member));
+    setUnifiedResponseChain(20);
+
+    long downTime = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, 8, 9, 0);
+    try {
+      mGestureArenaManager.dispatchTouchEventToArena(down, null);
+      Assert.assertEquals(Arrays.asList(GestureConstants.LYNX_STATE_BEGIN), member.getStates());
+
+      Map<Integer, GestureDetector> replacement = new HashMap<>();
+      replacement.put(
+          21, new GestureDetector(21, GestureDetector.GESTURE_TYPE_LONG_PRESS, null, null));
+      member.setDetectors(replacement);
+      mGestureArenaManager.replaceGestureDetectors(20, replacement);
+      Assert.assertEquals(
+          Arrays.asList(GestureConstants.LYNX_STATE_BEGIN, GestureConstants.LYNX_STATE_CANCELLED),
+          member.getStates());
+
+      mGestureArenaManager.setGestureDetectorState(20, 20, LynxNewGestureDelegate.STATE_FAIL);
+      Assert.assertEquals(2, member.getStates().size());
+      mGestureArenaManager.setGestureDetectorState(20, 21, LynxNewGestureDelegate.STATE_FAIL);
+      Assert.assertEquals(GestureConstants.LYNX_STATE_FAIL,
+          (int) member.getStates().get(member.getStates().size() - 1));
+
+      member.setDetectors(Collections.emptyMap());
+      mGestureArenaManager.replaceGestureDetectors(20, Collections.emptyMap());
+      int stateCountAfterClear = member.getStates().size();
+      mGestureArenaManager.setGestureDetectorState(20, 21, LynxNewGestureDelegate.STATE_END);
+      Assert.assertEquals(stateCountAfterClear, member.getStates().size());
+    } finally {
+      down.recycle();
+      mGestureArenaManager.onDestroy();
+    }
+  }
+
+  @Test
+  public void testUnifiedDuplicateTypeKeepsMinimumGestureId() throws Exception {
+    mGestureArenaManager.onDestroy();
+    mGestureArenaManager.init(true, true, mContext);
+    Map<Integer, GestureDetector> detectors = new HashMap<>();
+    detectors.put(31, new GestureDetector(31, GestureDetector.GESTURE_TYPE_PAN, null, null));
+    detectors.put(30, new GestureDetector(30, GestureDetector.GESTURE_TYPE_PAN, null, null));
+    RecordingArenaMember member = new RecordingArenaMember(30, detectors);
+    Assert.assertEquals(30, mGestureArenaManager.addMember(member));
+    setUnifiedResponseChain(30);
+
+    long downTime = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, 4, 5, 0);
+    try {
+      mGestureArenaManager.dispatchTouchEventToArena(down, null);
+      Assert.assertEquals(Arrays.asList(GestureConstants.LYNX_STATE_BEGIN), member.getStates());
+
+      mGestureArenaManager.setGestureDetectorState(30, 31, LynxNewGestureDelegate.STATE_FAIL);
+      Assert.assertEquals(1, member.getStates().size());
+      mGestureArenaManager.setGestureDetectorState(30, 30, LynxNewGestureDelegate.STATE_FAIL);
+      Assert.assertEquals(
+          Arrays.asList(GestureConstants.LYNX_STATE_BEGIN, GestureConstants.LYNX_STATE_FAIL),
+          member.getStates());
+    } finally {
+      down.recycle();
+      mGestureArenaManager.onDestroy();
+    }
+  }
+
+  @Test
+  public void testUnifiedCancelPreventsLongPressTimer() throws Exception {
+    mGestureArenaManager.onDestroy();
+    mGestureArenaManager.init(true, true, mContext);
+    JavaOnlyMap config = new JavaOnlyMap();
+    config.putDouble(GestureConstants.MIN_DURATION, 50);
+    Map<Integer, GestureDetector> detectors = new HashMap<>();
+    detectors.put(
+        40, new GestureDetector(40, GestureDetector.GESTURE_TYPE_LONG_PRESS, null, null, config));
+    RecordingArenaMember member = new RecordingArenaMember(40, detectors);
+    Assert.assertEquals(40, mGestureArenaManager.addMember(member));
+    setUnifiedResponseChain(40);
+
+    long downTime = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, 6, 7, 0);
+    MotionEvent cancel =
+        MotionEvent.obtain(downTime, downTime + 1, MotionEvent.ACTION_CANCEL, 6, 7, 0);
+    try {
+      mGestureArenaManager.dispatchTouchEventToArena(down, null);
+      mGestureArenaManager.dispatchTouchEventToArena(cancel, null);
+      SystemClock.sleep(100);
+      InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      Assert.assertEquals(
+          Arrays.asList(GestureConstants.LYNX_STATE_BEGIN, GestureConstants.LYNX_STATE_CANCELLED),
+          member.getStates());
+      Assert.assertFalse(mGestureArenaManager.hasActivePlatformGesture());
+    } finally {
+      down.recycle();
+      cancel.recycle();
+      mGestureArenaManager.onDestroy();
+    }
+  }
+
+  @Test
+  public void testUnifiedInputAndCancelReachNative() {
+    mGestureArenaManager.onDestroy();
+    mGestureArenaManager.init(true, true, mContext);
+    ConcreteArenaMember member = new ConcreteArenaMember() {
+      private final GestureDetector detector =
+          new GestureDetector(5, GestureDetector.GESTURE_TYPE_TAP, null, null);
+
+      @Override
+      public int getSign() {
+        return 5;
+      }
+
+      @Override
+      public int getGestureArenaMemberId() {
+        return 5;
+      }
+
+      @Override
+      public Map<Integer, GestureDetector> getGestureDetectorMap() {
+        Map<Integer, GestureDetector> detectors = new HashMap<>();
+        detectors.put(5, detector);
+        return detectors;
+      }
+    };
+
+    long downTime = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, 12, 18, 0);
+    MotionEvent move =
+        MotionEvent.obtain(downTime, downTime + 1, MotionEvent.ACTION_MOVE, 13, 19, 0);
+    MotionEvent cancel =
+        MotionEvent.obtain(downTime, downTime + 2, MotionEvent.ACTION_CANCEL, 13, 19, 0);
+    try {
+      Assert.assertEquals(5, mGestureArenaManager.addMember(member));
+      mGestureArenaManager.dispatchTouchEventToArena(down, null);
+      mGestureArenaManager.dispatchTouchEventToArena(move, null);
+      mGestureArenaManager.dispatchTouchEventToArena(cancel, null);
+      Assert.assertTrue(mGestureArenaManager.isMemberExist(5));
+    } finally {
+      down.recycle();
+      move.recycle();
+      cancel.recycle();
+      mGestureArenaManager.onDestroy();
+    }
+  }
+
   /**
    * Helper method to retrieve the GestureDetectorManager from GestureArenaManager using reflection.
    *
    * @return The retrieved GestureDetectorManager instance or null if not found.
    */
   private GestureDetectorManager getGestureDetectorManager() {
+    return getGestureDetectorManager(mGestureArenaManager);
+  }
+
+  private GestureDetectorManager getGestureDetectorManager(GestureArenaManager arenaManager) {
     // Reflectively retrieve the GestureDetectorManager instance from the GestureArenaManager
     // This is done using reflection to access a private member of the class for testing purposes
     GestureDetectorManager manager = null;
     try {
-      Field field = mGestureArenaManager.getClass().getDeclaredField("mGestureDetectorManager");
+      Field field = arenaManager.getClass().getDeclaredField("mGestureDetectorManager");
       field.setAccessible(true);
-      manager = (GestureDetectorManager) field.get(mGestureArenaManager);
+      manager = (GestureDetectorManager) field.get(arenaManager);
     } catch (Exception e) {
       Log.e(TAG, e.toString());
     }
     return manager;
+  }
+
+  private void setUnifiedResponseChain(int... memberIds) throws Exception {
+    Field field = mGestureArenaManager.getClass().getDeclaredField("mUnifiedResponseChain");
+    field.setAccessible(true);
+    field.set(mGestureArenaManager, memberIds);
   }
 
   @Test

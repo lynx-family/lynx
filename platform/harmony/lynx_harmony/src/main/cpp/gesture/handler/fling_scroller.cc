@@ -71,9 +71,10 @@ void FlingScroller::Start(float velocity_x, float velocity_y,
     float delta_x = (velocity_x * (1.0f - progress) / 1000) * delta_time;
     float delta_y = (velocity_y * (1.0f - progress) / 1000) * delta_time;
     current_fling_state_ = static_cast<uint8_t>(FlingState::FLING);
+    last_time_ = current_time;
     (*cb)(static_cast<uint8_t>(FlingState::FLING), -delta_x, -delta_y);
-    this->last_time_ = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
   });
+  current_fling_state_ = static_cast<uint8_t>(FlingState::FLING);
   fling_scroller_animator_->Start();
 }
 
@@ -82,11 +83,9 @@ bool FlingScroller::IsIdle() {
 }
 
 void FlingScroller::Stop() {
-  if (fling_scroller_animator_) {
-    fling_scroller_animator_->Stop();
-  }
+  auto animator = std::move(fling_scroller_animator_);
   current_fling_state_ = static_cast<uint8_t>(FlingState::IDLE);
-  fling_scroller_animator_ = nullptr;
+  if (animator) animator->Stop();
 }
 
 }  // namespace harmony

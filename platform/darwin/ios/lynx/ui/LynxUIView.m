@@ -9,6 +9,8 @@
 #import <Lynx/LynxUIView.h>
 #import <Lynx/UIScrollView+LynxGesture.h>
 #import "LynxUIContext+Internal.h"
+#import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 
 @interface UILynxView : UIView <UIGestureRecognizerDelegate>
 
@@ -25,6 +27,16 @@
         [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanGesture:)];
     _nativeGesturePanRecognizer.delegate = self;
     [self addGestureRecognizer:_nativeGesturePanRecognizer];
+  }
+}
+
+- (void)setNativeGestureRecognizerEnabled:(BOOL)enabled {
+  if (enabled) {
+    [self setupNativeGestureRecognizerIfNeeded];
+  } else if (_nativeGesturePanRecognizer) {
+    _nativeGesturePanRecognizer.delegate = nil;
+    [self removeGestureRecognizer:_nativeGesturePanRecognizer];
+    _nativeGesturePanRecognizer = nil;
   }
 }
 
@@ -58,12 +70,7 @@
 }
 
 - (void)dealloc {
-  // Remove the gesture recognizer from the view
-  if (_nativeGesturePanRecognizer) {
-    _nativeGesturePanRecognizer.delegate = nil;
-    [self removeGestureRecognizer:_nativeGesturePanRecognizer];
-    _nativeGesturePanRecognizer = nil;
-  }
+  [self setNativeGestureRecognizerEnabled:NO];
 }
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
@@ -119,6 +126,29 @@ LYNX_REGISTER_UI("view")
 
 - (void)gestureDidSet {
   [super gestureDidSet];
+
+  if (self.context.enableNewGesture && self.context.enableUnifiedGestureHandler) {
+    LynxUnifiedGestureArena *arena = self.context.uiOwner.unifiedGestureArena;
+    __block BOOL hasNativeGesture = NO;
+    [self.gestureMap enumerateKeysAndObjectsUsingBlock:^(
+                         NSNumber *_Nonnull key, LynxGestureDetectorDarwin *_Nonnull detector,
+                         BOOL *_Nonnull stop) {
+      if (detector.gestureType == LynxGestureTypeNative && [arena containsGesture:detector.gestureID
+                                                                         memberId:self.sign]) {
+        hasNativeGesture = YES;
+        *stop = YES;
+      }
+    }];
+    UILynxView *lynxView = (UILynxView *)self.view;
+    if ([lynxView isKindOfClass:[UILynxView class]]) {
+      if (!hasNativeGesture) {
+        lynxView.interceptGestureStatus = LynxInterceptGestureStateUnset;
+      }
+      [lynxView setNativeGestureRecognizerEnabled:hasNativeGesture];
+    }
+    return;
+  }
+
   for (NSNumber *key in self.gestureMap) {
     LynxGestureDetectorDarwin *detector = self.gestureMap[key];
     // Check if a native gesture type exists.
