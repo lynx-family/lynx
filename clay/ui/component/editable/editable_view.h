@@ -82,7 +82,7 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void OnSelectionChanged(const TextEditingValue& value,
                           const TextEditingController*) override;
   void OnContentChanged(const TextEditingValue& value,
-                        const TextEditingController*) override{};
+                        const TextEditingController*) override {};
   void OnUserInput(const TextEditingValue& value,
                    const TextEditingController*) override;
 
@@ -227,6 +227,9 @@ class EditableView : public WithTypeInfo<EditableView, BaseView>,
   void DoBackspace();
   void DoDelete();
   void MoveCaret(KeyCode keycode);
+#if defined(ENABLE_GTK_HOST)
+  void MoveCaretToBoundary(bool end, bool extend, bool document);
+#endif
 
   void ToggleCaret();
   void TwinkleCaretPeriodically();

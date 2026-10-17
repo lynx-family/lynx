@@ -6,8 +6,11 @@
 #define CLAY_SHELL_PLATFORM_HEADLESS_CLAY_HEADLESS_ENGINE_H_
 
 #include <chrono>
+#include <functional>
 #include <map>
 #include <memory>
+#include <string>
+#include <utility>
 
 #include "base/include/fml/macros.h"
 #include "clay/common/service/service_manager.h"
@@ -23,6 +26,17 @@ class EmbedderLynxView;
 }  // namespace lynx
 
 namespace clay {
+
+#if defined(ENABLE_GTK_HOST)
+// Private host editing bridge; no change to the windowless public C ABI.
+struct GtkTextInputCallbacks {
+  std::function<void(int, const char*, const char*)> set_client;
+  std::function<void()> clear_client;
+  std::function<void(uint64_t, uint64_t, const std::string&, const std::string&,
+                     bool, uint64_t, uint64_t)>
+      set_state;
+};
+#endif
 
 class ClayHeadlessRenderer;
 
@@ -46,6 +60,20 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
   void NotifyLowMemoryWarning();
   void NotifyLocaleChange();
   void RequestPaint();
+
+#if defined(ENABLE_GTK_HOST)
+  void SetGtkTextInputCallbacks(GtkTextInputCallbacks callbacks) {
+    gtk_text_input_ = std::move(callbacks);
+  }
+  bool UpdateGtkEditingState(int client, const std::string& text,
+                             int selection_base, int selection_extent,
+                             int composing_base, int composing_extent);
+#endif
+
+#if defined(ENABLE_GTK_HOST) && defined(ENABLE_SKITY)
+  bool SuspendGLSurface();
+  bool ResumeGLSurface();
+#endif
 
   void SetVisible(bool enable);
   void SetFontFaceCache(const char* font_family, const char* local_path);
@@ -96,6 +124,9 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
 
   void* user_data_ = nullptr;
   int client_id_ = -1;
+#if defined(ENABLE_GTK_HOST)
+  GtkTextInputCallbacks gtk_text_input_;
+#endif
 
   // The event loop for the main thread that allows for delayed task execution.
   std::unique_ptr<ClayEventLoop> event_loop_;

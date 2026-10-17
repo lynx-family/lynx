@@ -94,7 +94,7 @@ source_set("common") {
     ]
   }
 
-  if (is_win || is_mac || (is_headless && !is_ios)) {
+  if (is_win || is_mac || (is_headless && !is_ios) || enable_lynx_gtk) {
     sources += [
       "services/drag_drop_service.cc",
       "services/drag_drop_service.h",
@@ -149,10 +149,10 @@ source_set("common") {
     "../../common",
     "../../common/graphics",
     "../../flow",
-    "../../fml:fml",
+    "../../fml",
     "../../gfx",
     "../../gfx/shared_image",
-    "../../memory:memory",
+    "../../memory",
     "../../shell/profiling",
     "../../ui",
   ]

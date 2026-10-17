@@ -226,6 +226,30 @@ void LynxEventDispatcher::OnTouchEvent(const std::string& event_name, int tag,
   }
 }
 
+#if defined(ENABLE_GTK_HOST)
+void LynxEventDispatcher::OnTouchEventWithIdentifier(
+    const std::string& event_name, int tag, int64_t identifier, float x,
+    float y, float page_x, float page_y) {
+  if (!engine_proxy_) return;
+  // The existing engine overload accepts {target: [[id, clientX, clientY,
+  // pageX, pageY, localX, localY]]} and builds touches/changedTouches.
+  clay::Value::Array point;
+  point.emplace_back(identifier);
+  point.emplace_back(page_x);
+  point.emplace_back(page_y);
+  point.emplace_back(page_x);
+  point.emplace_back(page_y);
+  point.emplace_back(x);
+  point.emplace_back(y);
+  clay::Value::Array points;
+  points.emplace_back(std::move(point));
+  clay::Value::Map params;
+  params.emplace(std::to_string(tag), clay::Value(std::move(points)));
+  engine_proxy_->SendTouchEvent(
+      event_name, lynx::ClayValue(clay::Value(std::move(params))));
+}
+#endif
+
 void LynxEventDispatcher::OnMouseEvent(const std::string& event_name,
                                        int view_id, int button, int buttons,
                                        float scale, float x, float y,

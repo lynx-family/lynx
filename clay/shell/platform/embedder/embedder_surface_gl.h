@@ -23,6 +23,11 @@ class EmbedderSurfaceGL final : public EmbedderSurface,
 
   ~EmbedderSurfaceGL() override;
 
+#if defined(ENABLE_GTK_HOST) && defined(ENABLE_SKITY)
+  // Raster thread, after the rasterizer has released its output surface.
+  bool ResetMainContext();
+#endif
+
  private:
   bool valid_ = false;
   GPUSurfaceGLDelegate* delegate_;

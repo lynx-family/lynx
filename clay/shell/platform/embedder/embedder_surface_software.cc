@@ -15,9 +15,52 @@
 #include "third_party/skia/include/core/SkColorSpace.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
 #include "third_party/skia/include/gpu/GrDirectContext.h"
+#else
+#include "skity/graphic/bitmap.hpp"
+#include "skity/render/canvas.hpp"
 #endif  // ENABLE_SKITY
 
 namespace clay {
+#ifdef ENABLE_SKITY
+namespace {
+// Adapt Skity CPU rendering to the surface interface used by the compositor.
+class SoftwareSurface final : public skity::GPUSurface {
+ public:
+  SoftwareSurface(uint32_t width, uint32_t height)
+      : bitmap_(width, height, skity::AlphaType::kPremul_AlphaType,
+                skity::ColorType::kRGBA),
+        canvas_(skity::Canvas::MakeSoftwareCanvas(&bitmap_)) {}
+  uint32_t GetWidth() const override { return bitmap_.Width(); }
+  uint32_t GetHeight() const override { return bitmap_.Height(); }
+  float ContentScale() const override { return 1.f; }
+  skity::Canvas* LockCanvas(bool clear) override {
+    if (clear && canvas_) canvas_->Clear(0);
+    return canvas_.get();
+  }
+  void Flush() override {}
+  std::shared_ptr<skity::Pixmap> ReadPixels(const skity::Rect&) override {
+    return nullptr;  // GPU readback is not needed for a CPU backing store.
+  }
+  const skity::Bitmap& Bitmap() const { return bitmap_; }
+  const uint8_t* BGRAPixels() {
+    bgra_.resize(bitmap_.RowBytes() * bitmap_.Height());
+    auto* rgba = bitmap_.GetPixelAddr();
+    for (size_t i = 0; i < bgra_.size(); i += 4) {
+      bgra_[i] = rgba[i + 2];
+      bgra_[i + 1] = rgba[i + 1];
+      bgra_[i + 2] = rgba[i];
+      bgra_[i + 3] = rgba[i + 3];
+    }
+    return bgra_.data();
+  }
+
+ private:
+  std::vector<uint8_t> bgra_;
+  skity::Bitmap bitmap_;
+  std::unique_ptr<skity::Canvas> canvas_;
+};
+}  // namespace
+#endif
 
 EmbedderSurfaceSoftware::EmbedderSurfaceSoftware(
     EmbedderSurfaceSoftwareDelegate* delegate)
@@ -73,6 +116,12 @@ clay::GrSurfacePtr EmbedderSurfaceSoftware::AcquireBackingStore(
     FML_LOG(ERROR) << "Could not create backing store for software rendering.";
     return nullptr;
   }
+#else
+  if (skity_size.x <= 0 || skity_size.y <= 0) return nullptr;
+  if (!sk_surface_ || sk_surface_->GetWidth() != skity_size.x ||
+      sk_surface_->GetHeight() != skity_size.y) {
+    sk_surface_ = std::make_shared<SoftwareSurface>(skity_size.x, skity_size.y);
+  }
 #endif
   return sk_surface_;
 }
@@ -81,8 +130,11 @@ clay::GrSurfacePtr EmbedderSurfaceSoftware::AcquireBackingStore(
 bool EmbedderSurfaceSoftware::PresentBackingStore(
     clay::GrSurfacePtr backing_store) {
 #ifdef ENABLE_SKITY
-  FML_UNIMPLEMENTED();
-  return false;
+  if (!IsValid() || !backing_store) return false;
+  auto* surface = static_cast<SoftwareSurface*>(backing_store.get());
+  const auto& bitmap = surface->Bitmap();
+  return delegate_->OnPresentBackingStore(surface->BGRAPixels(),
+                                          bitmap.RowBytes(), bitmap.Height());
 #else
   if (!IsValid()) {
     FML_LOG(ERROR) << "Tried to present an invalid software surface.";

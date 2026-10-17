@@ -40,6 +40,25 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
 
   void OnEnterBackground() override;
 
+#if defined(ENABLE_GTK_HOST)
+  void SetGtkTextInputCallbacks(clay::GtkTextInputCallbacks callbacks) {
+    headless_engine_->SetGtkTextInputCallbacks(std::move(callbacks));
+  }
+  bool UpdateGtkEditingState(int client, const std::string& text,
+                             int selection_base, int selection_extent,
+                             int composing_base, int composing_extent) {
+    return headless_engine_->UpdateGtkEditingState(
+        client, text, selection_base, selection_extent, composing_base,
+        composing_extent);
+  }
+#endif
+
+#if defined(ENABLE_GTK_HOST) && defined(ENABLE_SKITY)
+  bool SuspendGLSurface() { return headless_engine_->SuspendGLSurface(); }
+  bool ResumeGLSurface() { return headless_engine_->ResumeGLSurface(); }
+  void RequestPaint() { headless_engine_->RequestPaint(); }
+#endif
+
   void InjectBubbleEvent(const char* params) override {}
 #if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX) || \
     defined(OS_HARMONY)

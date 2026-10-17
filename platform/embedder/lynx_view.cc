@@ -162,6 +162,10 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   view->lynx_ui_renderer =
       lynx::embedder::LynxUIRenderer::CreateWithBuilder(builder);
 #endif
+  if (!view->lynx_ui_renderer) {
+    delete view;
+    return nullptr;
+  }
   // get UIDelegate from lynx_ui_renderer.
   auto* ui_delegate = view->lynx_ui_renderer->GetUIDelegate();
 
@@ -296,6 +300,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   }
   view->lynx_template_renderer->UpdateViewport(builder->frame.width, 1,
                                                builder->frame.height, 1, true);
+  view->lynx_ui_renderer->OnViewCreated(view);
   return view;
 }
 
@@ -577,7 +582,15 @@ LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
   }
 #endif
   // Destroy template renderer and ui renderer.
+#if defined(ENABLE_GTK_HOST)
+  auto runtime_runner = view->lynx_template_renderer->GetRuntimeTaskRunner();
+#endif
   view->lynx_template_renderer.reset();
+#if defined(ENABLE_GTK_HOST)
+  // The GTK host must outlive all runtime detach work. Reset() already uses
+  // this barrier when replacing a template renderer; use it on disposal too.
+  if (runtime_runner) runtime_runner->PostSyncTask([]() {});
+#endif
   view->lynx_view_clients.reset();
   view->lynx_ui_renderer.reset();
   delete view;

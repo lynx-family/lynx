@@ -9,6 +9,7 @@
 #define CLAY_SHELL_PLATFORM_EMBEDDER_EMBEDDER_TASK_RUNNER_H_
 
 #include <mutex>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 
@@ -88,6 +89,7 @@ class EmbedderTaskRunner final : public fml::TaskRunner {
       pending_tasks_;
   fml::TaskQueueId placeholder_id_;
   bool thread_host_destroyed_ = false;
+  std::thread::id shutdown_cleanup_thread_;
 
   // |fml::TaskRunner|
   void PostTaskForTime(lynx::base::closure task,

@@ -74,7 +74,8 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
     virtual void DumpInfoToDevtoolEnabled(bool enabled) {}
     virtual void SetClipboardData(const std::u16string& data) = 0;
     virtual std::u16string GetClipboardData() = 0;
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
     // Text input related functions Begin.
     virtual void SetTextInputClient(int client_id, const char* input_action,
                                     const char* input_type) = 0;
@@ -222,7 +223,8 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
     return delegate_->GetClipboardData();
   }
 
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   // Text input related functions Begin.
   void SetTextInputClient(int client_id, const char* input_action,
                           const char* input_type) override {
@@ -304,7 +306,7 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
   const std::shared_ptr<clay::ServiceManager> service_manager_;
   // Control whether vsync request and response should be paused when
   // app/view is in background.
-#if defined(OS_ANDROID) || defined(OS_IOS)
+#if defined(OS_ANDROID) || defined(OS_IOS) || defined(ENABLE_GTK_HOST)
   bool enable_vsync_pause_ = true;
 #else
   bool enable_vsync_pause_ = false;

@@ -21,11 +21,14 @@ group("lynx_linux_group") {
   deps = [
     "../../base/src:base_static",
     "../../clay/fml",
-    "../../clay/lynx_adaptor:lynx_adaptor",
-    "../../clay/shell/platform/embedder:embedder",
-    "../embedder:embedder",
+    "../../clay/lynx_adaptor",
+    "../../clay/shell/platform/embedder",
+    "../embedder",
     "../embedder/lynx_service",
   ]
+  if (enable_lynx_gtk) {
+    deps += [ "gtk:gtk_public_headers" ]
+  }
   if (enable_napi_binding) {
     deps += [
       "../../core/runtime/common/napi:napi_binding_quickjs",

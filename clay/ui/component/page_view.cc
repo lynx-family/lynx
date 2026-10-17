@@ -345,7 +345,8 @@ void PageView::InitManagers() {
 #if defined(ENABLE_MOUSE_TRACKING)
   // init mouse region manager, mouse cursor manager
   MouseCursorManager::ActiveCursorCallback cursor_callback = nullptr;
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   cursor_callback = [weak_view =
                          weak_factory_.GetWeakPtr()](const Cursor& cursor) {
     PageView* page_view = static_cast<PageView*>(weak_view.get());
@@ -1435,6 +1436,7 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
   auto position = event.position;
   BaseView* top_view = nullptr;
   FloatPoint transformed_position;
+  int finished_view_id = -1;
   if (type == kClayEventTypeTouchMove || type == kClayEventTypeTouchEnd ||
       type == kClayEventTypeTouchCancel) {
     auto it = touch_view_map_.find(event.pointer_id);
@@ -1446,12 +1448,24 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
     if (it != touch_view_map_.end()) {
       top_view = this->render_delegate_->FindViewById(it->second);
       if (type == kClayEventTypeTouchEnd || type == kClayEventTypeTouchCancel) {
+        finished_view_id = it->second;
         FML_DCHECK(touch_view_map_.find(event.pointer_id) !=
                    touch_view_map_.end());
         touch_view_map_.erase(it);
       }
     }
     if (!top_view || !top_view->attach_to_tree()) {
+#if defined(ENABLE_GTK_HOST)
+      // The DOM target may have been removed after touchstart. Core still
+      // needs the terminal contact to retire its cache; it skips dispatch
+      // when the original target no longer exists.
+      if (event_delegate_ && event.device == PointerEvent::DeviceType::kTouch &&
+          finished_view_id >= 0) {
+        event_delegate_->OnTouchEventWithIdentifier(
+            EventTypeToString(type), finished_view_id, event.pointer_id, 0, 0,
+            position.x(), position.y());
+      }
+#endif
       return;
     }
     auto view_pos = top_view->AbsoluteLocationWithScroll();
@@ -1486,6 +1500,15 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
             event, transformed_position);
       }
       if (event_delegate_) {
+#if defined(ENABLE_GTK_HOST)
+        if (is_raw_events) {
+          event_delegate_->OnTouchEventWithIdentifier(
+              EventTypeToString(type), top_view->id(), event.pointer_id,
+              transformed_position.x(), transformed_position.y(), position.x(),
+              position.y());
+          break;
+        }
+#endif
         event_delegate_->OnTouchEvent(
             EventTypeToString(type), top_view->id(), transformed_position.x(),
             transformed_position.y(), position.x(), position.y());
@@ -2318,19 +2341,19 @@ void PageView::MakeRasterSnapshot(
         }
         callback(gr_data, callback_width, callback_height);
 #else
-        FML_DCHECK(!image->IsTextureBackend());
-        GrDataPtr gr_data = nullptr;
-        // The scale factor has already been applied to the image with transform
-        // layer, so we don't need to scale the image here again. Just compress
-        // the image to png or jpeg format.
-        auto codec = compress_jpeg ? skity::Codec::MakeJPEGCodec()
-                                   : skity::Codec::MakePngCodec();
-        if (!codec) {
-          callback(nullptr, 0, 0);
-        } else {
-          gr_data = codec->Encode(image->GetPixmap()->get());
-          callback(gr_data, callback_width, callback_height);
-        }
+    FML_DCHECK(!image->IsTextureBackend());
+    GrDataPtr gr_data = nullptr;
+    // The scale factor has already been applied to the image with transform
+    // layer, so we don't need to scale the image here again. Just compress
+    // the image to png or jpeg format.
+    auto codec = compress_jpeg ? skity::Codec::MakeJPEGCodec()
+                               : skity::Codec::MakePngCodec();
+    if (!codec) {
+      callback(nullptr, 0, 0);
+    } else {
+      gr_data = codec->Encode(image->GetPixmap()->get());
+      callback(gr_data, callback_width, callback_height);
+    }
 #endif  // ENABLE_SKITY
       });
 }

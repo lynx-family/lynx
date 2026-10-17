@@ -38,6 +38,9 @@ struct lynx_view_builder_t {
   std::string webview2_fixed_runtime_path;
   lynx_group_t* group = nullptr;
   NativeWindow parent = nullptr;
+#if defined(ENABLE_GTK_HOST)
+  bool gtk_use_gl = true;
+#endif
 #if defined(ENABLE_WINDOWLESS)
   lynx::fml::RefPtr<lynx::embedder::LynxWindowlessRenderer>
       windowless_renderer = nullptr;
