@@ -770,11 +770,11 @@ public class UIList extends AbsLynxList<RecyclerView> {
   }
 
   public boolean isAsyncThreadStrategy() {
-    if (mContext == null || mContext.getLynxView() == null) {
+    if (mContext == null || mContext.getUIBodyView() == null) {
       return false;
     }
 
-    ThreadStrategyForRendering strategy = mContext.getLynxView().getThreadStrategyForRendering();
+    ThreadStrategyForRendering strategy = mContext.getUIBodyView().getThreadStrategyForRendering();
     return strategy == ThreadStrategyForRendering.MOST_ON_TASM
         || strategy == ThreadStrategyForRendering.MULTI_THREADS;
   }
@@ -1953,10 +1953,10 @@ public class UIList extends AbsLynxList<RecyclerView> {
   }
 
   boolean isPartOnLayoutThreadStrategy() {
-    if (mContext == null || mContext.getLynxView() == null) {
+    if (mContext == null || mContext.getUIBodyView() == null) {
       return false;
     }
-    ThreadStrategyForRendering strategy = mContext.getLynxView().getThreadStrategyForRendering();
+    ThreadStrategyForRendering strategy = mContext.getUIBodyView().getThreadStrategyForRendering();
     return strategy == ThreadStrategyForRendering.PART_ON_LAYOUT;
   }
 

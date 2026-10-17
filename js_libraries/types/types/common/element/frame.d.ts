@@ -95,6 +95,22 @@ export interface FrameProps extends StandardProps {
    * @defaultValue false
    */
   'enable-multi-async-thread'?: boolean;
+
+  /**
+   * Overrides the rendering thread strategy of the nested Lynx page.
+   * 0: ALL_ON_UI; 1: MOST_ON_TASM; 2: PART_ON_LAYOUT; 3: MULTI_THREADS.
+   * Harmony supports only 0 and 1. An omitted, reset, or unsupported value
+   * preserves the inherited host setting.
+   * Applied only when the child engine is first created. Later changes,
+   * including src reloads, require remounting the frame to take effect.
+   * This setting is independent of enable-multi-async-thread.
+   * @example
+   * <frame src={url} thread-strategy={1} />
+   * @Android
+   * @iOS
+   * @Harmony
+   */
+  'thread-strategy'?: 0 | 1 | 2 | 3;
 }
 
 export interface BaseFrameLoadInfo {
