@@ -2,28 +2,24 @@ name: publish-release
 on:
   workflow_dispatch:
     inputs:
-      releaseType:
-        description: 'release type (release: publish by tag; nightly: generate nightly version and ignore tag)'
-        required: true
-        default: 'release'
-        type: choice
-        options:
-          - release
-          - nightly
       tag:
-        description: 'release tag (required when releaseType=release)'
-        required: false
+        description: 'release tag'
+        required: true
         type: string
-      commitId:
-        description: 'specific commit SHA to build (optional; used for checkout and nightly suffix)'
+      correlationId:
+        description: 'optional external correlation ID'
         required: false
         type: string
 
   schedule:
     - cron: '0 22 * * *'
 
-  release:
-    types: [published]
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-release-${{ github.event_name == 'schedule' && 'nightly' || inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 env:
   NIGHTLY_BASE_VERSION: '4.2.0'
@@ -32,130 +28,242 @@ jobs:
   get-version:
     runs-on: lynx-ubuntu-22.04-medium
     timeout-minutes: 60
+    permissions:
+      contents: write
     env:
       EVENT_NAME: ${{ github.event_name }}
-      REF: ${{ github.ref }}
       REF_NAME: ${{ github.ref_name }}
-      INPUT_RELEASE_TYPE: ${{ github.event.inputs.releaseType || '' }}
-      INPUT_TAG: ${{ github.event.inputs.tag || '' }}
-      INPUT_COMMIT_ID: ${{ github.event.inputs.commitId || '' }}
+      INPUT_TAG: ${{ inputs.tag || '' }}
+      CORRELATION_ID: ${{ inputs.correlationId || '' }}
+      GITHUB_TOKEN: ${{ github.token }}
     outputs:
-      version: ${{ steps.resolve_version.outputs.VERSION }}
-      ios_storage_type: ${{ steps.resolve_version.outputs.IOS_STORAGE_TYPE }}
-      checkout_ref: ${{ steps.resolve_checkout_ref.outputs.CHECKOUT_REF }}
-      release_mode: ${{ steps.resolve_release_mode.outputs.RELEASE_MODE }}
+      version: ${{ steps.resolve.outputs.VERSION }}
+      ios_storage_type: ${{ steps.resolve.outputs.IOS_STORAGE_TYPE }}
+      checkout_ref: ${{ steps.resolve.outputs.CHECKOUT_REF }}
+      release_mode: ${{ steps.resolve.outputs.RELEASE_MODE }}
+      release_id: ${{ steps.prepare_release.outputs.RELEASE_ID }}
     steps:
-      - name: Validate manual inputs
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: Resolve and validate release plan
+        id: resolve
+        shell: bash
         run: |-
-          if [ -n "$INPUT_COMMIT_ID" ] && ! [[ "$INPUT_COMMIT_ID" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
-            echo "commitId must be a git SHA (7-40 hex chars)."
-            exit 1
-          fi
-
-          if [ "$INPUT_RELEASE_TYPE" != "nightly" ] && [ -z "$INPUT_TAG" ]; then
-            echo "tag is required when releaseType=release."
-            exit 1
-          fi
-
-      - name: Resolve release mode
-        id: resolve_release_mode
-        run: |-
-          release_mode="tag_release"
+          set -euo pipefail
 
           if [ "$EVENT_NAME" = "schedule" ]; then
             release_mode="nightly"
-          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_RELEASE_TYPE" = "nightly" ]; then
-            release_mode="nightly"
-          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            release_mode="manual_release"
+            source_ref="$GITHUB_SHA"
+            source_sha="$(curl --silent --show-error --fail \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$source_ref" |
+              jq --raw-output '.sha')"
+            commit_short="${source_sha:0:8}"
+            version="${NIGHTLY_BASE_VERSION}-nightly.$(TZ=Asia/Shanghai date +'%Y%m%d%H%M').${GITHUB_RUN_NUMBER}.g${commit_short}"
+            checkout_ref="$source_sha"
+            storage_type="s3"
+            tag=""
+          else
+            release_mode="official"
+            if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+              tag="$INPUT_TAG"
+              source_ref="$GITHUB_SHA"
+            elif [ "$EVENT_NAME" = "push" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              tag="$REF_NAME"
+              source_ref="$GITHUB_SHA"
+            else
+              echo "Unsupported release event: $EVENT_NAME"
+              exit 1
+            fi
+
+            version="$tag"
+            source_sha="$(curl --silent --show-error --fail \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$source_ref" |
+              jq --raw-output '.sha')"
+            checkout_ref="$source_sha"
+            storage_type="github_release"
           fi
 
-          echo "RELEASE_MODE=$release_mode" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve checkout ref
-        id: resolve_checkout_ref
-        env:
-          RELEASE_MODE: ${{ steps.resolve_release_mode.outputs.RELEASE_MODE }}
-        run: |-
-          case "$RELEASE_MODE" in
-            nightly)
-              checkout_ref="${INPUT_COMMIT_ID:-$GITHUB_SHA}"
-              commit_short="${INPUT_COMMIT_ID:-$GITHUB_SHA}"
-              ;;
-            manual_release)
-              checkout_ref="${INPUT_COMMIT_ID:-$REF}"
-              commit_short="${INPUT_COMMIT_ID:-$GITHUB_SHA}"
-              ;;
-            tag_release)
-              checkout_ref="$REF"
-              commit_short="$GITHUB_SHA"
-              ;;
-            *)
-              echo "Unsupported release mode: $RELEASE_MODE"
-              exit 1
-              ;;
-          esac
-
-          commit_short="$(printf '%s' "$commit_short" | tr '[:upper:]' '[:lower:]')"
-          echo "CHECKOUT_REF=$checkout_ref" >> "$GITHUB_OUTPUT"
-          echo "COMMIT_SHORT=${commit_short:0:8}" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve version
-        id: resolve_version
-        env:
-          RELEASE_MODE: ${{ steps.resolve_release_mode.outputs.RELEASE_MODE }}
-          COMMIT_SHORT: ${{ steps.resolve_checkout_ref.outputs.COMMIT_SHORT }}
-          CHECKOUT_REF: ${{ steps.resolve_checkout_ref.outputs.CHECKOUT_REF }}
-        run: |-
-          case "$RELEASE_MODE" in
-            nightly)
-              version="${NIGHTLY_BASE_VERSION}-nightly.$(TZ=Asia/Shanghai date +'%Y%m%d%H%M').${GITHUB_RUN_NUMBER}.g${COMMIT_SHORT}"
-              storage_type="s3"
-              ;;
-            manual_release)
-              version="$INPUT_TAG"
-              storage_type="github_release"
-              ;;
-            tag_release)
-              version="$REF_NAME"
-              storage_type="github_release"
-              ;;
-            *)
-              echo "Unsupported release mode: $RELEASE_MODE"
-              exit 1
-              ;;
-          esac
-
-          version_regex='^[0-9]+\.[0-9]+\.[0-9]+(-((rc|alpha)\.[0-9]+|nightly\.[0-9]{12}\.[0-9]+\.g[0-9a-f]+))?$'
-          if ! [[ "$version" =~ $version_regex ]]; then
-            echo "Version is invalid"
+          official_version_regex='^[0-9]+\.[0-9]+\.[0-9]+(-((rc|alpha)\.[0-9]+))?$'
+          nightly_version_regex='^[0-9]+\.[0-9]+\.[0-9]+-nightly\.[0-9]{12}\.[0-9]+\.g[0-9a-f]+$'
+          if [ "$release_mode" = "official" ] && ! [[ "$version" =~ $official_version_regex ]]; then
+            echo "Official version is invalid: $version"
+            exit 1
+          fi
+          if [ "$release_mode" = "nightly" ] && ! [[ "$version" =~ $nightly_version_regex ]]; then
+            echo "Nightly version is invalid: $version"
             exit 1
           fi
 
-          echo "Version is valid"
-          echo "Resolved version: $version"
-          echo "Release mode: $RELEASE_MODE"
-          echo "Checkout ref: $CHECKOUT_REF"
-          echo "iOS storage type: $storage_type"
           echo "VERSION=$version" >> "$GITHUB_OUTPUT"
           echo "IOS_STORAGE_TYPE=$storage_type" >> "$GITHUB_OUTPUT"
+          echo "CHECKOUT_REF=$checkout_ref" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_MODE=$release_mode" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_SHA=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "TAG=$tag" >> "$GITHUB_OUTPUT"
+
           {
-            echo "### Release version"
+            echo "### Release plan"
             echo
             echo "| Field | Value |"
             echo "| --- | --- |"
-            printf '| Release mode | `%s` |\n' "$RELEASE_MODE"
+            printf '| Release mode | `%s` |\n' "$release_mode"
             printf '| Version | `%s` |\n' "$version"
-            printf '| Checkout ref | `%s` |\n' "$CHECKOUT_REF"
+            printf '| Source SHA | `%s` |\n' "$source_sha"
             printf '| iOS storage type | `%s` |\n' "$storage_type"
+            if [ -n "$CORRELATION_ID" ]; then
+              printf '| Correlation ID | `%s` |\n' "$CORRELATION_ID"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or validate release tag
+        if: ${{ steps.resolve.outputs.RELEASE_MODE == 'official' }}
+        shell: bash
+        env:
+          TAG: ${{ steps.resolve.outputs.TAG }}
+          SOURCE_SHA: ${{ steps.resolve.outputs.SOURCE_SHA }}
+        run: |-
+          set -euo pipefail
+
+          tag_file="$(mktemp)"
+          create_tag_file="$(mktemp)"
+          trap 'rm -f "$tag_file" "$create_tag_file"' EXIT
+          tag_status="$(curl --silent --show-error \
+            --output "$tag_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" || true)"
+          if [ "$tag_status" = "200" ]; then
+            tag_sha="$(jq --exit-status --raw-output '.object.sha' "$tag_file")"
+            object_type="$(jq --exit-status --raw-output '.object.type' "$tag_file")"
+            if [ "$object_type" = "tag" ]; then
+              tag_object_status="$(curl --silent --show-error \
+                --output "$tag_file" \
+                --write-out '%{http_code}' \
+                --header "Authorization: Bearer $GITHUB_TOKEN" \
+                "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" || true)"
+              if [ "$tag_object_status" != "200" ]; then
+                echo "Failed to resolve annotated tag $TAG (HTTP $tag_object_status):"
+                cat "$tag_file"
+                exit 1
+              fi
+              tag_sha="$(jq --exit-status --raw-output '.object.sha' "$tag_file")"
+            fi
+            if [ "$tag_sha" != "$SOURCE_SHA" ]; then
+              echo "Tag $TAG already points to $tag_sha, expected $SOURCE_SHA."
+              exit 1
+            fi
+            echo "Reusing tag $TAG at $SOURCE_SHA."
+          elif [ "$tag_status" = "404" ] && [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            create_tag_status="$(curl --silent --show-error \
+              --output "$create_tag_file" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data "$(jq -n \
+                --arg ref "refs/tags/$TAG" \
+                --arg sha "$SOURCE_SHA" \
+                '{ref: $ref, sha: $sha}')" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/refs" || true)"
+            if [ "$create_tag_status" != "201" ]; then
+              echo "Failed to create tag $TAG (HTTP $create_tag_status):"
+              cat "$create_tag_file"
+              exit 1
+            fi
+            echo "Created tag $TAG at $SOURCE_SHA."
+          elif [ "$tag_status" = "404" ]; then
+            echo "Tag $TAG is missing for a tag push event."
+            exit 1
+          else
+            echo "Failed to query tag $TAG (HTTP $tag_status):"
+            cat "$tag_file"
+            exit 1
+          fi
+
+      - name: Create or reuse draft release
+        id: prepare_release
+        if: ${{ steps.resolve.outputs.RELEASE_MODE == 'official' }}
+        shell: bash
+        env:
+          TAG: ${{ steps.resolve.outputs.TAG }}
+          SOURCE_SHA: ${{ steps.resolve.outputs.SOURCE_SHA }}
+        run: |-
+          set -euo pipefail
+
+          release_file="$(mktemp)"
+          create_file="$(mktemp)"
+          trap 'rm -f "$release_file" "$create_file"' EXIT
+          release_status="$(curl --silent --show-error \
+            --output "$release_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" || true)"
+          if [ "$release_status" = "200" ]; then
+            release_info="$(cat "$release_file")"
+          elif [ "$release_status" = "404" ]; then
+            release_info=""
+          else
+            echo "Failed to query release for $TAG (HTTP $release_status):"
+            cat "$release_file"
+            exit 1
+          fi
+          if [ -n "$release_info" ]; then
+            release_id="$(echo "$release_info" | jq --raw-output '.id')"
+            is_draft="$(echo "$release_info" | jq --raw-output '.draft')"
+            target_commitish="$(echo "$release_info" | jq --raw-output '.target_commitish')"
+            if [ "$is_draft" != "true" ]; then
+              echo "Release for $TAG is already published."
+              exit 1
+            fi
+            target_sha="$(curl --silent --show-error --fail \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$target_commitish" |
+              jq --raw-output '.sha')"
+            if [ "$target_sha" != "$SOURCE_SHA" ]; then
+              echo "Draft release for $TAG targets $target_sha, expected $SOURCE_SHA."
+              exit 1
+            fi
+            echo "Reusing draft release $release_id for $TAG."
+          else
+            prerelease=false
+            if [[ "$TAG" =~ -(rc|alpha)\. ]]; then
+              prerelease=true
+            fi
+            echo "Creating draft release: tag=$TAG source_sha=$SOURCE_SHA prerelease=$prerelease"
+            create_status="$(curl --silent --show-error \
+              --output "$create_file" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --header "Authorization: Bearer $GITHUB_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data "$(jq -n \
+                --arg tag_name "$TAG" \
+                --arg target_commitish "$SOURCE_SHA" \
+                --arg name "$TAG" \
+                --argjson prerelease "$prerelease" \
+                '{tag_name: $tag_name, target_commitish: $target_commitish, name: $name,
+                  body: "", draft: true, prerelease: $prerelease}')" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases" || true)"
+            if [ "$create_status" != "201" ]; then
+              echo "Failed to create draft release (HTTP $create_status)."
+              jq --compact-output \
+                '{message, errors, documentation_url}' "$create_file" 2>/dev/null ||
+                cat "$create_file"
+              exit 1
+            fi
+            release_id="$(jq --exit-status --raw-output '.id' "$create_file")"
+            echo "Created draft release $release_id for $TAG."
+          fi
+
+          echo "RELEASE_ID=$release_id" >> "$GITHUB_OUTPUT"
 
   android-explorer-build:
     timeout-minutes: 60
     runs-on: lynx-ubuntu-22.04-large
     needs: get-version
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ needs.get-version.outputs.release_mode == 'official' }}
+    permissions:
+      contents: write
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -174,13 +282,19 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
           allowUpdates: true
-          body: ''
+          updateOnlyUnreleased: true
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          draft: true
 
   ios-explorer-build:
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     needs: get-version
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ needs.get-version.outputs.release_mode == 'official' }}
+    permissions:
+      contents: write
     strategy:
       matrix:
         arch: [arm64, x86_64]
@@ -202,7 +316,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
           allowUpdates: true
-          body: ''
+          updateOnlyUnreleased: true
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          draft: true
 
   harmony-explorer-build:
     runs-on: lynx-custom-container
@@ -212,7 +330,10 @@ jobs:
         username: lynx-family
         password: ${{ secrets.GITHUB_TOKEN }}
     needs: get-version
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ needs.get-version.outputs.release_mode == 'official' }}
+    permissions:
+      contents: write
+      packages: read
     defaults:
       run:
         working-directory: ${{ github.workspace }}
@@ -233,13 +354,17 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/explorer/harmony/lynx_explorer/build/default/outputs/default/lynx_explorer-default-unsigned.hap'
           allowUpdates: true
-          body: ''
+          updateOnlyUnreleased: true
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          draft: true
 
   android-sdk-release:
     runs-on: ubuntu-22.04
     needs: get-version
-    if: ${{ needs.get-version.outputs.release_mode == 'tag_release' }}
-    timeout-minutes: 240
+    if: ${{ needs.get-version.outputs.release_mode == 'official' }}
+    timeout-minutes: 300
     steps:
       - name: Download Source
         uses: actions/checkout@v6
@@ -289,7 +414,7 @@ jobs:
   android-sdk-snapshot-release:
     runs-on: lynx-ubuntu-22.04-large
     needs: get-version
-    if: ${{ needs.get-version.outputs.release_mode != 'tag_release' }}
+    if: ${{ needs.get-version.outputs.release_mode == 'nightly' }}
     timeout-minutes: 240
     steps:
       - name: Download Source
@@ -325,6 +450,8 @@ jobs:
     timeout-minutes: 60
     runs-on: macos-14
     needs: get-version
+    permissions:
+      contents: write
     env:
       REPO_LYNX_ARTIFACTS_S3_AK: ${{ secrets.REPO_LYNX_ARTIFACTS_S3_AK }}
       REPO_LYNX_ARTIFACTS_S3_SK: ${{ secrets.REPO_LYNX_ARTIFACTS_S3_SK }}
@@ -471,6 +598,9 @@ jobs:
             modules: 'lynx lynx_devtool lynx_base'
             build_param: '--dev'
             label: 'dev'
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -528,7 +658,9 @@ jobs:
     timeout-minutes: 60
     runs-on: lynx-darwin-15.6.1-medium
     needs: get-version
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ needs.get-version.outputs.release_mode == 'official' }}
+    permissions:
+      contents: write
     strategy:
       matrix:
         arch: [arm64, x64]
@@ -550,7 +682,11 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/LynxExplorer-macos-${{ matrix.arch }}.app.tar.gz,${{ github.workspace }}/lynx/out/Default/lynx_sdk_macos_${{ matrix.arch }}.zip'
           allowUpdates: true
-          body: ''
+          updateOnlyUnreleased: true
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          draft: true
 
   linux-sdk-release:
     timeout-minutes: 60
@@ -585,13 +721,19 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/out/Default/lynx_sdk_linux_x64.zip,${{ github.workspace }}/lynx/out/Default/lynx_sdk_linux_x64.zip.sha256'
           allowUpdates: true
-          body: ''
+          updateOnlyUnreleased: true
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          draft: true
 
   windows-explorer-release:
     timeout-minutes: 60
     runs-on: lynx-windows-2022-large
     needs: get-version
-    if: ${{ !contains(needs.get-version.outputs.version, '-nightly.') }}
+    if: ${{ needs.get-version.outputs.release_mode == 'official' }}
+    permissions:
+      contents: write
     strategy:
       matrix:
         arch: [x86, x64]
@@ -628,4 +770,87 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/LynxExplorer-windows-${{ matrix.arch }}.tar.gz,${{ github.workspace }}/lynx/out/Default/lynx_sdk_windows_${{ matrix.arch }}.zip'
           allowUpdates: true
-          body: ''
+          updateOnlyUnreleased: true
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          draft: true
+
+  finalize-release:
+    runs-on: ubuntu-22.04
+    needs:
+      - get-version
+      - android-explorer-build
+      - ios-explorer-build
+      - harmony-explorer-build
+      - android-sdk-release
+      - ios-sdk-publish
+      - cocoapods-lynx-library-publish
+      - harmony-sdk-publish
+      - macos-explorer-release
+      - dynamic-lib-release
+      - windows-explorer-release
+    if: ${{ always() && needs.get-version.outputs.release_mode == 'official' }}
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      RELEASE_ID: ${{ needs.get-version.outputs.release_id }}
+      ANDROID_EXPLORER_RESULT: ${{ needs.android-explorer-build.result }}
+      IOS_EXPLORER_RESULT: ${{ needs.ios-explorer-build.result }}
+      HARMONY_EXPLORER_RESULT: ${{ needs.harmony-explorer-build.result }}
+      ANDROID_SDK_RESULT: ${{ needs.android-sdk-release.result }}
+      IOS_SDK_RESULT: ${{ needs.ios-sdk-publish.result }}
+      COCOAPODS_LIBRARY_RESULT: ${{ needs.cocoapods-lynx-library-publish.result }}
+      HARMONY_SDK_RESULT: ${{ needs.harmony-sdk-publish.result }}
+      MACOS_EXPLORER_RESULT: ${{ needs.macos-explorer-release.result }}
+      LINUX_SDK_RESULT: ${{ needs.dynamic-lib-release.result }}
+      WINDOWS_EXPLORER_RESULT: ${{ needs.windows-explorer-release.result }}
+    steps:
+      - name: Verify required release jobs
+        shell: bash
+        run: |-
+          set -euo pipefail
+
+          failed_jobs=()
+          while IFS='=' read -r job result; do
+            if [ "$result" != "success" ]; then
+              failed_jobs+=("$job=$result")
+            fi
+          done <<EOF
+          android-explorer-build=$ANDROID_EXPLORER_RESULT
+          ios-explorer-build=$IOS_EXPLORER_RESULT
+          harmony-explorer-build=$HARMONY_EXPLORER_RESULT
+          android-sdk-release=$ANDROID_SDK_RESULT
+          ios-sdk-publish=$IOS_SDK_RESULT
+          cocoapods-lynx-library-publish=$COCOAPODS_LIBRARY_RESULT
+          harmony-sdk-publish=$HARMONY_SDK_RESULT
+          macos-explorer-release=$MACOS_EXPLORER_RESULT
+          dynamic-lib-release=$LINUX_SDK_RESULT
+          windows-explorer-release=$WINDOWS_EXPLORER_RESULT
+          EOF
+
+          if [ "${#failed_jobs[@]}" -gt 0 ]; then
+            printf 'Required release jobs did not succeed:\n'
+            printf '  %s\n' "${failed_jobs[@]}"
+            echo "The GitHub release remains a draft."
+            exit 1
+          fi
+
+      - name: Publish GitHub release
+        shell: bash
+        run: |-
+          set -euo pipefail
+
+          if [ -z "$RELEASE_ID" ]; then
+            echo "Release ID is missing."
+            exit 1
+          fi
+
+          curl --silent --show-error --fail \
+            --request PATCH \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{"draft":false}' \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" >/dev/null
+          echo "Published GitHub release $RELEASE_ID."
