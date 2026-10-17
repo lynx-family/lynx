@@ -5,6 +5,9 @@
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 
 #include "core/public/jsb/extension_module_factory.h"
+#if ENABLE_INSPECTOR
+#include "core/runtime/js/bindings/modules/host_script_module_interceptor.h"
+#endif  // ENABLE_INSPECTOR
 #include "core/runtime/js/bindings/interceptor/interceptor_factory.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module.h"
 
@@ -104,6 +107,12 @@ LynxModuleProviderFunction LynxModuleManager::BindingFunc(
 
 void LynxModuleManager::InitModuleInterceptor() {
   group_interceptor_ = InterceptorFactory::CreateGroupInterceptor();
+#if ENABLE_INSPECTOR
+  if (!group_interceptor_)
+    group_interceptor_ = std::make_shared<GroupInterceptor>();
+  group_interceptor_->AddInterceptor(
+      std::make_unique<HostScriptModuleInterceptor>(), true);
+#endif  // ENABLE_INSPECTOR
 }
 
 void LynxModuleManager::SetTemplateUrl(const std::string &url) {

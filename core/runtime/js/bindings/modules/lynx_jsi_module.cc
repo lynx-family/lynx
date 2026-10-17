@@ -20,6 +20,7 @@
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/services/recorder/record.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "core/value_wrapper/value_impl_piper.h"
 
 namespace lynx {
 namespace runtime {
@@ -83,6 +84,16 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
                        << method.name);
   Scope scope(*rt);
   [[maybe_unused]] std::vector<int64_t> callback_ids;
+  auto interceptor = group_interceptor_;
+  std::vector<Value> rewritten_args;
+  if (interceptor) {
+    auto invocation = interceptor->CreateInvocationGroup(
+        name_, method.name, GetLogContext().view_id);
+    if (invocation) interceptor = std::move(invocation);
+    interceptor->RewriteArguments(*rt, args, count, rewritten_args);
+    if (!rewritten_args.empty()) args = rewritten_args.data();
+  }
+  const bool handled_early = interceptor && interceptor->HandlesCall();
 
   // timing
   std::string first_arg_str;
@@ -183,7 +194,7 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
         callback->SetModuleName(name_);
         callback->SetMethodName(method.name);
         callback->timing_collector_ = timing_collector;
-        callback->SetModuleInterceptor(group_interceptor_);
+        callback->SetModuleInterceptor(interceptor, static_cast<int>(i));
         callback->SetCallbackFlowId(callback_flow_id);
         callback->SetFirstArg(first_arg_str);
         if (invocation_context) {
@@ -230,17 +241,16 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
 #if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
     (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
   // TODO(liyanbo.monster): after remove native promise, delete this.
-  native_module_->EnterInvokeScope(rt, delegate_);
+  if (!handled_early) native_module_->EnterInvokeScope(rt, delegate_);
 #endif
-  if (group_interceptor_) {
-    group_interceptor_->BeforeInvokeMethod(method, args_array,
-                                           timing_collector);
+  if (!handled_early && interceptor) {
+    interceptor->BeforeInvokeMethod(method, args_array, timing_collector);
   }
 
   base::expected<Value, JSINativeException> response;
   bool has_intercept = false;
-  if (group_interceptor_) {
-    auto interceptor_result = group_interceptor_->InterceptModuleMethod(
+  if (interceptor) {
+    auto interceptor_result = interceptor->InterceptModuleMethod(
         shared_from_this(), method, rt, delegate_, args, count, args_array,
         callback_map, timing_collector);
     if (interceptor_result.handled) {
@@ -249,6 +259,9 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     }
   }
   if (!has_intercept) {
+    // Native Promise resolvers inherit the current call, including nested
+    // calls.
+    GroupInterceptor::Scope interception_scope(interceptor);
     // call method by native module
     auto ret = native_module_->InvokeMethod(method.name, std::move(args_array),
                                             count, callback_map);
@@ -281,6 +294,11 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     }
   }
 
+  if (interceptor && response.has_value() &&
+      interceptor->RewriteResult(*rt, response.value())) {
+    observer_result = pub::ValueUtils::ConvertValueToLepusValue(
+        pub::ValueImplPiper(*rt, response.value()));
+  }
   RECORD_OPTIONAL(response.has_value(), NativeModuleFunctionCall,
                   GetLogContext(), name_.c_str(), method.name.c_str(),
                   static_cast<uint32_t>(count), args, callback_ids.data(),
