@@ -72,8 +72,13 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   using Completion = std::function<void(Result)>;
   // Runs on the target runner just before evaluation; must be thread-safe.
   using Guard = std::function<bool()>;
+  // Pure, thread-safe lifecycle predicate. May run while publication is locked;
+  // must never reenter the runtime or invoke JavaScript.
+  using AdmissionGuard = std::function<bool()>;
 
   static ProcessRuntime& GetInstance();
+  // Never allocates. Lifecycle teardown may probe a cold process safely.
+  static ProcessRuntime* GetIfCreated();
   static const char* DomainName(Domain domain);
 
   // Publishes three fixed execution domains on the supplied runners. Eager
@@ -84,10 +89,13 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   // reports cancellation at shutdown without creating a context. Bootstrap
   // must complete synchronously.
   // Runners must remain alive and service tasks until Shutdown completes.
+  // An optional admission guard is retained by the generation and checked on
+  // owners before allocating bindings or executing queued work.
   bool Initialize(Runners runners, Completion per_domain_ready,
                   BindingFactory binding_factory = {},
                   std::string bootstrap = {},
-                  InitializationMode mode = InitializationMode::kEager);
+                  InitializationMode mode = InitializationMode::kEager,
+                  AdmissionGuard admission_guard = {});
   // Requests context/binding initialization on all three owners without
   // evaluating a script. Repeated calls reuse the current generation.
   void InitializeBindings();
@@ -100,7 +108,7 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   // A submitted task completes on its target runner. Admission errors complete
   // on the calling thread; callers must marshal callbacks to their own owner.
   void Evaluate(Domain domain, std::string source, std::string url,
-                Completion completion);
+                Completion completion, AdmissionGuard admission_guard = {});
   void RunOnThread(Domain domain, std::string source, std::string url,
                    Completion completion, Guard guard = {});
 
@@ -114,7 +122,8 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   // generation; a later LoadScript may retry with the retained configuration.
   // Shutdown cancels replacement without reviving the old script.
   // Callbacks run on an owner runner, or the caller for admission errors.
-  void LoadScript(std::string source, std::string url, Completion completion);
+  void LoadScript(std::string source, std::string url, Completion completion,
+                  AdmissionGuard admission_guard = {});
 
   // Delivers to initialized domains: inline on the current owner runner,
   // posted otherwise. Callbacks may reenter on that runner; no cross-thread
