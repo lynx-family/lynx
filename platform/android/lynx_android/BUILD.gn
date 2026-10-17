@@ -152,9 +152,6 @@ config("lynx_android_public_config") {
   if (enable_inspector) {
     defines += [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
   }
-  if (lynx_in_debug && enable_napi_binding) {
-    defines += [ "ENABLE_HOST_SCRIPT_RUNTIME=1" ]
-  }
   include_dirs = []
   cflags = []
   cflags += [

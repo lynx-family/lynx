@@ -47,7 +47,7 @@ lynx_core_source_set("process_runtime") {
 }
 
 if (enable_unittests) {
-  if (is_android) {
+  if (is_android && lynx_in_debug && enable_napi_binding) {
     unittest_exec("host_script_jsb_call_unittests_exec") {
       sources = [ "host_script_jsb_call_unittest.cc" ]
       deps = [

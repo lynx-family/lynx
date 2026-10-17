@@ -21,6 +21,13 @@
 #include "core/services/recorder/record.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
+#if ENABLE_HOST_SCRIPT_RUNTIME
+#include <unordered_set>
+
+#include "core/shell/host_script/runtime/host_script_jsb_call.h"
+#include "core/value_wrapper/value_impl_piper.h"
+#endif
+
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -59,6 +66,66 @@ class InvokeScope {
   std::vector<InvokeInfo*>& infos_;
 };
 
+#if ENABLE_HOST_SCRIPT_RUNTIME
+namespace {
+BASE_STATIC_STRING_DECL(kMockReturnValue, "returnValue");
+BASE_STATIC_STRING_DECL(kMockCallbacks, "callbacks");
+BASE_STATIC_STRING_DECL(kMockArgumentIndex, "argumentIndex");
+BASE_STATIC_STRING_DECL(kMockArgs, "args");
+}  // namespace
+
+// Own mock delivery and release every registered callback not posted, including
+// when argument conversion returns early. Keep the full map for recording.
+class MockCallbackScope {
+ public:
+  MockCallbackScope(ModuleDelegate* delegate, const CallbackMap& callbacks)
+      : delegate_(delegate), callbacks_(callbacks) {}
+  ~MockCallbackScope() {
+    if (delegate_) {
+      for (const auto& [index, callback] : callbacks_) {
+        if (!posted_indices_.count(index)) {
+          delegate_->CallJSCallback(nullptr, nullptr, callback->CallbackId());
+        }
+      }
+    }
+  }
+
+  Value Deliver(const lepus::Value& mock, Runtime& rt) {
+    auto result =
+        mock.Contains(kMockReturnValue)
+            ? pub::ValueUtils::ConvertValueToPiperValue(
+                  rt, pub::ValueImplLepus(mock.GetProperty(kMockReturnValue)))
+            : Value::undefined();
+    auto deliveries = mock.GetProperty(kMockCallbacks);
+    for (int i = 0; deliveries.IsArray() && i < deliveries.GetLength(); ++i) {
+      auto item = deliveries.GetProperty(i);
+      int index =
+          static_cast<int>(item.GetProperty(kMockArgumentIndex).Number());
+      auto entry = callbacks_.find(index);
+      if (entry == callbacks_.end() || posted_indices_.count(index)) {
+        continue;
+      }
+      auto callback = std::static_pointer_cast<ModuleCallback>(entry->second);
+      callback->SetArgs(
+          std::make_unique<pub::ValueImplLepus>(item.GetProperty(kMockArgs)));
+      if (callback->timing_collector_) {
+        callback->timing_collector_->CallbackThreadSwitchStart();
+      }
+      // Run in a later JS task, after invoke/result recording, at most once
+      // per argument index. The queued callback keeps its registered ID.
+      delegate_->PostJSCallback(callback);
+      posted_indices_.insert(index);
+    }
+    return result;
+  }
+
+ private:
+  ModuleDelegate* delegate_;
+  const CallbackMap& callbacks_;
+  std::unordered_set<int> posted_indices_;
+};
+#endif
+
 LynxJSIModule::~LynxJSIModule() = default;
 void LynxJSIModule::SetLogContext(const base::LogContext& log_context) {
   LynxModule::SetLogContext(log_context);
@@ -83,6 +150,22 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
                        << method.name);
   Scope scope(*rt);
   [[maybe_unused]] std::vector<int64_t> callback_ids;
+  CallbackMap callback_map;
+#if ENABLE_HOST_SCRIPT_RUNTIME
+  auto host =
+      HostScriptJSBCall::Create(name_, method.name, GetLogContext().view_id);
+  std::vector<Value> rewritten_args;
+  lepus::Value mock;
+  if (host) {
+    mock = host->OnCall(*rt, args, count, rewritten_args);
+    if (!rewritten_args.empty()) args = rewritten_args.data();
+  }
+  const bool mocked = mock.IsTable();
+  MockCallbackScope mock_callbacks(mocked ? delegate_.get() : nullptr,
+                                   callback_map);
+#else
+  constexpr bool mocked = false;
+#endif
 
   // timing
   std::string first_arg_str;
@@ -143,7 +226,6 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
 
   uint64_t convert_params_start = base::CurrentSystemTimeMilliseconds();
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, JS_VALUE_TO_PUB_VALUE);
-  CallbackMap callback_map;
   auto args_array = value_factory_->CreateArray();
   // args is a pointer array. can not use getArray to read value.
   for (size_t i = 0; i < count; i++) {
@@ -183,7 +265,13 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
         callback->SetModuleName(name_);
         callback->SetMethodName(method.name);
         callback->timing_collector_ = timing_collector;
-        callback->SetModuleInterceptor(group_interceptor_);
+        // Mock decisions are final: bypass both callback interception paths.
+        if (!mocked) {
+          callback->SetModuleInterceptor(group_interceptor_);
+#if ENABLE_HOST_SCRIPT_RUNTIME
+          callback->SetHostScriptCall(host, static_cast<int>(i));
+#endif
+        }
         callback->SetCallbackFlowId(callback_flow_id);
         callback->SetFirstArg(first_arg_str);
         if (invocation_context) {
@@ -230,16 +318,26 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
 #if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
     (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
   // TODO(liyanbo.monster): after remove native promise, delete this.
-  native_module_->EnterInvokeScope(rt, delegate_);
+  if (!mocked) native_module_->EnterInvokeScope(rt, delegate_);
 #endif
-  if (group_interceptor_) {
+  if (!mocked && group_interceptor_) {
     group_interceptor_->BeforeInvokeMethod(method, args_array,
                                            timing_collector);
   }
 
   base::expected<Value, JSINativeException> response;
   bool has_intercept = false;
-  if (group_interceptor_) {
+#if ENABLE_HOST_SCRIPT_RUNTIME
+  if (mocked) {
+    response = mock_callbacks.Deliver(mock, *rt);
+    has_intercept = true;
+    if (invocation_context && mock.Contains(kMockReturnValue)) {
+      observer_result = pub::ValueUtils::ConvertValueToLepusValue(
+          pub::ValueImplPiper(*rt, response.value()));
+    }
+  }
+#endif
+  if (!mocked && group_interceptor_) {
     auto interceptor_result = group_interceptor_->InterceptModuleMethod(
         shared_from_this(), method, rt, delegate_, args, count, args_array,
         callback_map, timing_collector);
@@ -281,6 +379,13 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     }
   }
 
+#if ENABLE_HOST_SCRIPT_RUNTIME
+  if (!mocked && host && response.has_value() &&
+      host->OnResult(*rt, response.value()) && invocation_context) {
+    observer_result = pub::ValueUtils::ConvertValueToLepusValue(
+        pub::ValueImplPiper(*rt, response.value()));
+  }
+#endif
   RECORD_OPTIONAL(response.has_value(), NativeModuleFunctionCall,
                   GetLogContext(), name_.c_str(), method.name.c_str(),
                   static_cast<uint32_t>(count), args, callback_ids.data(),

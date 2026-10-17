@@ -41,6 +41,21 @@ void ModuleDelegateImpl::CallJSCallback(
   });
 }
 
+#if ENABLE_HOST_SCRIPT_RUNTIME
+void ModuleDelegateImpl::PostJSCallback(
+    const std::shared_ptr<runtime::js::ModuleCallback>& callback) {
+  if (!runtime_actor_) {
+    return;
+  }
+  auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
+  runtime_actor_->ActAsync([callback, enqueue_info](auto& runtime) {
+    runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+    runtime->CallJSCallback(callback,
+                            runtime::js::ModuleCallback::kInvalidCallbackId);
+  });
+}
+#endif
+
 void ModuleDelegateImpl::OnErrorOccurred(base::LynxError error) {
   if (!runtime_actor_) {
     return;

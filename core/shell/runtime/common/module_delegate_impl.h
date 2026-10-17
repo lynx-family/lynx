@@ -35,6 +35,10 @@ class ModuleDelegateImpl : public runtime::js::ModuleDelegate {
       base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
       int64_t id_to_delete =
           runtime::js::ModuleCallback::kInvalidCallbackId) override;
+#if ENABLE_HOST_SCRIPT_RUNTIME
+  void PostJSCallback(
+      const std::shared_ptr<runtime::js::ModuleCallback>& callback) override;
+#endif
   void OnErrorOccurred(base::LynxError error) override;
   void OnMethodInvoked(const std::string& module_name,
                        const std::string& method_name, int32_t code) override;
