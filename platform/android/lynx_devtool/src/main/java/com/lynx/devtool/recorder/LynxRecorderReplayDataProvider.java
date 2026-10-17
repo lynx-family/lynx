@@ -8,6 +8,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public interface LynxRecorderReplayDataProvider {
+  default LynxRecorderFixture acquireFixture() {
+    return null;
+  }
+
   JSONArray getFunctionCall();
   JSONObject getCallbackData();
   JSONArray getActionList();
