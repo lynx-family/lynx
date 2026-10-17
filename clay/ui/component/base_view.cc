@@ -46,6 +46,7 @@
 #include "clay/ui/component/text/unicode_util.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/event/event_utils.h"
+#include "clay/ui/gesture/drag_gesture_recognizer.h"
 #include "clay/ui/gesture/mouse_region_manager.h"
 #include "clay/ui/gesture_handler/gesture_detector.h"
 #include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
@@ -2985,6 +2986,25 @@ bool BaseView::HasDragGestureRecognizer(ScrollDirection direction) const {
     if (recognizer) {
       if (recognizer->getType() == type ||
           recognizer->getType() == GestureRecognizerType::kDragGesture) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool BaseView::HasDragGestureRecognizerWithNonDefaultSlop() const {
+  for (const auto& recognizer : gesture_recognizers_) {
+    if (!recognizer) {
+      continue;
+    }
+    const auto type = recognizer->getType();
+    if (type == GestureRecognizerType::kDragGesture ||
+        type == GestureRecognizerType::kHorizontalDrag ||
+        type == GestureRecognizerType::kVerticalDrag) {
+      auto* drag = static_cast<DragGestureRecognizer*>(recognizer.get());
+      if (drag->GetTouchSlop() !=
+          drag->gesture_manager()->ConvertFrom<kPixelTypeLogical>(kTouchSlop)) {
         return true;
       }
     }
