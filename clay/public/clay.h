@@ -577,6 +577,10 @@ typedef bool (*ClaySoftwarePresentCallback)(void* /* user data */,
                                             size_t /* row bytes */,
                                             size_t /* height */);
 
+typedef bool (*ClaySoftwarePresentCallbackV2)(
+    void* /* user data */, const void* /* allocation */, size_t /* row bytes */,
+    size_t /* height */, ClaySharedImageBackingPixelFormat /* pixel format */);
+
 typedef struct ClayOpenGLRendererConfig {
   /// The size of this struct. Must be sizeof(ClayOpenGLRendererConfig).
   size_t struct_size;
@@ -619,10 +623,14 @@ typedef struct ClaySoftwareRendererConfig {
   /// The size of this struct. Must be sizeof(ClaySoftwareRendererConfig).
   size_t struct_size;
   /// The callback presented to the embedder to present a fully populated buffer
-  /// to the user. The pixel format of the buffer is the native 32-bit RGBA
-  /// format. The buffer is owned by the engine and must be copied in
-  /// this callback if needed.
+  /// to the user. Pixels are top-down, premultiplied RGBA8888 for SwiftShader
+  /// and native N32 for Skia. The buffer is owned by the engine and must be
+  /// copied in this callback if needed.
   ClaySoftwarePresentCallback present_callback;
+  /// Optional callback with the actual pixel format. Takes precedence over
+  /// present_callback, including when it returns false. The buffer lifetime
+  /// and top-down row order are the same as for present_callback.
+  ClaySoftwarePresentCallbackV2 present_callback_v2;
 } ClaySoftwareRendererConfig;
 
 typedef enum {

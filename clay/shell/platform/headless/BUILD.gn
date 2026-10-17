@@ -82,24 +82,34 @@ source_set("headless") {
       ]
     }
 
-    if (is_linux) {
-      if (enable_software_rendering && enable_skity) {
-        sources += [
-          "gl/clay_headless_renderer_swiftshader.cc",
-          "gl/clay_headless_renderer_swiftshader.h",
-        ]
+    if (is_linux && !(enable_software_rendering && enable_skity)) {
+      sources += [
+        "gl/clay_headless_renderer_epoxy.cc",
+        "gl/clay_headless_renderer_epoxy.h",
+      ]
+    }
+
+    if (enable_skity && enable_software_rendering &&
+        (is_mac || is_win || is_linux)) {
+      import("//third_party/angle/gni/angle.gni")
+      assert(angle_enable_vulkan && angle_enable_swiftshader,
+             "Skity software rendering requires ANGLE Vulkan and SwiftShader.")
+      sources += [
+        "gl/clay_headless_renderer_swiftshader.cc",
+        "gl/clay_headless_renderer_swiftshader.h",
+      ]
+      if (!is_win) {
         configs += [ "//third_party/angle:gl_prototypes" ]
         deps += [
-          "//third_party/angle:includes",
           "//third_party/angle:libEGL_static",
           "//third_party/angle:libGLESv2_static",
         ]
-      } else {
-        sources += [
-          "gl/clay_headless_renderer_epoxy.cc",
-          "gl/clay_headless_renderer_epoxy.h",
-        ]
       }
+      deps += [ "//third_party/angle:includes" ]
+      data_deps = [
+        "//third_party/swiftshader:swiftshader",
+        "//third_party/vulkan-deps/vulkan-loader/src:libvulkan",
+      ]
     }
 
     if (is_harmony || is_android) {
@@ -131,5 +141,70 @@ config("headless_config") {
   if (is_win) {
     defines += [ "lynx_EXPORTS" ]
     cflags = [ "-Wno-c99-designator" ]
+  }
+}
+
+# Requires the SwiftShader runtime beside the test executable.
+if (is_headless && enable_skity && enable_software_rendering &&
+    shell_enable_gl && (is_mac || is_win)) {
+  executable("swiftshader_software_unittests") {
+    testonly = true
+    sources = [ "gl/clay_headless_renderer_swiftshader_unittests.cc" ]
+    if (!enable_clay_standalone) {
+      sources += [ "../common/desktop/codec/desktop_image_codec_service.cc" ]
+    }
+    configs += [
+      "../../../../clay:config",
+      "../embedder:embedder_gpu_configuration_config",
+      "//third_party/angle:gl_prototypes",
+    ]
+    deps = [
+      ":headless",
+      "../../../../base/src:base_static",
+      "../../../../base/trace/native:trace",
+      "../common/desktop/codec",
+      "../common/desktop/svg",
+      "//third_party/angle:includes",
+      "//third_party/googletest:gtest_main",
+    ]
+    if (is_win) {
+      import("//build/config/win/win.gni")
+      configs += [ "//third_party/angle:angle_static" ]
+      deps += [
+        "../../common:platform_overlay_service_fallback",
+        "../../common:presenter_service_fallback",
+      ]
+      if (!enable_clay_standalone) {
+        sources += [
+          "../../../ui/platform/common/native_view_service_common.cc",
+          "../../common/services/initialize_service.cc",
+        ]
+      }
+      if (use_flutter_cxx) {
+        runtime_lib = "msvcprt"
+        if (windows_runtime_library_mode == "mt") {
+          runtime_lib = "libcpmt"
+        }
+        if (is_debug) {
+          runtime_lib += "d"
+        }
+        libs = [ "$runtime_lib.lib" ]
+      }
+    }
+    if (is_mac) {
+      # Keep the test's static libc++ symbols private when loading Vulkan.
+      ldflags = [
+        "-Wl,-dead_strip",
+        "-Wl,-exported_symbol,_main",
+      ]
+      frameworks = [
+        "AppKit.framework",
+        "CoreText.framework",
+        "CoreGraphics.framework",
+        "Metal.framework",
+        "CoreVideo.framework",
+        "IOKit.framework",
+      ]
+    }
   }
 }

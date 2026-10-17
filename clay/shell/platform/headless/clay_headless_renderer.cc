@@ -5,7 +5,15 @@
 #include "clay/shell/platform/headless/clay_headless_renderer.h"
 
 #include "clay/fml/logging.h"
+#include "clay/shell/platform/embedder/embedder_struct_macros.h"
 #include "clay/shell/platform/headless/clay_headless_engine.h"
+#ifndef ENABLE_SKITY
+#include "third_party/skia/include/core/SkColorType.h"
+#endif
+#if defined(ENABLE_SKITY) && defined(ENABLE_SOFTWARE_RENDERING) && \
+    (defined(OS_MACOSX) || defined(OS_WIN) || defined(OS_LINUX))
+#include "clay/shell/platform/headless/gl/clay_headless_renderer_swiftshader.h"
+#endif
 
 namespace clay {
 
@@ -20,7 +28,12 @@ class ClayHeadlessRendererSoftware final
  public:
   explicit ClayHeadlessRendererSoftware(
       ClayHeadlessEngine* engine, const ClaySoftwareRendererConfig& config)
-      : ClayHeadlessRenderer(engine), config_(config) {}
+      : ClayHeadlessRenderer(engine) {
+    const auto* config_ptr = &config;
+    present_callback_ = SAFE_ACCESS(config_ptr, present_callback, nullptr);
+    present_callback_v2_ =
+        SAFE_ACCESS(config_ptr, present_callback_v2, nullptr);
+  }
 
   EmbedderSurfaceSoftwareDelegate* GetSoftwareRendererDelegate() override {
     return this;
@@ -28,14 +41,27 @@ class ClayHeadlessRendererSoftware final
 
   bool OnPresentBackingStore(const void* allocation, size_t row_bytes,
                              size_t height) override {
-    return config_.present_callback(engine_->UserData(), allocation, row_bytes,
-                                    height);
+#ifndef ENABLE_SKITY
+    // EmbedderSurfaceSoftware allocates a premultiplied N32 raster surface.
+    if (present_callback_v2_) {
+      constexpr auto format =
+          kN32_SkColorType == kRGBA_8888_SkColorType
+              ? kClaySharedImageBackingPixelFormatRGBA8
+              : kClaySharedImageBackingPixelFormatNative8888;
+      return present_callback_v2_(engine_->UserData(), allocation, row_bytes,
+                                  height, format);
+    }
+#endif
+    return present_callback_ &&
+           present_callback_(engine_->UserData(), allocation, row_bytes,
+                             height);
   }
 
   void CleanupGPUResources() override {}
 
  private:
-  ClaySoftwareRendererConfig config_;
+  ClaySoftwarePresentCallback present_callback_;
+  ClaySoftwarePresentCallbackV2 present_callback_v2_;
 };
 
 std::unique_ptr<ClayHeadlessRenderer> ClayHeadlessRenderer::Create(
@@ -55,8 +81,14 @@ std::unique_ptr<ClayHeadlessRenderer> ClayHeadlessRenderer::Create(
   }
 #endif
   if (config.type == kClayRendererTypeSoftware) {
+#if defined(ENABLE_SKITY) && defined(ENABLE_SOFTWARE_RENDERING) && \
+    (defined(OS_MACOSX) || defined(OS_WIN) || defined(OS_LINUX))
+    return CreateSwiftShaderSoftwareRenderer(engine, config.software,
+                                             engine->UserData());
+#else
     return std::make_unique<ClayHeadlessRendererSoftware>(engine,
                                                           config.software);
+#endif
   }
 
   FML_LOG(ERROR) << "Unknown renderer type: " << config.type;
