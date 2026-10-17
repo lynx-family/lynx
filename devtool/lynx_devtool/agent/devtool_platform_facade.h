@@ -14,6 +14,7 @@
 #include "core/renderer/dom/element.h"
 #include "devtool/lynx_devtool/base/mouse_event.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
+#include "devtool/lynx_devtool/input/input_event_target.h"
 
 namespace lynx {
 namespace devtool {
@@ -75,6 +76,15 @@ class DevToolPlatformFacade
 
   void InitWithDevToolMediator(
       std::shared_ptr<LynxDevToolMediator> devtool_mediator);
+
+  std::shared_ptr<input::InputEventTarget> GetInputEventTarget() const {
+    return input_event_target_;
+  }
+
+  void SetInputEventTarget(
+      const std::shared_ptr<input::InputEventTarget>& input_event_target) {
+    input_event_target_ = input_event_target;
+  }
 
   const std::weak_ptr<InspectorJavaScriptDebuggerImpl>& GetJSDebugger() {
     return js_debugger_wp_;
@@ -152,6 +162,8 @@ class DevToolPlatformFacade
   // information from a TASM-thread snapshot plus UI-thread transform.
   std::vector<double> GetBoxModelInGeneralPlatform(
       const InspectorBoxModelQuery& query);
+
+  std::shared_ptr<input::InputEventTarget> input_event_target_;
 
  private:
   std::weak_ptr<InspectorUIExecutor> inspector_ui_executor_wp_;

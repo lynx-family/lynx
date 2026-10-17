@@ -26,6 +26,7 @@ class TemplateData;
 namespace devtool {
 class MessageHandler;
 class DevtoolPlatformEmbedder;
+class DevToolPlatformFacade;
 class DevToolNGDelegateEmbedder;
 class ScreenCastHelperEmbedder;
 struct ScreenMetadata;
@@ -94,6 +95,10 @@ class InspectorOwnerEmbedder
                         int callback_id);
   virtual void OnConsoleMessage(const std::string& message) {}
   virtual void OnConsoleObject(const std::string& detail, int callback_id) {}
+
+ protected:
+  virtual void OnDevToolPlatformFacadeReady(
+      const std::shared_ptr<DevToolPlatformFacade>& facade) {}
 
  private:
   void InitRecord();

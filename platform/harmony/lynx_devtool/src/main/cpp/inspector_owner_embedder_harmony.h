@@ -7,9 +7,11 @@
 
 #include <node_api.h>
 
+#include <memory>
 #include <string>
 
 #include "devtool/embedder/core/inspector_owner_embedder.h"
+#include "platform/harmony/lynx_devtool/src/main/cpp/harmony_input_event_target.h"
 
 namespace lynx {
 namespace devtool {
@@ -24,11 +26,23 @@ class InspectorOwnerEmbedderHarmony : public InspectorOwnerEmbedder {
   void OnConsoleMessage(const std::string& message) override;
   void OnConsoleObject(const std::string& detail, int callback_id) override;
 
+  void UpdateInputWindowInfo(const HarmonyInputWindowInfo& window_info);
+  void InvalidateInputWindow();
+  // InspectorOwnerHarmony calls this explicitly during N-API teardown. The
+  // destructor stays default to avoid repeating the same cleanup.
   void Destroy();
 
+ protected:
+  void OnDevToolPlatformFacadeReady(
+      const std::shared_ptr<DevToolPlatformFacade>& facade) override;
+
  private:
+  void ClearInputEventTarget();
+
   napi_env env_;
   napi_ref ref_;
+  std::weak_ptr<DevToolPlatformFacade> platform_facade_;
+  std::shared_ptr<HarmonyInputEventTarget> input_event_target_;
 };
 
 }  // namespace devtool

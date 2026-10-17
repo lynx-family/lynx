@@ -30,8 +30,12 @@ class MessageSender {
   }
 
   void SendErrorResponse(int64_t id, const std::string& error) {
+    SendErrorResponse(id, kInspectorErrorCode, error);
+  }
+
+  void SendErrorResponse(int64_t id, int code, const std::string& error) {
     Json::Value res;
-    res["error"]["code"] = kInspectorErrorCode;
+    res["error"]["code"] = code;
     res["error"]["message"] = error;
     res["id"] = id;
     SendMessage("CDP", res);

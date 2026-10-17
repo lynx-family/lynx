@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import <LynxDevtool/DevToolPlatformDarwinDelegate.h>
+#include <cmath>
 #include <vector>
 
 #import <BaseDevTool/DevToolToast.h>
@@ -15,23 +16,123 @@
 #import <LynxDevtool/LynxDeviceInfoHelper.h>
 #import <LynxDevtool/LynxDevtoolEnv.h>
 #import <LynxDevtool/LynxEmulateTouchHelper.h>
+#import <LynxDevtool/LynxPointerEventDispatcher.h>
 #import <LynxDevtool/LynxScreenCastHelper.h>
 #import <LynxDevtool/LynxUITreeHelper.h>
 #import <sys/utsname.h>
 
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
+#include "devtool/lynx_devtool/input/input_event_target.h"
 
 @interface DevToolPlatformDarwinDelegate ()
 - (nullable UIView*)firstResponderInView:(nullable UIView*)view;
+- (BOOL)isPointerEventInjectionAvailable;
+- (BOOL)injectPointerEvent:(const lynx::devtool::input::PointerEvent&)event;
 @end
 
 #pragma mark - DevToolPlatformDarwin
 namespace lynx {
 namespace devtool {
+namespace {
+
+constexpr size_t kMaxTouchPoints = 2;
+
+bool ToDarwinPointerEventType(input::PointerEventType type,
+                              LynxDevToolPointerEventType* darwin_type) {
+  if (darwin_type == nullptr) {
+    return false;
+  }
+  switch (type) {
+    case input::PointerEventType::kDown:
+      *darwin_type = LynxDevToolPointerEventTypeDown;
+      return true;
+    case input::PointerEventType::kMove:
+      *darwin_type = LynxDevToolPointerEventTypeMove;
+      return true;
+    case input::PointerEventType::kUp:
+      *darwin_type = LynxDevToolPointerEventTypeUp;
+      return true;
+    case input::PointerEventType::kCancel:
+      *darwin_type = LynxDevToolPointerEventTypeCancel;
+      return true;
+    case input::PointerEventType::kScroll:
+      *darwin_type = LynxDevToolPointerEventTypeScroll;
+      return true;
+  }
+  return false;
+}
+
+// Adapts the shared native InputEventTarget to the Darwin platform delegate.
+// Capability probing and injection both hop to the main thread because UIKit
+// event dispatch and the dispatcher's sequence state require it.
+class DarwinInputEventTarget final : public input::InputEventTarget {
+ public:
+  explicit DarwinInputEventTarget(DevToolPlatformDarwinDelegate* delegate) : _delegate(delegate) {}
+
+  input::PointerCapabilities GetPointerCapabilities() const override {
+    input::PointerCapabilities capabilities;
+    __strong typeof(_delegate) delegate = _delegate;
+    if (delegate == nil) {
+      return capabilities;
+    }
+
+    __block BOOL available = NO;
+    void (^check_capability)(void) = ^{
+      available = [delegate isPointerEventInjectionAvailable];
+    };
+    if ([NSThread isMainThread]) {
+      check_capability();
+    } else {
+      dispatch_sync(dispatch_get_main_queue(), check_capability);
+    }
+    if (available) {
+      capabilities.default_source_type = input::PointerSourceType::kTouch;
+      capabilities.supports_touch = true;
+      capabilities.max_touch_points = kMaxTouchPoints;
+    }
+    return capabilities;
+  }
+
+  bool InjectPointerEvent(const input::PointerEvent& event) override {
+    if (event.source_type != input::PointerSourceType::kTouch || event.pointers.empty() ||
+        event.pointers.size() > kMaxTouchPoints ||
+        event.FindPointer(event.action_pointer_id) == nullptr) {
+      return false;
+    }
+    for (const auto& pointer : event.pointers) {
+      if (!std::isfinite(pointer.x) || !std::isfinite(pointer.y)) {
+        return false;
+      }
+    }
+
+    __strong typeof(_delegate) delegate = _delegate;
+    if (delegate == nil) {
+      return false;
+    }
+    __block BOOL injected = NO;
+    void (^inject)(void) = ^{
+      injected = [delegate injectPointerEvent:event];
+    };
+    if ([NSThread isMainThread]) {
+      inject();
+    } else {
+      dispatch_sync(dispatch_get_main_queue(), inject);
+    }
+    return injected;
+  }
+
+ private:
+  __weak DevToolPlatformDarwinDelegate* _delegate;
+};
+
+}  // namespace
+
 class DevToolPlatformDarwin : public DevToolPlatformFacade {
  public:
-  DevToolPlatformDarwin(DevToolPlatformDarwinDelegate* darwin) { _darwin = darwin; }
+  explicit DevToolPlatformDarwin(DevToolPlatformDarwinDelegate* darwin) : _darwin(darwin) {
+    input_event_target_ = std::make_shared<DarwinInputEventTarget>(darwin);
+  }
 
   int FindNodeIdForLocation(float x, float y, std::string screen_shot_mode) override {
     __strong typeof(_darwin) darwin = _darwin;
@@ -84,7 +185,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
-  virtual void StartScreenCast(ScreenshotRequest request) override {
+  void StartScreenCast(ScreenshotRequest request) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin) {
       std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
@@ -98,28 +199,28 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
-  virtual void StopScreenCast() override {
+  void StopScreenCast() override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin) {
       [darwin stopCasting];
     }
   }
 
-  virtual void GetLynxScreenShot() override {
+  void GetLynxScreenShot() override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin) {
       [darwin sendCardPreview];
     }
   }
 
-  virtual void OnAckReceived() override {
+  void OnAckReceived() override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
       [darwin onAckReceived];
     }
   }
 
-  virtual std::string GetUINodeInfo(int id) override {
+  std::string GetUINodeInfo(int id) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
       NSString* res = [darwin getUINodeInfo:id];
@@ -130,7 +231,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     return "";
   }
 
-  virtual std::string GetLynxUITree() override {
+  std::string GetLynxUITree() override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
       NSString* res = [darwin getLynxUITree];
@@ -141,7 +242,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     return "";
   }
 
-  virtual int SetUIStyle(int id, std::string name, std::string content) override {
+  int SetUIStyle(int id, std::string name, std::string content) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
       return [darwin setUIStyle:id
@@ -199,7 +300,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
-  virtual lynx::lepus::Value* GetLepusValueFromTemplateData() override {
+  lynx::lepus::Value* GetLepusValueFromTemplateData() override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
       return [darwin getLepusValueFromTemplateData];
@@ -223,7 +324,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     return "";
   }
 
-  virtual void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input) override {
+  void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
       [darwin emulateTouch:input];
@@ -320,6 +421,9 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   // EmulateTouch
   LynxEmulateTouchHelper* _touchHelper;
 
+  // Synthetic pointer event injection
+  LynxPointerEventDispatcher* _pointerEventDispatcher;
+
   // DebugInfoRecorder
   id<LynxDebugInfoRecorderProtocol> _debugInfoRecorder;
 
@@ -343,6 +447,8 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   _debugInfoRecorder = nil;
   _touchHelper = [[LynxEmulateTouchHelper alloc] initWithLynxView:view];
 
+  _pointerEventDispatcher = [[LynxPointerEventDispatcher alloc] initWithLynxView:view];
+
   _castHelper = [[LynxScreenCastHelper alloc] initWithLynxView:view withPlatformDelegate:self];
 
   devtool_platform_facade_ = std::make_shared<lynx::devtool::DevToolPlatformDarwin>(self);
@@ -352,6 +458,10 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   _lepusDebugInfoHelper = [[LepusDebugInfoHelper alloc] init];
 
   return self;
+}
+
+- (void)dealloc {
+  [_pointerEventDispatcher cancelCurrentPointerSequence];
 }
 
 - (void)attachLynxUIOwner:(nullable LynxUIOwner*)owner {
@@ -415,6 +525,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   _lynxView = lynxView;
   [_castHelper attachLynxView:lynxView];
   [_touchHelper attachLynxView:lynxView];
+  [_pointerEventDispatcher attachLynxView:lynxView];
 }
 
 - (void)startCasting:(int)quality
@@ -605,6 +716,36 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
       [firstResponder respondsToSelector:@selector(insertText:)]) {
     [(id<UITextInput>)firstResponder insertText:text];
   }
+}
+
+- (BOOL)isPointerEventInjectionAvailable {
+  return [_pointerEventDispatcher isPointerEventInjectionAvailable];
+}
+
+- (BOOL)injectPointerEvent:(const lynx::devtool::input::PointerEvent&)event {
+  if (![NSThread isMainThread]) {
+    return NO;
+  }
+
+  LynxDevToolPointerEventType darwinType;
+  if (!lynx::devtool::ToDarwinPointerEventType(event.type, &darwinType)) {
+    return NO;
+  }
+
+  NSMutableArray<NSNumber*>* pointerIds = [NSMutableArray arrayWithCapacity:event.pointers.size()];
+  NSMutableArray<NSValue*>* coordinates = [NSMutableArray arrayWithCapacity:event.pointers.size()];
+  for (const auto& pointer : event.pointers) {
+    [pointerIds addObject:@(pointer.id)];
+    [coordinates addObject:[NSValue valueWithCGPoint:CGPointMake(pointer.x, pointer.y)]];
+  }
+  return [_pointerEventDispatcher injectPointerEvent:darwinType
+                                          pointerIds:pointerIds
+                                         coordinates:coordinates
+                                     actionPointerId:event.action_pointer_id
+                                              deltaX:event.delta_x
+                                              deltaY:event.delta_y
+                                           modifiers:event.modifiers
+                                         timestampUs:event.timestamp_us];
 }
 
 - (nullable UIView*)firstResponderInView:(nullable UIView*)view {

@@ -61,6 +61,8 @@ void InspectorOwnerEmbedder::AttachProxy(devtool::LynxDevToolProxy* proxy) {
   if (!platform_embedder_) {
     platform_embedder_ = std::make_shared<DevtoolPlatformEmbedder>();
     platform_embedder_->Init(proxy, weak_self_.lock());
+    OnDevToolPlatformFacadeReady(
+        platform_embedder_->GetDevtoolPlatformFacade());
   } else {
     platform_embedder_->AttachProxy(proxy);
   }

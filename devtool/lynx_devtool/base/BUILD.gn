@@ -6,6 +6,8 @@ import("../devtool.gni")
 devtool_base_shared_sources = [
   "file_stream.cc",
   "file_stream.h",
+  "input_event.cc",
+  "input_event.h",
   "mouse_event.h",
   "screen_metadata.h",
 ]

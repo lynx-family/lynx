@@ -32,6 +32,7 @@ source_set("devtool_mock") {
     "../../lynx_devtool/base:base",
     "../../lynx_devtool/config:config",
     "../../lynx_devtool/element:element",
+    "../../lynx_devtool/input:input_types",
     "../../lynx_devtool/js_debug:js_debug",
     "../../lynx_devtool/message_handler:message_handler",
     "../../lynx_devtool/shared_data:shared_data",

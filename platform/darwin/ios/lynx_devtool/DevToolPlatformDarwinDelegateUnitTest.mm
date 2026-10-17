@@ -3,8 +3,24 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <LynxDevtool/DevToolPlatformDarwinDelegate.h>
+#import <LynxDevtool/LynxPointerEventDispatcher.h>
 #import <UIKit/UIKit.h>
 #import <XCTest/XCTest.h>
+
+#include "devtool/lynx_devtool/input/input_event_target.h"
+
+@interface LynxPointerEventDispatcher (PointerEventInjectionTesting)
+
+- (BOOL)lynx_isPointerEventInjectionAvailable;
+- (BOOL)lynx_dispatchPointerEvent:(LynxDevToolPointerEventType)type
+                         inWindow:(UIWindow *)window
+                        hitTarget:(nullable UIView *)target
+                       pointerIds:(NSArray<NSNumber *> *)pointerIds
+                      coordinates:(NSArray<NSValue *> *)coordinates
+                  actionPointerId:(int32_t)actionPointerId;
+- (void)lynx_cancelCurrentPointerSequence;
+
+@end
 
 @interface DevToolInsertTextField : UITextField
 @end
@@ -16,6 +32,147 @@
 }
 
 @end
+
+// Stubs the typed injection entry point so the native adapter can be exercised
+// without touching real UIKit.
+@interface DevToolPointerInjectionHelper : LynxPointerEventDispatcher
+
+@property(nonatomic, assign) BOOL injectionAvailable;
+@property(nonatomic, assign) BOOL injectionResult;
+@property(nonatomic, assign) BOOL injectedOnMainThread;
+@property(nonatomic, assign) NSInteger injectionCount;
+@property(nonatomic, assign) NSInteger cancellationCount;
+@property(nonatomic, assign) NSInteger lastPointerCount;
+@property(nonatomic, assign) int32_t lastActionPointerId;
+
+- (BOOL)injectPointerEvent:(LynxDevToolPointerEventType)type
+                pointerIds:(NSArray<NSNumber *> *)pointerIds
+               coordinates:(NSArray<NSValue *> *)coordinates
+           actionPointerId:(int32_t)actionPointerId
+                    deltaX:(CGFloat)deltaX
+                    deltaY:(CGFloat)deltaY
+                 modifiers:(int32_t)modifiers
+               timestampUs:(int64_t)timestampUs;
+
+@end
+
+@implementation DevToolPointerInjectionHelper
+
+- (BOOL)isPointerEventInjectionAvailable {
+  return self.injectionAvailable;
+}
+
+- (BOOL)injectPointerEvent:(LynxDevToolPointerEventType)type
+                pointerIds:(NSArray<NSNumber *> *)pointerIds
+               coordinates:(NSArray<NSValue *> *)coordinates
+           actionPointerId:(int32_t)actionPointerId
+                    deltaX:(CGFloat)deltaX
+                    deltaY:(CGFloat)deltaY
+                 modifiers:(int32_t)modifiers
+               timestampUs:(int64_t)timestampUs {
+  self.injectedOnMainThread = [NSThread isMainThread];
+  self.injectionCount += 1;
+  self.lastPointerCount = pointerIds.count;
+  self.lastActionPointerId = actionPointerId;
+  return self.injectionResult;
+}
+
+- (void)cancelCurrentPointerSequence {
+  self.cancellationCount += 1;
+}
+
+@end
+
+// Stubs only the private UIKit dispatch so the dispatcher's own sequence state
+// machine (window resolution, boundary checks, cancellation) can be tested.
+@interface DevToolWindowInputHelper : LynxPointerEventDispatcher
+
+@property(nonatomic, assign) BOOL dispatchResult;
+@property(nonatomic, assign) BOOL cancellationOnMainThread;
+@property(nonatomic, assign) NSInteger dispatchCount;
+@property(nonatomic, assign) NSInteger cancellationCount;
+@property(nonatomic, weak, nullable) UIWindow *lastWindow;
+@property(nonatomic, weak, nullable) UIView *lastTarget;
+@property(nonatomic, assign) NSInteger lastPointerCount;
+@property(nonatomic, assign) int32_t lastActionPointerId;
+
+@end
+
+@implementation DevToolWindowInputHelper
+
+- (instancetype)initWithLynxView:(nullable LynxView *)view {
+  self = [super initWithLynxView:view];
+  if (self) {
+    _dispatchResult = YES;
+  }
+  return self;
+}
+
+- (BOOL)lynx_isPointerEventInjectionAvailable {
+  return YES;
+}
+
+- (BOOL)lynx_dispatchPointerEvent:(LynxDevToolPointerEventType)type
+                         inWindow:(UIWindow *)window
+                        hitTarget:(nullable UIView *)target
+                       pointerIds:(NSArray<NSNumber *> *)pointerIds
+                      coordinates:(NSArray<NSValue *> *)coordinates
+                  actionPointerId:(int32_t)actionPointerId {
+  self.dispatchCount += 1;
+  self.lastWindow = window;
+  self.lastTarget = target;
+  self.lastPointerCount = pointerIds.count;
+  self.lastActionPointerId = actionPointerId;
+  return self.dispatchResult;
+}
+
+- (void)lynx_cancelCurrentPointerSequence {
+  self.cancellationOnMainThread = [NSThread isMainThread];
+  self.cancellationCount += 1;
+}
+
+@end
+
+namespace {
+
+lynx::devtool::input::PointerEvent MakePointerEvent(
+    lynx::devtool::input::PointerSourceType source_type,
+    lynx::devtool::input::PointerEventType event_type, float x, float y) {
+  lynx::devtool::input::PointerEvent event;
+  event.source_type = source_type;
+  event.type = event_type;
+  event.action_pointer_id = 1;
+  lynx::devtool::input::Pointer pointer;
+  pointer.id = 1;
+  pointer.x = x;
+  pointer.y = y;
+  event.pointers.push_back(pointer);
+  return event;
+}
+
+UIWindow *MakeWindow(CGSize size) {
+  UIWindow *window = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, size.width, size.height)];
+  window.hidden = NO;
+  UIView *root = [[UIView alloc] initWithFrame:window.bounds];
+  [window addSubview:root];
+  return window;
+}
+
+UIView *WindowRootView(UIWindow *window) { return window.subviews.firstObject; }
+
+BOOL InjectSinglePointer(LynxPointerEventDispatcher *dispatcher, LynxDevToolPointerEventType type,
+                         CGFloat x, CGFloat y, int32_t pointerId) {
+  return [dispatcher injectPointerEvent:type
+                             pointerIds:@[ @(pointerId) ]
+                            coordinates:@[ [NSValue valueWithCGPoint:CGPointMake(x, y)] ]
+                        actionPointerId:pointerId
+                                 deltaX:0
+                                 deltaY:0
+                              modifiers:0
+                            timestampUs:0];
+}
+
+}  // namespace
 
 @interface DevToolPlatformDarwinDelegateUnitTest : XCTestCase
 @end
@@ -40,6 +197,279 @@
   [platform insertText:@"b"];
 
   XCTAssertEqualObjects(textField.text, @"abc");
+}
+
+- (void)testInputEventTargetCapabilitiesFollowInternalUIKitAvailability {
+  DevToolPlatformDarwinDelegate *platform =
+      [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:nil];
+  DevToolPointerInjectionHelper *helper =
+      [[DevToolPointerInjectionHelper alloc] initWithLynxView:nil];
+  helper.injectionAvailable = YES;
+  [platform setValue:helper forKey:@"pointerEventDispatcher"];
+
+  std::shared_ptr<lynx::devtool::input::InputEventTarget> target =
+      [platform getNativePtr]->GetInputEventTarget();
+  XCTAssertNotEqual(target, nullptr);
+  auto capabilities = target->GetPointerCapabilities();
+  XCTAssertEqual(capabilities.default_source_type, lynx::devtool::input::PointerSourceType::kTouch);
+  XCTAssertTrue(capabilities.supports_touch);
+  XCTAssertFalse(capabilities.supports_mouse);
+  XCTAssertEqual(capabilities.max_touch_points, 2);
+
+  helper.injectionAvailable = NO;
+  capabilities = target->GetPointerCapabilities();
+  XCTAssertEqual(capabilities.default_source_type,
+                 lynx::devtool::input::PointerSourceType::kDefault);
+  XCTAssertFalse(capabilities.supports_touch);
+  XCTAssertFalse(capabilities.supports_mouse);
+}
+
+- (void)testInputEventTargetForwardsMultiplePointers {
+  DevToolPlatformDarwinDelegate *platform =
+      [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:nil];
+  DevToolPointerInjectionHelper *helper =
+      [[DevToolPointerInjectionHelper alloc] initWithLynxView:nil];
+  helper.injectionAvailable = YES;
+  helper.injectionResult = YES;
+  [platform setValue:helper forKey:@"pointerEventDispatcher"];
+  auto target = [platform getNativePtr]->GetInputEventTarget();
+
+  auto event = MakePointerEvent(lynx::devtool::input::PointerSourceType::kTouch,
+                                lynx::devtool::input::PointerEventType::kDown, 10.f, 20.f);
+  lynx::devtool::input::Pointer secondPointer;
+  secondPointer.id = 2;
+  secondPointer.x = 30.f;
+  secondPointer.y = 40.f;
+  event.pointers.push_back(secondPointer);
+  event.action_pointer_id = 2;
+
+  XCTAssertTrue(target->InjectPointerEvent(event));
+  XCTAssertEqual(helper.injectionCount, 1);
+  XCTAssertEqual(helper.lastPointerCount, 2);
+  XCTAssertEqual(helper.lastActionPointerId, 2);
+}
+
+- (void)testInputEventTargetRejectsInvalidSourceAndTooManyPointers {
+  DevToolPlatformDarwinDelegate *platform =
+      [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:nil];
+  DevToolPointerInjectionHelper *helper =
+      [[DevToolPointerInjectionHelper alloc] initWithLynxView:nil];
+  helper.injectionAvailable = YES;
+  helper.injectionResult = YES;
+  [platform setValue:helper forKey:@"pointerEventDispatcher"];
+  auto target = [platform getNativePtr]->GetInputEventTarget();
+
+  auto event = MakePointerEvent(lynx::devtool::input::PointerSourceType::kMouse,
+                                lynx::devtool::input::PointerEventType::kDown, 10.f, 20.f);
+  XCTAssertFalse(target->InjectPointerEvent(event));
+
+  event.source_type = lynx::devtool::input::PointerSourceType::kTouch;
+  lynx::devtool::input::Pointer secondPointer;
+  secondPointer.id = 2;
+  secondPointer.x = 30.f;
+  secondPointer.y = 40.f;
+  event.pointers.push_back(secondPointer);
+  lynx::devtool::input::Pointer thirdPointer;
+  thirdPointer.id = 3;
+  thirdPointer.x = 50.f;
+  thirdPointer.y = 60.f;
+  event.pointers.push_back(thirdPointer);
+  XCTAssertFalse(target->InjectPointerEvent(event));
+  XCTAssertEqual(helper.injectionCount, 0);
+}
+
+- (void)testPointerHelperRejectsNilWindowAndWindowBoundary {
+  UIView *detachedView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 20, 20)];
+  DevToolWindowInputHelper *helper =
+      [[DevToolWindowInputHelper alloc] initWithLynxView:(LynxView *)detachedView];
+  XCTAssertFalse(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, 10, 10, 1));
+
+  UIWindow *window = MakeWindow(CGSizeMake(200, 100));
+  UIView *lynxView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 20, 20)];
+  [WindowRootView(window) addSubview:lynxView];
+  [helper attachLynxView:(LynxView *)lynxView];
+
+  XCTAssertFalse(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, -1, 10, 1));
+  XCTAssertFalse(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, 200, 10, 1));
+  XCTAssertFalse(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, 10, 100, 1));
+  XCTAssertEqual(helper.dispatchCount, 0);
+}
+
+- (void)testPointerHelperUsesWindowCoordinatesForHitTestingOutsideLynxView {
+  UIWindow *window = MakeWindow(CGSizeMake(200, 200));
+  UIView *root = WindowRootView(window);
+  UIView *lynxView = [[UIView alloc] initWithFrame:CGRectMake(40, 50, 40, 40)];
+  UIView *hostView = [[UIView alloc] initWithFrame:CGRectMake(100, 100, 40, 40)];
+  [root addSubview:lynxView];
+  [root addSubview:hostView];
+  DevToolWindowInputHelper *helper =
+      [[DevToolWindowInputHelper alloc] initWithLynxView:(LynxView *)lynxView];
+  CGPoint windowPoint = CGPointMake(110, 110);
+  CGPoint pointIfTreatedAsLynxViewLocal = [lynxView convertPoint:windowPoint toView:window];
+  XCTAssertEqual([window hitTest:windowPoint withEvent:nil], hostView);
+  XCTAssertNotEqual([window hitTest:pointIfTreatedAsLynxViewLocal withEvent:nil], hostView);
+
+  XCTAssertTrue(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, windowPoint.x,
+                                    windowPoint.y, 1));
+  XCTAssertEqual(helper.lastWindow, window);
+  XCTAssertEqual(helper.lastTarget, hostView);
+  XCTAssertTrue(
+      InjectSinglePointer(helper, LynxDevToolPointerEventTypeUp, windowPoint.x, windowPoint.y, 1));
+}
+
+- (void)testPointerHelperInjectsMultiplePointerSequence {
+  UIWindow *window = MakeWindow(CGSizeMake(200, 200));
+  UIView *lynxView = [[UIView alloc] initWithFrame:window.bounds];
+  [WindowRootView(window) addSubview:lynxView];
+  DevToolWindowInputHelper *helper =
+      [[DevToolWindowInputHelper alloc] initWithLynxView:(LynxView *)lynxView];
+  NSArray<NSNumber *> *firstPointer = @[ @1 ];
+  NSArray<NSNumber *> *bothPointers = @[ @1, @2 ];
+  NSArray<NSValue *> *firstPosition = @[ [NSValue valueWithCGPoint:CGPointMake(50, 50)] ];
+  NSArray<NSValue *> *bothPositions = @[
+    [NSValue valueWithCGPoint:CGPointMake(50, 50)], [NSValue valueWithCGPoint:CGPointMake(150, 50)]
+  ];
+
+  XCTAssertTrue([helper injectPointerEvent:LynxDevToolPointerEventTypeDown
+                                pointerIds:firstPointer
+                               coordinates:firstPosition
+                           actionPointerId:1
+                                    deltaX:0
+                                    deltaY:0
+                                 modifiers:0
+                               timestampUs:1000]);
+  XCTAssertTrue([helper injectPointerEvent:LynxDevToolPointerEventTypeDown
+                                pointerIds:bothPointers
+                               coordinates:bothPositions
+                           actionPointerId:2
+                                    deltaX:0
+                                    deltaY:0
+                                 modifiers:0
+                               timestampUs:2000]);
+  XCTAssertTrue([helper injectPointerEvent:LynxDevToolPointerEventTypeMove
+                                pointerIds:bothPointers
+                               coordinates:bothPositions
+                           actionPointerId:1
+                                    deltaX:0
+                                    deltaY:0
+                                 modifiers:0
+                               timestampUs:3000]);
+  XCTAssertTrue([helper injectPointerEvent:LynxDevToolPointerEventTypeUp
+                                pointerIds:bothPointers
+                               coordinates:bothPositions
+                           actionPointerId:2
+                                    deltaX:0
+                                    deltaY:0
+                                 modifiers:0
+                               timestampUs:4000]);
+  XCTAssertTrue([helper injectPointerEvent:LynxDevToolPointerEventTypeUp
+                                pointerIds:firstPointer
+                               coordinates:firstPosition
+                           actionPointerId:1
+                                    deltaX:0
+                                    deltaY:0
+                                 modifiers:0
+                               timestampUs:5000]);
+
+  XCTAssertEqual(helper.dispatchCount, 5);
+  XCTAssertEqual(helper.lastPointerCount, 1);
+  XCTAssertEqual(helper.lastActionPointerId, 1);
+  XCTAssertEqual(helper.cancellationCount, 0);
+}
+
+- (void)testPointerHelperCancelsOnWindowSwitchAndAttach {
+  UIWindow *firstWindow = MakeWindow(CGSizeMake(100, 100));
+  UIWindow *secondWindow = MakeWindow(CGSizeMake(100, 100));
+  UIView *lynxView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 50, 50)];
+  [WindowRootView(firstWindow) addSubview:lynxView];
+  DevToolWindowInputHelper *helper =
+      [[DevToolWindowInputHelper alloc] initWithLynxView:(LynxView *)lynxView];
+
+  XCTAssertTrue(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, 10, 10, 1));
+  [WindowRootView(secondWindow) addSubview:lynxView];
+  XCTAssertFalse(InjectSinglePointer(helper, LynxDevToolPointerEventTypeMove, 12, 12, 1));
+  XCTAssertEqual(helper.cancellationCount, 1);
+
+  XCTAssertTrue(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, 10, 10, 2));
+  UIView *replacement = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 50, 50)];
+  [WindowRootView(secondWindow) addSubview:replacement];
+  [helper attachLynxView:(LynxView *)replacement];
+  XCTAssertEqual(helper.cancellationCount, 2);
+}
+
+- (void)testPointerHelperCancelsWhenReleaseDispatchFails {
+  UIWindow *window = MakeWindow(CGSizeMake(100, 100));
+  UIView *lynxView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 50, 50)];
+  [WindowRootView(window) addSubview:lynxView];
+  DevToolWindowInputHelper *helper =
+      [[DevToolWindowInputHelper alloc] initWithLynxView:(LynxView *)lynxView];
+
+  XCTAssertTrue(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, 10, 10, 1));
+  helper.dispatchResult = NO;
+  XCTAssertFalse(InjectSinglePointer(helper, LynxDevToolPointerEventTypeUp, 10, 10, 1));
+  XCTAssertEqual(helper.cancellationCount, 1);
+
+  helper.dispatchResult = YES;
+  XCTAssertTrue(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, 10, 10, 2));
+}
+
+- (void)testDelegateDeallocCancelsActivePointerSequence {
+  DevToolPointerInjectionHelper *helper =
+      [[DevToolPointerInjectionHelper alloc] initWithLynxView:nil];
+  @autoreleasepool {
+    DevToolPlatformDarwinDelegate *platform =
+        [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:nil];
+    [platform setValue:helper forKey:@"pointerEventDispatcher"];
+    platform = nil;
+  }
+  XCTAssertEqual(helper.cancellationCount, 1);
+}
+
+- (void)testDelegateDeallocCancelsOnMainThreadWhenReleasedOffMainThread {
+  UIWindow *window = MakeWindow(CGSizeMake(100, 100));
+  UIView *lynxView = [[UIView alloc] initWithFrame:window.bounds];
+  [window addSubview:lynxView];
+  DevToolWindowInputHelper *helper =
+      [[DevToolWindowInputHelper alloc] initWithLynxView:(LynxView *)lynxView];
+  XCTAssertTrue(InjectSinglePointer(helper, LynxDevToolPointerEventTypeDown, 10, 10, 1));
+
+  __block DevToolPlatformDarwinDelegate *platform =
+      [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:nil];
+  [platform setValue:helper forKey:@"pointerEventDispatcher"];
+  XCTestExpectation *expectation =
+      [self expectationWithDescription:@"background dealloc cancellation"];
+  dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+    @autoreleasepool {
+      platform = nil;
+    }
+    [expectation fulfill];
+  });
+
+  [self waitForExpectations:@[ expectation ] timeout:2];
+  XCTAssertEqual(helper.cancellationCount, 1);
+  XCTAssertTrue(helper.cancellationOnMainThread);
+}
+
+- (void)testInputEventTargetRoutesInjectionToMainThread {
+  DevToolPlatformDarwinDelegate *platform =
+      [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:nil];
+  DevToolPointerInjectionHelper *helper =
+      [[DevToolPointerInjectionHelper alloc] initWithLynxView:nil];
+  helper.injectionAvailable = YES;
+  helper.injectionResult = YES;
+  [platform setValue:helper forKey:@"pointerEventDispatcher"];
+  auto target = [platform getNativePtr]->GetInputEventTarget();
+  auto event = MakePointerEvent(lynx::devtool::input::PointerSourceType::kTouch,
+                                lynx::devtool::input::PointerEventType::kDown, 10.f, 20.f);
+  XCTestExpectation *expectation = [self expectationWithDescription:@"main thread injection"];
+
+  dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+    XCTAssertTrue(target->InjectPointerEvent(event));
+    XCTAssertTrue(helper.injectedOnMainThread);
+    [expectation fulfill];
+  });
+
+  [self waitForExpectations:@[ expectation ] timeout:2];
 }
 
 @end
