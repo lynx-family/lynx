@@ -49,7 +49,9 @@ public enum LynxEnvKey {
   FSP_CONFIG_JSON_STRING("fsp_config_json_string"),
   INIT_DISPLAY_METRICS_IN_ENV("init_display_metrics_in_env"),
   // Internal-only Lynx settings key. Do not mention graphics backend details in the key.
-  SETUP_CANVAS_SURFACE_EARLIER("setup_canvas_surface_earlier");
+  SETUP_CANVAS_SURFACE_EARLIER("setup_canvas_surface_earlier"),
+  ENABLE_DISMISS_TEXT_SELECTION_MENU_ON_BACKGROUND(
+      "enable_dismiss_text_selection_menu_on_background");
 
   private final String description;
 
