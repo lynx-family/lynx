@@ -102,6 +102,9 @@ class KeyframeEffect {
 
  private:
   friend class Animation;
+  void RestoreTiming(fml::TimePoint start_time, fml::TimePoint sample_time,
+                     gfx::KeyframeModel::RunState run_state);
+  fml::TimeDelta CurrentTime(fml::TimePoint sample_time) const;
   void SeekTo(fml::TimeDelta current_time, fml::TimePoint reference_time,
               bool paused);
   void ApplyTickResult(const gfx::KeyframeEffect::TickResult& tick_result,
