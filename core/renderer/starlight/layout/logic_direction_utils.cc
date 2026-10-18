@@ -161,8 +161,9 @@ void ResolveJustifyContent(const LayoutComputedStyle* css_style,
 void SetBoundOffsetFrom(LayoutObject* item, Direction direction,
                         BoundType bound_type, BoundType container_bound_type,
                         float offset) {
-  const LayoutObject* container =
-      item->IsNewFixed() ? item->GetRoot() : item->ParentLayoutObject();
+  //  const LayoutObject* container =
+  //      item->IsNewFixed() ? item->GetRoot() : item->ParentLayoutObject();
+  const LayoutObject* container = item->ContainingBlockEstablisher();
   if (direction == Direction::kLeft) {
     item->SetBoundLeftFrom(container, offset, bound_type, container_bound_type);
   } else if (direction == Direction::kTop) {
@@ -178,8 +179,9 @@ void SetBoundOffsetFrom(LayoutObject* item, Direction direction,
 
 float GetBoundOffsetFrom(const LayoutObject* item, Dimension axis,
                          BoundType bound_type, BoundType container_bound_type) {
-  const LayoutObject* container =
-      item->IsNewFixed() ? item->GetRoot() : item->ParentLayoutObject();
+  //  const LayoutObject* container =
+  //      item->IsNewFixed() ? item->GetRoot() : item->ParentLayoutObject();
+  const LayoutObject* container = item->ContainingBlockEstablisher();
   return axis == Dimension::kHorizontal
              ? item->GetBoundLeftFrom(container, bound_type,
                                       container_bound_type)
