@@ -145,6 +145,7 @@ bool IsParentDataStyle(CSSPropertyID id) {
 bool IsBoundaryStyle(CSSPropertyID id) {
   switch (id) {
     case kPropertyIDBackgroundColor:
+    case kPropertyIDBackgroundImage:
     case kPropertyIDBoxShadow:
     case kPropertyIDBorderWidth:
     case kPropertyIDBorderColor:
