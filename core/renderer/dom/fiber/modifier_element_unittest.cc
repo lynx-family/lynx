@@ -75,9 +75,101 @@ lepus::Value MakePaddingChain(size_t frame_count, double value) {
   return previous;
 }
 
+lepus::Value AppendTestStyle(const lepus::Value& previous, CSSPropertyID id,
+                             const char* value) {
+  auto node = lepus::Dictionary::Create();
+  node->SetValue("op", lepus::Value(3));
+  node->SetValue("propertyId", lepus::Value(static_cast<int32_t>(id)));
+  node->SetValue("value", lepus::Value(value));
+  node->SetValue("previous", previous);
+  return lepus::Value(node);
+}
+
+lepus::Value AppendTestPadding(const lepus::Value& previous) {
+  auto node = lepus::Dictionary::Create();
+  node->SetValue("op", lepus::Value(7));
+  for (const auto* side : {"start", "top", "end", "bottom"}) {
+    node->SetValue(side, lepus::Value(8.0));
+  }
+  node->SetValue("previous", previous);
+  return lepus::Value(node);
+}
+
+lepus::Value RawStyle(Element* element, CSSPropertyID id) {
+  const auto& styles = element->GetCurrentRawInlineStyles();
+  if (styles.has_value()) {
+    const auto it = styles->find(id);
+    if (it != styles->end()) {
+      return it->second;
+    }
+  }
+  return lepus::Value();
+}
+
 }  // namespace
 
 class ModifierElementTest : public FiberElementTest {};
+
+TEST_P(ModifierElementTest, GradientBackgroundUsesAuthoredPaddingBoundary) {
+  auto handle = CreateComposeHandle(manager);
+  auto owner = handle->content_element();
+  constexpr char kGradient[] = "linear-gradient(180deg, red, blue)";
+
+  // Move the same background before, between and after two padding modifiers.
+  for (size_t background_position = 0; background_position <= 2;
+       ++background_position) {
+    SCOPED_TRACE(background_position);
+    lepus::Value source;
+    for (size_t position = 0; position <= 2; ++position) {
+      if (position == background_position) {
+        source = AppendTestStyle(source, kPropertyIDBackgroundImage, kGradient);
+      }
+      if (position < 2) {
+        source = AppendTestPadding(source);
+      }
+    }
+    const auto result =
+        ComposeModifierApplicator::Apply(handle.get(), source, nullptr);
+    ASSERT_TRUE(result.success) << result.error_message;
+    const auto frames =
+        CollectModifierFrames(handle->mount_root().get(), owner.get());
+    ASSERT_EQ(frames.size(), 2u);
+    for (size_t position = 0; position <= 2; ++position) {
+      Element* target = position < 2 ? frames[position] : owner.get();
+      EXPECT_EQ(RawStyle(target, kPropertyIDBackgroundImage),
+                position == background_position ? lepus::Value(kGradient)
+                                                : lepus::Value());
+    }
+  }
+}
+
+TEST_P(ModifierElementTest, ReplacingGradientClearsPreviousBackgroundImage) {
+  constexpr char kGradient[] = "linear-gradient(180deg, red, blue)";
+  for (const bool background_first : {true, false}) {
+    SCOPED_TRACE(background_first);
+    auto handle = CreateComposeHandle(manager);
+    auto owner = handle->content_element();
+    const auto source =
+        background_first
+            ? AppendTestPadding(AppendTestStyle(
+                  lepus::Value(), kPropertyIDBackgroundImage, kGradient))
+            : AppendTestStyle(AppendTestPadding(lepus::Value()),
+                              kPropertyIDBackgroundImage, kGradient);
+    auto result =
+        ComposeModifierApplicator::Apply(handle.get(), source, nullptr);
+    ASSERT_TRUE(result.success) << result.error_message;
+
+    result = ComposeModifierApplicator::Apply(
+        handle.get(),
+        AppendTestStyle(lepus::Value(), kPropertyIDBackgroundColor, "#ffffff"),
+        nullptr);
+    ASSERT_TRUE(result.success) << result.error_message;
+    EXPECT_EQ(handle->mount_root(), owner);
+    EXPECT_TRUE(RawStyle(owner.get(), kPropertyIDBackgroundImage).IsEmpty());
+    EXPECT_EQ(RawStyle(owner.get(), kPropertyIDBackgroundColor),
+              lepus::Value("#ffffff"));
+  }
+}
 
 TEST_P(ModifierElementTest, UsesDefaultElementBehaviorWithViewTag) {
   auto element = manager->CreateFiberModifierElement();
