@@ -92,10 +92,23 @@ LepusCallbackManager::~LepusCallbackManager() { Destroy(); }
 void LepusCallbackManager::EnsureTimerTaskInvokerInited(
     runtime::MTSRuntime* context) {
   if (!timer_task_manager_) {
+    auto* delegate = context->GetDelegate();
     timer_task_manager_ = std::make_unique<base::TimedTaskManager>(
-        true, context->GetDelegate()
-                  ? context->GetDelegate()->GetLepusTimedTaskRunner()
-                  : nullptr);
+        true, delegate ? delegate->GetLepusTimedTaskRunner() : nullptr);
+    if (delegate && delegate->IsPaused()) {
+      timer_task_manager_->Pause();
+    }
+  }
+}
+
+void LepusCallbackManager::SetPaused(bool paused) {
+  if (!timer_task_manager_) {
+    return;
+  }
+  if (paused) {
+    timer_task_manager_->Pause();
+  } else {
+    timer_task_manager_->Resume();
   }
 }
 

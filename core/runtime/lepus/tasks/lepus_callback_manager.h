@@ -35,6 +35,9 @@ class LepusCallbackManager {
                        int64_t interval_time);
   void RemoveTimeTask(uint32_t task_id);
 
+  // Pause or resume the timed tasks.
+  void SetPaused(bool paused);
+
  private:
   // FuncTask cached in TaskMap , it has execute method
   class FuncTask {

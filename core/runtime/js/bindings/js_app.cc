@@ -3859,7 +3859,18 @@ Value App::RequestAnimationFrame(Function func) {
     return Value::undefined();
     //
   }
-  // requestVSyncTick
+  // requestVSyncTick, the request is postponed to Resume() while paused.
+  if (!paused_) {
+    RequestVSyncForAnimationFrame();
+  }
+
+  const int64_t id =
+      animation_frame_handler_->RequestAnimationFrame(std::move(func));
+
+  return Value(static_cast<double>(id));
+}
+
+void App::RequestVSyncForAnimationFrame() {
   auto observer = delegate_->GetVSyncObserver();
   if (observer) {
     observer->RequestAnimationFrame(
@@ -3871,11 +3882,6 @@ Value App::RequestAnimationFrame(Function func) {
           }
         });
   }
-
-  const int64_t id =
-      animation_frame_handler_->RequestAnimationFrame(std::move(func));
-
-  return Value(static_cast<double>(id));
 }
 
 void App::CancelAnimationFrame(int64_t id) {
@@ -3886,7 +3892,7 @@ void App::CancelAnimationFrame(int64_t id) {
 
 void App::DoFrame(int64_t time_stamp) {
   static constexpr int64_t kNanoSecondsPerMilliSecond = 1e+6;
-  if (animation_frame_handler_ && !has_paused_animation_frame_ &&
+  if (animation_frame_handler_ && !has_paused_animation_frame_ && !paused_ &&
       !IsDestroying() && IsJsAppStateValid()) {
     // W3C window.requestAnimationFrame request milliseconds
     TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_DO_FRAME, "timestamp", time_stamp);
@@ -3907,15 +3913,46 @@ void App::ResumeAnimationFrame() {
   auto observer = delegate_->GetVSyncObserver();
   if (has_paused_animation_frame_ && observer) {
     has_paused_animation_frame_ = false;
-    observer->RequestAnimationFrame(
-        reinterpret_cast<uintptr_t>(this),
-        [weak_self = GetWeakPtr()](int64_t frame_start, int64_t frame_end) {
-          auto* lock_self = weak_self.Lock();
-          if (lock_self) {
-            lock_self->DoFrame(frame_start);
-          }
-        });
+    // Still paused by Pause(), Resume() will request the frame.
+    if (!paused_) {
+      RequestVSyncForAnimationFrame();
+    }
   }
+}
+
+void App::Pause() {
+  if (paused_) {
+    return;
+  }
+  paused_ = true;
+  if (js_task_adapter_) {
+    js_task_adapter_->Pause();
+  }
+}
+
+void App::Resume() {
+  if (!paused_) {
+    return;
+  }
+  paused_ = false;
+  if (js_task_adapter_) {
+    js_task_adapter_->Resume();
+  }
+  // Still paused by entering background, ResumeAnimationFrame() will request
+  // the frame.
+  if (!has_paused_animation_frame_ && animation_frame_handler_ &&
+      animation_frame_handler_->HasPendingRequest()) {
+    RequestVSyncForAnimationFrame();
+  }
+}
+
+void App::SetPausedFromJS(bool paused) {
+  if (paused) {
+    Pause();
+  } else {
+    Resume();
+  }
+  delegate_->SetPausedFromJS(paused);
 }
 
 void App::SetJsBundleHolder(const std::weak_ptr<JsBundleHolder>& holder) {

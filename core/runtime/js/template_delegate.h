@@ -216,6 +216,10 @@ class TemplateDelegate : public ContextProxy::Delegate,
   virtual void StartRecording(const lepus::Value& value) = 0;
   virtual void StopRecording(const lepus::Value& value) = 0;
 
+  // Requests the owning renderer to pause or resume main-thread timers,
+  // requestAnimationFrame callbacks, and animation VSync.
+  virtual void SetPausedFromJS(bool paused) {}
+
   // for Fiber
   virtual void CallLepusMethod(const std::string& method_name,
                                lepus::Value value,

@@ -984,6 +984,18 @@ public class LynxTemplateRender
     return mLynxContext == null ? "" : mLynxContext.getPageVersion();
   }
 
+  public void pause() {
+    if (mNativePtr != 0) {
+      LynxJNI.nativePause(mNativePtr, mNativeLifecycle);
+    }
+  }
+
+  public void resume() {
+    if (mNativePtr != 0) {
+      LynxJNI.nativeResume(mNativePtr, mNativeLifecycle);
+    }
+  }
+
   public void pauseRootLayoutAnimation() {
     if (mLynxUIRender != null) {
       mLynxUIRender.pauseRootLayoutAnimation();

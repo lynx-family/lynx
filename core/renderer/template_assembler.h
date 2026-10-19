@@ -341,6 +341,15 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override;
 
+  // Pause or resume timers and requestAnimationFrame of the main thread script.
+  void SetPaused(bool paused);
+  bool IsPaused() override { return frame_pause_state_->paused; }
+
+  // Request vsync for requestAnimationFrame of the main thread script. The
+  // callback is postponed to SetPaused(false) while paused.
+  void RequestVsyncForAnimationFrame(
+      uintptr_t id, base::MoveOnlyClosure<void, int64_t, int64_t> callback);
+
   LYNX_EXPORT_FOR_DEVTOOL void UpdateGlobalProps(
       const lepus::Value& data, bool need_render,
       std::shared_ptr<PipelineOptions>& pipeline_options);
@@ -1118,6 +1127,16 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   base::Vector<base::closure> on_layout_ready_hooks_;
   base::Vector<base::closure> deferred_tasks_;
+
+  struct FramePauseState {
+    bool paused{false};
+    // Animation frame callbacks requested or fired while paused.
+    std::unordered_map<uintptr_t, base::MoveOnlyClosure<void, int64_t, int64_t>>
+        pending_callbacks;
+  };
+  // Shared with the vsync callbacks, which may outlive this.
+  std::shared_ptr<FramePauseState> frame_pause_state_ =
+      std::make_shared<FramePauseState>();
 
   base::OnceTaskRefptr<void> execute_on_layout_ready_hooks_{nullptr};
 

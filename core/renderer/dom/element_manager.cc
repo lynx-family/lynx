@@ -1311,14 +1311,30 @@ void ElementManager::StopAnimationVsync() {
   }
 }
 
-void ElementManager::SetElementVsyncPaused(bool paused) {
-  if (animation_vsync_stopped_ || element_vsync_paused_ == paused) {
+void ElementManager::SetElementVsyncPaused(bool paused, bool lynx_view_paused) {
+  if (animation_vsync_stopped_) {
     return;
   }
+  const bool suppress_infinite_animation_events = paused && lynx_view_paused;
+  if (element_vsync_paused_ == paused &&
+      suppress_infinite_animation_events_ ==
+          suppress_infinite_animation_events) {
+    return;
+  }
+
+  const bool was_suppressing_infinite_animation_events =
+      suppress_infinite_animation_events_;
   element_vsync_paused_ = paused;
+  suppress_infinite_animation_events_ = suppress_infinite_animation_events;
   if (element_vsync_proxy_) {
-    if (!paused) {
+    if (!paused || was_suppressing_infinite_animation_events !=
+                       suppress_infinite_animation_events_) {
       element_vsync_proxy_->CancelBackgroundFrame();
+    }
+    if (was_suppressing_infinite_animation_events &&
+        !suppress_infinite_animation_events_) {
+      auto now = fml::TimePoint::Now();
+      SyncInfiniteAnimationEvents(now);
     }
     if (!animation_element_set_.empty()) {
       element_vsync_proxy_->RequestNextFrame();
@@ -1355,11 +1371,25 @@ fml::TimePoint ElementManager::ProcessAnimationEvents(
   }
   for (const auto &element : elements) {
     if (!element->IsDetached()) {
-      next = std::min(
-          next, element->ProcessAnimationEvents(frame_time, dispatch_events));
+      next = std::min(next, element->ProcessAnimationEvents(
+                                frame_time, dispatch_events,
+                                suppress_infinite_animation_events_));
     }
   }
   return next;
+}
+
+void ElementManager::SyncInfiniteAnimationEvents(fml::TimePoint &frame_time) {
+  std::vector<fml::RefPtr<Element>> elements;
+  elements.reserve(animation_element_set_.size());
+  for (auto *element : animation_element_set_) {
+    elements.emplace_back(element);
+  }
+  for (const auto &element : elements) {
+    if (!element->IsDetached()) {
+      element->SyncInfiniteAnimationEvents(frame_time);
+    }
+  }
 }
 
 void ElementManager::TickAllElement(fml::TimePoint &frame_time) {

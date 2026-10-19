@@ -44,6 +44,14 @@ void BTSRuntimeMediator::AttachToLynxShell(
   runtime_standalone_mode_ = false;
 }
 
+void BTSRuntimeMediator::SetPausedFromJS(bool paused) {
+  if (runtime_standalone_mode_ || !engine_actor_) {
+    return;
+  }
+  engine_actor_->ActAsync(
+      [paused](auto& engine) { engine->SetPaused(paused); });
+}
+
 void BTSRuntimeMediator::OnRuntimeGC(
     std::unordered_map<std::string, std::string> mem_info) {
   if (!perf_controller_actor_) {

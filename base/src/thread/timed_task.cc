@@ -28,12 +28,23 @@ uint32_t TimedTaskManager::SetTimeout(closure closure, int64_t delay) {
   // DCHECK(runner_->RunsTasksOnCurrentThread());
   auto controller = std::make_unique<Controller>(std::move(closure));
   controllers_.emplace(++current_, controller.get());
+  PostTimeout(std::move(controller), delay, current_,
+              runner_->GetCurrentAllocSlot());
+  return current_;
+}
 
+void TimedTaskManager::PostTimeout(
+    std::unique_ptr<TimedTaskManager::Controller> controller, int64_t delay,
+    uint32_t current, int32_t alloc_slot) {
   runner_->PostDelayedTask(
-      fml::MakeCopyable([this, current = current_,
-                         alloc_slot = runner_->GetCurrentAllocSlot(),
+      fml::MakeCopyable([this, current, alloc_slot,
                          controller = std::move(controller)]() mutable {
         if (controller->closure) {
+          if (paused_) {
+            deferred_tasks_.push_back(
+                {current, std::move(controller), false, 0, alloc_slot});
+            return;
+          }
           Scope scope(this, current);
           fml::JSMemoryTrackSlot alloc_slot_scope(this->runner_.get(),
                                                   alloc_slot);
@@ -42,35 +53,39 @@ uint32_t TimedTaskManager::SetTimeout(closure closure, int64_t delay) {
         }
       }),
       fml::TimeDelta::FromMilliseconds(delay));
-
-  return current_;
 }
 
 uint32_t TimedTaskManager::SetInterval(closure closure, int64_t delay) {
   // DCHECK(runner_->RunsTasksOnCurrentThread());
   auto controller = std::make_unique<Controller>(std::move(closure));
   controllers_.emplace(++current_, controller.get());
-  SetInterval(std::move(controller), delay, current_);
+  SetInterval(std::move(controller), delay, current_,
+              runner_->GetCurrentAllocSlot(), delay);
   return current_;
 }
 
 void TimedTaskManager::SetInterval(
     std::unique_ptr<TimedTaskManager::Controller> controller, int64_t delay,
-    uint32_t current) {
+    uint32_t current, int32_t alloc_slot, int64_t first_delay) {
   runner_->PostDelayedTask(
-      fml::MakeCopyable([this, alloc_slot = runner_->GetCurrentAllocSlot(),
-                         controller = std::move(controller), delay,
-                         current]() mutable {
+      fml::MakeCopyable([this, alloc_slot, controller = std::move(controller),
+                         delay, current]() mutable {
         if (controller->closure) {
+          if (paused_) {
+            // Stop rescheduling while paused, the interval restarts on Resume.
+            deferred_tasks_.push_back(
+                {current, std::move(controller), true, delay, alloc_slot});
+            return;
+          }
           Scope scope(this, current, true);
           fml::JSMemoryTrackSlot alloc_slot_scope(this->runner_.get(),
                                                   alloc_slot);
           auto& closure = controller->closure;
-          SetInterval(std::move(controller), delay, current);
+          SetInterval(std::move(controller), delay, current, alloc_slot, delay);
           closure();
         }
       }),
-      fml::TimeDelta::FromMilliseconds(delay));
+      fml::TimeDelta::FromMilliseconds(first_delay));
 }
 
 void TimedTaskManager::StopTask(uint32_t id) {
@@ -105,6 +120,34 @@ void TimedTaskManager::StopAllTasks() {
   }
 
   controllers_.clear();
+  deferred_tasks_.clear();
+}
+
+void TimedTaskManager::Pause() {
+  // DCHECK(runner_->RunsTasksOnCurrentThread());
+  paused_ = true;
+}
+
+void TimedTaskManager::Resume() {
+  // DCHECK(runner_->RunsTasksOnCurrentThread());
+  if (!paused_) {
+    return;
+  }
+  paused_ = false;
+
+  // Post instead of running them here to keep the callbacks out of the caller's
+  // stack. Tasks stopped while deferred have a null closure and are dropped
+  // when they are posted.
+  auto deferred_tasks = std::move(deferred_tasks_);
+  deferred_tasks_.clear();
+  for (auto& task : deferred_tasks) {
+    if (task.is_interval) {
+      SetInterval(std::move(task.controller), task.interval, task.id,
+                  task.alloc_slot, 0);
+    } else {
+      PostTimeout(std::move(task.controller), 0, task.id, task.alloc_slot);
+    }
+  }
 }
 
 TimedTaskManager::Scope::Scope(TimedTaskManager* manager, uint32_t current,

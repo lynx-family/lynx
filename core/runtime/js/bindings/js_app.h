@@ -292,6 +292,12 @@ class App {
   void PauseAnimationFrame();
   void ResumeAnimationFrame();
 
+  // Pause or resume timers and requestAnimationFrame of this app explicitly,
+  // independent of the foreground/background state.
+  void Pause();
+  void Resume();
+  void SetPausedFromJS(bool paused);
+
   void SetJsBundleHolder(const std::weak_ptr<JsBundleHolder>& holder);
 
   void QueueMicrotask(Function func);
@@ -414,8 +420,13 @@ class App {
 
   void OnBTSConsoleEvent(const lepus::Value& args);
 
+  void RequestVSyncForAnimationFrame();
+
   std::unique_ptr<runtime::AnimationFrameTaskHandler> animation_frame_handler_;
+  // Paused by entering background.
   bool has_paused_animation_frame_{false};
+  // Paused by Pause().
+  bool paused_{false};
   lynx::tasm::FluencyTracer fluency_tracer_;
 };
 

@@ -293,6 +293,30 @@ void LynxEngine::SetAnimationsPending(bool need_pending_ui_op) {
   }
 }
 
+void LynxEngine::SetPaused(bool paused) {
+  if (paused_ == paused) {
+    return;
+  }
+  paused_ = paused;
+  if (tasm_) {
+    tasm_->SetPaused(paused);
+    if (auto& element_manager = tasm_->page_proxy()->element_manager()) {
+      element_manager->SetElementVsyncPaused(paused || lifecycle_paused_,
+                                             paused);
+    }
+  }
+}
+
+void LynxEngine::SetElementVsyncPaused(bool paused) {
+  lifecycle_paused_ = paused;
+  if (!tasm_) {
+    return;
+  }
+  if (auto& element_manager = tasm_->page_proxy()->element_manager()) {
+    element_manager->SetElementVsyncPaused(paused || paused_, paused_);
+  }
+}
+
 void LynxEngine::StartRecording(const lepus::Value& value) {
   if (delegate_ != nullptr) {
     delegate_->StartRecording(value);

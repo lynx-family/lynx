@@ -180,6 +180,32 @@ TEST_F(LynxShellTest, LifecycleControlsElementVsyncOnEngineThread) {
   EXPECT_FALSE(is_paused());
 }
 
+TEST_F(LynxShellTest, ExplicitPauseControlsInfiniteAnimationEventTimer) {
+  auto animation_state = [this]() {
+    return shell_->engine_actor_->ActSync([](auto& engine) {
+      auto* manager = engine->GetTasm()->page_proxy()->element_manager().get();
+      return std::make_pair(manager->element_vsync_paused_,
+                            manager->suppress_infinite_animation_events_);
+    });
+  };
+  shell_->OnEnterBackground();
+  EXPECT_EQ(animation_state(), std::make_pair(true, false));
+  shell_->OnEnterForeground();
+  EXPECT_EQ(animation_state(), std::make_pair(false, false));
+
+  shell_->Pause();
+  EXPECT_EQ(animation_state(), std::make_pair(true, true));
+
+  // Resuming an explicitly paused view while the app remains in background
+  // keeps element VSync paused but restores the legacy background event timer.
+  shell_->OnEnterBackground();
+  shell_->Resume();
+  EXPECT_EQ(animation_state(), std::make_pair(true, false));
+
+  shell_->OnEnterForeground();
+  EXPECT_EQ(animation_state(), std::make_pair(false, false));
+}
+
 TEST_F(LynxShellTest, ResetLoadOrderOnlyForEmbeddedMode) {
   shell_->ui_operation_queue_->is_engine_async_ = true;
   shell_->ui_operation_queue_->CreateImpl();
