@@ -6,6 +6,21 @@ declare const cssWithLonghands: CSSPropertiesWithLonghands;
 declare const cssWithShorthands: CSSPropertiesWithShorthands;
 
 describe('CSSProperty Type Test', () => {
+  it('border radius reference modes', () => {
+    assertType<CSSProperties>({ XBorderRadiusMode: 'short-side', borderRadius: '20%' });
+    assertType<CSSPropertiesWithLonghands>({ XBorderRadiusMode: 'auto' });
+    assertType<CSSPropertiesWithLonghands>({ XBorderRadiusMode: 'long-side' });
+    expectTypeOf<CSSProperties['XBorderRadiusMode']>().toEqualTypeOf<'auto' | 'long-side' | 'short-side' | undefined>();
+    assertType<CSSProperties>({
+      // @ts-expect-error: only the three declared radius modes are accepted
+      XBorderRadiusMode: 'unknown',
+    });
+    assertType<CSSProperties>({
+      // @ts-expect-error: the default mode is named auto
+      XBorderRadiusMode: 'css',
+    });
+  });
+
   it('example', () => {
     assertType<CSSProperties>({
       // layout

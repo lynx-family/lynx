@@ -324,6 +324,11 @@ class ComputedCSSStyle {
                 ->radius_y_bottom_left.GetRawValue()) > 0;
   }
 
+  XBorderRadiusModeType GetBorderRadiusMode() const {
+    const auto& border = layout_computed_style_.surround_data_.border_data_;
+    return border ? border->radius_mode : XBorderRadiusModeType::kAuto;
+  }
+
   const NLength& GetSimpleBorderTopLeftRadius() {
     DCHECK(
         layout_computed_style_.surround_data_.border_data_->radius_x_top_left ==

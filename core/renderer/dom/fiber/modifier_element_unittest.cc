@@ -594,6 +594,90 @@ TEST_P(ModifierElementTest,
   EXPECT_FALSE(root_weak);
 }
 
+TEST_P(ModifierElementTest,
+       BorderRadiusStyleFollowsPaddingWhileAttributesStayOnContent) {
+  auto runtime_ = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(runtime_, nullptr);
+  runtime_->Initialize();
+  runtime_->SetGlobalData(
+      "radiusModeId",
+      lepus::Value(static_cast<int>(kPropertyIDXBorderRadiusMode)));
+  runtime_->SetGlobalData(
+      "radiusId", lepus::Value(static_cast<int>(kPropertyIDBorderRadius)));
+  auto Eval = [&](const std::string& script) {
+    lepus::Value value;
+    EXPECT_TRUE(runtime::MTSRuntime::ToQuickContext(runtime_.get())
+                    ->EvalBuf(script.c_str(), script.size(), value,
+                              "border_radius_mode_test.js"));
+    return value;
+  };
+  auto handle = CreateComposeHandle(manager, ComposeElementKind::kImage);
+  auto attribute = [](Element* element, const char* key) {
+    const auto& attributes = element->data_model()->attributes();
+    auto found = attributes.find(base::String(key));
+    return found == attributes.end() ? lepus::Value() : found->second;
+  };
+  auto style = [](Element* element, CSSPropertyID id) {
+    const auto& styles = element->GetCurrentRawInlineStyles();
+    if (!styles.has_value()) return lepus::Value();
+    auto found = styles->find(id);
+    return found == styles->end() ? lepus::Value() : found->second;
+  };
+  auto outer = Eval(R"JS(({
+    op:7,start:10,top:10,end:10,bottom:10,
+    previous:{op:3,propertyId:radiusModeId,value:'short-side',
+      previous:{op:3,propertyId:radiusId,value:'20%',
+        previous:{op:4,name:'src',value:'image.png',
+          previous:{op:4,name:'id',value:'content'}}}}
+  }))JS");
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle.get(), outer, runtime_.get())
+          .success);
+  auto* owner = handle->content_element().get();
+  auto root = handle->mount_root();
+  EXPECT_EQ(style(root.get(), kPropertyIDXBorderRadiusMode),
+            lepus::Value("short-side"));
+  EXPECT_EQ(style(root.get(), kPropertyIDBorderRadius), lepus::Value("20%"));
+  EXPECT_TRUE(style(owner, kPropertyIDXBorderRadiusMode).IsEmpty());
+  EXPECT_TRUE(style(owner, kPropertyIDBorderRadius).IsEmpty());
+  EXPECT_EQ(attribute(owner, "id"), lepus::Value("content"));
+  EXPECT_EQ(attribute(owner, "src"), lepus::Value("image.png"));
+  EXPECT_TRUE(attribute(root.get(), "id").IsEmpty());
+  EXPECT_TRUE(attribute(root.get(), "src").IsEmpty());
+
+  // Put styles after padding, and ordinary attributes on both sides of it.
+  auto inner = Eval(R"JS(({
+    op:4,name:'id',value:'updated',
+    previous:{op:3,propertyId:radiusModeId,value:'long-side',
+      previous:{op:3,propertyId:radiusId,value:'30%',
+        previous:{op:7,start:10,top:10,end:10,bottom:10,
+          previous:{op:4,name:'src',value:'updated.png'}}}}
+  }))JS");
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle.get(), inner, runtime_.get())
+          .success);
+  EXPECT_TRUE(style(handle->mount_root().get(), kPropertyIDXBorderRadiusMode)
+                  .IsEmpty());
+  EXPECT_TRUE(
+      style(handle->mount_root().get(), kPropertyIDBorderRadius).IsEmpty());
+  EXPECT_EQ(style(owner, kPropertyIDXBorderRadiusMode),
+            lepus::Value("long-side"));
+  EXPECT_EQ(style(owner, kPropertyIDBorderRadius), lepus::Value("30%"));
+  EXPECT_EQ(attribute(owner, "id"), lepus::Value("updated"));
+  EXPECT_EQ(attribute(owner, "src"), lepus::Value("updated.png"));
+  EXPECT_TRUE(attribute(handle->mount_root().get(), "id").IsEmpty());
+  EXPECT_TRUE(attribute(handle->mount_root().get(), "src").IsEmpty());
+
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(handle.get(), lepus::Value(),
+                                               runtime_.get())
+                  .success);
+  EXPECT_TRUE(style(owner, kPropertyIDXBorderRadiusMode).IsEmpty());
+  EXPECT_TRUE(style(owner, kPropertyIDBorderRadius).IsEmpty());
+  EXPECT_TRUE(attribute(owner, "id").IsEmpty());
+  EXPECT_TRUE(attribute(owner, "src").IsEmpty());
+}
+
 INSTANTIATE_TEST_SUITE_P(ModifierElementTestModule, ModifierElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 

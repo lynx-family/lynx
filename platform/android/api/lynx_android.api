@@ -659,6 +659,9 @@ public interface com::lynx::tasm::behavior::AutoGenStyleConstants {
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTSTYLE_OBLIQUE XPLACEHOLDERFONTSTYLE_OBLIQUE;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.POINTEREVENTS_AUTO POINTEREVENTS_AUTO;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.POINTEREVENTS_NONE POINTEREVENTS_NONE;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XBORDERRADIUSMODE_AUTO XBORDERRADIUSMODE_AUTO;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XBORDERRADIUSMODE_SHORTSIDE XBORDERRADIUSMODE_SHORTSIDE;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XBORDERRADIUSMODE_LONGSIDE XBORDERRADIUSMODE_LONGSIDE;
 }
 
 public class abstract com::lynx::tasm::behavior::ui::scroll::utils::AutoScroller :  {

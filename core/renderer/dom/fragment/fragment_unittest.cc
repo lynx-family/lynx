@@ -2134,6 +2134,222 @@ TEST_F(FragmentTest, UpdateLayoutNormalizesOversizedBorderRadii) {
   EXPECT_FLOAT_EQ(radii.y_bottom_left, 22.f);
 }
 
+TEST_F(FragmentTest, BorderRadiusModesResolvePercentagesAndResize) {
+  using Mode = starlight::XBorderRadiusModeType;
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  auto* style = element->computed_css_style()->GetLayoutComputedStyle();
+  style->surround_data_.border_data_ = starlight::BordersData();
+  auto& border = *style->surround_data_.border_data_;
+  for (auto mode : {Mode::kAuto, Mode::kLongSide, Mode::kShortSide}) {
+    element->computed_css_style()->SetValue(kPropertyIDXBorderRadiusMode,
+                                            CSSValue(mode));
+    for (float percent : {0.f, 20.f, 50.f, 100.f}) {
+      const auto radius = starlight::NLength::MakePercentageNLength(percent);
+      border.radius_x_top_left = border.radius_y_top_left = radius;
+      border.radius_x_top_right = border.radius_y_top_right = radius;
+      border.radius_x_bottom_right = border.radius_y_bottom_right = radius;
+      border.radius_x_bottom_left = border.radius_y_bottom_left = radius;
+      for (auto size : {FloatSize(200.f, 100.f), FloatSize(200.f, 80.f),
+                        FloatSize(80.f, 200.f), FloatSize(100.f, 100.f),
+                        FloatSize(0.f, 80.f), FloatSize(80.f, 0.f)}) {
+        SCOPED_TRACE(::testing::Message()
+                     << static_cast<int>(mode) << ": " << percent << "% "
+                     << size.width_ << " x " << size.height_);
+        starlight::LayoutResultForRendering layout;
+        layout.size_ = size;
+        fragment.UpdateLayout(layout);
+        if (percent == 0.f) {
+          EXPECT_FALSE(fragment.LayoutResult().border_radius_info.has_value());
+          continue;
+        }
+        ASSERT_TRUE(fragment.LayoutResult().border_radius_info.has_value());
+        const auto& radii = *fragment.LayoutResult().border_radius_info;
+        float expected_x = size.width_ * std::min(percent, 50.f) / 100.f;
+        float expected_y = size.height_ * std::min(percent, 50.f) / 100.f;
+        if (mode != Mode::kAuto) {
+          const float short_side = std::min(size.width_, size.height_);
+          const float reference = mode == Mode::kShortSide
+                                      ? short_side
+                                      : std::max(size.width_, size.height_);
+          expected_x = expected_y =
+              std::min(reference * percent / 100.f, short_side / 2.f);
+        }
+        EXPECT_FLOAT_EQ(radii.x_top_left, expected_x);
+        EXPECT_FLOAT_EQ(radii.y_top_left, expected_y);
+        EXPECT_FLOAT_EQ(radii.x_top_right, expected_x);
+        EXPECT_FLOAT_EQ(radii.y_top_right, expected_y);
+        EXPECT_FLOAT_EQ(radii.x_bottom_right, expected_x);
+        EXPECT_FLOAT_EQ(radii.y_bottom_right, expected_y);
+        EXPECT_FLOAT_EQ(radii.x_bottom_left, expected_x);
+        EXPECT_FLOAT_EQ(radii.y_bottom_left, expected_y);
+      }
+    }
+  }
+}
+
+TEST_F(FragmentTest, ShortSideBorderRadiusFitsPairsIndependently) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  auto* style = element->computed_css_style()->GetLayoutComputedStyle();
+  style->surround_data_.border_data_ = starlight::BordersData();
+  auto& border = *style->surround_data_.border_data_;
+  element->computed_css_style()->SetValue(
+      kPropertyIDXBorderRadiusMode,
+      CSSValue(starlight::XBorderRadiusModeType::kShortSide));
+  border.radius_x_top_left = border.radius_y_top_left =
+      starlight::NLength::MakePercentageNLength(80.f);
+  border.radius_x_bottom_left = border.radius_y_bottom_left =
+      starlight::NLength::MakeUnitNLength(80.f);
+  border.radius_x_top_right = border.radius_y_top_right =
+      starlight::NLength::MakeCalcNLength(10.f, 10.f);
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(200.f, 100.f);
+  fragment.UpdateLayout(layout);
+  const auto& radii = *fragment.LayoutResult().border_radius_info;
+  EXPECT_FLOAT_EQ(radii.x_top_left, 50.f);
+  EXPECT_FLOAT_EQ(radii.y_bottom_left, 50.f);
+  EXPECT_FLOAT_EQ(radii.x_top_right, 20.f);
+  EXPECT_FLOAT_EQ(radii.y_top_right, 20.f);
+  EXPECT_FLOAT_EQ(radii.x_bottom_right, 0.f);
+}
+
+TEST_F(FragmentTest, LongSideBorderRadiusMixedUnitsAndGlobalOverlapReduction) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  auto* style = element->computed_css_style()->GetLayoutComputedStyle();
+  style->surround_data_.border_data_ = starlight::BordersData();
+  auto& border = *style->surround_data_.border_data_;
+  element->computed_css_style()->SetValue(
+      kPropertyIDXBorderRadiusMode,
+      CSSValue(starlight::XBorderRadiusModeType::kLongSide));
+  border.radius_x_top_left = border.radius_y_top_left =
+      starlight::NLength::MakePercentageNLength(20.f);
+  border.radius_x_bottom_left = border.radius_y_bottom_left =
+      starlight::NLength::MakeUnitNLength(10.f);
+  border.radius_x_top_right = border.radius_y_top_right =
+      starlight::NLength::MakeCalcNLength(10.f, 10.f);
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(200.f, 100.f);
+  fragment.UpdateLayout(layout);
+  ASSERT_TRUE(fragment.LayoutResult().border_radius_info.has_value());
+  const auto& initial = *fragment.LayoutResult().border_radius_info;
+  EXPECT_FLOAT_EQ(initial.x_top_left, 40.f);
+  EXPECT_FLOAT_EQ(initial.y_bottom_left, 10.f);
+  EXPECT_FLOAT_EQ(initial.x_top_right, 30.f);
+  EXPECT_FLOAT_EQ(initial.y_top_right, 30.f);
+
+  border.radius_x_top_left = border.radius_y_top_left =
+      starlight::NLength::MakePercentageNLength(80.f);
+  border.radius_x_bottom_left = border.radius_y_bottom_left =
+      starlight::NLength::MakeUnitNLength(80.f);
+  fragment.UpdateLayout(layout);
+  const auto& radii = *fragment.LayoutResult().border_radius_info;
+  // The left pair exceeds the height; scale every corner by 100 / 240.
+  EXPECT_FLOAT_EQ(radii.x_top_left, 160.f * (100.f / 240.f));
+  EXPECT_FLOAT_EQ(radii.y_bottom_left, 80.f * (100.f / 240.f));
+  EXPECT_FLOAT_EQ(radii.x_top_right, 12.5f);
+  EXPECT_FLOAT_EQ(radii.y_top_right, 12.5f);
+  EXPECT_FLOAT_EQ(radii.x_bottom_right, 0.f);
+}
+
+TEST_F(FragmentTest, BorderRadiusModeStyleUpdatesAndResetsWithoutLayout) {
+  auto element = manager->CreateFiberView();
+  auto& fragment = *element->fragment_impl();
+  auto* style = element->computed_css_style()->GetLayoutComputedStyle();
+  style->surround_data_.border_data_ = starlight::BordersData();
+  auto& border = *style->surround_data_.border_data_;
+  border.radius_x_top_left = border.radius_y_top_left =
+      starlight::NLength::MakePercentageNLength(20.f);
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(200.f, 100.f);
+  fragment.UpdateLayout(layout);
+  EXPECT_FLOAT_EQ(fragment.LayoutResult().border_radius_info->x_top_left, 40.f);
+  EXPECT_FLOAT_EQ(fragment.LayoutResult().border_radius_info->y_top_left, 20.f);
+
+  for (bool remove : {false, true}) {
+    for (auto mode : {starlight::XBorderRadiusModeType::kLongSide,
+                      starlight::XBorderRadiusModeType::kShortSide}) {
+      fragment.ClearPaintDirtyState();
+      element->SetStyleInternal(kPropertyIDXBorderRadiusMode, CSSValue(mode));
+      EXPECT_TRUE(fragment.NeedRedraw());
+      DisplayListBuilder builder;
+      fragment.DrawFull(builder);
+      const float expected =
+          mode == starlight::XBorderRadiusModeType::kLongSide ? 40.f : 20.f;
+      EXPECT_FLOAT_EQ(fragment.LayoutResult().border_radius_info->x_top_left,
+                      expected);
+      EXPECT_FLOAT_EQ(fragment.LayoutResult().border_radius_info->y_top_left,
+                      expected);
+    }
+
+    fragment.ClearPaintDirtyState();
+    if (remove) {
+      element->ResetStyleInternal(kPropertyIDXBorderRadiusMode);
+    } else {
+      element->SetStyleInternal(
+          kPropertyIDXBorderRadiusMode,
+          CSSValue(starlight::XBorderRadiusModeType::kAuto));
+    }
+    EXPECT_TRUE(fragment.NeedRedraw());
+    DisplayListBuilder auto_builder;
+    fragment.DrawFull(auto_builder);
+    EXPECT_FLOAT_EQ(fragment.LayoutResult().border_radius_info->x_top_left,
+                    40.f);
+    EXPECT_FLOAT_EQ(fragment.LayoutResult().border_radius_info->y_top_left,
+                    20.f);
+  }
+}
+
+TEST_F(FragmentTest, BorderRadiusModesShareBackgroundAndClipGeometry) {
+  auto element = manager->CreateFiberText("text");
+  Fragment fragment(element.get());
+  auto* style = element->computed_css_style();
+  style->background_data_ = starlight::BackgroundData();
+  style->background_data_->color = 0xFFFF0000;
+  style->origin_overflow_ = starlight::ComputedCSSStyle::OVERFLOW_HIDDEN;
+  auto* layout_style = style->GetLayoutComputedStyle();
+  layout_style->surround_data_.border_data_ = starlight::BordersData();
+  auto& border = *layout_style->surround_data_.border_data_;
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(200.f, 100.f);
+  layout.border_ = starlight::DirectionValue<float>({1.f, 2.f, 3.f, 4.f});
+  for (auto mode : {starlight::XBorderRadiusModeType::kShortSide,
+                    starlight::XBorderRadiusModeType::kLongSide}) {
+    style->SetValue(kPropertyIDXBorderRadiusMode, CSSValue(mode));
+    border.radius_x_top_left = border.radius_y_top_left =
+        starlight::NLength::MakePercentageNLength(50.f);
+    fragment.UpdateLayout(layout);
+    for (float percent : {20.f, 80.f}) {
+      // Change only the radius style: drawing must not rely on another layout.
+      border.radius_x_top_left = border.radius_y_top_left =
+          starlight::NLength::MakePercentageNLength(percent);
+      const float reference =
+          mode == starlight::XBorderRadiusModeType::kLongSide ? 200.f : 100.f;
+      const float expected = std::min(reference * percent / 100.f, 100.f);
+      DisplayListBuilder builder;
+      fragment.DrawFull(builder);
+      auto items = CollectDisplayListItems(builder.Build());
+      bool saw_background_box = false;
+      bool saw_clip = false;
+      for (const auto& item : items) {
+        if (item.type == DisplayListOpType::kRecordBox &&
+            item.payload.record_box.w == 200.f) {
+          EXPECT_FLOAT_EQ(item.payload.record_box.radii[0], expected);
+          EXPECT_FLOAT_EQ(item.payload.record_box.radii[1], expected);
+          saw_background_box = true;
+        } else if (item.type == DisplayListOpType::kClipRect) {
+          EXPECT_FLOAT_EQ(item.payload.clip_rect.radii[0], expected - 1.f);
+          EXPECT_FLOAT_EQ(item.payload.clip_rect.radii[1], expected - 3.f);
+          saw_clip = true;
+        }
+      }
+      EXPECT_TRUE(saw_background_box);
+      EXPECT_TRUE(saw_clip);
+    }
+  }
+}
+
 TEST_F(FragmentTest, TestUpdateLayoutAndDefineBoxAndDrawImage) {
   auto element = manager->CreateFiberImage("image");
   element->SetAttributeInternal("src", lepus::Value("image-src://"));
