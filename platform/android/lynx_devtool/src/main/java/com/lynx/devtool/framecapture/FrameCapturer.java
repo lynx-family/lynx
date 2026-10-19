@@ -29,6 +29,8 @@ public abstract class FrameCapturer {
   protected WeakReference<View> mView;
   protected long mLastScreenshotTime;
   protected volatile String mScreenshotBitmapDataCache;
+  // Time the latest capture request waited in the main looper before running (trace only).
+  protected volatile long mUiQueueDelayNs;
   protected FrameChangeListener mFrameChangeListener;
   private final Runnable mCallback;
 
@@ -107,9 +109,11 @@ public abstract class FrameCapturer {
     mLastScreenshotTime = currentTime;
 
     // post a message to main looper
+    final long postedNs = System.nanoTime();
     UIThreadUtils.runOnUiThread(new Runnable() {
       @Override
       public void run() {
+        mUiQueueDelayNs = System.nanoTime() - postedNs;
         View view = mView.get();
         if (view == null) {
           return;
