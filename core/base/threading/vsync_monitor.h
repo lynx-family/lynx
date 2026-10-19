@@ -52,6 +52,8 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
 
   void BindTaskRunner(const fml::RefPtr<fml::TaskRunner> &runner);
 
+  const fml::RefPtr<fml::TaskRunner> &GetTaskRunner() const { return runner_; }
+
   void StopVSync();
 
   virtual void RequestVSyncOnUIThread(Callback callback){};

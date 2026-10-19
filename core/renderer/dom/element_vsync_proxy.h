@@ -37,7 +37,9 @@ class ElementVsyncProxy
 
   void RequestNextFrame();
   void CancelBackgroundFrame() {
-    background_timer_.Stop();
+    if (background_timer_) {
+      background_timer_->Stop();
+    }
     background_frame_time_ = fml::TimePoint::Max();
   }
 
@@ -69,7 +71,7 @@ class ElementVsyncProxy
  private:
   void ScheduleBackgroundFrame(fml::TimePoint next);
 
-  fml::OneshotTimer background_timer_;
+  std::unique_ptr<fml::OneshotTimer> background_timer_;
   fml::TimePoint background_frame_time_{fml::TimePoint::Max()};
   fml::TimePoint last_background_event_time_{fml::TimePoint::Min()};
   // It marks whether has requested next frame time.
