@@ -79,6 +79,10 @@ class RecordingMockPaintingContextPlatformRef
     }
   }
 
+  void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override {
+    completion_events_->push_back("SetNeedMarkPaintEndTiming");
+  }
+
   int touch_pseudo_update_count_{0};
 
  private:
@@ -215,6 +219,46 @@ TEST_P(ElementManagerNoPatchTest, PublishesCompletionForLayoutInElement) {
   EXPECT_EQ(painting_context->completion_events_, expected_events);
   EXPECT_EQ(painting_context->HasFlushed(), layout_in_element);
   EXPECT_FALSE(options->has_layout);
+}
+
+TEST_F(ElementManagerTest, ReuseEngineNoPatchCompletesSetupTiming) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  manager->painting_context()->OnFirstScreen();
+  painting_context->completion_events_.clear();
+  manager->need_layout_ = false;
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->is_reuse_engine = true;
+  options->need_timestamps = true;
+  manager->OnPatchFinishForFiber(
+      options, [](bool has_patch) { EXPECT_FALSE(has_patch); }, page.get());
+
+  EXPECT_EQ(painting_context->completion_events_,
+            (std::vector<std::string>{"FinishTasm", "FinishLayout",
+                                      "SetNeedMarkPaintEndTiming"}));
+}
+
+TEST_F(ElementManagerTest, RegularNoPatchDoesNotRequestPaintEndTiming) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  manager->painting_context()->OnFirstScreen();
+  painting_context->completion_events_.clear();
+  manager->need_layout_ = false;
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->need_timestamps = true;
+  manager->OnPatchFinishForFiber(
+      options, [](bool has_patch) { EXPECT_FALSE(has_patch); }, page.get());
+
+  EXPECT_EQ(painting_context->completion_events_,
+            (std::vector<std::string>{"FinishTasm", "FinishLayout"}));
 }
 
 INSTANTIATE_TEST_SUITE_P(NoPatch, ElementManagerNoPatchTest,
