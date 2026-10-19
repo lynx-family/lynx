@@ -6,12 +6,24 @@ import("//build/util/write_cmake_config.gni")
 import("../config.gni")
 import("Lynx.gni")
 
+config("native_generated_headers_config") {
+  include_dirs = lynx_native_codegen_include_dirs
+}
+
+group("native_generated_headers") {
+  public_deps = [
+    "build:gen_error_code",
+    "services/feature_count:gen_feature_count",
+  ]
+  public_configs = [ ":native_generated_headers_config" ]
+}
+
 # This target is used to contain configs that are required globally.
 # This config is added to the basic xxx_source_set template.
 # If you are using the basic xxx_source_set template, you do not need to add this config.
 config("lynx_public_config") {
   ldflags = []
-  include_dirs = []
+  include_dirs = lynx_native_codegen_include_dirs
   cflags = []
   defines = []
   include_dirs += [

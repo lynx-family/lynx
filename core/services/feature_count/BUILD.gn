@@ -2,15 +2,44 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+native_codegen_specs = {
+  import("//build_overrides/core.gni")
+}
+
 import("//${lynx_dir}/build_overrides/services_files.gni")
 import("../../Lynx.gni")
 
+action("gen_feature_count") {
+  script = "../../../tools/feature_count/generate_feature_count.py"
+  inputs = native_codegen_specs.lynx_feature_count_spec_files + [
+             "../../../tools/feature_count/base.py",
+             "../../../tools/feature_count/code_generator.py",
+             "../../../tools/feature_count/java_generator.py",
+             "../../../tools/feature_count/native_generator.py",
+             "../../../tools/feature_count/objc_generator.py",
+             "../../../tools/feature_count/typescript_generator.py",
+           ]
+
+  # The CMake exporter tracks sources rather than inputs for action rebuilds.
+  sources = inputs + [ script ]
+  outputs = [ "$target_gen_dir/core/services/feature_count/feature.h" ]
+  args = [ "--spec-files" ] +
+         rebase_path(native_codegen_specs.lynx_feature_count_spec_files,
+                     root_build_dir) +
+         [
+           "--lang",
+           "cpp",
+           "--output-root",
+           rebase_path(target_gen_dir, root_build_dir),
+         ]
+}
+
 feature_count_shared_sources = [
-                                 "feature.h",
                                  "feature_counter.h",
                                  "global_feature_counter.cc",
                                  "global_feature_counter.h",
-                               ] + feature_count_extend_shared_sources
+                               ] + feature_count_extend_shared_sources +
+                               get_target_outputs(":gen_feature_count")
 
 if (is_android) {
   feature_count_shared_sources += [ "android/feature_counter_android.cc" ]
@@ -19,6 +48,7 @@ if (is_android) {
 lynx_core_source_set("feature_count") {
   sources = feature_count_shared_sources
   deps = [
+    ":gen_feature_count",
     "../../../base/src:base_log_headers",
     "../trace:service_trace",
   ]

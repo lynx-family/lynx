@@ -767,7 +767,7 @@ subspec_target("Native") {
     if (enable_inspector) {
       GCC_PREPROCESSOR_DEFINITIONS = [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
     }
-    HEADER_SEARCH_PATHS = Native_includes
+    HEADER_SEARCH_PATHS = Native_includes + lynx_native_codegen_include_dirs
   }
   dependency = [ "Lynx/Gfx" ]
   if (enable_recorder) {

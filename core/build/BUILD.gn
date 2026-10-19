@@ -1,11 +1,66 @@
 # Copyright 2020 The Lynx Authors. All rights reserved.
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
+native_codegen_specs = {
+  import("//build_overrides/core.gni")
+}
+
 import("../Lynx.gni")
 
+action("gen_error_code") {
+  script = "../../tools/error_code/gen_error_code.py"
+  inputs =
+      native_codegen_specs.lynx_error_code_spec_files + [
+        "../../tools/error_code/common.py",
+        "../../tools/error_code/checker/__init__.py",
+        "../../tools/error_code/checker/base.py",
+        "../../tools/error_code/checker/error_code_def_checker.py",
+        "../../tools/error_code/checker/metadata_checker.py",
+        "../../tools/error_code/checker/spec_checker.py",
+        "../../tools/error_code/generator/__init__.py",
+        "../../tools/error_code/generator/base_generator.py",
+        "../../tools/error_code/generator/code_generator.py",
+        "../../tools/error_code/generator/android/__init__.py",
+        "../../tools/error_code/generator/android/android_base.py",
+        "../../tools/error_code/generator/android/android_generator.py",
+        "../../tools/error_code/generator/android/behavior_file_generator.py",
+        "../../tools/error_code/generator/android/sub_code_file_generator.py",
+        "../../tools/error_code/generator/darwin/__init__.py",
+        "../../tools/error_code/generator/darwin/behavior_header_generator.py",
+        "../../tools/error_code/generator/darwin/behavior_src_generator.py",
+        "../../tools/error_code/generator/darwin/darwin_base.py",
+        "../../tools/error_code/generator/darwin/darwin_generator.py",
+        "../../tools/error_code/generator/darwin/sub_code_header_generator.py",
+        "../../tools/error_code/generator/darwin/sub_code_src_generator.py",
+        "../../tools/error_code/generator/harmony/__init__.py",
+        "../../tools/error_code/generator/harmony/behavior_file_generator.py",
+        "../../tools/error_code/generator/harmony/harmony_common.py",
+        "../../tools/error_code/generator/harmony/harmony_generator.py",
+        "../../tools/error_code/generator/harmony/sub_code_file_generator.py",
+        "../../tools/error_code/generator/native/__init__.py",
+        "../../tools/error_code/generator/native/native_common.py",
+        "../../tools/error_code/generator/native/native_generator.py",
+        "../../tools/error_code/generator/native/sub_code_header_generator.py",
+        "../../tools/error_code/generator/native/sub_code_src_generator.py",
+        "../../tools/error_code/generator/typescript/__init__.py",
+        "../../tools/error_code/generator/typescript/ts_generator.py",
+      ]
+
+  # The CMake exporter tracks sources rather than inputs for action rebuilds.
+  sources = inputs + [ script ]
+  outputs = lynx_error_code_generated_sources
+  args = [ "--spec-files" ] +
+         rebase_path(native_codegen_specs.lynx_error_code_spec_files,
+                     root_build_dir) +
+         [
+           "--lang",
+           "cpp",
+           "--output-root",
+           rebase_path(target_gen_dir, root_build_dir),
+         ]
+}
+
 lynx_core_source_set("build") {
-  sources = [
-    "gen/lynx_sub_error_code.cc",
-    "gen/lynx_sub_error_code.h",
-  ]
+  sources = get_target_outputs(":gen_error_code")
+  deps = [ ":gen_error_code" ]
 }

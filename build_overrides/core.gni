@@ -5,3 +5,8 @@
 # Optional source replacements for lynx_core_source_set. Each entry contains
 # source and replacement fields using source-absolute GN paths (//...).
 lynx_core_source_overrides = []
+
+lynx_feature_count_spec_files =
+    rebase_path([ "../tools/feature_count/specification.yaml" ])
+lynx_error_code_spec_files =
+    rebase_path([ "../tools/error_code/error_code.yaml" ])
