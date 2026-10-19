@@ -98,7 +98,9 @@ class LayerTree {
   void ResetServiceManagerForAnimation();
   void SetAnimationHost(std::shared_ptr<AnimationHost> animation_host);
 
-  bool DoAnimations();
+  // Advances raster animations to the supplied presentation time in
+  // milliseconds.
+  bool DoAnimations(int64_t frame_time);
   bool HasAnimations() const;
 
   bool HasPlatformViewLayer() const { return has_platform_view_layer_; }

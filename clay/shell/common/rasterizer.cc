@@ -161,12 +161,7 @@ RasterStatus Rasterizer::DrawLastLayerTree() {
   if (!last_layer_tree_ || !surface_) {
     return RasterStatus::kFailed;
   }
-  RasterStatus raster_status = RasterStatus::kFailed;
-  if (!last_layer_tree_->DoAnimations()) {
-    raster_frame_service_->RequestRasterFrame();
-  }
-  raster_status = DrawToSurface(nullptr, *last_layer_tree_);
-  return raster_status;
+  return DrawToSurface(nullptr, *last_layer_tree_);
 }
 
 RasterStatus Rasterizer::Draw(std::shared_ptr<LayerTree> layer_tree,
@@ -240,7 +235,10 @@ RasterStatus Rasterizer::DoDraw(
     if (last_layer_tree_ != layer_tree) {
       layer_tree->MergeAnimations(last_layer_tree_.get());
     }
-    need_next_animation_frame = !layer_tree->DoAnimations();
+    const int64_t frame_time = frame_timings_recorder->GetVsyncTargetTime()
+                                   .ToEpochDelta()
+                                   .ToMilliseconds();
+    need_next_animation_frame = !layer_tree->DoAnimations(frame_time);
   }
 
   RasterStatus raster_status =
