@@ -8,12 +8,16 @@
 #include <stddef.h>
 
 #include "base/include/fml/macros.h"
+#include "clay/flow/animation/animation_host.h"
+#include "clay/flow/animation/animation_mutator.h"
 #include "clay/flow/compositor_context.h"
 #include "clay/flow/layers/clip_rect_layer.h"
 #include "clay/flow/layers/container_layer.h"
 #include "clay/flow/layers/layer_tree.h"
+#include "clay/flow/layers/opacity_layer.h"
 #include "clay/flow/raster_cache.h"
 #include "clay/flow/testing/mock_layer.h"
+#include "clay/gfx/animation/transition_manager.h"
 #include "clay/gfx/skity_to_skia_utils.h"
 #include "clay/testing/canvas_test.h"
 #include "clay/testing/mock_canvas.h"
@@ -75,6 +79,35 @@ TEST_F(LayerTreeTest, BeginRetainedPrerollWithoutRootLayerIsNoOp) {
   layer_tree().BeginRetainedPreroll();
 
   EXPECT_EQ(layer_tree().retained_preroll_generation(), 0u);
+}
+
+TEST_F(LayerTreeTest, DoAnimationsUsesProvidedFrameTime) {
+  auto layer = std::make_shared<OpacityLayer>(0, skity::Vec2{0.0f, 0.0f});
+  auto mutator = AnimationMutator::Create(
+      ElementId(1), AnimationMutatorType::kOpacity, layer.get());
+  auto transition_manager = std::make_unique<TransitionManager>(mutator.get());
+  TransitionData transition;
+  transition.duration = 1000;
+  transition.property = ClayAnimationPropertyType::kOpacity;
+  transition_manager->AppendData(transition);
+  ASSERT_TRUE(transition_manager->TransitionTo(
+      ClayAnimationPropertyType::kOpacity, 1.0f));
+  mutator->AddTransitionManager(std::move(transition_manager));
+
+  auto animation_host = std::make_shared<AnimationHost>();
+  animation_host->AddAnimationMutator(layer.get(), mutator);
+  layer_tree().SetAnimationHost(std::move(animation_host));
+
+  EXPECT_TRUE(mutator->HasAnimationRunning());
+  EXPECT_FALSE(layer_tree().DoAnimations(1000));
+  EXPECT_FLOAT_EQ(mutator->asOpacity()->alpha(), 0.0f);
+
+  EXPECT_FALSE(layer_tree().DoAnimations(1500));
+  EXPECT_FLOAT_EQ(mutator->asOpacity()->alpha(), 127.5f);
+
+  EXPECT_TRUE(layer_tree().DoAnimations(2000));
+  EXPECT_FLOAT_EQ(mutator->asOpacity()->alpha(), 255.0f);
+  EXPECT_FALSE(mutator->HasAnimationRunning());
 }
 
 TEST_F(LayerTreeTest, Simple) {
