@@ -741,12 +741,8 @@ void FlutterWindowsView::CreateRenderSurface() {
     PhysicalWindowBounds bounds = binding_handler_->GetPhysicalWindowBounds();
     bool enable_vsync = binding_handler_->NeedsVSync();
     const bool is_implicit_view = view_id_ == kImplicitViewId;
-    // Keep the implicit view compatible with Win32 window capture while
-    // retaining DirectComposition for overlay views.
     const auto surface_type =
-        is_implicit_view
-            ? egl::GLImplementationType::kAngleEGL
-            : egl::GLImplementationType::kAngleEGLDirectComposition;
+        egl::GLImplementationType::kAngleEGLDirectComposition;
     const HWND surface_window = is_implicit_view
                                     ? GetWindowHandle()
                                     : std::get<HWND>(*GetRenderTarget());
