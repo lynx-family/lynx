@@ -602,13 +602,19 @@ CSSValue CSSStringParser::ParseFontWeight() {
   return CSSValue(std::move(result));
 }
 
-CSSValue CSSStringParser::ParseFontLength() {
+CSSValue CSSStringParser::ParseNumberOrLength() {
   Advance();
   if (Check(TokenType::TOKEN_EOF)) {
     return CSSValue();
   }
   auto res = CSSValue();
-  LengthTo(res);
+  Token token;
+  // Preserve scalars for grammars such as line-height and calc operands.
+  if (NumberValue(token)) {
+    res.SetNumber(TokenToDouble(token), CSSValuePattern::NUMBER);
+  } else {
+    LengthTo(res);
+  }
   if (!Check(TokenType::TOKEN_EOF)) {
     return CSSValue();
   }
@@ -781,7 +787,11 @@ CSSValue CSSStringParser::TokenToLength(const Token &token) {
 
 void CSSStringParser::TokenToLengthTarget(const Token &token,
                                           CSSValue &css_value) {
-  auto pattern = TokenTypeToENUM(token.type);
+  // Lynx accepts bare numbers as CSS px in length contexts. Keep NUMBER for
+  // other grammars such as flex factors, colors and transform scales.
+  auto pattern = token.type == TokenType::NUMBER
+                     ? static_cast<uint32_t>(CSSValuePattern::PX)
+                     : TokenTypeToENUM(token.type);
   if (pattern == static_cast<uint32_t>(CSSValuePattern::CALC) ||
       pattern == static_cast<uint32_t>(CSSValuePattern::ENV) ||
       pattern == static_cast<uint32_t>(CSSValuePattern::INTRINSIC)) {
@@ -2230,26 +2240,10 @@ bool CSSStringParser::LengthOrPercentageValue(Token &token) {
       ConsumeAndSave(TokenType::AUTO, token)) {
     return true;
   }
+  // Bare numeric lengths are a Lynx extension; the enclosing grammar validates
+  // the remaining tokens, just as it does for an explicit px dimension.
   if (ConsumeAndSave(TokenType::NUMBER, token)) {
-    if (token.IsZero()) {
-      return true;
-    }
-    // For compatibility, we use numbers as valid length
-    if (Check(TokenType::TOKEN_EOF)) {
-      return true;
-    }
-    // engine version >= 2.6
-    if (parser_configs_.enable_length_unit_check) {
-      return false;
-    }
-    // If the next char is white space, comma or slash, can be
-    // resolved to a valid length value, for compatibility
-    const char *next = token.start + token.length;
-    if (next[0] == ' ' || next[0] == '/' || next[0] == ',') {
-      token.type = TokenType::NUMBER;
-      return true;
-    }
-    return false;
+    return true;
   }
 
   if (ConsumeAndSave(TokenType::DIMENSION, token) &&
@@ -3233,7 +3227,7 @@ CSSValue CSSStringParser::ParseFilterValue(starlight::FilterType filter_type) {
     }
     pattern_type = CSSValuePattern::NUMBER;
   } else if (filter_type == starlight::FilterType::kBlur) {
-    pattern_type = static_cast<CSSValuePattern>(TokenTypeToENUM(token.type));
+    return TokenToLength(token);
   }
 
   return CSSValue(value, pattern_type);
@@ -3896,7 +3890,7 @@ bool CSSStringParser::ParseFlex(double &flex_grow, double &flex_shrink,
         } else if (!num || !parser_configs_.enable_length_unit_check) {
           // flex only allows a basis of 0
           // If disable unit check the last number can be basis
-          flex_basis.SetNumber(num, CSSValuePattern::NUMBER);
+          flex_basis.SetNumber(num, CSSValuePattern::PX);
         } else {
           return false;
         }

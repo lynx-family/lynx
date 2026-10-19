@@ -14,6 +14,59 @@
 namespace lynx {
 namespace starlight {
 
+TEST(CssStyleUtils, NumericLengthsUseCssPixelsAtNonUnitDensity) {
+  tasm::CSSParserConfigs configs;
+  // Density 2: physical layout uses two layout units per CSS px, logical layout
+  // uses one. Both must produce the same physical size for all input forms.
+  for (bool physical_layout : {false, true}) {
+    float units_per_px = physical_layout ? 2.f : 1.f;
+    float pixels_per_unit = physical_layout ? 1.f : 2.f;
+    tasm::CssMeasureContext context(
+        375 * units_per_px, units_per_px, pixels_per_unit, 16 * units_per_px,
+        16 * units_per_px, LayoutUnit(375), LayoutUnit(1000));
+    for (const auto& input :
+         {lepus::Value(12.5), lepus::Value("12.5"), lepus::Value("12.5px")}) {
+      auto parsed =
+          tasm::UnitHandler::Process(tasm::kPropertyIDWidth, input, configs);
+      ASSERT_EQ(parsed.size(), 1u);
+      auto length = CSSStyleUtils::ToLength(parsed[tasm::kPropertyIDWidth],
+                                            context, configs);
+      ASSERT_TRUE(length.second);
+      EXPECT_FLOAT_EQ(length.first.GetRawValue(), 12.5f * units_per_px);
+      EXPECT_FLOAT_EQ(length.first.GetRawValue() * pixels_per_unit, 25.f);
+    }
+    auto rpx = CSSStyleUtils::ToLength(
+        tasm::CSSValue(12.5, tasm::CSSValuePattern::RPX), context, configs);
+    ASSERT_TRUE(rpx.second);
+    EXPECT_FLOAT_EQ(rpx.first.GetRawValue() * pixels_per_unit, 12.5f);
+    auto percent = CSSStyleUtils::ToLength(
+        tasm::CSSValue(12.5, tasm::CSSValuePattern::PERCENT), context, configs);
+    ASSERT_TRUE(percent.second);
+    EXPECT_TRUE(percent.first.IsPercent());
+    EXPECT_FLOAT_EQ(percent.first.GetRawValue(), 12.5f);
+  }
+}
+
+TEST(CssStyleUtils, CalcRetainsUnitlessOperands) {
+  tasm::CSSParserConfigs configs;
+  tasm::CssMeasureContext context(1500, 2.f, 1.f, 32, 32, LayoutUnit(1500),
+                                  LayoutUnit(2000));
+  const std::pair<const char*, float> cases[] = {
+      {"calc(10px * 2)", 40},   {"calc(2 * 10px)", 40},
+      {"calc(10px / 2)", 10},   {"calc((2 + 3) * 10px)", 100},
+      {"calc(10px + 2px)", 24}, {"calc(10px - 2px)", 16}};
+  for (const auto& [raw, expected] : cases) {
+    SCOPED_TRACE(raw);
+    auto parsed = tasm::UnitHandler::Process(tasm::kPropertyIDWidth,
+                                             lepus::Value(raw), configs);
+    ASSERT_EQ(parsed.size(), 1u);
+    auto length = CSSStyleUtils::ToLength(parsed[tasm::kPropertyIDWidth],
+                                          context, configs);
+    ASSERT_TRUE(length.second);
+    EXPECT_FLOAT_EQ(length.first.GetRawValue(), expected);
+  }
+}
+
 TEST(CssStyleUtils, SetZIndex) {
   ComputedCSSStyle computed_css_style(1.f, 1.f);
 

@@ -15,7 +15,10 @@ static constexpr float UNDEFINED = 10E20;
 
 HANDLER_IMPL() {
   if (input.IsNumber()) {
-    output.emplace_or_assign(key, input, CSSValuePattern::NUMBER);
+    output.emplace_or_assign(key, input,
+                             key == kPropertyIDLineHeight
+                                 ? CSSValuePattern::NUMBER
+                                 : CSSValuePattern::PX);
     return true;
   }
   if (input.IsString()) {
@@ -24,7 +27,8 @@ HANDLER_IMPL() {
       return true;
     }
     CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
-    auto res = parser.ParseFontLength();
+    auto res = key == kPropertyIDLineHeight ? parser.ParseNumberOrLength()
+                                            : parser.ParseLength();
     if (!res.IsEmpty()) {
       output.insert_or_assign(key, std::move(res));
       return true;

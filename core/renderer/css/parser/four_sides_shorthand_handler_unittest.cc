@@ -126,7 +126,7 @@ TEST(FourSidesShorthandHandler, Handler) {
   impl = lepus::Value("2% 3");
   UnitHandler::Process(id, impl, output, configs);
   EXPECT_TRUE(output[kPropertyIDMarginTop].IsPercent());
-  EXPECT_TRUE(output[kPropertyIDMarginRight].IsNumber());
+  EXPECT_TRUE(output[kPropertyIDMarginRight].IsPx());
 
   // invalid cases.
   output.clear();
