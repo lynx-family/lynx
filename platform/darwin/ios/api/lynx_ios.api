@@ -5998,6 +5998,7 @@ public protocol LynxViewVisibleHelper-p : <NSObject> {
 
 public class LynxWasmFuncRegistry : NSObject {
   public void LynxWasmFuncRegistry::registerWasmFunc:(void *func);
+  public void LynxWasmFuncRegistry::registerQjsWasmFunc:(void *func);
 }
 
 public class LynxWeakProxy : NSProxy {

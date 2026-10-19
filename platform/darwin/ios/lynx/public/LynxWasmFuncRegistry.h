@@ -6,6 +6,13 @@
 
 @interface LynxWasmFuncRegistry : NSObject
 
+// Install the JavaScriptCore WebAssembly registration function pointer.
 + (void)registerWasmFunc:(void*)func;
+
+// Install a non-null QuickJS WebAssembly registration function pointer before
+// the first QuickJS context is created. A null pointer leaves the current
+// registration unchanged. Callers must check respondsToSelector when supporting
+// older Registry implementations without this entry.
++ (void)registerQjsWasmFunc:(void*)func;
 
 @end
