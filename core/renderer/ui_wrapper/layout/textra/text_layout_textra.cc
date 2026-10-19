@@ -317,6 +317,12 @@ void TextLayoutTextra::ApplyTextStyle(Element* element,
                                            &(letter_spacing), sizeof(float));
           break;
         }
+        case kPropertyIDWordBreak: {
+          int word_break = static_cast<int>(text_attributes->word_break);
+          paragraph_builder_->SetTextStyle(kTextPropWordBreak, &word_break,
+                                           sizeof(int));
+          break;
+        }
         case kPropertyIDTextDecoration: {
           //[type,style,color]
           int decoration[3] = {0};
