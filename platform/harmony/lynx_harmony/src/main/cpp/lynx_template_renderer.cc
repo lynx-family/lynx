@@ -347,6 +347,20 @@ void LynxTemplateRenderer::OnEnterBackground() {
   shell_->OnEnterBackground();
 }
 
+void LynxTemplateRenderer::Pause() {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+  shell_->Pause();
+}
+
+void LynxTemplateRenderer::Resume() {
+  if (shell_->IsDestroyed()) {
+    return;
+  }
+  shell_->Resume();
+}
+
 void LynxTemplateRenderer::StartLynxRuntime() {
   if (!shell_ || shell_->IsDestroyed()) {
     return;
@@ -808,6 +822,8 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("setupExtensionDelegate", SetupExtensionDelegate),
       DECLARE_NAPI_METHOD("onEnterForeground", OnEnterForeground),
       DECLARE_NAPI_METHOD("onEnterBackground", OnEnterBackground),
+      DECLARE_NAPI_METHOD("pause", Pause),
+      DECLARE_NAPI_METHOD("resume", Resume),
       DECLARE_NAPI_METHOD("startLynxRuntime", StartLynxRuntime),
       DECLARE_NAPI_METHOD("nativeSetSessionStorageItem", SetSessionStorageItem),
       DECLARE_NAPI_METHOD("nativeGetSessionStorageItem", GetSessionStorageItem),
@@ -2186,6 +2202,38 @@ napi_value LynxTemplateRenderer::OnEnterBackground(napi_env env,
     return nullptr;
   }
   obj->OnEnterBackground();
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::Pause(napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 0;
+  napi_value args[0];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "Pause failed")) {
+    return nullptr;
+  }
+  obj->Pause();
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::Resume(napi_env env, napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 0;
+  napi_value args[0];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "Resume failed")) {
+    return nullptr;
+  }
+  obj->Resume();
   return nullptr;
 }
 

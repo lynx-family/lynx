@@ -1440,6 +1440,20 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [_devTool onEnterBackground];
 }
 
+- (void)pause {
+  LOGI("pause");
+  if (shell_ != nullptr) {
+    shell_->Pause();
+  }
+}
+
+- (void)resume {
+  LOGI("resume");
+  if (shell_ != nullptr) {
+    shell_->Resume();
+  }
+}
+
 - (BOOL)getAutoExpose {
   return _enableAutoExpose && (!pageConfig_ || pageConfig_->GetAutoExpose());
 }

@@ -987,6 +987,18 @@ public class LynxTemplateRender
     return mLynxContext == null ? "" : mLynxContext.getPageVersion();
   }
 
+  public void pause() {
+    if (mNativePtr != 0) {
+      nativePause(mNativePtr, mNativeLifecycle);
+    }
+  }
+
+  public void resume() {
+    if (mNativePtr != 0) {
+      nativeResume(mNativePtr, mNativeLifecycle);
+    }
+  }
+
   public void pauseRootLayoutAnimation() {
     if (mLynxUIRender != null) {
       mLynxUIRender.pauseRootLayoutAnimation();
@@ -4798,6 +4810,10 @@ public class LynxTemplateRender
   private static native void nativeOnEnterForeground(long ptr, long lifecycle);
 
   private static native void nativeOnEnterBackground(long ptr, long lifecycle);
+
+  private static native void nativePause(long ptr, long lifecycle);
+
+  private static native void nativeResume(long ptr, long lifecycle);
 
   // load template && component
   // FIXME(songshourui.null): only use templateData later

@@ -194,6 +194,8 @@ export abstract class LynxNodeController extends NodeController {
   reInitTemplateRenderer(shouldLoadTemplate: boolean): void;
   onEnterForeground(): void;
   onEnterBackground(): void;
+  pause(): void;
+  resume(): void;
   startLynxRuntime(): void;
   prepareForLoadTemplate(): void;
   getCurrentWindow(): Promise<window.Window>;
@@ -334,6 +336,8 @@ export class LynxContext implements IContext {
   public updateViewport(width: number, widthMode: number, height: number, heightMode: number): void;
   public onEnterForeground(): void;
   public onEnterBackground(): void;
+  public pause(): void;
+  public resume(): void;
   public startLynxRuntime(): void;
   public updateScreenMetrics(width: number, height: number): void;
   updateCustomData(data: Record<string, Object>): void;

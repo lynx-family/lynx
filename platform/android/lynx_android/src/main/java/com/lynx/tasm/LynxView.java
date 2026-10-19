@@ -527,6 +527,34 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     mLynxTemplateRender.setAsyncImageInterceptor(interceptor);
   }
 
+  /**
+   * @apidoc
+   * @brief Pause setTimeout, setInterval, requestAnimationFrame and animation
+   * vsync of the current `LynxView`, similar to `WebView.pauseTimers()` but
+   * only affects the current view. Lifecycle events are not triggered.
+   * Timers which become due while paused run after `resume()`.
+   */
+  public void pause() {
+    checkAccessFromNonUiThread("pause");
+    LLog.i(TAG, "pause " + this.toString());
+    if (mLynxTemplateRender != null) {
+      mLynxTemplateRender.pause();
+    }
+  }
+
+  /**
+   * @apidoc
+   * @brief Resume the timers, requestAnimationFrame and animation vsync paused
+   * by `pause()`.
+   */
+  public void resume() {
+    checkAccessFromNonUiThread("resume");
+    LLog.i(TAG, "resume " + this.toString());
+    if (mLynxTemplateRender != null) {
+      mLynxTemplateRender.resume();
+    }
+  }
+
   public void pauseRootLayoutAnimation() {
     if (mLynxTemplateRender == null) {
       return;

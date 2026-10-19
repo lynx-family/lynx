@@ -103,7 +103,13 @@ int64_t LepusComponent::RequestAnimationFrame(
     return sFailInt;
   }
 
-  tasm_->GetDelegate().RequestVsync(
+  RequestVsyncForAnimationFrame();
+
+  return raf_handler_->RequestAnimationFrame(std::move(callback));
+}
+
+void LepusComponent::RequestVsyncForAnimationFrame() {
+  tasm_->RequestVsyncForAnimationFrame(
       reinterpret_cast<uintptr_t>(this),
       fml::MakeCopyable([this, weak = Napi::Weak(NapiObject())](
                             int64_t frame_start, int64_t frame_end) {
@@ -111,8 +117,18 @@ int64_t LepusComponent::RequestAnimationFrame(
           this->DoFrame(frame_start, frame_end);
         }
       }));
+}
 
-  return raf_handler_->RequestAnimationFrame(std::move(callback));
+void LepusComponent::DoAnimationFrame(int64_t time_stamp) {
+  if (tasm_->IsPaused()) {
+    // DoFrame may be triggered by SetData while paused, keep the frame tasks
+    // and run them after resumed.
+    if (raf_handler_->HasPendingRequest()) {
+      RequestVsyncForAnimationFrame();
+    }
+    return;
+  }
+  raf_handler_->DoFrame(time_stamp, tasm_);
 }
 
 void LepusComponent::CancelAnimationFrame(int64_t id) {
@@ -277,7 +293,7 @@ void LepusComponent::DoFrame(int64_t start_time, int64_t end_time) {
 
   // for fiber arch, exec lepus raf task and return.
   if (tasm_->GetPageConfig()->GetEnableFiberArch()) {
-    raf_handler_->DoFrame(cur, tasm_);
+    DoAnimationFrame(cur);
     return;
   }
 
@@ -300,7 +316,7 @@ void LepusComponent::DoFrame(int64_t start_time, int64_t end_time) {
   data_updated_ = lepus::Value();
 
   // second, exec lepus raf task
-  raf_handler_->DoFrame(cur, tasm_);
+  DoAnimationFrame(cur);
 }
 
 Napi::Object LepusComponent::GetStore() {
