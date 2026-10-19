@@ -4,11 +4,20 @@
 
 #import <Lynx/LynxWasmFuncRegistry.h>
 #include "core/runtime/js/jsi/jsc/jsc_context_wrapper.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_context_wrapper.h"
 
 @implementation LynxWasmFuncRegistry
 
 + (void)registerWasmFunc:(void*)func {
   lynx::runtime::js::JSCContextWrapper::register_wasm_func_ =
+      reinterpret_cast<void (*)(void*, void*)>(func);
+}
+
++ (void)registerQjsWasmFunc:(void*)func {
+  if (!func) {
+    return;
+  }
+  lynx::runtime::js::QuickjsContextWrapper::register_wasm_func_ =
       reinterpret_cast<void (*)(void*, void*)>(func);
 }
 
