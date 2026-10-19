@@ -9,7 +9,6 @@
 
 #include <atomic>
 
-#include "base/include/fml/time/time_point.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/flow/embedded_views.h"
 #include "clay/flow/frame_timings.h"
@@ -240,9 +239,8 @@ void LayerTree::MergeAnimations(LayerTree* prev_layer_tree) {
   animation_host_->MergeAnimations(prev_layer_tree->animation_host_.get());
 }
 
-bool LayerTree::DoAnimations() {
-  int64_t now = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
-  return animation_host_ && animation_host_->DoAnimationFrame(now);
+bool LayerTree::DoAnimations(int64_t frame_time) {
+  return animation_host_ && animation_host_->DoAnimationFrame(frame_time);
 }
 
 bool LayerTree::HasAnimations() const {
