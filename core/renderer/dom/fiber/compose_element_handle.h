@@ -27,6 +27,7 @@ enum class ComposeElementKind : int32_t {
   kText = 2,
   kImage = 3,
   kList = 4,
+  kSvg = 5,
   kOverlay = 6,
 };
 
