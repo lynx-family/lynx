@@ -8,7 +8,6 @@
 #include <memory>
 #include <set>
 
-#include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
@@ -23,9 +22,7 @@ namespace tasm {
 ElementVsyncProxy::ElementVsyncProxy(
     ElementManager *element_manager,
     const std::shared_ptr<base::VSyncMonitor> &vsync_monitor)
-    : background_timer_(fml::MessageLoop::GetCurrent().GetTaskRunner()),
-      element_manager_(element_manager),
-      vsync_monitor_(vsync_monitor){};
+    : element_manager_(element_manager), vsync_monitor_(vsync_monitor){};
 
 void ElementVsyncProxy::TickAllElement(fml::TimePoint &frame_time) {
   if (!element_manager_ || element_manager_->IsElementVsyncPaused()) {
@@ -50,7 +47,7 @@ void ElementVsyncProxy::TickAllElement(fml::TimePoint &frame_time) {
 
 void ElementVsyncProxy::SetPreferredFps(const std::string &preferred_fps) {
   set_preferred_fps(preferred_fps);
-  if (preferred_fps == kPreferredFpsHigh) {
+  if (preferred_fps == kPreferredFpsHigh && vsync_monitor_) {
     report::FeatureCounter::Instance()->Count(
         report::LynxFeature::CPP_ENABLE_HIGH_REFRESH_RATE);
     vsync_monitor_->SetHighRefreshRate();
@@ -59,7 +56,8 @@ void ElementVsyncProxy::SetPreferredFps(const std::string &preferred_fps) {
 
 // The first animation starts an infinite loop.
 void ElementVsyncProxy::RequestNextFrame() {
-  if (!element_manager_ || element_manager_->IsPause()) {
+  if (!element_manager_ || element_manager_->IsPause() || !vsync_monitor_ ||
+      !vsync_monitor_->GetTaskRunner()) {
     return;
   }
   if (element_manager_->IsElementVsyncPaused()) {
@@ -68,7 +66,7 @@ void ElementVsyncProxy::RequestNextFrame() {
         element_manager_->ProcessAnimationEvents(now, false));
     return;
   }
-  if (!has_requested_next_frame_ && vsync_monitor_) {
+  if (!has_requested_next_frame_) {
     std::weak_ptr<ElementVsyncProxy> weak_ptr{shared_from_this()};
     vsync_monitor_->ScheduleVSyncSecondaryCallback(
         reinterpret_cast<uintptr_t>(this),
@@ -110,11 +108,20 @@ void ElementVsyncProxy::ScheduleBackgroundFrame(fml::TimePoint next) {
     CancelBackgroundFrame();
     return;
   }
-  if (!background_timer_.Stopped() && background_frame_time_ <= next) {
+  if (!background_timer_) {
+    if (!vsync_monitor_ || !vsync_monitor_->GetTaskRunner()) {
+      return;
+    }
+    // Keep background events on the same runner as foreground animation frames,
+    // including delegate runners without an FML MessageLoop.
+    background_timer_ =
+        std::make_unique<fml::OneshotTimer>(vsync_monitor_->GetTaskRunner());
+  }
+  if (!background_timer_->Stopped() && background_frame_time_ <= next) {
     return;
   }
   background_frame_time_ = next;
-  background_timer_.Start(
+  background_timer_->Start(
       std::max(next - fml::TimePoint::Now(),
                fml::TimeDelta::FromMilliseconds(1)),
       [weak = weak_from_this()]() {

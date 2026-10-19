@@ -7,8 +7,10 @@
 #include <functional>
 #include <memory>
 #include <thread>
+#include <utility>
 
 #include "base/include/fml/message_loop.h"
+#include "base/include/fml/task_runner_delegate.h"
 #include "core/animation/animation.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/keyframe_effect.h"
@@ -203,6 +205,50 @@ TEST_F(ElementVsyncProxyTest, TickAllElement) {
   test_vsync_proxy->set_preferred_fps("auto");
   auto time2 = fml::TimePoint::Now();
   test_vsync_proxy->TickAllElement(time2);
+}
+
+TEST_F(ElementVsyncProxyTest, DelegateRunnerWithoutMessageLoop) {
+  // Element's debug thread checker initializes a loop; prepare it here.
+  auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
+  AddBackgroundAnimation(element.get(), "delegate", 100);
+  element->data_model()->SetStaticEvent("bindEvent", "animationstart", "start");
+  element->data_model()->SetStaticEvent("bindEvent", "animationiteration",
+                                        "iteration");
+  std::thread([&]() {
+    ASSERT_EQ(fml::MessageLoop::IsInitializedForCurrentThread(), nullptr);
+    class Delegate : public fml::TaskRunnerDelegate {
+     public:
+      void PostDelayedTask(base::closure task, int64_t delay) override {
+        pending_task = std::move(task);
+      }
+      bool RunsTasksOnCurrentThread() override { return true; }
+      base::closure pending_task;
+    } delegate;
+    auto runner = fml::MakeRefCounted<fml::TaskRunner>(nullptr);
+    runner->SetDelegate(&delegate);
+    vsync_monitor_->BindTaskRunner(runner);
+
+    manager->RequestNextFrame(element.get());
+    vsync_monitor_->TriggerVsync();
+    EXPECT_EQ(element->element_tick_count, 1);
+    EXPECT_EQ(fml::MessageLoop::IsInitializedForCurrentThread(), nullptr);
+
+    manager->SetElementVsyncPaused(true);
+    manager->RequestNextFrame(element.get());
+    ASSERT_TRUE(delegate.pending_task);
+    auto task = std::move(delegate.pending_task);
+    task();
+    EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationstart");
+    EXPECT_EQ(element->element_tick_count, 1);
+
+    manager->StopAnimationVsync();
+    tasm_mediator->ClearAnimationEvent();
+    ASSERT_TRUE(delegate.pending_task);
+    task = std::move(delegate.pending_task);
+    task();
+    EXPECT_TRUE(tasm_mediator->not_received_any_event());
+    EXPECT_FALSE(delegate.pending_task);
+  }).join();
 }
 
 TEST_F(ElementVsyncProxyTest, StoppedPageIgnoresQueuedFrame) {
