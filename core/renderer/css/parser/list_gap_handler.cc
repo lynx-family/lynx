@@ -12,6 +12,10 @@ namespace tasm {
 namespace ListGapHandler {
 
 HANDLER_IMPL() {
+  if (input.IsNumber()) {
+    output.emplace_or_assign(key, input, CSSValuePattern::PX);
+    return true;
+  }
   if (input.IsString()) {
     CSSStringParser parser = CSSStringParser::FromLepusString(input, configs);
     auto res = parser.ParseListGap();

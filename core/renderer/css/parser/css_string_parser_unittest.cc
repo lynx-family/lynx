@@ -408,7 +408,7 @@ TEST(CSSStringParser, length_valid_and_value) {
   CSSValue lengths[] = {
       make_a_length(static_cast<int>(starlight::LengthValueType::kAuto), ENUM),
       make_a_length("max-content", INTRINSIC),
-      make_a_length(0, NUMBER),
+      make_a_length(0, PX),
       make_a_length(0, PX),
       make_a_length(10, PERCENT),
       make_a_length(0.5, EM),
@@ -496,9 +496,8 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
   }
 
   {
-    // <length-percentage>{1,4}. length should have unit or be a percentage
-    // value.
-    std::string raw = R"(inset(10 10 10 10))";
+    // Unknown units remain invalid even though bare numeric lengths are valid.
+    std::string raw = R"(inset(10qu 10 10 10))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
     auto result = parser.ParseShapePath();

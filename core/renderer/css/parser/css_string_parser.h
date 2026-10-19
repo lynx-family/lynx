@@ -172,8 +172,8 @@ class CSSStringParser final {
   /// font-weight [ normal | bold | <number [1, 1000]>{1, 2}
   CSSValue ParseFontWeight();
 
-  /// <length>
-  CSSValue ParseFontLength();
+  /// <number> | <length-percentage>
+  CSSValue ParseNumberOrLength();
 
   /// [ [ <url> [ <x> <y> ]? , ]* [ auto | default | none | ... ] ]
   CSSValue ParseCursor();

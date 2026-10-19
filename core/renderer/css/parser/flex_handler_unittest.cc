@@ -116,7 +116,7 @@ TEST(FlexHandler, Three) {
   EXPECT_EQ(output[kPropertyIDFlexGrow].AsNumber(), 2);
   EXPECT_TRUE(output[kPropertyIDFlexShrink].IsNumber());
   EXPECT_EQ(output[kPropertyIDFlexShrink].AsNumber(), 3);
-  EXPECT_TRUE(output[kPropertyIDFlexBasis].IsNumber());
+  EXPECT_TRUE(output[kPropertyIDFlexBasis].IsPx());
   EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
 
   output.clear();
@@ -129,7 +129,7 @@ TEST(FlexHandler, Three) {
   EXPECT_EQ(output[kPropertyIDFlexGrow].AsNumber(), 2);
   EXPECT_TRUE(output[kPropertyIDFlexShrink].IsNumber());
   EXPECT_EQ(output[kPropertyIDFlexShrink].AsNumber(), 3);
-  EXPECT_TRUE(output[kPropertyIDFlexBasis].IsNumber());
+  EXPECT_TRUE(output[kPropertyIDFlexBasis].IsPx());
   EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 5);
 
   output.clear();

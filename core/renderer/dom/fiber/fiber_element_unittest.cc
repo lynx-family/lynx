@@ -1029,6 +1029,101 @@ TEST_P(FiberElementTest, TestSetOverflow) {
   EXPECT_TRUE(page->computed_css_style()->IsOverflowY());
 }
 
+TEST_P(FiberElementTest, NumericInlineLengthsUseCssPixels) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  for (bool physical_layout : {false, true}) {
+    const float units_per_px = physical_layout ? 2.f : 1.f;
+    const float pixels_per_unit = physical_layout ? 1.f : 2.f;
+    manager->GetLynxEnvConfig() = LynxEnvConfig(
+        750 * units_per_px, 1000 * units_per_px, units_per_px, pixels_per_unit);
+    manager->platform_computed_css()->SetLayoutUnit(pixels_per_unit,
+                                                    units_per_px);
+    manager->UpdateViewport(375 * units_per_px, SLMeasureModeDefinite,
+                            1000 * units_per_px, SLMeasureModeDefinite, true);
+    auto page = manager->CreateFiberPage("page", 11);
+    manager->SetFiberPageElement(page);
+    auto text_style = manager->CreateFiberView();
+    auto object_style = manager->CreateFiberView();
+    auto explicit_px = manager->CreateFiberView();
+    page->InsertNode(text_style);
+    page->InsertNode(object_style);
+    page->InsertNode(explicit_px);
+
+    for (double number : {12.5, 24.0, 0.0}) {
+      SCOPED_TRACE(number);
+      const std::string raw = std::to_string(number);
+      // The compiler's static literal and a runtime string use this same entry.
+      text_style->SetRawInlineStyles(base::String(
+          "width:" + raw + ";font-size:" + raw + ";letter-spacing:" + raw +
+          ";line-spacing:" + raw + ";line-height:1.5"));
+      // Variable objects and subsequent numeric updates use SetStyle.
+      object_style->SetStyle(kPropertyIDWidth, lepus::Value(number));
+      object_style->SetStyle(kPropertyIDFontSize, lepus::Value(number));
+      object_style->SetStyle(kPropertyIDLineHeight, lepus::Value(1.5));
+      object_style->SetStyle(kPropertyIDLetterSpacing, lepus::Value(number));
+      object_style->SetStyle(kPropertyIDLineSpacing, lepus::Value(number));
+      explicit_px->SetRawInlineStyles(base::String(
+          "width:" + raw + "px;font-size:" + raw + "px;letter-spacing:" + raw +
+          "px;line-spacing:" + raw + "px;line-height:1.5"));
+      page->FlushActionsAsRoot();
+      manager->RequestLayout(std::make_shared<PipelineOptions>());
+      for (auto element : {text_style, object_style, explicit_px}) {
+        auto* style = element->computed_css_style();
+        ASSERT_NE(element->slnode(), nullptr);
+        EXPECT_FLOAT_EQ(
+            element->slnode()->GetCSSStyle()->GetWidth().GetRawValue(),
+            number * units_per_px);
+        EXPECT_FLOAT_EQ(
+            element->slnode()->GetLayoutResult().size_.width_ * pixels_per_unit,
+            number * 2);
+        EXPECT_FLOAT_EQ(style->GetFontSize(), number * units_per_px);
+        ASSERT_TRUE(style->GetTextAttributes().has_value());
+        EXPECT_FLOAT_EQ(style->GetTextAttributes()->letter_spacing,
+                        number * units_per_px);
+        EXPECT_FLOAT_EQ(style->GetTextAttributes()->line_spacing,
+                        number * units_per_px);
+        EXPECT_FLOAT_EQ(style->GetTextAttributes()->line_height_factor, 1.5);
+        EXPECT_FLOAT_EQ(style->GetTextAttributes()->computed_line_height,
+                        number * units_per_px * 1.5);
+      }
+    }
+  }
+}
+
+TEST_P(FiberElementTest, NumericVariablesKeepTheirConsumerSemantics) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+  manager->GetLynxEnvConfig() = LynxEnvConfig(1500, 2000, 2.f, 1.f);
+  manager->platform_computed_css()->SetLayoutUnit(1.f, 2.f);
+  manager->UpdateViewport(1500, SLMeasureModeDefinite, 2000,
+                          SLMeasureModeDefinite, true);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  for (const std::string raw : {"2", "3"}) {
+    element->SetRawInlineStyles(
+        base::String("--n:" + raw +
+                     ";width:var(--n);height:var(--n);"
+                     "flex-grow:var(--n);opacity:0.5;line-height:var(--n)"));
+    page->FlushActionsAsRoot();
+    manager->RequestLayout(std::make_shared<PipelineOptions>());
+    auto* style = element->computed_css_style();
+    ASSERT_NE(element->slnode(), nullptr);
+    float number = std::stof(raw);
+    EXPECT_FLOAT_EQ(element->slnode()->GetCSSStyle()->GetWidth().GetRawValue(),
+                    number * 2);
+    EXPECT_FLOAT_EQ(element->slnode()->GetCSSStyle()->GetHeight().GetRawValue(),
+                    number * 2);
+    EXPECT_EQ(element->data_model()->GetCSSVariableValue("--n"),
+              base::String(raw));
+    EXPECT_FLOAT_EQ(style->GetTextAttributes()->line_height_factor, number);
+    EXPECT_FLOAT_EQ(element->slnode()->GetCSSStyle()->GetFlexGrow(), number);
+    EXPECT_FLOAT_EQ(style->GetOpacity(), 0.5);
+  }
+}
+
 TEST_P(FiberElementTest, ReapplyingEquivalentSimpleStylesDoesNotForceUpdate) {
   manager->SetEnableSimpleStyle(true);
   manager->config_->SetEnablePropertyBasedSimpleStyle(true);
