@@ -172,13 +172,14 @@ bool ParseComposeElementKind(const lepus::Value& value, const char* function,
     case ComposeElementKind::kText:
     case ComposeElementKind::kImage:
     case ComposeElementKind::kList:
+    case ComposeElementKind::kSvg:
     case ComposeElementKind::kOverlay:
     case ComposeElementKind::kCustom:
       *result = kind;
       return true;
     default:
       ElementAPIError(
-          "%s kind should be View, Text, Image, List, Overlay or Custom",
+          "%s kind should be View, Text, Image, List, Svg, Overlay or Custom",
           function);
       return false;
   }

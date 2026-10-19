@@ -431,7 +431,7 @@ TEST_P(ModifierElementTest, AcceptsComposeModifierSingletonAsChainEnd) {
 }
 
 TEST_P(ModifierElementTest,
-       OverlayAndCustomBindingsUseNormalModifierAndChildOperations) {
+       BuiltinAndCustomBindingsUseNormalModifierAndChildOperations) {
   auto runtime_ = runtime::MTSRuntime::CreateContext(
       runtime::ContextType::LepusNGContextType);
   ASSERT_NE(runtime_, nullptr);
@@ -461,15 +461,17 @@ TEST_P(ModifierElementTest,
   const struct {
     ComposeElementKind kind;
     const char* tag;
-  } cases[] = {{ComposeElementKind::kOverlay, "overlay"},
+  } cases[] = {{ComposeElementKind::kSvg, "svg"},
+               {ComposeElementKind::kOverlay, "overlay"},
                {ComposeElementKind::kCustom, "sample-widget"},
+               {ComposeElementKind::kCustom, "svg"},
                {ComposeElementKind::kCustom, "overlay"}};
   for (const auto& test_case : cases) {
     runtime_->SetGlobalData("customKind",
                             lepus::Value(static_cast<int>(test_case.kind)));
     runtime_->SetGlobalData("customTag", lepus::Value(test_case.tag));
     EXPECT_TRUE(Eval(R"JS(
-    globalThis.custom = customKind === 6
+    globalThis.custom = customKind !== 0
       ? __CreateCompose(customPageId, customKind)
       : __CreateCompose(customPageId, customKind, customTag);
     globalThis.customChild = __CreateCompose(customPageId, 1);
@@ -517,9 +519,10 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
   padding->SetValue("bottom", lepus::Value(2.0));
 
   const ComposeElementKind kinds[] = {
-      ComposeElementKind::kView,    ComposeElementKind::kText,
-      ComposeElementKind::kImage,   ComposeElementKind::kList,
-      ComposeElementKind::kOverlay, ComposeElementKind::kCustom};
+      ComposeElementKind::kView,  ComposeElementKind::kText,
+      ComposeElementKind::kImage, ComposeElementKind::kList,
+      ComposeElementKind::kSvg,   ComposeElementKind::kOverlay,
+      ComposeElementKind::kCustom};
   for (const auto kind : kinds) {
     auto handle =
         CreateComposeHandle(manager, kind, base::String("sample-widget"));
@@ -538,6 +541,9 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
       case ComposeElementKind::kImage:
         EXPECT_TRUE(owner->is_image());
         EXPECT_TRUE(owner->GetTag().IsEqual(kElementImageTag));
+        break;
+      case ComposeElementKind::kSvg:
+        EXPECT_TRUE(owner->GetTag().IsEqual("svg"));
         break;
       case ComposeElementKind::kOverlay:
         EXPECT_TRUE(owner->GetTag().IsEqual("overlay"));

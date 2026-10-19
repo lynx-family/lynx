@@ -17,6 +17,7 @@ namespace tasm {
 namespace {
 
 constexpr char kOverlayTag[] = "overlay";
+constexpr char kSvgTag[] = "svg";
 
 fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
                                           ComposeElementKind kind,
@@ -32,6 +33,8 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
     case ComposeElementKind::kList:
       return manager->CreateFiberList(tasm, BASE_STATIC_STRING(kElementListTag),
                                       {}, {}, {});
+    case ComposeElementKind::kSvg:
+      return manager->CreateFiberElement(BASE_STATIC_STRING(kSvgTag));
     case ComposeElementKind::kOverlay:
       return manager->CreateFiberElement(BASE_STATIC_STRING(kOverlayTag));
     case ComposeElementKind::kCustom:
