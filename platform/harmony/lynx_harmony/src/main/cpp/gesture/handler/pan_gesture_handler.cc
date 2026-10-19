@@ -85,6 +85,9 @@ void PanGestureHandler::OnHandle(
 }
 
 bool PanGestureHandler::ShouldActivate() {
+  if (status_ >= GestureConstants::LYNX_STATE_FAIL) {
+    return false;
+  }
   float dx = std::abs(last_x_ - start_x_);
   float dy = std::abs(last_y_ - start_y_);
   return dx > min_distance_ || dy > min_distance_;
