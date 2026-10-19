@@ -257,6 +257,38 @@ TEST_F(GestureManagerTest, NoConflict_Tap_Test) {
   }
 }
 
+TEST_F(GestureManagerTest, TouchMovementPolicyDoesNotOverrideArenaLoss) {
+  auto target = std::make_unique<MultiRecognizerHitTestTarget>();
+  auto tap = std::make_unique<TapGestureRecognizer>(gesture_manager());
+  tap->SetAllowTouchMovementCallback([](const PointerEvent&) { return true; });
+  bool tapped = false;
+  tap->SetTapUpCallback([&](const PointerEvent&) { tapped = true; });
+  target->recognizers_.emplace_back(std::move(tap));
+  target->recognizers_.emplace_back(
+      std::make_unique<DragGestureRecognizer>(gesture_manager()));
+  AddHitTestTarget(target.get());
+  auto pointers = CreatePointer(ID(), PointerEvent::EventType::kDownEvent);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+  MovePointer(pointers[0], {20, 0}, kFastMoveTime);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+  UpPointer(pointers[0]);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+  EXPECT_FALSE(tapped);
+}
+
+TEST(GestureManagerListenerTest, AcceptanceWithoutHitBookkeepingStillNotifies) {
+  GestureManager manager;
+  int calls = 0;
+  manager.SetListenerForGestureAccepted(
+      [&](int pointer_id, GestureRecognizerType type) {
+        EXPECT_EQ(pointer_id, 7);
+        EXPECT_EQ(type, GestureRecognizerType::kDragGesture);
+        ++calls;
+      });
+  manager.OnGestureAccepted(7, GestureRecognizerType::kDragGesture);
+  EXPECT_EQ(calls, 1);
+}
+
 TEST_F(GestureManagerTest, PointerDownAfterHitTestListenerRunsForRecognizer) {
   auto target_with_tap = std::make_unique<MultiRecognizerHitTestTarget>();
   auto tap_recognizer =

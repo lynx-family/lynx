@@ -75,6 +75,80 @@ class NestedScrollableTest : public UITest {
   void UISetUp() override {}
 };
 
+class ExtendedTouchPageView : public PageView {
+ public:
+  using PageView::PageView;
+
+ protected:
+  bool ReadTouchTapMovementSetting() const override { return true; }
+};
+
+class ExtendedTouchScrollTest : public NestedScrollableTest {
+ protected:
+  std::unique_ptr<PageView> CreatePageView() override {
+    return std::make_unique<ExtendedTouchPageView>(0, nullptr,
+                                                   ui_task_runner());
+  }
+};
+
+TEST_F_UI(ExtendedTouchScrollTest, ScrollAndFlingStillSuppressTap) {
+  auto* scrollable = new TestScrollable(page_.get(), 100, 1);
+  page_->AddChild(scrollable);
+  page_->SetTapSlop(8);
+  find_view_by_id_callback_ = [scrollable](int id) -> BaseView* {
+    return id == 1 ? scrollable : nullptr;
+  };
+  int taps = 0;
+  touch_event_callback_ = [&](const std::string& name, int) {
+    if (name == "tap") {
+      ++taps;
+    }
+  };
+  DispatchTapEvent({50, 50});
+  EXPECT_EQ(taps, 1);
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {50, 50}),
+       CreatePointer(1, PointerEvent::EventType::kMoveEvent, {50, 35},
+                     {0, -15}),
+       CreatePointer(1, PointerEvent::EventType::kUpEvent, {50, 35})});
+  EXPECT_GT(scrollable->scroll_offset_, 0);
+  EXPECT_EQ(taps, 1);
+
+  page_->nested_scroll_manager()->DragStart(scrollable);
+  page_->nested_scroll_manager()->DragEnd(scrollable, {0, 500});
+  DoAnimation(10);
+  EXPECT_EQ(scrollable->GetScrollStatus(), Scrollable::ScrollStatus::kFling);
+  DispatchTapEvent({50, 50});
+  EXPECT_EQ(taps, 1);
+  DispatchTapEvent({50, 50});
+  EXPECT_EQ(taps, 2);
+}
+
+TEST_F_UI(ExtendedTouchScrollTest, ImmediateScrollRetainsTapMovementThreshold) {
+  auto* scrollable = new TestScrollable(page_.get(), 100, 1);
+  scrollable->SetResolveDragImmediately(true);
+  page_->AddChild(scrollable);
+  page_->SetTapSlop(8);
+  find_view_by_id_callback_ = [scrollable](int id) -> BaseView* {
+    return id == 1 ? scrollable : nullptr;
+  };
+  int taps = 0;
+  touch_event_callback_ = [&](const std::string& name, int) {
+    if (name == "tap") {
+      ++taps;
+    }
+  };
+  // Immediate ownership can consume a tiny vertical delta even though most
+  // movement is horizontal. It must not produce a newly eligible tap.
+  page_->DispatchPointerEvent(
+      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {50, 50}),
+       CreatePointer(1, PointerEvent::EventType::kMoveEvent, {62, 48},
+                     {12, -2}),
+       CreatePointer(1, PointerEvent::EventType::kUpEvent, {62, 48})});
+  EXPECT_GT(scrollable->scroll_offset_, 0);
+  EXPECT_EQ(taps, 0);
+}
+
 PointerEvent CreateWheelEvent(float delta, bool is_precise_scroll) {
   PointerEvent event(PointerEvent::EventType::kSignalEvent);
   event.device = PointerEvent::DeviceType::kMouse;

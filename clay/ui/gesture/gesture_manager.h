@@ -77,6 +77,11 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
 
   void OnGestureAccepted(int pointer_id, GestureRecognizerType type);
 
+  void SetListenerForGestureAccepted(
+      std::function<void(int, GestureRecognizerType)> callback) {
+    gesture_accepted_listener_ = std::move(callback);
+  }
+
   const HitTestResponsiveResult& GetHitTestResponsiveResult() const {
     return hit_test_responsive_result_;
   }
@@ -119,6 +124,7 @@ class GestureManager final : public PixelHelper<kPixelTypeClay>,
   // We need get value from map and judge if it's empty or not set.
   std::map<int, HitTestResult> hit_tests_;
   std::unordered_map<int, GestureRecognizerType> gesture_accepted_map_;
+  std::function<void(int, GestureRecognizerType)> gesture_accepted_listener_;
   const fml::RefPtr<fml::TaskRunner> task_runner_;
 
   FloatPoint down_event_point_;
