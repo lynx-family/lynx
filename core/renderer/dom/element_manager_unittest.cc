@@ -33,14 +33,54 @@ static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
 
+class RecordingMockPaintingContextPlatformRef
+    : public MockPaintingContextPlatformRef {
+ public:
+  explicit RecordingMockPaintingContextPlatformRef(
+      std::vector<std::string>* completion_events)
+      : completion_events_(completion_events) {}
+
+  void UpdateEventInfo(bool has_touch_pseudo) override {
+    if (has_touch_pseudo) {
+      ++touch_pseudo_update_count_;
+      completion_events_->push_back("UpdateEventInfo");
+    }
+  }
+
+  void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override {
+    completion_events_->push_back("SetNeedMarkPaintEndTiming");
+  }
+
+  int touch_pseudo_update_count_{0};
+
+ private:
+  std::vector<std::string>* completion_events_;
+};
+
 class RecordingMockPaintingContext : public MockPaintingContext {
  public:
+  RecordingMockPaintingContext() {
+    platform_ref_ = std::make_shared<RecordingMockPaintingContextPlatformRef>(
+        &completion_events_);
+  }
+
+  void FinishTasmOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {
+    completion_events_.push_back("FinishTasm");
+  }
+
+  void FinishLayoutOperation(
+      const std::shared_ptr<PipelineOptions>& options) override {
+    completion_events_.push_back("FinishLayout");
+  }
+
   void RecordInitialLynxUITreeForReplay(
       std::vector<InitialLynxUITreeNodeForReplay> nodes) override {
     initial_tree_nodes_ = std::move(nodes);
   }
 
   std::vector<InitialLynxUITreeNodeForReplay> initial_tree_nodes_;
+  std::vector<std::string> completion_events_;
 };
 
 const InitialLynxUITreeNodeForReplay* FindInitialTreeNode(
@@ -77,6 +117,46 @@ class ElementManagerTest : public ::testing::Test {
     manager->SetConfig(config);
   }
 };
+
+TEST_F(ElementManagerTest, ReuseEngineNoPatchCompletesSetupTiming) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  manager->painting_context()->OnFirstScreen();
+  painting_context->completion_events_.clear();
+  manager->need_layout_ = false;
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->is_reuse_engine = true;
+  options->need_timestamps = true;
+  manager->OnPatchFinishForFiber(
+      options, [](bool has_patch) { EXPECT_FALSE(has_patch); }, page.get());
+
+  EXPECT_EQ(painting_context->completion_events_,
+            (std::vector<std::string>{"FinishTasm", "FinishLayout",
+                                      "SetNeedMarkPaintEndTiming"}));
+}
+
+TEST_F(ElementManagerTest, RegularNoPatchDoesNotRequestPaintEndTiming) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->FlushActionsAsRoot();
+  manager->painting_context()->OnFirstScreen();
+  painting_context->completion_events_.clear();
+  manager->need_layout_ = false;
+
+  auto options = std::make_shared<PipelineOptions>();
+  options->need_timestamps = true;
+  manager->OnPatchFinishForFiber(
+      options, [](bool has_patch) { EXPECT_FALSE(has_patch); }, page.get());
+
+  EXPECT_EQ(painting_context->completion_events_,
+            (std::vector<std::string>{"FinishTasm", "FinishLayout"}));
+}
 
 TEST_F(ElementManagerTest, CreateFiberPage) {
   auto config = std::make_shared<PageConfig>();
