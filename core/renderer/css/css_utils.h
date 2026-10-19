@@ -7,6 +7,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/include/closure.h"
 #include "core/base/lynx_export.h"
@@ -27,10 +28,8 @@ using DeclarationListConsumeFunction =
 // Returns true if "!important" was found and removed.
 // out_value_start/out_value_length point to the trimmed value without
 // !important.
-LYNX_EXPORT_FOR_DEVTOOL bool StripImportant(const char* value,
-                                            uint32_t value_length,
-                                            const char** out_value_start,
-                                            uint32_t* out_value_length);
+bool StripImportant(const char* value, uint32_t value_length,
+                    const char** out_value_start, uint32_t* out_value_length);
 
 inline std::string MaybeStripImportant(const std::string& value) {
   const char* start;

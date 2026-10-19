@@ -7,7 +7,6 @@
 
 #include "core/inspector/style_sheet.h"
 #include "core/renderer/css/css_property.h"
-#include "core/renderer/css/css_utils.h"
 #include "core/shell/lynx_shell.h"
 #include "devtool/lynx_devtool/element/inspector_css_helper.h"
 #include "third_party/jsoncpp/include/json/json.h"
@@ -51,9 +50,6 @@ enum class ParserState {
 std::string StripSpace(const std::string& str);
 
 bool IsSpace(char letter);
-
-std::string CSSPropertyValueForProtocol(const std::string& value,
-                                        bool important);
 
 bool IsAnimationNameLegal(std::shared_ptr<InspectorElement> ptr,
                           std::string name);
@@ -161,12 +157,6 @@ InspectorStyleSheet StyleTextParser(T ptr, std::string text,
           length--;
         }
 
-        const auto stripped_value =
-            lynx::tasm::MaybeStripImportantAsView(value);
-        temp_css_property.important_ = stripped_value.size() != value.size();
-        if (temp_css_property.important_) {
-          value.resize(stripped_value.size());
-        }
         temp_css_property.name_ = name;
         temp_css_property.value_ = value;
         temp_css_property.text_ = property_text;
@@ -194,11 +184,6 @@ InspectorStyleSheet StyleTextParser(T ptr, std::string text,
       length--;
     }
 
-    const auto stripped_value = lynx::tasm::MaybeStripImportantAsView(value);
-    temp_css_property.important_ = stripped_value.size() != value.size();
-    if (temp_css_property.important_) {
-      value.resize(stripped_value.size());
-    }
     temp_css_property.name_ = name;
     temp_css_property.value_ = value;
     temp_css_property.text_ = property_text;
