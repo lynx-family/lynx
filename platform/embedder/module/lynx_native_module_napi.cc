@@ -303,6 +303,11 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
   napi_value ret = nullptr;
   if (napi_call_function(env_, receiver, func, capi_args.size(),
                          capi_args.data(), &ret) != napi_ok) {
+    // A failed native method can leave an exception pending in the NAPI
+    // environment. Consume it before returning the current invocation error;
+    // otherwise the next unrelated native method is rejected by the stale
+    // exception as well.
+    lynx_napi_report_and_clear_exception(env_);
     return close_scope_with_error("NativeModule: Failed to call napi method.");
   }
   std::unique_ptr<lynx::pub::Value> result = nullptr;
