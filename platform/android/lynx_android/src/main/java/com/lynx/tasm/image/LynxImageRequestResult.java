@@ -9,10 +9,16 @@ import androidx.annotation.Nullable;
 public final class LynxImageRequestResult {
   private final int mErrorCode;
   private final @Nullable Throwable mThrowable;
+  private final int mImageOrigin;
 
   public LynxImageRequestResult(int errorCode, @Nullable Throwable throwable) {
+    this(errorCode, throwable, -1);
+  }
+
+  public LynxImageRequestResult(int errorCode, @Nullable Throwable throwable, int imageOrigin) {
     mErrorCode = errorCode;
     mThrowable = throwable;
+    mImageOrigin = imageOrigin;
   }
 
   public int getErrorCode() {
@@ -22,5 +28,10 @@ public final class LynxImageRequestResult {
   @Nullable
   public Throwable getThrowable() {
     return mThrowable;
+  }
+
+  /** Returns the image loader's origin value, or -1 when unavailable. */
+  public int getImageOrigin() {
+    return mImageOrigin;
   }
 }

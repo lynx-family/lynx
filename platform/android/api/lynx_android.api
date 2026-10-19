@@ -6139,8 +6139,10 @@ public class com::lynx::tasm::image::LynxImageRequestOptions :  {
 
 public class com::lynx::tasm::image::LynxImageRequestResult :  {
   public com.lynx.tasm.image.LynxImageRequestResult.LynxImageRequestResult(int errorCode, @Nullable Throwable throwable);
+  public com.lynx.tasm.image.LynxImageRequestResult.LynxImageRequestResult(int errorCode, @Nullable Throwable throwable, int imageOrigin);
   public int com.lynx.tasm.image.LynxImageRequestResult.getErrorCode();
   public Throwable com.lynx.tasm.image.LynxImageRequestResult.getThrowable();
+  public int com.lynx.tasm.image.LynxImageRequestResult.getImageOrigin();
 }
 
 public class com::lynx::tasm::event::LynxImpressionEvent : com.lynx.tasm.event.LynxCustomEvent {

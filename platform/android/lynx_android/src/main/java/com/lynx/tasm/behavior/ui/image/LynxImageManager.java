@@ -411,7 +411,7 @@ public class LynxImageManager implements Drawable.Callback {
       onImageLoadSuccess(mImageWidth, mImageHeight);
       reportImageSuccess(imageInfo);
       invalidate();
-      onImageRequestFinished(requestInfo, 0, null);
+      onImageRequestFinished(requestInfo, 0, null, imageInfo.getOrigin());
     }
 
     @Override
@@ -431,7 +431,7 @@ public class LynxImageManager implements Drawable.Callback {
       onImageLoadError(lynxError, categoryCode, errorCode);
       reportImageFailure(errorCode, error);
       if (mCurImageRequest != null) {
-        onImageRequestFinished(mCurImageRequest, errorCode, throwable);
+        onImageRequestFinished(mCurImageRequest, errorCode, throwable, IMAGE_ORIGIN_UNKNOWN);
       }
     }
 
@@ -1211,13 +1211,13 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
-  private void onImageRequestFinished(
-      @NonNull ImageRequestInfo requestInfo, int errorCode, @Nullable Throwable throwable) {
+  private void onImageRequestFinished(@NonNull ImageRequestInfo requestInfo, int errorCode,
+      @Nullable Throwable throwable, int imageOrigin) {
     if (mImageRequestDelegate == null || !isHttpImageRequest(requestInfo)) {
       return;
     }
     mImageRequestDelegate.onImageRequestFinished(
-        requestInfo, new LynxImageRequestResult(errorCode, throwable));
+        requestInfo, new LynxImageRequestResult(errorCode, throwable, imageOrigin));
   }
 
   private static boolean isHttpImageRequest(@NonNull ImageRequestInfo requestInfo) {
