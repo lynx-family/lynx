@@ -2140,20 +2140,19 @@ void TemplateAssembler::SendAirComponentEvent(const std::string& event_name,
                                               const lepus::Value& params,
                                               const std::string& param_name) {}
 
-void TemplateAssembler::OnPseudoStatusChanged(int32_t id, uint32_t pre_status,
-                                              uint32_t current_status) {
-  DCHECK(pre_status >= 0 &&
-         pre_status <= std::numeric_limits<PseudoState>::max());
-  DCHECK(current_status >= 0 &&
-         current_status <= std::numeric_limits<PseudoState>::max());
+void TemplateAssembler::OnPseudoStatusesChanged(
+    const std::vector<event::PseudoStatusChange>& changes) {
+  if (changes.empty() || destroyed()) {
+    return;
+  }
   EnsureTouchEventHandler();
   std::shared_ptr<PipelineOptions> current_option =
       std::make_shared<PipelineOptions>();
   PipelineScope pipeline_scope(this, current_option);
 
-  touch_event_handler_->HandlePseudoStatusChanged(
-      id, static_cast<PseudoState>(pre_status),
-      static_cast<PseudoState>(current_status));
+  if (touch_event_handler_->HandlePseudoStatusesChanged(changes)) {
+    page_proxy()->element_manager()->RequestResolve(current_option);
+  }
 }
 
 void TemplateAssembler::SendTouchEvent(const std::string& name,

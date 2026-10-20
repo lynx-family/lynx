@@ -103,8 +103,17 @@
 - (void)onPseudoStatusChanged:(int32_t)tag
                 fromPreStatus:(int32_t)preStatus
               toCurrentStatus:(int32_t)currentStatus {
+  [self onPseudoStatusesChanged:std::vector<lynx::event::PseudoStatusChange>{
+                                    {tag, static_cast<uint32_t>(preStatus),
+                                     static_cast<uint32_t>(currentStatus)}}];
+}
+
+- (void)onPseudoStatusesChanged:(std::vector<lynx::event::PseudoStatusChange>)changes {
+  if (changes.empty()) {
+    return;
+  }
   if (native_engine_proxy_ != nullptr) {
-    native_engine_proxy_->OnPseudoStatusChanged(tag, preStatus, currentStatus);
+    native_engine_proxy_->OnPseudoStatusesChanged(std::move(changes));
   }
 }
 

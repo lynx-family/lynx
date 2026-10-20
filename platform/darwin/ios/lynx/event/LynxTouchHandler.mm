@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxTouchHandler.h>
 #import <UIKit/UIGestureRecognizerSubclass.h>
-#import "LynxTouchHandler+Internal.h"
 
 #import <Lynx/DevToolLogLevel.h>
 #import <Lynx/LynxBaseInspectorController.h>
@@ -21,6 +21,7 @@
 #import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
+#import "LynxEventEmitter+Internal.h"
 #import "LynxGestureArenaManager.h"
 #import "LynxGestureFlingTrigger.h"
 #import "LynxGestureHandlerTrigger.h"
@@ -28,6 +29,7 @@
 #include <deque>
 #include <map>
 #include <set>
+#include <utility>
 
 @interface LynxUI (ResponseChainEvent)
 - (BOOL)hasResponseChainEvent:(NSString*)eventName;
@@ -720,13 +722,14 @@
   if (target == nil) {
     return;
   }
+  std::vector<lynx::event::PseudoStatusChange> changes;
   while (target != nil) {
     [_touchDeque addObject:[LynxWeakProxy proxyWithTarget:target]];
     [target onPseudoStatusFrom:LynxTouchPseudoStateNone changedTo:LynxTouchPseudoStateActive];
     if (_enableTouchPseudo) {
-      [_eventHandler.eventEmitter onPseudoStatusChanged:(int32_t)target.signature
-                                          fromPreStatus:(int32_t)LynxTouchPseudoStateNone
-                                        toCurrentStatus:(int32_t)LynxTouchPseudoStateActive];
+      changes.push_back({static_cast<int32_t>(target.signature),
+                         static_cast<uint32_t>(LynxTouchPseudoStateNone),
+                         static_cast<uint32_t>(LynxTouchPseudoStateActive)});
     }
     if (![target enableTouchPseudoPropagation]) {
       break;
@@ -734,6 +737,9 @@
     target = [target parentTarget];
   }
   _touchDeque = [[[_touchDeque reverseObjectEnumerator] allObjects] mutableCopy];
+  if (!changes.empty()) {
+    [_eventHandler.eventEmitter onPseudoStatusesChanged:std::move(changes)];
+  }
 }
 
 - (UITouch*)findFirstValidTouch:(NSSet<UITouch*>*)touches {
@@ -944,15 +950,21 @@
     index = i;
   }
 
+  std::vector<lynx::event::PseudoStatusChange> changes;
   for (NSInteger i = (NSInteger)[_touchDeque count] - 1; i >= index + 1; --i) {
     id<LynxEventTarget> ui = _touchDeque[i].target;
-    [ui onPseudoStatusFrom:LynxTouchPseudoStateActive changedTo:LynxTouchPseudoStateNone];
-    if (_enableTouchPseudo) {
-      [_eventHandler.eventEmitter onPseudoStatusChanged:(int32_t)ui.signature
-                                          fromPreStatus:(int32_t)LynxTouchPseudoStateActive
-                                        toCurrentStatus:(int32_t)LynxTouchPseudoStateNone];
+    if (ui) {
+      [ui onPseudoStatusFrom:LynxTouchPseudoStateActive changedTo:LynxTouchPseudoStateNone];
+      if (_enableTouchPseudo) {
+        changes.push_back({static_cast<int32_t>(ui.signature),
+                           static_cast<uint32_t>(LynxTouchPseudoStateActive),
+                           static_cast<uint32_t>(LynxTouchPseudoStateNone)});
+      }
     }
     [_touchDeque removeLastObject];
+  }
+  if (!changes.empty()) {
+    [_eventHandler.eventEmitter onPseudoStatusesChanged:std::move(changes)];
   }
 }
 
@@ -1106,17 +1118,22 @@
 
 // change all targets from active to none
 - (void)deactivatePseudoState:(int32_t)state {
+  std::vector<lynx::event::PseudoStatusChange> changes;
   for (LynxWeakProxy* proxy : _touchDeque) {
     id<LynxEventTarget> ui = proxy.target;
     if (!ui) {
       continue;
     }
-    if (_enableTouchPseudo) {
-      [_eventHandler.eventEmitter onPseudoStatusChanged:(int32_t)ui.signature
-                                          fromPreStatus:ui.pseudoStatus
-                                        toCurrentStatus:ui.pseudoStatus & ~state];
+    int32_t previousStatus = ui.pseudoStatus;
+    int32_t currentStatus = previousStatus & ~state;
+    [ui onPseudoStatusFrom:previousStatus changedTo:currentStatus];
+    if (_enableTouchPseudo && previousStatus != currentStatus) {
+      changes.push_back({static_cast<int32_t>(ui.signature), static_cast<uint32_t>(previousStatus),
+                         static_cast<uint32_t>(currentStatus)});
     }
-    [ui onPseudoStatusFrom:ui.pseudoStatus changedTo:ui.pseudoStatus & ~state];
+  }
+  if (!changes.empty()) {
+    [_eventHandler.eventEmitter onPseudoStatusesChanged:std::move(changes)];
   }
 }
 

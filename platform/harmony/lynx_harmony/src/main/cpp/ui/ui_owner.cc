@@ -1620,14 +1620,14 @@ void UIOwner::HandleCustomEvent(const CustomEvent& custom_event) const {
   context_->HandleCustomEvent(custom_event);
 }
 
-void UIOwner::SendPseudoStatusEvent(int id, PseudoStatus pre_status,
-                                    PseudoStatus current_status) const {
-  event_emitter_->SendPseudoStatusEvent(id, pre_status, current_status);
+void UIOwner::SendPseudoStatusEvents(
+    std::vector<event::PseudoStatusChange> changes) const {
+  event_emitter_->SendPseudoStatusEvents(std::move(changes));
 }
 
-void UIOwner::OnPseudoStatusChanged(int id, PseudoStatus pre_status,
-                                    PseudoStatus current_status) const {
-  context_->OnPseudoStatusChanged(id, pre_status, current_status);
+void UIOwner::OnPseudoStatusesChanged(
+    std::vector<event::PseudoStatusChange> changes) const {
+  context_->OnPseudoStatusesChanged(std::move(changes));
 }
 
 void UIOwner::ConsumeGesture(int64_t id, int32_t gesture_id,

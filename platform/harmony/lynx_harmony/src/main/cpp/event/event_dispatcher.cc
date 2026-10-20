@@ -1273,22 +1273,26 @@ void EventDispatcher::ActivePseudoStatus() {
   if (first_active_target_.expired()) {
     return;
   }
+  std::vector<event::PseudoStatusChange> changes;
   EventTarget* current = first_active_target_.lock().get();
   while (current != nullptr && current->ParentTarget() != current) {
     event_target_chain_.push_back(current->WeakTarget());
     current->OnPseudoStatusChanged(PseudoStatus::kNone, PseudoStatus::kActive);
     if (has_touch_pseudo_) {
-      ui_owner_->SendPseudoStatusEvent(current->Sign(), PseudoStatus::kNone,
-                                       PseudoStatus::kActive);
+      changes.push_back({current->Sign(),
+                         static_cast<uint32_t>(PseudoStatus::kNone),
+                         static_cast<uint32_t>(PseudoStatus::kActive)});
     }
     if (!current->TouchPseudoPropagation()) {
       break;
     }
     current = current->ParentTarget();
   }
+  ui_owner_->SendPseudoStatusEvents(std::move(changes));
 }
 
 void EventDispatcher::DeactivatePseudoStatus(PseudoStatus status) {
+  std::vector<event::PseudoStatusChange> changes;
   int32_t int_status = static_cast<int32_t>(status);
   for (auto target : event_target_chain_) {
     if (target.expired()) {
@@ -1296,15 +1300,15 @@ void EventDispatcher::DeactivatePseudoStatus(PseudoStatus status) {
     }
     auto current = target.lock();
     int32_t current_status = static_cast<int32_t>(current->GetPseudoStatus());
-    current->OnPseudoStatusChanged(
-        static_cast<PseudoStatus>(current_status),
-        static_cast<PseudoStatus>(current_status & ~int_status));
-    if (has_touch_pseudo_) {
-      ui_owner_->SendPseudoStatusEvent(
-          current->Sign(), static_cast<PseudoStatus>(current_status),
-          static_cast<PseudoStatus>(current_status & ~int_status));
+    int32_t next_status = current_status & ~int_status;
+    current->OnPseudoStatusChanged(static_cast<PseudoStatus>(current_status),
+                                   static_cast<PseudoStatus>(next_status));
+    if (has_touch_pseudo_ && current_status != next_status) {
+      changes.push_back({current->Sign(), static_cast<uint32_t>(current_status),
+                         static_cast<uint32_t>(next_status)});
     }
   }
+  ui_owner_->SendPseudoStatusEvents(std::move(changes));
 }
 
 void EventDispatcher::OnGetVelocity(const ArkUI_GestureEvent* event) {

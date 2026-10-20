@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -51,9 +52,8 @@ class RadonNode : public RadonBase {
   // removed the given class, what other types of elements need to change?).
   // Then apply style invalidation to children immediately.
   void CollectInvalidationSetsAndInvalidate(RadonNode* old_radon_node);
-  void CollectInvalidationSetsForPseudoAndInvalidate(
-      std::shared_ptr<PipelineOptions>& pipeline_options, CSSFragment*,
-      PseudoState, PseudoState);
+  bool CollectInvalidationSetsForPseudoAndInvalidate(
+      CSSFragment*, PseudoState, PseudoState, std::unordered_set<RadonNode*>*);
   // Optimized logic: use GetCachedStyleList to get new style only when
   // needed.
   // only can be used if forceCalcNewStyle is set to false by compilerOptions
@@ -63,6 +63,13 @@ class RadonNode : public RadonBase {
   bool RefreshStyle();
 
   void OnPseudoStateChanged(PseudoState, PseudoState);
+  // Collect Radon nodes instead of refreshing them when pending_nodes is given.
+  bool InvalidatePseudoState(
+      PseudoState, PseudoState,
+      std::unordered_set<RadonNode*>* pending_nodes = nullptr);
+
+  bool RefreshOrCollectStyleForPseudo(
+      std::unordered_set<RadonNode*>* pending_nodes);
 
   void UpdateCSSVariable(const base::String& key, const base::String& value,
                          CSSVariableMap* changed_css_vars = nullptr) {

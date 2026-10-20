@@ -1465,13 +1465,6 @@ void LynxShell::SendTouchEvent(const std::string& name, int32_t tag, float x,
   });
 }
 
-void LynxShell::OnPseudoStatusChanged(int32_t id, int32_t pre_status,
-                                      int32_t current_status) {
-  engine_actor_->Act([id, pre_status, current_status](auto& engine) {
-    (void)engine->OnPseudoStatusChanged(id, pre_status, current_status);
-  });
-}
-
 void LynxShell::SendBubbleEvent(const std::string& name, int32_t tag,
                                 lepus::DictionaryPtr dict) {
   engine_actor_->Act([name, tag, &dict](auto& engine) {
