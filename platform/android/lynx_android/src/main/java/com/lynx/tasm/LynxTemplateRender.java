@@ -745,7 +745,8 @@ public class LynxTemplateRender
   }
 
   public boolean shouldSendEventToMainThread() {
-    return !mHasDestroy && (mNativeFacade == null || mNativeFacade.shouldSendEventToMainThread());
+    NativeFacade nativeFacade = mNativeFacade;
+    return !mHasDestroy && (nativeFacade == null || nativeFacade.shouldSendEventToMainThread());
   }
 
   void showErrorMessage(final LynxError error) {
@@ -1333,12 +1334,14 @@ public class LynxTemplateRender
       finalParams = mSSRHelper.processEventParams(params);
     }
 
-    if (checkIfEnvPrepared() && mLynxContext != null) {
-      mLynxContext.sendGlobalEvent(name, finalParams);
+    LynxContext context = mLynxContext;
+    if (checkIfEnvPrepared() && context != null) {
+      context.sendGlobalEvent(name, finalParams);
     } else {
       LLog.e(TAG, "sendGlobalEvent error, can't get GlobalEventEmitter in " + this.toString());
     }
-    if (mLynxContext != null && mLynxContext.isEmbeddedModeOn()) {
+    context = mLynxContext;
+    if (context != null && context.isEmbeddedModeOn()) {
       JavaOnlyMap args = new JavaOnlyMap();
       args.putString(DefaultLogicExecutor.EVENT_METHOD, DefaultLogicExecutor.GLOBAL_EVENT_METHOD);
       args.putString(DefaultLogicExecutor.GLOBAL_EVENT_NAME, name);
