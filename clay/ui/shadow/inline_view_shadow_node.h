@@ -5,7 +5,6 @@
 #ifndef CLAY_UI_SHADOW_INLINE_VIEW_SHADOW_NODE_H_
 #define CLAY_UI_SHADOW_INLINE_VIEW_SHADOW_NODE_H_
 
-#include <optional>
 #include <string>
 
 #include "clay/ui/common/measure_constraint.h"
@@ -35,8 +34,6 @@ class InlineViewShadowNode : public ShadowNode {
 
   void SetMeasuredBaseline(float baseline) { measured_baseline_ = baseline; }
 
-  void ResetBaselineOffset() { baseline_offset_.reset(); }
-
   void SetBaselineOffset(double baseline_offset) override {
     baseline_offset_ = baseline_offset;
   }
@@ -48,7 +45,7 @@ class InlineViewShadowNode : public ShadowNode {
   int placeholder_index_ = -1;
   size_t start_glyph_ = 0;
   size_t end_glyph_ = 0;
-  std::optional<double> baseline_offset_;
+  double baseline_offset_ = 0.f;
   float measured_baseline_ = 0.f;
 };
 
