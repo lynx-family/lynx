@@ -46,6 +46,12 @@ typedef void (*SLAlignmentFunc)(void* context);
 using SLCanReuseLayoutWithSameSizeAsGivenConstraintFunc =
     bool (*)(void* context, bool is_horizontal_constraint);
 
+struct CustomLayoutFunctions {
+  SLMeasureFunc measure = nullptr;
+  SLAlignmentFunc layout = nullptr;
+  SLCanReuseLayoutWithSameSizeAsGivenConstraintFunc can_reuse = nullptr;
+};
+
 }  // namespace starlight
 }  // namespace lynx
 

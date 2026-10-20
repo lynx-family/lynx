@@ -3939,6 +3939,7 @@ void Element::PerformElementContainerCreateOrUpdate(bool need_update,
   dirty_ &= ~kDirtyForceUpdate;
 
   UpdateLayoutNodeByBundle();
+  FlushCustomLayoutFunctions();
 
   if (need_reset) {
     ResetPropBundle();
@@ -5751,6 +5752,38 @@ void Element::UpdateLayoutInfo() {
     static_cast<Fragment *>(element_container())->UpdateLayout(layout_result);
   }
   frame_changed_ = true;
+}
+
+void Element::SetCustomLayoutFunctions(
+    starlight::CustomLayoutFunctions functions) {
+  if (!functions.measure && !functions.layout && !functions.can_reuse) {
+    custom_layout_functions_.reset();
+  } else {
+    if (!custom_layout_functions_) {
+      custom_layout_functions_ =
+          std::make_unique<starlight::CustomLayoutFunctions>();
+    }
+    *custom_layout_functions_ = functions;
+  }
+  MarkDirty(kDirtyCustomLayout);
+}
+
+void Element::FlushCustomLayoutFunctions() {
+  if (!(dirty_ & kDirtyCustomLayout)) {
+    return;
+  }
+  if (EnableLayoutInElementMode()) {
+    EnsureSLNode();
+    const auto functions = custom_layout_functions_
+                               ? *custom_layout_functions_
+                               : starlight::CustomLayoutFunctions{};
+    SetMeasureFunc(this, functions.measure);
+    SetAlignmentFunc(this, functions.layout);
+    sl_node_->SetCanReuseLayoutWithSameSizeAsGivenConstraintFunc(
+        functions.can_reuse);
+    RequestLayout();
+  }
+  dirty_ &= ~kDirtyCustomLayout;
 }
 
 void Element::SetMeasureFunc(void *context,

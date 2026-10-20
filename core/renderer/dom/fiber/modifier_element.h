@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_DOM_FIBER_MODIFIER_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_MODIFIER_ELEMENT_H_
 
+#include <array>
+
 #include "core/renderer/dom/element.h"
 
 namespace lynx {
@@ -21,6 +23,8 @@ class ModifierElement : public Element {
 
   bool is_modifier() const override { return true; }
 
+  void SetSizeRange(const std::array<double, 4>& limits);
+
   fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     return fml::AdoptRef<Element>(
         new ModifierElement(*this, clone_resolved_props));
@@ -28,7 +32,11 @@ class ModifierElement : public Element {
 
  private:
   ModifierElement(const ModifierElement& element, bool clone_resolved_props)
-      : Element(element, clone_resolved_props) {}
+      : Element(element, clone_resolved_props),
+        size_limits_(element.size_limits_) {}
+
+  std::array<double, 4> size_limits_{};
+  FloatSize child_offset_;
 };
 
 }  // namespace tasm
