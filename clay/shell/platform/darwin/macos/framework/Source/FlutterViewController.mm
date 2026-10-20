@@ -363,13 +363,16 @@ static void CommonInit(FlutterViewController* controller) {
   FlutterView* flutterView;
   id<MTLDevice> device = _engine.renderer.device;
   id<MTLCommandQueue> commandQueue = _engine.renderer.commandQueue;
-  if (!device || !commandQueue) {
+  if (_engine.renderer.softwareRendering) {
+    flutterView = [[FlutterView alloc] initWithSoftwareRendering:self];
+  } else if (!device || !commandQueue) {
     FML_LOG(ERROR) << "Unable to create FlutterView; no MTLDevice or MTLCommandQueue available.";
     return;
+  } else {
+    flutterView = [[FlutterView alloc] initWithMTLDevice:device
+                                            commandQueue:commandQueue
+                                         reshapeListener:self];
   }
-  flutterView = [[FlutterView alloc] initWithMTLDevice:device
-                                          commandQueue:commandQueue
-                                       reshapeListener:self];
   if (_backgroundColor != nil) {
     [flutterView setBackgroundColor:_backgroundColor];
   }

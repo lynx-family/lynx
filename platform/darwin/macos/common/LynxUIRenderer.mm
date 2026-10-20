@@ -30,11 +30,13 @@
 
 @property(nonatomic) ClayViewProvider* clayViewProvider;
 
+- (instancetype)initWithSoftwareRendering:(BOOL)softwareRendering;
+
 @end
 
 @implementation LynxUIRendererMac : NSObject
 
-- (instancetype)init {
+- (instancetype)initWithSoftwareRendering:(BOOL)softwareRendering {
   self = [super init];
 #if ENABLE_TESTBENCH_RECORDER
   // Set storage directory for testbench recorder.
@@ -47,7 +49,7 @@
   }
 #endif
   if (self) {
-    _clayViewProvider = [[ClayViewProvider alloc] init];
+    _clayViewProvider = [[ClayViewProvider alloc] initWithSoftwareRendering:softwareRendering];
   }
   return self;
 }
@@ -218,7 +220,8 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
     });
   }
 
-  auto lynx_ui_renderer = [[LynxUIRendererMac alloc] init];
+  auto lynx_ui_renderer =
+      [[LynxUIRendererMac alloc] initWithSoftwareRendering:builder->enable_software_rendering];
   auto* view_context =
       reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);
   if (builder->default_background_color) {

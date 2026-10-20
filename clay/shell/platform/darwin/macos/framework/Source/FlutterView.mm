@@ -13,6 +13,12 @@
 
 #import <QuartzCore/QuartzCore.h>
 
+#include <limits>
+
+#ifndef ENABLE_SKITY
+#include "third_party/skia/include/core/SkTypes.h"
+#endif
+
 @interface FlutterView () <FlutterSurfaceManagerDelegate> {
   __weak id<FlutterViewReshapeListener> _reshapeListener;
   FlutterThreadSynchronizer* _threadSynchronizer;
@@ -22,6 +28,10 @@
 @end
 
 @implementation FlutterView
+
+- (instancetype)initWithSoftwareRendering:(id<FlutterViewReshapeListener>)reshapeListener {
+  return [self initWithMTLDevice:nil commandQueue:nil reshapeListener:reshapeListener];
+}
 
 - (instancetype)initWithMTLDevice:(id<MTLDevice>)device
                      commandQueue:(id<MTLCommandQueue>)commandQueue
@@ -33,14 +43,64 @@
     [self setLayerContentsRedrawPolicy:NSViewLayerContentsRedrawDuringViewResize];
     _reshapeListener = reshapeListener;
     _threadSynchronizer = [[FlutterThreadSynchronizer alloc] init];
-    _surfaceManager = [[FlutterSurfaceManager alloc] initWithDevice:device
-                                                       commandQueue:commandQueue
-                                                              layer:self.layer
-                                                           delegate:self];
+    if (device && commandQueue) {
+      _surfaceManager = [[FlutterSurfaceManager alloc] initWithDevice:device
+                                                         commandQueue:commandQueue
+                                                                layer:self.layer
+                                                             delegate:self];
+    }
     NSArray* allowedTypes = @[ NSFilenamesPboardType, NSPasteboardTypeString ];
     [self registerForDraggedTypes:allowedTypes];
   }
   return self;
+}
+
++ (CGImageRef)createSoftwareImage:(const void*)allocation
+                         rowBytes:(size_t)rowBytes
+                           height:(size_t)height {
+  if (!allocation || !rowBytes || rowBytes % 4 || !height ||
+      height > std::numeric_limits<size_t>::max() / rowBytes ||
+      rowBytes * height > std::numeric_limits<CFIndex>::max()) {
+    return nullptr;
+  }
+  CFDataRef data =
+      CFDataCreate(kCFAllocatorDefault, static_cast<const UInt8*>(allocation), rowBytes * height);
+  if (!data) {
+    return nullptr;
+  }
+  CGDataProviderRef provider = CGDataProviderCreateWithCFData(data);
+  CFRelease(data);
+  if (!provider) {
+    return nullptr;
+  }
+  CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+#if defined(ENABLE_SKITY) || (defined(SK_R32_SHIFT) && SK_R32_SHIFT == 0)
+  CGBitmapInfo bitmapInfo = kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast;
+#else
+  CGBitmapInfo bitmapInfo = kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst;
+#endif
+  CGImageRef image = CGImageCreate(rowBytes / 4, height, 8, 32, rowBytes, colorSpace, bitmapInfo,
+                                   provider, nullptr, false, kCGRenderingIntentDefault);
+  CGColorSpaceRelease(colorSpace);
+  CGDataProviderRelease(provider);
+  return image;
+}
+
+- (BOOL)presentSoftwareBackingStore:(const void*)allocation
+                           rowBytes:(size_t)rowBytes
+                             height:(size_t)height {
+  CGImageRef image = [FlutterView createSoftwareImage:allocation rowBytes:rowBytes height:height];
+  if (!image) {
+    return NO;
+  }
+  id contents = CFBridgingRelease(image);
+  CGSize size = CGSizeMake(rowBytes / 4, height);
+  [_threadSynchronizer performCommit:size
+                              notify:^{
+                                self.layer.contentsGravity = kCAGravityResize;
+                                self.layer.contents = contents;
+                              }];
+  return YES;
 }
 
 - (void)onPresent:(CGSize)frameSize withBlock:(dispatch_block_t)block {

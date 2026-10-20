@@ -179,6 +179,14 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
 
 - (instancetype)initWithName:(NSString*)labelPrefix
       allowHeadlessExecution:(BOOL)allowHeadlessExecution {
+  return [self initWithName:labelPrefix
+      allowHeadlessExecution:allowHeadlessExecution
+           softwareRendering:NO];
+}
+
+- (instancetype)initWithName:(NSString*)labelPrefix
+      allowHeadlessExecution:(BOOL)allowHeadlessExecution
+           softwareRendering:(BOOL)softwareRendering {
   self = [super init];
   NSAssert(self, @"Super init cannot be nil");
 
@@ -188,7 +196,8 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
   _isResponseValid = [[NSMutableArray alloc] initWithCapacity:1];
   [_isResponseValid addObject:@YES];
 
-  _renderer = [[FlutterRenderer alloc] initWithFlutterEngine:self];
+  _renderer = [[FlutterRenderer alloc] initWithFlutterEngine:self
+                                           softwareRendering:softwareRendering];
 
   NSNotificationCenter* notificationCenter = [NSNotificationCenter defaultCenter];
   [notificationCenter addObserver:self
@@ -233,6 +242,7 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
     command_line = fml::CommandLineFromArgcArgv(argv.size(), argv.data());
   }
   clay::Settings settings = clay::SettingsFromCommandLine(command_line);
+  settings.enable_software_rendering = _renderer.softwareRendering;
   const char* icu_data_path =
       [[NSBundle mainBundle] pathForResource:@"icudtl.dat" ofType:nil].UTF8String;
   if (icu_data_path) {
@@ -367,11 +377,21 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
       .platform_task_runner = &cocoa_task_runner_description,
   };
 
-  fml::RefPtr<clay::EmbedderSurfaceMetal> embedderSurfaceMetal =
-      [_renderer createEmbedderSurfaceMetal];
-  _engine = clay::EmbedderEngine::CreateEngine(settings, &custom_task_runners, embedderSurfaceMetal,
-                                               platform_dispatch_table, &_platformViewDelegate,
-                                               (__bridge void*)(self));
+  if (!_renderer) {
+    FML_LOG(ERROR) << "Failed to initialize renderer";
+    return NO;
+  }
+  if (_renderer.softwareRendering) {
+    _engine = clay::EmbedderEngine::CreateEngine(
+        settings, &custom_task_runners, [_renderer softwareDelegate], platform_dispatch_table,
+        &_platformViewDelegate, (__bridge void*)self);
+  } else {
+    fml::RefPtr<clay::EmbedderSurfaceMetal> embedderSurfaceMetal =
+        [_renderer createEmbedderSurfaceMetal];
+    _engine = clay::EmbedderEngine::CreateEngine(settings, &custom_task_runners,
+                                                 embedderSurfaceMetal, platform_dispatch_table,
+                                                 &_platformViewDelegate, (__bridge void*)self);
+  }
   if (!_engine) {
     FML_LOG(ERROR) << "Failed to initialize Flutter engine";
     return NO;

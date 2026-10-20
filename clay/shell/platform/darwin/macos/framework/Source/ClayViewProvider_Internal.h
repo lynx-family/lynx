@@ -9,6 +9,8 @@
 
 @interface ClayViewProvider () <FlutterKeyboardViewDelegate>
 
+- (nonnull instancetype)initWithSoftwareRendering:(BOOL)softwareRendering;
+
 /**
  * This just returns the NSPasteboard so that it can be mocked in the tests.
  */

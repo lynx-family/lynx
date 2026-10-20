@@ -68,8 +68,8 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_custom_vsync_monitor(
 LYNX_CAPI_EXPORT void lynx_view_builder_set_enable_js_runtime(
     lynx_view_builder_t*, bool enable);
 
-// Enables CPU software rendering for a windowed LynxView on Windows with the
-// Skia backend. Skity builds log a warning and keep hardware rendering.
+// Enables CPU software rendering for a windowed LynxView on macOS (Skia or
+// Skity) and Windows (Skia). Windows Skity builds keep hardware rendering.
 // Disabled by default. Call before lynx_view_create. Other platforms and
 // windowless renderers do not use this setting.
 LYNX_CAPI_EXPORT void lynx_view_builder_set_enable_software_rendering(

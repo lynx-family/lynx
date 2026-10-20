@@ -42,11 +42,22 @@ constexpr uint64_t kFlutterDefaultViewId = 0;
  */
 @interface FlutterView ()
 
+- (nullable instancetype)initWithSoftwareRendering:
+    (nonnull id<FlutterViewReshapeListener>)reshapeListener;
+
++ (nullable CGImageRef)createSoftwareImage:(nonnull const void*)allocation
+                                  rowBytes:(size_t)rowBytes
+                                    height:(size_t)height CF_RETURNS_RETAINED;
+
+- (BOOL)presentSoftwareBackingStore:(nonnull const void*)allocation
+                           rowBytes:(size_t)rowBytes
+                             height:(size_t)height;
+
 /**
  * Initialize a FlutterView that will be rendered to using Metal rendering apis.
  */
-- (nullable instancetype)initWithMTLDevice:(nonnull id<MTLDevice>)device
-                              commandQueue:(nonnull id<MTLCommandQueue>)commandQueue
+- (nullable instancetype)initWithMTLDevice:(nullable id<MTLDevice>)device
+                              commandQueue:(nullable id<MTLCommandQueue>)commandQueue
                            reshapeListener:(nonnull id<FlutterViewReshapeListener>)reshapeListener
     NS_DESIGNATED_INITIALIZER;
 
@@ -60,7 +71,7 @@ constexpr uint64_t kFlutterDefaultViewId = 0;
  * Returns SurfaceManager for this view. SurfaceManager is responsible for
  * providing and presenting render surfaces.
  */
-@property(readonly, nonatomic, nonnull) FlutterSurfaceManager* surfaceManager;
+@property(readonly, nonatomic, nullable) FlutterSurfaceManager* surfaceManager;
 
 @property(nonatomic, nullable, weak) ClayViewProvider* provider;
 

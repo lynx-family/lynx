@@ -69,7 +69,6 @@ class LynxView {
       return *this;
     }
 
-    // Enables CPU software rendering for windowed views on Windows.
     Builder& SetEnableSoftwareRendering(bool enable) {
       lynx_view_builder_set_enable_software_rendering(builder_, enable);
       return *this;
