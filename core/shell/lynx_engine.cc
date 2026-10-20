@@ -364,9 +364,9 @@ void LynxEngine::SendGestureEvent(int tag, int gesture_id, std::string name,
   tasm_->SendGestureEvent(tag, gesture_id, name, params);
 }
 
-void LynxEngine::OnPseudoStatusChanged(int32_t id, int32_t pre_status,
-                                       int32_t current_status) {
-  tasm_->OnPseudoStatusChanged(id, pre_status, current_status);
+void LynxEngine::OnPseudoStatusesChanged(
+    const std::vector<event::PseudoStatusChange>& changes) {
+  tasm_->OnPseudoStatusesChanged(changes);
 }
 
 void LynxEngine::StartEventGenerate(const lepus::Value& event_params) {

@@ -161,15 +161,18 @@ public final class LynxEngineProxy {
     });
   }
 
-  public void onPseudoStatusChanged(final int id, final int preStatus, final int currentStatus) {
+  public void onPseudoStatusesChanged(final int[] changes) {
+    if (changes.length == 0) {
+      return;
+    }
     UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
       @Override
       public void run() {
         if (mNativePtr == 0) {
-          LLog.e(TAG, "OnPseudoStatusChanged failed since mNativePtr is null");
+          LLog.e(TAG, "OnPseudoStatusesChanged failed since mNativePtr is null");
           return;
         }
-        nativeOnPseudoStatusChanged(mNativePtr, id, preStatus, currentStatus);
+        nativeOnPseudoStatusesChanged(mNativePtr, changes);
       }
     });
   }
@@ -306,8 +309,7 @@ public final class LynxEngineProxy {
   private native void nativeSendGestureEvent(
       long nativePtr, String name, int tag, int gestureId, ByteBuffer params, int length);
 
-  private native void nativeOnPseudoStatusChanged(
-      long nativePtr, int id, int preStatus, int currentStatus);
+  private native void nativeOnPseudoStatusesChanged(long nativePtr, int[] changes);
 
   private native void nativeStartEventGenerate(long nativePtr, ByteBuffer params, int length);
 

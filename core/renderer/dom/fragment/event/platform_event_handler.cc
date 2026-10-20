@@ -530,6 +530,7 @@ bool PlatformEventHandler::CanRespondTap(
 }
 
 void PlatformEventHandler::ActivePseudoStatus() {
+  std::vector<event::PseudoStatusChange> changes;
   auto current = GetEventTarget(first_target_sign_);
   while (current && current->ParentTarget() != current) {
     event_target_chain_.push_back(current->Sign());
@@ -557,14 +558,15 @@ void PlatformEventHandler::ActivePseudoStatus() {
     }
     if (has_pointer_pseudo_ && pre_status != current_status) {
       // update :active for target.
-      platform_ref_->UpdatePseudoStatusStatus(
-          sign, static_cast<uint32_t>(pre_status),
-          static_cast<uint32_t>(current_status));
+      changes.push_back({sign, static_cast<uint32_t>(pre_status),
+                         static_cast<uint32_t>(current_status)});
     }
   }
+  platform_ref_->UpdatePseudoStatuses(std::move(changes));
 }
 
 void PlatformEventHandler::DeactivatePseudoStatus(LynxPseudoStatus status) {
+  std::vector<event::PseudoStatusChange> changes;
   const int int_status = static_cast<int>(status);
   for (auto sign : event_target_chain_) {
     auto status_it = pseudo_statuses_.find(sign);
@@ -578,9 +580,8 @@ void PlatformEventHandler::DeactivatePseudoStatus(LynxPseudoStatus status) {
     auto target = GetEventTarget(sign);
     if (target && has_pointer_pseudo_ && pre_status != current_status) {
       // update :active for target.
-      platform_ref_->UpdatePseudoStatusStatus(
-          sign, static_cast<uint32_t>(pre_status),
-          static_cast<uint32_t>(current_status));
+      changes.push_back({sign, static_cast<uint32_t>(pre_status),
+                         static_cast<uint32_t>(current_status)});
     }
     if (current_status == LynxPseudoStatus::kNone) {
       pseudo_statuses_.erase(status_it);
@@ -589,6 +590,7 @@ void PlatformEventHandler::DeactivatePseudoStatus(LynxPseudoStatus status) {
     }
   }
   event_target_chain_.clear();
+  platform_ref_->UpdatePseudoStatuses(std::move(changes));
 }
 
 bool PlatformEventHandler::IsPointerMoveOutside(

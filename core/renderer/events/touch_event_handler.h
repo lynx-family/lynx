@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/vector.h"
+#include "core/public/event/pseudo_status.h"
 #include "core/public/event/touch_event_data.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/page_proxy.h"
@@ -151,8 +152,8 @@ class TouchEventHandler {
   void HandleCustomEvent(TemplateAssembler *tasm, const std::string &name,
                          int tag, const lepus::Value &params,
                          const std::string &pname);
-  void HandlePseudoStatusChanged(int32_t id, PseudoState pre_status,
-                                 PseudoState current_status);
+  bool HandlePseudoStatusesChanged(
+      const std::vector<event::PseudoStatusChange> &changes);
   static lepus::Value GetTargetInfo(int32_t impl_id,
                                     const AttributeHolder *holder,
                                     const Element *element = nullptr,

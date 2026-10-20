@@ -233,9 +233,6 @@ class LynxShell {
                       float client_x, float client_y, float page_x,
                       float page_y);
 
-  void OnPseudoStatusChanged(int32_t id, int32_t pre_status,
-                             int32_t current_status);
-
   void SendBubbleEvent(const std::string& name, int32_t tag,
                        lepus::DictionaryPtr dict);
 

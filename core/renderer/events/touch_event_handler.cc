@@ -3,6 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/renderer/events/touch_event_handler.h"
 
+#include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
@@ -445,17 +448,68 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
   return;
 }
 
-void TouchEventHandler::HandlePseudoStatusChanged(int32_t id,
-                                                  PseudoState pre_status,
-                                                  PseudoState current_status) {
+bool TouchEventHandler::HandlePseudoStatusesChanged(
+    const std::vector<event::PseudoStatusChange> &changes) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_PSEUDO_STATUS_CHANGED);
-  LOGI("HandlePseudoStatusChanged sign:"
-       << id << " , with pre_status: " << pre_status
-       << " , and current_status:" << current_status);
-  Element *element = node_manager_->Get(id);
-  if (element) {
-    element->OnPseudoStatusChanged(pre_status, current_status);
+  std::vector<
+      std::pair<fml::RefPtr<Element>, const event::PseudoStatusChange *>>
+      targets;
+  targets.reserve(changes.size());
+  for (const auto &change : changes) {
+    if (change.pre_status == change.current_status) {
+      continue;
+    }
+    auto *element = node_manager_->Get(change.id);
+    if (!element) {
+      continue;
+    }
+    targets.emplace_back(fml::RefPtr<Element>(element), &change);
+    // Persist the complete response chain before any selector is evaluated.
+    // SetPseudoState would synchronously refresh Radon styles here.
+    element->data_model()->raw_set_pseudo_state(change.current_status);
   }
+
+  bool needs_resolve = false;
+  std::unordered_set<RadonNode *> pending_nodes;
+  for (const auto &target : targets) {
+    needs_resolve |= target.first->InvalidatePseudoStatus(
+        target.second->pre_status, target.second->current_status,
+        &pending_nodes);
+  }
+
+  // Collect every affected Radon node before refreshing any styles. Sorting
+  // only the response chain is insufficient: an ancestor's invalidation may
+  // reach a descendant before its parent updates inherited custom properties.
+  std::vector<RadonNode *> nodes(pending_nodes.begin(), pending_nodes.end());
+  if (nodes.size() > 1) {
+    std::unordered_map<RadonBase *, size_t> depths;
+    std::vector<RadonBase *> ancestors;
+    for (auto *node : nodes) {
+      auto *ancestor = static_cast<RadonBase *>(node);
+      while (ancestor && depths.find(ancestor) == depths.end()) {
+        ancestors.push_back(ancestor);
+        ancestor = ancestor->Parent();
+      }
+      size_t depth = ancestor ? depths.at(ancestor) : 0;
+      while (!ancestors.empty()) {
+        depths.emplace(ancestors.back(), ++depth);
+        ancestors.pop_back();
+      }
+    }
+    std::sort(nodes.begin(), nodes.end(), [&depths](auto *lhs, auto *rhs) {
+      return depths.at(lhs) < depths.at(rhs);
+    });
+  }
+
+  bool radon_styles_changed = false;
+  for (auto *node : nodes) {
+    radon_styles_changed |= node->RefreshStyle();
+  }
+  if (radon_styles_changed) {
+    nodes.front()->page_proxy()->element_manager()->SetNeedsLayout();
+    needs_resolve = true;
+  }
+  return needs_resolve;
 }
 
 void TouchEventHandler::FireEvent(const EventType &type,

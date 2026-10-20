@@ -8,8 +8,12 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTemplateData+Converter.h>
+#import "LynxEngineProxy+Native.h"
+#import "LynxEventEmitter+Internal.h"
 
+#include <algorithm>
 #include <limits>
+#include <utility>
 
 using namespace lynx::tasm;
 using namespace lynx::lepus;
@@ -156,14 +160,24 @@ static constexpr int64_t kCurrentLynxPageOnlyEventID = std::numeric_limits<int64
 - (void)onPseudoStatusChanged:(int32_t)tag
                 fromPreStatus:(int32_t)preStatus
               toCurrentStatus:(int32_t)currentStatus {
+  [self onPseudoStatusesChanged:std::vector<lynx::event::PseudoStatusChange>{
+                                    {tag, static_cast<uint32_t>(preStatus),
+                                     static_cast<uint32_t>(currentStatus)}}];
+}
+
+- (void)onPseudoStatusesChanged:(std::vector<lynx::event::PseudoStatusChange>)changes {
+  changes.erase(
+      std::remove_if(changes.begin(), changes.end(),
+                     [](const auto& change) { return change.pre_status == change.current_status; }),
+      changes.end());
+  if (changes.empty()) {
+    return;
+  }
   if (_engineProxy == nil) {
-    _LogE(@"onPseudoStatusChanged id: %d failed since engineProxy is nil", tag);
+    _LogE(@"onPseudoStatusesChanged failed since engineProxy is nil");
     return;
   }
-  if (preStatus == currentStatus) {
-    return;
-  }
-  [_engineProxy onPseudoStatusChanged:tag fromPreStatus:preStatus toCurrentStatus:currentStatus];
+  [_engineProxy onPseudoStatusesChanged:std::move(changes)];
 }
 
 - (void)dispatchLayoutEvent {

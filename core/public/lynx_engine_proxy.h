@@ -9,8 +9,10 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/closure.h"
+#include "core/public/event/pseudo_status.h"
 #include "core/public/event/touch_event_data.h"
 #include "core/public/external_memory_snapshot.h"
 #include "core/public/list_data.h"
@@ -61,8 +63,8 @@ class LynxEngineProxy {
   virtual void SendBubbleEvent(const std::string& name, int32_t tag,
                                const pub::Value& dict) = 0;
 
-  virtual void OnPseudoStatusChanged(int32_t id, int32_t pre_status,
-                                     int32_t current_status) = 0;
+  virtual void OnPseudoStatusesChanged(
+      std::vector<event::PseudoStatusChange> changes) = 0;
 
   virtual void StartEventGenerate(const pub::Value& event_params) = 0;
 

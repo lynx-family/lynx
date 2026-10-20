@@ -1472,6 +1472,7 @@ public class LynxEngineProxy : NSObject {
   public void LynxEngineProxy()::setNativeEngineProxy:(std::shared_ptr< lynx::shell::LynxEngineProxyDarwin > proxy);
   public const std::shared_ptr< lynx::shell::LynxEngineProxyDarwin > & LynxEngineProxy()::nativeProxy();
   public void LynxEngineProxy()::reportExternalMemoryWithTotalSize:garbageSize:(int64_t totalSize, [garbageSize] int64_t garbageSize);
+  public void LynxEngineProxy()::onPseudoStatusesChanged:(std::vector< lynx::event::PseudoStatusChange > changes);
 }
 
 public class LynxEnv : NSObject {
@@ -1642,6 +1643,7 @@ public class LynxEventEmitter : NSObject {
   public void LynxEventEmitter::startEventCapture:(int64_t eventID);
   public void LynxEventEmitter::startEventBubble:(int64_t eventID);
   public void LynxEventEmitter::startEventFire:withEventID:(BOOL isStop,[withEventID] int64_t eventID);
+  public void LynxEventEmitter()::onPseudoStatusesChanged:(std::vector< lynx::event::PseudoStatusChange > changes);
 }
 
 public class LynxEventEmitterUnitTestHelper : LynxEventEmitter {

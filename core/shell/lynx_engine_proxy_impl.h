@@ -9,6 +9,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/value/base_value.h"
 #include "core/public/lynx_engine_proxy.h"
@@ -52,8 +53,8 @@ class LynxEngineProxyImpl : public LynxEngineProxy {
   void SendBubbleEvent(const std::string& name, int32_t tag,
                        const pub::Value& params) override;
 
-  void OnPseudoStatusChanged(int32_t id, int32_t pre_status,
-                             int32_t current_status) override;
+  void OnPseudoStatusesChanged(
+      std::vector<event::PseudoStatusChange> changes) override;
 
   void StartEventGenerate(const pub::Value& event_params) override;
 

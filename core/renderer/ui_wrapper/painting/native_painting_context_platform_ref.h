@@ -15,6 +15,7 @@
 #include "base/include/fml/task_runner.h"
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
+#include "core/public/event/pseudo_status.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
@@ -105,9 +106,8 @@ class NativePaintingCtxPlatformRef
   bool CanRespondPlatformFocus();
   // Send event to the target element.
   void SendEvent(int32_t target_id, fml::RefPtr<event::Event> event);
-  // Update the pseudo status of the target element.
-  void UpdatePseudoStatusStatus(int32_t target_id, uint32_t pre_status,
-                                uint32_t current_status);
+  // Update pseudo statuses for a batch of target elements.
+  void UpdatePseudoStatuses(std::vector<event::PseudoStatusChange> changes);
   // Get PlatformEventEmitter instance.
   PlatformEventEmitter *GetEventEmitter();
   // Get PlatformEventTargetHelper instance.

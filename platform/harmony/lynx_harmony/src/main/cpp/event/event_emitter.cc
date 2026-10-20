@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_emitter.h"
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 
@@ -103,12 +104,18 @@ void EventEmitter::SendTouchEvent(const TouchEvent& touch_event) {
   }
 }
 
-void EventEmitter::SendPseudoStatusEvent(int id, PseudoStatus pre_status,
-                                         PseudoStatus current_status) const {
-  if (pre_status == current_status) {
+void EventEmitter::SendPseudoStatusEvents(
+    std::vector<event::PseudoStatusChange> changes) const {
+  changes.erase(std::remove_if(changes.begin(), changes.end(),
+                               [](const auto& change) {
+                                 return change.pre_status ==
+                                        change.current_status;
+                               }),
+                changes.end());
+  if (changes.empty()) {
     return;
   }
-  ui_owner_->OnPseudoStatusChanged(id, pre_status, current_status);
+  ui_owner_->OnPseudoStatusesChanged(std::move(changes));
 }
 
 }  // namespace harmony
