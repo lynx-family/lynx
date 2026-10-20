@@ -4,6 +4,7 @@
 
 #include "core/renderer/dom/element_manager.h"
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <mutex>
@@ -736,6 +737,25 @@ void ElementManager::DrainPendingElementTemplateChildMounts(
       }
     }
 
+    // Mounting an ancestor can bring an already-materialized subtree into
+    // scope without scheduling its pending descendants. Revisit those instances
+    // in this drain; leave genuinely out-of-scope instances for a later flush.
+    out_of_scope_instances.erase(
+        std::remove_if(
+            out_of_scope_instances.begin(), out_of_scope_instances.end(),
+            [this, flush_root](const auto &weak_instance) {
+              auto instance =
+                  fml::RefPtr<ElementTemplateInstance>(weak_instance.get());
+              if (instance == nullptr || !instance->HasPendingChildMounts()) {
+                return true;
+              }
+              if (!instance->IsMaterializedRootInFlushScope(flush_root)) {
+                return false;
+              }
+              EnqueuePendingElementTemplateChildMounts(*instance);
+              return true;
+            }),
+        out_of_scope_instances.end());
     pending_instances = std::move(pending_element_template_child_mounts_);
     pending_element_template_child_mounts_.clear();
   }

@@ -32,6 +32,7 @@
 #include "core/renderer/template_entry.h"
 #include "core/renderer/utils/base/element_template_info.h"
 #include "core/renderer/utils/base/tasm_constants.h"
+#include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepusng/quick_context.h"
@@ -243,6 +244,96 @@ class ElementTemplateInstanceTest : public FiberElementTest {
     const auto foreground = text_props.find("color");
     ASSERT_NE(foreground, text_props.end());
     EXPECT_EQ(foreground->second.UInt32(), color);
+  }
+
+  std::vector<fml::RefPtr<ElementTemplateInstance>> CreateCompiledMountChain(
+      size_t length) {
+    auto entry = std::make_shared<TemplateEntry>();
+    entry->SetName(DEFAULT_ENTRY_NAME);
+    tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
+    auto info = std::make_shared<ElementTemplateInfo>();
+    info->exist_ = true;
+    info->key_ = "mount_chain";
+    ElementInfo root;
+    root.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+    root.attributes_ =
+        std::make_shared<const TemplateAttributes>(TemplateAttributes{
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                      base::String("main-thread:ref"), lepus::Value(), 0}});
+    ElementInfo slot;
+    slot.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_SLOT;
+    slot.slot_index_ = 0;
+    root.children_.emplace_back(std::move(slot));
+    info->elements_.emplace_back(std::move(root));
+    entry->template_bundle_.element_template_infos_[info->key_] = info;
+
+    std::vector<fml::RefPtr<ElementTemplateInstance>> chain;
+    for (size_t i = 0; i < length; ++i) {
+      auto instance = fml::AdoptRef<ElementTemplateInstance>(
+          new ElementTemplateInstance(manager));
+      instance->SetTASM(tasm.get());
+      instance->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
+      instance->SetTemplateKey(base::String("mount_chain"));
+      if (!chain.empty()) {
+        chain.back()->InsertNodeIntoChildSlot(0, lepus::Value(instance),
+                                              lepus::Value());
+      }
+      chain.emplace_back(std::move(instance));
+    }
+    return chain;
+  }
+
+  void ExpectPageFlushCompletesNestedAttrSlotMaterialization(
+      bool query_before_insertion) {
+    auto chain = CreateCompiledMountChain(5);
+    // page -> outer -> inner -> parent -> middle -> leaf. The two lazy
+    // ancestors keep middle outside the physical flush scope in the first pass.
+    auto& outer = chain[0];
+    auto& parent = chain[2];
+    auto& middle = chain[3];
+    auto& leaf = chain[4];
+    auto page = fml::AdoptRef<ElementTemplateInstance>(
+        new ElementTemplateInstance(manager));
+    page->SetTASM(tasm.get());
+    page->SetTypedTag(base::String("page"));
+    page->SetUid(lepus::Value(0));
+    auto page_root = page->GetRoot();
+    ASSERT_NE(page_root, nullptr);
+    if (!query_before_insertion) {
+      page->InsertNodeIntoChildSlot(0, lepus::Value(outer), lepus::Value());
+    }
+    auto runtime = CreatePAPIRuntime();
+    auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+    for (const auto& instance : {middle, parent}) {
+      lepus::Value args[] = {lepus::Value(instance), lepus::Value(0)};
+      ASSERT_TRUE(RendererFunctions::FiberGetElementByAttrSlot(ctx, args, 2)
+                      .IsRefCounted());
+    }
+    if (query_before_insertion) {
+      page->InsertNodeIntoChildSlot(0, lepus::Value(outer), lepus::Value());
+    }
+    ASSERT_EQ(manager->pending_element_template_child_mounts_.size(), 2u);
+    EXPECT_EQ(manager->pending_element_template_child_mounts_.front().get(),
+              query_before_insertion ? middle.get() : page.get());
+    EXPECT_EQ(leaf->PeekMaterializedRoot(), nullptr);
+    EXPECT_FALSE(parent->HasPendingChildMounts());
+    EXPECT_TRUE(middle->HasPendingChildMounts());
+
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page_root.get());
+
+    auto expected_parent = page_root;
+    for (const auto& instance : chain) {
+      auto root = instance->PeekMaterializedRoot();
+      ASSERT_NE(root, nullptr);
+      EXPECT_EQ(root->parent(), expected_parent.get());
+      ASSERT_EQ(expected_parent->children().size(), 1u);
+      EXPECT_EQ(expected_parent->children()[0].get(), root.get());
+      EXPECT_FALSE(instance->HasPendingChildMounts());
+      expected_parent = std::move(root);
+    }
+    EXPECT_FALSE(page->HasPendingChildMounts());
+    EXPECT_TRUE(manager->pending_element_template_child_mounts_.empty());
   }
 };
 
@@ -827,6 +918,200 @@ TEST_P(ElementTemplateInstanceTest, UsesIndependentLepusRefType) {
 
   EXPECT_EQ(instance->GetRefType(), lepus::RefType::kElementTemplate);
   static_assert(!std::is_base_of_v<Element, ElementTemplateInstance>);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PAPIAttributeSlotQueryReturnsDistinctNestedElements) {
+  auto entry = std::make_shared<TemplateEntry>();
+  entry->SetName(DEFAULT_ENTRY_NAME);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
+  auto info = std::make_shared<ElementTemplateInfo>();
+  info->exist_ = true;
+  info->key_ = "ref_targets";
+  ElementInfo root_info;
+  root_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_VIEW;
+  for (uint32_t slot : {0u, 2u}) {
+    ElementInfo child_info;
+    child_info.tag_enum_ = slot == 0 ? ElementBuiltInTagEnum::ELEMENT_TEXT
+                                     : ElementBuiltInTagEnum::ELEMENT_VIEW;
+    child_info.attributes_ =
+        std::make_shared<const TemplateAttributes>(TemplateAttributes{
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                      base::String("main-thread:ref"), lepus::Value(), slot}});
+    root_info.children_.emplace_back(std::move(child_info));
+  }
+  info->elements_.emplace_back(std::move(root_info));
+  entry->template_bundle_.element_template_infos_["ref_targets"] = info;
+  auto instance = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  instance->SetTASM(tasm.get());
+  instance->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
+  instance->SetTemplateKey(base::String("ref_targets"));
+
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  auto query = [&](uint32_t slot) {
+    lepus::Value args[] = {lepus::Value(instance), lepus::Value(slot)};
+    return RendererFunctions::FiberGetElementByAttrSlot(ctx, args, 2);
+  };
+  auto first_target = query(0);
+  ASSERT_TRUE(first_target.IsRefCounted());
+  EXPECT_TRUE(instance->materialization_requested_);
+  auto root = instance->PeekMaterializedRoot();
+  ASSERT_NE(root, nullptr);
+  ASSERT_EQ(root->children().size(), 2u);
+  for (uint32_t slot : {0u, 2u}) {
+    auto target = query(slot);
+    ASSERT_TRUE(target.IsRefCounted());
+    EXPECT_EQ(target.RefCounted()->GetRefType(), lepus::RefType::kElement);
+    EXPECT_EQ(target.RefCounted().get(), root->children()[slot / 2].get());
+    EXPECT_NE(target.RefCounted().get(), root.get());
+    EXPECT_EQ(query(slot).RefCounted().get(), target.RefCounted().get());
+    lepus::Value args[] = {target, lepus::Value("accessibility-label"),
+                           lepus::Value(slot == 0 ? "text" : "view")};
+    RendererFunctions::FiberSetAttribute(ctx, args, 3);
+    const auto& attributes =
+        root->children()[slot / 2]->data_model()->attributes();
+    auto written = attributes.find(base::String("accessibility-label"));
+    ASSERT_NE(written, attributes.end());
+    EXPECT_EQ(written->second.StdString(), slot == 0 ? "text" : "view");
+  }
+  EXPECT_TRUE(query(1).IsNil());
+  EXPECT_TRUE(query(3).IsNil());
+
+  Renderer::RegisterBuiltin(runtime.get(), ArchOption::FIBER_ARCH);
+  runtime->SetGlobalData("et", lepus::Value(instance));
+  lepus::BytecodeGenerator::GenerateBytecode(
+      runtime->GetMTSContext(),
+      "let slotTarget = __GetElementByAttrSlot(et, 2);"
+      "let missingTarget = __GetElementByAttrSlot(et, 1) === null;",
+      runtime->GetSdkVersion(), "");
+  ASSERT_TRUE(runtime->Execute(nullptr));
+  auto global_target = runtime->GetGlobalData("slotTarget");
+  ASSERT_TRUE(global_target.IsRefCounted());
+  EXPECT_EQ(global_target.RefCounted().get(), root->children()[1].get());
+  EXPECT_TRUE(runtime->GetGlobalData("missingTarget").Bool());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PAPIAttributeSlotQueryMaterializesTypedRoot) {
+  auto instance = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  instance->SetTypedTag(base::String("view"));
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  lepus::Value args[] = {lepus::Value(instance), lepus::Value(0)};
+  auto target = RendererFunctions::FiberGetElementByAttrSlot(ctx, args, 2);
+  auto root = instance->PeekMaterializedRoot();
+  ASSERT_NE(root, nullptr);
+  ASSERT_TRUE(target.IsRefCounted());
+  EXPECT_EQ(target.RefCounted()->GetRefType(), lepus::RefType::kElement);
+  EXPECT_EQ(target.RefCounted().get(), root.get());
+  args[1] = lepus::Value(1);
+  EXPECT_TRUE(
+      RendererFunctions::FiberGetElementByAttrSlot(ctx, args, 2).IsNil());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PAPIAttributeSlotQueryRejectsInvalidHandleAndIndex) {
+  auto instance = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  instance->SetTypedTag(base::String("view"));
+  ASSERT_NE(instance->GetRoot(), nullptr);
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  for (const auto& index :
+       {lepus::Value(-1), lepus::Value(0.5), lepus::Value("0"), lepus::Value(),
+        lepus::Value(std::numeric_limits<double>::quiet_NaN()),
+        lepus::Value(std::numeric_limits<double>::infinity()),
+        lepus::Value(static_cast<double>(std::numeric_limits<uint32_t>::max()) +
+                     1)}) {
+    lepus::Value args[] = {lepus::Value(instance), index};
+    EXPECT_TRUE(
+        RendererFunctions::FiberGetElementByAttrSlot(ctx, args, 2).IsNil());
+  }
+  for (const auto& handle :
+       {lepus::Value(), lepus::Value(manager->CreateFiberView())}) {
+    lepus::Value args[] = {handle, lepus::Value(0)};
+    EXPECT_TRUE(
+        RendererFunctions::FiberGetElementByAttrSlot(ctx, args, 2).IsNil());
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest, PAPISlotMutationsRejectInvalidIndex) {
+  auto parent = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  parent->SetTypedTag(base::String("view"));
+  auto child = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  child->SetTypedTag(base::String("view"));
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue("data-state", lepus::Value("unchanged"));
+  parent->SetAttributeSlot(0, lepus::Value(attributes));
+  auto changed_attributes = lepus::Dictionary::Create();
+  changed_attributes->SetValue("data-state", lepus::Value("changed"));
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+
+  for (const auto& index :
+       {lepus::Value(-1), lepus::Value(0.5), lepus::Value("0"), lepus::Value(),
+        lepus::Value(std::numeric_limits<double>::quiet_NaN()),
+        lepus::Value(std::numeric_limits<double>::infinity()),
+        lepus::Value(-std::numeric_limits<double>::infinity()),
+        lepus::Value(static_cast<double>(std::numeric_limits<uint32_t>::max()) +
+                     1)}) {
+    SCOPED_TRACE(index.IsNumber() ? std::to_string(index.Number())
+                                  : "nonnumeric");
+    parent->SetAttributeSlot(0, lepus::Value(attributes));
+    lepus::Value set_args[] = {lepus::Value(parent), index,
+                               lepus::Value(changed_attributes)};
+    RendererFunctions::FiberSetAttributeOfElementTemplate(ctx, set_args, 3);
+    EXPECT_EQ(parent->attribute_slots_.GetProperty(0)
+                  .GetProperty("data-state")
+                  .StdString(),
+              "unchanged");
+
+    lepus::Value insert_args[] = {lepus::Value(parent), index,
+                                  lepus::Value(child), lepus::Value()};
+    RendererFunctions::FiberInsertNodeToElementTemplate(ctx, insert_args, 4);
+    EXPECT_EQ(child->logical_parent_, nullptr);
+
+    parent->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+    lepus::Value remove_args[] = {lepus::Value(parent), index,
+                                  lepus::Value(child)};
+    RendererFunctions::FiberRemoveNodeFromElementTemplate(ctx, remove_args, 3);
+    EXPECT_EQ(child->logical_parent_, parent.get());
+    parent->RemoveNodeFromChildSlot(0, lepus::Value(child));
+    base::ErrorStorage::GetInstance().Reset();
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest, PAPISlotIndexAcceptsUint32Boundaries) {
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  auto parent = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  parent->SetTypedTag(base::String("view"));
+  auto attributes = lepus::Dictionary::Create();
+  attributes->SetValue("data-state", lepus::Value("valid"));
+  for (const auto& index : {lepus::Value(0), lepus::Value(-0.0)}) {
+    lepus::Value set_args[] = {lepus::Value(parent), index,
+                               lepus::Value(attributes)};
+    RendererFunctions::FiberSetAttributeOfElementTemplate(ctx, set_args, 3);
+    EXPECT_EQ(parent->attribute_slots_.GetProperty(0)
+                  .GetProperty("data-state")
+                  .StdString(),
+              "valid");
+  }
+  // Exercise the upper bound without allocating a UINT32_MAX-sized slot array.
+  lepus::Value insert_args[] = {
+      lepus::Value(parent),
+      lepus::Value(static_cast<double>(std::numeric_limits<uint32_t>::max())),
+      lepus::Value(parent), lepus::Value()};
+  base::ErrorStorage::GetInstance().Reset();
+  RendererFunctions::FiberInsertNodeToElementTemplate(ctx, insert_args, 4);
+  EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  base::ErrorStorage::GetInstance().Reset();
 }
 
 TEST_P(ElementTemplateInstanceTest, SerializeElementTemplateRecursively) {
@@ -2466,6 +2751,66 @@ TEST_P(ElementTemplateInstanceTest,
   auto* listeners = child_root->GetEventListenerMap()->Find("tap");
   ASSERT_NE(listeners, nullptr);
   EXPECT_EQ(listeners->size(), 1u);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PageFlushCompletesNestedAttrSlotMaterialization) {
+  ExpectPageFlushCompletesNestedAttrSlotMaterialization(false);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PageFlushCompletesNestedAttrSlotMaterializationBeforeInsertion) {
+  ExpectPageFlushCompletesNestedAttrSlotMaterialization(true);
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       AttrSlotMaterializedPendingDescendantsRespectFlushScope) {
+  auto detached = CreateCompiledMountChain(3);
+  auto attached = CreateCompiledMountChain(3);
+  auto page_root = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page_root);
+  auto scope_root = manager->CreateFiberView();
+  page_root->InsertNode(scope_root);
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  for (const auto& instance :
+       {detached[1], detached[0], attached[1], attached[0]}) {
+    lepus::Value args[] = {lepus::Value(instance), lepus::Value(0)};
+    ASSERT_TRUE(RendererFunctions::FiberGetElementByAttrSlot(ctx, args, 2)
+                    .IsRefCounted());
+  }
+  page_root->InsertNode(attached[0]->PeekMaterializedRoot());
+  ASSERT_EQ(manager->pending_element_template_child_mounts_.size(), 2u);
+
+  // Neither subtree belongs to this scope, including the one attached elsewhere
+  // on the same page. Repeated drains must return without resolving either
+  // leaf.
+  for (int i = 0; i < 2; ++i) {
+    manager->DrainPendingElementTemplateChildMounts(scope_root.get());
+    EXPECT_EQ(detached[2]->PeekMaterializedRoot(), nullptr);
+    EXPECT_EQ(attached[2]->PeekMaterializedRoot(), nullptr);
+    EXPECT_TRUE(detached[1]->HasPendingChildMounts());
+    EXPECT_TRUE(attached[1]->HasPendingChildMounts());
+    EXPECT_EQ(manager->pending_element_template_child_mounts_.size(), 2u);
+  }
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+  ASSERT_NE(attached[2]->PeekMaterializedRoot(), nullptr);
+  EXPECT_EQ(attached[2]->PeekMaterializedRoot()->parent(),
+            attached[1]->PeekMaterializedRoot().get());
+  EXPECT_FALSE(attached[1]->HasPendingChildMounts());
+  EXPECT_EQ(detached[2]->PeekMaterializedRoot(), nullptr);
+  EXPECT_EQ(manager->pending_element_template_child_mounts_.size(), 1u);
+
+  scope_root->InsertNode(detached[0]->PeekMaterializedRoot());
+  options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+  ASSERT_NE(detached[2]->PeekMaterializedRoot(), nullptr);
+  EXPECT_EQ(detached[2]->PeekMaterializedRoot()->parent(),
+            detached[1]->PeekMaterializedRoot().get());
+  EXPECT_FALSE(detached[1]->HasPendingChildMounts());
+  EXPECT_TRUE(manager->pending_element_template_child_mounts_.empty());
 }
 
 TEST_P(ElementTemplateInstanceTest,

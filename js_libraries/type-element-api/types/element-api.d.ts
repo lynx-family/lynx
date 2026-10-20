@@ -466,6 +466,16 @@ declare global {
   ): ElementTemplateHandle;
 
   /**
+   * Synchronously materialize the template instance on demand and return the element targeted by an attribute slot.
+   * Returns null if the slot is absent. Typed instances use slot 0 for their root.
+   * This does not complete pending parent mounts or layout.
+   */
+  function __GetElementByAttrSlot(
+    templateInstance: ElementTemplateHandle,
+    attributeSlotIndex: number
+  ): ElementRef | null;
+
+  /**
    * Update one dynamic attribute slot on an existing compiled template instance.
    *
    * For typed template instances, `attributeSlotIndex === 0` applies `value` as
