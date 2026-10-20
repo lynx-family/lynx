@@ -14,6 +14,7 @@
 namespace serval {
 namespace markdown {
 class NativeMarkdownMeasurer;
+class MarkdownEventListener;
 }  // namespace markdown
 }  // namespace serval
 
@@ -48,6 +49,7 @@ class MarkdownShadowNode : public ShadowNode, public CustomMeasureFunc {
   std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>
   EnsureMarkdownMeasurer();
 
+  std::shared_ptr<serval::markdown::MarkdownEventListener> event_listener_;
   std::shared_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer_;
   std::shared_ptr<MarkdownResourceLoaderHarmony> resource_loader_;
   serval::markdown::MeasureResult measured_size_{};

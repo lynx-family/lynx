@@ -12,6 +12,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "markdown/parser/markdown_resource_loader.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/measure_mode.h"
@@ -66,6 +67,13 @@ class MarkdownResourceLoaderHarmony final
                          MeasureMode height_mode, bool final_measure,
                          float density);
   void AlignInlineView(const std::string& id_selector, float x, float y);
+  void UpdateInlineViewBounds(int sign, serval::markdown::RectF bounds);
+  void SetEnableGif(bool enable) { enable_gif_.store(enable); }
+  bool EnableGif() const { return enable_gif_.load(); }
+  bool HasAnimatedImages() const { return has_animated_images_.load(); }
+  void RegisterAnimatedImage(
+      std::weak_ptr<CanvasImageMarkdownDrawable> drawable);
+  bool AdvanceImageFrames(int64_t frame_time, bool active);
 
  private:
   std::shared_ptr<serval::markdown::MarkdownDrawable> CreatePlaceholderDrawable(
@@ -95,6 +103,11 @@ class MarkdownResourceLoaderHarmony final
   std::atomic<MarkdownShadowNode*> markdown_node_{nullptr};
   std::weak_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer_;
   std::atomic<bool> destroyed_{false};
+  std::atomic<bool> enable_gif_{false};
+  const int markdown_sign_;
+  std::atomic<bool> has_animated_images_{false};
+  std::mutex animated_images_mutex_;
+  std::vector<std::weak_ptr<CanvasImageMarkdownDrawable>> animated_images_;
   mutable std::mutex image_cache_mutex_;
   std::unordered_map<std::string, std::weak_ptr<LynxBaseImage>> image_cache_;
   float measure_width_{0.f};

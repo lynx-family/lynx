@@ -243,7 +243,7 @@ class LynxContext {
     return resource_loader_;
   }
 
-  UIBase* FindUIBySign(int sign) const;
+  LYNX_EXPORT UIBase* FindUIBySign(int sign) const;
 
   LYNX_EXPORT UIBase* FindUIByIdSelector(const std::string& id_selector) const;
 
