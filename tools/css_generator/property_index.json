@@ -1,6 +1,6 @@
 [
     {
-        "count": 238
+        "count": 243
     },
     {
         "id": 1,
@@ -953,5 +953,25 @@
     {
         "id": 238,
         "name": "-x-box-match-parent-size"
+    },
+    {
+        "id": 239,
+        "name": "corner-shape"
+    },
+    {
+        "id": 240,
+        "name": "corner-top-left-shape"
+    },
+    {
+        "id": 241,
+        "name": "corner-top-right-shape"
+    },
+    {
+        "id": 242,
+        "name": "corner-bottom-right-shape"
+    },
+    {
+        "id": 243,
+        "name": "corner-bottom-left-shape"
     }
 ]

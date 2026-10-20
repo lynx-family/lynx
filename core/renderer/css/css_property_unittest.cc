@@ -131,6 +131,61 @@ TEST(CSSProperty, GetExpandedLonghands) {
   EXPECT_EQ(count, 0u);
 }
 
+TEST(CSSProperty, CornerShapePropertyLookup) {
+  const struct {
+    CSSPropertyID id;
+    const char* name;
+    int numeric_id;
+  } properties[] = {
+      {kPropertyIDCornerShape, "corner-shape", 239},
+      {kPropertyIDCornerTopLeftShape, "corner-top-left-shape", 240},
+      {kPropertyIDCornerTopRightShape, "corner-top-right-shape", 241},
+      {kPropertyIDCornerBottomRightShape, "corner-bottom-right-shape", 242},
+      {kPropertyIDCornerBottomLeftShape, "corner-bottom-left-shape", 243},
+  };
+  const auto& defaults = CSSProperty::GetComputeStyleMap();
+  for (const auto& property : properties) {
+    SCOPED_TRACE(property.name);
+    EXPECT_EQ(static_cast<int>(property.id), property.numeric_id);
+    EXPECT_TRUE(CSSProperty::IsPropertyValid(property.id));
+    EXPECT_EQ(CSSProperty::GetPropertyID(property.name), property.id);
+    EXPECT_EQ(CSSProperty::GetPropertyID(std::string(property.name)),
+              property.id);
+    EXPECT_EQ(CSSProperty::GetPropertyID(base::String(property.name)),
+              property.id);
+    EXPECT_EQ(CSSProperty::GetPropertyName(property.id).str(), property.name);
+    EXPECT_STREQ(CSSProperty::GetPropertyNameCStr(property.id), property.name);
+    EXPECT_STREQ(GetPropertyNameCStr(property.id), property.name);
+    auto it = defaults.find(property.name);
+    ASSERT_NE(it, defaults.end());
+    EXPECT_EQ(it->second, "round");
+  }
+}
+
+TEST(CSSProperty, CornerShapeShorthandMetadata) {
+  const CSSPropertyID corners[] = {
+      kPropertyIDCornerTopLeftShape, kPropertyIDCornerTopRightShape,
+      kPropertyIDCornerBottomRightShape, kPropertyIDCornerBottomLeftShape};
+  EXPECT_EQ(CSSProperty::GetShorthandExpand(kPropertyIDCornerShape), 4u);
+  EXPECT_TRUE(CSSProperty::IsShorthandProperty(kPropertyIDCornerShape));
+  size_t count = 0;
+  const auto* longhands =
+      CSSProperty::GetExpandedLonghands(kPropertyIDCornerShape, &count);
+  ASSERT_NE(longhands, nullptr);
+  ASSERT_EQ(count, 4u);
+  for (size_t i = 0; i < count; ++i) {
+    EXPECT_EQ(longhands[i], corners[i]);
+  }
+  for (auto id : corners) {
+    SCOPED_TRACE(CSSProperty::GetPropertyNameCStr(id));
+    EXPECT_EQ(CSSProperty::GetShorthandExpand(id), 0u);
+    EXPECT_FALSE(CSSProperty::IsShorthandProperty(id));
+    size_t longhand_count = 42;
+    EXPECT_EQ(CSSProperty::GetExpandedLonghands(id, &longhand_count), nullptr);
+    EXPECT_EQ(longhand_count, 0u);
+  }
+}
+
 TEST(CSSProperty, IsCustomProperty) {
   EXPECT_FALSE(CSSProperty::IsCustomProperty("", 0));
   EXPECT_FALSE(CSSProperty::IsCustomProperty("--", 2));
