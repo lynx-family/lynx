@@ -11,7 +11,7 @@ import {
   NativeApp,
   requireParamObj,
 } from './interface';
-import { AMDFactory, AMDModule } from '../common';
+import { AMDFactory, AMDModule, APP_SERVICE_NAME } from '../common';
 import {
   Reporter,
   BaseError,
@@ -577,7 +577,12 @@ export abstract class BaseApp<
 
       // Here means that no error occurred when executing.
       // Only then we cache the factory.
-      if (shouldCacheFactory) {
+      if (
+        shouldCacheFactory &&
+        (path !== APP_SERVICE_NAME ||
+          this.params?.pageConfigSubset?.disableAppServiceFactoryCache ===
+            false)
+      ) {
         BaseApp._$factoryCache[path] = factory;
       }
       addLoadScriptCache(cacheKey, exports);
