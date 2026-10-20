@@ -111,6 +111,12 @@ void ElementManagerDelegateImpl::TriggerLepusGlobalEvent(
   tasm_->TriggerLepusGlobalEvent(event, info);
 }
 
+void ElementManagerDelegateImpl::InvokeOrDefer(base::closure task) {
+  if (tasm_ != nullptr) {
+    tasm_->InvokeOrDefer(std::move(task));
+  }
+}
+
 void ElementManagerDelegateImpl::TriggerLepusBridgeAsync(
     const std::string &method_name, const lepus::Value &arguments) {
   if (tasm_ == nullptr) {

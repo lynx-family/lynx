@@ -56,8 +56,10 @@ class FrameElement : public Element {
   // load bundle if src is set
   void OnSetSrc(const base::String& key, const lepus::Value& value);
 
-  // send load event for `bindload` callback
+  // Schedule both load callbacks on the engine thread outside an active
+  // pipeline.
   void SendLoadEvent(const std::shared_ptr<FrameElementData>& data);
+  void DispatchLoadEvent(const std::shared_ptr<FrameElementData>& data);
 
   std::unique_ptr<lepus::Value> data_;
   std::unique_ptr<lepus::Value> global_props_;
