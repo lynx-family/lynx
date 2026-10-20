@@ -18,7 +18,6 @@ import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
-import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
@@ -61,7 +60,6 @@ public final class LynxFrameView extends UIBodyView {
   private int mPresetWidth = -1;
   private int mPresetHeight = -1;
   private Boolean mEnableMultiAsyncThread = null;
-  private ThreadStrategyForRendering mThreadStrategy = null;
   private final FramePerformanceClient mFramePerformanceClient = new FramePerformanceClient(this);
 
   interface FrameEventCallback {
@@ -104,9 +102,6 @@ public final class LynxFrameView extends UIBodyView {
     builder.setEmbeddedMode(mEmbeddedMode);
     if (mEnableMultiAsyncThread != null) {
       builder.setEnableMultiAsyncThread(mEnableMultiAsyncThread);
-    }
-    if (mThreadStrategy != null) {
-      builder.setThreadStrategyForRendering(mThreadStrategy);
     }
     if (mPresetWidth != -1 || mPresetHeight != -1) {
       builder.setPresetMeasuredSpec(
@@ -232,15 +227,6 @@ public final class LynxFrameView extends UIBodyView {
     mEnableMultiAsyncThread = value;
   }
 
-  void setThreadStrategy(double value) {
-    if (mRender != null) {
-      return;
-    }
-    mThreadStrategy = value >= 0 && value <= 3 && value == (int) value
-        ? ThreadStrategyForRendering.values()[(int) value]
-        : null;
-  }
-
   void setInitData(long dataPtr) {
     TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, TraceEventDef.LYNX_FRAME_VIEW_SET_INIT_DATA);
     mInitData = updatePendingTemplateData(mInitData, dataPtr);
@@ -305,12 +291,6 @@ public final class LynxFrameView extends UIBodyView {
     if (mRender != null) {
       mRender.runOnTasmThread(runnable);
     }
-  }
-
-  @Override
-  public ThreadStrategyForRendering getThreadStrategyForRendering() {
-    return mRender != null ? mRender.getThreadStrategyForRendering()
-                           : ThreadStrategyForRendering.ALL_ON_UI;
   }
 
   public void setEmbeddedMode(@EmbeddedMode.Mode int mode) {

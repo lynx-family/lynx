@@ -23,7 +23,6 @@ import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.PageConfig;
-import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.OnceTask;
 import com.lynx.tasm.base.TraceEvent;
@@ -865,11 +864,6 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     // run task on engine thread
     public void runOnTasmThread(Runnable runnable) {}
-
-    /** Returns the rendering strategy of this page's engine. */
-    public ThreadStrategyForRendering getThreadStrategyForRendering() {
-      return ThreadStrategyForRendering.ALL_ON_UI;
-    }
 
     /**
      * @return internal UIRenderer

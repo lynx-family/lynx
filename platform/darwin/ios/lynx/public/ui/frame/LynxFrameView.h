@@ -42,10 +42,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setEnableMultiAsyncThread:(nullable NSNumber *)enableMultiAsyncThread;
 
-/// Overrides the child rendering strategy before its render is created.
-/// A nil or unsupported value preserves the inherited builder setting.
-- (void)setThreadStrategy:(nullable NSNumber *)threadStrategy;
-
 - (UIView<LUIBodyView> *_Nullable)getRootView;
 
 - (void)updateFrame:(CGRect)frame contentFrame:(CGRect)contentFrame;

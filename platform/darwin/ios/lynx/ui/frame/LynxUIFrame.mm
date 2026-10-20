@@ -63,10 +63,6 @@ LYNX_LAZY_REGISTER_UI("frame")
 LYNX_REGISTER_UI("frame")
 #endif
 
-- (void)dealloc {
-  [self.childrenLynxPageUI removeObjectForKey:[NSString stringWithFormat:@"%p", self]];
-}
-
 - (UIView*)createView {
   id<LynxFrameViewProvider> provider = self.context.lynxFrameViewProvider;
   LynxFrameView* view = nil;
@@ -252,9 +248,5 @@ LYNX_PROP_SETTER("preset-height", setPresetHeight, NSString*) {
 
 LYNX_PROP_SETTER("enable-multi-async-thread", setEnableMultiAsyncThread, NSNumber*) {
   [[self view] setEnableMultiAsyncThread:requestReset ? nil : value];
-}
-
-LYNX_PROP_SETTER("thread-strategy", setThreadStrategy, NSNumber*) {
-  [[self view] setThreadStrategy:requestReset ? nil : value];
 }
 @end
