@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include "base/include/closure.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "core/event/event_dispatch_result.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
@@ -74,6 +75,13 @@ class ElementManagerDelegate {
   // Call for sending Lepus global event.
   virtual void TriggerLepusGlobalEvent(const std::string &event,
                                        const lepus::Value &info) = 0;
+
+  // Engine-thread only. Defer callbacks until the active pipeline completes.
+  virtual void InvokeOrDefer(base::closure task) {
+    if (task) {
+      task();
+    }
+  }
 
   // Call for dispatching message event.
   virtual event::DispatchEventResult DispatchMessageEvent(

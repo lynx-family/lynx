@@ -53,6 +53,8 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
   void TriggerLepusGlobalEvent(const std::string &event,
                                const lepus::Value &info) override;
 
+  void InvokeOrDefer(base::closure task) override;
+
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event) override;
 

@@ -111,6 +111,12 @@ void ElementManagerDelegateImpl::TriggerLepusGlobalEvent(
   tasm_->TriggerLepusGlobalEvent(event, info);
 }
 
+void ElementManagerDelegateImpl::InvokeOrDefer(base::closure task) {
+  if (tasm_ != nullptr) {
+    tasm_->InvokeOrDefer(std::move(task));
+  }
+}
+
 event::DispatchEventResult ElementManagerDelegateImpl::DispatchMessageEvent(
     fml::RefPtr<runtime::MessageEvent> event) {
   if (tasm_ == nullptr) {
