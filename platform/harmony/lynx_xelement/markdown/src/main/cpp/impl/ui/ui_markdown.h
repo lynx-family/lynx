@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "markdown/platform/harmony/serval_markdown_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
@@ -41,6 +42,9 @@ class UIMarkdown : public UIBase {
  private:
   static void InitMarkdownEnv(LynxContext* context);
   void DetachMarkdownView();
+  lepus::Value GetTextRectsResult(
+      const std::vector<serval::markdown::RectF>& boxes,
+      const lepus::Value& args, bool include_handles);
 
   std::shared_ptr<serval::markdown::NativeServalMarkdownView> markdown_view_;
 };
