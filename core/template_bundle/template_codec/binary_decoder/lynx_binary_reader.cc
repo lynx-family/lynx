@@ -39,6 +39,14 @@ bool LynxBinaryReader::DidDecodeHeader() {
         template_info_.GetProperty(BASE_STATIC_STRING(kEnableParallelElement))
             .Bool() ||
         template_info_.GetProperty(kEnableConcurrentElement).Bool());
+
+    const auto enable_layout_only_transition_order_fix =
+        template_info_.GetProperty(
+            BASE_STATIC_STRING(kEnableLayoutOnlyTransitionOrderFix));
+    if (enable_layout_only_transition_order_fix.IsBool()) {
+      page_configs_->SetEnableLayoutOnlyTransitionOrderFix(
+          enable_layout_only_transition_order_fix.Bool());
+    }
   }
 
   auto& tb = template_bundle();
