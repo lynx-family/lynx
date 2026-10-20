@@ -165,8 +165,21 @@ std::shared_ptr<skity::Image> TakeScreenshotWithOpaque(
 
   auto* gpu_context = surface->GetContext();
   if (!gpu_context) {
-    FML_DLOG(ERROR) << "Screenshot: unable to get gpu context";
-    return nullptr;
+    auto size = tree->frame_size();
+    if (!(size.x >= 1 && size.y >= 1 && size.x <= 16384 && size.y <= 16384)) {
+      return nullptr;
+    }
+    skity::Bitmap bitmap(size.x, size.y, skity::AlphaType::kPremul_AlphaType);
+    auto canvas = skity::Canvas::MakeSoftwareCanvas(&bitmap);
+    if (!canvas) {
+      return nullptr;
+    }
+    auto frame = compositor_context.AcquireFrame(nullptr, canvas.get(), nullptr,
+                                                 skity::Matrix(), false, true);
+    canvas->Clear(clay::Color::kTransparent());
+    frame->Raster(*tree, true, nullptr, background_color);
+    canvas->Flush();
+    return skity::Image::MakeImage(bitmap.GetPixmap());
   }
 
   auto context_switch = surface->MakeRenderContextCurrent();

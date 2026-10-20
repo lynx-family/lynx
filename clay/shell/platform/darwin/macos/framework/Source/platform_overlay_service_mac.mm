@@ -36,9 +36,13 @@ PlatformOverlayMac::PlatformOverlayMac(id<MTLDevice> device, id<MTLCommandQueue>
       layer_(layer),
       back_buffer_cache_([[FlutterBackBufferCache alloc] init]),
       front_surface_(nil) {
-  // Upcast to base inside the class where private inheritance is accessible.
-  EmbedderSurfaceMetalDelegate* delegate = this;
-  output_surface_ = fml::MakeRefCounted<EmbedderSurfaceMetal>(delegate);
+  if (device_ && command_queue_) {
+    EmbedderSurfaceMetalDelegate* delegate = this;
+    output_surface_ = fml::MakeRefCounted<EmbedderSurfaceMetal>(delegate);
+  } else {
+    EmbedderSurfaceSoftwareDelegate* delegate = this;
+    output_surface_ = fml::MakeRefCounted<EmbedderSurfaceSoftware>(delegate);
+  }
 }
 
 PlatformOverlayMac::~PlatformOverlayMac() {
@@ -123,6 +127,17 @@ bool PlatformOverlayMac::PresentTexture(GPUMTLTextureInfo texture) const {
 }
 
 bool PlatformOverlayMac::EnablePartialRepaint() const { return false; }
+
+bool PlatformOverlayMac::OnPresentBackingStore(const void* allocation, size_t row_bytes,
+                                               size_t height) {
+  FML_DCHECK([NSThread isMainThread]);
+  CGImageRef image = [FlutterView createSoftwareImage:allocation rowBytes:row_bytes height:height];
+  if (!image) {
+    return false;
+  }
+  layer_.contents = CFBridgingRelease(image);
+  return true;
+}
 
 std::vector<std::shared_ptr<PlatformOverlay>> PlatformOverlayServiceMac::CreatePlatformOverlay(
     size_t num) {

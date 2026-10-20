@@ -15,6 +15,7 @@
 #include "clay/shell/platform/darwin/macos/framework/Source/FlutterSurface.h"
 #include "clay/shell/platform/darwin/macos/framework/Source/overlay_view_controller_service.h"
 #include "clay/shell/platform/embedder/embedder_surface_metal.h"
+#include "clay/shell/platform/embedder/embedder_surface_software.h"
 
 @class ClayOverlayView;
 @class FlutterBackBufferCache;
@@ -23,7 +24,9 @@ namespace clay {
 
 // One Metal IOSurface-backed overlay layer rendered above native views.
 // Each instance owns a CALayer sublayer on the Lynx overlay view's layer.
-class PlatformOverlayMac final : public PlatformOverlay, private EmbedderSurfaceMetalDelegate {
+class PlatformOverlayMac final : public PlatformOverlay,
+                                 private EmbedderSurfaceMetalDelegate,
+                                 private EmbedderSurfaceSoftwareDelegate {
  public:
   PlatformOverlayMac(id<MTLDevice> device, id<MTLCommandQueue> command_queue,
                      ClayOverlayView* overlay_view, CALayer* layer);
@@ -49,6 +52,7 @@ class PlatformOverlayMac final : public PlatformOverlay, private EmbedderSurface
   GPUMTLTextureInfo GetMTLTexture(const skity::Vec2& frame_size) const override;
   bool PresentTexture(GPUMTLTextureInfo texture) const override;
   bool EnablePartialRepaint() const override;
+  bool OnPresentBackingStore(const void* allocation, size_t row_bytes, size_t height) override;
 
   __strong id<MTLDevice> device_;
   __strong id<MTLCommandQueue> command_queue_;
@@ -56,7 +60,7 @@ class PlatformOverlayMac final : public PlatformOverlay, private EmbedderSurface
   __strong CALayer* layer_;
   __strong FlutterBackBufferCache* back_buffer_cache_;
   mutable __strong FlutterSurface* front_surface_;
-  fml::RefPtr<EmbedderSurfaceMetal> output_surface_;
+  fml::RefPtr<OutputSurface> output_surface_;
 };
 
 // Creates PlatformOverlayMac instances, adding CALayer sublayers to the
