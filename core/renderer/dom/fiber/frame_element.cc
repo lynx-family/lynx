@@ -155,6 +155,25 @@ void FrameElement::FlushProps() {
 
 void FrameElement::SendLoadEvent(
     const std::shared_ptr<FrameElementData>& data) {
+  // First return from a resolve worker to the engine thread.
+  if (ShouldProcessParallelTasks()) {
+    EnqueueReduceTask([this, data]() { SendLoadEvent(data); });
+    return;
+  }
+  // Then wait for the active pipeline before invoking callbacks.
+  if (auto* delegate = element_manager()->element_manager_delegate()) {
+    delegate->InvokeOrDefer([weak_self = WeakFromThis(), data]() {
+      fml::RefPtr<FrameElement> frame(
+          static_cast<FrameElement*>(weak_self.get()));
+      if (frame && frame->ShouldDestroy() && frame->src_ == data->src) {
+        frame->DispatchLoadEvent(data);
+      }
+    });
+  }
+}
+
+void FrameElement::DispatchLoadEvent(
+    const std::shared_ptr<FrameElementData>& data) {
   auto detail = lepus::Dictionary::Create();
   detail->SetValue(BASE_STATIC_STRING(kURL), data->src);
   detail->SetValue(BASE_STATIC_STRING(kStatusCode), data->error_code);

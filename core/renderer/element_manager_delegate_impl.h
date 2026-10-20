@@ -53,6 +53,8 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
   void TriggerLepusGlobalEvent(const std::string &event,
                                const lepus::Value &info) override;
 
+  void InvokeOrDefer(base::closure task) override;
+
   void TriggerLepusBridgeAsync(const std::string &method_name,
                                const lepus::Value &arguments) override;
 
