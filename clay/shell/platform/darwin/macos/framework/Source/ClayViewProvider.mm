@@ -274,22 +274,27 @@ NSData* currentKeyboardLayoutData() {
 /**
  * Performs initialization that's common between the different init paths.
  */
-static void CommonInit(ClayViewProvider* controller) {
+static void CommonInit(ClayViewProvider* controller, BOOL softwareRendering) {
   if (!controller->_engine) {
     controller->_engine = [[FlutterEngine alloc] initWithName:@"lynx.clay"
-                                       allowHeadlessExecution:NO];
+                                       allowHeadlessExecution:NO
+                                            softwareRendering:softwareRendering];
     [controller->_engine setViewProvider:controller];
   }
   controller->_mouseTrackingMode = FlutterMouseTrackingModeInKeyWindow;
 }
 
 - (instancetype)init {
+  return [self initWithSoftwareRendering:NO];
+}
+
+- (instancetype)initWithSoftwareRendering:(BOOL)softwareRendering {
   self = [super init];
   NSAssert(self, @"Super init cannot be nil");
   _ime_callback = nullptr;
   _viewDidLoad = NO;
   _serviceManager = [[ClayServiceManager alloc] init];
-  CommonInit(self);
+  CommonInit(self, softwareRendering);
   _isLaunchEngineSuccess = [self launchEngine];
   return self;
 }
@@ -305,13 +310,16 @@ static void CommonInit(ClayViewProvider* controller) {
   FlutterView* flutterView;
   id<MTLDevice> device = _engine.renderer.device;
   id<MTLCommandQueue> commandQueue = _engine.renderer.commandQueue;
-  if (!device || !commandQueue) {
+  if (_engine.renderer.softwareRendering) {
+    flutterView = [[FlutterView alloc] initWithSoftwareRendering:self];
+  } else if (!device || !commandQueue) {
     FML_LOG(ERROR) << "Unable to create FlutterView; no MTLDevice or MTLCommandQueue available.";
     return;
+  } else {
+    flutterView = [[FlutterView alloc] initWithMTLDevice:device
+                                            commandQueue:commandQueue
+                                         reshapeListener:self];
   }
-  flutterView = [[FlutterView alloc] initWithMTLDevice:device
-                                          commandQueue:commandQueue
-                                       reshapeListener:self];
 
   flutterView.provider = self;
   self.view = flutterView;

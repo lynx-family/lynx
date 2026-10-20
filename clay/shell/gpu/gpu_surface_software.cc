@@ -74,11 +74,13 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceSoftware::AcquireFrame(
     }
 
     CANVAS_FLUSH(canvas);
-    return self->delegate_->PresentBackingStore(surface_frame.GetSurface());
+    return true;
   };
   SurfaceFrame::SubmitCallback submit_callback =
-      [self = weak_factory_.GetWeakPtr()](
-          const SurfaceFrame::SubmitInfo& surface_frame) { return true; };
+      [delegate = delegate_,
+       backing_store](const SurfaceFrame::SubmitInfo& surface_frame) {
+        return delegate->PresentBackingStore(backing_store);
+      };
 
   return std::make_unique<SurfaceFrame>(backing_store, framebuffer_info,
                                         encode_callback, submit_callback,
