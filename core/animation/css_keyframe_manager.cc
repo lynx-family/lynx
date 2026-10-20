@@ -14,8 +14,10 @@
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
 #include "core/animation/animation.h"
+#include "core/animation/animation_backend_evaluator.h"
 #include "core/animation/animation_delegate.h"
 #include "core/animation/animation_trace_event_def.h"
+#include "core/animation/constants.h"
 #include "core/animation/keyframe_model.h"
 #include "core/animation/keyframed_animation_curve.h"
 #include "core/animation/transform_animation_curve.h"
@@ -281,6 +283,107 @@ fml::TimePoint CSSKeyframeManager::ProcessAnimationEvents(
     next = std::min(next, time);
   }
   return next;
+}
+
+gfx::AnimationEventCapabilityMask
+CSSKeyframeManager::GetRequiredAnimationEvents() const {
+  if (element_ == nullptr || !element_->supports_platform_animation_routing()) {
+    return 0;
+  }
+  gfx::AnimationEventCapabilityMask events = 0;
+  auto require_if_bound = [&](const char* name,
+                              gfx::AnimationEventCapabilityMask event) {
+    const base::String key(name);
+    if (element_->event_map().find(key) != element_->event_map().end() ||
+        element_->lepus_event_map().find(key) !=
+            element_->lepus_event_map().end() ||
+        element_->global_bind_event_map().find(key) !=
+            element_->global_bind_event_map().end()) {
+      events |= event;
+    }
+  };
+  const bool keyframe = GetAnimationKind() == gfx::AnimationKind::kKeyframe;
+  require_if_bound(
+      keyframe ? kKeyframeStartEventName : kTransitionStartEventName,
+      gfx::kAnimationEventStart);
+  require_if_bound(keyframe ? kKeyframeEndEventName : kTransitionEndEventName,
+                   gfx::kAnimationEventEnd);
+  require_if_bound(
+      keyframe ? kKeyframeCancelEventName : kTransitionCancelEventName,
+      gfx::kAnimationEventCancel);
+  if (keyframe) {
+    require_if_bound(kKeyframeIterationEventName,
+                     gfx::kAnimationEventIteration);
+  }
+  return events;
+}
+
+AnimationBackendResult CSSKeyframeManager::EvaluatePlatformSupport(
+    ParsedPropertyMap& properties) {
+  // TODO: Profile whether caching eligibility checks is worthwhile. Keys must
+  // cover kind/property, keyframes/timing, dynamic inputs, events and
+  // capabilities. Cache hits still need resolved endpoints and node eligibility
+  // checks.
+  auto* painting_context = element_->painting_context();
+  if (painting_context == nullptr) {
+    return {false, AnimationFallbackReason::kBackendUnavailable};
+  }
+
+  const auto& capabilities =
+      painting_context->GetPlatformAnimationCapabilities();
+  const auto required_events = GetRequiredAnimationEvents();
+
+  AnimationBackendResult effect_result;
+  for (auto& entry : properties) {
+    auto& property = entry.second;
+    AnimationBackendRequest request;
+    request.kind = GetAnimationKind();
+    request.required_events = required_events;
+    request.property = property.gfx_property;
+    request.has_dynamic_dependencies = property.has_dynamic_dependencies;
+    request.keyframes.reserve(property.keyframes.size());
+    for (auto& parsed : property.keyframes) {
+      if (parsed.keyframe == nullptr) {
+        return {false, AnimationFallbackReason::kUnresolvedKeyframe};
+      }
+      if (parsed.keyframe->IsEmpty()) {
+        const auto& value = property.underlying_value;
+        if (value.IsEmpty()) {
+          return {false, AnimationFallbackReason::kUnresolvedKeyframe};
+        }
+        auto resolved = CreateParsedKeyframe(
+            property.curve_type, parsed.keyframe->Offset(),
+            parsed.keyframe->timing_function()
+                ? parsed.keyframe->timing_function()->Clone()
+                : nullptr,
+            property.css_id, &value);
+        if (!resolved.keyframe || resolved.keyframe->IsEmpty()) {
+          return {false, AnimationFallbackReason::kUnresolvedKeyframe};
+        }
+        resolved.keyframe->SetTimingSource(parsed.keyframe->timing_source());
+        request.has_dynamic_dependencies |= value.IsVariable();
+        if (resolved.keyframe->ValueType() ==
+            gfx::KeyframeValueType::kTransform) {
+          request.has_dynamic_dependencies |=
+              static_cast<const TransformKeyframe*>(resolved.keyframe.get())
+                  ->HasDynamicDependencies();
+        }
+        parsed.resolved_platform_endpoint = std::move(resolved.keyframe);
+      }
+      request.keyframes.push_back(parsed.KeyframeForPlatform());
+    }
+    const auto result = EvaluateAnimationBackend(request, capabilities);
+    if (!result.CanRun()) {
+      return result;
+    }
+    // All properties in one platform effect must share its timing function.
+    if (effect_result.CanRun() &&
+        !(effect_result.platform_timing == result.platform_timing)) {
+      return {false, AnimationFallbackReason::kUnsupportedTimingFunction};
+    }
+    effect_result = result;
+  }
+  return effect_result;
 }
 
 void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
@@ -913,7 +1016,7 @@ CSSKeyframeManager::ParsedPropertyMap CSSKeyframeManager::ParseKeyframes(
               css_value_pair.first, css_value_pair.second, custom_properties,
               configs, effective_base_custom_properties);
       // Resolve animation defaults later; do not allocate a temporary linear
-      // function that CreateAnimation would immediately replace.
+      // function that the animation builder would immediately replace.
       auto timing_function = has_explicit_timing
                                  ? gfx::CreateTimingFunction(explicit_timing)
                                  : nullptr;
@@ -931,6 +1034,14 @@ CSSKeyframeManager::ParsedPropertyMap CSSKeyframeManager::ParseKeyframes(
       auto& property = parsed_properties[curve_type];
       property.curve_type = curve_type;
       property.css_id = css_value_pair.first;
+      property.gfx_property =
+          static_cast<gfx::AnimationPropertyType>(animation_property->second);
+      property.has_dynamic_dependencies |= css_value_pair.second.IsVariable();
+      if (parsed.keyframe->ValueType() == gfx::KeyframeValueType::kTransform) {
+        property.has_dynamic_dependencies |=
+            static_cast<const TransformKeyframe*>(parsed.keyframe.get())
+                ->HasDynamicDependencies();
+      }
       // Insert after frames with the same normalized time to preserve their
       // input order, even when distinct CSS offsets resolve to the same time.
       auto position = property.keyframes.end();

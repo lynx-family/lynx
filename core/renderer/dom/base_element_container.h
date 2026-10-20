@@ -104,6 +104,8 @@ class BaseElementContainer {
   virtual bool CheckFlatten(base::MoveOnlyClosure<bool, bool> func);
 
   virtual void SetKeyframes(fml::RefPtr<PropBundle> bundle);
+  void ApplyPlatformAnimationCommands(
+      std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands);
   virtual void SetFrameAppBundle(
       const std::shared_ptr<LynxTemplateBundle>& bundle);
 

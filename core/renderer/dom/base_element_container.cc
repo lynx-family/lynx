@@ -59,6 +59,12 @@ void BaseElementContainer::SetKeyframes(fml::RefPtr<PropBundle> bundle) {
   painting_context()->SetKeyframes(std::move(bundle));
 }
 
+void BaseElementContainer::ApplyPlatformAnimationCommands(
+    std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) {
+  painting_context()->ApplyPlatformAnimationCommands(element()->impl_id(),
+                                                     std::move(commands));
+}
+
 void BaseElementContainer::SetFrameAppBundle(
     const std::shared_ptr<LynxTemplateBundle>& bundle) {
   painting_context()->SetFrameAppBundle(element()->impl_id(), bundle);

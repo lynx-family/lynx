@@ -1043,6 +1043,8 @@ class Element : public lepus::RefCounted,
   bool display_none() { return display_none_; }
 
   bool enable_new_animator() { return enable_new_animator_; }
+  bool supports_platform_animation_routing() const;
+  bool use_cpp_animation_builder() const;
 
   PropertiesResolvingStatus GenerateRootPropertyStatus() const;
 
@@ -1098,6 +1100,11 @@ class Element : public lepus::RefCounted,
   bool NeedCreateNodeAsync() { return create_node_async_; }
 
   bool HasPaintingNode() { return has_painting_node_; }
+
+  // Platform animations need a concrete platform rendering target. This is
+  // separate from HasPaintingNode(), which is also true for layout-only nodes
+  // whose ElementContainer intentionally skipped native node creation.
+  bool PrepareForPlatformAnimation();
 
   bool IsNewlyCreated() const { return dirty_ & kDirtyCreated; }
 
@@ -1287,6 +1294,11 @@ class Element : public lepus::RefCounted,
 
   void SetAnimationSampleTimeForNewPipeline(const fml::TimePoint& sample_time);
   base::flex_optional<fml::TimePoint> TakeAnimationSampleTimeForNewPipeline();
+  void QueuePlatformAnimationCommand(gfx::PlatformAnimationCommand command);
+  bool HasPendingPlatformAnimationCommands() const {
+    return platform_animation_commands_ != nullptr &&
+           !platform_animation_commands_->empty();
+  }
   void DispatchAnimationEventsForNewPipeline(
       const animation::AnimationEventRecordsForNewPipeline& event_records);
   void UpdateFinalStyleMap(const StyleMap& styles);
@@ -1763,6 +1775,7 @@ class Element : public lepus::RefCounted,
 
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
   void UpdateFiberElement();
+  void CommitPlatformAnimationCommands();
 
   void HandleSelfFixedChange();
   virtual void OnNodeAdded(Element* child);
@@ -2209,6 +2222,11 @@ class Element : public lepus::RefCounted,
   bool trigger_global_event_{false};
 
   bool enable_new_animator_;
+  // An explicit element attribute takes precedence over automatic routing.
+  bool has_explicit_new_animator_attr_{false};
+
+  std::shared_ptr<gfx::PlatformAnimationCommandBatch>
+      platform_animation_commands_;
 
   bool create_node_async_{false};
 

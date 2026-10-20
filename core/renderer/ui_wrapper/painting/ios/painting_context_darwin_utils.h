@@ -27,6 +27,9 @@ class PaintingContextDarwinUtils {
 
   static void SetPerformanceController(PaintingCtxPlatformRef* platform_ref,
                                        LynxPerformanceController* performance_controller);
+
+ private:
+  static void ReportException(NSException* exception);
 };
 
 template <typename F>
@@ -34,25 +37,7 @@ void PaintingContextDarwinUtils::ExecuteSafely(F&& func) {
   @try {
     func();
   } @catch (NSException* e) {
-    std::string msg = [[NSString stringWithFormat:@"%@:%@", [e name], [e reason]] UTF8String];
-    if (LYNX_ERROR(error::E_EXCEPTION_PLATFORM, msg, "")) {
-      auto& instance = lynx::base::ErrorStorage::GetInstance();
-      std::string stack;
-      NSString* rawStack = [LynxCallStackUtil getCallStack:e];
-      stack = lynx::base::debug::GetBacktraceInfo(stack);
-      instance.AddCustomInfoToError("error_stack", stack);
-      if (rawStack) {
-        instance.AddCustomInfoToError("raw_stack", rawStack.UTF8String);
-      }
-      NSDictionary* info = [e userInfo];
-      NSDictionary* customInfo = [info objectForKey:@"LynxErrorCustomInfo"];
-      if (customInfo) {
-        for (NSString* key in customInfo) {
-          instance.AddCustomInfoToError([key UTF8String],
-                                        [[customInfo objectForKey:key] UTF8String]);
-        }
-      }
-    }
+    ReportException(e);
   }
 }
 

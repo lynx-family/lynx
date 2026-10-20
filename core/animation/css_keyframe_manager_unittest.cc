@@ -8,6 +8,10 @@
 
 #include <algorithm>
 #include <memory>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <utility>
 
 #include "core/animation/animation.h"
 #include "core/animation/keyframe_effect.h"
@@ -23,9 +27,11 @@
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/starlight/types/nlength.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/style/animation_data.h"
+#include "gfx/animation/capabilities/ios_animation_capabilities_generated.h"
 #include "gfx/animation/timing_function.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -37,6 +43,122 @@ static constexpr int32_t kWidth = 1080;
 static constexpr int32_t kHeight = 1920;
 static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
+
+class RoutingMockPaintingContext : public MockPaintingContext {
+ public:
+  explicit RoutingMockPaintingContext(bool has_backend)
+      : has_backend_(has_backend) {}
+
+  const gfx::AnimationBackendCapabilities& GetPlatformAnimationCapabilities()
+      override {
+    return has_backend_
+               ? gfx::GetIOSAnimationBackendCapabilities()
+               : MockPaintingContext::GetPlatformAnimationCapabilities();
+  }
+
+ private:
+  const bool has_backend_;
+};
+
+namespace {
+class ScopedAnimationRoutingSetting {
+ public:
+  explicit ScopedAnimationRoutingSetting(const std::string& value) {
+    auto& env = LynxEnv::GetInstance();
+    std::lock_guard<std::recursive_mutex> lock(env.external_env_mutex_);
+    auto it = env.external_env_map_.find(kKey);
+    if (it != env.external_env_map_.end()) {
+      previous_value_ = it->second;
+    }
+    env.external_env_map_[kKey] = value;
+  }
+
+  ~ScopedAnimationRoutingSetting() {
+    auto& env = LynxEnv::GetInstance();
+    std::lock_guard<std::recursive_mutex> lock(env.external_env_mutex_);
+    if (previous_value_) {
+      env.external_env_map_[kKey] = *previous_value_;
+    } else {
+      env.external_env_map_.erase(kKey);
+    }
+  }
+
+  ScopedAnimationRoutingSetting(const ScopedAnimationRoutingSetting&) = delete;
+  ScopedAnimationRoutingSetting& operator=(
+      const ScopedAnimationRoutingSetting&) = delete;
+
+ private:
+  static constexpr auto kKey = LynxEnv::Key::ENABLE_ANIMATION_ROUTING;
+  std::optional<std::string> previous_value_;
+};
+}  // namespace
+
+TEST(AnimationRoutingSettingsTest, RoutingPolicyIsCapturedWhenPageIsCreated) {
+  LynxEnvConfig env_config(kWidth, kHeight, kDefaultLayoutsUnitPerPx,
+                           kDefaultPhysicalPixelsPerLayoutUnit);
+  ::testing::NiceMock<test::MockTasmDelegate> delegate;
+  auto create_page = [&](bool has_backend) {
+    auto painting_context =
+        std::make_unique<RoutingMockPaintingContext>(has_backend);
+    auto page = std::make_unique<ElementManager>(std::move(painting_context),
+                                                 &delegate, env_config);
+    auto config = std::make_shared<PageConfig>();
+    config->SetEnableFiberArch(true);
+    page->SetConfig(config);
+    return page;
+  };
+
+  // An empty setting uses the default; an explicit false also keeps routing
+  // off.
+  for (const auto* value : {"", "false", "true"}) {
+    ScopedAnimationRoutingSetting setting(value);
+    const bool enabled = std::string(value) == "true";
+    for (bool has_backend : {false, true}) {
+      auto page = create_page(has_backend);
+      const bool routing = enabled && has_backend;
+      EXPECT_EQ(page->SupportsPlatformAnimationRouting(), routing);
+      for (bool new_animator : {false, true}) {
+        auto element = page->CreateFiberElement("view");
+        element->enable_new_animator_ = new_animator;
+        EXPECT_EQ(element->supports_platform_animation_routing(), routing);
+        EXPECT_EQ(element->use_cpp_animation_builder(),
+                  routing || new_animator);
+      }
+
+      // A changed setting applies only to new pages, in either direction.
+      ScopedAnimationRoutingSetting updated_setting(enabled ? "false" : "true");
+      EXPECT_EQ(page->SupportsPlatformAnimationRouting(), routing);
+      auto next_page = create_page(has_backend);
+      EXPECT_EQ(next_page->SupportsPlatformAnimationRouting(),
+                !enabled && has_backend);
+    }
+  }
+#if !OS_HARMONY
+  // Explicit frontend values override routing; removing the attribute restores
+  // it.
+  ScopedAnimationRoutingSetting setting("true");
+  auto page = create_page(true);
+  auto element = page->CreateFiberElement("view");
+  for (bool explicit_value : {false, true}) {
+    for (bool as_string : {false, true}) {
+      SCOPED_TRACE(explicit_value);
+      SCOPED_TRACE(as_string);
+      element->SetAttribute(
+          base::String("enable-new-animator"),
+          as_string ? lepus::Value(explicit_value ? "true" : "false")
+                    : lepus::Value(explicit_value));
+      element->ConsumeAllAttributes();
+      EXPECT_FALSE(element->supports_platform_animation_routing());
+      EXPECT_EQ(element->use_cpp_animation_builder(), explicit_value);
+    }
+  }
+  element->SetAttribute(base::String("enable-new-animator"), lepus::Value());
+  element->ConsumeAllAttributes();
+  EXPECT_TRUE(element->supports_platform_animation_routing());
+  EXPECT_EQ(element->enable_new_animator(),
+            page->GetEnableNewAnimatorForFiber());
+#endif
+}
 
 class CSSKeyframeManagerTest : public ::testing::Test {
  public:

@@ -16,6 +16,7 @@
 #include "base/include/fml/time/time_point.h"
 #include "base/include/vector.h"
 #include "core/animation/animation.h"
+#include "core/animation/animation_backend_evaluator.h"
 #include "core/animation/animation_delegate.h"
 #include "core/animation/keyframe_effect.h"
 #include "core/animation/keyframed_animation_curve.h"
@@ -24,6 +25,7 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/style/animation_data.h"
+#include "gfx/animation/platform_animation.h"
 #include "gfx/animation/timing_function.h"
 
 namespace lynx {
@@ -187,6 +189,10 @@ class CSSKeyframeManager : public AnimationDelegate {
       const starlight::ComputedCSSStyle& computed_style,
       const tasm::StyleMap* underlying_layout_only_styles);
 
+  virtual gfx::AnimationKind GetAnimationKind() const {
+    return gfx::AnimationKind::kKeyframe;
+  }
+
   base::InlineVector<starlight::AnimationData, 1> animation_data_;
   // The collection of animations running on the current element.
   base::LinearFlatMap<base::String, std::shared_ptr<Animation>> animations_map_;
@@ -207,17 +213,27 @@ class CSSKeyframeManager : public AnimationDelegate {
   struct ParsedKeyframe {
     std::unique_ptr<gfx::Keyframe> keyframe;
     KeyframeCallbacks callbacks;
+    // Platform evaluation needs a concrete snapshot for neutral endpoints.
+    // New Animator keeps the original frame and samples live underlying values.
+    std::unique_ptr<gfx::Keyframe> resolved_platform_endpoint;
 
-    // The default-deleter pointer owns a heap object. Callbacks refer to that
-    // object, never to this record, so base containers can relocate it intact.
+    // Default-deleter pointers own heap objects. Callbacks refer to those
+    // objects, never to this record, so base containers can relocate it intact.
     using TriviallyRelocatable = bool;
+
+    const gfx::Keyframe* KeyframeForPlatform() const {
+      return resolved_platform_endpoint ? resolved_platform_endpoint.get()
+                                        : keyframe.get();
+    }
   };
 
   struct ParsedPropertyKeyframes {
     AnimationCurve::CurveType curve_type{AnimationCurve::CurveType::UNSUPPORT};
     tasm::CSSPropertyID css_id{tasm::kPropertyStart};
+    gfx::AnimationPropertyType gfx_property{gfx::AnimationPropertyType::kNone};
     base::Vector<ParsedKeyframe> keyframes;
     tasm::CSSValue underlying_value;
+    bool has_dynamic_dependencies{false};
 
     // Vector owns heap storage and CSSValue supports relocation. Keep members
     // independent of this record's address when extending it.
@@ -238,6 +254,9 @@ class CSSKeyframeManager : public AnimationDelegate {
       const base::String& animation_name,
       const tasm::CustomPropertiesMap* base_custom_properties);
   tasm::CSSValue ResolveUnderlyingValue(tasm::CSSPropertyID id) const;
+  gfx::AnimationEventCapabilityMask GetRequiredAnimationEvents() const;
+
+  AnimationBackendResult EvaluatePlatformSupport(ParsedPropertyMap& properties);
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
 };
 

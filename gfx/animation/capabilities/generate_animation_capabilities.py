@@ -96,14 +96,16 @@ def _mask(values: object, mapping: dict, description: str) -> str:
     return aliases.get(frozenset(values), " | ".join(values))
 
 
-def _transform_assignments(capability: dict, index: int) -> list:
+def _transform_values(capability: dict, index: int) -> str:
     features = _require_mapping(capability.get("valueFeatures"),
                                 f"capabilities[{index}].valueFeatures")
     operations = _require_mapping(features.get("operations"),
                                   f"capabilities[{index}].valueFeatures.operations",
                                   TRANSFORM_OPERATION_FIELDS)
 
-    assignments = []
+    # Match the aggregate field order in TransformValueCapability.
+    values = {target: "0" for fields in TRANSFORM_OPERATION_FIELDS.values()
+              for target, _ in fields.values()}
     for operation_name, fields in TRANSFORM_OPERATION_FIELDS.items():
         if operation_name not in operations:
             continue
@@ -118,9 +120,8 @@ def _transform_assignments(capability: dict, index: int) -> list:
             mask = _mask(
                 operation.get(field_name), mapping,
                 f"{operation_name}.{field_name}")
-            assignments.append(
-                f"    capability.transform.{target_field} = {mask};")
-    return assignments
+            values[target_field] = mask
+    return "{" + ", ".join(values.values()) + "}"
 
 
 def generate_header(document: dict) -> str:
@@ -130,15 +131,15 @@ def generate_header(document: dict) -> str:
     backend_enum, backend_name = _enum_value(backend, BACKENDS, "backend")
     capabilities = _require_list(document.get("capabilities"), "capabilities")
 
-    blocks = []
+    properties = []
+    event_capabilities = []
     events = _require_mapping(document.get("events", {}), "events", KINDS)
     for kind, names in events.items():
         if names == []:
             continue
         mask = _mask(names, EVENTS, f"events.{kind}")
-        blocks.append(
-            "  capabilities.event_capabilities.push_back(\n"
-            f"      {{AnimationKind::{KINDS[kind]}, {mask}}});")
+        event_capabilities.append(
+            f"        {{AnimationKind::{KINDS[kind]}, {mask}}},")
     seen = set()
     for index, raw_capability in enumerate(capabilities):
         capability = _require_mapping(raw_capability, f"capabilities[{index}]", (
@@ -163,29 +164,20 @@ def generate_header(document: dict) -> str:
             raise ValueError(
                 f"capabilities[{index}].supportsPerKeyframeTiming must be a boolean")
 
-        lines = [
-            "  {",
-            "    AnimationPropertyCapability capability;",
-            f"    capability.kind = AnimationKind::{kind};",
-            f"    capability.property = AnimationPropertyType::{property_name};",
-            f"    capability.value_type = KeyframeValueType::{value_type};",
-            "    capability.supports_per_keyframe_timing = "
-            f"{'true' if supports_per_keyframe_timing else 'false'};",
-            "    capability.timing_functions =",
-            f"        {timing_functions};",
-        ]
+        transform = "{}"
         if capability["valueType"] == "transform":
-            lines.extend(_transform_assignments(capability, index))
+            transform = _transform_values(capability, index)
         elif "valueFeatures" in capability:
             raise ValueError(
                 f"capabilities[{index}].valueFeatures is only supported for transform")
-        lines.extend([
-            "    capabilities.properties.push_back(capability);",
-            "  }",
-        ])
-        blocks.append("\n".join(lines))
+        properties.append(
+            f"        {{AnimationKind::{kind}, AnimationPropertyType::{property_name},\n"
+            f"         KeyframeValueType::{value_type}, "
+            f"{'true' if supports_per_keyframe_timing else 'false'},\n"
+            f"         {timing_functions}, {transform}}},")
 
-    body = "\n".join("  " + line for block in blocks for line in block.splitlines())
+    properties = "\n".join(properties)
+    event_capabilities = "\n".join(event_capabilities)
     guard = (
         f"GFX_ANIMATION_CAPABILITIES_{backend.upper()}_ANIMATION_"
         "CAPABILITIES_GENERATED_H_")
@@ -204,13 +196,14 @@ namespace lynx {{
 namespace gfx {{
 
 inline const AnimationBackendCapabilities& Get{backend_name}AnimationBackendCapabilities() {{
-  static const AnimationBackendCapabilities instance = [] {{
-    AnimationBackendCapabilities capabilities;
-    capabilities.backend = AnimationBackendType::{backend_enum};
-    capabilities.properties.reserve({len(capabilities)});
-{body}
-    return capabilities;
-  }}();
+  static const AnimationBackendCapabilities instance = {{
+      AnimationBackendType::{backend_enum},
+      {{
+{properties}
+      }},
+      {{
+{event_capabilities}
+      }}}};
   return instance;
 }}
 
