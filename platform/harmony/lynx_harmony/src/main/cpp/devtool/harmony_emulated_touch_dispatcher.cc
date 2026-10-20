@@ -11,9 +11,9 @@
 #include <cmath>
 #include <cstdint>
 
-#include "base/include/float_comparison.h"
 #include "base/include/log/logging.h"
 #include "platform/embedder/public/lynx_event_simulation_proxy.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/devtool/harmony_devtool_coordinates.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 
@@ -205,10 +205,13 @@ bool HarmonyEmulatedTouchDispatcher::InjectTouch(LynxContext* context,
       LOGE("InjectTouch: window info is not available");
       return false;
     }
-    window_x = x;
-    window_y = y;
-    display_x = context->WindowLeftPx() + x;
-    display_y = context->WindowTopPx() + y;
+    const HarmonyDevToolCoordinates coordinates(context->ScaledDensity());
+    window_x =
+        static_cast<int32_t>(std::llround(coordinates.LogicalToPhysical(x)));
+    window_y =
+        static_cast<int32_t>(std::llround(coordinates.LogicalToPhysical(y)));
+    display_x = context->WindowLeftPx() + window_x;
+    display_y = context->WindowTopPx() + window_y;
   } else {
     if (!ToEventPoint(context, x, y, &display_x, &display_y, &window_x,
                       &window_y)) {
@@ -267,16 +270,13 @@ bool HarmonyEmulatedTouchDispatcher::ToEventPoint(LynxContext* context, int x,
     LOGE("ToEventPoint: root is null");
     return false;
   }
-  float scaled_density = context->ScaledDensity();
-  if (base::FloatsLargerOrEqual(0.f, scaled_density)) {
-    scaled_density = 1.f;
-  }
+  const HarmonyDevToolCoordinates coordinates(context->ScaledDensity());
   float offset_screen[2] = {0.f, 0.f};
   root->GetOffsetToScreen(offset_screen);
-  *display_x =
-      static_cast<int32_t>(std::llround(offset_screen[0] * scaled_density + x));
-  *display_y =
-      static_cast<int32_t>(std::llround(offset_screen[1] * scaled_density + y));
+  *display_x = static_cast<int32_t>(
+      std::llround(coordinates.LogicalToPhysical(offset_screen[0] + x)));
+  *display_y = static_cast<int32_t>(
+      std::llround(coordinates.LogicalToPhysical(offset_screen[1] + y)));
   *window_x = *display_x - context->WindowLeftPx();
   *window_y = *display_y - context->WindowTopPx();
   return true;
