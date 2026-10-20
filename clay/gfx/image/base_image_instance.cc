@@ -4,7 +4,9 @@
 
 #include "clay/gfx/image/base_image_instance.h"
 
+#include "clay/gfx/image/animated_image.h"
 #include "clay/gfx/image/base_image.h"
+#include "clay/gfx/image/image_resource_client.h"
 
 namespace clay {
 
@@ -41,6 +43,18 @@ void BaseImageInstance::SetAnimationFrameCallback(std::function<void()> func) {
 
 void BaseImageInstance::SetVisibleCallback(std::function<bool()> func) {
   visible_callback_ = std::move(func);
+}
+
+void BaseImageInstance::SetAnimationListener(ImageResourceClient* listener) {
+  if (animation_listener_ == listener) {
+    return;
+  }
+  animation_listener_ = listener;
+  // Autoplay may have started before this view was attached.
+  if (listener && image_->GetType() == ImageType::kAnimated &&
+      std::static_pointer_cast<AnimatedImage>(image_)->IsPlaying()) {
+    listener->OnStartPlay();
+  }
 }
 
 void BaseImageInstance::OnNotifyAnimationFrame() {

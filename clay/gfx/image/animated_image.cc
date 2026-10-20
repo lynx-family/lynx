@@ -5,8 +5,10 @@
 #include "clay/gfx/image/animated_image.h"
 
 #include <utility>
+#include <vector>
 
 #include "clay/gfx/graphics_context.h"
+#include "clay/gfx/image/image_resource_client.h"
 
 namespace clay {
 
@@ -30,7 +32,7 @@ void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
     FML_LOG(ERROR) << "AnimatedImage::Upload: unref_queue or context is null";
     return;
   }
-  if (!is_running_) {
+  if (is_playing_ && !is_running_) {
     OnNotifyAnimationFrame();
   }
   if (!gpu_image_.object()) {
@@ -65,40 +67,102 @@ void AnimatedImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
 }
 
 void AnimatedImage::NextFrame() {
-  if (image_->GetDuration() <= 0) {
+  if (!is_playing_ || image_->GetDuration() <= 0) {
     return;
   }
-  frame_timer_->Start(fml::TimeDelta::FromMilliseconds(image_->GetDuration()),
-                      [weak = weak_from_this()] {
-                        if (auto self = weak.lock()) {
-                          auto animated_image =
-                              static_cast<AnimatedImage*>(self.get());
-                          animated_image->image_->DrawFrame([animated_image] {
-                            animated_image->OnNotifyAnimationFrame();
-                          });
-                        }
-                      });
+  frame_timer_->Start(
+      fml::TimeDelta::FromMilliseconds(image_->GetDuration()),
+      [weak = weak_from_this()] {
+        if (auto self = weak.lock()) {
+          auto* image = static_cast<AnimatedImage*>(self.get());
+          auto result = image->image_->DrawFrame();
+          if (result == PlatformImage::FrameResult::kNoFrame) {
+            image->is_running_ = false;
+            image->is_playing_ = false;
+            return;
+          }
+          if (result == PlatformImage::FrameResult::kFinalLoopComplete) {
+            image->is_playing_ = false;
+          }
+          // Display the final frame before reporting completion.
+          image->OnNotifyAnimationFrame();
+          if (result == PlatformImage::FrameResult::kLoopComplete ||
+              result == PlatformImage::FrameResult::kFinalLoopComplete) {
+            image->NotifyAnimationEvent(
+                &ImageResourceClient::OnCurrentLoopComplete);
+          }
+          if (result == PlatformImage::FrameResult::kFinalLoopComplete) {
+            image->NotifyAnimationEvent(
+                &ImageResourceClient::OnFinalLoopComplete);
+          }
+        }
+      });
 }
 
 void AnimatedImage::SetAutoPlay(bool auto_play) {
-  image_->SetAutoPlay(auto_play);
+  if (auto_play == is_playing_) {
+    return;
+  }
+  if (auto_play) {
+    StartAnimate();
+  } else {
+    StopAnimation();
+  }
 }
 void AnimatedImage::SetLoopCount(int loop_count) {
   image_->SetLoopCount(loop_count);
 }
 void AnimatedImage::StartAnimate() {
+  auto keep_alive = shared_from_this();
   StopAnimation();
   image_->StartAnimation();
-  OnNotifyAnimationFrame();
+  is_playing_ = true;
+  NotifyAnimationEvent(&ImageResourceClient::OnStartPlay);
+  if (is_playing_) {
+    OnNotifyAnimationFrame();
+  }
 }
-void AnimatedImage::StopAnimation() { image_->StopAnimation(); }
-void AnimatedImage::PauseAnimation() { image_->PauseAnimation(); }
+void AnimatedImage::StopAnimation() {
+  image_->StopAnimation();
+  frame_timer_->Stop();
+  is_running_ = false;
+  is_playing_ = false;
+}
+void AnimatedImage::PauseAnimation() {
+  image_->PauseAnimation();
+  frame_timer_->Stop();
+  is_running_ = false;
+  is_playing_ = false;
+}
 void AnimatedImage::ResumeAnimation() {
+  if (is_playing_) {
+    return;
+  }
+  auto keep_alive = shared_from_this();
   image_->ResumeAnimation();
-  OnNotifyAnimationFrame();
+  is_playing_ = true;
+  NotifyAnimationEvent(&ImageResourceClient::OnStartPlay);
+  if (is_playing_) {
+    OnNotifyAnimationFrame();
+  }
+}
+
+void AnimatedImage::NotifyAnimationEvent(
+    void (ImageResourceClient::*callback)()) {
+  std::vector<fml::WeakPtr<BaseImageInstance>> instances;
+  for (auto* instance : instances_) {
+    instances.push_back(instance->GetWeakPtr());
+  }
+  for (auto& instance : instances) {
+    // An earlier callback may remove another view or replace its listener.
+    if (instance && instance->GetAnimationListener()) {
+      (instance->GetAnimationListener()->*callback)();
+    }
+  }
 }
 
 void AnimatedImage::OnNotifyAnimationFrame() {
+  gpu_image_.reset();
   if (!IsAnyInstanceVisible()) {
     is_running_ = false;
     return;
@@ -107,8 +171,7 @@ void AnimatedImage::OnNotifyAnimationFrame() {
     instance->OnNotifyAnimationFrame();
   }
   NextFrame();
-  gpu_image_.reset();
-  is_running_ = true;
+  is_running_ = is_playing_;
 }
 
 void AnimatedImage::OnInstanceCreated(BaseImageInstance* instance) {

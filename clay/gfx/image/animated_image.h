@@ -29,6 +29,7 @@ class AnimatedImage : public BaseImage {
   void StopAnimation();
   void PauseAnimation();
   void ResumeAnimation();
+  bool IsPlaying() const { return is_playing_; }
 
   void OnInstanceCreated(BaseImageInstance* instance) override;
   void OnInstanceDestroyed(BaseImageInstance* instance) override;
@@ -38,12 +39,14 @@ class AnimatedImage : public BaseImage {
 
   void NextFrame();
   void OnNotifyAnimationFrame();
+  void NotifyAnimationEvent(void (ImageResourceClient::*callback)());
 
   bool IsAnyInstanceVisible() const;
 
  private:
   std::unique_ptr<fml::OneshotTimer> frame_timer_;
   bool is_running_ = false;
+  bool is_playing_ = false;
 };
 
 }  // namespace clay

@@ -55,29 +55,32 @@ std::shared_ptr<skity::Pixmap> DesktopImage::ToBitmap() {
   }
   return is_animated_ ? current_pixmap_ : std::move(current_pixmap_);
 }
-void DesktopImage::DrawFrame(std::function<void()> on_frame_changed) {
+PlatformImage::FrameResult DesktopImage::DrawFrame() {
   if (is_playing_ && is_animated_ && decoder_) {
     auto frame_count = decoder_->GetFrameCount();
     if (frame_count <= 1 || current_frame_index_ >= frame_count) {
-      return;
+      return FrameResult::kNoFrame;
     }
     if (current_frame_index_ < frame_count) {
-      DrawFrameInternal();
+      if (!DrawFrameInternal()) {
+        return FrameResult::kNoFrame;
+      }
       if (current_frame_index_ >= frame_count) {
         if (frame_loop_count_ > 0) {
           --frame_loop_count_;
           if (frame_loop_count_ <= 0) {
             StopAnimation();
+            current_frame_index_ = 0;
+            return FrameResult::kFinalLoopComplete;
           }
         }
         current_frame_index_ = 0;
+        return FrameResult::kLoopComplete;
       }
-      if (current_pixmap_ && on_frame_changed) {
-        on_frame_changed();
-      }
+      return FrameResult::kFrameReady;
     }
   }
-  // For animated images, this would advance to the next frame
+  return FrameResult::kNoFrame;
 }
 bool DesktopImage::IsAnimated() { return is_animated_; }
 void DesktopImage::SetAutoPlay(bool auto_play) {
@@ -111,9 +114,13 @@ void DesktopImage::ResumeAnimation() {
   }
 }
 
-void DesktopImage::DrawFrameInternal() {
+bool DesktopImage::DrawFrameInternal() {
   auto frame_info = decoder_->GetFrameInfo(current_frame_index_++);
+  if (!frame_info) {
+    return false;
+  }
   current_pixmap_ = decoder_->DecodeFrame(frame_info, current_pixmap_);
   current_frame_duration_ = frame_info->GetDuration();
+  return current_pixmap_ != nullptr;
 }
 }  // namespace clay

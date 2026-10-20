@@ -8,10 +8,12 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "clay/gfx/image/graphics_image.h"
 
 namespace clay {
 class BaseImage;
+class ImageResourceClient;
 
 class BaseImageInstance {
  public:
@@ -28,6 +30,13 @@ class BaseImageInstance {
 
   void SetAnimationFrameCallback(std::function<void()> func);
   void SetVisibleCallback(std::function<bool()> func);
+  void SetAnimationListener(ImageResourceClient* listener);
+  ImageResourceClient* GetAnimationListener() const {
+    return animation_listener_;
+  }
+  fml::WeakPtr<BaseImageInstance> GetWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
 
   void OnNotifyAnimationFrame();
 
@@ -37,6 +46,11 @@ class BaseImageInstance {
   std::shared_ptr<BaseImage> image_;
   std::function<void()> animation_frame_callback_;
   std::function<bool()> visible_callback_;
+
+ private:
+  // Each view binds its own listener, including when the instance is cloned.
+  ImageResourceClient* animation_listener_ = nullptr;
+  fml::WeakPtrFactory<BaseImageInstance> weak_factory_{this};
 };
 
 }  // namespace clay
