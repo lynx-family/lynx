@@ -359,8 +359,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void SendGestureEvent(int tag, int gesture_id, const std::string& name,
                         const lepus::Value& params);
 
-  void OnPseudoStatusChanged(int32_t id, uint32_t pre_status,
-                             uint32_t current_status);
+  void OnPseudoStatusesChanged(
+      const std::vector<event::PseudoStatusChange>& changes);
 
   void StartEventGenerate(const lepus::Value& event_params);
 

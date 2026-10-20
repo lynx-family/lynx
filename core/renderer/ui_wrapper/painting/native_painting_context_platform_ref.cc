@@ -279,14 +279,13 @@ void NativePaintingCtxPlatformRef::SendEvent(int32_t target_id,
   });
 }
 
-void NativePaintingCtxPlatformRef::UpdatePseudoStatusStatus(
-    int32_t target_id, uint32_t pre_status, uint32_t current_status) {
-  if (engine_actor_ == nullptr) {
+void NativePaintingCtxPlatformRef::UpdatePseudoStatuses(
+    std::vector<event::PseudoStatusChange> changes) {
+  if (engine_actor_ == nullptr || changes.empty()) {
     return;
   }
-  engine_actor_->Act([target_id, pre_status, current_status](auto &engine) {
-    engine->OnPseudoStatusChanged(target_id, static_cast<int>(pre_status),
-                                  static_cast<int>(current_status));
+  engine_actor_->Act([changes = std::move(changes)](auto &engine) {
+    engine->OnPseudoStatusesChanged(changes);
   });
 }
 

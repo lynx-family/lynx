@@ -11,6 +11,7 @@ lynx_core_source_set("public") {
     "devtool/lynx_devtool_proxy.h",
     "devtool/lynx_inspector_owner.h",
     "devtool/vm_event.h",
+    "event/pseudo_status.h",
     "event/touch_event_data.h",
     "event_tracker_proxy.h",
     "external_memory_snapshot.h",

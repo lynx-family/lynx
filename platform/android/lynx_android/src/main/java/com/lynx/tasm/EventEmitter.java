@@ -68,7 +68,11 @@ public abstract class EventEmitter {
    */
   public abstract void sendGestureEvent(int gestureId, LynxCustomEvent event);
 
-  public abstract void onPseudoStatusChanged(int sign, int preStatus, int currentStatus);
+  /**
+   * Sends pseudo-state changes packed as consecutive sign, previous status, and current status
+   * triples.
+   */
+  public abstract void onPseudoStatusesChanged(@NonNull int[] changes);
 
   public abstract void setTestTapTracker(ITestTapTrack track);
 

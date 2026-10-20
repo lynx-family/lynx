@@ -59,9 +59,9 @@ public class LynxEventEmitter extends EventEmitter {
       }
     }
 
-    void onPseudoStatusChanged(final int id, final int preStatus, final int currentStatus) {
+    void onPseudoStatusesChanged(final int[] changes) {
       if (mEngineProxy != null) {
-        mEngineProxy.onPseudoStatusChanged(id, preStatus, currentStatus);
+        mEngineProxy.onPseudoStatusesChanged(changes);
       }
     }
 
@@ -258,14 +258,31 @@ public class LynxEventEmitter extends EventEmitter {
   }
 
   @Override
-  public void onPseudoStatusChanged(int sign, int preStatus, int currentStatus) {
-    if (preStatus == currentStatus) {
+  public void onPseudoStatusesChanged(int[] changes) {
+    int changedCount = 0;
+    for (int index = 0; index + 2 < changes.length; index += 3) {
+      if (changes[index + 1] != changes[index + 2]) {
+        changedCount++;
+      }
+    }
+    if (changedCount == 0) {
       return;
     }
+    int[] changedStatuses = changes;
+    if (changedCount * 3 != changes.length) {
+      changedStatuses = new int[changedCount * 3];
+      int offset = 0;
+      for (int index = 0; index + 2 < changes.length; index += 3) {
+        if (changes[index + 1] != changes[index + 2]) {
+          System.arraycopy(changes, index, changedStatuses, offset, 3);
+          offset += 3;
+        }
+      }
+    }
     if (mEngineProxy != null) {
-      mEngineProxy.onPseudoStatusChanged(sign, preStatus, currentStatus);
+      mEngineProxy.onPseudoStatusesChanged(changedStatuses);
     } else {
-      LLog.e(TAG, "onPseudoStatusChanged id: " + sign + " failed since mEngineProxy is null.");
+      LLog.e(TAG, "onPseudoStatusesChanged failed since mEngineProxy is null.");
     }
   }
 

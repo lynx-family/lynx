@@ -886,15 +886,15 @@ bool RadonNode::ShouldFlushStyle(RadonNode* old_radon_node,
   return style_updated;
 }
 
-void RadonNode::CollectInvalidationSetsForPseudoAndInvalidate(
-    std::shared_ptr<PipelineOptions>& pipeline_options,
-    CSSFragment* style_sheet, PseudoState prev, PseudoState curr) {
+bool RadonNode::CollectInvalidationSetsForPseudoAndInvalidate(
+    CSSFragment* style_sheet, PseudoState prev, PseudoState curr,
+    std::unordered_set<RadonNode*>* pending_nodes) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_SHOULD_COLLECT_INVALID_SETS_FOR_PSEUDO,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
   if (!style_sheet->enable_css_invalidation()) {
-    return;
+    return false;
   }
   css::InvalidationLists invalidation_lists;
   CSSFragment::CollectPseudoChangedInvalidation(style_sheet, invalidation_lists,
@@ -903,29 +903,32 @@ void RadonNode::CollectInvalidationSetsForPseudoAndInvalidate(
   bool should_patch = false;
   for (auto* invalidation_set : invalidation_lists.descendants) {
     if (invalidation_set->InvalidatesSelf() && element()) {
-      should_patch |= RefreshStyle();
+      should_patch |= RefreshOrCollectStyleForPseudo(pending_nodes);
     }
     if (invalidation_set->WholeSubtreeInvalid() ||
         !invalidation_set->IsEmpty()) {
-      Visit(false, [&should_patch, invalidation_set, this](RadonBase* child) {
+      Visit(false, [&should_patch, invalidation_set, this,
+                    pending_nodes](RadonBase* child) {
         if (child->IsRadonNode() && child->element() &&
             !child->TagName().IsEqual("raw-text") &&
             invalidation_set->InvalidatesElement(
                 *static_cast<RadonNode*>(child)->attribute_holder_)) {
-          should_patch |= static_cast<RadonNode*>(child)->RefreshStyle();
+          should_patch |=
+              static_cast<RadonNode*>(child)->RefreshOrCollectStyleForPseudo(
+                  pending_nodes);
         }
         return !child->IsRadonComponent() ||
                (child->IsRadonComponent() && GetRemoveCSSScopeEnabled());
       });
     }
   }
-  if (should_patch) {
-    page_proxy_->element_manager()->SetNeedsLayout();
-    page_proxy_->element_manager()->RequestResolve(pipeline_options);
-  }
+  return should_patch;
 }
 
 void RadonNode::OnPseudoStateChanged(PseudoState prev, PseudoState curr) {
+  if (!InvalidatePseudoState(prev, curr)) {
+    return;
+  }
   std::shared_ptr<PipelineOptions> pipeline_options;
   PipelineContext* current_context = nullptr;
   if (element_) {
@@ -938,31 +941,54 @@ void RadonNode::OnPseudoStateChanged(PseudoState prev, PseudoState curr) {
   } else {
     pipeline_options = std::make_shared<PipelineOptions>();
   }
+  page_proxy_->element_manager()->RequestResolve(pipeline_options);
+}
+
+bool RadonNode::InvalidatePseudoState(
+    PseudoState prev, PseudoState curr,
+    std::unordered_set<RadonNode*>* pending_nodes) {
   CSSFragment* style_sheet =
       GetRemoveCSSScopeEnabled() ? GetPageStyleSheet() : ParentStyleSheet();
   if (style_sheet && style_sheet->enable_css_selector()) {
-    return CollectInvalidationSetsForPseudoAndInvalidate(
-        pipeline_options, style_sheet, prev, curr);
+    bool should_patch = CollectInvalidationSetsForPseudoAndInvalidate(
+        style_sheet, prev, curr, pending_nodes);
+    if (should_patch) {
+      page_proxy_->element_manager()->SetNeedsLayout();
+    }
+    return should_patch;
   }
 
   bool should_patch = false;
   if (page_proxy_->element_manager()->GetEnableCascadePseudo()) {
     // Refresh styles of all descendants to support nested focus pseudo class
-    Visit(true, [&should_patch](RadonBase* child) {
+    Visit(true, [&should_patch, pending_nodes](RadonBase* child) {
       if (child->IsRadonNode() && child->element()) {
-        should_patch |= static_cast<RadonNode*>(child)->RefreshStyle();
+        should_patch |=
+            static_cast<RadonNode*>(child)->RefreshOrCollectStyleForPseudo(
+                pending_nodes);
       }
       return !child->IsRadonComponent() ||
              (child->IsRadonComponent() &&
               static_cast<RadonNode*>(child)->GetRemoveCSSScopeEnabled());
     });
   } else {
-    should_patch = RefreshStyle();
+    should_patch = RefreshOrCollectStyleForPseudo(pending_nodes);
   }
   if (should_patch) {
     page_proxy_->element_manager()->SetNeedsLayout();
-    page_proxy_->RequestResolve(pipeline_options);
   }
+  return should_patch;
+}
+
+bool RadonNode::RefreshOrCollectStyleForPseudo(
+    std::unordered_set<RadonNode*>* pending_nodes) {
+  if (pending_nodes) {
+    if (element()) {
+      pending_nodes->insert(this);
+    }
+    return false;
+  }
+  return RefreshStyle();
 }
 
 bool RadonNode::RefreshStyle() {

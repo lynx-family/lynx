@@ -123,16 +123,20 @@ void LynxEngineProxyImpl::SendGestureEvent(int tag, int gesture_id,
   });
 }
 
-void LynxEngineProxyImpl::OnPseudoStatusChanged(int32_t id, int32_t pre_status,
-                                                int32_t current_status) {
+void LynxEngineProxyImpl::OnPseudoStatusesChanged(
+    std::vector<event::PseudoStatusChange> changes) {
+  if (changes.empty()) {
+    return;
+  }
   if (engine_actor_ == nullptr) {
     LOGE(
-        "LynxEngineProxy::OnPseudoStatusChanged failed since engine_actor_ is "
+        "LynxEngineProxy::OnPseudoStatusesChanged failed since engine_actor_ "
+        "is "
         "nullptr");
     return;
   }
-  engine_actor_->Act([id, pre_status, current_status](auto& engine) {
-    engine->OnPseudoStatusChanged(id, pre_status, current_status);
+  engine_actor_->Act([changes = std::move(changes)](auto& engine) {
+    engine->OnPseudoStatusesChanged(changes);
   });
 }
 

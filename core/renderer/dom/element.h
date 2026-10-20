@@ -934,6 +934,16 @@ class Element : public lepus::RefCounted,
   virtual void OnPseudoStatusChanged(PseudoState prev_status,
                                      PseudoState current_status);
 
+  // Invalidates styles after the response chain's states have been updated.
+  // previous_state is the stored state before the update; prev_status is the
+  // platform-reported state, which may describe only one pseudo bit.
+  // Radon refreshes are deferred when pending_nodes is provided.
+  // The caller refreshes those nodes and requests one resolve for the batch.
+  bool InvalidatePseudoStatus(
+      PseudoState prev_status, PseudoState current_status,
+      PseudoState previous_state,
+      std::unordered_set<RadonNode*>* pending_nodes = nullptr);
+
   ContentData* content_data() const { return content_data_.get(); }
 
   virtual void UpdateDynamicElementStyle(uint32_t style, bool force_update);
