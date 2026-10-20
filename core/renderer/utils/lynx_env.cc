@@ -724,6 +724,10 @@ bool LynxEnv::EnableFiberUpdateMetaData() {
   return GetBoolEnv(Key::ENABLE_FIBER_UPDATE_METADATA, false);
 }
 
+bool LynxEnv::DisableAppServiceFactoryCache() {
+  return GetBoolEnv(Key::DISABLE_APP_SERVICE_FACTORY_CACHE, true);
+}
+
 uint32_t LynxEnv::GetJSCoveragePageSamplingBasisPoints() {
   const auto basis_points =
       GetLongEnv(Key::JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS, 0);

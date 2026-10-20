@@ -163,6 +163,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_RESET_NATIVE_UPDATE_DATA_ORDER_FOR_LOAD,
     MEMORY_MONITOR_CONFIG,
     ENABLE_UNIFY_FIXED_ORDER_FIX,
+    DISABLE_APP_SERVICE_FACTORY_CACHE,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -354,6 +355,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_PLATFORM_THREAD_SCHEDULING_POLICY,
              "enable_platform_thread_scheduling_policy"},
             {Key::MEMORY_MONITOR_CONFIG, "memory_monitor_config"},
+            {Key::DISABLE_APP_SERVICE_FACTORY_CACHE,
+             "disable_app_service_factory_cache"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -530,6 +533,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableElementInvokeUIMethodPendingTask();
   bool EnableAutoNonFlatten();
   bool EnableFiberUpdateMetaData();
+  bool DisableAppServiceFactoryCache();
   static constexpr uint32_t kJSCoverageSamplingBasisPointsMax = 10000;
   // Returns the JS coverage page sampling rate in basis points. 0 disables
   // coverage, 10000 samples every page, and N gives each page an N / 10000

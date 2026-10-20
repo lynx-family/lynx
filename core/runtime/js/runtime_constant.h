@@ -127,6 +127,10 @@ constexpr const char kEnableReuseLoadScriptExports[] =
 constexpr const char kEnableFetchAPIStandardStreaming[] =
     "enableFetchAPIStandardStreaming";
 
+// Controls caching app-service.js factories in the group-wide JS cache.
+constexpr const char kDisableAppServiceFactoryCache[] =
+    "disableAppServiceFactoryCache";
+
 /**
  * Check if the given url indicates lynx_core.js.
  * @param url the url to check
