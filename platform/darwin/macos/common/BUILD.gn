@@ -10,6 +10,7 @@ lynx_core_source_set("common") {
     "LynxUIRenderer.mm",
     "vsync_monitor_macos.h",
     "vsync_monitor_macos.mm",
+    "vsync_monitor_macos_factory.mm",
   ]
 
   configs = [

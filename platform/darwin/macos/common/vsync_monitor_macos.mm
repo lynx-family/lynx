@@ -59,20 +59,16 @@ using VSyncCallback = std::function<void(fml::TimePoint, fml::TimePoint)>;
 namespace lynx {
 namespace base {
 
-std::shared_ptr<VSyncMonitor> VSyncMonitor::Create(bool is_on_ui_thread) {
-  if (@available(macOS 14.0, *)) {
-    return std::make_shared<lynx::base::VSyncMonitorMacOS>();
-  }
-  int framesPerSecond = 60;
-  if (@available(macOS 12.0, *)) {
-    NSScreen *screen = [[NSScreen screens] firstObject];
-    framesPerSecond = screen.maximumFramesPerSecond;
-  }
-  return std::make_shared<lynx::base::VSyncMonitorFallback>(
-      fml::TimeDelta::FromSecondsF(1.0 / framesPerSecond));
-}
+VSyncMonitorMacOS::VSyncMonitorMacOS()
+    : VSyncMonitorFallback(fml::TimeDelta::FromSecondsF(1.0 / 60)) {}
 
 void VSyncMonitorMacOS::Init() {
+  if (runner_ && !runner_->GetLoop()) {
+    // Windowless hosts can drive tasks without running an NSRunLoop. Schedule
+    // frame callbacks through their task runner instead of a CADisplayLink.
+    VSyncMonitorFallback::Init();
+    return;
+  }
   std::weak_ptr<VSyncMonitorMacOS> weak_this =
       std::static_pointer_cast<VSyncMonitorMacOS>(shared_from_this());
 
@@ -112,6 +108,10 @@ VSyncMonitorMacOS::~VSyncMonitorMacOS() {
 
 void VSyncMonitorMacOS::RequestVSync() {
   if (destroying_.load() || !runner_) {
+    return;
+  }
+  if (!runner_->GetLoop()) {
+    VSyncMonitorFallback::RequestVSync();
     return;
   }
   auto impl = impl_;
