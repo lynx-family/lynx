@@ -23,15 +23,17 @@ class ChildWindowWin {
   ~ChildWindowWin();
 
   void Initialize();
-  HWND window() const { return window_; }
+  HWND window() const;
 
   void Resize(int width, int height);
 
  private:
+  struct WindowState;
+
   fml::RefPtr<fml::TaskRunner> task_runner_;
 
   HWND parent_window_ = nullptr;
-  HWND window_ = nullptr;
+  std::shared_ptr<WindowState> window_state_;
 };
 
 }  // namespace egl
