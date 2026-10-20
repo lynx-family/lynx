@@ -180,7 +180,7 @@ TEST_P(ModifierElementTest, UsesDefaultElementBehaviorWithViewTag) {
 
   const auto& styles = element->GetCurrentRawInlineStyles();
   ASSERT_TRUE(styles.has_value());
-  EXPECT_EQ(styles->at(kPropertyIDDisplay), lepus::Value("box"));
+  EXPECT_EQ(styles->at(kPropertyIDDisplay), lepus::Value("-x-box"));
   EXPECT_EQ(styles->at(kPropertyIDBoxSizing), lepus::Value("border-box"));
 }
 
