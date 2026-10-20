@@ -184,7 +184,6 @@ public class PropsConstants {
   public static final String SUSPENDABLE = "suspendable";
   public static final String PERSPECTIVE = "perspective";
   public static final String RENDER_TO_HARDWARE_TEXTURE = "hardware-layer";
-  public static final String BITMAP_GRADIENT = "bitmap-gradient";
   public static final String TEXT_INDENT = "text-indent";
   public static final String ANDROID_EMOJI_COMPAT = "android-emoji-compat";
   public static final String TRANSFORM_ORDER = "transform-order";
