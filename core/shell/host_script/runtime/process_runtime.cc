@@ -79,10 +79,12 @@ Result WithError(Result result, std::string error) {
 class DomainRuntime final {
  public:
   DomainRuntime(Result identity, fml::RefPtr<fml::TaskRunner> runner,
-                std::unique_ptr<ProcessRuntime::RuntimeBindings> bindings)
+                std::unique_ptr<ProcessRuntime::RuntimeBindings> bindings,
+                std::shared_ptr<std::atomic<ProcessState>> lifetime)
       : identity_(std::move(identity)),
         runner_(std::move(runner)),
-        bindings_(std::move(bindings)) {}
+        bindings_(std::move(bindings)),
+        lifetime_(std::move(lifetime)) {}
 
   ~DomainRuntime() {
     DCHECK(runner_->RunsTasksOnCurrentThread());
@@ -127,11 +129,16 @@ class DomainRuntime final {
     if (!stringify_) return FailedCall();
     thread_bindings_ = HostScriptThreadBindings::Create(
         *runtime, runner_,
-        [](Domain domain, std::string source, std::string url,
-           Completion completion, Guard guard) {
+        [lifetime = lifetime_](Domain domain, std::string source,
+                               std::string url, Completion completion,
+                               Guard guard) {
           ProcessRuntime::GetInstance().RunOnThread(
               domain, std::move(source), std::move(url), std::move(completion),
-              std::move(guard));
+              [lifetime, guard = std::move(guard)] {
+                return lifetime->load(std::memory_order_acquire) ==
+                           ProcessState::kRunning &&
+                       (!guard || guard());
+              });
         });
     if (!thread_bindings_ || !thread_bindings_->Install(identity_.domain))
       return WithError(Identity(), "HOST_SCRIPT_THREAD_BINDINGS_ATTACH_FAILED");
@@ -203,6 +210,7 @@ class DomainRuntime final {
   std::unique_ptr<runtime::js::JSExecutor> executor_;
   std::shared_ptr<HostScriptThreadBindings> thread_bindings_;
   std::unique_ptr<ProcessRuntime::RuntimeBindings> bindings_;
+  const std::shared_ptr<std::atomic<ProcessState>> lifetime_;
   std::optional<runtime::js::Function> stringify_;
   bool executing_ = false;
 };
@@ -250,7 +258,8 @@ class DomainState final {
     if (IsRunning()) {
       runtime_ = std::make_unique<DomainRuntime>(
           identity_, runner_,
-          binding_factory_ ? binding_factory_(domain_) : nullptr);
+          binding_factory_ ? binding_factory_(domain_) : nullptr,
+          process_state_);
       result = runtime_->Initialize();
       if (result.success && !bootstrap_.empty()) {
         result = runtime_->Execute(bootstrap_, "host-script-bootstrap.js",
@@ -354,8 +363,8 @@ Result ShutdownResult() {
   return result;
 }
 
-// A published generation has immutable endpoints. Only its lifecycle runner
-// coordinates initialization and shutdown; ordinary execution never hops there.
+// A domain generation owns one immutable endpoint. Independent admission and
+// lifetime state prevent replacement from redirecting old tasks to a new VM.
 class RuntimeGeneration final
     : public std::enable_shared_from_this<RuntimeGeneration> {
  public:
@@ -364,32 +373,28 @@ class RuntimeGeneration final
     std::shared_ptr<DomainState::Actor> actor;
   };
 
-  RuntimeGeneration(Owners owners, uint64_t first_id, const Completion& ready,
+  RuntimeGeneration(Domain domain, fml::RefPtr<fml::TaskRunner> owner,
+                    fml::RefPtr<fml::TaskRunner> control, uint64_t runtime_id,
+                    const Completion& ready,
                     const BindingFactory& binding_factory,
                     const std::string& bootstrap, InitializationMode mode)
-      : control_(owners[HostScriptDomainIndex(Domain::kUI)]),
+      : control_(std::move(control)),
         state_(std::make_shared<std::atomic<ProcessState>>(
             ProcessState::kRunning)),
         mode_(mode) {
-    for (size_t i = 0; i < endpoints_.size(); ++i) {
-      auto domain = static_cast<Domain>(i);
-      auto publication =
-          std::make_shared<DomainPublication>(domain, first_id + i, owners[i]);
-      auto owner =
-          std::make_unique<DomainState>(owners[i], publication, state_, ready,
-                                        domain, binding_factory, bootstrap);
-      endpoints_[i] = {
-          std::move(publication),
-          std::make_shared<DomainState::Actor>(std::move(owner), owners[i])};
-    }
+    auto publication =
+        std::make_shared<DomainPublication>(domain, runtime_id, owner);
+    auto target = std::make_unique<DomainState>(
+        owner, publication, state_, ready, domain, binding_factory, bootstrap);
+    endpoint_ = {std::move(publication), std::make_shared<DomainState::Actor>(
+                                             std::move(target), owner)};
   }
 
   ProcessState State() const { return state_->load(std::memory_order_acquire); }
   bool IsLazy() const { return mode_ == InitializationMode::kLazy; }
 
   const Endpoint* Find(Domain domain) const {
-    return IsValidDomain(domain) ? &endpoints_[HostScriptDomainIndex(domain)]
-                                 : nullptr;
+    return IsValidDomain(domain) ? &endpoint_ : nullptr;
   }
 
   // Count admission until work is queued or an inline event returns. Closing
@@ -422,16 +427,20 @@ class RuntimeGeneration final
     if (State() != ProcessState::kRunning ||
         initialization_posted_.exchange(true))
       return;
-    for (const auto& endpoint : endpoints_) {
-      Post(endpoint, [] { return [](auto& owner) { owner->Initialize(); }; });
-    }
+    Post(endpoint_, [] { return [](auto& owner) { owner->Initialize(); }; });
   }
 
-  void Shutdown(Completion completion) {
+  // This also invalidates guards originating in this domain before owner-local
+  // destruction can run. It is safe while another domain is executing.
+  void Close() {
     auto expected = ProcessState::kRunning;
     state_->compare_exchange_strong(expected, ProcessState::kStopping,
                                     std::memory_order_acq_rel);
     postings_.fetch_or(kClosed, std::memory_order_acq_rel);
+  }
+
+  void Shutdown(Completion completion) {
+    Close();
     control_->PostTask([self = shared_from_this(),
                         completion = std::move(completion)]() mutable {
       self->ShutdownOnControl(std::move(completion));
@@ -455,8 +464,7 @@ class RuntimeGeneration final
     if (completion) shutdown_waiters_.push_back(std::move(completion));
     if (shutdown_started_) return;
     shutdown_started_ = true;
-    // Shutdown can reach the control queue before Start's task. Still produce
-    // all three initialization receipts, followed by owner-local cleanup.
+    // Even an unused lazy domain produces its readiness receipt before cleanup.
     StartOnControl();
     StopOnControl();
   }
@@ -468,17 +476,14 @@ class RuntimeGeneration final
       return;
     stop_posted_ = true;
     // Every admitted submission is now enqueued ahead of its owner's Stop.
-    for (const auto& endpoint : endpoints_) {
-      endpoint.actor->ActAsync([self = shared_from_this()](auto& owner) {
-        owner->Stop();
-        self->control_->PostTask([self] { self->DomainStopped(); });
-      });
-    }
+    endpoint_.actor->ActAsync([self = shared_from_this()](auto& owner) {
+      owner->Stop();
+      self->control_->PostTask([self] { self->DomainStopped(); });
+    });
   }
 
   void DomainStopped() {
     DCHECK(control_->RunsTasksOnCurrentThread());
-    if (++stopped_domains_ != endpoints_.size()) return;
     state_->store(ProcessState::kStopped, std::memory_order_release);
     auto waiters = std::move(shutdown_waiters_);
     shutdown_waiters_.clear();
@@ -491,10 +496,9 @@ class RuntimeGeneration final
   const fml::RefPtr<fml::TaskRunner> control_;
   const std::shared_ptr<std::atomic<ProcessState>> state_;
   const InitializationMode mode_;
-  std::array<Endpoint, kHostScriptDomainCount> endpoints_;
+  Endpoint endpoint_;
   // Only control_ accesses these fields. No per-request process registry.
   std::vector<Completion> shutdown_waiters_;
-  size_t stopped_domains_ = 0;
   bool started_ = false;
   bool shutdown_started_ = false;
   bool stop_posted_ = false;
@@ -510,43 +514,50 @@ class ProcessRuntime::Impl {
     if (!IsHostScriptRuntimeEnabled()) return false;
     if (!bootstrap.empty() && !NormalizeScriptSource(bootstrap)) return false;
     if (!runners.bts || !runners.mts || !runners.ui) return false;
-    std::lock_guard<std::mutex> lock(lifecycle_mutex_);
-    if (load_) return false;
-    auto current = Current();
-    if (current && current->State() != ProcessState::kStopped) return false;
-    auto next = std::make_shared<RuntimeGeneration>(
-        Owners{runners.bts, runners.mts, runners.ui},
-        next_runtime_id_.fetch_add(kHostScriptDomainCount) + 1, ready,
-        binding_factory, bootstrap, mode);
-    runners_ = runners;
-    binding_factory_ = std::move(binding_factory);
-    bootstrap_ = std::move(bootstrap);
-    std::atomic_store(&current_, next);
-    next->Start();
+    std::array<std::shared_ptr<RuntimeGeneration>, kHostScriptDomainCount>
+        domains;
+    {
+      std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+      if (load_ || state_ != ProcessState::kStopped) return false;
+      runners_ = runners;
+      binding_factory_ = std::move(binding_factory);
+      bootstrap_ = std::move(bootstrap);
+      ++process_id_;
+      state_ = ProcessState::kRunning;
+      for (size_t i = 0; i < domains.size(); ++i) {
+        auto domain = static_cast<Domain>(i);
+        domains[i] = MakeDomain(domain, ready, mode);
+        std::atomic_store(&current_[i], domains[i]);
+      }
+    }
+    for (const auto& domain : domains) domain->Start();
     return true;
   }
 
   void InitializeBindings() {
-    if (!IsHostScriptRuntimeEnabled() || loading_.load()) return;
-    if (auto generation = Current()) generation->InitializeBindings();
+    if (!IsHostScriptRuntimeEnabled()) return;
+    for (size_t i = 0; i < current_.size(); ++i) {
+      if (auto domain = Current(static_cast<Domain>(i)))
+        domain->InitializeBindings();
+    }
   }
 
   bool IsReady(Domain domain) const {
-    auto generation = Current();
+    auto generation = Current(domain);
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
-    return IsHostScriptRuntimeEnabled() && !loading_.load() && generation &&
+    return IsHostScriptRuntimeEnabled() && !IsLoading(domain) && generation &&
            generation->State() == ProcessState::kRunning && endpoint &&
            endpoint->publication->ready.load(std::memory_order_acquire);
   }
 
   void Evaluate(Domain domain, std::string source, std::string url,
                 Completion completion, Guard guard, bool from_binding = false) {
-    auto generation = Current();
+    auto generation = Current(domain);
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
     const char* error =
-        !IsHostScriptRuntimeEnabled()      ? "HSR_DEBUG_DISABLED"
-        : loading_.load() && !from_binding ? "RUNTIME_LOADING"
-        : !IsValidDomain(domain)           ? "INVALID_DOMAIN"
+        !IsHostScriptRuntimeEnabled()        ? "HSR_DEBUG_DISABLED"
+        : IsLoading(domain) && !from_binding ? "RUNTIME_LOADING"
+        : !IsValidDomain(domain)             ? "INVALID_DOMAIN"
         : !generation || generation->State() != ProcessState::kRunning
             ? "RUNTIME_NOT_RUNNING"
         : !generation->IsLazy() &&
@@ -579,14 +590,14 @@ class ProcessRuntime::Impl {
   }
 
   void NotifyViewCreated(const ViewCreated& event) {
-    auto generation = Current();
-    if (!generation || generation->State() != ProcessState::kRunning) return;
-    for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
-      const auto* endpoint = generation->Find(domain);
-      if (!endpoint->publication->ready.load(std::memory_order_acquire))
+    for (size_t i = 0; i < current_.size(); ++i) {
+      auto generation = Current(static_cast<Domain>(i));
+      if (!generation || generation->State() != ProcessState::kRunning ||
+          !generation->Find(static_cast<Domain>(i))
+               ->publication->ready.load(std::memory_order_acquire))
         continue;
       generation->Post(
-          *endpoint,
+          *generation->Find(static_cast<Domain>(i)),
           [&] {
             return [event](auto& owner) { owner->NotifyViewCreated(event); };
           },
@@ -595,34 +606,59 @@ class ProcessRuntime::Impl {
   }
 
   void Shutdown(Completion completion) {
-    std::shared_ptr<RuntimeGeneration> generation;
+    std::array<std::shared_ptr<RuntimeGeneration>, kHostScriptDomainCount>
+        domains;
     std::shared_ptr<Load> load;
+    uint64_t process_id;
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
-      generation = Current();
       load = load_;
       if (load) load->cancelled = true;
       runners_ = {};
       binding_factory_ = {};
       bootstrap_.clear();
+      process_id = process_id_;
+      for (size_t i = 0; i < domains.size(); ++i) {
+        domains[i] = Current(static_cast<Domain>(i));
+        if (domains[i]) domains[i]->Close();
+      }
+      if (domains[0]) state_ = ProcessState::kStopping;
     }
-    if (generation) {
-      generation->Shutdown([this, load, completion = std::move(completion)](
-                               Result result) mutable {
+    if (!domains[0]) {
+      if (completion) completion(ShutdownResult());
+      return;
+    }
+    // Every domain acknowledges on the same lifecycle runner.
+    auto remaining = std::make_shared<size_t>(domains.size());
+    auto done = std::make_shared<Completion>(std::move(completion));
+    for (const auto& domain : domains) {
+      domain->Shutdown([this, load, remaining, done, process_id](Result) {
+        if (--*remaining != 0) return;
+        {
+          std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+          if (process_id_ == process_id) state_ = ProcessState::kStopped;
+        }
         if (load) FinishLoad(load, WithError({}, "RUNTIME_SHUTDOWN"));
-        if (completion) completion(std::move(result));
+        if (*done) {
+          auto completion = std::move(*done);
+          completion(ShutdownResult());
+        }
       });
-    } else if (completion) {
-      completion(ShutdownResult());
     }
   }
 
-  void LoadScript(std::string source, std::string url, Completion completion) {
+  void LoadScript(Domain domain, std::string source, std::string url,
+                  Completion completion) {
+    if (!IsValidDomain(domain)) {
+      if (completion) completion(WithError({}, "INVALID_DOMAIN"));
+      return;
+    }
     if (!NormalizeScriptSource(source, true) || url.empty()) {
       if (completion) completion(WithError({}, "INVALID_SCRIPT_SOURCE"));
       return;
     }
     auto load = std::make_shared<Load>();
+    load->domain = domain;
     load->source = std::move(source);
     load->url = std::move(url);
     load->completion = std::move(completion);
@@ -630,16 +666,17 @@ class ProcessRuntime::Impl {
     const char* error = nullptr;
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
-      generation = Current();
+      generation = Current(domain);
       error = !IsHostScriptRuntimeEnabled() ? "HSR_DEBUG_DISABLED"
               : load_                       ? "RUNTIME_LOADING"
-              : !runners_.bts || !generation ||
-                      generation->State() == ProcessState::kStopping
+              : state_ != ProcessState::kRunning || !generation
                   ? "RUNTIME_NOT_RUNNING"
                   : nullptr;
       if (!error) {
         load_ = load;
-        loading_.store(true);
+        loading_domain_.store(static_cast<int>(domain),
+                              std::memory_order_release);
+        generation->Close();
       }
     }
     if (error) {
@@ -651,32 +688,46 @@ class ProcessRuntime::Impl {
 
  private:
   struct Load {
+    Domain domain = Domain::kBTS;
     std::string source;
     std::string url;
     Completion completion;
-    Result initialization_error;
-    size_t initialized_domains = 0;
     bool cancelled = false;
   };
 
+  std::shared_ptr<RuntimeGeneration> MakeDomain(Domain domain,
+                                                const Completion& ready,
+                                                InitializationMode mode) {
+    const Owners owners{runners_.bts, runners_.mts, runners_.ui};
+    return std::make_shared<RuntimeGeneration>(
+        domain, owners[HostScriptDomainIndex(domain)], runners_.ui,
+        next_runtime_id_.fetch_add(1) + 1, ready, binding_factory_, bootstrap_,
+        mode);
+  }
+
   void RestartLoad(const std::shared_ptr<Load>& load) {
     std::shared_ptr<RuntimeGeneration> next;
+    const char* error = "RUNTIME_SHUTDOWN";
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
       if (load_ != load) return;
-      if (!load->cancelled && IsHostScriptRuntimeEnabled()) {
-        next = std::make_shared<RuntimeGeneration>(
-            Owners{runners_.bts, runners_.mts, runners_.ui},
-            next_runtime_id_.fetch_add(kHostScriptDomainCount) + 1,
-            [this, load](Result result) { LoadDomainReady(load, result); },
-            binding_factory_, bootstrap_, InitializationMode::kEager);
-        std::atomic_store(&current_, next);
+      if (!load->cancelled && state_ == ProcessState::kRunning) {
+        if (IsHostScriptRuntimeEnabled()) {
+          next = MakeDomain(
+              load->domain,
+              [this, load](Result result) { LoadDomainReady(load, result); },
+              InitializationMode::kEager);
+          std::atomic_store(&current_[HostScriptDomainIndex(load->domain)],
+                            next);
+        } else {
+          error = "HSR_DEBUG_DISABLED";
+        }
       }
     }
     if (next) {
       next->Start();
     } else {
-      FinishLoad(load, WithError({}, "HSR_DEBUG_DISABLED"));
+      FinishLoad(load, WithError({}, error));
     }
   }
 
@@ -685,16 +736,13 @@ class ProcessRuntime::Impl {
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
       if (load_ != load || load->cancelled) return;
-      if (!ready.success && load->initialization_error.error.empty())
-        load->initialization_error = ready;
-      if (++load->initialized_domains != 3) return;
-      generation = Current();
+      generation = Current(load->domain);
     }
-    if (!load->initialization_error.error.empty()) {
-      StopFailedLoad(load, load->initialization_error);
+    if (!ready.success) {
+      StopFailedLoad(load, ready);
       return;
     }
-    if (!generation->Post(*generation->Find(Domain::kBTS), [this, load] {
+    if (!generation->Post(*generation->Find(load->domain), [this, load] {
           return [this, load](auto& owner) {
             owner->Evaluate(
                 load->source, load->url,
@@ -717,7 +765,7 @@ class ProcessRuntime::Impl {
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
       if (load_ != load) return;
-      generation = Current();
+      generation = Current(load->domain);
     }
     generation->Shutdown(
         [this, load, result = std::move(result)](Result) mutable {
@@ -740,22 +788,33 @@ class ProcessRuntime::Impl {
       if (!cleanup) {
         completion = std::move(load->completion);
         load_.reset();
-        loading_.store(false);
+        loading_domain_.store(-1, std::memory_order_release);
       }
     }
     if (cleanup) StopFailedLoad(load, std::move(result));
     if (completion) completion(std::move(result));
   }
 
-  std::shared_ptr<RuntimeGeneration> Current() const {
-    return std::atomic_load(&current_);
+  bool IsLoading(Domain domain) const {
+    return IsValidDomain(domain) &&
+           loading_domain_.load(std::memory_order_acquire) ==
+               static_cast<int>(domain);
   }
-  // Publish immutable routing only; no process-level request registry.
-  std::shared_ptr<RuntimeGeneration> current_;
+
+  std::shared_ptr<RuntimeGeneration> Current(Domain domain) const {
+    return IsValidDomain(domain)
+               ? std::atomic_load(&current_[HostScriptDomainIndex(domain)])
+               : nullptr;
+  }
+
+  std::array<std::shared_ptr<RuntimeGeneration>, kHostScriptDomainCount>
+      current_;
   std::atomic<uint64_t> next_runtime_id_{0};
   // Serializes replacement with explicit initialization/shutdown, never JS.
   std::mutex lifecycle_mutex_;
-  std::atomic<bool> loading_{false};
+  ProcessState state_ = ProcessState::kStopped;
+  uint64_t process_id_ = 0;
+  std::atomic<int> loading_domain_{-1};
   std::shared_ptr<Load> load_;
   Runners runners_;
   BindingFactory binding_factory_;
@@ -804,8 +863,9 @@ void ProcessRuntime::RunOnThread(Domain domain, std::string source,
 }
 
 void ProcessRuntime::LoadScript(std::string source, std::string url,
-                                Completion completion) {
-  impl_->LoadScript(std::move(source), std::move(url), std::move(completion));
+                                Completion completion, Domain domain) {
+  impl_->LoadScript(domain, std::move(source), std::move(url),
+                    std::move(completion));
 }
 
 void ProcessRuntime::Shutdown(Completion completion) {

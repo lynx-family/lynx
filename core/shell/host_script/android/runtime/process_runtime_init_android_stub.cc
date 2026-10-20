@@ -17,7 +17,8 @@ void UnregisterHostScriptView(base::LynxEntityId) {}
 void UpdateHostScriptDebugState(bool) {}
 
 void LoadHostScriptRuntime(std::string, std::string,
-                           ProcessRuntime::Completion completion) {
+                           ProcessRuntime::Completion completion,
+                           ProcessRuntime::Domain) {
   ProcessRuntime::Result result;
   result.error = "HSR_DEBUG_LIBRARY_REQUIRED";
   if (completion) completion(std::move(result));

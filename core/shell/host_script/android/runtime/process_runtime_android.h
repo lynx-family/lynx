@@ -24,7 +24,8 @@ LYNX_EXPORT_FOR_DEVTOOL void EvaluateHostScriptRuntime(
     ProcessRuntime::Completion completion);
 
 LYNX_EXPORT_FOR_DEVTOOL void LoadHostScriptRuntime(
-    std::string source, std::string url, ProcessRuntime::Completion completion);
+    std::string source, std::string url, ProcessRuntime::Completion completion,
+    ProcessRuntime::Domain domain = ProcessRuntime::Domain::kBTS);
 
 }  // namespace shell
 }  // namespace lynx
