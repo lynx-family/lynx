@@ -80,6 +80,8 @@ class DirectCompositionSurface : public WindowSurface {
   bool has_alpha_ = true;
   bool first_swap_ = true;
 
+  std::optional<clay::Rect> pending_swap_rect_;
+
   Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device_;
   Microsoft::WRL::ComPtr<IDCompositionDevice2> dcomp_device_;
   Microsoft::WRL::ComPtr<IDXGISwapChain1> swap_chain_;

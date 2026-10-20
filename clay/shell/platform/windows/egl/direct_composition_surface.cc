@@ -22,6 +22,17 @@ clay::Rect FlipYAxis(const clay::Rect& rect, int height) {
   return {rect.x(), height - rect.MaxY(), rect.width(), rect.height()};
 }
 
+clay::Rect NormalizeDamageRect(const std::optional<clay::Rect>& region,
+                               const clay::Rect& full_rect,
+                               bool force_full_damage) {
+  if (force_full_damage || !region.has_value()) {
+    return full_rect;
+  }
+  clay::Rect damage_rect = *region;
+  damage_rect.Intersect(full_rect);
+  return damage_rect;
+}
+
 }  // namespace
 
 namespace clay {
@@ -139,6 +150,7 @@ bool DirectCompositionSurface::Destroy() {
     dcomp_root_visual_.Reset();
   }
   draw_texture_.Reset();
+  pending_swap_rect_.reset();
 
   is_valid_ = false;
   return true;
@@ -160,6 +172,7 @@ bool DirectCompositionSurface::SwapBuffers() {
     AddDamageRegionWithManualBufferRotation(*pending_present_damage_region_);
   }
   pending_present_damage_region_.reset();
+  pending_swap_rect_.reset();
   return swap_result;
 }
 
@@ -170,6 +183,7 @@ bool DirectCompositionSurface::Resize(int width, int height) {
   child_window_->Resize(width, height);
   first_swap_ = true;
   pending_present_damage_region_.reset();
+  pending_swap_rect_.reset();
   // This will release indirect references to swap chain (|real_surface_|) by
   // binding |default_surface_| as the default framebuffer.
   if (!ReleaseDrawTexture(true /* will_discard */)) return false;
@@ -220,20 +234,17 @@ std::optional<clay::Rect> DirectCompositionSurface::GetDamageRegion() const {
 
 void DirectCompositionSurface::SetDamageRegion(const clay::Rect& region) {
   clay::Rect full_rect(size_);
-  clay::Rect logical_damage_rect = region;
-  if (first_swap_ || !swap_chain_ || logical_damage_rect.IsEmpty()) {
+  clay::Rect logical_damage_rect =
+      NormalizeDamageRect(region, full_rect, first_swap_ || !swap_chain_);
+  if (logical_damage_rect.IsEmpty()) {
     logical_damage_rect = full_rect;
-  } else {
-    logical_damage_rect.Intersect(full_rect);
-    if (logical_damage_rect.IsEmpty()) {
-      logical_damage_rect = full_rect;
-    }
   }
 
   clay::Rect draw_rect = FlipYAxis(logical_damage_rect, size_.height());
   if (!SetDrawRectangle(draw_rect)) {
     return;
   }
+  pending_swap_rect_ = logical_damage_rect;
   if (::eglMakeCurrent(display_, GetHandle(), GetHandle(), context_) !=
       EGL_TRUE) {
     WINDOWS_LOG_EGL_ERROR;
@@ -289,14 +300,8 @@ bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard,
         return false;
       }
       const clay::Rect full_rect(size_);
-      clay::Rect logical_present_rect =
-          pending_present_damage_region_.value_or(full_rect);
-      if (first_swap_ || !pending_present_damage_region_.has_value()) {
-        logical_present_rect = full_rect;
-      } else {
-        logical_present_rect.Intersect(full_rect);
-      }
-      pending_present_damage_region_ = logical_present_rect;
+      pending_present_damage_region_ = NormalizeDamageRect(
+          pending_present_damage_region_, full_rect, first_swap_);
 
       const bool use_swap_chain_tearing = IsSwapChainTearingSupported();
       UINT interval =
@@ -304,7 +309,8 @@ bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard,
       UINT flags = use_swap_chain_tearing ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
       DXGI_PRESENT_PARAMETERS params = {};
-      clay::Rect present_rect = FlipYAxis(logical_present_rect, size_.height());
+      clay::Rect present_rect =
+          FlipYAxis(pending_swap_rect_.value_or(full_rect), size_.height());
       RECT dirty_rect = ToRECT(present_rect);
       if (!present_rect.IsEmpty()) {
         params.DirtyRectsCount = 1;
