@@ -56,7 +56,7 @@ class MarkdownResourceLoaderHarmony final
       const char* id_selector, float max_width, float max_height) override;
   void* LoadFont(const char* family,
                  serval::markdown::MarkdownFontWeight weight) override;
-  std::shared_ptr<serval::markdown::MarkdownDrawable> LoadReplacementView(
+  serval::markdown::MarkdownReplacementView LoadReplacementView(
       void* ud, int32_t id, float max_width, float max_height) override;
 
   void Destroy();

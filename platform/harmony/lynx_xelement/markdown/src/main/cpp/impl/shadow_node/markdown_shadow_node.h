@@ -13,6 +13,7 @@
 namespace serval {
 namespace markdown {
 class MarkdownView;
+class NativeMarkdownMeasurer;
 class NativeServalMarkdownView;
 }  // namespace markdown
 }  // namespace serval
@@ -49,6 +50,7 @@ class MarkdownShadowNode : public ShadowNode, public CustomMeasureFunc {
   EnsureMarkdownView();
   serval::markdown::MarkdownView* MarkdownView();
 
+  std::shared_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer_;
   std::shared_ptr<serval::markdown::NativeServalMarkdownView> markdown_view_;
   std::shared_ptr<MarkdownResourceLoaderHarmony> resource_loader_;
   fml::RefPtr<MarkdownViewBundle> bundle_;
