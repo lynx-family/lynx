@@ -125,35 +125,19 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
     if (mMarkdown == null || startX < 0 || startY < 0 || endX < 0 || endY < 0) {
       return null;
     }
-    if (startX != endX || startY != endY) {
-      int start = mMarkdown.getCharIndexByPoint(startX, startY, Constants.INDEX_TYPE_CHAR);
-      int end = mMarkdown.getCharIndexByPoint(endX, endY, Constants.INDEX_TYPE_CHAR);
-      if (start < 0 || end < 0) {
-        return null;
-      }
-      if (start == end) {
-        return getSelectionRange(startX, startY, startX, startY, Constants.CHAR_RANGE_TYPE_CHAR);
-      }
-      if (start > end) {
-        int tmp = start;
-        start = end;
-        end = tmp;
-      }
-      return new int[] {start, end};
-    }
+    // Point lookup returns a character index; selection ends are exclusive.
+    // Include both endpoint characters, including the final character on select-all.
+    int rangeType =
+        startX == endX && startY == endY ? selectionType : Constants.CHAR_RANGE_TYPE_CHAR;
     long startRange =
-        mMarkdown.getCharRangeByPoint(startX, startY, Constants.INDEX_TYPE_CHAR, selectionType);
-    long endRange =
-        mMarkdown.getCharRangeByPoint(endX, endY, Constants.INDEX_TYPE_CHAR, selectionType);
-    int start = MarkdownValuePack.unpackPairFirst(startRange);
-    int end = MarkdownValuePack.unpackPairSecond(endRange);
+        mMarkdown.getCharRangeByPoint(startX, startY, Constants.INDEX_TYPE_CHAR, rangeType);
+    long endRange = mMarkdown.getCharRangeByPoint(endX, endY, Constants.INDEX_TYPE_CHAR, rangeType);
+    int start = Math.min(
+        MarkdownValuePack.unpackPairFirst(startRange), MarkdownValuePack.unpackPairFirst(endRange));
+    int end = Math.max(MarkdownValuePack.unpackPairSecond(startRange),
+        MarkdownValuePack.unpackPairSecond(endRange));
     if (start < 0 || end < 0) {
       return null;
-    }
-    if (start > end) {
-      int tmp = start;
-      start = end;
-      end = tmp;
     }
     return new int[] {start, end};
   }
