@@ -16,6 +16,14 @@ namespace clay {
 
 class PlatformImage : public std::enable_shared_from_this<PlatformImage> {
  public:
+  // Values are also used by the platform animation bridges.
+  enum class FrameResult {
+    kNoFrame = 0,
+    kFrameReady = 1,
+    kLoopComplete = 2,
+    kFinalLoopComplete = 3,
+  };
+
   virtual ~PlatformImage() = default;
 
   virtual int GetWidth() = 0;
@@ -24,7 +32,7 @@ class PlatformImage : public std::enable_shared_from_this<PlatformImage> {
 
   virtual std::shared_ptr<skity::Pixmap> ToBitmap() = 0;
 
-  virtual void DrawFrame(std::function<void()> on_frame_changed) = 0;
+  virtual FrameResult DrawFrame() = 0;
   virtual bool IsAnimated() = 0;
   virtual void SetAutoPlay(bool auto_play) = 0;
   virtual void SetLoopCount(int loop_count) = 0;

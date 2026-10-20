@@ -22,7 +22,7 @@ class DesktopImage : public PlatformImage {
   int GetHeight() override;
   int64_t GetDuration() override;
   std::shared_ptr<skity::Pixmap> ToBitmap() override;
-  void DrawFrame(std::function<void()> on_frame_changed) override;
+  FrameResult DrawFrame() override;
   bool IsAnimated() override;
   void SetAutoPlay(bool auto_play) override;
   void SetLoopCount(int loop_count) override;
@@ -32,7 +32,7 @@ class DesktopImage : public PlatformImage {
   void ResumeAnimation() override;
 
  private:
-  void DrawFrameInternal();
+  bool DrawFrameInternal();
 
   int width_;
   int height_;
