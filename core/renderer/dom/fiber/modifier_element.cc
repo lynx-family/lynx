@@ -794,7 +794,7 @@ fml::RefPtr<Element> InstallModifierFramePlan(
 
 ModifierElement::ModifierElement(ElementManager* manager)
     : Element(manager, BASE_STATIC_STRING(kElementViewTag)) {
-  SetStyle(kPropertyIDDisplay, lepus::Value("box"));
+  SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
   SetStyle(kPropertyIDBoxSizing, lepus::Value("border-box"));
   if (manager != nullptr) {
     SetDefaultOverflow(manager->GetDefaultOverflowVisible());
