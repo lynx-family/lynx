@@ -16,9 +16,10 @@ local git repository. A Podfile can then consume the cache via::
     source "file://" + ENV["COCOAPODS_LOCAL_SOURCE_REPO"]
 
 Because ``git archive --remote=`` is not supported by GitHub, this
-open-source variant fetches each podspec over HTTPS from a CocoaPods
-CDN-style source (typically ``https://cdn.cocoapods.org/``), following
-the ``prefix_lengths`` layout advertised in ``CocoaPods-version.yml``.
+open-source variant fetches each podspec from either a CocoaPods CDN-style
+source (typically ``https://cdn.cocoapods.org/``), following the
+``prefix_lengths`` layout advertised in ``CocoaPods-version.yml``, or a
+Git Specs repository with a flat ``<PodName>/<Version>/`` layout.
 """
 
 import argparse
@@ -29,6 +30,8 @@ import shutil
 import ssl
 import subprocess
 import sys
+import tempfile
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -178,6 +181,96 @@ class CdnSource:
         )
 
 
+class GitSpecsSource:
+    """A git-backed Specs source with a flat ``<PodName>/<Version>/`` layout."""
+
+    def __init__(self, url):
+        self.url = url
+        self._checkout_dir = None
+        self._lock = threading.Lock()
+
+    def __str__(self):
+        return self.url
+
+    def _ensure_checkout(self):
+        with self._lock:
+            if self._checkout_dir is not None:
+                return self._checkout_dir
+            self._checkout_dir = tempfile.mkdtemp(prefix='lynx-cocoapods-specs-')
+            try:
+                self._clone_specs_repo()
+            except Exception:
+                shutil.rmtree(self._checkout_dir, ignore_errors=True)
+                self._checkout_dir = None
+                raise
+            return self._checkout_dir
+
+    def _clone_specs_repo(self):
+        base_command = ['git', 'clone', '--depth', '1']
+        try:
+            subprocess.check_call(
+                base_command + ['--filter=blob:none', self.url, self._checkout_dir],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT,
+            )
+        except subprocess.CalledProcessError:
+            subprocess.check_call(
+                base_command + [self.url, self._checkout_dir],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT,
+            )
+
+    def _read_repo_file(self, path):
+        checkout_dir = self._ensure_checkout()
+        try:
+            return subprocess.check_output(
+                ['git', 'show', f'HEAD:{path}'],
+                cwd=checkout_dir,
+                stderr=subprocess.STDOUT,
+            )
+        except subprocess.CalledProcessError:
+            return None
+
+    def _spec_path(self, pod_name, version, suffix):
+        return f'{pod_name}/{version}/{pod_name}.{suffix}'
+
+    def download_podspec(self, pod_name, version, target_dir):
+        attempted_suffixes = []
+        for suffix in SPEC_FILE_SUFFIXES:
+            attempted_suffixes.append(suffix)
+            repo_path = self._spec_path(pod_name, version, suffix)
+            content = self._read_repo_file(repo_path)
+            if content is None:
+                continue
+
+            base_dir = os.path.join(target_dir, pod_name, version)
+            os.makedirs(base_dir, exist_ok=True)
+            spec_path = os.path.join(base_dir, f'{pod_name}.{suffix}')
+            with open(spec_path, 'wb') as f:
+                f.write(content)
+            return spec_path
+
+        attempted = ', '.join(attempted_suffixes)
+        raise Exception(
+            'failed to download podspec from git specs repo: '
+            f'source={self.url}, pod_name={pod_name}, version={version}, '
+            f'suffixes_tried=[{attempted}]'
+        )
+
+    def close(self):
+        with self._lock:
+            if self._checkout_dir is not None:
+                shutil.rmtree(self._checkout_dir, ignore_errors=True)
+                self._checkout_dir = None
+
+
+def create_source(source_url):
+    parsed = urllib.parse.urlparse(source_url)
+    if source_url.endswith('.git') or parsed.scheme in ('git', 'ssh'):
+        return GitSpecsSource(source_url)
+    return CdnSource(source_url)
+
+
 class Pod:
     def __init__(self, name, version, source):
         self.name = name
@@ -214,7 +307,7 @@ def load_pods(source_list):
                 version = resolved
             if '$' in version:
                 continue
-            source = sources.setdefault(source_url, CdnSource(source_url))
+            source = sources.setdefault(source_url, create_source(source_url))
             pods.append(Pod(pod_name, version, source))
     return pods
 
@@ -280,12 +373,23 @@ def prepare_source_repo(pods, cache_dir):
     if not futures:
         return
 
-    wait(futures)
-    for future in futures:
-        result = future.result()
-        if isinstance(result, Exception):
-            log_r(str(result))
-            raise result
+    try:
+        wait(futures)
+        for future in futures:
+            result = future.result()
+            if isinstance(result, Exception):
+                log_r(str(result))
+                raise result
+    finally:
+        closed_sources = set()
+        for pod in pods:
+            source = pod.source
+            if id(source) in closed_sources:
+                continue
+            closed_sources.add(id(source))
+            close = getattr(source, 'close', None)
+            if close:
+                close()
 
     blocking = os.get_blocking(1)
     os.set_blocking(1, True)

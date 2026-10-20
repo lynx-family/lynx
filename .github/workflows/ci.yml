@@ -929,6 +929,7 @@ jobs:
           python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component Lynx --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
           python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component LynxService --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
           python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component XElement --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "https://github.com/lynx-family/Specs.git"
           python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "$LOCAL_POD_SOURCE"
           python3 lynx/tools/ios_tools/process_podfile.py --action pin_pod_source --component Lynx --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "$LOCAL_POD_SOURCE"
           python3 lynx/tools/ios_tools/process_podfile.py --action pin_pod_source --component LynxService --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "$LOCAL_POD_SOURCE"
