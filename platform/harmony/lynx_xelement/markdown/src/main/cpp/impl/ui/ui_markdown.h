@@ -7,13 +7,17 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
+#include "markdown/markdown_event_listener.h"
 #include "markdown/platform/harmony/serval_markdown_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+class MarkdownResourceLoaderHarmony;
 
 class UIMarkdown : public UIBase {
  public:
@@ -33,6 +37,10 @@ class UIMarkdown : public UIBase {
   void UpdateExtraData(
       const fml::RefPtr<fml::RefCountedThreadSafeStorage>& extra_data) override;
   void OnDestroy() override;
+  void OnNodeEvent(ArkUI_NodeEvent* event) override;
+  bool NeedWindowStateChangeEvent() const override { return true; }
+  void OnEnterForeground() override;
+  void OnEnterBackground() override;
 
  protected:
   UIMarkdown(LynxContext* context, int sign, const std::string& tag);
@@ -41,11 +49,19 @@ class UIMarkdown : public UIBase {
   void DetachMarkdownView();
   void LayoutMarkdownView();
   void RequestRendererFrame();
+  lepus::Value GetTextRectsResult(
+      const std::vector<serval::markdown::RectF>& boxes,
+      const lepus::Value& args, bool include_handles);
 
   std::shared_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer_;
+  std::shared_ptr<serval::markdown::MarkdownEventListener> event_listener_;
+  std::shared_ptr<MarkdownResourceLoaderHarmony> resource_loader_;
   std::unique_ptr<serval::markdown::NativeServalMarkdownView> markdown_view_;
   serval::markdown::MeasureResult measured_size_{};
   bool renderer_frame_requested_{false};
+  bool animation_paused_{false};
+  bool in_background_{false};
+  bool visible_in_window_{false};
 };
 
 }  // namespace harmony

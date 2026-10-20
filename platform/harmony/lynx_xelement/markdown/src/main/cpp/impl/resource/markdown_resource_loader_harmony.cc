@@ -22,6 +22,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_base_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_pixel_map.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/shadow_node/markdown_shadow_node.h"
 
 namespace lynx {
@@ -129,15 +130,19 @@ class FixedSizeMarkdownDrawable final
 }  // namespace
 
 class CanvasImageMarkdownDrawable final
-    : public serval::markdown::MarkdownDrawable {
+    : public serval::markdown::MarkdownDrawable,
+      public std::enable_shared_from_this<CanvasImageMarkdownDrawable> {
  public:
-  CanvasImageMarkdownDrawable(float desire_width, float desire_height,
-                              float max_width, float max_height, float width,
-                              float height)
-      : desire_width_(desire_width),
+  CanvasImageMarkdownDrawable(
+      std::weak_ptr<MarkdownResourceLoaderHarmony> loader, float desire_width,
+      float desire_height, float max_width, float max_height, float width,
+      float height, float density)
+      : loader_(std::move(loader)),
+        desire_width_(desire_width),
         desire_height_(desire_height),
         max_width_(max_width),
         max_height_(max_height),
+        density_(density),
         measured_size_{NormalizeNonNegativeSize(width),
                        NormalizeNonNegativeSize(height)} {}
 
@@ -150,14 +155,60 @@ class CanvasImageMarkdownDrawable final
         NormalizePositiveSize(static_cast<float>(image->Width()));
     const float intrinsic_height =
         NormalizePositiveSize(static_cast<float>(image->Height()));
-    auto size =
-        ResolveImageSize(desire_width_, desire_height_, max_width_, max_height_,
-                         intrinsic_width, intrinsic_height);
-    std::lock_guard<std::mutex> lock(mutex_);
+    // Bitmap dimensions are source pixels; Markdown layout uses device pixels.
+    // Explicit sizes and constraints have already been converted by Serval.
+    auto size = ResolveImageSize(desire_width_, desire_height_, max_width_,
+                                 max_height_, intrinsic_width * density_,
+                                 intrinsic_height * density_);
+    std::unique_lock<std::mutex> lock(mutex_);
+    const bool was_animated = !frame_ends_.empty();
     image_ = std::move(image);
+    frame_ends_.clear();
+    int64_t duration = 0;
+    if (image_->FrameCount() > 1) {
+      frame_ends_.reserve(image_->FrameCount());
+      for (uint32_t i = 0; i < image_->FrameCount(); ++i) {
+        const int32_t frame_duration = image_->FrameDuration(i);
+        duration += frame_duration > 0 ? frame_duration : 100;
+        frame_ends_.push_back(duration);
+      }
+    }
+    elapsed_nanos_ = 0;
+    last_frame_time_ = 0;
+    frame_index_ = 0;
     intrinsic_size_ = {intrinsic_width, intrinsic_height};
     measured_size_ = {size.first, size.second};
     visible_ = measured_size_.width_ > 0.f && measured_size_.height_ > 0.f;
+    const bool register_animation = !was_animated && !frame_ends_.empty();
+    lock.unlock();
+    if (register_animation) {
+      if (auto loader = loader_.lock()) {
+        loader->RegisterAnimatedImage(weak_from_this());
+      }
+    }
+  }
+
+  // Called once per host VSync, independent of how often ArkUI draws the view.
+  bool AdvanceFrame(int64_t frame_time, bool enabled, bool active) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const int previous_frame = frame_index_;
+    if (!enabled) {
+      frame_index_ = 0;
+      elapsed_nanos_ = 0;
+      last_frame_time_ = 0;
+    } else if (!active || !visible_ || frame_ends_.empty()) {
+      last_frame_time_ = 0;
+    } else {
+      if (last_frame_time_ != 0 && frame_time > last_frame_time_) {
+        elapsed_nanos_ += frame_time - last_frame_time_;
+      }
+      last_frame_time_ = frame_time;
+      elapsed_nanos_ %= frame_ends_.back() * 1000000;
+      const auto frame = std::upper_bound(
+          frame_ends_.begin(), frame_ends_.end(), elapsed_nanos_ / 1000000);
+      frame_index_ = static_cast<int>(frame - frame_ends_.begin());
+    }
+    return visible_ && previous_frame != frame_index_;
   }
 
   void Draw(tttext::ICanvasHelper* canvas, float x, float y) override {
@@ -169,12 +220,15 @@ class CanvasImageMarkdownDrawable final
     serval::markdown::SizeF measured_size;
     serval::markdown::SizeF intrinsic_size;
     bool visible = false;
+    int frame_index = 0;
+    auto loader = loader_.lock();
     {
       std::lock_guard<std::mutex> lock(mutex_);
       image = image_;
       measured_size = measured_size_;
       intrinsic_size = intrinsic_size_;
       visible = visible_;
+      frame_index = loader && loader->EnableGif() ? frame_index_ : 0;
     }
 
     if (!visible || !image || measured_size.width_ <= 0.f ||
@@ -183,7 +237,7 @@ class CanvasImageMarkdownDrawable final
       return;
     }
 
-    auto* pixel_map = image->FirstFrame();
+    auto* pixel_map = image->FramePixelMap(frame_index);
     if (!pixel_map || !pixel_map->Bitmap()) {
       return;
     }
@@ -230,10 +284,16 @@ class CanvasImageMarkdownDrawable final
   }
 
  private:
+  std::weak_ptr<MarkdownResourceLoaderHarmony> loader_;
+  std::vector<int64_t> frame_ends_;
+  int64_t elapsed_nanos_{0};
+  int64_t last_frame_time_{0};
+  int frame_index_{0};  // Accessed only on the UI thread.
   float desire_width_{0.f};
   float desire_height_{0.f};
   float max_width_{0.f};
   float max_height_{0.f};
+  const float density_;
   mutable std::mutex mutex_;
   serval::markdown::SizeF measured_size_{};
   serval::markdown::SizeF intrinsic_size_{};
@@ -246,9 +306,11 @@ class InlineViewMarkdownDrawable final
  public:
   InlineViewMarkdownDrawable(
       std::weak_ptr<MarkdownResourceLoaderHarmony> resource_loader,
-      std::string id_selector, serval::markdown::MeasureResult measure_result)
+      std::string id_selector, int sign,
+      serval::markdown::MeasureResult measure_result)
       : resource_loader_(std::move(resource_loader)),
         id_selector_(std::move(id_selector)),
+        sign_(sign),
         measured_size_{NormalizeNonNegativeSize(measure_result.width_),
                        NormalizeNonNegativeSize(measure_result.height_)},
         baseline_(ResolveBaseline(measure_result.baseline_,
@@ -267,6 +329,12 @@ class InlineViewMarkdownDrawable final
       return;
     }
     loader->AlignInlineView(id_selector_, x, y);
+  }
+
+  void SetBounds(serval::markdown::RectF bounds) override {
+    if (auto loader = resource_loader_.lock()) {
+      loader->UpdateInlineViewBounds(sign_, bounds);
+    }
   }
 
  protected:
@@ -290,6 +358,7 @@ class InlineViewMarkdownDrawable final
 
   std::weak_ptr<MarkdownResourceLoaderHarmony> resource_loader_;
   std::string id_selector_;
+  int sign_;
   serval::markdown::SizeF measured_size_{};
   float baseline_{0.f};
 };
@@ -299,7 +368,8 @@ MarkdownResourceLoaderHarmony::MarkdownResourceLoaderHarmony(
     std::weak_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer)
     : context_(context),
       markdown_node_(markdown_node),
-      markdown_measurer_(std::move(markdown_measurer)) {}
+      markdown_measurer_(std::move(markdown_measurer)),
+      markdown_sign_(markdown_node->Signature()) {}
 
 MarkdownResourceLoaderHarmony::~MarkdownResourceLoaderHarmony() { Destroy(); }
 
@@ -313,13 +383,14 @@ MarkdownResourceLoaderHarmony::LoadImage(const char* src, float desire_width,
   const std::string source = src ? src : "";
   auto size =
       ResolveImageSize(desire_width, desire_height, max_width, max_height);
-  if (!HasImageSource(source) || destroyed_.load()) {
+  auto* context = context_.load();
+  if (!HasImageSource(source) || !context || destroyed_.load()) {
     return CreatePlaceholderDrawable(size.first, size.second);
   }
 
   auto image_view = std::make_shared<CanvasImageMarkdownDrawable>(
-      desire_width, desire_height, max_width, max_height, size.first,
-      size.second);
+      weak_from_this(), desire_width, desire_height, max_width, max_height,
+      size.first, size.second, context->ScaledDensity());
   if (auto cached_image = GetCachedImage(source)) {
     image_view->SetImage(cached_image);
     return image_view;
@@ -335,7 +406,7 @@ MarkdownResourceLoaderHarmony::LoadInlineView(const char* id_selector,
   if (auto* child = FindChildById(id_selector)) {
     auto measure_result = MeasureChild(child, max_width, max_height);
     return std::make_shared<InlineViewMarkdownDrawable>(
-        weak_from_this(), id_selector, measure_result);
+        weak_from_this(), id_selector, child->Signature(), measure_result);
   }
   return nullptr;
 }
@@ -408,6 +479,51 @@ void MarkdownResourceLoaderHarmony::AlignInlineView(
     return;
   }
   child->AlignLayoutNode(x / density_, y / density_);
+}
+
+void MarkdownResourceLoaderHarmony::UpdateInlineViewBounds(
+    int sign, serval::markdown::RectF bounds) {
+  // Serval updates cursor bounds on the renderer thread. Resolve the UI here;
+  // shadow-node alignment belongs to the layout thread.
+  auto* context = context_.load();
+  if (!context || destroyed_.load()) {
+    return;
+  }
+  auto* child = context->FindUIBySign(sign);
+  auto* markdown_ui = context->FindUIBySign(markdown_sign_);
+  if (!child || !markdown_ui) {
+    return;
+  }
+  const bool visible = bounds.GetWidth() > 0 && bounds.GetHeight() > 0;
+  child->SetVisibility(visible);
+  if (!visible) {
+    return;
+  }
+  const float density = context->ScaledDensity();
+  float left = bounds.GetLeft() / density + markdown_ui->padding_left_ +
+               markdown_ui->GetBorderLeftWidth();
+  float top = bounds.GetTop() / density + markdown_ui->padding_top_ +
+              markdown_ui->GetBorderTopWidth();
+  if (child->Parent() && child->Parent() != markdown_ui) {
+    float markdown_rect[4] = {0};
+    float parent_rect[4] = {0};
+    markdown_ui->GetBoundingClientRect(markdown_rect);
+    child->Parent()->GetBoundingClientRect(parent_rect);
+    left += markdown_rect[0] - parent_rect[0];
+    top += markdown_rect[1] - parent_rect[1];
+  }
+  const float width = bounds.GetWidth() / density;
+  const float height = bounds.GetHeight() / density;
+  if (left == child->left_ && top == child->top_ && width == child->width_ &&
+      height == child->height_) {
+    return;
+  }
+  const float paddings[] = {child->padding_left_, child->padding_top_,
+                            child->padding_right_, child->padding_bottom_};
+  const float margins[] = {child->margin_left_, child->margin_top_,
+                           child->margin_right_, child->margin_bottom_};
+  child->UpdateLayout(left, top, width, height, paddings, margins, nullptr,
+                      height, 0);
 }
 
 std::shared_ptr<serval::markdown::MarkdownDrawable>
@@ -613,6 +729,35 @@ void MarkdownResourceLoaderHarmony::NotifyImageLoaded(
       measurer->OnImageLoaded(source);
     }
   });
+}
+
+void MarkdownResourceLoaderHarmony::RegisterAnimatedImage(
+    std::weak_ptr<CanvasImageMarkdownDrawable> drawable) {
+  std::lock_guard<std::mutex> lock(animated_images_mutex_);
+  if (!destroyed_.load()) {
+    animated_images_.push_back(std::move(drawable));
+    has_animated_images_.store(true);
+  }
+}
+
+bool MarkdownResourceLoaderHarmony::AdvanceImageFrames(int64_t frame_time,
+                                                       bool active) {
+  if (destroyed_.load()) {
+    return false;
+  }
+  const bool enabled = EnableGif();
+  bool changed = false;
+  std::lock_guard<std::mutex> lock(animated_images_mutex_);
+  auto retained = animated_images_.begin();
+  for (auto it = animated_images_.begin(); it != animated_images_.end(); ++it) {
+    if (auto image = it->lock()) {
+      changed |= image->AdvanceFrame(frame_time, enabled, active);
+      *retained++ = *it;
+    }
+  }
+  animated_images_.erase(retained, animated_images_.end());
+  has_animated_images_.store(!animated_images_.empty());
+  return changed;
 }
 
 }  // namespace harmony

@@ -16,19 +16,32 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+class MarkdownResourceLoaderHarmony;
+
 class MarkdownViewBundle final : public fml::RefCountedThreadSafeStorage {
  public:
   static fml::RefPtr<MarkdownViewBundle> Create(
       std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>
           markdown_measurer,
-      serval::markdown::MeasureResult measured_size) {
-    return fml::AdoptRef(
-        new MarkdownViewBundle(std::move(markdown_measurer), measured_size));
+      serval::markdown::MeasureResult measured_size,
+      std::shared_ptr<MarkdownResourceLoaderHarmony> resource_loader,
+      std::shared_ptr<serval::markdown::MarkdownEventListener> event_listener) {
+    return fml::AdoptRef(new MarkdownViewBundle(
+        std::move(markdown_measurer), measured_size, std::move(resource_loader),
+        std::move(event_listener)));
   }
 
   const std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>&
   GetMarkdownMeasurer() const {
     return markdown_measurer_;
+  }
+  const std::shared_ptr<MarkdownResourceLoaderHarmony>& GetResourceLoader()
+      const {
+    return resource_loader_;
+  }
+  const std::shared_ptr<serval::markdown::MarkdownEventListener>&
+  GetEventListener() const {
+    return event_listener_;
   }
   serval::markdown::MeasureResult GetMeasuredSize() const {
     return measured_size_;
@@ -38,15 +51,21 @@ class MarkdownViewBundle final : public fml::RefCountedThreadSafeStorage {
   explicit MarkdownViewBundle(
       std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>
           markdown_measurer,
-      serval::markdown::MeasureResult measured_size)
+      serval::markdown::MeasureResult measured_size,
+      std::shared_ptr<MarkdownResourceLoaderHarmony> resource_loader,
+      std::shared_ptr<serval::markdown::MarkdownEventListener> event_listener)
       : markdown_measurer_(std::move(markdown_measurer)),
-        measured_size_(measured_size) {}
+        measured_size_(measured_size),
+        resource_loader_(std::move(resource_loader)),
+        event_listener_(std::move(event_listener)) {}
 
   ~MarkdownViewBundle() override = default;
   void ReleaseSelf() const override { delete this; }
 
   std::shared_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer_;
   serval::markdown::MeasureResult measured_size_;
+  std::shared_ptr<MarkdownResourceLoaderHarmony> resource_loader_;
+  std::shared_ptr<serval::markdown::MarkdownEventListener> event_listener_;
 };
 
 }  // namespace harmony
