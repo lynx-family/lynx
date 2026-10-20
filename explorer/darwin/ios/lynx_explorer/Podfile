@@ -3,6 +3,7 @@ require 'json'
 if ENV['COCOAPODS_LOCAL_SOURCE_REPO'] && !ENV['COCOAPODS_LOCAL_SOURCE_REPO'].empty?
   source 'file://' + ENV['COCOAPODS_LOCAL_SOURCE_REPO']
 end
+source 'https://github.com/lynx-family/Specs.git'
 source 'https://cdn.cocoapods.org/'
 
 $sources_file = File.expand_path('Podfile.flatten', __dir__)

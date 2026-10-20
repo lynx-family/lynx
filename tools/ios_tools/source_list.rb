@@ -9,6 +9,8 @@
 #
 #   <source_url>:<PodName>:<Version> pod
 #
+# The source URL can be either a CocoaPods CDN or a Git Specs repository.
+#
 # Callers set $sources_file to the absolute path of Podfile.flatten before
 # invoking `use_pod`.
 
