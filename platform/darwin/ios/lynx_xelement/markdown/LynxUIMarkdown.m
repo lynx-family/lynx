@@ -99,48 +99,25 @@
                                       EndX:(CGFloat)endX
                                       EndY:(CGFloat)endY
                              SelectionType:(ServalMarkdownCharRangeType)selectionType {
-  NSInteger start = -1;
-  NSInteger end = -1;
   if (startX < 0 || startY < 0 || endX < 0 || endY < 0) {
     return nil;
   }
-  if (startX != endX || startY != endY) {
-    start = [markdown getCharIndexByPoint:startX y:startY indexType:kServalMarkdownIndexTypeChar];
-    end = [markdown getCharIndexByPoint:endX y:endY indexType:kServalMarkdownIndexTypeChar];
-  } else {
-    NSRange startRange = [markdown getCharRangeByPoint:startX
-                                                     y:startY
-                                             indexType:kServalMarkdownIndexTypeChar
-                                             rangeType:selectionType];
-    NSRange endRange = [markdown getCharRangeByPoint:endX
-                                                   y:endY
+  // Selection ranges are half-open; include the character under each endpoint.
+  ServalMarkdownCharRangeType rangeType =
+      startX == endX && startY == endY ? selectionType : kServalMarkdownCharRangeTypeChar;
+  NSRange startRange = [markdown getCharRangeByPoint:startX
+                                                   y:startY
                                            indexType:kServalMarkdownIndexTypeChar
-                                           rangeType:selectionType];
-    if (startRange.location == NSNotFound || endRange.location == NSNotFound) {
-      return nil;
-    }
-    start = (NSInteger)startRange.location;
-    end = (NSInteger)(endRange.location + endRange.length);
-  }
-  if (start < 0 || end < 0) {
+                                           rangeType:rangeType];
+  NSRange endRange = [markdown getCharRangeByPoint:endX
+                                                 y:endY
+                                         indexType:kServalMarkdownIndexTypeChar
+                                         rangeType:rangeType];
+  if (startRange.location == NSNotFound || endRange.location == NSNotFound) {
     return nil;
   }
-  if (start == end) {
-    NSRange range = [markdown getCharRangeByPoint:startX
-                                                y:startY
-                                        indexType:kServalMarkdownIndexTypeChar
-                                        rangeType:kServalMarkdownCharRangeTypeChar];
-    if (range.location == NSNotFound || range.length == 0) {
-      return nil;
-    }
-    start = range.location;
-    end = NSMaxRange(range);
-  }
-  if (start > end) {
-    NSInteger tmp = start;
-    start = end;
-    end = tmp;
-  }
+  NSInteger start = MIN(startRange.location, endRange.location);
+  NSInteger end = MAX(NSMaxRange(startRange), NSMaxRange(endRange));
   return @[ @(start), @(end) ];
 }
 
