@@ -1,0 +1,38 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../../core/Lynx.gni")
+import("../../../../../testing/test.gni")
+
+# Keep tests separate from the production BUILD file so loading them does not
+# also load the renderer's dependencies.
+if (is_mac && enable_unittests) {
+  unittest_set("vsync_monitor_macos_testset") {
+    sources = [
+      "../../../../embedder/vsync_monitor_fallback.cc",
+      "../../../../embedder/vsync_monitor_fallback.h",
+      "../../../../embedder/windowless/windowless_ui_task_runner_delegate.cc",
+      "../../../../embedder/windowless/windowless_ui_task_runner_delegate.h",
+      "../vsync_monitor_macos.h",
+      "../vsync_monitor_macos.mm",
+      "../vsync_monitor_macos_unittest.mm",
+    ]
+    deps = [
+      "../../../../../base/src:base_group",
+      "../../../../../core/base",
+      "../../../../embedder:lynx_embedder_capi",
+    ]
+    frameworks = [
+      "AppKit.framework",
+      "QuartzCore.framework",
+    ]
+  }
+
+  unittest_exec("vsync_monitor_macos_unittests_exec") {
+    deps = [
+      ":vsync_monitor_macos_testset",
+      "../../../../../core/renderer/utils:lynx_env",
+    ]
+  }
+}

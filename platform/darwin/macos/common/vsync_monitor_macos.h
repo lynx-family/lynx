@@ -9,7 +9,7 @@
 #import <QuartzCore/CADisplayLink.h>
 
 #include "base/include/fml/time/time_point.h"
-#include "core/base/threading/vsync_monitor.h"
+#include "platform/embedder/vsync_monitor_fallback.h"
 
 API_AVAILABLE(macos(14.0))
 @interface DisplayLinkImpl : NSObject
@@ -19,8 +19,9 @@ API_AVAILABLE(macos(14.0))
 namespace lynx {
 namespace base {
 
-class API_AVAILABLE(macos(14.0)) VSyncMonitorMacOS : public VSyncMonitor {
+class API_AVAILABLE(macos(14.0)) VSyncMonitorMacOS : public VSyncMonitorFallback {
  public:
+  VSyncMonitorMacOS();
   ~VSyncMonitorMacOS() override;
 
   void Init() override;

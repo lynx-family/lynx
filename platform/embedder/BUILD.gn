@@ -305,6 +305,7 @@ if (enable_unittests) {
     }
 
     if (is_mac) {
+      deps += [ "../darwin/macos/common/testing:vsync_monitor_macos_testset" ]
       frameworks = [
         "IOSurface.framework",
         "QuartzCore.framework",
