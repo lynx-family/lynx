@@ -347,7 +347,7 @@ void* MarkdownResourceLoaderHarmony::LoadFont(
   return nullptr;
 }
 
-std::shared_ptr<serval::markdown::MarkdownDrawable>
+serval::markdown::MarkdownReplacementView
 MarkdownResourceLoaderHarmony::LoadReplacementView(void* ud, int32_t id,
                                                    float max_width,
                                                    float max_height) {
@@ -357,7 +357,7 @@ MarkdownResourceLoaderHarmony::LoadReplacementView(void* ud, int32_t id,
       max_width >= 0.f && std::isfinite(max_width) ? max_width : 1.f;
   const float height =
       max_height >= 0.f && std::isfinite(max_height) ? max_height : 1.f;
-  return CreatePlaceholderDrawable(width, height);
+  return {CreatePlaceholderDrawable(width, height), {}};
 }
 
 void MarkdownResourceLoaderHarmony::Destroy() {

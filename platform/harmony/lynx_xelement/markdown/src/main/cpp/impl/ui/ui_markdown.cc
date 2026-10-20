@@ -129,7 +129,11 @@ void UIMarkdown::UpdateLayout(float left, float top, float width, float height,
                         GetBorderTopWidth() - GetBorderBottomWidth());
   markdown_view_->SetWidth(content_width);
   markdown_view_->SetHeight(content_height);
-  markdown_view_->Layout(0, 0);
+  // Persist the content origin so ArkUI does not center the drawing node
+  // independently of the inline views positioned by Lynx layout.
+  NodeManager::Instance().SetAttributeWithNumberValue(
+      markdown_view_->GetHandle(), NODE_POSITION,
+      padding_left_ + GetBorderLeftWidth(), padding_top_ + GetBorderTopWidth());
 }
 
 void UIMarkdown::OnPropUpdate(const std::string& name,

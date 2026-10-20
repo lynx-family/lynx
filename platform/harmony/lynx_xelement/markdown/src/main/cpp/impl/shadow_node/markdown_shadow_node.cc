@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "markdown/platform/harmony/harmony_markdown_measurer.h"
 #include "markdown/platform/harmony/serval_markdown_view.h"
 #include "markdown/view/markdown_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
@@ -24,6 +25,17 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 namespace {
+
+struct MarkdownNativeState {
+  MarkdownNativeState() {
+    view.SetMeasurer(&measurer);
+    view.GetMarkdownView()->SetEnableRegionView(false);
+  }
+
+  // The view must be destroyed before the measurer it references.
+  serval::markdown::NativeMarkdownMeasurer measurer;
+  serval::markdown::NativeServalMarkdownView view{false};
+};
 
 tttext::LayoutMode ToMarkdownLayoutMode(MeasureMode mode) {
   switch (mode) {
@@ -114,9 +126,14 @@ MarkdownShadowNode::EnsureMarkdownView() {
     return markdown_view_;
   }
   InitMarkdownEnv(context_);
-  markdown_view_ =
-      std::make_shared<serval::markdown::NativeServalMarkdownView>();
-  markdown_view_->SetRequestMeasureCallback([this]() { MarkDirty(); });
+  auto state = std::make_shared<MarkdownNativeState>();
+  // Share ownership so a view retained by the UI keeps its measurer alive.
+  markdown_measurer_ =
+      std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>(
+          state, &state->measurer);
+  markdown_view_ = std::shared_ptr<serval::markdown::NativeServalMarkdownView>(
+      state, &state->view);
+  markdown_measurer_->SetRequestMeasureCallback([this]() { MarkDirty(); });
   resource_loader_ = std::make_shared<MarkdownResourceLoaderHarmony>(
       context_, this, markdown_view_.get());
   markdown_view_->GetMarkdownView()->SetResourceLoader(resource_loader_.get());
@@ -136,12 +153,16 @@ MarkdownShadowNode::getExtraBundle() {
 }
 
 void MarkdownShadowNode::Destroy() {
+  if (markdown_measurer_) {
+    markdown_measurer_->SetRequestMeasureCallback(nullptr);
+  }
   if (markdown_view_ && markdown_view_->GetMarkdownView()) {
     markdown_view_->GetMarkdownView()->SetResourceLoader(nullptr);
   }
   resource_loader_.reset();
   bundle_ = nullptr;
   markdown_view_.reset();
+  markdown_measurer_.reset();
 }
 
 void MarkdownShadowNode::OnPropsUpdate(const std::string& name,
