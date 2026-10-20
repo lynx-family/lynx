@@ -387,6 +387,23 @@ TEST_F_UI(TextTest, FontVariationAttributesPropagateToTxtStyle) {
       static_cast<float>(txt_style.font_size));
 }
 
+#if defined(CLAY_ENABLE_TTTEXT)
+TEST_F_UI(TextTest, BaselineVerticalAlignPropagatesComputedShiftToTTText) {
+  for (const float baseline_shift : {12.f, -8.f, 0.f}) {
+    TextStyle style;
+    style.font_size = 16.f;
+    style.align_type = kVerticalAlignBaseline;
+    style.baseline_shift = baseline_shift;
+
+    TextParagraphBuilder builder(true, style);
+    builder.PushStyle(style);
+
+    EXPECT_FLOAT_EQ(builder.PeekStyleForTesting().text_baseline_shift,
+                    baseline_shift);
+  }
+}
+#endif
+
 TEST_F_UI(TextTest, TextGradientAndSolidColorUpdatePaintState) {
   const Gradient gradient;
 
