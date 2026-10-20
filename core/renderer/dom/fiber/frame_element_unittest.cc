@@ -9,6 +9,8 @@
 
 #include <memory>
 #include <string>
+#include <thread>
+#include <vector>
 
 #include "core/public/page_options.h"
 #include "core/renderer/dom/element_manager_delegate.h"
@@ -16,6 +18,8 @@
 #include "core/renderer/dom/testing/fiber_mock_painting_context.h"
 #include "core/renderer/events/touch_event_handler.h"
 #include "core/renderer/pipeline/pipeline_context.h"
+#include "core/renderer/pipeline/pipeline_context_manager.h"
+#include "core/renderer/pipeline/pipeline_layout_data.h"
 #include "core/renderer/template_assembler.h"
 #include "core/shell/testing/mock_layout_platform.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
@@ -53,6 +57,10 @@ class TrackingFiberElementMockTasmDelegate
     last_native_custom_event_tag_ = tag;
     last_native_custom_event_value_ = param_value;
     last_native_custom_event_param_name_ = param_name;
+    last_event_thread_ = std::this_thread::get_id();
+    if (event_order_) {
+      event_order_->push_back(name);
+    }
   }
 
   void ResetNativeCustomEvent() {
@@ -68,6 +76,8 @@ class TrackingFiberElementMockTasmDelegate
   int last_native_custom_event_tag_{0};
   lepus::Value last_native_custom_event_value_;
   std::string last_native_custom_event_param_name_;
+  std::thread::id last_event_thread_;
+  std::vector<std::string>* event_order_{nullptr};
 };
 
 class FrameElementTest : public ::testing::Test {
@@ -105,6 +115,42 @@ class FrameElementTest : public ::testing::Test {
   }
 
  protected:
+  fml::RefPtr<FrameElement> CreateAttachedFrame() {
+    auto page = manager_->CreateFiberPage("0", 0);
+    manager_->SetFiberPageElement(page);
+    auto frame = manager_->CreateFiberFrame();
+    frame->data_model()->SetStaticEvent(kLoadType, kLoad, kLoadHandler);
+    frame->SetAttribute(kSrc, lepus::Value(kFrameURL));
+    page->InsertNode(frame);
+    page->FlushActionsAsRoot();
+    return frame;
+  }
+
+  PipelineContext* BeginPipeline() {
+    tasm_->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+    auto* context =
+        tasm_->pipeline_context_manager_->CreateAndUpdateCurrentPipelineContext(
+            std::make_shared<PipelineOptions>());
+    context->RequestResolve();
+    tasm_->pipeline_context_manager_->AdvanceLifecycleTo(
+        context, LifecycleState::kInStyleResolve);
+    return context;
+  }
+
+  void FinishPipeline(PipelineContext* context) {
+    context->ResetResolveRequested();
+    tasm_->pipeline_context_manager_->AdvanceLifecycleTo(
+        context, LifecycleState::kAfterStyleResolve);
+    tasm_->pipeline_context_manager_->AdvanceLifecycleTo(
+        context, LifecycleState::kInPerformLayout);
+    auto version = context->GetVersion();
+    PipelineLayoutData data;
+    data.pipeline_version = &version;
+    tasm_->OnLayoutAfter(data);
+  }
+
+  void CheckParallelLoadCallbacks(bool unified_pipeline);
+
   void SetEnableFrameNativeData(bool enabled) {
     manager_->GetConfig()->SetEnableFrameNativeData(enabled);
   }
@@ -118,6 +164,19 @@ class FrameElementTest : public ::testing::Test {
 
 class RecordingElementManagerDelegate : public ElementManagerDelegate {
  public:
+  explicit RecordingElementManagerDelegate(
+      ElementManagerDelegate* pipeline_delegate = nullptr)
+      : pipeline_delegate_(pipeline_delegate) {}
+
+  void InvokeOrDefer(base::closure task) override {
+    last_scheduling_thread_ = std::this_thread::get_id();
+    if (pipeline_delegate_) {
+      pipeline_delegate_->InvokeOrDefer(std::move(task));
+    } else {
+      task();
+    }
+  }
+
   void LoadFrameBundle(const std::string& src, FrameElement* element) override {
     load_frame_bundle_src_ = src;
     load_frame_bundle_element_ = element;
@@ -146,6 +205,10 @@ class RecordingElementManagerDelegate : public ElementManagerDelegate {
     ++trigger_lepus_global_event_count_;
     last_triggered_event_ = event;
     last_triggered_info_ = info;
+    last_event_thread_ = std::this_thread::get_id();
+    if (event_order_) {
+      event_order_->push_back(event);
+    }
   }
 
   event::DispatchEventResult DispatchMessageEvent(
@@ -193,6 +256,10 @@ class RecordingElementManagerDelegate : public ElementManagerDelegate {
   std::string load_frame_bundle_src_;
   FrameElement* load_frame_bundle_element_{nullptr};
   FrameElement* removed_frame_{nullptr};
+  ElementManagerDelegate* pipeline_delegate_{nullptr};
+  std::thread::id last_scheduling_thread_;
+  std::thread::id last_event_thread_;
+  std::vector<std::string>* event_order_{nullptr};
 };
 
 class ScopedElementManagerDelegateOverride {
@@ -365,6 +432,119 @@ TEST_F(FrameElementTest, FrameDeferredLoadTriggersEventsOnceAfterFlush) {
   EXPECT_EQ(tasm_mediator_.last_native_custom_event_param_name_, kDetail);
   ExpectFrameLoadedPayload(delegate, frame.get(), kFrameURL, error::E_SUCCESS,
                            std::string());
+}
+
+void FrameElementTest::CheckParallelLoadCallbacks(bool unified_pipeline) {
+  RecordingElementManagerDelegate delegate(
+      manager_->element_manager_delegate());
+  ScopedElementManagerDelegateOverride delegate_override(manager_, &delegate);
+  std::vector<std::string> event_order;
+  delegate.event_order_ = &event_order;
+  tasm_mediator_.event_order_ = &event_order;
+
+  auto frame = CreateAttachedFrame();
+  auto* context = unified_pipeline ? BeginPipeline() : nullptr;
+  frame->bundle_data_ =
+      CreateFrameData(kFrameURL, error::E_SUCCESS, std::string(), true);
+  ParallelFlushReturn reduce;
+  std::thread worker([&]() {
+    frame->MarkParallelFlushFlag(Element::kFlagGreedyParallel);
+    frame->FlushProps();
+    reduce = frame->CreateParallelTaskHandler();
+  });
+  worker.join();
+
+  EXPECT_EQ(tasm_mediator_.native_custom_event_count_, 0);
+  EXPECT_EQ(delegate.trigger_lepus_global_event_count_, 0);
+  EXPECT_TRUE(event_order.empty());
+  ASSERT_TRUE(reduce);
+  reduce();
+  EXPECT_EQ(delegate.last_scheduling_thread_, std::this_thread::get_id());
+  if (unified_pipeline) {
+    EXPECT_EQ(tasm_mediator_.native_custom_event_count_, 0);
+    EXPECT_EQ(delegate.trigger_lepus_global_event_count_, 0);
+    EXPECT_EQ(tasm_->GetCurrentPipelineContext(), context);
+    FinishPipeline(context);
+  }
+
+  EXPECT_EQ(tasm_mediator_.native_custom_event_count_, 1);
+  EXPECT_EQ(delegate.trigger_lepus_global_event_count_, 1);
+  EXPECT_EQ(tasm_mediator_.last_event_thread_, std::this_thread::get_id());
+  EXPECT_EQ(delegate.last_event_thread_, std::this_thread::get_id());
+  EXPECT_EQ(event_order, (std::vector<std::string>{kLoad, kFrameLoaded}));
+  ExpectFrameLoadedPayload(delegate, frame.get(), kFrameURL, error::E_SUCCESS,
+                           std::string());
+  frame->FlushProps();
+  EXPECT_EQ(delegate.trigger_lepus_global_event_count_, 1);
+  EXPECT_EQ(tasm_mediator_.native_custom_event_count_, 1);
+  tasm_mediator_.event_order_ = nullptr;
+}
+
+TEST_F(FrameElementTest, ParallelLoadCallbacksWaitForEngineReduce) {
+  CheckParallelLoadCallbacks(false);
+}
+
+TEST_F(FrameElementTest, ParallelLoadCallbacksWaitForPipelineCompletion) {
+  CheckParallelLoadCallbacks(true);
+}
+
+TEST_F(FrameElementTest, LoadedBundleCallbacksWaitForPipelineCompletion) {
+  RecordingElementManagerDelegate delegate(
+      manager_->element_manager_delegate());
+  ScopedElementManagerDelegateOverride delegate_override(manager_, &delegate);
+  auto frame = CreateAttachedFrame();
+  auto* context = BeginPipeline();
+  EXPECT_TRUE(frame->DidBundleLoaded(
+      CreateFrameData(kFrameURL, error::E_LAZY_BUNDLE_LOAD_BAD_RESPONSE,
+                      kFailureMessage, false)));
+  EXPECT_EQ(tasm_mediator_.native_custom_event_count_, 0);
+  EXPECT_EQ(delegate.trigger_lepus_global_event_count_, 0);
+  EXPECT_EQ(tasm_->GetCurrentPipelineContext(), context);
+  FinishPipeline(context);
+
+  EXPECT_EQ(tasm_mediator_.native_custom_event_count_, 1);
+  EXPECT_EQ(delegate.trigger_lepus_global_event_count_, 1);
+  ExpectFrameLoadedPayload(delegate, frame.get(), kFrameURL,
+                           error::E_LAZY_BUNDLE_LOAD_BAD_RESPONSE,
+                           kFailureMessage);
+}
+
+TEST_F(FrameElementTest, DeferredLoadCallbacksDiscardMismatchedSource) {
+  RecordingElementManagerDelegate delegate(
+      manager_->element_manager_delegate());
+  ScopedElementManagerDelegateOverride delegate_override(manager_, &delegate);
+  auto frame = CreateAttachedFrame();
+  auto* context = BeginPipeline();
+  auto data = CreateFrameData(kFrameURL, error::E_SUCCESS, std::string(), true);
+  EXPECT_TRUE(frame->DidBundleLoaded(data));
+  frame->SetAttribute(kSrc, lepus::Value("https://lynx.dev/other-frame.js"));
+  FinishPipeline(context);
+  EXPECT_EQ(tasm_mediator_.native_custom_event_count_, 0);
+  EXPECT_EQ(delegate.trigger_lepus_global_event_count_, 0);
+
+  frame->SetAttribute(kSrc, lepus::Value(kFrameURL));
+  EXPECT_TRUE(frame->DidBundleLoaded(data));
+  EXPECT_EQ(tasm_mediator_.native_custom_event_count_, 1);
+  EXPECT_EQ(delegate.trigger_lepus_global_event_count_, 1);
+}
+
+TEST_F(FrameElementTest, DeferredLoadCallbacksDoNotRetainDestroyedFrame) {
+  RecordingElementManagerDelegate delegate(
+      manager_->element_manager_delegate());
+  ScopedElementManagerDelegateOverride delegate_override(manager_, &delegate);
+  auto* context = BeginPipeline();
+  auto frame = manager_->CreateFiberFrame();
+  frame->data_model()->SetStaticEvent(kLoadType, kLoad, kLoadHandler);
+  frame->SetAttribute(kSrc, lepus::Value(kFrameURL));
+  frame->SendLoadEvent(
+      CreateFrameData(kFrameURL, error::E_SUCCESS, std::string(), true));
+  auto weak_frame = frame->WeakFromThis();
+  frame = nullptr;
+  EXPECT_FALSE(weak_frame);
+
+  FinishPipeline(context);
+  EXPECT_EQ(tasm_mediator_.native_custom_event_count_, 0);
+  EXPECT_EQ(delegate.trigger_lepus_global_event_count_, 0);
 }
 
 TEST_F(FrameElementTest, FrameDataOverwriteBeforeFlushUsesLatestValue) {
