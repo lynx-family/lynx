@@ -119,10 +119,14 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
     _uilayoutTick = [[LynxUILayoutTick alloc] initWithRoot:_containerView];
   }
   if (!_isEngineInitFromReusePool) {
-    BOOL isAsyncLayout = _threadStrategyForRendering != LynxThreadStrategyForRenderAllOnUI;
+    // Layout-in-element can create platform shadow nodes on parallel workers even with AllOnUI.
+    BOOL needsThreadSafeNodeHolder =
+        _threadStrategyForRendering != LynxThreadStrategyForRenderAllOnUI ||
+        (_embeddedMode & (LynxEmbeddedModeLayoutInElement | LynxEmbeddedModeFragmentLayerRender)) !=
+            0;
     _shadowNodeOwner = [[LynxShadowNodeOwner alloc] initWithUIOwner:[_lynxUIRenderer uiOwner]
                                                          layoutTick:_uilayoutTick
-                                                      isAsyncLayout:isAsyncLayout];
+                                                      isAsyncLayout:needsThreadSafeNodeHolder];
   } else {
     [_shadowNodeOwner setLayoutTick:_uilayoutTick];
   }
