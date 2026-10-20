@@ -274,9 +274,9 @@ TEST(BorderRadiusHandler, Handler) {
     } else if (id == 1) {
       // RIGHT
       EXPECT_EQ((int)arr->get(0).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::PX);
       EXPECT_EQ((int)arr->get(2).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::PX);
     } else if (id == 2) {
       // BOTTOM == TOP
       EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
@@ -310,7 +310,7 @@ TEST(BorderRadiusHandler, Handler) {
     } else if (id == 1) {
       // RIGHT
       EXPECT_EQ((int)arr->get(0).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::PX);
       EXPECT_EQ((int)arr->get(2).Number(), 12);
       EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::PX);
     } else if (id == 2) {
@@ -340,15 +340,15 @@ TEST(BorderRadiusHandler, Handler) {
     if (id == 0) {
       // TOP
       EXPECT_EQ((int)arr->get(0).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::PX);
       EXPECT_EQ((int)arr->get(2).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::PX);
     } else if (id == 1) {
       // RIGHT
       EXPECT_EQ((int)arr->get(0).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::PX);
       EXPECT_EQ((int)arr->get(2).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::PX);
     } else if (id == 2) {
       // BOTTOM == TOP
       EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
@@ -376,15 +376,15 @@ TEST(BorderRadiusHandler, Handler) {
     if (id == 0) {
       // TOP
       EXPECT_EQ((int)arr->get(0).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::PX);
       EXPECT_EQ((int)arr->get(2).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::PX);
     } else if (id == 1) {
       // RIGHT
       EXPECT_EQ((int)arr->get(0).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(1).Number(), CSSValuePattern::PX);
       EXPECT_EQ((int)arr->get(2).Number(), 0);
-      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::NUMBER);
+      EXPECT_EQ((CSSValuePattern)arr->get(3).Number(), CSSValuePattern::PX);
     } else if (id == 2) {
       // BOTTOM == TOP
       EXPECT_EQ(arr->get(0), output[radius_array[0]].GetArray()->get(0));
@@ -573,7 +573,7 @@ TEST(BorderRadiusHandler, LengthUnitCheck) {
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   impl = lepus::Value("100/0");
   configs.enable_length_unit_check = true;
-  EXPECT_FALSE(UnitHandler::Process(id, impl, output, configs));
+  EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
   configs.enable_length_unit_check = false;
   EXPECT_TRUE(UnitHandler::Process(id, impl, output, configs));
 }

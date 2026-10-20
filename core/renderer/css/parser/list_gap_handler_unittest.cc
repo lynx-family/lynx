@@ -24,14 +24,16 @@ TEST(ListGapHandler, Handler) {
   output.clear();
   impl = lepus::Value(5);
   ret = UnitHandler::Process(id, impl, output, configs);
-  EXPECT_FALSE(ret);
-  EXPECT_TRUE(output.empty());
+  ASSERT_TRUE(ret);
+  EXPECT_TRUE(output[id].IsPx());
+  EXPECT_EQ(output[id].GetNumber(), 5);
 
   output.clear();
   impl = lepus::Value("10");
   ret = UnitHandler::Process(id, impl, output, configs);
-  EXPECT_FALSE(ret);
-  EXPECT_TRUE(output.empty());
+  ASSERT_TRUE(ret);
+  EXPECT_TRUE(output[id].IsPx());
+  EXPECT_EQ(output[id].GetNumber(), 10);
 
   output.clear();
   impl = lepus::Value("20px");

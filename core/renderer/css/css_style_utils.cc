@@ -203,8 +203,11 @@ std::pair<NLength, bool> TryMakeCalcNLength(
       } else if (sub_value == kViewHeight) {
         sub_value = k100VH;
       }
-      if (!lynx::tasm::LengthHandler::Process(lepus::Value(sub_value),
-                                              css_value, configs)) {
+      // Unlike a standalone length, a calc operand can be a unitless scalar.
+      tasm::CSSStringParser parser(
+          sub_value.data(), static_cast<uint32_t>(sub_value.size()), configs);
+      css_value = parser.ParseNumberOrLength();
+      if (css_value.IsEmpty()) {
         return std::pair<NLength, bool>(NLength::MakeAutoNLength(), false);
       }
       CalcValue value;
