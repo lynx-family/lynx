@@ -4,9 +4,10 @@
 #
 #   <source_url>:<PodName>:<Version> pod [auto]
 #
-# The source URL matches a `source` declared in Podfile. For the CocoaPods
-# trunk index the correct value is https://cdn.cocoapods.org/.
-https://cdn.cocoapods.org/:PrimJS:4.4.0-alpha.11 pod
+# The source URL is where the podspec is published. For the CocoaPods
+# trunk index the correct value is https://cdn.cocoapods.org/. PrimJS is
+# published to the Lynx Specs repo https://github.com/lynx-family/Specs.git.
+https://github.com/lynx-family/Specs.git:PrimJS:4.4.0-alpha.12 pod
 https://cdn.cocoapods.org/:AnimaX:1.1.0 pod
 https://cdn.cocoapods.org/:skity:1.1.0-alpha.3 pod
 https://cdn.cocoapods.org/:LynxTextra:0.2.0 pod

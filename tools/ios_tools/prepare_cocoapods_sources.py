@@ -16,15 +16,22 @@ local git repository. A Podfile can then consume the cache via::
     source "file://" + ENV["COCOAPODS_LOCAL_SOURCE_REPO"]
 
 Because ``git archive --remote=`` is not supported by GitHub, this
-open-source variant fetches each podspec over HTTPS from a CocoaPods
-CDN-style source (typically ``https://cdn.cocoapods.org/``), following
-the ``prefix_lengths`` layout advertised in ``CocoaPods-version.yml``.
+open-source variant fetches each podspec over HTTPS. Two kinds of
+``<source_url>`` are supported:
+
+- A CocoaPods CDN-style source (typically ``https://cdn.cocoapods.org/``),
+  following the ``prefix_lengths`` layout advertised in
+  ``CocoaPods-version.yml``.
+- A GitHub-hosted git Specs repo such as
+  ``https://github.com/lynx-family/Specs.git``, whose podspecs live at
+  ``<PodName>/<Version>/`` in the repository root.
 """
 
 import argparse
 import hashlib
 import http.client
 import os
+import re
 import shutil
 import ssl
 import subprocess
@@ -39,6 +46,8 @@ SPEC_FILE_SUFFIXES = ['podspec.json', 'podspec']
 DEFAULT_PREFIX_LENGTHS = [1, 1, 1]
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30
 MAX_RETRY_ATTEMPTS = 5
+GITHUB_SPECS_REPO_PATTERN = re.compile(r'^https://github\.com/([^/]+)/([^/]+)\.git$')
+GITHUB_RAW_CONTENT_URL = 'https://raw.githubusercontent.com'
 
 
 def log(msg):
@@ -96,50 +105,18 @@ def _parse_prefix_lengths(yaml_text):
     return prefix_lengths
 
 
-class CdnSource:
-    """A CocoaPods CDN-style Specs source served over HTTPS."""
+class HttpsSpecsSource:
+    """A Specs source whose podspecs can be downloaded over HTTPS."""
 
-    def __init__(self, url):
-        self.url = url.rstrip('/') + '/'
-        self._prefix_lengths = None
-
-    def __str__(self):
-        return self.url
-
-    def _load_prefix_lengths(self):
-        if self._prefix_lengths is not None:
-            return self._prefix_lengths
-        try:
-            content = _http_get(
-                urllib.parse.urljoin(self.url, COCOAPODS_VERSION_FILE)
-            )
-        except Exception as e:  # noqa: BLE001 - network fallback path
-            log_y(
-                f'Failed to load {COCOAPODS_VERSION_FILE} from {self.url}: '
-                f'{type(e).__name__}: {e}; falling back to {DEFAULT_PREFIX_LENGTHS}.'
-            )
-            self._prefix_lengths = list(DEFAULT_PREFIX_LENGTHS)
-            return self._prefix_lengths
-        parsed = _parse_prefix_lengths(content.decode('utf-8', errors='replace'))
-        self._prefix_lengths = parsed if parsed else list(DEFAULT_PREFIX_LENGTHS)
-        return self._prefix_lengths
-
-    def _spec_path(self, pod_name, version, suffix):
-        digest = hashlib.md5(pod_name.encode()).hexdigest()
-        components = ['Specs']
-        offset = 0
-        for length in self._load_prefix_lengths():
-            components.append(digest[offset:offset + length])
-            offset += length
-        components += [pod_name, version, f'{pod_name}.{suffix}']
-        return '/'.join(components)
+    def spec_url(self, pod_name, version, suffix):
+        raise NotImplementedError
 
     def download_podspec(self, pod_name, version, target_dir):
         last_error = None
         attempted_suffixes = []
         for suffix in SPEC_FILE_SUFFIXES:
             attempted_suffixes.append(suffix)
-            url = urllib.parse.urljoin(self.url, self._spec_path(pod_name, version, suffix))
+            url = self.spec_url(pod_name, version, suffix)
             for attempt in range(MAX_RETRY_ATTEMPTS):
                 try:
                     content = _http_get(url)
@@ -178,6 +155,79 @@ class CdnSource:
         )
 
 
+class CdnSource(HttpsSpecsSource):
+    """A CocoaPods CDN-style Specs source served over HTTPS."""
+
+    def __init__(self, url):
+        self.url = url.rstrip('/') + '/'
+        self._prefix_lengths = None
+
+    def __str__(self):
+        return self.url
+
+    def _load_prefix_lengths(self):
+        if self._prefix_lengths is not None:
+            return self._prefix_lengths
+        try:
+            content = _http_get(
+                urllib.parse.urljoin(self.url, COCOAPODS_VERSION_FILE)
+            )
+        except Exception as e:  # noqa: BLE001 - network fallback path
+            log_y(
+                f'Failed to load {COCOAPODS_VERSION_FILE} from {self.url}: '
+                f'{type(e).__name__}: {e}; falling back to {DEFAULT_PREFIX_LENGTHS}.'
+            )
+            self._prefix_lengths = list(DEFAULT_PREFIX_LENGTHS)
+            return self._prefix_lengths
+        parsed = _parse_prefix_lengths(content.decode('utf-8', errors='replace'))
+        self._prefix_lengths = parsed if parsed else list(DEFAULT_PREFIX_LENGTHS)
+        return self._prefix_lengths
+
+    def _spec_path(self, pod_name, version, suffix):
+        digest = hashlib.md5(pod_name.encode()).hexdigest()
+        components = ['Specs']
+        offset = 0
+        for length in self._load_prefix_lengths():
+            components.append(digest[offset:offset + length])
+            offset += length
+        components += [pod_name, version, f'{pod_name}.{suffix}']
+        return '/'.join(components)
+
+    def spec_url(self, pod_name, version, suffix):
+        return urllib.parse.urljoin(self.url, self._spec_path(pod_name, version, suffix))
+
+
+class GitHubSpecsRepoSource(HttpsSpecsSource):
+    """A git Specs repo hosted on GitHub, read through raw.githubusercontent.com.
+
+    The repository must keep podspecs at ``<PodName>/<Version>/`` in its root,
+    which is the layout written by the Lynx and PrimJS publish workflows.
+    """
+
+    def __init__(self, url):
+        match = GITHUB_SPECS_REPO_PATTERN.match(url)
+        if not match:
+            raise ValueError(
+                f'Unsupported git Specs repo {url}: expected '
+                'https://github.com/<owner>/<repo>.git'
+            )
+        owner, repo = match.groups()
+        self.url = url
+        self._raw_base_url = f'{GITHUB_RAW_CONTENT_URL}/{owner}/{repo}/HEAD/'
+
+    def __str__(self):
+        return self.url
+
+    def spec_url(self, pod_name, version, suffix):
+        return f'{self._raw_base_url}{pod_name}/{version}/{pod_name}.{suffix}'
+
+
+def create_source(url):
+    if url.endswith('.git'):
+        return GitHubSpecsRepoSource(url)
+    return CdnSource(url)
+
+
 class Pod:
     def __init__(self, name, version, source):
         self.name = name
@@ -214,7 +264,7 @@ def load_pods(source_list):
                 version = resolved
             if '$' in version:
                 continue
-            source = sources.setdefault(source_url, CdnSource(source_url))
+            source = sources.setdefault(source_url, create_source(source_url))
             pods.append(Pod(pod_name, version, source))
     return pods
 

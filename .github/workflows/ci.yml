@@ -918,9 +918,10 @@ jobs:
             ~/Library/Caches/CocoaPods
           # This cache is for third-party pods' trunk/spec and download artifacts.
           # The Podfile rewrite below only pins Lynx pods to a local source, but
-          # Lynx podspec transitive dependencies resolved from trunk are expected
-          # to stay in sync with explorer Podfile.flatten. Include that file so
-          # child dependency version changes also invalidate this third-party cache.
+          # Lynx podspec transitive dependencies resolved from trunk or the Lynx
+          # Specs repo are expected to stay in sync with explorer Podfile.flatten.
+          # Include that file so child dependency version changes also
+          # invalidate this third-party cache.
           key: cocoapods-ios-integration-${{ runner.os }}-${{ hashFiles('demo/ios/HelloLynxObjc/Podfile', 'demo/ios/HelloLynxObjc/Podfile.lock', 'lynx/explorer/darwin/ios/lynx_explorer/Podfile.flatten') }}
       - name: Build the Demo Project
         run: |-
@@ -930,6 +931,8 @@ jobs:
           python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component LynxService --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
           python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component XElement --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
           python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "$LOCAL_POD_SOURCE"
+          # PrimJS is published to the Lynx Specs repo instead of trunk.
+          python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "https://github.com/lynx-family/Specs.git"
           python3 lynx/tools/ios_tools/process_podfile.py --action pin_pod_source --component Lynx --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "$LOCAL_POD_SOURCE"
           python3 lynx/tools/ios_tools/process_podfile.py --action pin_pod_source --component LynxService --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "$LOCAL_POD_SOURCE"
           python3 lynx/tools/ios_tools/process_podfile.py --action pin_pod_source --component XElement --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "$LOCAL_POD_SOURCE"
