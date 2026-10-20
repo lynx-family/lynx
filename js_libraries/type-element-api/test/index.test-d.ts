@@ -129,6 +129,8 @@ describe('Test Element API Types', () => {
     const template = {} as ElementTemplateHandle;
 
     expectTypeOf<typeof __CreateElementTemplate>().returns.toEqualTypeOf<ElementTemplateHandle>();
+    expectTypeOf<typeof __GetElementByAttrSlot>().toBeCallableWith(template, 0);
+    expectTypeOf<typeof __GetElementByAttrSlot>().returns.toEqualTypeOf<ElementRef | null>();
     expectTypeOf<typeof __SetAttributeOfElementTemplate>().toBeCallableWith(template, 0, { completed: true });
     expectTypeOf<typeof __InsertNodeToElementTemplate>().toBeCallableWith(template, 1, child, null);
     expectTypeOf<typeof __RemoveNodeFromElementTemplate>().toBeCallableWith(template, 1, child);

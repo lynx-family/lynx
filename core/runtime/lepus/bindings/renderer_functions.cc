@@ -6,6 +6,7 @@
 
 #include <assert.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <deque>
 #include <limits>
@@ -201,10 +202,16 @@ ElementTemplateInstance* GetElementTemplateInstanceFromValue(
 
 std::optional<uint32_t> DecodeElementTemplateSlotIndex(
     const lepus::Value& value) {
-  if (!value.IsNumber() || value.Number() < 0) {
+  if (!value.IsNumber()) {
     return std::nullopt;
   }
-  return static_cast<uint32_t>(value.Number());
+  const auto index = value.Number();
+  if (!std::isfinite(index) || index < 0 ||
+      index > std::numeric_limits<uint32_t>::max() ||
+      std::floor(index) != index) {
+    return std::nullopt;
+  }
+  return static_cast<uint32_t>(index);
 }
 
 // Multiple FiberFlushElementTree calls may share the same PipelineOptions in
@@ -4000,6 +4007,22 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
   }
 
   RETURN(lepus::Value(instance));
+}
+
+RENDERER_FUNCTION_CC(FiberGetElementByAttrSlot) {
+  CHECK_ARGC_GE(FiberGetElementByAttrSlot, 2);
+  CONVERT_ARG(arg0, 0);
+  CONVERT_ARG(arg1, 1);
+  auto* instance = GetElementTemplateInstanceFromValue(*arg0);
+  auto slot_index = DecodeElementTemplateSlotIndex(*arg1);
+  if (instance == nullptr || !slot_index.has_value()) {
+    RETURN(lepus::Value());
+  }
+  auto element = instance->GetElementByAttrSlot(*slot_index);
+  if (element == nullptr) {
+    RETURN(lepus::Value());
+  }
+  RETURN(lepus::Value(std::move(element)));
 }
 
 RENDERER_FUNCTION_CC(FiberSetAttributeOfElementTemplate) {

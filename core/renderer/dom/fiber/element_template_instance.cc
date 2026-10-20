@@ -577,6 +577,20 @@ fml::RefPtr<Element> ElementTemplateInstance::PeekMaterializedRoot() const {
   return result_;
 }
 
+fml::RefPtr<Element> ElementTemplateInstance::GetElementByAttrSlot(
+    uint32_t slot_index) {
+  if (!IsMaterialized()) {
+    GetRoot();
+  }
+  if (IsTypedTemplate()) {
+    return slot_index == kTypedTemplateAttributeSlotIndex ? result_ : nullptr;
+  }
+  if (slot_index >= attribute_slot_targets_.size()) {
+    return nullptr;
+  }
+  return attribute_slot_targets_[slot_index];
+}
+
 void ElementTemplateInstance::ApplyAttributeSlotToTarget(
     uint32_t slot_index, const lepus::Value& previous_attribute_slots) {
   if (slot_index >= attribute_slot_targets_.size()) {

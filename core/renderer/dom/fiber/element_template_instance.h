@@ -46,6 +46,9 @@ class ElementTemplateInstance
   void SetUid(const lepus::Value& uid);
 
   fml::RefPtr<Element> GetRoot();
+  // Materializes this instance on demand, then returns the slot target.
+  // This does not complete pending parent mounts or layout.
+  fml::RefPtr<Element> GetElementByAttrSlot(uint32_t slot_index);
   lepus::Value Serialize() const;
 
   void SetAttributeSlot(uint32_t slot_index, const lepus::Value& value);
