@@ -33,16 +33,17 @@ bool CheckUIInitialized(const ProcessRuntime::Completion& completion) {
 }  // namespace
 
 void LoadHostScriptRuntime(std::string source, std::string url,
-                           ProcessRuntime::Completion completion) {
+                           ProcessRuntime::Completion completion,
+                           ProcessRuntime::Domain domain) {
   // GetRunner waits until UI setup; reject before asking for that runner.
   if (!CheckUIInitialized(completion)) return;
   fml::TaskRunner::RunNowOrPostTask(
       base::UIThread::GetRunner(),
-      [source = std::move(source), url = std::move(url),
+      [domain, source = std::move(source), url = std::move(url),
        completion = std::move(completion)]() mutable {
         PrepareHostScriptRuntime();
         ProcessRuntime::GetInstance().LoadScript(
-            std::move(source), std::move(url), std::move(completion));
+            std::move(source), std::move(url), std::move(completion), domain);
       });
 }
 

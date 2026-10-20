@@ -105,17 +105,19 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   void RunOnThread(Domain domain, std::string source, std::string url,
                    Completion completion, Guard guard = {});
 
-  // Replaces all three control contexts using their configured runners and
-  // bindings, then executes source only on BTS. Source bytes are validated
+  // Replaces the selected control context using its configured runner and
+  // bindings, then executes source there. Source bytes are validated
   // before closing the old generation; an empty script is allowed. The entry
   // script's completion value is ignored, including Promise values. Completion
   // means synchronous entry execution finished, not that async work settled.
-  // Evaluate and another LoadScript are rejected with RUNTIME_LOADING during
-  // replacement. A failed replacement is cleaned up and leaves no running
-  // generation; a later LoadScript may retry with the retained configuration.
-  // Shutdown cancels replacement without reviving the old script.
-  // Callbacks run on an owner runner, or the caller for admission errors.
-  void LoadScript(std::string source, std::string url, Completion completion);
+  // Evaluate on that domain and another LoadScript return RUNTIME_LOADING
+  // during replacement. A failed replacement is cleaned up and leaves only that
+  // domain unavailable; a later LoadScript may retry with the retained
+  // configuration. Other domains and live Views are preserved. Shutdown cancels
+  // replacement without reviving the old script. Callbacks run on an owner
+  // runner, or the caller for admission errors.
+  void LoadScript(std::string source, std::string url, Completion completion,
+                  Domain domain = Domain::kBTS);
 
   // Delivers to initialized domains: inline on the current owner runner,
   // posted otherwise. Callbacks may reenter on that runner; no cross-thread

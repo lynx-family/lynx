@@ -24,7 +24,7 @@ struct HSRScriptRequest {
   // passed unchanged to the platform's existing resource fetcher, which owns
   // scheme handling (including file URLs). Never parse a business envelope.
   std::string source;
-  // Evaluation selects a process runtime, independently of any View.
+  // Loading and evaluation select a process runtime, independently of any View.
   Thread thread = Thread::kBTS;
 };
 
