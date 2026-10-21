@@ -5550,6 +5550,405 @@ TEST_P(FiberElementTest, TestIsLayoutOnlyUpdate) {
   EXPECT_FALSE(fiber_element_1->is_layout_only_);
 }
 
+namespace {
+void ExpectPaintingChildOrder(FiberMockPaintingContext* context,
+                              Element* parent,
+                              const std::vector<Element*>& expected_children) {
+  std::vector<int> actual_ids;
+  for (const auto* child :
+       context->node_map_.at(parent->impl_id())->children_) {
+    actual_ids.push_back(child->id_);
+  }
+  std::vector<int> expected_ids;
+  for (const auto* child : expected_children) {
+    expected_ids.push_back(child->impl_id());
+  }
+  EXPECT_EQ(actual_ids, expected_ids);
+}
+void CheckInheritedLayoutOnlyInitialPaintingOrder(FiberElementTest* test) {
+  auto* manager = test->manager;
+  auto* platform_impl_ = test->platform_impl_;
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(kPropertyIDFontWeight, lepus::Value("500"));
+
+  auto container = manager->CreateFiberView();
+  container->SetStyle(kPropertyIDBackgroundColor, lepus::Value("white"));
+  page->InsertNode(container);
+  auto background = manager->CreateFiberView();
+  background->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+  auto overlay = manager->CreateFiberView();
+  overlay->SetStyle(kPropertyIDOpacity, lepus::Value(0.6));
+  auto content = manager->CreateFiberView();
+  content->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+  container->InsertNode(background);
+  container->InsertNode(overlay);
+  container->InsertNode(content);
+
+  auto first_row = manager->CreateFiberView();
+  first_row->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+  auto text = manager->CreateFiberText("text");
+  auto last_row = manager->CreateFiberView();
+  last_row->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+  content->InsertNode(first_row);
+  content->InsertNode(text);
+  content->InsertNode(last_row);
+
+  // The parallel pass can create layout-only containers before inherited
+  // font-weight is consumed. Materializing their UIs must not mount them ahead
+  // of siblings whose normal insertion actions have not run yet.
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  ASSERT_FALSE(content->IsLayoutOnly());
+  ASSERT_FALSE(first_row->IsLayoutOnly());
+  ASSERT_FALSE(last_row->IsLayoutOnly());
+  if (!manager->GetEnableLayoutOnlyTransitionOrderFix() &&
+      test->enable_parallel_element_flush_strategy == 1) {
+    // Disabling the fix must restore the original greedy-parallel insertion
+    // order, including insertion ahead of siblings that are not mounted yet.
+    ExpectPaintingChildOrder(platform_impl_, container.get(),
+                             {content.get(), background.get(), overlay.get()});
+    ExpectPaintingChildOrder(platform_impl_, content.get(),
+                             {first_row.get(), last_row.get(), text.get()});
+  } else {
+    ExpectPaintingChildOrder(platform_impl_, container.get(),
+                             {background.get(), overlay.get(), content.get()});
+    ExpectPaintingChildOrder(platform_impl_, content.get(),
+                             {first_row.get(), text.get(), last_row.get()});
+  }
+}
+}  // namespace
+
+TEST_P(FiberElementTest,
+       InheritedLayoutOnlyTransitionPreservesInitialPaintingOrder) {
+  ASSERT_TRUE(manager->GetEnableLayoutOnlyTransitionOrderFix());
+  CheckInheritedLayoutOnlyInitialPaintingOrder(this);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionOrderFixExplicitlyEnabled) {
+  manager->config_->SetEnableLayoutOnlyTransitionOrderFix(true);
+  manager->config_->SetEnableParallelElement(
+      manager->GetEnableParallelElement());
+  tasm->OnPageConfigDecoded(manager->config_);
+  ASSERT_TRUE(manager->GetEnableLayoutOnlyTransitionOrderFix());
+  CheckInheritedLayoutOnlyInitialPaintingOrder(this);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionOrderFixDisabledInitialMount) {
+  manager->config_->SetEnableLayoutOnlyTransitionOrderFix(false);
+  manager->config_->SetEnableParallelElement(
+      manager->GetEnableParallelElement());
+  tasm->OnPageConfigDecoded(manager->config_);
+  ASSERT_FALSE(manager->GetEnableLayoutOnlyTransitionOrderFix());
+  CheckInheritedLayoutOnlyInitialPaintingOrder(this);
+}
+
+TEST_P(FiberElementTest,
+       InheritedLayoutOnlyTransitionPreservesInsertBeforePaintingOrder) {
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(kPropertyIDFontWeight, lepus::Value("500"));
+  auto anchor = manager->CreateFiberView();
+  anchor->SetStyle(kPropertyIDBackgroundColor, lepus::Value("white"));
+  page->InsertNode(anchor);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  auto background = manager->CreateFiberView();
+  background->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+  auto content = manager->CreateFiberView();
+  content->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+  auto text = manager->CreateFiberText("text");
+  content->InsertNode(text);
+  page->InsertNodeBefore(background, anchor);
+  page->InsertNodeBefore(content, anchor);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  ASSERT_FALSE(content->IsLayoutOnly());
+  ExpectPaintingChildOrder(platform_impl_, page.get(),
+                           {background.get(), content.get(), anchor.get()});
+  ExpectPaintingChildOrder(platform_impl_, content.get(), {text.get()});
+}
+
+TEST_P(FiberElementTest,
+       InheritedLayoutOnlyTransitionPreservesWrapperPaintingOrder) {
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(kPropertyIDFontWeight, lepus::Value("500"));
+  auto background = manager->CreateFiberView();
+  background->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+  auto wrapper = manager->CreateFiberWrapperElement();
+  auto content = manager->CreateFiberView();
+  content->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+  auto text = manager->CreateFiberText("text");
+  content->InsertNode(text);
+  wrapper->InsertNode(content);
+  page->InsertNode(background);
+  page->InsertNode(wrapper);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  ASSERT_FALSE(content->IsLayoutOnly());
+  ExpectPaintingChildOrder(platform_impl_, page.get(),
+                           {background.get(), content.get()});
+  ExpectPaintingChildOrder(platform_impl_, content.get(), {text.get()});
+}
+
+TEST_P(FiberElementTest,
+       InheritedLayoutOnlyTransitionPreservesMountedPaintingOrder) {
+  manager->config_->SetEnableCSSInheritance(true);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto background = manager->CreateFiberView();
+  background->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+  auto content = manager->CreateFiberView();
+  content->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+  auto text = manager->CreateFiberText("text");
+  auto following = manager->CreateFiberView();
+  following->SetStyle(kPropertyIDBackgroundColor, lepus::Value("white"));
+  content->InsertNode(text);
+  page->InsertNode(background);
+  page->InsertNode(content);
+  page->InsertNode(following);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  ASSERT_TRUE(content->IsLayoutOnly());
+  ExpectPaintingChildOrder(platform_impl_, page.get(),
+                           {background.get(), text.get(), following.get()});
+
+  // An already mounted layout-only container must still reparent its existing
+  // UI descendants when an inherited style requires a UI of its own.
+  page->SetStyle(kPropertyIDFontWeight, lepus::Value("500"));
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+
+  ASSERT_FALSE(content->IsLayoutOnly());
+  ExpectPaintingChildOrder(platform_impl_, page.get(),
+                           {background.get(), content.get(), following.get()});
+  ExpectPaintingChildOrder(platform_impl_, content.get(), {text.get()});
+}
+
+namespace {
+enum class FixedTransitionMode { kLegacy, kNew, kUnified };
+enum class FixedTransitionScenario {
+  kInitialMount,
+  kMountedUpdate,
+  kAncestorReattach,
+  kPositionToggle,
+};
+
+// Use normal style/tree operations so the pending insertion or reattachment
+// path must mount the UI; do not directly invoke TransitionToNativeView.
+void CheckFixedLayoutOnlyTransition(FiberElementTest* test,
+                                    FixedTransitionMode mode,
+                                    FixedTransitionScenario scenario,
+                                    bool enable_fix = true) {
+  auto* manager = test->manager;
+  if (!enable_fix) {
+    manager->config_->SetEnableLayoutOnlyTransitionOrderFix(false);
+    manager->config_->SetEnableParallelElement(
+        manager->GetEnableParallelElement());
+    test->tasm->OnPageConfigDecoded(manager->config_);
+  }
+  ASSERT_EQ(manager->GetEnableLayoutOnlyTransitionOrderFix(), enable_fix);
+  manager->config_->SetEnableCSSInheritance(true);
+  manager->config_->SetEnableFixedNew(mode == FixedTransitionMode::kNew);
+  manager->config_->SetEnableUnifyFixedBehavior(mode ==
+                                                FixedTransitionMode::kUnified);
+  // Preserve the separate old-fixed render-parent compatibility fix when a
+  // previously mounted layout-only node becomes native.
+  manager->fix_old_fixed_insert_self_use_render_parent_ = true;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  parent->SetStyle(kPropertyIDBackgroundColor, lepus::Value("white"));
+  auto wrapper = manager->CreateFiberWrapperElement();
+  auto fixed = manager->CreateFiberView();
+  fixed->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+  if (scenario != FixedTransitionScenario::kPositionToggle) {
+    fixed->SetStyle(kPropertyIDPosition, lepus::Value("fixed"));
+  }
+  auto background = manager->CreateFiberView();
+  background->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+  auto content = manager->CreateFiberView();
+  content->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+  auto text = manager->CreateFiberText("text");
+  auto following = manager->CreateFiberView();
+  following->SetStyle(kPropertyIDBackgroundColor, lepus::Value("green"));
+  page->InsertNode(parent);
+  parent->InsertNode(wrapper);
+  wrapper->InsertNode(fixed);
+  // A nested layout-only unified-fixed node with populated children already
+  // fails initial UI-index lookup on the unpatched baseline. Start these two
+  // cases with an empty fixed node so they reach conversion and reattachment.
+  const bool populate_after_mount =
+      mode == FixedTransitionMode::kUnified &&
+      (scenario == FixedTransitionScenario::kMountedUpdate ||
+       scenario == FixedTransitionScenario::kAncestorReattach);
+  auto populate = [&]() {
+    fixed->InsertNode(background);
+    fixed->InsertNode(content);
+    fixed->InsertNode(following);
+    content->InsertNode(text);
+  };
+  if (!populate_after_mount) {
+    populate();
+  }
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    test->platform_impl_->Flush();
+  };
+  auto expect_tree = [&](bool is_fixed) {
+    ASSERT_FALSE(fixed->IsLayoutOnly());
+    ASSERT_FALSE(content->IsLayoutOnly());
+    EXPECT_EQ(fixed->parent(), wrapper.get());
+    EXPECT_EQ(fixed->render_parent(),
+              is_fixed && mode == FixedTransitionMode::kLegacy
+                  ? static_cast<Element*>(page.get())
+                  : static_cast<Element*>(wrapper.get()));
+    // With the fix disabled, legacy fixed reattachment reproduces the old
+    // premature insertion under the logical ancestor, even in serial mode.
+    const bool paint_at_root =
+        is_fixed && !(!enable_fix && mode == FixedTransitionMode::kLegacy &&
+                      scenario == FixedTransitionScenario::kAncestorReattach);
+    auto* ui_parent = paint_at_root ? static_cast<Element*>(page.get())
+                                    : static_cast<Element*>(parent.get());
+    EXPECT_EQ(fixed->element_container()->parent(),
+              ui_parent->element_container());
+    ASSERT_TRUE(test->platform_impl_->node_map_.count(fixed->impl_id()));
+    EXPECT_EQ(test->platform_impl_->node_map_.at(fixed->impl_id())->parent_,
+              test->platform_impl_->node_map_.at(ui_parent->impl_id()).get());
+    if (paint_at_root) {
+      ExpectPaintingChildOrder(test->platform_impl_, page.get(),
+                               {parent.get(), fixed.get()});
+      ExpectPaintingChildOrder(test->platform_impl_, parent.get(), {});
+    } else {
+      ExpectPaintingChildOrder(test->platform_impl_, page.get(),
+                               {parent.get()});
+      ExpectPaintingChildOrder(test->platform_impl_, parent.get(),
+                               {fixed.get()});
+    }
+    ExpectPaintingChildOrder(
+        test->platform_impl_, fixed.get(),
+        {background.get(), content.get(), following.get()});
+    ExpectPaintingChildOrder(test->platform_impl_, content.get(), {text.get()});
+  };
+
+  if (scenario != FixedTransitionScenario::kInitialMount) {
+    flush();
+    if (populate_after_mount) {
+      ASSERT_FALSE(content->has_painting_node_);
+    } else {
+      ASSERT_TRUE(content->IsLayoutOnly());
+    }
+    if (mode != FixedTransitionMode::kNew ||
+        scenario == FixedTransitionScenario::kPositionToggle) {
+      ASSERT_TRUE(fixed->IsLayoutOnly());
+    } else {
+      // New fixed is native from the start; its layout-only descendants still
+      // exercise conversion below.
+      ASSERT_FALSE(fixed->IsLayoutOnly());
+    }
+  }
+
+  if (scenario == FixedTransitionScenario::kAncestorReattach) {
+    // The fixed node is logically inside the removed subtree but paints at
+    // the page root. Reinsert only its ancestor: no new InsertNode(fixed) call
+    // is available to rescue a missed fixed-container reattachment.
+    page->RemoveNode(parent);
+    flush();
+    ASSERT_EQ(fixed->render_parent(), nullptr);
+    EXPECT_EQ(fixed->element_container()->parent(), nullptr);
+    ExpectPaintingChildOrder(test->platform_impl_, page.get(), {});
+    page->InsertNode(parent);
+  } else if (scenario == FixedTransitionScenario::kPositionToggle) {
+    fixed->SetStyle(kPropertyIDPosition, lepus::Value("fixed"));
+  }
+
+  page->SetStyle(kPropertyIDFontWeight, lepus::Value("500"));
+  if (populate_after_mount) {
+    populate();
+  }
+  flush();
+  expect_tree(true);
+
+  if (scenario == FixedTransitionScenario::kPositionToggle) {
+    fixed->SetStyle(kPropertyIDPosition, lepus::Value("relative"));
+    flush();
+    expect_tree(false);
+  }
+}
+}  // namespace
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionOldFixedInitialMount) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kLegacy,
+                                 FixedTransitionScenario::kInitialMount);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionNewFixedInitialMount) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kNew,
+                                 FixedTransitionScenario::kInitialMount);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionUnifiedFixedInitialMount) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kUnified,
+                                 FixedTransitionScenario::kInitialMount);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionOldFixedMountedUpdate) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kLegacy,
+                                 FixedTransitionScenario::kMountedUpdate);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionNewFixedMountedUpdate) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kNew,
+                                 FixedTransitionScenario::kMountedUpdate);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionUnifiedFixedMountedUpdate) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kUnified,
+                                 FixedTransitionScenario::kMountedUpdate);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionOldFixedAncestorReattach) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kLegacy,
+                                 FixedTransitionScenario::kAncestorReattach);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionOrderFixDisabledOldFixedReattach) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kLegacy,
+                                 FixedTransitionScenario::kAncestorReattach,
+                                 false);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionNewFixedAncestorReattach) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kNew,
+                                 FixedTransitionScenario::kAncestorReattach);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionUnifiedFixedAncestorReattach) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kUnified,
+                                 FixedTransitionScenario::kAncestorReattach);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionOldFixedPositionToggle) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kLegacy,
+                                 FixedTransitionScenario::kPositionToggle);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionNewFixedPositionToggle) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kNew,
+                                 FixedTransitionScenario::kPositionToggle);
+}
+
+TEST_P(FiberElementTest, LayoutOnlyTransitionUnifiedFixedPositionToggle) {
+  CheckFixedLayoutOnlyTransition(this, FixedTransitionMode::kUnified,
+                                 FixedTransitionScenario::kPositionToggle);
+}
+
 TEST_P(FiberElementTest, TestZIndexRemovedRelated) {
   // styles for fiber_element
   //  constructor css fragment

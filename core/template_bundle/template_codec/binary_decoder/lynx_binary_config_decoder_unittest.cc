@@ -4,6 +4,7 @@
 
 #include <any>
 #include <sstream>
+#include <vector>
 
 #define private public
 #define protected public
@@ -11,6 +12,7 @@
 #include "core/renderer/css/unit_handler.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_config_decoder_unittest.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "template_bundle/template_codec/binary_decoder/lynx_config_auto_gen.h"
 
 namespace lynx {
@@ -66,6 +68,39 @@ class ScopedGlobalFeatureSwitchStatisticEnv {
 };
 
 }  // namespace
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       LayoutOnlyTransitionOrderFixDefaultsForExistingTemplates) {
+  EXPECT_TRUE(page_config_->GetEnableLayoutOnlyTransitionOrderFix());
+  for (const auto& template_info :
+       {lepus::Value(), lepus::Value(lepus::Dictionary::Create())}) {
+    auto reader =
+        LynxBinaryReader::CreateLynxBinaryReader(std::vector<uint8_t>{});
+    reader.template_info_ = template_info;
+    ASSERT_TRUE(reader.DidDecodeHeader());
+    reader.EnsurePageConfig();
+    EXPECT_TRUE(reader.page_configs_->GetEnableLayoutOnlyTransitionOrderFix());
+  }
+}
+
+TEST_F(LynxBinaryConfigDecoderTest,
+       LayoutOnlyTransitionOrderFixReadsTemplateMetadata) {
+  for (bool enabled : {false, true}) {
+    SCOPED_TRACE(enabled);
+    auto reader =
+        LynxBinaryReader::CreateLynxBinaryReader(std::vector<uint8_t>{});
+    reader.template_info_ = lepus::Value(lepus::Dictionary::Create());
+    reader.template_info_.SetProperty("enableLayoutOnlyTransitionOrderFix",
+                                      lepus::Value(enabled));
+    ASSERT_TRUE(reader.DidDecodeHeader());
+    EXPECT_EQ(reader.page_configs_->GetEnableLayoutOnlyTransitionOrderFix(),
+              enabled);
+    // Decoding the page config must preserve the compiler option.
+    reader.config_decoder_->DecodePageConfig("{}", reader.page_configs_);
+    EXPECT_EQ(reader.page_configs_->GetEnableLayoutOnlyTransitionOrderFix(),
+              enabled);
+  }
+}
 
 TEST_F(LynxBinaryConfigDecoderTest, ReadPipelineSchedulerConfig) {
   EXPECT_FALSE(page_config_->GetEnableParallelParseElementTemplate());
