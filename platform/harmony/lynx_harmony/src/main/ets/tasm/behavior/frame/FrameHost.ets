@@ -141,6 +141,10 @@ export class FrameHost {
     }
   }
 
+  createTemplateBundle(): TemplateBundle {
+    return new TemplateBundle(0);
+  }
+
   updateMetaData(data?: MetaInput, globalProps?: MetaInput): void {
     this.childContext?.updateMetaData(new LynxUpdateMeta(
       createTemplateData(data), createTemplateData(globalProps)));
