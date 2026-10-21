@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "platform/harmony/lynx_harmony/src/main/cpp/devtool/harmony_devtool_coordinates.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -196,6 +197,78 @@ TEST(HarmonyInputEventTargetTest, ConvertsCssPixelsAndInjectsSequence) {
   EXPECT_EQ(injector->events[0].display_y, 240);
   EXPECT_EQ(injector->events[1].action, HarmonyTouchEventAction::kMove);
   EXPECT_EQ(injector->events[2].action, HarmonyTouchEventAction::kUp);
+}
+
+TEST(HarmonyInputEventTargetTest, BoxModelCoordinatesMatchHitTestingAndInput) {
+  for (float density : {1.f, 2.f, 3.f}) {
+    SCOPED_TRACE(density);
+    const tasm::harmony::HarmonyDevToolCoordinates coordinates(density);
+    // A 40 x 30 logical box at (15, 20) inside a root at window (10, 25).
+    std::vector<float> quad = {15, 20, 55, 20, 55, 50, 15, 50};
+    for (auto& value : quad) {
+      value *= density;
+    }
+    const float root_x_px = 10 * density;
+    const float root_y_px = 25 * density;
+    coordinates.QuadToWindow(quad, root_x_px, root_y_px);
+    EXPECT_EQ(quad, (std::vector<float>{25, 45, 65, 45, 65, 75, 25, 75}));
+    EXPECT_FLOAT_EQ(quad[2] - quad[0], 40);
+    EXPECT_FLOAT_EQ(quad[5] - quad[1], 30);
+
+    // Both screencast modes must select the same point in the root.
+    float fullscreen_point[2] = {quad[0], quad[1]};
+    coordinates.WindowToRoot(fullscreen_point, root_x_px, root_y_px);
+    std::vector<float> root_quad(8, 0.f);
+    coordinates.QuadToWindow(root_quad, root_x_px, root_y_px);
+    const float lynxview_x = quad[0] - root_quad[0];
+    const float lynxview_y = quad[1] - root_quad[1];
+    EXPECT_FLOAT_EQ(fullscreen_point[0], 15);
+    EXPECT_FLOAT_EQ(fullscreen_point[1], 20);
+    EXPECT_FLOAT_EQ(lynxview_x, fullscreen_point[0]);
+    EXPECT_FLOAT_EQ(lynxview_y, fullscreen_point[1]);
+
+    // A fullscreen box-model point can be passed directly to synthetic input.
+    auto injector = std::make_shared<RecordingHarmonyTouchEventInjector>();
+    HarmonyInputEventTarget target(injector);
+    auto window = MakeWindowInfo();
+    window.pixel_ratio = density;
+    target.UpdateWindowInfo(window);
+    ASSERT_TRUE(target.InjectPointerEvent(
+        MakePointerEvent(input::PointerEventType::kDown, 5, quad[0], quad[1])));
+    ASSERT_EQ(injector->events.size(), 1u);
+    const auto& event = injector->events[0];
+    EXPECT_EQ(event.window_x, 25 * density);
+    EXPECT_EQ(event.window_y, 45 * density);
+    EXPECT_EQ(event.display_x, 100 + 25 * density);
+    EXPECT_EQ(event.display_y, 200 + 45 * density);
+
+    // Emulated input converts to physical pixels only at native injection.
+    EXPECT_FLOAT_EQ(coordinates.LogicalToPhysical(quad[0]), event.window_x);
+    EXPECT_FLOAT_EQ(coordinates.LogicalToPhysical(quad[1]), event.window_y);
+    const float root_screen_x = coordinates.PhysicalToLogical(100 + root_x_px);
+    const float root_screen_y = coordinates.PhysicalToLogical(200 + root_y_px);
+    EXPECT_FLOAT_EQ(coordinates.LogicalToPhysical(root_screen_x + lynxview_x),
+                    event.display_x);
+    EXPECT_FLOAT_EQ(coordinates.LogicalToPhysical(root_screen_y + lynxview_y),
+                    event.display_y);
+
+    // Viewport metadata and the box quad share the same scale.
+    const float logical_width = coordinates.PhysicalToLogical(window.width_px);
+    EXPECT_FLOAT_EQ(quad[0] / logical_width,
+                    static_cast<float>(event.window_x) / window.width_px);
+  }
+}
+
+TEST(HarmonyInputEventTargetTest, BoxModelPreservesTransformedCorners) {
+  const tasm::harmony::HarmonyDevToolCoordinates coordinates(1.25f);
+  std::vector<float> quad = {-5, 2.5f, 7.5f, 15, -5, 27.5f, -17.5f, 15};
+  coordinates.QuadToWindow(quad, 3, 7);
+  const std::vector<float> expected = {-1.6f, 7.6f,  8.4f,   17.6f,
+                                       -1.6f, 27.6f, -11.6f, 17.6f};
+  ASSERT_EQ(quad.size(), expected.size());
+  for (size_t i = 0; i < quad.size(); ++i) {
+    EXPECT_FLOAT_EQ(quad[i], expected[i]);
+  }
 }
 
 TEST(HarmonyInputEventTargetTest, CompletesInputProcessingSynchronously) {

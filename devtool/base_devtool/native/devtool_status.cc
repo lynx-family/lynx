@@ -18,19 +18,35 @@ DevToolStatus& DevToolStatus::GetInstance() {
 }
 
 std::string DevToolStatus::GetStatus(const DevToolStatusKey& key,
-                                     std::string default_value) {
+                                     const std::string& default_value) {
   std::lock_guard<std::mutex> lock(mutex_);
-  std::string value = config_[key];
-  if (value.empty()) {
-    value = default_value;
+  switch (key) {
+    case kDevToolStatusKeyIsConnected:
+      return connection_status_.empty() ? default_value : connection_status_;
+    case kDevToolStatusKeyScreenShotMode:
+      return screenshot_mode_;
   }
-  return value;
+  return default_value;
 }
 
 void DevToolStatus::SetStatus(const DevToolStatusKey& key,
                               const std::string& value) {
   std::lock_guard<std::mutex> lock(mutex_);
-  config_[key] = value;
+  switch (key) {
+    case kDevToolStatusKeyIsConnected:
+      connection_status_ = value;
+      break;
+    case kDevToolStatusKeyScreenShotMode:
+      // Clearing the status restores the default. Ignore unsupported modes so
+      // all coordinate consumers see the same valid mode.
+      if (value.empty()) {
+        screenshot_mode_ = SCREENSHOT_MODE_FULLSCREEN;
+      } else if (value == SCREENSHOT_MODE_FULLSCREEN ||
+                 value == SCREENSHOT_MODE_LYNXVIEW) {
+        screenshot_mode_ = value;
+      }
+      break;
+  }
 }
 
 }  // namespace devtool

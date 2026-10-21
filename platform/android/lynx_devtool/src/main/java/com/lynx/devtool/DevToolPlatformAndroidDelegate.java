@@ -360,7 +360,7 @@ public class DevToolPlatformAndroidDelegate {
 
   @CalledByNative
   public void emulateTouch(final String type, final int x, final int y, final float deltaX,
-      final float deltaY, final String button) {
+      final float deltaY, final String button, final String screenshotMode) {
     if (mTouchHelper == null) {
       return;
     }
@@ -368,7 +368,7 @@ public class DevToolPlatformAndroidDelegate {
     if (lynxView != null) {
       float scale = lynxView.getLynxContext().getResources().getDisplayMetrics().density;
       mTouchHelper.emulateTouch(type, (int) (x * scale + 0.5f), (int) (y * scale + 0.5f),
-          deltaX * scale + 0.5f, deltaY * scale + 0.5f, button, mDevToolDelegate);
+          deltaX * scale + 0.5f, deltaY * scale + 0.5f, button, mDevToolDelegate, screenshotMode);
     }
   }
 

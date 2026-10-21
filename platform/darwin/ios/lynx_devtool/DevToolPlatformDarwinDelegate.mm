@@ -194,8 +194,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin) {
       std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
-          lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-          lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
+          lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
       [darwin startCasting:request.quality_
                      width:(int)request.max_width_
                     height:(int)request.max_height_
@@ -719,14 +718,15 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   NSString* button = [NSString stringWithCString:input->button_.c_str()
                                         encoding:[NSString defaultCStringEncoding]];
 
-  [self emulateTouch:type
-         coordinateX:input->x_
-         coordinateY:input->y_
-              button:button
-              deltaX:input->delta_x_
-              deltaY:input->delta_y_
-           modifiers:input->modifiers_
-          clickCount:input->click_count_];
+  [_touchHelper emulateTouch:type
+                 coordinateX:input->x_
+                 coordinateY:input->y_
+                      button:button
+                      deltaX:input->delta_x_
+                      deltaY:input->delta_y_
+                   modifiers:input->modifiers_
+                  clickCount:input->click_count_
+              screenshotMode:[NSString stringWithUTF8String:input->coordinate_mode_.c_str()]];
 }
 
 - (void)insertText:(nullable NSString*)text {
@@ -797,8 +797,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
           clickCount:(int)clickCount {
   if (_touchHelper != nil) {
     std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
-        lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-        lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
+        lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
     [_touchHelper emulateTouch:type
                    coordinateX:x
                    coordinateY:y

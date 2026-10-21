@@ -1457,8 +1457,7 @@ void InspectorTasmExecutor::GetDocumentWithBoxModel(
 
   size_t root_box_model_index = queries.size();
   std::string screen_shot_mode = DevToolStatus::GetInstance().GetStatus(
-      DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
+      DevToolStatus::kDevToolStatusKeyScreenShotMode);
   if (screen_shot_mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW) {
     InspectorBoxModelQuery root_query;
     if (BuildBoxModelQuery(root, root_query)) {

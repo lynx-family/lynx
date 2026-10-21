@@ -19,6 +19,7 @@
 #include "base/include/fml/thread.h"
 #include "devtool/base_devtool/native/public/cdp_error_code.h"
 #include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -74,6 +75,16 @@ class InputAgentTestMessageSender : public MessageSender {
 class InputAgentPlatformFacadeMock
     : public lynx::testing::DevToolPlatformFacadeMock {
  public:
+  void EmulateTouch(std::shared_ptr<MouseEvent> input) override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    touch_events_.push_back(input);
+  }
+
+  std::vector<std::shared_ptr<MouseEvent>> TouchEvents() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return touch_events_;
+  }
+
   void EmulateMouse(std::shared_ptr<MouseEvent> input) override {
     std::lock_guard<std::mutex> lock(mutex_);
     mouse_events_.push_back(*input);
@@ -86,6 +97,7 @@ class InputAgentPlatformFacadeMock
 
  private:
   mutable std::mutex mutex_;
+  std::vector<std::shared_ptr<MouseEvent>> touch_events_;
   std::vector<MouseEvent> mouse_events_;
 };
 
@@ -100,6 +112,8 @@ class InspectorInputAgentTest : public ::testing::Test {
   }
 
   void SetUp() override {
+    original_screenshot_mode_ = DevToolStatus::GetInstance().GetStatus(
+        DevToolStatus::kDevToolStatusKeyScreenShotMode);
     devtool_mediator_ = std::make_shared<LynxDevToolMediator>();
     ui_executor_ = std::make_shared<InspectorUIExecutor>(devtool_mediator_);
     platform_facade_ = std::make_shared<InputAgentPlatformFacadeMock>();
@@ -120,6 +134,9 @@ class InspectorInputAgentTest : public ::testing::Test {
     platform_facade_.reset();
     message_sender_.reset();
     devtool_mediator_.reset();
+    DevToolStatus::GetInstance().SetStatus(
+        DevToolStatus::kDevToolStatusKeyScreenShotMode,
+        original_screenshot_mode_);
   }
 
  protected:
@@ -176,6 +193,7 @@ class InspectorInputAgentTest : public ::testing::Test {
   std::shared_ptr<InspectorUIExecutor> ui_executor_;
   std::shared_ptr<InputAgentPlatformFacadeMock> platform_facade_;
   std::shared_ptr<InputAgentTestMessageSender> message_sender_;
+  std::string original_screenshot_mode_;
 };
 
 TEST_F(InspectorInputAgentTest, InsertTextReturnsSuccess) {
@@ -253,6 +271,46 @@ TEST_F(InspectorInputAgentTest, EmulateTouchFromMouseEventReturnsSuccess) {
   Dispatch(message);
 
   ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest, EmulateTouchSnapshotsModeWithoutScreencast) {
+  auto& status = DevToolStatus::GetInstance();
+  const auto key = DevToolStatus::kDevToolStatusKeyScreenShotMode;
+  // Clearing a previous selection restores the default; no screencast is
+  // needed to establish the coordinate mode.
+  status.SetStatus(key, "");
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 40;
+  message["method"] = "Input.emulateTouchFromMouseEvent";
+  message["params"]["type"] = "mousePressed";
+  message["params"]["button"] = "left";
+  message["params"]["x"] = 120;
+  message["params"]["y"] = 240;
+  Dispatch(message);
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+
+  status.SetStatus(key, "lynxview");
+  message["id"] = 41;
+  Dispatch(message);
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(2));
+
+  status.SetStatus(key, "fullscreen");
+  message["id"] = 42;
+  Dispatch(message);
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(3));
+
+  const auto events = platform_facade_->TouchEvents();
+  ASSERT_EQ(events.size(), 3U);
+  EXPECT_EQ(events[0]->coordinate_mode_, "fullscreen");
+  EXPECT_EQ(events[1]->coordinate_mode_, "lynxview");
+  EXPECT_EQ(events[2]->coordinate_mode_, "fullscreen");
+  for (const auto& event : events) {
+    EXPECT_EQ(event->x_, 120);
+    EXPECT_EQ(event->y_, 240);
+    EXPECT_EQ(event->type_, "mousePressed");
+  }
+  EXPECT_TRUE(platform_facade_->screen_cast_requests_.empty());
   EXPECT_TRUE(LastResponse()["result"].isObject());
 }
 

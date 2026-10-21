@@ -38,7 +38,7 @@ public class EmulateTouchHelper {
   }
 
   public void emulateTouch(String type, int x, int y, float deltaX, float deltaY, String button,
-      IDevToolDelegate devToolDelegate) {
+      IDevToolDelegate devToolDelegate, String screenshotMode) {
     if (type == null) {
       LLog.e(TAG, "emulateTouch: type is null");
       return;
@@ -54,8 +54,11 @@ public class EmulateTouchHelper {
       return;
     }
 
-    if (devToolDelegate.getActualScreenshotMode().equals(
-            ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN)) {
+    // Native input follows the request's coordinate mode even before any
+    // screencast. Clay retains its renderer-specific screenshot mode.
+    String mode = devToolDelegate.isClayRenderer() ? devToolDelegate.getActualScreenshotMode()
+                                                   : screenshotMode;
+    if (ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN.equals(mode)) {
       int[] outLocation = new int[2];
       view.getLocationOnScreen(outLocation);
       x -= outLocation[0];

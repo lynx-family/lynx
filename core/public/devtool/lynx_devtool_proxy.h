@@ -48,7 +48,8 @@ class LynxDevToolProxy {
   virtual void SetInspectorOwner(LynxInspectorOwner* owner) = 0;
   virtual void EmulateTouch(const std::string& event_type, int x, int y,
                             const std::string& button, float delta_x,
-                            float delta_y, int modifiers, int click_count) = 0;
+                            float delta_y, int modifiers, int click_count,
+                            const std::string& coordinate_mode) = 0;
   virtual void EmulateMouse(const std::string& event_type, int x, int y,
                             const std::string& button, float delta_x,
                             float delta_y, int modifiers, int click_count) {}

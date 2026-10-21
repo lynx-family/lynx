@@ -4,9 +4,9 @@
 
 #ifndef DEVTOOL_BASE_DEVTOOL_NATIVE_PUBLIC_DEVTOOL_STATUS_H_
 #define DEVTOOL_BASE_DEVTOOL_NATIVE_PUBLIC_DEVTOOL_STATUS_H_
+
 #include <mutex>
 #include <string>
-#include <unordered_map>
 
 #include "devtool/base_devtool/native/public/base_devtool_export.h"
 
@@ -33,13 +33,16 @@ class BASE_DEVTOOL_EXPORT DevToolStatus {
   static DevToolStatus& GetInstance();
   DevToolStatus(const DevToolStatus&) = delete;
   DevToolStatus& operator=(const DevToolStatus&) = delete;
+  // Screenshot mode always has a value, defaulting to fullscreen.
+  // default_value only applies to unset connection status or unknown keys.
   std::string GetStatus(const DevToolStatusKey& key,
-                        std::string default_value = "");
+                        const std::string& default_value = "");
   void SetStatus(const DevToolStatusKey& key, const std::string& value);
 
  private:
   DevToolStatus() = default;
-  std::unordered_map<DevToolStatusKey, std::string> config_;
+  std::string connection_status_;
+  std::string screenshot_mode_ = SCREENSHOT_MODE_FULLSCREEN;
   std::mutex mutex_;
 };
 
