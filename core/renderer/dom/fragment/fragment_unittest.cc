@@ -273,6 +273,7 @@ class TestNativePaintingContext : public NativePaintingContext {
     float height;
     int32_t event_mask;
     bool disable_default_resize;
+    bool is_background;
     int32_t image_key;
   };
 
@@ -331,7 +332,7 @@ class TestNativePaintingContext : public NativePaintingContext {
          paint_info.placeholder, paint_info.tint_color, paint_info.cap_insets,
          paint_info.cap_insets_scale, paint_info.skip_redirection,
          paint_info.autoplay, paint_info.loop_count, width, height, event_mask,
-         disable_default_resize, image_key});
+         disable_default_resize, paint_info.is_background, image_key});
     return fml::MakeRefCounted<PaintImage>(image_key);
   }
   void UpdateTextBundle(int id, intptr_t bundle) override {}
@@ -1889,6 +1890,103 @@ TEST_F(FragmentTest, ImageModesNormalizeBeforeCreation) {
             ImageFitMode::kScaleToFill);
 }
 
+TEST_F(FragmentTest, ImageReloadIgnoresOnePhysicalPixelJitter) {
+  for (float scale : {1.f, 2.f, 3.f, 4.f}) {
+    SCOPED_TRACE(scale);
+    manager->GetLynxEnvConfig().UpdateDevicePixelRatio(scale);
+    auto element = manager->CreateFiberImage("image");
+    element->SetAttributeInternal("src", lepus::Value("image-src://initial"));
+    Fragment fragment(element.get());
+    fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+    TestNativePaintingContext context;
+    fragment.behavior_->painting_context_ = &context;
+
+    auto update = [&](float width, float height) {
+      starlight::LayoutResultForRendering layout;
+      layout.size_ = FloatSize(width, height);
+      fragment.UpdateLayout(layout);
+      fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+      DisplayListBuilder builder;
+      fragment.OnDraw(builder);
+      auto items = CollectDisplayListItems(builder.Build());
+      std::vector<DisplayListItem> boxes;
+      bool drew_image = false;
+      for (const auto& item : items) {
+        if (item.type == DisplayListOpType::kRecordBox) {
+          boxes.push_back(item);
+        } else if (item.type == DisplayListOpType::kImage) {
+          ASSERT_LT(item.payload.image.box_index, boxes.size());
+          const auto& box =
+              boxes[item.payload.image.box_index].payload.record_box;
+          EXPECT_FLOAT_EQ(box.w, width);
+          EXPECT_FLOAT_EQ(box.h, height);
+          drew_image = true;
+        }
+      }
+      EXPECT_TRUE(drew_image);
+    };
+    update(100.f, 60.f);
+    ASSERT_EQ(context.created_images_.size(), 1u);
+    update(100.f + .5f / scale, 60.f - .5f / scale);
+    update(100.f + 1.f / scale, 60.f - 1.f / scale);
+    EXPECT_EQ(context.created_images_.size(), 1u);
+    // Accumulated movement is relative to the requested size, not the last
+    // layout.
+    update(100.f + 1.5f / scale, 60.f);
+    ASSERT_EQ(context.created_images_.size(), 2u);
+    update(100.f + 1.5f / scale, 60.f + 1.5f / scale);
+    ASSERT_EQ(context.created_images_.size(), 3u);
+
+    // Source and paint changes must still reload within the size tolerance.
+    element->SetAttributeInternal("src", lepus::Value("image-src://next"));
+    update(100.f + 1.5f / scale, 60.f + 1.5f / scale);
+    ASSERT_EQ(context.created_images_.size(), 4u);
+    element->SetAttributeInternal("mode", lepus::Value("aspectFit"));
+    update(100.f + 1.5f / scale, 60.f + 1.5f / scale);
+    EXPECT_EQ(context.created_images_.size(), 5u);
+  }
+}
+
+TEST_F(FragmentTest, ImageReloadHandlesThreePixelScaleAndZeroSize) {
+  manager->GetLynxEnvConfig().UpdateDevicePixelRatio(3.f);
+  auto element = manager->CreateFiberImage("image");
+  element->SetAttributeInternal("src", lepus::Value("image-src://initial"));
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+  TestNativePaintingContext context;
+  fragment.behavior_->painting_context_ = &context;
+  auto update = [&](float width, float height) {
+    starlight::LayoutResultForRendering layout;
+    layout.size_ = FloatSize(width, height);
+    fragment.UpdateLayout(layout);
+    fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+  };
+  update(0.f, 0.f);
+  ASSERT_EQ(context.created_images_.size(), 1u);
+  update(.25f, .25f);
+  ASSERT_EQ(context.created_images_.size(), 2u);
+  update(.5f, .5f);
+  EXPECT_EQ(context.created_images_.size(), 2u);
+  update(.75f, .5f);
+  EXPECT_EQ(context.created_images_.size(), 3u);
+  update(0.f, .5f);
+  EXPECT_EQ(context.created_images_.size(), 4u);
+
+  update(300.f / 3.f, 60.f);
+  ASSERT_EQ(context.created_images_.size(), 5u);
+  for (int i = 0; i < 3; ++i) {
+    update(301.f / 3.f, 60.f);
+    update(300.f / 3.f, 60.f);
+  }
+  EXPECT_EQ(context.created_images_.size(), 5u);
+  update(302.f / 3.f, 60.f);
+  ASSERT_EQ(context.created_images_.size(), 6u);
+  update(301.f / 3.f, 60.f);
+  EXPECT_EQ(context.created_images_.size(), 6u);
+  update(300.f / 3.f, 60.f);
+  EXPECT_EQ(context.created_images_.size(), 7u);
+}
+
 TEST_F(FragmentTest, ImageModeUpdateRecreatesOnlyForEffectiveChanges) {
   auto element = manager->CreateFiberImage("image");
   element->SetAttributeInternal("src", lepus::Value("image-src://initial"));
@@ -1991,6 +2089,7 @@ TEST_F(FragmentTest, ImagePaintInfoAttributesReachNativePaintingContext) {
   ASSERT_EQ(native_painting_context.created_images_.size(), 1u);
   const auto& image = native_painting_context.created_images_.back();
   EXPECT_TRUE(image.auto_size);
+  EXPECT_FALSE(image.is_background);
   EXPECT_EQ(image.placeholder, "image-src://placeholder");
   EXPECT_EQ(image.tint_color, "#ff0000");
   EXPECT_EQ(image.cap_insets, "1px 2px 3px 4px");
@@ -2458,6 +2557,7 @@ TEST_F(FragmentDrawTest, BackgroundUrlGeneratesBackgroundImageOp) {
   EXPECT_FLOAT_EQ(native_context->created_images_[0].height, 20.f);
   EXPECT_EQ(native_context->created_images_[0].event_mask, 0);
   EXPECT_TRUE(native_context->created_images_[0].disable_default_resize);
+  EXPECT_TRUE(native_context->created_images_[0].is_background);
 
   DisplayList list = builder.Build();
   auto items = CollectDisplayListItems(list);
