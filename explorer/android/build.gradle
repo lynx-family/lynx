@@ -81,7 +81,9 @@ ext.getFlavorNamesAndBuildTypes = { Project project ->
             runTasks = gradle.parent.startParameter.taskNames.toString().toLowerCase()
         }
     }
-    if (runTasks.contains("generateAllGnCmakeTargets".toLowerCase()) || runTasks.contains("clean")) {
+    if (runTasks.contains("generateAllGnCmakeTargets".toLowerCase()) ||
+            runTasks.contains("verifySparklingAndroid".toLowerCase()) ||
+            runTasks.contains("clean")) {
         return [flavorNames, buildTypes]
     }
     // To reduce the generation of cmake scripts, the following types that will
@@ -130,42 +132,101 @@ task generateAllGnCmakeTargets {
     // force Gradle to evaluate the child build.gradle files before the parent
     evaluationDependsOnChildren()
 
+    def previousGnConfigTask = null
     rootProject.allprojects { Project project ->
         if(project.tasks.findByName('configGnCompileParas')) {
             println project.name + " has configGnCompileParas task."
-            dependsOn project.configGnCompileParas
+            def gnConfigTask = project.configGnCompileParas
+            if (previousGnConfigTask != null) {
+                gnConfigTask.mustRunAfter previousGnConfigTask
+            }
+            previousGnConfigTask = gnConfigTask
+            dependsOn gnConfigTask
         }
     }
-    exec {
-        workingDir "../../"
-        rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
-        println commandLine
+    doLast {
+        exec {
+            workingDir "../../"
+            rootProject.ext.configurePythonExec(delegate, "tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
+            println commandLine
+        }
     }
+}
+
+rootProject.allprojects { Project nativeProject ->
+    nativeProject.tasks.matching {
+        it.name.startsWith('generateJsonModel') || it.name.startsWith('externalNativeBuild')
+    }.all { task ->
+        task.dependsOn generateAllGnCmakeTargets
+    }
+    nativeProject.tasks.whenTaskAdded { task ->
+        if (task.name.startsWith('generateJsonModel') || task.name.startsWith('externalNativeBuild')) {
+            task.dependsOn generateAllGnCmakeTargets
+        }
+    }
+}
+
+task generateAutoGenStyleConstants {
+    description "Generate Android Java CSS style constants."
+    def cssGeneratorDir = rootProject.file("../../tools/css_generator")
+    def autoGenStyleConstantsFile = rootProject.file(
+            "../../platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/AutoGenStyleConstants.java")
+
+    inputs.files(fileTree(dir: "${cssGeneratorDir}/css_defines", include: "*.json"))
+    inputs.file("${cssGeneratorDir}/property_index.json")
+    inputs.files(
+            "${cssGeneratorDir}/css_parser_generator.py",
+            "${cssGeneratorDir}/enum_css_generator.py",
+            "${cssGeneratorDir}/utils.py")
+    outputs.file(autoGenStyleConstantsFile)
+
+    doLast {
+        exec {
+            workingDir cssGeneratorDir
+            rootProject.ext.configurePythonExec(delegate, "-c", [
+                    "import css_parser_generator, enum_css_generator",
+                    "json_obj = css_parser_generator.check_and_get_defines()",
+                    "enum_css_generator.genJavaEnum(" +
+                            "'enum_handler.cc', css_parser_generator.sortJson(json_obj)['enum'])"
+            ].join("; "))
+            println commandLine
+        }
+    }
+}
+
+project(':LynxAndroid').tasks.matching {
+    it.name.startsWith('compile') && it.name.endsWith('JavaWithJavac')
+}.all { Task javaCompileTask ->
+    javaCompileTask.dependsOn generateAutoGenStyleConstants
 }
 
 task buildHomePage {
     description "Build home page card."
-    exec {
-        workingDir "../homepage"
-        rootProject.ext.configurePythonExec(delegate, "build.py")
-        println commandLine
-    }
-    copy {
-        from "../homepage/dist/"
-        into "lynx_explorer/src/main/assets"
-        include 'main.lynx.bundle'
-        rename { String fileName ->
-            'homepage.lynx.bundle'
+    doLast {
+        exec {
+            workingDir "../homepage"
+            rootProject.ext.configurePythonExec(delegate, "build.py")
+            println commandLine
+        }
+        copy {
+            from "../homepage/dist/"
+            into "lynx_explorer/src/main/assets"
+            include 'main.lynx.bundle'
+            rename { String fileName ->
+                'homepage.lynx.bundle'
+            }
         }
     }
 }
 
 task buildShowcase {
     description "Build showcase card."
-    exec {
-        workingDir "../showcase"
-        rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
-        println commandLine
+    doLast {
+        exec {
+            workingDir "../showcase"
+            rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
+            println commandLine
+        }
     }
 }
 
@@ -174,12 +235,25 @@ buildShowcase.onlyIf { build_showcase == 'true' }
 if (buildIntegrationDemo) {
     task buildIntegrationDemo {
         description "Build Integeration Test Demo Card."
-        exec {
-            workingDir "../../testing/integration_test/demo_pages"
-            rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
-            println commandLine
+        doLast {
+            exec {
+                workingDir "../../testing/integration_test/demo_pages"
+                rootProject.ext.configurePythonExec(delegate, "./build_and_copy.py")
+                println commandLine
+            }
         }
     }
+}
+
+def generatedExplorerAssetTasks = [buildHomePage, buildShowcase]
+if (tasks.findByName('buildIntegrationDemo') != null) {
+    generatedExplorerAssetTasks << tasks.findByName('buildIntegrationDemo')
+}
+
+project(':LynxExplorer').tasks.matching {
+    it.name.startsWith('merge') && it.name.endsWith('Assets')
+}.all { Task mergeAssetsTask ->
+    mergeAssetsTask.dependsOn generatedExplorerAssetTasks
 }
 
 task clean(type: Delete) {

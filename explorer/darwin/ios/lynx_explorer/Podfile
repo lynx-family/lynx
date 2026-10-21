@@ -1,5 +1,141 @@
+require 'json'
+
 source 'https://cdn.cocoapods.org/'
 project './LynxExplorer.xcodeproj'
+
+canonical_path = lambda do |value, base|
+  expanded_path = File.expand_path(value, base)
+  missing_components = []
+  existing_path = expanded_path
+  until File.exist?(existing_path)
+    parent = File.dirname(existing_path)
+    break if parent == existing_path
+
+    missing_components.unshift(File.basename(existing_path))
+    existing_path = parent
+  end
+  resolved_path = File.realpath(existing_path)
+  missing_components.reduce(resolved_path) { |path, component| File.join(path, component) }
+end
+
+normalized_path = lambda { |path| path.downcase }
+path_within = lambda do |path, root|
+  normalized = normalized_path.call(path)
+  normalized_root = normalized_path.call(root)
+  normalized == normalized_root || normalized.start_with?(normalized_root + File::SEPARATOR)
+end
+
+cocoapods_roots = [
+  ['CocoaPods home', canonical_path.call(File.join(Dir.home, '.cocoapods'), __dir__)],
+  [
+    'CocoaPods cache',
+    canonical_path.call(File.join(Dir.home, 'Library/Caches/CocoaPods'), __dir__)
+  ]
+]
+%w[CP_HOME_DIR CP_CACHE_DIR].each do |variable|
+  value = ENV[variable]
+  next if value.nil? || value.empty?
+
+  [__dir__, Dir.pwd].each do |base|
+    root = canonical_path.call(value, base)
+    cocoapods_roots << [variable, root] unless cocoapods_roots.any? do |entry|
+      normalized_path.call(entry[1]) == normalized_path.call(root)
+    end
+  end
+end
+
+forbidden_source_reason = lambda do |source_root|
+  canonical_root = canonical_path.call(source_root, __dir__)
+  forbidden_component = canonical_root.split(File::SEPARATOR).find do |component|
+    %w[node_modules pods].include?(component.downcase)
+  end
+  unless forbidden_component.nil?
+    next "path component '#{forbidden_component}' is package-manager owned"
+  end
+
+  matching_root = cocoapods_roots.find do |_label, root|
+    path_within.call(canonical_root, root)
+  end
+  unless matching_root.nil?
+    next "inside #{matching_root[0]} at #{matching_root[1]}"
+  end
+
+  nil
+end
+
+sparkling_mode = ENV.fetch('SPARKLING_MODE', 'disable_sparkling')
+unless %w[enable_sparkling disable_sparkling].include?(sparkling_mode)
+  raise 'SPARKLING_MODE must be enable_sparkling or disable_sparkling'
+end
+
+sparkling_pod_paths = {}
+if sparkling_mode == 'enable_sparkling'
+  manifest_path = File.join(__dir__, 'sparkling-source.json')
+  begin
+    sparkling_manifest = JSON.parse(File.read(manifest_path))
+  rescue Errno::ENOENT, JSON::ParserError => e
+    raise "Cannot load Sparkling source manifest #{manifest_path}: #{e.message}"
+  end
+
+  unless sparkling_manifest.is_a?(Hash)
+    raise 'Sparkling source manifest must contain a JSON object'
+  end
+  %w[repository removal_condition].each do |field|
+    value = sparkling_manifest[field]
+    unless value.is_a?(String) && !value.strip.empty?
+      raise "Sparkling source manifest #{field} must be a non-empty string"
+    end
+  end
+  unless sparkling_manifest['commit'].is_a?(String) &&
+         sparkling_manifest['commit'].match?(/\A[0-9a-fA-F]{40}\z/)
+    raise 'Sparkling source manifest commit must be a full 40-digit SHA'
+  end
+
+  sparkling_pods = sparkling_manifest['pods']
+  expected_sparkling_pods = %w[Sparkling SparklingMacro SparklingMethod Sparkling-Router]
+  unless sparkling_pods.is_a?(Hash) && sparkling_pods.keys.sort == expected_sparkling_pods.sort
+    raise "Sparkling source manifest must map exactly: #{expected_sparkling_pods.sort.join(', ')}"
+  end
+
+  source_root_value = ENV['SPARKLING_SOURCE_ROOT']
+  if source_root_value.nil? || source_root_value.empty?
+    source_root_value = File.join(__dir__, 'generated/sparkling-source')
+  end
+  sparkling_source_root = File.expand_path(source_root_value, __dir__)
+  forbidden_reason = forbidden_source_reason.call(sparkling_source_root)
+  unless forbidden_reason.nil?
+    raise "Forbidden Sparkling source destination #{sparkling_source_root}: #{forbidden_reason}"
+  end
+  unless File.directory?(sparkling_source_root)
+    raise "Sparkling source checkout is missing at #{sparkling_source_root}; " \
+          'run scripts/sync_sparkling_source.py first'
+  end
+  real_source_root = File.realpath(sparkling_source_root)
+
+  sparkling_pods.each do |pod_name, relative_path|
+    unless relative_path.is_a?(String) && !relative_path.strip.empty?
+      raise "Sparkling source manifest path for #{pod_name} must be a non-empty string"
+    end
+    pod_path = File.expand_path(relative_path, sparkling_source_root)
+    unless path_within.call(pod_path, sparkling_source_root) &&
+           normalized_path.call(pod_path) != normalized_path.call(sparkling_source_root)
+      raise "Sparkling source manifest path for #{pod_name} escapes the source checkout"
+    end
+    unless File.directory?(pod_path)
+      raise "Sparkling source directory for #{pod_name} is missing at #{pod_path}"
+    end
+    real_pod_path = File.realpath(pod_path)
+    unless path_within.call(real_pod_path, real_source_root) &&
+           normalized_path.call(real_pod_path) != normalized_path.call(real_source_root)
+      raise "Sparkling source directory for #{pod_name} escapes the source checkout"
+    end
+    podspec = File.join(pod_path, "#{pod_name}.podspec")
+    unless File.file?(podspec)
+      raise "Sparkling podspec for #{pod_name} is missing at #{podspec}"
+    end
+    sparkling_pod_paths[pod_name] = pod_path
+  end
+end
 
 lynx_root = File.expand_path('../../../..', __dir__)
 lynx_library_plugin_dir = File.join(lynx_root, 'tools/ios_tools/cocoapods-lynx-library/lib')
@@ -67,43 +203,22 @@ target 'LynxExplorer' do
   pod 'DebugRouter/MessageTransceiverEnable', '5.0.15'
   pod 'MJRefresh', '3.6.1'
 
-  # Sparkling SDK — pods sourced from npm packages in node_modules.
-  # Requires Swift 5.10+ (Xcode 15.3+). Skipped on GitHub Actions OSS CI which
-  # uses Xcode 15.1. All Sparkling ObjC/Swift code is guarded by
-  # #if HAS_SPARKLING / #if canImport(SparklingMethod).
-  node_modules = File.join(lynx_root, 'node_modules')
-
-  sparkling_pods = {
-    'Sparkling'        => File.join(node_modules, '@sparklingjs', 'runtime', 'ios'),
-    'SparklingMethod'  => File.join(node_modules, 'sparkling-method', 'ios'),
-    'Sparkling-Router' => File.join(node_modules, 'sparkling-navigation', 'ios'),
-  }
-
-  sparkling_available = File.exist?(File.join(sparkling_pods['SparklingMethod'], 'SparklingMethod.podspec'))
-  sparkling_available = false if ENV['GITHUB_ACTIONS'] # OSS CI uses Xcode 15.1 / Swift 5.9
-
-  if sparkling_available
-    # The Sparkling podspecs pin Lynx/Framework to a released version (e.g. 3.6.0),
-    # but LynxExplorer builds Lynx from local source (version 0.0.1). We strip
-    # Lynx/LynxBase/LynxServiceAPI version pins from podspecs before resolution.
-    sparkling_pods.each_value do |pod_dir|
-      Dir.glob(File.join(pod_dir, '*.podspec')).each do |spec|
-        content = File.read(spec)
-        patched = content
-          .gsub(/(dependency\s+['"](?:Lynx|LynxBase|LynxServiceAPI)(?:\/\w+)?['"])\s*,\s*['"][^'"]+['"]/, '\1')
-        File.write(spec, patched) if patched != content
-      end
-    end
-
-    pod 'Sparkling', :path => sparkling_pods['Sparkling']
-    pod 'SparklingMethod', :path => sparkling_pods['SparklingMethod'],
+  if sparkling_mode == 'enable_sparkling'
+    # Sparkling/Application and SparklingMethod currently leave these
+    # transitive versions open. Pin the graph at the verified versions while
+    # the source override is active; Podfile.lock is intentionally generated.
+    pod 'SnapKit', '5.7.1'
+    pod 'Mantle', '2.2.0'
+    pod 'Sparkling', :path => sparkling_pod_paths.fetch('Sparkling')
+    pod 'SparklingMacro', :path => sparkling_pod_paths.fetch('SparklingMacro')
+    pod 'SparklingMethod', :path => sparkling_pod_paths.fetch('SparklingMethod'),
         :subspecs => ['Lynx', 'DIProvider', 'Debug']
-    pod 'Sparkling-Router', :path => sparkling_pods['Sparkling-Router']
+    pod 'Sparkling-Router', :path => sparkling_pod_paths.fetch('Sparkling-Router')
   end
-end
 
-target 'LynxExplorerTests' do
-  inherit! :complete
-  pod 'OCMock', :git => 'https://github.com/erikdoe/ocmock.git', :tag => 'v3.9.1'
-  pod 'XcodeCoverage', :git => 'https://github.com/jonreid/XcodeCoverage.git', :tag => 'v1.4.0'
+  target 'LynxExplorerTests' do
+    inherit! :search_paths
+    pod 'OCMock', :git => 'https://github.com/erikdoe/ocmock.git', :tag => 'v3.9.1'
+    pod 'XcodeCoverage', :git => 'https://github.com/jonreid/XcodeCoverage.git', :tag => 'v1.4.0'
+  end
 end
