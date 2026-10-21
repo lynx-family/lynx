@@ -21,21 +21,31 @@ The implementation lives in:
 
 - `gfx/public/display_list.h`
 - `gfx/display_list/display_list.cc`
-- `core/renderer/dom/fragment/display_list_builder.h`
-- `core/renderer/dom/fragment/display_list_builder.cc`
+- `gfx/public/display_list_builder.h`
+- `gfx/display_list/display_list_builder.cc`
 - `gfx/public/display_list_reader.h`
 - `gfx/display_list/display_list_reader.cc`
 - `gfx/public/rounded_rectangle.h`
 
-The storage, reader, and rounded-rectangle target, `gfx/display_list:display_list`,
-does not depend on style or Starlight. The builder and renderer-specific layout
-helpers remain in `core/renderer/dom/fragment` for a later migration.
-These steps change paths and build ownership, not APIs or the buffer protocol.
+The storage, builder, reader, and rounded-rectangle target,
+`gfx/display_list:display_list`, does not depend on style or Starlight. The
+renderer-specific layout helpers remain in `core/renderer/dom/fragment`.
+The file migrations change paths and build ownership, not the buffer protocol.
 Shared-library packaging and consumer linkage remain unchanged until the related
 dependencies have migrated. A later step will place the shared implementation in
 `liblynxgfx.so` for Lynx and Clay and verify its exported symbols and linkage.
 All reader consumers use `gfx/public/display_list_reader.h`. The old forwarding
 header is removed because CocoaPods copies private headers into a flat directory.
+
+`DisplayListBuilder` records primitive border colors/styles in top, right, bottom,
+left order and a filter type with an already-resolved numeric amount. Fragment
+owns the conversion from Starlight's `BordersData` and `FilterData`: percentage
+filter amounts are divided by 100, fixed amounts are unchanged, and a reset emits
+`none` with amount zero. The builder does not interpret CSS units or depend on
+Starlight style types. The core target still needs style and Starlight for the
+renderer-specific helpers; the gfx target retains the existing core build
+configuration and header dependencies on `PlatformRendererType` and `PaintImage`
+until their boundaries are handled separately.
 
 ### 2.1 DisplayListItem
 

@@ -21,7 +21,6 @@
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
-#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/event/platform_pointer_event.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
@@ -34,6 +33,7 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/display_list_builder.h"
 #include "gfx/public/display_list_reader.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -191,6 +191,73 @@ TEST_F(FragmentTest, FilterResetInvalidatesSubtreeAndEmitsNone) {
   EXPECT_EQ(reset_properties[0].data.filter.type,
             static_cast<int32_t>(starlight::FilterType::kNone));
   EXPECT_FLOAT_EQ(reset_properties[0].data.filter.amount, 0.f);
+}
+
+TEST_F(FragmentTest, FixedFilterAmountIsNotNormalized) {
+  auto element = manager->CreateFiberView();
+  auto* fragment = element->element_container()->CastToFragment();
+  ASSERT_NE(fragment, nullptr);
+
+  auto filter_array = lepus::CArray::Create();
+  filter_array->emplace_back(
+      static_cast<int32_t>(starlight::FilterType::kBlur));
+  filter_array->emplace_back(25.f);
+  filter_array->emplace_back(static_cast<int32_t>(CSSValuePattern::PX));
+  element->SetStyleInternal(
+      CSSPropertyID::kPropertyIDFilter,
+      CSSValue(lepus::Value(filter_array), CSSValuePattern::ARRAY));
+  const auto& filter = element->computed_css_style()->GetFilterData();
+  ASSERT_TRUE(filter.has_value());
+  ASSERT_FALSE(filter->amount.NumericLength().ContainsPercentage());
+  ASSERT_FLOAT_EQ(filter->amount.NumericLength().GetFixedPart(), 25.f);
+
+  DisplayListBuilder builder;
+  fragment->DrawFilter(builder);
+  DisplayList list = builder.Build();
+  ASSERT_EQ(list.GetSubtreePropertiesSize(), 1u);
+  const auto& property = list.GetSubtreePropertiesData()[0];
+  EXPECT_EQ(property.type, DisplayListSubtreePropertyOpType::kFilter);
+  EXPECT_EQ(property.data.filter.type,
+            static_cast<int32_t>(starlight::FilterType::kBlur));
+  EXPECT_FLOAT_EQ(property.data.filter.amount, 25.f);
+}
+
+TEST_F(FragmentTest, BorderColorsAndStylesPreserveSideOrder) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  auto* style = element->computed_css_style()->GetLayoutComputedStyle();
+  style->surround_data_.border_data_ = starlight::BordersData();
+  auto& border = *style->surround_data_.border_data_;
+  border.width_top = border.width_right = border.width_bottom =
+      border.width_left = 1.f;
+  border.color_top = 0xFFFF0000;
+  border.color_right = 0xFF00FF00;
+  border.color_bottom = 0xFF0000FF;
+  border.color_left = 0xFFFFFF00;
+  border.style_top = static_cast<starlight::BorderStyleType>(1);
+  border.style_right = static_cast<starlight::BorderStyleType>(2);
+  border.style_bottom = static_cast<starlight::BorderStyleType>(3);
+  border.style_left = static_cast<starlight::BorderStyleType>(4);
+
+  starlight::LayoutResultForRendering layout;
+  layout.border_ = starlight::DirectionValue<float>({1.f, 1.f, 1.f, 1.f});
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment.UpdateLayout(layout);
+
+  DisplayListBuilder builder;
+  fragment.DrawBorder(builder);
+  const auto items = CollectDisplayListItems(builder.Build());
+  ASSERT_EQ(items.size(), 3u);
+  const auto& item = items.back();
+  ASSERT_EQ(item.type, DisplayListOpType::kBorder);
+  EXPECT_EQ(item.payload.border.colors[0], 0xFFFF0000);
+  EXPECT_EQ(item.payload.border.colors[1], 0xFF00FF00);
+  EXPECT_EQ(item.payload.border.colors[2], 0xFF0000FF);
+  EXPECT_EQ(item.payload.border.colors[3], 0xFFFFFF00);
+  EXPECT_EQ(item.payload.border.styles[0], 1);
+  EXPECT_EQ(item.payload.border.styles[1], 2);
+  EXPECT_EQ(item.payload.border.styles[2], 3);
+  EXPECT_EQ(item.payload.border.styles[3], 4);
 }
 
 class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {

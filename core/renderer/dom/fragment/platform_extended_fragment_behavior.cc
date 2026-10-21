@@ -5,8 +5,8 @@
 #include "core/renderer/dom/fragment/platform_extended_fragment_behavior.h"
 
 #include "core/public/platform_renderer_type.h"
-#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
+#include "gfx/public/display_list_builder.h"
 
 namespace lynx::tasm {
 

@@ -8,9 +8,9 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "core/public/platform_renderer_type.h"
 #include "core/public/prop_bundle.h"
-#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/layout_info.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
+#include "gfx/public/display_list_builder.h"
 
 namespace lynx::tasm {
 class PaintingContext;
