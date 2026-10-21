@@ -1047,6 +1047,7 @@ public class LynxTemplateRender
         mLynxContext.getTemplateResourceFetcher(), mLynxContext.getGenericResourceFetcher());
     mLynxContext.setEnableAutoExpose(mLynxViewConfigProvider.isEnableAutoExpose());
     mNativeFacade = new NativeFacade(mLynxViewBuilder.isEnableJSRuntime(), new TASMCallback());
+    mNativeFacade.setTemplateLoadClient(mClient);
     DisplayMetrics screenMetrics = mLynxContext.getScreenMetrics();
     long runtimeWrapperPtr = (mRuntime == null) ? 0 : mRuntime.getNativePtr();
     long whiteBoardPtr = (mGroup == null) ? 0 : mGroup.getWhiteBoardPtr();
@@ -1603,7 +1604,6 @@ public class LynxTemplateRender
     // generates a new instance ID.
     updateGenericInfoURL(mUrl);
     if (mNativeFacade != null) {
-      mNativeFacade.setTemplateLoadClient(mClient);
       dispatchOnPageStart(mUrl);
       // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchOnPageStart
       // Due to lynxDevTool UI session limitations, we cannot do this yet
