@@ -11,10 +11,12 @@
 #include "core/event/event_listener.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/text_element.h"
+#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
+#include "gfx/public/display_list_reader.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -72,6 +74,50 @@ class TextFragmentBehaviorTest : public ::testing::Test {
   std::unique_ptr<lynx::tasm::ElementManager> manager_;
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator_;
 };
+
+TEST_F(TextFragmentBehaviorTest, DrawTextStartsInsideBorderAndPadding) {
+  struct TestCase {
+    float border_left, border_top, padding_left, padding_top;
+    float expected_x, expected_y;
+  };
+  const TestCase cases[] = {
+      {0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+      {2.f, 2.f, 0.f, 0.f, 2.f, 2.f},
+      {0.f, 0.f, 5.f, 7.f, 5.f, 7.f},
+      {2.f, 3.f, 5.f, 7.f, 7.f, 10.f},
+  };
+  for (const auto& test : cases) {
+    auto element = manager_->CreateFiberText("text");
+    Fragment fragment(element.get());
+    TextFragmentBehavior behavior(&fragment);
+    starlight::LayoutResultForRendering layout_result;
+    layout_result.size_ = FloatSize(120.f, 60.f);
+    layout_result.border_[starlight::Direction::kLeft] = test.border_left;
+    layout_result.border_[starlight::Direction::kTop] = test.border_top;
+    layout_result.padding_[starlight::Direction::kLeft] = test.padding_left;
+    layout_result.padding_[starlight::Direction::kTop] = test.padding_top;
+    fragment.UpdateLayout(layout_result);
+
+    DisplayListBuilder builder;
+    behavior.OnDraw(builder);
+    auto list = builder.Build();
+    DisplayListReader reader(list);
+    ASSERT_TRUE(reader.HasNext());
+    const auto& begin = reader.Next();
+    ASSERT_EQ(begin.type, DisplayListOpType::kBegin);
+    EXPECT_FLOAT_EQ(begin.payload.begin.x, test.expected_x);
+    EXPECT_FLOAT_EQ(begin.payload.begin.y, test.expected_y);
+    ASSERT_TRUE(reader.HasNext());
+    EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
+    ASSERT_TRUE(reader.HasNext());
+    const auto& text = reader.Next();
+    EXPECT_EQ(text.type, DisplayListOpType::kText);
+    EXPECT_EQ(text.payload.text.text_id, fragment.id());
+    ASSERT_TRUE(reader.HasNext());
+    EXPECT_EQ(reader.Next().type, DisplayListOpType::kEnd);
+    EXPECT_FALSE(reader.HasNext());
+  }
+}
 
 TEST_F(TextFragmentBehaviorTest, DispatchLayoutEventContainsSizeAndLineData) {
   auto page = manager_->CreateFiberPage("page", 11);
