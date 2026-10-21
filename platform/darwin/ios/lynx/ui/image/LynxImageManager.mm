@@ -90,6 +90,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 @implementation LynxImageManager {
   NSMutableDictionary<id, dispatch_block_t>* _cancelBlocks;
   NSMutableDictionary<id, UIImage*>* _images;
+  BOOL _isBackground;
 
   __weak UIImageView* _imageView;
   __weak CALayer* _imageLayer;
@@ -135,6 +136,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   _contentMode = LynxImageContentModeFromMode(static_cast<int32_t>(paintInfo.mode));
   _blurRadius = LynxImageLengthFromProp(NSStringFromBaseString(paintInfo.blur_radius), _context);
   _autoSize = paintInfo.auto_size;
+  _isBackground = paintInfo.is_background;
   _tintColor =
       [LynxColorUtils convertNSStringToUIColor:NSStringFromBaseString(paintInfo.tint_color)];
   _capInsets = LynxImageCapInsetsFromProp(NSStringFromBaseString(paintInfo.cap_insets), _context);
@@ -173,6 +175,8 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   contextInfo[LynxEnableGenericFetcher] = @YES;
   contextInfo[LynxShouldUseImageService] = @YES;
   contextInfo[LynxImageSkipRedirection] = @(_skipRedirection);
+  // CALayer background animations need decoded frames; image views stream them.
+  contextInfo[LynxImagePreloadAllFrames] = @(_isBackground);
   options.contextInfo = contextInfo;
 
   NSMutableArray* processors = [NSMutableArray new];
