@@ -885,10 +885,15 @@ void ElementContainer::TransitionToNativeView(
       element()->TendToFlatten(), element()->NeedCreateNodeAsync(),
       element()->NodeIndex());
 
-  // Insert children to this.
+  // Parallel preparation or reattachment can materialize a Fiber UI before
+  // its render siblings are established. Let the pending insertion mount it
+  // in order unless the compatibility fix is disabled.
   if (retain_boundary) {
+    // Preserve the position of an already-mounted unified fixed boundary.
     root->AddChildAt(this, -1, &point);
-  } else {
+  } else if (!element()->IsFiberArch() ||
+             !element_manager()->GetEnableLayoutOnlyTransitionOrderFix() ||
+             element()->render_parent()) {
     InsertSelf();
   }
 
