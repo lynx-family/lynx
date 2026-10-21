@@ -10,28 +10,26 @@
 namespace lynx {
 namespace tasm {
 
-bool Element::HasAuthorAnimationDataChangedForNewPipeline(
-    const starlight::ComputedCSSStyle& new_base_style,
-    const starlight::ComputedCSSStyle* previous_base_style) const {
-  if (!HasImperativeAnimations()) {
-    return false;
-  }
+bool Element::UpdateAuthorAnimationDataForNewPipeline(
+    const starlight::ComputedCSSStyle& new_base_style) {
   const auto* new_animation_data = new_base_style.animation_data_or_null();
-  const auto* old_animation_data =
-      previous_base_style != nullptr
-          ? previous_base_style->animation_data_or_null()
-          : nullptr;
   const bool has_new_animation_data =
       new_animation_data != nullptr && !new_animation_data->empty();
   const bool has_old_animation_data =
-      old_animation_data != nullptr && !old_animation_data->empty();
-  if (has_new_animation_data != has_old_animation_data) {
-    return true;
-  }
-  if (!has_new_animation_data) {
+      author_animation_data_for_new_pipeline_.has_value();
+  const bool changed =
+      has_new_animation_data != has_old_animation_data ||
+      (has_new_animation_data &&
+       *new_animation_data != *author_animation_data_for_new_pipeline_);
+  if (!changed) {
     return false;
   }
-  return *new_animation_data != *old_animation_data;
+  if (has_new_animation_data) {
+    author_animation_data_for_new_pipeline_.emplace(*new_animation_data);
+  } else {
+    author_animation_data_for_new_pipeline_.reset();
+  }
+  return true;
 }
 
 void Element::FlushImperativeAnimationCleanupForNewPipeline(

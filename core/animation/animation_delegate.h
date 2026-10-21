@@ -35,7 +35,6 @@ class AnimationDelegate {
   tasm::Element* element() { return element_; }
 
  protected:
-  std::vector<std::weak_ptr<Animation>> active_animations_;
   tasm::Element* element_{nullptr};
 };
 
