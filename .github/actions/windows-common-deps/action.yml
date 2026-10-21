@@ -74,7 +74,7 @@ runs:
 
     - name: Setup cache action
       if: ${{ inputs.cache-backend == 'github' }}
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ${{ steps.hab-cache-dir.outputs.HABITAT_CACHE_DIR }}
         key: hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
