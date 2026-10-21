@@ -13,6 +13,7 @@
 #include <mutex>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/auto_reset.h"
@@ -21767,16 +21768,22 @@ TEST_P(FiberElementTest,
 TEST_P(FiberElementTest, ImperativeAnimationOriginAcrossStylingPipelines) {
   int32_t page_id = 11;
   for (const bool enable_new_styling_pipeline : {false, true}) {
-    for (const bool use_animate_v2 : {false, true}) {
+    for (const auto& mode : {std::pair{false, false}, std::pair{true, false},
+                             std::pair{false, true}}) {
+      const bool use_animate_v2 = mode.first;
+      const bool route_without_new_animator = mode.second;
       SCOPED_TRACE(::testing::Message()
                    << "enable_new_styling_pipeline="
                    << enable_new_styling_pipeline
-                   << ", use_animate_v2=" << use_animate_v2);
+                   << ", use_animate_v2=" << use_animate_v2
+                   << ", routing=" << route_without_new_animator);
       manager->enable_new_styling_pipeline_ = enable_new_styling_pipeline;
+      manager->supports_platform_animation_routing_ =
+          route_without_new_animator;
       auto page = manager->CreateFiberPage("page", page_id++);
       manager->SetFiberPageElement(page);
       auto element = manager->CreateFiberView();
-      element->enable_new_animator_ = true;
+      element->enable_new_animator_ = !route_without_new_animator;
       page->InsertNode(element);
       page->FlushActionsAsRoot();
 
@@ -21816,6 +21823,15 @@ TEST_P(FiberElementTest, ImperativeAnimationOriginAcrossStylingPipelines) {
       } else {
         EXPECT_FALSE(element->imperative_animation_state_.HasRecords());
         element->SetDataToNativeKeyframeAnimator(false);
+      }
+      if (enable_new_styling_pipeline) {
+        for (const auto* style : {"width: 10px;", "width: 20px;"}) {
+          element->SetRawInlineStyles(style);
+          page->FlushActionsAsRoot();
+          ASSERT_NE(nullptr, element->css_keyframe_manager_);
+          EXPECT_EQ(1U, element->css_keyframe_manager_->animations_map_.count(
+                            base::String("fade")));
+        }
       }
 
       for (const auto operation :
