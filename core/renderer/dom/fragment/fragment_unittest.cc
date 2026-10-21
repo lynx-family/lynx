@@ -1942,38 +1942,45 @@ TEST_F(FragmentTest, ComputeOutsetAdjustedRadiusNegativeSpread) {
   EXPECT_FLOAT_EQ(ComputeOutsetAdjustedRadius(0.f, -5.f, 0.5f), 0.0f);
 }
 
-TEST_F(FragmentTest, DrawBoxShadowInsetWithLargeSpreadSkipsInvertedRect) {
-  auto element = manager->CreateFiberView();
-  Fragment fragment(element.get());
+TEST_F(FragmentTest, DrawBoxShadowInsetPreservesCollapsedHole) {
+  for (const auto& size : {FloatSize(100.f, 20.f), FloatSize(20.f, 100.f),
+                           FloatSize(20.f, 20.f)}) {
+    for (float spread : {9.f, 10.f, 11.f}) {
+      auto element = manager->CreateFiberView();
+      Fragment fragment(element.get());
+      starlight::LayoutResultForRendering layout;
+      layout.size_ = size;
+      fragment.UpdateLayout(layout);
 
-  starlight::LayoutResultForRendering layout;
-  layout.border_ = starlight::DirectionValue<float>({0.f, 0.f, 0.f, 0.f});
-  layout.padding_ = starlight::DirectionValue<float>({5.f, 5.f, 5.f, 5.f});
-  layout.size_ = FloatSize(10.f, 10.f);
-  fragment.UpdateLayout(layout);
+      element->computed_css_style()->box_shadow_ =
+          base::InlineVector<starlight::ShadowData, 1>();
+      starlight::ShadowData shadow;
+      shadow.h_offset = 5.f;
+      shadow.v_offset = -5.f;
+      shadow.blur = 10.f;
+      shadow.spread = spread;
+      shadow.color = 0x80FF00FF;
+      shadow.option = starlight::ShadowOption::kInset;
+      element->computed_css_style()->box_shadow_->push_back(shadow);
 
-  // Inset shadow with large spread that inverts the rect
-  element->computed_css_style()->box_shadow_ =
-      base::InlineVector<starlight::ShadowData, 1>();
-  starlight::ShadowData shadow;
-  shadow.h_offset = 0.0f;
-  shadow.v_offset = 0.0f;
-  shadow.blur = 0.0f;
-  shadow.spread = 10.0f;  // Larger than half the padding box
-  shadow.color = 0xFF000000;
-  shadow.option = starlight::ShadowOption::kInset;
-  element->computed_css_style()->box_shadow_->push_back(shadow);
-
-  DisplayListBuilder builder;
-  fragment.DrawBoxShadow(builder);
-
-  DisplayList list = builder.Build();
-
-  // The shadow should be skipped because spread inverts the rect
-  // But padding box RecordBox is still added by DefinePaddingBox
-  auto items = CollectDisplayListItems(list);
-  ASSERT_EQ(items.size(), 1u);
-  EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+      DisplayListBuilder builder;
+      fragment.DrawBoxShadow(builder);
+      auto list = builder.Build();
+      auto items = CollectDisplayListItems(list);
+      ASSERT_EQ(items.size(), 3u);
+      ASSERT_EQ(items[1].type, DisplayListOpType::kRecordBox);
+      const auto& hole = items[1].payload.record_box;
+      EXPECT_FLOAT_EQ(hole.w, std::max(size.width_ - 2 * spread, 0.f));
+      EXPECT_FLOAT_EQ(hole.h, std::max(size.height_ - 2 * spread, 0.f));
+      ASSERT_EQ(items[2].type, DisplayListOpType::kBoxShadow);
+      const auto& operation = items[2].payload.box_shadow;
+      EXPECT_EQ(operation.shadow_box_index, 1);
+      EXPECT_EQ(operation.clip_box_index, 0);
+      EXPECT_EQ(operation.clip_mode, 1);
+      EXPECT_EQ(operation.color, 0x80FF00FFu);
+      EXPECT_FLOAT_EQ(operation.blur_radius, 10.f);
+    }
+  }
 }
 
 TEST_F(FragmentTest, DrawBoxShadowInsetWithNegativeSpread) {

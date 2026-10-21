@@ -5,6 +5,7 @@
 #import <Lynx/LynxBackgroundUtils.h>
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxImageManager.h>
+#import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
@@ -50,6 +51,18 @@ void AppendFill(DisplayList &list, uint32_t color, int32_t clip_index) {
   item.type = DisplayListOpType::kFill;
   item.payload.fill.color = color;
   item.payload.fill.clip_index = clip_index;
+  list.AppendItem(item);
+}
+
+void AppendBoxShadow(DisplayList &list, int32_t shadowIndex, int32_t clipIndex, bool inset,
+                     float blur = 10.f) {
+  DisplayListItem item;
+  item.type = DisplayListOpType::kBoxShadow;
+  item.payload.box_shadow.shadow_box_index = shadowIndex;
+  item.payload.box_shadow.clip_box_index = clipIndex;
+  item.payload.box_shadow.color = 0x80FF00FF;
+  item.payload.box_shadow.blur_radius = blur;
+  item.payload.box_shadow.clip_mode = inset ? 1 : 0;
   list.AppendItem(item);
 }
 
@@ -211,6 +224,134 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 }
 
 - (void)tearDown {
+}
+
+- (void)testBoxShadowCollapsedInsetAndReset {
+  for (CGSize size : {CGSizeMake(0, 20), CGSizeMake(60, 0), CGSizeZero}) {
+    LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                        andContext:nil];
+    DisplayList list;
+    const float radii[] = {8, 8, 8, 8, 8, 8, 8, 8};
+    AppendRecordBox(list, 10, 10, 60, 20, true, radii);
+    AppendRecordBox(list, 15, 15, size.width, size.height);
+    AppendBoxShadow(list, 1, 0, true);
+    [applier applyDisplayList:&list];
+    XCTAssertEqual(view.layer.sublayers.count, 1u);
+    CAShapeLayer *fill = (CAShapeLayer *)view.layer.sublayers.firstObject.sublayers.firstObject;
+    XCTAssertTrue([fill isKindOfClass:[CAShapeLayer class]]);
+    XCTAssertTrue(CGRectEqualToRect(fill.frame, CGRectMake(10, 10, 60, 20)));
+    XCTAssertEqualWithAccuracy(CGColorGetAlpha(fill.fillColor), 128.f / 255.f, 0.001f);
+    XCTAssertTrue(CGPathContainsPoint(fill.path, nullptr, CGPointMake(30, 10), false));
+    XCTAssertFalse(CGPathContainsPoint(fill.path, nullptr, CGPointZero, false));
+    XCTAssertEqual(fill.shadowOpacity, 0.f);
+
+    DisplayList empty;
+    [applier applyDisplayList:&empty];
+    XCTAssertEqual(view.layer.sublayers.count, 0u);
+  }
+}
+
+- (void)testBoxShadowInsetAndOutsetPaths {
+  for (bool inset : {false, true}) {
+    LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                        andContext:nil];
+    DisplayList list;
+    AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+    AppendBegin(list, 2, kViewType, 7, 9, 60, 20);
+    AppendRecordBox(list, 10, 10, 60, 20);
+    AppendRecordBox(list, 15, 15, 50, 10);
+    AppendBoxShadow(list, 1, 0, inset);
+    AppendEnd(list);
+    AppendEnd(list);
+    [applier applyDisplayList:&list];
+    CALayer *shadow = view.layer.sublayers.firstObject.sublayers.firstObject;
+    XCTAssertNotNil(shadow);
+    XCTAssertTrue(CGRectEqualToRect(shadow.frame, CGRectMake(17, 19, 60, 20)));
+    XCTAssertTrue(CGSizeEqualToSize(shadow.shadowOffset, CGSizeZero));
+    XCTAssertEqual(shadow.shadowRadius, 5.f);
+    XCTAssertEqualWithAccuracy(CGColorGetAlpha(shadow.shadowColor), 128.f / 255.f, 0.001f);
+    XCTAssertEqual(CGPathContainsPoint(shadow.shadowPath, nullptr, CGPointMake(30, 10), false),
+                   !inset);
+    XCTAssertEqual(CGPathContainsPoint(shadow.shadowPath, nullptr, CGPointMake(1, 1), false),
+                   inset);
+    CAShapeLayer *mask = (CAShapeLayer *)shadow.mask;
+    CGPoint center = CGPointMake(30 - mask.frame.origin.x, 10 - mask.frame.origin.y);
+    XCTAssertEqual(CGPathContainsPoint(mask.path, nullptr, center, !inset), inset);
+  }
+}
+
+- (void)testBoxShadowHostDecorationSurvivesClipAndUpdates {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
+  [parent addSubview:view];
+  [view createRendererWithSign:1 andContext:nil];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+  AppendRecordBox(list, 0, 0, 100, 80);
+  AppendRecordBox(list, -5, -5, 110, 90);
+  AppendBoxShadow(list, 1, 0, false);
+  AppendBoxShadow(list, 1, 0, false, 0);
+  AppendEnd(list);
+  [applier applyDisplayList:&list];
+  [applier syncHostDecorationLayers];
+  XCTAssertEqual(parent.layer.sublayers.count, 3u);
+  XCTAssertEqual(parent.layer.sublayers.lastObject, view.layer);
+  CALayer *first = parent.layer.sublayers[0];
+  XCTAssertTrue(CGRectEqualToRect(first.frame, view.frame));
+  XCTAssertEqual(first.sublayers.firstObject.shadowRadius, 5.f);
+  XCTAssertEqual(parent.layer.sublayers[1].sublayers.firstObject.shadowRadius, 0.f);
+  view.layer.masksToBounds = YES;
+  XCTAssertEqual(first.superlayer, parent.layer);
+  [applier applyDisplayList:&list];
+  XCTAssertNil(first.superlayer);
+  XCTAssertEqual(parent.layer.sublayers.count, 3u);
+}
+
+- (void)testBoxShadowHostDecorationKeepsViewportCoordinatesAfterScrolling {
+  for (int mode = 0; mode < 3; ++mode) {
+    UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+    LynxMockScrollView *view =
+        [[LynxMockScrollView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
+    view.contentSize = CGSizeMake(200, 400);
+    [parent addSubview:view];
+    [view createRendererWithSign:1 andContext:nil];
+    LynxRenderer *renderer = view.renderer;
+    DisplayList list;
+    AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+    AppendRecordBox(list, 2, 3, 96, 74);
+    AppendRecordBox(list, 5, 6, mode == 2 ? 0 : 90, 68);
+    AppendBoxShadow(list, 1, 0, mode != 0);
+    AppendEnd(list);
+    [renderer updateDisplayList:&list];
+    CALayer *container = parent.layer.sublayers.firstObject;
+    CALayer *drawing = container.sublayers.firstObject;
+    CGRect initialRect = [drawing convertRect:drawing.bounds toLayer:parent.layer];
+
+    // UIScrollView represents contentOffset through its bounds origin.
+    view.contentOffset = CGPointMake(7, 40);
+    SubtreeProperty opacity;
+    opacity.type = DisplayListSubtreePropertyOpType::kOpacity;
+    opacity.data.opacity = 0.8f;
+    [renderer applySubtreeProperties:&opacity count:1];
+    XCTAssertTrue(CGPointEqualToPoint(container.bounds.origin, CGPointZero));
+    XCTAssertEqualWithAccuracy(container.opacity, 0.8f, 0.001f);
+    XCTAssertTrue(
+        CGRectEqualToRect([drawing convertRect:drawing.bounds toLayer:parent.layer], initialRect));
+
+    [renderer updateDisplayList:&list];
+    XCTAssertNil(container.superlayer);
+    container = parent.layer.sublayers.firstObject;
+    drawing = container.sublayers.firstObject;
+    XCTAssertEqual(parent.layer.sublayers.count, 2u);
+    XCTAssertTrue(CGPointEqualToPoint(container.bounds.origin, CGPointZero));
+    XCTAssertEqualWithAccuracy(container.opacity, 0.8f, 0.001f);
+    XCTAssertTrue(
+        CGRectEqualToRect([drawing convertRect:drawing.bounds toLayer:parent.layer], initialRect));
+  }
 }
 
 - (void)testInitWithView {
