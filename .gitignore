@@ -106,6 +106,8 @@ js_libraries/**/output/
 js_libraries/**/node_modules/
 js_libraries/**/lib
 js_libraries/lynx-core/src/common/feature.ts
+platform/harmony/lynx_library_plugin/dist/
+platform/harmony/lynx_library_plugin/*.tsbuildinfo
 
 /core/renderer/css/auto_gen_css_decoder.h
 /core/renderer/css/auto_gen_css_decoder.cc

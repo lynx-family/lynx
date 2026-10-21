@@ -11,6 +11,10 @@ export { SessionStorageCallback } from './tasm/SessionStorage'
 
 export { LynxModule, ModuleClassWrapper, SendableLynxModule, SendableModuleClassWrapper } from './jsbridge/LynxModule'
 
+export {
+  LynxLibraryProvider, LynxLibraryProviderEntry, LynxLibraryRegistry
+} from './tasm/library/LynxLibraryRegistry'
+
 export { LynxHttpRequest } from './jsbridge/network/LynxHttpRequest'
 
 export { LynxHttpResponse } from './jsbridge/network/LynxHttpResponse'
