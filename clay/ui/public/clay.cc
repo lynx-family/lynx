@@ -49,6 +49,10 @@ SharedImageBacking::BackingType ClaySharedImageBackingTypeToBackingType(
       return SharedImageBacking::BackingType::kShmImage;
     case kClaySharedImageBackingTypeAngleShmImage:
       return SharedImageBacking::BackingType::kAngleShmImage;
+    case kClaySharedImageBackingTypeEGLImage:
+      return SharedImageBacking::BackingType::kEGLImage;
+    case kClaySharedImageBackingTypeAHardwareBuffer:
+      return SharedImageBacking::BackingType::kAHardwareBuffer;
   }
   FML_UNREACHABLE();
 }
@@ -303,6 +307,12 @@ CLAY_EXTERN_C void ClaySharedImageGetBacking(
       case SharedImageBacking::BackingType::kAngleShmImage:
         *out_type = kClaySharedImageBackingTypeAngleShmImage;
         break;
+      case SharedImageBacking::BackingType::kEGLImage:
+        *out_type = kClaySharedImageBackingTypeEGLImage;
+        break;
+      case SharedImageBacking::BackingType::kAHardwareBuffer:
+        *out_type = kClaySharedImageBackingTypeAHardwareBuffer;
+        break;
       default:
         break;
     }
@@ -509,7 +519,7 @@ CLAY_EXTERN_C bool ClaySharedImageSinkUpdateFront(
 }
 
 CLAY_EXTERN_C void ClaySharedImageSinkReleaseFront(
-    ClaySharedImageRef sink_ref, ClayFenceSyncRef produced_fence_sync_ref) {
+    ClaySharedImageSinkRef sink_ref, ClayFenceSyncRef produced_fence_sync_ref) {
   SharedImageSink* sink = reinterpret_cast<SharedImageSink*>(sink_ref);
   std::unique_ptr<FenceSync> produced_fence_sync(
       reinterpret_cast<FenceSync*>(produced_fence_sync_ref));

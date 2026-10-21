@@ -23,7 +23,7 @@ class EGLImageBacking : public SharedImageBacking {
                   std::optional<GraphicsMemoryHandle> gfx_handle = {});
   ~EGLImageBacking() override;
   BackingType GetType() const override;
-  GraphicsMemoryHandle GetGFXHandle() const override { return nullptr; }
+  GraphicsMemoryHandle GetGFXHandle() const override { return egl_image_; }
   fml::RefPtr<SharedImageRepresentation> CreateRepresentation(
       const ClaySharedImageRepresentationConfig* config) override;
 #ifndef ENABLE_SKITY
