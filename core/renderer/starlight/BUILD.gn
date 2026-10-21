@@ -132,14 +132,14 @@ source_set("starlight") {
   } else {
     not_needed(starlight_event_sources)
   }
-  public_deps = []
+  public_deps = [
+    "../../../base/src:base_group",
+    "../../base",
+  ]
 
   configs += [ ":starlight_private_config" ]
 
   deps = [ "../../../third_party/rapidjson" ]
-  if (is_win) {
-    deps += [ "../../../base/src:base_group" ]
-  }
 }
 
 group("starlight_tests") {
