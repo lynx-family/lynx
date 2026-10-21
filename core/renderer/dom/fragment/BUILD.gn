@@ -7,6 +7,7 @@ import("../../../Lynx.gni")
 
 lynx_core_source_set("fragment") {
   sources = [
+    "custom_draw_functions.h",
     "event/platform_event_bundle.h",
     "event/platform_event_emitter.cc",
     "event/platform_event_emitter.h",
