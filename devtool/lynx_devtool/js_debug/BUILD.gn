@@ -133,6 +133,8 @@ devtool_source_set("rts_inspector_manager_factory") {
   ]
   if (is_ios) {
     sources += [ "lepus/manager/rts_inspector_manager_factory_stub_ios.cc" ]
+  } else {
+    sources += [ "lepus/manager/rts_inspector_manager_factory_stub_default.cc" ]
   }
 }
 
@@ -143,6 +145,8 @@ devtool_source_set("rts_inspector_manager_factory_stub") {
   ]
   if (is_ios) {
     sources += [ "lepus/manager/rts_inspector_manager_factory_stub_ios.cc" ]
+  } else {
+    sources += [ "lepus/manager/rts_inspector_manager_factory_stub_default.cc" ]
   }
 }
 
