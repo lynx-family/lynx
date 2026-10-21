@@ -72,7 +72,10 @@ if (defined(enable_rts_runtime) && enable_rts_runtime && is_debug) {
   shared_library("rts_debug_loader") {
     output_name = "lynxdevtool_rts_debug"
 
-    sources = [ "../../../devtool/lynx_devtool/js_debug/lepus/manager/rts_inspector_manager_factory_stub.cc" ]
+    sources = [
+      "../../../devtool/lynx_devtool/js_debug/lepus/manager/rts_inspector_manager_factory_stub.cc",
+      "../../../devtool/lynx_devtool/js_debug/lepus/manager/rts_inspector_manager_factory_stub_default.cc",
+    ]
 
     lib_dirs = [
       primjs_native_lib_dir,
