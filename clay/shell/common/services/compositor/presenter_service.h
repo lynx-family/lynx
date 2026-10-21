@@ -34,6 +34,13 @@ class PresenterService
 
   void MarkPlatformViewToDispose(int64_t id);
 
+  void DisposeOverlays(
+      const std::vector<std::shared_ptr<PlatformOverlay>> &overlays) {
+    for (const auto &overlay : overlays) {
+      DisposeOverlay(*overlay);
+    }
+  }
+
   static std::shared_ptr<PresenterService> Create();
 
  private:
