@@ -968,6 +968,37 @@ public class DisplayListApplierTest {
     assertEquals(new RectF(0f, 0f, 100f, 50f), bounds);
   }
 
+  @Test
+  public void testCollapsedInsetShadowFillsPaddingBox() {
+    for (float[] hole : new float[][] {{0f, 20f}, {60f, 0f}, {0f, 0f}}) {
+      for (float blur : new float[] {0f, 10f}) {
+        for (float radius : new float[] {0f, 8f}) {
+          NativeDisplayListBuilder list = createDisplayList();
+          list.begin(0, VIEW_TYPE, 0f, 0f, 80f, 40f)
+              .recordBox(10f, 10f, 60f, 20f, radius, radius, radius, radius, radius, radius, radius,
+                  radius)
+              .recordBox(25f, 15f, hole[0], hole[1])
+              .boxShadow(1, 0, 0x80FF00FF, blur, 1)
+              .end();
+          Bitmap bitmap = Bitmap.createBitmap(80, 40, Bitmap.Config.ARGB_8888);
+          try {
+            setDisplayList(list);
+            displayListApplier.drawTillNextView(new Canvas(bitmap));
+            assertEquals(0x80FF00FF, bitmap.getPixel(40, 20));
+            assertEquals(0x80FF00FF, bitmap.getPixel(40, 11));
+            assertEquals(0, bitmap.getPixel(40, 9));
+            assertEquals(0, bitmap.getPixel(9, 20));
+            if (radius > 0f) {
+              assertEquals(0, bitmap.getPixel(10, 10));
+            }
+          } finally {
+            bitmap.recycle();
+          }
+        }
+      }
+    }
+  }
+
   /** Verifies OP_BOX_SHADOW reads the typed payload and draws the shadow. */
   @Test
   public void testOpBoxShadow() {

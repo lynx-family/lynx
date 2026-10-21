@@ -1051,15 +1051,20 @@ public class DisplayListApplier implements Drawable.Callback {
           canvas.clipPath(mReusablePath2, Region.Op.INTERSECT);
         }
 
-        mReusablePath2.reset();
-        mReusablePath2.setFillType(Path.FillType.EVEN_ODD);
-        float outset = Math.max(blurRadius, 1.f) + 100.f;
-        mReusablePath2.addRect(clipRect.left - outset, clipRect.top - outset,
-            clipRect.right + outset, clipRect.bottom + outset, Path.Direction.CW);
-        if (shadowBox.hasBorderRadius()) {
-          mReusablePath2.addRoundRect(shadowRect, shadowBox.getBorderRadii(), Path.Direction.CCW);
+        if (shadowRect.isEmpty()) {
+          // A collapsed inset hole covers the padding box. Do not blur its clip edge.
+          mPaint.setMaskFilter(null);
         } else {
-          mReusablePath2.addRect(shadowRect, Path.Direction.CCW);
+          mReusablePath2.reset();
+          mReusablePath2.setFillType(Path.FillType.EVEN_ODD);
+          float outset = Math.max(blurRadius, 1.f) + 100.f;
+          mReusablePath2.addRect(clipRect.left - outset, clipRect.top - outset,
+              clipRect.right + outset, clipRect.bottom + outset, Path.Direction.CW);
+          if (shadowBox.hasBorderRadius()) {
+            mReusablePath2.addRoundRect(shadowRect, shadowBox.getBorderRadii(), Path.Direction.CCW);
+          } else {
+            mReusablePath2.addRect(shadowRect, Path.Direction.CCW);
+          }
         }
         canvas.drawPath(mReusablePath2, mPaint);
         canvas.restoreToCount(saved);

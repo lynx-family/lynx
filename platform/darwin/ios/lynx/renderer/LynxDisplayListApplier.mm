@@ -22,6 +22,13 @@
 #include "gfx/public/display_list_reader.h"
 #include "gfx/public/rounded_rectangle.h"
 
+// Shadow children are positioned in viewport coordinates, not scroll content coordinates.
+@interface LynxBoxShadowContainerLayer : CALayer
+@end
+
+@implementation LynxBoxShadowContainerLayer
+@end
+
 using namespace lynx;
 using namespace lynx::tasm;
 
@@ -81,6 +88,11 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 - (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op;
 - (void)applyRoundedRect:(const RoundedRectangle &)box toLayer:(CALayer *)layer;
 - (CGRect)rectForRoundedRectangle:(const RoundedRectangle &)rect applyingOffsets:(BOOL)applyOffsets;
+- (CALayer *)createBoxShadowLayerWithShadowBox:(const RoundedRectangle &)shadowBox
+                                       clipBox:(const RoundedRectangle &)clipBox
+                                         color:(uint32_t)color
+                                    blurRadius:(float)blurRadius
+                                         inset:(BOOL)inset;
 - (CALayer *)createLinearGradientLayerWithAngle:(float)angle
                                          colors:(NSArray<NSNumber *> *)colors
                                           stops:(NSArray<NSNumber *> *)stops
@@ -666,6 +678,23 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         }
         break;
       }
+      case DisplayListOpType::kBoxShadow: {
+        const auto &shadow = item.payload.box_shadow;
+        if (shadow.shadow_box_index < 0 || shadow.clip_box_index < 0 ||
+            static_cast<size_t>(shadow.shadow_box_index) >= box_array_.size() ||
+            static_cast<size_t>(shadow.clip_box_index) >= box_array_.size()) {
+          break;
+        }
+        CALayer *layer = [self createBoxShadowLayerWithShadowBox:box_array_[shadow.shadow_box_index]
+                                                         clipBox:box_array_[shadow.clip_box_index]
+                                                           color:shadow.color
+                                                      blurRadius:shadow.blur_radius
+                                                           inset:shadow.clip_mode == 1];
+        if (layer != nil) {
+          [self insertLayer:layer forOp:op];
+        }
+        break;
+      }
       default:
         break;
     }
@@ -764,9 +793,11 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   for (CALayer *layer in _hostDecorationLayers) {
     layer.transform = CATransform3DIdentity;
     layer.anchorPoint = hostLayer.anchorPoint;
-    // Background children use viewport coordinates, independent of the scroll offset.
-    layer.bounds = layer == _hostBackgroundLayer ? (CGRect){CGPointZero, hostLayer.bounds.size}
-                                                 : hostLayer.bounds;
+    // Background and shadow children use viewport coordinates, independent of the scroll offset.
+    BOOL usesViewportCoordinates =
+        layer == _hostBackgroundLayer || [layer isKindOfClass:[LynxBoxShadowContainerLayer class]];
+    layer.bounds =
+        usesViewportCoordinates ? (CGRect){CGPointZero, hostLayer.bounds.size} : hostLayer.bounds;
     layer.position = hostLayer.position;
     layer.transform = hostLayer.transform;
 
@@ -804,6 +835,78 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     boxRect.origin.y += top_offset_;
   }
   return boxRect;
+}
+
+- (CALayer *)createBoxShadowLayerWithShadowBox:(const RoundedRectangle &)shadowBox
+                                       clipBox:(const RoundedRectangle &)clipBox
+                                         color:(uint32_t)color
+                                    blurRadius:(float)blurRadius
+                                         inset:(BOOL)inset {
+  const BOOL emptyHole = shadowBox.GetWidth() <= 0.f || shadowBox.GetHeight() <= 0.f;
+  if (clipBox.GetWidth() <= 0.f || clipBox.GetHeight() <= 0.f || (!inset && emptyHole)) {
+    return nil;
+  }
+
+  // Keep the drawing in a child layer: host decoration synchronization changes the container
+  // bounds.
+  CALayer *container = [LynxBoxShadowContainerLayer layer];
+  container.frame = (CGRect){CGPointZero, _view.bounds.size};
+  CGRect clipRect = CGRectMake(0, 0, clipBox.GetWidth(), clipBox.GetHeight());
+  CGPathRef clipPath = [LynxBackgroundUtils
+      createBezierPathWithRoundedRect:clipRect
+                          borderRadii:[self borderRadiiWithRoundedRectangle:clipBox]];
+  UIColor *shadowColor = [self colorFromARGB:color];
+  if (inset && emptyHole) {
+    // No hole remains. Fill the padding box without blurring its clipping edge.
+    CAShapeLayer *fill = [CAShapeLayer layer];
+    fill.frame = [self rectForRoundedRectangle:clipBox applyingOffsets:YES];
+    fill.path = clipPath;
+    fill.fillColor = shadowColor.CGColor;
+    [container addSublayer:fill];
+    CGPathRelease(clipPath);
+    return container;
+  }
+
+  CGRect shadowRect =
+      CGRectMake(shadowBox.GetX() - clipBox.GetX(), shadowBox.GetY() - clipBox.GetY(),
+                 shadowBox.GetWidth(), shadowBox.GetHeight());
+  CGPathRef shadowPath = [LynxBackgroundUtils
+      createBezierPathWithRoundedRect:shadowRect
+                          borderRadii:[self borderRadiiWithRoundedRectangle:shadowBox]];
+  // Extend the inverse path beyond both boxes so its outer edge cannot affect the visible blur.
+  CGFloat extent = MAX(blurRadius, 0.f) * 3.f + 1.f;
+  CGRect outerRect = CGRectInset(CGRectUnion(clipRect, shadowRect), -extent, -extent);
+  UIBezierPath *path = [UIBezierPath bezierPathWithCGPath:shadowPath];
+  if (inset) {
+    path = [path bezierPathByReversingPath];
+    [path appendPath:[UIBezierPath bezierPathWithRect:outerRect]];
+  }
+  CALayer *layer = [CALayer layer];
+  layer.frame = [self rectForRoundedRectangle:clipBox applyingOffsets:YES];
+  layer.shadowPath = path.CGPath;
+  layer.shadowColor = shadowColor.CGColor;
+  layer.shadowOpacity = 1.f;
+  layer.shadowOffset = CGSizeZero;  // The recorded shadow box already includes the CSS offset.
+  layer.shadowRadius = MAX(blurRadius, 0.f) * 0.5f;
+
+  CAShapeLayer *mask = [CAShapeLayer layer];
+  // The outset mask must extend outside the layer's bounds.
+  mask.frame = inset ? clipRect : outerRect;
+  CGMutablePathRef maskPath = CGPathCreateMutable();
+  CGAffineTransform translation =
+      CGAffineTransformMakeTranslation(-mask.frame.origin.x, -mask.frame.origin.y);
+  CGPathAddPath(maskPath, &translation, clipPath);
+  if (!inset) {
+    CGPathAddRect(maskPath, &translation, outerRect);
+    mask.fillRule = kCAFillRuleEvenOdd;
+  }
+  mask.path = maskPath;
+  layer.mask = mask;
+  [container addSublayer:layer];
+  CGPathRelease(maskPath);
+  CGPathRelease(shadowPath);
+  CGPathRelease(clipPath);
+  return container;
 }
 
 - (CALayer *)createLinearGradientLayerWithAngle:(float)angle
@@ -999,7 +1102,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   }
   return op == DisplayListOpType::kFill || op == DisplayListOpType::kBorder ||
          op == DisplayListOpType::kBackgroundImage || op == DisplayListOpType::kLinearGradient ||
-         op == DisplayListOpType::kRadialGradient;
+         op == DisplayListOpType::kRadialGradient || op == DisplayListOpType::kBoxShadow;
 }
 
 - (UIImageView *)createImageView {

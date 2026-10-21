@@ -200,14 +200,16 @@ void DrawBoxShadow(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
   }
   const auto& shadow_box = boxes[shadow.shadow_box_index];
   const auto& clip_box = boxes[shadow.clip_box_index];
-  if (shadow_box.GetWidth() <= 0.f || shadow_box.GetHeight() <= 0.f ||
-      clip_box.GetWidth() <= 0.f || clip_box.GetHeight() <= 0.f) {
+  const bool inset = shadow.clip_mode == 1;
+  const bool empty_shadow =
+      shadow_box.GetWidth() <= 0.f || shadow_box.GetHeight() <= 0.f;
+  if ((!inset && empty_shadow) || clip_box.GetWidth() <= 0.f ||
+      clip_box.GetHeight() <= 0.f) {
     return;
   }
-  auto* path = CreateBoxPath(shadow_box, density);
+  auto* path = CreateBoxPath(empty_shadow ? clip_box : shadow_box, density);
   auto* clip_path = CreateBoxPath(clip_box, density);
-  const bool inset = shadow.clip_mode == 1;
-  if (inset) {
+  if (inset && !empty_shadow) {
     // Match BoxShadowLayer: blur the base shape minus the inset shadow shape.
     auto* inset_path = CreateBoxPath(clip_box, density);
     OH_Drawing_PathOp(inset_path, path, PATH_OP_MODE_DIFFERENCE);
@@ -219,7 +221,8 @@ void DrawBoxShadow(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
   OH_Drawing_BrushSetColor(brush, shadow.color);
   OH_Drawing_Filter* filter = nullptr;
   OH_Drawing_MaskFilter* mask_filter = nullptr;
-  if (shadow.blur_radius > 0.f) {
+  // With no hole, fill the padding box without blurring its clipping edge.
+  if (shadow.blur_radius > 0.f && !empty_shadow) {
     mask_filter =
         BoxShadowLayer::CreateBlurMaskFilter(shadow.blur_radius, density);
     filter = OH_Drawing_FilterCreate();

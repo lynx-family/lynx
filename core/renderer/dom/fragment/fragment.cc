@@ -1060,11 +1060,8 @@ void Fragment::DrawBoxShadow(DisplayListBuilder& display_list_builder) {
     RoundedRectangle shadow_box = ComputeShadowBox(
         base_box, shadow.spread, shadow.h_offset, shadow.v_offset, is_inset);
 
-    // Skip if spread inverts the rect (inset only)
-    if (is_inset &&
-        (shadow_box.GetWidth() <= 0.f || shadow_box.GetHeight() <= 0.f)) {
-      continue;
-    }
+    // A collapsed inset hole still casts a shadow over the entire padding box.
+    // Preserve the operation so platform renderers can handle this case.
 
     // Record shadow box to display list
     int32_t shadow_box_index = -1;
