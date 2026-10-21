@@ -14,6 +14,11 @@ declare_args() {
   # Whether enable clay lite
   enable_clay_lite = false
 
+  # Size edition: render-only measurement without any element/view layer.
+  # Android artifacts may contain unresolved references and are not loadable
+  # renderers. Keep disabled for normal application builds.
+  enable_clay_se = false
+
   # The runtime mode ("debug", "profile", "release", or "jit_release")
   clay_engine_mode = "release"
 
@@ -44,6 +49,9 @@ declare_args() {
   use_discrete_gpu = false
 }
 
+# Keep host-tool and other platform builds on their normal code paths.
+enable_clay_se = enable_clay_se && is_android
+
 declare_args() {
   # Whether to use skity backend
   enable_skity = is_android || is_ios || enable_clay_lite
@@ -68,7 +76,8 @@ declare_args() {
   # Whether use own binary icudtl.
   use_binary_icudtl = false
 
-  use_accessbility = (is_android || is_ios) && !enable_clay_lite
+  use_accessbility =
+      (is_android || is_ios) && !enable_clay_lite && !enable_clay_se
 }
 
 if (enable_skity) {
