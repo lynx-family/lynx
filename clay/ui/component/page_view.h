@@ -328,7 +328,8 @@ class PageView : public BaseView,
     return render_delegate_->GetClipboardData();
   }
 
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   // Text input related functions Begin.
   void SetTextInputClient(int client_id, const char* input_action,
                           const char* input_type) {

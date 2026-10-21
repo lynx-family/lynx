@@ -146,6 +146,10 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   void Reset(bool wait_for_runtime_detach = true);
 
+  // Hold the runner across renderer destruction to drain asynchronous runtime
+  // detach before destroying a host with its own native resources.
+  fml::RefPtr<fml::TaskRunner> GetRuntimeTaskRunner() const;
+
   void SetTemplateVerification(TemplateVerification verification) {
     template_verification_ = verification;
   }

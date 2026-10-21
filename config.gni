@@ -106,6 +106,13 @@ declare_args() {
   # Whether to enable the headless engine. On iOS, package it alongside UIView.
   is_headless = false
 
+  # Optional Linux GTK4 host. Does not change the headless build mode.
+  enable_lynx_gtk = false
+
+  # Historical rendering probes only; never use this for release packaging.
+  # The full-support GTK host requires the GTK 4.22 runtime/development SDK.
+  lynx_gtk_legacy_rendering_probe = false
+
   # Whether to enable embedder layer for desktop.
   # If true, we can eliminate some unused platform-layer compilation units.
   desktop_enable_embedder_layer = false

@@ -220,8 +220,8 @@ EmbedderEngine::EmbedderEngine(
     const clay::TaskRunners& task_runners, const clay::Settings& settings,
     const Shell::CreateCallback<PlatformView>& on_create_platform_view,
     const Shell::CreateCallbackFnPtr<Rasterizer>& on_create_rasterizer)
-    : service_manager_(service_manager),
-      thread_host_(std::move(thread_host)),
+    : thread_host_(std::move(thread_host)),
+      service_manager_(service_manager),
       task_runners_(task_runners),
       shell_args_(std::make_unique<ShellArgs>(settings, on_create_platform_view,
                                               on_create_rasterizer)) {}

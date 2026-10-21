@@ -160,6 +160,11 @@ source_set("txt") {
     deps += [ "//third_party/skia" ]
   }
 
+  if (enable_skity && is_linux) {
+    assert(flutter_use_fontconfig, "Linux Skity requires Fontconfig")
+    sources += [ "src/txt/font_manager_fontconfig_skity.cc" ]
+  }
+
   public_configs = [ ":txt_config" ]
 
   public_configs += [
@@ -168,7 +173,7 @@ source_set("txt") {
   ]
 
   public_deps = [
-    "../../fml:fml",
+    "../../fml",
     "//third_party/harfbuzz",
     "//third_party/icu",
   ]
@@ -190,7 +195,7 @@ source_set("txt") {
 
   if (is_mac || is_ios) {
     sources += [ "src/txt/platform_mac.mm" ]
-    deps += [ "../../fml:fml" ]
+    deps += [ "../../fml" ]
   } else if (is_android) {
     sources += [ "src/txt/platform_android.cc" ]
   } else if (is_linux) {
@@ -263,9 +268,9 @@ source_set("txt") {
       "src/tttext/paragraph_builder_tt_text.h",
       "src/tttext/paragraph_tt_text.cc",
       "src/tttext/paragraph_tt_text.h",
+      "src/tttext/tttext_headers.h",
       "src/tttext/tttext_index_mapper.cc",
       "src/tttext/tttext_index_mapper.h",
-      "src/tttext/tttext_headers.h",
     ]
 
     include_dirs += [ "src/tttext/" ]
@@ -285,7 +290,7 @@ source_set("txt") {
 if (enable_unittests) {
   txt_common_executable_deps = [
     "../../../base/src:base_static",
-    "../../fml:fml",  # For ICU initialization.
+    "../../fml",  # For ICU initialization.
     "../../fml:icu_util",
   ]
 
@@ -310,7 +315,7 @@ if (enable_unittests) {
 
     deps = [
       ":txt",
-      "../../fml:fml",
+      "../../fml",
       "//third_party/skia",
     ]
   }
@@ -438,9 +443,7 @@ if (enable_unittests) {
     executable("paragraph_tt_text_unittests") {
       testonly = true
 
-      sources = [
-        "tests/paragraph_tt_text_unittests.cc",
-      ]
+      sources = [ "tests/paragraph_tt_text_unittests.cc" ]
 
       deps = [
                ":txt",

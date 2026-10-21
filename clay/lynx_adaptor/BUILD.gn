@@ -26,8 +26,8 @@ if (enable_unittests) {
     ]
 
     public_deps = [
-      "../fml:fml",
-      "../ui:ui",
+      "../fml",
+      "../ui",
     ]
 
     defines = []
@@ -43,8 +43,8 @@ source_set("resource_loader_embedder") {
     "resource_loader_embedder.h",
   ]
   deps = [
-    "../fml:fml",
-    "../ui:ui",
+    "../fml",
+    "../ui",
   ]
   public_configs = [
     "../../clay:config",
@@ -97,12 +97,12 @@ source_set("lynx_adaptor") {
   ]
 
   public_deps = [
-    "../fml:fml",
-    "../ui:ui",
+    "../fml",
+    "../ui",
   ]
   if (enable_clay_ui_tree) {
     public_deps += [
-      "../../third_party/rapidjson:rapidjson",
+      "../../third_party/rapidjson",
       "../gfx",
     ]
   }
@@ -110,7 +110,7 @@ source_set("lynx_adaptor") {
     public_deps += [ ":lynx_trail_hub_impl_clay" ]
   }
 
-  if (is_win || is_mac || (is_linux && is_headless) ||
+  if (is_win || is_mac || (is_linux && (is_headless || enable_lynx_gtk)) ||
       (is_harmony && is_headless)) {
     sources += [
       "native_view_service_embedder.cc",
@@ -142,5 +142,5 @@ source_set("lynx_trail_hub_impl_clay") {
 
   public_configs = [ "../../clay:config" ]
 
-  deps = [ "../../platform/embedder/lynx_service:lynx_service" ]
+  deps = [ "../../platform/embedder/lynx_service" ]
 }

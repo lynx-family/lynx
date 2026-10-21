@@ -1,0 +1,35 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0.
+import("//build/config/linux/pkg_config.gni")
+import("../../../../../core/Lynx.gni")
+pkg_config("gtk4") {
+  if (lynx_gtk_legacy_rendering_probe) {
+    packages = [
+      "gtk4 >= 4.6",
+      "epoxy",
+    ]
+  } else {
+    packages = [
+      "gtk4 >= 4.22",
+      "epoxy",
+    ]
+  }
+}
+source_set("gtk_surface") {
+  sources = [
+    "clay_gtk_surface.cc",
+    "clay_gtk_surface.h",
+  ]
+  include_dirs = [ "../../../../.." ]
+  configs += [ ":gtk4" ]
+  _api_floor = "4_22"
+  if (lynx_gtk_legacy_rendering_probe) {
+    _api_floor = "4_6"
+  }
+  defines = [
+    "GTK_VERSION_MIN_REQUIRED=GTK_VERSION_${_api_floor}",
+    "GTK_VERSION_MAX_ALLOWED=GTK_VERSION_${_api_floor}",
+    "GDK_VERSION_MIN_REQUIRED=GDK_VERSION_${_api_floor}",
+    "GDK_VERSION_MAX_ALLOWED=GDK_VERSION_${_api_floor}",
+  ]
+}

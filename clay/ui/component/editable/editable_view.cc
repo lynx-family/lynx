@@ -611,12 +611,23 @@ void EditableView::RelayoutWhenSetFontFamily(const std::string& font_family) {
 }
 
 void EditableView::UpdateCaretPosition() {
+#if defined(ENABLE_GTK_HOST)
+  // Use the painted caret, including vertical centering and the offset that
+  // keeps scrolled text visible. Paragraph-local coordinates put IME popups
+  // over the text instead of below the displayed caret.
+  auto caret_rect = GetRenderEditable()->ComputeCaretRectRelativeToCanvas();
+  auto point = AbsoluteLocationWithScroll();
+  text_input_controller_->UpdateCaretPosition(
+      point.x() + caret_rect.x(), point.y() + caret_rect.y(),
+      caret_rect.width(), caret_rect.height());
+#else
   auto point = AbsoluteLocationWithScroll();
   auto caret_rect = GetRenderEditable()->ComputeCaretRect();
   text_input_controller_->UpdateCaretPosition(
       point.x() + caret_rect.x() + ContentInsetLeft(),
       point.y() + caret_rect.y() + ContentInsetTop(), caret_rect.width(),
       caret_rect.height());
+#endif
 }
 
 void EditableView::OnValueChanged(const TextEditingValue& value,
@@ -746,6 +757,15 @@ bool EditableView::OnKeyEventInternal(const KeyEvent* key_event) {
   if (!editing_ && keycode != KeyCode::kSelect && keycode != KeyCode::kEnter) {
     return false;
   }
+#if defined(ENABLE_GTK_HOST)
+  if (keycode == KeyCode::kHome || keycode == KeyCode::kEnd) {
+    if (is_down || is_repeat)
+      MoveCaretToBoundary(keycode == KeyCode::kEnd,
+                          (hot_key_tag_ & kTagShift) != 0,
+                          (hot_key_tag_ & kTagControl) != 0);
+    return true;
+  }
+#endif
 
   if (ApplyHotKey(key_event)) {
     return true;
@@ -830,7 +850,8 @@ bool EditableView::OnKeyEventInternal(const KeyEvent* key_event) {
     }
     default: {
 #if defined(OS_ANDROID) || defined(OS_IOS) || \
-    (defined(OS_HARMONY) && !defined(ENABLE_HEADLESS))
+    (defined(OS_HARMONY) &&                   \
+     !(defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST)))
       // In case a keyboard is used on a mobile system.
       if (!key_event->GetCharacter().empty()) {
         // Treat as unicode character.
@@ -945,6 +966,39 @@ void EditableView::MoveCaret(KeyCode keycode) {
     GetRenderEditable()->MoveCaretUpDown(VerticalDirection::kDown);
   }
 }
+
+#if defined(ENABLE_GTK_HOST)
+void EditableView::MoveCaretToBoundary(bool end, bool extend, bool document) {
+  auto value = GetTextEditingValue();
+  if (value.composing()) return;  // The IM context owns its preedit caret.
+  const auto& text = value.GetU16Text();
+  size_t offset = std::min(value.selection().extent(), text.size());
+  TextRange boundary(0, text.size());
+  if (is_multiline_ && !document) {
+    auto visual = GetRenderEditable()->GetVisualLineRange(
+        offset, value.SelectionAffinity());
+    if (visual && offset >= visual->start() && offset <= visual->end()) {
+      boundary = *visual;
+    } else {
+      // Layout can be pending after an edit; use the hard line until painted.
+      auto previous =
+          offset ? text.rfind(u'\n', offset - 1) : std::u16string::npos;
+      auto next = text.find(u'\n', offset);
+      size_t start = previous == std::u16string::npos ? 0 : previous + 1;
+      size_t finish = next == std::u16string::npos ? text.size() : next;
+      if (finish > start && text[finish - 1] == u'\r') --finish;
+      boundary = TextRange(start, finish);
+    }
+  }
+  size_t destination =
+      std::min(end ? boundary.end() : boundary.start(), text.size());
+  value.SetSelection(
+      TextRange(extend ? value.selection().base() : destination, destination));
+  value.SetSelectionAffinity(end ? Affinity::kUpstream : Affinity::kDownstream);
+  SetTextEditingValue(value);
+  GetRenderEditable()->MarkNeedsPaint();
+}
+#endif
 
 void EditableView::OnDeleteSurroundingText(int before_length,
                                            int after_length) {
@@ -1081,7 +1135,11 @@ void EditableView::BeginEditing() {
   RequestFocus();
   TwinkleCaretPeriodically();
   text_input_controller_->SetClient(callback_id_, keyboard_action_,
+#if defined(ENABLE_GTK_HOST)
+                                    keyboard_input_type_);
+#else
                                     KeyboardInputType::kClassText);
+#endif
   text_input_controller_->SetEditableTransform(ToGlobalTransform());
   text_input_controller_->SetEditingState(GetTextEditingValue());
   text_input_controller_->Show();
@@ -1091,6 +1149,10 @@ void EditableView::BeginEditing() {
 
 void EditableView::QuitEditing() {
   FML_DCHECK(editing_);
+#if defined(ENABLE_GTK_HOST)
+  // Reset GTK preedit while its client can still restore the editing model.
+  text_input_controller_->Hide();
+#endif
   editing_ = false;
   hot_key_tag_ = 0;
   page_view()->StopInput(this);
@@ -1106,7 +1168,9 @@ void EditableView::QuitEditing() {
     caret_timer_.reset();
     GetRenderEditable()->SetCaretDisplay(false);
   }
+#if !defined(ENABLE_GTK_HOST)
   text_input_controller_->Hide();
+#endif
   text_input_controller_->ClearClient();
 }
 
@@ -1414,7 +1478,7 @@ void EditableView::HandleCommandShiftHotKey(LogicalKeyboardKey key_code) {
 }
 
 void EditableView::HandleCtrlHotKey(LogicalKeyboardKey key_code) {
-#if defined(WIN32) || defined(ENABLE_HEADLESS)
+#if defined(WIN32) || (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   HandleWinCtrlAndMacCommandHotKey(key_code);
 #endif
 }
@@ -1425,7 +1489,8 @@ void EditableView::HandleWinCtrlAndMacCommandHotKey(
   switch (key_code) {
     case KeyCode::kKeyV: {
       // Paste from clipboard.
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
       auto clip_board_data = page_view()->GetClipboardData();
       OnCommitText(lynx::base::U16StringToU8(clip_board_data));
 #endif
@@ -1439,7 +1504,8 @@ void EditableView::HandleWinCtrlAndMacCommandHotKey(
       if (!selection.collapsed()) {
         selected = text_editing_value.GetU16Text().substr(
             selection.start(), selection.end() - selection.start());
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
         page_view()->SetClipboardData(selected);
 #endif
         if (key_code == KeyCode::kKeyX) {
@@ -1728,7 +1794,8 @@ bool EditableView::IsPointerAllowed(const GestureRecognizer& gesture_recognizer,
 }
 
 void EditableView::UpdateCursorPositionIfNeeded(const TextRange& range) {
-#if defined(OS_WIN) || defined(OS_MAC) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(OS_MAC) || \
+    (defined(ENABLE_HEADLESS) || defined(ENABLE_GTK_HOST))
   if (range.collapsed()) {
     page_view_->SetCursorPosition(range.base());
   }

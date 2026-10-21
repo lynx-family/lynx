@@ -1,0 +1,36 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0.
+import("../../../core/Lynx.gni")
+assert(is_headless && !enable_lynx_gtk,
+       "Use a GTK-disabled, windowless SDK configuration")
+executable("windowless_lifecycle_smoke") {
+  sources = [ "windowless_lifecycle_smoke.cc" ]
+  if (is_linux) {
+    sources += [ "windowless_gl_renderer_linux.h" ]
+  }
+  include_dirs = [ "../../.." ]
+  if (is_linux) {
+    deps = [ "../../linux:lynx_linux_group" ]
+    libs = [
+      "epoxy",
+      "rt",
+    ]
+  } else if (is_mac) {
+    deps = [ "../../darwin/macos:lynx_common_deps" ]
+    frameworks = [
+      "CoreData.framework",
+      "QuartzCore.framework",
+      "WebKit.framework",
+      "JavaScriptCore.framework",
+    ]
+  } else if (is_win) {
+    deps = [ "../../windows:lynx_windows_group" ]
+    libs = [ "user32.lib" ]
+    configs += [ "../../windows:win_v8_config" ]
+
+    # This fixture links the SDK objects directly, rather than importing a DLL.
+    defines = [ "lynx_EXPORTS" ]
+  } else {
+    assert(false, "This smoke target supports Linux, macOS and Windows")
+  }
+}

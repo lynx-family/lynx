@@ -43,6 +43,11 @@ class LynxEventDispatcher : public EventDelegate {
   // clay::EventDelegate override
   void OnTouchEvent(const std::string& event_name, int tag, float x, float y,
                     float page_x, float page_y) override;
+#if defined(ENABLE_GTK_HOST)
+  void OnTouchEventWithIdentifier(const std::string& event_name, int tag,
+                                  int64_t identifier, float x, float y,
+                                  float page_x, float page_y) override;
+#endif
   void OnMouseEvent(const std::string& event_name, int view_id, int button,
                     int buttons, float scale, float x, float y, float page_x,
                     float page_y) override;

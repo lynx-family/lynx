@@ -74,6 +74,16 @@ class NativeViewPluginEmbedder : public NativeViewPlugin {
   }
 
   std::string GetName() const override { return native_view_->GetName(); }
+#if defined(ENABLE_GTK_HOST)
+  bool SupportHybridComposition() override {
+    // GTK currently mounts native widgets directly in the host's GtkFixed.
+    // Its headless engine has no PlatformOverlayService/PresenterService.
+    // Advertising hybrid composition would dereference a null overlay service
+    // on the raster thread. The widget still paints and receives GTK input;
+    // hosts must hide it while presenting an overlapping Lynx surface.
+    return false;
+  }
+#endif
   bool SupportScrolling() override {
     return native_platform_view_->SupportScrolling();
   }

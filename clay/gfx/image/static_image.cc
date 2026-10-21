@@ -24,8 +24,25 @@ std::shared_ptr<StaticImage> StaticImage::Make(
 }
 
 void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
-  if (!unref_queue || !unref_queue->GetContext()) {
-    FML_LOG(ERROR) << "StaticImage::Upload: unref_queue or context is null";
+  if (!unref_queue) {
+    FML_LOG(ERROR) << "StaticImage::Upload: unref_queue is null";
+    return;
+  }
+
+  if (render_info_.isEmpty()) render_info_ = orig_info_;
+  if (!unref_queue->GetContext()) {
+    // Software canvases sample decoded pixels directly. A deferred GPU-only
+    // image cannot be drawn without a context, so retain a CPU-backed image.
+    if (!gpu_image_.object()) {
+      auto pixmap = image_->ToBitmap(render_info_);
+      if (!pixmap) {
+        FML_LOG(ERROR) << "StaticImage::Upload: software bitmap is null";
+        return;
+      }
+      gpu_image_ = GPUObject(
+          GraphicsImage::Make(skity::Image::MakeImage(std::move(pixmap))),
+          unref_queue);
+    }
     return;
   }
 

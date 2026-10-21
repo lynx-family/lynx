@@ -28,7 +28,7 @@ source_set("shared_image") {
     "utils/image_utils.h",
   ]
 
-  public_deps = [ "../../fml:fml" ]
+  public_deps = [ "../../fml" ]
 
   defines = []
   if (is_headless && !is_ios) {
@@ -56,7 +56,7 @@ source_set("shared_image") {
 
   if (enable_skity) {
     deps += [ "../skity" ]
-    if (is_android || is_win) {
+    if (is_android || is_win || is_linux) {
       sources += [
         "skity_gl_image_representation.cc",
         "skity_gl_image_representation.h",
@@ -188,7 +188,7 @@ source_set("shared_image") {
         "android_surface_texture_image_backing.h",
       ]
     }
-    deps += [ "../../fml:fml" ]
+    deps += [ "../../fml" ]
     configs += [ "../../:config" ]
   }
 
@@ -232,7 +232,7 @@ source_set("shared_image") {
         "//third_party/angle:libGLESv2_static",
       ]
     }
-    deps += [ "../../fml:fml" ]
+    deps += [ "../../fml" ]
     configs += [ "../../:config" ]
   }
 

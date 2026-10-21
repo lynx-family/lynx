@@ -102,8 +102,9 @@ class EmbedderEngine {
   const std::shared_ptr<clay::ServiceManager>& GetServiceManager() const;
 
  private:
-  const std::shared_ptr<clay::ServiceManager> service_manager_;
+  // Release services before invalidating their task runners.
   const std::unique_ptr<EmbedderThreadHost> thread_host_;
+  const std::shared_ptr<clay::ServiceManager> service_manager_;
   TaskRunners task_runners_;
   std::unique_ptr<ShellArgs> shell_args_;
   std::unique_ptr<Shell> shell_;

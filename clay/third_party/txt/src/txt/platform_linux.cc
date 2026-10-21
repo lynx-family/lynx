@@ -7,10 +7,17 @@
 
 #include "txt/platform.h"
 
+#ifndef ENABLE_SKITY
 #ifdef FLUTTER_USE_FONTCONFIG
 #include "third_party/skia/include/ports/SkFontMgr_fontconfig.h"
 #else
 #include "third_party/skia/include/ports/SkFontMgr_directory.h"
+#endif
+
+#endif
+
+#ifdef ENABLE_SKITY
+#include "txt/font_manager_fontconfig_skity.h"
 #endif
 
 namespace txt {
@@ -22,7 +29,7 @@ std::vector<std::string> GetDefaultFontFamilies() {
 #ifdef ENABLE_SKITY
 std::shared_ptr<skity::FontManager> GetDefaultFontManager(
     uint32_t font_initialization_data) {
-  return nullptr;
+  return MakeFontconfigSkityFontManager();
 }
 #else
 sk_sp<SkFontMgr> GetDefaultFontManager(uint32_t font_initialization_data) {
