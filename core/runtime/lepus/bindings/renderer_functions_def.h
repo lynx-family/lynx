@@ -126,6 +126,7 @@
   V(FiberSetEvents)                     \
   V(FiberGetEvent)                      \
   V(FiberGetEvents)                     \
+  V(InvalidateElement)                  \
   V(FiberSetComposeModifier)            \
   V(FiberSetID)                         \
   V(FiberGetID)                         \

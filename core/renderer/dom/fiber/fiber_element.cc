@@ -2635,7 +2635,6 @@ ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
 
   // Need process attributes first.
   need_update = ConsumeAllAttributes();
-  need_update |= FlushCustomDrawFunctions();
 
   need_update |= FlushCustomLayoutFunctions();
 
@@ -2658,6 +2657,10 @@ ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
     ResolveCSSStyles(parsed_styles, reset_style_ids, need_update,
                      force_use_current_parsed_style_map);
   }
+
+  // Removing a layer hook resets the resolved CSS properties. Install drawing
+  // bindings after style resolution so it cannot overwrite those dirty bits.
+  need_update |= FlushCustomDrawFunctions();
 
   // If props, styles or custom layout functions changed, this patch needs to
   // trigger layout.
@@ -5882,7 +5885,8 @@ void Element::InvalidateChildrenIfNeeded() {
 
 void Element::SetCustomDrawFunctions(CustomDrawFunctions functions) {
   custom_draw_functions_ =
-      (functions.draw_foreground || functions.draw_behind)
+      (functions.draw_foreground || functions.draw_behind ||
+       functions.draw_layer_properties)
           ? std::make_shared<CustomDrawFunctions>(std::move(functions))
           : nullptr;
   MarkDirty(kDirtyCustomDraw);

@@ -16,11 +16,13 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
+#include "core/renderer/dom/fiber/compose_graphics_layer.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
+#include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/dom/fragment/view_fragment_behavior.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/utils/base/tasm_constants.h"
-#include "core/runtime/mts_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 
 namespace lynx {
@@ -39,6 +41,7 @@ constexpr int kModifierOpPadding = 7;
 constexpr int kModifierOpSize = 8;
 constexpr int kModifierOpFill = 9;
 constexpr int kModifierOpAspectRatio = 10;
+constexpr int kModifierOpGraphicsLayer = 11;
 
 constexpr int kModifierCallbackKindClick = 1;
 constexpr int kLayoutModifierAxisWidth = 1;
@@ -53,6 +56,7 @@ constexpr size_t kNoModifierFrame = std::numeric_limits<size_t>::max();
 
 BASE_STATIC_STRING_DECL(kOp, "op");
 BASE_STATIC_STRING_DECL(kPrevious, "previous");
+BASE_STATIC_STRING_DECL(kResolve, "resolve");
 BASE_STATIC_STRING_DECL(kLeft, "left");
 BASE_STATIC_STRING_DECL(kRight, "right");
 BASE_STATIC_STRING_DECL(kPropertyId, "propertyId");
@@ -94,6 +98,7 @@ struct ModifierFramePlan {
   std::vector<int> frame_child_constrained_axes;
   size_t frame_count{0};
   bool owner_uses_layout_box{false};
+  bool has_graphics_layers{false};
 };
 
 lepus::Value ReadModifierProperty(const lepus::Value& node,
@@ -302,6 +307,13 @@ bool ParseModifierOperation(const lepus::Value& node,
     case kModifierOpFill:
     case kModifierOpAspectRatio:
       return ParseLayoutOperation(node, operation, error);
+    case kModifierOpGraphicsLayer:
+      operation->callback = node.GetProperty(kResolve);
+      if (!operation->callback.ToLepusValue().IsCallable()) {
+        *error = "graphicsLayer resolve should be callable";
+        return false;
+      }
+      return true;
     default:
       *error = "unsupported Modifier operation";
       return false;
@@ -370,14 +382,19 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
   }
 
   for (const auto& operation : plan->operations) {
-    if (operation.op == kModifierOpPadding) {
+    if (operation.op == kModifierOpGraphicsLayer) {
+      plan->has_graphics_layers = true;
+      // Keep preceding effects outside the following Element's transform.
+      ++plan->frame_count;
+    } else if (operation.op == kModifierOpPadding) {
       ++plan->frame_count;
     }
   }
   plan->frame_child_constrained_axes.resize(plan->frame_count);
 
-  // Padding ends one carrier segment and is the only operation that creates a
-  // physical frame. The suffix after the last padding is carried by the owner.
+  // Padding and graphicsLayer introduce physical boundaries. Earlier paint and
+  // pointer operations stay outside a layer. Its callback belongs to the next
+  // carrier, which can also be the stable Content Element.
   size_t carrier_index = 0;
   int constrained_axes = 0;
   for (size_t position = 0; position < plan->operations.size(); ++position) {
@@ -386,7 +403,12 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     const size_t target_frame_index =
         carrier_index < plan->frame_count ? carrier_index : kNoModifierFrame;
 
-    if (IsLayoutOperation(operation.op)) {
+    if (operation.op == kModifierOpGraphicsLayer) {
+      plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
+      ++carrier_index;
+      operation.target_frame_index =
+          carrier_index < plan->frame_count ? carrier_index : kNoModifierFrame;
+    } else if (IsLayoutOperation(operation.op)) {
       operation.target_frame_index = target_frame_index;
       switch (operation.op) {
         case kModifierOpPadding:
@@ -604,6 +626,9 @@ void ApplyNonLayoutOperation(
     case kModifierOpStyleString:
       target->SetStyle(operation.style_id, operation.value.ToLepusValue());
       break;
+    case kModifierOpGraphicsLayer:
+      // The following Element records the callback result during Draw.
+      break;
     case kModifierOpAttribute:
       owner->SetModifierAttribute(operation.name,
                                   operation.value.ToLepusValue(deep_convert));
@@ -706,6 +731,45 @@ bool ValidateMountRoot(Element* owner, Element* current_mount_root,
   return true;
 }
 
+void ClearModifierDrawCallbacks(Element* mount_root, Element* content_element) {
+  // ValidateTopology guarantees a single-child Modifier chain ending at the
+  // stable content Element. Include that Element: the innermost graphicsLayer
+  // can bind directly to it. Do not visit its application-owned children.
+  for (auto* target = mount_root;; target = target->GetChildAt(0)) {
+    if (target->HasCustomDrawFunctions()) {
+      target->SetCustomDrawFunctions({});
+    }
+    if (target == content_element) {
+      break;
+    }
+  }
+}
+
+void BindGraphicsLayerCallbacks(const ModifierFramePlan& plan,
+                                Element* mount_root, Element* content_element,
+                                runtime::MTSRuntime* registration_context) {
+  // Match the outer-to-inner frame indices assigned by BuildModifierFramePlan.
+  // The stable content Element is not a frame; OperationTarget selects it when
+  // the operation has kNoModifierFrame as its target.
+  std::vector<fml::RefPtr<ModifierElement>> frames;
+  for (auto* target = mount_root; target != content_element;
+       target = target->GetChildAt(0)) {
+    frames.emplace_back(static_cast<ModifierElement*>(target));
+  }
+
+  for (const auto& operation : plan.operations) {
+    if (operation.op != kModifierOpGraphicsLayer) {
+      continue;
+    }
+    // Bind to the Element following this layer boundary so the transform covers
+    // its own drawing and descendants. The closure runs in Fragment's layer
+    // property phase, when that Element's layout size is available.
+    auto* target = OperationTarget(operation, content_element, frames);
+    target->SetCustomDrawFunctions(
+        GraphicsLayerDrawFunctions(registration_context, operation.callback));
+  }
+}
+
 fml::RefPtr<Element> InstallModifierFramePlan(
     const ModifierFramePlan& plan, Element* owner, Element* current_mount_root,
     runtime::MTSRuntime* registration_context, bool deep_convert) {
@@ -727,7 +791,12 @@ fml::RefPtr<Element> InstallModifierFramePlan(
   std::vector<fml::RefPtr<ModifierElement>> frames;
   frames.reserve(plan.frame_count);
   for (size_t index = 0; index < plan.frame_count; ++index) {
-    frames.push_back(CreateFrame(owner));
+    auto frame = CreateFrame(owner);
+    // Pass-through boxes must not introduce implicit clipping around
+    // transformed contents. Authored overflow styles are applied afterwards and
+    // still win.
+    if (plan.has_graphics_layers) frame->SetDefaultOverflow(true);
+    frames.push_back(std::move(frame));
   }
 
   // When replacing a mounted, non-empty frame chain, move the attached owner
@@ -792,6 +861,15 @@ fml::RefPtr<Element> InstallModifierFramePlan(
 
 }  // namespace
 
+void ModifierElement::SetupFragmentBehavior(Fragment* fragment) {
+  // Fragment::CreateLayerIfNeeded decides whether a platform layer is needed.
+  // Use the built-in view renderer type for generated Modifier boxes; the base
+  // Element behavior instead resolves a platform component by tag.
+  // Fragment dispatches DrawBehind/DrawForeground with either behavior, so
+  // adding or removing draw callbacks does not affect this choice.
+  fragment->SetBehavior(std::make_unique<ViewFragmentBehavior>(fragment));
+}
+
 ModifierElement::ModifierElement(ElementManager* manager)
     : Element(manager, BASE_STATIC_STRING(kElementViewTag)) {
   SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
@@ -825,20 +903,46 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
   if (!ValidateTopology(handle, &error)) {
     return {false, 0, std::move(error)};
   }
-  auto owner = handle->content_element();
-  auto current_mount_root = handle->mount_root();
-  auto* manager = owner->element_manager();
+  // The content Element keeps its identity while the surrounding Modifier
+  // frames are replaced. The mount root is the outermost of those frames, or
+  // the content Element itself when no frames are needed.
+  auto content_element = handle->content_element();
+  auto previous_mount_root = handle->mount_root();
+  auto* manager = content_element->element_manager();
 
   ModifierFramePlan plan;
   size_t error_position = 0;
   if (!BuildModifierFramePlan(modifier_tail, &plan, &error, &error_position)) {
     return {false, error_position, std::move(error)};
   }
+  // Reject unsupported plans before changing any active callbacks or nodes.
+  if (plan.has_graphics_layers) {
+    if (!registration_context) {
+      return {false, 0, "graphicsLayer requires a registering runtime"};
+    }
+    if (!manager->IsFragmentLayerRenderModeOn()) {
+      return {false, 0,
+              "graphicsLayer resolver requires Fragment Layer rendering"};
+    }
+  }
+
+  // Remove old bindings before replacing the chain, including any binding on
+  // the content Element that will be reused by the new plan.
+  ClearModifierDrawCallbacks(previous_mount_root.get(), content_element.get());
 
   auto mount_root = InstallModifierFramePlan(
-      plan, owner.get(), current_mount_root.get(), registration_context,
-      manager->GetEnableParallelElement());
+      plan, content_element.get(), previous_mount_root.get(),
+      registration_context, manager->GetEnableParallelElement());
   handle->SetMountRoot(std::move(mount_root));
+
+  if (plan.has_graphics_layers) {
+    BindGraphicsLayerCallbacks(plan, handle->mount_root().get(),
+                               content_element.get(), registration_context);
+    // Request layout for the newly installed chain. Redrawing an existing
+    // layer through InvalidateElement does not go through this Apply path.
+    content_element->RequestLayout();
+  }
+
   return {true, 0, {}};
 }
 

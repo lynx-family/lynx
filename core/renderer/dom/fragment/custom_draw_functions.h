@@ -19,8 +19,8 @@ class Fragment;
 // during Flush.
 struct CustomDrawFunctions {
   // Runs after ordinary background, behavior and children, inside Begin/End.
-  // Both callbacks run only when contents are recorded; property-only updates
-  // retain the existing contents without invoking either callback.
+  // These content callbacks run only when contents are recorded; property-only
+  // updates retain the existing contents without invoking either callback.
   // TODO(songshourui.null): Preserve foreground Fill, Border, background image
   // and gradient ordering in the iOS display-list consumer. These commands are
   // currently placed below the host content.
@@ -28,6 +28,12 @@ struct CustomDrawFunctions {
   // Runs before ordinary content on a full redraw. Fragment always draws its
   // default content next, then invokes draw_foreground.
   std::function<void(Fragment&, DisplayListBuilder&)> draw_behind;
+  // Runs in the subtree-property phase, after the current CSS/default layer
+  // properties are recorded. Record only subtree properties here; properties
+  // omitted by the callback retain their CSS/default values, not its previous
+  // output. This hook also runs on property-only updates without redrawing
+  // content. Removing the hook restores the CSS/default properties.
+  std::function<void(Fragment&, DisplayListBuilder&)> draw_layer_properties;
 };
 }  // namespace lynx::tasm
 

@@ -12,6 +12,8 @@ fiber_shared_sources = [
   "component_element.h",
   "compose_element_handle.cc",
   "compose_element_handle.h",
+  "compose_graphics_layer.cc",
+  "compose_graphics_layer.h",
   "compose_modifier_applicator.h",
   "element_template_instance.cc",
   "element_template_instance.h",

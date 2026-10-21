@@ -99,9 +99,14 @@ class Fragment : public BaseElementContainer {
 
   void OnDraw(DisplayListBuilder& display_list_builder);
 
+  // Install bindings after style resolution so removal can reset properties.
   void SetCustomDrawFunctions(
       std::shared_ptr<const CustomDrawFunctions> functions);
   bool HasCustomDraw() const { return custom_draw_functions_ != nullptr; }
+  bool HasCustomLayerProperties() const {
+    return custom_draw_functions_ &&
+           custom_draw_functions_->draw_layer_properties;
+  }
   void DrawBehind(DisplayListBuilder& builder);
   void DrawForeground(DisplayListBuilder& builder);
 
@@ -152,6 +157,8 @@ class Fragment : public BaseElementContainer {
   void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
   Fragment* EnclosingStackingContextFromElementParent();
   void ZIndexChanged();
+  void InvalidateLayerPropertiesIfSizeChanged(
+      const LayoutResultForRendering& layout_result_for_rendering);
   void UpdateBorderRadiusAccordingToLayoutInfo();
   size_t UpdateRenderOffsetRecursively(float left, float top, Fragment* root);
 
@@ -168,6 +175,8 @@ class Fragment : public BaseElementContainer {
   void DrawTransform(DisplayListBuilder& display_list_builder);
   void DrawOpacity(DisplayListBuilder& display_list_builder);
   void DrawFilter(DisplayListBuilder& display_list_builder);
+  void DrawLayerProperties(DisplayListBuilder& display_list_builder);
+  void ResetLayerProperties();
 
   // Performs a full redraw of this fragment including background, border,
   // children, etc. Called by OnDraw when NeedRedraw() is true.
