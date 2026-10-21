@@ -1047,6 +1047,8 @@ class Element : public lepus::RefCounted,
   bool display_none() { return display_none_; }
 
   bool enable_new_animator() { return enable_new_animator_; }
+  bool supports_platform_animation_routing() const;
+  bool use_cpp_animation_builder() const;
 
   PropertiesResolvingStatus GenerateRootPropertyStatus() const;
 
@@ -1102,6 +1104,10 @@ class Element : public lepus::RefCounted,
   bool NeedCreateNodeAsync() { return create_node_async_; }
 
   bool HasPaintingNode() { return has_painting_node_; }
+
+  // Request a native target; HasPaintingNode() is also true for layout-only
+  // containers that skipped native node creation.
+  bool PrepareForPlatformAnimation();
 
   bool IsNewlyCreated() const { return dirty_ & kDirtyCreated; }
 
@@ -1291,6 +1297,11 @@ class Element : public lepus::RefCounted,
 
   void SetAnimationSampleTimeForNewPipeline(const fml::TimePoint& sample_time);
   base::flex_optional<fml::TimePoint> TakeAnimationSampleTimeForNewPipeline();
+  void QueuePlatformAnimationCommand(gfx::PlatformAnimationCommand command);
+  bool HasPendingPlatformAnimationCommands() const {
+    return platform_animation_commands_ != nullptr &&
+           !platform_animation_commands_->empty();
+  }
   void DispatchAnimationEventsForNewPipeline(
       const animation::AnimationEventRecordsForNewPipeline& event_records);
   void UpdateFinalStyleMap(const StyleMap& styles);
@@ -1789,6 +1800,7 @@ class Element : public lepus::RefCounted,
 
   void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
   void UpdateFiberElement();
+  void CommitPlatformAnimationCommands();
 
   void HandleSelfFixedChange();
   virtual void OnNodeAdded(Element* child);
@@ -2074,9 +2086,8 @@ class Element : public lepus::RefCounted,
   animation::AnimationEventRecordsForNewPipeline
   TakeAnimationEventsForNewPipeline();
   bool NeedsAnimationFrameForNewPipeline() const;
-  bool HasAuthorAnimationDataChangedForNewPipeline(
-      const starlight::ComputedCSSStyle& new_base_style,
-      const starlight::ComputedCSSStyle* previous_base_style) const;
+  bool UpdateAuthorAnimationDataForNewPipeline(
+      const starlight::ComputedCSSStyle& new_base_style);
   void FlushImperativeAnimationCleanupForNewPipeline(
       starlight::ComputedCSSStyle& cleanup_style, bool& need_update,
       CSSIDBitset* replayed_ids, const CSSIDBitset* source_style_ids = nullptr);
@@ -2235,6 +2246,11 @@ class Element : public lepus::RefCounted,
   bool trigger_global_event_{false};
 
   bool enable_new_animator_;
+  // An explicit element attribute takes precedence over automatic routing.
+  bool has_explicit_new_animator_attr_{false};
+
+  std::shared_ptr<gfx::PlatformAnimationCommandBatch>
+      platform_animation_commands_;
 
   bool create_node_async_{false};
 
@@ -2307,6 +2323,10 @@ class Element : public lepus::RefCounted,
 
   std::unique_ptr<starlight::ComputedCSSStyle> base_css_style_;
   std::unique_ptr<starlight::ComputedCSSStyle> platform_css_style_;
+  // Author timing before imperative replay; computed styles can already
+  // contain timing written by Animate() or a previous replay.
+  base::flex_optional<base::InlineVector<starlight::AnimationData, 1>>
+      author_animation_data_for_new_pipeline_;
 
   // for animation
   std::unique_ptr<animation::CSSKeyframeManager> css_keyframe_manager_;

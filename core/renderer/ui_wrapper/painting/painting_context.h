@@ -123,6 +123,11 @@ class PaintingContext {
     platform_impl_->SetKeyframes(std::move(keyframes_data));
   }
 
+  inline void ApplyPlatformAnimationCommands(
+      int id, std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) {
+    platform_impl_->ApplyPlatformAnimationCommands(id, std::move(commands));
+  }
+
   inline void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_FINISH_TASM_OPERATION);
@@ -220,6 +225,11 @@ class PaintingContext {
 
   inline bool NeedAnimationProps() {
     return platform_impl_->NeedAnimationProps();
+  }
+
+  inline const gfx::AnimationBackendCapabilities&
+  GetPlatformAnimationCapabilities() {
+    return platform_impl_->GetPlatformAnimationCapabilities();
   }
 
   inline bool DefaultOverflowAlwaysVisible() {

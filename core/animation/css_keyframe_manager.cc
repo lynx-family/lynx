@@ -14,8 +14,10 @@
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
 #include "core/animation/animation.h"
+#include "core/animation/animation_backend_evaluator.h"
 #include "core/animation/animation_delegate.h"
 #include "core/animation/animation_trace_event_def.h"
+#include "core/animation/constants.h"
 #include "core/animation/keyframe_model.h"
 #include "core/animation/keyframed_animation_curve.h"
 #include "core/animation/transform_animation_curve.h"
@@ -265,7 +267,7 @@ fml::TimePoint CSSKeyframeManager::ProcessAnimationEvents(
     fml::TimePoint& frame_time, bool dispatch_events) {
   auto next = fml::TimePoint::Max();
   // Retain animations during event dispatch, keeping the frame queue intact.
-  std::vector<std::shared_ptr<Animation>> animations;
+  base::InlineVector<std::shared_ptr<Animation>, 4> animations;
   animations.reserve(animations_map_.size());
   for (const auto& entry : animations_map_) {
     if (entry.second) {
@@ -283,16 +285,108 @@ fml::TimePoint CSSKeyframeManager::ProcessAnimationEvents(
   return next;
 }
 
+AnimationBackendResult CSSKeyframeManager::EvaluatePlatformSupport(
+    ParsedPropertyMap& properties) {
+  // TODO: Profile caching eligibility by kind/property, keyframes/timing,
+  // dynamic inputs, events and capabilities. Hits must still resolve endpoints
+  // and validate the node.
+  auto* painting_context = element_->painting_context();
+  if (painting_context == nullptr) {
+    return {false, AnimationFallbackReason::kBackendUnavailable};
+  }
+
+  const auto& capabilities =
+      painting_context->GetPlatformAnimationCapabilities();
+  gfx::AnimationEventCapabilityMask required_events = 0;
+  auto require_if_bound = [&](const char* name,
+                              gfx::AnimationEventCapabilityMask event) {
+    const base::String key(name);
+    if (element_->event_map().count(key) ||
+        element_->lepus_event_map().count(key) ||
+        element_->global_bind_event_map().count(key)) {
+      required_events |= event;
+    }
+  };
+  const bool keyframe = GetAnimationKind() == gfx::AnimationKind::kKeyframe;
+  require_if_bound(
+      keyframe ? kKeyframeStartEventName : kTransitionStartEventName,
+      gfx::kAnimationEventStart);
+  require_if_bound(keyframe ? kKeyframeEndEventName : kTransitionEndEventName,
+                   gfx::kAnimationEventEnd);
+  require_if_bound(
+      keyframe ? kKeyframeCancelEventName : kTransitionCancelEventName,
+      gfx::kAnimationEventCancel);
+  if (keyframe) {
+    require_if_bound(kKeyframeIterationEventName,
+                     gfx::kAnimationEventIteration);
+  }
+
+  AnimationBackendResult effect_result;
+  for (auto& entry : properties) {
+    auto& property = entry.second;
+    AnimationBackendRequest request;
+    request.kind = GetAnimationKind();
+    request.required_events = required_events;
+    request.property = property.gfx_property;
+    request.has_dynamic_dependencies = property.has_dynamic_dependencies;
+    request.keyframes.reserve(property.keyframes.size());
+    for (auto& parsed : property.keyframes) {
+      if (parsed.keyframe == nullptr) {
+        return {false, AnimationFallbackReason::kUnresolvedKeyframe};
+      }
+      if (parsed.keyframe->IsEmpty()) {
+        const auto& value = property.underlying_value;
+        if (value.IsEmpty()) {
+          return {false, AnimationFallbackReason::kUnresolvedKeyframe};
+        }
+        auto resolved = CreateParsedKeyframe(
+            property.curve_type, parsed.keyframe->Offset(),
+            parsed.keyframe->timing_function()
+                ? parsed.keyframe->timing_function()->Clone()
+                : nullptr,
+            property.css_id, &value);
+        if (!resolved.keyframe || resolved.keyframe->IsEmpty()) {
+          return {false, AnimationFallbackReason::kUnresolvedKeyframe};
+        }
+        resolved.keyframe->SetTimingSource(parsed.keyframe->timing_source());
+        request.has_dynamic_dependencies |= value.IsVariable();
+        if (resolved.keyframe->ValueType() ==
+            gfx::KeyframeValueType::kTransform) {
+          request.has_dynamic_dependencies |=
+              static_cast<const TransformKeyframe*>(resolved.keyframe.get())
+                  ->HasDynamicDependencies();
+        }
+        parsed.resolved_platform_endpoint = std::move(resolved.keyframe);
+      }
+      request.keyframes.push_back(parsed.KeyframeForPlatform());
+    }
+    const auto result = EvaluateAnimationBackend(request, capabilities);
+    if (!result.CanRun()) {
+      return result;
+    }
+    // All properties in one platform effect must share its timing function.
+    if (effect_result.CanRun() &&
+        !(effect_result.platform_timing == result.platform_timing)) {
+      return {false, AnimationFallbackReason::kUnsupportedTimingFunction};
+    }
+    effect_result = result;
+  }
+  return effect_result;
+}
+
 void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_MANAGER_TICK_ALL_ANIMATION);
-  auto temp_vec = std::vector<std::weak_ptr<Animation>>();
-  auto& true_vec = active_animations_;
-  temp_vec.swap(true_vec);
-  for (auto& iter : temp_vec) {
-    auto animation_shared_ptr = iter.lock();
-    if (animation_shared_ptr != nullptr) {
-      animation_shared_ptr->DoFrame(frame_time);
+  base::InlineVector<std::shared_ptr<Animation>, 4> animations;
+  // Snapshot and clear requests before DoFrame(), so new requests are kept
+  // for the next frame. Keyframes already follow CSS declaration order.
+  for (const auto& [name, animation] : animations_map_) {
+    if (animation &&
+        std::exchange(animation->has_pending_frame_request_, false)) {
+      animations.push_back(animation);
     }
+  }
+  for (const auto& animation : animations) {
+    animation->DoFrame(frame_time);
   }
   // After traversing the set, the final_animator_maps_ is now assembled.
 }
@@ -407,9 +501,15 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
       active_ani_iter.second->Play(play_handles_initial_frame);
     }
   }
-  // 3. Swap active animations to animations_map_.
-  animations_map_.swap(temp_active_animations_map_);
-  animations_map_.merge(temp_keep_animations_map_);
+  // Keep changed and unchanged animations interleaved in CSS declaration order.
+  temp_active_animations_map_.merge(temp_keep_animations_map_);
+  animations_map_.clear();
+  for (const auto& data : animation_data_) {
+    auto animation = temp_active_animations_map_.find(data.name);
+    if (animation != temp_active_animations_map_.end()) {
+      animations_map_.insert(*animation);
+    }
+  }
   temp_keep_animations_map_.clear();
   temp_active_animations_map_.clear();
 }
@@ -521,8 +621,11 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
 
   {
     // SampleRunningAnimations
-    for (auto& item : animations_map_) {
-      auto& animation = item.second;
+    base::InlineVector<std::shared_ptr<Animation>, 4> animations;
+    for (const auto& item : animations_map_) {
+      animations.push_back(item.second);
+    }
+    for (const auto& animation : animations) {
       if (animation == nullptr || animation->keyframe_effect() == nullptr) {
         continue;
       }
@@ -550,7 +653,7 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
         // `padding: var(--box-padding)`, are rebuilt by style resolution after
         // these overrides are applied.
         animation->keyframe_effect()->SampleCustomPropertyKeyframes(
-            frame_time, GetKeyframesCustomPropertyMap(item.first),
+            frame_time, GetKeyframesCustomPropertyMap(animation->name()),
             custom_property_overrides);
         if (!custom_property_overrides.empty()) {
           auto& sample_ref = ensure_sample();
@@ -913,7 +1016,7 @@ CSSKeyframeManager::ParsedPropertyMap CSSKeyframeManager::ParseKeyframes(
               css_value_pair.first, css_value_pair.second, custom_properties,
               configs, effective_base_custom_properties);
       // Resolve animation defaults later; do not allocate a temporary linear
-      // function that CreateAnimation would immediately replace.
+      // function that the animation builder would immediately replace.
       auto timing_function = has_explicit_timing
                                  ? gfx::CreateTimingFunction(explicit_timing)
                                  : nullptr;
@@ -931,6 +1034,14 @@ CSSKeyframeManager::ParsedPropertyMap CSSKeyframeManager::ParseKeyframes(
       auto& property = parsed_properties[curve_type];
       property.curve_type = curve_type;
       property.css_id = css_value_pair.first;
+      property.gfx_property =
+          static_cast<gfx::AnimationPropertyType>(animation_property->second);
+      property.has_dynamic_dependencies |= css_value_pair.second.IsVariable();
+      if (parsed.keyframe->ValueType() == gfx::KeyframeValueType::kTransform) {
+        property.has_dynamic_dependencies |=
+            static_cast<const TransformKeyframe*>(parsed.keyframe.get())
+                ->HasDynamicDependencies();
+      }
       // Insert after frames with the same normalized time to preserve their
       // input order, even when distinct CSS offsets resolve to the same time.
       auto position = property.keyframes.end();
@@ -960,8 +1071,10 @@ CSSKeyframeManager::ParsedPropertyMap CSSKeyframeManager::ParseKeyframes(
 }
 
 void CSSKeyframeManager::RequestNextFrame(std::weak_ptr<Animation> ptr) {
-  active_animations_.push_back(ptr);
-  element_->RequestNextFrame();
+  if (auto animation = ptr.lock()) {
+    animation->has_pending_frame_request_ = true;
+    element_->RequestNextFrame();
+  }
 }
 
 void CSSKeyframeManager::UpdateFinalStyleMap(const tasm::StyleMap& styles) {
