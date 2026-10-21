@@ -237,9 +237,13 @@ void DevToolPlatformAndroid::EmulateTouch(
   lynx::base::android::ScopedLocalJavaRef<jstring> button =
       lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
           env, input->button_);
+  auto screenshot_mode =
+      lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+          env, input->coordinate_mode_);
 
   Java_DevToolPlatformAndroidDelegate_emulateTouch(
-      env, ref.Get(), type.Get(), x, y, deltaX, deltaY, button.Get());
+      env, ref.Get(), type.Get(), x, y, deltaX, deltaY, button.Get(),
+      screenshot_mode.Get());
 }
 
 void DevToolPlatformAndroid::Focus(int node_id) {
@@ -321,8 +325,7 @@ void DevToolPlatformAndroid::StartScreenCast(ScreenshotRequest request) {
     return;
   }
   std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
-      lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
+      lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
   auto jni_mode =
       lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, mode);
   auto jni_format =

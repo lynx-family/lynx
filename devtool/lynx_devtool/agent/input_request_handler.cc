@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "devtool/base_devtool/native/public/cdp_param_utils.h"
+#include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/base/mouse_event.h"
@@ -333,6 +334,8 @@ void InputRequestHandler::EmulateTouchFromMouseEvent(
   input->type_ = params["type"].asString();
   input->x_ = params["x"].asInt();
   input->y_ = params["y"].asInt();
+  input->coordinate_mode_ = DevToolStatus::GetInstance().GetStatus(
+      DevToolStatus::kDevToolStatusKeyScreenShotMode);
   devtool_platform_facade_->EmulateTouch(input);
   responder->SendSuccess();
 }

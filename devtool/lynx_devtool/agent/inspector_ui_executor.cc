@@ -98,8 +98,7 @@ void InspectorUIExecutor::GetNodeForLocation(
 
   std::string screen_shot_mode =
       lynx::devtool::DevToolStatus::GetInstance().GetStatus(
-          lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-          lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
+          lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
 
   CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
                             "devtool_platform_facade_ is null");

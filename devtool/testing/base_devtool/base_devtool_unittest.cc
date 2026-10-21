@@ -397,6 +397,36 @@ TEST_F(BaseDevToolTest, BaseDevToolStatusCheck) {
   EXPECT_EQ(result, "connect");
 }
 
+TEST_F(BaseDevToolTest, ScreenshotModeHasDeterministicDefault) {
+  devtool::DevToolStatus status;
+  const auto key = devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode;
+  EXPECT_EQ(status.GetStatus(key), "fullscreen");
+  EXPECT_EQ(status.GetStatus(key, "lynxview"), "fullscreen");
+
+  status.SetStatus(key, "lynxview");
+  EXPECT_EQ(status.GetStatus(key), "lynxview");
+  status.SetStatus(key, "unsupported");
+  EXPECT_EQ(status.GetStatus(key), "lynxview");
+  status.SetStatus(key, "");
+  EXPECT_EQ(status.GetStatus(key, "lynxview"), "fullscreen");
+}
+
+TEST_F(BaseDevToolTest, ConnectionStatusIsIndependentOfScreenshotMode) {
+  devtool::DevToolStatus status;
+  const auto connection = devtool::DevToolStatus::kDevToolStatusKeyIsConnected;
+  const auto screenshot =
+      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode;
+  EXPECT_EQ(status.GetStatus(connection), "");
+  EXPECT_EQ(status.GetStatus(connection, "disconnected"), "disconnected");
+
+  status.SetStatus(connection, "connect");
+  status.SetStatus(screenshot, "lynxview");
+  EXPECT_EQ(status.GetStatus(connection, "disconnected"), "connect");
+  status.SetStatus(connection, "");
+  EXPECT_EQ(status.GetStatus(connection, "disconnected"), "disconnected");
+  EXPECT_EQ(status.GetStatus(screenshot), "lynxview");
+}
+
 TEST_F(BaseDevToolTest, BaseDevToolCompress) {
   auto agent = std::make_unique<devtool::MockBaseAgent>();
   const std::string jsonResponse = R"(

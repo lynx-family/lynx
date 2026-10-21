@@ -709,7 +709,9 @@ void LynxTemplateRenderer::SetInspectorOwner(
 void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
                                         int y, const std::string& button,
                                         float delta_x, float delta_y,
-                                        int modifiers, int click_count) {
+                                        int modifiers, int click_count,
+                                        const std::string& coordinate_mode) {
+  (void)coordinate_mode;
   if (event_proxy_) {
     event_proxy_->EmulateTouch(event_type, x, y, button, delta_x, delta_y,
                                modifiers, click_count);

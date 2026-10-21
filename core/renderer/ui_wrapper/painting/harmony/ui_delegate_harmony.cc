@@ -682,14 +682,15 @@ int UIDelegateHarmony::SetUIStyle(int id, const std::string& name,
 void UIDelegateHarmony::EmulateTouch(const std::string& event_type, int x,
                                      int y, const std::string& button,
                                      float delta_x, float delta_y,
-                                     int modifiers, int click_count) {
+                                     int modifiers, int click_count,
+                                     const std::string& coordinate_mode) {
   auto lynx_context = lynx_context_.lock();
   if (!lynx_context) {
     return;
   }
   emulated_touch_dispatcher_.EmulateTouch(
       lynx_context, event_type, x, y, button, delta_x, delta_y, modifiers,
-      click_count, GetActualScreenshotMode() == kScreenShotModeFullScreen);
+      click_count, coordinate_mode == kScreenShotModeFullScreen);
 }
 
 }  // namespace harmony

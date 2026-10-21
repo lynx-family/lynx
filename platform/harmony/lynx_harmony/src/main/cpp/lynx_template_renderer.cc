@@ -2601,12 +2601,13 @@ void LynxTemplateRenderer::SyncWindowInfoToLynxContext() {
 void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
                                         int y, const std::string& button,
                                         float delta_x, float delta_y,
-                                        int modifiers, int click_count) {
+                                        int modifiers, int click_count,
+                                        const std::string& coordinate_mode) {
   if (!ui_delegate_) {
     return;
   }
   ui_delegate_->EmulateTouch(event_type, x, y, button, delta_x, delta_y,
-                             modifiers, click_count);
+                             modifiers, click_count, coordinate_mode);
 }
 
 void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {}

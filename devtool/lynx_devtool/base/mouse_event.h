@@ -18,6 +18,8 @@ struct MouseEvent {
   float delta_y_;
   int modifiers_;
   int click_count_;
+  // Coordinate mode captured when handling Input.emulateTouchFromMouseEvent.
+  std::string coordinate_mode_;
 };
 
 }  // namespace devtool

@@ -89,7 +89,8 @@ class UIDelegate {
   }
   virtual void EmulateTouch(const std::string& event_type, int x, int y,
                             const std::string& button, float delta_x,
-                            float delta_y, int modifiers, int click_count) {}
+                            float delta_y, int modifiers, int click_count,
+                            const std::string& coordinate_mode) {}
 
   // Whether enable native list for the different renderer backend.
   virtual bool EnableNativeList() const { return false; }

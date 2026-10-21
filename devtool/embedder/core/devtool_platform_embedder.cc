@@ -221,11 +221,9 @@ void DevtoolPlatformEmbedder::AttachProxy(devtool::LynxDevToolProxy* proxy) {
   if (reload_helper_) {
     reload_helper_->AttachProxy(proxy);
   }
-  if (proxy_ &&
-      proxy_->SetScreenshotMode(DevToolStatus::SCREENSHOT_MODE_LYNXVIEW)) {
-    DevToolStatus::GetInstance().SetStatus(
-        DevToolStatus::kDevToolStatusKeyScreenShotMode,
-        proxy_->GetActualScreenshotMode());
+  if (proxy_) {
+    proxy_->SetScreenshotMode(DevToolStatus::GetInstance().GetStatus(
+        DevToolStatus::kDevToolStatusKeyScreenShotMode));
   }
 }
 
@@ -243,8 +241,7 @@ void DevtoolPlatformEmbedder::StartCasting(int32_t quality, int32_t max_width,
   if (proxy_) {
     std::string requested_screen_shot_mode =
         DevToolStatus::GetInstance().GetStatus(
-            DevToolStatus::kDevToolStatusKeyScreenShotMode,
-            DevToolStatus::SCREENSHOT_MODE_LYNXVIEW);
+            DevToolStatus::kDevToolStatusKeyScreenShotMode);
     proxy_->SetScreenshotMode(requested_screen_shot_mode);
   }
   cast_helper_->StartCasting(quality, max_width, max_height, format);
@@ -348,7 +345,7 @@ void DevtoolPlatformEmbedder::EmulateTouch(
   CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
   proxy_->EmulateTouch(input->type_, input->x_, input->y_, input->button_,
                        input->delta_x_, input->delta_y_, input->modifiers_,
-                       input->click_count_);
+                       input->click_count_, input->coordinate_mode_);
 }
 
 void DevtoolPlatformEmbedder::EmulateMouse(
