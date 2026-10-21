@@ -86,6 +86,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                       int height_mode);
   void OnEnterForeground();
   void OnEnterBackground();
+  void Pause();
+  void Resume();
   void StartLynxRuntime();
   void UpdateScreenMetrics(float width, float height, float display_density);
   void SetWindowInfo(int32_t window_id, int32_t window_left_px,
@@ -245,6 +247,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                                            napi_callback_info info);
   static napi_value OnEnterForeground(napi_env env, napi_callback_info info);
   static napi_value OnEnterBackground(napi_env env, napi_callback_info info);
+  static napi_value Pause(napi_env env, napi_callback_info info);
+  static napi_value Resume(napi_env env, napi_callback_info info);
   static napi_value StartLynxRuntime(napi_env env, napi_callback_info info);
   static napi_value SetSessionStorageItem(napi_env env,
                                           napi_callback_info info);

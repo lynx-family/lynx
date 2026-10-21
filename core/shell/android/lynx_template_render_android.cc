@@ -625,6 +625,26 @@ void OnEnterBackground(JNIEnv* env, jclass jcaller, jlong ptr,
   TryFreeLifecycle(lifecycle_ptr);
 }
 
+void Pause(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!TryLockLifecycle(lifecycle_ptr)) {
+    return;
+  }
+  reinterpret_cast<LynxShell*>(ptr)->Pause();
+  TryFreeLifecycle(lifecycle_ptr);
+}
+
+void Resume(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!TryLockLifecycle(lifecycle_ptr)) {
+    return;
+  }
+  reinterpret_cast<LynxShell*>(ptr)->Resume();
+  TryFreeLifecycle(lifecycle_ptr);
+}
+
 void LoadSSRDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
                                 jlong lifecycle, jstring j_url,
                                 jbyteArray ssr_data, jlong data,

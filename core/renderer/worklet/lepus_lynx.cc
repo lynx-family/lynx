@@ -104,6 +104,20 @@ void LepusLynx::EnsureTimeTaskInvoker() {
   if (timer_ == nullptr) {
     timer_ = std::make_unique<base::TimedTaskManager>(
         true, tasm_->GetLepusTimedTaskRunner());
+    if (tasm_->IsPaused()) {
+      timer_->Pause();
+    }
+  }
+}
+
+void LepusLynx::SetPaused(bool paused) {
+  if (timer_ == nullptr) {
+    return;
+  }
+  if (paused) {
+    timer_->Pause();
+  } else {
+    timer_->Resume();
   }
 }
 

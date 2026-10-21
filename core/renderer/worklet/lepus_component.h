@@ -71,6 +71,8 @@ class LepusComponent : public ImplBase {
                                            bool single);
 
   void DoFrame(int64_t frame_start, int64_t frame_end);
+  void RequestVsyncForAnimationFrame();
+  void DoAnimationFrame(int64_t time_stamp);
 
   std::string component_id_;
   tasm::TemplateAssembler* tasm_{nullptr};

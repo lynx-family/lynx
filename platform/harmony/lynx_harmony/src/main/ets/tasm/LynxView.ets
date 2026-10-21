@@ -415,6 +415,26 @@ export struct LynxView {
     this.templateRenderer?.onEnterBackground();
   }
 
+  /**
+   * @apidoc
+   * @brief Pause setTimeout, setInterval, requestAnimationFrame and animation vsync of the current
+   * `LynxView`, without triggering lifecycle events. Timers which become due while paused run
+   * after `resume()`.
+   */
+  pause() {
+    LLog.i(TAG, 'pause, url: ' + this.url);
+    this.templateRenderer?.pause();
+  }
+
+  /**
+   * @apidoc
+   * @brief Resume the timers, requestAnimationFrame and animation vsync paused by `pause()`.
+   */
+  resume() {
+    LLog.i(TAG, 'resume, url: ' + this.url);
+    this.templateRenderer?.resume();
+  }
+
   startLynxRuntime(): void {
     if (!this.templateRenderer || this.templateRenderer.isDestroyed()) {
       return;

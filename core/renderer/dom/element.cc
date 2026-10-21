@@ -2370,17 +2370,25 @@ void Element::ClearTransitionPreviousEndValue(
 }
 
 fml::TimePoint Element::ProcessAnimationEvents(fml::TimePoint& frame_time,
-                                               bool dispatch_events) {
+                                               bool dispatch_events,
+                                               bool suppress_infinite_events) {
   auto next = fml::TimePoint::Max();
   if (css_transition_manager_) {
     next = std::min(next, css_transition_manager_->ProcessAnimationEvents(
                               frame_time, dispatch_events));
   }
   if (css_keyframe_manager_) {
-    next = std::min(next, css_keyframe_manager_->ProcessAnimationEvents(
-                              frame_time, dispatch_events));
+    next = std::min(next,
+                    css_keyframe_manager_->ProcessAnimationEvents(
+                        frame_time, dispatch_events, suppress_infinite_events));
   }
   return next;
+}
+
+void Element::SyncInfiniteAnimationEvents(fml::TimePoint& frame_time) {
+  if (css_keyframe_manager_) {
+    css_keyframe_manager_->SyncInfiniteAnimationEvents(frame_time);
+  }
 }
 
 bool Element::TickAllAnimation(fml::TimePoint& frame_time,

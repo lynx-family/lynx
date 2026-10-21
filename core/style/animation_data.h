@@ -11,6 +11,16 @@
 
 namespace lynx {
 namespace starlight {
+
+// CSS parsers encode the "infinite" keyword with this sentinel, while some
+// native animation paths use a negative iteration count.
+constexpr int kInfiniteAnimationIterationCount = 1000000000;
+
+inline bool IsInfiniteAnimationIterationCount(int iteration_count) {
+  return iteration_count < 0 ||
+         iteration_count == kInfiniteAnimationIterationCount;
+}
+
 struct AnimationData {
   AnimationData();
   ~AnimationData() = default;

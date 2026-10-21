@@ -241,6 +241,9 @@ TemplateAssembler::TemplateAssembler(
 TemplateAssembler::~TemplateAssembler() {
   LOGI(GetLogContext() << " TemplateAssembler::Release url:" << url_
                        << " this:" << this);
+  // Pending callbacks may hold napi references, release them before the napi
+  // environments are detached.
+  frame_pause_state_->pending_callbacks.clear();
   ForEachEntry([](const auto& entry) { entry->DetachNapiEnvironment(); });
 };
 
@@ -1719,6 +1722,43 @@ void TemplateAssembler::OnRuntimeGC(
 
 fml::RefPtr<fml::TaskRunner> TemplateAssembler::GetLepusTimedTaskRunner() {
   return delegate_.GetLepusTimedTaskRunner();
+}
+
+void TemplateAssembler::SetPaused(bool paused) {
+  if (frame_pause_state_->paused == paused) {
+    return;
+  }
+  LOGI(GetLogContext() << " TemplateAssembler::SetPaused, paused: " << paused);
+  frame_pause_state_->paused = paused;
+  ForEachEntry([paused](const auto& entry) { entry->SetPaused(paused); });
+  if (paused) {
+    return;
+  }
+  auto pending_callbacks = std::move(frame_pause_state_->pending_callbacks);
+  frame_pause_state_->pending_callbacks.clear();
+  for (auto& [id, callback] : pending_callbacks) {
+    RequestVsyncForAnimationFrame(id, std::move(callback));
+  }
+}
+
+void TemplateAssembler::RequestVsyncForAnimationFrame(
+    uintptr_t id, base::MoveOnlyClosure<void, int64_t, int64_t> callback) {
+  if (frame_pause_state_->paused) {
+    frame_pause_state_->pending_callbacks.try_emplace(id, std::move(callback));
+    return;
+  }
+  delegate_.RequestVsync(
+      id, [id, weak_state = std::weak_ptr<FramePauseState>(frame_pause_state_),
+           callback = std::move(callback)](int64_t frame_start,
+                                           int64_t frame_end) mutable {
+        auto state = weak_state.lock();
+        if (state && state->paused) {
+          // Paused after the vsync was requested, run it after resumed.
+          state->pending_callbacks.try_emplace(id, std::move(callback));
+          return;
+        }
+        callback(frame_start, frame_end);
+      });
 }
 
 std::unique_ptr<lepus::Value> TemplateAssembler::GetCurrentData() {

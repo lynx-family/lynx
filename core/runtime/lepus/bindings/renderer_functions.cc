@@ -6729,7 +6729,7 @@ RENDERER_FUNCTION_CC(RequestAnimationFrame) {
   const std::shared_ptr<AnimationFrameManager> animationFrameManager =
       LEPUS_CONTEXT()->GetAnimationFrameManager();
 
-  tasm->GetDelegate().RequestVsync(
+  tasm->RequestVsyncForAnimationFrame(
       reinterpret_cast<uintptr_t>(&animationFrameManager),
       [animationFrameManager](int64_t frame_start, int64_t frame_end) {
         animationFrameManager->DoFrame(frame_start /

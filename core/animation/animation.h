@@ -131,6 +131,11 @@ class Animation : public std::enable_shared_from_this<Animation> {
     return &animation_data_;
   }
 
+  bool IsInfinite() const {
+    return starlight::IsInfiniteAnimationIterationCount(
+        animation_data_.iteration_count);
+  }
+
   void SetRawCssId(tasm::CSSPropertyID id) { raw_style_set_.insert(id); }
 
   std::unordered_set<tasm::CSSPropertyID>& GetRawStyleSet() {
