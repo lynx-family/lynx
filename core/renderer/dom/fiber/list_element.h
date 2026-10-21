@@ -96,6 +96,10 @@ class ListElement : public Element, public tasm::ListNode {
   void UpdateComponent(uint32_t sign, uint32_t row,
                        int64_t operationId = 0) override {}
 
+  lepus::Value InvokeMethod(const base::String& method,
+                            const lepus::Value& params,
+                            std::string* error) override;
+
   int32_t ComponentAtIndex(uint32_t index, int64_t operationId,
                            bool enable_reuse_notification) override;
 
@@ -135,6 +139,10 @@ class ListElement : public Element, public tasm::ListNode {
   void ScrollToPosition(int index, float offset, int align,
                         bool smooth) override;
   void OnListItemLayoutUpdated(Element* component) override;
+  // |offset| is in CSS px, matching the returned scroll snapshot.
+  std::unique_ptr<pub::Value> ScrollToPositionSync(int index, float offset,
+                                                   std::string* error);
+
   void ScrollStopped() override;
   bool DisableListPlatformImplementation() const override {
     return disable_list_platform_implementation_

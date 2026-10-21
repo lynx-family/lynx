@@ -1370,6 +1370,15 @@ class Element : public lepus::RefCounted,
 
   virtual bool is_text() const { return false; }
 
+  // Synchronous element methods called on the owning engine thread.
+  // Failures return an empty value and describe the reason in |error|.
+  virtual lepus::Value InvokeMethod(const base::String& method,
+                                    const lepus::Value& params,
+                                    std::string* error) {
+    *error = "Unsupported element method: " + method.str();
+    return lepus::Value();
+  }
+
   virtual bool is_list() const { return false; }
 
   virtual bool is_wrapper() const { return false; }

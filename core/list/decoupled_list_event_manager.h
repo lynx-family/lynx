@@ -26,6 +26,9 @@ class ListEventManager {
  public:
   ListEventManager(ListContainerImpl* list_container_impl);
 
+  // A fresh snapshot, independent of event throttling.
+  std::unique_ptr<pub::Value> ScrollSnapshot() const;
+
   void SetVisibleCell(bool visible_cell) { need_visible_cell_ = visible_cell; }
 
   void SetScrollEventThrottleMS(int scroll_event_throttle_ms) {

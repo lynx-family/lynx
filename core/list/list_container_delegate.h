@@ -6,6 +6,7 @@
 #define CORE_LIST_LIST_CONTAINER_DELEGATE_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "core/list/list_element_delegate.h"
@@ -42,6 +43,15 @@ class ContainerDelegate {
   virtual void OnAttachedToElementManager() = 0;
   virtual void ScrollToPosition(int index, float offset, int align,
                                 bool smooth) = 0;
+  // Synchronous renderer entry point. |offset| is in CSS px. On failure,
+  // returns null and describes the reason in |error|.
+  virtual std::unique_ptr<pub::Value> ScrollToPositionSync(int index,
+                                                           float offset,
+                                                           std::string* error) {
+    *error = "synchronous scrolling is not supported by this list";
+    return nullptr;
+  }
+
   virtual void ScrollStopped() = 0;
   virtual void EnableInsertPlatformView() = 0;
   virtual void OnNextFrame() = 0;

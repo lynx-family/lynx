@@ -412,6 +412,19 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateNodeExposureInfo(
   return exposure_info;
 }
 
+std::unique_ptr<pub::Value> ListEventManager::ScrollSnapshot() const {
+  auto info = GenerateScrollInfo(0, 0);
+  if (!info) return nullptr;
+  auto* layout = list_container_->list_layout_manager();
+  const float offset = layout->content_offset();
+  const bool vertical = layout->CanScrollVertically();
+  auto cells = GenerateVisibleCellsInfo(vertical ? 0.f : offset,
+                                        vertical ? offset : 0.f, true);
+  if (!cells) return nullptr;
+  info->PushValueToMap(kScrollInfoAttachedCells, *cells);
+  return info;
+}
+
 std::unique_ptr<pub::Value> ListEventManager::GenerateScrollInfo(
     float deltaX, float deltaY) const {
   std::unique_ptr<pub::Value> scroll_info;

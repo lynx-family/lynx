@@ -4,7 +4,10 @@
 
 #include "core/renderer/dom/fiber/list_element.h"
 
+#include <cmath>
+#include <limits>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "core/list/decoupled_list_types.h"
@@ -685,6 +688,63 @@ void ListElement::ScrollToPosition(int index, float offset, int align,
   if (UseNativeList()) {
     list_mediator_->ScrollToPosition(index, offset, align, smooth);
   }
+}
+
+lepus::Value ListElement::InvokeMethod(const base::String& method,
+                                       const lepus::Value& params,
+                                       std::string* error) {
+  if (method != BASE_STATIC_STRING(lynx::list::kScrollToPositionMethod)) {
+    return Element::InvokeMethod(method, params, error);
+  }
+  static constexpr const char kIndex[] = "index";
+  static constexpr const char kOffset[] = "offset";
+  const auto index_value = params.GetProperty(BASE_STATIC_STRING(kIndex));
+  const auto offset_value = params.GetProperty(BASE_STATIC_STRING(kOffset));
+  if (!index_value.IsNumber() || !offset_value.IsNumber()) {
+    *error = "scrollToPosition requires numeric index and offset";
+    return lepus::Value();
+  }
+  const double index = index_value.Number();
+  const double offset = offset_value.Number();
+  if (!std::isfinite(index) || index < 0 ||
+      index > std::numeric_limits<int>::max() || index != std::trunc(index) ||
+      !std::isfinite(offset) ||
+      std::abs(offset) > std::numeric_limits<float>::max()) {
+    *error =
+        "scrollToPosition requires a nonnegative integer index and finite "
+        "offset";
+    return lepus::Value();
+  }
+  std::string reason;
+  auto result = ScrollToPositionSync(static_cast<int>(index),
+                                     static_cast<float>(offset), &reason);
+  if (!result) {
+    *error = "scrollToPosition failed: " + reason;
+    return lepus::Value();
+  }
+  return pub::ValueUtils::ConvertValueToLepusValue(*result);
+}
+
+std::unique_ptr<pub::Value> ListElement::ScrollToPositionSync(
+    int index, float offset, std::string* error) {
+  if (IsDetached() || will_destroy()) {
+    *error = "list is detached";
+    return nullptr;
+  }
+  if (!UseNativeList()) {
+    *error = "list does not use the native list implementation";
+    return nullptr;
+  }
+  const auto engine_thread = element_manager()->GetCurrentEngineThreadId();
+  if (engine_thread && *engine_thread != std::this_thread::get_id()) {
+    *error = "must be called on the engine thread";
+    return nullptr;
+  }
+  if (NeedAsyncResolveListItem()) {
+    *error = "not supported when list items resolve asynchronously";
+    return nullptr;
+  }
+  return list_mediator_->ScrollToPositionSync(index, offset, error);
 }
 
 /**

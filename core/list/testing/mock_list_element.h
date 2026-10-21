@@ -31,9 +31,7 @@ class MockListElement : public ElementDelegate {
   float GetPhysicalPixelsPerLayoutUnit() const override {
     return kDefaultPhysicalPixelsPerLayoutUnit;
   }
-  float GetLayoutsUnitPerPx() const override {
-    return kDefaultLayoutsUnitPerPx;
-  }
+  float GetLayoutsUnitPerPx() const override { return layouts_unit_per_px_; }
   MOCK_METHOD(void, MarkListElementLayoutDirty, (), (override));
   bool IsRTL() const override { return is_rtl_; }
   float GetWidth() const override { return width_; }
@@ -120,6 +118,7 @@ class MockListElement : public ElementDelegate {
   bool last_scroll_info_scrolling_{false};
   float width_{500.f};
   float height_{500.f};
+  float layouts_unit_per_px_{kDefaultLayoutsUnitPerPx};
   std::array<float, 4> paddings_{0.f, 0.f, 0.f, 0.f};
   std::array<float, 4> margins_{0.f, 0.f, 0.f, 0.f};
   std::array<float, 4> borders_{0.f, 0.f, 0.f, 0.f};

@@ -190,6 +190,7 @@
   V(CreateSlot)                         \
   V(SetProp)                            \
   V(SetData)                            \
+  V(FiberInvokeMethod)                  \
   V(InvokeUIMethod)                     \
   V(FiberGetDiffData)                   \
   V(FiberGetElementByUniqueID)          \

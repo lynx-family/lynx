@@ -9,6 +9,7 @@
 #include <limits>
 #include <utility>
 
+#include "base/include/auto_reset.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/list/animation/animation_manager_default.h"
@@ -868,6 +869,68 @@ void ListContainerImpl::ScrollToPosition(int index, float offset, int align,
   if (list_layout_manager_) {
     list_layout_manager_->ScrollToPosition(index, offset, align, smooth);
   }
+}
+
+bool ListContainerImpl::AreOnScreenItemsReady() const {
+  for (const auto* item : list_children_helper_->on_screen_children()) {
+    if (!list_adapter_->IsFinishedBinding(item)) return false;
+  }
+  return true;
+}
+
+// Indices past the end target the last item; an empty list only reports its
+// current snapshot.
+std::unique_ptr<pub::Value> ListContainerImpl::ScrollToPositionSync(
+    int index, float offset, std::string* error) {
+  if (index < 0 || !std::isfinite(offset)) {
+    *error = "invalid index or offset";
+    return nullptr;
+  }
+  if (!list_delegate_ || !list_layout_manager_ || !list_event_manager_ ||
+      !list_adapter_) {
+    *error = "list is not initialized";
+    return nullptr;
+  }
+  if (enable_batch_render_) {
+    *error = "not supported with batch render";
+    return nullptr;
+  }
+  if (intercept_depth_ != 0 || synchronous_scroll_active_) {
+    *error = "list is updating";
+    return nullptr;
+  }
+  const float viewport = list_layout_manager_->CanScrollVertically()
+                             ? list_delegate_->GetHeight()
+                             : list_delegate_->GetWidth();
+  const float layouts_unit_per_px = list_delegate_->GetLayoutsUnitPerPx();
+  if (!std::isfinite(viewport) || viewport <= 0 ||
+      !std::isfinite(layouts_unit_per_px) || layouts_unit_per_px <= 0) {
+    *error = "list has no layout";
+    return nullptr;
+  }
+  // Snapshots report CSS px, so the requested offset uses the same unit.
+  const float layout_offset = offset * layouts_unit_per_px;
+  if (!std::isfinite(layout_offset)) {
+    *error = "invalid index or offset";
+    return nullptr;
+  }
+  base::AutoReset<bool> guard(&synchronous_scroll_active_, true);
+  const int count = GetDataCount();
+  if (count > 0) {
+    // The existing positioning layout rebinds dirty items itself. Readiness is
+    // required after it finishes, not before it gets a chance to lay them out.
+    list_layout_manager_->ScrollToPosition(std::min(index, count - 1),
+                                           layout_offset, 0, false);
+    list_layout_manager_->ScrollStopped();
+  }
+  if (!AreOnScreenItemsReady()) {
+    *error =
+        "list was positioned, but on-screen items have not finished binding";
+    return nullptr;
+  }
+  auto snapshot = list_event_manager_->ScrollSnapshot();
+  if (!snapshot) *error = "failed to create the scroll snapshot";
+  return snapshot;
 }
 
 void ListContainerImpl::ScrollStopped() {
