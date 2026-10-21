@@ -19,6 +19,8 @@
 #include "base/include/fml/message_loop.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/compose_element_handle.h"
+#include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
@@ -34,6 +36,9 @@
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/lepus/bindings/renderer_functions.h"
+#include "core/runtime/lepusng/quick_context.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "gfx/geometry/matrix44.h"
 #include "gfx/public/display_list_reader.h"
@@ -129,6 +134,15 @@ class TestPlatformRenderer : public PlatformRendererImpl {
   void OnUpdateSubtreeProperties(const DisplayList&) override {}
 };
 
+static const SubtreeProperty* LastSubtreeProperty(
+    const DisplayList& list, DisplayListSubtreePropertyOpType type) {
+  for (size_t i = list.GetSubtreePropertiesSize(); i > 0; --i) {
+    const auto* property = list.GetSubtreePropertiesData() + i - 1;
+    if (property->type == type) return property;
+  }
+  return nullptr;
+}
+
 class TestPlatformRendererFactory : public PlatformRendererFactory {
  public:
   fml::RefPtr<PlatformRenderer> CreateRenderer(
@@ -193,6 +207,30 @@ TEST_F(FragmentTest, FilterResetInvalidatesSubtreeAndEmitsNone) {
   EXPECT_EQ(reset_properties[0].data.filter.type,
             static_cast<int32_t>(starlight::FilterType::kNone));
   EXPECT_FLOAT_EQ(reset_properties[0].data.filter.amount, 0.f);
+}
+
+TEST_F(FragmentTest, OrdinaryLayerPropertiesPublishOnlyChangedCSSProperties) {
+  auto element = manager->CreateFiberView();
+  auto* fragment = element->fragment_impl();
+  auto* style = element->computed_css_style();
+  const std::pair<CSSPropertyID, DisplayListSubtreePropertyOpType>
+      properties[] = {
+          {kPropertyIDTransform, DisplayListSubtreePropertyOpType::kTransform},
+          {kPropertyIDOpacity, DisplayListSubtreePropertyOpType::kOpacity},
+          {kPropertyIDFilter, DisplayListSubtreePropertyOpType::kFilter}};
+  for (const auto& property : properties) {
+    style->ClearChanged();
+    style->MarkChanged(property.first);
+    DisplayListBuilder builder;
+    fragment->DrawLayerProperties(builder);
+    auto list = builder.Build();
+    ASSERT_EQ(list.GetSubtreePropertiesSize(), 1u);
+    EXPECT_EQ(list.GetSubtreePropertiesData()[0].type, property.second);
+  }
+  style->ClearChanged();
+  DisplayListBuilder unchanged;
+  fragment->DrawLayerProperties(unchanged);
+  EXPECT_EQ(unchanged.Build().GetSubtreePropertiesSize(), 0u);
 }
 
 class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
@@ -606,6 +644,102 @@ TEST_F(FragmentDrawTest, CustomDrawBehindRecordsCommandsBeforeDefaultContent) {
   EXPECT_EQ(colors, (std::vector<uint32_t>{0xff0000ff, 0xffff0000}));
 }
 
+TEST_P(CustomDrawFlushTest,
+       CustomLayerPropertiesReuseContentAndRestoreCSSProperties) {
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(kPropertyIDTransform, lepus::Value("translate(7px, 9px)"));
+  element->SetStyle(kPropertyIDOpacity, lepus::Value(0.4));
+  element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  page->InsertNode(element);
+  int behind = 0;
+  int foreground = 0;
+  int layers = 0;
+  bool emit_transform = true;
+  bool emit_opacity = true;
+  CustomDrawFunctions functions;
+  functions.draw_behind = [&](Fragment&, DisplayListBuilder&) { ++behind; };
+  functions.draw_foreground = [&](Fragment&, DisplayListBuilder&) {
+    ++foreground;
+  };
+  functions.draw_layer_properties = [&](Fragment&,
+                                        DisplayListBuilder& builder) {
+    ++layers;
+    if (emit_transform) {
+      gfx::Matrix44 matrix;
+      matrix.preTranslate(40, 60, 0);
+      builder.Transform(matrix);
+    }
+    if (emit_opacity) builder.Opacity(0.8f);
+  };
+  element->SetCustomDrawFunctions(std::move(functions));
+  page->FlushActionsAsRoot();
+  auto* fragment = element->fragment_impl();
+  ASSERT_TRUE(fragment->has_platform_renderer_);
+  ASSERT_TRUE(fragment->HasCustomLayerProperties());
+  auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      element->impl_id(), PlatformRendererType::kView);
+  auto draw = [&](float x, float y, float opacity, bool expect_content) {
+    DisplayListBuilder builder;
+    fragment->OnDraw(builder);
+    auto list = builder.Build();
+    EXPECT_EQ(list.GetContentItemsSize() > 0, expect_content);
+    auto* property =
+        LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kOpacity);
+    ASSERT_NE(property, nullptr);
+    EXPECT_FLOAT_EQ(property->data.opacity, opacity);
+    renderer->UpdateDisplayList(std::move(list));
+    ASSERT_NE(renderer->GetTransform(), nullptr);
+    EXPECT_FLOAT_EQ(renderer->GetTransform()->data.transform[12], x);
+    EXPECT_FLOAT_EQ(renderer->GetTransform()->data.transform[13], y);
+  };
+  draw(40, 60, 0.8f, true);
+  EXPECT_EQ(behind, 1);
+  EXPECT_EQ(foreground, 1);
+  EXPECT_EQ(layers, 1);
+
+  // A property-only update runs the layer hook without recording content.
+  // Omitting a property restores CSS even though the CSS value did not change.
+  // This test calls OnDraw directly; finish the style-change bookkeeping first.
+  element->computed_css_style()->ClearChanged();
+  emit_opacity = false;
+  EXPECT_FALSE(element->computed_css_style()->OpacityChanged());
+  fragment->InvalidateForSubtreeProperty();
+  draw(40, 60, 0.4f, false);
+  EXPECT_EQ(behind, 1);
+  EXPECT_EQ(foreground, 1);
+  EXPECT_EQ(layers, 2);
+  emit_transform = false;
+  EXPECT_FALSE(element->computed_css_style()->TransformChanged());
+  fragment->InvalidateForSubtreeProperty();
+  draw(7, 9, 0.4f, false);
+
+  emit_transform = true;
+  emit_opacity = true;
+  fragment->InvalidateForSubtreeProperty();
+  draw(40, 60, 0.8f, false);
+  EXPECT_EQ(layers, 4);
+  element->SetCustomDrawFunctions({});
+  // Re-resolving an unrelated style in the same flush must not erase the
+  // explicit reset of the unchanged transform and opacity.
+  element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(fragment->HasCustomDraw());
+  draw(7, 9, 0.4f, true);
+  EXPECT_EQ(layers, 4);
+  EXPECT_EQ(behind, 1);
+  EXPECT_EQ(foreground, 1);
+  // The removal restores properties once. Later updates go back to ordinary
+  // CSS change detection instead of continuing to publish defaults.
+  element->computed_css_style()->ClearChanged();
+  fragment->InvalidateForSubtreeProperty();
+  DisplayListBuilder unchanged;
+  fragment->OnDraw(unchanged);
+  EXPECT_EQ(unchanged.Build().GetSubtreePropertiesSize(), 0u);
+  EXPECT_EQ(layers, 4);
+}
+
 TEST_F(FragmentDrawTest, CustomForegroundOverflowClipIsIndependentOfChildren) {
   auto page = manager->CreateFiberPage("0", 0);
   manager->SetFiberPageElement(page);
@@ -957,6 +1091,647 @@ TEST_F(FragmentDrawTest, CustomForegroundPreservesRetainedContent) {
   {
     SCOPED_TRACE("property-only redraw");
     verify_content();
+  }
+}
+
+class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
+ public:
+  void SetUp() override {
+    FragmentDrawTest::SetUp();
+    runtime_ = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    runtime_->Initialize();
+    Eval(
+        "globalThis.layerCalls = 0; globalThis.layerOffset = 10;"
+        "globalThis.layerXFactor = 0.5; globalThis.layerYFactor = 1;"
+        "globalThis.layerRotation = 0; globalThis.layerScaleX = 1; "
+        "globalThis.layerScaleY = 1;");
+  }
+
+  lepus::Value Eval(const std::string& script) {
+    lepus::Value value;
+    EXPECT_TRUE(runtime::MTSRuntime::ToQuickContext(runtime_.get())
+                    ->EvalBuf(script.data(), script.size(), value, "layer.js"));
+    return value;
+  }
+
+  lepus::Value Layer(const lepus::Value& previous = {}) {
+    auto layer = lepus::Dictionary::Create();
+    layer->SetValue("op", lepus::Value(11));
+    layer->SetValue("previous", previous);
+    layer->SetValue("resolve",
+                    Eval("(function(index) { return " +
+                         std::string(R"((function(element, width, height) {
+      if (globalThis.declineLayers) return null;
+      globalThis.layerElements = globalThis.layerElements || [];
+      globalThis.layerElements[index] = element;
+      globalThis.layerDrawOrder = globalThis.layerDrawOrder || [];
+      globalThis.layerDrawOrder.push(index);
+      globalThis.layerCalls++;
+      return {translationX: globalThis.invalidLayer ? NaN : width * globalThis.layerXFactor + globalThis.layerOffset,
+          translationY: height * globalThis.layerYFactor, rotationZ: globalThis.layerRotation,
+          scaleX: globalThis.layerScaleX, scaleY: globalThis.layerScaleY};
+    }))") + "; })(" + std::to_string(next_layer_index_++) +
+                         ")"));
+    return lepus::Value(layer);
+  }
+
+  void Install(const lepus::Value& plan,
+               ComposeElementKind kind = ComposeElementKind::kView) {
+    page_ = manager->CreateFiberPage("0", 0);
+    manager->SetFiberPageElement(page_);
+    handle_ = fml::AdoptRef(new ComposeElementHandle(manager.get(), kind));
+    ASSERT_TRUE(
+        ComposeModifierApplicator::Apply(handle_.get(), plan, runtime_.get())
+            .success);
+    EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+    page_->InsertNode(handle_->mount_root());
+    page_->FlushActionsAsRoot();
+  }
+
+  void Size(Element* element, float width, float height) {
+    element->UpdateLayout(0, 0, width, height, {}, {}, {}, nullptr, 0, false);
+    // Match UpdateLayoutInfo: the layout result must also reach Fragment before
+    // drawing, including its size-change invalidation.
+    element->fragment_impl()->UpdateLayout(element->layout_result());
+  }
+
+  DisplayList Draw(Element* element) {
+    DisplayListBuilder builder;
+    element->fragment_impl()->OnDraw(builder);
+    return builder.Build();
+  }
+
+  static void ExpectTranslation(const DisplayList& list, float x, float y) {
+    const auto* property =
+        LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kTransform);
+    ASSERT_NE(property, nullptr);
+    EXPECT_FLOAT_EQ(property->data.transform[12], x);
+    EXPECT_FLOAT_EQ(property->data.transform[13], y);
+  }
+
+  void Invalidate(const lepus::Value& element) {
+    auto argument = element;
+    RendererFunctions::InvalidateElement(runtime_->GetMTSContext(), &argument,
+                                         1);
+  }
+
+  size_t next_layer_index_{0};
+  std::shared_ptr<runtime::MTSRuntime> runtime_;
+  fml::RefPtr<PageElement> page_;
+  fml::RefPtr<ComposeElementHandle> handle_;
+};
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       CallbackRunsInFragmentDrawAndRecordsDisplayList) {
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  auto* fragment = layer->fragment_impl();
+  ASSERT_TRUE(fragment->HasCustomDraw());
+  ASSERT_TRUE(fragment->HasCustomLayerProperties());
+  EXPECT_FALSE(fragment->custom_draw_functions_->draw_foreground);
+  EXPECT_TRUE(fragment->has_platform_renderer_);
+  EXPECT_EQ(layer, handle_->content_element().get());
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+  Size(layer, 200, 80);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+  auto list = Draw(layer);
+  ExpectTranslation(list, 110, 80);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  EXPECT_FALSE(layer->computed_css_style()->HasTransform());
+  EXPECT_FALSE(layer->ShouldResolveStyle());
+  const auto items = CollectDisplayListItems(list);
+  ASSERT_GE(items.size(), 2u);
+  EXPECT_EQ(items.front().type, DisplayListOpType::kBegin);
+  EXPECT_EQ(items.front().payload.begin.id, layer->impl_id());
+  EXPECT_EQ(items.back().type, DisplayListOpType::kEnd);
+  for (const auto& item : items) EXPECT_NE(item.type, DisplayListOpType::kFill);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       PropertyInvalidationReusesContentAndEvaluatesLayer) {
+  Install(Layer());
+  auto* content = handle_->content_element().get();
+  Size(content, 200, 80);
+  ExpectTranslation(Draw(content), 110, 80);
+  Eval("globalThis.layerOffset = 25");
+  content->fragment_impl()->InvalidateForSubtreeProperty();
+  EXPECT_FALSE(content->fragment_impl()->NeedRedraw());
+  auto updated = Draw(content);
+  EXPECT_EQ(updated.GetContentItemsSize(), 0u);
+  ExpectTranslation(updated, 125, 80);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+  auto clean = Draw(content);
+  EXPECT_EQ(clean.GetSubtreePropertiesSize(), 0u);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       InvalidationRecordsCompleteContentWithNewProperties) {
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  Size(layer, 200, 80);
+  auto initial = Draw(layer);
+  ExpectTranslation(initial, 110, 80);
+  auto cached = Draw(layer);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  EXPECT_EQ(cached.GetContentItemsSize(), 0u);
+  Eval("globalThis.layerOffset = 25");
+  Invalidate(lepus::Value(handle_));
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  EXPECT_TRUE(layer->fragment_impl()->NeedRedraw());
+  auto updated = Draw(layer);
+  ExpectTranslation(updated, 125, 80);
+  const auto items = CollectDisplayListItems(updated);
+  ASSERT_GE(items.size(), 2u);
+  EXPECT_EQ(items.front().type, DisplayListOpType::kBegin);
+  EXPECT_EQ(items.back().type, DisplayListOpType::kEnd);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+  EXPECT_FALSE(layer->computed_css_style()->HasTransform());
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, FollowingContentKeepsItsOwnDrawing) {
+  auto background = [](const char* color, const lepus::Value& previous = {}) {
+    auto node = lepus::Dictionary::Create();
+    node->SetValue("op", lepus::Value(3));
+    node->SetValue("propertyId", lepus::Value(kPropertyIDBackgroundColor));
+    node->SetValue("value", lepus::Value(color));
+    node->SetValue("previous", previous);
+    return lepus::Value(node);
+  };
+  Install(background("blue", Layer(background("red"))));
+  auto* carrier = handle_->mount_root().get();
+  auto* content = handle_->content_element().get();
+  ASSERT_EQ(carrier->GetChildAt(0), content);
+  EXPECT_FALSE(carrier->HasCustomDrawFunctions());
+  ASSERT_TRUE(content->HasCustomDrawFunctions());
+  Size(carrier, 100, 60);
+  Size(content, 100, 60);
+  auto list = Draw(content);
+  ExpectTranslation(list, 60, 60);
+  bool has_fill = false;
+  for (const auto& item : CollectDisplayListItems(list))
+    has_fill |= item.type == DisplayListOpType::kFill;
+  EXPECT_TRUE(has_fill);
+  EXPECT_EQ(Draw(carrier).GetSubtreePropertiesSize(), 0u);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       AdjacentLayersUseDifferentFollowingElements) {
+  Install(Layer(Layer()));
+  auto* outer = handle_->mount_root()->GetChildAt(0);
+  auto* inner = outer->GetChildAt(0);
+  ASSERT_EQ(inner, handle_->content_element().get());
+  ASSERT_TRUE(outer->HasCustomDrawFunctions());
+  ASSERT_TRUE(inner->HasCustomDrawFunctions());
+  Size(outer, 100, 60);
+  Size(inner, 100, 60);
+  ExpectTranslation(Draw(outer), 60, 60);
+  EXPECT_EQ(Eval("globalThis.layerDrawOrder.join(',')").StdString(), "1,0");
+  auto outer_argument = Eval("globalThis.layerElements[0]").ToLepusValue();
+  auto inner_argument = Eval("globalThis.layerElements[1]").ToLepusValue();
+  ASSERT_TRUE(outer_argument.IsRefCounted());
+  ASSERT_TRUE(inner_argument.IsRefCounted());
+  EXPECT_EQ(outer_argument.RefCounted().get(), outer);
+  EXPECT_EQ(inner_argument.RefCounted().get(), inner);
+
+  // A State notification can use the received Element directly. It must not
+  // invalidate another layer owned by the same Compose content handle.
+  Invalidate(outer_argument);
+  EXPECT_TRUE(outer->fragment_impl()->NeedUpdateSubtreeProperty());
+  EXPECT_FALSE(inner->fragment_impl()->NeedUpdateSubtreeProperty());
+  ExpectTranslation(Draw(outer), 60, 60);
+  EXPECT_EQ(Eval("globalThis.layerDrawOrder.join(',')").StdString(), "1,0,0");
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, ImageContentOwnsItsLayerCallback) {
+  Install(Layer(), ComposeElementKind::kImage);
+  auto* content = handle_->content_element().get();
+  ASSERT_EQ(handle_->mount_root()->GetChildAt(0), content);
+  ASSERT_TRUE(content->is_image());
+  ASSERT_TRUE(content->HasCustomDrawFunctions());
+  Size(content, 100, 60);
+  ExpectTranslation(Draw(content), 60, 60);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, TextContentOwnsItsLayerCallback) {
+  Install(Layer(), ComposeElementKind::kText);
+  auto* content = handle_->content_element().get();
+  ASSERT_EQ(handle_->mount_root()->GetChildAt(0), content);
+  ASSERT_TRUE(content->is_text());
+  ASSERT_TRUE(content->HasCustomDrawFunctions());
+  Size(content, 100, 60);
+  ExpectTranslation(Draw(content), 60, 60);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       RemovingAndReaddingLayerRestoresRetainedContentTransform) {
+  auto padding = lepus::Dictionary::Create();
+  padding->SetValue("op", lepus::Value(7));
+  for (const auto* side : {"start", "top", "end", "bottom"})
+    padding->SetValue(side, lepus::Value(8.0));
+  auto with_layer = Layer(lepus::Value(padding));
+  Install(with_layer);
+  auto content = handle_->content_element();
+  Size(content.get(), 100, 60);
+  auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      content->impl_id(), PlatformRendererType::kView);
+  auto draw = [&](float x, float y) {
+    renderer->UpdateDisplayList(Draw(content.get()));
+    ASSERT_NE(renderer->GetTransform(), nullptr);
+    EXPECT_FLOAT_EQ(renderer->GetTransform()->data.transform[12], x);
+    EXPECT_FLOAT_EQ(renderer->GetTransform()->data.transform[13], y);
+  };
+  draw(60, 60);
+
+  auto replace = [&](const lepus::Value& modifier) {
+    ASSERT_TRUE(ComposeModifierApplicator::Apply(handle_.get(), modifier,
+                                                 runtime_.get())
+                    .success);
+    EXPECT_EQ(handle_->content_element(), content);
+  };
+  replace(lepus::Value(padding));
+  page_->FlushActionsAsRoot();
+  EXPECT_FALSE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(content->fragment_impl()->HasCustomLayerProperties());
+  draw(0, 0);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+
+  // Further Modifier updates retain the restored matrix without keeping a
+  // default callback or reviving the removed runtime closure.
+  replace(lepus::Value(padding));
+  page_->FlushActionsAsRoot();
+  draw(0, 0);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+
+  replace(with_layer);
+  page_->FlushActionsAsRoot();
+  draw(60, 60);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+
+  // Coalesced removal and installation must use the final layer hook.
+  replace(lepus::Value(padding));
+  replace(with_layer);
+  content->fragment_impl()->InvalidateForRedraw();
+  Draw(content.get());
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+  page_->FlushActionsAsRoot();
+  draw(60, 60);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 3);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, InvalidateElementRedrawsOrdinaryContent) {
+  Install({});
+  auto content = handle_->content_element();
+  Size(content.get(), 100, 50);
+  Draw(content.get());
+  EXPECT_FALSE(content->fragment_impl()->NeedRedraw());
+  Invalidate(lepus::Value(content));
+  EXPECT_TRUE(content->fragment_impl()->NeedRedraw());
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+  EXPECT_GT(Draw(content.get()).GetContentItemsSize(), 0u);
+  EXPECT_FALSE(content->fragment_impl()->NeedRedraw());
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, InvalidateHandleIncludesContentElement) {
+  Install(Layer(Layer()));
+  auto content = handle_->content_element();
+  Draw(content.get());
+  EXPECT_FALSE(content->fragment_impl()->NeedRedraw());
+  const double calls = Eval("globalThis.layerCalls").Number();
+  Invalidate(lepus::Value(handle_));
+  for (auto* target = handle_->mount_root().get(); target;
+       target = target->GetChildAt(0)) {
+    EXPECT_TRUE(target->fragment_impl()->NeedRedraw());
+    EXPECT_TRUE(target->fragment_impl()->NeedUpdateSubtreeProperty());
+    if (target == content.get()) break;
+  }
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), calls);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       ContentRedrawDoesNotInvalidateLayerProperties) {
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  Size(layer, 200, 80);
+  auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      layer->impl_id(), PlatformRendererType::kView);
+  renderer->UpdateDisplayList(Draw(layer));
+  Eval("globalThis.layerOffset = 25");
+  // Content-only redraw keeps the retained layer matrix and does not invoke
+  // the property hook. Runtime invalidation explicitly requests both phases.
+  layer->fragment_impl()->InvalidateForRedraw();
+  EXPECT_FALSE(layer->fragment_impl()->NeedUpdateSubtreeProperty());
+  auto content = Draw(layer);
+  EXPECT_GT(content.GetContentItemsSize(), 0u);
+  EXPECT_EQ(content.GetSubtreePropertiesSize(), 0u);
+  renderer->UpdateDisplayList(std::move(content));
+  ASSERT_NE(renderer->GetTransform(), nullptr);
+  EXPECT_FLOAT_EQ(renderer->GetTransform()->data.transform[12], 110.f);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  Invalidate(lepus::Value(handle_));
+  EXPECT_TRUE(layer->fragment_impl()->NeedRedraw());
+  EXPECT_TRUE(layer->fragment_impl()->NeedUpdateSubtreeProperty());
+  ExpectTranslation(Draw(layer), 125, 80);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+  Draw(layer);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       ResizeChangesScopeSizeAndDisplayListMatrix) {
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  Size(layer, 200, 80);
+  ExpectTranslation(Draw(layer), 110, 80);
+  Size(layer, 300, 90);
+  ExpectTranslation(Draw(layer), 160, 90);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+  // Repeating layout with the same size only redraws content.
+  Size(layer, 300, 90);
+  EXPECT_EQ(Draw(layer).GetSubtreePropertiesSize(), 0u);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       ReplacingModifierRecordsTransformWithoutCSSOverrides) {
+  auto make_plan = [this](double width) {
+    auto size = lepus::Dictionary::Create();
+    size->SetValue("op", lepus::Value(8));
+    size->SetValue("specifiedAxes", lepus::Value(3));
+    size->SetValue("width", lepus::Value(width));
+    size->SetValue("height", lepus::Value(60.0));
+    return Layer(lepus::Value(size));
+  };
+  Install(make_plan(100));
+  for (double width : {100.0, 200.0}) {
+    if (width != 100.0) {
+      ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                      handle_.get(), make_plan(width), runtime_.get())
+                      .success);
+      page_->FlushActionsAsRoot();
+    }
+    auto* layer = handle_->mount_root()->GetChildAt(0);
+    EXPECT_FALSE(layer->IsStackingContextNode());
+    EXPECT_FALSE(layer->computed_css_style()->HasTransform());
+    EXPECT_FALSE(layer->computed_css_style()->TransformChanged());
+    page_->Layout(std::make_shared<PipelineOptions>());
+    manager->Repaint();
+    auto* context = static_cast<NativeMockPaintingContext*>(
+        manager->painting_context()->impl());
+    const auto* list =
+        context->GetNativePlatformRef()->GetDisplayListForRenderer(
+            layer->impl_id());
+    ASSERT_NE(list, nullptr);
+    ExpectTranslation(*list, width * 0.5f + 10, 60);
+
+    Eval("globalThis.layerOffset = 25");
+    // Reuse the target supplied to the current resolver, as Compose does
+    // when an observed State changes after the property pass.
+    Invalidate(Eval("globalThis.layerElements[" +
+                    std::to_string(next_layer_index_ - 1) + "]")
+                   .ToLepusValue());
+    page_->FlushActionsAsRoot();
+    manager->Repaint();
+    list = context->GetNativePlatformRef()->GetDisplayListForRenderer(
+        layer->impl_id());
+    ASSERT_NE(list, nullptr);
+    ExpectTranslation(*list, width * 0.5f + 25, 60);
+    Eval("globalThis.layerOffset = 10");
+  }
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 4);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, LayoutResizeReevaluatesLayerOnRepaint) {
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  auto content = handle_->content_element();
+  content->SetStyle(kPropertyIDWidth, lepus::Value("100px"));
+  content->SetStyle(kPropertyIDHeight, lepus::Value("60px"));
+  page_->FlushActionsAsRoot();
+  page_->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+  manager->Repaint();
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  const float old_width = layer->width();
+  const float old_height = layer->height();
+  ASSERT_GT(old_width, 0);
+  ASSERT_GT(old_height, 0);
+
+  content->SetStyle(kPropertyIDWidth, lepus::Value("200px"));
+  content->SetStyle(kPropertyIDHeight, lepus::Value("90px"));
+  page_->FlushActionsAsRoot();
+  page_->Layout(std::make_shared<PipelineOptions>());
+  ASSERT_TRUE(layer->width() != old_width || layer->height() != old_height);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  manager->Repaint();
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  const auto* list = context->GetNativePlatformRef()->GetDisplayListForRenderer(
+      layer->impl_id());
+  ASSERT_NE(list, nullptr);
+  ExpectTranslation(*list, layer->width() * 0.5f + 10, layer->height());
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       NestedLayersKeepTheirOwnPaddingBoundarySizes) {
+  auto padding = lepus::Dictionary::Create();
+  padding->SetValue("op", lepus::Value(7));
+  for (const auto* side : {"start", "top", "end", "bottom"})
+    padding->SetValue(side, lepus::Value(8.0));
+  padding->SetValue("previous", Layer());
+  Install(Layer(lepus::Value(padding)));
+  auto* outer = handle_->mount_root()->GetChildAt(0);
+  auto* inner = outer->GetChildAt(0)->GetChildAt(0);
+  ASSERT_TRUE(outer->fragment_impl()->HasCustomDraw());
+  ASSERT_TRUE(inner->fragment_impl()->HasCustomDraw());
+  EXPECT_NE(outer->fragment_impl(), inner->fragment_impl());
+  Size(outer, 100, 80);
+  Size(inner, 60, 40);
+  ExpectTranslation(Draw(outer), 60, 80);
+  // Each layer hook resolves its own properties after visiting nested content.
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 2);
+  EXPECT_EQ(Eval("globalThis.layerDrawOrder.join(',')").StdString(), "1,0");
+  EXPECT_FALSE(inner->computed_css_style()->HasTransform());
+
+  // Only the outer size changes. Its draw must not execute the clean inner
+  // layer's callback or replace its retained matrix.
+  EXPECT_FALSE(inner->fragment_impl()->NeedRedraw());
+  Eval("globalThis.layerOffset = 25");
+  Size(outer, 200, 80);
+  ExpectTranslation(Draw(outer), 125, 80);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 3);
+  EXPECT_EQ(Eval("globalThis.layerDrawOrder.join(',')").StdString(), "1,0,0");
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  const auto* inner_list =
+      context->GetNativePlatformRef()->GetDisplayListForRenderer(
+          inner->impl_id());
+  ASSERT_NE(inner_list, nullptr);
+  ExpectTranslation(*inner_list, 40, 40);
+  EXPECT_FALSE(inner->fragment_impl()->NeedRedraw());
+
+  // State invalidation marks both layers; each then publishes its own result.
+  Invalidate(lepus::Value(handle_));
+  ExpectTranslation(Draw(outer), 125, 80);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 5);
+  EXPECT_EQ(Eval("globalThis.layerDrawOrder.join(',')").StdString(),
+            "1,0,0,1,0");
+  inner_list = context->GetNativePlatformRef()->GetDisplayListForRenderer(
+      inner->impl_id());
+  ASSERT_NE(inner_list, nullptr);
+  ExpectTranslation(*inner_list, 55, 40);
+  EXPECT_FALSE(inner->fragment_impl()->NeedRedraw());
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, InvalidResultRestoresDefaultTransform) {
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  Size(layer, 200, 80);
+  ExpectTranslation(Draw(layer), 110, 80);
+  Eval("globalThis.invalidLayer = true");
+  Invalidate(lepus::Value(handle_));
+  ExpectTranslation(Draw(layer), 0, 0);
+  EXPECT_FALSE(layer->computed_css_style()->HasTransform());
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, DeclinedResolverRestoresDefaultTransform) {
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  Size(layer, 200, 80);
+  ExpectTranslation(Draw(layer), 110, 80);
+  Eval("globalThis.declineLayers = true");
+  Invalidate(lepus::Value(handle_));
+  ExpectTranslation(Draw(layer), 0, 0);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       RemovingLastLayerRestoresDefaultRendererTransform) {
+  Install(Layer());
+  auto content = handle_->content_element();
+  Size(content.get(), 200, 80);
+  Eval(
+      "globalThis.layerRotation = 30; globalThis.layerScaleX = 2; "
+      "globalThis.layerScaleY = 3;");
+  auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      content->impl_id(), PlatformRendererType::kView);
+  renderer->UpdateDisplayList(Draw(content.get()));
+  ASSERT_NE(renderer->GetTransform(), nullptr);
+  EXPECT_NE(renderer->GetTransform()->data.transform[0], 1.f);
+  EXPECT_NE(renderer->GetTransform()->data.transform[1], 0.f);
+  EXPECT_NE(renderer->GetTransform()->data.transform[12], 0.f);
+
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), {}, runtime_.get())
+          .success);
+  EXPECT_EQ(handle_->mount_root(), content);
+  // The retained content still has the old Fragment binding before Flush.
+  // Removing it must stop that runtime closure immediately.
+  content->fragment_impl()->InvalidateForRedraw();
+  Draw(content.get());
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  page_->FlushActionsAsRoot();
+  EXPECT_FALSE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(content->fragment_impl()->HasCustomDraw());
+
+  // Verify the renderer itself loses translation, scale and rotation, including
+  // on later redraws. No runtime closure is needed to record the defaults.
+  for (int draw = 0; draw < 2; ++draw) {
+    content->fragment_impl()->InvalidateForRedraw();
+    renderer->UpdateDisplayList(Draw(content.get()));
+    ASSERT_NE(renderer->GetTransform(), nullptr);
+    for (size_t i = 0; i < 16; ++i) {
+      EXPECT_FLOAT_EQ(renderer->GetTransform()->data.transform[i],
+                      i % 5 == 0 ? 1.f : 0.f);
+    }
+    EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  }
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, CloneDoesNotShareRuntimeBinding) {
+  Install(Layer());
+  auto* source = handle_->mount_root()->GetChildAt(0);
+  Size(source, 200, 80);
+  ExpectTranslation(Draw(source), 110, 80);
+  auto clone = source->CloneElement(false);
+  EXPECT_FALSE(clone->HasCustomDrawFunctions());
+  clone->AttachToElementManager(manager.get(), nullptr, false);
+  EXPECT_FALSE(clone->fragment_impl()->HasCustomDraw());
+  page_->InsertNode(clone);
+  page_->FlushActionsAsRoot();
+  Draw(clone.get());
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  EXPECT_TRUE(source->fragment_impl()->HasCustomDraw());
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       ConvertsPhysicalPixelsOnceInDisplayListMatrix) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  Size(layer, 200, 80);
+  // Scope width=400px, x=210px; the display list uses layout units: x=105.
+  ExpectTranslation(Draw(layer), 105, 80);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, RotationAndScaleUseTheLayerCenter) {
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  Size(layer, 200, 80);
+  Eval(
+      "globalThis.layerXFactor = 0; globalThis.layerYFactor = 0;"
+      "globalThis.layerRotation = 90; globalThis.layerScaleX = 2; "
+      "globalThis.layerScaleY = 3;");
+  auto list = Draw(layer);
+  const auto* transform =
+      LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kTransform);
+  ASSERT_NE(transform, nullptr);
+  const auto* matrix = transform->data.transform;
+  EXPECT_NEAR(matrix[0], 0, 0.0001f);
+  EXPECT_NEAR(matrix[1], 2, 0.0001f);
+  EXPECT_NEAR(matrix[4], -3, 0.0001f);
+  EXPECT_NEAR(matrix[5], 0, 0.0001f);
+  EXPECT_NEAR(matrix[12], 230, 0.0001f);
+  EXPECT_NEAR(matrix[13], -160, 0.0001f);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       LayoutThenRepaintUsesActualPaddingBoundarySizes) {
+  for (bool padding_before : {false, true}) {
+    handle_ = nullptr;
+    page_ = nullptr;
+    auto size = lepus::Dictionary::Create();
+    size->SetValue("op", lepus::Value(8));
+    size->SetValue("specifiedAxes", lepus::Value(3));
+    size->SetValue("width", lepus::Value(100.0));
+    size->SetValue("height", lepus::Value(60.0));
+    auto padding = lepus::Dictionary::Create();
+    padding->SetValue("op", lepus::Value(7));
+    for (const auto* side : {"start", "top", "end", "bottom"})
+      padding->SetValue(side, lepus::Value(8.0));
+    padding->SetValue("previous", padding_before ? lepus::Value(size)
+                                                 : Layer(lepus::Value(size)));
+    Install(padding_before ? Layer(lepus::Value(padding))
+                           : lepus::Value(padding));
+    page_->Layout(std::make_shared<PipelineOptions>());
+    EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+    Element* layer = handle_->mount_root().get();
+    while (!layer->fragment_impl()->HasCustomDraw())
+      layer = layer->GetChildAt(0);
+    EXPECT_FLOAT_EQ(layer->width(), padding_before ? 84 : 100);
+    EXPECT_FLOAT_EQ(layer->height(), padding_before ? 44 : 60);
+    manager->Repaint();
+    EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+    auto* context = static_cast<NativeMockPaintingContext*>(
+        manager->painting_context()->impl());
+    const auto* list =
+        context->GetNativePlatformRef()->GetDisplayListForRenderer(
+            layer->impl_id());
+    ASSERT_NE(list, nullptr);
+    ExpectTranslation(*list, padding_before ? 52 : 60,
+                      padding_before ? 44 : 60);
+    Eval("globalThis.layerCalls = 0");
   }
 }
 

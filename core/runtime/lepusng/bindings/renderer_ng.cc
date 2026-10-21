@@ -473,6 +473,7 @@ const runtime::RenderBindingFunction* Renderer::GetBuiltinFunctionsForFiber(
     /* 137 */ {kCFunctionSetComposeModifier, &RendererFunctions::FiberSetComposeModifier, true, true},
     /* 138 */ {kCFunctionCreateCompose, &RendererFunctions::FiberCreateCompose, true, true},
     /* 139 */ {kCFunctionInvokeMethod, &RendererFunctions::FiberInvokeMethod, true, true},
+    /* 140 */ {kCFunctionInvalidateElement, &RendererFunctions::InvalidateElement, true, true},
   };
   // clang-format on
   size = sizeof(kFuncs) / sizeof(kFuncs[0]);

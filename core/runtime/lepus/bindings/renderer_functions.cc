@@ -54,6 +54,7 @@
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/selector/fiber_element_selector.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -4889,7 +4890,7 @@ RENDERER_FUNCTION_CC(FiberSetEvents) {
 // root entirely in native code; callers keep only the stable opaque handle.
 RENDERER_FUNCTION_CC(FiberSetComposeModifier) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_SET_COMPOSE_MODIFIER);
-  // parameter size = 2
+  // parameter size >= 2
   // [0] RefCounted -> Modifier owner element
   // [1] Object | Null | Undefined -> modifier chain tail node
   CHECK_ARGC_GE(FiberSetComposeModifier, 2);
@@ -4918,6 +4919,35 @@ RENDERER_FUNCTION_CC(FiberSetComposeModifier) {
   }
 
   ON_NODE_MODIFIED(owner);
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(InvalidateElement) {
+  CHECK_ARGC_GE(InvalidateElement, 1);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, InvalidateElement);
+  const auto type = arg0->RefCounted()->GetRefType();
+  if (type != lepus::RefType::kElement &&
+      type != lepus::RefType::kComposeElementHandle) {
+    ElementAPIError("InvalidateElement: param 0 should be an Element");
+    RETURN_UNDEFINED();
+  }
+  auto content = GetComposeContentOrFiberElementFromValue(*arg0);
+  if (!content->element_manager()->IsFragmentLayerRenderModeOn()) {
+    RETURN_UNDEFINED();
+  }
+  auto root = GetComposeMountRootOrFiberElementFromValue(*arg0);
+  // An opaque Compose handle owns its Modifier boundaries as well as content.
+  // Mark every owned Fragment, including nested independent platform layers.
+  // This binding explicitly invalidates both content and layer properties;
+  // Fragment's ordinary content-redraw API keeps the two phases independent.
+  // The caller submits these updates through the ordinary FlushElementTree
+  // path.
+  for (auto* target = root.get(); target; target = target->GetChildAt(0)) {
+    auto* fragment = target->fragment_impl();
+    fragment->InvalidateForRedraw();
+    fragment->InvalidateForSubtreeProperty();
+    if (target == content.get()) break;
+  }
   RETURN_UNDEFINED();
 }
 

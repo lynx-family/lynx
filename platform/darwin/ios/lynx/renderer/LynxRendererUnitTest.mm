@@ -10,14 +10,18 @@
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #import <malloc/malloc.h>
 #include <objc/runtime.h>
 #include <utility>
+#include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
+#include "gfx/geometry/matrix44.h"
 #include "gfx/public/display_list.h"
 
 @interface LynxRenderer (Testing)
@@ -304,6 +308,52 @@
   XCTAssertEqualWithAccuracy(view.layer.transform.m22, 0.70710677f, 0.001f);
   XCTAssertEqualWithAccuracy(view.layer.transform.m41, 60.0f, 0.001f);
   XCTAssertEqualWithAccuracy(view.layer.transform.m42, -24.852814f, 0.001f);
+}
+
+- (void)testCompatibleRendererRetainsDisplayListTransformAfterLayout {
+  using namespace lynx::tasm;
+  LynxComponentScopeRegistry* registry = [LynxComponentScopeRegistry new];
+  [registry registerUI:LynxUIView.class withName:@"view"];
+  LynxUIOwner* owner =
+      [[LynxUIOwner alloc] initWithContainerView:nil
+                               componentRegistry:registry
+                                   screenMetrics:nil
+                                    errorHandler:nil
+                                        uiConfig:nil
+                                    embeddedMode:LynxEmbeddedModeFragmentLayerRender];
+  PlatformRendererContextDarwin context(nil, owner, registry);
+  PlatformRendererInitConfig config;
+  config.is_direct_child_of_compatible_component = true;
+  PlatformRendererDarwin renderer(&context, 13, PlatformRendererType::kView, nullptr, config);
+  UIView<LynxRendererHost>* view = renderer.GetUIView();
+  XCTAssertNotNil([owner findUIBySign:13]);
+  XCTAssertTrue(view == [owner findUIBySign:13].view);
+
+  // A layout change invokes the real LynxUI background manager. It must not
+  // overwrite either a new display-list matrix or the last retained matrix.
+  for (int pass = 0; pass < 3; ++pass) {
+    DisplayListBuilder builder;
+    builder.Begin(13, PlatformRendererType::kView, 10, 20, 60 + pass * 30, 28);
+    builder.End();
+    if (pass == 0) {
+      lynx::gfx::Matrix44 transform;
+      transform.preTranslate(30, 12, 0);
+      builder.Transform(transform);
+    }
+    renderer.UpdateDisplayList(builder.Build());
+    XCTAssertEqualWithAccuracy(view.layer.transform.m41, 30, 0.001);
+    XCTAssertEqualWithAccuracy(view.layer.transform.m42, 12, 0.001);
+    XCTAssertTrue(CGPointEqualToPoint(view.layer.anchorPoint, CGPointZero));
+    XCTAssertTrue(CGPointEqualToPoint(view.layer.position, CGPointMake(10, 20)));
+    XCTAssertEqualWithAccuracy(view.bounds.size.width, 60 + pass * 30, 0.001);
+  }
+
+  // Explicitly clearing the transform must still restore ordinary geometry.
+  DisplayListBuilder reset;
+  reset.Transform(lynx::gfx::Matrix44());
+  renderer.UpdateDisplayList(reset.Build());
+  XCTAssertTrue(CATransform3DIsIdentity(view.layer.transform));
+  XCTAssertTrue(CGRectEqualToRect(view.frame, CGRectMake(10, 20, 120, 28)));
 }
 
 - (void)testPlatformRendererDarwinKeepsCenterAnchorForUntransformedPage {

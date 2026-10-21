@@ -514,6 +514,13 @@ void PlatformRendererDarwin::UpdateUIOwnerLayout(CGRect frame) {
            border:border
            margin:margin
            sticky:ui.sticky];
+
+  // A compatible LynxUI can restore its CSS transform while updating layout.
+  // The renderer owns any transform received through the display list, even
+  // when this repaint has no new subtree properties.
+  if (const auto* transform = GetTransform()) {
+    [[GetUIView() renderer] applyTransform:transform->data.transform];
+  }
 }
 
 bool PlatformRendererDarwin::HasUIOwnerNode(int sign) const {

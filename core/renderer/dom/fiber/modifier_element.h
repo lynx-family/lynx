@@ -12,14 +12,15 @@ namespace tasm {
 
 class ElementManager;
 
-// A physical box boundary introduced by a Compose LayoutModifier. It uses the
-// ordinary Element behavior and participates in the normal Fiber child tree.
+// A physical box boundary introduced by a Compose Modifier. It participates in
+// the normal Fiber child tree and uses view rendering in Fragment Layer mode.
 class ModifierElement : public Element {
  public:
   explicit ModifierElement(ElementManager* manager);
   ~ModifierElement() override = default;
 
   bool is_modifier() const override { return true; }
+  void SetupFragmentBehavior(Fragment* fragment) override;
 
   fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     return fml::AdoptRef<Element>(

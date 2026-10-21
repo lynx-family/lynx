@@ -334,8 +334,24 @@ void Fragment::OnNodeReady() {
   painting_context()->OnNodeReady(id());
 }
 
+void Fragment::InvalidateLayerPropertiesIfSizeChanged(
+    const LayoutResultForRendering& layout_result_for_rendering) {
+  if (!HasCustomLayerProperties()) {
+    return;
+  }
+
+  const auto& old_size = layout_info_.layout_result.size_;
+  const auto& new_size = layout_result_for_rendering.size_;
+  if (old_size.width_ != new_size.width_ ||
+      old_size.height_ != new_size.height_) {
+    // Layer hooks receive the actual size and may use it for their matrix.
+    InvalidateForSubtreeProperty();
+  }
+}
+
 void Fragment::UpdateLayout(
     LayoutResultForRendering layout_result_for_rendering) {
+  InvalidateLayerPropertiesIfSizeChanged(layout_result_for_rendering);
   InvalidateForRedraw();
   layout_info_.layout_result = std::move(layout_result_for_rendering);
   UpdateBorderRadiusAccordingToLayoutInfo();
@@ -1074,7 +1090,8 @@ void Fragment::DrawBoxShadow(DisplayListBuilder& display_list_builder) {
 }
 
 void Fragment::DrawTransform(DisplayListBuilder& display_list_builder) {
-  if (!element()->computed_css_style()->TransformChanged()) {
+  if (!element()->computed_css_style()->TransformChanged() &&
+      !HasCustomLayerProperties()) {
     return;
   }
 
@@ -1118,7 +1135,8 @@ void Fragment::DrawTransform(DisplayListBuilder& display_list_builder) {
 }
 
 void Fragment::DrawOpacity(DisplayListBuilder& display_list_builder) {
-  if (!element()->computed_css_style()->OpacityChanged()) {
+  if (!element()->computed_css_style()->OpacityChanged() &&
+      !HasCustomLayerProperties()) {
     return;
   }
 
@@ -1128,7 +1146,7 @@ void Fragment::DrawOpacity(DisplayListBuilder& display_list_builder) {
 
 void Fragment::DrawFilter(DisplayListBuilder& display_list_builder) {
   auto* style = element()->computed_css_style();
-  if (!style->FilterChanged()) {
+  if (!style->FilterChanged() && !HasCustomLayerProperties()) {
     return;
   }
 
@@ -1346,7 +1364,26 @@ void Fragment::MarkHasExposureEventIfNeeded() const {
 
 void Fragment::SetCustomDrawFunctions(
     std::shared_ptr<const CustomDrawFunctions> functions) {
+  const bool had_layer_hook = HasCustomLayerProperties();
   custom_draw_functions_ = std::move(functions);
+  if (HasCustomLayerProperties()) {
+    // Evaluate the new hook even when no CSS property changed. Element Flush
+    // schedules content redraw separately through its usual safe path.
+    InvalidateForSubtreeProperty();
+  } else if (had_layer_hook) {
+    // The removed hook may have left properties on the retained renderer.
+    ResetLayerProperties();
+  }
+}
+
+void Fragment::ResetLayerProperties() {
+  // Reuse CSS dirty tracking so the next property update replaces the removed
+  // hook's retained output with the current CSS/default values.
+  auto* style = element()->computed_css_style();
+  style->MarkChanged(kPropertyIDTransform);
+  style->MarkChanged(kPropertyIDOpacity);
+  style->MarkChanged(kPropertyIDFilter);
+  InvalidateForSubtreeProperty();
 }
 
 void Fragment::DrawBehind(DisplayListBuilder& builder) {
@@ -1358,6 +1395,18 @@ void Fragment::DrawBehind(DisplayListBuilder& builder) {
 void Fragment::DrawForeground(DisplayListBuilder& builder) {
   if (custom_draw_functions_ && custom_draw_functions_->draw_foreground) {
     custom_draw_functions_->draw_foreground(*this, builder);
+  }
+}
+
+void Fragment::DrawLayerProperties(DisplayListBuilder& builder) {
+  // Ordinary elements publish only changed CSS properties. An active hook
+  // needs a complete baseline before its overrides. Hook removal explicitly
+  // resets properties through the same CSS dirty tracking.
+  DrawTransform(builder);
+  DrawOpacity(builder);
+  DrawFilter(builder);
+  if (HasCustomLayerProperties()) {
+    custom_draw_functions_->draw_layer_properties(*this, builder);
   }
 }
 
@@ -1377,9 +1426,7 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   }
 
   if (NeedUpdateSubtreeProperty()) {
-    DrawTransform(display_list_builder);
-    DrawOpacity(display_list_builder);
-    DrawFilter(display_list_builder);
+    DrawLayerProperties(display_list_builder);
   }
 
   ClearPaintDirtyState();

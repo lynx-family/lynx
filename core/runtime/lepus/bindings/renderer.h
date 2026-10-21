@@ -245,6 +245,8 @@ constexpr static const char* kCFunctionAddEvent = "__AddEvent";
 constexpr static const char* kCFunctionSetEvents = "__SetEvents";
 constexpr static const char* kCFunctionGetEvent = "__GetEvent";
 constexpr static const char* kCFunctionGetEvents = "__GetEvents";
+constexpr static const char* kCFunctionInvalidateElement =
+    "__InvalidateElement";
 constexpr static const char* kCFunctionSetComposeModifier =
     "__SetComposeModifier";
 constexpr static const char* kCFunctionSetID = "__SetID";
