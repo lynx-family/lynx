@@ -89,6 +89,8 @@ typedef enum {
   kClaySharedImageBackingTypeNativeImage,    /// Harmony
   kClaySharedImageBackingTypeShmImage,       /// Linux
   kClaySharedImageBackingTypeAngleShmImage,  /// Linux software rendering
+  kClaySharedImageBackingTypeEGLImage,  /// Android, process-local EGLImageKHR
+  kClaySharedImageBackingTypeAHardwareBuffer,  /// Android, AHardwareBuffer*
 } ClaySharedImageBackingType;
 
 typedef enum {
@@ -704,6 +706,9 @@ CLAY_EXPORT void ClayReleaseSharedImage(ClaySharedImageRef shared_image_ref);
 /// Get backing type, format and the native handle from ClaySharedImage
 /// The returned handle is not owned. Users must retain the value to persist it.
 /// But it's safe to use the handle whenever the shared_image_ref is valid.
+/// Android EGLImage handles are borrowed from that image and must not be
+/// destroyed by the consumer. Import them on the same EGLDisplay as the
+/// producer.
 CLAY_EXPORT void ClaySharedImageGetBacking(
     ClaySharedImageRef shared_image_ref, ClaySharedImageBackingType* out_type,
     ClaySharedImageBackingPixelFormat* out_format,
@@ -787,7 +792,7 @@ CLAY_EXPORT bool ClaySharedImageSinkUpdateFront(
 /// Explicitly release the front buffer
 /// This function is only required in single buffer mode
 CLAY_EXPORT void ClaySharedImageSinkReleaseFront(
-    ClaySharedImageRef sink_ref, ClayFenceSyncRef produced_fence_sync);
+    ClaySharedImageSinkRef sink_ref, ClayFenceSyncRef produced_fence_sync);
 
 /// The out ClaySharedImageRef is owned by sink
 /// User must call `ClayRetainSharedImage` to retain it
