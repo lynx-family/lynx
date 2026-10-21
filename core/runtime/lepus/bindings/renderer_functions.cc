@@ -502,120 +502,6 @@ lepus::Value InnerTranslateResourceForTheme(runtime::MTSContext* ctx,
   return lepus::Value(std::move(ret));
 }
 
-GestureDetectorImpl InnerCreateGestureDetector(double gesture_id,
-                                               double gesture_type,
-                                               lepus::Value* callback_config,
-                                               lepus::Value* relation_map_value,
-                                               runtime::MTSRuntime* ctx) {
-  // Extract the "callbacks" property from the input "callbacksConfigs"
-  // argument.
-  BASE_STATIC_STRING_DECL(kCallbacks, "callbacks");
-  BASE_STATIC_STRING_DECL(kConfig, "config");
-  auto callbacks = callback_config->GetProperty(kCallbacks);
-  auto config = callback_config->GetProperty(kConfig).ToLepusValue();
-
-  // Initialize a vector to store gesture callbacks with their names and
-  // functions.
-  std::vector<GestureCallback> gesture_callback_vector{};
-
-  // Iterate over each item in the "callbacks" array and extract the name and
-  // callback function.
-  ForEachLepusValue(callbacks, [&gesture_callback_vector, ctx](
-                                   const lepus::Value& index,
-                                   const lepus::Value& value) {
-    // Define constants for property names in the "value" object.
-    BASE_STATIC_STRING_DECL(kName, "name");
-    BASE_STATIC_STRING_DECL(kCallback, "callback");
-
-    // Extract the "name" and "callback" properties from the current item.
-    const lepus::Value& name = value.GetProperty(kName);
-    const lepus::Value& callback = value.GetProperty(kCallback);
-
-    // Check if the "name" property is a string. If not, log a warning.
-    if (!name.IsString()) {
-      LOGW("CreateGestureDetector' "
-           << value.Number()
-           << " parameter must contain type, and type must be string.");
-      return;
-    }
-
-    // Check if the "callback" property is a callable function. If not, log a
-    // warning.
-    if (!(callback.IsCallable() || callback.IsObject())) {
-      LOGW("CreateGestureDetector' " << value.Number()
-                                     << " parameter must contain callback, and "
-                                        "callback must be callable or object.");
-      return;
-    }
-
-    if (callback.IsCallable()) {
-      // These closures need their runtime context to be invoked later when the
-      // gesture callback fires on the native side.
-      gesture_callback_vector.emplace_back(name.String(), lepus::Value(),
-                                           callback, ctx);
-    } else if (callback.IsObject()) {
-      gesture_callback_vector.emplace_back(name.String(), callback, ctx);
-    }
-  });
-  // Extract "simultaneous", "waitFor", "continueWith" properties from the
-  // "relationMap" argument.
-  auto simultaneous_value =
-      relation_map_value->GetProperty(BASE_STATIC_STRING(kGestureSimultaneous));
-  auto wait_for_value =
-      relation_map_value->GetProperty(BASE_STATIC_STRING(kGestureWaitFor));
-  auto continue_with_value =
-      relation_map_value->GetProperty(BASE_STATIC_STRING(kGestureContinueWith));
-
-  // Initialize vectors to store the gesture relation map (simultaneous,
-  // wait_for and continue_with) values.
-  std::vector<uint32_t> simultaneous_vector{};
-  std::vector<uint32_t> wait_for_vector{};
-  std::vector<uint32_t> continue_with_vector{};
-
-  // Iterate over "simultaneous" property and extract its numeric values.
-  ForEachLepusValue(simultaneous_value,
-                    [&simultaneous_vector](const lepus::Value& index,
-                                           const lepus::Value& value) {
-                      if (value.IsNumber()) {
-                        simultaneous_vector.emplace_back(value.Number());
-                      }
-                    });
-
-  // Iterate over "waitFor" property and extract its numeric values.
-  ForEachLepusValue(
-      wait_for_value,
-      [&wait_for_vector](const lepus::Value& index, const lepus::Value& value) {
-        if (value.IsNumber()) {
-          wait_for_vector.emplace_back(value.Number());
-        }
-      });
-
-  // Iterate over "continueWith" property and extract its numeric values.
-  ForEachLepusValue(continue_with_value,
-                    [&continue_with_vector](const lepus::Value& index,
-                                            const lepus::Value& value) {
-                      if (value.IsNumber()) {
-                        continue_with_vector.emplace_back(value.Number());
-                      }
-                    });
-
-  // Create a map to store the gesture relation information (simultaneous and
-  // wait_for).
-  std::unordered_map<std::string, std::vector<uint32_t>> relation_map;
-
-  // Populate the map with the extracted vectors.
-  relation_map.emplace(kGestureSimultaneous, simultaneous_vector);
-  relation_map.emplace(kGestureWaitFor, wait_for_vector);
-  relation_map.emplace(kGestureContinueWith, continue_with_vector);
-
-  // Create a GestureDetector object using the extracted data.
-  GestureDetectorImpl detector(
-      gesture_id, static_cast<GestureType>((gesture_type)),
-      gesture_callback_vector, relation_map, std::move(config));
-
-  return detector;
-}
-
 /* Lepus Lynx API BEGIN */
 RENDERER_FUNCTION_CC(GetTextInfo) {
   if (argc < 2) {
@@ -4650,9 +4536,10 @@ RENDERER_FUNCTION_CC(CreateGestureDetector) {
   }
 
   // Create a GestureDetector object using the extracted data.
-  GestureDetectorImpl detector = InnerCreateGestureDetector(
-      (*arg1).Number(), (*arg2).Number(), callbacksConfigs, relationMap,
-      LEPUS_CONTEXT());
+  GestureDetectorImpl detector(static_cast<uint32_t>(arg1->Number()),
+                               static_cast<GestureType>(arg2->Number()),
+                               *callbacksConfigs, *relationMap,
+                               LEPUS_CONTEXT());
 
   // Set the created GestureDetector object for the
   // specified gesture id.
@@ -4702,9 +4589,10 @@ RENDERER_FUNCTION_CC(FiberSetGestureDetector) {
   }
 
   // Create a GestureDetector object using the extracted data.
-  GestureDetectorImpl detector = InnerCreateGestureDetector(
-      (*arg1).Number(), (*arg2).Number(), callbacksConfigs, relationMap,
-      LEPUS_CONTEXT());
+  GestureDetectorImpl detector(static_cast<uint32_t>(arg1->Number()),
+                               static_cast<GestureType>(arg2->Number()),
+                               *callbacksConfigs, *relationMap,
+                               LEPUS_CONTEXT());
 
   auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetGestureDetector);

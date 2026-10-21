@@ -10,6 +10,7 @@ events_shared_sources = [
   "closure_event_listener.h",
   "event_handler.cc",
   "events.h",
+  "gesture.cc",
   "gesture.h",
   "touch_event_handler.cc",
   "touch_event_handler.h",

@@ -63,6 +63,11 @@ static constexpr const char kGestureContinueWith[] = "continueWith";
 class GestureDetectorImpl : public GestureDetector {
  public:
   ~GestureDetectorImpl() override = default;
+  // Decode the common Native gesture payload used by PAPI and ET bindings.
+  GestureDetectorImpl(uint32_t gesture_id, GestureType gesture_type,
+                      const lepus::Value& callback_config,
+                      const lepus::Value& relation_map,
+                      runtime::MTSRuntime* ctx);
   // Constructor for GestureDetectorImpl.
   GestureDetectorImpl(
       const uint32_t gesture_id, const GestureType gesture_type,
