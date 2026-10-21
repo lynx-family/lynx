@@ -278,6 +278,12 @@ Element::Element(const Element& element, bool clone_resolved_props)
       reset_attr_vec_(element.reset_attr_vec_),
       modifier_attribute_names_(element.modifier_attribute_names_),
       part_id_(element.part_id_) {
+  if (element.custom_layout_functions_) {
+    custom_layout_functions_ =
+        std::make_unique<starlight::CustomLayoutFunctions>(
+            *element.custom_layout_functions_);
+    MarkDirty(kDirtyCustomLayout);
+  }
   if (element.base_css_style() != nullptr) {
     base_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
         *(element.base_css_style()));

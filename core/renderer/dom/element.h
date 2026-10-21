@@ -51,6 +51,7 @@
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/simple_styling/simple_style_node.h"
 #include "core/renderer/simple_styling/style_object.h"
+#include "core/renderer/starlight/types/layout_measurefunc.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
@@ -264,6 +265,7 @@ class Element : public lepus::RefCounted,
   static constexpr uint32_t kDirtyCloned = 0x01 << 14;
   static constexpr uint32_t kDirtyDynamicStyleObjects = 0x01 << 15;
   static constexpr uint32_t kDirtyInvoke = 0x01 << 16;
+  static constexpr uint32_t kDirtyCustomLayout = 0x01 << 17;
 
   enum class AsyncResolveStatus : uint8_t {
     kCreated = 0,
@@ -1420,6 +1422,13 @@ class Element : public lepus::RefCounted,
   void SetAlignmentFunc(void* context,
                         starlight::SLAlignmentFunc alignment_func);
 
+  // Layout-in-Element callbacks receive this Element as their context. Keep
+  // per-element parameters on the owning element so clones bind their own data.
+  // Defers callback installation and layout invalidation until Flush. An empty
+  // configuration clears the custom callbacks. Set again when parameters
+  // change, even if the function pointers are unchanged.
+  void SetCustomLayoutFunctions(starlight::CustomLayoutFunctions functions);
+
   // When list component finishes all props update
   virtual void PropsUpdateFinish() {}
 
@@ -2423,8 +2432,11 @@ class Element : public lepus::RefCounted,
   style::DynamicStyleObjectRef dynamic_simple_object_{nullptr};
 
   std::unique_ptr<SLNode> sl_node_{nullptr};
+  std::unique_ptr<starlight::CustomLayoutFunctions> custom_layout_functions_;
 
  private:
+  void FlushCustomLayoutFunctions();
+
   // Updates logical and scoped ownership without enqueueing platform actions.
   void AttachNodeToElementTree(const fml::RefPtr<Element>& child,
                                Element* ref_node, int32_t index,

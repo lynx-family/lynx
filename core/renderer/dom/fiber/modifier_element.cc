@@ -16,9 +16,11 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
+#include "core/renderer/dom/fiber/compose_layout_utils.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/events/events.h"
+#include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/mts_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
@@ -39,6 +41,7 @@ constexpr int kModifierOpPadding = 7;
 constexpr int kModifierOpSize = 8;
 constexpr int kModifierOpFill = 9;
 constexpr int kModifierOpAspectRatio = 10;
+constexpr int kModifierOpSizeRange = 11;
 
 constexpr int kModifierCallbackKindClick = 1;
 constexpr int kLayoutModifierAxisWidth = 1;
@@ -71,6 +74,10 @@ BASE_STATIC_STRING_DECL(kWidth, "width");
 BASE_STATIC_STRING_DECL(kHeight, "height");
 BASE_STATIC_STRING_DECL(kFraction, "fraction");
 BASE_STATIC_STRING_DECL(kRatio, "ratio");
+BASE_STATIC_STRING_DECL(kMinWidth, "minWidth");
+BASE_STATIC_STRING_DECL(kMinHeight, "minHeight");
+BASE_STATIC_STRING_DECL(kMaxWidth, "maxWidth");
+BASE_STATIC_STRING_DECL(kMaxHeight, "maxHeight");
 BASE_STATIC_STRING_DECL(kTapEventName, "tap");
 BASE_STATIC_STRING_DECL(kBindEventType, "bindEvent");
 
@@ -94,6 +101,8 @@ struct ModifierFramePlan {
   std::vector<int> frame_child_constrained_axes;
   size_t frame_count{0};
   bool owner_uses_layout_box{false};
+  bool has_size_ranges{false};
+  std::vector<bool> frame_is_size_range;
 };
 
 lepus::Value ReadModifierProperty(const lepus::Value& node,
@@ -172,6 +181,7 @@ bool IsLayoutOperation(int op) {
     case kModifierOpSize:
     case kModifierOpFill:
     case kModifierOpAspectRatio:
+    case kModifierOpSizeRange:
       return true;
     default:
       return false;
@@ -182,6 +192,30 @@ bool ParseLayoutOperation(const lepus::Value& node,
                           ModifierOperation* operation, std::string* error) {
   auto& values = operation->layout_values;
   switch (operation->op) {
+    case kModifierOpSizeRange:
+      if (!ReadIntegerProperty(node, kSpecifiedAxes,
+                               &operation->specified_axes) ||
+          operation->specified_axes <= 0 ||
+          (operation->specified_axes & ~kLayoutModifierAllAxes) != 0 ||
+          !ReadFiniteNumberProperty(node, kMinWidth, &values[0]) ||
+          (values[0] < 0 && values[0] != -1) ||
+          !ReadFiniteNumberProperty(node, kMinHeight, &values[1]) ||
+          (values[1] < 0 && values[1] != -1) ||
+          !ReadFiniteNumberProperty(node, kMaxWidth, &values[2]) ||
+          (values[2] < 0 && values[2] != -1) ||
+          !ReadFiniteNumberProperty(node, kMaxHeight, &values[3]) ||
+          (values[3] < 0 && values[3] != -1)) {
+        *error = "invalid size range parameters";
+        return false;
+      }
+      for (int axis = 0; axis < 2; ++axis) {
+        if ((operation->specified_axes & (1 << axis)) == 0 &&
+            (values[axis] != 0 || values[axis + 2] != -1)) {
+          *error = "unspecified size range axes must be unbounded";
+          return false;
+        }
+      }
+      return true;
     case kModifierOpPadding:
       if (!ReadFiniteNumberProperty(node, kStart, &values[0]) ||
           values[0] < 0 || !ReadFiniteNumberProperty(node, kTop, &values[1]) ||
@@ -301,6 +335,7 @@ bool ParseModifierOperation(const lepus::Value& node,
     case kModifierOpSize:
     case kModifierOpFill:
     case kModifierOpAspectRatio:
+    case kModifierOpSizeRange:
       return ParseLayoutOperation(node, operation, error);
     default:
       *error = "unsupported Modifier operation";
@@ -370,14 +405,16 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
   }
 
   for (const auto& operation : plan->operations) {
-    if (operation.op == kModifierOpPadding) {
+    if (operation.op == kModifierOpPadding ||
+        operation.op == kModifierOpSizeRange) {
       ++plan->frame_count;
     }
   }
   plan->frame_child_constrained_axes.resize(plan->frame_count);
+  plan->frame_is_size_range.resize(plan->frame_count);
 
-  // Padding ends one carrier segment and is the only operation that creates a
-  // physical frame. The suffix after the last padding is carried by the owner.
+  // Padding and size ranges end a carrier segment with a physical frame. The
+  // suffix after the last boundary is carried by the owner.
   size_t carrier_index = 0;
   int constrained_axes = 0;
   for (size_t position = 0; position < plan->operations.size(); ++position) {
@@ -389,6 +426,13 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     if (IsLayoutOperation(operation.op)) {
       operation.target_frame_index = target_frame_index;
       switch (operation.op) {
+        case kModifierOpSizeRange:
+          plan->has_size_ranges = true;
+          plan->frame_is_size_range[carrier_index] = true;
+          // Incoming constraints cross this measured boundary at layout time.
+          constrained_axes = 0;
+          ++carrier_index;
+          break;
         case kModifierOpPadding:
           plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
           ++carrier_index;
@@ -398,7 +442,8 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
           operation.applied_axes = operation.specified_axes & ~constrained_axes;
           if (operation.op == kModifierOpFill &&
               operation.layout_values[0] != 1.0 &&
-              operation.applied_axes != 0 && carrier_index != 0) {
+              operation.applied_axes != 0 && carrier_index != 0 &&
+              !plan->frame_is_size_range[carrier_index - 1]) {
             *error =
                 "fractional fill inside a padding frame is not representable";
             *error_position = position;
@@ -477,6 +522,9 @@ void ApplyLayoutOperation(const ModifierOperation& operation,
                           Element* carrier) {
   const auto& values = operation.layout_values;
   switch (operation.op) {
+    case kModifierOpSizeRange:
+      static_cast<ModifierElement*>(carrier)->SetSizeRange(values);
+      break;
     case kModifierOpPadding:
       carrier->SetStyle(kPropertyIDPaddingLeft, CSSUnitValue(values[0], "px"));
       carrier->SetStyle(kPropertyIDPaddingTop, CSSUnitValue(values[1], "px"));
@@ -534,7 +582,9 @@ void ApplyLayoutOperations(
     ApplyLayoutOperation(
         operation, LayoutCarrierAt(operation.carrier_index, owner, frames));
     if (operation.op == kModifierOpFill && operation.layout_values[0] == 1.0) {
-      for (size_t index = 0; index < operation.carrier_index; ++index) {
+      for (size_t end = operation.carrier_index; end > 0; --end) {
+        const size_t index = end - 1;
+        if (plan.frame_is_size_range[index]) break;
         auto* carrier = LayoutCarrierAt(index, owner, frames);
         if ((operation.applied_axes & kLayoutModifierAxisWidth) != 0) {
           carrier->SetStyle(kPropertyIDWidth, lepus::Value("100%"));
@@ -727,7 +777,10 @@ fml::RefPtr<Element> InstallModifierFramePlan(
   std::vector<fml::RefPtr<ModifierElement>> frames;
   frames.reserve(plan.frame_count);
   for (size_t index = 0; index < plan.frame_count; ++index) {
-    frames.push_back(CreateFrame(owner));
+    auto frame = CreateFrame(owner);
+    // A size range constrains measurement without introducing a drawing clip.
+    if (plan.frame_is_size_range[index]) frame->SetDefaultOverflow(true);
+    frames.push_back(std::move(frame));
   }
 
   // When replacing a mounted, non-empty frame chain, move the attached owner
@@ -801,6 +854,32 @@ ModifierElement::ModifierElement(ElementManager* manager)
   }
 }
 
+void ModifierElement::SetSizeRange(const std::array<double, 4>& limits) {
+  size_limits_ = limits;
+  starlight::CustomLayoutFunctions functions;
+  functions.measure = [](void* context, const starlight::Constraints& incoming,
+                         bool final_measure) {
+    auto* frame = static_cast<ModifierElement*>(static_cast<Element*>(context));
+    auto* child = frame->GetChildAt(0);
+    if (!child || !child->slnode()) return FloatSize();
+    const auto result = compose_layout_utils::MeasureSizeRange(
+        *child->slnode(), incoming, frame->size_limits_,
+        frame->GetLayoutsUnitPerPx(), final_measure);
+    frame->child_offset_ = result.child_offset;
+    return result.size;
+  };
+  functions.layout = [](void* context) {
+    auto* frame = static_cast<ModifierElement*>(static_cast<Element*>(context));
+    auto* child = frame->GetChildAt(0);
+    if (child && child->slnode()) {
+      child->slnode()->AlignmentByPlatform(frame->child_offset_.height_,
+                                           frame->child_offset_.width_);
+    }
+  };
+  functions.can_reuse = [](void*, bool) { return false; };
+  SetCustomLayoutFunctions(functions);
+}
+
 bool ComposeModifierApplicator::ValidateTopology(ComposeElementHandle* handle,
                                                  std::string* error_message) {
   if (handle == nullptr || handle->content_element() == nullptr ||
@@ -833,6 +912,10 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
   size_t error_position = 0;
   if (!BuildModifierFramePlan(modifier_tail, &plan, &error, &error_position)) {
     return {false, error_position, std::move(error)};
+  }
+
+  if (plan.has_size_ranges && !owner->EnableLayoutInElementMode()) {
+    return {false, 0, "size range modifiers require Layout-in-Element mode"};
   }
 
   auto mount_root = InstallModifierFramePlan(

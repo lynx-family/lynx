@@ -108,7 +108,29 @@ lepus::Value RawStyle(Element* element, CSSPropertyID id) {
 
 }  // namespace
 
-class ModifierElementTest : public FiberElementTest {};
+class ModifierElementTest : public FiberElementTest {
+ public:
+  void InitializeRuntime() {
+    runtime_ = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    ASSERT_NE(runtime_, nullptr);
+    runtime_->Initialize();
+    runtime_->SetGlobalData(
+        BASE_STATIC_STRING(tasm::kTemplateAssembler),
+        lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+    Renderer::RegisterBuiltin(runtime_.get(), ArchOption::FIBER_ARCH);
+  }
+
+  lepus::Value Eval(const std::string& script) {
+    lepus::Value value;
+    EXPECT_TRUE(runtime::MTSRuntime::ToQuickContext(runtime_.get())
+                    ->EvalBuf(script.c_str(), script.size(), value,
+                              "compose_size_range_test.js"));
+    return value;
+  }
+
+  std::shared_ptr<runtime::MTSRuntime> runtime_;
+};
 
 TEST_P(ModifierElementTest, GradientBackgroundUsesAuthoredPaddingBoundary) {
   auto handle = CreateComposeHandle(manager);
@@ -168,6 +190,304 @@ TEST_P(ModifierElementTest, ReplacingGradientClearsPreviousBackgroundImage) {
     EXPECT_TRUE(RawStyle(owner.get(), kPropertyIDBackgroundImage).IsEmpty());
     EXPECT_EQ(RawStyle(owner.get(), kPropertyIDBackgroundColor),
               lepus::Value("#ffffff"));
+  }
+}
+
+TEST_P(ModifierElementTest, SizeRangePreservesOrderAndIncomingBounds) {
+  InitializeRuntime();
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  auto handle = CreateComposeHandle(manager);
+  page->InsertNode(handle->mount_root());
+  runtime_->SetGlobalData("rangeOwner", lepus::Value(handle));
+  Eval(R"JS(
+    function range(previous, min, max) {
+      return {op:11, specifiedAxes:1, minWidth:min, minHeight:0,
+              maxWidth:max, maxHeight:-1, previous:previous};
+    }
+    function size(previous, width) {
+      return {op:8, specifiedAxes:3, width:width, height:20, previous:previous};
+    }
+  )JS");
+  struct Case {
+    const char* source;
+    float available_width;
+    float expected;
+  };
+  const Case cases[] = {
+      {"size(range(null, 0, 100), 200)", 300, 100},
+      {"range(size(null, 200), 0, 100)", 300, 200},
+      {"size(range(null, 60, 100), 20)", 300, 60},
+      {"size(range(null, 60, 100), 20)", 40, 40},
+      {"size(range(range(null, 0, 100), 0, 200), 300)", 400, 100},
+      {"size(range(range(null, 100, 300), 0, 50), 20)", 400, 100},
+      {"size(range(range(null, 0, 50), 100, 300), 20)", 400, 50},
+      {"size(range(null, 100, 50), 20)", 300, 50},
+      {"size(range(null, 60, -1), 20)", 300, 60},
+      {"size(range(null, -1, 50), 20)", 300, 50},
+      {"size(range(null, -1, -1), 20)", 300, 20},
+  };
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.source);
+    Eval(std::string("__SetComposeModifier(rangeOwner, ") + test.source + ")");
+    page->FlushActionsAsRoot();
+    manager->OnUpdateViewport(test.available_width, SLMeasureModeDefinite, 200,
+                              SLMeasureModeDefinite, false);
+    manager->RequestLayout(std::make_shared<PipelineOptions>());
+    EXPECT_FLOAT_EQ(handle->mount_root()->slnode()->GetBorderBoundWidth(),
+                    test.expected);
+    EXPECT_FLOAT_EQ(handle->mount_root()->slnode()->GetBorderBoundHeight(), 20);
+  }
+}
+
+TEST_P(ModifierElementTest, SizeRangeCapsFillAndPaddingOnBothAxes) {
+  InitializeRuntime();
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  auto handle = CreateComposeHandle(manager);
+  page->InsertNode(handle->mount_root());
+  runtime_->SetGlobalData("rangeOwner", lepus::Value(handle));
+  Eval(R"JS(
+    __SetComposeModifier(rangeOwner, {
+      op:9, specifiedAxes:3, fraction:1, previous:{
+        op:7, start:4, end:4, top:4, bottom:4, previous:{
+          op:11, specifiedAxes:3, minWidth:20, minHeight:30,
+          maxWidth:100, maxHeight:80
+        }
+      }
+    });
+  )JS");
+  page->FlushActionsAsRoot();
+  manager->OnUpdateViewport(300, SLMeasureModeDefinite, 200,
+                            SLMeasureModeDefinite, false);
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(handle->mount_root()->slnode()->GetBorderBoundWidth(), 100);
+  EXPECT_FLOAT_EQ(handle->mount_root()->slnode()->GetBorderBoundHeight(), 80);
+  EXPECT_FLOAT_EQ(handle->content_element()->slnode()->GetBorderBoundWidth(),
+                  92);
+  EXPECT_FLOAT_EQ(handle->content_element()->slnode()->GetBorderBoundHeight(),
+                  72);
+
+  // A bounded range supplies the percentage base for fractional fill as well.
+  Eval(R"JS(__SetComposeModifier(rangeOwner, {
+      op:9, specifiedAxes:3, fraction:0.5, previous:{
+        op:11, specifiedAxes:3, minWidth:20, minHeight:30,
+        maxWidth:100, maxHeight:80
+      }
+    });)JS");
+  page->FlushActionsAsRoot();
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(handle->mount_root()->slnode()->GetBorderBoundWidth(), 50);
+  EXPECT_FLOAT_EQ(handle->mount_root()->slnode()->GetBorderBoundHeight(), 40);
+
+  // Removing a range removes its measured boundary and its old constraints.
+  Eval(R"JS(__SetComposeModifier(rangeOwner,
+      {op:8,specifiedAxes:3,width:20,height:10});)JS");
+  page->FlushActionsAsRoot();
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_EQ(handle->mount_root(), handle->content_element());
+  EXPECT_FLOAT_EQ(handle->mount_root()->slnode()->GetBorderBoundWidth(), 20);
+  EXPECT_FLOAT_EQ(handle->mount_root()->slnode()->GetBorderBoundHeight(), 10);
+}
+
+TEST_P(ModifierElementTest, SizeRangeFlushesUpdatesAndClearsCustomLayout) {
+  class TestModifierElement : public ModifierElement {
+   public:
+    using Element::PerformElementContainerCreateOrUpdate;
+    using ModifierElement::ModifierElement;
+  };
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  auto frame = fml::AdoptRef(new TestModifierElement(manager));
+  auto child = manager->CreateFiberView();
+  child->SetStyle(kPropertyIDWidth, lepus::Value("200px"));
+  child->SetStyle(kPropertyIDHeight, lepus::Value("20px"));
+  frame->InsertNode(child);
+  page->InsertNode(frame);
+
+  frame->SetSizeRange({0, 0, 100, -1});
+  EXPECT_TRUE(frame->dirty() & Element::kDirtyCustomLayout);
+  EXPECT_TRUE(!frame->slnode() || !frame->slnode()->GetSLMeasureFunc());
+  page->FlushActionsAsRoot();
+  ASSERT_NE(frame->slnode()->GetSLMeasureFunc(), nullptr);
+  ASSERT_NE(frame->slnode()->GetSLAlignmentFunc(), nullptr);
+  EXPECT_FALSE(frame->dirty() & Element::kDirtyCustomLayout);
+  manager->OnUpdateViewport(300, SLMeasureModeDefinite, 200,
+                            SLMeasureModeDefinite, false);
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(frame->slnode()->GetBorderBoundWidth(), 100);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 100);
+
+  // The callbacks stay the same, but changed parameters must invalidate layout.
+  const auto measure = frame->slnode()->GetSLMeasureFunc();
+  frame->SetSizeRange({0, 0, 150, -1});
+  EXPECT_EQ(frame->slnode()->GetSLMeasureFunc(), measure);
+  // A direct create/update call must consume a configuration-only change even
+  // when there are no style/attribute updates and PrepareForCreateOrUpdate is
+  // not called (for example, during parallel task reduction).
+  EXPECT_EQ(frame->dirty(), Element::kDirtyCustomLayout);
+  frame->PerformElementContainerCreateOrUpdate(false, true);
+  EXPECT_FALSE(frame->dirty() & Element::kDirtyCustomLayout);
+  EXPECT_TRUE(frame->slnode()->IsDirty());
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(frame->slnode()->GetBorderBoundWidth(), 150);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 150);
+
+  // Replacing only the layout callback takes effect on the next Flush.
+  const auto layout = frame->slnode()->GetSLAlignmentFunc();
+  frame->SetCustomLayoutFunctions({measure,
+                                   [](void* context) {
+                                     static_cast<Element*>(context)
+                                         ->GetChildAt(0)
+                                         ->slnode()
+                                         ->AlignmentByPlatform(3, 7);
+                                   },
+                                   [](void*, bool) { return false; }});
+  EXPECT_EQ(frame->slnode()->GetSLAlignmentFunc(), layout);
+  page->FlushActionsAsRoot();
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundLeftFromParentPaddingBound(),
+                  7);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundTopFromParentPaddingBound(),
+                  3);
+
+  frame->SetCustomLayoutFunctions({});
+  EXPECT_EQ(frame->slnode()->GetSLMeasureFunc(), measure);
+  frame->PerformElementContainerCreateOrUpdate(false, true);
+  EXPECT_EQ(frame->slnode()->GetSLMeasureFunc(), nullptr);
+  EXPECT_EQ(frame->slnode()->GetSLAlignmentFunc(), nullptr);
+  EXPECT_FALSE(frame->dirty() & Element::kDirtyCustomLayout);
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(frame->slnode()->GetBorderBoundWidth(), 200);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 200);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundLeftFromParentPaddingBound(),
+                  0);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundTopFromParentPaddingBound(),
+                  0);
+}
+
+TEST_P(ModifierElementTest, ClonedSizeRangeBindsItsOwnLayoutDuringFlush) {
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  auto source = fml::AdoptRef(new ModifierElement(manager));
+  source->SetSizeRange({0, 0, 100, -1});
+  page->InsertNode(source);
+  manager->OnUpdateViewport(300, SLMeasureModeDefinite, 200,
+                            SLMeasureModeDefinite, false);
+
+  for (bool flush_source : {false, true}) {
+    if (flush_source) page->FlushActionsAsRoot();
+    for (bool clone_resolved_props : {false, true}) {
+      SCOPED_TRACE(flush_source);
+      SCOPED_TRACE(clone_resolved_props);
+      auto clone = source->CloneElement(clone_resolved_props);
+      EXPECT_EQ(clone->element_manager(), nullptr);
+      EXPECT_EQ(clone->slnode(), nullptr);
+      EXPECT_TRUE(clone->dirty() & Element::kDirtyCustomLayout);
+      clone->AttachToElementManager(
+          manager, tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), false);
+      auto child = manager->CreateFiberView();
+      child->SetStyle(kPropertyIDWidth, lepus::Value("200px"));
+      child->SetStyle(kPropertyIDHeight, lepus::Value("20px"));
+      clone->InsertNode(child);
+      page->InsertNode(clone);
+      page->FlushActionsAsRoot();
+      EXPECT_EQ(clone->slnode()->GetContext(), clone.get());
+      manager->RequestLayout(std::make_shared<PipelineOptions>());
+      EXPECT_FLOAT_EQ(clone->slnode()->GetBorderBoundWidth(), 100);
+      EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 100);
+
+      // Updating the clone must not overwrite the source's parameters.
+      static_cast<ModifierElement*>(clone.get())->SetSizeRange({0, 0, 80, -1});
+      page->FlushActionsAsRoot();
+      manager->RequestLayout(std::make_shared<PipelineOptions>());
+      EXPECT_FLOAT_EQ(clone->slnode()->GetBorderBoundWidth(), 80);
+      EXPECT_EQ(source->slnode()->GetContext(), source.get());
+      page->RemoveNode(clone);
+    }
+  }
+}
+
+TEST_P(ModifierElementTest, SizeRangeKeepsOtherFrameOverflowDefaults) {
+  InitializeRuntime();
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto page = manager->CreateFiberPage("page", 11);
+  const bool default_visible = manager->GetDefaultOverflowVisible();
+  for (const bool explicit_clip : {false, true}) {
+    SCOPED_TRACE(explicit_clip);
+    auto handle = CreateComposeHandle(manager);
+    auto prefix = AppendTestPadding(lepus::Value());
+    if (explicit_clip) {
+      prefix = AppendTestStyle(prefix, kPropertyIDOverflow, "hidden");
+    }
+    runtime_->SetGlobalData("rangePrefix", prefix);
+    const auto range = Eval(R"JS(({op:11,specifiedAxes:1,minWidth:0,minHeight:0,
+        maxWidth:100,maxHeight:-1,previous:rangePrefix}))JS");
+    const auto result = ComposeModifierApplicator::Apply(
+        handle.get(), AppendTestPadding(range), runtime_.get());
+    ASSERT_TRUE(result.success) << result.error_message;
+    page->InsertNode(handle->mount_root());
+    page->FlushActionsAsRoot();
+    const auto frames = CollectModifierFrames(handle->mount_root().get(),
+                                              handle->content_element().get());
+    ASSERT_EQ(frames.size(), 3u);
+    // A range changes only its own default; padding keeps the page default.
+    EXPECT_EQ(frames[0]->computed_css_style()->IsOverflowXY(), default_visible);
+    EXPECT_EQ(frames[2]->computed_css_style()->IsOverflowXY(), default_visible);
+    EXPECT_EQ(frames[1]->computed_css_style()->IsOverflowXY(), !explicit_clip);
+    if (explicit_clip) {
+      EXPECT_TRUE(frames[1]->computed_css_style()->IsOverflowHidden());
+    }
+  }
+}
+
+TEST_P(ModifierElementTest, InvalidSizeRangeLeavesMountedTreeUnchanged) {
+  InitializeRuntime();
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto handle = CreateComposeHandle(manager);
+  const auto valid = Eval(R"JS(({op:11,specifiedAxes:1,minWidth:0,minHeight:0,
+                                maxWidth:100,maxHeight:-1}))JS");
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle.get(), valid, runtime_.get())
+          .success);
+  const auto root = handle->mount_root();
+  const char* invalid[] = {
+      "({op:11,specifiedAxes:0,minWidth:0,minHeight:0,maxWidth:100,maxHeight:-"
+      "1})",
+      "({op:11,specifiedAxes:4,minWidth:0,minHeight:0,maxWidth:100,maxHeight:-"
+      "1})",
+      "({op:11,specifiedAxes:1,minWidth:-0.5,minHeight:0,maxWidth:100,"
+      "maxHeight:-1})",
+      "({op:11,specifiedAxes:1,minWidth:0,minHeight:0,maxWidth:-0.5,maxHeight:-"
+      "1})",
+      "({op:11,specifiedAxes:1,minWidth:0,minHeight:1,maxWidth:100,maxHeight:-"
+      "1})",
+      "({op:11,specifiedAxes:1,minWidth:0,minHeight:0,maxWidth:Infinity,"
+      "maxHeight:-1})",
+  };
+  for (const auto* source : invalid) {
+    SCOPED_TRACE(source);
+    EXPECT_FALSE(ComposeModifierApplicator::Apply(handle.get(), Eval(source),
+                                                  runtime_.get())
+                     .success);
+    EXPECT_EQ(handle->mount_root(), root);
+    EXPECT_EQ(root->GetChildAt(0), handle->content_element().get());
   }
 }
 
