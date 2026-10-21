@@ -22,6 +22,7 @@ struct ImagePaintInfo {
   ImageFitMode mode{ImageFitMode::kScaleToFill};
   base::String blur_radius;
   bool auto_size{false};
+  bool is_background{false};
   base::String placeholder;
   base::String tint_color;
   base::String cap_insets;
@@ -32,8 +33,10 @@ struct ImagePaintInfo {
 
   bool operator==(const ImagePaintInfo& other) const {
     return mode == other.mode && blur_radius == other.blur_radius &&
-           auto_size == other.auto_size && placeholder == other.placeholder &&
-           tint_color == other.tint_color && cap_insets == other.cap_insets &&
+           auto_size == other.auto_size &&
+           is_background == other.is_background &&
+           placeholder == other.placeholder && tint_color == other.tint_color &&
+           cap_insets == other.cap_insets &&
            cap_insets_scale == other.cap_insets_scale &&
            skip_redirection == other.skip_redirection &&
            autoplay == other.autoplay && loop_count == other.loop_count;
