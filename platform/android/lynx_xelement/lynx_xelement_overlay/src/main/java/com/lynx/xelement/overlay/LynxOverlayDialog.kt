@@ -8,11 +8,14 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.graphics.PointF
+import android.os.Build
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -38,6 +41,7 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     private var skipNativeDispatchForCurrentGesture = false
     private var passThroughTarget: PassThroughTarget? = null
     private var lastPassThroughEvent: MotionEvent? = null
+    private var backInvokedCallback: OnBackInvokedCallback? = null
 
     var containerPopupTag: String? = null
 
@@ -67,6 +71,24 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         )
+    }
+
+    internal fun registerBackInvokedCallback() {
+        if (Build.VERSION.SDK_INT >= 33 && backInvokedCallback == null) {
+            val callback = OnBackInvokedCallback { overlay.requestDialogClose() }
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                callback
+            )
+            backInvokedCallback = callback
+        }
+    }
+
+    internal fun unregisterBackInvokedCallback() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            backInvokedCallback?.let { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
+            backInvokedCallback = null
+        }
     }
 
     // Override dialog's dispatchTouchEvent, if dialog needs to consume,

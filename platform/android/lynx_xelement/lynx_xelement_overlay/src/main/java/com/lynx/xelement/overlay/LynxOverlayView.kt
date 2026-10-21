@@ -151,8 +151,18 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mOverlayContainer.addView(mView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         mDialog?.setContentView(mOverlayContainer, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         mDialog?.setOnKeyListener { _, keyCode, event ->
-            if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                requestDialogClose()
+            if (Build.VERSION.SDK_INT < 33) {
+                if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+                    requestDialogClose()
+                    true
+                } else {
+                    false
+                }
+            } else if (keyCode == KeyEvent.KEYCODE_BACK) {
+                // Predictive back forwards a canceled key-up after invoking its callback.
+                if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+                    requestDialogClose()
+                }
                 true
             } else {
                 false
@@ -708,7 +718,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         )
     }
 
-    private fun requestDialogClose() {
+    internal fun requestDialogClose() {
         sendEventWithoutParam(EVENT_REQUEST_CLOSE)
     }
 
@@ -804,6 +814,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     }
 
     private fun activatePresentationResources() {
+        mDialog.registerBackInvokedCallback()
         if (!mPlatformEventRootActive) {
             setPlatformEventRootActive(true)
         }
@@ -811,6 +822,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     }
 
     private fun deactivatePresentationResources() {
+        mDialog.unregisterBackInvokedCallback()
         mDialog.cancelPassThroughGesture()
         LynxOverlayManager.cancelGesturesTargeting(mDialog)
         mPresentedHostWindowToken = null
@@ -851,11 +863,12 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             if (!LynxOverlayManager.containsGlobalId(mId)) {
                 mId = LynxOverlayManager.addGlobalId(mDialog)
                 mDialogDismissCleaned = false
+                val dialogId = mId
                 mDialog.setOnDismissListener {
-                    handleUnexpectedDialogDismiss()
+                    handleUnexpectedDialogDismiss(dialogId)
                 }
                 mDialog.setOnCancelListener {
-                    handleUnexpectedDialogDismiss()
+                    handleUnexpectedDialogDismiss(dialogId)
                 }
             }
             mDialog.show()
@@ -881,8 +894,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         }
     }
 
-    private fun handleUnexpectedDialogDismiss() {
-        if (mVisible || mDialogDismissCleaned) {
+    private fun handleUnexpectedDialogDismiss(dialogId: String?) {
+        if (dialogId != mId || mDialogDismissCleaned) {
             return
         }
         if (mShowEventSentForVisibleCycle) {
