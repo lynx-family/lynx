@@ -1148,6 +1148,14 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   bool GetEnableParallelElement() { return enable_parallel_element_; }
 
+  void SetEnableLayoutOnlyTransitionOrderFix(bool value) {
+    enable_layout_only_transition_order_fix_ = value;
+  }
+
+  bool GetEnableLayoutOnlyTransitionOrderFix() const {
+    return enable_layout_only_transition_order_fix_;
+  }
+
   bool GetEnableReportThreadedElementFlushStatistic() {
     return enable_report_threaded_element_flush_statistic_ &&
            EnableEventReporter();
@@ -1472,6 +1480,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   bool enable_dump_element_tree_{false};
 
   bool enable_parallel_element_{false};
+  bool enable_layout_only_transition_order_fix_{true};
 
   bool enable_report_threaded_element_flush_statistic_{false};
 

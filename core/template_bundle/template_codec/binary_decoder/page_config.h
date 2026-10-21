@@ -257,6 +257,14 @@ class PageConfig final : public LynxConfig {
     enable_parallel_element_ = enable;
   }
 
+  bool GetEnableLayoutOnlyTransitionOrderFix() const {
+    return enable_layout_only_transition_order_fix_;
+  }
+
+  void SetEnableLayoutOnlyTransitionOrderFix(bool enable) {
+    enable_layout_only_transition_order_fix_ = enable;
+  }
+
   bool GetEnableStandardCSSSelector() const {
     return enable_standard_css_selector_;
   }
@@ -430,6 +438,8 @@ class PageConfig final : public LynxConfig {
   // default value is false.
   bool enable_parallel_element_{false};
   std::optional<bool> level_order_traversing_env_;
+
+  bool enable_layout_only_transition_order_fix_{true};
 
   bool auto_non_flatten_platform_supported_{false};
 

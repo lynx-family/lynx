@@ -140,6 +140,8 @@ static constexpr const char kWidth[] = "width";
 static constexpr const char kHeight[] = "height";
 static constexpr const char kGlobalLynx[] = "lynx";
 static constexpr const char kEnableParallelElement[] = "enableParallelElement";
+static constexpr const char kEnableLayoutOnlyTransitionOrderFix[] =
+    "enableLayoutOnlyTransitionOrderFix";
 static constexpr const char kNodeIndex[] = "nodeIndex";
 static constexpr const char kContent[] = "content";
 static constexpr const char* kTrue = "true";

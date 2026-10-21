@@ -749,6 +749,20 @@ EncoderOptions MetaFactory::GetEncoderOptions(rapidjson::Document& document) {
     }
   }
 
+  if (arch == FIBER_ARCH &&
+      options.HasMember(kEnableLayoutOnlyTransitionOrderFix)) {
+    bool enable_layout_only_transition_order_fix = true;
+    GET_VALUE_FROM_JSON(options, kEnableLayoutOnlyTransitionOrderFix, Bool,
+                        enable_layout_only_transition_order_fix);
+    if (!encoder_options.generator_options_.template_info_.IsObject()) {
+      encoder_options.generator_options_.template_info_ =
+          lepus::Value(lepus::Dictionary::Create());
+    }
+    encoder_options.generator_options_.template_info_.SetProperty(
+        kEnableLayoutOnlyTransitionOrderFix,
+        lepus::Value(enable_layout_only_transition_order_fix));
+  }
+
   encoder_options.compile_options_.lepusng_debuginfo_outside_ =
       debuginfo_outside;
   encoder_options.generator_options_.lepus_closure_fix_ = lepus_closure_fix;
