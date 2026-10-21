@@ -2693,9 +2693,10 @@ void TemplateAssembler::OnScreenMetricsSet(float width, float height,
   }
 
   if (EnableEventReporter()) {
-    // update screen size info for EventReporter
+    // Report logical screen dimensions without changing renderer layout units.
     std::unordered_map<std::string, float> prop_map = {
-        {"screen_width", width}, {"screen_height", height}};
+        {"screen_width", width / env_config.LayoutsUnitPerPx()},
+        {"screen_height", height / env_config.LayoutsUnitPerPx()}};
     report::EventTracker::UpdateGenericInfo(instance_id_, std::move(prop_map));
   }
   // update element tree and layout tree
