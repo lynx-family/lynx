@@ -55,9 +55,8 @@ void TextFragmentBehavior::OnUpdateLayout(
 void TextFragmentBehavior::OnDraw(DisplayListBuilder& builder) {
   const auto& layout_info = fragment_->LayoutResult();
   const auto* computed_style = fragment_->element()->computed_css_style();
-  builder.Begin(fragment_->id(), GetType(),
-                layout_info.layout_result.padding_[starlight::Direction::kLeft],
-                layout_info.layout_result.padding_[starlight::Direction::kTop],
+  builder.Begin(fragment_->id(), GetType(), layout_info.GetContentBoxX(),
+                layout_info.GetContentBoxY(),
                 layout_info.layout_result.size_.width_,
                 layout_info.layout_result.size_.height_,
                 computed_style->IsOverflowX(), computed_style->IsOverflowY(),
