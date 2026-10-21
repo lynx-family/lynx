@@ -2718,6 +2718,53 @@ TEST_P(ElementTemplateInstanceTest,
   EXPECT_EQ(observer->modified_nodes.size(), 1u);
 }
 
+TEST_P(ElementTemplateInstanceTest,
+       GestureValueConstructorPreservesCallableAndObjectCallbacks) {
+  auto runtime = CreatePAPIRuntime();
+  auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  ASSERT_NE(context, nullptr);
+  lepus::Value value;
+  constexpr char source[] = R"JS(({
+    config: {enabled: true},
+    callbacks: [
+      {name: 'onUpdate', callback: {state: 0}},
+      {name: 'onEnd', callback: function() { return 42; }},
+      {name: 'invalid', callback: 42},
+      {name: 42, callback: {}}
+    ],
+    relationMap: {waitFor: [11, 'ignored', 12],
+      simultaneous: {first: 21, second: 22}, continueWith: []}
+  }))JS";
+  ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, value,
+                               "gesture_constructor.js"));
+  GestureDetectorImpl detector(1, GestureType::PAN, value,
+                               value.GetProperty("relationMap"), runtime.get());
+  EXPECT_EQ(detector.gesture_id(), 1u);
+  EXPECT_EQ(detector.gesture_type(), GestureType::PAN);
+  ASSERT_EQ(detector.gesture_callbacks().size(), 2u);
+  const auto& object = detector.gesture_callbacks()[0];
+  const auto& function = detector.gesture_callbacks()[1];
+  EXPECT_EQ(object.name_, "onUpdate");
+  EXPECT_EQ(function.name_, "onEnd");
+  EXPECT_EQ(object.ctx_, runtime.get());
+  EXPECT_EQ(function.ctx_, runtime.get());
+  EXPECT_TRUE(object.lepus_object_.IsEqual(
+      value.GetProperty("callbacks").GetProperty(0).GetProperty("callback")));
+  EXPECT_TRUE(function.lepus_function_.IsCallable());
+  EXPECT_TRUE(function.lepus_function_.IsEqual(
+      value.GetProperty("callbacks").GetProperty(1).GetProperty("callback")));
+  EXPECT_TRUE(function.lepus_object_.IsEmpty());
+  EXPECT_EQ(detector.relation_map().at(kGestureWaitFor),
+            std::vector<uint32_t>({11, 12}));
+  auto simultaneous = detector.relation_map().at(kGestureSimultaneous);
+  std::sort(simultaneous.begin(), simultaneous.end());
+  EXPECT_EQ(simultaneous, std::vector<uint32_t>({21, 22}));
+  EXPECT_TRUE(detector.relation_map().at(kGestureContinueWith).empty());
+  value.GetProperty("config").SetProperty("enabled", lepus::Value(false));
+  EXPECT_TRUE(
+      detector.gesture_config_in_lepus_value().GetProperty("enabled").Bool());
+}
+
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,
                          ElementTemplateInstanceTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
