@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/fml/memory/js_memory_track_scope.h"
 #include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_api.h"
@@ -215,8 +216,15 @@ std::unique_ptr<FixtureJsRuntime> CreateQuickJsFixtureRuntime(
   // effective regardless of the application's engine settings.
   // Memory tracking requires a task runner, including on evaluator workers.
   fml::MessageLoop::EnsureInitializedForCurrentThread();
+  fml::JSMemoryTrackAsCommon memory_scope;
   auto vm = std::make_shared<runtime::js::QuickjsRuntimeInstance>();
   vm->InitQuickjsRuntime(true, 0, true);
+  // Page slots belong to the application's VM, not this private VM. Keep a
+  // thread-local selector alive through teardown without changing the caller's
+  // active page slot. Fixture runtimes stay on their creating thread.
+  static thread_local int32_t fixture_memory_slot =
+      fml::JSMemoryTrackSlotType::Common;
+  LEPUS_RebindRuntimeMemoryTrackSlot(vm->Runtime(), &fixture_memory_slot);
   auto context = js_runtime->createContext(vm);
   js_runtime->InitRuntime(context);
   // Reject budgets that cannot hold even the initialized engine. In particular,

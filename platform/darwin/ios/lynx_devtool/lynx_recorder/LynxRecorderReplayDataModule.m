@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <LynxDevtool/LynxRecorderFixture.h>
 #import <LynxDevtool/LynxRecorderReplayDataModule.h>
 
 @interface LynxRecorderReplayDataModule ()
@@ -10,6 +11,10 @@
 @property NSArray *jsbIgnoredInfo;
 @property NSDictionary *jsbSettings;
 @property NSDictionary *sharedData;
+@property LynxRecorderFixture *fixture;
+@property LynxRecorderFixture *fixtureLease;
+@property NSUInteger fixtureUsers;
+@property BOOL destroyed;
 @property(nonatomic, weak) LynxContext *context;
 @end
 
@@ -47,6 +52,8 @@ static int64_t LynxRecorderRecordTimeInMilliseconds(NSDictionary *record) {
 + (NSDictionary<NSString *, NSString *> *)methodLookup {
   return @{
     @"getData" : NSStringFromSelector(@selector(getData:)),
+    @"getFixtureDirectory" : NSStringFromSelector(@selector(getFixtureDirectory)),
+    @"releaseFixture" : NSStringFromSelector(@selector(releaseFixture)),
     @"getSharedData" : NSStringFromSelector(@selector(getSharedData:)),
     @"schedule" : NSStringFromSelector(@selector(schedule:token:)),
   };
@@ -70,6 +77,9 @@ static int64_t LynxRecorderRecordTimeInMilliseconds(NSDictionary *record) {
     _sharedData = @{};
     if ([param conformsToProtocol:@protocol(LynxRecorderReplayDataProvider)]) {
       id<LynxRecorderReplayDataProvider> provider = (id<LynxRecorderReplayDataProvider>)param;
+      if ([provider respondsToSelector:@selector(getFixture)]) {
+        _fixture = [provider getFixture];
+      }
       id functionCall = [provider getFunctionCall];
       id callbackData = [provider getCallbackData];
       id jsbSettings = [provider getJsbSettings];
@@ -83,6 +93,29 @@ static int64_t LynxRecorderRecordTimeInMilliseconds(NSDictionary *record) {
     }
   }
   return self;
+}
+
+- (NSString *)getFixtureDirectory {
+  @synchronized(self) {
+    if (!_fixture || _destroyed) return @"";
+    _fixtureLease = _fixture;
+    ++_fixtureUsers;
+    return _fixture.directory;
+  }
+}
+
+// The JS thread releases this lease after destroying the shared FixtureContext.
+- (void)releaseFixture {
+  @synchronized(self) {
+    if (_fixtureUsers > 0 && --_fixtureUsers == 0) _fixtureLease = nil;
+  }
+}
+
+- (void)destroy {
+  @synchronized(self) {
+    _destroyed = YES;
+    _fixture = nil;
+  }
 }
 
 - (NSDictionary *)getSharedData:(NSString *)key {

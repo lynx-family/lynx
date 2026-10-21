@@ -4,6 +4,7 @@
 
 #import <Lynx/JSModule.h>
 #import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxResourceProvider.h>
 #import <Lynx/LynxTemplateBundle+Converter.h>
@@ -15,16 +16,25 @@
 #import <LynxDevtool/LynxRecorderDynamicComponentFetcher.h>
 #import <LynxDevtool/LynxRecorderEntranceViewController.h>
 #import <LynxDevtool/LynxRecorderEnv.h>
+#import <LynxDevtool/LynxRecorderFixture.h>
 #import <LynxDevtool/LynxRecorderOpenUrlModule.h>
 #import <LynxDevtool/LynxRecorderReplayConfig.h>
 #import <LynxDevtool/LynxRecorderReplayDataModule.h>
 #import <LynxDevtool/LynxRecorderViewClient.h>
 #import <third_party/zlib/zlib.h>
 
+#include <cstring>
+
 #define SCREEN_WIDTH [UIScreen mainScreen].bounds.size.width
 #define SCREEN_HEIGHT [UIScreen mainScreen].bounds.size.height
 
 static const int kVirtual = 1 << 2;
+
+static dispatch_time_t ReplayDeadline(int64_t milliseconds) {
+  // Fixture delays are script-controlled; avoid overflow in milliseconds to nanoseconds.
+  int64_t bounded = MIN(MAX(milliseconds, 0), INT64_MAX / NSEC_PER_MSEC);
+  return dispatch_time(DISPATCH_TIME_NOW, bounded * NSEC_PER_MSEC);
+}
 
 @interface LynxRecorderReplayConfig (RuntimeOptions)
 @property(nonatomic, readonly, nullable) NSNumber* enableBTSOverride;
@@ -85,6 +95,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 @property NSArray* jsbIgnoredInfo;
 @property NSDictionary* jsbSettings;
 @property NSDictionary* sharedData;
+@property LynxRecorderFixture* fixture;
 @end
 
 @implementation LynxRecorderReplayDataProviderInternal
@@ -112,6 +123,10 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 
 - (NSArray*)getJSbIgnoredInfo {
   return _jsbIgnoredInfo;
+}
+
+- (LynxRecorderFixture*)getFixture {
+  return self.fixture;
 }
 
 - (NSDictionary*)getSharedData {
@@ -153,6 +168,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 @property(nonatomic, strong) NSMutableArray* actionCallbacks;
 @property(nonatomic, strong) id<LynxRecorderTouchHelper> touchHelper;
 @property LynxRecorderReplayDataProviderInternal* dataProvider;
+@property NSUInteger replayGeneration;
 
 @end
 
@@ -214,6 +230,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 }
 
 - (void)loadRecordFile {
+  NSUInteger generation = self.replayGeneration;
   NSURLSessionConfiguration* configuration =
       [NSURLSessionConfiguration defaultSessionConfiguration];
   configuration.requestCachePolicy = self.replayConfig.requestCachePolicy;
@@ -224,12 +241,13 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
              completionHandler:^(NSData* _Nullable data, NSURLResponse* _Nullable response,
                                  NSError* _Nullable error) {
                __strong typeof(_self) strongSelf = _self;
+               if (!strongSelf || generation != strongSelf.replayGeneration) return;
                if (error != nil || [(NSHTTPURLResponse*)response statusCode] != 200) {
                  [strongSelf.stateView setReplayState:ERROR_DOWNLOAD_FAILED];
                  return;
                }
                [strongSelf.stateView setReplayState:PARSING_JSON_FILE];
-               [strongSelf handleRecordFileData:data];
+               [strongSelf handleRecordFileData:data generation:generation];
              }];
   [dataTask resume];
 }
@@ -250,7 +268,14 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 }
 
 - (void)create {
+  NSUInteger generation = ++self.replayGeneration;
+  // The old view may still initialize or destroy modules on its JS thread.
+  self.dataProvider = [[LynxRecorderReplayDataProviderInternal alloc] init];
+  self.client.manager = nil;
+  [self.reloadFuncList removeAllObjects];
+  self.startTime = 0;
   if (_lynxView != nil) {
+    [self.lynxView removeObserver:self forKeyPath:@"frame"];
     [self.lynxView removeFromSuperview];
     self.lynxView = nil;
   }
@@ -274,8 +299,11 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
                    return;
                  }
                  __strong typeof(_self) strongSelf = _self;
-                 [strongSelf setPreloadedSource:data];
-                 [strongSelf downloadRecordFile];
+                 dispatch_async(dispatch_get_main_queue(), ^{
+                   if (!strongSelf || generation != strongSelf.replayGeneration) return;
+                   [strongSelf setPreloadedSource:data];
+                   [strongSelf downloadRecordFile];
+                 });
                }];
     [dataTask resume];
   } else {
@@ -385,10 +413,28 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 - (void)loadLocalRecordFile {
   [self.stateView setReplayState:PARSING_JSON_FILE];
   NSData* data = [LynxRecorderEntranceViewController localRecordFileData:[self.replayConfig url]];
-  [self handleRecordFileData:data];
+  [self handleRecordFileData:data generation:self.replayGeneration];
 }
 
-- (void)handleRecordFileData:(NSData*)data {
+- (void)handleRecordFileData:(NSData*)data generation:(NSUInteger)generation {
+  if (data.length >= 4 && std::memcmp(data.bytes, "PK\003\004", 4) == 0) {
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+      NSError* error = nil;
+      LynxRecorderFixture* fixture = [LynxRecorderFixture openData:data error:&error];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        typeof(self) strongSelf = weakSelf;
+        if (!strongSelf || generation != strongSelf.replayGeneration) return;
+        if (!fixture) {
+          LLogError(@"[TestBench] Fixture load failed: %@", error);
+          [strongSelf.stateView setReplayState:INVALID_JSON_FILE];
+          return;
+        }
+        [strongSelf applyRecord:fixture.record fixture:fixture generation:generation];
+      });
+    });
+    return;
+  }
   if (data.length == 0) {
     NSLog(@"[TestBench] Replay record file is empty or unavailable.");
     [self.stateView setReplayState:INVALID_JSON_FILE];
@@ -426,6 +472,21 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
     [self.stateView setReplayState:INVALID_JSON_FILE];
     return;
   }
+  [self applyRecord:json fixture:nil generation:generation];
+}
+
+- (void)applyRecord:(NSDictionary*)json
+            fixture:(LynxRecorderFixture*)fixture
+         generation:(NSUInteger)generation {
+  if (![NSThread isMainThread]) {
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [weakSelf applyRecord:json fixture:fixture generation:generation];
+    });
+    return;
+  }
+  if (generation != self.replayGeneration) return;
+  self.dataProvider.fixture = fixture;
   self.moduleList = [NSMutableArray new];
   _config = [json[@"Config"] isKindOfClass:[NSDictionary class]] ? json[@"Config"] : @{};
   id jsbIgnoredInfo = _config[@"jsbIgnoredInfo"];
@@ -570,19 +631,26 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
   if (![[self.replayConfig canMockFuncName] containsObject:functionName]) {
     return;
   }
-  int64_t recordTime = [obj[@"Record Time"] doubleValue];
-  if ([obj[@"RecordMillisecond"] intValue]) {
-    recordTime = [obj[@"RecordMillisecond"] doubleValue];
+  BOOL fixture = self.dataProvider.fixture != nil;
+  int64_t recordTime = 0;
+  if (fixture) {
+    recordTime = [obj[@"RecordMillisecond"] longLongValue];
   } else {
-    recordTime = recordTime * 1000;
+    recordTime = [obj[@"Record Time"] doubleValue];
+    if ([obj[@"RecordMillisecond"] intValue]) {
+      recordTime = [obj[@"RecordMillisecond"] doubleValue];
+    } else {
+      recordTime *= 1000;
+    }
   }
-  if (_startTime == 0) {
+  if (!fixture && _startTime == 0) {
     _startTime = recordTime;
   }
   if ([functionName isEqualToString:@"sendEventDarwin"] && ![self.replayConfig replayGesture]) {
     return;
   }
-  NSInteger interval = MAX(0, recordTime - _startTime);
+  NSInteger interval =
+      fixture ? MIN(MAX(recordTime, 0), NSIntegerMax) : MAX(0, recordTime - _startTime);
   if ([[self.replayConfig reloadFuncName] containsObject:functionName]) {
     [_reloadFuncList addObject:[[ReloadAction alloc] initWithParams:interval
                                                            funcName:functionName
@@ -600,15 +668,15 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
   IMP imp = [self methodForSelector:selector];
   void (*func)(id, SEL, NSDictionary*) = (__typeof__(func))imp;
 
+  NSUInteger generation = self.replayGeneration;
   __weak typeof(self) _self = self;
   if ([self respondsToSelector:selector]) {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(interval * NSEC_PER_MSEC)),
-                   dispatch_get_main_queue(), ^{
-                     if (_self) {
-                       __strong typeof(_self) strongSelf = _self;
-                       func(strongSelf, selector, params);
-                     }
-                   });
+    dispatch_after(ReplayDeadline(interval), dispatch_get_main_queue(), ^{
+      if (_self) {
+        __strong typeof(_self) strongSelf = _self;
+        if (generation == strongSelf.replayGeneration) func(strongSelf, selector, params);
+      }
+    });
   }
 }
 
@@ -641,6 +709,8 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 }
 
 - (void)handleActionList:(NSArray*)actionList {
+  NSUInteger generation = self.replayGeneration;
+  [self.reloadFuncList removeAllObjects];
   __block BOOL hasSetReplayStartTime = NO;
   __block int64_t completionInterval = 0;
   if ([self.replayConfig enablePreDecode]) {
@@ -658,13 +728,12 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
   }];
   if (self.onTestBenchComplete) {
     __weak typeof(self) _self = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(completionInterval * NSEC_PER_MSEC)),
-                   dispatch_get_main_queue(), ^{
-                     if (_self) {
-                       __strong typeof(_self) strongSelf = _self;
-                       strongSelf.onTestBenchComplete();
-                     }
-                   });
+    dispatch_after(ReplayDeadline(completionInterval), dispatch_get_main_queue(), ^{
+      if (_self) {
+        __strong typeof(_self) strongSelf = _self;
+        if (generation == strongSelf.replayGeneration) strongSelf.onTestBenchComplete();
+      }
+    });
   }
 }
 
@@ -831,7 +900,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
       [strongSelf configureReplayResourceFetchersForBuilder:builder];
 
       NSMutableArray* preloadJSPaths = [[NSMutableArray alloc] init];
-      if (![self.replayConfig forbidTimeFreeze]) {
+      if (![self.replayConfig forbidTimeFreeze] && !self.dataProvider.fixture) {
         [preloadJSPaths addObject:[self replayTimeEnvJScript]];
       }
       [preloadJSPaths addObjectsFromArray:strongSelf.preloadScriptPaths ?: @[]];
@@ -1010,7 +1079,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
     [self configureReplayResourceFetchersForBuilder:builder];
 
     NSMutableArray* preloadJSPaths = [[NSMutableArray alloc] init];
-    if (![self.replayConfig forbidTimeFreeze]) {
+    if (![self.replayConfig forbidTimeFreeze] && !self.dataProvider.fixture) {
       [preloadJSPaths addObject:[self replayTimeEnvJScript]];
     }
     [preloadJSPaths addObjectsFromArray:self.preloadScriptPaths ?: @[]];
@@ -1303,18 +1372,17 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 }
 
 - (void)endTestBench {
+  NSUInteger generation = self.replayGeneration;
   __weak typeof(self) weakSelf = self;
 
-  dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
-                               (int64_t)([self.replayConfig delayEndInterval] * NSEC_PER_MSEC)),
-                 dispatch_get_main_queue(), ^{
-                   LynxRecorderActionManager* strongSelf = weakSelf;
-                   [strongSelf.lynxView.baseInspectorController
-                       endTestbench:[strongSelf getDumpFilePath]];
-                   if (self.endTestBenchBlock) {
-                     self.endTestBenchBlock();
-                   }
-                 });
+  dispatch_after(ReplayDeadline([self.replayConfig delayEndInterval]), dispatch_get_main_queue(), ^{
+    LynxRecorderActionManager* strongSelf = weakSelf;
+    if (!strongSelf || generation != strongSelf.replayGeneration) return;
+    [strongSelf.lynxView.baseInspectorController endTestbench:[strongSelf getDumpFilePath]];
+    if (strongSelf.endTestBenchBlock) {
+      strongSelf.endTestBenchBlock();
+    }
+  });
 }
 
 - (NSString*)getDumpFilePath {
@@ -1352,7 +1420,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 }
 
 - (void)reload {
-  if ([self.replayConfig createWhenReload]) {
+  if ([self.replayConfig createWhenReload] || self.dataProvider.fixture) {
     [self create];
   } else {
     _loadTemplateInitData = [_loadTemplateInitData deepClone];
@@ -1378,6 +1446,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 
 // when page reload, execute these functions in order
 - (void)reloadAction {
+  NSUInteger generation = self.replayGeneration;
   int64_t endTestTime = 1000;
   if (self.firstScreenBlock) {
     self.firstScreenBlock();
@@ -1388,27 +1457,25 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
     SEL selector = NSSelectorFromString([action.functionName stringByAppendingString:@":"]);
     IMP imp = [self methodForSelector:selector];
     void (*func)(id, SEL, NSDictionary*) = (__typeof__(func))imp;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(action.interval * NSEC_PER_MSEC)),
-                   dispatch_get_main_queue(), ^{
-                     if (_self) {
-                       __strong typeof(_self) strongSelf = _self;
-                       func(strongSelf, selector, action.params);
-                     }
-                   });
-    endTestTime = action.interval + 1000 > endTestTime ? action.interval : endTestTime;
+    dispatch_after(ReplayDeadline(action.interval), dispatch_get_main_queue(), ^{
+      if (_self) {
+        __strong typeof(_self) strongSelf = _self;
+        if (generation == strongSelf.replayGeneration) func(strongSelf, selector, action.params);
+      }
+    });
+    endTestTime = action.interval > endTestTime - 1000 ? action.interval : endTestTime;
   }
   // TODO(zhaosong.lmm): This is to prevent timeouts when retrieving layout files in e2e testing.
   // Just a temporary fix and we need to adopt a more reasonable approach.
   if (endTestTime >= 60 * 1000) {
     endTestTime = 5 * 1000;
   }
-  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(endTestTime * NSEC_PER_MSEC)),
-                 dispatch_get_main_queue(), ^{
-                   if (_self) {
-                     __strong typeof(_self) strongSelf = _self;
-                     [strongSelf endTestBench];
-                   }
-                 });
+  dispatch_after(ReplayDeadline(endTestTime), dispatch_get_main_queue(), ^{
+    if (_self) {
+      __strong typeof(_self) strongSelf = _self;
+      if (generation == strongSelf.replayGeneration) [strongSelf endTestBench];
+    }
+  });
 }
 
 @end
