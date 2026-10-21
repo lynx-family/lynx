@@ -10,6 +10,7 @@
 #include "base/include/value/base_string.h"
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/fragment/box_model_recorder.h"
+#include "core/renderer/dom/fragment/custom_draw_functions.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
@@ -97,6 +98,12 @@ class Fragment : public BaseElementContainer {
   void Draw(DisplayListBuilder& display_list_builder);
 
   void OnDraw(DisplayListBuilder& display_list_builder);
+
+  void SetCustomDrawFunctions(
+      std::shared_ptr<const CustomDrawFunctions> functions);
+  bool HasCustomDraw() const { return custom_draw_functions_ != nullptr; }
+  void DrawBehind(DisplayListBuilder& builder);
+  void DrawForeground(DisplayListBuilder& builder);
 
   void SetEventProp(PlatformEventPropName name, const lepus::Value& value);
 
@@ -196,6 +203,7 @@ class Fragment : public BaseElementContainer {
                                                      float image_height);
   void ClearBackgroundImage(size_t image_index);
 
+  std::shared_ptr<const CustomDrawFunctions> custom_draw_functions_;
   bool has_platform_renderer_{false};
   bool pending_node_ready_{false};
 

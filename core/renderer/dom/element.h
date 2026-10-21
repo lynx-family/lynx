@@ -43,6 +43,7 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/element_property.h"
+#include "core/renderer/dom/fragment/custom_draw_functions.h"
 #include "core/renderer/dom/imperative_animation_metadata.h"
 #include "core/renderer/dom/imperative_animation_state.h"
 #include "core/renderer/dom/selector/selector_item.h"
@@ -261,6 +262,7 @@ class Element : public lepus::RefCounted,
   static const uint32_t kDirtyFontSize;
   static const uint32_t kDirtyRefreshCSSVariables;
   static const uint32_t kDirtyStyleObjects;
+  static constexpr uint32_t kDirtyCustomDraw = 0x01 << 18;
   static constexpr uint32_t kDirtyCloned = 0x01 << 14;
   static constexpr uint32_t kDirtyDynamicStyleObjects = 0x01 << 15;
   static constexpr uint32_t kDirtyInvoke = 0x01 << 16;
@@ -1596,6 +1598,12 @@ class Element : public lepus::RefCounted,
   virtual bool IsDetached() const { return state_ == State::kDetached; }
   virtual void SetupFragmentBehavior(Fragment* fragment);
 
+  // Saving/removing a binding only marks dirty; Flush installs it on Fragment.
+  void SetCustomDrawFunctions(CustomDrawFunctions functions);
+  bool HasCustomDrawFunctions() const {
+    return custom_draw_functions_ != nullptr;
+  }
+
   void SetDefaultOverflow(bool visible);
 
   /**
@@ -2263,6 +2271,7 @@ class Element : public lepus::RefCounted,
   std::unique_ptr<ContentData> content_data_;
 
   std::unique_ptr<BaseElementContainer> element_container_;
+  std::shared_ptr<const CustomDrawFunctions> custom_draw_functions_;
 
   fml::RefPtr<AttributeHolder> data_model_;
 
@@ -2450,6 +2459,7 @@ class Element : public lepus::RefCounted,
   bool WriteRenderStyleToBundle(tasm::CSSPropertyID id,
                                 const tasm::CSSValue& value);
   void DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle);
+  bool FlushCustomDrawFunctions();
 
   void UpdateStickyPosition(const std::array<float, 4>* sticky_positions);
 

@@ -50,12 +50,14 @@ bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
     return false;
   }
 
+  // Custom draw callbacks can record subtree properties, so their output needs
+  // an independent platform layer.
   const bool can_flatten_without_platform_renderer =
       (!element()->is_page() &&
        !element()->is_direct_child_of_compatible_component() &&
        (element()->is_text() || element()->is_image() || element()->is_view() ||
         element()->is_component())) &&
-      element()->TendToFlatten();
+      element()->TendToFlatten() && !element()->HasCustomDrawFunctions();
   if (can_flatten_without_platform_renderer) {
     // If the fragment is a view, text, image, or component, and it tends to
     // flatten, then it does not need to be layerized. The page must keep its
@@ -1147,9 +1149,10 @@ void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
     return;
   }
 
-  // If the element has no children and is not a text node, do not need draw
-  // clip.
-  if (children_.empty() && !element()->is_text()) {
+  // Text and custom foreground drawing need content clipping even without
+  // children.
+  if (children_.empty() && !element()->is_text() &&
+      !(custom_draw_functions_ && custom_draw_functions_->draw_foreground)) {
     return;
   }
 
@@ -1342,6 +1345,23 @@ void Fragment::MarkHasExposureEventIfNeeded() const {
   }
 }
 
+void Fragment::SetCustomDrawFunctions(
+    std::shared_ptr<const CustomDrawFunctions> functions) {
+  custom_draw_functions_ = std::move(functions);
+}
+
+void Fragment::DrawBehind(DisplayListBuilder& builder) {
+  if (custom_draw_functions_ && custom_draw_functions_->draw_behind) {
+    custom_draw_functions_->draw_behind(*this, builder);
+  }
+}
+
+void Fragment::DrawForeground(DisplayListBuilder& builder) {
+  if (custom_draw_functions_ && custom_draw_functions_->draw_foreground) {
+    custom_draw_functions_->draw_foreground(*this, builder);
+  }
+}
+
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   SyncEventBundle();
   MarkHasExposureEventIfNeeded();
@@ -1397,17 +1417,16 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
       layout_info_.layout_result.size_.height_, computed_style->IsOverflowX(),
       computed_style->IsOverflowY(), ShouldSyncLayoutOnlyToEventTarget());
 
+  DrawBehind(display_list_builder);
   DrawBackground(display_list_builder);
   DrawBoxShadow(display_list_builder);
   DrawBorder(display_list_builder);
   DrawClip(display_list_builder);
-
   if (behavior_) {
     behavior_->OnDraw(display_list_builder);
   }
-
   DrawChildren(display_list_builder);
-
+  DrawForeground(display_list_builder);
   display_list_builder.End();
 }
 

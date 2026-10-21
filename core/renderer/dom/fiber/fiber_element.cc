@@ -2635,6 +2635,7 @@ ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
 
   // Need process attributes first.
   need_update = ConsumeAllAttributes();
+  need_update |= FlushCustomDrawFunctions();
 
   // If it's the first flush of the element and parsed_styles_map_ is empty, we
   // can take the fast path, directly using parsed_styles_map_ as the updated
@@ -5842,6 +5843,29 @@ void Element::InvalidateChildrenIfNeeded() {
     InvalidateChildren(invalidation_set);
   }
   invalidation_lists_.descendants.clear_and_shrink();
+}
+
+void Element::SetCustomDrawFunctions(CustomDrawFunctions functions) {
+  custom_draw_functions_ =
+      (functions.draw_foreground || functions.draw_behind)
+          ? std::make_shared<CustomDrawFunctions>(std::move(functions))
+          : nullptr;
+  MarkDirty(kDirtyCustomDraw);
+}
+
+bool Element::FlushCustomDrawFunctions() {
+  if (!(dirty_ & kDirtyCustomDraw)) return false;
+  dirty_ &= ~kDirtyCustomDraw;
+  if (EnableFragmentLayerRender()) {
+    fragment_impl()->SetCustomDrawFunctions(custom_draw_functions_);
+    // Configuration belongs to this element. Redraw invalidation can traverse
+    // shared ancestors, so defer only that operation during parallel resolve.
+    HandleBeforeFlushActionsTask(
+        [this]() { fragment_impl()->InvalidateForRedraw(); },
+        kFlagGreedyParallel | kFlagLevelOrderParallel);
+    return true;
+  }
+  return false;
 }
 
 void Element::SetupFragmentBehavior(Fragment *fragment) {
