@@ -29,6 +29,9 @@ using ItemHolderMap =
     std::unordered_map<std::string, std::unique_ptr<list::ItemHolder>>;
 using ItemHolderPtrMap = std::unordered_map<std::string, list::ItemHolder*>;
 
+// methods
+static constexpr const char kScrollToPositionMethod[] = "scrollToPosition";
+
 // props
 static constexpr const char* const kPropCustomListName = "custom-list-name";
 static constexpr const char kPropEnableDecoupledList[] =

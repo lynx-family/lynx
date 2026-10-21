@@ -45,6 +45,9 @@ class ListMediator : public lynx::list::ElementDelegate {
 
   void ScrollToPosition(int index, float offset, int align, bool smooth);
 
+  std::unique_ptr<pub::Value> ScrollToPositionSync(int index, float offset,
+                                                   std::string* error);
+
   void ScrollStopped();
 
   void OnNextFrame();

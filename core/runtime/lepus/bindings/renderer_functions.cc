@@ -6763,6 +6763,28 @@ RENDERER_FUNCTION_CC(TriggerComponentEvent) {
   RETURN_UNDEFINED();
 }
 
+RENDERER_FUNCTION_CC(FiberInvokeMethod) {
+  CHECK_ARGC_EQ(FiberInvokeMethod, 3);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberInvokeMethod);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, String, FiberInvokeMethod);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Object, FiberInvokeMethod);
+  const auto ref_type = arg0->RefCounted()->GetRefType();
+  if (ref_type != lepus::RefType::kElement &&
+      ref_type != lepus::RefType::kComposeElementHandle) {
+    ElementAPIError("FiberInvokeMethod requires an Element or Compose handle");
+    RETURN_UNDEFINED();
+  }
+  auto element = GetComposeContentOrFiberElementFromValue(*arg0);
+  if (!element) {
+    ElementAPIError("FiberInvokeMethod requires an Element or Compose handle");
+    RETURN_UNDEFINED();
+  }
+  std::string error;
+  auto result = element->InvokeMethod(arg1->String(), *arg2, &error);
+  if (!error.empty()) ElementAPIError("FiberInvokeMethod: %s", error.c_str());
+  RETURN(result);
+}
+
 RENDERER_FUNCTION_CC(InvokeUIMethod) {
   CHECK_ARGC_EQ(InvokeUIMethod, 4);
 

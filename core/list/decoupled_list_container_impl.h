@@ -62,6 +62,11 @@ class ListContainerImpl : public ContainerDelegate {
   void OnAttachedToElementManager() override;
   void ScrollToPosition(int index, float offset, int align,
                         bool smooth) override;
+  std::unique_ptr<pub::Value> ScrollToPositionSync(int index, float offset,
+                                                   std::string* error) override;
+  bool AreOnScreenItemsReady() const;
+  bool synchronous_scroll_active() const { return synchronous_scroll_active_; }
+
   void ScrollStopped() override;
   void EnableInsertPlatformView() override {
     enable_insert_platform_view_operation_ = true;
@@ -157,6 +162,8 @@ class ListContainerImpl : public ContainerDelegate {
   ListContainerImpl(const ListContainerImpl& list_container_impl) = delete;
 
  private:
+  bool synchronous_scroll_active_ = false;
+
   void UpdateListLayoutManager(LayoutType layout_type);
   //  fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
 

@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/debug/lynx_error.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
@@ -508,6 +509,55 @@ TEST_P(ModifierElementTest,
     EXPECT_FALSE(enabled->second.Bool());
     EXPECT_EQ(custom->parent(), nullptr);
   }
+}
+
+TEST_P(ModifierElementTest, SynchronousListJumpBindingValidatesInputAndLayout) {
+  auto runtime_ = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  runtime_->Initialize();
+  runtime_->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto Eval = [&](const std::string& script) {
+    lepus::Value value;
+    EXPECT_TRUE(runtime::MTSRuntime::ToQuickContext(runtime_.get())
+                    ->EvalBuf(script.c_str(), script.size(), value,
+                              "sync_list_test.js"));
+    return value;
+  };
+  auto page = manager->CreateFiberPage("page", 11);
+  Renderer::RegisterBuiltin(runtime_.get(), ArchOption::FIBER_ARCH);
+  runtime_->SetGlobalData("scrollPageId", lepus::Value(page->impl_id()));
+  EXPECT_TRUE(Eval(R"JS(
+    globalThis.scrollList = __CreateCompose(scrollPageId, 4);
+    globalThis.scrollView = __CreateCompose(scrollPageId, 1);
+    typeof __InvokeMethod === 'function';
+  )JS")
+                  .Bool());
+  for (const auto& args :
+       {"scrollView,'scrollToPosition',{index:0,offset:0}",
+        "scrollList,'unknown',{}", "null,'scrollToPosition',{}",
+        "{},'scrollToPosition',{}", "[],'scrollToPosition',{}",
+        "42,'scrollToPosition',{}", "scrollList,42,{}",
+        "scrollList,'scrollToPosition',null",
+        "scrollList,'scrollToPosition',{}",
+        "scrollList,'scrollToPosition',{index:'0',offset:0}",
+        "scrollList,'scrollToPosition',{index:0,offset:'0'}",
+        "scrollList,'scrollToPosition',{index:-1,offset:0}",
+        "scrollList,'scrollToPosition',{index:0.5,offset:0}",
+        "scrollList,'scrollToPosition',{index:Infinity,offset:0}",
+        "scrollList,'scrollToPosition',{index:2147483648,offset:0}",
+        "scrollList,'scrollToPosition',{index:0,offset:NaN}",
+        "scrollList,'scrollToPosition',{index:0,offset:1e100}",
+        "scrollList,'scrollToPosition',{index:0,offset:0}"}) {
+    SCOPED_TRACE(args);
+    base::ErrorStorage::GetInstance().Reset();
+    EXPECT_TRUE(
+        Eval(std::string("__InvokeMethod(") + args + ") == null").Bool());
+    // Every rejection, including an unlaid-out list, is reported.
+    EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  }
+  base::ErrorStorage::GetInstance().Reset();
 }
 
 TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {

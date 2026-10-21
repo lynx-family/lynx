@@ -96,6 +96,15 @@ void ListMediator::ScrollToPosition(int index, float offset, int align,
   }
 }
 
+std::unique_ptr<pub::Value> ListMediator::ScrollToPositionSync(
+    int index, float offset, std::string* error) {
+  if (!list_container_delegate_) {
+    *error = "list is not initialized";
+    return nullptr;
+  }
+  return list_container_delegate_->ScrollToPositionSync(index, offset, error);
+}
+
 void ListMediator::ScrollStopped() {
   if (list_container_delegate_) {
     list_container_delegate_->ScrollStopped();

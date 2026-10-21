@@ -9,9 +9,14 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyFloat;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import androidx.test.annotation.UiThreadTest;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
@@ -21,10 +26,8 @@ import com.lynx.tasm.ListNodeInfoFetcher;
 import com.lynx.tasm.LynxEventEmitter;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxView;
-import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.StyleConstants;
-import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.list.container.ListContainerProxy;
 import com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
@@ -54,10 +57,10 @@ public class UIListContainerTest {
     LynxTemplateRender renderer = mock(LynxTemplateRender.class);
     lynxContext.setListNodeInfoFetcher(new ListNodeInfoFetcher(renderer));
     lynxContext.setEventEmitter(new LynxEventEmitter(renderer.getEngineProxy()));
-    UIBody mUIBody = new UIBody(lynxContext, new UIBody.UIBodyView(lynxContext));
-    LynxView mLynxView = new LynxView(lynxContext, new LynxViewBuilder());
-    lynxContext.setLynxView(mLynxView);
+    // These container tests do not render a template or initialize a JS runtime.
+    lynxContext.setLynxView(mock(LynxView.class));
   }
+
   @Test
   public void testSnap() throws Exception {
     UIListContainer uiList = new UIListContainer(lynxContext);
@@ -205,6 +208,39 @@ public class UIListContainerTest {
     assertEquals(
         PixelUtils.pxToDip(currentPhysicalOffset), getEventOffset(event, "currentScrollLeft"), 0f);
     assertEquals(PixelUtils.pxToDip(100), getEventOffset(event, "targetScrollLeft"), 0f);
+  }
+
+  @Test
+  @UiThreadTest
+  public void testScrollToPositionKeepsLegacyUnitsAndCallback() throws Exception {
+    UIListContainer uiList = new UIListContainer(lynxContext);
+    ListContainerProxy proxy = mock(ListContainerProxy.class);
+    Field field = UIListContainer.class.getDeclaredField("mListContainerProxy");
+    field.setAccessible(true);
+    field.set(uiList, proxy);
+    JavaOnlyMap data = new JavaOnlyMap();
+    data.putArray("itemkeys", JavaOnlyArray.of("a", "b"));
+    uiList.setDiffInfo(data);
+    JavaOnlyMap params = new JavaOnlyMap();
+    params.putInt("index", 1);
+    params.putDouble("offset", 1.25);
+    params.putString("alignTo", "middle");
+    int[] callbacks = {0};
+    uiList.scrollToPosition(params, args -> {
+      assertEquals(1, args.length);
+      assertEquals(0, args[0]);
+      callbacks[0]++;
+    });
+    assertEquals(1, callbacks[0]);
+    verify(proxy).scrollToPosition(uiList.getSign(), 1, (int) PixelUtils.dipToPx(1.25), 1, false);
+    params.putInt("index", 2);
+    uiList.scrollToPosition(params, args -> {
+      assertFalse(Integer.valueOf(0).equals(args[0]));
+      callbacks[0]++;
+    });
+    assertEquals(2, callbacks[0]);
+    verify(proxy, times(1))
+        .scrollToPosition(anyInt(), anyInt(), anyFloat(), anyInt(), anyBoolean());
   }
 
   @Test

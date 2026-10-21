@@ -7,6 +7,9 @@
 
 #include "core/list/decoupled_list_event_manager.h"
 
+#include <limits>
+#include <string>
+
 #include "core/list/decoupled_list_container_impl.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "testing/fiber_data_source.h"
@@ -34,6 +37,33 @@ class ListEventManagerTest : public ::testing::Test {
   ListEventManager* list_event_manager_{nullptr};
   ListChildrenHelper* list_children_helper_{nullptr};
   ListAdapter* list_adapter_{nullptr};
+
+  std::unique_ptr<pub::Value> Jump(int index, float offset,
+                                   std::string* error = nullptr) {
+    std::string ignored;
+    return list_container_impl_->ScrollToPositionSync(index, offset,
+                                                      error ? error : &ignored);
+  }
+
+  void BindSynchronously(std::function<float(uint32_t)> height = [](uint32_t) {
+    return 100.f;
+  }) {
+    EXPECT_CALL(*mock_list_element_, ComponentAtIndex(_, _, _))
+        .WillRepeatedly([&, height](uint32_t index, int64_t operation, bool) {
+          auto* holder = list_adapter_->GetItemHolderForIndex(index);
+          const auto key = holder->item_key();
+          if (!mock_list_element_->GetListItemElement(key)) {
+            auto element = std::make_unique<MockListItemElement>(100 + index);
+            element->height_ = height(index);
+            mock_list_element_->AddListItemElement(key, std::move(element));
+          }
+          auto pipeline = std::make_shared<tasm::PipelineOptions>();
+          pipeline->operation_id = operation;
+          list_adapter_->OnFinishBindItemHolder(
+              mock_list_element_->GetListItemElement(key), pipeline);
+          return true;
+        });
+  }
 
   void SetUp() override {
     value_factory_ = std::make_shared<pub::PubValueFactoryDefault>();
@@ -330,6 +360,190 @@ TEST_F(ListEventManagerTest, SendLayoutCompleteEvent1) {
                         delta_x, delta_y);
       });
   list_event_manager_->SendLayoutCompleteEvent();
+}
+
+TEST_F(ListEventManagerTest, IndexedSnapReturnsPostLayoutAndClampedSnapshots) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  // Bind requested offscreen rows synchronously, as the Compose MTS producer
+  // does.
+  EXPECT_CALL(*mock_list_element_, ComponentAtIndex(_, _, _))
+      .WillRepeatedly([&](uint32_t index, int64_t operation, bool) {
+        auto* holder = list_adapter_->GetItemHolderForIndex(index);
+        const auto key = holder->item_key();
+        if (!mock_list_element_->GetListItemElement(key)) {
+          mock_list_element_->AddListItemElement(
+              key, std::make_unique<MockListItemElement>(100 + index));
+        }
+        auto pipeline = std::make_shared<tasm::PipelineOptions>();
+        pipeline->operation_id = operation;
+        list_adapter_->OnFinishBindItemHolder(
+            mock_list_element_->GetListItemElement(key), pipeline);
+        return true;
+      });
+  auto snap = Jump(4, -15.f);
+  ASSERT_TRUE(snap);
+  EXPECT_DOUBLE_EQ(snap->GetValueForKey(kScrollInfoScrollTop)->Number(), 415.f);
+  auto cells = snap->GetValueForKey(kScrollInfoAttachedCells);
+  ASSERT_GT(cells->Length(), 0u);
+  EXPECT_EQ(cells->GetValueAtIndex(0)->GetValueForKey(kCellInfoIndex)->Int32(),
+            4);
+  EXPECT_DOUBLE_EQ(
+      cells->GetValueAtIndex(0)->GetValueForKey(kCellInfoTop)->Number(), -15.f);
+  // Preserve the existing content-relative bottom and viewport-relative top.
+  EXPECT_DOUBLE_EQ(
+      cells->GetValueAtIndex(0)->GetValueForKey(kCellInfoBottom)->Number(),
+      500.f);
+  // Oversized indices target the last item, constrained by the end of content.
+  snap = Jump(1000, 0.f);
+  ASSERT_TRUE(snap);
+  EXPECT_DOUBLE_EQ(snap->GetValueForKey(kScrollInfoScrollTop)->Number(), 800.f);
+  snap = Jump(0, 0.f);
+  ASSERT_TRUE(snap);
+  EXPECT_DOUBLE_EQ(snap->GetValueForKey(kScrollInfoScrollTop)->Number(), 0.f);
+  std::string error;
+  EXPECT_FALSE(Jump(-1, 0.f, &error));
+  EXPECT_EQ(error, "invalid index or offset");
+  EXPECT_FALSE(Jump(1, std::numeric_limits<float>::infinity()));
+  EXPECT_DOUBLE_EQ(list_layout_manager_->content_offset(), 0.f);
+}
+
+TEST_F(ListEventManagerTest,
+       ScrollToPositionPreservesLegacyCallsAndOptsIntoLayout) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  BindSynchronously();
+  // Existing callers still scroll without requesting a snapshot.
+  list_container_impl_->ScrollToPosition(4, -15.f, 0, false);
+  EXPECT_FLOAT_EQ(list_layout_manager_->content_offset(), 415.f);
+  // Opted-in calls use the same alignment logic and retain fractional offsets.
+  auto result = Jump(4, -15.25f);
+  ASSERT_TRUE(result);
+  EXPECT_DOUBLE_EQ(result->GetValueForKey(kScrollInfoScrollTop)->Number(),
+                   415.25);
+}
+
+TEST_F(ListEventManagerTest,
+       SynchronousJumpPreservesHorizontalCellCoordinates) {
+  mock_list_element_->width_ = 200.f;
+  auto key = value_factory_->CreateString(kPropScrollOrientation);
+  auto value =
+      value_factory_->CreateString(kPropValueScrollOrientationHorizontal);
+  list_container_impl_->ResolveAttribute(*key, *value);
+  InitFiberDataSourceAndLayout(1, true, true);
+  BindSynchronously();
+  auto result = Jump(0, -15.f);
+  ASSERT_TRUE(result);
+  EXPECT_DOUBLE_EQ(result->GetValueForKey(kScrollInfoScrollLeft)->Number(),
+                   15.f);
+  auto cells = result->GetValueForKey(kScrollInfoAttachedCells);
+  ASSERT_GT(cells->Length(), 0u);
+  auto cell = cells->GetValueAtIndex(0);
+  EXPECT_EQ(cell->GetValueForKey(kCellInfoIndex)->Int32(), 0);
+  // Preserve the existing content-relative right and viewport-relative left.
+  EXPECT_DOUBLE_EQ(cell->GetValueForKey(kCellInfoLeft)->Number(), -15.f);
+  EXPECT_DOUBLE_EQ(cell->GetValueForKey(kCellInfoRight)->Number(), 500.f);
+}
+
+TEST_F(ListEventManagerTest, SynchronousJumpUsesSnapshotUnitsForOffset) {
+  mock_list_element_->height_ = 200.f;
+  mock_list_element_->layouts_unit_per_px_ = 2.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  BindSynchronously();
+  // The offset is in CSS px, like every value in the returned snapshot.
+  auto result = Jump(4, -15.f);
+  ASSERT_TRUE(result);
+  // Item 0 measures 100 layout units; items 1-3 still use the 100 CSS px
+  // estimate (200 layout units each), so item 4 starts at 700 layout units.
+  EXPECT_FLOAT_EQ(list_layout_manager_->content_offset(), 730.f);
+  EXPECT_DOUBLE_EQ(result->GetValueForKey(kScrollInfoScrollTop)->Number(),
+                   365.f);
+  auto cells = result->GetValueForKey(kScrollInfoAttachedCells);
+  ASSERT_GT(cells->Length(), 0u);
+  auto cell = cells->GetValueAtIndex(0);
+  EXPECT_EQ(cell->GetValueForKey(kCellInfoIndex)->Int32(), 4);
+  EXPECT_DOUBLE_EQ(cell->GetValueForKey(kCellInfoTop)->Number(), -15.f);
+  EXPECT_DOUBLE_EQ(cell->GetValueForKey(kCellInfoBottom)->Number(), 400.f);
+  EXPECT_DOUBLE_EQ(cell->GetValueForKey(kCellInfoBottom)->Number() -
+                       cell->GetValueForKey(kCellInfoTop)->Number() -
+                       result->GetValueForKey(kScrollInfoScrollTop)->Number(),
+                   50.f);
+}
+
+TEST_F(ListEventManagerTest,
+       SynchronousJumpRejectsUnsupportedLayoutBeforeMutation) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  BindSynchronously();
+  const float before = list_layout_manager_->content_offset();
+  std::string error;
+  list_container_impl_->SetEnableBatchRender(true);
+  EXPECT_FALSE(Jump(4, 0, &error));
+  EXPECT_EQ(error, "not supported with batch render");
+  list_container_impl_->SetEnableBatchRender(false);
+  list_container_impl_->StartInterceptListElementUpdated();
+  EXPECT_FALSE(Jump(4, 0, &error));
+  EXPECT_EQ(error, "list is updating");
+  list_container_impl_->StopInterceptListElementUpdated();
+  mock_list_element_->height_ = 0;
+  EXPECT_FALSE(Jump(4, 0, &error));
+  EXPECT_EQ(error, "list has no layout");
+  mock_list_element_->height_ = 200;
+  EXPECT_FLOAT_EQ(list_layout_manager_->content_offset(), before);
+  EXPECT_TRUE(Jump(4, 0));
+}
+
+TEST_F(ListEventManagerTest, SynchronousJumpRejectsReentryDuringBinding) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  int bindings = 0;
+  BindSynchronously([&](uint32_t) {
+    ++bindings;
+    EXPECT_FALSE(Jump(0, 0));
+    return 120.f;
+  });
+  auto result = Jump(4, -15.25f);
+  ASSERT_TRUE(result);
+  EXPECT_GT(bindings, 0);
+  EXPECT_FALSE(list_container_impl_->synchronous_scroll_active());
+  EXPECT_TRUE(Jump(0, 0));
+}
+
+TEST_F(ListEventManagerTest,
+       SynchronousJumpDoesNotReportUnfinishedBindingAsSuccess) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, false, false);
+  EXPECT_CALL(*mock_list_element_, ComponentAtIndex(_, _, _))
+      .WillRepeatedly(Return(true));
+  std::string error;
+  EXPECT_FALSE(Jump(4, 0, &error));
+  EXPECT_EQ(error,
+            "list was positioned, but on-screen items have not finished "
+            "binding");
+  EXPECT_FALSE(list_container_impl_->synchronous_scroll_active());
+}
+
+TEST_F(ListEventManagerTest,
+       SynchronousJumpReturnsEmptyAndNoMovementSnapshots) {
+  mock_list_element_->height_ = 200.f;
+  EXPECT_TRUE(Jump(0, 0));
+  InitFiberDataSourceAndLayout(1, false, false);
+  BindSynchronously();
+  auto result = Jump(0, 0);
+  ASSERT_TRUE(result);
+  EXPECT_DOUBLE_EQ(result->GetValueForKey(kScrollInfoScrollTop)->Number(), 0);
+}
+
+TEST_F(ListEventManagerTest, SynchronousJumpRebindsDirtyVisibleItems) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  for (auto* item : list_children_helper_->on_screen_children()) {
+    item->MarkDirty(true);
+  }
+  EXPECT_FALSE(list_container_impl_->AreOnScreenItemsReady());
+  BindSynchronously();
+  ASSERT_TRUE(Jump(0, 0));
+  EXPECT_TRUE(list_container_impl_->AreOnScreenItemsReady());
 }
 
 TEST_F(ListEventManagerTest, SendCustomScrollEvent) {

@@ -295,6 +295,7 @@ constexpr static const char* kCFuncReplaceStyleSheets = "__ReplaceStyleSheets";
 constexpr static const char* kCFunctionQueryComponent = "__QueryComponent";
 constexpr static const char* kCFunctionSetLepusInitData = "__SetLepusInitData";
 constexpr static const char* kCFunctionGetDiffData = "__GetDiffData";
+constexpr static const char* kCFunctionInvokeMethod = "__InvokeMethod";
 constexpr static const char* kCFunctionInvokeUIMethod = "__InvokeUIMethod";
 constexpr static const char* kCFunctionGetComputedStyleByKey =
     "__GetComputedStyleByKey";

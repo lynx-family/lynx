@@ -21,6 +21,8 @@
 #include "core/base/threading/vsync_monitor.h"
 #include "core/event/event_dispatcher.h"
 #include "core/event/touch_event.h"
+#include "core/list/decoupled_list_container_impl.h"
+#include "core/list/testing/fiber_data_source.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_decoder.h"
@@ -22917,6 +22919,178 @@ TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
   EXPECT_TRUE(StyleMapHasValue(child->computed_css_style()->GetResolvedValues(),
                                CSSPropertyID::kPropertyIDWidth,
                                CSSValue(200, CSSValuePattern::PX)));
+}
+
+TEST_P(FiberElementTest, ComposeListJumpMeasuresNewItemsBeforeReturning) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
+  manager->SetThreadStrategy(base::ThreadStrategyForRendering::ALL_ON_UI);
+  manager->SetEnableNativeListFromShell(true);
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 200,
+                          SLMeasureModeDefinite, true);
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  Renderer::RegisterBuiltin(renderer_runtime.get(), ArchOption::FIBER_ARCH);
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
+      manager, ComposeElementKind::kList, base::String(), tasm.get()));
+  auto* list = static_cast<ListElement*>(handle->content_element().get());
+  list->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("200px"));
+  list->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("200px"));
+  list->SetAttribute("enable-decoupled-list", lepus::Value(true));
+  list->SetAttribute("experimental-batch-render-strategy", lepus::Value(0));
+  page->InsertNode(handle->mount_root());
+  auto items = lepus::CArray::Create();
+  lynx::list::testing::FiberDataSource source;
+  for (int index = 0; index < 20; ++index) {
+    auto item = manager->CreateFiberElement("list-item");
+    item->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("200px"));
+    item->SetStyle(CSSPropertyID::kPropertyIDHeight,
+                   lepus::Value(std::to_string(60 + index * 10) + "px"));
+    items->emplace_back(item);
+    // Deliberately differ from measured sizes so estimates cannot pass.
+    source.insert_action_.insert_ops_.push_back(
+        {index, std::to_string(index), 100, false, false, false, false});
+  }
+  renderer_runtime->SetGlobalData("measuredItems", lepus::Value(items));
+  lepus::Value callback;
+  constexpr char kBind[] = R"JS((function(list, id, index, operation) {
+    globalThis.measuredBindings = (globalThis.measuredBindings || 0) + 1;
+    var item = measuredItems[index];
+    __AppendElement(list, item);
+    __FlushElementTree(item, {operationID: operation,
+      elementID: __GetElementUniqueID(item), listID: id});
+    return __GetElementUniqueID(item);
+  }))JS";
+  ASSERT_TRUE(
+      context->EvalBuf(kBind, sizeof(kBind) - 1, callback, "measure.js"));
+  list->UpdateCallbacks(callback, {}, {});
+  list->SetAttribute("update-list-info", lepus::Value(source.Resolve()));
+  page->FlushActionsAsRoot();
+  manager->RequestLayout(LayoutOptions(this, true, true));
+  ASSERT_EQ(list->height(), 200);
+  auto* container = static_cast<lynx::list::ListContainerImpl*>(
+      list->list_mediator_->list_container_delegate_.get());
+  ASSERT_NE(container, nullptr);
+  auto target = fml::static_ref_ptr_cast<Element>(items->get(10).RefCounted());
+  ASSERT_EQ(target->height(), 0);
+  // Without an active pipeline, the existing item flush measures immediately.
+  ASSERT_EQ(tasm->GetCurrentPipelineContext(), nullptr);
+  const auto before =
+      renderer_runtime->GetGlobalData("measuredBindings").Number();
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("index", lepus::Value(10));
+  params->SetValue("offset", lepus::Value(-15));
+  lepus::Value args[] = {lepus::Value(handle), lepus::Value("scrollToPosition"),
+                         lepus::Value(params)};
+  auto result = RendererFunctions::FiberInvokeMethod(context, args, 3);
+  ASSERT_TRUE(result.IsObject());
+  EXPECT_GT(renderer_runtime->GetGlobalData("measuredBindings").Number(),
+            before);
+  EXPECT_EQ(target->height(), 160);
+  auto* holder = container->GetItemHolderForIndex(10);
+  ASSERT_NE(holder, nullptr);
+  EXPECT_TRUE(container->list_adapter()->IsFinishedBinding(holder));
+  EXPECT_FLOAT_EQ(holder->height(), 160);
+  EXPECT_TRUE(container->AreOnScreenItemsReady());
+  // Verify the returned snapshot immediately, without pumping tasks or frames.
+  const auto cells = result.GetProperty("attachedCells");
+  bool found = false;
+  for (size_t i = 0; i < cells.GetLength(); ++i) {
+    auto cell = cells.GetProperty(i);
+    if (cell.GetProperty("position").Number() == 10) {
+      found = true;
+      // Recover the measured height from the existing scroll-info coordinates.
+      EXPECT_DOUBLE_EQ(cell.GetProperty("top").Number(), -15);
+      EXPECT_DOUBLE_EQ(cell.GetProperty("bottom").Number() -
+                           cell.GetProperty("top").Number() -
+                           result.GetProperty("scrollTop").Number(),
+                       160);
+    }
+  }
+  EXPECT_TRUE(found);
+
+  // An active unified pipeline owns deferred item flushes. Synchronous
+  // positioning must report incomplete layout without forcing that pipeline.
+  auto deferred = std::make_shared<PipelineOptions>();
+  auto* pending_context = tasm->CreateAndUpdateCurrentPipelineContext(deferred);
+  auto unmeasured =
+      fml::static_ref_ptr_cast<Element>(items->get(19).RefCounted());
+  ASSERT_EQ(unmeasured->height(), 0);
+  params = lepus::Dictionary::Create();
+  params->SetValue("index", lepus::Value(19));
+  params->SetValue("offset", lepus::Value(0));
+  lepus::Value deferred_args[] = {lepus::Value(handle),
+                                  lepus::Value("scrollToPosition"),
+                                  lepus::Value(params)};
+  base::ErrorStorage::GetInstance().Reset();
+  result = RendererFunctions::FiberInvokeMethod(context, deferred_args, 3);
+  EXPECT_TRUE(result.IsEmpty());
+  const auto& error = base::ErrorStorage::GetInstance().GetError();
+  ASSERT_NE(error, nullptr);
+  EXPECT_NE(error->error_message_.find("have not finished binding"),
+            std::string::npos);
+  base::ErrorStorage::GetInstance().Reset();
+  EXPECT_EQ(tasm->GetCurrentPipelineContext(), pending_context);
+  EXPECT_TRUE(deferred->resolve_requested);
+  EXPECT_EQ(unmeasured->height(), 0);
+  EXPECT_FALSE(container->AreOnScreenItemsReady());
+}
+
+TEST_P(FiberElementTest, ComposeListBindingsReuseTheCurrentPipeline) {
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  Renderer::RegisterBuiltin(renderer_runtime.get(), ArchOption::FIBER_ARCH);
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+  manager->SetEnableNativeListFromShell(true);
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  auto ordinary = manager->CreateFiberList(tasm.get(), "list", {}, {}, {});
+  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
+      manager, ComposeElementKind::kList, base::String(), tasm.get()));
+  auto* compose = static_cast<ListElement*>(handle->content_element().get());
+  page->InsertNode(ordinary);
+  page->InsertNode(handle->mount_root());
+  page->FlushActionsAsRoot();
+  lepus::Value callback;
+  constexpr char kBind[] = R"JS((function(node, id, index, operation) {
+    globalThis.bindCount = (globalThis.bindCount || 0) + 1;
+    __FlushElementTree(node, {operationID: operation, triggerLayout: false});
+    return index + 100;
+  }))JS";
+  ASSERT_TRUE(context->EvalBuf(kBind, sizeof(kBind) - 1, callback, "bind.js"));
+  for (auto* list : {ordinary.get(), compose}) {
+    lepus::Value args[] = {lepus::Value(fml::RefPtr<ListElement>(list)),
+                           callback, lepus::Value()};
+    RendererFunctions::FiberUpdateListCallbacks(context, args, 3);
+  }
+  auto outer = std::make_shared<PipelineOptions>();
+  outer->operation_id = 77;
+  auto* outer_context = tasm->CreateAndUpdateCurrentPipelineContext(outer);
+  ordinary->ComponentAtIndex(0, 55, false);
+  EXPECT_EQ(outer->operation_id, 55);
+  outer->operation_id = 77;
+  renderer_runtime->SetGlobalData("bindCount", lepus::Value(0));
+  compose->ComponentAtIndex(0, 101, false);
+  compose->ComponentAtIndex(1, 102, false);
+  EXPECT_EQ(renderer_runtime->GetGlobalData("bindCount"), lepus::Value(2));
+  EXPECT_EQ(outer->operation_id, 102);
+  EXPECT_EQ(tasm->GetCurrentPipelineContext(), outer_context);
+  EXPECT_TRUE(outer->resolve_requested);
+  auto next_frame = std::make_shared<PipelineOptions>();
+  next_frame->operation_id = 88;
+  auto* next_context = tasm->CreateAndUpdateCurrentPipelineContext(next_frame);
+  compose->ComponentAtIndex(2, 103, false);
+  EXPECT_EQ(renderer_runtime->GetGlobalData("bindCount"), lepus::Value(3));
+  EXPECT_EQ(next_frame->operation_id, 103);
+  EXPECT_EQ(tasm->GetCurrentPipelineContext(), next_context);
+  EXPECT_TRUE(next_frame->resolve_requested);
 }
 
 TEST_P(FiberElementTest,
