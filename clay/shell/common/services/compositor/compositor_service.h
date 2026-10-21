@@ -31,6 +31,10 @@ class CompositorService
 
   static std::shared_ptr<CompositorService> Create();
 
+  // Drop display-only overlays before changing the output surface. Native
+  // platform views keep their ownership and composition parameters.
+  void ResetPlatformOverlays();
+
  private:
   // |clay::Service|
   void OnInit(clay::ServiceManager& service_manager,
