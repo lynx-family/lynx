@@ -123,6 +123,11 @@ void RasterFrameService::ForceBeginFrame() {
 void RasterFrameService::Commit(
     std::shared_ptr<LayerTree> layer_tree,
     std::unique_ptr<FrameTimingsRecorder> recorder) {
+  // A UI frame queued before recycle can finish after the scheduler was reset.
+  // Discard its tree instead of committing into the stopped scheduler.
+  if (scheduler_->IsStopped()) {
+    return;
+  }
   // It's the response of ScheduledActionBeginFrame from UI thread if we are
   // using async compositor. If we are using sync compositor, it's the Push
   // request of LayerTree.
@@ -164,6 +169,9 @@ void RasterFrameService::Commit(
 }
 
 void RasterFrameService::CommitWithNoUpdates() {
+  if (scheduler_->IsStopped()) {
+    return;
+  }
   TRACE_EVENT("clay", "RasterFrameService::CommitWithNoUpdates");
   if (force_begin_frame_) {
     force_begin_frame_ = false;

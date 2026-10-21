@@ -38,12 +38,21 @@ void SharedDrawableImage::OnDrawableImageUnregistered() {
 // Called from raster thread.
 void SharedDrawableImage::OnGrContextCreated() {
   state_ = AttachmentState::uninitialized;
+  // Recreate the image in the new context even when the producer is static.
+  MarkNewFrameAvailable();
 }
 
 // |clay::ContextListener|
 // Called from raster thread.
 void SharedDrawableImage::OnGrContextDestroyed() {
   state_ = AttachmentState::detached;
+  // Release borrowed images before their representations detach the texture.
+  // Otherwise an old image can retain a representation across reattachment.
+#ifndef ENABLE_SKITY
+  sk_image_ = nullptr;
+#else
+  skity_image_ = nullptr;
+#endif
   accessor_ = nullptr;
 }
 
