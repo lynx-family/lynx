@@ -8,6 +8,7 @@
 @interface LynxNodeAPIModule : NSObject <LynxModule>
 
 - (instancetype)initWithToken:(id)token;
+- (instancetype)initWithParam:(id)param;
 
 + (void)putEnv:(void *)napiEnv forToken:(id)token;
 + (void)removeEnvForToken:(id)token;
