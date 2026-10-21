@@ -9,7 +9,6 @@
 
 #include "core/public/devtool/lynx_devtool_proxy.h"
 #include "core/renderer/tasm/config.h"
-#include "core/renderer/utils/base/tasm_constants.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/embedder/core/env_embedder.h"
 #include "devtool/embedder/core/inspector_owner_embedder.h"
@@ -106,12 +105,7 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
                      const std::string& data) override {
     auto embedder = weak_embedder_.lock();
     CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
-    Json::Value message;
-    message[lynx::tasm::kType] = event_name;
-    message[lynx::tasm::kOrigin] = "Devtool";
-    message[lynx::tasm::kData] = data;
-    message[lynx::tasm::kTarget] = vm_type;
-    embedder->SendEventToVM(message);
+    embedder->SendEventToVM({event_name, "Devtool", vm_type, data});
   }
 
   lynx::lepus::Value* GetLepusValueFromTemplateData() override {
@@ -196,7 +190,7 @@ void DevtoolPlatformEmbedder::SendCDPEvent(const std::string& message) {
   }
 }
 
-void DevtoolPlatformEmbedder::SendEventToVM(const Json::Value& message) {
+void DevtoolPlatformEmbedder::SendEventToVM(const VMEvent& message) {
   CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
   proxy_->DispatchMessageEvent(message);
 }

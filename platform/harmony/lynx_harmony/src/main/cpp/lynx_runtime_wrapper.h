@@ -118,7 +118,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
                     int modifiers, int click_count) override {}
-  void DispatchMessageEvent(const Json::Value& message) override {}
+  void DispatchMessageEvent(const devtool::VMEvent& message) override {}
   // LynxDevToolProxy override end
 
   shell::BTSRuntimeStandalone& RuntimeStandalone() {
