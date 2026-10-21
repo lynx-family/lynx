@@ -3,6 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
+#include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
@@ -63,11 +68,33 @@ bool ImageFragmentBehavior::UpdateImageIfNeeded(
   const auto& current_paint_info = image_element->paint_info();
   const float current_width = layout_info.GetContentBoxWidth();
   const float current_height = layout_info.GetContentBoxHeight();
+  const double pixels_per_unit = image_element->element_manager()
+                                     ->GetLynxEnvConfig()
+                                     .PhysicalPixelsPerLayoutUnit();
+  // Compare against the last requested size so successive small changes can
+  // still trigger a reload. Crossing zero must not suppress the first load.
+  const auto same_dimension = [pixels_per_unit](float requested,
+                                                float current) {
+    if (requested == current) {
+      return true;
+    }
+    // Layout rounding can represent one physical pixel slightly above one,
+    // notably at scale 3. Allow only the precision lost by the float sizes.
+    const double rounding_error =
+        std::numeric_limits<float>::epsilon() *
+        std::max(std::abs(requested), std::abs(current));
+    return (requested > 0) == (current > 0) &&
+           (std::abs(static_cast<double>(requested) - current) -
+            rounding_error) *
+                   pixels_per_unit <=
+               1.;
+  };
+  const bool same_size = same_dimension(image_width_, current_width) &&
+                         same_dimension(image_height_, current_height);
 
   if (image_url_ == current_src &&
       (current_src.empty() ||
-       (image_paint_info_ == current_paint_info &&
-        image_width_ == current_width && image_height_ == current_height))) {
+       (image_paint_info_ == current_paint_info && same_size))) {
     return false;
   }
 
