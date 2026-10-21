@@ -606,8 +606,10 @@ fml::RefPtr<PaintImage> Fragment::GetOrCreateBackgroundImage(
     return nullptr;
   }
 
-  auto image = native_context->CreateImage(id(), url, ImagePaintInfo(),
-                                           image_width, image_height, 0, true);
+  ImagePaintInfo paint_info;
+  paint_info.is_background = true;
+  auto image = native_context->CreateImage(id(), url, paint_info, image_width,
+                                           image_height, 0, true);
   if (!image) {
     resource = BackgroundImageResource{};
     return nullptr;
