@@ -34,6 +34,15 @@ class EmbedderSurfaceMetalDelegateImpl : public EmbedderSurfaceMetalDelegate {
  private:
   void* flutter_renderer_;
 };
+
+class EmbedderSurfaceSoftwareDelegateImpl : public EmbedderSurfaceSoftwareDelegate {
+ public:
+  explicit EmbedderSurfaceSoftwareDelegateImpl(void* renderer) : renderer_(renderer) {}
+  bool OnPresentBackingStore(const void* allocation, size_t row_bytes, size_t height) override;
+
+ private:
+  void* renderer_;
+};
 }  // namespace clay
 
 #pragma mark - FlutterRenderer implementation
@@ -46,12 +55,24 @@ class EmbedderSurfaceMetalDelegateImpl : public EmbedderSurfaceMetalDelegate {
   FlutterDarwinContextMetalSkity* _darwinMetalContext;
 #endif
   clay::EmbedderSurfaceMetalDelegateImpl* _embedderSurfaceMetalDelegate;
+  std::unique_ptr<clay::EmbedderSurfaceSoftwareDelegateImpl> _softwareDelegate;
 }
 
 - (instancetype)initWithFlutterEngine:(nonnull FlutterEngine*)flutterEngine {
+  return [self initWithFlutterEngine:flutterEngine softwareRendering:NO];
+}
+
+- (instancetype)initWithFlutterEngine:(nonnull FlutterEngine*)flutterEngine
+                    softwareRendering:(BOOL)softwareRendering {
   self = [super init];
   if (self) {
     _viewProvider = [[FlutterViewEngineProvider alloc] initWithEngine:flutterEngine];
+    _softwareRendering = softwareRendering;
+    if (_softwareRendering) {
+      _softwareDelegate =
+          std::make_unique<clay::EmbedderSurfaceSoftwareDelegateImpl>((__bridge void*)self);
+      return self;
+    }
     _device = MTLCreateSystemDefaultDevice();
     if (!_device) {
       FML_LOG(ERROR) << "Could not acquire Metal device.";
@@ -88,6 +109,10 @@ class EmbedderSurfaceMetalDelegateImpl : public EmbedderSurfaceMetalDelegate {
   return _viewProvider;
 }
 
+- (clay::EmbedderSurfaceSoftwareDelegate*)softwareDelegate {
+  return _softwareDelegate.get();
+}
+
 - (id<MTLDevice>)mtlDevice {
   return _device;
 }
@@ -103,6 +128,13 @@ class EmbedderSurfaceMetalDelegateImpl : public EmbedderSurfaceMetalDelegate {
 @end
 
 namespace clay {
+
+bool EmbedderSurfaceSoftwareDelegateImpl::OnPresentBackingStore(const void* allocation,
+                                                                size_t row_bytes, size_t height) {
+  FlutterRenderer* renderer = (__bridge FlutterRenderer*)renderer_;
+  FlutterView* view = [[renderer viewProvider] getView:kFlutterDefaultViewId];
+  return view && [view presentSoftwareBackingStore:allocation rowBytes:row_bytes height:height];
+}
 
 EmbedderSurfaceMetalDelegateImpl::EmbedderSurfaceMetalDelegateImpl(void* flutter_renderer)
     : flutter_renderer_(flutter_renderer) {}
