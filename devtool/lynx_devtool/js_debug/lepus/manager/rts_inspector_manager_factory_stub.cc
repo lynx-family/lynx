@@ -11,8 +11,3 @@ class JSDebugHelper;
 extern "C" __attribute__((visibility("default"))) void
 LynxRegisterRTSInspectorManagerFactoryImpl(
     lynx::devtool::JSDebugHelper* helper) {}
-
-extern "C" void LynxRegisterRTSInspectorManagerFactory(void) {
-  auto* anchor = &LynxRegisterRTSInspectorManagerFactoryImpl;
-  (void)anchor;
-}
