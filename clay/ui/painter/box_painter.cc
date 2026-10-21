@@ -82,7 +82,8 @@ void BoxPainter::PaintBoxDecorationBackground(GraphicsContext* context,
   if (render_object_->HasShadow()) {
     GraphicsContext::AutoRestore saver(context, true);
     context->Translate(offset.x(), offset.y());
-    BoxShadowPainter(render_object_).Paint(context, box_rect);
+    PaintBoxShadows(context->Canvas(), render_object_->Shadows(), box_rect,
+                    has_border ? &render_object_->Border() : nullptr);
   }
 
   if (has_border) {

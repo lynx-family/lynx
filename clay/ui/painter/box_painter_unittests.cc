@@ -5,10 +5,13 @@
 #include <memory>
 
 #include "clay/gfx/geometry/float_point.h"
+#include "clay/gfx/skia/skia_canvas.h"
 #include "clay/testing/canvas_test.h"
 #include "clay/ui/painter/box_painter.h"
+#include "clay/ui/painter/box_shadow_painter.h"
 #include "clay/ui/painter/painter_graphics_test.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+#include "third_party/skia/include/core/SkBitmap.h"
 
 namespace clay {
 
@@ -138,6 +141,37 @@ TEST(BorderPainterTest, ReconfigureWithoutRadius) {
   painter.SetBorder(borders, rect);
   EXPECT_FALSE(painter.OuterRect().IsRounded());
   EXPECT_FALSE(painter.GetBackgroundRoundedRect(rect).IsRounded());
+}
+
+TEST(BoxShadowPainterTest, PreparedGeometryPaintsAndRestoresCanvas) {
+  const auto clip =
+      skity::RRect::MakeRectXY(skity::Rect::MakeXYWH(20, 20, 40, 40), 8, 8);
+  for (bool inset : {false, true}) {
+    SkBitmap bitmap;
+    bitmap.allocN32Pixels(80, 80);
+    bitmap.eraseColor(SK_ColorTRANSPARENT);
+    SkiaBitmapCanvas canvas(bitmap);
+    const int save_count = canvas.GetSaveCount();
+    const auto clip_bounds = canvas.GetGrCanvas()->getDeviceClipBounds();
+    auto shadow = clip;
+    if (inset) {
+      shadow.Inset(4, 4, &shadow);
+    } else {
+      shadow.Outset(4, 4, &shadow);
+    }
+    PaintBoxShadow(&canvas, shadow, clip, Color(SK_ColorBLUE), 4, inset);
+
+    EXPECT_EQ(canvas.GetSaveCount(), save_count);
+    EXPECT_EQ(canvas.GetGrCanvas()->getDeviceClipBounds(), clip_bounds);
+    EXPECT_EQ(*bitmap.getAddr32(40, 40), SK_ColorTRANSPARENT);
+    if (inset) {
+      EXPECT_NE(*bitmap.getAddr32(21, 40), SK_ColorTRANSPARENT);
+      EXPECT_EQ(*bitmap.getAddr32(17, 40), SK_ColorTRANSPARENT);
+    } else {
+      EXPECT_NE(*bitmap.getAddr32(17, 40), SK_ColorTRANSPARENT);
+      EXPECT_EQ(*bitmap.getAddr32(21, 40), SK_ColorTRANSPARENT);
+    }
+  }
 }
 
 }  // namespace clay
