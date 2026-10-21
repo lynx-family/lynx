@@ -89,6 +89,40 @@ namespace tasm {
 namespace testing {
 
 namespace {
+class CustomLayoutTestElement : public ViewElement {
+ public:
+  explicit CustomLayoutTestElement(ElementManager* manager)
+      : ViewElement(manager) {}
+
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(
+        new CustomLayoutTestElement(*this, clone_resolved_props));
+  }
+
+  static starlight::CustomLayoutFunctions Functions() {
+    return {[](void* context, const starlight::Constraints&, bool) {
+              return static_cast<CustomLayoutTestElement*>(
+                         static_cast<Element*>(context))
+                  ->preferred_size;
+            },
+            [](void* context) {
+              ++static_cast<CustomLayoutTestElement*>(
+                    static_cast<Element*>(context))
+                    ->layout_count;
+            },
+            [](void*, bool) { return false; }};
+  }
+
+  FloatSize preferred_size{100, 20};
+  int layout_count{0};
+
+ private:
+  CustomLayoutTestElement(const CustomLayoutTestElement& other,
+                          bool clone_resolved_props)
+      : ViewElement(other, clone_resolved_props),
+        preferred_size(other.preferred_size) {}
+};
+
 class RecordingExternalMemoryContext : public lepus::VMContext {
  public:
   explicit RecordingExternalMemoryContext(runtime::MTSRuntime* runtime)
@@ -474,6 +508,107 @@ static std::unordered_map<std::string, uint32_t> kTestColorMap = {
     {"blue", 4278190335},
     {"black", 4278190080},
 };
+
+TEST_P(FiberElementTest, CustomLayoutFunctionsFlushUpdatesAndClears) {
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  auto element = fml::AdoptRef(new CustomLayoutTestElement(manager));
+  page->InsertNode(element);
+  auto functions = CustomLayoutTestElement::Functions();
+  element->SetCustomLayoutFunctions(functions);
+  EXPECT_TRUE(element->dirty() & Element::kDirtyCustomLayout);
+  EXPECT_TRUE(!element->slnode() || !element->slnode()->GetSLMeasureFunc());
+  page->FlushActionsAsRoot();
+  ASSERT_EQ(element->slnode()->GetSLMeasureFunc(), functions.measure);
+  ASSERT_EQ(element->slnode()->GetSLAlignmentFunc(), functions.layout);
+  EXPECT_FALSE(element->dirty() & Element::kDirtyCustomLayout);
+  manager->OnUpdateViewport(300, SLMeasureModeDefinite, 200,
+                            SLMeasureModeDefinite, false);
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(element->slnode()->GetBorderBoundWidth(), 100);
+  EXPECT_GT(element->layout_count, 0);
+
+  // Parameter-only updates must invalidate layout during the normal Flush,
+  // even when no styles or attributes change.
+  manager->need_layout_ = false;
+  element->preferred_size = FloatSize(150, 30);
+  element->SetCustomLayoutFunctions(functions);
+  EXPECT_EQ(element->dirty(), Element::kDirtyCustomLayout);
+  manager->SetLayoutTick(
+      [this](const auto& options) { manager->RequestLayout(options); });
+  auto update_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(update_options, page.get());
+  EXPECT_TRUE(update_options->has_layout);
+  EXPECT_FALSE(element->dirty() & Element::kDirtyCustomLayout);
+  EXPECT_FLOAT_EQ(element->slnode()->GetBorderBoundWidth(), 150);
+  EXPECT_FLOAT_EQ(element->slnode()->GetBorderBoundHeight(), 30);
+
+  functions.layout = [](void* context) {
+    static_cast<CustomLayoutTestElement*>(static_cast<Element*>(context))
+        ->layout_count += 10;
+  };
+  const auto old_layout = element->slnode()->GetSLAlignmentFunc();
+  const auto old_count = element->layout_count;
+  element->SetCustomLayoutFunctions(functions);
+  EXPECT_EQ(element->slnode()->GetSLAlignmentFunc(), old_layout);
+  page->FlushActionsAsRoot();
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_GE(element->layout_count, old_count + 10);
+
+  const auto count_before_clear = element->layout_count;
+  manager->need_layout_ = false;
+  element->SetCustomLayoutFunctions({});
+  EXPECT_EQ(element->slnode()->GetSLMeasureFunc(), functions.measure);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(element->slnode()->GetSLMeasureFunc(), nullptr);
+  EXPECT_EQ(element->slnode()->GetSLAlignmentFunc(), nullptr);
+  EXPECT_FALSE(element->dirty() & Element::kDirtyCustomLayout);
+  EXPECT_TRUE(manager->need_layout_);
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(element->slnode()->GetBorderBoundWidth(), 0);
+  EXPECT_FLOAT_EQ(element->slnode()->GetBorderBoundHeight(), 0);
+  EXPECT_EQ(element->layout_count, count_before_clear);
+}
+
+TEST_P(FiberElementTest, CustomLayoutFunctionsCloneBindsOwnContext) {
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  manager->OnUpdateViewport(300, SLMeasureModeDefinite, 200,
+                            SLMeasureModeDefinite, false);
+  for (bool flush_source : {false, true}) {
+    for (bool clone_resolved_props : {false, true}) {
+      SCOPED_TRACE(flush_source);
+      SCOPED_TRACE(clone_resolved_props);
+      auto source = fml::AdoptRef(new CustomLayoutTestElement(manager));
+      source->SetCustomLayoutFunctions(CustomLayoutTestElement::Functions());
+      page->InsertNode(source);
+      if (flush_source) page->FlushActionsAsRoot();
+      auto clone = source->CloneElement(clone_resolved_props);
+      EXPECT_EQ(clone->element_manager(), nullptr);
+      EXPECT_EQ(clone->slnode(), nullptr);
+      EXPECT_TRUE(clone->dirty() & Element::kDirtyCustomLayout);
+      static_cast<CustomLayoutTestElement*>(clone.get())->preferred_size =
+          FloatSize(80, 30);
+      clone->AttachToElementManager(
+          manager, tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), false);
+      page->InsertNode(clone);
+      page->FlushActionsAsRoot();
+      EXPECT_EQ(clone->slnode()->GetContext(), clone.get());
+      EXPECT_EQ(source->slnode()->GetContext(), source.get());
+      manager->RequestLayout(std::make_shared<PipelineOptions>());
+      EXPECT_FLOAT_EQ(clone->slnode()->GetBorderBoundWidth(), 80);
+      EXPECT_FLOAT_EQ(source->slnode()->GetBorderBoundWidth(), 100);
+      page->RemoveNode(clone);
+      page->RemoveNode(source);
+    }
+  }
+}
 
 TEST_P(FiberElementTest, TestSetFontSizeDirectlyToComputedStyle) {
   auto view = manager->CreateFiberView();

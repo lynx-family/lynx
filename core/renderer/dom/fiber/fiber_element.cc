@@ -2637,6 +2637,8 @@ ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
   need_update = ConsumeAllAttributes();
   need_update |= FlushCustomDrawFunctions();
 
+  need_update |= FlushCustomLayoutFunctions();
+
   // If it's the first flush of the element and parsed_styles_map_ is empty, we
   // can take the fast path, directly using parsed_styles_map_ as the updated
   // style. If the element is cloned, its parsed_styles_map_ may not be empty
@@ -2657,8 +2659,8 @@ ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
                      force_use_current_parsed_style_map);
   }
 
-  // If above props and styles need to be updated, this patch needs trigger
-  // layout.
+  // If props, styles or custom layout functions changed, this patch needs to
+  // trigger layout.
   if (need_update || dirty_ & kDirtyCreated || dirty_ & kDirtyForceUpdate) {
     RequestLayout();
   }
@@ -5752,6 +5754,39 @@ void Element::UpdateLayoutInfo() {
     static_cast<Fragment *>(element_container())->UpdateLayout(layout_result);
   }
   frame_changed_ = true;
+}
+
+void Element::SetCustomLayoutFunctions(
+    starlight::CustomLayoutFunctions functions) {
+  if (!functions.measure && !functions.layout && !functions.can_reuse) {
+    custom_layout_functions_.reset();
+  } else {
+    if (!custom_layout_functions_) {
+      custom_layout_functions_ =
+          std::make_unique<starlight::CustomLayoutFunctions>();
+    }
+    *custom_layout_functions_ = functions;
+  }
+  MarkDirty(kDirtyCustomLayout);
+}
+
+bool Element::FlushCustomLayoutFunctions() {
+  if (!(dirty_ & kDirtyCustomLayout)) {
+    return false;
+  }
+  dirty_ &= ~kDirtyCustomLayout;
+  if (!EnableLayoutInElementMode()) {
+    return false;
+  }
+  EnsureSLNode();
+  const auto functions = custom_layout_functions_
+                             ? *custom_layout_functions_
+                             : starlight::CustomLayoutFunctions{};
+  SetMeasureFunc(this, functions.measure);
+  SetAlignmentFunc(this, functions.layout);
+  sl_node_->SetCanReuseLayoutWithSameSizeAsGivenConstraintFunc(
+      functions.can_reuse);
+  return true;
 }
 
 void Element::SetMeasureFunc(void *context,
