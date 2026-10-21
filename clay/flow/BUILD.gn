@@ -231,6 +231,7 @@ if (enable_unittests) {
       "mutators_stack_unittests.cc",
       "raster_cache_unittests.cc",
       "rtree_unittests.cc",
+      "shared_image_sink_unittests.cc",
       "surface_frame_unittests.cc",
       "testing/mock_drawable_image_unittests.cc",
       "testing/mock_layer_unittests.cc",

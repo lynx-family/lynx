@@ -6,6 +6,7 @@
 #define CLAY_SHELL_COMMON_SERVICES_COMPOSITOR_PLATFORM_OVERLAY_SERVICE_H_
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "clay/common/service/service.h"
@@ -17,6 +18,7 @@
 namespace clay {
 
 class PlatformOverlay;
+class CompositorState;
 
 class PlatformOverlay {
  public:
@@ -40,6 +42,14 @@ class PlatformOverlayService
  public:
   virtual std::vector<std::shared_ptr<PlatformOverlay>> CreatePlatformOverlay(
       size_t num) = 0;
+
+  // Optionally flatten platform content into the background frame on the
+  // raster thread. An empty result keeps the normal hybrid display path.
+  virtual std::optional<bool> CompositeFrame(GrContextPtr context,
+                                             SurfaceFrame& background_frame,
+                                             CompositorState& state) {
+    return std::nullopt;
+  }
 
   static std::shared_ptr<PlatformOverlayService> Create();
 };

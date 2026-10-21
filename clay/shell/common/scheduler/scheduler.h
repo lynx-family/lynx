@@ -22,6 +22,7 @@ class Scheduler {
 
   void Stop() { stopped_ = true; }
   void Resume() { stopped_ = false; }
+  bool IsStopped() const { return stopped_; }
   void Reset();
   void SetVisible(bool visible);
 
