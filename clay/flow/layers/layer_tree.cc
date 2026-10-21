@@ -120,6 +120,9 @@ bool LayerTree::Preroll(CompositorContext::ScopedFrame& frame,
   const size_t raster_cache_entry_count_before = raster_cache_items_.size();
   root_layer_->Preroll(&context);
   root_layer_->SavePrerollSummary(context, raster_cache_entry_count_before);
+  // A retained subtree may be submitted before its first raster preroll.
+  // Preserve discovered platform views so their removal repaints every buffer.
+  has_platform_view_layer_ |= context.has_platform_view;
   retained_preroll_generation_ = 0;
 
   return context.surface_needs_readback;
