@@ -146,6 +146,11 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromCAMetalLayer(
     return nullptr;
   }
 
+  if (size_ != frame_info) {
+    damage_.clear();
+    size_ = frame_info;
+  }
+
   auto* mtl_layer = (__bridge CAMetalLayer*)layer;
   // Get the drawable eagerly, we will need texture object to identify target framebuffer
   fml::scoped_nsprotocol<id<CAMetalDrawable>> drawable([mtl_layer nextDrawable]);
@@ -170,8 +175,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromCAMetalLayer(
     return nullptr;
   }
 
-  auto encode_callback = [this, drawable, mtl_layer](const SurfaceFrame& surface_frame,
-                                                     SkCanvas* canvas) -> bool {
+  auto encode_callback = [this, drawable, mtl_layer, frame_info](const SurfaceFrame& surface_frame,
+                                                                 SkCanvas* canvas) -> bool {
     if (canvas == nullptr) {
       FML_DLOG(ERROR) << "Canvas not available.";
       return false;
@@ -187,9 +192,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromCAMetalLayer(
       for (auto& entry : damage_) {
         if (entry.first != texture) {
           // Accumulate damage for other framebuffers
-          if (surface_frame.submit_info().frame_damage) {
-            entry.second.Join(*surface_frame.submit_info().frame_damage);
-          }
+          entry.second.Join(surface_frame.submit_info().frame_damage.value_or(
+              skity::Rect::MakeWH(frame_info.x, frame_info.y)));
         }
       }
       // Reset accumulated damage for current framebuffer
@@ -250,7 +254,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromMTLTexture(
 
   int64_t texture_id = texture_lifetime->texture_id();
   SurfaceFrame::EncodeCallback encode_callback =
-      [this, texture_id](const SurfaceFrame& surface_frame, SkCanvas* canvas) -> bool {
+      [this, texture_id, frame_info](const SurfaceFrame& surface_frame, SkCanvas* canvas) -> bool {
     if (canvas == nullptr) {
       FML_DLOG(ERROR) << "Canvas not available.";
       return false;
@@ -265,9 +269,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromMTLTexture(
       for (auto& [current_texture_id, damage] : damage_) {
         if (current_texture_id != texture_id) {
           // Accumulate damage for other framebuffers
-          if (surface_frame.submit_info().frame_damage) {
-            damage.Join(*surface_frame.submit_info().frame_damage);
-          }
+          damage.Join(surface_frame.submit_info().frame_damage.value_or(
+              skity::Rect::MakeWH(frame_info.x, frame_info.y)));
         }
       }
       // Reset accumulated damage for current framebuffer
