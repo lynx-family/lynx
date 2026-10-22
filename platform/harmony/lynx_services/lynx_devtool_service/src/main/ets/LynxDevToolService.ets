@@ -61,6 +61,15 @@ export class LynxDevToolService implements ILynxDevToolService {
     }
   }
 
+  public enableAllSessions(): void {
+    let debugRouter: ESObject = LynxDevToolService.devtoolModule?.DebugRouter;
+    if (debugRouter) {
+      debugRouter.enableAllSessions();
+    } else {
+      LLog.i(LynxDevToolService.TAG, "enableAllSessions DebugRouter is null");
+    }
+  }
+
   /** @deprecated Use DevToolSettings instead. */
   public devtoolEnvSetSwitch(key: string, value: boolean): void {
     let lynxDevToolEnv: ESObject = LynxDevToolService.devtoolModule?.LynxDevToolEnv;

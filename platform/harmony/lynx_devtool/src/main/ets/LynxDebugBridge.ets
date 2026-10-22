@@ -9,6 +9,7 @@ export class LynxDebugBridge {
   private static instance?: LynxDebugBridge;
 
   private constructor() {
+    lynxdevtool.DebugBridgeHarmony.initialize();
   }
 
   public static getInstance(): LynxDebugBridge {
@@ -21,8 +22,14 @@ export class LynxDebugBridge {
 
 
   public connectDevtools(remoteDebugUrl: string, appInfo: Map<string, string>): boolean {
-    return lynxdevtool.DebugBridgeHarmony.connectDevtools(remoteDebugUrl, Array.from(appInfo.keys()),
-      Array.from(appInfo.values()));
+    if (DebugRouter.isConnected()) {
+      return true;
+    }
+    if (!DebugRouter.isValidSchema(remoteDebugUrl)) {
+      return false;
+    }
+    DebugRouter.setAppInfo(appInfo);
+    return DebugRouter.handleSchema(remoteDebugUrl);
   }
 
   public addOpenCardCallback(callback: (url: string) => void): void {

@@ -11,7 +11,7 @@ export {
   HarmonyGlobalHandler,
   HarmonySessionHandler,
   HarmonyStateListener
-} from 'liblynxdevtool.so'
+} from './DebugRouter'
 
 export { LynxDevToolEnv } from './LynxDevToolEnv'
 

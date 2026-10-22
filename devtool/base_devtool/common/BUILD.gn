@@ -12,7 +12,11 @@ source_set("base_devtool_common_sources") {
     "devtool_slot_common.h",
   ]
 
-  include_dirs = [ "../../../third_party/debug_router/src/" ]
+  if (is_harmony) {
+    include_dirs = [ "../../../platform/harmony/lynx_devtool/oh_modules/@lynx/debug_router/src/main/debug_router/include" ]
+  } else {
+    include_dirs = [ "../../../third_party/debug_router/src/" ]
+  }
 
   deps = [ "../native:base_devtool_common_lib" ]
 }

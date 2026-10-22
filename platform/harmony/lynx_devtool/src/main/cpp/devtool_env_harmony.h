@@ -21,29 +21,28 @@ class DevToolEnvHarmony {
   ~DevToolEnvHarmony();
   static napi_value Init(napi_env env, napi_value exports);
   static void InitDevToolEnv();
-  static DevToolEnvHarmony &GetInstance();
-  void SetSwitch(const std::string &key, bool value,
+  static DevToolEnvHarmony& GetInstance();
+  void SetSwitch(const std::string& key, bool value,
                  bool is_persistent = false);
-  bool GetSwitch(const std::string &key);
+  bool GetSwitch(const std::string& key);
 
-  static bool NeedPersistent(const std::string &key);
+  static bool NeedPersistent(const std::string& key);
 
  private:
-  DevToolEnvHarmony(const DevToolEnvHarmony &) = delete;
-  DevToolEnvHarmony &operator=(const DevToolEnvHarmony &) = delete;
+  DevToolEnvHarmony(const DevToolEnvHarmony&) = delete;
+  DevToolEnvHarmony& operator=(const DevToolEnvHarmony&) = delete;
 
   bool InitPreferences();
-  bool SetPersistentSwitch(const std::string &key, bool value);
+  bool SetPersistentSwitch(const std::string& key, bool value);
 
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value SetSwitchNAPI(napi_env env, napi_callback_info info);
   static napi_value GetSwitchNAPI(napi_env env, napi_callback_info info);
   static napi_value InitDevToolEnvNAPI(napi_env env, napi_callback_info info);
-  static napi_value SetAppInfo(napi_env env, napi_callback_info info);
   static napi_value InitDevToolSetModule(napi_env env, napi_callback_info info);
 
   static std::unordered_map<std::string, bool> s_persistent_default_value_;
-  OH_Preferences *preference_ = nullptr;
+  OH_Preferences* preference_ = nullptr;
 };
 
 }  // namespace devtool
