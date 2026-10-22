@@ -5488,6 +5488,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.MEMORY_REPORT_INTERVAL_SEC MEMORY_REPORT_INTERVAL_SEC;
   public com.lynx.tasm.LynxEnvKey.GLOBAL_MEMORY_REPORT_THRESHOLD_MB GLOBAL_MEMORY_REPORT_THRESHOLD_MB;
   public com.lynx.tasm.LynxEnvKey.ENABLE_DATA_LIST_FIX ENABLE_DATA_LIST_FIX;
+  public com.lynx.tasm.LynxEnvKey.ENABLE_CLEAR_UPDATED_DATA_LIST ENABLE_CLEAR_UPDATED_DATA_LIST;
   public com.lynx.tasm.LynxEnvKey.FSP_ENABLE FSP_ENABLE;
   public com.lynx.tasm.LynxEnvKey.FSP_CONFIG_JSON_STRING FSP_CONFIG_JSON_STRING;
   public com.lynx.tasm.LynxEnvKey.INIT_DISPLAY_METRICS_IN_ENV INIT_DISPLAY_METRICS_IN_ENV;
