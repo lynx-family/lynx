@@ -4,6 +4,7 @@
 
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("//${lynx_dir}/build_overrides/resource_file.gni")
+import("../../../../config.gni")
 import("../../../../core/Lynx.gni")
 import("Podspecs.gni")
 
