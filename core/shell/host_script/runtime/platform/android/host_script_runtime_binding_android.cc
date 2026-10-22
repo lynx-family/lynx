@@ -4,10 +4,10 @@
 
 #include <jni.h>
 
-#include "core/base/android/android_jni.h"
-#include "core/shell/host_script/android/runtime/host_script_android_session.h"
-#include "platform/android/lynx_android/src/main/jni/gen/LynxHostScriptRuntimeBinding_jni.h"
-#include "platform/android/lynx_android/src/main/jni/gen/LynxHostScriptRuntimeBinding_register_jni.h"
+#include "core/shell/host_script/runtime/platform/android/host_script_android_session.h"
+#include "core/shell/host_script/runtime/platform/android/process_runtime_android.h"
+#include "platform/android/lynx_host_script/src/main/jni/gen/LynxHostScriptRuntimeBinding_jni.h"
+#include "platform/android/lynx_host_script/src/main/jni/gen/LynxHostScriptRuntimeBinding_register_jni.h"
 
 using lynx::shell::HostScriptJavaString;
 using lynx::shell::HostScriptSession;
@@ -15,6 +15,13 @@ using lynx::shell::HostScriptSessionFromHandle;
 using lynx::shell::HostScriptSessionHandle;
 
 namespace lynx {
+namespace shell {
+bool PublishHostScriptRuntimeCallbacks(
+    JNIEnv* env, const HostScriptRuntimeCallbacks* callbacks, bool commit) {
+  return Java_LynxHostScriptRuntimeBinding_setRuntimeCallbacks(
+      env, reinterpret_cast<jlong>(callbacks), commit);
+}
+}  // namespace shell
 namespace jni {
 bool RegisterJNIForLynxHostScriptRuntimeBinding(JNIEnv* env) {
   return RegisterNativesImpl(env);

@@ -84,18 +84,11 @@ group("lynx_android_lib") {
     "../../../core/services/timing_handler:timing_handler_delegate",
     "../../../core/services/watch_dog:watch_dog",
     "../../../core/shared_data:shared_data",
+    "../../../core/shell/host_script/android:process_runtime_android",
     "../../../core/value_wrapper:value_wrapper",
     "../../../gfx:gfx_headers",
     "../../../third_party/rapidjson:rapidjson",
   ]
-  if (lynx_in_debug && enable_napi_binding) {
-    public_deps +=
-        [ "../../../core/shell/host_script/android:process_runtime_android" ]
-  }
-  if (is_debug && enable_napi_binding) {
-    public_deps +=
-        [ "../../../core/shell/host_script/android:host_script_android" ]
-  }
   if (enable_testbench_recorder) {
     public_deps += [ "../../../core/services/recorder:recorder" ]
   }
@@ -151,9 +144,6 @@ config("lynx_android_public_config") {
   ]
   if (enable_inspector) {
     defines += [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
-  }
-  if (lynx_in_debug && enable_napi_binding) {
-    defines += [ "ENABLE_HOST_SCRIPT_RUNTIME=1" ]
   }
   include_dirs = []
   cflags = []

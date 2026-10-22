@@ -50,6 +50,8 @@ class GlobalDevToolPlatformAndroid : public GlobalDevToolPlatformFacade {
   ~GlobalDevToolPlatformAndroid() override = default;
 
  private:
+  static jlong GetHSRTransport();
+
   GlobalDevToolPlatformAndroid() = default;
 
   friend class base::NoDestructor<GlobalDevToolPlatformAndroid>;
