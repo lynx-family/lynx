@@ -35,6 +35,11 @@ void PageReloadHelperEmbedder::Reload(bool ignore_cache,
       reload_url.substr(0, 4) == "http") {
     reload_url_ = reload_url;
   }
+  // Replace the cached data before reloading destroys the old runtime.
+  if (init_data_) {
+    init_data_ = std::make_shared<tasm::TemplateData>(
+        tasm::TemplateData::DeepClone(*init_data_));
+  }
   lynx::base::UIThread::GetRunner()->PostTask(
       [proxy = proxy_, url = reload_url_, binary = binary_,
        init_data = init_data_] {

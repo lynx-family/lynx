@@ -24,7 +24,7 @@ class Value;
 
 namespace tasm {
 
-class TemplateData {
+class LYNX_EXPORT_FOR_DEVTOOL TemplateData {
  public:
   // Return a new Template Data. If other has platform data, obtain the platform
   // data from other and set value_ to empty. If other does not have platform
