@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_STARLIGHT_LAYOUT_CACHE_MANAGER_H_
 #define CORE_RENDERER_STARLIGHT_LAYOUT_CACHE_MANAGER_H_
 
+#include <memory>
+
 #include "base/include/vector.h"
 #include "core/renderer/starlight/layout/layout_global.h"
 #include "core/renderer/starlight/types/layout_types.h"
@@ -18,6 +20,15 @@ struct CacheEntry {
   CompactConstraints resolved_constraints_;
   bool is_valid_ = false;
   float border_bound_width_ = 0.f, border_bound_height_ = 0.f;
+};
+
+struct ComposeMeasureCacheEntry {
+  ComposeConstraints constraints;
+  FloatSize size;
+  float inset_width = 0;
+  float inset_height = 0;
+  bool final_measure = false;
+  bool valid = false;
 };
 
 struct FindCacheResult {
@@ -48,9 +59,23 @@ class CacheManager {
   FindCacheResult FindAvailableCacheEntry(const Constraints& constraints,
                                           LayoutObject& target) const;
 
+  bool CanReuseComposeMeasure(const ComposeConstraints& constraints,
+                              bool final_measure,
+                              const LayoutObject& target) const;
+  // Records the key before measuring and clears incompatible CSS results.
+  void BeginComposeMeasure(const ComposeConstraints& constraints,
+                           bool final_measure, const LayoutObject& target);
+  void InsertComposeCacheEntry(const LayoutObject& target);
+  void ResetComposeCache();
+
  private:
+  void ResetCssCache();
+
   base::InlineVector<CacheEntry, 2> cache_data_;
   size_t current_cache_index_ = LAYOUT_RESULT_CACHE_SIZE - 1;
+  // Only the latest measurement can reuse the live algorithm/JS placement
+  // state. Allocate lazily so CSS cache entries keep their compact layout.
+  std::unique_ptr<ComposeMeasureCacheEntry> compose_measure_cache_;
 };
 
 }  // namespace starlight

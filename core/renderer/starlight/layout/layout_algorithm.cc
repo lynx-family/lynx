@@ -35,9 +35,27 @@ void LayoutAlgorithm::Update(const Constraints& constraints) {
   Reset();
 }
 
+void LayoutAlgorithm::UpdateWithCompose(
+    const Constraints& constraints,
+    const ComposeConstraints& compose_constraints) {
+  UpdateAvailableSizeAndMode(constraints);
+  UpdateComposeConstraints(compose_constraints);
+  Reset();
+}
+
 void LayoutAlgorithm::Initialize(const Constraints& constraints,
                                  const SLNodeSet* fixed_node_set) {
   UpdateAvailableSizeAndMode(constraints);
+  InitializeChildren(fixed_node_set);
+  InitializeAlgorithmEnv();
+}
+
+void LayoutAlgorithm::InitializeWithCompose(
+    const Constraints& constraints,
+    const ComposeConstraints& compose_constraints,
+    const SLNodeSet* fixed_node_set) {
+  UpdateAvailableSizeAndMode(constraints);
+  UpdateComposeConstraints(compose_constraints);
   InitializeChildren(fixed_node_set);
   InitializeAlgorithmEnv();
 }
@@ -153,6 +171,13 @@ void LayoutAlgorithm::UpdateAvailableSizeAndMode(
                               container_->GetPaddingAndBorderVertical(),
                           constraints[kVertical].Mode());
   }
+}
+
+void LayoutAlgorithm::UpdateComposeConstraints(
+    const ComposeConstraints& constraints) {
+  compose_constraints_ =
+      constraints.Inset(container_->GetPaddingAndBorderHorizontal(),
+                        container_->GetPaddingAndBorderVertical());
 }
 
 FloatSize LayoutAlgorithm::PostLayoutProcessingAndResultBorderBoxSize() {

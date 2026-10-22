@@ -5,6 +5,9 @@
 #ifndef CORE_RENDERER_STARLIGHT_TYPES_LAYOUT_CONSTRAINTS_H_
 #define CORE_RENDERER_STARLIGHT_TYPES_LAYOUT_CONSTRAINTS_H_
 
+#include <algorithm>
+#include <limits>
+
 #include "base/include/compiler_specific.h"
 #include "base/include/float_comparison.h"
 #include "base/include/log/logging.h"
@@ -75,6 +78,41 @@ class OneSideConstraint {
 };
 
 using Constraints = DimensionValue<OneSideConstraint>;
+
+// Compose ranges are independent of CSS measure modes. Native units are layout
+// units; infinity is represented explicitly, never by an arbitrary large size.
+struct ComposeConstraints {
+  static constexpr float kInfinity = std::numeric_limits<float>::infinity();
+  float min_width = 0;
+  float max_width = kInfinity;
+  float min_height = 0;
+  float max_height = kInfinity;
+
+  bool operator==(const ComposeConstraints& other) const {
+    return min_width == other.min_width && max_width == other.max_width &&
+           min_height == other.min_height && max_height == other.max_height;
+  }
+
+  float ConstrainWidth(float width) const {
+    return std::max(min_width, std::min(width, max_width));
+  }
+  float ConstrainHeight(float height) const {
+    return std::max(min_height, std::min(height, max_height));
+  }
+  ComposeConstraints Inset(float width, float height) const {
+    return {std::max(0.f, min_width - width), std::max(0.f, max_width - width),
+            std::max(0.f, min_height - height),
+            std::max(0.f, max_height - height)};
+  }
+  Constraints ToCssConstraints() const {
+    auto axis = [](float min, float max) {
+      return min == max         ? OneSideConstraint::Definite(max)
+             : max == kInfinity ? OneSideConstraint::Indefinite()
+                                : OneSideConstraint::AtMost(max);
+    };
+    return {axis(min_width, max_width), axis(min_height, max_height)};
+  }
+};
 
 // Layout optimized struct for cache.
 struct __attribute__((packed, aligned(1))) CompactConstraints {

@@ -18,6 +18,23 @@ export interface ComposeElementRef {
   readonly [composeElementRefBrand]: never;
 }
 
+/** A nonnegative, finite size in physical pixels. */
+export interface CustomLayoutSize {
+  width: number;
+  height: number;
+}
+
+/** Content bounds in physical pixels. A maximum of -1 means unbounded. */
+export type CustomLayoutMeasureCallback = (
+  minWidth: number,
+  maxWidth: number,
+  minHeight: number,
+  maxHeight: number,
+) => CustomLayoutSize;
+
+/** Return true to apply recorded placements, or false to cancel placement. */
+export type CustomLayoutPlaceCallback = () => boolean;
+
 export enum ComposeElementKind {
   View = 1,
   Text = 2,
@@ -320,7 +337,7 @@ declare global {
 
   function __GetParent(current: ElementRef): ElementRef;
 
-  function __GetChildren(current: ElementRef): ElementRef[];
+  function __GetChildren(current: ElementRef | ComposeElementRef): ElementRef[];
 
   function __FirstElement(current: ElementRef): ElementRef;
 
@@ -364,6 +381,56 @@ declare global {
     owner: ComposeElementRef,
     modifier: object | null | undefined,
   ): void;
+
+  /**
+   * Installs synchronous measure and placement callbacks on a Compose view.
+   * Requires LepusNG, layout-in-element and enableZIndex. Callback dimensions
+   * and child positions use physical pixels. Clear both callbacks with null.
+   */
+  function __SetCustomLayout(
+    owner: ComposeElementRef,
+    measure: CustomLayoutMeasureCallback,
+    place: CustomLayoutPlaceCallback,
+  ): void;
+
+  function __SetCustomLayout(
+    owner: ComposeElementRef,
+    measure: null,
+    place: null,
+  ): void;
+
+  /**
+   * Measures a direct physical layout child during its owner's measure callback.
+   * A Compose child resolves to its current mount root. Bounds use physical
+   * pixels; minima must be nonnegative, and -1 means an unbounded maximum.
+   */
+  function __MeasureElement(
+    owner: ComposeElementRef,
+    child: ElementRef | ComposeElementRef,
+    minWidth: number,
+    maxWidth: number,
+    minHeight: number,
+    maxHeight: number,
+  ): CustomLayoutSize;
+
+  /**
+   * Records a measured child's position during its owner's placement callback.
+   * Coordinates use physical pixels; zIndex must be finite. Equal zIndex values
+   * follow placement call order. Geometry is applied after the callback returns.
+   */
+  function __PlaceElement(
+    owner: ComposeElementRef,
+    child: ElementRef | ComposeElementRef,
+    x: number,
+    y: number,
+    zIndex: number,
+  ): void;
+
+  /**
+   * Invalidates an installed policy outside its measure and placement callbacks.
+   * Flush the owning tree to schedule the next layout pass.
+   */
+  function __InvalidateLayout(owner: ComposeElementRef): void;
 
   function __GetEvent(node: ElementRef, name: string, type: string): Record<string, any>;
 

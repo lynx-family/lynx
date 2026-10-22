@@ -1171,6 +1171,8 @@ class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
   void Install(const lepus::Value& plan,
                ComposeElementKind kind = ComposeElementKind::kView) {
     page_ = manager->CreateFiberPage("0", 0);
+    page_->MarkAsComposeLayout();
+    page_->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
     manager->SetFiberPageElement(page_);
     handle_ = fml::AdoptRef(new ComposeElementHandle(manager.get(), kind));
     ASSERT_TRUE(

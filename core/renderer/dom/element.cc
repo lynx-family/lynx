@@ -278,8 +278,10 @@ Element::Element(const Element& element, bool clone_resolved_props)
       builtin_attr_map_(element.builtin_attr_map_),
       reset_attr_vec_(element.reset_attr_vec_),
       modifier_attribute_names_(element.modifier_attribute_names_),
-      part_id_(element.part_id_) {
-  if (element.custom_layout_functions_) {
+      part_id_(element.part_id_),
+      is_compose_layout_(element.is_compose_layout_) {
+  if (element.custom_layout_functions_ &&
+      !element.custom_layout_functions_->context) {
     custom_layout_functions_ =
         std::make_unique<starlight::CustomLayoutFunctions>(
             *element.custom_layout_functions_);

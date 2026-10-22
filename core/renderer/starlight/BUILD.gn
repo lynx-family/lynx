@@ -42,6 +42,8 @@ starlight_layout_sources = [
   "layout/property_resolving_utils.h",
   "layout/relative_layout_algorithm.cc",
   "layout/relative_layout_algorithm.h",
+  "layout/row_column_layout_algorithm.cc",
+  "layout/row_column_layout_algorithm.h",
   "layout/staggered_grid_layout_algorithm.cc",
   "layout/staggered_grid_layout_algorithm.h",
 ]

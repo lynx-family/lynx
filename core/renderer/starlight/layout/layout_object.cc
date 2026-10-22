@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "base/include/auto_reset.h"
 #include "core/renderer/starlight/layout/box_layout_algorithm.h"
 #include "core/renderer/starlight/layout/flex_layout_algorithm.h"
 #include "core/renderer/starlight/layout/grid_layout_algorithm.h"
@@ -15,6 +16,7 @@
 #include "core/renderer/starlight/layout/position_layout_utils.h"
 #include "core/renderer/starlight/layout/property_resolving_utils.h"
 #include "core/renderer/starlight/layout/relative_layout_algorithm.h"
+#include "core/renderer/starlight/layout/row_column_layout_algorithm.h"
 #include "core/renderer/starlight/layout/staggered_grid_layout_algorithm.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
 #include "core/renderer/starlight/style/layout_style_utils.h"
@@ -24,6 +26,28 @@ namespace lynx {
 namespace starlight {
 
 namespace {
+ComposeConstraints ComposeRangeFromCss(const LayoutObject& node,
+                                       const Constraints& constraints) {
+  const auto& box = *node.GetBoxInfo();
+  auto axis = [&](Dimension dim) {
+    const auto& value = constraints[dim];
+    float minimum = std::max(0.f, box.min_size_[dim]);
+    float maximum = box.max_size_[dim] == DefaultLayoutStyle::kDefaultMaxSize
+                        ? ComposeConstraints::kInfinity
+                        : std::max(minimum, box.max_size_[dim]);
+    if (value.Mode() == SLMeasureModeDefinite) {
+      minimum = maximum = std::max(0.f, value.Size());
+    } else if (value.Mode() == SLMeasureModeAtMost) {
+      maximum = std::max(0.f, std::min(maximum, value.Size()));
+      minimum = std::min(minimum, maximum);
+    }
+    return std::pair<float, float>{minimum, maximum};
+  };
+  const auto width = axis(kHorizontal);
+  const auto height = axis(kVertical);
+  return {width.first, width.second, height.first, height.second};
+}
+
 inline float GetBoundLeftOffsetFromPaddingBound(const LayoutObject& target,
                                                 BoundType bound_type) {
   float result = 0.f;
@@ -116,6 +140,10 @@ SLAlignmentFunc LayoutObject::GetSLAlignmentFunc() const {
 
 void LayoutObject::RemoveAlgorithm() {
   if (algorithm_) {
+    cache_manager_.ResetComposeCache();
+    if (IsComposeLayout()) {
+      inflow_sub_tree_in_sync_with_last_measurement_ = false;
+    }
     delete algorithm_;
     algorithm_ = nullptr;
   }
@@ -126,6 +154,10 @@ void LayoutObject::RemoveAlgorithmRecursive() {
   LayoutObject* child = static_cast<LayoutObject*>(FirstChild());
   while (child) {
     child->RemoveAlgorithmRecursive();
+    if (IsComposeLayout()) {
+      inflow_sub_tree_in_sync_with_last_measurement_ &=
+          child->IsInflowSubTreeInSyncWithLastMeasurement();
+    }
     child = static_cast<LayoutObject*>(child->Next());
   }
 }
@@ -275,7 +307,7 @@ void LayoutObject::RoundToPixelGrid(const float container_absolute_left,
     // if is first layout or has new layout result or has MeasureFunc && dirty,
     // mark and continue visit child
     if (SetNewLayoutResult(new_layout_result) || (!is_layout_occurred) ||
-        (GetSLMeasureFunc() && IsDirty())) {
+        (need_custom_layout() && IsDirty())) {
       MarkHasNewLayout();
     }
   }
@@ -340,7 +372,11 @@ void LayoutObject::ReLayoutWithConstraints(Constraints& constraints,
                                            const SLNodeSet* fixed_node_set) {
   MarkHasNewLayout();
   SendLayoutEvent(LayoutEventType::UpdateMeasureBegin);
-  UpdateMeasure(constraints, true, fixed_node_set);
+  if (IsComposeLayout()) {
+    UpdateMeasureWithCompose(constraints, true);
+  } else {
+    UpdateMeasure(constraints, true, fixed_node_set);
+  }
   SendLayoutEvent(LayoutEventType::UpdateMeasureEnd);
   SendLayoutEvent(LayoutEventType::UpdateAlignmentBegin);
   UpdateAlignment();
@@ -417,16 +453,20 @@ void LayoutObject::ClearCache() {
 }
 
 void LayoutObject::MarkDirtyInternal(bool request_layout, bool force) {
-  if (force || !IsDirty()) {
-    is_dirty_ = true;
-    if (request_layout && request_layout_func_) {
-      request_layout_func_(context_);
+  // Compose geometry updates can leave a dirty node's measurement reusable.
+  // Clear that result on explicit dirty.
+  // CSS nodes keep the existing stop-at-dirty propagation behavior.
+  for (auto* node = this;
+       node && (force || !node->IsDirty() ||
+                (node->IsComposeLayout() &&
+                 node->IsInflowSubTreeInSyncWithLastMeasurement()));
+       node = node->ParentLayoutObject()) {
+    const bool notify = force || !node->IsDirty();
+    node->is_dirty_ = true;
+    if (request_layout && notify && node->request_layout_func_) {
+      node->request_layout_func_(node->context_);
     }
-    ClearCache();
-    LayoutObject* parent = static_cast<LayoutObject*>(parent_);
-    if (parent != nullptr && (force || !parent->IsDirty())) {
-      parent->MarkDirtyInternal(request_layout, force);
-    }
+    node->ClearCache();
   }
 }
 
@@ -566,6 +606,7 @@ bool LayoutObject::FetchEarlyReturnResultForMeasure(
 
 bool LayoutObject::CanReuseLayoutWithSameSizeAsGivenConstraint(
     bool is_horizontal) const {
+  if (IsComposeLayout()) return false;
   if (BoxInfo().IsDependentOnPercentBase(is_horizontal)) {
     return false;
   }
@@ -641,11 +682,132 @@ FloatSize LayoutObject::UpdateMeasureByPlatform(const Constraints& constraints,
   Constraints item_constraints =
       property_utils::GenerateDefaultConstraints(*this, constraints);
   box_info_.InitializeBoxInfo(item_constraints, *this, GetLayoutConfigs());
-  FloatSize size = UpdateMeasure(item_constraints, final_measure);
+  FloatSize size =
+      IsComposeLayout()
+          ? UpdateMeasureWithCompose(item_constraints, final_measure)
+          : UpdateMeasure(item_constraints, final_measure);
   size.width_ += GetLayoutMarginLeft() + GetLayoutMarginRight();
   size.height_ += GetLayoutMarginTop() + GetLayoutMarginBottom();
   size.baseline_ = GetOffsetFromTopMarginEdgeToBaseline();
   return size;
+}
+
+// Compose owns the bounds of its children. Resolve CSS hints once at this
+// boundary; never round-trip a Compose child through OneSideConstraint.
+FloatSize LayoutObject::UpdateMeasureWithComposeConstraints(
+    const ComposeConstraints& constraints, bool final_measure) {
+  auto available = constraints.ToCssConstraints();
+  // Bounded Compose space is also the percentage base for size/fill hints.
+  // This resolves hints only; it does not make the incoming range fixed.
+  if (std::isfinite(constraints.max_width))
+    available[kHorizontal] = OneSideConstraint::Definite(constraints.max_width);
+  if (std::isfinite(constraints.max_height))
+    available[kVertical] = OneSideConstraint::Definite(constraints.max_height);
+  box_info_.InitializeBoxInfo(available, *this, GetLayoutConfigs());
+  auto css_constraints =
+      property_utils::GenerateDefaultConstraints(*this, available);
+  const float margin_width = GetLayoutMarginLeft() + GetLayoutMarginRight();
+  const float margin_height = GetLayoutMarginTop() + GetLayoutMarginBottom();
+  auto border = constraints.Inset(margin_width, margin_height);
+  auto resolve_bounds = [](float& min, float& max, float css_min,
+                           float css_max) {
+    const float lower = min;
+    auto clamp = [lower, max](float size) {
+      return std::max(lower, std::min(size, max));
+    };
+    min = clamp(css_min);
+    if (css_max != DefaultLayoutStyle::kDefaultMaxSize) max = clamp(css_max);
+    max = std::max(min, max);
+  };
+  resolve_bounds(border.min_width, border.max_width,
+                 box_info_.min_size_[kHorizontal],
+                 box_info_.max_size_[kHorizontal]);
+  resolve_bounds(border.min_height, border.max_height,
+                 box_info_.min_size_[kVertical],
+                 box_info_.max_size_[kVertical]);
+  // Explicit size/fill modifiers are hints constrained by the incoming range.
+  if (css_constraints[kHorizontal].Mode() == SLMeasureModeDefinite) {
+    border.min_width = border.max_width =
+        border.ConstrainWidth(css_constraints[kHorizontal].Size());
+  }
+  if (css_constraints[kVertical].Mode() == SLMeasureModeDefinite) {
+    border.min_height = border.max_height =
+        border.ConstrainHeight(css_constraints[kVertical].Size());
+  }
+  UpdateMeasureWithResolvedComposeConstraints(border, final_measure);
+  return FloatSize(GetBorderBoundWidth() + margin_width,
+                   GetBorderBoundHeight() + margin_height,
+                   GetOffsetFromTopMarginEdgeToBaseline());
+}
+
+void LayoutObject::UpdateMeasureWithResolvedComposeConstraints(
+    const ComposeConstraints& border, bool final_measure) {
+  const float inset_width = GetPaddingAndBorderHorizontal();
+  const float inset_height = GetPaddingAndBorderVertical();
+  final_measure_ = final_measure;
+  if (cache_manager_.CanReuseComposeMeasure(border, final_measure, *this)) {
+    return;
+  }
+  cache_manager_.BeginComposeMeasure(border, final_measure, *this);
+  base::AutoReset<DimensionValue<float>> minimum(
+      &box_info_.min_size_,
+      DimensionValue<float>{border.min_width, border.min_height});
+  base::AutoReset<DimensionValue<float>> maximum(
+      &box_info_.max_size_,
+      DimensionValue<float>{
+          std::isinf(border.max_width) ? DefaultLayoutStyle::kDefaultMaxSize
+                                       : border.max_width,
+          std::isinf(border.max_height) ? DefaultLayoutStyle::kDefaultMaxSize
+                                        : border.max_height});
+  const auto inner = border.Inset(inset_width, inset_height);
+  if (compose_measure_func_) {
+    auto range = inner;
+    auto size = compose_measure_func_(context_, range, final_measure);
+    // Keep unconstrained axes flexible during correction: narrowing width can
+    // legitimately change a text or nested layout's height.
+    for (int pass = 0; pass < 2; ++pass) {
+      const float width = inner.ConstrainWidth(size.width_);
+      const float height = inner.ConstrainHeight(size.height_);
+      bool retry = false;
+      if (width != size.width_ &&
+          (range.min_width != width || range.max_width != width)) {
+        range.min_width = range.max_width = width;
+        retry = true;
+      }
+      if (height != size.height_ &&
+          (range.min_height != height || range.max_height != height)) {
+        range.min_height = range.max_height = height;
+        retry = true;
+      }
+      if (!retry) break;
+      size = compose_measure_func_(context_, range, final_measure);
+    }
+    const float width = inner.ConstrainWidth(size.width_);
+    const float height = inner.ConstrainHeight(size.height_);
+    SetBorderBoundWidth(border.ConstrainWidth(width + inset_width));
+    SetBorderBoundHeight(border.ConstrainHeight(height + inset_height));
+    SetBaseline(size.baseline_);
+    inflow_sub_tree_in_sync_with_last_measurement_ = true;
+    for (Node* node = FirstChild(); node; node = node->Next()) {
+      inflow_sub_tree_in_sync_with_last_measurement_ &=
+          static_cast<LayoutObject*>(node)
+              ->IsInflowSubTreeInSyncWithLastMeasurement();
+    }
+  } else {
+    // Box and Row/Column retain the full range alongside the CSS adapter.
+    // Other native algorithms and platform measurers use size/mode constraints.
+    auto constraints = border.ToCssConstraints();
+    property_utils::ApplyMinMaxToConstraints(constraints, *this);
+    UpdateMeasureWithNativeLayout(constraints, final_measure, nullptr, &border);
+    if (IsComposeLayout()) {
+      // CSS layout may floor the border box at its padding/border size. A
+      // Compose wrapper must still fit its incoming range when insets exceed
+      // it.
+      SetBorderBoundWidth(border.ConstrainWidth(GetBorderBoundWidth()));
+      SetBorderBoundHeight(border.ConstrainHeight(GetBorderBoundHeight()));
+    }
+  }
+  cache_manager_.InsertComposeCacheEntry(*this);
 }
 
 void LayoutObject::AlignmentByPlatform(float offset_top, float offset_left) {
@@ -661,28 +823,45 @@ void LayoutObject::AlignmentByPlatform(float offset_top, float offset_left) {
 FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
                                       bool final_measure,
                                       const SLNodeSet* fixed_node_set) {
+  // CSS parents enter Compose through this boundary. Compose children are
+  // measured directly with UpdateMeasureWithComposeConstraints instead.
+  if (IsComposeLayout()) {
+    return UpdateMeasureWithCompose(given_constraints, final_measure);
+  }
   Constraints constraints = given_constraints;
   property_utils::ApplyMinMaxToConstraints(constraints, *this);
-
   final_measure_ = final_measure;
-
   FloatSize result;
   if (FetchEarlyReturnResultForMeasure(constraints, !final_measure, result)) {
     result.baseline_ = GetBaseline();
     return result;
   }
+  UpdateMeasureWithNativeLayout(constraints, final_measure, fixed_node_set);
+  cache_manager_.InsertCacheEntry(constraints, GetBorderBoundWidth(),
+                                  GetBorderBoundHeight());
+  return FloatSize(GetBorderBoundWidth(), GetBorderBoundHeight(),
+                   GetBaseline());
+}
 
-  const auto ReturnCurrentSizeAndInsertToCache = [this, &constraints]() {
-    FloatSize size;
-    cache_manager_.InsertCacheEntry(constraints, GetBorderBoundWidth(),
-                                    GetBorderBoundHeight());
-    size.width_ = GetBorderBoundWidth();
-    size.height_ = GetBorderBoundHeight();
-    size.baseline_ = GetBaseline();
-    return size;
-  };
+FloatSize LayoutObject::UpdateMeasureWithCompose(
+    const Constraints& given_constraints, bool final_measure) {
+  Constraints constraints = given_constraints;
+  property_utils::ApplyMinMaxToConstraints(constraints, *this);
+  // CSS has already resolved percentages against the containing block.
+  UpdateMeasureWithResolvedComposeConstraints(
+      ComposeRangeFromCss(*this, constraints), final_measure);
+  return FloatSize(GetBorderBoundWidth(), GetBorderBoundHeight(),
+                   GetBaseline());
+}
 
+void LayoutObject::UpdateMeasureWithNativeLayout(
+    const Constraints& constraints, bool final_measure,
+    const SLNodeSet* fixed_node_set,
+    const ComposeConstraints* compose_constraints) {
   if (measure_func_) {
+    if (algorithm_ && algorithm_->RequiresComposeConstraints()) {
+      RemoveAlgorithm();
+    }
     UpdateMeasureWithMeasureFunc(constraints, final_measure);
     inflow_sub_tree_in_sync_with_last_measurement_ = true;
     for (Node* node = FirstChild(); node != nullptr; node = node->Next()) {
@@ -693,26 +872,34 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
       }
     }
 
-    return ReturnCurrentSizeAndInsertToCache();
+    return;
   }
 
-  /* IF THE NODE HAS NO CHILD, WE DO NOT NEED TO CREATE THE LAYOUT ALGORITHM*/
-  if (!GetChildCount()) {
+  const auto type = css_style_->GetDisplay(configs_, attr_map());
+  const bool compose_row_column =
+      IsComposeLayout() && type == DisplayType::kLinear;
+  if (algorithm_ &&
+      algorithm_->RequiresComposeConstraints() != compose_row_column) {
+    RemoveAlgorithm();
+  }
+  // A cached Row/Column must also refresh its child list when it becomes empty.
+  if (!GetChildCount() && !compose_row_column) {
     UpdateMeasureWithLeafNode(constraints);
     inflow_sub_tree_in_sync_with_last_measurement_ = true;
-    return ReturnCurrentSizeAndInsertToCache();
+    return;
   }
 
   if (!algorithm_) {
-    const auto type = css_style_->GetDisplay(configs_, attr_map());
     if (type == DisplayType::kNone) {
-      return ReturnCurrentSizeAndInsertToCache();
+      return;
     }
 
     if (type == DisplayType::kFlex) {
       algorithm_ = new FlexLayoutAlgorithm(this);
     } else if (type == DisplayType::kLinear) {
-      if (attr_map_.getColumnCount().has_value()) {
+      if (IsComposeLayout()) {
+        algorithm_ = new RowColumnLayoutAlgorithm(this);
+      } else if (attr_map_.getColumnCount().has_value()) {
         algorithm_ = new StaggeredGridLayoutAlgorithm(this);
       } else {
         algorithm_ = new LinearLayoutAlgorithm(this);
@@ -731,9 +918,18 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
 
     DCHECK(algorithm_);
 
-    algorithm_->Initialize(constraints, fixed_node_set);
+    if (IsComposeLayout()) {
+      algorithm_->InitializeWithCompose(constraints, *compose_constraints,
+                                        fixed_node_set);
+    } else {
+      algorithm_->Initialize(constraints, fixed_node_set);
+    }
   } else {
-    algorithm_->Update(constraints);
+    if (IsComposeLayout()) {
+      algorithm_->UpdateWithCompose(constraints, *compose_constraints);
+    } else {
+      algorithm_->Update(constraints);
+    }
     // TODO: Handling boxdata and flexinfo when using cache.
   }
   inflow_sub_tree_in_sync_with_last_measurement_ = true;
@@ -746,8 +942,6 @@ FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
   SetBorderBoundHeight(size.height_);
 
   algorithm_->SetContainerBaseline();
-
-  return ReturnCurrentSizeAndInsertToCache();
 }
 
 void LayoutObject::UpdateMeasureWithMeasureFunc(const Constraints& constraints,
@@ -847,7 +1041,7 @@ void LayoutObject::UpdateAlignment() {
   if (!measured_position_.Reset(border_box_offset_left, border_box_offset_top,
                                 border_box_offset_left + offset_width_,
                                 border_box_offset_top + offset_height_) &&
-      !IsDirty()) {
+      !IsDirty() && !IsComposeLayout()) {
     return;
   }
   if (alignment_func_) {
@@ -1007,6 +1201,8 @@ void LayoutObject::Reset(LayoutObject* node) {
   }
   measured_position_.Reset(0, 0, 0, 0);
   SetSLMeasureFunc(nullptr);
+  SetSLComposeMeasureFunc(nullptr);
+  SetComposeLayout(false);
   SetContext(nullptr);
   SetBorderBoundWidth(node->GetBorderBoundWidth());
   SetBorderBoundHeight(node->GetBorderBoundHeight());

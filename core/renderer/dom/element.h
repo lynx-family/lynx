@@ -1408,6 +1408,11 @@ class Element : public lepus::RefCounted,
 
   virtual bool is_modifier() const { return false; }
 
+  // Compose ownership is independent of the selected native layout algorithm
+  // and of whether a custom measure callback is installed.
+  void MarkAsComposeLayout();
+  bool IsComposeLayout() const { return is_compose_layout_; }
+
   virtual bool is_component() const { return false; }
 
   virtual bool is_scroll_view() const { return false; }
@@ -1456,12 +1461,15 @@ class Element : public lepus::RefCounted,
   void SetAlignmentFunc(void* context,
                         starlight::SLAlignmentFunc alignment_func);
 
-  // Layout-in-Element callbacks receive this Element as their context. Keep
-  // per-element parameters on the owning element so clones bind their own data.
+  // Layout-in-Element callbacks default to this Element as their context.
+  // Explicit external contexts and their callbacks are not inherited by clones.
   // Defers callback installation and layout invalidation until Flush. An empty
   // configuration clears the custom callbacks. Set again when parameters
   // change, even if the function pointers are unchanged.
   void SetCustomLayoutFunctions(starlight::CustomLayoutFunctions functions);
+  bool HasCustomLayoutFunctions() const {
+    return custom_layout_functions_ != nullptr;
+  }
 
   // When list component finishes all props update
   virtual void PropsUpdateFinish() {}
@@ -2483,6 +2491,7 @@ class Element : public lepus::RefCounted,
 
   std::unique_ptr<SLNode> sl_node_{nullptr};
   std::unique_ptr<starlight::CustomLayoutFunctions> custom_layout_functions_;
+  bool is_compose_layout_{false};
 
  private:
   bool FlushCustomLayoutFunctions();

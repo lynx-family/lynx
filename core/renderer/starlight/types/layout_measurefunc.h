@@ -12,6 +12,9 @@ namespace starlight {
 typedef FloatSize (*SLMeasureFunc)(void* context,
                                    const Constraints& constraints,
                                    bool final_measure);
+typedef FloatSize (*SLComposeMeasureFunc)(void* context,
+                                          const ComposeConstraints& constraints,
+                                          bool final_measure);
 typedef void (*SLAlignmentFunc)(void* context);
 
 // Function to check if the layout of the layout object depends the mode of the
@@ -50,6 +53,10 @@ struct CustomLayoutFunctions {
   SLMeasureFunc measure = nullptr;
   SLAlignmentFunc layout = nullptr;
   SLCanReuseLayoutWithSameSizeAsGivenConstraintFunc can_reuse = nullptr;
+  // Null binds the owning Element at Flush. External contexts are caller-owned
+  // and their callbacks are not inherited by Element clones.
+  void* context = nullptr;
+  SLComposeMeasureFunc compose_measure = nullptr;
 };
 
 }  // namespace starlight
