@@ -19,7 +19,10 @@ if (is_android && enable_lite && !enable_lite_keep_lepus_vm) {
 lynx_lepus_binding_sources_path =
     get_path_info(lynx_lepus_binding_sources, "abspath")
 
-lynx_renderer_functions_sources = [ "renderer_functions.cc" ]
+lynx_renderer_functions_sources = [
+  "custom_layout_binding.cc",
+  "renderer_functions.cc",
+]
 
 lynx_renderer_functions_sources_path =
     get_path_info(lynx_renderer_functions_sources, "abspath")

@@ -3649,7 +3649,7 @@ RENDERER_FUNCTION_CC(FiberGetChildren) {
     RETURN_UNDEFINED();
   }
 
-  auto parent = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto parent = GetComposeContentOrFiberElementFromValue(*arg0);
 
   auto ary = lepus::CArray::Create();
   const auto& children = parent->children();

@@ -127,6 +127,10 @@
   V(FiberGetEvent)                      \
   V(FiberGetEvents)                     \
   V(InvalidateElement)                  \
+  V(FiberSetCustomLayout)               \
+  V(FiberMeasureLayoutChild)            \
+  V(FiberPlaceLayoutChild)              \
+  V(FiberInvalidateLayout)              \
   V(FiberSetComposeModifier)            \
   V(FiberSetID)                         \
   V(FiberGetID)                         \
