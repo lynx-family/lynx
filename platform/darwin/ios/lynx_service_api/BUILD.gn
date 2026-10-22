@@ -75,7 +75,14 @@ subspec_target("Core") {
     "./LynxServiceTrailProtocol.h",
     "./LynxServiceLogProtocol.h",
   ]
-  dependency = [ "LynxServiceAPI/Native" ]
+  if (use_flatten_deps) {
+    dependency = [ [
+          "LynxServiceAPI/Native",
+          "$lynx_version",
+        ] ]
+  } else {
+    dependency = [ "LynxServiceAPI/Native" ]
+  }
 }
 
 lynx_core_source_set("lynx_service_api_sources") {
