@@ -56,6 +56,7 @@ class LynxImageManager final
   ImagePaintInfo paint_info_;
   std::shared_ptr<ImageData> image_;
   std::unique_ptr<ImageDrawable> drawable_;
+  float scale_density_{1.f};
   float width_{0.f};
   float height_{0.f};
   bool has_bounds_{false};

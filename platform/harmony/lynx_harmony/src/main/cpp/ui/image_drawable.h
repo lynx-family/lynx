@@ -26,6 +26,7 @@ class ImageDrawable {
     kAspectFit,
     kAspectFill,
     kScaleToFill,
+    kCenter,
   };
 
   class ImageAnimationListener {
@@ -87,6 +88,7 @@ class ImageDrawable {
   OH_Drawing_SamplingOptions* sample_{nullptr};
   uint32_t image_width_{0};
   uint32_t image_height_{0};
+  float scale_density_{1.f};
   float width_{0.f};
   float height_{0.f};
   float left_{0.f};

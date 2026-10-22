@@ -69,6 +69,7 @@ void ImageDrawable::UpdateBounds(float left, float top, float width,
     OH_Drawing_RectDestroy(dst_rect_);
     dst_rect_ = nullptr;
   }
+  scale_density_ = scale_density;
   width_ = width * scale_density;
   height_ = height * scale_density;
   left_ = padding_left * scale_density;
@@ -230,7 +231,8 @@ void ImageDrawable::UpdateDrawMatrix() {
     DestroyMatrix();
     return;
   }
-  if (image_width_ == width_ && image_height_ == height_) {
+  if (mode_ != ImageMode::kCenter && image_width_ == width_ &&
+      image_height_ == height_) {
     DestroyMatrix();
     return;
   }
@@ -243,8 +245,19 @@ void ImageDrawable::UpdateDrawMatrix() {
   } else {
     OH_Drawing_MatrixReset(matrix_);
   }
-  float view_width = right_ - left_;
-  float view_height = bottom_ - top_;
+  const float view_width = right_ - left_;
+  const float view_height = bottom_ - top_;
+  if (mode_ == ImageMode::kCenter) {
+    // Convert the intrinsic size to physical pixels before centering.
+    const float translate_x =
+        left_ + (view_width - image_width_ * scale_density_) / 2.f;
+    const float translate_y =
+        top_ + (view_height - image_height_ * scale_density_) / 2.f;
+    OH_Drawing_MatrixSetMatrix(matrix_, scale_density_, 0.f, translate_x, 0.f,
+                               scale_density_, translate_y, 0.f, 0.f, 1.f);
+    return;
+  }
+
   if (mode_ == ImageMode::kAspectFit) {
     float w_rate = view_width / image_width_;
     float h_rate = view_height / image_height_;
@@ -512,9 +525,11 @@ void ImageDrawable::UpdateBlurFilter() {
   if (matrix_ && sigma > 0.f) {
     const float width_scale = (right_ - left_) / image_width_;
     const float height_scale = (bottom_ - top_) / image_height_;
-    const float scale = mode_ == ImageMode::kAspectFit
-                            ? std::min(width_scale, height_scale)
-                            : std::max(width_scale, height_scale);
+    const float scale = mode_ == ImageMode::kCenter
+                            ? scale_density_
+                            : (mode_ == ImageMode::kAspectFit
+                                   ? std::min(width_scale, height_scale)
+                                   : std::max(width_scale, height_scale));
     if (scale <= 0.f) {
       return;
     }
