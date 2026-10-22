@@ -50,8 +50,8 @@ class MockDelegate : public runtime::js::ModuleDelegate {
   virtual void CallJSCallback(
       const std::shared_ptr<runtime::js::ModuleCallback>& callback,
       base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
-      int64_t id_to_delete =
-          runtime::js::ModuleCallback::kInvalidCallbackId) override {
+      int64_t id_to_delete = runtime::js::ModuleCallback::kInvalidCallbackId,
+      bool force_async = false) override {
     latch.Signal();
   }
   virtual void OnErrorOccurred(base::LynxError error) override {}
@@ -259,7 +259,8 @@ TEST_F(FixtureModuleTest, DispatchReturnCallbacksAndDestroy) {
     }
     void CallJSCallback(const std::shared_ptr<ModuleCallback>& callback,
                         base::MoveOnlyClosure<bool> = nullptr,
-                        int64_t = ModuleCallback::kInvalidCallbackId) override {
+                        int64_t = ModuleCallback::kInvalidCallbackId,
+                        bool force_async = false) override {
       std::lock_guard<std::mutex> lock(mutex);
       callbacks.push_back(callback);
       ready.notify_all();

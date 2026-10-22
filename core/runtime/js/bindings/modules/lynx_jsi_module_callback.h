@@ -26,6 +26,7 @@ namespace lynx {
 namespace runtime {
 namespace js {
 class GroupInterceptor;
+class ModuleCallContext;
 class NativeModuleInvocationContext;
 
 class ModuleCallbackFunctionHolder {
@@ -80,6 +81,17 @@ class ModuleCallback : public LynxModuleCallback {
     group_interceptor_ = std::move(interceptor);
   }
 
+  // The invocation that registered this callback at `argument_index`.
+  void SetCallContext(std::shared_ptr<ModuleCallContext> context,
+                      int argument_index) {
+    call_context_ = std::move(context);
+    argument_index_ = argument_index;
+  }
+  const std::shared_ptr<ModuleCallContext>& call_context() const {
+    return call_context_;
+  }
+  int argument_index() const { return argument_index_; }
+
   void SetNativeModuleInvocationContext(
       std::shared_ptr<NativeModuleInvocationContext> context) {
     invocation_context_ = std::move(context);
@@ -107,6 +119,8 @@ class ModuleCallback : public LynxModuleCallback {
   std::shared_ptr<NativeModuleInvocationContext> invocation_context_ = nullptr;
 
  private:
+  std::shared_ptr<ModuleCallContext> call_context_;
+  int argument_index_ = -1;
   std::unique_ptr<pub::Value> args_ = nullptr;
   std::function<std::unique_ptr<pub::Value>(Runtime* rt,
                                             ModuleCallback* callback)>
