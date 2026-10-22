@@ -13,7 +13,9 @@
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/shell/host_script/android/lynx_view/host_script_view_observer_android.h"
 #include "core/shell/host_script/android/runtime/process_runtime_android.h"
+#include "core/shell/host_script/runtime/host_script_interceptor_bindings.h"
 #include "core/shell/host_script/runtime/host_script_module_interceptor.h"
+#include "core/shell/host_script/runtime/interceptor.h"
 
 namespace lynx {
 namespace shell {
@@ -63,7 +65,8 @@ void PrepareHostScriptRuntime() {
   auto& runtime = ProcessRuntime::GetInstance();
   runtime.Initialize({runners.GetJSTaskRunner(), runners.GetTASMTaskRunner(),
                       runners.GetUITaskRunner()},
-                     {}, {}, {}, ProcessRuntime::InitializationMode::kLazy);
+                     {}, &HostScriptInterceptorBindings::Create, {},
+                     ProcessRuntime::InitializationMode::kLazy);
   if (view_created.load(std::memory_order_acquire))
     runtime.InitializeBindings();
 }
@@ -73,6 +76,14 @@ void OnHostScriptViewCreated() {
   if (!ui_initialized.load(std::memory_order_acquire)) return;
   fml::TaskRunner::RunNowOrPostTask(base::UIThread::GetRunner(),
                                     [] { PrepareHostScriptRuntime(); });
+}
+
+void RegisterHostScriptView(base::LynxEntityId view) {
+  Interceptor::RegisterView(view);
+}
+
+void UnregisterHostScriptView(base::LynxEntityId view) {
+  Interceptor::DestroyView(view);
 }
 
 void UpdateHostScriptDebugState(bool) {

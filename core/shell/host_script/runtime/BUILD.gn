@@ -5,6 +5,11 @@
 import("../../../../testing/test.gni")
 import("../../../Lynx.gni")
 
+# Header only: the execution domain shared by every Host Script target.
+lynx_core_source_set("host_script_domain") {
+  sources = [ "host_script_domain.h" ]
+}
+
 lynx_core_source_set("host_script") {
   sources = [
     "../lynx_view/lynx_view_ref_proxy.h",
@@ -21,7 +26,10 @@ lynx_core_source_set("host_script") {
     "interceptor.h",
   ]
 
-  public_deps = [ "../../../../base/src:base_values" ]
+  public_deps = [
+    ":host_script_domain",
+    "../../../../base/src:base_values",
+  ]
   deps = [
     "../../../../third_party/binding/napi:napi_binding_base",
     "../../../build",
@@ -52,8 +60,24 @@ lynx_core_source_set("process_runtime") {
     "process_runtime.cc",
     "process_runtime.h",
   ]
+  public_deps = [ ":host_script_domain" ]
   deps = [
     "../../../../base/src:base_log_headers",
+    "../../../runtime/js:js",
+  ]
+}
+
+# Installs `interceptor` into process runtime contexts.
+lynx_core_source_set("interceptor_bindings") {
+  sources = [
+    "host_script_interceptor_bindings.cc",
+    "host_script_interceptor_bindings.h",
+  ]
+  deps = [
+    ":host_script",
+    ":process_runtime",
+    "../../../../base/src:base_log_headers",
+    "../../../runtime/common/napi:napi_binding_core",
     "../../../runtime/js:js",
   ]
 }

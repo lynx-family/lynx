@@ -49,8 +49,11 @@ std::string CurrentThread() {
   return stream.str();
 }
 
-size_t DomainIndex(Domain domain) { return static_cast<size_t>(domain); }
-bool IsValidDomain(Domain domain) { return DomainIndex(domain) < 3; }
+using Owners = std::array<fml::RefPtr<fml::TaskRunner>, kHostScriptDomainCount>;
+
+bool IsValidDomain(Domain domain) {
+  return HostScriptDomainIndex(domain) < kHostScriptDomainCount;
+}
 
 // Input-byte normalization only; JavaScript syntax belongs to the engine.
 bool NormalizeScriptSource(std::string& source, bool allow_empty = false) {
@@ -225,7 +228,7 @@ class DomainRuntime final {
 struct DomainPublication {
   DomainPublication(Domain domain, uint64_t runtime_id,
                     const fml::RefPtr<fml::TaskRunner>& runner) {
-    identity.domain = ProcessRuntime::DomainName(domain);
+    identity.domain = HostScriptDomainName(domain);
     identity.runtime_id = runtime_id;
     identity.owner_runner_id = static_cast<size_t>(runner->GetTaskQueueId());
   }
@@ -378,11 +381,10 @@ class RuntimeGeneration final
     std::shared_ptr<DomainState::Actor> actor;
   };
 
-  RuntimeGeneration(std::array<fml::RefPtr<fml::TaskRunner>, 3> owners,
-                    uint64_t first_id, const Completion& ready,
+  RuntimeGeneration(Owners owners, uint64_t first_id, const Completion& ready,
                     const BindingFactory& binding_factory,
                     const std::string& bootstrap, InitializationMode mode)
-      : control_(owners[2]),
+      : control_(owners[HostScriptDomainIndex(Domain::kUI)]),
         state_(std::make_shared<std::atomic<ProcessState>>(
             ProcessState::kRunning)),
         mode_(mode) {
@@ -403,7 +405,8 @@ class RuntimeGeneration final
   bool IsLazy() const { return mode_ == InitializationMode::kLazy; }
 
   const Endpoint* Find(Domain domain) const {
-    return IsValidDomain(domain) ? &endpoints_[DomainIndex(domain)] : nullptr;
+    return IsValidDomain(domain) ? &endpoints_[HostScriptDomainIndex(domain)]
+                                 : nullptr;
   }
 
   // Count admission until work is queued or an inline event returns. Closing
@@ -505,7 +508,7 @@ class RuntimeGeneration final
   const fml::RefPtr<fml::TaskRunner> control_;
   const std::shared_ptr<std::atomic<ProcessState>> state_;
   const InitializationMode mode_;
-  std::array<Endpoint, 3> endpoints_;
+  std::array<Endpoint, kHostScriptDomainCount> endpoints_;
   // Only control_ accesses these fields. No per-request process registry.
   std::vector<Completion> shutdown_waiters_;
   size_t stopped_domains_ = 0;
@@ -529,10 +532,9 @@ class ProcessRuntime::Impl {
     auto current = Current();
     if (current && current->State() != ProcessState::kStopped) return false;
     auto next = std::make_shared<RuntimeGeneration>(
-        std::array<fml::RefPtr<fml::TaskRunner>, 3>{runners.bts, runners.mts,
-                                                    runners.ui},
-        next_runtime_id_.fetch_add(3) + 1, ready, binding_factory, bootstrap,
-        mode);
+        Owners{runners.bts, runners.mts, runners.ui},
+        next_runtime_id_.fetch_add(kHostScriptDomainCount) + 1, ready,
+        binding_factory, bootstrap, mode);
     runners_ = runners;
     binding_factory_ = std::move(binding_factory);
     bootstrap_ = std::move(bootstrap);
@@ -569,7 +571,7 @@ class ProcessRuntime::Impl {
             ? "RUNTIME_NOT_READY"
             : nullptr;
     auto identity = endpoint ? endpoint->publication->Snapshot() : Result{};
-    identity.domain = DomainName(domain);
+    identity.domain = HostScriptDomainName(domain);
     if (error) {
       if (completion) completion(WithError(std::move(identity), error));
       return;
@@ -679,9 +681,8 @@ class ProcessRuntime::Impl {
       if (load_ != load) return;
       if (!load->cancelled && IsHostScriptRuntimeEnabled()) {
         next = std::make_shared<RuntimeGeneration>(
-            std::array<fml::RefPtr<fml::TaskRunner>, 3>{
-                runners_.bts, runners_.mts, runners_.ui},
-            next_runtime_id_.fetch_add(3) + 1,
+            Owners{runners_.bts, runners_.mts, runners_.ui},
+            next_runtime_id_.fetch_add(kHostScriptDomainCount) + 1,
             [this, load](Result result) { LoadDomainReady(load, result); },
             binding_factory_, bootstrap_, InitializationMode::kEager);
         std::atomic_store(&current_, next);
@@ -780,18 +781,6 @@ ProcessRuntime& ProcessRuntime::GetInstance() {
   // Process lifetime avoids destroying VM state from a static destructor.
   static auto* runtime = new ProcessRuntime();
   return *runtime;
-}
-
-const char* ProcessRuntime::DomainName(Domain domain) {
-  switch (domain) {
-    case Domain::kBTS:
-      return "bts";
-    case Domain::kMTS:
-      return "mts";
-    case Domain::kUI:
-      return "ui";
-  }
-  return "unknown";
 }
 
 ProcessRuntime::ProcessRuntime() : impl_(std::make_unique<Impl>()) {}

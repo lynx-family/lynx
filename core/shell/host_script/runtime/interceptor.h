@@ -12,6 +12,7 @@
 
 #include "base/include/log/log_context.h"
 #include "base/include/value/base_value.h"
+#include "core/shell/host_script/runtime/host_script_domain.h"
 
 namespace lynx::shell {
 
@@ -36,7 +37,7 @@ struct InterceptResult {
 // Optional synchronous, thread-affine extension. No JS engine dependency.
 class Interceptor {
  public:
-  enum class Domain { kUI, kBTS, kMTS };
+  using Domain = HostScriptDomain;
   virtual ~Interceptor() = default;
   virtual void Uninstall() { Detach(this); }
   virtual bool HasHandlers(InterceptKind kind) const = 0;
@@ -61,6 +62,7 @@ class Interceptor {
   static uint64_t FailureCount();
 
   // Track liveness without owning a View or allocating another identity.
+  // Registrations are counted, so a replaced engine may register first.
   static void RegisterView(base::LynxEntityId view);
   static void DestroyView(base::LynxEntityId view);
   static bool IsViewAlive(base::LynxEntityId view);

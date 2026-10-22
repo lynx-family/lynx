@@ -13,6 +13,7 @@
 #include "base/include/fml/task_runner.h"
 #include "core/base/lynx_export.h"
 #include "core/base/memory/unsafe_owning_ptr.h"
+#include "core/shell/host_script/runtime/host_script_domain.h"
 
 namespace lynx {
 namespace runtime {
@@ -28,7 +29,7 @@ namespace shell {
 // These do not replace a page's JS or MTS context.
 class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
  public:
-  enum class Domain { kBTS, kMTS, kUI };
+  using Domain = HostScriptDomain;
   enum class InitializationMode { kEager, kLazy };
 
   // Optional capabilities are created, attached and destroyed on their owner.
@@ -74,7 +75,6 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   using Guard = std::function<bool()>;
 
   static ProcessRuntime& GetInstance();
-  static const char* DomainName(Domain domain);
 
   // Publishes three fixed execution domains on the supplied runners. Eager
   // initialization creates all contexts before accepting scripts. Lazy

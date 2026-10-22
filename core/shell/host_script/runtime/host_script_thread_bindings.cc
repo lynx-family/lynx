@@ -176,10 +176,9 @@ HostScriptThreadBindings::CallResult HostScriptThreadBindings::Run(
         "Thread execution expects a function or source and optional source "
         "URL");
   }
-  auto url =
-      count < 2 || args[1].isUndefined()
-          ? std::string("host-script://") + ProcessRuntime::DomainName(domain)
-          : args[1].getString(runtime_).utf8(runtime_);
+  auto url = count < 2 || args[1].isUndefined()
+                 ? std::string("host-script://") + HostScriptDomainName(domain)
+                 : args[1].getString(runtime_).utf8(runtime_);
   if (url.empty()) return reject("Source URL must be non-empty");
   if (!IsHostScriptRuntimeEnabled())
     return reject("HSR_DEBUG_DISABLED", "INVALID_STATE");
@@ -187,7 +186,7 @@ HostScriptThreadBindings::CallResult HostScriptThreadBindings::Run(
   if (args[0].isString()) {
     source = args[0].getString(runtime_).utf8(runtime_);
   } else {
-    const bool local = domain_ == ProcessRuntime::DomainName(domain);
+    const bool local = domain_ == HostScriptDomainName(domain);
     std::optional<Value> value;
     std::string failure;
     {

@@ -324,6 +324,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong view_id,
   }
   lynx::shell::ShellOption shell_option;
   shell_option.view_id_ = static_cast<lynx::base::LynxEntityId>(view_id);
+  lynx::shell::RegisterHostScriptView(shell_option.view_id_);
   shell_option.enable_multi_tasm_thread_ = enable_multi_async_thread;
   shell_option.enable_multi_layout_thread_ = enable_multi_async_thread;
   shell_option.enable_js_ = enable_js;
@@ -431,7 +432,9 @@ void RebuildLynxEngine(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
 }
 
 void Destroy(JNIEnv* env, jclass jcaller, jlong ptr) {
-  delete reinterpret_cast<LynxShell*>(ptr);
+  auto* shell = reinterpret_cast<LynxShell*>(ptr);
+  lynx::shell::UnregisterHostScriptView(shell->GetLogContextSnapshot().view_id);
+  delete shell;
 }
 
 jlong LifecycleCreate(JNIEnv* env, jclass jclass) {

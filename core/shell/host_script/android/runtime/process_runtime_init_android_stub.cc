@@ -12,6 +12,8 @@ namespace shell {
 
 void PrepareHostScriptRuntime() {}
 void OnHostScriptViewCreated() {}
+void RegisterHostScriptView(base::LynxEntityId) {}
+void UnregisterHostScriptView(base::LynxEntityId) {}
 void UpdateHostScriptDebugState(bool) {}
 
 void LoadHostScriptRuntime(std::string, std::string,
