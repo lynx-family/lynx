@@ -22,7 +22,24 @@ ModuleCallbackFunctionHolder::ModuleCallbackFunctionHolder(Function&& func)
     : function_(std::move(func)) {}
 
 ModuleCallback::ModuleCallback(int64_t callback_id)
-    : LynxModuleCallback(callback_id) {}
+    : LynxModuleCallback(callback_id) {
+  group_interceptor_ = GroupInterceptor::Current();
+}
+
+std::shared_ptr<ModuleCallback> ModuleCallback::CloneForMockDelivery(
+    int64_t id) const {
+  auto callback = std::make_shared<ModuleCallback>(id);
+  callback->SetModuleName(module_name_);
+  callback->SetMethodName(method_name_);
+  callback->SetNativeModuleInvocationContext(invocation_context_);
+  callback->group_interceptor_ = group_interceptor_;
+  callback->interception_argument_index_ = interception_argument_index_;
+  callback->SetCallbackFlowId(CallbackFlowId());
+  callback->timing_collector_ = timing_collector_;
+  callback->SetFirstArg(FirstArg());
+  callback->SetRecordID(record_id_);
+  return callback;
+}
 
 void ModuleCallback::Invoke(Runtime* runtime,
                             ModuleCallbackFunctionHolder* holder) {
@@ -43,6 +60,10 @@ void ModuleCallback::Invoke(Runtime* runtime,
   }
   if (!args_ || !args_->IsArray()) {
     LOGW("NativeModule: Callback's args is invalid.");
+  }
+  if (!args_ || !args_->IsArray()) return;
+  if (group_interceptor_) {
+    group_interceptor_->BeforeCallback(interception_argument_index_, args_);
   }
   size_t size = static_cast<size_t>(args_->Length());
   Value values[size];
@@ -73,7 +94,7 @@ void ModuleCallback::Invoke(Runtime* runtime,
   if (timing_collector_ != nullptr) {
     timing_collector_->EndCallbackInvoke(
         (convert_params_end - convert_params_start), invoke_js_callback_start);
-    if (group_interceptor_) {
+    if (group_interceptor_ && notify_callback_invoked_) {
       group_interceptor_->OnCallbackInvoked(timing_collector_, this);
     }
   }
