@@ -34,6 +34,7 @@
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/shell/lynx_engine.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 typedef NS_ENUM(NSUInteger, BoxModelOffset) {
   PAD_LEFT = 0,
