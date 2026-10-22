@@ -589,8 +589,6 @@ LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
   }
   if (IsSLDefiniteMode(measure_height_mode)) {
     result.height_ = height;
-  } else if (IsSLAtMostMode(measure_height_mode)) {
-    result.height_ = std::min(result.height_, height);
   }
 
   if (!IsSLDefiniteMode(measure_width_mode) ||
