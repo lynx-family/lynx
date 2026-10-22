@@ -5,6 +5,8 @@
 #ifndef CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_PROCESS_RUNTIME_INIT_ANDROID_H_
 #define CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_PROCESS_RUNTIME_INIT_ANDROID_H_
 
+#include "base/include/log/log_context.h"
+
 namespace lynx {
 namespace shell {
 
@@ -16,6 +18,11 @@ void PrepareHostScriptRuntime();
 // Reuses the native View renderer creation path. Initializes each domain's
 // bindings on its owner. DevTool toggles do not stop the Android runtime.
 void OnHostScriptViewCreated();
+
+// Track a native engine's View identity from creation to destruction, so
+// interception can tell live Views apart. Callable on any thread.
+void RegisterHostScriptView(base::LynxEntityId view);
+void UnregisterHostScriptView(base::LynxEntityId view);
 
 // Updates View observation on UI without stopping the process runtimes.
 void UpdateHostScriptDebugState(bool enabled);

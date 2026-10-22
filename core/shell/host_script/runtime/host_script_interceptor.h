@@ -19,13 +19,16 @@ namespace lynx::shell {
 // The runtime owner installs this into an existing environment, on its owning
 // thread. This component never creates a VM, thread or cross-thread JS handle.
 // Each event kind accepts one active handler. Dispose it before registering
-// another handler of the same kind.
+// another handler of the same kind. Handlers decide with `proceed`, optionally
+// with a patch, or `mock` for jsb.call.
 class HostScriptInterceptor final
     : public Interceptor,
       public std::enable_shared_from_this<HostScriptInterceptor> {
  public:
   using Guard = std::function<bool()>;
   using Reporter = std::function<void(const std::string&)>;
+  // Whether the domain accepts any event kind. Install fails otherwise.
+  static bool Supports(Domain domain);
   static std::shared_ptr<HostScriptInterceptor> Install(
       napi_env env, Domain domain, Reporter reporter = nullptr,
       Guard guard = {});

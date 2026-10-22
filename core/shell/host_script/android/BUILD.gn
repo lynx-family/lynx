@@ -12,7 +12,11 @@ lynx_core_source_set("host_script_runtime_headers") {
     "../runtime/process_runtime.h",
     "runtime/process_runtime_android.h",
   ]
-  public_deps = [ "../../../../base/src:base_public_headers" ]
+  public_deps = [
+    "../../../../base/src:base_log_headers",
+    "../../../../base/src:base_public_headers",
+    "../runtime:host_script_domain",
+  ]
 }
 
 # LynxEnv only needs the startup declaration. The Android library links the
@@ -57,6 +61,7 @@ if (is_android && lynx_in_debug && enable_napi_binding) {
       "../../../../third_party/rapidjson:rapidjson",
       "../../../base:base",
       "../runtime:host_script",
+      "../runtime:interceptor_bindings",
       "../runtime:jsb_interceptor",
       "../runtime:process_runtime",
     ]

@@ -34,7 +34,22 @@ BASE_STATIC_STRING_DECL(kAction, "action");
 BASE_STATIC_STRING_DECL(kPayload, "payload");
 BASE_STATIC_STRING_DECL(kRequest, "request");
 
-enum class Action { kInvalid, kNext, kProceed, kMock };
+enum class Action { kInvalid, kProceed, kMock };
+
+// Event kinds each execution domain accepts. A domain without kinds gets no
+// provider. MTS stays empty until its native module calls are connected.
+bool Accepts(Interceptor::Domain domain, Kind kind) {
+  switch (domain) {
+    case Interceptor::Domain::kUI:
+      return kind == Kind::kCreate || kind == Kind::kCreated ||
+             kind == Kind::kLoadTemplate || kind == Kind::kUpdateMetaData;
+    case Interceptor::Domain::kBTS:
+      return kind == Kind::kCall || kind == Kind::kResult ||
+             kind == Kind::kCallback;
+    default:
+      return false;
+  }
+}
 
 Napi::Value MakeDecision(const Napi::CallbackInfo& info) {
   auto name = *static_cast<const char**>(info.Data());
@@ -46,7 +61,7 @@ Napi::Value MakeDecision(const Napi::CallbackInfo& info) {
 }
 
 Napi::Object CreateChain(Napi::Env env) {
-  static const char* actions[] = {"next", "proceed", "mock"};
+  static const char* actions[] = {"proceed", "mock"};
   auto chain = Napi::Object::New(env);
   for (auto& action : actions) {
     chain.Set(action, Napi::Function::New(env, MakeDecision, action, &action));
@@ -256,18 +271,23 @@ Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
                ? Action::kMock
                : Action::kInvalid;
   }
-  if ((name != "next" && name != "proceed") ||
-      !ValidPatch(kind, *payload, original))
+  if (name != "proceed" || !ValidPatch(kind, *payload, original))
     return Action::kInvalid;
-  return name == "next" ? Action::kNext : Action::kProceed;
+  return Action::kProceed;
 }
 }  // namespace
+
+bool HostScriptInterceptor::Supports(Domain domain) {
+  for (size_t i = 0; i < static_cast<size_t>(Kind::kCount); ++i)
+    if (Accepts(domain, static_cast<Kind>(i))) return true;
+  return false;
+}
 
 std::shared_ptr<HostScriptInterceptor> HostScriptInterceptor::Install(
     napi_env env, Domain domain, Reporter reporter, Guard guard) {
   Napi::ContextScope context_scope(env);
   Napi::Env napi(env);
-  if (napi.Global().Has("interceptor")) return nullptr;
+  if (!Supports(domain) || napi.Global().Has("interceptor")) return nullptr;
   auto provider = std::shared_ptr<HostScriptInterceptor>(
       new HostScriptInterceptor(env, domain, std::move(reporter)));
   provider->guard_ = std::move(guard);
@@ -334,15 +354,7 @@ Napi::Value HostScriptInterceptor::Add(const Napi::CallbackInfo& info) {
   for (int i = 0; i < static_cast<int>(Kind::kCount); ++i) {
     if (name == Name(static_cast<Kind>(i))) kind = static_cast<Kind>(i);
   }
-  const bool allowed =
-      (domain_ == Domain::kUI &&
-       (kind == Kind::kCreate || kind == Kind::kCreated ||
-        kind == Kind::kLoadTemplate)) ||
-      (domain_ == Domain::kMTS && kind == Kind::kUpdateMetaData) ||
-      (domain_ != Domain::kUI &&
-       (kind == Kind::kCall || kind == Kind::kResult ||
-        kind == Kind::kCallback));
-  if (!allowed) {
+  if (kind == Kind::kCount || !Accepts(domain_, kind)) {
     Napi::TypeError::New(env,
                          "Unsupported interceptor kind or execution domain")
         .ThrowAsJavaScriptException();

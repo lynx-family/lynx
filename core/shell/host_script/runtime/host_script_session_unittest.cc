@@ -242,23 +242,42 @@ class HostScriptInterceptorTest : public HostScriptSessionTest {
   std::shared_ptr<HostScriptInterceptor> provider_;
 };
 
-TEST_F(HostScriptInterceptorTest,
-       MTSDomainRejectsUIEventsAndAcceptsNativeModules) {
-  Install(HostScriptInterceptor::Domain::kMTS);
-  Script(R"(
-    for (const name of ['view.create','view.created','view.loadTemplate']) {
-      let rejected=false;
-      try { interceptor.on(name,()=>{}); } catch(e) { rejected=true; }
-      if(!rejected) throw Error('unexpected domain');
-    }
-    for (const name of ['view.updateMetaData','jsb.call','jsb.result','jsb.callback'])
-      interceptor.on(name,(e,c)=>c.next());
-  )");
+TEST_F(HostScriptInterceptorTest, MTSDomainHasNoProvider) {
+  EXPECT_EQ(
+      HostScriptInterceptor::Install(env_, HostScriptInterceptor::Domain::kMTS),
+      nullptr);
+  EXPECT_FALSE(Interceptor::IsEnabled());
+  EXPECT_EQ(EvalString("typeof interceptor"), "undefined");
+}
+
+TEST_F(HostScriptInterceptorTest, DomainsAcceptOnlyTheirEventKinds) {
+  const std::pair<Interceptor::Domain, const char*> cases[] = {
+      {Interceptor::Domain::kUI,
+       "[['view.create','view.created','view.loadTemplate',"
+       "'view.updateMetaData'],['jsb.call','jsb.result','jsb.callback']]"},
+      {Interceptor::Domain::kBTS,
+       "[['jsb.call','jsb.result','jsb.callback'],['view.create',"
+       "'view.created','view.loadTemplate','view.updateMetaData']]"}};
+  for (const auto& [domain, names] : cases) {
+    Install(domain);
+    std::string script =
+        "const [accepted, rejected] = " + std::string(names) + R"(;
+      for (const name of accepted) interceptor.on(name,(e,c)=>c.proceed());
+      for (const name of rejected) {
+        let message='';
+        try { interceptor.on(name,()=>{}); } catch(e) { message=e.message; }
+        if(!message.includes('execution domain')) throw Error(name);
+      }
+    )";
+    Script(("(()=>{" + script + "})()").c_str());
+    provider_->Uninstall();
+    provider_.reset();
+  }
 }
 
 TEST_F(HostScriptInterceptorTest, DomainLookupRequiresOwnerThread) {
   Install(HostScriptInterceptor::Domain::kBTS);
-  Script("interceptor.on('jsb.call',(e,c)=>c.next())");
+  Script("interceptor.on('jsb.call',(e,c)=>c.proceed())");
   const auto before = Interceptor::FailureCount();
   EXPECT_EQ(
       Interceptor::Current({InterceptKind::kCall}, Interceptor::Domain::kUI),
@@ -288,7 +307,7 @@ TEST_F(HostScriptInterceptorTest, GuardDisablesLookupAndDispatch) {
       HostScriptInterceptor::Install(env_, HostScriptInterceptor::Domain::kUI,
                                      nullptr, [ready] { return *ready; });
   ASSERT_NE(provider_, nullptr);
-  Script("interceptor.on('view.create',(e,c)=>c.next({fontScale:2}))");
+  Script("interceptor.on('view.create',(e,c)=>c.proceed({fontScale:2}))");
   EXPECT_EQ(Dispatch().patch.GetProperty("fontScale").Number(), 2);
   *ready = false;
   EXPECT_EQ(
@@ -332,21 +351,19 @@ TEST_F(HostScriptInterceptorTest, DomainsCanShareOneOwnerThread) {
 }
 
 TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
-  for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS,
-                      Interceptor::Domain::kMTS}) {
+  for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS}) {
     Install(domain);
     const char* names =
         domain == Interceptor::Domain::kUI
-            ? "['view.create','view.created','view.loadTemplate']"
-        : domain == Interceptor::Domain::kBTS
-            ? "['jsb.call','jsb.result','jsb.callback']"
-            : "['view.updateMetaData','jsb.call','jsb.result','jsb.callback']";
+            ? "['view.create','view.created','view.loadTemplate',"
+              "'view.updateMetaData']"
+            : "['jsb.call','jsb.result','jsb.callback']";
     std::string script = R"(
       globalThis.calls = [];
       globalThis.names = )" +
                          std::string(names) + R"(;
       for (const name of names) {
-        interceptor.on(name, (e,c) => { calls.push(name); return c.next(); });
+        interceptor.on(name, (e,c) => { calls.push(name); return c.proceed(); });
         let message = '';
         try { interceptor.on(name, () => { throw Error('duplicate ran'); }); }
         catch (e) { message = e.message; }
@@ -365,18 +382,26 @@ TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
   }
 }
 
-TEST_F(HostScriptInterceptorTest, NextAndProceedCommitSingleHandlerPatch) {
+TEST_F(HostScriptInterceptorTest, ProceedCommitsSingleHandlerPatch) {
   Install();
-  for (const char* action : {"next", "proceed"}) {
-    std::string script =
-        "globalThis.subscription = interceptor.on('view.create', (e,c) => c." +
-        std::string(action) + "({fontScale:2}))";
-    Script(script.c_str());
-    auto result = Dispatch();
-    EXPECT_FALSE(result.failed);
-    EXPECT_EQ(result.patch.GetProperty("fontScale").Number(), 2);
-    Script("subscription.dispose()");
-  }
+  Script(R"(
+    interceptor.on('view.create', (e,c) => {
+      if ('next' in c || Object.keys(c).sort().join() !== 'mock,proceed')
+        throw Error('unexpected chain decisions');
+      return c.proceed({fontScale:2});
+    });
+  )");
+  auto result = Dispatch();
+  EXPECT_FALSE(result.failed);
+  EXPECT_EQ(result.patch.GetProperty("fontScale").Number(), 2);
+}
+
+TEST_F(HostScriptInterceptorTest, RejectsRemovedNextDecision) {
+  Install();
+  Script(R"(
+    interceptor.on('view.create', () => ({action:'next', payload:{}}));
+  )");
+  EXPECT_TRUE(Dispatch().failed);
 }
 
 TEST_F(HostScriptInterceptorTest, RegistrationSnapshotAndDispose) {
@@ -385,9 +410,9 @@ TEST_F(HostScriptInterceptorTest, RegistrationSnapshotAndDispose) {
     globalThis.calls = [];
     globalThis.first = interceptor.on('view.create', (e,c) => {
       calls.push('first'); first.dispose();
-      interceptor.on('view.create', (e,c) => {calls.push('late'); return c.next()});
+      interceptor.on('view.create', (e,c) => {calls.push('late'); return c.proceed()});
       first.dispose();
-      return c.next();
+      return c.proceed();
     });
   )");
   EXPECT_FALSE(Dispatch().failed);
@@ -400,19 +425,19 @@ TEST_F(HostScriptInterceptorTest, RegistrationSnapshotAndDispose) {
 TEST_F(HostScriptInterceptorTest, InvalidDecisionsRollbackWholePhase) {
   const char* invalid[] = {
       "throw Error('failure')",
-      "return Promise.resolve(c.next())",
+      "return Promise.resolve(c.proceed())",
       "return undefined",
-      "return c.next({fontScale:-1})",
+      "return c.proceed({fontScale:-1})",
       "return c.mock({})",
-      "const x={}; x.self=x; return c.next(x)",
-      "return c.next({fontScale: NaN})",
-      "return c.next({threadStrategy: 1.5})",
-      "return c.next({threadStrategy: 4})",
-      "return c.next({threadStrategy: -1})",
-      "return c.next({screenSize: {width:-1,height:1}})",
-      "return c.next({screenSize: {width:2147483648,height:1}})",
-      "return c.next({screenSize: {width:1}})",
-      "return c.next({presetMeasuredSpec: {width:1.5,height:1}})"};
+      "const x={}; x.self=x; return c.proceed(x)",
+      "return c.proceed({fontScale: NaN})",
+      "return c.proceed({threadStrategy: 1.5})",
+      "return c.proceed({threadStrategy: 4})",
+      "return c.proceed({threadStrategy: -1})",
+      "return c.proceed({screenSize: {width:-1,height:1}})",
+      "return c.proceed({screenSize: {width:2147483648,height:1}})",
+      "return c.proceed({screenSize: {width:1}})",
+      "return c.proceed({presetMeasuredSpec: {width:1.5,height:1}})"};
   for (auto body : invalid) {
     Install();
     std::string source =
@@ -433,7 +458,7 @@ TEST_F(HostScriptInterceptorTest, InvalidDecisionsRollbackWholePhase) {
 TEST_F(HostScriptInterceptorTest, CreatePatchAcceptsIntegerBoundaries) {
   Install();
   Script(R"(
-    interceptor.on('view.create', (e,c) => c.next({
+    interceptor.on('view.create', (e,c) => c.proceed({
       threadStrategy:3, screenSize:{width:0,height:2147483647},
       presetMeasuredSpec:{width:-2147483648,height:2147483647}
     }));
@@ -461,7 +486,7 @@ TEST_F(HostScriptInterceptorTest, ViewSnapshotsOnlyExposeCommittedPatches) {
       if (++calls === 1) {
         globalThis.firstEvent = e;
         e.request.fontScale = 99;
-        return c.next({fontScale:2});
+        return c.proceed({fontScale:2});
       }
       if (e === firstEvent || e.request === firstEvent.request ||
           e.request.fontScale !== 1 || firstEvent.request.fontScale !== 99)
@@ -488,7 +513,7 @@ TEST_F(HostScriptInterceptorTest, DataRoundTripCopiesNestedRecordsAndBuffers) {
     globalThis.bytes = new Uint8Array([1,2,3]);
     globalThis.payload = [undefined, null, true, 1.5, record, bytes.buffer,
                           shared, shared];
-    globalThis.subscription = interceptor.on('jsb.result', (e,c) => c.next({value:payload}));
+    globalThis.subscription = interceptor.on('jsb.result', (e,c) => c.proceed({value:payload}));
   )");
   lepus::Value event(lepus::Dictionary::Create());
   event.SetProperty("value", lepus::Value(0));
@@ -544,7 +569,7 @@ TEST_F(HostScriptInterceptorTest,
     SCOPED_TRACE(value);
     Install(HostScriptInterceptor::Domain::kBTS);
     std::string source =
-        "interceptor.on('jsb.result', (e,c) => c.next({value:[" +
+        "interceptor.on('jsb.result', (e,c) => c.proceed({value:[" +
         std::string(value) + "]}))";
     Script(source.c_str());
     lepus::Value event(lepus::Dictionary::Create());
@@ -566,7 +591,7 @@ TEST_F(HostScriptInterceptorTest, ThreadRegistrationAndUnload) {
             "ok");
   Script(
       "globalThis.oldApi=interceptor; "
-      "interceptor.on('view.create',(e,c)=>c.next())");
+      "interceptor.on('view.create',(e,c)=>c.proceed())");
   provider_->Uninstall();
   EXPECT_EQ(
       Interceptor::Current({InterceptKind::kCreate}, Interceptor::Domain::kUI),
@@ -585,7 +610,7 @@ TEST_F(HostScriptInterceptorTest,
   Install();
   Script(R"(
     globalThis.savedOn = interceptor.on;
-    globalThis.savedDispose = savedOn('view.create', (e,c) => c.next()).dispose;
+    globalThis.savedDispose = savedOn('view.create', (e,c) => c.proceed()).dispose;
   )");
   std::weak_ptr<HostScriptInterceptor> previous = provider_;
   provider_->Uninstall();
@@ -597,7 +622,7 @@ TEST_F(HostScriptInterceptorTest,
             "ok");
   Install();
   Script(R"(
-    interceptor.on('view.create', (e,c) => c.next({fontScale:3}));
+    interceptor.on('view.create', (e,c) => c.proceed({fontScale:3}));
     savedDispose();
   )");
   EXPECT_EQ(Dispatch().patch.GetProperty("fontScale").Number(), 3);
@@ -608,11 +633,11 @@ TEST_F(HostScriptInterceptorTest,
   Install();
   Script(R"(
     globalThis.subscription = interceptor.on('view.create', (e,c) => {
-      globalThis.savedNext = c.next;
       globalThis.savedProceed = c.proceed;
       globalThis.savedMock = c.mock;
+      const proceed = c.proceed;
       c.proceed = () => { throw Error('modified chain leaked'); };
-      return c.next();
+      return proceed();
     });
   )");
   EXPECT_FALSE(Dispatch().failed);
@@ -625,8 +650,7 @@ TEST_F(HostScriptInterceptorTest,
   provider_.reset();
   LEPUS_RunGC(runtime_);
   Script(R"(
-    for (const [fn, action] of [[savedNext,'next'], [savedProceed,'proceed'],
-                                [savedMock,'mock']]) {
+    for (const [fn, action] of [[savedProceed,'proceed'], [savedMock,'mock']]) {
       const payload = {value:7};
       const result = fn(payload);
       if (result.action !== action || result.payload !== payload)
@@ -634,7 +658,6 @@ TEST_F(HostScriptInterceptorTest,
       if (Object.keys(fn().payload).length !== 0)
         throw Error('invalid default payload');
     }
-    delete globalThis.savedNext;
     delete globalThis.savedProceed;
     delete globalThis.savedMock;
   )");
@@ -680,8 +703,14 @@ TEST_F(HostScriptInterceptorTest, TracksExistingLogContextIDsIncludingZero) {
   EXPECT_FALSE(Interceptor::IsViewAlive(-1));
   Interceptor::RegisterView(0);
   Interceptor::RegisterView(42);
+  // A replacement engine for the same View may register before the old one
+  // is destroyed.
   Interceptor::RegisterView(0);
   EXPECT_TRUE(Interceptor::IsViewAlive(0));
+  Interceptor::DestroyView(0);
+  EXPECT_TRUE(Interceptor::IsViewAlive(0));
+  Interceptor::DestroyView(0);
+  EXPECT_FALSE(Interceptor::IsViewAlive(0));
   Interceptor::DestroyView(0);
   EXPECT_FALSE(Interceptor::IsViewAlive(0));
   EXPECT_TRUE(Interceptor::IsViewAlive(42));
@@ -694,7 +723,7 @@ TEST_F(HostScriptInterceptorTest, OnRegistersInterceptorsAndNotifications) {
     if (typeof interceptor.use !== 'undefined') throw Error('old API');
     interceptor.on('view.create', (e, chain) => {
       if ('viewId' in e || 'url' in e) throw Error('creation identity');
-      return chain.next({fontScale: 2});
+      return chain.proceed({fontScale: 2});
     });
     globalThis.created = false;
     interceptor.on('view.created', e => {
