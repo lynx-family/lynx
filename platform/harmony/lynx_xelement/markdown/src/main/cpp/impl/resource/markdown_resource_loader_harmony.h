@@ -64,6 +64,10 @@ class MarkdownResourceLoaderHarmony final
                          MeasureMode height_mode, bool final_measure,
                          float density);
   void AlignInlineView(const std::string& id_selector, float x, float y);
+  void UpdateInlineViewBounds(int sign, serval::markdown::RectF bounds);
+  void SetEnableGif(bool enable) { enable_gif_.store(enable); }
+  bool EnableGif() const { return enable_gif_.load(); }
+  void RequestImageDraw();
 
  private:
   std::shared_ptr<serval::markdown::MarkdownDrawable> CreatePlaceholderDrawable(
@@ -94,6 +98,8 @@ class MarkdownResourceLoaderHarmony final
   std::atomic<serval::markdown::NativeServalMarkdownView*> markdown_view_{
       nullptr};
   std::atomic<bool> destroyed_{false};
+  std::atomic<bool> enable_gif_{false};
+  const int markdown_sign_;
   mutable std::mutex image_cache_mutex_;
   std::unordered_map<std::string, std::weak_ptr<LynxBaseImage>> image_cache_;
   float measure_width_{0.f};

@@ -13,10 +13,13 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "markdown/markdown_event_listener.h"
 #include "markdown/platform/harmony/harmony_markdown_measurer.h"
 #include "markdown/platform/harmony/serval_markdown_view.h"
 #include "markdown/view/markdown_view.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/markdown_view_bundle.h"
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/resource/markdown_resource_loader_harmony.h"
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/utils/markdown_lepus_value.h"
@@ -26,13 +29,62 @@ namespace tasm {
 namespace harmony {
 namespace {
 
+class MarkdownEventListenerHarmony final
+    : public serval::markdown::MarkdownEventListener {
+ public:
+  MarkdownEventListenerHarmony(std::weak_ptr<LynxContext> context, int sign)
+      : context_(std::move(context)), sign_(sign) {}
+
+  void OnParseEnd() override {}
+  void OnTextOverflow(serval::markdown::MarkdownTextOverflow) override {}
+  void OnDrawStart() override { SendEvent("drawStart"); }
+  void OnDrawEnd() override { SendEvent("drawEnd"); }
+  void OnAnimationStep(int32_t, int32_t) override {}
+  void OnLinkClicked(const char*, const char*) override {}
+  void OnImageClicked(const char*) override {}
+  void OnSelectionChanged(int32_t start, int32_t end,
+                          serval::markdown::SelectionHandleType,
+                          serval::markdown::SelectionState) override {
+    auto detail = lepus::Dictionary::Create();
+    detail->SetValue("start", start);
+    detail->SetValue("end", end);
+    const bool forward = last_start_ == -1
+                             ? start < end
+                             : last_start_ < start || last_end_ < end;
+    detail->SetValue("direction", forward ? "forward" : "backward");
+    last_start_ = start;
+    last_end_ = end;
+    SendEvent("selectionchange", lepus::Value(std::move(detail)));
+  }
+
+ private:
+  void SendEvent(const char* name, lepus::Value detail = lepus::Value()) const {
+    if (auto context = context_.lock()) {
+      CustomEvent event{sign_, name, "detail", std::move(detail)};
+      context->RunOnUIThread([weak_context = context_, event]() {
+        if (auto context = weak_context.lock()) {
+          context->SendEvent(event);
+        }
+      });
+    }
+  }
+
+  std::weak_ptr<LynxContext> context_;
+  int sign_;
+  int32_t last_start_{-1};
+  int32_t last_end_{-1};
+};
+
 struct MarkdownNativeState {
-  MarkdownNativeState() {
+  MarkdownNativeState(std::weak_ptr<LynxContext> context, int sign)
+      : listener(std::move(context), sign) {
     view.SetMeasurer(&measurer);
     view.GetMarkdownView()->SetEnableRegionView(false);
+    view.GetMarkdownView()->SetEventListener(&listener);
   }
 
   // The view must be destroyed before the measurer it references.
+  MarkdownEventListenerHarmony listener;
   serval::markdown::NativeMarkdownMeasurer measurer;
   serval::markdown::NativeServalMarkdownView view{false};
 };
@@ -126,7 +178,8 @@ MarkdownShadowNode::EnsureMarkdownView() {
     return markdown_view_;
   }
   InitMarkdownEnv(context_);
-  auto state = std::make_shared<MarkdownNativeState>();
+  auto state = std::make_shared<MarkdownNativeState>(owner_->GetWeakContext(),
+                                                     Signature());
   // Share ownership so a view retained by the UI keeps its measurer alive.
   markdown_measurer_ =
       std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>(
@@ -196,6 +249,17 @@ void MarkdownShadowNode::ApplyConfig(const std::string& name,
   auto* view = markdown_view->GetMarkdownView();
   if (name == "markdown-config") {
     markdown_view->SetConfig(LepusValueToMarkdownValueMap(value));
+  } else if (name == "enable-gif") {
+    resource_loader_->SetEnableGif(value.IsBool() && value.Bool());
+  } else if (name == "text-mark-attachments") {
+    view->SetTextAttachments(LepusValueToMarkdownValue(value));
+  } else if (name == "markdown-effect") {
+    auto effect = LepusValueToMarkdownValueMap(value);
+    view->SetMapProp(serval::markdown::MarkdownProps::kMarkdownEffect, effect);
+  } else if (name == "content-complete") {
+    if (value.IsBool()) {
+      view->SetContentComplete(value.Bool());
+    }
   } else if (name == "content-range") {
     view->SetContentRange(ReadRange(value));
   } else if (name == "text-maxline" || name == "text-max-lines") {

@@ -5,6 +5,8 @@
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/ui/ui_markdown.h"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <mutex>
 #include <utility>
 
@@ -19,15 +21,24 @@ namespace tasm {
 namespace harmony {
 namespace {
 
+int32_t ReadIndex(const lepus::Value& value) {
+  if (std::isnan(value.Number())) {
+    return -1;
+  }
+  return static_cast<int32_t>(std::clamp(
+      value.Number(), static_cast<double>(std::numeric_limits<int32_t>::min()),
+      static_cast<double>(std::numeric_limits<int32_t>::max())));
+}
+
 serval::markdown::Range ReadRange(const lepus::Value& value) {
   serval::markdown::Range range{0, 0};
   if (value.IsArray()) {
     auto array = value.Array();
     if (array->size() > 0 && array->get(0).IsNumber()) {
-      range.start_ = static_cast<int32_t>(array->get(0).Number());
+      range.start_ = ReadIndex(array->get(0));
     }
     if (array->size() > 1 && array->get(1).IsNumber()) {
-      range.end_ = static_cast<int32_t>(array->get(1).Number());
+      range.end_ = ReadIndex(array->get(1));
     }
   } else if (value.IsTable()) {
     auto table = value.Table();
@@ -36,28 +47,41 @@ serval::markdown::Range ReadRange(const lepus::Value& value) {
     const auto& selection_start = table->GetValue("selectionStart");
     const auto& selection_end = table->GetValue("selectionEnd");
     if (start.IsNumber()) {
-      range.start_ = static_cast<int32_t>(start.Number());
+      range.start_ = ReadIndex(start);
     } else if (selection_start.IsNumber()) {
-      range.start_ = static_cast<int32_t>(selection_start.Number());
+      range.start_ = ReadIndex(selection_start);
     }
     if (end.IsNumber()) {
-      range.end_ = static_cast<int32_t>(end.Number());
+      range.end_ = ReadIndex(end);
     } else if (selection_end.IsNumber()) {
-      range.end_ = static_cast<int32_t>(selection_end.Number());
+      range.end_ = ReadIndex(selection_end);
     }
   }
   return range;
 }
 
-lepus::Value RectToLepusValue(const serval::markdown::RectF& rect) {
+lepus::Value RectToLepusValue(const serval::markdown::RectF& rect, float left,
+                              float top, float density) {
   auto result = lepus::Dictionary::Create();
-  result->SetValue("left", rect.GetLeft());
-  result->SetValue("top", rect.GetTop());
-  result->SetValue("right", rect.GetRight());
-  result->SetValue("bottom", rect.GetBottom());
-  result->SetValue("width", rect.GetWidth());
-  result->SetValue("height", rect.GetHeight());
+  result->SetValue("left", left + rect.GetLeft() / density);
+  result->SetValue("top", top + rect.GetTop() / density);
+  result->SetValue("right", left + rect.GetRight() / density);
+  result->SetValue("bottom", top + rect.GetBottom() / density);
+  result->SetValue("width", rect.GetWidth() / density);
+  result->SetValue("height", rect.GetHeight() / density);
   return lepus::Value(result);
+}
+
+serval::markdown::MarkdownSelection::CharRangeType ReadSelectionType(
+    const lepus::Value& value) {
+  using Type = serval::markdown::MarkdownSelection::CharRangeType;
+  if (value.IsString()) {
+    const auto type = value.StdString();
+    if (type == "word") return Type::kWord;
+    if (type == "sentence") return Type::kSentence;
+    if (type == "paragraph") return Type::kParagraph;
+  }
+  return Type::kChar;
 }
 
 }  // namespace
@@ -145,6 +169,50 @@ void UIMarkdown::OnPropUpdate(const std::string& name,
   }
 }
 
+lepus::Value UIMarkdown::GetTextRectsResult(
+    const std::vector<serval::markdown::RectF>& boxes, const lepus::Value& args,
+    bool include_handles) {
+  auto result = lepus::Dictionary::Create();
+  auto box_values = lepus::CArray::Create();
+  auto handles = lepus::CArray::Create();
+  if (!boxes.empty()) {
+    float rect[4] = {0, 0, width_, height_};
+    GetBoundingClientRect(args, rect);
+    const float left = rect[0] + padding_left_ + GetBorderLeftWidth();
+    const float top = rect[1] + padding_top_ + GetBorderTopWidth();
+    const float density = context_->ScaledDensity();
+    auto bounds = boxes.front();
+    for (const auto& box : boxes) {
+      bounds.SetLeft(std::min(bounds.GetLeft(), box.GetLeft()));
+      bounds.SetTop(std::min(bounds.GetTop(), box.GetTop()));
+      bounds.SetRight(std::max(bounds.GetRight(), box.GetRight()));
+      bounds.SetBottom(std::max(bounds.GetBottom(), box.GetBottom()));
+      box_values->emplace_back(RectToLepusValue(box, left, top, density));
+    }
+    result->SetValue("boundingRect",
+                     RectToLepusValue(bounds, left, top, density));
+    if (include_handles) {
+      const auto append_handle = [&](float x, float y) {
+        auto handle = lepus::Dictionary::Create();
+        handle->SetValue("x", left + x / density);
+        handle->SetValue("y", top + y / density);
+        handle->SetValue(
+            "radius",
+            markdown_view_->GetMarkdownView()->GetSelectionHandleRadius() /
+                density);
+        handles->emplace_back(std::move(handle));
+      };
+      append_handle(boxes.front().GetLeft(), boxes.front().GetBottom());
+      append_handle(boxes.back().GetRight(), boxes.back().GetBottom());
+    }
+  }
+  result->SetValue("boxes", std::move(box_values));
+  if (include_handles) {
+    result->SetValue("handles", std::move(handles));
+  }
+  return lepus::Value(std::move(result));
+}
+
 void UIMarkdown::InvokeMethod(
     const std::string& method, const lepus::Value& args,
     base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) {
@@ -166,11 +234,84 @@ void UIMarkdown::InvokeMethod(
     result->SetValue("selectedText", view->GetSelectedText());
     callback(LynxGetUIResult::SUCCESS, lepus::Value(result));
   } else if (method == "setTextSelection") {
-    view->SetTextSelection(ReadRange(args));
-    callback(LynxGetUIResult::SUCCESS, lepus::Value());
+    if (!args.IsTable() && !args.IsArray()) {
+      callback(LynxGetUIResult::PARAM_INVALID, lepus::Value());
+      return;
+    }
+    const auto table =
+        args.IsTable() ? args.Table() : lepus::Dictionary::Create();
+    auto range = ReadRange(args);
+    if (table->Contains("startX") || table->Contains("startY") ||
+        table->Contains("endX") || table->Contains("endY")) {
+      double coordinates[4] = {};
+      const char* keys[] = {"startX", "startY", "endX", "endY"};
+      bool clear = false;
+      for (size_t i = 0; i < 4; ++i) {
+        const auto& value = table->GetValue(keys[i]);
+        if (!value.IsNil() && !value.IsNumber()) {
+          callback(LynxGetUIResult::PARAM_INVALID, lepus::Value());
+          return;
+        }
+        coordinates[i] = value.IsNumber() ? value.Number() : 0;
+        if (std::isnan(coordinates[i])) {
+          callback(LynxGetUIResult::PARAM_INVALID, lepus::Value());
+          return;
+        }
+        clear |= coordinates[i] < 0;
+      }
+      if (clear) {
+        range = {-1, -1};
+      } else {
+        const double density = context_->ScaledDensity();
+        const float content_left = padding_left_ + GetBorderLeftWidth();
+        const float content_top = padding_top_ + GetBorderTopWidth();
+        const auto point = [&](size_t offset) {
+          return serval::markdown::PointF{
+              static_cast<float>(std::clamp(
+                  (coordinates[offset] - content_left) * density, 0.0,
+                  static_cast<double>(std::numeric_limits<float>::max()))),
+              static_cast<float>(std::clamp(
+                  (coordinates[offset + 1] - content_top) * density, 0.0,
+                  static_cast<double>(std::numeric_limits<float>::max())))};
+        };
+        const auto start = point(0);
+        const auto end = point(2);
+        const auto type =
+            start.x_ == end.x_ && start.y_ == end.y_
+                ? ReadSelectionType(table->GetValue("selectionTextType"))
+                : serval::markdown::MarkdownSelection::CharRangeType::kChar;
+        const auto start_range = view->GetCharRangeByPosition(start, type);
+        const auto end_range = view->GetCharRangeByPosition(end, type);
+        range = {std::min(start_range.start_, end_range.start_),
+                 std::max(start_range.end_, end_range.end_)};
+      }
+    }
+    view->SetTextSelection(range);
+    callback(
+        LynxGetUIResult::SUCCESS,
+        GetTextRectsResult(view->GetSelectedLineBoundingRect(), args, true));
   } else if (method == "getTextBoundingRect") {
-    callback(LynxGetUIResult::SUCCESS,
-             RectToLepusValue(view->GetTextBoundingRect(ReadRange(args))));
+    if (!args.IsTable() || !args.Table()->GetValue("start").IsNumber() ||
+        !args.Table()->GetValue("end").IsNumber()) {
+      callback(LynxGetUIResult::PARAM_INVALID, lepus::Value());
+      return;
+    }
+    auto range = ReadRange(args);
+    if (range.start_ < 0 || range.end_ < range.start_) {
+      callback(LynxGetUIResult::PARAM_INVALID, lepus::Value());
+      return;
+    }
+    const auto& index_type = args.Table()->GetValue("indexType");
+    if (index_type.IsString() && index_type.StdString() == "source") {
+      range = {view->SourceOffsetToCharOffset(range.start_),
+               view->SourceOffsetToCharOffset(range.end_)};
+    }
+    const auto boxes = view->GetTextLineBoundingRect(range);
+    if (boxes.empty()) {
+      callback(LynxGetUIResult::UNKNOWN, lepus::Value());
+      return;
+    }
+    callback(LynxGetUIResult::SUCCESS, GetTextRectsResult(boxes, args, false));
   } else {
     UIBase::InvokeMethod(method, args, std::move(callback));
   }
