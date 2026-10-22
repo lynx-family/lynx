@@ -10,6 +10,7 @@
 #include <optional>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "base/include/log/logging.h"
 #include "base/include/value/array.h"
@@ -283,8 +284,10 @@ void HostScriptInterceptor::Uninstall() {
   Napi::ContextScope context_scope(env_);
   active_ = false;
   Interceptor::Detach(this);
-  for (const auto& entry : entries_) HandlerRemoved(entry->kind, domain_);
-  entries_.clear();
+  for (auto& entry : entries_) {
+    if (entry) HandlerRemoved(entry->kind, domain_);
+    entry.reset();
+  }
   auto global = Napi::Env(env_).Global();
   if (global.Get("interceptor").StrictEquals(api_.Value()))
     global.Delete("interceptor");
@@ -345,11 +348,18 @@ Napi::Value HostScriptInterceptor::Add(const Napi::CallbackInfo& info) {
         .ThrowAsJavaScriptException();
     return env.Undefined();
   }
+  auto& slot = entries_[static_cast<size_t>(kind)];
+  if (slot) {
+    Napi::Error::New(
+        env, ("Interceptor handler already registered for " + name).c_str())
+        .ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
   auto entry = std::make_shared<Entry>();
   entry->id = next_id_++;
   entry->kind = kind;
   entry->function = Napi::Persistent(info[1].As<Napi::Function>());
-  entries_.push_back(entry);
+  slot = entry;
   HandlerAdded(kind, domain_);
   auto result = Napi::Object::New(env);
   result.Set("dispose", Bind(env, "dispose", Dispose, entry->id));
@@ -357,17 +367,16 @@ Napi::Value HostScriptInterceptor::Add(const Napi::CallbackInfo& info) {
 }
 
 void HostScriptInterceptor::Remove(uint64_t id) {
-  auto entry = std::find_if(entries_.begin(), entries_.end(),
-                            [id](const auto& item) { return item->id == id; });
-  if (entry != entries_.end()) {
-    HandlerRemoved((*entry)->kind, domain_);
-    entries_.erase(entry);
+  for (auto& entry : entries_) {
+    if (entry && entry->id == id) {
+      HandlerRemoved(entry->kind, domain_);
+      entry.reset();
+      return;
+    }
   }
 }
 bool HostScriptInterceptor::HasHandlers(Kind kind) const {
-  return active_ &&
-         std::any_of(entries_.begin(), entries_.end(),
-                     [kind](const auto& entry) { return entry->kind == kind; });
+  return active_ && entries_[static_cast<size_t>(kind)] != nullptr;
 }
 void HostScriptInterceptor::ReportError(const std::string& message) {
   LOGE("Host Script interceptor: " << message);
@@ -377,6 +386,7 @@ void HostScriptInterceptor::ReportError(const std::string& message) {
 InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   InterceptResult result;
   if (!active_ || !IsAttached()) return result;
+  if (!HasHandlers(kind)) return result;
   if (dispatching_) {
     ReportCoverageGap(kind, "Reentrant interceptor dispatch is not supported");
     result.failed = true;
@@ -386,39 +396,24 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   Napi::Env env(env_);
   Napi::ContextScope context_scope(env);
   Napi::HandleScope scope(env);
-  auto snapshot = entries_;
+  // Keep the current handler alive if it disposes itself or uninstalls HSR.
+  // Release its reference while the owning NAPI context is still entered.
+  auto entry = entries_[static_cast<size_t>(kind)];
   const bool view_event = kind <= Kind::kUpdateMetaData;
   const Value& original = view_event ? event.GetProperty(kRequest) : event;
-  // Only native copies are reused. Every handler receives a fresh JS snapshot.
-  Value request = Value::ShallowCopy(original);
-  auto current = view_event ? Value::ShallowCopy(event) : request;
-  if (view_event) current.SetProperty(kRequest, request);
-  Value merged(lepus::Dictionary::Create());
-  bool failed = false;
-  for (const auto& entry : snapshot) {
-    if (entry->kind != kind) continue;
-    auto returned =
-        entry->function.Value().Call({ToJS(env, current), CreateChain(env)});
-    if (env.IsExceptionPending() || returned.IsPromise()) {
-      failed = true;
-      break;
-    }
-    if (kind == Kind::kCreated) continue;
+  auto returned =
+      entry->function.Value().Call({ToJS(env, event), CreateChain(env)});
+  bool failed = env.IsExceptionPending() || returned.IsPromise();
+  if (!failed && kind != Kind::kCreated) {
     Value patch;
     auto action = ReadDecision(returned, kind, original, &patch);
     if (action == Action::kInvalid) {
       failed = true;
-      break;
-    }
-    if (action == Action::kMock) {
+    } else if (action == Action::kMock) {
       result.mock = std::move(patch);
-      break;
+    } else if (patch.GetLength()) {
+      result.patch = std::move(patch);
     }
-    for (const auto& item : *patch.Table()) {
-      request.SetProperty(item.first, item.second);
-      merged.SetProperty(item.first, item.second);
-    }
-    if (action == Action::kProceed) break;
   }
   dispatching_ = false;
   if (failed) {
@@ -434,8 +429,7 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
     ReportCoverageGap(kind, message.c_str());
     result = {};
     result.failed = true;
-  } else if (merged.GetLength())
-    result.patch = std::move(merged);
+  }
   return result;
 }
 }  // namespace lynx::shell

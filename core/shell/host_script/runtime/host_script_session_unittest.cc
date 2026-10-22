@@ -331,34 +331,70 @@ TEST_F(HostScriptInterceptorTest, DomainsCanShareOneOwnerThread) {
   mts->Uninstall();
 }
 
-TEST_F(HostScriptInterceptorTest, OrderedPatchesAndProceed) {
+TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
+  for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS,
+                      Interceptor::Domain::kMTS}) {
+    Install(domain);
+    const char* names =
+        domain == Interceptor::Domain::kUI
+            ? "['view.create','view.created','view.loadTemplate']"
+        : domain == Interceptor::Domain::kBTS
+            ? "['jsb.call','jsb.result','jsb.callback']"
+            : "['view.updateMetaData','jsb.call','jsb.result','jsb.callback']";
+    std::string script = R"(
+      globalThis.calls = [];
+      globalThis.names = )" +
+                         std::string(names) + R"(;
+      for (const name of names) {
+        interceptor.on(name, (e,c) => { calls.push(name); return c.next(); });
+        let message = '';
+        try { interceptor.on(name, () => { throw Error('duplicate ran'); }); }
+        catch (e) { message = e.message; }
+        if (!message.includes('already registered'))
+          throw Error('duplicate registration was not rejected');
+      }
+    )";
+    Script(script.c_str());
+    for (size_t i = 0; i < static_cast<size_t>(InterceptKind::kCount); ++i) {
+      auto kind = static_cast<InterceptKind>(i);
+      if (provider_->HasHandlers(kind)) EXPECT_FALSE(Dispatch(kind).failed);
+    }
+    EXPECT_EQ(EvalString("calls.join(',')"), EvalString("names.join(',')"));
+    provider_->Uninstall();
+    provider_.reset();
+  }
+}
+
+TEST_F(HostScriptInterceptorTest, NextAndProceedCommitSingleHandlerPatch) {
   Install();
-  Script(R"(
-    interceptor.on('view.create', (e,c) => c.next({fontScale: 2}));
-    interceptor.on('view.create', (e,c) => c.proceed({fontScale: e.request.fontScale + 1}));
-    interceptor.on('view.create', () => {throw Error('must not execute')});
-  )");
-  auto result = Dispatch();
-  EXPECT_FALSE(result.failed);
-  EXPECT_EQ(result.patch.GetProperty("fontScale").Number(), 3);
+  for (const char* action : {"next", "proceed"}) {
+    std::string script =
+        "globalThis.subscription = interceptor.on('view.create', (e,c) => c." +
+        std::string(action) + "({fontScale:2}))";
+    Script(script.c_str());
+    auto result = Dispatch();
+    EXPECT_FALSE(result.failed);
+    EXPECT_EQ(result.patch.GetProperty("fontScale").Number(), 2);
+    Script("subscription.dispose()");
+  }
 }
 
 TEST_F(HostScriptInterceptorTest, RegistrationSnapshotAndDispose) {
   Install();
   Script(R"(
     globalThis.calls = [];
-    interceptor.on('view.create', (e,c) => {
-      calls.push('first'); second.dispose();
+    globalThis.first = interceptor.on('view.create', (e,c) => {
+      calls.push('first'); first.dispose();
       interceptor.on('view.create', (e,c) => {calls.push('late'); return c.next()});
+      first.dispose();
       return c.next();
     });
-    globalThis.second = interceptor.on('view.create', (e,c) => {calls.push('second'); return c.next()});
   )");
   EXPECT_FALSE(Dispatch().failed);
-  EXPECT_EQ(EvalString("calls.join(',')"), "first,second");
-  Script("calls = []");
+  EXPECT_EQ(EvalString("calls.join(',')"), "first");
+  Script("calls = []; first.dispose()");
   EXPECT_FALSE(Dispatch().failed);
-  EXPECT_EQ(EvalString("calls.join(',')"), "first,late");
+  EXPECT_EQ(EvalString("calls.join(',')"), "late");
 }
 
 TEST_F(HostScriptInterceptorTest, InvalidDecisionsRollbackWholePhase) {
@@ -379,7 +415,6 @@ TEST_F(HostScriptInterceptorTest, InvalidDecisionsRollbackWholePhase) {
       "return c.next({presetMeasuredSpec: {width:1.5,height:1}})"};
   for (auto body : invalid) {
     Install();
-    Script("interceptor.on('view.create', (e,c) => c.next({fontScale:2}))");
     std::string source =
         "interceptor.on('view.create', (e,c) => {" + std::string(body) + "})";
     Script(source.c_str());
@@ -421,27 +456,26 @@ TEST_F(HostScriptInterceptorTest, ViewSnapshotsOnlyExposeCommittedPatches) {
   lepus::Value event(lepus::Dictionary::Create());
   event.SetProperty("request", request);
   Script(R"(
+    globalThis.calls = 0;
     interceptor.on('view.create', (e,c) => {
-      globalThis.firstEvent = e;
-      e.request.fontScale = 99;
-      return c.next({fontScale:2});
-    });
-    interceptor.on('view.create', (e,c) => {
+      if (++calls === 1) {
+        globalThis.firstEvent = e;
+        e.request.fontScale = 99;
+        return c.next({fontScale:2});
+      }
       if (e === firstEvent || e.request === firstEvent.request ||
-          e.request.fontScale !== 2 || firstEvent.request.fontScale !== 99)
+          e.request.fontScale !== 1 || firstEvent.request.fontScale !== 99)
         throw Error('snapshots are not isolated');
-      globalThis.secondEvent = e;
-      return c.next({fontScale:3});
-    });
-    interceptor.on('view.create', (e,c) => {
-      if (e.request.fontScale !== 3 || secondEvent.request.fontScale !== 2)
-        throw Error('later patch changed a retained snapshot');
-      return c.proceed();
+      return c.proceed({fontScale:3});
     });
   )");
-  auto result = provider_->Dispatch(InterceptKind::kCreate, event);
-  ASSERT_FALSE(result.failed);
-  EXPECT_EQ(result.patch.GetProperty("fontScale").Number(), 3);
+  auto first = provider_->Dispatch(InterceptKind::kCreate, event);
+  ASSERT_FALSE(first.failed);
+  EXPECT_EQ(first.patch.GetProperty("fontScale").Number(), 2);
+  auto second = provider_->Dispatch(InterceptKind::kCreate, event);
+  ASSERT_FALSE(second.failed);
+  EXPECT_EQ(second.patch.GetProperty("fontScale").Number(), 3);
+  EXPECT_EQ(first.patch.GetProperty("fontScale").Number(), 2);
   EXPECT_EQ(request.GetProperty("fontScale").Number(), 1);
 }
 
@@ -454,7 +488,16 @@ TEST_F(HostScriptInterceptorTest, DataRoundTripCopiesNestedRecordsAndBuffers) {
     globalThis.bytes = new Uint8Array([1,2,3]);
     globalThis.payload = [undefined, null, true, 1.5, record, bytes.buffer,
                           shared, shared];
-    interceptor.on('jsb.result', (e,c) => c.next({value:payload}));
+    globalThis.subscription = interceptor.on('jsb.result', (e,c) => c.next({value:payload}));
+  )");
+  lepus::Value event(lepus::Dictionary::Create());
+  event.SetProperty("value", lepus::Value(0));
+  auto result = provider_->Dispatch(InterceptKind::kResult, event);
+  ASSERT_FALSE(result.failed);
+  auto value = result.patch.GetProperty("value");
+  ASSERT_TRUE(value.IsArray());
+  Script(R"(
+    subscription.dispose();
     interceptor.on('jsb.result', (e,c) => {
       if (e.value[0] !== undefined || e.value[1] !== null ||
           e.value[2] !== true || e.value[3] !== 1.5 ||
@@ -467,12 +510,10 @@ TEST_F(HostScriptInterceptorTest, DataRoundTripCopiesNestedRecordsAndBuffers) {
       return c.proceed();
     });
   )");
-  lepus::Value event(lepus::Dictionary::Create());
-  event.SetProperty("value", lepus::Value(0));
-  auto result = provider_->Dispatch(InterceptKind::kResult, event);
-  ASSERT_FALSE(result.failed);
-  auto value = result.patch.GetProperty("value");
-  ASSERT_TRUE(value.IsArray());
+  event.SetProperty("value", value);
+  auto next = provider_->Dispatch(InterceptKind::kResult, event);
+  ASSERT_FALSE(next.failed);
+  EXPECT_FALSE(next.patch.IsTable());
   EXPECT_TRUE(value.GetProperty(0).IsUndefined());
   EXPECT_TRUE(value.GetProperty(1).IsNil());
   EXPECT_EQ(value.GetProperty(4).GetProperty("text").StdString(), "data");
@@ -480,7 +521,7 @@ TEST_F(HostScriptInterceptorTest, DataRoundTripCopiesNestedRecordsAndBuffers) {
   ASSERT_EQ(bytes->GetLength(), 3);
   EXPECT_EQ(bytes->GetPtr()[0], 1);
   EXPECT_EQ(bytes->GetPtr()[2], 3);
-  EXPECT_EQ(event.GetProperty("value").Number(), 0);
+  EXPECT_EQ(event.GetProperty("value"), value);
 }
 
 TEST_F(HostScriptInterceptorTest,
@@ -502,7 +543,6 @@ TEST_F(HostScriptInterceptorTest,
   for (auto value : invalid) {
     SCOPED_TRACE(value);
     Install(HostScriptInterceptor::Domain::kBTS);
-    Script("interceptor.on('jsb.result', (e,c) => c.next({value:2}))");
     std::string source =
         "interceptor.on('jsb.result', (e,c) => c.next({value:[" +
         std::string(value) + "]}))";
@@ -567,13 +607,17 @@ TEST_F(HostScriptInterceptorTest,
        SavedChainFunctionsOutliveDispatchAndProvider) {
   Install();
   Script(R"(
-    interceptor.on('view.create', (e,c) => {
+    globalThis.subscription = interceptor.on('view.create', (e,c) => {
       globalThis.savedNext = c.next;
       globalThis.savedProceed = c.proceed;
       globalThis.savedMock = c.mock;
       c.proceed = () => { throw Error('modified chain leaked'); };
       return c.next();
     });
+  )");
+  EXPECT_FALSE(Dispatch().failed);
+  Script(R"(
+    subscription.dispose();
     interceptor.on('view.create', (e,c) => c.proceed({fontScale:2}));
   )");
   EXPECT_EQ(Dispatch().patch.GetProperty("fontScale").Number(), 2);

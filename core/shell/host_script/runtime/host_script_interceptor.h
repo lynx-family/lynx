@@ -5,11 +5,11 @@
 #ifndef CORE_SHELL_HOST_SCRIPT_RUNTIME_HOST_SCRIPT_INTERCEPTOR_H_
 #define CORE_SHELL_HOST_SCRIPT_RUNTIME_HOST_SCRIPT_INTERCEPTOR_H_
 
+#include <array>
 #include <functional>
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "core/shell/host_script/runtime/interceptor.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
@@ -18,6 +18,8 @@ namespace lynx::shell {
 
 // The runtime owner installs this into an existing environment, on its owning
 // thread. This component never creates a VM, thread or cross-thread JS handle.
+// Each event kind accepts one active handler. Dispose it before registering
+// another handler of the same kind.
 class HostScriptInterceptor final
     : public Interceptor,
       public std::enable_shared_from_this<HostScriptInterceptor> {
@@ -63,7 +65,8 @@ class HostScriptInterceptor final
   bool active_ = true;
   bool dispatching_ = false;
   Napi::ObjectReference api_;
-  std::vector<std::shared_ptr<Entry>> entries_;
+  std::array<std::shared_ptr<Entry>, static_cast<size_t>(InterceptKind::kCount)>
+      entries_{};
 };
 }  // namespace lynx::shell
 #endif  // CORE_SHELL_HOST_SCRIPT_RUNTIME_HOST_SCRIPT_INTERCEPTOR_H_
