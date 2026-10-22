@@ -211,6 +211,51 @@ TEST_F(AnimationTest, UpdateAnimationData) {
   EXPECT_TRUE(test_animation->get_animation_data() == test_animation_data);
 }
 
+TEST_F(AnimationTest,
+       PausedEffectReplacementKeepsTimeThroughDummyAndRealFrames) {
+  ASSERT_FALSE(manager->SupportsPlatformAnimationRouting());
+  for (bool apply_initial_frame : {false, true}) {
+    auto a = InitTestAnimation();
+    auto data = InitAnimationData(base::String("test_animation"), 1000, 0,
+                                  starlight::TimingFunctionData(), 5,
+                                  starlight::AnimationFillModeType::kBoth,
+                                  starlight::AnimationDirectionType::kNormal,
+                                  starlight::AnimationPlayStateType::kPaused);
+    a->UpdateAnimationData(data);
+    a->Play(false);
+    auto initial_frame = fml::TimePoint::FromTicks(1000);
+    a->SampleAt(initial_frame);
+    a->SendStartEvent();
+    a->Pause();
+    const auto paused_time = fml::TimeDelta::FromMilliseconds(2500);
+    a->SeekTo(paused_time, fml::TimePoint::Now());
+
+    animation::MockCSSKeyframeManager delegate(element_.get());
+    a->BindDelegate(&delegate);
+    animation::MockAnimation replacement("test_animation");
+    auto effect = animation::KeyframeEffect::Create();
+    InitTestEffect(*effect);
+    effect->BindAnimationDelegate(&delegate);
+    replacement.SetKeyframeEffect(std::move(effect));
+    replacement.UpdateAnimationData(data);
+    a->ReplaceEffectFrom(replacement);
+
+    a->Pause(apply_initial_frame);
+    EXPECT_EQ(delegate.has_flush_animated_style(), apply_initial_frame);
+    auto frame_time = fml::TimePoint::FromTicks(100000);
+    for (int i = 0; i < 2; ++i) {
+      auto result = a->SampleAt(frame_time);
+      ASSERT_NE(result.styles.find(kPropertyIDOpacity), result.styles.end());
+      EXPECT_NEAR(result.styles.at(kPropertyIDOpacity).AsNumber(), 0.5, 0.001);
+      EXPECT_FALSE(result.should_send_start_event);
+      EXPECT_FALSE(result.should_send_end_event);
+      EXPECT_EQ(result.iteration_events_due, 0);
+      EXPECT_EQ(a->GetCurrentTime(), paused_time);
+      frame_time = frame_time + fml::TimeDelta::FromSeconds(1);
+    }
+  }
+}
+
 TEST_F(AnimationTest, CheckStartTime) {
   auto test_animation = InitTestAnimation();
   auto test_effect = animation::KeyframeEffect::Create();

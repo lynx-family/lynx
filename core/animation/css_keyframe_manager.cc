@@ -418,6 +418,7 @@ void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
 
 void CSSKeyframeManager::SetAnimationDataAndPlay(
     base::Vector<starlight::AnimationData>& anim_data) {
+  // Legacy styling relies on Play/Pause to sample and flush initial styles.
   SetAnimationDataAndPlayInternal(anim_data, false, true, false);
 }
 
@@ -451,17 +452,24 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
       // Update an existing animation, add it to temp_active_animations_map_ and
       // delete it from animations_map_;
       if (force_rebuild) {
-        const auto origin = animation->second->GetOrigin();
-        if (use_new_pipeline_cleanup) {
+        auto replacement =
+            CreateAnimation(data, new_base_custom_properties,
+                            animation->second->GetOrigin(), false);
+        if (replacement) {
+          if (use_new_pipeline_cleanup) {
+            ClearAnimationEffects(animation->second, new_base_resolved_styles,
+                                  new_underlying_layout_only_styles);
+          } else {
+            SetNeedsAnimationStyleRecalc(data.name);
+            FlushAnimatedStyle();
+          }
+          animation->second->ReplaceEffectFrom(*replacement);
+          temp_active_animations_map_[data.name] = animation->second;
+        } else if (use_new_pipeline_cleanup) {
           PrepareAnimationRemoval(animation->second, new_base_resolved_styles,
                                   new_underlying_layout_only_styles);
         } else {
           animation->second->Destroy();
-        }
-        auto recreated_animation =
-            CreateAnimation(data, new_base_custom_properties, origin);
-        if (recreated_animation != nullptr) {
-          temp_active_animations_map_[data.name] = recreated_animation;
         }
         animations_map_.erase(animation);
         continue;
@@ -521,7 +529,7 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
   for (auto& active_ani_iter : temp_active_animations_map_) {
     if (active_ani_iter.second->animation_data()->play_state ==
         starlight::AnimationPlayStateType::kPaused) {
-      active_ani_iter.second->Pause();
+      active_ani_iter.second->Pause(play_handles_initial_frame);
     } else {
       active_ani_iter.second->Play(play_handles_initial_frame);
     }
@@ -547,6 +555,8 @@ void CSSKeyframeManager::SyncAnimationDataForNewPipeline(
     const starlight::ComputedCSSStyle* new_base_style) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               KEYFRAME_MANAGER_SYNC_ANIMATION_DATA_FOR_NEW_PIPELINE);
+  // New styling samples in CollectAnimationUpdatesForNewPipeline() and
+  // composes the final style in the same outer style pass.
   SetAnimationDataAndPlayInternal(
       anim_data, force_rebuild, false, true, new_base_resolved_styles,
       new_underlying_layout_only_styles, new_base_custom_properties);
@@ -899,7 +909,7 @@ tasm::CSSValue CSSKeyframeManager::ResolveUnderlyingValue(
 std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
     starlight::AnimationData& data,
     const tasm::CustomPropertiesMap* base_custom_properties,
-    std::optional<Animation::Origin> origin) {
+    std::optional<Animation::Origin> origin, bool notify_created) {
   const auto resolved_origin =
       origin.has_value() ? *origin : ResolveAnimationOrigin(data);
   auto parsed_properties = ParseKeyframes(data.name, base_custom_properties);
@@ -942,7 +952,9 @@ std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
         << data.name.str());
     return nullptr;
   }
-  animation->NotifyInspectorCreated();
+  if (notify_created) {
+    animation->NotifyInspectorCreated();
+  }
   return animation;
 }
 

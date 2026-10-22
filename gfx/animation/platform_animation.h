@@ -12,7 +12,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/memory/ref_counted.h"
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/time/time_point.h"
+#include "base/include/vector.h"
 #include "gfx/animation/animation_keyframe.h"
 #include "gfx/animation/animation_types.h"
 
@@ -42,7 +45,8 @@ enum class PlatformAnimationCommandType : uint8_t {
 
 // Shared across the animation and UI threads. Executors own neither the clock
 // nor the lifecycle: rebuilding one must not restart the logical animation.
-class AnimationPlaybackState {
+class AnimationPlaybackState final
+    : public fml::RefCountedThreadSafe<AnimationPlaybackState> {
  public:
   // Tracks claimed lifecycle events, independently of the timing phase.
   // A timing update can allow kFinished to transition back to kStarted.
@@ -215,9 +219,9 @@ struct AnimationEventCapability {
 
 struct AnimationBackendCapabilities {
   AnimationBackendType backend{AnimationBackendType::kNone};
-  std::vector<AnimationPropertyCapability> properties;
+  base::Vector<AnimationPropertyCapability> properties;
   // Event support belongs to the whole animation, independently of properties.
-  std::vector<AnimationEventCapability> event_capabilities;
+  base::Vector<AnimationEventCapability> event_capabilities;
 
   bool SupportsEvents(AnimationKind kind,
                       AnimationEventCapabilityMask required) const {
@@ -270,9 +274,10 @@ struct PlatformAnimationCommand {
   // A CSS keyframe animation effect is routed atomically. A CSS transition is
   // already represented as one independently routed property animation.
   std::vector<PlatformAnimationProperty> properties;
+  // The evaluator normalizes timing_func before platform handoff.
   AnimationData animation_data;
   // Present for routed keyframe animations.
-  std::shared_ptr<AnimationPlaybackState> playback;
+  fml::RefPtr<AnimationPlaybackState> playback;
   // Snapshot of playback's execution ownership token, not an animator or thread
   // ID. IsCurrentExecutor() rejects stale work after execution switches between
   // New Animator and the platform. Unlike generation, this token does not

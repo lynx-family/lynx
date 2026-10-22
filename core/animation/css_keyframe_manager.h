@@ -164,7 +164,8 @@ class CSSKeyframeManager : public AnimationDelegate {
   std::shared_ptr<Animation> CreateAnimation(
       starlight::AnimationData& data,
       const tasm::CustomPropertiesMap* base_custom_properties = nullptr,
-      std::optional<Animation::Origin> origin = std::nullopt);
+      std::optional<Animation::Origin> origin = std::nullopt,
+      bool notify_created = true);
 
   void SetAnimationDataAndPlayInternal(
       base::Vector<starlight::AnimationData>& anim_data, bool force_rebuild,

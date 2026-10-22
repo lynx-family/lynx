@@ -1298,10 +1298,14 @@ TEST_F(
     void OnAnimationCanceled(animation::Animation* animation) override {
       canceled.push_back(animation->id());
     }
+    void OnAnimationUpdated(animation::Animation*) override { ++updated; }
     base::Vector<int64_t> created;
     base::Vector<int64_t> canceled;
+    size_t updated{0};
   };
 
+  manager->GetConfig()->SetEnableFiberArch(true);
+  manager->supports_platform_animation_routing_ = false;
   for (bool finished : {false, true}) {
     for (bool rebuild : {false, true}) {
       SCOPED_TRACE(finished);
@@ -1334,9 +1338,17 @@ TEST_F(
       EXPECT_TRUE(observer->canceled.empty());
 
       if (rebuild) {
+        auto original = test_manager->animations_map().at(base::String("test"));
+        observer->updated = 0;
         test_manager->SyncAnimationDataForNewPipeline(animation_data, true);
-        ASSERT_EQ(2U, observer->created.size());
-        EXPECT_NE(old_id, observer->created[1]);
+        EXPECT_EQ(original,
+                  test_manager->animations_map().at(base::String("test")));
+        EXPECT_EQ(1U, observer->created.size());
+        EXPECT_TRUE(observer->canceled.empty());
+        EXPECT_EQ(1U, observer->updated);
+        EXPECT_TRUE(
+            test_manager->TakePendingAnimationEventsForNewPipeline().empty());
+        continue;
       } else {
         base::Vector<starlight::AnimationData> empty_data;
         test_manager->SyncAnimationDataForNewPipeline(empty_data);
@@ -1618,6 +1630,19 @@ TEST_F(CSSKeyframeManagerTest,
   EXPECT_EQ(animation::Animation::State::kStop,
             test_manager->animations_map()[base::String("move")]->GetState());
 
+  // Rebuild a completed effect without replaying its already delivered end.
+  end_events[0].animation->SendEndEvent();
+  animation_data[0].duration = 500;
+  test_manager->SyncAnimationDataForNewPipeline(animation_data, true);
+  auto rebuild_time = TimePointFromMs(2008);
+  auto rebuilt_sample =
+      test_manager->CollectAnimationUpdatesForNewPipeline(rebuild_time);
+  const auto* rebuilt_left =
+      FindSampledStyle(rebuilt_sample, tasm::kPropertyIDLeft);
+  ASSERT_NE(nullptr, rebuilt_left);
+  EXPECT_EQ(*rebuilt_left, tasm::CSSValue(200, tasm::CSSValuePattern::PX));
+  EXPECT_TRUE(test_manager->TakePendingAnimationEventsForNewPipeline().empty());
+
   auto later_time = TimePointFromMs(2016);
   auto later_sample =
       test_manager->CollectAnimationUpdatesForNewPipeline(later_time);
@@ -1714,11 +1739,13 @@ TEST_F(CSSKeyframeManagerTest,
   UpdateOpacityKeyframes(test_element.get(), base::String("test"), 0.2, 0.4);
   test_manager->SyncAnimationDataForNewPipeline(animation_data);
   ASSERT_TRUE(test_manager->animations_map().count(base::String("test")));
+  auto original = test_manager->animations_map().at(base::String("test"));
 
   UpdateOpacityKeyframes(test_element.get(), base::String("test"), 0.8, 0.9);
   test_manager->SyncAnimationDataForNewPipeline(animation_data, true);
 
   ASSERT_TRUE(test_manager->animations_map().count(base::String("test")));
+  EXPECT_EQ(original, test_manager->animations_map().at(base::String("test")));
   auto* model = test_manager->animations_map()[base::String("test")]
                     ->keyframe_effect()
                     ->GetKeyframeModelByCurveType(
@@ -1747,6 +1774,7 @@ TEST_F(
   UpdateOpacityKeyframes(test_element.get(), base::String("test"), 0.2, 0.4);
   test_manager->SyncAnimationDataForNewPipeline(animation_data);
   ASSERT_TRUE(test_manager->animations_map().count(base::String("test")));
+  auto original = test_manager->animations_map().at(base::String("test"));
 
   auto updated_animation_data = animation_data;
   updated_animation_data[0].duration = 3000;
@@ -1754,6 +1782,8 @@ TEST_F(
   test_manager->SyncAnimationDataForNewPipeline(updated_animation_data, true);
 
   ASSERT_TRUE(test_manager->animations_map().count(base::String("test")));
+  EXPECT_EQ(original, test_manager->animations_map().at(base::String("test")));
+  EXPECT_EQ(original->animation_data()->duration, 3000);
   auto* model = test_manager->animations_map()[base::String("test")]
                     ->keyframe_effect()
                     ->GetKeyframeModelByCurveType(

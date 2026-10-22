@@ -11,12 +11,14 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 
 #include "base/include/fml/time/time_point.h"
 #include "core/animation/keyframe_effect.h"
 #include "core/base/lynx_export.h"
+#include "gfx/animation/platform_animation.h"
 
 namespace lynx {
 namespace base {
@@ -58,8 +60,11 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   Animation(const base::String& name);
   ~Animation() = default;
+  // Initial-frame handling samples and flushes styles inside Play/Pause.
+  // Legacy styling enables it; new styling passes false and lets the outer
+  // style pass sample animations before composing the final style.
   void Play(bool play_handles_initial_frame = true);
-  void Pause();
+  void Pause(bool pause_handles_initial_frame = false);
   void Stop();
   void Destroy(bool need_clear_effect = true);
 
@@ -123,6 +128,9 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   void UpdateAnimationData(starlight::AnimationData& data);
 
+  // Replace only the effect; the animation's identity, clock and events
+  // survive.
+  void ReplaceEffectFrom(Animation& replacement);
   void UpdateUnderlyingValue(AnimationCurve::CurveType type,
                              const tasm::CSSValue& value);
 
@@ -185,6 +193,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void ReportAnimationOverTime();
   void CreateEventAndSend(const base::String& event);
   bool HasIterationEvent() const;
+  void InitializeSampleTiming(fml::TimePoint frame_time);
   bool Tick(fml::TimePoint& time);
   bool pending_final_sample_{false};
   // Records one requested frame, including a seek while paused.
@@ -198,6 +207,11 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void NotifyInspectorStarted(fml::TimePoint time);
   void NotifyInspectorUpdated();
   void NotifyInspectorCanceled();
+  void EnsurePlaybackState();
+  void UpdatePlaybackState();
+  void ApplyInitialFrame();
+  void RebaseEffectTiming(fml::TimePoint frame_time);
+  void RecordSampleTime(fml::TimePoint frame_time);
   AnimationDelegate* animation_delegate_{nullptr};
   base::String name_;
   // Process-unique identifier assigned once when the object is constructed.
@@ -229,6 +243,15 @@ class Animation : public std::enable_shared_from_this<Animation> {
   // animationstart/animationiteration/animationend events for skipped time.
   bool suppress_next_sample_events_{false};
   bool inspector_started_notified_{false};
+  // Created by ReplaceEffectFrom() to preserve logical time and lifecycle
+  // events when replacing a C++ effect. Otherwise the local timing fields are
+  // used and no shared clock is allocated.
+  fml::RefPtr<gfx::AnimationPlaybackState> playback_;
+  // The previous effect's run state, kept until the replacement is rebased to
+  // its first real frame. A dummy sample must not consume this pending state.
+  std::optional<gfx::KeyframeModel::RunState> pending_run_state_;
+  gfx::AnimationPlaybackState::EventState event_state_{
+      gfx::AnimationPlaybackState::EventState::kNotStarted};
   bool has_cached_sample_{false};
   fml::TimePoint cached_sample_time_{fml::TimePoint::Min()};
   KeyframeEffect::KeyframeSampleResult cached_sample_result_;
