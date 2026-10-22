@@ -34,6 +34,20 @@ class PresenterService
 
   void MarkPlatformViewToDispose(int64_t id);
 
+  void DisposeOverlays(
+      const std::vector<std::shared_ptr<PlatformOverlay>> &overlays) {
+    for (const auto &overlay : overlays) {
+      DisposeOverlay(*overlay);
+    }
+  }
+
+  // Native view ownership has already been reset by the platform embedder.
+  // A reused engine must composite the next page's initial parameters again.
+  void ResetForReuse() {
+    current_composition_params_.clear();
+    views_to_dispose_.clear();
+  }
+
   static std::shared_ptr<PresenterService> Create();
 
  private:
