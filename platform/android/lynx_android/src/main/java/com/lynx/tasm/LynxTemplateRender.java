@@ -2243,6 +2243,9 @@ public class LynxTemplateRender
       }
       nativeResetDataByPreParsedData(mNativePtr, mNativeLifecycle, data.getNativePtr(),
           data.processorName(), data.isReadOnly(), data);
+      if (LynxEnv.inst().enableClearUpdatedDataList()) {
+        updatedDataList.clear();
+      }
     }
     postRenderOrUpdateData(data);
     LLog.i(TAG, formatLynxMessage("reset"));
@@ -2286,6 +2289,9 @@ public class LynxTemplateRender
       nativeReloadTemplate(mNativePtr, mNativeLifecycle, data.getNativePtr(), propsNativePtr,
           data.processorName(), data.isReadOnly(), newGlobalProps, data,
           timingOption.toJavaOnlyMap());
+      if (LynxEnv.inst().enableClearUpdatedDataList()) {
+        updatedDataList.clear();
+      }
     }
     postRenderOrUpdateData(data);
     LLog.i(TAG, formatLynxMessage("reload"));
