@@ -4,6 +4,8 @@
 
 #include "clay/shell/platform/windows/egl/direct_composition_surface.h"
 
+#include <utility>
+
 #include "clay/gfx/geometry/rect.h"
 #include "clay/shell/platform/windows/egl/egl.h"
 
@@ -123,24 +125,29 @@ bool DirectCompositionSurface::Initialize() {
 }
 
 bool DirectCompositionSurface::Destroy() {
+  bool success = true;
   // Ensure the surface is not current before destroying it.
-  if (::eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE,
+  if ((default_surface_ || real_surface_) &&
+      ::eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE,
                        EGL_NO_CONTEXT) != EGL_TRUE) {
     WINDOWS_LOG_EGL_ERROR;
-    return false;
+    success = false;
   }
   if (default_surface_) {
     if (!eglDestroySurface(display_, default_surface_)) {
       FML_LOG(ERROR) << "eglDestroySurface failed with error";
+      success = false;
     }
     default_surface_ = nullptr;
   }
   if (real_surface_) {
     if (!eglDestroySurface(display_, real_surface_)) {
       FML_LOG(ERROR) << "eglDestroySurface failed with error";
+      success = false;
     }
     real_surface_ = nullptr;
   }
+  const bool needs_commit = dcomp_target_ || dcomp_root_visual_ || swap_chain_;
   if (dcomp_target_) {
     dcomp_target_->SetRoot(nullptr);
     dcomp_target_.Reset();
@@ -151,9 +158,18 @@ bool DirectCompositionSurface::Destroy() {
   }
   draw_texture_.Reset();
   pending_swap_rect_.reset();
+  swap_chain_.Reset();
+  if (needs_commit && dcomp_device_) {
+    HRESULT hr = dcomp_device_->Commit();
+    if (FAILED(hr)) {
+      FML_LOG(ERROR) << "DirectComposition teardown Commit failed with error 0x"
+                     << std::hex << hr;
+      success = false;
+    }
+  }
 
   is_valid_ = false;
-  return true;
+  return success;
 }
 
 bool DirectCompositionSurface::MakeCurrent() {
@@ -166,10 +182,11 @@ bool DirectCompositionSurface::MakeCurrent() {
 }
 
 bool DirectCompositionSurface::SwapBuffers() {
-  bool released_draw_texture = false;
-  bool swap_result = ReleaseDrawTexture(false, &released_draw_texture);
-  if (swap_result && released_draw_texture) {
-    AddDamageRegionWithManualBufferRotation(*pending_present_damage_region_);
+  bool swap_result = ReleaseDrawTexture(false);
+  if (!swap_result) {
+    for (auto& buffer : buffers_) {
+      buffer.age = 0;
+    }
   }
   pending_present_damage_region_.reset();
   pending_swap_rect_.reset();
@@ -256,13 +273,11 @@ void DirectCompositionSurface::SetPresentDamageRegion(
   pending_present_damage_region_ = region;
 }
 
-bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard,
-                                                  bool* released_draw_texture) {
-  if (released_draw_texture) {
-    *released_draw_texture = false;
-  }
+bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard) {
   EGLSurface egl_surface = real_surface_;
   real_surface_ = nullptr;
+  const bool had_draw_texture = draw_texture_ != nullptr;
+  draw_texture_.Reset();
 
   // If MakeCurrent fails (probably lost device), we'll want to return failure,
   // but we still want to reset the rest of the state for consistency.
@@ -287,12 +302,7 @@ bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard,
   }
 
   HRESULT hr;
-  if (draw_texture_) {
-    if (released_draw_texture) {
-      *released_draw_texture = true;
-    }
-    draw_texture_.Reset();
-
+  if (had_draw_texture) {
     if (!will_discard) {
       if (!swap_chain_) {
         FML_LOG(ERROR) << "Cannot present DirectComposition surface without a "
@@ -324,6 +334,7 @@ bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard,
                        << ", flags=0x" << std::hex << flags;
         return false;
       }
+      AddDamageRegionWithManualBufferRotation(*pending_present_damage_region_);
       // Wait for the GPU to finish executing its commands before
       // committing the DirectComposition tree, or else the swapchain
       // may flicker black when it's first presented.
@@ -421,24 +432,27 @@ bool DirectCompositionSurface::SetDrawRectangle(const clay::Rect& rectangle) {
     desc.Flags =
         IsSwapChainTearingSupported() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
+    Microsoft::WRL::ComPtr<IDXGISwapChain1> swap_chain;
     hr = dxgi_factory->CreateSwapChainForComposition(d3d11_device_.Get(), &desc,
-                                                     nullptr, &swap_chain_);
-    first_swap_ = true;
-    if (FAILED(hr) || !swap_chain_) {
+                                                     nullptr, &swap_chain);
+    if (FAILED(hr) || !swap_chain) {
       FML_LOG(ERROR) << "CreateSwapChainForComposition failed. "
                      << "hr=0x" << std::hex << hr
                      << ", d3d11_device_=" << d3d11_device_.Get()
-                     << ", swap_chain_=" << swap_chain_.Get();
+                     << ", swap_chain=" << swap_chain.Get();
       return false;
     }
-    hr = dcomp_root_visual_->SetContent(swap_chain_.Get());
+    hr = dcomp_root_visual_->SetContent(swap_chain.Get());
     if (FAILED(hr)) {
       FML_LOG(ERROR) << "SetContent failed with error 0x" << std::hex << hr;
       return false;
     }
+    swap_chain_ = std::move(swap_chain);
+    first_swap_ = true;
   }
-  HRESULT hr = swap_chain_->GetBuffer(0, IID_PPV_ARGS(&draw_texture_));
-  if (FAILED(hr) || !draw_texture_) {
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> draw_texture;
+  HRESULT hr = swap_chain_->GetBuffer(0, IID_PPV_ARGS(&draw_texture));
+  if (FAILED(hr) || !draw_texture) {
     FML_LOG(ERROR) << "GetBuffer failed with error 0x" << std::hex << hr;
     return false;
   }
@@ -448,15 +462,17 @@ bool DirectCompositionSurface::SetDrawRectangle(const clay::Rect& rectangle) {
       static_cast<EGLint>(height()), EGL_NONE};
 
   EGLClientBuffer buffer =
-      reinterpret_cast<EGLClientBuffer>(draw_texture_.Get());
-  real_surface_ = eglCreatePbufferFromClientBuffer(
+      reinterpret_cast<EGLClientBuffer>(draw_texture.Get());
+  EGLSurface real_surface = eglCreatePbufferFromClientBuffer(
       display_, EGL_D3D_TEXTURE_ANGLE, buffer, config_, pbuffer_attribs.data());
 
-  if (!real_surface_) {
+  if (!real_surface) {
     WINDOWS_LOG_EGL_ERROR;
     return false;
   }
 
+  real_surface_ = real_surface;
+  draw_texture_ = std::move(draw_texture);
   return true;
 }
 
