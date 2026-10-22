@@ -130,6 +130,11 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromCAMetalLayer
     return nullptr;
   }
 
+  if (size_ != frame_info) {
+    damage_.clear();
+    size_ = frame_info;
+  }
+
   auto* mtl_layer = (__bridge CAMetalLayer*)layer;
   // Get the drawable eagerly, we will need texture object to identify target framebuffer
   fml::scoped_nsprotocol<id<CAMetalDrawable>> drawable([mtl_layer nextDrawable]);
@@ -146,8 +151,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromCAMetalLayer
     return nullptr;
   }
 
-  auto encode_callback = [this, drawable, surface](SurfaceFrame& surface_frame,
-                                                   skity::Canvas* canvas) -> bool {
+  auto encode_callback = [this, drawable, surface, frame_info](SurfaceFrame& surface_frame,
+                                                               skity::Canvas* canvas) -> bool {
     if (!canvas) {
       FML_LOG(ERROR) << "skity Canvas is null.";
       return false;
@@ -161,9 +166,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromCAMetalLayer
       for (auto& entry : damage_) {
         if (entry.first != texture) {
           // Accumulate damage for other framebuffers
-          if (surface_frame.submit_info().frame_damage) {
-            entry.second.Join(*surface_frame.submit_info().frame_damage);
-          }
+          entry.second.Join(surface_frame.submit_info().frame_damage.value_or(
+              skity::Rect::MakeWH(frame_info.x, frame_info.y)));
         }
       }
       // Reset accumulated damage for current framebuffer
@@ -220,8 +224,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
   int64_t texture_id = texture_lifetime->texture_id();
   surface = KeepMTLTextureAliveWithSurface(std::move(surface), texture_lifetime);
 
-  auto encode_callback = [this, texture_id, surface](SurfaceFrame& surface_frame,
-                                                     skity::Canvas* canvas) -> bool {
+  auto encode_callback = [this, texture_id, surface, frame_info](SurfaceFrame& surface_frame,
+                                                                 skity::Canvas* canvas) -> bool {
     if (!canvas) {
       FML_LOG(ERROR) << "skity Canvas is null.";
       return false;
@@ -234,9 +238,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
       for (auto& entry : damage_) {
         if (entry.first != texture_id) {
           // Accumulate damage for other framebuffers
-          if (surface_frame.submit_info().frame_damage) {
-            entry.second.Join(*surface_frame.submit_info().frame_damage);
-          }
+          entry.second.Join(surface_frame.submit_info().frame_damage.value_or(
+              skity::Rect::MakeWH(frame_info.x, frame_info.y)));
         }
       }
       // Reset accumulated damage for current framebuffer
