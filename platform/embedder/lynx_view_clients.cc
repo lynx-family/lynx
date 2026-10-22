@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "core/renderer/data/template_data.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "platform/embedder/lynx_view_priv.h"
 
@@ -103,6 +104,14 @@ void LynxViewClients::OnReloadTemplate(
     const std::shared_ptr<tasm::TemplateData>& data) {
   auto& ui_renderer = lynx_view_->lynx_ui_renderer;
   auto& template_renderer = lynx_view_->lynx_template_renderer;
+  // Clone global props while the old runtime is still alive.
+  auto global_props =
+      lynx_view_->global_props
+          ? std::make_shared<tasm::TemplateData>(
+                tasm::TemplateData::DeepClone(*lynx_view_->global_props))
+          : nullptr;
+  // Keep the cached global props valid for subsequent reloads.
+  lynx_view_->global_props = global_props;
   // Reset ui renderer
   ui_renderer->Reset();
   // Reset template renderer
