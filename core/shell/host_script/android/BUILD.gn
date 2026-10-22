@@ -57,6 +57,7 @@ if (is_android && lynx_in_debug && enable_napi_binding) {
       "../../../../third_party/rapidjson:rapidjson",
       "../../../base:base",
       "../runtime:host_script",
+      "../runtime:jsb_interceptor",
       "../runtime:process_runtime",
     ]
     if (!enable_unittests && !is_oliver_ssr) {
