@@ -10,9 +10,11 @@
 #include <vector>
 
 #include "clay/shell/common/pointer_data_to_event.h"
+#include "clay/ui/component/image_view.h"
 #include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/gesture/drag_gesture_recognizer.h"
 #include "clay/ui/gesture/long_press_gesture_recognizer.h"
@@ -155,6 +157,64 @@ class TapReturnTest : public UITest {
   std::vector<int> tap_targets_;
   std::vector<int> long_press_targets_;
 };
+
+class MeaningfulPaintingAreaTest : public UITest {};
+
+TEST_F_UI(MeaningfulPaintingAreaTest, EmptyTreeReturnsNoRecords) {
+  EXPECT_TRUE(page_->CollectMeaningfulPaintingAreas().empty());
+}
+
+TEST_F_UI(MeaningfulPaintingAreaTest, PendingTextAndImageUsePageCoordinates) {
+  auto* container = new View(1, page_.get());
+  container->SetBound(10, 20, 300, 300);
+  page_->AddChild(container);
+
+  auto* text = new TextView(2, page_.get());
+  text->SetBound(30, 40, 100, 50);
+  container->AddChild(text);
+
+  auto* image = new ImageView(3, page_.get());
+  image->SetBound(60, 80, 120, 70);
+  container->AddChild(image);
+
+  auto records = page_->CollectMeaningfulPaintingAreas();
+  ASSERT_EQ(records.size(), 2u);
+  EXPECT_EQ(records[0].status, 1);
+  EXPECT_FALSE(records[0].valid);
+  EXPECT_FLOAT_EQ(records[0].x, 70.f);
+  EXPECT_FLOAT_EQ(records[0].y, 100.f);
+  EXPECT_FLOAT_EQ(records[0].width, 120.f);
+  EXPECT_FLOAT_EQ(records[0].height, 70.f);
+
+  EXPECT_EQ(records[1].status, 1);
+  EXPECT_TRUE(records[1].valid);
+  EXPECT_FLOAT_EQ(records[1].x, 40.f);
+  EXPECT_FLOAT_EQ(records[1].y, 60.f);
+  EXPECT_FLOAT_EQ(records[1].width, 100.f);
+  EXPECT_FLOAT_EQ(records[1].height, 50.f);
+}
+
+TEST_F_UI(MeaningfulPaintingAreaTest,
+          VisibilityAndAlphaPreserveNativeSnapshotSemantics) {
+  auto* hidden = new View(1, page_.get());
+  page_->AddChild(hidden);
+  auto* hidden_text = new TextView(2, page_.get());
+  hidden_text->SetBound(0, 0, 100, 50);
+  hidden_text->SetVisible(false);
+  hidden->AddChild(hidden_text);
+
+  auto* transparent = new View(3, page_.get());
+  page_->AddChild(transparent);
+  auto* transparent_image = new ImageView(4, page_.get());
+  transparent_image->SetBound(0, 0, 100, 50);
+  transparent_image->SetOpacity(0.f);
+  transparent->AddChild(transparent_image);
+
+  auto records = page_->CollectMeaningfulPaintingAreas();
+  ASSERT_EQ(records.size(), 2u);
+  EXPECT_FLOAT_EQ(records[0].alpha, 0.f);
+  EXPECT_EQ(records[1].visible_status, 4);
+}
 
 class TapReturnDefaultSettingTest : public TapReturnTest {
  protected:

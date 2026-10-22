@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include "clay/ui/rendering/text/render_text.h"
+
 namespace clay {
 
 BaseTextView::BaseTextView(uint32_t id, std::string tag,
@@ -18,5 +20,14 @@ BaseTextView::BaseTextView(uint32_t id, std::string tag,
 }
 
 BaseTextView::~BaseTextView() = default;
+
+BaseView::MeaningfulContentStatus BaseTextView::GetMeaningfulContentStatus()
+    const {
+  auto* render_text = static_cast<const RenderText*>(render_object());
+  return render_text->GetPainter() != nullptr &&
+                 render_text->GetPainter()->CanPaint()
+             ? MeaningfulContentStatus::kPresented
+             : MeaningfulContentStatus::kPending;
+}
 
 }  // namespace clay

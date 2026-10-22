@@ -67,6 +67,8 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
 
   std::string GetSource() const { return source_; }
   virtual bool IsSVG() const { return false; }
+  MeaningfulContentStatus GetMeaningfulContentStatus() const override;
+  bool IsMeaningfulContentValid() const override;
 
   void DidUpdateAttributes() override;
 

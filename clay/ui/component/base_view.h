@@ -84,6 +84,12 @@ class BaseView : public TypeIdentifiable<BaseView>,
                  public GestureArenaMember,
                  public GestureHandlerDelegate {
  public:
+  enum class MeaningfulContentStatus {
+    kIrrelevant = 0,
+    kPending = 1,
+    kPresented = 2,
+  };
+
   BaseView(std::unique_ptr<RenderObject> render_object, PageView* page_view);
 
   BaseView(int id, std::string tag, std::unique_ptr<RenderObject> render_object,
@@ -402,6 +408,14 @@ class BaseView : public TypeIdentifiable<BaseView>,
   float Top() const { return top_; }
   float Width() const { return width_; }
   float Height() const { return height_; }
+
+  virtual MeaningfulContentStatus GetMeaningfulContentStatus() const {
+    return MeaningfulContentStatus::kIrrelevant;
+  }
+  virtual bool IsMeaningfulContentValid() const { return true; }
+  virtual int64_t FirstMeaningfulContentPresentedTimestampMicros() const {
+    return -1;
+  }
 
   FloatPoint AbsoluteLocationWithScroll() const;
 

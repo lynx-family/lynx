@@ -98,6 +98,19 @@ class PageView : public BaseView,
                  public Recyclable,
                  public PixelHelper<kPixelTypeClay> {
  public:
+  struct MeaningfulPaintingAreaRecord {
+    float x;
+    float y;
+    float width;
+    float height;
+    bool valid;
+    int status;
+    int visible_status;
+    float alpha;
+    float scale_x;
+    float scale_y;
+  };
+
   // Only for unittests compatiblity.
   PageView(uint32_t id, fml::RefPtr<GPUUnrefQueue> unref_queue,
            fml::RefPtr<fml::TaskRunner> ui_task_runner);
@@ -108,6 +121,7 @@ class PageView : public BaseView,
   ~PageView() override;
 
   bool IsLayoutRootCandidate() const override { return true; }
+  std::vector<MeaningfulPaintingAreaRecord> CollectMeaningfulPaintingAreas();
 
   void SetEventDelegate(EventDelegate* delegate) { event_delegate_ = delegate; }
   EventDelegate* GetEventDelegate() { return event_delegate_; }
