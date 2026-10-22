@@ -19,7 +19,7 @@
 
 namespace serval {
 namespace markdown {
-class NativeServalMarkdownView;
+class NativeMarkdownMeasurer;
 }  // namespace markdown
 }  // namespace serval
 
@@ -42,7 +42,8 @@ class MarkdownResourceLoaderHarmony final
  public:
   MarkdownResourceLoaderHarmony(
       LynxContext* context, MarkdownShadowNode* markdown_node,
-      serval::markdown::NativeServalMarkdownView* markdown_view);
+      std::weak_ptr<serval::markdown::NativeMarkdownMeasurer>
+          markdown_measurer);
   ~MarkdownResourceLoaderHarmony() override;
 
   MarkdownResourceLoaderHarmony(const MarkdownResourceLoaderHarmony&) = delete;
@@ -60,6 +61,7 @@ class MarkdownResourceLoaderHarmony final
       void* ud, int32_t id, float max_width, float max_height) override;
 
   void Destroy();
+  void RequestMeasure();
   void SetMeasureContext(float width, MeasureMode width_mode, float height,
                          MeasureMode height_mode, bool final_measure,
                          float density);
@@ -91,8 +93,7 @@ class MarkdownResourceLoaderHarmony final
 
   std::atomic<LynxContext*> context_{nullptr};
   std::atomic<MarkdownShadowNode*> markdown_node_{nullptr};
-  std::atomic<serval::markdown::NativeServalMarkdownView*> markdown_view_{
-      nullptr};
+  std::weak_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer_;
   std::atomic<bool> destroyed_{false};
   mutable std::mutex image_cache_mutex_;
   std::unordered_map<std::string, std::weak_ptr<LynxBaseImage>> image_cache_;
