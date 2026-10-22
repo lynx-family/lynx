@@ -27,7 +27,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.UiThread;
-import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
 import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
@@ -174,10 +173,9 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
     initLynxTemplateRender(context, builder);
     mDisableDrawChildHook = mLynxUIRender.disableBindDrawChildHook();
-    // Process-wide effective LynxEnv debug state, not a per-View switch.
-    if (DevToolLifecycle.getInstance().isEnabled() && !mReportedCreation) {
+    if (LynxHostScriptViewHooks.isEnabled() && !mReportedCreation) {
       mReportedCreation = true;
-      LynxEnv.inst().getLynxViewClient().onLynxViewCreated(this);
+      LynxHostScriptViewHooks.onCreated(this);
     }
   }
 

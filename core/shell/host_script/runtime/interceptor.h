@@ -17,7 +17,6 @@
 namespace lynx::shell {
 
 enum class InterceptKind {
-  kCreate,
   kCreated,
   kLoadTemplate,
   kUpdateMetaData,

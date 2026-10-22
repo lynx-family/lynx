@@ -32,6 +32,7 @@ class HostScriptInterceptorBindings final
   // Failing to install leaves the context usable without interception.
   bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime> runtime,
               fml::RefPtr<fml::TaskRunner> runner) override;
+  void NotifyViewCreated(const ProcessRuntime::ViewCreated& event) override;
 
  private:
   explicit HostScriptInterceptorBindings(ProcessRuntime::Domain domain);

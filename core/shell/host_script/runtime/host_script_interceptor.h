@@ -20,7 +20,8 @@ namespace lynx::shell {
 // thread. This component never creates a VM, thread or cross-thread JS handle.
 // Each event kind accepts one active handler. Dispose it before registering
 // another handler of the same kind. Handlers decide with `proceed`, optionally
-// with a patch, or `mock` for jsb.call.
+// with a patch, or `mock` for jsb.call. The view.created notification accepts
+// handlers in every domain and ignores their return values.
 class HostScriptInterceptor final
     : public Interceptor,
       public std::enable_shared_from_this<HostScriptInterceptor> {

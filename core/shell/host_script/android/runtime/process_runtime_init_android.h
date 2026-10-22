@@ -24,7 +24,8 @@ void OnHostScriptViewCreated();
 void RegisterHostScriptView(base::LynxEntityId view);
 void UnregisterHostScriptView(base::LynxEntityId view);
 
-// Updates View observation on UI without stopping the process runtimes.
+// Updates the View interception hooks on UI without stopping the process
+// runtimes.
 void UpdateHostScriptDebugState(bool enabled);
 
 }  // namespace shell

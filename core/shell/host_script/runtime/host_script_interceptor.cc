@@ -4,7 +4,6 @@
 
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
 
-#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <optional>
@@ -21,8 +20,6 @@ namespace lynx::shell {
 namespace {
 using Kind = InterceptKind;
 using Value = lepus::Value;
-BASE_STATIC_STRING_DECL(kWidth, "width");
-BASE_STATIC_STRING_DECL(kHeight, "height");
 BASE_STATIC_STRING_DECL(kKind, "kind");
 BASE_STATIC_STRING_DECL(kBytes, "bytes");
 BASE_STATIC_STRING_DECL(kSource, "source");
@@ -36,13 +33,13 @@ BASE_STATIC_STRING_DECL(kRequest, "request");
 
 enum class Action { kInvalid, kProceed, kMock };
 
-// Event kinds each execution domain accepts. A domain without kinds gets no
-// provider. MTS stays empty until its native module calls are connected.
+// Creation notifications are available in every domain. Decisions stay on
+// the domain owning the intercepted operation.
 bool Accepts(Interceptor::Domain domain, Kind kind) {
+  if (kind == Kind::kCreated) return true;
   switch (domain) {
     case Interceptor::Domain::kUI:
-      return kind == Kind::kCreate || kind == Kind::kCreated ||
-             kind == Kind::kLoadTemplate || kind == Kind::kUpdateMetaData;
+      return kind == Kind::kLoadTemplate || kind == Kind::kUpdateMetaData;
     case Interceptor::Domain::kBTS:
       return kind == Kind::kCall || kind == Kind::kResult ||
              kind == Kind::kCallback;
@@ -161,27 +158,9 @@ std::optional<Value> FromJS(Napi::Value input,
 
 bool IsData(const Value& value) { return value.IsNil() || value.IsTable(); }
 
-bool IsInteger(const Value& value, int32_t min, int32_t max) {
-  return value.IsNumber() && value.Number() >= min && value.Number() <= max &&
-         std::floor(value.Number()) == value.Number();
-}
-
 bool ValidPatchField(Kind kind, const std::string& key, const Value& value,
                      const Value& original) {
   switch (kind) {
-    case Kind::kCreate:
-      if (key == "fontScale") return value.IsNumber() && value.Number() > 0;
-      if (key == "threadStrategy") return IsInteger(value, 0, 3);
-      if (key == "screenSize" || key == "presetMeasuredSpec") {
-        int32_t min = key == "presetMeasuredSpec" ? INT32_MIN : 0;
-        return value.IsTable() && value.GetLength() == 2 &&
-               IsInteger(value.GetProperty(kWidth), min, INT32_MAX) &&
-               IsInteger(value.GetProperty(kHeight), min, INT32_MAX);
-      }
-      return key == "lynxViewConfig" && value.IsTable() &&
-             std::all_of(
-                 value.Table()->begin(), value.Table()->end(),
-                 [](const auto& field) { return field.second.IsString(); });
     case Kind::kLoadTemplate:
       if (key == "url") return value.IsString() && !value.StdString().empty();
       if (key == "initialData" || key == "globalProps") return IsData(value);
@@ -399,12 +378,15 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   InterceptResult result;
   if (!active_ || !IsAttached()) return result;
   if (!HasHandlers(kind)) return result;
-  if (dispatching_) {
+  // Notifications ignore return values, so nested delivery is safe.
+  const bool decision = kind != Kind::kCreated;
+  if (dispatching_ && decision) {
     ReportCoverageGap(kind, "Reentrant interceptor dispatch is not supported");
     result.failed = true;
     return result;
   }
-  dispatching_ = true;
+  const bool was_dispatching = dispatching_;
+  dispatching_ |= decision;
   Napi::Env env(env_);
   Napi::ContextScope context_scope(env);
   Napi::HandleScope scope(env);
@@ -415,8 +397,8 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   const Value& original = view_event ? event.GetProperty(kRequest) : event;
   auto returned =
       entry->function.Value().Call({ToJS(env, event), CreateChain(env)});
-  bool failed = env.IsExceptionPending() || returned.IsPromise();
-  if (!failed && kind != Kind::kCreated) {
+  bool failed = env.IsExceptionPending() || (decision && returned.IsPromise());
+  if (!failed && decision) {
     Value patch;
     auto action = ReadDecision(returned, kind, original, &patch);
     if (action == Action::kInvalid) {
@@ -427,7 +409,7 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
       result.patch = std::move(patch);
     }
   }
-  dispatching_ = false;
+  dispatching_ = was_dispatching;
   if (failed) {
     std::string message = "Invalid synchronous interceptor decision";
     if (env.IsExceptionPending()) {
