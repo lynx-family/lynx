@@ -7224,8 +7224,8 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.setAttachLynxPageUICallback(UIBodyView.attachLynxPageUICallback callback);
   public void com.lynx.tasm.LynxTemplateRender.checkFallbackForLynxEvent(boolean enableAsync);
   public void com.lynx.tasm.LynxTemplateRender.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
-  public native void com.lynx.tasm.LynxTemplateRender.nativeReattachLynxEngineWrapper(long ptr, long lifecycle, long engine_ptr, long proxy_ptr);
-  public native void com.lynx.tasm.LynxTemplateRender.nativeDetachLynxEngineWrapper(long ptr, long lifecycle);
+  public void com.lynx.tasm.LynxTemplateRender.nativeReattachLynxEngineWrapper(long ptr, long lifecycle, long enginePtr, long proxyPtr);
+  public void com.lynx.tasm.LynxTemplateRender.nativeDetachLynxEngineWrapper(long ptr, long lifecycle);
 }
 
 public class abstract com::lynx::tasm::resourceprovider::template::LynxTemplateResourceFetcher :  {
