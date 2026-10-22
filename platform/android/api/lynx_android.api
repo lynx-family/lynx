@@ -5517,6 +5517,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.ENABLE_LAZY_INIT_A11Y ENABLE_LAZY_INIT_A11Y;
   public com.lynx.tasm.LynxEnvKey.ENABLE_TEXT_LAYOUT_CACHE ENABLE_TEXT_LAYOUT_CACHE;
   public com.lynx.tasm.LynxEnvKey.ENABLE_DATA_LIST_FIX ENABLE_DATA_LIST_FIX;
+  public com.lynx.tasm.LynxEnvKey.ENABLE_CLEAR_UPDATED_DATA_LIST ENABLE_CLEAR_UPDATED_DATA_LIST;
   public com.lynx.tasm.LynxEnvKey.FSP_ENABLE FSP_ENABLE;
   public com.lynx.tasm.LynxEnvKey.FSP_CONFIG_JSON_STRING FSP_CONFIG_JSON_STRING;
   public com.lynx.tasm.LynxEnvKey.INIT_DISPLAY_METRICS_IN_ENV INIT_DISPLAY_METRICS_IN_ENV;
