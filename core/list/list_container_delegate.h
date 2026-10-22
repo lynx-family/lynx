@@ -52,6 +52,10 @@ class ContainerDelegate {
     return nullptr;
   }
 
+  virtual std::unique_ptr<pub::Value> ScrollBySync(float delta) {
+    return nullptr;
+  }
+
   virtual void ScrollStopped() = 0;
   virtual void EnableInsertPlatformView() = 0;
   virtual void OnNextFrame() = 0;

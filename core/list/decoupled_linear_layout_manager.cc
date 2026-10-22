@@ -5,6 +5,7 @@
 #include "core/list/decoupled_linear_layout_manager.h"
 
 #include <algorithm>
+#include <limits>
 #include <unordered_set>
 #include <vector>
 
@@ -486,6 +487,65 @@ int LinearLayoutManager::GetTargetIndexForPreloadBuffer(
  * Recycle / Flush: Handle sticky, recycle ItemHolder out of list's visible
  * range, and flush children's layout infos to platform in OnLayoutCompleted.
  */
+std::optional<float> LinearLayoutManager::ScrollByDelta(float delta) {
+  if (!std::isfinite(delta) || !list_container_ || !list_children_helper_ ||
+      !list_orientation_helper_) {
+    return std::nullopt;
+  }
+  const float viewport = list_orientation_helper_->GetMeasurement();
+  if (!std::isfinite(viewport) || viewport <= 0) return std::nullopt;
+  if (delta == 0 || list_container_->GetDataCount() == 0) return 0.f;
+
+  auto* adapter = list_container_->list_adapter();
+  // Keep a measured item in the overlapping viewport while filling. A large
+  // jump to an estimated offset can otherwise discard every valid anchor.
+  const double step_limit = std::max(1.f, viewport / 2.f);
+  double remaining = delta;
+  double consumed = 0;
+  while (remaining != 0) {
+    const float step =
+        static_cast<float>(std::clamp(remaining, -step_limit, step_limit));
+    const float before = content_offset_;
+    const float target = ClampContentOffsetToEdge(before + step, content_size_);
+    if (target == before) break;
+    auto* anchor = list_children_helper_->GetFirstChild(
+        list_children_helper_->on_screen_children(),
+        [this, adapter](const ItemHolder* item) {
+          return !adapter->IsDirty(item) && !adapter->IsBinding(item) &&
+                 adapter->GetItemElementDelegate(item) &&
+                 IsItemHolderNotAtStickyPosition(item);
+        });
+    if (!anchor) return std::nullopt;
+    const auto key = anchor->item_key();
+    const int index = anchor->index();
+    const float anchor_before = list_orientation_helper_->GetStart(anchor);
+    ScrollByInternal(target, before, false);
+    if (!list_container_->AreOnScreenItemsReady()) return std::nullopt;
+    // Callbacks may update data; never dereference a stale ItemHolder.
+    anchor = list_container_->GetItemHolderForIndex(index);
+    if (!anchor || anchor->item_key() != key) return std::nullopt;
+    // Measuring newly bound items can adjust the global content offset. Only
+    // the displacement of the retained anchor is scrolling consumption.
+    const float anchor_after = list_orientation_helper_->GetStart(anchor);
+    const float moved =
+        (content_offset_ - before) - (anchor_after - anchor_before);
+    // Absorb float rounding relative to the anchor's viewport-local position.
+    const float tolerance =
+        std::max(1e-6f, 2.f * std::numeric_limits<float>::epsilon() *
+                            std::max(std::abs(anchor_before - before),
+                                     std::abs(anchor_after - content_offset_)));
+    const float bounded =
+        moved != 0 && std::abs(moved - step) <= tolerance
+            ? step
+            : std::clamp(moved, std::min(0.f, step), std::max(0.f, step));
+    consumed += bounded;
+    // A short step reached an edge; also stop if |remaining| cannot shrink.
+    if (bounded != step || remaining - step == remaining) break;
+    remaining -= step;
+  }
+  return static_cast<float>(consumed);
+}
+
 void LinearLayoutManager::ScrollByInternal(float content_offset,
                                            float original_offset,
                                            bool from_platform) {

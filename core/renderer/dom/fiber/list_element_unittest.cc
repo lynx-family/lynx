@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -377,6 +378,80 @@ TEST_F(ListElementTest,
   page_->FlushActionsAsRoot();
 
   EXPECT_EQ(ListAxisGaps(list.get()), std::make_pair(12.f, 4.f));
+}
+
+TEST_F(ListElementTest, InvokeMethodValidatesParamsAndDispatches) {
+  const auto scroll_to_position_params = [](lepus::Value index,
+                                            lepus::Value offset) {
+    auto params = lepus::Dictionary::Create();
+    params->SetValue(lynx::list::kScrollToPositionIndex, std::move(index));
+    params->SetValue(lynx::list::kScrollToPositionOffset, std::move(offset));
+    return lepus::Value(params);
+  };
+  const auto scroll_by_params = [](lepus::Value delta) {
+    auto params = lepus::Dictionary::Create();
+    params->SetValue(lynx::list::kScrollByDelta, std::move(delta));
+    return lepus::Value(params);
+  };
+  const auto invoke = [this](const char* method, const lepus::Value& params,
+                             std::string* error) {
+    error->clear();
+    return list_element_->InvokeMethod(base::String(method), params, error);
+  };
+  constexpr double kInf = std::numeric_limits<double>::infinity();
+  const double kTooLargeForFloat =
+      static_cast<double>(std::numeric_limits<float>::max()) * 2;
+  const double kTooLargeForInt =
+      static_cast<double>(std::numeric_limits<int>::max()) + 1;
+  constexpr char kScrollToPositionParamsError[] =
+      "scrollToPosition requires a nonnegative integer index and finite offset";
+  constexpr char kScrollByParamsError[] =
+      "scrollBy requires a finite numeric delta";
+  std::string error;
+
+  for (const auto& params : {
+           scroll_to_position_params(lepus::Value(-1), lepus::Value(0)),
+           scroll_to_position_params(lepus::Value(1.5), lepus::Value(0)),
+           scroll_to_position_params(lepus::Value(kInf), lepus::Value(0)),
+           scroll_to_position_params(lepus::Value(kTooLargeForInt),
+                                     lepus::Value(0)),
+           scroll_to_position_params(lepus::Value("1"), lepus::Value(0)),
+           scroll_to_position_params(lepus::Value(0), lepus::Value(kInf)),
+           scroll_to_position_params(lepus::Value(0),
+                                     lepus::Value(kTooLargeForFloat)),
+           scroll_to_position_params(lepus::Value(0), lepus::Value()),
+       }) {
+    EXPECT_TRUE(
+        invoke(lynx::list::kScrollToPositionMethod, params, &error).IsEmpty());
+    EXPECT_EQ(error, kScrollToPositionParamsError);
+  }
+  for (const auto& params : {
+           scroll_by_params(lepus::Value(kInf)),
+           scroll_by_params(lepus::Value(kTooLargeForFloat)),
+           scroll_by_params(lepus::Value("1")),
+           scroll_by_params(lepus::Value()),
+       }) {
+    EXPECT_TRUE(invoke(lynx::list::kScrollByMethod, params, &error).IsEmpty());
+    EXPECT_EQ(error, kScrollByParamsError);
+  }
+
+  // Valid params reach the synchronous path, which rejects a non-native list.
+  EXPECT_TRUE(
+      invoke(lynx::list::kScrollToPositionMethod,
+             scroll_to_position_params(lepus::Value(0), lepus::Value(0)),
+             &error)
+          .IsEmpty());
+  EXPECT_EQ(error.rfind("scrollToPosition failed: ", 0), 0u) << error;
+  EXPECT_TRUE(invoke(lynx::list::kScrollByMethod,
+                     scroll_by_params(lepus::Value(10)), &error)
+                  .IsEmpty());
+  EXPECT_EQ(error.rfind("scrollBy failed: ", 0), 0u) << error;
+
+  // Unknown methods fall back to Element.
+  EXPECT_TRUE(
+      invoke("unknownMethod", lepus::Value(lepus::Dictionary::Create()), &error)
+          .IsEmpty());
+  EXPECT_EQ(error, "Unsupported element method: unknownMethod");
 }
 
 TEST_F(SSRListElementTest, AttributeStyleCacheMirrorsCommittedStyleCache) {

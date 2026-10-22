@@ -67,6 +67,7 @@ class ListContainerImpl : public ContainerDelegate {
   bool AreOnScreenItemsReady() const;
   bool synchronous_scroll_active() const { return synchronous_scroll_active_; }
 
+  std::unique_ptr<pub::Value> ScrollBySync(float delta) override;
   void ScrollStopped() override;
   void EnableInsertPlatformView() override {
     enable_insert_platform_view_operation_ = true;

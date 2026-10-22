@@ -4,10 +4,13 @@
 
 #include "core/renderer/dom/fiber/list_element.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "core/list/decoupled_list_types.h"
@@ -59,6 +62,47 @@ list::BatchRenderStrategy NormalizeBatchRenderStrategyForNewStylingPipeline(
     return list::BatchRenderStrategy::kBatchRender;
   }
   return strategy;
+}
+
+// Reads a finite number that is representable as float.
+std::optional<double> ReadFiniteFloatParam(const lepus::Value& params,
+                                           const base::String& key) {
+  const auto value = params.GetProperty(key);
+  if (!value.IsNumber()) {
+    return std::nullopt;
+  }
+  const double number = value.Number();
+  if (!std::isfinite(number) ||
+      std::abs(number) > std::numeric_limits<float>::max()) {
+    return std::nullopt;
+  }
+  return number;
+}
+
+std::optional<int> ReadNonNegativeIntParam(const lepus::Value& params,
+                                           const base::String& key) {
+  const auto value = params.GetProperty(key);
+  if (!value.IsNumber()) {
+    return std::nullopt;
+  }
+  const double number = value.Number();
+  if (!std::isfinite(number) || number < 0 ||
+      number > std::numeric_limits<int>::max() ||
+      number != std::trunc(number)) {
+    return std::nullopt;
+  }
+  return static_cast<int>(number);
+}
+
+// Converts a synchronous list result into the InvokeMethod contract.
+lepus::Value ToInvokeMethodResult(const std::unique_ptr<pub::Value>& result,
+                                  const char* method, const std::string& reason,
+                                  std::string* error) {
+  if (!result) {
+    *error = std::string(method) + " failed: " + reason;
+    return lepus::Value();
+  }
+  return pub::ValueUtils::ConvertValueToLepusValue(*result);
 }
 
 }  // namespace
@@ -693,58 +737,102 @@ void ListElement::ScrollToPosition(int index, float offset, int align,
 lepus::Value ListElement::InvokeMethod(const base::String& method,
                                        const lepus::Value& params,
                                        std::string* error) {
-  if (method != BASE_STATIC_STRING(lynx::list::kScrollToPositionMethod)) {
-    return Element::InvokeMethod(method, params, error);
+  static constexpr std::pair<const char*, MethodHandler> kHandlers[] = {
+      {lynx::list::kScrollToPositionMethod,
+       &ListElement::InvokeScrollToPosition},
+      {lynx::list::kScrollByMethod, &ListElement::InvokeScrollBy},
+  };
+  for (const auto& [name, handler] : kHandlers) {
+    if (method == name) {
+      return (this->*handler)(params, error);
+    }
   }
-  static constexpr const char kIndex[] = "index";
-  static constexpr const char kOffset[] = "offset";
-  const auto index_value = params.GetProperty(BASE_STATIC_STRING(kIndex));
-  const auto offset_value = params.GetProperty(BASE_STATIC_STRING(kOffset));
-  if (!index_value.IsNumber() || !offset_value.IsNumber()) {
-    *error = "scrollToPosition requires numeric index and offset";
-    return lepus::Value();
-  }
-  const double index = index_value.Number();
-  const double offset = offset_value.Number();
-  if (!std::isfinite(index) || index < 0 ||
-      index > std::numeric_limits<int>::max() || index != std::trunc(index) ||
-      !std::isfinite(offset) ||
-      std::abs(offset) > std::numeric_limits<float>::max()) {
+  return Element::InvokeMethod(method, params, error);
+}
+
+lepus::Value ListElement::InvokeScrollToPosition(const lepus::Value& params,
+                                                 std::string* error) {
+  const auto index = ReadNonNegativeIntParam(
+      params, BASE_STATIC_STRING(lynx::list::kScrollToPositionIndex));
+  const auto offset = ReadFiniteFloatParam(
+      params, BASE_STATIC_STRING(lynx::list::kScrollToPositionOffset));
+  if (!index || !offset) {
     *error =
         "scrollToPosition requires a nonnegative integer index and finite "
         "offset";
     return lepus::Value();
   }
   std::string reason;
-  auto result = ScrollToPositionSync(static_cast<int>(index),
-                                     static_cast<float>(offset), &reason);
-  if (!result) {
-    *error = "scrollToPosition failed: " + reason;
-    return lepus::Value();
-  }
-  return pub::ValueUtils::ConvertValueToLepusValue(*result);
+  const auto result =
+      ScrollToPositionSync(*index, static_cast<float>(*offset), &reason);
+  return ToInvokeMethodResult(result, lynx::list::kScrollToPositionMethod,
+                              reason, error);
 }
 
-std::unique_ptr<pub::Value> ListElement::ScrollToPositionSync(
-    int index, float offset, std::string* error) {
+lepus::Value ListElement::InvokeScrollBy(const lepus::Value& params,
+                                         std::string* error) {
+  const auto delta = ReadFiniteFloatParam(
+      params, BASE_STATIC_STRING(lynx::list::kScrollByDelta));
+  if (!delta) {
+    *error = "scrollBy requires a finite numeric delta";
+    return lepus::Value();
+  }
+  std::string reason;
+  const auto result = ScrollBySync(*delta, &reason);
+  return ToInvokeMethodResult(result, lynx::list::kScrollByMethod, reason,
+                              error);
+}
+
+bool ListElement::CanScrollSynchronously(std::string* error) {
   if (IsDetached() || will_destroy()) {
     *error = "list is detached";
-    return nullptr;
+    return false;
   }
   if (!UseNativeList()) {
     *error = "list does not use the native list implementation";
-    return nullptr;
+    return false;
   }
   const auto engine_thread = element_manager()->GetCurrentEngineThreadId();
   if (engine_thread && *engine_thread != std::this_thread::get_id()) {
     *error = "must be called on the engine thread";
-    return nullptr;
+    return false;
   }
   if (NeedAsyncResolveListItem()) {
     *error = "not supported when list items resolve asynchronously";
+    return false;
+  }
+  return true;
+}
+
+std::unique_ptr<pub::Value> ListElement::ScrollToPositionSync(
+    int index, float offset, std::string* error) {
+  if (!CanScrollSynchronously(error)) return nullptr;
+  return list_mediator_->ScrollToPositionSync(index, offset, error);
+}
+
+std::unique_ptr<pub::Value> ListElement::ScrollBySync(double physical_delta,
+                                                      std::string* error) {
+  if (!CanScrollSynchronously(error)) return nullptr;
+  const double scale =
+      element_manager()->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  const float delta = static_cast<float>(physical_delta / scale);
+  if (!std::isfinite(scale) || scale <= 0 || !std::isfinite(delta)) {
+    *error = "invalid delta or pixel ratio";
     return nullptr;
   }
-  return list_mediator_->ScrollToPositionSync(index, offset, error);
+  auto result = list_mediator_->ScrollBySync(delta);
+  const auto consumed =
+      result ? result->GetValueForKey("consumedDelta") : nullptr;
+  if (!consumed || !consumed->IsNumber()) {
+    *error = "list could not complete synchronous layout";
+    return nullptr;
+  }
+  // Bound float rounding by the original double request.
+  result->PushDoubleToMap(
+      "consumedDelta",
+      std::clamp(consumed->Number() * scale, std::min(0.0, physical_delta),
+                 std::max(0.0, physical_delta)));
+  return result;
 }
 
 /**
