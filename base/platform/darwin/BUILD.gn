@@ -100,7 +100,14 @@ subspec_target("Framework") {
   ]
   frameworks = []
   libraries = [ "stdc++" ]
-  dependency = [ "LynxServiceAPI/Core" ]
+  if (use_flatten_deps) {
+    dependency = [ [
+          "LynxServiceAPI/Core",
+          "$lynx_version",
+        ] ]
+  } else {
+    dependency = [ "LynxServiceAPI/Core" ]
+  }
 }
 
 lynx_base_source_set("base") {
