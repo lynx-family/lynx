@@ -12,7 +12,13 @@ extern "C" __attribute__((visibility("default"))) void
 LynxRegisterRTSInspectorManagerFactoryImpl(
     lynx::devtool::JSDebugHelper* helper) {}
 
+// On iOS the registration entry point lives in
+// rts_inspector_manager_factory_stub_ios.cc, which is compiled alongside this
+// file; defining it here as well produces a duplicate symbol when the
+// framework is linked dynamically.
+#if !OS_IOS
 extern "C" void LynxRegisterRTSInspectorManagerFactory(void) {
   auto* anchor = &LynxRegisterRTSInspectorManagerFactoryImpl;
   (void)anchor;
 }
+#endif
