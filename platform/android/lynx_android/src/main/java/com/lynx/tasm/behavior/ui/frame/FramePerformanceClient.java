@@ -32,4 +32,12 @@ final class FramePerformanceClient extends LynxViewClientV2 {
     }
     frameView.onFrameLoadMetricsEvent(entry);
   }
+
+  @Override
+  public void onResourceLoaded(@NonNull LynxResourceLoadInfo info) {
+    LynxFrameView frameView = mFrameViewRef.get();
+    if (frameView != null) {
+      frameView.onFrameImageLoaded(info);
+    }
+  }
 }

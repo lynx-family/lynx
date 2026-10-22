@@ -16,6 +16,7 @@ import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxUpdateMeta;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
+import com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.ThreadStrategyForRendering;
@@ -27,6 +28,7 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.event.LynxDetailEvent;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
+import com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
@@ -49,7 +51,7 @@ public final class LynxFrameView extends UIBodyView {
   private boolean mIsIntrinsicSizeConsumed = true;
   private int mContentWidth = -1;
   private int mContentHeight = -1;
-  private boolean mDestroyed = false;
+  private volatile boolean mDestroyed = false;
   private TemplateData mInitData = null;
   private TemplateData mGlobalProps = null;
   private boolean mAutoWidth = false;
@@ -121,6 +123,13 @@ public final class LynxFrameView extends UIBodyView {
       return false;
     }
 
+    // These image hooks are installed on the context after the host view is built.
+    mRender.setImageInterceptor(mContext.imageInterceptor());
+    mRender.setAsyncImageInterceptor(mContext.getAsyncImageInterceptor());
+    LynxContext childContext = mRender.getLynxContext();
+    if (childContext != null) {
+      childContext.setFrescoCallerContext(mContext.getFrescoCallerContext());
+    }
     attachFramePerformanceClientIfNeeded();
     if (mAttachLynxPageUICallback != null) {
       mRender.setAttachLynxPageUICallback(mAttachLynxPageUICallback);
@@ -464,6 +473,13 @@ public final class LynxFrameView extends UIBodyView {
   private void attachFramePerformanceClientIfNeeded() {
     if (mRender != null) {
       mRender.addLynxViewClientV2(mFramePerformanceClient);
+    }
+  }
+
+  void onFrameImageLoaded(LynxResourceLoadInfo info) {
+    if (!mDestroyed && mContext != null
+        && info.getResourceType() == LynxResourceType.LynxResourceTypeImage) {
+      mContext.notifyResourceLoaded(info);
     }
   }
 
