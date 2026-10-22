@@ -8,13 +8,11 @@
 #include <cmath>
 #include <limits>
 #include <memory>
-#include <mutex>
 #include <string>
-#include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/platform/harmony/harmony_vsync_manager.h"
 #include "markdown/platform/harmony/harmony_markdown_measurer.h"
-#include "markdown/platform/harmony/serval_markdown_view.h"
 #include "markdown/view/markdown_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/markdown_view_bundle.h"
@@ -25,17 +23,6 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 namespace {
-
-struct MarkdownNativeState {
-  MarkdownNativeState() {
-    view.SetMeasurer(&measurer);
-    view.GetMarkdownView()->SetEnableRegionView(false);
-  }
-
-  // The view must be destroyed before the measurer it references.
-  serval::markdown::NativeMarkdownMeasurer measurer;
-  serval::markdown::NativeServalMarkdownView view{false};
-};
 
 tttext::LayoutMode ToMarkdownLayoutMode(MeasureMode mode) {
   switch (mode) {
@@ -99,16 +86,6 @@ serval::markdown::MarkdownAnimationType ReadAnimationType(
   return serval::markdown::MarkdownAnimationType::kNone;
 }
 
-void InitMarkdownEnv(LynxContext* context) {
-  if (!context) {
-    return;
-  }
-  static std::once_flag once_flag;
-  std::call_once(once_flag, [context] {
-    serval::markdown::NativeServalMarkdownView::InitEnv(context->GetNapiEnv());
-  });
-}
-
 }  // namespace
 
 MarkdownShadowNode::MarkdownShadowNode(int sign, const std::string& tag)
@@ -118,84 +95,95 @@ MarkdownShadowNode::MarkdownShadowNode(int sign, const std::string& tag)
 
 MarkdownShadowNode::~MarkdownShadowNode() = default;
 
-void MarkdownShadowNode::OnContextReady() { EnsureMarkdownView(); }
-
-std::shared_ptr<serval::markdown::NativeServalMarkdownView>
-MarkdownShadowNode::EnsureMarkdownView() {
-  if (markdown_view_ || !context_) {
-    return markdown_view_;
-  }
-  InitMarkdownEnv(context_);
-  auto state = std::make_shared<MarkdownNativeState>();
-  // Share ownership so a view retained by the UI keeps its measurer alive.
-  markdown_measurer_ =
-      std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>(
-          state, &state->measurer);
-  markdown_view_ = std::shared_ptr<serval::markdown::NativeServalMarkdownView>(
-      state, &state->view);
-  markdown_measurer_->SetRequestMeasureCallback([this]() { MarkDirty(); });
-  resource_loader_ = std::make_shared<MarkdownResourceLoaderHarmony>(
-      context_, this, markdown_view_.get());
-  markdown_view_->GetMarkdownView()->SetResourceLoader(resource_loader_.get());
-  bundle_ = MarkdownViewBundle::Create(markdown_view_);
-  return markdown_view_;
+void MarkdownShadowNode::OnContextReady() {
+  EnsureMarkdownMeasurer();
+  RequestLayoutFrame();
 }
 
-serval::markdown::MarkdownView* MarkdownShadowNode::MarkdownView() {
-  auto markdown_view = EnsureMarkdownView();
-  return markdown_view ? markdown_view->GetMarkdownView() : nullptr;
+void MarkdownShadowNode::RequestLayoutFrame() {
+  base::HarmonyVsyncManager::GetInstance().RequestVSync(
+      [self = fml::RefPtr<MarkdownShadowNode>(this),
+       runner = context_->GetLayoutTaskRunner()](long long frame_time) {
+        runner->PostTask([self, frame_time] {
+          if (self->IsDestroyed()) {
+            return;
+          }
+          self->markdown_measurer_->OnLayoutFrame(frame_time);
+          self->RequestLayoutFrame();
+        });
+      });
+}
+
+std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>
+MarkdownShadowNode::EnsureMarkdownMeasurer() {
+  if (markdown_measurer_ || !context_) {
+    return markdown_measurer_;
+  }
+  markdown_measurer_ =
+      std::make_shared<serval::markdown::NativeMarkdownMeasurer>();
+  markdown_measurer_->GetMarkdownView()->SetEnableRegionView(false);
+  markdown_measurer_->SetNumberProp(
+      serval::markdown::MarkdownProps::kAnimationFrameRate, 15);
+  resource_loader_ = std::make_shared<MarkdownResourceLoaderHarmony>(
+      context_, this, markdown_measurer_);
+  markdown_measurer_->GetMarkdownView()->SetResourceLoader(
+      resource_loader_.get());
+  markdown_measurer_->SetRequestMeasureCallback(
+      [weak_loader =
+           std::weak_ptr<MarkdownResourceLoaderHarmony>(resource_loader_)] {
+        if (auto loader = weak_loader.lock()) {
+          loader->RequestMeasure();
+        }
+      });
+  return markdown_measurer_;
 }
 
 fml::RefPtr<fml::RefCountedThreadSafeStorage>
 MarkdownShadowNode::getExtraBundle() {
-  EnsureMarkdownView();
-  return bundle_;
+  return MarkdownViewBundle::Create(EnsureMarkdownMeasurer(), measured_size_);
 }
 
 void MarkdownShadowNode::Destroy() {
   if (markdown_measurer_) {
     markdown_measurer_->SetRequestMeasureCallback(nullptr);
+    markdown_measurer_->GetMarkdownView()->SetResourceLoader(nullptr);
   }
-  if (markdown_view_ && markdown_view_->GetMarkdownView()) {
-    markdown_view_->GetMarkdownView()->SetResourceLoader(nullptr);
+  if (resource_loader_) {
+    resource_loader_->Destroy();
   }
   resource_loader_.reset();
-  bundle_ = nullptr;
-  markdown_view_.reset();
   markdown_measurer_.reset();
 }
 
 void MarkdownShadowNode::OnPropsUpdate(const std::string& name,
                                        const lepus::Value& value) {
-  auto markdown_view = EnsureMarkdownView();
-  if (!markdown_view) {
+  auto markdown_measurer = EnsureMarkdownMeasurer();
+  if (!markdown_measurer) {
     return;
   }
-  auto* view = markdown_view->GetMarkdownView();
   if (name == "content") {
     if (value.IsString()) {
-      markdown_view->SetContent(value.StdString());
+      markdown_measurer->SetContent(value.StdString());
     } else {
       LOGE("markdown: content prop is not string");
     }
   } else if (name == "markdown-style") {
-    markdown_view->SetStyle(LepusValueToMarkdownValueMap(value));
+    markdown_measurer->SetStyle(LepusValueToMarkdownValueMap(value));
   } else {
     ApplyConfig(name, value);
   }
-  view->NeedsMeasure();
-  MarkDirty();
+  markdown_measurer->MarkDirty();
 }
 
 void MarkdownShadowNode::ApplyConfig(const std::string& name,
                                      const lepus::Value& value) {
-  auto markdown_view = EnsureMarkdownView();
-  if (!markdown_view) {
+  auto markdown_measurer = EnsureMarkdownMeasurer();
+  if (!markdown_measurer) {
     return;
   }
-  auto* view = markdown_view->GetMarkdownView();
+  auto* view = markdown_measurer->GetMarkdownView();
   if (name == "markdown-config") {
-    markdown_view->SetConfig(LepusValueToMarkdownValueMap(value));
+    markdown_measurer->SetConfig(LepusValueToMarkdownValueMap(value));
   } else if (name == "content-range") {
     view->SetContentRange(ReadRange(value));
   } else if (name == "text-maxline" || name == "text-max-lines") {
@@ -207,6 +195,11 @@ void MarkdownShadowNode::ApplyConfig(const std::string& name,
   } else if (name == "animation-velocity") {
     if (value.IsNumber()) {
       view->SetAnimationVelocity(static_cast<float>(value.Number()));
+    }
+  } else if (name == "animation-frame-rate") {
+    if (value.IsNumber()) {
+      markdown_measurer->SetNumberProp(
+          serval::markdown::MarkdownProps::kAnimationFrameRate, value.Number());
     }
   } else if (name == "initial-animation-step") {
     if (value.IsNumber()) {
@@ -245,9 +238,9 @@ void MarkdownShadowNode::ApplyConfig(const std::string& name,
 LayoutResult MarkdownShadowNode::Measure(float width, MeasureMode width_mode,
                                          float height, MeasureMode height_mode,
                                          bool final_measure) {
-  (void)final_measure;
-  auto* view = MarkdownView();
-  if (!view) {
+  auto markdown_measurer = EnsureMarkdownMeasurer();
+  if (!markdown_measurer) {
+    measured_size_ = {};
     return {0, 0};
   }
   const float density = context_ ? context_->ScaledDensity() : 1.f;
@@ -260,16 +253,15 @@ LayoutResult MarkdownShadowNode::Measure(float width, MeasureMode width_mode,
   spec.width_mode_ = ToMarkdownLayoutMode(width_mode);
   spec.height_ = ToMarkdownMeasureValue(height, height_mode, density);
   spec.height_mode_ = ToMarkdownLayoutMode(height_mode);
-  auto size = view->Measure(spec);
-  return {size.width_ / density, size.height_ / density};
+  measured_size_ = markdown_measurer->Measure(spec);
+  return {measured_size_.width_ / density, measured_size_.height_ / density,
+          measured_size_.baseline_ / density};
 }
 
 void MarkdownShadowNode::Align() {
-  auto* view = MarkdownView();
-  if (!view) {
-    return;
+  if (auto markdown_measurer = EnsureMarkdownMeasurer()) {
+    markdown_measurer->Align(0, 0);
   }
-  view->Align(0, 0);
 }
 
 }  // namespace harmony

@@ -10,7 +10,7 @@
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
-#include "markdown/platform/harmony/serval_markdown_view.h"
+#include "markdown/platform/harmony/harmony_markdown_measurer.h"
 
 namespace lynx {
 namespace tasm {
@@ -19,25 +19,34 @@ namespace harmony {
 class MarkdownViewBundle final : public fml::RefCountedThreadSafeStorage {
  public:
   static fml::RefPtr<MarkdownViewBundle> Create(
-      std::shared_ptr<serval::markdown::NativeServalMarkdownView>
-          markdown_view) {
-    return fml::AdoptRef(new MarkdownViewBundle(std::move(markdown_view)));
+      std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>
+          markdown_measurer,
+      serval::markdown::MeasureResult measured_size) {
+    return fml::AdoptRef(
+        new MarkdownViewBundle(std::move(markdown_measurer), measured_size));
   }
 
-  const std::shared_ptr<serval::markdown::NativeServalMarkdownView>&
-  GetMarkdownView() const {
-    return markdown_view_;
+  const std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>&
+  GetMarkdownMeasurer() const {
+    return markdown_measurer_;
+  }
+  serval::markdown::MeasureResult GetMeasuredSize() const {
+    return measured_size_;
   }
 
  private:
   explicit MarkdownViewBundle(
-      std::shared_ptr<serval::markdown::NativeServalMarkdownView> markdown_view)
-      : markdown_view_(std::move(markdown_view)) {}
+      std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>
+          markdown_measurer,
+      serval::markdown::MeasureResult measured_size)
+      : markdown_measurer_(std::move(markdown_measurer)),
+        measured_size_(measured_size) {}
 
   ~MarkdownViewBundle() override = default;
   void ReleaseSelf() const override { delete this; }
 
-  std::shared_ptr<serval::markdown::NativeServalMarkdownView> markdown_view_;
+  std::shared_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer_;
+  serval::markdown::MeasureResult measured_size_;
 };
 
 }  // namespace harmony
