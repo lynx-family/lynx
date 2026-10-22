@@ -126,12 +126,18 @@ void ScreenCastHelper::TakeSnapshotAsync(
         if (!embedder_proxy) {
           return;
         }
+        auto platform = sp_self->weak_platform_embedder_.lock();
+        if (!platform || !platform->GetDevtoolPlatformFacade()) {
+          return;
+        }
+        const auto mode =
+            platform->GetDevtoolPlatformFacade()->GetScreenshotMode();
 
         embedder_proxy->TakeSnapshot(
             sp_self->max_width_, sp_self->max_height_, sp_self->quality_,
             sp_self->format_, sp_self->GetScreenScaleFactor(),
-            ScreenshotThreadManager::GetScreenshotRunner(),
-            std::move(callback));
+            ScreenshotThreadManager::GetScreenshotRunner(), std::move(callback),
+            mode);
       });
 }
 

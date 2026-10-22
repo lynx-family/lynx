@@ -2463,33 +2463,20 @@ void LynxTemplateRenderer::TakeSnapshot(
     size_t max_width, size_t max_height, int quality, const std::string& format,
     float screen_scale_factor,
     const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
-    tasm::TakeSnapshotCompletedCallback callback) {
+    tasm::TakeSnapshotCompletedCallback callback,
+    const std::string& screenshot_mode) {
   ui_delegate_->TakeSnapshot(max_width, max_height, quality, format,
-                             screen_scale_factor, screenshot_runner, callback);
+                             screen_scale_factor, screenshot_runner, callback,
+                             screenshot_mode);
 }
 
-int LynxTemplateRenderer::GetNodeForLocation(int x, int y) {
-  return ui_delegate_->GetNodeForLocation(x, y);
+int LynxTemplateRenderer::GetNodeForLocation(
+    int x, int y, const std::string& coordinate_mode) {
+  return ui_delegate_->GetNodeForLocation(x, y, coordinate_mode);
 }
 
-bool LynxTemplateRenderer::SetScreenshotMode(
-    const std::string& screen_shot_mode) {
-  if (!is_host_renderer_ || !ui_delegate_) {
-    return false;
-  }
-  const std::string actual_screen_shot_mode =
-      screen_shot_mode == "fullscreen" ? "fullscreen" : "lynxview";
-  static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
-      ->SetScreenshotMode(actual_screen_shot_mode);
-  return true;
-}
-
-std::string LynxTemplateRenderer::GetActualScreenshotMode() {
-  if (!is_host_renderer_ || !ui_delegate_) {
-    return "lynxview";
-  }
-  return static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
-      ->GetActualScreenshotMode();
+bool LynxTemplateRenderer::SupportsFullscreenScreenshot() const {
+  return is_host_renderer_ && ui_delegate_;
 }
 
 std::vector<float> LynxTemplateRenderer::GetTransformValue(
@@ -2601,12 +2588,13 @@ void LynxTemplateRenderer::SyncWindowInfoToLynxContext() {
 void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
                                         int y, const std::string& button,
                                         float delta_x, float delta_y,
-                                        int modifiers, int click_count) {
+                                        int modifiers, int click_count,
+                                        const std::string& coordinate_mode) {
   if (!ui_delegate_) {
     return;
   }
   ui_delegate_->EmulateTouch(event_type, x, y, button, delta_x, delta_y,
-                             modifiers, click_count);
+                             modifiers, click_count, coordinate_mode);
 }
 
 void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {}

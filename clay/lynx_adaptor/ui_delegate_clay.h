@@ -57,9 +57,11 @@ class UIDelegateClay : public UIDelegate {
       size_t max_width, size_t max_height, int quality,
       const std::string& format, float screen_scale_factor,
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
-      TakeSnapshotCompletedCallback callback) override;
+      TakeSnapshotCompletedCallback callback,
+      const std::string& screenshot_mode = "lynxview") override;
 
-  int GetNodeForLocation(int x, int y) override;
+  int GetNodeForLocation(
+      int x, int y, const std::string& coordinate_mode = "lynxview") override;
 
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;

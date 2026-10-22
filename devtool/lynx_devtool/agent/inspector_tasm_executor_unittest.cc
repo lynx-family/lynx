@@ -41,7 +41,6 @@
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "devtool/base_devtool/native/public/cdp_responder.h"
-#include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_overlay_agent_ng.h"
@@ -1738,12 +1737,8 @@ TEST_F(InspectorTasmExecutorTest, DOMGetBoxModelRequestsBoxModelOnUICase) {
   element->CreateElementContainer(false);
   element->MarkAttached();
   element_executor_->element_root_ = element.get();
-  std::string screen_shot_mode =
-      devtool::DevToolStatus::GetInstance().GetStatus(
-          devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
-  devtool::DevToolStatus::GetInstance().SetStatus(
-      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
+  element_executor_->SetDevToolPlatformFacade(facade);
+  ASSERT_TRUE(facade->SetScreenshotMode("fullscreen"));
 
   Json::Value message(Json::ValueType::objectValue);
   message["id"] = 9;
@@ -1751,9 +1746,6 @@ TEST_F(InspectorTasmExecutorTest, DOMGetBoxModelRequestsBoxModelOnUICase) {
       devtool::ElementInspector::NodeId(element.get());
   element_executor_->DOM_GetBoxModel(message_sender_, message);
   FlushUITasks();
-  devtool::DevToolStatus::GetInstance().SetStatus(
-      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      screen_shot_mode);
 
   Json::Value res;
   Json::Reader reader;
@@ -1793,21 +1785,14 @@ TEST_F(InspectorTasmExecutorTest, DOMGetBoxModelAppliesRootOffsetCase) {
   child->MarkAttached();
   element_executor_->element_root_ = root.get();
 
-  std::string screen_shot_mode =
-      devtool::DevToolStatus::GetInstance().GetStatus(
-          devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
-  devtool::DevToolStatus::GetInstance().SetStatus(
-      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      devtool::DevToolStatus::SCREENSHOT_MODE_LYNXVIEW);
+  element_executor_->SetDevToolPlatformFacade(facade);
+  ASSERT_TRUE(facade->SetScreenshotMode("lynxview"));
 
   Json::Value message(Json::ValueType::objectValue);
   message["id"] = 10;
   message["params"]["nodeId"] = devtool::ElementInspector::NodeId(child.get());
   element_executor_->DOM_GetBoxModel(message_sender_, message);
   FlushUITasks();
-  devtool::DevToolStatus::GetInstance().SetStatus(
-      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      screen_shot_mode);
 
   Json::Value res;
   Json::Reader reader;

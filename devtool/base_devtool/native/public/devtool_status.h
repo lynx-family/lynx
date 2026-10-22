@@ -14,19 +14,17 @@ namespace lynx {
 namespace devtool {
 
 /**
- * Store some status of devtool
+ * Process-wide connection status. Per-target capture/coordinate state belongs
+ * to DevToolPlatformFacade.
  */
 class BASE_DEVTOOL_EXPORT DevToolStatus {
  public:
   enum DevToolStatusKey {
     kDevToolStatusKeyIsConnected =
         0,  // devtool is whether connect to debug platform or not
-    kDevToolStatusKeyScreenShotMode
   };
 
  public:
-  static const char* SCREENSHOT_MODE_FULLSCREEN;
-  static const char* SCREENSHOT_MODE_LYNXVIEW;
   static const char* NO_DEBUG_INFO_FOUND_BY_URL;
 
  public:

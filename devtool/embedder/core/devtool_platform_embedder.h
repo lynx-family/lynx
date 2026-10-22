@@ -37,7 +37,8 @@ class DevtoolPlatformEmbedder
             const std::shared_ptr<InspectorOwnerEmbedder>& owner);
   void AttachProxy(devtool::LynxDevToolProxy* proxy);
 
-  int FindNodeIdForLocation(float x, float y);
+  int FindNodeIdForLocation(float x, float y,
+                            const std::string& coordinate_mode);
 
   void StartCasting(int32_t quality, int32_t max_width, int32_t max_height,
                     const std::string& format);

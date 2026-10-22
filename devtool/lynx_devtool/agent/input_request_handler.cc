@@ -333,6 +333,7 @@ void InputRequestHandler::EmulateTouchFromMouseEvent(
   input->type_ = params["type"].asString();
   input->x_ = params["x"].asInt();
   input->y_ = params["y"].asInt();
+  input->coordinate_mode_ = devtool_platform_facade_->GetScreenshotMode();
   devtool_platform_facade_->EmulateTouch(input);
   responder->SendSuccess();
 }

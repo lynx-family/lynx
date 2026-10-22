@@ -18,6 +18,8 @@ struct MouseEvent {
   float delta_y_;
   int modifiers_;
   int click_count_;
+  // Snapshot of the target facade's mode when this request was accepted.
+  std::string coordinate_mode_;
 };
 
 }  // namespace devtool

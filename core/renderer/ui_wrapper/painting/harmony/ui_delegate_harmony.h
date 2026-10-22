@@ -61,13 +61,11 @@ class UIDelegateHarmony : public UIDelegate {
       size_t max_width, size_t max_height, int quality,
       const std::string& format, float screen_scale_factor,
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
-      TakeSnapshotCompletedCallback callback) override;
+      TakeSnapshotCompletedCallback callback,
+      const std::string& screenshot_mode = "lynxview") override;
 
-  int GetNodeForLocation(int x, int y) override;
-  void SetScreenshotMode(const std::string& screen_shot_mode);
-  const std::string& GetActualScreenshotMode() const {
-    return screen_shot_mode_;
-  }
+  int GetNodeForLocation(
+      int x, int y, const std::string& coordinate_mode = "lynxview") override;
 
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
@@ -78,7 +76,8 @@ class UIDelegateHarmony : public UIDelegate {
                  const std::string& content) override;
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
-                    int modifiers, int click_count) override;
+                    int modifiers, int click_count,
+                    const std::string& coordinate_mode) override;
 
   float ScreenWidth() { return screen_width_; }
   float ScreenHeight() { return screen_height_; }
@@ -102,7 +101,6 @@ class UIDelegateHarmony : public UIDelegate {
   std::weak_ptr<LynxContext> lynx_context_;
   HarmonyEmulatedTouchDispatcher emulated_touch_dispatcher_;
   shell::EmbedderPlatformHarmony* platform_ = nullptr;
-  std::string screen_shot_mode_ = "lynxview";
 
   float screen_width_ = 0.f;
   float screen_height_ = 0.f;

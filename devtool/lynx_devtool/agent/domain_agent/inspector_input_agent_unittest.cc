@@ -74,6 +74,16 @@ class InputAgentTestMessageSender : public MessageSender {
 class InputAgentPlatformFacadeMock
     : public lynx::testing::DevToolPlatformFacadeMock {
  public:
+  void EmulateTouch(std::shared_ptr<MouseEvent> input) override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    touch_events_.push_back(*input);
+  }
+
+  std::vector<MouseEvent> TouchEvents() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return touch_events_;
+  }
+
   void EmulateMouse(std::shared_ptr<MouseEvent> input) override {
     std::lock_guard<std::mutex> lock(mutex_);
     mouse_events_.push_back(*input);
@@ -86,6 +96,7 @@ class InputAgentPlatformFacadeMock
 
  private:
   mutable std::mutex mutex_;
+  std::vector<MouseEvent> touch_events_;
   std::vector<MouseEvent> mouse_events_;
 };
 
@@ -177,6 +188,36 @@ class InspectorInputAgentTest : public ::testing::Test {
   std::shared_ptr<InputAgentPlatformFacadeMock> platform_facade_;
   std::shared_ptr<InputAgentTestMessageSender> message_sender_;
 };
+
+TEST_F(InspectorInputAgentTest,
+       EmulateTouchSnapshotsFacadeModeWithoutScreencast) {
+  auto other_target = std::make_shared<InputAgentPlatformFacadeMock>();
+  ASSERT_TRUE(other_target->SetScreenshotMode("lynxview"));
+  Json::Value message;
+  message["id"] = 40;
+  message["method"] = "Input.emulateTouchFromMouseEvent";
+  message["params"]["type"] = "mousePressed";
+  message["params"]["button"] = "left";
+  message["params"]["x"] = 120;
+  message["params"]["y"] = 240;
+  Dispatch(message);
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  ASSERT_TRUE(platform_facade_->SetScreenshotMode("lynxview"));
+  message["id"] = 41;
+  Dispatch(message);
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(2));
+  ASSERT_TRUE(platform_facade_->SetScreenshotMode("fullscreen"));
+
+  auto events = platform_facade_->TouchEvents();
+  ASSERT_EQ(events.size(), 2U);
+  EXPECT_EQ(events[0].coordinate_mode_, "fullscreen");
+  EXPECT_EQ(events[1].coordinate_mode_, "lynxview");
+  EXPECT_EQ(events[0].x_, 120);
+  EXPECT_EQ(events[1].y_, 240);
+  EXPECT_EQ(other_target->GetScreenshotMode(), "lynxview");
+  EXPECT_EQ(platform_facade_->GetScreenshotMode(), "fullscreen");
+  EXPECT_TRUE(platform_facade_->screen_cast_requests_.empty());
+}
 
 TEST_F(InspectorInputAgentTest, InsertTextReturnsSuccess) {
   Json::Value message(Json::ValueType::objectValue);

@@ -335,14 +335,16 @@ void UIDelegateHarmony::TakeSnapshot(
     size_t max_width, size_t max_height, int quality, const std::string& format,
     float screen_scale_factor,
     const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
-    TakeSnapshotCompletedCallback callback) {
+    TakeSnapshotCompletedCallback callback,
+    const std::string& screenshot_mode) {
   if (!platform_) return;
   platform_->TakeSnapshot(max_width, max_height, quality, format,
                           screenshot_runner, std::move(callback),
-                          GetActualScreenshotMode());
+                          screenshot_mode);
 }
 
-int UIDelegateHarmony::GetNodeForLocation(int x, int y) {
+int UIDelegateHarmony::GetNodeForLocation(int x, int y,
+                                          const std::string& coordinate_mode) {
   auto lynx_context = lynx_context_.lock();
   if (lynx_context) {
     auto root = lynx_context->GetUIOwner()->Root();
@@ -350,7 +352,7 @@ int UIDelegateHarmony::GetNodeForLocation(int x, int y) {
       return 0;
     }
     float pos[2] = {static_cast<float>(x), static_cast<float>(y)};
-    if (GetActualScreenshotMode() == kScreenShotModeFullScreen) {
+    if (coordinate_mode == kScreenShotModeFullScreen) {
       ArkUI_IntOffset root_offset = {0, 0};
       OH_ArkUI_NodeUtils_GetPositionWithTranslateInWindow(root->GetProxyNode(),
                                                           &root_offset);
@@ -361,10 +363,6 @@ int UIDelegateHarmony::GetNodeForLocation(int x, int y) {
     return ui ? ui->Sign() : 0;
   }
   return 0;
-}
-
-void UIDelegateHarmony::SetScreenshotMode(const std::string& screen_shot_mode) {
-  screen_shot_mode_ = screen_shot_mode;
 }
 
 std::vector<float> UIDelegateHarmony::GetTransformValue(
@@ -682,14 +680,15 @@ int UIDelegateHarmony::SetUIStyle(int id, const std::string& name,
 void UIDelegateHarmony::EmulateTouch(const std::string& event_type, int x,
                                      int y, const std::string& button,
                                      float delta_x, float delta_y,
-                                     int modifiers, int click_count) {
+                                     int modifiers, int click_count,
+                                     const std::string& coordinate_mode) {
   auto lynx_context = lynx_context_.lock();
   if (!lynx_context) {
     return;
   }
   emulated_touch_dispatcher_.EmulateTouch(
       lynx_context, event_type, x, y, button, delta_x, delta_y, modifiers,
-      click_count, GetActualScreenshotMode() == kScreenShotModeFullScreen);
+      click_count, coordinate_mode == kScreenShotModeFullScreen);
 }
 
 }  // namespace harmony

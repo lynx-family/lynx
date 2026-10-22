@@ -2452,7 +2452,7 @@ public interface com::lynx::devtoolwrapper::IDevToolDelegate {
   public void com.lynx.devtoolwrapper.IDevToolDelegate.onDispatchMessageEvent(ReadableMap map);
   public void com.lynx.devtoolwrapper.IDevToolDelegate.takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode);
   public void com.lynx.devtoolwrapper.IDevToolDelegate.scrollIntoViewFromUI(int nodeId);
-  public String com.lynx.devtoolwrapper.IDevToolDelegate.getActualScreenshotMode();
+  public default boolean com.lynx.devtoolwrapper.IDevToolDelegate.supportsFullscreenScreenshot();
   public int com.lynx.devtoolwrapper.IDevToolDelegate.getNodeForLocation(float x, float y, String mode);
   public float[] com.lynx.devtoolwrapper.IDevToolDelegate.getTransformValue(int id, float[] padBorderMarginLayout);
   public Bitmap com.lynx.devtoolwrapper.IDevToolDelegate.getBitmapOfView();
@@ -2810,7 +2810,7 @@ public interface com::lynx::tasm::behavior::ILynxUIRenderer {
   public boolean com.lynx.tasm.behavior.ILynxUIRenderer.needHandleDispatchKeyEvent();
   public boolean com.lynx.tasm.behavior.ILynxUIRenderer.dispatchKeyEvent(KeyEvent event);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.scrollIntoViewFromUI(int nodeId);
-  public String com.lynx.tasm.behavior.ILynxUIRenderer.getActualScreenshotMode();
+  public default boolean com.lynx.tasm.behavior.ILynxUIRenderer.supportsFullscreenScreenshot();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode);
   public Bitmap com.lynx.tasm.behavior.ILynxUIRenderer.getBitmapOfView();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas);
@@ -5172,7 +5172,7 @@ public class com::lynx::tasm::LynxDevToolDelegateImpl : com.lynx.devtoolwrapper.
   public void com.lynx.tasm.LynxDevToolDelegateImpl.onDispatchMessageEvent(ReadableMap map);
   public void com.lynx.tasm.LynxDevToolDelegateImpl.takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode);
   public void com.lynx.tasm.LynxDevToolDelegateImpl.scrollIntoViewFromUI(int nodeId);
-  public String com.lynx.tasm.LynxDevToolDelegateImpl.getActualScreenshotMode();
+  public boolean com.lynx.tasm.LynxDevToolDelegateImpl.supportsFullscreenScreenshot();
   public int com.lynx.tasm.LynxDevToolDelegateImpl.getNodeForLocation(float x, float y, String mode);
   public float[] com.lynx.tasm.LynxDevToolDelegateImpl.getTransformValue(int id, float[] padBorderMarginLayout);
   public Bitmap com.lynx.tasm.LynxDevToolDelegateImpl.getBitmapOfView();
@@ -7637,7 +7637,7 @@ public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.needHandleDispatchKeyEvent();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.dispatchKeyEvent(KeyEvent event);
   public void com.lynx.tasm.behavior.LynxUIRenderer.scrollIntoViewFromUI(int nodeId);
-  public String com.lynx.tasm.behavior.LynxUIRenderer.getActualScreenshotMode();
+  public boolean com.lynx.tasm.behavior.LynxUIRenderer.supportsFullscreenScreenshot();
   public void com.lynx.tasm.behavior.LynxUIRenderer.takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode);
   public void com.lynx.tasm.behavior.LynxUIRenderer.drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas);
   public Bitmap com.lynx.tasm.behavior.LynxUIRenderer.getBitmapOfView();

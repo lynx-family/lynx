@@ -50,6 +50,7 @@ int const ScreenshotPreviewDelayTime = 1500;
   int quality_;
   BOOL enabled_;
   BOOL ack_received_;
+  // Capture-request snapshot from the facade, never a source for input/inspection.
   ScreenshotMode screenshot_mode_;
   NSString* format_;
 
@@ -414,6 +415,7 @@ int const ScreenshotPreviewDelayTime = 1500;
   int max_height_;
   int max_width_;
   int quality_;
+  // Retains the accepted capture request across pause/resume.
   ScreenshotMode screenshot_mode_;
   NSString* format_;
 
