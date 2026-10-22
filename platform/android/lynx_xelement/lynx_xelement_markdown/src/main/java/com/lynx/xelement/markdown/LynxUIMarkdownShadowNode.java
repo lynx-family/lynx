@@ -41,8 +41,7 @@ public class LynxUIMarkdownShadowNode
   private final MarkdownEventListener mEventListener = new MarkdownEventListener(this);
   private MeasureContext mMeasureContext;
   private AlignContext mAlignContext;
-  private int mMeasuredWidth;
-  private int mMeasuredHeight;
+  private long mMeasuredSize;
   private volatile int mContentLeftOffset;
   private volatile int mContentTopOffset;
   private String mContent = "";
@@ -101,8 +100,7 @@ public class LynxUIMarkdownShadowNode
     mMeasureContext = context;
     MarkdownMeasurer markdown = mMarkdownMeasurer;
     if (markdown == null) {
-      mMeasuredWidth = 0;
-      mMeasuredHeight = 0;
+      mMeasuredSize = 0;
       return new MeasureResult(0, 0, 0);
     }
     if (isChildDirty()) {
@@ -116,8 +114,7 @@ public class LynxUIMarkdownShadowNode
     int width = MarkdownValuePack.unpackMeasureResultWidth(result);
     int height = MarkdownValuePack.unpackMeasureResultHeight(result);
     int baseline = MarkdownValuePack.unpackMeasureResultBaseline(result);
-    mMeasuredWidth = width;
-    mMeasuredHeight = height;
+    mMeasuredSize = result;
     return new MeasureResult(width, height, baseline);
   }
   @Override
@@ -131,8 +128,7 @@ public class LynxUIMarkdownShadowNode
   @Nullable
   @Override
   public Object getExtraBundle() {
-    return new LynxMarkdownBundle(
-        mMarkdownMeasurer, this, this, mResourceLoader, mMeasuredWidth, mMeasuredHeight);
+    return new LynxMarkdownBundle(mMarkdownMeasurer, this, this, mResourceLoader, mMeasuredSize);
   }
   @Override
   protected void onDestroy() {
