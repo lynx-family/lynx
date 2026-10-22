@@ -7,10 +7,10 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "debug_router/common/debug_router.h"
 #include "devtool/embedder/core/env_embedder.h"
 #include "devtool/lynx_devtool/config/devtool_config.h"
 #include "devtool/lynx_devtool/js_debug/inspector_const_extend.h"
-#include "third_party/debug_router/src/debug_router/common/debug_router.h"
 #include "third_party/jsoncpp/include/json/json.h"
 
 namespace lynx {

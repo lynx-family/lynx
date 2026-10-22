@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "third_party/debug_router/src/debug_router/common/debug_router.h"
+#include "debug_router/common/debug_router.h"
 
 namespace lynx {
 namespace devtool {
@@ -17,9 +17,9 @@ class DebugStateListenerEmbedder
       public std::enable_shared_from_this<DebugStateListenerEmbedder> {
  public:
   void OnOpen(debugrouter::common::ConnectionType type) override;
-  void OnClose(int32_t code, const std::string &reason) override {}
-  void OnMessage(const std::string &message) override {}
-  void OnError(const std::string &error) override {}
+  void OnClose(int32_t code, const std::string& reason) override {}
+  void OnMessage(const std::string& message) override {}
+  void OnError(const std::string& error) override {}
 
   DebugStateListenerEmbedder() = default;
   virtual ~DebugStateListenerEmbedder() = default;

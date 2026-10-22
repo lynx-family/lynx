@@ -20,6 +20,9 @@ export interface ILynxDevToolService extends IServiceProvider {
 
   initDevToolEnv?(): void
 
+  /** Enables all DebugRouter sessions for an explicitly prepared development environment. */
+  enableAllSessions?(): void
+
   /** @deprecated Use DevToolSettings instead. */
   devtoolEnvSetSwitch(key: string, value: boolean): void
 

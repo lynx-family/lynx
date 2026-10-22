@@ -10,22 +10,12 @@ devtool_source_set("cpp") {
   sources = [
     "debug_bridge_harmony.cc",
     "debug_bridge_harmony.h",
-    "debug_router_wrapper.cc",
-    "debug_router_wrapper.h",
     "devtool_env_harmony.cc",
     "devtool_env_harmony.h",
     "entry.cc",
     "env_embedder.cc",
-    "harmony_debug_router_message_handler.cc",
-    "harmony_debug_router_message_handler.h",
-    "harmony_global_handler.cc",
-    "harmony_global_handler.h",
     "harmony_input_event_target.cc",
     "harmony_input_event_target.h",
-    "harmony_session_handler.cc",
-    "harmony_session_handler.h",
-    "harmony_state_listener.cc",
-    "harmony_state_listener.h",
     "harmony_touch_event_injector.cc",
     "inspector_owner_embedder_harmony.cc",
     "inspector_owner_embedder_harmony.h",
@@ -36,5 +26,6 @@ devtool_source_set("cpp") {
   ]
   deps = [ "../../../../../../devtool/lynx_devtool/js_debug:rts_inspector_manager_factory_stub" ]
 
-  include_dirs = [ "../../../../../../third_party/debug_router/src/" ]
+  include_dirs =
+      [ "../../../oh_modules/@lynx/debug_router/src/main/debug_router/include" ]
 }

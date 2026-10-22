@@ -207,6 +207,7 @@ class LynxEnvironment {
       }
     }
     this.tryInitLynxDebug();
+    devToolService.enableAllSessions?.();
   }
 
   /**
