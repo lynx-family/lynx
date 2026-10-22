@@ -13,7 +13,13 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 
 #if defined(__cplusplus)
-#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
+#include <memory>
+
+namespace lynx {
+namespace tasm {
+class PageConfig;
+}
+}  // namespace lynx
 #endif
 
 NS_ASSUME_NONNULL_BEGIN
