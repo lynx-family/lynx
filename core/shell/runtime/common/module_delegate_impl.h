@@ -33,8 +33,8 @@ class ModuleDelegateImpl : public runtime::js::ModuleDelegate {
   void CallJSCallback(
       const std::shared_ptr<runtime::js::ModuleCallback>& callback,
       base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
-      int64_t id_to_delete =
-          runtime::js::ModuleCallback::kInvalidCallbackId) override;
+      int64_t id_to_delete = runtime::js::ModuleCallback::kInvalidCallbackId,
+      bool force_async = false) override;
   void OnErrorOccurred(base::LynxError error) override;
   void OnMethodInvoked(const std::string& module_name,
                        const std::string& method_name, int32_t code) override;
