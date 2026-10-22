@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.8
+
+- Add `fading-edge-length` to `<scroll-view>` typings with native and Clay platform support metadata.
+
 ## 4.4.7
 
 - Add `text-spacing-trim` CSS typings.
@@ -7,7 +11,6 @@
 ## 4.4.6
 
 - Add `lynx.pause()` and `lynx.resume()` for pausing and resuming timers, microtasks, animation frame callbacks, and animation VSync on the current page.
-
 ## 4.4.5
 
 - Add `thread-strategy` to `<frame>` typings and declare the `FrameThreadStrategy` enum for rendering thread models.
