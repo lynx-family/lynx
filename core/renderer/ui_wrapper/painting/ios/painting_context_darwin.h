@@ -80,6 +80,9 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
                           uint32_t node_index) override;
 
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override;
+  void ApplyPlatformAnimationCommands(
+      int id,
+      std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) override;
   void UpdatePaintingNode(
       int id, bool tend_to_flatten,
       const fml::RefPtr<PropBundle>& painting_data) override;
@@ -137,6 +140,9 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
   void OnFirstMeaningfulLayout() override;
 
   bool NeedAnimationProps() override { return false; }
+
+  const gfx::AnimationBackendCapabilities& GetPlatformAnimationCapabilities()
+      override;
 
   static lepus::Value GetUITreeRecursive(LynxUI* ui);
   std::string GetUITree();

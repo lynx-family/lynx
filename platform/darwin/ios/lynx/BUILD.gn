@@ -493,6 +493,7 @@ subspec_target("UnitTests") {
   }
   sources = [
     "../../../../core/renderer/ui_wrapper/painting/ios/painting_context_darwin_UnitTest.mm",
+    "../../../../core/renderer/ui_wrapper/painting/ios/platform_animation_darwin_unittest.mm",
     "../../../../core/value_wrapper/darwin/value_impl_darwin_unittest.mm",
     "../../common/lynx/LynxEnvUnitTest.mm",
     "../../common/lynx/LynxErrorUnitTest.m",

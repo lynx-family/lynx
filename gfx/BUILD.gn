@@ -14,7 +14,10 @@ gfx_source_files = gfx_animation_sources + gfx_geometry_sources
 
 gfx_builds_shared_library = (is_android || is_harmony) && !is_headless
 
-gfx_public_deps = [ "../base/src:base_log_headers" ]
+gfx_public_deps = [
+  "../base/src:base_log_headers",
+  "../base/src:base_public_headers",
+]
 
 generate_ios_animation_capabilities = is_ios || enable_unittests
 if (generate_ios_animation_capabilities) {

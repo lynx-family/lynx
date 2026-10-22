@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/fml/time/time_point.h"
+#include "base/include/vector.h"
 #include "gfx/animation/animation_keyframe.h"
 #include "gfx/animation/animation_types.h"
 
@@ -215,9 +216,9 @@ struct AnimationEventCapability {
 
 struct AnimationBackendCapabilities {
   AnimationBackendType backend{AnimationBackendType::kNone};
-  std::vector<AnimationPropertyCapability> properties;
+  base::Vector<AnimationPropertyCapability> properties;
   // Event support belongs to the whole animation, independently of properties.
-  std::vector<AnimationEventCapability> event_capabilities;
+  base::Vector<AnimationEventCapability> event_capabilities;
 
   bool SupportsEvents(AnimationKind kind,
                       AnimationEventCapabilityMask required) const {
@@ -270,6 +271,7 @@ struct PlatformAnimationCommand {
   // A CSS keyframe animation effect is routed atomically. A CSS transition is
   // already represented as one independently routed property animation.
   std::vector<PlatformAnimationProperty> properties;
+  // The evaluator normalizes timing_func before platform handoff.
   AnimationData animation_data;
   // Present for routed keyframe animations.
   std::shared_ptr<AnimationPlaybackState> playback;
