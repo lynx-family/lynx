@@ -6,6 +6,7 @@
 #import <Lynx/LynxColorUtils.h>
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxFrameView.h>
 #import <Lynx/LynxImageBlurUtils.h>
 #import <Lynx/LynxImageLoadInfo.h>
 #import <Lynx/LynxImageLoader.h>
@@ -1240,6 +1241,8 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   UIView* rootView = self.context.rootView;
   if ([rootView isKindOfClass:[LynxView class]]) {
     dispatcher = [(LynxView*)rootView getLifecycleDispatcher];
+  } else if ([rootView isKindOfClass:[LynxFrameView class]]) {
+    dispatcher = [(LynxFrameView*)rootView getLifecycleDispatcher];
   }
   if (!dispatcher) {
     return;
