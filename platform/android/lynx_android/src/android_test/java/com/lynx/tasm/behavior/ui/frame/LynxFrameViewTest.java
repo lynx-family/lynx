@@ -4,12 +4,14 @@
 
 package com.lynx.tasm.behavior.ui.frame;
 
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.app.Application;
 import android.content.Context;
 import android.graphics.Rect;
 import android.util.DisplayMetrics;
@@ -19,6 +21,10 @@ import com.lynx.react.bridge.DynamicFromMap;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.EventEmitter;
+import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxTemplateRender;
+import com.lynx.tasm.LynxViewBuilder;
+import com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.behavior.LynxContext;
@@ -27,11 +33,15 @@ import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxCustomEvent;
+import com.lynx.tasm.image.LynxImageConfig;
+import com.lynx.tasm.image.LynxImageRequestDelegate;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
+import com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import junit.framework.TestCase;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -39,6 +49,74 @@ import org.mockito.ArgumentCaptor;
 @RunWith(AndroidJUnit4.class)
 public class LynxFrameViewTest extends TestCase {
   private static final String EVENT_LAYOUT_CHANGE = "layoutchange";
+
+  @BeforeClass
+  public static void initializeLynx() {
+    Application application = ApplicationProvider.getApplicationContext();
+    LynxEnv.inst().init(application, null, null, null, null);
+  }
+
+  @Test
+  public void childBuilderPreservesImageMonitoringConfiguration() throws Exception {
+    LynxImageConfig config = new LynxImageConfig();
+    LynxImageRequestDelegate delegate = mock(LynxImageRequestDelegate.class);
+    config.setImageRequestDelegate(delegate);
+    config.setEnableImageLoadCallback(true);
+    Map<String, String> params = new HashMap<>();
+    params.put("scene", "frame-image");
+    LynxViewBuilder builder =
+        new LynxViewBuilder().setLynxImageConfig(config).setImageCustomParam(params);
+    LynxTemplateRender render =
+        mock(LynxTemplateRender.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+    Field builderField = LynxTemplateRender.class.getDeclaredField("mLynxViewBuilder");
+    builderField.setAccessible(true);
+    builderField.set(render, builder);
+
+    LynxViewBuilder child = render.getLynxViewBuilder();
+    assertSame(config, child.getLynxImageConfig());
+    assertSame(delegate, child.getLynxImageConfig().getImageRequestDelegate());
+    assertTrue(child.getLynxImageConfig().getEnableImageLoadCallback());
+    Field paramsField = LynxViewBuilder.class.getDeclaredField("mImageCustomParam");
+    paramsField.setAccessible(true);
+    assertSame(params, paramsField.get(child));
+    builderField.set(render, child);
+    assertSame(config, render.getLynxViewBuilder().getLynxImageConfig());
+  }
+
+  @Test
+  public void nestedFramesForwardImageResultsOnceAndStopAfterDestroy() {
+    Context androidContext = ApplicationProvider.getApplicationContext();
+    LynxContext rootContext = mock(LynxContext.class);
+    LynxFrameView parent = new LynxFrameView(androidContext);
+    parent.init(rootContext);
+    FramePerformanceClient parentClient = new FramePerformanceClient(parent);
+    LynxContext parentContext = mock(LynxContext.class);
+    doAnswer(invocation -> {
+      parentClient.onResourceLoaded(invocation.getArgument(0));
+      return null;
+    })
+        .when(parentContext)
+        .notifyResourceLoaded(org.mockito.ArgumentMatchers.any());
+    LynxFrameView child = new LynxFrameView(androidContext);
+    child.init(parentContext);
+    FramePerformanceClient childClient = new FramePerformanceClient(child);
+    LynxResourceLoadInfo success =
+        new LynxResourceLoadInfo(LynxResourceType.LynxResourceTypeImage, 0, null);
+    LynxResourceLoadInfo failure =
+        new LynxResourceLoadInfo(LynxResourceType.LynxResourceTypeImage, 7, "image failed");
+    LynxResourceLoadInfo font =
+        new LynxResourceLoadInfo(LynxResourceType.LynxResourceTypeFont, 0, null);
+
+    childClient.onResourceLoaded(success);
+    childClient.onResourceLoaded(failure);
+    childClient.onResourceLoaded(font);
+    child.destroy();
+    childClient.onResourceLoaded(success);
+
+    verify(rootContext, times(1)).notifyResourceLoaded(success);
+    verify(rootContext, times(1)).notifyResourceLoaded(failure);
+    verify(rootContext, never()).notifyResourceLoaded(font);
+  }
 
   private LynxContext createLynxContext(
       DisplayMetrics screenMetrics, EventEmitter eventEmitter, LynxUIOwner uiOwner) {
