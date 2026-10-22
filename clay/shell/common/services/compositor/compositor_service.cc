@@ -76,6 +76,12 @@ bool CompositorService::SubmitFrame(
     std::unique_ptr<CompositorState> compositor_state) {
   TRACE_EVENT("clay", "CompositorService::SubmitFrame");
 
+  if (auto result = overlay_service_->CompositeFrame(context, *background_frame,
+                                                     *compositor_state)) {
+    had_hybrid_composited_ = false;
+    return *result;
+  }
+
   const bool has_composition_order =
       !compositor_state->GetCompositionOrder().empty();
   if (!has_composition_order && !had_hybrid_composited_) {
@@ -264,6 +270,22 @@ CompositorService::RemoveUnusedSurfaces() {
 }
 
 void CompositorService::RecycleSurfaces() { available_layer_index_ = 0; }
+
+void CompositorService::ResetPlatformOverlays() {
+  std::vector<std::shared_ptr<PlatformOverlay>> overlays;
+  overlays.reserve(compositor_surfaces_.size());
+  for (auto& surface : compositor_surfaces_) {
+    overlays.push_back(std::move(surface.platform_overlay));
+  }
+  // GPU surfaces are destroyed on the raster thread. Their platform wrappers
+  // are removed on the platform thread without hiding business-owned views.
+  compositor_surfaces_.clear();
+  available_layer_index_ = 0;
+  had_hybrid_composited_ = false;
+  presenter_service_.Act([overlays = std::move(overlays)](auto& presenter) {
+    presenter.DisposeOverlays(overlays);
+  });
+}
 
 std::shared_ptr<CompositorService> CompositorService::Create() {
   return std::make_shared<CompositorService>();
