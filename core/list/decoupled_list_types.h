@@ -31,6 +31,12 @@ using ItemHolderPtrMap = std::unordered_map<std::string, list::ItemHolder*>;
 
 // methods
 static constexpr const char kScrollToPositionMethod[] = "scrollToPosition";
+static constexpr const char kScrollByMethod[] = "scrollBy";
+
+// method params
+static constexpr const char kScrollToPositionIndex[] = "index";
+static constexpr const char kScrollToPositionOffset[] = "offset";
+static constexpr const char kScrollByDelta[] = "delta";
 
 // props
 static constexpr const char* const kPropCustomListName = "custom-list-name";

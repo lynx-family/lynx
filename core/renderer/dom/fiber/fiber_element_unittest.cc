@@ -22921,7 +22921,8 @@ TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
                                CSSValue(200, CSSValuePattern::PX)));
 }
 
-TEST_P(FiberElementTest, ComposeListJumpMeasuresNewItemsBeforeReturning) {
+TEST_P(FiberElementTest,
+       ComposeListScrollMethodsMeasureNewItemsBeforeReturning) {
   PrepareLayoutInElementFirstScreenTest(this);
   tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
   manager->SetThreadStrategy(base::ThreadStrategyForRendering::ALL_ON_UI);
@@ -23013,6 +23014,31 @@ TEST_P(FiberElementTest, ComposeListJumpMeasuresNewItemsBeforeReturning) {
     }
   }
   EXPECT_TRUE(found);
+  const auto bindings_before_delta =
+      renderer_runtime->GetGlobalData("measuredBindings").Number();
+  params = lepus::Dictionary::Create();
+  params->SetValue("delta", lepus::Value(500));
+  lepus::Value delta_args[] = {lepus::Value(handle), lepus::Value("scrollBy"),
+                               lepus::Value(params)};
+  result = RendererFunctions::FiberInvokeMethod(context, delta_args, 3);
+  ASSERT_TRUE(result.IsObject());
+  EXPECT_DOUBLE_EQ(result.GetProperty("consumedDelta").Number(), 500);
+  EXPECT_GT(renderer_runtime->GetGlobalData("measuredBindings").Number(),
+            bindings_before_delta);
+  const auto delta_cells = result.GetProperty("attachedCells");
+  ASSERT_GT(delta_cells.GetLength(), 0u);
+  for (size_t i = 0; i < delta_cells.GetLength(); ++i) {
+    const auto cell = delta_cells.GetProperty(i);
+    const int index = cell.GetProperty("position").Number();
+    auto* item = container->GetItemHolderForIndex(index);
+    ASSERT_NE(item, nullptr);
+    EXPECT_TRUE(container->list_adapter()->IsFinishedBinding(item));
+    EXPECT_FLOAT_EQ(item->height(), 60 + index * 10);
+    EXPECT_DOUBLE_EQ(cell.GetProperty("bottom").Number() -
+                         cell.GetProperty("top").Number() -
+                         result.GetProperty("scrollTop").Number(),
+                     60 + index * 10);
+  }
 
   // An active unified pipeline owns deferred item flushes. Synchronous
   // positioning must report incomplete layout without forcing that pipeline.
@@ -23039,6 +23065,46 @@ TEST_P(FiberElementTest, ComposeListJumpMeasuresNewItemsBeforeReturning) {
   EXPECT_TRUE(deferred->resolve_requested);
   EXPECT_EQ(unmeasured->height(), 0);
   EXPECT_FALSE(container->AreOnScreenItemsReady());
+}
+
+TEST_P(FiberElementTest, DirectScrollConsumptionDoesNotRoundPastTheJsRequest) {
+  class ConsumingContainer : public lynx::list::ListContainerImpl {
+   public:
+    using lynx::list::ListContainerImpl::ListContainerImpl;
+    std::unique_ptr<pub::Value> ScrollBySync(float delta) override {
+      auto result = value_factory()->CreateMap();
+      result->PushDoubleToMap("consumedDelta", delta);
+      return result;
+    }
+  };
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  Renderer::RegisterBuiltin(renderer_runtime.get(), ArchOption::FIBER_ARCH);
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  manager->SetEnableNativeListFromShell(true);
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  auto list = manager->CreateFiberList(tasm.get(), "list", {}, {}, {});
+  page->InsertNode(list);
+  page->FlushActionsAsRoot();
+  ASSERT_NE(list->list_mediator_, nullptr);
+  list->list_mediator_->list_container_delegate_ =
+      std::make_unique<ConsumingContainer>(
+          list->list_mediator_.get(),
+          std::make_shared<pub::PubValueFactoryDefault>());
+  for (double delta : {0.0005, -0.0005, 0.005, -0.005, 80.0, -80.0}) {
+    auto params = lepus::Dictionary::Create();
+    params->SetValue("delta", lepus::Value(delta));
+    lepus::Value args[] = {lepus::Value(list), lepus::Value("scrollBy"),
+                           lepus::Value(params)};
+    auto result = RendererFunctions::FiberInvokeMethod(context, args, 3);
+    ASSERT_TRUE(result.IsObject());
+    auto consumed = result.GetProperty("consumedDelta").Number();
+    EXPECT_GE(consumed, std::min(0.0, delta));
+    EXPECT_LE(consumed, std::max(0.0, delta));
+    EXPECT_NEAR(consumed, delta, 1e-9);
+  }
 }
 
 TEST_P(FiberElementTest, ComposeListBindingsReuseTheCurrentPipeline) {

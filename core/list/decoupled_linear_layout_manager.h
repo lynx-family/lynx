@@ -77,6 +77,7 @@ class LinearLayoutManager : public ListLayoutManager {
                         int component_index = -1) override;
 
  protected:
+  std::optional<float> ScrollByDelta(float delta) override;
   void ScrollByInternal(float content_offset, float original_offset,
                         bool from_platform) override;
   void LayoutInvalidItemHolder(int first_invalid_index) override;

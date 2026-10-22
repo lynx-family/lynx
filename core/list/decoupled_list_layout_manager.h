@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 
 #include "base/include/float_comparison.h"
 #include "core/list/decoupled_list_anchor_manager.h"
@@ -43,6 +44,12 @@ class ListLayoutManager {
   void ScrollByPlatformContainer(float content_offset_x, float content_offset_y,
                                  float original_x, float original_y);
   void ScrollToPosition(int index, float offset, int align, bool smooth);
+  // Reuse each layout's scrolling algorithm; unsupported layouts fail
+  // explicitly.
+  virtual std::optional<float> ScrollByDelta(float delta) {
+    return std::nullopt;
+  }
+
   void ScrollStopped();
   float GetWidth() const;
   float GetHeight() const;

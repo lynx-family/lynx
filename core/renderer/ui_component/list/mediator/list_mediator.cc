@@ -105,6 +105,12 @@ std::unique_ptr<pub::Value> ListMediator::ScrollToPositionSync(
   return list_container_delegate_->ScrollToPositionSync(index, offset, error);
 }
 
+std::unique_ptr<pub::Value> ListMediator::ScrollBySync(float delta) {
+  return list_container_delegate_
+             ? list_container_delegate_->ScrollBySync(delta)
+             : nullptr;
+}
+
 void ListMediator::ScrollStopped() {
   if (list_container_delegate_) {
     list_container_delegate_->ScrollStopped();

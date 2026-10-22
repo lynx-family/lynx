@@ -933,6 +933,20 @@ std::unique_ptr<pub::Value> ListContainerImpl::ScrollToPositionSync(
   return snapshot;
 }
 
+std::unique_ptr<pub::Value> ListContainerImpl::ScrollBySync(float delta) {
+  if (!list_layout_manager_ || !list_event_manager_ || !list_adapter_ ||
+      enable_batch_render_ || intercept_depth_ != 0 ||
+      synchronous_scroll_active_) {
+    return nullptr;
+  }
+  base::AutoReset<bool> guard(&synchronous_scroll_active_, true);
+  const auto consumed = list_layout_manager_->ScrollByDelta(delta);
+  if (!consumed || !AreOnScreenItemsReady()) return nullptr;
+  auto snapshot = list_event_manager_->ScrollSnapshot();
+  if (snapshot) snapshot->PushDoubleToMap("consumedDelta", *consumed);
+  return snapshot;
+}
+
 void ListContainerImpl::ScrollStopped() {
   if (list_layout_manager_) {
     list_layout_manager_->ScrollStopped();

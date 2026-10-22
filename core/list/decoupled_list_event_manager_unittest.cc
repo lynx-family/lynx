@@ -546,6 +546,154 @@ TEST_F(ListEventManagerTest, SynchronousJumpRebindsDirtyVisibleItems) {
   EXPECT_TRUE(list_container_impl_->AreOnScreenItemsReady());
 }
 
+TEST_F(ListEventManagerTest, SynchronousDeltaConsumesTheRemainingDistanceOnce) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  BindSynchronously();
+  ASSERT_TRUE(Jump(7, 0));
+  auto first = list_container_impl_->ScrollBySync(80.f);
+  ASSERT_TRUE(first);
+  EXPECT_DOUBLE_EQ(first->GetValueForKey("consumedDelta")->Number(), 80);
+  EXPECT_DOUBLE_EQ(first->GetValueForKey(kScrollInfoScrollTop)->Number(), 780);
+  auto second = list_container_impl_->ScrollBySync(80.f);
+  ASSERT_TRUE(second);
+  EXPECT_DOUBLE_EQ(second->GetValueForKey("consumedDelta")->Number(), 20);
+  EXPECT_DOUBLE_EQ(second->GetValueForKey(kScrollInfoScrollTop)->Number(), 800);
+  auto edge = list_container_impl_->ScrollBySync(80.f);
+  ASSERT_TRUE(edge);
+  EXPECT_DOUBLE_EQ(edge->GetValueForKey("consumedDelta")->Number(), 0);
+}
+
+TEST_F(ListEventManagerTest,
+       SynchronousDeltaSupportsLargeSignedAndFractionalInput) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  BindSynchronously();
+  auto forward = list_container_impl_->ScrollBySync(5000);
+  ASSERT_TRUE(forward);
+  EXPECT_DOUBLE_EQ(forward->GetValueForKey("consumedDelta")->Number(), 800);
+  auto backward = list_container_impl_->ScrollBySync(-5000);
+  ASSERT_TRUE(backward);
+  EXPECT_DOUBLE_EQ(backward->GetValueForKey("consumedDelta")->Number(), -800);
+  EXPECT_DOUBLE_EQ(backward->GetValueForKey(kScrollInfoScrollTop)->Number(), 0);
+  for (int i = 1; i <= 4; ++i) {
+    auto fractional = list_container_impl_->ScrollBySync(0.25f);
+    ASSERT_TRUE(fractional);
+    EXPECT_DOUBLE_EQ(fractional->GetValueForKey("consumedDelta")->Number(),
+                     .25);
+    EXPECT_DOUBLE_EQ(fractional->GetValueForKey(kScrollInfoScrollTop)->Number(),
+                     i * .25);
+  }
+}
+
+TEST_F(ListEventManagerTest,
+       SynchronousDeltaDoesNotCountAnchorEstimateCorrection) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  BindSynchronously([](uint32_t index) { return 40.f + index * 30.f; });
+  ASSERT_TRUE(Jump(8, 0));
+  auto* anchor = list_adapter_->GetItemHolderForIndex(8);
+  auto* orientation = list_layout_manager_->list_orientation_helper_.get();
+  const float before_offset = list_layout_manager_->content_offset();
+  const float before_local = orientation->GetStart(anchor) - before_offset;
+  auto result = list_container_impl_->ScrollBySync(-150);
+  ASSERT_TRUE(result);
+  const float after_offset = list_layout_manager_->content_offset();
+  const float after_local = orientation->GetStart(anchor) - after_offset;
+  EXPECT_FLOAT_EQ(result->GetValueForKey("consumedDelta")->Number(), -150);
+  EXPECT_FLOAT_EQ(after_local - before_local, 150);
+  EXPECT_NE(after_offset - before_offset, -150);
+}
+
+TEST_F(ListEventManagerTest, SynchronousDeltaRejectsInvalidAndUnmeasuredCalls) {
+  EXPECT_FALSE(list_container_impl_->ScrollBySync(
+      std::numeric_limits<float>::infinity()));
+  EXPECT_FALSE(list_container_impl_->ScrollBySync(
+      std::numeric_limits<float>::quiet_NaN()));
+  mock_list_element_->height_ = 0;
+  EXPECT_FALSE(list_container_impl_->ScrollBySync(1));
+  mock_list_element_->height_ = 200;
+  InitFiberDataSourceAndLayout(1, true, true);
+  list_container_impl_->SetEnableBatchRender(true);
+  EXPECT_FALSE(list_container_impl_->ScrollBySync(1));
+  list_container_impl_->SetEnableBatchRender(false);
+  list_container_impl_->StartInterceptListElementUpdated();
+  EXPECT_FALSE(list_container_impl_->ScrollBySync(1));
+  list_container_impl_->StopInterceptListElementUpdated();
+  EXPECT_FLOAT_EQ(list_layout_manager_->content_offset(), 0);
+}
+
+TEST_F(ListEventManagerTest,
+       SynchronousDeltaDoesNotReturnAnAsyncBindingEstimate) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  EXPECT_CALL(*mock_list_element_, ComponentAtIndex(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_FALSE(list_container_impl_->ScrollBySync(100.f));
+}
+
+TEST_F(ListEventManagerTest, SynchronousDeltaUsesTheHorizontalAxis) {
+  mock_list_element_->width_ = 200.f;
+  list_layout_manager_->SetOrientation(Orientation::kHorizontal);
+  list_layout_manager_->CreateOrUpdateListAnchorManager();
+  InitFiberDataSourceAndLayout(1, true, true);
+  BindSynchronously();
+  ASSERT_TRUE(Jump(0, 0));
+  auto result = list_container_impl_->ScrollBySync(80.f);
+  ASSERT_TRUE(result);
+  EXPECT_FLOAT_EQ(result->GetValueForKey("consumedDelta")->Number(), 80.f);
+  EXPECT_FLOAT_EQ(result->GetValueForKey(kScrollInfoScrollLeft)->Number(),
+                  80.f);
+  EXPECT_FLOAT_EQ(result->GetValueForKey(kScrollInfoScrollTop)->Number(), 0.f);
+}
+
+TEST_F(ListEventManagerTest, SynchronousDeltaRejectsScrollEventReentry) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true, 0);
+  BindSynchronously();
+  mock_list_element_->events_ = {"scroll"};
+  list_event_manager_->last_scroll_event_time_ = {};
+  EXPECT_CALL(*mock_list_element_, SendCustomEvent(kEventScroll, _, _))
+      .WillOnce([&](const std::string&, const std::string&,
+                    std::unique_ptr<pub::Value> event) {
+        EXPECT_FALSE(Jump(0, 0));
+        EXPECT_FALSE(list_container_impl_->ScrollBySync(80.f));
+      });
+  auto result = list_container_impl_->ScrollBySync(80.f);
+  ASSERT_TRUE(result);
+  EXPECT_FLOAT_EQ(result->GetValueForKey("consumedDelta")->Number(), 80.f);
+  EXPECT_FLOAT_EQ(result->GetValueForKey(kScrollInfoScrollTop)->Number(), 80.f);
+}
+
+TEST_F(ListEventManagerTest, SynchronousDeltaAndJumpShareBindingReentryGuard) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, true, true);
+  int bindings = 0;
+  BindSynchronously([&](uint32_t) {
+    ++bindings;
+    EXPECT_FALSE(list_container_impl_->ScrollBySync(1));
+    EXPECT_FALSE(Jump(0, 0));
+    return 100.f;
+  });
+  ASSERT_TRUE(Jump(4, 0));
+  ASSERT_TRUE(list_container_impl_->ScrollBySync(300));
+  EXPECT_GT(bindings, 0);
+  EXPECT_FALSE(list_container_impl_->synchronous_scroll_active());
+}
+
+TEST_F(ListEventManagerTest, SynchronousDeltaReturnsTinyMovementWithoutEvents) {
+  mock_list_element_->height_ = 200.f;
+  InitFiberDataSourceAndLayout(1, false, false, 100000);
+  BindSynchronously();
+  EXPECT_CALL(*mock_list_element_, SendCustomEvent(_, _, _)).Times(0);
+  for (float delta : {.25f, .005f, .0005f, 100.f, -.0005f, -.005f, -.25f}) {
+    auto result = list_container_impl_->ScrollBySync(delta);
+    ASSERT_TRUE(result);
+    EXPECT_NEAR(result->GetValueForKey("consumedDelta")->Number(), delta,
+                .00001f);
+  }
+}
+
 TEST_F(ListEventManagerTest, SendCustomScrollEvent) {
   int layout_id = 1;
   int scroll_event_threshold = 20;

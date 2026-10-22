@@ -143,6 +143,9 @@ class ListElement : public Element, public tasm::ListNode {
   std::unique_ptr<pub::Value> ScrollToPositionSync(int index, float offset,
                                                    std::string* error);
 
+  // |physical_delta| and the returned consumedDelta are in physical pixels.
+  std::unique_ptr<pub::Value> ScrollBySync(double physical_delta,
+                                           std::string* error);
   void ScrollStopped() override;
   bool DisableListPlatformImplementation() const override {
     return disable_list_platform_implementation_
@@ -210,6 +213,14 @@ class ListElement : public Element, public tasm::ListNode {
   void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) override;
 
  private:
+  using MethodHandler = lepus::Value (ListElement::*)(
+      const lepus::Value& params, std::string* error);
+  lepus::Value InvokeScrollToPosition(const lepus::Value& params,
+                                      std::string* error);
+  lepus::Value InvokeScrollBy(const lepus::Value& params, std::string* error);
+
+  bool CanScrollSynchronously(std::string* error);
+
   void ResolveEnableNativeList();
   void ResolvePlatformNodeTag();
   bool NeedAsyncResolveListItem();
