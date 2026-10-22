@@ -5,13 +5,13 @@
 package com.lynx.tasm;
 
 import static android.view.View.MeasureSpec;
+import static com.lynx.tasm.LynxJNI.*;
 
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
-import android.util.SparseArray;
 import android.view.InputEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -42,7 +42,6 @@ import com.lynx.jsbridge.network.LynxFetchModuleEventSender;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
-import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.CleanupReference;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxConsumer;
@@ -306,9 +305,6 @@ public class LynxTemplateRender
   private volatile LynxLogContext mLogContext = LynxLogContext.UNAVAILABLE;
 
   @Keep @Nullable private LynxResourceLoader mLoader;
-
-  private AtomicInteger mLynxGetDataCounter = new AtomicInteger(0);
-  private SparseArray<LynxGetDataCallback> mCallbackSparseArray = new SparseArray<>();
 
   private int mEmbeddedMode;
   private boolean mEnableReuseEngine;
@@ -2405,9 +2401,7 @@ public class LynxTemplateRender
       return;
     }
 
-    int tag = mLynxGetDataCounter.incrementAndGet();
-    mCallbackSparseArray.put(tag, callback);
-    nativeGetDataAsync(mNativePtr, mNativeLifecycle, tag);
+    nativeGetDataAsync(mNativePtr, mNativeLifecycle, callback);
   }
 
   public Map<String, Object> getPageDataByKey(String[] keys) {
@@ -3740,13 +3734,6 @@ public class LynxTemplateRender
     return nativeTakeBTSHeapSnapshotToFile(mNativePtr, mNativeLifecycle, outputPath, callback);
   }
 
-  @CalledByNative
-  static void dispatchBTSHeapSnapshotResult(LynxConsumer<Boolean> callback, boolean success) {
-    if (callback != null) {
-      callback.accept(success);
-    }
-  }
-
   public boolean enableJSRuntime() {
     return mEnableJSRuntime;
   }
@@ -4701,25 +4688,6 @@ public class LynxTemplateRender
     checkEngineFallbackAndLoad(enableAsync);
   }
 
-  @CalledByNative
-  private void getDataBack(ByteBuffer buffer, int tag) {
-    LynxGetDataCallback callback = mCallbackSparseArray.get(tag);
-    Object object = LepusBuffer.INSTANCE.decodeMessage(buffer);
-    if (object instanceof Map) {
-      callback.onSuccess(JavaOnlyMap.from(((Map) object)));
-    } else {
-      callback.onFail("LynxView GetData Failed");
-    }
-  }
-
-  @CalledByNative
-  private static Object decodeByteBuffer(ByteBuffer buffer) {
-    if (buffer != null) {
-      return LepusBuffer.INSTANCE.decodeMessage(buffer);
-    }
-    return null;
-  }
-
   @RestrictTo({RestrictTo.Scope.LIBRARY})
   public void addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener) {
     if (null == listener || null == mJSProxy) {
@@ -4758,230 +4726,12 @@ public class LynxTemplateRender
     }
   }
 
-  private static native long nativeGenerateViewId();
-
-  private static native long nativeCreate(long viewId, long runtimePtr, Object nativeFacade,
-      Object performanceController, Object loader, int renderStrategy,
-      boolean enableLayoutSafePoint, boolean enableLayoutOnly, int screenWidth, int screenHeight,
-      float density, String locale, boolean enableJSRuntime, boolean enableMultiAsyncThread,
-      boolean enablePreUpdateData, boolean enableVSyncAlignedMessageLoop,
-      boolean enableAsyncHydration, boolean enableJSGroupThread, String jsGroupThreadName,
-      Object tasmPlatformInvoker, long whiteboard, long uiDelegate, boolean useInvokeUIMethod,
-      boolean longTaskMonitorDisabled, boolean forceLayoutOnBackgroundThread,
-      boolean enableUnifiedPipeline, int embeddedMode, boolean has_logic_executor,
-      boolean debuggable, long enginePtr, Object moduleFactory);
-
-  private static native void nativeRebuildLynxEngine(
-      long ptr, long lifecycle, long uiDelegate, Object tasmPlatformInvoker, Object moduleFactory);
-
-  private static native void nativeDestroy(long ptr);
-
-  private static native long nativeLifecycleCreate();
-
-  private static native boolean nativeLifecycleTryTerminate(long lifecycle);
-
-  private static native void nativeLifecycleDestroy(long lifecycle);
-
-  private static native int nativeGetInstanceId(long ptr, long lifecycle);
-
-  private static native void nativeAttachRuntime(long ptr, long lifecycle, long backgroundRuntime);
-
-  private static native void nativeInitRuntime(long ptr, LynxResourceLoader resourceLoader,
-      LynxModuleFactory moduleFactory, String groupId, String monitoringGroupLabel,
-      String[] preloadJSPaths, String bytecodeSourceUrl, int runtimeFlags, long uiDelegate);
-
-  private static native void nativeOnLynxEngineCreated(long ptr, long uiDelegatePtr);
-
-  private static native byte[] nativeGetLynxUITree(long uiDelegatePtr);
-
-  private static native byte[] nativeGetUINodeInfo(long uiDelegatePtr, int id);
-
-  private static native int nativeSetUIStyle(
-      long uiDelegatePtr, int id, String name, String content);
-
-  private static native void nativeStartRuntime(long ptr, long lifecycle);
-
-  private static native void nativeProcessRender(long ptr, long lifecycle);
-
-  private static native void nativeSetEnableUIFlush(
-      long ptr, long lifecycle, boolean enableUIFlush);
-
-  private static native void nativeOnEnterForeground(long ptr, long lifecycle);
-
-  private static native void nativeOnEnterBackground(long ptr, long lifecycle);
-
-  // load template && component
-  // FIXME(songshourui.null): only use templateData later
-  private static native void nativeLoadSSRDataByPreParsedData(long ptr, long lifecycle, String url,
-      byte[] temp, long data, boolean readOnly, String processorName, TemplateData templateData);
-
-  // FIXME(songshourui.null): only use templateData later
-  private static native void nativeLoadTemplateByPreParsedData(long ptr, long lifecycle, String url,
-      byte[] temp, boolean isPrePainting, boolean enableRecycleTemplateBundle, long data,
-      boolean readOnly, String processorName, TemplateData templateData, int options,
-      ReadableMap timingOption);
-
-  private static native void nativeLoadLynxML(long ptr, long lifecycle, String url, byte[] source,
-      long data, boolean readOnly, String processorName, TemplateData templateData,
-      ReadableMap timingOption);
-
-  // FIXME(songshourui.null): only use templateData later
-  private static native void nativeLoadTemplateBundleByPreParsedData(long ptr, long lifecycle,
-      String url, long bundlePtr, boolean isPrePainting, long data, boolean readOnly,
-      String processorName, TemplateData templateData, int options, ReadableMap timingOption);
-
-  private static native void nativeLoadTemplateBufferByPreParsedData(long ptr, long lifecycle,
-      String url, ByteBuffer temp, boolean isPrePainting, boolean enableRecycleTemplateBundle,
-      long data, boolean readOnly, String processorName, TemplateData templateData, int options,
-      ReadableMap timingOption);
-
-  private static native void nativePreloadLazyBundles(long ptr, long lifecycle, String[] urls);
-
-  private static native boolean nativeRegisterLazyBundle(
-      long ptr, long lifecycle, String url, long bundlePtr);
-
-  // update data
-  // FIXME(songshourui.null): only use templateData later
-  private static native void nativeUpdateDataByPreParsedData(long ptr, long lifecycle, long dataPtr,
-      String processorName, boolean readOnly, TemplateData templateData, boolean is_reuse_engine);
-
-  private static native void nativeUpdateMetaData(long ptr, long lifecycle, long dataPtr,
-      String processorName, boolean readOnly, TemplateData templateData, long globalPropsPtr);
-
-  // FIXME(songshourui.null): only use templateData later
-  private static native void nativeResetDataByPreParsedData(long ptr, long lifecycle, long dataPtr,
-      String processorName, boolean readOnly, TemplateData templateData);
-
-  // FIXME(songshourui.null): only use templateData later
-  private static native void nativeReloadTemplate(long ptr, long lifecycle, long dataPtr,
-      long propPtr, String dataProcessorName, boolean dataReadOnly, Object globalProps,
-      TemplateData templateData, ReadableMap timingOption);
-
-  private static native void nativeUpdateConfig(
-      long ptr, long lifecycle, ByteBuffer buffer, int length);
-
-  private static native void nativeUpdateGlobalProps(long ptr, long lifecycle, long data);
-
-  private static native void nativeUpdateScreenMetrics(
-      long ptr, long lifecycle, int width, int height, float scale, long uiDelegate);
-
-  private static native void nativeSetFontScale(long ptr, long lifecycle, float scale);
-
-  private static native void nativeSetPlatformConfig(long ptr, long lifecycle, String jsonString);
-
-  private static native void nativeUpdateFontScale(long ptr, long lifecycle, float scale);
-
-  private static native void nativeUpdateColorScheme(
-      long ptr, long lifecycle, int scheme, boolean useActLite);
-
-  // layout
-  private static native void nativeUpdateViewport(long ptr, long lifecycle, int width,
-      int widthMode, int height, int heightMode, float scale, long uiDelegate, boolean needLayout);
-
-  private static native void nativeSyncFetchLayoutResult(long ptr, long lifecycle);
-
-  private static native void nativeEnforceRelayoutOnCurrentThreadWithUpdatedViewport(
-      long ptr, long lifecycle, int width, int widthMode, int height, int heightMode);
-
-  private static native void nativeSendGlobalEventToLepus(
-      long ptr, long lifecycle, String name, ByteBuffer buffer, int length);
-
-  private static native void nativeSendSsrGlobalEvent(
-      long ptr, long lifecycle, String name, ByteBuffer buffer, int length);
-
-  private static native void nativeTriggerEventBus(
-      long ptr, long lifecycle, String name, ByteBuffer buffer, int length);
-
-  // fetch data in native
-  private native void nativeGetDataAsync(long ptr, long lifecycle, int tag);
-
-  private static native Object nativeGetPageDataByKey(long ptr, long lifecycle, String[] keys);
-
-  private static native JavaOnlyMap nativeGetAllJsSource(long ptr, long lifecycle);
-
-  private static native boolean nativeTakeBTSHeapSnapshotToFile(
-      long ptr, long lifecycle, String outputPath, Object callback);
-
-  // list methods
-  private static native void nativeRenderChild(
-      long ptr, long lifecycle, int listSign, int index, long operationId);
-
-  private static native void nativeUpdateChild(
-      long ptr, long lifecycle, int listSign, int oldSign, int newIndex, long operationId);
-
-  private static native void nativeRemoveChild(
-      long ptr, long lifecycle, int listSign, int childSign);
-
-  private static native int nativeObtainChild(long ptr, long lifecycle, int listSign, int index,
-      long operationId, boolean enableReuseNotification);
-
-  private static native void nativeRecycleChild(
-      long ptr, long lifecycle, int listSign, int childSign);
-
-  private static native void nativeObtainChildAsync(
-      long ptr, long lifecycle, int listSign, int index, long operationId);
-
-  private static native void nativeRecycleChildAsync(
-      long ptr, long lifecycle, int listSign, int childSign);
-
-  private native void nativeScrollByListContainer(
-      long ptr, long lifecycle, int sign, float x, float y, float originalX, float originalY);
-
-  private native void nativeScrollToPosition(
-      long ptr, long lifecycle, int sign, int position, float offset, int align, boolean smooth);
-
-  private native void nativeScrollStopped(long ptr, long lifecycle, int sign);
-
-  private static native long nativeGetListEngineProxy(long ptr, long lifecycle);
-
-  private static native JavaOnlyMap nativeGetListPlatformInfo(
-      long ptr, long lifecycle, int listSign);
-
-  private static native void nativeUpdateI18nResource(
-      long ptr, long lifecycle, String key, String bytes, int status);
-
-  private static native void nativeMarkDirty(long ptr, long lifecycle);
-
-  private static native void nativeFlush(long ptr, long lifecycle);
-
-  private static native void nativeSyncPackageExternalPath(long ptr, String path);
-
-  private static native void nativeSetEnableBytecode(
-      long ptr, long lifecycle, boolean enable, String url);
-
-  private static native void nativeDispatchMessageEvent(
-      long ptr, long lifecycle, ReadableMap event);
-
-  private native void nativeSetSSRTimingData(long ptr, long lifecycle, String url, long data_size);
-
-  private native JavaOnlyMap nativeGetAllTimingInfo(long ptr, long lifecycle);
-
-  private native void nativeClearPipelineTimingInfo(long ptr, long lifecycle);
-
-  private native void nativeSetLongTaskMonitorDisabled(long ptr, long lifecycle, boolean disabled);
-
-  private native void nativeSetSessionStorageItem(
-      long ptr, long lifecycle, String key, long value, boolean readonly);
-
-  private native void nativeGetSessionStorageItem(
-      long ptr, long lifecycle, String key, PlatformCallBack callback);
-
-  private native double nativeSubscribeSessionStorage(
-      long ptr, long lifecycle, String key, PlatformCallBack callBack);
-
-  private native void nativeUnsubscribeSessionStorage(
-      long ptr, long lifecycle, String key, double id);
-
-  private native void nativeAttachEngineToUIThread(long ptr, long lifecycle);
-
-  private native void nativeDetachEngineFromUIThread(long ptr, long lifecycle);
-
-  private native void nativeSetExtensionDelegate(long ptr, long lifecycle, long delegatePtr);
-
-  private native void nativeSetContextHasAttached(long ptr, long lifecycle);
-
-  public native void nativeReattachLynxEngineWrapper(
-      long ptr, long lifecycle, long engine_ptr, long proxy_ptr);
-
-  public native void nativeDetachLynxEngineWrapper(long ptr, long lifecycle);
+  public void nativeReattachLynxEngineWrapper(
+      long ptr, long lifecycle, long enginePtr, long proxyPtr) {
+    LynxJNI.nativeReattachLynxEngineWrapper(ptr, lifecycle, enginePtr, proxyPtr);
+  }
+
+  public void nativeDetachLynxEngineWrapper(long ptr, long lifecycle) {
+    LynxJNI.nativeDetachLynxEngineWrapper(ptr, lifecycle);
+  }
 }
