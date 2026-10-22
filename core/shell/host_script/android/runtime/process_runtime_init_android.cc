@@ -11,7 +11,7 @@
 #include "base/include/log/logging.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
-#include "core/shell/host_script/android/lynx_view/host_script_view_observer_android.h"
+#include "core/shell/host_script/android/lynx_view/host_script_view_hooks_android.h"
 #include "core/shell/host_script/android/runtime/process_runtime_android.h"
 #include "core/shell/host_script/runtime/host_script_interceptor_bindings.h"
 #include "core/shell/host_script/runtime/host_script_module_interceptor.h"
@@ -61,7 +61,7 @@ void PrepareHostScriptRuntime() {
   HostScriptModuleInterceptor::Register();
   base::TaskRunnerManufactor runners(base::MOST_ON_TASM, false, false);
   DCHECK(runners.GetUITaskRunner()->RunsTasksOnCurrentThread());
-  InstallHostScriptViewObserver();
+  InstallHostScriptViewHooks();
   auto& runtime = ProcessRuntime::GetInstance();
   runtime.Initialize({runners.GetJSTaskRunner(), runners.GetTASMTaskRunner(),
                       runners.GetUITaskRunner()},
@@ -92,7 +92,7 @@ void UpdateHostScriptDebugState(bool) {
     if (tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
       PrepareHostScriptRuntime();
     } else {
-      UninstallHostScriptViewObserver();
+      UninstallHostScriptViewHooks();
     }
   });
 }

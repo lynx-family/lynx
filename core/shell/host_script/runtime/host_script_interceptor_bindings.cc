@@ -7,12 +7,17 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/value/table.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
 
 namespace lynx {
 namespace shell {
+namespace {
+BASE_STATIC_STRING_DECL(kViewId, "viewId");
+BASE_STATIC_STRING_DECL(kUrl, "url");
+}  // namespace
 
 std::unique_ptr<ProcessRuntime::RuntimeBindings>
 HostScriptInterceptorBindings::Create(ProcessRuntime::Domain domain) {
@@ -56,6 +61,15 @@ bool HostScriptInterceptorBindings::Attach(
          << HostScriptDomainName(domain_));
   }
   return true;
+}
+
+void HostScriptInterceptorBindings::NotifyViewCreated(
+    const ProcessRuntime::ViewCreated& event) {
+  if (!provider_) return;
+  lepus::Value snapshot(lepus::Dictionary::Create());
+  snapshot.SetProperty(kViewId, lepus::Value(event.view_id));
+  snapshot.SetProperty(kUrl, lepus::Value(event.url));
+  provider_->Dispatch(InterceptKind::kCreated, snapshot);
 }
 
 }  // namespace shell

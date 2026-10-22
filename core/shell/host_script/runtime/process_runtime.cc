@@ -146,26 +146,9 @@ class DomainRuntime final {
     return result;
   }
 
-  void NotifyEvent(const ProcessRuntime::Event& event) {
+  void NotifyViewCreated(const ProcessRuntime::ViewCreated& event) {
     DCHECK(runner_->RunsTasksOnCurrentThread());
-    auto& runtime = *executor_->GetJSRuntime().Lock();
-    runtime::js::Scope scope(runtime);
-    runtime::js::JSINativeExceptionCollector::Scope exceptions;
-    auto dispatch =
-        runtime.global().getProperty(runtime, "__hostScriptDispatchEvent");
-    if (!dispatch || !dispatch->isObject() ||
-        !dispatch->getObject(runtime).isFunction(runtime))
-      return;
-    auto result = dispatch->getObject(runtime).getFunction(runtime).call(
-        runtime, runtime::js::String::createFromUtf8(runtime, event.name),
-        runtime::js::String::createFromUtf8(runtime, event.payload_json),
-        runtime::js::String::createFromUtf8(runtime, identity_.domain));
-    if (!result) {
-      UNUSED_LOG_VARIABLE const auto& error =
-          runtime::js::JSINativeExceptionCollector::Instance()->GetException();
-      LOGE("Host Script event callback: "
-           << (error ? error->message() : "JAVASCRIPT_CALL_FAILED"));
-    }
+    if (bindings_) bindings_->NotifyViewCreated(event);
   }
 
   Result Execute(const std::string& source, const std::string& url,
@@ -331,10 +314,10 @@ class DomainState final {
     runtime_.reset();
   }
 
-  void NotifyEvent(const ProcessRuntime::Event& event) {
+  void NotifyViewCreated(const ProcessRuntime::ViewCreated& event) {
     AssertOwner();
     if (IsHostScriptRuntimeEnabled() && IsRunning() && runtime_)
-      runtime_->NotifyEvent(event);
+      runtime_->NotifyViewCreated(event);
   }
 
  private:
@@ -595,7 +578,7 @@ class ProcessRuntime::Impl {
     }
   }
 
-  void NotifyEvent(const Event& event) {
+  void NotifyViewCreated(const ViewCreated& event) {
     auto generation = Current();
     if (!generation || generation->State() != ProcessState::kRunning) return;
     for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
@@ -604,7 +587,9 @@ class ProcessRuntime::Impl {
         continue;
       generation->Post(
           *endpoint,
-          [&] { return [event](auto& owner) { owner->NotifyEvent(event); }; },
+          [&] {
+            return [event](auto& owner) { owner->NotifyViewCreated(event); };
+          },
           /*allow_inline=*/true);
     }
   }
@@ -801,7 +786,9 @@ bool ProcessRuntime::IsReady(Domain domain) const {
   return impl_->IsReady(domain);
 }
 
-void ProcessRuntime::NotifyEvent(Event event) { impl_->NotifyEvent(event); }
+void ProcessRuntime::NotifyViewCreated(ViewCreated event) {
+  impl_->NotifyViewCreated(event);
+}
 
 void ProcessRuntime::Evaluate(Domain domain, std::string source,
                               std::string url, Completion completion) {

@@ -51,15 +51,15 @@ if (is_android && is_debug && enable_napi_binding) {
 if (is_android && lynx_in_debug && enable_napi_binding) {
   lynx_core_source_set("process_runtime_android") {
     sources = [
-      "lynx_view/host_script_view_observer_android.cc",
-      "lynx_view/host_script_view_observer_android.h",
+      "lynx_view/host_script_view_hooks_android.cc",
+      "lynx_view/host_script_view_hooks_android.h",
       "runtime/process_runtime_android.cc",
       "runtime/process_runtime_android.h",
     ]
     deps = [
       ":host_script_init",
-      "../../../../third_party/rapidjson:rapidjson",
       "../../../base:base",
+      "../../../runtime/lepus:lepus",
       "../runtime:host_script",
       "../runtime:interceptor_bindings",
       "../runtime:jsb_interceptor",

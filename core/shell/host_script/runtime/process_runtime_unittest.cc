@@ -18,6 +18,7 @@
 #include "base/include/fml/thread.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/devtool_state.h"
+#include "core/shell/host_script/runtime/host_script_interceptor_bindings.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -133,6 +134,102 @@ class ProcessRuntimeTest : public ::testing::Test {
   std::array<std::unique_ptr<fml::Thread>, 3> threads_;
   ProcessRuntime::Runners runners_;
 };
+
+TEST_F(ProcessRuntimeTest, ViewCreatedBroadcastsIndependentSnapshotsToOwners) {
+  auto ready = std::make_shared<Results>();
+  ASSERT_TRUE(runtime_.Initialize(runners_, Collect(ready),
+                                  &HostScriptInterceptorBindings::Create, R"(
+        globalThis.created = [];
+        interceptor.on('view.created', event => {
+          created.push([event.viewId, event.url, __hostScriptThread.thread]);
+          event.url = 'changed in this domain';
+          if (__hostScriptThread.thread === 'bts') throw Error('observer failed');
+        });
+      )"));
+  ASSERT_TRUE(ready->WaitFor(3));
+  for (const auto& result : ready->Values()) ASSERT_TRUE(result.success);
+  runtime_.NotifyViewCreated({"1", "https://example.com/🌍"});
+  for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
+    auto result = Evaluate(domain, "created")->Values().front();
+    ASSERT_TRUE(result.success) << result.error;
+    EXPECT_EQ(result.value_json,
+              std::string("[[\"1\",\"https://example.com/🌍\",\"") +
+                  HostScriptDomainName(domain) + "\"]]");
+  }
+}
+
+TEST_F(ProcessRuntimeTest,
+       ViewCreatedDoesNotInitializeOrReplayToUnusedDomains) {
+  ASSERT_TRUE(runtime_.Initialize(runners_, {},
+                                  &HostScriptInterceptorBindings::Create, "",
+                                  ProcessRuntime::InitializationMode::kLazy));
+  runtime_.NotifyViewCreated({"before", ""});
+  for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI})
+    EXPECT_FALSE(runtime_.IsReady(domain));
+  const char* listen = R"(
+    globalThis.created = [];
+    interceptor.on('view.created', event => created.push(event.viewId));
+  )";
+  ASSERT_TRUE(Evaluate(Domain::kUI, listen)->Values().front().success);
+  runtime_.NotifyViewCreated({"1", ""});
+  EXPECT_EQ(Evaluate(Domain::kUI, "created")->Values().front().value_json,
+            "[\"1\"]");
+  EXPECT_FALSE(runtime_.IsReady(Domain::kBTS));
+  EXPECT_FALSE(runtime_.IsReady(Domain::kMTS));
+  ASSERT_TRUE(Evaluate(Domain::kBTS, listen)->Values().front().success);
+  EXPECT_EQ(Evaluate(Domain::kBTS, "created")->Values().front().value_json,
+            "[]");
+  runtime_.NotifyViewCreated({"2", ""});
+  EXPECT_EQ(Evaluate(Domain::kUI, "created")->Values().front().value_json,
+            "[\"1\",\"2\"]");
+  EXPECT_EQ(Evaluate(Domain::kBTS, "created")->Values().front().value_json,
+            "[\"2\"]");
+  EXPECT_FALSE(runtime_.IsReady(Domain::kMTS));
+}
+
+TEST_F(ProcessRuntimeTest, ViewCreatedRunsInlineOnOwnerAndDropsAfterShutdown) {
+  class Binding final : public ProcessRuntime::RuntimeBindings {
+   public:
+    explicit Binding(std::shared_ptr<std::atomic<int>> calls)
+        : calls_(std::move(calls)) {}
+    bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime>,
+                fml::RefPtr<fml::TaskRunner> runner) override {
+      runner_ = std::move(runner);
+      return true;
+    }
+    void NotifyViewCreated(const ProcessRuntime::ViewCreated&) override {
+      EXPECT_TRUE(runner_->RunsTasksOnCurrentThread());
+      ++*calls_;
+    }
+
+   private:
+    std::shared_ptr<std::atomic<int>> calls_;
+    fml::RefPtr<fml::TaskRunner> runner_;
+  };
+  auto calls = std::make_shared<std::atomic<int>>(0);
+  auto ready = std::make_shared<Results>();
+  ASSERT_TRUE(runtime_.Initialize(runners_, Collect(ready), [calls](Domain) {
+    return std::make_unique<Binding>(calls);
+  }));
+  ASSERT_TRUE(ready->WaitFor(3));
+  RunnerBlock bts(runners_.bts);
+  RunnerBlock mts(runners_.mts);
+  auto done = std::make_shared<std::promise<void>>();
+  auto future = done->get_future();
+  runners_.ui->PostTask([this, calls, done] {
+    runtime_.NotifyViewCreated({"1", ""});
+    EXPECT_EQ(calls->load(), 1);
+    done->set_value();
+  });
+  ASSERT_EQ(future.wait_for(kTimeout), std::future_status::ready);
+  auto stopped = std::make_shared<Results>();
+  runtime_.Shutdown(Collect(stopped));
+  bts.Release();
+  mts.Release();
+  ASSERT_TRUE(stopped->WaitFor(1));
+  runtime_.NotifyViewCreated({"2", ""});
+  EXPECT_EQ(calls->load(), 1);
+}
 
 TEST_F(ProcessRuntimeTest, BootstrapIgnoresSynchronousCompletionValue) {
   auto ready = Initialize("globalThis.helper = () => 42;");
