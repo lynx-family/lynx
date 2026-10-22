@@ -70,7 +70,6 @@ void KeyframeEffect::SetStartTime(fml::TimePoint& time,
   if (!reset_effect_state) {
     return;
   }
-  pending_end_styles_ = false;
   custom_property_run_state_ = gfx::TimingRunState::STARTING;
   custom_property_current_iteration_count_ = 0;
 }
@@ -78,6 +77,37 @@ void KeyframeEffect::SetStartTime(fml::TimePoint& time,
 void KeyframeEffect::SetPauseTime(fml::TimePoint& time) {
   gfx_effect_->SetPauseTime(time);
   custom_property_run_state_ = gfx::TimingRunState::PAUSED;
+}
+
+void KeyframeEffect::RestoreTiming(fml::TimePoint start_time,
+                                   fml::TimePoint sample_time,
+                                   gfx::KeyframeModel::RunState run_state) {
+  for (auto& model : keyframe_models_) {
+    model->gfx_model_->RestoreTiming(start_time, run_state);
+    // Do not replay iterations that elapsed in the previous effect.
+    model->gfx_model_->TrimTimeToCurrentIteration(
+        sample_time, gfx_effect_->current_iteration_count_);
+  }
+  if (has_custom_property_keyframes_) {
+    custom_property_run_state_ = static_cast<gfx::TimingRunState>(run_state);
+    auto data = ToGfxAnimationData(*animation_->animation_data());
+    auto trimmed = gfx::TrimTimeToCurrentIteration(
+        CreateCustomPropertyTimingInput(*animation_, data,
+                                        custom_property_run_state_),
+        sample_time, 0);
+    custom_property_current_iteration_count_ = trimmed.current_iteration_count;
+  }
+}
+
+fml::TimeDelta KeyframeEffect::CurrentTime(fml::TimePoint sample_time) const {
+  if (!keyframe_models_.empty()) {
+    return keyframe_models_.front()
+        ->gfx_model_->ConvertMonotonicTimeToLocalTime(sample_time);
+  }
+  const bool paused = animation_->GetState() == Animation::State::kPause &&
+                      animation_->pause_time() != fml::TimePoint::Min();
+  return (paused ? animation_->pause_time() : sample_time) -
+         animation_->start_time() - animation_->total_paused_duration();
 }
 
 void KeyframeEffect::AddKeyframeModel(
@@ -153,6 +183,8 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
         UpdateCustomPropertyAnimationState(*animation_, gfx_animation_data,
                                            monotonic_time,
                                            custom_property_run_state_);
+    tick_result.has_finished_all =
+        custom_property_run_state_ == gfx::TimingRunState::FINISHED;
     auto timing_input = CreateCustomPropertyTimingInput(
         *animation_, gfx_animation_data, custom_property_run_state_);
     auto elapsed_time =
@@ -179,7 +211,6 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
   result.iteration_events_due = tick_result.iteration_events_due;
 
   if (events_only) {
-    pending_end_styles_ |= tick_result.end_event_due;
     return result;
   }
 
@@ -199,8 +230,9 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
 
   const bool is_transition_effect =
       animation_ != nullptr && animation_->GetTransitionFlag();
-  if (!is_transition_effect &&
-      (tick_result.end_event_due || pending_end_styles_)) {
+  // A rebuilt finished effect must restore fill even when its end event has
+  // already been sent. Fill depends on completion, not event delivery.
+  if (!is_transition_effect && tick_result.has_finished_all) {
     for (const auto& keyframe_model : keyframe_models_) {
       if (!keyframe_model || !keyframe_model->is_finished() ||
           !keyframe_model->HasAnimationData()) {
@@ -222,7 +254,6 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
     }
   }
 
-  pending_end_styles_ = false;
   return result;
 }
 
@@ -257,8 +288,7 @@ void KeyframeEffect::ApplyTickResult(
     }
   }
 
-  if (!is_transition_effect &&
-      (tick_result.end_event_due || pending_end_styles_)) {
+  if (!is_transition_effect && tick_result.has_finished_all) {
     for (const auto& keyframe_model : keyframe_models_) {
       if (!keyframe_model || !keyframe_model->is_finished() ||
           !keyframe_model->HasAnimationData()) {
@@ -272,7 +302,6 @@ void KeyframeEffect::ApplyTickResult(
     }
   }
 
-  pending_end_styles_ = false;
   if (animation_delegate_ != nullptr && !style_map.empty()) {
     animation_delegate_->UpdateFinalStyleMap(style_map);
   }

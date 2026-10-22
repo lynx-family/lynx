@@ -102,6 +102,9 @@ class KeyframeEffect {
 
  private:
   friend class Animation;
+  void RestoreTiming(fml::TimePoint start_time, fml::TimePoint sample_time,
+                     gfx::KeyframeModel::RunState run_state);
+  fml::TimeDelta CurrentTime(fml::TimePoint sample_time) const;
   void SeekTo(fml::TimeDelta current_time, fml::TimePoint reference_time,
               bool paused);
   void ApplyTickResult(const gfx::KeyframeEffect::TickResult& tick_result,
@@ -112,8 +115,6 @@ class KeyframeEffect {
   std::unique_ptr<lynx::gfx::KeyframeEffect> gfx_effect_;
   AnimationDelegate* animation_delegate_;
   Animation* animation_{nullptr};
-  // Event-only background ticks defer fill-style finalization until sampling.
-  bool pending_end_styles_{false};
   bool has_custom_property_keyframes_{false};
   gfx::TimingRunState custom_property_run_state_{gfx::TimingRunState::STARTING};
   int custom_property_current_iteration_count_{0};

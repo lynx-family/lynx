@@ -368,7 +368,8 @@ TEST_F(ElementTest, Animate_Array) {
       animation_data, true);
   auto rebuilt_animation =
       element->css_keyframe_manager_->animations_map_["name1"];
-  EXPECT_NE(web_animation, rebuilt_animation);
+  // Rebuilding the effect preserves the logical animation and its origin.
+  EXPECT_EQ(web_animation, rebuilt_animation);
   EXPECT_EQ(animation::Animation::Origin::kWebAnimation,
             rebuilt_animation->GetOrigin());
 

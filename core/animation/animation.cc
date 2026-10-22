@@ -10,6 +10,7 @@
 
 #include <math.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <utility>
@@ -66,6 +67,11 @@ fml::TimeDelta Animation::GetCurrentTime() const {
 
 fml::TimeDelta Animation::GetCurrentTimeAt(
     fml::TimePoint reference_time) const {
+  // Effect replacement keeps this clock. Animations whose effects have
+  // never been replaced use the local timing fields below.
+  if (playback_) {
+    return playback_->CurrentTime(reference_time);
+  }
   if (start_time_ == fml::TimePoint::Min() ||
       start_time_ == GetAnimationDummyStartTime() ||
       current_run_start_system_time_ == fml::TimePoint::Min() ||
@@ -117,6 +123,12 @@ void Animation::SeekTo(fml::TimeDelta current_time,
   current_time_at_pause_ = current_time;
   current_run_start_system_time_ = reference_time;
   keyframe_effect_->SeekTo(current_time, reference_time, keep_paused);
+  // The explicit seek replaces any pending effect timing transfer.
+  pending_run_state_.reset();
+  if (playback_) {
+    playback_->SetPaused(keep_paused, reference_time);
+    playback_->SetCurrentTime(current_time, reference_time);
+  }
   suppress_next_sample_events_ = true;
   RequestNextFrame();
 }
@@ -127,6 +139,7 @@ void Animation::SetPaused(bool paused, fml::TimePoint reference_time) {
     return;
   }
 
+  RebaseEffectTiming(reference_time);
   const auto current_time = GetCurrentTimeAt(reference_time);
   const bool has_real_start_time = start_time_ != fml::TimePoint::Min() &&
                                    start_time_ != GetAnimationDummyStartTime();
@@ -156,6 +169,10 @@ void Animation::SetPaused(bool paused, fml::TimePoint reference_time) {
     }
   }
 
+  if (playback_) {
+    playback_->SetPaused(paused, reference_time);
+  }
+
   // Inspector controls operate on the real Lynx animation rather than a
   // Chromium-style clone. Do not turn the timing discontinuity into page
   // animation lifecycle events on the next sample.
@@ -166,12 +183,19 @@ void Animation::SetPaused(bool paused, fml::TimePoint reference_time) {
 
 void Animation::Play(bool play_handles_initial_frame) {
   if (state_ == State::kPlay) {
+    if (pending_run_state_ && play_handles_initial_frame) {
+      ApplyInitialFrame();
+    }
     return;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_PLAY);
   LOGI("Lynx Animation start, name is: " << name_.str());
   State temp_state = state_;
-  if (temp_state == State::kIdle || temp_state == State::kStop) {
+  if (playback_) {
+    playback_->SetPaused(false);
+  }
+  if (!playback_ &&
+      (temp_state == State::kIdle || temp_state == State::kStop)) {
     ResetPauseTiming();
     current_run_start_system_time_ = fml::TimePoint::Min();
     ClearSampleHistory();
@@ -208,10 +232,7 @@ void Animation::Play(bool play_handles_initial_frame) {
   // TODO(WUJINTIAN): Remove these tricky code and defer the destruction of the
   // animator to the next vsync to solve the aforementioned problem.
   if (temp_state == State::kIdle && play_handles_initial_frame) {
-    DoFrame(GetAnimationDummyStartTime());
-    if (animation_delegate_) {
-      animation_delegate_->FlushAnimatedStyle();
-    }
+    ApplyInitialFrame();
   } else if (play_handles_initial_frame || temp_state != State::kIdle) {
     RequestNextFrame();
   } else {
@@ -221,13 +242,19 @@ void Animation::Play(bool play_handles_initial_frame) {
   }
 }
 
-void Animation::Pause() {
+void Animation::Pause(bool pause_handles_initial_frame) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_PAUSE);
   LOGI("Lynx Animation pause, name is: " << name_.str());
   if (state_ == State::kPause) {
+    if (pending_run_state_ && pause_handles_initial_frame) {
+      ApplyInitialFrame();
+    }
     return;
   }
   current_time_at_pause_ = GetCurrentTime();
+  if (playback_) {
+    playback_->SetPaused(true);
+  }
   InvalidateSampleCache();
   state_ = State::kPause;
   NotifyInspectorUpdated();
@@ -235,6 +262,9 @@ void Animation::Pause() {
 
 void Animation::Stop() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_STOP);
+  if (playback_) {
+    playback_->SetPaused(true);
+  }
   current_time_at_pause_ = GetCurrentTime();
   ClearSampleHistory();
   state_ = State::kStop;
@@ -243,6 +273,9 @@ void Animation::Stop() {
 
 void Animation::Destroy(bool need_clear_effect) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_DESTORY);
+  if (playback_) {
+    playback_->SetPaused(true);
+  }
   current_time_at_pause_ = GetCurrentTime();
   ClearSampleHistory();
   ClearTransitionPreviousEndValue();
@@ -290,25 +323,33 @@ void Animation::SetKeyframeEffect(
   keyframe_effect_ = std::move(keyframe_effect);
 }
 
+void Animation::InitializeSampleTiming(fml::TimePoint frame_time) {
+  // Dummy time only primes styles. Replace it at the first real frame without
+  // resetting effect state, while an unset start time needs full
+  // initialization.
+  if (start_time_ == fml::TimePoint::Min() ||
+      start_time_ == GetAnimationDummyStartTime()) {
+    const bool reset_effect_state = start_time_ == fml::TimePoint::Min();
+    start_time_ = frame_time;
+    keyframe_effect_->SetStartTime(frame_time, reset_effect_state);
+    NotifyInspectorStarted(frame_time);
+  }
+  if (state_ == State::kPlay && frame_time != GetAnimationDummyStartTime() &&
+      current_run_start_system_time_ == fml::TimePoint::Min()) {
+    current_run_start_system_time_ = fml::TimePoint::Now();
+  }
+}
+
 bool Animation::Tick(fml::TimePoint& time) {
   if (!keyframe_effect_) {
     return true;
   }
-  // If start_time_ is uninitialized or is a dummy time, we should update it.
-  if (start_time_ == fml::TimePoint::Min() ||
-      start_time_ == GetAnimationDummyStartTime()) {
-    const bool reset_effect_state = start_time_ == fml::TimePoint::Min();
-    start_time_ = time;
-    keyframe_effect_->SetStartTime(time, reset_effect_state);
-    NotifyInspectorStarted(time);
-  }
-  if (state_ == State::kPlay && time != GetAnimationDummyStartTime() &&
-      current_run_start_system_time_ == fml::TimePoint::Min()) {
-    current_run_start_system_time_ = fml::TimePoint::Now();
-  }
+  RebaseEffectTiming(time);
+  InitializeSampleTiming(time);
   auto tick_result =
       keyframe_effect_->TickKeyframeModel(time, suppress_next_sample_events_);
   suppress_next_sample_events_ = false;
+  RecordSampleTime(time);
   return tick_result.has_finished_all;
 }
 
@@ -417,6 +458,7 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
   if (frame_time == fml::TimePoint::Min() || !keyframe_effect_) {
     return result;
   }
+  RebaseEffectTiming(frame_time);
   if (state_ == State::kStop && !pending_final_sample_) {
     // A just-finished animation may be sampled repeatedly at the same timestamp
     // in one pipeline pass. Keep style output stable, but do not replay events
@@ -429,7 +471,7 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
   }
 
   if (state_ == State::kPause && frame_time == GetAnimationDummyStartTime() &&
-      !has_last_sample_ &&
+      !has_last_sample_ && !pending_run_state_ &&
       (!was_paused_ || pause_time_ == fml::TimePoint::Min())) {
     // Dummy time is only a style recalculation placeholder. Without a previous
     // real sample or an explicit hold point, it must not initialize pause
@@ -444,20 +486,7 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     was_paused_ = false;
   }
 
-  // Convert an unset or dummy start time into the timestamp used for sampling.
-  // Replacing a dummy start time should not restart effect state, because dummy
-  // time only primes the initial style before the first real frame arrives.
-  if (start_time_ == fml::TimePoint::Min() ||
-      start_time_ == GetAnimationDummyStartTime()) {
-    const bool reset_effect_state = start_time_ == fml::TimePoint::Min();
-    start_time_ = frame_time;
-    keyframe_effect_->SetStartTime(frame_time, reset_effect_state);
-    NotifyInspectorStarted(frame_time);
-  }
-  if (state_ == State::kPlay && frame_time != GetAnimationDummyStartTime() &&
-      current_run_start_system_time_ == fml::TimePoint::Min()) {
-    current_run_start_system_time_ = fml::TimePoint::Now();
-  }
+  InitializeSampleTiming(frame_time);
 
   // Resolve the timestamp that should be sampled. Paused animations keep
   // sampling at pause_time_ so repeated resolves return a frozen style.
@@ -511,6 +540,7 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     SuppressSampleEvents(result);
     suppress_next_sample_events_ = false;
   }
+  RecordSampleTime(sample_time);
   if (!events_only) {
     has_last_sample_ = true;
     last_sample_time_ = sample_time;
@@ -543,6 +573,91 @@ void Animation::UpdateAnimationData(starlight::AnimationData& data) {
   animation_data_ = data;
   if (keyframe_effect_) {
     keyframe_effect_->UpdateAnimationData(&animation_data_);
+  }
+}
+
+void Animation::EnsurePlaybackState() {
+  if (!playback_) {
+    playback_ = fml::MakeRefCounted<gfx::AnimationPlaybackState>(
+        GetCurrentTime(),
+        state_ == State::kPause || state_ == State::kStop ||
+            (state_ == State::kIdle &&
+             animation_data_.play_state ==
+                 starlight::AnimationPlayStateType::kPaused),
+        event_state_);
+  }
+}
+
+void Animation::ApplyInitialFrame() {
+  DoFrame(GetAnimationDummyStartTime());
+  if (animation_delegate_) {
+    animation_delegate_->FlushAnimatedStyle();
+  }
+}
+
+void Animation::UpdatePlaybackState() {
+  EnsurePlaybackState();
+  const bool paused =
+      animation_data_.play_state == starlight::AnimationPlayStateType::kPaused;
+  playback_->SetPaused(paused);
+  state_ = paused ? State::kPause : State::kPlay;
+}
+
+void Animation::ReplaceEffectFrom(Animation& replacement) {
+  EnsurePlaybackState();
+  // For forward playback, only max(delay, 0) is needed to detect the old
+  // before-delay phase; completion is tracked by event_state.
+  const auto delay =
+      fml::TimeDelta::FromMilliseconds(std::max(animation_data_.delay, 0L));
+  const auto event_state = playback_->event_state();
+  if (playback_->CurrentTime() < delay ||
+      event_state == gfx::AnimationPlaybackState::EventState::kNotStarted) {
+    pending_run_state_ = gfx::KeyframeModel::STARTING;
+  } else if (event_state ==
+             gfx::AnimationPlaybackState::EventState::kFinished) {
+    pending_run_state_ = gfx::KeyframeModel::FINISHED;
+  } else {
+    pending_run_state_ = gfx::KeyframeModel::RUNNING;
+  }
+  SetKeyframeEffect(std::move(replacement.keyframe_effect_));
+  raw_style_set_.swap(replacement.raw_style_set_);
+  raw_custom_property_set_.swap(replacement.raw_custom_property_set_);
+  UpdateAnimationData(replacement.animation_data_);
+  UpdatePlaybackState();
+  ClearSampleHistory();
+  NotifyInspectorUpdated();
+}
+
+void Animation::RebaseEffectTiming(fml::TimePoint frame_time) {
+  if (!pending_run_state_) {
+    return;
+  }
+  // VSync timestamps and the UI clock can have different epochs. Transfer
+  // elapsed time, then establish a start time in the new sampler's epoch.
+  start_time_ = frame_time - playback_->CurrentTime();
+  pause_time_ = fml::TimePoint::Min();
+  total_paused_duration_ = fml::TimeDelta::Zero();
+  was_paused_ = false;
+  keyframe_effect_->RestoreTiming(start_time_, frame_time, *pending_run_state_);
+  // A dummy sample primes styles only; rebase again at the first real frame.
+  if (frame_time != GetAnimationDummyStartTime()) {
+    pending_run_state_.reset();
+  }
+}
+
+void Animation::RecordSampleTime(fml::TimePoint frame_time) {
+  // Paused samples must preserve the time frozen by Pause() or SeekTo().
+  // Dummy frames only prime styles and cannot anchor the playback clock.
+  if (state_ == State::kPause || frame_time == GetAnimationDummyStartTime()) {
+    return;
+  }
+  // Capture the sampled elapsed time before using the monotonic clock between
+  // frames. This also avoids assuming that VSync uses the FML clock's epoch.
+  current_time_at_pause_ = keyframe_effect_->CurrentTime(frame_time);
+  current_run_start_system_time_ = fml::TimePoint::Now();
+  if (playback_) {
+    playback_->SetCurrentTime(current_time_at_pause_,
+                              current_run_start_system_time_);
   }
 }
 
@@ -605,18 +720,30 @@ void Animation::ClearTransitionPreviousEndValue() {
 }
 
 void Animation::SendStartEvent() {
+  event_state_ = gfx::AnimationPlaybackState::EventState::kStarted;
+  if (playback_ && !playback_->ClaimEvent(0, event_state_)) {
+    return;
+  }
   CreateEventAndSend(is_transition_
                          ? BASE_STATIC_STRING(kTransitionStartEventName)
                          : BASE_STATIC_STRING(kKeyframeStartEventName));
 }
 
 void Animation::SendEndEvent() {
+  event_state_ = gfx::AnimationPlaybackState::EventState::kFinished;
+  if (playback_ && !playback_->ClaimEvent(0, event_state_)) {
+    return;
+  }
   CreateEventAndSend(is_transition_
                          ? BASE_STATIC_STRING(kTransitionEndEventName)
                          : BASE_STATIC_STRING(kKeyframeEndEventName));
 }
 
 void Animation::SendCancelEvent() {
+  event_state_ = gfx::AnimationPlaybackState::EventState::kCanceled;
+  if (playback_ && !playback_->ClaimEvent(0, event_state_)) {
+    return;
+  }
   CreateEventAndSend(is_transition_
                          ? BASE_STATIC_STRING(kTransitionCancelEventName)
                          : BASE_STATIC_STRING(kKeyframeCancelEventName));
