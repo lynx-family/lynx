@@ -273,7 +273,8 @@
   }
 
   if (!allLevelContainerAtTheMode[@(level)]) {
-    UIView *view = [[LynxOverlayGlobalContainer alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    UIView *view =
+        [[LynxOverlayGlobalContainer alloc] initWithFrame:[LynxOverlayGlobalManager windowBounds]];
     allLevelContainerAtTheMode[@(level)] = view;
     [topContainer addSubview:view];
   }
@@ -361,7 +362,8 @@
 }
 
 + (CGRect)windowBounds {
-  UIWindow *window = [LynxUIKitAPIAdapter getKeyWindow];
+  UIWindow *window =
+      [LynxUIKitAPIAdapter getKeyWindow] ?: [LynxUIKitAPIAdapter getForegroundKeyWindow];
   if (window) {
     return window.bounds;
   }

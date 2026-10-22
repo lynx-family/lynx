@@ -137,7 +137,8 @@ LYNX_LAZY_REGISTER_SHADOW_NODE("overlay")
 }
 
 + (CGRect)windowBounds {
-  UIWindow *window = [LynxUIKitAPIAdapter getKeyWindow];
+  UIWindow *window =
+      [LynxUIKitAPIAdapter getKeyWindow] ?: [LynxUIKitAPIAdapter getForegroundKeyWindow];
   if (window) {
     return window.bounds;
   }
