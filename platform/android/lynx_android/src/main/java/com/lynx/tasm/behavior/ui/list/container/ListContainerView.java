@@ -417,6 +417,10 @@ public class ListContainerView extends NestedScrollContainerView
     }
   }
 
+  public boolean shouldConsumeGesture() {
+    return !Boolean.TRUE.equals(mConsumeGesture) && !Boolean.TRUE.equals(mInterceptGesture);
+  }
+
   /**
    * @breif Dynamically intercepting native gestures
    * @param intercept true: intercept native gesture, false: not intercept native gesture

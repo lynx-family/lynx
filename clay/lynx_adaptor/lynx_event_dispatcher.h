@@ -60,11 +60,8 @@ class LynxEventDispatcher : public EventDelegate {
   void OnKeyEvent(const std::string& event_name, int view_id, const char* key,
                   bool repeat) override;
 
-  void OnGestureHandlerEvent(const std::string& event_name, int view_id,
-                             uint32_t gesture_id, float x, float y,
-                             float page_x, float page_y, int64_t timestamp,
-                             Value& additional_params) override;
-
+  void OnUnifiedGestureHandlerEvent(const std::string& event_name, int view_id,
+                                    uint32_t gesture_id, Value params) override;
   void OnAnimationEvent(const std::string& event_name,
                         const char* animation_name, int view_id) override;
   void OnTransitionEvent(const std::string& event_name,

@@ -30,6 +30,10 @@ public interface GestureArenaMember {
    */
   boolean canConsumeGesture(float deltaX, float deltaY);
 
+  default boolean shouldConsumeGesture() {
+    return true;
+  }
+
   /**
    * Get sign of lynx ui
    * @return

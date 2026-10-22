@@ -130,6 +130,11 @@ void ScrollCoordinator::AddEventCallback(const char* event) {
   }
 }
 
+void ScrollCoordinator::ConsumeGesture(int gesture_id, const Value& params) {
+  BaseView::ConsumeGesture(gesture_id, params);
+  scroll_view_->SetShouldConsumeGesture(ShouldConsumeGesture());
+}
+
 void ScrollCoordinator::SetAttribute(const char* attr_c,
                                      const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);

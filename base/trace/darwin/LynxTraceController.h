@@ -7,6 +7,7 @@
 
 typedef void (^completeBlockType)(NSString* traceFile);
 
+__attribute__((visibility("default")))
 @interface LynxTraceController : NSObject
 + (instancetype)sharedInstance;
 - (intptr_t)getTraceController;

@@ -986,7 +986,6 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-  [self resetInterceptGesture];
   return [self findHitTestTarget:point withEvent:event] ?: self;
 }
 

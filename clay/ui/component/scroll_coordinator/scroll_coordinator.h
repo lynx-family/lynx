@@ -34,6 +34,7 @@ class ScrollCoordinator : public WithTypeInfo<ScrollCoordinator, BaseView> {
 
   void OnLayout(LayoutContext* context) override;
   void AddEventCallback(const char* event) override;
+  void ConsumeGesture(int gesture_id, const Value& params) override;
 
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
   void setFoldExpanded(const LynxModuleValues& args,

@@ -34,6 +34,13 @@ static constexpr const float kOuterMul = 0.0f;
 static constexpr const float kInnerMul = 1.0f;
 static constexpr const float kAntiAliasClipLength = 2.0f;
 
+BackgroundDrawable::RoundRectPath::RoundRectPath()
+    : path(OH_Drawing_PathCreate()) {}
+
+BackgroundDrawable::RoundRectPath::~RoundRectPath() {
+  OH_Drawing_PathDestroy(path);
+}
+
 BackgroundDrawable::BackgroundDrawable(const std::weak_ptr<UIBase>& ui_base,
                                        bool is_mask)
     : ui_base_(ui_base),

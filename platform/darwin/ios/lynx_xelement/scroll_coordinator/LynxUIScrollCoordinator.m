@@ -654,7 +654,6 @@ typedef NS_ENUM(NSInteger, LynxUIScrollCoordinatorHeaderOverSlot) {
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)oriPoint withEvent:(UIEvent *)event {
-  [self resetInterceptGesture];
   LynxUI *guard = nil;
   NSMutableArray<LynxUI *> *array = [[NSMutableArray alloc] init];
 

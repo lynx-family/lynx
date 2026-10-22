@@ -28,6 +28,7 @@
 #include "clay/public/ui_component_delegate.h"
 #include "clay/public/value.h"
 #include "clay/ui/component/text/text_style.h"
+#include "clay/ui/gesture_handler/gesture_detector.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
 #include "clay/ui/platform/native_view_service.h"
 #include "clay/ui/shadow/bundle.h"
@@ -38,8 +39,6 @@
 #include "gfx/geometry/transform_operations.h"
 
 namespace clay {
-
-class GestureDetector;
 
 enum BoxModelOffset {
   PAD_LEFT,
@@ -219,10 +218,7 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void DidUpdateAttributes(int id);
 
   void AddEventProp(int id, const char* event);
-  void SetGestureDetectorMap(
-      int id,
-      const std::unordered_map<uint32_t, std::shared_ptr<GestureDetector>>&
-          gesture_detector_map);
+  void SetGestureDetectorMap(int id, const GestureMap& gesture_detector_map);
   void SetGestureDetectorState(int id, int32_t gesture_id, int32_t state);
   void ConsumeGesture(int id, int32_t gesture_id, const Value& params);
 

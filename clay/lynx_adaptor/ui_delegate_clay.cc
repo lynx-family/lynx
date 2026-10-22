@@ -16,6 +16,7 @@
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 

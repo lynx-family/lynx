@@ -40,6 +40,7 @@ class NestedScrollable : public WithTypeInfo<NestedScrollable, Scrollable>,
   ~NestedScrollable() override;
 
   void SetScrollEnabled(bool enabled) override;
+  void SetTouchScrollEnabled(bool enabled) { touch_scroll_enabled_ = enabled; }
 
   // TODO(liuguoliang.lgl): Consider moving this to NestedScrollManager.
   /**
@@ -187,6 +188,7 @@ class NestedScrollable : public WithTypeInfo<NestedScrollable, Scrollable>,
   void DispatchMouseWheelEvent(const PointerEvent& event);
 
   bool enable_nested_scroll_ = false;
+  bool touch_scroll_enabled_ = true;
   float touch_slop_ = kTouchSlop;
   // We ensure to resolve the drag gesture immediately. This results in a better
   // user experience and reasonable state transition.

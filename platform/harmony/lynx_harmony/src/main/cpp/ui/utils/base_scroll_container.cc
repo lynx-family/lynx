@@ -5,6 +5,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/base_scroll_container.h"
 
 #include "base/include/float_comparison.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 
 namespace lynx {
@@ -28,6 +29,11 @@ void BaseScrollContainer::OnNodeReady() {
         scroll_backward_mode_.value_or(ARKUI_SCROLL_NESTED_MODE_SELF_ONLY));
   }
 
+  auto manager = GetGestureArenaManager();
+  if (manager && manager->UsesUnifiedGestureHandler()) {
+    UpdateGestureScrollInteraction();
+    return;
+  }
   if (IsEnableNewGesture()) {
     SetEnableScrollInteraction(false);
     auto map = UIBase::GetGestureDetectorMap();
@@ -39,6 +45,25 @@ void BaseScrollContainer::OnNodeReady() {
       }
     }
   }
+}
+
+void BaseScrollContainer::SetGestureDetectors(const GestureMap& detectors) {
+  UIBase::SetGestureDetectors(detectors);
+  auto manager = GetGestureArenaManager();
+  if (manager && manager->UsesUnifiedGestureHandler()) {
+    UpdateGestureScrollInteraction();
+  }
+}
+
+void BaseScrollContainer::UpdateGestureScrollInteraction() {
+  gesture_allows_native_scroll_ = !IsEnableNewGesture();
+  for (const auto& entry : GetGestureDetectorMap()) {
+    if (entry.second->gesture_type() == GestureType::NATIVE) {
+      gesture_allows_native_scroll_ = true;
+      break;
+    }
+  }
+  SetEnableScrollInteraction(scroll_interaction_enabled_);
 }
 
 void BaseScrollContainer::SetScrollbar(bool enable_scroll_bar) {
@@ -110,9 +135,10 @@ void BaseScrollContainer::SetBounces(bool bounces, bool always_enabled) {
 
 void BaseScrollContainer::SetEnableScrollInteraction(
     bool enable_scroll_interaction) {
+  scroll_interaction_enabled_ = enable_scroll_interaction;
   NodeManager::Instance().SetAttributeWithNumberValue(
       node_, NODE_SCROLL_ENABLE_SCROLL_INTERACTION,
-      enable_scroll_interaction ? 1 : 0);
+      scroll_interaction_enabled_ && gesture_allows_native_scroll_ ? 1 : 0);
 }
 
 void BaseScrollContainer::ScrollTo(float x, float y, bool smooth) {
