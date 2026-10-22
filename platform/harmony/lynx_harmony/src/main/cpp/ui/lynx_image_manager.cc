@@ -5,6 +5,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/lynx_image_manager.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 #include <vector>
 
@@ -81,6 +82,7 @@ ImageDrawable::ImageMode ToImageDrawableMode(ImageFitMode mode) {
     case ImageFitMode::kAspectFill:
       return ImageDrawable::ImageMode::kAspectFill;
     case ImageFitMode::kCenter:
+      return ImageDrawable::ImageMode::kCenter;
     case ImageFitMode::kScaleToFill:
       return ImageDrawable::ImageMode::kScaleToFill;
   }
@@ -173,13 +175,23 @@ void LynxImageManager::SetTarget(const std::weak_ptr<UIBase>& target) {
 
 void LynxImageManager::UpdateBounds(float width, float height,
                                     float scale_density) {
+  if (!paint_info_.is_background &&
+      paint_info_.mode == ImageFitMode::kScaleToFill) {
+    // Match RSImage's FILL destination size in physical pixels.
+    // Clip and translation remain based on the original content box.
+    width = std::ceil(width * scale_density);
+    height = std::ceil(height * scale_density);
+    scale_density = 1.f;
+  }
   const float physical_width = width * scale_density;
   const float physical_height = height * scale_density;
   if (drawable_ == nullptr ||
       (has_bounds_ && base::FloatsEqual(width_, physical_width) &&
-       base::FloatsEqual(height_, physical_height))) {
+       base::FloatsEqual(height_, physical_height) &&
+       base::FloatsEqual(scale_density_, scale_density))) {
     return;
   }
+  scale_density_ = scale_density;
   width_ = physical_width;
   height_ = physical_height;
   has_bounds_ = true;
