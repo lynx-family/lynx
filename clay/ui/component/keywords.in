@@ -111,6 +111,7 @@ prev-scrollable
 next-scrollable
 enable-scroll
 scroll-monitor-tag
+fading-edge-length
 list-container-info
 clay-disable-platform-scroll-event
 enable-nested-scroll

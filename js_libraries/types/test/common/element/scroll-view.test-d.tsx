@@ -18,6 +18,12 @@ let a;
   <scroll-view bounces={true} />;
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-view']['bounces']);
 
+  <scroll-view fading-edge-length="20px" />;
+  assertType<string | undefined>(a as IntrinsicElements['scroll-view']['fading-edge-length']);
+
+  // @ts-expect-error
+  <scroll-view fading-edge-length={20} />;
+
   <scroll-view enable-scroll={true} />;
   assertType<boolean | undefined>(a as IntrinsicElements['scroll-view']['enable-scroll']);
 

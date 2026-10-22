@@ -20,6 +20,9 @@ class ScrollWrapper : public WithTypeInfo<ScrollWrapper, ScrollbarWrapper>,
   ScrollWrapper(int id, ScrollDirection direction, PageView* page_view);
   ~ScrollWrapper() override;
 
+  void AddChild(BaseView* child) override;
+  void AddChild(BaseView* child, int index) override;
+
   // UI Method
   void scrollTo(const LynxModuleValues& args);
   void autoScroll(const LynxModuleValues& args);
