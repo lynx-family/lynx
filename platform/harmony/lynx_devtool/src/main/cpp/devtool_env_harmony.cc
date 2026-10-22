@@ -15,7 +15,6 @@
 #include <mutex>
 #include <set>
 #include <utility>
-#include <vector>
 
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
@@ -24,9 +23,7 @@
 #include "core/public/jsb/native_module_factory.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
-#include "devtool/embedder/core/debug_bridge_embedder.h"
 #include "devtool/embedder/core/lynx_devtool_set_module.h"
-#include "third_party/debug_router/src/debug_router/common/debug_router.h"
 
 namespace lynx {
 namespace devtool {
@@ -53,7 +50,7 @@ DevToolEnvHarmony::DevToolEnvHarmony() {
     LOGW("InitPreferences failed");
   }
 
-  for (auto &it : s_persistent_default_value_) {
+  for (auto& it : s_persistent_default_value_) {
     std::string key = it.first;
     bool defaultValue = it.second;
     bool value = false;
@@ -75,7 +72,7 @@ DevToolEnvHarmony::~DevToolEnvHarmony() {
 }
 
 bool DevToolEnvHarmony::InitPreferences() {
-  OH_PreferencesOption *option = OH_PreferencesOption_Create();
+  OH_PreferencesOption* option = OH_PreferencesOption_Create();
   if (option == nullptr) {
     return false;
   }
@@ -107,7 +104,6 @@ napi_value DevToolEnvHarmony::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_STATIC_FUNCTION("initDevToolEnv", InitDevToolEnvNAPI),
       DECLARE_NAPI_STATIC_FUNCTION("setSwitch", SetSwitchNAPI),
       DECLARE_NAPI_STATIC_FUNCTION("getSwitch", GetSwitchNAPI),
-      DECLARE_NAPI_STATIC_FUNCTION("setAppInfo", SetAppInfo),
       DECLARE_NAPI_STATIC_FUNCTION("initDevToolSetModule",
                                    InitDevToolSetModule),
   };
@@ -133,14 +129,13 @@ napi_value DevToolEnvHarmony::Constructor(napi_env env,
 void DevToolEnvHarmony::InitDevToolEnv() {
   static std::once_flag once;
   std::call_once(once, []() {
-    debugrouter::common::DebugRouter::GetInstance().EnableAllSessions();
     // Keep the legacy EnvEmbedder path ready by loading persisted switch values
     // into LynxEnv during explicit devtool init, not on first switch access.
     (void)DevToolEnvHarmony::GetInstance();
   });
 }
 
-DevToolEnvHarmony &DevToolEnvHarmony::GetInstance() {
+DevToolEnvHarmony& DevToolEnvHarmony::GetInstance() {
   static base::NoDestructor<DevToolEnvHarmony> instance;
   return *instance;
 }
@@ -180,7 +175,7 @@ napi_value DevToolEnvHarmony::GetSwitchNAPI(napi_env env,
   return result;
 }
 
-bool DevToolEnvHarmony::NeedPersistent(const std::string &key) {
+bool DevToolEnvHarmony::NeedPersistent(const std::string& key) {
   if (s_persistent_default_value_.find(key) !=
       s_persistent_default_value_.end()) {
     return true;
@@ -188,7 +183,7 @@ bool DevToolEnvHarmony::NeedPersistent(const std::string &key) {
   return false;
 }
 
-bool DevToolEnvHarmony::SetPersistentSwitch(const std::string &key,
+bool DevToolEnvHarmony::SetPersistentSwitch(const std::string& key,
                                             bool value) {
   if (preference_ == nullptr) {
     return false;
@@ -200,7 +195,7 @@ bool DevToolEnvHarmony::SetPersistentSwitch(const std::string &key,
   return true;
 }
 
-void DevToolEnvHarmony::SetSwitch(const std::string &key, bool value,
+void DevToolEnvHarmony::SetSwitch(const std::string& key, bool value,
                                   bool is_persistent) {
   tasm::LynxEnv::GetInstance().SetBoolLocalEnv(key, value);
   if (is_persistent) {
@@ -208,7 +203,7 @@ void DevToolEnvHarmony::SetSwitch(const std::string &key, bool value,
   }
 }
 
-bool DevToolEnvHarmony::GetSwitch(const std::string &key) {
+bool DevToolEnvHarmony::GetSwitch(const std::string& key) {
   if (!tasm::LynxEnv::GetInstance().ContainKey(key) && preference_ != nullptr) {
     bool value = false;
     auto result = OH_Preferences_GetBool(preference_, key.c_str(), &value);
@@ -217,26 +212,6 @@ bool DevToolEnvHarmony::GetSwitch(const std::string &key) {
     }
   }
   return tasm::LynxEnv::GetInstance().GetBoolEnv(key, false);
-}
-
-napi_value DevToolEnvHarmony::SetAppInfo(napi_env env,
-                                         napi_callback_info info) {
-  size_t argc = 2;
-  napi_value args[2] = {nullptr};
-  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-  std::vector<std::string> keys;
-  base::NapiUtil::ConvertToArrayString(env, args[0], keys);
-  std::vector<std::string> values;
-  base::NapiUtil::ConvertToArrayString(env, args[1], values);
-  if (keys.size() != values.size()) {
-    return nullptr;
-  }
-  std::unordered_map<std::string, std::string> options;
-  for (size_t i = 0; i < keys.size(); ++i) {
-    options[keys[i]] = values[i];
-  }
-  DebugBridgeEmbedder::GetInstance().SetAppInfo(options);
-  return nullptr;
 }
 
 napi_value DevToolEnvHarmony::InitDevToolSetModule(napi_env env,
@@ -248,7 +223,7 @@ napi_value DevToolEnvHarmony::InitDevToolSetModule(napi_env env,
   uint64_t module_manager_num = base::NapiUtil::ConvertToPtr(env, args[0]);
 
   auto module_manager =
-      reinterpret_cast<runtime::js::LynxModuleManager *>(module_manager_num);
+      reinterpret_cast<runtime::js::LynxModuleManager*>(module_manager_num);
   std::unique_ptr<runtime::NativeModuleFactory> devtool_module_factory_ =
       std::make_unique<runtime::NativeModuleFactory>();
   devtool_module_factory_->Register(LynxDevToolSetModule::GetName(),

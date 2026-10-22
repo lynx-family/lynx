@@ -17,7 +17,8 @@ devtool_source_set("lynx_devtool_lib") {
     "../../../core/renderer/css/css_color.h",
   ]
 
-  include_dirs = [ "../../../third_party/debug_router/src/" ]
+  include_dirs =
+      [ "oh_modules/@lynx/debug_router/src/main/debug_router/include" ]
 
   deps = [
     ":native",
@@ -25,7 +26,6 @@ devtool_source_set("lynx_devtool_lib") {
     "../../../core/renderer/css:css_keywords",
     "../../../devtool/embedder/core:lynx_devtool_embedder_core",
     "../../../devtool/lynx_devtool:lynx_devtool_group",
-    "../../../third_party/debug_router/src/debug_router/common:debug_router_source",
   ]
 
   deps += [
@@ -54,12 +54,16 @@ target(lynx_devtool_type, "lynx_devtool") {
     "../lynx_harmony",
   ]
 
-  lib_dirs = [ primjs_native_lib_dir ]
+  lib_dirs = [
+    primjs_native_lib_dir,
+    "oh_modules/@lynx/debug_router/libs/${harmony_app_abi}",
+  ]
   if (defined(enable_rts_runtime) && enable_rts_runtime) {
     lib_dirs += [ "//third_party/rts/harmony" ]
   }
   libs = [
     "ace_napi.z",
+    "debugrouter",
     "quick",
     "uv",
     "native_vsync",

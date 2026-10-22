@@ -3,9 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 import lynxdevtool from 'liblynxdevtool.so';
+import { DebugRouter } from './DebugRouter';
 
 export class LynxDevToolEnv {
   public static initDevToolEnv(): void {
+    lynxdevtool.DebugBridgeHarmony.initialize();
+    DebugRouter.init();
+    DebugRouter.enableAllSessions();
     lynxdevtool.LynxDevToolEnvHarmony.initDevToolEnv();
   }
 
@@ -20,7 +24,14 @@ export class LynxDevToolEnv {
   }
 
   public static setAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void {
-    lynxdevtool.LynxDevToolEnvHarmony.setAppInfo(optionKeys, optionValues);
+    if (optionKeys.length !== optionValues.length) {
+      return;
+    }
+    const appInfo = new Map<string, string>();
+    optionKeys.forEach((key: string, index: number) => {
+      appInfo.set(key, optionValues[index]);
+    });
+    DebugRouter.setAppInfo(appInfo);
   }
 
   public static initDevToolSetModule(moduleManager: number[]): void {
