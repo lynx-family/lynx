@@ -237,6 +237,8 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
     return NO;
   }
 
+  // The legacy image fetcher is installed on the UI context, outside the builder.
+  [_render setImageFetcherInUIOwner:self.context.imageFetcher];
   [self getLifecycleDispatcher].instanceId = [_render instanceId];
   [self attachFramePerformanceClientIfNeeded];
   [self applyRenderLayoutWithRect:_contentRect
@@ -376,6 +378,19 @@ static NSString *const kLynxFrameEventModeStandard = @"standard";
 - (void)onPerformanceEvent:(nonnull LynxPerformanceEntry *)entry {
   if (ShouldHandleFrameLoadMetricsEntry(entry)) {
     [self onFrameLoadMetricsEvent:entry];
+  }
+}
+
+- (void)onResourceLoaded:(LynxResourceLoadInfo *)info {
+  if (info.type != LynxResourceTypeImage) {
+    return;
+  }
+  // Forward image results through the direct parent without sharing page lifecycle clients.
+  UIView<LUIBodyView> *parentView = self.context.rootView;
+  if ([parentView isKindOfClass:[LynxView class]]) {
+    [[(LynxView *)parentView getLifecycleDispatcher] onResourceLoaded:info];
+  } else if ([parentView isKindOfClass:[LynxFrameView class]]) {
+    [[(LynxFrameView *)parentView getLifecycleDispatcher] onResourceLoaded:info];
   }
 }
 

@@ -4636,6 +4636,8 @@ public class LynxTemplateRender
     builder.setUIRendererCreator(mLynxViewBuilder.getUIRendererCreator())
         .setFontLoader(mLynxViewBuilder.fontLoader)
         .setImageFetcher(mLynxViewBuilder.imageFetcher)
+        .setLynxImageConfig(mLynxViewBuilder.mLynxImageConfig)
+        .setImageCustomParam(mLynxViewBuilder.mImageCustomParam)
         .setFontScale(mLynxViewBuilder.getFontScale())
         .setColorScheme(mLynxViewBuilder.getColorScheme())
         .setEnablePreUpdateData(true)

@@ -2869,6 +2869,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.genericResourceFetcher = [self->_lynxUIRenderer genericResourceFetcher];
     builder.mediaResourceFetcher = [self->_lynxUIRenderer mediaResourceFetcher];
     builder.templateResourceFetcher = [self->_lynxUIRenderer templateResourceFetcher];
+    builder.imageConfig = self->_lynxUIRenderer.uiOwner.uiContext.imageConfig;
+    builder.enableFetchUIImage = self->_lynxUIRenderer.uiOwner.uiContext.enableFetchUIImage;
     builder.screenSize = [[self->_lynxUIRenderer getScreenMetrics] screenSize];
     builder.screenScale = [[self->_lynxUIRenderer getScreenMetrics] scale];
     builder.lynxBackgroundRuntimeOptions =
