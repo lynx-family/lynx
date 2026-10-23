@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/base/threading/task_runner_manufactor.h"
 
+#include "base/include/fml/memory/js_memory_track_scope.h"
+#include "base/include/fml/message_loop.h"
 #include "base/include/fml/synchronization/count_down_latch.h"
 #include "core/base/threading/js_thread_config_getter.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -152,6 +154,40 @@ TEST_F(TaskRunnerManufactorTest, MultiJSGroupThreadMode) {
             TaskRunnerManufactor::GetJSRunner("Group1")->GetLoop());
   ASSERT_EQ(multi_js_thread_1.GetJSTaskRunner()->GetLoop(),
             multi_js_thread_temp_1.GetJSTaskRunner()->GetLoop());
+}
+
+TEST_F(TaskRunnerManufactorTest, GroupedJSRunnerUsesMessageLoopMemorySlots) {
+  auto runner = TaskRunnerManufactor::GetJSRunner("Group1");
+  auto cached_runner = TaskRunnerManufactor::GetJSRunner("Group1");
+  ASSERT_EQ(runner.get(), cached_runner.get());
+
+  runner->PostSyncTask([&runner]() {
+    auto loop_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
+    ASSERT_EQ(runner.get(), loop_runner.get());
+
+    constexpr int32_t kFirstInstanceId = 1001;
+    constexpr int32_t kSecondInstanceId = 1002;
+    constexpr int32_t kFirstSlot = 3;
+    constexpr int32_t kSecondSlot = 4;
+    loop_runner->SetInstanceMemorySlot(kFirstInstanceId, kFirstSlot);
+    loop_runner->SetInstanceMemorySlot(kSecondInstanceId, kSecondSlot);
+
+    {
+      fml::JSMemoryTrackSlot scope(
+          runner.get(), runner->GetInstanceMemorySlot(kFirstInstanceId));
+      EXPECT_EQ(loop_runner->GetCurrentAllocSlot(), kFirstSlot);
+    }
+    {
+      fml::JSMemoryTrackSlot scope(
+          runner.get(), runner->GetInstanceMemorySlot(kSecondInstanceId));
+      EXPECT_EQ(loop_runner->GetCurrentAllocSlot(), kSecondSlot);
+    }
+    EXPECT_EQ(loop_runner->GetCurrentAllocSlot(),
+              fml::JSMemoryTrackSlotType::Unknown);
+
+    loop_runner->RemoveInstanceMemorySlot(kFirstInstanceId);
+    loop_runner->RemoveInstanceMemorySlot(kSecondInstanceId);
+  });
 }
 
 TEST_F(TaskRunnerManufactorTest, IsOnConcurrentLoopWorker) {

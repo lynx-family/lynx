@@ -118,14 +118,13 @@ class ThreadGroup {
       if (it == thread_groups_.end()) {
         auto new_thread = std::make_unique<fml::Thread>(
             GetJSThreadConfig(prefix_name_ + std::to_string(index)));
-        auto task_runner =
-            fml::MakeRefCounted<fml::TaskRunner>(new_thread->GetLoop());
+        auto task_runner = new_thread->GetTaskRunner();
         thread_groups_.emplace(index, std::move(new_thread));
         LOGI("ThreadGroup for " << prefix_name_ << ", max_count:" << max_count_
                                 << ", new thread for index:" << index);
         return task_runner;
       }
-      return fml::MakeRefCounted<fml::TaskRunner>(it->second->GetLoop());
+      return it->second->GetTaskRunner();
     }
   }
 
