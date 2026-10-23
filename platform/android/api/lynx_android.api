@@ -5984,6 +5984,10 @@ public interface com::lynx::tasm::navigator::LynxHolder {
   public void com.lynx.tasm.navigator.LynxHolder.quit();
 }
 
+public class com::lynx::tasm::LynxHostEnvironment :  {
+  public com.lynx.tasm.LynxHostEnvironment.LynxHostEnvironment(ILynxViewConfigProvider configProvider);
+}
+
 public class abstract com::lynx::tasm::service::LynxHttpRequestCallback :  {
   public void com.lynx.tasm.service.LynxHttpRequestCallback.invoke(@NonNull HttpResponse response);
 }
