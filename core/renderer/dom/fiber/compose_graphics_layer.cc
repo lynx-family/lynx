@@ -4,6 +4,7 @@
 
 #include "core/renderer/dom/fiber/compose_graphics_layer.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <limits>
@@ -64,6 +65,20 @@ CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
           }
           properties[i] = static_cast<float>(number.Number());
         }
+        // Alpha is optional so previously built transform-only templates keep
+        // their ordinary opacity. Validate before emitting any custom output.
+        static constexpr char kAlpha[] = "alpha";
+        const auto alpha_value =
+            value.GetProperty(BASE_STATIC_STRING(kAlpha)).ToLepusValue();
+        float alpha = 1.f;
+        if (!alpha_value.IsUndefined()) {
+          if (!alpha_value.IsNumber() || !std::isfinite(alpha_value.Number())) {
+            LOGE("graphicsLayer resolver returned invalid alpha");
+            return;
+          }
+          alpha = static_cast<float>(
+              std::max(0., std::min(1., alpha_value.Number())));
+        }
         const float center_x = target->width() * 0.5f;
         const float center_y = target->height() * 0.5f;
         gfx::Matrix44 matrix;
@@ -81,6 +96,11 @@ CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
           }
         }
         builder.Transform(matrix);
+        // The innermost layer can bind to the content Element itself. Preserve
+        // opacity from the content (for example an image's own alpha) and apply
+        // the layer's opacity to that output. Removal restores the ordinary
+        // value.
+        builder.Opacity(alpha * target->computed_css_style()->GetOpacity());
       };
   return functions;
 }
