@@ -198,8 +198,9 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   }
 
   public LynxContext getLynxContext() {
-    if (mLynxTemplateRender != null) {
-      return mLynxTemplateRender.getLynxContext();
+    LynxTemplateRender render = mLynxTemplateRender;
+    if (render != null) {
+      return render.getLynxContext();
     }
     return null;
   }
@@ -1829,10 +1830,11 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
    */
   public void triggerEventBus(String name, List<Object> params) {
     checkAccessFromNonUiThread("triggerEventBus");
-    if (mLynxTemplateRender == null) {
+    LynxTemplateRender render = mLynxTemplateRender;
+    if (render == null) {
       return;
     }
-    mLynxTemplateRender.triggerEventBus(name, params);
+    render.triggerEventBus(name, params);
   }
 
   public boolean enableAirStrictMode() {
