@@ -11,6 +11,7 @@
 #include "clay/shell/common/engine.h"
 #include "clay/shell/common/services/platform_const_service.h"
 #include "clay/shell/common/services/raster_frame_service.h"
+#include "clay/ui/component/page_view.h"
 
 namespace clay {
 
@@ -74,6 +75,18 @@ void UIFrameService::OnFirstMeaningfulLayout() {
   }
 }
 
+bool UIFrameService::PrepareFrame() {
+  if (!using_sync_compositor_ || !engine_ || !engine_->GetPageView() ||
+      !engine_->GetPageView()->HasMeaningfulLayout()) {
+    return false;
+  }
+  if (frame_requested_) {
+    BeginFrame();
+  }
+  return !engine_->HasPendingLayout() &&
+         !engine_->GetPageView()->HasPendingFrameChanges();
+}
+
 void UIFrameService::DemandDrawHw(std::promise<bool> frame_promise) {
   std::unique_ptr<FrameTimingsRecorder> recorder =
       std::make_unique<FrameTimingsRecorder>();
@@ -88,6 +101,13 @@ void UIFrameService::DemandDrawHw(std::promise<bool> frame_promise) {
         bool result = impl.DemandDrawHw();
         frame_promise.set_value(result);
       });
+}
+
+void UIFrameService::BeginFrame() {
+  auto recorder = std::make_unique<FrameTimingsRecorder>();
+  const auto now = fml::TimePoint::Now();
+  recorder->RecordVsync(now, now);
+  BeginFrame(std::move(recorder));
 }
 
 void UIFrameService::BeginFrame(

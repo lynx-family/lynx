@@ -159,6 +159,18 @@ class LynxNativeView {
     return lynx_native_view_acquire_surface(native_view_, width, height);
   }
 
+  // Optional windowless synchronous surface acquisition. Currently validated
+  // only on the Linux windowless backend. Other platforms have not been
+  // validated and are not guaranteed to work. Use only after enabling
+  // windowless synchronous composition, with the previous draw and host
+  // presentation finished. May recycle an unconsumed queued buffer, never the
+  // current front. Ownership matches AcquireSurface(); publish with SwapBack().
+  inline lynx_surface_handle_t* AcquireSurfaceForSyncDraw(int width,
+                                                          int height) {
+    return lynx_native_view_acquire_surface_for_sync_draw(native_view_, width,
+                                                          height);
+  }
+
   /**
    * @apidoc
    * @brief Acquire the latest back buffer and assign its texture-coordinate

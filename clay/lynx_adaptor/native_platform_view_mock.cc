@@ -39,6 +39,10 @@ ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(
     int width, int height, const ClayTransformation* transform) {
   return nullptr;
 }
+ClaySharedImageNativeHandle NativePlatformView::AcquireSurfaceForSyncDraw(
+    int width, int height) {
+  return nullptr;
+}
 bool NativePlatformView::SwapBack() { return false; }
 void NativePlatformView::MarkDirty() {}
 void NativePlatformView::RequestFocus() {}

@@ -55,6 +55,18 @@ PlatformViewEmbedder::PlatformViewEmbedder(
 
 PlatformViewEmbedder::~PlatformViewEmbedder() = default;
 
+void PlatformViewEmbedder::PostInvalidate() {
+  if (platform_dispatch_table_.invalidate_callback) {
+    platform_dispatch_table_.invalidate_callback();
+  }
+}
+
+void PlatformViewEmbedder::SubmitFrameFuture(std::future<bool> future) {
+  if (platform_dispatch_table_.submit_frame_future_callback) {
+    platform_dispatch_table_.submit_frame_future_callback(std::move(future));
+  }
+}
+
 void PlatformViewEmbedder::NotifyDestroyed() {
   PlatformView::NotifyDestroyed();
   // This context needs to be deallocated from the raster thread in order to

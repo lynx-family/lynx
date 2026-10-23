@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "base/include/fml/macros.h"
+#include "build/build_config.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/common/task_runners.h"
 #include "clay/common/vsync/vsync_callback.h"
@@ -33,10 +34,13 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
       const char* icu_data_path,
       const ClayHeadlessRendererConfig* renderer_config,
       const ClayTaskRunnerDescription* platform_task_runner_description,
-      void* user_data, VsyncRequestCallback custom_vsync_request = {});
+      void* user_data, VsyncRequestCallback custom_vsync_request = {},
+      bool enable_sync_compositor = false);
   ~ClayHeadlessEngine() override;
 
   bool IsValid() const;
+  // Frame driving also requires services initialized by RunEngine.
+  bool IsReadyForFrame() const;
   void* UserData() const { return user_data_; }
   ClayHeadlessRenderer* Renderer() const;
 
@@ -47,6 +51,10 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
   void NotifyLowMemoryWarning();
   void NotifyLocaleChange();
   void RequestPaint();
+  // Prepare UI without drawing on Raster.
+  bool PrepareFrame();
+  // Request a synchronous draw; any completion future goes to the delegate.
+  void DemandDrawHw();
 
   void SetVisible(bool enable);
   void SetFontFaceCache(const char* font_family, const char* local_path);
@@ -96,6 +104,8 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
   void ClearTextInputClient();
 
   void* user_data_ = nullptr;
+  // Used by windowless synchronous composition.
+  [[maybe_unused]] bool enable_sync_compositor_ = false;
   int client_id_ = -1;
 
   // The event loop for the main thread that allows for delayed task execution.

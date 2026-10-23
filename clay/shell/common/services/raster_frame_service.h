@@ -35,6 +35,9 @@ class RasterFrameService
   // Ask the Rasterizer to submit a new Frame synchronously.
   bool DemandDrawHw();
 
+  // Request work for a sync draw. Host-driven windowless mode needs no extra
+  // invalidation; other compositors retain their normal notifications.
+  void RequestRasterFrameForSyncDraw();
   void RequestRasterFrame();
   void RequestUIFrame(bool inside_ui_frame = false);
 
@@ -103,6 +106,8 @@ class RasterFrameService
   clay::Puppet<clay::Owner::kRaster, SyncCompositorService>
       sync_compositor_service_;
   bool using_sync_compositor_ = false;
+  bool using_host_driven_windowless_draw_ = false;
+  bool inside_sync_draw_ = false;
 
   clay::Puppet<clay::Owner::kRaster, UIFrameService> ui_frame_service_;
   bool force_begin_frame_ = false;

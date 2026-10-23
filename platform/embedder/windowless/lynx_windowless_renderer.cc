@@ -4,6 +4,7 @@
 
 #include "base/include/log/logging.h"
 #include "build/build_config.h"
+#include "clay/shell/platform/headless/clay_headless_engine.h"
 #include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
 #include "platform/embedder/windowless/windowless_ui_task_runner_delegate.h"
 
@@ -24,6 +25,67 @@ LYNX_EXTERN_C void* lynx_windowless_renderer_get_user_data(
     lynx_windowless_renderer_t* renderer) {
   return reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer)
       ->user_data;
+}
+
+LYNX_EXTERN_C bool lynx_windowless_renderer_set_sync_compositor(
+    lynx_windowless_renderer_t* renderer, bool enabled) {
+  auto* impl =
+      reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer);
+  if (impl->sync_compositor_config_locked) {
+    LOGE("SetSyncCompositor must be called before creating the LynxView.");
+    return false;
+  }
+  impl->enable_sync_compositor = enabled;
+  if (!enabled) {
+    impl->on_invalidate_callback = nullptr;
+  }
+  return true;
+}
+
+LYNX_EXTERN_C void lynx_windowless_renderer_bind_on_invalidate(
+    lynx_windowless_renderer_t* renderer, on_invalidate callback) {
+  reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer)
+      ->on_invalidate_callback = callback;
+}
+
+LYNX_EXTERN_C bool lynx_windowless_renderer_prepare_frame(
+    lynx_windowless_renderer_t* renderer) {
+  auto* impl =
+      reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer);
+  if (!impl->CanDriveFrame()) {
+    return false;
+  }
+  return impl->headless_engine->PrepareFrame();
+}
+
+LYNX_EXTERN_C bool lynx_windowless_renderer_demand_draw_hw(
+    lynx_windowless_renderer_t* renderer) {
+  auto* impl =
+      reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer);
+  if (!impl->CanDriveFrame()) {
+    return false;
+  }
+  impl->frame_draw_future = {};
+  impl->headless_engine->DemandDrawHw();
+  return impl->frame_draw_future.valid();
+}
+
+LYNX_EXTERN_C lynx_frame_draw_status_e
+lynx_windowless_renderer_get_frame_draw_status(
+    lynx_windowless_renderer_t* renderer) {
+  auto* impl =
+      reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer);
+  if (!impl->enable_sync_compositor || !impl->frame_draw_future.valid()) {
+    return kFrameDrawUnavailable;
+  }
+  if (impl->frame_draw_future.wait_for(std::chrono::seconds(0)) !=
+      std::future_status::ready) {
+    return kFrameDrawPending;
+  }
+  if (impl->frame_draw_future.get()) {
+    return kFrameDrawn;
+  }
+  return kFrameNotDrawn;
 }
 
 LYNX_EXTERN_C void lynx_windowless_renderer_bind_on_gl_make_current(
@@ -402,6 +464,24 @@ bool LynxWindowlessRenderer::GetAcceleratedPaintInfo(
     }
   }
   return false;
+}
+
+bool LynxWindowlessRenderer::CanDriveFrame() const {
+  if (!enable_sync_compositor) {
+    return false;
+  }
+  if (!headless_engine || !headless_engine->IsReadyForFrame()) {
+    LOGE(
+        "Cannot drive a frame before headless engine initialization "
+        "completed.");
+    return false;
+  }
+  return headless_engine->GetTaskRunners()
+             .GetPlatformTaskRunner()
+             ->RunsTasksOnCurrentThread() &&
+         (!frame_draw_future.valid() ||
+          frame_draw_future.wait_for(std::chrono::seconds(0)) ==
+              std::future_status::ready);
 }
 
 }  // namespace embedder

@@ -5,6 +5,10 @@
 #ifndef CLAY_SHELL_PLATFORM_HEADLESS_PUBLIC_EMBDDER_HEADLESS_DELEGATE_H_
 #define CLAY_SHELL_PLATFORM_HEADLESS_PUBLIC_EMBDDER_HEADLESS_DELEGATE_H_
 
+#include <future>
+
+#include "build/build_config.h"
+
 namespace lynx {
 class HeadlessDelegate {
  public:
@@ -19,6 +23,10 @@ class HeadlessDelegate {
   virtual void SetMarkedTextRect(float x, float y, float width,
                                  float height) = 0;
   virtual void SetEditableTransform(const float transform_matrix[16]) = 0;
+
+  // Windowless sync callbacks delivered on the platform thread.
+  virtual void OnInvalidate() {}
+  virtual void SubmitFrameFuture(std::future<bool> future) {}
 };
 }  // namespace lynx
 
