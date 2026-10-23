@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <initializer_list>
 #include <limits>
 #include <map>
 #include <memory>
@@ -155,6 +156,66 @@ class ElementTemplateInstanceTest : public FiberElementTest {
     instance->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
     instance->SetTemplateKey(base::String("spread_template"));
     return instance;
+  }
+
+  fml::RefPtr<ElementTemplateInstance> CreateCompiledGestureInstance(
+      const std::shared_ptr<runtime::MTSRuntime>& runtime, bool nested_target) {
+    auto instance = CreateCompiledSpreadInstance(nested_target);
+    const auto& entry = tasm->template_entries_[DEFAULT_ENTRY_NAME];
+    entry->SetVm(runtime);
+    auto& root =
+        entry->template_bundle_.element_template_infos_["spread_template"]
+            ->elements_[0];
+    auto& target = nested_target ? root.children_[0] : root;
+    target.attributes_ =
+        std::make_shared<const TemplateAttributes>(TemplateAttributes{
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                      base::String("main-thread:gesture"), lepus::Value(), 0},
+            Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("flatten"),
+                      lepus::Value(true), 0},
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                      base::String("data-label"), lepus::Value(), 1}});
+    return instance;
+  }
+
+  lepus::Value GestureDescriptor(std::initializer_list<int> ids,
+                                 int callback_version, int entry_count = 1) {
+    auto gestures = lepus::CArray::Create();
+    for (auto id : ids) {
+      auto callbacks = lepus::CArray::Create();
+      for (int index = 0; index < entry_count; ++index) {
+        auto callback = lepus::Dictionary::Create();
+        callback->SetValue("name",
+                           lepus::Value(index == 0 ? "onUpdate" : "onEnd"));
+        auto worklet = lepus::Dictionary::Create();
+        worklet->SetValue("version", lepus::Value(callback_version + index));
+        callback->SetValue("callback", lepus::Value(worklet));
+        callbacks->emplace_back(lepus::Value(callback));
+      }
+      auto config = lepus::Dictionary::Create();
+      config->SetValue("enabled", lepus::Value(callback_version != 0));
+      auto relations = lepus::Dictionary::Create();
+      for (const auto* key :
+           {kGestureWaitFor, kGestureSimultaneous, kGestureContinueWith}) {
+        auto relation_ids = lepus::CArray::Create();
+        for (int index = 0; index < entry_count; ++index) {
+          relation_ids->emplace_back(lepus::Value(id + 10 + index));
+        }
+        relations->SetValue(key, lepus::Value(relation_ids));
+      }
+      auto gesture = lepus::Dictionary::Create();
+      gesture->SetValue("id", lepus::Value(id));
+      gesture->SetValue("type",
+                        lepus::Value(static_cast<int>(GestureType::PAN)));
+      gesture->SetValue("config", lepus::Value(config));
+      gesture->SetValue("callbacks", lepus::Value(callbacks));
+      gesture->SetValue("relationMap", lepus::Value(relations));
+      gestures->emplace_back(lepus::Value(gesture));
+    }
+    auto descriptor = lepus::Dictionary::Create();
+    descriptor->SetValue("type", lepus::Value("gesture"));
+    descriptor->SetValue("value", lepus::Value(gestures));
+    return lepus::Value(descriptor);
   }
 
   void CreateCSSEntry(const char* name, const char* default_color,
@@ -2763,6 +2824,131 @@ TEST_P(ElementTemplateInstanceTest,
   value.GetProperty("config").SetProperty("enabled", lepus::Value(false));
   EXPECT_TRUE(
       detector.gesture_config_in_lepus_value().GetProperty("enabled").Bool());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       GestureStoragePreservesLiveCallbacksAndIsolatesWorkerPreparation) {
+  auto runtime = CreatePAPIRuntime();
+  auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  ASSERT_NE(context, nullptr);
+  auto instance = CreateCompiledGestureInstance(runtime, true);
+  lepus::Value descriptor;
+  constexpr char source[] = R"JS(({
+    type: 'gesture',
+    value: [{id: 1, type: 0, config: {enabled: true},
+      callbacks: [{name: 'onUpdate', callback: {state: 0}}],
+      relationMap: {waitFor: [], simultaneous: [], continueWith: []}}]
+  }))JS";
+  ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, descriptor,
+                               "gesture_storage.js"));
+  const auto source_entry = descriptor.GetProperty("value").GetProperty(0);
+  auto callback = source_entry.GetProperty("callbacks")
+                      .GetProperty(0)
+                      .GetProperty("callback");
+  ASSERT_TRUE(callback.IsJSValue());
+  auto slots = lepus::CArray::Create();
+  slots->emplace_back(descriptor);
+  instance->SetAttributeSlots(lepus::Value(slots));
+  auto stored_entry = instance->attribute_slots_.GetProperty(0)
+                          .GetProperty("value")
+                          .GetProperty(0);
+  auto stored_callback = stored_entry.GetProperty("callbacks")
+                             .GetProperty(0)
+                             .GetProperty("callback");
+  EXPECT_TRUE(stored_callback.IsEqual(callback));
+  stored_callback.SetProperty("state", lepus::Value(7));
+  EXPECT_EQ(callback.GetProperty("state").Number(), 7);
+  source_entry.GetProperty("config").SetProperty("enabled",
+                                                 lepus::Value(false));
+  EXPECT_TRUE(stored_entry.GetProperty("config").GetProperty("enabled").Bool());
+
+  instance->SetAttributeSlot(0, descriptor);
+  stored_entry = instance->attribute_slots_.GetProperty(0)
+                     .GetProperty("value")
+                     .GetProperty(0);
+  EXPECT_FALSE(
+      stored_entry.GetProperty("config").GetProperty("enabled").Bool());
+  EXPECT_TRUE(stored_entry.GetProperty("callbacks")
+                  .GetProperty(0)
+                  .GetProperty("callback")
+                  .IsEqual(callback));
+  auto task = instance->CreateElementTreeTask(
+      tasm->template_entries_[DEFAULT_ENTRY_NAME].get());
+  instance = nullptr;
+  task->Run();
+  auto prepared = task->GetFuture().get();
+  EXPECT_TRUE(prepared.prepared_attribute_slots_.GetProperty(0).IsEmpty());
+  ASSERT_NE(prepared.result_, nullptr);
+  EXPECT_TRUE(prepared.result_->children()[0]->gesture_map().empty());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       OrdinaryAttributeStorageDefersTemplateMetadataLookup) {
+  auto object = lepus::Dictionary::Create();
+  object->SetValue("type", lepus::Value(42));
+  object->SetValue("payload", lepus::Value("ordinary"));
+  auto other_type = lepus::Dictionary::Create();
+  other_type->SetValue("type", lepus::Value("ordinary"));
+  for (const auto& value :
+       {lepus::Value(), lepus::Value(42), lepus::Value("label"),
+        lepus::Value(object), lepus::Value(other_type)}) {
+    auto instance = CreateCompiledSpreadInstance();
+    auto& infos = tasm->template_entries_[DEFAULT_ENTRY_NAME]
+                      ->template_bundle_.element_template_infos_;
+    // A cold bundle has no cached metadata until preparation requests it.
+    infos.clear();
+    auto slots = lepus::CArray::Create();
+    slots->emplace_back(value);
+    instance->SetAttributeSlots(lepus::Value(slots));
+    EXPECT_TRUE(infos.empty());
+    instance->SetAttributeSlot(0, value);
+    EXPECT_TRUE(infos.empty());
+    EXPECT_TRUE(instance->attribute_slots_.GetProperty(0).IsEqual(value));
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       GestureMarkerRemainsOrdinaryDataOutsideDeclaredGestureSlots) {
+  for (int host_kind : {0, 1, 2}) {
+    auto marker = GestureDescriptor({1}, 1);
+    marker.SetProperty("custom", lepus::Value("retained"));
+    auto instance = host_kind == 2 ? fml::AdoptRef<ElementTemplateInstance>(
+                                         new ElementTemplateInstance(manager))
+                                   : CreateCompiledSpreadInstance();
+    if (host_kind == 0) {
+      auto& info =
+          tasm->template_entries_[DEFAULT_ENTRY_NAME]
+              ->template_bundle_.element_template_infos_["spread_template"];
+      info->elements_[0].attributes_ =
+          std::make_shared<const TemplateAttributes>(TemplateAttributes{
+              Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("payload"),
+                        lepus::Value(), 0}});
+    }
+    if (host_kind == 2) {
+      instance->SetTypedTag(base::String("view"));
+      instance->SetAttributes(marker);
+    } else {
+      auto slots = lepus::CArray::Create();
+      slots->emplace_back(marker);
+      instance->SetAttributeSlots(lepus::Value(slots));
+    }
+    auto serialized = instance->Serialize();
+    auto stored = host_kind == 2
+                      ? serialized.GetProperty("attributes")
+                      : serialized.GetProperty("attributeSlots").GetProperty(0);
+    EXPECT_EQ(stored.GetProperty("custom").StdString(), "retained");
+    EXPECT_EQ(stored.GetProperty("type").StdString(), "gesture");
+    ASSERT_EQ(stored.GetProperty("value").GetLength(), 1);
+    instance->SetAttributeSlot(0, marker);
+    auto root = instance->GetRoot();
+    ASSERT_NE(root, nullptr);
+    EXPECT_TRUE(root->gesture_map().empty());
+    serialized = instance->Serialize();
+    stored = host_kind == 2
+                 ? serialized.GetProperty("attributes")
+                 : serialized.GetProperty("attributeSlots").GetProperty(0);
+    EXPECT_EQ(stored.GetProperty("custom").StdString(), "retained");
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,
