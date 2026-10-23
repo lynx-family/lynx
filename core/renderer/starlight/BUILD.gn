@@ -151,6 +151,7 @@ group("starlight_tests") {
 unittest_set("starlight_testset") {
   public_configs = [ "../../:lynx_public_config" ]
   sources = [
+    "layout/box_layout_algorithm_unittest.cc",
     "layout/container_node_unittest.cc",
     "style/data_ref_unittest.cc",
   ]
