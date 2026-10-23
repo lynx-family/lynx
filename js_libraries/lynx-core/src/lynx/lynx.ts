@@ -547,9 +547,9 @@ export class Lynx {
   cancelAnimationFrame = (animationId: number) =>
     this.getNativeApp().cancelAnimationFrame(animationId);
 
-  queueMicrotask(callback: () => void): void {
+  queueMicrotask = (callback: () => void): void => {
     this.getNativeLynx().queueMicrotask(callback);
-  }
+  };
 
   loadScript = <LoadScript>(<T>(
     url: string,
