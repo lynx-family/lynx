@@ -29,6 +29,7 @@
 #include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/utils/base/base_def.h"
+#include "core/renderer/utils/base/event_converter.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
@@ -2612,7 +2613,23 @@ void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
 }
 
 void LynxTemplateRenderer::DispatchMessageEvent(
-    const devtool::VMEvent& message) {}
+    const devtool::VMEvent& message) {
+  if (!shell_ || shell_->IsDestroyed()) {
+    return;
+  }
+  shell_->DispatchMessageEvent(
+      tasm::EventConverter::ConvertVMEventToMessageEvent(message));
+}
+
+void LynxTemplateRenderer::OnReceiveMessageEvent(
+    const runtime::MessageEvent& event) {
+  std::lock_guard<std::recursive_mutex> lock(inspector_owner_mutex_);
+  auto* inspector_owner = inspector_owner_.load(std::memory_order_acquire);
+  if (inspector_owner) {
+    inspector_owner->OnReceiveMessageEvent(
+        tasm::EventConverter::ConvertMessageEventToVMEvent(event));
+  }
+}
 
 }  // namespace harmony
 }  // namespace lynx
