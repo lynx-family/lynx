@@ -85,8 +85,13 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
 
   headless_engine_ = std::make_unique<clay::ClayHeadlessEngine>(
       icu_data_path, windowless_renderer_->GetRendererConfig(), &description_,
-      windowless_renderer_.get());
+      windowless_renderer_.get(), windowless_renderer_->enable_sync_compositor);
   headless_engine_->SetHeadlessDelegate(this);
+#if defined(OS_LINUX)
+  if (windowless_renderer_->enable_sync_compositor) {
+    windowless_renderer_->headless_engine = headless_engine_.get();
+  }
+#endif
 
   auto* view_context =
       static_cast<clay::ViewContext*>(headless_engine_->GetViewContext());
@@ -142,6 +147,8 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
 }
 
 LynxUIRendererWindowless::~LynxUIRendererWindowless() {
+  windowless_renderer_->headless_engine = nullptr;
+  windowless_renderer_->frame_future = {};
   headless_engine_->SetHeadlessDelegate(nullptr);
   windowless_renderer_->run_task = nullptr;
   windowless_renderer_->send_pointer_event = nullptr;
@@ -249,6 +256,20 @@ void LynxUIRendererWindowless::InsertText(const std::string& text) {
 void LynxUIRendererWindowless::SendPointerEvent(const ClayPointerEvent& event) {
   headless_engine_->SendPointerEvents(&event, 1);
 }
+
+#if defined(OS_LINUX)
+void LynxUIRendererWindowless::OnInvalidate() {
+  if (windowless_renderer_->on_invalidate_callback) {
+    windowless_renderer_->on_invalidate_callback(
+        reinterpret_cast<lynx_windowless_renderer_t*>(
+            windowless_renderer_.get()));
+  }
+}
+
+void LynxUIRendererWindowless::SubmitFrameFuture(std::future<bool> future) {
+  windowless_renderer_->frame_future = future.share();
+}
+#endif
 
 const char* LynxUIRendererWindowless::GetClipboardData() const {
   if (windowless_renderer_ && windowless_renderer_->get_clipboard_data) {

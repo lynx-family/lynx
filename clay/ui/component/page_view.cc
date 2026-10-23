@@ -471,6 +471,11 @@ void PageView::OnFirstMeaningfulLayout() {
   render_delegate_->OnFirstMeaningfulLayout();
 }
 
+bool PageView::HasPendingFrameChanges() const {
+  return force_raster_ || layout_controller_->HasDirtyNodes() ||
+         renderer_->HasDirtyNodes() || !ui_method_tasks_.empty();
+}
+
 bool PageView::BeginFrame(
     std::unique_ptr<clay::FrameTimingsRecorder> recorder) {
   if (!render_delegate_) {

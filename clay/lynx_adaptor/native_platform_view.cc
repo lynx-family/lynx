@@ -128,6 +128,16 @@ bool NativePlatformView::PresentSurface(
 
 ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(
     int width, int height, const ClayTransformation* transform) {
+  return AcquireSurfaceInternal(width, height, transform, false);
+}
+
+ClaySharedImageNativeHandle NativePlatformView::AcquireSurfaceForSyncDraw(
+    int width, int height) {
+  return AcquireSurfaceInternal(width, height, nullptr, true);
+}
+
+ClaySharedImageNativeHandle NativePlatformView::AcquireSurfaceInternal(
+    int width, int height, const ClayTransformation* transform, bool force) {
   if (!sink_ref_) {
     return nullptr;
   }
@@ -138,7 +148,8 @@ ClaySharedImageNativeHandle NativePlatformView::AcquireSurface(
     sink->UpdateBufferMode(mode);
   }
 
-  auto [backing, buffer_age] = sink->AcquireBack({width, height});
+  auto [backing, buffer_age] = force ? sink->AcquireBackForced({width, height})
+                                     : sink->AcquireBack({width, height});
   if (!backing) {
     return nullptr;
   }

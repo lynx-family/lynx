@@ -9,11 +9,13 @@
 #define CLAY_SHELL_PLATFORM_EMBEDDER_PLATFORM_VIEW_EMBEDDER_H_
 
 #include <functional>
+#include <future>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "base/include/fml/macros.h"
+#include "build/build_config.h"
 #include "clay/flow/embedded_views.h"
 #include "clay/public/clay.h"
 #include "clay/shell/common/platform_view.h"
@@ -65,6 +67,9 @@ class PlatformViewEmbedder final : public PlatformView {
   using WindowMoveCallback = std::function<void()>;
   using ActivateSystemCursorCallback =
       std::function<void(int type, const std::string& path)>;
+  using InvalidateCallback = std::function<void()>;
+  using SubmitFrameFutureCallback =
+      std::function<void(std::future<bool> future)>;
 
   struct PlatformDispatchTable {
     ComputePlatformResolvedLocaleCallback
@@ -91,6 +96,15 @@ class PlatformViewEmbedder final : public PlatformView {
     } textinput;
     WindowMoveCallback window_move_callback;
     ActivateSystemCursorCallback activate_system_cursor_callback;
+
+    // Optional Linux sync notification on the platform thread that frame work
+    // is pending. The host defers preparation and drawing to a later loop turn.
+    InvalidateCallback invalidate_callback;
+
+    // Optional Linux sync callback on the platform thread; transfers the draw
+    // future for later polling. Its result does not guarantee fresh host
+    // output.
+    SubmitFrameFutureCallback submit_frame_future_callback;
   };
 
   // Create a platform view that sets up a software rasterizer.
@@ -128,6 +142,10 @@ class PlatformViewEmbedder final : public PlatformView {
 
   // |PlatformView|
   void NotifyDestroyed() override;
+#if defined(OS_LINUX)
+  void PostInvalidate() override;
+  void SubmitFrameFuture(std::future<bool> future) override;
+#endif
 
   std::string ShouldInterceptUrl(const std::string& origin_url,
                                  bool should_decode) override;

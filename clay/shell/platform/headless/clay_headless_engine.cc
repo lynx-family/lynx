@@ -7,6 +7,7 @@
 #include <assert.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/time/time_point.h"
@@ -16,13 +17,18 @@
 #include "clay/shell/platform/embedder/embedder_engine.h"
 #include "clay/shell/platform/headless/clay_headless_renderer.h"
 
+#if defined(OS_LINUX)
+#include "clay/shell/common/services/sync_compositor_service.h"
+#endif
+
 namespace clay {
 
 ClayHeadlessEngine::ClayHeadlessEngine(
     const char* icu_data_path,
     const ClayHeadlessRendererConfig* renderer_config,
     const ClayTaskRunnerDescription* platform_task_runner_description,
-    void* user_data) {
+    void* user_data, bool enable_sync_compositor)
+    : enable_sync_compositor_(enable_sync_compositor) {
   RunEngine(icu_data_path, renderer_config, platform_task_runner_description,
             user_data);
 }
@@ -60,6 +66,11 @@ bool ClayHeadlessEngine::RunEngine(
     command_line = fml::CommandLineFromArgcArgv(argv.size(), argv.data());
   }
   clay::Settings settings = clay::SettingsFromCommandLine(command_line);
+#if defined(OS_LINUX)
+  if (enable_sync_compositor_) {
+    settings.enable_sync_compositor = true;
+  }
+#endif
   if (icu_data_path) {
     settings.icu_data_path = icu_data_path;
   }
@@ -154,6 +165,21 @@ bool ClayHeadlessEngine::RunEngine(
       [this](int type, const std::string& path) {
         ActivateSystemCursor(type, path.c_str());
       };
+#if defined(OS_LINUX)
+  if (enable_sync_compositor_) {
+    platform_dispatch_table.invalidate_callback = [this]() {
+      if (delegate_) {
+        delegate_->OnInvalidate();
+      }
+    };
+    platform_dispatch_table.submit_frame_future_callback =
+        [this](std::future<bool> future) {
+          if (delegate_) {
+            delegate_->SubmitFrameFuture(std::move(future));
+          }
+        };
+  }
+#endif
 
   renderer_ = ClayHeadlessRenderer::Create(this, *renderer_config);
   if (!renderer_) {
@@ -213,6 +239,26 @@ bool ClayHeadlessEngine::RunEngine(
 
   return true;
 }
+
+#if defined(OS_LINUX)
+bool ClayHeadlessEngine::PrepareFrame() {
+  if (!enable_sync_compositor_) {
+    return false;
+  }
+  bool prepared = false;
+  Puppet<Owner::kPlatform, SyncCompositorService> service =
+      service_manager_->GetService<SyncCompositorService>();
+  service.Act([](auto& impl) { return impl.PrepareFrame(); },
+              [&prepared](bool result) { prepared = result; });
+  return prepared;
+}
+
+void ClayHeadlessEngine::DemandDrawHw() {
+  if (enable_sync_compositor_) {
+    engine_->GetShell().OnDrawHardware(true);
+  }
+}
+#endif
 
 const char* ClayHeadlessEngine::GetClipboardData() const {
   if (!delegate_) {
