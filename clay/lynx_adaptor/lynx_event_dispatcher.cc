@@ -418,7 +418,7 @@ void LynxEventDispatcher::OnActiveChanged(int view_id, bool active) {
   }
   auto prev_state = !active ? lynx::kPseudoStateActive : lynx::kPseudoStateNone;
   auto cur_state = active ? lynx::kPseudoStateActive : lynx::kPseudoStateNone;
-  engine_proxy_->OnPseudoStatusChanged(view_id, prev_state, cur_state);
+  engine_proxy_->OnPseudoStatusesChanged({{view_id, prev_state, cur_state}});
 }
 
 void LynxEventDispatcher::OnFocusChanged(int view_id, bool focus) {
@@ -427,7 +427,7 @@ void LynxEventDispatcher::OnFocusChanged(int view_id, bool focus) {
   }
   auto prev_state = !focus ? lynx::kPseudoStateFocus : lynx::kPseudoStateNone;
   auto cur_state = focus ? lynx::kPseudoStateFocus : lynx::kPseudoStateNone;
-  engine_proxy_->OnPseudoStatusChanged(view_id, prev_state, cur_state);
+  engine_proxy_->OnPseudoStatusesChanged({{view_id, prev_state, cur_state}});
 }
 
 void LynxEventDispatcher::OnHoverChanged(int view_id, bool hover) {
@@ -441,7 +441,7 @@ void LynxEventDispatcher::OnHoverChanged(int view_id, bool hover) {
 
   auto prev_state = !hover ? lynx::kPseudoStateHover : lynx::kPseudoStateNone;
   auto cur_state = hover ? lynx::kPseudoStateHover : lynx::kPseudoStateNone;
-  engine_proxy_->OnPseudoStatusChanged(view_id, prev_state, cur_state);
+  engine_proxy_->OnPseudoStatusesChanged({{view_id, prev_state, cur_state}});
 }
 
 void LynxEventDispatcher::OnDragDropEvent(const std::string& event_name,

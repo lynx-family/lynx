@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 package com.lynx.tasm;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -36,9 +37,8 @@ public class LynxEventEmitterTest {
   String mGestureName = null;
   ByteBuffer mGestureBuffer = null;
 
-  int mPseudoID = -1;
-  int mPseudoPreStatus = -1;
-  int mPseudoCurrentStatus = -1;
+  int[] mPseudoStatuses;
+  int mPseudoBatchCount;
 
   boolean mLynxEventReporterReturn = false;
   LynxEvent mLynxEvent = null;
@@ -108,10 +108,9 @@ public class LynxEventEmitterTest {
     }
 
     @Override
-    void onPseudoStatusChanged(final int id, final int preStatus, final int currentStatus) {
-      mPseudoID = id;
-      mPseudoPreStatus = preStatus;
-      mPseudoCurrentStatus = currentStatus;
+    void onPseudoStatusesChanged(final int[] changes) {
+      mPseudoStatuses = changes;
+      mPseudoBatchCount++;
     }
   }
 
@@ -143,9 +142,8 @@ public class LynxEventEmitterTest {
     mGestureName = null;
     mGestureBuffer = null;
 
-    mPseudoID = -1;
-    mPseudoPreStatus = -1;
-    mPseudoCurrentStatus = -1;
+    mPseudoStatuses = null;
+    mPseudoBatchCount = 0;
 
     mLynxEventReporterReturn = false;
     mLynxEvent = null;
@@ -325,20 +323,20 @@ public class LynxEventEmitterTest {
   }
 
   @Test
-  public void testOnPseudoStatusChanged() {
+  public void testOnPseudoStatusesChanged() {
     mEventEmitter.mEngineProxy = null;
-    mEventEmitter.onPseudoStatusChanged(11, 1, 1);
-    assertEquals(mPseudoPreStatus, -1);
-    assertEquals(mPseudoCurrentStatus, -1);
+    mEventEmitter.onPseudoStatusesChanged(new int[] {11, 1, 1});
+    assertNull(mPseudoStatuses);
 
     mEventEmitter.mEngineProxy = new MockEngineProxyWrapper(null);
-    mEventEmitter.onPseudoStatusChanged(11, 1, 1);
-    assertEquals(mPseudoPreStatus, -1);
-    assertEquals(mPseudoCurrentStatus, -1);
+    mEventEmitter.onPseudoStatusesChanged(new int[] {11, 1, 1});
+    mEventEmitter.onPseudoStatusesChanged(new int[] {});
+    assertNull(mPseudoStatuses);
+    assertEquals(0, mPseudoBatchCount);
 
-    mEventEmitter.onPseudoStatusChanged(11, 1, 2);
-    assertEquals(mPseudoPreStatus, 1);
-    assertEquals(mPseudoCurrentStatus, 2);
+    mEventEmitter.onPseudoStatusesChanged(new int[] {11, 1, 2, 12, 8, 8, 13, 8, 0});
+    assertArrayEquals(new int[] {11, 1, 2, 13, 8, 0}, mPseudoStatuses);
+    assertEquals(1, mPseudoBatchCount);
   }
 
   @Test

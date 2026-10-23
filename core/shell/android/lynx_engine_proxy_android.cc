@@ -14,6 +14,7 @@
 #include "core/base/android/java_only_map.h"
 #include "core/base/android/java_value.h"
 #include "core/base/android/jni_helper.h"
+#include "core/public/event/pseudo_status.h"
 #include "core/public/event/touch_event_data.h"
 #include "core/renderer/dom/android/lepus_message_consumer.h"
 #include "core/renderer/utils/android/value_converter_android.h"
@@ -175,14 +176,24 @@ static void SendGestureEvent(JNIEnv *env, jobject jcaller, jlong ptr,
       PubLepusValue(ConvertJavaData(env, params, length)));
 }
 
-static void OnPseudoStatusChanged(JNIEnv *env, jobject jcaller, jlong ptr,
-                                  jint id, jint pre_status,
-                                  jint current_status) {
-  lynx::shell::LynxEngineProxyAndroid *engine_proxy =
+static void OnPseudoStatusesChanged(JNIEnv *env, jobject jcaller, jlong ptr,
+                                    jintArray changes) {
+  const jsize length = env->GetArrayLength(changes);
+  if (length == 0 || length % 3 != 0) {
+    return;
+  }
+  std::vector<jint> values(length);
+  env->GetIntArrayRegion(changes, 0, length, values.data());
+  std::vector<lynx::event::PseudoStatusChange> statuses;
+  statuses.reserve(length / 3);
+  for (jsize index = 0; index < length; index += 3) {
+    statuses.push_back({static_cast<int32_t>(values[index]),
+                        static_cast<uint32_t>(values[index + 1]),
+                        static_cast<uint32_t>(values[index + 2])});
+  }
+  auto *engine_proxy =
       reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
-  engine_proxy->OnPseudoStatusChanged(static_cast<int32_t>(id),
-                                      static_cast<int32_t>(pre_status),
-                                      static_cast<int32_t>(current_status));
+  engine_proxy->OnPseudoStatusesChanged(std::move(statuses));
 }
 
 static void StartEventGenerate(JNIEnv *env, jobject jcaller, jlong ptr,

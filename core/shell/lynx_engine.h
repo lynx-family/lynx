@@ -151,8 +151,8 @@ class LynxEngine {
   void SendGestureEvent(int tag, int gesture_id, std::string name,
                         const lepus::Value& params);
 
-  void OnPseudoStatusChanged(int32_t id, int32_t pre_status,
-                             int32_t current_status);
+  void OnPseudoStatusesChanged(
+      const std::vector<event::PseudoStatusChange>& changes);
 
   void StartEventGenerate(const lepus::Value& event_params);
 

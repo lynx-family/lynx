@@ -53,8 +53,8 @@ TEST_F(LynxEngineProxyImplTest, SendCustomEvent) {
                                  "test");
 }
 
-TEST_F(LynxEngineProxyImplTest, OnPseudoStatusChanged) {
-  engine_proxy_->OnPseudoStatusChanged(0, 0, 0);
+TEST_F(LynxEngineProxyImplTest, OnPseudoStatusesChanged) {
+  engine_proxy_->OnPseudoStatusesChanged({{0, 0, 0}});
 }
 
 TEST_F(LynxEngineProxyImplTest, SendGestureEvent) {

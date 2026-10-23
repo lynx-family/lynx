@@ -15,6 +15,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "base/include/closure.h"
 #include "base/include/fml/task_runner.h"
@@ -182,8 +183,8 @@ class LynxContext {
 
   void HandleCustomEvent(const CustomEvent& custom_event) const;
 
-  void OnPseudoStatusChanged(int id, PseudoStatus pre_status,
-                             PseudoStatus current_status) const;
+  void OnPseudoStatusesChanged(
+      std::vector<event::PseudoStatusChange> changes) const;
 
   void HandleGestureEvent(const GestureEvent& custom_event) const;
 

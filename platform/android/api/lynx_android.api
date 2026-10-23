@@ -1774,7 +1774,7 @@ public class abstract com::lynx::tasm::EventEmitter :  {
   public abstract void com.lynx.tasm.EventEmitter.sendMultiTouchEvent(LynxTouchEvent event);
   public abstract void com.lynx.tasm.EventEmitter.sendCustomEvent(LynxCustomEvent event);
   public abstract void com.lynx.tasm.EventEmitter.sendGestureEvent(int gestureId, LynxCustomEvent event);
-  public abstract void com.lynx.tasm.EventEmitter.onPseudoStatusChanged(int sign, int preStatus, int currentStatus);
+  public abstract void com.lynx.tasm.EventEmitter.onPseudoStatusesChanged(@NonNull int[] changes);
   public abstract void com.lynx.tasm.EventEmitter.setTestTapTracker(ITestTapTrack track);
   public abstract void com.lynx.tasm.EventEmitter.sendLayoutEvent();
   public abstract void com.lynx.tasm.EventEmitter.setInPreLoad(boolean preload);
@@ -5308,7 +5308,7 @@ public class com::lynx::tasm::core::LynxEngineProxy :  {
   public void com.lynx.tasm.core.LynxEngineProxy.sendMultiTouchEvent(LynxTouchEvent event);
   public void com.lynx.tasm.core.LynxEngineProxy.sendCustomEvent(LynxCustomEvent event);
   public void com.lynx.tasm.core.LynxEngineProxy.sendGestureEvent(final String name, final int tag, int gestureId, final ByteBuffer params, final int length);
-  public void com.lynx.tasm.core.LynxEngineProxy.onPseudoStatusChanged(final int id, final int preStatus, final int currentStatus);
+  public void com.lynx.tasm.core.LynxEngineProxy.onPseudoStatusesChanged(final int[] changes);
   public void com.lynx.tasm.core.LynxEngineProxy.invokeLepusApiCallback(int callbackID, String entryName, Object data);
   public void com.lynx.tasm.core.LynxEngineProxy.startEventGenerate(LynxEvent event);
   public void com.lynx.tasm.core.LynxEngineProxy.startEventCapture(long eventID);
@@ -5694,7 +5694,7 @@ public class com::lynx::tasm::LynxEventEmitter : com.lynx.tasm.EventEmitter {
   public void com.lynx.tasm.LynxEventEmitter.sendMultiTouchEvent(LynxTouchEvent event);
   public void com.lynx.tasm.LynxEventEmitter.sendCustomEvent(LynxCustomEvent event);
   public void com.lynx.tasm.LynxEventEmitter.sendGestureEvent(int gestureId, LynxCustomEvent event);
-  public void com.lynx.tasm.LynxEventEmitter.onPseudoStatusChanged(int sign, int preStatus, int currentStatus);
+  public void com.lynx.tasm.LynxEventEmitter.onPseudoStatusesChanged(int[] changes);
   public void com.lynx.tasm.LynxEventEmitter.setTestTapTracker(ITestTapTrack track);
   public void com.lynx.tasm.LynxEventEmitter.sendLayoutEvent();
   public void com.lynx.tasm.LynxEventEmitter.setInPreLoad(boolean preload);

@@ -52,6 +52,7 @@ import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.tasm.recording.LynxFrameRecorder;
 import com.lynx.tasm.utils.PixelUtils;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -791,15 +792,17 @@ public class TouchEventDispatcher {
       }
       target = target.parent();
     }
-    for (int i = 0; i < mActiveUIList.size(); ++i) {
-      EventTarget ui = mActiveUIList.get(i);
+    int[] changes = mHasTouchPseudo ? new int[mActiveUIList.size() * 3] : null;
+    int offset = 0;
+    for (EventTarget ui : mActiveUIList) {
       if (mHasTouchPseudo) {
-        // Only execute this function if mHasTouchPseudo is true
-        eventEmitter().onPseudoStatusChanged(
-            ui.getSign(), LynxTouchEvent.kPseudoStateNone, LynxTouchEvent.kPseudoStateActive);
+        changes[offset++] = ui.getSign();
+        changes[offset++] = LynxTouchEvent.kPseudoStateNone;
+        changes[offset++] = LynxTouchEvent.kPseudoStateActive;
       }
       ui.onPseudoStatusChanged(LynxTouchEvent.kPseudoStateNone, LynxTouchEvent.kPseudoStateActive);
     }
+    dispatchPseudoStatusesChanged(changes, offset);
   }
 
   // When ActionMove, the touched event target may change. Disable the touch pseudo class for
@@ -829,16 +832,19 @@ public class TouchEventDispatcher {
       index = i;
     }
 
+    int[] changes = mHasTouchPseudo ? new int[(mActiveUIList.size() - index - 1) * 3] : null;
+    int offset = 0;
     for (int i = mActiveUIList.size() - 1; i >= index + 1; --i) {
       EventTarget ui = mActiveUIList.get(i);
       if (mHasTouchPseudo) {
-        // Only execute this function if mHasTouchPseudo is true
-        eventEmitter().onPseudoStatusChanged(
-            ui.getSign(), LynxTouchEvent.kPseudoStateActive, LynxTouchEvent.kPseudoStateNone);
+        changes[offset++] = ui.getSign();
+        changes[offset++] = LynxTouchEvent.kPseudoStateActive;
+        changes[offset++] = LynxTouchEvent.kPseudoStateNone;
       }
       ui.onPseudoStatusChanged(LynxTouchEvent.kPseudoStateActive, LynxTouchEvent.kPseudoStateNone);
       mActiveUIList.remove(i);
     }
+    dispatchPseudoStatusesChanged(changes, offset);
   }
 
   // When ActionUp, the touched event target may change. Disable the touch pseudo class for all
@@ -851,14 +857,30 @@ public class TouchEventDispatcher {
     if (eventEmitter() == null) {
       return;
     }
+    int[] changes = null;
+    int offset = 0;
     for (EventTarget ui : mActiveUIList) {
-      if (mHasTouchPseudo) {
-        // Only execute this function if mHasTouchPseudo is true
-        eventEmitter().onPseudoStatusChanged(
-            ui.getSign(), ui.getPseudoStatus(), ui.getPseudoStatus() & ~state);
+      int preStatus = ui.getPseudoStatus();
+      int currentStatus = preStatus & ~state;
+      if (mHasTouchPseudo && preStatus != currentStatus) {
+        if (changes == null) {
+          changes = new int[mActiveUIList.size() * 3];
+        }
+        changes[offset++] = ui.getSign();
+        changes[offset++] = preStatus;
+        changes[offset++] = currentStatus;
       }
-      ui.onPseudoStatusChanged(ui.getPseudoStatus(), ui.getPseudoStatus() & ~state);
+      ui.onPseudoStatusChanged(preStatus, currentStatus);
     }
+    dispatchPseudoStatusesChanged(changes, offset);
+  }
+
+  private void dispatchPseudoStatusesChanged(int[] changes, int length) {
+    if (length == 0) {
+      return;
+    }
+    eventEmitter().onPseudoStatusesChanged(
+        length == changes.length ? changes : Arrays.copyOf(changes, length));
   }
 
   // dispatch event for touch* .

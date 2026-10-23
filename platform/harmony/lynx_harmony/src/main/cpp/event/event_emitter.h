@@ -7,7 +7,9 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
+#include "core/public/event/pseudo_status.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 
 namespace lynx {
@@ -24,8 +26,8 @@ class EventEmitter {
 
   void SendEvent(const LynxEvent& event);
 
-  void SendPseudoStatusEvent(int id, PseudoStatus pre_status,
-                             PseudoStatus current_status) const;
+  void SendPseudoStatusEvents(
+      std::vector<event::PseudoStatusChange> changes) const;
 
   void SetEventID(int64_t event_id) { event_id_ = event_id; }
 

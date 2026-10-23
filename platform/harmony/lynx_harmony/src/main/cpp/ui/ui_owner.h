@@ -166,10 +166,10 @@ class UIOwner {
   void HandleTouchEvent(const TouchEvent& touch_event) const;
   void HandleMultiTouchEvent(const TouchEvent& touch_event) const;
   void HandleCustomEvent(const CustomEvent& custom_event) const;
-  void SendPseudoStatusEvent(int id, PseudoStatus pre_status,
-                             PseudoStatus current_status) const;
-  void OnPseudoStatusChanged(int id, PseudoStatus pre_status,
-                             PseudoStatus current_status) const;
+  void SendPseudoStatusEvents(
+      std::vector<event::PseudoStatusChange> changes) const;
+  void OnPseudoStatusesChanged(
+      std::vector<event::PseudoStatusChange> changes) const;
   // for gesture handler
 
   void SetGestureDetectorState(int64_t id, int32_t gesture_id,

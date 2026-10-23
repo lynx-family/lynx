@@ -240,13 +240,12 @@ void LynxContext::HandleCustomEvent(const CustomEvent& custom_event) const {
                                  custom_event.ParamName());
 }
 
-void LynxContext::OnPseudoStatusChanged(int id, PseudoStatus pre_status,
-                                        PseudoStatus current_status) const {
-  if (!engine_proxy_) {
+void LynxContext::OnPseudoStatusesChanged(
+    std::vector<event::PseudoStatusChange> changes) const {
+  if (!engine_proxy_ || changes.empty()) {
     return;
   }
-  engine_proxy_->OnPseudoStatusChanged(id, static_cast<int32_t>(pre_status),
-                                       static_cast<int32_t>(current_status));
+  engine_proxy_->OnPseudoStatusesChanged(std::move(changes));
 }
 
 void LynxContext::HandleGestureEvent(const GestureEvent& gesture_event) const {

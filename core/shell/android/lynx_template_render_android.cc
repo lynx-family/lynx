@@ -1154,13 +1154,6 @@ void TriggerEventBus(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   TryFreeLifecycle(lifecycle_ptr);
 }
 
-void OnPseudoStatusChanged(JNIEnv* env, jclass jcaller, jlong ptr, jint tag,
-                           jint pre, jint current) {
-  reinterpret_cast<LynxShell*>(ptr)->OnPseudoStatusChanged(
-      static_cast<int32_t>(tag), static_cast<int32_t>(pre),
-      static_cast<int32_t>(current));
-}
-
 void GetDataAsync(JNIEnv* env, jobject jcaller, jlong ptr, jlong lifecycle,
                   jint tag) {
   AtomicLifecycle* lifecycle_ptr =

@@ -62,6 +62,7 @@
 #include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
+#include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/events/touch_event_handler.h"
@@ -4969,23 +4970,38 @@ void Element::DumpStyle(StyleMap &computed_styles) {
 
 void Element::OnPseudoStatusChanged(PseudoState prev_status,
                                     PseudoState current_status) {
+  data_model_->raw_set_pseudo_state(current_status);
+  if (InvalidatePseudoStatus(prev_status, current_status)) {
+    auto current_context = element_manager_->element_manager_delegate()
+                               ->GetCurrentPipelineContext();
+    auto pipeline_options = current_context
+                                ? current_context->GetOptions()
+                                : std::make_shared<PipelineOptions>();
+    element_manager_->RequestResolve(pipeline_options);
+  }
+}
+
+bool Element::InvalidatePseudoStatus(
+    PseudoState prev_status, PseudoState current_status,
+    std::unordered_set<RadonNode *> *pending_nodes) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PSEUDO_CHANGED,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  // FIXME: Every element will emit the OnPseudoStatusChanged event
   auto *css_fragment = GetRelatedCSSFragment();
   if (css_fragment && css_fragment->enable_css_selector()) {
     // If disable the invalidation do nothing
     if (!css_fragment->enable_css_invalidation()) {
-      return;
+      return false;
     }
     css::InvalidationLists invalidation_lists;
     CSSFragment::CollectPseudoChangedInvalidation(
         css_fragment, invalidation_lists, prev_status, current_status);
-    data_model_->SetPseudoState(current_status);
     bool inheritance_invalidated = false;
-    bool needs_resolve = false;
+    auto *radon_node = data_model_->radon_node_ptr();
+    bool needs_resolve =
+        radon_node && radon_node->InvalidatePseudoState(
+                          prev_status, current_status, pending_nodes);
     for (auto *invalidation_set : invalidation_lists.descendants) {
       if (invalidation_set->InvalidatesSelf()) {
         MarkStyleDirty(false);
@@ -5008,20 +5024,12 @@ void Element::OnPseudoStatusChanged(PseudoState prev_status,
       }
       needs_resolve |= InvalidateChildren(invalidation_set, true);
     }
-    if (needs_resolve) {
-      auto current_context = element_manager_->element_manager_delegate()
-                                 ->GetCurrentPipelineContext();
-      auto pipeline_options = current_context
-                                  ? current_context->GetOptions()
-                                  : std::make_shared<PipelineOptions>();
-      element_manager_->RequestResolve(pipeline_options);
-    }
-    return;
+    return needs_resolve;
   }
 
   if (!css_fragment || css_fragment->pseudo_map().empty()) {
     // no need do any pseudo changing logic if no any touch pseudo token
-    return;
+    return false;
   }
 
   bool cascade_pseudo_enabled = element_manager_->GetEnableCascadePseudo();
@@ -5032,12 +5040,11 @@ void Element::OnPseudoStatusChanged(PseudoState prev_status,
 
   has_extreme_parsed_styles_ = false;
 
-  data_model_->SetPseudoState(current_status);
-  auto current_context =
-      element_manager_->element_manager_delegate()->GetCurrentPipelineContext();
-  auto pipeline_options = current_context ? current_context->GetOptions()
-                                          : std::make_shared<PipelineOptions>();
-  element_manager_->RequestResolve(pipeline_options);
+  if (auto *radon_node = data_model_->radon_node_ptr()) {
+    radon_node->InvalidatePseudoState(prev_status, current_status,
+                                      pending_nodes);
+  }
+  return true;
 }
 
 bool Element::TryResolveLogicStyleAndSaveDirectionRelatedStyle(
