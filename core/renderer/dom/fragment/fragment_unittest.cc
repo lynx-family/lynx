@@ -1130,7 +1130,8 @@ class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
       globalThis.layerCalls++;
       return {translationX: globalThis.invalidLayer ? NaN : width * globalThis.layerXFactor + globalThis.layerOffset,
           translationY: height * globalThis.layerYFactor, rotationZ: globalThis.layerRotation,
-          scaleX: globalThis.layerScaleX, scaleY: globalThis.layerScaleY};
+          scaleX: globalThis.layerScaleX, scaleY: globalThis.layerScaleY,
+          alpha: globalThis.layerAlphas ? globalThis.layerAlphas[index] : globalThis.layerAlpha};
     }))") + "; })(" + std::to_string(next_layer_index_++) +
                          ")"));
     return lepus::Value(layer);
@@ -1583,6 +1584,110 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   ASSERT_NE(inner_list, nullptr);
   ExpectTranslation(*inner_list, 55, 40);
   EXPECT_FALSE(inner->fragment_impl()->NeedRedraw());
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, OptionalAlphaUpdatesClampsAndResets) {
+  Install(Layer());
+  auto* layer = handle_->content_element().get();
+  Size(layer, 100, 80);
+  const auto expect_alpha = [&](float alpha) {
+    auto list = Draw(layer);
+    const auto* property =
+        LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kOpacity);
+    ASSERT_NE(property, nullptr);
+    EXPECT_FLOAT_EQ(property->data.opacity, alpha);
+  };
+  expect_alpha(1.f);
+  for (const auto& entry :
+       std::vector<std::pair<std::string, float>>{{"0.25", 0.25f},
+                                                  {"0", 0.f},
+                                                  {"-2", 0.f},
+                                                  {"3", 1.f},
+                                                  {"undefined", 1.f}}) {
+    Eval("globalThis.layerAlpha = " + entry.first);
+    Invalidate(lepus::Value(handle_));
+    expect_alpha(entry.second);
+  }
+  Eval("globalThis.layerAlpha = 0.4");
+  Invalidate(lepus::Value(handle_));
+  expect_alpha(0.4f);
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), {}, runtime_.get())
+          .success);
+  page_->FlushActionsAsRoot();
+  expect_alpha(1.f);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, LayerAlphaPreservesContentOpacity) {
+  auto image_alpha = lepus::Dictionary::Create();
+  image_alpha->SetValue("op", lepus::Value(2));
+  image_alpha->SetValue("propertyId", lepus::Value(kPropertyIDOpacity));
+  image_alpha->SetValue("value", lepus::Value(0.4));
+  image_alpha->SetValue("previous", Layer());
+  Install(lepus::Value(image_alpha), ComposeElementKind::kImage);
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 80);
+  const auto expect_alpha = [&](float alpha) {
+    auto list = Draw(content);
+    const auto* property =
+        LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kOpacity);
+    ASSERT_NE(property, nullptr);
+    EXPECT_FLOAT_EQ(property->data.opacity, alpha);
+  };
+  // An older template has no alpha field; its image alpha remains effective.
+  expect_alpha(0.4f);
+  Eval("globalThis.layerAlpha = 0.5");
+  Invalidate(lepus::Value(handle_));
+  expect_alpha(0.2f);
+  // Image(alpha) remains after removing only the caller's graphicsLayer.
+  image_alpha->SetValue("previous", lepus::Value());
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                  handle_.get(), lepus::Value(image_alpha), runtime_.get())
+                  .success);
+  page_->FlushActionsAsRoot();
+  expect_alpha(0.4f);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       InvalidAlphaDoesNotPublishPartialTransform) {
+  Install(Layer());
+  auto* layer = handle_->content_element().get();
+  Size(layer, 100, 80);
+  for (const auto* invalid : {"NaN", "Infinity", "null", "'0.4'"}) {
+    Eval(std::string("globalThis.layerAlpha = ") + invalid);
+    Invalidate(lepus::Value(handle_));
+    auto list = Draw(layer);
+    ExpectTranslation(list, 0, 0);
+    const auto* property =
+        LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kOpacity);
+    ASSERT_NE(property, nullptr);
+    EXPECT_FLOAT_EQ(property->data.opacity, 1.f);
+  }
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, NestedAlphaRemainsOnEachLayerBoundary) {
+  Install(Layer(Layer()));
+  auto* outer = handle_->mount_root()->GetChildAt(0);
+  auto* inner = handle_->content_element().get();
+  ASSERT_NE(outer, inner);
+  Size(outer, 100, 80);
+  Size(inner, 60, 40);
+  Eval("globalThis.layerAlphas = [0.5, 0.25]");
+  auto outer_list = Draw(outer);
+  const auto* opacity = LastSubtreeProperty(
+      outer_list, DisplayListSubtreePropertyOpType::kOpacity);
+  ASSERT_NE(opacity, nullptr);
+  EXPECT_FLOAT_EQ(opacity->data.opacity, 0.5f);
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  const auto* inner_list =
+      context->GetNativePlatformRef()->GetDisplayListForRenderer(
+          inner->impl_id());
+  ASSERT_NE(inner_list, nullptr);
+  opacity = LastSubtreeProperty(*inner_list,
+                                DisplayListSubtreePropertyOpType::kOpacity);
+  ASSERT_NE(opacity, nullptr);
+  EXPECT_FLOAT_EQ(opacity->data.opacity, 0.25f);
 }
 
 TEST_F(ComposeGraphicsLayerDrawTest, InvalidResultRestoresDefaultTransform) {
