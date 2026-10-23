@@ -257,6 +257,14 @@ class PageConfig final : public LynxConfig {
     enable_parallel_element_ = enable;
   }
 
+  bool GetEnableLayoutOnlyTransitionOrderFix() const {
+    return enable_layout_only_transition_order_fix_;
+  }
+
+  void SetEnableLayoutOnlyTransitionOrderFix(bool enable) {
+    enable_layout_only_transition_order_fix_ = enable;
+  }
+
   bool GetEnableStandardCSSSelector() const {
     return enable_standard_css_selector_;
   }
@@ -437,6 +445,8 @@ class PageConfig final : public LynxConfig {
 
   // enable raster animation
   bool enable_raster_animation_{false};
+
+  bool enable_layout_only_transition_order_fix_{true};
 
   TernaryBool enable_level_order_traversing_{TernaryBool::UNDEFINE_VALUE};
 };
