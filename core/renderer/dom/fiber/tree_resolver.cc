@@ -47,6 +47,12 @@ constexpr std::string_view kDataAttributePrefix = "data-";
 // prefixes that can appear in runtime input. Non-event main-thread:* keys fall
 // through to normal attribute handling.
 constexpr std::string_view kMainThreadEventPrefix = "main-thread:";
+constexpr char kGestureValue[] = "value";
+constexpr char kGestureType[] = "type";
+constexpr char kGestureId[] = "id";
+constexpr char kGestureRelations[] = "relationMap";
+constexpr char kHasReactGesture[] = "has-react-gesture";
+constexpr char kGestureFlatten[] = "flatten";
 
 enum class TemplateAttributeApplyMode {
   kAll,
@@ -346,6 +352,80 @@ void ApplyTemplateAttributeValue(Element* element, const base::String& key,
   element->SetAttribute(key, value);
 }
 
+void ApplyTemplateGestureAttribute(Element* element, const lepus::Value& value,
+                                   const lepus::Value& previous_value,
+                                   bool gesture_slot_updated) {
+  const auto gestures =
+      value.IsEmpty() ? lepus::Value()
+                      : value.GetProperty(BASE_STATIC_STRING(kGestureValue));
+  if (gestures.GetLength() != 0) {
+    element->SetAttribute(BASE_STATIC_STRING(kHasReactGesture),
+                          lepus::Value(true));
+    element->SetAttribute(BASE_STATIC_STRING(kGestureFlatten),
+                          lepus::Value(false));
+  }
+  // An ordinary slot update replays attributes on the same node. Keep active
+  // recognizers and callback state when the gesture slot itself did not change.
+  if (!gesture_slot_updated) {
+    return;
+  }
+  std::vector<uint32_t> next_ids;
+  auto* runtime = element->element_manager()->GetDefaultEntryRuntime();
+  for (uint32_t index = 0; index < static_cast<uint32_t>(gestures.GetLength());
+       ++index) {
+    const auto gesture = gestures.GetProperty(index);
+    const auto id = static_cast<uint32_t>(
+        gesture.GetProperty(BASE_STATIC_STRING(kGestureId)).Number());
+    next_ids.emplace_back(id);
+    const auto type = static_cast<GestureType>(
+        gesture.GetProperty(BASE_STATIC_STRING(kGestureType)).Number());
+    GestureDetectorImpl next(
+        id, type, gesture,
+        gesture.GetProperty(BASE_STATIC_STRING(kGestureRelations)), runtime);
+    const auto& callbacks = next.gesture_callbacks();
+    const auto existing = element->gesture_map().find(id);
+    if (existing != element->gesture_map().end()) {
+      auto& detector = *existing->second;
+      const auto& old_callbacks = detector.gesture_callbacks();
+      if (detector.gesture_type() == type &&
+          detector.gesture_config_in_lepus_value().IsEqual(
+              next.gesture_config_in_lepus_value()) &&
+          detector.relation_map() == next.relation_map() &&
+          old_callbacks.size() == callbacks.size() &&
+          std::equal(old_callbacks.begin(), old_callbacks.end(),
+                     callbacks.begin(),
+                     [](const auto& old_callback, const auto& callback) {
+                       return old_callback.name_ == callback.name_;
+                     })) {
+        // Callback contexts are read from the C++ detector on every event.
+        // Updating them does not require resetting active platform recognizers.
+        detector.SetGestureCallbacks(std::move(next));
+        continue;
+      }
+    }
+    element->SetGestureDetector(id, std::move(next));
+  }
+  if (!previous_value.IsEmpty()) {
+    const auto previous_gestures =
+        previous_value.GetProperty(BASE_STATIC_STRING(kGestureValue));
+    if (gestures.GetLength() == 0 && previous_gestures.GetLength() != 0) {
+      element->SetAttribute(BASE_STATIC_STRING(kHasReactGesture),
+                            lepus::Value());
+    }
+    for (uint32_t index = 0;
+         index < static_cast<uint32_t>(previous_gestures.GetLength());
+         ++index) {
+      const auto id =
+          static_cast<uint32_t>(previous_gestures.GetProperty(index)
+                                    .GetProperty(BASE_STATIC_STRING(kGestureId))
+                                    .Number());
+      if (std::find(next_ids.begin(), next_ids.end(), id) == next_ids.end()) {
+        element->RemoveGestureDetector(id);
+      }
+    }
+  }
+}
+
 void ApplyTemplateSpreadAttributes(Element* element, const lepus::Value& value,
                                    TemplateAttributeApplyMode mode) {
   if (element == nullptr || !value.IsObject()) {
@@ -400,7 +480,8 @@ void ClearPreviousTemplateSpreadAttributes(
 
 void ApplyTemplateAttributesToElementInternal(
     Element* element, const lepus::Value* previous_attribute_slots,
-    const lepus::Value& attribute_slots, TemplateAttributeApplyMode mode) {
+    const lepus::Value& attribute_slots, TemplateAttributeApplyMode mode,
+    std::optional<uint32_t> updated_slot_index = std::nullopt) {
   if (element == nullptr || !element->HasTemplateAttributes()) {
     return;
   }
@@ -414,6 +495,7 @@ void ApplyTemplateAttributesToElementInternal(
                                           *previous_attribute_slots, mode);
   }
   bool has_applied_spread = false;
+  const Attribute* gesture_attribute = nullptr;
   for (const auto& attr : *template_attributes) {
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
       ApplyTemplateSpreadAttributes(
@@ -429,11 +511,27 @@ void ApplyTemplateAttributesToElementInternal(
       continue;
     }
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC) {
+      if (TreeResolver::IsTemplateGestureAttribute(attr.key_)) {
+        gesture_attribute = &attr;
+        continue;
+      }
       ApplyTemplateAttributeValue(
           element, attr.key_,
           ResolveAttributeSlotValue(attribute_slots, attr.slot_index_), mode);
       continue;
     }
+  }
+  // A detector requires a real platform view, including when a later template
+  // attribute sets flatten=true. Apply its native constraints after attributes.
+  if (gesture_attribute != nullptr &&
+      mode != TemplateAttributeApplyMode::kNonEventOnly) {
+    const auto slot_index = gesture_attribute->slot_index_;
+    ApplyTemplateGestureAttribute(
+        element, ResolveAttributeSlotValue(attribute_slots, slot_index),
+        previous_attribute_slots != nullptr
+            ? ResolveAttributeSlotValue(*previous_attribute_slots, slot_index)
+            : lepus::Value(),
+        !updated_slot_index.has_value() || *updated_slot_index == slot_index);
   }
 }
 
@@ -446,6 +544,12 @@ bool TreeResolver::IsTemplateEventAttribute(const base::String& key) {
                                      &event_name);
 }
 
+// Gesture callbacks need the attached element's MTS runtime. Like events,
+// direct gesture slots are applied after detached template preparation.
+bool TreeResolver::IsTemplateGestureAttribute(const base::String& key) {
+  return key.IsEqual("main-thread:gesture");
+}
+
 void TreeResolver::ApplyTemplateAttributesToElement(
     Element* element, const lepus::Value& attribute_slots) {
   ApplyTemplateAttributesToElementInternal(element, nullptr, attribute_slots,
@@ -454,10 +558,11 @@ void TreeResolver::ApplyTemplateAttributesToElement(
 
 void TreeResolver::ApplyTemplateAttributesToElement(
     Element* element, const lepus::Value& previous_attribute_slots,
-    const lepus::Value& attribute_slots) {
-  ApplyTemplateAttributesToElementInternal(element, &previous_attribute_slots,
-                                           attribute_slots,
-                                           TemplateAttributeApplyMode::kAll);
+    const lepus::Value& attribute_slots,
+    std::optional<uint32_t> updated_slot_index) {
+  ApplyTemplateAttributesToElementInternal(
+      element, &previous_attribute_slots, attribute_slots,
+      TemplateAttributeApplyMode::kAll, updated_slot_index);
 }
 
 void TreeResolver::ApplyTemplateNonEventAttributesToElement(
@@ -918,7 +1023,8 @@ fml::RefPtr<Element> TreeResolver::FromElementInfo(
         RegisterSlotTarget(&generated->attribute_slot_targets_,
                            static_cast<int32_t>(attr.slot_index_), res);
         if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD ||
-            TreeResolver::IsTemplateEventAttribute(attr.key_)) {
+            TreeResolver::IsTemplateEventAttribute(attr.key_) ||
+            TreeResolver::IsTemplateGestureAttribute(attr.key_)) {
           RegisterSlotTarget(&generated->event_attribute_slot_targets_,
                              static_cast<int32_t>(attr.slot_index_), res);
         }

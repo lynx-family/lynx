@@ -6,6 +6,7 @@
 #define CORE_RENDERER_EVENTS_GESTURE_H_
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/value/base_value.h"
@@ -105,6 +106,10 @@ class GestureDetectorImpl : public GestureDetector {
   // GestureDetectorImpl.
   const std::vector<GestureCallback>& gesture_callbacks() const {
     return gesture_callback_vec_;
+  }
+
+  void SetGestureCallbacks(GestureDetectorImpl&& source) {
+    gesture_callback_vec_ = std::move(source.gesture_callback_vec_);
   }
 
   // Getter method for retrieving the relation map of GestureDetectorImpl.

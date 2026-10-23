@@ -5,8 +5,10 @@
 #ifndef CORE_RENDERER_DOM_FIBER_TREE_RESOLVER_H_
 #define CORE_RENDERER_DOM_FIBER_TREE_RESOLVER_H_
 
+#include <cstdint>
 #include <list>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
@@ -71,6 +73,7 @@ class TreeResolver {
       const fml::RefPtr<Element>& template_element);
 
   static bool IsTemplateEventAttribute(const base::String& key);
+  static bool IsTemplateGestureAttribute(const base::String& key);
 
   // Apply template dynamic/spread attributes on top of the static attributes
   // initialized by FromElementInfo. The overload with previous slots rebuilds
@@ -80,7 +83,8 @@ class TreeResolver {
       Element* element, const lepus::Value& attribute_slots);
   static void ApplyTemplateAttributesToElement(
       Element* element, const lepus::Value& previous_attribute_slots,
-      const lepus::Value& attribute_slots);
+      const lepus::Value& attribute_slots,
+      std::optional<uint32_t> updated_slot_index = std::nullopt);
   static void ApplyTemplateNonEventAttributesToElement(
       Element* element, const lepus::Value& attribute_slots);
   static void ApplyTemplateNonEventAttributesToElement(
