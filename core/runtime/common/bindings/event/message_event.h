@@ -33,6 +33,7 @@
 #ifndef CORE_RUNTIME_COMMON_BINDINGS_EVENT_MESSAGE_EVENT_H_
 #define CORE_RUNTIME_COMMON_BINDINGS_EVENT_MESSAGE_EVENT_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -64,6 +65,10 @@ class MessageEvent : public event::Event {
 
   const pub::Value* message() const { return message_.get(); }
 
+  void EnableDispatchDiagnostics();
+  static void LogDispatch(uint64_t dispatch_id, const char* stage);
+  uint64_t DispatchId() const { return dispatch_id_; }
+
   bool IsSendingToUIThread() {
     return target_ == ContextProxy::Type::kUIContext ||
            target_ == ContextProxy::Type::kDevTool;
@@ -83,6 +88,7 @@ class MessageEvent : public event::Event {
   ContextProxy::Type origin_;
   ContextProxy::Type target_;
   std::unique_ptr<pub::Value> message_;
+  uint64_t dispatch_id_{0};
 };
 
 }  // namespace runtime

@@ -858,15 +858,8 @@ event::DispatchEventResult TasmMediator::DispatchMessageEvent(
     fml::RefPtr<runtime::MessageEvent> event) {
   auto copy_event = runtime::MessageEvent::ShallowCopy(*event);
   if (event->IsSendingToJSThread()) {
-    if (runtime_actor_) {
-      auto enqueue_info =
-          tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-      runtime_actor_->Act([message_event = std::move(copy_event),
-                           enqueue_info](auto& runtime) mutable {
-        runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-        runtime->OnReceiveMessageEvent(std::move(message_event));
-      });
-    }
+    BTSRuntimeMediator::DispatchMessageEventToRuntime(runtime_actor_,
+                                                      std::move(copy_event));
   } else if (event->IsSendingToUIThread()) {
     facade_actor_->Act(
         [message_event = std::move(copy_event)](auto& facade) mutable {

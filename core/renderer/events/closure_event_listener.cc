@@ -25,6 +25,10 @@ ClosureEventListener::ClosureEventListener(
       closure_type_(closure_type),
       lepus_object_(lepus_object) {}
 
+ClosureEventListener::ClosureEventListener(MessageClosureListener&& closure)
+    : event::EventListener(event::EventListener::Type::kClosureEventListener),
+      message_closure_(std::move(closure)) {}
+
 void ClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, CLOSURE_EVENT_LISTENER_INVOKE,
@@ -38,8 +42,13 @@ void ClosureEventListener::Invoke(fml::RefPtr<event::Event> event) {
        << ", type: " << static_cast<int>(closure_type_));
   if (event->event_type() == event::Event::EventType::kMessageEvent) {
     auto message_event = fml::static_ref_ptr_cast<runtime::MessageEvent>(event);
-    closure_(
-        pub::ValueUtils::ConvertValueToLepusValue(*message_event->message()));
+    auto args =
+        pub::ValueUtils::ConvertValueToLepusValue(*message_event->message());
+    if (message_closure_) {
+      message_closure_(std::move(args), *message_event);
+    } else {
+      closure_(std::move(args));
+    }
   }
   if (event->event_type() == event::Event::EventType::kTouchEvent ||
       event->event_type() == event::Event::EventType::kCustomEvent ||

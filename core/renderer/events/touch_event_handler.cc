@@ -1408,6 +1408,9 @@ void TouchEventHandler::SendPageEvent(const EventType &type,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+  if (LOGO_IS_ON() && (event_name == EVENT_TAP || event_name == "click")) {
+    event->EnableDispatchDiagnostics();
+  }
   event->SetTraceFlowId(trace_flow_id);
   context_proxy_delegate_.DispatchMessageEvent(std::move(event));
   if (type != EventType::kComponent) {
@@ -1437,6 +1440,9 @@ void TouchEventHandler::PublishComponentEvent(const EventType &type,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+  if (LOGO_IS_ON() && (event_name == EVENT_TAP || event_name == "click")) {
+    event->EnableDispatchDiagnostics();
+  }
   event->SetTraceFlowId(trace_flow_id);
   context_proxy_delegate_.DispatchMessageEvent(std::move(event));
   if (type != EventType::kComponent) {

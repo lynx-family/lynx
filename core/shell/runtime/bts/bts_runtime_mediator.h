@@ -46,6 +46,10 @@ class BTSRuntime;
 // ensure run on js thread, lifecycle manage by LynxRuntime
 class BTSRuntimeMediator : public runtime::TemplateDelegate {
  public:
+  static void DispatchMessageEventToRuntime(
+      const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor,
+      fml::RefPtr<runtime::MessageEvent> event);
+
   BTSRuntimeMediator(
       const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
       const std::shared_ptr<LynxActor<LynxEngine>>& engine_actor,

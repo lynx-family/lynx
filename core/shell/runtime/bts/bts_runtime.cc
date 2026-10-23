@@ -1136,6 +1136,12 @@ void BTSRuntime::OnReceiveMessageEvent(
     return;
   }
 
+  if (LOGO_IS_ON() && event->DispatchId() != 0 &&
+      state_ != State::kRuntimeReady) {
+    LOGO("EventDispatch event_id="
+         << event->DispatchId() << " stage=cached state="
+         << static_cast<int>(state_) << " runtime_flags=" << runtime_flags_);
+  }
   QueueOrExecTask([this, event = std::move(event)]() mutable {
     auto proxy = app_->GetOrCreateContextProxyImpl(event->GetOriginType());
     if (proxy != nullptr) {
