@@ -47,8 +47,11 @@ std::unique_ptr<pub::Value> LynxUIMethodModule::InvokeUIMethod(
     return std::unique_ptr<pub::Value>(nullptr);
   }
   base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback =
-      [delegate, callback = it->second](int32_t code,
-                                        const lepus::Value& data) {
+      [delegate, callback = it->second, invoked = false](
+          int32_t code, const lepus::Value& data) mutable {
+        if (std::exchange(invoked, true)) {
+          return;
+        }
         auto callback_args = lepus::CArray::Create();
         auto ret = lepus::Dictionary::Create();
         ret->SetValue("code", code);
