@@ -10,6 +10,8 @@ fiber_shared_sources = [
   "block_element.h",
   "component_element.cc",
   "component_element.h",
+  "compose_draw_behind.cc",
+  "compose_draw_behind.h",
   "compose_element_handle.cc",
   "compose_element_handle.h",
   "compose_graphics_layer.cc",

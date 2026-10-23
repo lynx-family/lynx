@@ -1072,6 +1072,66 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertEqualWithAccuracy(view.layer.mask.frame.origin.y, 100.0f, 0.001f);
 }
 
+- (void)testCustomFillRetainsBoundsAfterHostPropertyUpdate {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
+  [host createRendererWithSign:1 andContext:nil];
+  [parent addSubview:host];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+  AppendRecordBox(list, 5, 7, 40, 16);
+  AppendFill(list, 0x80FF0000, 0);
+  AppendEnd(list);
+  [applier applyDisplayList:&list];
+  host.alpha = 0.5;
+  host.bounds = CGRectMake(0, 20, 100, 80);
+  [applier syncHostDecorationLayers];
+  CALayer *container = parent.layer.sublayers.firstObject;
+  CALayer *fill = container.sublayers.firstObject;
+  XCTAssertTrue(CGRectEqualToRect(fill.frame, CGRectMake(5, 7, 40, 16)));
+  XCTAssertTrue(CGRectEqualToRect([fill convertRect:fill.bounds toLayer:parent.layer],
+                                  CGRectMake(25, 37, 40, 16)));
+  XCTAssertEqualWithAccuracy(container.opacity, 0.5, 0.001);
+}
+
+- (void)testInterleavedGradientsAndFillsKeepCommandOrder {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
+  [host createRendererWithSign:1 andContext:nil];
+  [parent addSubview:host];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+  AppendRecordBox(list, 0, 0, 100, 80);
+  list.AddLinearGradient(180, {0xFFFF0000, 0xFF0000FF}, {0, 1}, 0, 0, LynxBackgroundRepeatNoRepeat,
+                         LynxBackgroundRepeatNoRepeat);
+  AppendFill(list, 0xFF00FF00, 0);
+  list.AddLinearGradient(180, {0x80FFFFFF, 0x80000000}, {0, 1}, 0, 0, LynxBackgroundRepeatNoRepeat,
+                         LynxBackgroundRepeatNoRepeat);
+  AppendEnd(list);
+  [applier applyDisplayList:&list];
+  [applier syncHostDecorationLayers];
+  NSArray<CALayer *> *layers = parent.layer.sublayers;
+  XCTAssertEqual(layers.count, 4u);
+  XCTAssertEqual(layers.lastObject, host.layer);
+  XCTAssertEqual(layers[0].sublayers.count, 1u);
+  XCTAssertTrue(CGColorEqualToColor(layers[1].backgroundColor, UIColor.greenColor.CGColor));
+  XCTAssertEqual(layers[2].sublayers.count, 1u);
+  host.bounds = CGRectMake(7, 40, 100, 80);
+  host.alpha = 0.5;
+  [applier syncHostDecorationLayers];
+  for (NSNumber *index in @[ @0, @2 ]) {
+    CALayer *group = layers[index.unsignedIntegerValue];
+    XCTAssertTrue(CGRectEqualToRect(group.bounds, CGRectMake(0, 0, 100, 80)));
+    XCTAssertEqualWithAccuracy(group.opacity, 0.5, 0.001);
+  }
+  [applier reset];
+  XCTAssertEqual(parent.layer.sublayers.count, 1u);
+}
+
 - (void)testHostBackgroundsShareContainerBelowBorderAndPreserveClip {
   UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
   LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
