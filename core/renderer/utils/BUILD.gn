@@ -74,3 +74,23 @@ unittest_exec("renderer_utils_unittests_exec") {
     "../dom:dom",
   ]
 }
+
+lynx_core_source_set("event_converter") {
+  sources = [
+    "base/event_converter.cc",
+    "base/event_converter.h",
+  ]
+  public_deps = [
+    "../../public",
+    "../../runtime/common/bindings/event:runtime_common",
+  ]
+  deps = [ "../../value_wrapper:value_wrapper" ]
+}
+
+unittest_exec("event_converter_unittests_exec") {
+  sources = [ "base/event_converter_unittest.cc" ]
+  deps = [
+    ":event_converter",
+    "../../:lynx_native",
+  ]
+}

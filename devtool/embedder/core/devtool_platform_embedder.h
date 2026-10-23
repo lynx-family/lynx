@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "core/public/devtool/vm_event.h"
 #include "devtool/embedder/core/debug_info_helper.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
@@ -82,7 +83,7 @@ class DevtoolPlatformEmbedder
 
   void SendCDPEvent(const std::string& message);
 
-  void SendEventToVM(const Json::Value& message);
+  void SendEventToVM(const VMEvent& message);
 
   void DispatchScreencastVisibilityChanged(bool status);
 
