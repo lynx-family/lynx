@@ -52,7 +52,9 @@ void BoxLayoutAlgorithm::MeasureChildren() {
       child->ClearCache();
     }
 
-    child->UpdateMeasure(child_constraints, final_measure);
+    // Speculative measurement may return without updating the child's bounds.
+    const auto child_size =
+        child->UpdateMeasure(child_constraints, final_measure);
 
     if (propagate_min_constraints) {
       child->GetBoxInfo()->min_size_ = original_min_size;
@@ -60,9 +62,13 @@ void BoxLayoutAlgorithm::MeasureChildren() {
     }
 
     max_child_margin_bound_width_ =
-        std::max(max_child_margin_bound_width_, child->GetMarginBoundWidth());
+        std::max(max_child_margin_bound_width_,
+                 child_size.width_ + child->GetLayoutMarginLeft() +
+                     child->GetLayoutMarginRight());
     max_child_margin_bound_height_ =
-        std::max(max_child_margin_bound_height_, child->GetMarginBoundHeight());
+        std::max(max_child_margin_bound_height_,
+                 child_size.height_ + child->GetLayoutMarginTop() +
+                     child->GetLayoutMarginBottom());
   }
 }
 
