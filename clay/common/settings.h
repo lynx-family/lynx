@@ -125,6 +125,10 @@ struct Settings {
   // Whether to use synchronous compositor.
   bool enable_sync_compositor = false;
 
+  // Set before shell creation by windowless hosts that explicitly drive sync
+  // draws. Other synchronous compositors retain their notification behavior.
+  bool enable_host_driven_windowless_draw = false;
+
   // Configure before creating the shell. Used by the asynchronous compositor
   // instead of platform VSync, without a system-clock fallback. The callback
   // retains its source until the current page is cleaned for recycling.

@@ -151,9 +151,10 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
   void SetDefaultOverflowVisible(bool visible);
   void SetExposureProps(int freq, bool enable_exposure_ui_margin);
 
-  /// Schedule a frame with the default parameter of regenerating the layer
-  /// tree.
+  /// Schedule shadow-tree layout before the next UI frame.
   void ScheduleLayout() override;
+  // Whether shadow-tree layout is still pending, independently of UI dirtiness.
+  bool HasPendingLayout() const { return pending_layout_; }
 
   // clay::RenderDelegate
   void ScheduleFrame() override;

@@ -216,6 +216,59 @@ class LynxWindowlessRenderer
         });
   }
 
+  // Optional synchronous composition for windowless embedders, disabled by
+  // default. Currently validated only on the Linux windowless backend; other
+  // platforms have not been validated and are not guaranteed to work.
+  // Configure before creating the LynxView; later requests return false.
+  // Disabling before creation also clears the invalidation callback.
+  // A true result means configuration was accepted, not that the backend was
+  // validated.
+  // Hosts must check frame preparation, draw completion and fresh output.
+  bool SetSyncCompositor(bool enabled) {
+    InitIfNeeded();
+    if (!lynx_windowless_renderer_set_sync_compositor(windowless_renderer_,
+                                                      enabled)) {
+      return false;
+    }
+    if (enabled) {
+      lynx_windowless_renderer_bind_on_invalidate(
+          windowless_renderer_, [](lynx_windowless_renderer_t* renderer) {
+            auto wrapper =
+                Unwrap(lynx_windowless_renderer_get_user_data(renderer));
+            if (wrapper) {
+              wrapper->OnInvalidate();
+            }
+          });
+    }
+    return true;
+  }
+
+  // Prepare UI without drawing to complete layout-dependent methods.
+  // Requires enabled synchronous composition; otherwise returns
+  // false.
+  bool PrepareFrame() {
+    return windowless_renderer_ &&
+           lynx_windowless_renderer_prepare_frame(windowless_renderer_);
+  }
+
+  // Requires enabled synchronous composition; otherwise returns
+  // false. Returns whether a completion future was installed, not whether
+  // drawing succeeded. UI preparation still runs inside the draw request.
+  bool DemandDrawHw() {
+    return windowless_renderer_ &&
+           lynx_windowless_renderer_demand_draw_hw(windowless_renderer_);
+  }
+
+  // Gets compositor status without blocking or consuming the result.
+  // Returns kFrameDrawUnavailable when disabled or
+  // when no draw request has been established.
+  lynx_frame_draw_status_e GetFrameDrawStatus() const {
+    return windowless_renderer_
+               ? lynx_windowless_renderer_get_frame_draw_status(
+                     windowless_renderer_)
+               : kFrameDrawUnavailable;
+  }
+
   virtual ~LynxWindowlessRenderer() {
     if (windowless_renderer_) {
       lynx_windowless_renderer_release(windowless_renderer_);
@@ -287,6 +340,12 @@ class LynxWindowlessRenderer
   virtual void SetCursorPosition(int position) {}
   virtual void SetMarkedTextRect(float x, float y, float width, float height) {}
   virtual void SetEditableTransform(const float transform[16]) {}
+
+  // Notifies the host of new frame work in synchronous composition, on the
+  // host/platform thread.
+  // Defer PrepareFrame() and DemandDrawHw() to a later host-loop iteration.
+  virtual void OnInvalidate() {}
+
   /* ----- Callbacks for platform function ----- */
 
   lynx_windowless_renderer_t* Impl() { return windowless_renderer_; }
