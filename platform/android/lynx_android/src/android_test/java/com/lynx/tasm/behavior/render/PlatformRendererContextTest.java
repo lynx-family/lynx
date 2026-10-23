@@ -375,6 +375,56 @@ public class PlatformRendererContextTest {
   }
 
   @Test
+  public void testInsertPlatformRenderer_ReparentViewWithItsSubtree() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    FrameLayout oldParent = new FrameLayout(context);
+    FrameLayout parent = new FrameLayout(context);
+    FrameLayout child = new FrameLayout(context);
+    FrameLayout grandchild = new FrameLayout(context);
+    FrameLayout first = new FrameLayout(context);
+    FrameLayout last = new FrameLayout(context);
+    oldParent.addView(child);
+    child.addView(grandchild);
+    parent.addView(first);
+    parent.addView(last);
+    // The old renderer may be gone while its ViewGroup still owns the View.
+    rendererContext.mViewHolder.put(1, createHost(parent));
+    rendererContext.mViewHolder.put(2, createHost(child));
+
+    rendererContext.insertPlatformRenderer(1, 2, 1, false);
+
+    assertEquals(0, oldParent.getChildCount());
+    assertSame(parent, child.getParent());
+    assertEquals(3, parent.getChildCount());
+    assertSame(first, parent.getChildAt(0));
+    assertSame(child, parent.getChildAt(1));
+    assertSame(last, parent.getChildAt(2));
+    assertEquals(1, child.getChildCount());
+    assertSame(grandchild, child.getChildAt(0));
+    assertSame(child, grandchild.getParent());
+  }
+
+  @Test
+  public void testInsertPlatformRenderer_ReordersWithinSameParent() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    FrameLayout parent = new FrameLayout(context);
+    FrameLayout child = new FrameLayout(context);
+    FrameLayout sibling = new FrameLayout(context);
+    parent.addView(child);
+    parent.addView(sibling);
+    rendererContext.mViewHolder.put(1, createHost(parent));
+    rendererContext.mViewHolder.put(2, createHost(child));
+
+    // Reinserting an attached View must move it to the requested position.
+    rendererContext.insertPlatformRenderer(1, 2, 1, false);
+
+    assertEquals(2, parent.getChildCount());
+    assertSame(sibling, parent.getChildAt(0));
+    assertSame(child, parent.getChildAt(1));
+    assertSame(parent, child.getParent());
+  }
+
+  @Test
   public void testInsertPlatformRenderer_UpdatesUIOwnerWhenRequested() {
     LynxUIOwner owner = mock(LynxUIOwner.class);
     LynxBaseUI parentUI = mock(LynxBaseUI.class);
