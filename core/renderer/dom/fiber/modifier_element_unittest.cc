@@ -456,6 +456,7 @@ TEST_P(ModifierElementTest,
   EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0, '') === null").Bool());
   EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0, null) === null").Bool());
   EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0, 42) === null").Bool());
+  EXPECT_TRUE(Eval("__CreateCompose(customPageId, 8) === null").Bool());
   EXPECT_TRUE(
       Eval("__CreateCompose(customPageId, 0.5, 'sample-widget') === null")
           .Bool());
@@ -464,6 +465,7 @@ TEST_P(ModifierElementTest,
     const char* tag;
   } cases[] = {{ComposeElementKind::kSvg, "svg"},
                {ComposeElementKind::kOverlay, "overlay"},
+               {ComposeElementKind::kAnimaX, "animax-view"},
                {ComposeElementKind::kCustom, "sample-widget"},
                {ComposeElementKind::kCustom, "svg"},
                {ComposeElementKind::kCustom, "overlay"}};
@@ -569,10 +571,10 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
   padding->SetValue("bottom", lepus::Value(2.0));
 
   const ComposeElementKind kinds[] = {
-      ComposeElementKind::kView,  ComposeElementKind::kText,
-      ComposeElementKind::kImage, ComposeElementKind::kList,
-      ComposeElementKind::kSvg,   ComposeElementKind::kOverlay,
-      ComposeElementKind::kCustom};
+      ComposeElementKind::kView,   ComposeElementKind::kText,
+      ComposeElementKind::kImage,  ComposeElementKind::kList,
+      ComposeElementKind::kSvg,    ComposeElementKind::kOverlay,
+      ComposeElementKind::kAnimaX, ComposeElementKind::kCustom};
   for (const auto kind : kinds) {
     auto handle =
         CreateComposeHandle(manager, kind, base::String("sample-widget"));
@@ -597,6 +599,9 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
         break;
       case ComposeElementKind::kOverlay:
         EXPECT_TRUE(owner->GetTag().IsEqual("overlay"));
+        break;
+      case ComposeElementKind::kAnimaX:
+        EXPECT_TRUE(owner->GetTag().IsEqual("animax-view"));
         break;
       case ComposeElementKind::kCustom:
         EXPECT_TRUE(owner->GetTag().IsEqual("sample-widget"));

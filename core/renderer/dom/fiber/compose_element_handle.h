@@ -29,6 +29,7 @@ enum class ComposeElementKind : int32_t {
   kList = 4,
   kSvg = 5,
   kOverlay = 6,
+  kAnimaX = 7,
 };
 
 // Stable, opaque identity for one Compose-owned Fiber subtree. The concrete
