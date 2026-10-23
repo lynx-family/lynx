@@ -131,6 +131,9 @@ void ApplyTextStyle(TextElement* element, float density,
   }
 
   text_style.SetFontSize(style->GetFontSize() * density);
+  // Match native text's default font height before applying explicit
+  // line-height.
+  text_style.SetFontHeight(0);
   text_style.SetHalfLeading(true);
   if (!attributes.has_value()) {
     text_style.SetColor(starlight::DefaultColor::DEFAULT_TEXT_COLOR);
