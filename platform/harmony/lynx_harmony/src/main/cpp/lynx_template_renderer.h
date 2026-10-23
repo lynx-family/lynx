@@ -163,6 +163,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   void DispatchMessageEvent(const devtool::VMEvent& message) override;
 
+  void OnReceiveMessageEvent(const runtime::MessageEvent& event);
+
   void SetUpLynxShell(
       napi_env env, tasm::UIDelegate* ui_delegate,
       const std::shared_ptr<LynxResourceLoaderHarmony>& resource_loader,
