@@ -841,6 +841,11 @@ public class DisplayListApplier implements Drawable.Callback {
       return;
     }
 
+    // TODO: Keep the full shader tile and clip only the painted region, preserving root
+    // scroll offsets. Normalizing the tile can shrink or shift the gradient; this consumer
+    // bug predates Compose drawing callbacks and also affects CSS linear gradients.
+    // Cover extended and negative-origin tiles, repetition, and scrolling with nonzero
+    // host dimensions before changing this shared path.
     RoundedRectangle tilingBox = getNormalizedRoundedRectangle(tilingIndex);
     if (tilingBox == null) {
       return;
