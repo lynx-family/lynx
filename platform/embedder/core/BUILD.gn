@@ -29,7 +29,7 @@ lynx_core_source_set("renderer") {
   }
   deps = [
     "../../../core:lynx_native",
-    "../../../third_party/jsoncpp:jsoncpp",
+    "../../../core/renderer/utils:event_converter",
   ]
   if (!enable_unittests) {
     deps += [ "../lynx_service:lynx_service" ]

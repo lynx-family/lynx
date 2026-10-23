@@ -5,6 +5,7 @@
 #include "platform/embedder/core/lynx_template_renderer.h"
 
 #include "base/include/log/logging.h"
+#include "core/renderer/utils/base/event_converter.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/shell/event_tracker_proxy_impl.h"
@@ -484,7 +485,8 @@ void LynxTemplateRenderer::InvokeCDPFromSDK(
   }
 }
 
-void LynxTemplateRenderer::OnReceiveMessageEvent(const Json::Value& event) {
+void LynxTemplateRenderer::OnReceiveMessageEvent(
+    const devtool::VMEvent& event) {
   if (devtools_) {
     devtools_->GetInspectorOwner()->OnReceiveMessageEvent(event);
   }
@@ -795,23 +797,13 @@ void LynxTemplateRenderer::ClearGenericInfo(int32_t instance_id) {
   }
 }
 
-void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {
-  if (!shell_ || !message.isObject()) {
+void LynxTemplateRenderer::DispatchMessageEvent(
+    const devtool::VMEvent& message) {
+  if (!shell_) {
     return;
   }
-  auto type = message.get(lynx::tasm::kType, "").asString();
-  runtime::ContextProxy::Type origin =
-      runtime::ContextProxy::ConvertStringToContextType(
-          message.get(lynx::tasm::kOrigin, "").asString());
-  runtime::ContextProxy::Type target =
-      runtime::ContextProxy::ConvertStringToContextType(
-          message.get(lynx::tasm::kTarget, "").asString());
-  auto data_value = pub::PubValueFactoryDefault();
-  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
-      type, origin, target,
-      data_value.CreateString(message.get(lynx::tasm::kData, "").asString()));
-
-  shell_->DispatchMessageEvent(event);
+  shell_->DispatchMessageEvent(
+      tasm::EventConverter::ConvertVMEventToMessageEvent(message));
 }
 
 int32_t LynxTemplateRenderer::GetDevtoolSessionId() {

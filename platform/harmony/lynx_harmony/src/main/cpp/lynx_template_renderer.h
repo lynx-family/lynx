@@ -161,7 +161,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                     const std::string& button, float delta_x, float delta_y,
                     int modifiers, int click_count) override;
 
-  void DispatchMessageEvent(const Json::Value& message) override;
+  void DispatchMessageEvent(const devtool::VMEvent& message) override;
 
   void SetUpLynxShell(
       napi_env env, tasm::UIDelegate* ui_delegate,

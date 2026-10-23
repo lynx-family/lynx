@@ -296,6 +296,7 @@ if (enable_unittests) {
       "../../testing/utils:gtest_custom_init",
       "../../testing/utils:gtest_main",
       "../../third_party/aes",
+      "../../third_party/jsoncpp:jsoncpp",
       "./fetcher:fetcher_unittests",
       "./lynx_service:lynx_service_unittests",
     ]

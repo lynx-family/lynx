@@ -13,10 +13,6 @@
 #include "core/public/devtool/lynx_inspector_owner.h"
 #include "core/public/ui_delegate.h"
 
-namespace Json {
-class Value;
-}
-
 namespace lynx {
 
 namespace tasm {
@@ -54,7 +50,7 @@ class LynxDevToolProxy {
                             float delta_y, int modifiers, int click_count) {}
   virtual void Focus(int node_id) {}
   virtual void InsertText(const std::string& text) {}
-  virtual void DispatchMessageEvent(const Json::Value& message) = 0;
+  virtual void DispatchMessageEvent(const VMEvent& message) = 0;
   virtual bool SetScreenshotMode(const std::string&) { return false; }
   virtual std::string GetActualScreenshotMode() { return "lynxview"; }
 };

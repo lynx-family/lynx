@@ -77,7 +77,7 @@ class InspectorOwnerEmbedder
   int32_t GetSessionId() override;
 
   // LynxInspectorOwner
-  void OnReceiveMessageEvent(const Json::Value& event) override;
+  void OnReceiveMessageEvent(const VMEvent& event) override;
   void OnTemplateAssemblerCreated(intptr_t prt) override;
   std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
   OnBackgroundRuntimeCreated(const std::string& group_thread_name) override;
