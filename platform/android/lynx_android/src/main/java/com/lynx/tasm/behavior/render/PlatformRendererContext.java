@@ -11,6 +11,7 @@ import android.text.Spanned;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.react.bridge.Callback;
@@ -718,6 +719,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     View childView = hChild.getView();
     if (childView == null) {
       return;
+    }
+    // A surviving View can still belong to a removed renderer's ViewGroup.
+    ViewParent oldParent = childView.getParent();
+    if (oldParent instanceof ViewGroup) {
+      ((ViewGroup) oldParent).removeView(childView);
     }
     int count = parentView.getChildCount();
     if (index == -1 || index >= count) {
