@@ -86,8 +86,8 @@ LYNX_EXTERN_C void lynx_view_builder_set_windowless_renderer(
     lynx_windowless_renderer_t* windowless_renderer) {
 #if defined(ENABLE_WINDOWLESS)
   builder->windowless_renderer =
-      lynx::fml::RefPtr<lynx::embedder::LynxWindowlessRenderer>(
-          reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(
+      lynx::fml::RefPtr<lynx::embedder::RendererBinding>(
+          reinterpret_cast<lynx::embedder::RendererBinding*>(
               windowless_renderer));
 #else
   UNIMPLEMENTED();

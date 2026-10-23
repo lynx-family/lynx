@@ -12,15 +12,16 @@
 #include "clay/public/clay.h"
 #include "clay/shell/platform/headless/clay_headless_engine.h"
 #include "clay/shell/platform/headless/public/embdder_headless_delegate.h"
-#include "platform/embedder/lynx_ui_renderer.h"
+#include "platform/embedder/lynx_ui_renderer_clay.h"
 #include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
 
 namespace lynx {
 namespace embedder {
-class LynxUIRendererWindowless : public LynxUIRenderer,
+class LynxUIRendererWindowless : public LynxUIRendererClay,
                                  public HeadlessDelegate {
  public:
-  explicit LynxUIRendererWindowless(lynx_view_builder_t* builder);
+  explicit LynxUIRendererWindowless(
+      RendererConfig config, fml::RefPtr<LynxWindowlessRenderer> renderer);
   ~LynxUIRendererWindowless() override;
 
   bool RunsTaskOnCurrentThread() const;

@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "base/include/value/lynx_value_api.h"
 #include "clay/public/value.h"
 #include "core/public/pub_value.h"
 
@@ -24,15 +23,6 @@ class ValueConverter {
 
   static clay::Value CreateClayValue(const uint8_t* data, size_t size);
   static clay::Value CreateClayValue(const uint32_t* data, size_t size);
-
-  static clay::Value CreateClayValue(lynx_api_env env, lynx_value val);
-  static lynx_value CreateLynxValue(lynx_api_env env, const clay::Value& val);
-  static lynx_value CreateLynxValue(lynx_api_env env,
-                                    const clay::Value::Map& map);
-  static lynx_value CreateLynxValue(lynx_api_env env,
-                                    const clay::Value::Array& array);
-
- private:
 };
 
 }  // namespace lynx

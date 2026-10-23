@@ -14,13 +14,13 @@
 #include "clay/shell/platform/windows/flutter_window.h"
 #include "clay/shell/platform/windows/flutter_windows_view.h"
 #include "platform/embedder/frame_timing_listener_impl.h"
-#include "platform/embedder/lynx_ui_renderer.h"
+#include "platform/embedder/lynx_ui_renderer_clay.h"
 
 namespace lynx {
 namespace embedder {
-class LynxUIRendererWin : public LynxUIRenderer {
+class LynxUIRendererWin : public LynxUIRendererClay {
  public:
-  explicit LynxUIRendererWin(lynx_view_builder_t* builder);
+  explicit LynxUIRendererWin(RendererConfig config);
   ~LynxUIRendererWin() override;
 
   void SetParent(NativeWindow parent) override;
@@ -51,7 +51,7 @@ class LynxUIRendererWin : public LynxUIRenderer {
 
   void RegisterIMEHandler(void* handler, void* opaque) override;
 
-  void AddClient(LynxViewClients* client) override;
+  void SetFrameTimingClient(FrameTimingClient* client) override;
 
  private:
   void SendPointerEvent(const ClayPointerEvent& event) override;

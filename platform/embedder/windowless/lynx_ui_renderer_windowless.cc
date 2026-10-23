@@ -19,24 +19,18 @@
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/event/key_codes.h"
-#include "core/base/threading/task_runner_manufactor.h"
-#include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
-#include "platform/embedder/public/capi/lynx_memory_capi.h"
 
 namespace lynx {
 namespace embedder {
 
-std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWindowlessUIRenderer(
-    lynx_view_builder_t* builder) {
-  return std::make_unique<LynxUIRendererWindowless>(builder);
+std::unique_ptr<LynxUIRenderer> LynxWindowlessRenderer::CreateUIRenderer(
+    RendererConfig config) {
+  return std::make_unique<LynxUIRendererWindowless>(std::move(config),
+                                                    fml::Ref(this));
 }
-
-LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
-    : LynxUIRenderer(builder) {
-#if !defined(OS_WIN)
-  base::UIThread::Init();
-#endif
-  windowless_renderer_ = builder->windowless_renderer;
+LynxUIRendererWindowless::LynxUIRendererWindowless(
+    RendererConfig config, fml::RefPtr<LynxWindowlessRenderer> renderer)
+    : LynxUIRendererClay(config), windowless_renderer_(std::move(renderer)) {
   windowless_renderer_->run_task = [this](lynx_task_t task) {
     ClayTask clay_task{};
     clay_task.task = task.task;
@@ -72,7 +66,7 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
   };
   description_.identifier = ++sTaskRunnerIdentifiers;
 
-  const char* icu_data_path = builder->GetICUDataPath();
+  const char* icu_data_path = config.icu_data_path.c_str();
   if (icu_data_path == nullptr || icu_data_path[0] == '\0') {
 #if OS_WIN
     icu_data_path = "data\\icudtl.dat";
@@ -90,9 +84,9 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
 
   auto* view_context =
       static_cast<clay::ViewContext*>(headless_engine_->GetViewContext());
-  if (builder->default_background_color) {
+  if (config.default_background_color) {
     view_context->GetPageView()->SetDefaultBackgroundColor(
-        clay::Color(*builder->default_background_color));
+        clay::Color(*config.default_background_color));
   }
   auto module_factory = std::unique_ptr<lynx::runtime::NativeModuleFactory>(
       lynx::LynxModuleFactory::CreateModuleFactory(view_context));
@@ -102,43 +96,35 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
 #if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX) || \
     defined(OS_HARMONY)
   clay::NativeViewServiceEmbedder::SetViewFactories(
-      view_context, std::move(builder->native_view_creators));
+      view_context, std::move(config.native_view_creators));
 #endif
 
-  if (builder->generic_fetcher) {
-    auto fetcher_holder =
-        std::make_shared<LynxResourceFetcherHolder>(builder->generic_fetcher);
+  if (config.resource_provider) {
+    auto provider = config.resource_provider;
     auto intercept = headless_engine_->GetResourceLoaderIntercept();
     if (intercept) {
       intercept->BindShouldInterceptUrlCallback(
-          [fetcher_holder](const char* origin_url, bool should_decode,
-                           char* intercept_url, int max_path_length) {
-            char* redirected = lynx_generic_resource_fetcher_intercept(
-                fetcher_holder->GenericFetcher(), origin_url, should_decode);
-            if (!redirected || !intercept_url || max_path_length <= 0) {
-              if (redirected) {
-                lynx_free(redirected);
-              }
-              return;
-            }
-            std::snprintf(intercept_url, max_path_length, "%s", redirected);
-            lynx_free(redirected);
+          [provider](const char* origin_url, bool should_decode,
+                     char* intercept_url, int max_path_length) {
+            if (!intercept_url || max_path_length <= 0) return;
+            auto redirected = provider->Intercept(origin_url, should_decode);
+            std::snprintf(intercept_url, max_path_length, "%s",
+                          redirected.c_str());
           });
     }
     headless_engine_->GetServiceManager()
         ->RegisterService<clay::ResourceLoaderCreatorService>(
             std::make_shared<clay::ResourceLoaderCreatorService>(
-                [fetcher_holder](
+                [provider](
                     fml::RefPtr<fml::TaskRunner> task_runner,
                     std::shared_ptr<clay::ResourceLoaderIntercept> intercept) {
                   return std::make_shared<clay::ResourceLoaderEmbedder>(
-                      task_runner, intercept, fetcher_holder);
+                      task_runner, intercept, provider);
                 }));
   }
-  headless_engine_->SendViewportMetrics(
-      builder->frame.width * builder->screen_size.pixel_ratio,
-      builder->frame.height * builder->screen_size.pixel_ratio,
-      builder->screen_size.pixel_ratio);
+  headless_engine_->SendViewportMetrics(config.width * config.pixel_ratio,
+                                        config.height * config.pixel_ratio,
+                                        config.pixel_ratio);
 }
 
 LynxUIRendererWindowless::~LynxUIRendererWindowless() {

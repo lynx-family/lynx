@@ -11,6 +11,8 @@ lynx_core_source_set("resource") {
     "js_source_loader_desktop.h",
     "lynx_resource_loader_embedder.cc",
     "lynx_resource_loader_embedder.h",
+    "resource_provider_embedder.cc",
+    "resource_provider_embedder.h",
   ]
   if (is_win || is_linux) {
     sources += [ "js_source_loader_desktop.cc" ]

@@ -8,6 +8,7 @@
 
 #include "core/renderer/ui_wrapper/common/prop_bundle_creator_default.h"
 #include "core/renderer/ui_wrapper/painting/empty/painting_context_implementation.h"
+#include "platform/embedder/interfaces/renderer_factory.h"
 
 namespace lynx {
 namespace embedder {
@@ -128,16 +129,15 @@ class TestUIDelegate : public tasm::UIDelegate {
 
 }  // namespace
 
-TestLynxUIRenderer::TestLynxUIRenderer(lynx_view_builder_t* builder)
-    : LynxUIRenderer(builder),
+TestLynxUIRenderer::TestLynxUIRenderer(RendererConfig config)
+    : LynxUIRenderer(config),
       state_(std::make_shared<TestPaintingState>()),
       ui_delegate_(std::make_unique<TestUIDelegate>(state_)) {}
 
 TestLynxUIRenderer::~TestLynxUIRenderer() = default;
 
-std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(
-    lynx_view_builder_t* builder) {
-  return std::make_unique<TestLynxUIRenderer>(builder);
+std::unique_ptr<LynxUIRenderer> CreateDefaultUIRenderer(RendererConfig config) {
+  return std::make_unique<TestLynxUIRenderer>(std::move(config));
 }
 
 }  // namespace embedder

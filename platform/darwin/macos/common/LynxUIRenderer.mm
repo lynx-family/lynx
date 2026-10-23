@@ -16,10 +16,7 @@
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterTextInputPlugin.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
-#include "core/base/threading/task_runner_manufactor.h"
-#include "platform/embedder/lynx_view_clients.h"
-#include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
-#include "platform/embedder/public/capi/lynx_memory_capi.h"
+#include "platform/embedder/interfaces/renderer_factory.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
 #include "third_party/rapidjson/reader.h"
@@ -36,16 +33,7 @@
 
 - (instancetype)init {
   self = [super init];
-#if ENABLE_TESTBENCH_RECORDER
-  // Set storage directory for testbench recorder.
-  if (lynx::tasm::LynxEnv::GetInstance().GetStorageDirectory().empty()) {
-    NSString* filePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask,
-                                                              YES) lastObject];
-    if (filePath) {
-      lynx::tasm::LynxEnv::GetInstance().SetStorageDirectory([filePath UTF8String]);
-    }
-  }
-#endif
+
   if (self) {
     _clayViewProvider = [[ClayViewProvider alloc] init];
   }
@@ -203,52 +191,42 @@ void DispatchEmulatedMouseEvent(LynxUIRendererMac* lynx_ui_renderer, const std::
 
 }  // namespace
 
-std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(lynx_view_builder_t* builder) {
-  return std::make_unique<LynxUIRendererImpl>(builder);
+std::unique_ptr<LynxUIRenderer> CreateDefaultUIRenderer(RendererConfig config) {
+  return std::make_unique<LynxUIRendererImpl>(std::move(config));
 }
 
-LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
-    : LynxUIRenderer(builder), frame_timing_listener_(std::make_shared<FrameTimingListenerImpl>()) {
-  // init ui thread native loop
-  if (NSThread.isMainThread) {
-    base::UIThread::Init();
-  } else {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      base::UIThread::Init();
-    });
-  }
-
+LynxUIRendererImpl::LynxUIRendererImpl(RendererConfig config)
+    : LynxUIRendererClay(config),
+      frame_timing_listener_(std::make_shared<FrameTimingListenerImpl>()) {
   auto lynx_ui_renderer = [[LynxUIRendererMac alloc] init];
   auto* view_context =
       reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);
-  if (builder->default_background_color) {
+  if (config.default_background_color) {
     view_context->GetPageView()->SetDefaultBackgroundColor(
-        clay::Color(*builder->default_background_color));
+        clay::Color(*config.default_background_color));
   }
   auto module_factory = std::unique_ptr<lynx::runtime::NativeModuleFactory>(
       lynx::LynxModuleFactory::CreateModuleFactory(view_context));
   ui_delegate_ =
       std::make_unique<lynx::tasm::UIDelegateClay>(view_context, std::move(module_factory));
   lynx_ui_renderer_ = (__bridge_retained void*)lynx_ui_renderer;
-  CGRect frame = CGRectMake(0, 0, builder->frame.width, builder->frame.height);
+  CGRect frame = CGRectMake(0, 0, config.width, config.height);
   [lynx_ui_renderer setFrame:frame];
-  [lynx_ui_renderer setParent:builder->parent];
+  [lynx_ui_renderer setParent:config.parent];
 
   clay::NativeViewServiceEmbedder::SetViewFactories(view_context,
-                                                    std::move(builder->native_view_creators));
+                                                    std::move(config.native_view_creators));
 
-  if (builder->generic_fetcher) {
-    auto fetcher_holder = std::make_shared<LynxResourceFetcherHolder>(builder->generic_fetcher);
+  if (config.resource_provider) {
+    resource_provider_ = std::move(config.resource_provider);
+    std::weak_ptr<ResourceProvider> weak_provider = resource_provider_;
     [lynx_ui_renderer.clayViewProvider
         setInterceptUrlCallback:^NSString*(NSString* originUrl, BOOL shouldDecode,
                                            NSInteger maxPathLength) {
-          char* redirected = lynx_generic_resource_fetcher_intercept(
-              fetcher_holder->GenericFetcher(), [originUrl UTF8String], shouldDecode);
-          if (!redirected) {
-            return nil;
-          }
-          NSString* redirectedUrl = [NSString stringWithUTF8String:redirected];
-          lynx_free(redirected);
+          auto provider = weak_provider.lock();
+          if (!provider) return originUrl;
+          auto redirected = provider->Intercept([originUrl UTF8String], shouldDecode);
+          NSString* redirectedUrl = [NSString stringWithUTF8String:redirected.c_str()];
           if (!redirectedUrl) {
             return nil;
           }
@@ -256,10 +234,13 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
         }];
     view_context->GetServiceManager()->RegisterService<clay::ResourceLoaderCreatorService>(
         std::make_shared<clay::ResourceLoaderCreatorService>(
-            [fetcher_holder](fml::RefPtr<fml::TaskRunner> task_runner,
-                             std::shared_ptr<clay::ResourceLoaderIntercept> intercept) {
+            [weak_provider](fml::RefPtr<fml::TaskRunner> task_runner,
+                            std::shared_ptr<clay::ResourceLoaderIntercept> intercept)
+                -> std::shared_ptr<clay::ResourceLoader> {
+              auto provider = weak_provider.lock();
+              if (!provider) return nullptr;
               return std::make_shared<clay::ResourceLoaderEmbedder>(task_runner, intercept,
-                                                                    fetcher_holder);
+                                                                    provider);
             }));
   }
 
@@ -276,13 +257,14 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
 LynxUIRendererImpl::~LynxUIRendererImpl() {
   if (lynx_ui_renderer_) {
     LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+    [lynx_ui_renderer.clayViewProvider setInterceptUrlCallback:nil];
     [lynx_ui_renderer.clayViewProvider setParent:nil];
   }
   ui_delegate_.reset();
   if (lynx_ui_renderer_) {
     (void)(__bridge_transfer id)lynx_ui_renderer_;
   }
-  frame_timing_listener_->RemoveAllClients();
+  frame_timing_listener_->SetClient(nullptr);
 }
 
 void LynxUIRendererImpl::SetParent(NativeWindow parent) {
@@ -449,8 +431,8 @@ void LynxUIRendererImpl::SendPointerEvent(const ClayPointerEvent& event) {
   [lynx_ui_renderer.clayViewProvider.engine sendPointerEvent:event];
 }
 
-void LynxUIRendererImpl::AddClient(LynxViewClients* client) {
-  frame_timing_listener_->AddClient(client);
+void LynxUIRendererImpl::SetFrameTimingClient(FrameTimingClient* client) {
+  frame_timing_listener_->SetClient(client);
 }
 
 }  // namespace embedder

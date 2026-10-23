@@ -8,28 +8,19 @@
 #include <memory>
 #include <string>
 
-#include "clay/public/clay.h"
 #include "core/public/ui_delegate.h"
-#include "platform/embedder/lynx_view_builder_priv.h"
+#include "platform/embedder/interfaces/renderer_config.h"
 
 namespace lynx {
 namespace embedder {
 
-class LynxViewClients;
-
 // Abstract class for UI Renderer.
 class LynxUIRenderer {
  public:
-  static std::unique_ptr<LynxUIRenderer> CreateWithBuilder(
-      lynx_view_builder_t* builder);
-
-  static std::unique_ptr<LynxUIRenderer> CreateWindowlessUIRenderer(
-      lynx_view_builder_t* builder);
-
-  explicit LynxUIRenderer(lynx_view_builder_t* builder)
-      : width_(builder->frame.width),
-        height_(builder->frame.height),
-        pixel_ratio_(builder->screen_size.pixel_ratio) {}
+  explicit LynxUIRenderer(const RendererConfig& config)
+      : width_(config.width),
+        height_(config.height),
+        pixel_ratio_(config.pixel_ratio) {}
   virtual ~LynxUIRenderer() = default;
 
   LynxUIRenderer(const LynxUIRenderer&) = delete;
@@ -60,17 +51,15 @@ class LynxUIRenderer {
   virtual void EmulateMouseEvent(const char* event_name, float x, float y,
                                  float delta_x, float delta_y) {}
 
-  // Dispatches DevTool synthetic mouse input through Clay's pointer pipeline.
-  void EmulateMouseSyntheticEvent(const char* event_type, float x, float y,
-                                  const char* button, float delta_x,
-                                  float delta_y, int modifiers,
-                                  int click_count);
+  virtual void EmulateMouseSyntheticEvent(const char* event_type, float x,
+                                          float y, const char* button,
+                                          float delta_x, float delta_y,
+                                          int modifiers, int click_count) {}
 
-  // Dispatches DevTool synthetic touch input through Clay's pointer pipeline.
-  void EmulateTouchSyntheticEvent(const char* event_type, float x, float y,
-                                  const char* button, float delta_x,
-                                  float delta_y, int modifiers,
-                                  int click_count);
+  virtual void EmulateTouchSyntheticEvent(const char* event_type, float x,
+                                          float y, const char* button,
+                                          float delta_x, float delta_y,
+                                          int modifiers, int click_count) {}
 
   virtual void Focus(int node_id) {}
 
@@ -86,21 +75,14 @@ class LynxUIRenderer {
 
   virtual void RegisterIMEHandler(void* handler, void* opaque) = 0;
 
-  virtual void AddClient(LynxViewClients* client) {}
+  virtual void SetFrameTimingClient(FrameTimingClient* client) {}
 
   // TODO: Add more methods.
 
  protected:
-  virtual void SendPointerEvent(const ClayPointerEvent& event) {}
-
   float width_ = 0;
   float height_ = 0;
   float pixel_ratio_ = 1;
-
- private:
-  // Converts logical coordinates to physical pixels and sends the event with
-  // its device-specific lifecycle.
-  void DispatchSyntheticPointerEvent(ClayPointerEvent event);
 };
 }  // namespace embedder
 }  // namespace lynx

@@ -50,10 +50,10 @@ namespace clay {
 ResourceLoaderEmbedder::ResourceLoaderEmbedder(
     fml::RefPtr<fml::TaskRunner> task_runner,
     std::shared_ptr<ResourceLoaderIntercept> intercept,
-    std::shared_ptr<lynx::embedder::LynxResourceFetcherHolder> fetcher_holder)
+    std::shared_ptr<lynx::embedder::ResourceProvider> provider)
     : ui_task_runner_(task_runner),
       intercept_(intercept),
-      fetcher_holder_(fetcher_holder) {}
+      provider_(std::move(provider)) {}
 
 void ResourceLoaderEmbedder::Load(
     const std::string& src,
@@ -86,47 +86,31 @@ void ResourceLoaderEmbedder::LoadByNet(
     const std::string& url,
     const std::function<void(const uint8_t*, size_t)>& callback,
     const ResourceType resource_type) {
-  lynx_resource_request_t* fetcher_request =
-      lynx_resource_request_create_internal(
-          url, ConvertToLynxResourceType(resource_type));
-  lynx_resource_response_t* fetcher_response =
-      lynx_resource_response_create_internal(fml::MakeCopyable(
-          [callback = std::move(callback), ui_task_runner = ui_task_runner_](
-              lynx_resource_response_t* fetcher_response) mutable {
-            // Swap the response to make sure the response is valid when
-            // callback is called.
-            lynx_resource_response_t* response =
-                lynx_resource_response_create_swap(fetcher_response);
-            ui_task_runner->PostTask([callback, response]() mutable {
-              if (callback) {
-                callback(response->data.content, response->data.length);
-              }
-              lynx_resource_response_release(response);
-            });
-          }));
-  lynx_generic_resource_fetcher_fetch_resource(
-      fetcher_holder_->GenericFetcher(), fetcher_request, fetcher_response);
+  auto provider = provider_.lock();
+  if (!provider) {
+    if (callback) callback(nullptr, 0);
+    return;
+  }
+  provider->Load(
+      url, ConvertToLynxResourceType(resource_type),
+      [callback, runner = ui_task_runner_](lynx::embedder::ResourceData data) {
+        runner->PostTask([callback, data = std::move(data)]() {
+          if (callback) callback(data.bytes.get(), data.size);
+        });
+      });
 }
 
 RawResource ResourceLoaderEmbedder::LoadSyncByNet(
     const std::string& url, const ResourceType resource_type) {
   std::promise<RawResource> promise;
   std::future<RawResource> future = promise.get_future();
-  lynx_resource_request_t* fetcher_request =
-      lynx_resource_request_create_internal(
-          url, ConvertToLynxResourceType(resource_type));
-  lynx_resource_response_t* fetcher_response =
-      lynx_resource_response_create_internal(fml::MakeCopyable(
-          [promise = std::move(promise)](
-              lynx_resource_response_t* fetcher_response) mutable {
-            lynx_resource_response_t* response =
-                lynx_resource_response_create_swap(fetcher_response);
-            promise.set_value(RawResource::MakeWithCopy(response->data.content,
-                                                        response->data.length));
-            lynx_resource_response_release(response);
-          }));
-  lynx_generic_resource_fetcher_fetch_resource(
-      fetcher_holder_->GenericFetcher(), fetcher_request, fetcher_response);
+  auto provider = provider_.lock();
+  if (!provider) return RawResource::MakeWithCopy(nullptr, 0);
+  provider->Load(url, ConvertToLynxResourceType(resource_type),
+                 [&promise](lynx::embedder::ResourceData data) {
+                   promise.set_value(
+                       RawResource::MakeWithCopy(data.bytes.get(), data.size));
+                 });
   return future.get();
 }
 

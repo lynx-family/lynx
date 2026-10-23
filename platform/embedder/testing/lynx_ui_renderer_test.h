@@ -27,7 +27,7 @@ struct TestPaintingState {
 
 class TestLynxUIRenderer : public LynxUIRenderer {
  public:
-  explicit TestLynxUIRenderer(lynx_view_builder_t* builder);
+  explicit TestLynxUIRenderer(RendererConfig config);
   ~TestLynxUIRenderer() override;
 
   void SetParent(NativeWindow parent) override {}

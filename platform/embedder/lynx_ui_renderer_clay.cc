@@ -2,11 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "platform/embedder/lynx_ui_renderer.h"
+#include "platform/embedder/lynx_ui_renderer_clay.h"
 
 #include <string_view>
 
 #include "base/include/timer/time_utils.h"
+#include "clay/public/clay.h"
 
 namespace lynx {
 namespace embedder {
@@ -47,7 +48,7 @@ int64_t ButtonMask(std::string_view button) {
 
 }  // namespace
 
-void LynxUIRenderer::DispatchSyntheticPointerEvent(ClayPointerEvent event) {
+void LynxUIRendererClay::DispatchSyntheticPointerEvent(ClayPointerEvent event) {
   event.struct_size = sizeof(event);
   event.x *= pixel_ratio_;
   event.y *= pixel_ratio_;
@@ -86,11 +87,9 @@ void LynxUIRenderer::DispatchSyntheticPointerEvent(ClayPointerEvent event) {
   }
 }
 
-void LynxUIRenderer::EmulateMouseSyntheticEvent(const char* event_type, float x,
-                                                float y, const char* button,
-                                                float delta_x, float delta_y,
-                                                int modifiers,
-                                                int click_count) {
+void LynxUIRendererClay::EmulateMouseSyntheticEvent(
+    const char* event_type, float x, float y, const char* button, float delta_x,
+    float delta_y, int modifiers, int click_count) {
   // ClayPointerEvent has no modifier/click-count fields; kept for API parity.
   (void)modifiers;
   (void)click_count;
@@ -135,11 +134,9 @@ void LynxUIRenderer::EmulateMouseSyntheticEvent(const char* event_type, float x,
   DispatchSyntheticPointerEvent(event);
 }
 
-void LynxUIRenderer::EmulateTouchSyntheticEvent(const char* event_type, float x,
-                                                float y, const char* button,
-                                                float delta_x, float delta_y,
-                                                int modifiers,
-                                                int click_count) {
+void LynxUIRendererClay::EmulateTouchSyntheticEvent(
+    const char* event_type, float x, float y, const char* button, float delta_x,
+    float delta_y, int modifiers, int click_count) {
   (void)modifiers;
   (void)click_count;
   (void)button;

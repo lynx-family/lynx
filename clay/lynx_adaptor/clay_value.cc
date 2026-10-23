@@ -67,6 +67,8 @@ int ClayValueWrapper::Length() const {
     return backend_value_.GetArray().size();
   } else if (backend_value_.IsString()) {
     return backend_value_.GetString().size();
+  } else if (backend_value_.IsArrayBuffer()) {
+    return backend_value_.GetArrayBuffer().size();
   }
   return 0;
 }

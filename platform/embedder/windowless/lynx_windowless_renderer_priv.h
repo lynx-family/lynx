@@ -4,15 +4,20 @@
 #ifndef PLATFORM_EMBEDDER_WINDOWLESS_LYNX_WINDOWLESS_RENDERER_PRIV_H_
 #define PLATFORM_EMBEDDER_WINDOWLESS_LYNX_WINDOWLESS_RENDERER_PRIV_H_
 
+#include <functional>
+#include <memory>
+
 #include "base/include/fml/memory/ref_counted.h"
 #include "clay/public/clay.h"
+#include "platform/embedder/interfaces/renderer_config.h"
 #include "platform/embedder/public/capi/lynx_windowless_renderer_capi.h"
 
 namespace lynx {
 namespace embedder {
-class LynxWindowlessRenderer
-    : public lynx::fml::RefCountedThreadSafe<LynxWindowlessRenderer> {
+class LynxWindowlessRenderer : public RendererBinding {
  public:
+  std::unique_ptr<LynxUIRenderer> CreateUIRenderer(
+      RendererConfig config) override;
   lynx_windowless_renderer_type_e type = kRendererTypeSoftware;
   void* user_data = nullptr;
   void (*finalizer)(lynx_windowless_renderer_t*, void*) = nullptr;
@@ -54,6 +59,7 @@ class LynxWindowlessRenderer
   bool GetAcceleratedPaintInfo(lynx_accelerated_paint_info_t* paint_info);
 
  private:
+  void ReleaseSelf() const override { delete this; }
   ClayHeadlessRendererConfig renderer_config_ = {};
   ClaySharedImageSinkRef sink_ref_ = nullptr;
 };

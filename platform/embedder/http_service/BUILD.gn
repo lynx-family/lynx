@@ -21,7 +21,7 @@ lynx_core_source_set("http_service") {
 
   public_configs = [
     "../:public_api",
-    "../:config",
+    "../:engine_config",
   ]
   deps = [ "../:public_headers" ]
 }

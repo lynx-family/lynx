@@ -5,14 +5,13 @@
 #ifndef PLATFORM_EMBEDDER_FRAME_TIMING_LISTENER_IMPL_H_
 #define PLATFORM_EMBEDDER_FRAME_TIMING_LISTENER_IMPL_H_
 
-#include <list>
+#include <mutex>
 
 #include "clay/shell/common/frame_timing_listener.h"
+#include "platform/embedder/interfaces/renderer_config.h"
 
 namespace lynx {
 namespace embedder {
-
-class LynxViewClients;
 
 class FrameTimingListenerImpl : public clay::FrameTimingListener {
  public:
@@ -21,11 +20,11 @@ class FrameTimingListenerImpl : public clay::FrameTimingListener {
   void OnFrameTiming(int64_t frame_start_time_in_ns,
                      int64_t frame_finish_time_in_ns) override;
 
-  void AddClient(LynxViewClients* client);
-  void RemoveAllClients();
+  void SetClient(FrameTimingClient* client);
 
  private:
-  std::list<LynxViewClients*> clients_;
+  std::recursive_mutex mutex_;
+  FrameTimingClient* client_ = nullptr;
 };
 
 }  // namespace embedder
