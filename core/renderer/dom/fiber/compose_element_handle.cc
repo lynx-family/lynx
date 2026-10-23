@@ -18,6 +18,7 @@ namespace {
 
 constexpr char kOverlayTag[] = "overlay";
 constexpr char kSvgTag[] = "svg";
+constexpr char kAnimaXTag[] = "animax-view";
 
 fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
                                           ComposeElementKind kind,
@@ -37,6 +38,8 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
       return manager->CreateFiberElement(BASE_STATIC_STRING(kSvgTag));
     case ComposeElementKind::kOverlay:
       return manager->CreateFiberElement(BASE_STATIC_STRING(kOverlayTag));
+    case ComposeElementKind::kAnimaX:
+      return manager->CreateFiberElement(BASE_STATIC_STRING(kAnimaXTag));
     case ComposeElementKind::kCustom:
       return manager->CreateFiberElement(tag);
   }
