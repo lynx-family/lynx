@@ -155,6 +155,16 @@ LYNX_CAPI_EXPORT bool lynx_native_view_present_surface(
 LYNX_CAPI_EXPORT lynx_surface_handle_t* lynx_native_view_acquire_surface(
     lynx_native_view_t*, int width, int height);
 
+// For serialized offline draws only. The previous draw and host presentation
+// must be finished. May recycle an unconsumed pending buffer when the pool is
+// full, but never the current front. Ownership matches
+// lynx_native_view_acquire_surface(); nullptr means no buffer is available.
+// Publish writes with lynx_native_view_swap_back(), then request the next draw.
+// Await that draw and validate its host output before acquiring another buffer.
+LYNX_CAPI_EXPORT lynx_surface_handle_t*
+lynx_native_view_acquire_surface_for_sync_draw(lynx_native_view_t*, int width,
+                                               int height);
+
 // Acquires the latest back buffer and assigns its texture-coordinate
 // transformation. If transform is nullptr, the current transformation remains
 // unchanged. Otherwise, it must point to nine floats in this row-major order:
