@@ -13,8 +13,6 @@ lynx_core_source_set("host_script") {
     "host_script_interceptor.h",
     "host_script_js_dispatcher.cc",
     "host_script_js_dispatcher.h",
-    "host_script_jsb_call.cc",
-    "host_script_jsb_call.h",
     "host_script_module.cc",
     "host_script_module.h",
     "host_script_session.cc",
@@ -28,6 +26,20 @@ lynx_core_source_set("host_script") {
     "../../../../third_party/binding/napi:napi_binding_base",
     "../../../build",
     "../../../runtime/common/napi:napi_binding_core",
+  ]
+}
+
+# BTS native module interception, installed into each module manager.
+lynx_core_source_set("jsb_interceptor") {
+  sources = [
+    "host_script_module_interceptor.cc",
+    "host_script_module_interceptor.h",
+    "host_script_value_snapshot.cc",
+    "host_script_value_snapshot.h",
+  ]
+  deps = [
+    ":host_script",
+    "../../../runtime/js:js",
     "../../../runtime/js/jsi",
     "../../../value_wrapper:value_wrapper",
   ]
@@ -47,11 +59,14 @@ lynx_core_source_set("process_runtime") {
 }
 
 if (enable_unittests) {
-  if (is_android) {
-    unittest_exec("host_script_jsb_call_unittests_exec") {
-      sources = [ "host_script_jsb_call_unittest.cc" ]
+  # The interceptor needs no platform macro, so it is also tested on hosts.
+  if (enable_napi_binding &&
+      (is_mac || is_linux || is_win || (is_android && lynx_in_debug))) {
+    unittest_exec("host_script_module_interceptor_unittests_exec") {
+      sources = [ "host_script_module_interceptor_unittest.cc" ]
       deps = [
         ":host_script",
+        ":jsb_interceptor",
         "../../../inspector:inspector",
         "../../../renderer/dom:dom",
         "../../../runtime",

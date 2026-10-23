@@ -13,6 +13,7 @@
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/shell/host_script/android/lynx_view/host_script_view_observer_android.h"
 #include "core/shell/host_script/android/runtime/process_runtime_android.h"
+#include "core/shell/host_script/runtime/host_script_module_interceptor.h"
 
 namespace lynx {
 namespace shell {
@@ -53,6 +54,9 @@ void EvaluateHostScriptRuntime(ProcessRuntime::Domain domain,
 
 void PrepareHostScriptRuntime() {
   ui_initialized.store(true, std::memory_order_release);
+  // Precedes every JS runtime, so DevTool may be enabled later. Each call
+  // checks admission first.
+  HostScriptModuleInterceptor::Register();
   base::TaskRunnerManufactor runners(base::MOST_ON_TASM, false, false);
   DCHECK(runners.GetUITaskRunner()->RunsTasksOnCurrentThread());
   InstallHostScriptViewObserver();
