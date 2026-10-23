@@ -70,6 +70,8 @@ class TreeResolver {
   static fml::RefPtr<lepus::Dictionary> GetTemplateParts(
       const fml::RefPtr<Element>& template_element);
 
+  static bool IsTemplateEventAttribute(const base::String& key);
+
   // Apply template dynamic/spread attributes on top of the static attributes
   // initialized by FromElementInfo. The overload with previous slots rebuilds
   // template attributes after clearing keys that used to come from spread

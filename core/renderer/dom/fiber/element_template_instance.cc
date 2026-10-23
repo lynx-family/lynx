@@ -8,6 +8,7 @@
 #include <future>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
@@ -36,6 +37,9 @@ static constexpr const char kDefaultPageComponentId[] = "0";
 static constexpr int32_t kDefaultPageCSSId = 0;
 static constexpr uint32_t kTypedTemplateAttributeSlotIndex = 0;
 static constexpr uint32_t kTypedTemplateRootChildSlotIndex = 0;
+constexpr char kGestureValue[] = "value";
+constexpr char kGestureType[] = "type";
+constexpr char kGestureMarker[] = "gesture";
 
 fml::RefPtr<ElementTemplateInstance> ResolveElementTemplateInstanceValue(
     const lepus::Value& value) {
@@ -134,31 +138,53 @@ lepus::Value CopyTemplateValueForStorage(const lepus::Value& value) {
   return value.IsCallable() ? value : lepus::Value::Clone(value);
 }
 
-lepus::Value CopyTemplateObjectForStorage(const lepus::Value& value) {
+lepus::Value CopyTemplateObjectForStorage(
+    const lepus::Value& value,
+    const base::String* retained_property = nullptr) {
   auto object = lepus::Dictionary::Create();
-  lepus::Value::ForEachLepusValue(
-      value, [&object](const lepus::Value& key, const lepus::Value& item) {
-        if (key.IsString()) {
-          object->SetValue(key.String(), CopyTemplateValueForStorage(item));
-        }
-      });
+  lepus::Value::ForEachLepusValue(value, [&object, retained_property](
+                                             const lepus::Value& key,
+                                             const lepus::Value& item) {
+    if (!key.IsString()) {
+      return;
+    }
+    if (retained_property != nullptr && key.String() == *retained_property) {
+      object->SetValue(key.String(), item);
+    } else {
+      object->SetValue(key.String(), CopyTemplateValueForStorage(item));
+    }
+  });
   return lepus::Value(std::move(object));
 }
 
-lepus::Value CopyAttributeSlotsForStorage(const lepus::Value& attribute_slots) {
-  if (!attribute_slots.IsArrayOrJSArray()) {
-    return lepus::Value();
+// Callback contexts are shared with framework hydration. Copy the descriptor's
+// data containers while retaining each live worklet object and its mutable
+// state.
+lepus::Value CopyTemplateGestureForStorage(const lepus::Value& value) {
+  BASE_STATIC_STRING_DECL(kCallbacksProperty, "callbacks");
+  BASE_STATIC_STRING_DECL(kCallbackProperty, "callback");
+  auto entries = lepus::CArray::Create();
+  const auto gestures = value.GetProperty(BASE_STATIC_STRING(kGestureValue));
+  for (uint32_t index = 0; index < static_cast<uint32_t>(gestures.GetLength());
+       ++index) {
+    const auto gesture = gestures.GetProperty(index);
+    auto entry = CopyTemplateObjectForStorage(gesture, &kCallbacksProperty);
+    auto callbacks = lepus::CArray::Create();
+    const auto source_callbacks = gesture.GetProperty(kCallbacksProperty);
+    for (uint32_t callback_index = 0;
+         callback_index < static_cast<uint32_t>(source_callbacks.GetLength());
+         ++callback_index) {
+      callbacks->emplace_back(CopyTemplateObjectForStorage(
+          source_callbacks.GetProperty(callback_index), &kCallbackProperty));
+    }
+    entry.SetProperty(kCallbacksProperty, lepus::Value(std::move(callbacks)));
+    entries->emplace_back(std::move(entry));
   }
-  auto copied_slots = lepus::CArray::Create();
-  copied_slots->reserve(attribute_slots.GetLength());
-  for (size_t index = 0;
-       index < static_cast<size_t>(attribute_slots.GetLength()); ++index) {
-    auto slot = attribute_slots.GetProperty(static_cast<uint32_t>(index));
-    copied_slots->emplace_back(slot.IsObject()
-                                   ? CopyTemplateObjectForStorage(slot)
-                                   : CopyTemplateValueForStorage(slot));
-  }
-  return lepus::Value(std::move(copied_slots));
+  auto descriptor = lepus::Dictionary::Create();
+  descriptor->SetValue(BASE_STATIC_STRING(kGestureType),
+                       BASE_STATIC_STRING(kGestureMarker));
+  descriptor->SetValue(BASE_STATIC_STRING(kGestureValue), std::move(entries));
+  return lepus::Value(std::move(descriptor));
 }
 
 const SharedTemplateAttributes& TypedTemplateAttributes() {
@@ -359,9 +385,83 @@ void ElementTemplateInstance::SetAttributes(const lepus::Value& attributes) {
   }
 }
 
+void ElementTemplateInstance::CollectCallbackAttributeSlots(
+    const std::vector<ElementInfo>& elements) {
+  for (const auto& element : elements) {
+    if (element.attributes_ != nullptr) {
+      for (const auto& attr : *element.attributes_) {
+        if (attr.type_ != ATTRIBUTE_BINDING_TYPE_DYNAMIC) {
+          continue;
+        }
+        if (attr.key_.IsEqual("main-thread:gesture")) {
+          callback_attribute_slots_->emplace_back(CallbackAttributeSlot{
+              attr.slot_index_, CallbackAttributeType::kGesture});
+        } else if (TreeResolver::IsTemplateEventAttribute(attr.key_)) {
+          callback_attribute_slots_->emplace_back(CallbackAttributeSlot{
+              attr.slot_index_, CallbackAttributeType::kEvent});
+        }
+      }
+    }
+    CollectCallbackAttributeSlots(element.children_);
+  }
+}
+
+lepus::Value ElementTemplateInstance::CopyAttributeSlotForStorage(
+    uint32_t slot_index, const lepus::Value& value) {
+  if (!callback_attribute_slots_.has_value() && !IsTypedTemplate() &&
+      tasm_ != nullptr) {
+    const auto type = value.IsObject()
+                          ? value.GetProperty(BASE_STATIC_STRING(kGestureType))
+                          : lepus::Value();
+    // Only live callback candidates need metadata. Ordinary writes must not
+    // force cold template decoding.
+    if (value.IsCallable() ||
+        (type.IsString() && (type.String().IsEqual("gesture") ||
+                             type.String().IsEqual("worklet")))) {
+      const auto entry = tasm_->FindTemplateEntry(bundle_url_.str());
+      if (entry != nullptr) {
+        callback_attribute_slots_.emplace();
+        const auto& info = entry->GetElementTemplateInfo(template_key_.str());
+        CollectCallbackAttributeSlots(info.elements_);
+      }
+    }
+  }
+  if (!value.IsEmpty() && callback_attribute_slots_.has_value()) {
+    const auto slot = std::find_if(
+        callback_attribute_slots_->begin(), callback_attribute_slots_->end(),
+        [slot_index](const auto& slot) { return slot.index == slot_index; });
+    if (slot != callback_attribute_slots_->end()) {
+      if (slot->type == CallbackAttributeType::kGesture) {
+        return CopyTemplateGestureForStorage(value);
+      }
+      if (value.IsCallable()) {
+        return value;
+      }
+      if (value.IsObject()) {
+        // Snapshot the event wrapper while retaining its live MTS context.
+        BASE_STATIC_STRING_DECL(kContextProperty, "value");
+        return CopyTemplateObjectForStorage(value, &kContextProperty);
+      }
+    }
+  }
+  return value.IsObject() ? CopyTemplateObjectForStorage(value)
+                          : CopyTemplateValueForStorage(value);
+}
+
 void ElementTemplateInstance::SetAttributeSlots(
     const lepus::Value& attribute_slots) {
-  attribute_slots_ = CopyAttributeSlotsForStorage(attribute_slots);
+  lepus::Value copied_attribute_slots;
+  if (attribute_slots.IsArrayOrJSArray()) {
+    auto copied_slots = lepus::CArray::Create();
+    const auto length = static_cast<uint32_t>(attribute_slots.GetLength());
+    copied_slots->reserve(length);
+    for (uint32_t index = 0; index < length; ++index) {
+      copied_slots->emplace_back(CopyAttributeSlotForStorage(
+          index, attribute_slots.GetProperty(index)));
+    }
+    copied_attribute_slots = lepus::Value(std::move(copied_slots));
+  }
+  attribute_slots_ = std::move(copied_attribute_slots);
   ++attribute_slots_generation_;
 }
 
@@ -458,6 +558,23 @@ ElementTemplateInstance::CreateElementTreeTask(TemplateEntry* entry) {
   auto future = promise.get_future();
   auto template_key = template_key_;
   auto attribute_slots = attribute_slots_;
+  if (callback_attribute_slots_.has_value() &&
+      !callback_attribute_slots_->empty()) {
+    // Detached preparation never consumes callbacks. Keep their live worklet
+    // contexts on MTS, including when a worker outlives this logical instance.
+    auto preparation_slots = lepus::CArray::Create();
+    const auto length = static_cast<uint32_t>(attribute_slots_.GetLength());
+    preparation_slots->reserve(length);
+    for (uint32_t index = 0; index < length; ++index) {
+      preparation_slots->emplace_back(attribute_slots_.GetProperty(index));
+    }
+    for (const auto& slot : *callback_attribute_slots_) {
+      if (slot.index < length) {
+        preparation_slots->set(slot.index, lepus::Value());
+      }
+    }
+    attribute_slots = lepus::Value(std::move(preparation_slots));
+  }
   auto attribute_slots_generation = attribute_slots_generation_;
   return fml::MakeRefCounted<base::OnceTask<GeneratedElementsResult>>(
       [entry, template_key = std::move(template_key),
@@ -900,9 +1017,8 @@ void ElementTemplateInstance::SetAttributeSlot(uint32_t slot_index,
     }
   }
   attribute_slots_ = lepus::Value(std::move(next_slots));
-  attribute_slots_.SetProperty(
-      slot_index, value.IsObject() ? CopyTemplateObjectForStorage(value)
-                                   : CopyTemplateValueForStorage(value));
+  attribute_slots_.SetProperty(slot_index,
+                               CopyAttributeSlotForStorage(slot_index, value));
   ++attribute_slots_generation_;
   if (IsMaterialized()) {
     ApplyAttributeSlotToTarget(slot_index, previous_attribute_slots);

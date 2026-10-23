@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <functional>
 #include <limits>
 #include <map>
@@ -16,6 +17,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "core/event/event_dispatcher.h"
+#include "core/event/touch_event.h"
 #include "core/public/pipeline_option.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
@@ -28,15 +31,19 @@
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
+#include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/template_entry.h"
 #include "core/renderer/utils/base/element_template_info.h"
 #include "core/renderer/utils/base/tasm_constants.h"
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
 #include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
+#include "core/value_wrapper/value_impl_lepus.h"
+#include "core/value_wrapper/value_wrapper_utils.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -155,6 +162,27 @@ class ElementTemplateInstanceTest : public FiberElementTest {
     instance->SetTASM(tasm.get());
     instance->SetBundleUrl(base::String(DEFAULT_ENTRY_NAME));
     instance->SetTemplateKey(base::String("spread_template"));
+    return instance;
+  }
+
+  fml::RefPtr<ElementTemplateInstance> CreateCompiledCallbackInstance(
+      const std::shared_ptr<runtime::MTSRuntime>& runtime, bool nested_target,
+      const char* key = "main-thread:gesture") {
+    auto instance = CreateCompiledSpreadInstance(nested_target);
+    const auto& entry = tasm->template_entries_[DEFAULT_ENTRY_NAME];
+    entry->SetVm(runtime);
+    auto& root =
+        entry->template_bundle_.element_template_infos_["spread_template"]
+            ->elements_[0];
+    auto& target = nested_target ? root.children_[0] : root;
+    target.attributes_ =
+        std::make_shared<const TemplateAttributes>(TemplateAttributes{
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String(key),
+                      lepus::Value(), 0},
+            Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("flatten"),
+                      lepus::Value(true), 0},
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                      base::String("data-label"), lepus::Value(), 1}});
     return instance;
   }
 
@@ -3108,6 +3136,339 @@ TEST_P(ElementTemplateInstanceTest,
   value.GetProperty("config").SetProperty("enabled", lepus::Value(false));
   EXPECT_TRUE(
       detector.gesture_config_in_lepus_value().GetProperty("enabled").Bool());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       GestureStoragePreservesLiveCallbacksAndIsolatesWorkerPreparation) {
+  auto runtime = CreatePAPIRuntime();
+  auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  ASSERT_NE(context, nullptr);
+  auto instance = CreateCompiledCallbackInstance(runtime, true);
+  lepus::Value descriptor;
+  constexpr char source[] = R"JS(({
+    type: 'gesture',
+    value: [{id: 1, type: 0, config: {enabled: true},
+      callbacks: [{name: 'onUpdate', callback: {state: 0}}],
+      relationMap: {waitFor: [], simultaneous: [], continueWith: []}}]
+  }))JS";
+  ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, descriptor,
+                               "gesture_storage.js"));
+  const auto source_entry = descriptor.GetProperty("value").GetProperty(0);
+  auto callback = source_entry.GetProperty("callbacks")
+                      .GetProperty(0)
+                      .GetProperty("callback");
+  ASSERT_TRUE(callback.IsJSValue());
+  auto slots = lepus::CArray::Create();
+  slots->emplace_back(descriptor);
+  instance->SetAttributeSlots(lepus::Value(slots));
+  auto stored_entry = instance->attribute_slots_.GetProperty(0)
+                          .GetProperty("value")
+                          .GetProperty(0);
+  auto stored_callback = stored_entry.GetProperty("callbacks")
+                             .GetProperty(0)
+                             .GetProperty("callback");
+  EXPECT_TRUE(stored_callback.IsEqual(callback));
+  stored_callback.SetProperty("state", lepus::Value(7));
+  EXPECT_EQ(callback.GetProperty("state").Number(), 7);
+  source_entry.GetProperty("config").SetProperty("enabled",
+                                                 lepus::Value(false));
+  EXPECT_TRUE(stored_entry.GetProperty("config").GetProperty("enabled").Bool());
+
+  instance->SetAttributeSlot(0, descriptor);
+  stored_entry = instance->attribute_slots_.GetProperty(0)
+                     .GetProperty("value")
+                     .GetProperty(0);
+  EXPECT_FALSE(
+      stored_entry.GetProperty("config").GetProperty("enabled").Bool());
+  EXPECT_TRUE(stored_entry.GetProperty("callbacks")
+                  .GetProperty(0)
+                  .GetProperty("callback")
+                  .IsEqual(callback));
+  auto task = instance->CreateElementTreeTask(
+      tasm->template_entries_[DEFAULT_ENTRY_NAME].get());
+  instance = nullptr;
+  task->Run();
+  auto prepared = task->GetFuture().get();
+  EXPECT_TRUE(prepared.prepared_attribute_slots_.GetProperty(0).IsEmpty());
+  ASSERT_NE(prepared.result_, nullptr);
+  EXPECT_TRUE(prepared.result_->children()[0]->gesture_map().empty());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PAPIEventStoragePreservesContextIdentityAcrossDispatchAndUpdate) {
+  manager->config_->SetEnableEventHandleRefactor(true);
+  auto runtime = CreatePAPIRuntime();
+  auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  ASSERT_NE(context, nullptr);
+  auto instance =
+      CreateCompiledCallbackInstance(runtime, true, "main-thread:bindtap");
+  lepus::Value ignored;
+  constexpr char source[] = R"JS(
+    globalThis.originalContext = {state: {count: 0}, _jsFn: {cb: {_jsFnId: 7}}};
+    globalThis.registry = new FinalizationRegistry(function() {});
+    globalThis.descriptor = {type: 'worklet', value: originalContext};
+    globalThis.runWorklet = function(ctx) {
+      globalThis.sameContext = ctx === originalContext;
+      registry.register(ctx._jsFn.cb, 1);
+      globalThis.carrierAccepted = true;
+      ctx.state.count++;
+    };
+  )JS";
+  ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, ignored,
+                               "event_storage.js"));
+  auto descriptor = runtime->GetGlobalData("descriptor");
+  auto original = runtime->GetGlobalData("originalContext");
+  auto slots = lepus::CArray::Create();
+  slots->emplace_back(descriptor);
+  lepus::Value create_args[] = {lepus::Value("spread_template"), lepus::Value(),
+                                lepus::Value(slots), lepus::Value(),
+                                lepus::Value(1)};
+  auto handle =
+      RendererFunctions::FiberCreateElementTemplate(context, create_args, 5);
+  ASSERT_TRUE(handle.IsRefCounted());
+  instance =
+      fml::static_ref_ptr_cast<ElementTemplateInstance>(handle.RefCounted())
+          .strongify();
+  ASSERT_NE(instance, nullptr);
+  auto stored = instance->attribute_slots_.GetProperty(0);
+  EXPECT_TRUE(stored.GetProperty("value").IsEqual(original));
+  lepus::Value serialize_args[] = {handle};
+  auto serialized = RendererFunctions::FiberSerializeElementTemplate(
+      context, serialize_args, 1);
+  auto message = fml::MakeRefCounted<runtime::MessageEvent>(
+      runtime::ContextProxy::Type::kCoreContext,
+      runtime::ContextProxy::Type::kJSContext,
+      std::make_unique<pub::ValueImplLepus>(serialized));
+  auto copied_message = runtime::MessageEvent::ShallowCopy(*message);
+  auto copied_context =
+      pub::ValueUtils::ConvertValueToLepusValue(*copied_message->message())
+          .GetProperty("attributeSlots")
+          .GetProperty(0)
+          .GetProperty("value");
+  EXPECT_FALSE(copied_context.IsJSValue());
+  EXPECT_TRUE(instance->attribute_slots_.GetProperty(0)
+                  .GetProperty("value")
+                  .IsJSValue());
+  original.GetProperty("state").SetProperty("count", lepus::Value(3));
+  EXPECT_EQ(copied_context.GetProperty("state").GetProperty("count").Number(),
+            0);
+  EXPECT_TRUE(
+      instance->attribute_slots_.GetProperty(0).GetProperty("value").IsEqual(
+          original));
+  original.GetProperty("state").SetProperty("count", lepus::Value(0));
+  // Replacing the caller's wrapper must not replace the installed context.
+  descriptor.SetProperty("value", lepus::Value());
+  EXPECT_TRUE(stored.GetProperty("value").IsEqual(original));
+
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  auto target = root->children()[0];
+  root->MarkAttached();
+  target->MarkAttached();
+  for (int count : {1, 2}) {
+    auto event = fml::MakeRefCounted<event::TouchEvent>("tap");
+    event::EventDispatcher::DispatchEvent(*target, event);
+    EXPECT_TRUE(runtime->GetGlobalData("sameContext").Bool());
+    EXPECT_TRUE(runtime->GetGlobalData("carrierAccepted").Bool());
+    EXPECT_EQ(original.GetProperty("state").GetProperty("count").Number(),
+              count);
+  }
+  // Hydration updates the original context's state in place.
+  constexpr char hydrate[] = "originalContext.state = {count: 10}";
+  ASSERT_TRUE(context->EvalBuf(hydrate, sizeof(hydrate) - 1, ignored,
+                               "event_hydration.js"));
+  auto event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  event::EventDispatcher::DispatchEvent(*target, event);
+  EXPECT_EQ(original.GetProperty("state").GetProperty("count").Number(), 11);
+
+  descriptor.SetProperty("value", original);
+  lepus::Value update_args[] = {handle, lepus::Value(0), descriptor};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(context, update_args,
+                                                        3);
+  auto installed = target->lepus_event_map().find("tap");
+  ASSERT_NE(installed, target->lepus_event_map().end());
+  EXPECT_TRUE(installed->second->lepus_object().IsEqual(original));
+  target->FiberAddEvent("bindEvent", "tap", lepus::Value("backgroundHandler"),
+                        DEFAULT_ENTRY_NAME);
+  update_args[2] = lepus::Value();
+  RendererFunctions::FiberSetAttributeOfElementTemplate(context, update_args,
+                                                        3);
+  installed = target->lepus_event_map().find("tap");
+  ASSERT_NE(installed, target->lepus_event_map().end());
+  EXPECT_TRUE(installed->second->lepus_object().IsEmpty());
+  ASSERT_NE(target->event_map().find("tap"), target->event_map().end());
+  EXPECT_EQ(target->event_map().find("tap")->second->function().str(),
+            "backgroundHandler");
+  auto listeners = target->GetEventListenerMap()->Find("tap");
+  ASSERT_NE(listeners, nullptr);
+  ASSERT_EQ(listeners->size(), 1u);
+  EXPECT_EQ(static_cast<event::ClosureEventListener*>(listeners->front().get())
+                ->closure_type(),
+            event::ClosureEventListener::ClosureType::kJS);
+  auto cleared_event = fml::MakeRefCounted<event::TouchEvent>("tap");
+  event::EventDispatcher::DispatchEvent(*target, cleared_event);
+  EXPECT_EQ(original.GetProperty("state").GetProperty("count").Number(), 11);
+  instance = nullptr;
+  handle = lepus::Value();
+  root = nullptr;
+  target = nullptr;
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       MainThreadNullPreservesNativeCallableRemovalInBothEventModes) {
+  auto runtime = CreatePAPIRuntime();
+  auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  lepus::Value callable;
+  constexpr char source[] = "(function() {})";
+  ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, callable,
+                               "callable_removal.js"));
+  for (bool refactored : {false, true}) {
+    manager->config_->SetEnableEventHandleRefactor(refactored);
+    for (const auto* key :
+         {"main-thread:bindtap", "main-thread:global-bindtap"}) {
+      auto instance = CreateCompiledCallbackInstance(runtime, false, key);
+      instance->SetAttributeSlot(0, callable);
+      auto root = instance->GetRoot();
+      const auto& events = std::string(key) == "main-thread:global-bindtap"
+                               ? root->global_bind_event_map()
+                               : root->event_map();
+      ASSERT_NE(events.find("tap"), events.end());
+      EXPECT_TRUE(events.find("tap")->second->lepus_function().IsCallable());
+      instance->SetAttributeSlot(0, lepus::Value());
+      EXPECT_EQ(events.find("tap"), events.end());
+      if (refactored) {
+        auto listeners = root->GetEventListenerMap()->Find("tap");
+        ASSERT_NE(listeners, nullptr);
+        EXPECT_TRUE(listeners->empty());
+      }
+    }
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       EventStorageExcludesLiveContextsFromDetachedPreparation) {
+  auto runtime = CreatePAPIRuntime();
+  auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  ASSERT_NE(context, nullptr);
+  lepus::Value descriptor;
+  constexpr char source[] = "({type: 'worklet', value: {state: {count: 0}}})";
+  ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, descriptor,
+                               "event_preparation.js"));
+  for (bool initially_empty : {false, true}) {
+    auto instance =
+        CreateCompiledCallbackInstance(runtime, true, "main-thread:bindtap");
+    auto slots = lepus::CArray::Create();
+    slots->emplace_back(initially_empty ? lepus::Value() : descriptor);
+    slots->emplace_back(lepus::Value("label"));
+    instance->SetAttributeSlots(lepus::Value(slots));
+    auto task = instance->CreateElementTreeTask(
+        tasm->template_entries_[DEFAULT_ENTRY_NAME].get());
+    instance->SetAttributeSlot(0, descriptor);
+    EXPECT_TRUE(
+        instance->attribute_slots_.GetProperty(0).GetProperty("value").IsEqual(
+            descriptor.GetProperty("value")));
+    instance = nullptr;
+    task->Run();
+    auto prepared = task->GetFuture().get();
+    EXPECT_TRUE(prepared.prepared_attribute_slots_.GetProperty(0).IsEmpty());
+    EXPECT_EQ(prepared.prepared_attribute_slots_.GetProperty(1).StdString(),
+              "label");
+    ASSERT_NE(prepared.result_, nullptr);
+    EXPECT_TRUE(prepared.result_->children()[0]->event_map().empty());
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       OrdinaryAttributeStorageDefersTemplateMetadataLookup) {
+  auto object = lepus::Dictionary::Create();
+  object->SetValue("type", lepus::Value(42));
+  object->SetValue("payload", lepus::Value("ordinary"));
+  auto other_type = lepus::Dictionary::Create();
+  other_type->SetValue("type", lepus::Value("ordinary"));
+  for (const auto& value :
+       {lepus::Value(), lepus::Value(42), lepus::Value("label"),
+        lepus::Value(object), lepus::Value(other_type)}) {
+    auto instance = CreateCompiledSpreadInstance();
+    auto& infos = tasm->template_entries_[DEFAULT_ENTRY_NAME]
+                      ->template_bundle_.element_template_infos_;
+    // A cold bundle has no cached metadata until preparation requests it.
+    infos.clear();
+    auto slots = lepus::CArray::Create();
+    slots->emplace_back(value);
+    instance->SetAttributeSlots(lepus::Value(slots));
+    EXPECT_TRUE(infos.empty());
+    instance->SetAttributeSlot(0, value);
+    EXPECT_TRUE(infos.empty());
+    EXPECT_TRUE(instance->attribute_slots_.GetProperty(0).IsEqual(value));
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       CallbackMarkersRemainOrdinaryDataOutsideDeclaredSlots) {
+  auto runtime = CreatePAPIRuntime();
+  auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  ASSERT_NE(context, nullptr);
+  auto data = [](const lepus::Value& descriptor) {
+    const auto value = descriptor.GetProperty("value");
+    return value.IsArrayOrJSArray() ? value.GetProperty(0).GetProperty("config")
+                                    : value.GetProperty("state");
+  };
+  for (const auto* source : {
+           R"JS(({type: 'gesture', custom: 'retained', value: [{
+             id: 1, type: 0, config: {count: 1}, callbacks: [],
+             relationMap: {waitFor: [], simultaneous: [], continueWith: []}
+           }]}))JS",
+           "({type: 'worklet', value: {state: {count: 1}}, custom: "
+           "'retained'})"}) {
+    for (int host_kind : {0, 1, 2}) {
+      lepus::Value descriptor;
+      ASSERT_TRUE(context->EvalBuf(source, strlen(source), descriptor,
+                                   "ordinary_callback.js"));
+      auto instance = host_kind == 2 ? fml::AdoptRef<ElementTemplateInstance>(
+                                           new ElementTemplateInstance(manager))
+                                     : CreateCompiledSpreadInstance();
+      if (host_kind == 0) {
+        auto& info =
+            tasm->template_entries_[DEFAULT_ENTRY_NAME]
+                ->template_bundle_.element_template_infos_["spread_template"];
+        info->elements_[0].attributes_ =
+            std::make_shared<const TemplateAttributes>(TemplateAttributes{
+                Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                          base::String("payload"), lepus::Value(), 0}});
+      }
+      if (host_kind == 2) {
+        instance->SetTypedTag(base::String("view"));
+        instance->SetAttributes(descriptor);
+      } else {
+        auto slots = lepus::CArray::Create();
+        slots->emplace_back(descriptor);
+        instance->SetAttributeSlots(lepus::Value(slots));
+      }
+      data(descriptor).SetProperty("count", lepus::Value(2));
+      auto serialized = instance->Serialize();
+      auto stored =
+          host_kind == 2
+              ? serialized.GetProperty("attributes")
+              : serialized.GetProperty("attributeSlots").GetProperty(0);
+      EXPECT_EQ(stored.GetProperty("custom").StdString(), "retained");
+      EXPECT_EQ(stored.GetProperty("type").StdString(),
+                descriptor.GetProperty("type").StdString());
+      EXPECT_EQ(stored.GetProperty("value").GetLength(),
+                descriptor.GetProperty("value").GetLength());
+      EXPECT_EQ(data(stored).GetProperty("count").Number(), 1);
+      instance->SetAttributeSlot(0, descriptor);
+      data(descriptor).SetProperty("count", lepus::Value(3));
+      serialized = instance->Serialize();
+      stored = host_kind == 2
+                   ? serialized.GetProperty("attributes")
+                   : serialized.GetProperty("attributeSlots").GetProperty(0);
+      EXPECT_EQ(stored.GetProperty("custom").StdString(), "retained");
+      EXPECT_EQ(data(stored).GetProperty("count").Number(), 2);
+      auto root = instance->GetRoot();
+      ASSERT_NE(root, nullptr);
+      EXPECT_TRUE(root->gesture_map().empty());
+    }
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,

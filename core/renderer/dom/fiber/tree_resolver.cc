@@ -98,13 +98,6 @@ bool ParseTemplateDataAttribute(std::string_view key, base::String* name) {
   return true;
 }
 
-bool IsTemplateEventAttribute(const base::String& key) {
-  base::String event_type;
-  base::String event_name;
-  return ParseTemplateEventAttribute(key.string_view(), &event_type,
-                                     &event_name);
-}
-
 void RegisterSlotTarget(base::Vector<fml::RefPtr<Element>>* targets,
                         int32_t slot_index,
                         const fml::RefPtr<Element>& element) {
@@ -233,6 +226,27 @@ bool ApplyTemplateEventAttribute(Element* element, const base::String& key,
     return false;
   }
 
+  if (StartsWith(key.string_view(), kMainThreadEventPrefix) &&
+      value.IsEmpty()) {
+    const auto& events = event_type == kEventGlobalBind
+                             ? element->global_bind_event_map()
+                             : element->event_map();
+    const auto handler = events.find(event_name);
+    // Native callables use the ordinary event map and its removal path.
+    // Worklets clear only the MTS context, preserving the BTS channel.
+    if (handler == events.end() ||
+        !handler->second->lepus_function().IsCallable()) {
+      BASE_STATIC_STRING_DECL(kCallbackType, "type");
+      BASE_STATIC_STRING_DECL(kCallbackValue, "value");
+      auto worklet = lepus::Dictionary::Create();
+      worklet->SetValue(kCallbackType, kWorklet);
+      worklet->SetValue(kCallbackValue);
+      element->FiberAddEvent(event_type, event_name,
+                             lepus::Value(std::move(worklet)),
+                             DEFAULT_ENTRY_NAME);
+      return true;
+    }
+  }
   // Element Template is only used by RL3, whose template event handlers are
   // always registered under the default entry context.
   element->FiberAddEvent(event_type, event_name, value, DEFAULT_ENTRY_NAME);
@@ -310,7 +324,7 @@ bool RemoveTemplateDataAttribute(Element* element, const base::String& key) {
 void ApplyTemplateAttributeValue(Element* element, const base::String& key,
                                  const lepus::Value& value,
                                  TemplateAttributeApplyMode mode) {
-  if (IsTemplateEventAttribute(key)) {
+  if (TreeResolver::IsTemplateEventAttribute(key)) {
     if (mode == TemplateAttributeApplyMode::kNonEventOnly) {
       return;
     }
@@ -424,6 +438,13 @@ void ApplyTemplateAttributesToElementInternal(
 }
 
 }  // namespace
+
+bool TreeResolver::IsTemplateEventAttribute(const base::String& key) {
+  base::String event_type;
+  base::String event_name;
+  return ParseTemplateEventAttribute(key.string_view(), &event_type,
+                                     &event_name);
+}
 
 void TreeResolver::ApplyTemplateAttributesToElement(
     Element* element, const lepus::Value& attribute_slots) {
@@ -881,7 +902,8 @@ fml::RefPtr<Element> TreeResolver::FromElementInfo(
     bool has_static_template_event = false;
     for (const auto& attr : *info.attributes_) {
       if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
-        if (generated != nullptr && IsTemplateEventAttribute(attr.key_)) {
+        if (generated != nullptr &&
+            TreeResolver::IsTemplateEventAttribute(attr.key_)) {
           has_static_template_event = true;
         }
         ApplyTemplateAttributeValue(res.get(), attr.key_, attr.value_,
@@ -896,7 +918,7 @@ fml::RefPtr<Element> TreeResolver::FromElementInfo(
         RegisterSlotTarget(&generated->attribute_slot_targets_,
                            static_cast<int32_t>(attr.slot_index_), res);
         if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD ||
-            IsTemplateEventAttribute(attr.key_)) {
+            TreeResolver::IsTemplateEventAttribute(attr.key_)) {
           RegisterSlotTarget(&generated->event_attribute_slot_targets_,
                              static_cast<int32_t>(attr.slot_index_), res);
         }
