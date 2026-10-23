@@ -6,6 +6,7 @@
 #define CORE_RENDERER_DOM_FIBER_COMPOSE_ELEMENT_HANDLE_H_
 
 #include <cstdint>
+#include <memory>
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
@@ -16,6 +17,7 @@
 namespace lynx {
 namespace tasm {
 
+class CustomLayout;
 class ComposeModifierApplicator;
 class ElementManager;
 class TemplateAssembler;
@@ -41,6 +43,14 @@ class ComposeElementHandle final : public lepus::RefCounted {
                        const base::String& tag = base::String(),
                        TemplateAssembler* tasm = nullptr);
 
+  ~ComposeElementHandle() override;
+
+  bool SetCustomLayout(std::shared_ptr<CustomLayout> layout);
+  void visitor(void* rt, void* func, uint64_t trace_tool) override;
+  const std::shared_ptr<CustomLayout>& custom_layout() const {
+    return custom_layout_;
+  }
+
   void ReleaseSelf() const override { delete this; }
   lepus::RefType GetRefType() const override {
     return lepus::RefType::kComposeElementHandle;
@@ -58,8 +68,11 @@ class ComposeElementHandle final : public lepus::RefCounted {
     mount_root_ = std::move(mount_root);
   }
 
+  void ClearCustomLayout();
+
   fml::RefPtr<Element> content_element_;
   fml::RefPtr<Element> mount_root_;
+  std::shared_ptr<CustomLayout> custom_layout_;
 };
 
 }  // namespace tasm
