@@ -390,7 +390,7 @@ void ElementTemplateInstance::CollectCallbackAttributeSlots(
     if (element.attributes_ != nullptr) {
       for (const auto& attr : *element.attributes_) {
         if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC &&
-            (attr.key_.IsEqual("main-thread:gesture") ||
+            (TreeResolver::IsTemplateGestureAttribute(attr.key_) ||
              TreeResolver::IsTemplateEventAttribute(attr.key_))) {
           callback_attribute_slots_->push_back(attr.slot_index_);
         }
@@ -711,7 +711,7 @@ void ElementTemplateInstance::ApplyAttributeSlotToTarget(
     return;
   }
   TreeResolver::ApplyTemplateAttributesToElement(
-      target.get(), previous_attribute_slots, attribute_slots_);
+      target.get(), previous_attribute_slots, attribute_slots_, slot_index);
   NotifyTemplateAttributesChangedForInspector(element_manager_, target.get());
 }
 
