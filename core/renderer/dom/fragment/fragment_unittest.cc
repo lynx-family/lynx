@@ -1183,6 +1183,162 @@ class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
   fml::RefPtr<ComposeElementHandle> handle_;
 };
 
+class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
+ public:
+  lepus::Value Behind(const std::string& expression,
+                      const lepus::Value& previous = {}) {
+    auto node = lepus::Dictionary::Create();
+    node->SetValue("op", lepus::Value(12));
+    node->SetValue("previous", previous);
+    node->SetValue(
+        "resolve",
+        Eval("(function(element, width, height) { "
+             "globalThis.drawCalls = (globalThis.drawCalls || 0) + 1; "
+             "return " +
+             expression + "; })"));
+    return lepus::Value(node);
+  }
+};
+
+TEST_F(ComposeDrawBehindTest, DrawsBeforeContentAndOnlyOnFullRedraw) {
+  auto background = lepus::Dictionary::Create();
+  background->SetValue("op", lepus::Value(3));
+  background->SetValue("propertyId", lepus::Value(kPropertyIDBackgroundColor));
+  background->SetValue("value", lepus::Value("blue"));
+  background->SetValue("previous",
+                       Behind("[[1, 0, 0, width, height, 0xffff0000]]"));
+  Install(lepus::Value(background));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  std::vector<uint32_t> fills;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kFill)
+      fills.push_back(item.payload.fill.color);
+  }
+  EXPECT_THAT(fills, ::testing::ElementsAre(0xffff0000, 0xff0000ff));
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
+  content->fragment_impl()->InvalidateForSubtreeProperty();
+  EXPECT_EQ(Draw(content).GetContentItemsSize(), 0u);
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
+  Invalidate(lepus::Value(handle_));
+  Draw(content);
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
+}
+
+TEST_F(ComposeDrawBehindTest, MultipleHooksAndLayersKeepSeparateTargets) {
+  Install(Behind("[[1, 0, 0, width, height, 0xff0000ff]]",
+                 Layer(Behind("[[1, 0, 0, width, height, 0xffff0000]]"))));
+  auto* first = handle_->mount_root()->GetChildAt(0);
+  auto* layer = first->GetChildAt(0);
+  auto* last = layer->GetChildAt(0);
+  EXPECT_EQ(last, handle_->content_element().get());
+  ASSERT_TRUE(first->fragment_impl()->custom_draw_functions_->draw_behind);
+  ASSERT_TRUE(
+      layer->fragment_impl()->custom_draw_functions_->draw_layer_properties);
+  ASSERT_TRUE(last->fragment_impl()->custom_draw_functions_->draw_behind);
+  Size(first, 100, 60);
+  Size(layer, 100, 60);
+  Size(last, 80, 40);
+  // Drawing a parent may draw its descendants too. Inspect the layer's first
+  // property pass before the outer content pass consumes its dirty flags.
+  EXPECT_TRUE(layer->fragment_impl()->NeedUpdateSubtreeProperty());
+  EXPECT_TRUE(layer->fragment_impl()->has_platform_renderer_);
+  ExpectTranslation(Draw(layer), 60, 60);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  Draw(first);
+  Draw(last);
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
+}
+
+TEST_F(ComposeDrawBehindTest, ConvertsPhysicalRectCoordinatesOnce) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
+  Install(Behind("[[1, 10, 20, width - 10, height - 20, 0x80ffffff]]"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  bool found = false;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type != DisplayListOpType::kRecordBox) continue;
+    found = true;
+    EXPECT_FLOAT_EQ(item.payload.record_box.x, 5);
+    EXPECT_FLOAT_EQ(item.payload.record_box.y, 10);
+    EXPECT_FLOAT_EQ(item.payload.record_box.w, 95);
+    EXPECT_FLOAT_EQ(item.payload.record_box.h, 50);
+  }
+  EXPECT_TRUE(found);
+}
+
+TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
+  for (bool padding_before : {false, true}) {
+    handle_ = nullptr;
+    page_ = nullptr;
+    auto size = lepus::Dictionary::Create();
+    size->SetValue("op", lepus::Value(8));
+    size->SetValue("specifiedAxes", lepus::Value(3));
+    size->SetValue("width", lepus::Value(100.0));
+    size->SetValue("height", lepus::Value(60.0));
+    auto padding = lepus::Dictionary::Create();
+    padding->SetValue("op", lepus::Value(7));
+    for (const auto* side : {"start", "top", "end", "bottom"}) {
+      padding->SetValue(side, lepus::Value(8.0));
+    }
+    const std::string commands = "[[1, 0, 0, width, height, 0xffffffff]]";
+    padding->SetValue("previous", padding_before
+                                      ? lepus::Value(size)
+                                      : Behind(commands, lepus::Value(size)));
+    Install(padding_before ? Behind(commands, lepus::Value(padding))
+                           : lepus::Value(padding));
+    page_->Layout(std::make_shared<PipelineOptions>());
+    auto* target = handle_->mount_root().get();
+    while (!target->HasCustomDrawFunctions()) target = target->GetChildAt(0);
+    EXPECT_FLOAT_EQ(target->width(), padding_before ? 84 : 100);
+    EXPECT_FLOAT_EQ(target->height(), padding_before ? 44 : 60);
+    auto list = Draw(target);
+    bool found = false;
+    for (const auto& item : CollectDisplayListItems(list)) {
+      if (item.type != DisplayListOpType::kFill) continue;
+      found = true;
+      EXPECT_EQ(item.payload.fill.color, 0xffffffff);
+    }
+    EXPECT_TRUE(found);
+  }
+}
+
+TEST_F(ComposeDrawBehindTest, GradientKeepsEndpointsAndClampsOutsideTile) {
+  Install(
+      Behind("[[2, 5, -10, 40, 50, 0, 16, [0x80ffffff, 0x80000000], [0, 1]]]"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto list = Draw(content);
+  DisplayListReader reader(list);
+  bool found = false;
+  while (reader.HasNext()) {
+    const auto item = reader.Next();
+    if (item.type != DisplayListOpType::kLinearGradient) continue;
+    found = true;
+    EXPECT_FLOAT_EQ(item.payload.linear_gradient.angle, 180);
+    EXPECT_EQ(item.payload.linear_gradient.repeat_y, 1);
+    EXPECT_EQ(item.payload.linear_gradient.stop_count, 4u);
+    const auto* stops = reader.Stops(item);
+    ASSERT_NE(stops, nullptr);
+    EXPECT_FLOAT_EQ(stops[0], 0);
+    EXPECT_FLOAT_EQ(stops[1], 10.f / 50);
+    EXPECT_FLOAT_EQ(stops[2], 26.f / 50);
+    EXPECT_FLOAT_EQ(stops[3], 1);
+  }
+  EXPECT_TRUE(found);
+}
+
+TEST_F(ComposeDrawBehindTest, MalformedTailDoesNotRecordPartialBackground) {
+  Install(Behind(
+      "[[1, 0, 0, 10, 10, 0xffff0000], [1, 0, 0, NaN, 10, 0xff000000]]"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    EXPECT_NE(item.type, DisplayListOpType::kFill);
+    EXPECT_NE(item.type, DisplayListOpType::kLinearGradient);
+  }
+}
+
 TEST_F(ComposeGraphicsLayerDrawTest,
        CallbackRunsInFragmentDrawAndRecordsDisplayList) {
   Install(Layer());
