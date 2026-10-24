@@ -12,7 +12,10 @@ if (is_ios) {
   import("//${lynx_dir}/build_overrides/darwin.gni")
   subspec_target("lynx_service_api") {
     output_name = "ServiceAPI"
-    dependency = [ "LynxServiceAPI/Core" ]
+    dependency = [ [
+          "LynxServiceAPI/Core",
+          "$lynx_version",
+        ] ]
     pod_target_xcconfig = {
       HEADER_SEARCH_PATHS = [ "//PODS_ROOT/LynxServiceAPI/lynx" ]
     }
