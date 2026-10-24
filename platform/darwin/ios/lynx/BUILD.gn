@@ -4,6 +4,7 @@
 
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("//${lynx_dir}/build_overrides/resource_file.gni")
+import("../../../../config.gni")
 import("../../../../core/Lynx.gni")
 import("../../../../tools/css_generator/css_keywords_podspec.gni")
 import("Podspecs.gni")
@@ -876,7 +877,14 @@ subspec_target("base") {
     "../../../../core/base:observer",
     "../../../../core/build:build",
   ]
-  dependency = [ "LynxBase/Framework" ]
+  if (use_flatten_deps) {
+    dependency = [ [
+          "LynxBase/Framework",
+          "$lynx_version",
+        ] ]
+  } else {
+    dependency = [ "LynxBase/Framework" ]
+  }
 }
 
 subspec_target("basic_animation") {
