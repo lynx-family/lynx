@@ -309,8 +309,10 @@ void UIDelegateHarmony::OnPageConfigDecoded(
     lynx_context->SetEnableHarmonyNewOverlay(
         config->GetEnableHarmonyNewOverlay() ||
         LynxEnv::GetInstance().EnableHarmonyNewOverlay());
-    if (config->GetEnableNewGesture() && ui_owner_) {
-      ui_owner_->InitGestureArenaManager(lynx_context.get());
+    if (ui_owner_) {
+      ui_owner_->InitGestureArenaManager(
+          lynx_context.get(), config->GetEnableUnifiedGestureHandler(),
+          config->GetEnableNewGesture());
     }
     if (config->GetSyncXElementRegistry() && ui_owner_) {
       ui_owner_->SetEnableSyncXElementRegistry();

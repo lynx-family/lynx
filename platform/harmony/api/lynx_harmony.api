@@ -1360,6 +1360,7 @@ export enum LynxTrailKey {
   ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK = 'enable_element_invoke_ui_method_pending_task'
   MEMORY_MONITOR_CONFIG = 'memory_monitor_config'
   DISABLE_APP_SERVICE_FACTORY_CACHE = 'disable_app_service_factory_cache'
+  ENABLE_UNIFIED_GESTURE_HANDLER = 'enable_unified_gesture_handler'
 }
 
 export interface LynxUIRenderer {

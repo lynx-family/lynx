@@ -172,6 +172,9 @@
 
   if (gestureRecognizer == _nativeGesturePanRecognizer && _gestureConsumer &&
       _gestureConsumer.interceptGestureStatus == LynxInterceptGestureStateTrue) {
+    if (![otherGestureRecognizer canBePreventedByGestureRecognizer:gestureRecognizer]) {
+      return YES;
+    }
     otherGestureRecognizer.state = UIGestureRecognizerStateFailed;
     return NO;
   }

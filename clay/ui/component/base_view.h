@@ -48,7 +48,6 @@
 #include "clay/ui/gesture_handler/gesture_arena_member.h"
 #include "clay/ui/gesture_handler/gesture_detector.h"
 #include "clay/ui/gesture_handler/gesture_handler_delegate.h"
-#include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
 #include "gfx/geometry/transform_operations.h"
 #ifdef ENABLE_ACCESSIBILITY
@@ -347,9 +346,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   float ScrollY() override { return 0; }
   const GestureMap& GetGestureDetectorMap() override {
     return gesture_detector_map_;
-  }
-  const GestureHandlerMap& GetGestureHandlers() override {
-    return gesture_handler_map_;
   }
   virtual void GestureDetectorDidSet();
 
@@ -684,6 +680,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   BaseViewAnimationMutator* GetAnimationMutator();
 
   void DestroyChildrenRecursively(BaseView* view);
+  void ResetGestureHandlerState();
   virtual bool IsIndependentSubViewTree() const { return false; }
 
   virtual void OnDestroy() {}
@@ -869,7 +866,6 @@ class BaseView : public TypeIdentifiable<BaseView>,
   bool transition_animation_ready_ = false;
   // gesture handler
   GestureMap gesture_detector_map_;
-  GestureHandlerMap gesture_handler_map_;
   int gesture_arena_member_id_{0};
 };
 

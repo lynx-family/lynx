@@ -20,6 +20,7 @@ namespace tasm {
 namespace harmony {
 
 class LynxContext;
+class UnifiedGestureHandler;
 class TouchEvent;
 class EventTarget;
 class GestureArenaMember;
@@ -34,7 +35,11 @@ class GestureHandlerTrigger;
 class GestureArenaManager
     : public std::enable_shared_from_this<GestureArenaManager> {
  public:
-  GestureArenaManager(bool enable, LynxContext* context);
+  GestureArenaManager(bool enable, LynxContext* context, bool unified = false);
+  bool UsesUnifiedGestureHandler() const;
+  bool CanControlGesture(int member_id, uint32_t gesture_id) const;
+  void RemoveUnifiedMember(int member_id);
+  void CancelUnifiedGesture();
 
   ~GestureArenaManager();
 
@@ -62,6 +67,7 @@ class GestureArenaManager
   void EnsureGestureDetectorAndHandler();
 
   LynxContext* context_;
+  std::shared_ptr<UnifiedGestureHandler> unified_handler_;
   std::unordered_map<int, std::weak_ptr<GestureArenaMember>> arena_member_map_;
   std::vector<std::weak_ptr<GestureArenaMember>> compete_chain_candidates_;
   std::vector<std::weak_ptr<GestureArenaMember>> bubble_candidate_;

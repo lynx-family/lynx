@@ -179,7 +179,8 @@ class UIOwner {
                       const lepus::Value& param) const;
 
   std::shared_ptr<GestureArenaManager> GetGestureArenaManager() const;
-  void InitGestureArenaManager(LynxContext* context);
+  void InitGestureArenaManager(LynxContext* context, bool unified = true,
+                               bool enabled = true);
   void SetEnableSyncXElementRegistry();
   void GetWindowScale(float scale[2]) const;
 
