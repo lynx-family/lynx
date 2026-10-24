@@ -48,5 +48,9 @@ group("devtool_ng_unit_test") {
   ]
   if (is_mac || is_linux || is_win) {
     deps += [ ":harmony_input_event_target_unittests_exec" ]
+    if (enable_inspector) {
+      deps +=
+          [ "../../platform/embedder:clay_input_event_target_unittests_exec" ]
+    }
   }
 }

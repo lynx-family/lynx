@@ -142,6 +142,7 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
 }
 
 LynxUIRendererWindowless::~LynxUIRendererWindowless() {
+  InvalidateInputEvents();
   headless_engine_->SetHeadlessDelegate(nullptr);
   windowless_renderer_->run_task = nullptr;
   windowless_renderer_->send_pointer_event = nullptr;
@@ -186,6 +187,7 @@ void LynxUIRendererWindowless::SetFrame(float x, float y, float width,
 }
 
 void LynxUIRendererWindowless::Reset() {
+  CancelInputEvents();
   if (auto* vc =
           static_cast<clay::ViewContext*>(headless_engine_->GetViewContext())) {
     vc->ResetPageView();
