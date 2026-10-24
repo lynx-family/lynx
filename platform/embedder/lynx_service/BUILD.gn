@@ -40,3 +40,13 @@ if (enable_unittests) {
     ]
   }
 }
+
+lynx_core_source_set("devtool_service") {
+  sources = [ "lynx_devtool_service.h" ]
+  if (enable_inspector && is_ios) {
+    sources += [ "lynx_devtool_service_darwin.mm" ]
+  } else {
+    sources += [ "lynx_devtool_service_stub.cc" ]
+  }
+  public_deps = [ "../../../service_api:lynx_service_api" ]
+}

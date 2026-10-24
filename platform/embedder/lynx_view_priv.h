@@ -24,7 +24,7 @@ struct lynx_view_t {
       nullptr;
   std::unique_ptr<lynx::embedder::LynxViewClients> lynx_view_clients = nullptr;
 #if ENABLE_INSPECTOR
-  std::unique_ptr<lynx::embedder::LynxLogBoxWrapperEmbedder>
+  std::shared_ptr<lynx::embedder::LynxLogBoxWrapperEmbedder>
       lynx_logbox_wrapper = nullptr;
 #endif
 #if ENABLE_NAPI_BINDING
