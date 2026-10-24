@@ -274,6 +274,7 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
 }
 
 LynxUIRendererImpl::~LynxUIRendererImpl() {
+  InvalidateInputEvents();
   if (lynx_ui_renderer_) {
     LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
     [lynx_ui_renderer.clayViewProvider setParent:nil];
@@ -286,6 +287,7 @@ LynxUIRendererImpl::~LynxUIRendererImpl() {
 }
 
 void LynxUIRendererImpl::SetParent(NativeWindow parent) {
+  CancelInputEvents();
   if (!lynx_ui_renderer_) {
     return;
   }
@@ -302,6 +304,7 @@ NativeWindow LynxUIRendererImpl::GetNativeWindow() {
 }
 
 void LynxUIRendererImpl::SetFrame(float x, float y, float width, float height) {
+  LynxUIRenderer::SetFrame(x, y, width, height);
   if (!lynx_ui_renderer_) {
     return;
   }
@@ -311,6 +314,7 @@ void LynxUIRendererImpl::SetFrame(float x, float y, float width, float height) {
 }
 
 void LynxUIRendererImpl::Reset() {
+  CancelInputEvents();
   if (!lynx_ui_renderer_) {
     return;
   }

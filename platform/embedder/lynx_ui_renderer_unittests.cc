@@ -4,6 +4,7 @@
 
 #include <vector>
 
+#include "platform/embedder/clay_input_event_target.h"
 #include "platform/embedder/lynx_ui_renderer.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -15,6 +16,8 @@ class CapturingLynxUIRenderer : public LynxUIRenderer {
  public:
   explicit CapturingLynxUIRenderer(lynx_view_builder_t* builder)
       : LynxUIRenderer(builder) {}
+
+  ~CapturingLynxUIRenderer() override { InvalidateInputEvents(); }
 
   void SetParent(NativeWindow parent) override {}
   NativeWindow GetNativeWindow() override { return nullptr; }
@@ -220,6 +223,71 @@ TEST(LynxUIRendererTest, TouchAndMouseUseDifferentDeviceIds) {
   EXPECT_NE(renderer.events[0].device, renderer.events[2].device);
 }
 
+TEST(LynxUIRendererTest, InputTargetUsesViewCoordinatesAndCancelsBeforeReset) {
+  lynx_view_builder_t builder = {};
+  builder.frame = {60, 80, 100, 200};
+  builder.screen_size.pixel_ratio = 2.f;
+  CapturingLynxUIRenderer renderer(&builder);
+  auto target = renderer.GetInputEventTarget();
+  EXPECT_EQ(target, renderer.GetInputEventTarget());
+  devtool::input::PointerEvent event;
+  event.source_type = devtool::input::PointerSourceType::kMouse;
+  event.type = devtool::input::PointerEventType::kDown;
+  event.buttons = devtool::input::kPrimaryButton;
+  devtool::input::Pointer pointer;
+  pointer.x = 10.25f;
+  pointer.y = 20.5f;
+  event.pointers.push_back(pointer);
+  ASSERT_TRUE(target->InjectPointerEvent(event));
+  EXPECT_DOUBLE_EQ(renderer.events.back().x, 20.5);
+  EXPECT_DOUBLE_EQ(renderer.events.back().y, 41);
+  const auto target_device = renderer.events.back().device;
+  renderer.EmulateMouseSyntheticEvent("mousePressed", 10, 20, "left", 0, 0, 0,
+                                      1);
+  EXPECT_NE(renderer.events.back().device, target_device);
+  renderer.Reset();
+  ASSERT_EQ(renderer.events.size(), 5u);
+  EXPECT_EQ(renderer.events[3].phase, kClayPointerPhaseCancel);
+  EXPECT_EQ(renderer.events[4].phase, kClayPointerPhaseRemove);
+}
+
+TEST(LynxUIRendererTest, InputTargetTracksRendererSizeAndPixelRatio) {
+  lynx_view_builder_t builder = {};
+  builder.frame = {60, 80, 100, 200};
+  builder.screen_size.pixel_ratio = 2.f;
+  CapturingLynxUIRenderer renderer(&builder);
+  auto target = renderer.GetInputEventTarget();
+  renderer.SetFrame(300, 400, 50, 60);
+  renderer.SetPixelRatio(1.5f);
+
+  devtool::input::PointerEvent event;
+  event.source_type = devtool::input::PointerSourceType::kMouse;
+  event.type = devtool::input::PointerEventType::kDown;
+  event.buttons = devtool::input::kPrimaryButton;
+  devtool::input::Pointer pointer;
+  pointer.x = 49;
+  pointer.y = 59;
+  event.pointers.push_back(pointer);
+  ASSERT_TRUE(target->InjectPointerEvent(event));
+  EXPECT_DOUBLE_EQ(renderer.events.back().x, 73.5);
+  EXPECT_DOUBLE_EQ(renderer.events.back().y, 88.5);
+
+  event.pointers[0].x = 50;
+  EXPECT_FALSE(target->InjectPointerEvent(event));
+}
+
+TEST(LynxUIRendererTest,
+     RetainedInputTargetIsUnavailableAfterRendererDestruction) {
+  lynx_view_builder_t builder = {};
+  builder.frame.width = 100;
+  builder.frame.height = 200;
+  builder.screen_size.pixel_ratio = 1;
+  auto renderer = std::make_unique<CapturingLynxUIRenderer>(&builder);
+  auto target = renderer->GetInputEventTarget();
+  EXPECT_TRUE(target->GetPointerCapabilities().supports_mouse);
+  renderer.reset();
+  EXPECT_FALSE(target->GetPointerCapabilities().supports_mouse);
+}
 }  // namespace
 }  // namespace embedder
 }  // namespace lynx

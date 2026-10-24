@@ -13,9 +13,15 @@
 #include "platform/embedder/lynx_view_builder_priv.h"
 
 namespace lynx {
+namespace devtool {
+namespace input {
+class InputEventTarget;
+}  // namespace input
+}  // namespace devtool
 namespace embedder {
 
 class LynxViewClients;
+class ClayInputEventTarget;
 
 // Abstract class for UI Renderer.
 class LynxUIRenderer {
@@ -30,7 +36,7 @@ class LynxUIRenderer {
       : width_(builder->frame.width),
         height_(builder->frame.height),
         pixel_ratio_(builder->screen_size.pixel_ratio) {}
-  virtual ~LynxUIRenderer() = default;
+  virtual ~LynxUIRenderer();
 
   LynxUIRenderer(const LynxUIRenderer&) = delete;
   LynxUIRenderer& operator=(const LynxUIRenderer&) = delete;
@@ -51,7 +57,9 @@ class LynxUIRenderer {
 
   float GetPixelRatio() const { return pixel_ratio_; }
 
-  virtual void Reset() {}
+  virtual void Reset() { CancelInputEvents(); }
+
+  std::shared_ptr<devtool::input::InputEventTarget> GetInputEventTarget();
 
   virtual void OnEnterForeground() = 0;
 
@@ -92,6 +100,9 @@ class LynxUIRenderer {
 
  protected:
   virtual void SendPointerEvent(const ClayPointerEvent& event) {}
+  void CancelInputEvents();
+  // Derived destructors must call this before tearing down their engine.
+  void InvalidateInputEvents();
 
   float width_ = 0;
   float height_ = 0;
@@ -101,6 +112,7 @@ class LynxUIRenderer {
   // Converts logical coordinates to physical pixels and sends the event with
   // its device-specific lifecycle.
   void DispatchSyntheticPointerEvent(ClayPointerEvent event);
+  std::shared_ptr<ClayInputEventTarget> input_event_target_;
 };
 }  // namespace embedder
 }  // namespace lynx

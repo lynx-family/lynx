@@ -5,6 +5,22 @@
 import("../../core/Lynx.gni")
 import("../../testing/test.gni")
 
+lynx_core_source_set("clay_input_events") {
+  sources = [
+    "clay_input_event_target.cc",
+    "clay_input_event_target.h",
+  ]
+  public_deps = [ "../../devtool/lynx_devtool/input:input_types" ]
+  deps = [ "../../base/src:base_static" ]
+}
+
+if (enable_unittests) {
+  unittest_exec("clay_input_event_target_unittests_exec") {
+    sources = [ "clay_input_event_target_unittest.cc" ]
+    deps = [ ":clay_input_events" ]
+  }
+}
+
 config("public_api") {
   include_dirs = [ "./public" ]
   defines = [
@@ -98,6 +114,7 @@ lynx_core_source_set("embedder") {
   }
 
   deps = [
+    ":clay_input_events",
     ":public_headers",
     "../../base/src:base_static",
     "../../core:lynx_native",

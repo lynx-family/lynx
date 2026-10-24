@@ -72,6 +72,7 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
   if (pixel_ratio == 1.0) {
     pixel_ratio = clay::GetDpiForHWND(parent_hwnd) / 96.0;
   }
+  pixel_ratio_ = pixel_ratio;
 
   std::unique_ptr<clay::WindowBindingHandler> window_wrapper =
       std::make_unique<clay::FlutterWindow>(
@@ -155,10 +156,12 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
 }
 
 LynxUIRendererWin::~LynxUIRendererWin() {
+  InvalidateInputEvents();
   frame_timing_listener_->RemoveAllClients();
 }
 
 void LynxUIRendererWin::SetParent(NativeWindow parent) {
+  CancelInputEvents();
   HWND native_window = std::get<HWND>(*flutter_view_->GetRenderTarget());
   HWND parent_hwnd = reinterpret_cast<HWND>(parent);
   if (!IsWindow(native_window) || !IsWindow(parent_hwnd)) {
@@ -188,6 +191,7 @@ void LynxUIRendererWin::SetFrame(float x, float y, float width, float height) {
 }
 
 void LynxUIRendererWin::Reset() {
+  CancelInputEvents();
   auto* view_context =
       static_cast<clay::ViewContext*>(engine_->GetViewContext());
   if (view_context) {

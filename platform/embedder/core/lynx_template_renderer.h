@@ -194,6 +194,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                       float page_y);
 
 #if ENABLE_INSPECTOR
+  void SetInputEventTarget(
+      const std::shared_ptr<devtool::input::InputEventTarget>& target);
   void InvokeCDPFromSDK(const std::string& cdp_msg,
                         std::function<void(const std::string&)>&& callback);
   void OnReceiveMessageEvent(const Json::Value& event);
@@ -335,6 +337,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
 #if ENABLE_INSPECTOR
   std::unique_ptr<devtool::DevtoolsEmbedder> devtools_;
+  std::shared_ptr<devtool::input::InputEventTarget> input_event_target_;
 #endif  // ENABLE_INSPECTOR
   std::shared_ptr<pub::LynxEventSimulationProxy> event_proxy_;
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
