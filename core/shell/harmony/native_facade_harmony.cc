@@ -4,6 +4,7 @@
 
 #include "core/shell/harmony/native_facade_harmony.h"
 
+#include "core/runtime/common/bindings/event/message_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 
 namespace lynx {
@@ -31,6 +32,13 @@ void NativeFacadeHarmony::OnTemplateLoaded(const std::string& url) {
 }
 
 void NativeFacadeHarmony::OnRuntimeReady() { renderer_->OnRuntimeReady(); }
+
+void NativeFacadeHarmony::OnReceiveMessageEvent(
+    fml::RefPtr<runtime::MessageEvent> event) {
+  if (event->IsSendingToDevTool()) {
+    renderer_->OnReceiveMessageEvent(*event);
+  }
+}
 
 void NativeFacadeHarmony::ReportError(const base::LynxError& error) {
   renderer_->OnErrorOccurred(static_cast<int>(error.error_level_),

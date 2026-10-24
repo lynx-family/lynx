@@ -43,6 +43,9 @@ lynx_core_source_set("renderer_utils") {
     sources += lynx_trail_hub_default_sources_path
   }
   public_deps = [ "../../public" ]
+  if (is_harmony) {
+    public_deps += [ ":event_converter" ]
+  }
   deps = [
     "../../../base/src:base_log_headers",
     "../../../third_party/rapidjson:rapidjson",
@@ -72,5 +75,25 @@ unittest_exec("renderer_utils_unittests_exec") {
   deps = [
     "../:tasm",
     "../dom:dom",
+  ]
+}
+
+lynx_core_source_set("event_converter") {
+  sources = [
+    "base/event_converter.cc",
+    "base/event_converter.h",
+  ]
+  public_deps = [
+    "../../public",
+    "../../runtime/common/bindings/event:runtime_common",
+  ]
+  deps = [ "../../value_wrapper:value_wrapper" ]
+}
+
+unittest_exec("event_converter_unittests_exec") {
+  sources = [ "base/event_converter_unittest.cc" ]
+  deps = [
+    ":event_converter",
+    "../../:lynx_native",
   ]
 }

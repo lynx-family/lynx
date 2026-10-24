@@ -12,10 +12,7 @@
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
-
-namespace Json {
-class Value;
-}
+#include "core/public/devtool/vm_event.h"
 
 namespace lynx {
 namespace runtime {
@@ -51,7 +48,7 @@ class LynxInspectorOwner {
       std::function<void(const std::string&)>&& callback) = 0;
   virtual std::shared_ptr<lynx::runtime::js::InspectorRuntimeObserverNG>
   OnBackgroundRuntimeCreated(const std::string& group_thread_name) = 0;
-  virtual void OnReceiveMessageEvent(const Json::Value& event) = 0;
+  virtual void OnReceiveMessageEvent(const VMEvent& event) = 0;
   virtual void DispatchConsoleMessage(const std::string&, int32_t, int64_t) {}
   virtual int32_t GetSessionId() { return 0; }
   virtual std::string GetTemplateUrl() { return {}; }
