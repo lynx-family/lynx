@@ -16,7 +16,6 @@
 
 #include "core/inspector/style_sheet.h"
 #include "core/renderer/template_assembler.h"
-#include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/agent_defines.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"

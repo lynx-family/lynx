@@ -113,6 +113,10 @@ public class DevToolPlatformAndroidDelegate {
 
   public void setDevToolDelegate(IDevToolDelegate devToolDelegate) {
     mDevToolDelegate = devToolDelegate;
+    if (mFacadePtr != 0 && devToolDelegate != null) {
+      nativeSetSupportsFullscreenScreenshot(
+          mFacadePtr, devToolDelegate.supportsFullscreenScreenshot());
+    }
   }
 
   public void setLynxInspectorConsoleDelegate(Object delegate) {
@@ -348,6 +352,9 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   public void destroy() {
+    if (mCastHelper != null) {
+      mCastHelper.stopCasting();
+    }
     if (mInputEventDispatcher != null) {
       mInputEventDispatcher.detach();
       mInputEventDispatcher = null;
@@ -360,7 +367,7 @@ public class DevToolPlatformAndroidDelegate {
 
   @CalledByNative
   public void emulateTouch(final String type, final int x, final int y, final float deltaX,
-      final float deltaY, final String button) {
+      final float deltaY, final String button, final String screenshotMode) {
     if (mTouchHelper == null) {
       return;
     }
@@ -368,7 +375,7 @@ public class DevToolPlatformAndroidDelegate {
     if (lynxView != null) {
       float scale = lynxView.getLynxContext().getResources().getDisplayMetrics().density;
       mTouchHelper.emulateTouch(type, (int) (x * scale + 0.5f), (int) (y * scale + 0.5f),
-          deltaX * scale + 0.5f, deltaY * scale + 0.5f, button, mDevToolDelegate);
+          deltaX * scale + 0.5f, deltaY * scale + 0.5f, button, mDevToolDelegate, screenshotMode);
     }
   }
 
@@ -495,6 +502,7 @@ public class DevToolPlatformAndroidDelegate {
     }
   }
   private native long nativeCreateDevToolPlatformFacade();
+  private native void nativeSetSupportsFullscreenScreenshot(long facadePtr, boolean supported);
   private native void nativeDestroyDevToolPlatformFacade(long facadePtr);
   private native void nativeSendPageScreencastFrameEvent(long facadePtr, String data,
       float offsetTop, float pageScaleFactor, float deviceWidth, float deviceHeight,

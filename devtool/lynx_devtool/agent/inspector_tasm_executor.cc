@@ -31,7 +31,6 @@
 #include "core/services/timing_handler/timing_constants.h"
 #include "devtool/base_devtool/native/public/cdp_param_utils.h"
 #include "devtool/base_devtool/native/public/cdp_responder.h"
-#include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/element/element_helper.h"
@@ -1456,10 +1455,10 @@ void InspectorTasmExecutor::GetDocumentWithBoxModel(
       GetDocumentBodyFromNodeWithBoxModel(root, queries, box_model_paths, {});
 
   size_t root_box_model_index = queries.size();
-  std::string screen_shot_mode = DevToolStatus::GetInstance().GetStatus(
-      DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
-  if (screen_shot_mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW) {
+  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
+                            "devtool_platform_facade is null");
+  const auto screen_shot_mode = devtool_platform_facade_->GetScreenshotMode();
+  if (screen_shot_mode == "lynxview") {
     InspectorBoxModelQuery root_query;
     if (BuildBoxModelQuery(root, root_query)) {
       queries.push_back(std::move(root_query));
@@ -1572,8 +1571,11 @@ void InspectorTasmExecutor::DOM_GetBoxModel(
   }
   const float layouts_unit_per_px =
       element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
-  std::string screen_shot_mode = DevToolStatus::GetInstance().GetStatus(
-      DevToolStatus::kDevToolStatusKeyScreenShotMode);
+  if (!devtool_platform_facade_) {
+    send_response(BuildBoxModelError());
+    return;
+  }
+  const auto screen_shot_mode = devtool_platform_facade_->GetScreenshotMode();
   InspectorBoxModelQuery query;
   if (!BuildBoxModelQuery(ptr, query)) {
     send_response(BuildBoxModelError());
@@ -1581,8 +1583,7 @@ void InspectorTasmExecutor::DOM_GetBoxModel(
   }
 
   bool need_root_box_model =
-      screen_shot_mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW &&
-      GetElementRoot() != nullptr;
+      screen_shot_mode == "lynxview" && GetElementRoot() != nullptr;
   InspectorBoxModelQuery root_query;
   if (need_root_box_model) {
     need_root_box_model = BuildBoxModelQuery(GetElementRoot(), root_query);

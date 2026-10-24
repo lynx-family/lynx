@@ -26,7 +26,7 @@ class DevToolPlatformAndroid : public DevToolPlatformFacade {
   std::string GetDebugInfoByUrl(const std::string& url) override;
   void ScrollIntoView(int node_id) override;
   int FindNodeIdForLocation(float x, float y,
-                            std::string screen_shot_mode) override;
+                            const std::string& screen_shot_mode) override;
   void StartScreenCast(ScreenshotRequest request) override;
   void OnAckReceived() override;
   void StopScreenCast() override;

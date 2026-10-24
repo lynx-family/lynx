@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -72,8 +73,16 @@ struct InspectorBoxModelQuery {
 class DevToolPlatformFacade
     : public std::enable_shared_from_this<DevToolPlatformFacade> {
  public:
-  DevToolPlatformFacade() = default;
+  explicit DevToolPlatformFacade(bool supports_fullscreen = false);
   virtual ~DevToolPlatformFacade();
+
+  // The accepted coordinate/capture mode belongs to this target. Requests
+  // snapshot it before crossing threads; renderers must not write it back.
+  std::string GetScreenshotMode() const;
+  // Returns false without changing state for invalid or unsupported modes.
+  bool SetScreenshotMode(const std::string& mode);
+  // Called when binding a renderer, before exposing it to CDP requests.
+  void SetSupportsFullscreenScreenshot(bool supported);
 
   void InitWithDevToolMediator(
       std::shared_ptr<LynxDevToolMediator> devtool_mediator);
@@ -101,7 +110,7 @@ class DevToolPlatformFacade
   virtual void ScrollIntoView(int node_id) = 0;
   virtual void Focus(int node_id) {}
   virtual int FindNodeIdForLocation(float x, float y,
-                                    std::string screen_shot_mode) = 0;
+                                    const std::string& screen_shot_mode) = 0;
   virtual void StartScreenCast(ScreenshotRequest request) = 0;
   virtual void StopScreenCast() = 0;
   virtual void PageReload(bool ignore_cache,
@@ -175,6 +184,10 @@ class DevToolPlatformFacade
   std::shared_ptr<input::InputEventTarget> input_event_target_;
 
  private:
+  mutable std::mutex screenshot_mode_mutex_;
+  bool supports_fullscreen_screenshot_;
+  std::string screenshot_mode_;
+
   std::vector<float> GetTransformValueForBoxModel(
       int identifier, const std::vector<float>& pad_border_margin_layout);
 

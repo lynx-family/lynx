@@ -7,7 +7,6 @@
 #include <sys/system_properties.h>
 
 #include "core/base/android/jni_helper.h"
-#include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/android/android_input_event_target.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -42,6 +41,13 @@ void DestroyDevToolPlatformFacade(JNIEnv* env, jobject jcaller,
           facadePtr);
   (*sp_ptr)->Destroy();
   delete sp_ptr;
+}
+
+void SetSupportsFullscreenScreenshot(JNIEnv* env, jobject jcaller,
+                                     jlong facadePtr, jboolean supported) {
+  auto platform_facade = *reinterpret_cast<
+      std::shared_ptr<lynx::devtool::DevToolPlatformAndroid>*>(facadePtr);
+  platform_facade->SetSupportsFullscreenScreenshot(supported);
 }
 
 void FlushConsoleMessages(JNIEnv* env, jobject jcaller, jlong facadePtr) {
@@ -156,7 +162,7 @@ DevToolPlatformAndroid::DevToolPlatformAndroid(JNIEnv* env, jobject owner)
 }
 
 int DevToolPlatformAndroid::FindNodeIdForLocation(
-    float x, float y, std::string screen_shot_mode) {
+    float x, float y, const std::string& screen_shot_mode) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
   lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
   if (ref.IsNull()) {
@@ -237,9 +243,12 @@ void DevToolPlatformAndroid::EmulateTouch(
   lynx::base::android::ScopedLocalJavaRef<jstring> button =
       lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
           env, input->button_);
+  auto mode = lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, input->coordinate_mode_);
 
-  Java_DevToolPlatformAndroidDelegate_emulateTouch(
-      env, ref.Get(), type.Get(), x, y, deltaX, deltaY, button.Get());
+  Java_DevToolPlatformAndroidDelegate_emulateTouch(env, ref.Get(), type.Get(),
+                                                   x, y, deltaX, deltaY,
+                                                   button.Get(), mode.Get());
 }
 
 void DevToolPlatformAndroid::Focus(int node_id) {
@@ -320,11 +329,8 @@ void DevToolPlatformAndroid::StartScreenCast(ScreenshotRequest request) {
   if (ref.IsNull()) {
     return;
   }
-  std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
-      lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
-  auto jni_mode =
-      lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, mode);
+  auto jni_mode = lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, request.mode_);
   auto jni_format =
       lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
           env, request.format_);

@@ -38,7 +38,7 @@ public class EmulateTouchHelper {
   }
 
   public void emulateTouch(String type, int x, int y, float deltaX, float deltaY, String button,
-      IDevToolDelegate devToolDelegate) {
+      IDevToolDelegate devToolDelegate, String screenshotMode) {
     if (type == null) {
       LLog.e(TAG, "emulateTouch: type is null");
       return;
@@ -54,8 +54,7 @@ public class EmulateTouchHelper {
       return;
     }
 
-    if (devToolDelegate.getActualScreenshotMode().equals(
-            ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN)) {
+    if (ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN.equals(screenshotMode)) {
       int[] outLocation = new int[2];
       view.getLocationOnScreen(outLocation);
       x -= outLocation[0];

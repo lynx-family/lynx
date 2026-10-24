@@ -46,8 +46,8 @@ public class IDevToolDelegateTest {
     public void scrollIntoViewFromUI(int nodeId) {}
 
     @Override
-    public String getActualScreenshotMode() {
-      return "";
+    public boolean supportsFullscreenScreenshot() {
+      return false;
     }
 
     @Override

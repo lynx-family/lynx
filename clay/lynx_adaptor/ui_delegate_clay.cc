@@ -123,7 +123,8 @@ void UIDelegateClay::TakeSnapshot(
     size_t max_width, size_t max_height, int quality, const std::string& format,
     float screen_scale_factor,
     const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
-    TakeSnapshotCompletedCallback callback) {
+    TakeSnapshotCompletedCallback callback,
+    const std::string& screenshot_mode) {
   auto page_view = view_context_->GetPageView();
   if (!page_view) {
     return;
@@ -154,7 +155,8 @@ void UIDelegateClay::TakeSnapshot(
   page_view->TakeScreenshotHardware(request);
 }
 
-int UIDelegateClay::GetNodeForLocation(int x, int y) {
+int UIDelegateClay::GetNodeForLocation(int x, int y,
+                                       const std::string& coordinate_mode) {
   return view_context_->GetViewIdForLocation(x, y);
 }
 

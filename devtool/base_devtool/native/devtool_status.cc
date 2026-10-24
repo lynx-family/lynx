@@ -7,8 +7,6 @@
 namespace lynx {
 namespace devtool {
 
-const char* DevToolStatus::SCREENSHOT_MODE_FULLSCREEN = "fullscreen";
-const char* DevToolStatus::SCREENSHOT_MODE_LYNXVIEW = "lynxview";
 const char* DevToolStatus::NO_DEBUG_INFO_FOUND_BY_URL =
     "NO_DEBUG_INFO_FOUND_BY_URL";
 

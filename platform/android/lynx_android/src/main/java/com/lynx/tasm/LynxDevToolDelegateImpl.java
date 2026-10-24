@@ -7,7 +7,6 @@ package com.lynx.tasm;
 import android.graphics.Bitmap;
 import com.lynx.devtoolwrapper.IDevToolDelegate;
 import com.lynx.devtoolwrapper.ScreenshotBitmapHandler;
-import com.lynx.devtoolwrapper.ScreenshotMode;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -62,22 +61,10 @@ public class LynxDevToolDelegateImpl implements IDevToolDelegate {
     }
   }
 
-  /**
-   * for devtool inspector
-   *
-   * Retrieves the actual screenshot mode, which may not match the screenshot mode in DevToolStatus.
-   * The reason is that not every rendering mode supports full-screen screenshots.
-   * For iOS and Android native, the result of getActualScreenshotMode is consistent with the
-   * screenshot mode stored in DevToolStatus.
-   */
   @Override
-  public String getActualScreenshotMode() {
+  public boolean supportsFullscreenScreenshot() {
     ILynxUIRenderer render = getLynxUIRenderer();
-    if (render != null) {
-      return render.getActualScreenshotMode();
-    }
-    // The default screenshot mode is full screen.
-    return ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN;
+    return render != null && render.supportsFullscreenScreenshot();
   }
 
   // for devtool getNodeForLocation

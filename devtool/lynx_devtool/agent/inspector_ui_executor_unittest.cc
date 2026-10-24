@@ -186,9 +186,6 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
       std::make_shared<testing::DevToolPlatformFacadeMock>();
   ui_executor_->SetDevToolPlatformFacade(facade);
   EXPECT_EQ(ui_executor_->devtool_platform_facade_.get(), facade.get());
-  std::string original_screen_shot_mode =
-      devtool::DevToolStatus::GetInstance().GetStatus(
-          devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode);
 
   {
     Json::Value message;
@@ -199,6 +196,7 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     ASSERT_EQ(facade->screen_cast_requests_.size(), 1U);
     EXPECT_EQ(facade->screen_cast_requests_.back().format_, "jpeg");
     EXPECT_EQ(facade->screen_cast_requests_.back().quality_, 100);
+    EXPECT_EQ(facade->screen_cast_requests_.back().mode_, "fullscreen");
     EXPECT_EQ(facade->screen_cast_requests_.back().type_,
               devtool::ScreenshotType::JPEG);
   }
@@ -243,10 +241,39 @@ TEST_F(InspectorUIExecutorTest, StartScreencastTest) {
     EXPECT_EQ(facade->screen_cast_requests_.back().type_,
               devtool::ScreenshotType::PNG);
   }
+}
 
-  devtool::DevToolStatus::GetInstance().SetStatus(
-      devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-      original_screen_shot_mode);
+TEST_F(InspectorUIExecutorTest,
+       ScreencastModeIsTargetScopedAndRejectsUnsupportedMode) {
+  auto native = std::make_shared<testing::DevToolPlatformFacadeMock>(true);
+  auto clay = std::make_shared<testing::DevToolPlatformFacadeMock>(false);
+  EXPECT_EQ(native->GetScreenshotMode(), "fullscreen");
+  EXPECT_EQ(clay->GetScreenshotMode(), "lynxview");
+
+  ui_executor_->SetDevToolPlatformFacade(clay);
+  Json::Value message;
+  message["id"] = 34;
+  message["params"]["mode"] = "fullscreen";
+  ui_executor_->StartScreencast(message_sender_, message);
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(), -32602);
+  EXPECT_TRUE(clay->screen_cast_requests_.empty());
+  EXPECT_EQ(clay->GetScreenshotMode(), "lynxview");
+  EXPECT_EQ(native->GetScreenshotMode(), "fullscreen");
+
+  message["params"].removeMember("mode");
+  ui_executor_->StartScreencast(message_sender_, message);
+  ASSERT_EQ(clay->screen_cast_requests_.size(), 1U);
+  EXPECT_EQ(clay->screen_cast_requests_[0].mode_, "lynxview");
+  EXPECT_TRUE(native->SetScreenshotMode("lynxview"));
+  EXPECT_TRUE(native->SetScreenshotMode("fullscreen"));
+  EXPECT_EQ(clay->GetScreenshotMode(), "lynxview");
+  EXPECT_FALSE(native->SetScreenshotMode(""));
+  EXPECT_FALSE(native->SetScreenshotMode("invalid"));
+  EXPECT_EQ(native->GetScreenshotMode(), "fullscreen");
 }
 
 TEST_F(InspectorUIExecutorTest, InsertTextTest) {
