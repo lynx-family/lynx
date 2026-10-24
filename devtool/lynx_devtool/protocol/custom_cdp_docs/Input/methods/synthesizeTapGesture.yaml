@@ -1,11 +1,11 @@
-summary: Synthesizes one or more single-pointer tap sequences in the native window containing the LynxView.
+summary: Synthesizes one or more single-pointer tap sequences through the platform input target.
 parameters:
   - name: x
     type: number
-    description: Finite horizontal logical coordinate relative to the left edge of the native window containing the LynxView.
+    description: Finite horizontal logical coordinate relative to the LynxView on Clay desktop, or its containing native window on mobile.
   - name: y
     type: number
-    description: Finite vertical logical coordinate relative to the top edge of the native window containing the LynxView.
+    description: Finite vertical logical coordinate relative to the LynxView on Clay desktop, or its containing native window on mobile.
   - name: duration
     type: integer
     optional: true
@@ -28,11 +28,12 @@ parameters:
 returns: []
 events: []
 notes:
-  - Lynx interprets x and y as window-local logical coordinates rather than the main-frame viewport CSS coordinates described by upstream CDP.
-  - Android and Harmony convert logical coordinates to native pixels using the window density or pixel ratio before injection. Darwin targets use window points only when an optional platform-specific pointer injection implementation is linked; otherwise they advertise no touch support.
-  - Coordinates are not absolute screen coordinates or physical screenshot pixels. Convert LynxView-local coordinates to the containing window coordinate space before sending the request.
-  - Injection is dispatched through the native window or root view. A native overlay above the LynxView can receive the tap, and the request cannot target content in a different native window.
-  - The target LynxView must be attached to a valid native window, and the point must fall inside that window. Otherwise the request fails.
+  - Clay desktop (macOS, Windows, and windowless renderers) uses logical pixels relative to the top-left of the target LynxView, independent of screenshot mode. The target defaults to mouse and supports primary mouse taps plus up to two synthetic touch points.
+  - Clay converts coordinates once using the current viewport pixel ratio and dispatches through its pointer pipeline. Do not add the LynxView window offset. Input participates in Clay hit testing and gesture recognition; it is not native window input and does not target unrelated host controls.
+  - Clay requires a valid renderer viewport and a point inside its bounds. Resizing or changing the pixel ratio during a pressed gesture cancels that gesture. Resetting or destroying the renderer also cancels pressed input.
+  - Mobile targets use window-local logical coordinates. Android and Harmony convert them to native pixels using the window density or pixel ratio. iOS uses window points when an optional platform-specific pointer injection implementation is linked; otherwise it advertises no touch support.
+  - Coordinates are not absolute screen coordinates or physical screenshot pixels. On mobile, convert LynxView-local coordinates to the containing window coordinate space before sending the request.
+  - On mobile, injection is dispatched through the native window or root view. A native overlay above the LynxView can receive the tap. The LynxView must be attached to a valid native window and the point must fall inside that window.
   - Explicitly requesting a pointer source that the current platform target does not advertise returns a CDP server error. Targets with native touch injection support normally resolve default to touch.
   - Each tap is an independent single-pointer down/up sequence. tapCount does not create multiple simultaneous pointers.
   - The actual elapsed duration may exceed duration because pointer injection is frame-driven. The request completes after every tap event has been accepted by the current platform target; it does not guarantee that the native UI or page script has consumed the event.

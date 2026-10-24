@@ -1,11 +1,11 @@
-summary: Synthesizes a two-pointer touch pinch sequence in the native window containing the LynxView.
+summary: Synthesizes a two-pointer touch pinch sequence through the platform input target.
 parameters:
   - name: x
     type: number
-    description: Finite horizontal logical coordinate of the pinch center relative to the left edge of the native window containing the LynxView.
+    description: Finite horizontal logical coordinate of the pinch center relative to the LynxView on Clay desktop, or its containing native window on mobile.
   - name: y
     type: number
-    description: Finite vertical logical coordinate of the pinch center relative to the top edge of the native window containing the LynxView.
+    description: Finite vertical logical coordinate of the pinch center relative to the LynxView on Clay desktop, or its containing native window on mobile.
   - name: scaleFactor
     type: number
     description: Finite positive ratio of the final distance between the two pointers to their initial distance. Values greater than 1 move the pointers apart, values less than 1 move them together, and 1 completes successfully without injecting an event.
@@ -24,17 +24,19 @@ parameters:
 returns: []
 events: []
 notes:
-  - Lynx interprets x and y as window-local logical coordinates rather than the main-frame viewport CSS coordinates described by upstream CDP.
-  - Android and Harmony convert logical coordinates to native pixels using the window density or pixel ratio before injection. Darwin targets use window points only when an optional platform-specific pointer injection implementation is linked; otherwise they advertise no touch support.
-  - Coordinates are not absolute screen coordinates or physical screenshot pixels. Convert LynxView-local coordinates to the containing window coordinate space before sending the request.
+  - Clay desktop uses logical pixels relative to the top-left of the target LynxView, independent of screenshot mode. Pass gestureSourceType touch because the Clay target keeps mouse as its default source.
+  - Clay converts both touch points using the renderer pixel ratio and dispatches them through its pointer pipeline. Do not add the LynxView window offset. The gesture does not target unrelated native host controls.
+  - Mobile targets use window-local logical coordinates. Android and Harmony convert them to native pixels using the window density or pixel ratio. iOS uses window points when an optional platform-specific pointer injection implementation is linked; otherwise it advertises no touch support.
+  - Coordinates are not absolute screen coordinates or physical screenshot pixels. On mobile, convert LynxView-local coordinates to the containing window coordinate space before sending the request.
   - The two pointers start on a horizontal line at x minus 50 and x plus 50, giving an initial separation of 100 logical pixels. They move symmetrically around the center and finish at x minus 50 times scaleFactor and x plus 50 times scaleFactor.
-  - Injection is dispatched through the native window or root view. A native overlay above the LynxView can receive the pinch, and the request cannot target content in a different native window.
-  - The target LynxView must be attached to a valid native window, and every generated pointer position must remain inside that window. Otherwise the request fails.
+  - On mobile, injection is dispatched through the native window or root view. A native overlay above the LynxView can receive the pinch, and the request cannot target content in a different native window.
+  - Every generated pointer position must remain inside the selected target bounds. Otherwise the request fails and active pointers are cancelled.
   - Lynx currently supports only the touch source for pinch gestures. The resolved target must advertise touch support and at least two simultaneous touch points. Requesting mouse, or resolving default to a non-touch source, returns a CDP server error.
+  - Mouse or touchpad wheel pinch is not implemented. Requesting gestureSourceType mouse returns an unsupported-source error.
   - The gesture duration is derived from the change in pointer separation and relativeSpeed. The actual elapsed duration may be longer because pointer movement is frame-driven.
   - The request completes after all pointer events have been accepted by the current platform target; it does not guarantee that the native UI or page script has consumed the events.
 examples:
-  - title: Pinch outward with platform defaults
+  - title: Pinch outward with touch input
     request:
       id: 1
       method: Input.synthesizePinchGesture
@@ -42,6 +44,7 @@ examples:
         x: 200
         y: 300
         scaleFactor: 2
+        gestureSourceType: touch
     response:
       id: 1
       result: {}

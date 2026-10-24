@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "base/include/timer/time_utils.h"
+#include "platform/embedder/clay_input_event_target.h"
 
 namespace lynx {
 namespace embedder {
@@ -46,6 +47,32 @@ int64_t ButtonMask(std::string_view button) {
 }
 
 }  // namespace
+
+LynxUIRenderer::~LynxUIRenderer() { InvalidateInputEvents(); }
+
+std::shared_ptr<devtool::input::InputEventTarget>
+LynxUIRenderer::GetInputEventTarget() {
+  if (!input_event_target_) {
+    input_event_target_ = std::make_shared<ClayInputEventTarget>(
+        [this]() {
+          return ClayInputViewport{width_, height_, pixel_ratio_};
+        },
+        [this](const ClayPointerEvent& event) { SendPointerEvent(event); });
+  }
+  return input_event_target_;
+}
+
+void LynxUIRenderer::CancelInputEvents() {
+  if (input_event_target_) {
+    input_event_target_->CancelActivePointers();
+  }
+}
+
+void LynxUIRenderer::InvalidateInputEvents() {
+  if (input_event_target_) {
+    input_event_target_->Invalidate();
+  }
+}
 
 void LynxUIRenderer::DispatchSyntheticPointerEvent(ClayPointerEvent event) {
   event.struct_size = sizeof(event);
