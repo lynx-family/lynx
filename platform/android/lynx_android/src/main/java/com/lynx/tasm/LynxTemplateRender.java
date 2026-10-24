@@ -24,21 +24,11 @@ import androidx.annotation.StringDef;
 import com.lynx.BuildConfig;
 import com.lynx.devtoolwrapper.LynxDevtool;
 import com.lynx.devtoolwrapper.LynxDevtoolGlobalHelper;
-import com.lynx.jsbridge.CommonModuleCreator;
 import com.lynx.jsbridge.IContextFinder;
 import com.lynx.jsbridge.JSModule;
-import com.lynx.jsbridge.LynxAccessibilityModule;
-import com.lynx.jsbridge.LynxExposureModule;
 import com.lynx.jsbridge.LynxExtensionModule;
-import com.lynx.jsbridge.LynxFetchModule;
-import com.lynx.jsbridge.LynxIntersectionObserverModule;
 import com.lynx.jsbridge.LynxModuleFactory;
-import com.lynx.jsbridge.LynxResourceModule;
-import com.lynx.jsbridge.LynxSetModule;
-import com.lynx.jsbridge.LynxTextInfoModule;
-import com.lynx.jsbridge.LynxUIMethodModule;
 import com.lynx.jsbridge.RuntimeLifecycleListener;
-import com.lynx.jsbridge.network.LynxFetchModuleEventSender;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
@@ -68,7 +58,6 @@ import com.lynx.tasm.common.LepusBuffer;
 import com.lynx.tasm.core.JSProxy;
 import com.lynx.tasm.core.LynxEngineProxy;
 import com.lynx.tasm.core.LynxLayoutProxy;
-import com.lynx.tasm.core.resource.LynxResourceLoader;
 import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.group.ILynxViewConfigProvider;
@@ -215,6 +204,7 @@ public class LynxTemplateRender
   private ILynxViewRuntimeCacheManager mCacheManager;
   private ILynxLogicExecutor mLogicExecutor;
 
+  private LynxHostEnvironment mHostEnvironment;
   protected LynxBackgroundRuntimeOptions mLynxRuntimeOptions;
   protected LynxModuleFactory mModuleFactory;
   private LynxIntersectionObserverManager mIntersectionObserverManager;
@@ -224,7 +214,6 @@ public class LynxTemplateRender
   private boolean mAsyncRender;
   private LynxTheme mTheme;
   private TemplateData globalProps;
-  @Keep private LynxResourceLoader mResourceLoader;
   private long mFirstMeasureTime = -1;
   private List<TemplateData> updatedDataList = new CopyOnWriteArrayList<>();
 
@@ -303,8 +292,6 @@ public class LynxTemplateRender
   private volatile NativeFacade mNativeFacade;
   private long mNativePtr = 0;
   private volatile LynxLogContext mLogContext = LynxLogContext.UNAVAILABLE;
-
-  @Keep @Nullable private LynxResourceLoader mLoader;
 
   private int mEmbeddedMode;
   private boolean mEnableReuseEngine;
@@ -432,8 +419,8 @@ public class LynxTemplateRender
     if (mBodyView != null) {
       mBodyView.setTimingCollector(mPerformanceController);
     }
-    mLynxRuntimeOptions =
-        new LynxBackgroundRuntimeOptions(mLynxViewConfigProvider.getLynxRuntimeOptions());
+    mHostEnvironment = new LynxHostEnvironment(mLynxViewConfigProvider);
+    mLynxRuntimeOptions = mHostEnvironment.getRuntimeOptions();
 
     mAsyncRender = (mThreadStrategyForRendering == ThreadStrategyForRendering.MULTI_THREADS
         || mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM);
@@ -581,46 +568,12 @@ public class LynxTemplateRender
     }
   }
 
-  private void setLynxInternalModules(LynxModuleFactory factory) {
-    factory.registerModule(
-        LynxIntersectionObserverModule.NAME, LynxIntersectionObserverModule.class, null);
-    factory.registerModule(LynxUIMethodModule.NAME, LynxUIMethodModule.class, null);
-    factory.registerModule(LynxTextInfoModule.NAME, LynxTextInfoModule.class, null);
-    factory.registerModule(LynxAccessibilityModule.NAME, LynxAccessibilityModule.class, null);
-    factory.registerModule(LynxSetModule.NAME, LynxSetModule.class, null);
-    factory.registerModule(LynxResourceModule.NAME, LynxResourceModule.class, null);
-    factory.registerModule(LynxExposureModule.NAME, LynxExposureModule.class, null);
-  }
-
-  private void setUserModules(LynxModuleFactory factory) {
-    factory.setLynxModuleExtraData(mLynxViewBuilder.lynxModuleExtraData);
-    factory.addModuleParamWrapper(mLynxRuntimeOptions.getWrappers());
-  }
-
   private void setUpMainThreadModuleFactory() {
     if (!mLynxViewBuilder.isEnableMTSModule()) {
       return;
     }
-    mMainThreadModuleFactory = new LynxModuleFactory();
-    // bind common module creator
-    IContextFinder contextFinder = new IContextFinder() {
-      private WeakReference<Context> mContext = new WeakReference<>(mLynxContext);
-
-      @NonNull
-      @Override
-      public WeakReference<Context> findContext(@Nullable String instanceId) {
-        return mContext;
-      }
-
-      @Override
-      public void registerContext(
-          @Nullable String instanceId, @Nullable WeakReference<Context> context) {}
-    };
-    mMainThreadModuleFactory.bind(new CommonModuleCreator(contextFinder));
-    // set internal modules
-    setLynxInternalModules(mMainThreadModuleFactory);
-    // set user modules
-    setUserModules(mMainThreadModuleFactory);
+    mMainThreadModuleFactory = mHostEnvironment.createMainThreadFactory(
+        mLynxContext, mLynxViewBuilder.lynxModuleExtraData);
   }
 
   private void setUpBackgroundThreadModuleFactory() {
@@ -638,8 +591,8 @@ public class LynxTemplateRender
       if (mRuntime != null) {
         mModuleFactory = mRuntime.getModuleFactory();
       } else {
-        mModuleFactory = new LynxModuleFactory();
-        mModuleFactory.registerModuleAuthValidator(mLynxRuntimeOptions.getModuleAuthValidator());
+        mModuleFactory = mHostEnvironment.createBackgroundThreadFactory(
+            mLynxContext, mLynxViewBuilder.lynxModuleExtraData);
       }
       final LynxViewClient client = mLynxContext.getLynxViewClient();
       Runnable factoryRunnable = new Runnable() {
@@ -659,33 +612,10 @@ public class LynxTemplateRender
           UIThreadUtils.runOnUiThread(factoryRunnable);
         }
       });
-      // bind common module creator or reset context finder for reused runtime
-      IContextFinder contextFinder = new IContextFinder() {
-        private WeakReference<Context> mContext = new WeakReference<>(mLynxContext);
-
-        @NonNull
-        @Override
-        public WeakReference<Context> findContext(@Nullable String instanceId) {
-          return mContext;
-        }
-
-        @Override
-        public void registerContext(
-            @Nullable String instanceId, @Nullable WeakReference<Context> context) {}
-      };
       if (mRuntime != null) {
-        mModuleFactory.resetContextFinder(contextFinder);
-      } else {
-        mModuleFactory.bind(new CommonModuleCreator(contextFinder));
+        mHostEnvironment.prepareReusedBackgroundThreadFactory(
+            mModuleFactory, mLynxContext, mLynxViewBuilder.lynxModuleExtraData);
       }
-      // set user modules
-      setUserModules(mModuleFactory);
-      // set internal modules
-      setLynxInternalModules(mModuleFactory);
-      // set fetch module , only in background thread
-      LynxFetchModuleEventSender eventSender = new LynxFetchModuleEventSender();
-      eventSender.setWeakContext(mLynxContext);
-      mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, eventSender);
     }
     mNativeFacade.setModuleFactory(mModuleFactory);
   }
@@ -1039,8 +969,7 @@ public class LynxTemplateRender
 
     mPageLoadListener = new InnerPageLoadListener();
     mGroup = mLynxViewBuilder.getLynxGroup();
-    mLoader = new LynxResourceLoader(null, mLynxViewBuilder.fetcher, this,
-        mLynxContext.getTemplateResourceFetcher(), mLynxContext.getGenericResourceFetcher());
+    mHostEnvironment.createEngineResourceLoader(mLynxViewBuilder.fetcher, mLynxContext, this);
     mLynxContext.setEnableAutoExpose(mLynxViewConfigProvider.isEnableAutoExpose());
     mNativeFacade = new NativeFacade(mLynxViewBuilder.isEnableJSRuntime(), new TASMCallback());
     mNativeFacade.setTemplateLoadClient(mClient);
@@ -1057,10 +986,11 @@ public class LynxTemplateRender
         || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal();
     setUpMainThreadModuleFactory();
     mNativePtr = nativeCreate(mLogContext.viewId, runtimeWrapperPtr, mNativeFacade,
-        mPerformanceController.isEmbeddedMode() ? null : mPerformanceController, mLoader,
-        mThreadStrategyForRendering.id(), mLynxViewConfigProvider.isEnableLayoutSafepoint(),
-        mLynxViewBuilder.enableLayoutOnly, screenMetrics.widthPixels, screenMetrics.heightPixels,
-        screenMetrics.density, LynxEnv.inst().getLocale(), mLynxViewBuilder.isEnableJSRuntime(),
+        mPerformanceController.isEmbeddedMode() ? null : mPerformanceController,
+        mHostEnvironment.getEngineResourceLoader(), mThreadStrategyForRendering.id(),
+        mLynxViewConfigProvider.isEnableLayoutSafepoint(), mLynxViewBuilder.enableLayoutOnly,
+        screenMetrics.widthPixels, screenMetrics.heightPixels, screenMetrics.density,
+        LynxEnv.inst().getLocale(), mLynxViewBuilder.isEnableJSRuntime(),
         mLynxViewConfigProvider.isEnableMultiAsyncThread(),
         mLynxViewConfigProvider.isEnablePreUpdateData(), enableVSyncAligned,
         mLynxViewConfigProvider.isEnableAsyncHydration(),
@@ -1086,16 +1016,7 @@ public class LynxTemplateRender
       mDevTool.onTemplateAssemblerCreated(mNativePtr);
     }
 
-    LynxProviderRegistry providerRegistry = new LynxProviderRegistry();
-    for (Map.Entry<String, LynxResourceProvider> global :
-        LynxEnv.inst().getResourceProvider().entrySet()) {
-      providerRegistry.addLynxResourceProvider(global.getKey(), global.getValue());
-    }
-    for (Map.Entry<String, LynxResourceProvider> local :
-        mLynxRuntimeOptions.getAllResourceProviders()) {
-      providerRegistry.addLynxResourceProvider(local.getKey(), local.getValue());
-    }
-    mLynxContext.setProviderRegistry(providerRegistry);
+    mLynxContext.setProviderRegistry(mHostEnvironment.getProviderRegistry());
 
     mLynxContext.setFontLoader(mLynxViewBuilder.fontLoader);
     mLynxContext.setImageFetcher(mLynxViewBuilder.imageFetcher);
@@ -1128,9 +1049,7 @@ public class LynxTemplateRender
       }
       // only init LynxRuntime if enableJSRuntime is true.
       if (enableJSRuntime()) {
-        mResourceLoader = new LynxResourceLoader(mLynxRuntimeOptions, mLynxViewBuilder.fetcher,
-            this, mLynxContext.getTemplateResourceFetcher(),
-            mLynxContext.getGenericResourceFetcher());
+        mHostEnvironment.createRuntimeResourceLoader(mLynxViewBuilder.fetcher, mLynxContext, this);
         if (mRuntime != null) {
           // In LynxbakcgroundRuntime Standalone, we create and init a LynxRuntime without
           // LynxShell. During LynxTemplateRender creation, this runtime is used to create
@@ -2685,9 +2604,6 @@ public class LynxTemplateRender
     if (extensionService != null) {
       extensionService.onLynxViewDestroy(mLynxContext);
     }
-    if (mLynxContext != null && mLynxContext.getProviderRegistry() != null) {
-      mLynxContext.getProviderRegistry().clear();
-    }
     mLynxContext = null;
     if (mLynxUIRender != null) {
       mLynxUIRender.onDestroy();
@@ -4225,8 +4141,9 @@ public class LynxTemplateRender
       LLog.i(TAG, "useQuickJSEngine is false");
     }
 
-    nativeInitRuntime(mNativePtr, mResourceLoader, mModuleFactory, getGroupID(),
-        getMonitoringGroupLabel(), getPreloadJSPath(), mLynxRuntimeOptions.getBytecodeSourceUrl(),
+    nativeInitRuntime(mNativePtr, mHostEnvironment.getRuntimeResourceLoader(), mModuleFactory,
+        getGroupID(), getMonitoringGroupLabel(), getPreloadJSPath(),
+        mLynxRuntimeOptions.getBytecodeSourceUrl(),
         mLynxRuntimeOptions.calcRuntimeFlags(false, mEnablePendingJsTask),
         lynxUIRenderer().getUIDelegatePtr());
     String jsGroupThreadName = getJSGroupThreadNameIfNeed();
