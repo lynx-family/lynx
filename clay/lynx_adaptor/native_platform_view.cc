@@ -10,10 +10,10 @@
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
+#include "clay/lynx_adaptor/clay_value.h"
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
-#include "platform/embedder/public/lynx_value.h"
 
 namespace clay {
 
@@ -48,8 +48,8 @@ void NativePlatformView::OnDestroy() {}
 void NativePlatformView::OnLayoutChanged(float left, float top, float width,
                                          float height, float pixel_ratio) {}
 
-void NativePlatformView::OnPropertiesChanged(lynx_value attrs,
-                                             lynx_value events) {}
+void NativePlatformView::OnPropertiesChanged(const lynx::pub::Value& attrs,
+                                             const lynx::pub::Value& events) {}
 
 void NativePlatformView::OnMouseClickEvent(int x, int y, int buttons,
                                            bool mouse_up) {}
@@ -59,25 +59,17 @@ void NativePlatformView::OnMouseWheelEvent(int x, int y, int modifiers,
                                            double delta_x, double delta_y) {}
 void NativePlatformView::OnFocusChanged(bool focused, bool is_leaf) {}
 void NativePlatformView::OnMethodInvoked(
-    const std::string& method, lynx_value attrs,
-    std::function<void(int code, lynx_value data)> callback) {
-  callback(kMethodNotFound, {.val_ptr = 0, .type = lynx_value_undefined});
+    const std::string& method, const lynx::pub::Value& attrs,
+    std::function<void(int, const lynx::pub::Value&)> callback) {
+  clay::Value result;
+  lynx::ClayValueWrapper wrapped(result);
+  callback(kMethodNotFound, wrapped);
 }
 
 void NativePlatformView::TriggerEvent(const char* name,
-                                      lynx::pub::LynxValue&& params) {
-  lynx_value_add_reference(nullptr, params.Value(), nullptr);
-  TriggerEvent(name, params.Value());
-}
-
-void NativePlatformView::TriggerEvent(const char* name, lynx_value params) {
-  lynx_api_env env = nullptr;
-  auto m =
-      params.type == lynx_value_map
-          ? std::move(
-                lynx::ValueConverter::CreateClayValue(env, params).GetMap())
-          : clay::Value::Map();
-  lynx_value_remove_reference(env, params, nullptr);
+                                      const lynx::pub::Value& params) {
+  auto value = lynx::ValueConverter::CreateClayValue(params);
+  auto m = value.IsMap() ? std::move(value.GetMap()) : clay::Value::Map();
   native_view_->page_view()->SendCustomEvent(native_view_->id(), name,
                                              std::move(m));
 }

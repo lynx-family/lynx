@@ -11,6 +11,8 @@
 #include <utility>
 
 #include "clay/gfx/shared_image/shared_image_sink.h"
+#include "clay/lynx_adaptor/clay_value.h"
+#include "clay/lynx_adaptor/native_view_embedder_adapter.h"
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
@@ -51,26 +53,28 @@ class NativeViewPluginEmbedder : public NativeViewPlugin {
     if (attrs.empty() && events.empty()) {
       return;
     }
-    lynx_api_env env = nullptr;
-    lynx_value lynx_attrs = lynx::ValueConverter::CreateLynxValue(env, attrs);
-    lynx_value lynx_events = lynx::ValueConverter::CreateLynxValue(env, events);
-    native_platform_view_->OnPropertiesChanged(lynx_attrs, lynx_events);
-    lynx_value_remove_reference(env, lynx_attrs, nullptr);
-    lynx_value_remove_reference(env, lynx_events, nullptr);
+    // These wrappers borrow the containers only during synchronous conversion.
+    clay::Value attrs_value(std::shared_ptr<clay::Value::Map>(
+        const_cast<clay::Value::Map*>(&attrs), [](auto*) {}));
+    clay::Value events_value(std::shared_ptr<clay::Value::Array>(
+        const_cast<clay::Value::Array*>(&events), [](auto*) {}));
+    lynx::ClayValueWrapper wrapped_attrs(attrs_value);
+    lynx::ClayValueWrapper wrapped_events(events_value);
+    native_platform_view_->OnPropertiesChanged(wrapped_attrs, wrapped_events);
   }
   void InvokePlatformMethod(
       const std::string& method, const clay::Value::Map& attrs,
       const clay::LynxUIMethodCallback& callback) override {
-    lynx_api_env env = nullptr;
-    lynx_value lynx_attrs = lynx::ValueConverter::CreateLynxValue(env, attrs);
+    // These wrappers borrow the containers only during synchronous conversion.
+    clay::Value attrs_value(std::shared_ptr<clay::Value::Map>(
+        const_cast<clay::Value::Map*>(&attrs), [](auto*) {}));
+    lynx::ClayValueWrapper wrapped_attrs(attrs_value);
     native_platform_view_->OnMethodInvoked(
-        method, lynx_attrs,
-        [env, cb = std::move(callback)](int code, lynx_value data) {
-          clay::Value result = lynx::ValueConverter::CreateClayValue(env, data);
-          lynx_value_remove_reference(env, data, nullptr);
-          cb(static_cast<LynxUIMethodResult>(code), std::move(result));
+        method, wrapped_attrs,
+        [cb = std::move(callback)](int code, const lynx::pub::Value& data) {
+          cb(static_cast<LynxUIMethodResult>(code),
+             lynx::ValueConverter::CreateClayValue(data));
         });
-    lynx_value_remove_reference(env, lynx_attrs, nullptr);
   }
 
   std::string GetName() const override { return native_view_->GetName(); }
@@ -250,10 +254,8 @@ void NativeViewServiceEmbedder::SetViewFactories(
   for (auto& pair : creators) {
     view_factories[pair.first] =
         [native_view_creator = pair.second]() -> clay::NativePlatformView* {
-      auto creator = reinterpret_cast<clay::NativePlatformView* (*)(void*)>(
-          std::get<0>(native_view_creator));
-      auto opaque = std::get<1>(native_view_creator);
-      return creator(opaque);
+      return NativeViewEmbedderAdapter::Create(
+          native_view_creator.first(native_view_creator.second));
     };
   }
   SetViewFactories(view_context, view_factories);
@@ -281,8 +283,7 @@ void NativeViewServiceEmbedder::AddViewFactory(ViewContext* view_context,
     view_context->SyncNativeViewTags(native_view_tags, native_view_tags);
 
     factories[name] = [creator, opaque]() -> clay::NativePlatformView* {
-      auto fx = reinterpret_cast<clay::NativePlatformView* (*)(void*)>(creator);
-      return fx(opaque);
+      return NativeViewEmbedderAdapter::Create(creator(opaque));
     };
   });
 }

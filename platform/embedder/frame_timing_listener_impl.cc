@@ -4,25 +4,19 @@
 
 #include "platform/embedder/frame_timing_listener_impl.h"
 
-#include "platform/embedder/lynx_view_clients.h"
-
 namespace lynx {
 namespace embedder {
 
 void FrameTimingListenerImpl::OnFrameTiming(int64_t frame_start_time_in_ns,
                                             int64_t frame_finish_time_in_ns) {
-  for (auto* client : clients_) {
-    client->OnFrameTiming(frame_start_time_in_ns, frame_finish_time_in_ns);
-  }
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  if (client_)
+    client_->OnFrameTiming(frame_start_time_in_ns, frame_finish_time_in_ns);
 }
-
-void FrameTimingListenerImpl::AddClient(LynxViewClients* client) {
-  if (std::find(clients_.begin(), clients_.end(), client) == clients_.end()) {
-    clients_.emplace_back(client);
-  }
+void FrameTimingListenerImpl::SetClient(FrameTimingClient* client) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  client_ = client;
 }
-
-void FrameTimingListenerImpl::RemoveAllClients() { clients_.clear(); }
 
 }  // namespace embedder
 }  // namespace lynx

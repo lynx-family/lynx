@@ -4,20 +4,97 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
-#include "clay/lynx_adaptor/native_platform_view.h"
+#include "base/include/no_destructor.h"
+#include "core/value_wrapper/value_impl_lepus.h"
+#include "platform/embedder/interfaces/native_view.h"
 #include "platform/embedder/public/capi/lynx_native_view_capi.h"
 
-class LynxNativeViewPrivate : public clay::NativePlatformView {
+namespace {
+// Callback tokens are independent of the CAPI object's address. A late or
+// duplicate completion must not dereference a released native-view handle.
+class NativeMethodCallbacks {
+ public:
+  using Callback = lynx::embedder::NativeView::MethodCallback;
+  struct State {
+    std::recursive_mutex mutex;
+    std::unordered_map<int64_t, Callback> pending;
+  };
+  NativeMethodCallbacks() : state_(std::make_shared<State>()) {}
+  ~NativeMethodCallbacks() { Cancel(); }
+  int64_t Add(Callback callback) {
+    std::lock_guard<std::recursive_mutex> state_lock(state_->mutex);
+    auto& registry = Registry();
+    std::lock_guard<std::mutex> lock(registry.mutex);
+    auto id = ++registry.next_id;
+    state_->pending.emplace(id, std::move(callback));
+    registry.states.emplace(id, state_);
+    return id;
+  }
+  void Cancel() {
+    std::unordered_map<int64_t, Callback> cancelled;
+    {
+      std::lock_guard<std::recursive_mutex> state_lock(state_->mutex);
+      auto& registry = Registry();
+      std::lock_guard<std::mutex> lock(registry.mutex);
+      for (const auto& entry : state_->pending) {
+        registry.states.erase(entry.first);
+      }
+      cancelled.swap(state_->pending);
+    }
+    // Captured owners may release other native views or complete cancelled
+    // methods during destruction. Destroy callbacks after releasing both locks.
+  }
+  static void Complete(lynx_native_view_callback_info_t info, int code,
+                       lynx_value data) {
+    // The callback consumes the result, including cancelled/duplicate results.
+    lynx::lepus::Value value(nullptr, data);
+    lynx_value_remove_reference(nullptr, data, nullptr);
+    std::shared_ptr<State> state;
+    {
+      auto& registry = Registry();
+      std::lock_guard<std::mutex> lock(registry.mutex);
+      auto found = registry.states.find(info.callback_id);
+      if (found == registry.states.end()) return;
+      state = found->second.lock();
+      registry.states.erase(found);
+    }
+    if (!state) return;
+    std::lock_guard<std::recursive_mutex> lock(state->mutex);
+    auto found = state->pending.find(info.callback_id);
+    if (found == state->pending.end()) return;
+    auto callback = std::move(found->second);
+    state->pending.erase(found);
+    lynx::pub::ValueImplLepus wrapped(value);
+    callback(code, wrapped);
+  }
+
+ private:
+  struct CallbackRegistry {
+    std::mutex mutex;
+    int64_t next_id = 0;
+    std::unordered_map<int64_t, std::weak_ptr<State>> states;
+  };
+  static CallbackRegistry& Registry() {
+    static lynx::base::NoDestructor<CallbackRegistry> registry;
+    return *registry;
+  }
+  std::shared_ptr<State> state_;
+};
+}  // namespace
+
+class LynxNativeViewPrivate : public lynx::embedder::NativeView {
  public:
   void Retain() { ref_count_.fetch_add(1, std::memory_order_relaxed); }
 
-  void ReleaseRef() {
+  void ReleaseRef() override {
     if (ref_count_.fetch_sub(1, std::memory_order_acq_rel) != 1) {
       return;
     }
+    callbacks_.Cancel();
     if (release_fn) {
       auto release = release_fn;
       auto* user_data = user_data_;
@@ -28,6 +105,13 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
     delete this;
   }
 
+  void SetRenderer(
+      std::shared_ptr<lynx::embedder::NativeViewRenderer> renderer) override {
+    renderer_ = std::move(renderer);
+  }
+  lynx_surface_handle_t* AcquireSurface(int width, int height) {
+    return renderer_ ? renderer_->AcquireSurface(width, height) : nullptr;
+  }
   bool OnCreate() override {
     if (on_create_fn) {
       return on_create_fn(reinterpret_cast<lynx_native_view_t*>(this),
@@ -46,6 +130,7 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
     }
   }
   void OnDestroy() override {
+    callbacks_.Cancel();
     if (on_destroy_fn) {
       on_destroy_fn(reinterpret_cast<lynx_native_view_t*>(this), user_data_);
     }
@@ -57,10 +142,15 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
                            user_data_, left, top, width, height, pixel_ratio);
     }
   }
-  void OnPropertiesChanged(lynx_value attrs, lynx_value events) override {
+  void OnPropertiesChanged(const lynx::pub::Value& attrs,
+                           const lynx::pub::Value& events) override {
     if (on_properties_changed_fn) {
+      auto attrs_value = lynx::pub::ValueUtils::ConvertValueToLepusValue(attrs);
+      auto events_value =
+          lynx::pub::ValueUtils::ConvertValueToLepusValue(events);
       on_properties_changed_fn(reinterpret_cast<lynx_native_view_t*>(this),
-                               user_data_, attrs, events);
+                               user_data_, attrs_value.value(),
+                               events_value.value());
     }
   }
   bool HandleMotionEvent(native_view_motion_event_t* event) override {
@@ -76,27 +166,19 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
                           user_data_, focused, is_leaf);
     }
   }
-  void OnMethodInvoked(
-      const std::string& method, lynx_value attrs,
-      std::function<void(int code, lynx_value data)> callback) override {
+  void OnMethodInvoked(const std::string& method, const lynx::pub::Value& attrs,
+                       MethodCallback callback) override {
     if (on_method_invoked_fn) {
-      int64_t callback_id = next_callback_id_++;
-      callbacks_[callback_id] = callback;
+      auto attrs_value = lynx::pub::ValueUtils::ConvertValueToLepusValue(attrs);
+      int64_t callback_id = callbacks_.Add(std::move(callback));
       return on_method_invoked_fn(
           reinterpret_cast<lynx_native_view_t*>(this), user_data_,
-          method.c_str(), attrs,
-          [](lynx_native_view_callback_info_t info, int code, lynx_value data) {
-            auto* self = reinterpret_cast<LynxNativeViewPrivate*>(info.impl);
-            auto search = self->callbacks_.find(info.callback_id);
-            if (search == self->callbacks_.end()) {
-              return;
-            }
-            search->second(code, data);
-            self->callbacks_.erase(search);
-          },
-          {(void*)this, callback_id});
+          method.c_str(), attrs_value.value(), NativeMethodCallbacks::Complete,
+          {this, callback_id});
     }
-    callback(kMethodNotFound, {.val_ptr = 0, .type = lynx_value_undefined});
+    lynx::lepus::Value value(lynx::lepus::Value::kCreateAsUndefinedTag);
+    lynx::pub::ValueImplLepus wrapped(value);
+    callback(3, wrapped);
   }
   bool SupportScrolling() const override {
     if (is_scroll_enabled_fn) {
@@ -115,17 +197,17 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
     }
     return false;
   }
-  ClaySharedImageSinkBufferMode buffer_mode() const override {
+  lynx_surface_buffer_mode_t BufferMode() const override {
     if (surface_buffer_mode_fn) {
       auto mode =
           surface_buffer_mode_fn(reinterpret_cast<lynx_native_view_t*>(
                                      const_cast<LynxNativeViewPrivate*>(this)),
                                  user_data_);
-      return static_cast<ClaySharedImageSinkBufferMode>(mode);
+      return mode;
     }
-    return kClaySharedImageSinkBufferModeDoubleBuffer;
+    return kDoubleBuffer;
   }
-  void Release() override { ReleaseRef(); }
+  std::shared_ptr<lynx::embedder::NativeViewRenderer> renderer_;
 
   void (*release_fn)(lynx_native_view_t*, void*) = nullptr;
   bool (*on_create_fn)(lynx_native_view_t*, void*) = nullptr;
@@ -150,9 +232,7 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
   lynx_surface_buffer_mode_t (*surface_buffer_mode_fn)(lynx_native_view_t*,
                                                        void*) = nullptr;
   void* user_data_ = nullptr;
-  std::unordered_map<int64_t, std::function<void(int code, lynx_value data)>>
-      callbacks_;
-  int64_t next_callback_id_ = 1;
+  NativeMethodCallbacks callbacks_;
   std::atomic<uint32_t> ref_count_{1};
 };
 
@@ -239,7 +319,7 @@ LYNX_EXTERN_C void lynx_native_view_bind_is_surface_enabled(
   reinterpret_cast<LynxNativeViewPrivate*>(view)->is_surface_enabled_fn =
       callback;
 }
-LYNX_CAPI_EXPORT void lynx_native_view_bind_surface_buffer_mode(
+LYNX_EXTERN_C void lynx_native_view_bind_surface_buffer_mode(
     lynx_native_view_t* view,
     lynx_surface_buffer_mode_t (*callback)(lynx_native_view_t*,
                                            void* user_data)) {
@@ -259,48 +339,44 @@ lynx_native_view_get_surface_buffer_mode(lynx_native_view_t* view) {
 LYNX_EXTERN_C bool lynx_native_view_present_surface(
     lynx_native_view_t* view, int width, int height, const float* transform,
     lynx_surface_handle_t* handle) {
-  static_assert(sizeof(ClayTransformation) == sizeof(float) * 3 * 3);
-  auto self = reinterpret_cast<LynxNativeViewPrivate*>(view);
-  if (!self->GetSharedImageSink()) {
-    return false;
-  }
-  return self->PresentSurface(
-      width, height, reinterpret_cast<const ClayTransformation*>(transform),
-      handle);
+  auto* self = reinterpret_cast<LynxNativeViewPrivate*>(view);
+  return self->renderer_ &&
+         self->renderer_->PresentSurface(width, height, transform, handle);
 }
+
 LYNX_EXTERN_C lynx_surface_handle_t* lynx_native_view_acquire_surface(
     lynx_native_view_t* view, int width, int height) {
-  auto self = reinterpret_cast<LynxNativeViewPrivate*>(view);
-  if (!self->GetSharedImageSink()) {
-    return nullptr;
-  }
-  auto handle = self->AcquireSurface(width, height);
-  return reinterpret_cast<lynx_surface_handle_t*>(handle);
+  return reinterpret_cast<LynxNativeViewPrivate*>(view)->AcquireSurface(width,
+                                                                        height);
 }
 LYNX_EXTERN_C lynx_surface_handle_t*
 lynx_native_view_acquire_surface_with_transform(lynx_native_view_t* view,
                                                 int width, int height,
                                                 const float* transform) {
-  static_assert(sizeof(ClayTransformation) == sizeof(float) * 3 * 3);
-  auto self = reinterpret_cast<LynxNativeViewPrivate*>(view);
-  if (!self->GetSharedImageSink()) {
-    return nullptr;
-  }
-  auto handle = self->AcquireSurface(
-      width, height, reinterpret_cast<const ClayTransformation*>(transform));
-  return reinterpret_cast<lynx_surface_handle_t*>(handle);
+  auto* self = reinterpret_cast<LynxNativeViewPrivate*>(view);
+  return self->renderer_
+             ? self->renderer_->AcquireSurface(width, height, transform)
+             : nullptr;
 }
+
 LYNX_EXTERN_C bool lynx_native_view_swap_back(lynx_native_view_t* view) {
-  return reinterpret_cast<LynxNativeViewPrivate*>(view)->SwapBack();
+  auto* self = reinterpret_cast<LynxNativeViewPrivate*>(view);
+  return self->renderer_ && self->renderer_->SwapBack();
 }
 LYNX_EXTERN_C void lynx_native_view_trigger_event(lynx_native_view_t* view,
                                                   const char* name,
                                                   lynx_value params) {
-  reinterpret_cast<LynxNativeViewPrivate*>(view)->TriggerEvent(name, params);
+  auto* self = reinterpret_cast<LynxNativeViewPrivate*>(view);
+  lynx::lepus::Value value(nullptr, params);
+  lynx::pub::ValueImplLepus wrapped(value);
+  if (self->renderer_) self->renderer_->TriggerEvent(name, wrapped);
+  lynx_value_remove_reference(nullptr, params, nullptr);
 }
 LYNX_EXTERN_C void lynx_native_view_request_focus(lynx_native_view_t* view) {
-  reinterpret_cast<LynxNativeViewPrivate*>(view)->RequestFocus();
+  auto* self = reinterpret_cast<LynxNativeViewPrivate*>(view);
+  if (self->renderer_) self->renderer_->RequestFocus();
 }
 LYNX_EXTERN_C void lynx_native_view_mark_dirty(lynx_native_view_t* view) {
-  reinterpret_cast<LynxNativeViewPrivate*>(view)->MarkDirty();
+  auto* self = reinterpret_cast<LynxNativeViewPrivate*>(view);
+  if (self->renderer_) self->renderer_->MarkDirty();
 }

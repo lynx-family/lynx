@@ -21,7 +21,7 @@ lynx_core_source_set("lynx_service") {
     "lynx_trail_service.cc",
     "lynx_trail_service_priv.h",
   ]
-  public_configs = [ "../:config" ]
+  public_configs = [ "../:engine_config" ]
   deps = [ "../:lynx_embedder_capi" ]
 }
 if (enable_unittests) {
@@ -39,4 +39,9 @@ if (enable_unittests) {
       "//third_party/googletest:gtest",
     ]
   }
+}
+
+lynx_core_source_set("trail_hub_impl") {
+  sources = [ "lynx_trail_hub_impl.cc" ]
+  deps = [ ":lynx_service" ]
 }

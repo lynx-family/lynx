@@ -10,14 +10,10 @@
 #include <string>
 #include <utility>
 
-#include "base/include/value/lynx_value_api.h"
 #include "clay/public/clay.h"
+#include "core/public/pub_value.h"
 
 struct native_view_motion_event;
-
-namespace lynx::pub {
-class LynxValue;
-}
 
 namespace clay {
 
@@ -39,15 +35,16 @@ class CLAY_EXPORT NativePlatformView {
   virtual void OnDestroy();
   virtual void OnLayoutChanged(float left, float top, float width, float height,
                                float pixel_ratio);
-  virtual void OnPropertiesChanged(lynx_value attrs, lynx_value events);
+  virtual void OnPropertiesChanged(const lynx::pub::Value& attrs,
+                                   const lynx::pub::Value& events);
   virtual void OnMouseClickEvent(int x, int y, int buttons, bool mouse_up);
   virtual void OnMouseMoveEvent(int x, int y, int modifiers, bool mouse_leave);
   virtual void OnMouseWheelEvent(int x, int y, int modifiers, double delta_x,
                                  double delta_y);
   virtual void OnFocusChanged(bool focused, bool is_leaf);
   virtual void OnMethodInvoked(
-      const std::string& method, lynx_value attrs,
-      std::function<void(int code, lynx_value data)> callback);
+      const std::string& method, const lynx::pub::Value& attrs,
+      std::function<void(int, const lynx::pub::Value&)> callback);
   virtual bool SupportScrolling() const { return false; }
   virtual bool NeedSharedImageSink() const { return false; }
   virtual bool HandleMotionEvent(native_view_motion_event* event) {
@@ -85,8 +82,7 @@ class CLAY_EXPORT NativePlatformView {
   bool SwapBack();
   ClaySharedImageSinkRef GetSharedImageSink();
 
-  void TriggerEvent(const char* name, lynx::pub::LynxValue&& params);
-  void TriggerEvent(const char* name, lynx_value params);
+  void TriggerEvent(const char* name, const lynx::pub::Value& params);
   void RequestFocus();
   void MarkDirty();
 

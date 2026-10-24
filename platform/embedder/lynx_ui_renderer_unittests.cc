@@ -4,17 +4,18 @@
 
 #include <vector>
 
-#include "platform/embedder/lynx_ui_renderer.h"
+#include "clay/public/clay.h"
+#include "platform/embedder/lynx_ui_renderer_clay.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace embedder {
 namespace {
 
-class CapturingLynxUIRenderer : public LynxUIRenderer {
+class CapturingLynxUIRenderer : public LynxUIRendererClay {
  public:
-  explicit CapturingLynxUIRenderer(lynx_view_builder_t* builder)
-      : LynxUIRenderer(builder) {}
+  explicit CapturingLynxUIRenderer(const RendererConfig& config)
+      : LynxUIRendererClay(config) {}
 
   void SetParent(NativeWindow parent) override {}
   NativeWindow GetNativeWindow() override { return nullptr; }
@@ -32,9 +33,9 @@ class CapturingLynxUIRenderer : public LynxUIRenderer {
 };
 
 TEST(LynxUIRendererTest, DragProducesClayPointerSequence) {
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 2.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 2.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateMouseSyntheticEvent("mousePressed", 10, 20, "left", 0, 0, 0,
                                       1);
@@ -61,9 +62,9 @@ TEST(LynxUIRendererTest, DragProducesClayPointerSequence) {
 }
 
 TEST(LynxUIRendererTest, RightDragRetainsPressedButtonAcrossMove) {
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 1.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 1.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateMouseSyntheticEvent("mousePressed", 1, 2, "right", 0, 0, 0,
                                       1);
@@ -77,9 +78,9 @@ TEST(LynxUIRendererTest, RightDragRetainsPressedButtonAcrossMove) {
 }
 
 TEST(LynxUIRendererTest, WheelProducesPreciseClayScroll) {
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 2.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 2.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateMouseSyntheticEvent("mouseWheel", 7, 8, "none", 1.5f, -2.5f,
                                       0, 0);
@@ -96,9 +97,9 @@ TEST(LynxUIRendererTest, WheelProducesPreciseClayScroll) {
 }
 
 TEST(LynxUIRendererTest, MoveUsesButtonStateFromCaller) {
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 1.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 1.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateMouseSyntheticEvent("mousePressed", 1, 2, "left", 0, 0, 0, 1);
   renderer.EmulateMouseSyntheticEvent("mouseMoved", 2, 3, "left", 0, 0, 0, 0);
@@ -114,9 +115,9 @@ TEST(LynxUIRendererTest, MoveUsesButtonStateFromCaller) {
 }
 
 TEST(LynxUIRendererTest, MouseHoverRetainsDeviceAcrossGestures) {
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 1.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 1.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateMouseSyntheticEvent("mouseMoved", 1, 2, "none", 0, 0, 0, 0);
   renderer.EmulateMouseSyntheticEvent("mouseMoved", 3, 4, "none", 0, 0, 0, 0);
@@ -140,9 +141,9 @@ TEST(LynxUIRendererTest, MouseHoverRetainsDeviceAcrossGestures) {
 }
 
 TEST(LynxUIRendererTest, UnknownEventTypeIsIgnored) {
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 1.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 1.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateMouseSyntheticEvent("unknown", 1, 2, "left", 0, 0, 0, 0);
   renderer.EmulateTouchSyntheticEvent("unknown", 1, 2, "left", 0, 0, 0, 0);
@@ -151,9 +152,9 @@ TEST(LynxUIRendererTest, UnknownEventTypeIsIgnored) {
 }
 
 TEST(LynxUIRendererTest, TouchDragProducesTouchPointerSequence) {
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 2.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 2.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateTouchSyntheticEvent("mousePressed", 10, 20, "left", 0, 0, 0,
                                       1);
@@ -183,9 +184,9 @@ TEST(LynxUIRendererTest, TouchDragProducesTouchPointerSequence) {
 }
 
 TEST(LynxUIRendererTest, TouchHoverMoveHasNoLifecycleAndNoHover) {
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 1.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 1.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateTouchSyntheticEvent("mouseMoved", 3, 4, "none", 0, 0, 0, 0);
 
@@ -196,9 +197,9 @@ TEST(LynxUIRendererTest, TouchHoverMoveHasNoLifecycleAndNoHover) {
 
 TEST(LynxUIRendererTest, TouchWheelIsIgnoredByRenderer) {
   // Renderer drops touch-wheel; the proxy layer downgrades it to mouse.
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 2.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 2.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateTouchSyntheticEvent("mouseWheel", 7, 8, "none", 1.5f, -2.5f,
                                       0, 0);
@@ -207,9 +208,9 @@ TEST(LynxUIRendererTest, TouchWheelIsIgnoredByRenderer) {
 }
 
 TEST(LynxUIRendererTest, TouchAndMouseUseDifferentDeviceIds) {
-  lynx_view_builder_t builder = {};
-  builder.screen_size.pixel_ratio = 1.f;
-  CapturingLynxUIRenderer renderer(&builder);
+  RendererConfig config = {};
+  config.pixel_ratio = 1.f;
+  CapturingLynxUIRenderer renderer(config);
 
   renderer.EmulateMouseSyntheticEvent("mousePressed", 1, 2, "left", 0, 0, 0, 1);
   renderer.EmulateTouchSyntheticEvent("mousePressed", 1, 2, "left", 0, 0, 0, 1);

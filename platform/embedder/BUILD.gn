@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("../../clay/common/config.gni")
 import("../../core/Lynx.gni")
 import("../../testing/test.gni")
 
@@ -13,12 +14,12 @@ config("public_api") {
   ]
 }
 
-config("config") {
+config("engine_config") {
   include_dirs = [
     "../..",
     "../../base/include/value",
   ]
-  defines = [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+  defines = []
   if (is_win) {
     # enable dllexport for public APIs.
     defines += [ "lynx_EXPORTS" ]
@@ -32,8 +33,30 @@ config("config") {
   }
 }
 
+config("rendering_config") {
+  defines = [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+}
+
+# Keep the existing config available to platform integrations while they move
+# to the engine or rendering target. Engine-only targets must not use it.
+config("config") {
+  configs = [
+    ":engine_config",
+    ":rendering_config",
+  ]
+}
+
 lynx_core_source_set("lynx_runtime_lifecycle_observer") {
-  sources = [ "lynx_runtime_lifecycle_observer.cc" ]
+  sources = [
+    "lynx_runtime_lifecycle_observer.cc",
+    "lynx_runtime_lifecycle_observer_priv.h",
+  ]
+  public_deps = [
+    ":lynx_embedder_capi",
+    ":lynx_napi_api",
+    "../../base/src:base_public_headers",
+    "../../core/runtime/js:js",
+  ]
   public_configs = [ "../../third_party/weak-node-api:weak_node_api_config" ]
 }
 
@@ -51,29 +74,77 @@ lynx_core_source_set("devtool_settings_embedder") {
   } else {
     sources += [ "switch_persist.cc" ]
   }
-  deps = [ "../../core/renderer/utils:renderer_utils" ]
+  deps = [
+    "../../base/src:base_public_headers",
+    "../../core/renderer/utils:renderer_utils",
+  ]
 }
 
-lynx_core_source_set("embedder") {
+# Preserve the existing SDK entry point and public configuration. Implementations
+# are linked exactly once through their owning target.
+group("embedder") {
+  public_deps = [
+    ":engine",
+    ":rendering",
+  ]
+  public_configs = [
+    ":public_api",
+    ":config",
+  ]
+}
+
+# SDK-private declarations. Builder storage and concrete renderers are not part
+# of this target. Factory contracts accept only an owned configuration snapshot.
+lynx_core_source_set("contracts") {
   sources = [
-    "frame_timing_listener_impl.cc",
-    "frame_timing_listener_impl.h",
-    "lynx_env.cc",
+    "interfaces/native_view.h",
+    "interfaces/renderer_config.h",
+    "interfaces/renderer_factory.h",
+    "interfaces/resource_provider.h",
     "lynx_env_platform.h",
+    "lynx_ui_renderer.h",
+  ]
+  public_deps = [
+    ":lynx_embedder_capi",
+    "../../base/src:base_public_headers",
+    "../../core/public:public",
+  ]
+  public_configs = [
+    ":public_api",
+    ":engine_config",
+  ]
+  if (enable_napi_binding) {
+    public_configs += [ "../../third_party/weak-node-api:weak_node_api_config" ]
+  }
+  assert_no_deps = [
+    ":engine",
+    ":rendering",
+  ]
+}
+
+lynx_core_source_set("engine") {
+  assert_no_deps = [
+    ":clay_renderer",
+    ":rendering",
+    "../../clay/*",
+    "./windowless:*",
+  ]
+  sources = [
+    "lynx_env.cc",
+    "lynx_env_priv.h",
     "lynx_group.cc",
     "lynx_group_priv.h",
     "lynx_load_meta.cc",
     "lynx_load_meta_priv.h",
     "lynx_log.cc",
     "lynx_native_view.cc",
-    "lynx_runtime_lifecycle_observer_priv.h",
     "lynx_template_bundle.cc",
     "lynx_template_bundle_priv.h",
     "lynx_template_data.cc",
     "lynx_template_data_priv.h",
     "lynx_trace.cc",
-    "lynx_ui_renderer.cc",
-    "lynx_ui_renderer.h",
+    "lynx_ui_renderer_factory.cc",
+    "lynx_ui_renderer_factory.h",
     "lynx_update_meta.cc",
     "lynx_update_meta_priv.h",
     "lynx_view.cc",
@@ -90,40 +161,79 @@ lynx_core_source_set("embedder") {
     "lynx_vsync_monitor_priv.h",
     "memory/lynx_memory.cc",
   ]
-  if (is_win || is_mac) {
-    sources += [
-      "native_view/lynx_texture_view.cc",
-      "native_view/lynx_texture_view.h",
-    ]
-  }
-
   deps = [
+    ":contracts",
     ":public_headers",
     "../../base/src:base_static",
+    "../../base/trace/native:trace_public_headers",
     "../../core:lynx_native",
+    "../../core/base:base",
+    "../../core/renderer:tasm",
     "../../core/renderer/data",
+    "../../core/renderer/utils:renderer_utils",
+    "../../core/runtime/lepus:lepus",
+    "../../core/shared_data:white_board",
+    "../../core/shell:shell",
+    "../../core/template_bundle:template_bundle",
+    "../../core/value_wrapper:value_wrapper",
     "./core:renderer",
+    "./fetcher",
     "./lynx_service",
     "./resource",
   ]
+  if (enable_unittests) {
+    sources += [
+      "testing/lynx_ui_renderer_test.cc",
+      "testing/lynx_ui_renderer_test.h",
+    ]
+    deps += [ "../../core/renderer/ui_wrapper/common" ]
+  } else if (!is_mac && !is_win) {
+    # Mobile and other non-desktop hosts have no platform window renderer.
+    sources += [ "lynx_ui_renderer_mock.cc" ]
+  }
   if (enable_napi_binding) {
+    deps += [ "./module:base_module" ]
     public_deps = [
       ":lynx_runtime_lifecycle_observer",
       "../../third_party/napi:weak_node_api_host",
       "./module",
     ]
   }
-  if (is_headless) {
-    deps += [ "./windowless" ]
+  if (use_clay_lynx_trail_hub_impl) {
+    deps += [ "./lynx_service:trail_hub_impl" ]
   }
+  public_configs = [
+    ":public_api",
+    ":engine_config",
+  ]
+
+  if (is_mac) {
+    sources += [ "lynx_env_macos.mm" ]
+    if (!enable_unittests) {
+      deps += [ "../darwin/macos/common:engine" ]
+    }
+  } else {
+    sources += [ "lynx_env_default.cc" ]
+  }
+  if (is_win || is_mac) {
+    sources += [
+      "native_view/lynx_texture_view.cc",
+      "native_view/lynx_texture_view.h",
+    ]
+  }
+  if (is_headless) {
+    sources += [ "windowless/windowless_ui_task_runner_delegate.cc" ]
+  }
+
   if (enable_inspector && enable_logbox) {
     deps += [ "./lynx_devtool:lynx_devtool_logbox" ]
   }
-
-  public_configs = [
-    ":public_api",
-    ":config",
-  ]
+  if (enable_inspector) {
+    deps += [
+      "../../devtool/embedder/common:lynx_devtool_embedder_common",
+      "../../third_party/debug_router/src/debug_router/common:debug_router_source",
+    ]
+  }
 
   if (!enable_unittests && !is_android && !is_harmony) {
     if (!is_ios) {
@@ -133,22 +243,6 @@ lynx_core_source_set("embedder") {
       "vsync_monitor_fallback.cc",
       "vsync_monitor_fallback.h",
     ]
-    if (is_linux) {
-      sources += [ "lynx_ui_renderer_mock.cc" ]
-    }
-  } else {
-    if (enable_unittests) {
-      sources += [
-        "testing/lynx_ui_renderer_test.cc",
-        "testing/lynx_ui_renderer_test.h",
-      ]
-      deps += [ "../../core/renderer/ui_wrapper/common" ]
-    } else {
-      sources += [ "lynx_ui_renderer_mock.cc" ]
-    }
-    if (!(is_harmony && is_headless)) {
-      sources += [ "../../clay/lynx_adaptor/native_platform_view_mock.cc" ]
-    }
   }
   if (!enable_unittests && is_android && is_headless) {
     sources += [
@@ -161,8 +255,55 @@ lynx_core_source_set("embedder") {
   }
 }
 
+# Clay-specific input behavior stays out of the generic renderer vtable so the
+# Engine-owned mock can link without any Rendering implementation.
+lynx_core_source_set("clay_renderer") {
+  sources = [
+    "lynx_ui_renderer_clay.cc",
+    "lynx_ui_renderer_clay.h",
+  ]
+  deps = [ "../../base/src:base_static" ]
+  public_deps = [ ":contracts" ]
+  configs = [ ":rendering_config" ]
+  assert_no_deps = [ ":engine" ]
+}
+
+# Renderer implementations consume only SDK-private contracts, never Builder
+# storage, engine callback state, or the resource fetcher implementation.
+lynx_core_source_set("rendering") {
+  sources = [
+    "frame_timing_listener_impl.cc",
+    "frame_timing_listener_impl.h",
+  ]
+  deps = [ "../../base/src:base_static" ]
+  public_deps = [
+    ":clay_renderer",
+    ":contracts",
+    "../../clay/shell/common:frame_timing_listener",
+  ]
+  configs = [ ":rendering_config" ]
+  if (is_headless) {
+    deps += [ "./windowless" ]
+  }
+
+  if (is_mac && !enable_unittests) {
+    deps += [ "../darwin/macos/common:rendering" ]
+  }
+  if ((enable_unittests || is_android || is_harmony) &&
+      !(is_harmony && is_headless)) {
+    deps += [ "../../clay/lynx_adaptor:native_platform_view_mock" ]
+  }
+  assert_no_deps = [
+    ":engine",
+    "./core/*",
+    "./fetcher/*",
+    "./module/*",
+    "./resource/*",
+  ]
+}
+
 group("public_headers") {
-  deps = [
+  public_deps = [
     ":lynx_embedder_capi",
     ":lynx_embedder_cxxapi",
     ":lynx_napi_api",
@@ -277,6 +418,8 @@ if (enable_unittests) {
       "lynx_view_builder_unittests.cc",
       "lynx_view_client_unittests.cc",
       "lynx_view_event_simulation_proxy_unittest.cc",
+      "native_view_contract_unittests.cc",
+      "resource_provider_contract_unittests.cc",
     ]
 
     # The test host uses a desktop FML message loop for view initialization.

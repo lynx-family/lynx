@@ -159,3 +159,24 @@ WindowlessUITaskRunnerDelegate* GetGlobalUITaskRunnerDelegate() {
 
 }  // namespace embedder
 }  // namespace lynx
+
+LYNX_EXTERN_C bool lynx_windowless_set_global_ui_task_runner(
+    const lynx_windowless_ui_task_runner_config_t* config) {
+  LOGD("[lynx_windowless_set_global_ui_task_runner] Called");
+  bool result = lynx::embedder::SetGlobalUITaskRunnerDelegate(config);
+  LOGD("[lynx_windowless_set_global_ui_task_runner] Returning");
+  return result;
+}
+
+LYNX_EXTERN_C bool lynx_windowless_run_ui_task(lynx_task_t task) {
+  LOGD("[lynx_windowless_run_ui_task] Called");
+  lynx::embedder::WindowlessUITaskRunnerDelegate* delegate =
+      lynx::embedder::GetGlobalUITaskRunnerDelegate();
+  if (!delegate) {
+    LOGW("[lynx_windowless_run_ui_task] delegate is null");
+    return false;
+  }
+  bool result = delegate->RunTask(task.task);
+  LOGD("[lynx_windowless_run_ui_task] Returning");
+  return result;
+}
