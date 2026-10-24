@@ -1016,6 +1016,42 @@ TEST_P(TextElementTest, WordBreakReachesTextMeasurerUnderLayoutInElement) {
             starlight::WordBreakType::kBreakAll);
 }
 
+TEST_P(TextElementTest, TextSpacingTrimReachesTextMeasurerAndResets) {
+  manager->GetConfig()->SetEnableCSSInheritance(true);
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  auto raw_text = manager->CreateFiberRawText();
+  raw_text->SetText(lepus::Value("text-content"));
+  page->InsertNode(text);
+  text->InsertNode(raw_text);
+
+  page->SetRawInlineStyles(
+      base::String("font-size:16px;text-spacing-trim:trim-both;"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(text->property_bits_.Has(kPropertyIDTextSpacingTrim));
+  ASSERT_TRUE(text->computed_css_style()->GetTextAttributes().has_value());
+  EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->text_spacing_trim,
+            starlight::TextSpacingTrimType::kNormal);
+
+  text->SetRawInlineStyles(base::String("text-spacing-trim:trim-all;"));
+  text->FlushActionsAsRoot();
+  EXPECT_TRUE(text->property_bits_.Has(kPropertyIDTextSpacingTrim));
+  EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->text_spacing_trim,
+            starlight::TextSpacingTrimType::kTrimAll);
+
+  text->RemoveAllInlineStyles();
+  text->SetRawInlineStyles(base::String(""));
+  text->FlushActionsAsRoot();
+  EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->text_spacing_trim,
+            starlight::TextSpacingTrimType::kNormal);
+  EXPECT_TRUE(text->property_bits_.Has(kPropertyIDTextSpacingTrim));
+}
+
 TEST_P(TextElementTest, ResetTextMaxlineClearsLayoutInElementProp) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
