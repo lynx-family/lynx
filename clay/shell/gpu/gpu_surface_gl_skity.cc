@@ -259,9 +259,7 @@ bool GPUSurfaceGLSkity::PresentSurface(const SurfaceFrame& frame) {
       .presentation_time = frame.submit_info().presentation_time,
       .buffer_damage = frame.submit_info().buffer_damage,
   };
-  if (!delegate_->GLContextPresent(present_info)) {
-    return false;
-  }
+  const bool present_result = delegate_->GLContextPresent(present_info);
 
   if (delegate_->GLContextFBOResetAfterPresent()) {
     gpu_surface_ = nullptr;
@@ -271,7 +269,7 @@ bool GPUSurfaceGLSkity::PresentSurface(const SurfaceFrame& frame) {
     has_surface_generation_ = false;
   }
 
-  return true;
+  return present_result;
 }
 
 }  // namespace clay
