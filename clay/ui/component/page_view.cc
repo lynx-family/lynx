@@ -46,6 +46,7 @@
 #include "clay/shell/common/services/vsync_waiter_service.h"
 #include "clay/ui/common/overlay_manager.h"
 #include "clay/ui/common/utils/watch_dog.h"
+#include "clay/ui/component/base_image_view.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/image_view.h"
@@ -64,6 +65,7 @@
 #include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/selection_handle_view.h"
 #include "clay/ui/component/selection_popup_view.h"
+#include "clay/ui/component/text/base_text_view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/event/event_utils.h"
 #include "clay/ui/event/gesture_event.h"
@@ -74,6 +76,7 @@
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
 #include "clay/ui/painter/painting_context.h"
 #include "clay/ui/rendering/render_page.h"
+#include "clay/ui/rendering/text/render_text.h"
 #include "clay/ui/resource/image_resource_fetcher.h"
 #include "clay/version/version.h"
 
@@ -82,6 +85,40 @@
 #endif
 
 namespace clay {
+
+std::vector<PageView::MeaningfulPaintingAreaRecord>
+PageView::CollectMeaningfulPaintingAreas() {
+  std::vector<MeaningfulPaintingAreaRecord> records;
+  std::vector<BaseView*> to_visit;
+  for (auto* child : GetChildren()) {
+    to_visit.emplace_back(child);
+  }
+
+  while (!to_visit.empty()) {
+    auto* view = to_visit.back();
+    to_visit.pop_back();
+    if (view == nullptr || !view->attach_to_tree()) {
+      continue;
+    }
+    for (auto* child : view->GetChildren()) {
+      to_visit.emplace_back(child);
+    }
+
+    const auto status = view->GetMeaningfulContentStatus();
+    if (status == BaseView::MeaningfulContentStatus::kIrrelevant) {
+      continue;
+    }
+    const auto location = view->AbsoluteLocationWithScroll();
+    records.push_back({ConvertTo<kPixelTypePhysical>(location.x()),
+                       ConvertTo<kPixelTypePhysical>(location.y()),
+                       ConvertTo<kPixelTypePhysical>(view->Width()),
+                       ConvertTo<kPixelTypePhysical>(view->Height()),
+                       view->IsMeaningfulContentValid(),
+                       static_cast<int>(status), view->Visible() ? 0 : 4,
+                       view->Opacity(), 1.f, 1.f});
+  }
+  return records;
+}
 
 class PageView::PageTapGestureRecognizer final : public TapGestureRecognizer {
  public:

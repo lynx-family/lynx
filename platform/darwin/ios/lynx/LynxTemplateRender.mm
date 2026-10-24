@@ -65,6 +65,16 @@
 - (LynxBackgroundRuntimeOptions*)effectiveLynxRuntimeOptions;
 @end
 
+@protocol LynxMeaningfulPaintingContents <NSObject>
+- (void)getMeaningfulPaintingContentsWithCompletion:
+    (void (^)(LynxMeaningfulContentSnapshot* _Nullable))completion;
+@end
+
+@interface LynxFSPTracer (LynxAsyncMeaningfulContentCapture)
+- (void)startWithAsyncCaptureHandler:
+    (void (^)(void (^completion)(LynxMeaningfulContentSnapshot* _Nullable)))captureHandler;
+@end
+
 #include <cmath>
 #include <functional>
 #include <memory>
@@ -2525,16 +2535,25 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [fspTracer configureWithPageConfig:pageConfig_.get()];
   if (fspTracer.enable) {
     __weak typeof(self) weakSelf = self;
-    [fspTracer startWithCaptureHandler:^LynxMeaningfulContentSnapshot* {
+    id<LynxMeaningfulPaintingContents> renderer =
+        (id<LynxMeaningfulPaintingContents>)[self lynxUIRenderer];
+    if (![renderer respondsToSelector:@selector(getMeaningfulPaintingContentsWithCompletion:)]) {
+      [fspTracer startWithCaptureHandler:^LynxMeaningfulContentSnapshot* {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        return [[[strongSelf lynxUIRenderer] uiOwner] getMeaningfulPaintingContents];
+      }];
+      return;
+    }
+    [fspTracer startWithAsyncCaptureHandler:^(
+                   void (^completion)(LynxMeaningfulContentSnapshot* _Nullable)) {
       __strong typeof(weakSelf) strongSelf = weakSelf;
       if (!strongSelf) {
-        return nil;
+        completion(nil);
+        return;
       }
-      LynxUIOwner* owner = [[strongSelf lynxUIRenderer] uiOwner];
-      if (!owner) {
-        return nil;
-      }
-      return [owner getMeaningfulPaintingContents];
+      id<LynxMeaningfulPaintingContents> currentRenderer =
+          (id<LynxMeaningfulPaintingContents>)[strongSelf lynxUIRenderer];
+      [currentRenderer getMeaningfulPaintingContentsWithCompletion:completion];
     }];
   }
 }

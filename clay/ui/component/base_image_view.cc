@@ -101,6 +101,17 @@ BaseImageView::~BaseImageView() {
   TryCancelFetch(placeholder_, placeholder_fetch_id_);
 }
 
+BaseView::MeaningfulContentStatus BaseImageView::GetMeaningfulContentStatus()
+    const {
+  return static_cast<const RenderImage*>(render_object())->HasContent()
+             ? MeaningfulContentStatus::kPresented
+             : MeaningfulContentStatus::kPending;
+}
+
+bool BaseImageView::IsMeaningfulContentValid() const {
+  return static_cast<const RenderImage*>(render_object())->HasContent();
+}
+
 int64_t BaseImageView::GetMemoryUsageBytes() {
   int64_t size = BaseView::GetMemoryUsageBytes();
   auto* render_image = GetRenderImage();

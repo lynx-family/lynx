@@ -29,6 +29,9 @@ using namespace lynx::tasm::performance;
 @property(nonatomic, assign) BOOL isRunning;
 @property(nonatomic, assign) int snapshotIntervalMs;
 
+- (void)startWithAsyncCaptureHandler:
+    (void (^)(void (^completion)(LynxMeaningfulContentSnapshot* _Nullable)))captureHandler;
+
 @end
 
 @implementation LynxFSPTracer
@@ -44,6 +47,13 @@ using namespace lynx::tasm::performance;
 
 // Call on main thread
 - (void)startWithCaptureHandler:(LynxMeaningfulContentSnapshot* (^)(void))captureHandler {
+  [self startWithAsyncCaptureHandler:^(void (^completion)(LynxMeaningfulContentSnapshot*)) {
+    completion(captureHandler());
+  }];
+}
+
+- (void)startWithAsyncCaptureHandler:
+    (void (^)(void (^completion)(LynxMeaningfulContentSnapshot* _Nullable)))captureHandler {
   if (self.isRunning || !self.enable) {
     return;
   }
@@ -192,7 +202,8 @@ using namespace lynx::tasm::performance;
 }
 
 #pragma mark - Snapshot
-- (void)scheduleNextCapture:(LynxMeaningfulContentSnapshot* (^)(void))captureHandler {
+- (void)scheduleNextCapture:
+    (void (^)(void (^completion)(LynxMeaningfulContentSnapshot* _Nullable)))captureHandler {
   if (self.snapshotIntervalMs <= 0) {
     return;
   }
@@ -204,8 +215,14 @@ using namespace lynx::tasm::performance;
         if (!strongSelf || !strongSelf.isRunning || !captureHandler) {
           return;
         }
-        [strongSelf handleSnapshotCapture:captureHandler()];
-        [strongSelf scheduleNextCapture:captureHandler];
+        captureHandler(^(LynxMeaningfulContentSnapshot* snapshot) {
+          __strong __typeof(weakSelf) currentSelf = weakSelf;
+          if (!currentSelf || !currentSelf.isRunning) {
+            return;
+          }
+          [currentSelf handleSnapshotCapture:snapshot];
+          [currentSelf scheduleNextCapture:captureHandler];
+        });
       });
 }
 

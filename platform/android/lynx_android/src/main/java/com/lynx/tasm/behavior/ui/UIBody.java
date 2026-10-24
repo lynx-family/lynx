@@ -57,6 +57,8 @@ import org.json.JSONObject;
 
 public class UIBody extends UIGroup<UIBodyView> {
   private final static String TAG = "UIBody";
+  private static final String MEANINGFUL_PAINTING_AREA_CAPTURE_HANDLER =
+      "lynx_meaningful_painting_area_capture_handler";
 
   @Nullable private UIBodyView mBodyView;
   @Nullable private EventTarget mParentLynxPageUI;
@@ -111,6 +113,21 @@ public class UIBody extends UIGroup<UIBodyView> {
         List<MeaningfulPaintingArea> areas =
             ((LynxUIRenderer) uiRenderer).getMeaningfulPaintingAreas();
         return areas != null ? areas : new ArrayList<MeaningfulPaintingArea>();
+      }
+      Object handler = getLynxContext().getSharedData(MEANINGFUL_PAINTING_AREA_CAPTURE_HANDLER);
+      if (handler instanceof Callable) {
+        @SuppressWarnings("unchecked")
+        Callable<List<MeaningfulPaintingArea>> captureHandler =
+            (Callable<List<MeaningfulPaintingArea>>) handler;
+        try {
+          List<MeaningfulPaintingArea> areas = captureHandler.call();
+          return areas != null ? areas : new ArrayList<MeaningfulPaintingArea>();
+        } catch (Exception exception) {
+          if (mExceptionHandler != null) {
+            mExceptionHandler.accept(exception);
+          }
+          return new ArrayList<>();
+        }
       }
     }
     int width = getWidth();
