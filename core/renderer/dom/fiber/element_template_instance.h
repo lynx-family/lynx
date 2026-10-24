@@ -5,6 +5,7 @@
 #define CORE_RENDERER_DOM_FIBER_ELEMENT_TEMPLATE_INSTANCE_H_
 
 #include <cstddef>
+#include <optional>
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/ref_counted_class.h"
@@ -71,6 +72,8 @@ class ElementTemplateInstance
   bool IsMaterialized() const { return result_ != nullptr; }
   fml::RefPtr<Element> PeekMaterializedRoot() const;
 
+  lepus::Value CopyAttributeSlotForStorage(uint32_t slot_index,
+                                           const lepus::Value& value);
   void ApplyAttributeSlotToTarget(uint32_t slot_index,
                                   const lepus::Value& previous_attribute_slots);
 
@@ -111,6 +114,7 @@ class ElementTemplateInstance
 
   // Typed instances store their complete attribute object in slot 0.
   lepus::Value attribute_slots_;
+  std::optional<base::InlineVector<uint32_t, 1>> gesture_attribute_slots_;
   uint32_t attribute_slots_generation_{0};
   lepus::Value child_slots_;
   lepus::Value options_;
