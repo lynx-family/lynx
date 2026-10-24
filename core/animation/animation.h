@@ -182,6 +182,8 @@ class Animation : public std::enable_shared_from_this<Animation> {
   bool HasIterationEvent() const;
   bool Tick(fml::TimePoint& time);
   bool pending_final_sample_{false};
+  // Records one requested frame, including a seek while paused.
+  bool has_pending_frame_request_{false};
   void RequestNextFrame();
   void ResetPauseTiming();
   fml::TimeDelta GetCurrentTimeAt(fml::TimePoint reference_time) const;

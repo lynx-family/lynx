@@ -584,6 +584,17 @@ TEST_F(CSSTransitionManagerTest, ConsumeCSSPropertyForActiveTransition) {
                                   1.f, tasm::kPropertyIDOpacity);
   ASSERT_NE(nullptr, opacity_end);
   EXPECT_EQ(*opacity_end, tasm::CSSValue(0.25, CSSValuePattern::NUMBER));
+
+  // Tick only the replacement, then preserve its request for the next frame.
+  const auto old_start_time = old_animation->start_time_;
+  auto frame_time = fml::TimePoint::Now();
+  test_manager->TickAllAnimation(frame_time);
+  EXPECT_EQ(old_animation->start_time_, old_start_time);
+  EXPECT_EQ(new_animation->start_time_, frame_time);
+  test_manager->has_been_ticked_ = false;
+  frame_time = frame_time + fml::TimeDelta::FromMilliseconds(10);
+  test_manager->TickAllAnimation(frame_time);
+  EXPECT_TRUE(test_manager->has_been_ticked());
 }
 
 TEST_F(CSSTransitionManagerTest, HasTwoSameAnimation) {
