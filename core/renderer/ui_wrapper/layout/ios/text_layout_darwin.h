@@ -9,8 +9,6 @@
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxTextRenderManager.h>
 
-#include <cstdint>
-#include <optional>
 #include <vector>
 
 #include "core/public/text_layout_impl.h"
@@ -33,9 +31,6 @@ class TextLayoutDarwin : public TextLayoutImpl {
   LayoutResult Measure(Element* element, float width, int width_mode, float height,
                        int height_mode) override;
 
-  std::optional<LayoutResult> MeasureDetached(Element* element, float width, int width_mode,
-                                              float height, int height_mode) override;
-
   void Align(Element* element) override;
 
   void DispatchLayoutBefore(Element* element) override;
@@ -43,9 +38,6 @@ class TextLayoutDarwin : public TextLayoutImpl {
   void Destroy(Element* element) override;
 
  private:
-  std::optional<LayoutResult> MeasureInternal(Element* element, float width, int width_mode,
-                                              float height, int height_mode);
-
   static void ApplyTextStyle(TextElement* text_element, LynxTextStyle* textStyle);
   static void HandleParagraphStyle(TextElement* text_element, LynxTextStyle* textStyle,
                                    LynxAttributedTextBundle* textBundle);
@@ -61,7 +53,6 @@ class TextLayoutDarwin : public TextLayoutImpl {
   void AlignChildrenRecursively(Element* element, NSDictionary* offsetDic);
 
   std::vector<PlatformTextEventTargetRange> event_target_ranges_;
-  std::optional<int32_t> prepared_detached_id_;
   LynxTextRenderManager* _textRenderManager;
   LynxFontFaceContext* _fontFaceContext;
 };

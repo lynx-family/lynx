@@ -70,8 +70,7 @@ class ParagraphBuilderHarmony {
         OH_Drawing_CreateTypography(builder_), font_collection,
         std::move(event_roots_), std::move(placeholder_signs_),
         std::move(inline_emojis_), std::move(effects_));
-    if (paragraph->GetRawStruct() != nullptr &&
-        paragraph_style_->GetTextIndent()) {
+    if (paragraph_style_->GetTextIndent()) {
       float indent = paragraph_style_->GetTextIndent()->GetValue(width);
       paragraph->SetIndent(indent);
     }

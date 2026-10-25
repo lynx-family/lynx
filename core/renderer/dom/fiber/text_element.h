@@ -60,10 +60,6 @@ class TextElement : public Element {
   LayoutResult Measure(float width, int32_t width_mode, float height,
                        int32_t height_mode, bool final_measure);
 
-  // Resolve only this detached node. Unlike normal preparation, this does not
-  // request layout, create UI, or process animation/painting work.
-  void PrepareForDetachedMeasurement();
-
   void Align();
 
   void OnLayoutObjectCreated() override;
@@ -167,7 +163,6 @@ class TextElement : public Element {
   CSSIDBitset property_bits_;
   bool has_inline_child_{false};
   bool need_layout_children_{false};
-  bool preparing_detached_measurement_{false};
 
   // Line layout information from text measurement (null-terminated array)
   TextLineInfoArray line_layout_info_;

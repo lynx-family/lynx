@@ -36,10 +36,6 @@ Textra is not responsible for:
 
 ## Lifetime And Teardown
 
-- `MeasureDetached()` only measures and reports the size. It must not create a
-  `Page` or publish a text bundle: a detached element never reaches
-  `OnUpdateLayout()`, so the platform renderer never takes over the page and
-  repeated detached measurements would leak one `Page` each.
 - `TextLayoutTextra` owns `TextLayoutAPI` and is responsible for releasing it.
 - `TextLayoutTextra` teardown must destroy any remaining `ParagraphBuilder` and
   `Paragraph` objects before releasing `TextLayoutAPI`.

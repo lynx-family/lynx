@@ -25,15 +25,6 @@ LayoutResult TextLayoutHarmony::Measure(Element* element, float width,
              : LayoutResult{};
 }
 
-std::optional<LayoutResult> TextLayoutHarmony::MeasureDetached(
-    Element* element, float width, int width_mode, float height,
-    int height_mode) {
-  return text_measurer_ != nullptr
-             ? text_measurer_->MeasureDetached(element, width, width_mode,
-                                               height, height_mode)
-             : std::nullopt;
-}
-
 void TextLayoutHarmony::Align(Element* element) {
   if (text_measurer_ != nullptr) {
     text_measurer_->Align(element);

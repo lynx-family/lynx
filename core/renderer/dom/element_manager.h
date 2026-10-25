@@ -386,13 +386,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   LayoutResult MeasureText(Element *element, float width, int width_mode,
                            float height, int height_mode);
-  std::optional<LayoutResult> MeasureDetached(Element *element, float width,
-                                              int width_mode, float height,
-                                              int height_mode);
   void DispatchLayoutBefore(Element *element);
   void AlignText(Element *element);
   void DestroyText(Element *element);
-  void DestroyDetachedText(Element *element);
 
   void MarkLayoutDirty(int32_t id);
   void AttachLayoutNodeType(int32_t id, const base::String &tag,

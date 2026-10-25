@@ -20,9 +20,6 @@ class TextLayoutHarmony final : public TextLayoutImpl {
 
   LayoutResult Measure(Element* element, float width, int width_mode,
                        float height, int height_mode) override;
-  std::optional<LayoutResult> MeasureDetached(Element* element, float width,
-                                              int width_mode, float height,
-                                              int height_mode) override;
   void Align(Element* element) override;
   void DispatchLayoutBefore(Element* element) override;
   void Destroy(Element* element) override;

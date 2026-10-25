@@ -135,8 +135,6 @@ constexpr static const char* kCFuncSetContextData = "_SetContextData";
 constexpr static const char* kCFunctionCreateElement = "__CreateElement";
 constexpr static const char* kCFunctionCreateView = "__CreateView";
 constexpr static const char* kCFunctionCreateCompose = "__CreateCompose";
-constexpr static const char* kCFunctionMeasureTextElement =
-    "__MeasureTextElement";
 constexpr static const char* kCFunctionCreateText = "__CreateText";
 constexpr static const char* kCFunctionCreateImage = "__CreateImage";
 constexpr static const char* kCFunctionCreateRawText = "__CreateRawText";

@@ -60,39 +60,18 @@ NSString* DecodeTextContentToNSString(const base::String& text) {
 
 void TextLayoutDarwin::Destroy(Element* element) {
   if (element != nullptr) {
-    if (prepared_detached_id_ == element->impl_id()) {
-      prepared_detached_id_.reset();
-    }
     [_textRenderManager releaseTextRender:element->impl_id()];
   }
 }
 
 LayoutResult TextLayoutDarwin::Measure(Element* element, float width, int width_mode, float height,
                                        int height_mode) {
-  return MeasureInternal(element, width, width_mode, height, height_mode).value_or(LayoutResult{});
-}
-
-std::optional<LayoutResult> TextLayoutDarwin::MeasureDetached(Element* element, float width,
-                                                              int width_mode, float height,
-                                                              int height_mode) {
-  if (element == nullptr || prepared_detached_id_ != element->impl_id()) {
-    return std::nullopt;
-  }
-  return MeasureInternal(element, width, width_mode, height, height_mode);
-}
-
-std::optional<LayoutResult> TextLayoutDarwin::MeasureInternal(Element* element, float width,
-                                                              int width_mode, float height,
-                                                              int height_mode) {
-  if (element == nullptr || !element->is_text() || _textRenderManager == nil) {
-    return std::nullopt;
-  }
   TextElement* text_element = static_cast<TextElement*>(element);
   // TODO(renzhongyue): Return text layout metadata through the measurement
   // result and let TextElement own result updates. Pass line-info collection
   // as a measurement option instead of reading Element's event bindings here.
   text_element->ClearTextLineLayoutInfo();
-  NSMutableDictionary* childrenLayoutResultDic = nil;
+  NSMutableDictionary* childrenLayoutResultDic;
   if (text_element->need_layout_children()) {
     starlight::Constraints constraints;
     constraints[starlight::kHorizontal] =
@@ -111,11 +90,8 @@ std::optional<LayoutResult> TextLayoutDarwin::MeasureInternal(Element* element, 
                                                           height:height
                                                       heightMode:heightMode
                                                  childrenSizeDic:childrenLayoutResultDic];
-  LynxTextRenderer* renderer = [_textRenderManager takeTextRender:element->impl_id()];
-  if (renderer == nil) {
-    return std::nullopt;
-  }
   if (text_element->HasLayoutEvent()) {
+    LynxTextRenderer* renderer = [_textRenderManager takeTextRender:element->impl_id()];
     NSDictionary* layoutInfo =
         [LynxTextUtils computeLayoutEventInfoWithRenderer:renderer
                                          attributedString:renderer.attrStr
@@ -173,28 +149,11 @@ void TextLayoutDarwin::AlignChildrenRecursively(Element* element, NSDictionary* 
 }
 
 void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
-  if (element == nullptr || !element->is_text()) {
-    return;
-  }
-  const bool is_detached_root =
-      !element->parent() && !element->render_parent() && element->IsDetached();
-  if (is_detached_root) {
-    prepared_detached_id_.reset();
-  }
-  if (_textRenderManager == nil) {
-    return;
-  }
   TextElement* text_element = static_cast<TextElement*>(element);
   LynxTextStyle* textStyle = [[LynxTextStyle alloc] init];
-  if (textStyle == nil) {
-    return;
-  }
   ApplyTextStyle(text_element, textStyle);
 
   LynxAttributedTextBundle* textBundle = [[LynxAttributedTextBundle alloc] init];
-  if (textBundle == nil) {
-    return;
-  }
   HandleParagraphStyle(text_element, textStyle, textBundle);
 
   NSDictionary<NSAttributedStringKey, id>* baseAttributes =
@@ -202,9 +161,6 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
 
   NSMutableAttributedString* attributedString = [[NSMutableAttributedString alloc] init];
   NSMutableSet* inlineElementSigns = [[NSMutableSet alloc] init];
-  if (attributedString == nil || inlineElementSigns == nil) {
-    return;
-  }
   Boolean hasViewOrImage = NO;
   event_target_ranges_.clear();
   [attributedString beginEditing];
@@ -224,10 +180,7 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
   textBundle.inlineElementSigns = inlineElementSigns;
   textBundle.textStyle = textStyle;
   [_textRenderManager putAttributedTextBundle:element->impl_id() textBundle:textBundle];
-  if (is_detached_root) {
-    prepared_detached_id_ = element->impl_id();
-  }
-  if (element->EnableFragmentLayerRender() && !is_detached_root) {
+  if (element->EnableFragmentLayerRender()) {
     if (auto* manager = element->element_manager(); manager && manager->painting_context()) {
       manager->painting_context()->impl()->CastToNativeCtx()->UpdateTextEventTargetRanges(
           element->impl_id(), std::move(event_target_ranges_));
