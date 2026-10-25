@@ -1,0 +1,101 @@
+summary: Synthesizes a single-pointer touch scroll in the native window containing the LynxView.
+parameters:
+  - name: x
+    type: number
+    description: Finite horizontal logical coordinate of the starting point relative to the left edge of the native window.
+  - name: y
+    type: number
+    description: Finite vertical logical coordinate of the starting point relative to the top edge of the native window.
+  - name: xDistance
+    type: number
+    optional: true
+    default: 0
+    description: Horizontal finger displacement in logical pixels. Positive values scroll content toward the left.
+  - name: yDistance
+    type: number
+    optional: true
+    default: 0
+    description: Vertical finger displacement in logical pixels. Positive values scroll content toward the top.
+  - name: xOverscroll
+    type: number
+    optional: true
+    default: 0
+    description: Additional reverse horizontal displacement after the main movement. The final finger coordinate is x plus xDistance minus xOverscroll.
+  - name: yOverscroll
+    type: number
+    optional: true
+    default: 0
+    description: Additional reverse vertical displacement after the main movement. The final finger coordinate is y plus yDistance minus yOverscroll.
+  - name: preventFling
+    type: boolean
+    optional: true
+    default: true
+    description: Feed stationary touch moves for at least 100 milliseconds before releasing the pointer to suppress native fling velocity.
+  - name: speed
+    type: integer
+    optional: true
+    default: 800
+    minimum: 1
+    description: Finger speed along each straight segment in logical pixels per second.
+  - name: gestureSourceType
+    type: string
+    optional: true
+    default: default
+    enum: [default, touch, mouse]
+    description: Only touch is implemented. The default value resolves to the preferred source reported by the target.
+  - name: repeatCount
+    type: integer
+    optional: true
+    default: 0
+    minimum: 0
+    description: Number of additional swipes, each starting from x and y with a new pointer sequence.
+  - name: repeatDelayMs
+    type: integer
+    optional: true
+    default: 250
+    minimum: 0
+    description: Minimum delay in milliseconds from the previous release to the next press.
+  - name: interactionMarkerName
+    type: string
+    optional: true
+    default: ''
+    description: Interaction markers are not implemented. A nonempty value returns a CDP server error.
+returns: []
+events: []
+notes:
+  - Coordinates are window-local logical coordinates, consistent with Lynx tap and pinch synthesis. Android converts them to native pixels using the window density before dispatching MotionEvents through the window root.
+  - The target must advertise touch support and at least one touch point. Requesting mouse or resolving default to a non-touch source returns a CDP server error.
+  - The LynxView must be attached to a valid native window and the entire pointer path must remain inside that window. A native overlay may receive the events.
+  - Distances must be finite numbers. Both axes move together at the requested path speed, followed by the reverse overscroll segment while the finger remains down.
+  - With all distances zero, the request succeeds without injecting touch events or waiting for repeats.
+  - The calculated sequence duration, including movements, fling prevention and repeat delays, must not exceed 10000 milliseconds. Actual elapsed time can be longer because injection is frame-driven.
+  - Native touch slop, scroll limits and gesture recognizers determine the resulting content movement. Displacements describe finger motion and do not guarantee an exact content offset.
+  - Completion means all events have been accepted by the target. It does not wait for page script, layout or a native fling animation to finish. An injection failure cancels the active pointer and stops remaining repeats.
+examples:
+  - title: Scroll down using touch
+    request:
+      id: 1
+      method: Input.synthesizeScrollGesture
+      params:
+        x: 180
+        y: 500
+        yDistance: -300
+        gestureSourceType: touch
+    response:
+      id: 1
+      result: {}
+  - title: Repeat a swipe with reverse overscroll
+    request:
+      id: 2
+      method: Input.synthesizeScrollGesture
+      params:
+        x: 180
+        y: 500
+        yDistance: -200
+        yOverscroll: -20
+        speed: 400
+        repeatCount: 1
+        repeatDelayMs: 250
+    response:
+      id: 2
+      result: {}

@@ -34,6 +34,7 @@ class InspectorInputAgent : public CDPDomainAgentBase {
   DECLARE_DEVTOOL_CDP_METHOD(InsertText);
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizePinchGesture);
+  DECLARE_DEVTOOL_CDP_METHOD(SynthesizeScrollGesture);
 
   std::map<std::string, InputAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;

@@ -4,6 +4,7 @@
 
 #include "devtool/lynx_devtool/agent/input_request_handler.h"
 
+#include <cmath>
 #include <string>
 #include <utility>
 
@@ -15,6 +16,7 @@
 #include "devtool/lynx_devtool/input/synthetic_gesture_controller.h"
 #include "devtool/lynx_devtool/input/synthetic_tap_gesture.h"
 #include "devtool/lynx_devtool/input/synthetic_touch_pinch_gesture.h"
+#include "devtool/lynx_devtool/input/synthetic_touch_scroll_gesture.h"
 
 namespace lynx {
 namespace devtool {
@@ -27,6 +29,7 @@ constexpr int kMaxSyntheticTapCount = 200;
 constexpr int64_t kMaxSyntheticTapSequenceDurationMs = 10000;
 constexpr int kDefaultPinchRelativeSpeed = 800;
 constexpr int kRequiredPinchTouchPoints = 2;
+constexpr double kMaxSyntheticScrollDurationUs = 10000000;
 
 std::string ButtonFromButtons(int buttons) {
   if ((buttons & 1) != 0) {
@@ -293,6 +296,112 @@ bool IsValidPinchGesture(
   return false;
 }
 
+bool IsValidScrollGesture(
+    const Json::Value& params,
+    const std::shared_ptr<DevToolPlatformFacade>& platform_facade,
+    input::SyntheticTouchScrollGestureParams& gesture, CDPErrorCode& error_code,
+    std::string& error_message) {
+  error_code = CDPErrorCode::InvalidParams;
+  if (!params.isObject() || !ReadFiniteFloatParam(params["x"], gesture.x) ||
+      !ReadFiniteFloatParam(params["y"], gesture.y)) {
+    error_message = "Invalid params: expected finite numeric x and y";
+    return false;
+  }
+  const std::pair<const char*, float*> distances[] = {
+      {"xDistance", &gesture.x_distance},
+      {"yDistance", &gesture.y_distance},
+      {"xOverscroll", &gesture.x_overscroll},
+      {"yOverscroll", &gesture.y_overscroll}};
+  for (const auto& distance : distances) {
+    if (params.isMember(distance.first) &&
+        !ReadFiniteFloatParam(params[distance.first], *distance.second)) {
+      error_message = std::string("Invalid params: ") + distance.first +
+                      " must be a finite number";
+      return false;
+    }
+  }
+  if (params.isMember("speed") &&
+      (!ReadIntParam(params["speed"], gesture.speed) || gesture.speed <= 0)) {
+    error_message = "Invalid params: speed must be a positive integer";
+    return false;
+  }
+  if (params.isMember("preventFling")) {
+    if (!params["preventFling"].isBool()) {
+      error_message = "Invalid params: preventFling must be a boolean";
+      return false;
+    }
+    gesture.prevent_fling = params["preventFling"].asBool();
+  }
+  if (params.isMember("repeatCount") &&
+      (!ReadIntParam(params["repeatCount"], gesture.repeat_count) ||
+       gesture.repeat_count < 0)) {
+    error_message =
+        "Invalid params: repeatCount must be a non-negative integer";
+    return false;
+  }
+  if (params.isMember("repeatDelayMs") &&
+      (!ReadIntParam(params["repeatDelayMs"], gesture.repeat_delay_ms) ||
+       gesture.repeat_delay_ms < 0)) {
+    error_message =
+        "Invalid params: repeatDelayMs must be a non-negative integer";
+    return false;
+  }
+  if (params.isMember("interactionMarkerName") &&
+      !params["interactionMarkerName"].isString()) {
+    error_message = "Invalid params: interactionMarkerName must be a string";
+    return false;
+  }
+  // Validate arithmetic before constructing a gesture with integer durations.
+  if (input::SyntheticTouchScrollGesture::TotalDurationUs(gesture) >
+      kMaxSyntheticScrollDurationUs) {
+    error_message = "Invalid params: scroll sequence duration exceeds 10000 ms";
+    return false;
+  }
+  const float end_x = gesture.x + gesture.x_distance;
+  const float end_y = gesture.y + gesture.y_distance;
+  if (!std::isfinite(end_x) || !std::isfinite(end_y) ||
+      !std::isfinite(end_x - gesture.x_overscroll) ||
+      !std::isfinite(end_y - gesture.y_overscroll)) {
+    error_message = "Invalid params: scroll coordinates overflow";
+    return false;
+  }
+
+  input::PointerSourceType source_type;
+  if (!ParseGestureSourceType(params, source_type)) {
+    error_message =
+        "Invalid params: expected gestureSourceType default, touch, or mouse";
+    return false;
+  }
+  error_code = CDPErrorCode::ServerError;
+  if (!params.get("interactionMarkerName", "").asString().empty()) {
+    error_message =
+        "Not implemented: Input.synthesizeScrollGesture interaction markers";
+    return false;
+  }
+  if (!platform_facade) {
+    error_message = "Input target is unavailable";
+    return false;
+  }
+  const auto target = platform_facade->GetInputEventTarget();
+  if (!target) {
+    error_message = "Not implemented: Input.synthesizeScrollGesture";
+    return false;
+  }
+  const auto capabilities = target->GetPointerCapabilities();
+  if (source_type == input::PointerSourceType::kDefault) {
+    source_type = capabilities.default_source_type;
+  }
+  if (source_type != input::PointerSourceType::kTouch ||
+      !capabilities.Supports(source_type) ||
+      capabilities.max_touch_points < 1) {
+    error_message =
+        std::string("Not implemented: Input.synthesizeScrollGesture source ") +
+        SourceTypeToString(source_type);
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 InputRequestHandler::InputRequestHandler(
@@ -454,6 +563,37 @@ void InputRequestHandler::SynthesizePinchGesture(
         }
         responder->SendError(CDPErrorCode::ServerError,
                              "Input.synthesizePinchGesture failed");
+      });
+}
+
+void InputRequestHandler::SynthesizeScrollGesture(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  input::SyntheticTouchScrollGestureParams gesture;
+  CDPErrorCode error_code = CDPErrorCode::ServerError;
+  std::string error_message;
+  if (!IsValidScrollGesture(params, devtool_platform_facade_, gesture,
+                            error_code, error_message)) {
+    responder->SendError(error_code, error_message);
+    return;
+  }
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  const auto task_runner =
+      devtool_mediator ? devtool_mediator->GetUITaskRunner() : nullptr;
+  if (!task_runner) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Input UI task runner is unavailable");
+    return;
+  }
+  EnsureSyntheticGestureController(task_runner);
+  synthetic_gesture_controller_->QueueSyntheticGesture(
+      std::make_unique<input::SyntheticTouchScrollGesture>(gesture),
+      [responder](input::SyntheticGestureResult result) {
+        if (result == input::SyntheticGestureResult::kDone) {
+          responder->SendSuccess();
+        } else {
+          responder->SendError(CDPErrorCode::ServerError,
+                               "Input.synthesizeScrollGesture failed");
+        }
       });
 }
 
