@@ -1021,7 +1021,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     // Remove and release the image source from UIBodyView
     UIBody.UIBodyView rootView = mRootView.get();
     if (rootView != null) {
-      rootView.obtainImageAccordingToNodeIndex(imageKey);
+      LynxImageManager imageManager = rootView.obtainImageAccordingToNodeIndex(imageKey);
+      if (imageManager != null) {
+        imageManager.destroy();
+      }
     }
     Integer sign = mImageUIMethodSignsByKey.remove(imageKey);
     if (sign != null) {
