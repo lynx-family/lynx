@@ -383,6 +383,9 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
   protected void didEnsureCreateView() {
     // Reset the properties on View to current properties on UI while creating a new View.
+    if (mClipPath != null) {
+      mView.setWillNotDraw(false);
+    }
     if (mBackgroundManager != null && mBackgroundManager.getDrawable() != null) {
       mView.setBackground(mBackgroundManager.getDrawable());
     }
@@ -1500,6 +1503,11 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   @LynxProp(name = "clip-path")
   public void setClipPath(@Nullable ReadableArray basicShape) {
     mClipPath = BasicShape.CreateFromReadableArray(basicShape, mContext.getScreenMetrics().density);
+    if (mClipPath != null && mView != null) {
+      // clip-path is applied in the draw hook, which a backgroundless ViewGroup can skip.
+      // Do not reset willNotDraw when clearing the clip: other effects may still need draw().
+      mView.setWillNotDraw(false);
+    }
   }
 
   @LynxProp(name = PropsConstants.OFFSET_PATH)
