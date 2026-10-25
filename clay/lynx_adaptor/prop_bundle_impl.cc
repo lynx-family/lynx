@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "clay/lynx_adaptor/value_converter.h"
+#include "core/gesture/gesture_config.h"
 #include "core/renderer/css/css_property_id.h"
 
 namespace lynx {
@@ -219,13 +220,16 @@ void PropBundleImpl::SetGestureDetector(const tasm::GestureDetector& detector) {
   if (!data.gesture_detector_map_) {
     data.gesture_detector_map_ = clay::GestureMap();
   }
-  data.gesture_detector_map_->emplace(
-      detector.gesture_id(),
-      std::make_shared<clay::GestureDetector>(
-          detector.gesture_id(),
-          static_cast<clay::GestureHandlerType>(detector.gesture_type()),
-          detector.gesture_callback_names(), detector.relation_map(),
-          ValueConverter::CreateClayValue(detector.gesture_config())));
+  if (auto definition = tasm::gesture::SnapshotGestureDetector(detector)) {
+    data.gesture_detector_map_->insert_or_assign(detector.gesture_id(),
+                                                 std::move(*definition));
+  } else {
+    data.gesture_detector_map_->erase(detector.gesture_id());
+  }
+}
+
+void PropBundleImpl::ResetGestureDetector() {
+  UniqueData().gesture_detector_map_ = clay::GestureMap();
 }
 
 fml::RefPtr<tasm::PropBundle> PropBundleCreatorClay::CreatePropBundle() {

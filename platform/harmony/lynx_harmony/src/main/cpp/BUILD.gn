@@ -70,6 +70,8 @@ lynx_core_source_set("cpp") {
     "gesture/handler/pan_gesture_handler.h",
     "gesture/handler/tap_gesture_handler.cc",
     "gesture/handler/tap_gesture_handler.h",
+    "gesture/unified_gesture_handler.cc",
+    "gesture/unified_gesture_handler.h",
     "lynx_context.cc",
     "lynx_context.h",
     "lynx_napi_export.h",
@@ -278,6 +280,7 @@ lynx_core_source_set("cpp") {
 
   deps = [
     ":static_task_napi_bridge",
+    "../../../../../../core/gesture:gesture",
     "../../../../../../gfx:gfx",
   ]
 

@@ -11,6 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxError;
 
 @interface LynxUIContext ()
+@property(nonatomic, readonly) BOOL enableUnifiedGestureHandler;
 @property(nonatomic, assign) BOOL imageMonitorEnabled;
 @property(nonatomic, assign) BOOL devtoolEnabled;
 @property(nonatomic, assign) BOOL fixNewImageDownSampling;
@@ -33,6 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setEnableBackgroundShapeLayer:(BOOL)enable;
 - (void)setEnableFiberArch:(BOOL)enable;
 - (void)setEnableNewGesture:(BOOL)enable;
+- (void)setEnableUnifiedGestureHandler:(BOOL)enable;
+- (void)resetGestureHandlerImplementationSelection;
 - (void)setEnableExposureUIMargin:(BOOL)enable;
 - (void)setEnableTextLanguageAlignment:(BOOL)enable;
 - (void)setEnableXTextLayoutReused:(BOOL)enable;

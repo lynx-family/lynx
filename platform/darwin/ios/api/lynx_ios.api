@@ -4544,6 +4544,7 @@ public class LynxTouchHandler : UIGestureRecognizer {
   public LynxPlatformEventBehavior LynxTouchHandler()::platformEventBehavior platformEventBehavior;
   public BOOL LynxTouchHandler()::hasActivePlatformTouches hasActivePlatformTouches;
   public LynxGestureArenaManager* _Nullable LynxTouchHandler()::gestureArenaManager gestureArenaManager;
+  public LynxUnifiedGestureArena* _Nullable LynxTouchHandler()::unifiedGestureArena unifiedGestureArena;
   public instancetype LynxTouchHandler::initWithEventHandler:(LynxEventHandler *eventHandler);
   public void LynxTouchHandler::onGestureRecognized();
   public void LynxTouchHandler::touchesBeganInner:withEvent:(NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
@@ -5021,6 +5022,7 @@ public class LynxUIContext : NSObject {
   public BOOL LynxUIContext::enableTextLayoutCache enableTextLayoutCache;
   public BOOL LynxUIContext::enableNewSticky enableNewSticky;
   public BOOL LynxUIContext::enableExposureWhenReload enableExposureWhenReload;
+  public BOOL LynxUIContext()::enableUnifiedGestureHandler enableUnifiedGestureHandler;
   public BOOL LynxUIContext()::imageMonitorEnabled imageMonitorEnabled;
   public BOOL LynxUIContext()::devtoolEnabled devtoolEnabled;
   public BOOL LynxUIContext()::fixNewImageDownSampling fixNewImageDownSampling;
@@ -5061,6 +5063,8 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext()::setEnableBackgroundShapeLayer:(BOOL enable);
   public void LynxUIContext()::setEnableFiberArch:(BOOL enable);
   public void LynxUIContext()::setEnableNewGesture:(BOOL enable);
+  public void LynxUIContext()::setEnableUnifiedGestureHandler:(BOOL enable);
+  public void LynxUIContext()::resetGestureHandlerImplementationSelection();
   public void LynxUIContext()::setEnableExposureUIMargin:(BOOL enable);
   public void LynxUIContext()::setEnableTextLanguageAlignment:(BOOL enable);
   public void LynxUIContext()::setEnableXTextLayoutReused:(BOOL enable);
@@ -5416,6 +5420,7 @@ public class LynxUIOwner : NSObject {
   public LynxGestureArenaManager* _Nullable LynxUIOwner::gestureArenaManager gestureArenaManager;
   public attachLynxPageUI LynxUIOwner::attachLynxPageUICallback attachLynxPageUICallback;
   public LynxTextRenderManager* LynxUIOwner::textRenderManager textRenderManager;
+  public LynxUnifiedGestureArena* LynxUIOwner(UnifiedGestureHandler)::unifiedGestureArena unifiedGestureArena;
   public void LynxUIOwner::attachContainerView:(UIView< LUIBodyView > *_Nonnull containerView);
   public instancetype LynxUIOwner::initWithContainerView:componentRegistry:screenMetrics:(UIView< LUIBodyView > *containerView,[componentRegistry] LynxComponentScopeRegistry *registry,[screenMetrics] LynxScreenMetrics *screenMetrics);
   public instancetype LynxUIOwner::initWithContainerView:componentRegistry:screenMetrics:errorHandler:uiConfig:(UIView< LUIBodyView > *containerView,[componentRegistry] LynxComponentScopeRegistry *registry,[screenMetrics] LynxScreenMetrics *screenMetrics,[errorHandler] id< LUIErrorHandling > _Nullable errorHandler,[uiConfig] id< LUIConfig > _Nullable uiConfig);
@@ -5496,6 +5501,7 @@ public class LynxUIOwner : NSObject {
   public LynxExternalMemorySnapshot LynxUIOwner(Private)::getExternalMemorySnapshot();
   public void LynxUIOwner(Private)::cacheRemovedUIId:(NSInteger removeId);
   public void LynxUIOwner(Private)::requestExternalMemoryReport:(int64_t delayMs);
+  public void LynxUIOwner(UnifiedGestureHandler)::initNewGestureInUIThread:enableUnifiedGestureHandler:(BOOL enableNewGesture, [enableUnifiedGestureHandler] BOOL enableUnifiedGestureHandler);
 }
 
 public interface LynxUIOwner(Accessibility) {
@@ -5520,6 +5526,11 @@ public interface LynxUIOwner(Private) {
   public LynxExternalMemorySnapshot LynxUIOwner(Private)::getExternalMemorySnapshot();
   public void LynxUIOwner(Private)::cacheRemovedUIId:(NSInteger removeId);
   public void LynxUIOwner(Private)::requestExternalMemoryReport:(int64_t delayMs);
+}
+
+public interface LynxUIOwner(UnifiedGestureHandler) {
+  public LynxUnifiedGestureArena* LynxUIOwner(UnifiedGestureHandler)::unifiedGestureArena unifiedGestureArena;
+  public void LynxUIOwner(UnifiedGestureHandler)::initNewGestureInUIThread:enableUnifiedGestureHandler:(BOOL enableNewGesture,[enableUnifiedGestureHandler] BOOL enableUnifiedGestureHandler);
 }
 
 public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
@@ -5675,6 +5686,18 @@ public class LynxUIUnitUtils : NSObject {
 }
 
 public class LynxUIView : LynxUI, <UIView> {
+}
+
+public class LynxUnifiedGestureArena : NSObject {
+  public instancetype LynxUnifiedGestureArena::initWithUIOwner:(LynxUIOwner *uiOwner);
+  public void LynxUnifiedGestureArena::replaceGestureDetectors:forMember:(NSDictionary< NSNumber *, LynxGestureDetectorDarwin * > *gestureDetectors,[forMember] NSInteger memberId);
+  public void LynxUnifiedGestureArena::removeMember:(NSInteger memberId);
+  public BOOL LynxUnifiedGestureArena::containsMember:(NSInteger memberId);
+  public BOOL LynxUnifiedGestureArena::containsGesture:memberId:(NSInteger gestureId,[memberId] NSInteger memberId);
+  public void LynxUnifiedGestureArena::setGestureDetectorState:memberId:state:(NSInteger gestureId,[memberId] NSInteger memberId,[state] LynxGestureState state);
+  public void LynxUnifiedGestureArena::handleTouch:action:target:pointerId:velocity:(nullable UITouch *touch,[action] LynxUnifiedGestureInputType action,[target] nullable id< LynxEventTarget > target,[pointerId] NSInteger pointerId,[velocity] CGPoint velocity);
+  public BOOL LynxUnifiedGestureArena::hasActiveGesture();
+  public void LynxUnifiedGestureArena::invalidate();
 }
 
 public class LynxUnitTest : XCTestCase {
@@ -7177,6 +7200,14 @@ public enum LynxGestureFlingTriggerState {
   LynxGestureFlingTriggerStateStart
   LynxGestureFlingTriggerStateUpdate
   LynxGestureFlingTriggerStateEnd
+}
+
+
+public enum LynxUnifiedGestureInputType {
+  LynxUnifiedGestureInputTypeDown
+  LynxUnifiedGestureInputTypeMove
+  LynxUnifiedGestureInputTypeUp
+  LynxUnifiedGestureInputTypeCancel
 }
 
 

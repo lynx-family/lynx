@@ -905,8 +905,7 @@ TEST_F_UI(NestedScrollableTest, MismatchBlockedSourceStopsCurrentDrag) {
             Scrollable::ScrollStatus::kDragging);
   EXPECT_EQ(active->GetScrollStatus(), Scrollable::ScrollStatus::kDragging);
 
-  blocked->ConsumeGesture(
-      0, Value{{"inner", Value(true)}, {"consume", Value(false)}});
+  blocked->SetShouldConsumeGesture(false);
   page_->nested_scroll_manager()->DragUpdate(blocked, {0, 50});
   EXPECT_EQ(active->nested_scroll_manager()->GetScrollStatus(),
             Scrollable::ScrollStatus::kIdle);

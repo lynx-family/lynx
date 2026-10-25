@@ -130,9 +130,7 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   void StopExposure(const pub::Value& options) override;
   void ResumeExposure() override;
   std::vector<float> GetRectToLynxView(int64_t id) override;
-  std::vector<float> ScrollBy(int64_t id, float width, float height) override {
-    return floats_;
-  }
+  std::vector<float> ScrollBy(int64_t id, float width, float height) override;
   int32_t GetTagInfo(const std::string& tag_name) override;
   void UpdatePlatformExtraBundle(int32_t id,
                                  PlatformExtraBundle* bundle) override;

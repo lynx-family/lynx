@@ -65,7 +65,7 @@ typedef NS_ENUM(NSInteger, LynxBounceForbiddenDirection) {
 @property(nonatomic, strong) NSDictionary *_Nullable diffResultFromTasm;
 @property(nonatomic, strong) NSDictionary *_Nullable listNoDiffInfo;
 @property(nonatomic, assign) LynxListDebugInfoLevel debugInfoLevel;
-@property(nonatomic, strong) LynxGestureConsumer *gestureConsumer;
+@property(nonatomic, strong, nullable) LynxGestureConsumer *gestureConsumer;
 
 - (void)performBatchUpdates:(void (^)(void))updates
                  completion:(void (^_Nullable)(BOOL))completion

@@ -702,9 +702,7 @@ void ViewContext::AddEventProp(int id, const char* event) {
 }
 
 void ViewContext::SetGestureDetectorMap(
-    int id,
-    const std::unordered_map<uint32_t, std::shared_ptr<GestureDetector>>&
-        gesture_detector_map) {
+    int id, const GestureMap& gesture_detector_map) {
   FIND_VIEW_WITH_ID_OR_RET;
   view->SetGestureDetectorMap(gesture_detector_map);
 }

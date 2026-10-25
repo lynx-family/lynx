@@ -164,6 +164,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     MEMORY_MONITOR_CONFIG,
     ENABLE_UNIFY_FIXED_ORDER_FIX,
     DISABLE_APP_SERVICE_FACTORY_CACHE,
+    ENABLE_UNIFIED_GESTURE_HANDLER,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -348,6 +349,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             // NOLINT(harmony-trail-key): Android-only configuration.
             {Key::ENABLE_AUTO_NON_FLATTEN, "enable_auto_non_flatten"},
             {Key::ENABLE_FIBER_UPDATE_METADATA, "enable_fiber_update_metadata"},
+            {Key::ENABLE_UNIFIED_GESTURE_HANDLER,
+             "enable_unified_gesture_handler"},
             // NOLINT(harmony-trail-key): Android-only configuration.
             {Key::JS_COVERAGE_PAGE_SAMPLING_BASIS_POINTS,
              "js_coverage_page_sampling_basis_points"},
@@ -490,6 +493,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableAnimationInfoReport();
   bool EnableJSVMRuntime();
   bool EnableUnifiedPixelPipeline();
+  bool EnableUnifiedGestureHandler();
   bool EnableReportMTSContextEvent();
   bool EnableFiberElementMemoryReport();
   bool EnableHarmonyNewOverlay();

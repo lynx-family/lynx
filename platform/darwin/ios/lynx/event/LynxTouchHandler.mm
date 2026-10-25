@@ -16,6 +16,7 @@
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTouchEvent.h>
+#import <Lynx/LynxUI+Gesture.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIRenderer.h>
@@ -24,6 +25,7 @@
 #import "LynxGestureArenaManager.h"
 #import "LynxGestureFlingTrigger.h"
 #import "LynxGestureHandlerTrigger.h"
+#import "LynxUnifiedGestureArena.h"
 
 #include <deque>
 #include <map>
@@ -336,6 +338,23 @@
   [_gestureArenaManager.gestureHandlerTrigger addVelocityTracker:_velocityTracker];
   NSInteger index = [_gestureArenaManager.gestureHandlerTrigger addEventHandler:_eventHandler];
   return index;
+}
+
+- (void)dispatchUnifiedGestureForTouch:(UITouch*)touch
+                                action:(LynxUnifiedGestureInputType)action
+                                target:(id<LynxEventTarget>)target {
+  LynxUnifiedGestureArena* arena = self.unifiedGestureArena;
+  if (arena == nil || touch == nil || target == nil) {
+    return;
+  }
+  NSInteger pointerId = 0;
+  auto iterator = touches_map_.find(touch);
+  if (iterator != touches_map_.end()) {
+    pointerId = iterator->second.identifier.integerValue;
+  }
+  CGPoint velocity =
+      action == LynxUnifiedGestureInputTypeUp ? [_velocityTracker velocityInView:nil] : CGPointZero;
+  [arena handleTouch:touch action:action target:target pointerId:pointerId velocity:velocity];
 }
 
 - (void)removeGestureArenaManager:(NSInteger)index {
@@ -826,7 +845,7 @@
     return;
   }
 
-  if (!_enableMultiTouch) {
+  if (!_enableMultiTouch && self.unifiedGestureArena == nil) {
     [self.gestureArenaManager setActiveUIToArena:_eventHandler.touchTarget];
   }
 
@@ -859,6 +878,16 @@
       _primaryGestureTarget = target;
     }
 
+    if (isFirstTouchSequence && shouldDispatchGesture) {
+      id<LynxEventTarget> currentTarget = target;
+      while (currentTarget) {
+        if ([currentTarget isKindOfClass:LynxUI.class]) {
+          [(LynxUI*)currentTarget resetInterceptGesture];
+        }
+        currentTarget = currentTarget.parentTarget;
+      }
+    }
+
     LynxTouchEvent* touchEvent = nil;
 
     if (!_enableMultiTouch) {
@@ -872,16 +901,21 @@
     [_touches addObject:touch];
 
     if (shouldDispatchGesture) {
-      if (_enableMultiTouch) {
-        [self.gestureArenaManager setActiveUIToArena:target];
+      if (self.unifiedGestureArena != nil) {
+        [self dispatchUnifiedGestureForTouch:touch
+                                      action:LynxUnifiedGestureInputTypeDown
+                                      target:target];
+      } else {
+        if (_enableMultiTouch) {
+          [self.gestureArenaManager setActiveUIToArena:target];
+        }
+        [self.gestureArenaManager dispatchBubble:LynxEventTouchStart touchEvent:touchEvent];
+        [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchStart
+                                               touches:[self gestureTouchesWithTouch:touch
+                                                                     fallbackTouches:touches]
+                                                 event:event
+                                            touchEvent:touchEvent];
       }
-      // Dispatch TouchStart
-      [self.gestureArenaManager dispatchBubble:LynxEventTouchStart touchEvent:touchEvent];
-      [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchStart
-                                             touches:[self gestureTouchesWithTouch:touch
-                                                                   fallbackTouches:touches]
-                                               event:event
-                                          touchEvent:touchEvent];
       _panGestureRecognized = NO;
     }
   }
@@ -965,9 +999,11 @@
     if (((UIGestureRecognizer*)gesture.target).state == UIGestureRecognizerStateChanged) {
       _LogI(@"LynxTouchHandler: touchesCancelled %p: ", _eventHandler.rootView);
       self.state = UIGestureRecognizerStateCancelled;
-      [self dispatchEvent:LynxEventTouchCancel
-                 toTarget:_target
-                    touch:[self findFirstValidTouch:touches]];
+      UITouch* touch = [self findFirstValidTouch:touches];
+      [self dispatchEvent:LynxEventTouchCancel toTarget:_target touch:touch];
+      [self dispatchUnifiedGestureForTouch:touch
+                                    action:LynxUnifiedGestureInputTypeCancel
+                                    target:[self gestureTarget]];
       return YES;
     }
   }
@@ -1028,13 +1064,18 @@
       }
 
       if ([self shouldDispatchGestureForTouch:touch firstTouch:firstTouch]) {
-        // Dispatch TouchMove
-        [self.gestureArenaManager dispatchBubble:LynxEventTouchMove touchEvent:touchEvent];
-        [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchMove
-                                               touches:[self gestureTouchesWithTouch:touch
-                                                                     fallbackTouches:touches]
-                                                 event:event
-                                            touchEvent:touchEvent];
+        if (self.unifiedGestureArena != nil) {
+          [self dispatchUnifiedGestureForTouch:touch
+                                        action:LynxUnifiedGestureInputTypeMove
+                                        target:[self gestureTarget]];
+        } else {
+          [self.gestureArenaManager dispatchBubble:LynxEventTouchMove touchEvent:touchEvent];
+          [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchMove
+                                                 touches:[self gestureTouchesWithTouch:touch
+                                                                       fallbackTouches:touches]
+                                                   event:event
+                                              touchEvent:touchEvent];
+        }
 
         // Calculate the distance from the down point to the current point.
         CGFloat absDeltaX = fabs(point.x - touches_map_[touch].downPoint.x);
@@ -1183,13 +1224,18 @@
                                      touch:touch];
     }
     if (shouldDispatchGesture) {
-      // Dispatch TouchEnd
-      [self.gestureArenaManager dispatchBubble:LynxEventTouchEnd touchEvent:touchEvent];
-      [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchEnd
-                                             touches:[self gestureTouchesWithTouch:touch
-                                                                   fallbackTouches:touches]
-                                               event:event
-                                          touchEvent:touchEvent];
+      if (self.unifiedGestureArena != nil) {
+        [self dispatchUnifiedGestureForTouch:touch
+                                      action:LynxUnifiedGestureInputTypeUp
+                                      target:[self gestureTarget]];
+      } else {
+        [self.gestureArenaManager dispatchBubble:LynxEventTouchEnd touchEvent:touchEvent];
+        [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchEnd
+                                               touches:[self gestureTouchesWithTouch:touch
+                                                                     fallbackTouches:touches]
+                                                 event:event
+                                            touchEvent:touchEvent];
+      }
     }
     if (_enableMultiTouch && touch == _primaryGestureTouch) {
       _primaryGestureTouch = nil;
@@ -1302,13 +1348,18 @@
                                      touch:touch];
     }
     if (shouldDispatchGesture) {
-      // Dispatch TouchCancel
-      [self.gestureArenaManager dispatchBubble:LynxEventTouchCancel touchEvent:touchEvent];
-      [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchCancel
-                                             touches:[self gestureTouchesWithTouch:touch
-                                                                   fallbackTouches:touches]
-                                               event:event
-                                          touchEvent:touchEvent];
+      if (self.unifiedGestureArena != nil) {
+        [self dispatchUnifiedGestureForTouch:touch
+                                      action:LynxUnifiedGestureInputTypeCancel
+                                      target:[self gestureTarget]];
+      } else {
+        [self.gestureArenaManager dispatchBubble:LynxEventTouchCancel touchEvent:touchEvent];
+        [self.gestureArenaManager dispatchTouchToArena:LynxEventTouchCancel
+                                               touches:[self gestureTouchesWithTouch:touch
+                                                                     fallbackTouches:touches]
+                                                 event:event
+                                            touchEvent:touchEvent];
+      }
     }
     if (_enableMultiTouch && touch == _primaryGestureTouch) {
       _primaryGestureTouch = nil;

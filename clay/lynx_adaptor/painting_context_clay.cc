@@ -423,7 +423,7 @@ void PaintingContextClay::SetAttribute(clay::ViewContext* view_context,
     }
   }
 
-  if (!pda || pda->map().empty()) {
+  if (!pda || (pda->map().empty() && !pda->GestureDetectorMap())) {
     view_context->DidUpdateAttributes(sign);
     return;
   }
@@ -467,7 +467,7 @@ void PaintingContextClay::SetAttribute(clay::ViewContext* view_context,
   }
 
   const auto& gesture_detector_map = pda->GestureDetectorMap();
-  if (gesture_detector_map && gesture_detector_map->size() > 0) {
+  if (gesture_detector_map) {
     view_context->SetGestureDetectorMap(sign, gesture_detector_map.value());
   }
   view_context->DidUpdateAttributes(sign);
@@ -557,6 +557,14 @@ void PaintingContextClay::ResumeExposure() {
 
 std::vector<float> PaintingContextClay::GetRectToLynxView(int64_t id) {
   return view_context_->GetRectToLynxView(id);
+}
+
+std::vector<float> PaintingContextClay::ScrollBy(int64_t id, float width,
+                                                 float height) {
+  if (auto* view = view_context_->FindViewByViewId(id)) {
+    return view->ScrollBy(width, height);
+  }
+  return {0, 0, width, height};
 }
 
 std::list<int32_t> PaintingContextClay::GetAncestorElements(int32_t tag) {

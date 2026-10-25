@@ -190,10 +190,10 @@ class BASE_EXPORT NodeManager {
   void GetAttributeValues(ArkUI_NodeHandle node, ArkUI_NodeAttributeType type,
                           Args*... args) {
     const auto* item = native_node_api_->getAttribute(node, type);
-    auto* data = item->value;
-    if (item->size < sizeof...(args)) {
+    if (!item || !item->value || item->size < sizeof...(args)) {
       return;
     }
+    auto* data = item->value;
     size_t i = 0;
     ((*args = GetValue<Args>(&data[i++])), ...);
   }

@@ -29,6 +29,7 @@
 
 @implementation LynxUIContext {
   BOOL _isDev;
+  BOOL _hasSelectedGestureHandlerImplementation;
 }
 
 - (instancetype)initWithScreenMetrics:(LynxScreenMetrics*)screenMetrics {
@@ -308,6 +309,18 @@
   [self setEnableExposureWhenReload:config.enableExposureWhenReload];
   [self setEnableNewSticky:config.enableNewSticky];
   [self setEnableiOSAnimationLayerForExposure:config.enableiOSAnimationLayerForExposure];
+}
+
+- (void)setEnableUnifiedGestureHandler:(BOOL)enable {
+  if (_hasSelectedGestureHandlerImplementation) {
+    return;
+  }
+  _enableUnifiedGestureHandler = enable;
+  _hasSelectedGestureHandlerImplementation = YES;
+}
+
+- (void)resetGestureHandlerImplementationSelection {
+  _hasSelectedGestureHandlerImplementation = NO;
 }
 
 - (void)setDefaultOverflowVisible:(BOOL)enable {

@@ -83,6 +83,7 @@ class ScrollbarWrapper : public BaseView, public ScrollbarView::Delegate {
 
  protected:
   void OnDestroy() override;
+  void GestureDetectorDidSet() override;
 
   const ScrollbarOrientationHelper& OrientationHelper() const {
     return scrollbar_->GetOrientationHelper();
