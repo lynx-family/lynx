@@ -18,6 +18,7 @@ namespace harmony {
 class UIMarkdown : public UIBase {
  public:
   static UIBase* Make(LynxContext* context, int sign, const std::string& tag) {
+    InitMarkdownEnv(context);
     return new UIMarkdown(context, sign, tag);
   }
 
@@ -38,14 +39,10 @@ class UIMarkdown : public UIBase {
   UIMarkdown(LynxContext* context, int sign, const std::string& tag);
 
  private:
+  static void InitMarkdownEnv(LynxContext* context);
   void DetachMarkdownView();
-  void LayoutMarkdownView();
-  void RequestRendererFrame();
 
-  std::shared_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer_;
-  std::unique_ptr<serval::markdown::NativeServalMarkdownView> markdown_view_;
-  serval::markdown::MeasureResult measured_size_{};
-  bool renderer_frame_requested_{false};
+  std::shared_ptr<serval::markdown::NativeServalMarkdownView> markdown_view_;
 };
 
 }  // namespace harmony

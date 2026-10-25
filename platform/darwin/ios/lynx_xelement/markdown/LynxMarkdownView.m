@@ -47,7 +47,6 @@
       ServalMarkdownView *newMarkdownView = [[ServalMarkdownView alloc] initWithCreateMeasurer:NO];
       if ([newMarkdownView attachMarkdownMeasurer:newMarkdownMeasurer]) {
         [newMarkdownView disableInternalVSync:YES];
-        [newMarkdownView setExternalMeasure:YES];
         _markdownMeasurer = newMarkdownMeasurer;
         _markdownView = newMarkdownView;
         [self addSubview:_markdownView];
@@ -62,10 +61,7 @@
     [self invalidateDisplayLink];
   }
   _exposureUpdatePending = YES;
-  ServalMarkdownMeasureResult measuredSize =
-      bundle != nil ? bundle.measuredSize : (ServalMarkdownMeasureResult){0};
-  [_markdownView setExternalMeasuredSize:measuredSize];
-  _measuredSize = CGSizeMake(measuredSize.width, measuredSize.height);
+  _measuredSize = bundle != nil ? bundle.measuredSize : CGSizeZero;
   [self layoutMarkdownView];
   [self setNeedsDisplay];
   return _markdownView;

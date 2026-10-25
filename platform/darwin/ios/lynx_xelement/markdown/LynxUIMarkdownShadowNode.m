@@ -80,7 +80,7 @@ static uint32_t LynxUIMarkdownColorToARGB(UIColor *color) {
   LynxMarkdownEventDispatcher *_eventDispatcher;
   MeasureContext *_measureContext;
   AlignContext *_alignContext;
-  ServalMarkdownMeasureResult _measuredSize;
+  CGSize _measuredSize;
   CGPoint _contentOffset;
   NSString *_contentID;
   BOOL _exposeLinks;
@@ -106,7 +106,7 @@ static uint32_t LynxUIMarkdownColorToARGB(UIColor *color) {
     _markdownMeasurer.requestMeasureCallback = ^{
       [weakSelf setNeedsLayout];
     };
-    _measuredSize = (ServalMarkdownMeasureResult){0};
+    _measuredSize = CGSizeZero;
     _contentOffset = CGPointZero;
     _contentID = @"";
     _content = @"";
@@ -138,19 +138,19 @@ static uint32_t LynxUIMarkdownColorToARGB(UIColor *color) {
   _measureContext = context;
   MarkdownMeasurer *markdownMeasurer = _markdownMeasurer;
   if (markdownMeasurer == nil) {
-    _measuredSize = (ServalMarkdownMeasureResult){0};
+    _measuredSize = CGSizeZero;
     return (MeasureResult){CGSizeZero, 0.f};
   }
   if ([self isChildDirty]) {
     [markdownMeasurer markDirty];
   }
-  _measuredSize =
+  ServalMarkdownMeasureResult result =
       [markdownMeasurer measureWithWidth:param.width
                                widthMode:LynxMarkdownToServalLayoutMode(param.widthMode)
                                   height:param.height
                               heightMode:LynxMarkdownToServalLayoutMode(param.heightMode)];
-  return (MeasureResult){CGSizeMake(_measuredSize.width, _measuredSize.height),
-                         _measuredSize.baseline};
+  _measuredSize = CGSizeMake(result.width, result.height);
+  return (MeasureResult){_measuredSize, result.baseline};
 }
 
 - (void)alignWithAlignParam:(AlignParam *)param AlignContext:(AlignContext *)context {
@@ -362,7 +362,7 @@ LYNX_PROP_SETTER("allow-break-around-punctuation", setAllowBreakAroundPunctuatio
   _markdownMeasurer.eventDelegate = nil;
   _markdownMeasurer.exposureDelegate = nil;
   _markdownMeasurer = nil;
-  _measuredSize = (ServalMarkdownMeasureResult){0};
+  _measuredSize = CGSizeZero;
   _content = @"";
   [super destroy];
 }

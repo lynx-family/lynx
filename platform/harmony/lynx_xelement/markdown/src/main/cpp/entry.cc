@@ -8,7 +8,6 @@
 
 #include "base/include/log/logging.h"
 #include "core/base/lynx_export.h"
-#include "markdown/platform/harmony/serval_markdown_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/shadow_node/markdown_shadow_node.h"
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/ui/ui_markdown.h"
@@ -34,7 +33,6 @@ ShadowNode* CreateMarkdownShadowNode(int sign, const std::string& tag) {
 
 napi_value InitMarkdown(napi_env env, napi_callback_info info) {
   LOGI("XElement markdown initMarkdown called");
-  serval::markdown::NativeServalMarkdownView::InitEnv(env);
   auto& map = LynxContext::GetCAPINodeInfoMap();
   map["markdown"] = {CreateMarkdownUI, CreateMarkdownShadowNode,
                      LayoutNodeType::CUSTOM};

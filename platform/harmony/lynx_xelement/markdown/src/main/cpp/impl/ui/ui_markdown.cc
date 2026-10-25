@@ -4,10 +4,10 @@
 
 #include "platform/harmony/lynx_xelement/markdown/src/main/cpp/impl/ui/ui_markdown.h"
 
+#include <algorithm>
+#include <mutex>
 #include <utility>
 
-#include "base/include/log/logging.h"
-#include "base/include/platform/harmony/harmony_vsync_manager.h"
 #include "base/include/value/table.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "markdown/view/markdown_view.h"
@@ -62,6 +62,16 @@ lepus::Value RectToLepusValue(const serval::markdown::RectF& rect) {
 
 }  // namespace
 
+void UIMarkdown::InitMarkdownEnv(LynxContext* context) {
+  if (!context) {
+    return;
+  }
+  static std::once_flag once_flag;
+  std::call_once(once_flag, [context] {
+    serval::markdown::NativeServalMarkdownView::InitEnv(context->GetNapiEnv());
+  });
+}
+
 UIMarkdown::UIMarkdown(LynxContext* context, int sign, const std::string& tag)
     : UIBase(context, ARKUI_NODE_CUSTOM, sign, tag) {}
 
@@ -70,40 +80,30 @@ void UIMarkdown::DetachMarkdownView() {
     return;
   }
   NodeManager::Instance().RemoveNode(Node(), markdown_view_->GetHandle());
-  markdown_view_.reset();
-  markdown_measurer_.reset();
 }
 
-void UIMarkdown::OnDestroy() { DetachMarkdownView(); }
+void UIMarkdown::OnDestroy() {
+  DetachMarkdownView();
+  markdown_view_.reset();
+}
 
 void UIMarkdown::UpdateExtraData(
     const fml::RefPtr<fml::RefCountedThreadSafeStorage>& extra_data) {
   UIBase::UpdateExtraData(extra_data);
-  std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>
-      new_markdown_measurer;
-  measured_size_ = {};
+  std::shared_ptr<serval::markdown::NativeServalMarkdownView> new_markdown_view;
   if (extra_data) {
     auto* bundle = static_cast<MarkdownViewBundle*>(extra_data.get());
-    new_markdown_measurer = bundle->GetMarkdownMeasurer();
-    measured_size_ = bundle->GetMeasuredSize();
+    new_markdown_view = bundle->GetMarkdownView();
   }
-  if (new_markdown_measurer != markdown_measurer_) {
-    DetachMarkdownView();
-    if (new_markdown_measurer) {
-      auto view =
-          std::make_unique<serval::markdown::NativeServalMarkdownView>(false);
-      view->DisableInternalVSync(true);
-      view->SetExternalMeasure(true);
-      const bool attached = view->SetMeasurer(new_markdown_measurer.get());
-      DCHECK(attached);
-      markdown_measurer_ = std::move(new_markdown_measurer);
-      markdown_view_ = std::move(view);
-      NodeManager::Instance().InsertNode(Node(), markdown_view_->GetHandle(),
-                                         0);
-      RequestRendererFrame();
-    }
+  if (new_markdown_view == markdown_view_) {
+    return;
   }
-  LayoutMarkdownView();
+  DetachMarkdownView();
+  markdown_view_ = std::move(new_markdown_view);
+  if (!markdown_view_) {
+    return;
+  }
+  NodeManager::Instance().InsertNode(Node(), markdown_view_->GetHandle(), 0);
   RequestLayout();
   Invalidate();
 }
@@ -114,45 +114,26 @@ void UIMarkdown::UpdateLayout(float left, float top, float width, float height,
                               uint32_t node_index) {
   UIBase::UpdateLayout(left, top, width, height, paddings, margins, sticky,
                        max_height, node_index);
-  LayoutMarkdownView();
-}
-
-void UIMarkdown::LayoutMarkdownView() {
   if (!markdown_view_) {
     return;
   }
-  markdown_view_->SetExternalMeasuredSize(measured_size_);
-  const float density = context_->ScaledDensity();
-  markdown_view_->SetWidth(measured_size_.width_ / density);
-  markdown_view_->SetHeight(measured_size_.height_ / density);
+  // The custom view should be sized to the content box, not the border box.
+  // Otherwise ArkUI remeasures it with a width that includes padding/border,
+  // which differs from the shadow node's content constraint and causes the
+  // MarkdownViewMeasurer to re-layout on every animation step.
+  const float content_width =
+      std::max(0.f, width - padding_left_ - padding_right_ -
+                        GetBorderLeftWidth() - GetBorderRightWidth());
+  const float content_height =
+      std::max(0.f, height - padding_top_ - padding_bottom_ -
+                        GetBorderTopWidth() - GetBorderBottomWidth());
+  markdown_view_->SetWidth(content_width);
+  markdown_view_->SetHeight(content_height);
   // Persist the content origin so ArkUI does not center the drawing node
   // independently of the inline views positioned by Lynx layout.
   NodeManager::Instance().SetAttributeWithNumberValue(
       markdown_view_->GetHandle(), NODE_POSITION,
       padding_left_ + GetBorderLeftWidth(), padding_top_ + GetBorderTopWidth());
-}
-
-void UIMarkdown::RequestRendererFrame() {
-  if (renderer_frame_requested_) {
-    return;
-  }
-  renderer_frame_requested_ = true;
-  base::HarmonyVsyncManager::GetInstance().RequestVSync(
-      [weak_self = weak_from_this(),
-       runner = context_->GetUITaskRunner()](long long frame_time) {
-        runner->PostTask([weak_self, frame_time] {
-          auto self = std::static_pointer_cast<UIMarkdown>(weak_self.lock());
-          if (!self) {
-            return;
-          }
-          self->renderer_frame_requested_ = false;
-          if (!self->markdown_view_) {
-            return;
-          }
-          self->markdown_view_->OnRendererFrame(frame_time);
-          self->RequestRendererFrame();
-        });
-      });
 }
 
 void UIMarkdown::OnPropUpdate(const std::string& name,
@@ -180,33 +161,6 @@ void UIMarkdown::InvokeMethod(
     auto result = lepus::Dictionary::Create();
     result->SetValue("content", view->GetContent());
     callback(LynxGetUIResult::SUCCESS, lepus::Value(result));
-  } else if (method == "pauseAnimation") {
-    view->PauseRenderUpdate();
-    auto result = lepus::Dictionary::Create();
-    result->SetValue("animationStep", view->GetRenderedAnimationStep());
-    context_->RunOnLayoutThread(
-        [weak_measurer = std::weak_ptr(markdown_measurer_)] {
-          if (auto measurer = weak_measurer.lock()) {
-            measurer->PauseAnimation();
-          }
-        });
-    callback(LynxGetUIResult::SUCCESS, lepus::Value(result));
-  } else if (method == "resumeAnimation") {
-    int32_t animation_step = -1;
-    if (args.IsTable()) {
-      const auto& step = args.Table()->GetValue("animationStep");
-      if (step.IsNumber()) {
-        animation_step = static_cast<int32_t>(step.Number());
-      }
-    }
-    context_->RunOnLayoutThread(
-        [weak_measurer = std::weak_ptr(markdown_measurer_), animation_step] {
-          if (auto measurer = weak_measurer.lock()) {
-            measurer->ResumeAnimation(animation_step);
-          }
-        });
-    view->ResumeRenderUpdate();
-    callback(LynxGetUIResult::SUCCESS, lepus::Value());
   } else if (method == "getSelectedText") {
     auto result = lepus::Dictionary::Create();
     result->SetValue("selectedText", view->GetSelectedText());

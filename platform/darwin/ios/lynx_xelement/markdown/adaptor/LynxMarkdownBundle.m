@@ -9,7 +9,7 @@
 
 - (instancetype)initWithMarkdownMeasurer:(MarkdownMeasurer *_Nullable)markdownMeasurer
                               shadowNode:(LynxUIMarkdownShadowNodeV2 *_Nullable)shadowNode
-                            measuredSize:(ServalMarkdownMeasureResult)measuredSize {
+                            measuredSize:(CGSize)measuredSize {
   self = [super init];
   if (self != nil) {
     _markdownMeasurer = markdownMeasurer;

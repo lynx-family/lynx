@@ -8,12 +8,13 @@
 #include <memory>
 #include <string>
 
-#include "markdown/utils/markdown_definition.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node.h"
 
 namespace serval {
 namespace markdown {
+class MarkdownView;
 class NativeMarkdownMeasurer;
+class NativeServalMarkdownView;
 }  // namespace markdown
 }  // namespace serval
 
@@ -21,6 +22,7 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+class MarkdownViewBundle;
 class MarkdownResourceLoaderHarmony;
 
 class MarkdownShadowNode : public ShadowNode, public CustomMeasureFunc {
@@ -44,13 +46,14 @@ class MarkdownShadowNode : public ShadowNode, public CustomMeasureFunc {
 
  private:
   void ApplyConfig(const std::string& name, const lepus::Value& value);
-  void RequestLayoutFrame();
-  std::shared_ptr<serval::markdown::NativeMarkdownMeasurer>
-  EnsureMarkdownMeasurer();
+  std::shared_ptr<serval::markdown::NativeServalMarkdownView>
+  EnsureMarkdownView();
+  serval::markdown::MarkdownView* MarkdownView();
 
   std::shared_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer_;
+  std::shared_ptr<serval::markdown::NativeServalMarkdownView> markdown_view_;
   std::shared_ptr<MarkdownResourceLoaderHarmony> resource_loader_;
-  serval::markdown::MeasureResult measured_size_{};
+  fml::RefPtr<MarkdownViewBundle> bundle_;
 };
 
 }  // namespace harmony

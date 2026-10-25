@@ -16,7 +16,7 @@
 #include "base/include/string/string_utils.h"
 #include "core/public/lynx_resource_loader.h"
 #include "markdown/element/markdown_drawable.h"
-#include "markdown/platform/harmony/harmony_markdown_measurer.h"
+#include "markdown/platform/harmony/serval_markdown_view.h"
 #include "markdown/view/markdown_view.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_base_image.h"
@@ -296,10 +296,10 @@ class InlineViewMarkdownDrawable final
 
 MarkdownResourceLoaderHarmony::MarkdownResourceLoaderHarmony(
     LynxContext* context, MarkdownShadowNode* markdown_node,
-    std::weak_ptr<serval::markdown::NativeMarkdownMeasurer> markdown_measurer)
+    serval::markdown::NativeServalMarkdownView* markdown_view)
     : context_(context),
       markdown_node_(markdown_node),
-      markdown_measurer_(std::move(markdown_measurer)) {}
+      markdown_view_(markdown_view) {}
 
 MarkdownResourceLoaderHarmony::~MarkdownResourceLoaderHarmony() { Destroy(); }
 
@@ -366,24 +366,9 @@ void MarkdownResourceLoaderHarmony::Destroy() {
   }
   context_.store(nullptr);
   markdown_node_.store(nullptr);
+  markdown_view_.store(nullptr);
   std::lock_guard<std::mutex> lock(image_cache_mutex_);
   image_cache_.clear();
-}
-
-void MarkdownResourceLoaderHarmony::RequestMeasure() {
-  auto* context = context_.load();
-  if (destroyed_.load() || !context) {
-    return;
-  }
-  context->RunOnLayoutThread([weak_self = weak_from_this()] {
-    auto self = weak_self.lock();
-    if (!self || self->destroyed_.load()) {
-      return;
-    }
-    if (auto* node = self->markdown_node_.load()) {
-      node->MarkDirty();
-    }
-  });
 }
 
 void MarkdownResourceLoaderHarmony::SetMeasureContext(
@@ -600,19 +585,19 @@ void MarkdownResourceLoaderHarmony::SetCachedImage(
 
 void MarkdownResourceLoaderHarmony::NotifyImageLoaded(
     const std::string& source) {
-  auto* context = context_.load();
-  if (destroyed_.load() || !context) {
+  if (destroyed_.load()) {
     return;
   }
-  context->RunOnLayoutThread([weak_self = weak_from_this(), source] {
-    auto self = weak_self.lock();
-    if (!self || self->destroyed_.load()) {
-      return;
-    }
-    if (auto measurer = self->markdown_measurer_.lock()) {
-      measurer->OnImageLoaded(source);
-    }
-  });
+  auto* markdown_view = markdown_view_.load();
+  if (!markdown_view) {
+    return;
+  }
+  if (auto* view = markdown_view->GetMarkdownView()) {
+    view->OnImageLoaded(source);
+    view->NeedsMeasure();
+  }
+  markdown_view->RequestMeasure();
+  markdown_view->RequestDraw();
 }
 
 }  // namespace harmony
