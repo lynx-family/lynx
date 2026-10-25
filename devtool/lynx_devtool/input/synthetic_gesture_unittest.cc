@@ -17,6 +17,7 @@
 #undef private
 #include "devtool/lynx_devtool/input/synthetic_tap_gesture.h"
 #include "devtool/lynx_devtool/input/synthetic_touch_pinch_gesture.h"
+#include "devtool/lynx_devtool/input/synthetic_touch_scroll_gesture.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -292,6 +293,208 @@ TEST(SyntheticTouchPinchGestureTest, CompletesWithoutInputWhenScaleIsOne) {
   EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
             SyntheticGestureResult::kDone);
   EXPECT_TRUE(target.Events().empty());
+}
+
+TEST(SyntheticTouchScrollGestureTest, InterpolatesDiagonalMotionAtSwipeSpeed) {
+  RecordingInputEventTarget target;
+  SyntheticTouchScrollGestureParams params;
+  params.x = 100;
+  params.y = 200;
+  params.x_distance = 30;
+  params.y_distance = -40;
+  params.speed = 100;
+  params.prevent_fling = false;
+  SyntheticTouchScrollGesture gesture(params);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(251000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(501000, &target),
+            SyntheticGestureResult::kDone);
+  const auto events = target.Events();
+  ASSERT_EQ(events.size(), 4u);
+  EXPECT_EQ(events[0].type, PointerEventType::kDown);
+  EXPECT_FLOAT_EQ(events[0].pointers[0].x, 100);
+  EXPECT_FLOAT_EQ(events[0].pointers[0].y, 200);
+  EXPECT_EQ(events[1].type, PointerEventType::kMove);
+  EXPECT_FLOAT_EQ(events[1].pointers[0].x, 115);
+  EXPECT_FLOAT_EQ(events[1].pointers[0].y, 180);
+  EXPECT_EQ(events[2].type, PointerEventType::kMove);
+  EXPECT_FLOAT_EQ(events[2].pointers[0].x, 130);
+  EXPECT_FLOAT_EQ(events[2].pointers[0].y, 160);
+  EXPECT_EQ(events[3].type, PointerEventType::kUp);
+  for (const auto& event : events) {
+    ASSERT_EQ(event.pointers.size(), 1u);
+    EXPECT_EQ(event.source_type, PointerSourceType::kTouch);
+    EXPECT_EQ(event.action_pointer_id, events[0].action_pointer_id);
+  }
+}
+
+TEST(SyntheticTouchScrollGestureTest, OverscrollReversesAfterMainDisplacement) {
+  RecordingInputEventTarget target;
+  SyntheticTouchScrollGestureParams params;
+  params.x = 100;
+  params.y = 200;
+  params.x_distance = -30;
+  params.y_distance = 40;
+  params.x_overscroll = -6;
+  params.y_overscroll = 8;
+  params.speed = 100;
+  params.prevent_fling = false;
+  SyntheticTouchScrollGesture gesture(params);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kRunning);
+  // A late frame must still deliver the turning point before moving back.
+  EXPECT_EQ(gesture.ForwardInputEvents(601000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(651000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(701000, &target),
+            SyntheticGestureResult::kDone);
+  const auto events = target.Events();
+  ASSERT_EQ(events.size(), 5u);
+  EXPECT_FLOAT_EQ(events[1].pointers[0].x, 70);
+  EXPECT_FLOAT_EQ(events[1].pointers[0].y, 240);
+  EXPECT_FLOAT_EQ(events[2].pointers[0].x, 73);
+  EXPECT_FLOAT_EQ(events[2].pointers[0].y, 236);
+  EXPECT_FLOAT_EQ(events[3].pointers[0].x, 76);
+  EXPECT_FLOAT_EQ(events[3].pointers[0].y, 232);
+  EXPECT_EQ(events[4].type, PointerEventType::kUp);
+}
+
+TEST(SyntheticTouchScrollGestureTest,
+     SupportsOverscrollWithoutMainDisplacement) {
+  RecordingInputEventTarget target;
+  SyntheticTouchScrollGestureParams params;
+  params.y = 200;
+  params.y_overscroll = 10;
+  params.speed = 100;
+  params.prevent_fling = false;
+  SyntheticTouchScrollGesture gesture(params);
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(101000, &target),
+            SyntheticGestureResult::kDone);
+  const auto events = target.Events();
+  ASSERT_EQ(events.size(), 3u);
+  EXPECT_FLOAT_EQ(events[1].pointers[0].y, 190);
+}
+
+TEST(SyntheticTouchScrollGestureTest,
+     PreventFlingFeedsStationaryMovesBeforeUp) {
+  RecordingInputEventTarget target;
+  SyntheticTouchScrollGestureParams params;
+  params.y_distance = 10;
+  params.speed = 100;
+  SyntheticTouchScrollGesture gesture(params);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(101000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(151000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(201000, &target),
+            SyntheticGestureResult::kDone);
+  const auto events = target.Events();
+  ASSERT_EQ(events.size(), 5u);
+  for (size_t i = 1; i < 4; ++i) {
+    EXPECT_EQ(events[i].type, PointerEventType::kMove);
+    EXPECT_FLOAT_EQ(events[i].pointers[0].y, 10);
+  }
+  EXPECT_EQ(events.back().type, PointerEventType::kUp);
+  EXPECT_EQ(events.back().timestamp_us - events[1].timestamp_us, 100000);
+}
+
+TEST(SyntheticTouchScrollGestureTest, RepeatsFromAnchorAfterDelay) {
+  RecordingInputEventTarget target;
+  SyntheticTouchScrollGestureParams params;
+  params.x = 20;
+  params.x_distance = 10;
+  params.speed = 100;
+  params.prevent_fling = false;
+  params.repeat_count = 1;
+  params.repeat_delay_ms = 250;
+  SyntheticTouchScrollGesture gesture(params);
+
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(101000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(350999, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(target.EventCount(), 3u);
+  EXPECT_EQ(gesture.ForwardInputEvents(351000, &target),
+            SyntheticGestureResult::kRunning);
+  EXPECT_EQ(gesture.ForwardInputEvents(451000, &target),
+            SyntheticGestureResult::kDone);
+  EXPECT_EQ(gesture.ForwardInputEvents(501000, &target),
+            SyntheticGestureResult::kDone);
+  const auto events = target.Events();
+  ASSERT_EQ(events.size(), 6u);
+  EXPECT_EQ(events[2].type, PointerEventType::kUp);
+  EXPECT_EQ(events[3].type, PointerEventType::kDown);
+  EXPECT_FLOAT_EQ(events[3].pointers[0].x, 20);
+  EXPECT_NE(events[0].action_pointer_id, events[3].action_pointer_id);
+}
+
+TEST(SyntheticTouchScrollGestureTest, ZeroDistanceDoesNotTapOrRepeat) {
+  RecordingInputEventTarget target;
+  SyntheticTouchScrollGestureParams params;
+  params.repeat_count = 2;
+  SyntheticTouchScrollGesture gesture(params);
+  EXPECT_EQ(gesture.ForwardInputEvents(1000, &target),
+            SyntheticGestureResult::kDone);
+  EXPECT_TRUE(target.Events().empty());
+}
+
+TEST(SyntheticTouchScrollGestureTest, InjectionFailuresCancelAndStopRepeats) {
+  // Exercise failure at down, move, stationary move, and up.
+  for (int fail_index = 0; fail_index < 4; ++fail_index) {
+    SCOPED_TRACE(fail_index);
+    RecordingInputEventTarget target;
+    target.fail_on_injection_index_ = fail_index;
+    SyntheticTouchScrollGestureParams params;
+    params.y_distance = 10;
+    params.speed = 100;
+    params.repeat_count = 1;
+    SyntheticTouchScrollGesture gesture(params);
+    SyntheticGestureResult result = SyntheticGestureResult::kRunning;
+    for (int64_t time = 1000;
+         time <= 201000 && result == SyntheticGestureResult::kRunning;
+         time += 100000) {
+      result = gesture.ForwardInputEvents(time, &target);
+    }
+    EXPECT_EQ(result, SyntheticGestureResult::kFailed);
+    const auto events = target.Events();
+    if (fail_index == 0) {
+      ASSERT_EQ(events.size(), 1u);
+    } else {
+      ASSERT_EQ(events.size(), static_cast<size_t>(fail_index + 2));
+      EXPECT_EQ(events.back().type, PointerEventType::kCancel);
+    }
+    EXPECT_EQ(gesture.ForwardInputEvents(501000, &target),
+              SyntheticGestureResult::kDone);
+    EXPECT_EQ(target.EventCount(), events.size());
+  }
+}
+
+TEST(SyntheticTouchScrollGestureTest, CancelReleasesPointerAtLastPosition) {
+  RecordingInputEventTarget target;
+  SyntheticTouchScrollGestureParams params;
+  params.y_distance = 100;
+  params.speed = 100;
+  SyntheticTouchScrollGesture gesture(params);
+  gesture.ForwardInputEvents(1000, &target);
+  gesture.ForwardInputEvents(501000, &target);
+  gesture.Cancel(601000, &target);
+  gesture.Cancel(701000, &target);
+  const auto events = target.Events();
+  ASSERT_EQ(events.size(), 3u);
+  EXPECT_EQ(events.back().type, PointerEventType::kCancel);
+  EXPECT_FLOAT_EQ(events.back().pointers[0].y, 50);
 }
 
 TEST(SyntheticGestureControllerTest, CompletesWhenVSyncDoesNotRespond) {
