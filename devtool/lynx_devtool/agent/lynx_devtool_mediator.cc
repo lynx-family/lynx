@@ -1263,6 +1263,13 @@ void LynxDevToolMediator::SynthesizePinchGesture(
   });
 }
 
+void LynxDevToolMediator::SynthesizeScrollGesture(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->SynthesizeScrollGesture(responder, params);
+  });
+}
+
 void LynxDevToolMediator::InspectorEnable(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {

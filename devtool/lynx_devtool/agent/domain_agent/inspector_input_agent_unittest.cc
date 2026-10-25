@@ -150,6 +150,16 @@ class InspectorInputAgentTest : public ::testing::Test {
     return message;
   }
 
+  Json::Value BuildScrollMessage(int64_t id) {
+    Json::Value message(Json::objectValue);
+    message["id"] = id;
+    message["method"] = "Input.synthesizeScrollGesture";
+    message["params"]["x"] = 100;
+    message["params"]["y"] = 200;
+    message["params"]["yDistance"] = -80;
+    return message;
+  }
+
   void EnableTwoTouchPoints() {
     input::PointerCapabilities capabilities;
     capabilities.default_source_type = input::PointerSourceType::kTouch;
@@ -681,6 +691,150 @@ TEST_F(InspectorInputAgentTest, SynthesizePinchReportsInjectionFailure) {
             "Input.synthesizePinchGesture failed");
   EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
             static_cast<int>(CDPErrorCode::ServerError));
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizeScrollGestureUsesTouchDefaults) {
+  Dispatch(BuildScrollMessage(50));
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  const auto events = platform_facade_->mock_input_event_target_->Events();
+  ASSERT_GE(events.size(), 4u);
+  EXPECT_EQ(events.front().type, input::PointerEventType::kDown);
+  EXPECT_EQ(events.back().type, input::PointerEventType::kUp);
+  EXPECT_FLOAT_EQ(events.back().pointers[0].x, 100);
+  EXPECT_FLOAT_EQ(events.back().pointers[0].y, 120);
+  // 80 logical pixels at the default 800 px/s plus 100 ms to stop.
+  EXPECT_GE(events.back().timestamp_us - events.front().timestamp_us, 200000);
+  for (const auto& event : events) {
+    EXPECT_EQ(event.source_type, input::PointerSourceType::kTouch);
+    EXPECT_EQ(event.pointers.size(), 1u);
+  }
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+  EXPECT_EQ(LastResponse()["id"].asInt64(), 50);
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizeScrollGestureHonorsOptionsAndRepeat) {
+  auto message = BuildScrollMessage(51);
+  message["params"]["gestureSourceType"] = "touch";
+  message["params"]["xDistance"] = 40;
+  message["params"]["xOverscroll"] = 10;
+  message["params"]["yOverscroll"] = -20;
+  message["params"]["speed"] = 100000;
+  message["params"]["preventFling"] = false;
+  message["params"]["repeatCount"] = 1;
+  message["params"]["repeatDelayMs"] = 100;
+  Dispatch(message);
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  const auto events = platform_facade_->mock_input_event_target_->Events();
+  ASSERT_EQ(events.size(), 8u);
+  EXPECT_FLOAT_EQ(events[1].pointers[0].x, 140);
+  EXPECT_FLOAT_EQ(events[1].pointers[0].y, 120);
+  EXPECT_FLOAT_EQ(events[2].pointers[0].x, 130);
+  EXPECT_FLOAT_EQ(events[2].pointers[0].y, 140);
+  EXPECT_EQ(events[3].type, input::PointerEventType::kUp);
+  EXPECT_EQ(events[3].timestamp_us, events[2].timestamp_us);
+  EXPECT_EQ(events[4].type, input::PointerEventType::kDown);
+  EXPECT_FLOAT_EQ(events[4].pointers[0].y, 200);
+  EXPECT_GE(events[4].timestamp_us - events[3].timestamp_us, 100000);
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizeScrollGestureAllowsNoDisplacement) {
+  auto message = BuildScrollMessage(52);
+  message["params"].removeMember("yDistance");
+  Dispatch(message);
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizeScrollGestureRejectsInvalidParams) {
+  const std::pair<std::string, Json::Value> invalid_params[] = {
+      {"x", Json::Value()},
+      {"y", std::numeric_limits<double>::infinity()},
+      {"xDistance", "10"},
+      {"yDistance", std::numeric_limits<double>::quiet_NaN()},
+      {"xOverscroll", std::numeric_limits<double>::infinity()},
+      {"yOverscroll", Json::Value()},
+      {"speed", 0},
+      {"speed", -1},
+      {"speed", 800.0},
+      {"preventFling", "true"},
+      {"repeatCount", -1},
+      {"repeatCount", 1.5},
+      {"repeatDelayMs", -1},
+      {"repeatDelayMs", 0.0},
+      {"gestureSourceType", "pen"},
+      {"interactionMarkerName", 1},
+      {"yDistance", 1e30},
+      {"repeatCount", std::numeric_limits<int>::max()},
+  };
+  size_t count = 0;
+  for (const auto& param : invalid_params) {
+    SCOPED_TRACE(param.first + ": " + param.second.toStyledString());
+    auto message = BuildScrollMessage(53);
+    message["params"][param.first] = param.second;
+    Dispatch(message);
+    ASSERT_TRUE(message_sender_->WaitForMessageCount(++count));
+    EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+              static_cast<int>(CDPErrorCode::InvalidParams));
+  }
+  EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizeScrollGestureRejectsMouseTargets) {
+  input::PointerCapabilities capabilities;
+  capabilities.default_source_type = input::PointerSourceType::kMouse;
+  capabilities.supports_mouse = true;
+  capabilities.supports_touch = true;
+  platform_facade_->mock_input_event_target_->SetCapabilities(capabilities);
+  Dispatch(BuildScrollMessage(54));
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+
+  auto message = BuildScrollMessage(55);
+  message["params"]["gestureSourceType"] = "mouse";
+  Dispatch(message);
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(2));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Not implemented: Input.synthesizeScrollGesture source mouse");
+  EXPECT_TRUE(platform_facade_->mock_input_event_target_->Events().empty());
+}
+
+TEST_F(InspectorInputAgentTest, SynthesizeScrollGestureRejectsMissingTargets) {
+  platform_facade_->ResetInputEventTarget();
+  Dispatch(BuildScrollMessage(56));
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Not implemented: Input.synthesizeScrollGesture");
+  SetDevToolPlatformFacade(nullptr);
+  Dispatch(BuildScrollMessage(57));
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(2));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Input target is unavailable");
+}
+
+TEST_F(InspectorInputAgentTest,
+       SynthesizeScrollGestureReportsInjectionFailure) {
+  platform_facade_->mock_input_event_target_->SetInjectionResult(false);
+  auto message = BuildScrollMessage(58);
+  message["params"]["repeatCount"] = 1;
+  Dispatch(message);
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Input.synthesizeScrollGesture failed");
+  EXPECT_EQ(platform_facade_->mock_input_event_target_->Events().size(), 1u);
+}
+
+TEST_F(InspectorInputAgentTest,
+       SynthesizeScrollGestureReportsProcessingFailure) {
+  platform_facade_->mock_input_event_target_->SetProcessingResult(false);
+  Dispatch(BuildScrollMessage(59));
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Input.synthesizeScrollGesture failed");
 }
 
 TEST_F(InspectorInputAgentTest, SynthesizeTapGestureRejectsMissingTarget) {
