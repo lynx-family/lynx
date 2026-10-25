@@ -10,13 +10,13 @@
 
 #include "clay/lynx_adaptor/ui_delegate_clay.h"
 #include "platform/embedder/frame_timing_listener_impl.h"
-#include "platform/embedder/lynx_ui_renderer.h"
+#include "platform/embedder/lynx_ui_renderer_clay.h"
 
 namespace lynx {
 namespace embedder {
-class LynxUIRendererImpl : public LynxUIRenderer {
+class LynxUIRendererImpl : public LynxUIRendererClay {
  public:
-  explicit LynxUIRendererImpl(lynx_view_builder_t* builder);
+  explicit LynxUIRendererImpl(RendererConfig config);
   ~LynxUIRendererImpl() override;
 
   void SetParent(NativeWindow parent) override;
@@ -47,11 +47,12 @@ class LynxUIRendererImpl : public LynxUIRenderer {
 
   void RegisterIMEHandler(void* handler, void* opaque) override;
 
-  void AddClient(LynxViewClients* client) override;
+  void SetFrameTimingClient(FrameTimingClient* client) override;
 
  private:
   void SendPointerEvent(const ClayPointerEvent& event) override;
 
+  std::shared_ptr<ResourceProvider> resource_provider_;
   void* lynx_ui_renderer_ = nullptr;
   std::unique_ptr<lynx::tasm::UIDelegateClay> ui_delegate_;
 

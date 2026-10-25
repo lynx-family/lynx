@@ -24,8 +24,7 @@
 #include "clay/shell/platform/windows/dpi_utils.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
-#include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
-#include "platform/embedder/public/capi/lynx_memory_capi.h"
+#include "platform/embedder/interfaces/renderer_factory.h"
 #if ENABLE_TESTBENCH_REPLAY
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
@@ -39,16 +38,15 @@ static constexpr UINT kRequestIME = WM_USER + 9;
 namespace lynx {
 namespace embedder {
 
-std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(
-    lynx_view_builder_t* builder) {
-  return std::make_unique<LynxUIRendererWin>(builder);
+std::unique_ptr<LynxUIRenderer> CreateDefaultUIRenderer(RendererConfig config) {
+  return std::make_unique<LynxUIRendererWin>(std::move(config));
 }
 
-LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
-    : LynxUIRenderer(builder),
+LynxUIRendererWin::LynxUIRendererWin(RendererConfig config)
+    : LynxUIRendererClay(config),
       frame_timing_listener_(std::make_shared<FrameTimingListenerImpl>()) {
   clay::FlutterDesktopEngineProperties properties = {};
-  properties.enable_software_rendering = builder->enable_software_rendering;
+  properties.enable_software_rendering = config.enable_software_rendering;
 #ifdef ENABLE_SKITY
   if (properties.enable_software_rendering) {
     LOGW(
@@ -58,7 +56,7 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
   }
 #endif
 
-  const char* icu_data_path = builder->GetICUDataPath();
+  const char* icu_data_path = config.icu_data_path.c_str();
   std::wstring icu_wstr;
   if (icu_data_path && icu_data_path[0] != '\0') {
     icu_wstr = base::Utf16FromUtf8(icu_data_path, strlen(icu_data_path));
@@ -67,17 +65,16 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
   }
   properties.icu_data_path = icu_wstr.c_str();
 
-  HWND parent_hwnd = reinterpret_cast<HWND>(builder->parent);
-  float pixel_ratio = builder->screen_size.pixel_ratio;
+  HWND parent_hwnd = reinterpret_cast<HWND>(config.parent);
+  float pixel_ratio = config.pixel_ratio;
   if (pixel_ratio == 1.0) {
     pixel_ratio = clay::GetDpiForHWND(parent_hwnd) / 96.0;
   }
 
   std::unique_ptr<clay::WindowBindingHandler> window_wrapper =
-      std::make_unique<clay::FlutterWindow>(
-          parent_hwnd, builder->frame.x, builder->frame.y,
-          builder->frame.width * pixel_ratio,
-          builder->frame.height * pixel_ratio);
+      std::make_unique<clay::FlutterWindow>(parent_hwnd, config.x, config.y,
+                                            config.width * pixel_ratio,
+                                            config.height * pixel_ratio);
   flutter_view_ =
       std::make_unique<clay::FlutterWindowsView>(std::move(window_wrapper));
 
@@ -98,9 +95,9 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
 
   auto* view_context =
       static_cast<clay::ViewContext*>(engine_->GetViewContext());
-  if (builder->default_background_color) {
+  if (config.default_background_color) {
     view_context->GetPageView()->SetDefaultBackgroundColor(
-        clay::Color(*builder->default_background_color));
+        clay::Color(*config.default_background_color));
   }
   auto module_factory = std::unique_ptr<lynx::runtime::NativeModuleFactory>(
       lynx::LynxModuleFactory::CreateModuleFactory(view_context));
@@ -108,36 +105,29 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
       view_context, std::move(module_factory));
 
   clay::NativeViewServiceEmbedder::SetViewFactories(
-      view_context, std::move(builder->native_view_creators));
+      view_context, std::move(config.native_view_creators));
 
-  if (builder->generic_fetcher) {
-    auto fetcher_holder =
-        std::make_shared<LynxResourceFetcherHolder>(builder->generic_fetcher);
+  if (config.resource_provider) {
+    auto provider = config.resource_provider;
     auto intercept = engine_->GetResourceLoaderIntercept();
     if (intercept) {
       intercept->BindShouldInterceptUrlCallback(
-          [fetcher_holder](const char* origin_url, bool should_decode,
-                           char* intercept_url, int max_path_length) {
-            char* redirected = lynx_generic_resource_fetcher_intercept(
-                fetcher_holder->GenericFetcher(), origin_url, should_decode);
-            if (!redirected || !intercept_url || max_path_length <= 0) {
-              if (redirected) {
-                lynx_free(redirected);
-              }
-              return;
-            }
-            std::snprintf(intercept_url, max_path_length, "%s", redirected);
-            lynx_free(redirected);
+          [provider](const char* origin_url, bool should_decode,
+                     char* intercept_url, int max_path_length) {
+            if (!intercept_url || max_path_length <= 0) return;
+            auto redirected = provider->Intercept(origin_url, should_decode);
+            std::snprintf(intercept_url, max_path_length, "%s",
+                          redirected.c_str());
           });
     }
     engine_->GetServiceManager()
         ->RegisterService<clay::ResourceLoaderCreatorService>(
             std::make_shared<clay::ResourceLoaderCreatorService>(
-                [fetcher_holder](
+                [provider](
                     fml::RefPtr<fml::TaskRunner> task_runner,
                     std::shared_ptr<clay::ResourceLoaderIntercept> intercept) {
                   return std::make_shared<clay::ResourceLoaderEmbedder>(
-                      task_runner, intercept, fetcher_holder);
+                      task_runner, intercept, provider);
                 }));
   }
 
@@ -155,7 +145,7 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
 }
 
 LynxUIRendererWin::~LynxUIRendererWin() {
-  frame_timing_listener_->RemoveAllClients();
+  frame_timing_listener_->SetClient(nullptr);
 }
 
 void LynxUIRendererWin::SetParent(NativeWindow parent) {
@@ -324,8 +314,8 @@ void LynxUIRendererWin::AdjustWindowRect() {
   }
 }
 
-void LynxUIRendererWin::AddClient(LynxViewClients* client) {
-  frame_timing_listener_->AddClient(client);
+void LynxUIRendererWin::SetFrameTimingClient(FrameTimingClient* client) {
+  frame_timing_listener_->SetClient(client);
 }
 
 }  // namespace embedder

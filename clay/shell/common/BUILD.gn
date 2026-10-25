@@ -10,6 +10,10 @@ import("../../../oliver/oliver.gni")
 import("../../common/config.gni")
 import("../../testing/testing.gni")
 
+source_set("frame_timing_listener") {
+  sources = [ "frame_timing_listener.h" ]
+}
+
 source_set("common") {
   sources = [
     "context_options.cc",
@@ -22,7 +26,6 @@ source_set("common") {
     "display_manager.h",
     "engine.cc",
     "engine.h",
-    "frame_timing_listener.h",
     "one_shot_callback.h",
     "output_surface.cc",
     "output_surface.h",
@@ -140,6 +143,7 @@ source_set("common") {
   public_configs = [ "../../:config" ]
 
   public_deps = [
+    ":frame_timing_listener",
     "../../../third_party/rapidjson",
     "../../third_party/txt",
     "../../version",

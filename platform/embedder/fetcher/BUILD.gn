@@ -16,7 +16,7 @@ lynx_core_source_set("fetcher") {
     "lynx_resource_response_priv.h",
   ]
   deps = [ "../../../core/template_bundle:template_bundle" ]
-  public_configs = [ "../:config" ]
+  public_configs = [ "../:engine_config" ]
 }
 if (enable_unittests) {
   lynx_core_source_set("fetcher_unittests") {

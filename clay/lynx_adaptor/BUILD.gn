@@ -53,6 +53,14 @@ source_set("resource_loader_embedder") {
   ]
 }
 
+# Share one mock implementation across the adaptor and embedder test/host paths.
+source_set("native_platform_view_mock") {
+  sources = [ "native_platform_view_mock.cc" ]
+  deps = [ "../../core/public:public" ]
+  configs += [ "../../core:lynx_public_config" ]
+  defines = [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+}
+
 source_set("lynx_adaptor") {
   sources = [
     "base_def.h",
@@ -106,9 +114,6 @@ source_set("lynx_adaptor") {
       "../gfx",
     ]
   }
-  if (use_clay_lynx_trail_hub_impl) {
-    public_deps += [ ":lynx_trail_hub_impl_clay" ]
-  }
 
   if (is_win || is_mac || (is_linux && is_headless) ||
       (is_harmony && is_headless)) {
@@ -117,14 +122,14 @@ source_set("lynx_adaptor") {
       "native_view_service_embedder.h",
     ]
     if (enable_unittests) {
-      sources += [ "native_platform_view_mock.cc" ]
+      deps = [ ":native_platform_view_mock" ]
     } else {
       sources += [ "native_platform_view.cc" ]
     }
     include_dirs += [ "../../base/include/value" ]
     public_deps += [
       ":resource_loader_embedder",
-      "../../base/src:base_values",
+      "../../platform/embedder:contracts",
     ]
   }
 
@@ -132,15 +137,4 @@ source_set("lynx_adaptor") {
   if (is_mac || is_android || is_ios) {
     defines += [ "TRACE_EVENT_HIDE_MACROS" ]
   }
-}
-
-source_set("lynx_trail_hub_impl_clay") {
-  sources = [
-    "lynx_trail_hub_impl_clay.cc",
-    "lynx_trail_hub_impl_clay.h",
-  ]
-
-  public_configs = [ "../../clay:config" ]
-
-  deps = [ "../../platform/embedder/lynx_service:lynx_service" ]
 }

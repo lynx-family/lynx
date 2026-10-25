@@ -8,9 +8,10 @@
 #include <memory>
 #include <string>
 
+#include "base/include/fml/task_runner.h"
 #include "clay/net/loader/resource_loader.h"
 #include "clay/net/loader/resource_loader_intercept.h"
-#include "platform/embedder/fetcher/lynx_resource_fetcher_holder.h"
+#include "platform/embedder/interfaces/resource_provider.h"
 
 namespace clay {
 
@@ -19,8 +20,7 @@ class ResourceLoaderEmbedder : public ResourceLoader {
   ResourceLoaderEmbedder(
       fml::RefPtr<fml::TaskRunner> task_runner,
       std::shared_ptr<ResourceLoaderIntercept> intercept,
-      std::shared_ptr<lynx::embedder::LynxResourceFetcherHolder>
-          fetcher_holder);
+      std::shared_ptr<lynx::embedder::ResourceProvider> provider);
   virtual ~ResourceLoaderEmbedder() = default;
 
   void Load(const std::string& src,
@@ -40,7 +40,10 @@ class ResourceLoaderEmbedder : public ResourceLoader {
                             const ResourceType resource_type);
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
   std::shared_ptr<ResourceLoaderIntercept> intercept_;
-  std::shared_ptr<lynx::embedder::LynxResourceFetcherHolder> fetcher_holder_;
+  // Cached loaders must not extend the page or host fetcher lifetime. The
+  // renderer owns the provider; each pending load retains itself until
+  // completion.
+  std::weak_ptr<lynx::embedder::ResourceProvider> provider_;
 };
 
 }  // namespace clay

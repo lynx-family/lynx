@@ -11,11 +11,13 @@
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
 #include "platform/embedder/fetcher/lynx_generic_resource_fetcher_priv.h"
 #include "platform/embedder/fetcher/lynx_resource_fetcher_holder.h"
+#include "platform/embedder/lynx_env_priv.h"
 #include "platform/embedder/lynx_group_priv.h"
 #include "platform/embedder/lynx_load_meta_priv.h"
 #include "platform/embedder/lynx_runtime_lifecycle_observer_priv.h"
 #include "platform/embedder/lynx_service/lynx_security_service_priv.h"
 #include "platform/embedder/lynx_service/lynx_service_center_priv.h"
+#include "platform/embedder/lynx_ui_renderer_factory.h"
 #include "platform/embedder/lynx_update_meta_priv.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
 #include "platform/embedder/lynx_view_event_simulation_proxy.h"
@@ -126,44 +128,41 @@ std::shared_ptr<lynx::tasm::TemplateData> MergeGlobalProps(
 
 LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                             void* user_data) {
+  if (!builder) {
+    return nullptr;
+  }
 #if defined(OS_IOS) && defined(ENABLE_WINDOWLESS)
   // The iOS C API hosts offscreen views; UIView uses its native entry point.
-  if (!builder || !builder->windowless_renderer) {
+  if (!builder->windowless_renderer) {
     return nullptr;
   }
 #if ENABLE_NAPI_BINDING
   InstallPrimJSWeakNodeApiBridgeForApple();
 #endif
 #endif
+#if defined(OS_IOS) && !defined(ENABLE_WINDOWLESS)
+  return nullptr;
+#endif
+  lynx::embedder::InitializeEmbedder();
+
   lynx_view_t* view = new lynx_view_t;
   view->user_data = user_data;
   const char* webview_fixed_runtime_path =
       builder->GetWebView2FixedRuntimePath();
   view->webview2_fixed_runtime_path =
       webview_fixed_runtime_path ? webview_fixed_runtime_path : "";
-  // Construct ui renderer with builder.
-#if defined(OS_IOS)
-#if defined(ENABLE_WINDOWLESS)
-  view->lynx_ui_renderer =
-      lynx::embedder::LynxUIRenderer::CreateWindowlessUIRenderer(builder);
-#else
-  delete view;
-  return nullptr;
-#endif
-#elif defined(ENABLE_WINDOWLESS)
-  if (builder->windowless_renderer) {
-    view->lynx_ui_renderer =
-        lynx::embedder::LynxUIRenderer::CreateWindowlessUIRenderer(builder);
-  } else {
-    view->lynx_ui_renderer =
-        lynx::embedder::LynxUIRenderer::CreateWithBuilder(builder);
+  view->lynx_ui_renderer = lynx::embedder::CreateUIRenderer(builder);
+  if (!view->lynx_ui_renderer) {
+    delete view;
+    return nullptr;
   }
-#else
-  view->lynx_ui_renderer =
-      lynx::embedder::LynxUIRenderer::CreateWithBuilder(builder);
-#endif
   // get UIDelegate from lynx_ui_renderer.
   auto* ui_delegate = view->lynx_ui_renderer->GetUIDelegate();
+  if (!ui_delegate) {
+    // A mock supplies no rendering backend and cannot create a page.
+    delete view;
+    return nullptr;
+  }
 
   // Construct template renderer with builder.
   lynx::embedder::LynxTemplateRenderer::Settings settings;
@@ -270,7 +269,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
 #endif
   view->lynx_view_clients =
       std::make_unique<lynx::embedder::LynxViewClients>(view);
-  view->lynx_ui_renderer->AddClient(view->lynx_view_clients.get());
+  view->lynx_ui_renderer->SetFrameTimingClient(view->lynx_view_clients.get());
   view->lynx_template_renderer->AddClient(view->lynx_view_clients.get());
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
   SetupLogBoxWrapper(view, builder->parent);
@@ -578,6 +577,7 @@ LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
 #endif
   // Destroy template renderer and ui renderer.
   view->lynx_template_renderer.reset();
+  view->lynx_ui_renderer->SetFrameTimingClient(nullptr);
   view->lynx_view_clients.reset();
   view->lynx_ui_renderer.reset();
   delete view;

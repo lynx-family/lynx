@@ -15,7 +15,7 @@
 #include "platform/embedder/public/capi/lynx_group_capi.h"
 #include "platform/embedder/public/capi/lynx_view_builder_capi.h"
 #if defined(ENABLE_WINDOWLESS)
-#include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
+#include "platform/embedder/interfaces/renderer_config.h"
 #endif
 
 struct lynx_view_builder_t {
@@ -39,8 +39,8 @@ struct lynx_view_builder_t {
   lynx_group_t* group = nullptr;
   NativeWindow parent = nullptr;
 #if defined(ENABLE_WINDOWLESS)
-  lynx::fml::RefPtr<lynx::embedder::LynxWindowlessRenderer>
-      windowless_renderer = nullptr;
+  lynx::fml::RefPtr<lynx::embedder::RendererBinding> windowless_renderer =
+      nullptr;
 #endif
   lynx_generic_resource_fetcher_t* generic_fetcher = nullptr;
 

@@ -12,13 +12,15 @@
 #include <vector>
 
 #include "platform/embedder/core/lynx_template_renderer.h"
+#include "platform/embedder/interfaces/renderer_config.h"
 #include "platform/embedder/lynx_view_client_priv.h"
 
 struct lynx_view_t;
 
 namespace lynx {
 namespace embedder {
-class LynxViewClients : public TemplateRendererClient {
+class LynxViewClients : public TemplateRendererClient,
+                        public FrameTimingClient {
  public:
   explicit LynxViewClients(lynx_view_t* lynx_view);
   virtual ~LynxViewClients() = default;
@@ -65,7 +67,7 @@ class LynxViewClients : public TemplateRendererClient {
   void OnTemplateBundleReady(const tasm::LynxTemplateBundle& bundle) override;
 
   void OnFrameTiming(int64_t frame_start_time_in_ns,
-                     int64_t frame_finish_time_in_ns);
+                     int64_t frame_finish_time_in_ns) override;
 
  private:
   lynx_view_t* lynx_view_;
