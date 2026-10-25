@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "base/include/fml/macros.h"
+#include "build/build_config.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/common/task_runners.h"
 #include "clay/public/clay.h"
@@ -32,7 +33,7 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
       const char* icu_data_path,
       const ClayHeadlessRendererConfig* renderer_config,
       const ClayTaskRunnerDescription* platform_task_runner_description,
-      void* user_data);
+      void* user_data, bool enable_sync_compositor = false);
   ~ClayHeadlessEngine() override;
 
   bool IsValid() const;
@@ -46,6 +47,12 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
   void NotifyLowMemoryWarning();
   void NotifyLocaleChange();
   void RequestPaint();
+#if defined(OS_LINUX)
+  // Prepare UI without drawing on Raster.
+  bool PrepareFrame();
+  // Request a synchronous draw; any completion future goes to the delegate.
+  void DemandDrawHw();
+#endif
 
   void SetVisible(bool enable);
   void SetFontFaceCache(const char* font_family, const char* local_path);
@@ -95,6 +102,8 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
   void ClearTextInputClient();
 
   void* user_data_ = nullptr;
+  // Used by Linux windowless synchronous composition.
+  [[maybe_unused]] bool enable_sync_compositor_ = false;
   int client_id_ = -1;
 
   // The event loop for the main thread that allows for delayed task execution.

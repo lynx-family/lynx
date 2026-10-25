@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "base/include/closure.h"
+#include "build/build_config.h"
 #include "clay/common/service/service.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/shell/common/services/sync_compositor_service.h"
@@ -21,9 +22,8 @@ class UIFrameService : public clay::Service<UIFrameService, clay::Owner::kUI> {
  public:
   static std::shared_ptr<UIFrameService> Create();
 
-  // Send a UI frame request to RasterFrameService, and it will trigger the
-  // scheduler to transfer the state machine. The scheduler will schedule to
-  // call BeginFrame with appropriate timing.
+  // Request a UI frame via Raster/vsync in async mode, or notify the
+  // platform in sync mode.
   void RequestFrame();
   void SetVsyncSourceActive(bool active);
 
@@ -31,16 +31,22 @@ class UIFrameService : public clay::Service<UIFrameService, clay::Owner::kUI> {
   // can build first frame now.
   void OnFirstMeaningfulLayout();
 
-  void DemandDrawHw(std::promise<bool> frame_future);
+  // Queue the synchronous scheduler call on Raster and fulfill the promise
+  // when it returns. UI preparation runs first on the calling UI thread.
+  void DemandDrawHw(std::promise<bool> frame_promise);
 
-  // Begin a new UI frame, which will try to build a new LayerTree, and than
-  // commit to RasterFrameService, it's called from RasterFrameService which is
-  // scheduled by the state machine.
+#if defined(OS_LINUX)
+  // Linux sync mode only. Process pending UI work without requesting a draw.
+  // Returns whether UI is ready for synchronous composition.
+  bool PrepareFrame();
+#endif
+
+  // Build UI with the supplied vsync timings and queue any resulting LayerTree
+  // on Raster. Used by vsync scheduling and synchronous UI preparation.
   void BeginFrame(std::unique_ptr<clay::FrameTimingsRecorder> recorder);
 
-  // Force begin a new UI frame, which will ignore the state machine and commit
-  // the layer tree immediately.
-  // It's used for BeginFrameImmediately in Engine.
+  // Build UI and mark any resulting LayerTree commit for immediate
+  // Raster drawing.
   void ForceBeginFrame(std::unique_ptr<clay::FrameTimingsRecorder> recorder,
                        fml::closure no_update_callback = nullptr);
 
@@ -48,6 +54,7 @@ class UIFrameService : public clay::Service<UIFrameService, clay::Owner::kUI> {
   void CleanForRecycle();
 
  private:
+  void BeginFrame();
   void CommitWithNoUpdates();
 
   void OnInit(clay::ServiceManager& service_manager,

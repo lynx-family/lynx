@@ -28,6 +28,18 @@ void SyncCompositorService::OnFirstMeaningfulLayout() {
   shell_->OnPostInvalidate(false);
 }
 
+#if defined(OS_LINUX)
+bool SyncCompositorService::PrepareFrame() {
+  has_invalidated_ = false;
+  clay::Puppet<clay::Owner::kPlatform, UIFrameService> ui_frame_service =
+      shell_->GetServiceManager()->GetService<UIFrameService>();
+  bool prepared = false;
+  ui_frame_service.Act(
+      [&prepared](auto& impl) { prepared = impl.PrepareFrame(); });
+  return prepared;
+}
+#endif
+
 void SyncCompositorService::DemandDrawHw(bool force_draw) {
   has_invalidated_ = false;
   if (!first_meaningful_layout_) {
@@ -45,11 +57,11 @@ void SyncCompositorService::DemandDrawHw(bool force_draw) {
 
   clay::Puppet<clay::Owner::kPlatform, UIFrameService> ui_frame_service =
       shell_->GetServiceManager()->GetService<UIFrameService>();
-  // Submit a frame future, and it will be consumed in Android RenderThread.
+  // Publish the future before dispatching the draw. The platform chooses how
+  // to wait for or poll the result.
   std::promise<bool> promise;
   platform_view_->SubmitFrameFuture(promise.get_future());
-  // Now it's time to do BeginFrame and push LayerTree, which will be scheduled
-  // by StateMachine.
+  // Build UI first, then queue the synchronous scheduler call on Raster.
   ui_frame_service.Act([promise = std::move(promise)](auto& impl) mutable {
     impl.DemandDrawHw(std::move(promise));
   });

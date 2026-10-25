@@ -11,6 +11,7 @@
 #include "clay/shell/common/engine.h"
 #include "clay/shell/common/services/platform_const_service.h"
 #include "clay/shell/common/services/raster_frame_service.h"
+#include "clay/ui/component/page_view.h"
 
 namespace clay {
 
@@ -74,20 +75,34 @@ void UIFrameService::OnFirstMeaningfulLayout() {
   }
 }
 
-void UIFrameService::DemandDrawHw(std::promise<bool> frame_promise) {
-  std::unique_ptr<FrameTimingsRecorder> recorder =
-      std::make_unique<FrameTimingsRecorder>();
-  const fml::TimePoint placeholder_time = fml::TimePoint::Now();
-  recorder->RecordVsync(placeholder_time, placeholder_time);
-  // Call BeginFrame synchronously first to build and push LayerTree to
-  // Scheduler, and will be scheduled with state machine in DemandDrawHw bellow.
-  BeginFrame(std::move(recorder));
+#if defined(OS_LINUX)
+bool UIFrameService::PrepareFrame() {
+  if (!using_sync_compositor_ || !engine_ || !engine_->GetPageView() ||
+      !engine_->GetPageView()->HasMeaningfulLayout()) {
+    return false;
+  }
+  if (frame_requested_) {
+    BeginFrame();
+  }
+  return !engine_->HasPendingLayout() &&
+         !engine_->GetPageView()->HasPendingFrameChanges();
+}
+#endif
 
+void UIFrameService::DemandDrawHw(std::promise<bool> frame_promise) {
+  // Build UI before queuing the synchronous draw on Raster.
+  BeginFrame();
   raster_frame_service_->puppet_.Act(
       [frame_promise = std::move(frame_promise)](auto& impl) mutable {
-        bool result = impl.DemandDrawHw();
-        frame_promise.set_value(result);
+        frame_promise.set_value(impl.DemandDrawHw());
       });
+}
+
+void UIFrameService::BeginFrame() {
+  auto recorder = std::make_unique<FrameTimingsRecorder>();
+  const auto now = fml::TimePoint::Now();
+  recorder->RecordVsync(now, now);
+  BeginFrame(std::move(recorder));
 }
 
 void UIFrameService::BeginFrame(

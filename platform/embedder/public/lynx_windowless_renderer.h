@@ -216,6 +216,57 @@ class LynxWindowlessRenderer
         });
   }
 
+  // Synchronous composition is currently supported only on Linux.
+  // Configure before attaching this renderer to a LynxView.
+  // Returns false on unsupported platforms.
+  bool SetSyncCompositor(bool enabled) {
+    InitIfNeeded();
+    if (!lynx_windowless_renderer_set_sync_compositor(windowless_renderer_,
+                                                      enabled)) {
+      return false;
+    }
+    if (enabled) {
+      lynx_windowless_renderer_bind_on_invalidate(
+          windowless_renderer_, [](lynx_windowless_renderer_t* renderer) {
+            auto wrapper =
+                Unwrap(lynx_windowless_renderer_get_user_data(renderer));
+            if (wrapper) {
+              wrapper->OnInvalidate();
+            }
+          });
+    }
+    return true;
+  }
+
+  // Prepare UI without drawing to complete layout-dependent methods.
+  // Requires Linux synchronous composition; otherwise returns false.
+  bool PrepareFrame() {
+    return windowless_renderer_ &&
+           lynx_windowless_renderer_prepare_frame(windowless_renderer_);
+  }
+
+  // Requires Linux synchronous composition; otherwise returns false.
+  // Returns whether a completion future was installed, not whether drawing
+  // succeeded. UI preparation still runs inside the draw request.
+  bool DemandDrawHw() {
+    return windowless_renderer_ &&
+           lynx_windowless_renderer_demand_draw_hw(windowless_renderer_);
+  }
+
+  // Gets compositor status without blocking or consuming the result.
+  // Returns kFrameDrawUnavailable outside Linux synchronous composition or
+  // when no draw request has been established.
+  lynx_frame_draw_status_e GetFrameDrawStatus() const {
+    return windowless_renderer_
+               ? lynx_windowless_renderer_get_frame_draw_status(
+                     windowless_renderer_)
+               : kFrameDrawUnavailable;
+  }
+
+  // Currently invoked only in Linux synchronous composition, on the
+  // host/platform thread.
+  virtual void OnInvalidate() {}
+
   virtual ~LynxWindowlessRenderer() {
     if (windowless_renderer_) {
       lynx_windowless_renderer_release(windowless_renderer_);

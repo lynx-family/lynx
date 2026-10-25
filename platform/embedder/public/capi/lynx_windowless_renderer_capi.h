@@ -4,6 +4,8 @@
 #ifndef PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_WINDOWLESS_RENDERER_CAPI_H_
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_WINDOWLESS_RENDERER_CAPI_H_
 
+#define LYNX_WINDOWLESS_SYNC_COMPOSITOR_API 1
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -101,6 +103,41 @@ lynx_windowless_renderer_create_with_finalizer(
 
 LYNX_CAPI_EXPORT void* lynx_windowless_renderer_get_user_data(
     lynx_windowless_renderer_t*);
+
+// Linux-only platform-driven compositor. Configure before building the
+// LynxView. Call the compositor APIs in this section on the host/platform
+// thread, which also runs UI tasks in windowless mode. Invalidation is
+// delivered there too. Defer prepare_frame and demand_draw_hw to a later
+// host-loop iteration; do not call them reentrantly from this callback.
+typedef void (*on_invalidate)(lynx_windowless_renderer_t*);
+LYNX_CAPI_EXPORT bool lynx_windowless_renderer_set_sync_compositor(
+    lynx_windowless_renderer_t*, bool enabled);
+LYNX_CAPI_EXPORT void lynx_windowless_renderer_bind_on_invalidate(
+    lynx_windowless_renderer_t*, on_invalidate);
+// Build UI and execute layout-dependent methods, without drawing on Raster.
+// Call this to complete layout-dependent methods while collecting inputs.
+// Returns false when unavailable, a draw is pending, or UI preparation remains
+// incomplete. This does not replace UI preparation inside demand_draw_hw.
+LYNX_CAPI_EXPORT bool lynx_windowless_renderer_prepare_frame(
+    lynx_windowless_renderer_t*);
+// Start the synchronous compositor draw path. Only one request may be
+// outstanding. Prepares UI, then queues the Raster draw. Returns true if a
+// completion future was installed; poll it for the draw result.
+LYNX_CAPI_EXPORT bool lynx_windowless_renderer_demand_draw_hw(
+    lynx_windowless_renderer_t*);
+typedef enum lynx_frame_draw_status_e {
+  kFrameDrawUnavailable = -1,
+  kFrameDrawPending = 0,
+  kFrameDrawn = 1,
+  // The compositor completed the request without drawing.
+  kFrameNotDrawn = 2,
+} lynx_frame_draw_status_e;
+// Nonblocking status of the latest compositor request. The result remains
+// available until the next request. Pump the host loop while pending.
+// kFrameDrawn does not prove host presentation or readback succeeded.
+// The host must validate fresh output and track any separate output dependency.
+LYNX_CAPI_EXPORT lynx_frame_draw_status_e
+lynx_windowless_renderer_get_frame_draw_status(lynx_windowless_renderer_t*);
 
 /* ----- Callbacks for GL renderer type ----- */
 // The callback function type for making the current context. Returns true if
