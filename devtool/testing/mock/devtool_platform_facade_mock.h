@@ -73,8 +73,9 @@ class InputEventTargetMock : public devtool::input::InputEventTarget {
 
 class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
  public:
-  DevToolPlatformFacadeMock()
-      : mock_input_event_target_(std::make_shared<InputEventTargetMock>()) {
+  explicit DevToolPlatformFacadeMock(bool supports_fullscreen = true)
+      : DevToolPlatformFacade(supports_fullscreen),
+        mock_input_event_target_(std::make_shared<InputEventTargetMock>()) {
     input_event_target_ = mock_input_event_target_;
   }
   ~DevToolPlatformFacadeMock() override = default;
@@ -88,7 +89,7 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
   }
 
   int FindNodeIdForLocation(float x, float y,
-                            std::string screen_shot_mode) override;
+                            const std::string& screen_shot_mode) override;
   void ScrollIntoView(int node_id) override {}
 
   void SetDevToolSwitch(const std::string& key, bool value) override;

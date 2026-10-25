@@ -6,7 +6,6 @@ package com.lynx.devtool.framecapture;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.view.View;
-import com.lynx.devtool.helper.ScreenCapturer;
 import com.lynx.devtoolwrapper.ScreenshotBitmapHandler;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -119,7 +118,7 @@ public abstract class FrameCapturer {
           screenshot(view, new ScreenshotBitmapHandler() {
             @Override
             public void sendBitmap(Bitmap bitmap) {
-              ScreenCapturer.getInstance().onScreenshotBitmapReady(bitmap);
+              onScreenshotBitmapReady(bitmap);
             }
           });
         } catch (Throwable e) {
@@ -132,6 +131,8 @@ public abstract class FrameCapturer {
   protected void onScreenshotActionEnd() {}
 
   protected void onScreenshotActionStart() {}
+
+  protected void onScreenshotBitmapReady(Bitmap bitmap) {}
 
   protected abstract void screenshot(final View view, ScreenshotBitmapHandler handler);
 }

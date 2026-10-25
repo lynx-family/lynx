@@ -9,7 +9,7 @@
 namespace lynx {
 namespace testing {
 int DevToolPlatformFacadeMock::FindNodeIdForLocation(
-    float x, float y, std::string screen_shot_mode) {
+    float x, float y, const std::string& screen_shot_mode) {
   return -1;
 }
 

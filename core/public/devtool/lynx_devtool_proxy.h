@@ -37,8 +37,10 @@ class LynxDevToolProxy {
       size_t max_width, size_t max_height, int quality,
       const std::string& format, float screen_scale_factor,
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
-      tasm::TakeSnapshotCompletedCallback callback) = 0;
-  virtual int GetNodeForLocation(int x, int y) = 0;
+      tasm::TakeSnapshotCompletedCallback callback,
+      const std::string& screenshot_mode = "lynxview") = 0;
+  virtual int GetNodeForLocation(
+      int x, int y, const std::string& coordinate_mode = "lynxview") = 0;
   virtual std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) = 0;
   virtual std::string GetLynxUITree() = 0;
@@ -48,15 +50,16 @@ class LynxDevToolProxy {
   virtual void SetInspectorOwner(LynxInspectorOwner* owner) = 0;
   virtual void EmulateTouch(const std::string& event_type, int x, int y,
                             const std::string& button, float delta_x,
-                            float delta_y, int modifiers, int click_count) = 0;
+                            float delta_y, int modifiers, int click_count,
+                            const std::string& coordinate_mode) = 0;
   virtual void EmulateMouse(const std::string& event_type, int x, int y,
                             const std::string& button, float delta_x,
                             float delta_y, int modifiers, int click_count) {}
   virtual void Focus(int node_id) {}
   virtual void InsertText(const std::string& text) {}
   virtual void DispatchMessageEvent(const Json::Value& message) = 0;
-  virtual bool SetScreenshotMode(const std::string&) { return false; }
-  virtual std::string GetActualScreenshotMode() { return "lynxview"; }
+  // Capability of the current renderer; independent of previous captures.
+  virtual bool SupportsFullscreenScreenshot() const { return false; }
 };
 }  // namespace devtool
 }  // namespace lynx

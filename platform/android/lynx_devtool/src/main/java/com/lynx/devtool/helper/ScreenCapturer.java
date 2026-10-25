@@ -27,6 +27,7 @@ public class ScreenCapturer extends FrameCapturer {
     private int mMaxWidth;
     private int mMaxHeight;
     private int mQuality;
+    // Immutable for a running capture; copied from the facade's accepted request.
     private String mScreenshotMode;
     private String mFormat;
   }
@@ -48,7 +49,6 @@ public class ScreenCapturer extends FrameCapturer {
   private static final String TAG = "ScreenCapturer";
   private static final String FORMAT_JPEG = "jpeg";
   private static final String FORMAT_PNG = "png";
-  private static final ScreenCapturer mInstance = new ScreenCapturer();
 
   private static final int CARD_PREVIEW_QUALITY = 100;
   private static final int CARD_PREVIEW_MAX_WIDTH = 400;
@@ -75,7 +75,7 @@ public class ScreenCapturer extends FrameCapturer {
   private long mScreenshotStartTime = 0;
 
   // use this executorService to encode and send screen data
-  private final ExecutorService executorService =
+  private static final ExecutorService executorService =
       Executors.newCachedThreadPool(new ThreadFactory() {
         @Override
         public Thread newThread(@NonNull Runnable runnable) {
@@ -83,11 +83,7 @@ public class ScreenCapturer extends FrameCapturer {
         }
       });
 
-  public static ScreenCapturer getInstance() {
-    return mInstance;
-  }
-
-  private ScreenCapturer() {
+  ScreenCapturer() {
     super();
     mScreenRequest = new ScreenRequest();
     mScreenMetadata = new ScreenMetadata();
@@ -130,6 +126,7 @@ public class ScreenCapturer extends FrameCapturer {
   }
 
   private void addResetDirtyStatusCallBack() {
+    Choreographer.getInstance().removeFrameCallback(mResetDirtyCallBack);
     Choreographer.getInstance().postFrameCallback(mResetDirtyCallBack);
   }
 
@@ -138,6 +135,7 @@ public class ScreenCapturer extends FrameCapturer {
       return;
     }
     stopFrameViewTrace();
+    Choreographer.getInstance().removeFrameCallback(mResetDirtyCallBack);
     mIsEnabled = false;
     mView.clear();
   }
@@ -181,7 +179,8 @@ public class ScreenCapturer extends FrameCapturer {
     return FORMAT_PNG.equalsIgnoreCase(format) ? FORMAT_PNG : FORMAT_JPEG;
   }
 
-  public void onScreenshotBitmapReady(Bitmap bitmap) {
+  @Override
+  protected void onScreenshotBitmapReady(Bitmap bitmap) {
     executorService.submit(new Runnable() {
       @Override
       public void run() {

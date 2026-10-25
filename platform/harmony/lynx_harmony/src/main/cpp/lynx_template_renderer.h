@@ -145,10 +145,11 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       size_t max_width, size_t max_height, int quality,
       const std::string& format, float screen_scale_factor,
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
-      tasm::TakeSnapshotCompletedCallback callback) override;
-  int GetNodeForLocation(int x, int y) override;
-  bool SetScreenshotMode(const std::string& screen_shot_mode) override;
-  std::string GetActualScreenshotMode() override;
+      tasm::TakeSnapshotCompletedCallback callback,
+      const std::string& screenshot_mode = "lynxview") override;
+  int GetNodeForLocation(
+      int x, int y, const std::string& coordinate_mode = "lynxview") override;
+  bool SupportsFullscreenScreenshot() const override;
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) override;
 
@@ -159,7 +160,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void SetInspectorOwner(devtool::LynxInspectorOwner* owner) override;
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
-                    int modifiers, int click_count) override;
+                    int modifiers, int click_count,
+                    const std::string& coordinate_mode) override;
 
   void DispatchMessageEvent(const Json::Value& message) override;
 

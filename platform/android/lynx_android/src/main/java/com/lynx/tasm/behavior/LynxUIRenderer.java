@@ -89,7 +89,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   private ShadowNodeOwner mShadowNodeOwner;
   private IPaintingContext mPaintingContext;
   private long mNativeUIDelegatePtr = 0;
-  private String mScreenshotMode = ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN;
   private LynxBooleanOption mLongTaskMonitorEnabled;
 
   // static synchronization object to ensure thread-safe operations of screenshot
@@ -565,16 +564,14 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   }
 
   @Override
-  public String getActualScreenshotMode() {
-    return mScreenshotMode;
+  public boolean supportsFullscreenScreenshot() {
+    return true;
   }
 
   @Override
   public void takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode) {
-    mScreenshotMode = screenShotMode;
     Bitmap bitmap;
-    if (mScreenshotMode != null
-        && mScreenshotMode.equals(ScreenshotMode.SCREEN_SHOT_MODE_LYNX_VIEW)) {
+    if (ScreenshotMode.SCREEN_SHOT_MODE_LYNX_VIEW.equals(screenShotMode)) {
       bitmap = getBitmapOfView();
     } else {
       bitmap = getBitmapOfScreen();

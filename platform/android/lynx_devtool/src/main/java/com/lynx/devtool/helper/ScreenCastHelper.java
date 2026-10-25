@@ -14,6 +14,7 @@ public class ScreenCastHelper {
   private WeakReference<LynxView> mLynxView;
   private volatile boolean mPaused;
   private volatile boolean mScreencastEnabled;
+  private final ScreenCapturer mCapturer = new ScreenCapturer();
 
   public ScreenCastHelper(DevToolPlatformAndroidDelegate platformDelegate, LynxView lynxView) {
     mPlatformDelegate = new WeakReference<>(platformDelegate);
@@ -24,7 +25,7 @@ public class ScreenCastHelper {
 
   public void attach(LynxView lynxView) {
     mLynxView = new WeakReference<>(lynxView);
-    ScreenCapturer.getInstance().attachView(lynxView);
+    mCapturer.attachView(lynxView);
   }
 
   public void startCasting(int quality, int maxWidth, int maxHeight, String screenShotMode,
@@ -34,14 +35,13 @@ public class ScreenCastHelper {
     if (platformDelegate != null) {
       platformDelegate.dispatchScreencastVisibilityChanged(true);
     }
-    ScreenCapturer.getInstance().attachView(mLynxView.get());
-    ScreenCapturer.getInstance().setDevToolDelegate(devToolDelegate);
-    ScreenCapturer.getInstance().startCapture(maxWidth, maxHeight, quality, screenShotMode, format,
+    mCapturer.attachView(mLynxView.get());
+    mCapturer.setDevToolDelegate(devToolDelegate);
+    mCapturer.startCapture(maxWidth, maxHeight, quality, screenShotMode, format,
         new ScreenCapturer.ScreenshotListener() {
           @Override
           public void onNewScreenshotBitmapData(String screenData, long timeCost) {
-            ScreenCapturer.ScreenMetadata metadata =
-                ScreenCapturer.getInstance().getScreenMetadata();
+            ScreenCapturer.ScreenMetadata metadata = mCapturer.getScreenMetadata();
             // nanosecond to millisecond
             float time = (float) (((double) timeCost) / 1E6);
             DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
@@ -56,8 +56,8 @@ public class ScreenCastHelper {
   public void stopCasting() {
     mScreencastEnabled = false;
     LynxView lynxView = mLynxView.get();
+    mCapturer.stopCapture(lynxView);
     if (lynxView != null) {
-      ScreenCapturer.getInstance().stopCapture(lynxView);
       DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
       if (platformDelegate != null) {
         platformDelegate.dispatchScreencastVisibilityChanged(false);
@@ -68,13 +68,13 @@ public class ScreenCastHelper {
   public void continueCasting() {
     if (mScreencastEnabled) {
       if (mPaused) {
-        ScreenCapturer.getInstance().clearScreenshotBitmapDataCache();
+        mCapturer.clearScreenshotBitmapDataCache();
         mPaused = false;
         DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
         if (platformDelegate != null) {
           platformDelegate.dispatchScreencastVisibilityChanged(true);
         }
-        ScreenCapturer.getInstance().triggerNextCapture();
+        mCapturer.triggerNextCapture();
       }
     }
   }
@@ -92,7 +92,7 @@ public class ScreenCastHelper {
   }
 
   public void onAckReceived() {
-    ScreenCapturer.getInstance().onAckReceived();
+    mCapturer.onAckReceived();
   }
 
   public void sendCardPreview(IDevToolDelegate devToolDelegate) {
@@ -103,11 +103,10 @@ public class ScreenCastHelper {
         public void run() {
           Bitmap bitmap = devToolDelegate.getBitmapOfView();
           // Delay for 1500ms to allow time for rendering remote resources
-          ScreenCapturer.getInstance().submit(new Runnable() {
+          mCapturer.submit(new Runnable() {
             @Override
             public void run() {
-              String cardPreviewData =
-                  ScreenCapturer.getInstance().getScreenshotDataFromBitmap(bitmap, true);
+              String cardPreviewData = mCapturer.getScreenshotDataFromBitmap(bitmap, true);
               DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
               if (platformDelegate != null) {
                 platformDelegate.sendCardPreviewData(cardPreviewData);

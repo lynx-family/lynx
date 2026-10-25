@@ -12,7 +12,6 @@
 #include "core/runtime/lepus/json_parser.h"
 #include "devtool/base_devtool/native/public/cdp_param_utils.h"
 #include "devtool/base_devtool/native/public/cdp_responder.h"
-#include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/input_request_handler.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -26,15 +25,6 @@ namespace devtool {
 extern const char* kLynxLocalUrl;
 extern const char* kLynxSecurityOrigin;
 extern const char* kLynxMimeType;
-
-namespace {
-
-bool IsValidScreencastMode(const std::string& mode) {
-  return mode == DevToolStatus::SCREENSHOT_MODE_FULLSCREEN ||
-         mode == DevToolStatus::SCREENSHOT_MODE_LYNXVIEW;
-}
-
-}  // namespace
 
 InspectorUIExecutor::InspectorUIExecutor(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
@@ -96,14 +86,10 @@ void InspectorUIExecutor::GetNodeForLocation(
   x = x * layouts_unit_per_px;
   y = y * layouts_unit_per_px;
 
-  std::string screen_shot_mode =
-      lynx::devtool::DevToolStatus::GetInstance().GetStatus(
-          lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-          lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
-
   CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
                             "devtool_platform_facade_ is null");
 
+  const auto screen_shot_mode = devtool_platform_facade_->GetScreenshotMode();
   int node_id =
       devtool_platform_facade_->FindNodeIdForLocation(x, y, screen_shot_mode);
 
@@ -144,6 +130,13 @@ void InspectorUIExecutor::StartScreencast(
   Json::Value response(Json::ValueType::objectValue);
   Json::Value content(Json::ValueType::objectValue);
   Json::Value params = message["params"];
+  auto responder =
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64());
+  if (!devtool_platform_facade_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Screencast target is unavailable");
+    return;
+  }
   ScreenshotRequest screen_request;
   if (params["format"].isString()) {
     std::string format = params["format"].asString();
@@ -158,15 +151,14 @@ void InspectorUIExecutor::StartScreencast(
   screen_request.max_width_ = params["maxWidth"].asInt();
   screen_request.max_height_ = params["maxHeight"].asInt();
   screen_request.every_nth_frame_ = params["everyNthFrame"].asInt();
-  if (params["mode"].isString()) {
-    std::string mode = params["mode"].asString();
-    if (IsValidScreencastMode(mode)) {
-      lynx::devtool::DevToolStatus::GetInstance().SetStatus(
-          lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode, mode);
-    }
+  if (params.isMember("mode") && (!params["mode"].isString() ||
+                                  !devtool_platform_facade_->SetScreenshotMode(
+                                      params["mode"].asString()))) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Unsupported screencast mode for this target");
+    return;
   }
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+  screen_request.mode_ = devtool_platform_facade_->GetScreenshotMode();
   devtool_platform_facade_->StartScreenCast(std::move(screen_request));
 
   response["result"] = content;

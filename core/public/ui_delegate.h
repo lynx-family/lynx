@@ -75,8 +75,12 @@ class UIDelegate {
       size_t max_width, size_t max_height, int quality,
       const std::string& format, float screen_scale_factor,
       const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
-      TakeSnapshotCompletedCallback callback) {}
-  virtual int GetNodeForLocation(int x, int y) { return -1; }
+      TakeSnapshotCompletedCallback callback,
+      const std::string& screenshot_mode = "lynxview") {}
+  virtual int GetNodeForLocation(
+      int x, int y, const std::string& coordinate_mode = "lynxview") {
+    return -1;
+  }
   virtual std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout) {
     return {};
@@ -89,7 +93,8 @@ class UIDelegate {
   }
   virtual void EmulateTouch(const std::string& event_type, int x, int y,
                             const std::string& button, float delta_x,
-                            float delta_y, int modifiers, int click_count) {}
+                            float delta_y, int modifiers, int click_count,
+                            const std::string& coordinate_mode) {}
 
   // Whether enable native list for the different renderer backend.
   virtual bool EnableNativeList() const { return false; }

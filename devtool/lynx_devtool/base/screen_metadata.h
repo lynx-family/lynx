@@ -49,6 +49,8 @@ struct ScreenshotRequest {
   float screen_scale_factor_;
   std::string format_;
   int every_nth_frame_;
+  // Accepted mode copied from the facade for this capture request.
+  std::string mode_;
 };
 
 }  // namespace devtool

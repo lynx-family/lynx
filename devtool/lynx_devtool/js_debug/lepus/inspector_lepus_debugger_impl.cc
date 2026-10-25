@@ -5,6 +5,7 @@
 #include "devtool/lynx_devtool/js_debug/lepus/inspector_lepus_debugger_impl.h"
 
 #include "core/services/recorder/recorder_controller.h"
+#include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/config/devtool_config.h"
 #include "devtool/lynx_devtool/recorder/test_bench_utils.h"
 

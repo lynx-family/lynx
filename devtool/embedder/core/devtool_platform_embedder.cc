@@ -31,10 +31,11 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     weak_embedder_ = embedder;
   }
 
-  int FindNodeIdForLocation(float x, float y, std::string) override {
+  int FindNodeIdForLocation(float x, float y,
+                            const std::string& mode) override {
     auto embedder = weak_embedder_.lock();
     CHECK_NULL_AND_LOG_RETURN_VALUE(embedder, "embedder is null", 0);
-    return embedder->FindNodeIdForLocation(x, y);
+    return embedder->FindNodeIdForLocation(x, y, mode);
   }
 
   std::string GetDebugInfoByUrl(const std::string& url) override {
@@ -221,32 +222,24 @@ void DevtoolPlatformEmbedder::AttachProxy(devtool::LynxDevToolProxy* proxy) {
   if (reload_helper_) {
     reload_helper_->AttachProxy(proxy);
   }
-  if (proxy_ &&
-      proxy_->SetScreenshotMode(DevToolStatus::SCREENSHOT_MODE_LYNXVIEW)) {
-    DevToolStatus::GetInstance().SetStatus(
-        DevToolStatus::kDevToolStatusKeyScreenShotMode,
-        proxy_->GetActualScreenshotMode());
+  if (proxy_ && devtool_platform_facade_) {
+    devtool_platform_facade_->SetSupportsFullscreenScreenshot(
+        proxy_->SupportsFullscreenScreenshot());
   }
 }
 
 DevtoolPlatformEmbedder::~DevtoolPlatformEmbedder() {}
 
-int DevtoolPlatformEmbedder::FindNodeIdForLocation(float x, float y) {
+int DevtoolPlatformEmbedder::FindNodeIdForLocation(
+    float x, float y, const std::string& coordinate_mode) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(proxy_, "proxy_ is null", 0);
-  return proxy_->GetNodeForLocation(x, y);
+  return proxy_->GetNodeForLocation(x, y, coordinate_mode);
 }
 
 void DevtoolPlatformEmbedder::StartCasting(int32_t quality, int32_t max_width,
                                            int32_t max_height,
                                            const std::string& format) {
   CHECK_NULL_AND_LOG_RETURN(cast_helper_, "cast_helper_ is null");
-  if (proxy_) {
-    std::string requested_screen_shot_mode =
-        DevToolStatus::GetInstance().GetStatus(
-            DevToolStatus::kDevToolStatusKeyScreenShotMode,
-            DevToolStatus::SCREENSHOT_MODE_LYNXVIEW);
-    proxy_->SetScreenshotMode(requested_screen_shot_mode);
-  }
   cast_helper_->StartCasting(quality, max_width, max_height, format);
 }
 
@@ -348,7 +341,7 @@ void DevtoolPlatformEmbedder::EmulateTouch(
   CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
   proxy_->EmulateTouch(input->type_, input->x_, input->y_, input->button_,
                        input->delta_x_, input->delta_y_, input->modifiers_,
-                       input->click_count_);
+                       input->click_count_, input->coordinate_mode_);
 }
 
 void DevtoolPlatformEmbedder::EmulateMouse(

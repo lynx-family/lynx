@@ -130,7 +130,8 @@ class DarwinInputEventTarget final : public input::InputEventTarget {
 
 class DevToolPlatformDarwin : public DevToolPlatformFacade {
  public:
-  explicit DevToolPlatformDarwin(DevToolPlatformDarwinDelegate* darwin) : _darwin(darwin) {
+  explicit DevToolPlatformDarwin(DevToolPlatformDarwinDelegate* darwin)
+      : DevToolPlatformFacade(true), _darwin(darwin) {
     input_event_target_ = std::make_shared<DarwinInputEventTarget>(darwin);
   }
 
@@ -139,7 +140,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     SetNativePaintingContextRef(platform_ref);
   }
 
-  int FindNodeIdForLocation(float x, float y, std::string screen_shot_mode) override {
+  int FindNodeIdForLocation(float x, float y, const std::string& screen_shot_mode) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin) {
       return
@@ -193,13 +194,10 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   void StartScreenCast(ScreenshotRequest request) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin) {
-      std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
-          lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-          lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
       [darwin startCasting:request.quality_
                      width:(int)request.max_width_
                     height:(int)request.max_height_
-                      mode:[NSString stringWithUTF8String:mode.c_str()]
+                      mode:[NSString stringWithUTF8String:request.mode_.c_str()]
                     format:[NSString stringWithUTF8String:request.format_.c_str()]];
     }
   }
@@ -719,14 +717,15 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   NSString* button = [NSString stringWithCString:input->button_.c_str()
                                         encoding:[NSString defaultCStringEncoding]];
 
-  [self emulateTouch:type
-         coordinateX:input->x_
-         coordinateY:input->y_
-              button:button
-              deltaX:input->delta_x_
-              deltaY:input->delta_y_
-           modifiers:input->modifiers_
-          clickCount:input->click_count_];
+  [_touchHelper emulateTouch:type
+                 coordinateX:input->x_
+                 coordinateY:input->y_
+                      button:button
+                      deltaX:input->delta_x_
+                      deltaY:input->delta_y_
+                   modifiers:input->modifiers_
+                  clickCount:input->click_count_
+              screenshotMode:[NSString stringWithUTF8String:input->coordinate_mode_.c_str()]];
 }
 
 - (void)insertText:(nullable NSString*)text {
@@ -795,10 +794,8 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
               deltaY:(CGFloat)dy
            modifiers:(int)modifiers
           clickCount:(int)clickCount {
-  if (_touchHelper != nil) {
-    std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
-        lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
-        lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
+  if (_touchHelper != nil && devtool_platform_facade_) {
+    const auto mode = devtool_platform_facade_->GetScreenshotMode();
     [_touchHelper emulateTouch:type
                    coordinateX:x
                    coordinateY:y

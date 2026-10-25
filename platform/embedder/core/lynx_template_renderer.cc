@@ -673,14 +673,16 @@ void LynxTemplateRenderer::TakeSnapshot(
     size_t max_width, size_t max_height, int quality, const std::string& format,
     float screen_scale_factor,
     const lynx::fml::RefPtr<lynx::fml::TaskRunner>& screenshot_runner,
-    tasm::TakeSnapshotCompletedCallback callback) {
+    tasm::TakeSnapshotCompletedCallback callback,
+    const std::string& screenshot_mode) {
   ui_delegate_->TakeSnapshot(max_width, max_height, quality, format,
                              screen_scale_factor, screenshot_runner,
-                             std::move(callback));
+                             std::move(callback), screenshot_mode);
 }
 
-int LynxTemplateRenderer::GetNodeForLocation(int x, int y) {
-  return ui_delegate_->GetNodeForLocation(x, y);
+int LynxTemplateRenderer::GetNodeForLocation(
+    int x, int y, const std::string& coordinate_mode) {
+  return ui_delegate_->GetNodeForLocation(x, y, coordinate_mode);
 }
 
 std::vector<float> LynxTemplateRenderer::GetTransformValue(
@@ -709,7 +711,8 @@ void LynxTemplateRenderer::SetInspectorOwner(
 void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
                                         int y, const std::string& button,
                                         float delta_x, float delta_y,
-                                        int modifiers, int click_count) {
+                                        int modifiers, int click_count,
+                                        const std::string& coordinate_mode) {
   if (event_proxy_) {
     event_proxy_->EmulateTouch(event_type, x, y, button, delta_x, delta_y,
                                modifiers, click_count);

@@ -16,6 +16,34 @@ namespace {
 constexpr size_t kBoxModelSize = 34;
 }  // namespace
 
+DevToolPlatformFacade::DevToolPlatformFacade(bool supports_fullscreen)
+    : supports_fullscreen_screenshot_(supports_fullscreen),
+      screenshot_mode_(supports_fullscreen ? "fullscreen" : "lynxview") {}
+
+std::string DevToolPlatformFacade::GetScreenshotMode() const {
+  std::lock_guard<std::mutex> lock(screenshot_mode_mutex_);
+  return screenshot_mode_;
+}
+
+bool DevToolPlatformFacade::SetScreenshotMode(const std::string& mode) {
+  std::lock_guard<std::mutex> lock(screenshot_mode_mutex_);
+  if (mode != "lynxview" &&
+      (mode != "fullscreen" || !supports_fullscreen_screenshot_)) {
+    return false;
+  }
+  screenshot_mode_ = mode;
+  return true;
+}
+
+void DevToolPlatformFacade::SetSupportsFullscreenScreenshot(bool supported) {
+  std::lock_guard<std::mutex> lock(screenshot_mode_mutex_);
+  if (supports_fullscreen_screenshot_ != supported) {
+    supports_fullscreen_screenshot_ = supported;
+    // A renderer binding starts with its supported default.
+    screenshot_mode_ = supported ? "fullscreen" : "lynxview";
+  }
+}
+
 InspectorLayoutObjectInfo BuildLayoutObjectInfo(int32_t id,
                                                 SLNode* layout_obj) {
   InspectorLayoutObjectInfo info;

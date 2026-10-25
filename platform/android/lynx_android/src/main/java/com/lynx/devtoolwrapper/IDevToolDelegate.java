@@ -16,15 +16,10 @@ public interface IDevToolDelegate {
   // for devtool scrollIntoViewFromUI
   void scrollIntoViewFromUI(int nodeId);
 
-  /**
-   * for devtool inspector
-   *
-   * Retrieves the actual screenshot mode, which may not match the screenshot mode in DevToolStatus.
-   * The reason is that not every rendering mode supports full-screen screenshots.
-   * For iOS and Android native, the result of getActualScreenshotMode is consistent with the
-   * screenshot mode stored in DevToolStatus.
-   */
-  String getActualScreenshotMode();
+  /** Returns capture capability, independent of the mode of previous screenshots. */
+  default boolean supportsFullscreenScreenshot() {
+    return false;
+  }
 
   // for devtool getNodeForLocation
   int getNodeForLocation(float x, float y, String mode);

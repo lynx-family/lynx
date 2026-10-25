@@ -124,7 +124,10 @@ public interface ILynxUIRenderer {
 
   void scrollIntoViewFromUI(int nodeId);
 
-  String getActualScreenshotMode();
+  /** Whether the renderer can capture the full screen, without taking a screenshot. */
+  default boolean supportsFullscreenScreenshot() {
+    return false;
+  }
 
   void takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode);
 
