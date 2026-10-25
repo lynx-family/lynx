@@ -92,6 +92,13 @@ void RasterFrameService::RequestRasterFrame() {
   RequestFrameSignal();
 }
 
+void RasterFrameService::InvalidateRetainedFrames() {
+  committing_tree_matches_page_ = false;
+  pending_tree_matches_page_ = false;
+  active_tree_matches_page_ = false;
+  RequestUIFrame();
+}
+
 void RasterFrameService::RequestUIFrame(bool inside_ui_frame) {
   scheduler_->SetNeedsUIBeginFrame();
   if (!using_sync_compositor_) {
@@ -150,11 +157,13 @@ void RasterFrameService::Commit(
       // Activate the layer tree and then notify scheduler to perform raster
       // immediately for force draw.
       active_layer_tree_ = std::move(layer_tree);
+      active_tree_matches_page_ = true;
       active_recorder_ = std::move(recorder);
       scheduler_->SetNeedsRasterBeginFrame();
       scheduler_->NotifyReadyToPerformRasterFrame();
     } else {
       committing_layer_tree_ = std::move(layer_tree);
+      committing_tree_matches_page_ = true;
       committing_recorder_ = std::move(recorder);
       if (!using_sync_compositor_) {
         scheduler_->NotifyReadyToCommit(false);
@@ -193,6 +202,7 @@ void RasterFrameService::ForceCommit(
   });
   // Force draw the layer_tree.
   active_layer_tree_ = std::move(layer_tree);
+  active_tree_matches_page_ = true;
   active_recorder_ = std::move(recorder);
   scheduler_->SetNeedsRasterBeginFrame();
   scheduler_->NotifyReadyToPerformRasterFrame();
@@ -293,6 +303,7 @@ void RasterFrameService::ScheduledActionCommit() {
   }
   FML_DCHECK(!pending_layer_tree_);
   pending_layer_tree_ = std::move(committing_layer_tree_);
+  pending_tree_matches_page_ = committing_tree_matches_page_;
   pending_recorder_ = std::move(committing_recorder_);
   scheduler_->NotifyReadyToActivate();
 }
@@ -305,6 +316,7 @@ void RasterFrameService::ScheduledActionActivePendingTree() {
       RequestFrameSignal();
     }
     active_layer_tree_ = std::move(pending_layer_tree_);
+    active_tree_matches_page_ = pending_tree_matches_page_;
     active_recorder_ = std::move(pending_recorder_);
     active_layer_tree_->SetRequestNewFrame([weak_ptr = GetWeakPtr()] {
       if (weak_ptr) {
@@ -337,7 +349,9 @@ void RasterFrameService::ScheduledActionDraw() {
   }
   TRACE_EVENT_WITH_FRAME_NUMBER(recorder, "clay",
                                 "RasterFrameService::DrawLayerTree");
-  rasterizer_->Draw(active_layer_tree_, std::move(recorder));
+  if (active_tree_matches_page_) {
+    rasterizer_->Draw(active_layer_tree_, std::move(recorder));
+  }
   scheduler_->NotifyActiveTreeHasBeenDrawn();
 }
 
@@ -397,6 +411,9 @@ void RasterFrameService::StopSchedulerAndCleanLayerTree() {
   active_layer_tree_.reset();
   committing_layer_tree_.reset();
   pending_layer_tree_.reset();
+  committing_tree_matches_page_ = true;
+  pending_tree_matches_page_ = true;
+  active_tree_matches_page_ = true;
 #if OS_MAC
   vsync_waiter_.reset();
 #endif

@@ -36,6 +36,10 @@ class RasterFrameService
   void RequestRasterFrame();
   void RequestUIFrame(bool inside_ui_frame = false);
 
+  // Called after a new page's UI reset. Keep in-flight scheduler callbacks
+  // balanced, but do not display retained trees until a new tree is activated.
+  void InvalidateRetainedFrames();
+
   // Force begin UI frame, and Waitting the LayerTree to be commit. It's used
   // when we need to force begin frame outside the state machine. Should call
   // UIBeginFrame after this, otherwise the state machine may be broken.
@@ -111,6 +115,9 @@ class RasterFrameService
   // The `active_layer_tree_` is currently being activated.
   std::shared_ptr<LayerTree> active_layer_tree_;
   std::unique_ptr<FrameTimingsRecorder> active_recorder_;
+  bool committing_tree_matches_page_ = true;
+  bool pending_tree_matches_page_ = true;
+  bool active_tree_matches_page_ = true;
 
   uint64_t page_unique_id_ = 0;
 };
