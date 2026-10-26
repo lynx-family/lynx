@@ -30,6 +30,7 @@ class NapiLoaderUI : public runtime::js::NapiEnvironment::Delegate {
   void InvokeLepusBridge(const int32_t callback_id, const lepus::Value& data);
 
   static lepus::QuickContext* GetQuickContextFromNapiEnv(Napi::Env env);
+  static runtime::MTSRuntime* GetMTSRuntimeFromNapiEnv(Napi::Env env);
 
  private:
   static std::unordered_map<napi_env, lepus::QuickContext*>&

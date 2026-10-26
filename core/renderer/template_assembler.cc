@@ -1721,6 +1721,20 @@ fml::RefPtr<fml::TaskRunner> TemplateAssembler::GetLepusTimedTaskRunner() {
   return delegate_.GetLepusTimedTaskRunner();
 }
 
+void TemplateAssembler::SetPaused(bool paused) {
+  if (paused_ == paused) {
+    return;
+  }
+  LOGI(GetLogContext() << " TemplateAssembler::SetPaused, paused: " << paused);
+  paused_ = paused;
+  ForEachEntry([paused](const auto& entry) { entry->SetPaused(paused); });
+}
+
+void TemplateAssembler::RequestVsync(
+    uintptr_t id, base::MoveOnlyClosure<void, int64_t, int64_t> callback) {
+  delegate_.RequestVsync(id, std::move(callback));
+}
+
 std::unique_ptr<lepus::Value> TemplateAssembler::GetCurrentData() {
   // If enbale fiber arch, get data from lepus runtime, otherwise, get data from
   // page_proxy.

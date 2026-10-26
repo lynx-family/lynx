@@ -24,6 +24,7 @@
 #include "core/runtime/lepusng/napi/worklet/napi_frame_callback.h"
 #include "core/runtime/lepusng/napi/worklet/napi_func_callback.h"
 #include "core/runtime/lepusng/napi/worklet/napi_lepus_element.h"
+#include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
 
 namespace lynx {
 namespace worklet {
@@ -103,16 +104,39 @@ int64_t LepusComponent::RequestAnimationFrame(
     return sFailInt;
   }
 
-  tasm_->GetDelegate().RequestVsync(
-      reinterpret_cast<uintptr_t>(this),
+  RequestVsyncForAnimationFrame();
+
+  return raf_handler_->RequestAnimationFrame(std::move(callback));
+}
+
+void LepusComponent::RequestVsyncForAnimationFrame() {
+  base::MoveOnlyClosure<void, int64_t, int64_t> callback =
       fml::MakeCopyable([this, weak = Napi::Weak(NapiObject())](
                             int64_t frame_start, int64_t frame_end) {
         if (!weak.Value().IsUndefined()) {
           this->DoFrame(frame_start, frame_end);
         }
-      }));
+      });
+  auto* context = NapiLoaderUI::GetMTSRuntimeFromNapiEnv(NapiEnv());
+  if (context) {
+    callback = context->WrapAnimationFrameCallback(
+        reinterpret_cast<uintptr_t>(this), std::move(callback));
+  }
+  tasm_->GetDelegate().RequestVsync(reinterpret_cast<uintptr_t>(this),
+                                    std::move(callback));
+}
 
-  return raf_handler_->RequestAnimationFrame(std::move(callback));
+void LepusComponent::DoAnimationFrame(int64_t time_stamp) {
+  auto* context = NapiLoaderUI::GetMTSRuntimeFromNapiEnv(NapiEnv());
+  if (context && context->IsPaused()) {
+    // DoFrame may also be triggered by SetData. Keep RAF tasks pending and
+    // request a wrapped VSync callback that will be deferred by MTSRuntime.
+    if (raf_handler_->HasPendingRequest()) {
+      RequestVsyncForAnimationFrame();
+    }
+    return;
+  }
+  raf_handler_->DoFrame(time_stamp, tasm_);
 }
 
 void LepusComponent::CancelAnimationFrame(int64_t id) {
@@ -277,7 +301,7 @@ void LepusComponent::DoFrame(int64_t start_time, int64_t end_time) {
 
   // for fiber arch, exec lepus raf task and return.
   if (tasm_->GetPageConfig()->GetEnableFiberArch()) {
-    raf_handler_->DoFrame(cur, tasm_);
+    DoAnimationFrame(cur);
     return;
   }
 
@@ -300,7 +324,7 @@ void LepusComponent::DoFrame(int64_t start_time, int64_t end_time) {
   data_updated_ = lepus::Value();
 
   // second, exec lepus raf task
-  raf_handler_->DoFrame(cur, tasm_);
+  DoAnimationFrame(cur);
 }
 
 Napi::Object LepusComponent::GetStore() {

@@ -30,7 +30,10 @@ namespace runtime {
 MTSContextHolder::MTSContextHolder(std::unique_ptr<MTSContext> mts_context)
     : mts_context_(std::move(mts_context)) {}
 
-MTSRuntime::~MTSRuntime() { DestroyInspector(); }
+MTSRuntime::~MTSRuntime() {
+  ClearPendingAnimationFrameCallbacks();
+  DestroyInspector();
+}
 
 lepus::VMContext* MTSRuntime::ToVMContext(MTSRuntime* context) {
   DCHECK(context->IsVMContext());
@@ -105,6 +108,62 @@ MTSRuntime::Delegate* MTSRuntime::GetDelegate() {
   return delegate_;
 }
 
+void MTSRuntime::SetDelegate(Delegate* delegate) {
+  if (delegate_ && delegate_ != delegate) {
+    ClearPendingAnimationFrameCallbacks();
+  }
+  delegate_ = delegate;
+  if (delegate_) {
+    SetPaused(delegate_->IsPaused());
+  }
+}
+
+void MTSRuntime::SetPaused(bool paused) {
+  if (frame_pause_state_->paused == paused) {
+    return;
+  }
+  frame_pause_state_->paused = paused;
+  if (callback_manager_) {
+    callback_manager_->SetPaused(paused);
+  }
+  if (paused) {
+    return;
+  }
+
+  auto pending_callbacks = std::move(frame_pause_state_->pending_callbacks);
+  frame_pause_state_->pending_callbacks.clear();
+  auto* delegate = GetDelegate();
+  if (!delegate) {
+    return;
+  }
+  for (auto& [id, callback] : pending_callbacks) {
+    delegate->RequestVsync(id,
+                           WrapAnimationFrameCallback(id, std::move(callback)));
+  }
+}
+
+base::MoveOnlyClosure<void, int64_t, int64_t>
+MTSRuntime::WrapAnimationFrameCallback(
+    uintptr_t id, base::MoveOnlyClosure<void, int64_t, int64_t> callback) {
+  return [id, weak_state = std::weak_ptr<FramePauseState>(frame_pause_state_),
+          callback = std::move(callback)](int64_t frame_start,
+                                          int64_t frame_end) mutable {
+    auto state = weak_state.lock();
+    if (!state) {
+      return;
+    }
+    if (state->paused) {
+      state->pending_callbacks.try_emplace(id, std::move(callback));
+      return;
+    }
+    callback(frame_start, frame_end);
+  };
+}
+
+void MTSRuntime::ClearPendingAnimationFrameCallbacks() {
+  frame_pause_state_->pending_callbacks.clear();
+}
+
 std::shared_ptr<MTSRuntime> MTSRuntime::CreateContext(
     ContextType type, bool disable_tracing_gc, int runtime_mode,
     const tasm::PageOptions& page_options) {
@@ -159,6 +218,7 @@ const std::shared_ptr<tasm::LepusCallbackManager>&
 MTSRuntime::GetCallbackManager() const {
   if (!callback_manager_) {
     callback_manager_ = std::make_shared<tasm::LepusCallbackManager>();
+    callback_manager_->SetPaused(IsPaused());
   }
   return callback_manager_;
 }

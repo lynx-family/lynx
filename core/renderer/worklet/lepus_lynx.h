@@ -45,6 +45,9 @@ class LepusLynx : public ImplBase {
   void ClearTimeout(uint32_t task_id);
   void ClearInterval(uint32_t task_id);
 
+  // Pause or resume setTimeout and setInterval.
+  void SetPaused(bool paused);
+
   void TriggerLepusBridge(const std::string& method_name,
                           Napi::Object method_detail,
                           std::unique_ptr<NapiFuncCallback> callback);
@@ -63,6 +66,7 @@ class LepusLynx : public ImplBase {
   tasm::TemplateAssembler* tasm_;
   std::unique_ptr<LepusApiHandler> task_handler_;
   std::unique_ptr<base::TimedTaskManager> timer_;
+  bool paused_{false};
 
   std::unordered_map<uint32_t, int64_t> task_to_callback_map_{};
 };

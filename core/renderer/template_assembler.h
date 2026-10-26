@@ -341,6 +341,13 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override;
 
+  // Pause or resume timers and requestAnimationFrame of the main thread script.
+  void SetPaused(bool paused);
+  bool IsPaused() override { return paused_; }
+  void RequestVsync(
+      uintptr_t id,
+      base::MoveOnlyClosure<void, int64_t, int64_t> callback) override;
+
   LYNX_EXPORT_FOR_DEVTOOL void UpdateGlobalProps(
       const lepus::Value& data, bool need_render,
       std::shared_ptr<PipelineOptions>& pipeline_options);
@@ -1118,6 +1125,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   base::Vector<base::closure> on_layout_ready_hooks_;
   base::Vector<base::closure> deferred_tasks_;
+
+  bool paused_{false};
 
   base::OnceTaskRefptr<void> execute_on_layout_ready_hooks_{nullptr};
 

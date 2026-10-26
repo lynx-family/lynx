@@ -35,6 +35,9 @@ class LepusCallbackManager {
                        int64_t interval_time);
   void RemoveTimeTask(uint32_t task_id);
 
+  // Pause or resume the timed tasks.
+  void SetPaused(bool paused);
+
  private:
   // FuncTask cached in TaskMap , it has execute method
   class FuncTask {
@@ -60,6 +63,7 @@ class LepusCallbackManager {
 
   // time task for _SetTimeout , _SetTimeInterval
   std::unique_ptr<base::TimedTaskManager> timer_task_manager_{nullptr};
+  bool paused_{false};
   std::shared_ptr<State> state_ = std::make_shared<State>();
   // The return type depends on TimedTaskManager。
   uint32_t SetTimeTask(runtime::MTSRuntime* context,
