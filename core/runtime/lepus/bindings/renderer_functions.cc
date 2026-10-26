@@ -5316,6 +5316,39 @@ RENDERER_FUNCTION_CC(MarkTiming) {
 // The addTimingListener will be a no-op implementation in the lepus runtime.
 RENDERER_FUNCTION_CC(AddTimingListener) { RETURN_UNDEFINED(); }
 
+RENDERER_FUNCTION_CC(FiberResolveElementSubtree) {
+  CHECK_ARGC_GE(FiberResolveElementSubtree, 1);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
+                                        FiberResolveElementSubtree);
+  if (arg0->RefCounted()->GetRefType() != lepus::RefType::kElement &&
+      arg0->RefCounted()->GetRefType() !=
+          lepus::RefType::kComposeElementHandle) {
+    ElementAPIError(
+        "ResolveElementSubtree requires an Element or Compose handle");
+    RETURN_UNDEFINED();
+  }
+  auto element = GetComposeMountRootOrFiberElementFromValue(*arg0);
+  auto* manager = GET_TASM_POINTER()->page_proxy()->element_manager().get();
+  if (!element || element->element_manager() != manager ||
+      element->will_destroy() || element->IsDetached() ||
+      !element->EnableLayoutInElementMode()) {
+    ElementAPIError(
+        "ResolveElementSubtree requires an attached layout-in-element subtree");
+    RETURN_UNDEFINED();
+  }
+  bool prepare_for_layout = false;
+  if (argc > 1) {
+    CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, Bool,
+                                          FiberResolveElementSubtree);
+    prepare_for_layout = arg1->Bool();
+  }
+  // Do not enter OnPatchFinish or mutate its PipelineOptions: this work belongs
+  // to the current layout, and must be ready before a nested measure returns.
+  manager->ResolveSubtree(element.get());
+  if (prepare_for_layout) element->DispatchLayoutBeforeRecursively();
+  RETURN_UNDEFINED();
+}
+
 RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_FLUSH_ELEMENT_TREE);
   // parameter size >= 0

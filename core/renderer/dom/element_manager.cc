@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/auto_reset.h"
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/log/logging.h"
 #include "base/include/vector.h"
@@ -1813,8 +1814,7 @@ void ElementManager::OnPatchFinishForFiber(
         [](Element *element) { element->onNodeReload(); });
     catalyzer_->painting_context()->UpdateNodeReloadPatching();
   }
-  FirePostMTSRenderTasks();
-  element->FlushActionsAsRoot();
+  need_layout_ |= ResolveSubtree(element);
 
   BindTimingFlagToPipelineOptions(options);
 
@@ -1909,6 +1909,13 @@ void ElementManager::OnPatchFinishForFiber(
   if (element != nullptr && element->is_list_item()) {
     painting_context()->FlushImmediately();
   }
+}
+
+bool ElementManager::ResolveSubtree(Element *root) {
+  base::AutoReset<bool> layout_request(&need_layout_, need_layout_);
+  FirePostMTSRenderTasks();
+  root->FlushActionsAsRoot();
+  return need_layout_;
 }
 
 void ElementManager::Repaint() {
