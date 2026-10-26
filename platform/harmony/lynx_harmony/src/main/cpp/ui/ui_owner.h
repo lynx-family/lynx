@@ -55,6 +55,7 @@ class UIOwner {
   void UpdateUI(int sign, PropBundleHarmony* props);
   void DestroyUI(int parent, int child, int index);
   void OnNodeReady(int sign);
+  void OnNodeReload(int sign);
   void OnNodeRemoved(int sign);
 
   void UpdateLayout(int sign, float left, float top, float width, float height,
