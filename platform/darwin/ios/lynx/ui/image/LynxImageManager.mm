@@ -10,6 +10,7 @@
 #import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxNinePatchImageProcessor.h>
 #import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIImage.h>
 #import <Lynx/LynxUIMethodProcessor.h>
@@ -33,6 +34,17 @@ using lynx::tasm::ImageFitMode;
 using lynx::tasm::ImagePaintInfo;
 
 namespace {
+
+void CancelImageRequest(dispatch_block_t cancel) {
+  if (!cancel) {
+    return;
+  }
+  if ([NSThread isMainThread]) {
+    cancel();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), cancel);
+  }
+}
 
 NSString* NSStringFromBaseString(const lynx::base::String& value) {
   return [NSString stringWithUTF8String:value.c_str()];
@@ -106,6 +118,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 
 @implementation LynxImageManager {
   NSMutableDictionary<id, dispatch_block_t>* _cancelBlocks;
+  NSUInteger _requestGenerations[LynxImageRequestPlaceholder + 1];
   NSMutableDictionary<id, UIImage*>* _images;
   BOOL _isBackground;
 
@@ -141,6 +154,18 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   return self;
 }
 
+- (void)dealloc {
+  if (_cancelBlocks.count == 0) {
+    return;
+  }
+  NSArray<dispatch_block_t>* cancelBlocks = _cancelBlocks.allValues;
+  CancelImageRequest(^{
+    for (dispatch_block_t cancel in cancelBlocks) {
+      cancel();
+    }
+  });
+}
+
 - (void)setSign:(NSInteger)sign {
   _sign = sign;
 }
@@ -173,25 +198,39 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 }
 
 - (void)requestImage:(LynxURL*)imageURL withType:(LynxImageRequestType)type {
-  if (_cancelBlocks[@(type)]) {
-    _cancelBlocks[@(type)]();
+  // Start loading on the caller's thread. Only request ownership is shared;
+  // never invoke the loader or cancellation while holding this lock.
+  NSUInteger requestGeneration;
+  dispatch_block_t cancel;
+  @synchronized(self) {
+    // Invalidate before cancelling: cancellation may complete synchronously.
+    requestGeneration = ++_requestGenerations[type];
+    cancel = _cancelBlocks[@(type)];
     _cancelBlocks[@(type)] = nil;
   }
+  CancelImageRequest(cancel);
   if (imageURL.url == nil || imageURL.url.absoluteString.length == 0) {
     return;
   }
 
-  LynxImageLoadOptions* options = [[LynxImageLoadOptions alloc] init];
   CGSize targetSize = imageURL.imageSize;
+  LynxImageLoadOptions* options = [[LynxImageLoadOptions alloc] init];
   options.imageURL = imageURL;
   options.targetSize = targetSize;
   options.fontSize = 0;
   options.context = _context;
 
   NSMutableDictionary* contextInfo = [NSMutableDictionary new];
-  contextInfo[LynxEnableGenericFetcher] = @YES;
-  contextInfo[LynxShouldUseImageService] = @YES;
-  contextInfo[LynxImageSkipRedirection] = @(_skipRedirection);
+  BOOL enableGenericFetcher = _context.mediaResourceFetcher != nil;
+  BOOL shouldUseImageService =
+      enableGenericFetcher || _context.trailUseNewImage || _context.imageFetcher == nil;
+  contextInfo[LynxEnableGenericFetcher] = @(enableGenericFetcher);
+  contextInfo[LynxShouldUseImageService] = @(shouldUseImageService);
+  // Preserve direct loading when no media fetcher is available, including when
+  // the context hides an injected fetcher. Keep legacy fetcher options unchanged.
+  contextInfo[LynxImageSkipRedirection] =
+      @(_skipRedirection || (shouldUseImageService && !enableGenericFetcher));
+  contextInfo[LynxImageCancelRequest] = @YES;
   // CALayer background animations need decoded frames; image views stream them.
   contextInfo[LynxImagePreloadAllFrames] = @(_isBackground);
   options.contextInfo = contextInfo;
@@ -207,58 +246,108 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     [processors addObject:blurProcessor];
   }
   options.processors = processors;
+  __weak typeof(self) weakSelf = self;
+  __block BOOL completed = NO;
   options.completed = ^(UIImage* image, NSError* error, NSURL* imageURL) {
-    self->_images[@(type)] = image;
-
-    if (image != nil && type == LynxImageRequestSrc && self->_autoSize &&
-        UIEdgeInsetsEqualToEdgeInsets(self->_capInsets, UIEdgeInsetsZero)) {
-      CGSize imageSize = image.size;
-      if (ShouldUpdateAutoSizeLayout(imageSize, targetSize)) {
-        [self->_context findShadowNodeAndRunTask:self->_sign
-                                            task:^(LynxShadowNode* node) {
-                                              if ([node isKindOfClass:LynxImageShadowNode.class]) {
-                                                [(LynxImageShadowNode*)node setImageSize:imageSize];
-                                              }
-                                            }];
+    __strong typeof(weakSelf) self = weakSelf;
+    if (self == nil) {
+      return;
+    }
+    @synchronized(self) {
+      completed = YES;
+      if (self->_requestGenerations[type] != requestGeneration) {
+        return;
       }
+      self->_cancelBlocks[@(type)] = nil;
     }
+    dispatch_block_t applyResult = ^{
+      __strong typeof(weakSelf) self = weakSelf;
+      if (self == nil) {
+        return;
+      }
+      // Once accepted on main, this result finishes before queued target cleanup.
+      // Do not hold the request lock across image service or event callbacks.
+      @synchronized(self) {
+        if (self->_requestGenerations[type] != requestGeneration) {
+          return;
+        }
+      }
+      self->_images[@(type)] = image;
 
-    // If source image is loaded, placeholder image is not needed to be displayed.
-    if (self->_images[@(LynxImageRequestSrc)] != nil && type == LynxImageRequestPlaceholder) {
-      return;
-    }
+      if (image != nil && type == LynxImageRequestSrc && self->_autoSize &&
+          UIEdgeInsetsEqualToEdgeInsets(self->_capInsets, UIEdgeInsetsZero)) {
+        CGSize imageSize = image.size;
+        if (ShouldUpdateAutoSizeLayout(imageSize, targetSize)) {
+          [self->_context
+              findShadowNodeAndRunTask:self->_sign
+                                  task:^(LynxShadowNode* node) {
+                                    __strong typeof(weakSelf) self = weakSelf;
+                                    if (self == nil) {
+                                      return;
+                                    }
+                                    // Serialize the layout mutation with request invalidation.
+                                    @synchronized(self) {
+                                      if (self->_requestGenerations[type] == requestGeneration &&
+                                          [node isKindOfClass:LynxImageShadowNode.class]) {
+                                        [(LynxImageShadowNode*)node setImageSize:imageSize];
+                                      }
+                                    }
+                                  }];
+        }
+      }
 
-    if (self->_imageView != nil || self->_imageLayer != nil) {
-      [self applyImage:image withType:type];
-    }
-    if (type != LynxImageRequestSrc) {
-      return;
-    }
+      // If source image is loaded, placeholder image is not needed to be displayed.
+      if (self->_images[@(LynxImageRequestSrc)] != nil && type == LynxImageRequestPlaceholder) {
+        return;
+      }
 
-    if (error != nil) {
-      BOOL should_emit_error = (self->_eventMask & kFlagImageErrorEvent) != 0;
-      if (should_emit_error) {
-        [self sendCustomEvent:kLynxImageEventError
+      if (self->_imageView != nil || self->_imageLayer != nil) {
+        [self applyImage:image withType:type];
+      }
+      if (type != LynxImageRequestSrc) {
+        return;
+      }
+
+      if (error != nil) {
+        BOOL should_emit_error = (self->_eventMask & kFlagImageErrorEvent) != 0;
+        if (should_emit_error) {
+          [self sendCustomEvent:kLynxImageEventError
+                     withParams:@{
+                       @"errMsg" : error.localizedDescription,
+                       @"error_code" : @(0),
+                       @"lynx_categorized_code" : @(0),
+                     }];
+        }
+        return;
+      }
+
+      BOOL should_emit_load = (self->_eventMask & kFlagImageLoadEvent) != 0;
+      if (image != nil && should_emit_load) {
+        [self sendCustomEvent:kLynxImageEventLoad
                    withParams:@{
-                     @"errMsg" : error.localizedDescription,
-                     @"error_code" : @(0),
-                     @"lynx_categorized_code" : @(0),
+                     @"width" : @(image.size.width),
+                     @"height" : @(image.size.height),
                    }];
       }
-      return;
-    }
-
-    BOOL should_emit_load = (self->_eventMask & kFlagImageLoadEvent) != 0;
-    if (image != nil && should_emit_load) {
-      [self sendCustomEvent:kLynxImageEventLoad
-                 withParams:@{
-                   @"width" : @(image.size.width),
-                   @"height" : @(image.size.height),
-                 }];
+    };
+    if ([NSThread isMainThread]) {
+      applyResult();
+    } else {
+      dispatch_async(dispatch_get_main_queue(), applyResult);
     }
   };
 
-  _cancelBlocks[@(type)] = [[LynxImageLoader sharedInstance] loadImageWithOptions:options];
+  cancel = [[LynxImageLoader sharedInstance] loadImageWithOptions:options];
+  @synchronized(self) {
+    if (completed) {
+      return;
+    }
+    if (_requestGenerations[type] == requestGeneration) {
+      _cancelBlocks[@(type)] = cancel;
+      return;
+    }
+  }
+  CancelImageRequest(cancel);
 }
 
 - (void)applyBackgroundImage:(UIImage*)image {
@@ -448,16 +537,23 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 }
 
 - (void)reset {
-  [_imageLayer removeAnimationForKey:kBackgroundImageAnimationKey];
-  _imageLayer = nil;
-  _imageSizeDidChange = nil;
-  _imageView = nil;
-  [_cancelBlocks enumerateKeysAndObjectsUsingBlock:^(id key, dispatch_block_t block, BOOL* stop) {
-    if (block) {
-      block();
+  NSArray<dispatch_block_t>* cancelBlocks;
+  @synchronized(self) {
+    for (NSUInteger& generation : _requestGenerations) {
+      ++generation;
     }
-  }];
-  [_cancelBlocks removeAllObjects];
+    cancelBlocks = _cancelBlocks.allValues;
+    [_cancelBlocks removeAllObjects];
+  }
+  CancelImageRequest(^{
+    [self->_imageLayer removeAnimationForKey:kBackgroundImageAnimationKey];
+    self->_imageLayer = nil;
+    self->_imageSizeDidChange = nil;
+    self->_imageView = nil;
+    for (dispatch_block_t cancel in cancelBlocks) {
+      cancel();
+    }
+  });
 }
 
 @end

@@ -32,12 +32,6 @@
 #import <Lynx/LynxURL.h>
 #include <cstdint>
 
-@interface LynxRendererContext (ImageUIMethod)
-
-- (void)markPrimaryImageManager:(int32_t)imageKey forSign:(int32_t)sign;
-
-@end
-
 namespace lynx {
 namespace tasm {
 
@@ -403,7 +397,6 @@ fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::Strin
                                                              float width, float height,
                                                              int32_t event_mask,
                                                              bool disable_default_resize) {
-  static_cast<void>(disable_default_resize);
   CGSize image_size = CGSizeMake(width, height);
   LynxURL *source_url = CreateImageURL(src, image_size, LynxImageRequestSrc);
   LynxURL *placeholder_url =
@@ -416,9 +409,6 @@ fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::Strin
                                            paintInfo:paint_info
                                            eventMask:event_mask
                                             imageKey:image_key];
-  if (!disable_default_resize) {
-    [context_->GetRendererContext() markPrimaryImageManager:image_key forSign:id];
-  }
   return fml::MakeRefCounted<PaintImageDarwin>(image_key, context_->GetRendererContext());
 }
 
