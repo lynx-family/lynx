@@ -22,12 +22,13 @@ lynx_core_source_set("host_script_init") {
   public_deps = [ ":host_script_runtime_headers" ]
 
   # Regular libraries and standalone test/SSR binaries keep empty entry points.
-  if (!is_android || !lynx_in_debug || enable_unittests || is_oliver_ssr) {
+  if (!is_android || !lynx_in_debug || !enable_napi_binding ||
+      enable_unittests || is_oliver_ssr) {
     sources += [ "runtime/process_runtime_init_android_stub.cc" ]
   }
 }
 
-if (is_android && is_debug) {
+if (is_android && is_debug && enable_napi_binding) {
   lynx_core_source_set("host_script_android") {
     sources = [
       "lynx_view/host_script_lynx_view_binding_android.cc",
@@ -43,7 +44,7 @@ if (is_android && is_debug) {
 
 # Compile the process runtime only into the engine debugMode library flavor,
 # including optimized liblynx_debug.so builds.
-if (is_android && lynx_in_debug) {
+if (is_android && lynx_in_debug && enable_napi_binding) {
   lynx_core_source_set("process_runtime_android") {
     sources = [
       "lynx_view/host_script_view_observer_android.cc",
@@ -55,6 +56,7 @@ if (is_android && lynx_in_debug) {
       ":host_script_init",
       "../../../../third_party/rapidjson:rapidjson",
       "../../../base:base",
+      "../runtime:host_script",
       "../runtime:process_runtime",
     ]
     if (!enable_unittests && !is_oliver_ssr) {

@@ -26,9 +26,9 @@ jni_class_configs:
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxTemplateRender.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxBackgroundRuntime.java
     - java: platform/android/lynx_android/src/debug/java/com/lynx/tasm/LynxHostScriptRuntimeBinding.java
-      macro: (!defined(NDEBUG))
+      macro: (!defined(NDEBUG)) && ENABLE_NAPI_BINDING
     - java: platform/android/lynx_android/src/debug/java/com/lynx/tasm/LynxHostScriptLynxViewBinding.java
-      macro: (!defined(NDEBUG))
+      macro: (!defined(NDEBUG)) && ENABLE_NAPI_BINDING
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxHostScriptViewObserver.java
       macro: defined(ENABLE_HOST_SCRIPT_RUNTIME)
     - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/JavaOnlyMap.java

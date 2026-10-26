@@ -71,8 +71,8 @@ class MockDelegate : public lynx::runtime::js::ModuleDelegate {
  public:
   int64_t RegisterJSCallbackFunction(lynx::runtime::js::Function func) override { return 1; }
   void CallJSCallback(const std::shared_ptr<lynx::runtime::js::ModuleCallback> &callback,
-                      lynx::base::MoveOnlyClosure<bool> invoke_pre_func,
-                      int64_t id_to_delete) override {}
+                      lynx::base::MoveOnlyClosure<bool> invoke_pre_func, int64_t id_to_delete,
+                      bool force_async) override {}
   void OnErrorOccurred(lynx::base::LynxError error) override {}
   void OnMethodInvoked(const std::string &module_name, const std::string &method_name,
                        int32_t code) override {}

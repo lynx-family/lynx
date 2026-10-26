@@ -6,6 +6,7 @@
 #define CORE_SHELL_HOST_SCRIPT_RUNTIME_INTERCEPTOR_H_
 
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <string>
 
@@ -49,8 +50,10 @@ class Interceptor {
                      Domain domain = Domain::kUI);
   virtual bool IsAttached() const { return attached_; }
   static void Detach(const Interceptor* provider);
-  static std::shared_ptr<Interceptor> Current(InterceptKind kind,
-                                              Domain domain = Domain::kUI);
+  // Select one provider for a call with multiple observation stages. Report
+  // missing coverage at most once, using the first registered stage.
+  static std::shared_ptr<Interceptor> Current(
+      std::initializer_list<InterceptKind> kinds, Domain domain);
   static void HandlerAdded(InterceptKind kind, Domain domain = Domain::kUI);
   static void HandlerRemoved(InterceptKind kind, Domain domain = Domain::kUI);
   static bool IsEnabled();

@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstring>
 #include <optional>
+#include <unordered_set>
 #include <utility>
 
 #include "base/include/log/logging.h"
@@ -19,6 +20,18 @@ namespace lynx::shell {
 namespace {
 using Kind = InterceptKind;
 using Value = lepus::Value;
+BASE_STATIC_STRING_DECL(kWidth, "width");
+BASE_STATIC_STRING_DECL(kHeight, "height");
+BASE_STATIC_STRING_DECL(kKind, "kind");
+BASE_STATIC_STRING_DECL(kBytes, "bytes");
+BASE_STATIC_STRING_DECL(kSource, "source");
+BASE_STATIC_STRING_DECL(kArgs, "args");
+BASE_STATIC_STRING_DECL(kCallbacks, "callbacks");
+BASE_STATIC_STRING_DECL(kCallbackIndices, "callbackIndices");
+BASE_STATIC_STRING_DECL(kArgumentIndex, "argumentIndex");
+BASE_STATIC_STRING_DECL(kAction, "action");
+BASE_STATIC_STRING_DECL(kPayload, "payload");
+BASE_STATIC_STRING_DECL(kRequest, "request");
 
 enum class Action { kInvalid, kNext, kProceed, kMock };
 
@@ -146,39 +159,39 @@ bool ValidPatchField(Kind kind, const std::string& key, const Value& value,
       if (key == "screenSize" || key == "presetMeasuredSpec") {
         int32_t min = key == "presetMeasuredSpec" ? INT32_MIN : 0;
         return value.IsTable() && value.GetLength() == 2 &&
-               IsInteger(value.GetProperty("width"), min, INT32_MAX) &&
-               IsInteger(value.GetProperty("height"), min, INT32_MAX);
+               IsInteger(value.GetProperty(kWidth), min, INT32_MAX) &&
+               IsInteger(value.GetProperty(kHeight), min, INT32_MAX);
       }
-      return key == "lynxViewConfig" && value.IsTable() &&
-             std::all_of(
-                 value.Table()->begin(), value.Table()->end(),
-                 [](const auto& field) { return field.second.IsString(); });
+      if (key != "lynxViewConfig" || !value.IsTable()) return false;
+      for (const auto& field : *value.Table())
+        if (!field.second.IsString()) return false;
+      return true;
     case Kind::kLoadTemplate:
       if (key == "url") return value.IsString() && !value.StdString().empty();
       if (key == "initialData" || key == "globalProps") return IsData(value);
       if (key == "source" && value.IsTable()) {
-        auto tag = value.GetProperty("kind");
+        auto tag = value.GetProperty(kKind);
         if (!tag.IsString()) return false;
         auto type = tag.StdString();
         return (type == "url" && value.GetLength() == 1) ||
                (type == "bytes" && value.GetLength() == 2 &&
-                value.GetProperty("bytes").IsByteArray() &&
-                value.GetProperty("bytes").ByteArray()->GetLength() > 0) ||
-               (value == original.GetProperty("source"));
+                value.GetProperty(kBytes).IsByteArray() &&
+                value.GetProperty(kBytes).ByteArray()->GetLength() > 0) ||
+               (value == original.GetProperty(kSource));
       }
       return false;
     case Kind::kUpdateMetaData:
       return (key == "updateData" || key == "globalProps") && IsData(value);
     case Kind::kCall:
       if (key != "args" || !value.IsArray() ||
-          value.GetLength() != original.GetProperty("args").GetLength())
+          value.GetLength() != original.GetProperty(kArgs).GetLength())
         return false;
       for (const char* field : {"callbackIndices", "opaqueIndices"}) {
         const auto& indices = original.GetProperty(field);
         for (int i = 0; indices.IsArray() && i < indices.GetLength(); ++i) {
           auto index = static_cast<uint32_t>(indices.GetProperty(i).Number());
           if (value.GetProperty(index) !=
-              original.GetProperty("args").GetProperty(index))
+              original.GetProperty(kArgs).GetProperty(index))
             return false;
         }
       }
@@ -206,19 +219,24 @@ bool ValidMock(const Value& mock, const Value& event) {
     if (field.first.str() != "returnValue" && field.first.str() != "callbacks")
       return false;
   }
-  if (!mock.Contains("callbacks")) return true;
-  auto callbacks = mock.GetProperty("callbacks");
+  if (!mock.Contains(kCallbacks)) return true;
+  auto callbacks = mock.GetProperty(kCallbacks);
   if (!callbacks.IsArray()) return false;
-  auto indices = event.GetProperty("callbackIndices");
+  auto indices = event.GetProperty(kCallbackIndices);
+  std::unordered_set<int> delivered_indices;
   for (int i = 0; i < callbacks.GetLength(); ++i) {
     auto callback = callbacks.GetProperty(i);
     if (!callback.IsTable() || callback.GetLength() != 2 ||
-        !callback.GetProperty("args").IsArray())
+        !callback.GetProperty(kArgs).IsArray())
       return false;
     bool found = false;
     for (int j = 0; j < indices.GetLength(); ++j)
-      found |= callback.GetProperty("argumentIndex") == indices.GetProperty(j);
+      found |= callback.GetProperty(kArgumentIndex) == indices.GetProperty(j);
     if (!found) return false;
+    // A callback registration is consumed by one delivery.
+    auto index =
+        static_cast<int>(callback.GetProperty(kArgumentIndex).Number());
+    if (!delivered_indices.insert(index).second) return false;
   }
   return true;
 }
@@ -228,9 +246,9 @@ Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
   std::vector<napi_value> parents;
   auto decision = FromJS(returned, parents);
   if (!decision || !decision->IsTable()) return Action::kInvalid;
-  auto action = decision->GetProperty("action");
+  auto action = decision->GetProperty(kAction);
   if (!action.IsString()) return Action::kInvalid;
-  *payload = decision->GetProperty("payload");
+  *payload = decision->GetProperty(kPayload);
   auto name = action.StdString();
   if (name == "mock") {
     return kind == Kind::kCall && ValidMock(*payload, original)
@@ -370,11 +388,11 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   Napi::HandleScope scope(env);
   auto snapshot = entries_;
   const bool view_event = kind <= Kind::kUpdateMetaData;
-  const Value& original = view_event ? event.GetProperty("request") : event;
+  const Value& original = view_event ? event.GetProperty(kRequest) : event;
   // Only native copies are reused. Every handler receives a fresh JS snapshot.
   Value request = Value::ShallowCopy(original);
   auto current = view_event ? Value::ShallowCopy(event) : request;
-  if (view_event) current.SetProperty("request", request);
+  if (view_event) current.SetProperty(kRequest, request);
   Value merged(lepus::Dictionary::Create());
   bool failed = false;
   for (const auto& entry : snapshot) {
