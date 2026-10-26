@@ -5,8 +5,10 @@ package com.lynx.tasm;
 
 import static org.junit.Assert.*;
 
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.LynxErrorBehavior;
 import com.lynx.tasm.LynxSubErrorCode;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import org.json.JSONObject;
@@ -148,6 +150,42 @@ public class LynxErrorTest {
 
     res = mError.containsCustomField("custom_info1");
     assertTrue(res);
+  }
+
+  @Test
+  public void nativeRootCausePreservesGetterAndJson() throws Exception {
+    JavaOnlyMap customInfo = new JavaOnlyMap();
+    customInfo.putString("src", "https://example.com/script.js");
+    LynxError error = createNativeError("request failed", customInfo);
+
+    assertEquals("request failed", error.getRootCause());
+    JSONObject json = new JSONObject(error.getMsg());
+    assertEquals("request failed", json.getString("root_cause"));
+    assertEquals("https://example.com/script.js", json.getString("src"));
+    assertFalse(json.has("context"));
+    assertFalse(customInfo.containsKey("root_cause"));
+
+    error.setRootCause("updated cause");
+    assertEquals("updated cause", error.getRootCause());
+    assertEquals("updated cause", new JSONObject(error.getMsg()).getString("root_cause"));
+  }
+
+  @Test
+  public void nativeErrorWithoutRootCauseOmitsJsonField() throws Exception {
+    for (JavaOnlyMap customInfo : new JavaOnlyMap[] {null, new JavaOnlyMap()}) {
+      LynxError error = createNativeError("", customInfo);
+      assertEquals("", error.getRootCause());
+      assertFalse(new JSONObject(error.getMsg()).has("root_cause"));
+    }
+  }
+
+  private LynxError createNativeError(String rootCause, JavaOnlyMap customInfo) throws Exception {
+    Method factory = LynxError.class.getDeclaredMethod("createLynxError", int.class, String.class,
+        String.class, String.class, String.class, JavaOnlyMap.class, boolean.class);
+    factory.setAccessible(true);
+    return (LynxError) factory.invoke(null,
+        LynxSubErrorCode.E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED, mTestMessage, rootCause, "",
+        LynxError.LEVEL_ERROR, customInfo, false);
   }
 
   @Test

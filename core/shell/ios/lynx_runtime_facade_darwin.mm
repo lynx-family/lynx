@@ -27,6 +27,9 @@ void NativeRuntimeFacadeDarwin::ReportError(const base::LynxError& error) {
                              level:level
                         customInfo:customInfo
                       isLogBoxOnly:error.is_logbox_only_ ? YES : NO];
+  if (!error.root_cause_.empty()) {
+    lynxError.rootCause = [NSString stringWithUTF8String:error.root_cause_.c_str()];
+  }
   [runtime onErrorOccurred:lynxError];
 }
 

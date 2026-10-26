@@ -19,22 +19,22 @@ namespace lynx {
 namespace base {
 namespace android {
 
-LynxErrorAndroid::LynxErrorAndroid(
-    int error_code, const std::string& error_message,
-    const std::string& fix_suggestion, base::LynxErrorLevel level,
-    const std::unordered_map<std::string, std::string>& custom_info,
-    bool is_logbox_only) {
+LynxErrorAndroid::LynxErrorAndroid(const base::LynxError& error) {
   JNIEnv* env = AttachCurrentThread();
-  auto j_msg = JNIConvertHelper::ConvertToJNIStringUTF(env, error_message);
+  auto j_msg =
+      JNIConvertHelper::ConvertToJNIStringUTF(env, error.error_message_);
+  auto j_root_cause =
+      JNIConvertHelper::ConvertToJNIStringUTF(env, error.root_cause_);
   auto j_suggestion =
-      JNIConvertHelper::ConvertToJNIStringUTF(env, fix_suggestion);
+      JNIConvertHelper::ConvertToJNIStringUTF(env, error.fix_suggestion_);
   auto j_level = JNIConvertHelper::ConvertToJNIStringUTF(
-      env, LynxError::GetLevelString(static_cast<int32_t>(level)));
-  auto j_map = JNIHelper::ConvertSTLStringMapToJavaMap(env, custom_info);
+      env, LynxError::GetLevelString(static_cast<int32_t>(error.error_level_)));
+  auto j_map = JNIHelper::ConvertSTLStringMapToJavaMap(env, error.custom_info_);
 
   jni_object_.Reset(env, Java_LynxError_createLynxError(
-                             env, error_code, j_msg.Get(), j_suggestion.Get(),
-                             j_level.Get(), j_map.Get(), is_logbox_only)
+                             env, error.error_code_, j_msg.Get(),
+                             j_root_cause.Get(), j_suggestion.Get(),
+                             j_level.Get(), j_map.Get(), error.is_logbox_only_)
                              .Get());
 }
 

@@ -76,8 +76,9 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   // client callback
   // Invoked on the UI thread.
   onErrorOccurred(level: string, errorCode: number, message: string, suggestion: string,
-    customInfo: Record<string, string>, logboxOnly: boolean) {
+    customInfo: Record<string, string>, logboxOnly: boolean, rootCause: string = '') {
     let err = new LynxError(LynxErrorLevel[level], errorCode, message, suggestion, LynxError.NATIVE_ERROR, customInfo);
+    err.setRootCause(rootCause);
     err.setTemplateUrl(this.lastScriptUrl);
     // TODO: add logBox
     if (logboxOnly) {

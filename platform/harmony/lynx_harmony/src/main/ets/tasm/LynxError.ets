@@ -53,6 +53,7 @@ export class LynxError extends LynxErrorCodeLegacy {
   private fixSuggestion: string;
   // the call stack when the error occurred
   private callStack?: string;
+  private rootCause?: string;
   private customInfo: Record<string, Object>;
 
   constructor(level: LynxErrorLevel, errorCode: number, errorMessage: string, fixSuggestion: string,
@@ -98,6 +99,17 @@ export class LynxError extends LynxErrorCodeLegacy {
   setUserDefineInfo(object: Object) {
     this.jsonStringCache = undefined;
     this.userDefineInfo = object;
+  }
+
+  /** Sets the original cause supplied by a resource provider or another caller. */
+  setRootCause(rootCause: string): void {
+    this.jsonStringCache = undefined;
+    this.rootCause = rootCause;
+  }
+
+  /** Returns the original cause, or an empty string when none was supplied. */
+  getRootCause(): string {
+    return this.rootCause || '';
   }
 
   getSummaryMessage() {
@@ -165,6 +177,9 @@ export class LynxError extends LynxErrorCodeLegacy {
     }
     if (Object.entries(context).length !== 0) {
       json.context = context;
+    }
+    if (this.rootCause) {
+      json.root_cause = this.rootCause;
     }
     return JSON.stringify(json);
   }

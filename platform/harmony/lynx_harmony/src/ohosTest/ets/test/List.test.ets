@@ -3,7 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 import LynxLogContextTest from './LynxLogContextTest.test';
+import LynxErrorTest from './LynxErrorTest.test';
 
 export default function testsuite() {
   LynxLogContextTest();
+  LynxErrorTest();
 }

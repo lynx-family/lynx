@@ -52,7 +52,7 @@ void NativeRuntimeFacadeHarmony::ReportError(const base::LynxError& error) {
   base::NapiHandleScope scope(runtime_wrapper_->env_);
   std::string level_str =
       base::LynxError::GetLevelString(static_cast<int32_t>(error.error_level_));
-  napi_value param[6];
+  napi_value param[7];
   napi_create_string_utf8(runtime_wrapper_->env_, level_str.c_str(),
                           level_str.length(), &param[0]);
   napi_create_int32(runtime_wrapper_->env_, error.error_code_, &param[1]);
@@ -63,9 +63,11 @@ void NativeRuntimeFacadeHarmony::ReportError(const base::LynxError& error) {
   param[4] =
       base::NapiUtil::CreateMap(runtime_wrapper_->env_, error.custom_info_);
   napi_get_boolean(runtime_wrapper_->env_, error.is_logbox_only_, &param[5]);
+  napi_create_string_utf8(runtime_wrapper_->env_, error.root_cause_.c_str(),
+                          error.root_cause_.length(), &param[6]);
   base::NapiUtil::AsyncInvokeJsMethod(runtime_wrapper_->env_,
                                       runtime_wrapper_->runtime_wrapper_ref_,
-                                      "onErrorOccurred", 6, param);
+                                      "onErrorOccurred", 7, param);
 }
 
 void NativeRuntimeFacadeHarmony::OnModuleMethodInvoked(
