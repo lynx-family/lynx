@@ -20,6 +20,12 @@
   return self;
 }
 
+// CSS animations belong to the renderer host. Reusing a backing layer must not
+// animate its frame or cross-fade contents when a redraw is required.
+- (id<CAAction>)actionForLayer:(CALayer *)layer forKey:(NSString *)event {
+  return (id<CAAction>)[NSNull null];
+}
+
 - (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx {
   CGRect frame = CGRectMake(0, 0, layer.frame.size.width, layer.frame.size.height);
 
