@@ -1116,6 +1116,12 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   LYNX_EXPORT_FOR_DEVTOOL void OnPatchFinish(
       std::shared_ptr<PipelineOptions> &option, Element *root = nullptr);
 
+  // Synchronously resolve pending subtree mutations. Layout, completion and UI
+  // submission remain owned by the enclosing pipeline. The caller either
+  // schedules the returned layout requirement or consumes it in its current
+  // pass.
+  bool ResolveSubtree(Element *root);
+
   /**
    * Used By RunPixelPipeline Process.
    *

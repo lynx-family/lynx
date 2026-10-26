@@ -141,6 +141,7 @@
   V(FiberUpdateComponentInfo)           \
   V(FiberUpdateListCallbacks)           \
   V(FiberFlushElementTree)              \
+  V(FiberResolveElementSubtree)         \
   V(FiberOnLifecycleEvent)              \
   V(FiberElementFromBinary)             \
   V(FiberElementFromBinaryAsync)        \

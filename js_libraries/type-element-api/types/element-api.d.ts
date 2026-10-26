@@ -426,6 +426,15 @@ declare global {
     }
   ): void;
 
+  /**
+   * Synchronously resolves mutations in an attached layout-in-element subtree.
+   * Does not trigger layout, completion callbacks, or UI submission. The caller
+   * must complete the enclosing pipeline. Pass prepareForLayout for content
+   * changed during layout that needs native measurement preparation.
+   */
+  function __ResolveElementSubtree(
+      element: ElementRef|ComposeElementRef, prepareForLayout?: boolean): void;
+
   function __FlushElementTree(
     element?: ElementRef,
     options?: {

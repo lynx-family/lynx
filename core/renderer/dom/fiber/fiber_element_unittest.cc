@@ -68,6 +68,7 @@
 #include "core/renderer/utils/test/text_utils_mock.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/java_script_element.h"
+#include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/runtime/lepus/bytecode_generator.h"
@@ -23578,6 +23579,237 @@ TEST_P(FiberElementTest, ParallelResolvePreparesNativeBuiltinConfig) {
   auto callback = element->config().GetProperty("callback");
   EXPECT_TRUE(callback.IsCallable());
   EXPECT_EQ(runtime->CallClosure(callback).Number(), 42);
+}
+
+namespace {
+
+class SubtreeResolveTestElement : public ViewElement {
+ public:
+  explicit SubtreeResolveTestElement(ElementManager* manager)
+      : ViewElement(manager) {
+    SetCustomLayoutFunctions(
+        {[](void* context, const starlight::Constraints& constraints, bool) {
+           return static_cast<SubtreeResolveTestElement*>(
+                      static_cast<Element*>(context))
+               ->measure(constraints);
+         },
+         [](void* context) {
+           static_cast<SubtreeResolveTestElement*>(
+               static_cast<Element*>(context))
+               ->align();
+         }});
+  }
+
+  std::function<FloatSize(const starlight::Constraints&)> measure;
+  std::function<void()> align = [] {};
+};
+
+std::shared_ptr<runtime::MTSRuntime> CreateSubtreeResolveRuntime(
+    TemplateAssembler* template_assembler) {
+  auto runtime = CreateRendererRuntime(template_assembler);
+  Renderer::RegisterBuiltin(runtime.get(), ArchOption::FIBER_ARCH);
+  SetDefaultEntryRuntime(template_assembler, runtime);
+  return runtime;
+}
+
+bool EvalSubtreeResolve(const std::shared_ptr<runtime::MTSRuntime>& runtime,
+                        const std::string& source) {
+  lepus::Value result;
+  return runtime::MTSRuntime::ToQuickContext(runtime.get())
+      ->EvalBuf(source.data(), source.size(), result, "resolve_subtree.js");
+}
+
+}  // namespace
+
+TEST_P(FiberElementTest, ResolveElementSubtreeNestedContentWithinOuterLayout) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, true);
+  int nested_layout_requests = 0;
+  manager->SetLayoutTick([&](const auto&) { ++nested_layout_requests; });
+  for (bool unified : {false, true}) {
+    SCOPED_TRACE(unified);
+    auto page = CreateLayoutInElementPage(this);
+    auto owner = fml::AdoptRef(new SubtreeResolveTestElement(manager));
+    auto nested = fml::AdoptRef(new SubtreeResolveTestElement(manager));
+    auto runtime = CreateSubtreeResolveRuntime(tasm.get());
+    fml::RefPtr<Element> slot, first, leaf;
+    int parent_measures = 0;
+    int child_measures = 0;
+    float nested_width = 0;
+    nested->measure = [&](const starlight::Constraints&) {
+      ++child_measures;
+      leaf = manager->CreateFiberView();
+      leaf->SetStyle(kPropertyIDWidth, lepus::Value(nested_width));
+      leaf->SetStyle(kPropertyIDHeight, lepus::Value(12));
+      nested->InsertNode(leaf);
+      EXPECT_TRUE(
+          EvalSubtreeResolve(runtime, "__ResolveElementSubtree(nested, true)"));
+      return leaf->slnode()->UpdateMeasureByPlatform(starlight::Constraints(),
+                                                     true);
+    };
+    nested->align = [&] { leaf->slnode()->AlignmentByPlatform(0, 0); };
+    owner->measure = [&](const starlight::Constraints&) {
+      ++parent_measures;
+      slot = manager->CreateFiberWrapperElement();
+      first = manager->CreateFiberView();
+      first->SetStyle(kPropertyIDWidth, lepus::Value(30));
+      first->SetStyle(kPropertyIDHeight, lepus::Value(20));
+      owner->InsertNode(slot);
+      slot->InsertNode(first);
+      slot->InsertNode(nested);
+      runtime->SetGlobalData("slot", lepus::Value(slot));
+      runtime->SetGlobalData("nested", lepus::Value(nested));
+      EXPECT_TRUE(
+          EvalSubtreeResolve(runtime, "__ResolveElementSubtree(slot, true)"));
+      auto a = first->slnode()->UpdateMeasureByPlatform(
+          starlight::Constraints(), true);
+      nested_width = a.width_ + 7;
+      auto b = nested->slnode()->UpdateMeasureByPlatform(
+          starlight::Constraints(), true);
+      return FloatSize(std::max(a.width_, b.width_), a.height_ + b.height_);
+    };
+    owner->align = [&] {
+      first->slnode()->AlignmentByPlatform(0, 0);
+      nested->slnode()->AlignmentByPlatform(20, 0);
+    };
+    page->InsertNode(owner);
+    page->FlushActionsAsRoot();
+    auto options = LayoutOptions(this, unified, true);
+    options->pipeline_origin = "outer-layout";
+    const bool resolve_requested = options->resolve_requested;
+    manager->need_layout_ = false;
+    manager->RequestLayout(options);
+    EXPECT_EQ(nested_layout_requests, 0);
+    EXPECT_EQ(parent_measures, 1);
+    EXPECT_EQ(child_measures, 1);
+    EXPECT_EQ(options->pipeline_origin, "outer-layout");
+    EXPECT_EQ(options->resolve_requested, resolve_requested);
+    EXPECT_FALSE(manager->need_layout_);
+    EXPECT_FLOAT_EQ(owner->height(), 32);
+    EXPECT_EQ(owner->slnode()->GetChildCount(), 2);
+    EXPECT_FLOAT_EQ(first->slnode()->GetBorderBoundWidth(), 30);
+    EXPECT_FLOAT_EQ(nested->slnode()->GetBorderBoundWidth(), 37);
+    EXPECT_FLOAT_EQ(nested->slnode()->GetBorderBoundTopFromParentPaddingBound(),
+                    20);
+  }
+}
+
+TEST_P(FiberElementTest, ResolveElementSubtreeMeasuresNativeBox) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  for (bool unified : {false, true}) {
+    SCOPED_TRACE(unified);
+    auto page = CreateLayoutInElementPage(this);
+    auto owner = fml::AdoptRef(new SubtreeResolveTestElement(manager));
+    page->InsertNode(owner);
+    auto runtime = CreateSubtreeResolveRuntime(tasm.get());
+    runtime->SetGlobalData("owner", lepus::Value(owner));
+    runtime->SetGlobalData("pageId", lepus::Value(page->impl_id()));
+    int width = 100;
+    int leaf_width = 30;
+    ASSERT_TRUE(EvalSubtreeResolve(runtime, R"JS(
+      globalThis.slot = null;
+      globalThis.box = null;
+      globalThis.leaf = null;
+    )JS"));
+    fml::RefPtr<Element> box;
+    owner->measure = [&](const starlight::Constraints&) {
+      runtime->SetGlobalData("boxWidth", lepus::Value(width));
+      runtime->SetGlobalData("leafWidth", lepus::Value(leaf_width));
+      EXPECT_TRUE(EvalSubtreeResolve(runtime, R"JS(
+        if (!slot) {
+          slot = __CreateWrapperElement(pageId);
+          box = __CreateView(pageId);
+          leaf = __CreateView(pageId);
+          __InsertElementAt(owner, slot, 0);
+          __InsertElementAt(slot, box, 0);
+          __InsertElementAt(box, leaf, 0);
+        }
+        __SetInlineStyles(box, "display:-x-box;justify-items:center;align-items:start;width:" + boxWidth + "px;height:80px");
+        __SetInlineStyles(leaf, "width:" + leafWidth + "px;height:20px");
+        __ResolveElementSubtree(slot, true);
+      )JS"));
+      box = fml::static_ref_ptr_cast<Element>(
+          runtime->GetGlobalData("box").RefCounted());
+      starlight::Constraints constraints;
+      constraints[starlight::kHorizontal] =
+          starlight::OneSideConstraint::Definite(width);
+      constraints[starlight::kVertical] =
+          starlight::OneSideConstraint::Definite(80);
+      return box->slnode()->UpdateMeasureByPlatform(constraints, true);
+    };
+    owner->align = [&] { box->slnode()->AlignmentByPlatform(0, 0); };
+    for (int viewport_width : {100, 200}) {
+      width = viewport_width;
+      leaf_width = width == 100 ? 30 : 50;
+      manager->UpdateViewport(width, SLMeasureModeDefinite, 600,
+                              SLMeasureModeDefinite, true);
+      page->FlushActionsAsRoot();
+      owner->RequestLayout();
+      manager->RequestLayout(LayoutOptions(this, unified, true));
+      ASSERT_EQ(owner->slnode()->GetChildCount(), 1);
+      ASSERT_EQ(box->slnode()->GetChildCount(), 1);
+      auto* leaf =
+          static_cast<starlight::LayoutObject*>(box->slnode()->FirstChild());
+      EXPECT_EQ(box->slnode()->GetSLMeasureFunc(), nullptr);
+      EXPECT_FLOAT_EQ(box->slnode()->GetBorderBoundWidth(), width);
+      EXPECT_FLOAT_EQ(box->slnode()->GetBorderBoundHeight(), 80);
+      EXPECT_FLOAT_EQ(leaf->GetBorderBoundWidth(), leaf_width);
+      EXPECT_FLOAT_EQ(leaf->GetBorderBoundLeftFromParentPaddingBound(),
+                      (width - leaf_width) / 2.f);
+      EXPECT_FLOAT_EQ(leaf->GetBorderBoundTopFromParentPaddingBound(), 0);
+    }
+  }
+}
+
+TEST_P(FiberElementTest, ResolveElementSubtreeDoesNotSubmitOuterPatch) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto child = manager->CreateFiberView();
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+  auto runtime = CreateSubtreeResolveRuntime(tasm.get());
+  runtime->SetGlobalData("child", lepus::Value(child));
+  int layout_requests = 0;
+  manager->SetLayoutTick([&](const auto&) { ++layout_requests; });
+  for (bool pending_layout : {false, true}) {
+    SCOPED_TRACE(pending_layout);
+    manager->need_layout_ = pending_layout;
+    ASSERT_TRUE(EvalSubtreeResolve(runtime, R"JS(
+      __SetInlineStyles(child, "width:42px;height:18px");
+      __ResolveElementSubtree(child);
+    )JS"));
+    EXPECT_EQ(layout_requests, 0);
+    EXPECT_EQ(manager->need_layout_, pending_layout);
+    EXPECT_FALSE(child->flush_required());
+    EXPECT_FLOAT_EQ(child->width(), 0);
+  }
+  auto size =
+      child->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  EXPECT_FLOAT_EQ(size.width_, 42);
+  EXPECT_FLOAT_EQ(size.height_, 18);
+}
+
+TEST_P(FiberElementTest, ResolveElementSubtreePreparesChangedNativeContent) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto slot = manager->CreateFiberWrapperElement();
+  auto text = manager->CreateFiberNode("text");
+  page->InsertNode(slot);
+  slot->InsertNode(text);
+  text->SetCustomLayoutFunctions({[](void*, const starlight::Constraints&,
+                                     bool) { return FloatSize(10, 20); }});
+  auto runtime = CreateSubtreeResolveRuntime(tasm.get());
+  runtime->SetGlobalData("slot", lepus::Value(slot));
+  auto* platform =
+      static_cast<test::MockPlatformImpl*>(manager->layout_context());
+  ASSERT_TRUE(
+      EvalSubtreeResolve(runtime, "__ResolveElementSubtree(slot, true)"));
+  ASSERT_NE(text->customized_layout_node_, nullptr);
+  EXPECT_EQ(platform->before_ids, std::vector<int32_t>{text->impl_id()});
+  ASSERT_TRUE(
+      EvalSubtreeResolve(runtime, "__ResolveElementSubtree(slot, false)"));
+  EXPECT_EQ(platform->before_ids.size(), 1u);
 }
 
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
