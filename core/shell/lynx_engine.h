@@ -127,6 +127,9 @@ class LynxEngine {
 
   void SetAnimationsPending(bool need_pending_ui_op);
 
+  // Forward pause state to the main-thread runtime.
+  void SetPaused(bool paused);
+
   void UpdateFontScale(float scale);
 
   void UpdateColorScheme(int scheme);

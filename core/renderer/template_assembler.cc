@@ -1722,12 +1722,19 @@ fml::RefPtr<fml::TaskRunner> TemplateAssembler::GetLepusTimedTaskRunner() {
 }
 
 void TemplateAssembler::SetPaused(bool paused) {
-  if (paused_ == paused) {
-    return;
+  if (paused_ != paused) {
+    LOGI(GetLogContext() << " TemplateAssembler::SetPaused, paused: "
+                         << paused);
+    paused_ = paused;
+    ForEachEntry([paused](const auto& entry) { entry->SetPaused(paused); });
   }
-  LOGI(GetLogContext() << " TemplateAssembler::SetPaused, paused: " << paused);
-  paused_ = paused;
-  ForEachEntry([paused](const auto& entry) { entry->SetPaused(paused); });
+  SetElementVsyncPaused(paused);
+}
+
+void TemplateAssembler::SetElementVsyncPaused(bool paused) {
+  if (auto& element_manager = page_proxy()->element_manager()) {
+    element_manager->SetElementVsyncPaused(paused);
+  }
 }
 
 void TemplateAssembler::RequestVsync(

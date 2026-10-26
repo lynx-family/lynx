@@ -407,7 +407,10 @@ void LynxShell::OnLynxEngineBuilt(
     tasm->CreateModuleManager(std::move(native_module_manager));
   }
 
-  engine_actor_->ActLite([](auto& engine) { engine->Init(); });
+  engine_actor_->ActLite([paused = paused_](auto& engine) {
+    engine->Init();
+    engine->SetPaused(paused);
+  });
 
   if (engine_build_options_.use_invoke_ui_method_func_) {
     shell::InvokeUIMethodFunction invoke_ui_method_func =
@@ -643,6 +646,7 @@ void LynxShell::InitRuntime(
       code_cache_source_url, runtime_flags, page_options_);
   runtime->SetMonitoringGroupLabel(std::move(monitoring_group_label));
   runtime->SetPageOptions(page_options_);
+  runtime->SetPaused(paused_);
   runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       std::move(runtime), js_task_runner, instance_id_, enable_runtime_);
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor_);
@@ -726,7 +730,7 @@ void LynxShell::AttachRuntime() {
          card_cached_data_mgr = card_cached_data_mgr_,
          weak_js_bundle_holder = GetWeakJsBundleHolder(),
          lazy_bundle_loader = engine_build_options_.lazy_bundle_loader_,
-         enqueue_info, flow_id](auto& runtime) mutable {
+         paused = paused_, enqueue_info, flow_id](auto& runtime) mutable {
           runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
           (void)flow_id;  // Explicitly reference `flow_id` to suppress the
                           // compiler warning.
@@ -739,6 +743,7 @@ void LynxShell::AttachRuntime() {
           runtime->SetJsBundleHolder(weak_js_bundle_holder);
           static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
               ->SetLazyBundleLoader(lazy_bundle_loader);
+          runtime->SetPaused(paused);
           static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
               ->AttachToLynxShell(std::move(facade_actor),
                                   std::move(engine_actor),
@@ -1629,9 +1634,8 @@ void LynxShell::SetElementVsyncPaused(bool paused) {
     return;
   }
   engine_actor_->Act([paused](auto& engine) {
-    auto* tasm = engine->GetTasm();
-    if (tasm && tasm->page_proxy()->element_manager()) {
-      tasm->page_proxy()->element_manager()->SetElementVsyncPaused(paused);
+    if (auto* tasm = engine->GetTasm()) {
+      tasm->SetElementVsyncPaused(paused);
     }
   });
 }
@@ -1695,6 +1699,25 @@ void LynxShell::OnEnterBackground() {
           std::make_unique<pub::ValueImplLepus>(lepus::Value()));
       engine->OnReceiveMessageEvent(std::move(lepus_event));
     });
+  }
+}
+
+void LynxShell::Pause() { SetPaused(true); }
+
+void LynxShell::Resume() { SetPaused(false); }
+
+void LynxShell::SetPaused(bool paused) {
+  if (IsDestroyed() || paused_ == paused) {
+    return;
+  }
+  LOGI("LynxShell::SetPaused, paused: " << paused << " this:" << this);
+  paused_ = paused;
+  if (engine_actor_) {
+    engine_actor_->Act([paused](auto& engine) { engine->SetPaused(paused); });
+  }
+  if (runtime_actor_) {
+    runtime_actor_->Act(
+        [paused](auto& runtime) { runtime->SetPaused(paused); });
   }
 }
 

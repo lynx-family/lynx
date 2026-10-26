@@ -73,6 +73,8 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
       const std::shared_ptr<LynxActor<LynxEngine>>& engine_actor,
       const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr);
 
+  void SetPausedFromJS(bool paused) override;
+
   void OnRuntimeGC(
       std::unordered_map<std::string, std::string> mem_info) override;
   // inherit from TemplateDelegate

@@ -180,6 +180,32 @@ TEST_F(LynxShellTest, LifecycleControlsElementVsyncOnEngineThread) {
   EXPECT_FALSE(is_paused());
 }
 
+TEST_F(LynxShellTest, ElementVsyncUsesUnifiedPauseState) {
+  auto is_paused = [this]() {
+    return shell_->engine_actor_->ActSync([](auto& engine) {
+      auto* manager = engine->GetTasm()->page_proxy()->element_manager().get();
+      return manager->IsElementVsyncPaused();
+    });
+  };
+  shell_->OnEnterBackground();
+  EXPECT_TRUE(is_paused());
+  shell_->OnEnterForeground();
+  EXPECT_FALSE(is_paused());
+
+  shell_->Pause();
+  EXPECT_TRUE(is_paused());
+
+  // Lifecycle and explicit pause both update the same VSync state.
+  shell_->OnEnterBackground();
+  shell_->Resume();
+  EXPECT_FALSE(is_paused());
+
+  // The foreground lifecycle update resumes the same state.
+  shell_->Pause();
+  shell_->OnEnterForeground();
+  EXPECT_FALSE(is_paused());
+}
+
 TEST_F(LynxShellTest, ResetLoadOrderOnlyForEmbeddedMode) {
   shell_->ui_operation_queue_->is_engine_async_ = true;
   shell_->ui_operation_queue_->CreateImpl();

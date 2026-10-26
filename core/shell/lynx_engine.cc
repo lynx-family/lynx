@@ -293,6 +293,12 @@ void LynxEngine::SetAnimationsPending(bool need_pending_ui_op) {
   }
 }
 
+void LynxEngine::SetPaused(bool paused) {
+  if (tasm_) {
+    tasm_->SetPaused(paused);
+  }
+}
+
 void LynxEngine::StartRecording(const lepus::Value& value) {
   if (delegate_ != nullptr) {
     delegate_->StartRecording(value);

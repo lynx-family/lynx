@@ -341,8 +341,10 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override;
 
-  // Pause or resume timers and requestAnimationFrame of the main thread script.
+  // Pause or resume main-thread timers, requestAnimationFrame callbacks, and
+  // animation VSync.
   void SetPaused(bool paused);
+  void SetElementVsyncPaused(bool paused);
   bool IsPaused() override { return paused_; }
   void RequestVsync(
       uintptr_t id,
