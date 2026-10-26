@@ -22,6 +22,11 @@
 #include "core/renderer/dom/fragment/display_list_reader.h"
 #include "core/renderer/dom/fragment/rounded_rectangle.h"
 
+@interface LynxRendererContext (TextContentReuse)
+// Stable while the context owns this Page; changes when the Page is replaced.
+- (id)textBundleIdentityForID:(int32_t)textID;
+@end
+
 using namespace lynx;
 using namespace lynx::tasm;
 
@@ -126,6 +131,10 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   NSMutableArray<UIImageView *> *_contentImageViews;
   NSMutableArray<CALayer *> *_contentLayers;
   NSMutableArray<CALayer *> *_hostDecorationLayers;
+  // Resource identities, not display-list positions, own reusable content.
+  // Keep only the current list and the previous list while applying an update.
+  NSMapTable<id, id> *_reusableContent;
+  NSMapTable<id, id> *_previousContent;
 }
 
 - (instancetype)initWithView:(UIView<LynxRendererHost> *)view
@@ -241,23 +250,41 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         auto text_id = item.payload.text.text_id;
         auto box_index = item.payload.text.box_index;
         CALayer *layer = nil;
+        BOOL needsDisplay = YES;
         if ([self isTextServiceModeOn]) {
-          void *page = [_renderer_context getTextBundle:text_id];
-          if (page != nullptr) {
-            layer = [[LynxTextraLayer alloc] initWithTextID:text_id
-                                            rendererContext:_renderer_context];
+          id bundleIdentity = [_renderer_context textBundleIdentityForID:text_id];
+          if (bundleIdentity != nil) {
+            layer = [_previousContent objectForKey:bundleIdentity];
+            [_previousContent removeObjectForKey:bundleIdentity];
+            if (layer == nil) {
+              layer = [[LynxTextraLayer alloc] initWithTextID:text_id
+                                              rendererContext:_renderer_context];
+            } else {
+              needsDisplay = layer.contents == nil;
+            }
+            [self recordReusableContent:layer forKey:bundleIdentity];
           }
         } else {
           LynxTextRenderer *textRenderer =
               (LynxTextRenderer *)[_renderer_context.textRenderManager takeTextRender:text_id];
           if (textRenderer != nil) {
-            layer = [[LynxTextLayer alloc] initWithLynxTextRenderer:textRenderer];
+            layer = [_previousContent objectForKey:textRenderer];
+            [_previousContent removeObjectForKey:textRenderer];
+            if (layer == nil) {
+              layer = [[LynxTextLayer alloc] initWithLynxTextRenderer:textRenderer];
+            } else {
+              needsDisplay = layer.contents == nil;
+            }
+            [self recordReusableContent:layer forKey:textRenderer];
           }
         }
         if (layer != nil) {
+          CGSize oldSize = layer.bounds.size;
           [self applyRectToLayer:layer withBoxIndex:box_index];
           [self insertLayer:layer];
-          [layer setNeedsDisplay];
+          if (needsDisplay || !CGSizeEqualToSize(oldSize, layer.bounds.size)) {
+            [layer setNeedsDisplay];
+          }
         }
         break;
       }
@@ -269,18 +296,29 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         }
         LynxImageManager *imageManager = [self imageManagerForID:image_id];
 
-        UIImageView *imageView = [self createImageView];
+        UIImageView *imageView = imageManager ? [_previousContent objectForKey:imageManager] : nil;
+        if (imageManager) {
+          [_previousContent removeObjectForKey:imageManager];
+        }
+        BOOL reused = imageView != nil;
+        if (!reused) {
+          imageView = [self createImageView];
+        }
+        [self recordReusableContent:imageView forKey:imageManager];
 
         auto &box = box_array_[box_index];
         CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
         rect.origin.x += left_offset_;
         rect.origin.y += top_offset_;
         [imageView setFrame:rect];
-        if (box.HasRadius()) {
-          [self applyRoundedRect:box toLayer:imageView.layer];
+        [self applyRoundedRect:box toLayer:imageView.layer];
+        if (!box.HasRadius()) {
+          imageView.clipsToBounds = YES;
         }
 
-        [imageManager setTarget:imageView];
+        if (!reused) {
+          [imageManager setTarget:imageView];
+        }
 
         if (refView == nil) {
           [_view insertSubview:imageView atIndex:0];
@@ -681,15 +719,30 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     return;
   }
 
+  NSMapTable *previousContent = _reusableContent;
   [self reset];
+  _previousContent = previousContent;
 
   reader_ = DisplayListReader(*list);
 
   [self processContentOperations];
+  _previousContent = nil;
   [_view setNeedsDisplay];
 }
 
+- (void)recordReusableContent:(id)content forKey:(id)key {
+  if (key == nil || content == nil) {
+    return;
+  }
+  if (_reusableContent == nil) {
+    _reusableContent = [NSMapTable strongToStrongObjectsMapTable];
+  }
+  [_reusableContent setObject:content forKey:key];
+}
+
 - (void)reset {
+  _reusableContent = nil;
+  _previousContent = nil;
   reader_ = DisplayListReader();
   top_offset_ = 0;
   left_offset_ = 0;
