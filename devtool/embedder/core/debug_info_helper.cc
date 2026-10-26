@@ -10,6 +10,10 @@
 #include "base/include/log/logging.h"
 #include "third_party/httplib/httplib.h"
 
+#if defined(_WIN32)
+#include <VersionHelpers.h>
+#endif
+
 namespace lynx {
 namespace devtool {
 
@@ -54,6 +58,16 @@ constexpr char kDownloadThread[] = "MTS_DebugInfo_Download";
 
 void DebugInfoHelper::GetLepusDebugInfo(const std::string &url,
                                         std::string &debug_info) {
+#if defined(_WIN32)
+  // The host executable must declare Windows 10 support in its manifest.
+  if (!IsWindows10OrGreater()) {
+    debug_info.clear();
+    LOGW(
+        "lepus debug: Download requires Windows 10+ and a compatible "
+        "manifest.");
+    return;
+  }
+#endif
   LOGI("lepus debug: get debug info, url: " << url);
   std::string host, path;
   SplitUrl(url, host, path);
