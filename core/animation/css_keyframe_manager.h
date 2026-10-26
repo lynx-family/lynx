@@ -122,7 +122,9 @@ class CSSKeyframeManager : public AnimationDelegate {
 
   virtual void TickAllAnimation(fml::TimePoint& time);
   fml::TimePoint ProcessAnimationEvents(fml::TimePoint& time,
-                                        bool dispatch_events);
+                                        bool dispatch_events,
+                                        bool suppress_infinite_events = false);
+  void SyncInfiniteAnimationEvents(fml::TimePoint& time);
 
   void RequestNextFrame(std::weak_ptr<Animation> ptr) override;
 

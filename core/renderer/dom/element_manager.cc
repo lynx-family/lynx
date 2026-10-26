@@ -1337,10 +1337,13 @@ void ElementManager::SetElementVsyncPaused(bool paused) {
   if (animation_vsync_stopped_ || element_vsync_paused_ == paused) {
     return;
   }
+
   element_vsync_paused_ = paused;
   if (element_vsync_proxy_) {
+    element_vsync_proxy_->CancelBackgroundFrame();
     if (!paused) {
-      element_vsync_proxy_->CancelBackgroundFrame();
+      auto now = fml::TimePoint::Now();
+      SyncInfiniteAnimationEvents(now);
     }
     if (!animation_element_set_.empty()) {
       element_vsync_proxy_->RequestNextFrame();
@@ -1378,10 +1381,24 @@ fml::TimePoint ElementManager::ProcessAnimationEvents(
   for (const auto &element : elements) {
     if (!element->IsDetached()) {
       next = std::min(
-          next, element->ProcessAnimationEvents(frame_time, dispatch_events));
+          next, element->ProcessAnimationEvents(frame_time, dispatch_events,
+                                                element_vsync_paused_));
     }
   }
   return next;
+}
+
+void ElementManager::SyncInfiniteAnimationEvents(fml::TimePoint &frame_time) {
+  std::vector<fml::RefPtr<Element>> elements;
+  elements.reserve(animation_element_set_.size());
+  for (auto *element : animation_element_set_) {
+    elements.emplace_back(element);
+  }
+  for (const auto &element : elements) {
+    if (!element->IsDetached()) {
+      element->SyncInfiniteAnimationEvents(frame_time);
+    }
+  }
 }
 
 void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
