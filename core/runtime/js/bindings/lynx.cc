@@ -412,6 +412,21 @@ Value LynxProxy::get(Runtime *rt, const PropNameID &name) {
         });
   }
 
+  if (methodName == runtime::kPause || methodName == runtime::kResume) {
+    return Function::createFromHostFunction(
+        *rt, PropNameID::forAscii(*rt, methodName), 0,
+        [this, methodName = std::move(methodName)](
+            Runtime &rt, const Value &this_val, const Value *args,
+            size_t count) -> base::expected<Value, JSINativeException> {
+          auto *native_app = native_app_.Lock();
+          if (!native_app || native_app->IsDestroying()) {
+            return Value::undefined();
+          }
+          native_app->SetPausedFromJS(methodName == runtime::kPause);
+          return Value::undefined();
+        });
+  }
+
   if (methodName == tasm::kLoadScript) {
     return LoadScript(*rt);
   }
@@ -568,6 +583,8 @@ std::vector<PropNameID> LynxProxy::getPropertyNames(Runtime &rt) {
                                  runtime::kGetEngine,
                                  runtime::kGetCustomSectionSync,
                                  runtime::kQueueMicrotask,
+                                 runtime::kPause,
+                                 runtime::kResume,
                                  tasm::kLoadScript,
                                  tasm::kFetchBundle};
   static constexpr size_t kPropsCount = sizeof(kProps) / sizeof(kProps[0]);

@@ -69,6 +69,8 @@ static constexpr const char kFlowIds[] = "flowIds";
 static constexpr const char kIsProfileRecording[] = "isProfileRecording";
 
 static constexpr const char* kQueueMicrotask = "queueMicrotask";
+static constexpr const char* kPause = "pause";
+static constexpr const char* kResume = "resume";
 
 // response handler;
 static constexpr const char* kWait = "wait";

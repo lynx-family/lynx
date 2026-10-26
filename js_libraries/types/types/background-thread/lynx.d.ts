@@ -193,6 +193,16 @@ export interface Lynx extends CommonLynx {
   queueMicrotask(callback: () => void): void;
 
   /**
+   * @description Pause timers, requestAnimationFrame callbacks, and animation VSync of the current Lynx page.
+   */
+  pause(): void;
+
+  /**
+   * @description Resume timers, requestAnimationFrame callbacks, and animation VSync paused by {@link Lynx.pause}.
+   */
+  resume(): void;
+
+  /**
    * @description Callback when an error occurs
    * @since 1.0
    */
