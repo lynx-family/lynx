@@ -25,7 +25,7 @@ static NSDictionary* systemCursors;
 //
 // Note that the column/row resize cursors have a bar in the middle (e.g. <-|->)
 // whereas the frame resize cursors have no bar in the middle (e.g. <-->).
-enum class CrCoreCursorType : int32_t {
+enum class ClayCoreCursorType : int32_t {
   kArrow = 0,                           // NSCursor.arrowCursor
   kIBeam = 1,                           // NSCursor.IBeamCursor
   kMakeAlias = 2,                       // NSCursor.dragLinkCursor
@@ -71,22 +71,23 @@ enum class CrCoreCursorType : int32_t {
   kZoomOut = 43,                        // NSCursor.zoomOutCursor
 };
 
-@interface CrCoreCursor : NSCursor
+// Use a Clay-specific name to avoid Objective-C class collisions with Chromium.
+@interface ClayCoreCursor : NSCursor
 
-+ (id)cursorWithType:(CrCoreCursorType)type;
-@property(readonly, nonatomic) CrCoreCursorType _coreCursorType;
++ (id)cursorWithType:(ClayCoreCursorType)type;
+@property(readonly, nonatomic) ClayCoreCursorType _coreCursorType;
 
 @end
 
-@implementation CrCoreCursor
+@implementation ClayCoreCursor
 
 @synthesize _coreCursorType = _type;
 
-+ (id)cursorWithType:(CrCoreCursorType)type {
-  return [[CrCoreCursor alloc] initWithType:type];
++ (id)cursorWithType:(ClayCoreCursorType)type {
+  return [[ClayCoreCursor alloc] initWithType:type];
 }
 
-- (id)initWithType:(CrCoreCursorType)type {
+- (id)initWithType:(ClayCoreCursorType)type {
   if ((self = [super init])) {
     _type = type;
   }
@@ -161,7 +162,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsAll];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeEastWest];
+        result = [ClayCoreCursor cursorWithType:ClayCoreCursorType::kFrameResizeEastWest];
       break;
     case CursorTypes::kResizeright:
       result = [NSCursor resizeRightCursor];
@@ -188,7 +189,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsOutward];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeSouthwest];
+        result = [ClayCoreCursor cursorWithType:ClayCoreCursorType::kFrameResizeSouthwest];
       break;
     // cspell:disable-next-line
     case CursorTypes::kResizedownright:
@@ -198,7 +199,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsOutward];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeSoutheast];
+        result = [ClayCoreCursor cursorWithType:ClayCoreCursorType::kFrameResizeSoutheast];
       break;
     case CursorTypes::kResizeupleft:
 #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
@@ -207,7 +208,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsOutward];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeNorthwest];
+        result = [ClayCoreCursor cursorWithType:ClayCoreCursorType::kFrameResizeNorthwest];
       break;
     case CursorTypes::kResizeupright:
 #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
@@ -216,7 +217,7 @@ static NSCursor* GetCursorByType(CursorTypes type) {
                                             inDirections:NSCursorFrameResizeDirectionsOutward];
       } else
 #endif
-        result = [CrCoreCursor cursorWithType:CrCoreCursorType::kFrameResizeNortheast];
+        result = [ClayCoreCursor cursorWithType:ClayCoreCursorType::kFrameResizeNortheast];
       break;
     case CursorTypes::kVerticaltext:
       result = [NSCursor IBeamCursorForVerticalLayout];
