@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "core/renderer/dom/element.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/layout/harmony/text_layout_harmony.h"
 #include "core/renderer/ui_wrapper/layout/harmony/text_measurer_harmony.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
@@ -112,6 +113,19 @@ void PaintingContextHarmonyRef::UpdateNodeReadyPatching(
 
 void PaintingContextHarmonyRef::RequestExternalMemoryReport(int64_t delay_ms) {
   ui_owner_->RequestExternalMemoryReport(delay_ms);
+}
+
+void PaintingContextHarmonyRef::UpdateNodeReloadPatching(
+    std::vector<int32_t> reload_ids) {
+  if (reload_ids.empty()) {
+    return;
+  }
+
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              UI_OPERATION_QUEUE_UPDATE_NODE_RELOAD_PATCHING);
+  for (int node_reload_id : reload_ids) {
+    ui_owner_->OnNodeReload(node_reload_id);
+  }
 }
 
 void PaintingContextHarmonyRef::SetNeedMarkPaintEndTiming(
