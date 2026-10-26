@@ -16,6 +16,7 @@
 
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/css_fragment_decorator.h"
+#include "core/renderer/css/ng/style/cascade_layer_map.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_property.h"
@@ -951,6 +952,99 @@ TEST_F(ElementManagerTest, AdoptStyleSheet_NullWrapper) {
   // List should still be valid (may contain null or be empty depending on
   // implementation) The important thing is it doesn't crash
   SUCCEED();
+}
+
+TEST_F(ElementManagerTest, ReplaceStyleSheetsSetsOrderClearsAndReusesHandles) {
+  auto first = fml::MakeRefCounted<SharedCSSFragmentWrapper>(
+      std::make_unique<SharedCSSFragment>());
+  auto second = fml::MakeRefCounted<SharedCSSFragmentWrapper>(
+      std::make_unique<SharedCSSFragment>());
+  manager->AdoptStyleSheet(first);
+  manager->AdoptStyleSheet(second);
+  manager->AdoptStyleSheet(first);
+
+  EXPECT_FALSE(manager->ReplaceStyleSheets({first, second, first}));
+  EXPECT_TRUE(manager->ReplaceStyleSheets({second, first, second}));
+  auto sheets = manager->GetAdoptedStyleSheets();
+  ASSERT_EQ(sheets.size(), 3u);
+  EXPECT_EQ(sheets[0], second);
+  EXPECT_EQ(sheets[1], first);
+  EXPECT_EQ(sheets[2], second);
+
+  EXPECT_FALSE(manager->ReplaceStyleSheets({first, nullptr}));
+  auto empty = fml::MakeRefCounted<SharedCSSFragmentWrapper>(nullptr);
+  EXPECT_FALSE(manager->ReplaceStyleSheets({empty}));
+  EXPECT_EQ(manager->GetAdoptedStyleSheets(), sheets);
+  EXPECT_TRUE(manager->ReplaceStyleSheets({}));
+  EXPECT_FALSE(manager->HasAdoptedStyleSheets());
+  EXPECT_FALSE(manager->ReplaceStyleSheets({}));
+  EXPECT_TRUE(manager->ReplaceStyleSheets({first}));
+  EXPECT_EQ(manager->GetAdoptedStyleSheets()[0], first);
+}
+
+TEST_F(ElementManagerTest,
+       StyleSheetReplacementRefreshesFeaturesAndTouchPseudo) {
+  auto make_sheet = [](css::RuleSet::FeatureFlags flags) {
+    auto fragment = std::make_unique<SharedCSSFragment>();
+    fragment->SetEnableCSSSelector();
+    fragment->rule_set()->AddFeatureFlag(flags);
+    return fml::MakeRefCounted<SharedCSSFragmentWrapper>(std::move(fragment));
+  };
+  auto first = make_sheet(css::RuleSet::kHasMediaQuery);
+  auto second = make_sheet(css::RuleSet::kHasSupports);
+  auto replacement = make_sheet(css::RuleSet::kHasCascadeLayers);
+  replacement->fragment_->MarkHasTouchPseudoToken();
+  manager->AdoptStyleSheet(first);
+  manager->AdoptStyleSheet(second);
+  EXPECT_FALSE(manager->push_touch_pseudo_flag_);
+
+  ASSERT_TRUE(manager->ReplaceStyleSheets({replacement, second}));
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(),
+            css::RuleSet::kHasSupports | css::RuleSet::kHasCascadeLayers);
+  EXPECT_TRUE(manager->push_touch_pseudo_flag_);
+  ASSERT_TRUE(manager->ReplaceStyleSheets({second}));
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kHasSupports);
+  EXPECT_FALSE(manager->HasAdoptedCascadeLayers());
+  ASSERT_TRUE(manager->ReplaceStyleSheets({}));
+  EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kNoFeatures);
+}
+
+TEST_F(ElementManagerTest, StyleSheetChangesInvalidateCascadeLayerOrder) {
+  auto make_sheet = [](const char* name) {
+    auto fragment = std::make_unique<SharedCSSFragment>();
+    fragment->SetEnableCSSSelector();
+    fragment->SetEnableCSSRule(true);
+    fragment->GetOrCreateRootLayer()->GetOrAddSubLayer({name});
+    return fml::MakeRefCounted<SharedCSSFragmentWrapper>(std::move(fragment));
+  };
+  auto first = make_sheet("first");
+  auto second = make_sheet("second");
+  auto replacement = make_sheet("replacement");
+  auto* second_layer =
+      second->fragment_->GetOrCreateRootLayer()->GetOrAddSubLayer({"second"});
+  auto* replacement_layer =
+      replacement->fragment_->GetOrCreateRootLayer()->GetOrAddSubLayer(
+          {"replacement"});
+  manager->AdoptStyleSheet(first);
+  manager->AdoptStyleSheet(second);
+  auto original_map = manager->GetCascadeLayerMap(nullptr);
+  ASSERT_NE(original_map, nullptr);
+  EXPECT_EQ(original_map->GetLayerOrder(second_layer), 1u);
+
+  ASSERT_TRUE(manager->ReplaceStyleSheets({replacement, second}));
+  auto replaced_map = manager->GetCascadeLayerMap(nullptr);
+  ASSERT_NE(replaced_map, nullptr);
+  EXPECT_NE(replaced_map, original_map);
+  EXPECT_EQ(replaced_map->GetLayerOrder(replacement_layer), 0u);
+  EXPECT_EQ(replaced_map->GetLayerOrder(second_layer), 1u);
+
+  ASSERT_TRUE(manager->ReplaceStyleSheets({second}));
+  auto removed_map = manager->GetCascadeLayerMap(nullptr);
+  ASSERT_NE(removed_map, nullptr);
+  EXPECT_NE(removed_map, replaced_map);
+  EXPECT_EQ(removed_map->GetLayerOrder(second_layer), 0u);
+  ASSERT_TRUE(manager->ReplaceStyleSheets({}));
+  EXPECT_EQ(manager->GetCascadeLayerMap(nullptr), nullptr);
 }
 
 TEST_F(ElementManagerTest, GetAdoptedStyleSheets_ThreadSafeCopy) {

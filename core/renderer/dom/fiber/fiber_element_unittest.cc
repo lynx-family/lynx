@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "base/include/auto_reset.h"
+#include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
@@ -50,6 +51,7 @@
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
+#include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -922,6 +924,668 @@ TEST_P(FiberElementTest, LoadStyleSheetUsesBundleCSSRuleConfig) {
       fml::static_ref_ptr_cast<SharedCSSFragmentWrapper>(result.RefCounted());
   ASSERT_TRUE(wrapper);
   EXPECT_TRUE(wrapper->fragment_->enable_css_rule());
+}
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsRestoresExistingNodes) {
+  for (bool new_styling : {false, true}) {
+    SCOPED_TRACE(new_styling);
+    manager->enable_new_styling_pipeline_ = new_styling;
+    manager->config_->SetEnableStandardCSSSelector(true);
+    const auto make_sheet = [](const StyleMap& styles) {
+      auto fragment = std::make_unique<SharedCSSFragment>(11);
+      fragment->SetEnableCSSSelector();
+      auto token = fml::MakeRefCounted<CSSParseToken>(CSSParserConfigs{});
+      token->raw_attributes_ = styles;
+      auto selector = std::make_unique<css::LynxCSSSelector[]>(1);
+      selector[0].SetMatch(css::LynxCSSSelector::kClass);
+      selector[0].SetValue("theme-target");
+      selector[0].SetLastInTagHistory(true);
+      selector[0].SetLastInSelectorList(true);
+      fragment->AddStyleRule(std::move(selector), std::move(token));
+      return fml::MakeRefCounted<SharedCSSFragmentWrapper>(std::move(fragment));
+    };
+    auto base = make_sheet({{kPropertyIDFontSize,
+                             CSSValue(lepus::Value(10), CSSValuePattern::PX)}});
+    auto theme_a = make_sheet(
+        {{kPropertyIDFontSize, CSSValue(lepus::Value(20), CSSValuePattern::PX)},
+         {kPropertyIDOpacity,
+          CSSValue(lepus::Value(0.3), CSSValuePattern::NUMBER)}});
+    auto theme_b =
+        make_sheet({{kPropertyIDOpacity,
+                     CSSValue(lepus::Value(0.6), CSSValuePattern::NUMBER)}});
+    auto overlay =
+        make_sheet({{kPropertyIDOpacity,
+                     CSSValue(lepus::Value(0.8), CSSValuePattern::NUMBER)}});
+
+    auto page = manager->CreateFiberPage("page", 11);
+    auto sheets = tasm->style_sheet_manager(DEFAULT_ENTRY_NAME);
+    sheets->AddSharedCSSFragment(std::move(base->fragment_));
+    page->set_style_sheet_manager(sheets);
+    auto view = manager->CreateFiberView();
+    view->parent_component_element_ = page.get();
+    view->SetClass("theme-target");
+    page->InsertNode(view);
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->GetFontSize(), 10);
+
+    auto runtime = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    runtime->Initialize();
+    runtime->SetGlobalData(
+        BASE_STATIC_STRING(tasm::kTemplateAssembler),
+        lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+    auto* context = runtime->GetMTSContext();
+    lepus::Value theme_a_value(theme_a);
+    lepus::Value theme_b_value(theme_b);
+    lepus::Value overlay_value(overlay);
+    RendererFunctions::AdoptStyleSheet(context, &theme_a_value, 1);
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->GetFontSize(), 20);
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.3);
+
+    RendererFunctions::AdoptStyleSheet(context, &overlay_value, 1);
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.8);
+
+    auto replace_sources = lepus::CArray::Create();
+    replace_sources->push_back(theme_b_value);
+    replace_sources->push_back(overlay_value);
+    lepus::Value replace_args[] = {lepus::Value(replace_sources)};
+    EXPECT_TRUE(
+        RendererFunctions::ReplaceStyleSheets(context, replace_args, 1).Bool());
+    page->FlushActionsAsRoot();
+    // The explicit array preserves the overlay and restores base font size.
+    EXPECT_FLOAT_EQ(view->GetFontSize(), 10);
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.8);
+    EXPECT_FALSE(
+        RendererFunctions::ReplaceStyleSheets(context, replace_args, 1).Bool());
+
+    replace_sources = lepus::CArray::Create();
+    replace_sources->push_back(theme_b_value);
+    replace_args[0] = lepus::Value(replace_sources);
+    EXPECT_TRUE(
+        RendererFunctions::ReplaceStyleSheets(context, replace_args, 1).Bool());
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.6);
+    replace_args[0] = lepus::Value(lepus::CArray::Create());
+    EXPECT_TRUE(
+        RendererFunctions::ReplaceStyleSheets(context, replace_args, 1).Bool());
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->GetFontSize(), 10);
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 1);
+
+    RendererFunctions::AdoptStyleSheet(context, &theme_a_value, 1);
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->GetFontSize(), 20);
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.3);
+    EXPECT_TRUE(manager->ReplaceStyleSheets({}));
+  }
+}
+
+namespace {
+fml::RefPtr<SharedCSSFragmentWrapper> MakeLifecycleSheet(
+    const std::vector<std::pair<std::string, StyleMap>>& rules = {},
+    const CSSVariableMap& variables = {}) {
+  auto fragment = std::make_unique<SharedCSSFragment>(11);
+  fragment->SetEnableCSSInvalidation();
+  fragment->SetEnableCSSSelector();
+  for (const auto& [selector_text, styles] : rules) {
+    auto token = fml::MakeRefCounted<CSSParseToken>(CSSParserConfigs{});
+    token->raw_attributes_ = styles;
+    token->style_variables_ = variables;
+    css::CSSParserContext context;
+    css::CSSTokenizer tokenizer(selector_text);
+    const auto tokens = tokenizer.TokenizeToEOF();
+    css::CSSParserTokenRange range(tokens);
+    auto selectors = css::CSSSelectorParser::ParseSelector(range, &context);
+    const auto size = css::CSSSelectorParser::FlattenedSize(selectors);
+    auto array = std::make_unique<css::LynxCSSSelector[]>(size);
+    css::CSSSelectorParser::AdoptSelectorVector(selectors, array.get(), size);
+    fragment->AddStyleRule(std::move(array), std::move(token));
+  }
+  return fml::MakeRefCounted<SharedCSSFragmentWrapper>(std::move(fragment));
+}
+
+void AddLifecycleKeyframes(SharedCSSFragmentWrapper& sheet, double opacity,
+                           const base::String& name = "theme-fade") {
+  auto token = fml::MakeRefCounted<CSSKeyframesToken>(CSSParserConfigs{});
+  CSSKeyframesContent frames;
+  for (float offset : {0.f, 1.f}) {
+    auto styles = std::make_shared<StyleMap>();
+    (*styles)[kPropertyIDOpacity] = CSSValue(opacity, CSSValuePattern::NUMBER);
+    frames.emplace(offset, std::move(styles));
+  }
+  token->SetKeyframesContent(std::move(frames));
+  sheet.fragment_->keyframes_[name] = std::move(token);
+}
+}  // namespace
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsRemovesVariables) {
+  for (bool new_styling : {false, true}) {
+    for (bool inline_variables : {false, true}) {
+      for (bool replace : {false, true}) {
+        SCOPED_TRACE(::testing::Message()
+                     << new_styling << inline_variables << replace);
+        manager->enable_new_styling_pipeline_ = new_styling;
+        manager->config_->SetEnableStandardCSSSelector(true);
+        manager->config_->css_configs_.enable_css_inline_variables_ =
+            inline_variables;
+        CSSValue opacity("{{--accent}}", CSSValuePattern::STRING,
+                         CSSValueType::VARIABLE);
+        opacity.SetDefaultValue("0.1");
+        auto base =
+            MakeLifecycleSheet({{".target", {{kPropertyIDOpacity, opacity}}}},
+                               {{"--base", "0.1"}});
+        auto theme =
+            MakeLifecycleSheet({{".target", {}}}, {{"--accent", "0.3"}});
+        auto replacement = MakeLifecycleSheet();
+        auto sheets = std::make_shared<CSSStyleSheetManager>(nullptr);
+        sheets->AddSharedCSSFragment(std::move(base->fragment_));
+        auto page = manager->CreateFiberPage("page", 11);
+        page->set_style_sheet_manager(sheets);
+        auto view = manager->CreateFiberView();
+        view->parent_component_element_ = page.get();
+        view->SetClass("target");
+        view->data_model()->UpdateCSSVariableFromSetProperty("--runtime",
+                                                             "blue");
+        page->InsertNode(view);
+        manager->AdoptStyleSheet(theme);
+        page->FlushActionsAsRoot();
+        EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.3);
+        ASSERT_TRUE(replace ? manager->ReplaceStyleSheets({replacement})
+                            : manager->ReplaceStyleSheets({}));
+        page->FlushActionsAsRoot();
+        EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.1);
+        const auto& variables = view->data_model()->css_variables_map();
+        EXPECT_EQ(variables.count("--accent"), 0u);
+        if (!new_styling) {
+          ASSERT_NE(variables.find("--base"), variables.end());
+          EXPECT_EQ(variables.find("--base")->second, "0.1");
+        }
+        ASSERT_NE(view->data_model()->GetCSSInlineVariables().find("--runtime"),
+                  view->data_model()->GetCSSInlineVariables().end());
+        EXPECT_EQ(view->data_model()
+                      ->GetCSSInlineVariables()
+                      .find("--runtime")
+                      ->second,
+                  "blue");
+        manager->ReplaceStyleSheets({});
+      }
+    }
+  }
+}
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsClearsPendingInvalidations) {
+  for (bool new_styling : {false, true}) {
+    for (bool replace : {false, true}) {
+      for (bool detached : {false, true}) {
+        SCOPED_TRACE(::testing::Message()
+                     << new_styling << replace << detached);
+        manager->enable_new_styling_pipeline_ = new_styling;
+        manager->config_->SetEnableStandardCSSSelector(true);
+        auto base = MakeLifecycleSheet();
+        auto theme = MakeLifecycleSheet(
+            {{"#before .target",
+              {{kPropertyIDOpacity, CSSValue(0.3, CSSValuePattern::NUMBER)}}}});
+        auto replacement = MakeLifecycleSheet();
+        auto sheets = std::make_shared<CSSStyleSheetManager>(nullptr);
+        sheets->AddSharedCSSFragment(std::move(base->fragment_));
+        auto page = manager->CreateFiberPage("page", 11);
+        page->set_style_sheet_manager(sheets);
+        auto parent = manager->CreateFiberView();
+        parent->parent_component_element_ = page.get();
+        parent->SetIdSelector("before");
+        auto child = manager->CreateFiberView();
+        child->parent_component_element_ = page.get();
+        child->SetClass("target");
+        parent->InsertNode(child);
+        page->InsertNode(parent);
+        manager->AdoptStyleSheet(theme);
+        page->FlushActionsAsRoot();
+        EXPECT_FLOAT_EQ(child->computed_css_style()->GetOpacity(), 0.3);
+        parent->SetIdSelector("after");
+        ASSERT_FALSE(parent->invalidation_lists_.descendants.empty());
+        if (replace) {
+          manager->SetCSSFragmentParsingOnTASMWorkerMTSRender(true);
+          parent->SetIdSelector("before");
+        }
+        if (detached) {
+          page->RemoveNode(parent);
+          page->FlushActionsAsRoot();
+        }
+        ASSERT_TRUE(replace ? manager->ReplaceStyleSheets({replacement})
+                            : manager->ReplaceStyleSheets({}));
+        // Do not release the last owner until the queue is checked: the
+        // pre-fix failure should report a stale queue without invoking UB.
+        ASSERT_TRUE(parent->invalidation_lists_.descendants.empty());
+        manager->SetCSSFragmentParsingOnTASMWorkerMTSRender(false);
+        theme = nullptr;
+        if (detached) {
+          page->InsertNode(parent);
+        }
+        page->FlushActionsAsRoot();
+        EXPECT_FLOAT_EQ(child->computed_css_style()->GetOpacity(), 1);
+        manager->ReplaceStyleSheets({});
+      }
+    }
+  }
+}
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsRestylesDetachedNodes) {
+  for (bool new_styling : {false, true}) {
+    for (bool replace : {false, true}) {
+      SCOPED_TRACE(::testing::Message() << new_styling << replace);
+      manager->enable_new_styling_pipeline_ = new_styling;
+      manager->config_->SetEnableStandardCSSSelector(true);
+      auto base = MakeLifecycleSheet();
+      auto theme = MakeLifecycleSheet(
+          {{".target",
+            {{kPropertyIDOpacity, CSSValue(0.3, CSSValuePattern::NUMBER)}}}});
+      auto replacement = MakeLifecycleSheet(
+          {{".target",
+            {{kPropertyIDOpacity, CSSValue(0.6, CSSValuePattern::NUMBER)}}}});
+      auto sheets = std::make_shared<CSSStyleSheetManager>(nullptr);
+      sheets->AddSharedCSSFragment(std::move(base->fragment_));
+      auto page = manager->CreateFiberPage("page", 11);
+      page->set_style_sheet_manager(sheets);
+      auto view = manager->CreateFiberView();
+      view->parent_component_element_ = page.get();
+      view->SetClass("target");
+      page->InsertNode(view);
+      manager->AdoptStyleSheet(theme);
+      page->FlushActionsAsRoot();
+      ASSERT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.3);
+      page->RemoveNode(view);
+      page->FlushActionsAsRoot();
+      ASSERT_TRUE(replace ? manager->ReplaceStyleSheets({replacement})
+                          : manager->ReplaceStyleSheets({}));
+      page->InsertNode(view);
+      page->FlushActionsAsRoot();
+      EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(),
+                      replace ? 0.6 : 1);
+      manager->ReplaceStyleSheets({});
+    }
+  }
+}
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsResetsLastPseudoRules) {
+  for (bool new_styling : {false, true}) {
+    for (bool replace : {false, true}) {
+      SCOPED_TRACE(::testing::Message() << new_styling << replace);
+      manager->enable_new_styling_pipeline_ = new_styling;
+      manager->config_->SetEnableStandardCSSSelector(true);
+      auto base = MakeLifecycleSheet();
+      auto theme = MakeLifecycleSheet(
+          {{"::placeholder",
+            {{kPropertyIDColor, CSSValue::MakePlainString("red")}}},
+           {"::selection",
+            {{kPropertyIDBackgroundColor,
+              CSSValue::MakePlainString("blue")}}}});
+      auto replacement = MakeLifecycleSheet();
+      auto sheets = std::make_shared<CSSStyleSheetManager>(nullptr);
+      sheets->AddSharedCSSFragment(std::move(base->fragment_));
+      auto page = manager->CreateFiberPage("page", 11);
+      page->set_style_sheet_manager(sheets);
+      auto view = manager->CreateFiberView();
+      view->MarkCanBeLayoutOnly(false);
+      view->parent_component_element_ = page.get();
+      view->has_placeholder_ = true;
+      view->has_text_selection_ = true;
+      page->InsertNode(view);
+      manager->AdoptStyleSheet(theme);
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+      ASSERT_TRUE(view->pseudo_elements_.has_value());
+      auto* placeholder =
+          view->pseudo_elements_->at(kPseudoStatePlaceHolder).get();
+      auto* selection = view->pseudo_elements_->at(kPseudoStateSelection).get();
+      ASSERT_FALSE(placeholder->style_map_.empty());
+      ASSERT_FALSE(selection->style_map_.empty());
+      ASSERT_TRUE(replace ? manager->ReplaceStyleSheets({replacement})
+                          : manager->ReplaceStyleSheets({}));
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+      EXPECT_TRUE(placeholder->style_map_.empty());
+      EXPECT_TRUE(selection->style_map_.empty());
+      auto& props = platform_impl_->node_map_.at(view->impl_id())->props_;
+      EXPECT_EQ(props.at("placeholder-color"), lepus::Value(0xff000000U));
+      EXPECT_EQ(props.at("selection-background-color"), lepus::Value(0U));
+      manager->ReplaceStyleSheets({});
+    }
+  }
+}
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsRefreshesKeyframes) {
+  for (bool new_styling : {false, true}) {
+    for (bool has_fallback : {false, true}) {
+      SCOPED_TRACE(::testing::Message() << new_styling << has_fallback);
+      manager->enable_new_styling_pipeline_ = new_styling;
+      auto base = MakeLifecycleSheet();
+      auto theme = MakeLifecycleSheet();
+      auto replacement = MakeLifecycleSheet();
+      if (has_fallback) {
+        AddLifecycleKeyframes(*base, 0.1);
+      }
+      AddLifecycleKeyframes(*base, 0.9, "unchanged");
+      AddLifecycleKeyframes(*theme, 0.3);
+      AddLifecycleKeyframes(*replacement, 0.6);
+      auto sheets = std::make_shared<CSSStyleSheetManager>(nullptr);
+      sheets->AddSharedCSSFragment(std::move(base->fragment_));
+      auto page = manager->CreateFiberPage("page", 11);
+      page->set_style_sheet_manager(sheets);
+      auto view = manager->CreateFiberView();
+      view->parent_component_element_ = page.get();
+      view->enable_new_animator_ = true;
+      view->SetStyle(kPropertyIDAnimation,
+                     lepus::Value("theme-fade 1000ms linear infinite, "
+                                  "unchanged 1000ms linear infinite"));
+      page->InsertNode(view);
+      manager->AdoptStyleSheet(theme);
+      const auto check_opacity = [&](std::optional<float> expected) {
+        page->FlushActionsAsRoot();
+        platform_impl_->Flush();
+        ASSERT_NE(view->css_keyframe_manager_, nullptr);
+        auto& animations = view->css_keyframe_manager_->animations_map_;
+        auto it = animations.find("theme-fade");
+        auto* model =
+            it == animations.end()
+                ? nullptr
+                : it->second->keyframe_effect()->GetKeyframeModelByCurveType(
+                      animation::AnimationCurve::CurveType::OPACITY);
+        if (!expected) {
+          EXPECT_EQ(model, nullptr);
+          return;
+        }
+        ASSERT_NE(model, nullptr);
+        auto* curve = static_cast<animation::KeyframedOpacityAnimationCurve*>(
+            model->animation_curve());
+        ASSERT_EQ(curve->keyframes_.size(), 2u);
+        EXPECT_FLOAT_EQ(
+            static_cast<gfx::FloatKeyframe*>(curve->keyframes_[0].get())
+                ->Value(),
+            *expected);
+      };
+      check_opacity(0.3);
+      auto unchanged =
+          view->css_keyframe_manager_->animations_map_.at("unchanged");
+      auto* unchanged_effect = unchanged->keyframe_effect();
+      auto unrelated = MakeLifecycleSheet();
+      manager->AdoptStyleSheet(unrelated);
+      auto original =
+          view->css_keyframe_manager_->animations_map_.at("theme-fade");
+      ASSERT_TRUE(manager->ReplaceStyleSheets({theme}));
+      check_opacity(0.3);
+      EXPECT_EQ(view->css_keyframe_manager_->animations_map_.at("theme-fade"),
+                original);
+      if (!new_styling) {
+        manager->PauseAllAnimations();
+      }
+      ASSERT_TRUE(manager->ReplaceStyleSheets({replacement}));
+      if (!new_styling) {
+        page->FlushActionsAsRoot();
+        EXPECT_FALSE(
+            view->css_keyframe_manager_->invalidated_keyframes_.empty());
+        manager->ResumeAllAnimations();
+      }
+      check_opacity(0.6);
+      EXPECT_EQ(view->css_keyframe_manager_->animations_map_.at("theme-fade"),
+                original);
+      EXPECT_EQ(view->css_keyframe_manager_->animations_map_.at("unchanged"),
+                unchanged);
+      EXPECT_EQ(unchanged->keyframe_effect(), unchanged_effect);
+      // Adding a shadowed definition does not replace the winning effect.
+      auto* current_effect = original->keyframe_effect();
+      ASSERT_TRUE(manager->ReplaceStyleSheets({theme, replacement}));
+      check_opacity(0.6);
+      EXPECT_EQ(original->keyframe_effect(), current_effect);
+      ASSERT_TRUE(manager->ReplaceStyleSheets({replacement, theme}));
+      check_opacity(0.3);
+      EXPECT_EQ(view->css_keyframe_manager_->animations_map_.at("theme-fade"),
+                original);
+      EXPECT_EQ(unchanged->keyframe_effect(), unchanged_effect);
+      ASSERT_TRUE(manager->ReplaceStyleSheets({}));
+      check_opacity(has_fallback ? std::optional<float>(0.1) : std::nullopt);
+      if (has_fallback) {
+        EXPECT_EQ(view->css_keyframe_manager_->animations_map_.at("theme-fade"),
+                  original);
+      }
+      EXPECT_EQ(view->css_keyframe_manager_->animations_map_.at("unchanged"),
+                unchanged);
+      EXPECT_EQ(unchanged->keyframe_effect(), unchanged_effect);
+    }
+  }
+}
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsValidatesEntireArrayBeforeMutation) {
+  auto runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  runtime->Initialize();
+  runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* context = runtime->GetMTSContext();
+  auto theme = MakeLifecycleSheet();
+  manager->AdoptStyleSheet(theme);
+  auto replacement = MakeLifecycleSheet();
+  for (const auto& invalid :
+       {lepus::Value(1), lepus::Value(".broken {"),
+        lepus::Value(lepus::Dictionary::Create()),
+        lepus::Value(fml::MakeRefCounted<SharedCSSFragmentWrapper>(nullptr))}) {
+    auto values = lepus::CArray::Create();
+    values->push_back(lepus::Value(replacement));
+    values->push_back(invalid);
+    lepus::Value args[] = {lepus::Value(values)};
+    EXPECT_FALSE(
+        RendererFunctions::ReplaceStyleSheets(context, args, 1).Bool());
+    EXPECT_EQ(manager->GetAdoptedStyleSheets(),
+              (std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>{theme}));
+  }
+  lepus::Value invalid_array(1);
+  EXPECT_FALSE(
+      RendererFunctions::ReplaceStyleSheets(context, &invalid_array, 1).Bool());
+}
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsParsesRawCSSAndPreservesOrder) {
+  for (bool new_styling : {false, true}) {
+    auto entry = std::make_shared<TemplateEntry>();
+    ASSERT_TRUE(
+        entry->template_bundle_
+            .FromLynxML("<!doctype lynx><lynx><style>.base {}</style><script "
+                        "thread=main>void 0;</script></lynx>",
+                        "test.lynxml")
+            .empty());
+    manager->SetConfig(entry->template_bundle_.GetPageConfig());
+    manager->enable_new_styling_pipeline_ = new_styling;
+    tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
+    auto runtime = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    runtime->Initialize();
+    runtime->SetGlobalData(
+        BASE_STATIC_STRING(tasm::kTemplateAssembler),
+        lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+    auto* context = runtime->GetMTSContext();
+    auto page = manager->CreateFiberPage("page", 0);
+    page->set_style_sheet_manager(entry->GetStyleSheetManager());
+    auto view = manager->CreateFiberView();
+    view->parent_component_element_ = page.get();
+    view->SetClass("target");
+    page->InsertNode(view);
+    auto overlay = MakeLifecycleSheet(
+        {{".target",
+          {{kPropertyIDOpacity, CSSValue(0.8, CSSValuePattern::NUMBER)}}}});
+    const auto replace = [&](const std::vector<lepus::Value>& values) {
+      auto array = lepus::CArray::Create();
+      for (const auto& value : values) array->push_back(value);
+      lepus::Value args[] = {lepus::Value(array)};
+      return RendererFunctions::ReplaceStyleSheets(context, args, 1).Bool();
+    };
+    EXPECT_TRUE(replace(
+        {lepus::Value(".target { opacity: 0.3; }"), lepus::Value(overlay)}));
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.8);
+    auto previous = manager->GetAdoptedStyleSheets();
+    EXPECT_FALSE(replace({lepus::Value(".target { opacity: 0.6; }"),
+                          lepus::Value(".broken {")}));
+    EXPECT_EQ(manager->GetAdoptedStyleSheets(), previous);
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.8);
+    EXPECT_TRUE(replace(
+        {lepus::Value(overlay), lepus::Value(".target { opacity: 0.3; }")}));
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.3);
+    EXPECT_TRUE(replace({}));
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 1);
+    EXPECT_FALSE(replace({}));
+  }
+}
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsWorksWithoutLynxMLStyleBlock) {
+  for (bool new_styling : {false, true}) {
+    SCOPED_TRACE(new_styling);
+    auto entry = std::make_shared<TemplateEntry>();
+    ASSERT_TRUE(entry->template_bundle_
+                    .FromLynxML("<!doctype lynx><lynx><script thread=main>void "
+                                "0;</script></lynx>",
+                                "test.lynxml")
+                    .empty());
+    manager->SetConfig(entry->template_bundle_.GetPageConfig());
+    manager->enable_new_styling_pipeline_ = new_styling;
+    tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
+    auto runtime = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    runtime->Initialize();
+    runtime->SetGlobalData(
+        BASE_STATIC_STRING(tasm::kTemplateAssembler),
+        lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+    auto* context = runtime->GetMTSContext();
+    auto page = manager->CreateFiberPage("page", 0);
+    page->set_style_sheet_manager(entry->GetStyleSheetManager());
+    auto view = manager->CreateFiberView();
+    view->parent_component_element_ = page.get();
+    view->SetClass("target");
+    page->InsertNode(view);
+    for (double opacity : {0.3, 0.6}) {
+      auto array = lepus::CArray::Create();
+      array->push_back(lepus::Value(
+          ".target { opacity: " + std::to_string(opacity) + "; }"));
+      lepus::Value arg(array);
+      ASSERT_TRUE(
+          RendererFunctions::ReplaceStyleSheets(context, &arg, 1).Bool());
+      page->FlushActionsAsRoot();
+      EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), opacity);
+    }
+    lepus::Value clear(lepus::CArray::Create());
+    ASSERT_TRUE(
+        RendererFunctions::ReplaceStyleSheets(context, &clear, 1).Bool());
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 1);
+  }
+}
+
+TEST_P(FiberElementTest, ReplaceStyleSheetsRejectsRawCSSWithoutStandardBase) {
+  for (const auto& [has_base, standard_base, standard_compile] :
+       {std::make_tuple(false, false, false),
+        std::make_tuple(false, false, true),
+        std::make_tuple(true, false, false), std::make_tuple(true, false, true),
+        std::make_tuple(true, true, false)}) {
+    SCOPED_TRACE(::testing::Message()
+                 << has_base << standard_base << standard_compile);
+    auto entry = std::make_shared<TemplateEntry>();
+    entry->template_bundle_.compile_options_.enable_css_selector_ =
+        standard_compile;
+    if (has_base) {
+      auto fragment = std::make_unique<SharedCSSFragment>(0);
+      if (standard_base) fragment->SetEnableCSSSelector();
+      entry->GetStyleSheetManager()->AddSharedCSSFragment(std::move(fragment));
+    }
+    tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
+    auto runtime = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    runtime->Initialize();
+    runtime->SetGlobalData(
+        BASE_STATIC_STRING(tasm::kTemplateAssembler),
+        lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+    auto* context = runtime->GetMTSContext();
+    auto old = MakeLifecycleSheet();
+    auto replacement = MakeLifecycleSheet();
+    ASSERT_TRUE(manager->ReplaceStyleSheets({old}));
+    auto values = lepus::CArray::Create();
+    values->push_back(lepus::Value(replacement));
+    values->push_back(lepus::Value(".target:active { opacity: 0.3; }"));
+    lepus::Value arg(values);
+    EXPECT_FALSE(
+        RendererFunctions::ReplaceStyleSheets(context, &arg, 1).Bool());
+    EXPECT_EQ(manager->GetAdoptedStyleSheets(),
+              (std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>{old}));
+    arg = lepus::Value(lepus::CArray::Create());
+    EXPECT_TRUE(RendererFunctions::ReplaceStyleSheets(context, &arg, 1).Bool());
+    values = lepus::CArray::Create();
+    values->push_back(lepus::Value(replacement));
+    arg = lepus::Value(values);
+    EXPECT_TRUE(RendererFunctions::ReplaceStyleSheets(context, &arg, 1).Bool());
+  }
+}
+
+TEST_P(FiberElementTest,
+       ReplaceStyleSheetsRawActiveEnablesNotificationsAndRestyles) {
+  for (bool new_styling : {false, true}) {
+    for (const char* selector :
+         {".button:active", ".button:not(:not(:active))",
+          ".button:not(.unused, :not(:active))", ".unused, .button:active"}) {
+      SCOPED_TRACE(::testing::Message() << new_styling << selector);
+      manager->push_touch_pseudo_flag_ = false;
+      manager->touch_pseudo_status_pushed_ = false;
+      auto entry = std::make_shared<TemplateEntry>();
+      ASSERT_TRUE(
+          entry->template_bundle_
+              .FromLynxML("<!doctype lynx><lynx><style>.base {}</style><script "
+                          "thread=main>void 0;</script></lynx>",
+                          "test.lynxml")
+              .empty());
+      manager->SetConfig(entry->template_bundle_.GetPageConfig());
+      manager->enable_new_styling_pipeline_ = new_styling;
+      tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
+      auto runtime = runtime::MTSRuntime::CreateContext(
+          runtime::ContextType::LepusNGContextType);
+      runtime->Initialize();
+      runtime->SetGlobalData(
+          BASE_STATIC_STRING(tasm::kTemplateAssembler),
+          lepus::Value(
+              static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+      auto* context = runtime->GetMTSContext();
+      auto page = manager->CreateFiberPage("page", 0);
+      page->set_style_sheet_manager(entry->GetStyleSheetManager());
+      auto button = manager->CreateFiberView();
+      button->parent_component_element_ = page.get();
+      button->SetClass("button");
+      page->InsertNode(button);
+      page->FlushActionsAsRoot();
+      ASSERT_FALSE(manager->touch_pseudo_status_pushed_);
+      ASSERT_FALSE(manager->push_touch_pseudo_flag_);
+      auto values = lepus::CArray::Create();
+      values->push_back(
+          lepus::Value(std::string(selector) + " { opacity: 0.3; }"));
+      lepus::Value arg(values);
+      ASSERT_TRUE(
+          RendererFunctions::ReplaceStyleSheets(context, &arg, 1).Bool());
+      ASSERT_EQ(manager->GetAdoptedStyleSheets().size(), 1u);
+      EXPECT_TRUE(manager->GetAdoptedStyleSheets()[0]
+                      ->fragment_->HasTouchPseudoToken());
+      EXPECT_TRUE(manager->push_touch_pseudo_flag_);
+      manager->PatchEventRelatedInfo();
+      EXPECT_TRUE(manager->touch_pseudo_status_pushed_);
+      page->FlushActionsAsRoot();
+      EXPECT_FLOAT_EQ(button->computed_css_style()->GetOpacity(), 1);
+      button->OnPseudoStatusChanged(kPseudoStateNone, kPseudoStateActive);
+      page->FlushActionsAsRoot();
+      EXPECT_FLOAT_EQ(button->computed_css_style()->GetOpacity(), 0.3);
+      button->OnPseudoStatusChanged(kPseudoStateActive, kPseudoStateNone);
+      page->FlushActionsAsRoot();
+      EXPECT_FLOAT_EQ(button->computed_css_style()->GetOpacity(), 1);
+      ASSERT_TRUE(manager->ReplaceStyleSheets({}));
+    }
+  }
 }
 
 TEST_P(FiberElementTest,

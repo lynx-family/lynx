@@ -107,15 +107,12 @@ std::string LynxTemplateBundle::BuildFromLynxMLSources(
   compile_options_.enable_css_selector_ = true;
   compile_options_.enable_css_invalidation_ = true;
 
-  if (!style.empty()) {
-    auto style_result = ParseLynxMLStyle(style, compile_options_);
-    if (!style_result.success) {
-      return style_result.error;
-    }
-    if (style_result.fragment) {
-      css_style_manager_->AddSharedCSSFragment(
-          std::move(style_result.fragment));
-    }
+  auto style_result = ParseLynxMLStyle(style, compile_options_);
+  if (!style_result.success) {
+    return style_result.error;
+  }
+  if (style_result.fragment) {
+    css_style_manager_->AddSharedCSSFragment(std::move(style_result.fragment));
   }
 
   page_configs_ = std::make_shared<PageConfig>();

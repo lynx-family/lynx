@@ -9,9 +9,11 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
+#include "base/include/compiler_specific.h"
 #include "base/include/string/string_utils.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_utils.h"
@@ -20,6 +22,7 @@
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
+#include "core/renderer/css/ng/selector/lynx_css_selector_list.h"
 #include "core/renderer/css/ng/style/style_rule.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/renderer/css/parser/css_string_parser.h"
@@ -30,6 +33,25 @@ namespace {
 
 using css::CSSParserTokenStream;
 using ParseError = std::optional<std::string>;
+
+bool HasTouchPseudo(const css::LynxCSSSelector& selector) {
+  if (selector.GetPseudoType() == css::LynxCSSSelector::kPseudoActive) {
+    return true;
+  }
+  const auto* selector_list = selector.SelectorList();
+  if (!selector_list) {
+    return false;
+  }
+  for (const auto* current = selector_list->First(); current; ++current) {
+    if (HasTouchPseudo(*current)) {
+      return true;
+    }
+    if (current->IsLastInTagHistory() && current->IsLastInSelectorList()) {
+      break;
+    }
+  }
+  return false;
+}
 
 class StyleParserImpl {
  public:
@@ -101,6 +123,12 @@ class StyleParserImpl {
         std::make_unique<css::LynxCSSSelector[]>(flattened_size);
     css::CSSSelectorParser::AdoptSelectorVector(
         selector_vector, selector_array.get(), flattened_size);
+    for (size_t i = 0; i < flattened_size; ++i) {
+      if (HasTouchPseudo(selector_array[i])) {
+        fragment_->MarkHasTouchPseudoToken();
+        break;
+      }
+    }
 
     RawStyleMap attributes;
     RawStyleMap important_attributes;
@@ -304,9 +332,14 @@ class StyleParserImpl {
         std::move(selector_array), std::move(token)));
   }
 
-  std::string ErrorAt(size_t offset, std::string message) {
-    return "invalid style at offset " + std::to_string(offset) + ": " +
-           std::move(message);
+  // Keep diagnostic formatting shared by all validation paths.
+  static NO_INLINE std::string ErrorAt(size_t offset,
+                                       std::string_view message) {
+    std::string error("invalid style at offset ");
+    error.append(std::to_string(offset));
+    error.append(": ");
+    error.append(message.data(), message.size());
+    return error;
   }
 
   CSSParserConfigs parser_configs_;
@@ -321,12 +354,13 @@ LynxMLStyleParser::LynxMLStyleParser(std::string style,
     : style_(std::move(style)), compile_options_(compile_options) {}
 
 LynxMLStyleParseResult LynxMLStyleParser::Parse() {
-  return StyleParserImpl(compile_options_).Parse(style_);
+  return ParseLynxMLStyle(style_, compile_options_);
 }
 
-LynxMLStyleParseResult ParseLynxMLStyle(const std::string& style,
-                                        const CompileOptions& compile_options) {
-  return LynxMLStyleParser(style, compile_options).Parse();
+// Share the parser implementation between bundle loading and runtime updates.
+NO_INLINE LynxMLStyleParseResult ParseLynxMLStyle(
+    const std::string& style, const CompileOptions& compile_options) {
+  return StyleParserImpl(compile_options).Parse(style);
 }
 
 }  // namespace tasm

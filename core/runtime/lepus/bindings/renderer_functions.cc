@@ -103,6 +103,7 @@
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/shared_data/white_board_delegate.h"
+#include "core/template_bundle/lynxml/lynxml_style_parser.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_css_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 #include "core/value_wrapper/value_impl_lepus.h"
@@ -970,7 +971,57 @@ RENDERER_FUNCTION_CC(AdoptStyleSheet) {
   RETURN_UNDEFINED();
 }
 
-RENDERER_FUNCTION_CC(ReplaceStyleSheets) { RETURN_UNDEFINED(); }
+RENDERER_FUNCTION_CC(ReplaceStyleSheets) {
+  CHECK_ARGC_EQ(ReplaceStyleSheets, 1);
+  CONVERT_ARG(arg0, 0);
+  if (!arg0->IsArrayOrJSArray()) {
+    LOGI("ReplaceStyleSheets: Expected an array");
+    RETURN(lepus::Value(false));
+  }
+  auto* tasm = GET_TASM_POINTER();
+  if (!tasm) RETURN_UNDEFINED();
+
+  // Validate and parse the whole update before changing the current set.
+  std::vector<fml::RefPtr<SharedCSSFragmentWrapper>> sheets;
+  for (int i = 0; i < arg0->GetLength(); ++i) {
+    const auto value = arg0->GetProperty(static_cast<uint32_t>(i));
+    if (value.IsString()) {
+      auto entry = tasm->FindTemplateEntry(DEFAULT_ENTRY_NAME);
+      if (!entry) RETURN(lepus::Value(false));
+      auto* base_fragment =
+          entry->GetStyleSheetManager()->GetCSSStyleSheetForComponent(0);
+      if (!entry->compile_options().enable_css_selector_ || !base_fragment ||
+          !base_fragment->enable_css_selector()) {
+        LOGI(
+            "ReplaceStyleSheets: CSS text requires a standard-selector base "
+            "stylesheet");
+        RETURN(lepus::Value(false));
+      }
+      auto result =
+          ParseLynxMLStyle(value.StdString(), entry->compile_options());
+      if (!result.success) {
+        LOGI("ReplaceStyleSheets: " << result.error);
+        RETURN(lepus::Value(false));
+      }
+      if (result.fragment) {
+        sheets.push_back(fml::MakeRefCounted<SharedCSSFragmentWrapper>(
+            std::move(result.fragment)));
+      }
+    } else if (value.IsRefCounted() && value.RefCounted() &&
+               value.RefCounted()->GetRefType() ==
+                   lepus::RefType::kCSSFragment) {
+      auto wrapper = fml::static_ref_ptr_cast<SharedCSSFragmentWrapper>(
+          value.RefCounted());
+      if (!wrapper->fragment_) RETURN(lepus::Value(false));
+      sheets.push_back(std::move(wrapper));
+    } else {
+      LOGI("ReplaceStyleSheets: Expected CSS text or stylesheet handles");
+      RETURN(lepus::Value(false));
+    }
+  }
+  RETURN(lepus::Value(tasm->page_proxy()->element_manager()->ReplaceStyleSheets(
+      std::move(sheets))));
+}
 
 /* NativeModule Lynx API END */
 
