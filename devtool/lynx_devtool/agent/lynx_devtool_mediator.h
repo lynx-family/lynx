@@ -220,6 +220,9 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_CDP_METHOD(LayerTreeDisable);
   DECLARE_DEVTOOL_CDP_METHOD(CompositingReasons);
 
+  void LynxInvokeUIMethod(const std::shared_ptr<CDPResponder>& responder,
+                          const Json::Value& params);
+
   // Animation domain -> tasm executor
   DECLARE_DEVTOOL_CDP_METHOD(AnimationEnable);
   DECLARE_DEVTOOL_CDP_METHOD(AnimationDisable);

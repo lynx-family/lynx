@@ -490,6 +490,10 @@ domains:
         origin: lynx-extension
         since: '4.1'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
+      - name: invokeUIMethod
+        origin: lynx-extension
+        since: '4.4'
+        source: devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.cc
       - name: sendVMEvent
         origin: lynx-extension
         since: '4.1'
