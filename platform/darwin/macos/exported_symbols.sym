@@ -18,6 +18,7 @@ _lynx_http_*
 _lynx_security_service_*
 _lynx_extension_module_*
 _lynx_vsync_observer_*
+_lynx_vsync_monitor_*
 _lynx_napi_*
 _lynx_event_reporter_service_*
 _lynx_free*
