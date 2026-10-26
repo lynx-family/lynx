@@ -11,6 +11,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -57,6 +58,7 @@ import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.tasm.image.model.AnimationListener;
 import com.lynx.tasm.image.model.BitmapPostProcessor;
 import com.lynx.tasm.image.model.DiskCacheChoice;
+import com.lynx.tasm.image.model.ImageAnimationInfo;
 import com.lynx.tasm.image.model.ImageBlurPostProcessor;
 import com.lynx.tasm.image.model.ImageInfo;
 import com.lynx.tasm.image.model.ImageLoadListener;
@@ -68,6 +70,7 @@ import com.lynx.tasm.resourceprovider.media.OptionalBool;
 import com.lynx.tasm.utils.ColorUtils;
 import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.tasm.utils.UnitUtils;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -292,6 +295,9 @@ public class LynxImageManager implements Drawable.Callback {
   private long mStartTimeStamp = 0;
 
   private long mFinishTimeStamp = 0;
+  // The backend reports a frame only after drawing it; never infer it from playback commands.
+  private WeakReference<Drawable> mFrameDrawable = new WeakReference<>(null);
+  private Integer mCurrentFrame;
 
   private static class ImageRequestHandle implements ImageLoadListener {
     private final ImageLoadListener mSrcLoadListenerImpl;
@@ -490,6 +496,15 @@ public class LynxImageManager implements Drawable.Callback {
     public void onAnimationCurrentLoop(Drawable drawable) {
       if (shouldEmitCurrentLoopEvent()) {
         sendCustomEvent(EVENT_CURRENT_LOOP_COMPLETE);
+      }
+    }
+    @Override
+    public void onAnimationFrame(Drawable drawable, int frameNumber) {
+      if (mImageDrawable != null && drawable == mImageDrawable.getAnimDrawable()) {
+        if (mFrameDrawable.get() != drawable) {
+          mFrameDrawable = new WeakReference<>(drawable);
+        }
+        mCurrentFrame = frameNumber;
       }
     }
   };
@@ -1198,7 +1213,8 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void tryFetchImageFromService(int width, int height) {
     AnimationListener animationListener =
-        (shouldEmitFinalLoopEvent() || shouldEmitStartPlayEvent() || shouldEmitCurrentLoopEvent())
+        (shouldEmitFinalLoopEvent() || shouldEmitStartPlayEvent() || shouldEmitCurrentLoopEvent()
+            || LynxEnv.inst().isDevtoolEnabled())
         ? mAnimationListener
         : null;
     ImageRequestInfo requestInfo = createImageRequest(width, height, mSrc, true);
@@ -1781,6 +1797,30 @@ public class LynxImageManager implements Drawable.Callback {
 
   public Boolean getHasContent() {
     return mImageDrawable != null || mPlaceholderDrawable != null;
+  }
+
+  private Drawable getAnimationDrawable() {
+    return mImageDrawable == null ? null : mImageDrawable.getAnimDrawable();
+  }
+
+  Integer getCurrentFrame() {
+    Drawable drawable = getAnimationDrawable();
+    return drawable != null && mFrameDrawable.get() == drawable ? mCurrentFrame : null;
+  }
+
+  Integer getFrameCount() {
+    ImageAnimationInfo info = mImageLoader.getAnimationInfo(getAnimationDrawable());
+    return info == null ? null : info.getFrameCount();
+  }
+
+  Long getDuration() {
+    ImageAnimationInfo info = mImageLoader.getAnimationInfo(getAnimationDrawable());
+    return info == null ? null : info.getLoopDurationMs();
+  }
+
+  boolean isAnimating() {
+    Drawable drawable = getAnimationDrawable();
+    return drawable instanceof Animatable && ((Animatable) drawable).isRunning();
   }
 
   private void setSmoothAnimation(boolean enable) {
