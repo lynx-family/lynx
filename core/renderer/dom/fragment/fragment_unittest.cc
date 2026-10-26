@@ -252,6 +252,16 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
   }
 };
 
+class TestResizablePaintImage : public PaintImage {
+ public:
+  TestResizablePaintImage(int32_t key, const bool* can_reuse)
+      : PaintImage(key), can_reuse_(can_reuse) {}
+  bool CanReuseOnResize() const override { return *can_reuse_; }
+
+ private:
+  const bool* can_reuse_;
+};
+
 // Adapter that exposes the NativePaintingContext interface expected by
 // Fragment::Draw() and forwards to a TestNativePaintingCtxPlatformRef.
 class TestNativePaintingContext : public NativePaintingContext {
@@ -333,7 +343,8 @@ class TestNativePaintingContext : public NativePaintingContext {
          paint_info.cap_insets_scale, paint_info.skip_redirection,
          paint_info.autoplay, paint_info.loop_count, width, height, event_mask,
          disable_default_resize, paint_info.is_background, image_key});
-    return fml::MakeRefCounted<PaintImage>(image_key);
+    return fml::MakeRefCounted<TestResizablePaintImage>(
+        image_key, &can_reuse_image_on_resize_);
   }
   void UpdateTextBundle(int id, intptr_t bundle) override {}
   void DestroyTextBundle(int id) override {}
@@ -355,6 +366,7 @@ class TestNativePaintingContext : public NativePaintingContext {
   std::vector<std::vector<int>> display_list_batch_ids;
   std::vector<CreatedImage> created_images_;
   bool fail_image_creation_{false};
+  bool can_reuse_image_on_resize_{false};
 
  private:
   TestNativePaintingCtxPlatformRef* ref_ = nullptr;
@@ -1947,6 +1959,75 @@ TEST_F(FragmentTest, ImageReloadIgnoresOnePhysicalPixelJitter) {
   }
 }
 
+TEST_F(FragmentTest, ImageResizeReusesOnlyCompatibleRequests) {
+  manager->GetLynxEnvConfig().UpdateDevicePixelRatio(3.f);
+  for (bool can_reuse : {false, true}) {
+    for (bool downsampling : {false, true}) {
+      SCOPED_TRACE(can_reuse);
+      SCOPED_TRACE(downsampling);
+      auto element = manager->CreateFiberImage("image");
+      element->SetAttributeInternal("src", lepus::Value("image-src://resize"));
+      // Exercise the platform opt-in independently of attribute support.
+      element->paint_info_.downsampling = downsampling;
+      Fragment fragment(element.get());
+      fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+      TestNativePaintingContext context;
+      context.can_reuse_image_on_resize_ = can_reuse;
+      fragment.behavior_->painting_context_ = &context;
+      size_t expected_requests = 0;
+      auto update = [&](float width, float height, bool reload) {
+        starlight::LayoutResultForRendering layout;
+        layout.size_ = FloatSize(width, height);
+        fragment.UpdateLayout(layout);
+        fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+        DisplayListBuilder builder;
+        fragment.OnDraw(builder);
+        auto list = builder.Build();
+        expected_requests += reload;
+        ASSERT_EQ(context.created_images_.size(), expected_requests);
+        ASSERT_EQ(list.Images().size(), 1u);
+        EXPECT_EQ(list.Images()[0]->image_key_,
+                  context.created_images_.back().image_key);
+        std::vector<DisplayListItem> boxes;
+        bool drew_image = false;
+        for (const auto& item : CollectDisplayListItems(list)) {
+          if (item.type == DisplayListOpType::kRecordBox) {
+            boxes.push_back(item);
+          } else if (item.type == DisplayListOpType::kImage) {
+            ASSERT_LT(item.payload.image.box_index, boxes.size());
+            const auto& box =
+                boxes[item.payload.image.box_index].payload.record_box;
+            EXPECT_FLOAT_EQ(box.w, width);
+            EXPECT_FLOAT_EQ(box.h, height);
+            drew_image = true;
+          }
+        }
+        EXPECT_TRUE(drew_image);
+      };
+      update(100, 80, true);
+      update(50, 40, !can_reuse);
+      update(90, 70, !can_reuse);
+      update(100.f + 1.f / 3.f, 70, !can_reuse);
+      update(200, 160, !can_reuse || downsampling);
+      // Growth in either dimension requires a larger downsampled request.
+      update(150, 200, !can_reuse || downsampling);
+      update(0, 0, true);
+      update(100, 80, true);
+      element->SetAttributeInternal("src", lepus::Value("image-src://next"));
+      update(50, 40, true);
+      element->SetAttributeInternal("mode", lepus::Value("aspectFit"));
+      update(40, 30, true);
+      element->SetAttributeInternal("auto-size", lepus::Value(true));
+      update(40, 30, true);
+      update(30, 20, true);
+      element->ResetAttribute(base::String("auto-size"));
+      // A failed request or newly configured custom fetcher disables reuse.
+      context.can_reuse_image_on_resize_ = false;
+      update(20, 10, true);
+    }
+  }
+}
+
 TEST_F(FragmentTest, ImageReloadHandlesThreePixelScaleAndZeroSize) {
   manager->GetLynxEnvConfig().UpdateDevicePixelRatio(3.f);
   auto element = manager->CreateFiberImage("image");
@@ -2246,6 +2327,96 @@ TEST_F(FragmentTest, ImageSrcResetCreatesEmptyReplacement) {
   ASSERT_NE(updated_list.Images()[0], nullptr);
   EXPECT_EQ(updated_list.Images()[0]->image_key_,
             native_painting_context.created_images_.back().image_key);
+}
+
+TEST_F(FragmentTest, ImagePlaceholderLoadsAndClearsWithoutSource) {
+  auto element = manager->CreateFiberImage("image");
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+  TestNativePaintingContext context;
+  fragment.behavior_->painting_context_ = &context;
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment.UpdateLayout(layout);
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+  EXPECT_TRUE(context.created_images_.empty());
+
+  for (const char* placeholder : {"image-src://first", "image-src://second"}) {
+    element->SetAttributeInternal("placeholder", lepus::Value(placeholder));
+    fragment.UpdatePaintingNode(true, nullptr);
+    EXPECT_TRUE(fragment.NeedRedraw());
+    DisplayListBuilder builder;
+    fragment.OnDraw(builder);
+    ASSERT_FALSE(context.created_images_.empty());
+    EXPECT_TRUE(context.created_images_.back().src.empty());
+    EXPECT_EQ(context.created_images_.back().placeholder, placeholder);
+    EXPECT_EQ(builder.Build().Images().size(), 1u);
+  }
+  ASSERT_EQ(context.created_images_.size(), 2u);
+  element->ResetAttribute(base::String("placeholder"));
+  fragment.UpdatePaintingNode(true, nullptr);
+  EXPECT_TRUE(fragment.NeedRedraw());
+  DisplayListBuilder builder;
+  fragment.OnDraw(builder);
+  ASSERT_EQ(context.created_images_.size(), 3u);
+  EXPECT_TRUE(context.created_images_.back().placeholder.empty());
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+  EXPECT_EQ(context.created_images_.size(), 3u);
+}
+
+TEST_F(FragmentTest, ImageRequestAttributesReloadOnlyWhenChanged) {
+  auto element = manager->CreateFiberImage("image");
+  element->SetAttributeInternal("src", lepus::Value("image-src://initial"));
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+  TestNativePaintingContext context;
+  fragment.behavior_->painting_context_ = &context;
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment.UpdateLayout(layout);
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+  size_t requests = 1;
+  element->SetAttributeInternal("request-priority", lepus::Value("high"));
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+  EXPECT_EQ(context.created_images_.size(), requests);
+  const std::pair<const char*, lepus::Value> attributes[] = {
+      {"downsampling", lepus::Value(true)},
+      {"prefetch-width", lepus::Value("120px")},
+      {"prefetch-height", lepus::Value("80px")}};
+  for (const auto& [key, value] : attributes) {
+    SCOPED_TRACE(key);
+    element->SetAttributeInternal(key, value);
+    fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+    if constexpr (GetOSType() == OSType::kIOS) {
+      ++requests;
+    }
+    EXPECT_EQ(context.created_images_.size(), requests);
+    element->SetAttributeInternal(key, value);
+    fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+    EXPECT_EQ(context.created_images_.size(), requests);
+  }
+  const auto& info = static_cast<ImageElement*>(element.get())->paint_info();
+  if constexpr (GetOSType() == OSType::kIOS) {
+    EXPECT_TRUE(info.downsampling);
+    EXPECT_EQ(info.request_priority, "high");
+    EXPECT_EQ(info.prefetch_width, "120px");
+    EXPECT_EQ(info.prefetch_height, "80px");
+  } else {
+    EXPECT_EQ(info, ImagePaintInfo());
+  }
+  for (const auto& [key, value] : attributes) {
+    element->ResetAttribute(base::String(key));
+    fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+    if constexpr (GetOSType() == OSType::kIOS) {
+      ++requests;
+    }
+    EXPECT_EQ(context.created_images_.size(), requests);
+  }
+  element->ResetAttribute(base::String("request-priority"));
+  fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+  EXPECT_EQ(context.created_images_.size(), requests);
+  EXPECT_TRUE(info.request_priority.empty());
+  EXPECT_EQ(info, ImagePaintInfo());
 }
 
 TEST_F(FragmentTest, ImageUpdateRetriesAfterFailedCreation) {
