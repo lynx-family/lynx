@@ -27,6 +27,7 @@ class LynxVSyncMonitor : public base::VSyncMonitorPlatformImpl,
       : c_monitor_(c_monitor) {}
   ~LynxVSyncMonitor() override;
   void RequestVSync(Callback callback) override;
+  lynx_vsync_monitor_t* GetCMonitor() const { return c_monitor_; }
 
  private:
   static void OnVSync(void* user_data, int64_t frame_start_time,

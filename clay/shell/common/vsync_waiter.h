@@ -8,6 +8,7 @@
 #ifndef CLAY_SHELL_COMMON_VSYNC_WAITER_H_
 #define CLAY_SHELL_COMMON_VSYNC_WAITER_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -15,6 +16,7 @@
 
 #include "base/include/fml/time/time_point.h"
 #include "clay/common/task_runners.h"
+#include "clay/common/vsync_callback.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/shell/common/variable_refresh_rate_reporter.h"
 namespace clay {
@@ -40,7 +42,7 @@ class VsyncWaiter : public VariableRefreshRateReporter,
 
   bool HasCallback() { return !!callback_; }
   void ResetCallback() { callback_ = nullptr; }
-  void ResetPendingCallbacks();
+  virtual void ResetPendingCallbacks();
 
   bool InsideVsync() const { return inside_vsync_; }
   void SetEngineIsActive(bool active) { engine_is_active_ = active; }
@@ -101,6 +103,23 @@ class VsyncWaiter : public VariableRefreshRateReporter,
   AWaitVSyncCallback await_vsync_callback_;
 
   BASE_DISALLOW_COPY_AND_ASSIGN(VsyncWaiter);
+};
+
+// Uses only the supplied source. A source that does not reply leaves the frame
+// pending; it never falls back to a display timer.
+class VsyncWaiterCustom final : public VsyncWaiter {
+ public:
+  using SignalCallback = VsyncSignalCallback;
+  using RequestCallback = VsyncRequestCallback;
+
+  VsyncWaiterCustom(fml::RefPtr<fml::TaskRunner> task_runner,
+                    RequestCallback request);
+  void ResetPendingCallbacks() override;
+
+ private:
+  void AwaitVSync() override;
+  RequestCallback request_;
+  uint64_t request_generation_ = 0;
 };
 
 }  // namespace clay

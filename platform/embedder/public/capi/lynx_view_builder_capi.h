@@ -12,6 +12,7 @@
 #include "lynx_group_capi.h"
 #include "lynx_native_module_capi.h"
 #include "lynx_native_view_capi.h"
+#include "lynx_vsync_monitor_capi.h"
 #include "lynx_windowless_renderer_capi.h"
 
 LYNX_EXTERN_C_BEGIN
@@ -47,6 +48,21 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_frame(lynx_view_builder_t*,
 // reduce it by 20%.
 LYNX_CAPI_EXPORT void lynx_view_builder_set_font_scale(lynx_view_builder_t*,
                                                        const float& scale);
+
+// Sets a custom VSync source before lynx_view_create. Drives script and core
+// animation VSync without a system-clock fallback. With a Clay windowless
+// renderer, also drives asynchronous raster VSync from initialization.
+// Forced frames are unchanged. Host requests may arrive from
+// different threads; reply with monotonic start and target timestamps in
+// nanoseconds, matching Lynx's monotonic clock origin. Requests may arrive
+// before lynx_view_create returns; bind the callback before creating the view.
+// Ownership of a non-null monitor transfers to the builder. The builder and all
+// views created from it share the source. Replacing, clearing, or releasing the
+// builder does not change existing views. The monitor is released when the last
+// reference to its source is released. Do not assign the same monitor handle to
+// multiple builders or reuse it after replacing or clearing it.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_custom_vsync_monitor(
+    lynx_view_builder_t* builder, lynx_vsync_monitor_t* monitor);
 
 // Controls whether the LynxView creates and runs a JavaScript runtime.
 LYNX_CAPI_EXPORT void lynx_view_builder_set_enable_js_runtime(

@@ -4,12 +4,14 @@
 #ifndef PLATFORM_EMBEDDER_LYNX_VIEW_BUILDER_PRIV_H_
 #define PLATFORM_EMBEDDER_LYNX_VIEW_BUILDER_PRIV_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
 
+#include "platform/embedder/lynx_vsync_monitor_priv.h"
 #include "platform/embedder/public/capi/lynx_env_capi.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_group_capi.h"
@@ -32,6 +34,8 @@ struct lynx_view_builder_t {
   } frame;
   float font_scale = 1.0;
   std::optional<uint32_t> default_background_color;
+  std::shared_ptr<lynx::embedder::LynxVSyncMonitor> custom_vsync_monitor;
+
   bool enable_js_runtime = true;
   std::string icu_data_path;
   std::string webview2_fixed_runtime_path;

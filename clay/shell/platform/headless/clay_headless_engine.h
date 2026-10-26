@@ -12,6 +12,7 @@
 #include "base/include/fml/macros.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/common/task_runners.h"
+#include "clay/common/vsync_callback.h"
 #include "clay/public/clay.h"
 #include "clay/shell/platform/embedder/embedder_engine.h"
 #include "clay/shell/platform/embedder/platform_view_embedder_delegate.h"
@@ -32,7 +33,7 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
       const char* icu_data_path,
       const ClayHeadlessRendererConfig* renderer_config,
       const ClayTaskRunnerDescription* platform_task_runner_description,
-      void* user_data);
+      void* user_data, VsyncRequestCallback custom_vsync_request = {});
   ~ClayHeadlessEngine() override;
 
   bool IsValid() const;
@@ -78,7 +79,7 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
       const char* icu_data_path,
       const ClayHeadlessRendererConfig* renderer_config,
       const ClayTaskRunnerDescription* platform_task_runner_description,
-      void* user_data);
+      void* user_data, VsyncRequestCallback custom_vsync_request);
   bool StopEngine();
 
   const char* GetClipboardData() const;

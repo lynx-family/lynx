@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "platform/embedder/lynx_view_builder_priv.h"
+#include "platform/embedder/lynx_vsync_monitor_priv.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/weak-node-api/headers/node_api.h"
 
@@ -56,4 +57,84 @@ TEST(LynxViewBuilder, Create) {
 
   lynx_view_builder_release(builder);
   lynx_group_release(group);
+}
+
+TEST(LynxViewBuilder, CustomVSyncFinalizesUnusedAndReplacedMonitors) {
+  int finalized = 0;
+  auto create = [&] {
+    return lynx_vsync_monitor_create_with_finalizer(
+        &finalized, [](auto*, void* data) { ++*static_cast<int*>(data); });
+  };
+  auto* builder = lynx_view_builder_create();
+  auto* first = create();
+  lynx_view_builder_set_custom_vsync_monitor(builder, first);
+  lynx_view_builder_set_custom_vsync_monitor(builder, first);
+  EXPECT_EQ(finalized, 0);
+  lynx_view_builder_set_custom_vsync_monitor(builder, create());
+  EXPECT_EQ(finalized, 1);
+  lynx_view_builder_set_custom_vsync_monitor(builder, nullptr);
+  EXPECT_EQ(finalized, 2);
+  lynx_view_builder_set_custom_vsync_monitor(builder, create());
+  lynx_view_builder_release(builder);
+  EXPECT_EQ(finalized, 3);
+}
+
+TEST(LynxViewBuilder, CustomVSyncSurvivesBuilderReplacementAndSharing) {
+  struct State {
+    int requests = 0;
+    int finalized = 0;
+  } first, replacement;
+  auto create = [](State* state) {
+    auto* monitor = lynx_vsync_monitor_create_with_finalizer(
+        state,
+        [](auto*, void* data) { ++static_cast<State*>(data)->finalized; });
+    lynx_vsync_monitor_bind_request_vsync_func(
+        monitor, [](auto* monitor, auto callback, void* context) {
+          auto* state =
+              static_cast<State*>(lynx_vsync_monitor_get_user_data(monitor));
+          ++state->requests;
+          callback(context, 10, 20);
+        });
+    return monitor;
+  };
+  std::shared_ptr<lynx::embedder::LynxVSyncMonitor> source;
+  std::shared_ptr<lynx::embedder::LynxVSyncMonitor> second_source;
+  std::shared_ptr<lynx::embedder::LynxVSyncMonitor> replacement_source;
+  {
+    auto* builder = lynx_view_builder_create();
+    lynx_view_builder_set_custom_vsync_monitor(builder, create(&first));
+    // Retain the source as views do when copying the builder settings.
+    source = builder->custom_vsync_monitor;
+    second_source = builder->custom_vsync_monitor;
+    lynx_view_builder_set_custom_vsync_monitor(builder, create(&replacement));
+    replacement_source = builder->custom_vsync_monitor;
+    lynx_view_builder_set_custom_vsync_monitor(builder, nullptr);
+    lynx_view_builder_release(builder);
+  }
+  EXPECT_EQ(first.finalized, 0);
+  EXPECT_EQ(replacement.finalized, 0);
+  int signals = 0;
+  {
+    ASSERT_NE(source, nullptr);
+    ASSERT_EQ(source, second_source);
+    ASSERT_NE(source, replacement_source);
+    ASSERT_NE(replacement_source, nullptr);
+    for (const auto& monitor : {source, second_source, replacement_source}) {
+      monitor->RequestVSync([&](int64_t start, int64_t target) {
+        EXPECT_EQ(start, 10);
+        EXPECT_EQ(target, 20);
+        ++signals;
+      });
+    }
+  }
+  EXPECT_EQ(first.requests, 2);
+  EXPECT_EQ(replacement.requests, 1);
+  EXPECT_EQ(signals, 3);
+  source.reset();
+  EXPECT_EQ(first.finalized, 0);
+  second_source.reset();
+  EXPECT_EQ(first.finalized, 1);
+  EXPECT_EQ(replacement.finalized, 0);
+  replacement_source.reset();
+  EXPECT_EQ(replacement.finalized, 1);
 }
