@@ -46,6 +46,8 @@ static NSString *const DisplayModeAuto = @"auto";
 @property(nonatomic, assign) BOOL enableMultiThreadAccelerate;
 @property(nonatomic, assign) BOOL ignoreAttachStatus;
 
+@property(nonatomic, copy) NSString *frameCountSource;
+@property(nonatomic, strong) NSNumber *frameCount;
 @property(nonatomic, strong) NSString *displayMode;
 @property(nonatomic, strong) NSString *tag;
 
@@ -137,6 +139,7 @@ LYNX_PROP_SETTER("src", src, NSString *) {
         if (!self) {
           return;
         }
+        [self resetFrameCount:[@"src:" stringByAppendingString:value]];
         [player setSrc:value];
         [self reportMotionEvent:value];
       }
@@ -154,6 +157,7 @@ LYNX_PROP_SETTER("src-format", srcFormat, NSString *) {
         if (!self) {
           return;
         }
+        [self resetFrameCount:[@"src:" stringByAppendingString:value]];
         [player setSrc:value];
         [self reportMotionEvent:value];
       }
@@ -182,6 +186,7 @@ LYNX_PROP_SETTER("json", json, NSString *) {
         if (!self) {
           return;
         }
+        [self resetFrameCount:[@"json:" stringByAppendingString:value]];
         [player setJson:value];
         [self reportMotionEvent:value];
       }
@@ -398,6 +403,24 @@ LYNX_UI_METHOD(pause) {
   [self.animaxPlayer pause];
   if (callback) {
     callback(kUIMethodSuccess, nil);
+  }
+}
+
+// Total frames arrive with readiness; discard them only when the resource changes.
+- (void)resetFrameCount:(NSString *)source {
+  if (![_frameCountSource isEqualToString:source]) {
+    _frameCountSource = [source copy];
+    _frameCount = nil;
+  }
+}
+
+LYNX_UI_METHOD(getFrameCount) {
+  if (callback) {
+    if (!self.context.devtoolEnabled) {
+      callback(kUIMethodMethodNotFound, nil);
+      return;
+    }
+    callback(kUIMethodSuccess, _frameCount ?: NSNull.null);
   }
 }
 
@@ -660,6 +683,7 @@ LYNX_UI_METHOD(playSegment) {
 }
 
 - (void)onReady:(NSDictionary *)params {
+  _frameCount = params[@"total"];
   [self sendEventToJS:@"ready" params:params];
 }
 
@@ -668,6 +692,7 @@ LYNX_UI_METHOD(playSegment) {
 }
 
 - (void)onError:(NSDictionary *)params {
+  _frameCount = nil;
   [self sendEventToJS:@"error" params:params];
   [self showLogBox:params level:LynxErrorLevelError];
 }
