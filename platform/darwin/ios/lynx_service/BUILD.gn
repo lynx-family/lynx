@@ -125,9 +125,13 @@ subspec_target("Http") {
 
 subspec_target("UnitTests") {
   test_subspec = true
-  sources = [ "http/LynxNSUrlSessionDelegateUnitTest.m" ]
+  sources = [
+    "http/LynxNSUrlSessionDelegateUnitTest.m",
+    "image/LynxImageServiceUnitTest.m",
+  ]
   dependency = [
     "LynxService/Http",
+    "LynxService/Image",
     "XcodeCoverage",
   ]
 }

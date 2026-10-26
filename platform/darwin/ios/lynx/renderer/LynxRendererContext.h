@@ -34,6 +34,7 @@ struct ImagePaintInfo;
 #endif
 
 - (LynxImageManager *)imageManagerForID:(int32_t)imageManagerID;
+- (LynxImageManager *)imageManagerForSign:(int32_t)sign;
 
 - (void)destroyImage:(int32_t)imageKey;
 
