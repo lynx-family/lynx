@@ -30,14 +30,15 @@ inline constexpr char kRuntimeGroupId[] = "groupId";
 // Caches page memory by source and emits scheduled observations plus one
 // early summary. GlobalMemoryMonitor owns process snapshots and residency.
 //
-// Monitoring questions and query contract, schema_version=10:
+// Monitoring questions and query contract, schema_version=11:
 // - lynxsdk_performance_entry_memory_v2: Q1/Q2 page observations.
 // - lynxsdk_memory_page_residency: Q3.1 fixed 10min lifecycle cohorts.
 // - lynxsdk_memory_page: Q3.2/Q4 periodic active-page samples.
 // - lynxsdk_memory_vm_stat: Q5.1/Q5.2/Q9.1 periodic all-engine VM samples.
 // - lynxsdk_memory_vm_quickjs: Q5.3/Q9.2/Q10 QuickJS-only data.
 // - lynxsdk_memory_page_residual: Q6 periodic positive-residual PPS samples.
-// - lynxsdk_memory_persistence: Q7 all-trigger endpoint byte-time samples.
+// - lynxsdk_memory_persistence: Q7.1 VM endpoints; Q7.2 slot residual
+// integrals.
 // - lynxsdk_memory_process: process accounting and Q8 PSS milestones.
 // - lynxsdk_memory_mts_pool: Q11 bundle-local MTS pool samples.
 // Event production owns fixed trigger and data-availability gates. Queries
@@ -88,9 +89,16 @@ inline constexpr char kRuntimeGroupId[] = "groupId";
 //    Both sums require the same rows with a present, positive weight.
 //    Zero, pending, reserved and untracked slots never enter the residual draw.
 //    Pending pages do not invalidate confirmed samples.
-// Q7 Which memory persists? The persistence event contains VM/exited-page-key
-//    byte-time terms over all trigger endpoints, capped at 5min and clipped to
-//    creation/exit. Field presence is the source-specific validity gate.
+// Q7 Which memory persists? Both questions use lynxsdk_memory_persistence;
+//    field presence is the source-specific validity gate.
+//    Q7.1: VM heap byte-time, grouped by vm_name/vm_runtime_type.
+//    A=SUM(vm_attributed_heap_byte_ms). All-trigger snapshot endpoints are
+//    capped at 5min and clipped to VM creation.
+//    Q7.2: exited-page residual byte-time, grouped by leak_page_key.
+//    A=SUM(leak_page_attributed_byte_ms). Integrate confirmed slot bytes from
+//    the first post-exit full GC to later GCs/destruction with no cap; drain
+//    each pending area once using an independent area-PPS draw. Include
+//    residual-only rows emitted at VM destruction.
 // Q8 What is Lynx's measured share at 1/2/3GiB? Process events require positive
 //    PSS and complete synchronous VM collection. Group ratios by RAM/milestone.
 //    A ratio percentile is not the ratio of separate memory percentiles.

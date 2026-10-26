@@ -318,7 +318,7 @@ void MemoryMonitor::AddCommonProps(report::MoveOnlyEvent& event) {
   // - MTS and page-attributed BTS can still be absent because an engine does
   //   not expose them. Use mts_context_type and bts_runtime_type for those
   //   cohorts instead of treating absent records as a separate validity state.
-  event.SetProps("schema_version", 10);
+  event.SetProps("schema_version", kMemoryEventSchemaVersion);
   event.SetProps("lynx_ui_memory_enabled", GetSettings().lynx_ui.enabled != 0);
 }
 

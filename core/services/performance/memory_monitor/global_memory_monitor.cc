@@ -47,6 +47,22 @@ bool SameOwner(const std::weak_ptr<runtime::js::VMInstance>& a,
   return !a.owner_before(b) && !b.owner_before(a);
 }
 
+void AccumulateResidualSlots(BtsVmState& state, int64_t until_ms) {
+  if (until_ms <= state.full_gc_at_ms) return;
+  const double duration = until_ms - state.full_gc_at_ms;
+  for (size_t slot = fml::JSMemoryTrackSlotType::Overflow + 1;
+       slot < state.residual_slots.size(); ++slot) {
+    auto& residual = state.residual_slots[slot];
+    // The first full GC strictly after exit establishes the baseline. Late
+    // exit delivery starts at the last saved GC; unavailable history is not
+    // reconstructed. Same-ms capture/exit ordering cannot certify residuals.
+    if (residual.exited_at_ms >= 0 &&
+        state.full_gc_at_ms > residual.exited_at_ms) {
+      residual.pending_byte_ms += state.full_gc_slots[slot] * duration;
+    }
+  }
+}
+
 void StoreSample(BtsVmState& state, const BtsMemorySample& sample) {
   // Ordinary callbacks refresh current heap/slots. Only a valid, newer full
   // GC replaces residual evidence; notification arrival order is irrelevant.
@@ -59,6 +75,7 @@ void StoreSample(BtsVmState& state, const BtsMemorySample& sample) {
     state.memory_slots = sample.slots;
     if (sample.is_full_gc && sample.heap_valid &&
         sample.measured_at_ms > state.full_gc_at_ms) {
+      AccumulateResidualSlots(state, sample.measured_at_ms);
       state.full_gc_slots = sample.slots;
       state.full_gc_at_ms = sample.measured_at_ms;
     }
@@ -263,6 +280,12 @@ void GlobalMemoryMonitor::OnInstanceDestroyed(int32_t id, int64_t at_ms) {
     if (vm && state.bts_expected && !fml::IsValidInstanceSlot(state.slot)) {
       vm->has_untracked_exited_pages = true;
     }
+    if (vm && fml::IsValidInstanceSlot(state.slot)) {
+      if (vm->residual_slots.size() <= static_cast<size_t>(state.slot)) {
+        vm->residual_slots.resize(state.slot + 1);
+      }
+      vm->residual_slots[state.slot].exited_at_ms = at_ms;
+    }
     // A valid slot implies tracking, but standalone VMs are not in this table.
     // Residual events read shared VM slots, never the exited page's usage.
     // MemoryMonitor owns its planned-sample summary, so cleanup need not wait
@@ -273,12 +296,23 @@ void GlobalMemoryMonitor::OnInstanceDestroyed(int32_t id, int64_t at_ms) {
   });
 }
 
-void GlobalMemoryMonitor::OnBtsVMDestroy(runtime::js::VMInstance* vm) {
-  fml::TaskRunner::RunNowOrPostTask(ReportRunner(), [this, vm] {
+void GlobalMemoryMonitor::OnBtsVMDestroy(runtime::js::VMInstance* vm,
+                                         int64_t at_ms) {
+  fml::TaskRunner::RunNowOrPostTask(ReportRunner(), [this, vm, at_ms] {
     const auto state = std::find_if(
         bts_vm_state_.begin(), bts_vm_state_.end(),
         [vm](const auto& candidate) { return candidate->vm_ptr == vm; });
     if (state == bts_vm_state_.end()) return;
+    // VM destruction ends the last held residual segment. Emit before
+    // removing the slot/page identities; no engine or page is kept alive.
+    AccumulateResidualSlots(**state, at_ms);
+    if (auto event = TakeResidualPersistenceEvent(state->get())) {
+      report::EventTracker::OnGlobalEvent(
+          [event = std::move(*event)](auto& target) mutable {
+            target = std::move(event);
+          });
+      report::EventTracker::Flush(0);
+    }
     bts_vm_state_.erase(state);
     for (auto it = instance_state_.begin(); it != instance_state_.end();) {
       if (it->second.bts_vm == vm && it->second.destroyed) {
@@ -288,6 +322,34 @@ void GlobalMemoryMonitor::OnBtsVMDestroy(runtime::js::VMInstance* vm) {
       }
     }
   });
+}
+
+std::optional<report::MoveOnlyEvent>
+GlobalMemoryMonitor::TakeResidualPersistenceEvent(BtsVmState* only_vm) {
+  MemoryReservoir picker;
+  const InstanceState* selected = nullptr;
+  for (const auto& item : instance_state_) {
+    const auto& page = item.second;
+    if (!page.destroyed || !fml::IsValidInstanceSlot(page.slot)) continue;
+    auto* vm = only_vm ? only_vm : FindVM(page.bts_vm);
+    if (!vm || vm->vm_ptr != page.bts_vm ||
+        static_cast<size_t>(page.slot) >= vm->residual_slots.size()) {
+      continue;
+    }
+    auto& area = vm->residual_slots[page.slot].pending_byte_ms;
+    if (picker.Consider(area, random_)) selected = &page;
+    // Each batch samples by area, so A_i / (A_i / SUM(A)) = SUM(A).
+    // Drain every candidate once, including those not selected.
+    area = 0;
+  }
+  if (!selected) return std::nullopt;
+  report::MoveOnlyEvent event;
+  event.SetName("lynxsdk_memory_persistence");
+  event.SetInstanceId(report::kUnknownInstanceId);
+  event.SetProps("schema_version", kMemoryEventSchemaVersion);
+  event.SetProps("leak_page_key", selected->page_key);
+  event.SetProps("leak_page_attributed_byte_ms", picker.total());
+  return event;
 }
 
 void GlobalMemoryMonitor::OnBtsVMMemoryUpdate(runtime::js::VMInstance* vm,
@@ -464,7 +526,7 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::TakeResidencyReports(
     report::MoveOnlyEvent event;
     event.SetName("lynxsdk_memory_page_residency");
     event.SetInstanceId(report::kUnknownInstanceId);
-    event.SetProps("schema_version", 10);
+    event.SetProps("schema_version", kMemoryEventSchemaVersion);
     event.SetProps("page_key", key);
     event.SetProps("residency_threshold_ms", kResidencyThresholdMs);
     event.SetProps("evaluated_page_count", count.evaluated);
@@ -762,7 +824,7 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     event.Reserve(32);
     event.SetName(name);
     event.SetInstanceId(report::kUnknownInstanceId);
-    event.SetProps("schema_version", 10);
+    event.SetProps("schema_version", kMemoryEventSchemaVersion);
     if (include_ui_scope) {
       event.SetProps("lynx_ui_memory_enabled",
                      MemoryMonitor::GetSettings().lynx_ui.enabled != 0);
@@ -774,7 +836,6 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
   size_t sampled_quickjs_pending_gc = 0, quickjs_count = 0;
   uint64_t mts_pool_runtime_count = 0;
   double sampled_quickjs_retained = 0;
-  bool retained_complete = true;
   const BtsVmState* sampled_vm = nullptr;
   const BtsVmState* sampled_quickjs = nullptr;
   const MTSRuntimePoolState* sampled_mts_pool = nullptr;
@@ -795,8 +856,6 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
       shared_heap += vm.heap_size;
       accounted += vm.heap_size;
     }
-    if (vm.slot_tracking_enabled && !vm.has_per_instance_data)
-      retained_complete = false;
   }
   for (const auto& item : instance_state_) {
     const auto& page = item.second;
@@ -808,7 +867,6 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
         // same-ms GC cannot establish post-exit residuals.
         if (vm->full_gc_at_ms <= page.exited_at_ms) {
           sampled_quickjs_pending_gc += vm == sampled_quickjs;
-          retained_complete = false;
           continue;
         }
         const double bytes = vm->full_gc_slots[page.slot];
@@ -981,8 +1039,12 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     event.SetProps("vm_selection_weight", vm_weight);
     events.push_back(std::move(event));
   }
-  // Q7 uses every snapshot as an endpoint. The presence of each area field is
-  // its source-specific validity gate.
+  // Residual Q7 drains only closed full-GC intervals, independently of Q6's
+  // current-byte draw and unrelated pages still awaiting their first GC.
+  // No extrapolation at report time: a GC captured before this report may be
+  // delivered afterward. Closing only at GC avoids overlap/backdating.
+  auto persistence = TakeResidualPersistenceEvent();
+  // VM heap Q7 remains an endpoint rectangle across consecutive snapshots.
   const bool interval_valid =
       previous_snapshot_at_ms_ > 0 &&
       snapshot.started_at_ms >= previous_snapshot_at_ms_;
@@ -991,30 +1053,21 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
         previous_snapshot_at_ms_, snapshot.started_at_ms - int64_t{300000});
     const bool vm_area_valid =
         sampled_vm && IsHeapAvailable(*sampled_vm, snapshot.failed_heap_vms);
-    const bool residual_area_valid = sampled_residual && retained_complete;
-    if (vm_area_valid || residual_area_valid) {
-      auto event = make_event("lynxsdk_memory_persistence");
-      if (vm_area_valid) {
-        const auto& vm = *sampled_vm;
-        const double weight = bts_vm_state_.size();
-        const auto duration = std::max<int64_t>(
-            0, snapshot.started_at_ms -
-                   std::max(interval_start, vm.created_at_ms));
-        event.SetProps("vm_name", vm.vm_name());
-        event.SetProps("vm_runtime_type", RuntimeName(vm.type));
-        event.SetProps("vm_attributed_heap_byte_ms",
-                       vm.heap_size * weight * duration);
-      }
-      if (residual_area_valid) {
-        const auto duration = std::max<int64_t>(
-            0, snapshot.started_at_ms -
-                   std::max(interval_start, sampled_residual->exited_at_ms));
-        event.SetProps("leak_page_key", sampled_residual->page_key);
-        event.SetProps("leak_page_attributed_byte_ms", retained * duration);
-      }
-      events.push_back(std::move(event));
+    if (vm_area_valid) {
+      if (!persistence) persistence = make_event("lynxsdk_memory_persistence");
+      auto& event = *persistence;
+      const auto& vm = *sampled_vm;
+      const double weight = bts_vm_state_.size();
+      const auto duration =
+          std::max<int64_t>(0, snapshot.started_at_ms -
+                                   std::max(interval_start, vm.created_at_ms));
+      event.SetProps("vm_name", vm.vm_name());
+      event.SetProps("vm_runtime_type", RuntimeName(vm.type));
+      event.SetProps("vm_attributed_heap_byte_ms",
+                     vm.heap_size * weight * duration);
     }
   }
+  if (persistence) events.push_back(std::move(*persistence));
 
   // Q5.3/Q10 use a QuickJS-only uniform draw. Q9.2 reuses the event name but
   // emits an independent row for the causative VM.

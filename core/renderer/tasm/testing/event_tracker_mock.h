@@ -23,6 +23,8 @@ class EventTrackerWaitableEvent {
   static std::shared_ptr<fml::AutoResetWaitableEvent> Await();
   static int32_t instance_id_;
   static std::vector<MoveOnlyEvent> stack_;
+  // Reporter-thread-only opt-in for replays spanning multiple flush batches.
+  static bool accumulate_events_;
   // Query storage must distinguish instances even when their URLs match.
   using InstanceParams =
       std::unordered_map<int32_t, std::unordered_map<std::string, std::string>>;

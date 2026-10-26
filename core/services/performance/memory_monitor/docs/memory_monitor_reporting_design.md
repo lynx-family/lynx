@@ -1,6 +1,6 @@
 # Global Memory Reporting Design
 
-This document describes the `schema_version=10` global memory event family. It
+This document describes the `schema_version=11` global memory event family. It
 covers process accounting, page residency, concurrent page groups, shared VMs,
 bundle-local MTS pools, post-exit residuals, and memory-pressure observations.
 
@@ -41,7 +41,7 @@ The monitor supports these questions:
 | `lynxsdk_memory_page` | Timer snapshot with an active-page sample | Q3.2 and Q4 |
 | `lynxsdk_memory_page_residency` | One or more due 10-minute observations | Q3.1 |
 | `lynxsdk_memory_page_residual` | Timer snapshot with a positive residual PPS sample | Q6 |
-| `lynxsdk_memory_persistence` | A valid interval with at least one valid area term | Q7 |
+| `lynxsdk_memory_persistence` | Valid VM endpoint area or pending residual integral; residual flush on VM destruction | Q7.1 VM heap byte-time and Q7.2 exited-page residual byte-time |
 | `lynxsdk_memory_vm_stat` | Timer snapshot with an all-engine VM sample | Q5.1, Q5.2, and Q9.1 |
 | `lynxsdk_memory_vm_quickjs` | `report_kind=sample` for usable timer data; `report_kind=slot_overflow` for a first overflow | Q5.3, Q9.2, and Q10 |
 | `lynxsdk_memory_mts_pool` | Timer snapshot with a bundle-local pool sample | Q11 |
@@ -283,9 +283,9 @@ field-absence contract because its heap is structurally unsupported.
 
 Residual totals and PPS samples contain only confirmed post-exit full-GC slots.
 Pending pages are reported separately and do not invalidate confirmed values.
-Residual byte-time fields are emitted only when the producer's internal
-residual-completeness check succeeds. No separate event-level completeness
-filter is required.
+Residual byte-time fields carry positive unreported integrals of confirmed
+slots, including historical area from slots now holding zero. Pending pages
+do not suppress these fields. No separate completeness filter is required.
 
 No field certifies freshness, simultaneous measurements, full widget coverage,
 or physical ownership. Missing MTS/BTS records lower the aggregate; use runtime
@@ -698,46 +698,67 @@ censoring, queueing, process termination, and delivery loss can omit them.
 
 ## 9. Byte-time boundaries
 
-Optional byte-time metrics use a snapshot-endpoint rectangle estimate, clipped
-to the entity's actual existence:
+### 9.1 VM heap byte-time (Q7.1)
+
+VM heap byte-time retains the snapshot-endpoint rectangle estimate, clipped
+to the VM's actual existence:
 
 ```text
 interval_start = max(previous_snapshot_start, current_snapshot_start - 300000)
-
-Exited page i:
-  dt_i = max(0, current_snapshot_start - max(interval_start, exit_i))
-  leak_page_attributed_byte_ms = (L_i * dt_i) / p_i = T * dt_i
 
 VM i:
   dt_i = max(0, current_snapshot_start - max(interval_start, creation_i))
   vm_attributed_heap_byte_ms = (H_i * dt_i) / p_i = H_i * V * dt_i
 ```
 
-The first snapshot has no preceding boundary. A selected VM with a failed heap
-query contributes no VM area; an incomplete residual endpoint contributes no
-residual area. Other valid sources remain usable. All snapshot trigger types
-define boundaries; residency events do not. Intervals use monotonic time and a
-5-minute cap, independent of foreground state.
+The first snapshot has no preceding VM boundary. A selected VM with a failed
+heap query contributes no VM area. All snapshot triggers split VM intervals;
+residency events do not. VM intervals have a 5-minute cap, independent of
+foreground state. Heap changes within an interval and VM destruction between
+snapshots remain limitations of this endpoint estimate.
 
-Residual endpoints use the latest qualifying full-GC value. A pending residual
-endpoint emits no complete residual area, and later snapshots do not fill that
-missing interval. This is not a continuous GC-to-GC integral.
+### 9.2 Exited-page residual byte-time (Q7.2)
 
-If a page exits 290 seconds after the preceding boundary and the next snapshot
-is at 300 seconds, its maximum residual interval is 10 seconds, not 300.
-Entity-specific clipping means one global duration cannot replace every dtᵢ.
+Exited-page residual byte-time instead integrates each tracked slot's
+confirmed full-GC step function. The first valid full GC strictly after page
+exit establishes the baseline. For consecutive accepted full GCs g[k], g[k+1]:
 
-Limits:
+```text
+pending_area[i] += full_gc_slots[i](g[k]) * (g[k+1] - g[k])
+A_i = all closed segments for page i not yet reported
+A = SUM(A_i)
+P(select i) = A_i / A
+leak_page_attributed_byte_ms = A_i / P(select i) = A
+```
 
-- Endpoint memory may have changed within the interval.
-- VMs destroyed between endpoints are absent, so transient area can be missed.
-- Allocations, GC, and exit ordering introduce approximation error.
-- Filtering to timer rows after all-trigger interval construction drops
-  intervals; it cannot produce a complete timer-based integral.
-- Byte-snapshot contribution, byte-time, and VM age are different metrics.
+`StoreSample` accumulates the OLD slot values before replacing the full-GC
+cache. Slot exit times and pending areas live in a lazily sized vector in
+`BtsVmState`; GC updates never scan the instance registry. At reporting, the
+reporter joins exited instances to their VM slots, draws independently by
+positive pending area, and drains every candidate exactly once. Q6 continues
+to draw by current residual bytes. A slot now holding zero remains eligible
+for Q7.2 if earlier segments contributed area. Other pages awaiting their first
+post-exit GC do not suppress those confirmed contributions.
 
-Complete lifecycle area would require additional boundary observations; these
-events do not claim to reconstruct it.
+Reports consume only closed GC intervals. They do not extrapolate to snapshot
+time, because a GC captured before a report can arrive afterward. The open
+segment is carried to the next GC. VM destruction closes the final segment at
+the captured destruction time and emits a residual-only persistence row before
+removing VM and exited-page metadata. Residual intervals have no 5-minute cap
+and can appear on the first report.
+
+Ordinary, invalid, duplicate, or older full-GC callbacks never create residual
+boundaries. When an exit notification arrives after full-GC delivery, the
+latest saved qualifying GC can establish its baseline; earlier unavailable
+segments are not reconstructed. Same-ms GC/exit order remains unqualified.
+Unknown/Common/Overflow are excluded.
+
+This is an integral of observed post-GC values, not of instantaneous physical
+memory. Delivery delay shifts contribution into a later event's time bucket;
+query windows can therefore receive segments beginning before that window.
+An open segment at abrupt process termination and lost telemetry cannot be
+recovered. Include all persistence rows, including VM-destruction rows.
+Byte-snapshot contribution, byte-time, and VM age are different metrics.
 
 ## 10. Bundle-local MTS pool sampling
 
@@ -798,7 +819,7 @@ Collection:
 Example 1GiB crossing query:
 
 ```text
-schema_version = 10
+schema_version = 11
 lynx_ui_memory_enabled = <fixed cohort>
 trigger_pss_previous_milestone_bytes < 1073741824
 trigger_pss_milestone_bytes >= 1073741824
