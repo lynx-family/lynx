@@ -264,7 +264,8 @@ void CSSKeyframeManager::AddParsedPropertyToNewAnimator(
 }
 
 fml::TimePoint CSSKeyframeManager::ProcessAnimationEvents(
-    fml::TimePoint& frame_time, bool dispatch_events) {
+    fml::TimePoint& frame_time, bool dispatch_events,
+    bool suppress_infinite_events) {
   auto next = fml::TimePoint::Max();
   // Retain animations during event dispatch, keeping the frame queue intact.
   base::InlineVector<std::shared_ptr<Animation>, 4> animations;
@@ -275,6 +276,11 @@ fml::TimePoint CSSKeyframeManager::ProcessAnimationEvents(
     }
   }
   for (const auto& animation : animations) {
+    if (suppress_infinite_events &&
+        animation->GetOrigin() == Animation::Origin::kCSSAnimation &&
+        animation->IsInfinite()) {
+      continue;
+    }
     auto time = animation->GetNextEventTime(frame_time);
     if (dispatch_events && time <= frame_time) {
       animation->TickEvents(frame_time);
@@ -372,6 +378,25 @@ AnimationBackendResult CSSKeyframeManager::EvaluatePlatformSupport(
     effect_result = result;
   }
   return effect_result;
+}
+
+void CSSKeyframeManager::SyncInfiniteAnimationEvents(
+    fml::TimePoint& frame_time) {
+  base::InlineVector<std::shared_ptr<Animation>, 4> animations;
+  animations.reserve(animations_map_.size());
+  for (const auto& entry : animations_map_) {
+    if (entry.second) {
+      animations.push_back(entry.second);
+    }
+  }
+  for (const auto& animation : animations) {
+    if (animation->GetOrigin() == Animation::Origin::kCSSAnimation &&
+        animation->IsInfinite()) {
+      // Advance event bookkeeping without dispatching events. This prevents
+      // all iterations crossed while paused from being replayed at resume.
+      animation->SampleAt(frame_time, true);
+    }
+  }
 }
 
 void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {

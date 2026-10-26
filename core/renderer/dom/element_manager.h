@@ -947,11 +947,13 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // frames.
   fml::TimePoint ProcessAnimationEvents(fml::TimePoint &time,
                                         bool dispatch_events);
+  void SyncInfiniteAnimationEvents(fml::TimePoint &time);
 
   // Permanently stop animation VSync when page destruction begins.
   void StopAnimationVsync();
 
-  // Pause animation and List frames without freezing animation event timelines.
+  // Pause animation and List frames and suppress infinite CSS animation event
+  // timers. Finite animation event timelines continue while frames are paused.
   void SetElementVsyncPaused(bool paused);
   bool IsElementVsyncPaused() const { return element_vsync_paused_; }
 
