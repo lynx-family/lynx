@@ -51,7 +51,9 @@ void ImageFragmentBehavior::OnAttributeUpdate(const fml::RefPtr<PropBundle>&) {
   const auto* image_element = static_cast<ImageElement*>(fragment_->element());
   const auto& current_src = image_element->src();
   if (image_url_ != current_src ||
-      (!current_src.empty() &&
+      ((!current_src.empty() ||
+        !image_element->paint_info().placeholder.empty() ||
+        !image_paint_info_.placeholder.empty()) &&
        image_paint_info_ != image_element->paint_info())) {
     fragment_->InvalidateForRedraw();
   }
@@ -89,13 +91,29 @@ bool ImageFragmentBehavior::UpdateImageIfNeeded(
                    pixels_per_unit <=
                1.;
   };
-  const bool same_size = same_dimension(image_width_, current_width) &&
-                         same_dimension(image_height_, current_height);
+  const bool same_width = same_dimension(image_width_, current_width);
+  const bool same_height = same_dimension(image_height_, current_height);
 
-  if (image_url_ == current_src &&
-      (current_src.empty() ||
-       (image_paint_info_ == current_paint_info && same_size))) {
-    return false;
+  if (image_url_ == current_src) {
+    if (current_src.empty() && current_paint_info.placeholder.empty() &&
+        image_paint_info_.placeholder.empty()) {
+      return false;
+    }
+    if (image_paint_info_ == current_paint_info) {
+      if (same_width && same_height) {
+        return false;
+      }
+      // Keep the last requested size: shrinking and growing back within it
+      // must not reload a downsampled image. Draw with the current layout.
+      if (paint_image_ && !current_paint_info.auto_size && image_width_ > 0 &&
+          image_height_ > 0 && current_width > 0 && current_height > 0 &&
+          (!current_paint_info.downsampling ||
+           ((current_width <= image_width_ || same_width) &&
+            (current_height <= image_height_ || same_height))) &&
+          paint_image_->CanReuseOnResize()) {
+        return false;
+      }
+    }
   }
 
   if (event_mask_ < 0) {

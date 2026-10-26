@@ -25,6 +25,12 @@ constexpr char kImageCapInsetsScale[] = "cap-insets-scale";
 constexpr char kImageSkipRedirection[] = "skip-redirection";
 constexpr char kImageAutoplay[] = "autoplay";
 constexpr char kImageLoopCount[] = "loop-count";
+// Only the iOS renderer consumes these request options.
+constexpr bool kSupportsRequestOptions = GetOSType() == OSType::kIOS;
+constexpr char kImageDownsampling[] = "downsampling";
+constexpr char kImageRequestPriority[] = "request-priority";
+constexpr char kImagePrefetchWidth[] = "prefetch-width";
+constexpr char kImagePrefetchHeight[] = "prefetch-height";
 
 BASE_STATIC_STRING_DECL(kModeAspectFit, "aspectFit");
 BASE_STATIC_STRING_DECL(kModeAspectFill, "aspectFill");
@@ -118,6 +124,17 @@ void ImageElement::ProcessAttributeForLayoutInElement(
     paint_info_.auto_size = has_auto_size;
   } else if (key.IsEqual(kSrc)) {
     url_ = value.String();
+  } else if (kSupportsRequestOptions && key.IsEqual(kImageDownsampling)) {
+    paint_info_.downsampling = value.IsBool() && value.Bool();
+  } else if (kSupportsRequestOptions && key.IsEqual(kImageRequestPriority)) {
+    paint_info_.request_priority =
+        value.IsString() ? value.String() : base::String();
+  } else if (kSupportsRequestOptions && key.IsEqual(kImagePrefetchWidth)) {
+    paint_info_.prefetch_width =
+        value.IsString() ? value.String() : base::String();
+  } else if (kSupportsRequestOptions && key.IsEqual(kImagePrefetchHeight)) {
+    paint_info_.prefetch_height =
+        value.IsString() ? value.String() : base::String();
   } else if (key.IsEqual(kImageMode)) {
     paint_info_.mode = value.IsString() ? ResolveImageFitMode(value.String())
                                         : ImageFitMode::kScaleToFill;
@@ -154,6 +171,14 @@ void ImageElement::ResetAttribute(const base::String& key) {
         UpdateNodeInfo(GetBuiltInNodeInfo());
       }
       paint_info_.auto_size = false;
+    } else if (kSupportsRequestOptions && key.IsEqual(kImageDownsampling)) {
+      paint_info_.downsampling = false;
+    } else if (kSupportsRequestOptions && key.IsEqual(kImageRequestPriority)) {
+      paint_info_.request_priority = base::String();
+    } else if (kSupportsRequestOptions && key.IsEqual(kImagePrefetchWidth)) {
+      paint_info_.prefetch_width = base::String();
+    } else if (kSupportsRequestOptions && key.IsEqual(kImagePrefetchHeight)) {
+      paint_info_.prefetch_height = base::String();
     } else if (key.IsEqual(kImageMode)) {
       paint_info_.mode = ImageFitMode::kScaleToFill;
     } else if (key.IsEqual(kImageBlurRadius)) {
