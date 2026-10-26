@@ -288,6 +288,13 @@ class LynxShell {
 
   void OnEnterBackground();
 
+  // Pause or resume timers, requestAnimationFrame and animation vsync of both
+  // the main thread and the background thread, without triggering lifecycle
+  // events.
+  void Pause();
+
+  void Resume();
+
   void UpdateI18nResource(const std::string& key, const std::string& new_data);
 
   // TODO(heshan):will be deleted, pass when ReportError
@@ -495,6 +502,8 @@ class LynxShell {
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_ =
       std::make_shared<tasm::PropBundleCreatorDefault>();
   AppState app_state_{AppState::kUnknown};
+  // Paused by Pause().
+  bool paused_{false};
 
   std::shared_ptr<EngineThreadSwitch> engine_thread_switch_;
 
@@ -510,6 +519,8 @@ class LynxShell {
 
   // Control animation and List frame scheduling independently of runtime rAF.
   void SetElementVsyncPaused(bool paused);
+
+  void SetPaused(bool paused);
 
   void SetUrl(const std::string& url);
 

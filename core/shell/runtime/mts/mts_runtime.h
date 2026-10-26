@@ -67,6 +67,8 @@ class MTSRuntime : private MTSContextHolder,
         std::unordered_map<std::string, std::string> mem_info) = 0;
 
     virtual fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() = 0;
+    // Whether timers and requestAnimationFrame are paused.
+    virtual bool IsPaused() { return false; }
 
     virtual void OnScriptingStart() = 0;
     virtual void OnScriptingEnd() = 0;

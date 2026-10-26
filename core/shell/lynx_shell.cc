@@ -383,6 +383,11 @@ void LynxShell::OnLynxEngineBuilt(
       engine_build_options_.enable_native_list_);
   element_manager->SetPropBundleCreator(prop_bundle_creator_);
   element_manager->SetThreadStrategy(current_strategy_);
+  engine_actor_->Act([lifecycle_paused = app_state_ == AppState::kBackground,
+                      paused = paused_](auto& engine) {
+    engine->SetElementVsyncPaused(lifecycle_paused);
+    engine->SetPaused(paused);
+  });
   if (element_manager->vsync_monitor()) {
     element_manager->vsync_monitor()->BindTaskRunner(
         runners_.GetTASMTaskRunner());
@@ -640,6 +645,7 @@ void LynxShell::InitRuntime(
       code_cache_source_url, runtime_flags, page_options_);
   runtime->SetMonitoringGroupLabel(std::move(monitoring_group_label));
   runtime->SetPageOptions(page_options_);
+  runtime->SetPaused(paused_);
   runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       std::move(runtime), js_task_runner, instance_id_, enable_runtime_);
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor_);
@@ -718,25 +724,27 @@ void LynxShell::AttachRuntime() {
 
     auto enqueue_info =
         tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-    runtime_actor_->ActAsync([facade_actor = facade_actor_,
-                              engine_actor = engine_actor_,
-                              card_cached_data_mgr = card_cached_data_mgr_,
-                              weak_js_bundle_holder = GetWeakJsBundleHolder(),
-                              enqueue_info, flow_id](auto& runtime) mutable {
-      runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-      (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
-                      // warning.
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, ATTACH_RUNTIME,
-                  [flow_id](lynx::perfetto::EventContext ctx) {
-                    ctx.event()->add_terminating_flow_ids(flow_id);
-                  });
+    runtime_actor_->ActAsync(
+        [facade_actor = facade_actor_, engine_actor = engine_actor_,
+         card_cached_data_mgr = card_cached_data_mgr_,
+         weak_js_bundle_holder = GetWeakJsBundleHolder(), paused = paused_,
+         enqueue_info, flow_id](auto& runtime) mutable {
+          runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+          (void)flow_id;  // Explicitly reference `flow_id` to suppress the
+                          // compiler warning.
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, ATTACH_RUNTIME,
+                      [flow_id](lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_terminating_flow_ids(flow_id);
+                      });
 
-      runtime->TransitionToFullRuntime();
-      runtime->SetJsBundleHolder(weak_js_bundle_holder);
-      static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
-          ->AttachToLynxShell(std::move(facade_actor), std::move(engine_actor),
-                              std::move(card_cached_data_mgr));
-    });
+          runtime->TransitionToFullRuntime();
+          runtime->SetJsBundleHolder(weak_js_bundle_holder);
+          runtime->SetPaused(paused);
+          static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
+              ->AttachToLynxShell(std::move(facade_actor),
+                                  std::move(engine_actor),
+                                  std::move(card_cached_data_mgr));
+        });
   }
 }
 
@@ -1628,12 +1636,8 @@ void LynxShell::SetElementVsyncPaused(bool paused) {
   if (IsDestroyed() || !engine_actor_) {
     return;
   }
-  engine_actor_->Act([paused](auto& engine) {
-    auto* tasm = engine->GetTasm();
-    if (tasm && tasm->page_proxy()->element_manager()) {
-      tasm->page_proxy()->element_manager()->SetElementVsyncPaused(paused);
-    }
-  });
+  engine_actor_->Act(
+      [paused](auto& engine) { engine->SetElementVsyncPaused(paused); });
 }
 
 void LynxShell::OnEnterForeground() {
@@ -1695,6 +1699,25 @@ void LynxShell::OnEnterBackground() {
           std::make_unique<pub::ValueImplLepus>(lepus::Value()));
       engine->OnReceiveMessageEvent(std::move(lepus_event));
     });
+  }
+}
+
+void LynxShell::Pause() { SetPaused(true); }
+
+void LynxShell::Resume() { SetPaused(false); }
+
+void LynxShell::SetPaused(bool paused) {
+  if (IsDestroyed() || paused_ == paused) {
+    return;
+  }
+  LOGI("LynxShell::SetPaused, paused: " << paused << " this:" << this);
+  paused_ = paused;
+  if (engine_actor_) {
+    engine_actor_->Act([paused](auto& engine) { engine->SetPaused(paused); });
+  }
+  if (runtime_actor_) {
+    runtime_actor_->Act(
+        [paused](auto& runtime) { runtime->SetPaused(paused); });
   }
 }
 

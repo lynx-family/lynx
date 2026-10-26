@@ -273,6 +273,24 @@ export class LynxContext implements IContext {
   }
 
   /**
+   * Pause setTimeout, setInterval, requestAnimationFrame and animation vsync of the current
+   * `LynxView`, without triggering lifecycle events. Timers which become due while paused run
+   * after `resume()`.
+   * @apidoc
+   */
+  public pause() {
+    this.lynxView?.pause();
+  }
+
+  /**
+   * Resume the timers, requestAnimationFrame and animation vsync paused by `pause()`.
+   * @apidoc
+   */
+  public resume() {
+    this.lynxView?.resume();
+  }
+
+  /**
    * Starts the Lynx JS runtime if its initialization is pending.
    * @apidoc
    */

@@ -347,6 +347,58 @@ TEST_F(ElementVsyncProxyTest, BackgroundTimerOnlyDispatchesAnimationEvents) {
   EXPECT_GE(element->last_element_tick_time, before_iteration_event);
 }
 
+TEST_F(ElementVsyncProxyTest, PauseKeepsFiniteAnimationEvents) {
+  auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
+  AddBackgroundAnimation(element.get(), "finite", 100, 3);
+  element->data_model()->SetStaticEvent("bindEvent", "animationstart", "start");
+  element->data_model()->SetStaticEvent("bindEvent", "animationiteration",
+                                        "iteration");
+
+  manager->SetElementVsyncPaused(true, true);
+  manager->RequestNextFrame(element.get());
+  RunTimer(20);
+  EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationstart");
+  tasm_mediator->ClearAnimationEvent();
+  RunTimer(120);
+  EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationiteration");
+  EXPECT_EQ(element->tick_count, 0);
+  EXPECT_EQ(element->element_tick_count, 0);
+  EXPECT_EQ(vsync_monitor_->request_count, 0);
+}
+
+TEST_F(ElementVsyncProxyTest, PauseSuppressesInfiniteAnimationEventTimer) {
+  manager->SetElementVsyncPaused(true, true);
+  auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
+  auto animation =
+      AddBackgroundAnimation(element.get(), "infinite", 50,
+                             starlight::kInfiniteAnimationIterationCount);
+  element->data_model()->SetStaticEvent("bindEvent", "animationstart", "start");
+  element->data_model()->SetStaticEvent("bindEvent", "animationiteration",
+                                        "iteration");
+
+  auto start = fml::TimePoint::Now();
+  animation->TickEvents(start);
+  tasm_mediator->ClearAnimationEvent();
+
+  manager->RequestNextFrame(element.get());
+  RunTimer(170);
+  EXPECT_TRUE(tasm_mediator->not_received_any_event());
+  EXPECT_EQ(element->tick_count, 0);
+  EXPECT_EQ(element->element_tick_count, 0);
+  EXPECT_EQ(vsync_monitor_->request_count, 0);
+
+  // Iterations crossed during pause are discarded rather than replayed in a
+  // burst. Future iteration events continue from the resumed position.
+  manager->SetElementVsyncPaused(false);
+  auto resumed = fml::TimePoint::Now();
+  animation->TickEvents(resumed);
+  EXPECT_TRUE(tasm_mediator->not_received_any_event());
+  RunTimer(60);
+  auto next_iteration = fml::TimePoint::Now();
+  animation->TickEvents(next_iteration);
+  EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationiteration");
+}
+
 TEST_F(ElementVsyncProxyTest,
        EventHandlerCanScheduleAnotherBackgroundAnimation) {
   auto element = fml::AdoptRef(new CountingTickElement(manager.get()));

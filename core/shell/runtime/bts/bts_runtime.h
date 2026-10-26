@@ -176,6 +176,9 @@ class BTSRuntime final {
   void SetPageOptions(const tasm::PageOptions& page_options);
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
 
+  // Pause or resume timers and requestAnimationFrame of the background thread.
+  void SetPaused(bool paused);
+
   void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event);
 
   void OnSetPresetData(lepus::Value data);
@@ -300,6 +303,7 @@ class BTSRuntime final {
   uint32_t runtime_flags_;
   std::unique_ptr<runtime::RuntimeLifecycleObserverImpl> lifecycle_observer_;
   tasm::PageOptions page_options_;
+  bool paused_{false};
   JsAppLoadState js_app_load_state_ = JsAppLoadState::kNotLoaded;
   lepus::Value init_global_props_;
   base::InlineVector<std::unique_ptr<runtime::NativeModuleFactory>, 4>

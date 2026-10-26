@@ -939,12 +939,16 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // frames.
   fml::TimePoint ProcessAnimationEvents(fml::TimePoint &time,
                                         bool dispatch_events);
+  void SyncInfiniteAnimationEvents(fml::TimePoint &time);
 
   // Permanently stop animation VSync when page destruction begins.
   void StopAnimationVsync();
 
   // Pause animation and List frames without freezing animation event timelines.
-  void SetElementVsyncPaused(bool paused);
+  // lynx_view_paused distinguishes an explicit LynxView pause from app
+  // backgrounding so only the former suppresses infinite CSS animation event
+  // timers.
+  void SetElementVsyncPaused(bool paused, bool lynx_view_paused = false);
   bool IsElementVsyncPaused() const { return element_vsync_paused_; }
 
   // Pause all element.
@@ -1579,6 +1583,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   std::shared_ptr<ElementVsyncProxy> element_vsync_proxy_;
   bool animation_vsync_stopped_{false};
   bool element_vsync_paused_{false};
+  bool suppress_infinite_animation_events_{false};
 
   base::OrderedFlatSet<tasm::Element *> animation_element_set_;
   base::OrderedFlatSet<tasm::Element *>

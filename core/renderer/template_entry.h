@@ -194,6 +194,9 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   void AttachNapiEnvironment();
   void DetachNapiEnvironment();
 
+  // Pause or resume timers of the main thread script.
+  void SetPaused(bool paused);
+
   bool IsCompatibleWithRootEntry(const TemplateEntry& root, std::string& msg);
   inline const tasm::CompileOptions& compile_options() const {
     return template_bundle_.compile_options_;

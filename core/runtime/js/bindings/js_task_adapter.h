@@ -40,6 +40,10 @@ class JsTaskAdapter {
 
   void QueueMicrotask(Function func, uint64_t trace_flow_id);
 
+  // Pause or resume setTimeout and setInterval. Microtasks are not affected.
+  void Pause() { manager_->Pause(); }
+  void Resume() { manager_->Resume(); }
+
   void SetPageOptions(const tasm::PageOptions& options) {
     page_options_ = options;
   }

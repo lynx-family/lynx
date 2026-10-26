@@ -127,6 +127,11 @@ class LynxEngine {
 
   void SetAnimationsPending(bool need_pending_ui_op);
 
+  // Pause or resume main-thread timers, requestAnimationFrame callbacks, and
+  // animation VSync. Explicit pause is composed with lifecycle pause.
+  void SetPaused(bool paused);
+  void SetElementVsyncPaused(bool paused);
+
   void UpdateFontScale(float scale);
 
   void UpdateColorScheme(int scheme);
@@ -355,6 +360,8 @@ class LynxEngine {
   void TriggerVmGC() { tasm_->TriggerVmGC(); }
 
  private:
+  bool paused_{false};
+  bool lifecycle_paused_{false};
   base::LogContext log_context_;
   std::unique_ptr<tasm::TemplateAssembler> tasm_;
   std::unique_ptr<Delegate> delegate_;
