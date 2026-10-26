@@ -1119,6 +1119,33 @@ TEST_P(AppTest, GetCustomSectionSyncTest) {
   }
 }
 
+TEST_P(AppTest, PauseAndResumeAnimationFrame) {
+  auto native_app = Object::createFromHostObject(
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
+  auto request_frame = function(R"--(
+function(nativeApp) {
+  globalThis.__raf_count = 0;
+  return nativeApp.requestAnimationFrame(function() {
+    globalThis.__raf_count++;
+  });
+}
+)--");
+  auto raf_count = [this]() {
+    return eval("globalThis.__raf_count")->getNumber();
+  };
+  static constexpr int64_t kFrameTime = 16 * 1000 * 1000;
+
+  app->Pause();
+  auto result = request_frame.call(rt, {native_app});
+  EXPECT_TRUE(result->isNumber());
+  app->DoFrame(kFrameTime);
+  EXPECT_EQ(raf_count(), 0);
+
+  app->Resume();
+  app->DoFrame(kFrameTime * 2);
+  EXPECT_EQ(raf_count(), 1);
+}
+
 TEST(AppTest, GenerateDynamicComponentSourceUrl) {
   auto source_url = App::GenerateDynamicComponentSourceUrl(
       "https://test.js", runtime::kAppServiceJSName);

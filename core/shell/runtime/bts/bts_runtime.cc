@@ -243,6 +243,9 @@ void BTSRuntime::Init(
       GetRuntimeId(), delegate_.get(), runtime_delegate_,
       std::make_unique<runtime::LynxApiHandler>(), page_options_);
   app_->SetRecordId(record_id_);
+  if (paused_) {
+    app_->Pause();
+  }
   LOGI(log_context_ << " LynxRuntime:" << this << " create APP " << app_.get());
   AddEventListeners();
 
@@ -1123,6 +1126,19 @@ void BTSRuntime::SetPageOptions(const tasm::PageOptions& page_options) {
   page_options_ = page_options;
   if (app_) {
     app_->SetPageOptions(page_options);
+  }
+}
+
+void BTSRuntime::SetPaused(bool paused) {
+  LOGI(log_context_ << " LynxRuntime::SetPaused, paused: " << paused);
+  paused_ = paused;
+  if (!app_) {
+    return;
+  }
+  if (paused) {
+    app_->Pause();
+  } else {
+    app_->Resume();
   }
 }
 
