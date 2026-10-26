@@ -5,7 +5,11 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIImage.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 #import <XCTest/XCTest.h>
 
 @interface LynxUIImage (RendererTesting)
@@ -146,6 +150,46 @@
   [LynxPropsProcessor updateProp:@0 withKey:@"not-cache-to-disk" forUI:_UIImage];
   [_UIImage propsDidUpdate];
   XCTAssertEqual(_UIImage.requestOptions, LynxImageDefaultOptions);
+}
+
+- (id)queryAnimationMethod:(NSString*)method {
+  __block id value;
+  __block BOOL called = NO;
+  [LynxUIMethodProcessor invokeMethod:method
+                           withParams:@{}
+                           withResult:^(int code, id data) {
+                             called = YES;
+                             XCTAssertEqual(code, kUIMethodSuccess);
+                             value = data;
+                           }
+                                forUI:_UIImage];
+  XCTAssertTrue(called);
+  return value;
+}
+
+- (void)testAnimationQueriesDoNotInventUnknownFrames {
+  LynxUIContext* context = [LynxUIContext new];
+  context.devtoolEnabled = YES;
+  _UIImage.context = context;
+  XCTAssertEqualObjects([self queryAnimationMethod:@"getCurrentFrame"], NSNull.null);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"getFrameCount"], NSNull.null);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"getDuration"], NSNull.null);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"isAnimating"], @NO);
+}
+
+- (void)testAnimationQueriesRequireDevTool {
+  for (NSString* method in
+       @[ @"getCurrentFrame", @"getFrameCount", @"getDuration", @"isAnimating" ]) {
+    __block BOOL called = NO;
+    [LynxUIMethodProcessor invokeMethod:method
+                             withParams:@{}
+                             withResult:^(int code, id data) {
+                               called = YES;
+                               XCTAssertEqual(code, kUIMethodMethodNotFound);
+                             }
+                                  forUI:_UIImage];
+    XCTAssertTrue(called);
+  }
 }
 
 @end
