@@ -3437,7 +3437,6 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
   starlight::LayoutResultForRendering layout;
   layout.border_ = starlight::DirectionValue<float>({1.f, 2.f, 3.f, 4.f});
   layout.size_ = FloatSize(100.f, 60.f);
-  fragment.UpdateLayout(layout);
 
   element->computed_css_style()->origin_overflow_ =
       starlight::ComputedCSSStyle::OVERFLOW_HIDDEN;
@@ -3453,6 +3452,8 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
   bd.radius_y_bottom_right = starlight::NLength::MakeUnitNLength(20.f);
   bd.radius_x_bottom_left = starlight::NLength::MakeUnitNLength(22.f);
   bd.radius_y_bottom_left = starlight::NLength::MakeUnitNLength(24.f);
+
+  fragment.UpdateLayout(layout);
 
   DisplayListBuilder builder;
   fragment.DrawClip(builder);
@@ -3477,6 +3478,114 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
   EXPECT_FLOAT_EQ(clip_rect.radii[5], 20.f - 4.f);
   EXPECT_FLOAT_EQ(clip_rect.radii[6], 22.f - 1.f);
   EXPECT_FLOAT_EQ(clip_rect.radii[7], 24.f - 4.f);
+}
+
+TEST_F(FragmentTest, DrawClipUsesNormalizedRadiiAfterLayoutUpdates) {
+  auto element = manager->CreateFiberText("text");
+  Fragment fragment(element.get());
+  element->computed_css_style()->origin_overflow_ =
+      starlight::ComputedCSSStyle::OVERFLOW_HIDDEN;
+  auto* layout_style = element->computed_css_style()->GetLayoutComputedStyle();
+  layout_style->surround_data_.border_data_ = starlight::BordersData();
+  auto& border = *layout_style->surround_data_.border_data_;
+  auto set_radius = [&](float value) {
+    const auto radius = starlight::NLength::MakeUnitNLength(value);
+    border.radius_x_top_left = border.radius_y_top_left = radius;
+    border.radius_x_top_right = border.radius_y_top_right = radius;
+    border.radius_x_bottom_right = border.radius_y_bottom_right = radius;
+    border.radius_x_bottom_left = border.radius_y_bottom_left = radius;
+  };
+  starlight::LayoutResultForRendering layout;
+  layout.border_ = starlight::DirectionValue<float>({20.f, 20.f, 20.f, 20.f});
+  layout.size_ = FloatSize(240.f, 180.f);
+  auto check_clip = [&](float expected_radius) {
+    fragment.UpdateLayout(layout);
+    DisplayListBuilder builder;
+    fragment.DrawClip(builder);
+    auto list = builder.Build();
+    auto items = CollectDisplayListItems(list);
+    ASSERT_EQ(items.size(), 1u);
+    ASSERT_EQ(items[0].type, DisplayListOpType::kClipRect);
+    const auto& clip = items[0].payload.clip_rect;
+    EXPECT_EQ(clip.has_radii, 1u);
+    EXPECT_FLOAT_EQ(clip.x, 20.f);
+    EXPECT_FLOAT_EQ(clip.y, 20.f);
+    EXPECT_FLOAT_EQ(clip.w, layout.size_.width_ - 40.f);
+    EXPECT_FLOAT_EQ(clip.h, layout.size_.height_ - 40.f);
+    for (int i = 0; i < 8; ++i) {
+      EXPECT_FLOAT_EQ(clip.radii[i], expected_radius);
+    }
+  };
+  set_radius(200.f);
+  check_clip(70.f);
+  layout.size_ = FloatSize(240.f, 300.f);
+  check_clip(100.f);
+  set_radius(40.f);
+  check_clip(20.f);
+
+  // A radius-only style update does not require another UpdateLayout call.
+  auto check_redraw = [&](float radius, float expected_inner_radius) {
+    set_radius(radius);
+    DisplayListBuilder builder;
+    fragment.DrawFull(builder);
+    auto list = builder.Build();
+    auto items = CollectDisplayListItems(list);
+    bool found_clip = false;
+    for (const auto& item : items) {
+      if (item.type != DisplayListOpType::kClipRect) {
+        continue;
+      }
+      found_clip = true;
+      for (int i = 0; i < 8; ++i) {
+        EXPECT_FLOAT_EQ(item.payload.clip_rect.radii[i], expected_inner_radius);
+      }
+    }
+    EXPECT_TRUE(found_clip);
+    ASSERT_TRUE(fragment.LayoutResult().border_radius_info.has_value());
+    EXPECT_FLOAT_EQ(fragment.LayoutResult().border_radius_info->x_top_left,
+                    expected_inner_radius + 20.f);
+  };
+  check_redraw(200.f, 100.f);
+  check_redraw(40.f, 20.f);
+}
+
+TEST_F(FragmentTest, DrawClipNormalizesEllipticalRadiiBeforeSubtractingBorder) {
+  auto element = manager->CreateFiberText("text");
+  Fragment fragment(element.get());
+  element->computed_css_style()->origin_overflow_ =
+      starlight::ComputedCSSStyle::OVERFLOW_HIDDEN;
+  auto* layout_style = element->computed_css_style()->GetLayoutComputedStyle();
+  layout_style->surround_data_.border_data_ = starlight::BordersData();
+  auto& border = *layout_style->surround_data_.border_data_;
+  border.radius_x_top_left = starlight::NLength::MakeUnitNLength(240.f);
+  border.radius_y_top_left = starlight::NLength::MakeUnitNLength(120.f);
+  border.radius_x_top_right = starlight::NLength::MakeUnitNLength(240.f);
+  border.radius_y_top_right = starlight::NLength::MakeUnitNLength(100.f);
+  border.radius_x_bottom_right = starlight::NLength::MakeUnitNLength(80.f);
+  border.radius_y_bottom_right = starlight::NLength::MakeUnitNLength(200.f);
+  border.radius_x_bottom_left = starlight::NLength::MakeUnitNLength(160.f);
+  border.radius_y_bottom_left = starlight::NLength::MakeUnitNLength(240.f);
+  starlight::LayoutResultForRendering layout;
+  layout.border_ = starlight::DirectionValue<float>({10.f, 20.f, 30.f, 40.f});
+  layout.size_ = FloatSize(240.f, 180.f);
+  fragment.UpdateLayout(layout);
+  DisplayListBuilder builder;
+  fragment.DrawClip(builder);
+  auto list = builder.Build();
+  auto items = CollectDisplayListItems(list);
+  ASSERT_EQ(items.size(), 1u);
+  ASSERT_EQ(items[0].type, DisplayListOpType::kClipRect);
+  const auto& clip = items[0].payload.clip_rect;
+  EXPECT_EQ(clip.has_radii, 1u);
+  EXPECT_FLOAT_EQ(clip.x, 10.f);
+  EXPECT_FLOAT_EQ(clip.y, 30.f);
+  EXPECT_FLOAT_EQ(clip.w, 210.f);
+  EXPECT_FLOAT_EQ(clip.h, 110.f);
+  // The outer radii share a 0.5 normalization factor before border subtraction.
+  const float expected[] = {110.f, 30.f, 100.f, 20.f, 20.f, 60.f, 70.f, 80.f};
+  for (int i = 0; i < 8; ++i) {
+    EXPECT_FLOAT_EQ(clip.radii[i], expected[i]);
+  }
 }
 
 TEST_F(FragmentTest, UpdateLayoutNormalizesOversizedBorderRadii) {

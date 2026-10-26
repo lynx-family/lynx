@@ -24,7 +24,9 @@ class LynxRenderNode {
   LynxRenderNode& operator=(const LynxRenderNode&) = delete;
 
   ArkUI_NodeHandle Node() const { return node_; }
-  void Update(size_t segment_index, float width, float height);
+  void Update(size_t segment_index, float width, float height, float left = 0.f,
+              float top = 0.f);
+  void AttachFirst(ArkUI_NodeHandle parent);
   void AttachAfter(ArkUI_NodeHandle parent, ArkUI_NodeHandle sibling);
   void Invalidate();
 
@@ -35,6 +37,8 @@ class LynxRenderNode {
   LynxRenderer* renderer_{nullptr};
   ArkUI_NodeHandle node_{nullptr};
   size_t segment_index_{0};
+  float left_{0.f};
+  float top_{0.f};
   float width_{-1.f};
   float height_{-1.f};
 };

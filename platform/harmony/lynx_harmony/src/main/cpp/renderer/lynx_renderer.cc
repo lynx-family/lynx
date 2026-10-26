@@ -4,8 +4,11 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer.h"
 
+#include <algorithm>
 #include <utility>
+#include <vector>
 
+#include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_display_list_applier.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_render_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
@@ -29,10 +32,15 @@ void LynxRenderer::UpdateDisplayList(const DisplayList* display_list) {
         std::make_unique<LynxDisplayListApplier>(context_.get(), host_);
   }
   segments_ = display_list_applier_->UpdateDisplayList(*display_list_);
+  UpdateDrawingBounds();
   UpdateRenderNodeOrder();
 }
 
-void LynxRenderer::Draw(OH_Drawing_Canvas* canvas) { DrawSegment(0, canvas); }
+void LynxRenderer::Draw(OH_Drawing_Canvas* canvas) {
+  if (!draw_first_segment_in_node_) {
+    DrawSegment(0, canvas);
+  }
+}
 
 void LynxRenderer::DrawSegment(size_t index, OH_Drawing_Canvas* canvas) {
   if (canvas == nullptr || !display_list_applier_ || !display_list_ ||
@@ -40,13 +48,89 @@ void LynxRenderer::DrawSegment(size_t index, OH_Drawing_Canvas* canvas) {
     return;
   }
   const auto& segment = segments_[index];
-  display_list_applier_->ApplyDisplayList(*display_list_, canvas, segment);
+  if (draw_first_segment_in_node_) {
+    auto lynx_context = context_->GetLynxContext();
+    if (!lynx_context) {
+      return;
+    }
+    const float density = lynx_context->ScaledDensity();
+    OH_Drawing_CanvasSave(canvas);
+    OH_Drawing_CanvasTranslate(canvas, -overflow_left_ * density,
+                               -overflow_top_ * density);
+    display_list_applier_->ApplyDisplayList(*display_list_, canvas, segment);
+    OH_Drawing_CanvasRestore(canvas);
+  } else {
+    display_list_applier_->ApplyDisplayList(*display_list_, canvas, segment);
+  }
 }
 
 void LynxRenderer::InvalidateRenderNodes() {
   for (const auto& node : render_nodes_) {
     node->Invalidate();
   }
+}
+
+void LynxRenderer::UpdateDrawingBounds() {
+  draw_first_segment_in_node_ = false;
+  overflow_left_ = 0.f;
+  overflow_top_ = 0.f;
+  drawing_width_ = 0.f;
+  drawing_height_ = 0.f;
+  const auto* items = reinterpret_cast<const DisplayListItem*>(
+      display_list_->GetContentItemsData());
+  const size_t count = display_list_->GetContentItemsSize();
+  if (count == 0 || items[0].type != DisplayListOpType::kBegin) {
+    return;
+  }
+  const auto& root = items[0].payload.begin;
+  drawing_width_ = root.w;
+  drawing_height_ = root.h;
+  // A zero-size host supplies an empty drawing canvas even without clipping.
+  // Preserve its layout and use drawing nodes for its flattened content.
+  if ((root.w > 0.f && root.h > 0.f) || !root.overflow_x || !root.overflow_y ||
+      display_list_->RootNeedClipBounds()) {
+    return;
+  }
+
+  // The root's position is already applied by its native host. Accumulate
+  // nested offsets to size a separate drawing surface without changing layout.
+  float left = 0.f;
+  float top = 0.f;
+  float right = std::max(0.f, root.w);
+  float bottom = std::max(0.f, root.h);
+  float x = 0.f;
+  float y = 0.f;
+  std::vector<std::pair<float, float>> offsets;
+  for (size_t i = 0; i < count; ++i) {
+    const auto& item = items[i];
+    if (item.type == DisplayListOpType::kBegin) {
+      offsets.emplace_back(x, y);
+      if (i != 0) {
+        x += item.payload.begin.x;
+        y += item.payload.begin.y;
+      }
+    } else if (item.type == DisplayListOpType::kEnd && !offsets.empty()) {
+      x = offsets.back().first;
+      y = offsets.back().second;
+      offsets.pop_back();
+    } else if (item.type == DisplayListOpType::kRecordBox) {
+      const auto& box = item.payload.record_box;
+      if (box.w > 0.f && box.h > 0.f) {
+        left = std::min(left, x + box.x);
+        top = std::min(top, y + box.y);
+        right = std::max(right, x + box.x + box.w);
+        bottom = std::max(bottom, y + box.y + box.h);
+      }
+    }
+  }
+  if (right <= left || bottom <= top) {
+    return;
+  }
+  draw_first_segment_in_node_ = true;
+  overflow_left_ = left;
+  overflow_top_ = top;
+  drawing_width_ = right - left;
+  drawing_height_ = bottom - top;
 }
 
 void LynxRenderer::UpdateRenderNodeOrder() {
@@ -58,20 +142,18 @@ void LynxRenderer::UpdateRenderNodeOrder() {
   }
   const auto* items = reinterpret_cast<const DisplayListItem*>(
       display_list_->GetContentItemsData());
-  const bool has_root = items[0].type == DisplayListOpType::kBegin;
-  const float width = has_root ? items[0].payload.begin.w : 0.f;
-  const float height = has_root ? items[0].payload.begin.h : 0.f;
   auto& manager = NodeManager::Instance();
   base::OrderedFlatMap<ArkUI_NodeHandle, ArkUI_NodeHandle> previous_nodes;
   size_t node_index = 0;
   // Place native children and drawing segments in display-list order.
   // UIBase keeps ownership and its logical child tree unchanged.
-  for (size_t i = 1; i < segments_.size(); ++i) {
+  for (size_t i = draw_first_segment_in_node_ ? 0 : 1; i < segments_.size();
+       ++i) {
     const auto& segment = segments_[i];
     auto parent_node = host->Node();
     ArkUI_NodeHandle child_node = nullptr;
     auto* child = owner->FindUIBySign(segment.preceding_view_id);
-    if (child != nullptr && child->Parent() == host.get()) {
+    if (i > 0 && child != nullptr && child->Parent() == host.get()) {
       const auto& draw_view =
           items[segment.start_item_index - 1].payload.draw_view;
       child->UpdateFragmentLayerOffset(draw_view.offset_x, draw_view.offset_y);
@@ -95,8 +177,13 @@ void LynxRenderer::UpdateRenderNodeOrder() {
       render_nodes_.emplace_back(std::make_unique<LynxRenderNode>(this));
     }
     auto& node = render_nodes_[node_index++];
-    node->Update(i, width, height);
-    node->AttachAfter(parent_node, previous_nodes[parent_node]);
+    node->Update(i, drawing_width_, drawing_height_, overflow_left_,
+                 overflow_top_);
+    if (i == 0) {
+      node->AttachFirst(parent_node);
+    } else {
+      node->AttachAfter(parent_node, previous_nodes[parent_node]);
+    }
     previous_nodes[parent_node] = node->Node();
     node->Invalidate();
   }

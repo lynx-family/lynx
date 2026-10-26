@@ -38,18 +38,32 @@ LynxRenderNode::~LynxRenderNode() {
   NodeManager::Instance().DisposeNode(node_);
 }
 
-void LynxRenderNode::Update(size_t segment_index, float width, float height) {
+void LynxRenderNode::Update(size_t segment_index, float width, float height,
+                            float left, float top) {
   segment_index_ = segment_index;
-  if (node_ == nullptr || (width_ == width && height_ == height)) {
+  if (node_ == nullptr ||
+      (width_ == width && height_ == height && left_ == left && top_ == top)) {
     return;
   }
+  left_ = left;
+  top_ = top;
   width_ = width;
   height_ = height;
-  NodeManager::Instance().SetAttributeWithNumberValue(node_, NODE_POSITION, 0.f,
-                                                      0.f);
+  NodeManager::Instance().SetAttributeWithNumberValue(node_, NODE_POSITION,
+                                                      left, top);
   NodeManager::Instance().SetAttributeWithNumberValue(node_, NODE_WIDTH, width);
   NodeManager::Instance().SetAttributeWithNumberValue(node_, NODE_HEIGHT,
                                                       height);
+}
+
+void LynxRenderNode::AttachFirst(ArkUI_NodeHandle parent) {
+  if (node_ == nullptr || parent == nullptr) {
+    return;
+  }
+  // Segment zero precedes native children, including children attached after
+  // the display list was applied.
+  Detach();
+  NodeManager::Instance().InsertNode(parent, node_, 0);
 }
 
 void LynxRenderNode::AttachAfter(ArkUI_NodeHandle parent,

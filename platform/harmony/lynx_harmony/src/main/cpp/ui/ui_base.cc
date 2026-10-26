@@ -1443,14 +1443,16 @@ void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
       background_drawable_->Render(canvas);
     }
   }
-  if (need_draw && !CanDrawBehind() && renderer_) {
+  if (need_draw && renderer_ &&
+      (!CanDrawBehind() || !fragment_content_clip_path_.empty())) {
     renderer_->Draw(canvas);
   }
 }
 
 void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_ON_DRAW_BEHIND);
-  if (draw_node_ && ShouldDrawOverlayShadowWithDrawNode()) {
+  if (draw_node_ && (ShouldDrawOverlayShadowWithDrawNode() ||
+                     !fragment_content_clip_path_.empty())) {
     return;
   }
   if (background_drawable_) {
@@ -1474,6 +1476,10 @@ void UIBase::AttachFragmentLayerRenderer(
 
 void UIBase::DetachFragmentLayerRenderer() {
   renderer_.reset();
+  if (!fragment_content_clip_path_.empty()) {
+    NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
+    fragment_content_clip_path_.clear();
+  }
   if (fragment_clip_rect_) {
     NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
     fragment_clip_rect_.reset();
@@ -1486,8 +1492,88 @@ void UIBase::UpdateFragmentLayerDisplayList(const DisplayList* display_list) {
   if (!renderer_) {
     return;
   }
+  UpdateFragmentLayerContentClip(*display_list);
   renderer_->UpdateDisplayList(display_list);
   Invalidate();
+}
+
+void UIBase::UpdateFragmentLayerContentClip(const DisplayList& display_list) {
+  std::string path;
+  const auto* items = reinterpret_cast<const DisplayListItem*>(
+      display_list.GetContentItemsData());
+  // Fragment::OnDraw emits the root clip before any children. Do not scan
+  // nested display lists when the root has no clip.
+  const size_t count = display_list.GetContentItemsSize();
+  for (size_t i = 1;
+       count > 0 && items[0].type == DisplayListOpType::kBegin && i < count;
+       ++i) {
+    const auto& item = items[i];
+    if (item.type == DisplayListOpType::kBegin ||
+        item.type == DisplayListOpType::kDrawView ||
+        item.type == DisplayListOpType::kEnd) {
+      break;
+    }
+    if (item.type == DisplayListOpType::kClipRect) {
+      // The root clip follows its background and border. Apply the same clip
+      // to native descendants, which are not affected by canvas clipping.
+      const auto& clip = item.payload.clip_rect;
+      // NODE_CLIP already handles an unrounded clip covering the host bounds.
+      if (!clip.has_radii && clip.x == 0.f && clip.y == 0.f &&
+          clip.w == width_ && clip.h == height_) {
+        break;
+      }
+      const float density = context_->ScaledDensity();
+      const float left = clip.x * density;
+      const float top = clip.y * density;
+      const float right = (clip.x + clip.w) * density;
+      const float bottom = (clip.y + clip.h) * density;
+      float radii[8] = {};
+      if (clip.has_radii) {
+        for (size_t j = 0; j < 8; ++j) {
+          radii[j] = clip.radii[j] * density;
+        }
+      }
+      std::ostringstream oss;
+      auto corner = [&](size_t index, float x, float y) {
+        if (radii[index] > 0.f && radii[index + 1] > 0.f) {
+          SvgPathUtils::ArcTo(oss, radii[index], radii[index + 1], x, y);
+        } else {
+          SvgPathUtils::LineTo(oss, x, y);
+        }
+      };
+      SvgPathUtils::MoveTo(oss, left + radii[0], top);
+      SvgPathUtils::LineTo(oss, right - radii[2], top);
+      corner(2, right, top + radii[3]);
+      SvgPathUtils::LineTo(oss, right, bottom - radii[5]);
+      corner(4, right - radii[4], bottom);
+      SvgPathUtils::LineTo(oss, left + radii[6], bottom);
+      corner(6, left, bottom - radii[7]);
+      SvgPathUtils::LineTo(oss, left, top + radii[1]);
+      corner(0, left + radii[0], top);
+      SvgPathUtils::Close(oss);
+      path = oss.str();
+      break;
+    }
+  }
+  if (path.empty() && !fragment_content_clip_path_.empty()) {
+    NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
+  }
+  fragment_content_clip_path_ = std::move(path);
+  ApplyFragmentLayerContentClip();
+}
+
+void UIBase::ApplyFragmentLayerContentClip() {
+  if (fragment_content_clip_path_.empty()) {
+    return;
+  }
+  // Keep the host's own drawing outside the clipped native content node.
+  // Reuse the existing draw wrapper rather than changing Lynx layout bounds.
+  InitDrawNode();
+  if (draw_node_) {
+    const float density = context_->ScaledDensity();
+    ApplyOverflowClipPath(width_ * density, height_ * density,
+                          fragment_content_clip_path_);
+  }
 }
 
 void UIBase::SetFragmentLayerClipBounds(bool need_clip, bool overflow_x,
@@ -1566,6 +1652,7 @@ void UIBase::UpdateFragmentLayerOffset(float left, float top) {
 }
 
 void UIBase::OnAttachedToFragmentLayerTree() {
+  ApplyFragmentLayerContentClip();
   if (renderer_ && !CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
     InitDrawNode();
   }
@@ -1699,8 +1786,10 @@ void UIBase::SetFilter(const lepus::Value& value) {
     NodeManager::Instance().ResetAttribute(filter_node, NODE_BLUR);
     NodeManager::Instance().ResetAttribute(filter_node, NODE_BRIGHTNESS);
     NodeManager::Instance().ResetAttribute(filter_node, NODE_CONTRAST);
+    has_set_filter_ = false;
     return;
   }
+  has_set_filter_ = true;
   const auto& val_array = value.Array();
   const starlight::FilterType type =
       static_cast<starlight::FilterType>(value.Array()->get(0).Number());
@@ -2397,6 +2486,32 @@ void UIBase::InitDrawNode() {
     NodeManager::Instance().InsertNodeAfter(parent, draw_node_, Node());
     NodeManager::Instance().RemoveNode(parent, Node());
     NodeManager::Instance().InsertNode(draw_node_, Node(), 0);
+    if (renderer_) {
+      auto& manager = NodeManager::Instance();
+      auto move_attribute = [&](ArkUI_NodeAttributeType type) {
+        const auto* attribute = manager.GetAttribute(Node(), type);
+        if (!attribute || !attribute->value || attribute->size <= 0) {
+          return;
+        }
+        std::vector<ArkUI_NumberValue> values(
+            attribute->value, attribute->value + attribute->size);
+        ArkUI_AttributeItem item = {
+            .value = values.data(),
+            .size = static_cast<int32_t>(values.size())};
+        manager.SetAttribute(draw_node_, type, &item);
+        manager.ResetAttribute(Node(), type);
+      };
+      if (fragment_transform_) {
+        move_attribute(NODE_TRANSFORM_CENTER);
+        move_attribute(NODE_TRANSFORM);
+      }
+      if (has_set_filter_) {
+        for (auto type : {NODE_GRAY_SCALE, NODE_BLUR, NODE_BRIGHTNESS,
+                          NODE_CONTRAST, NODE_SATURATION}) {
+          move_attribute(type);
+        }
+      }
+    }
     // update opacity
     float opacity{1.f};
     NodeManager::Instance().GetAttributeValues(Node(), NODE_OPACITY, &opacity);

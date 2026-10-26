@@ -1198,53 +1198,9 @@ void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
   // bounds and border.
   if (element()->computed_css_style()->IsOverflowHidden() &&
       element()->computed_css_style()->HasBorderRadius()) {
-    const auto& border = element()
-                             ->computed_css_style()
-                             ->GetLayoutComputedStyle()
-                             ->surround_data_.border_data_;
-
-    starlight::LayoutUnit width(layout_info_.layout_result.size_.width_);
-    starlight::LayoutUnit height(layout_info_.layout_result.size_.height_);
-    rect.SetRadiusXTopLeft(std::max(
-        starlight::NLengthToLayoutUnit(border->radius_x_top_left, width)
-                .ToFloat() -
-            border_left_width,
-        0.f));
-    rect.SetRadiusXTopRight(std::max(
-        starlight::NLengthToLayoutUnit(border->radius_x_top_right, width)
-                .ToFloat() -
-            border_right_width,
-        0.f));
-    rect.SetRadiusXBottomRight(std::max(
-        starlight::NLengthToLayoutUnit(border->radius_x_bottom_right, width)
-                .ToFloat() -
-            border_right_width,
-        0.f));
-    rect.SetRadiusXBottomLeft(std::max(
-        starlight::NLengthToLayoutUnit(border->radius_x_bottom_left, width)
-                .ToFloat() -
-            border_left_width,
-        0.f));
-    rect.SetRadiusYTopLeft(std::max(
-        starlight::NLengthToLayoutUnit(border->radius_y_top_left, height)
-                .ToFloat() -
-            border_top_width,
-        0.f));
-    rect.SetRadiusYTopRight(std::max(
-        starlight::NLengthToLayoutUnit(border->radius_y_top_right, height)
-                .ToFloat() -
-            border_top_width,
-        0.f));
-    rect.SetRadiusYBottomRight(std::max(
-        starlight::NLengthToLayoutUnit(border->radius_y_bottom_right, height)
-                .ToFloat() -
-            border_bottom_width,
-        0.f));
-    rect.SetRadiusYBottomLeft(std::max(
-        starlight::NLengthToLayoutUnit(border->radius_y_bottom_left, height)
-                .ToFloat() -
-            border_bottom_width,
-        0.f));
+    // Reuse the normalized outer radii with border widths subtracted, as in
+    // background and border painting.
+    rect = layout_info_.GeneratePaddingRectangle();
   } else if (element()->computed_css_style()->IsOverflowX()) {
     // x -= screen width
     // width += 2 * screen width
@@ -1452,6 +1408,9 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
     return;
   }
 
+  // Radius-only style changes can redraw without a layout update. Refresh the
+  // shared geometry before recording backgrounds, borders, and content clips.
+  UpdateBorderRadiusAccordingToLayoutInfo();
   box_recorder_.Reset();
   const auto* computed_style = element()->computed_css_style();
   display_list_builder.Begin(
