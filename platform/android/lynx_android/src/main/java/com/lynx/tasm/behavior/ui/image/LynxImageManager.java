@@ -11,6 +11,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -21,6 +22,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.Dynamic;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableMapKeySetIterator;
 import com.lynx.tasm.LynxEnv;
@@ -57,6 +59,7 @@ import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.tasm.image.model.AnimationListener;
 import com.lynx.tasm.image.model.BitmapPostProcessor;
 import com.lynx.tasm.image.model.DiskCacheChoice;
+import com.lynx.tasm.image.model.ImageAnimationInfo;
 import com.lynx.tasm.image.model.ImageBlurPostProcessor;
 import com.lynx.tasm.image.model.ImageInfo;
 import com.lynx.tasm.image.model.ImageLoadListener;
@@ -290,6 +293,12 @@ public class LynxImageManager implements Drawable.Callback {
 
   private long mFinishTimeStamp = 0;
 
+  private long mInspectorResourceGeneration;
+  private String mInspectorResourceState = "loading";
+  private Integer mInspectorErrorCode;
+  // Only a render callback can establish which frame was actually drawn.
+  private Integer mInspectorCurrentFrame;
+
   private static class ImageRequestHandle implements ImageLoadListener {
     private final ImageLoadListener mSrcLoadListenerImpl;
     private final ArrayList<Runnable> mRunnableList = new ArrayList<>();
@@ -397,6 +406,9 @@ public class LynxImageManager implements Drawable.Callback {
       }
       mImageWidth = imageInfo.getWidth();
       mImageHeight = imageInfo.getHeight();
+      mInspectorResourceState = "ready";
+      mInspectorErrorCode = null;
+      mInspectorCurrentFrame = null;
       mBitmapMemorySizeBytes = calculateBitmapMemorySizeBytes();
       ILynxViewRuntimeCacheManager cacheManager = mContext.getRuntimeCacheManager();
       if (cacheManager != null) {
@@ -416,6 +428,9 @@ public class LynxImageManager implements Drawable.Callback {
 
     @Override
     public void onFailure(int errorCode, Throwable throwable) {
+      mInspectorResourceState = "error";
+      mInspectorErrorCode = errorCode;
+      mInspectorCurrentFrame = null;
       LLog.e(TAG, "onFailed src:" + mSrc + ",with reason:" + throwable.getMessage());
       final int categoryCode = ImageErrorCodeUtils.checkImageExceptionCategory(errorCode);
       String error = throwable.getMessage();
@@ -489,6 +504,14 @@ public class LynxImageManager implements Drawable.Callback {
         sendCustomEvent(EVENT_CURRENT_LOOP_COMPLETE);
       }
     }
+
+    @Override
+    public void onAnimationFrame(Drawable drawable, int frameNumber) {
+      if ("ready".equals(mInspectorResourceState) && mImageDrawable != null
+          && drawable == mImageDrawable.getAnimDrawable()) {
+        mInspectorCurrentFrame = frameNumber;
+      }
+    }
   };
   private Rect mDrawableBounds;
 
@@ -546,6 +569,10 @@ public class LynxImageManager implements Drawable.Callback {
   public void setSrc(String src) {
     if (!TextUtils.equals(src, mSrc)) {
       mSrc = src;
+      mInspectorResourceGeneration++;
+      mInspectorResourceState = "loading";
+      mInspectorErrorCode = null;
+      mInspectorCurrentFrame = null;
       dirtyFlags |= SRC_CHANGED;
     }
   }
@@ -1188,7 +1215,8 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void tryFetchImageFromService(int width, int height) {
     AnimationListener animationListener =
-        (shouldEmitFinalLoopEvent() || shouldEmitStartPlayEvent() || shouldEmitCurrentLoopEvent())
+        (shouldEmitFinalLoopEvent() || shouldEmitStartPlayEvent() || shouldEmitCurrentLoopEvent()
+            || LynxEnv.inst().isDevtoolEnabled())
         ? mAnimationListener
         : null;
     ImageRequestInfo requestInfo = createImageRequest(width, height, mSrc, true);
@@ -1762,6 +1790,25 @@ public class LynxImageManager implements Drawable.Callback {
 
   public Boolean getHasContent() {
     return mImageDrawable != null || mPlaceholderDrawable != null;
+  }
+
+  JavaOnlyMap getInspectorSnapshot() {
+    boolean ready = "ready".equals(mInspectorResourceState);
+    Drawable drawable = ready && mImageDrawable != null ? mImageDrawable.getAnimDrawable() : null;
+    ImageAnimationInfo animationInfo = mImageLoader.getAnimationInfo(drawable);
+    JavaOnlyMap snapshot = new JavaOnlyMap();
+    snapshot.putLong("resourceGeneration", mInspectorResourceGeneration);
+    snapshot.putString("state", mInspectorResourceState);
+    snapshot.put("errorCode", mInspectorErrorCode);
+    snapshot.put("intrinsicWidth", ready ? mImageWidth : null);
+    snapshot.put("intrinsicHeight", ready ? mImageHeight : null);
+    snapshot.putBoolean(
+        "isAnimating", drawable instanceof Animatable && ((Animatable) drawable).isRunning());
+    snapshot.put("frameIndex", mInspectorCurrentFrame);
+    snapshot.put("frameCount", animationInfo == null ? null : animationInfo.getFrameCount());
+    snapshot.put(
+        "loopDurationMs", animationInfo == null ? null : animationInfo.getLoopDurationMs());
+    return snapshot;
   }
 
   private void setSmoothAnimation(boolean enable) {
