@@ -4,25 +4,18 @@
 #ifndef CORE_BASE_ANDROID_LYNX_ERROR_ANDROID_H_
 #define CORE_BASE_ANDROID_LYNX_ERROR_ANDROID_H_
 
-#include <string>
-#include <unordered_map>
-
 #include "base/include/platform/android/scoped_java_ref.h"
 
 namespace lynx {
 namespace base {
 
-enum class LynxErrorLevel;
+struct LynxError;
 
 namespace android {
 
 class LynxErrorAndroid {
  public:
-  LynxErrorAndroid(
-      int error_code, const std::string& error_message,
-      const std::string& fix_suggestion, base::LynxErrorLevel level,
-      const std::unordered_map<std::string, std::string>& custom_info,
-      bool is_logbox_only);
+  explicit LynxErrorAndroid(const base::LynxError& error);
   ~LynxErrorAndroid() = default;
 
   jobject jni_object() { return jni_object_.Get(); }

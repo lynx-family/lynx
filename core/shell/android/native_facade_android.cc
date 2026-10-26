@@ -172,9 +172,7 @@ void NativeFacadeAndroid::ReportError(const base::LynxError& error) {
   ScopedLocalJavaRef<jobject> local_ref(jni_object_);
   if (local_ref.IsNull()) return;
   JNIEnv* env = AttachCurrentThread();
-  base::android::LynxErrorAndroid error_android(
-      error.error_code_, error.error_message_, error.fix_suggestion_,
-      error.error_level_, error.custom_info_, error.is_logbox_only_);
+  base::android::LynxErrorAndroid error_android(error);
   Java_NativeFacade_reportError(env, local_ref.Get(),
                                 error_android.jni_object());
 }

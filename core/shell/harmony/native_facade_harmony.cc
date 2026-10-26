@@ -36,7 +36,7 @@ void NativeFacadeHarmony::ReportError(const base::LynxError& error) {
   renderer_->OnErrorOccurred(static_cast<int>(error.error_level_),
                              error.error_code_, error.error_message_,
                              error.fix_suggestion_, error.custom_info_,
-                             error.is_logbox_only_);
+                             error.is_logbox_only_, error.root_cause_);
 }
 
 void NativeFacadeHarmony::OnModuleMethodInvoked(const std::string& module,

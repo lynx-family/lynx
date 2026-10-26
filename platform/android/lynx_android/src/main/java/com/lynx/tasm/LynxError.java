@@ -353,9 +353,11 @@ public class LynxError extends LynxErrorCodeLegacy {
   }
 
   @CalledByNative
-  private static LynxError createLynxError(int errorCode, String errorMessage, String fixSuggestion,
-      String level, JavaOnlyMap customInfo, boolean isLogBoxOnly) {
-    return new LynxError(
+  private static LynxError createLynxError(int errorCode, String errorMessage, String rootCause,
+      String fixSuggestion, String level, JavaOnlyMap customInfo, boolean isLogBoxOnly) {
+    LynxError error = new LynxError(
         errorCode, errorMessage, fixSuggestion, level, NATIVE_ERROR, customInfo, isLogBoxOnly);
+    error.setRootCause(rootCause);
+    return error;
   }
 }

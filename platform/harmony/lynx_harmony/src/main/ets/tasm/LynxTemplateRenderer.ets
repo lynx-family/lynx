@@ -184,8 +184,9 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   }
 
   onErrorOccurred(level: string, errorCode: number, message: string, suggestion: string,
-    customInfo: Record<string, string>, logboxOnly: boolean) {
+    customInfo: Record<string, string>, logboxOnly: boolean, rootCause: string = '') {
     let err = new LynxError(LynxErrorLevel[level], errorCode, message, suggestion, LynxError.NATIVE_ERROR, customInfo);
+    err.setRootCause(rootCause);
     this.dispatchError(err, logboxOnly);
   }
 

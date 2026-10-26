@@ -76,6 +76,7 @@ struct BASE_EXPORT LynxError {
   std::string error_message_;
   // optional fields
   std::string fix_suggestion_;
+  std::string root_cause_;
   // custom fields
   std::unordered_map<std::string, std::string> custom_info_;
 

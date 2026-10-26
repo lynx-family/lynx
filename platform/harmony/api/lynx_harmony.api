@@ -803,6 +803,8 @@ export class LynxError extends LynxErrorCodeLegacy {
   setTemplateUrl(url: string): void;
   setCallStack(stack: string): void;
   setUserDefineInfo(object: Object): void;
+  setRootCause(rootCause: string): void;
+  getRootCause(): string;
   getSummaryMessage(): void;
   getLevel(): void;
   getErrorCode(): void;
@@ -1471,7 +1473,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   constructor(backgroundRuntimeOptions: LynxBackgroundRuntimeOptions, genericResourceFetcher: LynxGenericResourceFetcher | undefined, mediaResourceFetcher: LynxMediaResourceFetcher | undefined, templateResourceFetcher: LynxTemplateResourceFetcher | undefined, modules: Map<string, ModuleClassWrapper> | undefined, sendableModules: Map<string, SendableModuleClassWrapper> | undefined, data: MetaData | undefined);
   addLifecycleClient(client: LynxBackgroundRuntimeClient): void;
   removeLifecycleClient(client: LynxBackgroundRuntimeClient): void;
-  onErrorOccurred(level: string, errorCode: number, message: string, suggestion: string, customInfo: Record<string, string>, logboxOnly: boolean): void;
+  onErrorOccurred(level: string, errorCode: number, message: string, suggestion: string, customInfo: Record<string, string>, logboxOnly: boolean, rootCause: string): void;
   onModuleMethodInvoked(module: string, method: string, error_code: number): void;
   onEvaluateJavaScriptEnd(url: string): void;
   createDevTool(embedderProxy: number[]): void;

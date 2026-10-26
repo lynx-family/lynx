@@ -645,10 +645,10 @@ void LynxTemplateRenderer::OnErrorOccurred(
     int level, int32_t error_code, const std::string& message,
     const std::string& fix_suggestion,
     const std::unordered_map<std::string, std::string>& custom_info,
-    bool is_logbox_only) {
+    bool is_logbox_only, const std::string& root_cause) {
   base::NapiHandleScope scope(env_);
   std::string level_str = base::LynxError::GetLevelString(level);
-  napi_value param[6];
+  napi_value param[7];
   napi_create_string_utf8(env_, level_str.c_str(), level_str.length(),
                           &param[0]);
   napi_create_int32(env_, error_code, &param[1]);
@@ -657,8 +657,10 @@ void LynxTemplateRenderer::OnErrorOccurred(
                           &param[3]);
   param[4] = base::NapiUtil::CreateMap(env_, custom_info);
   napi_get_boolean(env_, is_logbox_only, &param[5]);
+  napi_create_string_utf8(env_, root_cause.c_str(), root_cause.length(),
+                          &param[6]);
   base::NapiUtil::AsyncInvokeJsMethod(env_, template_renderer_ref_,
-                                      "onErrorOccurred", 6, param);
+                                      "onErrorOccurred", 7, param);
 }
 
 void LynxTemplateRenderer::OnThemeUpdatedByJs(
