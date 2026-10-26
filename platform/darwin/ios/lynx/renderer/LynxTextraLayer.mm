@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxTextraLayer.h"
+#import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
-#import "LynxRendererContext.h"
 
 @implementation LynxTextraLayer {
   int32_t _textID;
@@ -23,6 +23,11 @@
     self.contentsScale = [UIScreen mainScreen].scale;
   }
   return self;
+}
+
+- (id<CAAction>)actionForLayer:(CALayer *)layer forKey:(NSString *)event {
+  // Geometry changes and redraws of reused backing must not animate implicitly.
+  return (id<CAAction>)[NSNull null];
 }
 
 - (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx {
