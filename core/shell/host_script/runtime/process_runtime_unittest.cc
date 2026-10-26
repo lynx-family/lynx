@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/message_loop_task_queues.h"
 #include "base/include/fml/thread.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/devtool_state.h"
@@ -127,6 +128,13 @@ class ProcessRuntimeTest : public ::testing::Test {
     runtime_.LoadScript(source, "host-script-entry.js", Collect(results));
     EXPECT_TRUE(results->WaitFor(1));
     return results->Values().front();
+  }
+
+  std::array<size_t, 3> PendingTasks() const {
+    auto* queues = fml::MessageLoopTaskQueues::GetInstance();
+    return {queues->GetNumPendingTasks(runners_.bts->GetTaskQueueId()),
+            queues->GetNumPendingTasks(runners_.mts->GetTaskQueueId()),
+            queues->GetNumPendingTasks(runners_.ui->GetTaskQueueId())};
   }
 
   ProcessRuntime& runtime_ = ProcessRuntime::GetInstance();
@@ -387,6 +395,115 @@ TEST_F(ProcessRuntimeTest, ExplicitShutdownDiscardsLoadConfiguration) {
   EXPECT_EQ(Load("42").error, "RUNTIME_NOT_RUNNING");
   Initialize("");
   EXPECT_TRUE(Load("42").success);
+}
+
+TEST_F(ProcessRuntimeTest, DisabledColdAdmissionDoesNotQueueOrCreateBindings) {
+  tasm::DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      tasm::DevToolState::ATTACHED);
+  RunnerBlock bts(runners_.bts), mts(runners_.mts), ui(runners_.ui);
+  auto before = PendingTasks();
+  std::atomic<size_t> factories{0};
+  EXPECT_FALSE(runtime_.Initialize(
+      runners_, {},
+      [&factories](Domain) {
+        ++factories;
+        return std::unique_ptr<ProcessRuntime::RuntimeBindings>{};
+      },
+      {}, ProcessRuntime::InitializationMode::kLazy));
+  auto results = std::make_shared<Results>();
+  for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
+    runtime_.Evaluate(domain, "42", "disabled.js", Collect(results));
+    runtime_.RunOnThread(domain, "42", "disabled.js", Collect(results));
+    EXPECT_FALSE(runtime_.IsReady(domain));
+  }
+  runtime_.LoadScript("42", "disabled.js", Collect(results));
+  runtime_.InitializeBindings();
+  runtime_.NotifyEvent({"disabled", "{}"});
+  ASSERT_TRUE(results->WaitFor(7));
+  EXPECT_EQ(results->Values().size(), 7u);
+  for (const auto& result : results->Values())
+    EXPECT_EQ(result.error, "HSR_DEBUG_DISABLED");
+  EXPECT_EQ(factories.load(), 0u);
+  EXPECT_EQ(PendingTasks(), before);
+}
+
+TEST_F(ProcessRuntimeTest, DisabledReadyGenerationDoesNotQueueEvents) {
+  Initialize("");
+  RunnerBlock bts(runners_.bts), mts(runners_.mts), ui(runners_.ui);
+  tasm::DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      tasm::DevToolState::ATTACHED);
+  auto before = PendingTasks();
+  runtime_.InitializeBindings();
+  runtime_.NotifyEvent({"disabled", "{}"});
+  for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI})
+    EXPECT_FALSE(runtime_.IsReady(domain));
+  EXPECT_EQ(PendingTasks(), before);
+}
+
+TEST_F(ProcessRuntimeTest, QueuedEvaluationRechecksAdmissionOnItsOwner) {
+  Initialize("");
+  RunnerBlock bts(runners_.bts);
+  auto pending = std::make_shared<Results>();
+  runtime_.RunOnThread(Domain::kBTS, "globalThis.staleWork = true", "queued.js",
+                       Collect(pending));
+  tasm::DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      tasm::DevToolState::ATTACHED);
+  bts.Release();
+  ASSERT_TRUE(pending->WaitFor(1));
+  EXPECT_EQ(pending->Values().size(), 1u);
+  EXPECT_EQ(pending->Values().front().error, "HSR_DEBUG_DISABLED");
+  tasm::DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      tasm::DevToolState::ENABLED);
+  EXPECT_EQ(
+      Evaluate(Domain::kBTS, "typeof staleWork")->Values().front().value_json,
+      "\"undefined\"");
+}
+
+TEST_F(ProcessRuntimeTest,
+       GenerationAdmissionGuardRejectsStaleWorkAfterReenable) {
+  auto revision = std::make_shared<std::atomic<uint64_t>>(1);
+  auto ready = std::make_shared<Results>();
+  ASSERT_TRUE(
+      runtime_.Initialize(runners_, Collect(ready), {}, {},
+                          ProcessRuntime::InitializationMode::kEager,
+                          [revision] { return revision->load() == 1; }));
+  ASSERT_TRUE(ready->WaitFor(3));
+  RunnerBlock bts(runners_.bts);
+  auto queued = std::make_shared<Results>();
+  runtime_.Evaluate(Domain::kBTS, "globalThis.stale = true", "stale.js",
+                    Collect(queued));
+  // Lifecycle may already be enabled again when the owner drains its queue.
+  tasm::DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      tasm::DevToolState::ATTACHED);
+  revision->store(2);
+  tasm::DevToolLifecycle::GetInstance().SyncStateFromPlatform(
+      tasm::DevToolState::ENABLED);
+  EXPECT_FALSE(runtime_.IsReady(Domain::kBTS));
+  bts.Release();
+  ASSERT_TRUE(queued->WaitFor(1));
+  ASSERT_EQ(queued->Values().size(), 1u);
+  EXPECT_EQ(queued->Values().front().error, "HSR_DEBUG_DISABLED");
+}
+
+TEST_F(ProcessRuntimeTest, LoadAdmissionGuardSurvivesReplacement) {
+  Initialize("");
+  RunnerBlock mts(runners_.mts);
+  std::atomic<bool> valid{true};
+  auto loaded = std::make_shared<Results>();
+  runtime_.LoadScript("globalThis.stale = true", "stale-load.js",
+                      Collect(loaded), [&] { return valid.load(); });
+  valid.store(false);
+  mts.Release();
+  ASSERT_TRUE(loaded->WaitFor(1));
+  ASSERT_EQ(loaded->Values().size(), 1u);
+  EXPECT_EQ(loaded->Values().front().error, "HSR_DEBUG_DISABLED");
+  EXPECT_FALSE(runtime_.IsReady(Domain::kBTS));
+  ASSERT_TRUE(Load("globalThis.fresh = true").success);
+  EXPECT_EQ(Evaluate(Domain::kBTS, "[typeof stale, fresh]")
+                ->Values()
+                .front()
+                .value_json,
+            "[\"undefined\",true]");
 }
 
 }  // namespace

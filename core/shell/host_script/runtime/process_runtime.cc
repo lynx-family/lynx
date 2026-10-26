@@ -24,12 +24,7 @@ namespace lynx {
 namespace shell {
 
 bool IsHostScriptRuntimeEnabled() {
-#if defined(OS_ANDROID)
-  // Only the Android debug engine links the real process runtime.
-  return true;
-#else
   return tasm::DevToolLifecycle::GetInstance().IsEnabled();
-#endif
 }
 
 namespace {
@@ -40,6 +35,7 @@ using Completion = ProcessRuntime::Completion;
 using Guard = ProcessRuntime::Guard;
 using BindingFactory = ProcessRuntime::BindingFactory;
 using InitializationMode = ProcessRuntime::InitializationMode;
+std::atomic<ProcessRuntime*> published_runtime{nullptr};
 enum class ProcessState { kRunning, kStopping, kStopped };
 enum class CompletionValue { kJSON, kSynchronous, kIgnored };
 
@@ -76,10 +72,12 @@ Result WithError(Result result, std::string error) {
 class DomainRuntime final {
  public:
   DomainRuntime(Result identity, fml::RefPtr<fml::TaskRunner> runner,
-                std::unique_ptr<ProcessRuntime::RuntimeBindings> bindings)
+                std::unique_ptr<ProcessRuntime::RuntimeBindings> bindings,
+                Guard admission_guard)
       : identity_(std::move(identity)),
         runner_(std::move(runner)),
-        bindings_(std::move(bindings)) {}
+        bindings_(std::move(bindings)),
+        admission_guard_(std::move(admission_guard)) {}
 
   ~DomainRuntime() {
     DCHECK(runner_->RunsTasksOnCurrentThread());
@@ -94,7 +92,7 @@ class DomainRuntime final {
 
   Result Initialize() {
     DCHECK(runner_->RunsTasksOnCurrentThread());
-    if (!IsHostScriptRuntimeEnabled())
+    if (!IsHostScriptRuntimeEnabled() || !admission_guard_())
       return WithError(Identity(), "HSR_DEBUG_DISABLED");
     identity_.owner_thread = CurrentThread();
     executor_ =
@@ -129,7 +127,8 @@ class DomainRuntime final {
           ProcessRuntime::GetInstance().RunOnThread(
               domain, std::move(source), std::move(url), std::move(completion),
               std::move(guard));
-        });
+        },
+        admission_guard_);
     if (!thread_bindings_ || !thread_bindings_->Install(identity_.domain))
       return WithError(Identity(), "HOST_SCRIPT_THREAD_BINDINGS_ATTACH_FAILED");
     auto result = Identity();
@@ -169,7 +168,7 @@ class DomainRuntime final {
                  CompletionValue completion_value = CompletionValue::kJSON) {
     DCHECK(runner_->RunsTasksOnCurrentThread());
     // Recheck owner admission on platforms with a revocable lifecycle.
-    if (!IsHostScriptRuntimeEnabled())
+    if (!IsHostScriptRuntimeEnabled() || !admission_guard_())
       return WithError(Identity(), "HSR_DEBUG_DISABLED");
     if (executing_) return WithError(Identity(), "REENTRANT_EVALUATION");
     executing_ = true;
@@ -218,6 +217,7 @@ class DomainRuntime final {
   std::shared_ptr<HostScriptThreadBindings> thread_bindings_;
   std::unique_ptr<ProcessRuntime::RuntimeBindings> bindings_;
   std::optional<runtime::js::Function> stringify_;
+  const Guard admission_guard_;
   bool executing_ = false;
 };
 
@@ -246,7 +246,7 @@ class DomainState final {
               std::shared_ptr<DomainPublication> publication,
               std::shared_ptr<std::atomic<ProcessState>> process_state,
               Completion ready, Domain domain, BindingFactory binding_factory,
-              std::string bootstrap)
+              std::string bootstrap, Guard admission_guard)
       : runner_(std::move(runner)),
         publication_(std::move(publication)),
         process_state_(std::move(process_state)),
@@ -254,17 +254,25 @@ class DomainState final {
         ready_callback_(std::move(ready)),
         domain_(domain),
         binding_factory_(std::move(binding_factory)),
-        bootstrap_(std::move(bootstrap)) {}
+        bootstrap_(std::move(bootstrap)),
+        admission_guard_(std::move(admission_guard)) {}
 
   Result Initialize() {
     AssertOwner();
     if (initialization_result_) return *initialization_result_;
     identity_.owner_thread = CurrentThread();
     Result result = WithError(Identity(), "RUNTIME_SHUTDOWN");
-    if (IsRunning()) {
+    if (!Admitted()) {
+      result = WithError(Identity(), "HSR_DEBUG_DISABLED");
+    } else if (IsRunning()) {
       runtime_ = std::make_unique<DomainRuntime>(
           identity_, runner_,
-          binding_factory_ ? binding_factory_(domain_) : nullptr);
+          binding_factory_ ? binding_factory_(domain_) : nullptr,
+          [state = process_state_, guard = admission_guard_] {
+            return state->load(std::memory_order_acquire) ==
+                       ProcessState::kRunning &&
+                   IsHostScriptRuntimeEnabled() && (!guard || guard());
+          });
       result = runtime_->Initialize();
       if (result.success && !bootstrap_.empty()) {
         result = runtime_->Execute(bootstrap_, "host-script-bootstrap.js",
@@ -276,6 +284,7 @@ class DomainState final {
       if (!result.success) runtime_.reset();
     }
     binding_factory_ = {};
+    bootstrap_.clear();
     std::atomic_store(&publication_->initialized_identity,
                       std::make_shared<const Result>(identity_));
     publication_->ready.store(result.success, std::memory_order_release);
@@ -291,13 +300,16 @@ class DomainState final {
 
   void Evaluate(const std::string& source, const std::string& url,
                 Completion completion, const Guard& guard,
-                CompletionValue completion_value = CompletionValue::kJSON) {
+                CompletionValue completion_value = CompletionValue::kJSON,
+                const char* guard_error = "SOURCE_RUNTIME_DETACHED") {
     AssertOwner();
     Result result;
-    if (!IsRunning()) {
+    if (!Admitted()) {
+      result = WithError(Identity(), "HSR_DEBUG_DISABLED");
+    } else if (!IsRunning()) {
       result = WithError(Identity(), "RUNTIME_SHUTDOWN");
     } else if (guard && !guard()) {
-      result = WithError(Identity(), "SOURCE_RUNTIME_DETACHED");
+      result = WithError(Identity(), guard_error);
     } else if (!IsRunning()) {
       // A guard is allowed to request shutdown.
       result = WithError(Identity(), "RUNTIME_SHUTDOWN");
@@ -305,8 +317,10 @@ class DomainState final {
       result = Initialize();
       // Bootstrap or the readiness callback may have detached the source.
       if (result.success && guard && !guard()) {
-        result = WithError(Identity(), "SOURCE_RUNTIME_DETACHED");
+        result = WithError(Identity(), guard_error);
       }
+      if (result.success && !Admitted())
+        result = WithError(Identity(), "HSR_DEBUG_DISABLED");
       if (result.success && IsRunning()) {
         result = runtime_->Execute(source, url, completion_value);
       }
@@ -330,12 +344,15 @@ class DomainState final {
 
   void NotifyEvent(const ProcessRuntime::Event& event) {
     AssertOwner();
-    if (IsHostScriptRuntimeEnabled() && IsRunning() && runtime_)
-      runtime_->NotifyEvent(event);
+    if (Admitted() && IsRunning() && runtime_) runtime_->NotifyEvent(event);
   }
 
  private:
   void AssertOwner() const { DCHECK(runner_->RunsTasksOnCurrentThread()); }
+  bool Admitted() const {
+    return IsHostScriptRuntimeEnabled() &&
+           (!admission_guard_ || admission_guard_());
+  }
   bool IsRunning() const {
     return process_state_->load(std::memory_order_acquire) ==
            ProcessState::kRunning;
@@ -358,6 +375,7 @@ class DomainState final {
   BindingFactory binding_factory_;
   std::string bootstrap_;
   std::unique_ptr<DomainRuntime> runtime_;
+  const Guard admission_guard_;
 };
 
 Result ShutdownResult() {
@@ -381,18 +399,20 @@ class RuntimeGeneration final
   RuntimeGeneration(std::array<fml::RefPtr<fml::TaskRunner>, 3> owners,
                     uint64_t first_id, const Completion& ready,
                     const BindingFactory& binding_factory,
-                    const std::string& bootstrap, InitializationMode mode)
+                    const std::string& bootstrap, InitializationMode mode,
+                    Guard admission_guard)
       : control_(owners[2]),
         state_(std::make_shared<std::atomic<ProcessState>>(
             ProcessState::kRunning)),
-        mode_(mode) {
+        mode_(mode),
+        admission_guard_(std::move(admission_guard)) {
     for (size_t i = 0; i < endpoints_.size(); ++i) {
       auto domain = static_cast<Domain>(i);
       auto publication =
           std::make_shared<DomainPublication>(domain, first_id + i, owners[i]);
-      auto owner =
-          std::make_unique<DomainState>(owners[i], publication, state_, ready,
-                                        domain, binding_factory, bootstrap);
+      auto owner = std::make_unique<DomainState>(owners[i], publication, state_,
+                                                 ready, domain, binding_factory,
+                                                 bootstrap, admission_guard_);
       endpoints_[i] = {
           std::move(publication),
           std::make_shared<DomainState::Actor>(std::move(owner), owners[i])};
@@ -401,6 +421,10 @@ class RuntimeGeneration final
 
   ProcessState State() const { return state_->load(std::memory_order_acquire); }
   bool IsLazy() const { return mode_ == InitializationMode::kLazy; }
+  bool Admitted() const {
+    return IsHostScriptRuntimeEnabled() &&
+           (!admission_guard_ || admission_guard_());
+  }
 
   const Endpoint* Find(Domain domain) const {
     return IsValidDomain(domain) ? &endpoints_[DomainIndex(domain)] : nullptr;
@@ -411,6 +435,7 @@ class RuntimeGeneration final
   template <typename Factory>
   bool Post(const Endpoint& endpoint, Factory&& task,
             bool allow_inline = false) {
+    if (!Admitted()) return false;
     auto postings = postings_.load(std::memory_order_acquire);
     do {
       if (postings & kClosed) return false;
@@ -433,7 +458,7 @@ class RuntimeGeneration final
   }
 
   void InitializeBindings() {
-    if (State() != ProcessState::kRunning ||
+    if (!Admitted() || State() != ProcessState::kRunning ||
         initialization_posted_.exchange(true))
       return;
     for (const auto& endpoint : endpoints_) {
@@ -505,6 +530,7 @@ class RuntimeGeneration final
   const fml::RefPtr<fml::TaskRunner> control_;
   const std::shared_ptr<std::atomic<ProcessState>> state_;
   const InitializationMode mode_;
+  const Guard admission_guard_;
   std::array<Endpoint, 3> endpoints_;
   // Only control_ accesses these fields. No per-request process registry.
   std::vector<Completion> shutdown_waiters_;
@@ -520,19 +546,24 @@ class ProcessRuntime::Impl {
  public:
   bool Initialize(Runners runners, Completion ready,
                   BindingFactory binding_factory, std::string bootstrap,
-                  InitializationMode mode) {
-    if (!IsHostScriptRuntimeEnabled()) return false;
+                  InitializationMode mode, Guard admission_guard) {
+    if (!IsHostScriptRuntimeEnabled() ||
+        (admission_guard && !admission_guard()))
+      return false;
     if (!bootstrap.empty() && !NormalizeScriptSource(bootstrap)) return false;
     if (!runners.bts || !runners.mts || !runners.ui) return false;
     std::lock_guard<std::mutex> lock(lifecycle_mutex_);
-    if (load_) return false;
+    if (load_ || !IsHostScriptRuntimeEnabled() ||
+        (admission_guard && !admission_guard()))
+      return false;
     auto current = Current();
     if (current && current->State() != ProcessState::kStopped) return false;
     auto next = std::make_shared<RuntimeGeneration>(
         std::array<fml::RefPtr<fml::TaskRunner>, 3>{runners.bts, runners.mts,
                                                     runners.ui},
         next_runtime_id_.fetch_add(3) + 1, ready, binding_factory, bootstrap,
-        mode);
+        mode, admission_guard);
+    admission_guard_ = std::move(admission_guard);
     runners_ = runners;
     binding_factory_ = std::move(binding_factory);
     bootstrap_ = std::move(bootstrap);
@@ -547,9 +578,10 @@ class ProcessRuntime::Impl {
   }
 
   bool IsReady(Domain domain) const {
+    if (!IsHostScriptRuntimeEnabled()) return false;
     auto generation = Current();
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
-    return IsHostScriptRuntimeEnabled() && !loading_.load() && generation &&
+    return !loading_.load() && generation && generation->Admitted() &&
            generation->State() == ProcessState::kRunning && endpoint &&
            endpoint->publication->ready.load(std::memory_order_acquire);
   }
@@ -559,7 +591,10 @@ class ProcessRuntime::Impl {
     auto generation = Current();
     auto* endpoint = generation ? generation->Find(domain) : nullptr;
     const char* error =
-        !IsHostScriptRuntimeEnabled()      ? "HSR_DEBUG_DISABLED"
+        !IsHostScriptRuntimeEnabled() ||
+                (generation && !generation->Admitted()) ||
+                (!from_binding && guard && !guard())
+            ? "HSR_DEBUG_DISABLED"
         : loading_.load() && !from_binding ? "RUNTIME_LOADING"
         : !IsValidDomain(domain)           ? "INVALID_DOMAIN"
         : !generation || generation->State() != ProcessState::kRunning
@@ -582,20 +617,29 @@ class ProcessRuntime::Impl {
     if (!generation->Post(
             *endpoint,
             [&] {
-              return [source = std::move(source), url = std::move(url),
-                      completion = std::move(completion),
-                      guard = std::move(guard)](auto& owner) mutable {
-                owner->Evaluate(source, url, std::move(completion), guard);
-              };
+              return
+                  [source = std::move(source), url = std::move(url),
+                   completion = std::move(completion), guard = std::move(guard),
+                   from_binding](auto& owner) mutable {
+                    owner->Evaluate(source, url, std::move(completion), guard,
+                                    CompletionValue::kJSON,
+                                    from_binding ? "SOURCE_RUNTIME_DETACHED"
+                                                 : "HSR_DEBUG_DISABLED");
+                  };
             }) &&
         completion) {
-      completion(WithError(std::move(identity), "RUNTIME_NOT_RUNNING"));
+      completion(WithError(std::move(identity), generation->Admitted()
+                                                    ? "RUNTIME_NOT_RUNNING"
+                                                    : "HSR_DEBUG_DISABLED"));
     }
   }
 
   void NotifyEvent(const Event& event) {
+    if (!IsHostScriptRuntimeEnabled()) return;
     auto generation = Current();
-    if (!generation || generation->State() != ProcessState::kRunning) return;
+    if (!generation || !generation->Admitted() ||
+        generation->State() != ProcessState::kRunning)
+      return;
     for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
       const auto* endpoint = generation->Find(domain);
       if (!endpoint->publication->ready.load(std::memory_order_acquire))
@@ -618,11 +662,18 @@ class ProcessRuntime::Impl {
       runners_ = {};
       binding_factory_ = {};
       bootstrap_.clear();
+      admission_guard_ = {};
     }
     if (generation) {
-      generation->Shutdown([this, load, completion = std::move(completion)](
-                               Result result) mutable {
+      generation->Shutdown([this, generation, load,
+                            completion =
+                                std::move(completion)](Result result) mutable {
         if (load) FinishLoad(load, WithError({}, "RUNTIME_SHUTDOWN"));
+        {
+          std::lock_guard<std::mutex> lock(lifecycle_mutex_);
+          if (Current() == generation)
+            std::atomic_store(&current_, std::shared_ptr<RuntimeGeneration>{});
+        }
         if (completion) completion(std::move(result));
       });
     } else if (completion) {
@@ -630,7 +681,13 @@ class ProcessRuntime::Impl {
     }
   }
 
-  void LoadScript(std::string source, std::string url, Completion completion) {
+  void LoadScript(std::string source, std::string url, Completion completion,
+                  Guard admission_guard) {
+    if (!IsHostScriptRuntimeEnabled() ||
+        (admission_guard && !admission_guard())) {
+      if (completion) completion(WithError({}, "HSR_DEBUG_DISABLED"));
+      return;
+    }
     if (!NormalizeScriptSource(source, true) || url.empty()) {
       if (completion) completion(WithError({}, "INVALID_SCRIPT_SOURCE"));
       return;
@@ -639,13 +696,17 @@ class ProcessRuntime::Impl {
     load->source = std::move(source);
     load->url = std::move(url);
     load->completion = std::move(completion);
+    load->guard = std::move(admission_guard);
     std::shared_ptr<RuntimeGeneration> generation;
     const char* error = nullptr;
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
       generation = Current();
-      error = !IsHostScriptRuntimeEnabled() ? "HSR_DEBUG_DISABLED"
-              : load_                       ? "RUNTIME_LOADING"
+      error = !IsHostScriptRuntimeEnabled() ||
+                      (load->guard && !load->guard()) ||
+                      (generation && !generation->Admitted())
+                  ? "HSR_DEBUG_DISABLED"
+              : load_ ? "RUNTIME_LOADING"
               : !runners_.bts || !generation ||
                       generation->State() == ProcessState::kStopping
                   ? "RUNTIME_NOT_RUNNING"
@@ -667,6 +728,7 @@ class ProcessRuntime::Impl {
     std::string source;
     std::string url;
     Completion completion;
+    Guard guard;
     Result initialization_error;
     size_t initialized_domains = 0;
     bool cancelled = false;
@@ -677,13 +739,16 @@ class ProcessRuntime::Impl {
     {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
       if (load_ != load) return;
-      if (!load->cancelled && IsHostScriptRuntimeEnabled()) {
+      if (!load->cancelled && IsHostScriptRuntimeEnabled() &&
+          (!load->guard || load->guard()) &&
+          (!admission_guard_ || admission_guard_())) {
         next = std::make_shared<RuntimeGeneration>(
             std::array<fml::RefPtr<fml::TaskRunner>, 3>{
                 runners_.bts, runners_.mts, runners_.ui},
             next_runtime_id_.fetch_add(3) + 1,
             [this, load](Result result) { LoadDomainReady(load, result); },
-            binding_factory_, bootstrap_, InitializationMode::kEager);
+            binding_factory_, bootstrap_, InitializationMode::kEager,
+            admission_guard_);
         std::atomic_store(&current_, next);
       }
     }
@@ -719,7 +784,7 @@ class ProcessRuntime::Impl {
                     StopFailedLoad(load, std::move(result));
                   }
                 },
-                {}, CompletionValue::kIgnored);
+                load->guard, CompletionValue::kIgnored, "HSR_DEBUG_DISABLED");
           };
         })) {
       StopFailedLoad(load, WithError({}, "RUNTIME_SHUTDOWN"));
@@ -746,7 +811,8 @@ class ProcessRuntime::Impl {
       std::lock_guard<std::mutex> lock(lifecycle_mutex_);
       if (load_ != load) return;
       cleanup =
-          result.success && (load->cancelled || !IsHostScriptRuntimeEnabled());
+          result.success && (load->cancelled || !IsHostScriptRuntimeEnabled() ||
+                             (load->guard && !load->guard()));
       if (load->cancelled)
         result = WithError(std::move(result), "RUNTIME_SHUTDOWN");
       else if (cleanup)
@@ -774,12 +840,21 @@ class ProcessRuntime::Impl {
   Runners runners_;
   BindingFactory binding_factory_;
   std::string bootstrap_;
+  Guard admission_guard_;
 };
 
 ProcessRuntime& ProcessRuntime::GetInstance() {
   // Process lifetime avoids destroying VM state from a static destructor.
-  static auto* runtime = new ProcessRuntime();
+  static auto* runtime = [] {
+    auto* created = new ProcessRuntime();
+    published_runtime.store(created, std::memory_order_release);
+    return created;
+  }();
   return *runtime;
+}
+
+ProcessRuntime* ProcessRuntime::GetIfCreated() {
+  return published_runtime.load(std::memory_order_acquire);
 }
 
 const char* ProcessRuntime::DomainName(Domain domain) {
@@ -799,11 +874,11 @@ ProcessRuntime::~ProcessRuntime() = default;
 
 bool ProcessRuntime::Initialize(Runners runners, Completion per_domain_ready,
                                 BindingFactory binding_factory,
-                                std::string bootstrap,
-                                InitializationMode mode) {
+                                std::string bootstrap, InitializationMode mode,
+                                Guard admission_guard) {
   return impl_->Initialize(std::move(runners), std::move(per_domain_ready),
                            std::move(binding_factory), std::move(bootstrap),
-                           mode);
+                           mode, std::move(admission_guard));
 }
 
 void ProcessRuntime::InitializeBindings() { impl_->InitializeBindings(); }
@@ -815,9 +890,10 @@ bool ProcessRuntime::IsReady(Domain domain) const {
 void ProcessRuntime::NotifyEvent(Event event) { impl_->NotifyEvent(event); }
 
 void ProcessRuntime::Evaluate(Domain domain, std::string source,
-                              std::string url, Completion completion) {
+                              std::string url, Completion completion,
+                              Guard admission_guard) {
   impl_->Evaluate(domain, std::move(source), std::move(url),
-                  std::move(completion), {});
+                  std::move(completion), std::move(admission_guard));
 }
 
 void ProcessRuntime::RunOnThread(Domain domain, std::string source,
@@ -828,8 +904,9 @@ void ProcessRuntime::RunOnThread(Domain domain, std::string source,
 }
 
 void ProcessRuntime::LoadScript(std::string source, std::string url,
-                                Completion completion) {
-  impl_->LoadScript(std::move(source), std::move(url), std::move(completion));
+                                Completion completion, Guard admission_guard) {
+  impl_->LoadScript(std::move(source), std::move(url), std::move(completion),
+                    std::move(admission_guard));
 }
 
 void ProcessRuntime::Shutdown(Completion completion) {

@@ -20,8 +20,8 @@
 namespace lynx {
 namespace shell {
 
-// Android runtime availability follows the loaded debug engine. Other
-// platforms retain their existing DevTool admission policy.
+// Runtime admission is independent of debug-engine compilation. A compiled
+// implementation accepts work only while its debug lifecycle is enabled.
 bool IsHostScriptRuntimeEnabled();
 
 // One source context owns its Promise callbacks. Copied source and native
@@ -37,7 +37,7 @@ class HostScriptThreadBindings final
 
   static std::shared_ptr<HostScriptThreadBindings> Create(
       runtime::js::Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner,
-      Executor executor);
+      Executor executor, ProcessRuntime::Guard admission_guard = {});
 
   // Installs runOn* and __hostScriptThread function/source bindings.
   // Same-domain functions keep their closure; cross-domain functions must use
@@ -58,8 +58,10 @@ class HostScriptThreadBindings final
 
   HostScriptThreadBindings(Runtime& runtime,
                            fml::RefPtr<fml::TaskRunner> runner,
-                           Executor executor);
+                           Executor executor,
+                           ProcessRuntime::Guard admission_guard);
   CallResult Run(Domain domain, const Value* args, size_t count);
+  bool Admitted() const;
   bool DefineProperty(runtime::js::Object& target, const char* name,
                       Value value, bool mutable_export = true);
   void Complete(uint64_t request, const Result& result);
@@ -68,6 +70,7 @@ class HostScriptThreadBindings final
   Runtime& runtime_;
   fml::RefPtr<fml::TaskRunner> runner_;
   Executor executor_;
+  const ProcessRuntime::Guard admission_guard_;
   std::atomic<bool> attached_{false};
   // Owner-thread state; Detach clears every engine reference explicitly.
   std::optional<Function> promise_;
