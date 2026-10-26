@@ -7135,6 +7135,8 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.setImageInterceptor(ImageInterceptor interceptor);
   public void com.lynx.tasm.LynxTemplateRender.setAsyncImageInterceptor(ImageInterceptor interceptor);
   public String com.lynx.tasm.LynxTemplateRender.getPageVersion();
+  public void com.lynx.tasm.LynxTemplateRender.pause();
+  public void com.lynx.tasm.LynxTemplateRender.resume();
   public void com.lynx.tasm.LynxTemplateRender.pauseRootLayoutAnimation();
   public void com.lynx.tasm.LynxTemplateRender.resumeRootLayoutAnimation();
   public void com.lynx.tasm.LynxTemplateRender.renderTemplateUrl(@NonNull String templateUrl, final TemplateData templateData);
@@ -7769,6 +7771,8 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.removeLynxViewClientV2(LynxViewClientV2 client);
   public void com.lynx.tasm.LynxView.setImageInterceptor(ImageInterceptor interceptor);
   public void com.lynx.tasm.LynxView.setAsyncImageInterceptor(ImageInterceptor interceptor);
+  public void com.lynx.tasm.LynxView.pause();
+  public void com.lynx.tasm.LynxView.resume();
   public void com.lynx.tasm.LynxView.pauseRootLayoutAnimation();
   public void com.lynx.tasm.LynxView.resumeRootLayoutAnimation();
   public void com.lynx.tasm.LynxView.renderTemplateUrl(@NonNull String templateUrl, final TemplateData templateData);

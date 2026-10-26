@@ -67,6 +67,10 @@ final class LynxJNI {
 
   static native void nativeOnEnterBackground(long ptr, long lifecycle);
 
+  static native void nativePause(long ptr, long lifecycle);
+
+  static native void nativeResume(long ptr, long lifecycle);
+
   // load template && component
   // FIXME(songshourui.null): only use templateData later
   static native void nativeLoadSSRDataByPreParsedData(long ptr, long lifecycle, String url,
