@@ -18,6 +18,13 @@ StaggeredGridLayoutManager::StaggeredGridLayoutManager(
     : ListLayoutManager(list_container_impl) {}
 
 void StaggeredGridLayoutManager::InitLayoutState() {
+  if (list_container_->enable_debug_error_info()) {
+    DLIST_LOGE(
+        "[" << list_container_
+            << "] StaggeredGridLayoutManager::InitLayoutState: span_count="
+            << span_count_);
+  }
+  span_count_dirty_ = true;
   column_indexes_.resize(span_count_);
   std::fill(column_indexes_.begin(), column_indexes_.begin() + span_count_,
             std::vector<int>());
@@ -49,6 +56,16 @@ void StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus(
           // span index of current item holder.
           int span_index = item_holder->item_col_index();
           int item_index = item_holder->index();
+          if (list_container_->enable_debug_error_info() &&
+              span_index >= span_count_) {
+            DLIST_LOGE(
+                "["
+                << list_container_
+                << "] "
+                   "StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus: "
+                   "span_index out of range: span_index="
+                << span_index << ", span_count_=" << span_count_);
+          }
           int current_start_item_index =
               start_item_holders[span_index]->index();
           int current_end_item_index = end_item_holders[span_index]->index();
@@ -488,6 +505,7 @@ void StaggeredGridLayoutManager::LayoutInvalidItemHolder(
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               STAGGERED_GRID_LAYOUT_MANAGER_LAYOUT_INVALID_ITEM,
               "first_invalid_index", first_invalid_index);
+  span_count_dirty_ = false;
   if (list_container_->GetDataCount() == 0) {
     for (auto& column_index : column_indexes_) {
       column_index.clear();
@@ -625,6 +643,11 @@ void StaggeredGridLayoutManager::ScrollByInternal(float content_offset,
       from_platform ? content_offset : content_offset_;
   list_container_->StartInterceptListElementUpdated();
   // Fill
+  if (list_container_->enable_change_span_count_with_frame_change() &&
+      span_count_dirty_) {
+    LayoutInvalidItemHolder(0);
+    content_size_ = GetTargetContentSize();
+  }
   LayoutState layout_state(span_count_, delta > 0
                                             ? LayoutDirection::kLayoutToEnd
                                             : LayoutDirection::kLayoutToStart);

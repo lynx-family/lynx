@@ -112,6 +112,11 @@ static constexpr const char* const kUpdateAnimationTypeRemove = "remove";
 static constexpr const char* const kUpdateAnimationTypeMove = "move";
 static constexpr const char* const kUpdateAnimationTypeAdd = "add";
 static constexpr const char* const kUpdateAnimationTypeChange = "change";
+static constexpr const char* const
+    kPropExperimentalEnableChangeSpanCountWithFrameChange =
+        "experimental-enable-change-span-count-with-frame-change";
+static constexpr const char* const kPropExperimentalEnableDebugErrorInfo =
+    "experimental-enable-debug-error-info";
 
 // prop value
 static constexpr const char* const kPropValueTrue = "true";

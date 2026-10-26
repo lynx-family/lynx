@@ -85,6 +85,8 @@ class AdapterHelper {
 
   bool HasValidDiff() const { return diff_result_.HasValidDiff(); }
 
+  const DiffResult& diff_result() const { return diff_result_; }
+
   int GetIndexForItemKey(const std::string& item_key) const {
     auto it = item_key_map_.end();
     if (item_key_map_.end() != (it = item_key_map_.find(item_key))) {

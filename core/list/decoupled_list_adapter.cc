@@ -143,6 +143,14 @@ std::pair<ListAdapterDiffResult, bool> ListAdapter::UpdateRadonDataSource(
       result |= ListAdapterDiffResult::kMove;
     }
   }
+
+  if (list_container_ && list_container_->enable_debug_error_info()) {
+    DLIST_LOGE("[" << list_container_
+                   << "] ListAdapter::UpdateRadonDataSource: diff_result="
+                   << adapter_helper_->diff_result().ToString()
+                   << ", has_valid_diff=" << adapter_helper_->HasValidDiff());
+  }
+
   return {result, HasExpectedDiffAnimation()};
 }
 
@@ -273,6 +281,12 @@ void ListAdapter::UpdateItemHolderToLatest(
   const auto& attached_children = list_children_helper->attached_children();
   const auto& last_binding_children =
       list_children_helper->last_binding_children();
+  if (list_container_->enable_debug_error_info()) {
+    DLIST_LOGE("[" << list_container_
+                   << "] ListAdapter::UpdateItemHolderToLatest: before ---- "
+                      "attached_children="
+                   << attached_children.size());
+  }
   std::unordered_set<ItemHolder*> attached_children_set(
       attached_children.begin(), attached_children.end());
   std::unordered_set<ItemHolder*> last_binding_children_set(
@@ -319,6 +333,14 @@ void ListAdapter::UpdateItemHolderToLatest(
     list_children_helper->AddChild(children, item_holder);
     if (attached_children_set.find(item_holder) !=
         attached_children_set.end()) {
+      if (list_container_->enable_debug_error_info()) {
+        DLIST_LOGE(
+            "["
+            << list_container_
+            << "] ListAdapter::UpdateItemHolderToLatest: re-attach new_index="
+            << new_index << ", item_key=" << item_key
+            << ", item_holder=" << item_holder);
+      }
       // Add item holder to attached children.
       ItemElementDelegate* list_item_delegate =
           GetItemElementDelegate(item_holder);

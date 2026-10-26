@@ -181,7 +181,7 @@ void ListLayoutManager::ScrollToPosition(int index, float offset, int align,
   }
   list_anchor_manager_->InitScrollToPositionParam(item_holder, index, offset,
                                                   align, smooth);
-  DLIST_LOGI("[" << list_container_ << "] ScrollToPosition: " << item_holder
+  DLIST_LOGE("[" << list_container_ << "] ScrollToPosition: " << item_holder
                  << ", " << index << ", " << offset << ", " << align << ", "
                  << smooth);
   if (smooth) {
