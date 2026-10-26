@@ -122,7 +122,7 @@ export abstract class UIBase {
         this.focusChange, this.focusable, this.onNodeReady, this.hasCustomizedLayout(), this.updateExtraData,
         this.needWindowStateChangeEvent(),
         this.onEnterForeground, this.onEnterBackground, this.isScrollable, this.scrollX, this.scrollY,
-        this.isLayoutPlaceholder(), this.observeInvalidation(), this.invalidate);
+        this.isLayoutPlaceholder(), this.observeInvalidation(), this.invalidate, this.onNodeReload);
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.UIBASE_CREATE_NATIVE_UI);
     this.nativeUI.setFrameNode(this.getFrameNode(this.uiContext!));
   }
@@ -207,6 +207,9 @@ export abstract class UIBase {
     this.nodeReadyBlockArray = undefined;
     // Operations queued while this batch runs belong to the next callback.
     blocks?.forEach((block: () => void) => block());
+  }
+
+  onNodeReload() {
   }
 
   setFocusedUI() {
