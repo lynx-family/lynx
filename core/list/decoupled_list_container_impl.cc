@@ -331,10 +331,22 @@ void ListContainerImpl::UpdateListLayoutManager(LayoutType layout_type) {
   float content_offset = list_layout_manager_->content_offset();
   bool enable_preload_section = list_layout_manager_->enable_preload_section();
   if (layout_type == LayoutType::kSingle) {
+    DLIST_LOGE(
+        "ListContainerImpl::UpdateListLayoutManager create linear layout "
+        "manager with span count="
+        << span_count);
     list_layout_manager_ = std::make_unique<LinearLayoutManager>(this);
   } else if (layout_type == LayoutType::kFlow) {
+    DLIST_LOGE(
+        "ListContainerImpl::UpdateListLayoutManager create grid layout manager "
+        "with span count="
+        << span_count);
     list_layout_manager_ = std::make_unique<GridLayoutManager>(this);
   } else if (layout_type == LayoutType::kWaterFall) {
+    DLIST_LOGE(
+        "ListContainerImpl::UpdateListLayoutManager create waterfall layout "
+        "manager with span count="
+        << span_count);
     list_layout_manager_ = std::make_unique<StaggeredGridLayoutManager>(this);
   }
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
@@ -414,6 +426,10 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     if (span_count <= 0) {
       span_count = 1;
     }
+    DLIST_LOGE("ListContainerImpl::ResolveAttribute this="
+               << this
+               << " current_span_count=" << list_layout_manager_->span_count()
+               << " -> span_count=" << span_count);
     if (list_layout_manager_->span_count() != span_count) {
       should_cancel_animation = true;
       span_count_changed_ = true;
@@ -451,8 +467,12 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     // list-platform-info / update-list-info
     std::pair<ListAdapterDiffResult, bool> result;
     if (key_str == kPropRadonListPlatformInfo) {
+      DLIST_LOGE("ListContainerImpl::ResolveAttribute this="
+                 << this << " update radon diff info");
       result = list_adapter_->UpdateRadonDataSource(value);
     } else if (key_str == kPropFiberUpdateListInfo) {
+      DLIST_LOGE("ListContainerImpl::ResolveAttribute this="
+                 << this << " update fiber diff info");
       result = list_adapter_->UpdateFiberDataSource(value);
     }
     if (result.first != ListAdapterDiffResult::kNone) {
@@ -505,6 +525,8 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     } else {
       layout_type_ = LayoutType::kSingle;
     }
+    DLIST_LOGE("ListContainerImpl::ResolveAttribute this="
+               << this << " layout_type_=" << static_cast<int>(layout_type_));
     if (layout_type_ != last_layout_type) {
       // Replacing the LayoutManager changes coordinate calculation and
       // recycling behavior, so an existing transaction cannot continue
@@ -601,6 +623,14 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     search_ref_anchor_strategy_ =
         static_cast<SearchRefAnchorStrategy>(static_cast<int>(value.Number()));
     should_set_props = false;
+  } else if (key_str == kPropExperimentalEnableDebugErrorInfo &&
+             value.IsBool()) {
+    enable_debug_error_info_ = value.Bool();
+    should_set_props = false;
+  } else if (key_str == kPropExperimentalEnableChangeSpanCountWithFrameChange &&
+             value.IsBool()) {
+    enable_change_span_count_with_frame_change_ = value.Bool();
+    should_set_props = false;
   }
   if (should_mark_layout_dirty) {
     list_delegate_->MarkListElementLayoutDirty();
@@ -627,10 +657,18 @@ void ListContainerImpl::OnLayoutChildren(
   }
 
   if (list_layout_manager_) {
+    if (enable_debug_error_info_) {
+      DLIST_LOGE("ListContainerImpl::OnLayoutChildren this="
+                 << this << " ------------ start, with list size=["
+                 << list_layout_manager_->GetWidth() << ", "
+                 << list_layout_manager_->GetHeight() << "]");
+    }
     if (options->need_timestamps) {
       list_delegate_->MarkTiming(ListTiming::kRenderChildrenStart);
     }
     if (need_recycle_all_item_holders_before_layout_) {
+      DLIST_LOGE("ListContainerImpl::OnLayoutChildren this="
+                 << this << " RecycleAllItemHolders");
       if (use_new_update_animation()) {
         // Changes such as list-type or span-count invalidate the coordinate
         // system used by existing PRE and POST state. Cancel the transaction
@@ -678,6 +716,10 @@ void ListContainerImpl::OnLayoutChildren(
           base::FloatsLargerOrEqual(content_size, list_main_size)) {
         list_delegate_->MarkTiming(ListTiming::kFullFillRenderChildrenEnd);
       }
+    }
+    if (enable_debug_error_info_) {
+      DLIST_LOGE("ListContainerImpl::OnLayoutChildren this="
+                 << this << " ------------ end");
     }
   }
 }
@@ -783,8 +825,19 @@ void ListContainerImpl::ScrollByPlatformContainer(float content_offset_x,
   if (list_layout_manager_) {
     // reset should_flush_finish_layout_ flag to false.
     should_flush_finish_layout_ = false;
+    if (enable_debug_error_info_) {
+      DLIST_LOGE("ListContainerImpl::ScrollByPlatformContainer this="
+                 << this << " ------------ start offset=[" << content_offset_x
+                 << ", " << content_offset_y << ", list size=["
+                 << list_layout_manager_->GetWidth() << ", "
+                 << list_layout_manager_->GetHeight() << "]");
+    }
     list_layout_manager_->ScrollByPlatformContainer(
         content_offset_x, content_offset_y, original_x, original_y);
+    if (enable_debug_error_info_) {
+      DLIST_LOGE("ListContainerImpl::ScrollByPlatformContainer this="
+                 << this << " ------------ end");
+    }
   }
 }
 

@@ -68,7 +68,7 @@ ListElement::ListElement(ElementManager* manager, const base::String& tag,
       component_at_index_(component_at_index),
       enqueue_component_(enqueue_component),
       component_at_indexes_(component_at_indexes) {
-  LOGI("[List] ListElement::ListElement: this=" << this
+  LOGE("[List] ListElement::ListElement: this=" << this
                                                 << ", impl_id=" << impl_id());
   if (manager == nullptr) {
     return;
@@ -493,7 +493,7 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
             tasm::report::LynxFeature::CPP_CUSTOM_LIST);
       }
     });
-    LOGI("[List] ListElement::PrepareForCreateOrUpdate: this="
+    LOGE("[List] ListElement::PrepareForCreateOrUpdate: this="
          << this << ", impl_id=" << impl_id()
          << ", enable_native_list=" << *disable_list_platform_implementation_
          << ", enable_decoupled_list=" << *enable_decoupled_list_);

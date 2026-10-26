@@ -140,6 +140,10 @@ class ListContainerImpl : public ContainerDelegate {
   bool has_completed_first_layout() const {
     return has_completed_first_layout_;
   }
+  bool enable_debug_error_info() const { return enable_debug_error_info_; }
+  bool enable_change_span_count_with_frame_change() const {
+    return enable_change_span_count_with_frame_change_;
+  }
 
  protected:
   // Currently, the list container does not copy any member variables and is an
@@ -151,6 +155,8 @@ class ListContainerImpl : public ContainerDelegate {
   //  fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
 
  private:
+  bool enable_debug_error_info_{false};
+  bool enable_change_span_count_with_frame_change_{false};
   bool enable_dynamic_span_count_{true};
   bool enable_insert_platform_view_operation_{false};
   bool span_count_changed_{false};

@@ -120,6 +120,7 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
 
  private:
   std::vector<std::vector<int>> column_indexes_{};
+  bool span_count_dirty_{false};
 };
 
 }  // namespace list

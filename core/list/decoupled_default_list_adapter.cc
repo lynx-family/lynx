@@ -99,10 +99,17 @@ bool DefaultListAdapter::BindItemHolder(ItemHolder* item_holder, int index,
     // in cloning of the old element. This MR aims to avoid this scenario by
     // mandating enqueuing before binding.
     if (list_delegate->IsFiberArch() && GetItemElementDelegate(item_holder)) {
-      DLIST_LOGI("[" << list_container_
-                     << "] DefaultListAdapter::BindItemHolder: enqueue "
-                        "component before render with item_key = "
-                     << item_holder->item_key() << ", index = " << index);
+      if (list_container_->enable_debug_error_info()) {
+        DLIST_LOGE("[" << list_container_
+                       << "] DefaultListAdapter::BindItemHolder: enqueue "
+                          "component before render with item_key = "
+                       << item_holder->item_key() << ", index = " << index);
+      } else {
+        DLIST_LOGI("[" << list_container_
+                       << "] DefaultListAdapter::BindItemHolder: enqueue "
+                          "component before render with item_key = "
+                       << item_holder->item_key() << ", index = " << index);
+      }
       RecycleItemHolder(item_holder, true);
     }
     item_holder->MarkDirty(false);
@@ -114,10 +121,17 @@ bool DefaultListAdapter::BindItemHolder(ItemHolder* item_holder, int index,
     ItemElementDelegate* list_item_delegate =
         GetItemElementDelegate(item_holder);
     bool should_send_exposure_event = list_item_delegate == nullptr;
-    DLIST_LOGI("[" << list_container_
-                   << "] DefaultListAdapter::BindItemHolder: with index = "
-                   << index << ", item_key = " << item_holder->item_key()
-                   << ", operation_id = " << operation_id);
+    if (list_container_->enable_debug_error_info()) {
+      DLIST_LOGE("[" << list_container_
+                     << "] DefaultListAdapter::BindItemHolder: with index = "
+                     << index << ", item_key = " << item_holder->item_key()
+                     << ", operation_id = " << operation_id);
+    } else {
+      DLIST_LOGI("[" << list_container_
+                     << "] DefaultListAdapter::BindItemHolder: with index = "
+                     << index << ", item_key = " << item_holder->item_key()
+                     << ", operation_id = " << operation_id);
+    }
     bool should_request_state_restore =
         list_container_->should_request_state_restore();
     if (list_delegate->ComponentAtIndex(index, operation_id,
@@ -166,12 +180,21 @@ void DefaultListAdapter::OnFinishBindItemHolder(
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
                   DEFAULT_LIST_ADAPTER_FINISH_BIND_ITEM_HOLDER_FINISH, "index",
                   index);
-      DLIST_LOGI(
-          "[" << list_container_
-              << "] DefaultListAdapter::OnFinishBindItemHolder: with index = "
-              << index << ", item_key = " << item_key << ", operation_id = "
-              << operation_id << ", list item element impl_id = "
-              << list_item_delegate->GetImplId());
+      if (list_container_->enable_debug_error_info()) {
+        DLIST_LOGE(
+            "[" << list_container_
+                << "] DefaultListAdapter::OnFinishBindItemHolder: with index = "
+                << index << ", item_key = " << item_key << ", operation_id = "
+                << operation_id << ", list item element impl_id = "
+                << list_item_delegate->GetImplId());
+      } else {
+        DLIST_LOGI(
+            "[" << list_container_
+                << "] DefaultListAdapter::OnFinishBindItemHolder: with index = "
+                << index << ", item_key = " << item_key << ", operation_id = "
+                << operation_id << ", list item element impl_id = "
+                << list_item_delegate->GetImplId());
+      }
       // Update item holder's info with list_item_delegate.
       binding_item_holder->SetItemDelegate(list_item_delegate);
       binding_item_holder->UpdateLayoutFromItemDelegate();
@@ -192,10 +215,17 @@ void DefaultListAdapter::OnFinishBindItemHolder(
       }
       list_delegate->ReportListItemLifecycleStatistic(option, item_key);
     } else {
-      DLIST_LOGI("[" << list_container_
-                     << "] DefaultListAdapter::OnFinishBindItemHolder: "
-                        "ItemHolder is destroy with operation_id = "
-                     << operation_id);
+      if (list_container_->enable_debug_error_info()) {
+        DLIST_LOGE("[" << list_container_
+                       << "] DefaultListAdapter::OnFinishBindItemHolder: "
+                          "ItemHolder is destroy with operation_id = "
+                       << operation_id);
+      } else {
+        DLIST_LOGI("[" << list_container_
+                       << "] DefaultListAdapter::OnFinishBindItemHolder: "
+                          "ItemHolder is destroy with operation_id = "
+                       << operation_id);
+      }
       binding_item_holder_weak_map_->erase(operation_id);
       list_delegate->EnqueueComponent(list_item_delegate->GetImplId());
     }
@@ -225,6 +255,11 @@ void DefaultListAdapter::RecycleItemHolder(
                 UpdateTraceDebugInfo(ctx.event(), item_holder);
               });
   if (item_holder) {
+    if (list_container_->enable_debug_error_info()) {
+      DLIST_LOGE(
+          "[" << list_container_ << "] DefaultListAdapter::RecycleItemHolder: "
+              << item_holder->index() << ", " << item_holder->item_key());
+    }
     EnqueueElement(item_holder);
     if (flush_immediately) {
       list_container_->list_delegate()->FlushImmediately();
