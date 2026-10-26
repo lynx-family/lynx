@@ -5,7 +5,6 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/devtool/harmony_emulated_touch_dispatcher.h"
 
 #include <dlfcn.h>
-#include <multimodalinput/oh_input_manager.h>
 
 #include <chrono>
 #include <cmath>
@@ -16,6 +15,11 @@
 #include "platform/embedder/public/lynx_event_simulation_proxy.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
+
+// The SDK input and drawing headers both declare an unscoped MOVE enumerator.
+namespace harmony_input {
+#include <multimodalinput/oh_input_manager.h>
+}  // namespace harmony_input
 
 namespace lynx {
 namespace tasm {
@@ -33,12 +37,15 @@ constexpr const char* kNativeWindowManagerSoName =
 constexpr const char* kInjectTouchEventSymbol =
     "OH_WindowManager_InjectTouchEvent";
 
-using WindowInjectTouchEventFunc = int32_t (*)(int32_t, Input_TouchEvent*,
+using WindowInjectTouchEventFunc = int32_t (*)(int32_t,
+                                               harmony_input::Input_TouchEvent*,
                                                int32_t, int32_t);
-using InputCreateTouchEventFunc = Input_TouchEvent* (*)();
-using InputDestroyTouchEventFunc = void (*)(Input_TouchEvent**);
-using InputSetTouchEventInt32Func = void (*)(Input_TouchEvent*, int32_t);
-using InputSetTouchEventInt64Func = void (*)(Input_TouchEvent*, int64_t);
+using InputCreateTouchEventFunc = harmony_input::Input_TouchEvent* (*)();
+using InputDestroyTouchEventFunc = void (*)(harmony_input::Input_TouchEvent**);
+using InputSetTouchEventInt32Func = void (*)(harmony_input::Input_TouchEvent*,
+                                             int32_t);
+using InputSetTouchEventInt64Func = void (*)(harmony_input::Input_TouchEvent*,
+                                             int64_t);
 
 struct OhInputTouchEventApi {
   InputCreateTouchEventFunc create = nullptr;
@@ -162,8 +169,8 @@ void HarmonyEmulatedTouchDispatcher::EmulateTouchOnUIThread(
     if (emulated_touch_active_) {
       CancelActiveTouch(context, event_time_us);
     }
-    if (InjectTouch(context, TOUCH_ACTION_DOWN, x, y, event_time_us,
-                    use_window_coordinates)) {
+    if (InjectTouch(context, harmony_input::TOUCH_ACTION_DOWN, x, y,
+                    event_time_us, use_window_coordinates)) {
       emulated_touch_active_ = true;
       emulated_touch_uses_window_coordinates_ = use_window_coordinates;
       emulated_touch_x_ = x;
@@ -173,8 +180,8 @@ void HarmonyEmulatedTouchDispatcher::EmulateTouchOnUIThread(
     if (!emulated_touch_active_) {
       return;
     }
-    if (InjectTouch(context, TOUCH_ACTION_MOVE, x, y, event_time_us,
-                    emulated_touch_uses_window_coordinates_)) {
+    if (InjectTouch(context, harmony_input::TOUCH_ACTION_MOVE, x, y,
+                    event_time_us, emulated_touch_uses_window_coordinates_)) {
       emulated_touch_x_ = x;
       emulated_touch_y_ = y;
     }
@@ -182,8 +189,8 @@ void HarmonyEmulatedTouchDispatcher::EmulateTouchOnUIThread(
     if (!emulated_touch_active_) {
       return;
     }
-    if (InjectTouch(context, TOUCH_ACTION_UP, x, y, event_time_us,
-                    emulated_touch_uses_window_coordinates_)) {
+    if (InjectTouch(context, harmony_input::TOUCH_ACTION_UP, x, y,
+                    event_time_us, emulated_touch_uses_window_coordinates_)) {
       emulated_touch_active_ = false;
       emulated_touch_uses_window_coordinates_ = false;
       emulated_touch_x_ = x;
@@ -287,7 +294,7 @@ void HarmonyEmulatedTouchDispatcher::CancelActiveTouch(LynxContext* context,
   if (!emulated_touch_active_) {
     return;
   }
-  InjectTouch(context, TOUCH_ACTION_CANCEL, emulated_touch_x_,
+  InjectTouch(context, harmony_input::TOUCH_ACTION_CANCEL, emulated_touch_x_,
               emulated_touch_y_, event_time_us,
               emulated_touch_uses_window_coordinates_);
   emulated_touch_active_ = false;

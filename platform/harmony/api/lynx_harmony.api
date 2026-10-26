@@ -767,6 +767,11 @@ export interface EventHandler {
 export type EventHandlerArray = (string | boolean) [] {
 }
 
+export class PlatformGestureModifier<T extends CommonAttribute> implements AttributeModifier<T> {
+  constructor(context: IContext);
+  applyNormalAttribute(instance: T): void;
+}
+
 export class LynxPipelineInfo {
   constructor(url: string);
   public addPipelineOrigin(pipelineOrigin: LynxPipelineOrigin): void;

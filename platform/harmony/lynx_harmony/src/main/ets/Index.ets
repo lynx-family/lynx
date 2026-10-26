@@ -71,6 +71,8 @@ export { NativeContent,
 export {
   EventHandler, EventHandlerArray } from './tasm/behavior/ui/EventHandler'
 
+export { PlatformGestureModifier } from './tasm/behavior/gesture/PlatformGestureModifier'
+
 export { LynxViewClient, LynxPipelineInfo, LynxResourceLoadInfo } from './tasm/LynxViewClient'
 
 export { LynxError } from './tasm/LynxError'
