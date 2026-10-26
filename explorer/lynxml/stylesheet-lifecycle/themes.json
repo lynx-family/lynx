@@ -1,0 +1,20 @@
+{
+  "theme-a.css": {
+    ".sample-card": {
+      "background-color": "#ffe4e6",
+      "opacity": "0.45"
+    },
+    ".sample-text": {
+      "color": "#e11d48",
+      "font-size": "30px"
+    }
+  },
+  "theme-b.css": {
+    ".sample-card": {
+      "background-color": "#dbeafe"
+    },
+    ".sample-text": {
+      "color": "#1d4ed8"
+    }
+  }
+}

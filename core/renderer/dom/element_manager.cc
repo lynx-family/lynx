@@ -322,6 +322,82 @@ void ElementManager::InvalidateCascadeLayerMapCache() {
   cascade_layer_map_cache_.clear();
 }
 
+bool ElementManager::ReplaceStyleSheets(
+    std::vector<fml::RefPtr<SharedCSSFragmentWrapper>> sheets) {
+  if (std::any_of(sheets.begin(), sheets.end(), [](const auto &sheet) {
+        return !sheet || !sheet->fragment_;
+      })) {
+    return false;
+  }
+  // Deferred ID/class invalidations must finish before their borrowed pointers
+  // are discarded. Wait outside the stylesheet lock used by those readers.
+  if (CSSFragmentParsingOnTASMWorkerMTSRender()) {
+    GetTasmWorkerTaskRunner()->WaitForCompletion();
+  }
+  std::vector<fml::RefPtr<SharedCSSFragmentWrapper>> previous;
+  base::LinearFlatSet<base::String> changed_keyframes;
+  const auto find_keyframes =
+      [](const auto &sheets,
+         const base::String &name) -> const fml::RefPtr<CSSKeyframesToken> * {
+    for (auto sheet = sheets.rbegin(); sheet != sheets.rend(); ++sheet) {
+      if (*sheet && (*sheet)->fragment_) {
+        const auto &keyframes = (*sheet)->fragment_->GetKeyframesRuleMap();
+        const auto token = keyframes.find(name);
+        if (token != keyframes.end()) {
+          return &token->second;
+        }
+      }
+    }
+    return nullptr;
+  };
+  {
+    std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+    if (adopted_stylesheets_ == sheets) {
+      return false;
+    }
+    // Preserve the old owners until every borrowed invalidation pointer has
+    // been discarded. Later sheets win for each keyframe name.
+    previous = std::move(adopted_stylesheets_);
+    adopted_stylesheets_ = std::move(sheets);
+    for (const auto &sheet : previous) {
+      if (sheet && sheet->fragment_) {
+        for (const auto &keyframe : sheet->fragment_->GetKeyframesRuleMap()) {
+          const auto &name = keyframe.first;
+          const auto *old = find_keyframes(previous, name);
+          const auto *current = find_keyframes(adopted_stylesheets_, name);
+          if (!current || *old != *current) {
+            changed_keyframes.insert(name);
+          }
+        }
+      }
+    }
+
+    uint8_t feature_flags = css::RuleSet::kNoFeatures;
+    for (const auto &sheet : adopted_stylesheets_) {
+      if (sheet && sheet->fragment_) {
+        feature_flags |= sheet->fragment_->GetFeatureFlags();
+        for (const auto &keyframe : sheet->fragment_->GetKeyframesRuleMap()) {
+          if (!find_keyframes(previous, keyframe.first)) {
+            changed_keyframes.insert(keyframe.first);
+          }
+        }
+        if (sheet->fragment_->HasTouchPseudoToken()) {
+          UpdateTouchPseudoStatus(true);
+        }
+      }
+    }
+    adopted_feature_flags_.store(feature_flags, std::memory_order_release);
+    cascade_layer_map_cache_.clear();
+  }
+
+  // Include detached nodes: they can retain invalidation pointers and be
+  // reinserted without another selector-style mutation.
+  for (const auto &entry : node_manager_->GetNodes()) {
+    entry.second->InvalidateStyleSheet(changed_keyframes);
+  }
+  return true;
+}
+
 void ElementManager::ReportElementStatistic() {
   if (EnableElementStatistic() && EnableEventReporter() && instance_id_ >= 0) {
     report::EventTracker::OnEvent(

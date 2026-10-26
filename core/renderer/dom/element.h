@@ -806,6 +806,8 @@ class Element : public lepus::RefCounted,
   }
 
   void ResetStyleSheet();
+  void InvalidateStyleSheet(
+      const base::LinearFlatSet<base::String>& changed_keyframes);
 
   void ResetSheetRecursively(
       const std::shared_ptr<CSSStyleSheetManager>& manager);

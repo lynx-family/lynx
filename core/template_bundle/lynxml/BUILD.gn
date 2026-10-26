@@ -21,9 +21,9 @@ lynx_core_source_set("lynxml_style_parser") {
     "lynxml_style_parser.h",
   ]
 
-  # Oliver compiles the CSS sources directly into encoder_common. Depending on
-  # the CSS targets as well would link those sources twice.
-  if (!is_oliver) {
+  # Encoders compile the CSS sources directly into encoder_common. SSR uses
+  # the renderer targets and needs the parser dependency here.
+  if (!is_oliver || is_oliver_ssr) {
     deps = [ "../../renderer/css:css_parser" ]
     public_deps = [ "../../renderer/css:css" ]
   }

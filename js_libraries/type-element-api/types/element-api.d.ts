@@ -59,6 +59,13 @@ export interface BlockElementRef extends ElementRef { }
 
 export interface StyleObjectRef extends ElementRef { }
 
+declare const styleSheetHandleKind: unique symbol;
+
+/** Opaque handle to a compiled stylesheet loaded by __LoadStyleSheet. */
+export interface StyleSheetRef {
+  readonly [styleSheetHandleKind]: 'stylesheet';
+}
+
 export type ElementInfo = Record<string, any>;
 
 export interface PipelineOptions {
@@ -218,6 +225,28 @@ export interface SerializedTypedTemplateInstance {
 }
 
 declare global {
+  /** Loads a compiled CSS section from an already loaded bundle. */
+  function __LoadStyleSheet(sectionName: string, bundleUrl: string): StyleSheetRef | undefined;
+
+  /** Appends the stylesheet to the page's adopted stylesheets. */
+  function __AdoptStyleSheet(styleSheet: StyleSheetRef): void;
+
+  /**
+   * Replaces the page's complete adopted stylesheet set in array order.
+   * Entries are loaded stylesheet handles or raw CSS text. All entries are
+   * validated and CSS text is parsed before the current set is changed.
+   * CSS text requires a base stylesheet with standard CSS selectors enabled;
+   * otherwise the update returns false and preserves the current set.
+   * An empty array clears adopted stylesheets; the bundle's base styles remain.
+   * Returns false for invalid input or the same ordered handle set.
+   * Existing elements are restyled on the next element-tree flush.
+   * Handles remain reusable. Changed keyframe effects require the C++ animation
+   * builder and retain playback time; unrelated effects remain unchanged.
+   * Legacy platform animators may retain cached keyframes. Loaded platform fonts
+   * are not unregistered or refreshed by stylesheet replacement.
+   */
+  function __ReplaceStyleSheets(styleSheets: (StyleSheetRef | string)[]): boolean;
+
   function __CreatePage(componentId: string, cssId: number, info?: ElementInfo): PageElementRef;
 
   function __CreateComponent(

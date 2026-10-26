@@ -24,6 +24,7 @@ import type {
   ElementEventRef,
   ElementEventType,
   ElementEventListenerOptions,
+  StyleSheetRef,
 } from '../types/index';
 
 describe('Test Animation Types', () => {
@@ -55,6 +56,17 @@ describe('Test Animation Types', () => {
 });
 
 describe('Test Element API Types', () => {
+  it('keeps stylesheet handles separate from element handles', () => {
+    const sheet = {} as StyleSheetRef;
+    expectTypeOf<typeof __LoadStyleSheet>().returns.toEqualTypeOf<StyleSheetRef | undefined>();
+    expectTypeOf<typeof __AdoptStyleSheet>().toBeCallableWith(sheet);
+    expectTypeOf<typeof __ReplaceStyleSheets>().toBeCallableWith([sheet, '.card { color: red; }']);
+    expectTypeOf<typeof __ReplaceStyleSheets>().toBeCallableWith([]);
+    expectTypeOf<typeof __ReplaceStyleSheets>().returns.toBeBoolean();
+    expectTypeOf<ElementRef>().not.toMatchTypeOf<StyleSheetRef>();
+    expectTypeOf<typeof __ReplaceStyleSheets>().parameters.toEqualTypeOf<[(StyleSheetRef | string)[]]>();
+  });
+
   it('should have correct ElementRef types', () => {
     expectTypeOf<ElementRef>().toBeObject();
     expectTypeOf<ComponentElementRef>().toEqualTypeOf<ElementRef>();
