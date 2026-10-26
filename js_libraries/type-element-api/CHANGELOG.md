@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.0.11
+
+### Patch Changes
+
+- Add `StyleSheetRef` and declarations for `__LoadStyleSheet`, `__AdoptStyleSheet`, `__RemoveStyleSheet`, and `__ReplaceStyleSheet`.
+
 ## 0.0.10
 
 ### Patch Changes

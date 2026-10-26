@@ -806,6 +806,7 @@ class Element : public lepus::RefCounted,
   }
 
   void ResetStyleSheet();
+  void InvalidateStyleSheet(CSSFragment* removed, CSSFragment* replacement);
 
   void ResetSheetRecursively(
       const std::shared_ptr<CSSStyleSheetManager>& manager);
@@ -2221,6 +2222,7 @@ class Element : public lepus::RefCounted,
   // Play-state-only updates still need to sync animation data, but should not
   // rebuild the keyframe effect or replace the Animation object.
   bool needs_keyframe_effect_rebuild_{false};
+  // Survives a paused flush until the changed sheet's keyframes are consumed.
   bool is_applying_animation_style_{false};
   bool has_non_flatten_attrs_{false};
 

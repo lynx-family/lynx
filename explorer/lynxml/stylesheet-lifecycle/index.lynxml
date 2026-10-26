@@ -1,0 +1,125 @@
+<!doctype lynx>
+<!-- Copyright 2026 The Lynx Authors. All rights reserved.
+     Licensed under the Apache License Version 2.0 that can be found in the
+     LICENSE file in the root directory of this source tree. -->
+<lynx engine-version="4.2">
+  <style>
+    .page { display: flex; flex-direction: column; padding: 24px; background-color: #f1f5f9; }
+    .title { font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 12px; }
+    .description { font-size: 14px; color: #475569; margin-bottom: 18px; }
+    .sample-card { display: flex; height: 110px; align-items: center; justify-content: center; background-color: #ffffff; border-radius: 16px; margin-bottom: 18px; }
+    .sample-text { font-size: 16px; color: #334155; }
+    .controls { display: flex; flex-direction: row; flex-wrap: wrap; margin-bottom: 12px; }
+    .button { display: flex; width: 46%; height: 44px; margin: 4px; border-radius: 10px; align-items: center; justify-content: center; background-color: #0f172a; }
+    .button-text { font-size: 13px; color: #ffffff; }
+    .status { font-size: 14px; color: #0f172a; margin-bottom: 12px; }
+    .note { font-size: 12px; color: #64748b; }
+  </style>
+  <script thread="main">
+    (function () {
+      var page, pageId, statusRaw, statusElement;
+      var sheets, active = null;
+      // Replaced by build.mjs; the generated XML is the runnable page.
+      var bundleUrl = __THEME_BUNDLE_URL__;
+      globalThis.processData = function (data) { return data; };
+
+      function text(parent, value, className) {
+        var element = __CreateText(pageId);
+        __SetClasses(element, className);
+        var raw = __CreateRawText(value);
+        __AppendElement(element, raw);
+        __AppendElement(parent, element);
+        return { element: element, raw: raw };
+      }
+
+      function status(message) {
+        __SetAttribute(statusRaw, 'text', message);
+        __SetAttribute(statusElement, 'accessibility-label', message);
+        __FlushElementTree();
+      }
+
+      function action(name) {
+        if (!sheets) return status('Stylesheets are not ready.');
+        var changed = true;
+        if (name === 'adopt') {
+          if (active) __RemoveStyleSheet(sheets[active]);
+          __AdoptStyleSheet(sheets.a);
+          active = 'a';
+        } else if (name === 'replace') {
+          changed = __ReplaceStyleSheet(sheets.a, sheets.b);
+          if (changed) active = 'b';
+        } else if (name === 'remove') {
+          changed = __RemoveStyleSheet(sheets[active || 'b']);
+          if (changed) active = null;
+        } else if (name === 'reset') {
+          __RemoveStyleSheet(sheets.a);
+          __RemoveStyleSheet(sheets.b);
+          active = null;
+        }
+        // A single flush commits the stylesheet mutation and status update.
+        status('Theme: ' + (active || 'base') + '\n' + name + ': ' + changed);
+      }
+
+      function button(parent, name, label) {
+        var element = __CreateView(pageId);
+        __SetClasses(element, 'button');
+        __SetAttribute(element, 'flatten', false);
+        __SetAttribute(element, 'accessible', true);
+        __SetAttribute(element, 'accessibility-label', label);
+        __AppendElement(parent, element);
+        text(element, label, 'button-text');
+        __AddEventListener(element, 'tap', function () { action(name); }, {});
+      }
+
+      function render() {
+        if (page) return;
+        page = __CreatePage('0', 0);
+        pageId = __GetElementUniqueID(page);
+        __SetClasses(page, 'page');
+        text(page, 'Stylesheet lifecycle', 'title');
+        text(page, 'Native LynxML - update the same elements', 'description');
+
+        var card = __CreateView(pageId);
+        __SetClasses(card, 'sample-card');
+        __SetAttribute(card, 'flatten', false);
+        __AppendElement(page, card);
+        var preview = text(card, 'Theme Preview', 'sample-text').element;
+        __SetAttribute(preview, 'flatten', false);
+        __SetAttribute(preview, 'accessible', true);
+        __SetAttribute(preview, 'accessibility-label', 'Theme Preview');
+
+        var controls = __CreateView(pageId);
+        __SetClasses(controls, 'controls');
+        __AppendElement(page, controls);
+        button(controls, 'adopt', 'Adopt A');
+        button(controls, 'replace', 'Replace A to B');
+        button(controls, 'remove', 'Remove');
+        button(controls, 'reset', 'Reset');
+        var statusText = text(page, 'Loading stylesheets...', 'status');
+        statusRaw = statusText.raw;
+        statusElement = statusText.element;
+        __SetAttribute(statusElement, 'flatten', false);
+        __SetAttribute(statusElement, 'accessible', true);
+        text(page, 'Base: white / gray / 16px / opacity 1\nA: pink / red / 30px / opacity 0.45\nB: blue; font size and opacity return to base values', 'note');
+        __FlushElementTree();
+
+        if (typeof __RemoveStyleSheet !== 'function' || typeof __ReplaceStyleSheet !== 'function') {
+          return status('This SDK does not support stylesheet remove/replace.');
+        }
+        lynx.fetchBundle(bundleUrl).then(function (response) {
+          if (response.code !== 0) return status('Bundle load failed (' + response.code + '). Check the URL and host/compiler compatibility.');
+          sheets = {
+            a: __LoadStyleSheet('theme-a.css', response.url),
+            b: __LoadStyleSheet('theme-b.css', response.url),
+          };
+          if (!sheets.a || !sheets.b) {
+            sheets = null;
+            return status('Stylesheet decode failed. Check CSS compilation settings.');
+          }
+          status('Ready - base styles');
+        });
+      }
+      lynx.getEngine().addEventListener('__RenderPage', render);
+    })();
+  </script>
+</lynx>

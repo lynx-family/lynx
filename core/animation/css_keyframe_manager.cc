@@ -429,7 +429,7 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
     const tasm::CustomPropertiesMap* new_base_custom_properties) {
   if (anim_data.size() == animation_data_.size() &&
       std::equal(anim_data.begin(), anim_data.end(), animation_data_.begin()) &&
-      !force_rebuild) {
+      !force_rebuild && invalidated_keyframes_.empty()) {
     return;
   }
   animation_data_ = anim_data;
@@ -450,7 +450,7 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
     if (animation != animations_map_.end()) {
       // Update an existing animation, add it to temp_active_animations_map_ and
       // delete it from animations_map_;
-      if (force_rebuild) {
+      if (force_rebuild || invalidated_keyframes_.count(data.name)) {
         const auto origin = animation->second->GetOrigin();
         if (use_new_pipeline_cleanup) {
           PrepareAnimationRemoval(animation->second, new_base_resolved_styles,
@@ -537,6 +537,7 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
   }
   temp_keep_animations_map_.clear();
   temp_active_animations_map_.clear();
+  invalidated_keyframes_.clear();
 }
 
 void CSSKeyframeManager::SyncAnimationDataForNewPipeline(

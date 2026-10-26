@@ -1,0 +1,12 @@
+{
+  "name": "lynxml-stylesheet-lifecycle",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "python3 -m http.server 3078 --bind 0.0.0.0 --directory dist"
+  },
+  "devDependencies": {
+    "@lynx-js/tasm": "0.0.53"
+  }
+}

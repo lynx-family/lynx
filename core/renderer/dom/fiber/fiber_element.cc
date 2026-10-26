@@ -2657,6 +2657,12 @@ ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
                      force_use_current_parsed_style_map);
   }
 
+  // Pseudo-element resolution can emit platform attributes, including resets.
+  // Consume them in this flush before parallel resolve validates dirty bits.
+  if (dirty_ & kDirtyAttr) {
+    need_update |= ConsumeAllAttributes();
+  }
+
   // Removing a layer hook resets the resolved CSS properties. Install drawing
   // bindings after style resolution so it cannot overwrite those dirty bits.
   need_update |= FlushCustomDrawFunctions();

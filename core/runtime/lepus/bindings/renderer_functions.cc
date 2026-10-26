@@ -969,6 +969,52 @@ RENDERER_FUNCTION_CC(AdoptStyleSheet) {
 
 RENDERER_FUNCTION_CC(ReplaceStyleSheets) { RETURN_UNDEFINED(); }
 
+namespace {
+fml::RefPtr<SharedCSSFragmentWrapper> GetStyleSheetWrapper(
+    const lepus::Value& value) {
+  auto ref_counted = value.RefCounted();
+  if (!ref_counted ||
+      ref_counted->GetRefType() != lepus::RefType::kCSSFragment) {
+    return nullptr;
+  }
+  auto wrapper = fml::RefPtr<SharedCSSFragmentWrapper>(
+      static_cast<SharedCSSFragmentWrapper*>(ref_counted.get()));
+  return wrapper->fragment_ ? wrapper : nullptr;
+}
+}  // namespace
+
+RENDERER_FUNCTION_CC(RemoveStyleSheet) {
+  CHECK_ARGC_GE(RemoveStyleSheet, 1);
+  CONVERT_ARG_AND_CHECK(arg0, 0, RefCounted, RemoveStyleSheet);
+  auto* tasm = GET_TASM_POINTER();
+  if (!tasm) RETURN_UNDEFINED();
+
+  auto wrapper = GetStyleSheetWrapper(*arg0);
+  if (!wrapper) {
+    LOGI("RemoveStyleSheet: Invalid stylesheet handle");
+    RETURN(lepus::Value(false));
+  }
+  RETURN(lepus::Value(
+      tasm->page_proxy()->element_manager()->RemoveStyleSheet(wrapper)));
+}
+
+RENDERER_FUNCTION_CC(ReplaceStyleSheet) {
+  CHECK_ARGC_GE(ReplaceStyleSheet, 2);
+  CONVERT_ARG_AND_CHECK(arg0, 0, RefCounted, ReplaceStyleSheet);
+  CONVERT_ARG_AND_CHECK(arg1, 1, RefCounted, ReplaceStyleSheet);
+  auto* tasm = GET_TASM_POINTER();
+  if (!tasm) RETURN_UNDEFINED();
+
+  auto wrapper = GetStyleSheetWrapper(*arg0);
+  auto replacement = GetStyleSheetWrapper(*arg1);
+  if (!wrapper || !replacement) {
+    LOGI("ReplaceStyleSheet: Invalid stylesheet handle");
+    RETURN(lepus::Value(false));
+  }
+  RETURN(lepus::Value(tasm->page_proxy()->element_manager()->ReplaceStyleSheet(
+      wrapper, replacement)));
+}
+
 /* NativeModule Lynx API END */
 
 RENDERER_FUNCTION_CC(FiberAddEventListener) {

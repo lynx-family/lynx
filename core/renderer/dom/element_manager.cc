@@ -319,6 +319,62 @@ void ElementManager::InvalidateCascadeLayerMapCache() {
   cascade_layer_map_cache_.clear();
 }
 
+bool ElementManager::RemoveStyleSheet(
+    const fml::RefPtr<SharedCSSFragmentWrapper> &wrapper) {
+  return ReplaceStyleSheet(wrapper, nullptr);
+}
+
+bool ElementManager::ReplaceStyleSheet(
+    const fml::RefPtr<SharedCSSFragmentWrapper> &wrapper,
+    const fml::RefPtr<SharedCSSFragmentWrapper> &replacement) {
+  if (!wrapper || wrapper == replacement) {
+    return false;
+  }
+  // Deferred ID/class invalidations must finish before their borrowed pointers
+  // are discarded. Wait outside the stylesheet lock used by those readers.
+  if (CSSFragmentParsingOnTASMWorkerMTSRender()) {
+    GetTasmWorkerTaskRunner()->WaitForCompletion();
+  }
+  {
+    std::unique_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+    auto first = std::find(adopted_stylesheets_.begin(),
+                           adopted_stylesheets_.end(), wrapper);
+    if (first == adopted_stylesheets_.end()) {
+      return false;
+    }
+    if (replacement) {
+      std::replace(first, adopted_stylesheets_.end(), wrapper, replacement);
+    } else {
+      adopted_stylesheets_.erase(
+          std::remove(first, adopted_stylesheets_.end(), wrapper),
+          adopted_stylesheets_.end());
+    }
+
+    uint8_t feature_flags = css::RuleSet::kNoFeatures;
+    for (const auto &sheet : adopted_stylesheets_) {
+      if (sheet && sheet->fragment_) {
+        feature_flags |= sheet->fragment_->GetFeatureFlags();
+      }
+    }
+    adopted_feature_flags_.store(feature_flags, std::memory_order_release);
+    cascade_layer_map_cache_.clear();
+    if (replacement && replacement->fragment_ &&
+        replacement->fragment_->HasTouchPseudoToken()) {
+      UpdateTouchPseudoStatus(true);
+    }
+  }
+
+  // Include detached nodes: they can retain invalidation pointers and be
+  // reinserted without another selector-style mutation. The caller still owns
+  // the removed wrapper while these queues are discarded.
+  for (const auto &entry : node_manager_->GetNodes()) {
+    entry.second->InvalidateStyleSheet(
+        wrapper->fragment_.get(),
+        replacement ? replacement->fragment_.get() : nullptr);
+  }
+  return true;
+}
+
 void ElementManager::ReportElementStatistic() {
   if (EnableElementStatistic() && EnableEventReporter() && instance_id_ >= 0) {
     report::EventTracker::OnEvent(
