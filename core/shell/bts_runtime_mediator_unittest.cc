@@ -180,6 +180,17 @@ TEST(BTSRuntimeMediatorTest, FetchBundleStandaloneCacheMissFetchesResource) {
   EXPECT_EQ(resource_loader->load_resource_count_, 1);
 }
 
+TEST(BTSRuntimeMediatorTest, SetPausedFromJSSkipsStandaloneRuntime) {
+  auto task_runner = fml::MakeRefCounted<ImmediateTaskRunner>();
+  auto external_resource_loader = std::make_unique<ExternalResourceLoader>();
+  auto mediator =
+      BTSRuntimeMediator(nullptr, nullptr, nullptr, nullptr, task_runner,
+                         std::move(external_resource_loader));
+
+  mediator.SetPausedFromJS(true);
+  mediator.SetPausedFromJS(false);
+}
+
 TEST(BTSRuntimeMediatorTest,
      FetchBundleShouldFailImmediatelyWhenEngineIsDestroyed) {
   auto task_runner = fml::MakeRefCounted<ImmediateTaskRunner>();
