@@ -56,9 +56,11 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
 
   void StopVSync();
 
-  virtual void RequestVSyncOnUIThread(Callback callback){};
+  bool UsesExternalVSync() const { return platform_impl_ != nullptr; }
 
-  virtual void RequestVSyncOnUIThread(){};
+  virtual void RequestVSyncOnUIThread(Callback callback) {}
+
+  virtual void RequestVSyncOnUIThread() {}
 
  protected:
   virtual void RequestVSync();

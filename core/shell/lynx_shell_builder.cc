@@ -71,9 +71,7 @@ LynxShellBuilder& LynxShellBuilder::SetEnableElementManagerVsyncMonitor(
     if (this->vsync_monitor_platform_impl_) {
       this->element_manager_vsync_monitor_ =
           std::make_shared<base::VSyncMonitor>(
-              this->vsync_monitor_platform_impl_,
-              lynx::tasm::LynxEnv::GetInstance()
-                  .EnableAnimationVsyncOnUIThread());
+              this->vsync_monitor_platform_impl_);
     } else {
       this->element_manager_vsync_monitor_ = base::VSyncMonitor::Create(
           lynx::tasm::LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread());
