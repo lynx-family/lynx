@@ -19,6 +19,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/runtime/lepus/bindings/renderer.h"
+#include "core/runtime/lepus/tasks/lepus_callback_manager.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/runtime/profile/lepusng/lepusng_profiler.h"
 #include "core/services/event_report/event_tracker.h"
@@ -26,6 +27,7 @@
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
 
 #if ENABLE_LEPUSNG_WORKLET
+#include "core/renderer/worklet/lepus_lynx.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
 #endif
@@ -513,7 +515,26 @@ void TemplateEntry::AttachNapiEnvironment() {
 #endif
 }
 
+void TemplateEntry::SetPaused(bool paused) {
+  if (vm_context_) {
+    vm_context_->SetPaused(paused);
+  }
+#if ENABLE_LEPUSNG_WORKLET
+  if (napi_environment_) {
+    auto* lepus_lynx = reinterpret_cast<lynx::worklet::NapiLoaderUI*>(
+                           napi_environment_->delegate())
+                           ->lepus_lynx();
+    if (lepus_lynx) {
+      lepus_lynx->SetPaused(paused);
+    }
+  }
+#endif
+}
+
 void TemplateEntry::DetachNapiEnvironment() {
+  if (vm_context_) {
+    vm_context_->ClearPendingAnimationFrameCallbacks();
+  }
 #if ENABLE_LEPUSNG_WORKLET
   if (vm_context_ && vm_context_->IsLepusNGContext() && napi_environment_) {
     napi_environment_->Detach();

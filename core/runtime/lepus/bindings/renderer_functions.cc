@@ -6710,12 +6710,15 @@ RENDERER_FUNCTION_CC(RequestAnimationFrame) {
   const std::shared_ptr<AnimationFrameManager> animationFrameManager =
       LEPUS_CONTEXT()->GetAnimationFrameManager();
 
-  tasm->GetDelegate().RequestVsync(
+  auto* context = LEPUS_CONTEXT();
+  auto callback = context->WrapAnimationFrameCallback(
       reinterpret_cast<uintptr_t>(&animationFrameManager),
       [animationFrameManager](int64_t frame_start, int64_t frame_end) {
         animationFrameManager->DoFrame(frame_start /
                                        kNanoSecondsPerMilliSecond);
       });
+  tasm->GetDelegate().RequestVsync(
+      reinterpret_cast<uintptr_t>(&animationFrameManager), std::move(callback));
 
   uint64_t task_id = animationFrameManager->RequestAnimationFrame(
       LEPUS_CONTEXT(), std::make_unique<lepus::Value>(*arg0));

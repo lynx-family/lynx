@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/debug/lynx_error.h"
 #include "base/include/fml/task_runner.h"
 #include "base/include/value/base_string.h"
@@ -67,6 +68,10 @@ class MTSRuntime : private MTSContextHolder,
         std::unordered_map<std::string, std::string> mem_info) = 0;
 
     virtual fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() = 0;
+    // Whether timers and requestAnimationFrame are paused.
+    virtual bool IsPaused() { return false; }
+    virtual void RequestVsync(uintptr_t,
+                              base::MoveOnlyClosure<void, int64_t, int64_t>) {}
 
     virtual void OnScriptingStart() = 0;
     virtual void OnScriptingEnd() = 0;
@@ -103,7 +108,13 @@ class MTSRuntime : private MTSContextHolder,
       const tasm::PageOptions& page_options = tasm::PageOptions());
 
   Delegate* GetDelegate();
-  void SetDelegate(Delegate* delegate) { delegate_ = delegate; }
+  void SetDelegate(Delegate* delegate);
+
+  void SetPaused(bool paused);
+  bool IsPaused() const { return frame_pause_state_->paused; }
+  base::MoveOnlyClosure<void, int64_t, int64_t> WrapAnimationFrameCallback(
+      uintptr_t id, base::MoveOnlyClosure<void, int64_t, int64_t> callback);
+  void ClearPendingAnimationFrameCallbacks();
 
   // virtual interface
   void Initialize();
@@ -338,6 +349,15 @@ class MTSRuntime : private MTSContextHolder,
   lepus::Value lynx_;
   mutable std::shared_ptr<tasm::LepusCallbackManager> callback_manager_;
   mutable std::shared_ptr<tasm::AnimationFrameManager> animate_frame_manager_;
+
+  struct FramePauseState {
+    bool paused{false};
+    std::unordered_map<uintptr_t, base::MoveOnlyClosure<void, int64_t, int64_t>>
+        pending_callbacks;
+  };
+  // Shared with VSync callbacks, which may outlive this runtime.
+  std::shared_ptr<FramePauseState> frame_pause_state_ =
+      std::make_shared<FramePauseState>();
 
   ContextType type_;
   std::string name_;

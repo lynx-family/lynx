@@ -31,6 +31,30 @@ class MockRuntime final : public runtime::MTSRuntime {
   bool invoked_{false};
 };
 
+class MockMTSDelegate final : public runtime::MTSRuntime::Delegate {
+ public:
+  const std::string& TargetSdkVersion() override { return target_sdk_; }
+  void ReportError(base::LynxError) override {}
+  void OnBTSConsoleEvent(const std::string&, const std::string&) override {}
+  void ReportGCTimingEvent(const char*, const char*) override {}
+  void OnRuntimeGC(std::unordered_map<std::string, std::string>) override {}
+  fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override {
+    return nullptr;
+  }
+  void OnScriptingStart() override {}
+  void OnScriptingEnd() override {}
+  void RequestVsync(
+      uintptr_t id,
+      base::MoveOnlyClosure<void, int64_t, int64_t> callback) override {
+    callbacks_.emplace_back(id, std::move(callback));
+  }
+
+  std::string target_sdk_;
+  std::vector<
+      std::pair<uintptr_t, base::MoveOnlyClosure<void, int64_t, int64_t>>>
+      callbacks_;
+};
+
 class LepusCallbackManagerTest : public ::testing::Test {
  public:
   LepusCallbackManagerTest() {}
@@ -103,6 +127,26 @@ TEST_F(LepusCallbackManagerTest, WeakPtrPreventsExecutionAfterDestroy) {
 
   task();
   EXPECT_FALSE(executed);
+}
+
+TEST_F(LepusCallbackManagerTest, MTSRuntimeDefersAnimationFrameWhilePaused) {
+  MockMTSDelegate delegate;
+  context.SetDelegate(&delegate);
+  context.SetPaused(true);
+
+  int64_t received_frame_start = 0;
+  auto callback = context.WrapAnimationFrameCallback(
+      1, [&received_frame_start](int64_t frame_start, int64_t) {
+        received_frame_start = frame_start;
+      });
+  callback(10, 20);
+  EXPECT_EQ(received_frame_start, 0);
+
+  context.SetPaused(false);
+  ASSERT_EQ(delegate.callbacks_.size(), 1u);
+  EXPECT_EQ(delegate.callbacks_[0].first, 1u);
+  delegate.callbacks_[0].second(30, 40);
+  EXPECT_EQ(received_frame_start, 30);
 }
 
 }  // namespace testing

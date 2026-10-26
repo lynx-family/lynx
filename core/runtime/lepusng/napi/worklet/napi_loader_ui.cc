@@ -8,6 +8,7 @@
 
 #include "core/renderer/worklet/lepus_lynx.h"
 #include "core/runtime/lepusng/napi/worklet/napi_lepus_lynx.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 #ifdef USE_PRIMJS_NAPI
 #include "third_party/napi/include/primjs_napi_defines.h"
@@ -30,6 +31,7 @@ void NapiLoaderUI::OnAttach(Napi::Env env) {
   lynx_ = LepusLynx::Create(
       env, context_->name(),
       static_cast<tasm::TemplateAssembler*>(context_->GetDelegate()));
+  lynx_->SetPaused(context_->IsPaused());
   constexpr const static char* kGlobalLynxName = "lepusLynx";
   Napi::HandleScope handle_scope(env);
   env.Global()[kGlobalLynxName] =
@@ -69,6 +71,11 @@ lepus::QuickContext* NapiLoaderUI::GetQuickContextFromNapiEnv(Napi::Env env) {
     return nullptr;
   }
   return iter->second;
+}
+
+runtime::MTSRuntime* NapiLoaderUI::GetMTSRuntimeFromNapiEnv(Napi::Env env) {
+  auto* context = GetQuickContextFromNapiEnv(env);
+  return context ? runtime::MTSRuntime::ToContext(context) : nullptr;
 }
 
 std::unordered_map<napi_env, lepus::QuickContext*>&
