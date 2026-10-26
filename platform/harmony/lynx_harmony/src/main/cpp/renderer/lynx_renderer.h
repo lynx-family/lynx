@@ -34,6 +34,7 @@ class LynxRenderer {
   void InvalidateRenderNodes();
 
  private:
+  void UpdateDrawingBounds();
   std::shared_ptr<LynxRendererContext> context_;
   std::weak_ptr<UIBase> host_;
   int32_t sign_{0};
@@ -43,6 +44,11 @@ class LynxRenderer {
   const DisplayList* display_list_ = nullptr;
   base::Vector<DisplayListSegment> segments_;
   base::Vector<std::unique_ptr<LynxRenderNode>> render_nodes_;
+  bool draw_first_segment_in_node_{false};
+  float drawing_width_{0.f};
+  float drawing_height_{0.f};
+  float overflow_left_{0.f};
+  float overflow_top_{0.f};
 };
 
 }  // namespace harmony

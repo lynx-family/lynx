@@ -417,6 +417,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unique_ptr<BackgroundDrawable> mask_drawable_{nullptr};
   std::unique_ptr<LynxRenderer> renderer_;
   std::optional<bool> fragment_clip_bounds_;
+  // Clip native descendants separately from the host background and border.
+  std::string fragment_content_clip_path_;
   // Applied directional clip in physical pixels.
   std::optional<std::array<float, 4>> fragment_clip_rect_;
   std::vector<std::string> events_;
@@ -494,6 +496,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void SetOverflowY(const lepus::Value& value);
   void SetBoxShadow(const lepus::Value& value);
   void SetFilter(const lepus::Value& value);
+  void UpdateFragmentLayerContentClip(const DisplayList& display_list);
+  void ApplyFragmentLayerContentClip();
   void ApplyOverflowClip();
   void InitDrawNode();
   bool ShouldDrawOverlayShadowWithDrawNode() const;
@@ -579,6 +583,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unique_ptr<BorderRadius> border_radius_;
   std::unique_ptr<Transform> transform_;
   std::unique_ptr<std::array<float, 16>> fragment_transform_;
+  bool has_set_filter_{false};
 
   std::string tag_;
   uint32_t dirty_flags_{0};
