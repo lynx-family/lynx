@@ -221,6 +221,10 @@ export class LynxTemplateRenderer {
 
   onEnterBackground(): void;
 
+  pause(): void;
+
+  resume(): void;
+
   callJSFunction(moduleName: string, method: string, params: Object[]): void;
 
   nativeSetPlatformConfig(config: string): void;
