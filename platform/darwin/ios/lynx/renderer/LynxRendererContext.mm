@@ -22,11 +22,20 @@ void DestroyTextBundlePointer(void *bundle) {
 
 }  // namespace
 
+// Cache identity follows the owned Page's lifetime, not its recyclable address.
+// Layout can publish the same Page repeatedly; measurement produces a new Page.
+@interface LynxRendererTextBundle : NSObject
+@property(nonatomic, assign) void *page;
+@end
+
+@implementation LynxRendererTextBundle
+@end
+
 @implementation LynxRendererContext {
   NSMutableDictionary<NSNumber *, LynxImageManager *> *_imageManagers;
   NSMutableDictionary<NSNumber *, NSNumber *> *_primaryImageKeysBySign;
   NSMutableDictionary<NSNumber *, NSNumber *> *_primaryImageSignsByKey;
-  NSMutableDictionary<NSNumber *, NSValue *> *_textBundles;
+  NSMutableDictionary<NSNumber *, LynxRendererTextBundle *> *_textBundles;
 }
 
 - (instancetype)init {
@@ -44,8 +53,8 @@ void DestroyTextBundlePointer(void *bundle) {
   for (LynxImageManager *imageManager in _imageManagers.objectEnumerator) {
     [imageManager reset];
   }
-  for (NSValue *value in _textBundles.objectEnumerator) {
-    DestroyTextBundlePointer([value pointerValue]);
+  for (LynxRendererTextBundle *value in _textBundles.objectEnumerator) {
+    DestroyTextBundlePointer(value.page);
   }
 }
 
@@ -125,14 +134,17 @@ void DestroyTextBundlePointer(void *bundle) {
 - (void)updateTextBundle:(int32_t)textID withBundle:(void *)bundle {
   void *previousBundle = nullptr;
   @synchronized(self) {
-    NSValue *previousValue = _textBundles[@(textID)];
-    if (previousValue != nil) {
-      previousBundle = [previousValue pointerValue];
-    }
+    previousBundle = _textBundles[@(textID)].page;
     if (previousBundle == bundle) {
       return;
     }
-    _textBundles[@(textID)] = [NSValue valueWithPointer:bundle];
+    if (bundle != nullptr) {
+      LynxRendererTextBundle *value = [LynxRendererTextBundle new];
+      value.page = bundle;
+      _textBundles[@(textID)] = value;
+    } else {
+      [_textBundles removeObjectForKey:@(textID)];
+    }
   }
   DestroyTextBundlePointer(previousBundle);
 }
@@ -140,24 +152,22 @@ void DestroyTextBundlePointer(void *bundle) {
 - (void)destroyTextBundle:(int32_t)textID {
   void *bundle = nullptr;
   @synchronized(self) {
-    NSValue *value = _textBundles[@(textID)];
-    if (value) {
-      bundle = [value pointerValue];
-      [_textBundles removeObjectForKey:@(textID)];
-    }
+    bundle = _textBundles[@(textID)].page;
+    [_textBundles removeObjectForKey:@(textID)];
   }
   DestroyTextBundlePointer(bundle);
 }
 
 - (void *)getTextBundle:(int32_t)textID {
-  void *bundle = nullptr;
   @synchronized(self) {
-    NSValue *value = _textBundles[@(textID)];
-    if (value) {
-      bundle = [value pointerValue];
-    }
+    return _textBundles[@(textID)].page;
   }
-  return bundle;
+}
+
+- (id)textBundleIdentityForID:(int32_t)textID {
+  @synchronized(self) {
+    return _textBundles[@(textID)];
+  }
 }
 
 @end
