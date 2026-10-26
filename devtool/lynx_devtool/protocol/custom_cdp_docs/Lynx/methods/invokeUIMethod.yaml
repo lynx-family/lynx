@@ -1,0 +1,40 @@
+summary: Invokes an existing native UIMethod on a node in the current Lynx view.
+parameters:
+  - name: backendNodeId
+    type: integer
+    description: Backend node id from the existing DOM or UITree inspection APIs.
+  - name: methodName
+    type: string
+    description: Existing UIMethod name, with its original parameters and behavior.
+  - name: params
+    type: object
+    optional: true
+    description: Native UIMethod parameters. Defaults to an empty object.
+returns:
+  - name: code
+    type: integer
+    description: Original native UIMethod callback status code. Zero means success.
+  - name: data
+    type: any
+    description: Original native callback data, or null when absent.
+events: []
+notes:
+  - AnimaX playback controls are play, pause, resume, stop and seek. Image playback controls are startAnimate, pauseAnimation, resumeAnimation and stopAnimation. Each method uses its native parameters and callback contract.
+  - AnimaX supports getCurrentFrame, isAnimating, getDuration and getFrameCount on Android, iOS and Harmony. getFrameCount returns the original total frame value without rounding; null means the resource is not ready. getDuration retains its native millisecond value and callback shape.
+  - Android and iOS images support getCurrentFrame, getFrameCount, getDuration and isAnimating. Image getDuration returns one loop in milliseconds. Unknown metadata or an unobserved frame is null. Harmony image backends do not expose these native read capabilities and return method-not-found.
+  - Image read methods and AnimaX getFrameCount require DevTool to be enabled. Read queries are optional observations and can be called independently of playback controls.
+  - Identity and geometry are available through existing DOM and UITree APIs.
+  - The response follows the native callback. Clients control request timeouts for asynchronous UIMethods. Methods without a callback do not report completion.
+examples:
+  - title: Read the current AnimaX frame
+    request:
+      id: 1
+      method: Lynx.invokeUIMethod
+      params:
+        backendNodeId: 42
+        methodName: getCurrentFrame
+    response:
+      id: 1
+      result:
+        code: 0
+        data: 12
