@@ -21,6 +21,8 @@ namespace lynx {
 namespace tasm {
 namespace performance {
 
+inline constexpr int32_t kMemoryEventSchemaVersion = 11;
+
 inline int64_t MemoryNowMs() {
   return fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
 }
@@ -129,7 +131,8 @@ struct EarlyMemorySamples {
 // Weighted reservoir, O(1) auxiliary space. Once all candidates are scanned,
 // P(select i)=weight_i/total. For an attributed quantity x_i, emit x_i/P(i).
 // Active pages and registered shared VMs use weight=1, including missing
-// memory values. Exited pages use positive, post-exit full-GC residual bytes.
+// memory values. Q6 uses positive post-exit full-GC residual bytes; Q7 uses
+// positive unreported integrals of those slots.
 // These draw weights differ from the emitted inverse selection weights:
 // N for pages, V for VMs, total residual / selected residual for exited pages.
 class MemoryReservoir {

@@ -1,6 +1,6 @@
 # Memory Monitor Query Guide
 
-Applies to `schema_version=10` and the memory events below.
+Applies to `schema_version=11` and the memory events below.
 Recipes use top-level property filters, grouping, aggregates, and arithmetic
 **between aggregate results**. They do not require bitwise operations,
 cross-event joins, or custom row-wise expressions.
@@ -152,7 +152,7 @@ See the [global design](./memory_monitor_reporting_design.md), and the
 | --- | --- |
 | Page event | `lynxsdk_performance_entry_memory_v2` |
 | Global events | `lynxsdk_memory_process`, `lynxsdk_memory_page`, `lynxsdk_memory_page_residency`, `lynxsdk_memory_page_residual`, `lynxsdk_memory_persistence`, `lynxsdk_memory_vm_stat`, `lynxsdk_memory_vm_quickjs`, `lynxsdk_memory_mts_pool` |
-| Version | `schema_version=10` |
+| Version | `schema_version=11` |
 | Cohort | Fix SDK/build, date range, platform, experiment, and source configuration |
 | Event deduplication | Provided by the data platform; no monitor-owned deduplication fields |
 | Timer cohort | Encoded by production of the page, residual, VM-stat, and sampled QuickJS events |
@@ -811,25 +811,59 @@ does not prove permanent leakage.
 
 ## Q7. Which memory remains occupied over time?
 
-Event: `lynxsdk_memory_persistence`. It is built from **all trigger types**
-because PSS/overflow/pressure snapshots split intervals.
+Event: `lynxsdk_memory_persistence`, filtered to `schema_version=11`.
+Q7.1 measures VM heap byte-time; Q7.2 measures exited-page residual byte-time.
+Both metrics use byte-ms. Divide by `1048576 × 3600000` for MiB-hours.
+Do not add these time contributions to instantaneous memory.
 
-| Entity | Filters | Grouping | Metric |
-| --- | --- | --- | --- |
-| VM | VM area field exists | `vm_name`, `vm_runtime_type` | `SUM(vm_attributed_heap_byte_ms)` |
-| Exited page | Residual area field exists | `leak_page_key` | `SUM(leak_page_attributed_byte_ms)` |
+### Q7.1 Which VMs contribute the most heap byte-time?
 
-Divide by `1048576 × 3600000` for MiB-hours. VM area terms are h×V×valid interval;
-residual terms are T×valid interval.
+| Filters | Grouping | Metric |
+| --- | --- | --- |
+| `vm_attributed_heap_byte_ms` exists | `vm_name`, `vm_runtime_type` | `SUM(vm_attributed_heap_byte_ms)` |
 
-These are endpoint rectangles capped at 5 minutes and clipped to VM creation or
-page exit. They are not continuous integrals or current heap × VM age, and must
+Include all snapshot trigger types: timer/PSS/overflow/pressure snapshots split
+the VM intervals. VM area remains h×V×valid snapshot interval, capped at
+5 minutes and clipped to VM creation. The first snapshot has no preceding
+interval; failed heap collection omits this field.
+
+This is a snapshot-endpoint rectangle estimate. Heap changes within an
+interval and VM destruction between snapshots can leave area unobserved.
+
+### Q7.2 Which exited pages contribute the most residual byte-time?
+
+| Filters | Grouping | Metric |
+| --- | --- | --- |
+| `leak_page_attributed_byte_ms` exists | `leak_page_key` | `SUM(leak_page_attributed_byte_ms)` |
+
+Include **all rows** with the residual field: timer/PSS/overflow/pressure
+snapshots and residual-only rows emitted when a VM is destroyed.
+
+For exited pages, each slot accumulates its previous confirmed residual bytes
+times the interval to the next full GC. The first full GC strictly after exit
+starts the integral. For example, 10 MiB at g1, 5 MiB 60 seconds later at g2,
+then zero another 60 seconds later at g3 contributes
+`10×60 + 5×60 = 900 MiB-seconds`, even though its current residual is zero.
+There is no 5-minute cap on these GC intervals.
+
+At each report, positive unreported page areas A_i are sampled with probability
+`A_i / SUM(A_i)`. The selected row carries
+`leak_page_attributed_byte_ms = SUM(A_i)`, so its expectation grouped by
+`leak_page_key` is that key's residual integral. This draw is independent of
+Q6's current-byte draw. Do not apply `leak_page_selection_weight` again.
+
+Each area increment is consumed once. Reports defer the current open segment
+until the next GC; VM destruction closes and reports the final segment.
+Pending pages do not suppress already confirmed areas. Ordinary/invalid GCs
+and pre-exit or same-ms GCs do not contribute. Delayed exit delivery can start
+from the latest qualifying saved GC, but unavailable earlier history and
+abrupt process termination cannot be recovered. Event time reflects delivery
+of accumulated segments, so a time-window sum may include area from before
+the window. These metrics describe the observed post-GC step function and must
 not be added to instantaneous memory.
 
-Residual endpoints use qualifying full-GC snapshots. The producer omits the
-area field for an incomplete residual endpoint, so no separate completeness
-filter is needed. Subsequent events do not fill missing intervals. The result
-is not a continuous GC-to-GC integral.
+Schema 10 used a snapshot-endpoint residual approximation. Keep versions
+separate when querying Q7.2.
 
 ## Q8. What is Lynx's share when PSS crosses 1/2/3GiB?
 
@@ -1004,7 +1038,8 @@ must determine success.
 | Q4 | Group-weighted bytes/counts and mixed-engine member handling |
 | Q5 | Heap contribution/weights/mean; missing and zero heaps; complete VM residuals; percentile query semantics |
 | Q6 | Strict post-exit full GC, pending/zero/positive distinctions, matching weighted cohorts |
-| Q7 | All-trigger boundaries, caps, entity clipping, and omitted incomplete intervals |
+| Q7.1 | All-trigger VM endpoints, creation clipping, 5-minute cap, and missing heap fields |
+| Q7.2 | Slot GC integral, zeroed residual history, area PPS, draining, and destruction flush |
 | Q8 | Per-event ratio distributions and crossings spanning multiple buckets |
 | Q9 | Cross-engine bindings independently of heap support; capacity versus first failure |
 | Q10 | Three independent reserved-slot rankings, zero values, missing tracking, and heap overlap |

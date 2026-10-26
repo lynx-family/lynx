@@ -1,6 +1,6 @@
 # Memory Monitor Event Property Reference
 
-Applies to `schema_version=10`. The page event keeps its `_v2` name. The global
+Applies to `schema_version=11`. The page event keeps its `_v2` name. The global
 snapshot has been split into analysis-specific events whose names intentionally
 have no `_v2` suffix.
 
@@ -13,7 +13,7 @@ All global events contain:
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `schema_version` | int32 | Event schema version, currently 10. |
+| `schema_version` | int32 | Event schema version, currently 11. |
 
 Global-event deduplication is provided by the data platform rather than
 monitor-owned properties.
@@ -85,15 +85,20 @@ selected by probability proportional to bytes.
 
 ## `lynxsdk_memory_persistence` - up to 6 properties
 
-Produced at any snapshot boundary when at least one valid area term exists.
+Produced at a snapshot when VM endpoint area or unreported residual area
+exists; also produced with residual fields only when a VM is destroyed.
 
 | Property | Type | Description |
 | --- | --- | --- |
 | `vm_name` | string | Selected all-engine VM name; present with VM area. |
 | `vm_runtime_type` | string | Selected VM engine. |
-| `vm_attributed_heap_byte_ms` | double | Heap endpoint area H x V x clipped interval. |
-| `leak_page_key` | string | Selected residual page key; present with residual area. |
-| `leak_page_attributed_byte_ms` | double | Residual endpoint area T x clipped interval. |
+| `vm_attributed_heap_byte_ms` | double | Q7.1: heap endpoint area H x V x clipped interval. |
+| `leak_page_key` | string | Page key drawn independently by positive unreported residual integral. |
+| `leak_page_attributed_byte_ms` | double | Q7.2: total pending slot byte-ms in this draw, equivalent to selected area / selection probability. Closed full-GC segments plus the final segment at VM destruction; consumed once, no 5-minute cap. |
+
+A now-zero slot can carry historical area. Residual field presence does not
+require every exited page to have completed a post-exit GC. Schema 10 used a
+snapshot-endpoint residual estimate; do not merge those Q7.2 semantics.
 
 ## `lynxsdk_memory_vm_stat` - up to 13 properties
 
@@ -166,7 +171,7 @@ standalone `early_summary`. Planned points and early statistics are unchanged.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `schema_version` | int32 | Event schema version, currently 10. |
+| `schema_version` | int32 | Event schema version, currently 11. |
 | `lynx_ui_memory_enabled` | int32 | Whether Lynx UI memory collection is enabled. |
 | `page_key` | string | Host page ID or URL fallback. |
 | `mts_context_type` | int32 | MTS runtime context. |

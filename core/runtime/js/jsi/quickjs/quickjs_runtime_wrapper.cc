@@ -93,6 +93,9 @@ QuickjsRuntimeInstance::QuickjsRuntimeInstance()
 }
 
 QuickjsRuntimeInstance::~QuickjsRuntimeInstance() {
+  if (tasm::performance::MemoryMonitor::Enable()) {
+    tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMDestroy(this);
+  }
   if (rt_) {
     LEPUS_SetGCObserver(rt_, nullptr);
     LEPUS_FreeRuntime(rt_);

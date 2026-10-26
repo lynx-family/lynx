@@ -7,6 +7,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -85,6 +86,11 @@ struct InstanceState {
 };
 
 struct BtsVmState {
+  struct ResidualSlot {
+    int64_t exited_at_ms{-1};
+    double pending_byte_ms{0};
+  };
+
   void SetName(const std::string& name) { name_ = name; }
   const std::string& vm_name() const {
     return !monitoring_group_label.empty() ? monitoring_group_label : name_;
@@ -115,10 +121,14 @@ struct BtsVmState {
   std::array<size_t, fml::JSMemoryTrackSlotType::Count> memory_slots{};
   // Preserve the last valid full-GC snapshot across ordinary updates. A page
   // qualifies only if exited_at_ms < full_gc_at_ms (equal-ms order is unknown).
-  // Keeping all slots also handles a delayed exit notification without a
-  // per-slot lifecycle map or a scan of the instance registry on every GC.
+  // Keeping all slots lets a delayed exit start from this saved baseline
+  // without scanning the instance registry on every GC.
   std::array<size_t, fml::JSMemoryTrackSlotType::Count> full_gc_slots{};
   int64_t full_gc_at_ms{0};
+  // Lazily allocated only for exited tracked slots. Full GC closes intervals
+  // using the OLD confirmed bytes; reporting drains area even after zeroing.
+  // No instance lookup or page-key storage is needed on the GC update path.
+  std::vector<ResidualSlot> residual_slots;
   int64_t created_at_ms{0};
   int64_t measured_at_ms{0};
   // Time with zero active pages, not "no JS task has executed". Reset on bind.
@@ -178,6 +188,9 @@ class GlobalMemoryMonitor {
   // The engine copies values on its owning JS thread; no engine-specific
   // headers, pointer reads or GC interpretation belong in this monitor.
   void OnBtsVMMemoryUpdate(runtime::js::VMInstance* vm, BtsMemorySample sample);
+  // Capture on the owner thread before teardown; identity is never read.
+  void OnBtsVMDestroy(runtime::js::VMInstance* vm,
+                      int64_t at_ms = MemoryNowMs());
   void OnBtsVMSlotAllocate(runtime::js::VMInstance* vm, int32_t slot);
   // Bundle-local pools publish owner-thread heap snapshots. LynxGlobalPool
   // never calls these entry points.
@@ -251,7 +264,8 @@ class GlobalMemoryMonitor {
   GlobalMemoryUsage BuildGlobalMemoryUsage(const Snapshot& snapshot);
   BtsVmState* FindVM(runtime::js::VMInstance* vm);
   PageMemoryUsage RefreshInstanceMemoryUsage(InstanceState& page);
-  void OnBtsVMDestroy(runtime::js::VMInstance* vm);
+  std::optional<report::MoveOnlyEvent> TakeResidualPersistenceEvent(
+      BtsVmState* only_vm = nullptr);
   void BindInstance(InstanceState& state, runtime::js::VMInstance* previous);
   // Called only by MemoryMonitor::OnFirstLoadComplete on the reporter thread.
   const InstanceState* ResolveInstancePageKey(int32_t id);

@@ -15,6 +15,7 @@ namespace report {
 
 int32_t EventTrackerWaitableEvent::instance_id_ = -1;
 std::vector<MoveOnlyEvent> EventTrackerWaitableEvent::stack_;
+bool EventTrackerWaitableEvent::accumulate_events_ = false;
 EventTrackerWaitableEvent::InstanceParams
     EventTrackerWaitableEvent::generic_info_by_instance_;
 EventTrackerWaitableEvent::InstanceParams
@@ -32,7 +33,8 @@ EventTrackerWaitableEvent::Await() {
 void EventTrackerPlatformImpl::OnEvent(MoveOnlyEvent&& event) {
   assert(event.IsValidInstanceId());
   EventTrackerWaitableEvent::instance_id_ = event.GetInstanceId();
-  EventTrackerWaitableEvent::stack_.clear();
+  if (!EventTrackerWaitableEvent::accumulate_events_)
+    EventTrackerWaitableEvent::stack_.clear();
   EventTrackerWaitableEvent::stack_.emplace_back(std::move(event));
   EventTrackerWaitableEvent::Await()->Signal();
 }
@@ -40,7 +42,12 @@ void EventTrackerPlatformImpl::OnEvent(MoveOnlyEvent&& event) {
 void EventTrackerPlatformImpl::OnEvents(std::vector<MoveOnlyEvent> stack) {
   EventTrackerWaitableEvent::instance_id_ =
       stack.empty() ? kUnknownInstanceId : stack.front().GetInstanceId();
-  EventTrackerWaitableEvent::stack_ = std::move(stack);
+  if (EventTrackerWaitableEvent::accumulate_events_) {
+    for (auto& event : stack)
+      EventTrackerWaitableEvent::stack_.push_back(std::move(event));
+  } else {
+    EventTrackerWaitableEvent::stack_ = std::move(stack);
+  }
   EventTrackerWaitableEvent::Await()->Signal();
 }
 
