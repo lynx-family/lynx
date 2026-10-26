@@ -7,6 +7,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
 import androidx.annotation.NonNull;
@@ -14,6 +15,9 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import com.lynx.animax.ability.LynxAbility;
 import com.lynx.animax.base.AnimaXError;
+import com.lynx.animax.listener.AnimaXErrorParam;
+import com.lynx.animax.listener.AnimaXParam;
+import com.lynx.animax.listener.AnimationListenerAdapter;
 import com.lynx.animax.loader.LynxHttpAnimaXLoader;
 import com.lynx.animax.monitor.AnimaXMonitorUtil;
 import com.lynx.animax.monitor.LynxAnimaXMonitorDefault;
@@ -33,6 +37,7 @@ import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ForegroundListener;
 import com.lynx.tasm.behavior.LynxContext;
@@ -119,6 +124,40 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   // Cross-flush flags.
   private boolean mHasReportMotionEvent = false;
 
+  @Nullable private Float mTotalFrames;
+  private String mFrameCountSource;
+  private final AnimationListenerAdapter mFrameCountListener = new AnimationListenerAdapter() {
+    @Override
+    public void onReady(AnimaXParam param) {
+      mTotalFrames = param.getTotalFrame();
+    }
+
+    @Override
+    public void onError(AnimaXErrorParam param) {
+      mTotalFrames = null;
+    }
+  };
+
+  // Total frames arrive with readiness; discard them only when the resource changes.
+  private void resetFrameCount(String source) {
+    if (!TextUtils.equals(mFrameCountSource, source)) {
+      mFrameCountSource = source;
+      mTotalFrames = null;
+    }
+  }
+
+  @LynxUIMethod
+  public void getFrameCount(ReadableMap params, Callback callback) {
+    if (callback == null) {
+      return;
+    }
+    if (!LynxEnv.inst().isDevtoolEnabled()) {
+      callback.invoke(LynxUIMethodConstants.METHOD_NOT_FOUND);
+      return;
+    }
+    callback.invoke(LynxUIMethodConstants.SUCCESS, mTotalFrames);
+  }
+
   public UIAnimaX(LynxContext context) {
     this(context, null);
   }
@@ -182,6 +221,9 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
 
     AnimaXLog.i(TAG, "UIAnimaX destroy");
 
+    if (mAnimaXPlayer != null) {
+      mAnimaXPlayer.removeAnimationListener(mFrameCountListener);
+    }
     if (mAnimaXView != null) {
       mAnimaXView.release();
     } else if (mAnimaXPlayer != null) {
@@ -222,6 +264,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     mAbility.registerService(IAnimaXResourceFactoryService.class,
         () -> Collections.singletonList(new LynxHttpAnimaXLoader(mAbility, mContext)));
     mAnimaXPlayer = new AnimaXPlayer(animaxContext);
+    mAnimaXPlayer.addAnimationListener(mFrameCountListener);
     mPropsSetter.init(mAnimaXPlayer);
   }
 
@@ -416,6 +459,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "json")
   public void setJson(String json) {
     mPropsSetter.enqueueTask(player -> {
+      resetFrameCount("json:" + json);
       player.setJson(json);
       setViewTag("json");
       reportMotionEvent("json");
@@ -430,6 +474,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "src")
   public void setSrc(String src) {
     mPropsSetter.enqueueTask(player -> {
+      resetFrameCount("src:" + src);
       player.setSrc(src);
       setViewTag(src);
       reportMotionEvent(src);
@@ -479,6 +524,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "src-format")
   public void setSrcFormat(String srcFormat) {
     mPropsSetter.enqueueTask(player -> {
+      resetFrameCount("src:" + srcFormat);
       player.setSrc(srcFormat);
       setViewTag(srcFormat);
       reportMotionEvent(srcFormat);
