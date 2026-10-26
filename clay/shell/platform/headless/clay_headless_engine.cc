@@ -7,6 +7,7 @@
 #include <assert.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/time/time_point.h"
@@ -22,9 +23,9 @@ ClayHeadlessEngine::ClayHeadlessEngine(
     const char* icu_data_path,
     const ClayHeadlessRendererConfig* renderer_config,
     const ClayTaskRunnerDescription* platform_task_runner_description,
-    void* user_data) {
+    void* user_data, VsyncRequestCallback custom_vsync_request) {
   RunEngine(icu_data_path, renderer_config, platform_task_runner_description,
-            user_data);
+            user_data, std::move(custom_vsync_request));
 }
 
 ClayHeadlessEngine::~ClayHeadlessEngine() {
@@ -48,7 +49,7 @@ bool ClayHeadlessEngine::RunEngine(
     const char* icu_data_path,
     const ClayHeadlessRendererConfig* renderer_config,
     const ClayTaskRunnerDescription* platform_task_runner_description,
-    void* user_data) {
+    void* user_data, VsyncRequestCallback custom_vsync_request) {
   user_data_ = user_data;
   // FlutterProjectArgs is expecting a full argv, so when processing it for
   // flags the first item is treated as the executable and ignored. Add a dummy
@@ -60,6 +61,7 @@ bool ClayHeadlessEngine::RunEngine(
     command_line = fml::CommandLineFromArgcArgv(argv.size(), argv.data());
   }
   clay::Settings settings = clay::SettingsFromCommandLine(command_line);
+  settings.custom_vsync_request = std::move(custom_vsync_request);
   if (icu_data_path) {
     settings.icu_data_path = icu_data_path;
   }

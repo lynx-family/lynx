@@ -60,6 +60,81 @@ class LynxViewTest : public ::testing::Test {
   bool logbox_enabled_ = false;
 };
 
+TEST_F(LynxViewTest, CustomVSyncSurvivesBuilderReplacementAndViewSharing) {
+  struct State {
+    int requests = 0;
+    int finalized = 0;
+  } first, replacement;
+  auto create = [](State* state) {
+    auto* monitor = lynx_vsync_monitor_create_with_finalizer(
+        state,
+        [](auto*, void* data) { ++static_cast<State*>(data)->finalized; });
+    lynx_vsync_monitor_bind_request_vsync_func(
+        monitor, [](auto* monitor, auto callback, void* context) {
+          auto* state =
+              static_cast<State*>(lynx_vsync_monitor_get_user_data(monitor));
+          ++state->requests;
+          callback(context, 10, 20);
+        });
+    return monitor;
+  };
+  using View = std::unique_ptr<lynx_view_t, decltype(&lynx_view_release)>;
+  View view(nullptr, lynx_view_release);
+  View second_view(nullptr, lynx_view_release);
+  View replacement_view(nullptr, lynx_view_release);
+  {
+    lynx::pub::LynxView::Builder builder;
+    builder.SetEnableJSRuntime(false);
+    lynx_view_builder_set_custom_vsync_monitor(builder.Impl(), create(&first));
+    // Use the regular test renderer without configuring a windowless renderer.
+    view.reset(lynx_view_create(builder.Impl(), nullptr));
+    ASSERT_NE(view, nullptr);
+    second_view.reset(lynx_view_create(builder.Impl(), nullptr));
+    ASSERT_NE(second_view, nullptr);
+    lynx_view_builder_set_custom_vsync_monitor(builder.Impl(),
+                                               create(&replacement));
+    replacement_view.reset(lynx_view_create(builder.Impl(), nullptr));
+    ASSERT_NE(replacement_view, nullptr);
+    lynx_view_builder_set_custom_vsync_monitor(builder.Impl(), nullptr);
+  }
+  EXPECT_EQ(first.finalized, 0);
+  EXPECT_EQ(replacement.finalized, 0);
+  int signals = 0;
+  {
+    auto source =
+        view->lynx_template_renderer->GetSettings().vsync_monitor_platform_impl;
+    auto second_source = second_view->lynx_template_renderer->GetSettings()
+                             .vsync_monitor_platform_impl;
+    auto replacement_source =
+        replacement_view->lynx_template_renderer->GetSettings()
+            .vsync_monitor_platform_impl;
+    ASSERT_NE(source, nullptr);
+    ASSERT_EQ(source, second_source);
+    ASSERT_NE(source, replacement_source);
+    ASSERT_NE(replacement_source, nullptr);
+    for (const auto& monitor : {source, second_source, replacement_source}) {
+      monitor->RequestVSync([&](int64_t start, int64_t target) {
+        EXPECT_EQ(start, 10);
+        EXPECT_EQ(target, 20);
+        ++signals;
+      });
+    }
+  }
+  EXPECT_EQ(first.requests, 2);
+  EXPECT_EQ(replacement.requests, 1);
+  EXPECT_EQ(signals, 3);
+  view.reset();
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(first.finalized, 0);
+  second_view.reset();
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(first.finalized, 1);
+  EXPECT_EQ(replacement.finalized, 0);
+  replacement_view.reset();
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(replacement.finalized, 1);
+}
+
 TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
   // Encode with the current build's codec instead of storing a binary fixture.
   Json::Value input;

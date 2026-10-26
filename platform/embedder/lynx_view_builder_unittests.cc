@@ -57,3 +57,23 @@ TEST(LynxViewBuilder, Create) {
   lynx_view_builder_release(builder);
   lynx_group_release(group);
 }
+
+TEST(LynxViewBuilder, CustomVSyncFinalizesUnusedAndReplacedMonitors) {
+  int finalized = 0;
+  auto create = [&] {
+    return lynx_vsync_monitor_create_with_finalizer(
+        &finalized, [](auto*, void* data) { ++*static_cast<int*>(data); });
+  };
+  auto* builder = lynx_view_builder_create();
+  auto* first = create();
+  lynx_view_builder_set_custom_vsync_monitor(builder, first);
+  lynx_view_builder_set_custom_vsync_monitor(builder, first);
+  EXPECT_EQ(finalized, 0);
+  lynx_view_builder_set_custom_vsync_monitor(builder, create());
+  EXPECT_EQ(finalized, 1);
+  lynx_view_builder_set_custom_vsync_monitor(builder, nullptr);
+  EXPECT_EQ(finalized, 2);
+  lynx_view_builder_set_custom_vsync_monitor(builder, create());
+  lynx_view_builder_release(builder);
+  EXPECT_EQ(finalized, 3);
+}

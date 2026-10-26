@@ -14,7 +14,6 @@
 #include "platform/embedder/module/extension_module_factory_impl.h"
 #include "platform/embedder/module/lynx_module_manager_napi.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
-#include "platform/embedder/public/capi/lynx_vsync_monitor_capi.h"
 #if ENABLE_INSPECTOR
 #include "platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.h"
 #endif
@@ -39,7 +38,6 @@ struct lynx_view_t {
   std::unique_ptr<lynx::embedder::LynxUIRenderer> lynx_ui_renderer = nullptr;
   std::shared_ptr<lynx::embedder::LynxResourceFetcherHolder>
       resource_fetcher_holder = nullptr;
-  lynx_vsync_monitor_t* custom_vsync_monitor = nullptr;
   std::shared_ptr<lynx::tasm::TemplateData> global_props = nullptr;
   void* user_data = nullptr;
   std::string devtool_target_url;

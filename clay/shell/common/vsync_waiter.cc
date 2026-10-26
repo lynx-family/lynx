@@ -150,4 +150,42 @@ void VsyncWaiter::Hook(AWaitVSyncCallback callback) {
   await_vsync_callback_ = callback;
 }
 
+VsyncWaiterCustom::VsyncWaiterCustom(fml::RefPtr<fml::TaskRunner> task_runner,
+                                     RequestCallback request)
+    : VsyncWaiter(std::move(task_runner)), request_(std::move(request)) {
+  FML_CHECK(request_);
+}
+
+void VsyncWaiterCustom::AwaitVSync() {
+  if (!IsEngineActive()) {
+    return;
+  }
+  auto weak = std::weak_ptr<VsyncWaiterCustom>(
+      std::static_pointer_cast<VsyncWaiterCustom>(shared_from_this()));
+  const auto generation = ++request_generation_;
+  request_([weak, generation](int64_t start, int64_t target) {
+    // The host may retain its reply after teardown. Do not keep the raster
+    // runner alive through that reply.
+    if (auto waiter = weak.lock()) {
+      // Always post, including synchronous replies, to avoid re-entering the
+      // scheduler while it is requesting a frame.
+      waiter->task_runner_->PostTask([weak, start, target, generation] {
+        if (auto waiter = weak.lock();
+            waiter && waiter->IsEngineActive() &&
+            waiter->request_generation_ == generation) {
+          waiter->FireCallback(fml::TimePoint::FromEpochDelta(
+                                   fml::TimeDelta::FromNanoseconds(start)),
+                               fml::TimePoint::FromEpochDelta(
+                                   fml::TimeDelta::FromNanoseconds(target)));
+        }
+      });
+    }
+  });
+}
+
+void VsyncWaiterCustom::ResetPendingCallbacks() {
+  ++request_generation_;
+  VsyncWaiter::ResetPendingCallbacks();
+}
+
 }  // namespace clay

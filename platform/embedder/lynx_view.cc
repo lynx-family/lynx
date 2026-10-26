@@ -204,11 +204,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
           std::move(extension_module_creators));
   view->extension_factory_->OnLynxViewCreate(view, ui_delegate);
 #endif
-  if (view->custom_vsync_monitor) {
-    settings.vsync_monitor_platform_impl =
-        std::make_shared<lynx::embedder::LynxVSyncMonitor>(
-            view->custom_vsync_monitor);
-  }
+  settings.vsync_monitor_platform_impl = builder->custom_vsync_monitor;
 
 #if ENABLE_NAPI_BINDING
   std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
@@ -540,11 +536,6 @@ LYNX_EXTERN_C void lynx_view_register_native_view(
     lynx_view_t* view, const char* name, lynx_native_view_creator creator,
     void* opaque) {
   view->lynx_ui_renderer->RegisterNativeView(name, creator, opaque);
-}
-
-LYNX_EXTERN_C void lynx_view_set_custom_vsync_monitor(
-    lynx_view_t* view, lynx_vsync_monitor_t* monitor) {
-  view->custom_vsync_monitor = monitor;
 }
 
 LYNX_EXTERN_C void lynx_view_register_ime_handler(lynx_view_t* view,
