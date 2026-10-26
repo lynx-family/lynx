@@ -605,6 +605,7 @@ void LynxShell::InitRuntime(
   delegate->SetRecordID(record_id);
 #endif
   delegate->SetPropBundleCreator(prop_bundle_creator_);
+  delegate->SetLazyBundleLoader(engine_build_options_.lazy_bundle_loader_);
   auto* delegate_raw_ptr = delegate.get();
   tasm_mediator_->SetPropBundleCreator(prop_bundle_creator_);
   auto runtime_context = log_context_;
@@ -692,25 +693,29 @@ void LynxShell::AttachRuntime() {
 
     auto enqueue_info =
         tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-    runtime_actor_->ActAsync([facade_actor = facade_actor_,
-                              engine_actor = engine_actor_,
-                              card_cached_data_mgr = card_cached_data_mgr_,
-                              weak_js_bundle_holder = GetWeakJsBundleHolder(),
-                              enqueue_info, flow_id](auto& runtime) mutable {
-      runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-      (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
-                      // warning.
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, ATTACH_RUNTIME,
-                  [flow_id](lynx::perfetto::EventContext ctx) {
-                    ctx.event()->add_terminating_flow_ids(flow_id);
-                  });
+    runtime_actor_->ActAsync(
+        [facade_actor = facade_actor_, engine_actor = engine_actor_,
+         card_cached_data_mgr = card_cached_data_mgr_,
+         weak_js_bundle_holder = GetWeakJsBundleHolder(),
+         lazy_bundle_loader = engine_build_options_.lazy_bundle_loader_,
+         enqueue_info, flow_id](auto& runtime) mutable {
+          runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+          (void)flow_id;  // Explicitly reference `flow_id` to suppress the
+                          // compiler warning.
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, ATTACH_RUNTIME,
+                      [flow_id](lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_terminating_flow_ids(flow_id);
+                      });
 
-      runtime->TransitionToFullRuntime();
-      runtime->SetJsBundleHolder(weak_js_bundle_holder);
-      static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
-          ->AttachToLynxShell(std::move(facade_actor), std::move(engine_actor),
-                              std::move(card_cached_data_mgr));
-    });
+          runtime->TransitionToFullRuntime();
+          runtime->SetJsBundleHolder(weak_js_bundle_holder);
+          static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
+              ->SetLazyBundleLoader(lazy_bundle_loader);
+          static_cast<BTSRuntimeMediator*>(runtime->GetDelegate())
+              ->AttachToLynxShell(std::move(facade_actor),
+                                  std::move(engine_actor),
+                                  std::move(card_cached_data_mgr));
+        });
   }
 }
 

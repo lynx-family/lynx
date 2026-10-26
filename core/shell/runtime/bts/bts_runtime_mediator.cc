@@ -198,6 +198,27 @@ void BTSRuntimeMediator::FetchBundle(
     const std::string& bundle_url,
     const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
         response_promise) {
+  // Registered bundles are shared through the loader's thread-safe cache, so a
+  // cache hit can complete on the JS thread without waiting for the engine.
+  if (lazy_bundle_loader_) {
+    auto bundle = lazy_bundle_loader_->GetTemplateBundle(bundle_url);
+    if (bundle) {
+#if ENABLE_TESTBENCH_RECORDER
+      if (!runtime_standalone_mode_ &&
+          tasm::recorder::TestBenchBaseRecorder::GetInstance()
+              .IsRecordingProcess() &&
+          !bundle->GetBinary().empty()) {
+        std::vector<uint8_t> binary = bundle->GetBinary();
+        tasm::recorder::TemplateAssemblerRecorder::
+            RecordLoadComponentWithCallback(bundle_url, binary, false, -1,
+                                            record_id_);
+      }
+#endif  // ENABLE_TESTBENCH_RECORDER
+      response_promise->SetValue(
+          {.url = bundle_url, .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
+      return;
+    }
+  }
   if (runtime_standalone_mode_) {
     if (!lazy_bundle_loader_) {
       response_promise->SetValue(
@@ -205,11 +226,6 @@ void BTSRuntimeMediator::FetchBundle(
            .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED,
            .error_msg =
                "fetchBundle not supported: lazy bundle loader is null"});
-      return;
-    }
-    if (lazy_bundle_loader_->GetTemplateBundle(bundle_url)) {
-      response_promise->SetValue(
-          {.url = bundle_url, .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
       return;
     }
     lazy_bundle_loader_->FetchBundle(tasm::lazy_bundle::LynxLazyBundleRequest{
