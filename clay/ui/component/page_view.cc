@@ -49,6 +49,7 @@
 #ifdef ENABLE_SKITY
 #include "clay/gfx/skity/image_encoder.h"
 #endif
+#include "clay/ui/component/base_image_view.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/image_view.h"
@@ -67,6 +68,7 @@
 #include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/selection_handle_view.h"
 #include "clay/ui/component/selection_popup_view.h"
+#include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/event/event_utils.h"
 #include "clay/ui/event/gesture_event.h"
@@ -77,6 +79,7 @@
 #include "clay/ui/gesture/tap_gesture_recognizer.h"
 #include "clay/ui/painter/painting_context.h"
 #include "clay/ui/rendering/render_page.h"
+#include "clay/ui/rendering/text/render_text.h"
 #include "clay/ui/resource/image_resource_fetcher.h"
 #include "clay/version/version.h"
 
@@ -85,6 +88,96 @@
 #endif
 
 namespace clay {
+
+namespace {
+
+class MeaningfulPaintingAreaCollector {
+ public:
+  explicit MeaningfulPaintingAreaCollector(PageView& page) : page_(page) {}
+
+  std::vector<float> Collect() {
+    std::vector<float> records;
+    std::vector<std::pair<BaseView*, FloatPoint>> to_visit;
+    for (auto* child : page_.GetChildren()) {
+      to_visit.emplace_back(child, FloatPoint());
+    }
+
+    while (!to_visit.empty()) {
+      const auto [view, parent_offset] = to_visit.back();
+      to_visit.pop_back();
+      if (view == nullptr || !view->attach_to_tree()) {
+        continue;
+      }
+      const FloatPoint location(parent_offset.x() + view->Left(),
+                                parent_offset.y() + view->Top());
+      if (location.x() >= page_.Width() || location.y() >= page_.Height()) {
+        continue;
+      }
+      for (auto* child : view->GetChildren()) {
+        to_visit.emplace_back(child, location);
+      }
+
+      const auto content = GetContent(*view);
+      if (content.status == ContentStatus::kIrrelevant) {
+        continue;
+      }
+      const auto record_offset = records.size();
+      records.resize(record_offset + 10);
+      auto* record = records.data() + record_offset;
+      record[0] = page_.ConvertTo<kPixelTypePlatform>(location.x());
+      record[1] = page_.ConvertTo<kPixelTypePlatform>(location.y());
+      record[2] = page_.ConvertTo<kPixelTypePlatform>(view->Width());
+      record[3] = page_.ConvertTo<kPixelTypePlatform>(view->Height());
+      record[4] = content.valid ? 1.f : 0.f;
+      record[5] = static_cast<float>(content.status);
+      record[6] = view->Visible() ? 0.f : 4.f;
+      record[7] = view->Opacity();
+      record[8] = 1.f;
+      record[9] = 1.f;
+    }
+    return records;
+  }
+
+ private:
+  enum class ContentStatus {
+    kIrrelevant = 0,
+    kPending = 1,
+    kPresented = 2,
+  };
+
+  struct Content {
+    ContentStatus status;
+    bool valid;
+  };
+
+  static Content GetContent(const BaseView& view) {
+    if (view.Is<TextView>()) {
+      const auto* render_text =
+          static_cast<const RenderText*>(view.render_object());
+      const bool presented = render_text->GetPainter() != nullptr &&
+                             render_text->GetPainter()->CanPaint();
+      return Content{
+          presented ? ContentStatus::kPresented : ContentStatus::kPending,
+          true};
+    }
+    if (view.Is<BaseImageView>()) {
+      const bool presented =
+          static_cast<const RenderImage*>(view.render_object())->HasContent();
+      return Content{
+          presented ? ContentStatus::kPresented : ContentStatus::kPending,
+          presented};
+    }
+    return Content{ContentStatus::kIrrelevant, false};
+  }
+
+  PageView& page_;
+};
+
+}  // namespace
+
+std::vector<float> PageView::CollectMeaningfulPaintingAreas() {
+  return MeaningfulPaintingAreaCollector(*this).Collect();
+}
 
 class PageView::PageTapGestureRecognizer final : public TapGestureRecognizer {
  public:
