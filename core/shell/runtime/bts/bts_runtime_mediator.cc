@@ -109,7 +109,8 @@ runtime::js::JsContent BTSRuntimeMediator::GetJSContentFromExternal(
   std::string external_resource_content("");
   runtime::js::JsContent::Type type(runtime::js::JsContent::Type::ERROR);
   if (info.Success()) {
-    external_resource_content = std::string(info.data.begin(), info.data.end());
+    external_resource_content =
+        std::string(info.data->begin(), info.data->end());
     type = runtime::js::JsContent::Type::SOURCE;
   } else {
     external_resource_content = info.err_msg;
@@ -671,10 +672,6 @@ std::shared_ptr<runtime::js::Buffer> BTSRuntimeMediator::LoadBytecode(
   auto info = external_resource_loader_->LoadByteCode(url, 5 /* 5s timeout */);
   std::shared_ptr<runtime::js::Buffer> buffer;
   if (info.Success()) {
-    if (info.shared_data != nullptr) {
-      return std::make_shared<runtime::js::ByteBuffer>(
-          std::move(info.shared_data));
-    }
     buffer = std::make_shared<runtime::js::ByteBuffer>(std::move(info.data));
   }
   return buffer;

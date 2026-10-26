@@ -110,6 +110,7 @@ subspec_target("Framework") {
     "-Werror",
   ]
   flatten_deps = framework_podspec_deps
+  flatten_deps += [ "../../../../service_api:lynx_service_api" ]
   frameworks = [
     "UIKit",
     "NaturalLanguage",
@@ -122,7 +123,6 @@ subspec_target("Framework") {
       "LynxBase/Framework",
     ]
   }
-  dependency += [ "LynxServiceAPI" ]
 }
 
 subspec_target("lynx") {

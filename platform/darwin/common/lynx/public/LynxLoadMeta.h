@@ -33,7 +33,7 @@ typedef NS_OPTIONS(NSInteger, LynxLoadOption) {
   LynxLoadOptionProcessLayoutWithoutUIFlush = 1 << 3,
 };
 
-// if both templateBundle and binaryData exist, use templateBundle first
+// The load priority is templateBundle, binaryData, then URL.
 @interface LynxLoadMeta : NSObject
 @property(nonatomic, copy, nonnull) NSString* url;
 @property(nonatomic, assign) LynxLoadMode loadMode;

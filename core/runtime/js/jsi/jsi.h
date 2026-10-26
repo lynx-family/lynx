@@ -103,8 +103,6 @@ class BaseStringBuffer : public Buffer {
 
 class ByteBuffer : public Buffer {
  public:
-  explicit ByteBuffer(std::vector<uint8_t>&& data)
-      : data_(std::make_shared<const std::vector<uint8_t>>(std::move(data))) {}
   explicit ByteBuffer(std::shared_ptr<const std::vector<uint8_t>> data)
       : data_(data == nullptr ? std::make_shared<const std::vector<uint8_t>>()
                               : std::move(data)) {}

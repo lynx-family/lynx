@@ -379,6 +379,12 @@ void LynxBinaryReader::RecordBinary() {
 
 LynxBinaryReader LynxBinaryReader::CreateLynxBinaryReader(
     std::vector<uint8_t> binary) {
+  return CreateLynxBinaryReader(
+      std::make_shared<const std::vector<uint8_t>>(std::move(binary)));
+}
+
+LynxBinaryReader LynxBinaryReader::CreateLynxBinaryReader(
+    std::shared_ptr<const std::vector<uint8_t>> binary) {
   auto input_stream =
       std::make_unique<lynx::lepus::ByteArrayInputStream>(std::move(binary));
   auto reader = LynxBinaryReader{std::move(input_stream)};

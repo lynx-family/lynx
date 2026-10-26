@@ -39,9 +39,10 @@ ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
         if (!p) {
           return;
         }
-        p->set_value(ExternalResourceInfo(std::move(response.data),
-                                          response.err_code,
-                                          std::move(response.err_msg)));
+        p->set_value(ExternalResourceInfo(
+            std::make_shared<const std::vector<uint8_t>>(
+                std::move(response.data)),
+            response.err_code, std::move(response.err_msg)));
       });
   timeout = timeout > 0 ? timeout : 5;
   if (future.wait_for(std::chrono::seconds(timeout)) !=
@@ -109,9 +110,6 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
         if (response.Success() && response.resource_handle != nullptr) {
           auto result = response.resource_handle->GetData();
           if (!result.has_value() || result.value() == nullptr) {
-            LOGE(
-                "[ResourceHandle] External bytecode "
-                "failure_stage=handle_read, failure_reason=read_failed");
             std::string error_message = result.has_value()
                                             ? "resource snapshot is null"
                                             : std::move(result.error());
@@ -121,9 +119,6 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
             return;
           }
           if (result.value()->empty()) {
-            LOGE(
-                "[ResourceHandle] External bytecode "
-                "failure_stage=handle_read, failure_reason=empty_resource");
             p->set_value(ExternalResourceInfo(
                 error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
                 "external bytecode resource is empty"));
@@ -135,9 +130,10 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
           return;
         }
 
-        p->set_value(ExternalResourceInfo(std::move(response.data),
-                                          response.err_code,
-                                          std::move(response.err_msg)));
+        p->set_value(ExternalResourceInfo(
+            std::make_shared<const std::vector<uint8_t>>(
+                std::move(response.data)),
+            response.err_code, std::move(response.err_msg)));
       });
 
   timeout = timeout > 0 ? timeout : 5;
