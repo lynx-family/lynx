@@ -261,6 +261,18 @@ copy("lynx_napi_api") {
 }
 
 if (enable_unittests) {
+  executable("lynx_vsync_monitor_unittests") {
+    testonly = true
+    sources = [
+      "lynx_vsync_monitor.cc",
+      "lynx_vsync_monitor_unittests.cc",
+    ]
+    deps = [
+      "../../base/src:base_static",
+      "//third_party/googletest:gtest_main",
+    ]
+  }
+
   executable("lynx_embedder_unittests") {
     testonly = true
     include_dirs = [ "../../base/include/value" ]
@@ -277,6 +289,7 @@ if (enable_unittests) {
       "lynx_view_builder_unittests.cc",
       "lynx_view_client_unittests.cc",
       "lynx_view_event_simulation_proxy_unittest.cc",
+      "lynx_vsync_monitor_unittests.cc",
     ]
 
     # The test host uses a desktop FML message loop for view initialization.
