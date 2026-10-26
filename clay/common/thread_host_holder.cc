@@ -20,6 +20,7 @@ ThreadHostHolder::ThreadHostHolder() = default;
 
 void ThreadHostHolder::SetConfig(
     const clay::ThreadHost::ThreadHostConfig& config) {
+  std::lock_guard<std::mutex> lock(mutex_);
   if (thread_host_ == nullptr) {
     thread_host_ = std::make_shared<ThreadHost>(config);
     return;
@@ -70,7 +71,35 @@ void ThreadHostHolder::SetMask(uint64_t mask, const std::string& thread_label,
 }
 
 const std::shared_ptr<ThreadHost> ThreadHostHolder::GetThreadHost() const {
+  std::lock_guard<std::mutex> lock(mutex_);
   return thread_host_;
+}
+
+fml::RefPtr<fml::TaskRunner> ThreadHostHolder::GetTaskRunner(
+    ThreadHost::Type type) const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!thread_host_) {
+    return nullptr;
+  }
+  fml::Thread* thread = nullptr;
+  switch (type) {
+    case ThreadHost::Platform:
+      thread = thread_host_->platform_thread.get();
+      break;
+    case ThreadHost::UI:
+      thread = thread_host_->ui_thread.get();
+      break;
+    case ThreadHost::RASTER:
+      thread = thread_host_->raster_thread.get();
+      break;
+    case ThreadHost::IO:
+      thread = thread_host_->io_thread.get();
+      break;
+    case ThreadHost::Profiler:
+      thread = thread_host_->profiler_thread.get();
+      break;
+  }
+  return thread ? thread->GetTaskRunner() : nullptr;
 }
 
 }  // namespace clay
