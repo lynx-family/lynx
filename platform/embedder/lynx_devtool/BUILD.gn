@@ -12,9 +12,12 @@ config("lynx_devtool_config") {
 
 devtool_source_set("lynx_devtool") {
   sources = [
+    "../lynx_service/lynx_devtool_service.h",
     "devtool_env_embedder.cc",
     "devtool_env_embedder.h",
     "env_embedder.cc",
+    "lynx_devtool_service.cc",
+    "lynx_devtool_service_factory.h",
   ]
 
   deps = [
@@ -25,10 +28,20 @@ devtool_source_set("lynx_devtool") {
     "../../../devtool/lynx_devtool:lynx_devtool_group",
     "../../../devtool/lynx_devtool/js_debug",
     "../../../devtool/lynx_devtool/tracing",
-    "../../../third_party/debug_router/src/debug_router/common:debug_router_source",
+    "../../../service_api:lynx_service_api",
     "../../../third_party/jsoncpp:jsoncpp",
     "//third_party/modp_b64:modp_b64",
   ]
+  if (is_ios) {
+    sources += [
+      "../../../third_party/debug_router/src/debug_router/common/debug_router_export.h",
+      "lynx_devtool_service_darwin.cc",
+    ]
+    deps += [ "../../../third_party/debug_router/src/debug_router/common:debug_router_cpp_interface" ]
+  } else {
+    sources += [ "lynx_devtool_service_default.cc" ]
+    deps += [ "../../../third_party/debug_router/src/debug_router/common:debug_router_source" ]
+  }
   public_configs = [ ":lynx_devtool_config" ]
 }
 

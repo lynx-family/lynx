@@ -4,9 +4,7 @@
 
 #include "core/renderer/tasm/config.h"
 #if ENABLE_INSPECTOR
-#include "devtool/embedder/common/debugger_embedder.h"
-#include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
-#include "third_party/debug_router/src/debug_router/native/core/debug_router_core.h"
+#include "platform/embedder/lynx_service/lynx_devtool_service.h"
 #endif
 #include "platform/embedder/lynx_env_platform.h"
 #include "platform/embedder/module/global_module_registry.h"
@@ -40,81 +38,88 @@ LYNX_EXTERN_C const char* lynx_env_get_icu_data_path() {
 LYNX_EXTERN_C void lynx_env_set_devtool_app_info(const char* name,
                                                  const char* value) {
 #if ENABLE_INSPECTOR
-  lynx::embedder::DevToolEnvEmbedder::GetInstance().SetAppInfo(name, value);
+  if (auto* service = lynx::embedder::GetDevToolService()) {
+    service->SetAppInfo(name ? name : "", value ? value : "");
+  }
 #endif
 }
 
 LYNX_EXTERN_C void lynx_env_enable_devtool(int enable) {
 #if ENABLE_INSPECTOR
-  lynx::embedder::DevToolEnvEmbedder::GetInstance().EnableDevTool(enable);
+  if (auto* service = lynx::embedder::GetDevToolService()) {
+    service->EnableDevTool(enable);
+  }
 #endif
 }
 
 LYNX_EXTERN_C int lynx_env_is_devtool_enabled() {
 #if ENABLE_INSPECTOR
-  return lynx::embedder::DevToolEnvEmbedder::GetInstance().IsDevToolEnabled();
-#else
-  return 0;
+  if (auto* service = lynx::embedder::GetDevToolService()) {
+    return service->IsDevToolEnabled();
+  }
 #endif
+  return 0;
 }
 
 LYNX_EXTERN_C int lynx_env_get_devtool_local_port() {
 #if ENABLE_INSPECTOR
-  return debugrouter::core::DebugRouterCore::GetInstance().GetUSBPort();
-#else
-  return -1;
+  if (auto* service = lynx::embedder::GetDevToolService()) {
+    return service->GetLocalPort();
+  }
 #endif
+  return -1;
 }
 
 LYNX_EXTERN_C int lynx_env_connect_devtool(const char* url) {
 #if ENABLE_INSPECTOR
-  std::unordered_map<std::string, std::string> options;
-  return lynx::devtool::DebuggerEmbedder::ConnectDevtools(url ? url : "",
-                                                          options);
-#else
-  return 0;
+  if (auto* service = lynx::embedder::GetDevToolService()) {
+    return service->Connect(url ? url : "", {});
+  }
 #endif
+  return 0;
 }
 
 LYNX_EXTERN_C void lynx_env_set_open_card_callback(
     lynx_env_open_card_callback callback, void* user_data) {
 #if ENABLE_INSPECTOR
-  if (!callback) {
-    lynx::devtool::DebuggerEmbedder::SetOpenCardCallback(nullptr);
-    return;
+  if (auto* service = lynx::embedder::GetDevToolService()) {
+    service->SetOpenCardCallback(
+        callback ? std::function<void(const std::string&)>(
+                       [callback, user_data](const std::string& url) {
+                         callback(user_data, url.c_str());
+                       })
+                 : nullptr);
   }
-  lynx::devtool::DebuggerEmbedder::SetOpenCardCallback(
-      [callback, user_data](const std::string& url) {
-        callback(user_data, url.c_str());
-      });
 #endif
 }
 
 LYNX_EXTERN_C void lynx_env_set_close_card_callback(
     lynx_env_close_card_callback callback, void* user_data) {
 #if ENABLE_INSPECTOR
-  if (!callback) {
-    lynx::devtool::DebuggerEmbedder::SetCloseCardCallback(nullptr);
-    return;
+  if (auto* service = lynx::embedder::GetDevToolService()) {
+    service->SetCloseCardCallback(
+        callback ? std::function<void()>(
+                       [callback, user_data]() { callback(user_data); })
+                 : nullptr);
   }
-  lynx::devtool::DebuggerEmbedder::SetCloseCardCallback(
-      [callback, user_data]() { callback(user_data); });
 #endif
 }
 
 LYNX_EXTERN_C void lynx_env_enable_logbox(int enable) {
 #if ENABLE_INSPECTOR
-  lynx::embedder::DevToolEnvEmbedder::GetInstance().SetDevToolSwitch(
-      lynx::tasm::LynxEnv::kLynxEnableLogBox, enable);
+  if (auto* service = lynx::embedder::GetDevToolService()) {
+    service->EnableLogBox(enable);
+  }
 #endif
 }
 
 LYNX_EXTERN_C int lynx_env_is_logbox_enabled() {
 #if ENABLE_INSPECTOR
-  return lynx::embedder::DevToolEnvEmbedder::GetInstance().IsLogBoxEnabled();
-#else
-  return 0;
+  if (auto* service = lynx::embedder::GetDevToolService()) {
+    return service->IsLogBoxEnabled();
+  }
 #endif
+  return 0;
 }
 
 LYNX_EXTERN_C void lynx_env_register_native_module(const char* name,

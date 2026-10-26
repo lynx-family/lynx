@@ -6,19 +6,15 @@
 
 #include "base/include/log/logging.h"
 #include "core/runtime/lepus/json_parser.h"
+#include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/performance_controller.h"
+#include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/event_tracker_proxy_impl.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/embedder/core/native_facade_impl.h"
 #include "platform/embedder/core/performance/performance_controller_impl.h"
 #include "platform/embedder/core/tasm_platform_invoker_impl.h"
-#if ENABLE_INSPECTOR
-#include "devtool/embedder/core/lynx_devtool_set_module.h"
-#include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
-#endif
-#include "core/renderer/utils/base/tasm_constants.h"
-#include "core/services/event_report/event_tracker.h"
-#include "core/services/timing_handler/timing_constants.h"
+#include "platform/embedder/lynx_service/lynx_devtool_service.h"
 
 namespace lynx {
 namespace embedder {
@@ -153,9 +149,10 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
   auto instance_id = GetInstanceId();
   shell_.reset();
 #if ENABLE_INSPECTOR
-  auto& devtool_env = DevToolEnvEmbedder::GetInstance();
-  bool is_devtool_enabled =
-      devtool_env.IsLynxDebugEnabled() && devtool_env.IsDevToolEnabled();
+  auto* devtool_service = GetDevToolService();
+  bool is_devtool_enabled = devtool_service &&
+                            devtool_service->IsLynxDebugEnabled() &&
+                            devtool_service->IsDevToolEnabled();
 #endif
   ClearGenericInfo(instance_id);
   auto native_facade = std::make_unique<NativeFacadeImpl>(this);
@@ -211,16 +208,16 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
 #if ENABLE_INSPECTOR
   if (is_devtool_enabled) {
     if (!devtools_) {
-      devtools_ = std::make_unique<devtool::DevtoolsEmbedder>(this);
+      devtools_ = devtool_service->CreateInspector(this);
     }
-    devtools_->GetInspectorOwner()->OnTemplateAssemblerCreated(
-        reinterpret_cast<intptr_t>(shell_.get()));
+    if (devtools_) {
+      devtools_->OnTemplateAssemblerCreated(
+          reinterpret_cast<intptr_t>(shell_.get()));
+    }
   }
-  std::unique_ptr<runtime::NativeModuleFactory> devtool_module_factory_ =
-      std::make_unique<runtime::NativeModuleFactory>();
-  devtool_module_factory_->Register(devtool::LynxDevToolSetModule::GetName(),
-                                    devtool::LynxDevToolSetModule::Create);
-  module_manager_->SetModuleFactory(std::move(devtool_module_factory_));
+  if (devtool_service) {
+    module_manager_->SetModuleFactory(devtool_service->CreateModuleFactory());
+  }
 #endif
 
   if (settings_.global_props) {
@@ -479,14 +476,16 @@ void LynxTemplateRenderer::InvokeCDPFromSDK(
     const std::string& cdp_msg,
     std::function<void(const std::string&)>&& callback) {
   if (devtools_) {
-    devtools_->GetInspectorOwner()->InvokeCDPFromSDK(cdp_msg,
-                                                     std::move(callback));
+    devtools_->InvokeCDPFromSDK(cdp_msg, std::move(callback));
   }
 }
 
-void LynxTemplateRenderer::OnReceiveMessageEvent(const Json::Value& event) {
+void LynxTemplateRenderer::OnReceiveMessageEvent(
+    const runtime::MessageEvent& event) {
   if (devtools_) {
-    devtools_->GetInspectorOwner()->OnReceiveMessageEvent(event);
+    if (auto* service = GetDevToolService()) {
+      service->OnReceiveMessageEvent(*devtools_, event);
+    }
   }
 }
 #endif  // ENABLE_INSPECTOR
@@ -796,28 +795,17 @@ void LynxTemplateRenderer::ClearGenericInfo(int32_t instance_id) {
 }
 
 void LynxTemplateRenderer::DispatchMessageEvent(const Json::Value& message) {
-  if (!shell_ || !message.isObject()) {
-    return;
+  if (shell_) {
+    if (auto* service = GetDevToolService()) {
+      service->DispatchMessageEvent(*shell_, message);
+    }
   }
-  auto type = message.get(lynx::tasm::kType, "").asString();
-  runtime::ContextProxy::Type origin =
-      runtime::ContextProxy::ConvertStringToContextType(
-          message.get(lynx::tasm::kOrigin, "").asString());
-  runtime::ContextProxy::Type target =
-      runtime::ContextProxy::ConvertStringToContextType(
-          message.get(lynx::tasm::kTarget, "").asString());
-  auto data_value = pub::PubValueFactoryDefault();
-  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
-      type, origin, target,
-      data_value.CreateString(message.get(lynx::tasm::kData, "").asString()));
-
-  shell_->DispatchMessageEvent(event);
 }
 
 int32_t LynxTemplateRenderer::GetDevtoolSessionId() {
 #if ENABLE_INSPECTOR
   if (devtools_) {
-    return devtools_->GetInspectorOwner()->GetSessionId();
+    return devtools_->GetSessionId();
   }
 #endif
   return 0;
@@ -826,7 +814,7 @@ int32_t LynxTemplateRenderer::GetDevtoolSessionId() {
 std::string LynxTemplateRenderer::GetDevtoolTemplateUrl() {
 #if ENABLE_INSPECTOR
   if (devtools_) {
-    return devtools_->GetInspectorOwner()->GetTemplateUrl();
+    return devtools_->GetTemplateUrl();
   }
 #endif
   return {};
