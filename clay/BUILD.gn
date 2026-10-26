@@ -185,6 +185,7 @@ group("unittests") {
   if (enable_unittests) {
     public_deps += [
       ":exposure_unittests",
+      "common:common_unittests",
       "flow:flow_unittests",
       "gfx:gfx_unittests",
       "memory:memory_unittests",
