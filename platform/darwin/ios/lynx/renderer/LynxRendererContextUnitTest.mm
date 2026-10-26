@@ -149,6 +149,44 @@
                       imageKey:key];
 }
 
+- (void)testResizeReuseExcludesEveryCustomFetcher {
+  LynxUIContext *uiContext =
+      [[LynxUIContext alloc] initWithScreenMetrics:[LynxScreenMetrics getDefaultLynxScreenMetrics]];
+  LynxContext *lynxContext = [LynxContext new];
+  uiContext.lynxContext = lynxContext;
+  _context.uiContext = uiContext;
+  [self createImage:1 background:NO];
+  LynxImageManager *manager = [_context imageManagerForID:1];
+  XCTAssertTrue([manager canReuseOnResize]);
+  id fetcher = OCMProtocolMock(@protocol(LynxImageFetcher));
+  uiContext.imageFetcher = fetcher;
+  XCTAssertFalse([manager canReuseOnResize]);
+  uiContext.imageFetcher = nil;
+  uiContext.mediaResourceFetcher = OCMProtocolMock(@protocol(LynxMediaResourceFetcher));
+  XCTAssertFalse([manager canReuseOnResize]);
+  lynxContext.hasCustomMediaFetcher = YES;
+  XCTAssertNil(uiContext.mediaResourceFetcher);
+  XCTAssertFalse([manager canReuseOnResize]);
+  lynxContext.hasCustomMediaFetcher = NO;
+  uiContext.mediaResourceFetcher = nil;
+  XCTAssertTrue([manager canReuseOnResize]);
+  [_context destroyImage:1];
+  XCTAssertFalse([manager canReuseOnResize]);
+}
+
+- (void)testResizeRetriesFailedRequestsButReusesPendingAndSuccessfulRequests {
+  [self createImage:1 background:NO];
+  LynxImageManager *manager = [_context imageManagerForID:1];
+  XCTAssertTrue([manager canReuseOnResize]);
+  _requests[0].completed([UIImage new], nil, _requests[0].imageURL.url);
+  XCTAssertTrue([manager canReuseOnResize]);
+  [self runOnBackgroundThread:^{
+    self->_requests[1].completed(nil, [NSError errorWithDomain:@"test" code:1 userInfo:nil],
+                                 self -> _requests[1].imageURL.url);
+  }];
+  XCTAssertFalse([manager canReuseOnResize]);
+}
+
 - (void)testImageStreamsFramesAndBackgroundPreloadsFrames {
   [self createImage:1 background:NO];
   [self createImage:2 background:YES];
@@ -166,6 +204,48 @@
   XCTAssertNotNil([_context imageManagerForID:2]);
 }
 
+- (void)testZeroSizeWaitsForLayoutButSingleDimensionCanLoad {
+  lynx::tasm::ImagePaintInfo info;
+  [self createImage:1 size:CGSizeZero paintInfo:info background:NO];
+  XCTAssertEqual(_requests.count, 0u);
+  [self createImage:2 size:CGSizeMake(100, 80) paintInfo:info background:NO];
+  XCTAssertEqual(_requests.count, 2u);
+  [self createImage:3 size:CGSizeMake(0, 80) paintInfo:info background:NO];
+  XCTAssertEqual(_requests.count, 4u);
+  info.auto_size = true;
+  [self createImage:4 size:CGSizeMake(100, 0) paintInfo:info background:NO];
+  XCTAssertEqual(_requests.count, 6u);
+  [self createImage:5 size:CGSizeZero paintInfo:info background:NO];
+  XCTAssertEqual(_requests.count, 6u);
+  [self createImage:6 size:CGSizeZero paintInfo:info background:YES];
+  XCTAssertEqual(_requests.count, 8u);
+}
+
+- (void)testPrefetchSizeAndAutoSizeBoundaries {
+  LynxScreenMetrics *metrics = [[LynxScreenMetrics alloc] initWithScreenSize:CGSizeMake(390, 844)
+                                                                       scale:2];
+  _context.uiContext = [[LynxUIContext alloc] initWithScreenMetrics:metrics];
+  lynx::tasm::ImagePaintInfo info;
+  info.prefetch_width = "120px";
+  info.prefetch_height = "80px";
+  [self createImage:1 size:CGSizeZero paintInfo:info background:NO];
+  XCTAssertEqual(_requests.count, 2u);
+  XCTAssertTrue(CGSizeEqualToSize(_requests[0].targetSize, CGSizeMake(120, 80)));
+  XCTAssertTrue(CGSizeEqualToSize(_requests[1].targetSize, CGSizeMake(120, 80)));
+  [self createImage:2 size:CGSizeMake(100, 60) paintInfo:info background:NO];
+  XCTAssertTrue(CGSizeEqualToSize(_requests[2].targetSize, CGSizeMake(100, 60)));
+  info.auto_size = true;
+  [self createImage:3 size:CGSizeZero paintInfo:info background:NO];
+  XCTAssertEqual(_requests.count, 4u);
+  info.auto_size = false;
+  info.prefetch_width = "";
+  [self createImage:4 size:CGSizeZero paintInfo:info background:NO];
+  XCTAssertEqual(_requests.count, 6u);
+  info.prefetch_height = "-1px";
+  [self createImage:5 size:CGSizeZero paintInfo:info background:NO];
+  XCTAssertEqual(_requests.count, 6u);
+}
+
 - (void)testQueuedAutoSizeLayoutIgnoresReplacedRequest {
   LynxUIContext *uiContext =
       [[LynxUIContext alloc] initWithScreenMetrics:[LynxScreenMetrics getDefaultLynxScreenMetrics]];
@@ -180,6 +260,8 @@
       });
   lynx::tasm::ImagePaintInfo info;
   info.auto_size = true;
+  info.prefetch_width = "120px";
+  info.prefetch_height = "80px";
   [self createImage:1 size:CGSizeMake(100, 0) paintInfo:info background:NO];
   // Keep the old manager alive so rejection depends on its generation.
   LynxImageManager *oldManager = [_context imageManagerForID:1];
@@ -191,6 +273,7 @@
   }];
   _requests[2].completed(image, nil, _requests[2].imageURL.url);
   XCTAssertEqual(tasks.count, 2u);
+  XCTAssertTrue(CGSizeEqualToSize(_requests[2].targetSize, CGSizeMake(120, 80)));
   LynxImageShadowNode *node = [[LynxImageShadowNode alloc] initWithSign:7 tagName:@"image"];
   id nodeMock = OCMPartialMock(node);
   OCMReject([nodeMock setImageSize:CGSizeMake(600, 400)]);
@@ -210,6 +293,56 @@
   [nodeMock stopMocking];
   [(id)image stopMocking];
   [contextMock stopMocking];
+}
+
+- (void)testExplicitRequestOptionsPreserveDefaultsAndBackgrounds {
+  _context.uiContext =
+      [[LynxUIContext alloc] initWithScreenMetrics:[LynxScreenMetrics getDefaultLynxScreenMetrics]];
+  _context.uiContext.fixNewImageDownSampling = NO;
+  [self createImage:1 background:NO];
+  XCTAssertNil(_requests[0].contextInfo[LynxImageFetcherContextKeyDownsampling]);
+  XCTAssertNil(_requests[0].contextInfo[LynxImageRequestPriority]);
+  lynx::tasm::ImagePaintInfo info;
+  info.downsampling = true;
+  info.request_priority = "high";
+  [self createImage:2 size:CGSizeMake(100, 80) paintInfo:info background:NO];
+  XCTAssertEqualObjects(_requests[2].contextInfo[LynxImageFetcherContextKeyDownsampling], @YES);
+  XCTAssertEqualObjects(_requests[3].contextInfo[LynxImageFetcherContextKeyDownsampling], @YES);
+  XCTAssertEqualObjects(_requests[2].contextInfo[LynxImageFixNewImageDownsampling], @NO);
+  XCTAssertEqualObjects(_requests[2].contextInfo[LynxImageRequestPriority], @"high");
+  _context.uiContext.fixNewImageDownSampling = YES;
+  info.request_priority = "low";
+  [self createImage:3 size:CGSizeMake(100, 80) paintInfo:info background:NO];
+  XCTAssertEqualObjects(_requests[4].contextInfo[LynxImageFixNewImageDownsampling], @YES);
+  XCTAssertEqualObjects(_requests[4].contextInfo[LynxImageRequestPriority], @"low");
+  info.auto_size = true;
+  [self createImage:4 size:CGSizeMake(100, 0) paintInfo:info background:NO];
+  XCTAssertNil(_requests[6].contextInfo[LynxImageFetcherContextKeyDownsampling]);
+  [self createImage:5 size:CGSizeMake(100, 80) paintInfo:info background:YES];
+  XCTAssertNil(_requests[8].contextInfo[LynxImageFetcherContextKeyDownsampling]);
+  XCTAssertNil(_requests[8].contextInfo[LynxImageRequestPriority]);
+  XCTAssertEqualObjects(_requests[8].contextInfo[LynxImagePreloadAllFrames], @YES);
+}
+
+- (void)testPlaceholderWithoutSourceDoesNotEmitSourceLoad {
+  lynx::tasm::ImagePaintInfo info;
+  [_context createImageManager:7
+                 withSourceURL:nil
+             andPlaceholderURL:[self url:@"https://example.com/placeholder.png"
+                                    type:LynxImageRequestPlaceholder]
+                     paintInfo:info
+                     eventMask:3
+                      imageKey:1];
+  XCTAssertEqual(_requests.count, 1u);
+  LynxImageManager *manager = [_context imageManagerForID:1];
+  id managerMock = OCMPartialMock(manager);
+  OCMReject([managerMock sendCustomEvent:[OCMArg any] withParams:[OCMArg any]]);
+  UIImageView *view = [UIImageView new];
+  [manager setTarget:view];
+  UIImage *placeholder = [UIImage new];
+  _requests[0].completed(placeholder, nil, _requests[0].imageURL.url);
+  XCTAssertEqual(view.image, placeholder);
+  [managerMock stopMocking];
 }
 
 - (void)testFetcherSelectionUsesTheConfiguredLoader {
