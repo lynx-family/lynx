@@ -133,6 +133,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void UpdateProps(PropBundleHarmony* props);
   virtual void OnNodeEvent(ArkUI_NodeEvent* event);
   virtual void OnNodeReady();
+  virtual void OnNodeReload() {}
   virtual bool NotifyParent() { return false; }
 
   virtual void OnDestroy() {}

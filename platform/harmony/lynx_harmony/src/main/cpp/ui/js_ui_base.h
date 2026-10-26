@@ -35,6 +35,7 @@ class JSUIBase : public UIBase {
                     const float* sticky, float max_height,
                     uint32_t node_index) override;
   void OnNodeReady() override;
+  void OnNodeReload() override;
   void RemoveChild(UIBase* child) override;
   bool Focusable() override;
   bool IsScrollable() override;
@@ -99,6 +100,7 @@ class JSUIBase : public UIBase {
   napi_ref js_update_{nullptr};
   napi_ref js_layout_{nullptr};
   napi_ref js_node_ready_{nullptr};
+  napi_ref js_node_reload_{nullptr};
   napi_ref js_ui_method_{nullptr};
   napi_ref js_dispose_{nullptr};
   napi_ref js_focus_change_{nullptr};
