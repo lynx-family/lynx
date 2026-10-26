@@ -110,9 +110,8 @@ struct ThreadHost {
       Type type, std::optional<ThreadConfig> thread_config,
       const ThreadHostConfig& host_config) const;
 
-  std::shared_ptr<fml::Thread> GetThreadSingleton(
-      Type type, std::optional<ThreadConfig> thread_config,
-      const ThreadHostConfig& host_config);
+  std::shared_ptr<fml::Thread> GetSharedIOThread(
+      const ThreadHostConfig& config) const;
 };
 
 }  // namespace clay
