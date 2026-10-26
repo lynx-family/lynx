@@ -533,7 +533,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
 
   public List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
     if (!(mPaintingContext instanceof NativePaintingContext)) {
-      return new ArrayList<>();
+      return ILynxUIRenderer.super.getMeaningfulPaintingAreas();
     }
     return ((NativePaintingContext) mPaintingContext).getMeaningfulPaintingAreas();
   }
