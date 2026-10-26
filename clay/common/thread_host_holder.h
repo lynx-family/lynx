@@ -9,6 +9,7 @@
 #define CLAY_COMMON_THREAD_HOST_HOLDER_H_
 
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "clay/common/thread_host.h"
@@ -28,9 +29,16 @@ class ThreadHostHolder {
 
   void SetConfig(const clay::ThreadHost::ThreadHostConfig& config);
 
+  // Retain thread ownership. Use GetTaskRunner for thread access while the
+  // configuration can be extended by another caller.
   const std::shared_ptr<ThreadHost> GetThreadHost() const;
 
+  // Copy runners under the configuration lock instead of reading ThreadHost's
+  // thread members while another caller may be adding threads.
+  fml::RefPtr<fml::TaskRunner> GetTaskRunner(ThreadHost::Type type) const;
+
  private:
+  mutable std::mutex mutex_;
   std::shared_ptr<ThreadHost> thread_host_;
 };
 
