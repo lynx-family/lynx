@@ -3807,6 +3807,7 @@ public protocol LynxServiceImageProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceImageProtocol-p::registerAnimatedImageCallback:UI:(id view,[UI] LynxUIImage *ui);
   public void LynxServiceImageProtocol-p::registerAnimatedImageCallback:startCallback:currentLoopCallback:finalLoopCallback:(id view,[startCallback] dispatch_block_t _Nullable startCallback,[currentLoopCallback] dispatch_block_t _Nullable currentLoopCallback,[finalLoopCallback] dispatch_block_t _Nullable finalLoopCallback);
   public BOOL LynxServiceImageProtocol-p::requiresAnimatedImageCallbackBeforeSettingImage();
+  public NSDictionary< NSString *, NSNumber * > * LynxServiceImageProtocol-p::animationInfo:(UIImageView *view);
   public dispatch_block_t LynxServiceImageProtocol-p::loadImageWithOptions:(LynxImageLoadOptions *options);
   public void LynxServiceImageProtocol-p::loadSVGImageWithURL:size:contextInfo:completed:(LynxURL *requestUrl,[size] CGSize targetSize,[contextInfo] NSDictionary *contextInfo,[completed] LynxImageLoadCompletionBlock completed);
 }

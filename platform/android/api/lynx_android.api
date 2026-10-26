@@ -493,6 +493,7 @@ public interface com::lynx::tasm::image::model::AnimationListener {
   public void com.lynx.tasm.image.model.AnimationListener.onAnimationStart(Drawable drawable);
   public void com.lynx.tasm.image.model.AnimationListener.onAnimationFinalLoop(Drawable drawable);
   public void com.lynx.tasm.image.model.AnimationListener.onAnimationCurrentLoop(Drawable drawable);
+  public default void com.lynx.tasm.image.model.AnimationListener.onAnimationFrame(Drawable drawable, int frameNumber);
 }
 
 public class com::lynx::tasm::behavior::ui::list::AppearEventCourier : com.lynx.tasm.behavior.ui.list.AppearEventCourierInterface {
@@ -2573,6 +2574,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public boolean com.lynx.tasm.service.ILynxImageService.resumeAnimation(@NonNull Drawable animatable);
   public boolean com.lynx.tasm.service.ILynxImageService.pauseAnimation(@NonNull Drawable animatable);
   public boolean com.lynx.tasm.service.ILynxImageService.stopAnimation(@NonNull Drawable animatable);
+  public default ImageAnimationInfo com.lynx.tasm.service.ILynxImageService.getAnimationInfo(@NonNull Drawable animatable);
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage( @NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params);
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage(@NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params, @Nullable ImageLoadListener loadListener);
   public void com.lynx.tasm.service.ILynxImageService.decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
@@ -2878,6 +2880,12 @@ public interface com::lynx::tasm::group::ILynxViewRuntimeCacheManager {
   public boolean com.lynx.tasm.group.ILynxViewRuntimeCacheManager.isEngineCacheEnabled();
   public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setBitmapSizeCache(String source, int width, int height);
   public BitmapSize com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getBitmapSizeCache(String source);
+}
+
+public class com::lynx::tasm::image::model::ImageAnimationInfo :  {
+  public com.lynx.tasm.image.model.ImageAnimationInfo.ImageAnimationInfo(int frameCount, long loopDurationMs);
+  public int com.lynx.tasm.image.model.ImageAnimationInfo.getFrameCount();
+  public long com.lynx.tasm.image.model.ImageAnimationInfo.getLoopDurationMs();
 }
 
 public class com::lynx::tasm::image::model::ImageBlurPostProcessor : com.lynx.tasm.image.model.BitmapPostProcessor {
