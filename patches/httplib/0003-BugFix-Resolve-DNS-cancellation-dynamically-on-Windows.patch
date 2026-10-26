@@ -1,0 +1,30 @@
+From 0c44865ca777d7432b0b6938a9841169754c7ef5 Mon Sep 17 00:00:00 2001
+From: Dango-2021 <191667655+Dango-2021@users.noreply.github.com>
+Date: Mon, 26 Oct 2026 20:18:54 +0800
+Subject: [PATCH] [BugFix] Resolve DNS cancellation dynamically on Windows
+
+GetAddrInfoExCancel is unavailable on Windows 7. Resolve it at runtime to
+avoid a mandatory DLL import, and fail timed DNS lookup when cancellation
+is unavailable. Keep the existing asynchronous path on supported systems.
+---
+ httplib.cc | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/httplib.cc b/httplib.cc
+index b78bb4f..7e980da 100644
+--- a/httplib.cc
++++ b/httplib.cc
+@@ -1419,2 +1419,8 @@ int getaddrinfo_with_timeout(const char *node, const char *service,
+ #ifdef _WIN32
++  // Resolve this Windows 8 API dynamically so older systems can load the DLL.
++  static const auto get_addr_info_ex_cancel =
++      reinterpret_cast<INT(WSAAPI *)(LPHANDLE)>(::GetProcAddress(
++          ::GetModuleHandleW(L"ws2_32.dll"), "GetAddrInfoExCancel"));
++  if (!get_addr_info_ex_cancel) { return EAI_FAIL; }
++
+   // Windows-specific implementation using GetAddrInfoEx with overlapped I/O
+@@ -1448,3 +1454,3 @@ int getaddrinfo_with_timeout(const char *node, const char *service,
+     if (wait_result == WAIT_TIMEOUT) {
+-      if (cancel_handle) { ::GetAddrInfoExCancel(&cancel_handle); }
++      if (cancel_handle) { get_addr_info_ex_cancel(&cancel_handle); }
+       ::CloseHandle(event);
