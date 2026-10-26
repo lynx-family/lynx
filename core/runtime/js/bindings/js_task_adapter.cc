@@ -49,8 +49,7 @@ class AdapterTask {
 JsTaskAdapter::JsTaskAdapter(base::UnsafeWeakPtr<Runtime> rt,
                              const tasm::PageOptions& page_options)
     : manager_(std::make_unique<base::TimedTaskManager>()),
-      micro_tasks_(base::MakeUnsafeOwning<
-                   std::unordered_map<uint64_t, base::closure>>()),
+      micro_task_state_(base::MakeUnsafeOwning<MicroTaskState>()),
       current_micro_task_id_(0),
       runner_(fml::MessageLoop::GetCurrent().GetTaskRunner()),
       rt_(std::move(rt)),
@@ -76,23 +75,54 @@ void JsTaskAdapter::QueueMicrotask(Function func, uint64_t trace_flow_id) {
   auto task =
       MakeTask(std::move(func), TaskType::kQueueMicrotask, trace_flow_id);
   auto current_id = current_micro_task_id_++;
-  micro_tasks_->emplace(current_id, std::move(task));
-  runner_->PostMicroTask(fml::MakeCopyable(
-      [current_id, weak_tasks = micro_tasks_.GetWeakPtr(),
-       runner = runner_.get(),
-       alloc_slot = runner_->GetCurrentAllocSlot()]() mutable {
-        auto* tasks = weak_tasks.Lock();
-        if (tasks) {
-          auto it = tasks->find(current_id);
-          if (it != tasks->end()) {
-            {
-              fml::JSMemoryTrackSlot alloc_slot_scope(runner, alloc_slot);
-              it->second();
-            }
-            tasks->erase(it);
-          }
+  micro_task_state_->tasks.emplace(
+      current_id, MicroTask{std::move(task), runner_->GetCurrentAllocSlot()});
+  if (micro_task_state_->paused) {
+    micro_task_state_->deferred_tasks.insert(current_id);
+    return;
+  }
+  PostMicroTask(current_id);
+}
+
+void JsTaskAdapter::PostMicroTask(uint64_t task_id) {
+  runner_->PostMicroTask(
+      fml::MakeCopyable([task_id, weak_state = micro_task_state_.GetWeakPtr(),
+                         runner = runner_.get()]() mutable {
+        auto* state = weak_state.Lock();
+        if (!state) {
+          return;
         }
+        auto it = state->tasks.find(task_id);
+        if (it == state->tasks.end()) {
+          return;
+        }
+        if (state->paused) {
+          state->deferred_tasks.insert(task_id);
+          return;
+        }
+        auto task = std::move(it->second.task);
+        auto alloc_slot = it->second.alloc_slot;
+        state->tasks.erase(it);
+        fml::JSMemoryTrackSlot alloc_slot_scope(runner, alloc_slot);
+        task();
       }));
+}
+
+void JsTaskAdapter::Pause() {
+  manager_->Pause();
+  micro_task_state_->paused = true;
+}
+
+void JsTaskAdapter::Resume() {
+  if (micro_task_state_->paused) {
+    micro_task_state_->paused = false;
+    auto deferred_tasks = std::move(micro_task_state_->deferred_tasks);
+    micro_task_state_->deferred_tasks.clear();
+    for (auto task_id : deferred_tasks) {
+      PostMicroTask(task_id);
+    }
+  }
+  manager_->Resume();
 }
 
 base::closure JsTaskAdapter::MakeTask(Function func, TaskType task_type,

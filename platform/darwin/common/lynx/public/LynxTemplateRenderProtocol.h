@@ -192,8 +192,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @optional
 /**
- * Pause and resume setTimeout, setInterval, requestAnimationFrame and animation vsync of the
- * current page, without triggering lifecycle events.
+ * Pause and resume setTimeout, setInterval, microtasks, requestAnimationFrame and animation vsync
+ * of the current page, without triggering lifecycle events.
  */
 - (void)pause;
 - (void)resume;

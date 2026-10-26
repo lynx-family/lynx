@@ -415,15 +415,16 @@
 
 /**
  * @apidoc
- * @brief Pause setTimeout, setInterval, requestAnimationFrame and animation vsync of the current
- * `LynxView`, similar to `WKWebView` pausing timers but only affects the current view. Lifecycle
- * events are not triggered. Timers which become due while paused run after `resume`.
+ * @brief Pause setTimeout, setInterval, microtasks, requestAnimationFrame and animation vsync of
+ * the current `LynxView`, similar to `WKWebView` pausing timers but only affects the current view.
+ * Lifecycle events are not triggered. Timers which become due while paused run after `resume`.
  */
 - (void)pause;
 
 /**
  * @apidoc
- * @brief Resume the timers, requestAnimationFrame and animation vsync paused by `pause`.
+ * @brief Resume the timers, microtasks, requestAnimationFrame and animation vsync paused by
+ * `pause`.
  */
 - (void)resume;
 

@@ -417,9 +417,9 @@ export struct LynxView {
 
   /**
    * @apidoc
-   * @brief Pause setTimeout, setInterval, requestAnimationFrame and animation vsync of the current
-   * `LynxView`, without triggering lifecycle events. Timers which become due while paused run
-   * after `resume()`.
+   * @brief Pause setTimeout, setInterval, microtasks, requestAnimationFrame and animation vsync of
+   * the current `LynxView`, without triggering lifecycle events. Timers which become due while
+   * paused run after `resume()`.
    */
   pause() {
     LLog.i(TAG, 'pause, url: ' + this.url);
@@ -428,7 +428,8 @@ export struct LynxView {
 
   /**
    * @apidoc
-   * @brief Resume the timers, requestAnimationFrame and animation vsync paused by `pause()`.
+   * @brief Resume the timers, microtasks, requestAnimationFrame and animation vsync paused by
+   * `pause()`.
    */
   resume() {
     LLog.i(TAG, 'resume, url: ' + this.url);
