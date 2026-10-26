@@ -4,6 +4,7 @@
 #ifndef PLATFORM_EMBEDDER_LYNX_VSYNC_MONITOR_PRIV_H_
 #define PLATFORM_EMBEDDER_LYNX_VSYNC_MONITOR_PRIV_H_
 
+#include <memory>
 #include <mutex>
 #include <vector>
 
@@ -19,7 +20,8 @@ struct lynx_vsync_monitor_t {
 namespace lynx {
 namespace embedder {
 
-class LynxVSyncMonitor : public base::VSyncMonitorPlatformImpl {
+class LynxVSyncMonitor : public base::VSyncMonitorPlatformImpl,
+                         public std::enable_shared_from_this<LynxVSyncMonitor> {
  public:
   explicit LynxVSyncMonitor(lynx_vsync_monitor_t* c_monitor)
       : c_monitor_(c_monitor) {}
@@ -32,6 +34,7 @@ class LynxVSyncMonitor : public base::VSyncMonitorPlatformImpl {
   lynx_vsync_monitor_t* c_monitor_;
   std::mutex mutex_;
   std::vector<Callback> callbacks_;
+  uintptr_t pending_request_id_ = 0;
 };
 
 }  // namespace embedder
