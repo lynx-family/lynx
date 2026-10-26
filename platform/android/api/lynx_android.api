@@ -4691,6 +4691,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public final void com.lynx.tasm.behavior.ui.LynxBaseUI.updateProperties(StylesDiffMap props);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.updatePropertiesInterval(StylesDiffMap props);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.afterPropsUpdated(StylesDiffMap props);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.getComponentState(Callback callback);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.boundingClientRect(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.uiOwnerDidPerformLayout();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.requestUIInfo(ReadableMap params, Callback callback);
@@ -11388,6 +11389,10 @@ public class com::lynx::tasm::behavior::ui::view::UIComponent : com.lynx.tasm.be
   public String com.lynx.tasm.behavior.ui.view.UIComponent.getItemKey();
   public void com.lynx.tasm.behavior.ui.view.UIComponent.setZIndex(int zIndex);
   public int com.lynx.tasm.behavior.ui.view.UIComponent.getZIndex();
+}
+
+public interface com::lynx::tasm::behavior::ui::UIComponentInspectorProvider {
+  public JavaOnlyMap com.lynx.tasm.behavior.ui.UIComponentInspectorProvider.getSnapshot();
 }
 
 public class com::lynx::tasm::behavior::ui::UIExposure : com.lynx.tasm.behavior.LynxObserverManager {
