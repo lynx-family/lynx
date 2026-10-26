@@ -91,6 +91,9 @@ describe('Global Variable Type Test ', () => {
     //QueueMicrotask
     expectTypeOf(lynx.queueMicrotask).parameter(0).toEqualTypeOf<() => void>();
     expectTypeOf(lynx.queueMicrotask).returns.toBeVoid();
+    //Pause and Resume
+    expectTypeOf(lynx.pause).toEqualTypeOf<() => void>();
+    expectTypeOf(lynx.resume).toEqualTypeOf<() => void>();
     //Reload
     expectTypeOf(lynx.reload).parameter(0).toEqualTypeOf<object>();
     expectTypeOf(lynx.reload).parameter(1).toEqualTypeOf<() => void>();

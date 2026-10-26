@@ -89,6 +89,8 @@ class MockDelegate : public runtime::test::MockTemplateDelegate {
 
   MOCK_METHOD(void, OnErrorOccurred, (base::LynxError), (override));
 
+  MOCK_METHOD(void, SetPausedFromJS, (bool), (override));
+
  private:
   std::vector<shell::CacheDataOp> cache_data_op_;
 };
@@ -1144,6 +1146,54 @@ function(nativeApp) {
   app->Resume();
   app->DoFrame(kFrameTime * 2);
   EXPECT_EQ(raf_count(), 1);
+}
+
+TEST_P(AppTest, LynxProxyPauseAndResumeAnimationFrameInStandaloneMode) {
+  auto native_app = Object::createFromHostObject(
+      rt, std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr()));
+  auto lynx_proxy = Object::createFromHostObject(
+      rt, std::make_shared<LynxProxy>(app->GetWeakPtr()));
+  auto request_frame = function(R"--(
+function(nativeApp) {
+  globalThis.__lynx_proxy_raf_count = 0;
+  return nativeApp.requestAnimationFrame(function() {
+    globalThis.__lynx_proxy_raf_count++;
+  });
+}
+)--");
+  auto raf_count = [this]() {
+    return eval("globalThis.__lynx_proxy_raf_count")->getNumber();
+  };
+  static constexpr int64_t kFrameTime = 16 * 1000 * 1000;
+
+  EXPECT_CALL(delegate_, SetPausedFromJS(true));
+  auto result =
+      function("function(lynx) { lynx.pause(); }").call(rt, lynx_proxy);
+  EXPECT_TRUE(result->isUndefined());
+  result = request_frame.call(rt, {native_app});
+  EXPECT_TRUE(result->isNumber());
+  app->DoFrame(kFrameTime);
+  EXPECT_EQ(raf_count(), 0);
+
+  EXPECT_CALL(delegate_, SetPausedFromJS(false));
+  result = function("function(lynx) { lynx.resume(); }").call(rt, lynx_proxy);
+  EXPECT_TRUE(result->isUndefined());
+  app->DoFrame(kFrameTime * 2);
+  EXPECT_EQ(raf_count(), 1);
+}
+
+TEST_P(AppTest, LynxProxyDelegatesPauseAndResumeToOwner) {
+  auto lynx_proxy = Object::createFromHostObject(
+      rt, std::make_shared<LynxProxy>(app->GetWeakPtr()));
+
+  EXPECT_CALL(delegate_, SetPausedFromJS(true));
+  auto result =
+      function("function(lynx) { lynx.pause(); }").call(rt, lynx_proxy);
+  EXPECT_TRUE(result->isUndefined());
+
+  EXPECT_CALL(delegate_, SetPausedFromJS(false));
+  result = function("function(lynx) { lynx.resume(); }").call(rt, lynx_proxy);
+  EXPECT_TRUE(result->isUndefined());
 }
 
 TEST(AppTest, GenerateDynamicComponentSourceUrl) {
