@@ -24,6 +24,8 @@ void DestroyTextBundlePointer(void *bundle) {
 
 @implementation LynxRendererContext {
   NSMutableDictionary<NSNumber *, LynxImageManager *> *_imageManagers;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_primaryImageKeysBySign;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_primaryImageSignsByKey;
   NSMutableDictionary<NSNumber *, NSValue *> *_textBundles;
 }
 
@@ -31,12 +33,17 @@ void DestroyTextBundlePointer(void *bundle) {
   self = [super init];
   if (self) {
     _imageManagers = [NSMutableDictionary new];
+    _primaryImageKeysBySign = [NSMutableDictionary new];
+    _primaryImageSignsByKey = [NSMutableDictionary new];
     _textBundles = [NSMutableDictionary new];
   }
   return self;
 }
 
 - (void)dealloc {
+  for (LynxImageManager *imageManager in _imageManagers.objectEnumerator) {
+    [imageManager reset];
+  }
   for (NSValue *value in _textBundles.objectEnumerator) {
     DestroyTextBundlePointer([value pointerValue]);
   }
@@ -52,12 +59,20 @@ void DestroyTextBundlePointer(void *bundle) {
   [imageManager setSign:imageManagerID];
   [imageManager setEventMask:eventMask];
   [imageManager updatePaintInfo:paintInfo];
-  [imageManager requestImage:sourceURL withType:LynxImageRequestSrc];
-  [imageManager requestImage:placeholderURL withType:LynxImageRequestPlaceholder];
+  LynxImageManager *previousManager = nil;
   @synchronized(self) {
-    // TODO(songshourui.null): Reset or destroy the previous manager when the same image id is
-    // replaced, so any pending request cannot update stale targets after ownership is finalized.
+    previousManager = _imageManagers[@(imageKey)];
     _imageManagers[@(imageKey)] = imageManager;
+  }
+  [previousManager reset];
+  if (!paintInfo.is_background) {
+    [self markPrimaryImageManager:imageKey forSign:imageManagerID];
+  }
+  if (sourceURL != nil) {
+    [imageManager requestImage:sourceURL withType:LynxImageRequestSrc];
+  }
+  if (placeholderURL != nil) {
+    [imageManager requestImage:placeholderURL withType:LynxImageRequestPlaceholder];
   }
 }
 
@@ -69,10 +84,42 @@ void DestroyTextBundlePointer(void *bundle) {
   return imageManager;
 }
 
-- (void)destroyImage:(int32_t)imageKey {
+- (void)markPrimaryImageManager:(int32_t)imageKey forSign:(int32_t)sign {
+  LynxImageManager *previousManager = nil;
   @synchronized(self) {
-    [_imageManagers removeObjectForKey:@(imageKey)];
+    NSNumber *signNumber = @(sign);
+    NSNumber *previousImageKey = _primaryImageKeysBySign[signNumber];
+    if (previousImageKey != nil && previousImageKey.intValue != imageKey) {
+      previousManager = _imageManagers[previousImageKey];
+      [_primaryImageSignsByKey removeObjectForKey:previousImageKey];
+    }
+    NSNumber *imageKeyNumber = @(imageKey);
+    _primaryImageKeysBySign[signNumber] = imageKeyNumber;
+    _primaryImageSignsByKey[imageKeyNumber] = signNumber;
   }
+  [previousManager reset];
+}
+
+- (LynxImageManager *)imageManagerForSign:(int32_t)sign {
+  @synchronized(self) {
+    NSNumber *imageKey = _primaryImageKeysBySign[@(sign)];
+    return imageKey != nil ? _imageManagers[imageKey] : nil;
+  }
+}
+
+- (void)destroyImage:(int32_t)imageKey {
+  LynxImageManager *imageManager = nil;
+  @synchronized(self) {
+    NSNumber *imageKeyNumber = @(imageKey);
+    imageManager = _imageManagers[imageKeyNumber];
+    [_imageManagers removeObjectForKey:imageKeyNumber];
+    NSNumber *sign = _primaryImageSignsByKey[imageKeyNumber];
+    if (sign != nil && [_primaryImageKeysBySign[sign] isEqual:imageKeyNumber]) {
+      [_primaryImageKeysBySign removeObjectForKey:sign];
+    }
+    [_primaryImageSignsByKey removeObjectForKey:imageKeyNumber];
+  }
+  [imageManager reset];
 }
 
 - (void)updateTextBundle:(int32_t)textID withBundle:(void *)bundle {
