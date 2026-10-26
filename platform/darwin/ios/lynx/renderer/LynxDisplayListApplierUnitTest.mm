@@ -8,6 +8,8 @@
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/UIView+Lynx.h>
@@ -22,6 +24,15 @@ using namespace lynx::tasm;
 @interface LynxImageManager (LynxDisplayListApplierUnitTest)
 - (void)updatePaintInfo:(const ImagePaintInfo &)paintInfo;
 - (void)applyImage:(UIImage *)image withType:(LynxImageRequestType)type;
+@end
+
+@interface LynxTextraTestDisplayListApplier : LynxDisplayListApplier
+@end
+
+@implementation LynxTextraTestDisplayListApplier
+- (BOOL)isTextServiceModeOn {
+  return YES;
+}
 @end
 
 namespace {
@@ -198,6 +209,213 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 
 - (void)onSetFrame:(CGRect)frame {
   self.setFrameCount++;
+}
+
+@end
+
+@interface LynxCountingTextRenderer : LynxTextRenderer
+@property(nonatomic, assign) NSInteger drawCount;
+@end
+
+@implementation LynxCountingTextRenderer
+- (void)drawRect:(CGRect)rect padding:(UIEdgeInsets)padding border:(UIEdgeInsets)border {
+  self.drawCount++;
+  [[UIColor blackColor] setFill];
+  UIRectFill(rect);
+}
+@end
+
+@interface LynxTextraContentReuseUnitTest : XCTestCase
+@end
+
+@implementation LynxTextraContentReuseUnitTest {
+  LynxMockView *_host;
+  LynxRendererContext *_context;
+  LynxDisplayListApplier *_applier;
+  id _services;
+  id _textService;
+  NSInteger _drawCount;
+  NSMutableArray<NSValue *> *_destroyedPages;
+  int _page;
+  int _replacementPage;
+  int _updatedPage;
+}
+
+- (void)setUp {
+  [super setUp];
+  _drawCount = 0;
+  _destroyedPages = [NSMutableArray new];
+  _textService = OCMProtocolMock(@protocol(LynxServiceTextProtocol));
+  _services = OCMClassMock([LynxServices class]);
+  OCMStub(ClassMethod([_services getInstanceWithProtocol:@protocol(LynxServiceTextProtocol)]))
+      .andReturn(_textService);
+  __weak typeof(self) weakSelf = self;
+  OCMStub([_textService drawPage:[OCMArg anyPointer] OnContext:(CGContextRef)[OCMArg anyPointer]])
+      .andDo(^(NSInvocation *invocation) {
+        typeof(self) self = weakSelf;
+        if (!self) return;
+        CGContextRef ctx;
+        [invocation getArgument:&ctx atIndex:3];
+        self->_drawCount++;
+        CGContextSetRGBFillColor(ctx, 0, 0, 0, 1);
+        CGContextFillRect(ctx, CGRectMake(0, 0, 100, 100));
+      });
+  OCMStub([_textService destroyPage:[OCMArg anyPointer]]).andDo(^(NSInvocation *invocation) {
+    typeof(self) self = weakSelf;
+    if (!self) return;
+    void *page;
+    [invocation getArgument:&page atIndex:2];
+    [self->_destroyedPages addObject:[NSValue valueWithPointer:page]];
+  });
+  _host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  _context = [LynxRendererContext new];
+  _applier = [[LynxTextraTestDisplayListApplier alloc] initWithView:_host andContext:_context];
+}
+
+- (void)tearDown {
+  [_applier reset];
+  _applier = nil;
+  _context = nil;
+  [_services stopMocking];
+  [_textService stopMocking];
+  [super tearDown];
+}
+
+- (void)applyTextAtX:(float)x width:(float)width {
+  DisplayList list;
+  AppendRecordBox(list, x, 0, width, 20);
+  AppendText(list, 1, 0);
+  [_applier applyDisplayList:&list];
+}
+
+- (void)testUnchangedTextReusesBackingButSizeAndBackingLossRedraw {
+  [_context updateTextBundle:1 withBundle:&_page];
+  [self applyTextAtX:0 width:40];
+  CALayer *layer = _host.layer.sublayers.firstObject;
+  [layer display];
+  XCTAssertNotNil(layer.contents);
+  id contents = layer.contents;
+  XCTAssertEqual(_drawCount, 1);
+
+  [self applyTextAtX:0 width:40];
+  XCTAssertEqual(_host.layer.sublayers.firstObject, layer);
+  XCTAssertEqual(layer.contents, contents);
+  XCTAssertFalse(layer.needsDisplay);
+  [self applyTextAtX:10 width:40];
+  XCTAssertEqual(layer.frame.origin.x, 10);
+  XCTAssertFalse(layer.needsDisplay);
+  XCTAssertEqual(layer.animationKeys.count, 0u);
+
+  [self applyTextAtX:10 width:60];
+  XCTAssertEqual(_host.layer.sublayers.firstObject, layer);
+  XCTAssertTrue(layer.needsDisplay);
+  [layer display];
+  XCTAssertEqual(_drawCount, 2);
+  layer.contents = nil;
+  [self applyTextAtX:10 width:60];
+  XCTAssertTrue(layer.needsDisplay);
+  [layer display];
+  XCTAssertEqual(_drawCount, 3);
+  XCTAssertEqual(layer.animationKeys.count, 0u);
+}
+
+- (void)testRepeatedPagePublicationReusesBackingButRecycledAddressDoesNot {
+  [_context updateTextBundle:1 withBundle:&_page];
+  [self applyTextAtX:0 width:40];
+  CALayer *first = _host.layer.sublayers.firstObject;
+  [first display];
+
+  // Layout republishes the existing Page when only a sibling has changed.
+  [_context updateTextBundle:1 withBundle:&_page];
+  [self applyTextAtX:0 width:40];
+  CALayer *updated = _host.layer.sublayers.firstObject;
+  XCTAssertEqual(updated, first);
+  XCTAssertFalse(updated.needsDisplay);
+  XCTAssertEqual(_drawCount, 1);
+  XCTAssertEqual(_destroyedPages.count, 0u);
+
+  // Reusing a destroyed page's address must also create a fresh cache identity.
+  [_context destroyTextBundle:1];
+  [_context updateTextBundle:1 withBundle:&_page];
+  [self applyTextAtX:0 width:40];
+  XCTAssertNotEqual(_host.layer.sublayers.firstObject, updated);
+  XCTAssertTrue(_host.layer.sublayers.firstObject.needsDisplay);
+  XCTAssertEqual(_destroyedPages.count, 1u);
+}
+
+- (void)testReplacementAndNullBundleKeepPageOwnershipInContext {
+  [_context updateTextBundle:1 withBundle:&_page];
+  [self applyTextAtX:0 width:40];
+  CALayer *oldLayer = _host.layer.sublayers.firstObject;
+  [oldLayer display];
+  [_context updateTextBundle:1 withBundle:&_replacementPage];
+  XCTAssertEqualObjects(_destroyedPages, (@[ [NSValue valueWithPointer:&_page] ]));
+  [self applyTextAtX:0 width:40];
+  XCTAssertNotEqual(_host.layer.sublayers.firstObject, oldLayer);
+  XCTAssertTrue(_host.layer.sublayers.firstObject.needsDisplay);
+
+  [_context updateTextBundle:1 withBundle:nullptr];
+  XCTAssertEqual([_context getTextBundle:1], nullptr);
+  [self applyTextAtX:0 width:40];
+  XCTAssertEqual(_host.layer.sublayers.count, 0u);
+  XCTAssertEqualObjects(
+      _destroyedPages,
+      (@[ [NSValue valueWithPointer:&_page], [NSValue valueWithPointer:&_replacementPage] ]));
+  [_context destroyTextBundle:1];
+  XCTAssertEqual(_destroyedPages.count, 2u);
+}
+
+- (void)testRemovedTextAndResetReleaseCachedLayers {
+  [_context updateTextBundle:1 withBundle:&_page];
+  __weak CALayer *removedLayer;
+  @autoreleasepool {
+    [self applyTextAtX:0 width:40];
+    removedLayer = _host.layer.sublayers.firstObject;
+    [removedLayer display];
+    DisplayList empty;
+    [_applier applyDisplayList:&empty];
+    [CATransaction flush];
+  }
+  XCTAssertNil(removedLayer);
+  XCTAssertEqual(_destroyedPages.count, 0u);
+  @autoreleasepool {
+    [self applyTextAtX:0 width:40];
+    removedLayer = _host.layer.sublayers.firstObject;
+    XCTAssertNotNil(removedLayer);
+    [_applier reset];
+    [CATransaction flush];
+  }
+  XCTAssertNil(removedLayer);
+  XCTAssertEqual([_context getTextBundle:1], &_page);
+  [_context destroyTextBundle:1];
+  XCTAssertEqual(_destroyedPages.count, 1u);
+}
+
+- (void)testChangedSiblingRedrawsAndReorderingPreservesUnchangedBacking {
+  [_context updateTextBundle:1 withBundle:&_page];
+  [_context updateTextBundle:2 withBundle:&_replacementPage];
+  auto makeList = [](bool reversed) {
+    DisplayList list;
+    AppendRecordBox(list, 0, 0, 40, 20);
+    AppendText(list, reversed ? 2 : 1, 0);
+    AppendText(list, reversed ? 1 : 2, 0);
+    return list;
+  };
+  auto list = makeList(false);
+  [_applier applyDisplayList:&list];
+  CALayer *unchanged = _host.layer.sublayers[0];
+  CALayer *changed = _host.layer.sublayers[1];
+  [unchanged display];
+  [changed display];
+  [_context updateTextBundle:2 withBundle:&_updatedPage];
+  auto reordered = makeList(true);
+  [_applier applyDisplayList:&reordered];
+  XCTAssertEqual(_host.layer.sublayers[1], unchanged);
+  XCTAssertFalse(unchanged.needsDisplay);
+  XCTAssertNotEqual(_host.layer.sublayers[0], changed);
+  XCTAssertTrue(_host.layer.sublayers[0].needsDisplay);
+  [_host.layer.sublayers[0] display];
+  XCTAssertEqual(_drawCount, 3);
 }
 
 @end
@@ -606,11 +824,9 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 
 - (void)testProcessContentOperationsWithClipRectPartial {
   // Clip rect not equal to view bounds, should use mask
-  id mockUIView = OCMClassMock([LynxMockView class]);
-  id mockLayer = OCMClassMock([CALayer class]);
-  [[[mockUIView stub] andReturn:mockLayer] layer];
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
 
-  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockUIView
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
                                                                       andContext:nil];
 
   DisplayList list;
@@ -618,7 +834,12 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 
   [applier applyDisplayList:&list];
 
-  XCTAssertTrue(true);  // If it reaches here, no crash
+  XCTAssertTrue([view.layer.mask isKindOfClass:[CAShapeLayer class]]);
+  CAShapeLayer *maskLayer = (CAShapeLayer *)view.layer.mask;
+  XCTAssertTrue(CGRectEqualToRect(maskLayer.frame, view.bounds));
+  XCTAssertTrue(
+      CGRectEqualToRect(CGPathGetBoundingBox(maskLayer.path), CGRectMake(10, 10, 50, 50)));
+  XCTAssertFalse(view.layer.masksToBounds);
 }
 
 - (void)testProcessContentOperationsWithClipRectFullView {
@@ -1174,6 +1395,179 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 
   // After reset, the old layers should be removed and new ones added
   XCTAssertEqual(view.layer.sublayers.count, 1u);
+}
+
+- (void)testUnchangedTextReusesBackingButResizesAndReplacementsRedraw {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxCountingTextRenderer *renderer = [LynxCountingTextRenderer new];
+  __block LynxCountingTextRenderer *currentRenderer = renderer;
+  id textManager = OCMClassMock([LynxTextRenderManager class]);
+  OCMStub([textManager takeTextRender:1]).andDo(^(NSInvocation *invocation) {
+    [invocation setReturnValue:&currentRenderer];
+  });
+  id context = OCMClassMock([LynxRendererContext class]);
+  OCMStub([context textRenderManager]).andReturn(textManager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context];
+  auto makeList = [](float x, float width) {
+    DisplayList list;
+    AppendBegin(list, 7, kViewType, 0, 0, 100, 100);
+    AppendRecordBox(list, x, 0, width, 20);
+    AppendText(list, 1, 0);
+    AppendEnd(list);
+    return list;
+  };
+  auto list = makeList(0, 40);
+  [applier applyDisplayList:&list];
+  CALayer *layer = host.layer.sublayers.firstObject;
+  [layer display];
+  XCTAssertNotNil(layer.contents);
+  id contents = layer.contents;
+  XCTAssertEqual(renderer.drawCount, 1);
+
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(host.layer.sublayers.firstObject, layer);
+  XCTAssertEqual(layer.contents, contents);
+  XCTAssertFalse(layer.needsDisplay);
+
+  auto moved = makeList(10, 40);
+  [applier applyDisplayList:&moved];
+  XCTAssertEqual(host.layer.sublayers.firstObject, layer);
+  XCTAssertEqual(layer.frame.origin.x, 10);
+  XCTAssertFalse(layer.needsDisplay);
+  XCTAssertEqual(layer.animationKeys.count, 0u);
+
+  auto resized = makeList(10, 60);
+  [applier applyDisplayList:&resized];
+  XCTAssertEqual(host.layer.sublayers.firstObject, layer);
+  XCTAssertTrue(layer.needsDisplay);
+  [layer display];
+  XCTAssertEqual(renderer.drawCount, 2);
+  XCTAssertEqual(layer.animationKeys.count, 0u);
+
+  layer.contents = nil;
+  [applier applyDisplayList:&resized];
+  XCTAssertTrue(layer.needsDisplay);
+  [layer display];
+  XCTAssertEqual(renderer.drawCount, 3);
+
+  currentRenderer = [LynxCountingTextRenderer new];
+  [applier applyDisplayList:&resized];
+  CALayer *replacement = host.layer.sublayers.firstObject;
+  XCTAssertNotEqual(replacement, layer);
+  [replacement display];
+  XCTAssertEqual(currentRenderer.drawCount, 1);
+  [applier reset];
+  XCTAssertEqual(host.layer.sublayers.count, 0u);
+  [applier applyDisplayList:&resized];
+  XCTAssertNotEqual(host.layer.sublayers.firstObject, replacement);
+}
+
+- (void)testImageReuseSurvivesNativeChildRebuildAndPreservesOrder {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  UIView *child = [UIView new];
+  child.lynxSign = @9;
+  [host addSubview:child];
+  id manager = OCMClassMock([LynxImageManager class]);
+  __block NSInteger targetCount = 0;
+  __block UIImageView *target = nil;
+  OCMStub([manager setTarget:[OCMArg any]]).andDo(^(NSInvocation *invocation) {
+    __unsafe_unretained UIImageView *view;
+    [invocation getArgument:&view atIndex:2];
+    target = view;
+    targetCount++;
+  });
+  id context = OCMClassMock([LynxRendererContext class]);
+  OCMStub([context imageManagerForID:1]).andReturn(manager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context];
+  auto makeList = [](bool before, bool rounded) {
+    DisplayList list;
+    AppendBegin(list, 7, kViewType, 0, 0, 100, 100);
+    const float radii[] = {4, 4, 4, 4, 4, 4, 4, 4};
+    AppendRecordBox(list, 0, 0, 40, 40, rounded, radii);
+    if (before) AppendDrawView(list, 9);
+    AppendImage(list, 1, 0);
+    if (!before) AppendDrawView(list, 9);
+    AppendEnd(list);
+    return list;
+  };
+  auto first = makeList(false, true);
+  [applier applyDisplayList:&first];
+  UIImageView *imageView = target;
+  XCTAssertEqual(targetCount, 1);
+  XCTAssertEqual(host.subviews.firstObject, imageView);
+  XCTAssertEqual(imageView.layer.cornerRadius, 4);
+
+  [applier onRebuildSubRenderers];
+  XCTAssertNil(imageView.superview);
+  XCTAssertEqualObjects(host.subviews, (@[ child ]));
+  auto reordered = makeList(true, false);
+  [applier applyDisplayList:&reordered];
+  XCTAssertEqual(host.subviews.lastObject, imageView);
+  XCTAssertEqual(targetCount, 1);
+  XCTAssertEqual(imageView.layer.cornerRadius, 0);
+  XCTAssertNil(imageView.layer.mask);
+  XCTAssertTrue(imageView.clipsToBounds);
+
+  // Completion after a rebuild still targets the same image view.
+  UIImage *loaded = [UIImage new];
+  target.image = loaded;
+  XCTAssertEqual(imageView.image, loaded);
+  [applier applyDisplayList:&reordered];
+  XCTAssertEqual(imageView.image, loaded);
+  XCTAssertEqual(targetCount, 1);
+
+  DisplayList empty;
+  [applier applyDisplayList:&empty];
+  XCTAssertNil(imageView.superview);
+  [applier applyDisplayList:&first];
+  XCTAssertNotEqual(target, imageView);
+  XCTAssertEqual(targetCount, 2);
+}
+
+- (void)testRemovedImageIsNotRetainedByReuseCache {
+  LynxMockView *host = [LynxMockView new];
+  LynxImageManager *manager = [[LynxImageManager alloc] initWithContext:nil];
+  id context = OCMClassMock([LynxRendererContext class]);
+  OCMStub([context imageManagerForID:1]).andReturn(manager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context];
+  __weak UIView *removedView;
+  @autoreleasepool {
+    DisplayList list;
+    AppendRecordBox(list, 0, 0, 40, 40);
+    AppendImage(list, 1, 0);
+    [applier applyDisplayList:&list];
+    removedView = host.subviews.firstObject;
+    XCTAssertNotNil(removedView);
+    DisplayList empty;
+    [applier applyDisplayList:&empty];
+  }
+  XCTAssertNil(removedView);
+}
+
+- (void)testReplacementImageManagerDoesNotReusePreviousTarget {
+  LynxMockView *host = [LynxMockView new];
+  id firstManager = OCMClassMock([LynxImageManager class]);
+  id secondManager = OCMClassMock([LynxImageManager class]);
+  __block id currentManager = firstManager;
+  id context = OCMClassMock([LynxRendererContext class]);
+  OCMStub([context imageManagerForID:1]).andDo(^(NSInvocation *invocation) {
+    [invocation setReturnValue:&currentManager];
+  });
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context];
+  DisplayList list;
+  AppendRecordBox(list, 0, 0, 40, 40);
+  AppendImage(list, 1, 0);
+  [applier applyDisplayList:&list];
+  UIView *first = host.subviews.firstObject;
+  currentManager = secondManager;
+  [applier applyDisplayList:&list];
+  XCTAssertNotEqual(host.subviews.firstObject, first);
+  OCMVerify([secondManager setTarget:[OCMArg any]]);
+  XCTAssertNil(first.superview);
 }
 
 @end
