@@ -21,6 +21,9 @@ struct ImagePaintInfo;
 
 - (void)requestImage:(LynxURL* _Nullable)imageURL withType:(LynxImageRequestType)type;
 
+// Custom fetchers and failed or invalidated requests retain resize reloads.
+- (BOOL)canReuseOnResize;
+
 - (void)setTarget:(UIImageView* _Nullable)view;
 
 - (void)setSign:(NSInteger)sign;

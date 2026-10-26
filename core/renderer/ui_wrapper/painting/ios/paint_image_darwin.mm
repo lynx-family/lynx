@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/ios/paint_image_darwin.h"
 
+#import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRendererContext.h>
 
 namespace lynx::tasm {
@@ -15,6 +16,10 @@ PaintImageDarwin::~PaintImageDarwin() {
   if (context_) {
     [context_ destroyImage:image_key_];
   }
+}
+
+bool PaintImageDarwin::CanReuseOnResize() const {
+  return [[context_ imageManagerForID:image_key_] canReuseOnResize];
 }
 
 }  // namespace lynx::tasm
