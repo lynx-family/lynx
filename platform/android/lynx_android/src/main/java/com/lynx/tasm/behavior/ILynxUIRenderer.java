@@ -19,12 +19,17 @@ import com.lynx.tasm.LynxView;
 import com.lynx.tasm.NativeFacade;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.ThreadStrategyForRendering;
+import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.base.LynxPageLoadListener;
 import com.lynx.tasm.behavior.shadow.LayoutTick;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.performance.fsp.MeaningfulContentSnapshot;
+import java.util.Collections;
+import java.util.List;
 
 public interface ILynxUIRenderer {
   enum RenderType {
@@ -70,6 +75,16 @@ public interface ILynxUIRenderer {
   void onDestroy();
 
   LynxUIOwner lynxUIOwner();
+
+  default List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+    LynxUIOwner owner = lynxUIOwner();
+    MeaningfulContentSnapshot snapshot = owner != null ? owner.getMeaningfulPaintingAreas() : null;
+    return snapshot != null ? snapshot.getMeaningfulPaintingAreas() : Collections.emptyList();
+  }
+
+  default void getMeaningfulPaintingAreas(LynxConsumer<List<MeaningfulPaintingArea>> callback) {
+    callback.accept(getMeaningfulPaintingAreas());
+  }
 
   UIGroup<UIBody.UIBodyView> getLynxRootUI();
 
