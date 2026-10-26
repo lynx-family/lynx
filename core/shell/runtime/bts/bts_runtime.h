@@ -176,7 +176,8 @@ class BTSRuntime final {
   void SetPageOptions(const tasm::PageOptions& page_options);
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
 
-  // Pause or resume timers and requestAnimationFrame of the background thread.
+  // Pause or resume timers, microtasks, and requestAnimationFrame of the
+  // background thread.
   void SetPaused(bool paused);
 
   void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event);

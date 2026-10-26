@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -40,9 +41,9 @@ class JsTaskAdapter {
 
   void QueueMicrotask(Function func, uint64_t trace_flow_id);
 
-  // Pause or resume setTimeout and setInterval. Microtasks are not affected.
-  void Pause() { manager_->Pause(); }
-  void Resume() { manager_->Resume(); }
+  // Pause or resume setTimeout, setInterval, and queued microtasks.
+  void Pause();
+  void Resume();
 
   void SetPageOptions(const tasm::PageOptions& options) {
     page_options_ = options;
@@ -57,9 +58,21 @@ class JsTaskAdapter {
   base::closure MakeTask(Function func, TaskType task_type,
                          uint64_t trace_flow_id);
 
+  struct MicroTask {
+    base::closure task;
+    int32_t alloc_slot;
+  };
+
+  struct MicroTaskState {
+    std::unordered_map<uint64_t, MicroTask> tasks;
+    std::set<uint64_t> deferred_tasks;
+    bool paused{false};
+  };
+
+  void PostMicroTask(uint64_t task_id);
+
   std::unique_ptr<base::TimedTaskManager> manager_;
-  base::UnsafeOwningPtr<std::unordered_map<uint64_t, base::closure>>
-      micro_tasks_;
+  base::UnsafeOwningPtr<MicroTaskState> micro_task_state_;
   uint64_t current_micro_task_id_;
 
   // bind to thread which JsTaskAdapter created.

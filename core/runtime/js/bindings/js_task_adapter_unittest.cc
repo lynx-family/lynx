@@ -91,6 +91,24 @@ TEST_P(JsTaskTest, QueueMicrotaskTaskTest) {
   EXPECT_EQ(eval("globalThis.microtask")->getString(rt).utf8(rt), "microtask");
 }
 
+TEST_P(JsTaskTest, PauseDefersMicrotasksInQueueOrder) {
+  auto first = function("function () { globalThis.microtasks += 'a' }");
+  auto second = function("function () { globalThis.microtasks += 'b' }");
+  ASSERT_TRUE(eval("globalThis.microtasks = ''").has_value());
+  EXPECT_CALL(*exception_handler_, OnJSIException).Times(0);
+
+  // Cover both a microtask queued before Pause() and one queued while paused.
+  adapter->QueueMicrotask(std::move(first), 0);
+  adapter->Pause();
+  adapter->QueueMicrotask(std::move(second), 0);
+  fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(eval("globalThis.microtasks")->getString(rt).utf8(rt), "");
+
+  adapter->Resume();
+  fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(eval("globalThis.microtasks")->getString(rt).utf8(rt), "ab");
+}
+
 TEST_P(JsTaskTest, MicrotaskTimeoutTaskOrderTest) {
   auto timeout_func =
       function("function () { globalThis.lastTask = 'timeout'; }");

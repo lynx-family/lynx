@@ -292,8 +292,8 @@ class App {
   void PauseAnimationFrame();
   void ResumeAnimationFrame();
 
-  // Pause or resume timers and requestAnimationFrame of this app explicitly,
-  // independent of the foreground/background state.
+  // Pause or resume timers, microtasks, and requestAnimationFrame of this app
+  // explicitly, independent of the foreground/background state.
   void Pause();
   void Resume();
   void SetPausedFromJS(bool paused);

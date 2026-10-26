@@ -528,9 +528,10 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
   /**
    * @apidoc
-   * @brief Pause setTimeout, setInterval, requestAnimationFrame and animation
-   * vsync of the current `LynxView`, similar to `WebView.pauseTimers()` but
-   * only affects the current view. Lifecycle events are not triggered.
+   * @brief Pause setTimeout, setInterval, microtasks, requestAnimationFrame and
+   * animation vsync of the current `LynxView`, similar to
+   * `WebView.pauseTimers()` but only affects the current view. Lifecycle events
+   * are not triggered.
    * Timers which become due while paused run after `resume()`.
    */
   public void pause() {
@@ -543,8 +544,8 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
   /**
    * @apidoc
-   * @brief Resume the timers, requestAnimationFrame and animation vsync paused
-   * by `pause()`.
+   * @brief Resume the timers, microtasks, requestAnimationFrame and animation
+   * vsync paused by `pause()`.
    */
   public void resume() {
     checkAccessFromNonUiThread("resume");

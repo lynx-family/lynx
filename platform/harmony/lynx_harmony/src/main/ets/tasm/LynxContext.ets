@@ -273,9 +273,9 @@ export class LynxContext implements IContext {
   }
 
   /**
-   * Pause setTimeout, setInterval, requestAnimationFrame and animation vsync of the current
-   * `LynxView`, without triggering lifecycle events. Timers which become due while paused run
-   * after `resume()`.
+   * Pause setTimeout, setInterval, microtasks, requestAnimationFrame and animation vsync of the
+   * current `LynxView`, without triggering lifecycle events. Timers which become due while paused
+   * run after `resume()`.
    * @apidoc
    */
   public pause() {
@@ -283,7 +283,7 @@ export class LynxContext implements IContext {
   }
 
   /**
-   * Resume the timers, requestAnimationFrame and animation vsync paused by `pause()`.
+   * Resume the timers, microtasks, requestAnimationFrame and animation vsync paused by `pause()`.
    * @apidoc
    */
   public resume() {
