@@ -786,7 +786,7 @@ jobs:
       - cocoapods-lynx-library-publish
       - harmony-sdk-publish
       - macos-explorer-release
-      - dynamic-lib-release
+      - linux-sdk-release
       - windows-explorer-release
     if: ${{ always() && needs.get-version.outputs.release_mode == 'official' }}
     permissions:
@@ -802,7 +802,7 @@ jobs:
       COCOAPODS_LIBRARY_RESULT: ${{ needs.cocoapods-lynx-library-publish.result }}
       HARMONY_SDK_RESULT: ${{ needs.harmony-sdk-publish.result }}
       MACOS_EXPLORER_RESULT: ${{ needs.macos-explorer-release.result }}
-      LINUX_SDK_RESULT: ${{ needs.dynamic-lib-release.result }}
+      LINUX_SDK_RESULT: ${{ needs.linux-sdk-release.result }}
       WINDOWS_EXPLORER_RESULT: ${{ needs.windows-explorer-release.result }}
     steps:
       - name: Verify required release jobs
@@ -824,7 +824,7 @@ jobs:
           cocoapods-lynx-library-publish=$COCOAPODS_LIBRARY_RESULT
           harmony-sdk-publish=$HARMONY_SDK_RESULT
           macos-explorer-release=$MACOS_EXPLORER_RESULT
-          dynamic-lib-release=$LINUX_SDK_RESULT
+          linux-sdk-release=$LINUX_SDK_RESULT
           windows-explorer-release=$WINDOWS_EXPLORER_RESULT
           EOF
 
