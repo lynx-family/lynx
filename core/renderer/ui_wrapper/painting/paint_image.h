@@ -23,6 +23,10 @@ struct ImagePaintInfo {
   base::String blur_radius;
   bool auto_size{false};
   bool is_background{false};
+  bool downsampling{false};
+  base::String request_priority;
+  base::String prefetch_width;
+  base::String prefetch_height;
   base::String placeholder;
   base::String tint_color;
   base::String cap_insets;
@@ -32,9 +36,13 @@ struct ImagePaintInfo {
   int32_t loop_count{0};
 
   bool operator==(const ImagePaintInfo& other) const {
+    // Priority applies to future requests; changing it alone must not reload.
     return mode == other.mode && blur_radius == other.blur_radius &&
            auto_size == other.auto_size &&
            is_background == other.is_background &&
+           downsampling == other.downsampling &&
+           prefetch_width == other.prefetch_width &&
+           prefetch_height == other.prefetch_height &&
            placeholder == other.placeholder && tint_color == other.tint_color &&
            cap_insets == other.cap_insets &&
            cap_insets_scale == other.cap_insets_scale &&
@@ -51,6 +59,8 @@ class PaintImage : public fml::RefCountedThreadSafe<PaintImage> {
  public:
   explicit PaintImage(int32_t image_key) : image_key_(image_key) {}
   virtual ~PaintImage() = default;
+  // Opt in only when the loader can reuse its request across layout changes.
+  virtual bool CanReuseOnResize() const { return false; }
   int32_t image_key_;
 };
 }  // namespace lynx::tasm

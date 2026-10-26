@@ -15,6 +15,7 @@ class PaintImageDarwin : public PaintImage {
  public:
   PaintImageDarwin(int32_t image_key, LynxRendererContext* context);
   ~PaintImageDarwin() override;
+  bool CanReuseOnResize() const override;
 
  private:
   __weak LynxRendererContext* context_;
