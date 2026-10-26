@@ -8,6 +8,7 @@
 #include <memory>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "base/include/base_export.h"
 #include "base/include/closure.h"
@@ -23,6 +24,11 @@ class BASE_EXPORT TimedTaskManager {
                             fml::RefPtr<fml::TaskRunner> runner = nullptr);
   ~TimedTaskManager();
 
+  TimedTaskManager(const TimedTaskManager&) = delete;
+  TimedTaskManager& operator=(const TimedTaskManager&) = delete;
+  TimedTaskManager(TimedTaskManager&&) = delete;
+  TimedTaskManager& operator=(TimedTaskManager&&) = delete;
+
   uint32_t SetTimeout(closure closure, int64_t delay);
 
   uint32_t SetInterval(closure closure, int64_t delay);
@@ -30,6 +36,16 @@ class BASE_EXPORT TimedTaskManager {
   void StopTask(uint32_t id);
 
   void StopAllTasks();
+
+  // While paused, tasks that become due are deferred instead of being executed,
+  // and intervals stop rescheduling themselves. Resume() posts the deferred
+  // tasks again in their due order, and a deferred interval fires once and then
+  // restarts its period.
+  void Pause();
+
+  void Resume();
+
+  bool IsPaused() const { return paused_; }
 
  private:
   struct Controller {
@@ -39,6 +55,14 @@ class BASE_EXPORT TimedTaskManager {
     Controller& operator=(const Controller&) = delete;
 
     closure closure;
+  };
+
+  struct DeferredTask {
+    uint32_t id;
+    std::unique_ptr<Controller> controller;
+    bool is_interval;
+    int64_t interval;
+    int32_t alloc_slot;
   };
 
   // need forbid StopTask in execute timed task,
@@ -55,12 +79,21 @@ class BASE_EXPORT TimedTaskManager {
     bool is_interval_;
   };
 
+  void PostTimeout(std::unique_ptr<TimedTaskManager::Controller> controller,
+                   int64_t delay, uint32_t current, int32_t alloc_slot);
+
   void SetInterval(std::unique_ptr<TimedTaskManager::Controller> controller,
-                   int64_t delay, uint32_t current);
+                   int64_t delay, uint32_t current, int32_t alloc_slot,
+                   int64_t first_delay);
 
   uint32_t current_ = 0;
 
   std::unordered_map<uint32_t, Controller*> controllers_;
+
+  bool paused_{false};
+
+  // Tasks which became due while paused, in due order.
+  std::vector<DeferredTask> deferred_tasks_;
 
   // bind to thread which TimedTaskManager created.
   fml::RefPtr<fml::TaskRunner> runner_;
