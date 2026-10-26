@@ -4,6 +4,8 @@
 
 #include "base/include/thread/timed_task.h"
 
+#include <type_traits>
+
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/fml/thread.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -19,6 +21,11 @@ static void usleep(long num) {
 
 namespace lynx {
 namespace base {
+
+static_assert(!std::is_copy_constructible_v<TimedTaskManager>);
+static_assert(!std::is_copy_assignable_v<TimedTaskManager>);
+static_assert(!std::is_move_constructible_v<TimedTaskManager>);
+static_assert(!std::is_move_assignable_v<TimedTaskManager>);
 
 class TimedTaskTest : public ::testing::Test {
  protected:
@@ -205,6 +212,84 @@ TEST_F(TimedTaskTest, StopSelfTaskInSetInterval) {
 
   usleep(DELAY * LOOP * 1000);
   ASSERT_EQ(result_, 1);
+}
+
+TEST_F(TimedTaskTest, PauseDefersSetTimeout) {
+  thread_.GetTaskRunner()->PostTask([this]() {
+    manager_->Pause();
+    for (int32_t i = 0; i < LOOP; ++i) {
+      manager_->SetTimeout([this]() { ++result_; }, DELAY);
+    }
+  });
+
+  usleep(DELAY * 5 * 1000);
+
+  thread_.GetTaskRunner()->PostTask([this]() {
+    EXPECT_EQ(result_, 0);
+    manager_->Resume();
+  });
+
+  WaitResult(DELAY);
+  ASSERT_EQ(result_, LOOP);
+}
+
+TEST_F(TimedTaskTest, StopTaskWhilePaused) {
+  thread_.GetTaskRunner()->PostTask([this]() {
+    uint32_t id = manager_->SetTimeout([this]() { ++result_; }, DELAY);
+    manager_->SetTimeout([this]() { ++result_; }, DELAY);
+    manager_->Pause();
+    manager_->StopTask(id);
+  });
+
+  usleep(DELAY * 5 * 1000);
+
+  thread_.GetTaskRunner()->PostTask([this]() {
+    // Stop the second one after it has been deferred.
+    manager_->StopTask(2);
+    manager_->Resume();
+  });
+
+  WaitResult(DELAY);
+  ASSERT_EQ(result_, 0);
+}
+
+TEST_F(TimedTaskTest, PauseAndResumeSetInterval) {
+  thread_.GetTaskRunner()->PostTask([this]() {
+    manager_->SetInterval([this]() { ++result_; }, DELAY);
+    manager_->Pause();
+  });
+
+  usleep(DELAY * 10 * 1000);
+
+  int32_t paused_result = -1;
+  thread_.GetTaskRunner()->PostTask([this, &paused_result]() {
+    paused_result = result_;
+    manager_->Resume();
+    manager_->SetTimeout([this]() { arwe_.Signal(); }, DELAY * 5);
+  });
+  arwe_.Wait();
+
+  // The deferred interval fires once on resume, then keeps its period.
+  ASSERT_EQ(paused_result, 0);
+  ASSERT_GE(result_, 2);
+}
+
+TEST_F(TimedTaskTest, StopAllTasksWhilePaused) {
+  thread_.GetTaskRunner()->PostTask([this]() {
+    manager_->SetTimeout([this]() { ++result_; }, DELAY);
+    manager_->SetInterval([this]() { ++result_; }, DELAY);
+    manager_->Pause();
+  });
+
+  usleep(DELAY * 5 * 1000);
+
+  thread_.GetTaskRunner()->PostTask([this]() {
+    manager_->StopAllTasks();
+    manager_->Resume();
+  });
+
+  WaitResult(DELAY * 2);
+  ASSERT_EQ(result_, 0);
 }
 
 }  // namespace base
