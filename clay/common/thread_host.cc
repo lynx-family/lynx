@@ -25,15 +25,6 @@ namespace clay {
 static std::atomic_bool g_has_android_looper = false;
 #endif
 
-namespace {
-
-std::shared_ptr<fml::Thread>& GetClayIOThread() {
-  static lynx::base::NoDestructor<std::shared_ptr<fml::Thread>> clay_io_thread;
-  return *clay_io_thread;
-}
-
-}  // namespace
-
 std::string ThreadHost::ThreadHostConfig::MakeThreadName(
     Type type, const std::string& prefix) {
   switch (type) {
@@ -89,6 +80,15 @@ std::unique_ptr<fml::Thread> ThreadHost::CreateThread(
                                        *thread_config);
 }
 
+std::shared_ptr<fml::Thread> ThreadHost::GetSharedIOThread(
+    const ThreadHostConfig& config) const {
+  // Local static initialization serializes the first request across all hosts.
+  // Later calls only copy the initialized shared pointer.
+  static const lynx::base::NoDestructor<std::shared_ptr<fml::Thread>> io_thread(
+      CreateThread(Type::IO, config.io_config, config));
+  return *io_thread;
+}
+
 ThreadHost::ThreadHost() = default;
 
 ThreadHost::ThreadHost(ThreadHost&&) = default;
@@ -113,12 +113,7 @@ ThreadHost::ThreadHost(const ThreadHostConfig& host_config)
   }
 
   if (host_config.isThreadNeeded(ThreadHost::Type::IO)) {
-    auto& clay_io_thread = GetClayIOThread();
-    if (!clay_io_thread) {
-      clay_io_thread =
-          CreateThread(Type::IO, host_config.io_config, host_config);
-    }
-    io_thread = clay_io_thread;
+    io_thread = GetSharedIOThread(host_config);
   }
 
   if (host_config.isThreadNeeded(ThreadHost::Type::Profiler)) {
@@ -153,11 +148,7 @@ void ThreadHost::UpdateConfig(const ThreadHostConfig& config) {
         CreateThread(Type::Platform, config.platform_config, config);
   }
   if (io_thread == nullptr && config.isThreadNeeded(Type::IO)) {
-    auto& clay_io_thread = GetClayIOThread();
-    if (!clay_io_thread) {
-      clay_io_thread = CreateThread(Type::IO, config.io_config, config);
-    }
-    io_thread = clay_io_thread;
+    io_thread = GetSharedIOThread(config);
   }
   if (raster_thread == nullptr && config.isThreadNeeded(Type::RASTER)) {
     raster_thread = CreateThread(Type::RASTER, config.raster_config, config);

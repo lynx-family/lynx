@@ -5,6 +5,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("../testing/testing.gni")
 import("config.gni")
 
 source_set("common") {
@@ -51,4 +52,21 @@ source_set("common") {
   }
 
   public_configs = [ "../:config" ]
+}
+
+if (enable_unittests) {
+  test_fixtures("common_fixtures") {
+    fixtures = []
+  }
+
+  executable("common_unittests") {
+    testonly = true
+    sources = [ "thread_host_holder_unittests.cc" ]
+    deps = [
+      ":common",
+      ":common_fixtures",
+      "../../base/src:base_static",
+      "../testing",
+    ]
+  }
 }
