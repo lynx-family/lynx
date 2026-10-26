@@ -8,13 +8,13 @@
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRenderer+Internal.h>
-#import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/UIView+Lynx.h>
 #import "LynxDisplayListApplier+Internal.h"
+#import "LynxRendererContext+Internal.h"
 #import "LynxTextraLayer.h"
 
 #include <stack>
@@ -50,6 +50,29 @@ bool HasApproximatelyUniformRadius(const RoundedRectangle &rect) {
          BorderValuesAreApproximatelyEqual(radius, rect.GetRadiusYBottomLeft());
 }
 
+struct RetainedResourceState {
+  RoundedRectangle box;
+  uint64_t text_version = 0;
+};
+
+struct RetainedItemShape {
+  DisplayListOpType type;
+  int32_t id;
+  int32_t renderer_type;
+};
+
+bool ResourceClipIsEqual(const RoundedRectangle &lhs, const RoundedRectangle &rhs) {
+  return lhs.GetWidth() == rhs.GetWidth() && lhs.GetHeight() == rhs.GetHeight() &&
+         lhs.GetRadiusXTopLeft() == rhs.GetRadiusXTopLeft() &&
+         lhs.GetRadiusYTopLeft() == rhs.GetRadiusYTopLeft() &&
+         lhs.GetRadiusXTopRight() == rhs.GetRadiusXTopRight() &&
+         lhs.GetRadiusYTopRight() == rhs.GetRadiusYTopRight() &&
+         lhs.GetRadiusXBottomRight() == rhs.GetRadiusXBottomRight() &&
+         lhs.GetRadiusYBottomRight() == rhs.GetRadiusYBottomRight() &&
+         lhs.GetRadiusXBottomLeft() == rhs.GetRadiusXBottomLeft() &&
+         lhs.GetRadiusYBottomLeft() == rhs.GetRadiusYBottomLeft();
+}
+
 // Renderer hosts need renderer callbacks and decoration-layer synchronization. Legacy LynxUI-backed
 // views have no renderer, so update only their host geometry here.
 bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
@@ -83,6 +106,10 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
 @interface LynxDisplayListApplier ()
 
+- (void)resetParsingState;
+- (void)resetNonResourceLayers;
+- (void)invalidateRetainedResources;
+- (BOOL)canReuseResourcesForDisplayList:(const DisplayList &)list;
 - (void)insertHostDecorationLayer:(CALayer *)layer;
 - (void)insertLayer:(CALayer *)layer forOp:(DisplayListOpType)op;
 - (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op;
@@ -137,7 +164,26 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
   NSMutableArray<UIImageView *> *_contentImageViews;
   NSMutableArray<CALayer *> *_contentLayers;
+  NSMutableArray<CALayer *> *_ordinaryContentLayers;
   NSMutableArray<CALayer *> *_hostDecorationLayers;
+
+  // Only text and image slots retain their layers and contents across updates.
+  // Ordinary drawing layers are reset even when the resource slots match.
+  // Text snapshots and image-manager ownership are checked separately from
+  // geometry so moving a resource does not discard its backing store.
+  base::Vector<RetainedItemShape> retained_items_;
+  base::Vector<RetainedResourceState> retained_resource_states_;
+  NSMutableArray<CALayer *> *_retainedResourceLayers;
+  NSMutableArray *_retainedResources;
+  NSArray<UIView *> *_retainedSubviews;
+  NSArray<UIView *> *_retainedNativeSubviews;
+  int32_t retained_host_sign_;
+  NSUInteger retained_resource_index_;
+  NSUInteger retained_image_index_;
+  BOOL _hasRetainedText;
+  BOOL _retainedTextServiceMode;
+  BOOL _canRetainResources;
+  BOOL _reusingResources;
 }
 
 - (instancetype)initWithView:(UIView<LynxRendererHost> *)view
@@ -156,7 +202,10 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     _hostDecorationRefLayer = nil;
     _contentImageViews = [NSMutableArray new];
     _contentLayers = [NSMutableArray new];
+    _ordinaryContentLayers = [NSMutableArray new];
     _hostDecorationLayers = [NSMutableArray new];
+    _retainedResourceLayers = [NSMutableArray new];
+    _retainedResources = [NSMutableArray new];
   }
   return self;
 }
@@ -171,13 +220,36 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     return;
   }
 
-  NSArray<UIView *> *hostSubviewsSnapshot = [_view.subviews copy];
+  NSArray<UIView *> *hostSubviewsSnapshot =
+      _reusingResources ? _retainedNativeSubviews : [_view.subviews copy];
   int32_t view_index = 0;
   UIView *refView = nil;
+
+  if (!_reusingResources) {
+    _canRetainResources = YES;
+    retained_host_sign_ = _view.renderer.sign;
+  }
 
   while (reader_.HasNext()) {
     const auto &item = reader_.Next();
     auto op = item.type;
+    if (!_reusingResources && _canRetainResources) {
+      switch (op) {
+        case DisplayListOpType::kBegin:
+        case DisplayListOpType::kEnd:
+        case DisplayListOpType::kRecordBox:
+        case DisplayListOpType::kClipRect:
+        case DisplayListOpType::kFill:
+        case DisplayListOpType::kText:
+        case DisplayListOpType::kImage:
+        case DisplayListOpType::kDrawView: {
+          break;
+        }
+        default:
+          [self invalidateRetainedResources];
+          break;
+      }
+    }
     switch (op) {
       case DisplayListOpType::kBegin: {
         // The first Begin describes the host renderer's frame, which is
@@ -208,16 +280,16 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
       case DisplayListOpType::kFill: {
         auto argb = item.payload.fill.color;
         auto clip_index = item.payload.fill.clip_index;
-
-        CGFloat a = ((argb >> 24) & 0xFF) / 255.0;
-        CGFloat r = ((argb >> 16) & 0xFF) / 255.0;
-        CGFloat g = ((argb >> 8) & 0xFF) / 255.0;
-        CGFloat b = (argb & 0xFF) / 255.0;
+        const bool valid_box =
+            clip_index >= 0 && static_cast<size_t>(clip_index) < box_array_.size();
+        if (!valid_box) {
+          [self invalidateRetainedResources];
+        }
 
         CALayer *layer = [[CALayer alloc] init];
-        layer.backgroundColor = [[UIColor alloc] initWithRed:r green:g blue:b alpha:a].CGColor;
+        layer.backgroundColor = [self colorFromARGB:argb].CGColor;
         [self applyRectToLayer:layer withBoxIndex:clip_index];
-        if (clip_index >= 0 && static_cast<size_t>(clip_index) < box_array_.size()) {
+        if (valid_box) {
           [self applyRoundedRect:box_array_[clip_index] toLayer:layer];
         }
         [self insertLayer:layer forOp:op];
@@ -252,24 +324,70 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
       case DisplayListOpType::kText: {
         auto text_id = item.payload.text.text_id;
         auto box_index = item.payload.text.box_index;
+        BOOL textServiceMode = [self isTextServiceModeOn];
+        LynxTextRenderer *textRenderer = nil;
+        uint64_t textVersion = 0;
         CALayer *layer = nil;
-        if ([self isTextServiceModeOn]) {
+        if (textServiceMode) {
           void *page = [_renderer_context getTextBundle:text_id];
           if (page != nullptr) {
-            layer = [[LynxTextraLayer alloc] initWithTextID:text_id
-                                            rendererContext:_renderer_context];
+            textVersion = [_renderer_context textBundleVersion:text_id];
+            layer = _reusingResources ? _retainedResourceLayers[retained_resource_index_]
+                                      : [[LynxTextraLayer alloc] initWithTextID:text_id
+                                                                rendererContext:_renderer_context];
           }
         } else {
-          LynxTextRenderer *textRenderer =
+          textRenderer =
               (LynxTextRenderer *)[_renderer_context.textRenderManager takeTextRender:text_id];
           if (textRenderer != nil) {
-            layer = [[LynxTextLayer alloc] initWithLynxTextRenderer:textRenderer];
+            layer = _reusingResources
+                        ? _retainedResourceLayers[retained_resource_index_]
+                        : [[LynxTextLayer alloc] initWithLynxTextRenderer:textRenderer];
           }
         }
+        const bool validBox = box_index >= 0 && static_cast<size_t>(box_index) < box_array_.size();
+        if (layer == nil || !validBox || (textServiceMode && textVersion == 0)) {
+          [self invalidateRetainedResources];
+        }
         if (layer != nil) {
-          [self applyRectToLayer:layer withBoxIndex:box_index];
-          [self insertLayer:layer];
-          [layer setNeedsDisplay];
+          if (_reusingResources) {
+            auto &previous = retained_resource_states_[retained_resource_index_];
+            CGRect rect = [self rectForRoundedRectangle:box_array_[box_index] applyingOffsets:YES];
+            CGFloat scale = UIScreen.mainScreen.scale;
+            BOOL redraw = !CGSizeEqualToSize(layer.bounds.size, rect.size) ||
+                          layer.contentsScale != scale || previous.text_version != textVersion;
+            const BOOL previousDisableActions = [CATransaction disableActions];
+            [CATransaction setDisableActions:YES];
+            if (!CGRectEqualToRect(layer.frame, rect)) {
+              layer.frame = rect;
+            }
+            if (layer.contentsScale != scale) {
+              layer.contentsScale = scale;
+            }
+            if (!textServiceMode) {
+              [(LynxTextLayer *)layer updateTextRenderer:textRenderer];
+            }
+            if (redraw) {
+              [layer setNeedsDisplay];
+            }
+            [CATransaction setDisableActions:previousDisableActions];
+            previous.text_version = textVersion;
+            [_contentLayers addObject:layer];
+            _refLayer = layer;
+            ++retained_resource_index_;
+          } else {
+            [self applyRectToLayer:layer withBoxIndex:box_index];
+            [self insertLayer:layer];
+            [layer setNeedsDisplay];
+            if (_canRetainResources) {
+              [_retainedResourceLayers addObject:layer];
+              [_retainedResources addObject:NSNull.null];
+              retained_resource_states_.push_back(
+                  RetainedResourceState{box_array_[box_index], textVersion});
+              _hasRetainedText = YES;
+              _retainedTextServiceMode = textServiceMode;
+            }
+          }
         }
         break;
       }
@@ -277,34 +395,59 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         auto image_id = item.payload.image.image_id;
         auto box_index = item.payload.image.box_index;
         if (box_index < 0 || static_cast<size_t>(box_index) >= box_array_.size()) {
+          [self invalidateRetainedResources];
           break;
         }
         LynxImageManager *imageManager = [self imageManagerForID:image_id];
-
-        UIImageView *imageView = [self createImageView];
+        if (imageManager == nil) {
+          [self invalidateRetainedResources];
+        }
+        UIImageView *imageView = _reusingResources ? _contentImageViews[retained_image_index_++]
+                                                   : [self createImageView];
 
         auto &box = box_array_[box_index];
         CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
         rect.origin.x += left_offset_;
         rect.origin.y += top_offset_;
-        [imageView setFrame:rect];
-        if (box.HasRadius()) {
-          [self applyRoundedRect:box toLayer:imageView.layer];
-        }
-
-        [imageManager setTarget:imageView];
-
-        if (refView == nil) {
-          [_view insertSubview:imageView atIndex:0];
+        if (_reusingResources) {
+          auto &previous = retained_resource_states_[retained_resource_index_];
+          const BOOL previousDisableActions = [CATransaction disableActions];
+          [CATransaction setDisableActions:YES];
+          if (!CGRectEqualToRect(imageView.frame, rect)) {
+            imageView.frame = rect;
+          }
+          if (!ResourceClipIsEqual(previous.box, box)) {
+            [self applyRoundedRect:box toLayer:imageView.layer];
+            if (!box.HasRadius()) {
+              imageView.clipsToBounds = YES;
+            }
+          }
+          [imageManager setTarget:imageView];
+          [CATransaction setDisableActions:previousDisableActions];
+          previous.box = box;
+          [_contentLayers addObject:imageView.layer];
+          _refLayer = imageView.layer;
+          ++retained_resource_index_;
         } else {
-          [_view insertSubview:imageView aboveSubview:refView];
+          [imageView setFrame:rect];
+          if (box.HasRadius()) {
+            [self applyRoundedRect:box toLayer:imageView.layer];
+          }
+          [imageManager setTarget:imageView];
+          if (refView == nil) {
+            [_view insertSubview:imageView atIndex:0];
+          } else {
+            [_view insertSubview:imageView aboveSubview:refView];
+          }
+          [self insertLayer:imageView.layer forOp:op];
+          [_contentImageViews addObject:imageView];
+          if (_canRetainResources) {
+            [_retainedResourceLayers addObject:imageView.layer];
+            [_retainedResources addObject:imageManager];
+            retained_resource_states_.push_back(RetainedResourceState{box});
+          }
         }
-
-        [self insertLayer:imageView.layer forOp:op];
-
         refView = imageView;
-
-        [_contentImageViews addObject:imageView];
         break;
       }
       case DisplayListOpType::kBackgroundImage: {
@@ -699,6 +842,127 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
     }
   }
+  if (!_canRetainResources) {
+    return;
+  }
+  if (_retainedResourceLayers.count == 0) {
+    [self invalidateRetainedResources];
+    return;
+  }
+  if (!_reusingResources) {
+    // Fill-only lists do not build or validate a retained structure.
+    DisplayListReader shapeReader = reader_;
+    shapeReader.Reset();
+    while (shapeReader.HasNext()) {
+      const auto &item = shapeReader.Next();
+      RetainedItemShape shape{item.type, 0, 0};
+      if (item.type == DisplayListOpType::kBegin) {
+        shape.id = item.payload.begin.id;
+        shape.renderer_type = item.payload.begin.type;
+      } else if (item.type == DisplayListOpType::kDrawView) {
+        shape.id = item.payload.draw_view.view_id;
+      } else if (item.type == DisplayListOpType::kText) {
+        shape.id = item.payload.text.text_id;
+      } else if (item.type == DisplayListOpType::kImage) {
+        shape.id = item.payload.image.image_id;
+      }
+      retained_items_.push_back(shape);
+    }
+    _retainedNativeSubviews = hostSubviewsSnapshot;
+    _retainedSubviews = [_view.subviews copy];
+  }
+  // Both arrays follow display-list order. Keep only ordinary layers in the
+  // next reset batch, leaving resource layers attached to their current parent.
+  NSUInteger resourceIndex = 0;
+  for (CALayer *layer in _contentLayers) {
+    if (resourceIndex < _retainedResourceLayers.count &&
+        layer == _retainedResourceLayers[resourceIndex]) {
+      ++resourceIndex;
+    } else {
+      [_ordinaryContentLayers addObject:layer];
+    }
+  }
+}
+
+- (void)invalidateRetainedResources {
+  _canRetainResources = NO;
+  retained_items_.clear();
+  retained_resource_states_.clear();
+  [_retainedResourceLayers removeAllObjects];
+  [_retainedResources removeAllObjects];
+  [_ordinaryContentLayers removeAllObjects];
+  _retainedSubviews = nil;
+  _retainedNativeSubviews = nil;
+  _hasRetainedText = NO;
+}
+
+- (BOOL)canReuseResourcesForDisplayList:(const DisplayList &)list {
+  if (!_canRetainResources || _retainedResourceLayers.count == 0 ||
+      retained_items_.size() != list.GetContentItemsSize() ||
+      retained_host_sign_ != _view.renderer.sign ||
+      ![_retainedSubviews isEqualToArray:_view.subviews]) {
+    return NO;
+  }
+  if (_hasRetainedText && _retainedTextServiceMode != [self isTextServiceModeOn]) {
+    return NO;
+  }
+
+  DisplayListReader reader(list);
+  size_t index = 0;
+  size_t boxCount = 0;
+  NSUInteger drawingIndex = 0;
+  while (reader.HasNext()) {
+    const auto &item = reader.Next();
+    const auto &previous = retained_items_[index++];
+    if (item.type != previous.type) {
+      return NO;
+    }
+    if (item.type == DisplayListOpType::kBegin &&
+        (item.payload.begin.id != previous.id ||
+         item.payload.begin.type != previous.renderer_type)) {
+      return NO;
+    }
+    if (item.type == DisplayListOpType::kDrawView &&
+        item.payload.draw_view.view_id != previous.id) {
+      return NO;
+    }
+    if (item.type == DisplayListOpType::kText) {
+      if (item.payload.text.text_id != previous.id ||
+          (_retainedTextServiceMode
+               ? [_renderer_context textBundleVersion:previous.id] == 0
+               : [_renderer_context.textRenderManager takeTextRender:previous.id] == nil)) {
+        return NO;
+      }
+    }
+    if (item.type == DisplayListOpType::kImage &&
+        (item.payload.image.image_id != previous.id ||
+         [self imageManagerForID:previous.id] != _retainedResources[drawingIndex])) {
+      return NO;
+    }
+    if (item.type == DisplayListOpType::kRecordBox) {
+      ++boxCount;
+    } else if (item.type == DisplayListOpType::kFill || item.type == DisplayListOpType::kText ||
+               item.type == DisplayListOpType::kImage) {
+      int32_t boxIndex = item.type == DisplayListOpType::kFill   ? item.payload.fill.clip_index
+                         : item.type == DisplayListOpType::kText ? item.payload.text.box_index
+                                                                 : item.payload.image.box_index;
+      if (boxIndex < 0 || static_cast<size_t>(boxIndex) >= boxCount) {
+        return NO;
+      }
+      if (item.type != DisplayListOpType::kFill) {
+        ++drawingIndex;
+      }
+    }
+  }
+  for (NSUInteger i = 0; i < _retainedResourceLayers.count; ++i) {
+    CALayer *layer = _retainedResourceLayers[i];
+    // Keep the fresh-layer geometry path for externally modified coordinate spaces.
+    if (layer.superlayer != _view.layer || !CATransform3DIsIdentity(layer.transform) ||
+        !CGPointEqualToPoint(layer.bounds.origin, CGPointZero)) {
+      return NO;
+    }
+  }
+  return YES;
 }
 
 - (void)applyDisplayList:(lynx::tasm::DisplayList *)list {
@@ -710,7 +974,16 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     return;
   }
 
-  [self reset];
+  BOOL reuseResources = [self canReuseResourcesForDisplayList:*list];
+  if (reuseResources) {
+    [self resetParsingState];
+    [self resetNonResourceLayers];
+  } else {
+    [self reset];
+  }
+  _reusingResources = reuseResources;
+  retained_resource_index_ = 0;
+  retained_image_index_ = 0;
 
   reader_ = DisplayListReader(*list);
 
@@ -718,7 +991,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   [_view setNeedsDisplay];
 }
 
-- (void)reset {
+- (void)resetParsingState {
   reader_ = DisplayListReader();
   top_offset_ = 0;
   left_offset_ = 0;
@@ -735,6 +1008,26 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     _view.layer.cornerRadius = 0;
     _view.layer.masksToBounds = NO;
   }
+}
+
+- (void)resetNonResourceLayers {
+  for (CALayer *layer in _ordinaryContentLayers) {
+    [layer removeFromSuperlayer];
+  }
+  [_ordinaryContentLayers removeAllObjects];
+  // Rebuild the ownership list in display-list order while visiting the retained
+  // resource layers and creating fresh ordinary drawing layers.
+  [_contentLayers removeAllObjects];
+  for (CALayer *layer in _hostDecorationLayers) {
+    [layer removeFromSuperlayer];
+  }
+  [_hostDecorationLayers removeAllObjects];
+}
+
+- (void)reset {
+  [self resetParsingState];
+  [self invalidateRetainedResources];
+  _reusingResources = NO;
 
   for (UIImageView *imageView in _contentImageViews) {
     [imageView removeFromSuperview];
@@ -810,6 +1103,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (void)onRebuildSubRenderers {
+  [self invalidateRetainedResources];
   for (UIImageView *imageView in _contentImageViews) {
     [imageView removeFromSuperview];
   }

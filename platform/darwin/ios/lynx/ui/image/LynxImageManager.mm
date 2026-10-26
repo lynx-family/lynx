@@ -137,6 +137,8 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   BOOL _skipRedirection;
   BOOL _autoPlay;
   NSInteger _loopCount;
+  uint64_t _paintVersion;
+  uint64_t _targetPaintVersion;
 }
 
 - (instancetype)initWithContext:(LynxUIContext*)context {
@@ -175,6 +177,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 }
 
 - (void)updatePaintInfo:(const ImagePaintInfo&)paintInfo {
+  ++_paintVersion;
   _contentMode = LynxImageContentModeFromMode(static_cast<int32_t>(paintInfo.mode));
   _blurRadius = LynxImageLengthFromProp(NSStringFromBaseString(paintInfo.blur_radius), _context);
   _autoSize = paintInfo.auto_size;
@@ -494,7 +497,15 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 }
 
 - (void)setTarget:(UIImageView*)view {
+  // Keep cached contents and animation playback when Apply revisits the same
+  // target. Asynchronous loads still update this view through applyImage:.
+  if (_imageView == view && _imageLayer == nil && _targetPaintVersion == _paintVersion) {
+    return;
+  }
+  _imageLayer = nil;
+  _imageSizeDidChange = nil;
   _imageView = view;
+  _targetPaintVersion = _paintVersion;
   _imageView.contentMode = _contentMode;
   _imageView.tintColor = _tintColor;
 

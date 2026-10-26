@@ -2,6 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxServiceTextProtocol.h>
+#import "LynxRendererContext+Internal.h"
+
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxImageLoader.h>
@@ -42,6 +45,42 @@
   id mockTextRenderManager = OCMClassMock([LynxTextRenderManager class]);
   context.textRenderManager = mockTextRenderManager;
   XCTAssertEqual(context.textRenderManager, mockTextRenderManager);
+}
+
+- (void)testTextBundleVersionChangesForInPlaceUpdatesAndRecreatedIDs {
+  id service = OCMProtocolMock(@protocol(LynxServiceTextProtocol));
+  id services = OCMClassMock([LynxServices class]);
+  OCMStub(ClassMethod([services getInstanceWithProtocol:@protocol(LynxServiceTextProtocol)]))
+      .andReturn(service);
+  LynxRendererContext *context = [LynxRendererContext new];
+  int pageStorage = 0;
+  void *page = &pageStorage;
+  XCTAssertEqual([context textBundleVersion:1], 0u);
+  [context updateTextBundle:1 withBundle:page];
+  uint64_t firstVersion = [context textBundleVersion:1];
+  XCTAssertGreaterThan(firstVersion, 0u);
+  [context updateTextBundle:1 withBundle:page];
+  uint64_t secondVersion = [context textBundleVersion:1];
+  XCTAssertGreaterThan(secondVersion, firstVersion);
+  [context destroyTextBundle:1];
+  XCTAssertEqual([context textBundleVersion:1], 0u);
+  [context updateTextBundle:1 withBundle:page];
+  XCTAssertGreaterThan([context textBundleVersion:1], secondVersion);
+  [context updateTextBundle:1 withBundle:nullptr];
+  XCTAssertEqual([context textBundleVersion:1], 0u);
+  XCTAssertTrue([context getTextBundle:1] == nullptr);
+  [services stopMocking];
+}
+
+- (void)testMissingTextPagesDoNotAccumulateVersionMetadata {
+  LynxRendererContext *context = [LynxRendererContext new];
+  for (int32_t textID = 0; textID < 100; ++textID) {
+    [context updateTextBundle:textID withBundle:nullptr];
+    XCTAssertEqual([context textBundleVersion:textID], 0u);
+  }
+  // Empty legacy-text updates must not leave one cache entry per discarded ID.
+  XCTAssertEqual(((NSDictionary *)[context valueForKey:@"textBundleVersions"]).count, 0u);
+  XCTAssertEqual(((NSDictionary *)[context valueForKey:@"textBundles"]).count, 0u);
 }
 
 @end

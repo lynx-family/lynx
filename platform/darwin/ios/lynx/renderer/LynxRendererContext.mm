@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxImageManager.h>
-#import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
+#import "LynxRendererContext+Internal.h"
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 
 namespace {
@@ -27,6 +27,8 @@ void DestroyTextBundlePointer(void *bundle) {
   NSMutableDictionary<NSNumber *, NSNumber *> *_primaryImageKeysBySign;
   NSMutableDictionary<NSNumber *, NSNumber *> *_primaryImageSignsByKey;
   NSMutableDictionary<NSNumber *, NSValue *> *_textBundles;
+  NSMutableDictionary<NSNumber *, NSNumber *> *_textBundleVersions;
+  uint64_t _nextTextBundleVersion;
 }
 
 - (instancetype)init {
@@ -36,6 +38,7 @@ void DestroyTextBundlePointer(void *bundle) {
     _primaryImageKeysBySign = [NSMutableDictionary new];
     _primaryImageSignsByKey = [NSMutableDictionary new];
     _textBundles = [NSMutableDictionary new];
+    _textBundleVersions = [NSMutableDictionary new];
   }
   return self;
 }
@@ -129,10 +132,18 @@ void DestroyTextBundlePointer(void *bundle) {
     if (previousValue != nil) {
       previousBundle = [previousValue pointerValue];
     }
+    if (bundle != nullptr) {
+      _textBundleVersions[@(textID)] = @(++_nextTextBundleVersion);
+    } else {
+      [_textBundleVersions removeObjectForKey:@(textID)];
+      [_textBundles removeObjectForKey:@(textID)];
+    }
     if (previousBundle == bundle) {
       return;
     }
-    _textBundles[@(textID)] = [NSValue valueWithPointer:bundle];
+    if (bundle != nullptr) {
+      _textBundles[@(textID)] = [NSValue valueWithPointer:bundle];
+    }
   }
   DestroyTextBundlePointer(previousBundle);
 }
@@ -145,6 +156,7 @@ void DestroyTextBundlePointer(void *bundle) {
       bundle = [value pointerValue];
       [_textBundles removeObjectForKey:@(textID)];
     }
+    [_textBundleVersions removeObjectForKey:@(textID)];
   }
   DestroyTextBundlePointer(bundle);
 }
@@ -158,6 +170,14 @@ void DestroyTextBundlePointer(void *bundle) {
     }
   }
   return bundle;
+}
+
+- (uint64_t)textBundleVersion:(int32_t)textID {
+  @synchronized(self) {
+    return [_textBundles[@(textID)] pointerValue] != nullptr
+               ? [_textBundleVersions[@(textID)] unsignedLongLongValue]
+               : 0;
+  }
 }
 
 @end

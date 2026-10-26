@@ -11,13 +11,39 @@
 - (instancetype)initWithLynxTextRenderer:(LynxTextRenderer *)textRenderer {
   self = [super init];
   if (self) {
-    _textRenderer = textRenderer;
+    [self updateTextRenderer:textRenderer];
     self.delegate = self;
     // TODO(xiamengfei.moonface): [ResizableWindowScale] Check whether this should use window or
     // physical screen metrics.
     self.contentsScale = [UIScreen mainScreen].scale;
   }
   return self;
+}
+
+- (void)updateTextRenderer:(LynxTextRenderer *)textRenderer {
+  if (_textRenderer != textRenderer) {
+    if (_textRenderer.textStorage != nil) {
+      [NSNotificationCenter.defaultCenter removeObserver:self
+                                                    name:NSTextStorageDidProcessEditingNotification
+                                                  object:_textRenderer.textStorage];
+    }
+    _textRenderer = textRenderer;
+    if (_textRenderer.textStorage != nil) {
+      [NSNotificationCenter.defaultCenter addObserver:self
+                                             selector:@selector(textStorageDidChange:)
+                                                 name:NSTextStorageDidProcessEditingNotification
+                                               object:_textRenderer.textStorage];
+    }
+    [self setNeedsDisplay];
+  }
+}
+
+- (void)textStorageDidChange:(NSNotification *)notification {
+  [self setNeedsDisplay];
+}
+
+- (void)dealloc {
+  [NSNotificationCenter.defaultCenter removeObserver:self];
 }
 
 - (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx {

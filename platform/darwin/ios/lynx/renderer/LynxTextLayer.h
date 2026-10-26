@@ -9,4 +9,7 @@
 
 - (instancetype)initWithLynxTextRenderer:(LynxTextRenderer *)textRenderer;
 
+// A new measured renderer invalidates the backing store; moving a layer does not.
+- (void)updateTextRenderer:(LynxTextRenderer *)textRenderer;
+
 @end

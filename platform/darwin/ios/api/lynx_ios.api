@@ -3525,6 +3525,11 @@ public class LynxRendererContext : NSObject {
   public void LynxRendererContext::updateTextBundle:withBundle:(int32_t textID,[withBundle] void *bundle);
   public void LynxRendererContext::destroyTextBundle:(int32_t textID);
   public void * LynxRendererContext::getTextBundle:(int32_t textID);
+  public uint64_t LynxRendererContext(DrawingResources)::textBundleVersion:(int32_t textID);
+}
+
+public interface LynxRendererContext(DrawingResources) {
+  public uint64_t LynxRendererContext(DrawingResources)::textBundleVersion:(int32_t textID);
 }
 
 public protocol LynxRendererHost-p : <NSObject> {
@@ -4338,6 +4343,7 @@ public class LynxTextInfoModule : NSObject, <LynxContextModule> {
 
 public class LynxTextLayer : CALayer, <CALayerDelegate> {
   public instancetype LynxTextLayer::initWithLynxTextRenderer:(LynxTextRenderer *textRenderer);
+  public void LynxTextLayer::updateTextRenderer:(LynxTextRenderer *textRenderer);
 }
 
 public class LynxTextLayoutManager : NSLayoutManager {
