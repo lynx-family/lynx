@@ -25,18 +25,23 @@ std::shared_ptr<RasterFrameService> RasterFrameService::Create() {
 
 void RasterFrameService::OnInit(clay::ServiceManager& service_manager,
                                 const clay::RasterServiceContext& ctx) {
-  clay::Puppet<clay::Owner::kRaster, VsyncWaiterService> vsync_waiter_service =
-      service_manager.GetService<VsyncWaiterService>();
-  vsync_waiter_ = vsync_waiter_service->CreateVsyncWaiter(
-      service_manager.GetTaskRunners()
-          ->SelectTaskRunner<clay::Owner::kRaster>());
+  auto raster_task_runner = service_manager.GetTaskRunners()
+                                ->SelectTaskRunner<clay::Owner::kRaster>();
   rasterizer_ = ctx.rasterizer;
   page_unique_id_ = ctx.page_unique_id;
   clay::Puppet<clay::Owner::kRaster, PlatformConstService>
       platform_const_service =
           service_manager.GetService<PlatformConstService>();
-  using_sync_compositor_ =
-      platform_const_service->GetSettings().enable_sync_compositor;
+  const auto& settings = platform_const_service->GetSettings();
+  using_sync_compositor_ = settings.enable_sync_compositor;
+  if (!using_sync_compositor_ && settings.custom_vsync_request) {
+    vsync_waiter_ = std::make_shared<VsyncWaiterCustom>(
+        raster_task_runner, settings.custom_vsync_request);
+  } else {
+    clay::Puppet<clay::Owner::kRaster, VsyncWaiterService>
+        vsync_waiter_service = service_manager.GetService<VsyncWaiterService>();
+    vsync_waiter_ = vsync_waiter_service->CreateVsyncWaiter(raster_task_runner);
+  }
   if (using_sync_compositor_) {
     sync_compositor_service_ =
         service_manager.GetService<SyncCompositorService>();
@@ -54,6 +59,11 @@ void RasterFrameService::OnDestroy() {
     raster_frame_deadline_timer_->Stop();
   }
   StopSchedulerAndCleanLayerTree();
+#if OS_MAC
+  // Keep the waiter across recycling. On detach, invalidate the macOS display
+  // link on the raster thread even if the service itself is still retained.
+  vsync_waiter_.reset();
+#endif
 }
 
 void RasterFrameService::SetOutputSurfaceValid(bool valid) {
@@ -414,9 +424,6 @@ void RasterFrameService::StopSchedulerAndCleanLayerTree() {
   committing_tree_matches_page_ = true;
   pending_tree_matches_page_ = true;
   active_tree_matches_page_ = true;
-#if OS_MAC
-  vsync_waiter_.reset();
-#endif
 }
 
 void RasterFrameService::NotifyUploadTaskRegistered() {

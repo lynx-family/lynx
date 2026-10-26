@@ -79,10 +79,9 @@ class ItemAnimatorDefault
     std::optional<float> last_iteration_progress{};
   };
 
-  // Centralizes LynxBasicAnimator creation. Production does not inject a
-  // VSyncMonitor; BasicAnimatorFrameCallbackProvider obtains a thread-local
-  // monitor when it first requests a frame. Tests override this method to
-  // inject a manually advanced monitor.
+  // Use the supplied monitor, or let BasicAnimatorFrameCallbackProvider create
+  // its default monitor. Tests may override creation to control animation
+  // timing.
   virtual std::shared_ptr<::lynx::animation::basic::LynxBasicAnimator>
   CreateBasicAnimator(starlight::AnimationData animation_data);
 

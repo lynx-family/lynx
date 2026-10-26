@@ -27,6 +27,7 @@ source_set("common") {
     "thread_host_holder.h",
     "trail_settings.cc",
     "trail_settings.h",
+    "vsync_callback.h",
   ]
 
   if (!is_android || is_headless) {

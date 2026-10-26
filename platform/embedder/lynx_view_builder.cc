@@ -43,6 +43,17 @@ LYNX_EXTERN_C void lynx_view_builder_set_font_scale(
   builder->font_scale = scale;
 }
 
+LYNX_EXTERN_C void lynx_view_builder_set_custom_vsync_monitor(
+    lynx_view_builder_t* builder, lynx_vsync_monitor_t* monitor) {
+  if (builder->custom_vsync_monitor &&
+      builder->custom_vsync_monitor->GetCMonitor() == monitor) {
+    return;
+  }
+  builder->custom_vsync_monitor =
+      monitor ? std::make_shared<lynx::embedder::LynxVSyncMonitor>(monitor)
+              : nullptr;
+}
+
 LYNX_EXTERN_C void lynx_view_builder_set_enable_js_runtime(
     lynx_view_builder_t* builder, bool enable) {
   builder->enable_js_runtime = enable;

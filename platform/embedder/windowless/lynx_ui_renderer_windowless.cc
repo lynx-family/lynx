@@ -83,9 +83,16 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
 #endif
   }
 
+  clay::VsyncRequestCallback custom_vsync_request;
+  if (auto monitor = builder->custom_vsync_monitor) {
+    custom_vsync_request =
+        [monitor = std::move(monitor)](clay::VsyncSignalCallback signal) {
+          monitor->RequestVSync(std::move(signal));
+        };
+  }
   headless_engine_ = std::make_unique<clay::ClayHeadlessEngine>(
       icu_data_path, windowless_renderer_->GetRendererConfig(), &description_,
-      windowless_renderer_.get());
+      windowless_renderer_.get(), std::move(custom_vsync_request));
   headless_engine_->SetHeadlessDelegate(this);
 
   auto* view_context =
