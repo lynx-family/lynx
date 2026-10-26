@@ -190,6 +190,15 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)pauseRootLayoutAnimation;
 - (void)resumeRootLayoutAnimation;
 
+@optional
+/**
+ * Pause and resume setTimeout, setInterval, requestAnimationFrame and animation vsync of the
+ * current page, without triggering lifecycle events.
+ */
+- (void)pause;
+- (void)resume;
+
+@required
 - (void)restartAnimation;
 - (void)resetAnimation;
 

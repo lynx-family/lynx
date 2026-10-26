@@ -415,6 +415,20 @@
 
 /**
  * @apidoc
+ * @brief Pause setTimeout, setInterval, requestAnimationFrame and animation vsync of the current
+ * `LynxView`, similar to `WKWebView` pausing timers but only affects the current view. Lifecycle
+ * events are not triggered. Timers which become due while paused run after `resume`.
+ */
+- (void)pause;
+
+/**
+ * @apidoc
+ * @brief Resume the timers, requestAnimationFrame and animation vsync paused by `pause`.
+ */
+- (void)resume;
+
+/**
+ * @apidoc
  * @brief Send global events to the front end through the client,
  * and the front end can listen to the event through `GlobalEventEmitter`.
  * @param name Global event name.

@@ -895,6 +895,14 @@
   RUN_RENDER_SAFELY([_templateRender onEnterBackground];);
 }
 
+- (void)pause {
+  RUN_RENDER_SAFELY([_templateRender pause];);
+}
+
+- (void)resume {
+  RUN_RENDER_SAFELY([_templateRender resume];);
+}
+
 - (void)onLongPress {
   RUN_RENDER_SAFELY([_templateRender onLongPress];);
 }
