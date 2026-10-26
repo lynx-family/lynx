@@ -105,7 +105,7 @@ void JSUIBase::SetFrameNode(ArkUI_NodeHandle frame_node) {
 }
 
 napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
-  size_t argc = 23;
+  size_t argc = 24;
   /** 0 - js ref
    *  1 - context ptr array
    *  2 - FrameNode napi_value
@@ -129,6 +129,7 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
    *  20 - layout placeholder bool
    *  21 - observe descendant invalidation bool, fixed for this instance
    *  22 - invalidate func ref
+   *  23 - nodeReload func ref (optional)
    */
   napi_value argv[argc];
   napi_value js_this;
@@ -173,6 +174,11 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
   napi_create_reference(env, argv[19], 1, &ui->js_scroll_y_);
   if (observe_invalidation && argc > 22) {
     napi_create_reference(env, argv[22], 1, &ui->js_invalidate_);
+  }
+  // Keep compatibility with callers that do not provide the reload callback.
+  if (argc > 23 && napi_typeof(env, argv[23], &type) == napi_ok &&
+      type == napi_function) {
+    napi_create_reference(env, argv[23], 1, &ui->js_node_reload_);
   }
 
   napi_wrap(
@@ -421,6 +427,9 @@ JSUIBase::~JSUIBase() {
   napi_delete_reference(env_, js_ui_method_);
   napi_delete_reference(env_, js_layout_);
   napi_delete_reference(env_, js_node_ready_);
+  if (js_node_reload_) {
+    napi_delete_reference(env_, js_node_reload_);
+  }
   napi_delete_reference(env_, js_update_);
   napi_delete_reference(env_, js_focusable_);
   napi_delete_reference(env_, js_is_scrollable_);
@@ -776,6 +785,21 @@ bool JSUIBase::ShouldHitTest() {
     return false;
   }
   return UIBase::ShouldHitTest();
+}
+
+void JSUIBase::OnNodeReload() {
+  UIBase::OnNodeReload();
+  if (!js_node_reload_) {
+    return;
+  }
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_ref_);
+  napi_value node_reload =
+      base::NapiUtil::GetReferenceNapiValue(env_, js_node_reload_);
+  if (!js_recv || !node_reload) {
+    return;
+  }
+  napi_call_function(env_, js_recv, node_reload, 0, nullptr, nullptr);
 }
 
 void JSUIBase::UpdateExtraData(

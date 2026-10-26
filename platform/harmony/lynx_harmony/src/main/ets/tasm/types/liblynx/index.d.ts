@@ -312,7 +312,7 @@ export class UIBase {
     customLayout: boolean, updateExtraData: Function,
     needWindowStateChangeEvent: boolean, onEnterForeground: Function, onEnterBackground: Function,
     isScrollable: Function, scrollX: Function, scrollY: Function, isLayoutPlaceholder: boolean,
-    observeInvalidation?: boolean, invalidate?: Function);
+    observeInvalidation?: boolean, invalidate?: Function, onNodeReload?: Function);
 
   static getUIFromNativeContent(nativeContent: NativeContent): Object | undefined;
 
