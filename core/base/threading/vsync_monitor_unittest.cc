@@ -5,7 +5,9 @@
 #include "core/base/threading/vsync_monitor.h"
 
 #include <algorithm>
+#include <thread>
 
+#include "base/include/fml/message_loop.h"
 #include "base/include/fml/thread.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -45,6 +47,113 @@ class VsyncMonitorTest : public ::testing::Test {
 
   static void SetUpTestSuite() { base::UIThread::Init(); }
 };
+
+class ExternalVSyncSource : public VSyncMonitorPlatformImpl {
+ public:
+  void RequestVSync(Callback callback) override {
+    ++requests;
+    pending = std::move(callback);
+  }
+
+  void Tick(int64_t start, int64_t target) {
+    auto callback = std::move(pending);
+    ASSERT_TRUE(callback);
+    callback(start, target);
+  }
+
+  int requests = 0;
+  Callback pending;
+};
+
+TEST_F(VsyncMonitorTest, ExternalSourceCoalescesPrimaryAndSecondaryRequests) {
+  auto source = std::make_shared<ExternalVSyncSource>();
+  auto monitor = std::make_shared<VSyncMonitor>(source);
+  monitor->BindToCurrentThread();
+  int callbacks = 0;
+  monitor->AsyncRequestVSync([&](int64_t start, int64_t target) {
+    EXPECT_EQ(start, 100);
+    EXPECT_EQ(target, 200);
+    ++callbacks;
+  });
+  monitor->ScheduleVSyncSecondaryCallback(
+      1, [&](int64_t, int64_t) { ++callbacks; });
+  EXPECT_EQ(source->requests, 1);
+  EXPECT_EQ(callbacks, 0);
+  source->Tick(100, 200);
+  fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(callbacks, 2);
+}
+
+TEST_F(VsyncMonitorTest, ExternalSourceDefersReentrantRequests) {
+  auto source = std::make_shared<ExternalVSyncSource>();
+  auto monitor = std::make_shared<VSyncMonitor>(source);
+  monitor->BindToCurrentThread();
+  int callbacks = 0;
+  monitor->AsyncRequestVSync([&](int64_t, int64_t) {
+    ++callbacks;
+    monitor->ScheduleVSyncSecondaryCallback(
+        2, [&](int64_t, int64_t) { ++callbacks; });
+  });
+  EXPECT_EQ(source->requests, 1);
+  source->Tick(100, 200);
+  fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(callbacks, 1);
+  EXPECT_EQ(source->requests, 2);
+  source->Tick(200, 300);
+  fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(callbacks, 2);
+}
+
+TEST_F(VsyncMonitorTest, ExternalSignalReturnsToBoundRunner) {
+  fml::Thread thread("external-vsync-test");
+  auto source = std::make_shared<ExternalVSyncSource>();
+  auto monitor = std::make_shared<VSyncMonitor>(source);
+  int callbacks = 0;
+  thread.GetTaskRunner()->PostSyncTask([&] {
+    monitor->BindToCurrentThread();
+    monitor->ScheduleVSyncSecondaryCallback(1, [&](int64_t start, int64_t) {
+      EXPECT_TRUE(thread.GetTaskRunner()->RunsTasksOnCurrentThread());
+      EXPECT_EQ(start, 100);
+      ++callbacks;
+    });
+  });
+  EXPECT_EQ(callbacks, 0);
+  source->Tick(100, 200);
+  thread.GetTaskRunner()->PostSyncTask([] {});
+  EXPECT_EQ(callbacks, 1);
+}
+
+TEST_F(VsyncMonitorTest, SynchronousHostDoesNotInvokeConsumersInline) {
+  class SynchronousSource : public VSyncMonitorPlatformImpl {
+   public:
+    void RequestVSync(Callback callback) override { callback(100, 200); }
+  };
+  auto monitor =
+      std::make_shared<VSyncMonitor>(std::make_shared<SynchronousSource>());
+  monitor->BindToCurrentThread();
+  bool called = false;
+  monitor->AsyncRequestVSync([&](int64_t, int64_t) { called = true; });
+  EXPECT_FALSE(called);
+  fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_TRUE(called);
+}
+
+TEST_F(VsyncMonitorTest, StopDiscardsAnAlreadyQueuedExternalSignal) {
+  fml::Thread thread("external-vsync-stop-test");
+  auto source = std::make_shared<ExternalVSyncSource>();
+  auto monitor = std::make_shared<VSyncMonitor>(source);
+  int callbacks = 0;
+  thread.GetTaskRunner()->PostSyncTask([&] {
+    monitor->BindToCurrentThread();
+    monitor->AsyncRequestVSync([&](int64_t, int64_t) { ++callbacks; });
+    // Queue delivery while the owner is still executing this task.
+    std::thread host([&] { source->Tick(100, 200); });
+    host.join();
+    monitor->StopVSync();
+  });
+  thread.GetTaskRunner()->PostSyncTask([] {});
+  EXPECT_EQ(callbacks, 0);
+}
 
 TEST_F(VsyncMonitorTest, AsyncRequestVSync) {
   auto monitor = std::make_shared<TestVSyncMonitor>();

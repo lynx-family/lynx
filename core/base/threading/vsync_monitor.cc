@@ -37,7 +37,7 @@ VSyncMonitor::VSyncMonitor(
 void VSyncMonitor::AsyncRequestVSync(Callback callback) {
   // take care: do not call AsyncRequestVSync in multiple threads, or add a
   // mutex to protect
-  if (callback_) {
+  if (!callback || callback_) {
     // request during a frame interval, just return
     return;
   }
@@ -45,6 +45,11 @@ void VSyncMonitor::AsyncRequestVSync(Callback callback) {
   DCHECK(runner_->RunsTasksOnCurrentThread());
 
   callback_ = std::move(callback);
+
+  if (requested_) {
+    return;
+  }
+  requested_ = true;
 
   if (is_on_ui_thread_) {
     RequestVSyncOnUIThread();
@@ -70,12 +75,12 @@ void VSyncMonitor::ScheduleVSyncSecondaryCallback(uintptr_t id,
   }
 
   if (!requested_) {
+    requested_ = true;
     if (is_on_ui_thread_) {
       RequestVSyncOnUIThread();
     } else {
       RequestVSync();
     }
-    requested_ = true;
   }
 }
 
@@ -83,13 +88,7 @@ void VSyncMonitor::StopVSync() { stop_vsync_ = true; }
 
 void VSyncMonitor::OnVSync(int64_t frame_start_time,
                            int64_t frame_target_time) {
-  if (stop_vsync_) {
-    callback_ = nullptr;
-    secondary_callbacks_.clear();
-    return;
-  }
-
-  if (runner_->RunsTasksOnCurrentThread()) {
+  if (!platform_impl_ && runner_->RunsTasksOnCurrentThread()) {
     OnVSyncInternal(frame_start_time, frame_target_time);
     return;
   }
@@ -111,23 +110,24 @@ void VSyncMonitor::OnVSync(int64_t frame_start_time,
 
 void VSyncMonitor::OnVSyncInternal(int64_t frame_start_time,
                                    int64_t frame_target_time) {
+  DCHECK(runner_->RunsTasksOnCurrentThread());
   requested_ = false;
-  // if necessary, add callback mutex
-  if (callback_) {
-    Callback callback = std::move(callback_);
-    callback(frame_start_time, frame_target_time);
+  if (stop_vsync_) {
+    callback_ = nullptr;
+    secondary_callbacks_.clear();
+    return;
   }
 
-  if (!secondary_callbacks_.empty()) {
-    std::vector<Callback> callback_vec;
-    for (auto &&[id, callback] : secondary_callbacks_) {
-      callback_vec.push_back(std::move(callback));
-    }
-    secondary_callbacks_.clear();
-
-    for (auto &cb : callback_vec) {
-      cb(frame_start_time, frame_target_time);
-    }
+  Callback primary = std::move(callback_);
+  auto secondary = std::move(secondary_callbacks_);
+  secondary_callbacks_.clear();
+  // Freeze this signal's subscribers before invoking any of them. Requests
+  // made by a callback belong to the following signal.
+  if (primary) {
+    primary(frame_start_time, frame_target_time);
+  }
+  for (auto &[id, callback] : secondary) {
+    callback(frame_start_time, frame_target_time);
   }
 }
 
