@@ -1964,6 +1964,10 @@ public class com::lynx::tasm::behavior::ui::image::FlattenUIImage : com.lynx.tas
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.pauseAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.resumeAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
+  public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.getCurrentFrame(com.lynx.react.bridge.Callback callback);
+  public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.getFrameCount(com.lynx.react.bridge.Callback callback);
+  public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.getDuration(com.lynx.react.bridge.Callback callback);
+  public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.isAnimating(com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.startAnimate(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.updatePropertiesInterval(StylesDiffMap props);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.onPropsUpdated();
@@ -11490,6 +11494,10 @@ public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behav
   public void com.lynx.tasm.behavior.ui.image.UIImage.pauseAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.resumeAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
+  public void com.lynx.tasm.behavior.ui.image.UIImage.getCurrentFrame(com.lynx.react.bridge.Callback callback);
+  public void com.lynx.tasm.behavior.ui.image.UIImage.getFrameCount(com.lynx.react.bridge.Callback callback);
+  public void com.lynx.tasm.behavior.ui.image.UIImage.getDuration(com.lynx.react.bridge.Callback callback);
+  public void com.lynx.tasm.behavior.ui.image.UIImage.isAnimating(com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.startAnimate(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.setImageRendering(int imageRendering);
   public void com.lynx.tasm.behavior.ui.image.UIImage.updatePropertiesInterval(StylesDiffMap props);
