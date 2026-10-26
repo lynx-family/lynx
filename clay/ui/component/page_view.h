@@ -24,6 +24,7 @@
 #include "clay/common/recyclable.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/flow/frame_timings.h"
+#include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/size.h"
 #include "clay/gfx/pixel_helper.h"
 #include "clay/public/event_delegate.h"
@@ -108,6 +109,11 @@ class PageView : public BaseView,
   ~PageView() override;
 
   bool IsLayoutRootCandidate() const override { return true; }
+  // Keep records flat to avoid instantiating a nested
+  // vector<pair<FloatRect, array<float, 6>>> and flattening it again in each
+  // platform bridge. Every 10 floats form one record:
+  // [x, y, width, height, valid, status, visibility, alpha, scale_x, scale_y].
+  std::vector<float> CollectMeaningfulPaintingAreas();
 
   void SetEventDelegate(EventDelegate* delegate) { event_delegate_ = delegate; }
   EventDelegate* GetEventDelegate() { return event_delegate_; }
