@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxBlurImageProcessor.h>
 #import <Lynx/LynxColorUtils.h>
+#import <Lynx/LynxContext.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventDetail.h>
 #import <Lynx/LynxImageLoader.h>
@@ -120,7 +121,11 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   NSMutableDictionary<id, dispatch_block_t>* _cancelBlocks;
   NSUInteger _requestGenerations[LynxImageRequestPlaceholder + 1];
   NSMutableDictionary<id, UIImage*>* _images;
+  CGSize _prefetchSize;
+  BOOL _downsampling;
   BOOL _isBackground;
+  BOOL _resizeReuseDisabled;
+  NSString* _requestPriority;
 
   __weak UIImageView* _imageView;
   __weak CALayer* _imageLayer;
@@ -179,6 +184,16 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   _blurRadius = LynxImageLengthFromProp(NSStringFromBaseString(paintInfo.blur_radius), _context);
   _autoSize = paintInfo.auto_size;
   _isBackground = paintInfo.is_background;
+  _downsampling = paintInfo.downsampling;
+  _requestPriority =
+      paintInfo.request_priority.empty() ? nil : NSStringFromBaseString(paintInfo.request_priority);
+  _prefetchSize = CGSizeMake(
+      paintInfo.prefetch_width.empty()
+          ? 0
+          : LynxImageLengthFromProp(NSStringFromBaseString(paintInfo.prefetch_width), _context),
+      paintInfo.prefetch_height.empty()
+          ? 0
+          : LynxImageLengthFromProp(NSStringFromBaseString(paintInfo.prefetch_height), _context));
   _tintColor =
       [LynxColorUtils convertNSStringToUIColor:NSStringFromBaseString(paintInfo.tint_color)];
   _capInsets = LynxImageCapInsetsFromProp(NSStringFromBaseString(paintInfo.cap_insets), _context);
@@ -194,6 +209,17 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
                                                         targetSign:_sign
                                                             detail:params];
     [_context.eventEmitter sendCustomEvent:event];
+  }
+}
+
+- (BOOL)canReuseOnResize {
+  LynxUIContext* context = _context;
+  if (context.imageFetcher != nil || context.mediaResourceFetcher != nil ||
+      context.lynxContext.hasCustomMediaFetcher) {
+    return NO;
+  }
+  @synchronized(self) {
+    return !_resizeReuseDisabled;
   }
 }
 
@@ -213,7 +239,20 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     return;
   }
 
-  CGSize targetSize = imageURL.imageSize;
+  const CGSize layoutSize = imageURL.imageSize;
+  CGSize targetSize = layoutSize;
+  if (!_isBackground) {
+    // A single resolved dimension is enough for auto-size. Prefetch may start
+    // ordinary requests before layout, but cannot resolve a 0x0 auto-size image.
+    if (targetSize.width <= 0 && targetSize.height <= 0 &&
+        (_autoSize || (_prefetchSize.width <= 0 && _prefetchSize.height <= 0))) {
+      return;
+    }
+    if ((targetSize.width <= 0 || targetSize.height <= 0) && _prefetchSize.width > 0 &&
+        _prefetchSize.height > 0) {
+      targetSize = _prefetchSize;
+    }
+  }
   LynxImageLoadOptions* options = [[LynxImageLoadOptions alloc] init];
   options.imageURL = imageURL;
   options.targetSize = targetSize;
@@ -233,6 +272,15 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   contextInfo[LynxImageCancelRequest] = @YES;
   // CALayer background animations need decoded frames; image views stream them.
   contextInfo[LynxImagePreloadAllFrames] = @(_isBackground);
+  if (!_isBackground) {
+    if (_downsampling && !_autoSize) {
+      contextInfo[LynxImageFetcherContextKeyDownsampling] = @YES;
+      contextInfo[LynxImageFixNewImageDownsampling] = @(_context.fixNewImageDownSampling);
+    }
+    if (_requestPriority != nil) {
+      contextInfo[LynxImageRequestPriority] = _requestPriority;
+    }
+  }
   options.contextInfo = contextInfo;
 
   NSMutableArray* processors = [NSMutableArray new];
@@ -258,6 +306,9 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
       if (self->_requestGenerations[type] != requestGeneration) {
         return;
       }
+      if (image == nil || error != nil) {
+        self->_resizeReuseDisabled = YES;
+      }
       self->_cancelBlocks[@(type)] = nil;
     }
     dispatch_block_t applyResult = ^{
@@ -277,7 +328,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
       if (image != nil && type == LynxImageRequestSrc && self->_autoSize &&
           UIEdgeInsetsEqualToEdgeInsets(self->_capInsets, UIEdgeInsetsZero)) {
         CGSize imageSize = image.size;
-        if (ShouldUpdateAutoSizeLayout(imageSize, targetSize)) {
+        if (ShouldUpdateAutoSizeLayout(imageSize, layoutSize)) {
           [self->_context
               findShadowNodeAndRunTask:self->_sign
                                   task:^(LynxShadowNode* node) {
@@ -539,6 +590,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 - (void)reset {
   NSArray<dispatch_block_t>* cancelBlocks;
   @synchronized(self) {
+    _resizeReuseDisabled = YES;
     for (NSUInteger& generation : _requestGenerations) {
       ++generation;
     }
