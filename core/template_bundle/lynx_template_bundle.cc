@@ -39,6 +39,32 @@ std::string LynxTemplateBundle::FromBinary(std::vector<uint8_t> binary,
 std::string LynxTemplateBundle::FromBinaryGreedy(
     std::vector<uint8_t> binary, const std::string &template_url,
     bool skip_css_decode, std::optional<bool> is_card) {
+  return FromBinaryGreedy(
+      std::make_shared<const std::vector<uint8_t>>(std::move(binary)),
+      template_url, skip_css_decode, is_card);
+}
+
+std::string LynxTemplateBundle::FromBinaryGreedy(
+    std::shared_ptr<const std::vector<uint8_t>> binary,
+    const std::string &template_url, bool skip_css_decode,
+    std::optional<bool> is_card, const TemplateVerification &verification) {
+  if (binary == nullptr) {
+    return "Cannot decode template from a null binary";
+  }
+  if (verification.enabled) {
+    auto *service =
+        service::get_service<service::security_service::LynxSecurityService>();
+    if (!service) {
+      return "Native security service is unavailable";
+    }
+    auto result =
+        service->VerifyTASM(binary->data(), binary->size(), template_url,
+                            verification.type, verification.platform_target);
+    if (!result.verified) {
+      return result.error_message.empty() ? "Template verification failed"
+                                          : result.error_message;
+    }
+  }
   auto reader = LynxBinaryReader::CreateLynxBinaryReader(std::move(binary));
   if (is_card.has_value()) {
     reader.SetIsCardType(*is_card);

@@ -98,7 +98,7 @@ bool TemplateBinaryReader::DecodeCSSDescriptor() {
  * @return A unique pointer to a `style::StyleObjectDecoder` instance.
  */
 static std::unique_ptr<style::StyleObjectDecoder> StyleObjectDecoderCreator(
-    uint8_t* data, size_t length, const StringListVec& string_list) {
+    const uint8_t* data, size_t length, const StringListVec& string_list) {
   auto binary_stream =
       std::make_unique<lepus::ByteArrayInputStream>(data, length);
   auto* async_reader = new LynxBinaryBaseCSSReader(std::move(binary_stream));

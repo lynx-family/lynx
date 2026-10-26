@@ -9,12 +9,10 @@
 
 #include "core/resource/lynx_resource_handle.h"
 
-/// @hide
 @interface LynxResourceHandle (Internal)
 
 - (std::shared_ptr<lynx::pub::LynxResourceHandle>)rawResourceHandle;
 
 @end
-/// @endhide
 
 #endif  // DARWIN_COMMON_LYNX_LYNX_RESOURCE_HANDLE_INTERNAL_H_

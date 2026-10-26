@@ -4,9 +4,13 @@
 
 #import <Lynx/LynxDevToolPool.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxError.h>
 #import <Lynx/LynxService.h>
+#import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTemplateBundle.h>
+
 #import "LynxBytecodeResponseBlock+Converter.h"
+#import "LynxResourceHandle+Internal.h"
 #import "LynxTemplateBundle+Converter.h"
 #include "base/include/value/byte_array.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
@@ -39,7 +43,8 @@
                                                                    url:url
                                                                   type:LynxTASMTypeTemplate];
     if (!verification.verified) {
-      _error = verification.errorMsg;
+      _error =
+          verification.errorMsg.length ? verification.errorMsg : @"Template verification failed";
       return;
     }
   }
@@ -106,6 +111,69 @@
   BOOL skipCSS = option ? [option skipCSS] : NO;
   [self decodeTemplate:data url:url debuggable:debuggable skipCSS:skipCSS];
   [self initWithOption:option];
+  return self;
+}
+
+- (instancetype _Nullable)initWithResourceHandle:(nullable LynxResourceHandle*)handle {
+  return [self initWithResourceHandle:handle option:nil];
+}
+
+- (instancetype _Nullable)initWithResourceHandle:(nullable LynxResourceHandle*)handle
+                                          option:(nullable LynxTemplateBundleOption*)option {
+  return [self initWithResourceHandle:handle option:option securityTarget:nil];
+}
+
+- (instancetype _Nullable)initWithResourceHandle:(nullable LynxResourceHandle*)handle
+                                          option:(nullable LynxTemplateBundleOption*)option
+                                  securityTarget:(nullable id<LynxSecurityTarget>)target {
+  if (handle == nil) {
+    return nil;
+  }
+  if (self = [super init]) {
+    _url = option.url ?: handle.filePath;
+    [LynxEnv sharedInstance];
+    auto resource = [handle rawResourceHandle];
+    if (!resource) {
+      _error = [NSString
+          stringWithFormat:@"Cannot parse template from an invalidated resource handle: %@",
+                           handle.filePath];
+    } else {
+      auto data = resource->GetData();
+      if (!data.has_value() || !data.value()) {
+        _error =
+            [NSString stringWithFormat:@"Failed to read template resource: %@", handle.filePath];
+      } else if (data.value()->empty()) {
+        _error = @"Cannot parse template from an empty resource";
+      } else {
+        auto snapshot = std::move(data.value());
+        lynx::tasm::TemplateVerification verification;
+        verification.enabled = true;
+        __attribute__((objc_precise_lifetime)) id<LynxSecurityTarget> realTarget = target ?: self;
+        verification.platform_target = (__bridge void*)realTarget;
+        if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
+          _devtool_pool = [[LynxDevToolPool alloc] initWithURL:_url debuggable:option.debuggable];
+        }
+        NSData* url = [_url dataUsingEncoding:NSUTF8StringEncoding];
+        std::string templateURL;
+        if (url.length) templateURL.assign(static_cast<const char*>(url.bytes), url.length);
+        auto bundle = std::make_shared<lynx::tasm::LynxTemplateBundle>();
+        auto error = bundle->FromBinaryGreedy(std::move(snapshot), templateURL, option.skipCSS,
+                                              std::nullopt, verification);
+        if (error.empty()) {
+          template_bundle_ = std::move(bundle);
+          [_devtool_pool
+              onTemplateBundleCreated:reinterpret_cast<intptr_t>(template_bundle_.get())];
+          template_bundle_->EnsureMTSRuntimePool();
+        } else {
+          _error = [[NSString alloc] initWithBytes:error.data()
+                                            length:error.size()
+                                          encoding:NSUTF8StringEncoding]
+                       ?: @"Template decoding failed";
+        }
+      }
+    }
+    [self initWithOption:option];
+  }
   return self;
 }
 
@@ -200,6 +268,25 @@
     completion = lynx::base::MoveOnlyClosure<>([completion_block]() { completion_block(); });
   }
   return template_bundle_->Preload([url UTF8String], std::move(bytes), std::move(completion));
+}
+
+LynxTemplateBundle* LynxCreateTemplateBundleFromResourceHandle(LynxResourceHandle* handle,
+                                                               NSString* url,
+                                                               id<LynxSecurityTarget> target,
+                                                               LynxError** error) {
+  LynxTemplateBundleOption* option = [[LynxTemplateBundleOption alloc] init];
+  option.url = url;
+  LynxTemplateBundle* bundle = [[LynxTemplateBundle alloc] initWithResourceHandle:handle
+                                                                           option:option
+                                                                   securityTarget:target];
+  if (bundle == nil || !bundle.isValid) {
+    if (error != nullptr) {
+      *error = [LynxError lynxErrorWithCode:ECLynxAppBundleLoadBadBundle
+                                    message:bundle.errorMsg ?: @"Failed to create template bundle"];
+    }
+    return nil;
+  }
+  return bundle;
 }
 
 std::shared_ptr<lynx::tasm::LynxTemplateBundle> LynxGetRawTemplateBundle(

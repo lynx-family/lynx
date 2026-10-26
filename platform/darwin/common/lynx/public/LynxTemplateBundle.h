@@ -6,6 +6,7 @@
 #define DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_H_
 
 #import <Lynx/LynxBytecodeResponseBlock.h>
+#import <Lynx/LynxResourceHandle.h>
 #import <Lynx/LynxServiceSecurityProtocol.h>
 #import <Lynx/LynxTemplateBundleOption.h>
 
@@ -50,6 +51,34 @@
 - (instancetype _Nullable)_swiftInitWithData:(nonnull NSData*)data
                                       option:(nullable LynxTemplateBundleOption*)option
     __attribute__((objc_method_family(none)))NS_SWIFT_NAME(initWith(_:option:));
+
+/**
+ * @apidoc
+ * @brief Reads and parses a Lynx Bundle from a reusable resource handle.
+ * @param handle The resource handle that describes the Lynx Bundle.
+ * @return The parsed `LynxTemplateBundle`, or `nil` when `handle` is `nil`.
+ * @note The handle remains valid and reusable after this method returns.
+ * @note The resource file path is used as the bundle URL.
+ * @note A registered native C++ security service is required. If unavailable, the returned bundle
+ * is invalid and contains a missing-service error.
+ */
+- (instancetype _Nullable)initWithResourceHandle:(nullable LynxResourceHandle*)handle
+    NS_SWIFT_NAME(init(resourceHandle:));
+
+/**
+ * @apidoc
+ * @brief Reads and parses a Lynx Bundle from a reusable resource handle with bundle options.
+ * @param handle The resource handle that describes the Lynx Bundle.
+ * @param option Options used while parsing and initializing the bundle. A non-null option URL takes
+ * precedence over the resource file path.
+ * @return The parsed `LynxTemplateBundle`, or `nil` when `handle` is `nil`.
+ * @note The handle remains valid and reusable after this method returns.
+ * @note A registered native C++ security service is required. Missing-service failure preserves
+ * the caller's handle and does not invoke platform byte verification.
+ */
+- (instancetype _Nullable)initWithResourceHandle:(nullable LynxResourceHandle*)handle
+                                          option:(nullable LynxTemplateBundleOption*)option
+    NS_SWIFT_NAME(init(resourceHandle:option:));
 
 /**
  * @apidoc

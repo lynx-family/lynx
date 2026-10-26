@@ -83,45 +83,6 @@ void VerifyLynxTemplateResource(const std::string& url, lynx::pub::LynxResourceR
   }
 }
 
-LynxGenericResourceHandleCompletionBlock CreateBytecodeHandleCallback(
-    lynx::fml::internal::CopyableLambda<
-        lynx::base::MoveOnlyClosure<void, lynx::pub::LynxResourceResponse&>>
-        callback) {
-  auto invoked = std::make_shared<std::atomic_bool>(false);
-  return ^(LynxResourceHandle* _Nullable handle, NSError* _Nullable error) {
-    if (invoked->exchange(true, std::memory_order_relaxed)) {
-      LLogWarn(@"[ResourceHandle] External bytecode failure_stage=handle_fetch_callback, "
-                "failure_reason=duplicate_callback");
-      return;
-    }
-
-    NSInteger errCode = 0;
-    NSString* errMsg = @"";
-    std::shared_ptr<lynx::pub::LynxResourceHandle> resourceHandle;
-    if (error != nil) {
-      LLogError(@"[ResourceHandle] External bytecode failure_stage=handle_fetch_callback, "
-                 "failure_reason=fetch_failed");
-      errCode = ECLynxResourceExternalResourceRequestFailed;
-      errMsg = error.localizedDescription ?: @"Error when fetch external resource";
-    } else if (handle == nil) {
-      LLogError(@"[ResourceHandle] External bytecode failure_stage=handle_fetch_callback, "
-                 "failure_reason=null_handle");
-      errCode = ECLynxResourceExternalResourceRequestFailed;
-      errMsg = kNullDataMsg;
-    } else if ((resourceHandle = [handle rawResourceHandle]) == nullptr) {
-      LLogError(@"[ResourceHandle] External bytecode failure_stage=handle_validation, "
-                 "failure_reason=invalidated_handle");
-      errCode = ECLynxResourceExternalResourceRequestFailed;
-      errMsg = kNullDataMsg;
-    }
-
-    lynx::pub::LynxResourceResponse resp{.resource_handle = std::move(resourceHandle),
-                                         .err_code = static_cast<int32_t>(errCode),
-                                         .err_msg = [errMsg UTF8String]};
-    callback(resp);
-  };
-}
-
 }  // namespace
 
 namespace lynx {
@@ -199,10 +160,29 @@ bool LynxResourceLoaderDarwin::FetchTemplateByGenericFetcher(const std::string& 
         fetchTemplate:request
            onComplete:^(LynxTemplateResource* _Nullable data, NSError* _Nullable error) {
              NSString* errMsg = error == nil ? @"" : [error localizedDescription];
+             std::shared_ptr<tasm::LynxTemplateBundle> retainedBundle;
              pub::LynxResourceResponse resp{.err_code = error == nil ? 0 : -1,
                                             .err_msg = [errMsg UTF8String]};
              if (data.bundle != nil) {
                resp.bundle = LynxGetRawTemplateBundle(data.bundle).get();
+             } else if (data.resourceHandle != nil) {
+               if (type == LynxResourceTypeDynamicComponent) {
+                 resp.err_code = -1;
+                 resp.err_msg = "Resource handles are not supported for lazy bundles";
+                 callback(resp);
+                 return;
+               }
+               LynxError* bundleError = nil;
+               // This loader has no View context; verification targets the new bundle.
+               LynxTemplateBundle* bundle = LynxCreateTemplateBundleFromResourceHandle(
+                   data.resourceHandle, nsUrl, nil, &bundleError);
+               if (bundle == nil) {
+                 resp.err_code = static_cast<int32_t>(bundleError.code);
+                 resp.err_msg = [bundleError.summaryMessage UTF8String];
+               } else {
+                 retainedBundle = LynxGetRawTemplateBundle(bundle);
+                 resp.bundle = retainedBundle.get();
+               }
              } else if (data.data != nil) {
                resp.data = ConvertNSBinary(data.data);
              }
@@ -395,9 +375,43 @@ void LynxResourceLoaderDarwin::LoadBytecode(
                                                                                  type:requestType];
       __block __weak id<LynxErrorReceiverProtocol> weakErrorReceiver = _errorReceiver;
       if ([_genericResourceFetcher respondsToSelector:@selector(fetchBytecodeHandle:onComplete:)]) {
+        auto invoked = std::make_shared<std::atomic_bool>(false);
         BOOL accepted = [_genericResourceFetcher
             fetchBytecodeHandle:resourceRequest
-                     onComplete:CreateBytecodeHandleCallback(copyable_callback)];
+                     onComplete:^(LynxResourceHandle* _Nullable handle, NSError* _Nullable error) {
+                       if (invoked->exchange(true, std::memory_order_relaxed)) {
+                         return;
+                       }
+
+                       NSInteger errCode = 0;
+                       NSString* errMsg = @"";
+                       std::shared_ptr<pub::LynxResourceHandle> resourceHandle;
+                       if (error != nil) {
+                         LLogError(@"[ResourceHandle] External bytecode "
+                                    "failure_stage=handle_fetch_callback, "
+                                    "failure_reason=fetch_failed");
+                         errCode = ECLynxResourceExternalResourceRequestFailed;
+                         errMsg =
+                             error.localizedDescription ?: @"Error when fetch external resource";
+                       } else if (handle == nil) {
+                         LLogError(@"[ResourceHandle] External bytecode "
+                                    "failure_stage=handle_fetch_callback, "
+                                    "failure_reason=null_handle");
+                         errCode = ECLynxResourceExternalResourceRequestFailed;
+                         errMsg = kNullDataMsg;
+                       } else if ((resourceHandle = [handle rawResourceHandle]) == nullptr) {
+                         LLogError(@"[ResourceHandle] External bytecode "
+                                    "failure_stage=handle_validation, "
+                                    "failure_reason=invalidated_handle");
+                         errCode = ECLynxResourceExternalResourceRequestFailed;
+                         errMsg = kNullDataMsg;
+                       }
+
+                       pub::LynxResourceResponse resp{.resource_handle = std::move(resourceHandle),
+                                                      .err_code = static_cast<int32_t>(errCode),
+                                                      .err_msg = [errMsg UTF8String]};
+                       copyable_callback(resp);
+                     }];
         if (accepted) {
           return;
         }
