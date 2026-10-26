@@ -13,6 +13,7 @@
 
 #include "base/include/fml/task_runner.h"
 #include "core/renderer/js_bundle_holder_impl.h"
+#include "core/renderer/template_entry_holder.h"
 #include "core/resource/external_resource/external_resource_loader.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/common/bindings/resource/response_promise.h"
@@ -29,22 +30,14 @@ class ImmediateTaskRunner : public fml::TaskRunner {
   void PostTask(base::closure task) override { task(); }
 };
 
-class MockLazyBundleLoaderForMediatorTest : public tasm::LazyBundleLoader {
+// Count engine dispatches without executing them on the calling JS thread.
+class CountingEngineTaskRunner : public fml::TaskRunner {
  public:
-  MockLazyBundleLoaderForMediatorTest() = default;
-  ~MockLazyBundleLoaderForMediatorTest() override = default;
+  CountingEngineTaskRunner() : fml::TaskRunner(nullptr) {}
+  bool RunsTasksOnCurrentThread() override { return false; }
+  void PostTask(base::closure) override { ++post_task_count_; }
 
-  using tasm::LazyBundleLoader::FetchBundle;
-  void FetchBundle(tasm::lazy_bundle::LynxLazyBundleRequest request) {
-    ++fetch_bundle_call_count_;
-    if (request.response_promise) {
-      request.response_promise->SetValue(
-          {.url = request.url,
-           .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED});
-    }
-  }
-
-  int fetch_bundle_call_count_{0};
+  int post_task_count_{0};
 };
 
 class EmptyBundleProxy : public tasm::JsBundleHolderImpl::BundleProxy {
@@ -80,8 +73,9 @@ TEST(BTSRuntimeMediatorTest,
       BTSRuntimeMediator(nullptr, nullptr, nullptr, nullptr, task_runner,
                          std::move(external_resource_loader));
 
+  auto resource_loader = std::make_shared<CountingResourceLoader>();
   auto lazy_bundle_loader =
-      std::make_shared<MockLazyBundleLoaderForMediatorTest>();
+      std::make_shared<tasm::LazyBundleLoader>(resource_loader);
   tasm::LynxTemplateBundle template_bundle;
   constexpr const char kBundleUrl[] = "standalone://cached_bundle";
   lazy_bundle_loader->InsertTemplateBundle(kBundleUrl,
@@ -96,7 +90,94 @@ TEST(BTSRuntimeMediatorTest,
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->url, kBundleUrl);
   EXPECT_EQ(result->code, tasm::LYNX_BUNDLE_RESOURCE_INFO_SUCCESS);
-  EXPECT_EQ(lazy_bundle_loader->fetch_bundle_call_count_, 0);
+  EXPECT_EQ(resource_loader->load_resource_count_, 0);
+}
+
+TEST(BTSRuntimeMediatorTest, FetchBundleRegisteredBundleSkipsEngineDispatch) {
+  auto js_runner = fml::MakeRefCounted<ImmediateTaskRunner>();
+  auto engine_runner = fml::MakeRefCounted<CountingEngineTaskRunner>();
+  auto engine_actor = std::make_shared<LynxActor<LynxEngine>>(
+      std::make_unique<LynxEngine>(nullptr, nullptr, nullptr,
+                                   base::LogContext{}, kUnknownInstanceId),
+      engine_runner);
+  auto resource_loader = std::make_shared<CountingResourceLoader>();
+  auto mediator = BTSRuntimeMediator(
+      nullptr, engine_actor, nullptr, nullptr, js_runner,
+      std::make_unique<ExternalResourceLoader>(resource_loader));
+  mediator.runtime_standalone_mode_ = false;
+  auto loader = std::make_shared<tasm::LazyBundleLoader>(resource_loader);
+  mediator.SetLazyBundleLoader(loader);
+
+  // Use the same registration path as LynxEngine::InsertLynxTemplateBundle.
+  tasm::TemplateEntryHolder holder;
+  holder.SetLazyBundleLoader(loader);
+  constexpr const char kBundleUrl[] = "https://example.com/registered.bundle";
+  holder.InsertLynxTemplateBundle(kBundleUrl, tasm::LynxTemplateBundle{});
+
+  auto response =
+      std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
+  mediator.FetchBundle(kBundleUrl, response);
+
+  auto result = response->Wait(0);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->url, kBundleUrl);
+  EXPECT_EQ(result->code, tasm::LYNX_BUNDLE_RESOURCE_INFO_SUCCESS);
+  EXPECT_EQ(engine_runner->post_task_count_, 0);
+  EXPECT_EQ(resource_loader->load_resource_count_, 0);
+}
+
+TEST(BTSRuntimeMediatorTest, FetchBundleCacheMissDispatchesToEngine) {
+  for (bool has_loader : {false, true}) {
+    SCOPED_TRACE(has_loader);
+    auto js_runner = fml::MakeRefCounted<ImmediateTaskRunner>();
+    auto engine_runner = fml::MakeRefCounted<CountingEngineTaskRunner>();
+    // Keep the engine alive so a cache miss exercises dispatch instead of the
+    // destroyed-engine error path. The counting runner never executes the task.
+    auto engine_actor = std::make_shared<LynxActor<LynxEngine>>(
+        std::make_unique<LynxEngine>(nullptr, nullptr, nullptr,
+                                     base::LogContext{}, kUnknownInstanceId),
+        engine_runner);
+    auto resource_loader = std::make_shared<CountingResourceLoader>();
+    auto mediator = BTSRuntimeMediator(
+        nullptr, engine_actor, nullptr, nullptr, js_runner,
+        std::make_unique<ExternalResourceLoader>(resource_loader));
+    mediator.runtime_standalone_mode_ = false;
+    if (has_loader) {
+      auto loader = std::make_shared<tasm::LazyBundleLoader>(resource_loader);
+      loader->InsertTemplateBundle("https://example.com/other.bundle",
+                                   tasm::LynxTemplateBundle{});
+      mediator.SetLazyBundleLoader(loader);
+    }
+
+    auto response =
+        std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
+    mediator.FetchBundle("https://example.com/missing.bundle", response);
+
+    EXPECT_FALSE(response->Wait(0).has_value());
+    EXPECT_EQ(engine_runner->post_task_count_, 1);
+    EXPECT_EQ(resource_loader->load_resource_count_, 0);
+  }
+}
+
+TEST(BTSRuntimeMediatorTest, FetchBundleStandaloneCacheMissFetchesResource) {
+  auto js_runner = fml::MakeRefCounted<ImmediateTaskRunner>();
+  auto resource_loader = std::make_shared<CountingResourceLoader>();
+  auto mediator = BTSRuntimeMediator(
+      nullptr, nullptr, nullptr, nullptr, js_runner,
+      std::make_unique<ExternalResourceLoader>(resource_loader));
+  mediator.SetLazyBundleLoader(
+      std::make_shared<tasm::LazyBundleLoader>(resource_loader));
+  auto response =
+      std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
+  constexpr const char kBundleUrl[] = "https://example.com/missing.bundle";
+
+  mediator.FetchBundle(kBundleUrl, response);
+
+  auto result = response->Wait(0);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->url, kBundleUrl);
+  EXPECT_EQ(result->code, tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED);
+  EXPECT_EQ(resource_loader->load_resource_count_, 1);
 }
 
 TEST(BTSRuntimeMediatorTest,
