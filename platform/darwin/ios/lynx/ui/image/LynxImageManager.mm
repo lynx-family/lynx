@@ -19,6 +19,21 @@
 #import <QuartzCore/QuartzCore.h>
 #include "core/renderer/ui_wrapper/painting/paint_image.h"
 
+NSDictionary<NSString*, id>* LynxImageAnimationInfo(UIImage* image, UIImageView* view) {
+  id<LynxServiceImageProtocol> service = [LynxImageLoader imageService];
+  NSDictionary* info = image && [service respondsToSelector:@selector(animationInfo:)]
+                           ? [service animationInfo:view]
+                           : nil;
+  return @{
+    @"isAnimating" : view ? @(view.isAnimating) : NSNull.null,
+    @"frameIndex" : info[@"frameIndex"] ?: NSNull.null,
+    @"frameCount" : info[@"frameCount"]
+        ?: (image.images.count ? @(image.images.count)
+                               : (image && ![service isAnimatedImage:image] ? @1 : NSNull.null)),
+    @"loopDurationMs" : image.duration > 0 ? @(image.duration * 1000) : NSNull.null,
+  };
+}
+
 static const NSInteger kFlagImageLoadEvent = 1 << 0;
 static const NSInteger kFlagImageErrorEvent = 1 << 1;
 static const NSInteger kFlagImageStartPlayEvent = 1 << 2;
@@ -658,6 +673,10 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     return YES;
   }
   return NO;
+}
+
+- (NSDictionary<NSString*, id>*)animationInfo {
+  return LynxImageAnimationInfo(_images[@(LynxImageRequestSrc)], _imageView);
 }
 
 - (void)reset {
