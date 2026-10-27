@@ -67,18 +67,7 @@ LynxShellBuilder& LynxShellBuilder::SetWhiteBoard(
 
 LynxShellBuilder& LynxShellBuilder::SetEnableElementManagerVsyncMonitor(
     bool enable_element_manager_vsync_monitor) {
-  if (enable_element_manager_vsync_monitor) {
-    if (this->vsync_monitor_platform_impl_) {
-      this->element_manager_vsync_monitor_ =
-          std::make_shared<base::VSyncMonitor>(
-              this->vsync_monitor_platform_impl_);
-    } else {
-      this->element_manager_vsync_monitor_ = base::VSyncMonitor::Create(
-          lynx::tasm::LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread());
-    }
-  } else {
-    this->element_manager_vsync_monitor_ = nullptr;
-  }
+  enable_element_manager_vsync_monitor_ = enable_element_manager_vsync_monitor;
   return *this;
 }
 
@@ -258,8 +247,17 @@ LynxShell* LynxShellBuilder::build() {
   shell->engine_build_options_.lynx_env_config_ = lynx_env_config_;
   shell->engine_build_options_.lazy_bundle_loader_ = loader_;
   shell->engine_build_options_.white_board_ = white_board_;
-  shell->engine_build_options_.element_manager_vsync_monitor_ =
-      element_manager_vsync_monitor_;
+  // Resolve the monitor from the final builder configuration, independent of
+  // the order in which the enable flag and platform source were set.
+  if (enable_element_manager_vsync_monitor_) {
+    shell->engine_build_options_.element_manager_vsync_monitor_ =
+        vsync_monitor_platform_impl_
+            ? std::make_shared<base::VSyncMonitor>(vsync_monitor_platform_impl_)
+            : base::VSyncMonitor::Create(tasm::LynxEnv::GetInstance()
+                                             .EnableAnimationVsyncOnUIThread());
+  }
+  shell->engine_build_options_.vsync_monitor_platform_impl_ =
+      vsync_monitor_platform_impl_;
   shell->engine_build_options_.enable_new_animator_ = enable_new_animator_;
   shell->engine_build_options_.enable_native_list_ = enable_native_list_;
   shell->engine_build_options_.enable_layout_only_ = enable_layout_only_;

@@ -17,6 +17,9 @@
 #include "core/public/pub_value.h"
 
 namespace lynx {
+namespace base {
+class VSyncMonitor;
+}
 namespace list {
 
 class ElementDelegate {
@@ -73,6 +76,11 @@ class ElementDelegate {
   virtual bool IsAttachToElementManager() const { return true; }
   virtual void MarkTiming(ListTiming flag) {}
   virtual void RequestNextFrame() {}
+  // Returns the page monitor using host-provided VSync. A null result lets
+  // the animator create its default platform monitor.
+  virtual std::shared_ptr<base::VSyncMonitor> GetCustomVSyncMonitor() const {
+    return nullptr;
+  }
   virtual bool IsInDebugMode() const { return false; }
 };
 

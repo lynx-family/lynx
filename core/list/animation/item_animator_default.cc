@@ -20,7 +20,7 @@ std::shared_ptr<::lynx::animation::basic::LynxBasicAnimator>
 ItemAnimatorDefault::CreateBasicAnimator(
     starlight::AnimationData animation_data) {
   return std::make_shared<::lynx::animation::basic::LynxBasicAnimator>(
-      std::move(animation_data));
+      std::move(animation_data), vsync_monitor_);
 }
 
 bool ItemAnimatorDefault::AnimateRemoveImpl(

@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "core/animation/lynx_basic_animator/basic_animator.h"
@@ -26,7 +27,9 @@ class ItemAnimatorDefault
     : public ItemAnimatorBase,
       public fml::EnableWeakFromThis<ItemAnimatorDefault> {
  public:
-  ItemAnimatorDefault() = default;
+  explicit ItemAnimatorDefault(
+      std::shared_ptr<base::VSyncMonitor> vsync_monitor = nullptr)
+      : vsync_monitor_(std::move(vsync_monitor)) {}
   ~ItemAnimatorDefault() override = default;
 
   void RunPendingAnimations() override;
@@ -46,6 +49,7 @@ class ItemAnimatorDefault
                          const ItemLayoutInfo& post_layout_info) override;
 
  private:
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor_;
   // Remove uses PRE, Add uses POST, and Move uses both snapshots. Change also
   // uses one target; cross-animation between separate targets is unsupported.
   struct PendingAnimationInfo {

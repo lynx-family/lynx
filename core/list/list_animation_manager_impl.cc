@@ -70,8 +70,9 @@ void ListAnimationManagerImpl::InitializeAnimator() {
   timing_function_data.timing_func = starlight::TimingFunctionType::kEaseIn;
   data.timing_func = timing_function_data;
   // basic animator requires a shared_ptr.
-  animator_ =
-      std::make_shared<animation::basic::LynxBasicAnimator>(std::move(data));
+  animator_ = std::make_shared<animation::basic::LynxBasicAnimator>(
+      std::move(data),
+      list_container_impl_->list_delegate()->GetCustomVSyncMonitor());
 }
 
 void ListAnimationManagerImpl::InitializeAnimatorEvent() {
