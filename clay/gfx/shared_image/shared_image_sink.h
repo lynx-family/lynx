@@ -10,6 +10,7 @@
 #include <mutex>
 #include <optional>
 #include <tuple>
+#include <utility>
 
 #include "base/include/closure.h"
 #include "base/include/fml/memory/ref_counted.h"
@@ -17,6 +18,12 @@
 #include "skity/geometry/vector.hpp"
 
 namespace clay {
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+namespace display {
+class OutputMailbox;
+}
+#endif
 
 class SharedImageBacking;
 class SharedImageBackingUnmanaged;
@@ -58,6 +65,16 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
   explicit SharedImageSink(
       UpdateFrontMode update_front_mode = UpdateFrontMode::kSequence);
   virtual ~SharedImageSink() = default;
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  std::shared_ptr<display::OutputMailbox> GetDisplayOutputMailbox() const {
+    return display_output_mailbox_;
+  }
+  void SetDisplayOutputMailbox(
+      std::shared_ptr<display::OutputMailbox> mailbox) {
+    display_output_mailbox_ = std::move(mailbox);
+  }
+#endif
 
   virtual void SetFrameAvailableCallback(const fml::closure& callback) = 0;
 
@@ -123,6 +140,9 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
 
  private:
   UpdateFrontMode update_front_mode_;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  std::shared_ptr<display::OutputMailbox> display_output_mailbox_;
+#endif
 };
 
 /// SharedImageSinkManaged owns all internal buffers.

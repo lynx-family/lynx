@@ -27,6 +27,7 @@ class VulkanFenceHelper {
   bool InPendingQueue(const std::list<VkFence> &pending_fences);
 
   bool WaitForFence();
+  VkResult GetFenceStatus();
   bool WaitSemaphore();
 
  private:

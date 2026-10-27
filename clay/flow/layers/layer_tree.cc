@@ -221,6 +221,9 @@ void LayerTree::Paint(CompositorContext::ScopedFrame& frame,
       // clang-format on
   };
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  context.segment_recorder = segment_recorder_;
+#endif
   if (cache) {
     cache->EvictUnusedCacheEntries();
     TryToRasterCache(raster_cache_items_, &context);

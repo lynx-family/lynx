@@ -47,6 +47,25 @@ void Scheduler::SetOutputSurfaceValid(bool valid) {
   ProcessScheduledAction();
 }
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+void Scheduler::ResetForNewProduction() {
+  state_machine_.ResetForNewProduction();
+  commit_has_no_updates_ = false;
+  sync_compositor_result_ = false;
+}
+void Scheduler::SetProductionAvailable(bool available) {
+  state_machine_.SetOutputSurfaceState(
+      available ? SchedulerStateMachine::OutputSurfaceState::ACTIVE
+                : SchedulerStateMachine::OutputSurfaceState::LOST);
+  ProcessScheduledAction();
+}
+void Scheduler::NotifyActiveTreeProduced(bool success) {
+  // Advances production only. Display acknowledgments use a different service.
+  state_machine_.NotifyActiveTreeHasBeenDrawn();
+  if (!success) state_machine_.SetNeedsRasterBeginFrame();
+  ProcessScheduledAction();
+}
+#endif
 void Scheduler::SetMeaningfulLayout(bool meaningful_layout) {
   state_machine_.SetMeaningfulLayoutState(
       meaningful_layout ? SchedulerStateMachine::MeaningfulLayoutState::FINISH

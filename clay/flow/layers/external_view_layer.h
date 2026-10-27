@@ -13,6 +13,9 @@
 namespace clay {
 class ExternalViewLayer : public ContainerLayer {
  public:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool CanSegmentDisplay() const override { return false; }
+#endif
   ExternalViewLayer(const clay::ElementId& element_id, const skity::Vec2& size);
 
   void Preroll(PrerollContext* context) override;

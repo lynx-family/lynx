@@ -118,6 +118,10 @@ struct PrerollContext {
   uint64_t retained_preroll_generation = 0;
 };
 
+namespace display {
+class SegmentRecorder;
+}
+
 struct PaintContext {
   // When splitting the scene into multiple canvases (e.g when embedding
   // a platform view on iOS) during the paint traversal we apply any state
@@ -146,6 +150,9 @@ struct PaintContext {
   const RasterCache* raster_cache;
   const float frame_device_pixel_ratio = 1.0f;
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  display::SegmentRecorder* segment_recorder = nullptr;
+#endif
   bool only_draw_punch_hole = false;
 
 #if !defined(NDEBUG)
@@ -312,6 +319,16 @@ class Layer {
   virtual RasterCacheKeyID caching_key_id() const {
     return RasterCacheKeyID(unique_id_, RasterCacheKeyType::kLayer);
   }
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool HasUnstableDisplayContent() const {
+    return preroll_summary_.has_deferred_image ||
+           preroll_summary_.has_running_picture_animation ||
+           preroll_summary_.has_running_transform_animation;
+  }
+  virtual bool CanSegmentDisplay() const {
+    return as_picture_layer() || as_drawable_image_layer();
+  }
+#endif
   virtual const ContainerLayer* as_container_layer() const { return nullptr; }
 
   virtual const PictureLayer* as_picture_layer() const { return nullptr; }

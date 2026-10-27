@@ -1,0 +1,17 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+# The immutable transport and resource protocol has no native GPU dependency.
+source_set("frame_protocol") {
+  sources = [
+    "../../gfx/shared_image/output_texture.cc",
+    "../../gfx/shared_image/output_texture.h",
+    "../../gfx/shared_image/texture_budget.h",
+    "compositor_frame.h",
+    "compositor_frame_builder.cc",
+    "compositor_frame_builder.h",
+    "frame_types.h",
+  ]
+  include_dirs = [ "../../.." ]
+}

@@ -8,6 +8,9 @@
 #include "clay/flow/layers/drawable_image_layer.h"
 
 #include <memory>
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/flow/compositor/segment_recorder.h"
+#endif
 
 #include "clay/common/graphics/drawable_image.h"
 #include "clay/gfx/pixel_helper.h"
@@ -68,6 +71,12 @@ void DrawableImageLayer::Preroll(PrerollContext* context) {
 }
 
 void DrawableImageLayer::Paint(PaintContext& context) const {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (context.segment_recorder) {
+    context.segment_recorder->RecordDynamic(*this, context);
+    return;
+  }
+#endif
   TRACE_EVENT("clay", "DrawableImageLayer::Paint");
   FML_DCHECK(needs_painting(context));
 
@@ -106,4 +115,48 @@ void DrawableImageLayer::Paint(PaintContext& context) const {
   image->Paint(ctx, physical_bounds, freeze_, ToSk(sampling_), fit_mode_);
 }
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+DrawableImageLayer::SegmentPaint DrawableImageLayer::CaptureSegmentPaint(
+    PaintContext& context) const {
+  MutatorsStack mutators;
+  context.state_stack.fill(&mutators);
+  GrPaint paint;
+  clay::Paint clay_paint;
+  context.state_stack.fill(paint);
+  context.state_stack.fill(clay_paint);
+  auto converter = PixelConverter(context.frame_device_pixel_ratio);
+  auto scale = converter.GetPixelRatio<kPixelTypePhysical, kPixelTypeClay>();
+  auto bounds = skity::Rect(
+      converter.ConvertTo<kPixelTypePhysical>(paint_bounds().Left()),
+      converter.ConvertTo<kPixelTypePhysical>(paint_bounds().Top()),
+      converter.ConvertTo<kPixelTypePhysical>(paint_bounds().Right()),
+      converter.ConvertTo<kPixelTypePhysical>(paint_bounds().Bottom()));
+  return
+      [registry = context.drawable_image_registry, mutators, paint, clay_paint,
+       scale, bounds, id = image_id_, freeze = freeze_, sampling = sampling_,
+       fit = fit_mode_](GrCanvas* canvas, GrContext* gpu) {
+        auto image = registry ? registry->GetDrawableImage(id) : nullptr;
+        if (!image) return;
+        GrAutoCanvasRestore restore(canvas, true);
+        for (auto it = mutators.Begin(); it != mutators.End(); ++it) {
+          switch ((*it)->GetType()) {
+            case MutatorType::kTransform:
+              canvas->Concat((*it)->GetMatrix());
+              break;
+            case MutatorType::kClipRect:
+              canvas->ClipRect((*it)->GetRect());
+              break;
+            case MutatorType::kOpacity:
+              break;  // Included in the leaf paint.
+            default:
+              FML_DCHECK(false);
+              return;  // Rejected by SegmentPlanner.
+          }
+        }
+        canvas->Scale(scale, scale);
+        DrawableImage::PaintContext ctx{canvas, gpu, &paint, &clay_paint};
+        image->Paint(ctx, bounds, freeze, ToSk(sampling), fit);
+      };
+}
+#endif
 }  // namespace clay

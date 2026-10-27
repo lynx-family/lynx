@@ -79,7 +79,23 @@ bool SharedDrawableImage::EnsureAttached() {
 }
 
 // Called from raster thread.
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+bool SharedDrawableImage::PrepareStagedRead() {
+  auto* scope = display::StagedImageReadScope::Current();
+  if (!scope || scope->Contains(this)) return true;
+  if (staged_read_->pending) {
+    scope->Block();
+    return false;
+  }
+  return true;
+}
+#endif
 void SharedDrawableImage::AdvanceFrameConsumption(bool freeze) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (auto* scope = display::StagedImageReadScope::Current();
+      scope && scope->Contains(this))
+    return;
+#endif
   if (image_sink_->Capacity() == 1) {
     [[maybe_unused]] bool update_success = Update();
   } else if (!freeze) {
@@ -240,6 +256,16 @@ void SharedDrawableImage::DrawSkityImage(
 
 // Called from raster thread.
 void SharedDrawableImage::FlushAndReleaseFrontForSingleBuffer() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (auto* scope = display::StagedImageReadScope::Current()) {
+    scope->Hold(this, staged_read_,
+                [accessor = accessor_, image = skity_image_,
+                 single = image_sink_->Capacity() == 1] {
+                  if (single) accessor->ReleaseFront();
+                });
+    return;
+  }
+#endif
   if (image_sink_->Capacity() == 1) {
 #ifndef ENABLE_SKITY
     // Flush sk_image to make sure the shared image can be transferred to the

@@ -10,6 +10,10 @@
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "clay/gfx/rendering_backend.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/shell/common/display_compositor/display_compositor.h"
+#include "clay/shell/common/display_compositor/raster_output_surface.h"
+#endif
 
 namespace clay {
 class GLContextResult;
@@ -36,6 +40,38 @@ class OutputSurface : public fml::RefCountedThreadSafe<OutputSurface> {
       clay::GrContextPtr gr_context = nullptr) = 0;
 
   virtual bool IsValid() const = 0;
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Platform-only window target; Raster-only allocation and producer fence.
+  // Unsupported hosts return null and do not enter the legacy pipeline.
+  virtual uint64_t StagedDeviceId() const { return 0; }
+  // Platform-only capability snapshot for the current display target. Unknown
+  // hosts retain the conservative native-window attachment estimate.
+  virtual bool UseStagedWindowAttachments() const { return true; }
+  virtual std::unique_ptr<Surface> CreateStagedProductionSurface() {
+    return nullptr;
+  }
+  virtual std::unique_ptr<display::DisplayTarget> CreateDisplayTarget(
+      std::shared_ptr<display::TextureBudget> budget) {
+    return nullptr;
+  }
+  virtual std::unique_ptr<display::RasterBuffer> CreateDisplayRasterBuffer(
+      GrContext* context, const skity::Vec2& size) {
+    return nullptr;
+  }
+  virtual std::shared_ptr<display::GPUCompletion> CreateDisplayCompletion(
+      GrContext* context) {
+    return nullptr;
+  }
+  // Raster-only. The production context is current. Queue a GPU dependency
+  // on a completion created by this owner; never wait on the CPU. Returning
+  // false keeps production deferred until the completion can be polled ready.
+  virtual bool EnqueueStagedUploadWait(
+      GrContext* production_context,
+      const std::shared_ptr<display::GPUCompletion>& completion) {
+    return false;
+  }
+#endif
 
  protected:
 #ifdef ENABLE_SKITY

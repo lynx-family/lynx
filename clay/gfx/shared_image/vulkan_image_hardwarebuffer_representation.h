@@ -21,6 +21,7 @@ class VkFenceSync final : public FenceSync {
   explicit VkFenceSync(std::shared_ptr<VulkanFenceHelper> fence_semaphore);
 
   bool ClientWait() override;
+  VkResult GetFenceStatus();
 
   void ServerWait();
 
@@ -52,6 +53,11 @@ class VulkanImageHardwareBufferRepresentation
 
   void SetCommandPoolHelper(std::shared_ptr<VulkanCommandPoolHelper> helper);
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // The caller has already observed the external producer's GPU completion.
+  bool PrepareStagedRead(uint32_t graphics_queue_family);
+#endif
+
   void PostDrawVk();
 
   bool ChangeImageLayout(VkImageLayout old_layout, VkImageLayout new_layout,
@@ -63,7 +69,9 @@ class VulkanImageHardwareBufferRepresentation
                          const VkSemaphore* wait_semaphores,
                          const VkPipelineStageFlags* wait_stages,
                          uint32_t signal_semaphore_count,
-                         const VkSemaphore* signal_semaphores, VkFence fence);
+                         const VkSemaphore* signal_semaphores, VkFence fence,
+                         uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
+                         uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED);
 
  private:
   void CreateVulkanImage(void* buffer);
@@ -77,6 +85,10 @@ class VulkanImageHardwareBufferRepresentation
 
   std::shared_ptr<VulkanCommandPoolHelper> command_pool_helper_;
   VkImageLayout old_layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool staged_read_ = false;
+  uint32_t staged_queue_family_ = VK_QUEUE_FAMILY_IGNORED;
+#endif
 };
 }  // namespace clay
 

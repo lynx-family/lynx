@@ -35,20 +35,22 @@ int findGraphicsQueueFamilyIndex(VkPhysicalDevice device) {
 }  // namespace
 
 VulkanCommandPoolHelper::VulkanCommandPoolHelper(
-    VkDevice device, VkPhysicalDevice physical_device)
+    VkDevice device, VkPhysicalDevice physical_device,
+    uint32_t graphics_queue_family)
     : device_(device), physical_device_(physical_device) {
-  CreateCommandPool();
+  CreateCommandPool(graphics_queue_family);
 }
 
-void VulkanCommandPoolHelper::CreateCommandPool() {
-  uint32_t graphics_queue_family_index =
-      findGraphicsQueueFamilyIndex(physical_device_);
+void VulkanCommandPoolHelper::CreateCommandPool(
+    uint32_t graphics_queue_family) {
+  if (graphics_queue_family == VK_QUEUE_FAMILY_IGNORED)
+    graphics_queue_family = findGraphicsQueueFamilyIndex(physical_device_);
 
   VkCommandPoolCreateInfo pool_info;
   memset(&pool_info, 0, sizeof(VkCommandPoolCreateInfo));
   pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
   pool_info.pNext = nullptr;
-  pool_info.queueFamilyIndex = graphics_queue_family_index;
+  pool_info.queueFamilyIndex = graphics_queue_family;
   pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
   if (!LogVkIfNotSuccess(clay::VulkanHelper::GetInstance().CreateCommandPool(

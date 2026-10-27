@@ -73,6 +73,9 @@ class SchedulerStateMachine {
   void SetOutputSurfaceState(OutputSurfaceState output_surface_state);
   void SetMeaningfulLayoutState(MeaningfulLayoutState meaningful_layout_state);
   void Reset();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void ResetForNewProduction();
+#endif
 
   Action NextAction() const;
   void WillSendUIBeginFrame();

@@ -31,6 +31,11 @@ bool VkFenceSync::ClientWait() {
   return fence_semaphore_->WaitForFence();
 }
 
+VkResult VkFenceSync::GetFenceStatus() {
+  return fence_semaphore_ ? fence_semaphore_->GetFenceStatus()
+                          : VK_ERROR_INITIALIZATION_FAILED;
+}
+
 void VkFenceSync::ServerWait() {
   if (!fence_semaphore_) {
     FML_LOG(ERROR) << "VkFenceSync::ServerWait: fence_semaphore_ is null";
@@ -68,6 +73,12 @@ ImageRepresentationType VulkanImageHardwareBufferRepresentation::GetType()
 bool VulkanImageHardwareBufferRepresentation::BeginRead(
     ClaySharedImageReadResult* out) {
   memset(out, 0, sizeof(ClaySharedImageReadResult));
+  if (!vulkan_image_ || vulkan_image_->GetImage() == VK_NULL_HANDLE ||
+      vulkan_image_->GetImageView() == VK_NULL_HANDLE) {
+    FML_LOG(ERROR)
+        << "AHardwareBuffer Vulkan import did not produce a valid image";
+    return false;
+  }
   out->struct_size = sizeof(ClaySharedImageReadResult);
   out->type = kClaySharedImageRepresentationTypeVulkan;
   out->vulkan_image.struct_size = sizeof(ClayVulkanImage);
@@ -186,7 +197,7 @@ bool VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
     VkPipelineStageFlagBits dst_stage_mask, uint32_t wait_semaphore_count,
     const VkSemaphore* wait_semaphores, const VkPipelineStageFlags* wait_stages,
     uint32_t signal_semaphore_count, const VkSemaphore* signal_semaphores,
-    VkFence fence) {
+    VkFence fence, uint32_t src_queue_family, uint32_t dst_queue_family) {
   VkCommandBuffer command_buffer = VK_NULL_HANDLE;
   command_pool_helper_->GetCommandBuffer(&command_buffer);
   if (command_buffer == VK_NULL_HANDLE) {
@@ -204,9 +215,21 @@ bool VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
     return false;
   }
 
-  vulkan_image_->ApplyImagerBarrier(command_buffer, old_layout, new_layout,
-                                    src_access_mask, dst_access_mask,
-                                    src_stage_mask, dst_stage_mask);
+  VkImageMemoryBarrier barrier{};
+  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barrier.oldLayout = old_layout;
+  barrier.newLayout = new_layout;
+  barrier.srcAccessMask = src_access_mask;
+  barrier.dstAccessMask = dst_access_mask;
+  barrier.srcQueueFamilyIndex = src_queue_family;
+  barrier.dstQueueFamilyIndex = dst_queue_family;
+  barrier.image = vulkan_image_->GetImage();
+  barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  barrier.subresourceRange.levelCount = 1;
+  barrier.subresourceRange.layerCount = 1;
+  VulkanHelper::GetInstance().CmdPipelineBarrier(command_buffer, src_stage_mask,
+                                                 dst_stage_mask, 0, 0, nullptr,
+                                                 0, nullptr, 1, &barrier);
 
   if (!LogVkIfNotSuccess(
           clay::VulkanHelper::GetInstance().EndCommandBuffer(command_buffer),
@@ -252,8 +275,45 @@ void VulkanImageHardwareBufferRepresentation::SetCommandPoolHelper(
   command_pool_helper_ = helper;
 }
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+bool VulkanImageHardwareBufferRepresentation::PrepareStagedRead(
+    uint32_t graphics_queue_family) {
+  if (staged_read_ || !command_pool_helper_ || !vulkan_image_ ||
+      vulkan_image_->GetImage() == VK_NULL_HANDLE ||
+      vulkan_image_->GetImageView() == VK_NULL_HANDLE)
+    return false;
+  VkFenceCreateInfo info{};
+  info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  VkFence fence = VK_NULL_HANDLE;
+  if (!LogVkIfNotSuccess(VulkanHelper::GetInstance().CreateFence(
+                             device_, &info, nullptr, &fence),
+                         "vkCreateFence"))
+    return false;
+  // A newly imported VkImage's UNDEFINED initialLayout is a placeholder. The
+  // AHB already contains external pixels, so acquire its GENERAL layout from
+  // the foreign producer rather than discarding it with an UNDEFINED barrier.
+  if (!ChangeImageLayout(
+          VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0,
+          VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, nullptr, nullptr, 0,
+          nullptr, fence, VK_QUEUE_FAMILY_FOREIGN_EXT, graphics_queue_family)) {
+    VulkanHelper::GetInstance().DestroyFence(device_, fence, nullptr);
+    return false;
+  }
+  staged_read_ = true;
+  staged_queue_family_ = graphics_queue_family;
+  return true;
+}
+#endif
+
 void VulkanImageHardwareBufferRepresentation::PostDrawVk() {
-  auto previous_fence_helper = last_fence_semaphore_;
+  // Never export a previous draw's completed fence if this submission fails.
+  auto previous_fence_helper = std::move(last_fence_semaphore_);
+  // With no exported sync left, permit collection even if this draw fails.
+  // The command pool still checks GPU completion before destroying handles.
+  if (previous_fence_helper && previous_fence_helper.use_count() == 2) {
+    previous_fence_helper->MarkCanDestroy();
+  }
 
   // We need to change the VkImage's imageLayout from
   // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL to
@@ -269,6 +329,10 @@ void VulkanImageHardwareBufferRepresentation::PostDrawVk() {
   VkSemaphoreCreateInfo semaphore_create_info = {};
   semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
   semaphore_create_info.pNext = &export_create_info;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Staged reads are polled through their VkFence; they do not export sync FDs.
+  if (staged_read_) semaphore_create_info.pNext = nullptr;
+#endif
   semaphore_create_info.flags = 0;
   auto result = VulkanHelper::GetInstance().CreateSemaphore(
       device_, &semaphore_create_info, nullptr, &semaphore);
@@ -289,13 +353,25 @@ void VulkanImageHardwareBufferRepresentation::PostDrawVk() {
     return;
   }
 
-  if (!ChangeImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                         VK_ACCESS_SHADER_READ_BIT,
-                         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
-                         nullptr, nullptr, 1, &semaphore, fence)) {
+  VkImageLayout next_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  VkAccessFlags dst_access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  auto dst_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  uint32_t src_family = VK_QUEUE_FAMILY_IGNORED;
+  uint32_t dst_family = VK_QUEUE_FAMILY_IGNORED;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (staged_read_) {
+    next_layout = VK_IMAGE_LAYOUT_GENERAL;
+    dst_access = 0;
+    dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    src_family = staged_queue_family_;
+    dst_family = VK_QUEUE_FAMILY_FOREIGN_EXT;
+  }
+#endif
+  if (!ChangeImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, next_layout,
+                         VK_ACCESS_SHADER_READ_BIT, dst_access,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, dst_stage, 0,
+                         nullptr, nullptr, 1, &semaphore, fence, src_family,
+                         dst_family)) {
     VulkanHelper::GetInstance().DestroyFence(device_, fence, nullptr);
     VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
     return;
@@ -309,13 +385,9 @@ void VulkanImageHardwareBufferRepresentation::PostDrawVk() {
   command_pool_helper_->InsertFenceSemaphore(fence_helper);
 
   last_fence_semaphore_ = fence_helper;
-
-  // If previous helper is only retained by
-  // {last_fence_semaphore_, fence_semaphores_} and never exported via
-  // ProduceFence(), mark it destroyable to avoid accumulating stale helpers.
-  if (previous_fence_helper && previous_fence_helper.use_count() == 2) {
-    previous_fence_helper->MarkCanDestroy();
-  }
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  staged_read_ = false;
+#endif
 }
 
 }  // namespace clay

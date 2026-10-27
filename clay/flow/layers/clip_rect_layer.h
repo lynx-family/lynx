@@ -16,6 +16,9 @@ namespace clay {
 
 class ClipRectLayer : public ClipShapeLayer<skity::Rect> {
  public:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool CanSegmentDisplay() const override { return !UsesSaveLayer(); }
+#endif
   ClipRectLayer(const skity::Rect& clip_rect, Clip clip_behavior);
 
  protected:

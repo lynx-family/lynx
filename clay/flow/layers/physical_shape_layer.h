@@ -16,6 +16,9 @@ namespace clay {
 
 class PhysicalShapeLayer : public ContainerLayer {
  public:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool CanSegmentDisplay() const override { return false; }
+#endif
   PhysicalShapeLayer(clay::GrColor color, clay::GrColor shadow_color,
                      float elevation, const clay::GrPath& path,
                      Clip clip_behavior);
