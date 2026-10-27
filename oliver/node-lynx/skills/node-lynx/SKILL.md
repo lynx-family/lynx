@@ -88,6 +88,9 @@ CLI rules:
 - Omit `--no-debug-router` when you need DebugRouter/OpenCard. Without an
   initial template, `render` waits for DebugRouter OpenCard. `preview` also
   waits for OpenCard without creating an initial window.
+- OpenCard only loads public http(s) URLs by default. Pass
+  `--allow-any-open-card-source` (API: `allowAnySource: true`) to load local
+  files or a loopback/private dev server, only on a trusted network.
 
 ## TypeScript API
 

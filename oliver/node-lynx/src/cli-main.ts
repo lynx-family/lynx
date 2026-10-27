@@ -28,6 +28,7 @@ type CliOptions = {
   title: string;
   debugRouter: boolean;
   debugRouterSchema?: string;
+  allowAnyOpenCardSource: boolean;
   logLevel?: LynxLogLevel;
 };
 
@@ -56,6 +57,8 @@ Options:
   --title <text>                   Preview window title.
   --debug-router-schema <schema>   Connect debug-router with the given schema.
   --no-debug-router                Disable preview debug-router startup. Requires a template input.
+  --allow-any-open-card-source     Let DebugRouter OpenCard load local files and loopback or private hosts.
+                                   By default OpenCard only loads public http(s) URLs.
   --log-level <level>              Lynx log level: verbose, debug, info, warning, error, fatal, or silent.
   --timeout <ms>                   Load and frame timeout. Defaults to ${DEFAULT_TIMEOUT_MS}.
   --screenshot-delay <ms>          Delay after first frame before screenshot. Defaults to ${DEFAULT_SCREENSHOT_DELAY_MS}.
@@ -151,6 +154,7 @@ function parseArgs(argv: string[]): CliOptions | undefined {
   let title = 'Node Lynx Preview';
   let debugRouter = true;
   let debugRouterSchema: string | undefined;
+  let allowAnyOpenCardSource = false;
   let logLevel: LynxLogLevel | undefined;
 
   const setTemplate = (value: string, kind: TemplateKind): void => {
@@ -231,6 +235,8 @@ function parseArgs(argv: string[]): CliOptions | undefined {
       }
     } else if (arg === '--no-debug-router') {
       debugRouter = false;
+    } else if (arg === '--allow-any-open-card-source') {
+      allowAnyOpenCardSource = true;
     } else if (arg === '--log-level' || arg.startsWith('--log-level=')) {
       const result = readOptionValue(args, index, arg);
       logLevel = parseLogLevel(result.value);
@@ -280,11 +286,13 @@ function parseArgs(argv: string[]): CliOptions | undefined {
     title,
     debugRouter,
     debugRouterSchema,
+    allowAnyOpenCardSource,
     logLevel,
   };
 }
 
-function initDebugRouter(schema?: string): void {
+function initDebugRouter(options: CliOptions): void {
+  const schema = options.debugRouterSchema;
   LynxEnv.init();
   if (schema) {
     const connected = LynxEnv.connectDevtools(schema);
@@ -292,7 +300,14 @@ function initDebugRouter(schema?: string): void {
       throw new Error(`failed to connect debug-router schema: ${schema}`);
     }
   }
-  console.log('Node Lynx debug-router initialized. Connect to 127.0.0.1:8901.');
+  console.log(
+    'Node Lynx debug-router initialized. It listens on port 8901, which may be reachable from other hosts.'
+  );
+  if (options.allowAnyOpenCardSource) {
+    console.warn(
+      'Node Lynx debug-router OpenCard accepts any source, including local files and loopback or private hosts.'
+    );
+  }
 }
 
 function waitForExitSignal(extraExitSignal?: Promise<void>): Promise<void> {
@@ -410,16 +425,10 @@ function registerDebugRouterWindowedOpenCardHandlers(
       );
     },
   });
-  LynxEnv.setOpenCardCallback((url) => {
-    const input = normalizeDebugRouterTemplateInput(url);
-    if (!input) {
-      console.warn(
-        `Node Lynx debug-router OpenCard ignored unsupported URL: ${url}`
-      );
-      return;
-    }
-    void openCards.open(toOpenCardLoadUrl(input)).catch(() => undefined);
-  });
+  const clearOpenCardCallback = installDebugRouterOpenCardCallback(
+    openCards,
+    options
+  );
   LynxEnv.setClosePageCallback(() => {
     try {
       openCards.closeAll();
@@ -432,7 +441,7 @@ function registerDebugRouterWindowedOpenCardHandlers(
   });
   return () => {
     openCards.dispose();
-    LynxEnv.clearOpenCardCallback();
+    clearOpenCardCallback();
     LynxEnv.clearClosePageCallback();
   };
 }
@@ -442,6 +451,28 @@ function toOpenCardLoadUrl(input: TemplateInput): string {
     return input.templateSource;
   }
   return pathToFileURL(path.resolve(input.templateSource)).toString();
+}
+
+function installDebugRouterOpenCardCallback(
+  openCards: HeadlessOpenCardManager | WindowedOpenCardManager,
+  options: CliOptions
+): () => void {
+  if (!options.allowAnyOpenCardSource) {
+    // install() only opens public http(s) URLs; dispose() uninstalls it.
+    openCards.install();
+    return () => undefined;
+  }
+  LynxEnv.setOpenCardCallback((url) => {
+    const input = normalizeDebugRouterTemplateInput(url);
+    if (!input) {
+      console.warn(
+        `Node Lynx debug-router OpenCard ignored unsupported URL: ${url}`
+      );
+      return;
+    }
+    void openCards.open(toOpenCardLoadUrl(input)).catch(() => undefined);
+  });
+  return () => LynxEnv.clearOpenCardCallback();
 }
 
 function registerDebugRouterHeadlessOpenCardHandlers(
@@ -466,16 +497,10 @@ function registerDebugRouterHeadlessOpenCardHandlers(
       );
     },
   });
-  LynxEnv.setOpenCardCallback((url) => {
-    const input = normalizeDebugRouterTemplateInput(url);
-    if (!input) {
-      console.warn(
-        `Node Lynx debug-router OpenCard ignored unsupported URL: ${url}`
-      );
-      return;
-    }
-    void openCards.open(toOpenCardLoadUrl(input)).catch(() => undefined);
-  });
+  const clearOpenCardCallback = installDebugRouterOpenCardCallback(
+    openCards,
+    options
+  );
   LynxEnv.setClosePageCallback(() => {
     try {
       openCards.closeAll();
@@ -488,7 +513,7 @@ function registerDebugRouterHeadlessOpenCardHandlers(
   });
   return () => {
     openCards.dispose();
-    LynxEnv.clearOpenCardCallback();
+    clearOpenCardCallback();
     LynxEnv.clearClosePageCallback();
   };
 }
@@ -519,7 +544,7 @@ export async function runNodeLynxCli(): Promise<void> {
 
   if (options.mode === 'preview') {
     if (options.debugRouter) {
-      initDebugRouter(options.debugRouterSchema);
+      initDebugRouter(options);
     }
     let cleanupDebugRouter = (): void => undefined;
     if (!options.initialTemplate) {
@@ -565,7 +590,7 @@ export async function runNodeLynxCli(): Promise<void> {
   }
 
   if (options.debugRouter) {
-    initDebugRouter(options.debugRouterSchema);
+    initDebugRouter(options);
   }
 
   let cleanupDebugRouter = (): void => undefined;

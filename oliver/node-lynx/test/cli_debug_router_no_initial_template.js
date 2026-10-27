@@ -3,6 +3,7 @@ const { spawn } = require('child_process');
 const { mkdtemp, readFile, rm, writeFile } = require('fs/promises');
 const os = require('os');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 const PACKAGE_ROOT = path.resolve(__dirname, '..');
 const CLI_PATH = path.join(PACKAGE_ROOT, 'dist', 'cli.js');
@@ -25,6 +26,8 @@ const state = {
   headlessScreenshotCalls: 0,
   headlessScreenshotArgs: [],
   windowedWaitUntilClosedCalls: 0,
+  loadTemplateUrls: [],
+  loadTemplateFromUrlUrls: [],
 };
 
 function writeState() {
@@ -38,9 +41,13 @@ class MockHeadlessLynxView {
     state.headlessViewConstructed += 1;
   }
 
-  async loadTemplate() {}
+  async loadTemplate(_template, options = {}) {
+    state.loadTemplateUrls.push(options.url);
+  }
 
-  async loadTemplateFromUrl() {}
+  async loadTemplateFromUrl(url) {
+    state.loadTemplateFromUrlUrls.push(url);
+  }
 
   async waitForFrame() {}
 
@@ -87,8 +94,11 @@ const mockLynxEnv = {
     state.connectDevtoolsCalls += 1;
     return true;
   },
-  setOpenCardCallback() {
+  setOpenCardCallback(callback) {
     state.setOpenCardCallbackCalls += 1;
+    if (callback && process.env.NODE_LYNX_CLI_TEST_OPEN_CARD_URL) {
+      callback(process.env.NODE_LYNX_CLI_TEST_OPEN_CARD_URL);
+    }
   },
   clearOpenCardCallback() {
     state.clearOpenCardCallbackCalls += 1;
@@ -119,7 +129,7 @@ Module._load = function patchedLoad(request, parent, isMain) {
 process.on('exit', writeState);
 `;
 
-async function runCli(args) {
+async function runCli(args, extraEnv = {}) {
   const tempDir = await mkdtemp(
     path.join(os.tmpdir(), 'node-lynx-cli-test-')
   );
@@ -130,6 +140,7 @@ async function runCli(args) {
   const env = {
     ...process.env,
     NODE_LYNX_CLI_TEST_STATE: statePath,
+    ...extraEnv,
   };
 
   try {
@@ -322,6 +333,44 @@ async function testSetsNativeLogLevel() {
   }
 }
 
+async function testOpenCardRejectsNonPublicSourcesByDefault() {
+  for (const url of [
+    'file:///etc/passwd',
+    '/etc/passwd',
+    'http://127.0.0.1:18080/',
+    'http://169.254.169.254/latest/meta-data/',
+  ]) {
+    const result = await runCli(['render'], {
+      NODE_LYNX_CLI_TEST_OPEN_CARD_URL: url,
+    });
+
+    assert.strictEqual(result.code, 0, result.stderr);
+    assert.match(
+      result.stderr,
+      /OpenCard failed: .*allow-any-open-card-source/
+    );
+    assert.deepStrictEqual(result.state.loadTemplateUrls, []);
+    assert.deepStrictEqual(result.state.loadTemplateFromUrlUrls, []);
+    assert.strictEqual(result.state.setOpenCardCallbackCalls, 1);
+    assert.strictEqual(result.state.clearOpenCardCallbackCalls, 1);
+  }
+}
+
+async function testAllowAnyOpenCardSourceKeepsLocalSources() {
+  const templatePath = path.join(PACKAGE_ROOT, 'package.json');
+  const result = await runCli(['render', '--allow-any-open-card-source'], {
+    NODE_LYNX_CLI_TEST_OPEN_CARD_URL: templatePath,
+  });
+
+  assert.strictEqual(result.code, 0, result.stderr);
+  assert.match(result.stderr, /OpenCard accepts any source/);
+  assert.deepStrictEqual(result.state.loadTemplateFromUrlUrls, [
+    pathToFileURL(templatePath).toString(),
+  ]);
+  assert.strictEqual(result.state.setOpenCardCallbackCalls, 1);
+  assert.strictEqual(result.state.clearOpenCardCallbackCalls, 1);
+}
+
 async function main() {
   await testRenderWaitsForOpenCardWithoutInitialView();
   await testImplicitRenderWaitsForOpenCardWithoutInitialView();
@@ -329,6 +378,8 @@ async function main() {
   await testNoTemplateStillRequiresDebugRouter();
   await testRenderPassesScreenshotDelay();
   await testSetsNativeLogLevel();
+  await testOpenCardRejectsNonPublicSourcesByDefault();
+  await testAllowAnyOpenCardSourceKeepsLocalSources();
 }
 
 main()
