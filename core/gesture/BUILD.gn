@@ -12,6 +12,8 @@ lynx_core_source_set("gesture") {
     "gesture_arena_impl.h",
     "gesture_config.cc",
     "gesture_config.h",
+    "gesture_handler.cc",
+    "gesture_touch_handler.cc",
     "gesture_types.cc",
     "gesture_types.h",
   ]
