@@ -26,6 +26,7 @@
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
@@ -3161,6 +3162,7 @@ TEST_P(ElementTemplateInstanceTest,
   auto slots = lepus::CArray::Create();
   slots->emplace_back(descriptor);
   instance->SetAttributeSlots(lepus::Value(slots));
+  EXPECT_TRUE(instance->attribute_slots_.GetProperty(0).IsEqual(descriptor));
   auto stored_entry = instance->attribute_slots_.GetProperty(0)
                           .GetProperty("value")
                           .GetProperty(0);
@@ -3170,20 +3172,31 @@ TEST_P(ElementTemplateInstanceTest,
   EXPECT_TRUE(stored_callback.IsEqual(callback));
   stored_callback.SetProperty("state", lepus::Value(7));
   EXPECT_EQ(callback.GetProperty("state").Number(), 7);
+  GestureDetectorImpl detector(1, GestureType::PAN, stored_entry,
+                               stored_entry.GetProperty("relationMap"),
+                               runtime.get());
   source_entry.GetProperty("config").SetProperty("enabled",
                                                  lepus::Value(false));
-  EXPECT_TRUE(stored_entry.GetProperty("config").GetProperty("enabled").Bool());
+  EXPECT_TRUE(
+      detector.gesture_config_in_lepus_value().GetProperty("enabled").Bool());
 
-  instance->SetAttributeSlot(0, descriptor);
+  lepus::Value next_descriptor;
+  constexpr char next_source[] = R"JS(({
+    type: 'gesture',
+    value: [{id: 1, type: 0, config: {enabled: false},
+      callbacks: [{name: 'onUpdate', callback: {state: 7}}],
+      relationMap: {waitFor: [], simultaneous: [], continueWith: []}}]
+  }))JS";
+  ASSERT_TRUE(context->EvalBuf(next_source, sizeof(next_source) - 1,
+                               next_descriptor, "gesture_storage_next.js"));
+  instance->SetAttributeSlot(0, next_descriptor);
+  EXPECT_TRUE(
+      instance->attribute_slots_.GetProperty(0).IsEqual(next_descriptor));
   stored_entry = instance->attribute_slots_.GetProperty(0)
                      .GetProperty("value")
                      .GetProperty(0);
   EXPECT_FALSE(
       stored_entry.GetProperty("config").GetProperty("enabled").Bool());
-  EXPECT_TRUE(stored_entry.GetProperty("callbacks")
-                  .GetProperty(0)
-                  .GetProperty("callback")
-                  .IsEqual(callback));
   auto task = instance->CreateElementTreeTask(
       tasm->template_entries_[DEFAULT_ENTRY_NAME].get());
   instance = nullptr;
@@ -3256,13 +3269,13 @@ TEST_P(ElementTemplateInstanceTest,
       instance->attribute_slots_.GetProperty(0).GetProperty("value").IsEqual(
           original));
   original.GetProperty("state").SetProperty("count", lepus::Value(0));
-  // Replacing the caller's wrapper must not replace the installed context.
-  descriptor.SetProperty("value", lepus::Value());
-  EXPECT_TRUE(stored.GetProperty("value").IsEqual(original));
 
   auto root = instance->GetRoot();
   ASSERT_NE(root, nullptr);
   auto target = root->children()[0];
+  // Replacing the caller's wrapper after installation must not replace the
+  // installed context on the element.
+  descriptor.SetProperty("value", lepus::Value());
   root->MarkAttached();
   target->MarkAttached();
   for (int count : {1, 2}) {
@@ -3380,14 +3393,27 @@ TEST_P(ElementTemplateInstanceTest,
 
 TEST_P(ElementTemplateInstanceTest,
        OrdinaryAttributeStorageDefersTemplateMetadataLookup) {
+  auto runtime = CreatePAPIRuntime();
+  auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  ASSERT_NE(context, nullptr);
+  lepus::Value js_array;
+  const char* array_source = "([[-180, -135], [135, 180]])";
+  ASSERT_TRUE(context->EvalBuf(array_source, strlen(array_source), js_array,
+                               "ordinary_array.js"));
+  auto expected_array = lepus::Value(js_array).ToLepusValue(true);
   auto object = lepus::Dictionary::Create();
   object->SetValue("type", lepus::Value(42));
   object->SetValue("payload", lepus::Value("ordinary"));
   auto other_type = lepus::Dictionary::Create();
   other_type->SetValue("type", lepus::Value("ordinary"));
-  for (const auto& value :
-       {lepus::Value(), lepus::Value(42), lepus::Value("label"),
-        lepus::Value(object), lepus::Value(other_type)}) {
+  for (const auto& [value, expected] :
+       std::initializer_list<std::pair<lepus::Value, lepus::Value>>{
+           {lepus::Value(), lepus::Value()},
+           {lepus::Value(42), lepus::Value(42)},
+           {lepus::Value("label"), lepus::Value("label")},
+           {lepus::Value(object), lepus::Value(object)},
+           {lepus::Value(other_type), lepus::Value(other_type)},
+           {js_array, expected_array}}) {
     auto instance = CreateCompiledSpreadInstance();
     auto& infos = tasm->template_entries_[DEFAULT_ENTRY_NAME]
                       ->template_bundle_.element_template_infos_;
@@ -3399,7 +3425,7 @@ TEST_P(ElementTemplateInstanceTest,
     EXPECT_TRUE(infos.empty());
     instance->SetAttributeSlot(0, value);
     EXPECT_TRUE(infos.empty());
-    EXPECT_TRUE(instance->attribute_slots_.GetProperty(0).IsEqual(value));
+    EXPECT_TRUE(instance->attribute_slots_.GetProperty(0).IsEqual(expected));
   }
 }
 
@@ -3469,6 +3495,229 @@ TEST_P(ElementTemplateInstanceTest,
       EXPECT_TRUE(root->gesture_map().empty());
     }
   }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       PAPIArrayAndCallableSlotsPreserveTypesAndMatchSnapshot) {
+  auto runtime = CreatePAPIRuntime();
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  ASSERT_NE(ctx, nullptr);
+
+  auto info = std::make_shared<ElementTemplateInfo>();
+  info->key_ = "array_callable_template";
+  ElementInfo root_info;
+  root_info.tag_enum_ = ELEMENT_VIEW;
+  root_info.tag_ = BASE_STATIC_STRING(kElementViewTag);
+  root_info.id_selector_ = base::String("root");
+  root_info.attributes_ =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("consume-slide-event"), lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-items"),
+                    lepus::Value(), 1},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("main-thread:bindtap"), lepus::Value(), 2},
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                    lepus::Value(), 3}});
+  info->elements_.push_back(std::move(root_info));
+  tasm->template_entries_[DEFAULT_ENTRY_NAME]
+      ->template_bundle_.element_template_infos_["array_callable_template"] =
+      info;
+
+  auto nested_lepus_ref = lepus::Dictionary::Create();
+  nested_lepus_ref->SetValue("fromLepusRef", lepus::Value("initial"));
+  runtime->SetGlobalData("nestedLepusRef", lepus::Value(nested_lepus_ref));
+
+  lepus::Value harness;
+  const char* source = R"JS((() => {
+    const slideRanges = [[-180, -135], [135, 180]];
+    const items = [1, {label: 'before'}, [2, 3], globalThis.nestedLepusRef];
+    const callback = function onTapOrFocus() { return 7; };
+    const spread = {
+      'extra-ranges': [[-90, -45]],
+      'data-spread-items': [{nested: [4, 5], ref: globalThis.nestedLepusRef}],
+      'data-direct-ref': globalThis.nestedLepusRef,
+      'main-thread:bindfocus': callback,
+    };
+    const nextRanges = [[-120, -60]];
+    return {
+      slideRanges,
+      items,
+      callback,
+      spread,
+      slots: [slideRanges, items, callback, spread],
+      nextRanges,
+      mutateInitial() {
+        slideRanges[0][0] = 0;
+        slideRanges.push([0, 45]);
+        items[1].label = 'mutated';
+        items[2].push(4);
+        spread['extra-ranges'][0][0] = 0;
+        spread['data-spread-items'][0].nested[0] = 99;
+      },
+      mutateUpdated() {
+        nextRanges[0][0] = -10;
+      },
+    };
+  })())JS";
+  ASSERT_TRUE(
+      ctx->EvalBuf(source, strlen(source), harness, "array_callable_slots.js"));
+
+  lepus::Value create_view_args[] = {lepus::Value(0)};
+  auto snapshot_view_val =
+      RendererFunctions::FiberCreateView(ctx, create_view_args, 1);
+  ASSERT_TRUE(snapshot_view_val.IsRefCounted());
+  auto snapshot_view =
+      fml::static_ref_ptr_cast<Element>(snapshot_view_val.RefCounted());
+  lepus::Value set_slide_args[] = {snapshot_view_val,
+                                   lepus::Value("consume-slide-event"),
+                                   harness.GetProperty("slideRanges")};
+  RendererFunctions::FiberSetAttribute(ctx, set_slide_args, 3);
+  lepus::Value set_dataset_args[] = {snapshot_view_val, lepus::Value("items"),
+                                     harness.GetProperty("items")};
+  RendererFunctions::FiberAddDataset(ctx, set_dataset_args, 3);
+  lepus::Value add_event_args[] = {snapshot_view_val, lepus::Value("bindEvent"),
+                                   lepus::Value("tap"),
+                                   harness.GetProperty("callback")};
+  RendererFunctions::FiberAddEvent(ctx, add_event_args, 4);
+
+  lepus::Value create_args[] = {
+      lepus::Value("array_callable_template"), lepus::Value(DEFAULT_ENTRY_NAME),
+      harness.GetProperty("slots"), lepus::Value(), lepus::Value(1)};
+  auto template_value =
+      RendererFunctions::FiberCreateElementTemplate(ctx, create_args, 5);
+  ASSERT_TRUE(template_value.IsRefCounted());
+
+  lepus::Value typed_args[] = {lepus::Value("view"),
+                               harness.GetProperty("spread"), lepus::Value(),
+                               lepus::Value(2)};
+  auto typed_value =
+      RendererFunctions::FiberCreateTypedElementTemplate(ctx, typed_args, 4);
+  ASSERT_TRUE(typed_value.IsRefCounted());
+
+  auto mutate_initial = harness.GetProperty("mutateInitial");
+  EXPECT_TRUE(runtime->CallClosure(mutate_initial).IsUndefined());
+
+  auto instance = fml::static_ref_ptr_cast<ElementTemplateInstance>(
+      template_value.RefCounted());
+  auto serialized_slots = instance->Serialize().GetProperty("attributeSlots");
+  EXPECT_TRUE(serialized_slots.GetProperty(0).IsArray());
+  EXPECT_TRUE(serialized_slots.GetProperty(1).IsArray());
+  EXPECT_TRUE(serialized_slots.GetProperty(2).IsCallable());
+  EXPECT_TRUE(
+      serialized_slots.GetProperty(2).IsEqual(harness.GetProperty("callback")));
+  EXPECT_TRUE(serialized_slots.GetProperty(3)
+                  .GetProperty("main-thread:bindfocus")
+                  .IsEqual(harness.GetProperty("callback")));
+
+  // Detached worker preparation must strip both declared callback slots (2) and
+  // 1st-level callables inside spread maps (3) while keeping non-callable
+  // spread entries intact.
+  auto task = instance->CreateElementTreeTask(
+      tasm->template_entries_[DEFAULT_ENTRY_NAME].get());
+  task->Run();
+  auto prepared = task->GetFuture().get();
+  EXPECT_TRUE(prepared.prepared_attribute_slots_.GetProperty(0).IsArray());
+  EXPECT_TRUE(prepared.prepared_attribute_slots_.GetProperty(1).IsArray());
+  EXPECT_TRUE(prepared.prepared_attribute_slots_.GetProperty(2).IsEmpty());
+  auto prepared_spread = prepared.prepared_attribute_slots_.GetProperty(3);
+  EXPECT_TRUE(prepared_spread.IsTable());
+  EXPECT_TRUE(prepared_spread.GetProperty("main-thread:bindfocus").IsEmpty());
+  EXPECT_TRUE(prepared_spread.GetProperty("extra-ranges").IsArray());
+  EXPECT_EQ(prepared_spread.GetProperty("extra-ranges")
+                .GetProperty(0)
+                .GetProperty(0)
+                .Number(),
+            -90);
+
+  auto attribute_value = [](const Element* element,
+                            const char* key) -> lepus::Value {
+    const auto& attributes = element->data_model()->attributes();
+    const auto it = attributes.find(base::String(key));
+    return it == attributes.end() ? lepus::Value() : it->second;
+  };
+
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  const auto tap_event = root->event_map().find("tap");
+  const auto snapshot_tap_event = snapshot_view->event_map().find("tap");
+  ASSERT_NE(tap_event, root->event_map().end());
+  ASSERT_NE(snapshot_tap_event, snapshot_view->event_map().end());
+  EXPECT_TRUE(tap_event->second->lepus_function().IsEqual(
+      snapshot_tap_event->second->lepus_function()));
+  const auto focus_event = root->event_map().find("focus");
+  ASSERT_NE(focus_event, root->event_map().end());
+  EXPECT_TRUE(focus_event->second->lepus_function().IsEqual(
+      harness.GetProperty("callback")));
+
+  const auto slide_attr = attribute_value(root.get(), "consume-slide-event");
+  const auto snapshot_slide_attr =
+      attribute_value(snapshot_view.get(), "consume-slide-event");
+  EXPECT_TRUE(slide_attr.IsArray());
+  EXPECT_TRUE(slide_attr.IsEqual(snapshot_slide_attr));
+  EXPECT_EQ(slide_attr.GetProperty(0).GetProperty(0).Number(), -180);
+
+  const auto extra_ranges = attribute_value(root.get(), "extra-ranges");
+  EXPECT_TRUE(extra_ranges.IsArray());
+  EXPECT_EQ(extra_ranges.GetProperty(0).GetProperty(0).Number(), -90);
+
+  const auto* items = DatasetValue(root.get(), base::String("items"));
+  const auto* snapshot_items =
+      DatasetValue(snapshot_view.get(), base::String("items"));
+  ASSERT_NE(items, nullptr);
+  ASSERT_NE(snapshot_items, nullptr);
+  EXPECT_TRUE(items->IsArray());
+  EXPECT_TRUE(items->IsEqual(*snapshot_items));
+  // Element Template always deep-clones ordinary data on write, whereas
+  // Snapshot's FiberAddDataset only deep-converts LepusRef when
+  // GetEnableParallelElement() is true.
+  nested_lepus_ref->SetValue("fromLepusRef", lepus::Value("mutated"));
+  EXPECT_EQ(items->GetProperty(1).GetProperty("label").StdString(), "before");
+  EXPECT_EQ(items->GetProperty(3).GetProperty("fromLepusRef").StdString(),
+            "initial");
+  EXPECT_EQ(
+      snapshot_items->GetProperty(3).GetProperty("fromLepusRef").StdString(),
+      manager->GetEnableParallelElement() ? "initial" : "mutated");
+  const auto* spread_items =
+      DatasetValue(root.get(), base::String("spread-items"));
+  ASSERT_NE(spread_items, nullptr);
+  EXPECT_EQ(spread_items->GetProperty(0)
+                .GetProperty("nested")
+                .GetProperty(0)
+                .Number(),
+            4);
+  EXPECT_EQ(spread_items->GetProperty(0)
+                .GetProperty("ref")
+                .GetProperty("fromLepusRef")
+                .StdString(),
+            "initial");
+  const auto* direct_ref = DatasetValue(root.get(), base::String("direct-ref"));
+  ASSERT_NE(direct_ref, nullptr);
+  EXPECT_TRUE(direct_ref->IsTable());
+  EXPECT_EQ(direct_ref->GetProperty("fromLepusRef").StdString(), "initial");
+
+  auto typed_instance = fml::static_ref_ptr_cast<ElementTemplateInstance>(
+      typed_value.RefCounted());
+  auto typed_root = typed_instance->GetRoot();
+  ASSERT_NE(typed_root, nullptr);
+  const auto typed_extra_ranges =
+      attribute_value(typed_root.get(), "extra-ranges");
+  EXPECT_TRUE(typed_extra_ranges.IsArray());
+  EXPECT_EQ(typed_extra_ranges.GetProperty(0).GetProperty(0).Number(), -90);
+  const auto typed_focus_event = typed_root->event_map().find("focus");
+  ASSERT_NE(typed_focus_event, typed_root->event_map().end());
+  EXPECT_TRUE(typed_focus_event->second->lepus_function().IsEqual(
+      harness.GetProperty("callback")));
+
+  lepus::Value update_args[] = {template_value, lepus::Value(0),
+                                harness.GetProperty("nextRanges")};
+  RendererFunctions::FiberSetAttributeOfElementTemplate(ctx, update_args, 3);
+  auto mutate_updated = harness.GetProperty("mutateUpdated");
+  EXPECT_TRUE(runtime->CallClosure(mutate_updated).IsUndefined());
+  const auto updated_slide_attr =
+      attribute_value(root.get(), "consume-slide-event");
+  EXPECT_TRUE(updated_slide_attr.IsArray());
+  EXPECT_EQ(updated_slide_attr.GetProperty(0).GetProperty(0).Number(), -120);
 }
 
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,
