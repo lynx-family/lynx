@@ -1254,7 +1254,8 @@ LYNX_UI_METHOD(scrollIntoView) {
   BOOL scrollFlag = false;
   LynxUI* uiParent = (LynxUI*)self.parent;
   while (uiParent != nil) {
-    if ([uiParent isKindOfClass:[AbsLynxUIScroller class]]) {
+    if ([uiParent isKindOfClass:[AbsLynxUIScroller class]] &&
+        ![uiParent isKindOfClass:[LynxUIListContainer class]]) {
       [((AbsLynxUIScroller*)uiParent) scrollInto:self
                                         isSmooth:isSmooth
                                        blockType:blockType
