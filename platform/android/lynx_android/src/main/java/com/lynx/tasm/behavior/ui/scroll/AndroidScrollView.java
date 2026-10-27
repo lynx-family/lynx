@@ -284,6 +284,10 @@ public class AndroidScrollView
     }
   }
 
+  public boolean shouldConsumeGesture() {
+    return !Boolean.TRUE.equals(mConsumeGesture) && !Boolean.TRUE.equals(mInterceptGesture);
+  }
+
   /**
    * @breif Dynamically intercepting native gestures
    * @param interceptGesture true: intercept native gesture, false: not intercept native gesture
