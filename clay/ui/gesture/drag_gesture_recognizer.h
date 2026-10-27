@@ -35,7 +35,10 @@ class GestureManager;
 
 class DragGestureRecognizer : public OneSequenceGestureRecognizer {
  public:
-  explicit DragGestureRecognizer(GestureManager* gesture_manager);
+  enum class Role { kInteraction, kScroll };
+
+  explicit DragGestureRecognizer(GestureManager* gesture_manager,
+                                 Role role = Role::kInteraction);
 
   const char* GetMemberTag() const override { return "[Drag]"; }
 
@@ -91,6 +94,9 @@ class DragGestureRecognizer : public OneSequenceGestureRecognizer {
 
   void GiveupPointer(int pointer_id);
   void ResetState();
+  void StartDrag();
+  void CancelDrag();
+  void SuspendDrag();
 
   DragDownCallback on_drag_down_;
   DragStartCallback on_drag_start_;
@@ -99,6 +105,9 @@ class DragGestureRecognizer : public OneSequenceGestureRecognizer {
   DragCancelCallback on_drag_cancel_;
 
   DragState state_ = DragState::kReady;
+  const Role role_;
+  bool drag_started_ = false;
+  bool drag_suspended_ = false;
 
   // For temporally store distance before accept to judge drag gesture.
   FloatSize pending_distance_;
@@ -119,8 +128,9 @@ class DragGestureRecognizer : public OneSequenceGestureRecognizer {
 
 class HorizontalDragGestureRecognizer : public DragGestureRecognizer {
  public:
-  explicit HorizontalDragGestureRecognizer(GestureManager* gesture_manager)
-      : DragGestureRecognizer(gesture_manager) {}
+  explicit HorizontalDragGestureRecognizer(GestureManager* gesture_manager,
+                                           Role role = Role::kInteraction)
+      : DragGestureRecognizer(gesture_manager, role) {}
   GestureRecognizerType getType() const override {
     return GestureRecognizerType::kHorizontalDrag;
   }
@@ -132,8 +142,9 @@ class HorizontalDragGestureRecognizer : public DragGestureRecognizer {
 
 class VerticalDragGestureRecognizer : public DragGestureRecognizer {
  public:
-  explicit VerticalDragGestureRecognizer(GestureManager* gesture_manager)
-      : DragGestureRecognizer(gesture_manager) {}
+  explicit VerticalDragGestureRecognizer(GestureManager* gesture_manager,
+                                         Role role = Role::kInteraction)
+      : DragGestureRecognizer(gesture_manager, role) {}
   GestureRecognizerType getType() const override {
     return GestureRecognizerType::kVerticalDrag;
   }

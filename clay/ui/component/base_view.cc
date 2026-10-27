@@ -3161,19 +3161,37 @@ BaseView* BaseView::GetTopViewToAcceptEvent(const FloatPoint& position,
 }
 
 FloatPoint BaseView::GetPointBySelf(const FloatPoint& point_by_page) const {
+  return GetPointBySelfImpl(point_by_page, false);
+}
+
+FloatPoint BaseView::GetPointBySelfForGesture(
+    const FloatPoint& point_by_page) const {
+  return GetPointBySelfImpl(point_by_page, true);
+}
+
+FloatPoint BaseView::GetPointBySelfImpl(const FloatPoint& point_by_page,
+                                        bool preserve_fractional_x) const {
   FloatPoint point = point_by_page;
+  // Keep the legacy horizontal rounding for callers outside gesture dispatch.
+  const auto move = [&point, preserve_fractional_x](float dx, float dy) {
+    if (preserve_fractional_x) {
+      point = point + FloatPoint(dx, dy);
+    } else {
+      point.Move(dx, dy);
+    }
+  };
   BaseView* parent = Parent();
   if (IsIndependentSubViewTree()) {
     parent = page_view();
   }
   if (parent) {
-    point = parent->GetPointBySelf(point);
-    FloatPoint offset = parent->GetScrollOffsetForPaint();
-    point.MoveBy(offset);
+    point = parent->GetPointBySelfImpl(point, preserve_fractional_x);
+    const FloatPoint offset = parent->GetScrollOffsetForPaint();
+    move(offset.x(), offset.y());
   }
-  point.Move(-Left(), -Top());
+  move(-Left(), -Top());
   if (sticky_) {
-    point.Move(-sticky_.value().offset_x, -sticky_.value().offset_y);
+    move(-sticky_->offset_x, -sticky_->offset_y);
   }
 
   auto origin = GetTransformOrigin();

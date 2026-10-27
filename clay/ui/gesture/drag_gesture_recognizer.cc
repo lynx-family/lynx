@@ -23,16 +23,20 @@ std::unique_ptr<DragGestureRecognizer> CreateDragRecognizerByDirection(
     ScrollDirection direction, GestureManager* gesture_manager) {
   switch (direction) {
     case ScrollDirection::kHorizontal:
-      return std::make_unique<HorizontalDragGestureRecognizer>(gesture_manager);
+      return std::make_unique<HorizontalDragGestureRecognizer>(
+          gesture_manager, DragGestureRecognizer::Role::kScroll);
     case ScrollDirection::kVertical:
-      return std::make_unique<VerticalDragGestureRecognizer>(gesture_manager);
+      return std::make_unique<VerticalDragGestureRecognizer>(
+          gesture_manager, DragGestureRecognizer::Role::kScroll);
     default:
-      return std::make_unique<DragGestureRecognizer>(gesture_manager);
+      return std::make_unique<DragGestureRecognizer>(
+          gesture_manager, DragGestureRecognizer::Role::kScroll);
   }
 }
 
-DragGestureRecognizer::DragGestureRecognizer(GestureManager* gesture_manager)
-    : super(gesture_manager) {}
+DragGestureRecognizer::DragGestureRecognizer(GestureManager* gesture_manager,
+                                             Role role)
+    : super(gesture_manager), role_(role) {}
 
 void DragGestureRecognizer::AddAllowedPointer(const PointerEvent& pointer) {
   super::AddAllowedPointer(pointer);
@@ -53,6 +57,33 @@ void DragGestureRecognizer::HandleEvent(const PointerEvent& pointer) {
   // No longer active.
   if (state_ == DragState::kReady) {
     return;
+  }
+  const bool move =
+      pointer.type == PointerEvent::EventType::kMoveEvent ||
+      pointer.type == PointerEvent::EventType::kPanZoomUpdateEvent;
+  const bool intercepted =
+      role_ == Role::kScroll && gesture_manager_->ShouldInterceptGesture();
+  // Discard pre-interception movement and velocity before native scrolling
+  // resumes.
+  if (intercepted) {
+    SuspendDrag();
+    initial_pointer_ = pointer;
+    pending_distance_ = {};
+    velocity_trackers_[pointer.pointer_id].Clear();
+  } else if (move && drag_suspended_) {
+    drag_suspended_ = false;
+    initial_pointer_ = pointer;
+    if (pointer.type == PointerEvent::EventType::kMoveEvent) {
+      initial_pointer_.position =
+          pointer.position -
+          FloatPoint(pointer.delta.width(), pointer.delta.height());
+    }
+    pending_distance_ = {};
+  }
+  if (role_ == Role::kScroll &&
+      pointer.type == PointerEvent::EventType::kCancel &&
+      tracking_pointers_.size() == 1) {
+    CancelDrag();
   }
   GESTURE_LOG << GetMemberTag() << this
               << " handle pointer event: " << pointer.ToString();
@@ -92,13 +123,18 @@ void DragGestureRecognizer::HandleEvent(const PointerEvent& pointer) {
     ResolveAll(GestureDisposition::kAccept);
   }
 
-  if (pointer.type == PointerEvent::EventType::kMoveEvent ||
-      pointer.type == PointerEvent::EventType::kPanZoomUpdateEvent) {
+  if (move) {
+    if (intercepted) {
+      return;
+    }
     FloatSize delta = pointer.type == PointerEvent::EventType::kMoveEvent
                           ? pointer.delta
                           : pointer.pan_delta;
     if (state_ == DragState::kAccepted) {
-      if (on_drag_update_) {
+      if (!drag_started_) {
+        StartDrag();
+      }
+      if (drag_started_ && on_drag_update_) {
         on_drag_update_(pointer.position, GetDeltaForDetails(delta));
       }
     } else {
@@ -132,7 +168,7 @@ void DragGestureRecognizer::DidStopTrackingLastPointer(int pointer_id) {
       }
       break;
     case DragState::kAccepted:
-      if (on_drag_end_) {
+      if (drag_started_ && on_drag_end_) {
         auto velocity_estimate =
             velocity_trackers_[pointer_id].GetVelocityEstimate();
         getType() == GestureRecognizerType::kHorizontalDrag
@@ -178,12 +214,7 @@ void DragGestureRecognizer::OnGestureAccepted(int pointer_id) {
   // Maybe called by multiple pointers.
   if (state_ != DragState::kAccepted) {
     state_ = DragState::kAccepted;
-    if (on_drag_start_) {
-      // Default use the pointer when trigger start as the start position.
-      auto start_position = initial_pointer_.position;
-      start_position.MoveBy(pending_distance_);
-      on_drag_start_(start_position);
-    }
+    StartDrag();
     // Notify other pointers.
     ResolveAll(GestureDisposition::kAccept);
   }
@@ -205,7 +236,48 @@ void DragGestureRecognizer::GiveupPointer(int pointer_id) {
 
 void DragGestureRecognizer::ResetState() {
   state_ = DragState::kReady;
+  drag_started_ = false;
+  drag_suspended_ = false;
   velocity_trackers_.clear();
+}
+
+void DragGestureRecognizer::StartDrag() {
+  if (role_ == Role::kScroll &&
+      (drag_suspended_ || gesture_manager_->ShouldInterceptGesture())) {
+    SuspendDrag();
+    return;
+  }
+  drag_started_ = true;
+  if (on_drag_start_) {
+    // Default use the pointer when trigger start as the start position.
+    auto start_position = initial_pointer_.position;
+    if (role_ == Role::kScroll) {
+      start_position = start_position + FloatPoint(pending_distance_.width(),
+                                                   pending_distance_.height());
+    } else {
+      start_position.MoveBy(pending_distance_);
+    }
+    on_drag_start_(start_position);
+  }
+}
+
+void DragGestureRecognizer::CancelDrag() {
+  if (!drag_started_) {
+    return;
+  }
+  drag_started_ = false;
+  if (on_drag_cancel_) {
+    on_drag_cancel_();
+  }
+}
+
+void DragGestureRecognizer::SuspendDrag() {
+  // Preserve arena ownership so the same pointer can resume native dragging.
+  if (!drag_suspended_) {
+    drag_suspended_ = true;
+    velocity_trackers_.clear();
+  }
+  CancelDrag();
 }
 
 float DragGestureRecognizer::GetTouchSlop() {
