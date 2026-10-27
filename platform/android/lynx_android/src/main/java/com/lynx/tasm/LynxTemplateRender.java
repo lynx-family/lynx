@@ -1589,6 +1589,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       return;
     }
 
+    LynxHostScriptViewHooks.beforeLoadTemplate(this, metaData);
     // Static-page direct data has no standard-data fallback, so a failed preparation must stop
     // this load.
     boolean isLoadPreparationSuccessful = prepareStaticPageLoad(metaData);
@@ -1965,6 +1966,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       mPerformanceController.markTiming(
           com.lynx.tasm.performance.timing.TimingConstants.UPDATE_DATA_START, "");
     }
+    meta = LynxHostScriptViewHooks.beforeUpdateMetaData(this, meta);
     TemplateData data = meta.getUpdatedData();
     TemplateData updatedGlobalPropsInput = meta.getUpdatedGlobalProps();
     if (shouldHandleStaticPageMetaData(data, updatedGlobalPropsInput)) {
