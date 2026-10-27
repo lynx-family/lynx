@@ -4,10 +4,12 @@
 
 #include <limits>
 #include <memory>
+#include <vector>
 
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/component.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
+#include "clay/ui/component/view.h"
 #include "clay/ui/testing/ui_test.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

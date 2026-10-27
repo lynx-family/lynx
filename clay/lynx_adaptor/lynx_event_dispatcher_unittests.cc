@@ -671,7 +671,8 @@ TEST_F(LynxEventDispatcherTest, MouseEventPreservesButtonsAndLogicalPosition) {
   dispatcher_.OnMouseEvent("mousedown", 42, 2, 3, 1.5f, 10.f, 20.f, 30.f, 40.f);
 }
 
-TEST_F(LynxEventDispatcherTest, GestureExtrasPreserveAuthoritativeCoordinates) {
+TEST_F(LynxEventDispatcherTest,
+       UnifiedGesturePayloadsAreForwardedIndependently) {
   engine_->density = 2.f;
   ::testing::InSequence sequence;
   EXPECT_CALL(*engine_, SendGestureEvent(42, 17, "onUpdate", ::testing::_))
@@ -689,20 +690,29 @@ TEST_F(LynxEventDispatcherTest, GestureExtrasPreserveAuthoritativeCoordinates) {
   EXPECT_CALL(*engine_, SendGestureEvent(42, 17, "onEnd", ::testing::_))
       .WillOnce(::testing::WithArg<3>([](const lynx::pub::Value& params) {
         ExpectStringField(params, "type", "onEnd");
-        ExpectNumberFields(params, {{"x", 6}, {"timestamp", 1250}});
+        ExpectNumberFields(params, {{"x", 6},
+                                    {"y", 10},
+                                    {"pageX", 15},
+                                    {"pageY", 20},
+                                    {"clientX", 15},
+                                    {"clientY", 20},
+                                    {"timestamp", 1250}});
         EXPECT_FALSE(params.Contains("scrollX"));
       }));
 
-  Value::Map extra;
-  // Gesture-specific data must not shadow the normalized event coordinates.
-  extra.emplace("x", Value(999));
-  extra.emplace("scrollX", Value(2.5f));
-  Value update(std::move(extra));
-  dispatcher_.OnGestureHandlerEvent("onUpdate", 42, 17, 10.f, 20.f, 30.f, 40.f,
-                                    1234, update);
-  Value end;
-  dispatcher_.OnGestureHandlerEvent("onEnd", 42, 17, 12.f, 20.f, 30.f, 40.f,
-                                    1250, end);
+  Value update{{"type", Value("onUpdate")}, {"x", Value(5.0)},
+               {"y", Value(10.0)},          {"pageX", Value(15.0)},
+               {"pageY", Value(20.0)},      {"clientX", Value(15.0)},
+               {"clientY", Value(20.0)},    {"timestamp", Value(int64_t{1234})},
+               {"scrollX", Value(2.5)}};
+  dispatcher_.OnUnifiedGestureHandlerEvent("onUpdate", 42, 17,
+                                           std::move(update));
+
+  Value end{{"type", Value("onEnd")}, {"x", Value(6.0)},
+            {"y", Value(10.0)},       {"pageX", Value(15.0)},
+            {"pageY", Value(20.0)},   {"clientX", Value(15.0)},
+            {"clientY", Value(20.0)}, {"timestamp", Value(int64_t{1250})}};
+  dispatcher_.OnUnifiedGestureHandlerEvent("onEnd", 42, 17, std::move(end));
 }
 
 TEST_F(LynxEventDispatcherTest, ActiveFocusAndHoverReportBothStateDirections) {

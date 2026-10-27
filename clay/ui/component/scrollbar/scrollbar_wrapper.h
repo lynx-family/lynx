@@ -28,7 +28,6 @@ class ScrollbarWrapper : public BaseView, public ScrollbarView::Delegate {
   void RemoveChild(BaseView* child) override;
 
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
-  void ConsumeGesture(int gesture_id, const Value& params) override;
   std::vector<float> GestureScrollBy(float delta_x, float delta_y) override;
   bool CanConsumeGesture(float delta_x, float delta_y) override;
   float ScrollX() override;
@@ -83,6 +82,7 @@ class ScrollbarWrapper : public BaseView, public ScrollbarView::Delegate {
 
  protected:
   void OnDestroy() override;
+  void GestureDetectorDidSet() override;
 
   const ScrollbarOrientationHelper& OrientationHelper() const {
     return scrollbar_->GetOrientationHelper();

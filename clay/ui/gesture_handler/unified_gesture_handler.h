@@ -9,6 +9,8 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <utility>
+#include <vector>
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/fml/time/timer.h"
@@ -32,7 +34,7 @@ class UnifiedGestureHandler final
   ~UnifiedGestureHandler() override;
 
   int ReplaceMember(BaseView *view, const GestureMap &detectors);
-  void RemoveMember(int member_id);
+  void RemoveMember(int member_id, bool notify_view = true);
   void SetGestureState(int member_id, uint32_t gesture_id, int state);
   bool ContainsGesture(int member_id, uint32_t gesture_id) const;
   void HandlePointerEvent(const PointerEvent &event, const HitTestResult &hits);
@@ -80,6 +82,8 @@ class UnifiedGestureHandler final
   unified_gesture::Point ToLogical(float x, float y) const;
   void LeaveEntry();
   void ResetNow();
+  std::unique_ptr<fml::OneshotTimer> TakeTimer(
+      unified_gesture::TimerToken token);
 
   PageView *page_view_;
   std::map<unified_gesture::MemberId, fml::WeakPtr<BaseView>> members_;
@@ -90,7 +94,8 @@ class UnifiedGestureHandler final
   unified_gesture::InputEvent last_input_;
   double native_to_monotonic_ms_ = 0;
   double monotonic_to_epoch_ms_ = 0;
-  std::map<unified_gesture::TimerToken, std::unique_ptr<fml::OneshotTimer>>
+  std::vector<std::pair<unified_gesture::TimerToken,
+                        std::unique_ptr<fml::OneshotTimer>>>
       timers_;
   std::unique_ptr<FlingScroller> fling_scroller_;
   bool stopping_fling_ = false;

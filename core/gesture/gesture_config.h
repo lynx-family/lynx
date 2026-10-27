@@ -11,6 +11,10 @@
 
 #include "core/gesture/gesture_types.h"
 
+namespace lynx::tasm {
+class GestureDetector;
+}  // namespace lynx::tasm
+
 namespace lynx::tasm::gesture {
 
 std::optional<GestureCallbackType> ParseGestureCallback(

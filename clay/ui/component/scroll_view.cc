@@ -25,6 +25,7 @@
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_callback/scroll_event_callback_manager.h"
 #include "clay/ui/component/view_context.h"
+#include "clay/ui/gesture_handler/gesture_arena_member.h"
 #include "clay/ui/lynx_module/lynx_ui_method_registrar.h"
 #include "clay/ui/rendering/render_box.h"
 #include "clay/ui/rendering/render_scroll.h"

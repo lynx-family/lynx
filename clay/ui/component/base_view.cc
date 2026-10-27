@@ -48,7 +48,6 @@
 #include "clay/ui/event/event_utils.h"
 #include "clay/ui/gesture/mouse_region_manager.h"
 #include "clay/ui/gesture_handler/gesture_detector.h"
-#include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/painter/gradient.h"
 #include "clay/ui/resource/image_resource_fetcher.h"
@@ -288,14 +287,11 @@ BaseView::~BaseView() {
 
 void BaseView::Destroy() {
   if (gesture_arena_member_id_ > 0 && page_view_ && page_view_ != this) {
+    const int member_id = std::exchange(gesture_arena_member_id_, 0);
     auto* dispatcher = page_view_->GetGestureHandlerDispatcher();
     if (dispatcher) {
-      auto* arena_manager = dispatcher->gesture_arena_manager();
-      if (arena_manager) {
-        arena_manager->RemoveMember(gesture_arena_member_id_);
-      }
+      dispatcher->RemoveMember(member_id, /*notify_view=*/false);
     }
-    gesture_arena_member_id_ = 0;
   }
 
   OnDestroy();
@@ -3490,23 +3486,46 @@ void BaseView::AddEventCallback(const char* event_c) {
 }
 
 void BaseView::SetGestureDetectorMap(const GestureMap& gesture_detector_map) {
-  if (gesture_detector_map.size() == 0) {
-    return;
-  }
   gesture_detector_map_ = gesture_detector_map;
   GestureDetectorDidSet();
 }
 
 void BaseView::GestureDetectorDidSet() {
-  auto* gesture_arena_manager =
-      page_view_->GetGestureHandlerDispatcher()->gesture_arena_manager();
-  if (!gesture_arena_manager) return;
-  if (!gesture_arena_manager->IsMemberExist(gesture_arena_member_id_)) {
-    gesture_arena_member_id_ = gesture_arena_manager->AddMember(GetWeakPtr());
+  if (gesture_detector_map_.empty()) {
+    ResetGestureHandlerState();
+    return;
   }
-  if (gesture_handler_map_.empty() && gesture_arena_member_id_ > 0) {
-    gesture_handler_map_ = BaseGestureHandler::ConvertToGestureHandler(
-        id_, page_view_, GetWeakPtr(), gesture_detector_map_);
+  const auto self = GetWeakPtr();
+  const int previous_id = gesture_arena_member_id_;
+  const int member_id =
+      page_view_->GetGestureHandlerDispatcher()->ReplaceUnifiedMember(
+          this, gesture_detector_map_);
+  // Termination callbacks can destroy the view or install a newer member.
+  if (self && gesture_arena_member_id_ == previous_id) {
+    gesture_arena_member_id_ = member_id;
+  }
+}
+
+void BaseView::ResetGestureHandlerState() {
+  const int member_id = std::exchange(gesture_arena_member_id_, 0);
+  gesture_detector_map_.clear();
+  if (member_id > 0 && page_view_) {
+    if (auto* dispatcher = page_view_->GetGestureHandlerDispatcher()) {
+      const auto self = GetWeakPtr();
+      dispatcher->RemoveMember(member_id);
+      if (!self || gesture_arena_member_id_ > 0) {
+        return;
+      }
+    }
+  }
+
+  // A removed detector can no longer release the native scroll it blocked.
+  SetShouldConsumeGesture(true);
+  if (ShouldInterceptGesture()) {
+    ResetInterceptGesture();
+    if (page_view_) {
+      page_view_->gesture_manager()->RefreshHitTestTargetResponsive();
+    }
   }
 }
 
@@ -3515,16 +3534,24 @@ std::vector<float> BaseView::GestureScrollBy(float delta_x, float delta_y) {
 }
 
 void BaseView::SetGestureDetectorState(int gesture_id, int state) {
-  auto* gesture_arena_manager =
-      page_view_->GetGestureHandlerDispatcher()->gesture_arena_manager();
-  if (!gesture_arena_manager ||
-      !gesture_arena_manager->IsMemberExist(gesture_arena_member_id_))
-    return;
-  gesture_arena_manager->SetGestureDetectorState(gesture_arena_member_id_,
-                                                 gesture_id, state);
+  page_view_->GetGestureHandlerDispatcher()->SetGestureState(
+      gesture_arena_member_id_, gesture_id, state);
+}
+
+bool BaseView::ShouldConsumeGesture() const {
+  for (auto* view = this; view; view = view->Parent()) {
+    if (!view->GestureArenaMember::ShouldConsumeGesture()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void BaseView::ConsumeGesture(int gesture_id, const Value& params) {
+  if (!page_view_->GetGestureHandlerDispatcher()->CanControlGesture(
+          gesture_arena_member_id_, gesture_id)) {
+    return;
+  }
   if (!params.IsMap()) return;
   const Value::Map& map = params.GetMap();
   bool inner = true;
