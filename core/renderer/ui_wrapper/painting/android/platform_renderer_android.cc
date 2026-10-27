@@ -101,6 +101,15 @@ void PlatformRendererAndroid::OnUpdateDisplayList(DisplayList display_list) {
   }
 }
 
+void PlatformRendererAndroid::OnUpdateLayoutMetrics() {
+  if (!context_ || context_->IsDestroyed() ||
+      GetPlatformRendererType() != PlatformRendererType::kListItem) {
+    return;
+  }
+  // NodeReady needs the current logical item frame before its display list.
+  context_->UpdatePlatformRendererLayoutMetrics(GetId(), layout_frame_);
+}
+
 void PlatformRendererAndroid::OnAddChild(PlatformRenderer* child, int index,
                                          bool should_update_ui_owner) {
   if (context_ && child) {

@@ -1305,7 +1305,16 @@ void UIList::InsertListItemNode(lynx::tasm::harmony::UIComponent* child) {
       UpdateStickyComponentInfoForUpdateAction(child);
     }
   }
-  NodeManager::Instance().InsertNode(container_layout_, child->DrawNode(), -1);
+  if (NodeManager::Instance().InsertNode(container_layout_, child->DrawNode(),
+                                         -1)) {
+    // PlatformRendererHarmony::OnAddChild calls InsertUI and then
+    // OnAttachedToFragmentLayerTree. For lists, InsertUI does not attach the
+    // list-item view, so that notification cannot reorder it in the native
+    // tree. InsertListItemNode runs afterward and appends the view to the end
+    // of the container. Notify attachment again after insertion to restore its
+    // drawing order.
+    child->OnAttachedToFragmentLayerTree();
+  }
 }
 
 void UIList::RemoveListItemNode(lynx::tasm::harmony::UIComponent* child) {

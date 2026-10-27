@@ -113,11 +113,10 @@ public class Renderer {
     if (mRenderHost == null) {
       return;
     }
-    View view = mRenderHost.getView();
-    if (!(view instanceof ViewGroup)) {
+    ViewGroup viewGroup = mRenderHost.getRendererChildViewGroup();
+    if (viewGroup == null) {
       return;
     }
-    ViewGroup viewGroup = (ViewGroup) view;
     for (int i = 0; i < viewGroup.getChildCount(); i++) {
       View child = viewGroup.getChildAt(i);
       if (child instanceof IRendererHost) {
@@ -139,11 +138,10 @@ public class Renderer {
     if (mRenderHost == null) {
       return;
     }
-    View view = mRenderHost.getView();
-    if (!(view instanceof ViewGroup)) {
+    ViewGroup viewGroup = mRenderHost.getRendererChildViewGroup();
+    if (viewGroup == null) {
       return;
     }
-    ViewGroup viewGroup = (ViewGroup) view;
     for (int i = 0; i < viewGroup.getChildCount(); i++) {
       View child = viewGroup.getChildAt(i);
       if (child instanceof IRendererHost) {
@@ -223,11 +221,12 @@ public class Renderer {
     }
     mRepaintType = REPAINT_TYPE_DRAW_ONLY;
   }
+
   public void beforeDrawHost(Canvas canvas) {
     if (mDisplayListApplier == null) {
       return;
     }
-    mDisplayListApplier.drawTillNextView(canvas);
+    mDisplayListApplier.drawTillNextView(canvas, 0, true);
   }
 
   public void beforeDrawChild(Canvas canvas, View child) {
@@ -255,13 +254,17 @@ public class Renderer {
   }
 
   public void afterDispatchDraw(Canvas canvas, int viewportSaveCount) {
+    afterDispatchDraw(canvas, viewportSaveCount, true);
+  }
+
+  public void afterDispatchDraw(Canvas canvas, int viewportSaveCount, boolean stopInDrawView) {
     if (mDisplayListApplier == null) {
       if (viewportSaveCount != 0) {
         canvas.restoreToCount(viewportSaveCount);
       }
       return;
     }
-    mDisplayListApplier.drawTillNextView(canvas, viewportSaveCount);
+    mDisplayListApplier.drawTillNextView(canvas, viewportSaveCount, stopInDrawView);
     mDisplayListApplier.reset();
     if (mOpacityLayerSaveCount != 0) {
       canvas.restoreToCount(mOpacityLayerSaveCount);

@@ -145,6 +145,30 @@ NativePaintingCtxAndroidRef::GetTextEventTargetRegions(int32_t text_id) {
              : PlatformTextEventTargetRegions();
 }
 
+void NativePaintingCtxAndroidRef::InsertListItemPaintingNode(int32_t list_id,
+                                                             int32_t child_id) {
+  if (view_manager_ && !destroyed_.load(std::memory_order_acquire)) {
+    view_manager_->InsertListItemPaintingNode(list_id, child_id);
+  }
+}
+
+void NativePaintingCtxAndroidRef::RemoveListItemPaintingNode(int32_t list_id,
+                                                             int32_t child_id) {
+  if (view_manager_ && !destroyed_.load(std::memory_order_acquire)) {
+    view_manager_->RemoveListItemPaintingNode(list_id, child_id);
+  }
+}
+
+void NativePaintingCtxAndroidRef::UpdateContentOffsetForListContainer(
+    int32_t container_id, float content_size, float delta_x, float delta_y,
+    bool is_init_scroll_offset, bool from_layout) {
+  if (view_manager_ && !destroyed_.load(std::memory_order_acquire)) {
+    view_manager_->UpdateContentOffsetForListContainer(
+        container_id, content_size, delta_x, delta_y, is_init_scroll_offset,
+        from_layout);
+  }
+}
+
 void NativePaintingCtxAndroidRef::SetNeedMarkPaintEndTiming(
     const tasm::PipelineID& pipeline_id) {
   if (view_manager_) {

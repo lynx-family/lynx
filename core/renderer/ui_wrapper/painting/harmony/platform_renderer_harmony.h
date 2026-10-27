@@ -35,6 +35,7 @@ class PlatformRendererHarmony : public PlatformRendererImpl {
                           const fml::RefPtr<PropBundle>& init_data,
                           const PlatformRendererInitConfig& init_config);
 
+  void OnUpdateLayoutMetrics() override;
   void OnUpdateDisplayList(DisplayList display_list) override;
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes) override;
   void OnAddChild(PlatformRenderer* child, int index,

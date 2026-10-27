@@ -69,6 +69,39 @@ void NativePaintingCtxPlatformHarmonyRef::GetScreenSize(float size[2]) {
   }
 }
 
+void NativePaintingCtxPlatformHarmonyRef::InsertListItemPaintingNode(
+    int32_t list_id, int32_t child_id) {
+  auto renderer_context = renderer_context_.lock();
+  auto* ui_owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
+  if (ui_owner == nullptr || ui_owner->Destroyed()) {
+    return;
+  }
+  ui_owner->InsertListItemPaintingNode(list_id, child_id);
+}
+
+void NativePaintingCtxPlatformHarmonyRef::RemoveListItemPaintingNode(
+    int32_t list_id, int32_t child_id) {
+  auto renderer_context = renderer_context_.lock();
+  auto* ui_owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
+  if (ui_owner == nullptr || ui_owner->Destroyed()) {
+    return;
+  }
+  ui_owner->RemoveListItemPaintingNode(list_id, child_id);
+}
+
+void NativePaintingCtxPlatformHarmonyRef::UpdateContentOffsetForListContainer(
+    int32_t container_id, float content_size, float delta_x, float delta_y,
+    bool is_init_scroll_offset, bool from_layout) {
+  auto renderer_context = renderer_context_.lock();
+  auto* ui_owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
+  if (ui_owner == nullptr || ui_owner->Destroyed()) {
+    return;
+  }
+  ui_owner->UpdateContentOffsetForListContainer(
+      container_id, content_size, delta_x, delta_y, is_init_scroll_offset,
+      from_layout);
+}
+
 void NativePaintingCtxPlatformHarmonyRef::GetPlatformRendererScrollOffset(
     int32_t sign, float offset[2]) {
   offset[0] = 0.f;

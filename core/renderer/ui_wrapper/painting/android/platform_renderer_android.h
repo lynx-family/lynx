@@ -48,6 +48,7 @@ class PlatformRendererAndroid : public PlatformRendererImpl {
   void OnRemoveFromParent(bool should_update_ui_owner) override;
   void OnUpdateSubtreeProperties(
       const DisplayList& subtree_properties) override;
+  void OnUpdateLayoutMetrics() override;
 
  private:
   // Android-specific context for managing native views via JNI

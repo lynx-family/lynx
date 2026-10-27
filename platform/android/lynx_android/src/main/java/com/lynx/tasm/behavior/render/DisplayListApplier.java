@@ -26,6 +26,7 @@ import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.list.container.ListContainerView;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil;
@@ -170,11 +171,15 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   public void drawTillNextView(Canvas canvas) {
-    drawTillNextView(canvas, 0);
+    drawTillNextView(canvas, 0, true);
   }
 
   void drawTillNextView(Canvas canvas, int viewportSaveCount) {
-    int remainingSaveCount = processContentOperations(canvas, viewportSaveCount);
+    drawTillNextView(canvas, viewportSaveCount, true);
+  }
+
+  void drawTillNextView(Canvas canvas, int viewportSaveCount, boolean stopInDrawView) {
+    int remainingSaveCount = processContentOperations(canvas, viewportSaveCount, stopInDrawView);
     if (remainingSaveCount != 0) {
       canvas.restoreToCount(remainingSaveCount);
     }
@@ -251,7 +256,8 @@ public class DisplayListApplier implements Drawable.Callback {
 
     float left = 0.f;
     float top = 0.f;
-    if (includeScrollOffset && hostLayer instanceof AndroidScrollView) {
+    if (includeScrollOffset
+        && (hostLayer instanceof AndroidScrollView || hostLayer instanceof ListContainerView)) {
       left = hostLayer.getRendererHostScrollX();
       top = hostLayer.getRendererHostScrollY();
     }
@@ -261,8 +267,9 @@ public class DisplayListApplier implements Drawable.Callback {
 
   private boolean shouldIncludeScrollOffsetForHostBounds() {
     IRendererHost hostLayer = getRendererHost();
-    return hostLayer instanceof AndroidScrollView
-        && !((AndroidScrollView) hostLayer).isHorizontal();
+    return (hostLayer instanceof ListContainerView)
+        || (hostLayer instanceof AndroidScrollView
+            && !((AndroidScrollView) hostLayer).isHorizontal());
   }
 
   private void offsetRectForHostScroll(RectF rect) {
@@ -358,7 +365,7 @@ public class DisplayListApplier implements Drawable.Callback {
 
   private void normalizeClipRect(RectF rect) {
     IRendererHost hostLayer = getRendererHost();
-    if (hostLayer instanceof AndroidScrollView) {
+    if (hostLayer instanceof AndroidScrollView || hostLayer instanceof ListContainerView) {
       rect.offset(hostLayer.getRendererHostScrollX(), hostLayer.getRendererHostScrollY());
     }
     if (!shouldNormalizeRootGeometry()) {
@@ -559,7 +566,8 @@ public class DisplayListApplier implements Drawable.Callback {
     return mItemsBuffer.getFloat(byteOffset);
   }
 
-  private int processContentOperations(Canvas canvas, int viewportSaveCount) {
+  private int processContentOperations(
+      Canvas canvas, int viewportSaveCount, boolean stopInDrawView) {
     if (mItemsBuffer == null) {
       return viewportSaveCount;
     }
@@ -628,8 +636,11 @@ public class DisplayListApplier implements Drawable.Callback {
         }
 
         case OP_DRAW_VIEW: {
-          mItemIndex = currentItemIndex + 1;
-          return viewportSaveCount;
+          if (stopInDrawView) {
+            mItemIndex = currentItemIndex + 1;
+            return viewportSaveCount;
+          }
+          break;
         }
 
         case OP_TEXT: {
@@ -1026,7 +1037,12 @@ public class DisplayListApplier implements Drawable.Callback {
     }
 
     mReusablePath.reset();
-    RectF shadowRect = shadowBox.getRectF();
+    // Note: Should create shadowBox here.
+    RectF shadowRect = new RectF(shadowBox.getRectF());
+    IRendererHost hostLayer = getRendererHost();
+    if (hostLayer instanceof ListContainerView) {
+      offsetRectForHostScroll(shadowRect);
+    }
 
     if (shadowBox.hasBorderRadius()) {
       mReusablePath.addRoundRect(shadowRect, shadowBox.getBorderRadii(), Path.Direction.CW);

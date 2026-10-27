@@ -44,6 +44,11 @@ public interface IRendererHost {
     return view != null ? view.getScrollY() : 0;
   }
 
+  default ViewGroup getRendererChildViewGroup() {
+    View view = getView();
+    return view instanceof ViewGroup ? (ViewGroup) view : null;
+  }
+
   default PointF convertPointInRendererHostToScreen(PointF point) {
     View view = getView();
     if (view == null) {

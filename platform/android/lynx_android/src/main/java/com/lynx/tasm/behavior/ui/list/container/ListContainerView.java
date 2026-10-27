@@ -22,10 +22,13 @@ import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.PlatformRendererContext;
 import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.utils.FloatUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
+import java.util.IdentityHashMap;
 
 public class ListContainerView extends NestedScrollContainerView
     implements IDrawChildHook.IDrawChildHookBinding, IRendererHost {
@@ -91,6 +94,18 @@ public class ListContainerView extends NestedScrollContainerView
   @Override
   public void setRenderer(Renderer renderer) {
     mRenderer = renderer;
+    if (mCustomLinearLayout != null) {
+      mCustomLinearLayout.setRendererDrawingOrderEnabled(renderer != null);
+    }
+    invalidateForRenderer();
+  }
+
+  @Override
+  public void invalidateForRenderer() {
+    IRendererHost.super.invalidateForRenderer();
+    if (mCustomLinearLayout != null) {
+      mCustomLinearLayout.invalidate();
+    }
   }
 
   @Override
@@ -101,6 +116,11 @@ public class ListContainerView extends NestedScrollContainerView
   @Override
   public View getView() {
     return this;
+  }
+
+  @Override
+  public ViewGroup getRendererChildViewGroup() {
+    return mCustomLinearLayout;
   }
 
   @Override
@@ -533,27 +553,6 @@ public class ListContainerView extends NestedScrollContainerView
   }
 
   @Override
-  protected void onLayout(boolean changed, int l, int t, int r, int b) {
-    if (mRenderer != null) {
-      if (mRenderer.getUIHost() != null) {
-        mRenderer.getUIHost().measure();
-      }
-    }
-
-    super.onLayout(changed, l, t, r, b);
-
-    if (mRenderer != null && mCustomLinearLayout != null) {
-      for (int i = 0; i < mCustomLinearLayout.getChildCount(); i++) {
-        View child = mCustomLinearLayout.getChildAt(i);
-        if (child instanceof IRendererHost) {
-          Rect childFrame = ((IRendererHost) child).getRenderer().getLynxFrame();
-          child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
-        }
-      }
-    }
-  }
-
-  @Override
   protected void onDraw(Canvas canvas) {
     if (mRenderer != null) {
       mRenderer.onDraw(canvas);
@@ -562,24 +561,38 @@ public class ListContainerView extends NestedScrollContainerView
     super.onDraw(canvas);
   }
 
+  /*
+   * In the fallback UI path, the list DisplayList has one outer Begin/End pair.
+   * It paints the list's decoration and sets up clipping, then references native
+   * list-item views with DrawView. Item contents are not inlined as nested
+   * Begin/End blocks in the list's DisplayList.
+   *
+   * Example:
+   * [ 0] kBegin #17 List
+   * [ 1]   kRecordBox
+   * [ 2]   kFill
+   * [ 3]   kRecordBox
+   * [ 4]   kBoxShadow
+   * [ 5]   kRecordBox B2
+   * [ 6]   kBorder
+   * [ 7]   kClipRect
+   * [ 8]     kDrawView #18 offset=(38, -181)
+   * [ 9]     kDrawView #21 offset=(38, -181)
+   * [10]     kDrawView #24 offset=(38, -181)
+   * [11] kEnd
+   */
   @Override
   protected void dispatchDraw(Canvas canvas) {
+    if (mRenderer != null) {
+      // Replay from the list's Begin through the first DrawView opcode, inclusive.
+      mRenderer.beforeDrawHost(canvas);
+    }
     super.dispatchDraw(canvas);
     if (mRenderer != null) {
-      mRenderer.afterDispatchDraw(canvas);
+      // Resume after the first DrawView and replay through End.
+      // Pass false so subsequent DrawView opcodes do not stop playback.
+      mRenderer.afterDispatchDraw(canvas, 0, false);
     }
-  }
-
-  @Override
-  protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
-    if (mRenderer != null) {
-      mRenderer.beforeDrawChild(canvas, child);
-    }
-    boolean ret = super.drawChild(canvas, child, drawingTime);
-    if (mRenderer != null) {
-      mRenderer.afterDrawChild(canvas, child);
-    }
-    return ret;
   }
 
   public void setOrientation(int orientation) {
@@ -812,9 +825,144 @@ public class ListContainerView extends NestedScrollContainerView
     return new CalcFlingOffsetResult(currentOffset, true);
   }
 
+  void markRendererDrawingOrderDirty() {
+    if (mCustomLinearLayout != null) {
+      mCustomLinearLayout.markRendererDrawingOrderDirty();
+    }
+  }
+
   private class CustomLinearLayout extends LinearLayout {
+    private boolean mRendererDrawingOrderDirty = false;
+    // Maps each drawing position to an index in the actual native child array.
+    private int[] mRendererDrawingOrder;
+
     public CustomLinearLayout(Context context) {
       super(context);
+    }
+
+    private void setRendererDrawingOrderEnabled(boolean enabled) {
+      setChildrenDrawingOrderEnabled(enabled);
+      mRendererDrawingOrderDirty = enabled;
+      mRendererDrawingOrder = null;
+      invalidate();
+    }
+
+    void markRendererDrawingOrderDirty() {
+      mRendererDrawingOrderDirty = true;
+    }
+
+    @Override
+    public void onViewAdded(View child) {
+      super.onViewAdded(child);
+      mRendererDrawingOrderDirty = true;
+    }
+
+    @Override
+    public void onViewRemoved(View child) {
+      super.onViewRemoved(child);
+      mRendererDrawingOrderDirty = true;
+    }
+
+    /**
+     * Maps the desired drawing order (mUiListContainer.getChildren()) to native
+     * child indices (getChildAt(index)):
+     * mRendererDrawingOrder[drawingPosition] = nativeChildIndex.
+     *
+     * Example:
+     * Native child views:      [A, X, B, C]
+     * Native child indices:    [0, 1, 2, 3]
+     * Logical order from C++:  [C, B, A, D]
+     *
+     * X has been removed from the logical child list but is still attached.
+     * D has been added to the logical child list but is not yet attached.
+     *
+     * Matched views follow the logical order; unmatched native views keep their
+     * original drawing positions. The resulting mapping is [3, 1, 2, 0], giving
+     * the drawing order [C, X, B, A].
+     *
+     * This method only rebuilds the drawing order; it does not attach D or remove X.
+     */
+    private void rebuildRendererDrawingOrder() {
+      if (mRenderer == null) {
+        mRendererDrawingOrder = null;
+        return;
+      }
+      if (!mRendererDrawingOrderDirty) {
+        return;
+      }
+
+      final int childViewCount = getChildCount();
+      if (mRendererDrawingOrder == null || mRendererDrawingOrder.length != childViewCount) {
+        mRendererDrawingOrder = new int[childViewCount];
+      }
+      /*
+       mRendererDrawingOrder = [0, 1, 2, 3]
+       */
+      for (int i = 0; i < childViewCount; i++) {
+        mRendererDrawingOrder[i] = i;
+      }
+
+      if (mUiListContainer == null || childViewCount < 2) {
+        mRendererDrawingOrderDirty = false;
+        // No reordering is needed without a list container or with fewer than two children.
+        return;
+      }
+
+      // Native child indices collected in logical paint order; only the matched prefix is valid.
+      int[] matchedChildIndices = new int[childViewCount];
+      // Indexed by native child index; a new boolean array is initialized to false.
+      boolean[] matchedChildren = new boolean[childViewCount];
+      IdentityHashMap<View, Integer> nativeChildIndices = new IdentityHashMap<>();
+
+      /*
+       * Look up each view's native child index:
+       * A -> 0 / X -> 1 / B -> 2 / C -> 3.
+       */
+      for (int i = 0; i < childViewCount; i++) {
+        nativeChildIndices.put(getChildAt(i), i);
+      }
+
+      /*
+       * Process [C, B, A, D] in logical order:
+       * matchedCount = 3
+       * matchedChildIndices (valid prefix) = [3 (C), 2 (B), 0 (A)]
+       * matchedChildren = [true (A), false (X), true (B), true (C)]
+       */
+      int matchedCount = 0;
+      for (LynxBaseUI child : mUiListContainer.getChildren()) {
+        if (child instanceof UIComponent) {
+          UIComponent childComponent = (UIComponent) child;
+          View childView = childComponent.getView();
+          // Find the view's native child index. An unattached view such as D returns null.
+          Integer nativeViewIndex = nativeChildIndices.get(childView);
+          if (nativeViewIndex == null || matchedChildren[nativeViewIndex]) {
+            continue;
+          }
+          matchedChildren[nativeViewIndex] = true;
+          matchedChildIndices[matchedCount++] = nativeViewIndex;
+        }
+      }
+
+      /*
+       * Rearrange only the slots occupied by matched views:
+       * mRendererDrawingOrder starts as [0, 1, 2, 3] and becomes [3, 1, 2, 0].
+       */
+      int matchedPosition = 0;
+      for (int i = 0; i < childViewCount; i++) {
+        if (matchedChildren[i]) {
+          mRendererDrawingOrder[i] = matchedChildIndices[matchedPosition++];
+        }
+      }
+      mRendererDrawingOrderDirty = false;
+    }
+
+    @Override
+    protected int getChildDrawingOrder(int childCount, int drawingPosition) {
+      if (mRenderer == null || mRendererDrawingOrder == null
+          || mRendererDrawingOrder.length != childCount) {
+        return drawingPosition;
+      }
+      return mRendererDrawingOrder[drawingPosition];
     }
 
     @Override
@@ -828,15 +976,26 @@ public class ListContainerView extends NestedScrollContainerView
         setMeasuredDimension(mMeasuredWidth > 0 ? mMeasuredWidth : mUiListContainer.getWidth(),
             mMeasuredHeight > 0 ? mMeasuredHeight : mUiListContainer.getHeight());
       }
+      if (mRenderer != null) {
+        mRenderer.onMeasure(widthMeasureSpec, heightMeasureSpec);
+      }
     }
 
     @Override
-    protected void onLayout(boolean changed, int l, int t, int r, int b) {}
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+      if (mRenderer != null) {
+        mRenderer.onLayout(changed, l, t, r, b);
+      }
+    }
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
       if (mDrawChildHook != null) {
         mDrawChildHook.beforeDispatchDraw(canvas);
+      }
+      if (mRenderer != null) {
+        // Rebuild the native child drawing order.
+        rebuildRendererDrawingOrder();
       }
       super.dispatchDraw(canvas);
       if (mDrawChildHook != null) {

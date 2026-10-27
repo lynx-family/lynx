@@ -77,6 +77,19 @@ class PlatformRendererContext {
                                    const float margins[4],
                                    const float borders[4]);
 
+  void InsertListItemPaintingNode(int32_t list_id, int32_t child_id);
+
+  void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id);
+
+  void UpdateContentOffsetForListContainer(int32_t container_id,
+                                           float content_size, float delta_x,
+                                           float delta_y,
+                                           bool is_init_scroll_offset,
+                                           bool from_layout);
+
+  void UpdatePlatformRendererLayoutMetrics(int32_t target,
+                                           const float frame[4]);
+
   // Update platform renderer subtree properties (transform, clip, etc.)
   void UpdatePlatformRendererSubtreeProperties(
       int32_t id, const SubtreeProperty* properties, size_t count);
