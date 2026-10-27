@@ -18,6 +18,9 @@ namespace clay {
 
 class ContainerLayer : public Layer {
  public:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool CanSegmentDisplay() const override { return true; }
+#endif
   ContainerLayer();
 
   void Diff(DiffContext* context, const Layer* old_layer) override;

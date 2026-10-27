@@ -73,6 +73,12 @@ class DrawableImage : public ContextListener {
   // Called on raster thread.
   virtual void OnDrawableImageUnregistered() = 0;
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Raster-only preflight before acquiring an output write. This query does
+  // not advance the source or acquire a read lease.
+  virtual bool IsStagedReadPending() const { return false; }
+#endif
+
   int64_t Id() { return id_; }
 
  private:

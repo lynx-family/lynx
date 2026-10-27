@@ -11,6 +11,9 @@
 #include "base/include/closure.h"
 #include "clay/common/service/service.h"
 #include "clay/flow/frame_timings.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/flow/compositor/frame_types.h"
+#endif
 #include "clay/shell/common/services/sync_compositor_service.h"
 
 namespace clay {
@@ -25,6 +28,11 @@ class UIFrameService : public clay::Service<UIFrameService, clay::Owner::kUI> {
   // scheduler to transfer the state machine. The scheduler will schedule to
   // call BeginFrame with appropriate timing.
   void RequestFrame();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void ResetFrameRequest() { frame_requested_ = false; }
+  void BeginFrameForBinding(display::RasterBindingKey binding,
+                            std::unique_ptr<FrameTimingsRecorder> recorder);
+#endif
   void SetVsyncSourceActive(bool active);
 
   // Indicates that the PageView has received meaningful layout, which means we

@@ -779,6 +779,18 @@ void PageView::CompositeFrame(
 
   // Submit a frame to the engine.
   auto layer_tree = frame_builder_->TakeLayerTree();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (layer_tree) {
+    const bool scrolled = std::exchange(scroll_update_pending_, false);
+    layer_tree->SetHasScrollUpdates(scrolled);
+    if (scrolled) {
+      // Publish an idle snapshot even if the last offset update leaves no
+      // dirty nodes. Later UI-method updates remain pending for that frame.
+      force_raster_ = true;
+      RequestNewFrame();
+    }
+  }
+#endif
   recorder->RecordVsyncTimeOnGeneration(recorder->GetVsyncStartTime());
   recorder->RecordVsyncSequenceId(recorder->GetVsyncSequenceId());
 
@@ -2323,6 +2335,9 @@ void PageView::ResetPageView(bool recycle) {
   }
   DestroyAllChildren();
   padding_left_ = 0.f;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  scroll_update_pending_ = false;
+#endif
   padding_top_ = 0.f;
   padding_right_ = 0.f;
   padding_bottom_ = 0.f;

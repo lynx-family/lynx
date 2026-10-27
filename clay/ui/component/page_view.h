@@ -532,6 +532,16 @@ class PageView : public BaseView,
   void SetLongPressDuration(uint64_t duration);
   bool ShouldPreserveFocusForTouchTarget(BaseView* target);
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Actual offset changes include dragging, flinging and programmatic scrolls.
+  void MarkScrollUpdate() {
+    if (scroll_update_pending_) return;
+    scroll_update_pending_ = true;
+    force_raster_ = true;
+    RequestNewFrame();
+  }
+#endif
+
  protected:
   std::optional<Color> default_background_color_;
 
@@ -619,6 +629,9 @@ class PageView : public BaseView,
   // If set to true, we will do raster in this frame even if there are no
   // nodes need to paint.
   bool force_raster_ = false;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool scroll_update_pending_ = false;
+#endif
   int button_state_ = 0;   // the one button changed recently
   int buttons_state_ = 0;  // bit field, all buttons pressed
 #if defined(OS_WIN) || defined(OS_MAC)

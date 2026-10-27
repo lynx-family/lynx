@@ -73,6 +73,15 @@ class SchedulerStateMachine {
   void SetOutputSurfaceState(OutputSurfaceState output_surface_state);
   void SetMeaningfulLayoutState(MeaningfulLayoutState meaningful_layout_state);
   void Reset();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void ResetForNewProduction();
+  void SetNeedsContentBeginFrame() { needs_content_begin_frame_ = true; }
+  bool HasPendingUIFrame() const {
+    return needs_ui_begin_frame_ ||
+           begin_frame_state_ != BeginFrameState::IDLE || has_pending_tree_ ||
+           !active_tree_has_been_drawn_;
+  }
+#endif
 
   Action NextAction() const;
   void WillSendUIBeginFrame();
@@ -149,6 +158,10 @@ class SchedulerStateMachine {
   // The `needs_raster_begin_frame_` flag is set when a new raster frame is
   // requested.
   bool needs_raster_begin_frame_ = false;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Unlike a full raster request, content must not bypass the UI deadline.
+  bool needs_content_begin_frame_ = false;
+#endif
 
   bool needs_upload_image_ = false;
 

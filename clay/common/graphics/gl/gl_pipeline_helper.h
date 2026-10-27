@@ -14,6 +14,11 @@ namespace clay {
 class GlPipelineHelper {
  public:
   static GlPipelineHelper* GetInstance();
+#if defined(OS_ANDROID) && defined(ENABLE_CLAY_DISPLAY_COMPOSITOR)
+  // Called with the owning EGL context current, before that context is torn
+  // down.
+  static void DestroyCurrentContext();
+#endif
   bool Initialize();
   void Destroy();
 

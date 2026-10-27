@@ -90,6 +90,15 @@ void UIFrameService::DemandDrawHw(std::promise<bool> frame_promise) {
       });
 }
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+void UIFrameService::BeginFrameForBinding(
+    display::RasterBindingKey binding,
+    std::unique_ptr<FrameTimingsRecorder> recorder) {
+  if (binding.tree_id && engine_->GetRasterBindingKey() == binding)
+    BeginFrame(std::move(recorder));
+}
+#endif
+
 void UIFrameService::BeginFrame(
     std::unique_ptr<clay::FrameTimingsRecorder> recorder) {
   FML_DCHECK(engine_);
@@ -106,8 +115,15 @@ void UIFrameService::BeginFrame(
 void UIFrameService::ForceBeginFrame(
     std::unique_ptr<clay::FrameTimingsRecorder> recorder,
     fml::closure no_update_callback) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  raster_frame_service_->puppet_.Act(
+      [binding = engine_->GetRasterBindingKey()](auto& impl) {
+        impl.ForceBeginFrameForBinding(binding);
+      });
+#else
   raster_frame_service_->puppet_.Act(
       [](auto& impl) { impl.ForceBeginFrame(); });
+#endif
   recorder->RecordBuildStart(fml::TimePoint::Now());
   FML_DCHECK(engine_);
   lynx::base::AutoReset<bool> resetter(&inside_ui_frame_, true);
@@ -121,8 +137,15 @@ void UIFrameService::ForceBeginFrame(
 }
 
 void UIFrameService::CommitWithNoUpdates() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  raster_frame_service_->puppet_.Act(
+      [binding = engine_->GetRasterBindingKey()](auto& impl) {
+        impl.CommitWithNoUpdatesForBinding(binding);
+      });
+#else
   raster_frame_service_->puppet_.Act(
       [](auto& impl) { impl.CommitWithNoUpdates(); });
+#endif
 }
 
 void UIFrameService::PrepareForRecycle() {
@@ -145,8 +168,10 @@ void UIFrameService::OnInit(clay::ServiceManager& service_manager,
   raster_frame_service_ = std::make_unique<RasterFrameServicePuppet>(puppet);
   clay::Puppet<clay::Owner::kUI, PlatformConstService> platform_const_service =
       service_manager.GetService<PlatformConstService>();
+#ifndef ENABLE_CLAY_DISPLAY_COMPOSITOR
   using_sync_compositor_ =
       platform_const_service->GetSettings().enable_sync_compositor;
+#endif
   if (using_sync_compositor_) {
     sync_compositor_service_ =
         service_manager.GetService<SyncCompositorService>();

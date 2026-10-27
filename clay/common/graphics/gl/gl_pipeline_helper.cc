@@ -6,13 +6,47 @@
 
 #include "base/include/closure.h"
 #include "clay/common/graphics/gl/gl_shader_program.h"
+#if defined(OS_ANDROID) && defined(ENABLE_CLAY_DISPLAY_COMPOSITOR)
+#include <EGL/egl.h>
+
+#include <map>
+#include <memory>
+#endif
 
 namespace clay {
 
+#if defined(OS_ANDROID) && defined(ENABLE_CLAY_DISPLAY_COMPOSITOR)
+namespace {
+auto& ContextPipelines() {
+  static thread_local std::map<EGLContext, std::unique_ptr<GlPipelineHelper>>
+      pipelines;
+  return pipelines;
+}
+}  // namespace
+#endif
+
 GlPipelineHelper* GlPipelineHelper::GetInstance() {
+#if defined(OS_ANDROID) && defined(ENABLE_CLAY_DISPLAY_COMPOSITOR)
+  // VAOs are context-local even when EGL contexts share textures/programs.
+  // A Raster worker can service multiple staged production contexts.
+  auto& pipeline = ContextPipelines()[eglGetCurrentContext()];
+  if (!pipeline) pipeline = std::make_unique<GlPipelineHelper>();
+  return pipeline.get();
+#else
   static thread_local GlPipelineHelper* instance = new GlPipelineHelper();
   return instance;
+#endif
 }
+
+#if defined(OS_ANDROID) && defined(ENABLE_CLAY_DISPLAY_COMPOSITOR)
+void GlPipelineHelper::DestroyCurrentContext() {
+  auto& pipelines = ContextPipelines();
+  auto it = pipelines.find(eglGetCurrentContext());
+  if (it == pipelines.end()) return;
+  it->second->Destroy();
+  pipelines.erase(it);
+}
+#endif
 
 bool GlPipelineHelper::Initialize() {
   if (initialized_) {

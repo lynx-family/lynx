@@ -31,7 +31,7 @@ VulkanImage::~VulkanImage() {
 
 void VulkanImage::CreateFromAndroidBuffer(AHardwareBuffer* buffer) {
   CreateImage(buffer);
-  CreateImageView();
+  if (image_ != VK_NULL_HANDLE) CreateImageView();
 }
 
 void VulkanImage::CreateImage(AHardwareBuffer* hw_buffer) {

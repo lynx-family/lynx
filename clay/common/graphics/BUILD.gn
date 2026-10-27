@@ -42,6 +42,14 @@ source_set("graphics") {
     "../../version",
   ]
 
+  if (clay_enable_display_compositor && is_android) {
+    sources += [
+      "staged_image_read_scope.cc",
+      "staged_image_read_scope.h",
+    ]
+    deps += [ "../../flow/compositor:frame_protocol" ]
+  }
+
   if (!enable_skity) {
     deps += [
       "../../third_party/skity_geometry:skity_geometry",

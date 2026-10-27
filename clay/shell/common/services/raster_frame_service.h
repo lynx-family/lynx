@@ -15,6 +15,10 @@
 #include "clay/shell/common/services/sync_compositor_service.h"
 #include "clay/shell/common/services/ui_frame_service.h"
 #include "clay/shell/common/vsync_waiter.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/shell/common/display_compositor/production_opportunity.h"
+#include "clay/shell/common/services/display_frame_service.h"
+#endif
 
 namespace clay {
 
@@ -27,6 +31,14 @@ class RasterFrameService
   static std::shared_ptr<RasterFrameService> Create();
 
   void SetOutputSurfaceValid(bool valid);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void SetProductionBinding(display::RasterBindingKey binding);
+  void ForceBeginFrameForBinding(display::RasterBindingKey binding);
+  void CommitWithNoUpdatesForBinding(display::RasterBindingKey binding);
+  void SetProductionAvailable(bool available);
+  void RequestContentFrame(display::RasterBindingKey binding);
+  bool CanDraw() const override;
+#endif
   void SetMeaningfulLayout(bool meaningful_layout);
   void SetVsyncSourceActive(bool active);
 
@@ -85,9 +97,25 @@ class RasterFrameService
 
   void StopSchedulerAndCleanLayerTree();
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void ResetProductionState();
+  bool HasPendingProduction() const {
+    return full_production_pending_ || content_production_pending_;
+  }
+
+  display::RasterBindingKey production_binding_;
+  display::ProductionOpportunity production_opportunity_;
+  bool full_production_pending_ = false;
+  bool content_production_pending_ = false;
+  bool preparing_production_ = false;
+#endif
   Rasterizer* rasterizer_ = nullptr;
   std::unique_ptr<Scheduler> scheduler_;
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  Puppet<Owner::kRaster, DisplayFrameService> display_clock_;
+  fml::RefPtr<fml::TaskRunner> raster_runner_;
+#endif
   std::shared_ptr<VsyncWaiter> vsync_waiter_;
   bool vsync_source_active_ = true;
   bool vsync_requested_ = false;
