@@ -41,7 +41,6 @@ public class FontFaceParser {
   }
 
   public static FontFace parse(LynxContext context, String fontFamily) {
-    fontFamily = trim(fontFamily);
     if (fontFamily == null) {
       reportSrcFormatError(context, "Font-family is empty", "");
       return null;
