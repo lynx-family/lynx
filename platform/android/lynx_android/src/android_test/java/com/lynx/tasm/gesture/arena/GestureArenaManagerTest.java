@@ -235,6 +235,54 @@ public class GestureArenaManagerTest {
     Assert.assertNotNull(manager);
   }
 
+  @Test
+  public void testLegacyArenaAndMemberDefaults() {
+    Assert.assertFalse(mGestureArenaManager.isUsingUnifiedGestureHandler());
+    Assert.assertTrue(arenaMember1.shouldConsumeGesture());
+    mGestureArenaManager.replaceGestureDetectors(1, null);
+    Assert.assertTrue(mGestureArenaManager.isMemberExist(1));
+  }
+
+  @Test
+  public void testEncodeGestureDetectorsForNativeArena() {
+    Map<String, List<Integer>> relations = new HashMap<>();
+    relations.put(GestureDetector.SIMULTANEOUS, Arrays.asList(2, 4));
+    relations.put(GestureDetector.WAIT_FOR, Collections.singletonList(6));
+    relations.put(GestureDetector.CONTINUE_WITH, Collections.singletonList(8));
+    JavaOnlyMap config = new JavaOnlyMap();
+    config.putDouble(GestureConstants.MIN_DISTANCE, 1.5);
+    config.putDouble(GestureConstants.MAX_DURATION, 250);
+    List<String> callbacks = Arrays.asList(GestureConstants.ON_TOUCHES_DOWN,
+        GestureConstants.ON_TOUCHES_MOVE, GestureConstants.ON_TOUCHES_UP,
+        GestureConstants.ON_TOUCHES_CANCEL, GestureConstants.ON_BEGIN, GestureConstants.ON_START,
+        GestureConstants.ON_UPDATE, GestureConstants.ON_END, "unrecognized");
+    Map<Integer, GestureDetector> detectors = new LinkedHashMap<>();
+    detectors.put(9, new GestureDetector(9, GestureDetector.GESTURE_TYPE_TAP, callbacks, null));
+    detectors.put(3,
+        new GestureDetector(3, GestureDetector.GESTURE_TYPE_PAN,
+            Arrays.asList(GestureConstants.ON_TOUCHES_DOWN, GestureConstants.ON_END), relations,
+            config));
+    detectors.put(2, new GestureDetector(2, GestureDetector.GESTURE_TYPE_PINCH, null, null));
+    detectors.put(4, null);
+
+    GestureArenaManager.EncodedDetectors encoded =
+        GestureArenaManager.encodeGestureDetectors(detectors);
+    Assert.assertEquals(2, encoded.count);
+    Assert.assertArrayEquals(new int[] {3, GestureDetector.GESTURE_TYPE_PAN, 129, 2, 1, 1, 2, 4, 6,
+                                 8, 9, GestureDetector.GESTURE_TYPE_TAP, 255, 0, 0, 0},
+        encoded.data);
+    Assert.assertArrayEquals(
+        new double[] {1.5, 10, 500, 250, 3, 0, 10, 500, 500, 3}, encoded.configs, 0);
+  }
+
+  @Test
+  public void testEncodeNullGestureDetectorsClearsNativeRecords() {
+    GestureArenaManager.EncodedDetectors encoded = GestureArenaManager.encodeGestureDetectors(null);
+    Assert.assertEquals(0, encoded.count);
+    Assert.assertArrayEquals(new int[0], encoded.data);
+    Assert.assertArrayEquals(new double[0], encoded.configs, 0);
+  }
+
   /**
    * Helper method to retrieve the GestureDetectorManager from GestureArenaManager using reflection.
    *

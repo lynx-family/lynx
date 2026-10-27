@@ -2201,6 +2201,7 @@ public class com::lynx::tasm::behavior::ui::list::GapItemDecoration : RecyclerVi
 public class com::lynx::tasm::gesture::arena::GestureArenaManager :  {
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.init(boolean enable, LynxContext context);
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.dispatchTouchEventToArena(MotionEvent event, LynxTouchEvent lynxTouchEvent);
+  public boolean com.lynx.tasm.gesture.arena.GestureArenaManager.isUsingUnifiedGestureHandler();
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.dispatchBubbleTouchEvent(String type, LynxTouchEvent touchEvent);
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.setActiveUIToArenaAtDownEvent(EventTarget target);
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.computeScroll();
@@ -2213,11 +2214,13 @@ public class com::lynx::tasm::gesture::arena::GestureArenaManager :  {
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.onDestroy();
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.registerGestureDetectors(int memberId, Map< Integer, GestureDetector > gestureDetectors);
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.unRegisterGestureDetectors(int memberId, Map< Integer, GestureDetector > gestureDetectors);
+  public void com.lynx.tasm.gesture.arena.GestureArenaManager.replaceGestureDetectors(int memberId, @Nullable Map< Integer, GestureDetector > gestureDetectors);
 }
 
 public interface com::lynx::tasm::gesture::GestureArenaMember {
   public void com.lynx.tasm.gesture.GestureArenaMember.onGestureScrollBy(float deltaX, float deltaY);
   public boolean com.lynx.tasm.gesture.GestureArenaMember.canConsumeGesture(float deltaX, float deltaY);
+  public default boolean com.lynx.tasm.gesture.GestureArenaMember.shouldConsumeGesture();
   public int com.lynx.tasm.gesture.GestureArenaMember.getSign();
   public int com.lynx.tasm.gesture.GestureArenaMember.getGestureArenaMemberId();
   public int com.lynx.tasm.gesture.GestureArenaMember.getMemberScrollX();
