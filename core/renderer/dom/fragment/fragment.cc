@@ -1290,6 +1290,7 @@ void Fragment::SetEventProp(PlatformEventPropName name,
   }
   event_props_.insert_or_assign(name, value);
   event_bundle_dirty_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::ClearEventProps() {
@@ -1298,6 +1299,7 @@ void Fragment::ClearEventProps() {
   }
   event_props_.clear();
   event_bundle_dirty_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::AddEventName(PlatformEventName name) {
@@ -1311,6 +1313,7 @@ void Fragment::AddEventName(PlatformEventName name) {
   }
   event_names_.push_back(name);
   event_bundle_dirty_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::ClearEventNames() {
@@ -1319,6 +1322,7 @@ void Fragment::ClearEventNames() {
   }
   event_names_.clear();
   event_bundle_dirty_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::MarkHasExposureEventIfNeeded() const {
@@ -1444,9 +1448,11 @@ void Fragment::SyncEventBundlesRecursively() {
 }
 
 void Fragment::MarkNodeReadyIfNeeded() {
-  if (ShouldSyncNativePlatformRenderer()) {
-    pending_node_ready_ = true;
+  if (!ShouldSyncNativePlatformRenderer() || pending_node_ready_) {
+    return;
   }
+  pending_node_ready_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::FlushPendingNodeReadyIfNeeded() {
@@ -1485,7 +1491,7 @@ void Fragment::Draw() {
   //  Collect own displayList.
   DisplayListBuilder builder{render_offset_[0], render_offset_[1]};
 
-  if (draw_node_capacity_ > 0) {
+  if (draw_node_capacity_ > 0 && (NeedRedraw() || !has_platform_renderer_)) {
     builder.Reserve(draw_node_capacity_);
   }
 
@@ -1512,8 +1518,12 @@ void Fragment::Draw() {
     MarkDirtyState(kNeedRedraw);
   }
 
-  painting_context()->impl()->CastToNativeCtx()->UpdateDisplayList(
-      id(), builder.Build());
+  auto display_list = builder.Build();
+  if (display_list.GetContentItemsSize() != 0 ||
+      display_list.GetSubtreePropertiesSize() != 0) {
+    painting_context()->impl()->CastToNativeCtx()->UpdateDisplayList(
+        id(), std::move(display_list));
+  }
 
   ReconstructEventTargetTreeForExposure();
 }
