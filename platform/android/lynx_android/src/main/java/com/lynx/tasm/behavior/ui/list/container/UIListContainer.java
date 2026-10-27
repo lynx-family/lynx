@@ -1755,6 +1755,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   }
 
   @Override
+  public boolean shouldConsumeGesture() {
+    return mView != null && mView.shouldConsumeGesture();
+  }
+
+  @Override
   public int getMemberScrollX() {
     if (mIsVertical) {
       return 0;
