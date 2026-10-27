@@ -4,14 +4,21 @@
 
 package com.lynx.tasm.gesture.arena;
 
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.MotionEvent;
 import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.event.LynxCustomEvent;
+import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.detector.GestureDetector;
@@ -26,6 +33,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 /**
@@ -281,6 +289,208 @@ public class GestureArenaManagerTest {
     Assert.assertEquals(0, encoded.count);
     Assert.assertArrayEquals(new int[0], encoded.data);
     Assert.assertArrayEquals(new double[0], encoded.configs, 0);
+  }
+
+  @Test
+  public void testUnifiedTouchInputKeepsPageAndWindowCoordinatesSeparate() throws Exception {
+    RecordingNativeArena arena = new RecordingNativeArena();
+    UIBody.UIBodyView view = Mockito.mock(UIBody.UIBodyView.class);
+    Mockito.when(view.getRootView()).thenReturn(view);
+    Mockito
+        .doAnswer(invocation -> {
+          int[] location = invocation.getArgument(0);
+          location[0] = 100;
+          location[1] = 200;
+          return null;
+        })
+        .when(view)
+        .getLocationOnScreen(Mockito.any(int[].class));
+    mContext.setUIBodyView(view);
+    setArenaField(arena, "mLynxContext", mContext);
+    setArenaField(arena, "mNativeGestureArena", 1L);
+    setArenaField(arena, "mUnifiedResponseChain", new int[] {9, 2});
+    double density = mContext.getResources().getDisplayMetrics().density;
+    long time = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, 131.5f, 241, 0);
+    MotionEvent move = MotionEvent.obtain(time, time + 8, MotionEvent.ACTION_MOVE, 134.5f, 247, 0);
+    MotionEvent up = MotionEvent.obtain(time, time + 16, MotionEvent.ACTION_UP, 138, 250, 0);
+    MotionEvent cancel =
+        MotionEvent.obtain(time, time + 24, MotionEvent.ACTION_CANCEL, 138, 250, 0);
+    MotionEvent[] events = {down, move, up, down, cancel};
+    try {
+      for (MotionEvent event : events) {
+        event.offsetLocation(-120, -220);
+        arena.dispatchTouchEventToUnifiedArena(event);
+        event.offsetLocation(120, 220);
+      }
+      Assert.assertEquals(Arrays.asList(0, 1, 2, 0, 3), arena.inputTypes);
+      Assert.assertEquals(Arrays.asList(1L, 1L, 1L, 2L, 2L), arena.sequenceIds);
+      Assert.assertArrayEquals(new double[] {131.5 / density, 241 / density, 11.5 / density,
+                                   21 / density, 31.5 / density, 41 / density, 0, 0},
+          arena.coordinates.get(0), 0.00001);
+      Assert.assertArrayEquals(
+          new double[] {134.5 / density, 247 / density, 14.5 / density, 27 / density,
+              34.5 / density, 47 / density, -3 / density, -6 / density},
+          arena.coordinates.get(1), 0.00001);
+      Assert.assertArrayEquals(new int[] {9, 2}, arena.responseChains.get(0));
+      Assert.assertNull(arena.responseChains.get(1));
+      Assert.assertNull(arena.responseChains.get(2));
+      Assert.assertArrayEquals(new int[] {9, 2}, arena.responseChains.get(3));
+      Assert.assertNull(arena.responseChains.get(4));
+    } finally {
+      down.recycle();
+      move.recycle();
+      up.recycle();
+      cancel.recycle();
+      mContext.setUIBodyView(mLynxView);
+    }
+  }
+
+  @Test
+  public void testUnifiedMoveCallbackHonorsPlatformFilter() throws Exception {
+    EventEmitter originalEmitter = mContext.getEventEmitter();
+    EventEmitter emitter = Mockito.mock(EventEmitter.class);
+    mContext.setEventEmitter(emitter);
+    setArenaField(mGestureArenaManager, "mLynxContext", mContext);
+    Method callback =
+        arenaMethod("dispatchGestureEvent", int.class, int.class, int.class, int.class, long.class,
+            double.class, double.class, double.class, double.class, double.class, double.class,
+            double.class, double.class, double.class, double.class, boolean.class, boolean.class);
+    try {
+      callback.invoke(mGestureArenaManager, 1, 41, 1, 1, 42L, 1.5, 2.5, 11.5, 21.5, 31.5, 41.5,
+          -3.0, -6.0, 7.0, 8.0, true, false);
+      Mockito.verifyNoInteractions(emitter);
+
+      setArenaField(mGestureArenaManager, "mUnifiedDispatchTouchMove", true);
+      callback.invoke(mGestureArenaManager, 1, 41, 1, 1, 42L, 1.5, 2.5, 11.5, 21.5, 31.5, 41.5,
+          -3.0, -6.0, 7.0, 8.0, true, false);
+      ArgumentCaptor<LynxCustomEvent> captured = ArgumentCaptor.forClass(LynxCustomEvent.class);
+      Mockito.verify(emitter).sendGestureEvent(Mockito.eq(41), captured.capture());
+      LynxCustomEvent event = captured.getValue();
+      Assert.assertEquals(GestureConstants.ON_TOUCHES_MOVE, event.getName());
+      Map<String, Object> params = event.eventParams();
+      Assert.assertEquals(42L, params.get("timestamp"));
+      Assert.assertEquals(LynxTouchEvent.EVENT_TOUCH_MOVE, params.get("type"));
+      Assert.assertEquals(1.5, params.get("x"));
+      Assert.assertEquals(2.5, params.get("y"));
+      Assert.assertEquals(11.5, params.get("pageX"));
+      Assert.assertEquals(21.5, params.get("pageY"));
+      Assert.assertEquals(31.5, params.get("clientX"));
+      Assert.assertEquals(41.5, params.get("clientY"));
+      Assert.assertEquals(-3.0, params.get("deltaX"));
+      Assert.assertEquals(-6.0, params.get("deltaY"));
+      Assert.assertEquals(7.0, params.get("scrollX"));
+      Assert.assertEquals(8.0, params.get("scrollY"));
+      Assert.assertEquals(true, params.get("isAtStart"));
+      Assert.assertEquals(false, params.get("isAtEnd"));
+    } finally {
+      mContext.setEventEmitter(originalEmitter);
+    }
+  }
+
+  @Test
+  public void testUnifiedMemberScrollAndStateCallbacks() throws Exception {
+    GestureArenaMember member = Mockito.mock(GestureArenaMember.class);
+    Mockito.when(member.getSign()).thenReturn(41);
+    Mockito.when(member.getMemberScrollX()).thenReturn(10, 16, 16);
+    Mockito.when(member.getMemberScrollY()).thenReturn(20, 18, 18);
+    Mockito.when(member.isAtBorder(true)).thenReturn(true);
+    Mockito.when(member.getScrollContainerDirection())
+        .thenReturn(GestureConstants.DIRECTION_VERTICAL);
+    Mockito.when(member.canConsumeGesture(8.0f, -3.0f)).thenReturn(true);
+    Mockito.when(member.shouldConsumeGesture()).thenReturn(true);
+    setArenaField(mGestureArenaManager, "mLynxContext", mContext);
+    Assert.assertEquals(41, mGestureArenaManager.addMember(member));
+    double density = mContext.getResources().getDisplayMetrics().density;
+
+    Assert.assertEquals(
+        true, arenaMethod("isMemberValid", int.class).invoke(mGestureArenaManager, 41));
+    Assert.assertEquals(
+        false, arenaMethod("isMemberValid", int.class).invoke(mGestureArenaManager, 42));
+    Assert.assertEquals(GestureConstants.DIRECTION_VERTICAL,
+        arenaMethod("getScrollDirection", int.class).invoke(mGestureArenaManager, 41));
+    Assert.assertEquals(
+        true, arenaMethod("shouldConsumeGesture", int.class).invoke(mGestureArenaManager, 41));
+    Assert.assertEquals(true,
+        arenaMethod("canConsumeGesture", int.class, int.class, double.class, double.class)
+            .invoke(mGestureArenaManager, 41, 2, 8 / density, -3 / density));
+    Assert.assertArrayEquals(new double[] {6 / density, -2 / density, 2 / density, -1 / density},
+        (double[]) arenaMethod("scrollBy", int.class, double.class, double.class)
+            .invoke(mGestureArenaManager, 41, 8 / density, -3 / density),
+        0.00001);
+    Mockito.verify(member).onGestureScrollBy(8.0f, -3.0f);
+    Assert.assertArrayEquals(new double[] {16 / density, 18 / density, 1, 0},
+        (double[]) arenaMethod("getScrollState", int.class).invoke(mGestureArenaManager, 41),
+        0.00001);
+    Assert.assertArrayEquals(new double[] {1.5, 2.5},
+        (double[]) arenaMethod("convertPageToMember", int.class, double.class, double.class)
+            .invoke(mGestureArenaManager, 41, 1.5, 2.5),
+        0);
+
+    Method stateChanged = arenaMethod("onGestureStateChanged", int.class, int.class, int.class);
+    stateChanged.invoke(mGestureArenaManager, 41, 1, 1);
+    stateChanged.invoke(mGestureArenaManager, 41, 1, 2);
+    stateChanged.invoke(mGestureArenaManager, 41, 1, 5);
+    Mockito.verify(member).onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_BEGIN);
+    Mockito.verify(member).onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_ACTIVE);
+    Mockito.verify(member).onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_CANCELLED);
+  }
+
+  @Test
+  public void testUnifiedJavaTimerCancellationSkipsNativeCallback() throws Exception {
+    RecordingNativeArena arena = new RecordingNativeArena();
+    setArenaField(arena, "mNativeGestureArena", 1L);
+    Method schedule = arenaMethod("scheduleTimer", long.class, double.class);
+    Method cancel = arenaMethod("cancelTimer", long.class);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      try {
+        schedule.invoke(arena, 1L, 0.0);
+        cancel.invoke(arena, 1L);
+        schedule.invoke(arena, 2L, 0.0);
+      } catch (ReflectiveOperationException e) {
+        throw new AssertionError(e);
+      }
+    });
+    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+    Assert.assertEquals(Collections.singletonList(2L), arena.timerTokens);
+  }
+
+  private static Method arenaMethod(String name, Class<?>... arguments) throws Exception {
+    Method method = GestureArenaManager.class.getDeclaredMethod(name, arguments);
+    method.setAccessible(true);
+    return method;
+  }
+
+  private static void setArenaField(GestureArenaManager arena, String name, Object value)
+      throws Exception {
+    Field field = GestureArenaManager.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(arena, value);
+  }
+
+  private static class RecordingNativeArena extends GestureArenaManager {
+    final List<Integer> inputTypes = new ArrayList<>();
+    final List<Long> sequenceIds = new ArrayList<>();
+    final List<double[]> coordinates = new ArrayList<>();
+    final List<int[]> responseChains = new ArrayList<>();
+    final List<Long> timerTokens = new ArrayList<>();
+
+    @Override
+    void nativeHandleInput(long nativePtr, int type, long sequenceId, int pointerId,
+        double monotonicTime, long epochTime, double screenX, double screenY, double pageX,
+        double pageY, double clientX, double clientY, double deltaX, double deltaY,
+        double velocityX, double velocityY, boolean flingFinished, int[] responseChain) {
+      inputTypes.add(type);
+      sequenceIds.add(sequenceId);
+      coordinates.add(
+          new double[] {screenX, screenY, pageX, pageY, clientX, clientY, deltaX, deltaY});
+      responseChains.add(responseChain);
+    }
+
+    @Override
+    void nativeHandleTimer(long nativePtr, long token, double monotonicTime, long epochTime) {
+      timerTokens.add(token);
+    }
   }
 
   /**
