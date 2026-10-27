@@ -190,6 +190,9 @@ FloatPoint ScrollCoordinatorScrollView::DoScroll(FloatPoint delta,
 }
 
 void ScrollCoordinatorScrollView::DidScroll() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  page_view()->MarkScrollUpdate();
+#endif
   SyncState();
   float offset_y = GetScrollOffset().y();
   bool exceeds_threshold = std::abs(offset_y - last_sent_offset_y_) >

@@ -44,6 +44,7 @@ fml::RefPtr<SharedImageRepresentation> SharedImageSinkAccessor::UpdateFront() {
 
 fml::RefPtr<SharedImageRepresentation>
 SharedImageSinkAccessor::UpdateFrontSequence() {
+  if (auto updated = TryUpdateFront(false)) return *updated;
   std::unique_ptr<FenceSync> front_fence;
   if (front_repr_) {
     if (!front_repr_->EndRead()) {
@@ -65,6 +66,8 @@ SharedImageSinkAccessor::UpdateFrontSequence() {
 
 fml::RefPtr<SharedImageRepresentation>
 SharedImageSinkAccessor::UpdateFrontToLatest() {
+  if (auto updated = TryUpdateFront(true))
+    return HasNoPendingFront() ? front_repr_ : *updated;
   std::unique_ptr<FenceSync> front_fence;
   if (front_repr_) {
     front_fence = front_repr_->ProduceFence();
@@ -83,6 +86,35 @@ SharedImageSinkAccessor::UpdateFrontToLatest() {
   front_repr_ = GetRepresentation(backing.get());
   front_repr_->ConsumeFence(backing->GetFenceSync());
   return front_repr_;
+}
+
+std::optional<fml::RefPtr<SharedImageRepresentation>>
+SharedImageSinkAccessor::TryUpdateFront(bool latest) {
+  pending_front_.reset();
+  bool failed = false;
+  auto backing = sink_->TryUpdateFront(
+      latest, [this, &failed](std::unique_ptr<FenceSync>& fence) {
+        if (front_repr_) {
+          if (!front_repr_->EndRead()) {
+            failed = true;
+            FML_LOG(ERROR) << "Failed to end read";
+            return false;
+          }
+          fence = front_repr_->ProduceFence();
+          front_repr_ = nullptr;
+        }
+        return true;
+      });
+  if (!backing) return std::nullopt;
+  pending_front_ = static_cast<bool>(*backing) || failed;
+  if (!*backing) return fml::RefPtr<SharedImageRepresentation>();
+  front_repr_ = GetRepresentation(backing->get());
+  if (front_repr_) front_repr_->ConsumeFence((*backing)->GetFenceSync());
+  return front_repr_;
+}
+
+std::function<void()> SharedImageSinkAccessor::TrackRead(bool staged) {
+  return front_repr_ ? front_repr_->TrackRead(staged) : std::function<void()>();
 }
 
 void SharedImageSinkAccessor::ReleaseFront() {
@@ -160,6 +192,8 @@ bool SharedImageSinkAccessor::SwapBack() {
 
 fml::RefPtr<SharedImageRepresentation>
 SharedImageSinkAccessor::GetRepresentation(SharedImageBacking* backing) {
+  if (auto representation = sink_->GetProducerRepresentation(backing))
+    return representation;
   for (auto& [cached_backing, cached_repr] : image_repr_cache_) {
     if (cached_backing == backing) {
       return cached_repr;

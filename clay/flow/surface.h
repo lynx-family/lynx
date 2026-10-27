@@ -17,6 +17,12 @@
 #include "clay/gfx/rendering_backend.h"
 
 namespace clay {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+namespace display {
+class GPUCompletion;
+class OutputTexture;
+}  // namespace display
+#endif
 
 /// Abstract Base Class that represents where we will be rendering content.
 class Surface {
@@ -43,6 +49,19 @@ class Surface {
   virtual bool AllowsDrawingWhenGpuDisabled() const;
 
   virtual bool EnableRasterCache() const;
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Texture hosts consume one completed output. Composition and allocation
+  // remain with the caller, just as they do for regular window surfaces.
+  virtual bool SupportsTexturePresentation() const { return false; }
+  // A null result means no native read or presentation was submitted. An
+  // accepted image keeps its original producer completion and immutable lease.
+  virtual std::shared_ptr<const display::GPUCompletion> PresentSharedImage(
+      std::shared_ptr<const display::OutputTexture> image) {
+    return nullptr;
+  }
+  virtual void DetachPresentation() {}
+#endif
 
  private:
   BASE_DISALLOW_COPY_AND_ASSIGN(Surface);

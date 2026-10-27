@@ -51,6 +51,9 @@ void SchedulerStateMachine::Reset() {
   image_upload_state_ = ImageUploadState::READY;
   needs_ui_begin_frame_ = false;
   needs_raster_begin_frame_ = false;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  needs_content_begin_frame_ = false;
+#endif
   needs_upload_image_ = false;
   visible_ = visible;
   ui_begin_frame_is_ready_to_send_ = false;
@@ -63,6 +66,18 @@ void SchedulerStateMachine::Reset() {
   first_frame_committed_ = false;
   first_frame_drawn_ = false;
 }
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+void SchedulerStateMachine::ResetForNewProduction() {
+  // A replacement producer cannot complete an outstanding request or draw a
+  // pending tree from the old binding. Page layout and upload work survive.
+  const auto layout = meaningful_layout_state_;
+  const auto uploads = needs_upload_image_;
+  Reset();
+  meaningful_layout_state_ = layout;
+  needs_upload_image_ = uploads;
+}
+#endif
 
 SchedulerStateMachine::Action SchedulerStateMachine::NextAction() const {
   if (ShouldSendUIBeginFrame()) {
@@ -179,9 +194,16 @@ void SchedulerStateMachine::NotifyActiveTreeHasBeenDrawn() {
 }
 
 void SchedulerStateMachine::NotifyReadyToPerformRasterFrame() {
-  if (needs_raster_begin_frame_) {
+  if (needs_raster_begin_frame_
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+      || needs_content_begin_frame_
+#endif
+  ) {
     raster_state_ = RasterState::BEGIN_FRAME;
     needs_raster_begin_frame_ = false;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    needs_content_begin_frame_ = false;
+#endif
     // Set the flag `needs_redraw_` which will schedule Action::DRAW.
     needs_redraw_ = true;
     image_upload_state_ = ImageUploadState::PENDING;

@@ -5,6 +5,7 @@
 #ifndef CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_REPRESENTATION_H_
 #define CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_REPRESENTATION_H_
 
+#include <functional>
 #include <memory>
 #include <optional>
 
@@ -61,6 +62,10 @@ class SharedImageRepresentation
   virtual bool BeginWrite(ClaySharedImageWriteResult* out) = 0;
   virtual bool EndWrite() = 0;
 
+  // A staged callback runs only after all GPU reads in that paint batch have
+  // finished. Ordinary paints must invalidate any previous completion proof.
+  virtual std::function<void()> TrackRead(bool) { return {}; }
+
   virtual void ConsumeFence(std::unique_ptr<FenceSync>) = 0;
   virtual std::unique_ptr<FenceSync> ProduceFence() = 0;
 
@@ -88,6 +93,11 @@ class SkityImageRepresentation : public SharedImageRepresentation {
   ~SkityImageRepresentation() override;
 
   virtual std::shared_ptr<SkityImage> GetSkityImage() = 0;
+
+  // The caller reports completion for every GPU read through TrackRead.
+  virtual std::shared_ptr<SkityImage> GetSkityImageForTrackedRead() {
+    return GetSkityImage();
+  }
 #endif  // ENABLE_SKITY
 
   ImageRepresentationType GetType() const override;

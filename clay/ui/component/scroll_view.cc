@@ -893,7 +893,11 @@ void ScrollView::CorrectScrollOffset() {
       return;
     }
     if (RoughlyNotZero(scroll->ScrollTop() - target_offset)) {
-      scroll->ScrollTo(scroll->ScrollLeft(), target_offset);
+      [[maybe_unused]] const bool changed =
+          scroll->ScrollTo(scroll->ScrollLeft(), target_offset);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+      if (changed) page_view()->MarkScrollUpdate();
+#endif
       last_scroll_offset_ = scroll->ScrollOffset();
     }
   } else {
@@ -904,7 +908,11 @@ void ScrollView::CorrectScrollOffset() {
       return;
     }
     if (RoughlyNotZero(scroll->ScrollLeft() - target_offset)) {
-      scroll->ScrollTo(target_offset, scroll->ScrollTop());
+      [[maybe_unused]] const bool changed =
+          scroll->ScrollTo(target_offset, scroll->ScrollTop());
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+      if (changed) page_view()->MarkScrollUpdate();
+#endif
       last_scroll_offset_ = scroll->ScrollOffset();
     }
   }

@@ -5,6 +5,7 @@
 #include "clay/common/graphics/shared_drawable_image.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_sink_accessor.h"
@@ -27,6 +28,12 @@ void SharedDrawableImage::SetFrameAvailableCallback(
 // |clay::raster|
 // Called on raster thread.
 void SharedDrawableImage::MarkNewFrameAvailable() { frame_produce_cnt_++; }
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+void SharedDrawableImage::MarkNewFramesAvailable(uint64_t count) {
+  frame_produce_cnt_ += count;
+}
+#endif
 
 // |clay::raster|
 // Called on raster thread.
@@ -79,7 +86,27 @@ bool SharedDrawableImage::EnsureAttached() {
 }
 
 // Called from raster thread.
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+bool SharedDrawableImage::IsStagedReadPending() const {
+  // Detached sources do not paint. Their old reads may still be draining.
+  return state_ != AttachmentState::detached && staged_read_->pending;
+}
+bool SharedDrawableImage::PrepareStagedRead() {
+  auto* scope = display::StagedImageReadScope::Current();
+  if (!scope || scope->Contains(this)) return true;
+  if (IsStagedReadPending()) {
+    scope->Block();
+    return false;
+  }
+  return true;
+}
+#endif
 void SharedDrawableImage::AdvanceFrameConsumption(bool freeze) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (auto* scope = display::StagedImageReadScope::Current();
+      scope && scope->Contains(this))
+    return;
+#endif
   if (image_sink_->Capacity() == 1) {
     [[maybe_unused]] bool update_success = Update();
   } else if (!freeze) {
@@ -88,7 +115,12 @@ void SharedDrawableImage::AdvanceFrameConsumption(bool freeze) {
       if (!Update()) {
         break;
       }
-      frame_consume_cnt_++;
+      if (image_sink_->update_front_mode() ==
+          SharedImageSink::UpdateFrontMode::kLatest) {
+        frame_consume_cnt_ = frame_produce_cnt_;
+      } else {
+        frame_consume_cnt_++;
+      }
     }
   }
 }
@@ -97,6 +129,11 @@ void SharedDrawableImage::AdvanceFrameConsumption(bool freeze) {
 bool SharedDrawableImage::Update() {
   fml::RefPtr<SharedImageRepresentation> repr = accessor_->UpdateFront();
   if (!repr) {
+    if (accessor_->HasNoPendingFront()) {
+      // Notifications can outlive a dropped publication.
+      // Only an empty queue, never an import/read failure, reconciles credits.
+      frame_consume_cnt_ = frame_produce_cnt_;
+    }
     return false;
   }
 
@@ -108,8 +145,15 @@ bool SharedDrawableImage::Update() {
   }
 #else
   FML_DCHECK(repr->GetType() == ImageRepresentationType::kSkity);
-  skity_image_ =
-      static_cast<SkityImageRepresentation*>(repr.get())->GetSkityImage();
+  auto* image = static_cast<SkityImageRepresentation*>(repr.get());
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (display::StagedImageReadScope::Current()) {
+    skity_image_ = image->GetSkityImageForTrackedRead();
+  } else
+#endif
+  {
+    skity_image_ = image->GetSkityImage();
+  }
   if (!skity_image_) {
     return false;
   }
@@ -240,6 +284,22 @@ void SharedDrawableImage::DrawSkityImage(
 
 // Called from raster thread.
 void SharedDrawableImage::FlushAndReleaseFrontForSingleBuffer() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (auto* scope = display::StagedImageReadScope::Current()) {
+    if (!scope->Contains(this)) {
+      auto complete = accessor_->TrackRead(true);
+      scope->Hold(this, staged_read_,
+                  [accessor = accessor_, image = skity_image_,
+                   complete = std::move(complete),
+                   single = image_sink_->Capacity() == 1] {
+                    if (complete) complete();
+                    if (single) accessor->ReleaseFront();
+                  });
+    }
+    return;
+  }
+#endif
+  accessor_->TrackRead(false);
   if (image_sink_->Capacity() == 1) {
 #ifndef ENABLE_SKITY
     // Flush sk_image to make sure the shared image can be transferred to the

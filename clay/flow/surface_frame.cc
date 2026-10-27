@@ -20,15 +20,17 @@ SurfaceFrame::SurfaceFrame(clay::GrSurfacePtr surface,
                            const EncodeCallback& encode_callback,
                            const SubmitCallback& submit_callback,
                            skity::Vec2 frame_size,
-                           std::unique_ptr<GLContextResult> context_result)
+                           std::unique_ptr<GLContextResult> context_result,
+                           clay::GrCanvas* existing_canvas)
     : surface_(std::move(surface)),
       framebuffer_info_(framebuffer_info),
       encode_callback_(encode_callback),
       submit_callback_(submit_callback),
       context_result_(std::move(context_result)) {
   FML_DCHECK(submit_callback_);
-  if (surface_) {
-    [[maybe_unused]] bool clear = !framebuffer_info.supports_partial_repaint;
+  canvas_ = existing_canvas;
+  if (!canvas_ && surface_) {
+    [[maybe_unused]] bool clear = !framebuffer_info_.supports_partial_repaint;
     canvas_ = SURFACE_GET_CANVAS(surface_, clear);
   }
 }

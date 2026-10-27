@@ -8,6 +8,7 @@
 #ifndef CLAY_FLOW_SURFACE_FRAME_H_
 #define CLAY_FLOW_SURFACE_FRAME_H_
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -103,7 +104,8 @@ class SurfaceFrame {
   SurfaceFrame(clay::GrSurfacePtr surface, FramebufferInfo framebuffer_info,
                const EncodeCallback& encode_callback,
                const SubmitCallback& submit_callback, skity::Vec2 frame_size,
-               std::unique_ptr<GLContextResult> context_result = nullptr);
+               std::unique_ptr<GLContextResult> context_result = nullptr,
+               clay::GrCanvas* existing_canvas = nullptr);
 
   void Prepare(std::optional<skity::Rect> buffer_damage);
 

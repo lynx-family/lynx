@@ -24,9 +24,10 @@ class VulkanFenceHelper {
 
   void Destroy();
 
-  bool InPendingQueue(const std::list<VkFence> &pending_fences);
+  bool InPendingQueue(const std::list<VkFence>& pending_fences);
 
   bool WaitForFence();
+  VkResult GetFenceStatus();
   bool WaitSemaphore();
 
  private:

@@ -28,6 +28,9 @@
 #include "clay/flow/frame_timings.h"
 #include "clay/fml/base64.h"
 #include "clay/gfx/rendering_backend.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/shell/common/output_surface.h"
+#endif
 #include "clay/shell/common/serialization_callbacks.h"
 #include "clay/ui/common/frame_timing_collector.h"
 #include "clay/ui/common/isolate.h"
@@ -128,6 +131,10 @@ void Rasterizer::CleanForRecycle() {
 }
 
 void Rasterizer::NotifyLowMemoryWarning() const {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (staged_) staged_->Trim();
+  if (!surface_) return;
+#endif
   if (!surface_) {
     FML_DLOG(INFO)
         << "Rasterizer::NotifyLowMemoryWarning called with no surface.";
@@ -152,6 +159,51 @@ void Rasterizer::NotifyLowMemoryWarning() const {
 std::shared_ptr<DrawableImageRegistry> Rasterizer::GetDrawableImageRegistry() {
   return compositor_context_->drawable_image_registry();
 }
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+void Rasterizer::SetHybridOutputSurface(
+    fml::RefPtr<OutputSurface> output,
+    std::shared_ptr<const std::atomic_bool> current, fml::closure activate) {
+  if (hybrid_output_ == output && hybrid_output_current_ == current) return;
+  TeardownHybridSurface();
+  hybrid_output_ = std::move(output);
+  hybrid_output_current_ = std::move(current);
+  activate_hybrid_output_ = std::move(activate);
+}
+
+bool Rasterizer::HasHybridOutputSurface() const {
+  return hybrid_output_ && hybrid_output_current_ &&
+         hybrid_output_current_->load();
+}
+
+void Rasterizer::TeardownHybridSurface() {
+  if (!surface_) return;
+  {
+    auto current = surface_->MakeRenderContextCurrent();
+    compositor_service_.Act(
+        [](auto& service) { service.ResetPlatformOverlays(true); });
+  }
+  Teardown();
+}
+
+void Rasterizer::DrawHybrid(std::shared_ptr<LayerTree> tree,
+                            std::unique_ptr<FrameTimingsRecorder> recorder) {
+  if (!HasHybridOutputSurface()) return;
+  if (!surface_) {
+    platform_const_service_->GetIsGPUDisabledSyncSwitch()->Execute(
+        fml::SyncSwitch::Handlers().SetIfFalse([&] {
+          if (auto surface = hybrid_output_->CreateGPUSurface();
+              surface && surface->IsValid()) {
+            Setup(std::move(surface));
+          }
+        }));
+    if (!surface_ || !HasHybridOutputSurface()) return;
+    if (staged_) staged_->ReleaseCachedScene();
+    if (auto activate = std::exchange(activate_hybrid_output_, {})) activate();
+  }
+  Draw(std::move(tree), std::move(recorder));
+}
+#endif
 
 clay::LayerTree* Rasterizer::GetLastLayerTree() {
   return last_layer_tree_.get();
@@ -498,21 +550,32 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     }
 
     frame->set_submit_info(submit_info);
+    bool submitted;
+    std::shared_ptr<const std::atomic_bool> current;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    current = hybrid_output_current_;
+#endif
     {
       TRACE_EVENT("clay", "GPURasterizer::SubmitFrame");
       if (frame_timings_recorder) {
         frame_timings_recorder->RecordFrameTime(
             FrameTimingKey::kSubmitFrameStart);
       }
-      compositor_service_->SubmitFrame(surface_->GetContextPtr(),
-                                       std::move(frame),
-                                       std::move(compositor_state));
+      submitted = compositor_service_->SubmitFrame(
+          surface_->GetContextPtr(), std::move(frame),
+          std::move(compositor_state), std::move(current));
       if (frame_timings_recorder) {
         frame_timings_recorder->RecordFrameTime(
             FrameTimingKey::kSubmitFrameEnd);
       }
     }
     compositor_context_->raster_cache().EndFrame();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    if (!submitted || (hybrid_output_current_ && !HasHybridOutputSurface()))
+      return RasterStatus::kFailed;
+#else
+    (void)submitted;
+#endif
     if (frame_timings_recorder) {
       frame_timings_recorder->RecordRasterEnd(
           &compositor_context_->raster_cache());

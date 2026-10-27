@@ -15,7 +15,7 @@ bool MTLCompleteFenceSync::ClientWait() {
   return true;
 }
 
-FenceSync::Type MTLCompleteFenceSync::GetType() const { return Type::kClientWaitOnly; }
+FenceSync::Type MTLCompleteFenceSync::GetType() const { return Type::kMetalComplete; }
 
 MTLCompleteFenceSync::~MTLCompleteFenceSync() = default;
 

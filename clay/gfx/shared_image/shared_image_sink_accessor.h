@@ -5,7 +5,9 @@
 #ifndef CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_SINK_ACCESSOR_H_
 #define CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_SINK_ACCESSOR_H_
 
+#include <functional>
 #include <list>
+#include <optional>
 #include <tuple>
 
 #include "base/include/fml/memory/ref_ptr.h"
@@ -34,6 +36,11 @@ class SharedImageSinkAccessor {
 
   fml::RefPtr<SharedImageRepresentation> UpdateFrontToLatest();
 
+  // Only an atomic managed-queue check can reconcile delayed frame credits.
+  bool HasNoPendingFront() const { return pending_front_ == false; }
+
+  std::function<void()> TrackRead(bool staged);
+
   void ReleaseFront();
 
   std::tuple<fml::RefPtr<SharedImageRepresentation>, uint32_t> AcquireBack(
@@ -52,6 +59,9 @@ class SharedImageSinkAccessor {
   BASE_DISALLOW_COPY_AND_ASSIGN(SharedImageSinkAccessor);
 
  private:
+  std::optional<fml::RefPtr<SharedImageRepresentation>> TryUpdateFront(
+      bool latest);
+
   fml::RefPtr<SharedImageRepresentation> GetRepresentation(
       SharedImageBacking* backing);
 
@@ -59,6 +69,7 @@ class SharedImageSinkAccessor {
   RepresentationFactory repr_factory_;
   fml::RefPtr<SharedImageRepresentation> front_repr_;
   fml::RefPtr<SharedImageRepresentation> back_repr_;
+  std::optional<bool> pending_front_;
   std::list<
       std::tuple<SharedImageBacking*, fml::RefPtr<SharedImageRepresentation>>>
       image_repr_cache_;

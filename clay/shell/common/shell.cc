@@ -8,6 +8,7 @@
 #include "clay/shell/common/shell.h"
 
 #include <atomic>
+#include <chrono>
 #include <future>
 #include <memory>
 #include <sstream>
@@ -315,6 +316,11 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
         }
       }));
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Register after service attachment has been queued on every owning thread.
+  // Offscreen production does not wait for a native surface-created callback.
+  shell->SetupRasterOutputSurface();
+#endif
   return shell;
 }
 
@@ -431,6 +437,10 @@ Shell::Shell(std::shared_ptr<clay::ServiceManager> service_manager,
 }
 
 Shell::~Shell() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  StopDisplayCompositor();
+  StopRasterOutputSurface();
+#endif
   // If GPUUnrefQueue is not shared, we need to remove it from GraphicsIsolate.
   if (engine_ && engine_->GetPageView()) {
     auto unref_queue = engine_->GetPageView()->GetUnrefQueue();
@@ -480,17 +490,26 @@ Shell::~Shell() {
   std::optional<std::promise<void>> raster_thread_promise;
   std::optional<std::future<void>> raster_thread_future;
 
+#ifndef ENABLE_CLAY_DISPLAY_COMPOSITOR
   if (platform_view_ && !platform_view_->IsOutputSurfaceThreadSafe()) {
     raster_thread_promise.emplace();
     raster_thread_future.emplace(raster_thread_promise->get_future());
   }
+#endif
+  // Staged resource records retain their native contexts through asynchronous
+  // drain; Platform does not wait for the Raster teardown or GPU completion.
 
   fml::TaskRunner::RunNowOrPostTask(
       task_runners_.GetRasterTaskRunner(),
       [p = std::move(raster_thread_promise),
        // OutputSurface MUST live longer than Rasterizer, since GPU surface
        // holds the raw pointer to it as a delegate
-       output_surface = platform_view_->GetOutputSurface(),
+       output_surface =
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+           raster_output_surface_,
+#else
+           platform_view_->GetOutputSurface(),
+#endif
        service_manager = service_manager_]() mutable {
         clay::Puppet<clay::Owner::kRaster, RasterizerService> raster_service =
             service_manager->GetService<RasterizerService>();
@@ -641,7 +660,12 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
   // async init main skia context in rasterThread
   fml::TaskRunner::RunNowOrPostTask(
       task_runners_.GetRasterTaskRunner(),
-      [output_surface = platform_view_->GetOutputSurface(),
+      [output_surface =
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+           platform_view_->GetRasterOutputSurface(),
+#else
+           platform_view_->GetOutputSurface(),
+#endif
        unref_queue = engine_->GetPageView()->GetUnrefQueue(),
        task_runner = task_runners_.GetUITaskRunner()]() {
         if (output_surface) {
@@ -709,15 +733,26 @@ void Shell::OnPlatformViewCreated() {
                                       }
                                     });
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  display_surface_available_ = true;
+  SetupDisplayCompositor();
+#else
   SetupOutputSurface(false);
+#endif
 }
 
 // |PlatformView::Delegate|
 void Shell::OnPlatformViewSurfaceCreated() {
   TRACE_EVENT("clay", "Shell::OnPlatformViewSurfaceCreated");
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  display_surface_available_ = true;
+  SetupDisplayCompositor();
+#else
   SetupOutputSurface(true);
+#endif
 }
 
+#ifndef ENABLE_CLAY_DISPLAY_COMPOSITOR
 void Shell::SetupOutputSurface(bool reuse_existing_surface) {
   fml::RefPtr<OutputSurface> output_surface =
       platform_view_->GetOutputSurface();
@@ -777,29 +812,288 @@ void Shell::SetupOutputSurface(bool reuse_existing_surface) {
   raster_frame_service.Act(
       [](auto& impl) { impl.SetOutputSurfaceValid(true); });
 }
+#endif
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+void Shell::RecoverStagedDevice(display::PipelineError error) {
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  FML_LOG(ERROR) << "Staged device recovery, code=" << static_cast<int>(error)
+                 << ", generation=" << display_config_.device_generation;
+  StopDisplayCompositor();
+  if (error == display::PipelineError::kDisplayFailure) {
+    if (++display_recovery_count_ <= 2) SetupDisplayCompositor();
+    return;
+  }
+  StopRasterOutputSurface();
+  if (error == display::PipelineError::kUnsupportedContent ||
+      ++display_recovery_count_ > 2) {
+    task_runners_.GetUITaskRunner()->PostTask([engine = engine_->GetWeakPtr()] {
+      if (engine) engine->OnOutputSurfaceCreateFailed();
+    });
+    return;
+  }
+  ++display_config_.device_generation;
+  ++display_config_.version;
+  SetupRasterOutputSurface();
+  SetupDisplayCompositor();
+}
+void Shell::StopDisplayCompositor() {
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  display_snapshot_.reset();
+  if (display_service_) display_service_.Act([](auto& impl) { impl.Detach(); });
+  if (auto current = std::exchange(display_output_current_, nullptr)) {
+    current->store(false);
+    SetHybridOutputSurface(nullptr);
+  }
+}
+void Shell::SetHybridOutputSurface(fml::RefPtr<OutputSurface> output,
+                                   fml::closure activation) {
+  Puppet<Owner::kPlatform, RasterFrameService> frames =
+      service_manager_->GetService<RasterFrameService>();
+  auto rasterizer = service_manager_->GetService<RasterizerService>();
+  auto valid = output ? display_output_current_ : nullptr;
+  frames.Act([output = std::move(output), valid = std::move(valid),
+              activation = std::move(activation), rasterizer,
+              waiting = waiting_for_first_frame_](auto& impl) mutable {
+    fml::closure on_activate;
+    if (output) {
+      on_activate = [activation = std::move(activation), rasterizer, valid,
+                     waiting] {
+        if (activation) activation();
+        Puppet<Owner::kRaster, RasterizerService> service = rasterizer;
+        service->GetRasterizer()->AddNextFrameCallback([valid, waiting] {
+          if (valid->load()) waiting->store(false);
+        });
+      };
+    }
+    impl.SetHybridOutputSurface(std::move(output), std::move(valid),
+                                std::move(on_activate));
+  });
+}
+void Shell::UpdateDisplayEnabled() {
+  if (!display_service_) return;
+  bool enabled = false;
+  is_gpu_disabled_sync_switch_->Execute(fml::SyncSwitch::Handlers().SetIfFalse(
+      [&] { enabled = !display_in_background_; }));
+  display_service_.Act([enabled](auto& impl) { impl.SetEnabled(enabled); });
+}
+void Shell::StopRasterOutputSurface() {
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  if (display_service_) display_service_.Act([](auto& impl) { impl.Close(); });
+  if (auto current = std::exchange(display_output_current_, nullptr)) {
+    current->store(false);
+    SetHybridOutputSurface(nullptr);
+  }
+  display_snapshot_.reset();
+  if (raster_binding_) {
+    std::atomic_store(display_route_.get(),
+                      std::shared_ptr<display::RasterBinding>());
+    auto binding = std::exchange(raster_binding_, nullptr);
+    render_runtime_->group().UnregisterRasterizer(
+        binding,
+        [manager = service_manager_](auto drained) {
+          Puppet<Owner::kRaster, RasterizerService> service =
+              manager->GetService<RasterizerService>();
+          service->GetRasterizer()->ReleaseStagedResources(std::move(drained));
+        },
+        [] {});
+  } else {
+    rasterizer_service_.Act([](auto& impl) {
+      impl.GetRasterizer()->ReleaseStagedResources(nullptr);
+    });
+  }
+}
+void Shell::SetupRasterOutputSurface() {
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  if (raster_binding_) return;
+  auto output = platform_view_->GetRasterOutputSurface();
+  if (output && output->StagedDeviceId())
+    render_runtime_ = display::RenderServiceRuntime::Acquire(
+        output->StagedDeviceId(), task_runners_.GetPlatformTaskRunner(),
+        task_runners_.GetRasterTaskRunner());
+  if (!output || !output->StagedDeviceId() || !render_runtime_) {
+    FML_LOG(ERROR) << "Could not create the offscreen Raster output.";
+    task_runners_.GetUITaskRunner()->PostTask([engine = engine_->GetWeakPtr()] {
+      if (engine) engine->OnOutputSurfaceCreateFailed();
+    });
+    return;
+  }
+  if (!display_service_)
+    display_service_ = service_manager_->GetService<DisplayCompositorService>();
+  UpdateDisplayEnabled();
+  raster_output_surface_ = output;
+  auto config = display_config_;
+  config.width = expected_frame_size_->x;
+  config.height = expected_frame_size_->y;
+  config.device_pixel_ratio = device_pixel_ratio_;
+  config.device_id = output->StagedDeviceId();
+  config.format = output->StagedPixelFormat();
+  if (auto display_output = platform_view_->GetOutputSurface())
+    config.uses_window_attachments =
+        display_output->UseStagedWindowAttachments();
+  if (!config.device_generation) config.device_generation = 1;
+  if (!config.SameContentConfig(display_config_)) ++config.version;
+  if (!config.version) config.version = 1;
+  display_config_ = config;
+  display_service_.Act([config](auto& impl) { impl.SetOutputConfig(config); });
+  Puppet<Owner::kPlatform, RasterFrameService> frames =
+      service_manager_->GetService<RasterFrameService>();
+  frames.Act([valid = config.IsValid()](auto& impl) {
+    impl.SetRasterViewportValid(valid);
+  });
+  display_service_.Act([weak = weak_factory_.GetWeakPtr(),
+                        generation = config.device_generation](auto& impl) {
+    impl.SetErrorHandler([weak, generation](auto error) {
+      if (weak && weak->raster_binding_ &&
+          generation == weak->display_config_.device_generation)
+        weak->RecoverStagedDevice(error);
+    });
+  });
+  struct Registration {
+    display::RasterBindingKey key;
+    std::shared_ptr<display::FrameMailbox> mailbox;
+    std::function<void()> wake;
+  };
+  auto registration = std::make_shared<Registration>();
+  auto manager = service_manager_;
+  auto display_actor = service_manager_->GetService<DisplayCompositorService>();
+  raster_binding_ = render_runtime_->group().RegisterRasterizer(
+      reinterpret_cast<uintptr_t>(this), ++display_tree_generation_,
+      [registration, manager, output, config,
+       budget = render_runtime_->budget(),
+       runner = task_runners_.GetRasterTaskRunner()] {
+        Puppet<Owner::kRaster, RasterizerService> service =
+            manager->GetService<RasterizerService>();
+        auto surface = std::make_unique<display::RasterOutputSurface>(
+            output, runner, budget, config);
+        bool success = service->GetRasterizer()->SetupStagedOutput(
+            std::move(surface), registration->key, registration->mailbox,
+            registration->wake);
+        Puppet<Owner::kRaster, RasterFrameService> frames =
+            manager->GetService<RasterFrameService>();
+        frames->SetProductionAvailable(success);
+        return success;
+      },
+      [registration, weak = weak_factory_.GetWeakPtr()](bool success) {
+        if (!weak || !weak->raster_binding_ ||
+            weak->raster_binding_->key() != registration->key)
+          return;
+        if (!success) weak->StopRasterOutputSurface();
+        weak->task_runners_.GetUITaskRunner()->PostTask(
+            [engine = weak->engine_->GetWeakPtr(), success] {
+              if (engine) {
+                if (success)
+                  engine->OnOutputSurfaceCreated();
+                else
+                  engine->OnOutputSurfaceCreateFailed();
+              }
+            });
+      },
+      [display_actor](uint64_t layout) {
+        Puppet<Owner::kRaster, DisplayCompositorService> service =
+            display_actor;
+        service->NotifyLayoutSubmitted(layout);
+      },
+      [registration, display_actor,
+       service = display_service_](display::RasterBindingKey key) {
+        registration->key = key;
+        registration->mailbox = std::make_shared<display::FrameMailbox>(key);
+        service.Act([key, mailbox = registration->mailbox](auto& impl) {
+          impl.SetBinding(key, std::move(mailbox));
+        });
+        registration->wake = [display_actor] {
+          Puppet<Owner::kRaster, DisplayCompositorService> service =
+              display_actor;
+          service.Act([](auto& impl) { impl.Drain(); });
+        };
+      });
+  std::atomic_store(display_route_.get(), raster_binding_);
+  task_runners_.GetUITaskRunner()->PostTask(
+      [engine = engine_->GetWeakPtr(), binding = raster_binding_] {
+        if (engine) engine->SetRasterBinding(binding);
+      });
+}
+void Shell::SetupDisplayCompositor() {
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  if (display_in_background_ || !display_surface_available_) return;
+  auto output = platform_view_->GetOutputSurface();
+  if (!output || !render_runtime_ || !display_service_ ||
+      output->StagedDeviceId() != display_config_.device_id)
+    return;
+  auto factory =
+      platform_view_->CreateDisplayTargetFactory(render_runtime_->budget());
+  if (display_output_current_) display_output_current_->store(false);
+  display_output_current_ = std::make_shared<std::atomic<bool>>(true);
+  waiting_for_first_frame_->store(true);
+  display_snapshot_ =
+      std::make_shared<std::shared_ptr<const display::CompositorFrame>>();
+  SetHybridOutputSurface(platform_view_->GetHybridOutputSurface(),
+                         platform_view_->GetHybridOutputActivation());
+  const display::WindowKey window{reinterpret_cast<uintptr_t>(this),
+                                  ++display_window_generation_};
+  auto rasterizer = service_manager_->GetService<RasterizerService>();
+  display_service_.Act([factory = std::move(factory), window, rasterizer,
+                        waiting = waiting_for_first_frame_,
+                        snapshot = display_snapshot_,
+                        current = display_output_current_](auto& impl) mutable {
+    if (!current->load()) return;
+    impl.Attach(
+        std::move(factory), window,
+        [rasterizer, waiting, current](const display::CompositorFrame& frame) {
+          if (!current->load()) return;
+          waiting->store(false);
+          auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count();
+          Puppet<Owner::kRaster, RasterizerService> service = rasterizer;
+          service->GetRasterizer()->OnDisplayPresented(
+              frame.result->binding, frame.result->layout_version, time);
+        },
+        [rasterizer] {
+          Puppet<Owner::kRaster, RasterizerService> service = rasterizer;
+          service->GetRasterizer()->RequestRetainedFrame();
+        },
+        std::move(snapshot));
+  });
+  UpdateDisplayEnabled();
+}
+#endif
 
 // |PlatformView::Delegate|
 void Shell::OnPlatformViewSurfaceDestroyed() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  display_surface_available_ = false;
+  StopDisplayCompositor();
+#endif
   TRACE_EVENT("clay", "Shell::OnPlatformViewSurfaceDestroyed");
   FML_DCHECK(is_setup_);
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
   clay::Puppet<clay::Owner::kPlatform, RasterFrameService>
       raster_frame_service =
           GetServiceManager()->GetService<RasterFrameService>();
+#ifndef ENABLE_CLAY_DISPLAY_COMPOSITOR
   raster_frame_service.Act(
       [](auto& impl) { impl.SetOutputSurfaceValid(false); });
+#endif
   rasterizer_service_.Act([waiting_for_first_frame = waiting_for_first_frame_](
                               auto&) { waiting_for_first_frame->store(true); });
 
+#ifndef ENABLE_CLAY_DISPLAY_COMPOSITOR
   task_runners_.GetUITaskRunner()->PostTask([engine = engine_->GetWeakPtr()]() {
     if (engine) {
       engine->OnOutputSurfaceDestroyed();
     }
   });
+#endif
 }
 
 // |PlatformView::Delegate|
 void Shell::OnPlatformViewDestroyed() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Hosts also use this callback when only their native output disappears.
+  // The page and its offscreen producer survive until recycle or destruction.
+  OnPlatformViewSurfaceDestroyed();
+#else
   TRACE_EVENT("clay", "Shell::OnPlatformViewDestroyed");
   FML_DCHECK(is_setup_);
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
@@ -820,6 +1114,7 @@ void Shell::OnPlatformViewDestroyed() {
         impl.GetRasterizer()->Teardown();
         waiting_for_first_frame->store(true);
       });
+#endif
 }
 
 // |PlatformView::Delegate|
@@ -842,6 +1137,22 @@ void Shell::OnPlatformViewSetViewportMetrics(const ViewportMetrics& metrics) {
 
   if (metrics.device_pixel_ratio <= 0 || metrics.physical_width <= 0 ||
       metrics.physical_height <= 0) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    auto config = display_config_;
+    config.width = 0;
+    config.height = 0;
+    ++config.version;
+    display_config_ = config;
+    if (display_service_)
+      display_service_.Act(
+          [config](auto& impl) { impl.SetOutputConfig(config); });
+    rasterizer_service_.Act([config](auto& impl) {
+      impl.GetRasterizer()->UpdateStagedOutputConfig(config);
+    });
+    Puppet<Owner::kPlatform, RasterFrameService> frames =
+        service_manager_->GetService<RasterFrameService>();
+    frames.Act([](auto& impl) { impl.SetRasterViewportValid(false); });
+#endif
     // Ignore invalid view-port metrics.
     if (metrics.device_pixel_ratio > 0) {
       // NOTE(Xietong): although the physical size is still invalid, the device
@@ -876,6 +1187,25 @@ void Shell::OnPlatformViewSetViewportMetrics(const ViewportMetrics& metrics) {
         skity::Vec2(metrics.physical_width, metrics.physical_height);
     device_pixel_ratio_ = metrics.device_pixel_ratio;
   }
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  auto config = display_config_;
+  config.width = metrics.physical_width;
+  config.height = metrics.physical_height;
+  config.device_pixel_ratio = metrics.device_pixel_ratio;
+  if (!config.SameContentConfig(display_config_)) {
+    config.version = display_config_.version + 1;
+    display_config_ = config;
+    Puppet<Owner::kPlatform, RasterFrameService> frames =
+        service_manager_->GetService<RasterFrameService>();
+    frames.Act([](auto& impl) { impl.SetRasterViewportValid(true); });
+    if (display_service_)
+      display_service_.Act(
+          [config](auto& impl) { impl.SetOutputConfig(config); });
+    rasterizer_service_.Act([config](auto& impl) {
+      impl.GetRasterizer()->UpdateStagedOutputConfig(config);
+    });
+  }
+#endif
   if (task_runners_.GetPlatformTaskRunner() ==
       task_runners_.GetUITaskRunner()) {
     // That mean the platform thread is the ui thread
@@ -971,6 +1301,11 @@ void Shell::OnPlatformViewDeleteSurroundingText(int before_length,
 
 void Shell::OnPlatformViewOnEnterForeground() {
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  display_in_background_ = false;
+  UpdateDisplayEnabled();
+  SetupDisplayCompositor();
+#endif
 
   fml::TaskRunner::RunNowOrPostTask(task_runners_.GetUITaskRunner(),
                                     [engine = engine_->GetWeakPtr()] {
@@ -983,6 +1318,13 @@ void Shell::OnPlatformViewOnEnterForeground() {
 
 void Shell::OnPlatformViewOnEnterBackground() {
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Visibility pauses scheduling without replacing the offscreen producer.
+  display_in_background_ = true;
+  if (display_service_)
+    display_service_.Act([](auto& impl) { impl.SetEnabled(false); });
+  StopDisplayCompositor();
+#endif
 
   fml::TaskRunner::RunNowOrPostTask(task_runners_.GetUITaskRunner(),
                                     [engine = engine_->GetWeakPtr()] {
@@ -1075,6 +1417,50 @@ void Shell::RegisterDrawableImage(
   FML_DCHECK(is_setup_);
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  static std::atomic<uint64_t> next_source{1};
+  auto alive = std::make_shared<std::atomic<bool>>(true);
+  auto previous = display_sources_.find(drawable_image->Id());
+  if (previous != display_sources_.end()) previous->second->store(false);
+  display_sources_[drawable_image->Id()] = alive;
+  drawable_image->SetFrameAvailableCallback(
+      [alive, route = display_route_, source = next_source++,
+       sequence = std::make_shared<display::ContentUpdateSequence>(),
+       ui_pending = std::make_shared<std::atomic<bool>>(false),
+       weak = std::weak_ptr<DrawableImage>(drawable_image),
+       manager = service_manager_, id = drawable_image->Id(),
+       ui = task_runners_.GetUITaskRunner(), engine = engine_->GetWeakPtr()] {
+        if (!alive->load()) return;
+        auto binding = std::atomic_load(route.get());
+        if (binding) {
+          const auto version = sequence->Notify();
+          binding->NotifyContentUpdated(
+              {id, source, version,
+               [alive, weak, manager, id, sequence, version,
+                key = binding->key()] {
+                 if (!alive->load()) return;
+                 if (auto image = weak.lock()) {
+                   image->MarkNewFramesAvailable(
+                       sequence->ConsumeThrough(version));
+                   Puppet<Owner::kRaster, RasterizerService> service =
+                       manager->GetService<RasterizerService>();
+                   Puppet<Owner::kRaster, RasterFrameService> frames =
+                       manager->GetService<RasterFrameService>();
+                   if (frames->IsHybridCompositionActive() ||
+                       service->GetRasterizer()->MarkDynamicSegmentsDirty(id)) {
+                     frames->RequestContentFrame(key);
+                   }
+                 }
+               }});
+        }
+        if (!ui_pending->exchange(true))
+          ui->PostTask([alive, engine, id, ui_pending] {
+            ui_pending->store(false);
+            if (alive->load() && engine)
+              engine->MarkDrawableImageFrameAvailable(id);
+          });
+      });
+#else
   drawable_image->SetFrameAvailableCallback(
       [ui_runner = task_runners_.GetUITaskRunner(),
        raster_runner = task_runners_.GetRasterTaskRunner(),
@@ -1104,6 +1490,8 @@ void Shell::RegisterDrawableImage(
         });
       });
 
+#endif
+
   rasterizer_service_.Act([drawable_image](auto& impl) {
     impl.GetRasterizer()->GetDrawableImageRegistry()->RegisterDrawableImage(
         drawable_image);
@@ -1114,6 +1502,14 @@ void Shell::UnregisterDrawableImage(int64_t image_id) {
   FML_DCHECK(is_setup_);
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  auto source = display_sources_.find(image_id);
+  if (source != display_sources_.end()) {
+    source->second->store(false);
+    display_sources_.erase(source);
+  }
+  if (raster_binding_) raster_binding_->ForgetContentSource(image_id);
+#endif
   rasterizer_service_.Act([image_id](auto& impl) {
     impl.GetRasterizer()->GetDrawableImageRegistry()->UnregisterDrawableImage(
         image_id);
@@ -1130,11 +1526,21 @@ size_t Shell::UnreportedFramesCount() const {
 void Shell::OnDrawHardware(bool force_draw) {
   TRACE_EVENT("clay", "Shell::OnDrawHardware");
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Functor is a host consumer in this build. It must not drive the legacy
+  // onDraw/promise scheduler or wait for a Raster frame.
+  if (force_draw) {
+    clay::Puppet<clay::Owner::kPlatform, RasterFrameService> raster =
+        GetServiceManager()->GetService<RasterFrameService>();
+    raster.Act([](auto& impl) { impl.RequestRasterFrame(); });
+  }
+#else
   clay::Puppet<clay::Owner::kPlatform, SyncCompositorService>
       sync_compositor_service =
           GetServiceManager()->GetService<SyncCompositorService>();
   sync_compositor_service.Act(
       [force_draw](auto& impl) { impl.DemandDrawHw(force_draw); });
+#endif
 }
 
 double Shell::GetMainDisplayRefreshRate() {
@@ -1195,6 +1601,27 @@ Shell::GetResourceLoaderIntercept() {
 
 ScreenshotData Shell::ScreenshotSync(
     ScreenshotData::ScreenshotType screenshot_type, uint32_t background_color) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+  if (screenshot_type != ScreenshotData::ScreenshotType::UncompressedImage ||
+      !display_snapshot_)
+    return {};
+  auto frame = std::atomic_load(display_snapshot_.get());
+  if (!frame) return {};
+  if (screenshot_snapshot_.data && screenshot_frame_.lock() == frame &&
+      screenshot_background_ == background_color)
+    return screenshot_snapshot_;
+  // Explicit capture primes the next synchronous request without blocking
+  // Platform or adding readback to the rendering path.
+  if (!screenshot_pending_) {
+    screenshot_pending_ = true;
+    ScreenshotAsync(screenshot_type, background_color,
+                    [weak = weak_factory_.GetWeakPtr()](ScreenshotData) {
+                      if (weak) weak->screenshot_pending_ = false;
+                    });
+  }
+  return {};
+#else
   TRACE_EVENT("clay", "Shell::ScreenshotSync");
   constexpr int kScreenshotTimeoutMs = 30;
 
@@ -1260,11 +1687,51 @@ ScreenshotData Shell::ScreenshotSync(
   }
 
   return state->future.get();
+#endif
 }
 
 void Shell::ScreenshotAsync(ScreenshotData::ScreenshotType screenshot_type,
                             uint32_t background_color,
                             std::function<void(ScreenshotData)> callback) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  auto runner = task_runners_.GetPlatformTaskRunner();
+  fml::TaskRunner::RunNowOrPostTask(
+      runner, [weak = weak_factory_.GetWeakPtr(), runner,
+               service = rasterizer_service_, screenshot_type, background_color,
+               callback = std::move(callback)]() mutable {
+        if (!weak || !weak->display_snapshot_ ||
+            screenshot_type !=
+                ScreenshotData::ScreenshotType::UncompressedImage) {
+          callback({});
+          return;
+        }
+        auto frame = std::atomic_load(weak->display_snapshot_.get());
+        if (!frame) {
+          callback({});
+          return;
+        }
+        service.Act([weak, frame, runner, background_color,
+                     callback = std::move(callback)](auto& impl) mutable {
+          impl.GetRasterizer()->ScreenshotCompositorFrameAsync(
+              frame, background_color,
+              [weak,
+               frame = std::weak_ptr<const display::CompositorFrame>(frame),
+               runner, background_color,
+               callback = std::move(callback)](ScreenshotData result) mutable {
+                runner->PostTask([weak, frame, background_color,
+                                  callback = std::move(callback),
+                                  result = std::move(result)]() mutable {
+                  if (weak) {
+                    weak->screenshot_frame_ = frame;
+                    weak->screenshot_background_ = background_color;
+                    weak->screenshot_snapshot_ = result;
+                  }
+                  callback(std::move(result));
+                });
+              });
+        });
+      });
+#else
   fml::RefPtr<fml::TaskRunner> platform_task_runner =
       task_runners_.GetPlatformTaskRunner();
   fml::RefPtr<fml::TaskRunner> ui_task_runner = task_runners_.GetUITaskRunner();
@@ -1346,6 +1813,8 @@ void Shell::ScreenshotAsync(ScreenshotData::ScreenshotType screenshot_type,
           }
         }));
   });
+
+#endif
 }
 
 void Shell::MakeRasterSnapshot(
@@ -1354,18 +1823,32 @@ void Shell::MakeRasterSnapshot(
   rasterizer_service_.Act(
       [layer_tree = std::move(layer_tree), callback,
        io_runner = GetTaskRunners().GetIOTaskRunner()](auto& impl) mutable {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+        impl.GetRasterizer()->MakeStagedRasterSnapshot(
+            std::shared_ptr<LayerTree>(std::move(layer_tree)),
+            [io_runner, callback](fml::RefPtr<PaintImage> image) {
+              io_runner->PostTask(
+                  [image = std::move(image), callback] { callback(image); });
+            });
+#else
         auto image =
             impl.GetRasterizer()->MakeRasterSnapshot(std::move(layer_tree));
         // Callback to IO thread for post-processing like jpeg/png compression,
         // do not block raster thread.
         io_runner->PostTask(
             [image = std::move(image), callback] { callback(image); });
+#endif
       });
 }
 
 fml::RefPtr<PaintImage> Shell::MakeRasterSnapshot(GrPicturePtr picture,
                                                   skity::Vec2 picture_size) {
   TRACE_EVENT("clay", "Shell::MakeRasterSnapshot");
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // This existing picture utility uses Skity's software canvas only. It does
+  // not need to synchronously dispatch work to Raster in staged builds.
+  return TakeScreenshot(std::move(picture), picture_size);
+#else
   std::future<std::optional<fml::RefPtr<clay::PaintImage>>> future =
       rasterizer_service_.ActWithPromise(
           [picture = std::move(picture), picture_size](auto& impl) {
@@ -1373,6 +1856,7 @@ fml::RefPtr<PaintImage> Shell::MakeRasterSnapshot(GrPicturePtr picture,
                                                             picture_size);
           });
   return future.get().value_or(nullptr);
+#endif
 }
 
 void Shell::AwaitFirstFrame(fml::TimeDelta timeout,
@@ -1433,6 +1917,17 @@ std::shared_ptr<const fml::SyncSwitch> Shell::GetIsGpuDisabledSyncSwitch()
 
 void Shell::SetGpuAvailability(GpuAvailability availability) {
   FML_DCHECK(task_runners_.GetPlatformTaskRunner()->RunsTasksOnCurrentThread());
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool available = availability == GpuAvailability::kAvailable;
+  is_gpu_disabled_sync_switch_->SetSwitch(!available);
+  UpdateDisplayEnabled();
+  if (available && !display_in_background_ && raster_binding_) {
+    Puppet<Owner::kPlatform, RasterFrameService> frames =
+        service_manager_->GetService<RasterFrameService>();
+    frames.Act([](auto& impl) { impl.RequestRasterFrame(); });
+  }
+  return;
+#endif
   switch (availability) {
     case GpuAvailability::kAvailable:
       is_gpu_disabled_sync_switch_->SetSwitch(false);
@@ -1537,6 +2032,14 @@ void Shell::OnPlatformViewDispatchSemanticsAction(int virtual_view_id,
 #endif
 
 void Shell::CleanForRecycle() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  for (auto& source : display_sources_) source.second->store(false);
+  display_sources_.clear();
+  display_recovery_count_ = 0;
+  // A recycled page must not accept a late result or first-frame callback.
+  StopDisplayCompositor();
+  StopRasterOutputSurface();
+#endif
   if (engine_) {
     engine_->CleanForRecycle();
   }
@@ -1583,6 +2086,12 @@ void Shell::PrepareForRecycle(VsyncRequestCallback custom_vsync_request) {
       [request = std::move(custom_vsync_request)](auto& impl) mutable {
         impl.PrepareForRecycle(std::move(request));
       });
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Page reuse creates its producer even when no native output is attached.
+  // Registration follows the old binding's drain on the Raster runner.
+  SetupRasterOutputSurface();
+  SetupDisplayCompositor();
+#endif
 }
 
 }  // namespace clay

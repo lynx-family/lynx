@@ -6,6 +6,9 @@
 
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/gl_context_switch.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/gfx/shared_image/shared_image_sink.h"
+#endif
 
 namespace clay {
 
@@ -18,6 +21,13 @@ clay::GrContextPtr OutputSurface::GetMainGrContext() { return nullptr; }
 std::unique_ptr<GLContextResult> OutputSurface::MakeCurrent() {
   return std::make_unique<GLContextDefaultResult>(true);
 }
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+fml::RefPtr<OutputSurface> OutputSurface::CreateSharedImageOutput(
+    fml::RefPtr<SharedImageSink> sink) {
+  return nullptr;
+}
+#endif
 
 #ifdef ENABLE_SKITY
 void OutputSurface::PrecompileDefaultSkityShaders() {

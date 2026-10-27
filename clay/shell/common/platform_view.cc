@@ -13,6 +13,10 @@
 #include <vector>
 
 #include "clay/common/service/service_manager.h"
+#include "clay/shell/common/output_surface.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/shell/common/display/surface_display_target.h"
+#endif
 
 namespace clay {
 
@@ -25,6 +29,22 @@ PlatformView::PlatformView(
       weak_factory_(this) {}
 
 PlatformView::~PlatformView() {}
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+fml::RefPtr<OutputSurface> PlatformView::GetRasterOutputSurface() const {
+  return GetOutputSurface();
+}
+PlatformView::DisplayTargetFactory PlatformView::CreateDisplayTargetFactory(
+    std::shared_ptr<display::TextureBudget> budget) const {
+  return [output = GetOutputSurface(), budget = std::move(budget),
+          runner = task_runners_.GetRasterTaskRunner()] {
+    return display::CreateSurfaceDisplayTarget(output, budget, runner);
+  };
+}
+fml::RefPtr<OutputSurface> PlatformView::GetHybridOutputSurface() const {
+  return nullptr;
+}
+#endif
 
 bool PlatformView::DispatchPointerDataPacket(
     std::unique_ptr<PointerDataPacket> packet) {

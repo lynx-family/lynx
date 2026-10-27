@@ -48,6 +48,12 @@
 #include "clay/shell/common/rasterizer.h"
 #include "clay/shell/common/resource_cache_limit_calculator.h"
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/common/graphics/texture_budget.h"
+#include "clay/common/render_service_runtime.h"
+#include "clay/shell/common/services/display_compositor_service.h"
+#endif
+
 namespace clay {
 class FrameTimingCollector;
 class ResourceLoaderIntercept;
@@ -482,6 +488,38 @@ class Shell final : public PlatformView::Delegate,
   uint64_t next_pointer_flow_id_ = 0;
 
   // Reset for each output surface and cleared by its first rendered frame.
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  Puppet<Owner::kPlatform, DisplayCompositorService> display_service_;
+  // Only the current window's immutable frame snapshot is read on Platform.
+  std::shared_ptr<std::shared_ptr<const display::CompositorFrame>>
+      display_snapshot_;
+  std::shared_ptr<std::atomic<bool>> display_output_current_;
+  std::shared_ptr<display::RenderServiceRuntime> render_runtime_;
+  std::shared_ptr<display::RasterBinding> raster_binding_;
+  fml::RefPtr<OutputSurface> raster_output_surface_;
+  display::OutputConfig display_config_;
+  std::weak_ptr<const display::CompositorFrame> screenshot_frame_;
+  ScreenshotData screenshot_snapshot_;
+  uint32_t screenshot_background_ = 0;
+  bool screenshot_pending_ = false;
+  std::shared_ptr<std::shared_ptr<display::RasterBinding>> display_route_ =
+      std::make_shared<std::shared_ptr<display::RasterBinding>>();
+  std::unordered_map<int64_t, std::shared_ptr<std::atomic<bool>>>
+      display_sources_;
+  uint64_t display_window_generation_ = 0;
+  uint64_t display_tree_generation_ = 0;
+  unsigned display_recovery_count_ = 0;
+  bool display_in_background_ = false;
+  bool display_surface_available_ = false;
+  void RecoverStagedDevice(display::PipelineError error);
+  void SetupDisplayCompositor();
+  void StopDisplayCompositor();
+  void SetHybridOutputSurface(fml::RefPtr<OutputSurface> output,
+                              fml::closure activation = {});
+  void SetupRasterOutputSurface();
+  void StopRasterOutputSurface();
+  void UpdateDisplayEnabled();
+#endif
   std::shared_ptr<std::atomic<bool>> waiting_for_first_frame_ =
       std::make_shared<std::atomic<bool>>(true);
   std::shared_ptr<std::atomic<bool>> screenshot =
@@ -549,7 +587,9 @@ class Shell final : public PlatformView::Delegate,
   bool Setup(std::unique_ptr<PlatformView> platform_view,
              std::unique_ptr<Engine> engine);
 
+#ifndef ENABLE_CLAY_DISPLAY_COMPOSITOR
   void SetupOutputSurface(bool reuse_existing_surface);
+#endif
 
   void ReportTimings();
 

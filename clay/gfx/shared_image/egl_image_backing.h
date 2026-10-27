@@ -10,6 +10,9 @@
 #include <GLES2/gl2.h>
 #include <android/hardware_buffer.h>
 
+#include <functional>
+#include <utility>
+
 #include "base/include/fml/task_runner.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 
@@ -35,6 +38,14 @@ class EGLImageBacking : public SharedImageBacking {
 #endif  // ENABLE_SKITY
 
   void BindToTexture(GLenum target);
+  bool IsValid() const { return egl_image_ != EGL_NO_IMAGE_KHR; }
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Imported images can outlive their producer. Restore its context before
+  // releasing the original GL storage, even when the last host import dies.
+  void SetReleaseCallback(std::function<void(fml::closure)> release) {
+    release_ = std::move(release);
+  }
+#endif
 
  private:
   EGLImageKHR egl_image_ = nullptr;
@@ -44,6 +55,9 @@ class EGLImageBacking : public SharedImageBacking {
   GLuint texture_id_ = 0;
 
   fml::RefPtr<fml::TaskRunner> task_runner_;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  std::function<void(fml::closure)> release_;
+#endif
 };
 
 }  // namespace clay

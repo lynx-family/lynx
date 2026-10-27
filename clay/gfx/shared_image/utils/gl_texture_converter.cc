@@ -4,6 +4,8 @@
 
 #include "clay/gfx/shared_image/utils/gl_texture_converter.h"
 
+#include <array>
+
 #include "base/include/closure.h"
 #include "clay/common/graphics/gl/gl_pipeline_helper.h"
 #include "clay/common/graphics/gl/gl_shader_program.h"
@@ -16,16 +18,20 @@ namespace clay {
 GLuint Get2DTextureFromExternalTextureOES(GLuint oes_texture_id,
                                           uint32_t texture_width,
                                           uint32_t texture_height) {
-  GLint old_framebuffer;
-  glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_framebuffer);
+  GLint old_read_framebuffer;
+  GLint old_draw_framebuffer;
+  glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &old_read_framebuffer);
+  glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &old_draw_framebuffer);
 
   GLuint fbo;
   glGenFramebuffers(1, &fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-  fml::ScopedCleanupClosure restore_fbo([old_framebuffer, fbo]() {
-    glBindFramebuffer(GL_FRAMEBUFFER, old_framebuffer);
-    glDeleteFramebuffers(1, &fbo);
-  });
+  fml::ScopedCleanupClosure restore_fbo(
+      [old_read_framebuffer, old_draw_framebuffer, fbo]() {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, old_read_framebuffer);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, old_draw_framebuffer);
+        glDeleteFramebuffers(1, &fbo);
+      });
 
   GLuint texture_2d;
   glGenTextures(1, &texture_2d);
@@ -79,6 +85,32 @@ GLuint Get2DTextureFromExternalTextureOES(GLuint oes_texture_id,
   clay::ScopedTextureBinder scoped_external_texture_binder(
       GL_TEXTURE_EXTERNAL_OES, oes_texture_id);
 
+  // A previous draw may leave clipping or blending enabled. The conversion
+  // must fill the entire new texture, independently of that draw's state.
+  constexpr std::array<GLenum, 5> capabilities = {
+      GL_SCISSOR_TEST, GL_BLEND, GL_DEPTH_TEST, GL_STENCIL_TEST, GL_CULL_FACE};
+  std::array<GLboolean, capabilities.size()> enabled;
+  for (auto i = 0u; i < capabilities.size(); ++i) {
+    enabled[i] = glIsEnabled(capabilities[i]);
+    glDisable(capabilities[i]);
+  }
+  std::array<GLboolean, 4> color_mask;
+  glGetBooleanv(GL_COLOR_WRITEMASK, color_mask.data());
+  std::array<GLint, 4> viewport;
+  glGetIntegerv(GL_VIEWPORT, viewport.data());
+  fml::ScopedCleanupClosure restore_draw_state(
+      [capabilities, enabled, color_mask, viewport]() {
+        for (auto i = 0u; i < capabilities.size(); ++i) {
+          if (enabled[i]) {
+            glEnable(capabilities[i]);
+          } else {
+            glDisable(capabilities[i]);
+          }
+        }
+        glColorMask(color_mask[0], color_mask[1], color_mask[2], color_mask[3]);
+        glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+      });
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   glViewport(0, 0, texture_width, texture_height);
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);

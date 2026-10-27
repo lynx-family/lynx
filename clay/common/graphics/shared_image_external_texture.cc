@@ -43,6 +43,9 @@ void SharedImageExternalTexture::Paint(PaintContext& context,
   if (!EnsureAttached()) {
     return;
   }
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (!PrepareStagedRead()) return;
+#endif
   AdvanceFrameConsumption(freeze);
 
 #ifndef ENABLE_SKITY

@@ -5,11 +5,13 @@
 #ifndef CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_SINK_H_
 #define CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_SINK_H_
 
+#include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <tuple>
+#include <utility>
 
 #include "base/include/closure.h"
 #include "base/include/fml/memory/ref_counted.h"
@@ -20,6 +22,7 @@ namespace clay {
 
 class SharedImageBacking;
 class SharedImageBackingUnmanaged;
+class SharedImageRepresentation;
 class FenceSync;
 
 class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
@@ -63,6 +66,11 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
 
   virtual void SetFrameAvailableCallback(const fml::closure& callback) = 0;
 
+  // A pool may share its existing producer view without another native import.
+  // Null keeps the accessor's ordinary representation factory and cache.
+  virtual fml::RefPtr<SharedImageRepresentation> GetProducerRepresentation(
+      SharedImageBacking* backing);
+
   /// Move the current front buffer to next.
   ///
   /// This is a non-blocking call and will return nullptr if no front buffer
@@ -78,6 +86,15 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
   /// front buffer available.
   [[nodiscard]] virtual fml::RefPtr<SharedImageBacking> UpdateFrontToLatest(
       std::unique_ptr<FenceSync> produced_fence_sync) = 0;
+
+  using FrontRelease = std::function<bool(std::unique_ptr<FenceSync>&)>;
+
+  // Managed queues can check for a pending frame and release the old read in
+  // one transaction. nullopt keeps the caller's existing update path; a null
+  // backing means no advance took place and the current front is unchanged.
+  // The release callback runs under the queue lock and must not reenter it.
+  [[nodiscard]] virtual std::optional<fml::RefPtr<SharedImageBacking>>
+  TryUpdateFront(bool latest, const FrontRelease& release_front);
 
   // Releases the front buffer. This is needed in single buffered mode to
   // allow the producer to take ownership of the buffer.
@@ -150,6 +167,9 @@ class SharedImageSinkManaged final : public SharedImageSink {
 
   [[nodiscard]] fml::RefPtr<SharedImageBacking> UpdateFrontToLatest(
       std::unique_ptr<FenceSync> produced_fence_sync) override;
+
+  [[nodiscard]] std::optional<fml::RefPtr<SharedImageBacking>> TryUpdateFront(
+      bool latest, const FrontRelease& release_front) override;
 
   void ReleaseFront(std::unique_ptr<FenceSync> produced_fence_sync) override;
 

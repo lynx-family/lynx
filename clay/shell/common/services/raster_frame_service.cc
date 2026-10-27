@@ -6,12 +6,16 @@
 
 #include <utility>
 
+#include "base/include/fml/make_copyable.h"
 #include "build/build_config.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/flow/compositor_context.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/image/image_upload_manager.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/shell/common/output_surface.h"
+#endif
 #include "clay/shell/common/rasterizer.h"
 #include "clay/shell/common/scheduler/scheduler.h"
 #include "clay/shell/common/services/platform_const_service.h"
@@ -30,12 +34,19 @@ void RasterFrameService::OnInit(clay::ServiceManager& service_manager,
   vsync_waiter_service_ = service_manager.GetService<VsyncWaiterService>();
   rasterizer_ = ctx.rasterizer;
   page_unique_id_ = ctx.page_unique_id;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Release the one-shot Raster callback; Display owns the frame clock.
+  (void)ctx.TakeInitialCustomVsyncRequest();
+  display_clock_ = service_manager.GetService<DisplayFrameService>();
+  display_service_ = service_manager.GetService<DisplayCompositorService>();
+#else
   clay::Puppet<clay::Owner::kRaster, PlatformConstService>
       platform_const_service =
           service_manager.GetService<PlatformConstService>();
   const auto& settings = platform_const_service->GetSettings();
   using_sync_compositor_ = settings.enable_sync_compositor;
   CreateVsyncWaiter(ctx.TakeInitialCustomVsyncRequest());
+#endif
   if (using_sync_compositor_) {
     sync_compositor_service_ =
         service_manager.GetService<SyncCompositorService>();
@@ -64,6 +75,10 @@ void RasterFrameService::OnDestroy() {
     raster_frame_deadline_timer_->Stop();
   }
   StopSchedulerAndCleanLayerTree();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (rasterizer_)
+    rasterizer_->SetHybridOutputSurface(nullptr, nullptr, nullptr);
+#endif
   // Release display links and custom sources on the raster thread even if
   // the service itself is still retained.
   vsync_waiter_.reset();
@@ -75,6 +90,97 @@ void RasterFrameService::SetOutputSurfaceValid(bool valid) {
   scheduler_->SetOutputSurfaceValid(valid);
 }
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+void RasterFrameService::SetProductionBinding(
+    display::RasterBindingKey binding) {
+  if (raster_frame_deadline_timer_) raster_frame_deadline_timer_->Stop();
+  ++vsync_request_generation_;
+  vsync_requested_ = false;
+  force_begin_frame_ = false;
+  frame_timings_recorder_.reset();
+  committing_recorder_.reset();
+  pending_recorder_.reset();
+  active_recorder_.reset();
+  active_layer_tree_.reset();
+  committing_layer_tree_.reset();
+  pending_layer_tree_.reset();
+  production_binding_ = binding;
+  ResetProductionState();
+  scheduler_->ResetForNewProduction();
+  ResetHybridComposition();
+}
+
+void RasterFrameService::ResetProductionState() {
+  production_opportunity_.Reset();
+  preparing_production_ = false;
+  full_production_pending_ = false;
+  content_production_pending_ = false;
+}
+
+void RasterFrameService::ForceBeginFrameForBinding(
+    display::RasterBindingKey binding) {
+  // The matching empty response is also binding-scoped. An early or stale
+  // request must not arm force_begin_frame_ for an unrelated scheduled frame.
+  if (binding.tree_id && binding == production_binding_) ForceBeginFrame();
+}
+void RasterFrameService::CommitWithNoUpdatesForBinding(
+    display::RasterBindingKey binding) {
+  if (binding.tree_id && binding == production_binding_) CommitWithNoUpdates();
+}
+void RasterFrameService::SetProductionAvailable(bool available) {
+  production_available_ = available;
+  UpdateProductionAvailability();
+}
+void RasterFrameService::SetRasterViewportValid(bool valid) {
+  raster_viewport_valid_ = valid;
+  UpdateProductionAvailability();
+}
+void RasterFrameService::SetHybridOutputSurface(
+    fml::RefPtr<OutputSurface> output,
+    std::shared_ptr<const std::atomic_bool> current, fml::closure activate) {
+  rasterizer_->SetHybridOutputSurface(std::move(output), std::move(current),
+                                      std::move(activate));
+  if (rasterizer_->HasHybridOutputSurface() && active_tree_matches_page_ &&
+      active_layer_tree_ &&
+      (hybrid_composition_active_ ||
+       active_layer_tree_->HasPlatformViewLayer())) {
+    RequestRasterFrame();
+  }
+}
+void RasterFrameService::ResetHybridComposition() {
+  if (!hybrid_composition_active_) return;
+  hybrid_composition_active_ = false;
+  rasterizer_->TeardownHybridSurface();
+  display_service_.Act(
+      [](auto& service) { service.SetHybridCompositionActive(false); });
+}
+void RasterFrameService::UpdateProductionAvailability() {
+  // Readiness and viewport updates can arrive in either order. Neither may
+  // reopen a producer whose other prerequisite is still unavailable.
+  const bool available = production_available_ && raster_viewport_valid_;
+  scheduler_->SetOutputSurfaceValid(available);
+  if (!available) production_opportunity_.Close();
+  if (available && HasPendingProduction()) RequestFrameSignal();
+}
+void RasterFrameService::RequestContentFrame(
+    display::RasterBindingKey binding) {
+  if (!binding.tree_id || binding != production_binding_ ||
+      scheduler_->IsStopped())
+    return;
+  if (hybrid_composition_active_) {
+    RequestRasterFrame();
+    return;
+  }
+  content_production_pending_ = true;
+  scheduler_->SetNeedsContentBeginFrame();
+  RequestFrameSignal();
+}
+bool RasterFrameService::CanDraw() const {
+  return !preparing_production_ &&
+         production_opportunity_.CanProduce(fml::TimePoint::Now()) &&
+         !scheduler_->IsInsideRasterFrameDeadline();
+}
+#endif
 void RasterFrameService::SetMeaningfulLayout(bool meaningful_layout) {
   scheduler_->SetMeaningfulLayout(meaningful_layout);
 }
@@ -89,6 +195,9 @@ void RasterFrameService::SetVsyncSourceActive(bool active) {
     raster_frame_deadline_timer_->Stop();
   }
   if (!active) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    production_opportunity_.Close();
+#endif
     vsync_requested_ = false;
     ++vsync_request_generation_;
   }
@@ -98,11 +207,18 @@ void RasterFrameService::SetVsyncSourceActive(bool active) {
     }
     vsync_waiter_->SetEngineIsActive(active);
   }
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (active && HasPendingProduction()) RequestFrameSignal();
+#endif
 }
 
 bool RasterFrameService::DemandDrawHw() { return scheduler_->OnDraw(); }
 
 void RasterFrameService::RequestRasterFrame() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  full_production_pending_ = true;
+  if (!hybrid_composition_active_) rasterizer_->InvalidateStagedUploads();
+#endif
   scheduler_->SetNeedsRasterBeginFrame();
   RequestFrameSignal();
 }
@@ -150,6 +266,9 @@ void RasterFrameService::Commit(
   if (scheduler_->IsStopped()) {
     return;
   }
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (layer_tree && layer_tree->StagedBinding() != production_binding_) return;
+#endif
   // It's the response of ScheduledActionBeginFrame from UI thread if we are
   // using async compositor. If we are using sync compositor, it's the Push
   // request of LayerTree.
@@ -172,6 +291,10 @@ void RasterFrameService::Commit(
       // Activate the layer tree and then notify scheduler to perform raster
       // immediately for force draw.
       active_layer_tree_ = std::move(layer_tree);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+      full_production_pending_ = true;
+      RequestFrameSignal();
+#endif
       active_tree_matches_page_ = true;
       active_recorder_ = std::move(recorder);
       scheduler_->SetNeedsRasterBeginFrame();
@@ -217,6 +340,10 @@ void RasterFrameService::ForceCommit(
   });
   // Force draw the layer_tree.
   active_layer_tree_ = std::move(layer_tree);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  full_production_pending_ = true;
+  RequestFrameSignal();
+#endif
   active_tree_matches_page_ = true;
   active_recorder_ = std::move(recorder);
   scheduler_->SetNeedsRasterBeginFrame();
@@ -243,6 +370,21 @@ void RasterFrameService::RequestVsync() {
   }
   vsync_requested_ = true;
   const auto request_generation = vsync_request_generation_;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  display_clock_.Act([weak = GetWeakPtr(), runner = raster_task_runner_,
+                      request_generation](auto& clock) {
+    clock.RequestRasterTick([weak, runner, request_generation](auto recorder) {
+      runner->PostTask(fml::MakeCopyable(
+          [weak, request_generation, recorder = std::move(recorder)]() mutable {
+            if (weak && weak->vsync_source_active_ &&
+                weak->vsync_request_generation_ == request_generation) {
+              weak->vsync_requested_ = false;
+              weak->OnVsync(std::move(recorder));
+            }
+          }));
+    });
+  });
+#else
   vsync_waiter_->AsyncWaitForVsync(
       [weak_self = GetWeakPtr(),
        request_generation](std::unique_ptr<FrameTimingsRecorder> recorder) {
@@ -255,25 +397,38 @@ void RasterFrameService::RequestVsync() {
           weak_self->OnVsync(std::move(recorder));
         }
       });
+#endif
 }
 
 void RasterFrameService::OnVsync(
     std::unique_ptr<FrameTimingsRecorder> recorder) {
   frame_timings_recorder_ = std::move(recorder);
+  const auto vsync_start = frame_timings_recorder_->GetVsyncStartTime();
+  const auto vsync_target = frame_timings_recorder_->GetVsyncTargetTime();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Commit/activation may run synchronously while preparing a tick. Keep DRAW
+  // pending until the UI deadline and the new opportunity are established.
+  preparing_production_ = true;
+  if (!raster_frame_deadline_timer_->Stopped())
+    raster_frame_deadline_timer_->Stop();
+  scheduler_->ClearRasterFrameDeadline();
+  production_opportunity_.Begin(vsync_target);
+  scheduler_->NotifyReadyToSendUIBeginFrame();
+#endif
   // The frame deadline time. If the UI frame is arrived, activate that new
   // LayerTree, otherwise, draw the last active LayerTree if needed.
   // Const the deadline time to 1/4 of the vsync period now, we may redefine
   // it later based on historical raster-timings.
   fml::TimePoint raster_frame_deadline =
-      frame_timings_recorder_->GetVsyncStartTime() +
-      (frame_timings_recorder_->GetVsyncTargetTime() -
-       frame_timings_recorder_->GetVsyncStartTime()) /
-          4;
+      vsync_start + (vsync_target - vsync_start) / 4;
   const auto now = fml::TimePoint::Now();
   if (now < raster_frame_deadline && scheduler_->BeginRasterFrameDeadline()) {
     // Start the deadline timer if the scheduler has sent a UIBeginFrame.
     ScheduledFrameDeadline(raster_frame_deadline - now);
   }
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  preparing_production_ = false;
+#endif
   scheduler_->OnBeginRasterFrame();
   // There's bad cases that the `UIFrameService` might use an expired frame
   // timings recorder, because the state machine might not transfer to
@@ -282,6 +437,13 @@ void RasterFrameService::OnVsync(
   // it and let the `RequestUIFrame` construct a new recorder with current
   // time.
   frame_timings_recorder_.reset();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // A late clock can have no usable budget and therefore never enter DRAW.
+  // Keep pending work live even when no further UI/content event arrives.
+  if (!production_opportunity_.CanProduce(fml::TimePoint::Now()) &&
+      HasPendingProduction())
+    RequestFrameSignal();
+#endif
 }
 
 void RasterFrameService::OnFrameDeadlineArrived() {
@@ -306,9 +468,16 @@ void RasterFrameService::ScheduledActionBeginFrame() {
   }
   // Try to pull a new LayerTree from UI thread if it's async compositor.
   // It will respond with RasterFrameService::Commit when it's done.
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  ui_frame_service_.Act([recorder = std::move(recorder),
+                         binding = production_binding_](auto& impl) mutable {
+    impl.BeginFrameForBinding(binding, std::move(recorder));
+  });
+#else
   ui_frame_service_.Act([recorder = std::move(recorder)](auto& impl) mutable {
     impl.BeginFrame(std::move(recorder));
   });
+#endif
 }
 
 void RasterFrameService::ScheduledActionCommit() {
@@ -331,6 +500,9 @@ void RasterFrameService::ScheduledActionActivePendingTree() {
       RequestFrameSignal();
     }
     active_layer_tree_ = std::move(pending_layer_tree_);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    full_production_pending_ = true;
+#endif
     active_tree_matches_page_ = pending_tree_matches_page_;
     active_recorder_ = std::move(pending_recorder_);
     active_layer_tree_->SetRequestNewFrame([weak_ptr = GetWeakPtr()] {
@@ -345,7 +517,16 @@ void RasterFrameService::ScheduledActionRasterInvalidate() {}
 
 void RasterFrameService::ScheduledActionDraw() {
   FML_DCHECK(raster_frame_deadline_timer_);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  const bool full = full_production_pending_ && active_layer_tree_;
+  const bool content_only = content_production_pending_ &&
+                            !full_production_pending_ && active_layer_tree_ &&
+                            active_tree_matches_page_ && !active_recorder_ &&
+                            !scheduler_->HasPendingUIFrame();
+  if (!content_only) RequestFrameSignal();
+#else
   RequestFrameSignal();
+#endif
   if (!raster_frame_deadline_timer_->Stopped()) {
     raster_frame_deadline_timer_->Stop();
   }
@@ -364,10 +545,50 @@ void RasterFrameService::ScheduledActionDraw() {
   }
   TRACE_EVENT_WITH_FRAME_NUMBER(recorder, "clay",
                                 "RasterFrameService::DrawLayerTree");
-  if (active_tree_matches_page_) {
-    rasterizer_->Draw(active_layer_tree_, std::move(recorder));
+  if (!active_tree_matches_page_) {
+    scheduler_->NotifyActiveTreeHasBeenDrawn();
+    return;
   }
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // New requests made by animation production must survive the current draw.
+  full_production_pending_ = false;
+  content_production_pending_ = false;
+  if (active_layer_tree_ && (hybrid_composition_active_ ||
+                             active_layer_tree_->HasPlatformViewLayer())) {
+    if (full && rasterizer_->HasHybridOutputSurface()) {
+      if (!hybrid_composition_active_) {
+        // Keep the legacy path for the rest of this binding, including the
+        // unmixed frame that removes its platform views and overlays.
+        hybrid_composition_active_ = true;
+        display_service_->SetHybridCompositionActive(true);
+      }
+      rasterizer_->DrawHybrid(active_layer_tree_, std::move(recorder));
+    }
+    production_opportunity_.Close();
+    if (full) scheduler_->NotifyActiveTreeHasBeenDrawn();
+    return;
+  }
+  const auto outcome = full ? rasterizer_->RasterizeToOutputs(
+                                  active_layer_tree_, std::move(recorder))
+                            : rasterizer_->ProducePendingContent();
+  using Outcome = display::ProductionOutcome;
+  if (outcome != Outcome::kNoWork) production_opportunity_.Close();
+  if (outcome == Outcome::kDeferred) {
+    full_production_pending_ |= full;
+    RequestContentFrame(production_binding_);
+  }
+  if (full && outcome != Outcome::kNoWork)
+    scheduler_->NotifyActiveTreeProduced(outcome == Outcome::kPublished);
+  // Content completion alone needs no successor tick. New work keeps its
+  // explicit wake; never cancel a tick that was already requested.
+  if (content_only && outcome != Outcome::kDeferred &&
+      (outcome == Outcome::kFailed || HasPendingProduction() ||
+       scheduler_->HasPendingUIFrame()))
+    RequestFrameSignal();
+#else
+  rasterizer_->Draw(active_layer_tree_, std::move(recorder));
   scheduler_->NotifyActiveTreeHasBeenDrawn();
+#endif
 }
 
 void RasterFrameService::ScheduledFrameDeadline(fml::TimeDelta delay) {
@@ -376,24 +597,42 @@ void RasterFrameService::ScheduledFrameDeadline(fml::TimeDelta delay) {
     raster_frame_deadline_timer_->Stop();
   }
   // Start deadline timer.
-  raster_frame_deadline_timer_->Start(delay, [weak_ptr = GetWeakPtr()]() {
-    if (weak_ptr) {
-      weak_ptr->OnFrameDeadlineArrived();
-    }
-  });
+  raster_frame_deadline_timer_->Start(
+      delay,
+      [weak_ptr = GetWeakPtr()
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+           ,
+       binding = production_binding_, cycle = production_opportunity_.serial()
+#endif
+  ]() {
+        if (weak_ptr) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+          if (binding != weak_ptr->production_binding_ ||
+              cycle != weak_ptr->production_opportunity_.serial())
+            return;
+#endif
+          weak_ptr->OnFrameDeadlineArrived();
+        }
+      });
 }
 
 void RasterFrameService::ScheduledActionUploadImage() {
   uint64_t left_tasks =
       ImageUploadManager::GetInstance().ProcessSingleTask(page_unique_id_);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  full_production_pending_ = true;
+  if (!hybrid_composition_active_) rasterizer_->InvalidateStagedUploads();
+#endif
   scheduler_->OnImageUploadTaskFinished(left_tasks);
 }
 
 void RasterFrameService::PrepareForRecycle(
     VsyncRequestCallback custom_vsync_request) {
+#ifndef ENABLE_CLAY_DISPLAY_COMPOSITOR
   // Clean and prepare run in order on the same raster runner. A new waiter
   // keeps a late signal for the previous page away from the new callback.
   CreateVsyncWaiter(std::move(custom_vsync_request));
+#endif
   vsync_source_active_ = true;
   vsync_requested_ = false;
   ++vsync_request_generation_;
@@ -419,9 +658,16 @@ void RasterFrameService::CleanForRecycle() {
   }
   vsync_waiter_.reset();
   StopSchedulerAndCleanLayerTree();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  rasterizer_->SetHybridOutputSurface(nullptr, nullptr, nullptr);
+  ResetHybridComposition();
+#endif
 }
 
 void RasterFrameService::StopSchedulerAndCleanLayerTree() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  ResetProductionState();
+#endif
   scheduler_->Reset();
   scheduler_->Stop();
   active_layer_tree_.reset();

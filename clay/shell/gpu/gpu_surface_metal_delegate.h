@@ -7,10 +7,21 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/include/fml/macros.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/common/graphics/gl_context_switch.h"
+#endif
 #include "skity/geometry/rect.hpp"
 
 namespace clay {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+namespace display {
+class GPUCompletion;
+class OutputTexture;
+}  // namespace display
+#endif
 
 // expected to be id<MTLDevice>
 typedef void* GPUMTLDeviceHandle;
@@ -94,6 +105,22 @@ class GPUSurfaceMetalDelegate {
   /// @brief Whether to enable partial repaint
   ///
   virtual bool EnablePartialRepaint() const;
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Only pooled native textures whose owner guards write reuse may opt in.
+  virtual bool AllowsRenderTargetReuse(const GPUMTLTextureInfo& texture) const {
+    return false;
+  }
+  virtual std::unique_ptr<GLContextResult> MakeRenderContextCurrent() const {
+    return std::make_unique<GLContextDefaultResult>(true);
+  }
+  virtual bool SupportsTexturePresentation() const { return false; }
+  virtual std::shared_ptr<const display::GPUCompletion> PresentSharedImage(
+      std::shared_ptr<const display::OutputTexture> image) const {
+    return nullptr;
+  }
+  virtual void DetachPresentation() const {}
+#endif
 
   MTLRenderTargetType GetRenderTargetType();
 

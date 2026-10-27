@@ -75,6 +75,14 @@ SharedImage output: when any embedded view still requires platform composite,
 rather than publishing a partial scene. The ordinary display holder selection
 and lifecycle remain unchanged.
 
+With DisplayCompositor enabled, a window page begins with staged composition
+on Raster. A texture-backed native component does not change that path.
+When a submitted frame contains a platform-view or platform-overlay layer,
+the page uses the existing Hybrid compositor for the rest of its rendering
+binding. Raster draws the background and overlay textures, and Platform
+presents them in order with the native views. Page reuse creates a new binding.
+The SharedImage export restriction above still applies.
+
 The intended lifecycle is:
 
 `create -> insert -> attach -> props/events -> layout -> nodeReady -> detach -> destroy`

@@ -8,6 +8,8 @@
 #import <CoreVideo/CoreVideo.h>
 #import <Metal/Metal.h>
 
+#include <atomic>
+#include <functional>
 #include <memory>
 
 #include "clay/fml/platform/darwin/cf_utils.h"
@@ -45,6 +47,8 @@ class API_AVAILABLE(macos(10.6), ios(11.0),
   ImageRepresentationType GetType() const override;
 
   bool BeginRead(ClaySharedImageReadResult* out) override;
+  // Only the tracked image entry point may defer proof to its staged batch.
+  bool BeginSkityRead(ClaySharedImageReadResult* out);
   bool EndRead() override;
   bool BeginWrite(ClaySharedImageWriteResult* out) override;
   bool EndWrite() override;
@@ -54,8 +58,12 @@ class API_AVAILABLE(macos(10.6), ios(11.0),
 
   fml::RefPtr<RepresentationStorageManager> GetTextureManager() const override;
   void SetTextureManager(fml::RefPtr<RepresentationStorageManager>) override;
+  std::function<void()> TrackRead(bool staged) override;
 
  private:
+  bool BeginReadInternal(ClaySharedImageReadResult* out);
+  void InvalidateReadCompletion(bool untracked);
+  bool ReadComplete() const;
   id<MTLTexture> GetMTLTexture();
 
   bool GetMTLTextureFromIOSurface();
@@ -66,7 +74,12 @@ class API_AVAILABLE(macos(10.6), ios(11.0),
   fml::scoped_nsprotocol<id> event_;  // MTLSharedEvent
   uint64_t event_value_ = 0;
   fml::scoped_nsprotocol<id<MTLTexture> > texture_;
+  fml::CFRef<CVMetalTextureRef> cv_texture_;
   fml::RefPtr<MTLStorageManager> storage_manager_;
+  std::atomic<uint64_t> read_epoch_{1};
+  std::atomic<uint64_t> completed_read_epoch_{0};
+  // A raw read, write, or legacy paint can outlive a later tracked batch.
+  std::atomic<bool> untracked_access_{false};
 };
 }  // namespace clay
 

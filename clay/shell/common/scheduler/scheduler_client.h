@@ -11,6 +11,11 @@ namespace clay {
 
 class SchedulerClient {
  public:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // A closed production opportunity must leave DRAW pending, without marking
+  // the active tree as drawn or entering the client's draw action.
+  virtual bool CanDraw() const { return true; }
+#endif
   virtual void ScheduledActionBeginFrame() = 0;
   virtual void ScheduledActionCommit() = 0;
   virtual void ScheduledActionActivePendingTree() = 0;

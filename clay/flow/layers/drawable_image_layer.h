@@ -32,6 +32,12 @@ class DrawableImageLayer : public Layer {
     return this;
   }
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  using SegmentPaint = std::function<void(GrCanvas*, GrContext*)>;
+  SegmentPaint CaptureSegmentPaint(PaintContext& context) const;
+  int64_t image_id() const { return image_id_; }
+  bool frozen() const { return freeze_; }
+#endif
   void Preroll(PrerollContext* context) override;
   void Paint(PaintContext& context) const override;
 
