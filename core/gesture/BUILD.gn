@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("../../testing/test.gni")
 import("../Lynx.gni")
 
 lynx_core_source_set("gesture") {
@@ -23,4 +24,19 @@ lynx_core_source_set("gesture") {
     "gesture_types.h",
   ]
   public_deps = [ "../public" ]
+}
+
+unittest_set("gesture_testset") {
+  sources = [ "gesture_arena_unittest.cc" ]
+  public_deps = [ ":gesture" ]
+}
+
+unittest_exec("gesture_unittests_exec") {
+  sources = []
+  deps = [ ":gesture_testset" ]
+}
+
+group("gesture_tests") {
+  testonly = true
+  deps = [ ":gesture_unittests_exec" ]
 }
