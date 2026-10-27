@@ -288,7 +288,7 @@ class PageView : public BaseView,
 
   void AddGlobalExposureEvent(bool exposure,
                               std::unique_ptr<clay::Value::Map> params,
-                              BaseView* view);
+                              BaseView* view, uint64_t trace_flow_id);
   void SendGlobalExposureEvent();
 
   void SetInterceptBackKeyOnce(bool intercept) {
@@ -625,6 +625,8 @@ class PageView : public BaseView,
 
   std::vector<fml::WeakPtr<BaseView>> exposure_event_data_set_;
   std::vector<fml::WeakPtr<BaseView>> disexposure_event_data_set_;
+  std::vector<uint64_t> exposure_event_flow_ids_;
+  std::vector<uint64_t> disexposure_event_flow_ids_;
 
   bool use_texture_backend_ = true;
   EventDelegate* event_delegate_ = nullptr;
