@@ -2203,6 +2203,7 @@ public class com::lynx::tasm::behavior::ui::list::GapItemDecoration : RecyclerVi
 
 public class com::lynx::tasm::gesture::arena::GestureArenaManager :  {
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.init(boolean enable, LynxContext context);
+  public void com.lynx.tasm.gesture.arena.GestureArenaManager.init(boolean enable, boolean enableUnifiedGestureHandler, LynxContext context);
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.dispatchTouchEventToArena(MotionEvent event, LynxTouchEvent lynxTouchEvent);
   public boolean com.lynx.tasm.gesture.arena.GestureArenaManager.isUsingUnifiedGestureHandler();
   public void com.lynx.tasm.gesture.arena.GestureArenaManager.dispatchBubbleTouchEvent(String type, LynxTouchEvent touchEvent);
