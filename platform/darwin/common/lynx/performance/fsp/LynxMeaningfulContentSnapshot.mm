@@ -81,9 +81,7 @@
     }
     // 2.3 encode image to base64
     NSString* snapshotImageBase64 = [NSString
-        stringWithFormat:
-            @"data:image/jpeg;base64,%@",
-            [data base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength]];
+        stringWithFormat:@"data:image/jpeg;base64,%@", [data base64EncodedStringWithOptions:0]];
     // 3. main thread: send trace event
     dispatch_async(dispatch_get_main_queue(), ^{
       TRACE_EVENT_INSTANT(
