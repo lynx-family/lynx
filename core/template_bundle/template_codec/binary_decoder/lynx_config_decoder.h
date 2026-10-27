@@ -584,6 +584,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableNewGesture].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableUnifiedGestureHandler) &&
+        doc[config::kEnableUnifiedGestureHandler].IsBool()) {
+      page_config->SetEnableUnifiedGestureHandler(
+          doc[config::kEnableUnifiedGestureHandler].GetBool());
+    }
+
     if (doc.HasMember(config::kEnablePlatformGesture) &&
         doc[config::kEnablePlatformGesture].IsBool()) {
       page_config->SetEnablePlatformGesture(
