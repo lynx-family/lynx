@@ -216,6 +216,7 @@ void BaseElementContainer::MarkDirtyState(DirtyState state) {
 
   if (state == kNeedRedraw || state == kNeedUpdateSubtreeProperty) {
     dirty_state_ = static_cast<DirtyState>(dirty_state_ | state);
+    element_manager()->SetNeedsRepaint();
   }
 }
 
