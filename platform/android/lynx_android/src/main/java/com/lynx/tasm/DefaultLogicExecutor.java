@@ -4,16 +4,15 @@
 
 package com.lynx.tasm;
 
-import android.content.Context;
 import com.lynx.jsbridge.LynxEmbeddedModule;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableType;
-import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.group.ILynxViewGroup;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
@@ -42,36 +41,39 @@ public class DefaultLogicExecutor implements ILynxLogicExecutor {
 
   private final Object mInitLock = new Object();
   private volatile LynxBackgroundRuntime mRuntime;
-  private final WeakReference<Context> mContextRef;
-  private final WeakReference<TemplateBundle> mTemplateBundleRef;
-  private final WeakReference<LynxBackgroundRuntimeOptions> mRuntimeOptionsRef;
-  private final WeakReference<ILynxViewGroup> mLynxViewGroupRef;
+  private WeakReference<ILynxViewGroup> mLynxViewGroupRef;
 
-  public DefaultLogicExecutor(TemplateBundle bundle,
-      LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context,
-      ILynxViewGroup lynxViewGroup) {
-    mTemplateBundleRef = new WeakReference<>(bundle);
-    mRuntimeOptionsRef = new WeakReference<>(backgroundRuntimeOptions);
-    mContextRef = new WeakReference<>(context);
+  public DefaultLogicExecutor() {
+    mLynxViewGroupRef = new WeakReference<ILynxViewGroup>(null);
+  }
+
+  public DefaultLogicExecutor(ILynxViewGroup lynxViewGroup) {
     mLynxViewGroupRef = new WeakReference<>(lynxViewGroup);
   }
 
-  private void initLynxBackgroundRuntimeIfNeeded() {
+  public void init(ILynxViewGroup viewGroup) {
+    mLynxViewGroupRef = new WeakReference<>(viewGroup);
+  }
+
+  private void initLynxBackgroundRuntimeIfNeeded(LynxContext lynxContext) {
     if (mRuntime == null) {
       synchronized (mInitLock) {
         if (mRuntime == null) {
           TraceEvent.beginSection(TraceEventDef.LOGIC_EXECUTOR_INIT);
-          final Context context = mContextRef.get();
-          final TemplateBundle bundle = mTemplateBundleRef.get();
-          final LynxBackgroundRuntimeOptions options = mRuntimeOptionsRef.get();
           final ILynxViewGroup viewGroup = mLynxViewGroupRef.get();
 
-          if (context == null || bundle == null || options == null || viewGroup == null) {
+          if (viewGroup == null) {
+            LLog.e(TAG, "LynxViewGroup not found");
+            return;
+          }
+          final LynxBackgroundRuntimeOptions options = viewGroup.getLynxRuntimeOptions();
+          final TemplateBundle bundle = viewGroup.getTemplateBundleNonBlocking();
+          if (options == null || bundle == null || lynxContext == null) {
             LLog.e(TAG, "init LynxBackgroundRuntime failed.");
             return;
           }
           options.registerModule(LynxEmbeddedModule.NAME, LynxEmbeddedModule.class, viewGroup);
-          mRuntime = new LynxBackgroundRuntime(context, options);
+          mRuntime = new LynxBackgroundRuntime(lynxContext, options);
           String url = LOGIC_JS_PATH;
           String bundleUrl = bundle.getUrl();
           if (bundleUrl != null) {
@@ -91,7 +93,7 @@ public class DefaultLogicExecutor implements ILynxLogicExecutor {
     if (!event.hasKey(EVENT_METHOD)) {
       return;
     }
-    initLynxBackgroundRuntimeIfNeeded();
+    initLynxBackgroundRuntimeIfNeeded(lynxView.getLynxContext());
     if (mRuntime == null) {
       return;
     }

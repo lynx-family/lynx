@@ -4,6 +4,8 @@
 package com.lynx.tasm.group;
 
 import android.content.Context;
+import androidx.annotation.Nullable;
+import com.lynx.jsbridge.LynxEmbeddedModule;
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.tasm.DefaultLogicExecutor;
 import com.lynx.tasm.EmbeddedMode;
@@ -27,7 +29,10 @@ import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
 import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -46,7 +51,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private final String url;
 
   // TemplateBundle object shared by multiple lynxViews config by the same LynxViewGroup;
-  private TemplateBundle templateBundle;
+  private volatile TemplateBundle templateBundle;
 
   // initial globalProps shared by multiple lynxViews config by the same LynxViewGroup;
   private TemplateData globalProps;
@@ -83,6 +88,11 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private Context mContext;
   private CountDownLatch countDownLatch = new CountDownLatch(1);
 
+  private final List<LynxResourceCallback<TemplateBundle>> mFetchCallbacks =
+      Collections.synchronizedList(new LinkedList<>());
+  private volatile LynxResourceResponse<TemplateBundle> mFetchResult = null;
+
+  /** Runtime Cache Manager **/
   private Future<Void> templateResultFutureTask;
 
   @Override
@@ -140,11 +150,14 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     if (this.lynxRuntimeOptions != null) {
       this.lynxRuntimeOptions.setGlobalProps(this.globalProps);
     }
+
     if (templateBundle == null) {
-      this.fetchTemplate();
+      this.fetchTemplateInternal();
+    }
+    if (logicExecutor instanceof DefaultLogicExecutor) {
+      ((DefaultLogicExecutor) logicExecutor).init(this);
     } else if (this.logicExecutor == null) {
-      this.logicExecutor = new DefaultLogicExecutor(
-          templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this);
+      registerModule(LynxEmbeddedModule.NAME, LynxEmbeddedModule.class, this);
     }
   }
 
@@ -339,6 +352,12 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     return this.templateBundle;
   }
 
+  @Nullable
+  @Override
+  public TemplateBundle getTemplateBundleNonBlocking() {
+    return templateBundle;
+  }
+
   /**
    * Check if the bundle in LynxViewGroup is ready yet.
    *
@@ -392,41 +411,83 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     lynxRuntimeOptions.registerModule(name, module, param);
   }
 
+  private void setFetchResult(LynxResourceResponse<TemplateBundle> result) {
+    synchronized (mFetchCallbacks) {
+      if (mFetchResult != null) {
+        LLog.e(TAG, "internal error: fetch result should be set once");
+        return;
+      }
+      mFetchResult = result;
+      if (result.getState() == LynxResourceResponse.ResponseState.SUCCESS) {
+        templateBundle = result.getData();
+      }
+      if (countDownLatch.getCount() > 0) {
+        countDownLatch.countDown();
+      }
+
+      for (LynxResourceCallback<TemplateBundle> callback : mFetchCallbacks) {
+        callback.onResponse(result);
+      }
+      mFetchCallbacks.clear();
+
+      if (logicExecutor instanceof DefaultLogicExecutor) {
+        ((DefaultLogicExecutor) logicExecutor).init(this);
+      }
+    }
+  }
+
   /**
    * Fetching template result as soon as possible.
    */
-  private void fetchTemplate() {
-    Runnable runnable = new Runnable() {
-      @Override
-      public void run() {
-        LynxResourceRequest request = new LynxResourceRequest(
-            url, LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate);
-        lynxRuntimeOptions.getTemplateResourceFetcher().fetchTemplate(
-            request, new LynxResourceCallback<TemplateProviderResult>() {
-              @Override
-              public void onResponse(LynxResourceResponse<TemplateProviderResult> response) {
-                TemplateProviderResult result = response.getData();
-                if (result != null) {
-                  if (result.getTemplateBundle() != null) {
-                    templateBundle = result.getTemplateBundle();
-                  } else if (result.getTemplateBinary() != null) {
-                    templateBundle = TemplateBundle.fromTemplate(result.getTemplateBinary());
-                  }
-                  if (templateBundle != null) {
-                    if (logicExecutor == null) {
-                      logicExecutor = new DefaultLogicExecutor(
-                          templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this);
-                    }
-                  }
+  private void fetchTemplateInternal() {
+    Runnable runnable = () -> {
+      LynxResourceRequest request = new LynxResourceRequest(
+          url, LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate);
+      lynxRuntimeOptions.getTemplateResourceFetcher().fetchTemplate(request, response -> {
+        if (response.getState() == LynxResourceResponse.ResponseState.FAILED) {
+          // request failed
+          setFetchResult(LynxResourceResponse.onFailed(response.getError()));
+          return;
+        }
 
-                  countDownLatch.countDown();
-                }
-              }
-            });
-      }
+        TemplateBundle bundle = null;
+        TemplateProviderResult result = response.getData();
+        if (result != null) {
+          if (result.getTemplateBundle() != null) {
+            bundle = result.getTemplateBundle();
+          } else if (result.getTemplateBinary() != null) {
+            bundle = TemplateBundle.fromTemplate(result.getTemplateBinary());
+          }
+        }
+        if (bundle == null) {
+          // unknown error
+          setFetchResult(
+              LynxResourceResponse.onFailed(new RuntimeException("Template bundle is null")));
+          return;
+        }
+        // success
+        setFetchResult(LynxResourceResponse.onSuccess(bundle));
+      });
     };
     if (lynxRuntimeOptions != null) {
       LynxThreadPool.getAsyncServiceExecutor().execute(runnable);
+    }
+  }
+
+  @Override
+  public void fetchTemplateBundle(LynxResourceCallback<TemplateBundle> callback) {
+    if (mFetchResult != null) {
+      callback.onResponse(mFetchResult);
+      return;
+    }
+    // not ready yet
+    synchronized (mFetchCallbacks) {
+      if (mFetchResult != null) {
+        // double check
+        callback.onResponse(mFetchResult);
+        return;
+      }
+      mFetchCallbacks.add(callback);
     }
   }
 
@@ -437,5 +498,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     if (logicExecutor != null) {
       logicExecutor.destroy();
     }
+    setFetchResult(
+        LynxResourceResponse.onFailed(new RuntimeException("This LynxViewGroup released")));
   }
 }
