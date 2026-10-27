@@ -2109,6 +2109,27 @@ void FiberElement::HandleRemoveSelf(FiberElement *removal_point,
   render_parent->HandleRemoveChildAction(this);
 }
 
+void FiberElement::HandleRemoveSelf(FiberElement *removal_point,
+                                    FiberElement *render_parent) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_REMOVE_SELF,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
+  if (!element_manager()->FixNewFixedRemovalBug()) {
+    render_parent->HandleRemoveChildAction(this);
+    return;
+  }
+
+  if (render_parent == nullptr) {
+    element_container()->RemoveSelf(false);
+    LOGE("FiberElement double remove child node!");
+    this->LogNodeInfo();
+    return;
+  }
+
+  render_parent->HandleRemoveChildAction(this);
+}
+
 void FiberElement::HandleContainerInsertion(FiberElement *parent,
                                             FiberElement *child,
                                             FiberElement *ref_node) {
