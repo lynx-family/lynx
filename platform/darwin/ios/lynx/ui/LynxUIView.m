@@ -28,6 +28,16 @@
   }
 }
 
+- (void)setNativeGestureRecognizerEnabled:(BOOL)enabled {
+  if (enabled) {
+    [self setupNativeGestureRecognizerIfNeeded];
+  } else if (_nativeGesturePanRecognizer) {
+    _nativeGesturePanRecognizer.delegate = nil;
+    [self removeGestureRecognizer:_nativeGesturePanRecognizer];
+    _nativeGesturePanRecognizer = nil;
+  }
+}
+
 - (void)handlePanGesture:(UIPanGestureRecognizer *)recognizer {
   if (self.interceptGestureStatus == LynxInterceptGestureStateTrue) {
     // Intercept the gesture without handling, so it will be consumed
@@ -58,12 +68,7 @@
 }
 
 - (void)dealloc {
-  // Remove the gesture recognizer from the view
-  if (_nativeGesturePanRecognizer) {
-    _nativeGesturePanRecognizer.delegate = nil;
-    [self removeGestureRecognizer:_nativeGesturePanRecognizer];
-    _nativeGesturePanRecognizer = nil;
-  }
+  [self setNativeGestureRecognizerEnabled:NO];
 }
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
