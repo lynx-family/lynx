@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
@@ -537,6 +538,8 @@ TEST(NativePaintingCtxPlatformRefTest,
 
 class FragmentDrawTest : public ::testing::Test {
  public:
+  static void SetUpTestSuite() { base::UIThread::Init(); }
+
   FragmentDrawTest() {}
   ~FragmentDrawTest() override {}
 
@@ -2454,6 +2457,72 @@ TEST_F(FragmentDrawTest, DrawSubmitsPlatformLayersInOneBatch) {
       native_context->operations,
       ::testing::ElementsAre("update_display_list", "update_display_list",
                              "reconstruct_event_target_tree"));
+}
+
+TEST_F(FragmentDrawTest, NoPatchRepaintRequiresInvalidation) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto child = manager->CreateFiberNode("native-child");
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+  auto finish_patch = [this]() {
+    manager->need_layout_ = false;
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options);
+  };
+  page->Layout(std::make_shared<PipelineOptions>());
+  manager->Repaint();
+
+  auto* native_context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  native_context->display_list_batch_sizes.clear();
+  native_context->display_list_batch_ids.clear();
+  native_context->operations.clear();
+
+  finish_patch();
+
+  EXPECT_TRUE(native_context->display_list_batch_sizes.empty());
+  EXPECT_THAT(native_context->operations,
+              ::testing::Not(::testing::Contains("update_display_list")));
+
+  auto* child_fragment = child->fragment_impl();
+  ASSERT_TRUE(child_fragment->has_platform_renderer_);
+  child_fragment->InvalidateForRedraw();
+  finish_patch();
+
+  ASSERT_THAT(native_context->display_list_batch_sizes,
+              ::testing::ElementsAre(1u));
+  ASSERT_EQ(native_context->display_list_batch_ids.size(), 1u);
+  EXPECT_THAT(native_context->display_list_batch_ids[0],
+              ::testing::ElementsAre(child_fragment->id()));
+}
+
+TEST_F(FragmentDrawTest, NoPatchRepaintSyncsEventBundle) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto child = manager->CreateFiberNode("native-child");
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+  auto finish_patch = [this]() {
+    manager->need_layout_ = false;
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options);
+  };
+  page->Layout(std::make_shared<PipelineOptions>());
+  manager->Repaint();
+
+  auto* child_fragment = child->fragment_impl();
+  child_fragment->SetEventProp(PlatformEventPropName::kIDSelector,
+                               lepus::Value("target"));
+  finish_patch();
+
+  auto* native_context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  const auto* bundle =
+      native_context->GetNativePlatformRef()->GetPlatformEventBundle(
+          child_fragment->id());
+  ASSERT_NE(bundle, nullptr);
+  auto it = bundle->EventProps().find(PlatformEventPropName::kIDSelector);
+  ASSERT_NE(it, bundle->EventProps().end());
+  EXPECT_EQ(it->second.StdString(), "target");
 }
 
 TEST_F(FragmentDrawTest, ZIndexChangeKeepsLayerOffsetWithoutRelayout) {
@@ -6210,7 +6279,9 @@ TEST_F(FragmentDrawTest, NativeReadyObservesChildrenAfterDisplayListBatch) {
   parent->fragment_impl()->MarkNodeReadyIfNeeded();
   page->fragment_impl()->UpdateLayoutWithoutChange();
   EXPECT_TRUE(platform_ref->ready_child_counts.empty());
-  manager->Repaint();
+  manager->need_layout_ = false;
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
   EXPECT_THAT(
       platform_ref->ready_child_counts,
       ::testing::ElementsAre(std::make_pair(parent->impl_id(), size_t{1})));
@@ -6253,8 +6324,19 @@ TEST_F(FragmentDrawTest,
             0);
   EXPECT_FALSE(manager->NeedReconstructEventTargetTreeForExposure());
 
+  EXPECT_THAT(context->operations,
+              ::testing::Contains("reconstruct_event_target_tree"));
+
   child->fragment_impl()->InvalidateForRedraw();
-  manager->Repaint();
+  completed = false;
+  manager->OnPatchFinishForFiber(
+      options,
+      [&completed](bool has_patch) {
+        completed = true;
+        EXPECT_FALSE(has_patch);
+      },
+      page.get());
+  EXPECT_TRUE(completed);
   ASSERT_FALSE(context->display_list_batch_ids.empty());
   ASSERT_EQ(context->display_list_batch_ids.back().size(), 1u);
   EXPECT_EQ(context->display_list_batch_ids.back()[0], child->impl_id());
