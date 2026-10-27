@@ -5,6 +5,8 @@ package com.lynx.tasm.behavior;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
@@ -17,6 +19,7 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.util.SparseBooleanArray;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
@@ -27,6 +30,7 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIShadowProxy;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.event.EventsListener;
+import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
@@ -159,6 +163,33 @@ public class LynxUIOwnerTest {
     assertTrue(uiOwner.getHasTouchPseudo());
     verify(dispatcher).setHasTouchPseudo(true);
     verify(dispatcher, never()).setHasTouchPseudo(false);
+  }
+
+  @Test
+  public void testGestureBindingSurvivesFlattenConversion() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxContext contextSpy = spy(mContext);
+      LynxUIOwner uiOwner = new LynxUIOwner(
+          contextSpy, new BehaviorRegistry(new BuiltInBehavior().create()), mUIBody.getBodyView());
+      contextSpy.setLynxUIOwner(uiOwner);
+      uiOwner.initGestureArenaManager(contextSpy);
+      uiOwner.createViewInternal(1, LynxConstants.ROOT_TAG_NAME,
+          new StylesDiffMap(new JavaOnlyMap()), null, false, 0, null);
+      uiOwner.createViewInternal(
+          2, "view", new StylesDiffMap(new JavaOnlyMap()), null, true, 1, null);
+      uiOwner.insert(1, 2, 0);
+      assertTrue(uiOwner.getNode(2).isFlatten());
+
+      Map<Integer, GestureDetector> detectors = new HashMap<>();
+      detectors.put(1, new GestureDetector(1, GestureDetector.GESTURE_TYPE_PAN, null, null));
+      uiOwner.updateProperties(2, false, new StylesDiffMap(new JavaOnlyMap()), null, detectors);
+
+      LynxBaseUI ui = uiOwner.getNode(2);
+      assertFalse(ui.isFlatten());
+      assertNotNull(ui.getGestureHandlers());
+      assertNotNull(ui.getGestureHandlers().get(GestureDetector.GESTURE_TYPE_PAN));
+      assertSame(ui, uiOwner.getGestureArenaManager().getMemberById(2));
+    });
   }
 
   @Test
