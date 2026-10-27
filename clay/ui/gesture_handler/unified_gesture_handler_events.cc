@@ -31,8 +31,8 @@ void UnifiedGestureHandler::DispatchGestureEvent(
   }
   const char *name = unified_gesture::GestureCallbackName(event.callback);
   Value::Map params;
-  params.emplace("type",
-                 Value(unified_gesture::GestureInputTypeName(event.source)));
+  // Preserve the type exposed to existing Clay gesture callbacks.
+  params.emplace("type", Value(name));
   params.emplace("timestamp", Value(event.timestamp_epoch_ms));
   params.emplace("x", Value(event.local.x));
   params.emplace("y", Value(event.local.y));

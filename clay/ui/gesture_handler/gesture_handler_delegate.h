@@ -13,11 +13,6 @@ namespace clay {
 
 class GestureHandlerDelegate {
  public:
-  enum class LynxGestureState : unsigned int {
-    ACTIVE = 1,
-    FAIL = 2,
-    END = 3,
-  };
   /**
    * Set the state of the gesture detector to the specified state.
    *

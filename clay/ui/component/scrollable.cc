@@ -10,6 +10,7 @@
 
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/rubberband_distance.h"
+#include "clay/ui/gesture_handler/gesture_handler_dispatcher.h"
 #include "clay/ui/rendering/render_scroll.h"
 
 namespace clay {
@@ -218,15 +219,16 @@ ScrollDirection Scrollable::GetScrollDirection() const {
 }
 
 void Scrollable::GestureDetectorDidSet() {
+  const auto self = GetWeakPtr();
   BaseView::GestureDetectorDidSet();
-  if (GestureArenaMemberId() > 0) {
-    SetScrollEnabled(false);
-    const auto& gesture_detector_map = GetGestureDetectorMap();
-    for (auto& pair : gesture_detector_map) {
-      if (pair.second->gesture_type() == GestureHandlerType::Native) {
-        SetScrollEnabled(true);
-        break;
-      }
+  if (!self) {
+    return;
+  }
+  gesture_scroll_enabled_ = GestureArenaMemberId() == 0;
+  for (const auto& entry : GetGestureDetectorMap()) {
+    if (entry.second.gesture_type == lynx::tasm::GestureType::NATIVE) {
+      gesture_scroll_enabled_ = true;
+      break;
     }
   }
 }

@@ -122,10 +122,8 @@ class MockEventDelegate : public clay::EventDelegate {
       uitest_->key_event_callback_(event_name, view_id, key, repeat);
     }
   }
-  void OnGestureHandlerEvent(const std::string& event_name, int view_id,
-                             uint32_t gesture_id, float x, float y,
-                             float page_x, float page_y, int64_t timestamp,
-                             clay::Value& additional_params) override {}
+  void OnUnifiedGestureHandlerEvent(const std::string&, int, uint32_t,
+                                    Value) override {}
   void OnAnimationEvent(const std::string& event_name,
                         const char* animation_name, int view_id,
                         double) override {

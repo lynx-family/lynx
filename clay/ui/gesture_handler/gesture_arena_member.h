@@ -5,12 +5,20 @@
 #ifndef CLAY_UI_GESTURE_HANDLER_GESTURE_ARENA_MEMBER_H_
 #define CLAY_UI_GESTURE_HANDLER_GESTURE_ARENA_MEMBER_H_
 
-#include <memory>
+#include <cstdint>
 #include <vector>
 
-#include "clay/ui/gesture_handler/handler/base_gesture_handler.h"
+#include "clay/ui/gesture_handler/gesture_detector.h"
 
 namespace clay {
+
+namespace GestureConstants {
+
+constexpr int8_t DIRECTION_HORIZONTAL = -1;
+constexpr int8_t DIRECTION_VERTICAL = 1;
+constexpr int8_t DIRECTION_UNDETERMINED = 0;
+
+}  // namespace GestureConstants
 
 class GestureArenaMember {
  public:
@@ -31,7 +39,7 @@ class GestureArenaMember {
    */
   virtual bool CanConsumeGesture(float delta_x, float delta_y) = 0;
 
-  bool ShouldConsumeGesture() const { return should_consume_gesture_; }
+  virtual bool ShouldConsumeGesture() const { return should_consume_gesture_; }
   void SetShouldConsumeGesture(bool should_consume_gesture) {
     should_consume_gesture_ = should_consume_gesture;
   }
@@ -57,8 +65,8 @@ class GestureArenaMember {
   virtual float ScrollX() = 0;
 
   /**
-   * get scroll container direction
-   * @return 1 —— vertical  -1 —— horizontal 0 —— not scroll container
+   * Returns the scroll direction, or DIRECTION_UNDETERMINED for a
+   * non-scrolling member.
    */
   virtual int8_t GetScrollContainerDirection() = 0;
 
@@ -82,26 +90,9 @@ class GestureArenaMember {
    * @return The map of gesture detectors, or null if not available.
    */
   virtual const GestureMap& GetGestureDetectorMap() = 0;
-  /**
-   * Retrieves the map of gesture handler associated with the member.
-   *
-   * @return The map of gesture handlers, or null if not available.
-   * @see GestureDetector key — GestureDetector type value — gesture handler
-   */
-  virtual const GestureHandlerMap& GetGestureHandlers() = 0;
 
  private:
   bool should_consume_gesture_ = true;
-};
-
-struct GestureArenaMemberCompare {
-  bool operator()(const fml::WeakPtr<GestureArenaMember>& lhs,
-                  const fml::WeakPtr<GestureArenaMember>& rhs) const {
-    if (!lhs || !rhs) {
-      return lhs ? true : false;
-    }
-    return lhs->GestureArenaMemberId() < rhs->GestureArenaMemberId();
-  }
 };
 
 }  // namespace clay

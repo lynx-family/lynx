@@ -16,6 +16,7 @@ lynx_core_source_set("public") {
     "event_tracker_proxy.h",
     "external_memory_snapshot.h",
     "gesture_handler.h",
+    "gesture_type.h",
     "jsb/extension_module_factory.h",
     "jsb/lynx_extension_module.h",
     "jsb/lynx_module_callback.h",

@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "core/public/gesture_handler.h"
 #include "core/public/pub_value.h"
 
 namespace lynx::tasm::gesture {

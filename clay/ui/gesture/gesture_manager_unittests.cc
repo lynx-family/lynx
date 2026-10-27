@@ -4,6 +4,7 @@
 
 #include <future>
 #include <memory>
+#include <vector>
 
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/fml/thread.h"
@@ -84,13 +85,19 @@ class MockHitTestTargetBase : public HitTestTarget {
 class MultiRecognizerHitTestTarget : public MockHitTestTargetBase {
  public:
   void HandleEvent(const PointerEvent& event) override {
-    if (event.type == PointerEvent::EventType::kDownEvent) {
+    if (event.type == PointerEvent::EventType::kMoveEvent ||
+        event.type == PointerEvent::EventType::kPanZoomUpdateEvent) {
+      ++move_events_;
+    }
+    if (event.type == PointerEvent::EventType::kDownEvent ||
+        event.type == PointerEvent::EventType::kPanZoomStartEvent) {
       for (const auto& recognizer : recognizers_) {
         recognizer->AddPointer(event);
       }
     }
   }
 
+  int move_events_ = 0;
   std::list<std::unique_ptr<GestureRecognizer>> recognizers_;
 };
 

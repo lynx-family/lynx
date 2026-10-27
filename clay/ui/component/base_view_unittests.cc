@@ -21,7 +21,6 @@
 #include "clay/ui/component/view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/gesture/mouse_region_manager.h"
-#include "clay/ui/gesture_handler/arena/gesture_arena_manager.h"
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "clay/ui/rendering/render_container.h"
 #include "clay/ui/shadow/inline_view_shadow_node.h"
@@ -269,112 +268,239 @@ TEST_F_UI(BaseViewTest, StableRasterAnimationStateDoesNotInvalidate) {
   EXPECT_EQ(view.invalidation_count(), 0);
 }
 
+TEST_F_UI(BaseViewTest, RegistersDetectorsUpdatedDuringGestureCallback) {
+  testing::MockEventDelegate delegate;
+  page_->SetEventDelegate(&delegate);
+  View existing_view(1, page_.get());
+  View new_view(2, page_.get());
+  auto* dispatcher = page_->GetGestureHandlerDispatcher();
+  using lynx::tasm::GestureType;
+  using lynx::tasm::gesture::GestureCallbackType;
+  existing_view.SetGestureDetectorMap(
+      {{1, MakeDetector(1, GestureType::PAN, {GestureCallbackType::kBegin})}});
+  const int original_id = existing_view.GestureArenaMemberId();
+
+  EXPECT_CALL(delegate,
+              OnUnifiedGestureHandlerEvent("onBegin", 1, 1, ::testing::_))
+      .WillOnce([&](const std::string&, int, uint32_t, Value) {
+        existing_view.SetGestureDetectorMap(
+            {{2, MakeDetector(2, GestureType::PAN,
+                              {GestureCallbackType::kBegin})}});
+        new_view.SetGestureDetectorMap(
+            {{3, MakeDetector(3, GestureType::PAN,
+                              {GestureCallbackType::kBegin})}});
+      });
+  EXPECT_CALL(delegate,
+              OnUnifiedGestureHandlerEvent("onBegin", 1, 2, ::testing::_))
+      .Times(1);
+  EXPECT_CALL(delegate,
+              OnUnifiedGestureHandlerEvent("onBegin", 2, 3, ::testing::_))
+      .Times(1);
+
+  HitTestResult existing_hits{existing_view.GetHitTestTargetWeakPtr()};
+  HitTestResult new_hits{new_view.GetHitTestTargetWeakPtr()};
+  auto down = CreateDownPointer(0, 0);
+  PointerEvent cancel(PointerEvent::EventType::kCancel);
+  dispatcher->HandlePointerDown(down, existing_hits);
+
+  EXPECT_GT(original_id, 0);
+  EXPECT_EQ(existing_view.GestureArenaMemberId(), original_id);
+  EXPECT_FALSE(dispatcher->CanControlGesture(original_id, 1));
+  EXPECT_TRUE(dispatcher->CanControlGesture(original_id, 2));
+  EXPECT_GT(new_view.GestureArenaMemberId(), 0);
+  EXPECT_TRUE(
+      dispatcher->CanControlGesture(new_view.GestureArenaMemberId(), 3));
+
+  dispatcher->HandlePointerCancel(cancel, existing_hits);
+  dispatcher->HandlePointerDown(down, existing_hits);
+  dispatcher->HandlePointerCancel(cancel, existing_hits);
+  dispatcher->HandlePointerDown(down, new_hits);
+  dispatcher->HandlePointerCancel(cancel, new_hits);
+
+  existing_view.Destroy();
+  new_view.Destroy();
+  page_->SetEventDelegate(nullptr);
+}
+
+TEST_F_UI(BaseViewTest, GestureUpdateReportsLocalAndPageCoordinates) {
+  auto metrics = page_->GetViewportMetrics();
+  metrics.device_pixel_ratio = 2;
+  page_->SetViewportMetrics(metrics);
+  constexpr float scale = kPixelTypeClay == kPixelTypePhysical ? 2.f : 1.f;
+
+  testing::MockEventDelegate delegate;
+  page_->SetEventDelegate(&delegate);
+  View view(1, page_.get());
+  view.SetBound(10 * scale, 10 * scale, 50 * scale, 50 * scale);
+  view.SetGestureDetectorMap(
+      {{1, MakeDetector(1, lynx::tasm::GestureType::PAN,
+                        {lynx::tasm::gesture::GestureCallbackType::kUpdate})}});
+  EXPECT_CALL(delegate,
+              OnUnifiedGestureHandlerEvent("onUpdate", 1, 1, ::testing::_))
+      .WillOnce([](const std::string&, int, uint32_t, Value params) {
+        ASSERT_TRUE(params.IsMap());
+        const auto& map = params.GetMap();
+        const std::initializer_list<std::pair<const char*, double>>
+            expected_coordinates = {{"x", 5},        {"y", 10},
+                                    {"pageX", 15},   {"pageY", 20},
+                                    {"clientX", 15}, {"clientY", 20}};
+        for (const auto& [key, expected] : expected_coordinates) {
+          const auto value = map.find(key);
+          ASSERT_NE(value, map.end()) << key;
+          EXPECT_DOUBLE_EQ(GetNumber(value->second), expected) << key;
+        }
+      });
+
+  auto* dispatcher = page_->GetGestureHandlerDispatcher();
+  HitTestResult hits{view.GetHitTestTargetWeakPtr()};
+  auto down = testing::MakePointerEvent(PointerEvent::EventType::kDownEvent,
+                                        {10 * scale, 10 * scale}, 1000000);
+  auto move = testing::MakePointerEvent(PointerEvent::EventType::kMoveEvent,
+                                        {15 * scale, 20 * scale}, 1010000);
+  dispatcher->HandlePointerDown(down, hits);
+  dispatcher->HandlePointerMove(move, hits);
+
+  view.Destroy();
+  page_->SetEventDelegate(nullptr);
+}
+
 TEST_F_UI(BaseViewTest, DestroyUnregistersGestureArenaMember) {
+  testing::MockEventDelegate delegate;
+  page_->SetEventDelegate(&delegate);
   auto view = std::make_unique<View>(1, page_.get());
-  GestureMap detectors;
-  detectors.emplace(
-      1, std::make_shared<GestureDetector>(
-             1, GestureHandlerType::Native, std::vector<std::string>{},
-             std::unordered_map<std::string, std::vector<uint32_t>>{}));
-  view->SetGestureDetectorMap(detectors);
+  view->SetGestureDetectorMap(
+      {{1, MakeDetector(1, lynx::tasm::GestureType::PAN,
+                        {lynx::tasm::gesture::GestureCallbackType::kEnd})}});
+  auto* dispatcher = page_->GetGestureHandlerDispatcher();
+  const int member_id = view->GestureArenaMemberId();
+  ASSERT_TRUE(dispatcher->CanControlGesture(member_id, 1));
 
-  auto* arena_manager =
-      page_->GetGestureHandlerDispatcher()->gesture_arena_manager();
-  ASSERT_TRUE(arena_manager->IsMemberExist(view->Sign()));
-
+  EXPECT_CALL(delegate,
+              OnUnifiedGestureHandlerEvent("onEnd", 1, 1, ::testing::_))
+      .Times(0);
+  HitTestResult hits{view->GetHitTestTargetWeakPtr()};
+  dispatcher->HandlePointerDown(CreateDownPointer(0, 0), hits);
   view->Destroy();
 
-  EXPECT_FALSE(arena_manager->IsMemberExist(view->Sign()));
+  EXPECT_FALSE(dispatcher->CanControlGesture(member_id, 1));
+  page_->SetEventDelegate(nullptr);
+}
+
+TEST_F_UI(BaseViewTest, DetectorChangesAllowViewTeardownInEndCallback) {
+  using lynx::tasm::GestureType;
+  using lynx::tasm::gesture::GestureCallbackType;
+  testing::MockEventDelegate delegate;
+  page_->SetEventDelegate(&delegate);
+  auto* dispatcher = page_->GetGestureHandlerDispatcher();
+  for (bool replace : {false, true}) {
+    SCOPED_TRACE(replace);
+    auto view = std::make_unique<View>(1, page_.get());
+    view->SetGestureDetectorMap(
+        {{1, MakeDetector(1, GestureType::PAN, {GestureCallbackType::kEnd})}});
+    const int member_id = view->GestureArenaMemberId();
+    const auto self = view->GetWeakPtr();
+    HitTestResult hits{view->GetHitTestTargetWeakPtr()};
+    auto down = CreateDownPointer(0, 0);
+    dispatcher->HandlePointerDown(down, hits);
+    EXPECT_CALL(delegate,
+                OnUnifiedGestureHandlerEvent("onEnd", 1, 1, ::testing::_))
+        .WillOnce([&](const std::string&, int, uint32_t, Value) {
+          view->Destroy();
+          view.reset();
+        });
+    GestureMap next;
+    if (replace) {
+      next.emplace(2, MakeDetector(2, GestureType::PAN));
+    }
+    view->SetGestureDetectorMap(next);
+    EXPECT_FALSE(self);
+    EXPECT_FALSE(dispatcher->CanControlGesture(member_id, 1));
+    EXPECT_FALSE(dispatcher->CanControlGesture(member_id, 2));
+    down.type = PointerEvent::EventType::kCancel;
+    dispatcher->HandlePointerCancel(down, hits);
+  }
+  page_->SetEventDelegate(nullptr);
 }
 
 TEST_F_UI(BaseViewTest, DownEventPrunesDestroyedGestureArenaMember) {
   auto destroyed_view = std::make_unique<View>(1, page_.get());
-  GestureMap detectors;
-  detectors.emplace(
-      1, std::make_shared<GestureDetector>(
-             1, GestureHandlerType::Native, std::vector<std::string>{},
-             std::unordered_map<std::string, std::vector<uint32_t>>{}));
-  destroyed_view->SetGestureDetectorMap(detectors);
+  destroyed_view->SetGestureDetectorMap(
+      {{1, MakeDetector(1, lynx::tasm::GestureType::NATIVE)}});
+  const int member_id = destroyed_view->GestureArenaMemberId();
   destroyed_view.reset();
 
   auto target_view = std::make_unique<View>(2, page_.get());
-  HitTestResult hit_test_result{target_view->GetHitTestTargetWeakPtr()};
-  auto* arena_manager =
-      page_->GetGestureHandlerDispatcher()->gesture_arena_manager();
+  HitTestResult hits{target_view->GetHitTestTargetWeakPtr()};
+  auto* dispatcher = page_->GetGestureHandlerDispatcher();
+  dispatcher->HandlePointerDown(CreateDownPointer(0, 0), hits);
 
-  arena_manager->SetActiveUIToArenaAtDownEvent(hit_test_result);
-
-  EXPECT_FALSE(arena_manager->IsMemberExist(1));
+  EXPECT_FALSE(dispatcher->CanControlGesture(member_id, 1));
   target_view->Destroy();
 }
 
 TEST_F_UI(BaseViewTest, DestroyDuringActiveGestureRemovesExpiredCandidate) {
+  testing::MockEventDelegate delegate;
+  page_->SetEventDelegate(&delegate);
   auto winner_view = std::make_unique<View>(1, page_.get());
   auto destroyed_view = std::make_unique<View>(2, page_.get());
-  GestureMap detectors;
-  detectors.emplace(
-      1, std::make_shared<GestureDetector>(
-             1, GestureHandlerType::Default, std::vector<std::string>{},
-             std::unordered_map<std::string, std::vector<uint32_t>>{}));
+  GestureMap detectors{
+      {1, MakeDetector(1, lynx::tasm::GestureType::PAN,
+                       {lynx::tasm::gesture::GestureCallbackType::kStart})}};
   winner_view->SetGestureDetectorMap(detectors);
   destroyed_view->SetGestureDetectorMap(detectors);
-
-  HitTestResult hit_test_result{winner_view->GetHitTestTargetWeakPtr(),
-                                destroyed_view->GetHitTestTargetWeakPtr()};
-  auto* arena_manager =
-      page_->GetGestureHandlerDispatcher()->gesture_arena_manager();
-  arena_manager->SetActiveUIToArenaAtDownEvent(hit_test_result);
-  arena_manager->DispatchTouchEventToArena(CreateDownPointer(0, 0));
+  const int removed_id = destroyed_view->GestureArenaMemberId();
+  HitTestResult hits{winner_view->GetHitTestTargetWeakPtr(),
+                     destroyed_view->GetHitTestTargetWeakPtr()};
+  auto* dispatcher = page_->GetGestureHandlerDispatcher();
+  EXPECT_CALL(delegate,
+              OnUnifiedGestureHandlerEvent("onStart", 1, 1, ::testing::_))
+      .Times(1);
+  dispatcher->HandlePointerDown(CreateDownPointer(0, 0), hits);
+  PointerEvent move(PointerEvent::EventType::kMoveEvent);
+  move.position = {100, 0};
+  dispatcher->HandlePointerMove(move, hits);
 
   destroyed_view->Destroy();
   destroyed_view.reset();
+  move.position = {110, 0};
+  dispatcher->HandlePointerMove(move, hits);
 
-  PointerEvent move(PointerEvent::EventType::kMoveEvent);
-  move.position = {1, 0};
-  arena_manager->DispatchTouchEventToArena(move);
-
-  EXPECT_TRUE(arena_manager->IsMemberExist(winner_view->Sign()));
+  EXPECT_TRUE(
+      dispatcher->CanControlGesture(winner_view->GestureArenaMemberId(), 1));
+  EXPECT_FALSE(dispatcher->CanControlGesture(removed_id, 1));
   winner_view->Destroy();
+  page_->SetEventDelegate(nullptr);
 }
 
 TEST_F_UI(BaseViewTest, DestroyDuringGestureCallbackSkipsExpiredCandidate) {
   testing::MockEventDelegate delegate;
   page_->SetEventDelegate(&delegate);
-
   auto winner_view = std::make_unique<View>(1, page_.get());
   auto destroyed_view = std::make_unique<View>(2, page_.get());
-  GestureMap detectors;
-  detectors.emplace(
-      1, std::make_shared<GestureDetector>(
-             1, GestureHandlerType::Default,
-             std::vector<std::string>{GestureConstants::ON_TOUCHES_DOWN},
-             std::unordered_map<std::string, std::vector<uint32_t>>{}));
+  GestureMap detectors{
+      {1,
+       MakeDetector(1, lynx::tasm::GestureType::DEFAULT,
+                    {lynx::tasm::gesture::GestureCallbackType::kTouchesDown})}};
   winner_view->SetGestureDetectorMap(detectors);
   destroyed_view->SetGestureDetectorMap(detectors);
+  const int removed_id = destroyed_view->GestureArenaMemberId();
 
-  EXPECT_CALL(delegate, OnGestureHandlerEvent(
-                            ::testing::StrEq(GestureConstants::ON_TOUCHES_DOWN),
-                            ::testing::Eq(2), ::testing::Eq(1), ::testing::_,
-                            ::testing::_, ::testing::_, ::testing::_,
-                            ::testing::_, ::testing::_))
+  EXPECT_CALL(delegate,
+              OnUnifiedGestureHandlerEvent("onTouchesDown", 2, 1, ::testing::_))
       .Times(0);
-  EXPECT_CALL(delegate, OnGestureHandlerEvent(
-                            ::testing::StrEq(GestureConstants::ON_TOUCHES_DOWN),
-                            ::testing::Eq(1), ::testing::Eq(1), ::testing::_,
-                            ::testing::_, ::testing::_, ::testing::_,
-                            ::testing::_, ::testing::_))
-      .WillOnce([&](const std::string&, int, uint32_t, float, float, float,
-                    float, int64_t, Value&) { destroyed_view->Destroy(); });
+  EXPECT_CALL(delegate,
+              OnUnifiedGestureHandlerEvent("onTouchesDown", 1, 1, ::testing::_))
+      .WillOnce([&](const std::string&, int, uint32_t, Value) {
+        destroyed_view->Destroy();
+      });
+  HitTestResult hits{winner_view->GetHitTestTargetWeakPtr(),
+                     destroyed_view->GetHitTestTargetWeakPtr()};
+  auto* dispatcher = page_->GetGestureHandlerDispatcher();
+  dispatcher->HandlePointerDown(CreateDownPointer(0, 0), hits);
 
-  HitTestResult hit_test_result{winner_view->GetHitTestTargetWeakPtr(),
-                                destroyed_view->GetHitTestTargetWeakPtr()};
-  auto* arena_manager =
-      page_->GetGestureHandlerDispatcher()->gesture_arena_manager();
-  arena_manager->SetActiveUIToArenaAtDownEvent(hit_test_result);
-  arena_manager->DispatchTouchEventToArena(CreateDownPointer(0, 0));
-
-  EXPECT_TRUE(arena_manager->IsMemberExist(winner_view->Sign()));
-  EXPECT_FALSE(arena_manager->IsMemberExist(2));
+  EXPECT_TRUE(
+      dispatcher->CanControlGesture(winner_view->GestureArenaMemberId(), 1));
+  EXPECT_FALSE(dispatcher->CanControlGesture(removed_id, 1));
   destroyed_view.reset();
   winner_view->Destroy();
   page_->SetEventDelegate(nullptr);
@@ -384,64 +510,55 @@ TEST_F_UI(BaseViewTest,
           DestroyCurrentMemberDuringGestureCallbackStopsRemainingHandlers) {
   testing::MockEventDelegate delegate;
   page_->SetEventDelegate(&delegate);
-
   auto winner_view = std::make_unique<View>(1, page_.get());
-  GestureMap detectors;
-  detectors.emplace(
-      1, std::make_shared<GestureDetector>(
-             1, GestureHandlerType::Default,
-             std::vector<std::string>{GestureConstants::ON_BEGIN},
-             std::unordered_map<std::string, std::vector<uint32_t>>{}));
-  detectors.emplace(
-      2, std::make_shared<GestureDetector>(
-             2, GestureHandlerType::Pan,
-             std::vector<std::string>{GestureConstants::ON_BEGIN},
-             std::unordered_map<std::string, std::vector<uint32_t>>{}));
+  GestureMap detectors{
+      {1, MakeDetector(1, lynx::tasm::GestureType::DEFAULT,
+                       {lynx::tasm::gesture::GestureCallbackType::kBegin})},
+      {2, MakeDetector(2, lynx::tasm::GestureType::PAN,
+                       {lynx::tasm::gesture::GestureCallbackType::kBegin})}};
   winner_view->SetGestureDetectorMap(detectors);
-
-  EXPECT_CALL(delegate,
-              OnGestureHandlerEvent(
-                  ::testing::StrEq(GestureConstants::ON_BEGIN),
-                  ::testing::Eq(1), ::testing::_, ::testing::_, ::testing::_,
-                  ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+  const int member_id = winner_view->GestureArenaMemberId();
+  EXPECT_CALL(delegate, OnUnifiedGestureHandlerEvent("onBegin", 1, ::testing::_,
+                                                     ::testing::_))
       .Times(1)
-      .WillOnce([&](const std::string&, int, uint32_t, float, float, float,
-                    float, int64_t, Value&) {
+      .WillOnce([&](const std::string&, int, uint32_t, Value) {
         winner_view->Destroy();
         winner_view.reset();
       });
+  HitTestResult hits{winner_view->GetHitTestTargetWeakPtr()};
+  auto* dispatcher = page_->GetGestureHandlerDispatcher();
+  dispatcher->HandlePointerDown(CreateDownPointer(0, 0), hits);
 
-  HitTestResult hit_test_result{winner_view->GetHitTestTargetWeakPtr()};
-  auto* arena_manager =
-      page_->GetGestureHandlerDispatcher()->gesture_arena_manager();
-  arena_manager->SetActiveUIToArenaAtDownEvent(hit_test_result);
-  arena_manager->DispatchTouchEventToArena(CreateDownPointer(0, 0));
-
-  EXPECT_FALSE(arena_manager->IsMemberExist(1));
+  EXPECT_FALSE(dispatcher->CanControlGesture(member_id, 1));
   page_->SetEventDelegate(nullptr);
 }
 
 TEST_F_UI(BaseViewTest, DestroyDuringFlingRemovesExpiredCandidate) {
+  testing::MockEventDelegate delegate;
+  page_->SetEventDelegate(&delegate);
   auto winner_view = std::make_unique<View>(1, page_.get());
   auto destroyed_view = std::make_unique<View>(2, page_.get());
-  GestureMap detectors;
-  detectors.emplace(
-      1, std::make_shared<GestureDetector>(
-             1, GestureHandlerType::Default, std::vector<std::string>{},
-             std::unordered_map<std::string, std::vector<uint32_t>>{}));
+  GestureMap detectors{
+      {1, MakeDetector(1, lynx::tasm::GestureType::FLING,
+                       {lynx::tasm::gesture::GestureCallbackType::kStart})}};
   winner_view->SetGestureDetectorMap(detectors);
   destroyed_view->SetGestureDetectorMap(detectors);
-
-  HitTestResult hit_test_result{winner_view->GetHitTestTargetWeakPtr(),
-                                destroyed_view->GetHitTestTargetWeakPtr()};
-  auto* arena_manager =
-      page_->GetGestureHandlerDispatcher()->gesture_arena_manager();
-  arena_manager->SetActiveUIToArenaAtDownEvent(hit_test_result);
-  arena_manager->DispatchTouchEventToArena(CreateDownPointer(0, 0));
-  arena_manager->SetVelocity(1000, 0);
-  PointerEvent up(PointerEvent::EventType::kUpEvent);
-  arena_manager->DispatchTouchEventToArena(up);
-
+  const int removed_id = destroyed_view->GestureArenaMemberId();
+  EXPECT_CALL(delegate,
+              OnUnifiedGestureHandlerEvent("onStart", 1, 1, ::testing::_))
+      .Times(1);
+  HitTestResult hits{winner_view->GetHitTestTargetWeakPtr(),
+                     destroyed_view->GetHitTestTargetWeakPtr()};
+  auto* dispatcher = page_->GetGestureHandlerDispatcher();
+  auto down = testing::MakePointerEvent(PointerEvent::EventType::kDownEvent,
+                                        {0, 0}, 1000000);
+  auto move = testing::MakePointerEvent(PointerEvent::EventType::kMoveEvent,
+                                        {100, 0}, 1010000);
+  auto up = testing::MakePointerEvent(PointerEvent::EventType::kUpEvent,
+                                      {200, 0}, 1020000);
+  dispatcher->HandlePointerDown(down, hits);
+  dispatcher->HandlePointerMove(move, hits);
+  dispatcher->HandlePointerUp(up, hits);
   auto* animation_handler = page_->GetAnimationHandler();
   animation_handler->DoAnimationFrame(0);
   animation_handler->DoAnimationFrame(16);
@@ -452,8 +569,11 @@ TEST_F_UI(BaseViewTest, DestroyDuringFlingRemovesExpiredCandidate) {
   animation_handler->DoAnimationFrame(32);
   animation_handler->DoAnimationFrame(48);
 
-  EXPECT_TRUE(arena_manager->IsMemberExist(winner_view->Sign()));
+  EXPECT_TRUE(
+      dispatcher->CanControlGesture(winner_view->GestureArenaMemberId(), 1));
+  EXPECT_FALSE(dispatcher->CanControlGesture(removed_id, 1));
   winner_view->Destroy();
+  page_->SetEventDelegate(nullptr);
 }
 
 class ViewContextMemoryTest : public UITest {

@@ -15,8 +15,10 @@
 #include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/gesture/gesture_manager.h"
+#include "clay/ui/gesture_handler/gesture_arena_member.h"
 #include "clay/ui/gesture_handler/gesture_handler_dispatcher.h"
 #include "clay/ui/gesture_handler/handler/fling_scroller.h"
+#include "core/gesture/gesture_config.h"
 
 namespace clay {
 namespace {
@@ -92,6 +94,8 @@ int UnifiedGestureHandler::ReplaceMember(BaseView *view,
   for (const auto &entry : detectors) {
     definitions.push_back(entry.second);
   }
+  definitions =
+      unified_gesture::NormalizeGestureDefinitions(std::move(definitions));
   if (definitions.empty()) {
     RemoveMember(member_id);
     return 0;
@@ -101,13 +105,17 @@ int UnifiedGestureHandler::ReplaceMember(BaseView *view,
     members_.emplace(member_id, view->GetWeakPtr());
   }
   arena_.ReplaceMemberGestures(member_id, std::move(definitions));
-  return arena_.ContainsMember(member_id) ? member_id : 0;
+  // A replacement can stay queued until the current callback returns.
+  return FindMember(member_id) ? member_id : 0;
 }
 
-void UnifiedGestureHandler::RemoveMember(int member_id) {
+void UnifiedGestureHandler::RemoveMember(int member_id, bool notify_view) {
   EntryScope entry(*this);
   if (reset_requested_) {
     return;
+  }
+  if (!notify_view) {
+    members_.erase(member_id);
   }
   arena_.RemoveMember(member_id);
   members_.erase(member_id);
@@ -281,9 +289,9 @@ unified_gesture::GestureDirection UnifiedGestureHandler::GetScrollDirection(
     unified_gesture::MemberId member_id) const {
   if (auto *view = FindMember(member_id)) {
     switch (view->GetScrollContainerDirection()) {
-      case -1:
+      case GestureConstants::DIRECTION_HORIZONTAL:
         return unified_gesture::GestureDirection::kHorizontal;
-      case 1:
+      case GestureConstants::DIRECTION_VERTICAL:
         return unified_gesture::GestureDirection::kVertical;
     }
   }
@@ -333,22 +341,36 @@ void UnifiedGestureHandler::ScheduleTimer(unified_gesture::TimerToken token,
                  if (self->reset_requested_) {
                    return;
                  }
-                 const auto it = self->timers_.find(token);
-                 if (it == self->timers_.end()) {
-                   return;
-                 }
                  // Keep the firing timer alive across callbacks that can reset
                  // the page.
-                 auto fired_timer = std::move(it->second);
-                 self->timers_.erase(it);
+                 auto fired_timer = self->TakeTimer(token);
+                 if (!fired_timer) {
+                   return;
+                 }
                  self->arena_.HandleTimer(token, MonotonicTimeMs(),
                                           EpochTimeMs());
                });
-  timers_.insert_or_assign(token, std::move(timer));
+  CancelTimer(token);
+  timers_.emplace_back(token, std::move(timer));
 }
 
 void UnifiedGestureHandler::CancelTimer(unified_gesture::TimerToken token) {
-  timers_.erase(token);
+  TakeTimer(token);
+}
+
+std::unique_ptr<fml::OneshotTimer> UnifiedGestureHandler::TakeTimer(
+    unified_gesture::TimerToken token) {
+  const auto it =
+      std::find_if(timers_.begin(), timers_.end(),
+                   [token](const auto &entry) { return entry.first == token; });
+  if (it == timers_.end()) {
+    return nullptr;
+  }
+  // Removal only depends on the token, so move the last timer into the gap.
+  std::swap(*it, timers_.back());
+  auto timer = std::move(timers_.back().second);
+  timers_.pop_back();
+  return timer;
 }
 
 bool UnifiedGestureHandler::StartFling(const unified_gesture::Point &velocity) {

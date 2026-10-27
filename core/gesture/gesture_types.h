@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "core/public/gesture_handler.h"
+#include "core/public/gesture_type.h"
 
 namespace lynx::tasm::gesture {
 

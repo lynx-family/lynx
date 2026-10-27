@@ -9,22 +9,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "core/public/gesture_type.h"
 #include "core/public/pub_value.h"
 
 namespace lynx {
 namespace tasm {
-
-// Enum class for representing different types of gestures.
-enum class GestureType : unsigned int {
-  PAN = 0,         // Pan gesture
-  FLING = 1,       // Fling gesture
-  DEFAULT = 2,     // Default gesture
-  TAP = 3,         // Tap gesture
-  LONG_PRESS = 4,  // Long press gesture
-  ROTATION = 5,    // Rotation gesture
-  PINCH = 6,       // Pinch gesture
-  NATIVE = 7       // Native gesture
-};
 
 // TODO(Xionghui He, Chenfeng Pan): Plan to make C++ class(es) related gesture
 // handler unified in all backend.

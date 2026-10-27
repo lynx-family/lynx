@@ -7,12 +7,14 @@
 #include <algorithm>
 #include <memory>
 
+#include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/scroll_wrapper.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/event/gesture_event.h"
 #include "clay/ui/gesture_handler/gesture_detector.h"
 #include "clay/ui/rendering/render_scroll.h"
+#include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/testing/ui_test.h"
 
 namespace clay {
@@ -53,6 +55,36 @@ class ScrollViewTest : public UITest {
   std::unique_ptr<ScrollView> outer_view_;
   std::unique_ptr<ScrollView> inner_view_;
   std::unique_ptr<ScrollView> box_view_;
+};
+
+class PaintingContextScrollTest : public UITest {
+ protected:
+  void UISetUp() override {
+    owner_ = std::make_unique<ShadowNodeOwner>(ui_task_runner());
+    view_context_ = std::make_unique<ViewContext>(page_.get(), owner_.get());
+    owner_->SetViewContext(view_context_.get());
+    view_context_->CreateView(0, "page");
+    view_context_->CreateView(1, "scroll-view");
+    view_context_->AddView(1, 0, 0);
+    scroll_view_ =
+        static_cast<ScrollWrapper*>(view_context_->FindViewByViewId(1));
+    scroll_view_->SetBound(0, 0, 100, 100);
+    view_context_->CreateView(2, "view");
+    view_context_->FindViewByViewId(2)->SetBound(0, 0, 300, 300);
+    view_context_->AddView(2, 1, 0);
+    Layout();
+    scroll_view_->GetScrollView()->OnLayoutUpdated();
+  }
+
+  void UITearDown() override {
+    owner_->SetViewContext(nullptr);
+    view_context_.reset();
+    owner_.reset();
+  }
+
+  std::unique_ptr<ShadowNodeOwner> owner_;
+  std::unique_ptr<ViewContext> view_context_;
+  ScrollWrapper* scroll_view_ = nullptr;
 };
 
 TEST_F_UI(ScrollViewTest, ScrollToId) {
@@ -111,6 +143,8 @@ TEST_F_UI(ScrollViewTest, NestedScrollGestureOnPC) {
 }
 
 TEST_F_UI(ScrollViewTest, NestedScrollGestureInterceptionOnPC) {
+  inner_view_->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   outer_view_->need_scroll_animation_ = false;
   inner_view_->need_scroll_animation_ = false;
   outer_view_->OnLayoutUpdated();
@@ -147,10 +181,8 @@ TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksTouchScroll) {
   outer_view_->OnLayoutUpdated();
 
   GestureMap gesture_detector_map;
-  gesture_detector_map.emplace(
-      1, std::make_shared<GestureDetector>(
-             1, GestureHandlerType::Native, std::vector<std::string>{},
-             std::unordered_map<std::string, std::vector<uint32_t>>{}));
+  gesture_detector_map.emplace(1, lynx::tasm::gesture::GestureDefinition{
+                                      1, lynx::tasm::GestureType::NATIVE});
   outer_view_->SetGestureDetectorMap(gesture_detector_map);
 
   outer_view_->ConsumeGesture(
@@ -165,6 +197,8 @@ TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksTouchScroll) {
 }
 
 TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksGestureScrollBy) {
+  outer_view_->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   outer_view_->SetBound(0, 0, 100, 100);
   box_view_->SetBound(0, 0, 100, 500);
   outer_view_->OnLayoutUpdated();
@@ -186,6 +220,8 @@ TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksGestureScrollBy) {
 }
 
 TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksMouseWheelScroll) {
+  outer_view_->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   outer_view_->SetBound(0, 0, 100, 100);
   box_view_->SetBound(0, 0, 100, 500);
   outer_view_->OnLayoutUpdated();
@@ -207,6 +243,8 @@ TEST_F_UI(ScrollViewTest, ConsumeGestureBlocksMouseWheelScroll) {
 TEST_F_UI(ScrollViewTest, WrapperConsumeGestureBlocksTrackpadDrag) {
   auto scroll_wrapper = std::make_unique<ScrollWrapper>(
       -1, ScrollDirection::kVertical, page_.get());
+  scroll_wrapper->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   ScrollView* scroll_view = scroll_wrapper->GetScrollView();
   scroll_wrapper->SetBound(0, 0, 100, 100);
   scroll_view->SetTouchSlop(-1);
@@ -257,6 +295,8 @@ TEST_F_UI(ScrollViewTest, WrapperConsumeGestureBlocksTrackpadDrag) {
 TEST_F_UI(ScrollViewTest, WrapperConsumeGestureResumeTrackpadDrag) {
   auto scroll_wrapper = std::make_unique<ScrollWrapper>(
       -1, ScrollDirection::kVertical, page_.get());
+  scroll_wrapper->SetGestureDetectorMap(
+      {{0, {0, lynx::tasm::GestureType::NATIVE}}});
   ScrollView* scroll_view = scroll_wrapper->GetScrollView();
   scroll_wrapper->SetBound(0, 0, 100, 100);
   scroll_view->SetTouchSlop(-1);
