@@ -271,7 +271,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
       [registry addLynxResourceProvider:key provider:_options.providers[key]];
     }
     auto loader = std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(
-        registry, nil, self, _options.templateResourceFetcher, _options.genericResourceFetcher);
+        registry, nil, _options.templateResourceFetcher, _options.genericResourceFetcher);
 
     auto on_runtime_actor_created = [native_module_manager](auto& actor, auto facade_actor) {
       std::shared_ptr<lynx::runtime::js::ModuleDelegate> module_delegate =

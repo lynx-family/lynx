@@ -100,8 +100,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.json.JSONObject;
 
 // TODO(heshan): merge the init logics.
-public class LynxTemplateRender
-    implements ILynxEngine, ILynxErrorReceiver, EventEmitter.LynxEventFallback {
+public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFallback {
   private static final String TAG = "LynxTemplateRender";
   // Must match kLockFreeLifecycle in lynx_template_render_android.cc.
   private static final long NATIVE_LIFECYCLE_LOCK_FREE = -1L;
@@ -969,7 +968,7 @@ public class LynxTemplateRender
 
     mPageLoadListener = new InnerPageLoadListener();
     mGroup = mLynxViewBuilder.getLynxGroup();
-    mHostEnvironment.createEngineResourceLoader(mLynxViewBuilder.fetcher, mLynxContext, this);
+    mHostEnvironment.createEngineResourceLoader(mLynxViewBuilder.fetcher, mLynxContext);
     mLynxContext.setEnableAutoExpose(mLynxViewConfigProvider.isEnableAutoExpose());
     mNativeFacade = new NativeFacade(mLynxViewBuilder.isEnableJSRuntime(), new TASMCallback());
     mNativeFacade.setTemplateLoadClient(mClient);
@@ -1049,7 +1048,7 @@ public class LynxTemplateRender
       }
       // only init LynxRuntime if enableJSRuntime is true.
       if (enableJSRuntime()) {
-        mHostEnvironment.createRuntimeResourceLoader(mLynxViewBuilder.fetcher, mLynxContext, this);
+        mHostEnvironment.createRuntimeResourceLoader(mLynxViewBuilder.fetcher, mLynxContext);
         if (mRuntime != null) {
           // In LynxbakcgroundRuntime Standalone, we create and init a LynxRuntime without
           // LynxShell. During LynxTemplateRender creation, this runtime is used to create
@@ -2684,7 +2683,6 @@ public class LynxTemplateRender
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
-  @Override
   public void onErrorOccurred(final LynxError error) {
     if (error == null || !error.isValid()) {
       LLog.e(TAG, "receive invalid error");

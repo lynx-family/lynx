@@ -171,24 +171,24 @@ public final class LynxHostEnvironment {
 
   /**
    * Creates and retains a private renderer's engine loader without runtime-option providers.
-   * Reads fetchers from the current context at engine creation and uses the supplied error
-   * receiver.
+   * Reads fetchers from the current context at engine creation. Errors are reported by the
+   * native request owner.
    */
   LynxResourceLoader createEngineResourceLoader(
-      DynamicComponentFetcher fetcher, LynxContext context, ILynxErrorReceiver errorReceiver) {
-    mLoader = new LynxResourceLoader(null, fetcher, errorReceiver,
-        context.getTemplateResourceFetcher(), context.getGenericResourceFetcher());
+      DynamicComponentFetcher fetcher, LynxContext context) {
+    mLoader = new LynxResourceLoader(
+        null, fetcher, context.getTemplateResourceFetcher(), context.getGenericResourceFetcher());
     return mLoader;
   }
 
   /**
    * Creates and retains a private renderer's runtime loader using the host's runtime options.
    * Keeps it separate from the engine loader and reads fetchers from the current page context.
-   * Local script errors use the supplied Java receiver, preserving the renderer's error behavior.
+   * Errors are reported by the native request owner.
    */
   LynxResourceLoader createRuntimeResourceLoader(
-      DynamicComponentFetcher fetcher, LynxContext context, ILynxErrorReceiver errorReceiver) {
-    mResourceLoader = new LynxResourceLoader(mRuntimeOptions, fetcher, errorReceiver,
+      DynamicComponentFetcher fetcher, LynxContext context) {
+    mResourceLoader = new LynxResourceLoader(mRuntimeOptions, fetcher,
         context.getTemplateResourceFetcher(), context.getGenericResourceFetcher());
     return mResourceLoader;
   }

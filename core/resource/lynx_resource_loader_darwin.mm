@@ -8,7 +8,6 @@
 #include <memory>
 
 #import <Lynx/LynxEnv.h>
-#import <Lynx/LynxError.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
@@ -19,7 +18,6 @@
 #include "core/resource/lynx_resource_setting.h"
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/shell/ios/data_utils.h"
-#import "platform/darwin/common/lynx/TemplateRenderCallbackProtocol.h"
 
 namespace {
 static NSString* const kFileScheme = @"file://";
@@ -28,29 +26,7 @@ static NSString* const kAssetsScheme = @"assets://";
 static NSString* const kLynxAssetsScheme = @"lynx_assets://";
 static NSString* const kAssetsCoreScheme = @"assets://lynx_core.js";
 
-static NSString* const kLoadScriptMethodName = @"LoadScript";
-static NSString* const kLoadLocalScriptMethodName = @"LoadLocalScript";
 static NSString* const kNullDataMsg = @"response with null data";
-
-void ReportError(__weak id<LynxErrorReceiverProtocol> weakErrorReceiver, NSString* methodName,
-                 NSString* url, NSInteger code, NSString* errorMsg, NSString* rootCause) {
-  dispatch_async(dispatch_get_main_queue(), ^() {
-    id<LynxErrorReceiverProtocol> errorReceiver = weakErrorReceiver;
-    if (!errorReceiver) {
-      return;
-    }
-    LynxError* lynxError = [LynxError
-        lynxErrorWithCode:code
-                  message:[[NSString alloc] initWithFormat:@"ResourceLoaderDarwin::%@ "
-                                                           @"failed, the error message is: %@",
-                                                           methodName, errorMsg]
-            fixSuggestion:LynxErrorSuggestionRefOfficialSite
-                    level:LynxErrorLevelError];
-    [lynxError setRootCause:rootCause];
-    [lynxError addCustomInfo:url forKey:LynxErrorKeyResourceUrl];
-    [errorReceiver onErrorOccurred:lynxError];
-  });
-}
 
 void VerifyLynxTemplateResource(const std::string& url, lynx::pub::LynxResourceResponse& response,
                                 lynx::pub::LynxResourceType resource_type) {
@@ -88,26 +64,16 @@ void VerifyLynxTemplateResource(const std::string& url, lynx::pub::LynxResourceR
 namespace lynx {
 namespace shell {
 
-void LynxResourceLoaderDarwin::FetchExternalResourceComplete(
-    NSData* data, NSError* error, NSString* nsUrl,
-    __weak id<LynxErrorReceiverProtocol> weakErrorReceiver, CopyableClosure callback,
-    bool reportError) {
+void LynxResourceLoaderDarwin::FetchExternalResourceComplete(NSData* data, NSError* error,
+                                                             CopyableClosure callback) {
   NSInteger errCode = 0;
   NSString* errMsg = @"";
-  NSString* rootCause = nil;
   if (error != nil) {
-    errMsg = @"Error when fetch external resource";
-    rootCause = error.localizedDescription;
+    errMsg = error.localizedDescription;
     errCode = ECLynxResourceExternalResourceRequestFailed;
   } else if (data == nil || [data length] == 0) {
     errMsg = kNullDataMsg;
     errCode = ECLynxResourceExternalResourceRequestFailed;
-  }
-
-  if (errCode != 0 && reportError) {
-    // Report only when loading script, the lazy bundle error will be reported in C++
-    // TODO(zhoupeng.z): Also Report script error in C++
-    ReportError(weakErrorReceiver, kLoadScriptMethodName, nsUrl, errCode, errMsg, rootCause);
   }
 
   pub::LynxResourceResponse resp{.data = ConvertNSBinary(data),
@@ -119,15 +85,13 @@ void LynxResourceLoaderDarwin::FetchExternalResourceComplete(
 
 LynxResourceLoaderDarwin::LynxResourceLoaderDarwin(
     LynxProviderRegistry* providerRegistry, id<LynxDynamicComponentFetcher> dynamicComponentFetcher,
-    id<LynxErrorReceiverProtocol> errorReceiver,
     id<LynxTemplateResourceFetcher> genericTemplateFetcher,
     id<LynxGenericResourceFetcher> genericResourceFetcher)
     : _providerRegistry(providerRegistry),
       _fetcher_wrapper([[LynxExternalResourceFetcherWrapper alloc]
           initWithDynamicComponentFetcher:dynamicComponentFetcher]),
       _templateResourceFetcher(genericTemplateFetcher),
-      _genericResourceFetcher(genericResourceFetcher),
-      _errorReceiver(errorReceiver) {}
+      _genericResourceFetcher(genericResourceFetcher) {}
 
 bool LynxResourceLoaderDarwin::FetchScriptByProvider(const std::string& url,
                                                      CopyableClosure callback) {
@@ -140,11 +104,9 @@ bool LynxResourceLoaderDarwin::FetchScriptByProvider(const std::string& url,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FETCH_SCRIPT_BY_PROVIDER, "url", url);
   NSString* nsUrl = [NSString stringWithUTF8String:url.c_str()];
   LynxResourceRequest* req = [[LynxResourceRequest alloc] initWithUrl:nsUrl];
-  __block __weak id<LynxErrorReceiverProtocol> weakErrorReceiver = _errorReceiver;
   [provider request:req
          onComplete:^(LynxResourceResponse* response) {
-           FetchExternalResourceComplete(response.data, response.error, nsUrl, weakErrorReceiver,
-                                         std::move(callback));
+           FetchExternalResourceComplete(response.data, response.error, std::move(callback));
          }];
   return true;
 }
@@ -200,11 +162,9 @@ bool LynxResourceLoaderDarwin::FetchResourceByGenericFetcher(const std::string& 
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FETCH_RESOURCE_BY_GENERIC_FETCHER, "url", url);
     NSString* nsUrl = [NSString stringWithUTF8String:url.c_str()];
     LynxResourceRequest* request = [[LynxResourceRequest alloc] initWithUrl:nsUrl type:type];
-    __block __weak id<LynxErrorReceiverProtocol> weakErrorReceiver = _errorReceiver;
     [_genericResourceFetcher fetchResource:request
                                 onComplete:^(NSData* _Nullable data, NSError* _Nullable error) {
-                                  FetchExternalResourceComplete(
-                                      data, error, nsUrl, weakErrorReceiver, std::move(callback));
+                                  FetchExternalResourceComplete(data, error, std::move(callback));
                                 }];
     return true;
   }
@@ -282,8 +242,13 @@ void LynxResourceLoaderDarwin::LoadResourceInternal(
   });
   // fetch Assets
   if (request.type == pub::LynxResourceType::kAssets) {
-    NSData* data = LoadJSSource(request.url);
-    pub::LynxResourceResponse resp{.data = ConvertNSBinary(data)};
+    std::string message = "Failed to load local script: " + request.url;
+    NSData* data = LoadJSSource(request.url, message);
+    pub::LynxResourceResponse resp{
+        .data = ConvertNSBinary(data),
+        .err_code = static_cast<int32_t>(
+            data == nil ? ECLynxResourceExternalResourceLocalResourceLoadFail : 0),
+        .err_msg = data == nil ? std::move(message) : ""};
     callback(resp);
     return;
   }
@@ -373,7 +338,6 @@ void LynxResourceLoaderDarwin::LoadBytecode(
           LynxResourceRequestType::LynxResourceTypeExternalByteCode;
       LynxResourceRequest* resourceRequest = [[LynxResourceRequest alloc] initWithUrl:nsUrl
                                                                                  type:requestType];
-      __block __weak id<LynxErrorReceiverProtocol> weakErrorReceiver = _errorReceiver;
       if ([_genericResourceFetcher respondsToSelector:@selector(fetchBytecodeHandle:onComplete:)]) {
         auto invoked = std::make_shared<std::atomic_bool>(false);
         BOOL accepted = [_genericResourceFetcher
@@ -420,8 +384,7 @@ void LynxResourceLoaderDarwin::LoadBytecode(
         [_genericResourceFetcher
             fetchBytecode:resourceRequest
                onComplete:^(NSData* _Nullable data, NSError* _Nullable error) {
-                 FetchExternalResourceComplete(data, error, nsUrl, weakErrorReceiver,
-                                               std::move(copyable_callback), false);
+                 FetchExternalResourceComplete(data, error, std::move(copyable_callback));
                }];
         return;
       }
@@ -450,7 +413,8 @@ void LynxResourceLoaderDarwin::LoadBytecode(
  * 4. the name starts with "lynx_assets://", the process is similar with "lynx_core.js" (the first
  * step)
  */
-NSData* LynxResourceLoaderDarwin::LoadJSSource(const std::string& name) {
+NSData* LynxResourceLoaderDarwin::LoadJSSource(const std::string& name,
+                                               std::string& error_message) {
   NSString* str = [NSString stringWithUTF8String:name.c_str()];
 
   NSString* path = nil;
@@ -507,9 +471,9 @@ NSData* LynxResourceLoaderDarwin::LoadJSSource(const std::string& name) {
       return data;
     }
   }
-  ReportError(_errorReceiver, kLoadLocalScriptMethodName, str,
-              ECLynxResourceExternalResourceLocalResourceLoadFail,
-              @"Error occurred when load js source", [error localizedFailureReason]);
+  if (error.localizedDescription != nil) {
+    error_message = error.localizedDescription.UTF8String;
+  }
   _LogE(@"LoadJSSource no corejs find with %@, resource path: %@, error: %@", str, path,
         [error localizedDescription]);
   return nil;

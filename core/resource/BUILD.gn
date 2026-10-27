@@ -64,7 +64,10 @@ lynx_core_source_set("resource_loader") {
 unittest_set("lazy_bundle_test_testset") {
   testonly = true
 
-  sources = [ "lazy_bundle/lazy_bundle_unittest.cc" ]
+  sources = [
+    "external_resource/external_resource_loader_unittest.cc",
+    "lazy_bundle/lazy_bundle_unittest.cc",
+  ]
 
   public_deps = [
     "../renderer:tasm",

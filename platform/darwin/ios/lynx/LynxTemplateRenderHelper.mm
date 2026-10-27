@@ -153,7 +153,7 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
   id<LynxGenericResourceFetcher> genericResourceFetcher = [_lynxUIRenderer genericResourceFetcher];
   auto loader = std::make_shared<lynx::tasm::LazyBundleLoader>(
       std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(
-          nil, _fetcher, self, templateResourceFetcher, genericResourceFetcher));
+          nil, _fetcher, templateResourceFetcher, genericResourceFetcher));
 
   // Main Thread Modules
   std::unique_ptr<lynx::pub::LynxNativeModuleManager> mts_native_module_manager = nullptr;
@@ -325,7 +325,7 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
       [_lynxUIRenderer templateResourceFetcher];
   id<LynxGenericResourceFetcher> genericResourceFetcher = [_lynxUIRenderer genericResourceFetcher];
   auto resource_loader = std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(
-      _providerRegistry, _fetcher, self, templateResourceFetcher, genericResourceFetcher);
+      _providerRegistry, _fetcher, templateResourceFetcher, genericResourceFetcher);
 
   auto on_runtime_actor_created = [&native_module_manager](auto& actor) {
     std::shared_ptr<lynx::runtime::js::ModuleDelegate> module_delegate =

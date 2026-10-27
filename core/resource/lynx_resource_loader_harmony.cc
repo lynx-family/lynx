@@ -120,10 +120,12 @@ std::vector<uint8_t> LoadJSSource(const std::string& url) {
       RawFile* raw_file = OH_ResourceManager_OpenRawFile(
           lynx::harmony::LynxResourceLoaderHarmony::resource_manager,
           url.substr(ASSETS_SCHEME.length()).c_str());
-      len = OH_ResourceManager_GetRawFileSize(raw_file);
-      data = std::make_unique<uint8_t[]>(len);
-      success = OH_ResourceManager_ReadRawFile(raw_file, data.get(), len) > 0;
-      OH_ResourceManager_CloseRawFile(raw_file);
+      if (raw_file != nullptr) {
+        len = OH_ResourceManager_GetRawFileSize(raw_file);
+        data = std::make_unique<uint8_t[]>(len);
+        success = OH_ResourceManager_ReadRawFile(raw_file, data.get(), len) > 0;
+        OH_ResourceManager_CloseRawFile(raw_file);
+      }
     }
   } else if (url.length() > FILE_SCHEME.length() &&
              url.find(FILE_SCHEME) == 0) {
@@ -175,6 +177,11 @@ void LynxResourceLoaderHarmony::LoadResourceInternal(
 
   if (request.type == pub::LynxResourceType::kAssets) {
     pub::LynxResourceResponse response{.data = LoadJSSource(request.url)};
+    if (response.data.empty()) {
+      response.err_code =
+          error::E_RESOURCE_EXTERNAL_RESOURCE_LOCAL_RESOURCE_LOAD_FAIL;
+      response.err_msg = "Failed to load local script: " + request.url;
+    }
     callback(response);
     return;
   }

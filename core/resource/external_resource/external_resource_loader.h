@@ -83,6 +83,9 @@ class ExternalResourceLoader
   }
 
  private:
+  void ReportResourceError(int error_code, const std::string& message,
+                           const std::string& url);
+
   std::shared_ptr<pub::LynxResourceLoader> resource_loader_ = nullptr;
   std::weak_ptr<LynxActor<LynxEngine>> engine_actor_;
   std::weak_ptr<LynxActor<BTSRuntime>> runtime_actor_;

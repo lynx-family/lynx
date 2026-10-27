@@ -9,45 +9,18 @@ import static org.junit.Assert.*;
 import android.app.Application;
 import android.content.Context;
 import androidx.test.platform.app.InstrumentationRegistry;
-import com.lynx.tasm.ILynxErrorReceiver;
 import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.LynxError;
 import com.lynx.tasm.core.resource.LynxResourceLoader;
-import com.lynx.tasm.resourceprovider.LynxResourceCallback;
-import com.lynx.tasm.resourceprovider.LynxResourceRequest;
-import com.lynx.tasm.resourceprovider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.TestContentProvider;
-import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.junit.Before;
 import org.junit.Test;
 
 public class ResourceLoaderTest {
-  private static final int LYNX_RESOURCE_TYPE_EXTERNAL_BYTE_CODE = 16;
   private static final String CONTENT_URI = "content://com.lynx.test.resourceprovider/resource";
-
-  private static class MockBytecodeErrorFetcher extends LynxGenericResourceFetcher {
-    @Override
-    public void fetchResource(LynxResourceRequest request, LynxResourceCallback<byte[]> callback) {}
-
-    @Override
-    public void fetchResourcePath(
-        LynxResourceRequest request, LynxResourceCallback<String> callback) {}
-
-    @Override
-    public void fetchBytecode(LynxResourceRequest request, LynxResourceCallback<byte[]> callback) {
-      callback.onResponse(LynxResourceResponse.onFailed(new Throwable("bytecode error")));
-    }
-
-    @Override
-    public void cancel(LynxResourceRequest request) {}
-  }
 
   @Before
   public void setUp() {
@@ -108,35 +81,20 @@ public class ResourceLoaderTest {
     byte[] expected = "Hello LynxResourceLoader ContentProvider".getBytes(StandardCharsets.UTF_8);
     TestContentProvider.setContent(expected);
 
-    LynxResourceLoader loader = new LynxResourceLoader(null, null, null, null, null);
+    LynxResourceLoader loader = new LynxResourceLoader(null, null, null, null);
     assertArrayEquals(expected, invokeLoadJSSource(loader, CONTENT_URI));
   }
 
   @Test
-  public void testLoadBytecodeFailureDoesNotReportError() throws Exception {
-    CountDownLatch errorLatch = new CountDownLatch(1);
-    ILynxErrorReceiver errorReceiver = new ILynxErrorReceiver() {
-      @Override
-      public void onErrorOccurred(LynxError error) {
-        errorLatch.countDown();
-      }
-    };
-    LynxResourceLoader loader =
-        new LynxResourceLoader(null, null, errorReceiver, null, new MockBytecodeErrorFetcher());
-
-    Method loadBytecode = LynxResourceLoader.class.getDeclaredMethod(
-        "loadBytecode", long.class, String.class, int.class);
-    loadBytecode.setAccessible(true);
+  public void missingLocalResourceDoesNotPreventSubsequentLoads() throws Exception {
+    LynxResourceLoader loader = new LynxResourceLoader(null, null, null, null);
     try {
-      loadBytecode.invoke(loader, 0L, "bytecode_url", LYNX_RESOURCE_TYPE_EXTERNAL_BYTE_CODE);
-    } catch (InvocationTargetException e) {
-      if (!(e.getCause() instanceof UnsatisfiedLinkError)) {
-        throw e;
-      }
-      // Some Java-only test environments do not load nativeInvokeCallback.
+      invokeLoadJSSource(loader, "assets://loader_missing_test.js");
+      fail("Missing assets must preserve their failure for the native response");
+    } catch (java.lang.reflect.InvocationTargetException error) {
+      assertTrue(error.getCause() instanceof java.io.IOException);
     }
-
-    assertFalse(errorLatch.await(200, TimeUnit.MILLISECONDS));
+    assertNotNull(invokeLoadJSSource(loader, "assets://lynx_core.js"));
   }
 
   private Context getContext() {

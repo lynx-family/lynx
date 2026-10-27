@@ -189,8 +189,8 @@ public class LynxHostEnvironmentTest {
   public void engineAndRuntimeLoadersRemainSeparate() throws Exception {
     LynxHostEnvironment host = createHostEnvironment(new LynxBackgroundRuntimeOptions());
     LynxContext context = mock(LynxContext.class);
-    LynxResourceLoader engine = host.createEngineResourceLoader(null, context, null);
-    LynxResourceLoader runtime = host.createRuntimeResourceLoader(null, context, null);
+    LynxResourceLoader engine = host.createEngineResourceLoader(null, context);
+    LynxResourceLoader runtime = host.createRuntimeResourceLoader(null, context);
     assertSame(engine, host.getEngineResourceLoader());
     assertSame(runtime, host.getRuntimeResourceLoader());
     assertNotSame(engine, runtime);
@@ -198,7 +198,7 @@ public class LynxHostEnvironmentTest {
     field.setAccessible(true);
     assertNull(field.get(engine));
     assertSame(host.getRuntimeOptions(), field.get(runtime));
-    LynxResourceLoader rebuiltEngine = host.createEngineResourceLoader(null, context, null);
+    LynxResourceLoader rebuiltEngine = host.createEngineResourceLoader(null, context);
     assertNotSame(engine, rebuiltEngine);
     assertSame(rebuiltEngine, host.getEngineResourceLoader());
     assertSame(runtime, host.getRuntimeResourceLoader());
