@@ -4,19 +4,26 @@
 
 package com.lynx.tasm.gesture.arena;
 
+import android.graphics.PointF;
+import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.view.Choreographer;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
+import android.view.View;
 import android.widget.OverScroller;
 import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
 import com.lynx.config.LynxLiteConfigs;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
+import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.detector.GestureDetector;
@@ -366,7 +373,87 @@ public class GestureArenaManager {
     replaceUnifiedGestureDetectors(memberId, gestureDetectors);
   }
 
+  void dispatchTouchEventToUnifiedArena(MotionEvent event) {
+    if (mNativeGestureArena == 0) {
+      return;
+    }
+    int inputType;
+    switch (event.getActionMasked()) {
+      case MotionEvent.ACTION_DOWN:
+        inputType = INPUT_DOWN;
+        mUnifiedSequenceId++;
+        resetUnifiedVelocityTracker();
+        break;
+      case MotionEvent.ACTION_MOVE:
+        inputType = INPUT_MOVE;
+        break;
+      case MotionEvent.ACTION_UP:
+        inputType = INPUT_UP;
+        break;
+      case MotionEvent.ACTION_CANCEL:
+        inputType = INPUT_CANCEL;
+        break;
+      default:
+        return;
+    }
+
+    if (mUnifiedVelocityTracker != null && inputType != INPUT_CANCEL) {
+      mUnifiedVelocityTracker.addMovement(event);
+    }
+
+    double density = getDensity();
+    double velocityX = 0;
+    double velocityY = 0;
+    if (inputType == INPUT_UP && mUnifiedVelocityTracker != null) {
+      mUnifiedVelocityTracker.computeCurrentVelocity(1000);
+      velocityX = mUnifiedVelocityTracker.getXVelocity(event.getPointerId(0)) / density;
+      velocityY = mUnifiedVelocityTracker.getYVelocity(event.getPointerId(0)) / density;
+    }
+
+    double pageX = event.getX() / density;
+    double pageY = event.getY() / density;
+    // Keep coordinates in logical pixels and client coordinates relative to the window root.
+    View root = mLynxContext == null ? null : mLynxContext.getUIBodyView();
+    int[] windowOrigin = new int[2];
+    if (root != null) {
+      root.getRootView().getLocationOnScreen(windowOrigin);
+    }
+    double clientX = (event.getRawX() - windowOrigin[0]) / density;
+    double clientY = (event.getRawY() - windowOrigin[1]) / density;
+    double deltaX = inputType == INPUT_MOVE ? mUnifiedLastPageX - pageX : 0;
+    double deltaY = inputType == INPUT_MOVE ? mUnifiedLastPageY - pageY : 0;
+    if (inputType == INPUT_DOWN || inputType == INPUT_MOVE) {
+      mUnifiedLastPageX = pageX;
+      mUnifiedLastPageY = pageY;
+    }
+    nativeHandleInput(mNativeGestureArena, inputType, mUnifiedSequenceId, event.getPointerId(0),
+        event.getEventTime(), getEpochTime(event), event.getRawX() / density,
+        event.getRawY() / density, pageX, pageY, clientX, clientY, deltaX, deltaY, velocityX,
+        velocityY, false, inputType == INPUT_DOWN ? mUnifiedResponseChain : null);
+
+    if (inputType == INPUT_UP || inputType == INPUT_CANCEL) {
+      recycleUnifiedVelocityTracker();
+    }
+  }
+
+  private void resetUnifiedVelocityTracker() {
+    if (mUnifiedVelocityTracker == null) {
+      mUnifiedVelocityTracker = VelocityTracker.obtain();
+    } else {
+      mUnifiedVelocityTracker.clear();
+    }
+  }
+
+  private void recycleUnifiedVelocityTracker() {
+    if (mUnifiedVelocityTracker == null) {
+      return;
+    }
+    mUnifiedVelocityTracker.recycle();
+    mUnifiedVelocityTracker = null;
+  }
+
   private long getEpochTime(MotionEvent event) {
+    // MotionEvent uses uptime; callback timestamps use wall-clock milliseconds.
     return System.currentTimeMillis() - (SystemClock.uptimeMillis() - event.getEventTime());
   }
 
@@ -518,16 +605,235 @@ public class GestureArenaManager {
     mUnifiedActiveHandlers.removeIf(key -> (key & 0xffffffff00000000L) == memberPrefix);
   }
 
+  @CalledByNative
+  private boolean isMemberValid(int memberId) {
+    GestureArenaMember member = getMemberById(memberId);
+    if (member == null && mArenaMemberMap != null) {
+      mArenaMemberMap.remove(memberId);
+    }
+    return member != null;
+  }
+
+  @CalledByNative
+  private double[] convertPageToMember(int memberId, double pageX, double pageY) {
+    GestureArenaMember member = getMemberById(memberId);
+    if (!(member instanceof LynxBaseUI) || mLynxContext == null
+        || mLynxContext.getLynxUIOwner() == null
+        || mLynxContext.getLynxUIOwner().getRootUI() == null) {
+      return new double[] {pageX, pageY};
+    }
+    LynxBaseUI ui = (LynxBaseUI) member;
+    double density = getDensity();
+    PointF pagePoint = new PointF((float) (pageX * density), (float) (pageY * density));
+    PointF localPoint;
+    if (mLynxContext.getEnableTransformedTouchPosition()) {
+      localPoint = LynxUIHelper.convertPointFromUIToAnotherUI(
+          mLynxContext.getLynxUIOwner().getRootUI(), ui, pagePoint);
+    } else {
+      RectF rect = LynxUIHelper.convertRectFromUIToRootUI(
+          ui, new RectF(0, 0, ui.getWidth(), ui.getHeight()));
+      localPoint = new PointF(pagePoint.x - rect.left, pagePoint.y - rect.top);
+    }
+    return new double[] {localPoint.x / density, localPoint.y / density};
+  }
+
+  @CalledByNative
+  private double[] getScrollState(int memberId) {
+    GestureArenaMember member = getMemberById(memberId);
+    if (member == null) {
+      return new double[4];
+    }
+    double density = getDensity();
+    return new double[] {member.getMemberScrollX() / density, member.getMemberScrollY() / density,
+        member.isAtBorder(true) ? 1 : 0, member.isAtBorder(false) ? 1 : 0};
+  }
+
+  @CalledByNative
+  private int getScrollDirection(int memberId) {
+    GestureArenaMember member = getMemberById(memberId);
+    return member == null ? GestureConstants.DIRECTION_UNDETERMINED
+                          : member.getScrollContainerDirection();
+  }
+
+  @CalledByNative
+  private boolean canConsumeGesture(int memberId, int direction, double deltaX, double deltaY) {
+    GestureArenaMember member = getMemberById(memberId);
+    double density = getDensity();
+    return member != null
+        && member.canConsumeGesture((float) (deltaX * density), (float) (deltaY * density));
+  }
+
+  @CalledByNative
+  private boolean shouldConsumeGesture(int memberId) {
+    GestureArenaMember member = getMemberById(memberId);
+    return member != null && member.shouldConsumeGesture();
+  }
+
+  @CalledByNative
+  private double[] scrollBy(int memberId, double deltaX, double deltaY) {
+    GestureArenaMember member = getMemberById(memberId);
+    if (member == null) {
+      return new double[] {0, 0, deltaX, deltaY};
+    }
+    double density = getDensity();
+    int beforeX = member.getMemberScrollX();
+    int beforeY = member.getMemberScrollY();
+    member.onGestureScrollBy((float) (deltaX * density), (float) (deltaY * density));
+    double consumedX = (member.getMemberScrollX() - beforeX) / density;
+    double consumedY = (member.getMemberScrollY() - beforeY) / density;
+    return new double[] {consumedX, consumedY, deltaX - consumedX, deltaY - consumedY};
+  }
+
+  @CalledByNative
+  private void onGestureRecognized(int memberId) {
+    GestureArenaMember member = getMemberById(memberId);
+    if (mLynxContext != null && member instanceof LynxBaseUI) {
+      mLynxContext.onGestureRecognized((LynxBaseUI) member);
+    }
+  }
+
+  @CalledByNative
+  private void onGestureStateChanged(int memberId, int gestureId, int state) {
+    long key = handlerKey(memberId, gestureId);
+    if (state == CORE_STATE_ACTIVE) {
+      mUnifiedActiveHandlers.add(key);
+    } else if (state == CORE_STATE_FAIL || state == CORE_STATE_END || state == CORE_STATE_CANCEL) {
+      mUnifiedActiveHandlers.remove(key);
+    }
+    // Publish ownership before callbacks that can remove or replace the member.
+    GestureArenaMember member = getMemberById(memberId);
+    if (member != null) {
+      member.onPlatformGestureStatusChanged(toPlatformState(state));
+    }
+  }
+
+  private int toPlatformState(int state) {
+    switch (state) {
+      case 0:
+        return GestureConstants.LYNX_STATE_INIT;
+      case 1:
+        return GestureConstants.LYNX_STATE_BEGIN;
+      case CORE_STATE_ACTIVE:
+        return GestureConstants.LYNX_STATE_ACTIVE;
+      case CORE_STATE_FAIL:
+        return GestureConstants.LYNX_STATE_FAIL;
+      case CORE_STATE_END:
+        return GestureConstants.LYNX_STATE_END;
+      case CORE_STATE_CANCEL:
+        return GestureConstants.LYNX_STATE_CANCELLED;
+      default:
+        return GestureConstants.LYNX_STATE_UNDETERMINED;
+    }
+  }
+
+  @CalledByNative
+  private void dispatchGestureEvent(int memberId, int gestureId, int callbackType, int sourceType,
+      long timestamp, double localX, double localY, double pageX, double pageY, double clientX,
+      double clientY, double deltaX, double deltaY, double scrollX, double scrollY,
+      boolean isAtStart, boolean isAtEnd) {
+    if (mLynxContext == null || mLynxContext.getEventEmitter() == null) {
+      return;
+    }
+    String callbackName = getCallbackName(callbackType);
+    if (callbackName == null
+        || (GestureConstants.ON_TOUCHES_MOVE.equals(callbackName) && !mUnifiedDispatchTouchMove)) {
+      return;
+    }
+    HashMap<String, Object> params = new HashMap<>();
+    params.put("timestamp", timestamp);
+    String sourceName = getSourceName(sourceType);
+    if (sourceName != null) {
+      params.put("type", sourceName);
+    }
+    params.put("x", localX);
+    params.put("y", localY);
+    params.put("pageX", pageX);
+    params.put("pageY", pageY);
+    params.put("clientX", clientX);
+    params.put("clientY", clientY);
+    params.put("deltaX", deltaX);
+    params.put("deltaY", deltaY);
+    params.put("scrollX", scrollX);
+    params.put("scrollY", scrollY);
+    params.put("isAtStart", isAtStart);
+    params.put("isAtEnd", isAtEnd);
+    LynxCustomEvent event = new LynxCustomEvent(memberId, callbackName, params);
+    mLynxContext.getEventEmitter().sendGestureEvent(gestureId, event);
+  }
+
+  @Nullable
+  private String getCallbackName(int callbackType) {
+    switch (callbackType) {
+      case 0:
+        return GestureConstants.ON_TOUCHES_DOWN;
+      case 1:
+        return GestureConstants.ON_TOUCHES_MOVE;
+      case 2:
+        return GestureConstants.ON_TOUCHES_UP;
+      case 3:
+        return GestureConstants.ON_TOUCHES_CANCEL;
+      case 4:
+        return GestureConstants.ON_BEGIN;
+      case 5:
+        return GestureConstants.ON_START;
+      case 6:
+        return GestureConstants.ON_UPDATE;
+      case 7:
+        return GestureConstants.ON_END;
+      default:
+        return null;
+    }
+  }
+
+  @Nullable
+  private String getSourceName(int sourceType) {
+    switch (sourceType) {
+      case INPUT_DOWN:
+        return LynxTouchEvent.EVENT_TOUCH_START;
+      case INPUT_MOVE:
+        return LynxTouchEvent.EVENT_TOUCH_MOVE;
+      case INPUT_UP:
+        return LynxTouchEvent.EVENT_TOUCH_END;
+      case INPUT_CANCEL:
+        return LynxTouchEvent.EVENT_TOUCH_CANCEL;
+      case INPUT_FLING_FRAME:
+        return "unknown";
+      default:
+        return null;
+    }
+  }
+
+  @CalledByNative
+  private void scheduleTimer(long token, double delayMs) {
+    cancelTimer(token);
+    Runnable timer = () -> {
+      mUnifiedTimers.remove(token);
+      if (mNativeGestureArena != 0) {
+        nativeHandleTimer(
+            mNativeGestureArena, token, SystemClock.uptimeMillis(), System.currentTimeMillis());
+      }
+    };
+    mUnifiedTimers.put(token, timer);
+    mMainThreadHandler.postDelayed(timer, Math.max(0, (long) Math.ceil(delayMs)));
+  }
+
+  @CalledByNative
+  private void cancelTimer(long token) {
+    Runnable timer = mUnifiedTimers.remove(token);
+    if (timer != null) {
+      mMainThreadHandler.removeCallbacks(timer);
+    }
+  }
+
   private native long nativeCreateGestureArena();
   private native void nativeDestroyGestureArena(long nativePtr);
   private native void nativeReplaceMemberGestures(
       long nativePtr, int memberId, int gestureCount, int[] gestureData, double[] configs);
   private native void nativeRemoveMember(long nativePtr, int memberId);
-  private native void nativeHandleInput(long nativePtr, int type, long sequenceId, int pointerId,
+  native void nativeHandleInput(long nativePtr, int type, long sequenceId, int pointerId,
       double monotonicTime, long epochTime, double screenX, double screenY, double pageX,
       double pageY, double clientX, double clientY, double deltaX, double deltaY, double velocityX,
       double velocityY, boolean flingFinished, int[] responseChain);
-  private native void nativeHandleTimer(
-      long nativePtr, long token, double monotonicTime, long epochTime);
+  native void nativeHandleTimer(long nativePtr, long token, double monotonicTime, long epochTime);
   private native void nativeSetGestureState(long nativePtr, int memberId, int gestureId, int state);
 }
