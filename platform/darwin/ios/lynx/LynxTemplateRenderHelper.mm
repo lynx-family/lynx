@@ -35,6 +35,7 @@
 #import <Lynx/LynxUILayoutTick.h>
 #import <Lynx/LynxUIMethodModule.h>
 #import <Lynx/LynxUIRenderer.h>
+#import <Lynx/LynxVersion.h>
 #import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/PaintingContextProxy.h>
 #import "LynxTraceEventDef.h"
@@ -306,6 +307,39 @@ bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painti
 
 - (void)setUpLynxContextWithLastInstanceId:(int32_t)lastInstanceId {
   _context.instanceId = shell_->GetInstanceId();
+  Class rendererClass = [_lynxUIRenderer class];
+  BOOL isNativeRenderer = [_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]];
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_RENDERER_BACKEND_SELECTED,
+      [rendererClass, isNativeRenderer, instanceId = _context.instanceId,
+       isReusePool = _isEngineInitFromReusePool,
+       threadStrategy = _threadStrategyForRendering](lynx::perfetto::EventContext ctx) {
+        NSString* rendererClassName = rendererClass ? NSStringFromClass(rendererClass) : nil;
+        const char* rendererBackend = "unknown";
+        if (isNativeRenderer) {
+          rendererBackend = "native";
+        } else if ([rendererClassName isEqualToString:@"LynxUIRendererClay"]) {
+          rendererBackend = "clay";
+        } else if (rendererClass != Nil) {
+          rendererBackend = "custom";
+        }
+        NSString* sdkVersion = [LynxVersion versionString];
+        ctx.event()->add_debug_annotations("renderer_backend", rendererBackend);
+        ctx.event()->add_debug_annotations("renderer_class",
+                                           rendererClassName ? rendererClassName.UTF8String : "");
+        ctx.event()->add_debug_annotations("sdk_version", sdkVersion ? sdkVersion.UTF8String : "");
+        ctx.event()->add_debug_annotations("instance_id", instanceId);
+        ctx.event()->add_debug_annotations("is_engine_reuse_pool", isReusePool);
+        ctx.event()->add_debug_annotations("thread_strategy", threadStrategy);
+        ctx.event()->add_debug_annotations("selection_stage", "post_shell_instance_assignment");
+        ctx.event()->add_debug_annotations("diagnostic_schema_version", 3);
+        ctx.event()->add_debug_annotations("capability_renderer_identity", true);
+        ctx.event()->add_debug_annotations("capability_exposure_episode", true);
+        ctx.event()->add_debug_annotations("capability_fast_exposure_eligibility", true);
+        ctx.event()->add_debug_annotations("capability_prefetch_outcome", true);
+        ctx.event()->add_debug_annotations("capability_prefetch_lookup_summary", true);
+        ctx.event()->add_debug_annotations("capability_clay_paint_breakdown", true);
+      });
   auto layout_proxy =
       std::make_shared<lynx::shell::LynxLayoutProxyDarwin>(shell_->GetLayoutActor());
   [_context setLayoutProxy:layout_proxy];

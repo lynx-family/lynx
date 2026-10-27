@@ -407,6 +407,15 @@ void BaseView::AddChild(BaseView* child, int index) {
   if (attach_to_tree_) {
     child->OnAttachToTree();
   }
+
+  if (this == page_view_ &&
+      !child->direct_page_child_first_add_exposure_attempted_) {
+    child->direct_page_child_first_add_exposure_attempted_ = true;
+    if (page_view_->HasIntersectionObserverManager()) {
+      page_view_->intersection_observer_manager()
+          ->TryReconcileDirectPageChildOnFirstAdd(child);
+    }
+  }
 }
 
 void BaseView::OnLayoutFinish(BaseView* view) {}

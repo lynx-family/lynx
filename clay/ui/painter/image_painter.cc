@@ -19,6 +19,7 @@
 #include "clay/ui/painter/gradient_factory.h"
 #include "clay/ui/rendering/decode_utils.h"
 #include "clay/ui/rendering/render_box.h"
+#include "core/base/trace/trace_event_def.h"
 
 namespace clay {
 namespace {
@@ -300,32 +301,44 @@ void ImagePainter::PaintImage(GraphicsContext* context,
   if (!image_data.image_resource->GetImage()) {
     return;
   }
-  image_data.image_resource->GetImage()->Upload(
-      context->GetUnrefQueue(),
-      Size{static_cast<int>(
-               render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
-                   content.width())),
-           static_cast<int>(
-               render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
-                   content.height()))});
+  {
+    TRACE_EVENT("clay", CLAY_IMAGE_PAINTER_UPLOAD_IMAGE, "image_kind",
+                "foreground", "view_id", render_box_->ID());
+    image_data.image_resource->GetImage()->Upload(
+        context->GetUnrefQueue(),
+        Size{static_cast<int>(
+                 render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
+                     content.width())),
+             static_cast<int>(
+                 render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
+                     content.height()))});
+  }
 
   mipmapped = image_data.image_resource->GetImage()->IsMipmapped();
 #endif  // ENABLE_SKITY
 
+  fml::RefPtr<GraphicsImage> image;
+  {
+    TRACE_EVENT("clay", CLAY_IMAGE_PAINTER_RESOLVE_IMAGE, "image_kind",
+                "foreground", "view_id", render_box_->ID());
 #ifndef ENABLE_SKITY
-  DecodePriority priority = DecodePriority::kImmediate;
-  if (render_box_->ImageDecodeWithPriority() &&
-      image_data.image_resource->GetImage()->NeedDecode()) {
-    priority = DecodeUtils::GetDecodePriority(render_box_);
-  }
-  auto image = image_data.image_resource->GetGraphicsImage(priority);
+    DecodePriority priority = DecodePriority::kImmediate;
+    if (render_box_->ImageDecodeWithPriority() &&
+        image_data.image_resource->GetImage()->NeedDecode()) {
+      priority = DecodeUtils::GetDecodePriority(render_box_);
+    }
+    image = image_data.image_resource->GetGraphicsImage(priority);
 #else
-  auto image = image_data.image_resource->GetGraphicsImage();
+    image = image_data.image_resource->GetGraphicsImage();
 #endif  // ENABLE_SKITY
+  }
 
   if (!image || image->width() == 0 || image->height() == 0) {
     return;
   }
+
+  TRACE_EVENT("clay", CLAY_IMAGE_PAINTER_DRAW_IMAGE, "image_kind", "foreground",
+              "view_id", render_box_->ID());
 
   // output_rect's offset is (0.f, 0.f).
   skity::Rect output_rect =
@@ -438,6 +451,8 @@ void ImagePainter::PaintBackgroundImage(
   if (bg_image.IsEmpty()) {
     return;
   }
+  TRACE_EVENT("clay", CLAY_IMAGE_PAINTER_PAINT_BACKGROUND_IMAGE, "view_id",
+              render_box_->ID());
 
   auto rect = GetPaintingBox(render_box_, frame_rect, origin);
   float output_x = rect.x();
@@ -573,29 +588,40 @@ void ImagePainter::PaintBackgroundImage(GraphicsContext* context,
     if (!image_resource->GetImage()) {
       return;
     }
-    image_resource->GetImage()->Upload(
-        context->GetUnrefQueue(),
-        Size{static_cast<int>(
-                 render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
-                     src_rect.Width())),
-             static_cast<int>(
-                 render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
-                     src_rect.Height()))});
+    {
+      TRACE_EVENT("clay", CLAY_IMAGE_PAINTER_UPLOAD_IMAGE, "image_kind",
+                  "background", "view_id", render_box_->ID());
+      image_resource->GetImage()->Upload(
+          context->GetUnrefQueue(),
+          Size{static_cast<int>(
+                   render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
+                       src_rect.Width())),
+               static_cast<int>(
+                   render_box_->GetRenderer()->ConvertTo<kPixelTypePhysical>(
+                       src_rect.Height()))});
+    }
 #endif  // ENABLE_SKITY
 
+    fml::RefPtr<GraphicsImage> image;
+    {
+      TRACE_EVENT("clay", CLAY_IMAGE_PAINTER_RESOLVE_IMAGE, "image_kind",
+                  "background", "view_id", render_box_->ID());
 #ifndef ENABLE_SKITY
-    DecodePriority priority = DecodePriority::kImmediate;
-    if (render_box_->ImageDecodeWithPriority() &&
-        image_resource->GetImage()->NeedDecode()) {
-      priority = DecodeUtils::GetDecodePriority(render_box_);
-    }
-    auto image = image_resource->GetGraphicsImage(priority);
+      DecodePriority priority = DecodePriority::kImmediate;
+      if (render_box_->ImageDecodeWithPriority() &&
+          image_resource->GetImage()->NeedDecode()) {
+        priority = DecodeUtils::GetDecodePriority(render_box_);
+      }
+      image = image_resource->GetGraphicsImage(priority);
 #else
-    auto image = image_resource->GetGraphicsImage();
+      image = image_resource->GetGraphicsImage();
 #endif  // ENABLE_SKITY
+    }
     if (!image) {
       return;
     }
+    TRACE_EVENT("clay", CLAY_IMAGE_PAINTER_DRAW_IMAGE, "image_kind",
+                "background", "view_id", render_box_->ID());
     auto dst_rect = dst_rrect.GetRect();
     Paint paint;
     skity::Matrix local_matrix =

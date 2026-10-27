@@ -242,7 +242,10 @@ inline constexpr const char* const JS_UPDATE_COMPONET_DATA =
     "LynxJSUpdateComponentData";
 
 /**
- * @trace_description: Invoke a stored callback for a native module call.
+ * @trace_description: Begin executing a stored native-module callback on the
+ * JS thread. callback_id/callback_flow_id can be joined to
+ * NativeModule::PlatformCallbackStart; their timestamp gap is callback queue
+ * wall time, not CPU time.
  */
 inline constexpr const char* const NATIVE_MODULE_CALLBACK =
     "NativeModule::Callback";
@@ -258,8 +261,11 @@ inline constexpr const char* const MODULE_INVOKE_CALLBACK = "InvokeCallback";
 inline constexpr const char* const CALL_PLATFORM_IMPLEMENTATION =
     "CallPlatformImplementation";
 /**
- * @trace_description: Mark the start of a platform callback path for a module
- * call, used for latency tracking across thread hops.
+ * @trace_description: Mark that a platform result is ready and is about to be
+ * delivered to JS. It is not the end of an async network operation unless the
+ * traced module callback itself represents that operation. Join its
+ * callback_id/callback_flow_id to NativeModule::Callback to measure JS queue
+ * wall time.
  * @history_name{JSBTiming::jsb_callback_thread_switch_start}
  */
 inline constexpr const char* const NATIVE_MODULE_PLATFORM_CALLBACK_START =

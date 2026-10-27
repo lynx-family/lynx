@@ -1121,9 +1121,21 @@ void LynxShell::LayoutImmediatelyWithUpdatedViewport(float width,
 void LynxShell::SendCustomEvent(const std::string& name, int32_t tag,
                                 const lepus::Value& params,
                                 const std::string& params_name) {
-  engine_actor_->Act([name, tag, params, params_name](auto& engine) {
-    engine->SendCustomEvent(name, tag, params, params_name);
-  });
+  const int32_t instance_id = engine_actor_->GetInstanceId();
+  const uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SEND_CUSTOM_EVENT_TO_ENGINE,
+              [name, tag, instance_id,
+               trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("event_name", name);
+                ctx.event()->add_debug_annotations("tag", std::to_string(tag));
+                ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                                   std::to_string(instance_id));
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
+  engine_actor_->Act(
+      [name, tag, params, params_name, trace_flow_id](auto& engine) {
+        engine->SendCustomEvent(name, tag, params, params_name, trace_flow_id);
+      });
 }
 
 void LynxShell::SendGestureEvent(int32_t tag, int32_t gesture_id,
