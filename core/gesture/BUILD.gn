@@ -8,6 +8,7 @@ lynx_core_source_set("gesture") {
   sources = [
     "gesture_arena.cc",
     "gesture_arena.h",
+    "gesture_arena_competition.cc",
     "gesture_arena_delegate.h",
     "gesture_arena_events.cc",
     "gesture_arena_impl.h",
