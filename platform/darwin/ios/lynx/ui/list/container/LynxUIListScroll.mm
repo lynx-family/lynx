@@ -229,8 +229,8 @@ LYNX_PROP_SETTER("scroll-orientation", setScrollOrientation, NSString *) {
 - (NSInteger)getIndexFromItemKey:(NSString *)itemKey {
   return [self.itemHelper indexForItemKey:itemKey];
 }
-- (NSArray<UIView<LynxListItemWrapper> *> *)visibleCells {
-  return self.itemHelper.visibleItemWrappers;
+- (NSArray<UIView *> *)visibleCells {
+  return self.itemHelper.visibleItemViews;
 }
 - (NSArray<NSDictionary *> *)visibleCellsInfo {
   return self.itemHelper.visibleItemInfo;

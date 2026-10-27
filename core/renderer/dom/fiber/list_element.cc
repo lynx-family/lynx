@@ -875,6 +875,11 @@ void ListElement::ResolveListAxisGapStyle(CSSPropertyID id) {
   }
 }
 
+void ListElement::OnLayoutObjectCreated() {
+  Element::OnLayoutObjectCreated();
+  slnode()->MarkList();
+}
+
 void ListElement::SetupFragmentBehavior(Fragment* fragment) {
   fragment->SetBehavior(std::make_unique<ListFragmentBehavior>(fragment));
 }

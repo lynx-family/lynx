@@ -106,6 +106,7 @@ void PlatformRendererImpl::UpdateLayoutMetrics(float left, float top,
   CopyMetrics(margins, layout_margins_);
   CopyMetrics(borders, layout_borders_);
   has_layout_metrics_ = true;
+  OnUpdateLayoutMetrics();
 }
 
 void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child,

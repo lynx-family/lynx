@@ -52,6 +52,5 @@ typedef void (^RestoreNativeStateBlock)(void);
                   offset:(float)offset
                    align:(int)align
                   smooth:(BOOL)smooth;
-- (NSArray<LynxListContainerComponentWrapper *> *_Nullable)visibleCells;
 
 @end

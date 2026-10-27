@@ -616,9 +616,6 @@ void ElementManager::RequestLayout(
 
   element_manager_delegate_->OnLayoutAfter(layout_data);
 
-  // TODO(songshourui.null): Move the following functions to onLayoutAfter.
-  TickListIfNeeded(options);
-
   if (root()->EnableFragmentLayerRender()) {
     if (layout_data.layout_triggered) {
       Repaint();
@@ -626,6 +623,8 @@ void ElementManager::RequestLayout(
     }
     root()->element_container()->Flush();
   }
+
+  TickListIfNeeded(options);
 }
 
 std::unordered_map<int32_t, LayoutInfoArray>

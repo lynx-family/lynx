@@ -15,6 +15,7 @@
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 
 @class LynxRendererContext;
+@class LynxUIOwner;
 @class UIView;
 
 namespace lynx {
@@ -34,6 +35,12 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   LynxRendererContext* GetRendererContext();
   PlatformTextEventTargetRegions GetTextEventTargetRegions(int32_t text_id) override;
 
+  void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;
+  void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override;
+  void UpdateContentOffsetForListContainer(int32_t container_id, float content_size, float delta_x,
+                                           float delta_y, bool is_init_scroll_offset,
+                                           bool from_layout) override;
+
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
 
   void SetPerformanceController(LynxPerformanceController* controller) {
@@ -49,6 +56,7 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   void NotifyNodeReady(const std::vector<int32_t>& signs) override;
 
  private:
+  LynxUIOwner* GetUIOwner();
   UIView* GetPlatformRendererView(int32_t sign);
   __weak LynxPerformanceController* perf_controller_;
 };

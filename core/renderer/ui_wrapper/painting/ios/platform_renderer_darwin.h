@@ -50,6 +50,7 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   void OnAddChild(PlatformRenderer* child, int index, bool should_update_ui_owner) override;
   void OnRemoveFromParent(bool should_update_ui_owner) override;
   void OnUpdateSubtreeProperties(const DisplayList& subtree_properties) override;
+  void OnUpdateLayoutMetrics() override;
   void UpdatePlatformExtraBundle(id platform_extra_bundle);
 
   void InitializeUIView();

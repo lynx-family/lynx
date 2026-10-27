@@ -231,13 +231,6 @@ Fragment* Fragment::EnclosingStackingContextFromElementParent() {
 }
 
 void Fragment::UpdateZIndexList() {
-  // If the element is a list and disable list platform implementation,
-  // we should not update z-index list.
-  if (element() != nullptr && element()->is_list() &&
-      element()->DisableListPlatformImplementation()) {
-    return;
-  }
-
   // If do not need sort z-index child and fixed child, we should not update
   // z-index list.
   if (!NeedSortZChild() && !NeedSortFixedChild()) {
@@ -367,6 +360,9 @@ bool Fragment::ShouldSyncNativePlatformRenderer() const {
          behavior_ != nullptr &&
          (element()->is_page() ||
           behavior_->GetType() == PlatformRendererType::kExtended ||
+          // The list applies contentSize and contentOffset in NodeReady.
+          behavior_->GetType() == PlatformRendererType::kList ||
+          behavior_->GetType() == PlatformRendererType::kListItem ||
           element()->is_direct_child_of_compatible_component());
 }
 
@@ -1816,8 +1812,15 @@ Fragment* Fragment::ResolveEnclosingStackingContextParent() const {
 }
 
 void Fragment::UpdateLayout(float left, float top, bool transition_view) {
+  const bool position_changed =
+      layout_info_.layout_result.offset_.X() != left ||
+      layout_info_.layout_result.offset_.Y() != top;
   layout_info_.layout_result.offset_.SetX(left);
   layout_info_.layout_result.offset_.SetY(top);
+  if (position_changed && behavior_ != nullptr &&
+      behavior_->GetType() == PlatformRendererType::kListItem) {
+    MarkNodeReadyIfNeeded();
+  }
   platform_layer_count_ = UpdateRenderOffsetRecursively(0, 0, this);
 }
 

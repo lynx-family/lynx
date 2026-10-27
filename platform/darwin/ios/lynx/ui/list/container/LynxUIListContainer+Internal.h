@@ -37,6 +37,8 @@ typedef NS_ENUM(NSInteger, LynxListContainerScrollState) {
 - (void)removeListComponent:(LynxUIComponent *)component;
 - (BOOL)initialPropsFlushed:(NSString *)initialPropKey cacheKey:(NSString *)cacheKey;
 - (void)setInitialPropsHasFlushed:(NSString *)initialPropKey cacheKey:(NSString *)cacheKey;
+@optional
+- (BOOL)isCUIList;
 @end
 
 NS_INLINE BOOL LynxIsListContainerUI(id _Nullable object) {

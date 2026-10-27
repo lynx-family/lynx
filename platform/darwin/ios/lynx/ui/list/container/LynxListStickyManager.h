@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)isVerticalForListStickyManager;
 - (nullable NSArray<NSString *> *)itemKeysForListStickyManager;
 - (nullable LynxScrollEventManager *)eventManagerForListStickyManager;
+@optional
+- (void)restoreCUIListItemOrder:(LynxUIComponent *)component;
 @end
 
 // Owns list sticky state and behavior independently from a concrete list UI or scroll-view
@@ -23,6 +25,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, assign, getter=isEnabled) BOOL enabled;
 @property(nonatomic, assign) CGFloat offset;
+@property(nonatomic, weak, readonly, nullable) LynxUIComponent *activeStickyStartItem;
+@property(nonatomic, weak, readonly, nullable) LynxUIComponent *activeStickyEndItem;
 
 - (instancetype)initWithOwner:(id<LynxListStickyManagerOwner>)owner NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;

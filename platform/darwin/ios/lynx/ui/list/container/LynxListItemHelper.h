@@ -6,6 +6,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class LynxUI;
 @class LynxUIComponent;
 @protocol LynxEventTarget;
 
@@ -23,19 +24,28 @@ NS_ASSUME_NONNULL_BEGIN
 // UI or scroll-view subclass.
 @interface LynxListItemHelper : NSObject
 
++ (BOOL)isCUIListItem:(nullable LynxUI *)ui;
++ (BOOL)isCUIListItemView:(UIView *)itemView;
++ (BOOL)isListItemWrapperView:(UIView *)itemView;
++ (nullable LynxUIComponent *)getComponentForListItemView:(UIView *)itemView;
++ (void)applyLayoutForComponent:(LynxUIComponent *)component frame:(CGRect)frame;
++ (void)setZPosition:(CGFloat)zPosition forComponent:(LynxUIComponent *)component;
++ (void)bringComponentToFront:(LynxUIComponent *)component inScrollView:(UIScrollView *)scrollView;
+
 - (instancetype)initWithOwner:(id<LynxListItemHelperOwner>)owner NS_DESIGNATED_INITIALIZER;
-
 - (instancetype)init NS_UNAVAILABLE;
-
 - (void)attachComponent:(LynxUIComponent *)component
               toWrapper:(UIView<LynxListItemWrapper> *)wrapper;
 - (void)updateLayoutForComponent:(LynxUIComponent *)component
                        inWrapper:(UIView<LynxListItemWrapper> *)wrapper;
-
+- (void)attachCUIComponent:(LynxUIComponent *)component
+           orderedChildren:(NSArray<LynxUI *> *)children
+           stickyStartItem:(nullable LynxUIComponent *)stickyStartItem
+             stickyEndItem:(nullable LynxUIComponent *)stickyEndItem;
+- (void)detachCUIComponent:(LynxUIComponent *)component;
 - (NSInteger)indexForItemKey:(nullable NSString *)itemKey;
-- (NSArray<UIView<LynxListItemWrapper> *> *)visibleItemWrappers;
+- (NSArray<UIView *> *)visibleItemViews;
 - (NSArray<NSDictionary *> *)visibleItemInfo;
-
 - (nullable id<LynxEventTarget>)findHitTargetAtPoint:(CGPoint)point
                                            withEvent:(nullable UIEvent *)event;
 // Compatibility query for list-container's legacy event path. It intentionally returns the first

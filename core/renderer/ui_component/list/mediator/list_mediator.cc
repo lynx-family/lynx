@@ -11,7 +11,9 @@
 #include "core/list/decoupled_list_container_factory.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/ui_component/list/mediator/list_item_mediator.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/value_wrapper/value_impl_lepus.h"
@@ -276,6 +278,16 @@ void ListMediator::InsertListItemPaintingNode(int32_t list_item_id) {
 }
 
 void ListMediator::FlushPatching(bool should_flush_finish_layout) {
+  if (list_element_->EnableFragmentLayerRender()) {
+    auto* list_fragment = list_element_->element_container()->CastToFragment();
+    auto* native_context =
+        list_element_->painting_context()->impl()->CastToNativeCtx();
+    {
+      NativePaintingContext::ScopedDisplayListBatch display_list_batch(
+          native_context, list_fragment->PlatformLayerCount());
+      list_fragment->Draw();
+    }
+  }
   list_element_->element_container()->UpdateLayoutPatching();
   // Note: Add list's id to patching_node_ready_ids_ before invoking
   // UpdateNodeReadyPatching(), and in list's OnNodeReady to handle sticky
