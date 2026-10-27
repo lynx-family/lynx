@@ -6,8 +6,10 @@ import("../Lynx.gni")
 
 lynx_core_source_set("gesture") {
   sources = [
+    "gesture_arena.cc",
     "gesture_arena.h",
     "gesture_arena_delegate.h",
+    "gesture_arena_impl.h",
     "gesture_config.cc",
     "gesture_config.h",
     "gesture_types.cc",
