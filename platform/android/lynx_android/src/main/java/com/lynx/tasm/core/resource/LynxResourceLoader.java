@@ -7,10 +7,8 @@ package com.lynx.tasm.core.resource;
 import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.lynx.tasm.ILynxErrorReceiver;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.LynxError;
 import com.lynx.tasm.LynxInfoReportHelper;
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.CalledByNative;
@@ -26,13 +24,11 @@ import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.LynxResourceUtil;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
-import com.lynx.tasm.utils.UIThreadUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 
 public class LynxResourceLoader {
@@ -48,8 +44,6 @@ public class LynxResourceLoader {
   static final int RESOURCE_LOADER_SUCCESS = 0;
   static final int RESOURCE_LOADER_FAILED = -1;
   static final String TAG = "LynxResourceLoader";
-  static final String METHOD_NAME_LOAD_SCRIPT = "loadExternalResource";
-  static final String METHOD_NAME_LOAD_LOCAL_SCRIPT = "loadLocalResource";
   static final String MSG_NULL_DATA = "get null data for provider.";
 
   private final LynxBackgroundRuntimeOptions mLynxRuntimeOptions;
@@ -57,17 +51,14 @@ public class LynxResourceLoader {
   private final TemplateLoaderHelper mTemplateLoaderHelper;
   private final LynxGenericResourceFetcher mGenericResourceFetcher;
 
-  private final WeakReference<ILynxErrorReceiver> mWeekErrorReceiver;
-
   private final LynxInfoReportHelper mReportHelper = new LynxInfoReportHelper();
 
+  /** Creates a resource loader that returns results to its native request owner. */
   public LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions,
-      DynamicComponentFetcher fetcher, ILynxErrorReceiver errorReceiver,
-      LynxTemplateResourceFetcher templateFetcher,
+      DynamicComponentFetcher fetcher, LynxTemplateResourceFetcher templateFetcher,
       LynxGenericResourceFetcher genericResourceFetcher) {
     mLynxRuntimeOptions = runtimeOptions;
     mFetcherWrapper = new LynxExternalResourceFetcherWrapper(fetcher);
-    mWeekErrorReceiver = new WeakReference<>(errorReceiver);
     mTemplateLoaderHelper = new TemplateLoaderHelper(templateFetcher);
     mGenericResourceFetcher = genericResourceFetcher;
   }
@@ -95,8 +86,21 @@ public class LynxResourceLoader {
   void loadResource(long responseHandler, String url, int type) {
     switch (type) {
       case LynxResourceType.LYNX_RESOURCE_TYPE_ASSETS: {
-        byte[] data = loadJSSource(url);
-        InvokeNativeCallbackWithBytes(responseHandler, data, RESOURCE_LOADER_SUCCESS, null);
+        byte[] data = null;
+        String errorMessage = null;
+        try {
+          data = loadJSSource(url);
+          if (data == null) {
+            errorMessage = "No local resource data for " + url;
+          }
+        } catch (Throwable error) {
+          errorMessage = "Failed to load " + url + ": " + error.getMessage();
+        }
+        InvokeNativeCallbackWithBytes(responseHandler, data,
+            errorMessage == null
+                ? RESOURCE_LOADER_SUCCESS
+                : LynxSubErrorCode.E_RESOURCE_EXTERNAL_RESOURCE_LOCAL_RESOURCE_LOAD_FAIL,
+            errorMessage);
       } break;
       case LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_JS: {
         // 1. try to use GenericResourceFetcher
@@ -188,25 +192,6 @@ public class LynxResourceLoader {
     return "";
   }
 
-  void reportError(final String methodName, final String url, final int code, final String errorMsg,
-      final String rootCause) {
-    UIThreadUtils.runOnUiThread(new Runnable() {
-      @Override
-      public void run() {
-        ILynxErrorReceiver errorReceiver = mWeekErrorReceiver.get();
-        if (errorReceiver == null) {
-          return;
-        }
-        LynxError lynxError = new LynxError(code,
-            String.format("%s %s failed, the error message is: %s", TAG, methodName, errorMsg),
-            LynxError.LYNX_ERROR_SUGGESTION_REF_OFFICIAL_SITE, LynxError.LEVEL_ERROR);
-        lynxError.setRootCause(rootCause);
-        lynxError.addCustomInfo(LynxError.LYNX_ERROR_KEY_RESOURCE_URL, url);
-        errorReceiver.onErrorOccurred(lynxError);
-      }
-    });
-  }
-
   private byte[] toByteArray(@NonNull InputStream in) throws IOException {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     byte[] buffer = new byte[1024 * 4];
@@ -217,7 +202,7 @@ public class LynxResourceLoader {
     return out.toByteArray();
   }
 
-  private byte[] loadJSSource(String name) {
+  private byte[] loadJSSource(String name) throws IOException {
     /* 1. if the file name is assets://lynx_core.js
      *   i. if devtool is enabled, try to load assets://lynx_core_dev.js
      * 2. if the file name is start with "file://", use FileInputStream to get the file content.
@@ -235,7 +220,6 @@ public class LynxResourceLoader {
     }
     LLog.i(TAG, "loadJSSource with name " + name);
     InputStream inputStream = null;
-    String errorMessage = null;
     try {
       if (CORE_JS.equals(name)) {
         //  get DebugResource from DevTool
@@ -278,8 +262,6 @@ public class LynxResourceLoader {
       if (null != inputStream) {
         return toByteArray(inputStream);
       }
-    } catch (Throwable e) {
-      errorMessage = e.getMessage();
     } finally {
       if (inputStream != null) {
         try {
@@ -287,12 +269,6 @@ public class LynxResourceLoader {
         } catch (IOException e) {
           // ignore
         }
-      }
-      if (errorMessage != null) {
-        reportError(METHOD_NAME_LOAD_LOCAL_SCRIPT, name,
-            LynxSubErrorCode.E_RESOURCE_EXTERNAL_RESOURCE_LOCAL_RESOURCE_LOAD_FAIL,
-            "Error when loading js source", errorMessage);
-        LLog.e(TAG, "loadJSSource " + name + "with error message: " + errorMessage);
       }
     }
     return null;
@@ -439,7 +415,7 @@ public class LynxResourceLoader {
       mGenericResourceFetcher.fetchResource(
           resourceRequest, new com.lynx.tasm.resourceprovider.LynxResourceCallback<byte[]>() {
             private final ExternalScriptResourceCallback callback =
-                new ExternalScriptResourceCallback(LynxResourceLoader.this, url, responseHandler);
+                new ExternalScriptResourceCallback(url, responseHandler);
 
             @Override
             public void onResponse(
@@ -471,7 +447,7 @@ public class LynxResourceLoader {
         new com.lynx.tasm.provider.LynxResourceRequest(url);
     provider.request(request, new LynxResourceCallback<byte[]>() {
       private final ExternalScriptResourceCallback callback =
-          new ExternalScriptResourceCallback(LynxResourceLoader.this, url, responseHandler);
+          new ExternalScriptResourceCallback(url, responseHandler);
 
       @Override
       public void onResponse(@NonNull LynxResourceResponse<byte[]> response) {

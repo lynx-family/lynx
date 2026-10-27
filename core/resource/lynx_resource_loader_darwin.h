@@ -14,13 +14,10 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxDynamicComponentFetcher.h>
-#import <Lynx/LynxErrorReceiverProtocol.h>
 #import <Lynx/LynxExternalResourceFetcherWrapper.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxTemplateResourceFetcher.h>
-
-@protocol TemplateRenderCallbackProtocol;
 
 namespace lynx {
 namespace shell {
@@ -29,7 +26,6 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
  public:
   LynxResourceLoaderDarwin(LynxProviderRegistry* providerRegistry,
                            id<LynxDynamicComponentFetcher> dynamicComponentFetcher,
-                           id<LynxErrorReceiverProtocol> errorReceiver,
                            id<LynxTemplateResourceFetcher> genericTemplateFetcher,
                            id<LynxGenericResourceFetcher> genericResourceFetcher);
   ~LynxResourceLoaderDarwin() override = default;
@@ -46,7 +42,7 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
   using CopyableClosure =
       fml::internal::CopyableLambda<base::MoveOnlyClosure<void, pub::LynxResourceResponse&>>;
 
-  NSData* LoadJSSource(const std::string& name);
+  NSData* LoadJSSource(const std::string& name, std::string& error_message);
   NSData* LoadLynxJSAsset(const std::string& name, NSURL& bundleUrl, NSURL& debugBundleUrl);
 
   /**
@@ -82,16 +78,12 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
   bool FetchTemplateByFetcherWrapper(const std::string& url, CopyableClosure callback,
                                      bool request_in_current_thread);
 
-  static void FetchExternalResourceComplete(NSData* data, NSError* error, NSString* nsUrl,
-                                            id<LynxErrorReceiverProtocol> weakErrorReceiver,
-                                            CopyableClosure callback, bool reportError = true);
+  static void FetchExternalResourceComplete(NSData* data, NSError* error, CopyableClosure callback);
 
   LynxProviderRegistry* _providerRegistry;
   LynxExternalResourceFetcherWrapper* _fetcher_wrapper;
   id<LynxTemplateResourceFetcher> _templateResourceFetcher;
   id<LynxGenericResourceFetcher> _genericResourceFetcher;
-
-  __weak id<LynxErrorReceiverProtocol> _errorReceiver;
 };
 
 }  // namespace shell

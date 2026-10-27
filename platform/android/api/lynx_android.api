@@ -2539,10 +2539,6 @@ public interface com::lynx::tasm::ILynxEngine {
   public void com.lynx.tasm.ILynxEngine.destroy();
 }
 
-public interface com::lynx::tasm::ILynxErrorReceiver {
-  public void com.lynx.tasm.ILynxErrorReceiver.onErrorOccurred(LynxError error);
-}
-
 public interface com::lynx::tasm::service::ILynxEventReporterService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxEventReporterService.getServiceClass();
 }
@@ -4079,7 +4075,7 @@ public class com::lynx::tasm::behavior::ui::utils::LynxBackground : LynxDrawable
   public UIShadowProxy.InsetDrawer com.lynx.tasm.behavior.ui.utils.LynxBackground.getBoxShadowInsetDrawer();
 }
 
-public class com::lynx::tasm::LynxBackgroundRuntime : com.lynx.tasm.ILynxErrorReceiver {
+public class com::lynx::tasm::LynxBackgroundRuntime :  {
   public final int com.lynx.tasm.LynxBackgroundRuntime.STATE_START STATE_START;
   public final int com.lynx.tasm.LynxBackgroundRuntime.STATE_DESTROYED STATE_DESTROYED;
   public final int com.lynx.tasm.LynxBackgroundRuntime.STATE_ATTACHED STATE_ATTACHED;
@@ -6679,7 +6675,7 @@ public class abstract com::lynx::tasm::provider::LynxResourceFetcher :  {
 }
 
 public class com::lynx::tasm::core::resource::LynxResourceLoader :  {
-  public com.lynx.tasm.core.resource.LynxResourceLoader.LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions, DynamicComponentFetcher fetcher, ILynxErrorReceiver errorReceiver, LynxTemplateResourceFetcher templateFetcher, LynxGenericResourceFetcher genericResourceFetcher);
+  public com.lynx.tasm.core.resource.LynxResourceLoader.LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions, DynamicComponentFetcher fetcher, LynxTemplateResourceFetcher templateFetcher, LynxGenericResourceFetcher genericResourceFetcher);
   public byte[] com.lynx.tasm.core.resource.LynxResourceLoader.loadLynxJSAsset(String name);
 }
 
@@ -7097,7 +7093,7 @@ public enum com::lynx::tasm::service::security::ILynxSecurityService::LynxTasmTy
   public com.lynx.tasm.service.security.ILynxSecurityService.LynxTasmType.TYPE_DYNAMIC_COMPONENT TYPE_DYNAMIC_COMPONENT;
 }
 
-public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, com.lynx.tasm.ILynxErrorReceiver, com.lynx.tasm.EventEmitter.LynxEventFallback {
+public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, com.lynx.tasm.EventEmitter.LynxEventFallback {
   public final String com.lynx.tasm.LynxTemplateRender.RENDER_PHASE_SETUP RENDER_PHASE_SETUP;
   public final String com.lynx.tasm.LynxTemplateRender.RENDER_PHASE_UPDATE RENDER_PHASE_UPDATE;
   public com.lynx.tasm.LynxTemplateRender.LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder);

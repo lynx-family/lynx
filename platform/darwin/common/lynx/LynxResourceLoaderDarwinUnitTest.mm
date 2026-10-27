@@ -10,6 +10,7 @@
 #include <memory>
 
 #import <Lynx/LynxBackgroundRuntime+Internal.h>
+#import <Lynx/LynxError.h>
 #import <Lynx/LynxErrorBehavior.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxView+Internal.h>
@@ -67,6 +68,14 @@
 
 - (void)checkLynxError:(NSError*)error {
   if ([error code] == EBLynxResourceExternalResource) {
+    LynxError* resourceError = (LynxError*)error;
+    XCTAssertEqualObjects(resourceError.rootCause, @"Failed to load local script: test");
+    NSDictionary* json =
+        [NSJSONSerialization JSONObjectWithData:[resourceError.userInfo[LynxErrorUserInfoKeyMessage]
+                                                    dataUsingEncoding:NSUTF8StringEncoding]
+                                        options:0
+                                          error:nil];
+    XCTAssertEqualObjects(json[@"root_cause"], resourceError.rootCause);
     [_expectation fulfill];
   }
 }
@@ -96,7 +105,7 @@
 - (void)testLoadBytecode {
   Mock2GenericResourceFetcher* genericFetcher = [[Mock2GenericResourceFetcher alloc] init];
   auto loader =
-      std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(nil, nil, nil, nil, genericFetcher);
+      std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(nil, nil, nil, genericFetcher);
   auto request = lynx::pub::LynxResourceRequest{"bytecode_url",
                                                 lynx::pub::LynxResourceType::kExternalByteCode};
   std::promise<std::string> promise;

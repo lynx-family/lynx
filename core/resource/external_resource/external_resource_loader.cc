@@ -18,6 +18,22 @@
 namespace lynx {
 namespace shell {
 
+void ExternalResourceLoader::ReportResourceError(int error_code,
+                                                 const std::string& message,
+                                                 const std::string& url) {
+  auto runtime_actor = runtime_actor_.lock();
+  if (!runtime_actor) {
+    return;
+  }
+  base::LynxError error{error_code, message};
+  error.root_cause_ = message;
+  error.custom_info_["src"] = url;
+  runtime::FormatErrorUrl(error, url);
+  runtime_actor->Act([error = std::move(error)](auto& runtime) mutable {
+    runtime->OnErrorOccurred(std::move(error));
+  });
+}
+
 ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
                                                         long timeout) {
   if (!resource_loader_) {
@@ -33,8 +49,16 @@ ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalJs};
   resource_loader_->LoadResource(
       request,
-      [promise_weak = std::weak_ptr<std::promise<ExternalResourceInfo>>(
+      [url, weak_self = weak_from_this(),
+       promise_weak = std::weak_ptr<std::promise<ExternalResourceInfo>>(
            promise)](pub::LynxResourceResponse& response) mutable {
+        if (!response.Success()) {
+          if (auto self = weak_self.lock()) {
+            self->ReportResourceError(
+                error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
+                response.err_msg, url);
+          }
+        }
         auto p = promise_weak.lock();
         if (!p) {
           return;
@@ -75,6 +99,11 @@ void ExternalResourceLoader::LoadScriptAsync(const std::string& url,
           return;
         }
 
+        if (!response.Success()) {
+          self->ReportResourceError(
+              error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
+              response.err_msg, url);
+        }
         std::string script(response.data.begin(), response.data.end());
         runtime_actor->Act([url, script = std::move(script),
                             error = response.err_msg,
@@ -231,8 +260,16 @@ std::vector<uint8_t> ExternalResourceLoader::LoadJSSource(
       .url = url, .type = pub::LynxResourceType::kAssets};
   resource_loader_->LoadResource(
       request,
-      [promise_weak = std::weak_ptr<std::promise<std::vector<uint8_t>>>(
+      [url, weak_self = weak_from_this(),
+       promise_weak = std::weak_ptr<std::promise<std::vector<uint8_t>>>(
            promise)](pub::LynxResourceResponse& response) mutable {
+        if (!response.Success()) {
+          if (auto self = weak_self.lock()) {
+            self->ReportResourceError(
+                error::E_RESOURCE_EXTERNAL_RESOURCE_LOCAL_RESOURCE_LOAD_FAIL,
+                response.err_msg, url);
+          }
+        }
         auto p = promise_weak.lock();
         if (!p) {
           return;

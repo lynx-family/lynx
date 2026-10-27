@@ -6,18 +6,15 @@ package com.lynx.tasm.core.resource;
 
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.LLog;
-import java.lang.ref.WeakReference;
 
 /**
  * Provide unified external script loading callback
  */
 class ExternalScriptResourceCallback extends GuardedResourceCallback {
   private final long mResponseHandler;
-  private WeakReference<LynxResourceLoader> weakLoader;
 
-  ExternalScriptResourceCallback(LynxResourceLoader loader, String url, long responseHandler) {
+  ExternalScriptResourceCallback(String url, long responseHandler) {
     super(url);
-    this.weakLoader = new WeakReference<>(loader);
     this.mResponseHandler = responseHandler;
   }
 
@@ -42,15 +39,6 @@ class ExternalScriptResourceCallback extends GuardedResourceCallback {
       rootCause = errorMsg;
       LynxResourceLoader.InvokeNativeCallbackWithBytes(
           mResponseHandler, null, errCode, errMsg + ": " + rootCause);
-    }
-    // Report only when loading script, the lazy bundle error will be reported in C++
-    // TODO(zhoupeng.z): Report script error in C++
-    if (errCode != LynxResourceLoader.RESOURCE_LOADER_SUCCESS) {
-      LynxResourceLoader loader = weakLoader.get();
-      if (loader != null) {
-        loader.reportError(
-            LynxResourceLoader.METHOD_NAME_LOAD_SCRIPT, mUrl, errCode, errMsg, rootCause);
-      }
     }
   }
 }

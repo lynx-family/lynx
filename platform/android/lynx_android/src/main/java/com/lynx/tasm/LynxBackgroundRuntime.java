@@ -41,7 +41,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 // LynxBackgroundRuntime is an instance of `Background Runtime`, which allows:
 //  1. user creates it asynchronously and pre-run some `Background Script`
 //  2. user use it to build a LynxView
-public class LynxBackgroundRuntime implements ILynxErrorReceiver {
+public class LynxBackgroundRuntime {
   private static final String TAG = "LynxBackgroundRuntime";
   private LynxBackgroundRuntimeOptions mOptions;
   private LynxModuleFactory mModuleFactory;
@@ -138,7 +138,7 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
         enableJSGroupThread && group != null ? group.getJSGroupThreadNameOrDefault() : "";
 
     mResourceLoader = new LynxResourceLoader(
-        options, null, this, options.templateResourceFetcher, options.genericResourceFetcher);
+        options, null, options.templateResourceFetcher, options.genericResourceFetcher);
 
     long whiteBoard = (group == null) ? 0 : group.getWhiteBoardPtr();
 
@@ -357,7 +357,6 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
 
   // Invoked on the JS thread, dispatched to the UI thread before notifying clients.
   @RestrictTo(RestrictTo.Scope.LIBRARY)
-  @Override
   @CalledByNative
   public void onErrorOccurred(LynxError error) {
     UIThreadUtils.runOnUiThread(() -> {
