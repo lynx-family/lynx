@@ -20,6 +20,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/utils/text_utils.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/lynx_image_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
 namespace lynx {
@@ -372,6 +373,26 @@ fml::RefPtr<PaintImage> NativePaintingCtxHarmony::CreateImage(
   return fml::MakeRefCounted<PaintImageHarmony>(
       image_key,
       std::static_pointer_cast<NativePaintingCtxPlatformRef>(platform_ref_));
+}
+
+bool NativePaintingCtxHarmony::UpdateImage(int32_t image_key, int id,
+                                           base::String src,
+                                           const ImagePaintInfo& paint_info,
+                                           uint32_t changes, float width,
+                                           float height, int32_t event_mask) {
+  if (queue_ == nullptr) {
+    return false;
+  }
+  Enqueue([renderer_context = renderer_context_, image_key, id, src = src.str(),
+           paint_info, changes, width, height, event_mask]() {
+    auto manager = renderer_context->GetImageManager(image_key);
+
+    if (manager) {
+      manager->UpdatePaintInfo(paint_info, changes);
+      manager->RequestImage(id, src, width, height, event_mask);
+    }
+  });
+  return true;
 }
 
 void NativePaintingCtxHarmony::UpdatePlatformEventBundle(

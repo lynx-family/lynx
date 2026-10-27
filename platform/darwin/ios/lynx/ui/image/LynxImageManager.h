@@ -39,6 +39,10 @@ struct ImagePaintInfo;
 
 #if defined(__cplusplus)
 - (void)updatePaintInfo:(const lynx::tasm::ImagePaintInfo&)paintInfo;
+- (void)updateSourceURL:(LynxURL* _Nullable)sourceURL
+         placeholderURL:(LynxURL* _Nullable)placeholderURL
+              paintInfo:(const lynx::tasm::ImagePaintInfo&)paintInfo
+                changes:(uint32_t)changes;
 #endif
 
 - (void)reset;

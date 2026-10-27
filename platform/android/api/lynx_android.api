@@ -6058,6 +6058,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setSkipContentLengthCheck(boolean skip);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setEnableCustomGifDecoder(boolean enable);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setSrc(String src);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.markSrcDirty();
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setPlaceholder(String placeholder);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setCapInsets(String capInsets);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setCapInsetsBackUp(String capInsetsBackUp);

@@ -721,6 +721,16 @@ fml::RefPtr<PaintImage> NativePaintingCtxAndroid::CreateImage(
   return nullptr;
 }
 
+bool NativePaintingCtxAndroid::UpdateImage(int32_t image_key, int id,
+                                           base::String src,
+                                           const ImagePaintInfo &paint_info,
+                                           uint32_t changes, float width,
+                                           float height, int32_t event_mask) {
+  return view_manager_ &&
+         view_manager_->UpdateImage(image_key, id, src, paint_info, changes,
+                                    width, height, event_mask);
+}
+
 void NativePaintingCtxAndroid::UpdateTextBundle(int id, intptr_t bundle) {
   if (view_manager_) {
     view_manager_->UpdateTextBundle(id, bundle);

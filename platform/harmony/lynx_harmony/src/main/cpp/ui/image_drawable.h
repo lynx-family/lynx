@@ -47,6 +47,7 @@ class ImageDrawable {
   void UpdateMode(ImageMode mode);
   void UpdateImageRendering(starlight::ImageRenderingType);
   void UpdateTintColor(uint32_t tint_color);
+  void ClearTintColor();
   void UpdateBlurRadius(float radius) { blur_radius_ = radius; }
   void UpdateLoopCount(int32_t loop_count);
   void Render(OH_Drawing_Canvas* canvas);

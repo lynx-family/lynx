@@ -55,6 +55,13 @@ class NativePaintingContext {
       int id, base::String src, const ImagePaintInfo& paint_info, float width,
       float height, int32_t event_mask = 0,
       bool disable_default_resize = false) = 0;
+  // Return true if the existing image accepts the update.
+  // Return false to fall back to creating a replacement.
+  virtual bool UpdateImage(int32_t image_key, int id, base::String src,
+                           const ImagePaintInfo& paint_info, uint32_t changes,
+                           float width, float height, int32_t event_mask) {
+    return false;
+  }
   virtual void UpdateTextBundle(int id, intptr_t bundle) = 0;
   virtual void DestroyTextBundle(int id) = 0;
   virtual void UpdateTextEventTargetRanges(

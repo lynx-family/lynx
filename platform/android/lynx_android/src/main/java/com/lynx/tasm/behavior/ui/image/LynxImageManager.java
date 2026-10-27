@@ -557,7 +557,7 @@ public class LynxImageManager implements Drawable.Callback {
     return mSrc;
   }
 
-  void markSrcDirty() {
+  public void markSrcDirty() {
     dirtyFlags |= SRC_CHANGED;
   }
 
@@ -637,6 +637,8 @@ public class LynxImageManager implements Drawable.Callback {
       if (ColorUtils.isValid(mTintColor)) {
         mColorFilter =
             new PorterDuffColorFilter(ColorUtils.parse(mTintColor), PorterDuff.Mode.SRC_IN);
+      } else {
+        mColorFilter = null;
       }
       dirtyFlags |= TINT_COLOR_CHANGED;
     }
@@ -1065,7 +1067,7 @@ public class LynxImageManager implements Drawable.Callback {
       dirtyFlags &= ~DOWN_SAMPLING_SCALE_CHANGED;
     }
     if (isDirty(MODE_CHANGED) && mImageDrawable != null) {
-      mImageDrawable = new LynxScaleTypeDrawable(mImageDrawable.getContent(), mMode);
+      mImageDrawable.setScaleType(mMode);
     }
     if (isDirty(CAP_INSETS_CHANGED) && mImageDrawable != null) {
       mImageDrawable.setCapInsets(mCapInsets, mCapInsetsScale);

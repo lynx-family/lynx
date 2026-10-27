@@ -149,6 +149,88 @@
                       imageKey:key];
 }
 
+- (void)testImageUpdatesKeepManagerAndReloadOnlyRequestChanges {
+  [self createImage:1 background:NO];
+  LynxImageManager *manager = [_context imageManagerForID:1];
+  UIImageView *view = [UIImageView new];
+  [manager setTarget:view];
+  LynxURL *source = [self url:@"https://example.com/next.png" type:LynxImageRequestSrc];
+  LynxURL *placeholder = [self url:@"https://example.com/placeholder.png"
+                              type:LynxImageRequestPlaceholder];
+  lynx::tasm::ImagePaintInfo info;
+  [manager updateSourceURL:source placeholderURL:placeholder paintInfo:info changes:0];
+  XCTAssertEqual([_context imageManagerForID:1], manager);
+  XCTAssertEqual(_requests.count, 3u);
+  UIImage *image = [UIImage new];
+  _requests.lastObject.completed(image, nil, source.url);
+  XCTAssertEqual(view.image, image);
+
+  info.mode = lynx::tasm::ImageFitMode::kAspectFit;
+  [manager updateSourceURL:source
+            placeholderURL:placeholder
+                 paintInfo:info
+                   changes:lynx::tasm::ImagePaintInfo::kModeChanged];
+  XCTAssertEqual(_requests.count, 3u);
+  XCTAssertEqual(view.contentMode, UIViewContentModeScaleAspectFit);
+
+  info.blur_radius = "8px";
+  [manager updateSourceURL:source
+            placeholderURL:placeholder
+                 paintInfo:info
+                   changes:lynx::tasm::ImagePaintInfo::kBlurRadiusChanged];
+  XCTAssertEqual(_requests.count, 5u);
+  XCTAssertEqual([_context imageManagerForID:1], manager);
+}
+
+- (void)testBlurUpdateWithoutPlaceholderSkipsPlaceholderRequest {
+  lynx::tasm::ImagePaintInfo info;
+  LynxURL *source = [self url:@"https://example.com/image.png" type:LynxImageRequestSrc];
+  LynxImageManager *manager = [[LynxImageManager alloc] initWithContext:nil];
+  [manager updatePaintInfo:info];
+  [manager requestImage:source withType:LynxImageRequestSrc];
+  id managerMock = OCMPartialMock(manager);
+  OCMReject([managerMock requestImage:[OCMArg any] withType:LynxImageRequestPlaceholder]);
+  info.blur_radius = "8px";
+  [manager updateSourceURL:source
+            placeholderURL:nil
+                 paintInfo:info
+                   changes:lynx::tasm::ImagePaintInfo::kBlurRadiusChanged];
+  XCTAssertEqual(_requests.count, 2u);
+  [managerMock stopMocking];
+}
+
+- (void)testRemovingPlaceholderStillRejectsItsPendingResult {
+  [self createImage:1 background:NO];
+  LynxImageManager *manager = [_context imageManagerForID:1];
+  UIImageView *view = [UIImageView new];
+  [manager setTarget:view];
+  LynxImageLoadOptions *pending = _requests[1];
+  lynx::tasm::ImagePaintInfo info;
+  [manager updateSourceURL:nil
+            placeholderURL:nil
+                 paintInfo:info
+                   changes:lynx::tasm::ImagePaintInfo::kPlaceholderChanged];
+  XCTAssertEqual(_cancelled.count, 2u);
+  pending.completed([UIImage new], nil, pending.imageURL.url);
+  XCTAssertNil(view.image);
+  XCTAssertEqual([[manager valueForKey:@"images"] count], 0u);
+}
+
+- (void)testClearingReusedSourceRejectsPendingResult {
+  lynx::tasm::ImagePaintInfo info;
+  LynxURL *source = [self url:@"https://example.com/image.png" type:LynxImageRequestSrc];
+  LynxImageManager *manager = [[LynxImageManager alloc] initWithContext:nil];
+  [manager updatePaintInfo:info];
+  UIImageView *view = [UIImageView new];
+  [manager setTarget:view];
+  [manager requestImage:source withType:LynxImageRequestSrc];
+  LynxImageLoadOptions *pending = _requests.lastObject;
+  [manager updateSourceURL:nil placeholderURL:nil paintInfo:info changes:0];
+  pending.completed([UIImage new], nil, source.url);
+  XCTAssertNil(view.image);
+  XCTAssertEqual(_requests.count, 1u);
+}
+
 - (void)testResizeReuseExcludesEveryCustomFetcher {
   LynxUIContext *uiContext =
       [[LynxUIContext alloc] initWithScreenMetrics:[LynxScreenMetrics getDefaultLynxScreenMetrics]];

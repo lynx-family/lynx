@@ -37,19 +37,24 @@ using lynx::tasm::ImagePaintInfo;
 
 namespace {
 
-void CancelImageRequest(dispatch_block_t cancel) {
-  if (!cancel) {
+void RunOnMainThread(dispatch_block_t block) {
+  if (!block) {
     return;
   }
   if ([NSThread isMainThread]) {
-    cancel();
+    block();
   } else {
-    dispatch_async(dispatch_get_main_queue(), cancel);
+    dispatch_async(dispatch_get_main_queue(), block);
   }
 }
 
 NSString* NSStringFromBaseString(const lynx::base::String& value) {
   return [NSString stringWithUTF8String:value.c_str()];
+}
+
+bool ImageURLChanged(LynxURL* previous, LynxURL* current) {
+  return ![previous.url.absoluteString ?: @"" isEqualToString:current.url.absoluteString ?: @""] ||
+         !CGSizeEqualToSize(previous.imageSize, current.imageSize);
 }
 
 UIViewContentMode LynxImageContentModeFromMode(int32_t mode) {
@@ -122,6 +127,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   NSMutableDictionary<id, dispatch_block_t>* _cancelBlocks;
   NSUInteger _requestGenerations[LynxImageRequestPlaceholder + 1];
   NSMutableDictionary<id, UIImage*>* _images;
+  LynxURL* _imageURLs[LynxImageRequestPlaceholder + 1];
   CGSize _prefetchSize;
   BOOL _downsampling;
   BOOL _isBackground;
@@ -165,7 +171,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     return;
   }
   NSArray<dispatch_block_t>* cancelBlocks = _cancelBlocks.allValues;
-  CancelImageRequest(^{
+  RunOnMainThread(^{
     for (dispatch_block_t cancel in cancelBlocks) {
       cancel();
     }
@@ -204,6 +210,55 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   _loopCount = MAX(paintInfo.loop_count, 0);
 }
 
+- (void)updateSourceURL:(LynxURL*)sourceURL
+         placeholderURL:(LynxURL*)placeholderURL
+              paintInfo:(const ImagePaintInfo&)paintInfo
+                changes:(uint32_t)changes {
+  constexpr uint32_t requestChanges =
+      ImagePaintInfo::kBlurRadiusChanged | ImagePaintInfo::kAutoSizeChanged |
+      ImagePaintInfo::kDownsamplingChanged | ImagePaintInfo::kPrefetchWidthChanged |
+      ImagePaintInfo::kPrefetchHeightChanged | ImagePaintInfo::kCapInsetsChanged |
+      ImagePaintInfo::kCapInsetsScaleChanged | ImagePaintInfo::kSkipRedirectionChanged;
+  [self updatePaintInfo:paintInfo];
+  BOOL reloadSource = (changes & requestChanges) != 0;
+  BOOL reloadPlaceholder = reloadSource || (changes & ImagePaintInfo::kPlaceholderChanged) != 0;
+  @synchronized(self) {
+    LynxURL* previous = _imageURLs[LynxImageRequestSrc];
+    reloadSource |= ImageURLChanged(previous, sourceURL);
+    previous = _imageURLs[LynxImageRequestPlaceholder];
+    if (previous.url.absoluteString.length == 0 && placeholderURL.url.absoluteString.length == 0) {
+      // No previous placeholder to clear and no new placeholder to load.
+      reloadPlaceholder = NO;
+    } else {
+      reloadPlaceholder |= ImageURLChanged(previous, placeholderURL);
+    }
+  }
+  // Invalidate an old placeholder before a source reload can expose it.
+  if (reloadPlaceholder) {
+    [self requestImage:placeholderURL withType:LynxImageRequestPlaceholder];
+  }
+  if (reloadSource) {
+    [self requestImage:sourceURL withType:LynxImageRequestSrc];
+  }
+  dispatch_block_t refresh = ^{
+    self->_imageView.contentMode = self->_contentMode;
+    self->_imageView.tintColor = self->_tintColor;
+    if (!reloadSource &&
+        (changes & (ImagePaintInfo::kTintColorChanged | ImagePaintInfo::kAutoplayChanged |
+                    ImagePaintInfo::kLoopCountChanged))) {
+      [self->_imageView stopAnimating];
+      [self applyCachedImage];
+    }
+  };
+  RunOnMainThread(refresh);
+}
+
+- (void)applyCachedImage {
+  UIImage* image = _images[@(LynxImageRequestSrc)];
+  [self applyImage:image ?: _images[@(LynxImageRequestPlaceholder)]
+          withType:image != nil ? LynxImageRequestSrc : LynxImageRequestPlaceholder];
+}
+
 - (void)sendCustomEvent:(NSString*)name withParams:(NSDictionary*)params {
   if (_context != nil && _sign >= 0) {
     LynxDetailEvent* event = [[LynxDetailEvent alloc] initWithName:name
@@ -234,8 +289,28 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     requestGeneration = ++_requestGenerations[type];
     cancel = _cancelBlocks[@(type)];
     _cancelBlocks[@(type)] = nil;
+    _imageURLs[type] = imageURL;
   }
-  CancelImageRequest(cancel);
+  RunOnMainThread(cancel);
+  // Both blocks access this flag on main. A delayed clear must not erase a
+  // result already applied for this request.
+  __block BOOL resultApplied = NO;
+  dispatch_block_t clearPrevious = ^{
+    @synchronized(self) {
+      if (self->_requestGenerations[type] != requestGeneration) {
+        return;
+      }
+    }
+    if (resultApplied) {
+      return;
+    }
+    [self->_images removeObjectForKey:@(type)];
+    if (type == LynxImageRequestSrc || self->_images[@(LynxImageRequestSrc)] == nil) {
+      [self->_imageView stopAnimating];
+      [self applyCachedImage];
+    }
+  };
+  RunOnMainThread(clearPrevious);
   if (imageURL.url == nil || imageURL.url.absoluteString.length == 0) {
     return;
   }
@@ -324,6 +399,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
           return;
         }
       }
+      resultApplied = YES;
       self->_images[@(type)] = image;
 
       if (image != nil && type == LynxImageRequestSrc && self->_autoSize &&
@@ -382,11 +458,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
                    }];
       }
     };
-    if ([NSThread isMainThread]) {
-      applyResult();
-    } else {
-      dispatch_async(dispatch_get_main_queue(), applyResult);
-    }
+    RunOnMainThread(applyResult);
   };
 
   if (type == LynxImageRequestSrc && (_eventMask & kFlagImageLoadStartEvent) != 0) {
@@ -402,7 +474,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
       return;
     }
   }
-  CancelImageRequest(cancel);
+  RunOnMainThread(cancel);
 }
 
 - (void)applyBackgroundImage:(UIImage*)image {
@@ -430,6 +502,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   if (_imageSizeDidChange) {
     _imageSizeDidChange(image != nil ? image.size : CGSizeZero);
   }
+  [layer removeAnimationForKey:kBackgroundImageAnimationKey];
   layer.contents = contents.firstObject;
   layer.contentsScale = image != nil ? image.scale : 1;
   layer.contentsGravity = kCAGravityResize;
@@ -541,11 +614,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 - (void)setLayerTarget:(CALayer*)layer imageSizeDidChange:(void (^)(CGSize))imageSizeDidChange {
   _imageSizeDidChange = [imageSizeDidChange copy];
   _imageLayer = layer;
-  if (_images[@(LynxImageRequestSrc)] != nil) {
-    [self applyImage:_images[@(LynxImageRequestSrc)] withType:LynxImageRequestSrc];
-  } else {
-    [self applyImage:_images[@(LynxImageRequestPlaceholder)] withType:LynxImageRequestPlaceholder];
-  }
+  [self applyCachedImage];
 }
 
 - (void)setTarget:(UIImageView*)view {
@@ -601,7 +670,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     cancelBlocks = _cancelBlocks.allValues;
     [_cancelBlocks removeAllObjects];
   }
-  CancelImageRequest(^{
+  RunOnMainThread(^{
     [self->_imageLayer removeAnimationForKey:kBackgroundImageAnimationKey];
     self->_imageLayer = nil;
     self->_imageSizeDidChange = nil;

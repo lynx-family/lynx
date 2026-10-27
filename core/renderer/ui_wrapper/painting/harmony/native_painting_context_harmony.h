@@ -97,6 +97,9 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
       int id, base::String src, const ImagePaintInfo& paint_info, float width,
       float height, int32_t event_mask = 0,
       bool disable_default_resize = false) override;
+  bool UpdateImage(int32_t image_key, int id, base::String src,
+                   const ImagePaintInfo& paint_info, uint32_t changes,
+                   float width, float height, int32_t event_mask) override;
   void UpdateTextBundle(int id, intptr_t bundle) override;
   void UpdateTextEventTargetRanges(
       int id, std::vector<PlatformTextEventTargetRange> ranges) override;

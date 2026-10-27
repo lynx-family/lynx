@@ -8,6 +8,7 @@
 #include <native_drawing/drawing_canvas.h>
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -29,7 +30,8 @@ class LynxImageManager final
   explicit LynxImageManager(std::weak_ptr<LynxContext> context);
   ~LynxImageManager();
 
-  void UpdatePaintInfo(const ImagePaintInfo& paint_info);
+  void UpdatePaintInfo(const ImagePaintInfo& paint_info,
+                       uint32_t changes = ImagePaintInfo::kAllChanged);
   void RequestImage(int32_t sign, std::string src, float width, float height,
                     int32_t event_mask);
   void SetTarget(const std::weak_ptr<UIBase>& target);
@@ -42,6 +44,14 @@ class LynxImageManager final
   void onAnimationStop() override;
 
  private:
+  enum DirtyFlag : uint8_t {
+    kRequestDirty = 1 << 0,
+    kPaintDirty = 1 << 1,
+    kAutoplayDirty = 1 << 2,
+    kLoopCountDirty = 1 << 3,
+  };
+  void RunForRequest(uint64_t generation,
+                     std::function<void(LynxImageManager&)> callback);
   void ApplyPaintInfo();
   void ApplyImage();
   void OnImageLoadSuccess(float image_width, float image_height,
@@ -60,6 +70,12 @@ class LynxImageManager final
   float width_{0.f};
   float height_{0.f};
   bool has_bounds_{false};
+  uint64_t request_generation_{0};
+  uint8_t dirty_flags_{kRequestDirty | kPaintDirty | kAutoplayDirty |
+                       kLoopCountDirty};
+  std::string source_;
+  float view_width_{0.f};
+  float view_height_{0.f};
 };
 
 }  // namespace harmony

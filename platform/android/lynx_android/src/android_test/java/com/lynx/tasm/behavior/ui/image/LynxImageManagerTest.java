@@ -25,6 +25,8 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxCustomEvent;
+import com.lynx.tasm.image.ImageContent;
+import com.lynx.tasm.image.LynxScaleTypeDrawable;
 import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
@@ -126,6 +128,44 @@ public class LynxImageManagerTest {
     assertEquals(42, events.get(0).getTag());
     assertEquals("https://example.com/source.png", events.get(0).eventParams().get("url"));
     assertEquals("load", events.get(1).getName());
+  }
+
+  @Test
+  public void clearingTintColorRemovesPreviousFilter() throws Exception {
+    LynxImageManager manager = new LynxImageManager(mContext);
+    Field field = LynxImageManager.class.getDeclaredField("mColorFilter");
+    field.setAccessible(true);
+    manager.setTintColor("#ff0000");
+    assertNotNull(field.get(manager));
+    manager.setTintColor(null);
+    assertNull(field.get(manager));
+  }
+
+  @Test
+  @UiThreadTest
+  public void changingModePreservesCapInsets() throws Exception {
+    LynxImageManager manager = new LynxImageManager(mContext);
+    LynxScaleTypeDrawable drawable =
+        new LynxScaleTypeDrawable(mock(ImageContent.class), ScalingUtils.ScaleType.FIT_XY);
+    Field drawableField = LynxImageManager.class.getDeclaredField("mImageDrawable");
+    drawableField.setAccessible(true);
+    drawableField.set(manager, drawable);
+
+    manager.setCapInsets("10px 20px 30px 40px");
+    manager.setCapInsetsScale("2");
+    manager.updateNodeProps();
+
+    manager.setMode("aspectFit");
+    manager.updateNodeProps();
+
+    assertSame(drawable, drawableField.get(manager));
+    assertSame(ScalingUtils.ScaleType.FIT_CENTER, drawable.getScaleType());
+    Field capInsetsField = LynxScaleTypeDrawable.class.getDeclaredField("mCapInsets");
+    capInsetsField.setAccessible(true);
+    assertEquals("10px 20px 30px 40px", capInsetsField.get(drawable));
+    Field capInsetsScaleField = LynxScaleTypeDrawable.class.getDeclaredField("mCapInsetsScale");
+    capInsetsScaleField.setAccessible(true);
+    assertEquals("2", capInsetsScaleField.get(drawable));
   }
 
   private BackgroundDrawable.RoundRectPath getRoundRectPath(LynxImageManager manager) {

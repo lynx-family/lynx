@@ -140,6 +140,44 @@ public class PlatformRendererContextTest {
   }
 
   @Test
+  public void testUpdateImageReusesManagerForDrawingChanges() {
+    LynxImageManager manager = mock(LynxImageManager.class);
+    when(mockBodyView.peekImageAccordingToNodeIndex(11)).thenReturn(manager);
+    ReadableMapBuffer paintInfo = mock(ReadableMapBuffer.class);
+    when(paintInfo.getInt(1)).thenReturn(IMAGE_MODE_ASPECT_FILL);
+
+    assertTrue(rendererContext.updateImage(11, 7, "image.png", paintInfo, 1 << 0, 100, 60, 0));
+
+    verify(manager).setMode(IMAGE_MODE_ASPECT_FILL);
+    verify(manager).setSrc("image.png");
+    verify(manager).onLayoutUpdated(100, 60, 0, 0, 0, 0);
+    verify(manager).onNodeReady();
+    verify(manager, never()).markSrcDirty();
+    verify(manager, never()).setAutoPlay(anyBoolean());
+    verify(mockBodyView, never()).registerImageAccordingToNodeIndex(anyInt(), any());
+  }
+
+  @Test
+  public void testUpdateImageReloadsForLoopCountWithoutChangingAutoplay() {
+    LynxImageManager manager = mock(LynxImageManager.class);
+    when(mockBodyView.peekImageAccordingToNodeIndex(11)).thenReturn(manager);
+    ReadableMapBuffer paintInfo = mock(ReadableMapBuffer.class);
+    when(paintInfo.getInt(10, 0)).thenReturn(3);
+
+    assertTrue(rendererContext.updateImage(11, 7, "image.png", paintInfo, 1 << 13, 100, 60, 0));
+
+    verify(manager).setLoopCount(3);
+    verify(manager).markSrcDirty();
+    verify(manager).onNodeReady();
+    verify(manager, never()).setAutoPlay(anyBoolean());
+  }
+
+  @Test
+  public void testUpdateMissingImageFallsBackToCreation() {
+    assertFalse(rendererContext.updateImage(11, 7, "image.png", null, 0, 100, 60, 0));
+  }
+
+  @Test
   public void testCreateImageInitializesImageManagerWithMode() throws Exception {
     ReadableMapBuffer paintInfo = mock(ReadableMapBuffer.class);
     when(paintInfo.getInt(1)).thenReturn(IMAGE_MODE_ASPECT_FILL);

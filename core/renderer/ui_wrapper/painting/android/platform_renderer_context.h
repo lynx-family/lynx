@@ -97,6 +97,10 @@ class PlatformRendererContext {
       float width, float height, int32_t event_mask,
       bool disable_default_resize,
       std::weak_ptr<NativePaintingCtxPlatformRef> platform_ref);
+  bool UpdateImage(int32_t image_key, int32_t id, base::String src,
+                   const ImagePaintInfo& paint_info, uint32_t changes,
+                   float width, float height, int32_t event_mask);
+
   void DestroyImage(int32_t id);
 
   void UpdateTextBundle(int32_t id, intptr_t text_bundle);
