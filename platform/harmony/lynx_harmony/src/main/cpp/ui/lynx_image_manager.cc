@@ -100,7 +100,29 @@ LynxImageManager::~LynxImageManager() {
   }
 }
 
-void LynxImageManager::UpdatePaintInfo(const ImagePaintInfo& paint_info) {
+void LynxImageManager::UpdatePaintInfo(const ImagePaintInfo& paint_info,
+                                       uint32_t changes) {
+  constexpr uint32_t paint_changes = ImagePaintInfo::kModeChanged |
+                                     ImagePaintInfo::kBlurRadiusChanged |
+                                     ImagePaintInfo::kTintColorChanged;
+  constexpr uint32_t playback_changes =
+      ImagePaintInfo::kAutoplayChanged | ImagePaintInfo::kLoopCountChanged;
+  if (changes & paint_changes) {
+    dirty_flags_ |= kPaintDirty;
+  }
+  if (changes & ImagePaintInfo::kAutoplayChanged) {
+    dirty_flags_ |= kAutoplayDirty;
+  }
+  if (changes & ImagePaintInfo::kLoopCountChanged) {
+    dirty_flags_ |= kLoopCountDirty;
+  }
+  if (changes &
+      (ImagePaintInfo::kAllChanged & ~(paint_changes | playback_changes))) {
+    dirty_flags_ |= kRequestDirty;
+  }
+  if (changes & ImagePaintInfo::kModeChanged) {
+    has_bounds_ = false;
+  }
   paint_info_ = paint_info;
 }
 
@@ -108,16 +130,57 @@ void LynxImageManager::RequestImage(int32_t sign, std::string src, float width,
                                     float height, int32_t event_mask) {
   sign_ = sign;
   event_mask_ = event_mask;
+
+  if (source_ != src || ((!paint_info_.cap_insets.empty() ||
+                          paint_info_.auto_size || paint_info_.downsampling) &&
+                         (view_width_ != width || view_height_ != height))) {
+    dirty_flags_ |= kRequestDirty;
+  }
+  source_ = src;
+  view_width_ = width;
+  view_height_ = height;
+  const uint8_t dirty = dirty_flags_;
+  dirty_flags_ = 0;
+  if (drawable_) {
+    if (dirty & kPaintDirty) {
+      ApplyPaintInfo();
+    }
+    if (dirty & kLoopCountDirty) {
+      drawable_->UpdateLoopCount(std::max(paint_info_.loop_count, 0));
+    }
+    if ((dirty & kAutoplayDirty) && !(dirty & kRequestDirty)) {
+      if (paint_info_.autoplay) {
+        drawable_->StartAnimation();
+      } else {
+        drawable_->StopAnimation();
+      }
+    }
+    if (dirty & (kPaintDirty | kAutoplayDirty | kLoopCountDirty)) {
+      drawable_->NotifyInvalidationObserver();
+    }
+  }
+  if (!(dirty & kRequestDirty)) {
+    return;
+  }
+  const uint64_t generation = ++request_generation_;
+  image_.reset();
+  if (drawable_) {
+    drawable_->StopAnimation();
+    drawable_->ResetContent();
+    drawable_->NotifyInvalidationObserver();
+  }
   if (src.empty()) {
     return;
   }
   auto* image_service = UIOwner::image_service;
   if (image_service == nullptr) {
+    dirty_flags_ |= kRequestDirty;
     LOGE("LynxImageManager image service is null");
     return;
   }
 
   ImageRequestInfo request{.url = std::move(src)};
+
   std::shared_ptr<ImageProcessor> cap_insets_processor;
   if (!paint_info_.cap_insets.empty() && width > 0.f && height > 0.f) {
     if (auto context = context_.lock()) {
@@ -135,38 +198,63 @@ void LynxImageManager::RequestImage(int32_t sign, std::string src, float width,
   }
   image_service->DecodeImage(
       request,
-      [weak_self = weak_from_this(),
-       cap_insets_processor](const std::shared_ptr<ImageData>& image) {
+      [weak_self = weak_from_this(), cap_insets_processor,
+       generation](const std::shared_ptr<ImageData>& image) {
         auto self = weak_self.lock();
         if (self == nullptr) {
           return;
         }
-        self->image_ = image;
-        // Match LynxImageHelper: apply image effects only to static images.
-        if (image && image->FrameCount() == 1 && image->Pixelmap() &&
-            cap_insets_processor) {
-          if (auto* processed =
-                  cap_insets_processor->Process(image->Pixelmap())) {
-            self->image_ = std::make_shared<CapInsetsImageData>(processed);
+        self->RunForRequest(generation, [image, cap_insets_processor](
+                                            LynxImageManager& manager) {
+          manager.image_ = image;
+
+          // Cap-insets processing depends on the size of this request.
+          if (image && image->FrameCount() == 1 && image->Pixelmap() &&
+              cap_insets_processor) {
+            if (auto* processed =
+                    cap_insets_processor->Process(image->Pixelmap())) {
+              manager.image_ = std::make_shared<CapInsetsImageData>(processed);
+            }
           }
-        }
-        self->ApplyImage();
-        if (self->drawable_) {
-          self->drawable_->NotifyInvalidationObserver();
+          manager.ApplyImage();
+          if (manager.drawable_) {
+            manager.drawable_->NotifyInvalidationObserver();
+          }
+        });
+      },
+      [weak_self = weak_from_this(), generation](float image_width,
+                                                 float image_height) {
+        if (auto self = weak_self.lock()) {
+          self->RunForRequest(generation, [=](LynxImageManager& manager) {
+            manager.OnImageLoadSuccess(image_width, image_height,
+                                       manager.view_width_,
+                                       manager.view_height_);
+          });
         }
       },
-      [weak_self = weak_from_this(), width, height](float image_width,
-                                                    float image_height) {
+      [weak_self = weak_from_this(), generation](
+          int error_code, const std::string& error_message) {
         if (auto self = weak_self.lock()) {
-          self->OnImageLoadSuccess(image_width, image_height, width, height);
-        }
-      },
-      [weak_self = weak_from_this()](int error_code,
-                                     const std::string& error_message) {
-        if (auto self = weak_self.lock()) {
-          self->OnImageLoadFailure(error_code, error_message);
+          self->RunForRequest(generation, [error_code, error_message](
+                                              LynxImageManager& manager) {
+            manager.dirty_flags_ |= kRequestDirty;
+            manager.OnImageLoadFailure(error_code, error_message);
+          });
         }
       });
+}
+
+void LynxImageManager::RunForRequest(
+    uint64_t generation, std::function<void(LynxImageManager&)> callback) {
+  if (auto context = context_.lock()) {
+    context->RunOnUIThread([weak_self = weak_from_this(), generation,
+                            callback = std::move(callback)]() {
+      if (auto self = weak_self.lock();
+          self && self->request_generation_ == generation) {
+        callback(*self);
+      }
+    });
+  }
 }
 
 void LynxImageManager::SetTarget(const std::weak_ptr<UIBase>& target) {
@@ -258,6 +346,8 @@ void LynxImageManager::ApplyPaintInfo() {
   }
   drawable_->UpdateMode(ToImageDrawableMode(paint_info_.mode));
   drawable_->UpdateLoopCount(std::max(paint_info_.loop_count, 0));
+  drawable_->UpdateBlurRadius(0.f);
+  drawable_->ClearTintColor();
   if (!paint_info_.blur_radius.empty()) {
     if (auto context = context_.lock()) {
       const auto& blur_radius = paint_info_.blur_radius.str();

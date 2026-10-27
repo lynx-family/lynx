@@ -26,6 +26,7 @@
 #import <Foundation/Foundation.h>
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxUIOwner+Private.h>
@@ -410,6 +411,23 @@ fml::RefPtr<PaintImage> NativePaintingCtxDarwin::CreateImage(int id, base::Strin
                                            eventMask:event_mask
                                             imageKey:image_key];
   return fml::MakeRefCounted<PaintImageDarwin>(image_key, context_->GetRendererContext());
+}
+
+bool NativePaintingCtxDarwin::UpdateImage(int32_t image_key, int id, base::String src,
+                                          const ImagePaintInfo &paint_info, uint32_t changes,
+                                          float width, float height, int32_t event_mask) {
+  LynxImageManager *manager = [context_->GetRendererContext() imageManagerForID:image_key];
+  if (manager == nil) {
+    return false;
+  }
+  CGSize size = CGSizeMake(width, height);
+  [manager setSign:id];
+  [manager setEventMask:event_mask];
+  [manager updateSourceURL:CreateImageURL(src, size, LynxImageRequestSrc)
+            placeholderURL:CreateImageURL(paint_info.placeholder, size, LynxImageRequestPlaceholder)
+                 paintInfo:paint_info
+                   changes:changes];
+  return true;
 }
 
 template <typename F>

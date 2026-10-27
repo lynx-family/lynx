@@ -88,6 +88,7 @@ bool ImageFragmentBehavior::UpdateImageIfNeeded(
   const auto* image_element = static_cast<ImageElement*>(fragment_->element());
   const auto& current_src = image_element->src();
   const auto& current_paint_info = image_element->paint_info();
+  const uint32_t changes = current_paint_info.Diff(image_paint_info_);
   const float current_width = layout_info.GetContentBoxWidth();
   const float current_height = layout_info.GetContentBoxHeight();
   const double pixels_per_unit = image_element->element_manager()
@@ -119,7 +120,7 @@ bool ImageFragmentBehavior::UpdateImageIfNeeded(
         image_paint_info_.placeholder.empty()) {
       return false;
     }
-    if (image_paint_info_ == current_paint_info) {
+    if (changes == 0) {
       if (same_width && same_height) {
         return false;
       }
@@ -139,11 +140,17 @@ bool ImageFragmentBehavior::UpdateImageIfNeeded(
   if (event_mask_ < 0) {
     event_mask_ = ComputeEventMask();
   }
-  auto paint_image = painting_context_->CreateImage(
-      fragment_->id(), current_src, current_paint_info, current_width,
-      current_height, event_mask_);
-  if (!paint_image) {
-    return false;
+  auto paint_image = paint_image_;
+  if (!paint_image || !painting_context_->UpdateImage(
+                          paint_image->image_key_, fragment_->id(), current_src,
+                          current_paint_info, changes, current_width,
+                          current_height, event_mask_)) {
+    paint_image = painting_context_->CreateImage(
+        fragment_->id(), current_src, current_paint_info, current_width,
+        current_height, event_mask_);
+    if (!paint_image) {
+      return false;
+    }
   }
   image_url_ = current_src;
   image_paint_info_ = current_paint_info;

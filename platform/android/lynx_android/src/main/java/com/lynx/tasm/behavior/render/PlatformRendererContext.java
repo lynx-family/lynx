@@ -849,6 +849,80 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return null;
   }
 
+  // Keep these bits in sync with ImagePaintInfo::Change.
+  private static final int IMAGE_MODE_CHANGED = 1 << 0;
+  private static final int IMAGE_BLUR_CHANGED = 1 << 1;
+  private static final int IMAGE_AUTO_SIZE_CHANGED = 1 << 2;
+  private static final int IMAGE_PLACEHOLDER_CHANGED = 1 << 7;
+  private static final int IMAGE_TINT_CHANGED = 1 << 8;
+  private static final int IMAGE_CAP_INSETS_CHANGED = 1 << 9;
+  private static final int IMAGE_CAP_INSETS_SCALE_CHANGED = 1 << 10;
+  private static final int IMAGE_SKIP_REDIRECTION_CHANGED = 1 << 11;
+  private static final int IMAGE_AUTOPLAY_CHANGED = 1 << 12;
+  private static final int IMAGE_LOOP_COUNT_CHANGED = 1 << 13;
+
+  @CalledByNative
+  boolean updateImage(int imageKey, int sign, String src, ReadableMapBuffer paintInfo, int changes,
+      int width, int height, int eventMask) {
+    LynxImageManager imageManager = getImage(imageKey);
+    if (imageManager == null) {
+      return false;
+    }
+    imageManager.setFallbackSign(sign);
+    imageManager.setEventMask(eventMask);
+    imageManager.setSrc(src);
+    applyImagePaintInfo(imageManager, paintInfo, changes);
+    // These options are consumed when building a request, not by the existing drawable.
+    if ((changes
+            & (IMAGE_AUTO_SIZE_CHANGED | IMAGE_SKIP_REDIRECTION_CHANGED | IMAGE_AUTOPLAY_CHANGED
+                | IMAGE_LOOP_COUNT_CHANGED))
+        != 0) {
+      imageManager.markSrcDirty();
+    }
+    imageManager.onLayoutUpdated(width, height, 0, 0, 0, 0);
+    imageManager.onNodeReady();
+    return true;
+  }
+
+  private void applyImagePaintInfo(
+      LynxImageManager imageManager, ReadableMapBuffer paintInfo, int changes) {
+    if (paintInfo == null) {
+      return;
+    }
+    if ((changes & IMAGE_MODE_CHANGED) != 0) {
+      imageManager.setMode(paintInfo.getInt(IMAGE_PAINT_INFO_MODE));
+    }
+    if ((changes & IMAGE_BLUR_CHANGED) != 0) {
+      imageManager.setBlurRadius(paintInfo.getString(IMAGE_PAINT_INFO_BLUR_RADIUS, null));
+    }
+    if ((changes & IMAGE_AUTO_SIZE_CHANGED) != 0) {
+      imageManager.setAutoSize(paintInfo.getBoolean(IMAGE_PAINT_INFO_AUTO_SIZE, false));
+    }
+    if ((changes & IMAGE_PLACEHOLDER_CHANGED) != 0) {
+      imageManager.setPlaceholder(paintInfo.getString(IMAGE_PAINT_INFO_PLACEHOLDER, null));
+    }
+    if ((changes & IMAGE_TINT_CHANGED) != 0) {
+      imageManager.setTintColor(paintInfo.getString(IMAGE_PAINT_INFO_TINT_COLOR, null));
+    }
+    if ((changes & IMAGE_CAP_INSETS_CHANGED) != 0) {
+      imageManager.setCapInsets(paintInfo.getString(IMAGE_PAINT_INFO_CAP_INSETS, null));
+    }
+    if ((changes & IMAGE_CAP_INSETS_SCALE_CHANGED) != 0) {
+      imageManager.setCapInsetsScale(
+          Double.toString(paintInfo.getDouble(IMAGE_PAINT_INFO_CAP_INSETS_SCALE, 1.0)));
+    }
+    if ((changes & IMAGE_SKIP_REDIRECTION_CHANGED) != 0) {
+      imageManager.setSkipRedirection(
+          paintInfo.getBoolean(IMAGE_PAINT_INFO_SKIP_REDIRECTION, false));
+    }
+    if ((changes & IMAGE_AUTOPLAY_CHANGED) != 0) {
+      imageManager.setAutoPlay(paintInfo.getBoolean(IMAGE_PAINT_INFO_AUTOPLAY, true));
+    }
+    if ((changes & IMAGE_LOOP_COUNT_CHANGED) != 0) {
+      imageManager.setLoopCount(paintInfo.getInt(IMAGE_PAINT_INFO_LOOP_COUNT, 0));
+    }
+  }
+
   @CalledByNative
   void createImage(int sign, String src, ReadableMapBuffer paintInfo, int width, int height,
       int eventMask, int imageKey, boolean disableDefaultResize) {
@@ -858,20 +932,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     imageManager.setEventMask(eventMask);
     imageManager.setSrc(src);
     imageManager.setDisableDefaultResize(disableDefaultResize);
-    if (paintInfo != null) {
-      imageManager.setMode(paintInfo.getInt(IMAGE_PAINT_INFO_MODE));
-      imageManager.setBlurRadius(paintInfo.getString(IMAGE_PAINT_INFO_BLUR_RADIUS, null));
-      imageManager.setAutoSize(paintInfo.getBoolean(IMAGE_PAINT_INFO_AUTO_SIZE, false));
-      imageManager.setPlaceholder(paintInfo.getString(IMAGE_PAINT_INFO_PLACEHOLDER, null));
-      imageManager.setTintColor(paintInfo.getString(IMAGE_PAINT_INFO_TINT_COLOR, null));
-      imageManager.setCapInsets(paintInfo.getString(IMAGE_PAINT_INFO_CAP_INSETS, null));
-      imageManager.setCapInsetsScale(
-          Double.toString(paintInfo.getDouble(IMAGE_PAINT_INFO_CAP_INSETS_SCALE, 1.0)));
-      imageManager.setSkipRedirection(
-          paintInfo.getBoolean(IMAGE_PAINT_INFO_SKIP_REDIRECTION, false));
-      imageManager.setAutoPlay(paintInfo.getBoolean(IMAGE_PAINT_INFO_AUTOPLAY, true));
-      imageManager.setLoopCount(paintInfo.getInt(IMAGE_PAINT_INFO_LOOP_COUNT, 0));
-    }
+    applyImagePaintInfo(imageManager, paintInfo, -1);
     imageManager.onLayoutUpdated(width, height, 0, 0, 0, 0);
     UIBody.UIBodyView rootView = mRootView.get();
     if (rootView != null) {

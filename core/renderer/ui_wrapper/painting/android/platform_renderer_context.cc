@@ -227,6 +227,25 @@ fml::RefPtr<PaintImage> PlatformRendererContext::CreateImage(
                                                 std::move(platform_ref));
 }
 
+bool PlatformRendererContext::UpdateImage(int32_t image_key, int32_t id,
+                                          base::String src,
+                                          const ImagePaintInfo& paint_info,
+                                          uint32_t changes, float width,
+                                          float height, int32_t event_mask) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return false;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto j_src =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, src.c_str());
+  auto j_paint_info = CreateImagePaintInfoMapBuffer(paint_info);
+  return Java_PlatformRendererContext_updateImage(
+      env, local_ref.Get(), image_key, id, j_src.Get(), j_paint_info.Get(),
+      static_cast<int32_t>(changes), static_cast<int>(width),
+      static_cast<int>(height), event_mask);
+}
+
 void PlatformRendererContext::DestroyImage(int32_t id) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {

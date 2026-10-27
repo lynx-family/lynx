@@ -39,6 +39,7 @@ void LynxRendererContext::CreateImageManager(int32_t id, const std::string& src,
     return;
   }
   auto image_manager = std::make_shared<LynxImageManager>(context);
+
   image_manager->UpdatePaintInfo(paint_info);
   image_managers_[image_key] = image_manager;
   image_manager->RequestImage(id, src, width, height, event_mask);

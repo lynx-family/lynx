@@ -395,6 +395,19 @@ class TestNativePaintingContext : public NativePaintingContext {
     return fml::MakeRefCounted<TestResizablePaintImage>(
         image_key, &can_reuse_image_on_resize_);
   }
+  bool UpdateImage(int32_t image_key, int id, base::String src,
+                   const ImagePaintInfo& paint_info, uint32_t changes,
+                   float width, float height, int32_t event_mask) override {
+    if (!can_update_image_) {
+      return false;
+    }
+    updated_image_keys_.push_back(image_key);
+    updated_image_changes_.push_back(changes);
+    updated_image_src_ = src;
+    updated_image_info_ = paint_info;
+    updated_image_size_ = {width, height};
+    return true;
+  }
   void UpdateTextBundle(int id, intptr_t bundle) override {}
   void DestroyTextBundle(int id) override {}
   void EnqueueReconstructEventTargetTreeRecursively() override {
@@ -416,6 +429,12 @@ class TestNativePaintingContext : public NativePaintingContext {
   std::vector<CreatedImage> created_images_;
   bool fail_image_creation_{false};
   bool can_reuse_image_on_resize_{false};
+  bool can_update_image_{false};
+  std::vector<int32_t> updated_image_keys_;
+  std::vector<uint32_t> updated_image_changes_;
+  base::String updated_image_src_;
+  ImagePaintInfo updated_image_info_;
+  std::array<float, 2> updated_image_size_{};
 
  private:
   TestNativePaintingCtxPlatformRef* ref_ = nullptr;
@@ -3854,6 +3873,107 @@ TEST_F(FragmentTest, ImageReloadIgnoresOnePhysicalPixelJitter) {
     update(100.f + 1.5f / scale, 60.f + 1.5f / scale);
     EXPECT_EQ(context.created_images_.size(), 5u);
   }
+}
+
+TEST_F(FragmentTest, ImagePaintInfoDiffReportsChangedFields) {
+  const ImagePaintInfo original;
+  ImagePaintInfo current;
+  EXPECT_EQ(current.Diff(original), 0u);
+  current.request_priority = base::String("high");
+  EXPECT_EQ(current.Diff(original), 0u);
+  uint32_t expected = 0;
+  current.mode = ImageFitMode::kAspectFit;
+  expected |= ImagePaintInfo::kModeChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.blur_radius = base::String("2px");
+  expected |= ImagePaintInfo::kBlurRadiusChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.auto_size = true;
+  expected |= ImagePaintInfo::kAutoSizeChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.downsampling = true;
+  expected |= ImagePaintInfo::kDownsamplingChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.prefetch_width = base::String("20px");
+  expected |= ImagePaintInfo::kPrefetchWidthChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.prefetch_height = base::String("20px");
+  expected |= ImagePaintInfo::kPrefetchHeightChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.placeholder = base::String("placeholder");
+  expected |= ImagePaintInfo::kPlaceholderChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.tint_color = base::String("red");
+  expected |= ImagePaintInfo::kTintColorChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.cap_insets = base::String("1px 1px 1px 1px");
+  expected |= ImagePaintInfo::kCapInsetsChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.cap_insets_scale = 2.f;
+  expected |= ImagePaintInfo::kCapInsetsScaleChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.skip_redirection = true;
+  expected |= ImagePaintInfo::kSkipRedirectionChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.autoplay = false;
+  expected |= ImagePaintInfo::kAutoplayChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  current.loop_count = 2;
+  expected |= ImagePaintInfo::kLoopCountChanged;
+  EXPECT_EQ(current.Diff(original), expected);
+  EXPECT_EQ(expected, ImagePaintInfo::kAllChanged);
+  EXPECT_EQ(original.Diff(current), expected);
+  EXPECT_EQ(current.Diff(current), 0u);
+}
+
+TEST_F(FragmentTest, ImageUpdatesReuseManagerWhenPlatformAccepts) {
+  auto element = manager->CreateFiberImage("image");
+  element->SetAttributeInternal("src", lepus::Value("image-src://first"));
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+  TestNativePaintingContext context;
+  context.can_update_image_ = true;
+  fragment.behavior_->painting_context_ = &context;
+  auto draw = [&](float width) {
+    starlight::LayoutResultForRendering layout;
+    layout.size_ = FloatSize(width, 80.f);
+    fragment.UpdateLayout(layout);
+    DisplayListBuilder builder;
+    fragment.OnDraw(builder);
+    auto list = builder.Build();
+    EXPECT_EQ(context.created_images_.size(), 1u);
+    ASSERT_EQ(list.Images().size(), 1u);
+    EXPECT_EQ(list.Images()[0]->image_key_,
+              context.created_images_[0].image_key);
+  };
+  draw(100.f);
+  EXPECT_TRUE(context.updated_image_keys_.empty());
+  element->paint_info_.request_priority = base::String("high");
+  draw(100.f);
+  EXPECT_TRUE(context.updated_image_keys_.empty());
+  draw(200.f);
+  ASSERT_EQ(context.updated_image_keys_.size(), 1u);
+  EXPECT_FLOAT_EQ(context.updated_image_size_[0], 200.f);
+  EXPECT_EQ(context.updated_image_info_.request_priority.str(), "high");
+  EXPECT_EQ(context.updated_image_changes_.back(), 0u);
+  element->paint_info_.mode = ImageFitMode::kAspectFit;
+  draw(200.f);
+  EXPECT_EQ(context.updated_image_info_.mode, ImageFitMode::kAspectFit);
+  EXPECT_EQ(context.updated_image_changes_.back(),
+            ImagePaintInfo::kModeChanged);
+  element->SetAttributeInternal("src", lepus::Value("image-src://second"));
+  draw(200.f);
+  EXPECT_EQ(context.updated_image_src_.str(), "image-src://second");
+  EXPECT_EQ(context.updated_image_changes_.back(), 0u);
+  element->SetAttributeInternal("src", lepus::Value(""));
+  draw(200.f);
+  EXPECT_TRUE(context.updated_image_src_.empty());
+  ASSERT_EQ(context.updated_image_keys_.size(), 4u);
+  for (auto key : context.updated_image_keys_) {
+    EXPECT_EQ(key, context.created_images_[0].image_key);
+  }
+  draw(200.f);
+  EXPECT_EQ(context.updated_image_keys_.size(), 4u);
 }
 
 TEST_F(FragmentTest, ImageResizeReusesOnlyCompatibleRequests) {

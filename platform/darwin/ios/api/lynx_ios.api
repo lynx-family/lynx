@@ -2380,6 +2380,7 @@ public class LynxImageManager : NSObject {
   public void LynxImageManager::setSign:(NSInteger sign);
   public void LynxImageManager::setEventMask:(NSInteger eventMask);
   public void LynxImageManager::updatePaintInfo:(const lynx::tasm::ImagePaintInfo &paintInfo);
+  public void LynxImageManager::updateSourceURL:placeholderURL:paintInfo:changes:(LynxURL *_Nullable sourceURL,[placeholderURL] LynxURL *_Nullable placeholderURL,[paintInfo] const lynx::tasm::ImagePaintInfo &paintInfo,[changes] uint32_t changes);
   public void LynxImageManager::reset();
 }
 

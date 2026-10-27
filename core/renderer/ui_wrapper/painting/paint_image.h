@@ -19,6 +19,24 @@ enum class ImageFitMode : int32_t {
 };
 
 struct ImagePaintInfo {
+  enum Change : uint32_t {
+    kModeChanged = 1u << 0,
+    kBlurRadiusChanged = 1u << 1,
+    kAutoSizeChanged = 1u << 2,
+    kDownsamplingChanged = 1u << 3,
+    // Bit 4 is reserved to keep the remaining flags aligned with Android.
+    kPrefetchWidthChanged = 1u << 5,
+    kPrefetchHeightChanged = 1u << 6,
+    kPlaceholderChanged = 1u << 7,
+    kTintColorChanged = 1u << 8,
+    kCapInsetsChanged = 1u << 9,
+    kCapInsetsScaleChanged = 1u << 10,
+    kSkipRedirectionChanged = 1u << 11,
+    kAutoplayChanged = 1u << 12,
+    kLoopCountChanged = 1u << 13,
+    kAllChanged = ((1u << 14) - 1) & ~(1u << 4),
+  };
+
   ImageFitMode mode{ImageFitMode::kScaleToFill};
   base::String blur_radius;
   bool auto_size{false};
@@ -34,6 +52,29 @@ struct ImagePaintInfo {
   bool skip_redirection{false};
   bool autoplay{true};
   int32_t loop_count{0};
+
+  // Compare snapshots; platforms decide which changes require a new request.
+  // Priority only affects future requests and does not trigger an update.
+  uint32_t Diff(const ImagePaintInfo& old) const {
+    uint32_t changes = 0;
+    if (mode != old.mode) changes |= kModeChanged;
+    if (blur_radius != old.blur_radius) changes |= kBlurRadiusChanged;
+    if (auto_size != old.auto_size) changes |= kAutoSizeChanged;
+    if (downsampling != old.downsampling) changes |= kDownsamplingChanged;
+    if (prefetch_width != old.prefetch_width) changes |= kPrefetchWidthChanged;
+    if (prefetch_height != old.prefetch_height)
+      changes |= kPrefetchHeightChanged;
+    if (placeholder != old.placeholder) changes |= kPlaceholderChanged;
+    if (tint_color != old.tint_color) changes |= kTintColorChanged;
+    if (cap_insets != old.cap_insets) changes |= kCapInsetsChanged;
+    if (cap_insets_scale != old.cap_insets_scale)
+      changes |= kCapInsetsScaleChanged;
+    if (skip_redirection != old.skip_redirection)
+      changes |= kSkipRedirectionChanged;
+    if (autoplay != old.autoplay) changes |= kAutoplayChanged;
+    if (loop_count != old.loop_count) changes |= kLoopCountChanged;
+    return changes;
+  }
 
   bool operator==(const ImagePaintInfo& other) const {
     // Priority applies to future requests; changing it alone must not reload.

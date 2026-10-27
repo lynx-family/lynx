@@ -300,6 +300,19 @@ void ImageDrawable::DestroyMatrix() {
 
 void ImageDrawable::UpdateImageRendering(starlight::ImageRenderingType) {}
 
+void ImageDrawable::ClearTintColor() {
+  if (filter_) {
+    OH_Drawing_FilterSetColorFilter(filter_, nullptr);
+    if (brush_) {
+      OH_Drawing_BrushSetFilter(brush_, filter_);
+    }
+  }
+  if (color_filter_) {
+    OH_Drawing_ColorFilterDestroy(color_filter_);
+    color_filter_ = nullptr;
+  }
+}
+
 void ImageDrawable::UpdateTintColor(uint32_t tint_color) {
   if (color_filter_) {
     OH_Drawing_ColorFilterDestroy(color_filter_);
