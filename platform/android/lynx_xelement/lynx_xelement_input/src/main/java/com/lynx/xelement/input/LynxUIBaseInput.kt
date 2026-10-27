@@ -903,9 +903,11 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     }
   
     private fun doBlur(callback: Callback?) {
-      mView.clearFocus()
-      if (!mUseCustomKeyboard) {
-        hideSoftInput()
+      if (mView.isFocused) {
+        mView.clearFocus()
+        if (!mUseCustomKeyboard) {
+          hideSoftInput()
+        }
       }
       callback?.invoke(LynxUIMethodConstants.SUCCESS)
     }
