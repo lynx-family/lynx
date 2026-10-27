@@ -153,7 +153,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     LynxContext lynxContext = (LynxContext) context;
     LynxAnimaX.inst().init();
     mAbility = new LynxAbility(this, lynxContext);
-    return new AnimaXContainerView(context);
+    return new LynxAnimaXContainerView(context);
   }
 
   @Override
