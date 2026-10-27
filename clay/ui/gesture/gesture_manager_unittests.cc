@@ -524,6 +524,51 @@ enum DragStatus : uint8_t {
   kHasDragCancel = 1 << 4,
 };
 
+TEST_F(GestureManagerTest, ScrollInterceptionCancelsDragAndAllowsResume) {
+  auto target = std::make_unique<MultiRecognizerHitTestTarget>();
+  auto drag = CreateDragRecognizerByDirection(ScrollDirection::kVertical,
+                                              gesture_manager());
+  int starts = 0;
+  int cancels = 0;
+  int ends = 0;
+  std::vector<float> updates;
+  drag->SetDragStartCallback([&](const FloatPoint&) { ++starts; });
+  drag->SetDragCancelCallback([&]() { ++cancels; });
+  drag->SetDragEndCallback([&](const Velocity&) { ++ends; });
+  drag->SetDragUpdateCallback([&](const FloatPoint&, const FloatSize& delta) {
+    updates.push_back(delta.height());
+  });
+  target->recognizers_.push_back(std::move(drag));
+  AddHitTestTarget(target.get());
+
+  auto pointers = CreatePointer(ID(), PointerEvent::EventType::kDownEvent);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+  ASSERT_EQ(starts, 1);
+
+  auto& pointer = pointers.front();
+  target->SetInterceptGesture(true);
+  for (int i = 0; i < 2; ++i) {
+    MovePointer(pointer, {0.f, 20.f}, kFastMoveTime);
+    gesture_manager()->HandlePointerEvents(root(), pointers);
+  }
+  EXPECT_EQ(cancels, 1);
+  EXPECT_TRUE(updates.empty());
+
+  target->SetInterceptGesture(false);
+  MovePointer(pointer, {0.f, 5.f}, kFastMoveTime);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+  EXPECT_EQ(starts, 2);
+  EXPECT_EQ(updates, std::vector<float>{5.f});
+
+  target->SetInterceptGesture(true);
+  MovePointer(pointer, {0.f, 20.f}, kFastMoveTime);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+  UpPointer(pointer);
+  gesture_manager()->HandlePointerEvents(root(), pointers);
+  EXPECT_EQ(cancels, 2);
+  EXPECT_EQ(ends, 0);
+}
+
 TEST_F(GestureManagerTest, NoConflict_Drag_Normal_Test) {
   // hypotenuse value is 10.f
   const FloatSize kMoveStep(6.f, 8.f);

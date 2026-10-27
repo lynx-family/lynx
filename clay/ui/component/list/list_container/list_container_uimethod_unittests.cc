@@ -124,6 +124,15 @@ TEST_F_UI(ListContainerUIMethodTest, GetScrollInfoClampsNegativeRangeToZero) {
   EXPECT_TRUE(callback_invoked);
 }
 
+TEST_F_UI(ListContainerUIMethodTest, GestureScrollByReportsRemainingDelta) {
+  wrapper_->UpdateContentOffsetForListContainer(300, 0, 0);
+  const std::vector<float> expected{0.f, 200.f, 3.f, 40.f};
+
+  EXPECT_EQ(wrapper_->ScrollBy(3.f, 240.f), expected);
+  EXPECT_FLOAT_EQ(wrapper_->GetListContainerView()->GetScrollOffset().y(),
+                  200.f);
+}
+
 TEST_F_UI(ListContainerUIMethodTest, ScrollByRequiresOffset) {
   bool callback_invoked = false;
   InvokeUIMethod(
