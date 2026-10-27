@@ -282,11 +282,6 @@ public class LynxUIOwner {
       updatePositionChangeListener(ui);
     }
 
-    // update gesture detectors
-    if (gestureDetectors != null) {
-      ui.setGestureDetectors(gestureDetectors);
-    }
-
     boolean needUpdateFlatten = !tendToFlatten && ui.isFlatten();
 
     // Transit UI between LynxUI and LynxFlattenUI according to props.
@@ -295,6 +290,11 @@ public class LynxUIOwner {
       // update flatten status with old props first & get the new created UI.
       updateFlatten(tag, false);
       ui = mUIHolder.get(tag);
+    }
+
+    // update gesture detectors
+    if (gestureDetectors != null) {
+      ui.setGestureDetectors(gestureDetectors);
     }
 
     if (props != null && !props.isEmpty()) {
