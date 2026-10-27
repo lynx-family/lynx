@@ -665,6 +665,67 @@ TEST_P(ModifierElementTest,
   EXPECT_FALSE(root_weak);
 }
 
+TEST_P(ModifierElementTest, GetChildrenResolvesComposeContent) {
+  auto runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(runtime, nullptr);
+  runtime->Initialize();
+  runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  Renderer::RegisterBuiltin(runtime.get(), ArchOption::FIBER_ARCH);
+  auto eval = [&](const std::string& script) {
+    lepus::Value value;
+    EXPECT_TRUE(runtime::MTSRuntime::ToQuickContext(runtime.get())
+                    ->EvalBuf(script.c_str(), script.size(), value,
+                              "element_handles.js"));
+    return value;
+  };
+  for (const bool use_handles : {false, true}) {
+    SCOPED_TRACE(use_handles);
+    struct Node {
+      lepus::Value value;
+      fml::RefPtr<Element> content;
+      fml::RefPtr<Element> root;
+    };
+    auto create_node = [&]() -> Node {
+      if (!use_handles) {
+        auto element = manager->CreateFiberElement("sample-widget");
+        return {lepus::Value(element), element, element};
+      }
+      auto handle = CreateComposeHandle(manager, ComposeElementKind::kCustom,
+                                        base::String("sample-widget"));
+      const auto result = ComposeModifierApplicator::Apply(
+          handle.get(), MakePaddingChain(2, 4.0), nullptr);
+      EXPECT_TRUE(result.success) << result.error_message;
+      EXPECT_NE(handle->content_element(), handle->mount_root());
+      return {lepus::Value(handle), handle->content_element(),
+              handle->mount_root()};
+    };
+    const auto parent = create_node();
+    const auto first = create_node();
+    const auto second = create_node();
+    auto tail = manager->CreateFiberView();
+    runtime->SetGlobalData("parent", parent.value);
+    parent.content->InsertNode(second.root);
+    parent.content->InsertNode(first.root);
+    parent.content->InsertNode(tail);
+    auto children = eval("__GetChildren(parent)");
+    ASSERT_TRUE(children.IsArrayOrJSArray());
+    ASSERT_EQ(children.GetLength(), 3u);
+    EXPECT_EQ(children.GetProperty(uint32_t{0}).RefCounted(), second.root);
+    EXPECT_EQ(children.GetProperty(uint32_t{1}).RefCounted(), first.root);
+    EXPECT_EQ(children.GetProperty(uint32_t{2}).RefCounted(), tail);
+
+    parent.content->RemoveNode(second.root);
+    parent.content->RemoveNode(first.root);
+    parent.content->RemoveNode(tail);
+    children = eval("__GetChildren(parent)");
+    ASSERT_TRUE(children.IsArrayOrJSArray());
+    EXPECT_EQ(children.GetLength(), 0u);
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(ModifierElementTestModule, ModifierElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 
