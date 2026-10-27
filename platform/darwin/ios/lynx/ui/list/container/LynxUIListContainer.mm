@@ -5,6 +5,8 @@
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxRenderer+Internal.h>
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxScrollEventManager.h>
 #import <Lynx/LynxScrollView.h>
 #import <Lynx/LynxSubErrorCode.h>
@@ -202,6 +204,9 @@ LYNX_REGISTER_UI("list-container")
 }
 
 - (void)insertChild:(LynxUI *)child atIndex:(NSInteger)index {
+  // TODO: Remount CUI list-item views when dynamic z-index updates reorder items.
+  // Removal detaches the UIView, but reinsertion here only restores the logical
+  // UI tree, leaving already-bound items detached from view tree and invisible.
   if (child != nil) {
     child.parent = self;
     if ((NSUInteger)index > self.children.count) {
@@ -218,6 +223,11 @@ LYNX_REGISTER_UI("list-container")
   [super removeChild:child atIndex:index];
 }
 
+- (BOOL)isCUIList {
+  return [self.view respondsToSelector:@selector(renderer)] &&
+         [(id<LynxRendererHost>)self.view renderer] != nil;
+}
+
 - (void)propsDidUpdate {
   [super propsDidUpdate];
   [self.stickyManager propsDidUpdate];
@@ -225,6 +235,12 @@ LYNX_REGISTER_UI("list-container")
 
 #pragma mark component update
 - (void)onComponentLayoutUpdated:(LynxUIComponent *)component {
+  if ([self isCUIList] && [LynxListItemHelper isCUIListItem:component]) {
+    if (component.view.superview == self.view) {
+      [self.stickyManager didLayoutComponent:component];
+    }
+    return;
+  }
   LynxListContainerComponentWrapper *wrapper =
       (LynxListContainerComponentWrapper *)component.view.superview;
   if ([wrapper isKindOfClass:LynxListContainerComponentWrapper.class]) {
@@ -244,6 +260,20 @@ LYNX_REGISTER_UI("list-container")
 }
 
 - (void)insertListComponent:(LynxUIComponent *)component {
+  if ([self isCUIList] && [LynxListItemHelper isCUIListItem:component]) {
+    BOOL newlyAttached = component.view.superview != self.view;
+    [self.itemHelper attachCUIComponent:component
+                        orderedChildren:self.children
+                        stickyStartItem:self.stickyManager.activeStickyStartItem
+                          stickyEndItem:self.stickyManager.activeStickyEndItem];
+    if (newlyAttached) {
+      // TODO: Support self.enableFadeInAnimation.
+      // CUI does not create wrappers; use the delegate's nullable wrapper parameter.
+      [self.delegate insertListComponent:component wrapper:nil];
+    }
+    [self.stickyManager didAttachComponent:component];
+    return;
+  }
   if (![component.view.superview isKindOfClass:LynxListContainerComponentWrapper.class]) {
     // Insert platform view.
     LynxListContainerComponentWrapper *wrapper = [[LynxListContainerComponentWrapper alloc] init];
@@ -271,6 +301,16 @@ LYNX_REGISTER_UI("list-container")
 }
 
 - (void)removeListComponent:(LynxUIComponent *)component {
+  if ([self isCUIList] && [LynxListItemHelper isCUIListItem:component]) {
+    // Clear sticky state on recycling even if the display list has already
+    // removed the view.
+    [self.stickyManager willDetachComponent:component];
+    if (component.view.superview == self.view) {
+      [self.itemHelper detachCUIComponent:component];
+      [self.delegate removeListComponent:component];
+    }
+    return;
+  }
   [self.stickyManager willDetachComponent:component];
   if (component.view.superview.superview == self.view) {
     [component.view.superview removeFromSuperview];
@@ -760,7 +800,8 @@ LYNX_UI_METHOD(getVisibleCells) {
     NSMutableArray<UIView *> *subviews = [NSMutableArray array];
 
     for (UIView *subview in self.view.subviews) {
-      if ([subview isKindOfClass:LynxListContainerComponentWrapper.class]) {
+      if ([LynxListItemHelper isListItemWrapperView:subview] ||
+          [LynxListItemHelper isCUIListItemView:subview]) {
         [subviews addObject:subview];
       }
     }
@@ -771,8 +812,9 @@ LYNX_UI_METHOD(getVisibleCells) {
         withScrollingVelocity:velocity
         withVisibleItems:subviews
         getIndexFromView:^NSInteger(UIView *_Nonnull view) {
-          if ([view isKindOfClass:LynxListContainerComponentWrapper.class]) {
-            NSString *itemKey = ((LynxListContainerComponentWrapper *)view).holdingUI.itemKey;
+          if ([LynxListItemHelper isListItemWrapperView:view] ||
+              [LynxListItemHelper isCUIListItemView:view]) {
+            NSString *itemKey = [LynxListItemHelper getComponentForListItemView:view].itemKey;
             NSUInteger position = [weakSelf.itemKeys indexOfObject:itemKey];
             if (position == NSNotFound) {
               return -1;
@@ -801,8 +843,9 @@ LYNX_UI_METHOD(getVisibleCells) {
           [weakSelf.view.subviews
               enumerateObjectsUsingBlock:^(__kindof UIView *_Nonnull obj, NSUInteger idx,
                                            BOOL *_Nonnull stop) {
-                if ([obj isKindOfClass:LynxListContainerComponentWrapper.class]) {
-                  NSString *itemKey = ((LynxListContainerComponentWrapper *)obj).holdingUI.itemKey;
+                if ([LynxListItemHelper isListItemWrapperView:obj] ||
+                    [LynxListItemHelper isCUIListItemView:obj]) {
+                  NSString *itemKey = [LynxListItemHelper getComponentForListItemView:obj].itemKey;
                   if ([targetItemKey isEqualToString:itemKey]) {
                     targetRect = obj.frame;
                     *stop = YES;
@@ -938,10 +981,6 @@ LYNX_UI_METHOD(getVisibleCells) {
 #pragma mark utils
 - (NSInteger)getIndexFromItemKey:(NSString *)itemKey {
   return [self.itemHelper indexForItemKey:itemKey];
-}
-
-- (NSArray<LynxListContainerComponentWrapper *> *)visibleCells {
-  return (NSArray<LynxListContainerComponentWrapper *> *)self.itemHelper.visibleItemWrappers;
 }
 
 - (NSArray<NSDictionary *> *)visibleCellsInfo {
@@ -1099,6 +1138,16 @@ LYNX_UI_METHOD(getVisibleCells) {
 
 - (LynxScrollEventManager *)eventManagerForListStickyManager {
   return self.scrollEventManager;
+}
+
+- (void)restoreCUIListItemOrder:(LynxUIComponent *)component {
+  if ([self isCUIList] && [LynxListItemHelper isCUIListItem:component] &&
+      component.view.superview == self.view) {
+    [self.itemHelper attachCUIComponent:component
+                        orderedChildren:self.children
+                        stickyStartItem:self.stickyManager.activeStickyStartItem
+                          stickyEndItem:self.stickyManager.activeStickyEndItem];
+  }
 }
 
 @end

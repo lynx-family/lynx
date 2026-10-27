@@ -104,6 +104,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   virtual void OnRemoveFromParent(bool should_update_ui_owner) = 0;
   virtual void OnUpdateSubtreeProperties(
       const DisplayList& subtree_properties) = 0;
+  virtual void OnUpdateLayoutMetrics() {}
 
   // Get the parent renderer
   PlatformRendererImpl* GetParent() const { return parent_; }

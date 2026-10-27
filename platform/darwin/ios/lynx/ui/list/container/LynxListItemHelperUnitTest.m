@@ -192,7 +192,7 @@
   XCTAssertEqual([self.helper indexForItemKey:nil], -1);
 }
 
-- (void)testVisibleItemWrappersAndInfoAreSortedByItemKeys {
+- (void)testVisibleItemViewsAndInfoAreSortedByItemKeys {
   self.owner.itemKeys = @[ @"first", @"second", @"hidden" ];
   self.owner.listScrollView.contentOffset = CGPointMake(0, 50);
 
@@ -213,7 +213,7 @@
                     zPosition:3
                acceptsHitTest:NO];
 
-  XCTAssertEqualObjects(self.helper.visibleItemWrappers, (@[ first, second ]));
+  XCTAssertEqualObjects(self.helper.visibleItemViews, (@[ first, second ]));
   XCTAssertEqualObjects(self.helper.visibleItemInfo, (@[
                           @{
                             @"id" : @"first-id",
@@ -238,7 +238,7 @@
                         ]));
 }
 
-- (void)testVisibleItemWrappersUseHorizontalViewport {
+- (void)testVisibleItemViewsUseHorizontalViewport {
   self.owner.vertical = NO;
   self.owner.itemKeys = @[ @"visible", @"hidden" ];
   self.owner.listScrollView.contentOffset = CGPointMake(40, 0);
@@ -254,7 +254,7 @@
                     zPosition:2
                acceptsHitTest:NO];
 
-  XCTAssertEqualObjects(self.helper.visibleItemWrappers, (@[ visible ]));
+  XCTAssertEqualObjects(self.helper.visibleItemViews, (@[ visible ]));
 }
 
 - (void)testHitTestingUsesHighestZPositionAndPreservesLegacyWrapperLookup {

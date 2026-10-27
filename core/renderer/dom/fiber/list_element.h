@@ -170,6 +170,8 @@ class ListElement : public Element, public tasm::ListNode {
   void Hydrate();
   void HydrateFinish();
 
+  void OnLayoutObjectCreated() override;
+
   void SetupFragmentBehavior(Fragment* fragment) override;
 
   virtual const base::String& GetPlatformNodeTag() const override {

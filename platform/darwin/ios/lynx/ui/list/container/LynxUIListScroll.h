@@ -33,7 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)insertListComponent:(LynxUIComponent *)component;
 - (void)removeListComponent:(LynxUIComponent *)component;
 - (NSInteger)getIndexFromItemKey:(NSString *)itemKey;
-- (NSArray<UIView<LynxListItemWrapper> *> *)visibleCells;
+- (NSArray<UIView *> *)visibleCells;
 - (NSArray<NSDictionary *> *)visibleCellsInfo;
 @end
 

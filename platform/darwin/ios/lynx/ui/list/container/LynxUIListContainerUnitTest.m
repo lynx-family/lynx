@@ -89,11 +89,14 @@
   [list insertListComponent:component];
 
   XCTAssertEqual([list getIndexFromItemKey:@"second"], 1);
-  XCTAssertEqualObjects([list.visibleCells valueForKeyPath:@"holdingUI.itemKey"], (@[ @"second" ]));
+  NSArray<UIView *> *visibleItemViews = list.itemHelper.visibleItemViews;
+  XCTAssertEqual(visibleItemViews.count, 1U);
+  XCTAssertEqual([LynxListItemHelper getComponentForListItemView:visibleItemViews.firstObject],
+                 component);
   XCTAssertTrue(CGRectEqualToRect(component.view.frame, CGRectMake(0, 0, 100, 40)));
 
   [list removeListComponent:component];
-  XCTAssertEqual(list.visibleCells.count, 0U);
+  XCTAssertEqual(list.itemHelper.visibleItemViews.count, 0U);
 }
 
 - (void)testScrollOperationsAreForwardedToHelper {

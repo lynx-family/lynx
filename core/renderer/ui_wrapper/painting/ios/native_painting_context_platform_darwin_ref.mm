@@ -14,6 +14,7 @@
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRendererContext.h>
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTemplateData+Converter.h>
@@ -165,6 +166,45 @@ LynxRendererContext* NativePaintingCtxPlatformDarwinRef::GetRendererContext() {
   return static_cast<PlatformRendererDarwinFactory*>(view_factory_.get())
       ->GetContext()
       ->GetRendererContext();
+}
+
+LynxUIOwner* NativePaintingCtxPlatformDarwinRef::GetUIOwner() {
+  return static_cast<PlatformRendererDarwinFactory*>(view_factory_.get())
+      ->GetContext()
+      ->GetUIOwner();
+}
+
+void NativePaintingCtxPlatformDarwinRef::InsertListItemPaintingNode(int32_t list_id,
+                                                                    int32_t child_id) {
+  LynxUIOwner* uiOwner = GetUIOwner();
+  if (uiOwner == nil) {
+    return;
+  }
+  [uiOwner insertListComponent:list_id componentSign:child_id];
+}
+
+void NativePaintingCtxPlatformDarwinRef::RemoveListItemPaintingNode(int32_t list_id,
+                                                                    int32_t child_id) {
+  LynxUIOwner* uiOwner = GetUIOwner();
+  if (uiOwner == nil) {
+    return;
+  }
+  [uiOwner removeListComponent:list_id componentSign:child_id];
+}
+
+void NativePaintingCtxPlatformDarwinRef::UpdateContentOffsetForListContainer(
+    int32_t container_id, float content_size, float delta_x, float delta_y,
+    bool is_init_scroll_offset, bool from_layout) {
+  (void)is_init_scroll_offset;
+  (void)from_layout;
+  LynxUIOwner* uiOwner = GetUIOwner();
+  if (uiOwner == nil) {
+    return;
+  }
+  [uiOwner updateContentOffsetForListContainer:container_id
+                                   contentSize:content_size
+                                        deltaX:delta_x
+                                        deltaY:delta_y];
 }
 
 void NativePaintingCtxPlatformDarwinRef::GetPlatformRendererScrollOffset(int32_t sign,

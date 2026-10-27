@@ -4,6 +4,8 @@
 
 #import "LynxListStickyManager.h"
 
+#import "LynxListItemHelper.h"
+
 #import <Lynx/LynxScrollEventManager.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIComponent.h>
@@ -20,6 +22,8 @@
 @property(nonatomic, strong) NSMutableDictionary<NSString *, LynxUIComponent *> *stickyEndItemDict;
 @property(nonatomic, weak, nullable) LynxUIComponent *previousStickyStartItem;
 @property(nonatomic, weak, nullable) LynxUIComponent *previousStickyEndItem;
+@property(nonatomic, weak, readwrite, nullable) LynxUIComponent *activeStickyStartItem;
+@property(nonatomic, weak, readwrite, nullable) LynxUIComponent *activeStickyEndItem;
 @property(nonatomic, assign) BOOL updatingAfterLayout;
 
 @end
@@ -36,6 +40,20 @@
     _stickyEndItemDict = [NSMutableDictionary dictionary];
   }
   return self;
+}
+
+- (void)setEnabled:(BOOL)enabled {
+  _enabled = enabled;
+  if (!enabled) {
+    LynxUIComponent *startItem = self.activeStickyStartItem;
+    LynxUIComponent *endItem = self.activeStickyEndItem;
+    if (startItem) {
+      [self resetStickyItem:startItem];
+    }
+    if (endItem && endItem != startItem) {
+      [self resetStickyItem:endItem];
+    }
+  }
 }
 
 - (void)setStickyStartIndexes:(NSArray<NSNumber *> *_Nullable)startIndexes
@@ -98,6 +116,7 @@
 }
 
 - (void)willDetachComponent:(LynxUIComponent *)component {
+  [self resetActiveStickyItems:component];
   if (!self.enabled) {
     return;
   }
@@ -210,12 +229,31 @@
   }
 }
 
+- (void)resetActiveStickyItems:(LynxUIComponent *_Nullable)component {
+  if (self.activeStickyStartItem == component) {
+    self.activeStickyStartItem = nil;
+  }
+  if (self.activeStickyEndItem == component) {
+    self.activeStickyEndItem = nil;
+  }
+}
+
 - (void)resetStickyItem:(LynxUIComponent *_Nullable)component {
-  if (component.view && component.view.superview) {
-    component.view.superview.frame = component.frame;
-    component.view.frame =
-        CGRectMake(0, 0, CGRectGetWidth(component.frame), CGRectGetHeight(component.frame));
-    component.view.superview.layer.zPosition = component.zIndex;
+  // Capture active state before clearing the references. Ordinary candidates are reset on every
+  // update, but only an item leaving sticky needs the costly sibling-order restoration.
+  BOOL needsRestoreOrder = component != nil && (self.activeStickyStartItem == component ||
+                                                self.activeStickyEndItem == component);
+  [self resetActiveStickyItems:component];
+  BOOL isCUIItem = [LynxListItemHelper isCUIListItem:component];
+  if (isCUIItem || (component.view && component.view.superview)) {
+    [LynxListItemHelper applyLayoutForComponent:component frame:component.frame];
+    [LynxListItemHelper setZPosition:component.zIndex forComponent:component];
+    if (needsRestoreOrder && isCUIItem &&
+        [self.owner respondsToSelector:@selector(restoreCUIListItemOrder:)]) {
+      // Ordinary candidates are reset on every sticky update. Restore sibling order only
+      // when an active sticky item exits, keeping the remaining active items in front.
+      [self.owner restoreCUIListItemOrder:component];
+    }
   }
 }
 
@@ -263,7 +301,7 @@
       stickyStartItem = startItem;
     }
   }
-
+  self.activeStickyStartItem = stickyStartItem;
   if (!stickyStartItem) {
     return;
   }
@@ -292,19 +330,15 @@
     }
   }
 
+  CGRect stickyFrame = stickyStartItem.frame;
   if (vertical) {
-    stickyStartItem.view.superview.frame =
-        (CGRect){CGPointMake(CGRectGetMinX(stickyStartItem.frame), stickyStartOffset),
-                 stickyStartItem.frame.size};
+    stickyFrame.origin.y = stickyStartOffset;
   } else {
-    stickyStartItem.view.superview.frame =
-        (CGRect){CGPointMake(stickyStartOffset, CGRectGetMinY(stickyStartItem.frame)),
-                 stickyStartItem.frame.size};
+    stickyFrame.origin.x = stickyStartOffset;
   }
-  stickyStartItem.view.frame = CGRectMake(0, 0, CGRectGetWidth(stickyStartItem.frame),
-                                          CGRectGetHeight(stickyStartItem.frame));
-  [scrollView bringSubviewToFront:stickyStartItem.view.superview];
-  stickyStartItem.view.superview.layer.zPosition = NSIntegerMax;
+  [LynxListItemHelper applyLayoutForComponent:stickyStartItem frame:stickyFrame];
+  [LynxListItemHelper bringComponentToFront:stickyStartItem inScrollView:scrollView];
+  [LynxListItemHelper setZPosition:NSIntegerMax forComponent:stickyStartItem];
 }
 
 - (void)updateStickyEnds {
@@ -341,7 +375,7 @@
       stickyEndItem = endItem;
     }
   }
-
+  self.activeStickyEndItem = stickyEndItem;
   if (!stickyEndItem) {
     return;
   }
@@ -371,19 +405,15 @@
     }
   }
 
+  CGRect stickyFrame = stickyEndItem.frame;
   if (vertical) {
-    stickyEndItem.view.superview.frame =
-        (CGRect){CGPointMake(CGRectGetMinX(stickyEndItem.frame), stickyStartOffset),
-                 stickyEndItem.frame.size};
+    stickyFrame.origin.y = stickyStartOffset;
   } else {
-    stickyEndItem.view.superview.frame =
-        (CGRect){CGPointMake(stickyStartOffset, CGRectGetMinY(stickyEndItem.frame)),
-                 stickyEndItem.frame.size};
+    stickyFrame.origin.x = stickyStartOffset;
   }
-  stickyEndItem.view.frame =
-      CGRectMake(0, 0, CGRectGetWidth(stickyEndItem.frame), CGRectGetHeight(stickyEndItem.frame));
-  [scrollView bringSubviewToFront:stickyEndItem.view.superview];
-  stickyEndItem.view.superview.layer.zPosition = NSIntegerMax;
+  [LynxListItemHelper applyLayoutForComponent:stickyEndItem frame:stickyFrame];
+  [LynxListItemHelper bringComponentToFront:stickyEndItem inScrollView:scrollView];
+  [LynxListItemHelper setZPosition:NSIntegerMax forComponent:stickyEndItem];
 }
 
 - (id<LynxEventTarget>)findHitTargetInStickyItemDict:(NSDictionary *)stickyItemDict

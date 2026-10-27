@@ -319,6 +319,16 @@ void PlatformRendererDarwin::OnUpdateSubtreeProperties(const DisplayList& subtre
   [renderer applySubtreeProperties:props count:count];
 }
 
+void PlatformRendererDarwin::OnUpdateLayoutMetrics() {
+  if (GetPlatformRendererType() != PlatformRendererType::kListItem) {
+    return;
+  }
+  // Sync the current list-item layout before NodeReady so sticky logic reads
+  // the latest frame.
+  UpdateUIOwnerLayout(
+      CGRectMake(layout_frame_[0], layout_frame_[1], layout_frame_[2], layout_frame_[3]));
+}
+
 void PlatformRendererDarwin::InitializeUIView() { InitializeUIView(fml::RefPtr<PropBundle>()); }
 
 void PlatformRendererDarwin::InitializeUIView(const fml::RefPtr<PropBundle>& init_data) {

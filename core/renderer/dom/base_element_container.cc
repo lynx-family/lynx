@@ -80,21 +80,21 @@ void BaseElementContainer::ListReusePaintingNode(int32_t child_id,
 }
 
 void BaseElementContainer::InsertListItemPaintingNode(int32_t child_id) {
-  (void)child_id;
+  painting_context()->InsertListItemPaintingNode(element()->impl_id(),
+                                                 child_id);
 }
 
 void BaseElementContainer::RemoveListItemPaintingNode(int32_t child_id) {
-  (void)child_id;
+  painting_context()->RemoveListItemPaintingNode(element()->impl_id(),
+                                                 child_id);
 }
 
 void BaseElementContainer::UpdateContentOffsetForListContainer(
     float content_size, float delta_x, float delta_y,
     bool is_init_scroll_offset, bool from_layout) {
-  (void)content_size;
-  (void)delta_x;
-  (void)delta_y;
-  (void)is_init_scroll_offset;
-  (void)from_layout;
+  painting_context()->UpdateContentOffsetForListContainer(
+      element()->impl_id(), content_size, delta_x, delta_y,
+      is_init_scroll_offset, from_layout);
 }
 
 std::vector<float> BaseElementContainer::ScrollBy(float width, float height) {

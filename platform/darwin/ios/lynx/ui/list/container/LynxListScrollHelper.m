@@ -114,7 +114,9 @@ static const int64_t kLynxListProgrammaticScrollTimeoutInMilliseconds = 600;
     CGFloat paddingEnd = vertical ? padding.bottom : padding.right;
     [scrollView.subviews enumerateObjectsUsingBlock:^(__kindof UIView *_Nonnull subview,
                                                       NSUInteger index, BOOL *_Nonnull stop) {
-      if ([subview conformsToProtocol:@protocol(LynxListItemWrapper)]) {
+      if ([LynxListItemHelper isListItemWrapperView:subview] ||
+          [LynxListItemHelper isCUIListItemView:subview]) {
+        // TODO: Consider how CSS transforms on CUI list items affect the scrollable range.
         max = MAX(max, vertical ? CGRectGetMaxY(subview.frame) : CGRectGetMaxX(subview.frame));
       }
     }];
@@ -126,7 +128,8 @@ static const int64_t kLynxListProgrammaticScrollTimeoutInMilliseconds = 600;
     CGFloat paddingStart = vertical ? padding.top : padding.left;
     [scrollView.subviews enumerateObjectsUsingBlock:^(__kindof UIView *_Nonnull subview,
                                                       NSUInteger index, BOOL *_Nonnull stop) {
-      if ([subview conformsToProtocol:@protocol(LynxListItemWrapper)]) {
+      if ([LynxListItemHelper isListItemWrapperView:subview] ||
+          [LynxListItemHelper isCUIListItemView:subview]) {
         min = MIN(min, vertical ? CGRectGetMinY(subview.frame) : CGRectGetMinX(subview.frame));
       }
     }];
