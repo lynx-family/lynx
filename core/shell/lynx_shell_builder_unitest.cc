@@ -18,6 +18,7 @@
 #include "core/shell/lynx_entity_id_generator.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
+#include "core/shell/tasm_mediator.h"
 #include "core/shell/testing/mock_native_facade.h"
 #include "core/shell/testing/mock_runner_manufactor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -135,6 +136,102 @@ class LynxShellBuilderTest : public ::testing::Test {
   std::unique_ptr<LynxShellBuilder> shell_builder_ = nullptr;
 
 };  // LynxShellBuilderTest
+
+TEST_F(LynxShellBuilderTest, CustomSourceSetAfterEnableDrivesCoreAndMTSVSync) {
+  class Source : public base::VSyncMonitorPlatformImpl {
+   public:
+    void RequestVSync(Callback) override { ++requests; }
+    int requests = 0;
+  };
+  auto source = std::make_shared<Source>();
+  auto creator = [](LynxShell*) {
+    return std::make_unique<tasm::PaintingContextPlatformImpl>();
+  };
+  option_->enable_js_ = false;
+  shell_.reset(
+      shell_builder_->SetNativeFacade(std::make_unique<MockNativeFacade>())
+          .SetPaintingContextCreator(creator)
+          .SetLynxEnvConfig(*lynx_env_config_)
+          .SetLazyBundleLoader(loader_)
+          .SetLayoutContextPlatformImpl(nullptr)
+          .SetStrategy(strategy_)
+          .SetShellOption(*option_)
+          .SetEnableElementManagerVsyncMonitor(true)
+          .SetVSyncMonitorPlatformImpl(source)
+          .build());
+  const auto& monitor =
+      shell_->engine_build_options_.element_manager_vsync_monitor_;
+  ASSERT_NE(monitor, nullptr);
+  EXPECT_TRUE(monitor->UsesCustomVSync());
+  ASSERT_NE(monitor->GetTaskRunner(), nullptr);
+  monitor->GetTaskRunner()->PostSyncTask([&] {
+    monitor->ScheduleVSyncSecondaryCallback(1, [](int64_t, int64_t) {});
+  });
+  EXPECT_EQ(source->requests, 1);
+
+  auto* mediator = shell_->tasm_mediator_;
+  shell_->engine_actor_->ActSync(
+      [&](auto&) { mediator->InitVSyncMonitorIfNeeded(); });
+  const auto& mts_monitor = mediator->vsync_monitor_;
+  ASSERT_NE(mts_monitor, nullptr);
+  EXPECT_TRUE(mts_monitor->UsesCustomVSync());
+  mts_monitor->GetTaskRunner()->PostSyncTask(
+      [&] { mts_monitor->AsyncRequestVSync([](int64_t, int64_t) {}); });
+  EXPECT_EQ(source->requests, 2);
+}
+
+TEST_F(LynxShellBuilderTest, FinalCoreVSyncConfigurationIsRespected) {
+  class Source : public base::VSyncMonitorPlatformImpl {
+   public:
+    void RequestVSync(Callback) override {}
+  };
+  auto source = std::make_shared<Source>();
+  auto painting = std::make_unique<tasm::PaintingContextPlatformImpl>();
+  auto creator = [&](LynxShell*) { return std::move(painting); };
+  option_->enable_js_ = false;
+  shell_.reset(
+      shell_builder_->SetNativeFacade(std::make_unique<MockNativeFacade>())
+          .SetPaintingContextCreator(creator)
+          .SetLynxEnvConfig(*lynx_env_config_)
+          .SetLazyBundleLoader(loader_)
+          .SetLayoutContextPlatformImpl(nullptr)
+          .SetStrategy(strategy_)
+          .SetShellOption(*option_)
+          .SetVSyncMonitorPlatformImpl(source)
+          .SetEnableElementManagerVsyncMonitor(true)
+          .SetVSyncMonitorPlatformImpl(nullptr)
+          .build());
+  const auto& monitor =
+      shell_->engine_build_options_.element_manager_vsync_monitor_;
+  // The unit-test platform factory can return null; neither outcome may retain
+  // the source that was explicitly cleared.
+  EXPECT_TRUE(!monitor || !monitor->UsesCustomVSync());
+}
+
+TEST_F(LynxShellBuilderTest, ExternalSourceRespectsDisabledCoreVSyncMonitor) {
+  class Source : public base::VSyncMonitorPlatformImpl {
+   public:
+    void RequestVSync(Callback) override {}
+  };
+  auto source = std::make_shared<Source>();
+  auto painting = std::make_unique<tasm::PaintingContextPlatformImpl>();
+  auto creator = [&](LynxShell*) { return std::move(painting); };
+  option_->enable_js_ = false;
+  shell_.reset(
+      shell_builder_->SetNativeFacade(std::make_unique<MockNativeFacade>())
+          .SetPaintingContextCreator(creator)
+          .SetLynxEnvConfig(*lynx_env_config_)
+          .SetLazyBundleLoader(loader_)
+          .SetLayoutContextPlatformImpl(nullptr)
+          .SetStrategy(strategy_)
+          .SetShellOption(*option_)
+          .SetEnableElementManagerVsyncMonitor(true)
+          .SetVSyncMonitorPlatformImpl(source)
+          .SetEnableElementManagerVsyncMonitor(false)
+          .build());
+  EXPECT_EQ(shell_->engine_build_options_.element_manager_vsync_monitor_,
+            nullptr);
+}
 
 TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
   auto facade = std::make_unique<MockNativeFacade>();

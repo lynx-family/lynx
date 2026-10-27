@@ -87,6 +87,7 @@ struct LynxEngineBuildOptions {
   std::shared_ptr<lynx::tasm::LazyBundleLoader> lazy_bundle_loader_;
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board_;
   std::shared_ptr<base::VSyncMonitor> element_manager_vsync_monitor_;
+  std::shared_ptr<base::VSyncMonitorPlatformImpl> vsync_monitor_platform_impl_;
   bool enable_new_animator_{false};
   bool enable_native_list_{false};
   bool enable_pre_update_data_{false};

@@ -16,6 +16,7 @@
 #undef protected
 #undef private
 
+#include "base/include/fml/message_loop.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/list/testing/mock_animation_target.h"
 #include "core/list/testing/mock_vsync_monitor.h"
@@ -108,25 +109,6 @@ class RecordingItemAnimatorListener : public ItemAnimator::Listener {
   std::vector<RecordedAnimationCallback> callback_sequence_;
 };
 
-// Overrides only the BasicAnimator factory so real animation code runs against
-// a controllable VSyncMonitor without changing ItemAnimatorDefault's production
-// constructor.
-class TestItemAnimatorDefault final : public ItemAnimatorDefault {
- public:
-  explicit TestItemAnimatorDefault(
-      std::shared_ptr<base::VSyncMonitor> vsync_monitor)
-      : vsync_monitor_(std::move(vsync_monitor)) {}
-
- private:
-  std::shared_ptr<::lynx::animation::basic::LynxBasicAnimator>
-  CreateBasicAnimator(starlight::AnimationData animation_data) override {
-    return std::make_shared<::lynx::animation::basic::LynxBasicAnimator>(
-        std::move(animation_data), vsync_monitor_);
-  }
-
-  std::shared_ptr<base::VSyncMonitor> vsync_monitor_;
-};
-
 class ItemAnimatorDefaultTest : public ::testing::Test {
  protected:
   static void SetUpTestSuite() {
@@ -137,7 +119,7 @@ class ItemAnimatorDefaultTest : public ::testing::Test {
   void SetUp() override {
     vsync_monitor_ = std::make_shared<MockVSyncMonitor>();
     vsync_monitor_->BindToCurrentThread();
-    item_animator_ = std::make_unique<TestItemAnimatorDefault>(vsync_monitor_);
+    item_animator_ = std::make_unique<ItemAnimatorDefault>(vsync_monitor_);
     item_animator_->SetListener(&listener_);
   }
 
@@ -178,6 +160,49 @@ class ItemAnimatorDefaultTest : public ::testing::Test {
   RecordingItemAnimatorListener listener_;
   std::unique_ptr<ItemAnimatorDefault> item_animator_;
 };
+
+TEST_F(ItemAnimatorDefaultTest, CustomVSyncControlsAnimationProgress) {
+  class CustomVSyncSource : public base::VSyncMonitorPlatformImpl {
+   public:
+    void RequestVSync(Callback callback) override {
+      ++requests;
+      pending = std::move(callback);
+    }
+    void Tick(int64_t milliseconds) {
+      auto callback = std::move(pending);
+      ASSERT_TRUE(callback);
+      callback(milliseconds * 1000000, (milliseconds + 16) * 1000000);
+      fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+    }
+    int requests = 0;
+    Callback pending;
+  };
+  auto source = std::make_shared<CustomVSyncSource>();
+  auto monitor = std::make_shared<base::VSyncMonitor>(source);
+  monitor->BindToCurrentThread();
+  item_animator_ = std::make_unique<ItemAnimatorDefault>(monitor);
+  starlight::AnimationData data;
+  data.duration = kAnimationDurationMs;
+  auto animator = item_animator_->CreateBasicAnimator(data);
+  std::vector<float> progress;
+  animator->RegisterCustomCallback(
+      [&](float value) { progress.push_back(value); });
+  animator->Start();
+  const auto initial_updates = progress.size();
+  EXPECT_EQ(source->requests, 1);
+  fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(progress.size(), initial_updates);
+
+  source->Tick(kFirstVSyncTimeMs);
+  ASSERT_GT(progress.size(), initial_updates);
+  const float start_progress = progress.back();
+  source->Tick(kFirstVSyncTimeMs + kAnimationDurationMs / 2);
+  EXPECT_GT(progress.back(), start_progress);
+  EXPECT_TRUE(animator->IsRunning());
+  source->Tick(kFirstVSyncTimeMs + kAnimationDurationMs + 1);
+  EXPECT_FALSE(animator->IsRunning());
+  EXPECT_FALSE(source->pending);
+}
 
 // Verifies input rejection for the currently supported queues and confirms
 // that Change remains unsupported.
