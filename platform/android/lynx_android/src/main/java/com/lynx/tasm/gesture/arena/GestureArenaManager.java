@@ -6,21 +6,31 @@ package com.lynx.tasm.gesture.arena;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
+import android.view.Choreographer;
 import android.view.MotionEvent;
+import android.view.VelocityTracker;
+import android.widget.OverScroller;
 import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
 import com.lynx.config.LynxLiteConfigs;
+import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.detector.GestureDetectorManager;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.tasm.gesture.handler.GestureHandlerTrigger;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Manages the gesture arenas for handling touch events and dispatching them to the appropriate
@@ -33,6 +43,35 @@ public class GestureArenaManager {
   private LinkedList<GestureArenaMember> mCompeteChainCandidates;
   private LinkedList<GestureArenaMember> mBubbleCandidate;
   private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
+
+  private static final int INPUT_DOWN = 0;
+  private static final int INPUT_MOVE = 1;
+  private static final int INPUT_UP = 2;
+  private static final int INPUT_CANCEL = 3;
+  private static final int INPUT_FLING_FRAME = 4;
+  private static final int CORE_STATE_ACTIVE = 2;
+  private static final int CORE_STATE_FAIL = 3;
+  private static final int CORE_STATE_END = 4;
+  private static final int CORE_STATE_CANCEL = 5;
+  private static final int FLING_MIN = Integer.MIN_VALUE;
+  private static final int FLING_MAX = Integer.MAX_VALUE;
+  private static final int FLING_SPEED_THRESHOLD = 300;
+
+  private boolean mUseUnifiedGestureHandler;
+  private long mNativeGestureArena;
+  private LynxContext mLynxContext;
+  private OverScroller mUnifiedScroller;
+  private Choreographer mUnifiedFlingChoreographer;
+  private VelocityTracker mUnifiedVelocityTracker;
+  private long mUnifiedSequenceId;
+  private boolean mUnifiedDispatchTouchMove;
+  private int[] mUnifiedResponseChain = new int[0];
+  private double mUnifiedLastPageX;
+  private double mUnifiedLastPageY;
+  private int mUnifiedLastFlingX;
+  private int mUnifiedLastFlingY;
+  private final Map<Long, Runnable> mUnifiedTimers = new HashMap<>();
+  private final Set<Long> mUnifiedActiveHandlers = new HashSet<>();
 
   private GestureDetectorManager mGestureDetectorManager;
 
@@ -72,6 +111,10 @@ public class GestureArenaManager {
     }
     mGestureHandlerTrigger.resolveTouchEvent(
         event, mCompeteChainCandidates, lynxTouchEvent, mBubbleCandidate);
+  }
+
+  public boolean isUsingUnifiedGestureHandler() {
+    return isEnableNewGesture() && mUseUnifiedGestureHandler && mNativeGestureArena != 0;
   }
 
   private boolean isEnableNewGesture() {
@@ -312,4 +355,179 @@ public class GestureArenaManager {
       }
     }
   }
+
+  @MainThread
+  public void replaceGestureDetectors(
+      int memberId, @Nullable Map<Integer, GestureDetector> gestureDetectors) {
+    if (!isUsingUnifiedGestureHandler() || mArenaMemberMap == null
+        || !mArenaMemberMap.containsKey(memberId)) {
+      return;
+    }
+    replaceUnifiedGestureDetectors(memberId, gestureDetectors);
+  }
+
+  private long getEpochTime(MotionEvent event) {
+    return System.currentTimeMillis() - (SystemClock.uptimeMillis() - event.getEventTime());
+  }
+
+  private double getDensity() {
+    if (mLynxContext == null || mLynxContext.getResources() == null
+        || mLynxContext.getResources().getDisplayMetrics() == null) {
+      return 1;
+    }
+    return mLynxContext.getResources().getDisplayMetrics().density;
+  }
+
+  private void replaceUnifiedGestureDetectors(
+      int memberId, @Nullable Map<Integer, GestureDetector> gestureDetectors) {
+    if (mNativeGestureArena == 0) {
+      return;
+    }
+    EncodedDetectors encoded = encodeGestureDetectors(gestureDetectors);
+    nativeReplaceMemberGestures(
+        mNativeGestureArena, memberId, encoded.count, encoded.data, encoded.configs);
+  }
+
+  // Keep the JNI record format testable before the native arena is enabled.
+  static final class EncodedDetectors {
+    final int count;
+    final int[] data;
+    final double[] configs;
+
+    EncodedDetectors(int count, int[] data, double[] configs) {
+      this.count = count;
+      this.data = data;
+      this.configs = configs;
+    }
+  }
+
+  static EncodedDetectors encodeGestureDetectors(
+      @Nullable Map<Integer, GestureDetector> gestureDetectors) {
+    List<GestureDetector> detectors = new ArrayList<>();
+    if (gestureDetectors != null) {
+      for (GestureDetector detector : gestureDetectors.values()) {
+        if (detector != null && isSupportedGestureType(detector.getGestureType())) {
+          detectors.add(detector);
+        }
+      }
+    }
+    detectors.sort((left, right) -> Integer.compare(left.getGestureID(), right.getGestureID()));
+
+    List<Integer> encoded = new ArrayList<>();
+    double[] configs = new double[detectors.size() * 5];
+    for (int i = 0; i < detectors.size(); i++) {
+      GestureDetector detector = detectors.get(i);
+      List<Integer> simultaneous = getRelation(detector, GestureDetector.SIMULTANEOUS);
+      List<Integer> waitFor = getRelation(detector, GestureDetector.WAIT_FOR);
+      List<Integer> continueWith = getRelation(detector, GestureDetector.CONTINUE_WITH);
+      encoded.add(detector.getGestureID());
+      encoded.add(detector.getGestureType());
+      encoded.add(getCallbackMask(detector));
+      encoded.add(simultaneous.size());
+      encoded.add(waitFor.size());
+      encoded.add(continueWith.size());
+      encoded.addAll(simultaneous);
+      encoded.addAll(waitFor);
+      encoded.addAll(continueWith);
+
+      ReadableMap config = detector.getConfigMap();
+      int offset = i * 5;
+      configs[offset] = getConfig(config, GestureConstants.MIN_DISTANCE, 0);
+      configs[offset + 1] = getConfig(config, GestureConstants.MAX_DISTANCE, 10);
+      configs[offset + 2] = getConfig(config, GestureConstants.MIN_DURATION, 500);
+      configs[offset + 3] = getConfig(config, GestureConstants.MAX_DURATION, 500);
+      configs[offset + 4] = getConfig(config, GestureConstants.TAP_SLOP, 3);
+    }
+
+    int[] gestureData = new int[encoded.size()];
+    for (int i = 0; i < encoded.size(); i++) {
+      gestureData[i] = encoded.get(i);
+    }
+    return new EncodedDetectors(detectors.size(), gestureData, configs);
+  }
+
+  private boolean hasSupportedGesture(@Nullable Map<Integer, GestureDetector> gestureDetectors) {
+    if (gestureDetectors == null) {
+      return false;
+    }
+    for (GestureDetector detector : gestureDetectors.values()) {
+      if (detector != null && isSupportedGestureType(detector.getGestureType())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isSupportedGestureType(int type) {
+    return type == GestureDetector.GESTURE_TYPE_PAN || type == GestureDetector.GESTURE_TYPE_FLING
+        || type == GestureDetector.GESTURE_TYPE_DEFAULT || type == GestureDetector.GESTURE_TYPE_TAP
+        || type == GestureDetector.GESTURE_TYPE_LONG_PRESS
+        || type == GestureDetector.GESTURE_TYPE_NATIVE;
+  }
+
+  private static List<Integer> getRelation(GestureDetector detector, String relationName) {
+    List<Integer> relation = detector.getRelationMap().get(relationName);
+    return relation == null ? new ArrayList<>() : relation;
+  }
+
+  private static int getCallbackMask(GestureDetector detector) {
+    int mask = 0;
+    for (String callback : detector.getGestureCallbackNames()) {
+      switch (callback) {
+        case GestureConstants.ON_TOUCHES_DOWN:
+          mask |= 1;
+          break;
+        case GestureConstants.ON_TOUCHES_MOVE:
+          mask |= 1 << 1;
+          break;
+        case GestureConstants.ON_TOUCHES_UP:
+          mask |= 1 << 2;
+          break;
+        case GestureConstants.ON_TOUCHES_CANCEL:
+          mask |= 1 << 3;
+          break;
+        case GestureConstants.ON_BEGIN:
+          mask |= 1 << 4;
+          break;
+        case GestureConstants.ON_START:
+          mask |= 1 << 5;
+          break;
+        case GestureConstants.ON_UPDATE:
+          mask |= 1 << 6;
+          break;
+        case GestureConstants.ON_END:
+          mask |= 1 << 7;
+          break;
+        default:
+          break;
+      }
+    }
+    return mask;
+  }
+
+  private static double getConfig(@Nullable ReadableMap config, String name, double defaultValue) {
+    return config == null ? defaultValue : config.getDouble(name, defaultValue);
+  }
+
+  private long handlerKey(int memberId, int gestureId) {
+    return ((long) memberId << 32) ^ (gestureId & 0xffffffffL);
+  }
+
+  private void removeActiveHandlersForMember(int memberId) {
+    long memberPrefix = (long) memberId << 32;
+    mUnifiedActiveHandlers.removeIf(key -> (key & 0xffffffff00000000L) == memberPrefix);
+  }
+
+  private native long nativeCreateGestureArena();
+  private native void nativeDestroyGestureArena(long nativePtr);
+  private native void nativeReplaceMemberGestures(
+      long nativePtr, int memberId, int gestureCount, int[] gestureData, double[] configs);
+  private native void nativeRemoveMember(long nativePtr, int memberId);
+  private native void nativeHandleInput(long nativePtr, int type, long sequenceId, int pointerId,
+      double monotonicTime, long epochTime, double screenX, double screenY, double pageX,
+      double pageY, double clientX, double clientY, double deltaX, double deltaY, double velocityX,
+      double velocityY, boolean flingFinished, int[] responseChain);
+  private native void nativeHandleTimer(
+      long nativePtr, long token, double monotonicTime, long epochTime);
+  private native void nativeSetGestureState(long nativePtr, int memberId, int gestureId, int state);
 }
