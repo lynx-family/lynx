@@ -511,6 +511,9 @@ void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
       item_holder->RecycleAfterAnimation(
           list::ItemHolderAnimationType::kOpacity);
     } else if (type == list::ListContainerAnimationType::kInsert) {
+      // The insert animation in a list may push a child off the screen, but at
+      // that moment we still need a transform animation, so deferred destroy is
+      // still necessary.
       item_holder->RecycleAfterAnimation(
           list::ItemHolderAnimationType::kTransform);
     }
