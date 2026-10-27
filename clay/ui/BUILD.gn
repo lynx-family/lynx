@@ -276,6 +276,7 @@ if (enable_unittests) {
       "gesture/mouse_region_manager_unittests.cc",
       "gesture/velocity_tracker_unittests.cc",
       "gesture_handler/handler/fling_scroller_unittests.cc",
+      "gesture_handler/unified_gesture_handler_unittests.cc",
       "lynx_module/lynx_module_unittests.cc",
       "lynx_module/lynx_ui_method_unittests.cc",
       "painter/box_painter_unittests.cc",
