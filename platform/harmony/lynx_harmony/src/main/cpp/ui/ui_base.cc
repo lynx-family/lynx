@@ -3777,7 +3777,7 @@ float UIBase::GetArkUIProperty(AnimationProperty type) const {
     case AnimationProperty::kTranslateX:
     case AnimationProperty::kTranslateY:
     case AnimationProperty::kTranslateZ: {
-      float trans[3];
+      float trans[3] = {0.f};
       NodeManager::Instance().GetAttributeValues(
           DrawNode(), NODE_TRANSLATE, &trans[0], &trans[1], &trans[2]);
       return trans[static_cast<int>(type) -
@@ -3786,7 +3786,7 @@ float UIBase::GetArkUIProperty(AnimationProperty type) const {
     case AnimationProperty::kRotateX:
     case AnimationProperty::kRotateY:
     case AnimationProperty::kRotateZ: {
-      float angles[4];
+      float angles[4] = {0.f};
       NodeManager::Instance().GetAttributeValues(DrawNode(), NODE_ROTATE_ANGLE,
                                                  &angles[0], &angles[1],
                                                  &angles[2], &angles[3]);
@@ -3795,7 +3795,7 @@ float UIBase::GetArkUIProperty(AnimationProperty type) const {
     }
     case AnimationProperty::kScaleX:
     case AnimationProperty::kScaleY: {
-      float scales[2];
+      float scales[2] = {1.f, 1.f};
       NodeManager::Instance().GetAttributeValues(DrawNode(), NODE_SCALE,
                                                  &scales[0], &scales[1]);
       return scales[static_cast<int>(type) -

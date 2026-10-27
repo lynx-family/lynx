@@ -182,6 +182,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   };
   const GestureHandlerMap& GetGestureHandlers() override;
   bool IsEnableNewGesture() { return gesture_arena_member_id_ > 0; }
+  bool ShouldConsumeGesture() const { return consume_gesture_; }
   void SetGestureDetectors(const GestureMap& gestureDetectors);
   std::shared_ptr<GestureArenaManager> GetGestureArenaManager();
 
