@@ -934,6 +934,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Element notify element_manager to trigger layout.
   void SetNeedsLayout();
 
+  void SetNeedsRepaint() { need_repaint_ = true; }
+
   // Element notify element_manager to regist itself to set.
   void RequestNextFrame(Element *element);
 
@@ -1513,6 +1515,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   // Indicate if need to do layout for current OnPatchFinish process
   bool need_layout_{false};
+  bool need_repaint_{false};
 
   // LayoutInElement may receive a first-screen or reuse layout request before
   // the viewport is ready. Retain that callback state until a real layout.
