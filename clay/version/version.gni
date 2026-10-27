@@ -1,0 +1,45 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../common/config.gni")
+
+declare_args() {
+  engine_version = ""
+
+  skia_version = ""
+}
+
+_flutter_root = "../"
+
+if (engine_version == "") {
+  engine_version_lines =
+      exec_script("../build/git_revision.py",
+                  [
+                    "--repository",
+                    rebase_path(_flutter_root, "", _flutter_root),
+                  ],
+                  "list lines")
+  engine_version = engine_version_lines[0]
+}
+
+if (!enable_skity) {
+  if (skia_version == "") {
+    skia_version_lines =
+        exec_script("../build/git_revision.py",
+                    [
+                      "--repository",
+                      rebase_path("//third_party/skia", "", _flutter_root),
+                    ],
+                    "list lines")
+    skia_version = skia_version_lines[0]
+  }
+} else {
+  # When using skity, set a default skia_version to avoid undefined variable issues
+  if (skia_version == "") {
+    skia_version = "skity-enabled"
+  }
+}

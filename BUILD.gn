@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("clay/common/config.gni")
 import("config.gni")
 
 group("root") {
@@ -31,6 +32,10 @@ group("default") {
 
   if (enable_unittests) {
     deps += [ "tools/gn_tools/test:gn_tools_test" ]
+  }
+
+  if (enable_clay) {
+    deps += [ "clay:standalone_lib" ]
   }
 }
 

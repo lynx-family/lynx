@@ -1,0 +1,30 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+ui_compositing_sources = [
+  "frame_builder.cc",
+  "frame_builder.h",
+  "pending_container_layer.cc",
+  "pending_container_layer.h",
+  "pending_drawable_image_layer.cc",
+  "pending_drawable_image_layer.h",
+  "pending_effect_layer.cc",
+  "pending_effect_layer.h",
+  "pending_external_view_layer.cc",
+  "pending_external_view_layer.h",
+  "pending_layer.cc",
+  "pending_layer.h",
+  "pending_offset_layer.cc",
+  "pending_offset_layer.h",
+  "pending_picture_layer.cc",
+  "pending_picture_layer.h",
+  "pending_platform_view_layer.cc",
+  "pending_platform_view_layer.h",
+  "pending_punch_hole_layer.cc",
+  "pending_punch_hole_layer.h",
+  "pending_scroll_offset_layer.cc",
+  "pending_scroll_offset_layer.h",
+  "pending_transform_layer.cc",
+  "pending_transform_layer.h",
+]

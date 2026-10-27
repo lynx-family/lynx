@@ -1,0 +1,55 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+import("../../shell/config.gni")
+
+if (is_win) {
+  import("//build/config/win/win.gni")
+}
+
+group("glfw") {
+  deps = [ ":clay_glfw" ]
+}
+
+executable("clay_glfw") {
+  sources = [
+    "clay_glfw.cc",
+    "clay_logo.h",
+    "custom_task_runner.cc",
+    "custom_task_runner.h",
+    "event_loop.cc",
+    "event_loop.h",
+    "platform_view_impl.h",
+    "shell_impl.cc",
+    "shell_impl.h",
+    "surface_gl_impl.h",
+    "thread_host_holder.cc",
+    "thread_host_holder.h",
+  ]
+
+  deps = [
+    "../../../base/src:base_static",
+    "../../common/graphics:gl_scoped_binder",
+    "../../fml:fml",
+    "../../fml:icu_util",
+    "../../shell/common",
+    "../../shell/gpu:gpu_surface_gl",
+    "../../ui",
+    "//build/secondary/third_party/glfw",
+    "//third_party/skia",
+  ]
+
+  defines = [ "GLFW_INCLUDE_NONE" ]
+  libs = []
+  if (is_win && use_flutter_cxx) {
+    if (windows_runtime_library_mode == "md") {
+      libs += [ "msvcprt.lib" ]
+    } else if (windows_runtime_library_mode == "mt") {
+      libs += [ "libcpmt.lib" ]
+    }
+  }
+
+  configs += [ "../../:config" ]
+}

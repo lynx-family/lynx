@@ -1,0 +1,266 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../common/config.gni")
+import("../testing/testing.gni")
+
+source_set("flow") {
+  sources = [
+    "animation/animation_host.cc",
+    "animation/animation_host.h",
+    "animation/animation_mutator.cc",
+    "animation/animation_mutator.h",
+    "animation/scroll_offset_animation.cc",
+    "animation/scroll_offset_animation.h",
+    "compositor/compositor_state.cc",
+    "compositor/compositor_state.h",
+    "compositor/overlay_views.h",
+    "compositor_context.cc",
+    "compositor_context.h",
+    "diff_context.cc",
+    "diff_context.h",
+    "embedded_views.cc",
+    "embedded_views.h",
+    "flow_rendering_backend.h",
+    "frame_timings.cc",
+    "frame_timings.h",
+    "instrumentation.cc",
+    "instrumentation.h",
+    "layer_snapshot_store.cc",
+    "layer_snapshot_store.h",
+    "layers/backdrop_filter_layer.cc",
+    "layers/backdrop_filter_layer.h",
+    "layers/cacheable_layer.cc",
+    "layers/cacheable_layer.h",
+    "layers/clip_path_layer.cc",
+    "layers/clip_path_layer.h",
+    "layers/clip_rect_layer.cc",
+    "layers/clip_rect_layer.h",
+    "layers/clip_rrect_layer.cc",
+    "layers/clip_rrect_layer.h",
+    "layers/clip_shape_layer.h",
+    "layers/color_filter_layer.cc",
+    "layers/color_filter_layer.h",
+    "layers/container_layer.cc",
+    "layers/container_layer.h",
+    "layers/drawable_image_layer.cc",
+    "layers/drawable_image_layer.h",
+    "layers/external_view_layer.cc",
+    "layers/external_view_layer.h",
+    "layers/image_filter_layer.cc",
+    "layers/image_filter_layer.h",
+    "layers/layer.cc",
+    "layers/layer.h",
+    "layers/layer_raster_cache_item.cc",
+    "layers/layer_raster_cache_item.h",
+    "layers/layer_state_stack.cc",
+    "layers/layer_state_stack.h",
+    "layers/layer_tree.cc",
+    "layers/layer_tree.h",
+    "layers/offscreen_surface.cc",
+    "layers/offscreen_surface.h",
+    "layers/opacity_layer.cc",
+    "layers/opacity_layer.h",
+    "layers/performance_overlay_layer.cc",
+    "layers/performance_overlay_layer.h",
+    "layers/physical_shape_layer.cc",
+    "layers/physical_shape_layer.h",
+    "layers/picture_complexity.cc",
+    "layers/picture_complexity.h",
+    "layers/picture_complexity_gl.cc",
+    "layers/picture_complexity_gl.h",
+    "layers/picture_complexity_metal.cc",
+    "layers/picture_complexity_metal.h",
+    "layers/picture_layer.cc",
+    "layers/picture_layer.h",
+    "layers/picture_raster_cache_item.cc",
+    "layers/picture_raster_cache_item.h",
+    "layers/platform_view_layer.cc",
+    "layers/platform_view_layer.h",
+    "layers/punch_hole_layer.cc",
+    "layers/punch_hole_layer.h",
+    "layers/shader_mask_layer.cc",
+    "layers/shader_mask_layer.h",
+    "layers/transform_layer.cc",
+    "layers/transform_layer.h",
+    "matrix_clip_tracker.cc",
+    "matrix_clip_tracker.h",
+    "paint_region.cc",
+    "paint_region.h",
+    "paint_utils.cc",
+    "paint_utils.h",
+    "raster_cache.cc",
+    "raster_cache.h",
+    "raster_cache_item.h",
+    "raster_cache_key.cc",
+    "raster_cache_key.h",
+    "raster_cache_util.cc",
+    "raster_cache_util.h",
+    "rtree.cc",
+    "rtree.h",
+    "services/animation_event_service.h",
+    "view_slicer.cc",
+    "view_slicer.h",
+
+    # "resource_holder.h",
+    "surface.cc",
+    "surface.h",
+    "surface_frame.cc",
+    "surface_frame.h",
+  ]
+
+  public_configs = [ "../:config" ]
+
+  deps = [
+    "../common",
+    "../common/graphics",
+    "../common/service",
+    "../fml:fml",
+    "../gfx",
+    "../gfx/shared_image",
+  ]
+
+  if (enable_skity) {
+    sources -= [
+      "layers/offscreen_surface.cc",
+      "layers/offscreen_surface.h",
+      "rtree.cc",
+      "rtree.h",
+    ]
+    sources += [
+      "layers/picture_complexity_calculator_skity.cc",
+      "layers/picture_complexity_calculator_skity.h",
+      "layers/picture_complexity_helper_skity.h",
+    ]
+    deps += [ "../gfx/skity" ]
+  } else {
+    sources += [ "layers/picture_complexity_helper_skia.h" ]
+    deps += [
+      "../third_party/skity_geometry:skity_geometry",
+      "//third_party/skia",
+    ]
+  }
+}
+
+if (enable_unittests) {
+  test_fixtures("flow_fixtures") {
+    fixtures = []
+  }
+
+  source_set("flow_testing") {
+    testonly = true
+
+    sources = [
+      "testing/diff_context_test.cc",
+      "testing/diff_context_test.h",
+      "testing/gl_context_switch_test.cc",
+      "testing/gl_context_switch_test.h",
+      "testing/gpu_object_layer_test.cc",
+      "testing/gpu_object_layer_test.h",
+      "testing/layer_test.h",
+      "testing/mock_drawable_image.cc",
+      "testing/mock_drawable_image.h",
+      "testing/mock_layer.cc",
+      "testing/mock_layer.h",
+      "testing/mock_raster_cache.cc",
+      "testing/mock_raster_cache.h",
+      "testing/mock_shared_image_backing.cc",
+      "testing/mock_shared_image_backing.h",
+      "testing/picture_complexity_unittests.cc",
+      "testing/picture_test_utils.cc",
+      "testing/picture_test_utils.h",
+    ]
+
+    public_deps = [
+      "../testing:skia",
+      "//third_party/googletest:gtest",
+    ]
+
+    deps = [
+      ":flow",
+      "../common/graphics",
+      "../gfx",
+      "../gfx/shared_image",
+    ]
+  }
+
+  executable("flow_unittests") {
+    testonly = true
+
+    sources = [
+      "animation/scroll_offset_animation_unittests.cc",
+      "compositor/compositor_state_unittests.cc",
+      "diff_context_unittests.cc",
+      "embedded_view_params_unittests.cc",
+      "flow_run_all_unittests.cc",
+      "flow_test_utils.cc",
+      "flow_test_utils.h",
+      "frame_timings_recorder_unittests.cc",
+      "gl_context_switch_unittests.cc",
+      "instrumentation_unittests.cc",
+      "layers/backdrop_filter_layer_unittests.cc",
+      "layers/checkerboard_layertree_unittests.cc",
+      "layers/clip_path_layer_unittests.cc",
+      "layers/clip_rect_layer_unittests.cc",
+      "layers/clip_rrect_layer_unittests.cc",
+      "layers/color_filter_layer_unittests.cc",
+      "layers/container_layer_unittests.cc",
+      "matrix_clip_tracker_unittests.cc",
+      "view_slicer_unittests.cc",
+
+      # "layers/display_list_layer_unittests.cc",
+      "drawable_image_unittests.cc",
+      "layers/drawable_image_layer_unittests.cc",
+      "layers/image_filter_layer_unittests.cc",
+      "layers/layer_state_stack_unittests.cc",
+      "layers/layer_tree_unittests.cc",
+      "layers/offscreen_surface_unittests.cc",
+      "layers/opacity_layer_unittests.cc",
+      "layers/performance_overlay_layer_unittests.cc",
+      "layers/physical_shape_layer_unittests.cc",
+      "layers/platform_view_layer_unittests.cc",
+      "layers/punch_hole_layer_unittests.cc",
+      "layers/shader_mask_layer_unittests.cc",
+      "layers/transform_layer_unittests.cc",
+      "mutators_stack_unittests.cc",
+      "raster_cache_unittests.cc",
+      "rtree_unittests.cc",
+      "surface_frame_unittests.cc",
+      "testing/mock_drawable_image_unittests.cc",
+      "testing/mock_layer_unittests.cc",
+      "testing/mock_shared_image_unittests.cc",
+    ]
+
+    deps = [
+      ":flow",
+      ":flow_fixtures",
+      ":flow_testing",
+      "../../base/src:base_static",
+      "../common/graphics",
+      "../fml:fml",
+      "../testing:skia",
+      "../testing:testing_lib",
+      "../third_party/skity_geometry:skity_geometry",
+      "//third_party/googletest:gtest",
+      "//third_party/skia",
+    ]
+
+    configs += [ "../:config" ]
+
+    if (!defined(defines)) {
+      defines = []
+    }
+    if (is_win) {
+      # Required for M_PI and others.
+      defines += [ "_USE_MATH_DEFINES" ]
+    }
+
+    if (enable_skity) {
+      sources -= [ "layers/shader_mask_layer_unittests.cc" ]
+    }
+  }
+}

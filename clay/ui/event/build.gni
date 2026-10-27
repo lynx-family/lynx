@@ -1,0 +1,18 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+ui_event_sources = [
+  "event_utils.cc",
+  "event_utils.h",
+  "focus_manager.cc",
+  "focus_manager.h",
+  "gesture_event.cc",
+  "gesture_event.h",
+  "key_code_converter.cc",
+  "key_code_converter.h",
+  "key_codes.h",
+  "key_event.cc",
+  "key_event.h",
+  "keyboard_key.h",
+]

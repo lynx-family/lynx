@@ -1,0 +1,23 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+ui_painter_sources = [
+  "border_side.h",
+  "box_painter.cc",
+  "box_painter.h",
+  "box_shadow_painter.cc",
+  "box_shadow_painter.h",
+  "gradient.cc",
+  "gradient.h",
+  "gradient_factory.cc",
+  "gradient_factory.h",
+  "image_painter.cc",
+  "image_painter.h",
+  "object_painter.cc",
+  "object_painter.h",
+  "painting_context.cc",
+  "painting_context.h",
+  "text_painter.cc",
+  "text_painter.h",
+]
