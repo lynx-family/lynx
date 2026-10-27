@@ -11,6 +11,7 @@ lynx_core_source_set("gesture") {
     "gesture_arena_delegate.h",
     "gesture_arena_events.cc",
     "gesture_arena_impl.h",
+    "gesture_arena_members.cc",
     "gesture_config.cc",
     "gesture_config.h",
     "gesture_handler.cc",
