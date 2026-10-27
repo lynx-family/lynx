@@ -30,6 +30,14 @@ LYNX_REGISTER_UI("component")
   }
 }
 
+- (void)frameDidChange {
+  [super frameDidChange];
+  if (self.layoutObserver &&
+      [self.layoutObserver respondsToSelector:@selector(onComponentFrameChanged:)]) {
+    [self.layoutObserver onComponentFrameChanged:self];
+  }
+}
+
 LYNX_PROP_SETTER("item-key", setItemKey, NSString*) {
   if (requestReset) {
     value = nil;

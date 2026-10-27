@@ -327,6 +327,9 @@ static const CGFloat kLynxUIListLoaderScreenWidthInRpx = 750.;
 
 #pragma mark - Private, Override LynxUI
 
+- (void)onComponentFrameChanged:(LynxUIComponent *)component {
+}
+
 - (void)onComponentLayoutUpdated:(nonnull LynxUIComponent *)component {
 }
 
