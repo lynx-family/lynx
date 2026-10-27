@@ -118,6 +118,7 @@ class ListMediator : public lynx::list::ElementDelegate {
                         bool scrolling) override;
 
   int GetThreadStrategy() const override;
+  std::shared_ptr<base::VSyncMonitor> GetCustomVSyncMonitor() const override;
 
   bool IsFiberArch() const override;
 

@@ -44,7 +44,8 @@ void AnimationManagerImpl::SetUpdateAnimationConfig(
 
 std::unique_ptr<ItemAnimator>
 AnimationManagerImpl::CreateItemAnimatorForTransaction() {
-  auto item_animator = std::make_unique<ItemAnimatorDefault>();
+  auto item_animator = std::make_unique<ItemAnimatorDefault>(
+      list_container_->list_delegate()->GetCustomVSyncMonitor());
   item_animator->SetAnimationStages(update_animation_config_.stages);
   item_animator->SetListener(this);
   return item_animator;
