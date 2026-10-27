@@ -42,7 +42,6 @@ public class LynxViewBuilder
   LynxFontFaceLoader.Loader fontLoader;
   LynxImageFetcher imageFetcher;
 
-  TemplateBundle templateBundle;
   boolean enableLayoutOnly = LynxEnv.inst().isLayoutOnlyEnabled();
   Map<String, String> mImageCustomParam;
   Map<String, String> lynxViewConfig;
@@ -348,11 +347,6 @@ public class LynxViewBuilder
    */
   public LynxViewBuilder setLynxBackgroundRuntime(LynxBackgroundRuntime runtime) {
     lynxBackgroundRuntime = runtime;
-    return this;
-  }
-
-  public LynxViewBuilder setTemplateBundle(TemplateBundle templateBundle) {
-    this.templateBundle = templateBundle;
     return this;
   }
 
