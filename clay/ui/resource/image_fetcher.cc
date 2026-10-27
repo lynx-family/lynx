@@ -18,7 +18,9 @@
 #include "clay/net/loader/resource_loader_factory.h"
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/net/url/url_helper.h"
+#ifdef ENABLE_SKITY_CODEC
 #include "skity/codec/codec.hpp"
+#endif
 #include "skity/graphic/image.hpp"
 
 namespace clay {
@@ -176,6 +178,9 @@ uint64_t ImageFetcher::FetchSVGImageWithContent(const std::string& content,
 }
 
 std::shared_ptr<skity::Image> ImageFetcher::LoadImage(const std::string& url) {
+#ifndef ENABLE_SKITY_CODEC
+  return nullptr;
+#else
   std::string trimmed_url = url::TrimUrl(url);
   auto loader = GetOrCreateResourceLoader(
       resource_loader_intercept_, trimmed_url, task_runners_.GetUITaskRunner(),
@@ -200,6 +205,7 @@ std::shared_ptr<skity::Image> ImageFetcher::LoadImage(const std::string& url) {
   }
 
   return skity::Image::MakeImage(pixel);
+#endif  // ENABLE_SKITY_CODEC
 }
 
 void ImageFetcher::OnFetchFinish(const std::string& trimmed_url,

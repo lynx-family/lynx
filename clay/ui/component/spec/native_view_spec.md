@@ -448,6 +448,10 @@ Current example:
 A wrapped internal native view may expose a Clay subtree raster snapshot
 provider to Java.
 
+Android SE builds exclude image codec support. Encoded subtree snapshots are
+unavailable in this mode: the native snapshot callback receives null data and
+zero dimensions, which the Android bridge forwards to its error callback.
+
 Generic flow:
 
 1. Java wrapper calls `requestSubtreeRasterSnapshot(scale, callback)` through

@@ -11,6 +11,8 @@ Scope:
   `BDXLynxMapMarkerNG`
 
 This document only records map-specific behavior.
+Android SE builds exclude the built-in map-marker component and its
+registration; the marker snapshot flow below is unavailable in that mode.
 Generic native-view lifecycle and holder rules are defined in
 `native_view_spec.md`.
 Generic iOS hybrid-composition overlay geometry is defined in

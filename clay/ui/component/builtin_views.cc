@@ -6,7 +6,7 @@
 #include "build/build_config.h"
 #include "clay/ui/component/component.h"
 
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_INPUT)
 #ifndef OS_IOS
 #include "clay/ui/component/editable/input_ng_view.h"
 #include "clay/ui/component/editable/input_view.h"
@@ -14,7 +14,7 @@
 #include "clay/ui/component/editable/textarea_view.h"
 #include "clay/ui/shadow/editable_shadow_node.h"
 #endif  // OS_IOS
-#endif  // ENABLE_CLAY_LITE
+#endif  // !ENABLE_CLAY_LITE && ENABLE_CLAY_TEXT_INPUT
 
 #include "clay/ui/component/image_view.h"
 #include "clay/ui/component/list/list_container/list_container_wrapper.h"
@@ -58,7 +58,7 @@ REGISTER_CLAY_ELEMENT("list-item", ListItemView, void);
 REGISTER_CLAY_ELEMENT("list", ListContainerWrapper, void);
 REGISTER_CLAY_ELEMENT("list-container", ListContainerWrapper, void);
 
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_INPUT)
 #ifndef OS_IOS
 REGISTER_CLAY_ELEMENT("x-input-ng", InputNGView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-textarea-ng", TextAreaNGView, EditableShadowNode);
@@ -67,7 +67,7 @@ REGISTER_CLAY_ELEMENT("textarea", TextAreaView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("input", InputView, EditableShadowNode);
 REGISTER_CLAY_ELEMENT("x-input", InputView, EditableShadowNode);
 #endif  // OS_IOS
-#endif  // ENABLE_CLAY_LITE
+#endif  // !ENABLE_CLAY_LITE && ENABLE_CLAY_TEXT_INPUT
 
 #if (defined(OS_MAC) || defined(OS_WIN))
 REGISTER_CLAY_ELEMENT("cover-view", CoverView, void);

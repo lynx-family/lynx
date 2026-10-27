@@ -53,7 +53,7 @@
 #include "clay/ui/painter/gradient.h"
 #include "clay/ui/resource/image_resource_fetcher.h"
 
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_INPUT)
 #include "clay/ui/component/editable/editable_view.h"
 #include "clay/ui/component/editable/textarea_ng_view.h"
 #include "clay/ui/component/editable/textarea_view.h"
@@ -4020,8 +4020,11 @@ bool BaseView::IsAccessibilityElement() const {
   }
   // Text and Image are not affected by lynx page config
   // `enableAccessibilityElement`.
-  if (Is<BaseImageView>() || Is<BaseTextView>() || Is<EditableView>() ||
-      Is<TextAreaView>() || Is<TextAreaNGView>()) {
+  if (Is<BaseImageView>() || Is<BaseTextView>()
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_INPUT)
+      || Is<EditableView>() || Is<TextAreaView>() || Is<TextAreaNGView>()
+#endif
+  ) {
     return accessibility_element_.value_or(true);
   }
   BaseView* a11y_scroll_target =

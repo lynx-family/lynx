@@ -25,7 +25,9 @@
 #include "clay/gfx/shared_image/native_image_image_backing.h"
 #endif
 #ifdef ENABLE_SKITY
+#ifdef ENABLE_SKITY_CODEC
 #include "skity/codec/codec.hpp"
+#endif
 #endif
 
 namespace clay {
@@ -131,6 +133,9 @@ void DecodeImage(
     GrDataPtr data,
     std::function<void(const char* error_message, const ClayBitmap* bitmap)>
         callback) {
+#if defined(ENABLE_SKITY) && !defined(ENABLE_SKITY_CODEC)
+  callback("Image decoding requires Skity codec support.", nullptr);
+#else
 #ifdef ENABLE_SKITY
   GraphicsIsolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
       [data = std::move(data), callback = std::move(callback)]() {
@@ -206,6 +211,7 @@ void DecodeImage(
             });
       });
 #endif
+#endif  // ENABLE_SKITY && !ENABLE_SKITY_CODEC
 }
 
 class ClayBitmapCallbackWrapper {
@@ -700,6 +706,9 @@ CLAY_EXTERN_C bool ClayDecodeDataUrlImage(const char* data_url, size_t length,
 CLAY_EXTERN_C bool ClayEncodeBitmap(const ClayBitmap* bitmap,
                                     ClayImageFormat encoding,
                                     float compress_ratio, ClayDataHolder* out) {
+#if defined(ENABLE_SKITY) && !defined(ENABLE_SKITY_CODEC)
+  return false;
+#else
 #ifndef ENABLE_SKITY
   SkEncodedImageFormat format;
 
@@ -734,6 +743,7 @@ CLAY_EXTERN_C bool ClayEncodeBitmap(const ClayBitmap* bitmap,
   return false;
 #endif  // ENABLE_SKITY
   return true;
+#endif  // ENABLE_SKITY && !ENABLE_SKITY_CODEC
 }
 
 }  // namespace clay
