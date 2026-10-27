@@ -15,7 +15,6 @@
 
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
-#include "core/renderer/dom/fiber/compose_draw_behind.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_graphics_layer.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
@@ -43,11 +42,6 @@ constexpr int kModifierOpSize = 8;
 constexpr int kModifierOpFill = 9;
 constexpr int kModifierOpAspectRatio = 10;
 constexpr int kModifierOpGraphicsLayer = 11;
-constexpr int kModifierOpDrawBehind = 12;
-
-bool IsDrawOperation(int op) {
-  return op == kModifierOpGraphicsLayer || op == kModifierOpDrawBehind;
-}
 
 constexpr int kModifierCallbackKindClick = 1;
 constexpr int kLayoutModifierAxisWidth = 1;
@@ -104,7 +98,7 @@ struct ModifierFramePlan {
   std::vector<int> frame_child_constrained_axes;
   size_t frame_count{0};
   bool owner_uses_layout_box{false};
-  bool has_draw_callbacks{false};
+  bool has_graphics_layers{false};
 };
 
 lepus::Value ReadModifierProperty(const lepus::Value& node,
@@ -314,10 +308,9 @@ bool ParseModifierOperation(const lepus::Value& node,
     case kModifierOpAspectRatio:
       return ParseLayoutOperation(node, operation, error);
     case kModifierOpGraphicsLayer:
-    case kModifierOpDrawBehind:
       operation->callback = node.GetProperty(kResolve);
       if (!operation->callback.ToLepusValue().IsCallable()) {
-        *error = "drawing resolve should be callable";
+        *error = "graphicsLayer resolve should be callable";
         return false;
       }
       return true;
@@ -389,9 +382,9 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
   }
 
   for (const auto& operation : plan->operations) {
-    if (IsDrawOperation(operation.op)) {
-      plan->has_draw_callbacks = true;
-      // Keep preceding effects outside the following Element's drawing hook.
+    if (operation.op == kModifierOpGraphicsLayer) {
+      plan->has_graphics_layers = true;
+      // Keep preceding effects outside the following Element's transform.
       ++plan->frame_count;
     } else if (operation.op == kModifierOpPadding) {
       ++plan->frame_count;
@@ -399,9 +392,9 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
   }
   plan->frame_child_constrained_axes.resize(plan->frame_count);
 
-  // Padding and drawing hooks introduce physical boundaries. Each hook belongs
-  // to the following carrier (possibly the stable Content Element). This keeps
-  // earlier drawing outside it and preserves multiple hooks in Modifier order.
+  // Padding and graphicsLayer introduce physical boundaries. Earlier paint and
+  // pointer operations stay outside a layer. Its callback belongs to the next
+  // carrier, which can also be the stable Content Element.
   size_t carrier_index = 0;
   int constrained_axes = 0;
   for (size_t position = 0; position < plan->operations.size(); ++position) {
@@ -410,7 +403,7 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     const size_t target_frame_index =
         carrier_index < plan->frame_count ? carrier_index : kNoModifierFrame;
 
-    if (IsDrawOperation(operation.op)) {
+    if (operation.op == kModifierOpGraphicsLayer) {
       plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
       ++carrier_index;
       operation.target_frame_index =
@@ -634,7 +627,6 @@ void ApplyNonLayoutOperation(
       target->SetStyle(operation.style_id, operation.value.ToLepusValue());
       break;
     case kModifierOpGraphicsLayer:
-    case kModifierOpDrawBehind:
       // The following Element records the callback result during Draw.
       break;
     case kModifierOpAttribute:
@@ -741,7 +733,7 @@ bool ValidateMountRoot(Element* owner, Element* current_mount_root,
 
 void ClearModifierDrawCallbacks(Element* mount_root, Element* content_element) {
   // ValidateTopology guarantees a single-child Modifier chain ending at the
-  // stable content Element. Include that Element: the innermost drawing hook
+  // stable content Element. Include that Element: the innermost graphicsLayer
   // can bind directly to it. Do not visit its application-owned children.
   for (auto* target = mount_root;; target = target->GetChildAt(0)) {
     if (target->HasCustomDrawFunctions()) {
@@ -753,9 +745,9 @@ void ClearModifierDrawCallbacks(Element* mount_root, Element* content_element) {
   }
 }
 
-void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
-                               Element* mount_root, Element* content_element,
-                               runtime::MTSRuntime* registration_context) {
+void BindGraphicsLayerCallbacks(const ModifierFramePlan& plan,
+                                Element* mount_root, Element* content_element,
+                                runtime::MTSRuntime* registration_context) {
   // Match the outer-to-inner frame indices assigned by BuildModifierFramePlan.
   // The stable content Element is not a frame; OperationTarget selects it when
   // the operation has kNoModifierFrame as its target.
@@ -766,19 +758,15 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
   }
 
   for (const auto& operation : plan.operations) {
-    if (!IsDrawOperation(operation.op)) {
+    if (operation.op != kModifierOpGraphicsLayer) {
       continue;
     }
-    // Every hook introduces its own boundary, so no two hooks replace one
-    // another on the same Element. Layer properties and content drawing run in
-    // their respective Fragment phases, both with this Element's actual size.
+    // Bind to the Element following this layer boundary so the transform covers
+    // its own drawing and descendants. The closure runs in Fragment's layer
+    // property phase, when that Element's layout size is available.
     auto* target = OperationTarget(operation, content_element, frames);
     target->SetCustomDrawFunctions(
-        operation.op == kModifierOpGraphicsLayer
-            ? GraphicsLayerDrawFunctions(registration_context,
-                                         operation.callback)
-            : ComposeDrawBehindFunctions(registration_context,
-                                         operation.callback));
+        GraphicsLayerDrawFunctions(registration_context, operation.callback));
   }
 }
 
@@ -807,7 +795,7 @@ fml::RefPtr<Element> InstallModifierFramePlan(
     // Pass-through boxes must not introduce implicit clipping around
     // transformed contents. Authored overflow styles are applied afterwards and
     // still win.
-    if (plan.has_draw_callbacks) frame->SetDefaultOverflow(true);
+    if (plan.has_graphics_layers) frame->SetDefaultOverflow(true);
     frames.push_back(std::move(frame));
   }
 
@@ -928,12 +916,13 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     return {false, error_position, std::move(error)};
   }
   // Reject unsupported plans before changing any active callbacks or nodes.
-  if (plan.has_draw_callbacks) {
+  if (plan.has_graphics_layers) {
     if (!registration_context) {
-      return {false, 0, "drawing modifiers require a registering runtime"};
+      return {false, 0, "graphicsLayer requires a registering runtime"};
     }
     if (!manager->IsFragmentLayerRenderModeOn()) {
-      return {false, 0, "drawing modifiers require Fragment Layer rendering"};
+      return {false, 0,
+              "graphicsLayer resolver requires Fragment Layer rendering"};
     }
   }
 
@@ -946,9 +935,9 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
       registration_context, manager->GetEnableParallelElement());
   handle->SetMountRoot(std::move(mount_root));
 
-  if (plan.has_draw_callbacks) {
-    BindModifierDrawCallbacks(plan, handle->mount_root().get(),
-                              content_element.get(), registration_context);
+  if (plan.has_graphics_layers) {
+    BindGraphicsLayerCallbacks(plan, handle->mount_root().get(),
+                               content_element.get(), registration_context);
     // Request layout for the newly installed chain. Redrawing an existing
     // layer through InvalidateElement does not go through this Apply path.
     content_element->RequestLayout();

@@ -22,11 +22,11 @@
 #include "gfx/public/display_list_reader.h"
 #include "gfx/public/rounded_rectangle.h"
 
-// Drawing children retain their own bounds inside a container that follows host geometry.
-@interface LynxHostDrawingContainerLayer : CALayer
+// Shadow children are positioned in viewport coordinates, not scroll content coordinates.
+@interface LynxBoxShadowContainerLayer : CALayer
 @end
 
-@implementation LynxHostDrawingContainerLayer
+@implementation LynxBoxShadowContainerLayer
 @end
 
 using namespace lynx;
@@ -794,7 +794,8 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     layer.transform = CATransform3DIdentity;
     layer.anchorPoint = hostLayer.anchorPoint;
     // Background and shadow children use viewport coordinates, independent of the scroll offset.
-    BOOL usesViewportCoordinates = [layer isKindOfClass:[LynxHostDrawingContainerLayer class]];
+    BOOL usesViewportCoordinates =
+        layer == _hostBackgroundLayer || [layer isKindOfClass:[LynxBoxShadowContainerLayer class]];
     layer.bounds =
         usesViewportCoordinates ? (CGRect){CGPointZero, hostLayer.bounds.size} : hostLayer.bounds;
     layer.position = hostLayer.position;
@@ -848,7 +849,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
   // Keep the drawing in a child layer: host decoration synchronization changes the container
   // bounds.
-  CALayer *container = [LynxHostDrawingContainerLayer layer];
+  CALayer *container = [LynxBoxShadowContainerLayer layer];
   container.frame = (CGRect){CGPointZero, _view.bounds.size};
   CGRect clipRect = CGRectMake(0, 0, clipBox.GetWidth(), clipBox.GetHeight());
   CGPathRef clipPath = [LynxBackgroundUtils
@@ -1064,23 +1065,13 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   if ([self shouldInsertAsHostDecorationForOp:op]) {
     if (op == DisplayListOpType::kBackgroundImage || op == DisplayListOpType::kLinearGradient ||
         op == DisplayListOpType::kRadialGradient) {
-      // Share geometry only between consecutive backgrounds. A custom drawing
-      // callback can interleave gradients and fills; reusing an earlier group
-      // would move a later gradient below the intervening fill.
-      if (_hostBackgroundLayer == nil || _hostDecorationLayers.lastObject != _hostBackgroundLayer) {
-        _hostBackgroundLayer = [LynxHostDrawingContainerLayer layer];
+      // Share host geometry while preserving each background's clip and paint order.
+      if (_hostBackgroundLayer == nil) {
+        _hostBackgroundLayer = [CALayer layer];
         [self insertHostDecorationLayer:_hostBackgroundLayer];
       }
       [_hostBackgroundLayer addSublayer:layer];
       return;
-    }
-    if (op == DisplayListOpType::kFill &&
-        !CGRectEqualToRect(layer.frame, (CGRect){CGPointZero, _view.bounds.size})) {
-      // Host property synchronization changes decoration bounds. Preserve a
-      // custom drawRect's offset and size in a child layer instead.
-      CALayer *container = [LynxHostDrawingContainerLayer layer];
-      [container addSublayer:layer];
-      layer = container;
     }
     [self insertHostDecorationLayer:layer];
   } else {
