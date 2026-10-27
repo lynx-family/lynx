@@ -8779,6 +8779,7 @@ public class com::lynx::tasm::PageConfig :  {
   public boolean com.lynx.tasm.PageConfig.getDefaultTextIncludePadding();
   public boolean com.lynx.tasm.PageConfig.getEnableFlattenTranslateZ();
   public boolean com.lynx.tasm.PageConfig.isEnableNewGesture();
+  public boolean com.lynx.tasm.PageConfig.isEnableUnifiedGestureHandler();
   public boolean com.lynx.tasm.PageConfig.isEnablePlatformGesture();
   public boolean com.lynx.tasm.PageConfig.getEnableDisexposureWhenLynxHidden();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureWhenLayout();
