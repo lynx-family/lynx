@@ -1774,9 +1774,9 @@ void ElementManager::OnPatchFinishForFiber(
     // and don't trigger layout, so we need to invoke OnComponentFinish to
     // notify list that child has been rendered.
     OnListComponentUpdated(options);
-    // Even if no layout is needed, we should still repaint if fragments are
-    // dirty. Repaint should not be bound to relayout.
-    if (root() && root()->EnableFragmentLayerRender()) {
+    if ((need_repaint_.load(std::memory_order_relaxed) ||
+         NeedReconstructEventTargetTreeForExposure()) &&
+        root() && root()->EnableFragmentLayerRender()) {
       Repaint();
     }
     if (root() && (root()->EnableFragmentLayerRender() ||
@@ -1835,13 +1835,19 @@ void ElementManager::OnPatchFinishForFiber(
 }
 
 void ElementManager::Repaint() {
+  need_repaint_.store(false, std::memory_order_relaxed);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
   auto *native_context = painting_context()->impl()->CastToNativeCtx();
   DCHECK(native_context != nullptr);
   auto *root_fragment = root()->element_container()->CastToFragment();
-  NativePaintingContext::ScopedDisplayListBatch display_list_batch(
-      native_context, root_fragment->PlatformLayerCount());
-  root_fragment->Draw();
+  {
+    NativePaintingContext::ScopedDisplayListBatch display_list_batch(
+        native_context, root_fragment->PlatformLayerCount());
+    root_fragment->Draw();
+  }
+  // Native children are attached while applying display lists. Publish ready
+  // callbacks only after the complete batch has been submitted.
+  painting_context()->UpdateNodeReadyPatching();
 }
 
 void ElementManager::EnqueueLevelOrderTask(
