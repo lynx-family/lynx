@@ -165,11 +165,19 @@ bool DirectCompositionSurface::MakeCurrent() {
   return true;
 }
 
+void DirectCompositionSurface::InvalidateBufferAge() {
+  for (auto& buffer : buffers_) {
+    buffer.age = 0;
+  }
+}
+
 bool DirectCompositionSurface::SwapBuffers() {
-  bool released_draw_texture = false;
-  bool swap_result = ReleaseDrawTexture(false, &released_draw_texture);
-  if (swap_result && released_draw_texture) {
+  const bool has_draw_texture = draw_texture_ != nullptr;
+  bool swap_result = ReleaseDrawTexture(false);
+  if (swap_result && has_draw_texture) {
     AddDamageRegionWithManualBufferRotation(*pending_present_damage_region_);
+  } else if (!swap_result) {
+    InvalidateBufferAge();
   }
   pending_present_damage_region_.reset();
   pending_swap_rect_.reset();
@@ -177,16 +185,19 @@ bool DirectCompositionSurface::SwapBuffers() {
 }
 
 bool DirectCompositionSurface::Resize(int width, int height) {
+  pending_present_damage_region_.reset();
+  pending_swap_rect_.reset();
+  // This will release indirect references to swap chain (|real_surface_|) by
+  // binding |default_surface_| as the default framebuffer.
+  if (!ReleaseDrawTexture(true /* will_discard */)) {
+    InvalidateBufferAge();
+    return false;
+  }
   if (size_.width() != width || size_.height() != height) {
     size_ = {width, height};
   }
   child_window_->Resize(width, height);
   first_swap_ = true;
-  pending_present_damage_region_.reset();
-  pending_swap_rect_.reset();
-  // This will release indirect references to swap chain (|real_surface_|) by
-  // binding |default_surface_| as the default framebuffer.
-  if (!ReleaseDrawTexture(true /* will_discard */)) return false;
 
   // ResizeBuffers can't change alpha blending mode.
   if (swap_chain_) {
@@ -198,9 +209,8 @@ bool DirectCompositionSurface::Resize(int width, int height) {
         swap_chain_->ResizeBuffers(count, width, height, format, flags);
     if (!SUCCEEDED(hr)) {
       FML_DLOG(ERROR) << "ResizeBuffers failed with error 0x" << std::hex << hr;
-      return false;
-    }
-    if (!MakeCurrent() || !SetVSyncEnabled(vsync_enabled())) {
+      swap_chain_.Reset();
+    } else if (!MakeCurrent() || !SetVSyncEnabled(vsync_enabled())) {
       // Surfaces block until the v-blank by default.
       // Failing to update the vsync might result in unnecessary blocking.
       // This regresses performance but not correctness.
@@ -256,43 +266,27 @@ void DirectCompositionSurface::SetPresentDamageRegion(
   pending_present_damage_region_ = region;
 }
 
-bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard,
-                                                  bool* released_draw_texture) {
-  if (released_draw_texture) {
-    *released_draw_texture = false;
-  }
+bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard) {
   EGLSurface egl_surface = real_surface_;
   real_surface_ = nullptr;
 
   // If MakeCurrent fails (probably lost device), we'll want to return failure,
   // but we still want to reset the rest of the state for consistency.
-  if (::eglMakeCurrent(display_, GetHandle(), GetHandle(), context_) !=
-      EGL_TRUE) {
+  const bool result = ::eglMakeCurrent(display_, GetHandle(), GetHandle(),
+                                       context_) == EGL_TRUE;
+  if (!result) {
     LogEGLError("Failed to make current in ReleaseDrawTexture");
-    if (egl_surface) {
-      if (eglDestroySurface(display_, egl_surface) != EGL_TRUE) {
-        LogEGLError("Failed to destroy draw surface in ReleaseDrawTexture");
-      }
-      egl_surface = nullptr;
-    }
-    return false;
   }
 
   if (egl_surface) {
     if (eglDestroySurface(display_, egl_surface) != EGL_TRUE) {
       LogEGLError("Failed to destroy draw surface in ReleaseDrawTexture");
-      return false;
     }
-    egl_surface = nullptr;
   }
 
   HRESULT hr;
   if (draw_texture_) {
-    if (released_draw_texture) {
-      *released_draw_texture = true;
-    }
     draw_texture_.Reset();
-
     if (!will_discard) {
       if (!swap_chain_) {
         FML_LOG(ERROR) << "Cannot present DirectComposition surface without a "
@@ -348,15 +342,17 @@ bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard,
           }
         }
       }
-      hr = dcomp_device_->Commit();
-      if (FAILED(hr)) {
-        FML_LOG(ERROR) << "dcomp_device_->Commit() failed. hr=0x" << std::hex
-                       << hr;
-        return false;
+      if (result) {
+        hr = dcomp_device_->Commit();
+        if (FAILED(hr)) {
+          FML_LOG(ERROR) << "dcomp_device_->Commit() failed. hr=0x" << std::hex
+                         << hr;
+          return false;
+        }
       }
     }
   }
-  return true;
+  return result;
 }
 
 bool DirectCompositionSurface::SetDrawRectangle(const clay::Rect& rectangle) {

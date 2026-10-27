@@ -62,9 +62,9 @@ class DirectCompositionSurface : public WindowSurface {
   uint32_t buffer_count() const override { return 2; }
 
  private:
+  void InvalidateBufferAge();
   bool SetDrawRectangle(const clay::Rect& rectangle);
-  bool ReleaseDrawTexture(bool will_discard,
-                          bool* released_draw_texture = nullptr);
+  bool ReleaseDrawTexture(bool will_discard);
   Microsoft::WRL::ComPtr<ID3D11Device> QueryD3D11DeviceObjectFromANGLE(
       EGLDisplay egl_display);
   bool IsSwapChainTearingSupported();
