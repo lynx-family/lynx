@@ -27,7 +27,8 @@ namespace lynx {
 
 namespace base {
 class VSyncMonitor;
-}
+class VSyncMonitorPlatformImpl;
+}  // namespace base
 
 namespace shell {
 
@@ -55,6 +56,11 @@ class TasmMediator : public LynxEngine::Delegate {
 
   void SetEngineActor(const std::shared_ptr<LynxActor<LynxEngine>>& actor) {
     engine_actor_ = actor;
+  }
+
+  void SetVSyncMonitorPlatformImpl(
+      const std::shared_ptr<base::VSyncMonitorPlatformImpl>& monitor) {
+    vsync_monitor_platform_impl_ = monitor;
   }
 
   void SetInvokeUIMethodFunction(InvokeUIMethodFunction func) {
@@ -295,6 +301,7 @@ class TasmMediator : public LynxEngine::Delegate {
   // TODO(songshourui.null): Provide requesAnimationFrame capability to
   // ElementWorklet later by this vsync_monitor_;
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_;
+  std::shared_ptr<base::VSyncMonitorPlatformImpl> vsync_monitor_platform_impl_;
   bool enable_high_refresh_rate_{false};
 
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_;
