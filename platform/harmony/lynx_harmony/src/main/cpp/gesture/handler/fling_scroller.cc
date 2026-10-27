@@ -15,7 +15,8 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
-FlingScroller::FlingScroller() { last_time_ = 0; }
+FlingScroller::FlingScroller(bool use_unified_lifecycle)
+    : use_unified_lifecycle_(use_unified_lifecycle), last_time_(0) {}
 
 FlingScroller::~FlingScroller() {}
 
@@ -59,21 +60,30 @@ void FlingScroller::Start(float velocity_x, float velocity_y,
       },
       animation::basic::Animation::EventType::Cancel);
 
-  fling_scroller_animator_->RegisterCustomCallback([cb, velocity_x, velocity_y,
-                                                    this](float progress) {
-    if (last_time_ == 0) {
-      last_time_ = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
-      return;
-    }
-    auto current_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+  fling_scroller_animator_->RegisterCustomCallback(
+      [cb, velocity_x, velocity_y,
+       use_unified_lifecycle = use_unified_lifecycle_, this](float progress) {
+        if (last_time_ == 0) {
+          last_time_ = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+          return;
+        }
+        auto current_time =
+            fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
 
-    int64_t delta_time = current_time - last_time_;
-    float delta_x = (velocity_x * (1.0f - progress) / 1000) * delta_time;
-    float delta_y = (velocity_y * (1.0f - progress) / 1000) * delta_time;
+        int64_t delta_time = current_time - last_time_;
+        float delta_x = (velocity_x * (1.0f - progress) / 1000) * delta_time;
+        float delta_y = (velocity_y * (1.0f - progress) / 1000) * delta_time;
+        current_fling_state_ = static_cast<uint8_t>(FlingState::FLING);
+        // A unified callback can destroy the scroller synchronously.
+        if (use_unified_lifecycle) last_time_ = current_time;
+        (*cb)(static_cast<uint8_t>(FlingState::FLING), -delta_x, -delta_y);
+        if (!use_unified_lifecycle) {
+          last_time_ = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
+        }
+      });
+  if (use_unified_lifecycle_) {
     current_fling_state_ = static_cast<uint8_t>(FlingState::FLING);
-    (*cb)(static_cast<uint8_t>(FlingState::FLING), -delta_x, -delta_y);
-    this->last_time_ = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
-  });
+  }
   fling_scroller_animator_->Start();
 }
 

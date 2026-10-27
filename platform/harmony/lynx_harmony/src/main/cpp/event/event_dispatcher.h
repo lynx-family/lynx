@@ -144,6 +144,8 @@ class EventDispatcher {
   void UpdateRootTarget(UIBase* root);
 
  private:
+  friend class UnifiedGestureHandler;
+
   enum class ChildLynxPageEventType { kTouch, kClick, kTap, kLongPress };
 
   void CacheConsumeSlideDirection(const NativePaintingCtxPlatformRef& context);

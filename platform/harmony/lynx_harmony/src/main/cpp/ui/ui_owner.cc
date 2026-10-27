@@ -27,6 +27,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/services/fluency/fluency_tracer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -498,6 +499,9 @@ void UIOwner::DestroyTarget(UIBase* target) {
   if (target == root_.get()) {
     root_ui_created_ = false;
   }
+  if (gesture_arena_manager_) {
+    gesture_arena_manager_->RemoveUnifiedMember(target->Sign());
+  }
   target->OnDestroy();
   target->RemoveFromParent();
   AddOrRemoveUIFromExclusiveSet(target->Sign(), false);
@@ -825,6 +829,10 @@ UIOwner::~UIOwner() {
   if (position_change_dispatch_state_) {
     position_change_dispatch_state_->owner = nullptr;
     position_change_dispatch_state_->pending = false;
+  }
+  if (gesture_arena_manager_ &&
+      gesture_arena_manager_->UsesUnifiedGestureHandler()) {
+    gesture_arena_manager_->OnDestroy();
   }
 }
 
@@ -1167,6 +1175,10 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
       input_context && obj->root_) {
     input_context->NotifyInputRootStateChanged(obj->root_->Sign(), false,
                                                false);
+  }
+  if (obj->gesture_arena_manager_ &&
+      obj->gesture_arena_manager_->UsesUnifiedGestureHandler()) {
+    obj->gesture_arena_manager_->OnDestroy();
   }
   obj->context_->ResetUIOwner();
   obj->PrepareForDestroy();
@@ -1789,8 +1801,18 @@ void UIOwner::SetVelocityToGestureArena(float velocity_x, float velocity_y) {
   }
 }
 
-void UIOwner::InitGestureArenaManager(LynxContext* context) {
-  gesture_arena_manager_ = std::make_shared<GestureArenaManager>(true, context);
+void UIOwner::InitGestureArenaManager(LynxContext* context, bool unified,
+                                      bool enabled) {
+  // Cancel outstanding unified input even when the next page uses legacy.
+  if (gesture_arena_manager_ &&
+      gesture_arena_manager_->UsesUnifiedGestureHandler()) {
+    auto previous = std::move(gesture_arena_manager_);
+    previous->OnDestroy();
+  }
+  if (!enabled) return;
+  gesture_arena_manager_ = std::make_shared<GestureArenaManager>(
+      true, context,
+      unified && LynxEnv::GetInstance().EnableUnifiedGestureHandler());
 }
 
 void UIOwner::SetEnableSyncXElementRegistry() {

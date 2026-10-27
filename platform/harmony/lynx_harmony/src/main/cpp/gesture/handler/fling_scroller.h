@@ -37,7 +37,7 @@ class FlingScroller : public std::enable_shared_from_this<FlingScroller> {
     IDLE = 0,
     FLING = 1,
   };
-  FlingScroller();
+  explicit FlingScroller(bool use_unified_lifecycle = false);
 
   ~FlingScroller();
 
@@ -48,6 +48,7 @@ class FlingScroller : public std::enable_shared_from_this<FlingScroller> {
   bool IsIdle();
 
  private:
+  const bool use_unified_lifecycle_;
   std::shared_ptr<animation::basic::LynxBasicAnimator> fling_scroller_animator_;
   int64_t last_time_;
   uint8_t current_fling_state_{0};
