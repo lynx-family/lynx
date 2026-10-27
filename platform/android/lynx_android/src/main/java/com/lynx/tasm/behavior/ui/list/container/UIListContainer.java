@@ -940,7 +940,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     // AutoScroller.
 
     if (mAutoScroller == null) {
-      mAutoScroller = new UIListAutoScroller() {
+      mAutoScroller = new UIListAutoScroller(getLynxContext()) {
         @Override
         void onAutoScrollError(String msg) {
           callback.invoke(LynxUIMethodConstants.UNKNOWN, msg);

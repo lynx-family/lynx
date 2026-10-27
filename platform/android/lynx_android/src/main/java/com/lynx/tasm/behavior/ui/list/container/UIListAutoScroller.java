@@ -9,12 +9,19 @@ import android.view.Choreographer;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.utils.DeviceUtils;
 import com.lynx.tasm.utils.UnitUtils;
+import java.lang.ref.WeakReference;
 
 public abstract class UIListAutoScroller {
   private boolean mStart = false;
   protected int mAutoRatePerFrame = 0;
+  private int mRate = 0;
   private boolean mAutoStopOnBounds = true;
   private Choreographer.FrameCallback mFrameCallback = null;
+  private WeakReference<Context> mContextRef = null;
+
+  public UIListAutoScroller(Context context) {
+    mContextRef = new WeakReference<>(context);
+  }
 
   abstract void onAutoScrollError(String msg);
 
@@ -40,11 +47,13 @@ public abstract class UIListAutoScroller {
         onAutoScrollError("rate is not right");
         return;
       }
+
       int refreshRate = (int) DeviceUtils.getRefreshRate(context);
       // prevent 0 from being a divisor
       if (refreshRate <= 0) {
         refreshRate = DeviceUtils.DEFAULT_DEVICE_REFRESH_RATE;
       }
+      mRate = px;
       // if list's scrolling direction is up, mAutoRatePerFrame >0; otherwise,mAutoRatePerFrame <0;
       mAutoRatePerFrame = px > 0 ? Math.max(px / refreshRate, 1) : Math.min(px / refreshRate, -1);
       // stop last scroll by removing FrameCallback
@@ -63,6 +72,18 @@ public abstract class UIListAutoScroller {
       public void doFrame(long frameTimeNanos) {
         // Check if this view can be scrolled vertically/horizontally in a certain direction.
         // direction:Negative to check scrolling up, positive to check scrolling down.
+
+        Context ctx = mContextRef != null ? mContextRef.get() : null;
+        int refreshRate = ctx != null ? (int) DeviceUtils.getRefreshRate(ctx)
+                                      : DeviceUtils.DEFAULT_DEVICE_REFRESH_RATE;
+        // prevent 0 from being a divisor
+
+        if (refreshRate <= 0) {
+          refreshRate = DeviceUtils.DEFAULT_DEVICE_REFRESH_RATE;
+        }
+        mAutoRatePerFrame =
+            mRate > 0 ? Math.max(mRate / refreshRate, 1) : Math.min(mRate / refreshRate, -1);
+
         boolean canScroll = canScroll(mAutoRatePerFrame);
         if (canScroll) {
           scrollBy(mAutoRatePerFrame);
