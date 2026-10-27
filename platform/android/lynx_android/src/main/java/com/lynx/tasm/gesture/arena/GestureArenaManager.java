@@ -79,6 +79,9 @@ public class GestureArenaManager {
   private int mUnifiedLastFlingY;
   private final Map<Long, Runnable> mUnifiedTimers = new HashMap<>();
   private final Set<Long> mUnifiedActiveHandlers = new HashSet<>();
+  // Run before traversal so gesture callbacks can safely update the view tree.
+  private final Choreographer.FrameCallback mUnifiedFlingFrameCallback =
+      frameTimeNanos -> computeUnifiedFling();
 
   private GestureDetectorManager mGestureDetectorManager;
 
@@ -95,14 +98,29 @@ public class GestureArenaManager {
    * @param context The LynxContext used for initializing the manager.
    */
   public void init(boolean enable, LynxContext context) {
+    init(enable, false, context);
+  }
+
+  public void init(boolean enable, boolean enableUnifiedGestureHandler, LynxContext context) {
+    onDestroy();
     mIsEnableNewGesture = enable;
     if (!isEnableNewGesture()) {
       return;
     }
-    mGestureDetectorManager = new GestureDetectorManager(this);
     mArenaMemberMap = new HashMap<>();
     mCompeteChainCandidates = new LinkedList<>();
     mBubbleCandidate = new LinkedList<>();
+    mLynxContext = context;
+    mUseUnifiedGestureHandler = false;
+    if (enableUnifiedGestureHandler) {
+      mNativeGestureArena = nativeCreateGestureArena();
+      if (mNativeGestureArena != 0) {
+        mUseUnifiedGestureHandler = true;
+        mUnifiedScroller = new OverScroller(context);
+        return;
+      }
+    }
+    mGestureDetectorManager = new GestureDetectorManager(this);
     mGestureHandlerTrigger = new GestureHandlerTrigger(context, mGestureDetectorManager);
   }
 
@@ -113,7 +131,17 @@ public class GestureArenaManager {
    * @param lynxTouchEvent The LynxTouchEvent associated with the event.
    */
   public void dispatchTouchEventToArena(MotionEvent event, LynxTouchEvent lynxTouchEvent) {
-    if (!isEnableNewGesture() || mGestureHandlerTrigger == null) {
+    if (!isEnableNewGesture()) {
+      return;
+    }
+    if (mUseUnifiedGestureHandler) {
+      // Preserve platform move filtering without dropping raw recognizer input.
+      mUnifiedDispatchTouchMove = lynxTouchEvent != null
+          && LynxTouchEvent.EVENT_TOUCH_MOVE.equals(lynxTouchEvent.getName());
+      dispatchTouchEventToUnifiedArena(event);
+      return;
+    }
+    if (mGestureHandlerTrigger == null) {
       return;
     }
     mGestureHandlerTrigger.resolveTouchEvent(
@@ -138,7 +166,7 @@ public class GestureArenaManager {
    * @param touchEvent The LynxTouchEvent to dispatch.
    */
   public void dispatchBubbleTouchEvent(String type, LynxTouchEvent touchEvent) {
-    if (!isEnableNewGesture() || mGestureHandlerTrigger == null) {
+    if (!isEnableNewGesture() || mUseUnifiedGestureHandler || mGestureHandlerTrigger == null) {
       return;
     }
     mGestureHandlerTrigger.dispatchBubbleTouchEvent(type, touchEvent, mBubbleCandidate, mWinner);
@@ -154,7 +182,8 @@ public class GestureArenaManager {
       return;
     }
     clearCurrentGesture();
-    if (mArenaMemberMap == null || mArenaMemberMap.isEmpty() || mGestureHandlerTrigger == null) {
+    if (mArenaMemberMap == null || mArenaMemberMap.isEmpty()
+        || (!mUseUnifiedGestureHandler && mGestureHandlerTrigger == null)) {
       return;
     }
 
@@ -183,14 +212,21 @@ public class GestureArenaManager {
     if (mCompeteChainCandidates != null && !mCompeteChainCandidates.isEmpty()) {
       mWinner = mCompeteChainCandidates.getFirst();
     }
-    mGestureHandlerTrigger.initCurrentWinnerWhenDown(mWinner);
+    if (mUseUnifiedGestureHandler) {
+      mUnifiedResponseChain = new int[mBubbleCandidate.size()];
+      for (int i = 0; i < mBubbleCandidate.size(); i++) {
+        mUnifiedResponseChain[i] = mBubbleCandidate.get(i).getGestureArenaMemberId();
+      }
+    } else {
+      mGestureHandlerTrigger.initCurrentWinnerWhenDown(mWinner);
+    }
   }
 
   /**
    * Computes the scroll for the active gesture members.
    */
   public void computeScroll() {
-    if (!isEnableNewGesture() || mGestureHandlerTrigger == null || mMainThreadHandler == null) {
+    if (!isEnableNewGesture() || mUseUnifiedGestureHandler || mGestureHandlerTrigger == null) {
       return;
     }
 
@@ -206,6 +242,7 @@ public class GestureArenaManager {
    */
   private void clearCurrentGesture() {
     mWinner = null;
+    mUnifiedResponseChain = new int[0];
     if (mBubbleCandidate != null) {
       mBubbleCandidate.clear();
     }
@@ -223,6 +260,9 @@ public class GestureArenaManager {
   @MainThread
   public int addMember(@Nullable GestureArenaMember member) {
     if (!isEnableNewGesture() || member == null || mArenaMemberMap == null) {
+      return 0;
+    }
+    if (mUseUnifiedGestureHandler && !hasSupportedGesture(member.getGestureDetectorMap())) {
       return 0;
     }
     mArenaMemberMap.put(member.getSign(), new WeakReference<>(member));
@@ -251,14 +291,27 @@ public class GestureArenaManager {
    * @param state The state of the gesture.
    */
   public void setGestureDetectorState(int memberId, int gestureId, int state) {
-    if (!isEnableNewGesture() || mGestureHandlerTrigger == null || mArenaMemberMap == null) {
+    if (!isEnableNewGesture() || mArenaMemberMap == null) {
+      return;
+    }
+    if (mUseUnifiedGestureHandler) {
+      if (mNativeGestureArena != 0 && mArenaMemberMap.containsKey(memberId)) {
+        nativeSetGestureState(mNativeGestureArena, memberId, gestureId, state);
+      }
+      return;
+    }
+    if (mGestureHandlerTrigger == null) {
       return;
     }
     WeakReference<GestureArenaMember> weakRef = mArenaMemberMap.get(memberId);
-    mGestureHandlerTrigger.handleGestureDetectorState(weakRef.get(), gestureId, state);
+    mGestureHandlerTrigger.handleGestureDetectorState(
+        weakRef == null ? null : weakRef.get(), gestureId, state);
   }
 
   public boolean hasActivePlatformGesture() {
+    if (mUseUnifiedGestureHandler) {
+      return isUsingUnifiedGestureHandler() && !mUnifiedActiveHandlers.isEmpty();
+    }
     return isEnableNewGesture() && mGestureHandlerTrigger != null
         && mGestureHandlerTrigger.hasActivePlatformGesture();
   }
@@ -274,7 +327,14 @@ public class GestureArenaManager {
       return;
     }
     mArenaMemberMap.remove(member.getGestureArenaMemberId());
-    unRegisterGestureDetectors(member.getGestureArenaMemberId(), member.getGestureDetectorMap());
+    if (mUseUnifiedGestureHandler) {
+      if (mNativeGestureArena != 0) {
+        nativeRemoveMember(mNativeGestureArena, member.getGestureArenaMemberId());
+      }
+      removeActiveHandlersForMember(member.getGestureArenaMemberId());
+    } else {
+      unRegisterGestureDetectors(member.getGestureArenaMemberId(), member.getGestureDetectorMap());
+    }
   }
 
   /**
@@ -285,6 +345,9 @@ public class GestureArenaManager {
    */
   @Nullable
   public GestureArenaMember getMemberById(int id) {
+    if (mArenaMemberMap == null) {
+      return null;
+    }
     WeakReference<GestureArenaMember> member = mArenaMemberMap.get(id);
     if (member != null) {
       return member.get();
@@ -297,6 +360,18 @@ public class GestureArenaManager {
    * Cleans up the GestureArenaManager and releases any resources.
    */
   public void onDestroy() {
+    stopUnifiedFling();
+    recycleUnifiedVelocityTracker();
+    for (Runnable timer : mUnifiedTimers.values()) {
+      mMainThreadHandler.removeCallbacks(timer);
+    }
+    mUnifiedTimers.clear();
+    mUnifiedActiveHandlers.clear();
+    if (mNativeGestureArena != 0) {
+      long nativeGestureArena = mNativeGestureArena;
+      mNativeGestureArena = 0;
+      nativeDestroyGestureArena(nativeGestureArena);
+    }
     if (mArenaMemberMap != null) {
       mArenaMemberMap.clear();
     }
@@ -312,6 +387,12 @@ public class GestureArenaManager {
     if (mGestureHandlerTrigger != null) {
       mGestureHandlerTrigger.onDestroy();
     }
+    mGestureDetectorManager = null;
+    mGestureHandlerTrigger = null;
+    mUnifiedScroller = null;
+    mLynxContext = null;
+    mUseUnifiedGestureHandler = false;
+    mUnifiedResponseChain = new int[0];
   }
 
   /**
@@ -324,6 +405,11 @@ public class GestureArenaManager {
   public void registerGestureDetectors(
       int memberId, Map<Integer, GestureDetector> gestureDetectors) {
     if (!isEnableNewGesture()) {
+      return;
+    }
+
+    if (mUseUnifiedGestureHandler) {
+      replaceUnifiedGestureDetectors(memberId, gestureDetectors);
       return;
     }
 
@@ -349,6 +435,13 @@ public class GestureArenaManager {
   public void unRegisterGestureDetectors(
       int memberId, Map<Integer, GestureDetector> gestureDetectors) {
     if (!isEnableNewGesture()) {
+      return;
+    }
+
+    if (mUseUnifiedGestureHandler) {
+      if (mNativeGestureArena != 0) {
+        nativeRemoveMember(mNativeGestureArena, memberId);
+      }
       return;
     }
 
@@ -822,6 +915,71 @@ public class GestureArenaManager {
     Runnable timer = mUnifiedTimers.remove(token);
     if (timer != null) {
       mMainThreadHandler.removeCallbacks(timer);
+    }
+  }
+
+  @CalledByNative
+  private boolean startFling(double velocityX, double velocityY) {
+    if (mUnifiedScroller == null
+        || (Math.abs(velocityX) <= FLING_SPEED_THRESHOLD
+            && Math.abs(velocityY) <= FLING_SPEED_THRESHOLD)) {
+      return false;
+    }
+    stopUnifiedFling();
+    mUnifiedLastFlingX = 0;
+    mUnifiedLastFlingY = 0;
+    double density = getDensity();
+    // The scroller runs in content direction, opposite to finger velocity.
+    mUnifiedScroller.fling(0, 0, (int) (-velocityX * density), (int) (-velocityY * density),
+        FLING_MIN, FLING_MAX, FLING_MIN, FLING_MAX);
+    mUnifiedFlingChoreographer = Choreographer.getInstance();
+    scheduleUnifiedFlingFrame();
+    return true;
+  }
+
+  private void scheduleUnifiedFlingFrame() {
+    // Sticky children and their scroller must be redrawn in the same frame.
+    for (int memberId : mUnifiedResponseChain) {
+      GestureArenaMember member = getMemberById(memberId);
+      if (member != null) {
+        member.onInvalidate();
+      }
+    }
+    mUnifiedFlingChoreographer.postFrameCallback(mUnifiedFlingFrameCallback);
+  }
+
+  private void computeUnifiedFling() {
+    if (mNativeGestureArena == 0 || mUnifiedScroller == null) {
+      return;
+    }
+    boolean hasFrame = mUnifiedScroller.computeScrollOffset();
+    int currentX = hasFrame ? mUnifiedScroller.getCurrX() : mUnifiedLastFlingX;
+    int currentY = hasFrame ? mUnifiedScroller.getCurrY() : mUnifiedLastFlingY;
+    double density = getDensity();
+    boolean finished = !hasFrame || mUnifiedScroller.isFinished();
+    nativeHandleInput(mNativeGestureArena, INPUT_FLING_FRAME, mUnifiedSequenceId, 0,
+        SystemClock.uptimeMillis(), System.currentTimeMillis(), 0, 0, 0, 0, 0, 0,
+        (currentX - mUnifiedLastFlingX) / density, (currentY - mUnifiedLastFlingY) / density, 0, 0,
+        finished, null);
+    mUnifiedLastFlingX = currentX;
+    mUnifiedLastFlingY = currentY;
+    // Native callbacks can synchronously stop or destroy the scroller.
+    if (!finished && mUnifiedScroller != null && !mUnifiedScroller.isFinished()) {
+      scheduleUnifiedFlingFrame();
+    }
+  }
+
+  @CalledByNative
+  private void stopFling() {
+    stopUnifiedFling();
+  }
+
+  private void stopUnifiedFling() {
+    if (mUnifiedFlingChoreographer != null) {
+      mUnifiedFlingChoreographer.removeFrameCallback(mUnifiedFlingFrameCallback);
+    }
+    if (mUnifiedScroller != null && !mUnifiedScroller.isFinished()) {
+      mUnifiedScroller.abortAnimation();
     }
   }
 
