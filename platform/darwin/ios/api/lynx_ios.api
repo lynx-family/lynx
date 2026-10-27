@@ -4858,6 +4858,7 @@ public class LynxUIContext : NSObject {
   public BOOL LynxUIContext::enableTextLayoutCache enableTextLayoutCache;
   public BOOL LynxUIContext::enableNewSticky enableNewSticky;
   public BOOL LynxUIContext::enableExposureWhenReload enableExposureWhenReload;
+  public BOOL LynxUIContext()::enableUnifiedGestureHandler enableUnifiedGestureHandler;
   public BOOL LynxUIContext()::imageMonitorEnabled imageMonitorEnabled;
   public BOOL LynxUIContext()::devtoolEnabled devtoolEnabled;
   public BOOL LynxUIContext()::fixNewImageDownSampling fixNewImageDownSampling;
@@ -4899,6 +4900,8 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext()::setEnableBackgroundShapeLayer:(BOOL enable);
   public void LynxUIContext()::setEnableFiberArch:(BOOL enable);
   public void LynxUIContext()::setEnableNewGesture:(BOOL enable);
+  public void LynxUIContext()::setEnableUnifiedGestureHandler:(BOOL enable);
+  public void LynxUIContext()::resetGestureHandlerImplementationSelection();
   public void LynxUIContext()::setEnableExposureUIMargin:(BOOL enable);
   public void LynxUIContext()::setEnableTextLanguageAlignment:(BOOL enable);
   public void LynxUIContext()::setEnableXTextLayoutReused:(BOOL enable);
