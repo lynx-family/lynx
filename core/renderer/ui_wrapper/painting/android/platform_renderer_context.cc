@@ -402,6 +402,92 @@ void PlatformRendererContext::UpdatePlatformRendererFrame(
       static_cast<jint>(borders[3]));
 }
 
+void PlatformRendererContext::InsertListItemPaintingNode(int32_t list_id,
+                                                         int32_t child_id) {
+  if (destroyed_) {
+    return;
+  }
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  EnsureAndroidViewCreated(list_id);
+  if (destroyed_) {
+    return;
+  }
+  EnsureAndroidViewCreated(child_id);
+  if (destroyed_) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_insertListItemNode(env, local_ref.Get(), list_id,
+                                                  child_id);
+}
+
+void PlatformRendererContext::RemoveListItemPaintingNode(int32_t list_id,
+                                                         int32_t child_id) {
+  if (destroyed_) {
+    return;
+  }
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  EnsureAndroidViewCreated(list_id);
+  if (destroyed_) {
+    return;
+  }
+  EnsureAndroidViewCreated(child_id);
+  if (destroyed_) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_removeListItemNode(env, local_ref.Get(), list_id,
+                                                  child_id);
+}
+
+void PlatformRendererContext::UpdateContentOffsetForListContainer(
+    int32_t container_id, float content_size, float delta_x, float delta_y,
+    bool is_init_scroll_offset, bool from_layout) {
+  if (destroyed_) {
+    return;
+  }
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  EnsureAndroidViewCreated(container_id);
+  if (destroyed_) {
+    return;
+  }
+  // Android's existing ListContainer offset API does not use these flags.
+  (void)is_init_scroll_offset;
+  (void)from_layout;
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_updateContentSizeAndOffset(
+      env, local_ref.Get(), container_id, content_size, delta_x, delta_y);
+}
+
+void PlatformRendererContext::UpdatePlatformRendererLayoutMetrics(
+    int32_t target, const float* frame) {
+  if (destroyed_) {
+    return;
+  }
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  EnsureAndroidViewCreated(target);
+  if (destroyed_) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PlatformRendererContext_updatePlatformRendererLayoutMetrics(
+      env, local_ref.Get(), target, static_cast<jint>(frame[0]),
+      static_cast<jint>(frame[1]), static_cast<jint>(frame[2]),
+      static_cast<jint>(frame[3]));
+}
+
 void PlatformRendererContext::UpdatePlatformRendererAttributes(
     int32_t id, jobject prop_bundle) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);

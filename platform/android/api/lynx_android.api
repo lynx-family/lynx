@@ -3253,6 +3253,7 @@ public interface com::lynx::tasm::behavior::render::IRendererHost {
   public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostHeight();
   public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostScrollX();
   public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostScrollY();
+  public default ViewGroup com.lynx.tasm.behavior.render.IRendererHost.getRendererChildViewGroup();
   public default PointF com.lynx.tasm.behavior.render.IRendererHost.convertPointInRendererHostToScreen(PointF point);
   public default void com.lynx.tasm.behavior.render.IRendererHost.requestLayoutForRenderer();
   public default void com.lynx.tasm.behavior.render.IRendererHost.invalidateForRenderer();
@@ -3700,8 +3701,10 @@ public class com::lynx::tasm::behavior::ui::list::container::ListContainerView :
   public com.lynx.tasm.behavior.ui.list.container.ListContainerView.ListContainerView(@NonNull Context context, UIListContainer uiListContainer);
   public Renderer com.lynx.tasm.behavior.ui.list.container.ListContainerView.createRenderer(PlatformRendererContext platformRendererContext, int sign);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.setRenderer(Renderer renderer);
+  public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.invalidateForRenderer();
   public Renderer com.lynx.tasm.behavior.ui.list.container.ListContainerView.getRenderer();
   public View com.lynx.tasm.behavior.ui.list.container.ListContainerView.getView();
+  public ViewGroup com.lynx.tasm.behavior.ui.list.container.ListContainerView.getRendererChildViewGroup();
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type);
   public void com.lynx.tasm.behavior.ui.list.container.ListContainerView.onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type, @NonNull int[] consumed);
   public boolean com.lynx.tasm.behavior.ui.list.container.ListContainerView.onInterceptTouchEvent(MotionEvent e);
@@ -9037,6 +9040,10 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformExtendedRenderer(int sign, String tagName, PropBundle initData);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyPlatformRenderer(int sign);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertListItemNode(int listSign, int childSign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.removeListItemNode(int listSign, int childSign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.updateContentSizeAndOffset(int listSign, float contentSize, float deltaX, float deltaY);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererLayoutMetrics(int sign, int left, int top, int width, int height);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererFrame(int sign, boolean needClip, int left, int top, int width, int height, int dx, int dy, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop, int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth, int borderRightWidth, int borderBottomWidth);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformRendererSubtreeProperties(int sign, ByteBuffer buffer, int count);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.updatePlatformExtraData(int sign, Object extraData);
@@ -9801,6 +9808,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public void com.lynx.tasm.behavior.render.Renderer.afterDrawChild(Canvas canvas, View child);
   public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas, int viewportSaveCount);
+  public void com.lynx.tasm.behavior.render.Renderer.afterDispatchDraw(Canvas canvas, int viewportSaveCount, boolean stopInDrawView);
   public void com.lynx.tasm.behavior.render.Renderer.invalidate(int invalidateMask);
   public void com.lynx.tasm.behavior.render.Renderer.updateAttributes(PropBundle props);
   public boolean com.lynx.tasm.behavior.render.Renderer.isNativeInteractionEnabled();

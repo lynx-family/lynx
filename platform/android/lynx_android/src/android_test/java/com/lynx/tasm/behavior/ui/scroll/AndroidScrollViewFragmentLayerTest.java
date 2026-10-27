@@ -6,8 +6,10 @@ package com.lynx.tasm.behavior.ui.scroll;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 
 import android.content.Context;
@@ -102,6 +104,7 @@ public class AndroidScrollViewFragmentLayerTest {
     scrollView.setBackground(background);
 
     Renderer renderer = mock(Renderer.class);
+    doCallRealMethod().when(renderer).afterDispatchDraw(any(Canvas.class), anyInt());
     doAnswer(invocation -> {
       Canvas canvas = invocation.getArgument(0);
       canvas.drawColor(Color.RED);
@@ -109,7 +112,7 @@ public class AndroidScrollViewFragmentLayerTest {
       return invocation.callRealMethod();
     })
         .when(renderer)
-        .afterDispatchDraw(any(Canvas.class), anyInt());
+        .afterDispatchDraw(any(Canvas.class), anyInt(), anyBoolean());
     scrollView.setRenderer(renderer);
 
     Bitmap bitmap = Bitmap.createBitmap(BITMAP_WIDTH, VIEWPORT_SIZE, Bitmap.Config.ARGB_8888);

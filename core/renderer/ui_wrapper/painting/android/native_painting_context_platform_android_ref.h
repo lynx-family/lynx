@@ -41,6 +41,13 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
   bool IsPlatformRendererScrollable(int32_t sign) override;
   PlatformTextEventTargetRegions GetTextEventTargetRegions(
       int32_t text_id) override;
+  void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;
+  void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override;
+  void UpdateContentOffsetForListContainer(int32_t container_id,
+                                           float content_size, float delta_x,
+                                           float delta_y,
+                                           bool is_init_scroll_offset,
+                                           bool from_layout) override;
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
   void InvokePlatformViewUIMethod(
       int32_t id, const std::string& method, const lepus::Value& params,

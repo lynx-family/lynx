@@ -110,6 +110,21 @@ void PlatformRendererHarmony::CleanupRenderer() {
   host_.reset();
 }
 
+void PlatformRendererHarmony::OnUpdateLayoutMetrics() {
+  if (GetPlatformRendererType() != PlatformRendererType::kListItem) {
+    return;
+  }
+  auto* ui_owner = context_ != nullptr ? context_->GetUIOwner() : nullptr;
+  if (ui_owner == nullptr || ui_owner->Destroyed()) {
+    return;
+  }
+  // NodeReady needs the current logical item frame before its display list.
+  ui_owner->UpdateLayout(GetId(), layout_frame_[0], layout_frame_[1],
+                         layout_frame_[2], layout_frame_[3],
+                         GetLayoutPaddings(), GetLayoutMargins(), nullptr, 0.f,
+                         0);
+}
+
 void PlatformRendererHarmony::OnUpdateDisplayList(DisplayList display_list) {
   if (display_list.GetContentItemsSize() == 0) {
     return;

@@ -104,6 +104,10 @@ class PlatformRendererImpl : public PlatformRenderer {
   virtual void OnRemoveFromParent(bool should_update_ui_owner) = 0;
   virtual void OnUpdateSubtreeProperties(
       const DisplayList& subtree_properties) = 0;
+  // TODO(dingwang.wxx): Make list-item layout animations update layout, submit
+  // the DisplayList, then notify NodeReady. Once this ordering is guaranteed,
+  // remove this hook: frame synchronization will happen through the DisplayList
+  // instead of this early callback.
   virtual void OnUpdateLayoutMetrics() {}
 
   // Get the parent renderer

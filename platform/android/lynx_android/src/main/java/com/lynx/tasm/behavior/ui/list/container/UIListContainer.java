@@ -181,6 +181,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     // The list container should manager the view of component on the interface of
     // "onLayoutFinish()"
     super.onInsertChild(child, index);
+    mView.markRendererDrawingOrderDirty();
     if (mEnableListSticky && !mUpdateStickyForDiff) {
       int indexFromItemKey = getIndexFromItemKey(((UIComponent) child).getItemKey());
       updateStickyInfoForInsertedChild(child, mStickyTopItems, mStickyTopIndexes, indexFromItemKey);
@@ -248,6 +249,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @Override
   public void removeChild(LynxBaseUI child) {
     super.removeChild(child);
+    mView.markRendererDrawingOrderDirty();
     if (child instanceof UIComponent) {
       UIComponent component = (UIComponent) child;
       if (mEnableFadeInAnimation && isAsyncThreadStrategy()) {
@@ -1439,7 +1441,6 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       } else {
         component.getView().setTranslationX(0);
       }
-
       setChildTranslationZ(component);
     }
   }
@@ -1534,6 +1535,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         }
         stickyStartItem.getView().bringToFront();
         setChildTranslationZ(stickyStartItem, Integer.MAX_VALUE);
+        mView.markRendererDrawingOrderDirty();
       }
     }
   }
@@ -1613,6 +1615,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         }
         stickyEndItem.getView().bringToFront();
         setChildTranslationZ(stickyEndItem, Integer.MAX_VALUE);
+        mView.markRendererDrawingOrderDirty();
       }
     }
   }

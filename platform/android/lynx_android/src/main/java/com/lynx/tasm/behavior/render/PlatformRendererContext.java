@@ -41,7 +41,9 @@ import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
+import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
@@ -739,6 +741,71 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     if (host != null) {
       host.invalidateForRenderer();
     }
+  }
+
+  @Nullable
+  private UIListContainer getCUIListContainer(int sign) {
+    if (mDestroyed || mContext == null) {
+      return null;
+    }
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    LynxBaseUI ui = owner != null ? owner.getNode(sign) : null;
+    IRendererHost host = mViewHolder.get(sign);
+    Renderer renderer = host != null ? host.getRenderer() : null;
+    if (ui instanceof UIListContainer && renderer != null && renderer.getUIHost() == ui) {
+      return (UIListContainer) ui;
+    }
+    return null;
+  }
+
+  @CalledByNative
+  public void insertListItemNode(int listSign, int childSign) {
+    UIListContainer list = getCUIListContainer(listSign);
+    if (list != null) {
+      LynxBaseUI child = mContext.getLynxUIOwner().getNode(childSign);
+      if (child instanceof UIComponent) {
+        list.insertListItemNode(child);
+      }
+    }
+  }
+
+  @CalledByNative
+  public void removeListItemNode(int listSign, int childSign) {
+    UIListContainer list = getCUIListContainer(listSign);
+    if (list != null) {
+      LynxBaseUI child = mContext.getLynxUIOwner().getNode(childSign);
+      if (child instanceof UIComponent) {
+        list.removeView(child);
+      }
+    }
+  }
+
+  @CalledByNative
+  public void updateContentSizeAndOffset(
+      int listSign, float contentSize, float deltaX, float deltaY) {
+    UIListContainer list = getCUIListContainer(listSign);
+    if (list != null) {
+      list.updateContentSizeAndOffset(contentSize, deltaX, deltaY);
+    }
+  }
+
+  @CalledByNative
+  public void updatePlatformRendererLayoutMetrics(
+      int sign, int left, int top, int width, int height) {
+    if (mDestroyed || mContext == null) {
+      return;
+    }
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    LynxBaseUI ui = owner != null ? owner.getNode(sign) : null;
+    IRendererHost host = mViewHolder.get(sign);
+    Renderer renderer = host != null ? host.getRenderer() : null;
+    if (!(ui instanceof UIComponent) || renderer == null || renderer.getUIHost() != ui) {
+      return;
+    }
+    // List item NodeReady needs the natural frame before the display list arrives.
+    // Keep layout callbacks and view invalidation in the display-list frame update.
+    ui.updateLayoutSize(width, height);
+    ui.syncLayoutFrame(left, top, width, height);
   }
 
   @CalledByNative
