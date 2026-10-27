@@ -9,9 +9,12 @@
 #import <Lynx/LynxUIView.h>
 #import <Lynx/UIScrollView+LynxGesture.h>
 #import "LynxUIContext+Internal.h"
+#import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 
 @interface UILynxView : UIView <UIGestureRecognizerDelegate>
 
+@property(nonatomic, weak) LynxUIView *lynxUI;
 @property(nonatomic, strong) UIPanGestureRecognizer *nativeGesturePanRecognizer;
 
 @property(nonatomic, assign) LynxInterceptGestureState interceptGestureStatus;
@@ -51,6 +54,10 @@
         (UIGestureRecognizer *)otherGestureRecognizer {
   if (gestureRecognizer == self.nativeGesturePanRecognizer &&
       self.interceptGestureStatus == LynxInterceptGestureStateTrue) {
+    if ([self.lynxUI.context isUsingUnifiedGestureHandler] &&
+        ![otherGestureRecognizer canBePreventedByGestureRecognizer:gestureRecognizer]) {
+      return YES;
+    }
     otherGestureRecognizer.state = UIGestureRecognizerStateFailed;
     return NO;
   }
@@ -112,7 +119,8 @@ LYNX_REGISTER_UI("view")
 #endif
 
 - (UIView *)createView {
-  UIView *view = [[UILynxView alloc] init];
+  UILynxView *view = [[UILynxView alloc] init];
+  view.lynxUI = self;
   // Disable AutoLayout
   [view setTranslatesAutoresizingMaskIntoConstraints:YES];
   return view;
@@ -124,6 +132,21 @@ LYNX_REGISTER_UI("view")
 
 - (void)gestureDidSet {
   [super gestureDidSet];
+
+  if (self.context.enableNewGesture && self.context.enableUnifiedGestureHandler) {
+    LynxUnifiedGestureArena *arena = self.context.uiOwner.unifiedGestureArena;
+    BOOL hasNativeGesture = ([arena registrationForDetectors:self.gestureMap] &
+                             LynxUnifiedGestureRegistrationHasNativeDetector) != 0;
+    UILynxView *lynxView = (UILynxView *)self.view;
+    if ([lynxView isKindOfClass:[UILynxView class]]) {
+      if (!hasNativeGesture) {
+        lynxView.interceptGestureStatus = LynxInterceptGestureStateUnset;
+      }
+      [lynxView setNativeGestureRecognizerEnabled:hasNativeGesture];
+    }
+    return;
+  }
+
   for (NSNumber *key in self.gestureMap) {
     LynxGestureDetectorDarwin *detector = self.gestureMap[key];
     // Check if a native gesture type exists.

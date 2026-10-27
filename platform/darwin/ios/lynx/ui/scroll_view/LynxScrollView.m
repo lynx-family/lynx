@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxScrollView.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIScroller.h>
 
 @implementation LynxScrollView
@@ -34,6 +35,10 @@
 
   if (gestureRecognizer == _nativeGesturePanRecognizer && _gestureConsumer &&
       _gestureConsumer.interceptGestureStatus == LynxInterceptGestureStateTrue) {
+    if ([self.weakUIScroller.context isUsingUnifiedGestureHandler] &&
+        ![otherGestureRecognizer canBePreventedByGestureRecognizer:gestureRecognizer]) {
+      return YES;
+    }
     otherGestureRecognizer.state = UIGestureRecognizerStateFailed;
     return NO;
   }

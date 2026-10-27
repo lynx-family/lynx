@@ -6,6 +6,8 @@
 
 #import <Lynx/LynxBaseScrollView+Nested.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/UIScrollView+Lynx.h>
 #import <Lynx/UIScrollView+LynxGesture.h>
 #import <Lynx/UIScrollView+Nested.h>
@@ -172,6 +174,12 @@
 
   if (gestureRecognizer == _nativeGesturePanRecognizer && _gestureConsumer &&
       _gestureConsumer.interceptGestureStatus == LynxInterceptGestureStateTrue) {
+    id owner = self.ui ?: self.scrollDelegate;
+    if ([owner isKindOfClass:LynxUI.class] &&
+        [((LynxUI *)owner).context isUsingUnifiedGestureHandler] &&
+        ![otherGestureRecognizer canBePreventedByGestureRecognizer:gestureRecognizer]) {
+      return YES;
+    }
     otherGestureRecognizer.state = UIGestureRecognizerStateFailed;
     return NO;
   }

@@ -113,6 +113,27 @@
   XCTAssertTrue([ui getGestureHandlers].count == 0);
 }
 
+- (void)testConsumeGestureUsesNativeInterceptionWithoutUnifiedArena {
+  LynxUIView *ui = [[LynxUIView alloc] initWithView:nil];
+  LynxUIContext *context =
+      [[LynxUIContext alloc] initWithScreenMetrics:[LynxScreenMetrics getDefaultLynxScreenMetrics]];
+  [context setEnableUnifiedGestureHandler:YES];
+  ui.context = context;
+  LynxGestureDetectorDarwin *detector =
+      [[LynxGestureDetectorDarwin alloc] initWithGestureID:1
+                                               gestureType:LynxGestureTypeNative
+                                      gestureCallbackNames:@[]
+                                               relationMap:@{}];
+  [ui setGestureDetectors:[NSSet setWithObject:detector]];
+  UIGestureRecognizer *recognizer = ui.view.gestureRecognizers.firstObject;
+  XCTAssertNotNil(recognizer);
+  XCTAssertFalse([recognizer.delegate gestureRecognizerShouldBegin:recognizer]);
+
+  [ui consumeGesture:1 params:@{@"inner" : @NO, @"consume" : @YES}];
+
+  XCTAssertTrue([recognizer.delegate gestureRecognizerShouldBegin:recognizer]);
+}
+
 - (void)testGestureDetectorsRefreshHandlersWithoutCancellingAndSupportClearing {
   LynxUIView *ui = [[LynxUIView alloc] initWithView:nil];
   LynxUIMockContext *mockContext = [LynxUIUnitTestUtils initUIMockContextWithUI:ui];
@@ -198,6 +219,19 @@ void printAllIvarDetails(Class cls) {
     XCTFail("LynxUI size is beyond bar causing memory padding, wasting memory usage. Please check "
             "its ivar to reduce it size under bar.");
   }
+}
+
+- (void)testUnifiedGestureHandlerSelectionIsImmutable {
+  LynxScreenMetrics *screenMetrics = [LynxScreenMetrics getDefaultLynxScreenMetrics];
+  LynxUIContext *enabledContext = [[LynxUIContext alloc] initWithScreenMetrics:screenMetrics];
+  [enabledContext setEnableUnifiedGestureHandler:YES];
+  [enabledContext setEnableUnifiedGestureHandler:NO];
+  XCTAssertTrue(enabledContext.enableUnifiedGestureHandler);
+
+  LynxUIContext *disabledContext = [[LynxUIContext alloc] initWithScreenMetrics:screenMetrics];
+  [disabledContext setEnableUnifiedGestureHandler:NO];
+  [disabledContext setEnableUnifiedGestureHandler:YES];
+  XCTAssertFalse(disabledContext.enableUnifiedGestureHandler);
 }
 
 - (void)testNewStickyCalculateTranslateClampsToParentRange {

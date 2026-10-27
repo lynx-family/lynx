@@ -55,6 +55,7 @@ using lynx::tasm::gesture::TimerToken;
 
 @interface LynxUnifiedGestureArena ()
 - (nullable LynxUI *)uiForMember:(MemberId)memberId;
+- (nullable id<LynxEventTarget>)flingTargetInChain:(nonnull id<LynxEventTarget>)target;
 - (void)dispatchGestureEvent:(const GestureEvent &)event;
 - (void)scheduleTimer:(TimerToken)token delay:(double)delayMs;
 - (void)cancelTimer:(TimerToken)token;

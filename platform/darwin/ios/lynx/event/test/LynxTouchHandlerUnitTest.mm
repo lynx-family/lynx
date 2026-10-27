@@ -8,22 +8,37 @@
 
 #include <deque>
 
+#import <Lynx/LUIConfigAdapter.h>
+#import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEventHandler+Internal.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxEventTarget.h>
+#import <Lynx/LynxGestureArenaMember.h>
+#import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxScreenMetrics.h>
+#import <Lynx/LynxScrollView.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTouchEvent.h>
 #import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxTouchHandler.h>
+#import <Lynx/LynxUI+Gesture.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIListContainer.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUIScroller.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxWeakProxy.h>
+#import <Lynx/UIScrollView+LynxGesture.h>
+#import "LynxListScrollView.h"
 #import "LynxTouchHandlerUnitTest.h"
+#import "LynxUIListScroll.h"
+#import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 
 @interface LynxTouchHandler ()
 
@@ -164,6 +179,121 @@
 }
 @end
 
+@interface LynxUnifiedGestureMockTouch : UITouch
+@property(nonatomic, assign) CGPoint mockLocation;
+@property(nonatomic, assign) NSTimeInterval mockTimestamp;
+@end
+
+@implementation LynxUnifiedGestureMockTouch
+
+- (CGPoint)locationInView:(UIView*)view {
+  return self.mockLocation;
+}
+
+- (NSTimeInterval)timestamp {
+  return self.mockTimestamp;
+}
+
+@end
+
+@interface LynxUnifiedGestureEventEmitter : LynxEventEmitter
+@property(nonatomic, strong) NSMutableArray<LynxCustomEvent*>* gestureEvents;
+@end
+
+@implementation LynxUnifiedGestureEventEmitter
+
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _gestureEvents = [NSMutableArray array];
+  }
+  return self;
+}
+
+- (void)dispatchGestureEvent:(int)gestureId event:(LynxCustomEvent*)event {
+  [_gestureEvents addObject:event];
+}
+
+@end
+
+@interface LynxUnifiedGestureTestUI : LynxUIView
+@property(nonatomic, strong) NSMutableArray<NSNumber*>* gestureStates;
+@property(nonatomic, copy, nullable) void (^stateHandler)(LynxGestureHandlerState state);
+@end
+
+@implementation LynxUnifiedGestureTestUI
+
+- (instancetype)init {
+  self = [super initWithView:[UIView new]];
+  if (self) {
+    _gestureStates = [NSMutableArray array];
+  }
+  return self;
+}
+
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status {
+  [_gestureStates addObject:@(status)];
+  if (_stateHandler) {
+    _stateHandler(status);
+  }
+}
+
+@end
+
+@interface LynxUnifiedGestureTestContext : NSObject
+@property(nonatomic, strong) LynxUIOwner* uiOwner;
+@property(nonatomic, strong) LynxUIContext* uiContext;
+@property(nonatomic, strong) LynxUnifiedGestureTestUI* ui;
+@property(nonatomic, strong) LynxUnifiedGestureEventEmitter* eventEmitter;
+@property(nonatomic, strong) LynxUnifiedGestureArena* arena;
+@property(nonatomic, strong) LynxUnifiedGestureMockTouch* touch;
+@end
+
+@implementation LynxUnifiedGestureTestContext
+
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _ui = [[LynxUnifiedGestureTestUI alloc] init];
+    _ui.sign = 1;
+    _uiContext = [[LynxUIContext alloc] init];
+    [_uiContext setEnableNewGesture:YES];
+    [_uiContext setEnableUnifiedGestureHandler:YES];
+    _ui.context = _uiContext;
+
+    _uiOwner = OCMClassMock(LynxUIOwner.class);
+    OCMStub([_uiOwner findUIBySign:1]).andReturn(_ui);
+    OCMStub([_uiOwner uiContext]).andReturn(_uiContext);
+    _uiContext.uiOwner = _uiOwner;
+
+    _eventEmitter = [[LynxUnifiedGestureEventEmitter alloc] init];
+    _uiContext.eventEmitter = _eventEmitter;
+    _arena = [[LynxUnifiedGestureArena alloc] initWithUIOwner:_uiOwner];
+    OCMStub([_uiOwner unifiedGestureArena]).andReturn(_arena);
+
+    _touch = [[LynxUnifiedGestureMockTouch alloc] init];
+    _touch.mockTimestamp = 1;
+  }
+  return self;
+}
+
+@end
+
+@interface LUIConfigAdapter (UnifiedGestureHandlerUnitTest)
+- (bool)enableUnifiedGestureHandler;
+@end
+
+static LynxGestureDetectorDarwin* LynxUnifiedGestureDetector(uint32_t gestureId,
+                                                             LynxGestureTypeDarwin type,
+                                                             NSArray<NSString*>* callbacks,
+                                                             NSDictionary* config) {
+  return [[LynxGestureDetectorDarwin alloc] initWithGestureID:gestureId
+                                                  gestureType:type
+                                         gestureCallbackNames:callbacks
+                                                  relationMap:@{}
+                                                    configMap:[config mutableCopy]];
+}
+
 @implementation LynxTouchHandlerUnitTest {
   LynxTouchHandler* _handler;
   NSArray<UIView*>* _pageViews;
@@ -203,6 +333,141 @@
                                                     eventName:LynxEventTap] count]);
 }
 
+- (void)testNativeInterceptionPreservesTouchDeliveryOnlyWithUnifiedArena {
+  for (NSNumber* unified in @[ @NO, @YES ]) {
+    LynxUIView* plainUI = [[LynxUIView alloc] init];
+    NSArray<LynxUI*>* components =
+        @[ plainUI, [[LynxUIScroller alloc] init], [[LynxUIListScroll alloc] init] ];
+    for (LynxUI* ui in components) {
+      UIView* view = ui.view;
+      UIView* root = [UIView new];
+      [root addSubview:view];
+      LynxEventHandler* eventHandler = OCMClassMock(LynxEventHandler.class);
+      OCMStub(eventHandler.rootView).andReturn(root);
+      LynxTouchHandler* handler = [[LynxTouchHandler alloc] initWithEventHandler:eventHandler];
+      OCMStub(eventHandler.touchRecognizer).andReturn(handler);
+      [root addGestureRecognizer:handler];
+
+      LynxUIContext* context = [[LynxUIContext alloc] init];
+      [context setValue:eventHandler forKey:@"eventHandler"];
+      [context setEnableUnifiedGestureHandler:YES];
+      ui.context = context;
+      LynxUnifiedGestureArena* arena =
+          unified.boolValue ? OCMClassMock(LynxUnifiedGestureArena.class) : nil;
+      handler.unifiedGestureArena = arena;
+
+      UIPanGestureRecognizer* native = [UIPanGestureRecognizer new];
+      [view addGestureRecognizer:native];
+      [view setValue:native forKey:@"nativeGesturePanRecognizer"];
+      if (ui == plainUI) {
+        [ui interceptGesture:YES];
+      } else {
+        LynxGestureConsumer* consumer = [LynxGestureConsumer new];
+        [consumer interceptGesture:YES];
+        [view setValue:consumer forKey:@"gestureConsumer"];
+      }
+
+      id<UIGestureRecognizerDelegate> delegate = (id<UIGestureRecognizerDelegate>)view;
+      XCTAssertFalse([handler canBePreventedByGestureRecognizer:native]);
+      XCTAssertEqual([delegate gestureRecognizer:native
+                         shouldRecognizeSimultaneouslyWithGestureRecognizer:handler],
+                     unified.boolValue);
+      XCTAssertEqual(handler.state, unified.boolValue ? UIGestureRecognizerStatePossible
+                                                      : UIGestureRecognizerStateFailed);
+
+      UIPanGestureRecognizer* competing = [UIPanGestureRecognizer new];
+      XCTAssertFalse([delegate gestureRecognizer:native
+          shouldRecognizeSimultaneouslyWithGestureRecognizer:competing]);
+      XCTAssertEqual(competing.state, UIGestureRecognizerStateFailed);
+      XCTAssertEqual(context.eventHandler.touchRecognizer.unifiedGestureArena, arena);
+    }
+  }
+}
+
+- (void)testNativeInterceptionSurvivesRepeatedHitTestOnlyWithUnifiedArena {
+  LynxUIView* view = [[LynxUIView alloc] init];
+  LynxUIListContainer* list = [[LynxUIListContainer alloc] init];
+  LynxGestureConsumer* consumer = [[LynxGestureConsumer alloc] init];
+  [list.view setValue:consumer forKey:@"gestureConsumer"];
+  LynxUIContext* context = [[LynxUIContext alloc] init];
+  [context setEnableUnifiedGestureHandler:YES];
+  view.context = context;
+  list.context = context;
+  LynxEventHandler* eventHandler = [[LynxEventHandler alloc] initWithRootView:view.view
+                                                                   withRootUI:view];
+  [context setValue:eventHandler forKey:@"eventHandler"];
+  LynxUnifiedGestureArena* arena = OCMClassMock(LynxUnifiedGestureArena.class);
+
+  for (NSNumber* unified in @[ @NO, @YES ]) {
+    eventHandler.touchRecognizer.unifiedGestureArena = unified.boolValue ? arena : nil;
+    for (NSNumber* intercept in @[ @YES, @NO ]) {
+      [view interceptGesture:intercept.boolValue];
+      [list interceptGesture:intercept.boolValue];
+      LynxInterceptGestureState expected = LynxInterceptGestureStateUnset;
+      if (unified.boolValue) {
+        expected =
+            intercept.boolValue ? LynxInterceptGestureStateTrue : LynxInterceptGestureStateFalse;
+      }
+      for (NSInteger index = 0; index < 3; ++index) {
+        [view hitTest:CGPointZero withEvent:nil];
+        [list hitTest:CGPointZero withEvent:nil];
+        XCTAssertEqual([[view.view valueForKey:@"interceptGestureStatus"] integerValue], expected);
+        XCTAssertEqual(consumer.interceptGestureStatus, expected);
+      }
+    }
+  }
+  XCTAssertEqual(context.eventHandler, eventHandler);
+  XCTAssertEqual(eventHandler.touchRecognizer.unifiedGestureArena, arena);
+}
+
+- (void)testNativeInterceptionResetsOnlyForFirstTouch {
+  for (NSNumber* multiTouch in @[ @NO, @YES ]) {
+    LynxUIListContainer* parent = [[LynxUIListContainer alloc] init];
+    LynxGestureConsumer* consumer = [[LynxGestureConsumer alloc] init];
+    [parent.view setValue:consumer forKey:@"gestureConsumer"];
+    LynxUIView* child = [[LynxUIView alloc] init];
+    child.parent = parent;
+    LynxEventHandler* eventHandler =
+        OCMPartialMock([[LynxEventHandler alloc] initWithRootView:child.view withRootUI:child]);
+    OCMStub([eventHandler touchTarget]).andReturn(child);
+    OCMStub([eventHandler hitTestInner:CGPointZero withEvent:OCMArg.any]).andReturn(child);
+    LynxTouchHandler* handler = eventHandler.touchRecognizer;
+    [handler setEnableMultiTouch:multiTouch.boolValue];
+    LynxUIContext* context = [[LynxUIContext alloc] init];
+    [context setValue:eventHandler forKey:@"eventHandler"];
+    parent.context = context;
+    child.context = context;
+    LynxUnifiedGestureArena* arena = OCMClassMock(LynxUnifiedGestureArena.class);
+    handler.unifiedGestureArena = arena;
+    UIEvent* event = OCMClassMock(UIEvent.class);
+    LynxTouchHandlerTestTouch* first = [self touchAtPoint:CGPointZero];
+    LynxTouchHandlerTestTouch* second = [self touchAtPoint:CGPointZero];
+
+    [parent interceptGesture:YES];
+    [child interceptGesture:NO];
+    [handler touchesBeganInner:[NSSet setWithObject:first] withEvent:event];
+    XCTAssertEqual(consumer.interceptGestureStatus, LynxInterceptGestureStateUnset);
+    XCTAssertEqual([[child.view valueForKey:@"interceptGestureStatus"] integerValue],
+                   LynxInterceptGestureStateUnset);
+
+    [parent interceptGesture:NO];
+    [child interceptGesture:YES];
+    [handler touchesBeganInner:[NSSet setWithObject:second] withEvent:event];
+    XCTAssertEqual(consumer.interceptGestureStatus, LynxInterceptGestureStateFalse);
+    XCTAssertEqual([[child.view valueForKey:@"interceptGestureStatus"] integerValue],
+                   LynxInterceptGestureStateTrue);
+    [handler touchesCancelledInner:[NSSet setWithObjects:first, second, nil] withEvent:event];
+
+    first.testPhase = UITouchPhaseBegan;
+    [handler touchesBeganInner:[NSSet setWithObject:first] withEvent:event];
+    XCTAssertEqual(consumer.interceptGestureStatus, LynxInterceptGestureStateUnset);
+    XCTAssertEqual([[child.view valueForKey:@"interceptGestureStatus"] integerValue],
+                   LynxInterceptGestureStateUnset);
+    [handler touchesCancelledInner:[NSSet setWithObject:first] withEvent:event];
+    XCTAssertEqual(context.eventHandler.touchRecognizer.unifiedGestureArena, arena);
+  }
+}
+
 - (void)testResponseChainEventExcludesGlobalBind {
   LynxUIView* ui = [[LynxUIView alloc] initWithView:[UIView new]];
   NSSet<NSString*>* globalBindEvents = [NSSet setWithObject:@"tap(global-bindEvent)"];
@@ -238,6 +503,331 @@
   [_handler onTouchesMoveWithTarget:target];
 
   XCTAssert([_handler.touchDeque count] == 0);
+}
+
+- (void)testUnifiedGestureBeginThenCancelDispatchesSingleEnd {
+  LynxUnifiedGestureTestContext* context = [[LynxUnifiedGestureTestContext alloc] init];
+  LynxGestureDetectorDarwin* detector = LynxUnifiedGestureDetector(
+      11, LynxGestureTypePan, @[ ON_BEGIN, ON_START, ON_END ], @{@"minDistance" : @10});
+  [context.ui setGestureDetectors:[NSSet setWithObject:detector]];
+
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeDown
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeCancel
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+
+  NSPredicate* endPredicate =
+      [NSPredicate predicateWithBlock:^BOOL(LynxCustomEvent* event, NSDictionary* _) {
+        return [event.eventName isEqualToString:ON_END];
+      }];
+  XCTAssertEqual(
+      [context.eventEmitter.gestureEvents filteredArrayUsingPredicate:endPredicate].count, 1UL);
+  XCTAssertEqualObjects(context.eventEmitter.gestureEvents.firstObject.eventName, ON_BEGIN);
+  XCTAssertFalse([context.arena hasActiveGesture]);
+}
+
+- (void)testUnifiedGestureDetectorsCanBeReplacedAndCleared {
+  LynxUnifiedGestureTestContext* context = [[LynxUnifiedGestureTestContext alloc] init];
+  LynxGestureDetectorDarwin* first = LynxUnifiedGestureDetector(
+      11, LynxGestureTypePan, @[ ON_BEGIN, ON_END ], @{@"minDistance" : @10});
+  [context.ui setGestureDetectors:[NSSet setWithObject:first]];
+  XCTAssertTrue([context.arena containsGesture:11 memberId:context.ui.sign]);
+
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeDown
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  context.touch.mockLocation = CGPointMake(20, 0);
+  context.touch.mockTimestamp = 2;
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeMove
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  XCTAssertTrue([context.arena hasActiveGesture]);
+
+  LynxGestureDetectorDarwin* second = LynxUnifiedGestureDetector(
+      12, LynxGestureTypePan, @[ ON_BEGIN, ON_START, ON_UPDATE, ON_END ], @{@"minDistance" : @0});
+  [context.ui setGestureDetectors:[NSSet setWithObject:second]];
+  XCTAssertFalse([context.arena containsGesture:11 memberId:context.ui.sign]);
+  XCTAssertTrue([context.arena containsGesture:12 memberId:context.ui.sign]);
+  XCTAssertFalse([context.arena hasActiveGesture]);
+
+  context.touch.mockLocation = CGPointZero;
+  context.touch.mockTimestamp = 3;
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeDown
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  context.touch.mockLocation = CGPointMake(10, 0);
+  context.touch.mockTimestamp = 4;
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeMove
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  XCTAssertTrue([context.arena hasActiveGesture]);
+
+  [context.ui setGestureDetectors:[NSSet set]];
+  XCTAssertFalse([context.arena containsMember:context.ui.sign]);
+  XCTAssertFalse([context.arena hasActiveGesture]);
+  XCTAssertEqualObjects(context.eventEmitter.gestureEvents.lastObject.eventName, ON_END);
+}
+
+- (void)testUnifiedNativeReplacementKeepsScrollInterception {
+  LynxUnifiedGestureTestContext* context = [[LynxUnifiedGestureTestContext alloc] init];
+  LynxUIScroller* scroller = [[LynxUIScroller alloc] init];
+  scroller.sign = 2;
+  scroller.context = context.uiContext;
+  OCMStub([context.uiOwner findUIBySign:2]).andReturn(scroller);
+  LynxGestureDetectorDarwin* first =
+      LynxUnifiedGestureDetector(11, LynxGestureTypeNative, @[], @{});
+  LynxGestureDetectorDarwin* replacement =
+      LynxUnifiedGestureDetector(12, LynxGestureTypeNative, @[], @{});
+  [scroller setGestureDetectors:[NSSet setWithObject:first]];
+
+  LynxScrollView* scrollView = (LynxScrollView*)scroller.view;
+  UIPanGestureRecognizer* recognizer = scrollView.nativeGesturePanRecognizer;
+  XCTAssertNotNil(recognizer);
+  id mockScroller = OCMPartialMock(scroller);
+  OCMStub([mockScroller onPlatformGestureStatusChanged:LynxGestureHandlerStateBegin])
+      .andDo(^(NSInvocation* invocation) {
+        [scroller setGestureDetectors:[NSSet setWithObject:replacement]];
+      });
+
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeDown
+                      target:scroller
+                   pointerId:0
+                    velocity:CGPointZero];
+  XCTAssertTrue([context.arena containsGesture:12 memberId:scroller.sign]);
+  XCTAssertEqual(scrollView.nativeGesturePanRecognizer, recognizer);
+  XCTAssertNotNil(scrollView.gestureConsumer);
+  [mockScroller stopMocking];
+}
+
+- (void)testUnifiedEquivalentGestureReplacementPreservesActiveState {
+  LynxUnifiedGestureTestContext* context = [[LynxUnifiedGestureTestContext alloc] init];
+  LynxGestureDetectorDarwin* detector = LynxUnifiedGestureDetector(
+      11, LynxGestureTypePan, @[ ON_BEGIN, ON_START, ON_UPDATE, ON_END ], @{@"minDistance" : @0});
+  [context.ui setGestureDetectors:[NSSet setWithObject:detector]];
+  LynxGestureDetectorDarwin* equivalentDetector = LynxUnifiedGestureDetector(
+      11, LynxGestureTypePan, @[ ON_BEGIN, ON_START, ON_UPDATE, ON_END ], @{@"minDistance" : @0});
+  __block BOOL replaced = NO;
+  __weak LynxUnifiedGestureTestContext* weakContext = context;
+  context.ui.stateHandler = ^(LynxGestureHandlerState state) {
+    if (state == LynxGestureHandlerStateActive && !replaced) {
+      replaced = YES;
+      [weakContext.ui setGestureDetectors:[NSSet setWithObject:equivalentDetector]];
+    }
+  };
+
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeDown
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  context.touch.mockLocation = CGPointMake(10, 0);
+  context.touch.mockTimestamp = 2;
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeMove
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  XCTAssertTrue(replaced);
+  XCTAssertTrue([context.arena hasActiveGesture]);
+  context.touch.mockLocation = CGPointMake(20, 0);
+  context.touch.mockTimestamp = 3;
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeMove
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  XCTAssertTrue([context.arena hasActiveGesture]);
+  XCTAssertEqualObjects(context.eventEmitter.gestureEvents.lastObject.eventName, ON_UPDATE);
+}
+
+- (void)testUnifiedLongPressStaysActiveBeyondMaxDistance {
+  LynxUnifiedGestureTestContext* context = [[LynxUnifiedGestureTestContext alloc] init];
+  XCTestExpectation* active = [self expectationWithDescription:@"long press becomes active"];
+  context.ui.stateHandler = ^(LynxGestureHandlerState state) {
+    if (state == LynxGestureHandlerStateActive) {
+      [active fulfill];
+    }
+  };
+  LynxGestureDetectorDarwin* detector = LynxUnifiedGestureDetector(
+      11, LynxGestureTypeLongPress, @[ ON_BEGIN, ON_START, ON_UPDATE, ON_END ],
+      @{@"minDuration" : @0, @"maxDistance" : @5});
+  [context.ui setGestureDetectors:[NSSet setWithObject:detector]];
+
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeDown
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  [self waitForExpectations:@[ active ] timeout:1];
+  XCTAssertTrue([context.arena hasActiveGesture]);
+
+  context.touch.mockLocation = CGPointMake(100, 100);
+  context.touch.mockTimestamp = 2;
+  [context.arena handleTouch:context.touch
+                      action:LynxUnifiedGestureInputTypeMove
+                      target:context.ui
+                   pointerId:0
+                    velocity:CGPointZero];
+  XCTAssertTrue([context.arena hasActiveGesture]);
+  XCTAssertEqual(context.ui.gestureStates.lastObject.integerValue, LynxGestureHandlerStateActive);
+}
+
+- (void)testEventHandlerSharesUnifiedGestureArenaWithUiOwner {
+  LynxUnifiedGestureTestContext* context = [[LynxUnifiedGestureTestContext alloc] init];
+  LynxGestureDetectorDarwin* detector = LynxUnifiedGestureDetector(
+      11, LynxGestureTypePan, @[ ON_BEGIN, ON_END ], @{@"minDistance" : @10});
+  [context.ui setGestureDetectors:[NSSet setWithObject:detector]];
+  LynxEventHandler* handler =
+      OCMPartialMock([[LynxEventHandler alloc] initWithRootView:context.ui.view
+                                                     withRootUI:context.ui]);
+  OCMStub([handler touchTarget]).andReturn(context.ui);
+  OCMStub([handler hitTestInner:CGPointZero withEvent:OCMArg.any]).andReturn(context.ui);
+  [handler updateUiOwner:context.uiOwner eventEmitter:context.eventEmitter];
+
+  UIEvent* event = OCMClassMock(UIEvent.class);
+  NSSet<UITouch*>* touches = [NSSet setWithObject:context.touch];
+  [handler.touchRecognizer touchesBeganInner:touches withEvent:event];
+  [handler.touchRecognizer touchesCancelledInner:touches withEvent:event];
+
+  XCTAssertEqualObjects([context.eventEmitter.gestureEvents valueForKey:@"eventName"],
+                        (@[ ON_BEGIN, ON_END ]));
+  XCTAssertFalse([context.arena hasActiveGesture]);
+  [handler updateUiOwner:nil eventEmitter:context.eventEmitter];
+  XCTAssertNil(handler.touchRecognizer.unifiedGestureArena);
+}
+
+- (void)testUnifiedGestureSuppressesClickWhenPressStopsFlingInSameChain {
+  for (NSNumber* sameChain in @[ @YES, @NO ]) {
+    LynxUnifiedGestureTestContext* context = [[LynxUnifiedGestureTestContext alloc] init];
+    LynxGestureDetectorDarwin* detector =
+        LynxUnifiedGestureDetector(11, LynxGestureTypeDefault, @[ ON_BEGIN, ON_END ], @{});
+    [context.ui setGestureDetectors:[NSSet setWithObject:detector]];
+    [context.arena handleTouch:context.touch
+                        action:LynxUnifiedGestureInputTypeDown
+                        target:context.ui
+                     pointerId:0
+                      velocity:CGPointZero];
+    context.touch.mockLocation = CGPointMake(20, 0);
+    context.touch.mockTimestamp = 2;
+    [context.arena handleTouch:context.touch
+                        action:LynxUnifiedGestureInputTypeMove
+                        target:context.ui
+                     pointerId:0
+                      velocity:CGPointZero];
+    [context.arena handleTouch:context.touch
+                        action:LynxUnifiedGestureInputTypeUp
+                        target:context.ui
+                     pointerId:0
+                      velocity:CGPointMake(1000, 0)];
+    XCTAssertTrue([context.arena hasActiveGesture]);
+
+    LynxUIView* target = [[LynxUIView alloc] initWithView:[UIView new]];
+    target.sign = 2;
+    target.context = context.uiContext;
+    if (sameChain.boolValue) {
+      [context.ui insertChild:target atIndex:0];
+    }
+    LynxEventHandler* handler =
+        OCMPartialMock([[LynxEventHandler alloc] initWithRootView:target.view withRootUI:target]);
+    OCMStub([handler touchTarget]).andReturn(target);
+    OCMStub([handler hitTestInner:CGPointZero withEvent:OCMArg.any]).andReturn(target);
+    [handler updateUiOwner:context.uiOwner eventEmitter:context.eventEmitter];
+
+    context.touch.mockLocation = CGPointZero;
+    context.touch.mockTimestamp = 3;
+    UIEvent* event = OCMClassMock(UIEvent.class);
+    NSSet<UITouch*>* touches = [NSSet setWithObject:context.touch];
+    [handler.touchRecognizer touchesBeganInner:touches withEvent:event];
+    const NSInteger expectedSuppression = sameChain.boolValue ? context.ui.sign : -1;
+    XCTAssertEqual([handler canRespondTapOrClickEvent:target], expectedSuppression);
+    [handler.touchRecognizer touchesCancelledInner:touches withEvent:event];
+  }
+}
+
+- (void)testUnifiedGestureUsesTransferWrapperForLocalCoordinates {
+  for (NSNumber* useWrapper in @[ @NO, @YES ]) {
+    LynxUnifiedGestureTestContext* context = [[LynxUnifiedGestureTestContext alloc] init];
+    UIView* page = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 500, 500)];
+    UIView* wrapper = [[UIView alloc] initWithFrame:CGRectMake(100, 200, 200, 200)];
+    [page addSubview:wrapper];
+    context.ui.view.frame = CGRectMake(10, 15, 200, 300);
+    [page addSubview:context.ui.view];
+
+    if (useWrapper.boolValue) {
+      context.ui.view.hidden = YES;
+      context.ui.touchEventSourceView = wrapper;
+    }
+    id uiContext = OCMPartialMock(context.uiContext);
+    OCMStub([uiContext rootView]).andReturn(page);
+    LynxGestureDetectorDarwin* detector =
+        LynxUnifiedGestureDetector(11, LynxGestureTypePan, @[ ON_BEGIN ], @{@"minDistance" : @10});
+    [context.ui setGestureDetectors:[NSSet setWithObject:detector]];
+
+    context.touch.mockLocation = CGPointMake(125, 245);
+    [context.arena handleTouch:context.touch
+                        action:LynxUnifiedGestureInputTypeDown
+                        target:context.ui
+                     pointerId:0
+                      velocity:CGPointZero];
+
+    LynxCustomEvent* event = context.eventEmitter.gestureEvents.firstObject;
+    XCTAssertEqualObjects(event.eventName, ON_BEGIN);
+    XCTAssertEqualObjects(event.params[@"pageX"], @125);
+    XCTAssertEqualObjects(event.params[@"pageY"], @245);
+    XCTAssertEqualObjects(event.params[@"x"], useWrapper.boolValue ? @25 : @115);
+    XCTAssertEqualObjects(event.params[@"y"], useWrapper.boolValue ? @45 : @230);
+  }
+}
+
+- (void)testUnifiedGestureGlobalDisableCanRecoverAfterPageReset {
+  static NSString* const key = @"enable_unified_gesture_handler";
+  LynxEnv* env = [LynxEnv sharedInstance];
+  NSString* originalValue = [env _stringFromExternalEnv:key];
+  LynxView* containerView = [[LynxView alloc] init];
+  LynxUIOwner* uiOwner =
+      [[LynxUIOwner alloc] initWithContainerView:containerView
+                               componentRegistry:[LynxComponentScopeRegistry new]
+                                   screenMetrics:[LynxScreenMetrics getDefaultLynxScreenMetrics]];
+  lynx::tasm::PageConfig pageConfig;
+  pageConfig.SetEnableNewGesture(true);
+  pageConfig.SetEnableUnifiedGestureHandler(true);
+
+  [env updateExternalEnvCacheForKey:key withValue:@"false"];
+  LUIConfigAdapter* disabledAdapter = [[LUIConfigAdapter alloc] initWithConfig:&pageConfig];
+  XCTAssertFalse(disabledAdapter.enableUnifiedGestureHandler);
+  [uiOwner.uiContext setEnableUnifiedGestureHandler:disabledAdapter.enableUnifiedGestureHandler];
+  [uiOwner initNewGestureInUIThread:YES
+        enableUnifiedGestureHandler:uiOwner.uiContext.enableUnifiedGestureHandler];
+  XCTAssertNil(uiOwner.unifiedGestureArena);
+  XCTAssertNotNil(uiOwner.gestureArenaManager);
+
+  [uiOwner reset];
+  [env updateExternalEnvCacheForKey:key withValue:@"true"];
+  LUIConfigAdapter* enabledAdapter = [[LUIConfigAdapter alloc] initWithConfig:&pageConfig];
+  XCTAssertTrue(enabledAdapter.enableUnifiedGestureHandler);
+  [uiOwner.uiContext setEnableUnifiedGestureHandler:enabledAdapter.enableUnifiedGestureHandler];
+  [uiOwner initNewGestureInUIThread:YES
+        enableUnifiedGestureHandler:uiOwner.uiContext.enableUnifiedGestureHandler];
+  XCTAssertNotNil(uiOwner.unifiedGestureArena);
+  XCTAssertNil(uiOwner.gestureArenaManager);
+
+  [uiOwner reset];
+  [env updateExternalEnvCacheForKey:key withValue:originalValue];
 }
 
 - (void)testEventThrough {
