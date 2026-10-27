@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
-#include "core/services/event_report/event_tracker.h"
 #include "core/shell/lynx_shell.h"
 #include "devtool/base_devtool/native/public/abstract_devtool.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_agent.h"
@@ -88,10 +87,9 @@ LynxDevToolNG::LynxDevToolNG(bool debuggable)
 LynxDevToolNG::~LynxDevToolNG() { devtool_mediator_->Destroy(); }
 
 int32_t LynxDevToolNG::Attach(const std::string& url) {
-  session_id_ = AbstractDevTool::Attach(url);
+  int32_t session_id = AbstractDevTool::Attach(url);
   devtool_mediator_->OnAttached();
-  UpdateSessionInfo();
-  return session_id_;
+  return session_id;
 }
 
 void LynxDevToolNG::RegisterGlobalDomainAgents(
@@ -248,16 +246,7 @@ void LynxDevToolNG::RegisterInstanceDomainAgents(
 
 void LynxDevToolNG::OnTasmCreated(intptr_t shell_ptr) {
   auto* shell = reinterpret_cast<lynx::shell::LynxShell*>(shell_ptr);
-  instance_id_ = shell->GetInstanceId();
   devtool_mediator_->Init(shell, shared_from_this());
-  UpdateSessionInfo();
-}
-
-void LynxDevToolNG::UpdateSessionInfo() {
-  if (session_id_ >= 0) {
-    lynx::tasm::report::EventTracker::UpdateGenericInfo(
-        instance_id_, "session_id", std::to_string(session_id_));
-  }
 }
 
 void LynxDevToolNG::SendMessageToDebugPlatform(const std::string& type,

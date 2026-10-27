@@ -9,27 +9,15 @@ import com.lynx.devtoolwrapper.IDevToolDelegate;
 import com.lynx.devtoolwrapper.ScreenshotBitmapHandler;
 import com.lynx.devtoolwrapper.ScreenshotMode;
 import com.lynx.react.bridge.ReadableMap;
-import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
-import com.lynx.tasm.behavior.LynxContext;
-import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
-import java.util.HashMap;
-import java.util.Map;
 
 public class LynxDevToolDelegateImpl implements IDevToolDelegate {
   private WeakReference<LynxTemplateRender> mRender = null;
-  private int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
 
   public LynxDevToolDelegateImpl(LynxTemplateRender render) {
     mRender = new WeakReference<>(render);
-    if (render != null) {
-      LynxContext context = render.getLynxContext();
-      if (context != null) {
-        mInstanceId = context.getInstanceId();
-      }
-    }
   }
 
   @Override
@@ -62,13 +50,6 @@ public class LynxDevToolDelegateImpl implements IDevToolDelegate {
     ILynxUIRenderer render = getLynxUIRenderer();
     if (render != null) {
       render.takeScreenshot(handler, screenShotMode);
-    } else if (LynxEnv.inst().isLynxDebugEnabled()) {
-      // Only report the event when LynxDebug is enabled.
-      LynxEventReporter.onEvent("lynxsdk_screencast_takeScreenshot_failed", mInstanceId, () -> {
-        Map<String, Object> data = new HashMap<>();
-        data.put("reason", "LynxDevToolDelegateImpl getLynxUIRenderer failed");
-        return data;
-      });
     }
   }
 
