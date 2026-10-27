@@ -10,6 +10,9 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "clay/common/graphics/drawable_image.h"
 #include "clay/gfx/rendering_backend.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/common/graphics/staged_image_read_scope.h"
+#endif
 #include "skity/geometry/matrix.hpp"
 #if defined(ENABLE_SKITY)
 #include "clay/gfx/skity/skity_image.h"
@@ -56,6 +59,9 @@ class SharedDrawableImage : public clay::DrawableImage {
 
   // Called from raster thread.
   void AdvanceFrameConsumption(bool freeze);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool PrepareStagedRead();
+#endif
 
 #ifndef ENABLE_SKITY
   // Called from raster thread.
@@ -83,7 +89,13 @@ class SharedDrawableImage : public clay::DrawableImage {
   [[nodiscard]] bool Update();
 
   fml::RefPtr<SharedImageSink> image_sink_;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  std::shared_ptr<SharedImageSinkAccessor> accessor_;
+  std::shared_ptr<display::SourceReadState> staged_read_ =
+      std::make_shared<display::SourceReadState>();
+#else
   std::unique_ptr<SharedImageSinkAccessor> accessor_;
+#endif
   uint32_t frame_consume_cnt_ = 0;
   uint32_t frame_produce_cnt_ = 0;
 

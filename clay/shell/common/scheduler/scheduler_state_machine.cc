@@ -64,6 +64,18 @@ void SchedulerStateMachine::Reset() {
   first_frame_drawn_ = false;
 }
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+void SchedulerStateMachine::ResetForNewProduction() {
+  // A replacement producer cannot complete an outstanding request or draw a
+  // pending tree from the old binding. Page layout and upload work survive.
+  const auto layout = meaningful_layout_state_;
+  const auto uploads = needs_upload_image_;
+  Reset();
+  meaningful_layout_state_ = layout;
+  needs_upload_image_ = uploads;
+}
+#endif
+
 SchedulerStateMachine::Action SchedulerStateMachine::NextAction() const {
   if (ShouldSendUIBeginFrame()) {
     return Action::BEGIN_FRAME;

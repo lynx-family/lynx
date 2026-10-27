@@ -48,6 +48,12 @@
 #include "clay/shell/common/rasterizer.h"
 #include "clay/shell/common/resource_cache_limit_calculator.h"
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/common/render_service_runtime.h"
+#include "clay/gfx/shared_image/texture_budget.h"
+#include "clay/shell/common/services/display_compositor_service.h"
+#endif
+
 namespace clay {
 class FrameTimingCollector;
 class ResourceLoaderIntercept;
@@ -480,6 +486,32 @@ class Shell final : public PlatformView::Delegate,
   uint64_t next_pointer_flow_id_ = 0;
 
   // Reset for each output surface and cleared by its first rendered frame.
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  Puppet<Owner::kPlatform, DisplayCompositorService> display_service_;
+  std::shared_ptr<display::RenderServiceRuntime> render_runtime_;
+  std::shared_ptr<display::RasterBinding> raster_binding_;
+  display::OutputConfig display_config_;
+  std::shared_ptr<std::shared_ptr<display::RasterBinding>> display_route_ =
+      std::make_shared<std::shared_ptr<display::RasterBinding>>();
+  std::unordered_map<int64_t, std::shared_ptr<std::atomic<bool>>>
+      display_sources_;
+  uint64_t display_window_generation_ = 0;
+  uint64_t display_tree_generation_ = 0;
+  unsigned display_recovery_count_ = 0;
+  bool display_in_background_ = false;
+  bool display_surface_available_ = false;
+  void RecoverStagedDevice(display::PipelineError error);
+  // The cached pixels must not pin a producer buffer after readback completes.
+  std::weak_ptr<const display::CompositorFrame> screenshot_frame_;
+  ScreenshotData staged_screenshot_;
+  uint32_t staged_screenshot_background_ = Color::kWhite().Value();
+  bool staged_screenshot_pending_ = false;
+  // Called only by ScreenshotSync; display and lifecycle callbacks never read
+  // GPU output back to CPU memory.
+  void RequestStagedScreenshot();
+  void SetupDisplayCompositor();
+  void StopDisplayCompositor(bool retain_production_context = false);
+#endif
   std::shared_ptr<std::atomic<bool>> waiting_for_first_frame_ =
       std::make_shared<std::atomic<bool>>(true);
   std::shared_ptr<std::atomic<bool>> screenshot =

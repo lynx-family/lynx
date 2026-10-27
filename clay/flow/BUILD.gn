@@ -9,7 +9,15 @@ import("../common/config.gni")
 import("../testing/testing.gni")
 
 source_set("flow") {
-  sources = [
+  if (clay_enable_display_compositor && is_android) {
+    sources = [
+      "compositor/segment_recorder.cc",
+      "compositor/segment_recorder.h",
+    ]
+  } else {
+    sources = []
+  }
+  sources += [
     "animation/animation_host.cc",
     "animation/animation_host.h",
     "animation/animation_mutator.cc",
@@ -109,6 +117,9 @@ source_set("flow") {
   ]
 
   public_configs = [ "../:config" ]
+  if (clay_enable_display_compositor && is_android) {
+    public_deps = [ "compositor:frame_protocol" ]
+  }
 
   deps = [
     "../common",

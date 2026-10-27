@@ -51,6 +51,11 @@ declare_args() {
   # Whether to use skity backend
   enable_skity = is_android || is_ios || enable_clay_lite
 
+  # Select the Android staged, single-page compositor at build time.
+  # Legacy rendering remains the default; a staged binary never falls back to
+  # the legacy path.
+  clay_enable_display_compositor = false
+
   # Whether freetype lite enables capability of font variant. Clay will enable this
   # by default. If canvas also wants to enable this config, just change this value to `true`.
   freetype2_lite_enable_font_variant = enable_clay
@@ -73,6 +78,11 @@ declare_args() {
 
   use_accessbility = (is_android || is_ios) && !enable_clay_lite
 }
+
+assert(
+    current_toolchain != default_toolchain || !clay_enable_display_compositor ||
+        (enable_clay && enable_skity && is_android),
+    "The display compositor requires Clay with Skity on Android.")
 
 if (enable_skity) {
   clay_enable_tttext = true
@@ -190,6 +200,10 @@ if (enable_clay_lite) {
 
 if (enable_skity) {
   feature_defines_list += [ "ENABLE_SKITY" ]
+}
+
+if (clay_enable_display_compositor && is_android) {
+  feature_defines_list += [ "ENABLE_CLAY_DISPLAY_COMPOSITOR=1" ]
 }
 
 if (enable_screenshot_service) {

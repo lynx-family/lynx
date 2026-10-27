@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/memory/weak_ptr.h"
@@ -36,6 +37,9 @@
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/window/viewport_metrics.h"
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/common/raster_binding.h"
+#endif
 namespace clay {
 class ResourceLoaderIntercept;
 }  // namespace clay
@@ -161,6 +165,16 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
 
   void ForceBeginFrame(fml::closure no_update_callback);
   void OnFirstMeaningfulLayout() override;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void SetRasterBinding(std::shared_ptr<display::RasterBinding> binding) {
+    raster_binding_ = std::move(binding);
+    ui_frame_service_.Act([](auto& impl) { impl.ResetFrameRequest(); });
+  }
+  display::RasterBindingKey GetRasterBindingKey() const {
+    return raster_binding_ ? raster_binding_->key()
+                           : display::RasterBindingKey{};
+  }
+#endif
   bool Raster(std::unique_ptr<clay::LayerTree> layer_tree,
               std::unique_ptr<clay::FrameTimingsRecorder> recorder = nullptr,
               bool force = false) override;
@@ -301,6 +315,9 @@ class Engine : public clay::RenderDelegate, public clay::Recyclable {
   void CleanForRecycle() override;
 
  private:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  std::shared_ptr<display::RasterBinding> raster_binding_;
+#endif
   const std::shared_ptr<clay::ServiceManager> service_manager_;
   // Control whether vsync request and response should be paused when
   // app/view is in background.

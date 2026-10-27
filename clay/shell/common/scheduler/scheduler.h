@@ -32,6 +32,11 @@ class Scheduler {
   // Indicates whether the output surface is valid, we should not do action draw
   // if it is invalid.
   void SetOutputSurfaceValid(bool valid);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void ResetForNewProduction();
+  void SetProductionAvailable(bool available);
+  void NotifyActiveTreeProduced(bool success);
+#endif
 
   // Indicates that current page has meaningful layout, if there is no
   // meaningful layout, we have no need to send begin frame.

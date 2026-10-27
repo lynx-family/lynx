@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/fml/make_copyable.h"
 #include "clay/common/graphics/shared_image_external_texture.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/layer_tree.h"
@@ -111,7 +112,17 @@ void Engine::ScheduleLayout() {
 
 void Engine::OnPlatformViewCreated() { page_view_->OnPlatformViewCreated(); }
 
-void Engine::OnOutputSurfaceCreated() { page_view_->OnOutputSurfaceCreated(); }
+void Engine::OnOutputSurfaceCreated() {
+  page_view_->OnOutputSurfaceCreated();
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // An already-dirty page may have requested its frame through the closed
+  // binding. Reissue the request after the replacement producer is ready.
+  ui_frame_service_.Act([](auto& impl) {
+    impl.ResetFrameRequest();
+    impl.RequestFrame();
+  });
+#endif
+}
 
 void Engine::OnOutputSurfaceCreateFailed() {
   FML_LOG(INFO) << "start Clay Engine::OnOutputSurfaceCreateFailed";
@@ -351,7 +362,13 @@ bool Engine::Raster(std::unique_ptr<clay::LayerTree> layer_tree,
     layer_tree.reset();
   }
   if (!layer_tree) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    raster_frame_service_.Act([binding = GetRasterBindingKey()](auto& impl) {
+      impl.CommitWithNoUpdatesForBinding(binding);
+    });
+#else
     raster_frame_service_.Act([](auto& impl) { impl.CommitWithNoUpdates(); });
+#endif
   } else {
     if (!recorder) {
       recorder = std::make_unique<FrameTimingsRecorder>();
@@ -361,6 +378,22 @@ bool Engine::Raster(std::unique_ptr<clay::LayerTree> layer_tree,
     }
     recorder->RecordBuildEnd(fml::TimePoint::Now());
     layer_tree->SetServiceManagerForAnimation(service_manager_);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    if (!raster_binding_) return false;
+    auto task = fml::MakeCopyable(
+        [manager = service_manager_, binding = raster_binding_->key(),
+         layer_tree = std::move(layer_tree), recorder = std::move(recorder),
+         force](uint64_t layout) mutable {
+          layer_tree->SetStagedIdentity(binding, layout);
+          Puppet<Owner::kRaster, RasterFrameService> service =
+              manager->GetService<RasterFrameService>();
+          if (force)
+            service->ForceCommit(std::move(layer_tree), std::move(recorder));
+          else
+            service->Commit(std::move(layer_tree), std::move(recorder));
+        });
+    return raster_binding_->PostTreeUpdate(std::move(task)) != 0;
+#else
     raster_frame_service_.Act([layer_tree = std::move(layer_tree),
                                recorder = std::move(recorder),
                                force = force](auto& impl) mutable {
@@ -372,6 +405,7 @@ bool Engine::Raster(std::unique_ptr<clay::LayerTree> layer_tree,
         impl.Commit(std::move(layer_tree), std::move(recorder));
       }
     });
+#endif
   }
   return true;
 }

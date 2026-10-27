@@ -34,6 +34,17 @@ source_set("common") {
   }
 
   deps = [ "../fml:fml" ]
+  if (clay_enable_display_compositor && is_android) {
+    sources += [
+      "raster_binding.cc",
+      "raster_binding.h",
+      "raster_thread_group.cc",
+      "raster_thread_group.h",
+      "render_service_runtime.cc",
+      "render_service_runtime.h",
+    ]
+    deps += [ "../flow/compositor:frame_protocol" ]
+  }
 
   include_dirs = [ "//third_party/boringssl/src/include" ]
 

@@ -27,6 +27,14 @@
 
 namespace clay {
 
+std::optional<bool> AndroidEGLFenceSync::IsSignaled() {
+  if (fence_ == EGL_NO_SYNC_KHR || !eglClientWaitSyncKHR) return std::nullopt;
+  auto result = eglClientWaitSyncKHR(display, fence_, 0, 0);
+  if (result == EGL_CONDITION_SATISFIED_KHR) return true;
+  if (result == EGL_TIMEOUT_EXPIRED_KHR) return false;
+  return std::nullopt;
+}
+
 AndroidEGLFenceSync::AndroidEGLFenceSync() {
   FML_DCHECK(display != EGL_NO_DISPLAY);
   FML_DCHECK(eglCreateSyncKHR);
