@@ -4,6 +4,7 @@ import {
   LoadTemplateOptions,
 } from './headless-lynx-view';
 import { LynxEnv } from './lynx-env';
+import { fetchPublicOpenCardSource } from './open-card-source';
 import {
   WindowedLynxView,
   WindowedLynxViewOptions,
@@ -13,6 +14,7 @@ export type OpenCardState = 'loading' | 'loaded' | 'failed' | 'closed';
 export type HeadlessOpenCardState = OpenCardState;
 
 type OpenCardView = {
+  loadTemplate(input: Buffer, options?: LoadTemplateOptions): Promise<void>;
   loadTemplateFromUrl(
     url: string,
     options?: Omit<LoadTemplateOptions, 'url'>
@@ -32,9 +34,20 @@ export interface OpenCard<TView extends OpenCardView> {
 export type HeadlessOpenCard = OpenCard<HeadlessLynxView>;
 export type WindowedOpenCard = OpenCard<WindowedLynxView>;
 
-interface OpenCardManagerOptions<TView extends OpenCardView, TViewOptions> {
+type OpenCardViewOptions = { timeoutMs?: number };
+
+interface OpenCardManagerOptions<
+  TView extends OpenCardView,
+  TViewOptions extends OpenCardViewOptions
+> {
   view?: TViewOptions;
   load?: Omit<LoadTemplateOptions, 'url'>;
+  /**
+   * Let `install()` open any URL DebugRouter sends, including local files and
+   * loopback or private hosts. By default only public http(s) URLs are opened
+   * and every redirect is re-checked. `open()` is not affected.
+   */
+  allowAnySource?: boolean;
   onCardLoaded?: (card: OpenCard<TView>) => void;
   onCardError?: (error: Error, card: OpenCard<TView>) => void;
 }
@@ -53,7 +66,10 @@ function normalizeError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-class OpenCardManager<TView extends OpenCardView, TViewOptions> {
+class OpenCardManager<
+  TView extends OpenCardView,
+  TViewOptions extends OpenCardViewOptions
+> {
   private currentCard?: OpenCard<TView>;
   private nextId = 1;
   private installed = false;
@@ -68,7 +84,10 @@ class OpenCardManager<TView extends OpenCardView, TViewOptions> {
       return;
     }
     LynxEnv.setOpenCardCallback((url) => {
-      void this.open(url).catch(() => undefined);
+      const opening = this.options.allowAnySource
+        ? this.open(url)
+        : this.openPublicSource(url);
+      void opening.catch(() => undefined);
     });
     this.installed = true;
   }
@@ -86,7 +105,26 @@ class OpenCardManager<TView extends OpenCardView, TViewOptions> {
     this.closeAll();
   }
 
-  async open(url: string): Promise<OpenCard<TView>> {
+  open(url: string): Promise<OpenCard<TView>> {
+    return this.openWith(url, (view) =>
+      view.loadTemplateFromUrl(url, this.options.load)
+    );
+  }
+
+  private openPublicSource(url: string): Promise<OpenCard<TView>> {
+    return this.openWith(url, async (view) => {
+      const template = await fetchPublicOpenCardSource(
+        url,
+        this.options.view?.timeoutMs
+      );
+      await view.loadTemplate(template, { ...this.options.load, url });
+    });
+  }
+
+  private async openWith(
+    url: string,
+    load: (view: TView) => Promise<void>
+  ): Promise<OpenCard<TView>> {
     if (!url) {
       throw new Error('open card url must not be empty');
     }
@@ -103,7 +141,7 @@ class OpenCardManager<TView extends OpenCardView, TViewOptions> {
     this.currentCard = card;
 
     try {
-      await view.loadTemplateFromUrl(url, this.options.load);
+      await load(view);
       if (this.currentCard === card && card.state !== 'closed') {
         card.state = 'loaded';
         this.options.onCardLoaded?.(card);

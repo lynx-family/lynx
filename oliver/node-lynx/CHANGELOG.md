@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 0.1.5
+1. [BugFix] Restrict DebugRouter OpenCard to public `http://` and `https://` URLs by default, re-checking resolved addresses and every redirect. Pass `--allow-any-open-card-source` or `allowAnySource: true` to also load local files and loopback or private hosts.
+
 ## 0.1.4
 1. [BugFix] Prevent macOS preview window crashes during close and destruction by retaining the window host through renderer shutdown and safely handling pending callbacks.
 

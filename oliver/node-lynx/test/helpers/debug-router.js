@@ -400,7 +400,11 @@ async function listSessions(connection, clientId) {
   return response.data.data;
 }
 
-async function waitForSession(connection, clientId) {
+async function waitForSession(
+  connection,
+  clientId,
+  { templateUrl, child, childOutput }
+) {
   const start = Date.now();
   let lastError;
   while (Date.now() - start < SESSION_TIMEOUT_MS) {
@@ -414,14 +418,17 @@ async function waitForSession(connection, clientId) {
     }
     await delay(250);
   }
-  if (lastError) {
-    throw new Error(
-      `timed out waiting for node-lynx DebugRouter session; last error: ${formatError(
-        lastError
-      )}`
-    );
-  }
-  throw new Error('timed out waiting for node-lynx DebugRouter session');
+  throw new Error(
+    [
+      `timed out waiting for node-lynx DebugRouter session after ${SESSION_TIMEOUT_MS}ms`,
+      `templateUrl: ${templateUrl}`,
+      `clientId: ${clientId}`,
+      `child status: ${childStatus(child)}`,
+      'last error:',
+      lastError ? formatError(lastError) : '<none>',
+      formatChildOutput(childOutput),
+    ].join('\n')
+  );
 }
 
 async function sendCDPMessage(
@@ -565,6 +572,7 @@ async function waitForDomDocument({
 async function runDebugRouterProtocolSmoke({
   packageRoot,
   cliPath,
+  cliArgs = [],
   templateUrl,
   port = 8901,
   clientId = port,
@@ -574,6 +582,7 @@ async function runDebugRouterProtocolSmoke({
     'render',
     '--timeout',
     String(REQUEST_TIMEOUT_MS),
+    ...cliArgs,
   ], {
     cwd: packageRoot,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -590,7 +599,11 @@ async function runDebugRouterProtocolSmoke({
       url: templateUrl,
     });
 
-    const session = await waitForSession(connection, clientId);
+    const session = await waitForSession(connection, clientId, {
+      templateUrl,
+      child,
+      childOutput,
+    });
     assert.strictEqual(typeof session.session_id, 'number');
 
     const document = await waitForDomDocument({

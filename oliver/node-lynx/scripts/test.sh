@@ -35,6 +35,7 @@ pnpm exec tsc --noEmit
 
 node test/publish_manifest_versions.js
 node test/cli_debug_router_no_initial_template.js
+node test/open_card_source_policy.js
 node test/remote_template_smoke.js
 node test/local_template_dom_tree.js
 node test/shared_runtime_smoke.js

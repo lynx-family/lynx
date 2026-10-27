@@ -75,6 +75,11 @@ Rules:
   and then waits for `SIGINT` or `SIGTERM` so DebugRouter stays available.
 - Without an initial template, `render` and `preview` wait for DebugRouter
   OpenCard. `--no-debug-router` requires an initial template input.
+- DebugRouter listens on port `8901`, which may be reachable from other hosts.
+  By default OpenCard only loads public `http://` or `https://` URLs and
+  re-checks every redirect. Pass `--allow-any-open-card-source` to also load
+  local files and loopback or private hosts, such as a local dev server, only
+  on a trusted network.
 - Use `--debug-router-schema <schema>` to connect DebugRouter with an explicit
   schema.
 - Use `--log-level error` to hide verbose, debug, info, and warning Lynx logs,
@@ -249,6 +254,11 @@ process.once('SIGINT', () => {
 
 `install()` registers a global OpenCard callback. Call `dispose()` when the
 session ends so the callback and any current card are cleaned up.
+
+By default `install()` only opens public `http://` or `https://` URLs and
+re-checks every redirect, because any peer that can reach DebugRouter can send
+OpenCard. Pass `allowAnySource: true` to also open local files and loopback or
+private hosts. `open(url)` is not restricted.
 
 ## Screenshot Timing
 
