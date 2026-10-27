@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.view.ViewCompat;
 import com.lynx.tasm.IListNodeInfoFetcher;
 import com.lynx.tasm.base.LLog;
@@ -74,6 +75,29 @@ public class ListContainerView extends NestedScrollContainerView
   private boolean mInNonTouchNestedScroll = false;
   private float mMaxFlingDistanceRatio = -1;
   private Renderer mRenderer;
+  private ListItemTransformer mListItemTransformer = null;
+  private final View.OnLayoutChangeListener mListItemLayoutChangeListener =
+      new View.OnLayoutChangeListener() {
+        @Override
+        public void onLayoutChange(View view, int left, int top, int right, int bottom, int oldLeft,
+            int oldTop, int oldRight, int oldBottom) {
+          transformListItem(view);
+        }
+      };
+  private final ViewGroup.OnHierarchyChangeListener mListItemHierarchyChangeListener =
+      new ViewGroup.OnHierarchyChangeListener() {
+        @Override
+        public void onChildViewAdded(View parent, View child) {
+          child.addOnLayoutChangeListener(mListItemLayoutChangeListener);
+          transformListItem(child);
+        }
+
+        @Override
+        public void onChildViewRemoved(View parent, View child) {
+          child.removeOnLayoutChangeListener(mListItemLayoutChangeListener);
+          resetListItemTransform(child);
+        }
+      };
 
   public ListContainerView(@NonNull Context context, UIListContainer uiListContainer) {
     super(context);
@@ -525,6 +549,7 @@ public class ListContainerView extends NestedScrollContainerView
         }
       }
     }
+    transformListItems();
   }
 
   @Override
@@ -539,9 +564,7 @@ public class ListContainerView extends NestedScrollContainerView
         mRenderer.getUIHost().measure();
       }
     }
-
     super.onLayout(changed, l, t, r, b);
-
     if (mRenderer != null && mCustomLinearLayout != null) {
       for (int i = 0; i < mCustomLinearLayout.getChildCount(); i++) {
         View child = mCustomLinearLayout.getChildAt(i);
@@ -551,6 +574,7 @@ public class ListContainerView extends NestedScrollContainerView
         }
       }
     }
+    requestListItemTransform();
   }
 
   @Override
@@ -595,6 +619,7 @@ public class ListContainerView extends NestedScrollContainerView
     TraceEvent.beginSection(TraceEventDef.LIST_CONTAINER_VIEW_DESTORY);
     // Stop any ongoing scroll animations from the parent class.
     stopFling();
+    setListItemTransformer(null);
     clearDrawTraversalState();
     mDrawChildHook = null;
     mUiListContainer = null;
@@ -614,6 +639,90 @@ public class ListContainerView extends NestedScrollContainerView
 
   LinearLayout getLinearLayout() {
     return mCustomLinearLayout;
+  }
+
+  boolean hasListItemTransformer() {
+    return mListItemTransformer != null;
+  }
+
+  void setListItemTransformer(@Nullable ListItemTransformer transformer) {
+    if (mListItemTransformer != transformer) {
+      resetListItemTransforms();
+      mListItemTransformer = transformer;
+      requestListItemTransform();
+    }
+    if (mListItemTransformer == null) {
+      removeListItemTransformListeners();
+    } else {
+      addListItemTransformListeners();
+    }
+  }
+
+  void requestListItemTransform() {
+    transformListItems();
+  }
+
+  private void transformListItems() {
+    if (mListItemTransformer != null && mCustomLinearLayout != null) {
+      for (int i = 0; i < mCustomLinearLayout.getChildCount(); i++) {
+        transformListItem(mCustomLinearLayout.getChildAt(i));
+      }
+    }
+  }
+
+  private void transformListItem(@Nullable View itemView) {
+    if (mListItemTransformer != null && mCustomLinearLayout != null && itemView != null
+        && itemView.getParent() == mCustomLinearLayout) {
+      boolean rtl = isRtl();
+      int mainAxisOffset;
+      if (mIsVertical) {
+        mainAxisOffset = itemView.getTop() - getScrollY();
+      } else if (rtl) {
+        int viewportRight = getScrollX() + getWidth();
+        mainAxisOffset = viewportRight - itemView.getRight();
+      } else {
+        mainAxisOffset = itemView.getLeft() - getScrollX();
+      }
+      mListItemTransformer.transformItem(this, itemView, mIsVertical, rtl, mainAxisOffset);
+    }
+  }
+
+  private void resetListItemTransforms() {
+    if (mListItemTransformer != null && mCustomLinearLayout != null) {
+      for (int i = 0; i < mCustomLinearLayout.getChildCount(); i++) {
+        mListItemTransformer.resetItem(mCustomLinearLayout.getChildAt(i));
+      }
+    }
+  }
+
+  private void resetListItemTransform(@Nullable View itemView) {
+    if (mListItemTransformer != null && itemView != null) {
+      mListItemTransformer.resetItem(itemView);
+    }
+  }
+
+  private void addListItemTransformListeners() {
+    if (mCustomLinearLayout != null) {
+      mCustomLinearLayout.setOnHierarchyChangeListener(mListItemHierarchyChangeListener);
+      for (int i = 0; i < mCustomLinearLayout.getChildCount(); i++) {
+        View childView = mCustomLinearLayout.getChildAt(i);
+        if (childView != null) {
+          childView.addOnLayoutChangeListener(mListItemLayoutChangeListener);
+        }
+      }
+    }
+  }
+
+  private void removeListItemTransformListeners() {
+    if (mCustomLinearLayout != null) {
+      mCustomLinearLayout.setOnHierarchyChangeListener(null);
+      for (int i = 0; i < mCustomLinearLayout.getChildCount(); i++) {
+        View childView = mCustomLinearLayout.getChildAt(i);
+        if (childView != null) {
+          childView.removeOnLayoutChangeListener(mListItemLayoutChangeListener);
+        }
+      }
+    }
   }
 
   @Override
