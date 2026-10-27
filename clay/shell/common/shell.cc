@@ -719,6 +719,10 @@ void Shell::SetupOutputSurface(bool reuse_existing_surface) {
         success = true;
       }
     }
+    if (success) {
+      TRACE_EVENT_INSTANT("clay", "ClayStartup::OutputSurfaceReady",
+                          "reused_surface", reuse_existing_surface);
+    }
     fml::TaskRunner::RunNowOrPostTask(ui_task_runner, [engine, success] {
       if (engine) {
         if (success) {
