@@ -36,6 +36,7 @@ class JSUIBase : public UIBase {
                     uint32_t node_index) override;
   void OnNodeReady() override;
   void OnNodeReload() override;
+  void OnNodeRemoved();
   void RemoveChild(UIBase* child) override;
   bool Focusable() override;
   bool IsScrollable() override;
@@ -119,6 +120,7 @@ class JSUIBase : public UIBase {
   const bool is_layout_placeholder_{false};
   bool is_reused_by_client_{false};
   bool destroyed_{false};
+  napi_ref js_node_removed_{nullptr};
 };
 
 }  // namespace harmony

@@ -122,7 +122,7 @@ export abstract class UIBase {
         this.focusChange, this.focusable, this.onNodeReady, this.hasCustomizedLayout(), this.updateExtraData,
         this.needWindowStateChangeEvent(),
         this.onEnterForeground, this.onEnterBackground, this.isScrollable, this.scrollX, this.scrollY,
-        this.isLayoutPlaceholder(), this.observeInvalidation(), this.invalidate, this.onNodeReload);
+        this.isLayoutPlaceholder(), this.observeInvalidation(), this.invalidate, this.onNodeReload, this.onNodeRemoved);
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.UIBASE_CREATE_NATIVE_UI);
     this.nativeUI.setFrameNode(this.getFrameNode(this.uiContext!));
   }
@@ -210,6 +210,10 @@ export abstract class UIBase {
   }
 
   onNodeReload() {
+  }
+
+  /** Called after a non-move detach. The UI may be retained and inserted again. */
+  onNodeRemoved(): void {
   }
 
   setFocusedUI() {

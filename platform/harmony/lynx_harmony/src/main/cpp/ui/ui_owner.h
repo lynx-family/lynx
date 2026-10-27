@@ -275,7 +275,7 @@ class UIOwner {
 
   void DestroySubTree(UIBase* root);
   void DestroyTarget(UIBase* target);
-  void OnNodeRemovedRecursively(UIBase* root);
+  void CollectRemovedNodeSigns(UIBase* root, std::vector<int32_t>& signs);
   int64_t GetExternalMemoryUsageRecursively(UIBase* root) const;
   void MarkHasUIOperations(UIBase* ui);
   void MarkHasUIOperationsBottomUp(UIBase* ui);

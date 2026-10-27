@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
@@ -156,16 +158,28 @@ void NativePaintingCtxPlatformHarmonyRef::InvokePlatformViewUIMethod(
   ui_owner->InvokeUIMethod(id, method, params, std::move(cb));
 }
 
-void NativePaintingCtxPlatformHarmonyRef::NotifyNodeReady(
-    const std::vector<int32_t>& signs) {
+void NativePaintingCtxPlatformHarmonyRef::UpdateNodeReadyPatching(
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+    bool should_cache_external_memory_candidates) {
+  if (destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
   auto renderer_context = renderer_context_.lock();
   auto* ui_owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
   if (ui_owner == nullptr || ui_owner->Destroyed()) {
     return;
   }
-  for (const auto sign : signs) {
-    ui_owner->OnNodeReady(sign);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              UI_OPERATION_QUEUE_UPDATE_NODE_READY_PATCHING);
+  std::vector<int32_t> platform_ready_ids;
+  platform_ready_ids.reserve(ready_ids.size());
+  for (int32_t id : ready_ids) {
+    if (renderers_.find(id) != renderers_.end()) {
+      platform_ready_ids.push_back(id);
+    }
   }
+  ui_owner->UpdateNodeReadyPatching(platform_ready_ids, remove_ids,
+                                    should_cache_external_memory_candidates);
 }
 
 void NativePaintingCtxPlatformHarmonyRef::DestroyImageOnPlatformThread(

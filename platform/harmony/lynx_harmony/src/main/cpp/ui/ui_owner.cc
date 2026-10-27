@@ -318,8 +318,21 @@ void UIOwner::OnNodeReload(int sign) {
 }
 
 void UIOwner::OnNodeRemoved(int sign) {
-  if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
-    OnNodeRemovedRecursively(it->second.get());
+  // Snapshot the subtree before ArkTS callbacks can detach or destroy nodes.
+  std::vector<int32_t> removed_signs;
+  CollectRemovedNodeSigns(FindUIBySign(sign), removed_signs);
+  for (int32_t removed_sign : removed_signs) {
+    auto it = ui_holder_.find(removed_sign);
+    if (it == ui_holder_.end()) {
+      continue;
+    }
+    // Keep the current node alive even if its callback removes it from the
+    // owner.
+    auto ui = it->second;
+    ui->OnNodeRemoved();
+    if (ui->HasJSObject()) {
+      static_cast<JSUIBase*>(ui.get())->OnNodeRemoved();
+    }
   }
 }
 
@@ -435,13 +448,14 @@ int64_t UIOwner::GetExternalMemoryUsageRecursively(UIBase* root) const {
   return size;
 }
 
-void UIOwner::OnNodeRemovedRecursively(UIBase* root) {
+void UIOwner::CollectRemovedNodeSigns(UIBase* root,
+                                      std::vector<int32_t>& signs) {
   if (!root) {
     return;
   }
-  root->OnNodeRemoved();
-  for (auto* child : root->Children()) {
-    OnNodeRemovedRecursively(child);
+  signs.push_back(root->Sign());
+  for (auto* child : root->ChildrenRef()) {
+    CollectRemovedNodeSigns(child, signs);
   }
 }
 

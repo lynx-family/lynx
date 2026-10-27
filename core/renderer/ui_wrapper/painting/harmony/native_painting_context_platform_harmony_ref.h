@@ -26,6 +26,9 @@ class NativePaintingCtxPlatformHarmonyRef
   ~NativePaintingCtxPlatformHarmonyRef() override;
 
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
+  void UpdateNodeReadyPatching(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
+      bool should_cache_external_memory_candidates) override;
   std::vector<float> GetTransformValue(
       int32_t sign, const std::vector<float>& offsets) override;
   void GetRootViewLocationOnScreen(float location[2]) override;
@@ -40,7 +43,6 @@ class NativePaintingCtxPlatformHarmonyRef
       override;
 
  protected:
-  void NotifyNodeReady(const std::vector<int32_t>& signs) override;
   void DestroyImageOnPlatformThread(int32_t image_key) override;
 
  private:
