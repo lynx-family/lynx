@@ -14,6 +14,7 @@
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxGestureArenaMember.h>
 #import <Lynx/LynxTouchEvent.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
@@ -80,11 +81,13 @@ class LynxUnifiedGestureArenaDelegate final : public GestureArenaDelegate {
   CorePoint ConvertPageToMember(MemberId member_id, const CorePoint &page_point) const override {
     LynxUI *ui = [owner_ uiForMember:member_id];
     UIView *rootView = ui.context.rootView;
-    if (ui.view == nil || rootView == nil) {
+    // A transfer root receives touches through its reparented wrapper.
+    UIView *memberView = ui.touchEventSourceView ?: ui.view;
+    if (memberView == nil || rootView == nil) {
       return page_point;
     }
-    CGPoint point = [ui.view convertPoint:CGPointMake(page_point.x, page_point.y)
-                                 fromView:rootView];
+    CGPoint point = [memberView convertPoint:CGPointMake(page_point.x, page_point.y)
+                                    fromView:rootView];
     return {point.x, point.y};
   }
 
