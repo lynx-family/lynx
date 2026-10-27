@@ -19,6 +19,7 @@ class BaseTextView : public WithTypeInfo<BaseTextView, BaseView> {
                std::unique_ptr<RenderObject> render_object,
                PageView* page_view);
   ~BaseTextView() override;
+  MeaningfulContentStatus GetMeaningfulContentStatus() const override;
 };
 
 }  // namespace clay
