@@ -8,8 +8,8 @@
 #include <memory>
 #include <unordered_map>
 
-#include "base/include/log/logging.h"
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
@@ -18,17 +18,18 @@ class InspectorTestBenchRecorderAgent : public CDPDomainAgentBase {
  public:
   InspectorTestBenchRecorderAgent();
   ~InspectorTestBenchRecorderAgent() override = default;
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
-  using InspectorTestBenchRecorderAgentMethod = void (
-      InspectorTestBenchRecorderAgent::*)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
-  void Start(const std::shared_ptr<MessageSender>& sender,
-             const Json::Value& message);
-  void End(const std::shared_ptr<MessageSender>& sender,
-           const Json::Value& message);
+  using InspectorTestBenchRecorderAgentMethod =
+      void (InspectorTestBenchRecorderAgent::*)(
+          const std::shared_ptr<CDPResponder>& responder,
+          const Json::Value& params);
+
+  DECLARE_DEVTOOL_CDP_METHOD(Start);
+  DECLARE_DEVTOOL_CDP_METHOD(End);
+
   std::unordered_map<std::string, InspectorTestBenchRecorderAgentMethod>
       functions_map_;
 };

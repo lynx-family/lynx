@@ -37,12 +37,12 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
       const std::string& file_path);
 
   // Recording domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(RecordingStart)
-  DECLARE_DEVTOOL_METHOD(RecordingEnd)
+  DECLARE_DEVTOOL_CDP_METHOD(RecordingStart);
+  DECLARE_DEVTOOL_CDP_METHOD(RecordingEnd);
 
   // Replay domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(ReplayStart)
-  DECLARE_DEVTOOL_METHOD(ReplayEnd)
+  DECLARE_DEVTOOL_CDP_METHOD(ReplayStart);
+  DECLARE_DEVTOOL_CDP_METHOD(ReplayEnd);
 
   // IO domain -> devtool executor
   DECLARE_DEVTOOL_CDP_METHOD(IORead);
