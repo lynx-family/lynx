@@ -199,7 +199,8 @@ class InspectorTracingAgentTest : public ::testing::Test {
     if (!params.isNull()) {
       message["params"] = params;
     }
-    agent_->CallMethod(sender_, message);
+    agent_->CallMethod(std::make_shared<CDPResponder>(sender_, kRequestId),
+                       message);
     Json::Value response = sender_->WaitForResponse();
     EXPECT_EQ(response["id"].asInt64(), kRequestId);
     return response;
@@ -230,6 +231,13 @@ class InspectorTracingAgentTest : public ::testing::Test {
   lynx::trace::TraceController* saved_trace_controller_ = nullptr;
   std::string temp_trace_file_;
 };
+
+TEST_F(InspectorTracingAgentTest, UnknownMethodReturnsMethodNotFound) {
+  Json::Value response = Dispatch("Tracing.unknown");
+
+  ExpectError(response, CDPErrorCode::MethodNotFound,
+              "'Tracing.unknown' wasn't found");
+}
 
 TEST_F(InspectorTracingAgentTest, StoresAndReturnsStartupConfig) {
   Json::Value params(Json::objectValue);
@@ -324,6 +332,58 @@ TEST_F(InspectorTracingAgentTest, ValidatesVMSnapshotRequest) {
   mediator.tracing_session_id_ = -1;
   response = Dispatch("Tracing.takeVMSnapshotByUrl", params);
   ExpectError(response, CDPErrorCode::ServerError, "Tracing is not started");
+}
+
+TEST_F(InspectorTracingAgentTest, StartsCompletesAndEndsTracing) {
+  trace_controller_.trace_file_path = temp_trace_file_;
+  Json::Value params(Json::objectValue);
+  params["traceConfig"]["includedCategories"].append("test");
+  params["traceConfig"]["enableSystrace"] = true;
+
+  Json::Value response = Dispatch("Tracing.start", params);
+  if (!lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
+    ExpectError(response, CDPErrorCode::ServerError, "Tracing not enabled");
+    return;
+  }
+  EXPECT_TRUE(response["result"].isObject());
+  ASSERT_NE(trace_controller_.last_config, nullptr);
+  EXPECT_EQ(trace_controller_.last_config->included_categories,
+            std::vector<std::string>({"test"}));
+  EXPECT_TRUE(trace_controller_.last_config->enable_systrace);
+  EXPECT_EQ(trace_controller_.callback_session_id, 37);
+
+  response = Dispatch("Tracing.start", params);
+  ExpectError(response, CDPErrorCode::ServerError, "Tracing already started");
+
+  MockReceiver::GetInstance().ResetAll();
+  ASSERT_TRUE(trace_controller_.complete_callback);
+  trace_controller_.complete_callback();
+  Json::Value event = ParseMockReceiverMessage();
+  EXPECT_EQ(event["method"], "Tracing.tracingComplete");
+  EXPECT_EQ(event["params"]["traceFormat"], "proto");
+  EXPECT_FALSE(event.isMember("id"));
+  int stream_handle = std::stoi(event["params"]["stream"].asString());
+  EXPECT_GT(stream_handle, 0);
+  FileStream::Close(stream_handle);
+
+  response = Dispatch("Tracing.end");
+  DrainTasks();
+  EXPECT_TRUE(response["result"].isObject());
+  EXPECT_EQ(trace_controller_.stopped_session_id, 37);
+
+  response = Dispatch("Tracing.end");
+  ExpectError(response, CDPErrorCode::ServerError, "Tracing is not started");
+}
+
+TEST_F(InspectorTracingAgentTest, ReportsTraceStartFailure) {
+  if (!lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
+    GTEST_SKIP() << "Tracing is disabled in this build";
+  }
+  trace_controller_.start_result = -1;
+
+  Json::Value response = Dispatch("Tracing.start");
+
+  ExpectError(response, CDPErrorCode::ServerError, "Failed to start tracing");
 }
 
 }  // namespace testing
