@@ -761,35 +761,35 @@ void LynxDevToolMediator::StopRuleUsageTracking(
 }
 
 void LynxDevToolMediator::GetMediaQueries(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->GetMediaQueries(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->GetMediaQueries(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::SetMediaText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->SetMediaText(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->SetMediaText(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::SetSupportsText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->SetSupportsText(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->SetSupportsText(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
