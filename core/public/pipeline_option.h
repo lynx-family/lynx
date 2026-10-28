@@ -8,7 +8,6 @@
 #include <sys/types.h>
 
 #include <cstdint>
-#include <optional>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -19,7 +18,6 @@
 #endif
 
 #include "base/include/timer/time_utils.h"
-#include "core/renderer/pipeline/pipeline_version.h"
 
 namespace lynx {
 namespace tasm {
@@ -67,6 +65,7 @@ struct ListItemLifeOption {
 };
 
 class Element;
+class PipelineVersion;
 
 struct PipelineOptions {
   // TODO(songshourui.null): The platform layer's LoadTemplate can accept these
@@ -171,6 +170,8 @@ struct PipelineOptions {
     debug_has_layout->set_string_value(has_layout ? "true" : "false");
   }
 #endif
+  bool HeldByContext() const { return version != nullptr; }
+
   bool need_trigger_data_updated_{false};
 
   // flag for unified pixel pipeline
@@ -183,9 +184,7 @@ struct PipelineOptions {
   int32_t target_node{kInvalidTargetNodeId};
   // Whether the current template has been reloaded.
   bool reload{false};
-  // A layout completion can outlive its pipeline context. Keep the version
-  // independently so copied options remain safe to use after context removal.
-  std::optional<PipelineVersion> version;
+  const PipelineVersion* version{nullptr};
 
  private:
   // Helper class to generate pipelineID

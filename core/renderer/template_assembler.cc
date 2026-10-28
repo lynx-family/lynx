@@ -3911,7 +3911,7 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
   }
 
   if (!layout_data.pipeline_version) {
-    // An unversioned completion does not own the current pipeline context.
+    pipeline_context_manager_->ResetCurrentPipelineContext();
     return;
   }
   auto* current_pipeline_context =
@@ -3919,6 +3919,7 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
           *layout_data.pipeline_version);
   if (!current_pipeline_context ||
       !current_pipeline_context->GetOptions()->enable_unified_pixel_pipeline) {
+    pipeline_context_manager_->ResetCurrentPipelineContext();
     return;
   }
 
@@ -3935,10 +3936,7 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
   // TODO(@nihao.royal): ResetCurrentPipelineContext here to make flush occurs
   // after pipeline ends, later we will support a micro task to do flush things.
   // current pipeline ends, reset current pipeline context to nullptr;
-  if (pipeline_context_manager_->GetCurrentPipelineContext() ==
-      current_pipeline_context) {
-    pipeline_context_manager_->ResetCurrentPipelineContext();
-  }
+  pipeline_context_manager_->ResetCurrentPipelineContext();
   if (layout_data.layout_triggered) {
     // Execute Flush UI OP;
     if (pipeline_context_manager_->AdvanceLifecycleTo(
