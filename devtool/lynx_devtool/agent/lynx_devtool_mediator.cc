@@ -673,13 +673,13 @@ void LynxDevToolMediator::SetStyleTexts(
 }
 
 void LynxDevToolMediator::GetStyleSheetText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->GetStyleSheetText(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->GetStyleSheetText(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
@@ -695,24 +695,24 @@ void LynxDevToolMediator::GetBackgroundColors(
 }
 
 void LynxDevToolMediator::SetStyleSheetText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->SetStyleSheetText(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->SetStyleSheetText(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::CreateStyleSheet(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->CreateStyleSheet(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->CreateStyleSheet(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
