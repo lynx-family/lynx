@@ -22,6 +22,7 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxHostEnvironment;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo;
@@ -71,6 +72,10 @@ public class LynxFrameViewTest extends TestCase {
     Field builderField = LynxTemplateRender.class.getDeclaredField("mLynxViewBuilder");
     builderField.setAccessible(true);
     builderField.set(render, builder);
+    Field hostEnvironmentField = LynxTemplateRender.class.getDeclaredField("mHostEnvironment");
+    hostEnvironmentField.setAccessible(true);
+    hostEnvironmentField.set(render,
+        new LynxHostEnvironment(builder.getLynxRuntimeOptions(), builder.getBehaviorRegistry()));
 
     LynxViewBuilder child = render.getLynxViewBuilder();
     assertSame(config, child.getLynxImageConfig());
