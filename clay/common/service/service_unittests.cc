@@ -2,7 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <functional>
 #include <memory>
+#include <vector>
 
 #include "clay/common/service/service_manager.h"
 #include "clay/testing/thread_test.h"
@@ -232,6 +234,85 @@ TYPED_TEST(ServiceTest, CallsOnInit) {
   auto service = this->template GetService<typename TestFixture::ServiceType>();
 
   this->task_runner_->PostSyncTask([] {});
+}
+
+template <Owner owner, int index>
+class ReentrantInitService
+    : public Service<ReentrantInitService<owner, index>, owner,
+                     ServiceFlags::kManualRegister> {
+ public:
+  using ContextType = ServiceContext<owner>;
+
+  std::function<void(ServiceManager&)> on_init;
+  int init_count = 0;
+  int destroy_count = 0;
+
+ private:
+  void OnInit(ServiceManager& manager, const ContextType&) override {
+    ++init_count;
+    if (on_init) {
+      on_init(manager);
+    }
+  }
+
+  void OnDestroy() override { ++destroy_count; }
+};
+
+TYPED_TEST(ServiceTest, RegistersSameOwnerServiceDuringAttach) {
+  using FirstService = ReentrantInitService<TestFixture::kOwner, 0>;
+  using LastService = ReentrantInitService<TestFixture::kOwner, 1>;
+  using NewService = ReentrantInitService<TestFixture::kOwner, 2>;
+
+  auto task_runners = this->task_runners_;
+  auto owner_runner = this->task_runner_;
+  if constexpr (TestFixture::kOwner == Owner::kUI) {
+    owner_runner = this->CreateNewThread("reentrant_ui");
+    std::get<+Owner::kUI>(task_runners) = owner_runner;
+  }
+  owner_runner->PostSyncTask([task_runners] {
+    for (bool from_on_init : {true, false}) {
+      SCOPED_TRACE(from_on_init ? "OnInit" : "pending call");
+      auto manager = ServiceManager::Create(task_runners);
+      auto first = std::make_shared<FirstService>();
+      auto last = std::make_shared<LastService>();
+      auto added = std::make_shared<NewService>();
+      std::vector<int> initialized;
+      added->on_init = [&](auto&) { initialized.push_back(2); };
+      last->on_init = [&](auto&) { initialized.push_back(3); };
+      auto register_service = [&](ServiceManager& manager) {
+        manager.template RegisterService<NewService>(added);
+        EXPECT_TRUE(added->IsValid());
+      };
+      first->on_init = [&](auto& manager) {
+        initialized.push_back(1);
+        if (from_on_init) {
+          register_service(manager);
+        }
+      };
+      // Two existing entries ensure that growing the vector while initializing
+      // the first entry leaves another original entry to visit.
+      manager->template RegisterService<FirstService>(first);
+      manager->template RegisterService<LastService>(last);
+      if (!from_on_init) {
+        Puppet<TestFixture::kOwner, FirstService> puppet =
+            manager->template GetService<FirstService>();
+        puppet.Act([&](auto&) { register_service(*manager); });
+      }
+      manager->template Attach<TestFixture::kOwner>(
+          ServiceContext<TestFixture::kOwner>{});
+
+      EXPECT_THAT(initialized, ElementsAre(1, 2, 3));
+      EXPECT_EQ(first->init_count, 1);
+      EXPECT_EQ(last->init_count, 1);
+      EXPECT_EQ(added->init_count, 1);
+      EXPECT_TRUE(first->IsValid());
+      EXPECT_TRUE(last->IsValid());
+      manager->template Detach<TestFixture::kOwner>();
+      EXPECT_EQ(first->destroy_count, 1);
+      EXPECT_EQ(last->destroy_count, 1);
+      EXPECT_EQ(added->destroy_count, 1);
+    }
+  });
 }
 
 TYPED_TEST(ServiceTest, CallsOnInitEvenNoAttachedBefore) {
