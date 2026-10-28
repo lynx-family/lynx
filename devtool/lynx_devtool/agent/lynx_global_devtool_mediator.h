@@ -53,7 +53,7 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_CDP_METHOD(MemoryStopTracing);
   DECLARE_DEVTOOL_CDP_METHOD(MemoryGetAllMemoryUsage);
 
-  DECLARE_DEVTOOL_METHOD(TracingStart)
+  DECLARE_DEVTOOL_CDP_METHOD(TracingStart);
   DECLARE_DEVTOOL_CDP_METHOD(TracingEnd);
   DECLARE_DEVTOOL_CDP_METHOD(SetStartupTracingConfig);
   DECLARE_DEVTOOL_CDP_METHOD(GetStartupTracingConfig);
