@@ -13,6 +13,7 @@ notes:
   - Returns a CDP error with message Startup Tracing is running when no file is available because tracing is still active.
   - Returns a CDP error with message Failed to get startup tracing file when no file is available and tracing is not active.
   - Returns a CDP error with message Failed to get trace controller when no trace controller is available.
+  - Returns ServerError with message Cannot find default task runner when the global mediator cannot dispatch the command.
 examples:
   - title: Request the startup tracing file
     request:
