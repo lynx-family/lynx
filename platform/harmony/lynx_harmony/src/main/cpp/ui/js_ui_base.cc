@@ -105,7 +105,7 @@ void JSUIBase::SetFrameNode(ArkUI_NodeHandle frame_node) {
 }
 
 napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
-  size_t argc = 24;
+  size_t argc = 25;
   /** 0 - js ref
    *  1 - context ptr array
    *  2 - FrameNode napi_value
@@ -130,6 +130,7 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
    *  21 - observe descendant invalidation bool, fixed for this instance
    *  22 - invalidate func ref
    *  23 - nodeReload func ref (optional)
+   *  24 - nodeRemoved func ref (optional)
    */
   napi_value argv[argc];
   napi_value js_this;
@@ -179,6 +180,11 @@ napi_value JSUIBase::Constructor(napi_env env, napi_callback_info info) {
   if (argc > 23 && napi_typeof(env, argv[23], &type) == napi_ok &&
       type == napi_function) {
     napi_create_reference(env, argv[23], 1, &ui->js_node_reload_);
+  }
+  // Keep compatibility with callers that do not provide the removal callback.
+  if (argc > 24 && napi_typeof(env, argv[24], &type) == napi_ok &&
+      type == napi_function) {
+    napi_create_reference(env, argv[24], 1, &ui->js_node_removed_);
   }
 
   napi_wrap(
@@ -427,6 +433,9 @@ JSUIBase::~JSUIBase() {
   napi_delete_reference(env_, js_ui_method_);
   napi_delete_reference(env_, js_layout_);
   napi_delete_reference(env_, js_node_ready_);
+  if (js_node_removed_) {
+    napi_delete_reference(env_, js_node_removed_);
+  }
   if (js_node_reload_) {
     napi_delete_reference(env_, js_node_reload_);
   }
@@ -778,6 +787,16 @@ void JSUIBase::OnNodeReady() {
     return;
   }
   napi_call_function(env_, js_recv, node_ready, 0, nullptr, nullptr);
+}
+
+void JSUIBase::OnNodeRemoved() {
+  UIBase::OnNodeRemoved();
+  if (!js_node_removed_ || destroyed_) {
+    return;
+  }
+  base::NapiHandleScope scope(env_);
+  base::NapiUtil::InvokeJsMethod(env_, js_ref_, js_node_removed_, 0, nullptr,
+                                 nullptr);
 }
 
 bool JSUIBase::ShouldHitTest() {

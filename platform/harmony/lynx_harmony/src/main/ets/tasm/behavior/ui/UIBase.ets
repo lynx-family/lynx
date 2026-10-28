@@ -122,7 +122,7 @@ export abstract class UIBase {
         this.focusChange, this.focusable, this.onNodeReady, this.hasCustomizedLayout(), this.updateExtraData,
         this.needWindowStateChangeEvent(),
         this.onEnterForeground, this.onEnterBackground, this.isScrollable, this.scrollX, this.scrollY,
-        this.isLayoutPlaceholder(), this.observeInvalidation(), this.invalidate, this.onNodeReload);
+        this.isLayoutPlaceholder(), this.observeInvalidation(), this.invalidate, this.onNodeReload, this.onNodeRemoved);
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.UIBASE_CREATE_NATIVE_UI);
     this.nativeUI.setFrameNode(this.getFrameNode(this.uiContext!));
   }
@@ -210,6 +210,14 @@ export abstract class UIBase {
   }
 
   onNodeReload() {
+  }
+
+  /**
+   * Called when this node is removed from the Lynx UI tree.
+   * Removal does not dispose the UI; the same instance may be inserted again.
+   * Override this callback to release resources tied to tree membership.
+   */
+  onNodeRemoved(): void {
   }
 
   setFocusedUI() {
