@@ -91,6 +91,7 @@ public class LynxImageManager implements Drawable.Callback {
   private static final int kFlagImageStartPlayEvent = 1 << 2;
   private static final int kFlagImageCurrentLoopEvent = 1 << 3;
   private static final int kFlagImageFinalLoopEvent = 1 << 4;
+  private static final int kFlagImageLoadStartEvent = 1 << 5;
 
   private long dirtyFlags = 0;
 
@@ -237,6 +238,7 @@ public class LynxImageManager implements Drawable.Callback {
   private boolean mEnableCurrentLoopEvent;
   private boolean mEnableAllLoopEvent;
   private boolean mEnableOnLoad;
+  private boolean mEnableOnLoadStart;
 
   private boolean mEnableOnError;
 
@@ -252,6 +254,7 @@ public class LynxImageManager implements Drawable.Callback {
 
   private final String EVENT_ALL_LOOP_COMPLETE = "finalloopcomplete";
 
+  private static final String EVENT_LOAD_START = "loadstart";
   public static final String EVENT_LOAD = "load";
 
   public static final String EVENT_ERROR = "error";
@@ -710,6 +713,13 @@ public class LynxImageManager implements Drawable.Callback {
       return mUI.getSign();
     }
     return mFallbackSign;
+  }
+
+  private boolean shouldEmitLoadStartEvent() {
+    if (mEventMask >= 0) {
+      return (mEventMask & kFlagImageLoadStartEvent) != 0;
+    }
+    return mEnableOnLoadStart;
   }
 
   private boolean shouldEmitLoadEvent() {
@@ -1195,6 +1205,11 @@ public class LynxImageManager implements Drawable.Callback {
     if (requestInfo != null) {
       mCurImageRequest = requestInfo;
       mStartTimeStamp = System.currentTimeMillis();
+      if (shouldEmitLoadStartEvent() && getEventSign() >= 0) {
+        LynxDetailEvent event = new LynxDetailEvent(getEventSign(), EVENT_LOAD_START);
+        event.addDetail("url", mSrc);
+        mContext.getEventEmitter().sendCustomEvent(event);
+      }
       mImageLoader.fetchImage(requestInfo, mSrcLoadListener, animationListener, mContext);
     }
   }
@@ -1419,6 +1434,7 @@ public class LynxImageManager implements Drawable.Callback {
     mEnableCurrentLoopEvent = false;
     mEnableAllLoopEvent = false;
     mEnableOnLoad = false;
+    mEnableOnLoadStart = false;
     mEnableOnError = false;
     if (events.containsKey(EVENT_START_PLAY)) {
       mEnableStartPlayEvent = true;
@@ -1428,6 +1444,9 @@ public class LynxImageManager implements Drawable.Callback {
     }
     if (events.containsKey(EVENT_ALL_LOOP_COMPLETE)) {
       mEnableAllLoopEvent = true;
+    }
+    if (events.containsKey(EVENT_LOAD_START)) {
+      mEnableOnLoadStart = true;
     }
     if (events.containsKey(EVENT_LOAD)) {
       mEnableOnLoad = true;

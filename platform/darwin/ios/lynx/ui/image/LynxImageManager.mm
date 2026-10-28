@@ -24,6 +24,7 @@ static const NSInteger kFlagImageErrorEvent = 1 << 1;
 static const NSInteger kFlagImageStartPlayEvent = 1 << 2;
 static const NSInteger kFlagImageCurrentLoopEvent = 1 << 3;
 static const NSInteger kFlagImageFinalLoopEvent = 1 << 4;
+static const NSInteger kFlagImageLoadStartEvent = 1 << 5;
 static NSString* const kBackgroundImageAnimationKey = @"lynx.backgroundImage";
 static NSString* const kLynxImageEventLoad = @"load";
 static NSString* const kLynxImageEventError = @"error";
@@ -388,6 +389,9 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     }
   };
 
+  if (type == LynxImageRequestSrc && (_eventMask & kFlagImageLoadStartEvent) != 0) {
+    [self sendCustomEvent:@"loadstart" withParams:@{@"url" : imageURL.url.absoluteString}];
+  }
   cancel = [[LynxImageLoader sharedInstance] loadImageWithOptions:options];
   @synchronized(self) {
     if (completed) {

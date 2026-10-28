@@ -43,6 +43,7 @@
 static NSString* const LynxSVGImageDataPrefix = @"data:image/svg+xml;base64";
 static NSString* const LynxSVGImageErrorDomain = @"LynxSVGImageErrorDomain";
 static NSString* const LynxImageEventLoad = @"load";
+static NSString* const LynxImageEventLoadStart = @"loadstart";
 
 @interface LynxConverter (ImageModeConversion)
 + (UIViewContentMode)toUIViewContentMode:(id)value;
@@ -865,6 +866,13 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
     size = CGSizeMake(_preFetchWidth, _preFetchHeight);
   } else {
     size = self.view.bounds.size;
+  }
+  if (requestUrl.type == LynxImageRequestSrc &&
+      [self.eventSet valueForKey:LynxImageEventLoadStart]) {
+    [self.context.eventEmitter
+        dispatchCustomEvent:[[LynxDetailEvent alloc] initWithName:LynxImageEventLoadStart
+                                                       targetSign:self.sign
+                                                           detail:@{@"url" : url.absoluteString}]];
   }
   if ([self isSVGSource:requestUrl]) {
     if (![self loadSVGImageWithRequest:requestUrl

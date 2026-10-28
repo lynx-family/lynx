@@ -700,7 +700,9 @@ void UINewImage::SetEvents(const std::vector<lepus::Value>& events) {
     return;
   }
   for (auto& event_ : events_) {
-    if (event_ == image::kLoadEventName) {
+    if (event_ == image::kLoadStartEventName) {
+      event_flags_ |= image::kFlagImageLoadStartEvent;
+    } else if (event_ == image::kLoadEventName) {
       event_flags_ |= image::kFlagImageLoadEvent;
     } else if (event_ == image::kErrorEventName) {
       event_flags_ |= image::kFlagImageErrorEvent;
@@ -773,6 +775,13 @@ void UINewImage::LoadImageFromService(const std::string& url,
   info.processors = std::move(processors);
   if (autoplay_) {
     image_node_->StartAnimation();
+  }
+  if (!url.empty() && context_ &&
+      (event_flags_ & image::kFlagImageLoadStartEvent) != 0) {
+    auto detail = lepus::Dictionary::Create();
+    detail->SetValue("url", lepus_value(src_));
+    context_->SendEvent(CustomEvent{Sign(), image::kLoadStartEventName,
+                                    "detail", lepus_value(detail)});
   }
   image_node_->FetchImage(std::move(info));
 }

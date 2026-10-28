@@ -4261,6 +4261,37 @@ TEST_F(FragmentTest, ImagePlaceholderLoadsAndClearsWithoutSource) {
   EXPECT_EQ(context.created_images_.size(), 3u);
 }
 
+TEST_F(FragmentTest, ImageLoadStartListenerIsForwardedToImageRequest) {
+  class Listener : public event::EventListener {
+   public:
+    Listener() : EventListener(Type::kClosureEventListener) {}
+    void Invoke(fml::RefPtr<event::Event>) override {}
+    bool Matches(EventListener* listener) override { return this == listener; }
+  };
+  for (bool listen : {false, true}) {
+    auto element = manager->CreateFiberImage("image");
+    element->SetAttributeInternal(
+        "src", lepus::Value("https://example.com/image.png"));
+    if (listen) {
+      ASSERT_TRUE(
+          element->AddEventListener("loadstart", std::make_shared<Listener>()));
+    }
+    Fragment fragment(element.get());
+    fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
+    TestNativePaintingContext context;
+    fragment.behavior_->painting_context_ = &context;
+    starlight::LayoutResultForRendering layout;
+    layout.size_ = FloatSize(100.f, 60.f);
+    fragment.UpdateLayout(layout);
+    fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+    ASSERT_EQ(context.created_images_.size(), 1u);
+    EXPECT_EQ(context.created_images_[0].event_mask,
+              listen ? kFlagImageLoadStartEvent : 0);
+    fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
+    EXPECT_EQ(context.created_images_.size(), 1u);
+  }
+}
+
 TEST_F(FragmentTest, ImageRequestAttributesReloadOnlyWhenChanged) {
   auto element = manager->CreateFiberImage("image");
   element->SetAttributeInternal("src", lepus::Value("image-src://initial"));

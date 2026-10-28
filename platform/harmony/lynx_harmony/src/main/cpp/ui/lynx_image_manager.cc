@@ -125,6 +125,14 @@ void LynxImageManager::RequestImage(int32_t sign, std::string src, float width,
           paint_info_, width, height, context->ScaledDensity());
     }
   }
+  if ((event_mask_ & image::kFlagImageLoadStartEvent) != 0) {
+    if (auto context = context_.lock()) {
+      auto detail = lepus::Dictionary::Create();
+      detail->SetValue("url", request.url);
+      context->SendEvent(CustomEvent{sign_, image::kLoadStartEventName,
+                                     "detail", lepus_value(detail)});
+    }
+  }
   image_service->DecodeImage(
       request,
       [weak_self = weak_from_this(),

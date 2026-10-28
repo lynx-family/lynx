@@ -4,22 +4,34 @@
 package com.lynx.tasm.behavior.ui.image;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.view.View;
 import androidx.test.annotation.UiThreadTest;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.RoundedRectangle;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
+import com.lynx.tasm.event.EventsListener;
+import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,6 +69,63 @@ public class LynxImageManagerTest {
     manager.setView(view);
     manager.invalidate();
     verify(view).invalidate();
+  }
+
+  @Test
+  @UiThreadTest
+  public void cuiLoadStartPrecedesLoad() throws Exception {
+    assertLoadStartPrecedesLoad(true);
+  }
+
+  @Test
+  @UiThreadTest
+  public void ordinaryLoadStartPrecedesLoad() throws Exception {
+    assertLoadStartPrecedesLoad(false);
+  }
+
+  private void assertLoadStartPrecedesLoad(boolean cui) throws Exception {
+    LynxContext context = spy(mContext);
+    EventEmitter emitter = mock(EventEmitter.class);
+    when(context.getEventEmitter()).thenReturn(emitter);
+    List<LynxCustomEvent> events = new ArrayList<>();
+    doAnswer(invocation -> {
+      events.add(invocation.getArgument(0));
+      return null;
+    })
+        .when(emitter)
+        .sendCustomEvent(any());
+    LynxImageManager manager = new LynxImageManager(context);
+    if (cui) {
+      manager.setFallbackSign(42);
+      manager.setEventMask((1 << 5) | LynxImageManager.kFlagImageLoadEvent);
+    } else {
+      LynxBaseUI ui = mock(LynxBaseUI.class);
+      when(ui.getSign()).thenReturn(42);
+      manager.setLynxBaseUI(ui);
+      Map<String, EventsListener> listeners = new HashMap<>();
+      listeners.put("loadstart", mock(EventsListener.class));
+      listeners.put("load", mock(EventsListener.class));
+      manager.setEvents(listeners);
+    }
+    manager.setSrc("https://example.com/source.png");
+    LynxImageLoader loader = mock(LynxImageLoader.class);
+    Field loaderField = LynxImageManager.class.getDeclaredField("mImageLoader");
+    loaderField.setAccessible(true);
+    loaderField.set(manager, loader);
+    doAnswer(invocation -> {
+      assertEquals(1, events.size());
+      manager.onImageLoadSuccess(100, 80);
+      return null;
+    })
+        .when(loader)
+        .fetchImage(any(), any(), any(), any());
+
+    manager.tryFetchImageFromService(100, 80);
+    assertEquals(2, events.size());
+    assertEquals("loadstart", events.get(0).getName());
+    assertEquals(42, events.get(0).getTag());
+    assertEquals("https://example.com/source.png", events.get(0).eventParams().get("url"));
+    assertEquals("load", events.get(1).getName());
   }
 
   private BackgroundDrawable.RoundRectPath getRoundRectPath(LynxImageManager manager) {
