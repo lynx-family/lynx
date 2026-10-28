@@ -596,24 +596,24 @@ void LynxDevToolMediator::PageReload(bool ignore_cache) {
 
 // CSS protocol
 void LynxDevToolMediator::CSS_Enable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->CSS_Enable(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->CSS_Enable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::CSS_Disable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->CSS_Disable(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->CSS_Disable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
@@ -728,34 +728,35 @@ void LynxDevToolMediator::AddRule(
 }
 
 void LynxDevToolMediator::StartRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->StartRuleUsageTracking(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->StartRuleUsageTracking(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
+
 void LynxDevToolMediator::UpdateRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
-                                        sender, message]() {
-      element_executor->UpdateRuleUsageTracking(sender, message);
-    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->UpdateRuleUsageTracking(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::StopRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->StopRuleUsageTracking(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->StopRuleUsageTracking(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 

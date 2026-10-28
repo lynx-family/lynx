@@ -168,8 +168,8 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(DOM_Focus)
 
   // css domain
-  DECLARE_DEVTOOL_METHOD(CSS_Enable)
-  DECLARE_DEVTOOL_METHOD(CSS_Disable)
+  DECLARE_DEVTOOL_CDP_METHOD(CSS_Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(CSS_Disable);
   DECLARE_DEVTOOL_METHOD(GetMatchedStylesForNode)
   DECLARE_DEVTOOL_METHOD(GetLayersForNode)
   DECLARE_DEVTOOL_METHOD(GetComputedStyleForNode)
@@ -180,9 +180,9 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_METHOD(SetStyleSheetText)
   DECLARE_DEVTOOL_METHOD(CreateStyleSheet)
   DECLARE_DEVTOOL_METHOD(AddRule)
-  DECLARE_DEVTOOL_METHOD(StartRuleUsageTracking)
-  DECLARE_DEVTOOL_METHOD(UpdateRuleUsageTracking)
-  DECLARE_DEVTOOL_METHOD(StopRuleUsageTracking)
+  DECLARE_DEVTOOL_CDP_METHOD(StartRuleUsageTracking);
+  DECLARE_DEVTOOL_CDP_METHOD(UpdateRuleUsageTracking);
+  DECLARE_DEVTOOL_CDP_METHOD(StopRuleUsageTracking);
   DECLARE_DEVTOOL_METHOD(GetMediaQueries)
   DECLARE_DEVTOOL_METHOD(SetMediaText)
   DECLARE_DEVTOOL_METHOD(SetSupportsText)
@@ -262,7 +262,7 @@ class InspectorTasmExecutor
   bool dom_enabled_{false};
   int origin_node_id_ = 0;
 
-  bool rule_usage_tracking_;
+  bool rule_usage_tracking_ = false;
   bool layer_tree_enabled_ = false;
   bool global_props_enabled_ = false;
   uint64_t last_global_props_timestamp_ms_ = 0;

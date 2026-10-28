@@ -2214,13 +2214,8 @@ void InspectorTasmExecutor::SetLastGlobalPropsTimestamp(uint64_t timestamp) {
 
 // Enable CSS debugging, get all style sheet of current page
 void InspectorTasmExecutor::CSS_Enable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  responder->SendSuccess();
 
   // then send styleSheetAdded event
   std::vector<Element*> style_values;
@@ -2236,13 +2231,8 @@ void InspectorTasmExecutor::CSS_Enable(
 
 // This protocol has not been implemented yet
 void InspectorTasmExecutor::CSS_Disable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::GetMatchedStylesForNode(
@@ -2534,33 +2524,45 @@ void InspectorTasmExecutor::CollectDomTreeCssUsage(
 // CSS.startRuleUsageTracking/CSS.updateRuleUsageTracking/CSS.stopRuleUsageTracking
 // added for Perf (wangjiankang)
 void InspectorTasmExecutor::StartRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   rule_usage_tracking_ = true;
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::UpdateRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.isNull() &&
+      (!params.isObject() ||
+       (params.isMember("selector") && !params["selector"].isArray()))) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "selector must be an array of strings");
+    return;
+  }
+  const auto& selectors = params["selector"];
+  for (const auto& selector : selectors) {
+    if (!selector.isString()) {
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "selector must be an array of strings");
+      return;
+    }
+  }
   if (rule_usage_tracking_) {
-    Json::Value selectors(Json::ValueType::arrayValue);
-    selectors = message["params"]["selector"];
     for (const Json::Value& selector : selectors) {
       css_used_selector_.insert(selector.asString());
     }
   }
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::StopRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value res(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (!element_root_) {
+    css_used_selector_.clear();
+    rule_usage_tracking_ = false;
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
+    return;
+  }
+  Json::Value result(Json::ValueType::objectValue);
   Json::Value rule_usage(Json::ValueType::arrayValue);
 
   std::vector<Element*> elements;
@@ -2586,13 +2588,10 @@ void InspectorTasmExecutor::StopRuleUsageTracking(
     }
   }
 
-  res["ruleUsage"] = rule_usage;
-  response["result"] = res;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
-
+  result["ruleUsage"] = rule_usage;
   css_used_selector_.clear();
   rule_usage_tracking_ = false;
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::GetMediaQueries(

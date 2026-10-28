@@ -67,12 +67,16 @@ void InspectorCSSAgentNG::SetStyleSheetText(
 
 void InspectorCSSAgentNG::Enable(const std::shared_ptr<MessageSender>& sender,
                                  const Json::Value& message) {
-  devtool_mediator_->CSS_Enable(sender, message);
+  devtool_mediator_->CSS_Enable(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::Disable(const std::shared_ptr<MessageSender>& sender,
                                   const Json::Value& message) {
-  devtool_mediator_->CSS_Disable(sender, message);
+  devtool_mediator_->CSS_Disable(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::GetMatchedStylesForNode(
@@ -123,17 +127,23 @@ void InspectorCSSAgentNG::CallMethod(
 
 void InspectorCSSAgentNG::StartRuleUsageTracking(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->StartRuleUsageTracking(sender, message);
+  devtool_mediator_->StartRuleUsageTracking(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::UpdateRuleUsageTracking(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->UpdateRuleUsageTracking(sender, message);
+  devtool_mediator_->UpdateRuleUsageTracking(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::StopRuleUsageTracking(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->StopRuleUsageTracking(sender, message);
+  devtool_mediator_->StopRuleUsageTracking(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::GetMediaQueries(
