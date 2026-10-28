@@ -662,13 +662,13 @@ void LynxDevToolMediator::GetInlineStylesForNode(
 }
 
 void LynxDevToolMediator::SetStyleTexts(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->SetStyleTexts(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->SetStyleTexts(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
@@ -717,13 +717,13 @@ void LynxDevToolMediator::CreateStyleSheet(
 }
 
 void LynxDevToolMediator::AddRule(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->AddRule(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->AddRule(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 

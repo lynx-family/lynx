@@ -59,7 +59,9 @@ void InspectorCSSAgentNG::CreateStyleSheet(
 
 void InspectorCSSAgentNG::AddRule(const std::shared_ptr<MessageSender>& sender,
                                   const Json::Value& message) {
-  devtool_mediator_->AddRule(sender, message);
+  devtool_mediator_->AddRule(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::SetStyleSheetText(
@@ -113,7 +115,9 @@ void InspectorCSSAgentNG::GetInlineStylesForNode(
 
 void InspectorCSSAgentNG::SetStyleTexts(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->SetStyleTexts(sender, message);
+  devtool_mediator_->SetStyleTexts(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::GetStyleSheetText(
