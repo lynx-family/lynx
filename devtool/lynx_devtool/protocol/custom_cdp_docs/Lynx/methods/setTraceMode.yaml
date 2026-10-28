@@ -6,7 +6,7 @@ notes:
   - Dispatches through LynxDevToolMediator to InspectorDefaultExecutor on the DevTool thread.
   - The native handler no longer supports this method and does not read request params.
   - The response is a CDP error with JSON-RPC code -32601 and message SetTraceMode is deprecated. Use global messages.
-  - If the mediator has no DevTool task runner, the current handler does not send an explicit CDP response.
+  - If the DevTool task runner or default executor is unavailable, the handler returns a ServerError instead.
 examples:
   - title: Deprecated trace mode request
     request:

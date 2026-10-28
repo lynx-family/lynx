@@ -16,9 +16,9 @@ notes:
   - Dispatches through LynxDevToolMediator to InspectorUIExecutor on the UI thread.
   - The handler forwards data only when params.dataType is template, params.data is a string, and params.eof is a boolean.
   - Matching requests call DevToolPlatformFacade::OnReceiveTemplateFragment(data, eof).
-  - Missing params, unsupported dataType values, or invalid field types are ignored.
-  - The current native handler does not send a CDP response.
-  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+  - Missing params, unsupported dataType values, or invalid field types are ignored and return an empty CDP result object.
+  - Valid template fragments return an empty CDP result object after being forwarded.
+  - If the UI task runner or UI executor is unavailable, or a valid fragment requires an unavailable platform facade, the handler returns a ServerError.
 examples:
   - title: Transfer a template fragment
     request:
@@ -28,3 +28,6 @@ examples:
         dataType: template
         data: '<binary-or-encoded-template-fragment>'
         eof: false
+    response:
+      id: 1
+      result: {}

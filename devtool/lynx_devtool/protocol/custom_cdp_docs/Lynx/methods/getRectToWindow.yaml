@@ -19,7 +19,8 @@ notes:
   - The result is the four-value vector returned by the platform facade as left, top, width, and height.
   - Android reads the root UI rect from UITreeHelper. Darwin reads the root UI rect and multiplies it by the screen scale.
   - The native implementation does not read request params.
-  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+  - If the UI task runner, UI executor, or platform facade is unavailable, the handler returns a ServerError.
+  - If the platform facade returns fewer than four values, the handler returns a MethodNotFound error.
 examples:
   - title: Read the LynxView window rectangle
     request:
