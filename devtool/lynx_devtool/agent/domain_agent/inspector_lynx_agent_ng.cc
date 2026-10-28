@@ -4,19 +4,14 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.h"
 
+#include <utility>
+
 #include "base/include/log/logging.h"
 #include "core/services/recorder/record_payload.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
 namespace devtool {
-namespace {
-int ParseLogLevel(const Json::Value& params) {
-  return params.isObject() && params["level"].isString()
-             ? base::logging::ParseLogLevel(params["level"].asString())
-             : -1;
-}
-}  // namespace
 
 InspectorLynxAgentNG::InspectorLynxAgentNG(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
@@ -42,124 +37,91 @@ InspectorLynxAgentNG::InspectorLynxAgentNG(
 InspectorLynxAgentNG::~InspectorLynxAgentNG() = default;
 
 void InspectorLynxAgentNG::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
   std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
   } else {
-    (this->*(iter->second))(sender, message);
+    (this->*(iter->second))(responder, message["params"]);
   }
 }
 
 void InspectorLynxAgentNG::SetObservePayloadEnabled(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  CDPResponder responder(sender, message["id"].asInt64());
-  const auto& params = message["params"];
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (!params.isObject() || !params["enabled"].isBool()) {
-    responder.SendError(CDPErrorCode::InvalidParams,
-                        "enabled must be a boolean");
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "enabled must be a boolean");
     return;
   }
   tasm::recorder::SetObservationPayloadEnabled(params["enabled"].asBool());
-  responder.SendSuccess();
+  responder->SendSuccess();
 }
 
 void InspectorLynxAgentNG::GetLogLevel(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   Json::Value result;
   result["runtimeLevel"] = base::logging::GetMinLogLevelName();
   result["nativeCompileLevel"] = base::logging::GetCompileMinLogLevelName();
-  CDPResponder(sender, message["id"].asInt64()).SendSuccess(result);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorLynxAgentNG::SetLogLevel(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  auto responder =
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64());
-  const int level = ParseLogLevel(message["params"]);
-  if (level < 0) {
-    responder->SendError(CDPErrorCode::InvalidParams,
-                         "level must be VERBOSE, DEBUG, MONITOR, OBSERVE, "
-                         "INFO, WARNING or ERROR");
-    return;
-  }
-  if (!devtool_mediator_ ||
-      !devtool_mediator_->LynxSetLogLevel(responder, level)) {
-    responder->SendError(CDPErrorCode::InternalError,
-                         "The UI thread is not available");
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxSetLogLevel(responder, params);
 }
 
 // return physical pixel rect of lynx view
 void InspectorLynxAgentNG::GetLynxViewRectToWindow(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetRectToWindow(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxGetRectToWindow(responder, params);
 }
 
 void InspectorLynxAgentNG::GetProperties(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetProperties(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxGetProperties(responder, params);
 }
 
-void InspectorLynxAgentNG::GetData(const std::shared_ptr<MessageSender>& sender,
-                                   const Json::Value& message) {
-  devtool_mediator_->LynxGetData(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+void InspectorLynxAgentNG::GetData(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxGetData(responder, params);
 }
 
 void InspectorLynxAgentNG::GetComponentId(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetComponentId(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxGetComponentId(responder, params);
 }
 
 void InspectorLynxAgentNG::GetLynxVersion(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetVersion(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxGetVersion(responder, params);
 }
 
 void InspectorLynxAgentNG::TransferData(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxTransferData(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxTransferData(responder, params);
 }
 
 void InspectorLynxAgentNG::SetTraceMode(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxSetTraceMode(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxSetTraceMode(responder, params);
 }
 
 void InspectorLynxAgentNG::GetScreenshot(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetScreenshot(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GetScreenshot(responder, params);
 }
 
 void InspectorLynxAgentNG::GetViewLocationOnScreen(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetViewLocationOnScreen(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxGetViewLocationOnScreen(responder, params);
 }
 
 void InspectorLynxAgentNG::SendVMEvent(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxSendEventToVM(
-      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
-      message["params"]);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->LynxSendEventToVM(responder, params);
 }
 
 }  // namespace devtool

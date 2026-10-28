@@ -1566,12 +1566,15 @@ void LynxDevToolMediator::LynxSetTraceMode(
   }
 }
 
-bool LynxDevToolMediator::LynxSetLogLevel(
-    const std::shared_ptr<CDPResponder>& responder, int level) {
-  return ui_executor_ &&
-         RunOnUIThread([executor = ui_executor_, responder, level] {
-           executor->LynxSetLogLevel(responder, level);
-         });
+void LynxDevToolMediator::LynxSetLogLevel(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = ui_executor_;
+  if (!executor || !RunOnUIThread([executor, responder, params] {
+        executor->LynxSetLogLevel(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxGetRectToWindow(
