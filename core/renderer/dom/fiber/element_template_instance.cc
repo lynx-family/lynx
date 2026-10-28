@@ -34,22 +34,11 @@ static constexpr const char kTemplateChildSlots[] = "childSlots";
 static constexpr const char kTemplateOptions[] = "options";
 static constexpr const char kTemplateUid[] = "uid";
 static constexpr const char kDefaultPageComponentId[] = "0";
+static constexpr const char kListItemPlatformInfo[] = "__listItemPlatformInfo";
 static constexpr int32_t kDefaultPageCSSId = 0;
 static constexpr uint32_t kTypedTemplateAttributeSlotIndex = 0;
 static constexpr uint32_t kTypedTemplateRootChildSlotIndex = 0;
 constexpr char kGestureType[] = "type";
-
-fml::RefPtr<ElementTemplateInstance> ResolveElementTemplateInstanceValue(
-    const lepus::Value& value) {
-  if (!value.IsRefCounted()) {
-    return nullptr;
-  }
-  auto ref = value.RefCounted();
-  if (ref->GetRefType() != lepus::RefType::kElementTemplate) {
-    return nullptr;
-  }
-  return fml::static_ref_ptr_cast<ElementTemplateInstance>(ref).strongify();
-}
 
 size_t FindSlotChildIndex(const lepus::Value& slot_children,
                           const lepus::Value& ref_node) {
@@ -138,21 +127,6 @@ bool IsTemplateMapValue(const lepus::Value& value) {
   }
   return value.IsJSValue() && value.IsJSTable() && !value.IsJSArray() &&
          !value.IsJSFunction();
-}
-
-lepus::Value ConvertTemplateValueForStorage(const lepus::Value& value) {
-  return value.IsCallable() ? value : lepus::Value::Clone(value);
-}
-
-lepus::Value ConvertTemplateMapForStorage(const lepus::Value& value) {
-  auto object = lepus::Dictionary::Create();
-  lepus::Value::ForEachLepusValue(
-      value, [&object](const lepus::Value& key, const lepus::Value& item) {
-        if (key.IsString()) {
-          object->SetValue(key.String(), ConvertTemplateValueForStorage(item));
-        }
-      });
-  return lepus::Value(std::move(object));
 }
 
 lepus::Value CopySlotForWorkerPreparation(const lepus::Value& slot,
@@ -290,8 +264,9 @@ class ElementTemplateInstanceSerializer {
       const int child_count = slot_children.GetLength();
       serialized_children->reserve(static_cast<size_t>(child_count));
       for (int child_index = 0; child_index < child_count; ++child_index) {
-        auto child = ResolveElementTemplateInstanceValue(
-            slot_children.GetProperty(static_cast<uint32_t>(child_index)));
+        auto child =
+            ElementTemplateInstance::ResolveElementTemplateInstanceValue(
+                slot_children.GetProperty(static_cast<uint32_t>(child_index)));
         if (child != nullptr) {
           serialized_children->emplace_back(Serialize(*child));
         }
@@ -346,6 +321,36 @@ class ElementTemplateInstanceSerializer {
     return lepus::Value(std::move(serialized));
   }
 };
+
+fml::RefPtr<ElementTemplateInstance>
+ElementTemplateInstance::ResolveElementTemplateInstanceValue(
+    const lepus::Value& value) {
+  if (!value.IsRefCounted()) {
+    return nullptr;
+  }
+  auto ref = value.RefCounted();
+  if (ref->GetRefType() != lepus::RefType::kElementTemplate) {
+    return nullptr;
+  }
+  return fml::static_ref_ptr_cast<ElementTemplateInstance>(ref).strongify();
+}
+
+lepus::Value ElementTemplateInstance::ConvertTemplateValueForStorage(
+    const lepus::Value& value) {
+  return value.IsCallable() ? value : lepus::Value::Clone(value);
+}
+
+lepus::Value ElementTemplateInstance::ConvertTemplateMapForStorage(
+    const lepus::Value& value) {
+  auto object = lepus::Dictionary::Create();
+  lepus::Value::ForEachLepusValue(
+      value, [&object](const lepus::Value& key, const lepus::Value& item) {
+        if (key.IsString()) {
+          object->SetValue(key.String(), ConvertTemplateValueForStorage(item));
+        }
+      });
+  return lepus::Value(std::move(object));
+}
 
 ElementTemplateInstance::ElementTemplateInstance(
     ElementManager* element_manager)
@@ -1083,6 +1088,37 @@ void ElementTemplateInstance::RemoveNodeFromChildSlot(
   if (IsMaterialized()) {
     UnmountMaterializedChild(slot_index, child_instance);
   }
+}
+
+base::String ElementTemplateInstance::GetTemplateType() const {
+  if (IsTypedTemplate()) {
+    return typed_tag_;
+  }
+  // Match the framework's elementTemplateIdentityKey: an omitted bundle is
+  // equivalent to the main bundle sentinel. UID and item-key identify logical
+  // items and must be excluded from the type so different items can share a
+  // pool.
+  if (bundle_url_.empty() || bundle_url_.IsEqual(kDefaultTemplateBundleUrl)) {
+    return template_key_;
+  }
+  return base::String(bundle_url_.str() + ":" + template_key_.str());
+}
+
+// List metadata: a regular ElementTemplateInstance can also be a List item.
+lepus::Value ElementTemplateInstance::GetListItemPlatformInfoFromOptions()
+    const {
+  // List items currently use regular ET instances, so read their platform
+  // metadata from options_. This does not depend on attribute_slots_ or require
+  // materializing the item's Element.
+  if (!options_.IsObject()) {
+    return lepus::Value();
+  }
+  auto list_item_platform_info =
+      options_.GetProperty(BASE_STATIC_STRING(kListItemPlatformInfo));
+  // Regular templates do not have this internal field. Preserve the distinction
+  // between an empty object and missing metadata.
+  return list_item_platform_info.IsObject() ? list_item_platform_info
+                                            : lepus::Value();
 }
 
 }  // namespace tasm
