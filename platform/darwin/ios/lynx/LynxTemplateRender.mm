@@ -552,9 +552,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (meta.loadOption & LynxLoadOptionProcessLayoutWithoutUIFlush) {
     [self setNeedPendingUIOperation:YES];
   }
-  BOOL isTemplateBundleValid = meta.templateBundle != nil && meta.templateBundle.errorMsg == nil;
-  BOOL isElementBundleValid = isTemplateBundleValid && [meta.templateBundle isElementBundleValid];
-
   // Inject platform page configs
   if (meta.lynxViewConfig) {
     [self setPlatformConfig:[meta.lynxViewConfig objectForKey:KEY_LYNX_PLATFORM_CONFIG]];
@@ -576,9 +573,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     [_lynxSSRHelper onHydrateStart];
   }
 
-  // bundle in meta is considered before bundle in lynxViewGroup.
-  LynxTemplateBundle* templateBundle =
-      meta.templateBundle ? meta.templateBundle : self.templateBundle;
+  // The bundle in meta is considered before the bundle in lynxViewGroup.
+  LynxTemplateBundle* templateBundle = meta.templateBundle ?: self.templateBundle;
+  BOOL isTemplateBundleValid = meta.templateBundle != nil && meta.templateBundle.errorMsg == nil;
+  BOOL isElementBundleValid = isTemplateBundleValid && [meta.templateBundle isElementBundleValid];
 
   if (_logicExecutor != nil) {
     // if logicExecutor set, we need to keep _templateData
@@ -675,14 +673,23 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                return;
              }
              if (!error) {
-               if (templateRes.bundle) {
-                 [strongSelf.devTool onLoadFromBundle:templateRes.bundle withURL:url initData:data];
+               LynxTemplateBundle* bundle = templateRes.bundle;
+               if (bundle == nil && templateRes.resourceHandle != nil) {
+                 LynxError* bundleError = nil;
+                 // Match the NSData path's View-scoped verification policy.
+                 bundle = LynxCreateTemplateBundleFromResourceHandle(
+                     templateRes.resourceHandle, url, [strongSelf getLynxView], &bundleError);
+                 if (bundle == nil) {
+                   [strongSelf onErrorOccurred:bundleError];
+                   return;
+                 }
+               }
+               if (bundle) {
+                 [strongSelf.devTool onLoadFromBundle:bundle withURL:url initData:data];
                  // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading
                  // Due to lynxDevTool UI session limitations, we cannot do this yet
                  [strongSelf->_devTool attachDebugBridge:url];
-                 [strongSelf internalLoadTemplateBundle:templateRes.bundle
-                                                withURL:url
-                                               initData:data];
+                 [strongSelf internalLoadTemplateBundle:bundle withURL:url initData:data];
                } else if (templateRes.data) {
                  [strongSelf.devTool onTemplateLoadSuccess:templateRes.data];
                  // TODO(zhoumingsong.smile) move attachToDebugBridge to dispatchViewDidStartLoading

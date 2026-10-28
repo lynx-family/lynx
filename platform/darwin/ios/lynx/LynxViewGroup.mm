@@ -14,6 +14,8 @@
 #import <pthread.h>
 #include <atomic>
 
+#import "LynxTemplateBundle+Converter.h"
+
 #include "core/runtime/js/bindings/modules/ios/module_factory_darwin.h"
 
 @implementation LynxViewGroup {
@@ -118,8 +120,19 @@
                [strongSelf setFetchResult:nil error:error];
                return;
              }
-             if (data.bundle) {
-               [strongSelf setFetchResult:data.bundle error:nil];
+             LynxTemplateBundle *bundle = data.bundle;
+             if (bundle == nil && data.resourceHandle != nil) {
+               LynxError *bundleError = nil;
+               // Preloading precedes View creation; verification targets the new bundle.
+               bundle = LynxCreateTemplateBundleFromResourceHandle(
+                   data.resourceHandle, strongSelf.url, nil, &bundleError);
+               if (bundle == nil) {
+                 [strongSelf setFetchResult:nil error:bundleError];
+                 return;
+               }
+             }
+             if (bundle) {
+               [strongSelf setFetchResult:bundle error:nil];
              } else if (data.data) {
                [strongSelf setFetchResult:[[LynxTemplateBundle alloc] initWithTemplate:data.data]
                                     error:nil];

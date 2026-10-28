@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include "core/resource/lynx_resource_handle.h"
+#import "LynxResourceHandle+Internal.h"
 
 namespace {
 
@@ -18,12 +18,6 @@ lynx::pub::LynxResourceHandle::CreateResult CreateFileResourceHandle(NSString* f
 }
 
 }  // namespace
-
-@interface LynxResourceHandle ()
-
-- (std::shared_ptr<lynx::pub::LynxResourceHandle>)rawResourceHandle;
-
-@end
 
 @implementation LynxResourceHandle {
   std::shared_ptr<lynx::pub::LynxResourceHandle> _resourceHandle;
@@ -65,21 +59,15 @@ lynx::pub::LynxResourceHandle::CreateResult CreateFileResourceHandle(NSString* f
 }
 
 - (BOOL)isValid {
-  @synchronized(self) {
-    return _resourceHandle != nullptr;
-  }
+  return std::atomic_load(&_resourceHandle) != nullptr;
 }
 
 - (void)invalidate {
-  @synchronized(self) {
-    _resourceHandle.reset();
-  }
+  std::atomic_store(&_resourceHandle, std::shared_ptr<lynx::pub::LynxResourceHandle>{});
 }
 
 - (std::shared_ptr<lynx::pub::LynxResourceHandle>)rawResourceHandle {
-  @synchronized(self) {
-    return _resourceHandle;
-  }
+  return std::atomic_load(&_resourceHandle);
 }
 
 @end

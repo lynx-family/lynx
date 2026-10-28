@@ -46,6 +46,8 @@ struct TemplateVerification {
   bool enabled{false};
   service::security_service::LynxTasmType type{
       service::security_service::LynxTasmType::kTemplate};
+  // Borrowed for the synchronous verification call only.
+  void* platform_target{nullptr};
 };
 
 class LynxBinaryLazyReaderDelegate;

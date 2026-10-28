@@ -5,12 +5,14 @@
 #ifndef DARWIN_COMMON_LYNX_RESOURCE_LYNXTEMPLATERESOURCE_H_
 #define DARWIN_COMMON_LYNX_RESOURCE_LYNXTEMPLATERESOURCE_H_
 
+#import <Lynx/LynxResourceHandle.h>
 #import <Lynx/LynxTemplateBundle.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 /**
- * represents the result of template resource, it may be a NSData* or LynxTemplateBundle*
+ * represents the result of template resource, it may be NSData*, LynxTemplateBundle*, or
+ * LynxResourceHandle*
  */
 @interface LynxTemplateResource : NSObject
 
@@ -18,11 +20,22 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, readonly, strong) LynxTemplateBundle* _Nonnull bundle;
 
+/**
+ * A reusable resource handle containing the template source. The handle remains valid and reusable
+ * after Lynx loads the template.
+ */
+@property(nonatomic, readonly, strong, nullable) LynxResourceHandle* resourceHandle;
+
 - (instancetype)init NS_UNAVAILABLE;
 
 - (instancetype)initWithNSData:(NSData* _Nonnull)data;
 
 - (instancetype)initWithBundle:(LynxTemplateBundle* _Nonnull)bundle;
+
+/**
+ * Constructs a template resource from a reusable resource handle.
+ */
+- (instancetype)initWithResourceHandle:(LynxResourceHandle* _Nonnull)resourceHandle;
 
 @end
 
