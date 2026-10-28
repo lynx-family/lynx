@@ -5,7 +5,8 @@
 #include "core/resource/lynx_resource_handle.h"
 
 #include <cctype>
-#include <fstream>
+#include <cerrno>
+#include <cstdio>
 #include <limits>
 #include <string>
 #include <utility>
@@ -29,15 +30,20 @@ bool IsAbsoluteFilePath(const std::string& path) {
 }
 
 LynxResourceHandle::DataResult ReadFile(const std::string& file_path) {
-  std::ifstream input(file_path, std::ios::binary | std::ios::ate);
-  if (!input.is_open()) {
+  FILE* file;
+  do {
+    file = fopen(file_path.c_str(), "rb");
+  } while (file == nullptr && errno == EINTR);
+  const std::unique_ptr<FILE, decltype(&fclose)> input(file, &fclose);
+  if (!input) {
     LOGE(
         "[ResourceHandle] Materialize failure_stage=file_open, "
         "failure_reason=open_failed");
     return base::unexpected<std::string>("Failed to open resource file");
   }
 
-  const std::streampos end = input.tellg();
+  const long end =
+      fseek(input.get(), 0, SEEK_END) == 0 ? ftell(input.get()) : -1;
   if (end < 0 ||
       static_cast<uint64_t>(end) >
           static_cast<uint64_t>(std::numeric_limits<int32_t>::max())) {
@@ -50,13 +56,24 @@ LynxResourceHandle::DataResult ReadFile(const std::string& file_path) {
   const auto size = static_cast<size_t>(end);
   std::vector<uint8_t> bytes;
   bytes.reserve(size);
-  input.seekg(0, std::ios::beg);
+  if (fseek(input.get(), 0, SEEK_SET) != 0) {
+    LOGE(
+        "[ResourceHandle] Materialize failure_stage=file_read, "
+        "failure_reason=seek_failed");
+    return base::unexpected<std::string>("Failed to read resource file");
+  }
   uint8_t buffer[64 * 1024];
   while (bytes.size() < size) {
     const auto remaining = size - bytes.size();
-    const auto count = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
-    input.read(reinterpret_cast<char*>(buffer), count);
-    if (!input) {
+    const auto requested =
+        remaining < sizeof(buffer) ? remaining : sizeof(buffer);
+    const auto count = fread(buffer, 1, requested, input.get());
+    const int read_error = errno;
+    const bool failed = ferror(input.get());
+    if (failed && read_error == EINTR) {
+      clearerr(input.get());
+      if (count == 0) continue;
+    } else if (failed || count == 0) {
       LOGE(
           "[ResourceHandle] Materialize failure_stage=file_read, "
           "failure_reason=read_failed");
