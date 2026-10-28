@@ -52,7 +52,9 @@ InspectorCSSAgentNG::~InspectorCSSAgentNG() = default;
 
 void InspectorCSSAgentNG::CreateStyleSheet(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->CreateStyleSheet(sender, message);
+  devtool_mediator_->CreateStyleSheet(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::AddRule(const std::shared_ptr<MessageSender>& sender,
@@ -62,7 +64,9 @@ void InspectorCSSAgentNG::AddRule(const std::shared_ptr<MessageSender>& sender,
 
 void InspectorCSSAgentNG::SetStyleSheetText(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->SetStyleSheetText(sender, message);
+  devtool_mediator_->SetStyleSheetText(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::Enable(const std::shared_ptr<MessageSender>& sender,
@@ -114,7 +118,9 @@ void InspectorCSSAgentNG::SetStyleTexts(
 
 void InspectorCSSAgentNG::GetStyleSheetText(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetStyleSheetText(sender, message);
+  devtool_mediator_->GetStyleSheetText(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::GetBackgroundColors(

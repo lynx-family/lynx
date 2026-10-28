@@ -87,6 +87,17 @@ bool ReadNodeIdParam(const Json::Value& params, int& node_id) {
   return ReadIntParam(params["nodeId"], node_id) && node_id >= 0;
 }
 
+bool ReadStyleSheetId(const Json::Value& value, std::string& style_sheet_id,
+                      int& node_id) {
+  if (!ReadStringParam(value, style_sheet_id) || style_sheet_id.empty()) {
+    return false;
+  }
+  const auto dot = style_sheet_id.find('.');
+  const auto suffix = dot == std::string::npos ? style_sheet_id
+                                               : style_sheet_id.substr(dot + 1);
+  return ReadIntStringParam(Json::Value(suffix), node_id) && node_id >= 0;
+}
+
 std::string NormalizeConditionTextForParser(const std::string& text,
                                             const std::string& at_rule) {
   std::string normalized = TrimConditionText(text);
@@ -2388,25 +2399,20 @@ void InspectorTasmExecutor::SetStyleTexts(
 
 // Get the content of the specified style sheet ( Unsure of usage scenario)
 void InspectorTasmExecutor::GetStyleSheetText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  std::string style_sheet_id = params["styleSheetId"].asString();
-  int index = atoi(style_sheet_id.substr(style_sheet_id.find('.') + 1).c_str());
-  Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr) {
-    content = ElementHelper::GetStyleSheetText(ptr, style_sheet_id);
-  } else {
-    Json::Value error = Json::Value(Json::ValueType::objectValue);
-    error["code"] = Json::Value(-32000);
-    error["message"] = Json::Value("Node is not an Element");
-    content["error"] = error;
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  std::string style_sheet_id;
+  int node_id = 0;
+  if (!params.isObject() ||
+      !ReadStyleSheetId(params["styleSheetId"], style_sheet_id, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams, "Invalid styleSheetId");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  Element* ptr = GetElementById(node_id);
+  if (!ptr) {
+    responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+    return;
+  }
+  responder->SendSuccess(ElementHelper::GetStyleSheetText(ptr, style_sheet_id));
 }
 
 // Get info of the specified node, Unsure of usage scenario
@@ -2427,32 +2433,40 @@ void InspectorTasmExecutor::GetBackgroundColors(
 }
 
 void InspectorTasmExecutor::SetStyleSheetText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  std::string style_sheet_id;
+  int node_id = 0;
+  if (!params.isObject() || !params["text"].isString() ||
+      !ReadStyleSheetId(params["styleSheetId"], style_sheet_id, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid styleSheetId or text");
+    return;
+  }
+  // Preserve the existing acknowledgement-only behavior.
   Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  std::string style_sheet_id = params["styleSheetId"].asString();
   content["sourceMapURL"] = "";
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(content));
 }
 
 // Create a style sheet (not sure where to use it)
 void InspectorTasmExecutor::CreateStyleSheet(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.isNull() &&
+      (!params.isObject() ||
+       (params.isMember("frameId") && !params["frameId"].isString()))) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "frameId must be a string when provided");
+    return;
+  }
   auto devtool_mediator = devtool_mediator_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
-  Json::Value response(Json::ValueType::objectValue);
+  if (!devtool_mediator || !element_root_) {
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
+    return;
+  }
   Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
   Json::Value header = ElementHelper::CreateStyleSheet(element_root_);
   content["styleSheetId"] = header["styleSheetId"];
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(content));
 
   // then send styleSheetAdded event
   Json::Value msg(Json::ValueType::objectValue);

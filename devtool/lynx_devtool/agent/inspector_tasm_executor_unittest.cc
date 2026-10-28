@@ -1106,6 +1106,84 @@ TEST_F(InspectorTasmExecutorTest,
       "Node is not an Element");
 }
 
+TEST_F(InspectorTasmExecutorTest,
+       CSSStyleSheetCommandsPreserveRepliesAndEvents) {
+  auto element = CreateInlineStyleUpdateTarget();
+  element_executor_->element_root_ = element.get();
+  auto sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = sender;
+  Json::Value params;
+  constexpr int64_t id = 1LL << 40;
+  element_executor_->CreateStyleSheet(
+      std::make_shared<devtool::CDPResponder>(sender, id), params);
+  ASSERT_EQ(sender->json_messages_.size(), 2U);
+  EXPECT_EQ(sender->json_messages_[0].second["id"].asInt64(), id);
+  const auto sheet = sender->json_messages_[0].second["result"]["styleSheetId"];
+  EXPECT_EQ(sender->json_messages_[1].second["method"], "CSS.styleSheetAdded");
+  EXPECT_EQ(
+      sender->json_messages_[1].second["params"]["header"]["styleSheetId"],
+      sheet);
+
+  sender->json_messages_.clear();
+  params["styleSheetId"] = sheet;
+  element_executor_->GetStyleSheetText(
+      std::make_shared<devtool::CDPResponder>(sender, id), params);
+  ASSERT_EQ(sender->json_messages_.size(), 1U);
+  EXPECT_TRUE(sender->json_messages_[0].second["result"]["text"].isString())
+      << sender->json_messages_[0].second;
+  params["text"] = ".example {}";
+  element_executor_->SetStyleSheetText(
+      std::make_shared<devtool::CDPResponder>(sender, id), params);
+  ASSERT_EQ(sender->json_messages_.size(), 2U);
+  EXPECT_EQ(sender->json_messages_[1].second["result"]["sourceMapURL"], "");
+}
+
+TEST_F(InspectorTasmExecutorTest, CSSStyleSheetCommandsRejectBadIdsAndNoRoot) {
+  for (auto method : {&devtool::InspectorTasmExecutor::GetStyleSheetText,
+                      &devtool::InspectorTasmExecutor::SetStyleSheetText}) {
+    for (auto value : {Json::Value(), Json::Value(1), Json::Value(""),
+                       Json::Value("1.bad"), Json::Value("1.2tail"),
+                       Json::Value("4294967296"), Json::Value("-1")}) {
+      auto sender = std::make_shared<RecordingMessageSender>();
+      Json::Value params;
+      params["styleSheetId"] = value;
+      params["text"] = "";
+      (element_executor_.get()->*method)(
+          std::make_shared<devtool::CDPResponder>(sender, 23), params);
+      ASSERT_EQ(sender->json_messages_.size(), 1U);
+      EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32602);
+    }
+  }
+  auto sender = std::make_shared<RecordingMessageSender>();
+  for (const auto& invalid_params :
+       {Json::Value(1), Json::Value(Json::arrayValue)}) {
+    element_executor_->CreateStyleSheet(
+        std::make_shared<devtool::CDPResponder>(sender, 24), invalid_params);
+  }
+  Json::Value params;
+  params["frameId"] = 1;
+  element_executor_->CreateStyleSheet(
+      std::make_shared<devtool::CDPResponder>(sender, 24), params);
+  ASSERT_EQ(sender->json_messages_.size(), 3U);
+  for (const auto& message : sender->json_messages_) {
+    EXPECT_EQ(message.second["error"]["code"], -32602);
+    EXPECT_FALSE(message.second.isMember("result"));
+  }
+
+  sender->json_messages_.clear();
+  params["frameId"] = "1";
+  element_executor_->CreateStyleSheet(
+      std::make_shared<devtool::CDPResponder>(sender, 24), params);
+  params["styleSheetId"] = "999999";
+  element_executor_->GetStyleSheetText(
+      std::make_shared<devtool::CDPResponder>(sender, 25), params);
+  ASSERT_EQ(sender->json_messages_.size(), 2U);
+  for (const auto& message : sender->json_messages_) {
+    EXPECT_EQ(message.second["error"]["code"], -32000);
+    EXPECT_FALSE(message.second.isMember("result"));
+  }
+}
+
 TEST_F(InspectorTasmExecutorTest, CSSConditionsRejectMalformedParamsAndNoRoot) {
   for (auto method : {&devtool::InspectorTasmExecutor::SetMediaText,
                       &devtool::InspectorTasmExecutor::SetSupportsText}) {
