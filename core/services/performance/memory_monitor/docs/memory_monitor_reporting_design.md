@@ -34,6 +34,7 @@ The monitor supports these questions:
 7. What fraction of process PSS is accounted for by Lynx, grouped by physical
    RAM and observed PSS milestones?
 8. Which bundle-local MTS pools have high heap memory or runtime counts?
+9. Are global JS module cache entries reused, and which pages created them?
 
 | Event | Production gate | Analysis |
 | --- | --- | --- |
@@ -42,7 +43,7 @@ The monitor supports these questions:
 | `lynxsdk_memory_page_residency` | One or more due 10-minute observations | Q3.1 |
 | `lynxsdk_memory_page_residual` | Timer snapshot with a positive residual PPS sample | Q6 |
 | `lynxsdk_memory_persistence` | Valid VM endpoint area or pending residual integral; residual flush on VM destruction | Q7.1 VM heap byte-time and Q7.2 exited-page residual byte-time |
-| `lynxsdk_memory_vm_stat` | Timer snapshot with an all-engine VM sample | Q5.1, Q5.2, and Q9.1 |
+| `lynxsdk_memory_vm_stat` | Timer snapshot with an all-engine VM sample | Q5.1, Q5.2, Q9.1, and Q12 |
 | `lynxsdk_memory_vm_quickjs` | `report_kind=sample` for usable timer data; `report_kind=slot_overflow` for a first overflow | Q5.3, Q9.2, and Q10 |
 | `lynxsdk_memory_mts_pool` | Timer snapshot with a bundle-local pool sample | Q11 |
 
@@ -593,8 +594,9 @@ weighted-quantile support; neither
 PCT(Hᵢ×V)/PCT(V) nor an average of stratum P95s can reconstruct it.
 See [Q5.2](./memory_monitor_query_guide.md#q52-heap-size-percentiles).
 
-`lynx_shared_vm_process_pss_ratio` includes all measurable shared heaps and cannot
-be attributed by the selected VM's name/type. A VM that is old and large now is
+The process-level ratio `shared_vm_heap_bytes_sum / process_pss_bytes` includes
+all measurable shared heaps and cannot be attributed by the selected VM's
+name/type. A VM that is old and large now is
 not proven to have been large throughout its lifetime. Heap × age is not
 measured byte-time or proof of a leak.
 
@@ -783,6 +785,56 @@ always emitted. Pool state is erased at destruction. These heap bytes are
 process overhead: they contribute to `lynx_accounted_memory_bytes` but never to
 page memory or `GlobalMemoryUsage.total.mts_bytes`.
 
+### 10.1 Global JS module cache reuse (Q12)
+
+`BaseApp._$factoryCache` and `BaseApp._$loadScriptCache` each track inserted
+entries, entries reused at least once, and entries reused by another app at
+least once. `MemoryMonitor::Enable()` controls instrumentation before cache
+creation; there is no backfill. Counts cover the registered physical VM
+population: shared QuickJS/JSC and RuntimeManager V8/JSVM.
+
+Each corejs sidecar retains only cache keys, creating native app IDs, and two
+reuse bits. A lookup sets the relevant bit before execution and reports only
+its first transition. Creation itself and app-local exports-cache lookups are
+excluded. Execution failure does not undo a lookup. Factory rebinding retains
+the same logical entry. Replacement starts a new entry, while deletion drops
+the sidecar metadata without subtracting historical counts.
+
+The fixed native call sends type, creator ID, and three zero/one deltas.
+The reporter task captures weak VM ownership and rejects a different VM
+reusing the same address. It keeps six scalar counters and a saved page key
+per creating app, without module keys, timestamps, or realm lifecycle state.
+Live creators use the existing first-load page identity; exit copies that key
+before the page record can disappear. Later cross-app hits still update the
+original creator. Records are released with the VM.
+
+Each JS sidecar admits at most 128 creating app IDs across both cache types.
+The native table also caps the entire physical VM at 128 creators because
+V8/JSVM can contain multiple corejs realms. Once full, new creators are
+ignored; admitted creators continue reporting new entries and reuse, including
+hits from untracked apps. Deletion and page exit do not free capacity.
+An untracked replacement discards the old sidecar entry to avoid misattribution.
+These limits affect monitoring metadata only, not the actual module caches.
+
+The existing timer VM sample carries six weighted VM counters and six weighted
+creator counters, plus creator key and weight. One creator is selected
+uniformly from C observed creators within the selected VM, with total weight
+V × C. Same-key creators aggregate by summing weighted rows. At least one
+observed insertion is required; absent fields are not a known empty cache.
+Older uninstrumented corejs contributes no counts even if it shares that VM.
+
+JS entry metadata covers admitted creators only; the number of entries per
+creator is not capped. Native metadata is bounded by 128 creators per VM.
+Bridge traffic is bounded by insertion, first reuse,
+and first cross-app reuse per entry. No per-entry events, extra timers, heap
+walks, or strong VM ownership cross the reporter boundary.
+
+Counts are cumulative history, including deleted entries and closed realms,
+not live cache size or bytes. Repeated snapshots cannot measure new interval
+operations or reuse within a fixed observation window. Creator selection
+weights estimate the admitted population only; they cannot recover creators
+excluded by the deterministic capacity limits.
+
 ## 11. Process memory ratios
 
 Both PSS triggers and ratio denominators use
@@ -791,27 +843,25 @@ Apple/Windows provide their platform equivalents within that implementation.
 Lynx's allocator/platform accounting is not identical to physical PSS, so ratios
 can exceed 1.
 
-```text
-lynx_accounted_process_pss_ratio =
-    lynx_accounted_memory_bytes / process_pss_bytes
-lynx_shared_vm_process_pss_ratio =
-    shared_vm_heap_bytes_sum / process_pss_bytes
-lynx_mts_pool_process_pss_ratio =
-    mts_pool_heap_bytes_sum / process_pss_bytes
-lynx_tracked_page_retained_process_pss_ratio =
-    shared_vm_tracked_exited_page_retained_bytes / process_pss_bytes
-```
+Queries derive ratios from byte fields on the same process-event row:
 
-Ratios exist only for positive PSS. Read failure is -1, not zero or a reused
-measurement.
+| Ratio | Per-row expression |
+| --- | --- |
+| Accounted memory / PSS | `lynx_accounted_memory_bytes / process_pss_bytes` |
+| Shared heap / PSS | `shared_vm_heap_bytes_sum / process_pss_bytes` |
+| MTS pool heap / PSS | `mts_pool_heap_bytes_sum / process_pss_bytes` |
+| Confirmed tracked residual / PSS | `shared_vm_tracked_exited_page_retained_bytes / process_pss_bytes` |
+
+Process rows require positive PSS, so these expressions have positive
+denominators. Read failure is -1, not zero or a reused measurement.
 
 Collection:
 
 - The process poll reads PSS every 8 seconds and compares high-water buckets.
 - Android reads system PSS and converts KB to bytes. Linux uses `smaps_rollup`
   with a `smaps` fallback. Harmony uses Native HiDebug PSS.
-- After heap collection, another PSS read supplies event ratios. It may differ
-  from the triggering read. Bucket boundaries are not the ratio denominator.
+- After heap collection, another PSS read supplies `process_pss_bytes`. It may
+  differ from the triggering read. Bucket boundaries are not the denominator.
 - A failed/nonpositive final PSS read suppresses the process event.
 - A synchronous VM heap query failure also suppresses the process event, so
   consumers do not need a completeness filter.
@@ -829,9 +879,10 @@ Use 2147483648 for 2GiB and 3221225472 for 3GiB. A jump across several buckets
 means the threshold was crossed by the poll, not that measurement occurred at
 exactly that byte value.
 
-Fix platform, use host RAM metadata for groups, and calculate
-PCT50/PCT90/PCT99 of `lynx_accounted_process_pss_ratio`, displaying actual rows
-and distinct processes/users. Missing MTS/BTS records can lower the numerator.
+Fix platform and use host RAM metadata for groups. Compute
+`lynx_accounted_memory_bytes / process_pss_bytes` on each event, then take
+PCT50/PCT90/PCT99, displaying actual rows and distinct processes/users.
+Missing MTS/BTS records can lower the numerator.
 
 ```text
 P99(accounted/PSS) != P99(accounted)/P99(PSS)

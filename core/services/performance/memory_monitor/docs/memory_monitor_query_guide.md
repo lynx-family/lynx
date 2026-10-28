@@ -874,8 +874,17 @@ trigger_pss_previous_milestone_bytes < 1073741824
 AND trigger_pss_milestone_bytes >= 1073741824
 ```
 
-Group by platform and physical RAM metadata. Calculate
-`PCT50/PCT90/PCT99(lynx_accounted_process_pss_ratio) × 100`, with sample counts.
+Group by platform and physical RAM metadata. Compute a ratio on each event:
+
+```text
+A = lynx_accounted_memory_bytes
+B = process_pss_bytes
+
+per-event accounted/PSS ratio = A/B
+```
+
+Calculate `PCT50/PCT90/PCT99(A/B) × 100`, with sample counts. Perform the
+per-event division before the percentile aggregation.
 Use 2147483648 for 2GiB and 3221225472 for 3GiB.
 Do not require equality to a boundary, because one observation may cross
 several buckets.
@@ -1006,6 +1015,61 @@ Pool heap is already included in `lynx_accounted_memory_bytes` and
 `GlobalMemoryUsage.total.total_bytes`; never add the pool event to those page
 totals.
 
+## Q12. Are global JS module cache entries reused, and who created them?
+
+Event: `lynxsdk_memory_vm_stat`. Fix schema, SDK/corejs version, platform,
+process sampling configuration, and VM age range. Filter for the presence of
+`js_cache_page_weight`. Missing fields are unobserved state,
+not measured zeros. No heap filter is required.
+
+Each physical VM retains at most 128 creating app IDs across both caches.
+JS sidecars also limit admission to 128 creators per corejs realm. New
+creators are ignored once full; admitted creators continue reporting entries
+and reuse, even after page exit. Untracked apps can still contribute hits to
+admitted creators. Capacity is not reclaimed on page exit or cache deletion.
+All Q12 formulas below describe this admitted population. Selection weights
+do not correct the deterministic exclusion of later creators.
+
+All counter fields already include their selection weights. Group by
+`js_cache_page_key`:
+
+```text
+A = SUM(js_cache_page_factory_inserted)
+B = SUM(js_cache_page_weight)
+C = SUM(js_cache_page_factory_reused)
+D = SUM(js_cache_page_factory_cross_app)
+
+cumulative insertion-snapshot contribution = A
+mean lifetime insertions per observed creator/VM snapshot = A/B
+fraction of insertion-snapshot contribution ever reused = C/A
+fraction ever reused across apps = D/A
+```
+
+Rank both A and A/B. For loadScript cache analysis, substitute `script` for
+`factory` in A/C/D. The caches can hold related objects; adding their counts
+does not yield distinct modules or retained bytes. The sampling weight is
+V × C: uniform physical VM selection followed by uniform creator-ID selection.
+Several creators with the same page key contribute separately; A/B averages
+over those creator observations, not distinct page keys.
+
+For VM-level analysis, group by `vm_name`/`vm_runtime_type`, replace
+`js_cache_page_` with `js_cache_` in A/C/D's field names, and use
+B=`SUM(vm_selection_weight)`. Do not group these VM totals by the sampled
+creator key.
+
+Creation itself and app-local exports-cache hits are excluded. A global cache
+lookup counts even if the later execution fails. Each inserted entry can
+contribute at most once to reuse and once to cross-app reuse. Rebinding a
+cached factory does not count as another insertion. Replacement starts a new
+entry; deletion does not erase past counts. Creator attribution survives page
+exit, but there is no exited/active split.
+
+These are repeated lifetime snapshots of observed entries, including removed
+entries and closed realms. Sums are not new operations in the query interval.
+Newer entries have had less opportunity for reuse; these ratios are not
+five-minute reuse probabilities. No timestamps, eviction recommendations,
+or retained-memory estimates can be derived from Q12.
+
 ## Validation principles and implementation references
 
 Validate event-derived queries against independently calculated workload truth.
@@ -1044,6 +1108,7 @@ must determine success.
 | Q9 | Cross-engine bindings independently of heap support; capacity versus first failure |
 | Q10 | Three independent reserved-slot rankings, zero values, missing tracking, and heap overlap |
 | Q11 | Four context types, zero heaps, page-key resolution, process-only accounting, lifecycle cleanup, and matching pool weights |
+| Q12 | First reuse/cross-app deduplication, lookup failures, JSON/async/wrapper paths, exited creator attribution, and same-key creator sampling weights |
 
 Directed lifecycle checks should include duplicate creation/load notifications,
 reload, never-loaded pages, reused IDs, out-of-order notifications, and stable

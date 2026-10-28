@@ -34,7 +34,7 @@ inline constexpr char kRuntimeGroupId[] = "groupId";
 // - lynxsdk_performance_entry_memory_v2: Q1/Q2 page observations.
 // - lynxsdk_memory_page_residency: Q3.1 fixed 10min lifecycle cohorts.
 // - lynxsdk_memory_page: Q3.2/Q4 periodic active-page samples.
-// - lynxsdk_memory_vm_stat: Q5.1/Q5.2/Q9.1 periodic all-engine VM samples.
+// - lynxsdk_memory_vm_stat: Q5.1/Q5.2/Q9.1/Q12 all-engine VM samples.
 // - lynxsdk_memory_vm_quickjs: Q5.3/Q9.2/Q10 QuickJS-only data.
 // - lynxsdk_memory_page_residual: Q6 periodic positive-residual PPS samples.
 // - lynxsdk_memory_persistence: Q7.1 VM endpoints; Q7.2 slot residual
@@ -123,6 +123,22 @@ inline constexpr char kRuntimeGroupId[] = "groupId";
 //    per physical pool snapshot by A/B, and mean runtime count by C/B.
 //    Pool heaps are included in process accounting, but never in
 //    GlobalMemoryUsage.total.mts_bytes or page memory.
+//
+// Q12 Are global JS cache entries reused, and which pages created them?
+//    VM samples include weighted lifetime insertion, first-reuse, and first
+//    cross-app reuse counts for factory/loadScript caches. One creator is
+//    sampled uniformly within the selected VM, with weight V*C and its saved
+//    page_key, including after exit. Hits count at lookup; creation is not
+//    reuse. Counters include their selection weights.
+//    A=SUM(js_cache_page_factory_inserted),
+//    B=SUM(js_cache_page_weight),
+//    C=SUM(js_cache_page_factory_reused),
+//    D=SUM(js_cache_page_factory_cross_app).
+//    Group by js_cache_page_key; compare A, A/B, C/A, and D/A.
+//    These are repeated lifetime snapshots, not live entries, retained bytes,
+//    interval insertions, or a fixed-window reuse probability.
+//    At most 128 creators are admitted per VM and per corejs sidecar. Weights
+//    cover admitted creators only; page exit does not free capacity.
 //
 // Detailed field gates and estimator rationale are in the memory monitor docs.
 class MemoryMonitor {

@@ -9,7 +9,7 @@ mixing collection details with query recipes.
 
 | Document | Purpose |
 | --- | --- |
-| [Global Memory Reporting Design](./memory_monitor_reporting_design.md) | Describes process-level collection and reporting, including active pages, residency, shared VMs, exited-page residuals, persistence, sampling, and PSS-based analysis. |
+| [Global Memory Reporting Design](./memory_monitor_reporting_design.md) | Describes process-level collection and reporting, including active pages, residency, shared VMs, JS module cache reuse, exited-page residuals, persistence, sampling, and PSS-based analysis. |
 | [Page Memory Reporting Design](./page_memory_monitor_reporting_design.md) | Describes per-page scheduled observations and the once-per-instance early total/BTS/MTS mean and peak summaries. |
 | [Memory Monitor Event Property Reference](./memory_monitor_property_registration.md) | Defines every emitted event property, its payload type, production gate, and conditional presence rule. |
 | [Memory Monitor Query Guide](./memory_monitor_query_guide.md) | Provides supported filters, aggregates, formulas, denominators, and interpretation guidance for the monitoring questions. |
