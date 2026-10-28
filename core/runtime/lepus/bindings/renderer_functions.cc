@@ -46,6 +46,7 @@
 #include "core/renderer/dom/fiber/if_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/list_element_template_instance.h"
 #include "core/renderer/dom/fiber/modifier_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
@@ -3837,6 +3838,8 @@ RENDERER_FUNCTION_CC(FiberCreateElementTemplate) {
   if (argc >= 6) {
     CONVERT_ARG(arg5, 5);
     if (arg5->IsObject()) {
+      // For list items, the sixth argument carries __listItemPlatformInfo.
+      // Convert the options before storing them in ElementTemplateInstance.
       options = arg5->ToLepusValue();
     } else if (!arg5->IsNil() && !arg5->IsUndefined()) {
       ElementAPIError(
@@ -3875,11 +3878,6 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
   CHECK_ARGC_GE(FiberCreateTypedElementTemplate, 4);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, String,
                                         FiberCreateTypedElementTemplate);
-  if (arg0->String().IsEqual(kElementListTag)) {
-    ElementAPIError(
-        "FiberCreateTypedElementTemplate does not support the list tag");
-    RETURN_UNDEFINED();
-  }
   CONVERT_ARG(arg1, 1);
   CONVERT_ARG(arg2, 2);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg3, 3, Number,
@@ -3919,8 +3917,15 @@ RENDERER_FUNCTION_CC(FiberCreateTypedElementTemplate) {
   }
 
   auto* manager = self->page_proxy()->element_manager().get();
-  auto instance = fml::AdoptRef<ElementTemplateInstance>(
-      new ElementTemplateInstance(manager));
+  fml::RefPtr<ElementTemplateInstance> instance;
+  if (arg0->String().IsEqual(kElementListTag)) {
+    instance = fml::AdoptRef<ListElementTemplateInstance>(
+        new ListElementTemplateInstance(manager));
+  } else {
+    instance = fml::AdoptRef<ElementTemplateInstance>(
+        new ElementTemplateInstance(manager));
+  }
+
   instance->SetTASM(self);
   instance->SetTypedTag(arg0->String());
   instance->SetAttributes(attributes);
@@ -3968,6 +3973,30 @@ RENDERER_FUNCTION_CC(FiberSetAttributeOfElementTemplate) {
     RETURN_UNDEFINED();
   }
   instance->SetAttributeSlot(*attribute_slot_index, *arg2);
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(FiberSetListItemInfoOfTemplate) {
+  // Update the logical item's platform info without writing an attribute slot.
+  // [0] RefCounted -> item template instance
+  // [1] Object | Null | Undefined -> platformInfo
+  CHECK_ARGC_GE(FiberSetListItemInfoOfTemplate, 2);
+  CONVERT_ARG(arg0, 0);
+  CONVERT_ARG(arg1, 1);
+  auto* instance = GetElementTemplateInstanceFromValue(*arg0);
+  if (instance == nullptr) {
+    RETURN_UNDEFINED();
+  }
+  lepus::Value platform_info;
+  if (arg1->IsObject()) {
+    platform_info = *arg1;
+  } else if (!arg1->IsNil() && !arg1->IsUndefined()) {
+    ElementAPIError(
+        "FiberSetListItemInfoOfTemplate param 1 should be "
+        "Object or Null or Undefined");
+    RETURN_UNDEFINED();
+  }
+  instance->SetListItemPlatformInfo(platform_info);
   RETURN_UNDEFINED();
 }
 

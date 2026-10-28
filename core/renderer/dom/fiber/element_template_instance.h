@@ -5,11 +5,14 @@
 #define CORE_RENDERER_DOM_FIBER_ELEMENT_TEMPLATE_INSTANCE_H_
 
 #include <cstddef>
+#include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/ref_counted_class.h"
+#include "base/include/vector.h"
 #include "core/base/thread/once_task.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/generated_elements_result.h"
@@ -24,10 +27,20 @@ class ElementTemplateInstance
     : public lepus::RefCounted,
       public fml::EnableWeakFromThis<ElementTemplateInstance> {
  public:
+  enum class FlushPendingChildMountsResult {
+    kDoNotRequeue,
+    kOutOfScope,
+  };
+
   static fml::RefPtr<ElementTemplateInstance>
   ResolveElementTemplateInstanceValue(const lepus::Value& value);
   static lepus::Value ConvertTemplateValueForStorage(const lepus::Value& value);
   static lepus::Value ConvertTemplateMapForStorage(const lepus::Value& value);
+  static bool IsTemplateMapValue(const lepus::Value& value);
+  // Finds the logical child's position. Returns the array length to append when
+  // the reference node is absent.
+  static size_t FindSlotChildIndex(const lepus::Value& slot_children,
+                                   const lepus::Value& ref_node);
 
   explicit ElementTemplateInstance(ElementManager* element_manager);
   ~ElementTemplateInstance() override;
@@ -46,7 +59,7 @@ class ElementTemplateInstance
   void SetTypedTag(const base::String& typed_tag);
   bool IsTypedTemplate() const { return !typed_tag_.empty(); }
   // Typed-only attributes; compiled instances use attribute slots.
-  void SetAttributes(const lepus::Value& attributes);
+  virtual void SetAttributes(const lepus::Value& attributes);
   void SetAttributeSlots(const lepus::Value& attribute_slots);
   void InitializeChildSlots(const lepus::Value& child_slots);
   void SetOptions(const lepus::Value& options);
@@ -70,12 +83,52 @@ class ElementTemplateInstance
   lepus::Value Serialize() const;
 
   void SetAttributeSlot(uint32_t slot_index, const lepus::Value& value);
-  void InsertNodeIntoChildSlot(uint32_t slot_index, const lepus::Value& child,
-                               const lepus::Value& ref_node);
+  virtual void InsertNodeIntoChildSlot(uint32_t slot_index,
+                                       const lepus::Value& child,
+                                       const lepus::Value& ref_node);
   void RemoveNodeFromChildSlot(uint32_t slot_index, const lepus::Value& child);
+  bool HasPendingChildMounts() const;
+  FlushPendingChildMountsResult FlushPendingChildMounts(Element* flush_root);
+  // Checks whether the materialized root is in the flush subtree without
+  // triggering materialization.
+  bool IsMaterializedRootInFlushScope(Element* flush_root) const;
+  // Updates the item's platform information and notifies its logical parent
+  // List to record the change in the current batch.
+  void SetListItemPlatformInfo(const lepus::Value& platform_info);
+  bool IsPendingChildMountsEnqueued() const {
+    return pending_child_mounts_enqueued_;
+  }
+  void SetPendingChildMountsEnqueued(bool enqueued) {
+    pending_child_mounts_enqueued_ = enqueued;
+  }
+
+ protected:
+  // Regular ETs materialize child slots with the parent tree. Lists materialize
+  // items on demand when requested by index.
+  virtual bool ShouldMaterializeChildSlots() const { return true; }
+  // Regular parents need no handling. Lists override this to record changes to
+  // their direct child items.
+  virtual void OnListItemPlatformInfoChanged(
+      const lepus::Value& child, const lepus::Value& platform_info) {}
+
+  // Reads a logical child without creating a slot or triggering
+  // materialization.
+  fml::RefPtr<ElementTemplateInstance> GetChildInstanceAt(
+      uint32_t slot_index, uint32_t child_index) const;
+  // Reads the materialized result without triggering subtree materialization.
+  fml::RefPtr<Element> PeekMaterializedRoot() const;
+  lepus::Value GetOrCreateMutableChildSlot(uint32_t slot_index);
+  // The caller validates the arguments. Updates only the logical order and
+  // parent-child links, returning the actual insertion position. Regular ETs
+  // and Lists share this logic; their insertion entry points handle
+  // materialization and mounting.
+  size_t InsertLogicalChildIntoSlot(uint32_t slot_index,
+                                    const lepus::Value& child,
+                                    const lepus::Value& ref_node,
+                                    ElementTemplateInstance& child_instance);
+  ElementManager* element_manager() const { return element_manager_; }
 
  private:
-  friend class ElementManager;
   friend class ElementTemplateInstanceSerializer;
 
   void RequestMaterializationRecursively();
@@ -87,7 +140,6 @@ class ElementTemplateInstance
                                 uint32_t prepared_attribute_slots_generation);
   void InitTypedRoot();
   bool IsMaterialized() const { return result_ != nullptr; }
-  fml::RefPtr<Element> PeekMaterializedRoot() const;
 
   void CollectCallbackAttributeSlots(const std::vector<ElementInfo>& elements);
   lepus::Value CopyAttributeSlotForStorage(uint32_t slot_index,
@@ -108,17 +160,8 @@ class ElementTemplateInstance
   fml::RefPtr<Element> FindChildInsertionReference(
       uint32_t slot_index, size_t first_sibling_index) const;
 
-  // Pending first-mount scheduling for unresolved compiled children.
-  enum class FlushPendingChildMountsResult {
-    kDoNotRequeue,
-    kOutOfScope,
-  };
-  bool HasPendingChildMounts() const;
   void SchedulePendingChildMounts();
-  FlushPendingChildMountsResult FlushPendingChildMounts(Element* flush_root);
-  bool IsMaterializedRootInFlushScope(Element* flush_root) const;
 
-  lepus::Value GetOrCreateMutableChildSlot(uint32_t slot_index);
   bool EraseChildFromSlotStorage(uint32_t slot_index,
                                  const lepus::Value& child);
   void ClearLogicalChildParentLinks();

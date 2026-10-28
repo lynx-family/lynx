@@ -104,6 +104,7 @@
   V(FiberRemoveNodeFromElementTemplate) \
   V(FiberSerializeElementTemplate)      \
   V(FiberCreateTypedElementTemplate)    \
+  V(FiberSetListItemInfoOfTemplate)     \
   V(FiberGetElementByAttrSlot)          \
   V(FiberElementIsEqual)                \
   V(FiberGetElementUniqueID)            \

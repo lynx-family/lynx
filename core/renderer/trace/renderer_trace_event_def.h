@@ -416,6 +416,9 @@ inline constexpr const char* const ELEMENT_CONTAINER_UPDATE_Z_INDEX_LIST =
 
 inline constexpr const char* const ELEMENT_MANAGER_CREATE_NODE =
     "ElementManager::CreateNode";
+inline constexpr const char* const
+    ELEMENT_MANAGER_DRAIN_PENDING_ELEMENT_TEMPLATE_LIST_UPDATES =
+        "ElementManager::DrainPendingElementTemplateListUpdates";
 inline constexpr const char* const ELEMENT_MANAGER_REQUEST_LAYOUT =
     "ElementManager::RequestLayout";
 inline constexpr const char* const ELEMENT_MANAGER_SCHEDULE_LAYOUT =
@@ -692,6 +695,9 @@ inline constexpr const char* const
         "TemplateElement::ApplyInitialElementSlots";
 inline constexpr const char* const TEMPLATE_ELEMENT_GET_ROOT =
     "TemplateElement::GetRoot";
+inline constexpr const char* const
+    LIST_ELEMENT_TEMPLATE_INSTANCE_FLUSH_LIST_UPDATES =
+        "ListElementTemplateInstance::FlushListUpdates";
 inline constexpr const char* const TREE_RESOLVER_INIT_ELEMENT_TREE =
     "TreeResolver::InitElementTree";
 inline constexpr const char* const TREE_RESOLVER_ATTACH_TO_ELEMENT_MANAGER =

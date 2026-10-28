@@ -32,6 +32,7 @@
 #include "core/renderer/dom/fiber/frame_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/list_element_template_instance.h"
 #include "core/renderer/dom/fiber/modifier_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
@@ -712,10 +713,10 @@ void ElementManager::FirePostMTSRenderTasks() {
 
 void ElementManager::EnqueuePendingElementTemplateChildMounts(
     ElementTemplateInstance &instance) {
-  if (instance.pending_child_mounts_enqueued_) {
+  if (instance.IsPendingChildMountsEnqueued()) {
     return;
   }
-  instance.pending_child_mounts_enqueued_ = true;
+  instance.SetPendingChildMountsEnqueued(true);
   pending_element_template_child_mounts_.emplace_back(instance.WeakFromThis());
 }
 
@@ -734,7 +735,7 @@ void ElementManager::DrainPendingElementTemplateChildMounts(
       if (instance == nullptr) {
         continue;
       }
-      instance->pending_child_mounts_enqueued_ = false;
+      instance->SetPendingChildMountsEnqueued(false);
       if (!instance->HasPendingChildMounts()) {
         continue;
       }
@@ -773,6 +774,54 @@ void ElementManager::DrainPendingElementTemplateChildMounts(
     if (instance != nullptr && instance->HasPendingChildMounts()) {
       EnqueuePendingElementTemplateChildMounts(*instance);
     }
+  }
+}
+
+void ElementManager::EnqueuePendingElementTemplateListUpdates(
+    ListElementTemplateInstance &instance) {
+  if (instance.IsPendingListUpdatesEnqueued()) {
+    return;
+  }
+  instance.SetPendingListUpdatesEnqueued(true);
+  pending_element_template_list_updates_.emplace_back(instance.WeakFromThis());
+}
+
+void ElementManager::DrainPendingElementTemplateListUpdates(
+    Element *flush_root) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              ELEMENT_MANAGER_DRAIN_PENDING_ELEMENT_TEMPLATE_LIST_UPDATES);
+  if (flush_root == nullptr || pending_element_template_list_updates_.empty()) {
+    return;
+  }
+  // Process only the batch present when draining starts, without retrying
+  // deferred instances during this call.
+  auto pending_instances = std::move(pending_element_template_list_updates_);
+  pending_element_template_list_updates_.clear();
+  for (const auto &weak_instance : pending_instances) {
+    // Hold a strong reference during submission; skip destroyed instances.
+    auto instance = fml::RefPtr<ElementTemplateInstance>(weak_instance.get());
+    if (instance == nullptr) {
+      continue;
+    }
+    // Only List subclasses can be enqueued; WeakFromThis uses the ET base type.
+    auto *list_instance =
+        static_cast<ListElementTemplateInstance *>(instance.get());
+    if (!list_instance->HasPendingListUpdates()) {
+      // No pending records remain. Clear the enqueue flag so future updates can
+      // enqueue this list again.
+      list_instance->SetPendingListUpdatesEnqueued(false);
+      continue;
+    }
+    if (!instance->IsMaterializedRootInFlushScope(flush_root)) {
+      // Check only the materialized root without calling GetRoot() or
+      // materializing items. Lists outside this physical subtree retain their
+      // records and enqueue flag for a later flush.
+      pending_element_template_list_updates_.emplace_back(weak_instance);
+      continue;
+    }
+    // Allow later updates to enqueue another attempt if this submission fails.
+    list_instance->SetPendingListUpdatesEnqueued(false);
+    list_instance->FlushListUpdates();
   }
 }
 
