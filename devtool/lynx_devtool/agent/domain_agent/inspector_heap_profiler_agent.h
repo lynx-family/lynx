@@ -19,7 +19,7 @@ class InspectorHeapProfilerAgent : public CDPDomainAgentBase {
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   ~InspectorHeapProfilerAgent() override = default;
 
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:

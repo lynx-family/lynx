@@ -12,7 +12,9 @@ InspectorRuntimeAgent::InspectorRuntimeAgent(
     : devtool_mediator_(devtool_mediator) {}
 
 void InspectorRuntimeAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  (void)responder->RetrieveSender();
   devtool_mediator_->DispatchJSMessage(message);
 }
 }  // namespace devtool
