@@ -20,4 +20,11 @@
   return self;
 }
 
+- (instancetype)initWithResourceHandle:(LynxResourceHandle *)resourceHandle {
+  if (self = [super init]) {
+    _resourceHandle = resourceHandle;
+  }
+  return self;
+}
+
 @end

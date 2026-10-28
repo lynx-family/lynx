@@ -2027,6 +2027,7 @@ public protocol LynxGenericResourceFetcher-p : <NSObject> {
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResource:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResourcePath:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourcePathCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchBytecode:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceCompletionBlock _Nonnull callback);
+  public BOOL LynxGenericResourceFetcher-p::fetchBytecodeHandle:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceHandleCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchStream:withStream:(nonnull LynxResourceRequest *request,[withStream] nonnull id< LynxResourceStreamLoadDelegate > delegate);
 }
 
@@ -3464,6 +3465,20 @@ public protocol LynxResourceFetcher-p : <NSObject> {
   public nonnull LynxResourceResponse * LynxResourceFetcher-p::requestSyncWithResourceRequest:type:(LynxResourceRequest *lynxResourceRequest,[type] LynxFetchResType type);
 }
 
+public class LynxResourceHandle : NSObject {
+  public NSString* LynxResourceHandle::filePath filePath;
+  public NSInteger LynxResourceHandle::size size;
+  public BOOL LynxResourceHandle::valid valid;
+  public nullable instancetype LynxResourceHandle::initWithFilePath:(NSString *NS_DESIGNATED_INITIALIZER);
+  public instancetype LynxResourceHandle::NS_UNAVAILABLE();
+  public void LynxResourceHandle::invalidate();
+  public std::shared_ptr< lynx::pub::LynxResourceHandle > LynxResourceHandle(Internal)::rawResourceHandle();
+}
+
+public interface LynxResourceHandle(Internal) {
+  public std::shared_ptr< lynx::pub::LynxResourceHandle > LynxResourceHandle(Internal)::rawResourceHandle();
+}
+
 public protocol LynxResourceLoadDelegate-p : <NSObject> {
   public void LynxResourceLoadDelegate-p::onStart:(NSInteger contentLength);
   public void LynxResourceLoadDelegate-p::onData:(NSData *data);
@@ -3906,6 +3921,8 @@ public class LynxTemplateBundle : NSObject, <LynxSecurityTarget> {
   public instancetype _Nullable LynxTemplateBundle::initWithTemplate:option:(nonnull NSData *tem,[option] init(_:option:) NS_SWIFT_NAME);
   public instancetype _Nullable LynxTemplateBundle::_swiftInitWithData:(initWith(_:) NS_SWIFT_NAME);
   public instancetype _Nullable LynxTemplateBundle::_swiftInitWithData:option:(nonnull NSData *data,[option] initWith(_:option:) NS_SWIFT_NAME);
+  public instancetype _Nullable LynxTemplateBundle::initWithResourceHandle:(init(resourceHandle:) NS_SWIFT_NAME);
+  public instancetype _Nullable LynxTemplateBundle::initWithResourceHandle:option:(nullable LynxResourceHandle *handle,[option] init(resourceHandle:option:) NS_SWIFT_NAME);
   public NSString *_Nullable LynxTemplateBundle::errorMsg();
   public NSDictionary *_Nullable LynxTemplateBundle::extraInfo();
   public BOOL LynxTemplateBundle::isElementBundleValid();
@@ -3913,6 +3930,7 @@ public class LynxTemplateBundle : NSObject, <LynxSecurityTarget> {
   public void LynxTemplateBundle::postJsCacheGenerationTask:(nonnull NSString *bytecodeSourceUrl);
   public void LynxTemplateBundle::postJsCacheGenerationTask:callback:(nonnull NSString *bytecodeSourceUrl,[callback] nullable LynxBytecodeResponseBlock callback);
   public BOOL LynxTemplateBundle::preload:bytecode:callback:(nonnull NSString *url,[bytecode] nonnull NSData *bytecode,[callback] nullable dispatch_block_t callback);
+  public nullable instancetype LynxTemplateBundle()::initWithResourceHandle:option:securityTarget:(nullable LynxResourceHandle *handle, [option] nullable LynxTemplateBundleOption *option, [securityTarget] nullable id< LynxSecurityTarget > target);
   public instancetype _Nullable LynxTemplateBundle::_swiftTemplateBundleWithTemplate:(init(template:) NS_SWIFT_NAME);
   public instancetype _Nullable LynxTemplateBundle::_swiftTemplateBundleWithTemplate:option:(nonnull NSData *tem,[option] init(template:option:) NS_SWIFT_NAME);
 }
@@ -4191,9 +4209,11 @@ public protocol LynxTemplateRenderProtocol-p : <NSObject> {
 public class LynxTemplateResource : NSObject {
   public NSData* _Nonnull LynxTemplateResource::data data;
   public LynxTemplateBundle* _Nonnull LynxTemplateResource::bundle bundle;
+  public LynxResourceHandle* LynxTemplateResource::resourceHandle resourceHandle;
   public instancetype LynxTemplateResource::NS_UNAVAILABLE();
   public instancetype LynxTemplateResource::initWithNSData:(NSData *_Nonnull data);
   public instancetype LynxTemplateResource::initWithBundle:(LynxTemplateBundle *_Nonnull bundle);
+  public instancetype LynxTemplateResource::initWithResourceHandle:(LynxResourceHandle *_Nonnull resourceHandle);
 }
 
 public protocol LynxTemplateResourceFetcher-p : <NSObject> {
@@ -6069,9 +6089,10 @@ public enum LynxFeature {
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT LynxTemplateData * LynxCreateStaticPageTemplateData(NSDictionary< NSString *, id > *dictionary);
   public FOUNDATION_EXPORT BOOL LynxTemplateDataIsForStaticPage(LynxTemplateData *_Nullable data);
 
-  public std::shared_ptr< lynx::tasm::LynxTemplateBundle > LynxGetRawTemplateBundle(LynxTemplateBundle *bundle);
-  public LynxTemplateBundle * ConstructTemplateBundleFromNative(lynx::tasm::LynxTemplateBundle bundle);
-  public void LynxSetRawTemplateBundle(LynxTemplateBundle *bundle, lynx::tasm::LynxTemplateBundle *raw_bundle);
+  public LynxTemplateBundle *_Nullable LynxCreateTemplateBundleFromResourceHandle(LynxResourceHandle *_Nonnull handle, NSString *_Nullable url, id< LynxSecurityTarget > _Nullable target, LynxError *_Nullable *_Nullable error);
+  public std::shared_ptr< lynx::tasm::LynxTemplateBundle > LynxGetRawTemplateBundle(LynxTemplateBundle *_Null_unspecified bundle);
+  public LynxTemplateBundle *_Null_unspecified ConstructTemplateBundleFromNative(lynx::tasm::LynxTemplateBundle bundle);
+  public void LynxSetRawTemplateBundle(LynxTemplateBundle *_Null_unspecified bundle, lynx::tasm::LynxTemplateBundle *_Null_unspecified raw_bundle);
 
   public lynx::lepus::Value LynxConvertToLepusValue(id data, BOOL useBoolLiterals=NO);
   public lynx::lepus::Value * LynxGetLepusValueFromTemplateData(LynxTemplateData *data);
@@ -6891,6 +6912,7 @@ public enum LynxUIMeaningfulContentStatus {
   public instancetype initWithDictionary initWithDictionary;
 
   typedef void(^ LynxGenericResourcePathCompletionBlock) (NSString *_Nullable path, NSError *_Nullable error)
+  typedef void(^ LynxGenericResourceHandleCompletionBlock) (LynxResourceHandle *_Nullable handle, NSError *_Nullable error)
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxGenericResourceCompletionBlock) (NSData *_Nullable data, NSError *_Nullable error) LynxGenericResourceCompletionBlock;
 
 public enum LynxResourceOptionalBool {

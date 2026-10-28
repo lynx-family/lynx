@@ -28,10 +28,12 @@ typedef void (^LynxSSRResourceCompletionBlock)(NSData* _Nullable data, NSError* 
 /**
  * @apidoc
  * @brief `LynxEngine` internally calls this method to obtain the contents of Bundle
- * and Lazy Bundle. The returned result type can contain `byte[]` or `TemplateBundle`.
+ * and Lazy Bundle. The returned result type can contain template data, `TemplateBundle`, or
+ * `LynxResourceHandle`. Resource handles are supported for templates only; lazy bundles must
+ * return template data or a pre-parsed `TemplateBundle`.
  *
  * @param request Request for the requiring content file.
- * @param callback Response with the requiring content file: byteArray or TemplateBundle
+ * @param callback Response with the requiring template resource.
  * @note This method must be implemented.
  */
 @required

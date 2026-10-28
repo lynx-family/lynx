@@ -9,6 +9,7 @@ import("../Lynx.gni")
 
 lynx_core_source_set("template_bundle") {
   deps = [
+    "../../service_api:lynx_service_api",
     "../runtime/js:js_common",
     "lynxml:lynxml_parser",
     "lynxml:lynxml_style_parser",
