@@ -684,7 +684,7 @@ $spacing-unit: 8px;
 - [ ] Remove `display: inline` and `display: inline-block`; Lynx 2.0+ retains `display: block` and falls back to Flex or Linear layout.
 - [ ] Replace `position: static` with `relative`.
 - [ ] Keep `max-content` and `fit-content`; replace `min-content` for width or height, and note that `flex-basis: min-content` degrades to `0px`.
-- [ ] Add `position` wherever `z-index` is used.
+- [ ] Treat every explicit `z-index`, including `0`, as creating a stacking context even without `position`; check ancestor contexts instead of automatically adding `position`.
 - [ ] Check whether `z-index` in a scroll container prevents elements from moving with scrolling.
 - [ ] Verify compatibility of CSS custom properties through `var()`; Lynx fully supports them.
 - [ ] Remove every use of `::before` and `::after`; they are not supported.

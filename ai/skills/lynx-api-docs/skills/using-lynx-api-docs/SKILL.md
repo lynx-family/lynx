@@ -1,68 +1,44 @@
 ---
 name: using-lynx-api-docs
-description: Provides authoritative guidance for Lynx development involving pages, templates, components, CSS, layouts, elements, web migration, rendering or styling bugs, and code review. Applies to *.ttml, Lynx *.tsx, and all Lynx-specific files, and requires searching the installed API docs before acting.
+description: Authoritative Lynx engine references for generating, reviewing, migrating, or debugging Lynx TSX/TTML pages, CSS, layouts, selectors, and elements. Use for Lynx-specific styling and Web-to-Lynx differences; always retrieve the relevant installed docs before changing code.
 
 ---
 
 # Using Lynx API Docs
 
-## Overview
+**MUST read the relevant API docs before writing or editing Lynx code.** Lynx elements and CSS differ from the Web; do not fill gaps with HTML or browser assumptions.
 
-**Pre-training knowledge is insufficient for Lynx.** Lynx is a rendering platform (like a browser) with its own elements, non-standard CSS behavior, unique layout systems, and web-incompatible defaults. Always retrieve from the installed API docs before writing or modifying Lynx page code.
+**For repair tasks, diagnose and route each symptom before reading element documentation.** For layout, sizing, wrapping, or stacking symptoms, read the CSS differences index first. Do not infer element-prop defects from visual differences alone.
 
-## Core Rule
+## Route the Task
 
-**MUST ALWAYS read the relevant API docs BEFORE writing or editing any Lynx code.**
+| Task | Read first |
+| --- | --- |
+| **Generate or edit Lynx CSS; migrate Web HTML/CSS; debug a Lynx/Web style difference** | **`lynx-vs-web/css-differences.md`**, then only the linked topic files needed for the diagnosed task |
+| Check a CSS property, value, unit, or function | `css/supported-properties.md` and `css/values-and-units.md`; also check the CSS differences index when Web compatibility matters |
+| Write or debug selectors | `css/selectors.md` and `css/pseudo-classes.md` |
+| Choose or debug a layout | `layout/linear-layout.md` (default), `layout/flex-layout.md`, `layout/grid-layout.md`, or `layout/relative-layout.md` |
+| Use or debug an element | `elements/<element-name>.md` |
+| Apply theming, responsive design, or animation | `patterns/theming.md`, `patterns/responsive.md`, or `patterns/animation.md` |
+| Look for a complete example or performance guidance | `examples/`, `quick-reference.md`, or `best-practices.md` as needed |
 
-Do not rely on web CSS knowledge. Do not assume standard HTML behavior. Do not guess element APIs. Lynx is a distinct platform with its own rules.
+For CSS work, the differences index is the generation entry point, not only a migration reference. Follow its exact topic links instead of loading the entire documentation bundle.
 
-## Why Web Knowledge Fails
+## Generation-Critical Defaults
 
-Lynx is **not** a web browser. Web assumptions produce broken Lynx code:
+- Use `<view>`, `<text>`, and `<image>`, not HTML elements; wrap text in `<text>`.
+- Lynx defaults to Linear layout, not Web block flow.
+- `box-sizing` initially uses `auto`, normally with border-box sizing; set an explicit value when compatibility settings may differ.
+- Margins do not collapse.
 
-- **Elements**: `<view>`, `<text>`, `<image>` — not `<div>`, `<span>`, `<img>`
-- **CSS defaults**: `box-sizing: auto` normally uses border-box sizing; no margin collapsing; Linear layout (not Flow)
-- **Properties**: Many CSS properties are unsupported or behave differently — always check `css/` docs
+These defaults are shortcuts, not a substitute for the task-specific references above.
 
-**Every web assumption is a potential bug.**
+## Repair Scope and Output
 
-## How to Use the Docs
+For debugging and visual-repair tasks:
 
-1. Identify what you're working on (layout, CSS, element, migration, pattern)
-2. Look up the relevant doc file from the table below
-3. **Read the doc BEFORE writing or editing code**
-4. Apply the rules and constraints from the doc
-5. If uncertain, search the `elements/` or `css/` directories
-
-## Quick Reference
-
-| Task | Read These Files First |
-|------|------------------------|
-| Choose layout | `layout/linear-layout.md` (default), `layout/flex-layout.md`, `layout/grid-layout.md`, `layout/relative-layout.md` |
-| CSS properties/units | `css/supported-properties.md`, `css/values-and-units.md` |
-| CSS selectors | `css/selectors.md`, `css/pseudo-classes.md` |
-| Use an element | `elements/<element-name>.md` |
-| Migrate from web | `lynx-vs-web/migration-guide.md`, `lynx-vs-web/css-differences.md` |
-| Theming/animation/responsive | `patterns/theming.md`, `patterns/animation.md`, `patterns/responsive.md` |
-| General lookup | `quick-reference.md`, `best-practices.md` |
-
-## Core Rules
-
-The compact layout decision rules and key CSS constraints are documented in `quick-reference.md`. Most critical:
-
-- **Text** must use `<text>` component
-- **Box sizing** initially uses `auto`, normally with border-box sizing; set an explicit value when compatibility settings may differ
-- **No margin collapsing**
-- **Use `rem` + `vw`** for screen adaptation
-
-## Red Flags — Stop and Read Docs
-
-- Adding a `<div>` or `<span>` → Lynx uses `<view>`, `<text>`
-- Using `margin` without checking if margin collapsing applies → It doesn't
-- Assuming `content-box` → `auto` normally uses border-box sizing; check `css/supported-properties.md#box-model`
-- Using web CSS properties without checking `css/supported-properties.md`
-- Guessing element attributes → Read `elements/<name>.md`
-- Choosing `rpx` for web-portable code → `rpx` is Lynx-specific; use `rem` + `vw` for web compatibility
-- Writing plain text without `<text>` wrapper → Invalid in Lynx
-- Using web pseudo-classes without checking `css/pseudo-classes.md`
-- Assuming standard HTML flow layout → Lynx uses linear layout by default
+- Diagnose before expanding retrieval. Read only topics tied to the observed defect; do not survey unrelated element, animation, or visual-effect documentation.
+- Start from the observed defect and the smallest affected element or selector. Change only what is required for that defect; do not repair speculative differences or normalize unrelated code.
+- Preserve unrelated styles, component props and behavior, content, assets, fonts, and routing. Do not apply a relevant rule, such as `box-sizing`, to other elements unless they share the diagnosed defect.
+- Before answering, compare the result with the original and remove every edit not required by the diagnosis.
+- Follow the user's output contract exactly. When complete files only are requested, return those files without retrieval notes, status updates, explanations, or other prose.

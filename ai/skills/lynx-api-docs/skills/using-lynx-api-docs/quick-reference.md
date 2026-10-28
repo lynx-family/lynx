@@ -133,6 +133,8 @@ text-overflow: clip | ellipsis
 
 ## Lynx vs Web CSS Key Differences
 
+For CSS generation and the complete constraints behind these shortcuts, start with the [CSS differences index](./lynx-vs-web/css-differences.md) and follow its topic links.
+
 | Web CSS                   | Lynx Support                     | Notes                                                |
 | ------------------------- | -------------------------------- | ---------------------------------------------------- |
 | `display: block`          | ⚠️ Compatibility value (2.0+)   | Resolves to a Lynx layout mode; prefer explicit Flex/Linear |
