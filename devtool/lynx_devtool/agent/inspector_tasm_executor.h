@@ -107,9 +107,6 @@ class InspectorTasmExecutor
   void OnAnimationUpdated(const Json::Value& snapshot);
   void OnAnimationCanceled(int64_t id);
 
-  void LynxInvokeUIMethod(const std::shared_ptr<CDPResponder>& responder,
-                          const Json::Value& params);
-
   DECLARE_DEVTOOL_CDP_METHOD(AnimationEnable);
   DECLARE_DEVTOOL_CDP_METHOD(AnimationDisable);
   DECLARE_DEVTOOL_CDP_METHOD(AnimationGetCurrentTime);
@@ -204,9 +201,10 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceContent);
 
   // Lynx domain
-  DECLARE_DEVTOOL_METHOD(LynxGetProperties)
-  DECLARE_DEVTOOL_METHOD(LynxGetData)
-  DECLARE_DEVTOOL_METHOD(LynxGetComponentId)
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetProperties);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxInvokeUIMethod);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetData);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetComponentId);
 
   // template domain
   DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateApiInfo);

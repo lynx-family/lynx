@@ -10,9 +10,10 @@ returns:
 events: []
 notes:
   - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
+  - Missing, non-integer, negative, or out-of-range params.nodeId values return InvalidParams.
   - The handler only calls the component data helper when params.nodeId resolves to a component element.
   - The current native component data helper returns an empty string.
-  - If the mediator has no TASM task runner, the current handler does not send an explicit CDP response.
+  - If the mediator has no TASM task runner or TASM executor, the handler returns a ServerError.
 examples:
   - title: Read component data
     request:
