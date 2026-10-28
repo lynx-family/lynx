@@ -146,7 +146,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   virtual void OnEnterForeground() {}
   virtual void OnEnterBackground() {}
   virtual bool NeedWindowStateChangeEvent() const { return false; }
-  void OnNodeRemoved();
+  virtual void OnNodeRemoved();
   bool CheckStickyOnParentScroll(float scroll_left, float scroll_top);
   void RemoveFromParent();
   void RequestLayout();
