@@ -6,9 +6,11 @@
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_TRACING_AGENT_H_
 
 #include <memory>
+#include <string>
+#include <unordered_map>
 
-#include "base/include/log/logging.h"
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
@@ -17,27 +19,24 @@ class InspectorTracingAgent : public CDPDomainAgentBase {
  public:
   InspectorTracingAgent();
 
-  virtual ~InspectorTracingAgent();
+  ~InspectorTracingAgent() override;
 
-  virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message) override;
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
+                  const Json::Value& message) override;
 
  private:
   using TracingAgentMethod = void (InspectorTracingAgent::*)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
-  std::map<std::string, TracingAgentMethod> functions_map_;
-  void Start(const std::shared_ptr<MessageSender>& sender,
-             const Json::Value& message);
-  void End(const std::shared_ptr<MessageSender>& sender,
-           const Json::Value& message);
-  void SetStartupTracingConfig(const std::shared_ptr<MessageSender>& sender,
-                               const Json::Value& message);
-  void GetStartupTracingConfig(const std::shared_ptr<MessageSender>& sender,
-                               const Json::Value& message);
-  void GetStartupTracingFile(const std::shared_ptr<MessageSender>& sender,
-                             const Json::Value& message);
-  void TakeVMSnapshotByUrl(const std::shared_ptr<MessageSender>& sender,
-                           const Json::Value& message);
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
+
+  DECLARE_DEVTOOL_CDP_METHOD(Start);
+  DECLARE_DEVTOOL_CDP_METHOD(End);
+  DECLARE_DEVTOOL_CDP_METHOD(SetStartupTracingConfig);
+  DECLARE_DEVTOOL_CDP_METHOD(GetStartupTracingConfig);
+  DECLARE_DEVTOOL_CDP_METHOD(GetStartupTracingFile);
+  DECLARE_DEVTOOL_CDP_METHOD(TakeVMSnapshotByUrl);
+
+  std::unordered_map<std::string, TracingAgentMethod> functions_map_;
 };
 
 }  // namespace devtool

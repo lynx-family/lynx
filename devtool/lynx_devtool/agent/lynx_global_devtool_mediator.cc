@@ -434,159 +434,152 @@ void LynxGlobalDevToolMediator::SystemInfoGetInfo(
 }
 
 void LynxGlobalDevToolMediator::TracingStart(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [this, sender, message]() {
-      if (!tracing_notification_callback_) {
-        tracing_notification_callback_ =
-            std::make_unique<base::NotificationCallback>(
-                runtime::kVMSnapshotCaptured,
-                [sender](const std::string& tag, intptr_t data) {
-                  Json::Value msg;
-                  msg["method"] = "VM.snapshotCaptured";
-                  sender->SendMessage("CDP", msg);
-                });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [this, responder, params]() {
+    if (!tracing_notification_callback_) {
+      tracing_notification_callback_ =
+          std::make_unique<base::NotificationCallback>(
+              runtime::kVMSnapshotCaptured,
+              [](const std::string& tag, intptr_t data) {
+                Json::Value msg;
+                msg["method"] = "VM.snapshotCaptured";
+                LynxGlobalDevToolMediator::GetInstance().SendCDPEvent(msg);
+              });
+    }
+
+    if (!lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
+      responder->SendError(CDPErrorCode::ServerError, "Tracing not enabled");
+      return;
+    }
+    if (this->tracing_session_id_ > 0) {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Tracing already started");
+      return;
+    }
+    LOGI("start tracing");
+
+    auto config = std::make_shared<lynx::trace::TraceConfig>();
+    if (params.isMember("traceConfig")) {
+      const auto& trace_config = params["traceConfig"];
+      const auto to_vector = [](const Json::Value& array,
+                                std::vector<std::string>& result) {
+        for (const auto& e : array) {
+          result.push_back(e.asString());
+        }
+        return result;
+      };
+      to_vector(trace_config["includedCategories"],
+                config->included_categories);
+      to_vector(trace_config["excludedCategories"],
+                config->excluded_categories);
+      config->enable_systrace = trace_config["enableSystrace"].asBool();
+      if (trace_config.isMember("bufferSize")) {
+        config->buffer_size = trace_config["bufferSize"].asInt();
       }
 
-      int id = static_cast<int>(message["id"].asInt64());
-      if (!lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
-        sender->SendErrorResponse(id, "Tracing not enabled");
-        return;
+      if (trace_config.isMember("recordMod")) {
+        const auto& record_mod = trace_config["recordMod"];
+        if (record_mod == "recordContinuously") {
+          config->record_mode = lynx::trace::TraceConfig::RECORD_CONTINUOUSLY;
+        }
       }
-      if (this->tracing_session_id_ > 0) {
-        sender->SendErrorResponse(id, "Tracing already started");
-        return;
+      if (trace_config.isMember("enableCompress")) {
+        config->enable_compress = trace_config["enableCompress"].asBool();
       }
-      LOGI("start tracing");
-
-      auto config = std::make_shared<lynx::trace::TraceConfig>();
-      const auto& params = message["params"];
-      if (params.isMember("traceConfig")) {
-        const auto& trace_config = params["traceConfig"];
-        const auto to_vector = [](const Json::Value& array,
-                                  std::vector<std::string>& result) {
-          for (const auto& e : array) {
-            result.push_back(e.asString());
-          }
-          return result;
-        };
-        to_vector(trace_config["includedCategories"],
-                  config->included_categories);
-        to_vector(trace_config["excludedCategories"],
-                  config->excluded_categories);
-        config->enable_systrace = trace_config["enableSystrace"].asBool();
-        if (trace_config.isMember("bufferSize")) {
-          config->buffer_size = trace_config["bufferSize"].asInt();
+      if (trace_config.isMember("enableMemoryTrace")) {
+        config->enable_memory_trace =
+            trace_config["enableMemoryTrace"].asBool();
+        if (config->enable_memory_trace) {
+          // When memory data tracing is enabled, use continuous file writing
+          // mode to reduce the impact on physical memory.
+          config->record_mode = trace::TraceConfig::RECORD_CONTINUOUSLY;
+          config->file_write_period_ms =
+              trace::TraceConfig::kMemoryTraceFileWritePeriodMs;
         }
-
-        if (trace_config.isMember("recordMod")) {
-          const auto& record_mod = trace_config["recordMod"];
-          if (record_mod == "recordContinuously") {
-            config->record_mode = lynx::trace::TraceConfig::RECORD_CONTINUOUSLY;
-          }
+      }
+      if (trace_config.isMember("forceGC")) {
+        config->memory_trace_force_gc = trace_config["forceGC"].asBool();
+      }
+      if (trace_config.isMember("enableAutoHeapSnapshot")) {
+        config->auto_take_snapshot =
+            trace_config["enableAutoHeapSnapshot"].asBool();
+        if (trace_config.isMember("sharedGroupId")) {
+          config->auto_take_snapshot_group_id =
+              trace_config["sharedGroupId"].asString();
         }
-        if (trace_config.isMember("enableCompress")) {
-          config->enable_compress = trace_config["enableCompress"].asBool();
-        }
-        if (trace_config.isMember("enableMemoryTrace")) {
-          config->enable_memory_trace =
-              trace_config["enableMemoryTrace"].asBool();
-          if (config->enable_memory_trace) {
-            // When memory data tracing is enabled, use continuous file writing
-            // mode to reduce the impact on physical memory.
-            config->record_mode = trace::TraceConfig::RECORD_CONTINUOUSLY;
-            config->file_write_period_ms =
-                trace::TraceConfig::kMemoryTraceFileWritePeriodMs;
-          }
-        }
-        if (trace_config.isMember("forceGC")) {
-          config->memory_trace_force_gc = trace_config["forceGC"].asBool();
-        }
-        if (trace_config.isMember("enableAutoHeapSnapshot")) {
-          config->auto_take_snapshot =
-              trace_config["enableAutoHeapSnapshot"].asBool();
-          if (trace_config.isMember("sharedGroupId")) {
-            config->auto_take_snapshot_group_id =
-                trace_config["sharedGroupId"].asString();
-          }
-        }
-
-        config->js_profile_interval =
-            trace_config.isMember("JSProfileInterval")
-                ? trace_config["JSProfileInterval"].asInt()
-                : -1;
-        if (config->js_profile_interval > 0) {
-          // JSProfileType has 3 options:
-          // 1. disable: don't allow js profile
-          // 2. quickjs: if JSProfileInterval is greater than 0, allow quickjs
-          // and lepusng profile
-          // 3. v8: if JSProfileInterval is greater than 0, allow v8 profile
-          auto js_profile_type = trace_config.isMember("JSProfileType")
-                                     ? trace_config["JSProfileType"].asString()
-                                     : "quickjs";
-          if (js_profile_type == "quickjs") {
-            config->js_profile_type = trace::RuntimeProfilerType::quickjs;
-          } else if (js_profile_type == "v8") {
-            config->js_profile_type = trace::RuntimeProfilerType::v8;
-          }
-        }
-      } else {
-        config->excluded_categories = {"*"};
       }
 
-      auto controller =
-          GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
-      if (controller == nullptr) {
-        sender->SendErrorResponse(id, "Failed to get trace controller");
-        return;
-      }
-      if (config->enable_memory_trace) {
-        controller->AddTracePlugin(
-            GlobalDevToolPlatformFacade::GetInstance().GetMemoryTracePlugin());
-      }
-      controller->AddTracePlugin(
-          GlobalDevToolPlatformFacade::GetInstance().GetFPSTracePlugin());
-      controller->AddTracePlugin(
-          GlobalDevToolPlatformFacade::GetInstance().GetInstanceTracePlugin());
-
+      config->js_profile_interval =
+          trace_config.isMember("JSProfileInterval")
+              ? trace_config["JSProfileInterval"].asInt()
+              : -1;
       if (config->js_profile_interval > 0) {
-        controller->AddTracePlugin(
-            lynx::runtime::profile::GetRuntimeProfilerManager());
+        // JSProfileType has 3 options:
+        // 1. disable: don't allow js profile
+        // 2. quickjs: if JSProfileInterval is greater than 0, allow quickjs
+        // and lepusng profile
+        // 3. v8: if JSProfileInterval is greater than 0, allow v8 profile
+        auto js_profile_type = trace_config.isMember("JSProfileType")
+                                   ? trace_config["JSProfileType"].asString()
+                                   : "quickjs";
+        if (js_profile_type == "quickjs") {
+          config->js_profile_type = trace::RuntimeProfilerType::quickjs;
+        } else if (js_profile_type == "v8") {
+          config->js_profile_type = trace::RuntimeProfilerType::v8;
+        }
       }
-      if (std::find(config->included_categories.begin(),
-                    config->included_categories.end(),
-                    LYNX_TRACE_CATEGORY_SCREENSHOTS) !=
-          config->included_categories.end()) {
-        controller->AddTracePlugin(GlobalDevToolPlatformFacade::GetInstance()
-                                       .GetFrameViewTracePlugin());
-      }
-      this->tracing_session_id_ = controller->StartTracing(config);
-      if (this->tracing_session_id_ > 0) {
-        controller->AddCompleteCallback(
-            this->tracing_session_id_, [config, sender]() {
-              Json::Value msg;
-              msg["method"] = "Tracing.tracingComplete";
-              int stream_handle = FileStream::Open(config->file_path);
-              msg["params"]["dataLossOccurred"] = (stream_handle <= 0);
-              msg["params"]["stream"] = std::to_string(stream_handle);
-              msg["params"]["traceFormat"] = "proto";
-              msg["params"]["streamCompression"] = "none";
-              sender->SendMessage("CDP", msg);
-            });
-        TRACE_EVENT_INSTANT(
-            "vitals", LYNX_ENGINE_VERSION, "version",
-            GlobalDevToolPlatformFacade::GetInstance().GetLynxVersion());
-        Json::Value res;
-        res["result"] = Json::Value(Json::ValueType::objectValue);
-        res["id"] = id;
+    } else {
+      config->excluded_categories = {"*"};
+    }
 
-        sender->SendMessage("CDP", res);
-      } else {
-        sender->SendErrorResponse(id, "Failed to start tracing");
-      }
-    });
-  }
+    auto controller =
+        GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
+    if (controller == nullptr) {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Failed to get trace controller");
+      return;
+    }
+    if (config->enable_memory_trace) {
+      controller->AddTracePlugin(
+          GlobalDevToolPlatformFacade::GetInstance().GetMemoryTracePlugin());
+    }
+    controller->AddTracePlugin(
+        GlobalDevToolPlatformFacade::GetInstance().GetFPSTracePlugin());
+    controller->AddTracePlugin(
+        GlobalDevToolPlatformFacade::GetInstance().GetInstanceTracePlugin());
+
+    if (config->js_profile_interval > 0) {
+      controller->AddTracePlugin(
+          lynx::runtime::profile::GetRuntimeProfilerManager());
+    }
+    if (std::find(config->included_categories.begin(),
+                  config->included_categories.end(),
+                  LYNX_TRACE_CATEGORY_SCREENSHOTS) !=
+        config->included_categories.end()) {
+      controller->AddTracePlugin(
+          GlobalDevToolPlatformFacade::GetInstance().GetFrameViewTracePlugin());
+    }
+    this->tracing_session_id_ = controller->StartTracing(config);
+    if (this->tracing_session_id_ > 0) {
+      controller->AddCompleteCallback(this->tracing_session_id_, [config]() {
+        Json::Value msg;
+        msg["method"] = "Tracing.tracingComplete";
+        int stream_handle = FileStream::Open(config->file_path);
+        msg["params"]["dataLossOccurred"] = (stream_handle <= 0);
+        msg["params"]["stream"] = std::to_string(stream_handle);
+        msg["params"]["traceFormat"] = "proto";
+        msg["params"]["streamCompression"] = "none";
+        LynxGlobalDevToolMediator::GetInstance().SendCDPEvent(msg);
+      });
+      TRACE_EVENT_INSTANT(
+          "vitals", LYNX_ENGINE_VERSION, "version",
+          GlobalDevToolPlatformFacade::GetInstance().GetLynxVersion());
+      responder->SendSuccess();
+    } else {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Failed to start tracing");
+    }
+  });
 }
 
 void LynxGlobalDevToolMediator::TracingEnd(
