@@ -47,30 +47,37 @@ void InspectorTracingAgent::Start(const std::shared_ptr<MessageSender>& sender,
 
 void InspectorTracingAgent::End(const std::shared_ptr<MessageSender>& sender,
                                 const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().TracingEnd(sender, message);
+  LynxGlobalDevToolMediator::GetInstance().TracingEnd(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorTracingAgent::SetStartupTracingConfig(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().SetStartupTracingConfig(sender,
-                                                                   message);
+  LynxGlobalDevToolMediator::GetInstance().SetStartupTracingConfig(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorTracingAgent::GetStartupTracingConfig(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingConfig(sender,
-                                                                   message);
+  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingConfig(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorTracingAgent::GetStartupTracingFile(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingFile(sender,
-                                                                 message);
+  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingFile(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorTracingAgent::TakeVMSnapshotByUrl(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().TakeVMSnapshotByUrl(sender, message);
+  LynxGlobalDevToolMediator::GetInstance().TakeVMSnapshotByUrl(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 }  // namespace devtool
