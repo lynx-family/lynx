@@ -6,11 +6,15 @@
 
 namespace lynx {
 namespace devtool {
+
 InspectorProfilerAgent::InspectorProfilerAgent(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
     : devtool_mediator_(devtool_mediator) {}
+
 void InspectorProfilerAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  (void)responder->RetrieveSender();
   devtool_mediator_->DispatchJSMessage(message);
 }
 
