@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "core/public/jsb/lynx_extension_module.h"
 #include "platform/embedder/public/capi/lynx_extension_module_capi.h"
@@ -20,6 +21,7 @@ namespace lynx {
 namespace embedder {
 class ExtensionModuleImpl;
 class LynxNativeModuleNAPI;
+class PendingVSyncCallback;
 }  // namespace embedder
 }  // namespace lynx
 
@@ -85,15 +87,21 @@ class ExtensionModuleImpl : public runtime::LynxExtensionModule {
 
   runtime::IVSyncObserver* VSyncObserver() { return vsync_observer_.get(); }
 
+  void RequestAnimationFrame(uintptr_t id, vsync_observer_callback callback,
+                             void* user_data, bool before);
+
   std::unique_ptr<pub::Value> GetAttributeValue(
       const std::string& attribute_name) override;
 
   void Destroy() override;
 
  private:
+  void CancelPendingVSyncCallbacks();
+
   lynx_extension_module_t* c_module_;
   napi_env env_;
   std::shared_ptr<runtime::IVSyncObserver> vsync_observer_;
+  std::vector<std::weak_ptr<PendingVSyncCallback>> pending_vsync_callbacks_;
   std::unique_ptr<LynxNativeModuleNAPI> napi_module_;
 };
 
