@@ -4,7 +4,6 @@
 package com.lynx.tasm.group;
 
 import androidx.annotation.Nullable;
-import com.lynx.jsbridge.LynxModule;
 import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.TemplateBundle;
@@ -19,7 +18,6 @@ public interface ILynxViewGroup extends ILynxViewConfigProvider {
   void addLynxView(int LynxViewId, LynxView view);
   void removeLynxView(int LynxViewId);
   LynxView getLynxViewById(int LynxViewId);
-  void registerModule(String name, Class<? extends LynxModule> module, Object param);
   String getUrl();
   TemplateData getGlobalProps();
 

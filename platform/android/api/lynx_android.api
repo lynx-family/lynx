@@ -2859,7 +2859,6 @@ public interface com::lynx::tasm::group::ILynxViewGroup {
   public void com.lynx.tasm.group.ILynxViewGroup.addLynxView(int LynxViewId, LynxView view);
   public void com.lynx.tasm.group.ILynxViewGroup.removeLynxView(int LynxViewId);
   public LynxView com.lynx.tasm.group.ILynxViewGroup.getLynxViewById(int LynxViewId);
-  public void com.lynx.tasm.group.ILynxViewGroup.registerModule(String name, Class<? extends LynxModule > module, Object param);
   public String com.lynx.tasm.group.ILynxViewGroup.getUrl();
   public TemplateData com.lynx.tasm.group.ILynxViewGroup.getGlobalProps();
   public TemplateBundle com.lynx.tasm.group.ILynxViewGroup.getTemplateBundle();
