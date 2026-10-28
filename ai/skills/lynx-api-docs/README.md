@@ -93,28 +93,16 @@ Lynx provides four layout systems:
 
 ### As Context for an AI Coding Agent
 
-```typescript
-const loadContext = (intent: string) => {
-  const base = load('quick-reference.md');
-
-  switch (intent) {
-    case 'layout':
-      return base + load('layout/' + layoutType + '.md');
-    case 'element':
-      return base + load('elements/' + elementName + '.md');
-    case 'migration':
-      return base + load('lynx-vs-web/migration-guide.md');
-    default:
-      return base + load('best-practices.md');
-  }
-};
-```
+- **CSS generation, editing, migration, or style debugging**: load [the CSS differences index](./skills/using-lynx-api-docs/lynx-vs-web/css-differences.md) first, then only its applicable topic files.
+- **Layout**: load the selected file under `layout/`.
+- **Element APIs**: load the selected file under `elements/`.
+- **Other tasks**: use `quick-reference.md`, `best-practices.md`, or a pattern/example only when relevant.
 
 ### Context Size
 
 - **Quick reference**: ~8 KB - Frequently used value types and properties
-- **One layout system**: ~8 KB - Detailed layout guidance and examples
-- **Complete context**: All documentation, loaded on demand
+- **One CSS differences topic**: Detailed constraints and examples for one task area
+- **Complete context**: All documentation, loaded on demand rather than upfront
 
 ## Key Points
 

@@ -204,6 +204,105 @@ run('keeps public source free of generated and non-public docs', () => {
   }
 });
 
+run('keeps CSS differences routing complete and consistent', () => {
+  const indexPath = path.join(skillRoot, 'lynx-vs-web', 'css-differences.md');
+  const indexContent = fs.readFileSync(indexPath, 'utf8');
+  const topicSections = {
+    'display-and-default-layout.md': ['The `display` Property', 'Default Layout Behavior (Important)'],
+    'flex-and-sizing.md': [
+      'Flex Shrinking and Content-Based Minimum Sizes',
+      'Cyclic Percentage Sizing',
+      'Length Values',
+    ],
+    'box-model.md': ['Box Model'],
+    'positioning-and-stacking.md': ['Positioning', 'Floats Are Not Supported', '`z-index`'],
+    'text-selectors-and-fonts.md': [
+      'Text Handling',
+      'Pseudo-elements',
+      'Selector Limitations',
+      'Custom Fonts',
+    ],
+    'transforms-and-animations.md': [
+      'Subset of 3D Transform Functions',
+      'The `steps(...)` Animation Timing Function',
+    ],
+    'migration-pitfalls.md': [
+      'Quick Migration Checklist',
+      'Common Pitfalls',
+      'Pitfall 1: Omitting the `text` Element',
+      'Pitfall 2: Relying on Margin Collapsing',
+      'Pitfall 3: Using Unsupported or Partially Supported Units',
+      'Pitfall 4: Omitting `white-space`',
+      'Pitfall 5: Failing to Copy `body` Styles to the `page` Element',
+      'Pitfall 6: Mapping Web `html` and `body` Backgrounds to Ordinary Containers',
+      'Pitfall 7: Migrating a `background` Shorthand That Contains `background-attachment`',
+    ],
+  };
+
+  for (const [fileName, headings] of Object.entries(topicSections)) {
+    const topicPath = path.join(skillRoot, 'lynx-vs-web', 'css-differences', fileName);
+    assert.ok(fs.existsSync(topicPath), `Missing CSS differences topic: ${fileName}`);
+    const content = fs.readFileSync(topicPath, 'utf8');
+    for (const heading of headings) {
+      assert.ok(content.includes(heading), `Missing ${heading} in ${fileName}`);
+    }
+  }
+
+  const slugify = (heading) =>
+    heading
+      .trim()
+      .toLowerCase()
+      .replace(/`/g, '')
+      .replace(/[^\p{L}\p{N} _-]/gu, '')
+      .replace(/ /g, '-');
+  const headingAnchors = new Map();
+  for (const match of indexContent.matchAll(/\]\(([^)]+)\)/g)) {
+    const link = match[1];
+    if (/^[a-z]+:/i.test(link) || link.startsWith('#')) {
+      continue;
+    }
+    const [relativePath, anchor] = link.split('#');
+    const targetPath = path.resolve(path.dirname(indexPath), relativePath);
+    assert.ok(fs.existsSync(targetPath), `Broken CSS differences link: ${link}`);
+    if (!anchor) {
+      continue;
+    }
+    if (!headingAnchors.has(targetPath)) {
+      const content = fs.readFileSync(targetPath, 'utf8');
+      headingAnchors.set(
+        targetPath,
+        new Set(
+          [...content.matchAll(/^#{1,6}\s+(.+)$/gm)].map((heading) => slugify(heading[1]))
+        )
+      );
+    }
+    assert.ok(headingAnchors.get(targetPath).has(anchor), `Broken CSS differences anchor: ${link}`);
+  }
+
+  const supportedProperties = fs.readFileSync(
+    path.join(skillRoot, 'css', 'supported-properties.md'),
+    'utf8'
+  );
+  assert.match(supportedProperties, /`transform: matrix, matrix3d`/);
+  assert.doesNotMatch(supportedProperties, /scale3d|rotate3d/);
+  assert.match(indexContent, /Flex text, numbers, or children shrink, wrap/);
+  assert.match(indexContent, /including `0`, creates a stacking context without requiring `position`/);
+  assert.match(indexContent, /`left` or `right`, and `top` or `bottom`/);
+
+  const positioningContent = fs.readFileSync(
+    path.join(skillRoot, 'lynx-vs-web', 'css-differences', 'positioning-and-stacking.md'),
+    'utf8'
+  );
+  assert.doesNotMatch(positioningContent, /Requires `position`/);
+  assert.match(positioningContent, /when the start inset is `auto` and the end inset is definite/);
+
+  const skillContent = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+  assert.match(skillContent, /## Repair Scope and Output/);
+  assert.match(skillContent, /Diagnose before expanding retrieval/);
+  assert.match(skillContent, /Preserve unrelated styles, component props and behavior/);
+  assert.match(skillContent, /without retrieval notes, status updates, explanations, or other prose/);
+});
+
 function execCli(args) {
   return execNode([cliPath, ...args]);
 }

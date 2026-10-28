@@ -177,8 +177,9 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 ### Transforms
 
 - `transform: translate, translateX, translateY, translate3d`
-- `transform: scale, scaleX, scaleY, scale3d`
-- `transform: rotate, rotateX, rotateY, rotateZ, rotate3d`
+- `transform: scale, scaleX, scaleY`
+- `transform: rotate, rotateX, rotateY, rotateZ`
+- `transform: matrix, matrix3d`
 - `transform-origin`
 
 ### Transitions and animations

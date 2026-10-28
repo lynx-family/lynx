@@ -1,5 +1,7 @@
 [Lynx API Docs - Engine AI Context]|root: ./lynx-api-docs
 |IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning for Lynx engine authoring, CSS/layout, and element tasks
+|CSS_GENERATION_FIRST:{lynx-vs-web/css-differences.md=>linked css-differences/*.md}:required for CSS authoring, Web migration, and style-difference debugging
+|REPAIR_DISCIPLINE:route layout/sizing/wrapping/stacking symptoms to css-differences before element docs; never infer prop defects from visuals alone; fix the smallest selector; preserve unrelated code; no narration
 |
 |Core:{quick-reference.md|best-practices.md}
 |Layout:{layout/linear-layout.md|layout/flex-layout.md|layout/grid-layout.md|layout/relative-layout.md}
