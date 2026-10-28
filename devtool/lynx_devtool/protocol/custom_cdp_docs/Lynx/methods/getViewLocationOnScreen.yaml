@@ -14,7 +14,7 @@ notes:
   - Android reads the LynxView location on screen and divides the stored coordinates by display density. Darwin returns the root view point converted to screen coordinates.
   - If the platform facade returns fewer than two coordinates, the response uses x = -1 and y = -1.
   - The native implementation does not read request params.
-  - If the mediator has no UI task runner or the platform facade is unavailable, the current handler does not send an explicit CDP response.
+  - If the UI task runner, UI executor, or platform facade is unavailable, the handler returns a ServerError.
 examples:
   - title: Read the LynxView screen location
     request:
