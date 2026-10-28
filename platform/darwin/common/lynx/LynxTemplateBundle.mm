@@ -4,15 +4,13 @@
 
 #import <Lynx/LynxDevToolPool.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxError.h>
 #import <Lynx/LynxService.h>
+#import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTemplateBundle.h>
-#include "core/resource/lynx_resource_handle.h"
-
-@interface LynxResourceHandle (Internal)
-- (std::shared_ptr<lynx::pub::LynxResourceHandle>)rawResourceHandle;
-@end
 
 #import "LynxBytecodeResponseBlock+Converter.h"
+#import "LynxResourceHandle+Internal.h"
 #import "LynxTemplateBundle+Converter.h"
 #include "base/include/string/string_utils.h"
 #include "base/include/value/byte_array.h"
@@ -124,6 +122,12 @@
 
 - (instancetype _Nullable)initWithResourceHandle:(nullable LynxResourceHandle*)handle
                                           option:(nullable LynxTemplateBundleOption*)option {
+  return [self initWithResourceHandle:handle option:option securityTarget:nil];
+}
+
+- (instancetype _Nullable)initWithResourceHandle:(nullable LynxResourceHandle*)handle
+                                          option:(nullable LynxTemplateBundleOption*)option
+                                  securityTarget:(nullable id<LynxSecurityTarget>)target {
   if (handle == nil) {
     return nil;
   }
@@ -146,6 +150,8 @@
         auto snapshot = std::move(data.value());
         lynx::tasm::TemplateVerification verification;
         verification.enabled = true;
+        __attribute__((objc_precise_lifetime)) id<LynxSecurityTarget> realTarget = target ?: self;
+        verification.platform_target = (__bridge void*)realTarget;
         if ([[LynxEnv sharedInstance] lynxDebugEnabled]) {
           _devtool_pool = [[LynxDevToolPool alloc] initWithURL:_url debuggable:option.debuggable];
         }
@@ -262,6 +268,25 @@
     completion = lynx::base::MoveOnlyClosure<>([completion_block]() { completion_block(); });
   }
   return template_bundle_->Preload([url UTF8String], std::move(bytes), std::move(completion));
+}
+
+LynxTemplateBundle* LynxCreateTemplateBundleFromResourceHandle(LynxResourceHandle* handle,
+                                                               NSString* url,
+                                                               id<LynxSecurityTarget> target,
+                                                               LynxError** error) {
+  LynxTemplateBundleOption* option = [[LynxTemplateBundleOption alloc] init];
+  option.url = url;
+  LynxTemplateBundle* bundle = [[LynxTemplateBundle alloc] initWithResourceHandle:handle
+                                                                           option:option
+                                                                   securityTarget:target];
+  if (bundle == nil || !bundle.isValid) {
+    if (error != nullptr) {
+      *error = [LynxError lynxErrorWithCode:ECLynxAppBundleLoadBadBundle
+                                    message:bundle.errorMsg ?: @"Failed to create template bundle"];
+    }
+    return nil;
+  }
+  return bundle;
 }
 
 std::shared_ptr<lynx::tasm::LynxTemplateBundle> LynxGetRawTemplateBundle(
