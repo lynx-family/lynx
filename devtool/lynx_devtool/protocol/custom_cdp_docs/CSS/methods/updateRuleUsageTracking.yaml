@@ -12,7 +12,7 @@ events: []
 notes:
   - Dispatches through LynxDevToolMediator to InspectorTasmExecutor on the TASM thread.
   - This method is only effective after CSS.startRuleUsageTracking has enabled rule usage tracking.
-  - The handler inserts each params.selector item into an in-memory selector set and does not send a CDP response.
+  - The handler validates selector as an optional array of strings, inserts each item into an in-memory selector set while tracking is active, and acknowledges the request with an empty result.
   - CSS.stopRuleUsageTracking later emits the collected selectors as ruleUsage entries. Each entry contains styleSheetId, startOffset, endOffset, and used.
   - When CSS.stopRuleUsageTracking runs with no selectors collected by this method, Lynx falls back to collecting id and class selector usage from the DOM tree.
 examples:

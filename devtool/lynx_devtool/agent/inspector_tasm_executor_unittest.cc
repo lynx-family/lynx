@@ -878,6 +878,56 @@ TEST_F(InspectorTasmExecutorTest, CompositingReasonsReturnsElementPayload) {
       devtool::MockReceiver::GetInstance().received_message_.second.empty());
 }
 
+TEST_F(InspectorTasmExecutorTest, CSSRuleUsageAcknowledgesAndValidatesUpdates) {
+  auto sender = std::make_shared<RecordingMessageSender>();
+  constexpr int64_t id = 1LL << 40;
+  auto respond = [&] {
+    return std::make_shared<devtool::CDPResponder>(sender, id);
+  };
+  Json::Value params;
+  params["selector"].append(".unused");
+  element_executor_->UpdateRuleUsageTracking(respond(), params);
+  EXPECT_TRUE(element_executor_->css_used_selector_.empty());
+  element_executor_->StartRuleUsageTracking(respond(), Json::Value());
+  element_executor_->UpdateRuleUsageTracking(respond(), params);
+  EXPECT_EQ(element_executor_->css_used_selector_.count(".unused"), 1U);
+
+  params["selector"].append(1);
+  params["selector"][0] = ".must-not-be-inserted";
+  element_executor_->UpdateRuleUsageTracking(respond(), params);
+  EXPECT_EQ(element_executor_->css_used_selector_.size(), 1U);
+  ASSERT_EQ(sender->json_messages_.size(), 4U);
+  for (size_t i = 0; i < 3; ++i) {
+    EXPECT_EQ(sender->json_messages_[i].second["id"].asInt64(), id);
+    EXPECT_EQ(sender->json_messages_[i].second["result"],
+              Json::Value(Json::objectValue));
+  }
+  EXPECT_EQ(sender->json_messages_.back().second["error"]["code"], -32602);
+
+  element_executor_->element_root_ = nullptr;
+  element_executor_->StopRuleUsageTracking(respond(), Json::Value());
+  ASSERT_EQ(sender->json_messages_.size(), 5U);
+  EXPECT_EQ(sender->json_messages_.back().second["error"]["code"], -32000);
+  EXPECT_FALSE(element_executor_->rule_usage_tracking_);
+  EXPECT_TRUE(element_executor_->css_used_selector_.empty());
+}
+
+TEST_F(InspectorTasmExecutorTest, CSSEnableRepliesBeforeStyleSheetEvents) {
+  auto dom = BuildMediaQueryTestDom(
+      manager_.get(), {{".plain", tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+                        "(min-width: 1000px)"}});
+  element_executor_->element_root_ = dom.style_value;
+  auto sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = sender;
+  element_executor_->CSS_Enable(
+      std::make_shared<devtool::CDPResponder>(sender, 12), Json::Value());
+  ASSERT_GT(sender->json_messages_.size(), 1U);
+  EXPECT_EQ(sender->json_messages_[0].second["id"], 12);
+  EXPECT_EQ(sender->json_messages_[0].second["result"],
+            Json::Value(Json::objectValue));
+  EXPECT_EQ(sender->json_messages_[1].second["method"], "CSS.styleSheetAdded");
+}
+
 TEST_F(InspectorTasmExecutorTest, GetLayersForNodeReturnsCanonicalLayerTree) {
   auto dom = BuildMediaQueryTestDom(manager_.get(),
                                     {{".layered",
