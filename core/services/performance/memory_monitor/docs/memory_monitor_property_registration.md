@@ -18,7 +18,7 @@ All global events contain:
 Global-event deduplication is provided by the data platform rather than
 monitor-owned properties.
 
-## `lynxsdk_memory_process` - 17 properties
+## `lynxsdk_memory_process` - 13 properties
 
 Produced only for positive PSS with no V8/JSVM heap-query failure or timeout.
 
@@ -34,12 +34,12 @@ Produced only for positive PSS with no V8/JSVM heap-query failure or timeout.
 | `mts_pool_runtime_count` | double | Total runtimes currently owned by those pools. |
 | `mts_pool_heap_bytes_sum` | double | Sum of reported bundle-local pool heaps, including zero-valued pools. |
 | `shared_vm_tracked_exited_page_retained_bytes` | double | Confirmed tracked residual total. |
-| `lynx_accounted_process_pss_ratio` | double | Accounted memory divided by PSS. |
-| `lynx_shared_vm_process_pss_ratio` | double | Shared heap sum divided by PSS. |
-| `lynx_mts_pool_process_pss_ratio` | double | Bundle-local MTS pool heap sum divided by PSS. |
-| `lynx_tracked_page_retained_process_pss_ratio` | double | Confirmed tracked residual divided by PSS. |
 | `trigger_pss_previous_milestone_bytes` | double | Previous PSS high-water boundary; PSS-trigger rows only. |
 | `trigger_pss_milestone_bytes` | double | New PSS high-water boundary; PSS-trigger rows only. |
+
+Process memory ratios are calculated in queries by dividing the relevant byte
+field by `process_pss_bytes` from the same event. For ratio percentiles, perform
+this division on each row before taking the percentile.
 
 ## `lynxsdk_memory_page` - 14 properties
 
@@ -100,7 +100,7 @@ A now-zero slot can carry historical area. Residual field presence does not
 require every exited page to have completed a post-exit GC. Schema 10 used a
 snapshot-endpoint residual estimate; do not merge those Q7.2 semantics.
 
-## `lynxsdk_memory_vm_stat` - up to 13 properties
+## `lynxsdk_memory_vm_stat` - up to 27 properties
 
 Produced only for timer snapshots with a uniform all-engine shared-VM sample.
 
@@ -118,6 +118,39 @@ Produced only for timer snapshots with a uniform all-engine shared-VM sample.
 | `vm_heap_bytes_weighted` | double | Heap multiplied by V. |
 | `vm_heap_selection_weight` | double | Heap denominator, emitted exactly with heap fields. |
 | `vm_heap_source_age_ms` | double | Age of the heap measurement when known. |
+
+Q12 adds the following 14 optional properties when the selected VM has at
+least one observed cache creator. There is no heap gate. Counts cover observed
+insertions over the VM lifetime, not the current cache contents. Missing
+fields do not establish a measured empty cache. Each VM retains at most 128
+creating app IDs across both cache types, and each JS sidecar also admits at
+most 128 creators. Counters and weights cover admitted creators only; later
+creators are not recovered by weighting.
+
+All counter fields below include their selection weights. The `page` segment
+identifies the selected creating app; other counters describe the sampled VM.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `js_cache_page_key` | string | Selected creating app's page key, preserved after exit; never the hitting app's key. |
+| `js_cache_page_weight` | double | V × C, with C distinct observed creating app IDs in this VM. |
+| `js_cache_factory_inserted` | double | Lifetime factory insertions × V. |
+| `js_cache_factory_reused` | double | Inserted factory entries looked up again at least once × V. |
+| `js_cache_factory_cross_app` | double | Inserted factory entries looked up by another app at least once × V. |
+| `js_cache_script_inserted` | double | Lifetime loadScript cache insertions × V. |
+| `js_cache_script_reused` | double | Inserted loadScript entries looked up again at least once × V. |
+| `js_cache_script_cross_app` | double | Inserted loadScript entries looked up by another app at least once × V. |
+| `js_cache_page_factory_inserted` | double | Selected creator's factory insertions × V × C. |
+| `js_cache_page_factory_reused` | double | Selected creator's reused factory entries × V × C. |
+| `js_cache_page_factory_cross_app` | double | Selected creator's cross-app reused factory entries × V × C. |
+| `js_cache_page_script_inserted` | double | Selected creator's loadScript insertions × V × C. |
+| `js_cache_page_script_reused` | double | Selected creator's reused loadScript entries × V × C. |
+| `js_cache_page_script_cross_app` | double | Selected creator's cross-app reused loadScript entries × V × C. |
+
+First reuse may also be the first cross-app reuse, incrementing both counters.
+Deleting/replacing a cache entry or closing a realm does not subtract history.
+Native app IDs and module keys are not emitted. Same-key creators remain
+separate sampling units; aggregate their weighted rows by page key.
 
 ## `lynxsdk_memory_vm_quickjs` - up to 14 properties
 
