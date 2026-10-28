@@ -8,6 +8,8 @@
 #define protected public
 
 #include <chrono>
+#include <cstdio>
+#include <fstream>
 #include <future>
 #include <memory>
 #include <thread>
@@ -29,6 +31,7 @@
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
+#include "devtool/lynx_devtool/base/file_stream.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 #include "devtool/testing/mock/cdp_event_listener_sender_mock.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
@@ -121,25 +124,31 @@ class DevToolMediatorTest : public ::testing::Test {
 };
 
 TEST_F(DevToolMediatorTest, RecordingStartDefaultsToJson) {
-  EXPECT_TRUE(lynx::tasm::recorder::RecorderController::Enable());
-  Json::Value message;
-  message["id"] = 1;
+  if (!lynx::tasm::recorder::RecorderController::Enable()) {
+    GTEST_SKIP() << "TestBench recorder is not enabled in this build";
+  }
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 1);
   devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
-      message_sender_, message);
+      responder, Json::Value());
   ui_thread_->Join();
 
   auto& recorder = lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance();
   EXPECT_TRUE(recorder.IsRecordingProcess());
   EXPECT_EQ(recorder.artifact_format_.load(),
             lynx::tasm::recorder::ArtifactFormat::kJson);
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"id\" : 1,\n   \"result\" : {}\n}\n");
 }
 
 TEST_F(DevToolMediatorTest, RecordingStartAcceptsBoth) {
-  Json::Value message;
-  message["id"] = 2;
-  message["params"]["format"] = "both";
-  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
-      message_sender_, message);
+  if (!lynx::tasm::recorder::RecorderController::Enable()) {
+    GTEST_SKIP() << "TestBench recorder is not enabled in this build";
+  }
+  Json::Value params;
+  params["format"] = "both";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 2);
+  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(responder,
+                                                                   params);
   ui_thread_->Join();
 
   auto& recorder = lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance();
@@ -149,11 +158,14 @@ TEST_F(DevToolMediatorTest, RecordingStartAcceptsBoth) {
 }
 
 TEST_F(DevToolMediatorTest, RecordingStartAcceptsFixture) {
-  Json::Value message;
-  message["id"] = 3;
-  message["params"]["format"] = "fixture";
-  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
-      message_sender_, message);
+  if (!lynx::tasm::recorder::RecorderController::Enable()) {
+    GTEST_SKIP() << "TestBench recorder is not enabled in this build";
+  }
+  Json::Value params;
+  params["format"] = "fixture";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 3);
+  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(responder,
+                                                                   params);
   ui_thread_->Join();
 
   auto& recorder = lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance();
@@ -163,31 +175,42 @@ TEST_F(DevToolMediatorTest, RecordingStartAcceptsFixture) {
 }
 
 TEST_F(DevToolMediatorTest, RecordingStartRejectsInvalidFormat) {
-  Json::Value message;
-  message["id"] = 4;
-  message["params"]["format"] = "zip";
-  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
-      message_sender_, message);
+  Json::Value params;
+  params["format"] = "zip";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 4);
+  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(responder,
+                                                                   params);
 
   EXPECT_FALSE(lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance()
                    .IsRecordingProcess());
-  EXPECT_NE(devtool::MockReceiver::GetInstance().received_message_.second.find(
-                "Invalid format"),
-            std::string::npos);
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"], 4);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+  EXPECT_EQ(response["error"]["message"],
+            "Invalid format: expected json, both, or fixture");
 }
 
 TEST_F(DevToolMediatorTest, RecordingStartRejectsNonStringFormat) {
-  Json::Value message;
-  message["id"] = 5;
-  message["params"]["format"] = true;
-  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(
-      message_sender_, message);
+  Json::Value params;
+  params["format"] = true;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 5);
+  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingStart(responder,
+                                                                   params);
 
   EXPECT_FALSE(lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance()
                    .IsRecordingProcess());
-  EXPECT_NE(devtool::MockReceiver::GetInstance().received_message_.second.find(
-                "expected string"),
-            std::string::npos);
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"], 5);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+  EXPECT_EQ(response["error"]["message"], "Invalid format: expected string");
 }
 
 // Simulates a shipping build without the testbench recorder compiled in.
@@ -203,61 +226,74 @@ class LynxGlobalDevToolMediatorWithoutRecorder
 TEST_F(DevToolMediatorTest,
        RecordingStartRejectsFixtureWhenRecorderUnavailable) {
   LynxGlobalDevToolMediatorWithoutRecorder mediator;
-  Json::Value message;
-  message["id"] = 6;
-  message["params"]["format"] = "fixture";
-  mediator.RecordingStart(message_sender_, message);
+  Json::Value params;
+  params["format"] = "fixture";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 6);
+  mediator.RecordingStart(responder, params);
 
   EXPECT_FALSE(lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance()
                    .IsRecordingProcess());
-  EXPECT_NE(devtool::MockReceiver::GetInstance().received_message_.second.find(
-                "not supported"),
-            std::string::npos);
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"],
+            "Fixture artifact is not supported by this Lynx build");
 }
 
 TEST_F(DevToolMediatorTest, RecordingStartRejectsBothWhenRecorderUnavailable) {
   LynxGlobalDevToolMediatorWithoutRecorder mediator;
-  Json::Value message;
-  message["id"] = 7;
-  message["params"]["format"] = "both";
-  mediator.RecordingStart(message_sender_, message);
+  Json::Value params;
+  params["format"] = "both";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 7);
+  mediator.RecordingStart(responder, params);
 
   EXPECT_FALSE(lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance()
                    .IsRecordingProcess());
-  EXPECT_NE(devtool::MockReceiver::GetInstance().received_message_.second.find(
-                "not supported"),
-            std::string::npos);
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"],
+            "Fixture artifact is not supported by this Lynx build");
 }
 
 TEST_F(DevToolMediatorTest,
        RecordingStartStillAcceptsJsonWhenRecorderUnavailable) {
   LynxGlobalDevToolMediatorWithoutRecorder mediator;
   mediator.ui_task_runner_ = ui_thread_->GetTaskRunner();
-  Json::Value message;
-  message["id"] = 8;
-  message["params"]["format"] = "json";
-  mediator.RecordingStart(message_sender_, message);
+  Json::Value params;
+  params["format"] = "json";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 8);
+  mediator.RecordingStart(responder, params);
   ui_thread_->Join();
 
   // Historical best-effort behavior: json is never rejected, and the reply is
   // a normal result rather than an error.
-  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second.find(
-                "not supported"),
-            std::string::npos);
-  EXPECT_NE(devtool::MockReceiver::GetInstance().received_message_.second.find(
-                "\"id\" : 8"),
-            std::string::npos);
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"], 8);
+  EXPECT_TRUE(response["result"].isObject());
 }
 
 TEST_F(DevToolMediatorTest,
        RecordingStartAcceptsFixtureWhenCapabilityForcedOn) {
+  if (!lynx::tasm::recorder::RecorderController::Enable()) {
+    GTEST_SKIP() << "TestBench recorder is not enabled in this build";
+  }
   LynxGlobalDevToolMediatorWithoutRecorder mediator;
   mediator.ui_task_runner_ = ui_thread_->GetTaskRunner();
   mediator.recorder_enabled = true;
-  Json::Value message;
-  message["id"] = 9;
-  message["params"]["format"] = "fixture";
-  mediator.RecordingStart(message_sender_, message);
+  Json::Value params;
+  params["format"] = "fixture";
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 9);
+  mediator.RecordingStart(responder, params);
   ui_thread_->Join();
 
   auto& recorder = lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance();
@@ -278,33 +314,210 @@ TEST_F(DevToolMediatorTest, RecordingCompleteFormatMatchesFiles) {
       "fixture");
 }
 
-TEST_F(DevToolMediatorTest, DISABLED_RecordEndCase) {
-  EXPECT_TRUE(lynx::tasm::recorder::RecorderController::Enable());
-  Json::Value param;
-  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingEnd(
-      message_sender_, param);
-  lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance().thread_.Join();
+TEST_F(DevToolMediatorTest, RecordingStartWithoutTaskRunnerReturnsServerError) {
+  auto& mediator = devtool::LynxGlobalDevToolMediator::GetInstance();
+  auto task_runner = mediator.ui_task_runner_;
+  mediator.ui_task_runner_ = nullptr;
+
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 10);
+  mediator.RecordingStart(responder, Json::Value());
+  mediator.ui_task_runner_ = task_runner;
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"], "Cannot find ui task runner");
+}
+
+TEST_F(DevToolMediatorTest, RecordingEndReturnsSuccess) {
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 11);
+  devtool::LynxGlobalDevToolMediator::GetInstance().RecordingEnd(responder,
+                                                                 Json::Value());
+  ui_thread_->Join();
+
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"id\" : 11,\n   \"result\" : {}\n}\n");
   EXPECT_FALSE(lynx::tasm::recorder::TestBenchBaseRecorder::GetInstance()
                    .IsRecordingProcess());
 }
 
-TEST_F(DevToolMediatorTest, ReplayStartCase) {
-  EXPECT_TRUE(lynx::tasm::replay::ReplayController::Enable());
-  Json::Value param;
-  devtool::LynxGlobalDevToolMediator::GetInstance().ReplayStart(message_sender_,
-                                                                param);
-  ui_thread_->Join();
-  EXPECT_TRUE(lynx::tasm::replay::TestBenchTestReplay::GetInstance().IsStart());
+TEST_F(DevToolMediatorTest, RecordingEndWithoutTaskRunnerReturnsServerError) {
+  auto& mediator = devtool::LynxGlobalDevToolMediator::GetInstance();
+  auto task_runner = mediator.ui_task_runner_;
+  mediator.ui_task_runner_ = nullptr;
+
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 12);
+  mediator.RecordingEnd(responder, Json::Value());
+  mediator.ui_task_runner_ = task_runner;
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"], "Cannot find ui task runner");
 }
 
-TEST_F(DevToolMediatorTest, ReplayEndCase) {
-  EXPECT_TRUE(lynx::tasm::replay::ReplayController::Enable());
-  Json::Value param;
-  devtool::LynxGlobalDevToolMediator::GetInstance().ReplayEnd(message_sender_,
-                                                              param);
+TEST_F(DevToolMediatorTest, ReplayStartCase) {
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 13);
+  devtool::LynxGlobalDevToolMediator::GetInstance().ReplayStart(responder,
+                                                                Json::Value());
   ui_thread_->Join();
-  // TODO: Here are some concerns: why wasn't the state set to false during the
-  // specific implementation?
+
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"id\" : 13,\n   \"result\" : {}\n}\n");
+  if (lynx::tasm::replay::ReplayController::Enable()) {
+    EXPECT_TRUE(
+        lynx::tasm::replay::TestBenchTestReplay::GetInstance().IsStart());
+  }
+}
+
+TEST_F(DevToolMediatorTest, ReplayStartWithoutTaskRunnerReturnsServerError) {
+  auto& mediator = devtool::LynxGlobalDevToolMediator::GetInstance();
+  auto task_runner = mediator.ui_task_runner_;
+  mediator.ui_task_runner_ = nullptr;
+
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 14);
+  mediator.ReplayStart(responder, Json::Value());
+  mediator.ui_task_runner_ = task_runner;
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"], "Cannot find ui task runner");
+}
+
+TEST_F(DevToolMediatorTest, ReplayEndReturnsStreamResult) {
+  if (!lynx::tasm::replay::ReplayController::Enable()) {
+    GTEST_SKIP() << "TestBench replay is not enabled in this build";
+  }
+  const std::string file_path =
+      ::testing::TempDir() + "lynx_devtool_replay_end.json";
+  {
+    std::ofstream file(file_path);
+    ASSERT_TRUE(file.is_open());
+    file << "{}";
+  }
+
+  devtool::LynxGlobalDevToolMediator mediator;
+  mediator.default_task_runner_ = devtool_thread_->GetTaskRunner();
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 15);
+  mediator.ReplayEnd(responder, Json::Value(file_path));
+  devtool_thread_->Join();
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["id"], 15);
+  EXPECT_TRUE(response["result"]["stream"].isString());
+  devtool::FileStream::Close(
+      std::stoi(response["result"]["stream"].asString()));
+  std::remove(file_path.c_str());
+}
+
+TEST_F(DevToolMediatorTest, ReplayEndRejectsInvalidParams) {
+  devtool::LynxGlobalDevToolMediator mediator;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 16);
+  mediator.ReplayEnd(responder, Json::Value(Json::objectValue));
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+  EXPECT_EQ(response["error"]["message"], "Invalid file path: expected string");
+}
+
+TEST_F(DevToolMediatorTest, ReplayEndRejectsUnavailableReplay) {
+  if (lynx::tasm::replay::ReplayController::Enable()) {
+    GTEST_SKIP() << "TestBench replay is enabled in this build";
+  }
+  devtool::LynxGlobalDevToolMediator mediator;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 17);
+  mediator.ReplayEnd(responder, Json::Value("/tmp/replay.json"));
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"], "Replay doesn't enable");
+}
+
+TEST_F(DevToolMediatorTest, ReplayEndWithoutTaskRunnerReturnsServerError) {
+  if (!lynx::tasm::replay::ReplayController::Enable()) {
+    GTEST_SKIP() << "TestBench replay is not enabled in this build";
+  }
+  devtool::LynxGlobalDevToolMediator mediator;
+  mediator.default_task_runner_ = nullptr;
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 18);
+  mediator.ReplayEnd(responder, Json::Value("/tmp/replay.json"));
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::ServerError));
+  EXPECT_EQ(response["error"]["message"], "Cannot find default task runner");
+}
+
+TEST_F(DevToolMediatorTest, ReplayEndRejectsMissingFile) {
+  if (!lynx::tasm::replay::ReplayController::Enable()) {
+    GTEST_SKIP() << "TestBench replay is not enabled in this build";
+  }
+  const std::string file_path =
+      ::testing::TempDir() + "lynx_devtool_missing_replay.json";
+  std::remove(file_path.c_str());
+
+  devtool::LynxGlobalDevToolMediator mediator;
+  mediator.default_task_runner_ = devtool_thread_->GetTaskRunner();
+  auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 19);
+  mediator.ReplayEnd(responder, Json::Value(file_path));
+  devtool_thread_->Join();
+
+  Json::Value response;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+  EXPECT_EQ(response["error"]["message"], "file path doesn't exist");
+}
+
+TEST_F(DevToolMediatorTest, EndReplayTestSendsEvent) {
+  const std::string file_path =
+      ::testing::TempDir() + "lynx_devtool_replay_event.json";
+  {
+    std::ofstream file(file_path);
+    ASSERT_TRUE(file.is_open());
+    file << "{}";
+  }
+
+  devtool::LynxGlobalDevToolMediator mediator;
+  mediator.default_task_runner_ = devtool_thread_->GetTaskRunner();
+  mediator.EndReplayTest(message_sender_, file_path);
+  devtool_thread_->Join();
+
+  Json::Value event;
+  Json::Reader reader;
+  ASSERT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, event));
+  EXPECT_FALSE(event.isMember("id"));
+  EXPECT_EQ(event["method"], "Replay.end");
+  EXPECT_TRUE(event["params"]["stream"].isString());
+  devtool::FileStream::Close(std::stoi(event["params"]["stream"].asString()));
+  std::remove(file_path.c_str());
 }
 
 TEST_F(DevToolMediatorTest, IOReadCase) {

@@ -28,11 +28,10 @@ constexpr char kMemoryUsageTimeoutMs[] = "timeoutMs";
 constexpr int64_t kMaxMemoryUsageTimeoutMs = 5 * 60 * 1000;
 
 bool ParseRecordingArtifactFormat(
-    const Json::Value& message,
+    const Json::Value& params,
     lynx::tasm::recorder::ArtifactFormat& artifact_format,
     std::string& error_message) {
   artifact_format = lynx::tasm::recorder::ArtifactFormat::kJson;
-  const Json::Value& params = message["params"];
   if (params.isNull()) {
     return true;
   }
@@ -106,6 +105,16 @@ bool ParseMemoryUsageTimeoutMs(const Json::Value& params, int64_t& timeout_ms,
   return true;
 }
 
+bool OpenReplayFileAsStream(const std::string& file_path,
+                            Json::Value& stream_params) {
+  int stream_handle = FileStream::Open(file_path);
+  if (stream_handle == -1) {
+    return false;
+  }
+  stream_params["stream"] = std::to_string(stream_handle);
+  return true;
+}
+
 }  // namespace
 
 LynxGlobalDevToolMediator::LynxGlobalDevToolMediator()
@@ -130,14 +139,12 @@ bool LynxGlobalDevToolMediator::IsRecorderEnabled() const {
 }
 
 void LynxGlobalDevToolMediator::RecordingStart(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   LOGI("start recording");
-  int64_t id = message["id"].asInt64();
   lynx::tasm::recorder::ArtifactFormat artifact_format;
   std::string error_message;
-  if (!ParseRecordingArtifactFormat(message, artifact_format, error_message)) {
-    sender->SendErrorResponse(id, error_message);
+  if (!ParseRecordingArtifactFormat(params, artifact_format, error_message)) {
+    responder->SendError(CDPErrorCode::InvalidParams, error_message);
     return;
   }
   // json keeps its historical best-effort behavior, but an explicit request
@@ -145,8 +152,9 @@ void LynxGlobalDevToolMediator::RecordingStart(
   // instead of being silently downgraded to json (or dropped entirely).
   if (artifact_format != lynx::tasm::recorder::ArtifactFormat::kJson &&
       !IsRecorderEnabled()) {
-    sender->SendErrorResponse(
-        id, "Fixture artifact is not supported by this Lynx build");
+    responder->SendError(
+        CDPErrorCode::ServerError,
+        "Fixture artifact is not supported by this Lynx build");
     return;
   }
   if (ui_task_runner_) {
@@ -154,14 +162,12 @@ void LynxGlobalDevToolMediator::RecordingStart(
       lynx::tasm::recorder::RecorderController::StartRecord(artifact_format);
     });
   } else {
-    sender->SendErrorResponse(id, "Cannot find ui task runner");
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Cannot find ui task runner");
     return;
   }
 
-  Json::Value res;
-  res["result"] = Json::Value(Json::ValueType::objectValue);
-  res["id"] = id;
-  sender->SendMessage("CDP", res);
+  responder->SendSuccess();
 }
 
 const char* LynxGlobalDevToolMediator::RecordFormatFromFiles(
@@ -181,94 +187,102 @@ const char* LynxGlobalDevToolMediator::RecordFormatFromFiles(
 }
 
 void LynxGlobalDevToolMediator::RecordingEnd(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   LOGI("End recording");
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_, [sender, message] {
-      lynx::base::MoveOnlyClosure<void, std::vector<std::string>&,
-                                  std::vector<int64_t>&>
-          send_complete([sender](std::vector<std::string>& files,
-                                 std::vector<int64_t>& sessions) {
-            Json::Value msg;
-            msg["method"] = "Recording.recordingComplete";
-            Json::Value handlers, filenames, session_ids;
-            for (auto i : sessions) {
-              session_ids.append(i);
-            }
-            for (auto item : files) {
-              int stream_handle = FileStream::Open(item);
-              handlers.append(std::to_string(stream_handle));
-              filenames.append(item);
-            }
-            msg["params"]["stream"] = handlers;
-            msg["params"]["filenames"] = filenames;
-            msg["params"]["sessionIDs"] = session_ids;
-            msg["params"]["recordFormat"] = RecordFormatFromFiles(files);
-            sender->SendMessage("CDP", msg);
-          });
-      lynx::tasm::recorder::RecorderController::EndRecord(
-          std::move(send_complete));
-      sender->SendOKResponse(message["id"].asInt64());
-    });
+  if (!ui_task_runner_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Cannot find ui task runner");
+    return;
   }
+
+  RunOnTaskRunner(ui_task_runner_, [responder] {
+    lynx::base::MoveOnlyClosure<void, std::vector<std::string>&,
+                                std::vector<int64_t>&>
+        send_complete([](std::vector<std::string>& files,
+                         std::vector<int64_t>& sessions) {
+          Json::Value event;
+          event["method"] = "Recording.recordingComplete";
+          Json::Value handlers, filenames, session_ids;
+          for (auto session : sessions) {
+            session_ids.append(session);
+          }
+          for (const auto& file : files) {
+            int stream_handle = FileStream::Open(file);
+            handlers.append(std::to_string(stream_handle));
+            filenames.append(file);
+          }
+          event["params"]["stream"] = handlers;
+          event["params"]["filenames"] = filenames;
+          event["params"]["sessionIDs"] = session_ids;
+          event["params"]["recordFormat"] = RecordFormatFromFiles(files);
+          LynxGlobalDevToolMediator::GetInstance().SendCDPEvent(event);
+        });
+    lynx::tasm::recorder::RecorderController::EndRecord(
+        std::move(send_complete));
+    responder->SendSuccess();
+  });
 }
 
 void LynxGlobalDevToolMediator::ReplayStart(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   LOGI("start replay test");
-  int64_t id = message["id"].asInt64();
   if (ui_task_runner_) {
     RunOnTaskRunner(ui_task_runner_,
                     [] { lynx::tasm::replay::ReplayController::StartTest(); });
   } else {
-    sender->SendErrorResponse(id, "Cannot find ui task runner");
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Cannot find ui task runner");
     return;
   }
 
-  Json::Value res;
-  res["result"] = Json::Value(Json::ValueType::objectValue);
-  res["id"] = id;
-  sender->SendMessage("CDP", res);
+  responder->SendSuccess();
 }
 
 void LynxGlobalDevToolMediator::ReplayEnd(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, message] {
-      int64_t id = message["id"].asInt64();
-      if (lynx::tasm::replay::ReplayController::Enable()) {
-        LOGI("send replay end");
-        Json::Value content(Json::ValueType::objectValue);
-        content["method"] = "Replay.end";
-        std::string file_path = message["params"].asString();
-        int stream_handle = FileStream::Open(file_path);
-        if (stream_handle == -1) {
-          sender->SendErrorResponse(id, "file path doesn't exist");
-          return;
-        }
-        content["params"]["stream"] = std::to_string(stream_handle);
-        sender->SendMessage("CDP", content);
-      } else {
-        sender->SendErrorResponse(id, "Replay doesn't enable");
-      }
-    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.isString()) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid file path: expected string");
+    return;
   }
+  if (!lynx::tasm::replay::ReplayController::Enable()) {
+    responder->SendError(CDPErrorCode::ServerError, "Replay doesn't enable");
+    return;
+  }
+  if (!default_task_runner_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Cannot find default task runner");
+    return;
+  }
+
+  std::string file_path = params.asString();
+  RunOnTaskRunner(default_task_runner_, [responder, file_path] {
+    LOGI("send replay end");
+    Json::Value result(Json::objectValue);
+    if (!OpenReplayFileAsStream(file_path, result)) {
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "file path doesn't exist");
+      return;
+    }
+    responder->SendSuccess(std::move(result));
+  });
 }
 
 void LynxGlobalDevToolMediator::EndReplayTest(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const std::string& file_path) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, file_path] {
-      Json::Value msg(Json::ValueType::objectValue);
-      msg["method"] = "Replay.end";
-      msg["params"] = file_path;
-      GetInstance().ReplayEnd(sender, msg);
-    });
+  if (!default_task_runner_ || !sender) {
+    return;
   }
+  RunOnTaskRunner(default_task_runner_, [sender, file_path] {
+    Json::Value event(Json::objectValue);
+    event["method"] = "Replay.end";
+    if (!OpenReplayFileAsStream(file_path, event["params"])) {
+      LOGE("Replay dump file doesn't exist: " << file_path);
+      return;
+    }
+    sender->SendMessage("CDP", event);
+  });
 }
 
 void LynxGlobalDevToolMediator::IORead(
