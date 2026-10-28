@@ -66,7 +66,8 @@ function noop() {}
 
   <viewpager
     bindoffsetchange={(e: ViewPagerOffsetChangeEvent) => {
-      assertType<number>(e.detail.offset);
+      assertType<'bindoffsetchange'>(e.type);
+      assertType<string>(e.detail.offset);
     }}
   />;
 }
@@ -79,7 +80,6 @@ function invoke<T extends keyof { viewpager: ViewPagerUIMethods }>(_param: { vie
     method: 'selectTab',
     params: {
       index: 2,
-      smooth: true,
     },
     success: () => {},
     fail: () => {},

@@ -9,7 +9,9 @@ import type { SelectionChangeEvent } from '../../types/common/element/text';
 // Props Types Check
 {
   <text text-maxline={'1'} />;
+  <text text-maxline={1} />;
   <text text-maxlength={'1'} />;
+  <text text-maxlength={1} />;
   <text enable-font-scaling={true} />;
   <text text-vertical-align={'top'} />;
   <text text-vertical-align={'center'} />;

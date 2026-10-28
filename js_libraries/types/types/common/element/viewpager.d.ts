@@ -33,7 +33,7 @@ export interface ViewPagerOffsetChange {
    * @PC
    * @Harmony
    */
-  offset: number;
+  offset: string;
 }
 
 export interface ViewPagerProps extends StandardProps {
@@ -164,7 +164,7 @@ export interface ViewPagerProps extends StandardProps {
 
 export type ViewPagerChangeEvent = BaseEvent<'bindchange', ViewPagerChange>;
 export type ViewPagerWillChangeEvent = BaseEvent<'bindwillchange', ViewPagerChange>;
-export type ViewPagerOffsetChangeEvent = BaseEvent<'bindchange', ViewPagerOffsetChange>;
+export type ViewPagerOffsetChangeEvent = BaseEvent<'bindoffsetchange', ViewPagerOffsetChange>;
 
 export interface ViewPagerItemProps extends StandardProps {}
 
@@ -197,7 +197,7 @@ export interface ViewPagerSelectTabMethod extends BaseMethod {
      * @Harmony
      * @PC
      */
-    smooth: boolean;
+    smooth?: boolean;
   };
 }
 

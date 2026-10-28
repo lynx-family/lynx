@@ -136,7 +136,6 @@ export interface InputProps extends Omit<StandardProps, 'bindfocus' | 'bindblur'
    * @ClayIOS 3.4
    * @ClayMacOS 3.4
    * @ClayWindows 3.4
-   * @defaultValue 'send'
    */
   'confirm-type'?: 'send' | 'search' | 'go' | 'done' | 'next';
   /**
@@ -150,7 +149,6 @@ export interface InputProps extends Omit<StandardProps, 'bindfocus' | 'bindblur'
    * @ClayMacOS 2.14
    * @ClayWindows 2.14
    * @ClayHarmony 2.17
-   * @defaultValue 140
    */
   maxlength?: number;
   /**

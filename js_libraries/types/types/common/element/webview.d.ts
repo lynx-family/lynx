@@ -127,7 +127,7 @@ export interface WebviewProps extends Omit<StandardProps, 'binderror'> {
   /**
    * Enable bounce effect
    * @iOS 4.0
-   * @defaultValue false
+   * @defaultValue true
    */
   bounces?: boolean;
   /**
