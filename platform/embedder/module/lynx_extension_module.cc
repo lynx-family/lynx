@@ -2,6 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <algorithm>
+#include <utility>
+
 #include "base/include/closure.h"
 #include "platform/embedder/module/lynx_extension_module_priv.h"
 #include "platform/embedder/module/lynx_native_module_napi.h"
@@ -9,30 +12,44 @@
 #include "third_party/weak-node-api/headers/weak_napi_defines.h"
 #endif
 
+namespace lynx {
+namespace embedder {
+
+// The module cancels requests before releasing the caller's context. The
+// destructor also cancels requests discarded by the observer, such as
+// duplicates.
+class PendingVSyncCallback {
+ public:
+  PendingVSyncCallback(vsync_observer_callback callback, void* user_data)
+      : callback_(callback), user_data_(user_data) {}
+  ~PendingVSyncCallback() { Run(0, 0); }
+
+  void Run(int64_t start, int64_t end) {
+    if (auto callback = std::exchange(callback_, nullptr)) {
+      callback(user_data_, start, end);
+    }
+  }
+
+ private:
+  vsync_observer_callback callback_;
+  void* user_data_;
+};
+
+}  // namespace embedder
+}  // namespace lynx
+
 LYNX_EXTERN_C void lynx_vsync_observer_request_before_animation_frame(
     lynx_vsync_observer_t* observer, uintptr_t id,
     vsync_observer_callback callback, void* user_data) {
-  auto* vsync_observer = observer->extension_module->VSyncObserver();
-  if (!vsync_observer) {
-    callback(user_data, 0, 0);
-    return;
-  }
-  vsync_observer->RequestBeforeAnimationFrame(
-      id, [callback = callback, user_data = user_data](
-              int64_t start, int64_t end) { callback(user_data, start, end); });
+  observer->extension_module->RequestAnimationFrame(id, callback, user_data,
+                                                    /*before=*/true);
 }
 
 LYNX_EXTERN_C void lynx_vsync_observer_request_animation_frame(
     lynx_vsync_observer_t* observer, uintptr_t id,
     vsync_observer_callback callback, void* user_data) {
-  auto* vsync_observer = observer->extension_module->VSyncObserver();
-  if (!vsync_observer) {
-    callback(user_data, 0, 0);
-    return;
-  }
-  vsync_observer->RequestAnimationFrame(
-      id, [callback = callback, user_data = user_data](
-              int64_t start, int64_t end) { callback(user_data, start, end); });
+  observer->extension_module->RequestAnimationFrame(id, callback, user_data,
+                                                    /*before=*/false);
 }
 
 LYNX_EXTERN_C void lynx_vsync_observer_register_after_animation_frame_listener(
@@ -180,8 +197,46 @@ ExtensionModuleImpl::ExtensionModuleImpl(lynx_extension_module_t* module)
 }
 
 ExtensionModuleImpl::~ExtensionModuleImpl() {
+  CancelPendingVSyncCallbacks();
   if (c_module_) {
     lynx_extension_module_unref(c_module_);
+  }
+}
+
+void ExtensionModuleImpl::RequestAnimationFrame(
+    uintptr_t id, vsync_observer_callback callback, void* user_data,
+    bool before) {
+  auto observer = vsync_observer_;
+  if (!observer) {
+    callback(user_data, 0, 0);
+    return;
+  }
+  pending_vsync_callbacks_.erase(
+      std::remove_if(pending_vsync_callbacks_.begin(),
+                     pending_vsync_callbacks_.end(),
+                     [](const auto& pending) { return pending.expired(); }),
+      pending_vsync_callbacks_.end());
+  auto pending = std::make_shared<PendingVSyncCallback>(callback, user_data);
+  pending_vsync_callbacks_.push_back(pending);
+  auto on_frame = [pending = std::move(pending)](int64_t start, int64_t end) {
+    pending->Run(start, end);
+  };
+  if (before) {
+    observer->RequestBeforeAnimationFrame(id, std::move(on_frame));
+  } else {
+    observer->RequestAnimationFrame(id, std::move(on_frame));
+  }
+}
+
+void ExtensionModuleImpl::CancelPendingVSyncCallbacks() {
+  // Reject reentrant requests before invoking cancellation callbacks. Other
+  // modules may still use this runtime observer, so cancel only our requests.
+  auto observer = std::move(vsync_observer_);
+  auto pending = std::exchange(pending_vsync_callbacks_, {});
+  for (auto& weak : pending) {
+    if (auto callback = weak.lock()) {
+      callback->Run(0, 0);
+    }
   }
 }
 
@@ -245,6 +300,7 @@ void ExtensionModuleImpl::SetRuntimeReadyState(void* opaque_env,
 }
 
 void ExtensionModuleImpl::SetRuntimeDetachedState() {
+  CancelPendingVSyncCallbacks();
   napi_module_.reset();
   methods_.clear();
   if (!c_module_ || !c_module_->on_runtime_detach_func) {
@@ -310,6 +366,7 @@ void ExtensionModuleImpl::SetDelegate(
 }
 
 void ExtensionModuleImpl::Destroy() {
+  CancelPendingVSyncCallbacks();
   if (!c_module_ || !c_module_->on_destroy_func) {
     LOGE("ExtensionModuleImpl c_module or on_destroy_func is nullptr");
     return;
