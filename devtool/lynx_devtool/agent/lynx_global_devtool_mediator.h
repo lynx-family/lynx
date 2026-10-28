@@ -54,11 +54,11 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_CDP_METHOD(MemoryGetAllMemoryUsage);
 
   DECLARE_DEVTOOL_METHOD(TracingStart)
-  DECLARE_DEVTOOL_METHOD(TracingEnd)
-  DECLARE_DEVTOOL_METHOD(SetStartupTracingConfig)
-  DECLARE_DEVTOOL_METHOD(GetStartupTracingConfig)
-  DECLARE_DEVTOOL_METHOD(GetStartupTracingFile)
-  DECLARE_DEVTOOL_METHOD(TakeVMSnapshotByUrl)
+  DECLARE_DEVTOOL_CDP_METHOD(TracingEnd);
+  DECLARE_DEVTOOL_CDP_METHOD(SetStartupTracingConfig);
+  DECLARE_DEVTOOL_CDP_METHOD(GetStartupTracingConfig);
+  DECLARE_DEVTOOL_CDP_METHOD(GetStartupTracingFile);
+  DECLARE_DEVTOOL_CDP_METHOD(TakeVMSnapshotByUrl);
 
   // System Info domain
   DECLARE_DEVTOOL_CDP_METHOD(SystemInfoGetInfo);

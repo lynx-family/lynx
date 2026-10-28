@@ -10,9 +10,9 @@ notes:
   - Writes params.config to GlobalDevToolPlatformFacade::GetTraceController()->SetStartupTracingConfig().
   - The trace controller stores the configuration as an opaque string. Lynx does not parse or validate it in this CDP method.
   - Returns an empty OK response when params.config is present.
-  - Returns a CDP error with message Set Startup Tracing config is null when params.config is missing.
+  - Missing or non-string params.config returns InvalidParams with message Invalid config: expected string.
   - Returns a CDP error with message Failed to get trace controller when no trace controller is available.
-  - If the global mediator has no default task runner, the current handler does not send an explicit CDP response.
+  - Returns ServerError with message Cannot find default task runner when the global mediator cannot dispatch the command.
 examples:
   - title: Store startup tracing config
     request:
