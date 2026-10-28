@@ -81,22 +81,30 @@ void InspectorCSSAgentNG::Disable(const std::shared_ptr<MessageSender>& sender,
 
 void InspectorCSSAgentNG::GetMatchedStylesForNode(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetMatchedStylesForNode(sender, message);
+  devtool_mediator_->GetMatchedStylesForNode(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::GetLayersForNode(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetLayersForNode(sender, message);
+  devtool_mediator_->GetLayersForNode(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::GetComputedStyleForNode(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetComputedStyleForNode(sender, message);
+  devtool_mediator_->GetComputedStyleForNode(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::GetInlineStylesForNode(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetInlineStylesForNode(sender, message);
+  devtool_mediator_->GetInlineStylesForNode(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::SetStyleTexts(
@@ -111,7 +119,9 @@ void InspectorCSSAgentNG::GetStyleSheetText(
 
 void InspectorCSSAgentNG::GetBackgroundColors(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetBackgroundColors(sender, message);
+  devtool_mediator_->GetBackgroundColors(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::CallMethod(
