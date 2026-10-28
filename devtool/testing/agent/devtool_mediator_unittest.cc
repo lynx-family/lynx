@@ -925,7 +925,9 @@ TEST_F(DevToolMediatorTest, BoxModelDomCommandsRunOnTASMThreadCase) {
   message["params"]["nodeId"] = 0;
   devtool_mediator_->GetDocumentWithBoxModel(message_sender_, message);
   devtool_mediator_->DOM_GetBoxModel(message_sender_, message);
-  devtool_mediator_->GetComputedStyleForNode(message_sender_, message);
+  devtool_mediator_->GetComputedStyleForNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 51),
+      message["params"]);
   tasm_thread_->Join();
 
   Json::Value res;

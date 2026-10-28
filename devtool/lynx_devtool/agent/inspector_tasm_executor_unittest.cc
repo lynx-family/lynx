@@ -928,6 +928,99 @@ TEST_F(InspectorTasmExecutorTest, CSSEnableRepliesBeforeStyleSheetEvents) {
   EXPECT_EQ(sender->json_messages_[1].second["method"], "CSS.styleSheetAdded");
 }
 
+TEST_F(InspectorTasmExecutorTest, CSSNodeQueriesRejectInvalidAndMissingNodes) {
+  for (auto method : {&devtool::InspectorTasmExecutor::GetMatchedStylesForNode,
+                      &devtool::InspectorTasmExecutor::GetLayersForNode,
+                      &devtool::InspectorTasmExecutor::GetInlineStylesForNode,
+                      &devtool::InspectorTasmExecutor::GetBackgroundColors}) {
+    auto check = [&](const Json::Value& params, int code) {
+      auto sender = std::make_shared<RecordingMessageSender>();
+      constexpr int64_t id = 1LL << 40;
+      (element_executor_.get()->*method)(
+          std::make_shared<devtool::CDPResponder>(sender, id), params);
+      ASSERT_EQ(sender->json_messages_.size(), 1U);
+      const auto& response = sender->json_messages_[0].second;
+      EXPECT_EQ(response["id"].asInt64(), id);
+      EXPECT_EQ(response["error"]["code"], code);
+      EXPECT_FALSE(response.isMember("result"));
+    };
+    for (auto params :
+         {Json::Value(), Json::Value(1), Json::Value(Json::arrayValue)}) {
+      check(params, -32602);
+    }
+    for (auto node : {Json::Value(), Json::Value("1"), Json::Value(-1),
+                      Json::Value(Json::UInt64(1) << 32)}) {
+      Json::Value params;
+      params["nodeId"] = node;
+      check(params, -32602);
+    }
+    Json::Value params;
+    params["nodeId"] = 999999;
+    check(params, -32000);
+  }
+}
+
+TEST_F(InspectorTasmExecutorTest,
+       CSSComputedStylePreservesEmptyResultForMissingNodes) {
+  auto element = CreateInlineStyleUpdateTarget();
+  element_executor_->element_root_ = element.get();
+  constexpr int64_t id = 1LL << 40;
+
+  for (const auto& params :
+       {Json::Value(), Json::Value(1), Json::Value(Json::arrayValue)}) {
+    auto sender = std::make_shared<RecordingMessageSender>();
+    element_executor_->GetComputedStyleForNode(
+        std::make_shared<devtool::CDPResponder>(sender, id), params);
+    ASSERT_EQ(sender->json_messages_.size(), 1U);
+    EXPECT_EQ(sender->json_messages_[0].second["id"].asInt64(), id);
+    EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32602);
+  }
+
+  for (const auto& node :
+       {Json::Value(), Json::Value("1"), Json::Value(Json::UInt64(1) << 32)}) {
+    Json::Value params;
+    params["nodeId"] = node;
+    auto sender = std::make_shared<RecordingMessageSender>();
+    element_executor_->GetComputedStyleForNode(
+        std::make_shared<devtool::CDPResponder>(sender, id), params);
+    ASSERT_EQ(sender->json_messages_.size(), 1U);
+    EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32602);
+  }
+
+  for (int node_id : {-1, 999999}) {
+    Json::Value params;
+    params["nodeId"] = node_id;
+    auto sender = std::make_shared<RecordingMessageSender>();
+    element_executor_->GetComputedStyleForNode(
+        std::make_shared<devtool::CDPResponder>(sender, id), params);
+    ASSERT_EQ(sender->json_messages_.size(), 1U);
+    EXPECT_EQ(sender->json_messages_[0].second["id"].asInt64(), id);
+    EXPECT_EQ(sender->json_messages_[0].second["result"],
+              Json::Value(Json::objectValue));
+    EXPECT_FALSE(sender->json_messages_[0].second.isMember("error"));
+  }
+}
+
+TEST_F(InspectorTasmExecutorTest, CSSComputedStyleRejectsMissingReplyThread) {
+  auto element = manager_->CreateFiberElement("view");
+  element->MarkCanBeLayoutOnly(false);
+  devtool::ElementInspector::InitForInspector(std::make_tuple(element.get()));
+  element->CreateElementContainer(false);
+  element->MarkAttached();
+  element_executor_->element_root_ = element.get();
+  devtool_mediator_->default_task_runner_ = nullptr;
+
+  Json::Value params;
+  params["nodeId"] = devtool::ElementInspector::NodeId(element.get());
+  auto sender = std::make_shared<RecordingMessageSender>();
+  element_executor_->GetComputedStyleForNode(
+      std::make_shared<devtool::CDPResponder>(sender, 17), params);
+  FlushUITasks();
+  ASSERT_EQ(sender->json_messages_.size(), 1U);
+  EXPECT_EQ(sender->json_messages_[0].second["id"], 17);
+  EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32000);
+}
+
 TEST_F(InspectorTasmExecutorTest, GetLayersForNodeReturnsCanonicalLayerTree) {
   auto dom = BuildMediaQueryTestDom(manager_.get(),
                                     {{".layered",
@@ -943,7 +1036,10 @@ TEST_F(InspectorTasmExecutorTest, GetLayersForNodeReturnsCanonicalLayerTree) {
   message["id"] = 100;
   message["params"]["nodeId"] =
       devtool::ElementInspector::NodeId(dom.element.get());
-  element_executor_->GetLayersForNode(response_sender, message);
+  element_executor_->GetLayersForNode(
+      std::make_shared<devtool::CDPResponder>(response_sender,
+                                              message["id"].asInt64()),
+      message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   const Json::Value& response = response_sender->json_messages_[0].second;
@@ -975,7 +1071,9 @@ TEST_F(InspectorTasmExecutorTest,
   node_without_layers["id"] = 101;
   node_without_layers["params"]["nodeId"] =
       devtool::ElementInspector::NodeId(dom.element.get());
-  element_executor_->GetLayersForNode(response_sender, node_without_layers);
+  element_executor_->GetLayersForNode(
+      std::make_shared<devtool::CDPResponder>(response_sender, 101),
+      node_without_layers["params"]);
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   const Json::Value& root_layer =
       response_sender->json_messages_[0].second["result"]["rootLayer"];
@@ -986,7 +1084,9 @@ TEST_F(InspectorTasmExecutorTest,
   response_sender->json_messages_.clear();
   Json::Value invalid_params(Json::ValueType::objectValue);
   invalid_params["id"] = 102;
-  element_executor_->GetLayersForNode(response_sender, invalid_params);
+  element_executor_->GetLayersForNode(
+      std::make_shared<devtool::CDPResponder>(response_sender, 102),
+      invalid_params["params"]);
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
             devtool::kInvalidParams);
@@ -995,7 +1095,9 @@ TEST_F(InspectorTasmExecutorTest,
   Json::Value missing_node(Json::ValueType::objectValue);
   missing_node["id"] = 103;
   missing_node["params"]["nodeId"] = 999999;
-  element_executor_->GetLayersForNode(response_sender, missing_node);
+  element_executor_->GetLayersForNode(
+      std::make_shared<devtool::CDPResponder>(response_sender, 103),
+      missing_node["params"]);
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
             devtool::kServerError);
@@ -1380,7 +1482,10 @@ TEST_F(InspectorTasmExecutorTest, GetComputedStyleOfNodeStyleOrderCase) {
   message["id"] = 100;
   message["params"]["nodeId"] =
       devtool::ElementInspector::NodeId(element.get());
-  element_executor_->GetComputedStyleForNode(message_sender_, message);
+  element_executor_->GetComputedStyleForNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_,
+                                              message["id"].asInt64()),
+      message["params"]);
   FlushUITasks();
 
   Json::Value response;
@@ -1440,7 +1545,10 @@ TEST_F(InspectorTasmExecutorTest, GetComputedStyleUsesResolvedElementStyle) {
   message["id"] = 110;
   message["params"]["nodeId"] =
       devtool::ElementInspector::NodeId(element.get());
-  element_executor_->GetComputedStyleForNode(message_sender_, message);
+  element_executor_->GetComputedStyleForNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_,
+                                              message["id"].asInt64()),
+      message["params"]);
   FlushUITasks();
 
   Json::Value response;
@@ -1482,7 +1590,10 @@ TEST_F(InspectorTasmExecutorTest,
   message["id"] = 13;
   message["params"]["nodeId"] =
       devtool::ElementInspector::NodeId(element.get());
-  element_executor_->GetComputedStyleForNode(message_sender_, message);
+  element_executor_->GetComputedStyleForNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_,
+                                              message["id"].asInt64()),
+      message["params"]);
   FlushUITasks();
 
   Json::Value res;
@@ -1524,7 +1635,10 @@ TEST_F(InspectorTasmExecutorTest,
   message["id"] = 14;
   message["params"]["nodeId"] =
       devtool::ElementInspector::NodeId(element.get());
-  element_executor_->GetComputedStyleForNode(message_sender_, message);
+  element_executor_->GetComputedStyleForNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_,
+                                              message["id"].asInt64()),
+      message["params"]);
   FlushUITasks();
 
   Json::Value res;
@@ -1955,7 +2069,10 @@ TEST_F(InspectorTasmExecutorTest, GetComputedStyleForNodeUsesBoxModelCase) {
   message["id"] = 12;
   message["params"]["nodeId"] =
       devtool::ElementInspector::NodeId(element.get());
-  element_executor_->GetComputedStyleForNode(message_sender_, message);
+  element_executor_->GetComputedStyleForNode(
+      std::make_shared<devtool::CDPResponder>(message_sender_,
+                                              message["id"].asInt64()),
+      message["params"]);
   FlushUITasks();
 
   Json::Value res;
