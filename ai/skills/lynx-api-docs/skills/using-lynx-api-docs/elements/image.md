@@ -142,6 +142,7 @@ This guide covers the current native Android, iOS, and Harmony `<image>` element
 
 | Event Binding | Platforms | When It Fires | Payload Highlights |
 | --- | --- | --- | --- |
+| `bindloadstart` | Android, iOS, Harmony | Main image source starts loading | `url`: image source URL |
 | `bindload` | All | Main image source loads successfully | Always includes `width` and `height`; can include report fields when reporting is enabled |
 | `binderror` | All | Main image source fails to load | Error message and error code |
 | `bindstartplay` | iOS, Android, Harmony (animated image paths) | Animated playback starts | Empty detail payload |

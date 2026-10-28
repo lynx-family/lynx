@@ -41,6 +41,7 @@ inline constexpr const char* const kHttpPrefix = "http";
 
 // event name
 inline constexpr const char* const kLoadEventName = "load";
+inline constexpr const char* const kLoadStartEventName = "loadstart";
 inline constexpr const char* const kLoadEventImageWidth = "width";
 inline constexpr const char* const kLoadEventImageHeight = "height";
 inline constexpr const char* const kErrorEventName = "error";
@@ -76,6 +77,7 @@ inline constexpr uint32_t kFlagImageErrorEvent = 1 << 1;
 inline constexpr uint32_t kFlagImageStartPlayEvent = 1 << 2;
 inline constexpr uint32_t kFlagImageCurrentLoopEvent = 1 << 3;
 inline constexpr uint32_t kFlagImageFinalLoopEvent = 1 << 4;
+inline constexpr uint32_t kFlagImageLoadStartEvent = 1 << 5;
 inline constexpr uint32_t kFlagImageAnimationEvent =
     kFlagImageStartPlayEvent | kFlagImageCurrentLoopEvent |
     kFlagImageFinalLoopEvent;
