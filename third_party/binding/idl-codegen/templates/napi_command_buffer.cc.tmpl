@@ -60,12 +60,46 @@ uint32_t has_{{argument.name}};
 {% endif %}
 {% endmacro %}
 
+{% macro overflow_guard(method, words_expr) %}
+if ((uint64_t)current + {{words_expr}} > length) {
+  {{macro_prefix}}LOGE("{{method.class_name}}.{{method.name}}{{method.overload_index}}: command overflows buffer, aborting flush");
+  *success = false;
+  return rv;
+}
+{% endmacro %}
+
 {% macro method_call_content(method) %}
 if (type_safe) {
-  {% if method.is_raises_exception %} 
+  {% if method.is_raises_exception %}
   binding::ExceptionState exception_state(env);
   {% endif %}
+  {% if method.name in ['fillText', 'strokeText'] %}
+  {# The impls overload on the optional maxWidth instead of defaulting it, so
+     dispatch on the JS-side argument count like the remote decoder does. #}
+  {% set text_ns = namespace(first_optional_index = -1) %}
+  {% for argument in method.arguments %}
+  {% if argument.is_optional and text_ns.first_optional_index == -1 %}
+  {% set text_ns.first_optional_index = loop.index %}
+  {% endif %}
+  {% endfor %}
+  switch (command.argument_count) {
+    {% for argument in method.arguments %}
+    {% if argument.is_optional %}
+    case {{loop.index}}:
+      pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{'exception_state, ' if method.is_raises_exception}}{{method.arguments[0: loop.index] | map ('command_argument_literal') | join(', ')}});
+      break;
+    {% endif %}
+    {% endfor %}
+    case {{text_ns.first_optional_index - 1}}:
+      pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{'exception_state, ' if method.is_raises_exception}}{{method.arguments[0: text_ns.first_optional_index - 1] | map ('command_argument_literal') | join(', ')}});
+      break;
+    default:
+      {{macro_prefix}}LOGE("{{method.class_name}}.{{method.name}}{{method.overload_index}}: unexpected argument count: " << command.argument_count);
+      break;
+  }
+  {% else %}
   {{'auto&& result = ' if method.idl_type != 'void'}}pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{'exception_state, ' if method.is_raises_exception}}{{method.arguments | map ('command_argument_literal') | join(', ')}});
+  {% endif %}
   {% if method.is_raises_exception %} 
   if (exception_state.HadException()) {
     *success = false;
@@ -136,13 +170,15 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
     {% endif %}
   };
   {% if ns.count > 0 %}
+  {{ overflow_guard(method, '%du' | format(ns.count)) | trim | indent(2) }}
   {{method.camel_case_name}}Command& command = ReadBuffer<{{method.camel_case_name}}Command>(buffer, current);
   current += {{ns.count}};
   {% endif %}
 {#                                                                            #}
-  {% for argument in method.arguments %}
   {% set ns.union_argument = False %}
+  {% for argument in method.arguments %}
   {% if argument.is_typed_array %}
+  {{ overflow_guard(method, '(uint64_t)command.' ~ argument.name ~ 'ArrayLengthGen') | trim | indent(2) }}
   {% if argument.idl_type == 'Float32Array' %}
   SharedVector<float> {{argument.name}}((float*)buffer + current, command.{{argument.name}}ArrayLengthGen);
   current += command.{{argument.name}}ArrayLengthGen;
@@ -159,17 +195,26 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   {% if argument.sequence_element_type == 'String' %}
   std::vector<std::string> {{argument.name}};
   for (uint32_t i = 0; i < command.{{argument.name}}ArrayLengthGen; ++i) {
+    {{ overflow_guard(method, '1u') | trim | indent(4) }}
     uint32_t str_len = ReadBuffer<uint32_t>(buffer, current);
+    {{ overflow_guard(method, '((uint64_t)str_len + 3) / 2') | trim | indent(4) }}
     {{argument.name}}.push_back(binding::Utf16LeToUtf8((char16_t*)(buffer + current + 1), str_len));
     current += (str_len + 3) / 2;
   }
   {% else %}
+  {{ overflow_guard(method, '(uint64_t)command.' ~ argument.name ~ 'ArrayLengthGen') | trim | indent(2) }}
   SharedVector<uint32_t> {{argument.name}}((uint32_t*)buffer + current, command.{{argument.name}}ArrayLengthGen);
   current += command.{{argument.name}}ArrayLengthGen;
   {% endif %}{# sequence_element_type #}
 {#                                                                            #}
   {% elif argument.is_string_type %}
+  {{ overflow_guard(method, '((uint64_t)command.' ~ argument.name ~ 'StringLengthGen + 1) / 2') | trim | indent(2) }}
+  {% if method.name in ['measureText', 'fillText', 'strokeText'] %}
+  {# The impls take UTF-16 directly; skip the UTF-8 conversion. #}
+  std::u16string {{argument.name}}((char16_t*)(buffer + current), command.{{argument.name}}StringLengthGen);
+  {% else %}
   std::string {{argument.name}} = binding::Utf16LeToUtf8((char16_t*)(buffer + current), command.{{argument.name}}StringLengthGen);
+  {% endif %}
   current += (command.{{argument.name}}StringLengthGen + 1) / 2;
 {#                                                                            #}
   {% elif argument.is_wrapper_type %}
@@ -189,13 +234,28 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   }
   {% endif %}
   {% elif argument.idl_type == 'ArrayBufferView' %}
+  {{ overflow_guard(method, '((uint64_t)command.' ~ argument.name ~ 'ByteLengthGen + 3) / 4') | trim | indent(2) }}
   ArrayBufferView {{argument.name}}(buffer + current, (ArrayBufferView::ViewType)command.{{argument.name}}ViewTypeGen, command.{{argument.name}}ByteLengthGen);
+{#                                                                            #}
+  {% elif argument.idl_type == 'ArrayBuffer' %}
+  {{ overflow_guard(method, '((uint64_t)command.' ~ argument.name ~ 'ByteLengthGen + 3) / 4') | trim | indent(2) }}
+{#                                                                            #}
+  {% elif argument.enum_type %}
+  if (command.{{argument.name}} >= {{argument.enum_values | length}}u) {
+    LogTypeError("{{method.camel_case_name}}", "{{argument.name}}", command.{{argument.name}});
+    type_safe = false;
+  }
 {#                                                                            #}
  {% elif argument.is_dictionary %}
   std::unique_ptr<{{argument.idl_type}}> {{argument.name}};
   if (command.has_{{argument.name}}) {
-    binding::DictionaryBuffer dict(buffer + current, binding::NapiEnvImpl::From(env));
+    binding::DictionaryBuffer dict(buffer + current, binding::NapiEnvImpl::From(env), length - current);
     {{argument.name}} = {{argument.idl_type}}::From(dict);
+    if (dict.Overflowed()) {
+      {{macro_prefix}}LOGE("{{method.class_name}}.{{method.name}}{{method.overload_index}}: dictionary overflows buffer, aborting flush");
+      *success = false;
+      return rv;
+    }
     current += dict.ParsedLength();
   }
   {% elif argument['union_types'] %}
@@ -205,9 +265,14 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
     case k{{union_arg['idl_type']}}TypeId: {
       {% if union_arg['is_interface_type'] %}
       auto* napi_interface = FromId<Napi{{union_arg['idl_type']}}>(command.idOrLength);
-      {{union_arg['idl_type']}}* {{argument['name']}} = napi_interface->ToImplUnsafe();
+      {{union_arg['idl_type']}}* {{argument['name']}} = napi_interface ? napi_interface->ToImplUnsafe() : nullptr;
+      if (!{{argument['name']}}) {
+        LogTypeError("{{method.camel_case_name}}", "{{argument['name']}}", command.idOrLength);
+        type_safe = false;
+      }
       {% else %}
       uint32_t strLength = command.idOrLength;
+      {{ overflow_guard(method, '((uint64_t)strLength + 1) / 2') | trim | indent(6) }}
       auto {{argument['name']}} = binding::Utf16LeToUtf8((char16_t*)(buffer + current), strLength);
       current += (strLength + 1) / 2;
       {% endif %}
@@ -271,6 +336,10 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   {% endif %}
   {% elif method.is_dictionary %}
   rv = result->ToJsObject(env);
+  {% elif method.enum_type %}
+  rv = Napi::String::New(env, result);
+  {% elif method.union_types %}
+  rv = ToNAPI(std::move(result), env);
   {% elif method.idl_type == 'any' or method.idl_type == 'object' or method.is_sequence_type or method.idl_type == 'ArrayBuffer' or method.idl_type == 'ArrayBufferView' %}
   {% if method.remote_method_id %}
   rv = ToNAPI(std::move(result), env);
@@ -286,6 +355,11 @@ Napi::Value {{napi_class}}::RunBuffer(uint32_t* buffer, uint32_t length, Napi::E
   Napi::Value rv;
   uint32_t current = 1u;
   while (current < length) {
+    if (current + 2u > length) {
+      {{macro_prefix}}LOGE("Malformed {{component}} command header, current: " << current << ", length: " << length << ", aborting flush");
+      *success = false;
+      return rv;
+    }
     struct __attribute__ ((__packed__)) MethodHeader {
       uint32_t method;
       uint32_t object_id;
@@ -332,8 +406,10 @@ Napi::Value {{napi_class}}::RunBuffer(uint32_t* buffer, uint32_t length, Napi::E
         }
         {{macro_prefix}}LOGE("Content around {{component}} current: " << current_content.str());
         {{macro_prefix}}LOGE("==========================================================");
-        {{macro_prefix}}NOTREACHED();
-        break;
+        {# The method id comes from a JS-writable buffer, so this must not be
+           treated as unreachable; abort decoding and let DoFlush reset. #}
+        *success = false;
+        return rv;
       }
     }
   }

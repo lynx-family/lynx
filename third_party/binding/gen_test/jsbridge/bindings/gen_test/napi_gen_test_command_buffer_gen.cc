@@ -29,6 +29,11 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
   Napi::Value rv;
   uint32_t current = 1u;
   while (current < length) {
+    if (current + 2u > length) {
+      LOGE("Malformed gen_test command header, current: " << current << ", length: " << length << ", aborting flush");
+      *success = false;
+      return rv;
+    }
     struct __attribute__ ((__packed__)) MethodHeader {
       uint32_t method;
       uint32_t object_id;
@@ -66,8 +71,18 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
         struct __attribute__ ((__packed__)) VoidFromStringCommand {
           uint32_t sStringLengthGen;
         };
+        if ((uint64_t)current + 1u > length) {
+          LOGE("TestContext.voidFromString: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         VoidFromStringCommand& command = ReadBuffer<VoidFromStringCommand>(buffer, current);
         current += 1;
+        if ((uint64_t)current + ((uint64_t)command.sStringLengthGen + 1) / 2 > length) {
+          LOGE("TestContext.voidFromString: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         std::string s = binding::Utf16LeToUtf8((char16_t*)(buffer + current), command.sStringLengthGen);
         current += (command.sStringLengthGen + 1) / 2;
         if (type_safe) {
@@ -79,11 +94,26 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
         struct __attribute__ ((__packed__)) VoidFromStringArrayCommand {
           uint32_t saArrayLengthGen;
         };
+        if ((uint64_t)current + 1u > length) {
+          LOGE("TestContext.voidFromStringArray: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         VoidFromStringArrayCommand& command = ReadBuffer<VoidFromStringArrayCommand>(buffer, current);
         current += 1;
         std::vector<std::string> sa;
         for (uint32_t i = 0; i < command.saArrayLengthGen; ++i) {
+          if ((uint64_t)current + 1u > length) {
+            LOGE("TestContext.voidFromStringArray: command overflows buffer, aborting flush");
+            *success = false;
+            return rv;
+          }
           uint32_t str_len = ReadBuffer<uint32_t>(buffer, current);
+          if ((uint64_t)current + ((uint64_t)str_len + 3) / 2 > length) {
+            LOGE("TestContext.voidFromStringArray: command overflows buffer, aborting flush");
+            *success = false;
+            return rv;
+          }
           sa.push_back(binding::Utf16LeToUtf8((char16_t*)(buffer + current + 1), str_len));
           current += (str_len + 3) / 2;
         }
@@ -96,8 +126,18 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
         struct __attribute__ ((__packed__)) VoidFromTypedArrayCommand {
           uint32_t faArrayLengthGen;
         };
+        if ((uint64_t)current + 1u > length) {
+          LOGE("TestContext.voidFromTypedArray: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         VoidFromTypedArrayCommand& command = ReadBuffer<VoidFromTypedArrayCommand>(buffer, current);
         current += 1;
+        if ((uint64_t)current + (uint64_t)command.faArrayLengthGen > length) {
+          LOGE("TestContext.voidFromTypedArray: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         SharedVector<float> fa((float*)buffer + current, command.faArrayLengthGen);
         current += command.faArrayLengthGen;
         if (type_safe) {
@@ -109,8 +149,18 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
         struct __attribute__ ((__packed__)) VoidFromArrayBufferCommand {
           uint32_t abByteLengthGen;
         };
+        if ((uint64_t)current + 1u > length) {
+          LOGE("TestContext.voidFromArrayBuffer: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         VoidFromArrayBufferCommand& command = ReadBuffer<VoidFromArrayBufferCommand>(buffer, current);
         current += 1;
+        if ((uint64_t)current + ((uint64_t)command.abByteLengthGen + 3) / 4 > length) {
+          LOGE("TestContext.voidFromArrayBuffer: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         if (type_safe) {
           pointer.test_context->VoidFromArrayBuffer(buffer + current, command.abByteLengthGen);
         }
@@ -122,8 +172,18 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
           uint32_t abvViewTypeGen;
           uint32_t abvByteLengthGen;
         };
+        if ((uint64_t)current + 2u > length) {
+          LOGE("TestContext.voidFromArrayBufferView: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         VoidFromArrayBufferViewCommand& command = ReadBuffer<VoidFromArrayBufferViewCommand>(buffer, current);
         current += 2;
+        if ((uint64_t)current + ((uint64_t)command.abvByteLengthGen + 3) / 4 > length) {
+          LOGE("TestContext.voidFromArrayBufferView: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         ArrayBufferView abv(buffer + current, (ArrayBufferView::ViewType)command.abvViewTypeGen, command.abvByteLengthGen);
         if (type_safe) {
           pointer.test_context->VoidFromArrayBufferView(abv);
@@ -136,8 +196,18 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
           uint32_t abvViewTypeGen;
           uint32_t abvByteLengthGen;
         };
+        if ((uint64_t)current + 2u > length) {
+          LOGE("TestContext.voidFromNullableArrayBufferView: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         VoidFromNullableArrayBufferViewCommand& command = ReadBuffer<VoidFromNullableArrayBufferViewCommand>(buffer, current);
         current += 2;
+        if ((uint64_t)current + ((uint64_t)command.abvByteLengthGen + 3) / 4 > length) {
+          LOGE("TestContext.voidFromNullableArrayBufferView: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         ArrayBufferView abv(buffer + current, (ArrayBufferView::ViewType)command.abvViewTypeGen, command.abvByteLengthGen);
         if (type_safe) {
           pointer.test_context->VoidFromNullableArrayBufferView(abv);
@@ -149,6 +219,11 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
         struct __attribute__ ((__packed__)) CreateAsyncObjectCommand {
           uint32_t id;
         };
+        if ((uint64_t)current + 1u > length) {
+          LOGE("TestContext.createAsyncObject: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         CreateAsyncObjectCommand& command = ReadBuffer<CreateAsyncObjectCommand>(buffer, current);
         current += 1;
         if (type_safe) {
@@ -161,6 +236,11 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
         struct __attribute__ ((__packed__)) AsyncForAsyncObjectCommand {
           uint32_t taoId;
         };
+        if ((uint64_t)current + 1u > length) {
+          LOGE("TestContext.asyncForAsyncObject: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         AsyncForAsyncObjectCommand& command = ReadBuffer<AsyncForAsyncObjectCommand>(buffer, current);
         current += 1;
         TestAsyncObject* tao = nullptr;
@@ -180,6 +260,11 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
         struct __attribute__ ((__packed__)) AsyncForNullableAsyncObjectCommand {
           uint32_t taoId;
         };
+        if ((uint64_t)current + 1u > length) {
+          LOGE("TestContext.asyncForNullableAsyncObject: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         AsyncForNullableAsyncObjectCommand& command = ReadBuffer<AsyncForNullableAsyncObjectCommand>(buffer, current);
         current += 1;
         TestAsyncObject* tao = nullptr;
@@ -195,6 +280,11 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
         struct __attribute__ ((__packed__)) SyncForAsyncObjectCommand {
           uint32_t taoId;
         };
+        if ((uint64_t)current + 1u > length) {
+          LOGE("TestContext.syncForAsyncObject: command overflows buffer, aborting flush");
+          *success = false;
+          return rv;
+        }
         SyncForAsyncObjectCommand& command = ReadBuffer<SyncForAsyncObjectCommand>(buffer, current);
         current += 1;
         TestAsyncObject* tao = nullptr;
@@ -231,8 +321,8 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
         }
         LOGE("Content around gen_test current: " << current_content.str());
         LOGE("==========================================================");
-        NOTREACHED();
-        break;
+        *success = false;
+        return rv;
       }
     }
   }
