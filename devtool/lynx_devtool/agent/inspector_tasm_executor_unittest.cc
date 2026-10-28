@@ -45,6 +45,7 @@
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_receiver.h"
+#include "devtool/lynx_devtool/agent/domain_agent/inspector_css_agent_ng.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_overlay_agent_ng.h"
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 #include "devtool/lynx_devtool/agent/inspector_util.h"
@@ -876,6 +877,100 @@ TEST_F(InspectorTasmExecutorTest, CompositingReasonsReturnsElementPayload) {
   EXPECT_EQ(response["result"], expected);
   EXPECT_TRUE(
       devtool::MockReceiver::GetInstance().received_message_.second.empty());
+}
+
+TEST_F(InspectorTasmExecutorTest, CSSAgentRejectsUnavailableTargets) {
+  for (const char* method :
+       {"CSS.enable", "CSS.disable", "CSS.getMatchedStylesForNode",
+        "CSS.getLayersForNode", "CSS.getComputedStyleForNode",
+        "CSS.getInlineStylesForNode", "CSS.setStyleTexts",
+        "CSS.getStyleSheetText", "CSS.getBackgroundColors",
+        "CSS.setStyleSheetText", "CSS.createStyleSheet", "CSS.addRule",
+        "CSS.startRuleUsageTracking", "CSS.updateRuleUsageTracking",
+        "CSS.stopRuleUsageTracking", "CSS.getMediaQueries", "CSS.setMediaText",
+        "CSS.setSupportsText"}) {
+    SCOPED_TRACE(method);
+    for (int unavailable = 0; unavailable < 3; ++unavailable) {
+      auto mediator = std::make_shared<devtool::LynxDevToolMediator>();
+      if (unavailable == 1) {
+        mediator->element_executor_ = element_executor_;
+      } else {
+        mediator->tasm_task_runner_ = ui_thread_->GetTaskRunner();
+      }
+      devtool::InspectorCSSAgentNG agent(unavailable == 2 ? nullptr : mediator);
+      auto sender = std::make_shared<RecordingMessageSender>();
+      Json::Value message;
+      message["method"] = method;
+      message["id"] = 1;
+      constexpr int64_t id = 1LL << 40;
+      devtool::CDPDomainAgentBase& base = agent;
+      base.CallMethod(std::make_shared<devtool::CDPResponder>(sender, id),
+                      message);
+      ASSERT_EQ(sender->json_messages_.size(), 1U);
+      EXPECT_EQ(sender->json_messages_[0].second["id"].asInt64(), id);
+      EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32000);
+      EXPECT_FALSE(sender->json_messages_[0].second.isMember("result"));
+    }
+  }
+}
+
+TEST_F(InspectorTasmExecutorTest, CSSAgentKeepsResponderAcrossQueuedDispatch) {
+  auto dom = BuildMediaQueryTestDom(
+      manager_.get(), {{".plain", tasm::CSSPropertyID::kPropertyIDWidth, "10px",
+                        "(min-width: 1000px)"}});
+  element_executor_->element_root_ = dom.style_value;
+  devtool_mediator_->element_executor_ = element_executor_;
+  devtool_mediator_->tasm_task_runner_ = ui_thread_->GetTaskRunner();
+  auto sender = std::make_shared<RecordingMessageSender>();
+  auto events = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = events;
+  std::promise<void> release;
+  auto gate = release.get_future().share();
+  ui_thread_->GetTaskRunner()->PostTask([gate] { gate.wait(); });
+  constexpr int64_t id = 1LL << 40;
+  {
+    devtool::InspectorCSSAgentNG agent(devtool_mediator_);
+    Json::Value message;
+    message["method"] = "CSS.enable";
+    message["id"] = 1;
+    agent.CallMethod(std::make_shared<devtool::CDPResponder>(sender, id),
+                     message);
+    message["method"] = "CSS.startRuleUsageTracking";
+    agent.CallMethod(std::make_shared<devtool::CDPResponder>(sender, id + 1),
+                     message);
+    message["method"] = "CSS.updateRuleUsageTracking";
+    message["params"]["selector"].append(".plain");
+    agent.CallMethod(std::make_shared<devtool::CDPResponder>(sender, id + 2),
+                     message);
+  }
+  release.set_value();
+  FlushUITasks();
+  ASSERT_EQ(sender->json_messages_.size(), 3U);
+  for (size_t index = 0; index < 3; ++index) {
+    EXPECT_EQ(sender->json_messages_[index].second["id"].asInt64(),
+              id + static_cast<int64_t>(index));
+    EXPECT_EQ(sender->json_messages_[index].second["result"],
+              Json::Value(Json::objectValue));
+    EXPECT_FALSE(sender->json_messages_[index].second.isMember("method"));
+  }
+  EXPECT_EQ(element_executor_->css_used_selector_.count(".plain"), 1U);
+  ASSERT_EQ(events->json_messages_.size(), 1U);
+  EXPECT_EQ(events->json_messages_[0].second["method"], "CSS.styleSheetAdded");
+  EXPECT_FALSE(events->json_messages_[0].second.isMember("id"));
+}
+
+TEST_F(InspectorTasmExecutorTest, CSSAgentReportsUnknownMethod) {
+  devtool::InspectorCSSAgentNG agent(nullptr);
+  auto sender = std::make_shared<RecordingMessageSender>();
+  Json::Value message;
+  message["method"] = "CSS.unknown";
+  agent.CallMethod(std::make_shared<devtool::CDPResponder>(sender, 31),
+                   message);
+  ASSERT_EQ(sender->json_messages_.size(), 1U);
+  EXPECT_EQ(sender->json_messages_[0].second["id"], 31);
+  EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32601);
+  EXPECT_EQ(sender->json_messages_[0].second["error"]["message"],
+            "'CSS.unknown' wasn't found");
 }
 
 TEST_F(InspectorTasmExecutorTest, CSSRuleUsageAcknowledgesAndValidatesUpdates) {
