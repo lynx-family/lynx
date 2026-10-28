@@ -584,7 +584,7 @@ void ElementManager::RequestLayout(
 
   auto *current_context =
       element_manager_delegate_->GetCurrentPipelineContext();
-  if (options->enable_unified_pixel_pipeline && current_context) {
+  if (current_context) {
     current_context->RequestFlushUIOperation();
   }
 

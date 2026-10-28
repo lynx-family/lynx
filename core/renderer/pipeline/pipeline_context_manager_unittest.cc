@@ -191,31 +191,6 @@ TEST_F(PipelineContextManagerTest, TestPipelineOptionsHeldByContext) {
   EXPECT_EQ(context->GetVersion(), next_context->GetVersion());
 }
 
-TEST_F(PipelineContextManagerTest, CopiedVersionSurvivesContextRemoval) {
-  auto manager = std::make_unique<PipelineContextManager>(true);
-  auto options = std::make_shared<PipelineOptions>();
-  auto* context = manager->CreateAndUpdateCurrentPipelineContext(options);
-  ASSERT_NE(context, nullptr);
-  auto completed_options = std::make_shared<PipelineOptions>(*options);
-  const auto version = context->GetVersion();
-
-  manager->ResetCurrentPipelineContext();
-  manager->RemovePipelineContextByVersion(version);
-  ASSERT_TRUE(completed_options->version.has_value());
-  EXPECT_EQ(*completed_options->version, version);
-  EXPECT_EQ(manager->GetPipelineContextByVersion(version), nullptr);
-  auto late_options = std::make_shared<PipelineOptions>(*options);
-  ASSERT_TRUE(late_options->version.has_value());
-  EXPECT_EQ(*late_options->version, version);
-
-  // A reused options object must create a new context after its old one ends.
-  auto* next_context = manager->CreateAndUpdateCurrentPipelineContext(options);
-  ASSERT_NE(next_context, nullptr);
-  EXPECT_FALSE(next_context->GetVersion() == version);
-  EXPECT_EQ(manager->GetCurrentPipelineContext(), next_context);
-  EXPECT_EQ(*completed_options->version, version);
-}
-
 TEST_F(PipelineContextManagerTest, ObserverPersistAcrossContexts) {
   auto manager = std::make_unique<PipelineContextManager>(true);
   auto observer = std::make_unique<TestLifecycleObserver>();

@@ -207,7 +207,7 @@ void ExpectLayoutInElementFirstScreenWithReadyViewport(FiberElementTest* test,
 
   auto first_screen_options = LayoutOptions(test, enable_unified, true);
   test->manager->RequestLayout(first_screen_options);
-  EXPECT_EQ(first_screen_options->version.has_value(), enable_unified);
+  EXPECT_EQ(first_screen_options->version, nullptr);
   EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
 
   test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
@@ -216,7 +216,7 @@ void ExpectLayoutInElementFirstScreenWithReadyViewport(FiberElementTest* test,
 
   auto update_options = LayoutOptions(test, enable_unified);
   test->manager->RequestLayout(update_options);
-  EXPECT_EQ(update_options->version.has_value(), enable_unified);
+  EXPECT_EQ(update_options->version, nullptr);
   EXPECT_EQ(test->tasm_mediator.page_updates_,
             (std::vector<bool>{true, false}));
 }
@@ -228,12 +228,12 @@ void ExpectLayoutInElementFirstScreenAfterLateViewport(FiberElementTest* test,
 
   auto first_screen_options = LayoutOptions(test, enable_unified, true);
   test->manager->RequestLayout(first_screen_options);
-  EXPECT_EQ(first_screen_options->version.has_value(), enable_unified);
+  EXPECT_EQ(first_screen_options->version, nullptr);
   EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
 
   auto pre_viewport_update = LayoutOptions(test, enable_unified);
   test->manager->RequestLayout(pre_viewport_update);
-  EXPECT_EQ(pre_viewport_update->version.has_value(), enable_unified);
+  EXPECT_EQ(pre_viewport_update->version, nullptr);
   EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
 
   test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
@@ -246,7 +246,7 @@ void ExpectLayoutInElementFirstScreenAfterLateViewport(FiberElementTest* test,
 
   auto update_options = LayoutOptions(test, enable_unified);
   test->manager->RequestLayout(update_options);
-  EXPECT_EQ(update_options->version.has_value(), enable_unified);
+  EXPECT_EQ(update_options->version, nullptr);
   EXPECT_EQ(test->tasm_mediator.page_updates_,
             (std::vector<bool>{true, false}));
 }
@@ -258,7 +258,7 @@ void ExpectLayoutInElementReuseAfterDeferredViewport(FiberElementTest* test,
 
   auto reuse_options = LayoutOptions(test, enable_unified, false, true);
   test->manager->RequestLayout(reuse_options);
-  EXPECT_EQ(reuse_options->version.has_value(), enable_unified);
+  EXPECT_EQ(reuse_options->version, nullptr);
   EXPECT_TRUE(test->tasm_mediator.page_updates_.empty());
 
   test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
@@ -267,7 +267,7 @@ void ExpectLayoutInElementReuseAfterDeferredViewport(FiberElementTest* test,
 
   auto deferred_layout_options = LayoutOptions(test, enable_unified);
   test->manager->OnPatchFinish(deferred_layout_options);
-  EXPECT_EQ(deferred_layout_options->version.has_value(), enable_unified);
+  EXPECT_EQ(deferred_layout_options->version, nullptr);
   EXPECT_EQ(test->tasm_mediator.page_updates_, (std::vector<bool>{true}));
 
   test->manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
@@ -23057,8 +23057,8 @@ TEST_P(FiberElementTest,
                      60 + index * 10);
   }
 
-  // List items complete their own flush during synchronous positioning, even
-  // when an outer unified pipeline is active. Keep that pipeline untouched.
+  // An active unified pipeline owns deferred item flushes. Synchronous
+  // positioning must report incomplete layout without forcing that pipeline.
   auto deferred = std::make_shared<PipelineOptions>();
   auto* pending_context = tasm->CreateAndUpdateCurrentPipelineContext(deferred);
   auto unmeasured =
@@ -23072,30 +23072,16 @@ TEST_P(FiberElementTest,
                                   lepus::Value(params)};
   base::ErrorStorage::GetInstance().Reset();
   result = RendererFunctions::FiberInvokeMethod(context, deferred_args, 3);
-  ASSERT_TRUE(result.IsObject());
-  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_TRUE(result.IsEmpty());
+  const auto& error = base::ErrorStorage::GetInstance().GetError();
+  ASSERT_NE(error, nullptr);
+  EXPECT_NE(error->error_message_.find("have not finished binding"),
+            std::string::npos);
   base::ErrorStorage::GetInstance().Reset();
   EXPECT_EQ(tasm->GetCurrentPipelineContext(), pending_context);
-  EXPECT_FALSE(deferred->resolve_requested);
-  EXPECT_EQ(unmeasured->height(), 250);
-  auto* measured_holder = container->GetItemHolderForIndex(19);
-  ASSERT_NE(measured_holder, nullptr);
-  EXPECT_TRUE(container->list_adapter()->IsFinishedBinding(measured_holder));
-  EXPECT_FLOAT_EQ(measured_holder->height(), 250);
-  EXPECT_TRUE(container->AreOnScreenItemsReady());
-  const auto measured_cells = result.GetProperty("attachedCells");
-  bool found_measured = false;
-  for (size_t i = 0; i < measured_cells.GetLength(); ++i) {
-    const auto cell = measured_cells.GetProperty(i);
-    if (cell.GetProperty("position").Number() == 19) {
-      found_measured = true;
-      EXPECT_DOUBLE_EQ(cell.GetProperty("bottom").Number() -
-                           cell.GetProperty("top").Number() -
-                           result.GetProperty("scrollTop").Number(),
-                       250);
-    }
-  }
-  EXPECT_TRUE(found_measured);
+  EXPECT_TRUE(deferred->resolve_requested);
+  EXPECT_EQ(unmeasured->height(), 0);
+  EXPECT_FALSE(container->AreOnScreenItemsReady());
 }
 
 TEST_P(FiberElementTest, DirectScrollConsumptionDoesNotRoundPastTheJsRequest) {

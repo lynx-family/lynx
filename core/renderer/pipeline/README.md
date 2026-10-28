@@ -80,9 +80,7 @@ Notes:
 
 ## Execution Flow
 1. Caller enters pipeline scope or creates context through manager.
-2. Manager assigns a version value to `PipelineOptions` and binds it to the
-   context. Copies of the options keep the version after the context is removed;
-   context membership is determined by looking up that version in the manager.
+2. Manager assigns version and binds `PipelineOptions` to context.
 3. `TemplateAssembler::RunPixelPipeline()` advances lifecycle and conditionally executes stages:
    - Resolve
    - Layout
