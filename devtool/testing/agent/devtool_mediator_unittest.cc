@@ -995,13 +995,11 @@ TEST_F(DevToolMediatorTest, LynxGetComponentIdElementNull) {
 }
 
 TEST_F(DevToolMediatorTest, LynxSetTraceMode) {
-  Json::Value request = Json::Value(Json::ValueType::objectValue);
   Json::Value param = Json::Value(Json::ValueType::objectValue);
   param["enableTraceMode"] = true;
-  request["params"] = param;
-  request["id"] = 123;
 
-  devtool_mediator_->LynxSetTraceMode(message_sender_, request);
+  devtool_mediator_->LynxSetTraceMode(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 123), param);
   devtool_thread_->Join();
 
   // The new behavior is to log a warning and return an error object
@@ -1013,16 +1011,18 @@ TEST_F(DevToolMediatorTest, LynxSetTraceMode) {
 }
 
 TEST_F(DevToolMediatorTest, GetLynxVersion) {
-  Json::Value request = Json::Value(Json::ValueType::objectValue);
-  devtool_mediator_->LynxGetVersion(message_sender_, request);
+  devtool_mediator_->LynxGetVersion(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0),
+      Json::Value());
   devtool_thread_->Join();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 0,\n   \"result\" : \"1.1.5\"\n}\n");
 }
 
 TEST_F(DevToolMediatorTest, GetRectToWindow) {
-  Json::Value request = Json::Value(Json::ValueType::objectValue);
-  devtool_mediator_->LynxGetRectToWindow(message_sender_, request);
+  devtool_mediator_->LynxGetRectToWindow(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0),
+      Json::Value());
   ui_thread_->Join();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 0,\n   \"result\" : {\n      \"height\" : 1.0,\n   "
@@ -1031,15 +1031,27 @@ TEST_F(DevToolMediatorTest, GetRectToWindow) {
 }
 
 TEST_F(DevToolMediatorTest, LynxTransferData) {
-  Json::Value request = Json::Value(Json::ValueType::objectValue);
-  devtool_mediator_->LynxTransferData(message_sender_, request);
+  devtool_mediator_->LynxTransferData(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0),
+      Json::Value());
   ui_thread_->Join();
-  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second, "");
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"id\" : 0,\n   \"result\" : {}\n}\n");
+}
+
+TEST_F(DevToolMediatorTest, LynxGetScreenshot) {
+  devtool_mediator_->GetScreenshot(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0),
+      Json::Value());
+  ui_thread_->Join();
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"id\" : 0,\n   \"result\" : {}\n}\n");
 }
 
 TEST_F(DevToolMediatorTest, LynxGetViewLocationOnScreen) {
-  Json::Value request = Json::Value(Json::ValueType::objectValue);
-  devtool_mediator_->LynxGetViewLocationOnScreen(message_sender_, request);
+  devtool_mediator_->LynxGetViewLocationOnScreen(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0),
+      Json::Value());
   ui_thread_->Join();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 0,\n   \"result\" : {\n      \"x\" : 1,\n      "
@@ -1047,8 +1059,9 @@ TEST_F(DevToolMediatorTest, LynxGetViewLocationOnScreen) {
 }
 
 TEST_F(DevToolMediatorTest, LynxSendEventToVM) {
-  Json::Value request = Json::Value(Json::ValueType::objectValue);
-  devtool_mediator_->LynxSendEventToVM(message_sender_, request);
+  devtool_mediator_->LynxSendEventToVM(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0),
+      Json::Value());
   ui_thread_->Join();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 0,\n   \"result\" : {}\n}\n");

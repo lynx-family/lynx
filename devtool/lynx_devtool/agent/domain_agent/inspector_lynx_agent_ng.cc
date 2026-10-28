@@ -94,7 +94,9 @@ void InspectorLynxAgentNG::SetLogLevel(
 // return physical pixel rect of lynx view
 void InspectorLynxAgentNG::GetLynxViewRectToWindow(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetRectToWindow(sender, message);
+  devtool_mediator_->LynxGetRectToWindow(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::GetProperties(
@@ -120,32 +122,44 @@ void InspectorLynxAgentNG::GetComponentId(
 
 void InspectorLynxAgentNG::GetLynxVersion(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetVersion(sender, message);
+  devtool_mediator_->LynxGetVersion(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::TransferData(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxTransferData(sender, message);
+  devtool_mediator_->LynxTransferData(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::SetTraceMode(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxSetTraceMode(sender, message);
+  devtool_mediator_->LynxSetTraceMode(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::GetScreenshot(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetScreenshot(sender, message);
+  devtool_mediator_->GetScreenshot(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::GetViewLocationOnScreen(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetViewLocationOnScreen(sender, message);
+  devtool_mediator_->LynxGetViewLocationOnScreen(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::SendVMEvent(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxSendEventToVM(sender, message);
+  devtool_mediator_->LynxSendEventToVM(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 }  // namespace devtool

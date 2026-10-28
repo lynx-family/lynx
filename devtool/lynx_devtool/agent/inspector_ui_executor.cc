@@ -492,13 +492,14 @@ void InspectorUIExecutor::ScreencastFrameAck(
 }
 
 void InspectorUIExecutor::GetScreenshot(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+    return;
+  }
   devtool_platform_facade_->GetLynxScreenShot();
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content = Json::Value(Json::ValueType::objectValue);
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::LynxSetLogLevel(
@@ -508,68 +509,66 @@ void InspectorUIExecutor::LynxSetLogLevel(
 }
 
 void InspectorUIExecutor::LynxGetRectToWindow(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   Json::Value rect(Json::ValueType::objectValue);
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+    return;
+  }
   auto dict = devtool_platform_facade_->GetRectToWindow();
   if (dict.size() < 4) {
-    sender->SendErrorResponse(message["id"].asInt64(),
-                              "Lynx.getRectToWindow is unavailable");
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "Lynx.getRectToWindow is unavailable");
     return;
   }
   rect["left"] = dict[0];
   rect["top"] = dict[1];
   rect["width"] = dict[2];
   rect["height"] = dict[3];
-  response["result"] = rect;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(rect));
 }
 
 void InspectorUIExecutor::LynxTransferData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value params = message["params"];
-  if (params.empty()) {
-    return;
-  }
-
-  Json::Value data_type = params["dataType"];
-  if (!data_type.empty() && !data_type.asString().compare("template")) {
-    Json::Value data = params["data"];
-    Json::Value eof = params["eof"];
-    if (data.isString() && eof.isBool()) {
-      CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                                "devtool_platform_facade_ is null");
-      devtool_platform_facade_->OnReceiveTemplateFragment(data.asString(),
-                                                          eof.asBool());
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.empty()) {
+    const Json::Value& data_type = params["dataType"];
+    if (!data_type.empty() && data_type.asString() == "template") {
+      const Json::Value& data = params["data"];
+      const Json::Value& eof = params["eof"];
+      if (data.isString() && eof.isBool()) {
+        if (devtool_platform_facade_ == nullptr) {
+          responder->SendError(CDPErrorCode::ServerError,
+                               "Lynx target is unavailable");
+          return;
+        }
+        devtool_platform_facade_->OnReceiveTemplateFragment(data.asString(),
+                                                            eof.asBool());
+      }
     }
   }
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::LynxGetViewLocationOnScreen(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+    return;
+  }
   std::vector<int32_t> res =
       devtool_platform_facade_->GetViewLocationOnScreen();
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content = Json::Value(Json::ValueType::objectValue);
+  Json::Value result = Json::Value(Json::ValueType::objectValue);
   const int invalid_pos = -1;
   if (res.size() < 2) {
-    content["x"] = invalid_pos;
-    content["y"] = invalid_pos;
+    result["x"] = invalid_pos;
+    result["y"] = invalid_pos;
   } else {
-    content["x"] = res[0];
-    content["y"] = res[1];
+    result["x"] = res[0];
+    result["y"] = res[1];
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::SendPageScreencastFrameEvent(
@@ -642,22 +641,23 @@ std::vector<double> InspectorUIExecutor::GetBoxModel(
 }
 
 void InspectorUIExecutor::LynxSendEventToVM(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value params = message["params"];
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   if (!params.empty()) {
-    Json::Value vm_type = params["vmType"];
-    Json::Value event_name = params["event"];
-    Json::Value data = params["data"];
+    const Json::Value& vm_type = params["vmType"];
+    const Json::Value& event_name = params["event"];
+    const Json::Value& data = params["data"];
     if (vm_type.isString() && event_name.isString()) {
-      CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                                "devtool_platform_facade_ is null");
+      if (devtool_platform_facade_ == nullptr) {
+        responder->SendError(CDPErrorCode::ServerError,
+                             "Lynx target is unavailable");
+        return;
+      }
       devtool_platform_facade_->SendEventToVM(
           vm_type.asString(), event_name.asString(),
           data.isString() ? data.asString() : "");
     }
   }
-  sender->SendOKResponse(message["id"].asInt64());
+  responder->SendSuccess();
 }
 
 // start template protocol
