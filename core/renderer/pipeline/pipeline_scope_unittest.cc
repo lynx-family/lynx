@@ -52,12 +52,13 @@ TEST_F(PipelineScopeTest, TestPipelineContextConstructor01) {
     auto* context = tasm_->GetCurrentPipelineContext();
     EXPECT_EQ(context->GetVersion().GetMajor(), 0);
     EXPECT_EQ(context->GetVersion().GetMinor(), 1);
-    EXPECT_EQ(options->HeldByContext(), true);
+    EXPECT_TRUE(options->version.has_value());
   }
 
   auto* context = tasm_->GetCurrentPipelineContext();
   EXPECT_EQ(context, nullptr);
-  EXPECT_EQ(options->HeldByContext(), false);
+  ASSERT_TRUE(options->version.has_value());
+  EXPECT_EQ(tasm_->GetPipelineContextByVersion(*options->version), nullptr);
 }
 
 TEST_F(PipelineScopeTest, TestPipelineContextConstructor02) {
@@ -68,12 +69,13 @@ TEST_F(PipelineScopeTest, TestPipelineContextConstructor02) {
     auto* context = tasm_->GetCurrentPipelineContext();
     EXPECT_EQ(context->GetVersion().GetMajor(), 1);
     EXPECT_EQ(context->GetVersion().GetMinor(), 0);
-    EXPECT_EQ(options->HeldByContext(), true);
+    EXPECT_TRUE(options->version.has_value());
   }
 
   auto* context = tasm_->GetCurrentPipelineContext();
   EXPECT_EQ(context, nullptr);
-  EXPECT_EQ(options->HeldByContext(), false);
+  ASSERT_TRUE(options->version.has_value());
+  EXPECT_EQ(tasm_->GetPipelineContextByVersion(*options->version), nullptr);
 }
 
 TEST_F(PipelineScopeTest, TestPipelineContextConstructor03) {
@@ -83,13 +85,14 @@ TEST_F(PipelineScopeTest, TestPipelineContextConstructor03) {
   auto* context = tasm_->GetCurrentPipelineContext();
   EXPECT_EQ(context->GetVersion().GetMajor(), 1);
   EXPECT_EQ(context->GetVersion().GetMinor(), 0);
-  EXPECT_EQ(options->HeldByContext(), true);
+  EXPECT_TRUE(options->version.has_value());
 
   scope.Exit();
 
   auto* current_context = tasm_->GetCurrentPipelineContext();
   EXPECT_EQ(current_context, nullptr);
-  EXPECT_EQ(options->HeldByContext(), false);
+  ASSERT_TRUE(options->version.has_value());
+  EXPECT_EQ(tasm_->GetPipelineContextByVersion(*options->version), nullptr);
 }
 
 TEST_F(PipelineScopeTest, TestTemplateAssemblerPipelineObserver) {
