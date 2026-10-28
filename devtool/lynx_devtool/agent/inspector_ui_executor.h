@@ -57,8 +57,7 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_CDP_METHOD(SetUIStyle);
 
   // lynx domain
-  void LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
-                       int level);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxSetLogLevel);
   DECLARE_DEVTOOL_CDP_METHOD(LynxGetRectToWindow);
   DECLARE_DEVTOOL_CDP_METHOD(LynxTransferData);
   DECLARE_DEVTOOL_CDP_METHOD(LynxGetViewLocationOnScreen);

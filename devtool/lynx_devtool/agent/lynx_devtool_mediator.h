@@ -181,8 +181,7 @@ class LynxDevToolMediator
   void AddNativeModuleRecord(const lepus::Value& record);
 
   // Lynx domain
-  bool LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
-                       int level);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxSetLogLevel);
   DECLARE_DEVTOOL_CDP_METHOD(LynxGetProperties);
   DECLARE_DEVTOOL_CDP_METHOD(LynxGetData);
   DECLARE_DEVTOOL_CDP_METHOD(LynxGetComponentId);

@@ -24,6 +24,7 @@
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_lynx_agent_ng.h"
 #include "devtool/lynx_devtool/agent/inspector_tasm_executor.h"
@@ -171,7 +172,9 @@ class InspectorLynxUIMethodTest : public ::testing::Test {
 
   Json::Value Call(Json::Value message) {
     const size_t expected_count = sender_->MessageCount() + 1;
-    agent_->CallMethod(sender_, message);
+    agent_->CallMethod(
+        std::make_shared<CDPResponder>(sender_, message["id"].asInt64()),
+        message);
     FlushTasmTasks();
     EXPECT_TRUE(
         sender_->WaitForMessageCount(expected_count, std::chrono::seconds(1)));
@@ -267,7 +270,9 @@ TEST_F(InspectorLynxUIMethodTest, WaitsForAsynchronousNativeCallback) {
   auto request = Request(5, "Lynx.invokeUIMethod");
   request["params"]["backendNodeId"] = backend_node_id_;
   request["params"]["methodName"] = "pause";
-  agent_->CallMethod(sender_, request);
+  agent_->CallMethod(
+      std::make_shared<CDPResponder>(sender_, request["id"].asInt64()),
+      request);
   FlushTasmTasks();
   EXPECT_EQ(sender_->MessageCount(), 0U);
   ASSERT_TRUE(mediator_->RunOnTASMThread(
