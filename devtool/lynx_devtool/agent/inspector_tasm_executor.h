@@ -200,9 +200,9 @@ class InspectorTasmExecutor
   DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceContent);
 
   // Lynx domain
-  DECLARE_DEVTOOL_METHOD(LynxGetProperties)
-  DECLARE_DEVTOOL_METHOD(LynxGetData)
-  DECLARE_DEVTOOL_METHOD(LynxGetComponentId)
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetProperties);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetData);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetComponentId);
 
   // template domain
   DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateApiInfo);

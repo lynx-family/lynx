@@ -963,7 +963,9 @@ TEST_F(DevToolMediatorTest, LayerTreeCommandsRunOnTASMThreadCase) {
 
 TEST_F(DevToolMediatorTest, LynxGetPropertyElementNull) {
   Json::Value param;
-  devtool_mediator_->LynxGetProperties(message_sender_, param);
+  param["nodeId"] = 0;
+  devtool_mediator_->LynxGetProperties(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0), param);
   tasm_thread_->Join();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 0,\n   \"result\" : {\n      \"properties\" : "
@@ -972,7 +974,9 @@ TEST_F(DevToolMediatorTest, LynxGetPropertyElementNull) {
 
 TEST_F(DevToolMediatorTest, LynxGetDataElementNull) {
   Json::Value param;
-  devtool_mediator_->LynxGetData(message_sender_, param);
+  param["nodeId"] = 0;
+  devtool_mediator_->LynxGetData(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0), param);
   tasm_thread_->Join();
   EXPECT_EQ(
       devtool::MockReceiver::GetInstance().received_message_.second,
@@ -981,7 +985,9 @@ TEST_F(DevToolMediatorTest, LynxGetDataElementNull) {
 
 TEST_F(DevToolMediatorTest, LynxGetComponentIdElementNull) {
   Json::Value param;
-  devtool_mediator_->LynxGetComponentId(message_sender_, param);
+  param["nodeId"] = 0;
+  devtool_mediator_->LynxGetComponentId(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 0), param);
   tasm_thread_->Join();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 0,\n   \"result\" : {\n      \"componentId\" : "
