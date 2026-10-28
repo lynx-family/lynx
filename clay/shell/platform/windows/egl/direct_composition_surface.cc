@@ -124,10 +124,10 @@ bool DirectCompositionSurface::Initialize() {
 
 bool DirectCompositionSurface::Destroy() {
   // Ensure the surface is not current before destroying it.
-  if (::eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                       EGL_NO_CONTEXT) != EGL_TRUE) {
+  const bool result = ::eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE,
+                                       EGL_NO_CONTEXT) == EGL_TRUE;
+  if (!result) {
     WINDOWS_LOG_EGL_ERROR;
-    return false;
   }
   if (default_surface_) {
     if (!eglDestroySurface(display_, default_surface_)) {
@@ -150,10 +150,20 @@ bool DirectCompositionSurface::Destroy() {
     dcomp_root_visual_.Reset();
   }
   draw_texture_.Reset();
+  swap_chain_.Reset();
+  // Releasing DirectComposition resources leaves pending changes on the device.
+  // Commit the cleanup to avoid a black window after a DWM restart.
+  if (dcomp_device_) {
+    HRESULT hr = dcomp_device_->Commit();
+    if (FAILED(hr)) {
+      FML_LOG(ERROR) << "DirectComposition cleanup Commit failed with error 0x"
+                     << std::hex << hr;
+    }
+  }
   pending_swap_rect_.reset();
 
   is_valid_ = false;
-  return true;
+  return result;
 }
 
 bool DirectCompositionSurface::MakeCurrent() {

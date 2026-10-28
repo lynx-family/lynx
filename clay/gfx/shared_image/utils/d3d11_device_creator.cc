@@ -70,15 +70,27 @@ HRESULT CreateSafeD3D11Device(
   D3D_FEATURE_LEVEL feature_levels[] = {
       D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1,
       D3D_FEATURE_LEVEL_10_0};
+  auto create_device = [&](IDXGIAdapter* selected_adapter,
+                           D3D_DRIVER_TYPE driver_type) {
+    HRESULT result = device_creator.value()(
+        selected_adapter, driver_type, nullptr, 0, feature_levels,
+        ARRAYSIZE(feature_levels), D3D11_SDK_VERSION, out_device, nullptr,
+        out_context);
+    if (result == E_INVALIDARG) {
+      // Older D3D runtimes reject feature level 11_1 with E_INVALIDARG.
+      // Retry with the remaining feature levels.
+      result = device_creator.value()(
+          selected_adapter, driver_type, nullptr, 0, feature_levels + 1,
+          ARRAYSIZE(feature_levels) - 1, D3D11_SDK_VERSION, out_device, nullptr,
+          out_context);
+    }
+    return result;
+  };
 #if USE_DISCRETE_GPU
   // Try to use high-performance discrete GPU
   if (SUCCEEDED(GetHighPerformanceAdapter(&adapter))) {
-    hr = device_creator.value()(
-        adapter.Get(),
-        D3D_DRIVER_TYPE_UNKNOWN,  // Must be UNKNOWN when using a specific
-                                  // adapter
-        nullptr, 0, feature_levels, ARRAYSIZE(feature_levels),
-        D3D11_SDK_VERSION, out_device, nullptr, out_context);
+    // Must be UNKNOWN when using a specific adapter
+    hr = create_device(adapter.Get(), D3D_DRIVER_TYPE_UNKNOWN);
     FML_LOG(INFO) << "Use high-performance discrete GPU for D3D11CreateDevice."
                   << std::hex << hr;
   }
@@ -86,11 +98,8 @@ HRESULT CreateSafeD3D11Device(
 
   // Fallback to system default hardware device
   if (FAILED(hr)) {
-    hr = device_creator.value()(
-        nullptr,                   // No specific adapter
-        D3D_DRIVER_TYPE_HARDWARE,  // Standard hardware device
-        nullptr, 0, feature_levels, ARRAYSIZE(feature_levels),
-        D3D11_SDK_VERSION, out_device, nullptr, out_context);
+    hr = create_device(nullptr,                    // No specific adapter
+                       D3D_DRIVER_TYPE_HARDWARE);  // Standard hardware device
     FML_LOG(INFO) << "Use system default hardware for D3D11CreateDevice."
                   << std::hex << hr;
   }

@@ -20,6 +20,17 @@
 
 namespace clay {
 namespace egl {
+namespace {
+
+std::unique_ptr<WindowSurface> InitializeSurface(
+    std::unique_ptr<WindowSurface> surface) {
+  if (!surface->Initialize()) {
+    return nullptr;
+  }
+  return surface;
+}
+
+}  // namespace
 
 std::unique_ptr<Manager> Manager::Create() {
   std::unique_ptr<Manager> manager;
@@ -306,9 +317,17 @@ bool Manager::TryInitializeDirectCompositionDevice() {
     return false;
   }
 
-  HRESULT hr;
+  Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+  if (!GetDevice(&d3d11_device)) {
+    return false;
+  }
   Microsoft::WRL::ComPtr<IDXGIDevice> dxgi_device;
-  resolved_device_.As(&dxgi_device);
+  HRESULT hr = d3d11_device.As(&dxgi_device);
+  if (FAILED(hr)) {
+    FML_LOG(ERROR) << "Query IDXGIDevice failed with error 0x" << std::hex
+                   << hr;
+    return false;
+  }
 
   Microsoft::WRL::ComPtr<IDCompositionDesktopDevice> desktop_device;
   hr = create_device_function.value()(dxgi_device.Get(),
@@ -368,21 +387,23 @@ std::unique_ptr<WindowSurface> Manager::CreateWindowSurface(
         static_cast<EGLNativeWindowType>(hwnd), width, height);
   } else if (type == GLImplementationType::kAngleEGLDirectComposition) {
     if (TryInitializeDirectCompositionDevice()) {
-      surface = std::make_unique<DirectCompositionSurface>(
+      surface = InitializeSurface(std::make_unique<DirectCompositionSurface>(
           display_, render_context_->GetHandle(), config_,
-          static_cast<EGLNativeWindowType>(hwnd), dcomp_device_, width, height);
-    } else {
-      surface = std::make_unique<WindowSurface>(
-          display_, render_context_->GetHandle(), config_,
-          static_cast<EGLNativeWindowType>(hwnd), width, height);
+          static_cast<EGLNativeWindowType>(hwnd), dcomp_device_, width,
+          height));
+      if (surface) {
+        return surface;
+      }
+      FML_LOG(WARNING) << "DirectComposition surface initialization failed; "
+                          "falling back to EGL.";
     }
+    surface = std::make_unique<WindowSurface>(
+        display_, render_context_->GetHandle(), config_,
+        static_cast<EGLNativeWindowType>(hwnd), width, height);
   } else {
     return nullptr;
   }
-  if (!surface->Initialize()) {
-    return nullptr;
-  }
-  return surface;
+  return InitializeSurface(std::move(surface));
 }
 
 bool Manager::HasContextCurrent() {
