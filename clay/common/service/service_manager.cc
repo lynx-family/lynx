@@ -85,7 +85,11 @@ void ServiceManager::Attach(ServiceContext<owner> context) {
   FML_DCHECK(!ctx.has_value());
   ctx.emplace(std::move(context));
 
-  for (auto& service : std::get<+owner>(services_by_owner_)) {
+  // Initialization and pending calls can register more services for this owner.
+  // Those services are initialized by TryInitService; keep this traversal
+  // stable even if registration reallocates the original vector.
+  const auto services = std::get<+owner>(services_by_owner_);
+  for (const auto& service : services) {
     DoServiceInit(*service);
   }
 }

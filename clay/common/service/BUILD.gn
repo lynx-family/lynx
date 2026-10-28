@@ -22,3 +22,15 @@ source_set("service") {
     defines = [ "ENABLE_HEADLESS" ]
   }
 }
+
+if (enable_unittests) {
+  executable("service_unittests") {
+    testonly = true
+    sources = [ "service_unittests.cc" ]
+    deps = [
+      ":service",
+      "../../../base/src:base_static",
+      "../../testing",
+    ]
+  }
+}
