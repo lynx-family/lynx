@@ -1142,12 +1142,6 @@ public class LynxTemplateRender
           // we need to bind it to LynxShell.
           attachPiper(mRuntime, mModuleFactory);
 
-          // Destruction of Runtime inside wrapper will be handled by LynxShell. Since
-          // after
-          // attachement, user cannot use LynxBackgroundRuntime, we can safely release its
-          // reference.
-          mRuntime = null;
-
         } else {
           initPiper();
         }
@@ -4387,6 +4381,7 @@ public class LynxTemplateRender
     // need ensure destroy native on ui thread
     UIThreadUtils.runOnUiThreadImmediately(
         new DestroyTask(mNativePtr, mNativeLifecycle, this, mNativeFacade));
+    mRuntime = null;
 
     if (shouldCacheLynxEngine) {
       LynxEngine lynxEngine = mLynxEngineRef;
