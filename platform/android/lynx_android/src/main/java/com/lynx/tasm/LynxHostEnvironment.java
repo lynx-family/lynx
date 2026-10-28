@@ -14,7 +14,6 @@ import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.component.DynamicComponentFetcher;
 import com.lynx.tasm.core.resource.LynxResourceLoader;
-import com.lynx.tasm.group.ILynxViewConfigProvider;
 import com.lynx.tasm.provider.LynxProviderRegistry;
 import com.lynx.tasm.provider.LynxResourceProvider;
 import java.lang.ref.WeakReference;
@@ -26,7 +25,7 @@ import java.util.Map;
 
 /**
  * Java host configuration and registrations, independent of page state.
- * A renderer owns a private environment; surfaces in a view group share one.
+ * A renderer owns a private environment; surfaces created by one LynxHost share one.
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class LynxHostEnvironment {
@@ -38,19 +37,23 @@ public final class LynxHostEnvironment {
   @Keep private LynxResourceLoader mResourceLoader;
   private final LynxProviderRegistry mProviders;
 
+  /** Returns the Java loader prepared for this host's surfaces at environment creation. */
+  LynxResourceLoader getResourceLoader() {
+    return mResourceLoader;
+  }
+
   /** Returns the configured behavior registry shared by this host's consumers. */
   BehaviorRegistry getBehaviorRegistry() {
     return mBehaviorRegistry;
   }
 
   /**
-   * Copies the configured runtime options and prepares provider and module registrations once.
-   * The configured behavior registry is retained by reference. A renderer owns a private host;
-   * surfaces in the same group share their host.
+   * Copies runtime options and prepares provider and module registrations once.
+   * Retains the configured behavior registry and creates the default Java resource loader.
+   * Renderers create their engine and runtime loaders separately during initialization.
    */
-  public LynxHostEnvironment(ILynxViewConfigProvider configProvider) {
-    LynxBackgroundRuntimeOptions options = configProvider.getLynxRuntimeOptions();
-    mBehaviorRegistry = configProvider.getBehaviorRegistry();
+  public LynxHostEnvironment(LynxBackgroundRuntimeOptions options, BehaviorRegistry behaviors) {
+    mBehaviorRegistry = behaviors;
     mRuntimeOptions = options == null ? new LynxBackgroundRuntimeOptions()
                                       : new LynxBackgroundRuntimeOptions(options);
     mProviders = createProviderRegistry();
@@ -66,6 +69,8 @@ public final class LynxHostEnvironment {
     mMainThreadRegistrations = Collections.unmodifiableList(new ArrayList<>(mainThread.values()));
     mBackgroundThreadRegistrations =
         Collections.unmodifiableList(new ArrayList<>(backgroundThread.values()));
+    mResourceLoader = new LynxResourceLoader(mRuntimeOptions, null,
+        mRuntimeOptions.getTemplateResourceFetcher(), mRuntimeOptions.getGenericResourceFetcher());
   }
 
   private static void addRegistration(
@@ -207,7 +212,7 @@ public final class LynxHostEnvironment {
    * Returns the host-owned runtime options by reference. Surfaces share these options;
    * page-specific state belongs to the page rather than this configuration.
    */
-  LynxBackgroundRuntimeOptions getRuntimeOptions() {
+  public LynxBackgroundRuntimeOptions getRuntimeOptions() {
     return mRuntimeOptions;
   }
 }

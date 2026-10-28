@@ -20,7 +20,6 @@ import com.lynx.jsbridge.LynxUIMethodModule;
 import com.lynx.jsbridge.ParamWrapper;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.core.resource.LynxResourceLoader;
-import com.lynx.tasm.group.ILynxViewConfigProvider;
 import com.lynx.tasm.provider.LynxProviderRegistry;
 import com.lynx.tasm.provider.LynxResourceProvider;
 import java.lang.reflect.Field;
@@ -40,10 +39,7 @@ public class LynxHostEnvironmentTest {
   }
 
   private LynxHostEnvironment createHostEnvironment(LynxBackgroundRuntimeOptions options) {
-    ILynxViewConfigProvider provider = mock(ILynxViewConfigProvider.class);
-    when(provider.getLynxRuntimeOptions()).thenReturn(options);
-    when(provider.getBehaviorRegistry()).thenReturn(new LynxViewBuilder().getBehaviorRegistry());
-    return new LynxHostEnvironment(provider);
+    return new LynxHostEnvironment(options, new LynxViewBuilder().getBehaviorRegistry());
   }
 
   @SuppressWarnings("unchecked")
@@ -54,13 +50,20 @@ public class LynxHostEnvironmentTest {
   }
 
   @Test
-  public void runtimeOptionsAreCopiedOnce() {
-    LynxBackgroundRuntimeOptions source = new LynxBackgroundRuntimeOptions();
+  public void configurationCopiesOptionsAndRetainsBehaviors() {
+    LynxViewBuilder builder = new LynxViewBuilder();
+    LynxBackgroundRuntimeOptions source = builder.getLynxRuntimeOptions();
     LynxGroup group = new LynxGroup.LynxGroupBuilder().setGroupName("legacy-group").build();
     source.setLynxGroup(group);
     source.registerModule("custom", LynxModule.class, null);
-    LynxHostEnvironment host = createHostEnvironment(source);
+    source.setBytecodeSourceUrl("initial");
+    LynxHostEnvironment host =
+        new LynxHostEnvironment(builder.getLynxRuntimeOptions(), builder.getBehaviorRegistry());
+    source.setBytecodeSourceUrl("changed");
+    assertSame(builder.getBehaviorRegistry(), host.getBehaviorRegistry());
     LynxBackgroundRuntimeOptions copy = host.getRuntimeOptions();
+    assertNotSame(source, copy);
+    assertEquals("initial", copy.getBytecodeSourceUrl());
     assertSame(copy, host.getRuntimeOptions());
     assertSame(group, copy.getLynxGroup());
     assertEquals(source.calcRuntimeFlags(false, true), copy.calcRuntimeFlags(false, true));
@@ -74,6 +77,8 @@ public class LynxHostEnvironmentTest {
   @Test
   public void modulePrecedenceAndContextArePreserved() throws Exception {
     LynxBackgroundRuntimeOptions options = new LynxBackgroundRuntimeOptions();
+    LynxModule.AuthValidator validator = mock(LynxModule.AuthValidator.class);
+    options.registerModuleAuthValidator(validator);
     options.registerModule(LynxUIMethodModule.NAME, LynxModule.class, null);
     options.registerModule(LynxFetchModule.NAME, LynxModule.class, null);
     LynxHostEnvironment host = createHostEnvironment(options);
@@ -82,6 +87,10 @@ public class LynxHostEnvironmentTest {
     LynxModuleFactory main = host.createMainThreadFactory(first, null);
     LynxModuleFactory background = host.createBackgroundThreadFactory(second, null);
     try {
+      Field auth = LynxModuleFactory.class.getDeclaredField("mAuthValidator");
+      auth.setAccessible(true);
+      assertNull(auth.get(main));
+      assertSame(validator, auth.get(background));
       Map<String, ParamWrapper> mainModules = registrations(main);
       Map<String, ParamWrapper> backgroundModules = registrations(background);
       assertEquals(LynxModule.class, mainModules.get(LynxUIMethodModule.NAME).getModuleClass());
@@ -101,7 +110,7 @@ public class LynxHostEnvironmentTest {
   }
 
   @Test
-  public void factoriesRemainPageOwned() throws Exception {
+  public void nonSharedFactoriesRemainPageOwned() throws Exception {
     LynxBackgroundRuntimeOptions options = new LynxBackgroundRuntimeOptions();
     Object userParam = new Object();
     options.registerModule("custom", LynxModule.class, userParam);
@@ -129,14 +138,14 @@ public class LynxHostEnvironmentTest {
   }
 
   @Test
-  public void reusedRuntimeKeepsCreatorAndRebindsContext() throws Exception {
+  public void runtimeFactoryKeepsCreatorAndBindsPageContext() throws Exception {
     LynxBackgroundRuntimeOptions options = new LynxBackgroundRuntimeOptions();
     Object hostParam = new Object();
     options.registerModule("overlap", LynxModule.class, hostParam);
     options.registerModule(LynxUIMethodModule.NAME, LynxModule.class, null);
     LynxHostEnvironment host = createHostEnvironment(options);
     LynxContext context = mock(LynxContext.class);
-    LynxModuleFactory factory = new LynxModuleFactory();
+    LynxModuleFactory factory = spy(new LynxModuleFactory());
     Object runtimeParam = new Object();
     factory.registerModule("runtime-only", LynxModule.class, runtimeParam);
     factory.registerModule("overlap", LynxModule.class, runtimeParam);
@@ -145,6 +154,8 @@ public class LynxHostEnvironmentTest {
     factory.bind(creator);
     try {
       host.prepareReusedBackgroundThreadFactory(factory, context, null);
+      verify(factory, times(1)).bind(creator);
+      verify(factory, never()).registerModuleAuthValidator(any());
       verify(creator).resetContextFinder(any());
       assertSame(context, factory.currentContextFinder().findContext(null).get());
       assertSame(runtimeParam, registrations(factory).get("runtime-only").getParam());
@@ -186,13 +197,31 @@ public class LynxHostEnvironmentTest {
   }
 
   @Test
-  public void engineAndRuntimeLoadersRemainSeparate() throws Exception {
+  public void resourceLoaderIsReadyWhenEnvironmentIsCreated() throws Exception {
+    LynxBackgroundRuntimeOptions options = new LynxBackgroundRuntimeOptions();
+    LynxHostEnvironment host =
+        new LynxHostEnvironment(options, new LynxViewBuilder().getBehaviorRegistry());
+    LynxResourceLoader loader = host.getRuntimeResourceLoader();
+    assertNotNull(loader);
+    assertSame(loader, host.getResourceLoader());
+    assertNull(host.getEngineResourceLoader());
+    Field field = LynxResourceLoader.class.getDeclaredField("mLynxRuntimeOptions");
+    field.setAccessible(true);
+    assertSame(host.getRuntimeOptions(), field.get(loader));
+  }
+
+  @Test
+  public void rendererLoadersReplaceTheDefaultAndRemainSeparate() throws Exception {
     LynxHostEnvironment host = createHostEnvironment(new LynxBackgroundRuntimeOptions());
     LynxContext context = mock(LynxContext.class);
+    assertNull(host.getEngineResourceLoader());
+    LynxResourceLoader defaultLoader = host.getRuntimeResourceLoader();
+    assertNotNull(defaultLoader);
     LynxResourceLoader engine = host.createEngineResourceLoader(null, context);
     LynxResourceLoader runtime = host.createRuntimeResourceLoader(null, context);
     assertSame(engine, host.getEngineResourceLoader());
     assertSame(runtime, host.getRuntimeResourceLoader());
+    assertNotSame(defaultLoader, runtime);
     assertNotSame(engine, runtime);
     Field field = LynxResourceLoader.class.getDeclaredField("mLynxRuntimeOptions");
     field.setAccessible(true);

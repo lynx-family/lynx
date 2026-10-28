@@ -5979,8 +5979,16 @@ public interface com::lynx::tasm::navigator::LynxHolder {
   public void com.lynx.tasm.navigator.LynxHolder.quit();
 }
 
+public class com::lynx::tasm::group::LynxHost :  {
+  public LynxPageView com.lynx.tasm.group.LynxHost.createPageView(@NonNull Context context);
+  public int com.lynx.tasm.group.LynxHost.getEmbeddedMode();
+  public LynxHostEnvironment com.lynx.tasm.group.LynxHost.getHostEnvironment();
+  public void com.lynx.tasm.group.LynxHost.release();
+}
+
 public class com::lynx::tasm::LynxHostEnvironment :  {
-  public com.lynx.tasm.LynxHostEnvironment.LynxHostEnvironment(ILynxViewConfigProvider configProvider);
+  public com.lynx.tasm.LynxHostEnvironment.LynxHostEnvironment(LynxBackgroundRuntimeOptions options, BehaviorRegistry behaviors);
+  public LynxBackgroundRuntimeOptions com.lynx.tasm.LynxHostEnvironment.getRuntimeOptions();
 }
 
 public class abstract com::lynx::tasm::service::LynxHttpRequestCallback :  {
@@ -6568,6 +6576,11 @@ public interface com::lynx::tasm::base::LynxPageLoadListener {
   public void com.lynx.tasm.base.LynxPageLoadListener.onFirstScreen();
   public void com.lynx.tasm.base.LynxPageLoadListener.onPageUpdate();
   public void com.lynx.tasm.base.LynxPageLoadListener.onUpdateDataWithoutChange();
+}
+
+public class com::lynx::tasm::LynxPageView : com.lynx.tasm.behavior.ui.UIBody.UIBodyView {
+  public com.lynx.tasm.LynxPageView.LynxPageView(Context context);
+  public void com.lynx.tasm.LynxPageView.destroy();
 }
 
 public class com::lynx::tasm::LynxPerfMetric :  {
@@ -8075,6 +8088,7 @@ public class com::lynx::tasm::group::LynxViewGroupBuilder : LynxBaseConfigurator
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setLogicExecutor(ILynxLogicExecutor logicExecutor);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setEnableSharedModule(boolean enableSharedModule);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setEnableCacheEngine(boolean enableCacheEngine);
+  public LynxHost com.lynx.tasm.group.LynxViewGroupBuilder.buildHost();
   public ILynxViewGroup com.lynx.tasm.group.LynxViewGroupBuilder.build();
 }
 
