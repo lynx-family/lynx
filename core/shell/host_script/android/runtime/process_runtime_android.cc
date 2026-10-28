@@ -8,9 +8,16 @@
 
 #include "base/include/log/logging.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/shell/host_script/android/lynx_view/host_script_view_hooks_android.h"
+#include "core/shell/host_script/runtime/host_script_interceptor_bindings.h"
 
 namespace lynx {
 namespace shell {
+
+ProcessRuntime::BindingFactory CreateAndroidProcessBindings() {
+  return HostScriptInterceptorBindings::CreateFactory(
+      GetHostScriptResourceRoot());
+}
 
 bool InitializeHostScriptRuntime(ProcessRuntime::Completion ready,
                                  std::string bootstrap) {
@@ -19,7 +26,7 @@ bool InitializeHostScriptRuntime(ProcessRuntime::Completion ready,
   return ProcessRuntime::GetInstance().Initialize(
       {runners.GetJSTaskRunner(), runners.GetTASMTaskRunner(),
        runners.GetUITaskRunner()},
-      std::move(ready), {}, std::move(bootstrap));
+      std::move(ready), CreateAndroidProcessBindings(), std::move(bootstrap));
 }
 
 }  // namespace shell
