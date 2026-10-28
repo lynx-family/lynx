@@ -1067,6 +1067,84 @@ TEST_F(DevToolMediatorTest, LynxSendEventToVM) {
             "{\n   \"id\" : 0,\n   \"result\" : {}\n}\n");
 }
 
+TEST_F(DevToolMediatorTest, LynxCommandsWithoutTaskRunnersReturnServerError) {
+  auto expect_server_error = [](int id) {
+    Json::Value response;
+    Json::Reader reader;
+    ASSERT_TRUE(reader.parse(
+        devtool::MockReceiver::GetInstance().received_message_.second,
+        response));
+    EXPECT_EQ(response["id"], id);
+    EXPECT_EQ(response["error"]["code"].asInt(),
+              static_cast<int>(devtool::CDPErrorCode::ServerError));
+    EXPECT_EQ(response["error"]["message"], "Lynx target is unavailable");
+    devtool::MockReceiver::GetInstance().ResetAll();
+  };
+
+  auto tasm_runner = devtool_mediator_->tasm_task_runner_;
+  devtool_mediator_->tasm_task_runner_ = nullptr;
+  devtool_mediator_->LynxGetProperties(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 101),
+      Json::Value());
+  expect_server_error(101);
+  devtool_mediator_->tasm_task_runner_ = tasm_runner;
+
+  auto ui_runner = devtool_mediator_->ui_task_runner_;
+  devtool_mediator_->ui_task_runner_ = nullptr;
+  devtool_mediator_->GetScreenshot(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 102),
+      Json::Value());
+  expect_server_error(102);
+  devtool_mediator_->ui_task_runner_ = ui_runner;
+
+  auto devtool_runner = devtool_mediator_->default_task_runner_;
+  devtool_mediator_->default_task_runner_ = nullptr;
+  devtool_mediator_->LynxGetVersion(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 103),
+      Json::Value());
+  expect_server_error(103);
+  devtool_mediator_->default_task_runner_ = devtool_runner;
+}
+
+TEST_F(DevToolMediatorTest, LynxCommandsWithoutExecutorsReturnServerError) {
+  auto expect_server_error = [](int id) {
+    Json::Value response;
+    Json::Reader reader;
+    ASSERT_TRUE(reader.parse(
+        devtool::MockReceiver::GetInstance().received_message_.second,
+        response));
+    EXPECT_EQ(response["id"], id);
+    EXPECT_EQ(response["error"]["code"].asInt(),
+              static_cast<int>(devtool::CDPErrorCode::ServerError));
+    EXPECT_EQ(response["error"]["message"], "Lynx target is unavailable");
+    devtool::MockReceiver::GetInstance().ResetAll();
+  };
+
+  auto element_executor = devtool_mediator_->element_executor_;
+  devtool_mediator_->element_executor_ = nullptr;
+  devtool_mediator_->LynxGetProperties(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 104),
+      Json::Value());
+  expect_server_error(104);
+  devtool_mediator_->element_executor_ = element_executor;
+
+  auto ui_executor = devtool_mediator_->ui_executor_;
+  devtool_mediator_->ui_executor_ = nullptr;
+  devtool_mediator_->GetScreenshot(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 105),
+      Json::Value());
+  expect_server_error(105);
+  devtool_mediator_->ui_executor_ = ui_executor;
+
+  auto devtool_executor = devtool_mediator_->devtool_executor_;
+  devtool_mediator_->devtool_executor_ = nullptr;
+  devtool_mediator_->LynxGetVersion(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 106),
+      Json::Value());
+  expect_server_error(106);
+  devtool_mediator_->devtool_executor_ = devtool_executor;
+}
+
 TEST_F(DevToolMediatorTest, LogDisable) {
   Json::Value params;
   auto responder = std::make_shared<devtool::CDPResponder>(message_sender_, 0);

@@ -6,6 +6,8 @@
 
 #include "base/include/fml/thread.h"
 #include "base/include/log/logging.h"
+#include "core/services/recorder/record_payload.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/lynx_devtool/agent/inspector_ui_executor.h"
 #define private public
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
@@ -38,6 +40,7 @@ class InspectorLynxLogLevelTest : public ::testing::Test {
   }
   void TearDown() override {
     ui_thread_.GetTaskRunner()->PostSyncTask([] {});
+    tasm::recorder::SetObservationPayloadEnabled(false);
     base::logging::SetPlatformMinLogLevel(saved_level_);
   }
   Json::Value Dispatch(const char* method, Json::Value params = Json::Value(),
@@ -56,7 +59,9 @@ class InspectorLynxLogLevelTest : public ::testing::Test {
     // must survive the originating view/session.
     {
       InspectorLynxAgentNG agent(mediator);
-      agent.CallMethod(sender, message);
+      agent.CallMethod(
+          std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+          message);
     }
     ui_thread_.GetTaskRunner()->PostSyncTask([] {});
     EXPECT_EQ(sender->count, 1);
@@ -137,11 +142,30 @@ TEST_F(InspectorLynxLogLevelTest, MissingUIThreadRejectsSetterButAllowsQuery) {
   Json::Value params;
   params["level"] = "MONITOR";
   auto response = Dispatch("Lynx.setLogLevel", params, false);
-  EXPECT_EQ(response["error"]["code"].asInt(), -32603);
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
   EXPECT_EQ(Dispatch("Lynx.getLogLevel", Json::Value(),
                      false)["result"]["runtimeLevel"]
                 .asString(),
             "INFO");
+}
+
+TEST_F(InspectorLynxLogLevelTest, SetObservePayloadEnabledValidatesParams) {
+  Json::Value params;
+  params["enabled"] = true;
+  EXPECT_FALSE(
+      Dispatch("Lynx.setObservePayloadEnabled", params)["result"].isNull());
+
+  params["enabled"] = "true";
+  EXPECT_EQ(Dispatch("Lynx.setObservePayloadEnabled", params)["error"]["code"],
+            static_cast<int>(CDPErrorCode::InvalidParams));
+}
+
+TEST_F(InspectorLynxLogLevelTest, UnknownMethodReturnsMethodNotFound) {
+  auto response = Dispatch("Lynx.unknown");
+  EXPECT_EQ(response["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::MethodNotFound));
+  EXPECT_EQ(response["error"]["message"], "'Lynx.unknown' wasn't found");
 }
 }  // namespace
 }  // namespace lynx::devtool
