@@ -10,6 +10,7 @@
 
 #include "base/include/log/logging.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/resource/lynx_resource_handle.h"
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/template_bundle/lynx_template_bundle.h"
@@ -38,9 +39,10 @@ ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
         if (!p) {
           return;
         }
-        p->set_value(ExternalResourceInfo(std::move(response.data),
-                                          response.err_code,
-                                          std::move(response.err_msg)));
+        p->set_value(ExternalResourceInfo(
+            std::make_shared<const std::vector<uint8_t>>(
+                std::move(response.data)),
+            response.err_code, std::move(response.err_msg)));
       });
   timeout = timeout > 0 ? timeout : 5;
   if (future.wait_for(std::chrono::seconds(timeout)) !=
@@ -105,9 +107,33 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
         if (!p) {
           return;
         }
-        p->set_value(ExternalResourceInfo(std::move(response.data),
-                                          response.err_code,
-                                          std::move(response.err_msg)));
+        if (response.Success() && response.resource_handle != nullptr) {
+          auto result = response.resource_handle->GetData();
+          if (!result.has_value() || result.value() == nullptr) {
+            std::string error_message = result.has_value()
+                                            ? "resource snapshot is null"
+                                            : std::move(result.error());
+            p->set_value(ExternalResourceInfo(
+                error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
+                std::move(error_message)));
+            return;
+          }
+          if (result.value()->empty()) {
+            p->set_value(ExternalResourceInfo(
+                error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
+                "external bytecode resource is empty"));
+            return;
+          }
+          p->set_value(ExternalResourceInfo(std::move(result.value()),
+                                            response.err_code,
+                                            std::move(response.err_msg)));
+          return;
+        }
+
+        p->set_value(ExternalResourceInfo(
+            std::make_shared<const std::vector<uint8_t>>(
+                std::move(response.data)),
+            response.err_code, std::move(response.err_msg)));
       });
 
   timeout = timeout > 0 ? timeout : 5;

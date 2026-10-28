@@ -116,6 +116,7 @@ subspec_target("Framework") {
     "-Werror",
   ]
   flatten_deps = framework_podspec_deps
+  flatten_deps += [ "../../../../service_api:lynx_service_api" ]
   frameworks = [
     "Accelerate",
     "CoreGraphics",
@@ -133,7 +134,6 @@ subspec_target("Framework") {
       "LynxBase/Framework",
     ]
   }
-  dependency += [ "LynxServiceAPI" ]
 }
 
 subspec_target("lynx") {
