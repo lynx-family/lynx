@@ -3178,6 +3178,9 @@ void Element::FlushActionsAsRoot() {
   element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   ParallelFlushAsRoot();
   element_manager()->DrainPendingElementTemplateChildMounts(this);
+  // Flush only Lists in the current physical subtree; leave other instances
+  // in the pending queue.
+  element_manager()->DrainPendingElementTemplateListUpdates(this);
   FlushActions();
 }
 

@@ -14,6 +14,8 @@
 #include <vector>
 
 #include "core/list/decoupled_list_types.h"
+#include "core/renderer/dom/fiber/element_template_instance.h"
+#include "core/renderer/dom/fiber/list_element_template_instance.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
@@ -272,6 +274,12 @@ void ListElement::set_will_destroy(bool destroy) {
   }
 }
 
+void ListElement::MarkListElementTemplateInstance(
+    ListElementTemplateInstance& instance) {
+  is_element_template_list_ = true;
+  element_template_instance_ = instance.WeakFromThis();
+}
+
 int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
                                       bool enable_reuse_notification) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ELEMENT_RENDER_COMPONENT,
@@ -285,6 +293,26 @@ int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
   tasm::timing::LongTaskMonitor::Scope longTaskScope(
       tasm_->GetPageOptions(), tasm::timing::kListNodeTask,
       tasm::timing::kTaskNameListElementComponentAtIndex);
+
+  // Route ET calls directly to native logic to avoid accessing tasm_ required
+  // by the legacy JS path.
+  if (is_element_template_list_) {
+    if (element_manager_ && element_manager_->DisableListCallbackIfDetached() &&
+        IsDetached()) {
+      return list::kInvalidIndex;
+    }
+    auto instance =
+        fml::RefPtr<ElementTemplateInstance>(element_template_instance_.get());
+    if (!instance) {
+      return list::kInvalidIndex;
+    }
+    // Only List subclasses can be bound here. Hold a strong reference to the
+    // logical instance during the callback.
+    return static_cast<ListElementTemplateInstance*>(instance.get())
+        ->ComponentAtIndex(tasm_, this, index, operationId,
+                           enable_reuse_notification);
+  }
+
   if (ssr_helper_ && !ssr_helper_->HasHydrate()) {
     // ComponentAtIndex is an interface for the list to create list items.
     // In SSR, list items have already been created on the server, so just need
@@ -316,6 +344,11 @@ void ListElement::ComponentAtIndexes(
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
+  if (is_element_template_list_) {
+    // TODO: The initial-render prototype only supports synchronous single-item
+    // requests. Avoid the legacy JS batch mounting path.
+    return;
+  }
   // Note: here we need to check if component_at_indexes_ is callable to ensure
   // the compatibility with lower versions of the front-end framework.
   if (!component_at_indexes_.IsCallable() ||
@@ -349,6 +382,11 @@ void ListElement::EnqueueComponent(int32_t sign) {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
+  if (is_element_template_list_) {
+    // TODO: The initial-render prototype does not recycle physical subtrees
+    // or allow JS callbacks to remove native logical items.
+    return;
+  }
   if (ssr_helper_ && !ssr_helper_->HasHydrate()) {
     ssr_helper_->OnEnqueueComponent(sign);
     return;

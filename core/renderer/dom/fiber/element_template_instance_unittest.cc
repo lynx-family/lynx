@@ -936,17 +936,31 @@ TEST_P(ElementTemplateInstanceTest,
   }
 }
 
-TEST_P(ElementTemplateInstanceTest, PAPITypedCreationRejectsList) {
+TEST_P(ElementTemplateInstanceTest, PAPITypedCreationList) {
   auto runtime = CreatePAPIRuntime();
   auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  // Use a valid list tag with empty attributes and children to exercise the
+  // minimal creation case.
   lepus::Value args[] = {lepus::Value("list"), lepus::Value(), lepus::Value(),
                          lepus::Value(0)};
   base::ErrorStorage::GetInstance().Reset();
   auto result =
       RendererFunctions::FiberCreateTypedElementTemplate(ctx, args, 4);
-  EXPECT_TRUE(result.IsEmpty());
-  EXPECT_NE(base::ErrorStorage::GetInstance().GetError(), nullptr);
+  EXPECT_EQ(base::ErrorStorage::GetInstance().GetError(), nullptr);
   base::ErrorStorage::GetInstance().Reset();
+  ASSERT_TRUE(result.IsRefCounted());
+  auto instance =
+      ElementTemplateInstance::ResolveElementTemplateInstanceValue(result);
+  ASSERT_NE(instance, nullptr);
+  EXPECT_TRUE(instance->IsTypedTemplate());
+  EXPECT_EQ(instance->GetTypedTag(), base::String("list"));
+
+  // Creation only builds the logical instance; GetRoot materializes its
+  // ListElement. Check both states and the root type to verify lazy creation.
+  EXPECT_EQ(instance->PeekMaterializedRoot(), nullptr);
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  EXPECT_TRUE(root->is_list());
 }
 
 TEST_P(ElementTemplateInstanceTest,

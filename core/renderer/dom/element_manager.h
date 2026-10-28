@@ -73,6 +73,7 @@ class PaintingContext;
 class PropBundle;
 class Element;
 class ElementTemplateInstance;
+class ListElementTemplateInstance;
 class ComponentElement;
 class ImageElement;
 class ListElement;
@@ -1433,6 +1434,12 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
       ElementTemplateInstance &instance);
   void DrainPendingElementTemplateChildMounts(Element *flush_root);
 
+  // Enqueue each List once for multiple logical insertions, then submit its
+  // updates within the current flush scope.
+  void EnqueuePendingElementTemplateListUpdates(
+      ListElementTemplateInstance &instance);
+  void DrainPendingElementTemplateListUpdates(Element *flush_root);
+
  protected:
   void TickLayout(const std::shared_ptr<PipelineOptions> &options);
 
@@ -1616,6 +1623,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   std::shared_ptr<PendingPostMTSRenderTasks> pending_post_mts_render_tasks_;
   base::Vector<fml::WeakPtr<ElementTemplateInstance>>
       pending_element_template_child_mounts_;
+  base::Vector<fml::WeakPtr<ElementTemplateInstance>>
+      pending_element_template_list_updates_;
 
   std::shared_ptr<tasm::TasmWorkerTaskRunner> task_runner_;
 

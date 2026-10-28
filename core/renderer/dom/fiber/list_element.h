@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/ui_component/list/list_types.h"
@@ -23,6 +24,8 @@ namespace tasm {
 
 class TemplateAssembler;
 class ListElement;
+class ElementTemplateInstance;
+class ListElementTemplateInstance;
 
 class ListElementSSRHelper {
  public:
@@ -102,6 +105,8 @@ class ListElement : public Element, public tasm::ListNode {
 
   int32_t ComponentAtIndex(uint32_t index, int64_t operationId,
                            bool enable_reuse_notification) override;
+
+  void MarkListElementTemplateInstance(ListElementTemplateInstance& instance);
 
   void ComponentAtIndexes(const fml::RefPtr<lepus::CArray>& index_array,
                           const fml::RefPtr<lepus::CArray>& operation_id_array,
@@ -235,6 +240,10 @@ class ListElement : public Element, public tasm::ListNode {
       bool enable_new_styling_pipeline);
 
  private:
+  // Track ET mode separately to avoid falling back to legacy JS callbacks
+  // after the weak reference expires.
+  bool is_element_template_list_{false};
+  fml::WeakPtr<ElementTemplateInstance> element_template_instance_;
   bool continuous_resolve_tree_{false};
   tasm::TemplateAssembler* tasm_{nullptr};
   lepus::Value component_at_index_{};

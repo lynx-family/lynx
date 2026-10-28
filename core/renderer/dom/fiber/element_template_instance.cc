@@ -14,6 +14,7 @@
 #include "base/include/value/base_value.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/template_entry.h"
@@ -39,19 +40,6 @@ static constexpr int32_t kDefaultPageCSSId = 0;
 static constexpr uint32_t kTypedTemplateAttributeSlotIndex = 0;
 static constexpr uint32_t kTypedTemplateRootChildSlotIndex = 0;
 constexpr char kGestureType[] = "type";
-
-size_t FindSlotChildIndex(const lepus::Value& slot_children,
-                          const lepus::Value& ref_node) {
-  if (!ref_node.IsRefCounted()) {
-    return static_cast<size_t>(slot_children.GetLength());
-  }
-  for (size_t i = 0; i < static_cast<size_t>(slot_children.GetLength()); ++i) {
-    if (slot_children.GetProperty(static_cast<uint32_t>(i)).IsEqual(ref_node)) {
-      return i;
-    }
-  }
-  return static_cast<size_t>(slot_children.GetLength());
-}
 
 void AddPendingSlot(base::Vector<uint32_t>& pending_slots,
                     uint32_t slot_index) {
@@ -121,19 +109,11 @@ void InitCompiledElementCSS(
   }
 }
 
-bool IsTemplateMapValue(const lepus::Value& value) {
-  if (value.IsTable()) {
-    return true;
-  }
-  return value.IsJSValue() && value.IsJSTable() && !value.IsJSArray() &&
-         !value.IsJSFunction();
-}
-
 bool IsLiveTemplateEventValue(const lepus::Value& value) {
   if (value.IsCallable()) {
     return true;
   }
-  if (!IsTemplateMapValue(value)) {
+  if (!ElementTemplateInstance::IsTemplateMapValue(value)) {
     return false;
   }
   const auto type = value.GetProperty(BASE_STATIC_STRING(kGestureType));
@@ -141,7 +121,7 @@ bool IsLiveTemplateEventValue(const lepus::Value& value) {
 }
 
 bool IsLiveTemplateGestureValue(const lepus::Value& value) {
-  if (!IsTemplateMapValue(value)) {
+  if (!ElementTemplateInstance::IsTemplateMapValue(value)) {
     return false;
   }
   const auto type = value.GetProperty(BASE_STATIC_STRING(kGestureType));
@@ -160,7 +140,7 @@ bool IsLiveSpreadCallbackEntry(const base::String& key,
 }
 
 bool HasLiveSpreadDescriptorEntry(const lepus::Value& value) {
-  if (!IsTemplateMapValue(value)) {
+  if (!ElementTemplateInstance::IsTemplateMapValue(value)) {
     return false;
   }
   bool found = false;
@@ -242,6 +222,10 @@ fml::RefPtr<Element> CreateTypedRootElement(ElementManager* manager,
           tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME));
     }
     return page;
+  }
+  if (tag.IsEqual(kElementListTag)) {
+    return manager->CreateFiberList(tasm, tag, lepus::Value(), lepus::Value(),
+                                    lepus::Value());
   }
   return manager->CreateFiberElement(tag);
 }
@@ -413,6 +397,27 @@ lepus::Value ElementTemplateInstance::ConvertTemplateMapForStorage(
       value, /*preserve_spread_callbacks=*/false);
 }
 
+bool ElementTemplateInstance::IsTemplateMapValue(const lepus::Value& value) {
+  if (value.IsTable()) {
+    return true;
+  }
+  return value.IsJSValue() && value.IsJSTable() && !value.IsJSArray() &&
+         !value.IsJSFunction();
+}
+
+size_t ElementTemplateInstance::FindSlotChildIndex(
+    const lepus::Value& slot_children, const lepus::Value& ref_node) {
+  if (!ref_node.IsRefCounted()) {
+    return static_cast<size_t>(slot_children.GetLength());
+  }
+  for (size_t i = 0; i < static_cast<size_t>(slot_children.GetLength()); ++i) {
+    if (slot_children.GetProperty(static_cast<uint32_t>(i)).IsEqual(ref_node)) {
+      return i;
+    }
+  }
+  return static_cast<size_t>(slot_children.GetLength());
+}
+
 ElementTemplateInstance::ElementTemplateInstance(
     ElementManager* element_manager)
     : element_manager_(element_manager),
@@ -528,6 +533,14 @@ void ElementTemplateInstance::InitializeChildSlots(
     auto slot_children =
         child_slots.GetProperty(static_cast<uint32_t>(slot_index));
     if (!slot_children.IsArrayOrJSArray()) {
+      /*
+       Preserve non-array values to keep subsequent slot indices unchanged.
+       For example, undefined is not a children array but still occupies slot 0:
+       child_slots = [
+         undefined,     // No children provided for slot 0.
+         [itemA, itemB] // Slot 1 has two children.
+       ];
+       */
       stored_slots->emplace_back(std::move(slot_children));
       continue;
     }
@@ -549,6 +562,9 @@ void ElementTemplateInstance::InitializeChildSlots(
 }
 
 void ElementTemplateInstance::SetOptions(const lepus::Value& options) {
+  // The creation entry point has converted JS options to a native Lepus value.
+  // Store __listItemPlatformInfo with the options for later List diff
+  // collection.
   options_ = options;
 }
 
@@ -560,10 +576,15 @@ void ElementTemplateInstance::RequestMaterializationRecursively() {
   }
   materialization_requested_ = true;
   EnsureCreateElementTreeTaskScheduled();
-  if (!child_slots_.IsArrayOrJSArray()) {
+  // This ET's materialization request is already registered above. Decide only
+  // whether to recurse into child ETs. The virtual
+  // ShouldMaterializeChildSlots() returns true for regular ETs and false for
+  // List ETs, so materializing a parent tree does not request every List item
+  // at once. ComponentAtIndex materializes each item through GetRoot() when
+  // requested by index.
+  if (!child_slots_.IsArrayOrJSArray() || !ShouldMaterializeChildSlots()) {
     return;
   }
-
   for (size_t slot_index = 0;
        slot_index < static_cast<size_t>(child_slots_.GetLength());
        ++slot_index) {
@@ -756,6 +777,22 @@ fml::RefPtr<Element> ElementTemplateInstance::PeekMaterializedRoot() const {
   return result_;
 }
 
+fml::RefPtr<ElementTemplateInstance>
+ElementTemplateInstance::GetChildInstanceAt(uint32_t slot_index,
+                                            uint32_t child_index) const {
+  if (!child_slots_.IsArrayOrJSArray() ||
+      slot_index >= static_cast<uint32_t>(child_slots_.GetLength())) {
+    return nullptr;
+  }
+  auto slot_children = child_slots_.GetProperty(slot_index);
+  if (!slot_children.IsArrayOrJSArray() ||
+      child_index >= static_cast<uint32_t>(slot_children.GetLength())) {
+    return nullptr;
+  }
+  return ResolveElementTemplateInstanceValue(
+      slot_children.GetProperty(child_index));
+}
+
 fml::RefPtr<Element> ElementTemplateInstance::GetElementByAttrSlot(
     uint32_t slot_index) {
   if (!IsMaterialized()) {
@@ -865,6 +902,11 @@ bool ElementTemplateInstance::IsMaterializedRootInFlushScope(
 }
 
 void ElementTemplateInstance::MountInitialChildSlots() {
+  // Child slots with deferred materialization skip regular mounting and do not
+  // register pending mount tasks.
+  if (!ShouldMaterializeChildSlots()) {
+    return;
+  }
   if (!child_slots_.IsArrayOrJSArray()) {
     return;
   }
@@ -1095,20 +1137,15 @@ void ElementTemplateInstance::InsertNodeIntoChildSlot(
     return;
   }
   if (IsTypedTemplate() && slot_index != kTypedTemplateRootChildSlotIndex) {
+    // Typed templates, such as "page" and "list", only accept children in slot
+    // 0.
     return;
   }
 
   auto* previous_parent = child_instance->logical_parent_;
   auto previous_slot_index = child_instance->logical_parent_slot_index_;
-  if (previous_parent != nullptr) {
-    previous_parent->EraseChildFromSlotStorage(previous_slot_index, child);
-  }
-
-  auto slot_children = GetOrCreateMutableChildSlot(slot_index);
-  auto insert_index = FindSlotChildIndex(slot_children, ref_node);
-  slot_children.Array()->Insert(static_cast<uint32_t>(insert_index), child);
-  child_instance->logical_parent_ = this;
-  child_instance->logical_parent_slot_index_ = slot_index;
+  auto insert_index =
+      InsertLogicalChildIntoSlot(slot_index, child, ref_node, *child_instance);
   if (materialization_requested_) {
     child_instance->RequestMaterializationRecursively();
   }
@@ -1140,6 +1177,29 @@ void ElementTemplateInstance::InsertNodeIntoChildSlot(
   }
 }
 
+size_t ElementTemplateInstance::InsertLogicalChildIntoSlot(
+    uint32_t slot_index, const lepus::Value& child_node,
+    const lepus::Value& ref_node, ElementTemplateInstance& child_instance) {
+  auto* previous_parent = child_instance.logical_parent_;
+  if (previous_parent != nullptr) {
+    // Remove the child from its previous parent's slot before reinserting it,
+    // even when the previous parent is this instance.
+    previous_parent->EraseChildFromSlotStorage(
+        child_instance.logical_parent_slot_index_, child_node);
+  }
+
+  // Get or create this parent's target slot array, then insert the child.
+  auto slot_children = GetOrCreateMutableChildSlot(slot_index);
+  auto insert_index = FindSlotChildIndex(slot_children, ref_node);
+  slot_children.Array()->Insert(static_cast<uint32_t>(insert_index),
+                                child_node);
+
+  // Update the child's links to its new logical parent and slot.
+  child_instance.logical_parent_ = this;
+  child_instance.logical_parent_slot_index_ = slot_index;
+  return insert_index;
+}
+
 void ElementTemplateInstance::RemoveNodeFromChildSlot(
     uint32_t slot_index, const lepus::Value& child) {
   auto child_instance = ResolveElementTemplateInstanceValue(child);
@@ -1156,6 +1216,41 @@ void ElementTemplateInstance::RemoveNodeFromChildSlot(
   child_instance->logical_parent_slot_index_ = 0;
   if (IsMaterialized()) {
     UnmountMaterializedChild(slot_index, child_instance);
+  }
+}
+
+void ElementTemplateInstance::SetListItemPlatformInfo(
+    const lepus::Value& platform_info) {
+  if (!IsTemplateMapValue(platform_info) && !platform_info.IsNil() &&
+      !platform_info.IsUndefined()) {
+    return;
+  }
+  auto next_info = IsTemplateMapValue(platform_info)
+                       ? ConvertTemplateMapForStorage(platform_info)
+                       : lepus::Value(lepus::Dictionary::Create());
+  if (GetListItemPlatformInfoFromOptions().IsEqual(next_info)) {
+    return;
+  }
+  // Replace only the platform information, preserving other options without
+  // modifying the shared object passed at creation.
+  auto next_options = lepus::Dictionary::Create();
+  if (options_.IsObject()) {
+    lepus::Value::ForEachLepusValue(
+        options_,
+        [&next_options](const lepus::Value& key, const lepus::Value& value) {
+          if (key.IsString()) {
+            next_options->SetValue(key.String(), value);
+          }
+        });
+  }
+  next_options->SetValue(BASE_STATIC_STRING(kListItemPlatformInfo), next_info);
+  options_ = lepus::Value(std::move(next_options));
+  // Items not yet inserted into a List only store the information. A later
+  // insertAction will read the latest value.
+  if (logical_parent_ != nullptr &&
+      logical_parent_slot_index_ == kTypedTemplateRootChildSlotIndex) {
+    logical_parent_->OnListItemPlatformInfoChanged(
+        lepus::Value(fml::RefPtr<ElementTemplateInstance>(this)), next_info);
   }
 }
 

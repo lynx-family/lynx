@@ -346,6 +346,9 @@ void ApplyTemplateAttributeValue(Element* element, const base::String& key,
   if (ApplySpecialTemplateAttribute(element, key, value)) {
     return;
   }
+  // TODO: Remove this call once all list callbacks are managed directly by
+  // ListElementTemplateInstance and no longer need to be applied to
+  // ListElement.
   if (ApplyTemplateListCallbackAttribute(element, key, value)) {
     return;
   }

@@ -191,6 +191,8 @@ constexpr static const char* kCFunctionGetElementByAttrSlot =
     "__GetElementByAttrSlot";
 constexpr static const char* kCFunctionSetAttributeOfElementTemplate =
     "__SetAttributeOfElementTemplate";
+constexpr static const char* kCFunctionSetListItemInfoOfTemplate =
+    "__SetListItemInfoOfTemplate";
 constexpr static const char* kCFunctionInsertNodeToElementTemplate =
     "__InsertNodeToElementTemplate";
 constexpr static const char* kCFunctionRemoveNodeFromElementTemplate =

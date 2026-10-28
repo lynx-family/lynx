@@ -99,6 +99,9 @@ void PageElement::FlushActionsAsRoot() {
   element_manager()->SetCurrentEngineThreadId(std::this_thread::get_id());
   Element::ParallelFlushAsRoot();
   element_manager()->DrainPendingElementTemplateChildMounts(this);
+  // Submit accumulated List ET instance updates within the current flush scope
+  // to the physical ListElement.
+  element_manager()->DrainPendingElementTemplateListUpdates(this);
   Element::FlushActions();
   Element::TraversalInsertFixedElementOfTree();
 }
