@@ -99,17 +99,23 @@ void InspectorLynxAgentNG::GetLynxViewRectToWindow(
 
 void InspectorLynxAgentNG::GetProperties(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetProperties(sender, message);
+  devtool_mediator_->LynxGetProperties(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::GetData(const std::shared_ptr<MessageSender>& sender,
                                    const Json::Value& message) {
-  devtool_mediator_->LynxGetData(sender, message);
+  devtool_mediator_->LynxGetData(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::GetComponentId(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->LynxGetComponentId(sender, message);
+  devtool_mediator_->LynxGetComponentId(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::GetLynxVersion(

@@ -1523,27 +1523,36 @@ void LynxDevToolMediator::FlushLayoutTreeForReplayEnd(
 }
 
 void LynxDevToolMediator::LynxGetProperties(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->LynxGetProperties(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->LynxGetProperties(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxGetData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->LynxGetData(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->LynxGetData(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxGetComponentId(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->LynxGetComponentId(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->LynxGetComponentId(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxSetTraceMode(

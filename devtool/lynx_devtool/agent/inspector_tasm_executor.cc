@@ -83,6 +83,10 @@ std::string TrimConditionText(const std::string& text) {
   return text.substr(start, end - start + 1);
 }
 
+bool ReadNodeIdParam(const Json::Value& params, int& node_id) {
+  return ReadIntParam(params["nodeId"], node_id) && node_id >= 0;
+}
+
 std::string NormalizeConditionTextForParser(const std::string& text,
                                             const std::string& at_rule) {
   std::string normalized = TrimConditionText(text);
@@ -2843,60 +2847,60 @@ void InspectorTasmExecutor::HideHighlight(
 // Overlay protocol end
 
 void InspectorTasmExecutor::LynxGetProperties(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["properties"] = "";
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  auto* ptr = GetElementById(index);
-  if (ptr && ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
-    content["properties"] = ElementHelper::GetProperties(ptr);
-  } else {
-    content["properties"] = "";
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  Json::Value result(Json::ValueType::objectValue);
+  result["properties"] = "";
+  auto* ptr = GetElementById(node_id);
+  if (ptr && ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
+    result["properties"] = ElementHelper::GetProperties(ptr);
+  } else {
+    result["properties"] = "";
+  }
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::LynxGetData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["data"] = "";
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  auto* ptr = GetElementById(index);
-  if (ptr && ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
-    content["data"] = ElementHelper::GetData(ptr);
-  } else {
-    content["data"] = "";
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  Json::Value result(Json::ValueType::objectValue);
+  result["data"] = "";
+  auto* ptr = GetElementById(node_id);
+  if (ptr && ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
+    result["data"] = ElementHelper::GetData(ptr);
+  } else {
+    result["data"] = "";
+  }
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::LynxGetComponentId(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["componentId"] = -1;
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  auto* ptr = GetElementById(index);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
+    return;
+  }
+  Json::Value result(Json::ValueType::objectValue);
+  result["componentId"] = -1;
+  auto* ptr = GetElementById(node_id);
   if (ptr) {
     if (ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
-      content["componentId"] = ElementHelper::GetComponentId(ptr);
+      result["componentId"] = ElementHelper::GetComponentId(ptr);
     }
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 // start template protocol

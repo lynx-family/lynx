@@ -11,6 +11,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <functional>
 #include <future>
 #include <initializer_list>
 #include <memory>
@@ -438,6 +439,48 @@ class InspectorTasmExecutorTest : public ::testing::Test {
   std::shared_ptr<::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>
       tasm_mediator_;
 };
+
+TEST_F(InspectorTasmExecutorTest, LynxNodeQueriesRejectInvalidNodeId) {
+  using Command = std::function<void(
+      const std::shared_ptr<devtool::CDPResponder>&, const Json::Value&)>;
+  const std::vector<Command> commands = {
+      [this](const std::shared_ptr<devtool::CDPResponder>& responder,
+             const Json::Value& params) {
+        element_executor_->LynxGetProperties(responder, params);
+      },
+      [this](const std::shared_ptr<devtool::CDPResponder>& responder,
+             const Json::Value& params) {
+        element_executor_->LynxGetData(responder, params);
+      },
+      [this](const std::shared_ptr<devtool::CDPResponder>& responder,
+             const Json::Value& params) {
+        element_executor_->LynxGetComponentId(responder, params);
+      },
+  };
+  const std::vector<Json::Value> invalid_node_ids = {
+      Json::Value(Json::nullValue), Json::Value("0"), Json::Value(-1),
+      Json::Value(1.5), Json::Value(Json::UInt64{1ULL << 32})};
+
+  int request_id = 1;
+  for (const auto& command : commands) {
+    for (const auto& node_id : invalid_node_ids) {
+      devtool::MockReceiver::GetInstance().ResetAll();
+      Json::Value params(Json::objectValue);
+      if (!node_id.isNull()) {
+        params["nodeId"] = node_id;
+      }
+      command(
+          std::make_shared<devtool::CDPResponder>(message_sender_, request_id),
+          params);
+      const Json::Value response = ReceivedMessage();
+      EXPECT_EQ(response["id"], request_id++);
+      EXPECT_EQ(response["error"]["code"].asInt(),
+                static_cast<int>(devtool::CDPErrorCode::InvalidParams));
+      EXPECT_EQ(response["error"]["message"],
+                "nodeId must be a non-negative integer");
+    }
+  }
+}
 
 TEST_F(InspectorTasmExecutorTest, OverlayHighlightSwitchAndHideRestoreStyles) {
   auto first = CreateInlineStyleUpdateTarget();
