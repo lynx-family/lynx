@@ -98,6 +98,18 @@ bool ReadStyleSheetId(const Json::Value& value, std::string& style_sheet_id,
   return ReadIntStringParam(Json::Value(suffix), node_id) && node_id >= 0;
 }
 
+bool ReadCSSRange(const Json::Value& value, Range& range) {
+  return value.isObject() &&
+         ReadIntParam(value["startLine"], range.start_line_) &&
+         ReadIntParam(value["startColumn"], range.start_column_) &&
+         ReadIntParam(value["endLine"], range.end_line_) &&
+         ReadIntParam(value["endColumn"], range.end_column_) &&
+         range.start_line_ >= 0 && range.start_column_ >= 0 &&
+         range.end_line_ >= range.start_line_ && range.end_column_ >= 0 &&
+         (range.end_line_ > range.start_line_ ||
+          range.end_column_ >= range.start_column_);
+}
+
 std::string NormalizeConditionTextForParser(const std::string& text,
                                             const std::string& at_rule) {
   std::string normalized = TrimConditionText(text);
@@ -2357,44 +2369,54 @@ void InspectorTasmExecutor::GetInlineStylesForNode(
 }
 
 void InspectorTasmExecutor::SetStyleTexts(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  Json::Value edits =
-      params.get("edits", Json::Value(Json::ValueType::arrayValue));
-  for (const Json::Value& edit : edits) {
-    std::string style_sheet_id = edit["styleSheetId"].asString();
-    int index =
-        atoi(style_sheet_id.substr(style_sheet_id.find('.') + 1).c_str());
-    Json::Value range_json =
-        edit.get("range", Json::Value(Json::ValueType::objectValue));
-    Range range;
-    range.start_line_ = range_json["startLine"].asInt();
-    range.start_column_ = range_json["startColumn"].asInt();
-    range.end_line_ = range_json["endLine"].asInt();
-    range.end_column_ = range_json["endColumn"].asInt();
-    std::string text = edit["text"].asString();
-    Element* ptr = GetElementById(static_cast<int>(index));
-    if (ptr != nullptr) {
-      ElementHelper::SetStyleTexts(element_root_, ptr, text, range);
-      content =
-          ElementHelper::GetStyleSheetAsTextOfNode(ptr, style_sheet_id, range);
-      std::string res = content.toStyledString();
-      Json::Value msg(Json::ValueType::objectValue);
-      if (ElementInspector::Type(ptr) != InspectorElementType::STYLEVALUE ||
-          ElementInspector::Type(ptr) != InspectorElementType::DOCUMENT) {
-        int nodeid =
-            atoi(style_sheet_id.substr(style_sheet_id.find('.') + 1).c_str());
-        SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_MODIFIED, nodeid, "style", -1);
-      }
-      SendCSSEventMsg(CssCdpEvent::STYLE_SHEET_CHANGED, style_sheet_id, ptr);
-    }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.isObject() || !params["edits"].isArray()) {
+    responder->SendError(CDPErrorCode::InvalidParams, "edits must be an array");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  struct StyleEdit {
+    std::string style_sheet_id;
+    int node_id = 0;
+    Range range;
+    std::string text;
+    Element* element = nullptr;
+  };
+  // Validate the entire batch before changing styles or emitting events.
+  std::vector<StyleEdit> edits;
+  for (const auto& value : params["edits"]) {
+    StyleEdit edit;
+    if (!value.isObject() ||
+        !ReadStyleSheetId(value["styleSheetId"], edit.style_sheet_id,
+                          edit.node_id) ||
+        !ReadCSSRange(value["range"], edit.range) ||
+        !ReadStringParam(value["text"], edit.text)) {
+      responder->SendError(CDPErrorCode::InvalidParams, "Invalid style edit");
+      return;
+    }
+    edit.element = GetElementById(edit.node_id);
+    if (!edit.element) {
+      responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+      return;
+    }
+    edits.push_back(std::move(edit));
+  }
+  Json::Value content(Json::ValueType::objectValue);
+  for (const auto& edit : edits) {
+    ElementHelper::SetStyleTexts(element_root_, edit.element, edit.text,
+                                 edit.range);
+    content = ElementHelper::GetStyleSheetAsTextOfNode(
+        edit.element, edit.style_sheet_id, edit.range);
+    if (ElementInspector::Type(edit.element) !=
+            InspectorElementType::STYLEVALUE ||
+        ElementInspector::Type(edit.element) !=
+            InspectorElementType::DOCUMENT) {
+      SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_MODIFIED, edit.node_id, "style",
+                      -1);
+    }
+    SendCSSEventMsg(CssCdpEvent::STYLE_SHEET_CHANGED, edit.style_sheet_id,
+                    edit.element);
+  }
+  responder->SendSuccess(std::move(content));
 }
 
 // Get the content of the specified style sheet ( Unsure of usage scenario)
@@ -2478,24 +2500,30 @@ void InspectorTasmExecutor::CreateStyleSheet(
 // Add a CSS rule (such as a class) to the specified style sheet (not sure where
 // to use it)
 void InspectorTasmExecutor::AddRule(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  std::string style_sheet_id = params["styleSheetId"].asString();
-  std::string rule_text = params["ruleText"].asString();
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  std::string style_sheet_id;
+  std::string rule_text;
+  int node_id = 0;
   Range range;
-  range.start_line_ = params["location"]["startLine"].asInt();
-  range.start_column_ = params["location"]["startColumn"].asInt();
-  range.end_line_ = params["location"]["endLine"].asInt();
-  range.end_column_ = params["location"]["endColumn"].asInt();
-  int index = atoi(style_sheet_id.substr(style_sheet_id.find('.') + 1).c_str());
-  Element* ptr = GetElementById(index);
-  response["result"] =
-      ElementHelper::AddRule(ptr, style_sheet_id, rule_text, range);
-
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  if (!params.isObject() ||
+      !ReadStyleSheetId(params["styleSheetId"], style_sheet_id, node_id) ||
+      !ReadStringParam(params["ruleText"], rule_text) ||
+      !ReadCSSRange(params["location"], range)) {
+    responder->SendError(CDPErrorCode::InvalidParams, "Invalid rule edit");
+    return;
+  }
+  Element* ptr = GetElementById(node_id);
+  if (!ptr) {
+    responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+    return;
+  }
+  auto result = ElementHelper::AddRule(ptr, style_sheet_id, rule_text, range);
+  if (result.isMember("error")) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         result["error"]["message"].asString());
+    return;
+  }
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::CollectDomTreeCssUsage(

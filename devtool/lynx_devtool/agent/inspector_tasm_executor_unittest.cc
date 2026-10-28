@@ -1106,6 +1106,89 @@ TEST_F(InspectorTasmExecutorTest,
       "Node is not an Element");
 }
 
+TEST_F(InspectorTasmExecutorTest, CSSStyleEditsValidateBatchBeforeMutation) {
+  auto element = CreateInlineStyleUpdateTarget();
+  auto sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = sender;
+  Json::Value edit;
+  edit["styleSheetId"] =
+      std::to_string(devtool::ElementInspector::NodeId(element.get()));
+  edit["text"] = "color: red;";
+  for (auto key : {"startLine", "endLine", "startColumn", "endColumn"}) {
+    edit["range"][key] = 0;
+  }
+  Json::Value params;
+  params["edits"].append(edit);
+  params["edits"].append(edit);
+  params["edits"][1]["text"] = 42;
+  const auto before =
+      devtool::ElementHelper::GetInlineStyleTexts(element.get()).css_text_;
+  element_executor_->SetStyleTexts(
+      std::make_shared<devtool::CDPResponder>(sender, 27), params);
+  ASSERT_EQ(sender->json_messages_.size(), 1U);
+  EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32602);
+  EXPECT_EQ(
+      devtool::ElementHelper::GetInlineStyleTexts(element.get()).css_text_,
+      before);
+
+  sender->json_messages_.clear();
+  params["edits"].resize(1);
+  constexpr int64_t id = 1LL << 40;
+  ui_thread_->GetTaskRunner()->PostSyncTask([&] {
+    element_executor_->SetStyleTexts(
+        std::make_shared<devtool::CDPResponder>(sender, id), params);
+  });
+  ASSERT_EQ(sender->json_messages_.size(), 3U);
+  EXPECT_EQ(sender->json_messages_[0].second["method"],
+            "DOM.attributeModified");
+  EXPECT_EQ(sender->json_messages_[1].second["method"],
+            "CSS.styleSheetChanged");
+  EXPECT_EQ(sender->json_messages_[2].second["id"].asInt64(), id);
+  EXPECT_EQ(
+      sender->json_messages_[2].second["result"],
+      devtool::ElementHelper::GetStyleSheetAsTextOfNode(
+          element.get(), edit["styleSheetId"].asString(), devtool::Range()));
+  EXPECT_NE(devtool::ElementHelper::GetInlineStyleTexts(element.get())
+                .css_text_.find("red"),
+            std::string::npos);
+}
+
+TEST_F(InspectorTasmExecutorTest, CSSAddRuleReturnsRuleOrTopLevelError) {
+  auto document = manager_->CreateFiberElement("doc");
+  devtool::ElementInspector::InitForInspector(std::make_tuple(document.get()));
+  element_executor_->element_root_ = document.get();
+  Json::Value params;
+  params["styleSheetId"] =
+      std::to_string(devtool::ElementInspector::NodeId(document.get()));
+  params["ruleText"] = ".example {}";
+  for (auto key : {"startLine", "endLine", "startColumn", "endColumn"}) {
+    params["location"][key] = 0;
+  }
+  auto sender = std::make_shared<RecordingMessageSender>();
+  element_executor_->AddRule(
+      std::make_shared<devtool::CDPResponder>(sender, 28), params);
+  ASSERT_EQ(sender->json_messages_.size(), 1U);
+  EXPECT_EQ(sender->json_messages_[0]
+                .second["result"]["rule"]["selectorList"]["text"],
+            ".example");
+  EXPECT_EQ(devtool::ElementInspector::GetCssRules(document.get()).size(), 1U);
+
+  sender->json_messages_.clear();
+  params["ruleText"] = "invalid";
+  element_executor_->AddRule(
+      std::make_shared<devtool::CDPResponder>(sender, 29), params);
+  ASSERT_EQ(sender->json_messages_.size(), 1U);
+  EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32000);
+  EXPECT_FALSE(sender->json_messages_[0].second.isMember("result"));
+  EXPECT_EQ(devtool::ElementInspector::GetCssRules(document.get()).size(), 1U);
+  sender->json_messages_.clear();
+  params["location"]["startLine"] = "0";
+  element_executor_->AddRule(
+      std::make_shared<devtool::CDPResponder>(sender, 30), params);
+  ASSERT_EQ(sender->json_messages_.size(), 1U);
+  EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32602);
+}
+
 TEST_F(InspectorTasmExecutorTest,
        CSSStyleSheetCommandsPreserveRepliesAndEvents) {
   auto element = CreateInlineStyleUpdateTarget();
