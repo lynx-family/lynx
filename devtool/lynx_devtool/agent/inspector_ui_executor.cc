@@ -503,7 +503,18 @@ void InspectorUIExecutor::GetScreenshot(
 }
 
 void InspectorUIExecutor::LynxSetLogLevel(
-    const std::shared_ptr<CDPResponder>& responder, int level) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  std::string level_name;
+  int level = -1;
+  if (params.isObject() && ReadStringParam(params["level"], level_name)) {
+    level = base::logging::ParseLogLevel(level_name);
+  }
+  if (level < 0) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "level must be VERBOSE, DEBUG, MONITOR, OBSERVE, "
+                         "INFO, WARNING or ERROR");
+    return;
+  }
   base::logging::SetPlatformMinLogLevel(level);
   responder->SendSuccess();
 }
