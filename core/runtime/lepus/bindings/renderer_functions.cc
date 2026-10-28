@@ -3696,7 +3696,7 @@ RENDERER_FUNCTION_CC(FiberGetChildren) {
     RETURN_UNDEFINED();
   }
 
-  auto parent = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto parent = GetComposeContentOrFiberElementFromValue(*arg0);
 
   auto ary = lepus::CArray::Create();
   const auto& children = parent->children();
@@ -4412,7 +4412,7 @@ RENDERER_FUNCTION_CC(FiberSetInlineStyles) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
                                         FiberSetInlineStyles);
   CONVERT_ARG(arg1, 1);
-  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto element = GetComposeContentOrFiberElementFromValue(*arg0);
   CHECK_ILLEGAL_ATTRIBUTE_CONFIG(element, FiberSetInlineStyles);
 
   // Since FiberSetInlineStyles means clear the previous value and set the new
