@@ -23,9 +23,16 @@ typedef struct lynx_vsync_observer_t lynx_vsync_observer_t;
 
 typedef void (*vsync_observer_callback)(void* user_data, int64_t, int64_t);
 
-// To synchronize with a given VSync, a callback is set, which is called back
-// when the next VSync signal arrives. This callback will be called before any
-// normal callback.
+// Make requests on the attached BTS runtime thread. One-shot requests receive
+// (0, 0) synchronously when discarded (for example, duplicate ids), or before
+// the module's runtime_detach, on_destroy or finalizer callback during
+// teardown. Zero timestamps indicate cancellation, not a frame. Keep user_data
+// valid until delivery or cancellation. Requests made while detached are
+// cancelled at once.
+//
+// The following two one-shot APIs use these cancellation rules.
+// The before-animation callback runs before any normal callback on the next
+// VSync.
 LYNX_CAPI_EXPORT void lynx_vsync_observer_request_before_animation_frame(
     lynx_vsync_observer_t*, uintptr_t id, vsync_observer_callback callback,
     void* user_data);

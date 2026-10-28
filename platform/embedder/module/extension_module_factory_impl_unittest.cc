@@ -8,10 +8,13 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <vector>
 
+#include "base/include/fml/thread.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "platform/embedder/module/lynx_extension_module_priv.h"
 #include "quickjs/include/quickjs.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -149,6 +152,233 @@ class MTSExtensionModuleFactoryTest : public ::testing::Test {
   LEPUSContext* context_;
   std::unique_ptr<runtime::js::NapiEnvironment> napi_environment_;
 };
+
+class TestVSyncObserver : public runtime::IVSyncObserver {
+ public:
+  using Callback = base::MoveOnlyClosure<void, int64_t, int64_t>;
+  void RequestAnimationFrame(uintptr_t id, Callback callback) override {
+    callbacks.emplace(id, std::move(callback));
+  }
+  void RequestBeforeAnimationFrame(uintptr_t id, Callback callback) override {
+    callbacks.emplace(id, std::move(callback));
+  }
+  void RegisterAfterAnimationFrameListener(Callback callback) override {}
+  std::unordered_map<uintptr_t, Callback> callbacks;
+};
+
+struct VSyncResult {
+  int calls = 0;
+  int64_t start = -1;
+  int64_t end = -1;
+  static void OnSignal(void* data, int64_t start, int64_t end) {
+    auto& result = *static_cast<VSyncResult*>(data);
+    ++result.calls;
+    result.start = start;
+    result.end = end;
+  }
+};
+
+class ExtensionModuleVSyncTest : public ::testing::TestWithParam<bool> {
+ protected:
+  struct Context {
+    VSyncResult* result;
+    std::vector<std::string>* events;
+    fml::TaskRunner* runner;
+  };
+
+  void SetUp() override {
+    runner_ = thread_.GetTaskRunner();
+    runner_->PostSyncTask([&] {
+      context_ = new Context{&result_, &events_, runner_.get()};
+      module_ = lynx_extension_module_create_with_finalizer(
+          context_, [](auto*, void* data) {
+            auto* context = static_cast<Context*>(data);
+            context->events->push_back("finalizer");
+            delete context;
+          });
+      lynx_extension_module_bind_runtime_attach(module_,
+                                                [](auto*, auto, auto*) {});
+      lynx_extension_module_bind_runtime_detach(module_, [](auto* module) {
+        auto* context =
+            static_cast<Context*>(lynx_extension_module_get_user_data(module));
+        context->events->push_back("detach");
+      });
+      lynx_extension_module_bind_on_destroy(module_, [](auto* module) {
+        auto* context =
+            static_cast<Context*>(lynx_extension_module_get_user_data(module));
+        context->events->push_back("destroy");
+      });
+      extension_ = std::make_unique<ExtensionModuleImpl>(module_);
+      extension_->SetRuntimeAttachedState(nullptr, observer_);
+    });
+  }
+
+  void TearDown() override {
+    runner_->PostSyncTask([&] {
+      extension_.reset();
+      observer_->callbacks.clear();
+    });
+  }
+
+ public:
+  void Request(uintptr_t id = 1) {
+    Request(
+        id,
+        [](void* data, int64_t start, int64_t end) {
+          auto* context = static_cast<Context*>(data);
+          EXPECT_TRUE(context->runner->RunsTasksOnCurrentThread());
+          context->events->push_back(start == 0 ? "cancel" : "signal");
+          VSyncResult::OnSignal(context->result, start, end);
+        },
+        context_);
+  }
+
+  void Request(uintptr_t id, vsync_observer_callback callback, void* data) {
+    auto request = GetParam()
+                       ? lynx_vsync_observer_request_before_animation_frame
+                       : lynx_vsync_observer_request_animation_frame;
+    request(module_->vsync_observer, id, callback, data);
+  }
+
+ protected:
+  fml::Thread thread_{"extension-vsync-test"};
+  fml::RefPtr<fml::TaskRunner> runner_;
+  std::shared_ptr<TestVSyncObserver> observer_ =
+      std::make_shared<TestVSyncObserver>();
+  VSyncResult result_;
+  std::vector<std::string> events_;
+  Context* context_ = nullptr;
+  lynx_extension_module_t* module_ = nullptr;
+  std::unique_ptr<ExtensionModuleImpl> extension_;
+};
+
+TEST_P(ExtensionModuleVSyncTest, CancelsBeforeRuntimeTeardownHooks) {
+  runner_->PostSyncTask([&] {
+    Request();
+    extension_->SetRuntimeDetachedState();
+    EXPECT_EQ(events_, (std::vector<std::string>{"cancel", "detach"}));
+    VSyncResult detached;
+    Request(2, VSyncResult::OnSignal, &detached);
+    EXPECT_EQ(detached.calls, 1);
+    EXPECT_EQ(detached.start, 0);
+    EXPECT_EQ(detached.end, 0);
+    extension_->Destroy();
+    extension_.reset();
+    EXPECT_EQ(events_, (std::vector<std::string>{"cancel", "detach", "destroy",
+                                                 "finalizer"}));
+    // The runtime can retain a callback after its module's context is freed.
+    observer_->callbacks.at(1)(100, 200);
+    EXPECT_EQ(result_.calls, 1);
+    EXPECT_EQ(result_.start, 0);
+    EXPECT_EQ(result_.end, 0);
+  });
+}
+
+TEST_P(ExtensionModuleVSyncTest, CancelsBeforeFinalizerWithSharedObserver) {
+  runner_->PostSyncTask([&] {
+    Request();
+    extension_.reset();
+    EXPECT_EQ(events_, (std::vector<std::string>{"cancel", "finalizer"}));
+    observer_->callbacks.at(1)(100, 200);
+    EXPECT_EQ(result_.calls, 1);
+    EXPECT_EQ(result_.start, 0);
+    EXPECT_EQ(result_.end, 0);
+  });
+}
+
+TEST_P(ExtensionModuleVSyncTest, CancelsBeforeDestroyHookWithoutDetach) {
+  runner_->PostSyncTask([&] {
+    Request();
+    extension_->Destroy();
+    EXPECT_EQ(events_, (std::vector<std::string>{"cancel", "destroy"}));
+    extension_.reset();
+    observer_->callbacks.at(1)(100, 200);
+    EXPECT_EQ(result_.calls, 1);
+    EXPECT_EQ(events_,
+              (std::vector<std::string>{"cancel", "destroy", "finalizer"}));
+  });
+}
+
+TEST_P(ExtensionModuleVSyncTest, DeliveredCallbacksAreNotCancelledAgain) {
+  runner_->PostSyncTask([&] {
+    Request();
+    auto node = observer_->callbacks.extract(1);
+    node.mapped()(100, 200);
+    extension_.reset();
+    EXPECT_EQ(result_.calls, 1);
+    EXPECT_EQ(result_.start, 100);
+    EXPECT_EQ(result_.end, 200);
+    EXPECT_EQ(events_, (std::vector<std::string>{"signal", "finalizer"}));
+  });
+}
+
+TEST_P(ExtensionModuleVSyncTest, CancelsRejectedDuplicateCallbacks) {
+  runner_->PostSyncTask([&] {
+    VSyncResult duplicate;
+    Request();
+    Request(1, VSyncResult::OnSignal, &duplicate);
+    EXPECT_EQ(result_.calls, 0);
+    EXPECT_EQ(duplicate.calls, 1);
+    EXPECT_EQ(duplicate.start, 0);
+    EXPECT_EQ(duplicate.end, 0);
+    extension_.reset();
+    EXPECT_EQ(result_.calls, 1);
+    EXPECT_EQ(duplicate.calls, 1);
+  });
+}
+
+TEST_P(ExtensionModuleVSyncTest, CancellingOneModulePreservesOtherRequests) {
+  runner_->PostSyncTask([&] {
+    ExtensionModuleCounters counters;
+    VSyncResult other_result;
+    auto* other_module = CreateExtensionModule(&counters);
+    ExtensionModuleImpl other(other_module);
+    other.SetRuntimeAttachedState(nullptr, observer_);
+    auto request = GetParam()
+                       ? lynx_vsync_observer_request_before_animation_frame
+                       : lynx_vsync_observer_request_animation_frame;
+    Request();
+    request(other_module->vsync_observer, 2, VSyncResult::OnSignal,
+            &other_result);
+    extension_.reset();
+    EXPECT_EQ(result_.calls, 1);
+    EXPECT_EQ(other_result.calls, 0);
+    observer_->callbacks.at(2)(100, 200);
+    EXPECT_EQ(other_result.calls, 1);
+    EXPECT_EQ(other_result.start, 100);
+    EXPECT_EQ(other_result.end, 200);
+  });
+}
+
+TEST_P(ExtensionModuleVSyncTest, ReentrantRequestDuringCancellationIsRejected) {
+  runner_->PostSyncTask([&] {
+    struct ReentrantRequest {
+      ExtensionModuleVSyncTest* test;
+      VSyncResult cancelled;
+      VSyncResult reentrant;
+    } state{this, {}, {}};
+    Request(
+        1,
+        [](void* data, int64_t start, int64_t end) {
+          auto* state = static_cast<ReentrantRequest*>(data);
+          VSyncResult::OnSignal(&state->cancelled, start, end);
+          state->test->Request(2, VSyncResult::OnSignal, &state->reentrant);
+        },
+        &state);
+    extension_->SetRuntimeDetachedState();
+    EXPECT_EQ(state.cancelled.calls, 1);
+    EXPECT_EQ(state.reentrant.calls, 1);
+    EXPECT_EQ(state.reentrant.start, 0);
+    EXPECT_EQ(state.reentrant.end, 0);
+    EXPECT_EQ(observer_->callbacks.size(), 1u);
+    extension_.reset();
+    observer_->callbacks.clear();
+    EXPECT_EQ(state.cancelled.calls, 1);
+    EXPECT_EQ(state.reentrant.calls, 1);
+  });
+}
+
+INSTANTIATE_TEST_SUITE_P(OneShot, ExtensionModuleVSyncTest, ::testing::Bool());
 
 TEST_F(MTSExtensionModuleFactoryTest,
        CreatesNapiModuleWithoutExtensionLifecycle) {
