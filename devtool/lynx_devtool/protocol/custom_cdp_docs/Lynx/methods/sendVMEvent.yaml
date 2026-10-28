@@ -18,7 +18,7 @@ notes:
   - The handler forwards the event only when params.vmType and params.event are strings.
   - Darwin wraps the payload with origin Devtool and target set to params.vmType before calling the platform delegate.
   - The handler returns an empty CDP result object after processing the request, including requests with missing or invalid params.
-  - If params are valid but the platform facade is unavailable, the current handler does not send an explicit CDP response.
+  - If the UI task runner or UI executor is unavailable, or valid params require an unavailable platform facade, the handler returns a ServerError.
 examples:
   - title: Send a VM event
     request:

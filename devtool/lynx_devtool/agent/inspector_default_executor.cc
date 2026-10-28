@@ -6,7 +6,6 @@
 
 #include "base/include/log/logging.h"
 #include "devtool/base_devtool/native/public/cdp_param_utils.h"
-#include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
@@ -29,30 +28,23 @@ void InspectorDefaultExecutor::Reset() {
 }
 
 void InspectorDefaultExecutor::LynxSetTraceMode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   // TODO(mitchilling): remove this protocol, including agent and mediator.
   LOGW(
       "SetTraceMode is no longer supported. Please use global messages to "
       "access certain settings.");
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value error(Json::ValueType::objectValue);
-  error["code"] = -32601;  // JSON-RPC standard code for Method not found
-  error["message"] = "SetTraceMode is deprecated. Use global messages.";
-  response["error"] = error;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendError(CDPErrorCode::MethodNotFound,
+                       "SetTraceMode is deprecated. Use global messages.");
 }
 
 void InspectorDefaultExecutor::LynxGetVersion(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
-                            "devtool_platform_facade_ is null");
-  response["result"] = devtool_platform_facade_->GetLynxVersion();
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (devtool_platform_facade_ == nullptr) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+    return;
+  }
+  responder->SendSuccess(devtool_platform_facade_->GetLynxVersion());
 }
 
 // start log protocol

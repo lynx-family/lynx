@@ -384,10 +384,9 @@ TEST_F(InspectorUIExecutorTest, GetRectToWindowReturnsErrorWhenUnavailable) {
   auto facade = std::make_shared<UnavailableRectDevToolPlatformFacadeMock>();
   ui_executor_->SetDevToolPlatformFacade(facade);
 
-  Json::Value message;
-  message["id"] = 42;
-
-  ui_executor_->LynxGetRectToWindow(message_sender_, message);
+  ui_executor_->LynxGetRectToWindow(
+      std::make_shared<devtool::CDPResponder>(message_sender_, 42),
+      Json::Value());
 
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"error\" : {\n      \"code\" : -32601,\n"
