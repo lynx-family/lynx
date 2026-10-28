@@ -24,6 +24,11 @@ class ElementTemplateInstance
     : public lepus::RefCounted,
       public fml::EnableWeakFromThis<ElementTemplateInstance> {
  public:
+  static fml::RefPtr<ElementTemplateInstance>
+  ResolveElementTemplateInstanceValue(const lepus::Value& value);
+  static lepus::Value ConvertTemplateValueForStorage(const lepus::Value& value);
+  static lepus::Value ConvertTemplateMapForStorage(const lepus::Value& value);
+
   explicit ElementTemplateInstance(ElementManager* element_manager);
   ~ElementTemplateInstance() override;
 
@@ -46,6 +51,17 @@ class ElementTemplateInstance
   void InitializeChildSlots(const lepus::Value& child_slots);
   void SetOptions(const lepus::Value& options);
   void SetUid(const lepus::Value& uid);
+
+  const base::String& GetTemplateKey() const { return template_key_; }
+  const base::String& GetTypedTag() const { return typed_tag_; }
+  const base::String& GetBundleUrl() const { return bundle_url_; }
+  const lepus::Value& GetUid() const { return uid_; }
+  ElementTemplateInstance* GetLogicalParent() const { return logical_parent_; }
+  // Provides a consistent template identity for the List data source and reuse
+  // pool: tag for typed templates, templateKey for compiled templates, and
+  // bundleUrl:templateKey for external bundles.
+  base::String GetTemplateType() const;
+  lepus::Value GetListItemPlatformInfoFromOptions() const;
 
   fml::RefPtr<Element> GetRoot();
   // Materializes this instance on demand, then returns the slot target.
