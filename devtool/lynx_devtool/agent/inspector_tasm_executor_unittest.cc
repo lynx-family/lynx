@@ -1106,6 +1106,44 @@ TEST_F(InspectorTasmExecutorTest,
       "Node is not an Element");
 }
 
+TEST_F(InspectorTasmExecutorTest, CSSConditionsRejectMalformedParamsAndNoRoot) {
+  for (auto method : {&devtool::InspectorTasmExecutor::SetMediaText,
+                      &devtool::InspectorTasmExecutor::SetSupportsText}) {
+    auto check = [&](const Json::Value& params, int code) {
+      auto sender = std::make_shared<RecordingMessageSender>();
+      constexpr int64_t id = 1LL << 40;
+      (element_executor_.get()->*method)(
+          std::make_shared<devtool::CDPResponder>(sender, id), params);
+      ASSERT_EQ(sender->json_messages_.size(), 1U);
+      EXPECT_EQ(sender->json_messages_[0].second["id"].asInt64(), id);
+      EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], code);
+      EXPECT_FALSE(sender->json_messages_[0].second.isMember("result"));
+    };
+    check(Json::Value(1), -32602);
+    Json::Value params;
+    params["styleSheetId"] = "1";
+    params["text"] = "(display: flex)";
+    params["range"]["startLine"] = 0;
+    check(params, -32000);
+    for (auto line : {Json::Value("0"), Json::Value(-1),
+                      Json::Value(Json::UInt64(1) << 32)}) {
+      params["range"]["startLine"] = line;
+      check(params, -32602);
+    }
+    params["range"]["startLine"] = 0;
+    params["text"] = Json::Value(Json::arrayValue);
+    check(params, -32602);
+    params["text"] = "(display: flex)";
+    params["styleSheetId"] = 1;
+    check(params, -32602);
+  }
+  auto sender = std::make_shared<RecordingMessageSender>();
+  element_executor_->GetMediaQueries(
+      std::make_shared<devtool::CDPResponder>(sender, 19), Json::Value());
+  ASSERT_EQ(sender->json_messages_.size(), 1U);
+  EXPECT_EQ(sender->json_messages_[0].second["error"]["code"], -32000);
+}
+
 TEST_F(InspectorTasmExecutorTest, GetMediaQueriesReturnsMediaRules) {
   auto dom = BuildMediaQueryTestDom(
       manager_.get(),
@@ -1119,7 +1157,10 @@ TEST_F(InspectorTasmExecutorTest, GetMediaQueriesReturnsMediaRules) {
   auto response_sender = std::make_shared<RecordingMessageSender>();
   Json::Value message(Json::ValueType::objectValue);
   message["id"] = 101;
-  element_executor_->GetMediaQueries(response_sender, message);
+  element_executor_->GetMediaQueries(
+      std::make_shared<devtool::CDPResponder>(response_sender,
+                                              message["id"].asInt64()),
+      message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   const Json::Value& response = response_sender->json_messages_[0].second;
@@ -1166,7 +1207,9 @@ TEST_F(InspectorTasmExecutorTest, SetMediaTextUpdatesRuleCacheAndSendsEvents) {
       static_cast<int>(std::string("(min-width: 1000px)").length());
   message["params"]["text"] = "@media (min-width: 100px)";
 
-  element_executor_->SetMediaText(response_sender, message);
+  element_executor_->SetMediaText(std::make_shared<devtool::CDPResponder>(
+                                      response_sender, message["id"].asInt64()),
+                                  message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   const Json::Value& response = response_sender->json_messages_[0].second;
@@ -1233,7 +1276,9 @@ TEST_F(InspectorTasmExecutorTest,
       static_cast<int>(std::string("(min-width: 1000px)").length());
   message["params"]["text"] = "@media (min-width: 100px)";
 
-  element_executor_->SetMediaText(response_sender, message);
+  element_executor_->SetMediaText(std::make_shared<devtool::CDPResponder>(
+                                      response_sender, message["id"].asInt64()),
+                                  message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   const Json::Value& response = response_sender->json_messages_[0].second;
@@ -1274,7 +1319,9 @@ TEST_F(InspectorTasmExecutorTest, SetMediaTextReportsErrors) {
   invalid_message["id"] = 103;
   invalid_message["params"]["styleSheetId"] = "";
   invalid_message["params"]["text"] = "(min-width: 100px)";
-  element_executor_->SetMediaText(response_sender, invalid_message);
+  element_executor_->SetMediaText(
+      std::make_shared<devtool::CDPResponder>(response_sender, 103),
+      invalid_message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
@@ -1290,7 +1337,9 @@ TEST_F(InspectorTasmExecutorTest, SetMediaTextReportsErrors) {
   not_found_message["params"]["range"]["endLine"] = 99;
   not_found_message["params"]["range"]["endColumn"] = 10;
   not_found_message["params"]["text"] = "(min-width: 100px)";
-  element_executor_->SetMediaText(response_sender, not_found_message);
+  element_executor_->SetMediaText(
+      std::make_shared<devtool::CDPResponder>(response_sender, 104),
+      not_found_message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
@@ -1340,7 +1389,10 @@ TEST_F(InspectorTasmExecutorTest,
       static_cast<int>(std::string("(display: flex)").length());
   message["params"]["text"] = "@supports (color: red)";
 
-  element_executor_->SetSupportsText(response_sender, message);
+  element_executor_->SetSupportsText(
+      std::make_shared<devtool::CDPResponder>(response_sender,
+                                              message["id"].asInt64()),
+      message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   const Json::Value& response = response_sender->json_messages_[0].second;
@@ -1391,7 +1443,10 @@ TEST_F(InspectorTasmExecutorTest,
       static_cast<int>(std::string("(display: flex)").length());
   message["params"]["text"] = "(unknown-property: value)";
 
-  element_executor_->SetSupportsText(response_sender, message);
+  element_executor_->SetSupportsText(
+      std::make_shared<devtool::CDPResponder>(response_sender,
+                                              message["id"].asInt64()),
+      message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   const Json::Value& response = response_sender->json_messages_[0].second;
@@ -1422,7 +1477,9 @@ TEST_F(InspectorTasmExecutorTest, SetSupportsTextReportsErrors) {
   invalid_location_message["id"] = 107;
   invalid_location_message["params"]["styleSheetId"] = "";
   invalid_location_message["params"]["text"] = "(color: red)";
-  element_executor_->SetSupportsText(response_sender, invalid_location_message);
+  element_executor_->SetSupportsText(
+      std::make_shared<devtool::CDPResponder>(response_sender, 107),
+      invalid_location_message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
@@ -1438,8 +1495,9 @@ TEST_F(InspectorTasmExecutorTest, SetSupportsTextReportsErrors) {
   invalid_condition_message["params"]["range"]["endLine"] = 0;
   invalid_condition_message["params"]["range"]["endColumn"] = 15;
   invalid_condition_message["params"]["text"] = "not not (display: flex)";
-  element_executor_->SetSupportsText(response_sender,
-                                     invalid_condition_message);
+  element_executor_->SetSupportsText(
+      std::make_shared<devtool::CDPResponder>(response_sender, 108),
+      invalid_condition_message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
@@ -1458,7 +1516,9 @@ TEST_F(InspectorTasmExecutorTest, SetSupportsTextReportsErrors) {
   not_found_message["params"]["range"]["endLine"] = 99;
   not_found_message["params"]["range"]["endColumn"] = 10;
   not_found_message["params"]["text"] = "(color: red)";
-  element_executor_->SetSupportsText(response_sender, not_found_message);
+  element_executor_->SetSupportsText(
+      std::make_shared<devtool::CDPResponder>(response_sender, 109),
+      not_found_message["params"]);
 
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),

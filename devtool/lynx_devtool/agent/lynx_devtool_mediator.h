@@ -139,9 +139,9 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_CDP_METHOD(StartRuleUsageTracking);
   DECLARE_DEVTOOL_CDP_METHOD(UpdateRuleUsageTracking);
   DECLARE_DEVTOOL_CDP_METHOD(StopRuleUsageTracking);
-  DECLARE_DEVTOOL_METHOD(GetMediaQueries);
-  DECLARE_DEVTOOL_METHOD(SetMediaText);
-  DECLARE_DEVTOOL_METHOD(SetSupportsText);
+  DECLARE_DEVTOOL_CDP_METHOD(GetMediaQueries);
+  DECLARE_DEVTOOL_CDP_METHOD(SetMediaText);
+  DECLARE_DEVTOOL_CDP_METHOD(SetSupportsText);
 
   // Performance domain -> ui executor
   DECLARE_DEVTOOL_CDP_METHOD(PerformanceEnable);

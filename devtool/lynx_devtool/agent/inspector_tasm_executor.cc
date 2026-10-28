@@ -104,23 +104,24 @@ struct ConditionTextEditRequest {
 };
 
 ConditionTextEditRequest ParseConditionTextEditRequest(
-    const Json::Value& message, const std::string& at_rule) {
-  const Json::Value& params = message["params"];
-  const Json::Value range =
-      params.get("range", Json::Value(Json::ValueType::objectValue));
-  return {params["styleSheetId"].asString(), range["startLine"].asInt(),
+    const Json::Value& params, const std::string& at_rule) {
+  int condition_index = -1;
+  if (!params.isObject() || !params["styleSheetId"].isString() ||
+      !params["text"].isString() || !params["range"].isObject() ||
+      !ReadIntParam(params["range"]["startLine"], condition_index)) {
+    return {};
+  }
+  return {params["styleSheetId"].asString(), condition_index,
           NormalizeConditionTextForParser(params["text"].asString(), at_rule),
-          range.isObject() && range.isMember("startLine")};
+          true};
 }
 
-void SendConditionTextEditResult(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message, const char* result_key,
-    const Json::Value& condition) {
-  Json::Value response(Json::ValueType::objectValue);
-  response["result"][result_key] = condition;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+void SendConditionTextEditResult(const std::shared_ptr<CDPResponder>& responder,
+                                 const char* result_key,
+                                 Json::Value condition) {
+  Json::Value result(Json::ValueType::objectValue);
+  result[result_key] = std::move(condition);
+  responder->SendSuccess(std::move(result));
 }
 
 // TTSS source ranges are not available after binary decoding. DevTool uses this
@@ -2589,9 +2590,7 @@ void InspectorTasmExecutor::StopRuleUsageTracking(
 }
 
 void InspectorTasmExecutor::GetMediaQueries(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   Json::Value result(Json::ValueType::objectValue);
   Json::Value medias(Json::ValueType::arrayValue);
   std::unordered_set<const css::RuleSet*> visited_rule_sets;
@@ -2599,7 +2598,10 @@ void InspectorTasmExecutor::GetMediaQueries(
   std::unordered_map<std::string, int> media_indices;
 
   Element* root = element_root_;
-  CHECK_NULL_AND_LOG_RETURN(root, "root is null");
+  if (!root) {
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
+    return;
+  }
   std::queue<Element*> inspect_node_queue;
   inspect_node_queue.push(root);
   while (!inspect_node_queue.empty()) {
@@ -2649,22 +2651,23 @@ void InspectorTasmExecutor::GetMediaQueries(
   }
 
   result["medias"] = medias;
-  response["result"] = result;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::SetMediaText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   const ConditionTextEditRequest request =
-      ParseConditionTextEditRequest(message, "@media");
+      ParseConditionTextEditRequest(params, "@media");
 
   Element* root = element_root_;
-  if (!root || request.style_sheet_id.empty() || !request.has_valid_range ||
+  if (request.style_sheet_id.empty() || !request.has_valid_range ||
       request.condition_index < 0) {
-    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
-                              "Invalid media query location");
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid media query location");
+    return;
+  }
+  if (!root) {
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
     return;
   }
 
@@ -2673,8 +2676,7 @@ void InspectorTasmExecutor::SetMediaText(
       root, request.style_sheet_id, request.condition_index,
       &css::ConditionRule::HasStructuredMediaQuery);
   if (!target) {
-    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
-                              "Media rule not found");
+    responder->SendError(CDPErrorCode::ServerError, "Media rule not found");
     return;
   }
 
@@ -2691,27 +2693,30 @@ void InspectorTasmExecutor::SetMediaText(
 
   SendCSSEventMsg(CssCdpEvent::MEDIA_QUERY_RESULT_CHANGED, "", nullptr);
   SendStyleSheetChanged(this, request.style_sheet_id);
-  SendConditionTextEditResult(sender, message, "media", updated_media);
+  SendConditionTextEditResult(responder, "media", std::move(updated_media));
 }
 
 void InspectorTasmExecutor::SetSupportsText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   const ConditionTextEditRequest request =
-      ParseConditionTextEditRequest(message, "@supports");
+      ParseConditionTextEditRequest(params, "@supports");
 
   Element* root = element_root_;
-  if (!root || request.style_sheet_id.empty() || !request.has_valid_range ||
+  if (request.style_sheet_id.empty() || !request.has_valid_range ||
       request.condition_index < 0) {
-    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
-                              "Invalid supports rule location");
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid supports rule location");
+    return;
+  }
+  if (!root) {
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
     return;
   }
 
   auto supports_condition = css::SupportsConditionParser::Parse(request.text);
   if (!supports_condition) {
-    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
-                              "Invalid supports condition");
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid supports condition");
     return;
   }
 
@@ -2719,8 +2724,7 @@ void InspectorTasmExecutor::SetSupportsText(
       root, request.style_sheet_id, request.condition_index,
       &css::ConditionRule::HasStructuredSupportsRules);
   if (!target) {
-    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
-                              "Supports rule not found");
+    responder->SendError(CDPErrorCode::ServerError, "Supports rule not found");
     return;
   }
 
@@ -2744,7 +2748,8 @@ void InspectorTasmExecutor::SetSupportsText(
   RequestStyleResolveAfterConditionEdit(root);
 
   SendStyleSheetChanged(this, request.style_sheet_id);
-  SendConditionTextEditResult(sender, message, "supports", updated_supports);
+  SendConditionTextEditResult(responder, "supports",
+                              std::move(updated_supports));
 }
 
 // CSS protocol end

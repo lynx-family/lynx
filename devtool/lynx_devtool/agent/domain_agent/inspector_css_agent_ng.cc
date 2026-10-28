@@ -158,17 +158,23 @@ void InspectorCSSAgentNG::StopRuleUsageTracking(
 
 void InspectorCSSAgentNG::GetMediaQueries(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetMediaQueries(sender, message);
+  devtool_mediator_->GetMediaQueries(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::SetMediaText(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->SetMediaText(sender, message);
+  devtool_mediator_->SetMediaText(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorCSSAgentNG::SetSupportsText(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->SetSupportsText(sender, message);
+  devtool_mediator_->SetSupportsText(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 }  // namespace devtool
