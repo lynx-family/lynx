@@ -30,7 +30,11 @@ import {
   TextInfoManager,
   TextMetrics,
 } from '../modules/nativeModules';
-import { DEFAULT_ENTRY, SOURCE_MAP_RELEASE_ERROR_NAME } from '../common';
+import {
+  APP_SERVICE_NAME,
+  DEFAULT_ENTRY,
+  SOURCE_MAP_RELEASE_ERROR_NAME,
+} from '../common';
 import nativeGlobal from '../common/nativeGlobal';
 import {
   CreateIntersectionObserverFunc,
@@ -1091,7 +1095,11 @@ export abstract class BaseApp<
       return undefined;
     }
     let cacheKey = (entryName ? entryName : DEFAULT_ENTRY) + path;
-    if (path.startsWith('/') || path.startsWith('lynx_assets')) {
+    if (
+      path === APP_SERVICE_NAME ||
+      path.startsWith('/') ||
+      path.startsWith('lynx_assets')
+    ) {
       cacheKey = templateUrl + cacheKey;
     }
     return cacheKey;
