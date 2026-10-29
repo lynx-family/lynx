@@ -13,6 +13,7 @@
 #include "base/include/fml/time/timer.h"
 #include "base/include/log/log_context.h"
 #include "base/include/log/logging.h"
+#include "base/include/value/base_value.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/memory_monitor/memory_monitor_data.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
@@ -26,6 +27,9 @@ class GlobalMemoryMonitor;
 struct InstanceState;
 inline constexpr char kRuntimeId[] = "runtimeId";
 inline constexpr char kRuntimeGroupId[] = "groupId";
+// Synchronous reporter-thread notification. Adapters copy the dictionary before
+// posting to the platform main thread; the pointer is valid only during Notify.
+inline constexpr char kHighMemoryEventNotification[] = "lynx_high_memory_event";
 
 // Caches page memory by source and emits scheduled observations plus one
 // early summary. GlobalMemoryMonitor owns process snapshots and residency.
@@ -162,6 +166,8 @@ class MemoryMonitor {
   // time_interval_sec and pss_threshold_mb choose global observations;
   // mts_threshold_mb/bts_threshold_mb configure engine cache-update thresholds.
   // They do not request a synchronous page measurement.
+  // large_*_threshold_mb configure one-shot host callbacks in MiB; 0 disables
+  // that event. QuickJS VM callbacks also work without memory monitoring.
   struct Settings {
     struct Entry {
       float sample_rate;
@@ -173,10 +179,13 @@ class MemoryMonitor {
       uint32_t pss_threshold_mb;
       uint32_t mts_threshold_mb;
       uint32_t bts_threshold_mb;
+      uint32_t large_vm_threshold_mb;
+      uint32_t large_bts_threshold_mb;
+      uint32_t large_ui_threshold_mb;
     };
 
     // After initialization is complete, read the `enabled` field.
-    GlobalEntry global{{0.0f}, 300, 256, 1, 1};
+    GlobalEntry global{{0.0f}, 300, 256, 1, 1, 1024, 512, 64};
     Entry lynx_ui{0.1f};
     Entry page_scheduled{0.1f};
 
@@ -185,8 +194,8 @@ class MemoryMonitor {
 
   static const Settings& GetSettings();
 
-  // Producer updates only mutate category records; page observations and
-  // active trace emissions aggregate them.
+  // Producer updates refresh category records. Interval checks and page
+  // observations aggregate them.
   // This interface will increase the total memory usage for the category found
   // in the record.
   void AllocateMemory(MemoryRecord&& record);
@@ -201,8 +210,13 @@ class MemoryMonitor {
   // the record, effectively updating the memory usage information.
   void UpdateMemoryUsage(MemoryRecord&& record, bool force_report = false);
 
-  // Aggregate current category records and report page memory to trace.
-  void ReportMemoryForTrace(bool force_report = false, bool is_exit = false);
+  // Refresh at 16ms while tracing, otherwise at 60s, and emit trace counters
+  // when tracing is active.
+  void ReportMemoryUsage(bool force_report = false, bool is_exit = false);
+  static bool ReachesThreshold(size_t bytes, uint32_t threshold_mb) {
+    return threshold_mb && bytes >= uint64_t{threshold_mb} * 1024 * 1024;
+  }
+  static void ReportHighMemoryEvent(const lepus::Value& event);
 
   // First completed loadBundle starts the fixed plan and attempts 0s now.
   // Later completions and reload do not restart it.
@@ -252,6 +266,11 @@ class MemoryMonitor {
   }
 
  private:
+  // Page byte values have already crossed a positive threshold.
+  static lepus::Value MakeHighMemoryEvent(const char* type,
+                                          const std::string& key,
+                                          uint64_t bytes,
+                                          const char* vm_type = nullptr);
   PageMemoryUsage RefreshMemoryUsage();
   void ScheduleNext();
   void ReportScheduled(size_t index, int64_t now_ms);
@@ -274,12 +293,7 @@ class MemoryMonitor {
   int32_t instance_id_ = report::kUninitializedInstanceId;
   base::LogContext log_context_;
   std::unordered_map<MemoryCategory, MemoryRecord> memory_records_;
-#if ENABLE_TRACE_PERFETTO
-  // When Lynx Trace captures memory data, the threshold for VM to report memory
-  // changes is relatively small. Adding time control helps prevent excessive
-  // events from being written to the trace file.
-  fml::TimePoint last_trace_event_time_;
-#endif
+  int64_t last_refresh_at_ms_{0};
 
   GlobalMemoryMonitor* global_;
   // Latest ownership-correct cache for normal updates. Never read to generate

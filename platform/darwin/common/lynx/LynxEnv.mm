@@ -36,11 +36,13 @@
 #include "base/include/fml/platform/thread_config_setter.h"
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/include/memory/memory_pressure_level.h"
+#include "base/include/no_destructor.h"
 #include "base/include/notification_center.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/darwin/lynx_env_darwin.h"
 #include "core/base/lynx_trace_categories.h"
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/lynx_global_pool.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
@@ -69,6 +71,7 @@
 @interface LynxEnv ()
 
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *externalEnvCache;
+@property(atomic, copy) NSArray<LynxHighMemoryCallback> *highMemoryCallbacks;
 
 @end
 
@@ -138,6 +141,20 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
     init_flow_completed_.store(false, std::memory_order_release);
     external_env_mutex_ = std::unique_ptr<fml::SharedMutex>(fml::SharedMutex::Create());
     _externalEnvCache = [NSMutableDictionary dictionary];
+    _highMemoryCallbacks = @[];
+    static lynx::base::NoDestructor<lynx::base::NotificationCallback> high_memory_callback(
+        lynx::tasm::performance::kHighMemoryEventNotification,
+        [](const std::string &, intptr_t data) {
+          NSDictionary *event = lynx::tasm::convertLepusValueToNSObject(
+              *reinterpret_cast<const lynx::lepus::Value *>(data));
+          dispatch_async(dispatch_get_main_queue(), ^{
+            NSArray<LynxHighMemoryCallback> *callbacks =
+                [LynxEnv sharedInstance].highMemoryCallbacks;
+            for (LynxHighMemoryCallback callback in callbacks) {
+              callback(event);
+            }
+          });
+        });
     _lifecycleDispatcher = [[LynxLifecycleDispatcher alloc] init];
     _resoureProviders = [NSMutableDictionary dictionary];
     _locale = [[NSLocale preferredLanguages] objectAtIndex:0];
@@ -884,6 +901,14 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
 + (void)setGlobalBytecodeGenerateCallback:(nullable LynxBytecodeResponseBlock)callback {
   lynx::runtime::js::cache::JsCacheManagerFacade::SetGlobalBytecodeGenerateCallback(
       CreateBytecodeGenerateCallback(callback));
+}
+
++ (void)setHighMemoryCallback:(nullable LynxHighMemoryCallback)callback {
+  LynxEnv *env = [LynxEnv sharedInstance];
+  @synchronized(env) {
+    env.highMemoryCallbacks =
+        callback ? [env.highMemoryCallbacks arrayByAddingObject:[callback copy]] : @[];
+  }
 }
 
 - (void)trimMemory:(LynxMemoryPressureLevel)pressure {

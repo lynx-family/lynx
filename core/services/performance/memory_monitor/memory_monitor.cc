@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_controller.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -26,6 +27,12 @@ namespace lynx {
 namespace tasm {
 namespace performance {
 namespace {
+
+constexpr char kTypeKey[] = "type";
+constexpr char kKey[] = "key";
+constexpr char kBytesKey[] = "bytes";
+constexpr char kCountsKey[] = "counts";
+constexpr char kVMTypeKey[] = "vm_type";
 
 #if ENABLE_TRACE_PERFETTO
 constexpr char kForceEnableMarkerName[] = ".lynx-memory-monitor-force-enabled";
@@ -158,6 +165,12 @@ void MemoryMonitor::Settings::ApplyConfig(std::string_view config) {
       global.mts_threshold_mb = number;
     } else if (key == "bts_threshold_mb") {
       global.bts_threshold_mb = number;
+    } else if (key == "large_vm_threshold_mb") {
+      global.large_vm_threshold_mb = number;
+    } else if (key == "large_bts_threshold_mb") {
+      global.large_bts_threshold_mb = number;
+    } else if (key == "large_ui_threshold_mb") {
+      global.large_ui_threshold_mb = number;
     }
   }
   if (HasForceEnableMarker()) EnableAllMemorySources(*this);
@@ -197,7 +210,7 @@ MemoryMonitor::~MemoryMonitor() {
   if (anchor_at_ms_ >= 0) {
     ReportPendingSummary(exit_at_ms_ >= 0 ? exit_at_ms_ : MemoryNowMs());
   }
-  ReportMemoryForTrace(true, true);
+  ReportMemoryUsage(true, true);
 }
 
 void MemoryMonitor::AllocateMemory(MemoryRecord&& record) {
@@ -210,7 +223,7 @@ void MemoryMonitor::AllocateMemory(MemoryRecord&& record) {
   } else {
     it->second += record;
   }
-  ReportMemoryForTrace();
+  ReportMemoryUsage();
 }
 
 void MemoryMonitor::DeallocateMemory(MemoryRecord&& record) {
@@ -222,7 +235,7 @@ void MemoryMonitor::DeallocateMemory(MemoryRecord&& record) {
     return;
   }
   it->second -= record;
-  ReportMemoryForTrace();
+  ReportMemoryUsage();
 }
 
 void MemoryMonitor::UpdateMemoryUsage(MemoryRecord&& record,
@@ -232,12 +245,13 @@ void MemoryMonitor::UpdateMemoryUsage(MemoryRecord&& record,
   }
   auto category = record.category_;
   memory_records_.insert_or_assign(category, std::move(record));
-  ReportMemoryForTrace(force_report);
+  ReportMemoryUsage(force_report);
 }
 
 PageMemoryUsage MemoryMonitor::RefreshMemoryUsage() {
-  const auto* state = global_->GetInstanceState(instance_id_);
+  auto* state = global_->GetInstanceState(instance_id_);
   if (!state || state->destroyed) return last_usage_;
+  last_refresh_at_ms_ = MemoryNowMs();
   PageMemoryUsage usage;
   for (const auto& item : memory_records_) {
     const auto index = SourceIndex(item.first);
@@ -271,20 +285,64 @@ PageMemoryUsage MemoryMonitor::RefreshMemoryUsage() {
   }
   usage.total_bytes += usage.bts_bytes;
   last_usage_ = global_->UpdatePageMemory(instance_id_, usage);
+  const auto& settings = GetSettings().global;
+  if (!state->large_bts_reported &&
+      last_usage_.bts_bytes >=
+          int64_t{settings.large_bts_threshold_mb} * 1024 * 1024) {
+    state->large_bts_reported = true;
+    ReportHighMemoryEvent(MakeHighMemoryEvent(
+        "large_bts", state->page_key, last_usage_.bts_bytes,
+        state->bts_known
+            ? GlobalMemoryMonitor::RuntimeName(state->bts_runtime_type)
+            : "unknown"));
+  }
+  if (!state->large_ui_reported &&
+      last_usage_.ui_bytes >=
+          int64_t{settings.large_ui_threshold_mb} * 1024 * 1024) {
+    state->large_ui_reported = true;
+    auto event =
+        MakeHighMemoryEvent("large_ui", state->page_key, last_usage_.ui_bytes);
+    auto counts = lepus::CArray::Create();
+    for (const auto& [category, record] : memory_records_) {
+      counts->emplace_back(category);
+      counts->emplace_back(record.instance_count_);
+    }
+    event.Table()->SetValue(BASE_STATIC_STRING(kCountsKey), std::move(counts));
+    ReportHighMemoryEvent(event);
+  }
   return last_usage_;
 }
 
-void MemoryMonitor::ReportMemoryForTrace(bool force_report, bool is_exit) {
-#if ENABLE_TRACE_PERFETTO
-  if (!trace::TraceController::Instance()->IsTracingStarted()) {
-    return;
+lepus::Value MemoryMonitor::MakeHighMemoryEvent(const char* type,
+                                                const std::string& key,
+                                                uint64_t bytes,
+                                                const char* vm_type) {
+  auto event = lepus::Dictionary::Create();
+  event->SetValue(BASE_STATIC_STRING(kTypeKey), type);
+  event->SetValue(BASE_STATIC_STRING(kKey), key);
+  event->SetValue(BASE_STATIC_STRING(kBytesKey), bytes);
+  if (vm_type) {
+    event->SetValue(BASE_STATIC_STRING(kVMTypeKey), vm_type);
   }
+  return lepus::Value(std::move(event));
+}
 
-  auto now = fml::TimePoint::Now();
-  if (!force_report && (now - last_trace_event_time_).ToMilliseconds() < 16) {
+void MemoryMonitor::ReportHighMemoryEvent(const lepus::Value& event) {
+  assert(report::EventTrackerPlatformImpl::GetReportTaskRunner()
+             ->RunsTasksOnCurrentThread());
+  base::NotificationCallback::Notify(kHighMemoryEventNotification,
+                                     reinterpret_cast<intptr_t>(&event));
+}
+
+void MemoryMonitor::ReportMemoryUsage(bool force_report, bool is_exit) {
+  bool tracing = false;
+#if ENABLE_TRACE_PERFETTO
+  tracing = trace::TraceController::Instance()->IsTracingStarted();
+#endif
+  const auto now = MemoryNowMs();
+  if (!force_report && now - last_refresh_at_ms_ < (tracing ? 16 : 60000)) {
     return;
   }
-  last_trace_event_time_ = now;
 
   PageMemoryUsage usage;
   if (!is_exit) {
@@ -292,6 +350,8 @@ void MemoryMonitor::ReportMemoryForTrace(bool force_report, bool is_exit) {
   } else {
     memory_records_.clear();
   }
+#if ENABLE_TRACE_PERFETTO
+  if (!tracing) return;
   TRACE_COUNTER(LYNX_TRACE_CATEGORY,
                 (std::string("memory_") + std::to_string(instance_id_)).c_str(),
                 usage.total_bytes,

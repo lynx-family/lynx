@@ -705,6 +705,10 @@ std::shared_ptr<runtime::js::JSIContext> JSRealmManager::CreateJSIContext(
     }
 
     if (!IsSingleJSContext(create_params.group_id)) {
+      if (rt.type() == runtime::js::JSRuntimeType::quickjs) {
+        std::static_pointer_cast<js::QuickjsRuntimeInstance>(vm_instance)
+            ->SetGroupId(create_params.group_id);
+      }
       tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMCreate(
           create_params.group_id, create_params.monitoring_group_label,
           vm_instance);
@@ -721,6 +725,10 @@ std::shared_ptr<runtime::js::JSIContext> JSRealmManager::CreateJSIContext(
 #else
     auto vm_instance = rt.createVM(nullptr);
     if (!IsSingleJSContext(create_params.group_id)) {
+      if (rt.type() == runtime::js::JSRuntimeType::quickjs) {
+        std::static_pointer_cast<js::QuickjsRuntimeInstance>(vm_instance)
+            ->SetGroupId(create_params.group_id);
+      }
       tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMCreate(
           create_params.group_id, create_params.monitoring_group_label,
           vm_instance);

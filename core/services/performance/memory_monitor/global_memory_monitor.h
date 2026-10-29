@@ -58,6 +58,8 @@ struct InstanceState {
   // shared-slot metadata survives for residual attribution; page summaries
   // own their saved observations and do not hold up cleanup.
   bool destroyed{false};
+  bool large_bts_reported{false};
+  bool large_ui_reported{false};
   // Default enum values below are not evidence of an initialized engine.
   bool mts_known{false};
   bool bts_known{false};
@@ -117,6 +119,9 @@ struct BtsVmState {
   bool runtime_manager_scope{false};
   // Valid zero heap differs from unknown JSC/uninitialized/missing data.
   bool heap_valid{false};
+  // Heap-only engines are checked on the reporter thread. QuickJS owns its
+  // one-shot flag in QuickjsRuntimeInstance instead.
+  bool large_vm_reported{false};
   // Tracking may be enabled before its first callback has delivered slots.
   bool has_per_instance_data{false};
   bool slot_tracking_enabled{false};
@@ -203,7 +208,10 @@ class GlobalMemoryMonitor {
                      const std::shared_ptr<runtime::js::VMInstance>& vm);
   // The engine copies values on its owning JS thread; no engine-specific
   // headers, pointer reads or GC interpretation belong in this monitor.
-  void OnBtsVMMemoryUpdate(runtime::js::VMInstance* vm, BtsMemorySample sample);
+  void OnBtsVMMemoryUpdate(runtime::js::VMInstance* vm, BtsMemorySample sample,
+                           bool report_large_vm = false);
+  // QuickJS without monitoring supplies only the shared group and heap.
+  void OnLargeVM(std::string vm_name, size_t heap_size);
   // Capture on the owner thread before teardown; identity is never read.
   void OnBtsVMDestroy(runtime::js::VMInstance* vm,
                       int64_t at_ms = MemoryNowMs());
@@ -230,7 +238,7 @@ class GlobalMemoryMonitor {
   // Reporter-thread-only reads/updates. Missing shared VM returns SIZE_MAX:
   // use the standalone page BTS record. Zero alone does not prove validity.
   size_t GetInstanceBtsMemoryUsage(int32_t id);
-  const InstanceState* GetInstanceState(int32_t id);
+  InstanceState* GetInstanceState(int32_t id);
   PageMemoryUsage UpdatePageMemory(int32_t id, PageMemoryUsage usage);
 
  private:
@@ -292,6 +300,7 @@ class GlobalMemoryMonitor {
   std::vector<report::MoveOnlyEvent> TakeResidencyReports(int64_t now_ms);
   void RefreshPageBts(InstanceState& page, const BtsVmState& vm);
   void EmitSlotOverflowTrigger(BtsVmState& vm);
+  void ReportLargeVM(const BtsVmState& vm);
 
   // All containers and timers below are reporter-thread confined. The singleton
   // outlives queued work; query tasks hold VM strong refs only on the JS
