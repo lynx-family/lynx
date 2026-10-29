@@ -12,6 +12,7 @@ if (enable_unittests) {
     testonly = true
     sources = [
       "clay_value.cc",
+      "layout_context_clay.cc",
       "native_module/lynx_text_info_module.cc",
       "painting_context_clay.cc",
       "perf_controller_clay.cc",
