@@ -52,8 +52,10 @@ Napi::Value MakeDecision(const Napi::CallbackInfo& info) {
   auto name = *static_cast<const char**>(info.Data());
   auto decision = Napi::Object::New(info.Env());
   decision.Set("action", Napi::String::New(info.Env(), name));
-  decision.Set("payload",
-               info.Length() ? info[0] : Napi::Object::New(info.Env()));
+  // An explicit undefined argument is the same decision as no argument.
+  decision.Set("payload", info.Length() && !info[0].IsUndefined()
+                              ? info[0]
+                              : Napi::Object::New(info.Env()));
   return decision;
 }
 
@@ -250,8 +252,16 @@ Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
                ? Action::kMock
                : Action::kInvalid;
   }
-  if (name != "proceed" || !ValidPatch(kind, *payload, original))
-    return Action::kInvalid;
+  if (name != "proceed") return Action::kInvalid;
+  // Explicit undefined fields mean omission, except that a result value may
+  // be replaced with undefined.
+  if (kind != Kind::kResult && payload->IsTable()) {
+    std::vector<base::String> omitted;
+    for (const auto& item : *payload->Table())
+      if (item.second.IsUndefined()) omitted.push_back(item.first);
+    for (const auto& key : omitted) payload->Table()->Erase(key);
+  }
+  if (!ValidPatch(kind, *payload, original)) return Action::kInvalid;
   return Action::kProceed;
 }
 }  // namespace

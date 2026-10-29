@@ -396,6 +396,38 @@ TEST_F(HostScriptInterceptorTest, ProceedCommitsSingleHandlerPatch) {
   EXPECT_EQ(result.patch.GetProperty("url").StdString(), "patched-2");
 }
 
+TEST_F(HostScriptInterceptorTest, ExplicitUndefinedMeansOmission) {
+  Install();
+  Script(R"(
+    globalThis.subscription = interceptor.on('view.loadTemplate',
+        (e,c) => c.proceed(undefined));
+  )");
+  auto omitted = Dispatch();
+  EXPECT_FALSE(omitted.failed);
+  EXPECT_FALSE(omitted.patch.IsTable());
+  Script(R"(
+    subscription.dispose();
+    interceptor.on('view.loadTemplate', (e,c) => c.proceed(
+        {url:'patched-2', source:undefined, initialData:undefined}));
+  )");
+  auto partial = Dispatch();
+  ASSERT_FALSE(partial.failed);
+  EXPECT_EQ(partial.patch.GetLength(), 1);
+  EXPECT_EQ(partial.patch.GetProperty("url").StdString(), "patched-2");
+  provider_->Uninstall();
+
+  Install(HostScriptInterceptor::Domain::kBTS);
+  Script(R"(
+    interceptor.on('jsb.result', (e,c) => c.proceed({value:undefined}));
+  )");
+  lepus::Value event(lepus::Dictionary::Create());
+  event.SetProperty("value", lepus::Value(0));
+  auto result = provider_->Dispatch(InterceptKind::kResult, event);
+  ASSERT_FALSE(result.failed);
+  ASSERT_TRUE(result.patch.IsTable());
+  EXPECT_TRUE(result.patch.GetProperty("value").IsUndefined());
+}
+
 TEST_F(HostScriptInterceptorTest, RejectsRemovedNextDecision) {
   Install();
   Script(R"(
