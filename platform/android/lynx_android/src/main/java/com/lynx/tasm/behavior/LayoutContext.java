@@ -7,16 +7,12 @@ import android.util.DisplayMetrics;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
-import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.behavior.ui.PropBundle;
 
 public abstract class LayoutContext {
   private long mNativePtr = 0;
   private volatile boolean mDestroyed;
-  private final boolean mUseGlobalRefForDestroy = LynxEnv.getBooleanFromExternalEnv(
-      LynxEnvKey.ENABLE_LAYOUT_CONTEXT_GLOBAL_REF_FOR_DESTROY, false);
   protected long mNativeLayoutContextPtr = 0;
 
   /**
@@ -87,7 +83,7 @@ public abstract class LayoutContext {
       return;
     }
     mDestroyed = true;
-    if (mUseGlobalRefForDestroy && mNativePtr != 0) {
+    if (mNativePtr != 0) {
       // Preserve this instance for native teardown without promoting a weak reference during GC.
       nativePrepareDestroy(mNativePtr);
     }
