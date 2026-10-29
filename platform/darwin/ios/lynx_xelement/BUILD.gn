@@ -329,7 +329,7 @@ subspec_target("Markdown") {
 
   dependency = [ [
         "ServalMarkdown",
-        "0.3.3",
+        "0.3.5",
       ] ]
 
   dependency += lynx_dependency
