@@ -129,26 +129,93 @@ bool IsTemplateMapValue(const lepus::Value& value) {
          !value.IsJSFunction();
 }
 
+bool IsLiveTemplateEventValue(const lepus::Value& value) {
+  if (value.IsCallable()) {
+    return true;
+  }
+  if (!IsTemplateMapValue(value)) {
+    return false;
+  }
+  const auto type = value.GetProperty(BASE_STATIC_STRING(kGestureType));
+  return type.IsString() && type.String().IsEqual("worklet");
+}
+
+bool IsLiveTemplateGestureValue(const lepus::Value& value) {
+  if (!IsTemplateMapValue(value)) {
+    return false;
+  }
+  const auto type = value.GetProperty(BASE_STATIC_STRING(kGestureType));
+  return type.IsString() && type.String().IsEqual("gesture");
+}
+
+bool IsLiveSpreadCallbackEntry(const base::String& key,
+                               const lepus::Value& item) {
+  if (TreeResolver::IsTemplateEventAttribute(key)) {
+    return IsLiveTemplateEventValue(item);
+  }
+  if (TreeResolver::IsTemplateGestureAttribute(key)) {
+    return IsLiveTemplateGestureValue(item);
+  }
+  return false;
+}
+
+bool HasLiveSpreadDescriptorEntry(const lepus::Value& value) {
+  if (!IsTemplateMapValue(value)) {
+    return false;
+  }
+  bool found = false;
+  lepus::Value::ForEachLepusValue(
+      value, [&found](const lepus::Value& key, const lepus::Value& item) {
+        if (!found && key.IsString() && !item.IsCallable() &&
+            IsLiveSpreadCallbackEntry(key.String(), item)) {
+          found = true;
+        }
+      });
+  return found;
+}
+
+lepus::Value ConvertTemplateMapForStorageInternal(
+    const lepus::Value& value, bool preserve_spread_callbacks) {
+  auto object = lepus::Dictionary::Create();
+  lepus::Value::ForEachLepusValue(value, [&object, preserve_spread_callbacks](
+                                             const lepus::Value& key,
+                                             const lepus::Value& item) {
+    if (key.IsString()) {
+      const auto key_str = key.String();
+      object->SetValue(
+          key_str,
+          preserve_spread_callbacks && IsLiveSpreadCallbackEntry(key_str, item)
+              ? item
+              : ElementTemplateInstance::ConvertTemplateValueForStorage(item));
+    }
+  });
+  return lepus::Value(std::move(object));
+}
 lepus::Value CopySlotForWorkerPreparation(const lepus::Value& slot,
-                                          bool* modified) {
+                                          bool is_spread_slot, bool* modified) {
   if (!slot.IsTable()) {
     return slot;
   }
   const auto& table = *slot.Table();
-  bool has_callable = false;
+  auto should_strip = [is_spread_slot](const base::String& key,
+                                       const lepus::Value& item) {
+    return item.IsCallable() ||
+           (is_spread_slot && IsLiveSpreadCallbackEntry(key, item));
+  };
+  bool has_live_callback = false;
   for (const auto& [key, item] : table) {
-    if (item.IsCallable()) {
-      has_callable = true;
+    if (should_strip(key, item)) {
+      has_live_callback = true;
       break;
     }
   }
-  if (!has_callable) {
+  if (!has_live_callback) {
     return slot;
   }
   *modified = true;
   auto filtered = lepus::Dictionary::Create();
   for (const auto& [key, item] : table) {
-    if (!item.IsCallable()) {
+    if (!should_strip(key, item)) {
       filtered->SetValue(key, item);
     }
   }
@@ -342,14 +409,8 @@ lepus::Value ElementTemplateInstance::ConvertTemplateValueForStorage(
 
 lepus::Value ElementTemplateInstance::ConvertTemplateMapForStorage(
     const lepus::Value& value) {
-  auto object = lepus::Dictionary::Create();
-  lepus::Value::ForEachLepusValue(
-      value, [&object](const lepus::Value& key, const lepus::Value& item) {
-        if (key.IsString()) {
-          object->SetValue(key.String(), ConvertTemplateValueForStorage(item));
-        }
-      });
-  return lepus::Value(std::move(object));
+  return ConvertTemplateMapForStorageInternal(
+      value, /*preserve_spread_callbacks=*/false);
 }
 
 ElementTemplateInstance::ElementTemplateInstance(
@@ -393,6 +454,8 @@ void ElementTemplateInstance::CollectCallbackAttributeSlots(
             (TreeResolver::IsTemplateGestureAttribute(attr.key_) ||
              TreeResolver::IsTemplateEventAttribute(attr.key_))) {
           callback_attribute_slots_->push_back(attr.slot_index_);
+        } else if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
+          spread_attribute_slots_.push_back(attr.slot_index_);
         }
       }
     }
@@ -404,14 +467,10 @@ lepus::Value ElementTemplateInstance::CopyAttributeSlotForStorage(
     uint32_t slot_index, const lepus::Value& value) {
   if (!callback_attribute_slots_.has_value() && !IsTypedTemplate() &&
       tasm_ != nullptr) {
-    const auto type = IsTemplateMapValue(value)
-                          ? value.GetProperty(BASE_STATIC_STRING(kGestureType))
-                          : lepus::Value();
     // Only live callback candidates need metadata. Ordinary writes must not
     // force cold template decoding.
-    if (value.IsCallable() ||
-        (type.IsString() && (type.String().IsEqual("gesture") ||
-                             type.String().IsEqual("worklet")))) {
+    if (IsLiveTemplateEventValue(value) || IsLiveTemplateGestureValue(value) ||
+        HasLiveSpreadDescriptorEntry(value)) {
       const auto entry = tasm_->FindTemplateEntry(bundle_url_.str());
       if (entry != nullptr) {
         callback_attribute_slots_.emplace();
@@ -427,8 +486,12 @@ lepus::Value ElementTemplateInstance::CopyAttributeSlotForStorage(
       (value.IsCallable() || IsTemplateMapValue(value))) {
     return value;
   }
-  return IsTemplateMapValue(value) ? ConvertTemplateMapForStorage(value)
-                                   : lepus::Value::Clone(value);
+  const bool is_spread_slot =
+      std::find(spread_attribute_slots_.begin(), spread_attribute_slots_.end(),
+                slot_index) != spread_attribute_slots_.end();
+  return IsTemplateMapValue(value)
+             ? ConvertTemplateMapForStorageInternal(value, is_spread_slot)
+             : lepus::Value::Clone(value);
 }
 
 void ElementTemplateInstance::SetAttributeSlots(
@@ -552,6 +615,11 @@ ElementTemplateInstance::CreateElementTreeTask(TemplateEntry* entry) {
                        callback_attribute_slots_->end(),
                        index) != callback_attribute_slots_->end();
     };
+    auto is_spread_slot = [this](uint32_t index) {
+      return std::find(spread_attribute_slots_.begin(),
+                       spread_attribute_slots_.end(),
+                       index) != spread_attribute_slots_.end();
+    };
     auto preparation_slots = lepus::CArray::Create();
     preparation_slots->reserve(length);
     bool modified = false;
@@ -561,8 +629,9 @@ ElementTemplateInstance::CreateElementTreeTask(TemplateEntry* entry) {
         modified = true;
         continue;
       }
-      preparation_slots->emplace_back(CopySlotForWorkerPreparation(
-          attribute_slots_.GetProperty(index), &modified));
+      preparation_slots->emplace_back(
+          CopySlotForWorkerPreparation(attribute_slots_.GetProperty(index),
+                                       is_spread_slot(index), &modified));
     }
     if (modified) {
       attribute_slots = lepus::Value(std::move(preparation_slots));

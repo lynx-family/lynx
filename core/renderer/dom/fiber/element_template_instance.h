@@ -133,6 +133,7 @@ class ElementTemplateInstance
   // Typed instances store their complete attribute object in slot 0.
   lepus::Value attribute_slots_;
   std::optional<base::InlineVector<uint32_t, 1>> callback_attribute_slots_;
+  base::InlineVector<uint32_t, 1> spread_attribute_slots_;
   uint32_t attribute_slots_generation_{0};
   lepus::Value child_slots_;
   lepus::Value options_;
