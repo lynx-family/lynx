@@ -44,6 +44,17 @@ The adapter is cleaned up when the NativeView detaches or is destroyed.
 
 ## 1. Design Goal
 
+Android SharedImage output exports the texture-composited Clay scene into a
+shared image surface. AUTO/texture and offscreen-surface (VirtualDisplay)
+holders keep their existing GPU image paths: their content renders through
+external textures inside the exported frame. Clay slices above platform views
+are re-rendered into the exported background frame so interleaved slices remain
+correct. Platform-window composition (explicit hybrid) is unsupported under
+SharedImage output: when any embedded view still requires platform composite,
+`PlatformOverlayServiceAndroid::CompositeFrame(...)` fails the whole frame
+rather than publishing a partial scene. The ordinary display holder selection
+and lifecycle remain unchanged.
+
 The intended lifecycle is:
 
 `create -> insert -> attach -> props/events -> layout -> nodeReady -> detach -> destroy`
@@ -189,9 +200,10 @@ For internal wrapped views the create path continues as:
 2. `InternalPlatformViewWrapper.createView(...)`
 3. `LynxUIClayUIBridge.createLynxUI(...)`
 4. `LynxUIClayUIBridge.setSign(...)`
-5. optionally install `LynxContext.ClaySnapshotProvider` through
-   `tryInstallClaySubtreeRasterSnapshotProvider(...)`
+5. `LynxUIClayUIBridge.bindEventTarget(...)`
 6. `LynxUIClayUIBridge.getView(...)`
+7. optionally install `LynxContext.ClaySnapshotProvider` through
+   `tryInstallClaySubtreeRasterSnapshotProvider(...)`
 
 The create contract completes only after a real Android `View` exists.
 
@@ -419,15 +431,18 @@ Current implementation details:
 - texture path
   - `PlatformViewPlugin` creates `PlatformViewWrapperHolder` with
     `canDraw=false`
-  - the holder sets `PlatformViewWrapper.canDraw=false` during construction
+  - during construction the holder calls
+    `viewWrapper.setWillNotDraw(!canDraw)`; `PlatformViewWrapper` has no
+    separate drawable flag
   - `PlatformViewWrapperHolder.onViewAttached(...)` skips adding the wrapper to
-    `FlutterView`
+    `FlutterView` when `willNotDraw()` is true
 - hybrid path
   - `PlatformViewPlugin` creates `PlatformViewHybridHolder` with
     `canDraw=false`
   - the holder calls
     `PlatformViewsController.setPlatformViewCanDraw(viewId, false)`
-  - `PlatformViewsController` tracks non-drawable platform view ids
+  - whether the embedded view can draw is determined by `View.willNotDraw()`
+    rather than by a separate non-drawable id registry
   - `PlatformViewsController.initializePlatformViewIfNeeded(...)` skips adding
     non-drawable mutator views to `FlutterView`
   - `PlatformViewsController.attachToView(...)` skips re-adding non-drawable
