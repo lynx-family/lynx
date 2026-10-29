@@ -46,6 +46,9 @@
 #include "clay/shell/common/services/vsync_waiter_service.h"
 #include "clay/ui/common/overlay_manager.h"
 #include "clay/ui/common/utils/watch_dog.h"
+#ifdef ENABLE_SKITY
+#include "clay/gfx/skity/image_encoder.h"
+#endif
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/image_view.h"
@@ -2403,6 +2406,13 @@ void PageView::MoveWindow() {
 void PageView::MakeRasterSnapshot(
     BaseView* target, bool compress_jpeg, float scale,
     std::function<void(GrDataPtr, int32_t, int32_t)> callback) {
+#ifdef ENABLE_SKITY
+  auto create_codec = GetImageEncoderFactory(compress_jpeg);
+  if (!create_codec) {
+    callback(nullptr, 0, 0);
+    return;
+  }
+#endif
   if (!target) {
     callback(nullptr, 0, 0);
     return;
@@ -2483,9 +2493,7 @@ void PageView::MakeRasterSnapshot(
   }
   // Make raster snapshot with the subtree, resulting in a CPU-backed DlImage.
   render_delegate_->MakeRasterSnapshot(
-      std::move(layer_tree),
-      [compress_jpeg, callback, callback_width,
-       callback_height](fml::RefPtr<PaintImage> paint_image) {
+      std::move(layer_tree), [=](fml::RefPtr<PaintImage> paint_image) {
         // The callback should run on IO thread.
         auto image = paint_image ? paint_image->gr_image() : nullptr;
         if (!image) {
@@ -2513,8 +2521,7 @@ void PageView::MakeRasterSnapshot(
         // The scale factor has already been applied to the image with transform
         // layer, so we don't need to scale the image here again. Just compress
         // the image to png or jpeg format.
-        auto codec = compress_jpeg ? skity::Codec::MakeJPEGCodec()
-                                   : skity::Codec::MakePngCodec();
+        auto codec = create_codec();
         if (!codec) {
           callback(nullptr, 0, 0);
         } else {

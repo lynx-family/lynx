@@ -125,7 +125,7 @@ class SharedImageBacking
 
   BASE_DISALLOW_COPY_AND_ASSIGN(SharedImageBacking);
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && (!defined(ENABLE_SKITY) || defined(ENABLE_SKITY_CODEC))
   void DumpToPng(const std::string& file_name);
 #endif
 

@@ -67,7 +67,9 @@
 #else
 #include "clay/gfx/skity/skity_auto_canvas_save.h"
 #include "clay/gfx/skity/skity_lazy_image_traveller.h"
+#ifdef ENABLE_SKITY_CODEC
 #include "skity/codec/codec.hpp"
+#endif
 #include "skity/effect/color_filter.hpp"
 #include "skity/effect/image_filter.hpp"
 #include "skity/effect/mask_filter.hpp"

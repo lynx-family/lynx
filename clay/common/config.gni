@@ -48,6 +48,26 @@ declare_args() {
 }
 
 declare_args() {
+  # Optional capabilities. Existing Lite guards still apply to these features.
+  enable_clay_text_input = true
+  enable_clay_text_selection = true
+  enable_clay_bounce = true
+  enable_clay_focus = true
+
+  # Fold views and scroll coordination share one dependency-closed capability.
+  enable_clay_nested_scroll = true
+  enable_clay_overlay = true
+  enable_clay_map = true
+
+  # The codec also supports synchronous image loading with the Skia backend.
+  enable_skity_codec = true
+
+  # Android mouse tracking is optional; desktop pointer handling requires it.
+  enable_clay_mouse_tracking = true
+
+  # Retain native unwind metadata when global size optimization disables it.
+  clay_preserve_unwind_tables = false
+
   # Whether to use skity backend
   enable_skity = is_android || is_ios || enable_clay_lite
 
@@ -73,6 +93,12 @@ declare_args() {
 
   use_accessbility = (is_android || is_ios) && !enable_clay_lite
 }
+
+# Image-producing capabilities bring their required codec implementation.
+# A false request does not remove a dependency required by another capability.
+use_skity_codec =
+    enable_skity_codec || !is_android ||
+    (enable_skity && (enable_clay_map || enable_screenshot_service))
 
 if (enable_skity) {
   clay_enable_tttext = true
@@ -156,8 +182,9 @@ if (is_headless && !is_ios) {
   feature_defines_list += [ "ENABLE_HEADLESS" ]
 }
 
-if (is_win || is_mac || (is_headless && !is_ios) ||
-    (is_android && !enable_clay_lite)) {
+if (is_win || is_mac ||
+    (((is_headless && !is_ios) || (is_android && !enable_clay_lite)) &&
+     enable_clay_mouse_tracking)) {
   feature_defines_list += [ "ENABLE_MOUSE_TRACKING" ]
 }
 
@@ -190,6 +217,38 @@ if (enable_clay_lite) {
 
 if (enable_skity) {
   feature_defines_list += [ "ENABLE_SKITY" ]
+}
+
+if (use_skity_codec) {
+  feature_defines_list += [ "ENABLE_SKITY_CODEC=1" ]
+}
+
+if (enable_clay_text_input) {
+  feature_defines_list += [ "ENABLE_CLAY_TEXT_INPUT=1" ]
+}
+
+if (enable_clay_text_selection) {
+  feature_defines_list += [ "ENABLE_CLAY_TEXT_SELECTION=1" ]
+}
+
+if (enable_clay_bounce) {
+  feature_defines_list += [ "ENABLE_CLAY_BOUNCE=1" ]
+}
+
+if (enable_clay_focus) {
+  feature_defines_list += [ "ENABLE_CLAY_FOCUS=1" ]
+}
+
+if (enable_clay_nested_scroll) {
+  feature_defines_list += [ "ENABLE_CLAY_NESTED_SCROLL=1" ]
+}
+
+if (enable_clay_overlay) {
+  feature_defines_list += [ "ENABLE_CLAY_OVERLAY=1" ]
+}
+
+if (enable_clay_map) {
+  feature_defines_list += [ "ENABLE_CLAY_MAP=1" ]
 }
 
 if (enable_screenshot_service) {
