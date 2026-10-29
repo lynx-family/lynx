@@ -165,13 +165,15 @@ and coordinate ownership. The wrapper controls placement and clipping; the
 inner view does not reintroduce global frame coordinates.
 
 `GetSystemOverlayHostView(...)` selects the UIKit host. It does not select a
-separate wrapper-frame or backing-surface policy.
+separate wrapper-frame or backing-surface policy. The same service reports the
+system host's offset and dimensions back to Clay through `NotifyGeometryChanged`.
 
 Primary code paths:
 
 - `clay/shell/platform/darwin/ios/framework/Source/presenter_service_ios.mm`
 - `clay/shell/platform/darwin/ios/framework/Source/platform_overlay_service_ios.mm`
 - `clay/shell/platform/darwin/ios/framework/Source/FlutterOverlayView.h`
+- `clay/shell/platform/darwin/ios/services/overlay_service_ios.mm`
 
 ## 6. Geometry Examples
 
@@ -280,3 +282,74 @@ Required iOS runtime checks:
 - verify multiple interleaved platform views preserve background and z-order
 - use a real device for final scale, Metal composition, memory, and performance
   validation
+
+## 10. SharedImage Delegate Output
+
+### 10.1 Configuration and attachment
+
+Configure output on the main thread through `DelegateRenderConfig` or the
+`FlutterView` fields before attachment. The default is display output, three
+buffers and an opaque white background. SharedImage accepts two or three
+buffers and requires Metal with IOSurface support on iOS 11 or later.
+`backgroundColor` uses unpremultiplied ARGB, including alpha.
+
+A new configuration object is applied before the next output attachment and
+replaces the view's output mode, buffer count and background color. Direct view
+overrides made after that application remain effective while the configuration
+object identity is unchanged. Assigning an engine configuration during an active
+attachment schedules it for the next attachment. A nil engine configuration
+leaves settings to the view. Changing the view's output mode or buffer count
+while attached raises an exception.
+
+SharedImage output keeps the UIView subtree hidden. The view remembers the
+caller's requested hidden state and restores it when display output is selected.
+Supported UIKit content and Clay overlays are composited into SharedImage;
+native GPU views require a texture adapter because bitmap capture cannot render
+arbitrary UIKit layers.
+
+The output states are:
+
+```text
+configured and detached -> attached display or SharedImage -> detached
+```
+
+Initial attachment requires a foreground window and a valid viewport. Foreground
+GPU-surface recovery preserves the current attachment's view settings and Sink;
+it does not consume a pending configuration.
+
+### 10.2 Borrowed Sink lifetime
+
+`getSharedImageSink` returns a borrowed native handle for one in-process
+consumer. Call it on the main thread after SharedImage attachment and acquire
+an owning native reference synchronously before scheduling asynchronous work.
+The getter raises unless the requesting view is the current owner with an
+attached SharedImage output. Registering a consumer wakes an otherwise static
+scene so its initial frame can be acquired.
+
+Stop using the previous attachment's callbacks and release its consumer
+references when detaching. Reattachment creates a new Sink; retaining an old
+Sink does not make it the output of the new attachment.
+
+### 10.3 Page reuse barrier
+
+Reuse starts on the main thread after the old output surface is detached.
+Concurrent reuse requests are rejected. Retaining the previous provider or its
+UIKit views is allowed, so correctness must not depend on their deallocation.
+
+Before publishing a new provider, reset must complete in this order:
+
+1. Invalidate the old native-view generation, remove its views, detach the old
+   nested scroll observer and reset presenter state.
+2. Clear the old page's UI and shadow nodes on the UI runner.
+3. Clear the retained raster layer tree and retained frames on the raster runner.
+4. Drain earlier platform work, reset page gesture results, outer scroll direction
+   and native fold-scroll state, and finish native-view reuse.
+5. Install the new provider and its page service manager, then invoke completion
+   on the main thread.
+
+Create the next page's painting/layout contexts and nodes only in completion or
+later. Old providers and plugins are invalid owners as soon as reuse starts.
+Delayed destruction of an old painting or layout context must preserve the new
+page's nodes and delegates. Page resource consumers resolve services from the
+current page manager. A retained old scroll must neither remain observed nor
+change the new page's gesture state; the new page can bind its own scroll.
