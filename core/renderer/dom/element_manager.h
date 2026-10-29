@@ -128,6 +128,8 @@ class NodeManager {
 
   size_t NodeCount() { return node_map_.size(); }
 
+  const auto &GetNodes() const { return node_map_; }
+
   ExternalMemorySnapshot GetExternalMemorySnapshot() const;
 
   int32_t GetTotalMemoryUsage() const {
@@ -476,7 +478,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   }
 
   // Thread-safe adopted stylesheet accessors using a read-write lock.
-  // Writers (Adopt/Clear) take an exclusive lock.
+  // Writers (Adopt/Remove/Replace/Clear) take an exclusive lock.
   // Readers (Get) take a shared lock.
   void AdoptStyleSheet(fml::RefPtr<tasm::SharedCSSFragmentWrapper> wrapper) {
     const uint8_t feature_flags = (wrapper && wrapper->fragment_)
@@ -505,6 +507,16 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
                                  std::memory_order_release);
     cascade_layer_map_cache_.clear();
   }
+
+  // Removes all adoptions of this handle. Returns false if it was not adopted.
+  bool RemoveStyleSheet(
+      const fml::RefPtr<tasm::SharedCSSFragmentWrapper> &wrapper);
+
+  // Replaces all adoptions in place, preserving their cascade order. A null
+  // replacement removes them. Returns false if nothing changed.
+  bool ReplaceStyleSheet(
+      const fml::RefPtr<tasm::SharedCSSFragmentWrapper> &wrapper,
+      const fml::RefPtr<tasm::SharedCSSFragmentWrapper> &replacement);
 
   // Iterates adopted stylesheets under a shared lock without copying.
   // Visitor returns true to continue, false to stop early.

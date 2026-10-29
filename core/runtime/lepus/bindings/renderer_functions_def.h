@@ -245,5 +245,7 @@
   V(FiberGetComputedStyleByKey)         \
   V(LoadStyleSheet)                     \
   V(AdoptStyleSheet)                    \
+  V(RemoveStyleSheet)                   \
+  V(ReplaceStyleSheet)                  \
   V(ReplaceStyleSheets)
 #endif  // CORE_RUNTIME_LEPUS_BINDINGS_RENDERER_FUNCTIONS_DEF_H_

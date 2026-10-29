@@ -49,6 +49,10 @@ documented in [Use Sparkling containers in iOS Lynx Explorer](docs/ios-sparkling
 
 ## Developing the Bundled Lynx Projects
 
+For a standalone native LynxML example, see
+[Stylesheet lifecycle](lynxml/stylesheet-lifecycle/README.md). It demonstrates
+loading, adopting, replacing, and removing compiled theme stylesheets.
+
 If you already have a built Lynx Explorer app (or any other Lynx-integrated environment), you can focus on developing the Lynx screens that run inside it. There are currently two screens: 
 
 ### homepage/

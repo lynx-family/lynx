@@ -59,6 +59,13 @@ export interface BlockElementRef extends ElementRef { }
 
 export interface StyleObjectRef extends ElementRef { }
 
+declare const styleSheetHandleKind: unique symbol;
+
+/** Opaque handle to a compiled stylesheet loaded by __LoadStyleSheet. */
+export interface StyleSheetRef {
+  readonly [styleSheetHandleKind]: 'stylesheet';
+}
+
 export type ElementInfo = Record<string, any>;
 
 export interface PipelineOptions {
@@ -218,6 +225,34 @@ export interface SerializedTypedTemplateInstance {
 }
 
 declare global {
+  /** Loads a compiled CSS section from an already loaded bundle. */
+  function __LoadStyleSheet(sectionName: string, bundleUrl: string): StyleSheetRef | undefined;
+
+  /** Appends the stylesheet to the page's adopted stylesheets. */
+  function __AdoptStyleSheet(styleSheet: StyleSheetRef): void;
+
+  /**
+   * Removes all adoptions of this handle from the current page.
+   * Returns false if the handle was not adopted. The handle can be adopted again.
+   * Existing elements are restyled on the next element-tree flush.
+   * Refreshing changed keyframes requires the C++ animation builder and rebuilds
+   * only animations with affected names. Legacy platform animators may retain cached keyframes.
+   * Changes to font-face rules do not invalidate existing platform font caches.
+   */
+  function __RemoveStyleSheet(styleSheet: StyleSheetRef): boolean;
+
+  /**
+   * Replaces all adoptions of oldStyleSheet in place, preserving cascade order.
+   * Other adopted stylesheets and the bundle's base styles remain unchanged.
+   * Returns false if the old handle was not adopted or both handles are equal.
+   * Existing elements are restyled on the next element-tree flush.
+   * Use newStyleSheet for subsequent removal or replacement.
+   * Refreshing changed keyframes requires the C++ animation builder and rebuilds
+   * only animations with affected names. Legacy platform animators may retain cached keyframes.
+   * Changes to font-face rules do not invalidate existing platform font caches.
+   */
+  function __ReplaceStyleSheet(oldStyleSheet: StyleSheetRef, newStyleSheet: StyleSheetRef): boolean;
+
   function __CreatePage(componentId: string, cssId: number, info?: ElementInfo): PageElementRef;
 
   function __CreateComponent(

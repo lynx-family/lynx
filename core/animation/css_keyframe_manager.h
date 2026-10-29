@@ -97,6 +97,10 @@ class CSSKeyframeManager : public AnimationDelegate {
   void SetAnimationDataAndPlay(
       base::Vector<starlight::AnimationData>& anim_data);
 
+  void InvalidateKeyframes(const base::String& name) {
+    invalidated_keyframes_.insert(name);
+  }
+
   void SyncAnimationDataForNewPipeline(
       base::Vector<starlight::AnimationData>& anim_data,
       bool force_rebuild = false,
@@ -196,6 +200,7 @@ class CSSKeyframeManager : public AnimationDelegate {
   }
 
   base::InlineVector<starlight::AnimationData, 1> animation_data_;
+  base::LinearFlatSet<base::String> invalidated_keyframes_;
   // Keyframe animations stay in CSS declaration order, including retained ones.
   base::LinearFlatMap<base::String, std::shared_ptr<Animation>> animations_map_;
   // The collection of animations that no need to update states during the diff.

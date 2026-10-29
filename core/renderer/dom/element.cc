@@ -3358,6 +3358,30 @@ bool Element::IfNeedsUpdateLayoutInfo() {
 
 void Element::ResetStyleSheet() { style_sheet_ = nullptr; }
 
+void Element::InvalidateStyleSheet(CSSFragment* removed,
+                                   CSSFragment* replacement) {
+  // Full style invalidation supersedes these borrowed rule-set pointers.
+  invalidation_lists_.descendants.clear_and_shrink();
+  ResetStyleSheet();
+  // Recollect stylesheet variables without discarding inline/runtime values.
+  data_model()->set_css_variables_map(CSSVariableMap{});
+  MarkCustomPropertiesDirty();
+  MarkStyleDirty(false);
+  // C++ consumes keyframes before routing playback to a backend. Keep
+  // stylesheet invalidation on this builder path as backends evolve;
+  // legacy platform animators resolve and cache keyframes independently.
+  if (!use_cpp_animation_builder() || !css_keyframe_manager_) {
+    return;
+  }
+  for (const auto& data : computed_css_style()->animation_data()) {
+    if ((removed && removed->GetKeyframesRule(data.name)) ||
+        (replacement && replacement->GetKeyframesRule(data.name))) {
+      has_keyframe_props_changed_ = true;
+      css_keyframe_manager_->InvalidateKeyframes(data.name);
+    }
+  }
+}
+
 void Element::ResetSheetRecursively(
     const std::shared_ptr<CSSStyleSheetManager>& manager) {
   if (is_page() || is_component() || css_id_ != kInvalidCssId) {

@@ -571,14 +571,10 @@ void StyleResolver::ResolveStyle(StyleMap& result, CSSFragment* fragment,
 
 void StyleResolver::HandlePseudoElement(CSSFragment* fragment) {
   Element* element_ = element();
-  if (!fragment) {
-    return;
-  }
-  if (fragment->enable_css_selector()) {
-    if (!HasPseudoRulesInStyleSheets(fragment)) {
-      return;
-    }
-  } else if (fragment->pseudo_map().empty()) {
+  if (!element_->pseudo_elements_.has_value() &&
+      (!fragment ||
+       (fragment->enable_css_selector() ? !HasPseudoRulesInStyleSheets(fragment)
+                                        : fragment->pseudo_map().empty()))) {
     return;
   }
   if (element_->HasTextSelection() && !element_->is_inline_element()) {
@@ -601,12 +597,10 @@ struct PseudoElementDescriptor {
 
 void StyleResolver::ResolvePseudoElementsForNewPipeline(CSSFragment* fragment) {
   Element* current_element = element();
-  if (!fragment) {
-    return;
-  }
-  if ((fragment->enable_css_selector() &&
-       !HasPseudoRulesInStyleSheets(fragment)) ||
-      (!fragment->enable_css_selector() && fragment->pseudo_map().empty())) {
+  if (!current_element->pseudo_elements_.has_value() &&
+      (!fragment ||
+       (fragment->enable_css_selector() ? !HasPseudoRulesInStyleSheets(fragment)
+                                        : fragment->pseudo_map().empty()))) {
     return;
   }
 
@@ -634,13 +628,13 @@ void StyleResolver::ResolvePseudoElement(PseudoState pseudo_state,
                                          const char* pseudo_selector) {
   StyleMap result;
   StyleMap important_result;
-  if (fragment->enable_css_selector()) {
+  if (fragment && fragment->enable_css_selector()) {
     AttributeHolder attribute_holder;
     attribute_holder.AddPseudoState(pseudo_state);
     attribute_holder.SetPseudoElementOwner(element->data_model());
     GetCSSStyleNew(&attribute_holder, fragment);
     DidCollectMatchedRules(element->data_model(), result, important_result);
-  } else {
+  } else if (fragment) {
     ParsePseudoCSSTokensForFiber(element, fragment, pseudo_selector, result);
     // Note: old pseudo token path doesn't have important_attributes_ yet.
   }
