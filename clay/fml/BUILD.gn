@@ -75,6 +75,10 @@ source_set("string_conversion") {
   if (is_win) {
     # TODO(cbracken): https://github.com/flutter/flutter/issues/50053
     defines += [ "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" ]
+
+    # Base64 checks and UTF conversion use Base implementations. Inherit their
+    # Windows export configuration instead of importing them from a DLL.
+    deps = [ "../../base/src:base_group" ]
   }
 
   public_configs = [ ":fml_config" ]
