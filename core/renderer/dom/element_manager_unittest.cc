@@ -160,6 +160,22 @@ class ElementManagerTest : public ::testing::Test {
   }
 };
 
+TEST_F(ElementManagerTest, BackgroundVsyncPauseSwitchIsFixedPerPage) {
+  for (bool enabled : {false, true}) {
+    SCOPED_TRACE(enabled);
+    ScopedExternalBoolEnv feature(
+        LynxEnv::Key::ENABLE_PAUSE_ELEMENT_VSYNC_IN_BACKGROUND, enabled);
+    CreateManager();
+    // Settings changes apply to new pages, not an existing page's lifecycle.
+    ScopedExternalBoolEnv update(
+        LynxEnv::Key::ENABLE_PAUSE_ELEMENT_VSYNC_IN_BACKGROUND, !enabled);
+    manager->SetElementVsyncPaused(true);
+    EXPECT_EQ(manager->IsElementVsyncPaused(), enabled);
+    manager->SetElementVsyncPaused(false);
+    EXPECT_FALSE(manager->IsElementVsyncPaused());
+  }
+}
+
 TEST_F(ElementManagerTest, RadonAnimationBackendSelection) {
   EXPECT_FALSE(manager->GetEnableNewAnimatorForRadon());
   manager->SetEnableNewAnimatorRadon(true);

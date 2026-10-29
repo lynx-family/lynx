@@ -10,7 +10,6 @@
 #include <utility>
 
 #include "base/include/fml/message_loop.h"
-#include "base/include/fml/task_runner_delegate.h"
 #include "core/animation/animation.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/keyframe_effect.h"
@@ -36,20 +35,6 @@ namespace testing {
 namespace {
 
 constexpr int64_t kFrameDuration = 16000000;  // ns
-
-class CallbackTasmDelegate : public test::MockTasmDelegate {
- public:
-  void SendAnimationEvent(const std::string& type, int tag,
-                          const lepus::Value& dict) override {
-    MockTasmDelegate::SendAnimationEvent(type, tag, dict);
-    if (on_animation_event) {
-      auto callback = on_animation_event;
-      callback(type);
-    }
-  }
-
-  std::function<void(const std::string&)> on_animation_event;
-};
 
 class CountingAnimationManager : public animation::CSSKeyframeManager {
  public:
@@ -129,7 +114,7 @@ class ElementVsyncProxyTest : public ::testing::Test {
   ElementVsyncProxyTest() {}
   ~ElementVsyncProxyTest() override {}
   std::unique_ptr<lynx::tasm::ElementManager> manager;
-  std::shared_ptr<::testing::NiceMock<CallbackTasmDelegate>> tasm_mediator;
+  std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
   std::shared_ptr<TestVSyncMonitor> vsync_monitor_;
 
   static void SetUpTestSuite() { base::UIThread::Init(); }
@@ -138,7 +123,7 @@ class ElementVsyncProxyTest : public ::testing::Test {
     LynxEnvConfig lynx_env_config(kWidth, kHeight, kDefaultLayoutsUnitPerPx,
                                   kDefaultPhysicalPixelsPerLayoutUnit);
     tasm_mediator =
-        std::make_shared<::testing::NiceMock<CallbackTasmDelegate>>();
+        std::make_shared<::testing::NiceMock<test::MockTasmDelegate>>();
     manager = std::make_unique<lynx::tasm::ElementManager>(
         std::make_unique<MockPaintingContext>(), tasm_mediator.get(),
         lynx_env_config);
@@ -216,6 +201,7 @@ TEST_F(ElementVsyncProxyTest, CustomVSyncKeepsInjectedFrameTime) {
 
   const auto injected_time =
       fml::TimePoint::Now() - fml::TimeDelta::FromSeconds(2);
+  test_vsync_proxy->SetMinFrameTime(fml::TimePoint::Now());
   test_vsync_proxy->RequestNextFrame();
   const int64_t frame_start = injected_time.ToEpochDelta().ToNanoseconds();
   source->Trigger(frame_start, frame_start + kFrameDuration);
@@ -238,50 +224,6 @@ TEST_F(ElementVsyncProxyTest, TickAllElement) {
   test_vsync_proxy->set_preferred_fps("auto");
   auto time2 = fml::TimePoint::Now();
   test_vsync_proxy->TickAllElement(time2);
-}
-
-TEST_F(ElementVsyncProxyTest, DelegateRunnerWithoutMessageLoop) {
-  // Element's debug thread checker initializes a loop; prepare it here.
-  auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
-  AddBackgroundAnimation(element.get(), "delegate", 100, 3);
-  element->data_model()->SetStaticEvent("bindEvent", "animationstart", "start");
-  element->data_model()->SetStaticEvent("bindEvent", "animationiteration",
-                                        "iteration");
-  std::thread([&]() {
-    ASSERT_EQ(fml::MessageLoop::IsInitializedForCurrentThread(), nullptr);
-    class Delegate : public fml::TaskRunnerDelegate {
-     public:
-      void PostDelayedTask(base::closure task, int64_t delay) override {
-        pending_task = std::move(task);
-      }
-      bool RunsTasksOnCurrentThread() override { return true; }
-      base::closure pending_task;
-    } delegate;
-    auto runner = fml::MakeRefCounted<fml::TaskRunner>(nullptr);
-    runner->SetDelegate(&delegate);
-    vsync_monitor_->BindTaskRunner(runner);
-
-    manager->RequestNextFrame(element.get());
-    vsync_monitor_->TriggerVsync();
-    EXPECT_EQ(element->element_tick_count, 1);
-    EXPECT_EQ(fml::MessageLoop::IsInitializedForCurrentThread(), nullptr);
-
-    manager->SetElementVsyncPaused(true);
-    manager->RequestNextFrame(element.get());
-    ASSERT_TRUE(delegate.pending_task);
-    auto task = std::move(delegate.pending_task);
-    task();
-    EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationstart");
-    EXPECT_EQ(element->element_tick_count, 1);
-
-    manager->StopAnimationVsync();
-    tasm_mediator->ClearAnimationEvent();
-    ASSERT_TRUE(delegate.pending_task);
-    task = std::move(delegate.pending_task);
-    task();
-    EXPECT_TRUE(tasm_mediator->not_received_any_event());
-    EXPECT_FALSE(delegate.pending_task);
-  }).join();
 }
 
 TEST_F(ElementVsyncProxyTest, StoppedPageIgnoresQueuedFrame) {
@@ -348,142 +290,64 @@ TEST_F(ElementVsyncProxyTest, BackgroundDefersElementFramesUntilForeground) {
   }
 }
 
-TEST_F(ElementVsyncProxyTest,
-       BackgroundTimerOnlyDispatchesFiniteAnimationEvents) {
+TEST_F(ElementVsyncProxyTest, BackgroundDefersFiniteAnimationEvents) {
   auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
-  AddBackgroundAnimation(element.get(), "background", 100, 3);
+  auto animation = AddBackgroundAnimation(element.get(), "finite", 100, 3);
   element->data_model()->SetStaticEvent("bindEvent", "animationstart", "start");
-  element->data_model()->SetStaticEvent("bindEvent", "animationiteration",
-                                        "iteration");
-
-  manager->SetElementVsyncPaused(true);
-  manager->RequestNextFrame(element.get());
-  RunTimer(20);
-  EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationstart");
-  tasm_mediator->ClearAnimationEvent();
-  const auto before_iteration_event = fml::TimePoint::Now();
-  RunTimer(120);
-  EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationiteration");
-  EXPECT_EQ(element->tick_count, 0);
-  EXPECT_EQ(element->element_tick_count, 0);
-  EXPECT_EQ(vsync_monitor_->request_count, 0);
-
-  // A timer from the previous background period must not fire after resume.
-  manager->SetElementVsyncPaused(false);
-  tasm_mediator->ClearAnimationEvent();
-  RunTimer(120);
-  EXPECT_EQ(tasm_mediator->GetAnimationEventType(), nullptr);
-  EXPECT_EQ(vsync_monitor_->request_count, 1);
-  const auto stale_time =
-      fml::TimePoint::Now() - fml::TimeDelta::FromMilliseconds(500);
-  vsync_monitor_->TriggerVsyncAt(stale_time.ToEpochDelta().ToNanoseconds());
-  EXPECT_EQ(element->element_tick_count, 1);
-  EXPECT_GE(element->last_element_tick_time, before_iteration_event);
-}
-
-TEST_F(ElementVsyncProxyTest, PauseKeepsFiniteAnimationEvents) {
-  auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
-  AddBackgroundAnimation(element.get(), "finite", 100, 3);
-  element->data_model()->SetStaticEvent("bindEvent", "animationstart", "start");
-  element->data_model()->SetStaticEvent("bindEvent", "animationiteration",
-                                        "iteration");
-
-  manager->SetElementVsyncPaused(true);
-  manager->RequestNextFrame(element.get());
-  RunTimer(20);
-  EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationstart");
-  tasm_mediator->ClearAnimationEvent();
-  RunTimer(120);
-  EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationiteration");
-  EXPECT_EQ(element->tick_count, 0);
-  EXPECT_EQ(element->element_tick_count, 0);
-  EXPECT_EQ(vsync_monitor_->request_count, 0);
-}
-
-TEST_F(ElementVsyncProxyTest, PauseSuppressesInfiniteAnimationEventTimer) {
-  manager->SetElementVsyncPaused(true);
-  auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
-  auto animation =
-      AddBackgroundAnimation(element.get(), "infinite", 50,
-                             starlight::kInfiniteAnimationIterationCount);
-  element->data_model()->SetStaticEvent("bindEvent", "animationstart", "start");
-  element->data_model()->SetStaticEvent("bindEvent", "animationiteration",
-                                        "iteration");
-
-  auto start = fml::TimePoint::Now();
-  animation->TickEvents(start);
-  tasm_mediator->ClearAnimationEvent();
-
-  manager->RequestNextFrame(element.get());
-  auto paused_time = fml::TimePoint::Now();
-  EXPECT_EQ(manager->ProcessAnimationEvents(paused_time, false),
-            fml::TimePoint::Max());
-  RunTimer(170);
-  EXPECT_TRUE(tasm_mediator->not_received_any_event());
-  EXPECT_EQ(element->tick_count, 0);
-  EXPECT_EQ(element->element_tick_count, 0);
-  EXPECT_EQ(vsync_monitor_->request_count, 0);
-
-  // Iterations crossed during pause are discarded rather than replayed in a
-  // burst. Future iteration events continue from the resumed position.
-  manager->SetElementVsyncPaused(false);
-  auto resumed = fml::TimePoint::Now();
-  animation->TickEvents(resumed);
-  EXPECT_TRUE(tasm_mediator->not_received_any_event());
-  RunTimer(60);
-  auto next_iteration = fml::TimePoint::Now();
-  animation->TickEvents(next_iteration);
-  EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "animationiteration");
-}
-
-TEST_F(ElementVsyncProxyTest,
-       EventHandlerCanScheduleAnotherBackgroundAnimation) {
-  auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
-  AddBackgroundAnimation(element.get(), "first", 30, 1);
   element->data_model()->SetStaticEvent("bindEvent", "animationend", "end");
-  std::shared_ptr<animation::Animation> next_animation;
-  tasm_mediator->on_animation_event = [&](const std::string& type) {
-    if (type == "animationend") {
-      next_animation = AddBackgroundAnimation(element.get(), "next", 100, 3);
-      manager->RequestNextFrame(element.get());
-    }
-  };
+  auto start = fml::TimePoint::Now() - fml::TimeDelta::FromSeconds(1);
+  animation->SampleAt(start);
   manager->SetElementVsyncPaused(true);
   manager->RequestNextFrame(element.get());
   RunTimer(20);
-  RunTimer(50);
-  ASSERT_NE(next_animation, nullptr);
-  RunTimer(20);
-  EXPECT_NE(next_animation->start_time(), fml::TimePoint::Min());
-  EXPECT_EQ(vsync_monitor_->request_count, 0);
+  EXPECT_TRUE(tasm_mediator->not_received_any_event());
   EXPECT_EQ(element->tick_count, 0);
+  EXPECT_EQ(element->element_tick_count, 0);
+  EXPECT_EQ(vsync_monitor_->request_count, 0);
+
+  manager->SetElementVsyncPaused(false);
+  EXPECT_EQ(vsync_monitor_->request_count, 1);
+  vsync_monitor_->TriggerVsync();
+  EXPECT_EQ(element->tick_count, 1);
+  auto result = animation->SampleAt(element->last_element_tick_time);
+  EXPECT_TRUE(result.should_send_end_event);
+  EXPECT_FALSE(animation->SampleAt(element->last_element_tick_time)
+                   .should_send_end_event);
 }
 
-TEST_F(ElementVsyncProxyTest, EventHandlerCanResumeOrStopPage) {
-  for (bool stop : {false, true}) {
-    SCOPED_TRACE(stop);
-    const auto previous_requests = vsync_monitor_->request_count;
-    auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
-    AddBackgroundAnimation(element.get(), "background", 100, 3);
-    element->data_model()->SetStaticEvent("bindEvent", "animationstart",
-                                          "start");
-    element->data_model()->SetStaticEvent("bindEvent", "animationiteration",
-                                          "iteration");
-    tasm_mediator->on_animation_event = [&, stop](const std::string&) {
-      if (stop) {
-        manager->StopAnimationVsync();
-      } else {
-        manager->SetElementVsyncPaused(false);
-      }
-    };
-    manager->SetElementVsyncPaused(true);
-    manager->RequestNextFrame(element.get());
-    RunTimer(20);
-    EXPECT_EQ(vsync_monitor_->request_count,
-              previous_requests + (stop ? 0 : 1));
-    tasm_mediator->ClearAnimationEvent();
-    RunTimer(120);
-    EXPECT_TRUE(tasm_mediator->not_received_any_event());
+TEST_F(ElementVsyncProxyTest, ResumeSkipsBackgroundIterations) {
+  for (auto origin : {animation::Animation::Origin::kCSSAnimation,
+                      animation::Animation::Origin::kWebAnimation}) {
+    for (int iterations :
+         {-1, starlight::kInfiniteAnimationIterationCount, 1000000}) {
+      SCOPED_TRACE(::testing::Message()
+                   << static_cast<int>(origin) << " " << iterations);
+      manager->SetElementVsyncPaused(true);
+      auto element = fml::AdoptRef(new CountingTickElement(manager.get()));
+      auto animation =
+          AddBackgroundAnimation(element.get(), "background", 10, iterations);
+      animation->SetOrigin(origin);
+      auto start = fml::TimePoint::Now() - fml::TimeDelta::FromSeconds(600);
+      animation->SampleAt(start);
+      const auto requests = vsync_monitor_->request_count;
+      manager->RequestNextFrame(element.get());
+      EXPECT_EQ(vsync_monitor_->request_count, requests);
+
+      auto before_resume = fml::TimePoint::Now();
+      manager->SetElementVsyncPaused(false);
+      // Resume marks the next sample without advancing the animation clock.
+      EXPECT_EQ(animation->start_time(), start);
+      auto stale_frame = before_resume - fml::TimeDelta::FromMilliseconds(100);
+      vsync_monitor_->TriggerVsyncAt(
+          stale_frame.ToEpochDelta().ToNanoseconds());
+      EXPECT_GE(element->last_element_tick_time, before_resume);
+      auto result = animation->SampleAt(element->last_element_tick_time);
+      EXPECT_FALSE(result.should_send_start_event);
+      EXPECT_EQ(result.iteration_events_due, 0);
+      auto next_iteration = element->last_element_tick_time +
+                            fml::TimeDelta::FromMilliseconds(10);
+      EXPECT_EQ(animation->SampleAt(next_iteration).iteration_events_due, 1);
+    }
   }
 }
 

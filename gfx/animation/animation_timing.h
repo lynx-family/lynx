@@ -67,11 +67,6 @@ GFX_EXPORT TrimmedAnimationTime TrimTimeToCurrentIteration(
 GFX_EXPORT int CountIterationEventsDue(int old_iteration_count,
                                        int current_iteration_count);
 
-// Max() means no lifecycle wakeup is needed. Callers exclude paused animations.
-GFX_EXPORT fml::TimePoint GetNextAnimationEventTime(
-    const AnimationTimingInput& input, fml::TimePoint now,
-    int current_iteration_count, bool needs_iteration_event);
-
 }  // namespace gfx
 }  // namespace lynx
 

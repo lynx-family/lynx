@@ -48,8 +48,6 @@ class KeyframeEffect {
       fml::TimePoint monotonic_time, bool suppress_animation_events = false);
   KeyframeSampleResult SampleKeyframeModel(fml::TimePoint monotonic_time,
                                            bool events_only = false);
-  fml::TimePoint GetNextEventTime(fml::TimePoint now,
-                                  bool needs_iteration_event) const;
 
   void AddKeyframeModel(std::unique_ptr<KeyframeModel> keyframe_model);
 

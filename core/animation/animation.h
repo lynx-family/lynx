@@ -71,10 +71,12 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void DoFrame(fml::TimePoint& frame_time);
   KeyframeEffect::KeyframeSampleResult SampleAt(fml::TimePoint& frame_time,
                                                 bool events_only = false);
-  // Advance lifecycle events without sampling or applying animated styles.
-  bool TickEvents(fml::TimePoint& frame_time);
-  fml::TimePoint GetNextEventTime(fml::TimePoint now) const;
-
+  // Resume skips elapsed iterations without consuming start/end events.
+  void SuppressNextIterationEvents() {
+    if (state_ == State::kPlay) {
+      suppress_next_iteration_events_ = true;
+    }
+  }
   void SendStartEvent();
 
   void SendEndEvent();
@@ -242,6 +244,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
   // it must update styles and timing state without synthesizing page-visible
   // animationstart/animationiteration/animationend events for skipped time.
   bool suppress_next_sample_events_{false};
+  bool suppress_next_iteration_events_{false};
   bool inspector_started_notified_{false};
   // Created by ReplaceEffectFrom() to preserve logical time and lifecycle
   // events when replacing a C++ effect. Otherwise the local timing fields are

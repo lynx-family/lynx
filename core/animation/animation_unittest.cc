@@ -1255,149 +1255,174 @@ class BackgroundAnimationTest : public AnimationTest {
   }
 };
 
-TEST_F(BackgroundAnimationTest, EventsDeferFinalStylesUntilForeground) {
+TEST_F(BackgroundAnimationTest, FiniteAnimationFinishesOnForegroundFrame) {
   for (auto fill : {starlight::AnimationFillModeType::kNone,
-                    starlight::AnimationFillModeType::kForwards}) {
+                    starlight::AnimationFillModeType::kBackwards,
+                    starlight::AnimationFillModeType::kForwards,
+                    starlight::AnimationFillModeType::kBoth}) {
     for (bool legacy : {false, true}) {
-      auto a = CreateAnimation(1000, 2, fill);
+      for (bool custom_only : {false, true}) {
+        // Custom properties are sampled by the new styling pipeline.
+        if (legacy && custom_only) {
+          continue;
+        }
+        for (long delay : {-250, 250}) {
+          SCOPED_TRACE(::testing::Message()
+                       << static_cast<int>(fill) << " " << legacy << " "
+                       << custom_only << " " << delay);
+          auto a = CreateAnimation(1000, 2, fill, custom_only);
+          auto data = *a->animation_data();
+          data.delay = delay;
+          a->UpdateAnimationData(data);
+          BackgroundAnimationDelegate delegate;
+          a->BindDelegate(&delegate);
+          a->keyframe_effect()->BindAnimationDelegate(&delegate);
+          a->keyframe_effect()->BindElement(element_.get());
+          auto start = fml::TimePoint::FromTicks(10000000000);
+          if (legacy) {
+            a->DoFrame(start);
+          } else {
+            a->SampleAt(start);
+          }
+          a->SuppressNextIterationEvents();
+          // No frames or event-only ticks occur while the page is backgrounded.
+          auto end = start + fml::TimeDelta::FromSeconds(5);
+          const bool persists =
+              fill == starlight::AnimationFillModeType::kForwards ||
+              fill == starlight::AnimationFillModeType::kBoth;
+          tasm_mediator->ClearAnimationEvent();
+          if (legacy) {
+            a->DoFrame(end);
+            EXPECT_TRUE(tasm_mediator->has_received_animation_end_event());
+            EXPECT_FALSE(
+                tasm_mediator->has_received_animation_iteration_event());
+            EXPECT_EQ(delegate.clear_count, persists ? 0 : 1);
+            if (persists) {
+              EXPECT_GT(delegate.apply_count, 0);
+            }
+            tasm_mediator->ClearAnimationEvent();
+            a->DoFrame(end);
+            EXPECT_TRUE(tasm_mediator->not_received_any_event());
+          } else {
+            auto result = a->SampleAt(end);
+            EXPECT_TRUE(result.should_send_end_event);
+            EXPECT_EQ(result.iteration_events_due, 0);
+            EXPECT_EQ(result.should_send_start_event, delay > 0);
+            EXPECT_EQ(result.should_persist_fill_styles, persists);
+            EXPECT_EQ(result.should_clear_fill_styles, !persists);
+            if (persists && !custom_only) {
+              ASSERT_EQ(result.styles.size(), 1u);
+              EXPECT_FLOAT_EQ(result.styles.at(kPropertyIDOpacity).GetNumber(),
+                              1.f);
+            }
+            auto repeated = a->SampleAt(end);
+            EXPECT_FALSE(repeated.should_send_start_event);
+            EXPECT_FALSE(repeated.should_send_end_event);
+            EXPECT_EQ(repeated.iteration_events_due, 0);
+            EXPECT_FALSE(repeated.should_persist_fill_styles);
+            EXPECT_FALSE(repeated.should_clear_fill_styles);
+          }
+          EXPECT_EQ(a->GetState(), animation::Animation::State::kStop);
+          tasm_mediator->ClearAnimationEvent();
+          a->Destroy(false);
+          EXPECT_TRUE(tasm_mediator->not_received_any_event());
+        }
+      }
+    }
+  }
+}
+
+TEST_F(BackgroundAnimationTest, ResumeSkipsIterationsOnlyOnFirstFrame) {
+  for (bool legacy : {false, true}) {
+    for (bool custom_only : {false, true}) {
+      if (legacy && custom_only) {
+        continue;
+      }
+      SCOPED_TRACE(::testing::Message() << legacy << " " << custom_only);
+      auto a = CreateAnimation(10, 1000000,
+                               starlight::AnimationFillModeType::kForwards,
+                               custom_only);
       BackgroundAnimationDelegate delegate;
       a->BindDelegate(&delegate);
       a->keyframe_effect()->BindAnimationDelegate(&delegate);
-      a->keyframe_effect()->BindElement(element_.get());
-      auto start =
-          fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSeconds(10));
-      tasm_mediator->ClearAnimationEvent();
-      EXPECT_TRUE(a->TickEvents(start));
-      EXPECT_TRUE(tasm_mediator->only_received_animation_start_event());
-      auto iteration = start + fml::TimeDelta::FromMilliseconds(1100);
-      tasm_mediator->ClearAnimationEvent();
-      EXPECT_TRUE(a->TickEvents(iteration));
-      EXPECT_TRUE(tasm_mediator->only_received_animation_iteration_event());
-      auto end = start + fml::TimeDelta::FromSeconds(3);
-      tasm_mediator->ClearAnimationEvent();
-      EXPECT_FALSE(a->TickEvents(end));
-      EXPECT_TRUE(tasm_mediator->has_received_animation_end_event());
-      EXPECT_EQ(a->GetState(), animation::Animation::State::kStop);
-      EXPECT_EQ(delegate.sample_count, 0);
-      EXPECT_EQ(delegate.apply_count, 0);
-      EXPECT_EQ(delegate.clear_count, 0);
-
-      tasm_mediator->ClearAnimationEvent();
-      EXPECT_FALSE(a->TickEvents(end));
+      auto start = fml::TimePoint::FromTicks(10000000000);
       if (legacy) {
-        a->DoFrame(end);
-        EXPECT_EQ(delegate.clear_count,
-                  fill == starlight::AnimationFillModeType::kNone ? 1 : 0);
-        EXPECT_EQ(delegate.apply_count,
-                  fill == starlight::AnimationFillModeType::kForwards ? 1 : 0);
+        a->DoFrame(start);
       } else {
-        auto result = a->SampleAt(end);
+        a->SampleAt(start);
+      }
+      tasm_mediator->ClearAnimationEvent();
+      a->SuppressNextIterationEvents();
+      // Ten minutes at 10 ms per iteration would otherwise dispatch 60000
+      // events.
+      auto resumed = start + fml::TimeDelta::FromSeconds(600);
+      if (legacy) {
+        a->DoFrame(resumed);
+        EXPECT_TRUE(tasm_mediator->not_received_any_event());
+      } else {
+        auto result = a->SampleAt(resumed);
+        EXPECT_EQ(result.iteration_events_due, 0);
         EXPECT_FALSE(result.should_send_start_event);
         EXPECT_FALSE(result.should_send_end_event);
-        EXPECT_EQ(result.iteration_events_due, 0);
-        EXPECT_EQ(result.should_persist_fill_styles,
-                  fill == starlight::AnimationFillModeType::kForwards);
-        EXPECT_EQ(result.should_clear_fill_styles,
-                  fill == starlight::AnimationFillModeType::kNone);
-        if (fill == starlight::AnimationFillModeType::kForwards) {
-          ASSERT_EQ(result.styles.size(), 1u);
-          EXPECT_FLOAT_EQ(result.styles.at(kPropertyIDOpacity).GetNumber(),
-                          1.f);
-        }
-        auto repeated = a->SampleAt(end);
-        EXPECT_FALSE(repeated.should_persist_fill_styles);
-        EXPECT_FALSE(repeated.should_clear_fill_styles);
       }
-      EXPECT_TRUE(tasm_mediator->not_received_any_event());
-      // Finished in the background: removing it must not emit cancellation.
-      a->Destroy(false);
-      EXPECT_TRUE(tasm_mediator->not_received_any_event());
+      auto next = resumed + fml::TimeDelta::FromMilliseconds(10);
+      if (legacy) {
+        a->DoFrame(next);
+        EXPECT_TRUE(tasm_mediator->only_received_animation_iteration_event());
+      } else {
+        EXPECT_EQ(a->SampleAt(next).iteration_events_due, 1);
+      }
     }
   }
 }
 
-TEST_F(BackgroundAnimationTest, EventsResumeWithoutDuplicateIterations) {
-  auto a = CreateAnimation(1000, 5);
-  BackgroundAnimationDelegate delegate;
-  a->keyframe_effect()->BindAnimationDelegate(&delegate);
-  auto start = fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSeconds(10));
-  a->SampleAt(start);
-  auto background = start + fml::TimeDelta::FromMilliseconds(2200);
-  a->TickEvents(background);
-  EXPECT_EQ(delegate.sample_count, 1);
-  auto foreground = start + fml::TimeDelta::FromMilliseconds(2500);
-  auto result = a->SampleAt(foreground);
-  EXPECT_EQ(result.iteration_events_due, 0);
-  EXPECT_FALSE(result.should_send_start_event);
-  EXPECT_FLOAT_EQ(result.styles.at(kPropertyIDOpacity).GetNumber(), .5f);
-  auto next_iteration = start + fml::TimeDelta::FromMilliseconds(3100);
-  EXPECT_EQ(a->SampleAt(next_iteration).iteration_events_due, 1);
-}
-
-TEST_F(BackgroundAnimationTest, TransitionFinishesWithoutApplyingStyles) {
-  auto a = CreateAnimation(100, 1);
-  BackgroundAnimationDelegate delegate;
-  a->keyframe_effect()->BindAnimationDelegate(&delegate);
-  a->SetTransitionFlag();
-  auto start = fml::TimePoint::Now();
-  EXPECT_TRUE(a->TickEvents(start));
-  auto end = start + fml::TimeDelta::FromSeconds(1);
-  EXPECT_FALSE(a->TickEvents(end));
-  EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "transitionend");
-  EXPECT_EQ(delegate.sample_count, 0);
-  EXPECT_EQ(delegate.apply_count, 0);
-  auto result = a->SampleAt(end);
-  EXPECT_FALSE(result.should_send_end_event);
-  EXPECT_FALSE(result.should_persist_fill_styles);
-  EXPECT_FLOAT_EQ(result.styles.at(kPropertyIDOpacity).GetNumber(), 1.f);
-}
-
-TEST_F(BackgroundAnimationTest, EventDeadlinesFollowStartIterationAndEnd) {
-  for (bool custom_only : {false, true}) {
-    for (long delay : {150, -50}) {
-      auto a = CreateAnimation(100, 3, starlight::AnimationFillModeType::kNone,
-                               custom_only);
-      auto data = *a->animation_data();
-      data.delay = delay;
-      a->UpdateAnimationData(data);
-      auto now = fml::TimePoint::FromTicks(10000000000);
-      const auto origin = now;
-      EXPECT_EQ(a->GetNextEventTime(now), now);
-      a->TickEvents(now);
-      if (delay > 0) {
-        now = origin + fml::TimeDelta::FromMilliseconds(delay);
-        EXPECT_EQ(a->GetNextEventTime(origin), now);
-        a->TickEvents(now);
-      }
-      for (int iteration = 1; iteration <= 3; ++iteration) {
-        auto next =
-            origin + fml::TimeDelta::FromMilliseconds(delay + iteration * 100);
-        EXPECT_EQ(a->GetNextEventTime(now), next);
-        now = next;
-        a->TickEvents(now);
-      }
-      EXPECT_EQ(a->GetNextEventTime(now), fml::TimePoint::Max());
-    }
+TEST_F(BackgroundAnimationTest,
+       ZeroDurationAnimationFinishesOnForegroundFrame) {
+  for (auto fill : {starlight::AnimationFillModeType::kNone,
+                    starlight::AnimationFillModeType::kForwards}) {
+    auto a =
+        CreateAnimation(0, starlight::kInfiniteAnimationIterationCount, fill);
+    auto time = fml::TimePoint::FromTicks(10000000000);
+    a->SuppressNextIterationEvents();
+    auto result = a->SampleAt(time);
+    EXPECT_TRUE(result.should_send_start_event);
+    EXPECT_TRUE(result.should_send_end_event);
+    EXPECT_EQ(result.iteration_events_due, 0);
+    EXPECT_EQ(result.should_persist_fill_styles,
+              fill == starlight::AnimationFillModeType::kForwards);
+    EXPECT_EQ(result.should_clear_fill_styles,
+              fill == starlight::AnimationFillModeType::kNone);
+    EXPECT_FALSE(a->SampleAt(time).should_persist_fill_styles);
+    EXPECT_FALSE(a->SampleAt(time).should_clear_fill_styles);
   }
 }
 
-TEST_F(BackgroundAnimationTest, NoRepeatWakeupsWithoutListener) {
-  for (bool custom_only : {false, true}) {
-    for (int iterations : {-1, 3}) {
-      auto a =
-          CreateAnimation(100, iterations,
-                          starlight::AnimationFillModeType::kNone, custom_only);
-      element_->RemoveAllEvents();
-      auto now = fml::TimePoint::FromTicks(10000000000);
-      a->TickEvents(now);
-      EXPECT_EQ(a->GetNextEventTime(now),
-                iterations < 0 ? fml::TimePoint::Max()
-                               : now + fml::TimeDelta::FromMilliseconds(300));
-      if (iterations > 0) {
-        now = now + fml::TimeDelta::FromMilliseconds(300);
-        EXPECT_FALSE(a->TickEvents(now));
-        EXPECT_EQ(a->GetNextEventTime(now), fml::TimePoint::Max());
-      }
+TEST_F(BackgroundAnimationTest, TransitionFinishesOnForegroundFrame) {
+  for (bool legacy : {false, true}) {
+    auto a = CreateAnimation(100, 1);
+    BackgroundAnimationDelegate delegate;
+    a->keyframe_effect()->BindAnimationDelegate(&delegate);
+    a->SetTransitionFlag();
+    auto start = fml::TimePoint::FromTicks(10000000000);
+    if (legacy) {
+      a->DoFrame(start);
+    } else {
+      a->SampleAt(start);
+    }
+    auto end = start + fml::TimeDelta::FromSeconds(1);
+    tasm_mediator->ClearAnimationEvent();
+    if (legacy) {
+      a->DoFrame(end);
+      EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), "transitionend");
+      tasm_mediator->ClearAnimationEvent();
+      a->DoFrame(end);
+      EXPECT_TRUE(tasm_mediator->not_received_any_event());
+    } else {
+      auto result = a->SampleAt(end);
+      EXPECT_TRUE(result.should_send_end_event);
+      EXPECT_FALSE(result.should_persist_fill_styles);
+      EXPECT_FLOAT_EQ(result.styles.at(kPropertyIDOpacity).GetNumber(), 1.f);
+      EXPECT_FALSE(a->SampleAt(end).should_send_end_event);
     }
   }
 }
