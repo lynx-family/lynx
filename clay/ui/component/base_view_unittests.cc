@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "clay/fml/logging.h"
+#include "clay/lynx_adaptor/layout_context_clay.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/native_view.h"
@@ -22,6 +23,8 @@
 #include "clay/ui/gesture_handler/arena/gesture_arena_manager.h"
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
 #include "clay/ui/rendering/render_container.h"
+#include "clay/ui/shadow/inline_view_shadow_node.h"
+#include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/testing/ui_test.h"
 #include "core/public/ui_operation_queue_interface.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -530,6 +533,122 @@ TEST_F_UI(ViewContextMemoryTest,
 
   EXPECT_EQ(view_context_->ExternalMemoryCandidateCountForTesting(), 2u);
   EXPECT_EQ(queue->PendingOperationCount(), 0u);
+}
+
+TEST_F_UI(ViewContextMemoryTest,
+          DestroyPreviousPaintingContextPreservesReusedPage) {
+  auto previous =
+      std::make_unique<lynx::tasm::PaintingContextClay>(view_context_.get());
+  view_context_->ResetPageView();
+  auto current =
+      std::make_unique<lynx::tasm::PaintingContextClay>(view_context_.get());
+  ASSERT_TRUE(view_context_->CreateView(1, "page"));
+  view_context_->CreateViewForTesting(2);
+  view_context_->AddView(2, 1, 0);
+  auto* child = view_context_->GetViewById(2);
+
+  previous.reset();
+
+  EXPECT_EQ(page_->GetUIComponentDelegate(), current.get());
+  EXPECT_EQ(view_context_->GetViewById(2), child);
+  EXPECT_EQ(page_->child_count(), 1u);
+
+  current.reset();
+
+  EXPECT_EQ(page_->GetUIComponentDelegate(), nullptr);
+  EXPECT_EQ(view_context_->GetViewById(2), nullptr);
+  EXPECT_EQ(page_->child_count(), 0u);
+}
+
+class LayoutContextReuseTest : public UITest {
+ protected:
+  void UISetUp() override {
+    owner_ = std::make_unique<ShadowNodeOwner>(ui_task_runner());
+    context_ = std::make_unique<ViewContext>(page_.get(), owner_.get());
+    owner_->SetViewContext(context_.get());
+  }
+
+  void UITearDown() override {
+    context_->DestroyAllShadowNode();
+    context_.reset();
+    owner_.reset();
+  }
+
+  ShadowNode* AddNode() {
+    auto* node = new InlineViewShadowNode(owner_.get(), "view", 2);
+    owner_->AddNode(2, node);
+    return node;
+  }
+
+  std::unique_ptr<ShadowNodeOwner> owner_;
+  std::unique_ptr<ViewContext> context_;
+};
+
+TEST_F_UI(LayoutContextReuseTest,
+          PreviousNodeRemovalPreservesCurrentShadowNodes) {
+  lynx::tasm::LayoutContextClay previous(context_.get());
+  lynx::tasm::LayoutContextClay current(context_.get());
+  auto* node = AddNode();
+
+  previous.DestroyLayoutNodes({2});
+
+  ASSERT_EQ(context_->FindShadowNodeByNodeId(2), node);
+  EXPECT_EQ(context_->GetLayoutDelegate(), &current);
+  current.DestroyLayoutNodes({2});
+  EXPECT_EQ(context_->FindShadowNodeByNodeId(2), nullptr);
+}
+
+TEST_F_UI(LayoutContextReuseTest, PreviousDestroyPreservesCurrentShadowNodes) {
+  lynx::tasm::LayoutContextClay previous(context_.get());
+  lynx::tasm::LayoutContextClay current(context_.get());
+  auto* node = AddNode();
+
+  previous.Destroy();
+
+  ASSERT_EQ(context_->FindShadowNodeByNodeId(2), node);
+  EXPECT_EQ(context_->GetLayoutDelegate(), &current);
+  current.Destroy();
+  EXPECT_EQ(context_->FindShadowNodeByNodeId(2), nullptr);
+}
+
+TEST_F_UI(LayoutContextReuseTest,
+          PreviousDestructionPreservesDelegateAndNativeMeasurement) {
+  class MeasuringLayoutContext final : public lynx::tasm::LayoutContextClay {
+   public:
+    using LayoutContextClay::LayoutContextClay;
+    int measurement_count = 0;
+    int layout_count = 0;
+
+   private:
+    ClayMeasureOutput OnMeasureNativeNode(int32_t, float width, int,
+                                          float height, int) override {
+      ++measurement_count;
+      return {width, height, 7.f};
+    }
+    void OnTriggerLayout() override { ++layout_count; }
+  };
+  auto previous =
+      std::make_unique<lynx::tasm::LayoutContextClay>(context_.get());
+  auto current = std::make_unique<MeasuringLayoutContext>(context_.get());
+  auto* node = AddNode();
+
+  previous.reset();
+
+  ASSERT_EQ(context_->GetLayoutDelegate(), current.get());
+  ASSERT_EQ(context_->FindShadowNodeByNodeId(2), node);
+  auto result = owner_->MeasureNativeNode(
+      node, {30.f, MeasureMode::kDefinite, 40.f, MeasureMode::kDefinite});
+  EXPECT_FLOAT_EQ(result.width, 30.f);
+  EXPECT_FLOAT_EQ(result.height, 40.f);
+  EXPECT_FLOAT_EQ(result.baseline, 7.f);
+  EXPECT_EQ(current->measurement_count, 1);
+  owner_->TriggerLayout();
+  EXPECT_EQ(current->layout_count, 1);
+
+  current->Destroy();
+  current.reset();
+  EXPECT_EQ(context_->GetLayoutDelegate(), nullptr);
+  EXPECT_EQ(context_->FindShadowNodeByNodeId(2), nullptr);
 }
 
 TEST_F_UI(ViewContextMemoryTest, PendingReportSurvivesPageReset) {
