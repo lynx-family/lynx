@@ -31,7 +31,7 @@ class HostScriptInterceptor final
   // Whether the domain accepts any event kind. Install fails otherwise.
   static bool Supports(Domain domain);
   static std::shared_ptr<HostScriptInterceptor> Install(
-      napi_env env, Domain domain, Reporter reporter = nullptr,
+      Napi::Env env, Domain domain, Reporter reporter = nullptr,
       Guard guard = {});
   bool IsAttached() const override {
     return Interceptor::IsAttached() && (!guard_ || guard_());
@@ -52,7 +52,7 @@ class HostScriptInterceptor final
     InterceptKind kind;
     Napi::FunctionReference function;
   };
-  HostScriptInterceptor(napi_env env, Domain domain, Reporter reporter)
+  HostScriptInterceptor(Napi::Env env, Domain domain, Reporter reporter)
       : env_(env), domain_(domain), reporter_(std::move(reporter)) {}
   Napi::Function Bind(Napi::Env env, const char* name,
                       Napi::Value (*callback)(const Napi::CallbackInfo&),
@@ -61,7 +61,7 @@ class HostScriptInterceptor final
   static Napi::Value Dispose(const Napi::CallbackInfo& info);
   Napi::Value Add(const Napi::CallbackInfo& info);
   void Remove(uint64_t id);
-  napi_env env_;
+  Napi::Env env_;
   Domain domain_;
   Reporter reporter_;
   Guard guard_;

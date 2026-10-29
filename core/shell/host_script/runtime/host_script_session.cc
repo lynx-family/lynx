@@ -22,14 +22,14 @@ void Reject(Napi::Promise::Deferred& deferred, const char* message,
 }  // namespace
 
 std::shared_ptr<HostScriptSession> HostScriptSession::Create(
-    ResultReporter reporter) {
+    ResultReporter reporter, bool supports_ssr) {
   return std::shared_ptr<HostScriptSession>(
-      new HostScriptSession(std::move(reporter)));
+      new HostScriptSession(std::move(reporter), supports_ssr));
 }
 
 HostScriptSession::~HostScriptSession() { Detach(); }
 
-bool HostScriptSession::Attach(napi_env env) {
+bool HostScriptSession::Attach(Napi::Env env) {
   auto dispatcher = HostScriptJsDispatcher::Create(env);
   if (!dispatcher) {
     return false;
@@ -168,9 +168,7 @@ void HostScriptSession::Notify(const std::string& event, int32_t code,
     if (event == "destroyed") {
       session.HandleDestroyed(env);
     } else if (event == "error") {
-      session.Emit(
-          env, event,
-          {Napi::Number::New(env, code), Napi::String::New(env, message)});
+      session.Emit(env, event, code, message);
     } else {
       session.Emit(env, event);
     }
@@ -211,7 +209,7 @@ void HostScriptSession::RemoveListener(const std::string& event,
 }
 
 void HostScriptSession::Emit(Napi::Env env, const std::string& event,
-                             const std::initializer_list<napi_value>& args) {
+                             int32_t code, const std::string& message) {
   if (destroyed_dispatched_ && event != "destroyed") {
     return;
   }
@@ -225,7 +223,12 @@ void HostScriptSession::Emit(Napi::Env env, const std::string& event,
     snapshot.push_back(Napi::Persistent(listener.Value()));
   }
   for (auto& listener : snapshot) {
-    listener.Value().Call(env.Global(), args);
+    if (event == "error") {
+      listener.Value().Call(env.Global(), {Napi::Number::New(env, code),
+                                           Napi::String::New(env, message)});
+    } else {
+      listener.Value().Call(env.Global(), {});
+    }
     if (env.IsExceptionPending()) {
       binding::CallbackHelper::ReportException(
           env.GetAndClearPendingException().As<Napi::Object>());

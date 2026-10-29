@@ -24,7 +24,7 @@ class HostScriptModule final : public runtime::js::NapiEnvironment::Module {
   void OnEnvDetach(Napi::Env env) override;
   void OnLoad(Napi::Object& target) override;
 
-  static void Register(napi_env env,
+  static void Register(Napi::Env env,
                        const std::shared_ptr<HostScriptSession>& session);
   static Napi::Error CreateError(Napi::Env env, const char* code,
                                  const std::string& message);

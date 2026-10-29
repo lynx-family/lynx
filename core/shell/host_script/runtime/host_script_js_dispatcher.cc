@@ -10,7 +10,7 @@ namespace lynx {
 namespace shell {
 
 std::shared_ptr<HostScriptJsDispatcher> HostScriptJsDispatcher::Create(
-    napi_env env) {
+    Napi::Env env) {
   if (!env) {
     return nullptr;
   }
@@ -41,8 +41,9 @@ bool HostScriptJsDispatcher::Post(Task task) {
     return false;
   }
   std::lock_guard<std::mutex> lock(mutex_);
-  return dispatcher_ &&
-         dispatcher_->NonBlockingCall(std::move(task)) == napi_ok;
+  if (!dispatcher_) return false;
+  // N-API success is zero in both the platform and prefixed backends.
+  return static_cast<int>(dispatcher_->NonBlockingCall(std::move(task))) == 0;
 }
 
 void HostScriptJsDispatcher::Detach() {

@@ -26,13 +26,14 @@ class HostScriptSession final
   using ResultReporter =
       std::function<void(const std::string&, const std::string&)>;
   static std::shared_ptr<HostScriptSession> Create(
-      ResultReporter reporter = nullptr);
+      ResultReporter reporter = nullptr, bool supports_ssr = true);
   ~HostScriptSession();
 
   // Attach/Detach and all N-API methods must run on the runtime's JS thread.
-  bool Attach(napi_env env);
+  bool Attach(Napi::Env env);
   void Detach();
   bool IsAttached() const;
+  bool SupportsSSR() const { return supports_ssr_; }
   void ReportEntryResult(const std::string& status, const std::string& message);
 
   // Platform-thread entry points; binding is allowed before or after Attach.
@@ -56,19 +57,20 @@ class HostScriptSession final
   void RemoveListener(const std::string& event, const Napi::Function& listener);
 
  private:
-  explicit HostScriptSession(ResultReporter reporter)
-      : reporter_(std::move(reporter)) {}
+  explicit HostScriptSession(ResultReporter reporter, bool supports_ssr)
+      : reporter_(std::move(reporter)), supports_ssr_(supports_ssr) {}
   using Deferred = Napi::Promise::Deferred;
   using Task = std::function<void(HostScriptSession&, Napi::Env)>;
   void Post(Task task);
   void MaybePostReady();
   void HandleDestroyed(Napi::Env env);
-  void Emit(Napi::Env env, const std::string& event,
-            const std::initializer_list<napi_value>& args = {});
+  void Emit(Napi::Env env, const std::string& event, int32_t code = 0,
+            const std::string& message = {});
   void SettleWaiters(const char* error = nullptr);
 
   mutable std::mutex mutex_;
   ResultReporter reporter_;
+  const bool supports_ssr_;
   std::shared_ptr<HostScriptJsDispatcher> dispatcher_;
   std::shared_ptr<LynxViewRefProxy> proxy_;
   bool attached_ = false;
