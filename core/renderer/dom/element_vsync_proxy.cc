@@ -85,11 +85,13 @@ void ElementVsyncProxy::RequestNextFrame() {
             fml::TimePoint frame_time = fml::TimePoint::FromEpochDelta(
                 fml::TimeDelta::FromNanoseconds(frame_start));
             const auto now = fml::TimePoint::Now();
-            // Keep time ahead of background events. iOS and custom embedders
-            // may also report VSync timestamps in another clock domain.
-            if (frame_time < shared_ptr->last_background_event_time_ ||
-                frame_time < now - fml::TimeDelta::FromSeconds(1) ||
-                frame_time > now + fml::TimeDelta::FromSeconds(1)) {
+            // System VSync must stay in the FML clock domain. An injected
+            // monitor owns its timeline and may intentionally use synthetic
+            // time.
+            if (!shared_ptr->vsync_monitor_->UsesCustomVSync() &&
+                (frame_time < shared_ptr->last_background_event_time_ ||
+                 frame_time < now - fml::TimeDelta::FromSeconds(1) ||
+                 frame_time > now + fml::TimeDelta::FromSeconds(1))) {
               frame_time = now;
             }
             shared_ptr->TickAllElement(frame_time);
