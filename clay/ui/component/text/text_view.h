@@ -184,7 +184,7 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
 #endif
   int selection_start_pos_ = -1;
   int selection_end_pos_ = -1;
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   SelectionPopupView* selection_popup_ = nullptr;
   OverlayView* selection_handle_container_ = nullptr;
   SelectionHandleView* start_selection_handle_ = nullptr;

@@ -72,6 +72,13 @@ config("config") {
   }
 
   cflags = []
+  if (clay_preserve_unwind_tables) {
+    # Keep native crash unwinding even when optimizing for size.
+    cflags += [
+      "-funwind-tables",
+      "-fasynchronous-unwind-tables",
+    ]
+  }
   if (is_mac) {
     cflags += [ "-g" ]
     cflags += [ "-fno-standalone-debug" ]
