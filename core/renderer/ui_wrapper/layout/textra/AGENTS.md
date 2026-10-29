@@ -60,6 +60,11 @@ Textra is not responsible for:
 
 ## Editing Guidance
 
+- Only forward computed line heights in `[0, 1e9)` as exact heights. Negative
+  reset values and large `normal` results use font-metric layout, matching the
+  legacy iOS undefined-value boundary. Preserve explicit zero line height.
+  Paragraph builders are recreated on layout, so omitting the override also
+  resets a previously explicit height.
 - If the task is about layout, style mapping, paragraph creation, or page creation, start here.
 - If the task is about actual drawing on Android/iOS, do not stop here; continue into the platform service implementation.
 - Keep cross-platform behavior here; do not add platform UI logic in this directory.
