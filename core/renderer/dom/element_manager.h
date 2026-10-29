@@ -942,18 +942,12 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   // Tick all element need to animated.
   void TickAllElement(fml::TimePoint &time);
-  // Query the earliest event deadline, optionally dispatching due events first.
-  // Max() means no wakeup is needed. Neither mode consumes pending style
-  // frames.
-  fml::TimePoint ProcessAnimationEvents(fml::TimePoint &time,
-                                        bool dispatch_events);
-  void SyncInfiniteAnimationEvents(fml::TimePoint &time);
+  void SuppressNextAnimationIterationEvents();
 
   // Permanently stop animation VSync when page destruction begins.
   void StopAnimationVsync();
 
-  // Pause animation and List frames and suppress infinite CSS animation event
-  // timers. Finite animation event timelines continue while frames are paused.
+  // Pause animation and List frames. Lifecycle events are processed on resume.
   void SetElementVsyncPaused(bool paused);
   bool IsElementVsyncPaused() const { return element_vsync_paused_; }
 
@@ -1594,6 +1588,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   // Animation proxy class
   std::shared_ptr<ElementVsyncProxy> element_vsync_proxy_;
+  // Capture once per page so experiment updates cannot interrupt resume.
+  bool enable_pause_element_vsync_in_background_{true};
   bool animation_vsync_stopped_{false};
   bool element_vsync_paused_{false};
 
