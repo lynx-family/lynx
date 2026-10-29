@@ -132,7 +132,7 @@ source_set("ui") {
       is_ios) {
     sources += rebase_path(ui_platform_fallback_sources, "", "platform")
   }
-  if (!enable_clay_lite) {
+  if (!enable_clay_lite && enable_clay_text_input) {
     sources += rebase_path(ui_extended_component_sources, "", "component")
     sources += rebase_path(ui_extended_rendering_sources, "", "rendering")
     sources += rebase_path(ui_extended_shadow_sources, "", "shadow")

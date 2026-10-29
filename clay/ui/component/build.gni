@@ -176,7 +176,7 @@ ui_extended_component_sources = [
 
 ui_component_unittests_sources = []
 
-if (enable_non_builtin_views) {
+if (enable_non_builtin_views && enable_clay_nested_scroll) {
   ui_component_sources += [
     "scroll_coordinator/scroll_coordinator.cc",
     "scroll_coordinator/scroll_coordinator.h",

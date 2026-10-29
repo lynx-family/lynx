@@ -10,7 +10,7 @@
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && (!defined(ENABLE_SKITY) || defined(ENABLE_SKITY_CODEC))
 #include "clay/fml/file.h"
 #include "clay/fml/mapping.h"
 #endif  // NDEBUG
@@ -38,7 +38,7 @@
 #endif
 
 namespace clay {
-#ifndef NDEBUG
+#if !defined(NDEBUG) && (!defined(ENABLE_SKITY) || defined(ENABLE_SKITY_CODEC))
 namespace {
 
 bool WriteDataToFile(const std::string& file_name, const void* data,
@@ -157,7 +157,7 @@ bool SharedImageBacking::ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
   return false;
 }
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && (!defined(ENABLE_SKITY) || defined(ENABLE_SKITY_CODEC))
 void SharedImageBacking::DumpToPng(const std::string& file_name) {
 #ifndef ENABLE_SKITY
   SkBitmap bitmap;
