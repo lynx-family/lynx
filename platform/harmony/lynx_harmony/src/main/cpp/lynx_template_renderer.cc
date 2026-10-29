@@ -243,6 +243,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
           .SetNativeModuleManager(std::move(native_module_manager))
           .SetWhiteBoard(white_board ? white_board->GetWhiteBoard() : nullptr)
           .build());
+  resource_loader->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
   if (lynx_context != nullptr) {
     if (auto painting_context = lynx_context->GetNativePaintingContext()) {
       painting_context->SetLynxEngineActorForPlatformContextRef(

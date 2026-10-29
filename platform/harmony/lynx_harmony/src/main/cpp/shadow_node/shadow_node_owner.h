@@ -72,6 +72,7 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
   void ScheduleLayout();
   void DestroyNode(int sign);
   void Destroy();
+  void PrepareForDestroy();
   fml::RefPtr<fml::RefCountedThreadSafeStorage> GetExtraBundle(int sign);
   void SetContext(const std::shared_ptr<LynxContext>& context);
 

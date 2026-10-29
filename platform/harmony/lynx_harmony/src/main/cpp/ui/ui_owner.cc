@@ -86,6 +86,9 @@ napi_value UIOwner::Init(napi_env env, napi_value exports) {
 }
 
 UIBase* UIOwner::CreateJSUI(int sign, const std::string& tag) {
+  if (!env_) {
+    return nullptr;
+  }
   base::NapiHandleScope scope(env_);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_CREATE_JS_UI, "tag", tag);
   napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
@@ -488,6 +491,9 @@ UIRoot* UIOwner::Root() {
 }
 
 void UIOwner::CreateNodeContent(UIBase* ui) const {
+  if (!env_) {
+    return;
+  }
   base::NapiHandleScope scope(env_);
   napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
   napi_value create =
@@ -609,7 +615,7 @@ void UIOwner::SetSoftInputMode(const std::string& mode) const {
 }
 
 void UIOwner::NotifyIntrinsicContentSizeChangedIfNeeded() {
-  if (destroyed_ || !env_ || !js_this_ || !root_) {
+  if (destroyed_ || !root_) {
     return;
   }
 
@@ -617,6 +623,16 @@ void UIOwner::NotifyIntrinsicContentSizeChangedIfNeeded() {
   float height = root_->height_;
   if (base::FloatsEqual(width, last_intrinsic_content_width_) &&
       base::FloatsEqual(height, last_intrinsic_content_height_)) {
+    return;
+  }
+
+  last_intrinsic_content_width_ = width;
+  last_intrinsic_content_height_ = height;
+  if (intrinsic_content_size_change_callback_) {
+    intrinsic_content_size_change_callback_(width, height);
+  }
+
+  if (!env_ || !js_this_) {
     return;
   }
 
@@ -636,9 +652,6 @@ void UIOwner::NotifyIntrinsicContentSizeChangedIfNeeded() {
   if (napi_typeof(env_, callback, &type) != napi_ok || type != napi_function) {
     return;
   }
-
-  last_intrinsic_content_width_ = width;
-  last_intrinsic_content_height_ = height;
 
   size_t argc = 2;
   napi_value argv[argc];
@@ -737,6 +750,38 @@ void UIOwner::ListReusePaintingNode(int sign, const std::string& item_key) {
   }
 }
 
+void UIOwner::PrepareForDestroy() {
+  if (destroyed_) {
+    return;
+  }
+  accessibility_exclusive_.clear();
+  ui_holder_.clear();
+  layout_changed_nodes_.clear();
+  invalidation_observer_count_ = 0;
+  pending_invalidation_observers_.clear();
+  keyboard_event_observers_.clear();
+  window_state_listeners_.clear();
+  external_memory_report_candidate_ids_.clear();
+  external_memory_report_pending_ = false;
+  position_change_listeners_.clear();
+  if (position_change_dispatch_state_) {
+    position_change_dispatch_state_->owner = nullptr;
+    position_change_dispatch_state_->pending = false;
+  }
+  keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
+  keyboard_avoiding_last_event_owner_ = kInvalidKeyboardAvoidingSign;
+  keyboard_height_ = 0.f;
+  keyboard_avoiding_screen_bottom_ = 0.f;
+  current_avoid_distance_ = 0.f;
+  last_intrinsic_content_width_ = 0.f;
+  last_intrinsic_content_height_ = 0.f;
+  attach_lynx_page_ui_callback_ = nullptr;
+  intrinsic_content_size_change_callback_ = nullptr;
+  root_ui_created_ = false;
+  root_ = nullptr;
+  destroyed_ = true;
+}
+
 UIOwner::~UIOwner() {
   if (position_change_dispatch_state_) {
     position_change_dispatch_state_->owner = nullptr;
@@ -754,6 +799,11 @@ void UIOwner::SetAttachLynxPageUICallback(AttachLynxPageUICallback callback) {
   if (attach_lynx_page_ui_callback_ && root_ui_created_ && root_) {
     attach_lynx_page_ui_callback_(root_.get());
   }
+}
+
+void UIOwner::SetIntrinsicContentSizeChangeCallback(
+    IntrinsicContentSizeChangeCallback callback) {
+  intrinsic_content_size_change_callback_ = std::move(callback);
 }
 
 void UIOwner::UpdateExtraData(
@@ -1073,30 +1123,7 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
       napi_remove_wrap(env, js_this, reinterpret_cast<void**>(&obj));
   NAPI_THROW_IF_FAILED_NULL(env, status, "UIOwner napi_remove_wrap failed!");
   obj->context_->ResetUIOwner();
-  obj->accessibility_exclusive_.clear();
-  obj->ui_holder_.clear();
-  obj->layout_changed_nodes_.clear();
-  obj->invalidation_observer_count_ = 0;
-  obj->pending_invalidation_observers_.clear();
-  obj->keyboard_event_observers_.clear();
-  obj->window_state_listeners_.clear();
-  obj->external_memory_report_candidate_ids_.clear();
-  obj->external_memory_report_pending_ = false;
-  obj->position_change_listeners_.clear();
-  if (obj->position_change_dispatch_state_) {
-    obj->position_change_dispatch_state_->owner = nullptr;
-    obj->position_change_dispatch_state_->pending = false;
-  }
-  obj->keyboard_avoiding_active_owner_ = kInvalidKeyboardAvoidingSign;
-  obj->keyboard_avoiding_last_event_owner_ = kInvalidKeyboardAvoidingSign;
-  obj->keyboard_height_ = 0.f;
-  obj->keyboard_avoiding_screen_bottom_ = 0.f;
-  obj->current_avoid_distance_ = 0.f;
-  obj->last_intrinsic_content_width_ = 0.f;
-  obj->last_intrinsic_content_height_ = 0.f;
-  obj->attach_lynx_page_ui_callback_ = nullptr;
-  obj->root_ui_created_ = false;
-  obj->root_ = nullptr;
+  obj->PrepareForDestroy();
   napi_delete_reference(env, obj->js_create_);
   napi_delete_reference(env, obj->js_create_node_content_);
   napi_delete_reference(env, obj->js_get_node_type_);
@@ -1118,7 +1145,6 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->js_this_ = nullptr;
   obj->js_ui_context_ = nullptr;
   obj->env_ = nullptr;
-  obj->destroyed_ = true;
   return nullptr;
 }
 
@@ -1466,7 +1492,7 @@ void UIOwner::DispatchPositionChangeEventsNow() {
   }
   UIRoot* root = root_ ? reinterpret_cast<UIRoot*>(root_.get()) : nullptr;
   if (destroyed_ || root == nullptr || !root->IsAttachedToViewTree() ||
-      context_ == nullptr || !context_->HasWindowInfo()) {
+      context_ == nullptr) {
     return;
   }
 
@@ -1923,6 +1949,9 @@ void UIOwner::UpdateComponentIdMap(UIBase* ui,
 
 void UIOwner::StartFluencyTrace(int sign, const std::string& scene,
                                 const std::string& tag) const {
+  if (!env_) {
+    return;
+  }
   base::NapiHandleScope scope(env_);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_START_FLUENCY_TRACE,
               [&scene, &tag](lynx::perfetto::EventContext ctx) {
@@ -1961,6 +1990,9 @@ void UIOwner::StartFluencyTrace(int sign, const std::string& scene,
 }
 
 void UIOwner::StopFluencyTrace(int sign) const {
+  if (!env_) {
+    return;
+  }
   base::NapiHandleScope scope(env_);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_STOP_FLUENCY_TRACE);
   if (!context_->GetFluencyTraceHelper().ShouldSendAllScrollEvent()) {
@@ -1985,6 +2017,9 @@ void UIOwner::StopFluencyTrace(int sign) const {
 }
 
 int UIOwner::GetJSNodeType(int sign, const std::string& tag) const {
+  if (!env_) {
+    return 0;
+  }
   auto runnable = [this, &tag]() -> int {
     // napi_ref could be reset to nullptr on ui thread.;
 
@@ -2022,6 +2057,9 @@ int UIOwner::GetJSNodeType(int sign, const std::string& tag) const {
 
 void UIOwner::PostDrawEndTimingFrameCallback(
     const tasm::PipelineID& pipeline_id) const {
+  if (!env_) {
+    return;
+  }
   base::NapiHandleScope scope(env_);
   napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
   napi_value post_draw_end_timing_frame_callback =
@@ -2041,6 +2079,9 @@ void UIOwner::PostDrawEndTimingFrameCallback(
 }
 
 void UIOwner::OnAvoidKeyboardCallback(float translate_y) const {
+  if (!env_) {
+    return;
+  }
   base::NapiHandleScope scope(env_);
   napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
   napi_value callback =
@@ -2063,6 +2104,9 @@ void UIOwner::OnAvoidKeyboardCallback(float translate_y) const {
 }
 
 void UIOwner::OnResourceLoadCallback(const lepus::Value& value) const {
+  if (!env_) {
+    return;
+  }
   base::NapiHandleScope scope(env_);
   napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
   napi_value callback =

@@ -22,6 +22,8 @@ class UIRoot : public UIView {
   ~UIRoot() override;
 
   void AttachToNodeContent(NativeNodeContent* content) override;
+  bool AttachToParent(ArkUI_NodeHandle parent);
+  void DetachFromParent();
 
   void UpdateLayout(float left, float top, float width, float height, const float* paddings,
                     const float* margins, const float* sticky, float max_height,
@@ -31,6 +33,7 @@ class UIRoot : public UIView {
   bool IsRoot() override;
   ArkUI_NodeHandle RootNode() override { return node_; }
   void GetOffsetToScreen(float offset_screen[2]);
+  bool GetOffsetToWindow(float offset_window[2]);
   bool IsVisible() override;
   void OnNodeReady() override;
   bool EventThrough(float point[2]) override;
@@ -52,6 +55,7 @@ class UIRoot : public UIView {
   bool is_root_visible_{false};
   bool is_position_change_observation_enabled_{false};
   ArkUI_NodeHandle root_proxy_{nullptr};
+  ArkUI_NodeHandle parent_node_{nullptr};
   ArkUI_NodeHandle normal_sibling_{nullptr};
   ArkUI_NodeHandle transparent_sibling_{nullptr};
   std::weak_ptr<EventTarget> parent_lynx_page_ui_;

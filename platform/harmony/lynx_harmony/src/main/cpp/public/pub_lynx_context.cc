@@ -5,6 +5,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/pub_lynx_context.h"
 
 #include "base/include/fml/message_loop_impl.h"
+#include "core/resource/lynx_resource_loader_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/pub_shadow_node_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/pub_ui_owner.h"
@@ -36,6 +37,9 @@ PubLynxContext::PubLynxContext(
       lynx::fml::MakeRefCounted<lynx::fml::TaskRunner>(
           lynx::fml::MessageLoop::EnsureInitializedForCurrentThread()
               .GetLoopImpl());
+  std::static_pointer_cast<lynx::harmony::LynxResourceLoaderHarmony>(
+      resource_loader)
+      ->SetUITaskRunner(ui_task_runner);
   // TODO(@hujing.1)add list_engine_proxy
   context_->OnLynxCreate(nullptr, nullptr, nullptr, nullptr, nullptr,
                          resource_loader, ui_task_runner, ui_task_runner,

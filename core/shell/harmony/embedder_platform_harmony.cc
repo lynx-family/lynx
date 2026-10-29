@@ -39,7 +39,7 @@ EmbedderPlatformHarmony::EmbedderPlatformHarmony(
 }
 
 EmbedderPlatformHarmony::~EmbedderPlatformHarmony() {
-  context_->ResetEmbedder();
+  context_->ResetHost();
   napi_delete_reference(env_, capi_embedder_ref_);
 };
 
@@ -81,8 +81,7 @@ napi_value EmbedderPlatformHarmony::New(napi_env env, napi_callback_info info) {
   EmbedderPlatformHarmony* native_object = new EmbedderPlatformHarmony(
       env, args[0], std::move(ui_delegate), context);
 
-  // TODO(chenyouhui): Remove embedder from LynxContext
-  context->SetEmbedder(native_object);
+  context->SetHost(native_object);
   native_object->SetContext(context);
   ui_owner->SetContext(context);
   shadow_node_owner->SetContext(context);
