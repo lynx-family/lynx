@@ -4118,6 +4118,362 @@ TEST_P(ElementTemplateInstanceTest,
   EXPECT_TRUE(root->gesture_map().empty());
 }
 
+TEST_P(ElementTemplateInstanceTest,
+       SpreadEventAndGestureStoragePreservesLiveContextAndSanitizesWorker) {
+  for (bool refactored : {false, true}) {
+    SCOPED_TRACE(refactored);
+    manager->config_->SetEnableEventHandleRefactor(refactored);
+    auto runtime = CreatePAPIRuntime();
+    auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+    ASSERT_NE(context, nullptr);
+    auto instance = CreateCompiledSpreadInstance(true);
+    tasm->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(runtime);
+
+    lepus::Value harness;
+    constexpr char source[] = R"JS((() => {
+      globalThis.tapCtx = {kind: 'tap', count: 0, _jsFn: {cb: {_jsFnId: 1}}};
+      globalThis.moveCtx = {kind: 'move', count: 0, _jsFn: {cb: {_jsFnId: 2}}};
+      globalThis.gestureCtx = {kind: 'gesture', state: 0};
+      globalThis.registry = new FinalizationRegistry(function() {});
+      globalThis.runWorklet = function(ctx) {
+        if (ctx.kind === 'tap') {
+          globalThis.sameTapCtx = ctx === globalThis.tapCtx;
+        } else if (ctx.kind === 'move') {
+          globalThis.sameMoveCtx = ctx === globalThis.moveCtx;
+        }
+        globalThis.registry.register(ctx._jsFn.cb, 1);
+        ctx.count++;
+      };
+      const label = ['initial'];
+      const spread = {
+        class: 'spread-box',
+        'data-label': label,
+        'main-thread:catchtap': {type: 'worklet', value: globalThis.tapCtx},
+        'main-thread:bindtouchmove': {
+          type: 'worklet',
+          value: globalThis.moveCtx,
+        },
+        'main-thread:gesture': {
+          type: 'gesture',
+          value: [{
+            id: 1,
+            type: 0,
+            config: {enabled: true},
+            callbacks: [{name: 'onUpdate', callback: globalThis.gestureCtx}],
+            relationMap: {waitFor: [], simultaneous: [], continueWith: []},
+          }],
+        },
+      };
+      return {
+        spread,
+        slots: [spread],
+        mutateOrdinary() {
+          label[0] = 'mutated';
+        },
+      };
+    })())JS";
+    ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, harness,
+                                 "spread_mts_storage.js"));
+
+    instance->SetAttributeSlots(harness.GetProperty("slots"));
+    EXPECT_TRUE(runtime->CallClosure(harness.GetProperty("mutateOrdinary"))
+                    .IsUndefined());
+
+    auto stored_spread = instance->attribute_slots_.GetProperty(0);
+    ASSERT_TRUE(stored_spread.IsTable());
+    EXPECT_TRUE(stored_spread.GetProperty("main-thread:catchtap")
+                    .GetProperty("value")
+                    .IsJSValue());
+    EXPECT_TRUE(stored_spread.GetProperty("main-thread:catchtap")
+                    .GetProperty("value")
+                    .IsEqual(runtime->GetGlobalData("tapCtx")));
+    EXPECT_TRUE(stored_spread.GetProperty("main-thread:gesture")
+                    .GetProperty("value")
+                    .GetProperty(0)
+                    .GetProperty("callbacks")
+                    .GetProperty(0)
+                    .GetProperty("callback")
+                    .IsEqual(runtime->GetGlobalData("gestureCtx")));
+
+    auto task = instance->CreateElementTreeTask(
+        tasm->template_entries_[DEFAULT_ENTRY_NAME].get());
+    task->Run();
+    auto prepared = task->GetFuture().get();
+    auto prepared_spread = prepared.prepared_attribute_slots_.GetProperty(0);
+    ASSERT_TRUE(prepared_spread.IsTable());
+    EXPECT_TRUE(prepared_spread.GetProperty("main-thread:catchtap").IsEmpty());
+    EXPECT_TRUE(
+        prepared_spread.GetProperty("main-thread:bindtouchmove").IsEmpty());
+    EXPECT_TRUE(prepared_spread.GetProperty("main-thread:gesture").IsEmpty());
+    EXPECT_EQ(prepared_spread.GetProperty("class").StdString(), "spread-box");
+    EXPECT_EQ(
+        prepared_spread.GetProperty("data-label").GetProperty(0).StdString(),
+        "initial");
+    ASSERT_NE(prepared.result_, nullptr);
+    EXPECT_TRUE(prepared.result_->children()[0]->event_map().empty());
+    EXPECT_TRUE(prepared.result_->children()[0]->lepus_event_map().empty());
+    EXPECT_TRUE(prepared.result_->children()[0]->gesture_map().empty());
+
+    auto root = instance->GetRoot();
+    ASSERT_NE(root, nullptr);
+    auto* target = static_cast<Element*>(root->children()[0].get());
+    const auto* dataset_label = DatasetValue(target, base::String("label"));
+    ASSERT_NE(dataset_label, nullptr);
+    EXPECT_EQ(dataset_label->GetProperty(0).StdString(), "initial");
+    EXPECT_EQ(target->data_model_->attributes().count("main-thread:gesture"),
+              0u);
+    target->ConsumeAllAttributes();
+    EXPECT_FALSE(target->config_flatten_);
+
+    ASSERT_EQ(target->gesture_map().count(1), 1u);
+    auto live_gesture_cb = target->gesture_map()
+                               .find(1)
+                               ->second->gesture_callbacks()[0]
+                               .lepus_object_;
+    ASSERT_TRUE(live_gesture_cb.IsJSValue());
+    live_gesture_cb.SetProperty("state", lepus::Value(19));
+    EXPECT_EQ(
+        runtime->GetGlobalData("gestureCtx").GetProperty("state").Number(), 19);
+
+    ASSERT_NE(target->lepus_event_map().find("tap"),
+              target->lepus_event_map().end());
+    EXPECT_TRUE(
+        target->lepus_event_map().find("tap")->second->lepus_object().IsEqual(
+            runtime->GetGlobalData("tapCtx")));
+    ASSERT_NE(target->lepus_event_map().find("touchmove"),
+              target->lepus_event_map().end());
+    EXPECT_TRUE(target->lepus_event_map()
+                    .find("touchmove")
+                    ->second->lepus_object()
+                    .IsEqual(runtime->GetGlobalData("moveCtx")));
+    if (refactored) {
+      root->MarkAttached();
+      target->MarkAttached();
+      event::EventDispatcher::DispatchEvent(
+          *target, fml::MakeRefCounted<event::TouchEvent>("tap"));
+      event::EventDispatcher::DispatchEvent(
+          *target, fml::MakeRefCounted<event::TouchEvent>("touchmove"));
+      EXPECT_TRUE(runtime->GetGlobalData("sameTapCtx").Bool());
+      EXPECT_TRUE(runtime->GetGlobalData("sameMoveCtx").Bool());
+      EXPECT_EQ(runtime->GetGlobalData("tapCtx").GetProperty("count").Number(),
+                1);
+      EXPECT_EQ(runtime->GetGlobalData("moveCtx").GetProperty("count").Number(),
+                1);
+    }
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       SpreadEventMultiSourceOverrideNullClearingAndFallback) {
+  for (bool refactored : {false, true}) {
+    SCOPED_TRACE(refactored);
+    manager->config_->SetEnableEventHandleRefactor(refactored);
+    auto runtime = CreatePAPIRuntime();
+    auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+    ASSERT_NE(context, nullptr);
+    auto instance = CreateCompiledSpreadInstance(false);
+    const auto& entry = tasm->template_entries_[DEFAULT_ENTRY_NAME];
+    entry->SetVm(runtime);
+    entry->template_bundle_.element_template_infos_["spread_template"]
+        ->elements_[0]
+        .attributes_ =
+        std::make_shared<const TemplateAttributes>(TemplateAttributes{
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                      base::String("main-thread:bindtap"), lepus::Value(), 0},
+            Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                      lepus::Value(), 1},
+            Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                      lepus::Value(), 2}});
+
+    lepus::Value harness;
+    constexpr char source[] = R"JS((() => {
+      globalThis.fired = [];
+      globalThis.runWorklet = function(ctx) {
+        globalThis.fired.push(ctx.id);
+      };
+      return {
+        directTap: {type: 'worklet', value: {id: 'direct'}},
+        spread1Tap: {
+          'main-thread:bindtap': {type: 'worklet', value: {id: 'spread1'}},
+        },
+        spread2Tap: {
+          'main-thread:bindtap': {type: 'worklet', value: {id: 'spread2'}},
+        },
+        spread2Null: {'main-thread:bindtap': null},
+        spreadEmpty: {id: 'keep-id'},
+      };
+    })())JS";
+    ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, harness,
+                                 "spread_event_override.js"));
+
+    auto slots = lepus::CArray::Create();
+    slots->emplace_back(harness.GetProperty("directTap"));
+    slots->emplace_back(harness.GetProperty("spread1Tap"));
+    slots->emplace_back(harness.GetProperty("spread2Tap"));
+    instance->SetAttributeSlots(lepus::Value(slots));
+
+    auto root = instance->GetRoot();
+    ASSERT_NE(root, nullptr);
+    root->FiberAddEvent("bindEvent", "tap", lepus::Value("btsTapHandler"),
+                        DEFAULT_ENTRY_NAME);
+    root->MarkAttached();
+
+    auto resolve_active_tap = [&]() {
+      const auto installed = root->lepus_event_map().find("tap");
+      std::string map_id =
+          (installed != root->lepus_event_map().end() &&
+           installed->second->lepus_object().IsObject())
+              ? installed->second->lepus_object().GetProperty("id").StdString()
+              : std::string("none");
+      if (!refactored) {
+        return map_id;
+      }
+      event::EventDispatcher::DispatchEvent(
+          *root, fml::MakeRefCounted<event::TouchEvent>("tap"));
+      auto fired = runtime->GetGlobalData("fired");
+      const int len = fired.GetLength();
+      std::string last = len > 0 ? fired.GetProperty(len - 1).StdString()
+                                 : std::string("none");
+      EXPECT_EQ(last, map_id);
+      lepus::Value ignored;
+      context->EvalBuf("globalThis.fired = []", 21, ignored, "reset.js");
+      return last;
+    };
+
+    EXPECT_EQ(resolve_active_tap(), "spread2");
+
+    // Deleting the key in spread 2 falls back to spread 1.
+    instance->SetAttributeSlot(2, harness.GetProperty("spreadEmpty"));
+    EXPECT_EQ(resolve_active_tap(), "spread1");
+
+    // Explicit null in spread 2 overrides earlier sources without dropping BTS.
+    instance->SetAttributeSlot(2, harness.GetProperty("spread2Null"));
+    EXPECT_EQ(resolve_active_tap(), "none");
+    ASSERT_NE(root->event_map().find("tap"), root->event_map().end());
+    EXPECT_EQ(root->event_map().find("tap")->second->function().str(),
+              "btsTapHandler");
+
+    // Removing spread 2 and clearing spread 1 falls back to direct slot 0.
+    instance->SetAttributeSlot(2, lepus::Value());
+    instance->SetAttributeSlot(1, lepus::Value());
+    EXPECT_EQ(resolve_active_tap(), "direct");
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       SpreadGestureMultiSourceOverrideFallbackAndInPlaceCallbackRefresh) {
+  auto runtime = CreatePAPIRuntime();
+  auto instance = CreateCompiledSpreadInstance(true);
+  const auto& entry = tasm->template_entries_[DEFAULT_ENTRY_NAME];
+  entry->SetVm(runtime);
+  auto& target_info =
+      entry->template_bundle_.element_template_infos_["spread_template"]
+          ->elements_[0]
+          .children_[0];
+  target_info.attributes_ =
+      std::make_shared<const TemplateAttributes>(TemplateAttributes{
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                    base::String("main-thread:gesture"), lepus::Value(), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                    lepus::Value(), 1},
+          Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                    lepus::Value(), 2},
+          Attribute{ATTRIBUTE_BINDING_TYPE_STATIC, base::String("flatten"),
+                    lepus::Value(true), 0},
+          Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("data-label"),
+                    lepus::Value(), 3}});
+
+  auto make_spread = [](const char* cls, const lepus::Value* gesture_opt) {
+    auto dict = lepus::Dictionary::Create();
+    if (cls != nullptr) {
+      dict->SetValue("class", lepus::Value(cls));
+    }
+    if (gesture_opt != nullptr) {
+      dict->SetValue("main-thread:gesture", *gesture_opt);
+    }
+    return lepus::Value(dict);
+  };
+
+  auto slots = lepus::CArray::Create();
+  slots->emplace_back(GestureDescriptor({1}, 1));
+  slots->emplace_back(make_spread("box-a", nullptr));
+  slots->emplace_back(lepus::Value());
+  slots->emplace_back(lepus::Value("initial"));
+  instance->SetAttributeSlots(lepus::Value(slots));
+
+  auto root = instance->GetRoot();
+  ASSERT_NE(root, nullptr);
+  auto* target = static_cast<Element*>(root->children()[0].get());
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  page->InsertNode(root);
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
+
+  ASSERT_EQ(target->gesture_map().count(1), 1u);
+  auto detector1 = target->gesture_map().find(1)->second;
+  EXPECT_FALSE(target->config_flatten_);
+
+  // Ordinary spread update without gesture key keeps active direct recognizer.
+  instance->SetAttributeSlot(1, make_spread("box-b", nullptr));
+  EXPECT_FALSE(target->dirty_ & Element::kDirtyGesture);
+  EXPECT_EQ(target->gesture_map().find(1)->second.get(), detector1.get());
+
+  // Spread 1 gesture overrides direct slot 0.
+  auto g2_v1 = GestureDescriptor({2}, 1);
+  instance->SetAttributeSlot(1, make_spread("box-b", &g2_v1));
+  EXPECT_TRUE(target->dirty_ & Element::kDirtyGesture);
+  EXPECT_EQ(target->gesture_map().count(1), 0u);
+  ASSERT_EQ(target->gesture_map().count(2), 1u);
+  auto detector2 = target->gesture_map().find(2)->second;
+  manager->OnPatchFinish(options);
+
+  // In-place callback refresh within spread 1 keeps recognizer pointer even
+  // when ordinary attributes in the same spread change.
+  auto g2_v2 = GestureDescriptor({2}, 2);
+  instance->SetAttributeSlot(1, make_spread("box-c", &g2_v2));
+  EXPECT_FALSE(target->dirty_ & Element::kDirtyGesture);
+  EXPECT_EQ(target->gesture_map().find(2)->second.get(), detector2.get());
+  EXPECT_EQ(detector2->gesture_callbacks()[0]
+                .lepus_object_.GetProperty("version")
+                .Number(),
+            2);
+  // Unrelated dynamic slot update also keeps spread recognizer untouched.
+  instance->SetAttributeSlot(3, lepus::Value("next-label"));
+  EXPECT_FALSE(target->dirty_ & Element::kDirtyGesture);
+  EXPECT_EQ(target->gesture_map().find(2)->second.get(), detector2.get());
+
+  // Explicit empty/null main-thread:gesture in spread 2 clears active
+  // detectors.
+  lepus::Value empty_gesture;
+  instance->SetAttributeSlot(2, make_spread("box-d", &empty_gesture));
+  EXPECT_TRUE(target->dirty_ & Element::kDirtyGesture);
+  EXPECT_TRUE(target->gesture_map().empty());
+  EXPECT_EQ(target->data_model_->attributes().count("has-react-gesture"), 0u);
+  manager->OnPatchFinish(options);
+
+  // Deleting main-thread:gesture from spread 2 falls back to spread 1 (id 2).
+  instance->SetAttributeSlot(2, make_spread("box-d", nullptr));
+  EXPECT_TRUE(target->dirty_ & Element::kDirtyGesture);
+  ASSERT_EQ(target->gesture_map().count(2), 1u);
+  EXPECT_EQ(target->data_model_->attributes().count("has-react-gesture"), 1u);
+  manager->OnPatchFinish(options);
+
+  // Deleting main-thread:gesture from spread 1 falls back to direct slot 0 (id
+  // 1).
+  instance->SetAttributeSlot(1, make_spread("box-c", nullptr));
+  EXPECT_TRUE(target->dirty_ & Element::kDirtyGesture);
+  EXPECT_EQ(target->gesture_map().count(2), 0u);
+  ASSERT_EQ(target->gesture_map().count(1), 1u);
+  manager->OnPatchFinish(options);
+
+  // Clearing direct slot 0 removes the remaining detector.
+  instance->SetAttributeSlot(0, lepus::Value());
+  EXPECT_TRUE(target->dirty_ & Element::kDirtyGesture);
+  EXPECT_TRUE(target->gesture_map().empty());
+  EXPECT_EQ(target->data_model_->attributes().count("has-react-gesture"), 0u);
+}
+
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,
                          ElementTemplateInstanceTest,
                          ::testing::ValuesIn(fiber_element_generation_params));

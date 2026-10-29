@@ -12836,6 +12836,7 @@ TEST_P(FiberElementTest, ApplyTemplateSpreadMainThreadNonEventKeys) {
   auto attribute_slots = lepus::CArray::Create();
   auto spread_object = lepus::Dictionary::Create();
   spread_object->SetValue("main-thread:ref", lepus::Value("ref-value"));
+  spread_object->SetValue("main-thread:id", lepus::Value("id-value"));
   spread_object->SetValue("main-thread:gesture", lepus::Value("gesture-value"));
   spread_object->SetValue("main-thread:bindtap", lepus::Value("onTap"));
   attribute_slots->emplace_back(lepus::Value(spread_object));
@@ -12851,9 +12852,9 @@ TEST_P(FiberElementTest, ApplyTemplateSpreadMainThreadNonEventKeys) {
 
   EXPECT_EQ(target->data_model_->attributes().at("main-thread:ref").StdString(),
             "ref-value");
-  EXPECT_EQ(
-      target->data_model_->attributes().at("main-thread:gesture").StdString(),
-      "gesture-value");
+  EXPECT_EQ(target->data_model_->attributes().at("main-thread:id").StdString(),
+            "id-value");
+  EXPECT_EQ(target->data_model_->attributes().count("main-thread:gesture"), 0u);
   EXPECT_EQ(target->data_model_->attributes().count("main-thread:bindtap"), 0u);
   auto event_iter = target->event_map().find("tap");
   ASSERT_NE(event_iter, target->event_map().end());

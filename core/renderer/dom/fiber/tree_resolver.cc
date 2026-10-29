@@ -330,6 +330,9 @@ bool RemoveTemplateDataAttribute(Element* element, const base::String& key) {
 void ApplyTemplateAttributeValue(Element* element, const base::String& key,
                                  const lepus::Value& value,
                                  TemplateAttributeApplyMode mode) {
+  if (TreeResolver::IsTemplateGestureAttribute(key)) {
+    return;
+  }
   if (TreeResolver::IsTemplateEventAttribute(key)) {
     if (mode == TemplateAttributeApplyMode::kNonEventOnly) {
       return;
@@ -352,12 +355,21 @@ void ApplyTemplateAttributeValue(Element* element, const base::String& key,
   element->SetAttribute(key, value);
 }
 
+bool IsTemplateGestureDescriptor(const lepus::Value& value) {
+  if (!value.IsObject()) {
+    return false;
+  }
+  const auto type = value.GetProperty(BASE_STATIC_STRING(kGestureType));
+  return type.IsString() && type.String().IsEqual("gesture");
+}
+
 void ApplyTemplateGestureAttribute(Element* element, const lepus::Value& value,
                                    const lepus::Value& previous_value,
                                    bool gesture_slot_updated) {
   const auto gestures =
-      value.IsEmpty() ? lepus::Value()
-                      : value.GetProperty(BASE_STATIC_STRING(kGestureValue));
+      IsTemplateGestureDescriptor(value)
+          ? value.GetProperty(BASE_STATIC_STRING(kGestureValue))
+          : lepus::Value();
   if (gestures.GetLength() != 0) {
     element->SetAttribute(BASE_STATIC_STRING(kHasReactGesture),
                           lepus::Value(true));
@@ -405,7 +417,7 @@ void ApplyTemplateGestureAttribute(Element* element, const lepus::Value& value,
     }
     element->SetGestureDetector(id, std::move(next));
   }
-  if (!previous_value.IsEmpty()) {
+  if (IsTemplateGestureDescriptor(previous_value)) {
     const auto previous_gestures =
         previous_value.GetProperty(BASE_STATIC_STRING(kGestureValue));
     if (gestures.GetLength() == 0 && previous_gestures.GetLength() != 0) {
@@ -445,6 +457,39 @@ lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
     return lepus::Value();
   }
   return attribute_slots.GetProperty(slot_index);
+}
+
+struct ResolvedTemplateGesture {
+  bool has_binding = false;
+  lepus::Value value;
+  std::optional<uint32_t> winning_slot_index;
+};
+
+ResolvedTemplateGesture ResolveEffectiveTemplateGesture(
+    const TemplateAttributes& template_attributes,
+    const lepus::Value& attribute_slots) {
+  BASE_STATIC_STRING_DECL(kMainThreadGesture, "main-thread:gesture");
+  ResolvedTemplateGesture resolved;
+  for (const auto& attr : template_attributes) {
+    if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC &&
+        TreeResolver::IsTemplateGestureAttribute(attr.key_)) {
+      resolved.has_binding = true;
+      resolved.value =
+          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_);
+      resolved.winning_slot_index = attr.slot_index_;
+      continue;
+    }
+    if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
+      const auto spread_value =
+          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_);
+      if (spread_value.Contains(kMainThreadGesture)) {
+        resolved.has_binding = true;
+        resolved.value = spread_value.GetProperty(kMainThreadGesture);
+        resolved.winning_slot_index = attr.slot_index_;
+      }
+    }
+  }
+  return resolved;
 }
 
 void ClearPreviousTemplateSpreadAttributes(
@@ -495,7 +540,6 @@ void ApplyTemplateAttributesToElementInternal(
                                           *previous_attribute_slots, mode);
   }
   bool has_applied_spread = false;
-  const Attribute* gesture_attribute = nullptr;
   for (const auto& attr : *template_attributes) {
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
       ApplyTemplateSpreadAttributes(
@@ -512,7 +556,6 @@ void ApplyTemplateAttributesToElementInternal(
     }
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC) {
       if (TreeResolver::IsTemplateGestureAttribute(attr.key_)) {
-        gesture_attribute = &attr;
         continue;
       }
       ApplyTemplateAttributeValue(
@@ -523,15 +566,25 @@ void ApplyTemplateAttributesToElementInternal(
   }
   // A detector requires a real platform view, including when a later template
   // attribute sets flatten=true. Apply its native constraints after attributes.
-  if (gesture_attribute != nullptr &&
-      mode != TemplateAttributeApplyMode::kNonEventOnly) {
-    const auto slot_index = gesture_attribute->slot_index_;
-    ApplyTemplateGestureAttribute(
-        element, ResolveAttributeSlotValue(attribute_slots, slot_index),
+  if (mode != TemplateAttributeApplyMode::kNonEventOnly) {
+    const auto current_gesture =
+        ResolveEffectiveTemplateGesture(*template_attributes, attribute_slots);
+    const auto previous_gesture =
         previous_attribute_slots != nullptr
-            ? ResolveAttributeSlotValue(*previous_attribute_slots, slot_index)
-            : lepus::Value(),
-        !updated_slot_index.has_value() || *updated_slot_index == slot_index);
+            ? ResolveEffectiveTemplateGesture(*template_attributes,
+                                              *previous_attribute_slots)
+            : ResolvedTemplateGesture{};
+    if (current_gesture.has_binding || previous_gesture.has_binding) {
+      const bool gesture_slot_updated =
+          !updated_slot_index.has_value() ||
+          current_gesture.winning_slot_index !=
+              previous_gesture.winning_slot_index ||
+          (current_gesture.winning_slot_index.has_value() &&
+           *current_gesture.winning_slot_index == *updated_slot_index);
+      ApplyTemplateGestureAttribute(element, current_gesture.value,
+                                    previous_gesture.value,
+                                    gesture_slot_updated);
+    }
   }
 }
 
