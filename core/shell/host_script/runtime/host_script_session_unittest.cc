@@ -168,9 +168,9 @@ class HostScriptSessionTest : public ::testing::Test {
   }
 
  protected:
-  void CreateSession(bool attach_first) {
+  void CreateSession(bool attach_first, bool supports_ssr = true) {
     state_ = std::make_shared<FakeProxyState>();
-    session_ = HostScriptSession::Create();
+    session_ = HostScriptSession::Create(nullptr, supports_ssr);
     if (attach_first) {
       EXPECT_TRUE(session_->Attach(env_));
     }
@@ -827,6 +827,23 @@ TEST_F(HostScriptSessionTest, PreservesAbsentMetadataAndDoesNotCacheUpdates) {
   state_->accepts = false;
   EXPECT_EQ(EvalString("viewRef.updateMetaData('{}')"), "false");
   EXPECT_EQ(EvalString("viewRef.sendGlobalEvent('event', '[]')"), "false");
+}
+
+TEST_F(HostScriptSessionTest, UnsupportedSsrThrowsWithoutPlatformDispatch) {
+  CreateSession(true, false);
+  LoadModule();
+  EXPECT_EQ(EvalString(R"(
+    ['loadSSR', 'hydrateSSR'].map(name => {
+      try {
+        viewRef[name](new Uint8Array([1]).buffer, 'lynx://page', '{}');
+        return 'accepted';
+      } catch (error) { return error.code; }
+    }).join(',')
+  )"),
+            "UNSUPPORTED,UNSUPPORTED");
+  EXPECT_TRUE(state_->calls.empty());
+  EXPECT_EQ(EvalString("viewRef.loadURL('lynx://page')"), "true");
+  EXPECT_EQ(state_->calls.size(), 1u);
 }
 
 TEST_F(HostScriptSessionTest, ReportsAsyncErrorsAndDestroysTargetOnce) {

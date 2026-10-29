@@ -186,10 +186,18 @@ Napi::Value HostScriptModule::LoadSsr(const Napi::CallbackInfo& info,
 }
 
 Napi::Value HostScriptModule::LoadSSR(const Napi::CallbackInfo& info) {
+  if (auto* state = StateFromInfo(info); state && !state->SupportsSSR()) {
+    return ThrowApiError(info.Env(), "UNSUPPORTED",
+                         "SSR is not supported by this platform");
+  }
   return LoadSsr(info, false);
 }
 
 Napi::Value HostScriptModule::HydrateSSR(const Napi::CallbackInfo& info) {
+  if (auto* state = StateFromInfo(info); state && !state->SupportsSSR()) {
+    return ThrowApiError(info.Env(), "UNSUPPORTED",
+                         "SSR hydration is not supported by this platform");
+  }
   return LoadSsr(info, true);
 }
 
@@ -352,7 +360,7 @@ Napi::Error HostScriptModule::CreateError(Napi::Env env, const char* code,
 }
 
 void HostScriptModule::Register(
-    napi_env env, const std::shared_ptr<HostScriptSession>& session) {
+    Napi::Env env, const std::shared_ptr<HostScriptSession>& session) {
   NapiEnvironment::From(Napi::Env(env))
       ->RegisterModule(kModuleName,
                        std::make_unique<HostScriptModule>(session));

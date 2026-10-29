@@ -95,7 +95,7 @@ Napi::Value ToJS(Napi::Env env, const Value& value) {
 // Copy data between VMs without sharing JS references. Reject executable,
 // cyclic and exotic objects instead of silently serializing them to {}.
 std::optional<Value> FromJS(Napi::Value input,
-                            std::vector<napi_value>& parents) {
+                            std::vector<Napi::Value>& parents) {
   if (input.IsEmpty()) return std::nullopt;
   auto env = input.Env();
   if (env.IsExceptionPending() || parents.size() >= 64) return std::nullopt;
@@ -122,7 +122,7 @@ std::optional<Value> FromJS(Napi::Value input,
   if (!input.IsObject() || input.IsFunction() || input.IsPromise())
     return std::nullopt;
   for (auto parent : parents)
-    if (input.StrictEquals(Napi::Value(env, parent))) return std::nullopt;
+    if (input.StrictEquals(parent)) return std::nullopt;
 
   auto object = input.As<Napi::Object>();
   const bool is_array = input.IsArray();
@@ -238,7 +238,7 @@ bool ValidMock(const Value& mock, const Value& event) {
 
 Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
                     Value* payload) {
-  std::vector<napi_value> parents;
+  std::vector<Napi::Value> parents;
   auto decision = FromJS(returned, parents);
   if (!decision || !decision->IsTable()) return Action::kInvalid;
   auto action = decision->GetProperty(kAction);
@@ -263,7 +263,7 @@ bool HostScriptInterceptor::Supports(Domain domain) {
 }
 
 std::shared_ptr<HostScriptInterceptor> HostScriptInterceptor::Install(
-    napi_env env, Domain domain, Reporter reporter, Guard guard) {
+    Napi::Env env, Domain domain, Reporter reporter, Guard guard) {
   Napi::ContextScope context_scope(env);
   Napi::Env napi(env);
   if (!Supports(domain) || napi.Global().Has("interceptor")) return nullptr;
@@ -299,7 +299,7 @@ Napi::Function HostScriptInterceptor::Bind(
   // JS may retain a callback after Uninstall and provider destruction.
   auto* data = new CallbackData{weak_from_this(), id};
   auto function = Napi::Function::New(env, callback, name, data);
-  function.AddFinalizer(data, [](napi_env, void* data, void*) {
+  function.AddFinalizer(data, [](auto, void* data, void*) {
     delete static_cast<CallbackData*>(data);
   });
   return function;

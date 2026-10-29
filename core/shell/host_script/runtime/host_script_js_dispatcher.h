@@ -20,7 +20,7 @@ class HostScriptJsDispatcher final {
  public:
   using Task = std::function<void(Napi::Env)>;
 
-  static std::shared_ptr<HostScriptJsDispatcher> Create(napi_env env);
+  static std::shared_ptr<HostScriptJsDispatcher> Create(Napi::Env env);
 
   ~HostScriptJsDispatcher();
 
