@@ -198,6 +198,7 @@ copy("lynx_embedder_capi") {
     "./public/capi/lynx_group_capi.h",
     "./public/capi/lynx_http_service_capi.h",
     "./public/capi/lynx_load_meta_capi.h",
+    "./public/capi/lynx_local_file_capi.h",
     "./public/capi/lynx_log_capi.h",
     "./public/capi/lynx_memory_capi.h",
     "./public/capi/lynx_native_module_capi.h",

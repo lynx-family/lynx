@@ -9,6 +9,7 @@ lynx_core_source_set("resource") {
     "core_js_loader_manager.cc",
     "core_js_loader_manager.h",
     "js_source_loader_desktop.h",
+    "lynx_local_file.cc",
     "lynx_resource_loader_embedder.cc",
     "lynx_resource_loader_embedder.h",
   ]
