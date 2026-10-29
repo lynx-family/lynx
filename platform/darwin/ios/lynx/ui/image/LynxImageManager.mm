@@ -591,6 +591,22 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   return NO;
 }
 
+- (NSDictionary<NSString*, id>*)animationInfo {
+  UIImage* image = _images[@(LynxImageRequestSrc)];
+  id<LynxServiceImageProtocol> service = [LynxImageLoader imageService];
+  NSDictionary* info = image && [service respondsToSelector:@selector(animationInfo:)]
+                           ? [service animationInfo:_imageView]
+                           : nil;
+  return @{
+    @"isAnimating" : _imageView ? @(_imageView.isAnimating) : NSNull.null,
+    @"frameIndex" : info[@"frameIndex"] ?: NSNull.null,
+    @"frameCount" : info[@"frameCount"]
+        ?: (image.images.count ? @(image.images.count)
+                               : (image && ![service isAnimatedImage:image] ? @1 : NSNull.null)),
+    @"loopDurationMs" : image.duration > 0 ? @(image.duration * 1000) : NSNull.null,
+  };
+}
+
 - (void)reset {
   NSArray<dispatch_block_t>* cancelBlocks;
   @synchronized(self) {

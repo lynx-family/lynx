@@ -9,8 +9,10 @@ import static com.lynx.tasm.behavior.AutoGenStyleConstants.IMAGERENDERING_PIXELA
 import android.graphics.Canvas;
 import android.view.View;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
+import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
@@ -124,6 +126,42 @@ public class UIImage extends UIView {
   public void stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback) {
     ensureLynxImageManager();
     mLynxImageManager.stopAnimation(params, callback);
+  }
+
+  @LynxUIMethod
+  public void getCurrentFrame(com.lynx.react.bridge.Callback callback) {
+    if (!LynxEnv.inst().isDevtoolEnabled()) {
+      callback.invoke(LynxUIMethodConstants.METHOD_NOT_FOUND);
+      return;
+    }
+    callback.invoke(LynxUIMethodConstants.SUCCESS, mLynxImageManager.getCurrentFrame());
+  }
+
+  @LynxUIMethod
+  public void getFrameCount(com.lynx.react.bridge.Callback callback) {
+    if (!LynxEnv.inst().isDevtoolEnabled()) {
+      callback.invoke(LynxUIMethodConstants.METHOD_NOT_FOUND);
+      return;
+    }
+    callback.invoke(LynxUIMethodConstants.SUCCESS, mLynxImageManager.getFrameCount());
+  }
+
+  @LynxUIMethod
+  public void getDuration(com.lynx.react.bridge.Callback callback) {
+    if (!LynxEnv.inst().isDevtoolEnabled()) {
+      callback.invoke(LynxUIMethodConstants.METHOD_NOT_FOUND);
+      return;
+    }
+    callback.invoke(LynxUIMethodConstants.SUCCESS, mLynxImageManager.getDuration());
+  }
+
+  @LynxUIMethod
+  public void isAnimating(com.lynx.react.bridge.Callback callback) {
+    if (!LynxEnv.inst().isDevtoolEnabled()) {
+      callback.invoke(LynxUIMethodConstants.METHOD_NOT_FOUND);
+      return;
+    }
+    callback.invoke(LynxUIMethodConstants.SUCCESS, mLynxImageManager.isAnimating());
   }
 
   @LynxUIMethod

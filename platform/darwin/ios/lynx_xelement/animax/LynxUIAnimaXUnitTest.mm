@@ -10,9 +10,13 @@
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender+Protected.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
+#import <Lynx/LynxUIContext+Internal.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxView+Internal.h>
 #import <XCTest/XCTest.h>
+#import <XElement/LynxUIAnimaX.h>
 #import <objc/runtime.h>
 
 #include <stdio.h>
@@ -22,6 +26,12 @@
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/shell/lynx_shell.h"
 #include "src/model/value/base_value.h"
+
+@interface LynxUIAnimaX (FrameCountTesting)
+- (void)resetFrameCount:(NSString *)source;
+- (void)onReady:(NSDictionary *)params;
+- (void)onError:(NSDictionary *)params;
+@end
 
 @interface AnimaXView (LynxUT)
 
@@ -152,6 +162,38 @@
   LynxUI *async_ui = [_uiOwner findUIBySign:12];
 
   XCTAssert(sync_ui.view.layer.opacity == async_ui.view.layer.opacity);
+}
+
+- (void)testFrameCountPreservesNativeValueAndInvalidatesOnReplacement {
+  LynxUIContext *context = [LynxUIContext new];
+  context.devtoolEnabled = YES;
+  LynxUIAnimaX *ui = [LynxUIAnimaX new];
+  ui.context = context;
+  id (^query)(void) = ^id {
+    __block id result;
+    __block BOOL called = NO;
+    [LynxUIMethodProcessor invokeMethod:@"getFrameCount"
+                             withParams:@{}
+                             withResult:^(int code, id data) {
+                               called = YES;
+                               XCTAssertEqual(code, kUIMethodSuccess);
+                               result = data;
+                             }
+                                  forUI:ui];
+    XCTAssertTrue(called);
+    return result;
+  };
+  XCTAssertEqualObjects(query(), NSNull.null);
+  [ui resetFrameCount:@"src:a"];
+  [ui onReady:@{@"total" : @12.5}];
+  XCTAssertEqualObjects(query(), @12.5);
+  [ui resetFrameCount:@"src:a"];
+  XCTAssertEqualObjects(query(), @12.5);
+  [ui resetFrameCount:@"src:b"];
+  XCTAssertEqualObjects(query(), NSNull.null);
+  [ui onReady:@{@"total" : @24}];
+  [ui onError:@{@"code" : @7, @"message" : @"load failed"}];
+  XCTAssertEqualObjects(query(), NSNull.null);
 }
 
 @end

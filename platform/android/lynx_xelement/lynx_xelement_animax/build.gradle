@@ -44,6 +44,7 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.0.0'
+    androidTestImplementation project(":LynxAndroid")
 
     def animaxVersion = "1.0.1-alpha.12"
     implementation("org.lynxsdk.lynx:animax-sdk:${animaxVersion}") {
