@@ -41,6 +41,8 @@ struct ImagePaintInfo;
 - (void)updatePaintInfo:(const lynx::tasm::ImagePaintInfo&)paintInfo;
 #endif
 
+- (NSDictionary<NSString*, id>* _Nonnull)animationInfo;
+
 - (void)reset;
 
 @end

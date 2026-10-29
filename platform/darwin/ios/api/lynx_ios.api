@@ -2380,6 +2380,7 @@ public class LynxImageManager : NSObject {
   public void LynxImageManager::setSign:(NSInteger sign);
   public void LynxImageManager::setEventMask:(NSInteger eventMask);
   public void LynxImageManager::updatePaintInfo:(const lynx::tasm::ImagePaintInfo &paintInfo);
+  public NSDictionary< NSString *, id > *_Nonnull LynxImageManager::animationInfo();
   public void LynxImageManager::reset();
 }
 
@@ -3537,6 +3538,7 @@ public class LynxRendererContext : NSObject {
   public LynxTextRenderManager* LynxRendererContext::textRenderManager textRenderManager;
   public void LynxRendererContext::createImageManager:withSourceURL:andPlaceholderURL:paintInfo:eventMask:imageKey:(int32_t imageManagerID,[withSourceURL] LynxURL *sourceURL,[andPlaceholderURL] LynxURL *placeholderURL,[paintInfo] const lynx::tasm::ImagePaintInfo &paintInfo,[eventMask] int32_t eventMask,[imageKey] int32_t imageKey);
   public LynxImageManager * LynxRendererContext::imageManagerForID:(int32_t imageManagerID);
+  public LynxImageManager * LynxRendererContext::imageManagerForSign:(int32_t sign);
   public void LynxRendererContext::destroyImage:(int32_t imageKey);
   public void LynxRendererContext::updateTextBundle:withBundle:(int32_t textID,[withBundle] void *bundle);
   public void LynxRendererContext::destroyTextBundle:(int32_t textID);
@@ -3820,6 +3822,7 @@ public protocol LynxServiceImageProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceImageProtocol-p::registerAnimatedImageCallback:UI:(id view,[UI] LynxUIImage *ui);
   public void LynxServiceImageProtocol-p::registerAnimatedImageCallback:startCallback:currentLoopCallback:finalLoopCallback:(id view,[startCallback] dispatch_block_t _Nullable startCallback,[currentLoopCallback] dispatch_block_t _Nullable currentLoopCallback,[finalLoopCallback] dispatch_block_t _Nullable finalLoopCallback);
   public BOOL LynxServiceImageProtocol-p::requiresAnimatedImageCallbackBeforeSettingImage();
+  public NSDictionary< NSString *, NSNumber * > * LynxServiceImageProtocol-p::animationInfo:(UIImageView *view);
   public dispatch_block_t LynxServiceImageProtocol-p::loadImageWithOptions:(LynxImageLoadOptions *options);
   public void LynxServiceImageProtocol-p::loadSVGImageWithURL:size:contextInfo:completed:(LynxURL *requestUrl,[size] CGSize targetSize,[contextInfo] NSDictionary *contextInfo,[completed] LynxImageLoadCompletionBlock completed);
 }

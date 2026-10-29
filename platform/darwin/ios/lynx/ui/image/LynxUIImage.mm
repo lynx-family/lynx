@@ -10,11 +10,13 @@
 #import <Lynx/LynxImageBlurUtils.h>
 #import <Lynx/LynxImageLoadInfo.h>
 #import <Lynx/LynxImageLoader.h>
+#import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxImageProcessor.h>
 #import <Lynx/LynxMeasureDelegate.h>
 #import <Lynx/LynxMemoryListener.h>
 #import <Lynx/LynxNinePatchImageProcessor.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxShadowNodeOwner.h>
@@ -1957,6 +1959,44 @@ LYNX_PROP_SETTER("region-to-decode", setRegionToDecode, NSDictionary*) {
 }
 
 #pragma mark UI_Method
+
+- (void)queryAnimation:(NSString*)key callback:(LynxUIMethodCallbackBlock)callback {
+  if (!callback) {
+    return;
+  }
+  if (!self.context.devtoolEnabled) {
+    callback(kUIMethodMethodNotFound, nil);
+    return;
+  }
+  if (((id<LynxRendererHost>)self.view).renderer != nil) {
+    LynxRendererContext* context = ((id<LynxRendererHost>)self.view).rendererContext;
+    LynxImageManager* manager = [context imageManagerForSign:(int32_t)self.sign];
+    callback(kUIMethodSuccess, [manager animationInfo][key] ?: NSNull.null);
+    return;
+  }
+  UIImage* image = self.imageFromSrc ? self.image : nil;
+  id<LynxServiceImageProtocol> service = [LynxImageLoader imageService];
+  NSDictionary* info = image && [service respondsToSelector:@selector(animationInfo:)]
+                           ? [service animationInfo:self.view]
+                           : nil;
+  NSDictionary* values = @{
+    @"frameIndex" : info[@"frameIndex"] ?: NSNull.null,
+    @"frameCount" : info[@"frameCount"]
+        ?: (image.images.count ? @(image.images.count)
+                               : (image && ![service isAnimatedImage:image] ? @1 : NSNull.null)),
+    @"loopDurationMs" : image.duration > 0 ? @(image.duration * 1000) : NSNull.null,
+    @"isAnimating" : @(self.view.isAnimating),
+  };
+  callback(kUIMethodSuccess, values[key]);
+}
+
+LYNX_UI_METHOD(getCurrentFrame) { [self queryAnimation:@"frameIndex" callback:callback]; }
+
+LYNX_UI_METHOD(getFrameCount) { [self queryAnimation:@"frameCount" callback:callback]; }
+
+LYNX_UI_METHOD(getDuration) { [self queryAnimation:@"loopDurationMs" callback:callback]; }
+
+LYNX_UI_METHOD(isAnimating) { [self queryAnimation:@"isAnimating" callback:callback]; }
 
 LYNX_UI_METHOD(startAnimate) {
   self.playState = LynxImagePlayStatePlaying;
