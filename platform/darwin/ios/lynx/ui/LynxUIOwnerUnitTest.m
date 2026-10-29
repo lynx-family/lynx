@@ -10,6 +10,7 @@
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView.h>
+#import <Lynx/LynxWeakProxy.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 
@@ -66,6 +67,61 @@
   XCTAssert([self.uiOwner getTagInfo:@"inline-text"] == LynxShadowNodeTypeCustom |
             LynxShadowNodeTypeVirtual);
   XCTAssert([self.uiOwner getTagInfo:@"xxxx"] == 0);
+}
+
+- (void)createNamedViewWithSign:(NSInteger)sign {
+  [self.uiOwner createUIWithSign:sign
+                         tagName:@"view"
+                        eventSet:[NSSet set]
+                   lepusEventSet:[NSSet set]
+                           props:@{@"name" : @"replacement-target"}
+                       nodeIndex:0
+              gestureDetectorSet:[NSSet set]];
+}
+
+- (void)prepareNamedViewOwner {
+  LynxComponentScopeRegistry *registry = [LynxComponentScopeRegistry new];
+  [LynxComponentScopeRegistry registerBuiltInBehaviors:registry];
+  self.uiOwner = [[LynxUIOwner alloc] initWithContainerView:[LynxView new]
+                                          componentRegistry:registry
+                                              screenMetrics:nil];
+}
+
+- (void)testRecyclingOldNodePreservesSameNameReplacement {
+  [self prepareNamedViewOwner];
+  [self createNamedViewWithSign:1];
+  [self createNamedViewWithSign:2];
+  LynxUI *replacement = [self.uiOwner findUIBySign:2];
+  XCTAssertNotNil(replacement.view);
+  XCTAssertEqual([self.uiOwner weakLynxUIWithName:@"replacement-target"].target, replacement);
+
+  [self.uiOwner recycleNode:1];
+  XCTAssertNil([self.uiOwner findUIBySign:1]);
+  XCTAssertEqual([self.uiOwner findUIBySign:2], replacement);
+  XCTAssertEqual([self.uiOwner weakLynxUIWithName:@"replacement-target"].target, replacement);
+
+  [self.uiOwner recycleNode:2];
+  XCTAssertNil([self.uiOwner weakLynxUIWithName:@"replacement-target"]);
+}
+
+- (void)testCleanupOfOldCreatedNodePreservesSameNameReplacement {
+  [self prepareNamedViewOwner];
+  [self createNamedViewWithSign:1];
+  [self createNamedViewWithSign:2];
+  LynxUI *replacement = [self.uiOwner findUIBySign:2];
+  [self.uiOwner cleanupCreatedUIWithSign:1];
+  XCTAssertNil([self.uiOwner findUIBySign:1]);
+  XCTAssertEqual([self.uiOwner weakLynxUIWithName:@"replacement-target"].target, replacement);
+}
+
+- (void)testRecyclingBeforeCreatingSameNameReplacement {
+  [self prepareNamedViewOwner];
+  [self createNamedViewWithSign:1];
+  [self.uiOwner recycleNode:1];
+  XCTAssertNil([self.uiOwner weakLynxUIWithName:@"replacement-target"]);
+  [self createNamedViewWithSign:2];
+  XCTAssertEqual([self.uiOwner weakLynxUIWithName:@"replacement-target"].target,
+                 [self.uiOwner findUIBySign:2]);
 }
 
 - (void)testExternalMemoryRemovedNodeCandidatesTrackDetachedLifetime {
