@@ -149,8 +149,25 @@ void GlobalDevToolPlatformAndroid::HandleHSRScript(HSRScriptRequest request,
       [request = std::move(request), callback = std::move(callback)]() mutable {
         if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
           std::move(callback)(Json::Value(), "HSR_DEBUG_DISABLED");
-        } else if (request.operation ==
-                   HSRScriptRequest::Operation::kLoadScript) {
+          return;
+        }
+        ProcessRuntime::GetInstance().SetEventSink(
+            [](ProcessRuntime::Event event, ProcessRuntime::Guard current) {
+              Json::Value message(Json::objectValue);
+              if (!Json::Reader().parse(event.payload_json, message["payload"],
+                                        false))
+                return;
+              message["version"] = 1;
+              message["thread"] = event.thread;
+              message["runtimeId"] = std::to_string(event.runtime_id);
+              GlobalDevToolPlatformFacade::GetInstance().SendHSRMessageReceived(
+                  Json::FastWriter().write(message),
+                  [current = std::move(current)] {
+                    return current() &&
+                           tasm::DevToolLifecycle::GetInstance().IsEnabled();
+                  });
+            });
+        if (request.operation == HSRScriptRequest::Operation::kLoadScript) {
           StartLoad(std::move(request), std::move(callback));
         } else {
           Evaluate(std::move(request), std::move(callback));

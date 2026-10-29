@@ -23,6 +23,7 @@ enum class InterceptKind {
   kCall,
   kResult,
   kCallback,
+  kError,
   kCount
 };
 

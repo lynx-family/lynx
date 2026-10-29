@@ -58,6 +58,33 @@ ProcessRuntime::Completion Collect(const std::shared_ptr<Results>& results) {
   return [results](Result result) { results->Add(std::move(result)); };
 }
 
+class Events {
+ public:
+  struct Entry {
+    ProcessRuntime::Event event;
+    ProcessRuntime::Guard current;
+  };
+  void Add(ProcessRuntime::Event event, ProcessRuntime::Guard current) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    entries_.push_back({std::move(event), std::move(current)});
+    changed_.notify_all();
+  }
+  bool WaitFor(size_t count) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return changed_.wait_for(lock, kTimeout,
+                             [&] { return entries_.size() >= count; });
+  }
+  std::vector<Entry> Values() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return entries_;
+  }
+
+ private:
+  std::mutex mutex_;
+  std::condition_variable changed_;
+  std::vector<Entry> entries_;
+};
+
 // Keep a lifecycle transition pending without sleeping or blocking the test's
 // calling thread. Releasing in the destructor also makes failed assertions
 // safe.
@@ -102,6 +129,7 @@ class ProcessRuntimeTest : public ::testing::Test {
     auto stopped = std::make_shared<Results>();
     runtime_.Shutdown(Collect(stopped));
     EXPECT_TRUE(stopped->WaitFor(1));
+    runtime_.SetEventSink({});
     for (auto& thread : threads_) {
       thread->Join();
     }
@@ -130,10 +158,171 @@ class ProcessRuntimeTest : public ::testing::Test {
     return results->Values().front();
   }
 
+  std::shared_ptr<Events> CollectEvents() {
+    auto events = std::make_shared<Events>();
+    runtime_.SetEventSink([events](auto event, auto current) {
+      events->Add(std::move(event), std::move(current));
+    });
+    return events;
+  }
+
   ProcessRuntime& runtime_ = ProcessRuntime::GetInstance();
   std::array<std::unique_ptr<fml::Thread>, 3> threads_;
   ProcessRuntime::Runners runners_;
 };
+
+TEST_F(ProcessRuntimeTest, EmitEventCopiesJSONAndIdentifiesEveryOwner) {
+  Initialize("");
+  auto events = CollectEvents();
+  size_t count = 0;
+  for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
+    auto result = Evaluate(domain, R"(
+      const payload = {type: 'sample', message: 'hello 🌍'};
+      JSON.stringify = () => 'replaced';
+      __hostScriptThread.emitEvent(payload);
+      payload.message = 'changed after emission';
+      void 0;
+    )")
+                      ->Values()
+                      .front();
+    ASSERT_TRUE(result.success) << result.error;
+    ASSERT_TRUE(events->WaitFor(++count));
+    const auto entry = events->Values().back();
+    EXPECT_EQ(entry.event.thread, HostScriptDomainName(domain));
+    EXPECT_EQ(entry.event.runtime_id, result.runtime_id);
+    EXPECT_EQ(entry.event.payload_json,
+              R"({"type":"sample","message":"hello 🌍"})");
+    EXPECT_TRUE(entry.current());
+  }
+}
+
+TEST_F(ProcessRuntimeTest, EmitEventRejectsInvalidAndOversizedPayloads) {
+  Initialize("");
+  auto events = CollectEvents();
+  for (const char* source :
+       {"__hostScriptThread.emitEvent()", "__hostScriptThread.emitEvent(null)",
+        "__hostScriptThread.emitEvent('text')",
+        "__hostScriptThread.emitEvent([])",
+        "__hostScriptThread.emitEvent(() => {})",
+        "const cycle = {}; cycle.self = cycle; "
+        "__hostScriptThread.emitEvent(cycle)",
+        "__hostScriptThread.emitEvent({message: 'x'.repeat(65536)})",
+        "__hostScriptThread.emitEvent({toJSON() { throw Error('failed'); }})",
+        "__hostScriptThread.emitEvent({toJSON() { return undefined; }})"}) {
+    auto result = Evaluate(Domain::kBTS, source)->Values().front();
+    EXPECT_FALSE(result.success) << source;
+    EXPECT_FALSE(result.error.empty()) << source;
+  }
+  EXPECT_TRUE(events->Values().empty());
+}
+
+TEST_F(ProcessRuntimeTest, ViewErrorPublishesAfterLoadScriptCompletes) {
+  auto ready = std::make_shared<Results>();
+  ASSERT_TRUE(runtime_.Initialize(runners_, Collect(ready),
+                                  &HostScriptInterceptorBindings::Create));
+  ASSERT_TRUE(ready->WaitFor(3));
+  auto events = CollectEvents();
+  auto loaded = Load(R"(
+    globalThis.errorSubscription = interceptor.on('view.error', event => {
+      __hostScriptThread.emitEvent({type: 'lynx.error', level: 'error',
+        viewId: event.viewId, code: event.code, message: event.message});
+    });
+  )");
+  ASSERT_TRUE(loaded.success) << loaded.error;
+  EXPECT_TRUE(events->Values().empty());
+  runtime_.NotifyViewError({"42", 1001, "later error 🌍"});
+  ASSERT_TRUE(events->WaitFor(1));
+  const auto event = events->Values().front().event;
+  EXPECT_EQ(event.thread, "bts");
+  EXPECT_EQ(event.runtime_id, loaded.runtime_id);
+  EXPECT_EQ(
+      event.payload_json,
+      R"({"type":"lynx.error","level":"error","viewId":"42","code":1001,"message":"later error 🌍"})");
+  ASSERT_TRUE(Evaluate(Domain::kBTS, "errorSubscription.dispose()")
+                  ->Values()
+                  .front()
+                  .success);
+  runtime_.NotifyViewError({"42", 1002, "after unsubscribe"});
+  ASSERT_TRUE(Evaluate(Domain::kBTS, "void 0")->Values().front().success);
+  EXPECT_EQ(events->Values().size(), 1u);
+}
+
+TEST_F(ProcessRuntimeTest, ViewErrorObserversReceiveIndependentCopies) {
+  auto ready = std::make_shared<Results>();
+  ASSERT_TRUE(runtime_.Initialize(runners_, Collect(ready),
+                                  &HostScriptInterceptorBindings::Create, R"(
+    interceptor.on('view.error', event => {
+      __hostScriptThread.emitEvent(event);
+      event.message = 'changed';
+      throw Error('observer failure');
+    });
+  )"));
+  ASSERT_TRUE(ready->WaitFor(3));
+  auto events = CollectEvents();
+  runtime_.NotifyViewError({"7", 5, "original", "warn"});
+  ASSERT_TRUE(events->WaitFor(3));
+  for (const auto& entry : events->Values()) {
+    // Object key order is owned by the N-API dictionary conversion.
+    EXPECT_NE(entry.event.payload_json.find("\"message\":\"original\""),
+              std::string::npos);
+    EXPECT_NE(entry.event.payload_json.find("\"level\":\"warn\""),
+              std::string::npos);
+  }
+}
+
+TEST_F(ProcessRuntimeTest, ReplacementInvalidatesEventDeliveryAndObserver) {
+  auto ready = std::make_shared<Results>();
+  ASSERT_TRUE(runtime_.Initialize(runners_, Collect(ready),
+                                  &HostScriptInterceptorBindings::Create));
+  ASSERT_TRUE(ready->WaitFor(3));
+  auto events = CollectEvents();
+  ASSERT_TRUE(Load(R"(
+    interceptor.on('view.error', event => __hostScriptThread.emitEvent(event));
+  )")
+                  .success);
+  runtime_.NotifyViewError({"1", 1, "old"});
+  ASSERT_TRUE(events->WaitFor(1));
+  auto previous = events->Values().front();
+  EXPECT_TRUE(previous.current());
+  auto loaded = Load("");
+  ASSERT_TRUE(loaded.success);
+  EXPECT_FALSE(previous.current());
+  runtime_.NotifyViewError({"1", 2, "must not reach old observer"});
+  ASSERT_TRUE(Evaluate(Domain::kBTS, "void 0")->Values().front().success);
+  EXPECT_EQ(events->Values().size(), 1u);
+  ASSERT_TRUE(
+      Evaluate(Domain::kBTS, "__hostScriptThread.emitEvent({message:'new'})")
+          ->Values()
+          .front()
+          .success);
+  ASSERT_TRUE(events->WaitFor(2));
+  EXPECT_EQ(events->Values().back().event.runtime_id, loaded.runtime_id);
+  EXPECT_TRUE(events->Values().back().current());
+  auto stopped = std::make_shared<Results>();
+  runtime_.Shutdown(Collect(stopped));
+  ASSERT_TRUE(stopped->WaitFor(1));
+  EXPECT_FALSE(events->Values().back().current());
+}
+
+TEST_F(ProcessRuntimeTest, QueuedViewErrorIsDroppedWhenGenerationCloses) {
+  auto ready = std::make_shared<Results>();
+  ASSERT_TRUE(runtime_.Initialize(runners_, Collect(ready),
+                                  &HostScriptInterceptorBindings::Create));
+  ASSERT_TRUE(ready->WaitFor(3));
+  auto events = CollectEvents();
+  ASSERT_TRUE(Load(R"(
+    interceptor.on('view.error', event => __hostScriptThread.emitEvent(event));
+  )")
+                  .success);
+  RunnerBlock blocked(runners_.bts);
+  runtime_.NotifyViewError({"1", 1, "queued"});
+  auto loaded = std::make_shared<Results>();
+  runtime_.LoadScript("", "replacement.js", Collect(loaded));
+  blocked.Release();
+  ASSERT_TRUE(loaded->WaitFor(1));
+  ASSERT_TRUE(loaded->Values().front().success);
+  EXPECT_TRUE(events->Values().empty());
+}
 
 TEST_F(ProcessRuntimeTest, ViewCreatedBroadcastsIndependentSnapshotsToOwners) {
   auto ready = std::make_shared<Results>();

@@ -742,6 +742,28 @@ TEST_F(HostScriptInterceptorTest, CreatedNotificationsAllowReentrantDelivery) {
   env_.Global().Delete("notifyCreated");
 }
 
+TEST_F(HostScriptInterceptorTest, ErrorObserversCannotPatchOrSuppressErrors) {
+  for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS,
+                      Interceptor::Domain::kMTS}) {
+    Install(domain);
+    Script(R"(
+      interceptor.on('view.error', (event, chain) => {
+        event.message = 'changed';
+        return chain.mock({message: 'suppressed'});
+      });
+    )");
+    lepus::Value event(lepus::Dictionary::Create());
+    event.SetProperty("message", lepus::Value("original"));
+    auto result = provider_->Dispatch(InterceptKind::kError, event);
+    EXPECT_FALSE(result.failed);
+    EXPECT_FALSE(result.patch.IsTable());
+    EXPECT_FALSE(result.mock.IsTable());
+    EXPECT_EQ(event.GetProperty("message").StdString(), "original");
+    provider_->Uninstall();
+    provider_.reset();
+  }
+}
+
 TEST_F(HostScriptSessionTest, SupportsBothAttachAndBindOrders) {
   for (bool attach_first : {true, false}) {
     state_ = std::make_shared<FakeProxyState>();

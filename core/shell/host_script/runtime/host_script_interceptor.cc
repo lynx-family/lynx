@@ -36,7 +36,7 @@ enum class Action { kInvalid, kProceed, kMock };
 // Creation notifications are available in every domain. Decisions stay on
 // the domain owning the intercepted operation.
 bool Accepts(Interceptor::Domain domain, Kind kind) {
-  if (kind == Kind::kCreated) return true;
+  if (kind == Kind::kCreated || kind == Kind::kError) return true;
   switch (domain) {
     case Interceptor::Domain::kUI:
       return kind == Kind::kLoadTemplate || kind == Kind::kUpdateMetaData;
@@ -379,7 +379,7 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   if (!active_ || !IsAttached()) return result;
   if (!HasHandlers(kind)) return result;
   // Notifications ignore return values, so nested delivery is safe.
-  const bool decision = kind != Kind::kCreated;
+  const bool decision = kind != Kind::kCreated && kind != Kind::kError;
   if (dispatching_ && decision) {
     ReportCoverageGap(kind, "Reentrant interceptor dispatch is not supported");
     result.failed = true;

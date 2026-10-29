@@ -17,6 +17,9 @@ namespace shell {
 namespace {
 BASE_STATIC_STRING_DECL(kViewId, "viewId");
 BASE_STATIC_STRING_DECL(kUrl, "url");
+BASE_STATIC_STRING_DECL(kCode, "code");
+BASE_STATIC_STRING_DECL(kMessage, "message");
+BASE_STATIC_STRING_DECL(kLevel, "level");
 }  // namespace
 
 std::unique_ptr<ProcessRuntime::RuntimeBindings>
@@ -70,6 +73,17 @@ void HostScriptInterceptorBindings::NotifyViewCreated(
   snapshot.SetProperty(kViewId, lepus::Value(event.view_id));
   snapshot.SetProperty(kUrl, lepus::Value(event.url));
   provider_->Dispatch(InterceptKind::kCreated, snapshot);
+}
+
+void HostScriptInterceptorBindings::NotifyViewError(
+    const ProcessRuntime::ViewError& event) {
+  if (!provider_) return;
+  lepus::Value snapshot(lepus::Dictionary::Create());
+  snapshot.SetProperty(kViewId, lepus::Value(event.view_id));
+  snapshot.SetProperty(kCode, lepus::Value(event.code));
+  snapshot.SetProperty(kMessage, lepus::Value(event.message));
+  snapshot.SetProperty(kLevel, lepus::Value(event.level));
+  provider_->Dispatch(InterceptKind::kError, snapshot);
 }
 
 }  // namespace shell
