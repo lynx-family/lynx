@@ -6,11 +6,14 @@
 
 #include <utility>
 
+#include "base/include/fml/message_loop.h"
+
 namespace testing {
 namespace utils {
 
 std::unique_ptr<lynx::runtime::js::Runtime> makeJSRuntime(
     std::shared_ptr<lynx::runtime::js::JSRuntimeDelegate> delegate) {
+  lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();
   std::unique_ptr<lynx::runtime::js::Runtime> rt =
       lynx::runtime::js::makeQuickJsRuntime();
   lynx::runtime::js::StartupData data{};

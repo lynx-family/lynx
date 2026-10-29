@@ -79,6 +79,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Keep
@@ -1728,6 +1729,47 @@ public class LynxEnv {
     if (inst().isNativeLibraryLoaded()) {
       nativeSetGlobalBytecodeGenerateCallback(callback);
     }
+  }
+
+  /**
+   * Receives one dictionary per high-memory event asynchronously on the main thread.
+   * The type is large_vm, large_bts, or large_ui. Events contain key (VM name or page key)
+   * and bytes; large_vm and large_bts add vm_type (quickjs, v8, jsvm, jsc, or unknown).
+   * large_ui adds counts with alternating category names and instance counts.
+   * Monitored VM events add total_page_count
+   * and slots with alternating names and byte counts, sorted by descending bytes.
+   * Each VM or page event type is emitted once, even if no callback is registered.
+   */
+  public interface HighMemoryCallback {
+    void onHighMemoryEvent(@NonNull Map<String, Object> event);
+  }
+
+  private static final CopyOnWriteArrayList<HighMemoryCallback> sHighMemoryCallbacks =
+      new CopyOnWriteArrayList<>();
+
+  /**
+   * Appends a process-wide high-memory callback, or clears all callbacks with null.
+   * Callbacks are retained globally and invoked in registration order.
+   * Each delivery uses a snapshot; changes during callbacks affect later events.
+   * Events are not replayed.
+   * Page and V8/JSVM events require memory monitoring; shared QuickJS VM events do not.
+   */
+  @AnyThread
+  public static void setHighMemoryCallback(@Nullable HighMemoryCallback callback) {
+    if (callback != null) {
+      sHighMemoryCallbacks.add(callback);
+    } else {
+      sHighMemoryCallbacks.clear();
+    }
+  }
+
+  @CalledByNative
+  private static void onHighMemoryEvent(Map<String, Object> event) {
+    UIThreadUtils.runOnUiThread(() -> {
+      for (HighMemoryCallback callback : sHighMemoryCallbacks) {
+        callback.onHighMemoryEvent(event);
+      }
+    });
   }
 
   public boolean tryToLoadV8Bridge(boolean unused) {

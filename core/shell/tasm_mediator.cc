@@ -368,12 +368,7 @@ void TasmMediator::ReportElementMemoryInfo(int64_t mem_size_bytes,
     tasm::performance::MemoryRecord record;
     record.category_ = tasm::performance::kCategoryTasmElement;
     record.size_bytes_ = mem_size_bytes;
-    auto detail =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
-    detail->emplace("singleElementSizeBytes",
-                    std::to_string(mem_size_bytes / element_count));
-    detail->emplace("elementCount", std::to_string(element_count));
-    record.detail_ = std::move(detail);
+    record.instance_count_ = element_count;
     performance->GetMemoryMonitor().UpdateMemoryUsage(std::move(record));
   });
 }

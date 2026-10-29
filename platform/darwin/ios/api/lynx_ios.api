@@ -1552,6 +1552,7 @@ public class LynxEnv : NSObject {
   public NSString *_Nonnull LynxEnv::getSSRApiVersion();
   public void LynxEnv::clearBytecode:(nonnull NSString *bytecodeSourceUrl);
   public void LynxEnv::setGlobalBytecodeGenerateCallback:(nullable LynxBytecodeResponseBlock callback);
+  public void LynxEnv::setHighMemoryCallback:(nullable LynxHighMemoryCallback callback);
   public NSString * LynxEnv()::_keyStringFromType:(LynxEnvKey key);
   public BOOL LynxEnv()::stringValueToBool:defaultValue:(NSString *value, [defaultValue] BOOL defaultValue);
 }
@@ -6759,6 +6760,7 @@ public enum LynxMTSContextType {
   LynxMTSContextTypeRTSNative
 }
 
+  public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxHighMemoryCallback) (NSDictionary< NSString *, id > *event) LynxHighMemoryCallback;
 
 public enum LynxEnvKey {
   LynxEnvSwitchRunloopThread

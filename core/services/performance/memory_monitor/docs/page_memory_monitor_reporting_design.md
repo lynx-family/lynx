@@ -155,17 +155,18 @@ owns creation and binding order.
 
 When a shared BTS record exists, refresh replaces its VM-heap value with the
 page's current attributed slot value. This keeps later
-`ReportMemoryForTrace()` iteration source-agnostic: the cached BTS record
+`ReportMemoryUsage()` iteration source-agnostic: the cached BTS record
 already represents this page rather than the whole shared VM.
 
 An owned VM without a BTS record, or a JSC VM without heap support, contributes
 no BTS bytes to the page total. Producers must provide balanced allocation
 deltas and values representable by the record types.
 
-Source callbacks update only per-category records and do not aggregate the page
-total. Scheduled page observations and the initial anchor call
-`RefreshMemoryUsage`; an actual Trace emission may also refresh after confirming
-that tracing is active and the 16ms throttle permits an event. Each refresh
+Source callbacks update per-category records and call `ReportMemoryUsage`.
+It refreshes after 16ms while Trace is active, otherwise after 60s, including
+builds without Perfetto. Forced updates bypass the interval. Scheduled page
+observations, the initial anchor, and global queries also call
+`RefreshMemoryUsage` and reset the last-refresh timestamp. Each refresh
 updates `InstanceState::memory_usage` and the BTS component already included in
 that total. Before a global snapshot, every active page with a live
 `MemoryMonitor` refreshes from its current category records. Pages without one

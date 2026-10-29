@@ -26,6 +26,22 @@ import { DevToolSettings } from '../devtool_wrapper/DevToolSettings';
 
 const TAG = 'LynxEnv';
 
+/** One event dictionary. The type is large_vm, large_bts, or large_ui. */
+export interface LynxHighMemoryEvent {
+  type: string;
+  key: string;
+  bytes: number;
+  /** Runtime type for large_vm and large_bts: quickjs, v8, jsvm, jsc, or unknown. */
+  vm_type?: string;
+  total_page_count?: number;
+  /** Alternating slot names and byte counts, sorted by descending bytes. */
+  slots?: Array<string | number>;
+  /** Alternating cached category names and instance counts; order is unspecified. */
+  counts?: Array<string | number>;
+}
+
+export type LynxHighMemoryCallback = (event: LynxHighMemoryEvent) => void;
+
 /** Process-wide JSVM flags, applied by the shared initializer before its first initialization attempt. */
 export interface LynxJSVMInitOptions {
   /** Integer percentage in [0, 100]. Zero selects the engine's default trigger policy. */
@@ -54,6 +70,27 @@ class LynxEnvironment {
   private commonEmojiPreloadScheduled = false;
   private displayInfo = new DisplayInfo();
   private initialized = false;
+  private highMemoryCallbacks: Array<LynxHighMemoryCallback> = [];
+
+  /**
+   * Appends a process-wide callback, or clears all callbacks with null/undefined.
+   * Callbacks are retained globally and invoked in registration order.
+   * Each delivery uses a snapshot; changes during callbacks affect later events.
+   * Each VM or page event type is delivered once asynchronously on the main thread,
+   * even if no callback is registered. Events are not replayed.
+   * Page and V8/JSVM events require memory monitoring; shared QuickJS VM events do not.
+   * Events contain key (VM name or page key) and bytes; large_vm and large_bts add vm_type.
+   * large_ui adds counts with alternating category names and instance counts.
+   * Monitored VM events add total_page_count and slots with alternating names and byte
+   * counts, sorted by descending bytes.
+   */
+  public setHighMemoryCallback(callback?: LynxHighMemoryCallback | null): void {
+    if (callback) {
+      this.highMemoryCallbacks.push(callback);
+    } else {
+      this.highMemoryCallbacks = [];
+    }
+  }
 
   /**
    * Saves all three JSVM options without initializing the engine. Call before
@@ -87,7 +124,13 @@ class LynxEnvironment {
       LLog.e(TAG, 'LynxImageService not found. Register via LynxServiceCenter.registerService before using.');
     }
 
-    lynx.initGlobalEnv(context.resourceManager);
+    lynx.initGlobalEnv(context.resourceManager, (event: Object) => {
+      const callbacks = this.highMemoryCallbacks.slice();
+      const highMemoryEvent = event as LynxHighMemoryEvent;
+      for (const callback of callbacks) {
+        callback(highMemoryEvent);
+      }
+    });
     this.registerNativeMemoryPressureCallback();
     LynxInfoReporterHelper.initialize();
     LynxEventReporter.initialize();
