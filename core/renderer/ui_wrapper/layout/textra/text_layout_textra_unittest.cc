@@ -5,8 +5,10 @@
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -44,17 +46,24 @@ struct BackendState {
   text::Page* last_page{nullptr};
   text::MeasureResult result{0, 0, 0};
   text::MeasureParams params{};
+  std::optional<float> line_height;
 };
 
 class FakeParagraphBuilder : public text::ParagraphBuilder {
  public:
   explicit FakeParagraphBuilder(BackendState& state) : state_(state) {
     ++state_.live_builder_count;
+    state_.line_height.reset();
   }
   ~FakeParagraphBuilder() override { --state_.live_builder_count; }
 
   void SetParagraphListener(text::ParagraphListener*) override {}
-  void SetParagraphStyle(TextPropertyKeyID, void*, size_t) override {}
+  void SetParagraphStyle(TextPropertyKeyID key, void* value,
+                         size_t length) override {
+    if (key == kTextPropLineHeight && length == sizeof(float)) {
+      state_.line_height = *static_cast<float*>(value);
+    }
+  }
   void PushTextStyle() override {}
   void PopTextStyle() override {}
   void PushEventTarget(const text::EventTargetInfo&) override {}
@@ -170,6 +179,15 @@ class TextLayoutTextraTest : public ::testing::Test {
 
   FakeTextLayoutAPI* api() { return api_; }
 
+  void SetLineHeight(const char* value) {
+    StyleMap styles;
+    ASSERT_TRUE(UnitHandler::Process(kPropertyIDLineHeight, lepus::Value(value),
+                                     styles, CSSParserConfigs()));
+    element_.computed_css_style()->SetValue(kPropertyIDLineHeight,
+                                            styles.at(kPropertyIDLineHeight));
+    element_.property_bits().Set(kPropertyIDLineHeight);
+  }
+
   void ExpectUnavailable() {
     EXPECT_FALSE(
         layout_->MeasureDetached(&element_, 100, 2, 100, 2).has_value());
@@ -259,6 +277,60 @@ TEST_F(TextLayoutTextraTest, ZeroSizeIsSuccessful) {
   EXPECT_EQ(result->baseline_, 0);
   EXPECT_EQ(state_.measured_count, 1);
   EXPECT_EQ(state_.live_builder_count, 0);
+}
+
+TEST_F(TextLayoutTextraTest, NormalLineHeightUsesFontMetrics) {
+  layout_->DispatchLayoutBefore(&element_);
+  EXPECT_FALSE(state_.line_height.has_value());
+
+  for (float font_size : {16.f, 0.5f}) {
+    element_.computed_css_style()->SetFontSize(font_size, 16.f);
+    SetLineHeight("normal");
+    layout_->DispatchLayoutBefore(&element_);
+    EXPECT_FALSE(state_.line_height.has_value());
+  }
+}
+
+TEST_F(TextLayoutTextraTest, LineHeightUpdatesRestoreFontMetrics) {
+  for (bool remove_property : {false, true}) {
+    SetLineHeight("36px");
+    layout_->DispatchLayoutBefore(&element_);
+    ASSERT_TRUE(state_.line_height.has_value());
+    EXPECT_FLOAT_EQ(*state_.line_height, 36.f);
+
+    if (remove_property) {
+      element_.computed_css_style()->ResetValue(kPropertyIDLineHeight);
+    } else {
+      SetLineHeight("normal");
+    }
+    // TextElement retains the property bit when a previously set style resets.
+    layout_->DispatchLayoutBefore(&element_);
+    EXPECT_FALSE(state_.line_height.has_value());
+  }
+}
+
+TEST_F(TextLayoutTextraTest, UndefinedLineHeightBoundaryUsesFontMetrics) {
+  element_.computed_css_style()->SetFontSize(16.f, 16.f);
+  SetLineHeight("999999936px");
+  layout_->DispatchLayoutBefore(&element_);
+  ASSERT_TRUE(state_.line_height.has_value());
+  EXPECT_FLOAT_EQ(*state_.line_height, 999999936.f);
+
+  for (const auto& value : {"1000000000px", "1000000064px", "62500000"}) {
+    SetLineHeight(value);
+    layout_->DispatchLayoutBefore(&element_);
+    EXPECT_FALSE(state_.line_height.has_value());
+  }
+}
+
+TEST_F(TextLayoutTextraTest, ExplicitLineHeightsRemainSupported) {
+  element_.computed_css_style()->SetFontSize(16.f, 16.f);
+  for (const auto& value : {"0", "0px", "1.5", "24px"}) {
+    SetLineHeight(value);
+    layout_->DispatchLayoutBefore(&element_);
+    ASSERT_TRUE(state_.line_height.has_value());
+    EXPECT_FLOAT_EQ(*state_.line_height, value[0] == '0' ? 0.f : 24.f);
+  }
 }
 
 TEST_F(TextLayoutTextraTest, PreservesBackendMetricsAndConstraints) {

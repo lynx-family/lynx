@@ -395,9 +395,13 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
                                           &(text_overflow), sizeof(int));
   }
   if (props_set.Has(kPropertyIDLineHeight)) {
+    // Match the undefined-value boundary of the legacy iOS text path.
+    constexpr float kUndefinedLineHeightThreshold = 1e9f;
     float line_height = text_attributes->computed_line_height;
-    paragraph_builder_->SetParagraphStyle(kTextPropLineHeight, &(line_height),
-                                          sizeof(float));
+    if (line_height >= 0 && line_height < kUndefinedLineHeightThreshold) {
+      paragraph_builder_->SetParagraphStyle(kTextPropLineHeight, &(line_height),
+                                            sizeof(float));
+    }
   }
   if (props_set.Has(kPropertyIDWhiteSpace)) {
     auto white_space = static_cast<int>(text_attributes->white_space);
