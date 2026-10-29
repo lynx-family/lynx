@@ -1005,7 +1005,7 @@ void LynxShell::RegisterNotificationCallbacks() {
                // existed before the trace started.
                if (this->perf_controller_actor_) {
                  this->perf_controller_actor_->ActAsync([](auto& performance) {
-                   performance->GetMemoryMonitor().ReportMemoryForTrace(true);
+                   performance->GetMemoryMonitor().ReportMemoryUsage(true);
                  });
                }
 

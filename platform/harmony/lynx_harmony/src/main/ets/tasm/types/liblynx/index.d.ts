@@ -6,7 +6,7 @@ import type { DrawContext, FrameNode, UIContext } from '@kit.ArkUI';
 import type { AsyncCallback } from '@ohos.base';
 import type { NodeContent } from '@ohos.arkui.node';
 
-export const initGlobalEnv: (resourceManager: Object) => void;
+export const initGlobalEnv: (resourceManager: Object, highMemoryCallback?: (event: Object) => void) => void;
 
 export const setJSVMInitOptions: (incrementalMarkingHardTrigger: number,
   minSemiSpaceSize: number, maxSemiSpaceSize: number) => boolean;

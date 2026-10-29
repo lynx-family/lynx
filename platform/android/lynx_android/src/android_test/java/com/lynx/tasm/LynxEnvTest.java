@@ -12,8 +12,11 @@ import android.app.Application;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.tasm.utils.UIThreadUtils;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,11 +33,13 @@ public class LynxEnvTest {
   @Before
   public void setUp() {
     mEnv = LynxEnv.inst();
+    LynxEnv.setHighMemoryCallback(null);
     resetLynxEnvReadyState();
   }
 
   @After
   public void tearDown() {
+    LynxEnv.setHighMemoryCallback(null);
     resetLynxEnvReadyState();
   }
 
@@ -161,6 +166,83 @@ public class LynxEnvTest {
     assertEquals(1, callbackCount.get());
     assertTrue(callbackRanOnMainThread.get());
     assertTrue(callbackSawInitCompleted.get());
+  }
+
+  @Test
+  public void highMemoryCallbacksRunInRegistrationOrderOnMainThread() throws Exception {
+    List<Integer> order = new ArrayList<>();
+    AtomicBoolean callbacksOnMainThread = new AtomicBoolean(true);
+    LynxEnv.setHighMemoryCallback(event -> {
+      callbacksOnMainThread.compareAndSet(true, UIThreadUtils.isOnUiThread());
+      order.add(1);
+    });
+    LynxEnv.setHighMemoryCallback(event -> {
+      callbacksOnMainThread.compareAndSet(true, UIThreadUtils.isOnUiThread());
+      order.add(2);
+    });
+
+    emitHighMemoryEvent();
+    drainMainQueue();
+
+    assertEquals(2, order.size());
+    assertEquals(Integer.valueOf(1), order.get(0));
+    assertEquals(Integer.valueOf(2), order.get(1));
+    assertTrue(callbacksOnMainThread.get());
+  }
+
+  @Test
+  public void clearHighMemoryCallbacksPreservesCurrentDelivery() throws Exception {
+    AtomicInteger firstCalls = new AtomicInteger();
+    AtomicInteger secondCalls = new AtomicInteger();
+    LynxEnv.setHighMemoryCallback(event -> {
+      firstCalls.incrementAndGet();
+      LynxEnv.setHighMemoryCallback(null);
+    });
+    LynxEnv.setHighMemoryCallback(event -> secondCalls.incrementAndGet());
+
+    emitHighMemoryEvent();
+    drainMainQueue();
+    emitHighMemoryEvent();
+    drainMainQueue();
+
+    assertEquals(1, firstCalls.get());
+    assertEquals(1, secondCalls.get());
+  }
+
+  @Test
+  public void registerHighMemoryCallbackDuringDeliveryAffectsNextEvent() throws Exception {
+    AtomicInteger firstCalls = new AtomicInteger();
+    AtomicInteger secondCalls = new AtomicInteger();
+    LynxEnv.setHighMemoryCallback(event -> {
+      if (firstCalls.incrementAndGet() == 1) {
+        LynxEnv.setHighMemoryCallback(nextEvent -> secondCalls.incrementAndGet());
+      }
+    });
+
+    emitHighMemoryEvent();
+    drainMainQueue();
+    assertEquals(1, firstCalls.get());
+    assertEquals(0, secondCalls.get());
+    emitHighMemoryEvent();
+    drainMainQueue();
+    assertEquals(2, firstCalls.get());
+    assertEquals(1, secondCalls.get());
+  }
+
+  private static void emitHighMemoryEvent() throws Exception {
+    Method method = LynxEnv.class.getDeclaredMethod("onHighMemoryEvent", Map.class);
+    method.setAccessible(true);
+    Map<String, Object> event = new HashMap<>();
+    event.put("type", "large_ui");
+    event.put("key", "test");
+    event.put("bytes", 1024);
+    method.invoke(null, event);
+  }
+
+  private static void drainMainQueue() throws Exception {
+    CountDownLatch latch = new CountDownLatch(1);
+    UIThreadUtils.runOnUiThread(latch::countDown);
+    assertTrue(latch.await(5, TimeUnit.SECONDS));
   }
 
   private void resetLynxEnvReadyState() {

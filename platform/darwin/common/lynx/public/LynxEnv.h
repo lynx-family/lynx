@@ -10,6 +10,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/** One high-memory event dictionary, delivered asynchronously on the main thread. */
+typedef void (^LynxHighMemoryCallback)(NSDictionary<NSString *, id> *event);
+
 typedef NS_ENUM(NSInteger, LynxMemoryPressureLevel) {
   /**
    * No problems, there is enough memory to use. This event is not sent via callback, but the enum
@@ -226,6 +229,21 @@ typedef NS_ENUM(NSInteger, LynxMTSContextType) {
  *     please pay attention to memory management.
  */
 + (void)setGlobalBytecodeGenerateCallback:(nullable LynxBytecodeResponseBlock)callback;
+
+/**
+ * Appends a process-wide callback, or clears all callbacks with nil. The block is copied.
+ * Callbacks run in registration order using a snapshot taken at main-thread delivery.
+ * Changes during callbacks affect later events.
+ * Each VM or page event type is emitted once, including when no callback is registered.
+ * Events are not replayed. The type is large_vm, large_bts, or large_ui.
+ * Events contain key (VM name or page key) and bytes; large_vm and large_bts add vm_type
+ * (quickjs, v8, jsvm, jsc, or unknown). large_ui adds counts with alternating category
+ * names and instance counts.
+ * Monitored VM events add total_page_count and slots with alternating names and byte counts,
+ * sorted by descending bytes. Page and V8/JSVM events require memory monitoring;
+ * shared QuickJS VM events do not.
+ */
++ (void)setHighMemoryCallback:(nullable LynxHighMemoryCallback)callback;
 
 @end
 
