@@ -5,6 +5,8 @@
 #ifndef CLAY_SHELL_PLATFORM_DARWIN_COMMON_CLAY_SERVICE_MANAGER_SERVICE_DARWIN_H_
 #define CLAY_SHELL_PLATFORM_DARWIN_COMMON_CLAY_SERVICE_MANAGER_SERVICE_DARWIN_H_
 
+#include <mutex>
+
 #import "ClayServiceManager.h"
 #include "clay/common/service/service.h"
 
@@ -17,8 +19,10 @@ class ClayServiceManagerServiceDarwin final
   explicit ClayServiceManagerServiceDarwin(ClayServiceManager* manager);
 
   ClayServiceManager* GetClayServiceManager();
+  void SetClayServiceManager(ClayServiceManager* manager);
 
  private:
+  std::mutex mutex_;
   ClayServiceManager* service_manager_;
 };
 }  // namespace clay

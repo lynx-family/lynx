@@ -1177,6 +1177,10 @@ void ViewContext::SetLayoutDelegate(LayoutDelegate* delegate) {
   shadow_node_owner_->SetLayoutDelegate(delegate);
 }
 
+LayoutDelegate* ViewContext::GetLayoutDelegate() const {
+  return shadow_node_owner_->GetLayoutDelegate();
+}
+
 void ViewContext::SetPipelineTimingDelegate(
     std::shared_ptr<PipelineTimingDelegate> delegate) {
   if (page_view_) {

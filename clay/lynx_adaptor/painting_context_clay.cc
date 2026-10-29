@@ -20,6 +20,7 @@
 #include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/list/lynx_list_data.h"
+#include "clay/ui/component/page_view.h"
 #include "clay/ui/lynx_module/type_utils.h"
 #include "clay/ui/shadow/text_render.h"
 #include "core/base/trace/trace_event_def.h"
@@ -144,8 +145,12 @@ PaintingContextClay::PaintingContextClay(clay::ViewContext* view_context)
 }
 
 PaintingContextClay::~PaintingContextClay() {
-  view_context_->SetUIComponentDelegate(nullptr);
-  view_context_->ResetPageView();
+  // A newer painting context may already own the reused page.
+  if (view_context_->GetPageView() &&
+      view_context_->GetPageView()->GetUIComponentDelegate() == this) {
+    view_context_->SetUIComponentDelegate(nullptr);
+    view_context_->ResetPageView();
+  }
 }
 
 void PaintingContextClay::Flush() { ui_operation_queue_ref_->Flush(); }

@@ -40,6 +40,7 @@ class ShadowNodeOwner {
   void SetLayoutDelegate(LayoutDelegate* delegate) {
     layout_delegate_ = delegate;
   }
+  LayoutDelegate* GetLayoutDelegate() const { return layout_delegate_; }
 
   fml::RefPtr<fml::TaskRunner> GetUITaskRunner() const {
     return ui_task_runner_;
