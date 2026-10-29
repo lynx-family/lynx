@@ -108,6 +108,7 @@ lynx_core_source_set("embedder") {
   ]
   if (is_win || is_mac) {
     sources += [
+      "lynx_recorder/test_bench_fixture_evaluator.cc",
       "native_view/lynx_texture_view.cc",
       "native_view/lynx_texture_view.h",
     ]
@@ -123,6 +124,9 @@ lynx_core_source_set("embedder") {
     "./lynx_service",
     "./resource",
   ]
+  if ((is_win || is_mac) && enable_testbench_replay) {
+    deps += [ "../../core/services/replay" ]
+  }
   if (enable_napi_binding) {
     public_deps = [
       ":lynx_runtime_lifecycle_observer",
@@ -202,6 +206,7 @@ copy("lynx_embedder_capi") {
     "./public/capi/lynx_memory_capi.h",
     "./public/capi/lynx_native_module_capi.h",
     "./public/capi/lynx_native_view_capi.h",
+    "./public/capi/lynx_replay_capi.h",
     "./public/capi/lynx_resource_request_capi.h",
     "./public/capi/lynx_resource_response_capi.h",
     "./public/capi/lynx_runtime_lifecycle_observer_capi.h",

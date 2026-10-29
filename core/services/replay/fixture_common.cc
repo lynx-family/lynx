@@ -9,13 +9,22 @@
 #include <fstream>
 #include <limits>
 
+#if defined(OS_WIN)
+#include "base/include/string/string_conversion_win.h"
+#endif
+
 namespace lynx {
 namespace tasm {
 namespace replay {
 namespace {
 
 std::string ReadFile(const std::string& path, size_t max_bytes) {
+#if defined(OS_WIN)
+  // Desktop package paths are UTF-8, including the user's temporary directory.
+  std::ifstream stream(base::Utf16FromUtf8(path).c_str(), std::ios::binary);
+#else
   std::ifstream stream(path, std::ios::binary);
+#endif
   if (!stream.is_open()) {
     return "";
   }

@@ -19,6 +19,8 @@
 namespace lynx {
 namespace embedder {
 
+class TestBenchFixture;
+
 class TestBenchReplayDataModule
     : public std::enable_shared_from_this<TestBenchReplayDataModule> {
  public:
@@ -34,6 +36,8 @@ class TestBenchReplayDataModule
   void SetJsbSettings(const std::string& data);
   void SetFunctionCall(const std::string& data);
   void SetCallbackData(const std::string& data);
+  void SetFixture(std::shared_ptr<TestBenchFixture> fixture);
+  std::shared_ptr<TestBenchFixture> AcquireFixture();
   void Reset();
   void MarkReady();
 
@@ -52,6 +56,7 @@ class TestBenchReplayDataModule
 
   mutable std::mutex mutex_;
   bool ready_ = false;
+  std::shared_ptr<TestBenchFixture> fixture_;
   std::string jsb_ignored_info_;
   std::string jsb_settings_;
   std::string function_call_;
