@@ -74,6 +74,12 @@ bool TextStyle::equals(const TextStyle& other) const {
 #endif  // ENABLE_SKITY
   if (word_break != other.word_break)
     return false;
+#if defined(CLAY_ENABLE_TTTEXT)
+  if (align_type != other.align_type)
+    return false;
+  if (use_parent_x_height_for_middle != other.use_parent_x_height_for_middle)
+    return false;
+#endif
   if (font_families.size() != other.font_families.size())
     return false;
   if (text_shadows.size() != other.text_shadows.size())
