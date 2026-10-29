@@ -47,7 +47,6 @@
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
-#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/recorder/record.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
@@ -439,25 +438,6 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                           callback, BuildMemoryUsageResult(*rt, usage_result));
                     });
               });
-          return Value::undefined();
-        });
-  } else if (methodName == "reportModuleCache") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "reportModuleCache"), 5,
-        [this](Runtime& rt, const Value&, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          auto* app = native_app_.Lock();
-          if (!app || app->IsDestroying() ||
-              !tasm::performance::MemoryMonitor::Enable() || count != 5) {
-            return Value::undefined();
-          }
-          tasm::performance::GlobalMemoryMonitor::GetInstance()
-              .OnModuleCacheUpdate(
-                  rt.getSharedContext()->getVM(),
-                  static_cast<int32_t>(args[1].getNumber()),
-                  static_cast<size_t>(args[0].getNumber()),
-                  {args[2].getNumber() == 1, args[3].getNumber() == 1,
-                   args[4].getNumber() == 1});
           return Value::undefined();
         });
   } else if (methodName == "setTimeout") {
@@ -2182,9 +2162,6 @@ void App::LoadApp(tasm::TasmRuntimeBundle bundle,
 
   Object page_config_subset(*rt);
   if (!page_config_subset.setProperty(
-          *rt, "enableModuleCacheMonitor",
-          tasm::performance::MemoryMonitor::Enable()) ||
-      !page_config_subset.setProperty(
           *rt, runtime::kEnableMicrotaskPromisePolyfill,
           card_bundle_.enable_microtask_promise_polyfill) ||
       !page_config_subset.setProperty(

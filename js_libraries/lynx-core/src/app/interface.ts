@@ -117,14 +117,6 @@ export type LifeEvent =
  * implementations are in `js_app.cc`
  */
 export interface NativeApp {
-  // Optional for compatibility with older native runtimes.
-  reportModuleCache?: (
-    type: 0 | 1,
-    creator: number,
-    inserted: number,
-    reused: number,
-    crossApp: number
-  ) => void;
   /**
    * call
    *

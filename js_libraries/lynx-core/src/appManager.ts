@@ -56,7 +56,7 @@ export function loadCard(
     loadSuccess = true;
     try {
       delete tt.lynx.requireModule.cache[APP_SERVICE_NAME];
-      tt.clearFactoryCache(APP_SERVICE_NAME);
+      delete BaseApp._$factoryCache[APP_SERVICE_NAME];
       tt.lynx.requireModule(APP_SERVICE_NAME, DEFAULT_ENTRY);
       if (tt.lynx._switches['allowUndefinedInNativeDataTypeSet']) {
         tt.dataTypeSet.add('undefined');
@@ -109,7 +109,7 @@ export function loadDynamicComponent<T>(tt: BaseApp, componentUrl: string): T {
 
   try {
     delete tt.lynx.requireModule.cache[APP_SERVICE_NAME];
-    tt.clearFactoryCache(APP_SERVICE_NAME);
+    delete BaseApp._$factoryCache[APP_SERVICE_NAME];
     const ret = tt.lynx.requireModule<T>(APP_SERVICE_NAME, componentUrl);
     tt.saveDynamicComponentExports(componentUrl, ret);
     tt.loadedDynamicComponentsSet.add(componentUrl);
