@@ -300,7 +300,13 @@ Napi::Value {{napi_class}}::RunBuffer(uint32_t* buffer, uint32_t length, Napi::E
       ImplBase* orphan;
     } pointer;
     {% for interface in interfaces if not interface.shared_impl and not interface.remote_only %}
-    if (Napi{{interface.type_name}}* bridge = FromId<Napi{{interface.type_name}}>(header.object_id)) {
+    {% if loop.first %}
+    auto object_it = ObjectRegistry().find(header.object_id);
+    Napi::ScriptWrappable* object =
+        object_it != ObjectRegistry().end() ? object_it->second : nullptr;
+    {% endif %}
+    if (object && Napi{{interface.type_name}}::IsInstance(object)) {
+      auto* bridge = static_cast<Napi{{interface.type_name}}*>(object);
       pointer.{{interface.ptr_name}} = bridge->ToImplUnsafe();
       type_safe = true;
     }

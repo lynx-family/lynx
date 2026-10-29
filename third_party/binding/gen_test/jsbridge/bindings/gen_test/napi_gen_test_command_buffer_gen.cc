@@ -40,7 +40,11 @@ Napi::Value NapiGenTestCommandBuffer::RunBuffer(uint32_t* buffer, uint32_t lengt
       // Currently assumes single inheritance only.
       ImplBase* orphan;
     } pointer;
-    if (NapiTestContext* bridge = FromId<NapiTestContext>(header.object_id)) {
+    auto object_it = ObjectRegistry().find(header.object_id);
+    Napi::ScriptWrappable* object =
+        object_it != ObjectRegistry().end() ? object_it->second : nullptr;
+    if (object && NapiTestContext::IsInstance(object)) {
+      auto* bridge = static_cast<NapiTestContext*>(object);
       pointer.test_context = bridge->ToImplUnsafe();
       type_safe = true;
     }
