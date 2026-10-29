@@ -376,7 +376,7 @@ void TextView::ResetGestureRecognizers() {
   AddGestureRecognizer(std::move(drag_recognizer));
   AddGestureRecognizer(std::move(multi_tap_recognizer));
 #elif defined(OS_ANDROID) || defined(OS_IOS)
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   auto double_tap_recognizer = std::make_unique<MultiTapGestureRecognizer>(
       page_view()->gesture_manager());
   double_tap_recognizer_ = double_tap_recognizer.get();
@@ -525,7 +525,7 @@ void TextView::UpdateSelectionRange(int selection_start, int selection_end) {
 }
 
 void TextView::ResetSelectionRange() {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   selection_start_pos_ = -1;
   selection_end_pos_ = -1;
   selection_direction_forward_ = true;
@@ -533,7 +533,7 @@ void TextView::ResetSelectionRange() {
 }
 
 void TextView::ClearSelection() {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   if (selection_start_pos_ != -1 || selection_end_pos_ != -1) {
     auto range = TextRange(-1, -1);
     GetRenderText()->SetSelection(range);
@@ -546,7 +546,7 @@ void TextView::ClearSelection() {
 }
 
 void TextView::PerformBeginSelection(FloatPoint point) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
 #if defined(OS_WIN) || defined(OS_OSX)
   point = GetPointBySelf(point);
   point.Move(-BorderLeft() - PaddingLeft(), -BorderTop() - PaddingTop());
@@ -567,7 +567,7 @@ void TextView::PerformBeginSelection(FloatPoint point) {
 
 void TextView::PerformMoveSelection(FloatPoint point,
                                     SelectionHandleView* handle_bar) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
 #if defined(OS_WIN) || defined(OS_OSX)
   point = GetPointBySelf(point);
   point.Move(-BorderLeft() - PaddingLeft(), -BorderTop() - PaddingTop());
@@ -647,7 +647,7 @@ void TextView::setTextSelection(const LynxModuleValues& args,
   clay::Value::Array handle_array(2);
   if (!line_rects.empty()) {
     float handle_radius = kSelectionHandleRadius;
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
     if (selection_handle_size_ > 0) {
       handle_radius = selection_handle_size_ / 2;
     }
@@ -931,7 +931,7 @@ bool TextView::ClickOnText(size_t glyph_index,
 }
 
 std::vector<FloatPoint> TextView::GetAnchorPosition() {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   RenderText* render_text = GetRenderText();
   auto select_range = render_text->GetSelectionRange();
   std::vector<Point> end_points = render_text->GetPointsFromRangeSelection(
@@ -978,7 +978,7 @@ std::vector<FloatPoint> TextView::GetAnchorPosition() {
 }
 
 void TextView::ShowSelectionPopup() {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   if (GetRenderText()->IsCollapsed()) {
     return;
   }
@@ -1007,7 +1007,7 @@ void TextView::ShowSelectionPopup() {
 }
 
 void TextView::HideSelectionPopup() {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   if (selection_popup_) {
     page_view()->RemoveChild(selection_popup_);
     delete selection_popup_;
@@ -1042,7 +1042,7 @@ FloatRect TextView::GetDisplayRect() {
 }
 
 void TextView::UpdateSelectionHandleLayout(SelectionHandleView* handle) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   FML_DCHECK(handle);
   auto text_box = handle->GetHandleType() == TextSelectionHandleType::kLeft
                       ? GetRenderText()->GetLeftTextBox()
@@ -1063,7 +1063,7 @@ void TextView::UpdateSelectionHandleLayout(SelectionHandleView* handle) {
 }
 
 void TextView::UpdateSelectionHandleTypes() {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   if (selection_start_pos_ == selection_end_pos_) {
     return;
   }
@@ -1086,7 +1086,7 @@ void TextView::UpdateSelectionHandleTypes() {
 
 void TextView::ShowSelectionHandle(bool show_start_handle,
                                    bool show_end_handle) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   if (GetRenderText()->IsCollapsed()) {
     return;
   }
@@ -1162,7 +1162,7 @@ void TextView::ShowSelectionHandle(bool show_start_handle,
 
 void TextView::BeginSelectionHandleDrag(const PointerEvent& event,
                                         SelectionHandleView* handle_bar) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   auto render_text = GetRenderText();
   FloatPoint endpoint;
   if (handle_bar->GetHandleType() == TextSelectionHandleType::kLeft) {
@@ -1179,7 +1179,7 @@ void TextView::BeginSelectionHandleDrag(const PointerEvent& event,
 }
 
 void TextView::EndSelectionHandleDrag(SelectionHandleView* handle_bar) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   if (dragging_selection_handle_ == handle_bar) {
     auto range = GetRenderText()->GetSelection();
     OnSelectionChanged(range.start(), range.end());
@@ -1191,7 +1191,7 @@ void TextView::EndSelectionHandleDrag(SelectionHandleView* handle_bar) {
 
 void TextView::UpdateSelectionHandle(FloatPoint point,
                                      SelectionHandleView* handle_bar) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   FML_DCHECK(handle_bar);
   FML_DCHECK(dragging_selection_handle_ == handle_bar);
   auto render_text = GetRenderText();
@@ -1237,7 +1237,7 @@ void TextView::UpdateSelectionHandle(FloatPoint point,
 }
 
 void TextView::SetSelectionHandleSize(float selection_handle_size) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   selection_handle_size_ =
       selection_handle_size <= 0 ? 0 : selection_handle_size;
   if (start_selection_handle_) {
@@ -1252,13 +1252,13 @@ void TextView::SetSelectionHandleSize(float selection_handle_size) {
 }
 
 void TextView::SetSelectionBackgroundColor(Color selection_background_color) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   GetRenderText()->SetSelectionBackgroundColor(selection_background_color);
 #endif
 }
 
 void TextView::SetSelectionHandleColor(Color selection_handle_color) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   selection_handle_color_ = selection_handle_color;
   if (start_selection_handle_) {
     start_selection_handle_->SetSelectionHandleColor(selection_handle_color_);
@@ -1270,7 +1270,7 @@ void TextView::SetSelectionHandleColor(Color selection_handle_color) {
 }
 
 void TextView::HideSelectionHandle() {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   dragging_selection_handle_ = nullptr;
   selection_handle_drag_offset_ = FloatPoint();
   page_view()->RemoveChild(selection_handle_container_);
@@ -1290,7 +1290,7 @@ void TextView::HideSelectionHandle() {
 }
 
 void TextView::HandleCopy() {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   auto editing_text = GetRenderText()->GetSelectionString();
   page_view()->SetClipboardData(editing_text);
   page_view()->GetTaskRunner()->PostTask([weak = weak_factory_.GetWeakPtr()]() {
@@ -1302,7 +1302,7 @@ void TextView::HandleCopy() {
 }
 
 void TextView::HandleSelectAll() {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   GetRenderText()->SetAllSelection();
   auto range = GetRenderText()->GetSelection();
   UpdateSelectionRange(range.start(), range.end());
@@ -1336,7 +1336,7 @@ void TextView::BringIntoView(TextBox* text_box) {
         (additional_offset + scroll_view->GetScrollOffset().y()), 0.f,
         static_cast<RenderScroll*>(scroll_view->render_object())
             ->MaxScrollHeight());
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
     if (start_selection_handle_) {
       start_selection_handle_->SetScrollOffset(FloatPoint(0, target_offset));
     }
@@ -1354,7 +1354,7 @@ void TextView::BringIntoView(TextBox* text_box) {
         (additional_offset + scroll_view->GetScrollOffset().x()), 0.f,
         static_cast<RenderScroll*>(scroll_view->render_object())
             ->MaxScrollWidth());
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
     if (start_selection_handle_) {
       start_selection_handle_->SetScrollOffset(FloatPoint(target_offset, 0));
     }
@@ -1400,7 +1400,7 @@ bool TextView::IsPointerAllowed(const GestureRecognizer& gesture_recognizer,
 }
 
 void TextView::OnViewPostionUpdate(FloatPoint scroll_offset) {
-#ifndef ENABLE_CLAY_LITE
+#if !defined(ENABLE_CLAY_LITE) && defined(ENABLE_CLAY_TEXT_SELECTION)
   if (start_selection_handle_) {
     start_selection_handle_->UpdatePosWithScroll(scroll_offset -
                                                  scroll_offset_);
