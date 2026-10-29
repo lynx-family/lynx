@@ -42,7 +42,7 @@ bool SharedCSSFragment::HasCSSStyle() {
     for (auto id = dependent_fragment_ids.rbegin();
          id != dependent_fragment_ids.rend(); ++id) {
       auto dependent_fragment = manager_->GetCSSStyleSheet(*id);
-      if (dependent_fragment->HasCSSStyle()) {
+      if (dependent_fragment && dependent_fragment->HasCSSStyle()) {
         has_css_style_ = true;
         return true;
       }
@@ -65,6 +65,9 @@ CSSParseToken* SharedCSSFragment::GetCSSStyle(const std::string& key) {
     for (auto id = dependent_fragment_ids.rbegin();
          id != dependent_fragment_ids.rend(); ++id) {
       auto dependent_fragment = manager_->GetCSSStyleSheet(*id);
+      if (!dependent_fragment) {
+        continue;
+      }
       auto result = dependent_fragment->GetCSSStyle(key);
       if (result != nullptr) {
         return result;
@@ -85,6 +88,9 @@ fml::RefPtr<CSSParseToken> SharedCSSFragment::GetSharedCSSStyle(
     for (auto id = dependent_fragment_ids.rbegin();
          id != dependent_fragment_ids.rend(); ++id) {
       auto dependent_fragment = manager_->GetCSSStyleSheet(*id);
+      if (!dependent_fragment) {
+        continue;
+      }
       auto result = dependent_fragment->GetSharedCSSStyle(key);
       if (result != nullptr) {
         return result;

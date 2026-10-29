@@ -60,18 +60,15 @@ class CSSStyleSheetManager {
 
   void AddSharedCSSFragment(std::unique_ptr<SharedCSSFragment> fragment) {
     std::lock_guard<std::mutex> g_lock(fragment_mutex_);
+    if (stop_thread_) {
+      return;
+    }
     raw_fragments_->emplace(fragment->id(), std::move(fragment));
   }
 
-  void ReplaceSharedCSSFragment(std::unique_ptr<SharedCSSFragment> fragment) {
-    std::lock_guard<std::mutex> g_lock(fragment_mutex_);
-    raw_fragments_->insert_or_assign(fragment->id(), std::move(fragment));
-  }
-
-  void RemoveSharedCSSFragment(int32_t id) {
-    std::lock_guard<std::mutex> g_lock(fragment_mutex_);
-    raw_fragments_->erase(id);
-  }
+  // The caller must invalidate all element stylesheet references first.
+  // Fragments must be freshly decoded and not yet flattened.
+  void ReplaceStyleSheetsForHotUpdate(CSSFragmentMap fragments);
 
   void SetEnableNewImportRule(bool enable) { enable_new_import_rule_ = enable; }
 

@@ -22,6 +22,13 @@ New CSS feature work should target the NG path by default; non-NG code in this a
 
 ## CSSFragmentDecorator and Adopted Sheets
 
+- CSS hot update must not replace or erase entries in the shared fragment
+  map from template predecode. Rebuild a private graph from source before
+  resolving imports:
+  `RuleSet` import dependencies also borrow pointers from other fragments.
+  Invalidate all registered elements, including detached nodes, before
+  releasing the previous graph. Stop late asynchronous decode writes as well.
+
 - `CSSFragmentDecorator` is the single integration point for adopted stylesheets. It combines `intrinsic_style_sheets_` (statically bundled) with `adopted_stylesheets_` (runtime-injected via `ElementManager`).
 - All callers should obtain a `CSSFragment*` via `GetRelatedCSSFragment()` or `GetCSSFragment()`, which returns a `CSSFragmentDecorator` when adopted sheets are present. Do **not** query `ElementManager::GetAdoptedStyleSheets()` directly from style resolution code.
 - The decorator uses `ForEachAdoptedFragment(visitor, reverse)` to iterate adopted sheets under `ElementManager`'s shared lock. Iteration order matters: reverse (newest first) for keyframes lookup, forward for font faces and invalidation.

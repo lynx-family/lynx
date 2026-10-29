@@ -88,6 +88,26 @@ void CSSStyleSheetManager::CopyFrom(const CSSStyleSheetManager& other) {
   enable_new_import_rule_ = other.enable_new_import_rule_;
 }
 
+void CSSStyleSheetManager::ReplaceStyleSheetsForHotUpdate(
+    CSSFragmentMap fragments) {
+  std::lock_guard<std::mutex> lock(fragment_mutex_);
+  // An in-flight decoder may already have passed its loop's stop check.
+  // AddSharedCSSFragment also checks this flag while holding the same lock.
+  stop_thread_ = true;
+  // Keep the shared predecoded map intact for other pages. Rebuilding the whole
+  // graph also discards imported RuleSet pointers and flattened page caches.
+  for (auto& item : fragments) {
+    item.second->manager_ = this;
+    item.second->SetEnableCSSLazyImport(enable_css_lazy_import_);
+  }
+  page_fragments_.clear();
+  raw_fragments_ = std::make_shared<CSSFragmentMap>(std::move(fragments));
+  decoded_fragment_.clear();
+  // All CSS has been decoded. A removed sheet must not be lazily decoded again
+  // from the original template.
+  delegate_ = nullptr;
+}
+
 const std::shared_ptr<CSSStyleSheetManager::CSSFragmentMap>&
 CSSStyleSheetManager::GetCSSFragmentMap() const {
   return raw_fragments_;

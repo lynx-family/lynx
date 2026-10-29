@@ -58,6 +58,15 @@ class TemplateBinaryReader : public LynxBinaryReader,
 
   bool CompleteDecode() override;
 
+  // Decode fresh, unflattened CSS for hot update. Imports must be resolved only
+  // after all replacement/removal operations have been applied.
+  std::shared_ptr<CSSStyleSheetManager> DecodeCSSForHotUpdate();
+
+  bool DecodeForHotUpdate() {
+    for_hot_update_ = true;
+    return Decode();
+  }
+
   LynxTemplateBundle GetCompleteTemplateBundle() override;
 
   // Decode result
@@ -110,6 +119,7 @@ class TemplateBinaryReader : public LynxBinaryReader,
   // When non-null, decode writes directly to this external bundle.
   // When null, decode writes to the inherited template_bundle_.
   LynxTemplateBundle* target_template_bundle_{nullptr};
+  bool for_hot_update_{false};
 };
 
 }  // namespace tasm

@@ -127,6 +127,7 @@ class SharedCSSFragment : public CSSFragment {
   css::CascadeLayer* root_layer() const { return root_layer_.get(); }
 
  protected:
+  friend class CSSStyleSheetManager;
   friend class TemplateBinaryReader;
   friend class TemplateBinaryReaderSSR;
   friend class LynxBinaryBaseCSSReader;

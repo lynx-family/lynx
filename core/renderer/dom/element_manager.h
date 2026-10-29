@@ -128,6 +128,12 @@ class NodeManager {
 
   size_t NodeCount() { return node_map_.size(); }
 
+  void InvalidateStyleSheets() {
+    for (const auto &entry : node_map_) {
+      entry.second->ResetStyleSheetForHotUpdate();
+    }
+  }
+
   ExternalMemorySnapshot GetExternalMemorySnapshot() const;
 
   int32_t GetTotalMemoryUsage() const {
@@ -546,6 +552,12 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // Call when an intrinsic fragment is freed (stylesheet replace/remove) so a
   // new fragment reusing its address cannot hit a stale entry.
   void InvalidateCascadeLayerMapCache();
+
+  void InvalidateStyleSheetsForHotUpdate() {
+    InvalidateCascadeLayerMapCache();
+    // Detached elements can still be retained by the runtime or a list cache.
+    node_manager_->InvalidateStyleSheets();
+  }
 
   // Returns a copy under the shared lock.
   std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>>
