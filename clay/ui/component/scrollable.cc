@@ -4,7 +4,9 @@
 
 #include "clay/ui/component/scrollable.h"
 
+#include <algorithm>
 #include <utility>
+#include <vector>
 
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/rubberband_distance.h"
@@ -26,21 +28,41 @@ void Scrollable::AddScrollListener(Listener* listener) {
   if (!listener) {
     return;
   }
-  listeners_.push_front(listener);
+  listeners_.remove_if([](const auto& entry) { return !entry; });
+  for (const auto& entry : listeners_) {
+    if (entry.get() == listener) {
+      return;
+    }
+  }
+  listeners_.push_front(listener->GetScrollListenerWeakPtr());
 }
 
 void Scrollable::RemoveScrollListener(Listener* listener) {
   if (!listener) {
     return;
   }
-  listeners_.remove(listener);
+  listeners_.remove_if([listener](const auto& entry) {
+    return !entry || entry.get() == listener;
+  });
 }
 
 void Scrollable::RemoveAllScrollListener() { listeners_.clear(); }
 
 void Scrollable::NotifyScrolled() {
-  for (auto& listener : listeners_) {
+  listeners_.remove_if([](const auto& entry) { return !entry; });
+  // Callbacks may remove listeners or destroy the scrollable itself.
+  std::vector<fml::WeakPtr<Listener>> listeners(listeners_.begin(),
+                                                listeners_.end());
+  auto weak_this = GetWeakPtr();
+  for (const auto& listener : listeners) {
+    if (!listener || std::find(listeners_.begin(), listeners_.end(),
+                               listener) == listeners_.end()) {
+      continue;
+    }
     listener->OnScrollableScrolled();
+    if (!weak_this) {
+      return;
+    }
   }
 }
 

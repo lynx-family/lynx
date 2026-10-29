@@ -48,6 +48,9 @@ Current spec files:
   - Normative contract for build-time Clay keyword code generation
   - Covers generated API compatibility, deterministic perfect hashing,
     failure conditions, and host-versus-target toolchain ownership
+- `spec/scroll_listener_spec.md`
+  - Normative contract for scroll listener ownership and registration
+  - Covers weak references, tree changes, callback mutation, and destruction
 
 Relationship between the specs:
 
