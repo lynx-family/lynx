@@ -47,7 +47,6 @@ ShadowNodeOwner::ShadowNodeOwner()
     : text_measure_cache_(new TextMeasureCache),
       font_face_manager_(new FontFaceManager(this)) {}
 
-// delete the reference to release the object in js.
 ShadowNodeOwner::~ShadowNodeOwner() = default;
 
 napi_value ShadowNodeOwner::Init(napi_env env, napi_value exports) {
@@ -204,6 +203,9 @@ void ShadowNodeOwner::ScheduleLayout() {
 ShadowNode* ShadowNodeOwner::CreateJSShadowNode(int sign,
                                                 const std::string& tag,
                                                 PropBundleHarmony* props) {
+  if (!env_) {
+    return nullptr;
+  }
   auto runnable = [this, sign, &tag]() -> ShadowNode* {
     base::NapiHandleScope scope(env_);
     napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_);
@@ -262,6 +264,8 @@ void ShadowNodeOwner::Destroy() {
   }
   node_holder_.clear();
 }
+
+void ShadowNodeOwner::PrepareForDestroy() { destroyed_ = true; }
 
 void ShadowNodeOwner::DestroyNode(const fml::RefPtr<ShadowNode>& node) {
   node->MarkDestroyed();
@@ -524,7 +528,7 @@ napi_value ShadowNodeOwner::Destroy(napi_env env, napi_callback_info info) {
       napi_remove_wrap(env, js_this, reinterpret_cast<void**>(&obj));
   NAPI_THROW_IF_FAILED_NULL(env, status,
                             "ShadowNodeOwner napi_remove_wrap failed!");
-  obj->destroyed_ = true;
+  obj->PrepareForDestroy();
   obj->context_->ResetNodeOwner();
   napi_delete_reference(env, obj->js_);
   napi_delete_reference(env, obj->create_);

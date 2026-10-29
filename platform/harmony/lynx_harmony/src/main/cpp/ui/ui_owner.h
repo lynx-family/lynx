@@ -42,6 +42,7 @@ class UIOwner {
   UIOwner();
   using UICreatorFunc = UIBase* (*)(LynxContext*, int, const std::string&);
   using AttachLynxPageUICallback = std::function<void(UIBase*)>;
+  using IntrinsicContentSizeChangeCallback = std::function<void(float, float)>;
   static napi_value Init(napi_env env, napi_value exports);
   void CreateUI(
       int sign, const std::string& tag, PropBundleHarmony* painting_data,
@@ -65,6 +66,12 @@ class UIOwner {
   void SetContext(const std::shared_ptr<LynxContext>& context) {
     context_ = context;
     context_->SetArkUIContext(ark_ui_context_);
+  }
+  void SetArkUIContext(ArkUI_ContextHandle context) {
+    ark_ui_context_ = context;
+    if (context_) {
+      context_->SetArkUIContext(context);
+    }
   }
 
   LynxContext* Context() const { return context_.get(); }
@@ -232,11 +239,14 @@ class UIOwner {
   void OnEnterForeground();
   void OnEnterBackground();
 
+  void PrepareForDestroy();
   bool Destroyed() const { return destroyed_; }
 
   const std::string& Id() { return id_; }
   void AttachPageRoot(NativeNodeContent* native_node_content);
   void SetAttachLynxPageUICallback(AttachLynxPageUICallback callback);
+  void SetIntrinsicContentSizeChangeCallback(
+      IntrinsicContentSizeChangeCallback callback);
   bool HasAccessibilityExclusiveUI() {
     return !accessibility_exclusive_.empty();
   }
@@ -333,6 +343,7 @@ class UIOwner {
   std::shared_ptr<UIBase> root_{nullptr};
   bool root_ui_created_{false};
   AttachLynxPageUICallback attach_lynx_page_ui_callback_;
+  IntrinsicContentSizeChangeCallback intrinsic_content_size_change_callback_;
 
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
   std::string id_;

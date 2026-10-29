@@ -96,6 +96,13 @@ class UIDelegateHarmony : public UIDelegate {
     return lynx_context_.lock();
   }
 
+  void RebindOwners(UIOwner* ui_owner, ShadowNodeOwner* node_owner,
+                    const std::shared_ptr<LynxContext>& lynx_context) {
+    ui_owner_ = ui_owner;
+    node_owner_ = node_owner;
+    lynx_context_ = lynx_context;
+  }
+
  private:
   UIOwner* ui_owner_;
   ShadowNodeOwner* node_owner_;

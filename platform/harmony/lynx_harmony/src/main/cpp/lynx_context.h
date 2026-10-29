@@ -41,10 +41,6 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_intersection_observer.h"
 
 namespace lynx {
-namespace shell {
-class EmbedderPlatformHarmony;
-}
-
 namespace tasm {
 class NativePaintingCtxPlatformRef;
 
@@ -60,6 +56,23 @@ class UIOwner;
 class UIBase;
 class UIRoot;
 class GestureArenaManager;
+
+// Supplies host-owned services to a LynxContext. Implementations must detach
+// from the context before they are destroyed.
+class LynxContextHost {
+ public:
+  virtual ~LynxContextHost() = default;
+
+  virtual void ScreenSize(float size[2]) const = 0;
+  virtual float DevicePixelRatio() const = 0;
+  virtual int32_t GetInstanceId() const = 0;
+  virtual void TakeSnapshot(
+      size_t max_width, size_t max_height, int quality,
+      const std::string& format,
+      const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
+      TakeSnapshotCompletedCallback callback,
+      const std::string& screen_shot_mode) = 0;
+};
 
 class LynxContext {
  public:
@@ -79,15 +92,14 @@ class LynxContext {
 
   ~LynxContext();
 
-  // TODO(chenyouhui): Remove embedder after UIRendererManager is added.
-  void SetEmbedder(shell::EmbedderPlatformHarmony* embedder) {
-    std::unique_lock<std::shared_mutex> guard(embedder_shared_mutex_);
-    embedder_ = embedder;
+  void SetHost(LynxContextHost* host) {
+    std::unique_lock<std::shared_mutex> guard(host_shared_mutex_);
+    host_ = host;
   }
 
-  void ResetEmbedder() {
-    std::unique_lock<std::shared_mutex> guard(embedder_shared_mutex_);
-    embedder_ = nullptr;
+  void ResetHost() {
+    std::unique_lock<std::shared_mutex> guard(host_shared_mutex_);
+    host_ = nullptr;
   }
 
   void TakeScreenShot(size_t max_width, size_t max_height, int quality,
@@ -409,7 +421,7 @@ class LynxContext {
 
  private:
   ShadowNodeOwner* node_owner_;
-  shell::EmbedderPlatformHarmony* embedder_{nullptr};
+  LynxContextHost* host_{nullptr};
   UIOwner* ui_owner_;
   fluency::harmony::FluencyTraceHelperHarmony fluency_trace_helper_;
   ArkUI_ContextHandle ark_ui_context_{nullptr};
@@ -435,7 +447,7 @@ class LynxContext {
   fml::RefPtr<fml::TaskRunner> layout_task_runner_;
 
   mutable std::shared_mutex node_owner_shared_mutex_;
-  mutable std::shared_mutex embedder_shared_mutex_;
+  mutable std::shared_mutex host_shared_mutex_;
   mutable std::mutex console_message_callback_mutex_;
   mutable std::mutex invoke_cdp_from_sdk_callback_mutex_;
 

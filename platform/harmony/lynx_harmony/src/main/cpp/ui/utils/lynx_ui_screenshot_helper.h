@@ -9,6 +9,7 @@
 #include <multimedia/image_framework/image/pixelmap_native.h>
 #include <node_api.h>
 
+#include <cstdint>
 #include <string>
 
 #include "base/include/closure.h"
@@ -27,6 +28,24 @@ class LynxUIScreenshotHelper {
   static void TakeContentScreenshotForNode(
       napi_env env, ArkUI_NodeHandle node, const lepus::Value& args,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+
+  struct SnapshotResult {
+    bool success{false};
+    uint32_t width{0};
+    uint32_t height{0};
+    // Raw Base64 on success, or an error message on failure.
+    std::string data;
+  };
+
+  // Must be called on the UI thread. The caller owns the returned pixel map.
+  static OH_PixelmapNative* TakeSnapshotForNode(ArkUI_NodeHandle node,
+                                                float scale,
+                                                std::string& error_message);
+
+  // Takes ownership of pixel_map and returns raw Base64 data on success.
+  static SnapshotResult EncodeSnapshot(OH_PixelmapNative* pixel_map,
+                                       const std::string& format,
+                                       int quality = 100);
 
  private:
   static OH_PixelmapNative* TakeSnapshotForNode(ArkUI_NodeHandle node,

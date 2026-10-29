@@ -58,6 +58,7 @@ UIRoot::~UIRoot() {
     context_->DetachGesturesFromRoot(this);
     are_gestures_attached_ = false;
   }
+  DetachFromParent();
   if (node_content_) {
     OH_ArkUI_NodeContent_RemoveNode(node_content_->NodeContentHandle(),
                                     root_proxy_);
@@ -172,6 +173,26 @@ void UIRoot::AttachToNodeContent(NativeNodeContent* content) {
   node_content_->SetUI(this);
 }
 
+bool UIRoot::AttachToParent(ArkUI_NodeHandle parent) {
+  if (parent_node_ == parent) {
+    return true;
+  }
+  DetachFromParent();
+  if (!parent || !NodeManager::Instance().InsertNode(parent, root_proxy_, 0)) {
+    return false;
+  }
+  parent_node_ = parent;
+  return true;
+}
+
+void UIRoot::DetachFromParent() {
+  if (!parent_node_) {
+    return;
+  }
+  NodeManager::Instance().RemoveNode(parent_node_, root_proxy_);
+  parent_node_ = nullptr;
+}
+
 bool UIRoot::IsRoot() { return true; }
 
 bool UIRoot::IsVisible() {
@@ -260,6 +281,21 @@ void UIRoot::GetOffsetToScreen(float offset_screen[2]) {
   float scaled_density = context_->ScaledDensity();
   offset_screen[0] = page_offset.x / scaled_density;
   offset_screen[1] = page_offset.y / scaled_density;
+}
+
+bool UIRoot::GetOffsetToWindow(float offset_window[2]) {
+  ArkUI_IntOffset page_offset{};
+  if (OH_ArkUI_NodeUtils_GetPositionWithTranslateInWindow(
+          root_proxy_, &page_offset) != ARKUI_ERROR_CODE_NO_ERROR) {
+    return false;
+  }
+  const float scaled_density = context_->ScaledDensity();
+  if (!(scaled_density > 0.f)) {
+    return false;
+  }
+  offset_window[0] = page_offset.x / scaled_density;
+  offset_window[1] = page_offset.y / scaled_density;
+  return true;
 }
 
 }  // namespace harmony

@@ -564,9 +564,6 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void OnNodeReadyForAccessibility();
   bool IsImportantForAccessibility();
   ArkUI_NodeType GetAccessibilityType(const std::string& traits);
-  void Base64EncodeTask(
-      OH_PixelmapNative* pixel_map, const std::string& format,
-      base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   void ApplyOverflowClipPath(float width, float height,
                              const std::string& path);
   void ApplyOverflowClipRectangle(float width, float height, float left,
@@ -662,20 +659,6 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
       LynxAccessibilityStatus::kDefault};
   int sticky_scroller_sign_{kInvalidStickySign};
 
-  struct EncodeAsyncContexts {
-    napi_async_work async_work = nullptr;
-    OH_PixelmapNative* pixel_map = nullptr;
-    std::string format;
-    uint32_t width;
-    uint32_t height;
-    bool res{false};
-    std::string data;
-    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback;
-    EncodeAsyncContexts(
-        OH_PixelmapNative* pixel_map, const std::string& format,
-        base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback)
-        : pixel_map(pixel_map), format(format), callback(std::move(callback)) {}
-  };
   std::unique_ptr<KeyframeManager> keyframe_manager_;
 };
 

@@ -30,29 +30,29 @@ namespace shell {
 
 // TODO(chenyouhui): Rename EmbedderPlatformHarmony and namespace
 // TODO(chenyouhui): Merge EmbedderPlatformHarmony and UIDelegateHarmony?
-class EmbedderPlatformHarmony {
+class EmbedderPlatformHarmony final : public tasm::harmony::LynxContextHost {
  public:
   EmbedderPlatformHarmony(
       napi_env env, napi_value capi_embedder,
       std::unique_ptr<tasm::harmony::UIDelegateHarmony> ui_delegate,
       const std::shared_ptr<tasm::harmony::LynxContext>& lynx_context);
 
-  ~EmbedderPlatformHarmony();
+  ~EmbedderPlatformHarmony() override;
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value New(napi_env env, napi_callback_info info);
   static napi_value GetUIDelegate(napi_env env, napi_callback_info info);
   static napi_value UpdateRefreshRate(napi_env env, napi_callback_info info);
   static napi_value Destroy(napi_env env, napi_callback_info info);
 
-  void ScreenSize(float size[2]) const;
-  float DevicePixelRatio() const;
-  int32_t GetInstanceId() const;
+  void ScreenSize(float size[2]) const override;
+  float DevicePixelRatio() const override;
+  int32_t GetInstanceId() const override;
 
   void TakeSnapshot(size_t max_width, size_t max_height, int quality,
                     const std::string& format,
                     const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
                     tasm::TakeSnapshotCompletedCallback callback,
-                    const std::string& screen_shot_mode);
+                    const std::string& screen_shot_mode) override;
 
  private:
   class CallbackHandler {

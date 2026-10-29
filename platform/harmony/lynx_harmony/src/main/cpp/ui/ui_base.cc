@@ -7,7 +7,6 @@
 
 #include <arkui/native_node.h>
 #include <deviceinfo.h>
-#include <multimedia/image_framework/image/image_packer_native.h>
 #include <native_drawing/drawing_canvas.h>
 
 #include <algorithm>
@@ -46,11 +45,11 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_screenshot_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/svg_path_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/transform.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/ui_sticky_scroller.h"
-#include "third_party/modp_b64/modp_b64.h"
 
 namespace lynx {
 namespace tasm {
@@ -79,7 +78,6 @@ constexpr uint32_t kFlagOffsetChanged = 1 << 16;
 // This value (~2.236068) is accurate enough for current use cases.
 static constexpr float kCameraDistanceNormalizationMultiplier = 2.236068;
 static constexpr int kDrawBehindVersion = 20;
-static constexpr size_t kImageBufferMargin = 2048;
 static constexpr float kOffsetRotateAutoWithAngleBase = -1000000.0f;
 static constexpr float kOffsetRotateAutoWithAngleRange = 360.0f;
 
@@ -420,20 +418,13 @@ void UIBase::SendPositionEvent(const char* event_name,
   ret->SetValue("width", result[2] - result[0]);
   ret->SetValue("height", result[3] - result[1]);
   auto* root = context_->Root();
+  float root_window_offset[2] = {0.f, 0.f};
   const bool has_window_position = root != nullptr &&
                                    root->IsAttachedToViewTree() &&
-                                   context_->HasWindowInfo();
+                                   root->GetOffsetToWindow(root_window_offset);
   if (has_window_position) {
-    float root_screen_offset[2] = {0.f, 0.f};
-    root->GetOffsetToScreen(root_screen_offset);
-    float scaled_density = context_->ScaledDensity();
-    if (!std::isfinite(scaled_density) || scaled_density <= 0.f) {
-      scaled_density = 1.f;
-    }
-    const float window_x = result[0] + root_screen_offset[0] -
-                           context_->WindowLeftPx() / scaled_density;
-    const float window_y = result[1] + root_screen_offset[1] -
-                           context_->WindowTopPx() / scaled_density;
+    const float window_x = result[0] + root_window_offset[0];
+    const float window_y = result[1] + root_window_offset[1];
     if (require_window_position) {
       const std::array<float, 4> rect = {
           window_x, window_y, result[2] - result[0], result[3] - result[1]};
@@ -3762,167 +3753,11 @@ void UIBase::InitAccessibilityAttrs(LynxAccessibilityMode mode,
   dirty_flags_ |= kFlagAccessibilityTraits;
 }
 
-void UIBase::Base64EncodeTask(
-    OH_PixelmapNative* pixel_map, const std::string& format,
-    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) {
-  napi_env env = context_->GetNapiEnv();
-  auto async_context =
-      new EncodeAsyncContexts(pixel_map, format, std::move(callback));
-  if (async_context == nullptr) {
-    callback(LynxGetUIResult::OPERATION_ERROR,
-             lepus::Value("Create Base64 encode task failed"));
-    return;
-  }
-  napi_value work_name;
-  napi_create_string_utf8(env, "TakeScreenshotBase64EncodeTask",
-                          NAPI_AUTO_LENGTH, &work_name);
-  napi_create_async_work(
-      env, nullptr, work_name,
-      [](napi_env env, void* data) {
-        EncodeAsyncContexts* encode_context =
-            reinterpret_cast<EncodeAsyncContexts*>(data);
-        if (encode_context == nullptr) {
-          LOGE("Failed to get encode task context");
-          return;
-        }
-        OH_Pixelmap_ImageInfo* image_info = nullptr;
-        OH_PixelmapImageInfo_Create(&image_info);
-        OH_PixelmapNative_GetImageInfo(encode_context->pixel_map, image_info);
-        OH_PixelmapImageInfo_GetWidth(image_info, &encode_context->width);
-        OH_PixelmapImageInfo_GetHeight(image_info, &encode_context->height);
-        OH_PixelmapImageInfo_Release(image_info);
-
-        OH_ImagePackerNative* image_packer = nullptr;
-        OH_PackingOptions* pack_option = nullptr;
-        OH_ImagePackerNative_Create(&image_packer);
-        OH_PackingOptions_Create(&pack_option);
-        std::string image_format = "image/" + encode_context->format;
-        Image_MimeType mime_type = {image_format.data(), image_format.length()};
-        OH_PackingOptions_SetMimeType(pack_option, &mime_type);
-        OH_PackingOptions_SetQuality(pack_option, 100);
-
-        // To optimize memory usage, we start with 0.5 * raw size (2 bytes per
-        // pixel). This should be enough for most cases.
-        // We also add a constant margin (2KB) to cover image headers/metadata,
-        // which is significant for very small images.
-        size_t buffer_size = static_cast<size_t>(encode_context->width) *
-                                 encode_context->height * 2 +
-                             kImageBufferMargin;
-        std::unique_ptr<uint8_t[]> buffer =
-            std::make_unique<uint8_t[]>(buffer_size);
-        int32_t res = OH_ImagePackerNative_PackToDataFromPixelmap(
-            image_packer, pack_option, encode_context->pixel_map, buffer.get(),
-            &buffer_size);
-
-        if (res == IMAGE_ENCODE_FAILED) {
-          // Retry with max safe size: raw RGBA size + margin
-          buffer_size = static_cast<size_t>(encode_context->width) *
-                            encode_context->height * 4 +
-                        kImageBufferMargin;
-          buffer = std::make_unique<uint8_t[]>(buffer_size);
-          res = OH_ImagePackerNative_PackToDataFromPixelmap(
-              image_packer, pack_option, encode_context->pixel_map,
-              buffer.get(), &buffer_size);
-        }
-        OH_PixelmapNative_Release(encode_context->pixel_map);
-        OH_PackingOptions_Release(pack_option);
-        OH_ImagePackerNative_Release(image_packer);
-        if (res != IMAGE_SUCCESS) {
-          encode_context->data = "pack image failed: " + std::to_string(res);
-          encode_context->res = false;
-          return;
-        }
-        std::unique_ptr<char[]> base64_buf =
-            std::make_unique<char[]>(lynx_modp_b64_encode_len(buffer_size));
-        size_t base64_len = lynx_modp_b64_encode(
-            base64_buf.get(), reinterpret_cast<const char*>(buffer.get()),
-            buffer_size);
-        if (base64_len == static_cast<size_t>(-1)) {
-          encode_context->data = "image base64 encode failed";
-          encode_context->res = false;
-          return;
-        }
-        std::string base64_str(reinterpret_cast<const char*>(base64_buf.get()),
-                               base64_len);
-        encode_context->data = base64_str;
-        encode_context->res = true;
-      },
-      [](napi_env env, napi_status status, void* data) {
-        EncodeAsyncContexts* encode_context =
-            reinterpret_cast<EncodeAsyncContexts*>(data);
-        if (encode_context == nullptr) {
-          LOGE("Failed to get encode task context");
-          return;
-        }
-        if (encode_context->res) {
-          auto ret = lepus::Dictionary::Create();
-          ret->SetValue("width", encode_context->width);
-          ret->SetValue("height", encode_context->height);
-          std::string header = "data:image/jpeg;base64,";
-          if (encode_context->format == "png") {
-            header = "data:image/png;base64,";
-          }
-          ret->SetValue("data", header + encode_context->data);
-          encode_context->callback(LynxGetUIResult::SUCCESS, lepus::Value(ret));
-        } else {
-          encode_context->callback(LynxGetUIResult::OPERATION_ERROR,
-                                   lepus::Value(encode_context->data));
-        }
-        napi_delete_async_work(env, encode_context->async_work);
-        delete encode_context;
-      },
-      reinterpret_cast<void*>(async_context), &async_context->async_work);
-  napi_queue_async_work(env, async_context->async_work);
-}
-
 void UIBase::TakeScreenshot(
     const lepus::Value& args,
     base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) {
-  base::harmony::HarmonyCompatFunctionsHandler* handle =
-      base::harmony::GetHarmonyCompatFunctionsHandler();
-  if (handle == nullptr) {
-    callback(LynxGetUIResult::OPERATION_ERROR,
-             lepus::Value("load symbol failed"));
-    return;
-  }
-  std::string format = "jpeg";
-  float scale = 1.0f;
-  if (args.IsTable() || args.IsJSTable()) {
-    tasm::ForEachLepusValue(
-        args, [&format, &scale](const auto& key, const auto& val) {
-          if (key.StdString() == "format" && val.StdString() == "png") {
-            format = "png";
-          }
-          if (key.StdString() == "scale") {
-            scale = val.Number();
-          }
-        });
-  }
-  scale = std::clamp(scale, 0.0f, 1.0f);
-  ArkUI_SnapshotOptions* snapshot_option =
-      handle->oh_create_snapshot_option_func();
-  if (snapshot_option == nullptr) {
-    callback(LynxGetUIResult::OPERATION_ERROR,
-             lepus::Value("The current version does not support screenshot"));
-    return;
-  }
-  int32_t res =
-      handle->oh_snapshot_option_set_scale_func(snapshot_option, scale);
-  if (res != 0) {
-    handle->oh_destroy_snapshot_option_func(snapshot_option);
-    callback(LynxGetUIResult::OPERATION_ERROR,
-             lepus::Value("screenshot args init failed"));
-    return;
-  }
-  OH_PixelmapNative* pixel_map = nullptr;
-  handle->oh_get_node_snapshot_func(DrawNode(), snapshot_option, &pixel_map);
-  handle->oh_destroy_snapshot_option_func(snapshot_option);
-  if (pixel_map == nullptr) {
-    callback(LynxGetUIResult::OPERATION_ERROR,
-             lepus::Value("task snapshot failed"));
-    return;
-  }
-  Base64EncodeTask(pixel_map, format, std::move(callback));
+  LynxUIScreenshotHelper::TakeScreenshotForNode(
+      context_->GetNapiEnv(), DrawNode(), args, std::move(callback));
 }
 
 void UIBase::OnResourceLoadCallback(const lepus::Value& value) {

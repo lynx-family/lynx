@@ -11,8 +11,6 @@
 
 #include "base/include/closure.h"
 #include "base/include/fml/task_runner.h"
-#include "core/resource/lynx_resource_loader_harmony.h"
-#include "core/shell/harmony/embedder_platform_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/gesture_event.h"
@@ -106,7 +104,7 @@ LynxContext::GetCAPINodeInfoMap() {
 }
 
 LynxContext::~LynxContext() {
-  DCHECK(!embedder_);
+  DCHECK(!host_);
   DCHECK(!ui_owner_);
   DCHECK(!node_owner_);
   LOGD("~LynxContext");
@@ -402,11 +400,11 @@ float LynxContext::ScaledDensity() const {
   if (delegate_) {
     return delegate_->device_pixel_ratio;
   }
-  std::shared_lock<std::shared_mutex> guard(embedder_shared_mutex_);
-  if (!embedder_) {
+  std::shared_lock<std::shared_mutex> guard(host_shared_mutex_);
+  if (!host_) {
     return 1.f;
   }
-  return embedder_->DevicePixelRatio();
+  return host_->DevicePixelRatio();
 }
 
 UIBase* LynxContext::FindUIBySign(int sign) const {
@@ -603,11 +601,11 @@ void LynxContext::ScreenSize(float size[2]) const {
     size[1] = delegate_->screen_height;
     return;
   }
-  std::shared_lock<std::shared_mutex> guard(embedder_shared_mutex_);
-  if (!embedder_) {
+  std::shared_lock<std::shared_mutex> guard(host_shared_mutex_);
+  if (!host_) {
     return;
   }
-  embedder_->ScreenSize(size);
+  host_->ScreenSize(size);
 }
 
 void LynxContext::OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
@@ -754,7 +752,8 @@ void LynxContext::StopFluencyTrace(int sign) {
 }
 
 int32_t LynxContext::GetInstanceId() const {
-  return embedder_->GetInstanceId();
+  std::shared_lock<std::shared_mutex> guard(host_shared_mutex_);
+  return host_ ? host_->GetInstanceId() : 0;
 }
 
 UIRoot* LynxContext::Root() {
@@ -812,8 +811,6 @@ void LynxContext::OnLynxCreate(
   resource_loader_ = resource_loader;
   ui_task_runner_ = ui_task_runner;
   layout_task_runner_ = layout_task_runner;
-  static_cast<lynx::harmony::LynxResourceLoaderHarmony*>(resource_loader_.get())
-      ->SetUITaskRunner(ui_task_runner_);
 }
 
 void LynxContext::PostTaskOnUIThread(base::closure task) const {
@@ -877,10 +874,10 @@ void LynxContext::TakeScreenShot(
     size_t max_width, size_t max_height, int quality,
     const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
     TakeSnapshotCompletedCallback callback, const std::string& format) {
-  std::shared_lock<std::shared_mutex> guard(embedder_shared_mutex_);
-  if (embedder_) {
-    embedder_->TakeSnapshot(max_width, max_height, quality, format,
-                            screenshot_runner, callback, "lynxview");
+  std::shared_lock<std::shared_mutex> guard(host_shared_mutex_);
+  if (host_) {
+    host_->TakeSnapshot(max_width, max_height, quality, format,
+                        screenshot_runner, callback, "lynxview");
   }
 }
 
