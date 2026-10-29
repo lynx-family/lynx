@@ -137,7 +137,9 @@ LayoutContextClay::LayoutContextClay(clay::ViewContext* view_context)
 }
 
 LayoutContextClay::~LayoutContextClay() {
-  view_context_->SetLayoutDelegate(nullptr);
+  if (view_context_->GetLayoutDelegate() == this) {
+    view_context_->SetLayoutDelegate(nullptr);
+  }
 }
 
 void LayoutContextClay::SetLayoutNodeManager(
@@ -222,6 +224,9 @@ void LayoutContextClay::UpdateRootSize(float width, float height) {
 }
 
 void LayoutContextClay::DestroyLayoutNodes(const std::unordered_set<int>& ids) {
+  if (view_context_->GetLayoutDelegate() != this) {
+    return;
+  }
   for (auto& child : ids) {
     view_context_->RemoveShadowNode(child);
   }
@@ -230,7 +235,12 @@ void LayoutContextClay::DestroyLayoutNodes(const std::unordered_set<int>& ids) {
   }
 }
 
-void LayoutContextClay::Destroy() { view_context_->DestroyAllShadowNode(); }
+void LayoutContextClay::Destroy() {
+  // A newer layout context may already own the reused shadow nodes.
+  if (view_context_->GetLayoutDelegate() == this) {
+    view_context_->DestroyAllShadowNode();
+  }
+}
 
 std::unique_ptr<PlatformExtraBundle> LayoutContextClay::GetPlatformExtraBundle(
     int32_t id) {
