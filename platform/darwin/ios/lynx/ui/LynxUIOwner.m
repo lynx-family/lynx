@@ -1490,7 +1490,9 @@ static NSString* const kPositionChangeEvent = @"positionchange";
 - (void)removeLynxUIFromNameLynxUIMap:(LynxUI*)ui {
   if (ui.name && ui.name.length != 0) {
     LynxWeakProxy* weakLynxUI = [_nameLynxUIMap objectForKey:ui.name];
-    if (weakLynxUI) {
+    LynxUI* mappedUI = weakLynxUI.target;
+    // A replacement may have registered the same name before this UI is recycled.
+    if (!mappedUI || mappedUI == ui) {
       [_nameLynxUIMap removeObjectForKey:ui.name];
     }
   }
