@@ -1126,7 +1126,11 @@ export abstract class BaseApp<
       return undefined;
     }
     let cacheKey = (entryName ? entryName : DEFAULT_ENTRY) + path;
-    if (path.startsWith('/') || path.startsWith('lynx_assets')) {
+    if (
+      path === APP_SERVICE_NAME ||
+      path.startsWith('/') ||
+      path.startsWith('lynx_assets')
+    ) {
       cacheKey = templateUrl + cacheKey;
     }
     return cacheKey;
