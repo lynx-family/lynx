@@ -191,6 +191,39 @@ TEST_F(ElementVsyncProxyTest, RequestNextFrame) {
   EXPECT_LE(test_vsync_proxy->last_tick_time(), fml::TimePoint::Now());
 }
 
+TEST_F(ElementVsyncProxyTest, CustomVSyncKeepsInjectedFrameTime) {
+  class CustomVSyncSource : public base::VSyncMonitorPlatformImpl {
+   public:
+    void RequestVSync(Callback callback) override {
+      callback_ = std::move(callback);
+    }
+
+    void Trigger(int64_t frame_start, int64_t frame_end) {
+      ASSERT_TRUE(callback_);
+      auto callback = std::move(callback_);
+      callback(frame_start, frame_end);
+    }
+
+   private:
+    Callback callback_;
+  };
+
+  auto source = std::make_shared<CustomVSyncSource>();
+  auto custom_vsync_monitor = std::make_shared<base::VSyncMonitor>(source);
+  custom_vsync_monitor->BindToCurrentThread();
+  auto test_vsync_proxy =
+      std::make_shared<ElementVsyncProxy>(manager.get(), custom_vsync_monitor);
+
+  const auto injected_time =
+      fml::TimePoint::Now() - fml::TimeDelta::FromSeconds(2);
+  test_vsync_proxy->RequestNextFrame();
+  const int64_t frame_start = injected_time.ToEpochDelta().ToNanoseconds();
+  source->Trigger(frame_start, frame_start + kFrameDuration);
+  fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+
+  EXPECT_EQ(test_vsync_proxy->last_tick_time(), injected_time);
+}
+
 TEST_F(ElementVsyncProxyTest, SetPreferredFps) {
   auto test_vsync_proxy = InitTestVSyncProxy();
   test_vsync_proxy->set_preferred_fps("high");
