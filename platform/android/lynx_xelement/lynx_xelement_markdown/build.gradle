@@ -36,5 +36,5 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "androidx.appcompat:appcompat:1.0.0"
-    compileOnly "org.lynxsdk.lynx:serval_markdown:0.3.3"
+    compileOnly "org.lynxsdk.lynx:serval_markdown:0.3.5"
 }
