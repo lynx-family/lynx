@@ -286,6 +286,7 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void SetEventDelegate(EventDelegate* delegate);
   void SetUIComponentDelegate(UIComponentDelegate* delegate);
   void SetLayoutDelegate(LayoutDelegate* delegate);
+  LayoutDelegate* GetLayoutDelegate() const;
 
   void SetPipelineTimingDelegate(
       std::shared_ptr<PipelineTimingDelegate> delegate);
