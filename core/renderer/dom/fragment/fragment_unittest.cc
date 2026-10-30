@@ -1229,7 +1229,213 @@ class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
              expression + "; })"));
     return lepus::Value(node);
   }
+
+  static lepus::Value Style(CSSPropertyID id, const char* value,
+                            const lepus::Value& previous) {
+    auto node = lepus::Dictionary::Create();
+    node->SetValue("op", lepus::Value(3));
+    node->SetValue("propertyId", lepus::Value(id));
+    node->SetValue("value", lepus::Value(value));
+    node->SetValue("previous", previous);
+    return lepus::Value(node);
+  }
+
+  static bool RecordsShadowOrFill(const DisplayList& list) {
+    for (const auto& item : CollectDisplayListItems(list)) {
+      if (item.type == DisplayListOpType::kBoxShadow ||
+          item.type == DisplayListOpType::kFill) {
+        return true;
+      }
+    }
+    return false;
+  }
 };
+
+TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
+  Install(Style(
+      kPropertyIDBackgroundColor, "red",
+      Behind(
+          "[[3, 0, 0, width, height, 24, 24, 8, 8, 0, 6, 16, 2, 0x40000000],"
+          " [1, 0, 0, width, height, 0xffffffff],"
+          " [3, 0, 0, width, height, 24, 24, 8, 8, 0, 0, 8, 0, 0x20000000]]")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  std::vector<DisplayListItem> boxes;
+  std::vector<DisplayListItem> painted;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kRecordBox) {
+      boxes.push_back(item);
+    } else if (item.type == DisplayListOpType::kBoxShadow ||
+               item.type == DisplayListOpType::kFill) {
+      painted.push_back(item);
+    }
+  }
+  // Commands paint in list order, all below the ordinary background.
+  ASSERT_EQ(painted.size(), 4u);
+  EXPECT_EQ(painted[0].type, DisplayListOpType::kBoxShadow);
+  EXPECT_EQ(painted[1].type, DisplayListOpType::kFill);
+  EXPECT_EQ(painted[1].payload.fill.color, 0xffffffff);
+  EXPECT_EQ(painted[2].type, DisplayListOpType::kBoxShadow);
+  EXPECT_EQ(painted[3].type, DisplayListOpType::kFill);
+  EXPECT_EQ(painted[3].payload.fill.color, 0xffff0000u);
+
+  const auto& first = painted[0].payload.box_shadow;
+  EXPECT_EQ(first.clip_mode, 0);
+  EXPECT_EQ(first.color, 0x40000000u);
+  EXPECT_FLOAT_EQ(first.blur_radius, 8.f);
+  EXPECT_EQ(painted[2].payload.box_shadow.color, 0x20000000u);
+  EXPECT_FLOAT_EQ(painted[2].payload.box_shadow.blur_radius, 4.f);
+  // Each shadow records its caster shape, then the offset/spread shadow box.
+  ASSERT_GE(boxes.size(), 2u);
+  const auto& caster = boxes[first.clip_box_index].payload.record_box;
+  EXPECT_FLOAT_EQ(caster.w, 100.f);
+  EXPECT_FLOAT_EQ(caster.h, 60.f);
+  EXPECT_FLOAT_EQ(caster.radii[0], 12.f);
+  EXPECT_FLOAT_EQ(caster.radii[2], 12.f);
+  EXPECT_FLOAT_EQ(caster.radii[4], 4.f);
+  EXPECT_FLOAT_EQ(caster.radii[6], 4.f);
+  const auto& shadow = boxes[first.shadow_box_index].payload.record_box;
+  EXPECT_FLOAT_EQ(shadow.x, -1.f);
+  EXPECT_FLOAT_EQ(shadow.y, 2.f);
+  EXPECT_FLOAT_EQ(shadow.w, 102.f);
+  EXPECT_FLOAT_EQ(shadow.h, 62.f);
+}
+
+TEST_F(ComposeDrawBehindTest, InvalidOutsetShadowRecordsNothing) {
+  const std::string fill = "[1, 0, 0, width, height, 0xffffffff], ";
+  for (const char* shadow : {
+           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, -1, 0, 0xff000000]",
+           "[3, 0, 0, width, height, 0, -1, 0, 0, 0, 0, 4, 0, 0xff000000]",
+           "[3, 0, 0, width, height, 0, 0, 0, 0, NaN, 0, 4, 0, 0xff000000]",
+           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, 4, 0, 0.5]",
+           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, 4, 0]",
+       }) {
+    SCOPED_TRACE(shadow);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(Behind("[" + fill + shadow + "]"));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    EXPECT_FALSE(RecordsShadowOrFill(Draw(content)));
+  }
+}
+
+TEST_F(ComposeDrawBehindTest,
+       OutsetShadowKeepsPlatformLayerUnclippedUnderOverflowHidden) {
+  Eval("globalThis.castShadow = true;");
+  Install(Style(kPropertyIDOverflow, "hidden",
+                Behind("globalThis.castShadow ? [[3, 0, 0, width, height, 8, "
+                       "8, 8, 8, 0, 4, 8, 0, 0xff000000]] : []")));
+  auto* content = handle_->content_element().get();
+  ASSERT_TRUE(content->computed_css_style()->IsOverflowHidden());
+  Size(content, 100, 60);
+  auto* fragment = content->fragment_impl();
+  ASSERT_TRUE(fragment->has_platform_renderer_);
+  auto* ref = static_cast<NativeMockPaintingContext*>(
+                  manager->painting_context()->impl())
+                  ->GetNativePlatformRef();
+  fragment->Draw();
+  const auto* list = ref->GetDisplayListForRenderer(fragment->id());
+  ASSERT_NE(list, nullptr);
+  EXPECT_FALSE(list->RootNeedClipBounds());
+
+  // A property-only update keeps the exemption of the last content draw.
+  fragment->InvalidateForSubtreeProperty();
+  fragment->Draw();
+  list = ref->GetDisplayListForRenderer(fragment->id());
+  ASSERT_NE(list, nullptr);
+  EXPECT_FALSE(list->RootNeedClipBounds());
+
+  // Without shadows the same layer clips its platform bounds again.
+  Eval("globalThis.castShadow = false;");
+  fragment->InvalidateForRedraw();
+  fragment->Draw();
+  list = ref->GetDisplayListForRenderer(fragment->id());
+  ASSERT_NE(list, nullptr);
+  EXPECT_TRUE(list->RootNeedClipBounds());
+}
+
+TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsInsideItsTransform) {
+  Install(
+      Behind("[[3, 0, 0, width, height, 0, 0, 0, 0, 0, 4, 8, 0, "
+             "0xff000000]]",
+             Layer()));
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  auto* content = layer->GetChildAt(0);
+  ASSERT_EQ(content, handle_->content_element().get());
+  ASSERT_TRUE(
+      layer->fragment_impl()->custom_draw_functions_->draw_layer_properties);
+  EXPECT_FALSE(layer->fragment_impl()->custom_draw_functions_->draw_behind);
+  ASSERT_TRUE(content->fragment_impl()->custom_draw_functions_->draw_behind);
+  Size(layer, 100, 60);
+  Size(content, 100, 60);
+  // Drawing the layer may draw its content too. Inspect the content first.
+  bool shadowed = false;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    shadowed |= item.type == DisplayListOpType::kBoxShadow;
+  }
+  EXPECT_TRUE(shadowed);
+  ExpectTranslation(Draw(layer), 60, 60);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
+}
+
+TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsOnImageAndTextContent) {
+  for (auto kind : {ComposeElementKind::kImage, ComposeElementKind::kText}) {
+    SCOPED_TRACE(static_cast<int>(kind));
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(Behind("[[3, 0, 0, width, height, 0, 0, 0, 0, 0, 4, 8, 0, "
+                   "0xff000000]]",
+                   Layer()),
+            kind);
+    auto* content = handle_->content_element().get();
+    ASSERT_EQ(handle_->mount_root()->GetChildAt(0)->GetChildAt(0), content);
+    Size(content, 100, 60);
+    bool shadowed = false;
+    for (const auto& item : CollectDisplayListItems(Draw(content))) {
+      shadowed |= item.type == DisplayListOpType::kBoxShadow;
+    }
+    EXPECT_TRUE(shadowed);
+  }
+}
+
+TEST_F(ComposeDrawBehindTest, ClippedShadowStaysOutsideTheContentClip) {
+  // Modifier.shadow(clip = true): layer, shadow, then the ordinary clip.
+  Install(Style(kPropertyIDOverflow, "hidden",
+                Style(kPropertyIDBorderRadius, "8px",
+                      Behind("[[3, 0, 0, width, height, 8, 8, 8, 8, 0, 4, 8, "
+                             "0, 0xff000000]]",
+                             Layer()))),
+          ComposeElementKind::kText);
+  auto* content = handle_->content_element().get();
+  ASSERT_TRUE(content->computed_css_style()->IsOverflowHidden());
+  Size(content, 100, 60);
+  int shadows = 0;
+  int clips = 0;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kBoxShadow) {
+      EXPECT_EQ(clips, 0);
+      ++shadows;
+    } else if (item.type == DisplayListOpType::kClipRect) {
+      EXPECT_EQ(item.payload.clip_rect.has_radii, 1u);
+      ++clips;
+    }
+  }
+  EXPECT_EQ(shadows, 1);
+  EXPECT_EQ(clips, 1);
+  auto* fragment = content->fragment_impl();
+  ASSERT_TRUE(fragment->has_platform_renderer_);
+  auto* ref = static_cast<NativeMockPaintingContext*>(
+                  manager->painting_context()->impl())
+                  ->GetNativePlatformRef();
+  fragment->InvalidateForRedraw();
+  fragment->Draw();
+  const auto* list = ref->GetDisplayListForRenderer(fragment->id());
+  ASSERT_NE(list, nullptr);
+  EXPECT_FALSE(list->RootNeedClipBounds());
+}
 
 TEST_F(ComposeDrawBehindTest, DrawsBeforeContentAndOnlyOnFullRedraw) {
   auto background = lepus::Dictionary::Create();
@@ -1771,6 +1977,30 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   ASSERT_NE(inner_list, nullptr);
   ExpectTranslation(*inner_list, 55, 40);
   EXPECT_FALSE(inner->fragment_impl()->NeedRedraw());
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, ResultWithoutAlphaKeepsTransform) {
+  // A transform-only template's result has no alpha key at all.
+  auto layer = lepus::Dictionary::Create();
+  layer->SetValue("op", lepus::Value(11));
+  layer->SetValue("resolve", Eval(R"((function(element, width, height) {
+      return {translationX: 15, translationY: 5, rotationZ: 0, scaleX: 1,
+          scaleY: 1};
+    }))"));
+  auto image_alpha = lepus::Dictionary::Create();
+  image_alpha->SetValue("op", lepus::Value(2));
+  image_alpha->SetValue("propertyId", lepus::Value(kPropertyIDOpacity));
+  image_alpha->SetValue("value", lepus::Value(0.4));
+  image_alpha->SetValue("previous", lepus::Value(layer));
+  Install(lepus::Value(image_alpha), ComposeElementKind::kImage);
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 80);
+  auto list = Draw(content);
+  ExpectTranslation(list, 15, 5);
+  const auto* property =
+      LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kOpacity);
+  ASSERT_NE(property, nullptr);
+  EXPECT_FLOAT_EQ(property->data.opacity, 0.4f);
 }
 
 TEST_F(ComposeGraphicsLayerDrawTest, OptionalAlphaUpdatesClampsAndResets) {
