@@ -76,17 +76,15 @@ class LayoutObject : public ContainerNode {
   }
   inline bool IsFixedBefore() const { return is_fixed_before_; }
   inline bool IsFixed() const {
-    return css_style_->GetPosition() == PositionType::kFixed;
+    // Compose placement stays relative to its parent, including during
+    // rounding.
+    return !IsComposeLayout() &&
+           css_style_->GetPosition() == PositionType::kFixed;
   }
   inline bool IsFixedOrAbsolute() const {
-    return css_style_->GetPosition() == PositionType::kFixed ||
-           css_style_->GetPosition() == PositionType::kAbsolute;
+    return IsFixed() || css_style_->GetPosition() == PositionType::kAbsolute;
   }
-  inline bool IsNewFixed() const {
-    return (css_style_->GetPosition() == PositionType::kFixed) &&
-           (configs_.enable_fixed_new_ ||
-            configs_.enable_unify_fixed_behavior_);
-  }
+  inline bool IsNewFixed() const { return IsFixed() && GetEnableFixedNew(); }
   inline bool GetEnableFixedNew() const {
     return configs_.enable_fixed_new_ || configs_.enable_unify_fixed_behavior_;
   }
@@ -99,6 +97,23 @@ class LayoutObject : public ContainerNode {
   }
 
   SLMeasureFunc GetSLMeasureFunc() const;
+  SLComposeMeasureFunc GetSLComposeMeasureFunc() const {
+    return compose_measure_func_;
+  }
+  void SetSLComposeMeasureFunc(SLComposeMeasureFunc func) {
+    compose_measure_func_ = func;
+  }
+  void SetComposeLayout(bool value) {
+    if (compose_layout_ != value) RemoveAlgorithm();
+    compose_layout_ = value;
+    ClearCache();
+  }
+  bool IsComposeLayout() const { return compose_layout_; }
+  // Takes and returns the margin box, matching AlignmentByPlatform. The
+  // callback receives content constraints after margins, padding and borders
+  // are removed.
+  FloatSize UpdateMeasureWithComposeConstraints(
+      const ComposeConstraints& constraints, bool final_measure);
 
   SLAlignmentFunc GetSLAlignmentFunc() const;
 
@@ -266,6 +281,9 @@ class LayoutObject : public ContainerNode {
   virtual FloatSize UpdateMeasure(const Constraints& constraints,
                                   bool final_measure,
                                   const SLNodeSet* fixed_node_set = nullptr);
+  // CSS parents resolve border-box constraints before entering Compose.
+  FloatSize UpdateMeasureWithCompose(const Constraints& constraints,
+                                     bool final_measure);
   virtual void UpdateAlignment();
   void LayoutDisplayNone();
   std::vector<double> GetBoxModel();
@@ -296,7 +314,9 @@ class LayoutObject : public ContainerNode {
   void SetTag(const base::String& tag) { tag_ = tag; }
   const base::String& GetTag() const { return tag_; }
 
-  bool need_custom_layout() const { return measure_func_ != nullptr; }
+  bool need_custom_layout() const {
+    return measure_func_ != nullptr || compose_measure_func_ != nullptr;
+  }
   void SendLayoutEvent(LayoutEventType type,
                        const LayoutEventData& data = LayoutEventData());
   void SetEventHandler(LayoutEventHandler* handler) {
@@ -319,6 +339,16 @@ class LayoutObject : public ContainerNode {
   void UpdateMeasureWithMeasureFunc(const Constraints& constraints,
                                     bool final_measure);
 
+  // Shares Compose measurement after the entry point resolves the border box.
+  // Preserve the caller's percentage bases and apply padding/border only once.
+  void UpdateMeasureWithResolvedComposeConstraints(
+      const ComposeConstraints& border, bool final_measure);
+
+  // Shared measurement core; the CSS and Compose entries own their caches.
+  void UpdateMeasureWithNativeLayout(
+      const Constraints& constraints, bool final_measure,
+      const SLNodeSet* fixed_node_set = nullptr,
+      const ComposeConstraints* compose_constraints = nullptr);
   void UpdateMeasureWithLeafNode(const Constraints& constraints);
 
   void RemoveAlgorithm();
@@ -333,6 +363,8 @@ class LayoutObject : public ContainerNode {
   base::String tag_;
 
   SLMeasureFunc measure_func_ = nullptr;
+  SLComposeMeasureFunc compose_measure_func_ = nullptr;
+  bool compose_layout_ = false;
   SLRequestLayoutFunc request_layout_func_ = nullptr;
   SLAlignmentFunc alignment_func_ = nullptr;
   SLCanReuseLayoutWithSameSizeAsGivenConstraintFunc can_reuse_layout_func_ =

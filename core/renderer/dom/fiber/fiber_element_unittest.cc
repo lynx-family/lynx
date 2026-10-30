@@ -7,13 +7,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <tuple>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "base/include/auto_reset.h"
@@ -39,6 +39,7 @@
 #include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
+#include "core/renderer/dom/fiber/custom_layout.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
@@ -172,6 +173,14 @@ void PrepareLayoutInElementFirstScreenTest(FiberElementTest* test) {
 fml::RefPtr<PageElement> CreateLayoutInElementPage(FiberElementTest* test) {
   auto page = test->manager->CreateFiberPage("page", 11);
   page->FlushActionsAsRoot();
+  return page;
+}
+
+fml::RefPtr<PageElement> CreateComposeLayoutInElementPage(
+    FiberElementTest* test) {
+  auto page = CreateLayoutInElementPage(test);
+  page->MarkAsComposeLayout();
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
   return page;
 }
 
@@ -504,6 +513,21 @@ void SetDefaultEntryRuntime(
   template_assembler->template_entries_[DEFAULT_ENTRY_NAME] = std::move(entry);
 }
 
+std::shared_ptr<runtime::MTSRuntime> CreateCustomLayoutRuntime(
+    TemplateAssembler* template_assembler) {
+  auto runtime = CreateRendererRuntime(template_assembler);
+  Renderer::RegisterBuiltin(runtime.get(), ArchOption::FIBER_ARCH);
+  SetDefaultEntryRuntime(template_assembler, runtime);
+  return runtime;
+}
+
+bool EvalCustomLayout(const std::shared_ptr<runtime::MTSRuntime>& runtime,
+                      const char* source) {
+  lepus::Value result;
+  return runtime::MTSRuntime::ToQuickContext(runtime.get())
+      ->EvalBuf(source, strlen(source), result, "custom_layout.js");
+}
+
 }  // namespace
 
 static std::unordered_map<std::string, uint32_t> kTestColorMap = {
@@ -608,6 +632,44 @@ TEST_P(FiberElementTest, CustomLayoutFunctionsCloneBindsOwnContext) {
       manager->RequestLayout(std::make_shared<PipelineOptions>());
       EXPECT_FLOAT_EQ(clone->slnode()->GetBorderBoundWidth(), 80);
       EXPECT_FLOAT_EQ(source->slnode()->GetBorderBoundWidth(), 100);
+      page->RemoveNode(clone);
+      page->RemoveNode(source);
+    }
+  }
+}
+
+TEST_P(FiberElementTest, CustomLayoutFunctionsExternalContextDoesNotClone) {
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto page = manager->CreateFiberPage("page", 11);
+  FloatSize size(80, 30);
+  starlight::CustomLayoutFunctions functions{
+      [](void* context, const starlight::Constraints&, bool) {
+        return *static_cast<FloatSize*>(context);
+      },
+      nullptr, nullptr, &size};
+  for (bool flush_source : {false, true}) {
+    for (bool clone_resolved_props : {false, true}) {
+      SCOPED_TRACE(flush_source);
+      SCOPED_TRACE(clone_resolved_props);
+      auto source = manager->CreateFiberView();
+      source->SetCustomLayoutFunctions(functions);
+      page->InsertNode(source);
+      if (flush_source) page->FlushActionsAsRoot();
+      auto clone = source->CloneElement(clone_resolved_props);
+      clone->AttachToElementManager(
+          manager, tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), false);
+      page->InsertNode(clone);
+      page->FlushActionsAsRoot();
+      EXPECT_EQ(source->slnode()->GetContext(), &size);
+      auto measured = source->slnode()->UpdateMeasureByPlatform(
+          starlight::Constraints(), true);
+      EXPECT_FLOAT_EQ(measured.width_, size.width_);
+      EXPECT_FLOAT_EQ(measured.height_, size.height_);
+      EXPECT_EQ(clone->slnode()->GetSLMeasureFunc(), nullptr);
+      EXPECT_EQ(clone->slnode()->GetSLAlignmentFunc(), nullptr);
+      EXPECT_FALSE(clone->HasCustomLayoutFunctions());
       page->RemoveNode(clone);
       page->RemoveNode(source);
     }
@@ -3397,6 +3459,2094 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   EXPECT_TRUE(parent->sl_node_->is_dirty_);
   EXPECT_TRUE(element->sl_node_->is_dirty_);
   EXPECT_TRUE(element0->sl_node_->is_dirty_);
+}
+
+TEST_P(FiberElementTest, ComposeLayoutIdentitySurvivesNativeContentAndCloning) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  for (auto kind : {ComposeElementKind::kView, ComposeElementKind::kText,
+                    ComposeElementKind::kImage, ComposeElementKind::kList}) {
+    auto handle = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, kind, base::String(), tasm.get()));
+    auto owner = handle->content_element();
+    EXPECT_TRUE(owner->IsComposeLayout());
+    owner->EnsureSLNode();
+    ASSERT_NE(owner->slnode(), nullptr);
+    EXPECT_TRUE(owner->slnode()->IsComposeLayout());
+    EXPECT_EQ(owner->slnode()->GetSLComposeMeasureFunc(), nullptr);
+    auto clone = owner->CloneElement(true);
+    EXPECT_TRUE(clone->IsComposeLayout());
+    clone->AttachToElementManager(
+        manager, tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), false);
+    clone->EnsureSLNode();
+    ASSERT_NE(clone->slnode(), nullptr);
+    EXPECT_TRUE(clone->slnode()->IsComposeLayout());
+  }
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetComposeModifier(owner, {op: 7, start: 10, top: 4, end: 0, bottom: 0});
+  )"));
+  page->InsertNode(handle->mount_root());
+  page->FlushActionsAsRoot();
+  for (auto* node = handle->mount_root().get(); node;
+       node = node->first_child()) {
+    EXPECT_TRUE(node->IsComposeLayout());
+    ASSERT_NE(node->slnode(), nullptr);
+    EXPECT_TRUE(node->slnode()->IsComposeLayout());
+    EXPECT_EQ(node->slnode()->GetSLComposeMeasureFunc(), nullptr);
+  }
+  auto* root = handle->mount_root()->slnode();
+  root->GetCSSMutableStyle()->SetMinWidth(
+      starlight::NLength::MakeUnitNLength(50));
+  const auto size =
+      root->UpdateMeasureByPlatform({starlight::OneSideConstraint::AtMost(100),
+                                     starlight::OneSideConstraint::AtMost(80)},
+                                    true);
+  EXPECT_FLOAT_EQ(50, size.width_);
+  EXPECT_FLOAT_EQ(40,
+                  handle->content_element()->slnode()->GetBorderBoundWidth());
+  root->UpdateAlignment();
+  EXPECT_FLOAT_EQ(10, handle->content_element()
+                          ->slnode()
+                          ->GetBorderBoundLeftFromParentPaddingBound());
+  auto css = manager->CreateFiberView();
+  css->EnsureSLNode();
+  EXPECT_FALSE(css->IsComposeLayout());
+  EXPECT_FALSE(css->slnode()->IsComposeLayout());
+}
+
+TEST_P(FiberElementTest, ComposeLinearWeightParentDataSurvivesPaddingAndReset) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto parent = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto child = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("child", lepus::Value(child));
+  runtime->SetGlobalData("weightId", lepus::Value(kPropertyIDLinearWeight));
+  runtime->SetGlobalData("widthId", lepus::Value(kPropertyIDWidth));
+  runtime->SetGlobalData("heightId", lepus::Value(kPropertyIDHeight));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.setWeight = (weight, padded) => {
+      let modifier = {op: 2, propertyId: weightId, value: weight};
+      if (padded) {
+        modifier = {op: 7, start: 5, top: 5, end: 5, bottom: 5, previous: modifier};
+      }
+      modifier = {op: 3, propertyId: widthId, value: "10px", previous: modifier};
+      modifier = {op: 3, propertyId: heightId, value: "10px", previous: modifier};
+      __SetComposeModifier(child, modifier);
+    };
+    setWeight(2, true);
+  )"));
+  auto frame = child->mount_root();
+  ASSERT_NE(frame, child->content_element());
+  parent->content_element()->SetStyle(kPropertyIDDisplay,
+                                      lepus::Value("linear"));
+  parent->content_element()->SetStyle(kPropertyIDLinearOrientation,
+                                      lepus::Value("row"));
+  parent->content_element()->InsertNode(frame);
+  page->InsertNode(parent->mount_root());
+  page->FlushActionsAsRoot();
+  auto* style = frame->computed_css_style()->GetLayoutComputedStyle();
+  EXPECT_FLOAT_EQ(2, style->GetLinearWeight());
+  auto* node = parent->content_element()->slnode();
+  const auto layout = [node] {
+    starlight::Constraints constraints{
+        starlight::OneSideConstraint::Definite(100),
+        starlight::OneSideConstraint::AtMost(100)};
+    node->ReLayoutWithConstraints(constraints);
+  };
+  layout();
+  // Weight fills the allocated width, including the padding frame.
+  EXPECT_FLOAT_EQ(100, frame->slnode()->GetBorderBoundWidth());
+  frame->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  page->FlushActionsAsRoot();
+  EXPECT_FLOAT_EQ(
+      2,
+      frame->computed_css_style()->GetLayoutComputedStyle()->GetLinearWeight());
+  ASSERT_TRUE(EvalCustomLayout(runtime, "setWeight(1, false);"));
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(child->mount_root(), child->content_element());
+  EXPECT_FLOAT_EQ(1, child->content_element()
+                         ->computed_css_style()
+                         ->GetLayoutComputedStyle()
+                         ->GetLinearWeight());
+  EXPECT_EQ(node->FirstChild(), child->content_element()->slnode());
+
+  layout();
+  EXPECT_FLOAT_EQ(100, child->mount_root()->slnode()->GetBorderBoundWidth());
+  ASSERT_TRUE(EvalCustomLayout(runtime, "__SetComposeModifier(child, null);"));
+  page->FlushActionsAsRoot();
+  EXPECT_FLOAT_EQ(0, child->content_element()
+                         ->computed_css_style()
+                         ->GetLayoutComputedStyle()
+                         ->GetLinearWeight());
+}
+
+TEST_P(FiberElementTest, CustomLayoutPolicyChangesFollowElementFlush) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, true);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  page->InsertNode(owner);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto* original_node = owner->slnode();
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.measures = 0;
+    __SetCustomLayout(owner, () => {
+      globalThis.measures++;
+      return {width: 30, height: 20};
+    }, () => true);
+  )"));
+  EXPECT_EQ(owner->slnode(), original_node);
+  EXPECT_TRUE(owner->dirty() & Element::kDirtyCustomLayout);
+  EXPECT_EQ(runtime->GetGlobalData("measures"), lepus::Value(0));
+  auto flush = [&] {
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page.get());
+    EXPECT_TRUE(options->has_layout);
+  };
+  flush();
+  auto* node = owner->slnode();
+  ASSERT_NE(node, nullptr);
+  EXPECT_EQ(node->GetContext(), handle->custom_layout().get());
+  EXPECT_FLOAT_EQ(node->GetBorderBoundHeight(), 20);
+
+  auto previous = handle->custom_layout();
+  manager->need_layout_ = false;
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => ({width: 30, height: 40}), () => true);
+  )"));
+  EXPECT_EQ(node->GetContext(), previous.get());
+  EXPECT_FALSE(manager->need_layout_);
+  flush();
+  EXPECT_EQ(node->GetContext(), handle->custom_layout().get());
+  EXPECT_FLOAT_EQ(node->GetBorderBoundHeight(), 40);
+
+  // A clear followed by an install in the same patch replaces the pending
+  // configuration, even though the old SL hooks remain until Flush.
+  auto measure = node->GetSLComposeMeasureFunc();
+  ASSERT_TRUE(
+      EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null)"));
+  EXPECT_EQ(node->GetSLComposeMeasureFunc(), measure);
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => ({width: 30, height: 60}), () => true);
+  )"));
+  flush();
+  EXPECT_EQ(node->GetContext(), handle->custom_layout().get());
+  EXPECT_FLOAT_EQ(node->GetBorderBoundHeight(), 60);
+
+  manager->need_layout_ = false;
+  ASSERT_TRUE(
+      EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null)"));
+  EXPECT_EQ(node->GetSLComposeMeasureFunc(), measure);
+  EXPECT_FALSE(manager->need_layout_);
+  flush();
+  EXPECT_EQ(node->GetSLComposeMeasureFunc(), nullptr);
+  EXPECT_EQ(node->GetSLAlignmentFunc(), nullptr);
+  EXPECT_EQ(node->GetContext(), nullptr);
+}
+
+TEST_P(FiberElementTest, CustomLayoutRejectsPendingElementFunctions) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  page->InsertNode(owner);
+  starlight::CustomLayoutFunctions functions{
+      [](void*, const starlight::Constraints&, bool) {
+        return FloatSize(12, 13);
+      }};
+  owner->SetCustomLayoutFunctions(functions);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto layout = std::make_shared<CustomLayout>(*owner, *runtime, lepus::Value(),
+                                               lepus::Value());
+  EXPECT_FALSE(handle->SetCustomLayout(layout));
+  EXPECT_FALSE(handle->custom_layout());
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(owner->slnode()->GetSLMeasureFunc(), functions.measure);
+  EXPECT_EQ(owner->slnode()->GetContext(), owner.get());
+}
+
+TEST_P(FiberElementTest, CustomLayoutJsBindingsUseExistingLayoutPipeline) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto child = manager->CreateFiberView();
+  handle->content_element()->InsertNode(child);
+  page->InsertNode(handle->mount_root());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  runtime->SetGlobalData("child", lepus::Value(child));
+  static constexpr char source[] = R"(
+    __SetCustomLayout(owner, function(w, wm, h, hm) {
+      const child = __GetChildren(owner)[0];
+      const size = __MeasureElement(owner, child, 30, 30, 20, 20);
+      return {width: size.width + 10, height: size.height + 10};
+    }, function() {
+      __PlaceElement(owner, child, 5, 6, 0);
+      return true;
+    });
+  )";
+  lepus::Value result;
+  ASSERT_TRUE(
+      ctx->EvalBuf(source, sizeof(source) - 1, result, "custom_layout.js"));
+  page->FlushActionsAsRoot();
+  auto* node = handle->content_element()->slnode();
+  auto size = node->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  node->AlignmentByPlatform(0, 0);
+  EXPECT_FLOAT_EQ(size.width_, 40);
+  EXPECT_FLOAT_EQ(size.height_, 30);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundLeftFromParentPaddingBound(),
+                  5);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundTopFromParentPaddingBound(),
+                  6);
+  static constexpr char release[] = "__SetCustomLayout(owner, null, null)";
+  ASSERT_TRUE(
+      ctx->EvalBuf(release, sizeof(release) - 1, result, "release_layout.js"));
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(node->GetSLComposeMeasureFunc(), nullptr);
+}
+
+TEST_P(FiberElementTest, CustomLayoutJsBindingsResolveCurrentMountRoot) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, true);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto owner = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto child = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  runtime->SetGlobalData("owner", lepus::Value(owner));
+  runtime->SetGlobalData("child", lepus::Value(child));
+  std::string modifier =
+      "__SetComposeModifier(child, {op: 7, start: 2, top: 2, "
+      "end: 2, bottom: 2, previous: {op: 3, propertyId: " +
+      std::to_string(kPropertyIDBackgroundColor) + ", value: 'red'}});";
+  lepus::Value result;
+  ASSERT_TRUE(ctx->EvalBuf(modifier.data(), modifier.size(), result,
+                           "layout_child_modifier.js"));
+  ASSERT_NE(child->mount_root(), child->content_element());
+  owner->content_element()->InsertNode(child->mount_root());
+  page->InsertNode(owner->mount_root());
+  static constexpr char policy[] = R"(
+    __SetCustomLayout(owner, function() {
+      const size = __MeasureElement(owner, child, 30, 30, 20, 20);
+      return {width: size.width + 10, height: size.height + 10};
+    }, function() {
+      __PlaceElement(owner, child, 5, 6, 0);
+      return true;
+    });
+  )";
+  ASSERT_TRUE(ctx->EvalBuf(policy, sizeof(policy) - 1, result,
+                           "wrapped_layout_child.js"));
+  auto check_layout = [&] {
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page.get());
+    auto* node = owner->content_element()->slnode();
+    EXPECT_FLOAT_EQ(node->GetBorderBoundWidth(), 40);
+    EXPECT_FLOAT_EQ(node->GetBorderBoundHeight(), 30);
+    EXPECT_FLOAT_EQ(child->mount_root()
+                        ->slnode()
+                        ->GetBorderBoundLeftFromParentPaddingBound(),
+                    5);
+    EXPECT_FLOAT_EQ(child->mount_root()
+                        ->slnode()
+                        ->GetBorderBoundTopFromParentPaddingBound(),
+                    6);
+  };
+  check_layout();
+  auto old_root = child->mount_root();
+  static constexpr char clear[] = "__SetComposeModifier(child, null)";
+  ASSERT_TRUE(ctx->EvalBuf(clear, sizeof(clear) - 1, result,
+                           "clear_layout_child_modifier.js"));
+  ASSERT_EQ(child->mount_root(), child->content_element());
+  ASSERT_NE(child->mount_root(), old_root);
+  owner->custom_layout()->Invalidate();
+  check_layout();
+}
+
+TEST_P(FiberElementTest, CustomLayoutJsBindingsRejectRawOwners) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  auto page = CreateLayoutInElementPage(this);
+  auto owner = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  owner->InsertNode(child);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("owner", lepus::Value(owner));
+  runtime->SetGlobalData("child", lepus::Value(child));
+  static constexpr char source[] = R"(
+    (() => {
+      const operations = [
+        () => __SetCustomLayout(owner, () => ({width: 10, height: 10}), () => true),
+        () => __MeasureElement(owner, child, 10, 10, 10, 10),
+        () => __PlaceElement(owner, child, 0, 0, 0),
+        () => __InvalidateLayout(owner),
+        () => __SetCustomLayout(owner, null, null)
+      ];
+      let rejected = 0;
+      for (const operation of operations) {
+        try { operation(); } catch (error) { rejected++; }
+      }
+      return rejected;
+    })()
+  )";
+  lepus::Value result;
+  ASSERT_TRUE(
+      ctx->EvalBuf(source, sizeof(source) - 1, result, "raw_layout_owner.js"));
+  EXPECT_EQ(result, lepus::Value(5));
+}
+
+TEST_P(FiberElementTest, CustomLayoutCallbacksUsePhysicalPixels) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto child = manager->CreateFiberView();
+  owner->InsertNode(child);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  runtime->SetGlobalData("child", lepus::Value(child));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, (minW, maxW, minH, maxH) => {
+      globalThis.constraints = {minWidth: minW, maxWidth: maxW, minHeight: minH, maxHeight: maxH};
+      globalThis.measured = __MeasureElement(owner, child, 40, 40, 20, 20);
+      return {width: maxW + 6, height: maxH + 8};
+    }, () => {
+      __PlaceElement(owner, child, 14, 18, 0);
+      return true;
+    });
+  )"));
+  page->FlushActionsAsRoot();
+  owner->computed_css_style()->SetLayoutUnit(2, 0.5);
+  child->computed_css_style()->SetLayoutUnit(2, 0.5);
+  auto layout = handle->custom_layout();
+  auto size = layout->Measure({5, 30, 7, 40}, true);
+  EXPECT_FLOAT_EQ(size.width_, 33);
+  EXPECT_FLOAT_EQ(size.height_, 44);
+  auto constraints = runtime->GetGlobalData("constraints");
+  EXPECT_EQ(constraints.GetProperty("maxWidth"), lepus::Value(60));
+  EXPECT_EQ(constraints.GetProperty("maxHeight"), lepus::Value(80));
+  EXPECT_EQ(constraints.GetProperty("minWidth"), lepus::Value(10));
+  EXPECT_EQ(constraints.GetProperty("minHeight"), lepus::Value(14));
+  EXPECT_EQ(runtime->GetGlobalData("measured").GetProperty("width"),
+            lepus::Value(40));
+  EXPECT_EQ(runtime->GetGlobalData("measured").GetProperty("height"),
+            lepus::Value(20));
+  layout->Alignment();
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 20);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundHeight(), 10);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundLeftFromParentPaddingBound(),
+                  7);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundTopFromParentPaddingBound(),
+                  9);
+}
+
+TEST_P(FiberElementTest, CustomLayoutRetainsNativeContainerWithoutPaintStyles) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->SetEnableLayoutOnly(true);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  owner->SetDefaultOverflow(true);
+  page->InsertNode(owner);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(owner->CanBeLayoutOnly());
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => ({width: 80, height: 50}), () => true);
+  )"));
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(owner->CanBeLayoutOnly());
+  EXPECT_FALSE(owner->IsLayoutOnly());
+  // The policy owns placement z-order even when its container has no paint.
+  ASSERT_TRUE(
+      EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null)"));
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(owner->CanBeLayoutOnly());
+}
+
+TEST_P(FiberElementTest, CustomLayoutNormalizesSubpixelConstraintRounding) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto child = manager->CreateFiberView();
+  owner->InsertNode(child);
+  page->InsertNode(owner);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  runtime->SetGlobalData("child", lepus::Value(child));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => {
+      globalThis.measured = __MeasureElement(owner, child, 90, 90, 60, 60);
+      return measured;
+    }, () => { __PlaceElement(owner, child, 0, 0, 0); return true; });
+  )"));
+  page->FlushActionsAsRoot();
+  constexpr float scale = 2.625f;
+  owner->computed_css_style()->SetLayoutUnit(scale, 1.f / scale);
+  child->computed_css_style()->SetLayoutUnit(scale, 1.f / scale);
+  // Starlight deliberately retains subpixel-equal old dimensions. Padding
+  // subtraction/addition at this density can leave a one-ULP difference.
+  child->slnode()->SetBorderBoundWidth(std::nextafter(90.f / scale, 0.f));
+  child->slnode()->SetBorderBoundHeight(std::nextafter(60.f / scale, 0.f));
+  owner->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  auto measured = runtime->GetGlobalData("measured");
+  ASSERT_TRUE(measured.GetProperty("width").IsNumber());
+  EXPECT_FLOAT_EQ(measured.GetProperty("width").Number(), 90);
+  EXPECT_FLOAT_EQ(measured.GetProperty("height").Number(), 60);
+}
+
+TEST_P(FiberElementTest, CustomLayoutRejectsInvalidCallbackResults) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.invalidResults = [null, {}, {width: '10', height: 10},
+      {width: NaN, height: 10}, {width: Infinity, height: 10},
+      {width: -1, height: 10}, {width: 10, height: -1}];
+    globalThis.index = 0;
+    globalThis.placements = 0;
+    __SetCustomLayout(owner, () => invalidResults[index], () => {
+      placements++;
+      return true;
+    });
+  )"));
+  auto layout = handle->custom_layout();
+  for (int i = 0; i < 7; ++i) {
+    runtime->SetGlobalData("index", lepus::Value(i));
+    auto size = layout->Measure({10, 10, 10, 10}, true);
+    EXPECT_FLOAT_EQ(size.width_, 0);
+    EXPECT_FLOAT_EQ(size.height_, 0);
+    layout->Alignment();
+  }
+  EXPECT_EQ(runtime->GetGlobalData("placements"), lepus::Value(0));
+}
+
+TEST_P(FiberElementTest, CustomLayoutMeasuresPlacesAndInvalidates) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, true);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto child = manager->CreateFiberView();
+  owner->InsertNode(child);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("child", lepus::Value(child));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.childWidth = 40;
+    globalThis.measures = 0;
+    globalThis.placements = 0;
+    __SetCustomLayout(owner, () => {
+      measures++;
+      globalThis.measured = __MeasureElement(owner, child, childWidth, childWidth, 20, 20);
+      return {width: 100, height: 80};
+    }, () => {
+      placements++;
+      __PlaceElement(owner, child, 13, 17, 0);
+      return true;
+    });
+  )"));
+  auto layout = handle->custom_layout();
+  auto flush = [&] {
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page.get());
+  };
+  flush();
+  EXPECT_FLOAT_EQ(owner->slnode()->GetBorderBoundWidth(), 100);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundLeftFromParentPaddingBound(),
+                  13);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundTopFromParentPaddingBound(),
+                  17);
+  EXPECT_EQ(runtime->GetGlobalData("placements"), lepus::Value(1));
+  EXPECT_FALSE(manager->need_layout_);
+  EXPECT_EQ(runtime->GetGlobalData("measured").GetProperty("width"),
+            lepus::Value(40));
+  EXPECT_EQ(runtime->GetGlobalData("measured").GetProperty("height"),
+            lepus::Value(20));
+  auto previous_measure_count = runtime->GetGlobalData("measures").Number();
+  runtime->SetGlobalData("childWidth", lepus::Value(60));
+  layout->Invalidate();
+  flush();
+  // Speculative/final passes have separate Compose cache keys. Invalidation
+  // must cause fresh measurement even when the bounds stay unchanged.
+  EXPECT_GT(runtime->GetGlobalData("measures").Number(),
+            previous_measure_count);
+  previous_measure_count = runtime->GetGlobalData("measures").Number();
+  EXPECT_EQ(runtime->GetGlobalData("placements"), lepus::Value(2));
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 60);
+  // Replacing the policy also needs a layout pass without a style mutation.
+  runtime->SetGlobalData("childWidth", lepus::Value(70));
+  ASSERT_TRUE(handle->SetCustomLayout(layout));
+  flush();
+  EXPECT_GT(runtime->GetGlobalData("measures").Number(),
+            previous_measure_count);
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 70);
+  ASSERT_TRUE(handle->SetCustomLayout(nullptr));
+  flush();
+  EXPECT_EQ(owner->slnode()->GetSLComposeMeasureFunc(), nullptr);
+}
+
+TEST_P(FiberElementTest, CustomLayoutCacheRetainsChildPlacementRecords) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto child = manager->CreateFiberView();
+  owner->InsertNode(child);
+  page->InsertNode(owner);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  runtime->SetGlobalData("child", lepus::Value(child));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.measures = 0;
+    globalThis.placements = 0;
+    globalThis.childWidth = 40;
+    globalThis.omitChild = false;
+    globalThis.invalidMeasure = false;
+    __SetCustomLayout(owner, () => {
+      measures++;
+      if (invalidMeasure) return {width: "invalid", height: 80};
+      if (!omitChild)
+        __MeasureElement(owner, child, childWidth, childWidth, 20, 20);
+      return {width: 100, height: 80};
+    }, () => {
+      placements++;
+      if (!omitChild) __PlaceElement(owner, child, 13, 17, 0);
+      return true;
+    });
+  )"));
+  page->FlushActionsAsRoot();
+  const starlight::ComposeConstraints constraints{0, 100, 0, 80};
+  // The first placement creates the default stacking context and marks
+  // layout dirty. Subsequent passes must preserve that context and cache.
+  owner->slnode()->UpdateMeasureWithComposeConstraints(constraints, true);
+  owner->slnode()->UpdateAlignment();
+  for (int pass = 1; pass <= 2; ++pass) {
+    owner->slnode()->UpdateMeasureWithComposeConstraints(constraints, true);
+    owner->slnode()->UpdateAlignment();
+    EXPECT_EQ(runtime->GetGlobalData("measures"), lepus::Value(2));
+    EXPECT_EQ(runtime->GetGlobalData("placements"), lepus::Value(pass + 1));
+    EXPECT_FLOAT_EQ(
+        13, child->slnode()->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(17,
+                    child->slnode()->GetBorderBoundTopFromParentPaddingBound());
+    owner->slnode()->MarkNotDirty();
+    child->slnode()->MarkNotDirty();
+  }
+  ASSERT_TRUE(
+      EvalCustomLayout(runtime, "childWidth = 60; __InvalidateLayout(owner);"));
+  owner->slnode()->UpdateMeasureWithComposeConstraints(constraints, true);
+  owner->slnode()->UpdateAlignment();
+  EXPECT_EQ(runtime->GetGlobalData("measures"), lepus::Value(3));
+  EXPECT_EQ(runtime->GetGlobalData("placements"), lepus::Value(4));
+  EXPECT_FLOAT_EQ(60, child->slnode()->GetBorderBoundWidth());
+  ASSERT_TRUE(EvalCustomLayout(runtime,
+                               "omitChild = true; __InvalidateLayout(owner);"));
+  owner->slnode()->UpdateMeasureWithComposeConstraints(constraints, true);
+  owner->slnode()->UpdateAlignment();
+  EXPECT_FALSE(child->computed_css_style()->HasZIndex());
+  EXPECT_FLOAT_EQ(0, child->slnode()->GetBorderBoundWidth());
+  ASSERT_TRUE(EvalCustomLayout(
+      runtime, "invalidMeasure = true; __InvalidateLayout(owner);"));
+  owner->slnode()->UpdateMeasureWithComposeConstraints(constraints, true);
+  EXPECT_FALSE(owner->computed_css_style()->HasZIndex());
+}
+
+TEST_P(FiberElementTest,
+       CustomLayoutCacheInvalidatesBeforeDeferredLayoutFlush) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  page->InsertNode(owner);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.measures = 0;
+    __SetCustomLayout(owner, () => {
+      measures++;
+      return {width: 20, height: 15};
+    }, () => true);
+  )"));
+  page->FlushActionsAsRoot();
+  const starlight::ComposeConstraints constraints{0, 100, 0, 80};
+  owner->slnode()->UpdateMeasureWithComposeConstraints(constraints, true);
+  owner->slnode()->UpdateMeasureWithComposeConstraints(constraints, true);
+  EXPECT_EQ(runtime->GetGlobalData("measures"), lepus::Value(1));
+  // RequestLayout is deferred, but the measurement must be invalid immediately.
+  handle->custom_layout()->Invalidate();
+  owner->slnode()->UpdateMeasureWithComposeConstraints(constraints, true);
+  owner->slnode()->UpdateMeasureWithComposeConstraints(constraints, true);
+  EXPECT_EQ(runtime->GetGlobalData("measures"), lepus::Value(2));
+}
+
+TEST_P(FiberElementTest, CustomLayoutCssBoundaryPreservesResolvedMinMax) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  owner->SetStyle(kPropertyIDMinWidth, lepus::Value("50px"));
+  owner->SetStyle(kPropertyIDMaxWidth, lepus::Value("100px"));
+  owner->SetStyle(kPropertyIDMinHeight, lepus::Value("30px"));
+  page->InsertNode(owner);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, (minW, maxW, minH, maxH) => {
+      globalThis.received = {minW, maxW, minH, maxH};
+      return {width: 80, height: minW};
+    }, () => true);
+  )"));
+  page->FlushActionsAsRoot();
+  auto size =
+      owner->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  auto received = runtime->GetGlobalData("received");
+  EXPECT_EQ(received.GetProperty("minW"), lepus::Value(50));
+  EXPECT_EQ(received.GetProperty("maxW"), lepus::Value(100));
+  EXPECT_EQ(received.GetProperty("minH"), lepus::Value(30));
+  EXPECT_EQ(received.GetProperty("maxH"), lepus::Value(-1));
+  EXPECT_FLOAT_EQ(size.width_, 80);
+  EXPECT_FLOAT_EQ(size.height_, 50);
+}
+
+TEST_P(FiberElementTest,
+       CustomLayoutCssBoundaryPreservesRangesThroughWrappers) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetComposeModifier(owner, {op: 7, start: 5, top: 5, end: 5, bottom: 5,
+      previous: {op: 7, start: 5, top: 5, end: 5, bottom: 5}});
+  )"));
+  auto root = handle->mount_root();
+  ASSERT_NE(root, owner);
+  root->SetStyle(kPropertyIDMinWidth, lepus::Value("50px"));
+  root->SetStyle(kPropertyIDMaxWidth, lepus::Value("100px"));
+  root->SetStyle(kPropertyIDMinHeight, lepus::Value("30px"));
+  page->InsertNode(root);
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, (minW, maxW, minH, maxH) => {
+      globalThis.received = {minW, maxW, minH, maxH};
+      return {width: 80, height: minW};
+    }, () => true);
+  )"));
+  page->FlushActionsAsRoot();
+  auto size =
+      root->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  auto received = runtime->GetGlobalData("received");
+  EXPECT_EQ(received.GetProperty("minW"), lepus::Value(30));
+  EXPECT_EQ(received.GetProperty("maxW"), lepus::Value(80));
+  EXPECT_EQ(received.GetProperty("minH"), lepus::Value(10));
+  EXPECT_EQ(received.GetProperty("maxH"), lepus::Value(-1));
+  EXPECT_FLOAT_EQ(size.width_, 100);
+  EXPECT_FLOAT_EQ(size.height_, 50);
+}
+
+TEST_P(FiberElementTest, CustomLayoutPreservesNestedConstraintRanges) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto nested_handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto leaf = manager->CreateFiberView();
+  nested_handle->content_element()->InsertNode(leaf);
+  owner->InsertNode(nested_handle->content_element());
+  page->InsertNode(owner);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  runtime->SetGlobalData("nested", lepus::Value(nested_handle));
+  runtime->SetGlobalData("leaf", lepus::Value(leaf));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.minimum = 50;
+    globalThis.calls = 0;
+    globalThis.fixedHeight = false;
+    globalThis.maximum = 100;
+    __SetCustomLayout(nested, (minW, maxW, minH, maxH) => {
+      calls++;
+      globalThis.received = [minW, maxW, minH, maxH];
+      __MeasureElement(nested, leaf, 10, 10, 10, 10);
+      return {width: 80, height: fixedHeight ? 80 : minW};
+    }, () => { __PlaceElement(nested, leaf, received[0], 0, 0); return true; });
+    __SetCustomLayout(owner, () => {
+      globalThis.size = __MeasureElement(owner, nested, minimum, maximum, 0, -1);
+      return {width: 100, height: 100};
+    }, () => { __PlaceElement(owner, nested, 0, 0, 0); return true; });
+  )"));
+  page->FlushActionsAsRoot();
+  auto measure = [&] {
+    owner->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+    owner->slnode()->AlignmentByPlatform(0, 0);
+  };
+  measure();
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("0"),
+            lepus::Value(50));
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("1"),
+            lepus::Value(100));
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("3"),
+            lepus::Value(-1));
+  EXPECT_EQ(runtime->GetGlobalData("size").GetProperty("height"),
+            lepus::Value(50));
+  ASSERT_TRUE(
+      EvalCustomLayout(runtime, "minimum = 60; __InvalidateLayout(owner);"));
+  page->FlushActionsAsRoot();
+  measure();
+  EXPECT_EQ(runtime->GetGlobalData("size").GetProperty("height"),
+            lepus::Value(60));
+  // Equal outer sizes still require the new pass's child placement.
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    fixedHeight = true; minimum = 50;
+    __InvalidateLayout(nested); __InvalidateLayout(owner);
+  )"));
+  measure();
+  owner->slnode()->MarkNotDirty();
+  nested_handle->content_element()->slnode()->MarkNotDirty();
+  leaf->slnode()->MarkNotDirty();
+  ASSERT_TRUE(
+      EvalCustomLayout(runtime, "minimum = 60; __InvalidateLayout(owner);"));
+  measure();
+  EXPECT_FLOAT_EQ(leaf->slnode()->GetBorderBoundLeftFromParentPaddingBound(),
+                  60);
+  // An unbounded maximum must not drop a nonzero minimum.
+  ASSERT_TRUE(EvalCustomLayout(
+      runtime, "minimum = 50; maximum = -1; __InvalidateLayout(owner);"));
+  measure();
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("0"),
+            lepus::Value(50));
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("1"),
+            lepus::Value(-1));
+  // Bounded space resolves fill fractions without fixing an unrelated axis.
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    minimum = 0; maximum = 100;
+    __SetComposeModifier(nested, {op: 9, specifiedAxes: 1, fraction: 0.5});
+  )"));
+  page->FlushActionsAsRoot();
+  measure();
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("0"),
+            lepus::Value(50));
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("1"),
+            lepus::Value(50));
+}
+
+TEST_P(FiberElementTest, CustomLayoutWidthCorrectionKeepsHeightFlexible) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto owner = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto nested = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  owner->content_element()->InsertNode(nested->mount_root());
+  page->InsertNode(owner->mount_root());
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(owner));
+  runtime->SetGlobalData("nested", lepus::Value(nested));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(nested, (minW, maxW, minH, maxH) => {
+      globalThis.heightRange = {minH, maxH};
+      return minW === maxW ? {width: maxW, height: 40} : {width: 80, height: 10};
+    }, () => true);
+    __SetCustomLayout(owner, () => {
+      globalThis.size = __MeasureElement(owner, nested, 0, 50, 0, -1);
+      return size;
+    }, () => { __PlaceElement(owner, nested, 0, 0, 0); return true; });
+  )"));
+  page->FlushActionsAsRoot();
+  owner->content_element()->slnode()->UpdateMeasureByPlatform(
+      starlight::Constraints(), true);
+  EXPECT_EQ(runtime->GetGlobalData("size").GetProperty("width"),
+            lepus::Value(50));
+  EXPECT_EQ(runtime->GetGlobalData("size").GetProperty("height"),
+            lepus::Value(40));
+  EXPECT_EQ(runtime->GetGlobalData("heightRange").GetProperty("minH"),
+            lepus::Value(0));
+  EXPECT_EQ(runtime->GetGlobalData("heightRange").GetProperty("maxH"),
+            lepus::Value(-1));
+}
+
+TEST_P(FiberElementTest, CustomLayoutRootAndNestedMeasurementsAgree) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  for (bool padded : {false, true}) {
+    SCOPED_TRACE(padded);
+    auto root_handle = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, ComposeElementKind::kView));
+    auto parent_handle = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, ComposeElementKind::kView));
+    auto nested_handle = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, ComposeElementKind::kView));
+    auto root_leaf = manager->CreateFiberView();
+    auto nested_leaf = manager->CreateFiberView();
+    root_handle->content_element()->InsertNode(root_leaf);
+    nested_handle->content_element()->InsertNode(nested_leaf);
+    runtime->SetGlobalData("rootOwner", lepus::Value(root_handle));
+    runtime->SetGlobalData("nestedOwner", lepus::Value(nested_handle));
+    runtime->SetGlobalData("parentOwner", lepus::Value(parent_handle));
+    runtime->SetGlobalData("rootLeaf", lepus::Value(root_leaf));
+    runtime->SetGlobalData("nestedLeaf", lepus::Value(nested_leaf));
+    if (padded) {
+      ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+        for (const owner of [rootOwner, nestedOwner])
+          __SetComposeModifier(owner, {op: 7, start: 5, top: 5, end: 5, bottom: 5,
+            previous: {op: 7, start: 5, top: 5, end: 5, bottom: 5}});
+      )"));
+    }
+    auto root = root_handle->mount_root();
+    auto parent = parent_handle->content_element();
+    auto nested = nested_handle->mount_root();
+    parent->InsertNode(nested);
+    page->InsertNode(root);
+    page->InsertNode(parent);
+    ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+      globalThis.scale = 1;
+      globalThis.minW = 50; globalThis.maxW = 100;
+      globalThis.minH = 0; globalThis.maxH = -1;
+      for (const label of ['root', 'nested']) {
+        __SetCustomLayout(globalThis[label + 'Owner'], (minW, maxW, minH, maxH) => {
+          const bounds = {minW, maxW, minH, maxH};
+          if (!globalThis[label + 'First']) globalThis[label + 'First'] = bounds;
+          globalThis[label + 'Last'] = bounds;
+          const width = minW === maxW ? maxW :
+            maxW === -1 ? minW - 20 * scale : maxW + 30 * scale;
+          const height = minH === maxH ? maxH : minW === maxW ? 40 * scale : 10 * scale;
+          const size = __MeasureElement(globalThis[label + 'Owner'],
+            globalThis[label + 'Leaf'], width, width, height, height);
+          globalThis[label + 'Size'] = size;
+          return size;
+        }, () => {
+          __PlaceElement(globalThis[label + 'Owner'], globalThis[label + 'Leaf'],
+            9 * scale, globalThis[label + 'Size'].height - 7 * scale, 0);
+          return true;
+        });
+      }
+      __SetCustomLayout(parentOwner, () =>
+        __MeasureElement(parentOwner, nestedOwner, minW, maxW, minH, maxH),
+        () => { __PlaceElement(parentOwner, nestedOwner, 0, 0, 0); return true; });
+    )"));
+    page->FlushActionsAsRoot();
+    constexpr float infinity = starlight::ComposeConstraints::kInfinity;
+    for (const auto& range :
+         {starlight::ComposeConstraints{50, 100, 0, infinity},
+          starlight::ComposeConstraints{50, infinity, 0, infinity},
+          starlight::ComposeConstraints{60, 60, 0, infinity},
+          starlight::ComposeConstraints{50, 100, 70, 90}}) {
+      SCOPED_TRACE(range.max_width);
+      for (float scale : {1.f, 2.625f}) {
+        SCOPED_TRACE(scale);
+        std::function<void(Element*)> set_scale = [&](Element* element) {
+          element->computed_css_style()->SetLayoutUnit(scale, 1.f / scale);
+          for (auto* child = element->first_child(); child;
+               child = child->next_sibling())
+            set_scale(child);
+        };
+        set_scale(root.get());
+        set_scale(parent.get());
+        auto* style = root->slnode()->GetCSSMutableStyle();
+        style->SetMinWidth(
+            starlight::NLength::MakeUnitNLength(range.min_width));
+        style->SetMaxWidth(
+            std::isinf(range.max_width)
+                ? starlight::NLength::MakeAutoNLength()
+                : starlight::NLength::MakeUnitNLength(range.max_width));
+        style->SetMinHeight(
+            starlight::NLength::MakeUnitNLength(range.min_height));
+        style->SetMaxHeight(
+            std::isinf(range.max_height)
+                ? starlight::NLength::MakeAutoNLength()
+                : starlight::NLength::MakeUnitNLength(range.max_height));
+        runtime->SetGlobalData("scale", lepus::Value(scale));
+        runtime->SetGlobalData("minW", lepus::Value(range.min_width * scale));
+        runtime->SetGlobalData("maxW",
+                               lepus::Value(std::isinf(range.max_width)
+                                                ? -1.f
+                                                : range.max_width * scale));
+        runtime->SetGlobalData("minH", lepus::Value(range.min_height * scale));
+        runtime->SetGlobalData("maxH",
+                               lepus::Value(std::isinf(range.max_height)
+                                                ? -1.f
+                                                : range.max_height * scale));
+        const float inset = padded ? 20.f : 0.f;
+        const auto inner = range.Inset(inset, inset);
+        const float width =
+            std::isinf(inner.max_width) ? inner.min_width : inner.max_width;
+        const float height = inner.ConstrainHeight(40);
+        for (bool final_measure : {false, true}) {
+          SCOPED_TRACE(final_measure);
+          ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+            rootFirst = null; nestedFirst = null;
+          )"));
+          const auto root_size = root->slnode()->UpdateMeasureByPlatform(
+              starlight::Constraints(), final_measure);
+          const auto nested_size = parent->slnode()->UpdateMeasureByPlatform(
+              starlight::Constraints(), final_measure);
+          EXPECT_FLOAT_EQ(root_size.width_, width + inset);
+          EXPECT_FLOAT_EQ(root_size.height_, height + inset);
+          EXPECT_FLOAT_EQ(nested_size.width_, root_size.width_);
+          EXPECT_FLOAT_EQ(nested_size.height_, root_size.height_);
+          for (const auto* label : {"root", "nested"}) {
+            const auto first =
+                runtime->GetGlobalData(std::string(label) + "First");
+            EXPECT_FLOAT_EQ(first.GetProperty("minW").Number(),
+                            inner.min_width * scale);
+            EXPECT_FLOAT_EQ(
+                first.GetProperty("maxW").Number(),
+                std::isinf(inner.max_width) ? -1.f : inner.max_width * scale);
+            EXPECT_FLOAT_EQ(first.GetProperty("minH").Number(),
+                            inner.min_height * scale);
+            EXPECT_FLOAT_EQ(
+                first.GetProperty("maxH").Number(),
+                std::isinf(inner.max_height) ? -1.f : inner.max_height * scale);
+          }
+          if (final_measure) {
+            root->slnode()->AlignmentByPlatform(0, 0);
+            parent->slnode()->AlignmentByPlatform(0, 0);
+            for (const auto& leaf : {root_leaf, nested_leaf}) {
+              EXPECT_FLOAT_EQ(leaf->slnode()->GetBorderBoundWidth(), width);
+              EXPECT_FLOAT_EQ(leaf->slnode()->GetBorderBoundHeight(), height);
+              EXPECT_FLOAT_EQ(
+                  leaf->slnode()->GetBorderBoundLeftFromParentPaddingBound(),
+                  9);
+              EXPECT_FLOAT_EQ(
+                  leaf->slnode()->GetBorderBoundTopFromParentPaddingBound(),
+                  height - 7);
+            }
+            root->slnode()->MarkNotDirty();
+            parent->slnode()->MarkNotDirty();
+            nested->slnode()->MarkNotDirty();
+          }
+        }
+      }
+    }
+    ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+      __SetCustomLayout(rootOwner, null, null);
+      __SetCustomLayout(nestedOwner, null, null);
+      __SetCustomLayout(parentOwner, null, null);
+    )"));
+    page->RemoveNode(root);
+    page->RemoveNode(parent);
+    page->FlushActionsAsRoot();
+  }
+}
+
+TEST_P(FiberElementTest, CustomLayoutComposeKeepsPercentageContainingBlock) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  for (bool wrapped : {false, true}) {
+    SCOPED_TRACE(wrapped);
+    auto parent = manager->CreateFiberView();
+    parent->MarkAsComposeLayout();
+    parent->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+    auto handle = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, ComposeElementKind::kView));
+    auto leaf = manager->CreateFiberView();
+    handle->content_element()->InsertNode(leaf);
+    runtime->SetGlobalData("owner", lepus::Value(handle));
+    runtime->SetGlobalData("leaf", lepus::Value(leaf));
+    if (wrapped) {
+      ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+        __SetComposeModifier(owner, {op: 7, start: 0, top: 0, end: 0, bottom: 0});
+      )"));
+    }
+    auto root = handle->mount_root();
+    root->SetStyle(kPropertyIDWidth, lepus::Value("50%"));
+    root->SetStyle(kPropertyIDPaddingLeft, lepus::Value("10%"));
+    parent->InsertNode(root);
+    page->InsertNode(parent);
+    ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+      __SetCustomLayout(owner, (minW, maxW) => {
+        globalThis.received = {minW, maxW};
+        return __MeasureElement(owner, leaf, maxW, maxW, 40, 40);
+      }, () => { __PlaceElement(owner, leaf, 0, 0, 0); return true; });
+    )"));
+    for (float width : {200.f, 300.f}) {
+      SCOPED_TRACE(width);
+      parent->SetStyle(kPropertyIDWidth, lepus::Value(width));
+      page->FlushActionsAsRoot();
+      parent->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+      parent->slnode()->AlignmentByPlatform(0, 0);
+      const auto received = runtime->GetGlobalData("received");
+      EXPECT_FLOAT_EQ(received.GetProperty("minW").Number(), width * 0.4f);
+      EXPECT_FLOAT_EQ(received.GetProperty("maxW").Number(), width * 0.4f);
+      EXPECT_FLOAT_EQ(root->slnode()->GetBorderBoundWidth(), width * 0.5f);
+      EXPECT_FLOAT_EQ(root->slnode()->GetLayoutPaddingLeft(), width * 0.1f);
+      EXPECT_FLOAT_EQ(leaf->slnode()->GetBorderBoundWidth(), width * 0.4f);
+      EXPECT_FLOAT_EQ(leaf->slnode()->GetBorderBoundHeight(), 40);
+      // Bound conversion is relative to the immediate layout parent.
+      float leaf_left = 0;
+      for (auto* node = leaf->slnode(); node != root->slnode();
+           node = node->ParentLayoutObject()) {
+        ASSERT_NE(node->ParentLayoutObject(), nullptr);
+        leaf_left += node->GetBoundLeftFrom(node->ParentLayoutObject(),
+                                            starlight::BoundType::kBorder,
+                                            starlight::BoundType::kBorder);
+      }
+      EXPECT_FLOAT_EQ(leaf_left, width * 0.1f);
+      parent->slnode()->MarkNotDirty();
+      root->slnode()->MarkNotDirty();
+    }
+    ASSERT_TRUE(
+        EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null);"));
+    page->RemoveNode(parent);
+    page->FlushActionsAsRoot();
+  }
+}
+
+TEST_P(FiberElementTest, CustomLayoutOrdinaryBoxModifierRangesAndPlacement) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  struct Case {
+    const char* name;
+    float width;
+    float height;
+    float child_max_width;
+    float child_max_height;
+    float padding;
+  };
+  const Case cases[] = {
+      {"plain", 50, 30, 100, 80, 0},
+      {"padding", 50, 35, 80, 60, 10},
+      {"nestedPadding", 50, 45, 70, 50, 15},
+      {"size", 80, 60, 80, 60, 0},
+      {"oversized", 100, 80, 100, 80, 0},
+      {"paddingSize", 100, 80, 80, 60, 10},
+      {"sizePadding", 80, 60, 60, 40, 10},
+      {"fill", 75, 30, 75, 80, 0},
+      {"paddingFill", 100, 35, 80, 60, 10},
+      {"fillPadding", 75, 35, 55, 60, 10},
+      {"sizeFill", 80, 60, 80, 60, 0},
+      {"fillSize", 75, 60, 75, 60, 0},
+  };
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.name);
+    auto parent = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, ComposeElementKind::kView));
+    auto box = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, ComposeElementKind::kView));
+    auto child = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, ComposeElementKind::kView));
+    auto leaf = manager->CreateFiberView();
+    child->content_element()->InsertNode(leaf);
+    box->content_element()->InsertNode(child->mount_root());
+    runtime->SetGlobalData("parentOwner", lepus::Value(parent));
+    runtime->SetGlobalData("boxOwner", lepus::Value(box));
+    runtime->SetGlobalData("childOwner", lepus::Value(child));
+    runtime->SetGlobalData("leaf", lepus::Value(leaf));
+    runtime->SetGlobalData("caseName", lepus::Value(test.name));
+    runtime->SetGlobalData("displayId",
+                           lepus::Value(static_cast<int>(kPropertyIDDisplay)));
+    ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+      {
+      const padding = (previous, value = 10) =>
+        ({op: 7, start: value, top: value, end: value, bottom: value, previous});
+      const size = (previous, value = 80) =>
+        ({op: 8, specifiedAxes: 3, width: value, height: value === 80 ? 60 : value,
+          previous});
+      const fill = (previous, fraction = 0.75) =>
+        ({op: 9, specifiedAxes: 1, fraction, previous});
+      const modifiers = {
+        plain: null, padding: padding(null),
+        nestedPadding: padding(padding(null), 5), size: size(null),
+        oversized: size(null, 200), paddingSize: size(padding(null)),
+        sizePadding: padding(size(null)), fill: fill(null),
+        paddingFill: fill(padding(null), 1), fillPadding: padding(fill(null)),
+        sizeFill: fill(size(null)), fillSize: size(fill(null))
+      };
+      // Box prepends its display style to the authored Modifier chain.
+      __SetComposeModifier(boxOwner, {op: 1,
+        left: {op: 3, propertyId: displayId, value: '-x-box'},
+        right: modifiers[caseName]});
+      }
+      globalThis.scale = 1; globalThis.minimum = 50;
+      __SetCustomLayout(childOwner, (minW, maxW, minH, maxH) => {
+        globalThis.received = {minW, maxW, minH, maxH};
+        return __MeasureElement(childOwner, leaf, 20 * scale, 20 * scale,
+          15 * scale, 15 * scale);
+      }, () => {
+        __PlaceElement(childOwner, leaf, 3 * scale, 4 * scale, 0);
+        return true;
+      });
+      __SetCustomLayout(parentOwner, () => {
+        globalThis.boxSize = __MeasureElement(parentOwner, boxOwner,
+          minimum * scale, 100 * scale, 30 * scale, 80 * scale);
+        return boxSize;
+      }, () => {
+        __PlaceElement(parentOwner, boxOwner, 7 * scale, 9 * scale, 0);
+        return true;
+      });
+    )"));
+    parent->content_element()->InsertNode(box->mount_root());
+    page->InsertNode(parent->mount_root());
+    page->FlushActionsAsRoot();
+    ASSERT_EQ(box->content_element()->slnode()->GetSLComposeMeasureFunc(),
+              nullptr);
+    auto* box_node = box->content_element()->slnode();
+    ASSERT_EQ(box_node->GetCSSStyle()->GetDisplay(box_node->GetLayoutConfigs(),
+                                                  box_node->attr_map()),
+              starlight::DisplayType::kXBox);
+    for (float scale : {1.f, 2.625f}) {
+      SCOPED_TRACE(scale);
+      std::function<void(Element*)> set_scale = [&](Element* element) {
+        element->computed_css_style()->SetLayoutUnit(scale, 1.f / scale);
+        for (auto* node = element->first_child(); node;
+             node = node->next_sibling())
+          set_scale(node);
+      };
+      set_scale(parent->mount_root().get());
+      runtime->SetGlobalData("scale", lepus::Value(scale));
+      for (bool final_measure : {false, true}) {
+        SCOPED_TRACE(final_measure);
+        parent->mount_root()->slnode()->UpdateMeasureByPlatform(
+            starlight::Constraints(), final_measure);
+        const auto received = runtime->GetGlobalData("received");
+        EXPECT_FLOAT_EQ(received.GetProperty("minW").Number(), 0);
+        EXPECT_FLOAT_EQ(received.GetProperty("minH").Number(), 0);
+        EXPECT_FLOAT_EQ(received.GetProperty("maxW").Number(),
+                        test.child_max_width * scale);
+        EXPECT_FLOAT_EQ(received.GetProperty("maxH").Number(),
+                        test.child_max_height * scale);
+        const auto size = runtime->GetGlobalData("boxSize");
+        EXPECT_FLOAT_EQ(size.GetProperty("width").Number(), test.width * scale);
+        EXPECT_FLOAT_EQ(size.GetProperty("height").Number(),
+                        test.height * scale);
+        if (final_measure) {
+          parent->mount_root()->slnode()->AlignmentByPlatform(0, 0);
+          float left = 0;
+          float top = 0;
+          for (auto* node = leaf->slnode();
+               node != parent->mount_root()->slnode();
+               node = node->ParentLayoutObject()) {
+            ASSERT_NE(node->ParentLayoutObject(), nullptr);
+            left += node->GetBoundLeftFrom(node->ParentLayoutObject(),
+                                           starlight::BoundType::kBorder,
+                                           starlight::BoundType::kBorder);
+            top += node->GetBoundTopFrom(node->ParentLayoutObject(),
+                                         starlight::BoundType::kBorder,
+                                         starlight::BoundType::kBorder);
+          }
+          EXPECT_FLOAT_EQ(left, 7 + test.padding + 3);
+          EXPECT_FLOAT_EQ(top, 9 + test.padding + 4);
+          EXPECT_FLOAT_EQ(leaf->slnode()->GetBorderBoundWidth(), 20);
+          EXPECT_FLOAT_EQ(leaf->slnode()->GetBorderBoundHeight(), 15);
+        }
+      }
+    }
+    ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+      __SetCustomLayout(parentOwner, null, null);
+      __SetCustomLayout(childOwner, null, null);
+    )"));
+    page->RemoveNode(parent->mount_root());
+    page->FlushActionsAsRoot();
+  }
+}
+
+TEST_P(FiberElementTest,
+       CustomLayoutOrdinaryBoxRemeasureRefreshesChildPlacement) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto parent = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto box = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto inner_box = manager->CreateFiberView();
+  inner_box->MarkAsComposeLayout();
+  auto child = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto leaf = manager->CreateFiberView();
+  child->content_element()->InsertNode(leaf);
+  inner_box->InsertNode(child->mount_root());
+  box->content_element()->InsertNode(inner_box);
+  parent->content_element()->InsertNode(box->mount_root());
+  Element* boxes[] = {box->content_element().get(), inner_box.get()};
+  for (auto* element : boxes)
+    element->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  page->InsertNode(parent->mount_root());
+  runtime->SetGlobalData("parentOwner", lepus::Value(parent));
+  runtime->SetGlobalData("boxOwner", lepus::Value(box));
+  runtime->SetGlobalData("childOwner", lepus::Value(child));
+  runtime->SetGlobalData("leaf", lepus::Value(leaf));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.minimum = 50;
+    __SetCustomLayout(childOwner, (minW, maxW, minH, maxH) => {
+      globalThis.received = {minW, maxW, minH, maxH};
+      __MeasureElement(childOwner, leaf, 10, 10, 10, 10);
+      return {width: 80, height: 40};
+    }, () => {
+      __PlaceElement(childOwner, leaf, received.minW, 0, 0);
+      return true;
+    });
+    __SetCustomLayout(parentOwner, () =>
+      __MeasureElement(parentOwner, boxOwner, minimum, 100, 0, -1),
+      () => { __PlaceElement(parentOwner, boxOwner, 0, 0, 0); return true; });
+  )"));
+  page->FlushActionsAsRoot();
+  for (auto* element : boxes)
+    element->slnode()->GetCSSMutableStyle()->SetXBoxPropagateMinConstraints(
+        true);
+  for (float minimum : {50.f, 60.f}) {
+    SCOPED_TRACE(minimum);
+    runtime->SetGlobalData("minimum", lepus::Value(minimum));
+    // Changing policy state requires invalidation with identical outer bounds.
+    parent->custom_layout()->Invalidate();
+    parent->mount_root()->slnode()->UpdateMeasureByPlatform(
+        starlight::Constraints(), true);
+    parent->mount_root()->slnode()->AlignmentByPlatform(0, 0);
+    EXPECT_FLOAT_EQ(
+        runtime->GetGlobalData("received").GetProperty("minW").Number(),
+        minimum);
+    EXPECT_FLOAT_EQ(80, box->mount_root()->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(minimum,
+                    leaf->slnode()->GetBorderBoundLeftFromParentPaddingBound());
+    Element* elements[] = {parent->mount_root().get(), box->mount_root().get(),
+                           inner_box.get(), child->mount_root().get(),
+                           leaf.get()};
+    for (auto* element : elements) element->slnode()->MarkNotDirty();
+  }
+}
+
+TEST_P(FiberElementTest, CustomLayoutMeasuresNativeRowColumnAndNestedPolicy) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto make_handle = [&] {
+    return fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, ComposeElementKind::kView));
+  };
+  auto outer = make_handle();
+  auto row = make_handle();
+  auto fixed = make_handle();
+  auto column = make_handle();
+  auto nested = make_handle();
+  auto leaf = make_handle();
+  row->content_element()->SetStyle(kPropertyIDDisplay, lepus::Value("linear"));
+  row->content_element()->SetStyle(kPropertyIDLinearOrientation,
+                                   lepus::Value("horizontal"));
+  row->content_element()->SetStyle(kPropertyIDColumnGap, lepus::Value("5px"));
+  fixed->content_element()->SetStyle(kPropertyIDWidth, lepus::Value("20px"));
+  fixed->content_element()->SetStyle(kPropertyIDHeight, lepus::Value("10px"));
+  column->content_element()->SetStyle(kPropertyIDDisplay,
+                                      lepus::Value("linear"));
+  column->content_element()->SetStyle(kPropertyIDLinearOrientation,
+                                      lepus::Value("vertical"));
+  column->content_element()->SetStyle(kPropertyIDLinearWeight, lepus::Value(1));
+  outer->content_element()->InsertNode(row->mount_root());
+  row->content_element()->InsertNode(fixed->mount_root());
+  row->content_element()->InsertNode(column->mount_root());
+  column->content_element()->InsertNode(nested->mount_root());
+  nested->content_element()->InsertNode(leaf->mount_root());
+  page->InsertNode(outer->mount_root());
+  runtime->SetGlobalData("outerOwner", lepus::Value(outer));
+  runtime->SetGlobalData("rowOwner", lepus::Value(row));
+  runtime->SetGlobalData("nestedOwner", lepus::Value(nested));
+  runtime->SetGlobalData("leafOwner", lepus::Value(leaf));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.maxMain = 100;
+    globalThis.outerMeasures = 0;
+    globalThis.nestedMeasures = 0;
+    globalThis.nestedPlacements = 0;
+    __SetCustomLayout(nestedOwner, (minW, maxW, minH, maxH) => {
+      globalThis.nestedMeasures++;
+      globalThis.received = {minW, maxW, minH, maxH};
+      __MeasureElement(nestedOwner, leafOwner, 10, 10, 5, 5);
+      return {width: Math.min(30, maxW), height: 20};
+    }, () => {
+      globalThis.nestedPlacements++;
+      __PlaceElement(nestedOwner, leafOwner, 3, 4, 0);
+      return true;
+    });
+    __SetCustomLayout(outerOwner, () => {
+      globalThis.outerMeasures++;
+      return __MeasureElement(outerOwner, rowOwner, 0, maxMain, 0, 50);
+    }, () => {
+      __PlaceElement(outerOwner, rowOwner, 7, 9, 0);
+      return true;
+    });
+  )"));
+  page->FlushActionsAsRoot();
+  auto* root = outer->mount_root()->slnode();
+  // ReLayout released the native algorithms under the custom ancestor.
+  // Identical outer bounds must rebuild those algorithms before placement.
+  const starlight::ComposeConstraints range{0, 200, 0, 100};
+  for (float max_main : {100.f, 120.f}) {
+    runtime->SetGlobalData("maxMain", lepus::Value(max_main));
+    outer->custom_layout()->Invalidate();
+    root->UpdateMeasureWithComposeConstraints(range, true);
+    root->UpdateAlignment();
+    const auto received = runtime->GetGlobalData("received");
+    EXPECT_FLOAT_EQ(0, received.GetProperty("minW").Number());
+    EXPECT_FLOAT_EQ(max_main - 25, received.GetProperty("maxW").Number());
+    EXPECT_FLOAT_EQ(0, received.GetProperty("minH").Number());
+    EXPECT_FLOAT_EQ(50, received.GetProperty("maxH").Number());
+    EXPECT_FLOAT_EQ(max_main,
+                    row->mount_root()->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(25, column->mount_root()
+                            ->slnode()
+                            ->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(max_main - 25,
+                    column->mount_root()->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(3, leaf->mount_root()
+                           ->slnode()
+                           ->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(4, leaf->mount_root()
+                           ->slnode()
+                           ->GetBorderBoundTopFromParentPaddingBound());
+    // The first custom placement establishes stacking projections and
+    // invalidates measurement once, as in the existing custom cache tests.
+    root->UpdateMeasureWithComposeConstraints(range, true);
+    root->UpdateAlignment();
+    const auto outer_measures = runtime->GetGlobalData("outerMeasures");
+    const auto nested_measures = runtime->GetGlobalData("nestedMeasures");
+    const auto nested_placements = runtime->GetGlobalData("nestedPlacements");
+    root->UpdateMeasureWithComposeConstraints(range, true);
+    root->UpdateAlignment();
+    EXPECT_EQ(outer_measures, runtime->GetGlobalData("outerMeasures"));
+    EXPECT_EQ(nested_measures, runtime->GetGlobalData("nestedMeasures"));
+    EXPECT_EQ(nested_placements.Number() + 1,
+              runtime->GetGlobalData("nestedPlacements").Number());
+  }
+}
+
+TEST_P(FiberElementTest, CustomLayoutPreservesRangesThroughPadding) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto nested_handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  runtime->SetGlobalData("nested", lepus::Value(nested_handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetComposeModifier(nested, {op: 7, start: 10, top: 10, end: 10, bottom: 10});
+  )"));
+  ASSERT_NE(nested_handle->mount_root(), nested_handle->content_element());
+  owner->InsertNode(nested_handle->mount_root());
+  page->InsertNode(owner);
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.minimum = 50;
+    globalThis.calls = 0;
+    __SetCustomLayout(nested, (minW, maxW, minH, maxH) => {
+      calls++;
+      globalThis.received = [minW, maxW, minH, maxH];
+      return {width: 80, height: minW};
+    }, () => true);
+    __SetCustomLayout(owner, () => {
+      globalThis.size = __MeasureElement(owner, nested, minimum, 100, 0, -1);
+      return {width: 100, height: 100};
+    }, () => { __PlaceElement(owner, nested, 0, 0, 0); return true; });
+  )"));
+  page->FlushActionsAsRoot();
+  auto measure = [&] {
+    owner->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+    owner->slnode()->AlignmentByPlatform(0, 0);
+  };
+  measure();
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("0"),
+            lepus::Value(30));
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("1"),
+            lepus::Value(80));
+  EXPECT_EQ(runtime->GetGlobalData("received").GetProperty("3"),
+            lepus::Value(-1));
+  EXPECT_EQ(runtime->GetGlobalData("size").GetProperty("height"),
+            lepus::Value(50));
+  ASSERT_TRUE(
+      EvalCustomLayout(runtime, "minimum = 60; __InvalidateLayout(owner);"));
+  page->FlushActionsAsRoot();
+  measure();
+  EXPECT_EQ(runtime->GetGlobalData("size").GetProperty("height"),
+            lepus::Value(60));
+}
+
+TEST_P(FiberElementTest, CustomLayoutNestedMinimumAndOmittedChild) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto nested_handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto nested = nested_handle->content_element();
+  auto leaf = manager->CreateFiberView();
+  auto omitted = manager->CreateFiberView();
+  owner->InsertNode(nested);
+  owner->InsertNode(omitted);
+  nested->InsertNode(leaf);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("nested", lepus::Value(nested_handle));
+  runtime->SetGlobalData("leaf", lepus::Value(leaf));
+  runtime->SetGlobalData("omitted", lepus::Value(omitted));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(nested, () => __MeasureElement(nested, leaf, 25, 25, 15, 15), () => {
+      __PlaceElement(nested, leaf, 3, 4, 0);
+      return true;
+    });
+  )"));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => {
+      globalThis.nestedSize = __MeasureElement(owner, nested, 50, 100, 30, -1);
+      globalThis.omittedSize = __MeasureElement(owner, omitted, 8, 8, 9, 9);
+      return {width: 100, height: 100};
+    }, () => {
+      __PlaceElement(owner, nested, 10, 12, 0);
+      return true;
+    });
+  )"));
+  page->FlushActionsAsRoot();
+  owner->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  owner->slnode()->AlignmentByPlatform(0, 0);
+  EXPECT_FLOAT_EQ(leaf->slnode()->GetBorderBoundLeftFromParentPaddingBound(),
+                  3);
+  EXPECT_FLOAT_EQ(nested->slnode()->GetBorderBoundTopFromParentPaddingBound(),
+                  12);
+  EXPECT_FLOAT_EQ(omitted->slnode()->GetBorderBoundWidth(), 0);
+  EXPECT_FLOAT_EQ(omitted->slnode()->GetBorderBoundHeight(), 0);
+  EXPECT_TRUE(omitted->slnode()->GetHasNewLayout());
+  EXPECT_EQ(runtime->GetGlobalData("nestedSize").GetProperty("width"),
+            lepus::Value(50));
+  EXPECT_EQ(runtime->GetGlobalData("nestedSize").GetProperty("height"),
+            lepus::Value(30));
+  EXPECT_EQ(runtime->GetGlobalData("omittedSize").GetProperty("width"),
+            lepus::Value(8));
+  EXPECT_EQ(runtime->GetGlobalData("omittedSize").GetProperty("height"),
+            lepus::Value(9));
+}
+
+TEST_P(FiberElementTest,
+       CustomLayoutRejectsInvalidOperationsAndOrdersPlacement) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, true);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  owner->InsertNode(first);
+  owner->InsertNode(second);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("first", lepus::Value(first));
+  runtime->SetGlobalData("second", lepus::Value(second));
+
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.firstZ = 0.5;
+    __SetCustomLayout(owner, () => {
+      __MeasureElement(owner, first, 10, 10, 10, 10);
+      __MeasureElement(owner, second, 10, 10, 10, 10);
+      return {width: 50, height: 50};
+    }, () => {
+      __PlaceElement(owner, second, 0, 0, 0.5);
+      __PlaceElement(owner, first, 0, 0, firstZ);
+      return true;
+    });
+  )"));
+  auto flush = [&] {
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page.get());
+  };
+  flush();
+  EXPECT_GT(first->ZIndex(), second->ZIndex());
+  auto* container = owner->element_container_impl();
+  ASSERT_EQ(container->children().size(), 2u);
+  auto ordered = container->children().begin();
+  EXPECT_EQ((*ordered++)->element(), second.get());
+  EXPECT_EQ((*ordered)->element(), first.get());
+  // A paint-only update must preserve policy order through style resolution.
+  first->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  flush();
+  EXPECT_GT(first->ZIndex(), second->ZIndex());
+  EXPECT_EQ(container->children().back()->element(), first.get());
+  second->SetStyle(kPropertyIDZIndex, lepus::Value(99));
+  flush();
+  EXPECT_GT(first->ZIndex(), second->ZIndex());
+  EXPECT_EQ(container->children().back()->element(), first.get());
+  runtime->SetGlobalData("firstZ", lepus::Value(-0.5));
+  handle->custom_layout()->Invalidate();
+  flush();
+  EXPECT_LT(first->ZIndex(), second->ZIndex());
+  ordered = container->children().begin();
+  EXPECT_EQ((*ordered++)->element(), first.get());
+  EXPECT_EQ((*ordered)->element(), second.get());
+  EXPECT_FALSE(handle->custom_layout()->PlaceChild(*first, 0, 0, 0));
+  LayoutResult size;
+  EXPECT_FALSE(
+      handle->custom_layout()->MeasureChild(*first, 10, 10, 10, 10, size));
+}
+
+TEST_P(FiberElementTest, CustomLayoutPlacementSurvivesNewStylingPipeline) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->GetConfig()->SetEnableNewStylingPipeline(true);
+  manager->SetConfig(manager->GetConfig());
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, true);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  owner->InsertNode(first);
+  owner->InsertNode(second);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("first", lepus::Value(first));
+  runtime->SetGlobalData("second", lepus::Value(second));
+
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.firstZ = 0.5;
+    __SetCustomLayout(owner, () => {
+      __MeasureElement(owner, first, 10, 10, 10, 10);
+      __MeasureElement(owner, second, 10, 10, 10, 10);
+      return {width: 50, height: 50};
+    }, () => {
+      __PlaceElement(owner, second, 0, 0, 0.5);
+      __PlaceElement(owner, first, 0, 0, firstZ);
+      return true;
+    });
+  )"));
+  auto flush = [&] {
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page.get());
+  };
+  flush();
+  EXPECT_GT(first->ZIndex(), second->ZIndex());
+  auto* container = owner->element_container_impl();
+  ASSERT_EQ(container->children().size(), 2u);
+  auto ordered = container->children().begin();
+  EXPECT_EQ((*ordered++)->element(), second.get());
+  EXPECT_EQ((*ordered)->element(), first.get());
+  // A paint-only update must preserve policy order through style resolution.
+  first->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  flush();
+  EXPECT_GT(first->ZIndex(), second->ZIndex());
+  EXPECT_EQ(container->children().back()->element(), first.get());
+  second->SetStyle(kPropertyIDZIndex, lepus::Value(99));
+  flush();
+  EXPECT_GT(first->ZIndex(), second->ZIndex());
+  EXPECT_EQ(container->children().back()->element(), first.get());
+  runtime->SetGlobalData("firstZ", lepus::Value(-0.5));
+  handle->custom_layout()->Invalidate();
+  flush();
+  EXPECT_LT(first->ZIndex(), second->ZIndex());
+  ordered = container->children().begin();
+  EXPECT_EQ((*ordered++)->element(), first.get());
+  EXPECT_EQ((*ordered)->element(), second.get());
+  EXPECT_FALSE(handle->custom_layout()->PlaceChild(*first, 0, 0, 0));
+  LayoutResult size;
+  EXPECT_FALSE(
+      handle->custom_layout()->MeasureChild(*first, 10, 10, 10, 10, size));
+}
+
+TEST_P(FiberElementTest, CustomLayoutHandleReleaseRestoresHooksAndStyles) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, true);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto child = manager->CreateFiberView();
+  child->SetStyle(kPropertyIDZIndex, lepus::Value(9));
+  owner->InsertNode(child);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("child", lepus::Value(child));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => {
+      __MeasureElement(owner, child, 10, 10, 10, 10);
+      return {width: 50, height: 50};
+    }, () => {
+      __PlaceElement(owner, child, 3, 4, 0);
+      return true;
+    });
+  )"));
+  auto flush = [&] {
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page.get());
+  };
+  flush();
+  EXPECT_EQ(child->ZIndex(), 1);
+  EXPECT_TRUE(owner->has_z_props());
+  // Restore the latest authored value, including changes made while attached.
+  child->SetStyle(kPropertyIDZIndex, lepus::Value(7));
+  handle->custom_layout()->Invalidate();
+  flush();
+  EXPECT_EQ(child->ZIndex(), 1);
+  handle = nullptr;
+  runtime->SetGlobalData("owner", lepus::Value());
+  EXPECT_EQ(child->ZIndex(), 7);
+  EXPECT_FALSE(owner->has_z_props());
+  EXPECT_TRUE(owner->dirty() & Element::kDirtyCustomLayout);
+  flush();
+  EXPECT_EQ(owner->slnode()->GetSLComposeMeasureFunc(), nullptr);
+  EXPECT_EQ(owner->slnode()->GetSLAlignmentFunc(), nullptr);
+  EXPECT_EQ(owner->slnode()->GetContext(), nullptr);
+  EXPECT_EQ(child->ZIndex(), 7);
+}
+
+TEST_P(FiberElementTest, CustomLayoutHandleReleaseDuringPlacement) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto child = manager->CreateFiberView();
+  child->SetStyle(kPropertyIDZIndex, lepus::Value(9));
+  owner->InsertNode(child);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("child", lepus::Value(child));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => {
+      __MeasureElement(owner, child, 10, 10, 10, 10);
+      return {width: 50, height: 50};
+    }, () => {
+      __PlaceElement(owner, child, 3, 4, 0);
+      owner = null;
+      return true;
+    });
+  )"));
+  std::weak_ptr<CustomLayout> layout = handle->custom_layout();
+  handle = nullptr;
+  page->FlushActionsAsRoot();
+  owner->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  owner->slnode()->AlignmentByPlatform(0, 0);
+  EXPECT_TRUE(owner->dirty() & Element::kDirtyCustomLayout);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(owner->slnode()->GetSLComposeMeasureFunc(), nullptr);
+  EXPECT_EQ(owner->slnode()->GetSLAlignmentFunc(), nullptr);
+  EXPECT_EQ(owner->slnode()->GetContext(), nullptr);
+  EXPECT_TRUE(layout.expired());
+  EXPECT_EQ(child->ZIndex(), 9);
+  EXPECT_FALSE(owner->has_z_props());
+}
+
+TEST_P(FiberElementTest, CustomLayoutNestedPlacementReleasesOuterHandle) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto nested_handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto nested = nested_handle->content_element();
+  auto sibling = manager->CreateFiberView();
+  auto leaf = manager->CreateFiberView();
+  sibling->SetStyle(kPropertyIDZIndex, lepus::Value(9));
+  nested->InsertNode(leaf);
+  owner->InsertNode(nested);
+  owner->InsertNode(sibling);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("nested", lepus::Value(nested_handle));
+  runtime->SetGlobalData("leaf", lepus::Value(leaf));
+  runtime->SetGlobalData("sibling", lepus::Value(sibling));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(nested, () => __MeasureElement(nested, leaf, 10, 10, 10, 10), () => {
+      owner = null;
+      __PlaceElement(nested, leaf, 0, 0, 0);
+      return true;
+    });
+  )"));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => {
+      __MeasureElement(owner, nested, 10, 10, 10, 10);
+      __MeasureElement(owner, sibling, 10, 10, 10, 10);
+      return {width: 50, height: 50};
+    }, () => {
+      __PlaceElement(owner, nested, 0, 0, 0);
+      __PlaceElement(owner, sibling, 0, 0, 1);
+      return true;
+    });
+  )"));
+  std::weak_ptr<CustomLayout> layout = handle->custom_layout();
+  handle = nullptr;
+  page->FlushActionsAsRoot();
+  owner->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  owner->slnode()->AlignmentByPlatform(0, 0);
+  EXPECT_TRUE(owner->dirty() & Element::kDirtyCustomLayout);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(owner->slnode()->GetSLComposeMeasureFunc(), nullptr);
+  EXPECT_EQ(owner->slnode()->GetSLAlignmentFunc(), nullptr);
+  EXPECT_TRUE(layout.expired());
+  EXPECT_EQ(sibling->ZIndex(), 9);
+  EXPECT_FALSE(owner->has_z_props());
+}
+
+TEST_P(FiberElementTest, CustomLayoutPolicyBoundsOverrideCssMinimum) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto child = manager->CreateFiberView();
+  child->SetStyle(kPropertyIDMinWidth, lepus::Value("100px"));
+  owner->InsertNode(child);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("child", lepus::Value(child));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => {
+      globalThis.measured = __MeasureElement(owner, child, 30, 30, 20, 20);
+      return {width: 50, height: 50};
+    }, () => {
+      __PlaceElement(owner, child, 0, 0, 0);
+      return true;
+    });
+  )"));
+  page->FlushActionsAsRoot();
+  owner->slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  owner->slnode()->AlignmentByPlatform(0, 0);
+  EXPECT_EQ(runtime->GetGlobalData("measured").GetProperty("width"),
+            lepus::Value(30));
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 30);
+}
+
+TEST_P(FiberElementTest, CustomLayoutOmittedPhysicalChildUnderWrapper) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, true);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto wrapper = manager->CreateFiberWrapperElement();
+  auto child = manager->CreateFiberView();
+  wrapper->InsertNode(child);
+  owner->InsertNode(wrapper);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("child", lepus::Value(child));
+
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.include = true;
+    __SetCustomLayout(owner, () => {
+      if (include) __MeasureElement(owner, child, 30, 30, 20, 20);
+      return {width: 50, height: 50};
+    }, () => {
+      if (include) __PlaceElement(owner, child, 0, 0, 0);
+      return true;
+    });
+  )"));
+  auto flush = [&] {
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page.get());
+  };
+  flush();
+  EXPECT_EQ(child->slnode()->ParentLayoutObject(), owner->slnode());
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 30);
+  runtime->SetGlobalData("include", lepus::Value(false));
+  handle->custom_layout()->Invalidate();
+  flush();
+  EXPECT_FLOAT_EQ(child->slnode()->GetBorderBoundWidth(), 0);
+  EXPECT_EQ(child->slnode()->GetShouldDisplayNone(),
+            !child->slnode()
+                 ->GetLayoutConfigs()
+                 .IsFixedNodeWithDisplayNoneQuirksMode());
+}
+
+TEST_P(FiberElementTest, CustomLayoutComposeDispatchDoesNotKeepHandleAlive) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  // Match Compose dispatchers: native callbacks capture only a WeakRef to JS
+  // policy state. The state may itself capture the native owner.
+  static constexpr char source[] = R"(
+    function measureDispatcher(reference) {
+      return function() {
+        const state = reference.deref();
+        return state ? state.measure() : {width: 0, height: 0};
+      };
+    }
+    function placeDispatcher(reference) {
+      return function() {
+        const state = reference.deref();
+        return state ? state.place() : false;
+      };
+    }
+    (() => {
+      const owner = __CreateCompose(0, 1);
+      const state = {
+        measure() { return {width: 10 + __GetChildren(owner).length, height: 10}; },
+        place() { return __GetChildren(owner).length >= 0; }
+      };
+      const reference = new WeakRef(state);
+      __SetCustomLayout(owner, measureDispatcher(reference), placeDispatcher(reference));
+      return owner;
+    })()
+  )";
+  auto raw = LEPUS_Eval(ctx->context(), source, sizeof(source) - 1,
+                        "capture_layout_owner.js", LEPUS_EVAL_TYPE_GLOBAL);
+  ASSERT_FALSE(LEPUS_IsException(raw));
+  ASSERT_TRUE(LEPUS_IsLepusRef(raw));
+  auto* handle =
+      static_cast<ComposeElementHandle*>(LEPUS_GetLepusRefPoint(raw));
+  std::weak_ptr<CustomLayout> weak = handle->custom_layout();
+  LEPUS_FreeValue(ctx->context(), raw);
+  for (int i = 0; i < 4; ++i) LEPUS_RunGC(ctx->runtime_);
+  EXPECT_TRUE(weak.expired());
+  // Explicit cleanup avoids keeping a callback root after this test.
+  if (auto keep = weak.lock()) {
+    static_cast<ComposeElementHandle*>(handle)->SetCustomLayout(nullptr);
+  }
+}
+
+TEST_P(FiberElementTest,
+       CustomLayoutGcReleasesHandleWhenCallbackDoesNotCaptureIt) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+
+  static constexpr char source[] = R"(
+    (() => {
+      const owner = __CreateCompose(0, 1);
+      __SetCustomLayout(owner, function() { return { width: 10, height: 10 }; }, function() { return true; });
+      return owner;
+    })()
+  )";
+  auto raw =
+      LEPUS_Eval(ctx->context(), source, sizeof(source) - 1,
+                 "layout_owner_without_capture.js", LEPUS_EVAL_TYPE_GLOBAL);
+  ASSERT_FALSE(LEPUS_IsException(raw));
+  ASSERT_TRUE(LEPUS_IsLepusRef(raw));
+  auto* handle =
+      static_cast<ComposeElementHandle*>(LEPUS_GetLepusRefPoint(raw));
+  std::weak_ptr<CustomLayout> weak = handle->custom_layout();
+  LEPUS_FreeValue(ctx->context(), raw);
+  for (int i = 0; i < 4; ++i) LEPUS_RunGC(ctx->runtime_);
+  EXPECT_TRUE(weak.expired());
+  if (auto keep = weak.lock()) handle->SetCustomLayout(nullptr);
+}
+
+TEST_P(FiberElementTest, CustomLayoutGcKeepsReachableCallbacks) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  static constexpr char source[] = R"(
+    globalThis.layoutCalls = 0;
+    globalThis.layoutOwner = __CreateCompose(0, 1);
+    __SetCustomLayout(layoutOwner, function() {
+      layoutCalls++;
+      return {width: 31, height: 21};
+    }, function() { return true; });
+  )";
+  lepus::Value result;
+  ASSERT_TRUE(ctx->EvalBuf(source, sizeof(source) - 1, result,
+                           "reachable_layout_policy.js"));
+  for (int i = 0; i < 4; ++i) LEPUS_RunGC(ctx->runtime_);
+  auto value = runtime->GetGlobalData("layoutOwner");
+  auto* handle = static_cast<ComposeElementHandle*>(value.RefCounted().get());
+  page->InsertNode(handle->content_element());
+  page->FlushActionsAsRoot();
+  auto size = handle->content_element()->slnode()->UpdateMeasureByPlatform(
+      starlight::Constraints(), true);
+  EXPECT_FLOAT_EQ(size.width_, 31);
+  EXPECT_FLOAT_EQ(size.height_, 21);
+  EXPECT_EQ(runtime->GetGlobalData("layoutCalls"), lepus::Value(1));
+  ASSERT_TRUE(handle->SetCustomLayout(nullptr));
+  runtime->SetGlobalData("layoutOwner", lepus::Value());
+}
+
+TEST_P(FiberElementTest, CustomLayoutGcSharesCallbacksAcrossHandleWrappers) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  static constexpr char create[] =
+      "globalThis.owner = __CreateCompose(0, 1); void 0;";
+  lepus::Value result;
+  ASSERT_TRUE(
+      ctx->EvalBuf(create, sizeof(create) - 1, result, "create_owner.js"));
+  auto owner = runtime->GetGlobalData("owner");
+  // Export a second wrapper before installing the policy, and a third after.
+  runtime->SetGlobalData("aliasBefore", owner);
+  static constexpr char install[] = R"(
+    __SetCustomLayout(owner, () => ({width: 31, height: 21}), () => true);
+  )";
+  ASSERT_TRUE(
+      ctx->EvalBuf(install, sizeof(install) - 1, result, "install_policy.js"));
+  auto* handle = static_cast<ComposeElementHandle*>(owner.RefCounted().get());
+  std::weak_ptr<CustomLayout> weak = handle->custom_layout();
+  runtime->SetGlobalData("aliasAfter", owner);
+  runtime->SetGlobalData("owner", lepus::Value());
+  owner = lepus::Value();
+  for (int i = 0; i < 4; ++i) LEPUS_RunGC(ctx->runtime_);
+  EXPECT_FALSE(weak.expired());
+  page->InsertNode(handle->content_element());
+  page->FlushActionsAsRoot();
+  auto size = handle->content_element()->slnode()->UpdateMeasureByPlatform(
+      starlight::Constraints(), true);
+  EXPECT_FLOAT_EQ(size.width_, 31);
+  EXPECT_FLOAT_EQ(size.height_, 21);
+  runtime->SetGlobalData("aliasBefore", lepus::Value());
+  for (int i = 0; i < 4; ++i) LEPUS_RunGC(ctx->runtime_);
+  EXPECT_FALSE(weak.expired());
+  size = handle->content_element()->slnode()->UpdateMeasureByPlatform(
+      starlight::Constraints(), true);
+  EXPECT_FLOAT_EQ(size.width_, 31);
+  runtime->SetGlobalData("aliasAfter", lepus::Value());
+  for (int i = 0; i < 4; ++i) LEPUS_RunGC(ctx->runtime_);
+  EXPECT_TRUE(weak.expired());
+}
+
+TEST_P(FiberElementTest,
+       CustomLayoutExpiredComposeStateDoesNotReadDeadCallback) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
+  static constexpr char source[] = R"(
+    function measureDispatcher(reference) {
+      return function() {
+        const state = reference.deref();
+        return state ? state.measure() : {width: 0, height: 0};
+      };
+    }
+    function placeDispatcher(reference) {
+      return function() {
+        const state = reference.deref();
+        return state ? state.place() : false;
+      };
+    }
+    (() => {
+      const owner = __CreateCompose(0, 1);
+      const state = {
+        measure() { return {width: 31, height: 21}; },
+        place() { return true; }
+      };
+      const reference = new WeakRef(state);
+      __SetCustomLayout(owner, measureDispatcher(reference), placeDispatcher(reference));
+      return owner;
+    })()
+  )";
+  auto raw = LEPUS_Eval(ctx->context(), source, sizeof(source) - 1,
+                        "expired_layout_state.js", LEPUS_EVAL_TYPE_GLOBAL);
+  ASSERT_TRUE(LEPUS_IsLepusRef(raw));
+  HandleScope scope(ctx->context(), &raw, HANDLE_TYPE_LEPUS_VALUE);
+  auto* handle =
+      static_cast<ComposeElementHandle*>(LEPUS_GetLepusRefPoint(raw));
+  for (int i = 0; i < 4; ++i) LEPUS_RunGC(ctx->runtime_);
+  // The owner remains reachable, but JS policy state has been collected.
+  page->InsertNode(handle->content_element());
+  page->FlushActionsAsRoot();
+  auto size = handle->content_element()->slnode()->UpdateMeasureByPlatform(
+      starlight::Constraints(), true);
+  EXPECT_FLOAT_EQ(size.width_, 0);
+  EXPECT_FLOAT_EQ(size.height_, 0);
+  handle->content_element()->slnode()->AlignmentByPlatform(0, 0);
+  EXPECT_TRUE(handle->SetCustomLayout(nullptr));
+  LEPUS_FreeValue(ctx->context(), raw);
+  raw = LEPUS_UNDEFINED;
+}
+
+TEST_P(FiberElementTest, CustomLayoutRejectsDisabledZIndex) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->GetConfig()->SetEnableZIndex(false);
+  manager->SetConfig(manager->GetConfig());
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.rejected = false;
+    try { __SetCustomLayout(owner, () => ({width: 10, height: 10}), () => true); }
+    catch (error) { rejected = true; }
+  )"));
+  EXPECT_EQ(runtime->GetGlobalData("rejected"), lepus::Value(true));
+  EXPECT_FALSE(handle->custom_layout());
+  owner->UpdateLayoutNodeByBundle();
+  EXPECT_EQ(owner->slnode()->GetSLComposeMeasureFunc(), nullptr);
+  EXPECT_EQ(owner->slnode()->GetSLAlignmentFunc(), nullptr);
+}
+
+TEST_P(FiberElementTest, CustomLayoutRestoresRemovedChildren) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  manager->UpdateViewport(100, SLMeasureModeDefinite, 600,
+                          SLMeasureModeDefinite, true);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+  auto owner = handle->content_element();
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  auto child = manager->CreateFiberView();
+  owner->InsertNode(child);
+  page->InsertNode(owner);
+  runtime->SetGlobalData("child", lepus::Value(child));
+
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.includeChild = true;
+    __SetCustomLayout(owner, () => {
+      if (includeChild) __MeasureElement(owner, child, 10, 10, 10, 10);
+      return {width: 50, height: 50};
+    }, () => {
+      if (includeChild) __PlaceElement(owner, child, 3, 4, 0);
+      return true;
+    });
+  )"));
+  auto flush = [&] {
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page.get());
+  };
+  flush();
+  EXPECT_EQ(child->ZIndex(), 1);
+  owner->RemoveNode(child);
+  page->InsertNode(child);
+  runtime->SetGlobalData("includeChild", lepus::Value(false));
+  flush();
+  EXPECT_EQ(child->ZIndex(), 0);
+  EXPECT_FALSE(child->has_z_props());
 }
 
 TEST_P(FiberElementTest, LayoutInElementLegacyFirstScreenWithReadyViewport) {
@@ -21769,22 +23919,16 @@ TEST_P(FiberElementTest,
 TEST_P(FiberElementTest, ImperativeAnimationOriginAcrossStylingPipelines) {
   int32_t page_id = 11;
   for (const bool enable_new_styling_pipeline : {false, true}) {
-    for (const auto& mode : {std::pair{false, false}, std::pair{true, false},
-                             std::pair{false, true}}) {
-      const bool use_animate_v2 = mode.first;
-      const bool route_without_new_animator = mode.second;
+    for (const bool use_animate_v2 : {false, true}) {
       SCOPED_TRACE(::testing::Message()
                    << "enable_new_styling_pipeline="
                    << enable_new_styling_pipeline
-                   << ", use_animate_v2=" << use_animate_v2
-                   << ", routing=" << route_without_new_animator);
+                   << ", use_animate_v2=" << use_animate_v2);
       manager->enable_new_styling_pipeline_ = enable_new_styling_pipeline;
-      manager->supports_platform_animation_routing_ =
-          route_without_new_animator;
       auto page = manager->CreateFiberPage("page", page_id++);
       manager->SetFiberPageElement(page);
       auto element = manager->CreateFiberView();
-      element->enable_new_animator_ = !route_without_new_animator;
+      element->enable_new_animator_ = true;
       page->InsertNode(element);
       page->FlushActionsAsRoot();
 
@@ -21824,15 +23968,6 @@ TEST_P(FiberElementTest, ImperativeAnimationOriginAcrossStylingPipelines) {
       } else {
         EXPECT_FALSE(element->imperative_animation_state_.HasRecords());
         element->SetDataToNativeKeyframeAnimator(false);
-      }
-      if (enable_new_styling_pipeline) {
-        for (const auto* style : {"width: 10px;", "width: 20px;"}) {
-          element->SetRawInlineStyles(style);
-          page->FlushActionsAsRoot();
-          ASSERT_NE(nullptr, element->css_keyframe_manager_);
-          EXPECT_EQ(1U, element->css_keyframe_manager_->animations_map_.count(
-                            base::String("fade")));
-        }
       }
 
       for (const auto operation :
@@ -22953,6 +25088,8 @@ TEST_P(FiberElementTest,
   SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
   tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
   auto page = manager->CreateFiberPage("page", 1);
+  page->MarkAsComposeLayout();
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
   manager->SetFiberPageElement(page);
   auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
       manager, ComposeElementKind::kList, base::String(), tasm.get()));
@@ -22966,6 +25103,7 @@ TEST_P(FiberElementTest,
   lynx::list::testing::FiberDataSource source;
   for (int index = 0; index < 20; ++index) {
     auto item = manager->CreateFiberElement("list-item");
+    item->MarkAsComposeLayout();
     item->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("200px"));
     item->SetStyle(CSSPropertyID::kPropertyIDHeight,
                    lepus::Value(std::to_string(60 + index * 10) + "px"));

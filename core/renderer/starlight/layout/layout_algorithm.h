@@ -6,6 +6,7 @@
 #define CORE_RENDERER_STARLIGHT_LAYOUT_LAYOUT_ALGORITHM_H_
 
 #include <array>
+#include <optional>
 
 #include "core/renderer/starlight/layout/box_info.h"
 #include "core/renderer/starlight/layout/direction_selector.h"
@@ -34,12 +35,19 @@ class LayoutAlgorithm : public DirectionSelector {
 
   void Initialize(const Constraints& constraints,
                   const SLNodeSet* fixed_node_set = nullptr);
+  void InitializeWithCompose(const Constraints& constraints,
+                             const ComposeConstraints& compose_constraints,
+                             const SLNodeSet* fixed_node_set = nullptr);
   FloatSize SizeDetermination();
-  void Alignment();
+  virtual void Alignment();
 
   void Update(const Constraints& constraints);
+  void UpdateWithCompose(const Constraints& constraints,
+                         const ComposeConstraints& compose_constraints);
 
   virtual void SetContainerBaseline() = 0;
+
+  virtual bool RequiresComposeConstraints() const { return false; }
 
   float CalculateFloatSizeFromLength(const NLength& length,
                                      const LayoutUnit& percent_base);
@@ -49,6 +57,7 @@ class LayoutAlgorithm : public DirectionSelector {
  protected:
   virtual void Reset(){};
   void UpdateAvailableSizeAndMode(const Constraints& constraints);
+  void UpdateComposeConstraints(const ComposeConstraints& constraints);
   FloatSize PostLayoutProcessingAndResultBorderBoxSize();
   virtual void AfterResultBorderBoxSize();
 
@@ -65,6 +74,8 @@ class LayoutAlgorithm : public DirectionSelector {
   // Initialize layout environment,init some relevant parameters
   virtual void InitializeAlgorithmEnv() = 0;
 
+  virtual void InitializeChildren(const SLNodeSet* fixed_node_set = nullptr);
+
   // TODO(zzz):unified handle process
   virtual void SizeDeterminationByAlgorithm() = 0;
 
@@ -72,6 +83,8 @@ class LayoutAlgorithm : public DirectionSelector {
   const LayoutComputedStyle* container_style_;
 
   Constraints container_constraints_;
+  // Content-box bounds retained for Compose measurement and placement.
+  std::optional<ComposeConstraints> compose_constraints_;
 
   LayoutItems sticky_items;
   LayoutItems absolute_or_fixed_items_;
@@ -87,7 +100,6 @@ class LayoutAlgorithm : public DirectionSelector {
 
   void ItemsUpdateAlignment();
 
-  void InitializeChildren(const SLNodeSet* fixed_node_set = nullptr);
   void InitializeFixedNode(const SLNodeSet* fixed_node_set = nullptr);
 };
 }  // namespace starlight

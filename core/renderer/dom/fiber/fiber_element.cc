@@ -4265,6 +4265,13 @@ void Element::UpdateFixedNodeSetRecursively(bool is_insert) {
   }
 }
 
+void Element::MarkAsComposeLayout() {
+  is_compose_layout_ = true;
+  if (sl_node_) {
+    sl_node_->SetComposeLayout(true);
+  }
+}
+
 void Element::EnsureSLNode() {
   if (EnableLayoutInElementMode() && sl_node_ == nullptr) {
     sl_node_ = std::make_unique<SLNode>(
@@ -4273,6 +4280,7 @@ void Element::EnsureSLNode() {
     if (is_page()) {
       MarkAsLayoutRoot();
     }
+    sl_node_->SetComposeLayout(IsComposeLayout());
     OnLayoutObjectCreated();
   }
 }
@@ -5695,7 +5703,12 @@ void Element::DispatchAsyncResolveSubtreeProperty() {
 }
 
 bool Element::CanBeLayoutOnly() const {
-  return can_be_layout_only_ && element_manager()->GetEnableLayoutOnly() &&
+  // Compose placement creates a stacking context and changes child z-order.
+  // Keep its native container before layout; materializing it from Alignment
+  // is too late for the platform's create/remove-node operation ordering.
+  return !(custom_layout_functions_ &&
+           custom_layout_functions_->compose_measure) &&
+         can_be_layout_only_ && element_manager()->GetEnableLayoutOnly() &&
          has_layout_only_props_ && computed_css_style()->IsOverflowXY();
 }
 
@@ -5780,7 +5793,8 @@ void Element::UpdateLayoutInfo() {
 
 void Element::SetCustomLayoutFunctions(
     starlight::CustomLayoutFunctions functions) {
-  if (!functions.measure && !functions.layout && !functions.can_reuse) {
+  if (!functions.measure && !functions.compose_measure && !functions.layout &&
+      !functions.can_reuse) {
     custom_layout_functions_.reset();
   } else {
     if (!custom_layout_functions_) {
@@ -5804,8 +5818,17 @@ bool Element::FlushCustomLayoutFunctions() {
   const auto functions = custom_layout_functions_
                              ? *custom_layout_functions_
                              : starlight::CustomLayoutFunctions{};
-  SetMeasureFunc(this, functions.measure);
-  SetAlignmentFunc(this, functions.layout);
+  void *context = custom_layout_functions_
+                      ? (functions.context ? functions.context : this)
+                      : nullptr;
+  SetMeasureFunc(context, functions.measure);
+  sl_node_->SetSLComposeMeasureFunc(functions.compose_measure);
+  if (functions.compose_measure && is_layout_only_) {
+    // A hook-only update has no style bundle. Route through UpdateFiberElement
+    // so an already mounted layout-only owner materializes before placement.
+    PreparePropBundleIfNeed();
+  }
+  SetAlignmentFunc(context, functions.layout);
   sl_node_->SetCanReuseLayoutWithSameSizeAsGivenConstraintFunc(
       functions.can_reuse);
   return true;
@@ -5831,7 +5854,7 @@ void Element::DispatchLayoutBeforeRecursively() {
       return;
     }
 
-    if (sl_node_->GetSLMeasureFunc()) {
+    if (sl_node_->need_custom_layout()) {
       DispatchLayoutBefore();
     }
   }

@@ -9,12 +9,14 @@
 #include <thread>
 
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/custom_layout.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/starlight/layout/layout_global.h"
+#include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx {
@@ -59,7 +61,9 @@ ComposeElementHandle::ComposeElementHandle(ElementManager* manager,
                                            const base::String& tag,
                                            TemplateAssembler* tasm)
     : content_element_(CreateContentElement(manager, kind, tag, tasm)),
-      mount_root_(content_element_) {}
+      mount_root_(content_element_) {
+  content_element_->MarkAsComposeLayout();
+}
 
 std::optional<LayoutResult> ComposeElementHandle::MeasureText(
     ElementManager* manager, double width, double width_mode, double height,
@@ -153,6 +157,55 @@ std::optional<LayoutResult> ComposeElementHandle::MeasureText(
       static_cast<float>(
           measure_height_mode == SLMeasureModeDefinite ? height : css_height),
       static_cast<float>(css_baseline)};
+}
+
+ComposeElementHandle::~ComposeElementHandle() { ClearCustomLayout(); }
+
+void ComposeElementHandle::ClearCustomLayout() {
+  if (!custom_layout_) return;
+  content_element_->SetCustomLayoutFunctions({});
+  custom_layout_->Detach();
+  custom_layout_.reset();
+}
+
+void ComposeElementHandle::visitor(void* rt, void* func, uint64_t trace_tool) {
+  if (custom_layout_) custom_layout_->visitor(rt, func, trace_tool);
+  content_element_->visitor(rt, func, trace_tool);
+}
+
+bool ComposeElementHandle::SetCustomLayout(
+    std::shared_ptr<CustomLayout> layout) {
+  auto& owner = *content_element_;
+  if (!owner.EnableLayoutInElementMode() || owner.will_destroy() ||
+      (layout && !owner.GetEnableZIndex()) || owner.GetTag() != "view" ||
+      owner.IsShadowNodeCustom() || (layout && &layout->owner() != &owner) ||
+      (custom_layout_ && custom_layout_->IsExecuting()))
+    return false;
+  // A pending clear can leave the previous SL hooks installed until Flush.
+  if (!custom_layout_ &&
+      (owner.HasCustomLayoutFunctions() ||
+       (!(owner.dirty() & Element::kDirtyCustomLayout) && owner.slnode() &&
+        (owner.slnode()->GetSLMeasureFunc() ||
+         owner.slnode()->GetSLComposeMeasureFunc() ||
+         owner.slnode()->GetSLAlignmentFunc()))))
+    return false;
+  ClearCustomLayout();
+  custom_layout_ = std::move(layout);
+  if (custom_layout_) {
+    owner.SetCustomLayoutFunctions({
+        nullptr,
+        [](void* context) { static_cast<CustomLayout*>(context)->Alignment(); },
+        nullptr,
+        custom_layout_.get(),
+        [](void* context, const starlight::ComposeConstraints& constraints,
+           bool final_measure) {
+          auto size = static_cast<CustomLayout*>(context)->Measure(
+              constraints, final_measure);
+          return FloatSize(size.width_, size.height_, size.baseline_);
+        },
+    });
+  }
+  return true;
 }
 
 }  // namespace tasm
