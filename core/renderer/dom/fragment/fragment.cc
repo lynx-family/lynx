@@ -1344,6 +1344,24 @@ void Fragment::DrawBehind(DisplayListBuilder& builder) {
   }
 }
 
+void Fragment::DrawCustomOutsetShadow(DisplayListBuilder& builder,
+                                      const RoundedRectangle& shape,
+                                      float offset_x, float offset_y,
+                                      float blur, float spread,
+                                      uint32_t color) {
+  // The shape is also the exclusion: an outset shadow is not painted below its
+  // caster, matching DrawBoxShadow for CSS outset shadows.
+  int32_t clip_box_index = -1;
+  builder.RecordBoxModel(shape, clip_box_index);
+  int32_t shadow_box_index = -1;
+  builder.RecordBoxModel(
+      ComputeShadowBox(shape, spread, offset_x, offset_y, false),
+      shadow_box_index);
+  builder.BoxShadow(shadow_box_index, clip_box_index, color, blur,
+                    DisplayListBuilder::BoxShadowClipMode::kOutset);
+  custom_outset_shadow_drawn_ = true;
+}
+
 void Fragment::DrawForeground(DisplayListBuilder& builder) {
   if (custom_draw_functions_ && custom_draw_functions_->draw_foreground) {
     custom_draw_functions_->draw_foreground(*this, builder);
@@ -1408,6 +1426,7 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
   // shared geometry before recording backgrounds, borders, and content clips.
   UpdateBorderRadiusAccordingToLayoutInfo();
   box_recorder_.Reset();
+  custom_outset_shadow_drawn_ = false;
   const auto* computed_style = element()->computed_css_style();
   display_list_builder.Begin(
       id(),
@@ -1835,6 +1854,10 @@ void Fragment::CheckRootIfNeedClipBounds(
     DisplayListBuilder& display_list_builder) {
   auto* style = element()->computed_css_style();
   if (!style->IsOverflowHidden()) {
+    return;
+  }
+  if (custom_outset_shadow_drawn_) {
+    // Custom outset shadows extend beyond the layer like CSS ones below.
     return;
   }
   const auto& shadows = style->GetBoxShadowData();

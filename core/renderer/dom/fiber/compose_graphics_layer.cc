@@ -66,12 +66,14 @@ CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
           properties[i] = static_cast<float>(number.Number());
         }
         // Alpha is optional so previously built transform-only templates keep
-        // their ordinary opacity. Validate before emitting any custom output.
+        // their ordinary opacity. An absent key reads like null, so test the
+        // key itself. Validate before emitting any custom output.
         static constexpr char kAlpha[] = "alpha";
         const auto alpha_value =
             value.GetProperty(BASE_STATIC_STRING(kAlpha)).ToLepusValue();
         float alpha = 1.f;
-        if (!alpha_value.IsUndefined()) {
+        if (value.Contains(BASE_STATIC_STRING(kAlpha)) &&
+            !alpha_value.IsUndefined()) {
           if (!alpha_value.IsNumber() || !std::isfinite(alpha_value.Number())) {
             LOGE("graphicsLayer resolver returned invalid alpha");
             return;
