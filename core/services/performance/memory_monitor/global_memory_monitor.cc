@@ -5,6 +5,7 @@
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
 
 #include <algorithm>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -270,6 +271,13 @@ void GlobalMemoryMonitor::OnInstanceDestroyed(int32_t id, int64_t at_ms) {
     state.memory_monitor = nullptr;
     state.destroyed = true;
     state.exited_at_ms = at_ms;
+    // Preserve creator attribution before untracked exited pages are erased.
+    for (auto& cache_vm : bts_vm_state_) {
+      auto creator = cache_vm->module_cache_creators.find(id);
+      if (creator != cache_vm->module_cache_creators.end()) {
+        creator->second.page_key = state.page_key;
+      }
+    }
     if (state.residency_observation) {
       // Keep early exits until the original creation+10min deadline. Counting
       // them now would bias the denominator toward short-lived processes.
@@ -380,6 +388,31 @@ void GlobalMemoryMonitor::OnBtsVMSlotAllocate(runtime::js::VMInstance* vm,
   });
 }
 
+void GlobalMemoryMonitor::OnModuleCacheUpdate(
+    const std::shared_ptr<runtime::js::VMInstance>& vm, int32_t creator,
+    size_t type, ModuleCacheCounts delta) {
+  if (!MemoryMonitor::Enable()) return;
+  ReportRunner()->PostTask([this,
+                            weak = std::weak_ptr<runtime::js::VMInstance>(vm),
+                            ptr = vm.get(), creator, type, delta] {
+    auto* state = FindVM(ptr);
+    if (!state || !SameOwner(state->vm, weak)) return;
+    auto it = state->module_cache_creators.find(creator);
+    if (it == state->module_cache_creators.end()) {
+      // A physical VM can contain multiple independently capped corejs realms.
+      if (state->module_cache_creators.size() >= 128) return;
+      const auto* page = GetInstanceState(creator);
+      if (!page || !delta.inserted) return;
+      it = state->module_cache_creators.try_emplace(creator).first;
+      it->second.page_key = page->page_key;
+    }
+    auto& counts = it->second.counts[type];
+    counts.inserted += delta.inserted;
+    counts.reused += delta.reused;
+    counts.cross_app += delta.cross_app;
+  });
+}
+
 void GlobalMemoryMonitor::OnMTSRuntimePoolUpdate(
     int32_t pool_instance_id, const std::string& template_url,
     runtime::ContextType context_type, int64_t created_at_ms,
@@ -417,7 +450,15 @@ void GlobalMemoryMonitor::EmitSlotOverflowTrigger(BtsVmState& vm) {
   if (!vm.pending_overflow) return;
   Trigger trigger;
   trigger.reasons = kOverflow;
-  trigger.overflow_vm = std::make_unique<BtsVmState>(vm);
+  // Only capture the inputs consumed by the overflow event.
+  trigger.overflow_vm = std::make_unique<BtsVmState>();
+  auto& captured = *trigger.overflow_vm;
+  captured.SetName(vm.vm_name());
+  captured.created_at_ms = vm.created_at_ms;
+  captured.total_page_count = vm.total_page_count;
+  captured.allocated_slots = vm.allocated_slots;
+  captured.untracked_page_count = vm.untracked_page_count;
+  captured.heap_size = vm.heap_size;
   vm.pending_overflow = false;
   // Queue after binding commits; do not collect in the middle of a
   // WithInstance callback. It does not merge with a timer/PSS snapshot or
@@ -924,11 +965,6 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     event.SetProps("mts_pool_runtime_count", mts_pool_runtime_count);
     event.SetProps("mts_pool_heap_bytes_sum", mts_pool_heap);
     event.SetProps("shared_vm_tracked_exited_page_retained_bytes", retained);
-    event.SetProps("lynx_accounted_process_pss_ratio", accounted / pss);
-    event.SetProps("lynx_shared_vm_process_pss_ratio", shared_heap / pss);
-    event.SetProps("lynx_mts_pool_process_pss_ratio", mts_pool_heap / pss);
-    event.SetProps("lynx_tracked_page_retained_process_pss_ratio",
-                   retained / pss);
     if (snapshot.trigger.reasons & kPss) {
       event.SetProps("trigger_pss_previous_milestone_bytes",
                      snapshot.trigger.pss_before);
@@ -1037,6 +1073,42 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     event.SetProps("vm_total_page_count_weighted",
                    vm.total_page_count * vm_weight);
     event.SetProps("vm_selection_weight", vm_weight);
+    if (!vm.module_cache_creators.empty()) {
+      // Uniform creator sampling within the uniformly selected physical VM.
+      // Same-key creators need not be merged: weighted rows add by page_key.
+      auto selected = vm.module_cache_creators.begin();
+      std::advance(selected,
+                   std::uniform_int_distribution<size_t>(
+                       0, vm.module_cache_creators.size() - 1)(random_));
+      const double creator_weight = vm_weight * vm.module_cache_creators.size();
+      const auto* page = GetInstanceState(selected->first);
+      event.SetProps("js_cache_page_key",
+                     page ? page->page_key : selected->second.page_key);
+      event.SetProps("js_cache_page_weight", creator_weight);
+      for (size_t type = 0; type < 2; ++type) {
+        ModuleCacheCounts total;
+        for (const auto& creator : vm.module_cache_creators) {
+          const auto& counts = creator.second.counts[type];
+          total.inserted += counts.inserted;
+          total.reused += counts.reused;
+          total.cross_app += counts.cross_app;
+        }
+        const auto& counts = selected->second.counts[type];
+        const std::string prefix =
+            type == 0 ? "js_cache_factory_" : "js_cache_script_";
+        const std::string page_prefix =
+            type == 0 ? "js_cache_page_factory_" : "js_cache_page_script_";
+        auto report_count = [&](const char* suffix, uint64_t vm_count,
+                                uint64_t creator_count) {
+          event.SetProps((prefix + suffix).c_str(), vm_count * vm_weight);
+          event.SetProps((page_prefix + suffix).c_str(),
+                         creator_count * creator_weight);
+        };
+        report_count("inserted", total.inserted, counts.inserted);
+        report_count("reused", total.reused, counts.reused);
+        report_count("cross_app", total.cross_app, counts.cross_app);
+      }
+    }
     events.push_back(std::move(event));
   }
   // Residual Q7 drains only closed full-GC intervals, independently of Q6's

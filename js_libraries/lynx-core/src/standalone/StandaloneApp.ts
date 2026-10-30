@@ -13,7 +13,7 @@ export default class StandaloneApp extends BaseApp {
     try {
       if (params.srcName) {
         delete this.lynx.requireModule.cache[params.srcName];
-        delete BaseApp._$factoryCache[params.srcName];
+        this.clearFactoryCache(params.srcName);
         this.lynx.requireModule(params.srcName, DEFAULT_ENTRY);
         this.dataTypeSet.add('undefined');
       }
