@@ -447,7 +447,8 @@ ClayHeadlessRendererAngle::GetGLProcResolver() const {
 GLFBOInfo ClayHeadlessRendererAngle::GLContextFBO(
     GLFrameInfo frame_info) const {
   GLFBOInfo info = ClayHeadlessRendererSharedImageGL::GLContextFBO(frame_info);
-  info.has_depth_stencil_attachment = info.fbo_id >= 0;
+  info.has_depth_stencil_attachment =
+      info.fbo_id >= 0 && has_depth_stencil_attachment_;
   return info;
 }
 
@@ -460,6 +461,7 @@ bool ClayHeadlessRendererAngle::ClearCurrent() {
 }
 
 int64_t ClayHeadlessRendererAngle::FBO(const ClayFrameInfo& frame_info) {
+  has_depth_stencil_attachment_ = false;
   const int64_t fbo_id = ClayHeadlessRendererSharedImageGL::FBO(frame_info);
   if (fbo_id < 0) {
     return fbo_id;
@@ -472,12 +474,9 @@ int64_t ClayHeadlessRendererAngle::FBO(const ClayFrameInfo& frame_info) {
     attachment_height_ = frame_info.height;
   }
 
-  if (depth_stencil_attachments_.find(fbo_id) !=
-      depth_stencil_attachments_.end()) {
-    return fbo_id;
-  }
-
-  while (glGetError() != GL_NO_ERROR) {
+  // Drain only a bounded number of stale errors. A lost context must not
+  // prevent the raster thread from making progress.
+  for (int i = 0; i < 16 && glGetError() != GL_NO_ERROR; ++i) {
   }
 
   GLint previous_fbo = 0;
@@ -486,35 +485,53 @@ int64_t ClayHeadlessRendererAngle::FBO(const ClayFrameInfo& frame_info) {
   glGetIntegerv(GL_RENDERBUFFER_BINDING, &previous_renderbuffer);
 
   glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(fbo_id));
-  GLuint depth_stencil_id = 0;
-  glGenRenderbuffers(1, &depth_stencil_id);
-  glBindRenderbuffer(GL_RENDERBUFFER, depth_stencil_id);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8_OES,
-                        frame_info.width, frame_info.height);
+  const bool allocate =
+      depth_stencil_attachment_ == 0 && !depth_stencil_allocation_failed_;
+  if (allocate) {
+    glGenRenderbuffers(1, &depth_stencil_attachment_);
+    glBindRenderbuffer(GL_RENDERBUFFER, depth_stencil_attachment_);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8_OES,
+                          frame_info.width, frame_info.height);
+  }
+
+  // FBOs are owned by shared image representations and can be recreated even
+  // without a size change. Never infer attachment availability from an FBO id.
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                            GL_RENDERBUFFER, depth_stencil_id);
+                            GL_RENDERBUFFER, depth_stencil_attachment_);
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
-                            GL_RENDERBUFFER, depth_stencil_id);
+                            GL_RENDERBUFFER, depth_stencil_attachment_);
 
   const GLenum framebuffer_status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
   const GLenum gl_error = glGetError();
 
+  has_depth_stencil_attachment_ = depth_stencil_attachment_ != 0 &&
+                                  gl_error == GL_NO_ERROR &&
+                                  framebuffer_status == GL_FRAMEBUFFER_COMPLETE;
+  if (!has_depth_stencil_attachment_) {
+    if (!depth_stencil_allocation_failed_) {
+      FML_LOG(WARNING)
+          << "Headless depth/stencil attachment unavailable; using offscreen "
+             "rendering, GL error: "
+          << gl_error << ", framebuffer status: " << framebuffer_status;
+    }
+    // Preserve the valid color target for Skity's offscreen fallback. An
+    // incomplete attachment must not turn a recoverable allocation failure
+    // into a failed frame acquisition.
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                              GL_RENDERBUFFER, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
+                              GL_RENDERBUFFER, 0);
+    ClearDepthStencilAttachments();
+    depth_stencil_allocation_failed_ = true;
+  }
+
+  const GLenum final_status = has_depth_stencil_attachment_
+                                  ? framebuffer_status
+                                  : glCheckFramebufferStatus(GL_FRAMEBUFFER);
   glBindRenderbuffer(GL_RENDERBUFFER, previous_renderbuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, previous_fbo);
 
-  if (depth_stencil_id == 0 || gl_error != GL_NO_ERROR ||
-      framebuffer_status != GL_FRAMEBUFFER_COMPLETE) {
-    FML_LOG(ERROR) << "Failed to attach the headless depth/stencil buffer, "
-                   << "GL error: " << gl_error
-                   << ", framebuffer status: " << framebuffer_status;
-    if (depth_stencil_id != 0) {
-      glDeleteRenderbuffers(1, &depth_stencil_id);
-    }
-    return -1;
-  }
-
-  depth_stencil_attachments_.emplace(fbo_id, depth_stencil_id);
-  return fbo_id;
+  return final_status == GL_FRAMEBUFFER_COMPLETE ? fbo_id : -1;
 }
 
 void ClayHeadlessRendererAngle::CleanupGPUResources() {
@@ -523,10 +540,12 @@ void ClayHeadlessRendererAngle::CleanupGPUResources() {
 }
 
 void ClayHeadlessRendererAngle::ClearDepthStencilAttachments() {
-  for (const auto& attachment : depth_stencil_attachments_) {
-    glDeleteRenderbuffers(1, &attachment.second);
+  if (depth_stencil_attachment_ != 0) {
+    glDeleteRenderbuffers(1, &depth_stencil_attachment_);
+    depth_stencil_attachment_ = 0;
   }
-  depth_stencil_attachments_.clear();
+  has_depth_stencil_attachment_ = false;
+  depth_stencil_allocation_failed_ = false;
 }
 
 std::unique_ptr<ClayHeadlessRenderer> ClayHeadlessRenderer::CreateGL(
