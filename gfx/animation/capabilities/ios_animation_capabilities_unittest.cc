@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <type_traits>
+
 #include "gfx/animation/capabilities/ios_animation_capabilities_generated.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -10,6 +12,10 @@ namespace gfx {
 namespace {
 
 TEST(IOSAnimationCapabilitiesTest, ReusesImmutableCapabilityStorage) {
+  static_assert(std::is_trivially_copyable_v<AnimationBackendCapabilities>);
+  constexpr AnimationBackendCapabilities empty;
+  static_assert(empty.event_capabilities.begin() ==
+                empty.event_capabilities.end());
   const auto& first = GetIOSAnimationBackendCapabilities();
   const auto& second = GetIOSAnimationBackendCapabilities();
   EXPECT_EQ(&first, &second);

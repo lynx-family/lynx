@@ -31,6 +31,9 @@ animation_shared_sources = [
 
 lynx_core_source_set("animation") {
   sources = animation_shared_sources
+  has_platform_animation_backend = (is_ios && !enable_clay) || enable_unittests
+  defines =
+      [ "LYNX_HAS_PLATFORM_ANIMATION_BACKEND=$has_platform_animation_backend" ]
 
   public_deps = [
     "../../gfx:gfx",

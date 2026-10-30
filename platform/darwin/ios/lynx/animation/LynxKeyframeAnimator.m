@@ -449,6 +449,20 @@ static const CATransform3D kEmptyCATransform3D = {0};
                    }
                  }
                }];
+
+  _delegate.didStart = ^(CAAnimation* anim) {
+    __strong LynxKeyframeAnimator* strongSelf = weakSelf;
+    if (strongSelf.platformPlayback == nil || !strongSelf.platformPlayback.isCurrentExecutor() ||
+        strongSelf.state != LynxKFAnimatorStateRunning) {
+      return;
+    }
+    NSNumber* generation = [anim valueForKey:kPlatformAnimationGenerationKey];
+    if (generation.unsignedIntValue != strongSelf.platformAnimationGeneration) {
+      return;
+    }
+    // CA starts after beginTime, including any remaining logical delay.
+    [strongSelf sendStartEvent:strongSelf.info];
+  };
 }
 
 - (BOOL)isAnimationExpired:(LynxAnimationInfo*)info {
@@ -1186,9 +1200,8 @@ static void AppendRotationKeyframe(LynxKeyframeParsedData* parsedData, NSString*
   }
 
   if (![self isAnimationExpired:info]) {
-    // Send animation start event
-    // only send start event when state is IDLE.
-    if (_state == LynxKFAnimatorStateIdle) {
+    // Legacy reports start on apply; routed effects wait for CA's actual start.
+    if (_state == LynxKFAnimatorStateIdle && _platformPlayback == nil) {
       [self sendStartEvent:info];
     }
 
@@ -1250,11 +1263,12 @@ static void AppendRotationKeyframe(LynxKeyframeParsedData* parsedData, NSString*
     [self finish];
     return;
   }
-  if (firstTime || _platformPlayback != nil) {
+  if (firstTime && _platformPlayback == nil) {
     [self sendStartEvent:info];
   }
   if (_platformPlayback != nil && [self isAnimationExpired:info]) {
     // Apply completed fill even when the handoff arrives paused.
+    [self sendStartEvent:info];
     [self finish];
     [self sendEndEvent:info finished:YES];
     return;
@@ -1284,6 +1298,9 @@ static void AppendRotationKeyframe(LynxKeyframeParsedData* parsedData, NSString*
                        (strongSelf.platformPlayback != nil &&
                         !strongSelf.platformPlayback.isCurrentExecutor())) {
                      return;
+                   }
+                   if (strongSelf.platformPlayback != nil) {
+                     [strongSelf sendStartEvent:info];
                    }
                    [strongSelf finish];
                    [strongSelf sendEndEvent:info finished:YES];

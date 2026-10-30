@@ -245,6 +245,33 @@ void Apply(LynxUI* ui, gfx::PlatformAnimationCommand command) {
   }
 }
 
+- (void)testRoutedStartWaitsForDelay {
+  for (long duration : {0L, 10000L}) {
+    auto playback = lynx::fml::MakeRefCounted<gfx::AnimationPlaybackState>(
+        lynx::fml::TimeDelta::Zero(), true, EventState::kNotStarted);
+    const auto executor = playback->ChangeExecutor();
+    auto apply = [&](uint32_t generation) {
+      auto command = OpacityCommand(generation, duration);
+      command.animation_data.delay = 5000;
+      command.playback = playback;
+      command.executor = executor;
+      Apply(self.ui, std::move(command));
+    };
+    apply(1);
+    [self drainMainQueue];
+    XCTAssertTrue(playback->event_state() == EventState::kNotStarted);
+    playback->SetCurrentTime(lynx::fml::TimeDelta::FromSeconds(5));
+    apply(2);
+    if (duration) {
+      CAAnimation* current = [self animationForKeyPath:@"opacity"];
+      [current.delegate animationDidStart:current];
+    }
+    XCTAssertTrue(playback->event_state() ==
+                  (duration ? EventState::kStarted : EventState::kFinished));
+    [self.ui.animationManager endAllAnimation];
+  }
+}
+
 - (void)testResizeRebuildsPercentageTransforms {
   gfx::TransformOperations operations;
   operations.AppendTranslate({25.f, gfx::LengthUnit::kPercent}, {0.f, gfx::LengthUnit::kNumber},

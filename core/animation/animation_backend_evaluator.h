@@ -5,8 +5,6 @@
 #ifndef CORE_ANIMATION_ANIMATION_BACKEND_EVALUATOR_H_
 #define CORE_ANIMATION_ANIMATION_BACKEND_EVALUATOR_H_
 
-#include <vector>
-
 #include "gfx/animation/platform_animation.h"
 
 namespace lynx {
@@ -39,7 +37,7 @@ struct AnimationBackendRequest {
   // The builder supplies at least two non-null, same-typed keyframes, sorted
   // with endpoints at 0 and 1. Values and outgoing-interval timing are already
   // resolved; a null timing function means linear.
-  std::vector<const gfx::Keyframe*> keyframes;
+  base::Vector<const gfx::Keyframe*> keyframes;
   bool has_dynamic_dependencies{false};
   // Only bound events constrain routing; unobserved events need no delivery.
   gfx::AnimationEventCapabilityMask required_events{0};

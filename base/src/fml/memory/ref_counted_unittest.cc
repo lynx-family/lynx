@@ -12,6 +12,7 @@
 #include "base/include/fml/memory/ref_counted.h"
 
 #include "base/include/fml/macros.h"
+#include "base/include/vector.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 #if defined(__clang__)
@@ -84,6 +85,21 @@ class MySubclass final : public MyClass {
 
   BASE_DISALLOW_COPY_AND_ASSIGN(MySubclass);
 };
+
+TEST(RefCountedTest, ContainerRelocationPreservesOwnership) {
+  static_assert(base::Vector<RefPtr<MyClass>>::is_trivially_relocatable);
+  bool was_destroyed = false;
+  base::InlineVector<RefPtr<MyClass>, 1> items;
+  items.push_back(MakeRefCounted<MyClass>(nullptr, &was_destroyed));
+  items.reserve(4);
+  EXPECT_TRUE(items.front()->HasOneRef());
+  items.push_back(items.front());
+  items.erase(items.begin());
+  EXPECT_FALSE(was_destroyed);
+  EXPECT_TRUE(items.front()->HasOneRef());
+  items.clear();
+  EXPECT_TRUE(was_destroyed);
+}
 
 TEST(RefCountedTest, Constructors) {
   bool was_destroyed;

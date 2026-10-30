@@ -45,6 +45,7 @@ podspec_target("lynx_podspec") {
     pod_target_xcconfig = {
       GCC_PREPROCESSOR_DEFINITIONS = [
         "OS_IOS=1",
+        "LYNX_HAS_PLATFORM_ANIMATION_BACKEND=1",
         "HOST_OSTYPE=HOST_IOS",
         "LYNX_DEBUG=0",
         "LYNX_ENABLE_E2E_TEST=#{\$enable_e2e_test}",

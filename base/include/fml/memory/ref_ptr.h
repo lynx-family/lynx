@@ -213,6 +213,10 @@ class RefPtr final {
     return result;
   }
 
+  // Relocation transfers ownership without moving the referenced object.
+  // The source must not be destroyed after relocation.
+  using TriviallyRelocatable = bool;
+
  private:
   template <typename U>
   friend class RefPtr;

@@ -211,6 +211,38 @@ TEST_F(AnimationTest, UpdateAnimationData) {
   EXPECT_TRUE(test_animation->get_animation_data() == test_animation_data);
 }
 
+TEST_F(AnimationTest, PlatformHandoffKeepsTimeFromTickAndSample) {
+  for (bool use_sample_at : {false, true}) {
+    auto a = InitTestAnimation();
+    starlight::AnimationData data;
+    data.duration = 5000;
+    a->UpdateAnimationData(data);
+    a->Play(false);
+    // Deliberately use a frame epoch unrelated to the system monotonic clock.
+    auto frame_time = fml::TimePoint::FromTicks(1000);
+    auto sample = [&]() {
+      if (use_sample_at) {
+        a->SampleAt(frame_time);
+      } else {
+        a->DoFrame(frame_time);
+      }
+    };
+    sample();
+    frame_time = frame_time + fml::TimeDelta::FromMilliseconds(2500);
+    sample();
+    a->Pause();
+    const auto paused_time = a->GetCurrentTime();
+    EXPECT_GE(paused_time, fml::TimeDelta::FromMilliseconds(2500));
+
+    a->SetPlatformExecution(true);
+    ASSERT_NE(a->playback(), nullptr);
+    EXPECT_EQ(a->playback()->CurrentTime(), paused_time);
+    frame_time = frame_time + fml::TimeDelta::FromSeconds(10);
+    sample();  // Ignore a C++ tick queued before the platform handoff.
+    EXPECT_EQ(a->GetCurrentTime(), paused_time);
+  }
+}
+
 TEST_F(AnimationTest,
        PausedEffectReplacementKeepsTimeThroughDummyAndRealFrames) {
   ASSERT_FALSE(manager->SupportsPlatformAnimationRouting());
@@ -253,6 +285,32 @@ TEST_F(AnimationTest,
       EXPECT_EQ(a->GetCurrentTime(), paused_time);
       frame_time = frame_time + fml::TimeDelta::FromSeconds(1);
     }
+  }
+}
+
+TEST_F(AnimationTest, PlatformFallbackCanSendEndAndCancel) {
+  using EventState = gfx::AnimationPlaybackState::EventState;
+  for (bool cancel : {false, true}) {
+    SCOPED_TRACE(cancel);
+    auto a = InitTestAnimation();
+    a->SetPlatformExecution(true);
+    const auto platform_executor = a->executor();
+    auto playback = a->playback();
+    ASSERT_TRUE(playback->ClaimEvent(platform_executor, EventState::kStarted));
+
+    animation::MockAnimation replacement("test_animation");
+    replacement.SetKeyframeEffect(animation::KeyframeEffect::Create());
+    a->ReplaceEffectFrom(replacement);
+    EXPECT_NE(a->executor(), platform_executor);
+    const char* event = cancel ? "animationcancel" : "animationend";
+    element_->data_model()->SetStaticEvent("bindEvent", event, event);
+    tasm_mediator->ClearAnimationEvent();
+    if (cancel) {
+      a->SendCancelEvent();
+    } else {
+      a->SendEndEvent();
+    }
+    EXPECT_STREQ(tasm_mediator->GetAnimationEventType(), event);
   }
 }
 
