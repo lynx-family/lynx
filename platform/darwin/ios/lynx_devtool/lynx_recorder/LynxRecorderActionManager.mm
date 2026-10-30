@@ -734,7 +734,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
   LynxUpdateMeta* meta = [[LynxUpdateMeta alloc] init];
   LynxTemplateData* templateData = nil;
   if (![templateDataJson isKindOfClass:[NSNull class]]) {
-    templateData = [[LynxTemplateData alloc] initWithDictionary:templateDataJson[@"value"]];
+    templateData = [self templateDataWithDictionary:templateDataJson[@"value"]];
     NSString* preprocessorName = [templateDataJson objectForKey:@"preprocessorName"];
     bool readOnly = [[templateDataJson objectForKey:@"readOnly"] boolValue];
     if (![@"" isEqualToString:preprocessorName]) {
@@ -744,7 +744,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
       [templateData markReadOnly];
     }
   }
-  LynxTemplateData* globalProps = [[LynxTemplateData alloc] initWithDictionary:globalPropsJson];
+  LynxTemplateData* globalProps = [self templateDataWithDictionary:globalPropsJson];
   meta.data = templateData;
   meta.globalProps = globalProps;
   [_lynxView updateMetaData:meta];
@@ -930,11 +930,23 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
   NSDictionary* update_data_option = [params objectForKey:@"updatePageOption"];
   if (update_data_option != nil &&
       [[update_data_option objectForKey:@"reset_page_data"] boolValue]) {
-    LynxTemplateData* data = [[LynxTemplateData alloc] initWithDictionary:value];
+    LynxTemplateData* data = [self templateDataWithDictionary:value];
     [_lynxView resetDataWithTemplateData:data];
     return;
   }
-  [_lynxView updateDataWithDictionary:value processorName:processorName];
+  if (!self.replayConfig.useBoolLiterals) {
+    [_lynxView updateDataWithDictionary:value processorName:processorName];
+  } else if (value.count > 0) {
+    LynxTemplateData* data = [self templateDataWithDictionary:value];
+    [data markState:processorName];
+    [data markReadOnly];
+    [_lynxView updateDataWithTemplateData:data];
+  }
+}
+
+- (LynxTemplateData*)templateDataWithDictionary:(NSDictionary*)dictionary {
+  return [[LynxTemplateData alloc] initWithDictionary:dictionary
+                                      useBoolLiterals:self.replayConfig.useBoolLiterals];
 }
 
 - (void)observeValueForKeyPath:(NSString*)keyPath
@@ -1068,8 +1080,8 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
     url = [[LynxRecorderEnv sharedInstance] lynxRecorderUrlPrefix];
   }
   if (_globalPropsCache) {
-    [_lynxView updateGlobalPropsWithTemplateData:[[LynxTemplateData alloc]
-                                                     initWithDictionary:_globalPropsCache]];
+    [_lynxView
+        updateGlobalPropsWithTemplateData:[self templateDataWithDictionary:_globalPropsCache]];
   }
   if (_lynxThemeCache) {
     [_lynxView setTheme:_lynxThemeCache];
@@ -1088,7 +1100,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
         [[NSData alloc] initWithBase64EncodedString:source
                                             options:NSDataBase64DecodingIgnoreUnknownCharacters];
   }
-  LynxTemplateData* initData = [[LynxTemplateData alloc] initWithDictionary:initDict];
+  LynxTemplateData* initData = [self templateDataWithDictionary:initDict];
   NSString* preprocessorName = [initDict objectForKey:@"preprocessorName"];
   bool readOnly = [[initDict objectForKey:@"readOnly"] boolValue];
   if (![@"" isEqualToString:preprocessorName]) {
@@ -1149,8 +1161,8 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
     url = [[LynxRecorderEnv sharedInstance] lynxRecorderUrlPrefix];
   }
   if (_globalPropsCache) {
-    [_lynxView updateGlobalPropsWithTemplateData:[[LynxTemplateData alloc]
-                                                     initWithDictionary:_globalPropsCache]];
+    [_lynxView
+        updateGlobalPropsWithTemplateData:[self templateDataWithDictionary:_globalPropsCache]];
   }
   if (_lynxThemeCache) {
     [_lynxView setTheme:_lynxThemeCache];
@@ -1162,7 +1174,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
   NSString* source = params[@"source"];
   NSDictionary* initDict = params[@"templateData"];
 
-  LynxTemplateData* initData = [[LynxTemplateData alloc] initWithDictionary:initDict];
+  LynxTemplateData* initData = [self templateDataWithDictionary:initDict];
   NSString* preprocessorName = [initDict objectForKey:@"preprocessorName"];
   bool readOnly = [[initDict objectForKey:@"readOnly"] boolValue];
   if (![@"" isEqualToString:preprocessorName]) {
@@ -1196,7 +1208,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 - (void)reloadTemplate:(NSDictionary*)params {
   NSDictionary* value = [params objectForKey:@"value"];
   NSString* processorName = [params objectForKey:@"preprocessorName"];
-  LynxTemplateData* templateData = [[LynxTemplateData alloc] initWithDictionary:value];
+  LynxTemplateData* templateData = [self templateDataWithDictionary:value];
   [templateData markState:processorName];
   [templateData markReadOnly];
   [_lynxView reloadTemplateWithTemplateData:templateData];
@@ -1269,7 +1281,7 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
     if ([self.replayConfig enableSizeOptimization]) {
       [self preprocessGlobalPropsDictData:mutableDictionary];
     }
-    LynxTemplateData* globalProps = [[LynxTemplateData alloc] initWithDictionary:mutableDictionary];
+    LynxTemplateData* globalProps = [self templateDataWithDictionary:mutableDictionary];
     [self.lynxView setGlobalPropsWithTemplateData:globalProps];
   } else {
     _globalPropsCache = params[@"global_props"];

@@ -30,6 +30,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, readonly) BOOL enableAirStrictMode;
 
+// Preserve JSON boolean types in recorded data; keep legacy numeric conversion by default.
+@property(nonatomic, readonly) BOOL useBoolLiterals;
+
 @property(nonatomic, readonly) BOOL createWhenReload;
 
 @property(nonatomic, readonly) BOOL enableTextGradientOpt;
