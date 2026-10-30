@@ -959,14 +959,6 @@ enableListNewArchitecture:
     - Android
     - iOS
   export: true
-enableNewListContainer:
-  description: Controls whether iOS exposes the ScrollView-based list container path. When enabled, `LynxTemplateRender` reports that the new list container should be used; when disabled, list rendering keeps the legacy container path.
-  defaultValue: 'false'
-  valueType: bool
-  author: keweibing
-  since: '2.13'
-  supportPlatform:
-    - iOS
 enableListPlug:
   description: Controls whether list rendering enables the list plug path in Radon list platform info. When enabled, page config passes the plug flag into list nodes; when disabled, list nodes run without the plug behavior.
   defaultValue: 'false'

@@ -6,7 +6,6 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIComponent.h>
-#import <Lynx/LynxUIListLight.h>
 
 #import "list/container/LynxUIListContainer+Internal.h"
 
@@ -53,7 +52,7 @@ LYNX_PROP_SETTER("z-index", setZIndex, NSInteger) {
 
 - (CGRect)getHitTestFrameWithFrame:(CGRect)frame {
   // Keep list-container compatibility: recycled items use local bounds for any list backend.
-  if (LynxIsListContainerUI(self.parent) || [self.parent isKindOfClass:LynxUIListLight.class]) {
+  if (LynxIsListContainerUI(self.parent)) {
     return self.view.bounds;
   }
   return [super getHitTestFrameWithFrame:frame];

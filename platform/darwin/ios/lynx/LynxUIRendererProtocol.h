@@ -110,8 +110,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 #pragma mark - View
 
-- (void)setCustomizedLayoutInUIContext:(id<LynxListLayoutProtocol> _Nullable)customizedListLayout;
-
 - (void)setScrollListener:(id<LynxScrollListener>)scrollListener;
 
 - (void)setImageFetcherInUIOwner:(id<LynxImageFetcher>)imageFetcher;

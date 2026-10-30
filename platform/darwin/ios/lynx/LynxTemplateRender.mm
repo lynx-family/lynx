@@ -1557,10 +1557,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 #pragma mark - View
 
-- (void)setCustomizedLayoutInUIContext:(id<LynxListLayoutProtocol> _Nullable)customizedListLayout {
-  [_lynxUIRenderer setCustomizedLayoutInUIContext:customizedListLayout];
-}
-
 - (void)setScrollListener:(id<LynxScrollListener>)scrollListener {
   [_lynxUIRenderer setScrollListener:scrollListener];
 }
@@ -2137,10 +2133,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (void)didMoveToWindow:(BOOL)windowIsNil {
   [_devTool onMovedToWindow];
   [_lynxUIRenderer didMoveToWindow:windowIsNil];
-}
-
-- (BOOL)enableNewListContainer {
-  return pageConfig_ != nullptr && pageConfig_->GetEnableNewListContainer();
 }
 
 - (BOOL)enableDispatchCustomEventForUI {

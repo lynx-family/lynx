@@ -15,7 +15,6 @@
 #import <Lynx/LynxScreenMetrics.h>
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxTemplateResourceFetcher.h>
-#import <Lynx/LynxUIListProtocol.h>
 #import <Lynx/LynxViewportMetrics.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -46,7 +45,6 @@ typedef void (^LynxClaySnapshotCompletion)(UIImage* _Nullable image);
 @property(nonatomic, weak, nullable, readwrite) id<LynxImageFetcher> imageFetcher;
 @property(nonatomic, weak, nullable, readwrite) id<LynxResourceFetcher> resourceFetcher;
 @property(nonatomic, strong, nullable, readwrite) id<LynxResourceFetcher> resourceServiceFetcher;
-@property(nonatomic, weak, nullable) id<LynxListLayoutProtocol> customizedListLayout;
 @property(nonatomic, weak, nullable) id<LUIErrorHandling> errorHandler;
 @property(nonatomic, weak, nullable, readwrite) id<LynxScrollListener> scrollListener;
 @property(nonatomic, weak, nullable, readonly) LynxEventHandler* eventHandler;

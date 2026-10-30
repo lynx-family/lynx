@@ -365,12 +365,6 @@ class LynxConfigDecoder final {
           LynxEnv::GetInstance().EnableListNewArchitecture());
     }
 
-    if (doc.HasMember(config::kEnableNewListContainer) &&
-        doc[config::kEnableNewListContainer].IsBool()) {
-      page_config->SetEnableNewListContainer(
-          doc[config::kEnableNewListContainer].GetBool());
-    }
-
     if (doc.HasMember(config::kEnableListPlug) &&
         doc[config::kEnableListPlug].IsBool()) {
       page_config->SetEnableListPlug(doc[config::kEnableListPlug].GetBool());
