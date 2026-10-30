@@ -34,9 +34,12 @@ export interface ScrollViewProps extends StandardProps, ScrollbarProps {
   'scroll-orientation'?: 'vertical' | 'horizontal';
 
   /**
-   * Enable bounce effect
+   * Enable bounce effect. Defaults to true on iOS and Clay macOS, and false
+   * on Clay Android, Windows, and Harmony. Adding or removing bounce children
+   * does not override this property.
    * @iOS 1.5
    * @Harmony 3.4
+   * @ClayAndroid 4.4
    * @ClayIOS 3.2
    * @ClayMacOS 3.2
    * @ClayWindows 3.2
@@ -44,6 +47,20 @@ export interface ScrollViewProps extends StandardProps, ScrollbarProps {
    * @defaultValue true
    */
   bounces?: boolean;
+
+  /**
+   * Set the length of the fading gradient at scroll edges. Accepts a length
+   * with units. Non-positive values disable the fading edge.
+   * @Android 2.14
+   * @iOS 2.14
+   * @ClayAndroid 4.5
+   * @ClayIOS 4.5
+   * @ClayMacOS 4.5
+   * @ClayWindows 4.5
+   * @ClayHarmony 4.5
+   * @defaultValue '0px'
+   */
+  'fading-edge-length'?: string;
 
   /**
    * Enable dragging

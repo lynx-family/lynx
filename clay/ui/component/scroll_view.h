@@ -173,7 +173,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   ScrollEventCallbackManager::ScrollState last_callback_scroll_state_ =
       ScrollEventCallbackManager::ScrollState::kIdle;
 
-  BounceView* bounce_view_ = nullptr;
+  std::vector<BounceView*> bounce_views_;
   bool auto_scroll_ = false;
   int auto_scroll_rate_;
   std::optional<int> pending_scroll_offset_ = std::nullopt;

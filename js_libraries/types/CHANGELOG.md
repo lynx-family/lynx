@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.6
+
+- Add `fading-edge-length` to `<scroll-view>` typings with native and Clay platform support metadata.
+
 ## 4.4.5
 
 - Add `thread-strategy` to `<frame>` typings and declare the `FrameThreadStrategy` enum for rendering thread models.
