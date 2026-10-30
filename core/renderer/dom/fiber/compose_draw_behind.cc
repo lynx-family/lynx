@@ -22,15 +22,31 @@ namespace lynx {
 namespace tasm {
 namespace {
 
-// Arrays shared with the Compose DrawScope producer, in physical pixels:
+// Arrays shared with the Compose producers, in physical pixels:
 // [1, x, y, width, height, ARGB]
 // [2, x, y, width, height, startY, endY, colors[], stops[]]
-// Only filled rectangles and clamped vertical gradients are supported here.
+// [3, x, y, width, height, topLeftRadius, topRightRadius, bottomRightRadius,
+//  bottomLeftRadius, offsetX, offsetY, blur, spread, ARGB]
+// Filled rectangles, clamped vertical gradients and outset shadows of a
+// rounded rectangle are supported here.
+constexpr double kCommandFill = 1;
+constexpr double kCommandGradient = 2;
+constexpr double kCommandOutsetShadow = 3;
+
+struct OutsetShadow {
+  float offset_x;
+  float offset_y;
+  float blur;
+  float spread;
+};
+
 struct DrawRect {
+  double kind{0};
   RoundedRectangle clip;
   RoundedRectangle tile;
   base::Vector<uint32_t> colors;
   base::Vector<float> stops;
+  OutsetShadow shadow{};
 };
 
 bool ReadNumber(const lepus::Value& array, uint32_t index, double* result) {
@@ -59,9 +75,11 @@ bool FitsFloat(double value) {
 bool ParseRect(const lepus::Value& value, double pixels, DrawRect* rect) {
   if (!value.IsArrayOrJSArray()) return false;
   const int length = value.GetLength();
-  double kind;
-  if (!ReadNumber(value, 0, &kind) ||
-      !((kind == 1 && length == 6) || (kind == 2 && length == 9))) {
+  if (!ReadNumber(value, 0, &rect->kind)) return false;
+  const double kind = rect->kind;
+  if (!((kind == kCommandFill && length == 6) ||
+        (kind == kCommandGradient && length == 9) ||
+        (kind == kCommandOutsetShadow && length == 14))) {
     return false;
   }
   double bounds[4];
@@ -77,9 +95,40 @@ bool ParseRect(const lepus::Value& value, double pixels, DrawRect* rect) {
   rect->clip.SetY(static_cast<float>(bounds[1]));
   rect->clip.SetWidth(static_cast<float>(bounds[2]));
   rect->clip.SetHeight(static_cast<float>(bounds[3]));
-  if (kind == 1) {
+  if (kind == kCommandFill) {
     uint32_t color;
     if (!ReadColor(value, 5, &color)) return false;
+    rect->colors.push_back(color);
+    return true;
+  }
+  if (kind == kCommandOutsetShadow) {
+    double radii[4];
+    for (uint32_t i = 0; i < 4; ++i) {
+      if (!ReadNumber(value, i + 5, &radii[i]) || radii[i] < 0) return false;
+      radii[i] /= pixels;
+      if (!FitsFloat(radii[i])) return false;
+    }
+    const auto r = [&radii](int i) { return static_cast<float>(radii[i]); };
+    rect->clip.SetRadiusXTopLeft(r(0));
+    rect->clip.SetRadiusYTopLeft(r(0));
+    rect->clip.SetRadiusXTopRight(r(1));
+    rect->clip.SetRadiusYTopRight(r(1));
+    rect->clip.SetRadiusXBottomRight(r(2));
+    rect->clip.SetRadiusYBottomRight(r(2));
+    rect->clip.SetRadiusXBottomLeft(r(3));
+    rect->clip.SetRadiusYBottomLeft(r(3));
+    double shadow[4];
+    for (uint32_t i = 0; i < 4; ++i) {
+      if (!ReadNumber(value, i + 9, &shadow[i])) return false;
+      shadow[i] /= pixels;
+      if (!FitsFloat(shadow[i])) return false;
+    }
+    if (shadow[2] < 0) return false;
+    rect->shadow = {
+        static_cast<float>(shadow[0]), static_cast<float>(shadow[1]),
+        static_cast<float>(shadow[2]), static_cast<float>(shadow[3])};
+    uint32_t color;
+    if (!ReadColor(value, 13, &color)) return false;
     rect->colors.push_back(color);
     return true;
   }
@@ -167,9 +216,15 @@ CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
     }
     for (const auto& rect : commands) {
       if (rect.clip.GetWidth() == 0 || rect.clip.GetHeight() == 0) continue;
+      if (rect.kind == kCommandOutsetShadow) {
+        fragment.DrawCustomOutsetShadow(
+            builder, rect.clip, rect.shadow.offset_x, rect.shadow.offset_y,
+            rect.shadow.blur, rect.shadow.spread, rect.colors[0]);
+        continue;
+      }
       int32_t clip_index;
       builder.RecordBoxModel(rect.clip, clip_index);
-      if (rect.colors.size() == 1) {
+      if (rect.kind == kCommandFill) {
         builder.Fill(rect.colors[0], clip_index);
       } else {
         int32_t tile_index;

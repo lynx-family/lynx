@@ -5,6 +5,7 @@
 #define CORE_RENDERER_DOM_FRAGMENT_FRAGMENT_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 
 #include "base/include/value/base_string.h"
@@ -109,6 +110,15 @@ class Fragment : public BaseElementContainer {
   }
   void DrawBehind(DisplayListBuilder& builder);
   void DrawForeground(DisplayListBuilder& builder);
+
+  // Records one outset shadow of `shape`, given in layout units in this
+  // fragment's coordinates. Custom drawing calls this from draw_behind, so the
+  // shadow is painted below the ordinary background and, like a CSS outset
+  // box-shadow, is kept outside the platform layer's own clip.
+  void DrawCustomOutsetShadow(DisplayListBuilder& builder,
+                              const RoundedRectangle& shape, float offset_x,
+                              float offset_y, float blur, float spread,
+                              uint32_t color);
 
   void SetEventProp(PlatformEventPropName name, const lepus::Value& value);
 
@@ -238,6 +248,9 @@ class Fragment : public BaseElementContainer {
       fixed_children_;
 
   LayoutInfoForDraw layout_info_;
+  // Whether the last full content draw recorded a custom outset shadow. Like a
+  // CSS outset box-shadow, it must not be cut by clipping the platform layer.
+  bool custom_outset_shadow_drawn_{false};
 
   BoxModelRecorder box_recorder_;
 
