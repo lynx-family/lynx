@@ -131,6 +131,15 @@ class Animation : public std::enable_shared_from_this<Animation> {
   // Replace only the effect; the animation's identity, clock and events
   // survive.
   void ReplaceEffectFrom(Animation& replacement);
+  // Transfer executor ownership while preserving the current playback clock.
+  // Apply playback changes separately after updating the animation data.
+  void SetPlatformExecution(bool platform);
+  void UpdatePlaybackState();
+  const fml::RefPtr<gfx::AnimationPlaybackState>& playback() const {
+    return playback_;
+  }
+  uint64_t executor() const { return executor_; }
+
   void UpdateUnderlyingValue(AnimationCurve::CurveType type,
                              const tasm::CSSValue& value);
 
@@ -208,7 +217,6 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void NotifyInspectorUpdated();
   void NotifyInspectorCanceled();
   void EnsurePlaybackState();
-  void UpdatePlaybackState();
   void ApplyInitialFrame();
   void RebaseEffectTiming(fml::TimePoint frame_time);
   void RecordSampleTime(fml::TimePoint frame_time);
@@ -243,10 +251,15 @@ class Animation : public std::enable_shared_from_this<Animation> {
   // animationstart/animationiteration/animationend events for skipped time.
   bool suppress_next_sample_events_{false};
   bool inspector_started_notified_{false};
-  // Created by ReplaceEffectFrom() to preserve logical time and lifecycle
-  // events when replacing a C++ effect. Otherwise the local timing fields are
-  // used and no shared clock is allocated.
+  // Null until SetPlatformExecution(), ReplaceEffectFrom(), or
+  // UpdatePlaybackState() calls EnsurePlaybackState(). Shares time and event
+  // state across effect replacement and backend switches, including fallback
+  // to C++ New Animator. Check platform_execution_ for the current backend.
   fml::RefPtr<gfx::AnimationPlaybackState> playback_;
+  // Token obtained from playback_ when execution switches between New Animator
+  // and the platform; carried by commands and used to reject stale events.
+  uint64_t executor_{0};
+  bool platform_execution_{false};
   // The previous effect's run state, kept until the replacement is rebased to
   // its first real frame. A dummy sample must not consume this pending state.
   std::optional<gfx::KeyframeModel::RunState> pending_run_state_;
