@@ -399,6 +399,7 @@ if (enable_unittests) {
       "linked_hash_map_unittest.cc",
       "log/log_stream_unittest.cc",
       "log/logging_unittest.cc",
+      "lru_cache_unittest.cc",
       "lynx_actor_unittest.cc",
       "memory/process_memory_info_unittest.cc",
       "notification_center_unittest.cc",
