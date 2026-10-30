@@ -85,6 +85,20 @@ struct InstanceState {
   std::string url_;
 };
 
+struct ModuleCacheCounts {
+  uint64_t inserted{0};
+  // Entries looked up again at least once.
+  uint64_t reused{0};
+  // Entries looked up by another app at least once.
+  uint64_t cross_app{0};
+};
+
+struct ModuleCacheCreator {
+  std::string page_key;
+  // Lifetime counts: 0 = factory cache, 1 = loadScript cache.
+  std::array<ModuleCacheCounts, 2> counts{};
+};
+
 struct BtsVmState {
   struct ResidualSlot {
     int64_t exited_at_ms{-1};
@@ -142,6 +156,8 @@ struct BtsVmState {
   uint64_t untracked_page_count{0};
   // Emission is deferred until RuntimeManager commits the failed page binding.
   bool pending_overflow{false};
+  // First 128 observed creators, retained until this VM is removed.
+  std::unordered_map<int32_t, ModuleCacheCreator> module_cache_creators;
 
  private:
   std::string name_;
@@ -192,6 +208,9 @@ class GlobalMemoryMonitor {
   void OnBtsVMDestroy(runtime::js::VMInstance* vm,
                       int64_t at_ms = MemoryNowMs());
   void OnBtsVMSlotAllocate(runtime::js::VMInstance* vm, int32_t slot);
+  void OnModuleCacheUpdate(const std::shared_ptr<runtime::js::VMInstance>& vm,
+                           int32_t creator, size_t type,
+                           ModuleCacheCounts delta);
   // Bundle-local pools publish owner-thread heap snapshots. LynxGlobalPool
   // never calls these entry points.
   void OnMTSRuntimePoolUpdate(int32_t pool_instance_id,

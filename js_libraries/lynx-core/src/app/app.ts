@@ -49,6 +49,7 @@ import { getPromiseMaybePolyfill } from '../util/setup-promise';
 import { createReadableStreamClass, Request, Response } from '../modules/fetch';
 import { MessageEventType } from '../lynx';
 import { TraceEventDef } from '../util/TraceEventDef';
+import { ModuleCacheMonitor } from './moduleCacheMonitor';
 
 export abstract class BaseApp<
   NativeAppProxy extends NativeApp = NativeApp,
@@ -57,6 +58,8 @@ export abstract class BaseApp<
   _nativeApp: NativeAppProxy;
   nativeAppId: string;
   _params: loadCardParams;
+  private static moduleCacheMonitor: ModuleCacheMonitor | undefined;
+  private moduleCacheMonitor: ModuleCacheMonitor | undefined;
   // globalThis of this page's realm; what native and the page bundle write to.
   pageGlobal: PageGlobal;
   lynx: LynxImpl;
@@ -224,6 +227,12 @@ export abstract class BaseApp<
     this.nativeAppId = nativeApp.id;
     this._params = params;
     this._nativeApp = nativeApp;
+    if (
+      params.pageConfigSubset?.enableModuleCacheMonitor &&
+      nativeApp.reportModuleCache
+    ) {
+      this.moduleCacheMonitor = BaseApp.moduleCacheMonitor ??= new ModuleCacheMonitor();
+    }
     // Must be resolved before anything may touch a page-realm global.
     this.pageGlobal = resolvePageGlobal(params);
 
@@ -530,6 +539,12 @@ export abstract class BaseApp<
    */
   static _$loadScriptCache: Record<string, BundleInitReturnObj | Function> = {};
 
+  /** Keep cache deletion and generation accounting together. */
+  clearFactoryCache(path: string) {
+    delete BaseApp._$factoryCache[path];
+    this.moduleCacheMonitor?.remove(0, path);
+  }
+
   /**
    * @internal
    * Execute the loaded JS module ,  Called by {@link requireModule} & {@link requireModuleAsync}
@@ -543,11 +558,13 @@ export abstract class BaseApp<
       entryName,
       shouldCacheFactory = true,
       cacheKey,
+      factoryCacheHit = false,
     }: {
       path: string;
       entryName?: string;
       shouldCacheFactory?: boolean;
       cacheKey?: string;
+      factoryCacheHit?: boolean;
     }
   ): T {
     let factory: <T>(injected: { tt: BaseApp }) => T;
@@ -583,9 +600,13 @@ export abstract class BaseApp<
           this.params?.pageConfigSubset?.disableAppServiceFactoryCache ===
             false)
       ) {
+        // Binding a cached factory again does not create a new entry.
+        if (!factoryCacheHit) {
+          this.moduleCacheMonitor?.insert(0, path, this.nativeApp);
+        }
         BaseApp._$factoryCache[path] = factory;
       }
-      addLoadScriptCache(cacheKey, exports);
+      this.addLoadScriptCache(cacheKey, exports);
 
       return ret;
     } finally {
@@ -606,6 +627,7 @@ export abstract class BaseApp<
   ): T {
     const ret = JSON.parse(content);
     const init = () => ret;
+    this.moduleCacheMonitor?.insert(0, path, this.nativeApp);
     BaseApp._$factoryCache[path] = init;
     return ret;
   }
@@ -618,7 +640,15 @@ export abstract class BaseApp<
     const init = BaseApp._$factoryCache[path];
     if (this.shouldUseModuleCache() && init) {
       // cache hit
-      return this._$executeInit<T>({ init }, { path, entryName });
+      this.moduleCacheMonitor?.hit(0, path, this.nativeApp);
+      return this._$executeInit<T>(
+        { init },
+        {
+          path,
+          entryName,
+          factoryCacheHit: true,
+        }
+      );
     }
 
     // cache miss
@@ -637,6 +667,7 @@ export abstract class BaseApp<
     const cache = tryGetLoadScriptCache(cacheKey);
     if (cache) {
       // cache hit
+      this.moduleCacheMonitor?.hit(1, cacheKey, this.nativeApp);
       return this._$executeInit<T>(cache as BundleInitReturnObj, {
         path,
         entryName,
@@ -654,7 +685,11 @@ export abstract class BaseApp<
     const init = BaseApp._$factoryCache[path];
     if (this.shouldUseModuleCache() && init) {
       // cache hit
-      callback(null, this._$executeInit<T>({ init }, { path }));
+      this.moduleCacheMonitor?.hit(0, path, this.nativeApp);
+      callback(
+        null,
+        this._$executeInit<T>({ init }, { path, factoryCacheHit: true })
+      );
       return;
     }
     // cache miss
@@ -678,6 +713,7 @@ export abstract class BaseApp<
     const cache = tryGetLoadScriptCache(cacheKey);
     if (cache) {
       // cache hit
+      this.moduleCacheMonitor?.hit(1, cacheKey, this.nativeApp);
       try {
         return callback(
           null,
@@ -829,6 +865,9 @@ export abstract class BaseApp<
       true
     );
     let exports: BundleInitReturnObj | object = tryGetLoadScriptCache(cacheKey);
+    if (this.shouldUseModuleCache() && exports) {
+      this.moduleCacheMonitor?.hit(1, cacheKey, this.nativeApp);
+    }
     if (!this.shouldUseModuleCache() || !exports) {
       let maybeExports = this.lynx.getNativeLynx().loadScript(url, options);
       if (maybeExports && typeof (maybeExports as any).init === 'function') {
@@ -866,7 +905,7 @@ export abstract class BaseApp<
         that.lynx.fetch,
       ];
       (exports as Function).apply(module.exports, args);
-      addLoadScriptCache(cacheKey, exports as Function);
+      this.addLoadScriptCache(cacheKey, exports as Function);
       return module.exports as T;
     } else {
       return this._$executeInit<T>(exports as BundleInitReturnObj, {
@@ -1097,6 +1136,17 @@ export abstract class BaseApp<
     return cacheKey;
   }
 
+  private addLoadScriptCache(
+    cacheKey: string | undefined,
+    exports: BundleInitReturnObj | undefined | Function
+  ) {
+    if (!cacheKey || !exports) return;
+    if (BaseApp._$loadScriptCache[cacheKey] !== exports) {
+      this.moduleCacheMonitor?.insert(1, cacheKey, this.nativeApp);
+    }
+    BaseApp._$loadScriptCache[cacheKey] = exports;
+  }
+
   private shouldUseModuleCache(): boolean {
     return NODE_ENV !== 'development' && !this.isModuleCacheDisabled();
   }
@@ -1215,14 +1265,4 @@ function tryGetLoadScriptCache(
     return undefined;
   }
   return BaseApp._$loadScriptCache[cacheKey];
-}
-
-function addLoadScriptCache(
-  cacheKey: string | undefined,
-  exports: BundleInitReturnObj | undefined | Function
-) {
-  if (!cacheKey || !exports) {
-    return;
-  }
-  BaseApp._$loadScriptCache[cacheKey] = exports;
 }
