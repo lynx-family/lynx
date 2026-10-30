@@ -11,6 +11,7 @@
 struct lynx_resource_request_t {
   std::string url;
   lynx_resource_type_e resource_type = kLynxResourceTypeGeneric;
+  lynx_resource_request_id request_id = kLynxResourceRequestIdInvalid;
 };
 
 lynx_resource_request_t* lynx_resource_request_create_internal(
