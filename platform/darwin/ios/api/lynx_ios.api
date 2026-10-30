@@ -233,12 +233,6 @@ public class LynxAliasFontInfo : NSObject {
   public bool LynxAliasFontInfo::isEmpty();
 }
 
-public struct LynxAnchorPolicies {
-  public BOOL LynxAnchorPolicies::anchorPriorityFromBegin anchorPriorityFromBegin;
-  public BOOL LynxAnchorPolicies::deleteRegressPolicyToTop deleteRegressPolicyToTop;
-  public BOOL LynxAnchorPolicies::insertAnchorModeInside insertAnchorModeInside;
-}
-
 public class LynxAnimationInfo : NSObject, <NSCopying> {
   public CompletionBlock LynxAnimationInfo::completeBlock completeBlock;
   public NSTimeInterval LynxAnimationInfo::duration duration;
@@ -2697,63 +2691,12 @@ public class LynxLinearGradient : LynxGradient {
   public void LynxLinearGradient::computeStartPoint:andEndPoint:withSize:(CGPoint *_Nonnull startPoint,[andEndPoint] CGPoint *_Nonnull endPoint,[withSize] const CGSize *_Nonnull size);
 }
 
-public class LynxListAnchorManager : NSObject {
-  public BOOL LynxListAnchorManager::isVerticalLayout isVerticalLayout;
-  public NSInteger LynxListAnchorManager::numberOfColumns numberOfColumns;
-  public NSInteger LynxListAnchorManager::findAnchorCell:anchorPolicies:layoutInfo:(LynxListCachedCellManager *cachedCells,[anchorPolicies] LynxAnchorPolicies anchorPolicies,[layoutInfo] NSMutableArray< NSMutableArray< NSNumber * > * > *layoutColumnInfo);
-  public NSInteger LynxListAnchorManager::findAnchorCellForRemoval:anchorPolicies:layoutInfo:deleteIndexes:(LynxListCachedCellManager *cachedCells,[anchorPolicies] LynxAnchorPolicies anchorPolicies,[layoutInfo] NSMutableArray< NSMutableArray< NSNumber * > * > *layoutColumnInfo,[deleteIndexes] NSArray< NSNumber * > *deleteIndexes);
-  public NSInteger LynxListAnchorManager::closestAttributesToUpperVisibleBound:inColumn:(NSInteger index,[inColumn] NSArray< NSNumber * > *columnInfo);
-  public NSInteger LynxListAnchorManager::closestAttributesToLowerVisibleBound:inColumn:(NSInteger index,[inColumn] NSArray< NSNumber * > *columnInfo);
-}
-
 public class LynxListAppearEventEmitter : NSObject {
   public instancetype LynxListAppearEventEmitter::initWithEmitter:(LynxEventEmitter *emitter);
   public void LynxListAppearEventEmitter::onCellAppear:atIndexPath:(LynxUIComponent *ui,[atIndexPath] NSIndexPath *indexPath);
   public void LynxListAppearEventEmitter::onCellDisappear:atIndexPath:(LynxUIComponent *ui,[atIndexPath] NSIndexPath *indexPath);
   public void LynxListAppearEventEmitter::invalidate();
   public void LynxListAppearEventEmitter::setListUI:(LynxUICollection *ui);
-}
-
-public class LynxListCachedCellManager : NSObject {
-  public NSMutableArray<id<LynxListCell> >* LynxListCachedCellManager::displayingCells displayingCells;
-  public NSMutableArray<id<LynxListCell> >* LynxListCachedCellManager::upperCachedCells upperCachedCells;
-  public NSMutableArray<id<LynxListCell> >* LynxListCachedCellManager::lowerCachedCells lowerCachedCells;
-  public NSArray<id<LynxListCell> >* LynxListCachedCellManager::allCachedCells allCachedCells;
-  public id<LynxListCell> LynxListCachedCellManager::lastVisibleCell lastVisibleCell;
-  public id<LynxListCell> LynxListCachedCellManager::firstVisibleCell firstVisibleCell;
-  public NSInteger LynxListCachedCellManager::numberOfColumns numberOfColumns;
-  public BOOL LynxListCachedCellManager::isVerticalLayout isVerticalLayout;
-  public instancetype LynxListCachedCellManager::initWithColumnCount:uiContext:(NSInteger numberOfColumns,[uiContext] LynxUIContext *context);
-  public void LynxListCachedCellManager::addCell:inArray:(id< LynxListCell > cell,[inArray] NSMutableArray< id< LynxListCell > > *cacheArray);
-  public id< LynxListCell > _Nullable LynxListCachedCellManager::findCellAtIndex:inArray:(NSInteger index,[inArray] NSMutableArray< id< LynxListCell > > *cacheArray);
-  public BOOL LynxListCachedCellManager::markRemoveCellAtIndex:(NSInteger index);
-  public void LynxListCachedCellManager::markCellInfoDirty();
-  public id< LynxListCell > LynxListCachedCellManager::removeCellAtIndex:(NSInteger index);
-  public id< LynxListCell > _Nullable LynxListCachedCellManager::cellAtIndex:(NSInteger index);
-  public NSMutableDictionary< NSNumber *, id< LynxListCell > > * LynxListCachedCellManager::topCells();
-  public NSMutableDictionary< NSNumber *, id< LynxListCell > > * LynxListCachedCellManager::bottomCells();
-  public NSInteger LynxListCachedCellManager::lastIndexInPathOrder();
-  public NSInteger LynxListCachedCellManager::firstIndexInPathOrder();
-  public BOOL LynxListCachedCellManager::isEmpty();
-}
-
-public protocol LynxListCell-p : <NSObject> {
-  public NSInteger LynxListCell-p::updateToPath updateToPath;
-  public NSString* LynxListCell-p::itemKey itemKey;
-  public BOOL LynxListCell-p::removed removed;
-  public NSInteger LynxListCell-p::columnIndex columnIndex;
-  public LynxLayoutModelType LynxListCell-p::layoutType layoutType;
-  public NSString* LynxListCell-p::reuseIdentifier reuseIdentifier;
-  public CGRect LynxListCell-p::frame frame;
-  public int64_t LynxListCell-p::operationID operationID;
-  public BOOL LynxListCell-p::isInStickyStatus isInStickyStatus;
-  public CGFloat LynxListCell-p::stickyPosition stickyPosition;
-  public UIView* LynxListCell-p::contentView contentView;
-  public void LynxListCell-p::applyLayoutModel:(LynxListLayoutModelLight *model);
-}
-
-public protocol LynxListCellContentProducer-p : <NSObject> {
-  public id< LynxListCell > LynxListCellContentProducer-p::cell:forKey:(id< LynxListCell > cell,[forKey] NSString *itemKey);
 }
 
 public class LynxListContainerComponentWrapper : UIView {
@@ -2776,14 +2719,6 @@ public protocol LynxListContainerInternal-p : <NSObject> {
 
 public protocol LynxListContainerScrollView-p : <LynxListScrollHelperView> {
   public BOOL LynxListContainerScrollView-p::verticalOrientation verticalOrientation;
-}
-
-public protocol LynxListEventsProtocol-p : <NSObject> {
-  public NSInteger LynxListEventsProtocol-p::totalItemsCount();
-  public NSArray< id< LynxListCell > > * LynxListEventsProtocol-p::attachedCells();
-}
-
-public class LynxListHorizontalLayoutManager : LynxListLayoutManager {
 }
 
 public class LynxListItemHelper : NSObject {
@@ -2815,71 +2750,6 @@ public protocol LynxListItemHelperOwner-p : <NSObject> {
 
 public protocol LynxListItemWrapper-p : <NSObject> {
   public LynxUIComponent* LynxListItemWrapper-p::holdingUI holdingUI;
-}
-
-public class LynxListLayoutManager : NSObject, <LynxListLayoutProtocol> {
-  public NSMutableArray<LynxListLayoutModelLight *>* LynxListLayoutManager::models models;
-  public NSInteger LynxListLayoutManager::firstInvalidIndex firstInvalidIndex;
-  public NSUInteger LynxListLayoutManager::numberOfColumns numberOfColumns;
-  public CGFloat LynxListLayoutManager::mainAxisGap mainAxisGap;
-  public CGFloat LynxListLayoutManager::crossAxisGap crossAxisGap;
-  public UIEdgeInsets LynxListLayoutManager::insets insets;
-  public CGRect LynxListLayoutManager::bounds bounds;
-  public NSArray<NSNumber *>* LynxListLayoutManager::fullSpanItems fullSpanItems;
-  public LynxListLayoutType LynxListLayoutManager::layoutType layoutType;
-  public BOOL LynxListLayoutManager::needAlignHeight needAlignHeight;
-  public NSInteger LynxListLayoutManager::lastValidModel lastValidModel;
-  public NSMutableArray<NSNumber *>* LynxListLayoutManager::mainSizes mainSizes;
-  public NSMutableArray<NSArray<NSNumber *> *>* LynxListLayoutManager::mainSizesCache mainSizesCache;
-  public NSMutableArray<NSMutableArray<NSNumber *> *>* LynxListLayoutManager::layoutColumnInfo layoutColumnInfo;
-  public NSDictionary<NSNumber *, NSNumber *>* LynxListLayoutManager::estimatedHeights estimatedHeights;
-  public void LynxListLayoutManager::retrieveMainSizeFromCacheAtInvalidIndex:(NSInteger invalidIndex);
-  public CGFloat LynxListLayoutManager::largestSizeInMainSizes:(NSArray< NSNumber * > *mainSizes);
-  public NSUInteger LynxListLayoutManager::findNearestFullSpanItem:(NSUInteger index);
-  public CGFloat LynxListLayoutManager::largestMainSizeInPreviousRowAtIndex:withNearestFullSpanIndex:(NSUInteger index,[withNearestFullSpanIndex] NSUInteger nearestFullSpanIndex);
-  public void LynxListLayoutManager::resetMainSizesWithNumberOfColumns:(NSUInteger numberOfColumns);
-  public CGFloat LynxListLayoutManager::layoutOffsetForFullSpanItems:crossSize:paddingStart:paddingEnd:(CGFloat itemSize,[crossSize] CGFloat collectionSize,[paddingStart] CGFloat paddingStart,[paddingEnd] CGFloat paddingEnd);
-  public CGFloat LynxListLayoutManager::largestMainSize();
-  public CGFloat LynxListLayoutManager::adjustOffsetAtIndex:originalOffset:nearestFullSpan:(NSUInteger index,[originalOffset] CGFloat Offset,[nearestFullSpan] NSUInteger nearestFullSpanIndex);
-  public NSUInteger LynxListLayoutManager::shortestColumn();
-  public CGFloat LynxListLayoutManager::shortestMainSize();
-}
-
-public class LynxListLayoutModelLight : NSObject {
-  public CGRect LynxListLayoutModelLight::frame frame;
-  public LynxLayoutModelType LynxListLayoutModelLight::type type;
-  public NSInteger LynxListLayoutModelLight::zIndex zIndex;
-  public NSInteger LynxListLayoutModelLight::columnIndex columnIndex;
-  public instancetype LynxListLayoutModelLight::initWithFrame:(CGRect frame);
-}
-
-public protocol LynxListLayoutProtocol-p : <NSObject> {
-  public NSInteger LynxListLayoutProtocol-p::firstInvalidIndex firstInvalidIndex;
-  public NSMutableArray<NSMutableArray<NSNumber *> *>* LynxListLayoutProtocol-p::layoutColumnInfo layoutColumnInfo;
-  public NSInteger LynxListLayoutProtocol-p::lastValidModel lastValidModel;
-  public NSUInteger LynxListLayoutProtocol-p::numberOfColumns numberOfColumns;
-  public CGFloat LynxListLayoutProtocol-p::mainAxisGap mainAxisGap;
-  public CGFloat LynxListLayoutProtocol-p::crossAxisGap crossAxisGap;
-  public UIEdgeInsets LynxListLayoutProtocol-p::insets insets;
-  public NSInteger LynxListLayoutProtocol-p::getCount();
-  public CGSize LynxListLayoutProtocol-p::getContentSize();
-  public BOOL LynxListLayoutProtocol-p::isVerticalLayout();
-  public void LynxListLayoutProtocol-p::updateModelsWithRemovals:(NSArray< NSNumber * > *removals);
-  public void LynxListLayoutProtocol-p::updateModelsWithInsertions:(NSArray< NSNumber * > *insertions);
-  public void LynxListLayoutProtocol-p::updateModels:(NSDictionary< NSNumber *, NSValue * > *updates);
-  public NSDictionary< NSNumber *, NSNumber * > * LynxListLayoutProtocol-p::findWhichItemToDisplayOnTop();
-  public void LynxListLayoutProtocol-p::updateBasicInvalidationContext:bounds:(LynxUIListInvalidationContext *context,[bounds] CGRect bounds);
-  public void LynxListLayoutProtocol-p::layoutFrom:to:(NSInteger startIndex,[to] NSInteger endIndex);
-  public LynxListLayoutModelLight * LynxListLayoutProtocol-p::attributesFromIndex:(NSInteger index);
-  public BOOL LynxListLayoutProtocol-p::layoutModelVisibleInIndex:(NSInteger index);
-}
-
-public class LynxListReusePool : NSObject {
-  public NSMutableDictionary<NSString *, NSMutableArray<id<LynxListCell> > *>* LynxListReusePool::pool pool;
-  public NSMutableDictionary<NSString *, Class>* LynxListReusePool::reuseIdentifierMap reuseIdentifierMap;
-  public void LynxListReusePool::enqueueReusableCell:(id< LynxListCell > cell);
-  public id< LynxListCell > LynxListReusePool::dequeueReusableCellInIndex:withReuseIdentifier:(NSInteger index,[withReuseIdentifier] NSString *reuseIdentifier);
-  public void LynxListReusePool::registerClass:forCellReuseIdentifier:(Class cellClass,[forCellReuseIdentifier] nonnull NSString *identifier);
 }
 
 public class LynxListScrollComponentWrapper : UIView, <LynxListItemWrapper> {
@@ -3008,60 +2878,6 @@ public protocol LynxListStickyManagerOwner-p : <NSObject> {
   public nullable NSArray< NSString * > * LynxListStickyManagerOwner-p::itemKeysForListStickyManager();
   public nullable LynxScrollEventManager * LynxListStickyManagerOwner-p::eventManagerForListStickyManager();
   public void LynxListStickyManagerOwner-p::restoreCUIListItemOrder:(LynxUIComponent *component);
-}
-
-public class LynxListVerticalLayoutManager : LynxListLayoutManager {
-}
-
-public class LynxListViewCellLight : UIView, <LynxListCell> {
-  public UIView* LynxListViewCellLight::contentView contentView;
-  public NSString* LynxListViewCellLight::reuseIdentifier reuseIdentifier;
-  public NSInteger LynxListViewCellLight::updateToPath updateToPath;
-  public NSString* LynxListViewCellLight::itemKey itemKey;
-  public BOOL LynxListViewCellLight::removed removed;
-  public NSInteger LynxListViewCellLight::columnIndex columnIndex;
-  public LynxLayoutModelType LynxListViewCellLight::layoutType layoutType;
-  public BOOL LynxListViewCellLight::isInStickyStatus isInStickyStatus;
-  public CGFloat LynxListViewCellLight::stickyPosition stickyPosition;
-  public int64_t LynxListViewCellLight::operationID operationID;
-  public void LynxListViewCellLight::applyLayoutModel:(LynxListLayoutModelLight *model);
-}
-
-public class LynxListViewCellLightLynxUI : LynxListViewCellLight {
-  public LynxUIComponent* LynxListViewCellLightLynxUI::ui ui;
-  public void LynxListViewCellLightLynxUI::addLynxUI:(LynxUI *ui);
-  public LynxUI * LynxListViewCellLightLynxUI::removeLynxUI();
-}
-
-public class LynxListViewLight : UIScrollView, <LynxListEventsProtocol> {
-  public NSInteger LynxListViewLight::numberOfColumns numberOfColumns;
-  public BOOL LynxListViewLight::verticalOrientation verticalOrientation;
-  public NSInteger LynxListViewLight::preloadBufferCount preloadBufferCount;
-  public BOOL LynxListViewLight::anchorPriorityFromBegin anchorPriorityFromBegin;
-  public BOOL LynxListViewLight::deleteRegressPolicyToTop deleteRegressPolicyToTop;
-  public BOOL LynxListViewLight::insertAnchorModeInside insertAnchorModeInside;
-  public LynxAnchorVisibility LynxListViewLight::anchorVisibility anchorVisibility;
-  public BOOL LynxListViewLight::anchorAlignToBottom anchorAlignToBottom;
-  public BOOL LynxListViewLight::isAsync isAsync;
-  public BOOL LynxListViewLight::enableFadeInAnimation enableFadeInAnimation;
-  public CGFloat LynxListViewLight::updateAnimationFadeInDuration updateAnimationFadeInDuration;
-  public void LynxListViewLight::setLayout:(LynxListLayoutManager *_Nullable layout);
-  public void LynxListViewLight::setDataSource:(LynxUIListDataSource *dataSource);
-  public void LynxListViewLight::setSign:(NSInteger sign);
-  public void LynxListViewLight::setUIContext:(LynxUIContext *context);
-  public void LynxListViewLight::setEventEmitter:(LynxEventEmitter *eventEmitter);
-  public void LynxListViewLight::updateFrame:withPadding:border:margin:withLayoutAnimation:(CGRect frame,[withPadding] UIEdgeInsets padding,[border] UIEdgeInsets border,[margin] UIEdgeInsets margin,[withLayoutAnimation] BOOL with);
-  public void LynxListViewLight::updateScrollThresholds:(LynxUIListScrollThresholds *scrollThreSholds);
-  public void LynxListViewLight::dispatchInvalidationContext:(LynxUIListInvalidationContext *context);
-  public NSArray< id< LynxListCell > > * LynxListViewLight::visibleCells();
-  public void LynxListViewLight::updateReuseIdentifiers:(NSArray< NSString * > *reuseIdentifiers);
-  public void LynxListViewLight::registerCellClass:reuseIdentifiers:(Class cellClass,[reuseIdentifiers] NSArray< NSString * > *reuseIdentifiers);
-  public void LynxListViewLight::invalidLayoutFromIndex:(NSInteger index);
-  public id< LynxListCell > LynxListViewLight::dequeueReusableCellForIndex:(NSInteger index);
-  public void LynxListViewLight::onAsyncComponentLayoutUpdated:operationID:(nonnull LynxUIComponent *component,[operationID] int64_t operationID);
-  public void LynxListViewLight::onComponentLayoutUpdated:(LynxUIComponent *component);
-  public id< LynxListCell > LynxListViewLight::visibleCellAtPoint:(CGPoint point);
-  public id< LynxEventTarget > LynxListViewLight::findHitTestTarget:withEvent:(CGPoint point,[withEvent] UIEvent *event);
 }
 
 public class LynxLoadBundleEntry : LynxPipelineEntry {
@@ -4107,7 +3923,6 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public LynxLogContext* LynxTemplateRender()::logContext logContext;
   public nullable id< LynxEventTarget > LynxTemplateRender::hitTestInEventHandler:withEvent:(CGPoint point,[withEvent] UIEvent *_Nonnull event);
   public void LynxTemplateRender::willMoveToWindow:(nonnull UIWindow *newWindow);
-  public void LynxTemplateRender::setCustomizedLayoutInUIContext:(id< LynxListLayoutProtocol > _Nullable customizedListLayout);
   public void LynxTemplateRender::setScrollListener:(id< LynxScrollListener > _Nullable scrollListener);
   public void LynxTemplateRender::setImageFetcherInUIOwner:(id< LynxImageFetcher > _Nullable imageFetcher);
   public void LynxTemplateRender::setResourceFetcherInUIOwner:(id< LynxResourceFetcher > _Nullable resourceFetcher);
@@ -4148,7 +3963,6 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public instancetype LynxTemplateRender()::initWithBuilderBlock:containerView:(void(^_Nullable block)(NS_NOESCAPE LynxViewBuilder *_Nonnull), [containerView] UIView< LUIBodyView > *_Nullable containerView);
   public NSInteger LynxTemplateRender()::logBoxImageSizeWarningThreshold();
   public void LynxTemplateRender()::didMoveToWindow:(BOOL windowIsNil);
-  public BOOL LynxTemplateRender()::enableNewListContainer();
   public void LynxTemplateRender()::runOnTasmThread:(dispatch_block_t task);
   public BOOL LynxTemplateRender()::onLynxEvent:(LynxEvent *event);
   public void LynxTemplateRender()::onErrorOccurred:(LynxError *error);
@@ -4983,7 +4797,6 @@ public class LynxUIContext : NSObject {
   public id<LynxImageFetcher> LynxUIContext::imageFetcher imageFetcher;
   public id<LynxResourceFetcher> LynxUIContext::resourceFetcher resourceFetcher;
   public id<LynxResourceFetcher> LynxUIContext::resourceServiceFetcher resourceServiceFetcher;
-  public id<LynxListLayoutProtocol> LynxUIContext::customizedListLayout customizedListLayout;
   public id<LUIErrorHandling> LynxUIContext::errorHandler errorHandler;
   public id<LynxScrollListener> LynxUIContext::scrollListener scrollListener;
   public LynxEventHandler* LynxUIContext::eventHandler eventHandler;
@@ -5206,17 +5019,6 @@ public class LynxUILayoutTick : LynxLayoutTick {
   public void LynxUILayoutTick::attach:(UIView< LUIBodyView > *_Nonnull root);
 }
 
-public class LynxUIListCellContentProducer : NSObject {
-  public NSInteger LynxUIListCellContentProducer::sign sign;
-  public BOOL LynxUIListCellContentProducer::needsInternalCellAppearNotification needsInternalCellAppearNotification;
-  public BOOL LynxUIListCellContentProducer::needsInternalCellDisappearNotification needsInternalCellDisappearNotification;
-  public BOOL LynxUIListCellContentProducer::needsInternalCellPrepareForReuseNotification needsInternalCellPrepareForReuseNotification;
-  public void LynxUIListCellContentProducer::setUIContext:(LynxUIContext *UIContext);
-  public LynxListViewCellLight * LynxUIListCellContentProducer::listView:cellForItemAtIndex:(LynxListViewLight *listView,[cellForItemAtIndex] NSInteger index);
-  public void LynxUIListCellContentProducer::listView:enqueueCell:(LynxListViewLight *listView,[enqueueCell] LynxListViewCellLightLynxUI *cell);
-  public id< LynxListCell > LynxUIListCellContentProducer::listView:updateCell:toItemAtIndex:(LynxListViewLight *listView,[updateCell] id< LynxListCell > cell,[toItemAtIndex] NSInteger index);
-}
-
 public class LynxUIListContainer : LynxUIScroller, <LynxUIComponentLayoutObserver> {
   public BOOL LynxUIListContainer::needAdjustContentOffset needAdjustContentOffset;
   public CGPoint LynxUIListContainer::targetDelta targetDelta;
@@ -5240,14 +5042,6 @@ public protocol LynxUIListContainerDelegate-p : <UIViewNSObject> {
   public void LynxUIListContainerDelegate-p::removeListComponent:(LynxUIComponent *_Nonnull component);
 }
 
-public class LynxUIListDataSource : NSObject {
-  public void LynxUIListDataSource::setLynxSign:(NSInteger sign);
-  public void LynxUIListDataSource::setLynxUIContext:(LynxUIContext *context);
-  public id< LynxListCell > _Nullable LynxUIListDataSource::listView:cellForItemAtIndex:(LynxListViewLight *listView,[cellForItemAtIndex] NSInteger index);
-  public void LynxUIListDataSource::listView:recycleCell:(LynxListViewLight *view,[recycleCell] id< LynxListCell > cell);
-  public id< LynxListCell > LynxUIListDataSource::listView:updateCell:toItemAtIndex:(LynxListViewLight *listView,[updateCell] id< LynxListCell > cell,[toItemAtIndex] NSInteger index);
-}
-
 public protocol LynxUIListDelegate-p : <NSObject> {
   public void LynxUIListDelegate-p::listDidScroll:(UIScrollView *scrollView);
   public void LynxUIListDelegate-p::listWillBeginDragging:(UIScrollView *scrollView);
@@ -5269,57 +5063,7 @@ public protocol LynxUIListInspector-p : <NSObject> {
   public double LynxUIListInspector-p::getCellOffsetByIndex:(int index);
 }
 
-public class LynxUIListInvalidationContext : NSObject {
-  public NSArray<NSNumber*>* LynxUIListInvalidationContext::removals removals;
-  public NSArray<NSNumber*>* LynxUIListInvalidationContext::insertions insertions;
-  public NSArray<NSNumber*>* LynxUIListInvalidationContext::moveFrom moveFrom;
-  public NSArray<NSNumber*>* LynxUIListInvalidationContext::moveTo moveTo;
-  public NSArray<NSNumber*>* LynxUIListInvalidationContext::updateTo updateTo;
-  public NSArray<NSNumber*>* LynxUIListInvalidationContext::updateFrom updateFrom;
-  public NSDictionary<NSNumber*, NSValue*>* LynxUIListInvalidationContext::updates updates;
-  public NSDictionary<NSNumber*, NSNumber*>* LynxUIListInvalidationContext::estimatedHeights estimatedHeights;
-  public NSArray<NSNumber*>* LynxUIListInvalidationContext::fullSpanItems fullSpanItems;
-  public NSArray<NSNumber*>* LynxUIListInvalidationContext::stickyTopItems stickyTopItems;
-  public NSArray<NSNumber*>* LynxUIListInvalidationContext::stickyBottomItems stickyBottomItems;
-  public UIEdgeInsets LynxUIListInvalidationContext::insets insets;
-  public NSInteger LynxUIListInvalidationContext::numberOfColumns numberOfColumns;
-  public CGFloat LynxUIListInvalidationContext::mainAxisGap mainAxisGap;
-  public CGFloat LynxUIListInvalidationContext::crossAxisGap crossAxisGap;
-  public LynxListLayoutType LynxUIListInvalidationContext::layoutType layoutType;
-  public BOOL LynxUIListInvalidationContext::needsInternalCellAppearNotification needsInternalCellAppearNotification;
-  public BOOL LynxUIListInvalidationContext::needsInternalCellDisappearNotification needsInternalCellDisappearNotification;
-  public BOOL LynxUIListInvalidationContext::needsInternalCellPrepareForReuseNotification needsInternalCellPrepareForReuseNotification;
-  public LynxListLayoutUpdateType LynxUIListInvalidationContext::listUpdateType listUpdateType;
-  public NSNumber* LynxUIListInvalidationContext::needsVisibleCells needsVisibleCells;
-  public NSInteger LynxUIListInvalidationContext::scrollToPosition scrollToPosition;
-  public BOOL LynxUIListInvalidationContext::smooth smooth;
-  public NSString* LynxUIListInvalidationContext::alignTo alignTo;
-  public CGFloat LynxUIListInvalidationContext::offset offset;
-  public NSInteger LynxUIListInvalidationContext::initialScrollIndex initialScrollIndex;
-  public LynxUIListScrollThresholds* LynxUIListInvalidationContext::scrollThresholds scrollThresholds;
-  public instancetype LynxUIListInvalidationContext::initWithBoundsChange();
-  public instancetype LynxUIListInvalidationContext::initWithScrollThresholdsUpdate:(LynxUIListScrollThresholds *scrollThresholds);
-  public instancetype LynxUIListInvalidationContext::initWithModelUpdates:(NSDictionary *updates);
-  public instancetype LynxUIListInvalidationContext::initWithGeneralPropsUpdate();
-  public instancetype LynxUIListInvalidationContext::initWithInitialScrollIndex:(NSInteger index);
-  public instancetype LynxUIListInvalidationContext::initWithScrollToInfo:offset:alignTo:smooth:(NSInteger position,[offset] CGFloat offset,[alignTo] NSString *alignTo,[smooth] BOOL smooth);
-}
-
 public class LynxUIListItem : LynxUIComponent {
-}
-
-public class LynxUIListLight : LynxUI, <UIScrollView> {
-  public <LynxUIComponentLayoutObserver> LynxUIListInvalidationContext* LynxUIListLight::generalPropsInfo generalPropsInfo;
-  public LynxListLayoutManager* LynxUIListLight::layout layout;
-  public LynxUIListScrollThresholds* LynxUIListLight::scrollThreSholds scrollThreSholds;
-  public NSNumber* _Nullable LynxUIListLight::initialScrollIndex initialScrollIndex;
-  public NSDictionary* _Nullable LynxUIListLight::listNoDiffInfo listNoDiffInfo;
-  public NSDictionary* _Nullable LynxUIListLight::diffResultFromTasm diffResultFromTasm;
-  public NSDictionary<NSString*, NSArray*>* LynxUIListLight::curComponents curComponents;
-  public void LynxUIListLight::setVerticalOrientation:(BOOL value);
-}
-
-public interface LynxUIListLight(propSetter) {
 }
 
 public class LynxUIListLoader : <NSObject__covariant V UIView> {
@@ -5375,25 +5119,6 @@ public protocol LynxUIListScrollDelegate-p : <NSObject> {
 public protocol LynxUIListScrollEvent-p : <NSObject> {
   public void LynxUIListScrollEvent-p::addListDelegate:(id< LynxUIListDelegate > delegate);
   public void LynxUIListScrollEvent-p::removeListDelegate:(id< LynxUIListDelegate > delegate);
-}
-
-public class LynxUIListScrollManager : NSObject, <UIScrollViewDelegate> {
-  public LynxListScrollStatus LynxUIListScrollManager::scrollStatus scrollStatus;
-  public LynxListScrollDirection LynxUIListScrollManager::scrollingDirection scrollingDirection;
-  public BOOL LynxUIListScrollManager::horizontal horizontal;
-  public void LynxUIListScrollManager::setSign:(NSInteger sign);
-  public void LynxUIListScrollManager::updateScrollThresholds:(LynxUIListScrollThresholds *scrollThreSholds);
-  public void LynxUIListScrollManager::sendCustomEvent:detail:(NSString *name,[detail] NSDictionary *detail);
-  public void LynxUIListScrollManager::sendScrollEvent:(UIScrollView *scrollView);
-  public void LynxUIListScrollManager::setEventEmitter:(LynxEventEmitter *eventEmitter);
-}
-
-public class LynxUIListScrollThresholds : NSObject {
-  public NSNumber* LynxUIListScrollThresholds::scrollToStartOffset scrollToStartOffset;
-  public NSNumber* LynxUIListScrollThresholds::scrollToEndOffset scrollToEndOffset;
-  public NSNumber* LynxUIListScrollThresholds::scrollToStartItemCount scrollToStartItemCount;
-  public NSNumber* LynxUIListScrollThresholds::scrollToEndItemCount scrollToEndItemCount;
-  public NSNumber* LynxUIListScrollThresholds::throttle throttle;
 }
 
 public protocol LynxUIMeaningfulContentProtocol-p : <NSObject> {
@@ -5586,7 +5311,6 @@ public protocol LynxUIRendererProtocol-p : <NSObject> {
   public void LynxUIRendererProtocol-p::onEnterBackground();
   public void LynxUIRendererProtocol-p::willMoveToWindow:(UIWindow *newWindow);
   public void LynxUIRendererProtocol-p::didMoveToWindow:(BOOL windowIsNil);
-  public void LynxUIRendererProtocol-p::setCustomizedLayoutInUIContext:(id< LynxListLayoutProtocol > _Nullable customizedListLayout);
   public void LynxUIRendererProtocol-p::setScrollListener:(id< LynxScrollListener > scrollListener);
   public void LynxUIRendererProtocol-p::setImageFetcherInUIOwner:(id< LynxImageFetcher > imageFetcher);
   public void LynxUIRendererProtocol-p::setResourceFetcherInUIOwner:(id< LynxResourceFetcher > resourceFetcher);
@@ -5779,7 +5503,6 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public bool LynxView::enableAutoLayout enableAutoLayout;
   public id<LynxImageFetcher> LynxView::imageFetcher imageFetcher;
   public id<LynxScrollListener> LynxView::scrollListener scrollListener;
-  public id<LynxListLayoutProtocol> LynxView::customizedListLayout customizedListLayout;
   public id<LynxBaseInspectorOwner> LynxView::baseInspectorOwner baseInspectorOwner;
   public NSArray<UIScrollView*>* LynxView::nestedScrollViewsChain nestedScrollViewsChain;
   public BOOL LynxView::catchAllException catchAllException;
@@ -7513,53 +7236,6 @@ public enum LynxOverflow {
   typedef void(^ LynxImageLoadCompletionBlock) (UIImage *_Nullable image, NSError *_Nullable error, NSURL *_Nullable imageURL)
 
   typedef void(^ RestoreNativeStateBlock) (void)
-
-public enum LynxLayoutModelType {
-  LynxLayoutModelInvalid
-  LynxLayoutModelNormal
-  LynxLayoutModelFullSpan
-  LyngLayoutModelNative
-}
-
-
-public enum LynxListLayoutUpdateType {
-  LynxListUpdateTypeNoneUpdate
-  LynxListUpdateTypeDataUpdate
-  LynxListUpdateTypeScrollBoundsUpdate
-  LynxListUpdateTypeScrollThresholdsUpdate
-  LynxListUpdateTypeInitialScrollIndexUpdate
-  LynxListUpdateTypeScrollToPositionUpdate
-  LynxListUpdateTypeLayoutGeneralPropsUpdate
-  LynxListUpdateTypeLayoutSelfSizing
-}
-
-public enum LynxListLayoutType {
-  LynxListLayoutNone
-  LynxListLayoutWaterfall
-  LynxListLayoutFlow
-}
-
-
-public enum LynxListScrollStatus {
-  LynxListScrollStatusIdle
-  LynxListScrollStatusDragging
-  LynxListScrollStatusScrolling
-  LynxListScrollStatusFling
-}
-
-public enum LynxListScrollDirection {
-  LynxListScrollDirectionToLower
-  LynxListScrollDirectionStop
-  LynxListScrollDirectionToUpper
-}
-
-
-public enum LynxAnchorVisibility {
-  LynxAnchorVisibilityNoAdjustment
-  LynxAnchorVisibilityShow
-  LynxAnchorVisibilityHide
-}
-
 
 public enum InvalidationType {
   ListNoneUpdate

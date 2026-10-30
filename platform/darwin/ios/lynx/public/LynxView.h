@@ -22,7 +22,6 @@
 #import <Lynx/LynxTemplateData.h>
 #import <Lynx/LynxTheme.h>
 #import <Lynx/LynxTouchEvent.h>
-#import <Lynx/LynxUIListProtocol.h>
 #import <Lynx/LynxUpdateMeta.h>
 #import <Lynx/LynxViewBuilder.h>
 #import <Lynx/LynxViewClient.h>
@@ -87,7 +86,6 @@
 
 @property(nonatomic, weak, nullable) id<LynxImageFetcher> imageFetcher;
 @property(nonatomic, weak, nullable) id<LynxScrollListener> scrollListener;
-@property(nonatomic, weak, nullable) id<LynxListLayoutProtocol> customizedListLayout;
 @property(nonatomic, readonly, nullable) id<LynxBaseInspectorOwner> baseInspectorOwner;
 @property(nonatomic, strong, nullable) NSArray<UIScrollView*>* nestedScrollViewsChain;
 
