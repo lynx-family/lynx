@@ -167,6 +167,9 @@ export default struct LynxRecorderView {
   public mediaFetcher?: LynxMediaResourceFetcher;
   public templateFetcher?: LynxTemplateResourceFetcher;
   public uiRendererCreator?: LynxUIRendererCreator;
+  // Host modules supplement replay data without changing the recorded template.
+  public modules?: Map<string, ModuleClassWrapper>;
+  public onCreate?: (context: LynxContext) => void;
   private data: string = '';
   private pageUrl: string = LynxRecorderEnv.RECORDER_URL_PREFIX;
   private buffer: ArrayBuffer | undefined;
@@ -347,6 +350,9 @@ export default struct LynxRecorderView {
       `[replay-shared-data] registerJSBModule | keys=${JSON.stringify(Object.keys(LynxRecorderReplayDataModule.sharedData))}`);
     this.jsbModule.set('LynxRecorderReplayDataModule', {
       moduleClass: LynxRecorderReplayDataModule
+    });
+    this.modules?.forEach((module: ModuleClassWrapper, name: string) => {
+      this.jsbModule.set(name, module);
     });
     this.jsbModuleReady = true;
   }
@@ -844,6 +850,7 @@ export default struct LynxRecorderView {
           },
           onCreate: (context) => {
             this.localLynxContext = context;
+            this.onCreate?.(context);
             this.tryLoadTemplate();
           }
         })
