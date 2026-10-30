@@ -220,19 +220,6 @@ Napi::Value HostScriptModule::UpdateMetaData(const Napi::CallbackInfo& info) {
                                            std::move(request)));
 }
 
-Napi::Value HostScriptModule::SetGlobalProps(const Napi::CallbackInfo& info) {
-  auto* state = StateFromInfo(info);
-  if (info.Length() != 1 || !info[0].IsString() ||
-      info[0].As<Napi::String>().Utf8Value().empty()) {
-    return ThrowApiError(info.Env(), kInvalidArgument,
-                         "setGlobalProps expects global props JSON", true);
-  }
-  return Napi::Boolean::New(
-      info.Env(),
-      state && state->Dispatch(&LynxViewRefProxy::SetGlobalProps,
-                               info[0].As<Napi::String>().Utf8Value()));
-}
-
 Napi::Value HostScriptModule::ReloadTemplate(const Napi::CallbackInfo& info) {
   auto* state = StateFromInfo(info);
   LynxViewRefReloadTemplateRequest request;
@@ -341,7 +328,6 @@ void HostScriptModule::OnLoad(Napi::Object& target) {
       {"loadSSR", LoadSSR},
       {"hydrateSSR", HydrateSSR},
       {"updateMetaData", UpdateMetaData},
-      {"setGlobalProps", SetGlobalProps},
       {"reloadTemplate", ReloadTemplate},
       {"sendGlobalEvent", SendGlobalEvent},
       {"on", On},

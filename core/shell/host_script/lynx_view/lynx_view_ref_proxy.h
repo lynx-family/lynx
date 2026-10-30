@@ -5,8 +5,6 @@
 #ifndef CORE_SHELL_HOST_SCRIPT_LYNX_VIEW_LYNX_VIEW_REF_PROXY_H_
 #define CORE_SHELL_HOST_SCRIPT_LYNX_VIEW_LYNX_VIEW_REF_PROXY_H_
 
-#include <string>
-
 #include "core/shell/host_script/lynx_view/lynx_view_ref_types.h"
 
 namespace lynx {
@@ -26,8 +24,6 @@ class LynxViewRefProxy {
   virtual bool UpdateMetaData(LynxViewRefUpdateMetaDataRequest request) = 0;
   virtual bool ReloadTemplate(LynxViewRefReloadTemplateRequest request) = 0;
   virtual bool SendGlobalEvent(LynxViewRefGlobalEventRequest request) = 0;
-
-  virtual bool SetGlobalProps(std::string global_props_json) = 0;
 
   virtual void Invalidate() = 0;
 };

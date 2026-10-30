@@ -48,7 +48,6 @@ class HostScriptModule final : public runtime::js::NapiEnvironment::Module {
   static Napi::Value LoadSSR(const Napi::CallbackInfo& info);
   static Napi::Value HydrateSSR(const Napi::CallbackInfo& info);
   static Napi::Value UpdateMetaData(const Napi::CallbackInfo& info);
-  static Napi::Value SetGlobalProps(const Napi::CallbackInfo& info);
   static Napi::Value ReloadTemplate(const Napi::CallbackInfo& info);
   static Napi::Value SendGlobalEvent(const Napi::CallbackInfo& info);
   static Napi::Value On(const Napi::CallbackInfo& info);
