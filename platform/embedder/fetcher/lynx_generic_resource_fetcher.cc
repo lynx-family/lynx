@@ -54,6 +54,14 @@ LYNX_EXTERN_C void lynx_generic_resource_fetcher_release(
 LYNX_EXTERN_C void lynx_generic_resource_fetcher_fetch_resource(
     lynx_generic_resource_fetcher_t* fetcher, lynx_resource_request_t* request,
     lynx_resource_response_t* response) {
+  if (!request) {
+    lynx_resource_response_set_code(response, -1);
+    lynx_resource_response_set_error_message(response,
+                                             "resource request is null");
+    lynx_resource_response_callback(response);
+    lynx_resource_response_release(response);
+    return;
+  }
   if (fetcher->fetch_resource) {
     fetcher->fetch_resource(fetcher, request, response);
   } else {
@@ -69,6 +77,14 @@ LYNX_EXTERN_C void lynx_generic_resource_fetcher_fetch_resource(
 LYNX_EXTERN_C void lynx_generic_resource_fetcher_fetch_resource_path(
     lynx_generic_resource_fetcher_t* fetcher, lynx_resource_request_t* request,
     lynx_resource_response_t* response) {
+  if (!request) {
+    lynx_resource_response_set_code(response, -1);
+    lynx_resource_response_set_error_message(response,
+                                             "resource request is null");
+    lynx_resource_response_callback(response);
+    lynx_resource_response_release(response);
+    return;
+  }
   if (fetcher->fetch_resource_path) {
     fetcher->fetch_resource_path(fetcher, request, response);
   } else {
