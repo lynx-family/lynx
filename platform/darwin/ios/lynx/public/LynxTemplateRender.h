@@ -10,7 +10,6 @@
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxTemplateRenderDelegateExternal.h>
 #import <Lynx/LynxTemplateRenderProtocol.h>
-#import <Lynx/LynxUIListProtocol.h>
 #import <Lynx/LynxViewEnum.h>
 
 @class LynxDevtool;
@@ -51,11 +50,6 @@
                                             withEvent:(UIEvent* _Nonnull)event;
 - (void)willMoveToWindow:(nonnull UIWindow*)newWindow;
 
-/**
- Accepts a custom layout from the client to replace the default layoutManager in the list. This can
- only be used with a new list container.
- */
-- (void)setCustomizedLayoutInUIContext:(id<LynxListLayoutProtocol> _Nullable)customizedListLayout;
 - (void)setScrollListener:(id<LynxScrollListener> _Nullable)scrollListener;
 - (void)setImageFetcherInUIOwner:(id<LynxImageFetcher> _Nullable)imageFetcher;
 - (void)setResourceFetcherInUIOwner:(id<LynxResourceFetcher> _Nullable)resourceFetcher;

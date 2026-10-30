@@ -830,11 +830,6 @@
   RUN_RENDER_SAFELY([_templateRender setScrollListener:scrollListener];);
 }
 
-- (void)setCustomizedListLayout:(id<LynxListLayoutProtocol>)customizedListLayout {
-  _customizedListLayout = customizedListLayout;
-  RUN_RENDER_SAFELY([_templateRender setCustomizedLayoutInUIContext:customizedListLayout];);
-}
-
 - (CGSize)intrinsicContentSize {
   return _intrinsicContentSize;
 }
