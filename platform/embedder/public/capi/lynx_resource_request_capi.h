@@ -39,6 +39,7 @@ typedef uint64_t lynx_resource_request_id;
 // when the object is passed to a consuming function like
 // `lynx_generic_resource_fetcher_fetch_resource`, which then becomes
 // responsible for its release.
+// Returns null if the SDK's request identifier space has been exhausted.
 LYNX_CAPI_EXPORT lynx_resource_request_t* lynx_resource_request_create(
     const char* url, lynx_resource_type_e type);
 
@@ -46,6 +47,9 @@ LYNX_CAPI_EXPORT lynx_resource_request_t* lynx_resource_request_create(
 // `lynx_resource_request_t` object. Each resource request is assigned a
 // distinct identifier upon creation, which can be used to track and manage the
 // request throughout its lifecycle, such as canceling it later.
+// Identifiers are opaque values, not object addresses. They remain distinct
+// across requests created by the same SDK instance, including released
+// requests. Passing a null request returns kLynxResourceRequestIdInvalid.
 LYNX_CAPI_EXPORT lynx_resource_request_id
 lynx_resource_request_get_id(lynx_resource_request_t*);
 
