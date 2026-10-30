@@ -201,13 +201,6 @@ final class LynxHostScriptLynxViewBinding {
   }
 
   @CalledByNative
-  private static boolean enqueueSetGlobalProps(
-      LynxHostScriptLynxViewBinding binding, LynxView view, String globalPropsJson) {
-    return binding.enqueue(
-        view, target -> target.setGlobalProps(createTemplateData(globalPropsJson, null, false)));
-  }
-
-  @CalledByNative
   private static boolean enqueueReloadTemplate(LynxHostScriptLynxViewBinding binding, LynxView view,
       String dataJson, String globalPropsJson) {
     return binding.enqueue(view, target -> {
