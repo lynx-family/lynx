@@ -25,7 +25,7 @@ source_set("graphics") {
     "shared_image_external_texture.h",
   ]
 
-  if (is_linux) {
+  if (is_linux || is_harmony) {
     sources += [
       "shared_image_external_bitmap.cc",
       "shared_image_external_bitmap.h",
