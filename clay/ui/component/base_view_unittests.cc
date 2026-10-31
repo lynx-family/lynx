@@ -18,6 +18,7 @@
 #include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/component/view_context.h"
+#include "clay/ui/component/view_tree_observer.h"
 #include "clay/ui/gesture/mouse_region_manager.h"
 #include "clay/ui/gesture_handler/arena/gesture_arena_manager.h"
 #include "clay/ui/gesture_handler/handler/gesture_handler_test_utils.h"
@@ -1372,6 +1373,75 @@ TEST_F_UI(BaseViewTest, BoundingClientRectReturnsPublicSchema) {
   EXPECT_TRUE(callback_invoked);
   parent->RemoveChild(child.get());
   page_->RemoveChild(parent.get());
+}
+
+namespace {
+
+class RecordingPaintingListener : public OnPaintingListener {
+ public:
+  RecordingPaintingListener(std::vector<int>* calls, int identifier)
+      : calls_(calls), identifier_(identifier) {}
+  void OnPainting() override { calls_->push_back(identifier_); }
+
+ private:
+  std::vector<int>* calls_;
+  int identifier_;
+};
+
+}  // namespace
+
+TEST(ViewTreeObserverTest, DeduplicatesAndPreservesRegistrationOrder) {
+  ViewTreeObserver observer;
+  std::vector<int> calls;
+  RecordingPaintingListener first(&calls, 1);
+  RecordingPaintingListener second(&calls, 2);
+  observer.AddOnPaintingListener(nullptr);
+  observer.AddOnPaintingListener(&first);
+  observer.AddOnPaintingListener(&first);
+  observer.AddOnPaintingListener(&second);
+  observer.DispatchOnPainting();
+  EXPECT_EQ(calls, (std::vector<int>{1, 2}));
+}
+
+TEST(ViewTreeObserverTest, RemovalSuppressesFutureCallbacks) {
+  ViewTreeObserver observer;
+  std::vector<int> calls;
+  RecordingPaintingListener listener(&calls, 1);
+  observer.DispatchOnPainting();
+  observer.AddOnPaintingListener(&listener);
+  observer.DispatchOnPainting();
+  observer.RemoveOnPaintingListener(nullptr);
+  observer.RemoveOnPaintingListener(&listener);
+  observer.RemoveOnPaintingListener(&listener);
+  observer.DispatchOnPainting();
+  EXPECT_EQ(calls, (std::vector<int>{1}));
+}
+
+TEST(ViewTreeObserverTest, RemovingFirstListenerPreservesRemainingOrder) {
+  ViewTreeObserver observer;
+  std::vector<int> calls;
+  RecordingPaintingListener first(&calls, 1);
+  RecordingPaintingListener second(&calls, 2);
+  RecordingPaintingListener third(&calls, 3);
+  observer.AddOnPaintingListener(&first);
+  observer.AddOnPaintingListener(&second);
+  observer.AddOnPaintingListener(&third);
+  observer.RemoveOnPaintingListener(&first);
+  observer.DispatchOnPainting();
+  EXPECT_EQ(calls, (std::vector<int>{2, 3}));
+}
+
+TEST(ViewTreeObserverTest, ReRegistrationMovesListenerToEnd) {
+  ViewTreeObserver observer;
+  std::vector<int> calls;
+  RecordingPaintingListener first(&calls, 1);
+  RecordingPaintingListener second(&calls, 2);
+  observer.AddOnPaintingListener(&first);
+  observer.AddOnPaintingListener(&second);
+  observer.RemoveOnPaintingListener(&first);
+  observer.AddOnPaintingListener(&first);
+  observer.DispatchOnPainting();
+  EXPECT_EQ(calls, (std::vector<int>{2, 1}));
 }
 
 }  // namespace clay
