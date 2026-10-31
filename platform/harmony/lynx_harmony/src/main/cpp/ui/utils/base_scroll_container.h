@@ -15,11 +15,13 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
 static constexpr const char* const kNestedScrollForwardOptions = "temporary-nested-scroll-forward";
 static constexpr const char* const kNestedScrollBackWardOptions =
     "temporary-nested-scroll-backward";
 static constexpr const char* const kScrollOrientation = "scroll-orientation";
 static constexpr const char* const kScrollEdgeEffect = "harmony-scroll-edge-effect";
+static constexpr int kScrollBackToTopSupportVersion = 15;
 
 class BaseScrollContainer : public UIView {
  public:
