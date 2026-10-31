@@ -18,6 +18,21 @@
 - (void)tearDown {
 }
 
+- (void)testToNSUIntegerWithUnsupportedValues {
+  NSArray *values = @[ @"1", [NSMutableString stringWithString:@"1"], @"", @[], @{} ];
+  for (id value in values) {
+    XCTAssertEqual([LynxConverter toNSUInteger:value], (NSUInteger)0);
+  }
+}
+
+- (void)testToNSUIntegerPreservesNumbersAndDefaults {
+  XCTAssertEqual([LynxConverter toNSUInteger:nil], (NSUInteger)0);
+  XCTAssertEqual([LynxConverter toNSUInteger:NSNull.null], (NSUInteger)0);
+  XCTAssertEqual([LynxConverter toNSUInteger:@0], (NSUInteger)0);
+  XCTAssertEqual([LynxConverter toNSUInteger:@1], (NSUInteger)1);
+  XCTAssertEqual([LynxConverter toNSUInteger:@(NSUIntegerMax)], NSUIntegerMax);
+}
+
 #ifdef OS_IOS
 - (void)testToAccessibilityTraits {
   UIAccessibilityTraits traits =
