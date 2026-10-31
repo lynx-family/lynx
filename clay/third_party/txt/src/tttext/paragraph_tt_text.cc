@@ -92,7 +92,8 @@ class TTShapeRun : public tttext::RunDelegate {
  public:
   TTShapeRun(const PlaceholderRun& span,
              const tttext::Style& style,
-             const std::optional<tttext::FontInfo>& font_info) {
+             const std::optional<tttext::FontInfo>& font_info,
+             float parent_x_height) {
     FML_DCHECK(span.baseline == TextBaseline::kAlphabetic);
     if (span.alignment == PlaceholderAlignment::kMiddle) {
       float text_size = style.GetTextSize();
@@ -113,15 +114,18 @@ class TTShapeRun : public tttext::RunDelegate {
       descent_ = static_cast<float>(span.height) - baseline;
     }
     advance_ = span.width;
+    parent_x_height_ = parent_x_height;
   }
   float GetAscent() const override { return ascent_; }
   float GetDescent() const override { return descent_; }
   float GetAdvance() const override { return advance_; }
+  float GetParentXHeight() const override { return parent_x_height_; }
 
  private:
   float ascent_;
   float descent_;
   float advance_;
+  float parent_x_height_;
 };
 
 namespace {
@@ -156,6 +160,43 @@ std::optional<tttext::FontInfo> ResolveFontInfo(
     return std::nullopt;
   }
   return typefaces.front()->GetFontInfo(style.GetTextSize());
+}
+
+float ResolveParentXHeight(
+    const std::shared_ptr<FontCollection>& font_collection,
+    const tttext::Style& style,
+#ifdef ENABLE_SKITY
+    const std::shared_ptr<DynamicFontManager>& variation_font_manager,
+#endif
+    bool use_parent_x_height_for_middle) {
+  if (!use_parent_x_height_for_middle || font_collection == nullptr ||
+      style.GetTextSize() <= 0) {
+    return 0.f;
+  }
+#ifdef ENABLE_SKITY
+  auto tt_font_collection =
+      font_collection->GetIFontCollection(variation_font_manager);
+  auto* tt_font_collection_ptr = &tt_font_collection;
+#else
+  auto tt_font_collection = font_collection->CreateTTFontCollection();
+  auto* tt_font_collection_ptr = tt_font_collection.get();
+#endif
+  if (tt_font_collection_ptr == nullptr) {
+    return 0.f;
+  }
+  auto typefaces =
+      tt_font_collection_ptr->findTypefaces(style.GetFontDescriptor());
+  if (typefaces.empty() || typefaces.front() == nullptr) {
+    return 0.f;
+  }
+  const auto& typeface = typefaces.front();
+  const auto glyph = typeface->UnicharToGlyph('x');
+  if (glyph == 0) {
+    return 0.f;
+  }
+  float bounds[4] = {};
+  typeface->GetWidthBound(bounds, glyph, style.GetTextSize());
+  return std::max(0.f, -bounds[1]);
 }
 
 }  // namespace
@@ -550,14 +591,21 @@ void ParagraphTTText::UpdateForegroundPaint(size_t start,
 
 void ParagraphTTText::AddPlaceholder(tttext::Style& style,
                                      PlaceholderRun& span,
-                                     bool is_float) {
+                                     bool is_float,
+                                     bool use_parent_x_height_for_middle) {
 #ifdef ENABLE_SKITY
   auto font_info =
       ResolveFontInfo(font_collection_, style, variation_font_manager_);
+  const float parent_x_height =
+      ResolveParentXHeight(font_collection_, style, variation_font_manager_,
+                           use_parent_x_height_for_middle);
 #else
   auto font_info = ResolveFontInfo(font_collection_, style);
+  const float parent_x_height = ResolveParentXHeight(
+      font_collection_, style, use_parent_x_height_for_middle);
 #endif
-  auto delegate = std::make_unique<TTShapeRun>(span, style, font_info);
+  auto delegate =
+      std::make_unique<TTShapeRun>(span, style, font_info, parent_x_height);
   placeholder_pos_.push_back(paragraph_->GetCharCount());
   index_mapper_.AppendText(u"\uFFFC");
   paragraph_->AddShapeRun(&style, std::move(delegate), is_float);
