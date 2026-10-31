@@ -234,6 +234,14 @@ compilerOptions:
     valueType: boolean
     codeGen:
       - NONE
+  # Validate the fix for one major release, then remove this option in the
+  # following release.
+  enableLayoutOnlyTransitionOrderFix:
+    description: Controls whether Fiber layout-only transitions wait for normal insertion or reattachment when the render parent is not established. Enabled by default to preserve painting order and fixed-node parenting. When disabled, transitions immediately insert the native view using the legacy behavior.
+    defaultValue: 'true'
+    valueType: boolean
+    codeGen:
+      - NONE
   silence:
     description: Controls whether the encoder suppresses progress and diagnostic logging while building the template binary. When enabled, encode and binary-writer logging stays quiet; when disabled, normal encode logs can be emitted.
     defaultValue: 'false'

@@ -634,8 +634,14 @@ void ElementContainer::TransitionToNativeView(
       element()->TendToFlatten(), element()->NeedCreateNodeAsync(),
       element()->NodeIndex());
 
-  // Insert children to this.
-  InsertSelf();
+  // Parallel preparation or reattachment can materialize a Fiber UI before
+  // its render siblings are established. Let the pending insertion mount it
+  // in order unless the compatibility fix is disabled.
+  if (!element()->IsFiberArch() ||
+      !element()->element_manager()->GetEnableLayoutOnlyTransitionOrderFix() ||
+      element()->render_parent()) {
+    InsertSelf();
+  }
 
   // Mark need update layout value to impl layer.
   element()->MarkFrameChanged();

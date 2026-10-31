@@ -3139,6 +3139,8 @@ void TemplateAssembler::OnPageConfigDecoded(
   const auto& element_manager = page_proxy()->element_manager();
   element_manager->SetEnableUIOperationOptimize(
       config->GetEnableUIOperationOptimize());
+  element_manager->SetEnableLayoutOnlyTransitionOrderFix(
+      config->GetEnableLayoutOnlyTransitionOrderFix());
 
   if (element_manager->painting_context()->impl()->EnableParallelElement()) {
     element_manager->SetEnableLevelOrderTraversing(
