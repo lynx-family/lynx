@@ -4281,6 +4281,8 @@ public protocol LynxTemplateRenderProtocol-p : <NSObject> {
   public void LynxTemplateRenderProtocol-p::updateColorScheme:(LynxColorScheme scheme);
   public void LynxTemplateRenderProtocol-p::pauseRootLayoutAnimation();
   public void LynxTemplateRenderProtocol-p::resumeRootLayoutAnimation();
+  public void LynxTemplateRenderProtocol-p::pause();
+  public void LynxTemplateRenderProtocol-p::resume();
   public void LynxTemplateRenderProtocol-p::restartAnimation();
   public void LynxTemplateRenderProtocol-p::resetAnimation();
   public void LynxTemplateRenderProtocol-p::setTheme:(LynxTheme *_Nullable theme);
@@ -5853,6 +5855,8 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public LynxLifecycleDispatcher *_Nullable LynxView::getLifecycleDispatcher();
   public void LynxView::onEnterForeground();
   public void LynxView::onEnterBackground();
+  public void LynxView::pause();
+  public void LynxView::resume();
   public void LynxView::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public void LynxView::sendGlobalEventToLepus:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public void LynxView::triggerEventBus:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
