@@ -16,6 +16,36 @@ TEST(LynxGenericResourceFetcher, Create) {
   lynx_generic_resource_fetcher_release(fetcher);
 }
 
+TEST(LynxGenericResourceFetcher, NullRequestFailsWithoutCallingHost) {
+  auto* fetcher = lynx_generic_resource_fetcher_create(nullptr);
+  fetch_resource_func unexpected_fetch =
+      [](lynx_generic_resource_fetcher_t*, lynx_resource_request_t*,
+         lynx_resource_response_t*) { ADD_FAILURE() << "Host was called"; };
+  lynx_generic_resource_fetcher_bind_fetch_resource(fetcher, unexpected_fetch);
+  lynx_generic_resource_fetcher_bind_fetch_resource_path(fetcher,
+                                                         unexpected_fetch);
+
+  for (bool fetch_path : {false, true}) {
+    int callbacks = 0;
+    auto* response = lynx_resource_response_create_internal(
+        [&callbacks](lynx_resource_response_t* response) {
+          ++callbacks;
+          EXPECT_EQ(response->code, -1);
+          EXPECT_EQ(response->error_message, "resource request is null");
+          EXPECT_EQ(response->data.content, nullptr);
+          EXPECT_EQ(response->data.length, 0u);
+        });
+    if (fetch_path) {
+      lynx_generic_resource_fetcher_fetch_resource_path(fetcher, nullptr,
+                                                        response);
+    } else {
+      lynx_generic_resource_fetcher_fetch_resource(fetcher, nullptr, response);
+    }
+    EXPECT_EQ(callbacks, 1);
+  }
+  lynx_generic_resource_fetcher_release(fetcher);
+}
+
 TEST(LynxGenericResourceFetcher, UnboundFetchCompletesWithErrorOnce) {
   auto* fetcher = lynx_generic_resource_fetcher_create(nullptr);
   for (bool path : {false, true}) {
