@@ -27,6 +27,14 @@ bool RegisterJNIForLynxHostScriptViewHooks(JNIEnv* env) {
 }
 }  // namespace jni
 namespace shell {
+std::string GetHostScriptResourceRoot() {
+  auto* env = base::android::AttachCurrentThread();
+  auto root = Java_LynxHostScriptViewHooks_getHostScriptResourceRoot(env);
+  return root.Get()
+             ? base::android::JNIConvertHelper::ConvertToString(env, root.Get())
+             : std::string{};
+}
+
 void InstallHostScriptViewHooks() {
   if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return;
   Java_LynxHostScriptViewHooks_setEnabled(base::android::AttachCurrentThread(),

@@ -12,6 +12,8 @@
 namespace lynx {
 namespace shell {
 
+ProcessRuntime::BindingFactory CreateAndroidProcessBindings();
+
 // Called on Android UI after Lynx initialization. Reuses the process runners;
 // readiness is reported on each owner after its bootstrap has been installed.
 LYNX_EXPORT_FOR_DEVTOOL bool InitializeHostScriptRuntime(

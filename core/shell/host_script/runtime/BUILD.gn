@@ -72,6 +72,8 @@ lynx_core_source_set("interceptor_bindings") {
   sources = [
     "host_script_interceptor_bindings.cc",
     "host_script_interceptor_bindings.h",
+    "host_script_resources.cc",
+    "host_script_resources.h",
   ]
   deps = [
     ":host_script",

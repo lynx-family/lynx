@@ -5,8 +5,13 @@
 #ifndef CORE_SHELL_HOST_SCRIPT_ANDROID_LYNX_VIEW_HOST_SCRIPT_VIEW_HOOKS_ANDROID_H_
 #define CORE_SHELL_HOST_SCRIPT_ANDROID_LYNX_VIEW_HOST_SCRIPT_VIEW_HOOKS_ANDROID_H_
 
+#include <string>
+
 namespace lynx {
 namespace shell {
+
+// Returns the platform-owned local resource root for process Host Scripts.
+std::string GetHostScriptResourceRoot();
 
 // Enables or disables LynxView creation notifications on the UI thread.
 void InstallHostScriptViewHooks();

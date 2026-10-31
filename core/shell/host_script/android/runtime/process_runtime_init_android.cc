@@ -13,7 +13,6 @@
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/shell/host_script/android/lynx_view/host_script_view_hooks_android.h"
 #include "core/shell/host_script/android/runtime/process_runtime_android.h"
-#include "core/shell/host_script/runtime/host_script_interceptor_bindings.h"
 #include "core/shell/host_script/runtime/host_script_module_interceptor.h"
 #include "core/shell/host_script/runtime/interceptor.h"
 
@@ -66,7 +65,7 @@ void PrepareHostScriptRuntime() {
   auto& runtime = ProcessRuntime::GetInstance();
   runtime.Initialize({runners.GetJSTaskRunner(), runners.GetTASMTaskRunner(),
                       runners.GetUITaskRunner()},
-                     {}, &HostScriptInterceptorBindings::Create, {},
+                     {}, CreateAndroidProcessBindings(), {},
                      ProcessRuntime::InitializationMode::kLazy);
   if (view_created.load(std::memory_order_acquire))
     runtime.InitializeBindings();
