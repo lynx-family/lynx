@@ -1597,7 +1597,7 @@ public class LynxEnv {
   }
 
   private void initEnableDataListFix() {
-    mEnableDataListFix = getBooleanFromExternalEnv(LynxEnvKey.ENABLE_DATA_LIST_FIX, false);
+    mEnableDataListFix = getBooleanFromExternalEnv(LynxEnvKey.ENABLE_DATA_LIST_FIX, true);
   }
 
   private void initEnableClearUpdatedDataList() {

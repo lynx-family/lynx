@@ -547,9 +547,6 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       ensureLynxEngine();
       mIsEngineFromReuse = false;
     }
-    if (mTemplateData != null) {
-      mTemplateData.setEnableJSData(false);
-    }
   }
 
   // ensures that the LynxEngine is non-null;
@@ -1767,7 +1764,6 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     }
 
     if (mLogicExecutor != null && metaData.getInitialData() != null) {
-      metaData.getInitialData().setEnableJSData(false);
       mTemplateData.updateWithTemplateData(metaData.getInitialData());
     }
 
@@ -1974,7 +1970,6 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       return;
     }
     if (mLynxContext != null && mLogicExecutor != null && data != null) {
-      data.setEnableJSData(false);
       mTemplateData.updateWithTemplateData(data);
     }
 
