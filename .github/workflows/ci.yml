@@ -86,7 +86,7 @@ jobs:
           echo "Darwin jobs affected: $darwin"
 
   static-check:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 30
     steps:
       - name: Python Setup
@@ -155,7 +155,7 @@ jobs:
           tools/rtf/rtf native-ut run --names lynx --disable-flutter-cxx --args="enable_encode_ut=true"
 
   linux-native-unittests-check:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -176,7 +176,7 @@ jobs:
           tools/rtf/rtf native-ut run --names lynx
 
   linux-native-devtool-unittests-check:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -280,7 +280,7 @@ jobs:
           ruby -rrubygems/package -e 'spec = Gem::Package.new(ARGV.fetch(0)).spec; puts "#{spec.name} #{spec.version}"; puts spec.summary' "$gem_file"
 
   tasm-linux-build:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -411,7 +411,7 @@ jobs:
           popd
 
   lynx-types-check:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -435,7 +435,7 @@ jobs:
 
   android-unittests-check:
     timeout-minutes: 60
-    runs-on: lynx-ubuntu-22.04-physical-medium
+    runs-on: lynx-ubuntu-22.04-physical-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -459,7 +459,7 @@ jobs:
           tools/rtf/rtf android-ut run --name lynx
 
   android-explorer-build:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -540,7 +540,7 @@ jobs:
 
   android-sdk-release:
     timeout-minutes: 60
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     steps:
       - name: Download Source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -581,7 +581,7 @@ jobs:
     env:
       APPIUM_TEST_SERVER_PORT: 4723
       APPIUM_TEST_SERVER_HOST: 127.0.0.1
-    runs-on: lynx-ubuntu-22.04-physical-medium
+    runs-on: lynx-ubuntu-22.04-physical-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -763,7 +763,7 @@ jobs:
   android-integeration-test:
     needs: [android-sdk-release]
     timeout-minutes: 15
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     steps:
       - name: Download Integeration Demo Source Code
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
