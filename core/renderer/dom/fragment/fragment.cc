@@ -1252,6 +1252,7 @@ void Fragment::SetEventProp(PlatformEventPropName name,
   }
   event_props_.insert_or_assign(name, value);
   event_bundle_dirty_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::ClearEventProps() {
@@ -1260,6 +1261,7 @@ void Fragment::ClearEventProps() {
   }
   event_props_.clear();
   event_bundle_dirty_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::AddEventName(PlatformEventName name) {
@@ -1273,6 +1275,7 @@ void Fragment::AddEventName(PlatformEventName name) {
   }
   event_names_.push_back(name);
   event_bundle_dirty_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::ClearEventNames() {
@@ -1281,6 +1284,7 @@ void Fragment::ClearEventNames() {
   }
   event_names_.clear();
   event_bundle_dirty_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::MarkHasExposureEventIfNeeded() const {
@@ -1448,9 +1452,11 @@ void Fragment::SyncEventBundlesRecursively() {
 }
 
 void Fragment::MarkNodeReadyIfNeeded() {
-  if (ShouldSyncNativePlatformRenderer()) {
-    pending_node_ready_ = true;
+  if (!ShouldSyncNativePlatformRenderer() || pending_node_ready_) {
+    return;
   }
+  pending_node_ready_ = true;
+  element_manager()->SetNeedsRepaint();
 }
 
 void Fragment::FlushPendingNodeReadyIfNeeded() {

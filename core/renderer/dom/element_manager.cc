@@ -1911,9 +1911,7 @@ void ElementManager::OnPatchFinishForFiber(
     // and don't trigger layout, so we need to invoke OnComponentFinish to
     // notify list that child has been rendered.
     OnListComponentUpdated(options);
-    // Even if no layout is needed, we should still repaint if fragments are
-    // dirty. Repaint should not be bound to relayout.
-    if (root() && root()->EnableFragmentLayerRender()) {
+    if (need_repaint_ && root() && root()->EnableFragmentLayerRender()) {
       Repaint();
     }
     // A reused engine serves as the setup pipeline of a newly created
@@ -1984,6 +1982,7 @@ bool ElementManager::ResolveSubtree(Element *root) {
 }
 
 void ElementManager::Repaint() {
+  need_repaint_ = false;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
   auto *native_context = painting_context()->impl()->CastToNativeCtx();
   DCHECK(native_context != nullptr);
