@@ -124,6 +124,8 @@ export interface Config {
    * @Harmony
    * @iOS
    *
+   * Type package availability: `@lynx-js/type-config` 4.1.0 or later
+   *
    * Since: LynxSDK 3.2
    *
    * @defaultValue false
