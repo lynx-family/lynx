@@ -205,7 +205,7 @@ TEST(ClipPathHandler, HandleSuperEllipse) {
   // [at position failed]
   input = lepus::Value(R"(super-ellipse(100px 100px 2 3 at))");
   EXPECT_FALSE(UnitHandler::Process(kPropertyIDClipPath, input, out, configs));
-  input = lepus::Value(R"(super-ellipse(100px 100px 2 3 at 100))");
+  input = lepus::Value(R"(super-ellipse(100px 100px 2 3 at 100qu))");
   EXPECT_FALSE(UnitHandler::Process(kPropertyIDClipPath, input, out, configs));
 }
 
