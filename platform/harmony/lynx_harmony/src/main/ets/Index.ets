@@ -7,6 +7,8 @@ export { TemplateData, MetaData, LynxUpdateMeta, LynxUpdateMode } from './tasm/M
 export { LynxNodeController, LynxView, LynxViewBuilder, ThreadStrategyForRendering, EmbeddedMode, MeasureMode, ColorScheme } from './tasm/LynxView'
 
 export { LynxContext } from './tasm/LynxContext'
+export { LynxHostScriptRuntime, LynxHostScriptRuntimeOptions, LynxHostScriptCallback,
+  LynxHostScriptError } from './tasm/LynxHostScriptRuntime'
 export { SessionStorageCallback } from './tasm/SessionStorage'
 
 export { LynxElement, LynxElementCallback, LynxElementFilter, LynxElementStatus, LynxValue } from './tasm/LynxElement'

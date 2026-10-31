@@ -51,6 +51,21 @@ export class LynxContext implements IContext {
   private lynxView?: LynxView;
   private contextData?: Record<string, Object>;
   private extensionModule?: LynxExtensionModule;
+  private viewDestroyListeners: Set<() => void> = new Set();
+
+  /** Internal view-lifetime hook; unlike renderer teardown, it excludes reload. */
+  addViewDestroyListener(listener: () => void): void {
+    this.viewDestroyListeners.add(listener);
+  }
+
+  removeViewDestroyListener(listener: () => void): void {
+    this.viewDestroyListeners.delete(listener);
+  }
+
+  setGlobalProps(data: TemplateData): void {
+    if (this.lynxView) this.lynxView.metaData.globalProps = data;
+    this.renderer?.updateGlobalProps(data.getDataForNative());
+  }
 
   constructor() {
     this._screenMetrics = new LynxScreenMetrics();
@@ -517,6 +532,8 @@ export class LynxContext implements IContext {
   }
 
   aboutToDisappear() {
+    this.viewDestroyListeners.forEach(listener => listener());
+    this.viewDestroyListeners.clear();
     this.setLynxView(undefined);
     this.setRenderer(undefined);
     this.setUIOwner(undefined);

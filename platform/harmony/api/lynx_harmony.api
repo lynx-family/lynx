@@ -307,6 +307,9 @@ export enum ColorScheme {
 
 export class LynxContext implements IContext {
   constructor();
+  addViewDestroyListener(listener: () => void): void;
+  removeViewDestroyListener(listener: () => void): void;
+  setGlobalProps(data: TemplateData): void;
   findJSShadowNodeBySign(sign: number): Object | undefined;
   public prefetchFont(uri: string, callback: (code: number, msg: string) => void): void;
   public setShadowNodeOwner(nodeOwner: ShadowNodeOwner): void;
@@ -367,6 +370,37 @@ export class LynxContext implements IContext {
   public getLynxViewClient(): LynxViewClient[] | undefined;
   aboutToDisappear(): void;
   screenMetrics(): LynxScreenMetrics;
+}
+
+export class LynxHostScriptError extends Error {
+  constructor(code: string, message: string);
+  readonly code: string;
+}
+
+export class LynxHostScriptRuntime {
+  static create(options: LynxHostScriptRuntimeOptions): LynxHostScriptRuntime;
+  bindLynxView(context: LynxContext): void;
+  startJavaScript(url: string, sourceOrCallback: string | LynxHostScriptCallback, callback: LynxHostScriptCallback): void;
+  evaluateJavaScript(url: string, source: string, callback: LynxHostScriptCallback): void;
+  destroy(): void;
+  entryResult(args: string[]): void;
+  evaluationEnded(url: string): void;
+  evaluationFailed(message: string): void;
+  notify(event: string, code: number, message: string): void;
+  dispatch(args: string[], bytes: ArrayBuffer): void;
+}
+
+export interface LynxHostScriptRuntimeOptions {
+  backgroundRuntimeOptions?: LynxBackgroundRuntimeOptions;
+  genericResourceFetcher?: LynxGenericResourceFetcher;
+  mediaResourceFetcher?: LynxMediaResourceFetcher;
+  templateResourceFetcher?: LynxTemplateResourceFetcher;
+  modules?: Map<string, ModuleClassWrapper>;
+}
+
+export interface LynxHostScriptCallback {
+  onSuccess(): void;
+  onFailure(error: LynxHostScriptError): void;
 }
 
 export type SessionStorageCallback = (value: Object | undefined) => void {
@@ -1495,6 +1529,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   subscribeSessionStorage(key: string, callback: SessionStorageCallback): number;
   unsubscribeSessionStorage(key: string, listenerId: number): void;
   getNativePtr(): bigint;
+  destroy(): void;
   getLastScriptUrl(): string | undefined;
   moduleFactory(): LynxModuleManager;
   runtimeOptions(): LynxBackgroundRuntimeOptions;

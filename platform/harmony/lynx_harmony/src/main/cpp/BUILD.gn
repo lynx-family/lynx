@@ -70,6 +70,7 @@ lynx_core_source_set("cpp") {
     "gesture/handler/pan_gesture_handler.h",
     "gesture/handler/tap_gesture_handler.cc",
     "gesture/handler/tap_gesture_handler.h",
+    "host_script_binding_harmony.h",
     "lynx_context.cc",
     "lynx_context.h",
     "lynx_napi_export.h",
@@ -303,6 +304,12 @@ lynx_core_source_set("cpp") {
   ]
 
   deps += [ "../../../../lynx_jsvm_initializer" ]
+  if (is_debug && enable_napi_binding) {
+    sources += [ "host_script_binding_harmony.cc" ]
+    deps += [ "../../../../../../core/shell/host_script/runtime:host_script" ]
+  } else {
+    sources += [ "host_script_binding_harmony_disabled.cc" ]
+  }
 }
 
 config("harmony_public_config") {

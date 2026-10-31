@@ -445,6 +445,7 @@ export class LynxRuntimeWrapper {
     props?: Object | string, enableNewShareGroup?: boolean): bigint;
 
   protected nativeEvaluateScript(url: string, sources: string): void;
+  protected nativeDestroy(): void;
 
   protected nativeEvaluateBundleScript(url: string, bundle: TemplateBundle, jsFile: string): void;
 
@@ -459,6 +460,13 @@ export class LynxRuntimeWrapper {
   protected nativeSubscribeSessionStorage(key: string, callback: Function): number;
 
   protected nativeUnsubscribeSessionStorage(key: string, listenerId: number): void;
+}
+
+export class LynxHostScriptBinding {
+  constructor(runtime: LynxRuntimeWrapper, callbacks: Object);
+  bind(): boolean;
+  notify(event: string, code: number, message: string): void;
+  destroy(): void;
 }
 
 export const registerStaticTask: (
