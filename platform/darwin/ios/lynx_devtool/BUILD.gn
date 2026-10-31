@@ -383,6 +383,7 @@ subspec_target("UnitTests") {
     "ConsoleDelegateManagerUnitTest.mm",
     "DevToolPlatformDarwinDelegateUnitTest.mm",
     "Helper/LepusDebugInfoHelperUnitTest.mm",
+    "Helper/LynxEmulateTouchHelperUnitTest.m",
     "Helper/LynxUITreeHelperUnitTest.m",
     "LynxDevToolErrorUtilsUnitTest.m",
     "Memory/LynxMemoryControllerUnitTest.m",
