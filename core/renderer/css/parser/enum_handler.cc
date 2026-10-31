@@ -25,6 +25,8 @@ static bool ToPositionType(std::string_view str, int& result) {
     type = PositionType::kFixed;
   } else if (str == "sticky") {
     type = PositionType::kSticky;
+  } else if (str == "static") {
+    type = PositionType::kStatic;
   } else {
     return false;
   }
@@ -67,6 +69,8 @@ static bool ToDisplayType(std::string_view str, int& result) {
     type = DisplayType::kAuto;
   } else if (str == "-x-box") {
     type = DisplayType::kXBox;
+  } else if (str == "contents") {
+    type = DisplayType::kContents;
   } else {
     return false;
   }
