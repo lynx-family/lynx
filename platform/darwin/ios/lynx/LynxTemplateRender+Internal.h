@@ -29,7 +29,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSInteger)logBoxImageSizeWarningThreshold;
 
 - (void)didMoveToWindow:(BOOL)windowIsNil;
-- (BOOL)enableNewListContainer;
 
 - (void)runOnTasmThread:(dispatch_block_t)task;
 - (BOOL)onLynxEvent:(LynxEvent *)event;

@@ -35,18 +35,6 @@ static NSString* const UI_OWNER_LAYOUT_FINISH = @"UIOwner.layoutFinish.";
 
 static NSString* const UI_OWNER_INIT = @"LynxUIOwner init";
 
-static NSString* const LIST_LIGHT_VIEW_DISPATCH_INVALID_CONTEXT = @"dispatchInvalidationContext";
-
-static NSString* const LIST_LIGHT_VIEW_LOAD_NEW_CELL_AT_INDEX = @"loadNewCellAtIndex";
-static NSString* const LIST_LIGHT_VIEW_ON_COMPONENT_LAYOUT_UPDATE = @"onComponentLayoutUpdated";
-static NSString* const LIST_LIGHT_VIEW_ON_ASYNC_COMPONENT_LAYOUT_UPDATE =
-    @"onAsyncComponentLayoutUpdated";
-static NSString* const LIST_LIGHT_VIEW_RECYCLE_CELL = @"recycleCell";
-static NSString* const LIST_LIGHT_VIEW_ADJUST_WITH_BOUNDS_CHANGE = @"adjustWithBoundsChange";
-static NSString* const LIST_LIGHT_VIEW_FILL_TO_UPPER_BOUNDS = @"fillToUpperBoundsIfNecessary";
-static NSString* const LIST_LIGHT_VIEW_FILL_TO_LOWER_BOUNDS = @"fillToLowerBoundsIfNecessary";
-static NSString* const LIST_LIGHT_VIEW_REFRESH_DISPLAY_CELLS = @"refreshDisplayCells";
-
 static NSString* const SERVICES_REGISTER_SERVICES = @"LynxServices registerServices";
 
 static NSString* const TEMPLATE_RENDER_UPDATE_GLOBAL_PROPS = @"TemplateRender::updateGlobalProps";

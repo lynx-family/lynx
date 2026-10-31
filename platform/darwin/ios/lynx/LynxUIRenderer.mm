@@ -509,10 +509,6 @@ static id<LynxServiceTextProtocol> getTextService() {
 
 #pragma mark - View
 
-- (void)setCustomizedLayoutInUIContext:(id<LynxListLayoutProtocol> _Nullable)customizedListLayout {
-  _uiOwner.uiContext.customizedListLayout = customizedListLayout;
-}
-
 - (void)setScrollListener:(id<LynxScrollListener>)scrollListener {
   _uiOwner.uiContext.scrollListener = scrollListener;
 }
