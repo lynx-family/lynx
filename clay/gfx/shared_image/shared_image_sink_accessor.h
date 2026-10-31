@@ -48,6 +48,12 @@ class SharedImageSinkAccessor {
 
   bool SwapBack();
 
+  // Ends the current write without publishing the back buffer.
+  bool CancelBack();
+
+  // Drops a back buffer for which BeginWrite did not succeed.
+  void AbandonBack();
+
   BASE_DISALLOW_COPY_AND_ASSIGN(SharedImageSinkAccessor);
 
  private:
