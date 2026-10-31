@@ -7,6 +7,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
 import androidx.annotation.NonNull;
@@ -14,6 +15,9 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import com.lynx.animax.ability.LynxAbility;
 import com.lynx.animax.base.AnimaXError;
+import com.lynx.animax.listener.AnimaXErrorParam;
+import com.lynx.animax.listener.AnimaXParam;
+import com.lynx.animax.listener.AnimationListenerAdapter;
 import com.lynx.animax.loader.LynxHttpAnimaXLoader;
 import com.lynx.animax.monitor.AnimaXMonitorUtil;
 import com.lynx.animax.monitor.LynxAnimaXMonitorDefault;
@@ -43,6 +47,7 @@ import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.LynxUIMethodsHolder;
 import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.LynxUI;
+import com.lynx.tasm.behavior.ui.UIComponentInspectorProvider;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.event.EventsListener;
@@ -61,9 +66,9 @@ import java.util.Map;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @LynxUIMethodsHolder
 @LynxPropsHolder
-public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
+public class UIAnimaX
+    extends LynxUI<View> implements ForegroundListener, UIComponentInspectorProvider {
   private static final String TAG = "UIAnimaX";
-
   private static final UIAnimaXPropsPrioritySetter.ExecutionPriority RESOURCE_LOAD =
       UIAnimaXPropsPrioritySetter.ExecutionPriority.LOW;
   private static final UIAnimaXPropsPrioritySetter.ExecutionPriority RESOURCE_SETUP =
@@ -118,6 +123,34 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
 
   // Cross-flush flags.
   private boolean mHasReportMotionEvent = false;
+
+  private long mResourceGeneration;
+  private String mResourceSource;
+  private String mResourceState = "loading";
+  @Nullable private Integer mResourceErrorCode;
+  @Nullable private Float mTotalFrames;
+
+  private final AnimationListenerAdapter mInspectorAnimationListener =
+      new AnimationListenerAdapter() {
+        @Override
+        public void onReady(AnimaXParam param) {
+          mResourceErrorCode = null;
+          mTotalFrames = param.getTotalFrame();
+        }
+
+        @Override
+        public void onFirstFrame(AnimaXParam param) {
+          // Resource decoding alone does not establish that content has been drawn.
+          mResourceState = "ready";
+        }
+
+        @Override
+        public void onError(AnimaXErrorParam param) {
+          mResourceState = "error";
+          mResourceErrorCode = param.getErrorCode();
+          mTotalFrames = null;
+        }
+      };
 
   public UIAnimaX(LynxContext context) {
     this(context, null);
@@ -182,6 +215,10 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
 
     AnimaXLog.i(TAG, "UIAnimaX destroy");
 
+    if (mAnimaXPlayer != null) {
+      mAnimaXPlayer.removeAnimationListener(mInspectorAnimationListener);
+    }
+
     if (mAnimaXView != null) {
       mAnimaXView.release();
     } else if (mAnimaXPlayer != null) {
@@ -222,6 +259,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     mAbility.registerService(IAnimaXResourceFactoryService.class,
         () -> Collections.singletonList(new LynxHttpAnimaXLoader(mAbility, mContext)));
     mAnimaXPlayer = new AnimaXPlayer(animaxContext);
+    mAnimaXPlayer.addAnimationListener(mInspectorAnimationListener);
     mPropsSetter.init(mAnimaXPlayer);
   }
 
@@ -416,6 +454,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "json")
   public void setJson(String json) {
     mPropsSetter.enqueueTask(player -> {
+      beginResourceLoad("json:" + json);
       player.setJson(json);
       setViewTag("json");
       reportMotionEvent("json");
@@ -430,6 +469,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "src")
   public void setSrc(String src) {
     mPropsSetter.enqueueTask(player -> {
+      beginResourceLoad("src:" + src);
       player.setSrc(src);
       setViewTag(src);
       reportMotionEvent(src);
@@ -479,6 +519,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "src-format")
   public void setSrcFormat(String srcFormat) {
     mPropsSetter.enqueueTask(player -> {
+      beginResourceLoad("src:" + srcFormat);
       player.setSrc(srcFormat);
       setViewTag(srcFormat);
       reportMotionEvent(srcFormat);
@@ -638,6 +679,16 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     mPropsSetter.flush();
   }
 
+  @Override
+  public JavaOnlyMap getSnapshot() {
+    JavaOnlyMap snapshot = new JavaOnlyMap();
+    snapshot.putLong("resourceGeneration", mResourceGeneration);
+    snapshot.putString("state", mResourceState);
+    snapshot.put("errorCode", mResourceErrorCode);
+    snapshot.put("frameCount", mTotalFrames);
+    return snapshot;
+  }
+
   // LynxUIMethod START
   /**
    * Play animation.
@@ -654,6 +705,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     }
 
     mAnimaXPlayer.play();
+
     if (callback != null) {
       callback.invoke(LynxUIMethodConstants.SUCCESS);
     }
@@ -692,6 +744,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     }
 
     mAnimaXPlayer.resume();
+
     if (callback != null) {
       callback.invoke(LynxUIMethodConstants.SUCCESS);
     }
@@ -711,6 +764,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     }
 
     mAnimaXPlayer.stop();
+
     if (callback != null) {
       callback.invoke(LynxUIMethodConstants.SUCCESS);
     }
@@ -781,6 +835,7 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
 
     int frame = params.getInt("frame");
     mAnimaXPlayer.seek(frame);
+
     if (callback != null) {
       callback.invoke(LynxUIMethodConstants.SUCCESS);
     }
@@ -963,6 +1018,17 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     }
   }
   // ForegroundListener interface END
+
+  private void beginResourceLoad(String source) {
+    if (TextUtils.equals(mResourceSource, source)) {
+      return;
+    }
+    mResourceSource = source;
+    mResourceGeneration++;
+    mResourceState = "loading";
+    mResourceErrorCode = null;
+    mTotalFrames = null;
+  }
 
   private void reportMotionEvent(String src) {
     if (src == null || src.isEmpty() || mContext == null || !mContext.enableEventReporter()

@@ -493,6 +493,7 @@ public interface com::lynx::tasm::image::model::AnimationListener {
   public void com.lynx.tasm.image.model.AnimationListener.onAnimationStart(Drawable drawable);
   public void com.lynx.tasm.image.model.AnimationListener.onAnimationFinalLoop(Drawable drawable);
   public void com.lynx.tasm.image.model.AnimationListener.onAnimationCurrentLoop(Drawable drawable);
+  public default void com.lynx.tasm.image.model.AnimationListener.onAnimationFrame(Drawable drawable, int frameNumber);
 }
 
 public class com::lynx::tasm::behavior::ui::list::AppearEventCourier : com.lynx.tasm.behavior.ui.list.AppearEventCourierInterface {
@@ -1954,12 +1955,13 @@ public interface com::lynx::tasm::service::ILynxTrailService::FetchCallback {
   public void com.lynx.tasm.service.ILynxTrailService.FetchCallback.onResult(boolean success, @Nullable String errorMessage);
 }
 
-public class com::lynx::tasm::behavior::ui::image::FlattenUIImage : com.lynx.tasm.behavior.ui.LynxFlattenUI {
+public class com::lynx::tasm::behavior::ui::image::FlattenUIImage : com.lynx.tasm.behavior.ui.LynxFlattenUI, com.lynx.tasm.behavior.ui.UIComponentInspectorProvider {
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context);
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context, Object params);
   public MeaningfulContentStatus com.lynx.tasm.behavior.ui.image.FlattenUIImage.getMeaningfulContentStatus();
   public long com.lynx.tasm.behavior.ui.image.FlattenUIImage.getMemoryUsageBytes();
   public Map< String, String > com.lynx.tasm.behavior.ui.image.FlattenUIImage.getMemoryUsageDetail();
+  public JavaOnlyMap com.lynx.tasm.behavior.ui.image.FlattenUIImage.getSnapshot();
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.pauseAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.resumeAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
@@ -2573,6 +2575,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public boolean com.lynx.tasm.service.ILynxImageService.resumeAnimation(@NonNull Drawable animatable);
   public boolean com.lynx.tasm.service.ILynxImageService.pauseAnimation(@NonNull Drawable animatable);
   public boolean com.lynx.tasm.service.ILynxImageService.stopAnimation(@NonNull Drawable animatable);
+  public default ImageAnimationInfo com.lynx.tasm.service.ILynxImageService.getAnimationInfo(@NonNull Drawable animatable);
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage( @NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params);
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage(@NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params, @Nullable ImageLoadListener loadListener);
   public void com.lynx.tasm.service.ILynxImageService.decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
@@ -2877,6 +2880,12 @@ public interface com::lynx::tasm::group::ILynxViewRuntimeCacheManager {
   public boolean com.lynx.tasm.group.ILynxViewRuntimeCacheManager.isEngineCacheEnabled();
   public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setBitmapSizeCache(String source, int width, int height);
   public BitmapSize com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getBitmapSizeCache(String source);
+}
+
+public class com::lynx::tasm::image::model::ImageAnimationInfo :  {
+  public com.lynx.tasm.image.model.ImageAnimationInfo.ImageAnimationInfo(int frameCount, long loopDurationMs);
+  public int com.lynx.tasm.image.model.ImageAnimationInfo.getFrameCount();
+  public long com.lynx.tasm.image.model.ImageAnimationInfo.getLoopDurationMs();
 }
 
 public class com::lynx::tasm::image::model::ImageBlurPostProcessor : com.lynx.tasm.image.model.BitmapPostProcessor {
@@ -4693,6 +4702,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public final void com.lynx.tasm.behavior.ui.LynxBaseUI.updateProperties(StylesDiffMap props);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.updatePropertiesInterval(StylesDiffMap props);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.afterPropsUpdated(StylesDiffMap props);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.getComponentState(Callback callback);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.boundingClientRect(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.uiOwnerDidPerformLayout();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.requestUIInfo(ReadableMap params, Callback callback);
@@ -11411,6 +11421,10 @@ public class com::lynx::tasm::behavior::ui::view::UIComponent : com.lynx.tasm.be
   public int com.lynx.tasm.behavior.ui.view.UIComponent.getZIndex();
 }
 
+public interface com::lynx::tasm::behavior::ui::UIComponentInspectorProvider {
+  public JavaOnlyMap com.lynx.tasm.behavior.ui.UIComponentInspectorProvider.getSnapshot();
+}
+
 public class com::lynx::tasm::behavior::ui::UIExposure : com.lynx.tasm.behavior.LynxObserverManager {
   public com.lynx.tasm.behavior.ui.UIExposure.UIExposure();
   public void com.lynx.tasm.behavior.ui.UIExposure.setCallback(ICallBack callback);
@@ -11495,12 +11509,13 @@ public class abstract com::lynx::tasm::behavior::ui::UIGroup : com.lynx.tasm.beh
   public static Integer com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.getViewZIndex(View view);
 }
 
-public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behavior.ui.view.UIView {
+public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behavior.ui.view.UIView, com.lynx.tasm.behavior.ui.UIComponentInspectorProvider {
   public com.lynx.tasm.behavior.ui.image.UIImage.UIImage(LynxContext context);
   public com.lynx.tasm.behavior.ui.image.UIImage.UIImage(LynxContext context, Object params);
   public MeaningfulContentStatus com.lynx.tasm.behavior.ui.image.UIImage.getMeaningfulContentStatus();
   public long com.lynx.tasm.behavior.ui.image.UIImage.getMemoryUsageBytes();
   public Map< String, String > com.lynx.tasm.behavior.ui.image.UIImage.getMemoryUsageDetail();
+  public JavaOnlyMap com.lynx.tasm.behavior.ui.image.UIImage.getSnapshot();
   public void com.lynx.tasm.behavior.ui.image.UIImage.pauseAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.resumeAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
   public void com.lynx.tasm.behavior.ui.image.UIImage.stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback);
