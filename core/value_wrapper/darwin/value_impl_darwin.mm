@@ -215,7 +215,7 @@ bool ValueImplDarwin::PushStringToArray(const std::string& value) {
   if (![backend_value_ isKindOfClass:[NSMutableArray class]]) {
     return false;
   }
-  [(NSMutableArray*)backend_value_ addObject:[NSString stringWithUTF8String:value.c_str()]];
+  [(NSMutableArray*)backend_value_ addObject:[NSString stringWithUTF8String:value.c_str()] ?: @""];
   return true;
 }
 
@@ -223,7 +223,7 @@ bool ValueImplDarwin::PushBigIntToArray(const std::string& value) {
   if (![backend_value_ isKindOfClass:[NSMutableArray class]]) {
     return false;
   }
-  [(NSMutableArray*)backend_value_ addObject:[NSString stringWithUTF8String:value.c_str()]];
+  [(NSMutableArray*)backend_value_ addObject:[NSString stringWithUTF8String:value.c_str()] ?: @""];
   return true;
 }
 
@@ -324,8 +324,9 @@ bool ValueImplDarwin::PushStringToMap(const std::string& key, const std::string&
   if (![backend_value_ isKindOfClass:[NSMutableDictionary class]]) {
     return false;
   }
-  [(NSMutableDictionary*)backend_value_ setObject:[NSString stringWithUTF8String:value.c_str()]
-                                           forKey:[NSString stringWithUTF8String:key.c_str()]];
+  [(NSMutableDictionary*)backend_value_
+      setObject:[NSString stringWithUTF8String:value.c_str()] ?: @""
+         forKey:[NSString stringWithUTF8String:key.c_str()]];
   return true;
 }
 
@@ -333,8 +334,9 @@ bool ValueImplDarwin::PushBigIntToMap(const std::string& key, const std::string&
   if (![backend_value_ isKindOfClass:[NSMutableDictionary class]]) {
     return false;
   }
-  [(NSMutableDictionary*)backend_value_ setObject:[NSString stringWithUTF8String:value.c_str()]
-                                           forKey:[NSString stringWithUTF8String:key.c_str()]];
+  [(NSMutableDictionary*)backend_value_
+      setObject:[NSString stringWithUTF8String:value.c_str()] ?: @""
+         forKey:[NSString stringWithUTF8String:key.c_str()]];
   return true;
 }
 
