@@ -98,6 +98,7 @@ class UIIntersectionObserver {
   float ui_margin_bottom_{0.f};
   float ui_margin_left_{0.f};
   int ref_id_{10};
+  bool relative_to_screen_{false};
   bool should_send_global_event_{false};
   float ref_rect_[4]{0.f};
   std::vector<UIIntersectionObserverTarget> intersection_observe_targets_;

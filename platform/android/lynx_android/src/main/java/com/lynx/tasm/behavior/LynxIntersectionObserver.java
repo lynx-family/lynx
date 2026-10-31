@@ -4,13 +4,11 @@
 package com.lynx.tasm.behavior;
 
 import android.graphics.RectF;
-import android.util.DisplayMetrics;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
-import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
@@ -227,7 +225,7 @@ public class LynxIntersectionObserver {
     if (manager == null) {
       return;
     }
-    RectF targetRect = manager.getBoundsOnScreenOfLynxBaseUI(target.ui);
+    RectF targetRect = getBoundingClientRectOfLynxBaseUI(target.ui);
     RectF intersectionRect =
         computeTargetAndRootIntersection((LynxBaseUI) target.ui, targetRect, rootRect);
 
@@ -293,7 +291,7 @@ public class LynxIntersectionObserver {
     if (manager == null)
       return null;
 
-    RectF intersectionRect = targetRect;
+    RectF intersectionRect = new RectF(targetRect);
     LynxBaseUI parent = (LynxBaseUI) target.getParent();
 
     boolean atRoot = false;
@@ -313,14 +311,14 @@ public class LynxIntersectionObserver {
         atRoot = true;
         if (mRelativeToScreen) {
           // parent is rootUi
-          parentRect = manager.getBoundsOnScreenOfLynxBaseUI(parent);
+          parentRect = getBoundingClientRectOfLynxBaseUI(parent);
         } else {
           parentRect = rootRect;
         }
       } else {
         // clip to bound
         if (parent.getOverflow() == 0) {
-          parentRect = manager.getBoundsOnScreenOfLynxBaseUI(parent);
+          parentRect = getBoundingClientRectOfLynxBaseUI(parent);
         }
       }
 
@@ -361,6 +359,13 @@ public class LynxIntersectionObserver {
     return intersectionRect;
   }
 
+  private RectF getBoundingClientRectOfLynxBaseUI(LynxBaseUI ui) {
+    if (ui == null) {
+      return new RectF();
+    }
+    return new RectF(ui.getBoundingClientRect());
+  }
+
   private RectF getRootRect() {
     RectF rootRect = new RectF();
     LynxIntersectionObserverManager manager = mManager.get();
@@ -369,13 +374,13 @@ public class LynxIntersectionObserver {
     }
     if (mRoot != null) {
       // relative to ui
-      rootRect = manager.getBoundsOnScreenOfLynxBaseUI(mRoot);
+      rootRect = getBoundingClientRectOfLynxBaseUI(mRoot);
     } else if (mRelativeToScreen) {
       // relative to screen
       rootRect = manager.getWindowRect(getContext());
     } else {
       // relative to LynxView
-      rootRect = manager.getBoundsOnScreenOfLynxBaseUI(manager.getContext().getUIBody());
+      rootRect = getBoundingClientRectOfLynxBaseUI(manager.getContext().getUIBody());
     }
 
     // extend rect with margins
