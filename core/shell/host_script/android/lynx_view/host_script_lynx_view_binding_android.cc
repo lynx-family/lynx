@@ -74,14 +74,6 @@ class AndroidLynxViewRefProxy final : public LynxViewRefProxy {
     });
   }
 
-  bool SetGlobalProps(std::string global_props_json) override {
-    return Dispatch([&](JNIEnv* env, jobject binding, jobject view) {
-      auto props = HostScriptJavaString(env, global_props_json);
-      return Java_LynxHostScriptLynxViewBinding_enqueueSetGlobalProps(
-          env, binding, view, props.Get());
-    });
-  }
-
   bool ReloadTemplate(LynxViewRefReloadTemplateRequest request) override {
     return Dispatch([&](JNIEnv* env, jobject binding, jobject view) {
       auto data = HostScriptJavaString(env, request.data_json);

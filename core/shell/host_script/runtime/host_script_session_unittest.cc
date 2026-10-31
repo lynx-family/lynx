@@ -34,7 +34,6 @@ using runtime::js::NapiRuntimeProxyQuickjs;
 struct FakeProxyState {
   bool accepts = true;
   std::vector<std::string> calls;
-  std::string global_props;
   LynxViewRefLoadTemplateRequest load_template;
   LynxViewRefSsrRequest load_ssr;
   LynxViewRefSsrRequest hydrate_ssr;
@@ -77,11 +76,6 @@ class FakeLynxViewRefProxy final : public LynxViewRefProxy {
   bool SendGlobalEvent(LynxViewRefGlobalEventRequest request) override {
     state_->global_event = std::move(request);
     return Record("sendGlobalEvent");
-  }
-
-  bool SetGlobalProps(std::string global_props) override {
-    state_->global_props = std::move(global_props);
-    return Record("setGlobalProps");
   }
 
   void Invalidate() override { ++state_->invalidate_count; }
@@ -821,11 +815,10 @@ TEST_F(HostScriptSessionTest, CopiesAndAcceptsOperationsWithoutPromises) {
      viewRef.hydrateSSR(new Uint8Array([6]).buffer, 'lynx://hydrate', '{}'),
      viewRef.updateMetaData('{"update":1}', '{"props":2}'),
      viewRef.reloadTemplate('{"reload":1}', '{"props":1}'),
-     viewRef.sendGlobalEvent('event', '[1,2]'),
-     viewRef.setGlobalProps('{"theme":"dark"}')].every(v => v === true)
+     viewRef.sendGlobalEvent('event', '[1,2]')].every(v => v === true)
   )"),
             "true");
-  EXPECT_EQ(state_->calls.size(), 7u);
+  EXPECT_EQ(state_->calls.size(), 6u);
   EXPECT_EQ(state_->load_template.template_data,
             (std::vector<uint8_t>{1, 2, 3}));
   EXPECT_EQ(state_->load_template.url, "lynx://page");
@@ -840,15 +833,17 @@ TEST_F(HostScriptSessionTest, CopiesAndAcceptsOperationsWithoutPromises) {
   EXPECT_EQ(state_->update_data.data_json, "{\"update\":1}");
   EXPECT_EQ(state_->update_data.global_props_json, "{\"props\":2}");
   EXPECT_EQ(state_->global_event.params_json, "[1,2]");
-  EXPECT_EQ(state_->global_props, "{\"theme\":\"dark\"}");
 }
 
 TEST_F(HostScriptSessionTest, PreservesAbsentMetadataAndDoesNotCacheUpdates) {
   CreateSession(true);
   LoadModule();
-  EXPECT_EQ(EvalString("viewRef.updateMetaData(undefined, '{}')"), "true");
+  EXPECT_EQ(
+      EvalString("viewRef.updateMetaData(undefined, '{\"theme\":\"dark\"}')"),
+      "true");
   EXPECT_FALSE(state_->update_data.has_data);
   EXPECT_TRUE(state_->update_data.has_global_props);
+  EXPECT_EQ(state_->update_data.global_props_json, "{\"theme\":\"dark\"}");
   EXPECT_EQ(EvalString("viewRef.updateMetaData('{}')"), "true");
   EXPECT_TRUE(state_->update_data.has_data);
   EXPECT_FALSE(state_->update_data.has_global_props);
@@ -973,6 +968,7 @@ TEST_F(HostScriptSessionTest,
   LoadModule();
   EXPECT_EQ(EvalString("typeof viewRef.getProtocolVersion"), "undefined");
   EXPECT_EQ(EvalString("typeof viewRef.updateData"), "undefined");
+  EXPECT_EQ(EvalString("typeof viewRef.setGlobalProps"), "undefined");
   EXPECT_EQ(EvalString("String(viewRef.hasCurrent())"), "false");
   env_.RunScript(
       "viewRef.reportEntryResult('REGISTERED'); "
@@ -996,8 +992,11 @@ TEST_F(HostScriptSessionTest, BindsOnceAndInvalidatesOnce) {
   EXPECT_FALSE(session_->HasCurrentView());
   EXPECT_FALSE(
       session_->BindView(std::make_unique<FakeLynxViewRefProxy>(state_)));
-  EXPECT_FALSE(
-      session_->Dispatch(&LynxViewRefProxy::SetGlobalProps, std::string("{}")));
+  LynxViewRefUpdateMetaDataRequest request;
+  request.has_global_props = true;
+  request.global_props_json = "{}";
+  EXPECT_FALSE(session_->Dispatch(&LynxViewRefProxy::UpdateMetaData,
+                                  std::move(request)));
   EXPECT_TRUE(state_->calls.empty());
 }
 
