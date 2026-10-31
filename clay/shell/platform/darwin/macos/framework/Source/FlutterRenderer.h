@@ -10,6 +10,7 @@
 #import "clay/shell/platform/darwin/macos/framework/Headers/FlutterEngine.h"
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterView.h"
 #import "clay/shell/platform/embedder/embedder_surface_metal.h"
+#include "clay/shell/platform/embedder/embedder_surface_software.h"
 
 /**
  * Rendering backend agnostic FlutterRendererConfig provider to be used by the embedder API.
@@ -19,17 +20,24 @@
 /**
  * Interface to the system GPU. Used to issue all the rendering commands.
  */
-@property(nonatomic, readonly, nonnull) id<MTLDevice> device;
+@property(nonatomic, readonly, nullable) id<MTLDevice> device;
 
 /**
  * Used to get the command buffers for the MTLDevice to render to.
  */
-@property(nonatomic, readonly, nonnull) id<MTLCommandQueue> commandQueue;
+@property(nonatomic, readonly, nullable) id<MTLCommandQueue> commandQueue;
+
+@property(nonatomic, readonly) BOOL softwareRendering;
 
 /**
  * Intializes the renderer with the given FlutterEngine.
  */
 - (nullable instancetype)initWithFlutterEngine:(nonnull FlutterEngine*)flutterEngine;
+
+- (nullable instancetype)initWithFlutterEngine:(nonnull FlutterEngine*)flutterEngine
+                             softwareRendering:(BOOL)softwareRendering;
+
+- (nullable clay::EmbedderSurfaceSoftwareDelegate*)softwareDelegate;
 
 /**
  * Creates a Metal embedder surface.

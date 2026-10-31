@@ -54,7 +54,11 @@ FLUTTER_DARWIN_EXPORT
  *                    as with the iOS FlutterEngine.
  */
 - (nonnull instancetype)initWithName:(nonnull NSString*)labelPrefix
-              allowHeadlessExecution:(BOOL)allowHeadlessExecution NS_DESIGNATED_INITIALIZER;
+              allowHeadlessExecution:(BOOL)allowHeadlessExecution;
+
+- (nonnull instancetype)initWithName:(nonnull NSString*)labelPrefix
+              allowHeadlessExecution:(BOOL)allowHeadlessExecution
+                   softwareRendering:(BOOL)softwareRendering NS_DESIGNATED_INITIALIZER;
 
 - (nonnull instancetype)init NS_UNAVAILABLE;
 
