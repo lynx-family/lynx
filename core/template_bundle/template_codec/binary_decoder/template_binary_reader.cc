@@ -50,6 +50,13 @@ bool TemplateBinaryReader::DecodeCSSDescriptor() {
   // decode route
   ERROR_UNLESS(DecodeCSSDescriptorRoute());
 
+  // Hot update decodes CSS into a private graph after reading the bundle.
+  // Do not start an asynchronous decoder against storage that will be replaced.
+  if (for_hot_update_) {
+    stream_->Seek(css_section_range_.end);
+    return true;
+  }
+
   // check whether lazy-decode or async-decode is needed
   bool enable_css_async_decode = GetCSSAsyncDecode();
   bool enable_css_lazy_decode = enable_css_async_decode || GetCSSLazyDecode();
@@ -438,6 +445,21 @@ TemplateBinaryReader::CreateRecycler() {
   recycler->lepus_chunk_route_ = lepus_chunk_route_;
 
   return recycler;
+}
+
+std::shared_ptr<CSSStyleSheetManager>
+TemplateBinaryReader::DecodeCSSForHotUpdate() {
+  const auto previous = template_bundle().GetCSSStyleManager();
+  auto manager = std::make_shared<CSSStyleSheetManager>(nullptr);
+  manager->route_ = previous->route_;
+  manager->SetEnableNewImportRule(GetEnableNewImportRule());
+  manager->SetFixCSSImportRuleOrder(previous->GetFixCSSImportRuleOrder());
+  template_bundle().SetCSSStyleManager(manager);
+  if (!GreedyDecodeCSSDescriptor(*manager->GetCSSFragmentMap())) {
+    template_bundle().SetCSSStyleManager(previous);
+    return nullptr;
+  }
+  return manager;
 }
 
 bool TemplateBinaryReader::CompleteDecode() {

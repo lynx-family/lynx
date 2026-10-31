@@ -807,6 +807,13 @@ class Element : public lepus::RefCounted,
 
   void ResetStyleSheet();
 
+  void ResetStyleSheetForHotUpdate() {
+    ResetStyleSheet();
+    // Pending invalidations borrow sets owned by the previous CSS graph.
+    invalidation_lists_.descendants.clear_and_shrink();
+    MarkStyleDirty(false);
+  }
+
   void ResetSheetRecursively(
       const std::shared_ptr<CSSStyleSheetManager>& manager);
 

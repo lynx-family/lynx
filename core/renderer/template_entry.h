@@ -236,6 +236,12 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   virtual bool DecodeCSSFragmentById(int32_t fragmentId) override;
 
+  // A null binary removes the sheet. Returns an error without changing the
+  // active stylesheets if decoding fails.
+  std::string UpdateStyleSheetForHotUpdate(int32_t id,
+                                           const std::vector<uint8_t>* binary,
+                                           ElementManager& element_manager);
+
   // Apply page_configs to LepusContext.
   void ApplyConfigsToLepusContext(
       const std::shared_ptr<PageConfig>& page_config);
@@ -345,6 +351,9 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   // result of entry's lepus.js.
   // now is only used for lazy bundle.
   lepus::Value binary_eval_result_{};
+
+  struct CSSHotUpdateState;
+  std::unique_ptr<CSSHotUpdateState> css_hot_update_state_;
 
   // error msg for initing template entry
   std::string error_msg_{};

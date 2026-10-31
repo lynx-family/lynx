@@ -104,7 +104,6 @@
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_css_reader.h"
-#include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/modp_b64/modp_b64.h"
 
@@ -1350,29 +1349,16 @@ RENDERER_FUNCTION_CC(DispatchEvent) {
   RETURN_UNDEFINED();
 }
 
-void ModifyStyleSheetByIdHelper(
-    TemplateAssembler* tasm, const std::string& entry_name, int32_t id,
-    std::unique_ptr<SharedCSSFragment> style_sheet) {
-  const auto& style_sheet_manager = tasm->style_sheet_manager(entry_name);
-  if (!style_sheet) {
-    style_sheet_manager->RemoveSharedCSSFragment(id);
-  } else {
-    // SharedCSSFragment has id_ field so no id is required
-    style_sheet_manager->ReplaceSharedCSSFragment(std::move(style_sheet));
+std::string ModifyStyleSheetByIdHelper(TemplateAssembler* tasm,
+                                       const std::string& entry_name,
+                                       int32_t id,
+                                       const std::vector<uint8_t>* binary) {
+  auto entry = tasm->FindTemplateEntry(entry_name);
+  if (!entry) {
+    return "Template entry is not available for CSS hot update";
   }
-
-  // After replacement/deletion above the CSSFragment held by FiberElement will
-  // become a wild ptr, need clear all style_sheet of entire tree
-  // so that replaced CSSFragment can be re-obtained
-  const auto& element_manager = tasm->page_proxy()->element_manager();
-  element_manager->InvalidateCascadeLayerMapCache();
-  auto root = element_manager->root();
-  if (root) {
-    root->ApplyFunctionRecursive([](auto element) {
-      element->ResetStyleSheet();
-      element->MarkStyleDirty(false);
-    });
-  }
+  return entry->UpdateStyleSheetForHotUpdate(
+      id, binary, *tasm->page_proxy()->element_manager());
 }
 
 RENDERER_FUNCTION_CC(ReplaceStyleSheetByIdWithBase64) {
@@ -1394,34 +1380,12 @@ RENDERER_FUNCTION_CC(ReplaceStyleSheetByIdWithBase64) {
 
   auto base64_buffer = arg1->StdString();
   lynx_modp_b64_decode(base64_buffer);
-  auto input_stream = std::make_unique<lepus::ByteArrayInputStream>(
-      std::vector<uint8_t>(base64_buffer.begin(), base64_buffer.end()));
-  auto reader = TemplateBinaryReader(std::move(input_stream));
-
-  const auto id = static_cast<int32_t>(arg0->Number());
-
-  reader.Decode();
-  if (!reader.template_bundle()
-           .GetCSSStyleManager()
-           ->IsSharedCSSFragmentDecoded(id)) {
-    reader.DecodeCSSFragmentByIdInRender(id);
+  const std::vector<uint8_t> binary(base64_buffer.begin(), base64_buffer.end());
+  const auto error = ModifyStyleSheetByIdHelper(
+      self, entry_name, static_cast<int32_t>(arg0->Number()), &binary);
+  if (!error.empty()) {
+    RenderFatal(LEPUS_CONTEXT(), "%s", error.c_str());
   }
-
-  // CSSStyleSheetManager hold by this reader is never shared
-  // so we can manipulate it without lock
-  auto fragment_handle = reader.template_bundle()
-                             .GetCSSStyleManager()
-                             ->GetCSSFragmentMap()
-                             ->extract(id);
-  if (fragment_handle.empty()) {
-    RenderFatal(LEPUS_CONTEXT(),
-                "css fragment with specific id is not provided by this buffer");
-    RETURN_UNDEFINED();
-  }
-
-  ModifyStyleSheetByIdHelper(self, entry_name,
-                             static_cast<int32_t>(arg0->Number()),
-                             std::move(fragment_handle.mapped()));
 
   RETURN_UNDEFINED();
 }
@@ -1441,8 +1405,11 @@ RENDERER_FUNCTION_CC(RemoveStyleSheetById) {
     entry_name = arg1->StdString();
   }
 
-  ModifyStyleSheetByIdHelper(self, entry_name,
-                             static_cast<int32_t>(arg0->Number()), nullptr);
+  const auto error = ModifyStyleSheetByIdHelper(
+      self, entry_name, static_cast<int32_t>(arg0->Number()), nullptr);
+  if (!error.empty()) {
+    RenderFatal(LEPUS_CONTEXT(), "%s", error.c_str());
+  }
 
   RETURN_UNDEFINED();
 }

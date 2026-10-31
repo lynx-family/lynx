@@ -25,6 +25,7 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
+#include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 
 #if ENABLE_LEPUSNG_WORKLET
 #include "core/renderer/worklet/lepus_lynx.h"
@@ -40,6 +41,85 @@
 
 namespace lynx {
 namespace tasm {
+
+struct TemplateEntry::CSSHotUpdateState {
+  std::unique_ptr<TemplateBinaryReader> original;
+  // Retain only the latest source for each id. A null reader records a removal.
+  std::unordered_map<int32_t, std::unique_ptr<TemplateBinaryReader>> updates;
+};
+
+std::string TemplateEntry::UpdateStyleSheetForHotUpdate(
+    int32_t id, const std::vector<uint8_t>* binary,
+    ElementManager& element_manager) {
+  std::unique_ptr<TemplateBinaryReader> replacement;
+  if (binary) {
+    replacement = std::make_unique<TemplateBinaryReader>(
+        std::make_unique<lepus::ByteArrayInputStream>(*binary));
+    if (!replacement->DecodeForHotUpdate()) {
+      return replacement->error_message_;
+    }
+  }
+
+  if (!css_hot_update_state_) {
+    auto state = std::make_unique<CSSHotUpdateState>();
+    auto recycler = template_bundle_.CreateRecycler();
+    if (recycler) {
+      // Bundle lazy decoding installs TemplateBinaryReader as its recycler.
+      state->original.reset(
+          static_cast<TemplateBinaryReader*>(recycler.release()));
+    } else {
+      const auto& original_binary = template_bundle_.GetBinary();
+      if (original_binary.empty()) {
+        return "Original template is unavailable for CSS hot update; reload "
+               "the page";
+      }
+      state->original = std::make_unique<TemplateBinaryReader>(
+          std::make_unique<lepus::ByteArrayInputStream>(original_binary));
+      state->original->SetIsCardType(template_bundle_.IsCard());
+      if (!state->original->DecodeForHotUpdate()) {
+        return state->original->error_message_;
+      }
+    }
+    css_hot_update_state_ = std::move(state);
+  }
+
+  auto manager = css_hot_update_state_->original->DecodeCSSForHotUpdate();
+  if (!manager) {
+    return "Failed to decode original CSS for hot update";
+  }
+  auto& fragments = *manager->GetCSSFragmentMap();
+  auto apply = [&fragments](int32_t sheet_id, TemplateBinaryReader* reader) {
+    if (!reader) {
+      fragments.erase(sheet_id);
+      return true;
+    }
+    auto updated = reader->DecodeCSSForHotUpdate();
+    if (!updated) {
+      return false;
+    }
+    auto node = updated->GetCSSFragmentMap()->extract(sheet_id);
+    if (node.empty()) {
+      return false;
+    }
+    fragments.insert_or_assign(sheet_id, std::move(node.mapped()));
+    return true;
+  };
+  for (const auto& update : css_hot_update_state_->updates) {
+    if (update.first != id && !apply(update.first, update.second.get())) {
+      return "Failed to decode a previous CSS hot update";
+    }
+  }
+  if (!apply(id, replacement.get())) {
+    return "CSS fragment with the requested id is not provided by this buffer";
+  }
+
+  // Publish only a complete, private graph. Existing managers stay in place
+  // because elements cache them, but their shared stylesheet storage does not.
+  element_manager.InvalidateStyleSheetsForHotUpdate();
+  GetStyleSheetManager()->ReplaceStyleSheetsForHotUpdate(std::move(fragments));
+  css_hot_update_state_->updates.insert_or_assign(id, std::move(replacement));
+  return {};
+}
 
 TemplateEntry::TemplateEntry() : VmContextHolder(nullptr) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_CONSTRUCTOR);
@@ -227,6 +307,7 @@ std::string TemplateEntry::GenerateLepusJSFileName(const std::string& name) {
 bool TemplateEntry::InitWithPageConfigger(PageConfigger* configger,
                                           const PageOptions& page_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_INIT_WITH_PAGE_CONFIG);
+  css_hot_update_state_.reset();
 
   if (is_card_ != template_bundle_.IsCard()) {
     // expected type does not match actual type
