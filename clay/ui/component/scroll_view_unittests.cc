@@ -5,8 +5,10 @@
 #define CLAY_UNIT_TESTS 1
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 
+#include "clay/ui/component/rubberband_distance.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/scroll_wrapper.h"
 #include "clay/ui/component/view.h"
@@ -845,6 +847,55 @@ TEST_F_UI(ScrollViewTest, BounceView) {
   }
   EXPECT_GT(max_scroll_offset, 120);
   EXPECT_EQ(scroll_view->GetScrollView()->TotalScrollOffset().x(), 100);
+}
+
+TEST(RubberBandDistanceTest, PreservesSignAndUsesResistance) {
+  EXPECT_FLOAT_EQ(RubberBandDistance(100.f, 200.f, 0.5f), 40.f);
+  EXPECT_FLOAT_EQ(RubberBandDistance(-100.f, 200.f, 0.5f), -40.f);
+  EXPECT_FLOAT_EQ(RubberBandDistance(0.f, 200.f), 0.f);
+  EXPECT_FLOAT_EQ(RubberBandDistance(100.f, 200.f, 0.f), 0.f);
+}
+
+TEST(RubberBandDistanceTest, CompressionIsMonotonicAndBounded) {
+  float previous_distance = 0.f;
+  for (float distance : {1.f, 10.f, 100.f, 1000.f, 10000.f}) {
+    float compressed = RubberBandDistance(distance, 200.f);
+    EXPECT_GT(compressed, previous_distance);
+    EXPECT_LT(compressed, distance);
+    EXPECT_LT(compressed, 200.f);
+    previous_distance = compressed;
+  }
+}
+
+TEST(RubberBandDistanceTest, ReverseRestoresSignedDistance) {
+  for (float distance : {-500.f, -100.f, 0.f, 100.f, 500.f}) {
+    float compressed = RubberBandDistance(distance, 200.f, 0.5f);
+    EXPECT_NEAR(ReverseRubberBandDistance(compressed, 200.f, 0.5f), distance,
+                0.001f);
+  }
+}
+
+TEST(RubberBandDistanceTest, SingularInputsReturnFiniteZero) {
+  EXPECT_FLOAT_EQ(RubberBandDistance(0.f, 0.f), 0.f);
+  EXPECT_FLOAT_EQ(RubberBandDistance(100.f, 0.f), 0.f);
+  EXPECT_FLOAT_EQ(ReverseRubberBandDistance(200.f, 200.f), 0.f);
+  EXPECT_FLOAT_EQ(ReverseRubberBandDistance(-200.f, 200.f), 0.f);
+  EXPECT_FLOAT_EQ(ReverseRubberBandDistance(100.f, 200.f, 0.f), 0.f);
+  EXPECT_FLOAT_EQ(
+      RubberBandDistance(std::numeric_limits<float>::infinity(), 200.f), 0.f);
+  EXPECT_FLOAT_EQ(
+      ReverseRubberBandDistance(std::numeric_limits<float>::quiet_NaN(), 200.f),
+      0.f);
+}
+
+TEST(RubberBandDistanceTest, PointUsesIndependentAxisDimensions) {
+  FloatPoint compressed =
+      RubberBandDistance(FloatPoint(100.f, -80.f), 200.f, 400.f);
+  EXPECT_FLOAT_EQ(compressed.x(), RubberBandDistance(100.f, 200.f));
+  EXPECT_FLOAT_EQ(compressed.y(), RubberBandDistance(-80.f, 400.f));
+  FloatPoint restored = ReverseRubberBandDistance(compressed, 200.f, 400.f);
+  EXPECT_NEAR(restored.x(), 100.f, 0.001f);
+  EXPECT_NEAR(restored.y(), -80.f, 0.001f);
 }
 
 }  // namespace clay
