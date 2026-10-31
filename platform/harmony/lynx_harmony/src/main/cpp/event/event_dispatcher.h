@@ -112,6 +112,8 @@ class EventDispatcher {
 
   bool EventThrough();
 
+  static EventDispatcher* ResolveDispatcherFromGestureUserData(void* user_data);
+
   bool ShouldBlockNativeEvent();
 
   bool ContainGestureNode();
@@ -280,6 +282,7 @@ class EventDispatcher {
   void ShowMessageOnConsole(const std::string& message, int32_t level) const;
 
   struct WeakFlag;
+  struct GestureCallbackFlag;
 
   struct ActiveOverlayHitTestRoot {
     std::weak_ptr<UIBase> root;
@@ -341,6 +344,7 @@ class EventDispatcher {
   std::atomic<uint64_t> inspect_hit_target_sequence_{0};
   std::atomic<uint64_t> cdp_request_id_{0};
   std::shared_ptr<WeakFlag> weak_flag_;
+  GestureCallbackFlag* gesture_callback_flag_{nullptr};
 
   static GestureReceiver long_press_receiver_callback_;
   static GestureReceiver tap_receiver_callback_;
