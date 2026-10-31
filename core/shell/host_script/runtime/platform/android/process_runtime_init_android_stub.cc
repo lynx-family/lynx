@@ -4,12 +4,16 @@
 
 #include <utility>
 
-#include "core/shell/host_script/android/runtime/process_runtime_android.h"
 #include "core/shell/host_script/android/runtime/process_runtime_init_android.h"
+#include "core/shell/host_script/runtime/platform/android/host_script_runtime_callbacks.h"
+#include "core/shell/host_script/runtime/platform/android/process_runtime_android.h"
 
 namespace lynx {
 namespace shell {
 
+bool SetHostScriptRuntimeProvider(const HostScriptRuntimeCallbacks*, bool) {
+  return false;
+}
 void PrepareHostScriptRuntime() {}
 void OnHostScriptViewCreated() {}
 void RegisterHostScriptView(base::LynxEntityId) {}

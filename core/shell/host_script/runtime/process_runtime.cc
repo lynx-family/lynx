@@ -19,13 +19,16 @@
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/runtime/js/js_executor.h"
 #include "core/shell/host_script/runtime/host_script_thread_bindings.h"
+#if defined(OS_ANDROID)
+#include "core/shell/host_script/runtime/platform/android/process_runtime_android.h"
+#endif
 
 namespace lynx {
 namespace shell {
 
 bool IsHostScriptRuntimeEnabled() {
 #if defined(OS_ANDROID)
-  // Only the Android debug engine links the real process runtime.
+  // The optional Android library owns the process runtime.
   return true;
 #else
   return tasm::DevToolLifecycle::GetInstance().IsEnabled();
@@ -102,8 +105,13 @@ class DomainRuntime final {
     if (!IsHostScriptRuntimeEnabled())
       return WithError(Identity(), "HSR_DEBUG_DISABLED");
     identity_.owner_thread = CurrentThread();
+#if defined(OS_ANDROID)
+    executor_ = CreateHostScriptExecutor();
+    if (!executor_) return WithError(Identity(), "RUNTIME_ALLOCATION_FAILED");
+#else
     executor_ =
         std::make_unique<runtime::js::JSExecutor>("-1", nullptr, nullptr, true);
+#endif
     runtime::js::JSRuntimeExternalParams params;
     // These contexts have no page and must not update page instrumentation.
     params.runtime_id = tasm::PageOptions::kUnknownInstanceID;
@@ -123,10 +131,12 @@ class DomainRuntime final {
         reinterpret_cast<uintptr_t>(runtime->getSharedContext().get());
     runtime::js::Scope scope(*runtime);
     runtime::js::JSINativeExceptionCollector::Scope exceptions;
-    auto json = runtime->global().getPropertyAsObject(*runtime, "JSON");
-    if (!json) return FailedCall();
-    stringify_ = json->getPropertyAsFunction(*runtime, "stringify");
-    if (!stringify_) return FailedCall();
+    auto json_value = runtime->global().getProperty(*runtime, "JSON");
+    if (!json_value || !json_value->isObject()) return FailedCall();
+    auto json = json_value->getObject(*runtime);
+    auto stringify = json.getPropertyAsFunction(*runtime, "stringify");
+    if (!stringify) return FailedCall();
+    stringify_.emplace(std::move(*stringify));
     thread_bindings_ = HostScriptThreadBindings::Create(
         *runtime, runner_,
         [lifetime = lifetime_](Domain domain, std::string source,
@@ -207,7 +217,11 @@ class DomainRuntime final {
 
   Result identity_;
   const fml::RefPtr<fml::TaskRunner> runner_;
+#if defined(OS_ANDROID)
+  HostScriptExecutor executor_{nullptr, nullptr};
+#else
   std::unique_ptr<runtime::js::JSExecutor> executor_;
+#endif
   std::shared_ptr<HostScriptThreadBindings> thread_bindings_;
   std::unique_ptr<ProcessRuntime::RuntimeBindings> bindings_;
   const std::shared_ptr<std::atomic<ProcessState>> lifetime_;

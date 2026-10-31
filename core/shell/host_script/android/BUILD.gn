@@ -9,8 +9,10 @@ lynx_core_source_set("host_script_runtime_headers") {
   sources = [
     "../../../base/lynx_export.h",
     "../../../base/memory/unsafe_owning_ptr.h",
+    "../runtime/platform/android/host_script_runtime_callbacks.h",
+    "../runtime/platform/android/host_script_task_runners.h",
+    "../runtime/platform/android/process_runtime_android.h",
     "../runtime/process_runtime.h",
-    "runtime/process_runtime_android.h",
   ]
   public_deps = [
     "../../../../base/src:base_log_headers",
@@ -25,48 +27,65 @@ lynx_core_source_set("host_script_init") {
   sources = [ "runtime/process_runtime_init_android.h" ]
   public_deps = [ ":host_script_runtime_headers" ]
 
-  # Regular libraries and standalone test/SSR binaries keep empty entry points.
-  if (!is_android || !lynx_in_debug || !enable_napi_binding ||
-      enable_unittests || is_oliver_ssr) {
-    sources += [ "runtime/process_runtime_init_android_stub.cc" ]
+  # Non-Android and test/SSR binaries keep empty entry points.
+  if (!is_android || enable_unittests || is_oliver_ssr) {
+    sources +=
+        [ "../runtime/platform/android/process_runtime_init_android_stub.cc" ]
   }
 }
 
-if (is_android && is_debug && enable_napi_binding) {
-  lynx_core_source_set("host_script_android") {
-    sources = [
-      "lynx_view/host_script_lynx_view_binding_android.cc",
-      "runtime/host_script_android_session.h",
-      "runtime/host_script_runtime_binding_android.cc",
-    ]
-    deps = [
-      "../../../base:base",
-      "../runtime:host_script",
-    ]
-  }
-}
-
-# Compile the process runtime only into the engine debugMode library flavor,
-# including optimized liblynx_debug.so builds.
-if (is_android && lynx_in_debug && enable_napi_binding) {
+# Keep only the engine-side callback and event-capture bridge in Lynx.
+if (is_android) {
   lynx_core_source_set("process_runtime_android") {
     sources = [
-      "lynx_view/host_script_view_hooks_android.cc",
-      "lynx_view/host_script_view_hooks_android.h",
-      "runtime/process_runtime_android.cc",
-      "runtime/process_runtime_android.h",
+      "../runtime/platform/android/host_script_runtime_bridge_android.cc",
+      "../runtime/platform/android/process_runtime_android.h",
     ]
     deps = [
       ":host_script_init",
       "../../../base:base",
-      "../../../runtime/lepus:lepus",
-      "../runtime:host_script",
-      "../runtime:interceptor_bindings",
+      "../../../runtime/js:js",
+      "../runtime:interceptor_core",
       "../runtime:jsb_interceptor",
-      "../runtime:process_runtime",
     ]
     if (!enable_unittests && !is_oliver_ssr) {
-      sources += [ "runtime/process_runtime_init_android.cc" ]
+      sources +=
+          [ "../runtime/platform/android/process_runtime_init_android.cc" ]
     }
+  }
+}
+
+# Optional module: runtime implementations live here; engine singletons stay shared.
+if (is_android && enable_napi_binding && !enable_unittests && !is_oliver_ssr) {
+  lynx_core_source_set("host_script_standalone") {
+    sources = [
+      "../../../../devtool/lynx_devtool/agent/android/global_devtool_hsr_android.cc",
+      "../../../../third_party/binding/napi/callback_helper.cc",
+      "../lynx_view/lynx_view_ref_proxy.h",
+      "../lynx_view/lynx_view_ref_types.h",
+      "../runtime/host_script_interceptor.cc",
+      "../runtime/host_script_interceptor_bindings.cc",
+      "../runtime/host_script_js_dispatcher.cc",
+      "../runtime/host_script_module.cc",
+      "../runtime/host_script_session.cc",
+      "../runtime/host_script_thread_bindings.cc",
+      "../runtime/platform/android/host_script_jni_android.cc",
+      "../runtime/platform/android/host_script_lynx_view_binding_android.cc",
+      "../runtime/platform/android/host_script_runtime_binding_android.cc",
+      "../runtime/platform/android/host_script_view_hooks_android.cc",
+      "../runtime/platform/android/host_script_view_hooks_android.h",
+      "../runtime/platform/android/process_runtime_android.cc",
+      "../runtime/process_runtime.cc",
+    ]
+
+    # This same-version module consumes engine-private headers, while its
+    # cmake_target links the engine shared target rather than its source sets.
+    check_includes = false
+    deps = [
+      ":host_script_runtime_headers",
+      "../../../../base/src:base_log_headers",
+      "../../../../third_party/jsoncpp:jsoncpp",
+      "../../../../third_party/rapidjson:rapidjson",
+    ]
   }
 }

@@ -10,6 +10,17 @@ lynx_core_source_set("host_script_domain") {
   sources = [ "host_script_domain.h" ]
 }
 
+lynx_core_source_set("interceptor_core") {
+  sources = [
+    "interceptor.cc",
+    "interceptor.h",
+  ]
+  public_deps = [
+    ":host_script_domain",
+    "../../../../base/src:base_values",
+  ]
+}
+
 lynx_core_source_set("host_script") {
   sources = [
     "../lynx_view/lynx_view_ref_proxy.h",
@@ -22,12 +33,10 @@ lynx_core_source_set("host_script") {
     "host_script_module.h",
     "host_script_session.cc",
     "host_script_session.h",
-    "interceptor.cc",
-    "interceptor.h",
   ]
 
   public_deps = [
-    ":host_script_domain",
+    ":interceptor_core",
     "../../../../base/src:base_values",
   ]
   deps = [
@@ -46,7 +55,7 @@ lynx_core_source_set("jsb_interceptor") {
     "host_script_value_snapshot.h",
   ]
   deps = [
-    ":host_script",
+    ":interceptor_core",
     "../../../runtime/js:js",
     "../../../runtime/js/jsi",
     "../../../value_wrapper:value_wrapper",

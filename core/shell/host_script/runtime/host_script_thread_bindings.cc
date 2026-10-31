@@ -34,6 +34,31 @@ constexpr char kInvokeSynchronous[] = R"JS(((Error, String) => function(fn) {
 bool IsFunction(Runtime& runtime, const Value& value) {
   return value.isObject() && value.getObject(runtime).isFunction(runtime);
 }
+
+std::optional<Object> GetObjectProperty(Runtime& runtime, const Object& object,
+                                        const char* name) {
+  auto value = object.getProperty(runtime, name);
+  if (!value || !value->isObject()) return std::nullopt;
+  return value->getObject(runtime);
+}
+
+template <typename T>
+void ReplaceOptional(std::optional<T>& target, std::optional<T> value) {
+  target.reset();
+  if (value) target.emplace(std::move(*value));
+}
+
+runtime::js::JSINativeException BindingException(const char* message,
+                                                 const char* function,
+                                                 const char* file, int line) {
+  // Keep the generated bindings-error value without requiring its data symbol.
+  constexpr int32_t kBindingsError = 20103;
+  return runtime::js::JSINativeException("NativeError", message,
+                                         std::string("at ") + function + "(" +
+                                             file + ": " +
+                                             std::to_string(line) + ")",
+                                         false, kBindingsError);
+}
 }  // namespace
 
 std::shared_ptr<HostScriptThreadBindings> HostScriptThreadBindings::Create(
@@ -53,29 +78,35 @@ bool HostScriptThreadBindings::Install(const std::string& domain) {
   if (domain != "bts" && domain != "mts" && domain != "ui") return false;
   if (attached_ || !executor_ || !runner_->RunsTasksOnCurrentThread())
     return false;
-  promise_ = runtime_.global().getPropertyAsFunction(runtime_, "Promise");
-  error_ = runtime_.global().getPropertyAsFunction(runtime_, "Error");
-  auto object = runtime_.global().getPropertyAsObject(runtime_, "Object");
-  auto json = runtime_.global().getPropertyAsObject(runtime_, "JSON");
+  ReplaceOptional(promise_,
+                  runtime_.global().getPropertyAsFunction(runtime_, "Promise"));
+  ReplaceOptional(error_,
+                  runtime_.global().getPropertyAsFunction(runtime_, "Error"));
+  auto object = GetObjectProperty(runtime_, runtime_.global(), "Object");
+  auto json = GetObjectProperty(runtime_, runtime_.global(), "JSON");
   if (!promise_ || !error_ || !object || !json) return false;
-  parse_json_ = json->getPropertyAsFunction(runtime_, "parse");
+  ReplaceOptional(parse_json_, json->getPropertyAsFunction(runtime_, "parse"));
   if (!parse_json_) return false;
-  define_property_ = object->getPropertyAsFunction(runtime_, "defineProperty");
-  create_object_ = object->getPropertyAsFunction(runtime_, "create");
-  get_prototype_ = object->getPropertyAsFunction(runtime_, "getPrototypeOf");
-  auto function = runtime_.global().getPropertyAsObject(runtime_, "Function");
+  ReplaceOptional(define_property_,
+                  object->getPropertyAsFunction(runtime_, "defineProperty"));
+  ReplaceOptional(create_object_,
+                  object->getPropertyAsFunction(runtime_, "create"));
+  ReplaceOptional(get_prototype_,
+                  object->getPropertyAsFunction(runtime_, "getPrototypeOf"));
+  auto function = GetObjectProperty(runtime_, runtime_.global(), "Function");
   if (!define_property_ || !create_object_ || !get_prototype_ || !function)
     return false;
-  function_prototype_ = function->getPropertyAsObject(runtime_, "prototype");
+  ReplaceOptional(function_prototype_,
+                  GetObjectProperty(runtime_, *function, "prototype"));
   if (!function_prototype_) return false;
-  function_source_ =
-      function_prototype_->getPropertyAsFunction(runtime_, "toString");
+  ReplaceOptional(function_source_, function_prototype_->getPropertyAsFunction(
+                                        runtime_, "toString"));
   if (!function_source_) return false;
   auto invoke = runtime_.evaluateJavaScript(
       std::make_shared<runtime::js::StringBuffer>(kInvokeSynchronous),
       "host-script://synchronous-function");
   if (!invoke.has_value() || !IsFunction(runtime_, *invoke)) return false;
-  invoke_sync_ = invoke->getObject(runtime_).getFunction(runtime_);
+  invoke_sync_.emplace(invoke->getObject(runtime_).getFunction(runtime_));
 
   Object target(runtime_);
   if (!DefineProperty(target, "thread",
@@ -93,8 +124,9 @@ bool HostScriptThreadBindings::Install(const std::string& domain) {
             size_t count) -> CallResult {
           auto self = weak.lock();
           if (!self || !self->attached_) {
-            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-                "The Host Script runtime was detached"));
+            return base::unexpected(
+                BindingException("The Host Script runtime was detached",
+                                 __FUNCTION__, __FILE__, __LINE__));
           }
           return self->Run(domain, args, count);
         });
@@ -145,19 +177,22 @@ HostScriptThreadBindings::CallResult HostScriptThreadBindings::Run(
         if (found == self->pending_.end()) return Value::undefined();
         if (count != 2 || !IsFunction(runtime, args[0]) ||
             !IsFunction(runtime, args[1]) || found->second.resolve) {
-          return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
-              "Invalid Host Script Promise executor"));
+          return base::unexpected(
+              BindingException("Invalid Host Script Promise executor",
+                               __FUNCTION__, __FILE__, __LINE__));
         }
-        found->second.resolve = args[0].getObject(runtime).getFunction(runtime);
-        found->second.reject = args[1].getObject(runtime).getFunction(runtime);
+        found->second.resolve.emplace(
+            args[0].getObject(runtime).getFunction(runtime));
+        found->second.reject.emplace(
+            args[1].getObject(runtime).getFunction(runtime));
         return Value::undefined();
       });
   auto promise = promise_->callAsConstructor(runtime_, std::move(executor));
   auto found = pending_.find(request);
   if (!promise || found == pending_.end() || !found->second.resolve) {
     pending_.erase(request);
-    return base::unexpected(
-        BUILD_JSI_NATIVE_EXCEPTION("Cannot create Host Script Promise"));
+    return base::unexpected(BindingException(
+        "Cannot create Host Script Promise", __FUNCTION__, __FILE__, __LINE__));
   }
   auto reject = [&](const char* message,
                     const char* code = "INVALID_ARGUMENT") -> CallResult {
