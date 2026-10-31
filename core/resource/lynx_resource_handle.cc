@@ -4,11 +4,20 @@
 
 #include "core/resource/lynx_resource_handle.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+
 #include <cctype>
-#include <fstream>
+#include <cerrno>
 #include <limits>
 #include <string>
 #include <utility>
+
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "base/include/log/logging.h"
 
@@ -16,6 +25,18 @@ namespace lynx {
 namespace pub {
 
 namespace {
+
+struct FileDescriptor {
+  int value;
+  ~FileDescriptor() {
+    if (value < 0) return;
+#ifdef _WIN32
+    _close(value);
+#else
+    close(value);
+#endif
+  }
+};
 
 bool IsAbsoluteFilePath(const std::string& path) {
 #ifdef _WIN32
@@ -29,17 +50,37 @@ bool IsAbsoluteFilePath(const std::string& path) {
 }
 
 LynxResourceHandle::DataResult ReadFile(const std::string& file_path) {
-  std::ifstream input(file_path, std::ios::binary | std::ios::ate);
-  if (!input.is_open()) {
+  int fd;
+  do {
+#ifdef _WIN32
+    fd = _open(file_path.c_str(), _O_RDONLY | _O_BINARY);
+#else
+    fd = open(file_path.c_str(), O_RDONLY);
+#endif
+  } while (fd < 0 && errno == EINTR);
+  const FileDescriptor input{fd};
+  if (fd < 0) {
     LOGE(
         "[ResourceHandle] Materialize failure_stage=file_open, "
         "failure_reason=open_failed");
     return base::unexpected<std::string>("Failed to open resource file");
   }
 
-  const std::streampos end = input.tellg();
-  if (end < 0 ||
-      static_cast<uint64_t>(end) >
+#ifdef _WIN32
+  struct _stat64 status;
+#else
+  struct stat status;
+#endif
+  int stat_result;
+  do {
+#ifdef _WIN32
+    stat_result = _fstat64(fd, &status);
+#else
+    stat_result = fstat(fd, &status);
+#endif
+  } while (stat_result < 0 && errno == EINTR);
+  if (stat_result < 0 || status.st_size < 0 ||
+      static_cast<uint64_t>(status.st_size) >
           static_cast<uint64_t>(std::numeric_limits<int32_t>::max())) {
     LOGE(
         "[ResourceHandle] Materialize failure_stage=size_validation, "
@@ -47,16 +88,21 @@ LynxResourceHandle::DataResult ReadFile(const std::string& file_path) {
     return base::unexpected<std::string>("Resource file has an invalid size");
   }
 
-  const auto size = static_cast<size_t>(end);
+  const auto size = static_cast<size_t>(status.st_size);
   std::vector<uint8_t> bytes;
   bytes.reserve(size);
-  input.seekg(0, std::ios::beg);
   uint8_t buffer[64 * 1024];
   while (bytes.size() < size) {
     const auto remaining = size - bytes.size();
-    const auto count = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
-    input.read(reinterpret_cast<char*>(buffer), count);
-    if (!input) {
+    const auto requested =
+        remaining < sizeof(buffer) ? remaining : sizeof(buffer);
+#ifdef _WIN32
+    const auto count = _read(fd, buffer, static_cast<unsigned int>(requested));
+#else
+    const auto count = read(fd, buffer, requested);
+#endif
+    if (count < 0 && errno == EINTR) continue;
+    if (count <= 0) {
       LOGE(
           "[ResourceHandle] Materialize failure_stage=file_read, "
           "failure_reason=read_failed");
