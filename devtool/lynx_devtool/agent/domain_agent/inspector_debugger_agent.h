@@ -8,7 +8,6 @@
 #include <unordered_map>
 
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
-#include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 namespace lynx {
@@ -20,12 +19,12 @@ class InspectorDebuggerAgent : public CDPDomainAgentBase {
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   ~InspectorDebuggerAgent() override = default;
 
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
-  typedef void (InspectorDebuggerAgent::*DebuggerAgentMethod)(
-      const Json::Value& message);
+  using DebuggerAgentMethod =
+      void (InspectorDebuggerAgent::*)(const Json::Value& message);
 
   void Enable(const Json::Value& message);
 

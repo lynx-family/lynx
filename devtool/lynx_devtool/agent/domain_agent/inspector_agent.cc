@@ -4,6 +4,9 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_agent.h"
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
+
 namespace lynx {
 namespace devtool {
 
@@ -14,27 +17,30 @@ InspectorAgent::InspectorAgent(
   functions_map_["Inspector.detached"] = &InspectorAgent::Detached;
 }
 
-InspectorAgent::~InspectorAgent() = default;
-
-void InspectorAgent::Enable(const std::shared_ptr<MessageSender>& sender,
-                            const Json::Value& message) {
-  devtool_mediator_->InspectorEnable(sender, message);
+void InspectorAgent::Enable(const std::shared_ptr<CDPResponder>& responder,
+                            const Json::Value&) {
+  responder->SendSuccess();
 }
 
-void InspectorAgent::Detached(const std::shared_ptr<MessageSender>& sender,
-                              const Json::Value& message) {
-  devtool_mediator_->InspectorDetached(sender, message);
+void InspectorAgent::Detached(const std::shared_ptr<CDPResponder>& responder,
+                              const Json::Value&) {
+  Json::Value event(Json::objectValue);
+  event["method"] = "Inspector.detached";
+  event["params"]["reason"] = "";
+  devtool_mediator_->SendCDPEvent(event);
+  responder->SendSuccess();
 }
 
-void InspectorAgent::CallMethod(const std::shared_ptr<MessageSender>& sender,
+void InspectorAgent::CallMethod(const std::shared_ptr<CDPResponder>& responder,
                                 const Json::Value& message) {
-  std::string method = message["method"].asString();
+  const std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
-  } else {
-    (this->*(iter->second))(sender, message);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
+    return;
   }
+  (this->*(iter->second))(responder, message["params"]);
 }
 }  // namespace devtool
 }  // namespace lynx

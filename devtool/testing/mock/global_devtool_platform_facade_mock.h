@@ -46,6 +46,11 @@ class GlobalDevToolPlatformFacadeMock
     return request;
   }
 
+  static lynx::trace::TraceController*& TraceControllerForTesting() {
+    static lynx::trace::TraceController* controller = nullptr;
+    return controller;
+  }
+
   void StartMemoryTracing() override {}
   void StopMemoryTracing() override {}
   void GetAllMemoryUsage(
@@ -71,7 +76,7 @@ class GlobalDevToolPlatformFacadeMock
     }
   }
   lynx::trace::TraceController* GetTraceController() override {
-    return nullptr;
+    return TraceControllerForTesting();
   }
   lynx::trace::TracePlugin* GetFPSTracePlugin() override { return nullptr; }
   lynx::trace::TracePlugin* GetFrameViewTracePlugin() override {

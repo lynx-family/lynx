@@ -83,6 +83,33 @@ std::string TrimConditionText(const std::string& text) {
   return text.substr(start, end - start + 1);
 }
 
+bool ReadNodeIdParam(const Json::Value& params, int& node_id) {
+  return ReadIntParam(params["nodeId"], node_id) && node_id >= 0;
+}
+
+bool ReadStyleSheetId(const Json::Value& value, std::string& style_sheet_id,
+                      int& node_id) {
+  if (!ReadStringParam(value, style_sheet_id) || style_sheet_id.empty()) {
+    return false;
+  }
+  const auto dot = style_sheet_id.find('.');
+  const auto suffix = dot == std::string::npos ? style_sheet_id
+                                               : style_sheet_id.substr(dot + 1);
+  return ReadIntStringParam(Json::Value(suffix), node_id) && node_id >= 0;
+}
+
+bool ReadCSSRange(const Json::Value& value, Range& range) {
+  return value.isObject() &&
+         ReadIntParam(value["startLine"], range.start_line_) &&
+         ReadIntParam(value["startColumn"], range.start_column_) &&
+         ReadIntParam(value["endLine"], range.end_line_) &&
+         ReadIntParam(value["endColumn"], range.end_column_) &&
+         range.start_line_ >= 0 && range.start_column_ >= 0 &&
+         range.end_line_ >= range.start_line_ && range.end_column_ >= 0 &&
+         (range.end_line_ > range.start_line_ ||
+          range.end_column_ >= range.start_column_);
+}
+
 std::string NormalizeConditionTextForParser(const std::string& text,
                                             const std::string& at_rule) {
   std::string normalized = TrimConditionText(text);
@@ -100,23 +127,24 @@ struct ConditionTextEditRequest {
 };
 
 ConditionTextEditRequest ParseConditionTextEditRequest(
-    const Json::Value& message, const std::string& at_rule) {
-  const Json::Value& params = message["params"];
-  const Json::Value range =
-      params.get("range", Json::Value(Json::ValueType::objectValue));
-  return {params["styleSheetId"].asString(), range["startLine"].asInt(),
+    const Json::Value& params, const std::string& at_rule) {
+  int condition_index = -1;
+  if (!params.isObject() || !params["styleSheetId"].isString() ||
+      !params["text"].isString() || !params["range"].isObject() ||
+      !ReadIntParam(params["range"]["startLine"], condition_index)) {
+    return {};
+  }
+  return {params["styleSheetId"].asString(), condition_index,
           NormalizeConditionTextForParser(params["text"].asString(), at_rule),
-          range.isObject() && range.isMember("startLine")};
+          true};
 }
 
-void SendConditionTextEditResult(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message, const char* result_key,
-    const Json::Value& condition) {
-  Json::Value response(Json::ValueType::objectValue);
-  response["result"][result_key] = condition;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+void SendConditionTextEditResult(const std::shared_ptr<CDPResponder>& responder,
+                                 const char* result_key,
+                                 Json::Value condition) {
+  Json::Value result(Json::ValueType::objectValue);
+  result[result_key] = std::move(condition);
+  responder->SendSuccess(std::move(result));
 }
 
 // TTSS source ranges are not available after binary decoding. DevTool uses this
@@ -2210,13 +2238,8 @@ void InspectorTasmExecutor::SetLastGlobalPropsTimestamp(uint64_t timestamp) {
 
 // Enable CSS debugging, get all style sheet of current page
 void InspectorTasmExecutor::CSS_Enable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  responder->SendSuccess();
 
   // then send styleSheetAdded event
   std::vector<Element*> style_values;
@@ -2232,238 +2255,240 @@ void InspectorTasmExecutor::CSS_Enable(
 
 // This protocol has not been implemented yet
 void InspectorTasmExecutor::CSS_Disable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::GetMatchedStylesForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr && !ptr->IsDetached()) {
-    content = ElementHelper::GetMatchedStylesForNode(ptr);
-  } else {
-    Json::Value error = Json::Value(Json::ValueType::objectValue);
-    error["code"] = Json::Value(-32000);
-    error["message"] = Json::Value("Node is not an Element");
-    content["error"] = error;
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!params.isObject() || !ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  Element* ptr = GetElementById(node_id);
+  if (!ptr || ptr->IsDetached() || !ElementInspector::HasDataModel(ptr)) {
+    responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+    return;
+  }
+  responder->SendSuccess(ElementHelper::GetMatchedStylesForNode(ptr));
 }
 
 void InspectorTasmExecutor::GetLayersForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  response["id"] = message["id"].asInt64();
-
-  const Json::Value& params = message["params"];
-  if (!params.isObject() || !params.isMember("nodeId") ||
-      (!params["nodeId"].isInt() && !params["nodeId"].isUInt())) {
-    response["error"]["code"] = kInvalidParams;
-    response["error"]["message"] =
-        "CSS.getLayersForNode requires a numeric nodeId parameter.";
-    sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!params.isObject() || !ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
     return;
   }
 
-  Element* ptr = GetElementById(params["nodeId"].asInt());
+  Element* ptr = GetElementById(node_id);
   if (ptr == nullptr || ptr->IsDetached()) {
-    response["error"]["code"] = kServerError;
-    response["error"]["message"] = "Node is not an Element";
-    sender->SendMessage("CDP", response);
+    responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
     return;
   }
 
-  response["result"] = ElementHelper::GetLayersForNode(ptr);
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(ElementHelper::GetLayersForNode(ptr));
 }
 
 void InspectorTasmExecutor::GetComputedStyleForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!params.isObject() || !ReadIntParam(params["nodeId"], node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be an integer");
+    return;
+  }
   Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr && !ptr->IsDetached()) {
-    ComputedStyleMap dict = BuildComputedStyleMap(ptr);
-    if (ElementInspector::HasDataModel(ptr)) {
-      auto* element_manager = ptr->element_manager();
-      if (element_manager != nullptr) {
-        const float layouts_unit_per_px =
-            element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
-        dict["font-size"] = lynx::tasm::CSSDecoder::ToPxValue(
-            ptr->GetFontSize() / layouts_unit_per_px);
-        InspectorBoxModelQuery query;
-        if (BuildBoxModelQuery(ptr, query)) {
-          response["id"] = message["id"].asInt64();
-          auto devtool_mediator = devtool_mediator_wp_.lock();
-          if (devtool_mediator) {
-            devtool_mediator->GetBoxModel(
-                query, [sender, self = shared_from_this(), devtool_mediator,
-                        response, dict = std::move(dict), layouts_unit_per_px](
-                           std::vector<double> box_info) mutable {
-                  Json::Value content(Json::ValueType::objectValue);
-                  ApplyBoxModelToComputedStyle(dict, box_info,
-                                               layouts_unit_per_px);
-                  content["computedStyle"] = ConvertComputedStyleToJson(dict);
-                  devtool_mediator->RunOnDevToolThread(
-                      [sender, self = std::move(self), response,
-                       content = std::move(content)]() mutable {
-                        response["result"] = content;
-                        sender->SendMessage("CDP", response);
-                      },
-                      true);
-                });
-            return;
-          }
+  if (node_id < 0) {
+    responder->SendSuccess(std::move(content));
+    return;
+  }
+  Element* ptr = GetElementById(node_id);
+  if (!ptr || ptr->IsDetached()) {
+    responder->SendSuccess(std::move(content));
+    return;
+  }
+  ComputedStyleMap dict = BuildComputedStyleMap(ptr);
+  if (ElementInspector::HasDataModel(ptr)) {
+    auto* element_manager = ptr->element_manager();
+    if (element_manager != nullptr) {
+      const float layouts_unit_per_px =
+          element_manager->GetLynxEnvConfig().LayoutsUnitPerPx();
+      dict["font-size"] = lynx::tasm::CSSDecoder::ToPxValue(
+          ptr->GetFontSize() / layouts_unit_per_px);
+      InspectorBoxModelQuery query;
+      if (BuildBoxModelQuery(ptr, query)) {
+        auto devtool_mediator = devtool_mediator_wp_.lock();
+        if (devtool_mediator) {
+          devtool_mediator->GetBoxModel(
+              query, [responder, self = shared_from_this(), devtool_mediator,
+                      dict = std::move(dict), layouts_unit_per_px](
+                         std::vector<double> box_info) mutable {
+                Json::Value content(Json::ValueType::objectValue);
+                ApplyBoxModelToComputedStyle(dict, box_info,
+                                             layouts_unit_per_px);
+                content["computedStyle"] = ConvertComputedStyleToJson(dict);
+                if (!devtool_mediator->RunOnDevToolThread(
+                        [responder, self = std::move(self),
+                         content = std::move(content)]() mutable {
+                          responder->SendSuccess(std::move(content));
+                        },
+                        true)) {
+                  responder->SendError(CDPErrorCode::ServerError,
+                                       "DevTool thread is unavailable");
+                }
+              });
+          return;
         }
       }
     }
-    content["computedStyle"] = ConvertComputedStyleToJson(dict);
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  content["computedStyle"] = ConvertComputedStyleToJson(dict);
+  responder->SendSuccess(std::move(content));
 }
 
 void InspectorTasmExecutor::GetInlineStylesForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr && !ptr->IsDetached()) {
-    content["inlineStyle"] = ElementHelper::GetInlineStyleOfNode(ptr);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!params.isObject() || !ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  Json::Value content(Json::ValueType::objectValue);
+  Element* ptr = GetElementById(node_id);
+  if (!ptr || ptr->IsDetached()) {
+    responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+    return;
+  }
+  content["inlineStyle"] = ElementHelper::GetInlineStyleOfNode(ptr);
+  responder->SendSuccess(std::move(content));
 }
 
 void InspectorTasmExecutor::SetStyleTexts(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  Json::Value edits =
-      params.get("edits", Json::Value(Json::ValueType::arrayValue));
-  for (const Json::Value& edit : edits) {
-    std::string style_sheet_id = edit["styleSheetId"].asString();
-    int index =
-        atoi(style_sheet_id.substr(style_sheet_id.find('.') + 1).c_str());
-    Json::Value range_json =
-        edit.get("range", Json::Value(Json::ValueType::objectValue));
-    Range range;
-    range.start_line_ = range_json["startLine"].asInt();
-    range.start_column_ = range_json["startColumn"].asInt();
-    range.end_line_ = range_json["endLine"].asInt();
-    range.end_column_ = range_json["endColumn"].asInt();
-    std::string text = edit["text"].asString();
-    Element* ptr = GetElementById(static_cast<int>(index));
-    if (ptr != nullptr) {
-      ElementHelper::SetStyleTexts(element_root_, ptr, text, range);
-      content =
-          ElementHelper::GetStyleSheetAsTextOfNode(ptr, style_sheet_id, range);
-      std::string res = content.toStyledString();
-      Json::Value msg(Json::ValueType::objectValue);
-      if (ElementInspector::Type(ptr) != InspectorElementType::STYLEVALUE ||
-          ElementInspector::Type(ptr) != InspectorElementType::DOCUMENT) {
-        int nodeid =
-            atoi(style_sheet_id.substr(style_sheet_id.find('.') + 1).c_str());
-        SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_MODIFIED, nodeid, "style", -1);
-      }
-      SendCSSEventMsg(CssCdpEvent::STYLE_SHEET_CHANGED, style_sheet_id, ptr);
-    }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.isObject() || !params["edits"].isArray()) {
+    responder->SendError(CDPErrorCode::InvalidParams, "edits must be an array");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  struct StyleEdit {
+    std::string style_sheet_id;
+    int node_id = 0;
+    Range range;
+    std::string text;
+    Element* element = nullptr;
+  };
+  // Validate the entire batch before changing styles or emitting events.
+  std::vector<StyleEdit> edits;
+  for (const auto& value : params["edits"]) {
+    StyleEdit edit;
+    if (!value.isObject() ||
+        !ReadStyleSheetId(value["styleSheetId"], edit.style_sheet_id,
+                          edit.node_id) ||
+        !ReadCSSRange(value["range"], edit.range) ||
+        !ReadStringParam(value["text"], edit.text)) {
+      responder->SendError(CDPErrorCode::InvalidParams, "Invalid style edit");
+      return;
+    }
+    edit.element = GetElementById(edit.node_id);
+    if (!edit.element) {
+      responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+      return;
+    }
+    edits.push_back(std::move(edit));
+  }
+  Json::Value content(Json::ValueType::objectValue);
+  for (const auto& edit : edits) {
+    ElementHelper::SetStyleTexts(element_root_, edit.element, edit.text,
+                                 edit.range);
+    content = ElementHelper::GetStyleSheetAsTextOfNode(
+        edit.element, edit.style_sheet_id, edit.range);
+    if (ElementInspector::Type(edit.element) !=
+            InspectorElementType::STYLEVALUE ||
+        ElementInspector::Type(edit.element) !=
+            InspectorElementType::DOCUMENT) {
+      SendDOMEventMsg(DomCdpEvent::ATTRIBUTE_MODIFIED, edit.node_id, "style",
+                      -1);
+    }
+    SendCSSEventMsg(CssCdpEvent::STYLE_SHEET_CHANGED, edit.style_sheet_id,
+                    edit.element);
+  }
+  responder->SendSuccess(std::move(content));
 }
 
 // Get the content of the specified style sheet ( Unsure of usage scenario)
 void InspectorTasmExecutor::GetStyleSheetText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  std::string style_sheet_id = params["styleSheetId"].asString();
-  int index = atoi(style_sheet_id.substr(style_sheet_id.find('.') + 1).c_str());
-  Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr) {
-    content = ElementHelper::GetStyleSheetText(ptr, style_sheet_id);
-  } else {
-    Json::Value error = Json::Value(Json::ValueType::objectValue);
-    error["code"] = Json::Value(-32000);
-    error["message"] = Json::Value("Node is not an Element");
-    content["error"] = error;
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  std::string style_sheet_id;
+  int node_id = 0;
+  if (!params.isObject() ||
+      !ReadStyleSheetId(params["styleSheetId"], style_sheet_id, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams, "Invalid styleSheetId");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  Element* ptr = GetElementById(node_id);
+  if (!ptr) {
+    responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+    return;
+  }
+  responder->SendSuccess(ElementHelper::GetStyleSheetText(ptr, style_sheet_id));
 }
 
 // Get info of the specified node, Unsure of usage scenario
 void InspectorTasmExecutor::GetBackgroundColors(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  Element* ptr = GetElementById(static_cast<int>(index));
-  if (ptr != nullptr && !ptr->IsDetached()) {
-    content = ElementHelper::GetBackGroundColorsOfNode(ptr);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!params.isObject() || !ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  Element* ptr = GetElementById(node_id);
+  if (!ptr || ptr->IsDetached() || !ElementInspector::HasDataModel(ptr)) {
+    responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+    return;
+  }
+  responder->SendSuccess(ElementHelper::GetBackGroundColorsOfNode(ptr));
 }
 
 void InspectorTasmExecutor::SetStyleSheetText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  std::string style_sheet_id;
+  int node_id = 0;
+  if (!params.isObject() || !params["text"].isString() ||
+      !ReadStyleSheetId(params["styleSheetId"], style_sheet_id, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid styleSheetId or text");
+    return;
+  }
+  // Preserve the existing acknowledgement-only behavior.
   Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  std::string style_sheet_id = params["styleSheetId"].asString();
   content["sourceMapURL"] = "";
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(content));
 }
 
 // Create a style sheet (not sure where to use it)
 void InspectorTasmExecutor::CreateStyleSheet(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.isNull() &&
+      (!params.isObject() ||
+       (params.isMember("frameId") && !params["frameId"].isString()))) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "frameId must be a string when provided");
+    return;
+  }
   auto devtool_mediator = devtool_mediator_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN(devtool_mediator, "devtool_mediator is null");
-  Json::Value response(Json::ValueType::objectValue);
+  if (!devtool_mediator || !element_root_) {
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
+    return;
+  }
   Json::Value content(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
   Json::Value header = ElementHelper::CreateStyleSheet(element_root_);
   content["styleSheetId"] = header["styleSheetId"];
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(content));
 
   // then send styleSheetAdded event
   Json::Value msg(Json::ValueType::objectValue);
@@ -2475,24 +2500,30 @@ void InspectorTasmExecutor::CreateStyleSheet(
 // Add a CSS rule (such as a class) to the specified style sheet (not sure where
 // to use it)
 void InspectorTasmExecutor::AddRule(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value params = message["params"];
-  std::string style_sheet_id = params["styleSheetId"].asString();
-  std::string rule_text = params["ruleText"].asString();
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  std::string style_sheet_id;
+  std::string rule_text;
+  int node_id = 0;
   Range range;
-  range.start_line_ = params["location"]["startLine"].asInt();
-  range.start_column_ = params["location"]["startColumn"].asInt();
-  range.end_line_ = params["location"]["endLine"].asInt();
-  range.end_column_ = params["location"]["endColumn"].asInt();
-  int index = atoi(style_sheet_id.substr(style_sheet_id.find('.') + 1).c_str());
-  Element* ptr = GetElementById(index);
-  response["result"] =
-      ElementHelper::AddRule(ptr, style_sheet_id, rule_text, range);
-
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  if (!params.isObject() ||
+      !ReadStyleSheetId(params["styleSheetId"], style_sheet_id, node_id) ||
+      !ReadStringParam(params["ruleText"], rule_text) ||
+      !ReadCSSRange(params["location"], range)) {
+    responder->SendError(CDPErrorCode::InvalidParams, "Invalid rule edit");
+    return;
+  }
+  Element* ptr = GetElementById(node_id);
+  if (!ptr) {
+    responder->SendError(CDPErrorCode::ServerError, "Node is not an Element");
+    return;
+  }
+  auto result = ElementHelper::AddRule(ptr, style_sheet_id, rule_text, range);
+  if (result.isMember("error")) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         result["error"]["message"].asString());
+    return;
+  }
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::CollectDomTreeCssUsage(
@@ -2530,33 +2561,45 @@ void InspectorTasmExecutor::CollectDomTreeCssUsage(
 // CSS.startRuleUsageTracking/CSS.updateRuleUsageTracking/CSS.stopRuleUsageTracking
 // added for Perf (wangjiankang)
 void InspectorTasmExecutor::StartRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   rule_usage_tracking_ = true;
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::UpdateRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.isNull() &&
+      (!params.isObject() ||
+       (params.isMember("selector") && !params["selector"].isArray()))) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "selector must be an array of strings");
+    return;
+  }
+  const auto& selectors = params["selector"];
+  for (const auto& selector : selectors) {
+    if (!selector.isString()) {
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "selector must be an array of strings");
+      return;
+    }
+  }
   if (rule_usage_tracking_) {
-    Json::Value selectors(Json::ValueType::arrayValue);
-    selectors = message["params"]["selector"];
     for (const Json::Value& selector : selectors) {
       css_used_selector_.insert(selector.asString());
     }
   }
+  responder->SendSuccess();
 }
 
 void InspectorTasmExecutor::StopRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value res(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  if (!element_root_) {
+    css_used_selector_.clear();
+    rule_usage_tracking_ = false;
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
+    return;
+  }
+  Json::Value result(Json::ValueType::objectValue);
   Json::Value rule_usage(Json::ValueType::arrayValue);
 
   std::vector<Element*> elements;
@@ -2582,19 +2625,14 @@ void InspectorTasmExecutor::StopRuleUsageTracking(
     }
   }
 
-  res["ruleUsage"] = rule_usage;
-  response["result"] = res;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
-
+  result["ruleUsage"] = rule_usage;
   css_used_selector_.clear();
   rule_usage_tracking_ = false;
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::GetMediaQueries(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   Json::Value result(Json::ValueType::objectValue);
   Json::Value medias(Json::ValueType::arrayValue);
   std::unordered_set<const css::RuleSet*> visited_rule_sets;
@@ -2602,7 +2640,10 @@ void InspectorTasmExecutor::GetMediaQueries(
   std::unordered_map<std::string, int> media_indices;
 
   Element* root = element_root_;
-  CHECK_NULL_AND_LOG_RETURN(root, "root is null");
+  if (!root) {
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
+    return;
+  }
   std::queue<Element*> inspect_node_queue;
   inspect_node_queue.push(root);
   while (!inspect_node_queue.empty()) {
@@ -2652,22 +2693,23 @@ void InspectorTasmExecutor::GetMediaQueries(
   }
 
   result["medias"] = medias;
-  response["result"] = result;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::SetMediaText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   const ConditionTextEditRequest request =
-      ParseConditionTextEditRequest(message, "@media");
+      ParseConditionTextEditRequest(params, "@media");
 
   Element* root = element_root_;
-  if (!root || request.style_sheet_id.empty() || !request.has_valid_range ||
+  if (request.style_sheet_id.empty() || !request.has_valid_range ||
       request.condition_index < 0) {
-    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
-                              "Invalid media query location");
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid media query location");
+    return;
+  }
+  if (!root) {
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
     return;
   }
 
@@ -2676,8 +2718,7 @@ void InspectorTasmExecutor::SetMediaText(
       root, request.style_sheet_id, request.condition_index,
       &css::ConditionRule::HasStructuredMediaQuery);
   if (!target) {
-    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
-                              "Media rule not found");
+    responder->SendError(CDPErrorCode::ServerError, "Media rule not found");
     return;
   }
 
@@ -2694,27 +2735,30 @@ void InspectorTasmExecutor::SetMediaText(
 
   SendCSSEventMsg(CssCdpEvent::MEDIA_QUERY_RESULT_CHANGED, "", nullptr);
   SendStyleSheetChanged(this, request.style_sheet_id);
-  SendConditionTextEditResult(sender, message, "media", updated_media);
+  SendConditionTextEditResult(responder, "media", std::move(updated_media));
 }
 
 void InspectorTasmExecutor::SetSupportsText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   const ConditionTextEditRequest request =
-      ParseConditionTextEditRequest(message, "@supports");
+      ParseConditionTextEditRequest(params, "@supports");
 
   Element* root = element_root_;
-  if (!root || request.style_sheet_id.empty() || !request.has_valid_range ||
+  if (request.style_sheet_id.empty() || !request.has_valid_range ||
       request.condition_index < 0) {
-    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
-                              "Invalid supports rule location");
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid supports rule location");
+    return;
+  }
+  if (!root) {
+    responder->SendError(CDPErrorCode::ServerError, "CSS root is unavailable");
     return;
   }
 
   auto supports_condition = css::SupportsConditionParser::Parse(request.text);
   if (!supports_condition) {
-    sender->SendErrorResponse(message["id"].asInt64(), kInvalidParams,
-                              "Invalid supports condition");
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid supports condition");
     return;
   }
 
@@ -2722,8 +2766,7 @@ void InspectorTasmExecutor::SetSupportsText(
       root, request.style_sheet_id, request.condition_index,
       &css::ConditionRule::HasStructuredSupportsRules);
   if (!target) {
-    sender->SendErrorResponse(message["id"].asInt64(), kServerError,
-                              "Supports rule not found");
+    responder->SendError(CDPErrorCode::ServerError, "Supports rule not found");
     return;
   }
 
@@ -2747,7 +2790,8 @@ void InspectorTasmExecutor::SetSupportsText(
   RequestStyleResolveAfterConditionEdit(root);
 
   SendStyleSheetChanged(this, request.style_sheet_id);
-  SendConditionTextEditResult(sender, message, "supports", updated_supports);
+  SendConditionTextEditResult(responder, "supports",
+                              std::move(updated_supports));
 }
 
 // CSS protocol end
@@ -2843,60 +2887,60 @@ void InspectorTasmExecutor::HideHighlight(
 // Overlay protocol end
 
 void InspectorTasmExecutor::LynxGetProperties(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["properties"] = "";
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  auto* ptr = GetElementById(index);
-  if (ptr && ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
-    content["properties"] = ElementHelper::GetProperties(ptr);
-  } else {
-    content["properties"] = "";
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  Json::Value result(Json::ValueType::objectValue);
+  result["properties"] = "";
+  auto* ptr = GetElementById(node_id);
+  if (ptr && ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
+    result["properties"] = ElementHelper::GetProperties(ptr);
+  } else {
+    result["properties"] = "";
+  }
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::LynxGetData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["data"] = "";
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  auto* ptr = GetElementById(index);
-  if (ptr && ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
-    content["data"] = ElementHelper::GetData(ptr);
-  } else {
-    content["data"] = "";
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
+    return;
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  Json::Value result(Json::ValueType::objectValue);
+  result["data"] = "";
+  auto* ptr = GetElementById(node_id);
+  if (ptr && ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
+    result["data"] = ElementHelper::GetData(ptr);
+  } else {
+    result["data"] = "";
+  }
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorTasmExecutor::LynxGetComponentId(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["componentId"] = -1;
-  Json::Value params = message["params"];
-  size_t index = static_cast<size_t>(params["nodeId"].asInt64());
-  auto* ptr = GetElementById(index);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  int node_id = 0;
+  if (!ReadNodeIdParam(params, node_id)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "nodeId must be a non-negative integer");
+    return;
+  }
+  Json::Value result(Json::ValueType::objectValue);
+  result["componentId"] = -1;
+  auto* ptr = GetElementById(node_id);
   if (ptr) {
     if (ElementInspector::Type(ptr) == InspectorElementType::COMPONENT) {
-      content["componentId"] = ElementHelper::GetComponentId(ptr);
+      result["componentId"] = ElementHelper::GetComponentId(ptr);
     }
   }
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess(std::move(result));
 }
 
 // start template protocol
@@ -3087,19 +3131,15 @@ void InspectorTasmExecutor::SendLayoutTreeWithCallback(
 }
 
 void InspectorTasmExecutor::PageGetResourceContent(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["base64Encoded"] = false;
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  Json::Value result(Json::ValueType::objectValue);
+  result["base64Encoded"] = false;
   std::string html_content = "";
   if (element_root_ != nullptr) {
     html_content = ElementHelper::GetElementContent(element_root_, 0);
   }
-  content["content"] = html_content;
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  result["content"] = html_content;
+  responder->SendSuccess(std::move(result));
 }
 
 Json::Value InspectorTasmExecutor::GetDocumentBodyFromNodeWithBoxModel(

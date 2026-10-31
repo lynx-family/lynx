@@ -4,12 +4,8 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_tracing_agent.h"
 
-#include <fstream>
-
-#include "core/base/lynx_trace_categories.h"
-#include "core/runtime/profile/runtime_profiler_manager.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
-#include "devtool/lynx_devtool/base/file_stream.h"
 
 namespace lynx {
 namespace devtool {
@@ -30,47 +26,50 @@ InspectorTracingAgent::InspectorTracingAgent() {
 InspectorTracingAgent::~InspectorTracingAgent() = default;
 
 void InspectorTracingAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
   std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
   } else {
-    (this->*(iter->second))(sender, message);
+    (this->*(iter->second))(responder, message["params"]);
   }
 }
 
-void InspectorTracingAgent::Start(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().TracingStart(sender, message);
+void InspectorTracingAgent::Start(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().TracingStart(responder, params);
 }
 
-void InspectorTracingAgent::End(const std::shared_ptr<MessageSender>& sender,
-                                const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().TracingEnd(sender, message);
+void InspectorTracingAgent::End(const std::shared_ptr<CDPResponder>& responder,
+                                const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().TracingEnd(responder, params);
 }
 
 void InspectorTracingAgent::SetStartupTracingConfig(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().SetStartupTracingConfig(sender,
-                                                                   message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().SetStartupTracingConfig(responder,
+                                                                   params);
 }
 
 void InspectorTracingAgent::GetStartupTracingConfig(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingConfig(sender,
-                                                                   message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingConfig(responder,
+                                                                   params);
 }
 
 void InspectorTracingAgent::GetStartupTracingFile(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingFile(sender,
-                                                                 message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingFile(responder,
+                                                                 params);
 }
 
 void InspectorTracingAgent::TakeVMSnapshotByUrl(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().TakeVMSnapshotByUrl(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().TakeVMSnapshotByUrl(responder,
+                                                               params);
 }
 
 }  // namespace devtool

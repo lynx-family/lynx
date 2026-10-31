@@ -50,19 +50,15 @@ class InspectorDefaultExecutor
   DECLARE_DEVTOOL_CDP_METHOD(LogClear);
 
   // Network domain
-  DECLARE_DEVTOOL_METHOD(NetworkEnable)
-  DECLARE_DEVTOOL_METHOD(NetworkDisable)
-  DECLARE_DEVTOOL_METHOD(NetworkGetResponseBody)
-  DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkGetResponseBody);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkGetRequestPostData);
 
-  DECLARE_DEVTOOL_METHOD(InspectorEnable)
-  DECLARE_DEVTOOL_METHOD(InspectorDetached)
-
-  DECLARE_DEVTOOL_METHOD(LynxSetTraceMode)
-  DECLARE_DEVTOOL_METHOD(LynxGetVersion)
+  DECLARE_DEVTOOL_CDP_METHOD(LynxSetTraceMode);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetVersion);
 
  private:
-  std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
   std::shared_ptr<DevToolPlatformFacade> devtool_platform_facade_;
   std::unique_ptr<ConsoleMessageManager> console_msg_manager_;
   std::shared_ptr<NetworkRequestObserver> network_observer_;

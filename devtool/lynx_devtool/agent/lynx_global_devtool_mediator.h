@@ -30,17 +30,19 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
  public:
   static LynxGlobalDevToolMediator& GetInstance();
 
+  void SendCDPEvent(const Json::Value& event) const;
+
   void EndReplayTest(
       const std::shared_ptr<lynx::devtool::MessageSender>& sender,
       const std::string& file_path);
 
   // Recording domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(RecordingStart)
-  DECLARE_DEVTOOL_METHOD(RecordingEnd)
+  DECLARE_DEVTOOL_CDP_METHOD(RecordingStart);
+  DECLARE_DEVTOOL_CDP_METHOD(RecordingEnd);
 
   // Replay domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(ReplayStart)
-  DECLARE_DEVTOOL_METHOD(ReplayEnd)
+  DECLARE_DEVTOOL_CDP_METHOD(ReplayStart);
+  DECLARE_DEVTOOL_CDP_METHOD(ReplayEnd);
 
   // IO domain -> devtool executor
   DECLARE_DEVTOOL_CDP_METHOD(IORead);
@@ -51,12 +53,12 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_CDP_METHOD(MemoryStopTracing);
   DECLARE_DEVTOOL_CDP_METHOD(MemoryGetAllMemoryUsage);
 
-  DECLARE_DEVTOOL_METHOD(TracingStart)
-  DECLARE_DEVTOOL_METHOD(TracingEnd)
-  DECLARE_DEVTOOL_METHOD(SetStartupTracingConfig)
-  DECLARE_DEVTOOL_METHOD(GetStartupTracingConfig)
-  DECLARE_DEVTOOL_METHOD(GetStartupTracingFile)
-  DECLARE_DEVTOOL_METHOD(TakeVMSnapshotByUrl)
+  DECLARE_DEVTOOL_CDP_METHOD(TracingStart);
+  DECLARE_DEVTOOL_CDP_METHOD(TracingEnd);
+  DECLARE_DEVTOOL_CDP_METHOD(SetStartupTracingConfig);
+  DECLARE_DEVTOOL_CDP_METHOD(GetStartupTracingConfig);
+  DECLARE_DEVTOOL_CDP_METHOD(GetStartupTracingFile);
+  DECLARE_DEVTOOL_CDP_METHOD(TakeVMSnapshotByUrl);
 
   // System Info domain
   DECLARE_DEVTOOL_CDP_METHOD(SystemInfoGetInfo);
@@ -72,7 +74,7 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
 
   friend class lynx::base::NoDestructor<LynxGlobalDevToolMediator>;
   LynxGlobalDevToolMediator();
-  ~LynxGlobalDevToolMediator() = default;
+  ~LynxGlobalDevToolMediator() override = default;
 
  private:
   void RunOnDefaultTaskRunnerOrSendError(

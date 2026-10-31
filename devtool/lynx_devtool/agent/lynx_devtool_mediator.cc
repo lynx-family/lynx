@@ -596,199 +596,200 @@ void LynxDevToolMediator::PageReload(bool ignore_cache) {
 
 // CSS protocol
 void LynxDevToolMediator::CSS_Enable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->CSS_Enable(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->CSS_Enable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::CSS_Disable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->CSS_Disable(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->CSS_Disable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetMatchedStylesForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
-                                        sender, message]() {
-      element_executor->GetMatchedStylesForNode(sender, message);
-    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->GetMatchedStylesForNode(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetLayersForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->GetLayersForNode(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->GetLayersForNode(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetComputedStyleForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
-                                        sender, message]() {
-      element_executor->GetComputedStyleForNode(sender, message);
-    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->GetComputedStyleForNode(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetInlineStylesForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->GetInlineStylesForNode(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->GetInlineStylesForNode(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::SetStyleTexts(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->SetStyleTexts(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->SetStyleTexts(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetStyleSheetText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->GetStyleSheetText(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->GetStyleSheetText(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetBackgroundColors(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->GetBackgroundColors(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->GetBackgroundColors(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::SetStyleSheetText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->SetStyleSheetText(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->SetStyleSheetText(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::CreateStyleSheet(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->CreateStyleSheet(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->CreateStyleSheet(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::AddRule(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->AddRule(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->AddRule(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::StartRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->StartRuleUsageTracking(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->StartRuleUsageTracking(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
+
 void LynxDevToolMediator::UpdateRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_, [element_executor = element_executor_,
-                                        sender, message]() {
-      element_executor->UpdateRuleUsageTracking(sender, message);
-    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->UpdateRuleUsageTracking(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::StopRuleUsageTracking(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->StopRuleUsageTracking(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->StopRuleUsageTracking(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetMediaQueries(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->GetMediaQueries(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->GetMediaQueries(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::SetMediaText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->SetMediaText(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->SetMediaText(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
 void LynxDevToolMediator::SetSupportsText(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message]() {
-                      element_executor->SetSupportsText(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->SetSupportsText(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "CSS target is unavailable");
   }
 }
 
@@ -884,178 +885,133 @@ bool LynxDevToolMediator::RunOnDevToolThread(lynx::base::closure&& closure,
 }
 
 void LynxDevToolMediator::StartScreencast(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message]() {
-                      ui_executor->StartScreencast(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->StartScreencast(responder, params);
+  });
 }
 
 void LynxDevToolMediator::StopScreencast(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message]() {
-                      ui_executor->StopScreencast(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->StopScreencast(responder, params);
+  });
 }
 
 void LynxDevToolMediator::ScreencastFrameAck(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->ScreencastFrameAck(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->ScreencastFrameAck(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageEnable(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageEnable(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageCanEmulate(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageCanEmulate(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageCanEmulate(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageCanScreencast(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageCanScreencast(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageCanScreencast(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageGetResourceContent(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (tasm_task_runner_) {
-    RunOnTaskRunner(tasm_task_runner_,
-                    [element_executor = element_executor_, sender, message] {
-                      element_executor->PageGetResourceContent(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnTASMThread([element_executor = element_executor_, responder, params] {
+    element_executor->PageGetResourceContent(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageGetResourceTree(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageGetResourceTree(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageGetResourceTree(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageReload(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageReload(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageReload(responder, params);
+  });
 }
 
 void LynxDevToolMediator::PageNavigate(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->PageNavigate(sender, message);
-                    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+    ui_executor->PageNavigate(responder, params);
+  });
 }
 
 void LynxDevToolMediator::GetScreenshot(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->GetScreenshot(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = ui_executor_;
+  if (!executor || !RunOnUIThread([executor, responder, params] {
+        executor->GetScreenshot(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
   }
 }
 
 void LynxDevToolMediator::UITree_Enable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->UITree_Enable(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->UITree_Enable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 
 void LynxDevToolMediator::UITree_Disable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->UITree_Disable(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->UITree_Disable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetLynxUITree(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->GetLynxUITree(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->GetLynxUITree(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 
 void LynxDevToolMediator::GetUIInfoForNode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->GetUIInfoForNode(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->GetUIInfoForNode(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 
 void LynxDevToolMediator::SetUIStyle(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_,
-                    [ui_executor = ui_executor_, sender, message] {
-                      ui_executor->SetUIStyle(sender, message);
-                    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([ui_executor = ui_executor_, responder, params] {
+        ui_executor->SetUIStyle(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "UITree target is unavailable");
   }
 }
 
@@ -1270,52 +1226,44 @@ void LynxDevToolMediator::SynthesizeScrollGesture(
   });
 }
 
-void LynxDevToolMediator::InspectorEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->InspectorEnable(sender, message);
-  });
-}
-
-void LynxDevToolMediator::InspectorDetached(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->InspectorDetached(sender, message);
-  });
-}
-
 void LynxDevToolMediator::PerformanceEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->PerformanceEnable(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([responder, params, executor = ui_executor_] {
+        executor->PerformanceEnable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Performance target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::PerformanceDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->PerformanceDisable(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([responder, params, executor = ui_executor_] {
+        executor->PerformanceDisable(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Performance target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::getAllTimingInfo(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->getAllTimingInfo(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([responder, params, executor = ui_executor_] {
+        executor->getAllTimingInfo(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Performance target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::getAllPerformanceEntries(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->getAllPerformanceEntries(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!RunOnUIThread([responder, params, executor = ui_executor_] {
+        executor->getAllPerformanceEntries(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Performance target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LogEnable(
@@ -1387,34 +1335,30 @@ void LynxDevToolMediator::NativeModuleGetRecords(
 
 // Network protocol
 void LynxDevToolMediator::NetworkEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->NetworkEnable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->NetworkEnable(responder, params);
   });
 }
 
 void LynxDevToolMediator::NetworkDisable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->NetworkDisable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->NetworkDisable(responder, params);
   });
 }
 
 void LynxDevToolMediator::NetworkGetResponseBody(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->NetworkGetResponseBody(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->NetworkGetResponseBody(responder, params);
   });
 }
 
 void LynxDevToolMediator::NetworkGetRequestPostData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->NetworkGetRequestPostData(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDevToolThread([responder, params, executor = devtool_executor_] {
+    executor->NetworkGetRequestPostData(responder, params);
   });
 }
 
@@ -1580,83 +1524,113 @@ void LynxDevToolMediator::FlushLayoutTreeForReplayEnd(
 }
 
 void LynxDevToolMediator::LynxGetProperties(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->LynxGetProperties(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->LynxGetProperties(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxGetData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->LynxGetData(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->LynxGetData(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxGetComponentId(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnTASMThread([sender, message, executor = element_executor_] {
-    executor->LynxGetComponentId(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([executor, responder, params] {
+        executor->LynxGetComponentId(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxSetTraceMode(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->LynxSetTraceMode(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = devtool_executor_;
+  if (!executor || !RunOnDevToolThread([executor, responder, params] {
+        executor->LynxSetTraceMode(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
-bool LynxDevToolMediator::LynxSetLogLevel(
-    const std::shared_ptr<CDPResponder>& responder, int level) {
-  return ui_executor_ &&
-         RunOnUIThread([executor = ui_executor_, responder, level] {
-           executor->LynxSetLogLevel(responder, level);
-         });
+void LynxDevToolMediator::LynxSetLogLevel(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = ui_executor_;
+  if (!executor || !RunOnUIThread([executor, responder, params] {
+        executor->LynxSetLogLevel(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxGetRectToWindow(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->LynxGetRectToWindow(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = ui_executor_;
+  if (!executor || !RunOnUIThread([executor, responder, params] {
+        executor->LynxGetRectToWindow(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxGetVersion(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnDevToolThread([sender, message, executor = devtool_executor_] {
-    executor->LynxGetVersion(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = devtool_executor_;
+  if (!executor || !RunOnDevToolThread([executor, responder, params] {
+        executor->LynxGetVersion(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxTransferData(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->LynxTransferData(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = ui_executor_;
+  if (!executor || !RunOnUIThread([executor, responder, params] {
+        executor->LynxTransferData(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxGetViewLocationOnScreen(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->LynxGetViewLocationOnScreen(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = ui_executor_;
+  if (!executor || !RunOnUIThread([executor, responder, params] {
+        executor->LynxGetViewLocationOnScreen(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::LynxSendEventToVM(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  RunOnUIThread([sender, message, executor = ui_executor_] {
-    executor->LynxSendEventToVM(sender, message);
-  });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = ui_executor_;
+  if (!executor || !RunOnUIThread([executor, responder, params] {
+        executor->LynxSendEventToVM(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Lynx target is unavailable");
+  }
 }
 
 void LynxDevToolMediator::TemplateGetTemplateData(

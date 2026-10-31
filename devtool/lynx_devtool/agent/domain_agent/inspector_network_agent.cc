@@ -4,6 +4,9 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_network_agent.h"
 
+#include "devtool/base_devtool/native/public/cdp_responder.h"
+#include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
+
 namespace lynx {
 namespace devtool {
 
@@ -19,34 +22,36 @@ InspectorNetworkAgent::InspectorNetworkAgent(
 }
 
 void InspectorNetworkAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
   const std::string method = message["method"].asString();
   auto it = functions_map_.find(method);
   if (it == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
     return;
   }
-  (this->*(it->second))(sender, message);
+  (this->*(it->second))(responder, message["params"]);
 }
 
-void InspectorNetworkAgent::Enable(const std::shared_ptr<MessageSender>& sender,
-                                   const Json::Value& message) {
-  devtool_mediator_->NetworkEnable(sender, message);
+void InspectorNetworkAgent::Enable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->NetworkEnable(responder, params);
 }
 
 void InspectorNetworkAgent::Disable(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->NetworkDisable(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->NetworkDisable(responder, params);
 }
 
 void InspectorNetworkAgent::GetResponseBody(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->NetworkGetResponseBody(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->NetworkGetResponseBody(responder, params);
 }
 
 void InspectorNetworkAgent::GetRequestPostData(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->NetworkGetRequestPostData(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->NetworkGetRequestPostData(responder, params);
 }
 
 }  // namespace devtool

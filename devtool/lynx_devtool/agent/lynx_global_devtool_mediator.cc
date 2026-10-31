@@ -12,6 +12,7 @@
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/recorder/recorder_types.h"
 #include "core/services/replay/replay_controller.h"
+#include "devtool/base_devtool/native/public/abstract_devtool.h"
 #include "devtool/base_devtool/native/public/cdp_param_utils.h"
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 #include "devtool/lynx_devtool/base/file_stream.h"
@@ -27,11 +28,10 @@ constexpr char kMemoryUsageTimeoutMs[] = "timeoutMs";
 constexpr int64_t kMaxMemoryUsageTimeoutMs = 5 * 60 * 1000;
 
 bool ParseRecordingArtifactFormat(
-    const Json::Value& message,
+    const Json::Value& params,
     lynx::tasm::recorder::ArtifactFormat& artifact_format,
     std::string& error_message) {
   artifact_format = lynx::tasm::recorder::ArtifactFormat::kJson;
-  const Json::Value& params = message["params"];
   if (params.isNull()) {
     return true;
   }
@@ -105,6 +105,16 @@ bool ParseMemoryUsageTimeoutMs(const Json::Value& params, int64_t& timeout_ms,
   return true;
 }
 
+bool OpenReplayFileAsStream(const std::string& file_path,
+                            Json::Value& stream_params) {
+  int stream_handle = FileStream::Open(file_path);
+  if (stream_handle == -1) {
+    return false;
+  }
+  stream_params["stream"] = std::to_string(stream_handle);
+  return true;
+}
+
 }  // namespace
 
 LynxGlobalDevToolMediator::LynxGlobalDevToolMediator()
@@ -117,19 +127,24 @@ LynxGlobalDevToolMediator& LynxGlobalDevToolMediator::GetInstance() {
   return *instance;
 }
 
+void LynxGlobalDevToolMediator::SendCDPEvent(const Json::Value& event) const {
+  auto sender = AbstractDevTool::GetGlobalSender();
+  if (sender) {
+    sender->SendMessage("CDP", event);
+  }
+}
+
 bool LynxGlobalDevToolMediator::IsRecorderEnabled() const {
   return lynx::tasm::recorder::RecorderController::Enable();
 }
 
 void LynxGlobalDevToolMediator::RecordingStart(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   LOGI("start recording");
-  int64_t id = message["id"].asInt64();
   lynx::tasm::recorder::ArtifactFormat artifact_format;
   std::string error_message;
-  if (!ParseRecordingArtifactFormat(message, artifact_format, error_message)) {
-    sender->SendErrorResponse(id, error_message);
+  if (!ParseRecordingArtifactFormat(params, artifact_format, error_message)) {
+    responder->SendError(CDPErrorCode::InvalidParams, error_message);
     return;
   }
   // json keeps its historical best-effort behavior, but an explicit request
@@ -137,8 +152,9 @@ void LynxGlobalDevToolMediator::RecordingStart(
   // instead of being silently downgraded to json (or dropped entirely).
   if (artifact_format != lynx::tasm::recorder::ArtifactFormat::kJson &&
       !IsRecorderEnabled()) {
-    sender->SendErrorResponse(
-        id, "Fixture artifact is not supported by this Lynx build");
+    responder->SendError(
+        CDPErrorCode::ServerError,
+        "Fixture artifact is not supported by this Lynx build");
     return;
   }
   if (ui_task_runner_) {
@@ -146,14 +162,12 @@ void LynxGlobalDevToolMediator::RecordingStart(
       lynx::tasm::recorder::RecorderController::StartRecord(artifact_format);
     });
   } else {
-    sender->SendErrorResponse(id, "Cannot find ui task runner");
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Cannot find ui task runner");
     return;
   }
 
-  Json::Value res;
-  res["result"] = Json::Value(Json::ValueType::objectValue);
-  res["id"] = id;
-  sender->SendMessage("CDP", res);
+  responder->SendSuccess();
 }
 
 const char* LynxGlobalDevToolMediator::RecordFormatFromFiles(
@@ -173,94 +187,102 @@ const char* LynxGlobalDevToolMediator::RecordFormatFromFiles(
 }
 
 void LynxGlobalDevToolMediator::RecordingEnd(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   LOGI("End recording");
-  if (ui_task_runner_) {
-    RunOnTaskRunner(ui_task_runner_, [sender, message] {
-      lynx::base::MoveOnlyClosure<void, std::vector<std::string>&,
-                                  std::vector<int64_t>&>
-          send_complete([sender](std::vector<std::string>& files,
-                                 std::vector<int64_t>& sessions) {
-            Json::Value msg;
-            msg["method"] = "Recording.recordingComplete";
-            Json::Value handlers, filenames, session_ids;
-            for (auto i : sessions) {
-              session_ids.append(i);
-            }
-            for (auto item : files) {
-              int stream_handle = FileStream::Open(item);
-              handlers.append(std::to_string(stream_handle));
-              filenames.append(item);
-            }
-            msg["params"]["stream"] = handlers;
-            msg["params"]["filenames"] = filenames;
-            msg["params"]["sessionIDs"] = session_ids;
-            msg["params"]["recordFormat"] = RecordFormatFromFiles(files);
-            sender->SendMessage("CDP", msg);
-          });
-      lynx::tasm::recorder::RecorderController::EndRecord(
-          std::move(send_complete));
-      sender->SendOKResponse(message["id"].asInt64());
-    });
+  if (!ui_task_runner_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Cannot find ui task runner");
+    return;
   }
+
+  RunOnTaskRunner(ui_task_runner_, [responder] {
+    lynx::base::MoveOnlyClosure<void, std::vector<std::string>&,
+                                std::vector<int64_t>&>
+        send_complete([](std::vector<std::string>& files,
+                         std::vector<int64_t>& sessions) {
+          Json::Value event;
+          event["method"] = "Recording.recordingComplete";
+          Json::Value handlers, filenames, session_ids;
+          for (auto session : sessions) {
+            session_ids.append(session);
+          }
+          for (const auto& file : files) {
+            int stream_handle = FileStream::Open(file);
+            handlers.append(std::to_string(stream_handle));
+            filenames.append(file);
+          }
+          event["params"]["stream"] = handlers;
+          event["params"]["filenames"] = filenames;
+          event["params"]["sessionIDs"] = session_ids;
+          event["params"]["recordFormat"] = RecordFormatFromFiles(files);
+          LynxGlobalDevToolMediator::GetInstance().SendCDPEvent(event);
+        });
+    lynx::tasm::recorder::RecorderController::EndRecord(
+        std::move(send_complete));
+    responder->SendSuccess();
+  });
 }
 
 void LynxGlobalDevToolMediator::ReplayStart(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   LOGI("start replay test");
-  int64_t id = message["id"].asInt64();
   if (ui_task_runner_) {
     RunOnTaskRunner(ui_task_runner_,
                     [] { lynx::tasm::replay::ReplayController::StartTest(); });
   } else {
-    sender->SendErrorResponse(id, "Cannot find ui task runner");
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Cannot find ui task runner");
     return;
   }
 
-  Json::Value res;
-  res["result"] = Json::Value(Json::ValueType::objectValue);
-  res["id"] = id;
-  sender->SendMessage("CDP", res);
+  responder->SendSuccess();
 }
 
 void LynxGlobalDevToolMediator::ReplayEnd(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, message] {
-      int64_t id = message["id"].asInt64();
-      if (lynx::tasm::replay::ReplayController::Enable()) {
-        LOGI("send replay end");
-        Json::Value content(Json::ValueType::objectValue);
-        content["method"] = "Replay.end";
-        std::string file_path = message["params"].asString();
-        int stream_handle = FileStream::Open(file_path);
-        if (stream_handle == -1) {
-          sender->SendErrorResponse(id, "file path doesn't exist");
-          return;
-        }
-        content["params"]["stream"] = std::to_string(stream_handle);
-        sender->SendMessage("CDP", content);
-      } else {
-        sender->SendErrorResponse(id, "Replay doesn't enable");
-      }
-    });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.isString()) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid file path: expected string");
+    return;
   }
+  if (!lynx::tasm::replay::ReplayController::Enable()) {
+    responder->SendError(CDPErrorCode::ServerError, "Replay doesn't enable");
+    return;
+  }
+  if (!default_task_runner_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Cannot find default task runner");
+    return;
+  }
+
+  std::string file_path = params.asString();
+  RunOnTaskRunner(default_task_runner_, [responder, file_path] {
+    LOGI("send replay end");
+    Json::Value result(Json::objectValue);
+    if (!OpenReplayFileAsStream(file_path, result)) {
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "file path doesn't exist");
+      return;
+    }
+    responder->SendSuccess(std::move(result));
+  });
 }
 
 void LynxGlobalDevToolMediator::EndReplayTest(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const std::string& file_path) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, file_path] {
-      Json::Value msg(Json::ValueType::objectValue);
-      msg["method"] = "Replay.end";
-      msg["params"] = file_path;
-      GetInstance().ReplayEnd(sender, msg);
-    });
+  if (!default_task_runner_ || !sender) {
+    return;
   }
+  RunOnTaskRunner(default_task_runner_, [sender, file_path] {
+    Json::Value event(Json::objectValue);
+    event["method"] = "Replay.end";
+    if (!OpenReplayFileAsStream(file_path, event["params"])) {
+      LOGE("Replay dump file doesn't exist: " << file_path);
+      return;
+    }
+    sender->SendMessage("CDP", event);
+  });
 }
 
 void LynxGlobalDevToolMediator::IORead(
@@ -412,297 +434,269 @@ void LynxGlobalDevToolMediator::SystemInfoGetInfo(
 }
 
 void LynxGlobalDevToolMediator::TracingStart(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [this, sender, message]() {
-      if (!tracing_notification_callback_) {
-        tracing_notification_callback_ =
-            std::make_unique<base::NotificationCallback>(
-                runtime::kVMSnapshotCaptured,
-                [sender](const std::string& tag, intptr_t data) {
-                  Json::Value msg;
-                  msg["method"] = "VM.snapshotCaptured";
-                  sender->SendMessage("CDP", msg);
-                });
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [this, responder, params]() {
+    if (!tracing_notification_callback_) {
+      tracing_notification_callback_ =
+          std::make_unique<base::NotificationCallback>(
+              runtime::kVMSnapshotCaptured,
+              [](const std::string& tag, intptr_t data) {
+                Json::Value msg;
+                msg["method"] = "VM.snapshotCaptured";
+                LynxGlobalDevToolMediator::GetInstance().SendCDPEvent(msg);
+              });
+    }
+
+    if (!lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
+      responder->SendError(CDPErrorCode::ServerError, "Tracing not enabled");
+      return;
+    }
+    if (this->tracing_session_id_ > 0) {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Tracing already started");
+      return;
+    }
+    LOGI("start tracing");
+
+    auto config = std::make_shared<lynx::trace::TraceConfig>();
+    if (params.isMember("traceConfig")) {
+      const auto& trace_config = params["traceConfig"];
+      const auto to_vector = [](const Json::Value& array,
+                                std::vector<std::string>& result) {
+        for (const auto& e : array) {
+          result.push_back(e.asString());
+        }
+        return result;
+      };
+      to_vector(trace_config["includedCategories"],
+                config->included_categories);
+      to_vector(trace_config["excludedCategories"],
+                config->excluded_categories);
+      config->enable_systrace = trace_config["enableSystrace"].asBool();
+      if (trace_config.isMember("bufferSize")) {
+        config->buffer_size = trace_config["bufferSize"].asInt();
       }
 
-      int id = static_cast<int>(message["id"].asInt64());
-      if (!lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
-        sender->SendErrorResponse(id, "Tracing not enabled");
-        return;
+      if (trace_config.isMember("recordMod")) {
+        const auto& record_mod = trace_config["recordMod"];
+        if (record_mod == "recordContinuously") {
+          config->record_mode = lynx::trace::TraceConfig::RECORD_CONTINUOUSLY;
+        }
       }
-      if (this->tracing_session_id_ > 0) {
-        sender->SendErrorResponse(id, "Tracing already started");
-        return;
+      if (trace_config.isMember("enableCompress")) {
+        config->enable_compress = trace_config["enableCompress"].asBool();
       }
-      LOGI("start tracing");
-
-      auto config = std::make_shared<lynx::trace::TraceConfig>();
-      const auto& params = message["params"];
-      if (params.isMember("traceConfig")) {
-        const auto& trace_config = params["traceConfig"];
-        const auto to_vector = [](const Json::Value& array,
-                                  std::vector<std::string>& result) {
-          for (const auto& e : array) {
-            result.push_back(e.asString());
-          }
-          return result;
-        };
-        to_vector(trace_config["includedCategories"],
-                  config->included_categories);
-        to_vector(trace_config["excludedCategories"],
-                  config->excluded_categories);
-        config->enable_systrace = trace_config["enableSystrace"].asBool();
-        if (trace_config.isMember("bufferSize")) {
-          config->buffer_size = trace_config["bufferSize"].asInt();
+      if (trace_config.isMember("enableMemoryTrace")) {
+        config->enable_memory_trace =
+            trace_config["enableMemoryTrace"].asBool();
+        if (config->enable_memory_trace) {
+          // When memory data tracing is enabled, use continuous file writing
+          // mode to reduce the impact on physical memory.
+          config->record_mode = trace::TraceConfig::RECORD_CONTINUOUSLY;
+          config->file_write_period_ms =
+              trace::TraceConfig::kMemoryTraceFileWritePeriodMs;
         }
-
-        if (trace_config.isMember("recordMod")) {
-          const auto& record_mod = trace_config["recordMod"];
-          if (record_mod == "recordContinuously") {
-            config->record_mode = lynx::trace::TraceConfig::RECORD_CONTINUOUSLY;
-          }
+      }
+      if (trace_config.isMember("forceGC")) {
+        config->memory_trace_force_gc = trace_config["forceGC"].asBool();
+      }
+      if (trace_config.isMember("enableAutoHeapSnapshot")) {
+        config->auto_take_snapshot =
+            trace_config["enableAutoHeapSnapshot"].asBool();
+        if (trace_config.isMember("sharedGroupId")) {
+          config->auto_take_snapshot_group_id =
+              trace_config["sharedGroupId"].asString();
         }
-        if (trace_config.isMember("enableCompress")) {
-          config->enable_compress = trace_config["enableCompress"].asBool();
-        }
-        if (trace_config.isMember("enableMemoryTrace")) {
-          config->enable_memory_trace =
-              trace_config["enableMemoryTrace"].asBool();
-          if (config->enable_memory_trace) {
-            // When memory data tracing is enabled, use continuous file writing
-            // mode to reduce the impact on physical memory.
-            config->record_mode = trace::TraceConfig::RECORD_CONTINUOUSLY;
-            config->file_write_period_ms =
-                trace::TraceConfig::kMemoryTraceFileWritePeriodMs;
-          }
-        }
-        if (trace_config.isMember("forceGC")) {
-          config->memory_trace_force_gc = trace_config["forceGC"].asBool();
-        }
-        if (trace_config.isMember("enableAutoHeapSnapshot")) {
-          config->auto_take_snapshot =
-              trace_config["enableAutoHeapSnapshot"].asBool();
-          if (trace_config.isMember("sharedGroupId")) {
-            config->auto_take_snapshot_group_id =
-                trace_config["sharedGroupId"].asString();
-          }
-        }
-
-        config->js_profile_interval =
-            trace_config.isMember("JSProfileInterval")
-                ? trace_config["JSProfileInterval"].asInt()
-                : -1;
-        if (config->js_profile_interval > 0) {
-          // JSProfileType has 3 options:
-          // 1. disable: don't allow js profile
-          // 2. quickjs: if JSProfileInterval is greater than 0, allow quickjs
-          // and lepusng profile
-          // 3. v8: if JSProfileInterval is greater than 0, allow v8 profile
-          auto js_profile_type = trace_config.isMember("JSProfileType")
-                                     ? trace_config["JSProfileType"].asString()
-                                     : "quickjs";
-          if (js_profile_type == "quickjs") {
-            config->js_profile_type = trace::RuntimeProfilerType::quickjs;
-          } else if (js_profile_type == "v8") {
-            config->js_profile_type = trace::RuntimeProfilerType::v8;
-          }
-        }
-      } else {
-        config->excluded_categories = {"*"};
       }
 
-      auto controller =
-          GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
-      if (controller == nullptr) {
-        sender->SendErrorResponse(id, "Failed to get trace controller");
-        return;
-      }
-      if (config->enable_memory_trace) {
-        controller->AddTracePlugin(
-            GlobalDevToolPlatformFacade::GetInstance().GetMemoryTracePlugin());
-      }
-      controller->AddTracePlugin(
-          GlobalDevToolPlatformFacade::GetInstance().GetFPSTracePlugin());
-      controller->AddTracePlugin(
-          GlobalDevToolPlatformFacade::GetInstance().GetInstanceTracePlugin());
-
+      config->js_profile_interval =
+          trace_config.isMember("JSProfileInterval")
+              ? trace_config["JSProfileInterval"].asInt()
+              : -1;
       if (config->js_profile_interval > 0) {
-        controller->AddTracePlugin(
-            lynx::runtime::profile::GetRuntimeProfilerManager());
+        // JSProfileType has 3 options:
+        // 1. disable: don't allow js profile
+        // 2. quickjs: if JSProfileInterval is greater than 0, allow quickjs
+        // and lepusng profile
+        // 3. v8: if JSProfileInterval is greater than 0, allow v8 profile
+        auto js_profile_type = trace_config.isMember("JSProfileType")
+                                   ? trace_config["JSProfileType"].asString()
+                                   : "quickjs";
+        if (js_profile_type == "quickjs") {
+          config->js_profile_type = trace::RuntimeProfilerType::quickjs;
+        } else if (js_profile_type == "v8") {
+          config->js_profile_type = trace::RuntimeProfilerType::v8;
+        }
       }
-      if (std::find(config->included_categories.begin(),
-                    config->included_categories.end(),
-                    LYNX_TRACE_CATEGORY_SCREENSHOTS) !=
-          config->included_categories.end()) {
-        controller->AddTracePlugin(GlobalDevToolPlatformFacade::GetInstance()
-                                       .GetFrameViewTracePlugin());
-      }
-      this->tracing_session_id_ = controller->StartTracing(config);
-      if (this->tracing_session_id_ > 0) {
-        controller->AddCompleteCallback(
-            this->tracing_session_id_, [config, sender]() {
-              Json::Value msg;
-              msg["method"] = "Tracing.tracingComplete";
-              int stream_handle = FileStream::Open(config->file_path);
-              msg["params"]["dataLossOccurred"] = (stream_handle <= 0);
-              msg["params"]["stream"] = std::to_string(stream_handle);
-              msg["params"]["traceFormat"] = "proto";
-              msg["params"]["streamCompression"] = "none";
-              sender->SendMessage("CDP", msg);
-            });
-        TRACE_EVENT_INSTANT(
-            "vitals", LYNX_ENGINE_VERSION, "version",
-            GlobalDevToolPlatformFacade::GetInstance().GetLynxVersion());
-        Json::Value res;
-        res["result"] = Json::Value(Json::ValueType::objectValue);
-        res["id"] = id;
+    } else {
+      config->excluded_categories = {"*"};
+    }
 
-        sender->SendMessage("CDP", res);
-      } else {
-        sender->SendErrorResponse(id, "Failed to start tracing");
-      }
-    });
-  }
+    auto controller =
+        GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
+    if (controller == nullptr) {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Failed to get trace controller");
+      return;
+    }
+    if (config->enable_memory_trace) {
+      controller->AddTracePlugin(
+          GlobalDevToolPlatformFacade::GetInstance().GetMemoryTracePlugin());
+    }
+    controller->AddTracePlugin(
+        GlobalDevToolPlatformFacade::GetInstance().GetFPSTracePlugin());
+    controller->AddTracePlugin(
+        GlobalDevToolPlatformFacade::GetInstance().GetInstanceTracePlugin());
+
+    if (config->js_profile_interval > 0) {
+      controller->AddTracePlugin(
+          lynx::runtime::profile::GetRuntimeProfilerManager());
+    }
+    if (std::find(config->included_categories.begin(),
+                  config->included_categories.end(),
+                  LYNX_TRACE_CATEGORY_SCREENSHOTS) !=
+        config->included_categories.end()) {
+      controller->AddTracePlugin(
+          GlobalDevToolPlatformFacade::GetInstance().GetFrameViewTracePlugin());
+    }
+    this->tracing_session_id_ = controller->StartTracing(config);
+    if (this->tracing_session_id_ > 0) {
+      controller->AddCompleteCallback(this->tracing_session_id_, [config]() {
+        Json::Value msg;
+        msg["method"] = "Tracing.tracingComplete";
+        int stream_handle = FileStream::Open(config->file_path);
+        msg["params"]["dataLossOccurred"] = (stream_handle <= 0);
+        msg["params"]["stream"] = std::to_string(stream_handle);
+        msg["params"]["traceFormat"] = "proto";
+        msg["params"]["streamCompression"] = "none";
+        LynxGlobalDevToolMediator::GetInstance().SendCDPEvent(msg);
+      });
+      TRACE_EVENT_INSTANT(
+          "vitals", LYNX_ENGINE_VERSION, "version",
+          GlobalDevToolPlatformFacade::GetInstance().GetLynxVersion());
+      responder->SendSuccess();
+    } else {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Failed to start tracing");
+    }
+  });
 }
 
 void LynxGlobalDevToolMediator::TracingEnd(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [this, sender, message]() {
-      int id = static_cast<int>(message["id"].asInt64());
-      LOGI("End tracing");
-      if (this->tracing_session_id_ <= 0) {
-        sender->SendErrorResponse(id, "Tracing is not started");
-        return;
-      }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [this, responder]() {
+    LOGI("End tracing");
+    if (this->tracing_session_id_ <= 0) {
+      responder->SendError(CDPErrorCode::ServerError, "Tracing is not started");
+      return;
+    }
 
-      auto controller =
-          GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
-      if (controller == nullptr) {
-        sender->SendErrorResponse(id, "Failed to get trace controller");
-        return;
-      }
-      sender->SendOKResponse(static_cast<int>(message["id"].asInt64()));
+    auto controller =
+        GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
+    if (controller == nullptr) {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Failed to get trace controller");
+      return;
+    }
+    controller->StopTracing(this->tracing_session_id_);
+    //  controller->RemoveCompleteCallbacks(this->tracing_session_id_);
+    this->tracing_session_id_ = -1;
 
-      controller->StopTracing(this->tracing_session_id_);
-      //  controller->RemoveCompleteCallbacks(this->tracing_session_id_);
-      this->tracing_session_id_ = -1;
-    });
-  }
+    responder->SendSuccess();
+  });
 }
 
 void LynxGlobalDevToolMediator::SetStartupTracingConfig(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, message]() {
-      const int id = static_cast<int>(message["id"].asInt());
-      auto controller =
-          GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
-      if (controller == nullptr) {
-        sender->SendErrorResponse(id, "Failed to get trace controller");
-        return;
-      }
-      const auto& params = message["params"];
-      if (params.isMember("config")) {
-        const auto& config = params["config"];
-        controller->SetStartupTracingConfig(config.asString());
-        sender->SendOKResponse(id);
-      } else {
-        sender->SendErrorResponse(id, "Set Startup Tracing config is null");
-      }
-    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [responder, params]() {
+    auto controller =
+        GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
+    if (controller == nullptr) {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Failed to get trace controller");
+      return;
+    }
+    if (!params.isObject() || !params["config"].isString()) {
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "Invalid config: expected string");
+      return;
+    }
+    controller->SetStartupTracingConfig(params["config"].asString());
+    responder->SendSuccess();
+  });
 }
 
 void LynxGlobalDevToolMediator::GetStartupTracingConfig(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, message]() {
-      const int id = static_cast<int>(message["id"].asInt());
-      auto controller =
-          GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
-      if (controller == nullptr) {
-        sender->SendErrorResponse(id, "Failed to get trace controller");
-        return;
-      }
-      const auto config = controller->GetStartupTracingConfig();
-      Json::Value response(Json::ValueType::objectValue);
-      Json::Value result(Json::ValueType::objectValue);
-      result["config"] = config;
-      response["result"] = result;
-      response["id"] = message["id"].asInt64();
-      sender->SendMessage("CDP", response);
-    });
-  }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [responder]() {
+    auto controller =
+        GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
+    if (controller == nullptr) {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Failed to get trace controller");
+      return;
+    }
+    Json::Value result(Json::ValueType::objectValue);
+    result["config"] = controller->GetStartupTracingConfig();
+    responder->SendSuccess(std::move(result));
+  });
 }
 
 void LynxGlobalDevToolMediator::GetStartupTracingFile(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, message]() {
-      const int id = static_cast<int>(message["id"].asInt());
-      auto controller =
-          GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
-      if (controller == nullptr) {
-        sender->SendErrorResponse(id, "Failed to get trace controller");
-        return;
-      }
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [responder]() {
+    auto controller =
+        GlobalDevToolPlatformFacade::GetInstance().GetTraceController();
+    if (controller == nullptr) {
+      responder->SendError(CDPErrorCode::ServerError,
+                           "Failed to get trace controller");
+      return;
+    }
 
-      const std::string file_path = controller->GetStartupTracingFilePath();
-      if (file_path != "") {
-        sender->SendOKResponse(id);
-        Json::Value msg;
-        msg["method"] = "Tracing.tracingComplete";
-        int stream_handle = FileStream::Open(file_path);
-        msg["params"]["dataLossOccurred"] = (stream_handle <= 0);
-        msg["params"]["stream"] = std::to_string(stream_handle);
-        msg["params"]["isStartupTracing"] = true;
-        sender->SendMessage("CDP", msg);
+    const std::string file_path = controller->GetStartupTracingFilePath();
+    if (file_path != "") {
+      responder->SendSuccess();
+      Json::Value msg;
+      msg["method"] = "Tracing.tracingComplete";
+      int stream_handle = FileStream::Open(file_path);
+      msg["params"]["dataLossOccurred"] = (stream_handle <= 0);
+      msg["params"]["stream"] = std::to_string(stream_handle);
+      msg["params"]["isStartupTracing"] = true;
+      LynxGlobalDevToolMediator::GetInstance().SendCDPEvent(msg);
+    } else {
+      bool isTracingStarted = controller->IsTracingStarted();
+      if (isTracingStarted) {
+        responder->SendError(CDPErrorCode::ServerError,
+                             "Startup Tracing is running");
       } else {
-        bool isTracingStarted = controller->IsTracingStarted();
-        if (isTracingStarted) {
-          sender->SendErrorResponse(id, "Startup Tracing is running");
-        } else {
-          sender->SendErrorResponse(id, "Failed to get startup tracing file");
-        }
+        responder->SendError(CDPErrorCode::ServerError,
+                             "Failed to get startup tracing file");
       }
-    });
-  }
+    }
+  });
 }
 
 void LynxGlobalDevToolMediator::TakeVMSnapshotByUrl(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [this, sender, message]() {
-      const int id = static_cast<int>(message["id"].asInt());
-      if (this->tracing_session_id_ > 0) {
-        const auto& params = message["params"];
-        if (params.isMember("url")) {
-          const auto url = params["url"].asString();
-          if (params.isMember("type")) {
-            const auto type = params["type"].asString();
-            intptr_t payload[2] = {reinterpret_cast<intptr_t>(url.c_str()),
-                                   reinterpret_cast<intptr_t>(type.c_str())};
-            base::NotificationCallback::Notify(
-                runtime::kTakeVMSnapshotByUrl,
-                reinterpret_cast<intptr_t>(payload));
-            sender->SendOKResponse(id);
-            return;
-          }
-        }
-        sender->SendErrorResponse(id, "Argument error");
-      } else {
-        sender->SendErrorResponse(id, "Tracing is not started");
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnDefaultTaskRunnerOrSendError(responder, [this, responder, params]() {
+    if (this->tracing_session_id_ > 0) {
+      if (params.isObject() && params["url"].isString() &&
+          params["type"].isString()) {
+        const auto url = params["url"].asString();
+        const auto type = params["type"].asString();
+        intptr_t payload[2] = {reinterpret_cast<intptr_t>(url.c_str()),
+                               reinterpret_cast<intptr_t>(type.c_str())};
+        base::NotificationCallback::Notify(runtime::kTakeVMSnapshotByUrl,
+                                           reinterpret_cast<intptr_t>(payload));
+        responder->SendSuccess();
+        return;
       }
-    });
-  }
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "Invalid url or type: expected strings");
+    } else {
+      responder->SendError(CDPErrorCode::ServerError, "Tracing is not started");
+    }
+  });
 }
 
 }  // namespace devtool
