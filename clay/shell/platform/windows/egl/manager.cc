@@ -10,28 +10,36 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/make_copyable.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/utils/d3d11_device_creator.h"
 #include "clay/shell/platform/windows/egl/direct_composition_surface.h"
 #include "clay/shell/platform/windows/egl/egl.h"
+#include "clay/ui/common/isolate.h"
 
 namespace clay {
 namespace egl {
-
-int Manager::instance_count_ = 0;
 
 std::unique_ptr<Manager> Manager::Create() {
   std::unique_ptr<Manager> manager;
   manager.reset(new Manager());
   if (!manager->IsValid()) {
+    DestroyAsync(std::move(manager));
     return nullptr;
   }
   return std::move(manager);
 }
 
-Manager::Manager() {
-  ++instance_count_;
+void Manager::DestroyAsync(std::unique_ptr<Manager> manager) {
+  if (!manager) {
+    return;
+  }
+  Isolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
+      fml::MakeCopyable(
+          [manager = std::move(manager)]() mutable { manager.reset(); }));
+}
 
+Manager::Manager() {
 #ifndef CLAY_FORCE_D3D9
   if (!TryInitializeD3D11Device()) {
     return;
@@ -53,10 +61,7 @@ Manager::Manager() {
   is_valid_ = true;
 }
 
-Manager::~Manager() {
-  CleanUp();
-  --instance_count_;
-}
+Manager::~Manager() { CleanUp(); }
 
 bool Manager::InitializeDisplay() {
   // These are preferred display attributes and request ANGLE's D3D11
