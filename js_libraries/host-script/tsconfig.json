@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "module": "ES6",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "strict": true,
+    "target": "ES2020",
+    "types": []
+  },
+  "include": ["src"]
+}
