@@ -16,6 +16,7 @@ recorder_shared_sources = [
   "native_module_recorder.cc",
   "native_module_recorder.h",
   "recorder_constants.h",
+  "recorder_types.h",
   "template_assembler_recorder.cc",
   "template_assembler_recorder.h",
   "testbench_base_recorder.cc",
