@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 export * from './component';
+export * from './cover-view';
 export * from './filter-image';
 export * from './image';
 export * from './inline-image';

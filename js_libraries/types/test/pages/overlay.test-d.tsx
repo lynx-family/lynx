@@ -13,6 +13,7 @@ let a;
 {
   // Test overlay JSX element with various props
   <overlay visible={true} />;
+  <overlay events-pass-through={true} />;
   <overlay android-overlay-scope="global" />;
   <overlay android-overlay-scope="fragment" />;
   <overlay level={1} />;
@@ -25,6 +26,7 @@ let a;
   <overlay visible={false} level={2} mode="top" />;
 
   assertType<boolean | undefined>(a as IntrinsicElements['overlay']['visible']);
+  assertType<boolean | undefined>(a as IntrinsicElements['overlay']['events-pass-through']);
   assertType<'global' | 'fragment' | undefined>(a as IntrinsicElements['overlay']['android-overlay-scope']);
   assertType<1 | 2 | 3 | 4 | undefined>(a as IntrinsicElements['overlay']['level']);
   assertType<boolean | undefined>(a as IntrinsicElements['overlay']['ios-enable-swipe-back']);

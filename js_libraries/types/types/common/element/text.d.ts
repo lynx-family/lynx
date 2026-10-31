@@ -59,7 +59,7 @@ export interface TextProps extends StandardProps, TextBaselineProps {
    * @ClayWindows 1.5
    * @ClayHarmony 2.18
    */
-  'text-maxline'?: string;
+  'text-maxline'?: number | `${number}`;
 
   /**
    * Maximum number of characters for text display
@@ -73,7 +73,7 @@ export interface TextProps extends StandardProps, TextBaselineProps {
    * @ClayHarmony 2.18
    * @deprecated Suggest preprocessing the text content length.
    */
-  'text-maxlength'?: string;
+  'text-maxlength'?: number | `${number}`;
 
   /**
    * Whether font-size is affected by system font scaling

@@ -639,24 +639,27 @@ export interface ListProps extends StandardProps, ScrollbarProps {
   'enable-scroll'?: boolean;
 
   /**
-   * Indicates whether list can achieve nested scrolling with other scrollable containers. When enabled, the inner container scrolls first, followed by the outer container.
+   * Indicates whether list can achieve nested scrolling with other scrollable
+   * containers. When enabled, the inner container scrolls first, followed by
+   * the outer container. The effective default depends on the native list
+   * implementation selected by the host.
    * @Android 2.14
    * @iOS 2.16
    * @Harmony 2.16
    * @Clay 2.16
-   * @defaultValue  false
    */
   'enable-nested-scroll'?: boolean;
 
   /**
-   * Declared on the list to control whether the list as a whole is allowed to be sticky at the top or bottom.
+   * Declared on the list to control whether the list as a whole is allowed to
+   * be sticky at the top or bottom. The effective default depends on the
+   * native list implementation selected by the host.
    * @Android
    * @iOS
    * @Harmony
    * @Web
    * @Clay
    * @since 1.6
-   * @defaultValue  false
    */
   sticky?: boolean;
 

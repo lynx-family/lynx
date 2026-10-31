@@ -51,6 +51,21 @@ export interface OverlayTouch {
 
 export interface OverlayProps extends Omit<StandardProps, 'binderror'> {
   /**
+   * Legacy overlay-specific event penetration switch. Native defaults differ
+   * by platform, so set it explicitly when relying on this behavior.
+   * @Android 3.5
+   * @iOS 3.5
+   * @Harmony 3.5
+   * @ClayAndroid 3.5
+   * @ClayIOS 3.5
+   * @ClayMacOS 3.5
+   * @ClayWindows 3.5
+   * @ClayHarmony 3.6
+   * @deprecated Use event-through for new code.
+   */
+  'events-pass-through'?: boolean;
+
+  /**
    * Keeps a global overlay displayed when its authored view detaches.
    * Set to false to hide the overlay on detach. Fragment-scoped overlays follow their owner.
    * @Android 3.6
@@ -102,7 +117,7 @@ export interface OverlayProps extends Omit<StandardProps, 'binderror'> {
   'android-overlay-scope'?: 'global' | 'fragment';
 
   /**
-   * Introduces the concept of layers, which are divided into four levels. The larger the layer, the closer it is to the bottom. By default, it is the first level. The layers are arranged in order from 1 to 4. The displayed layer is specified and is not affected by the order of display. Within each layer, the arrangement is based on the 'last in, first out' logic. The layer cannot be dynamically adjusted when the overlay is displayed, and can only be adjusted when it is hidden.     * @Android
+   * Introduces the concept of layers, which are divided into four levels. The larger the layer, the closer it is to the bottom. By default, it is the first level. The layers are arranged in order from 1 to 4. The displayed layer is specified and is not affected by the order of display. Within each layer, the arrangement is based on the 'last in, first out' logic. The layer cannot be dynamically adjusted when the overlay is displayed, and can only be adjusted when it is hidden.
    * @Android 3.5
    * @iOS 3.5
    * @Harmony 3.5

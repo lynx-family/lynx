@@ -10,7 +10,8 @@ import { StandardProps } from '../props';
  */
 export interface ImageProps extends StandardProps {
   /**
-   * Supports http/https/base64
+   * Supports HTTP, HTTPS, and base64 sources. The value must be non-empty to
+   * display an image.
    * @Android 0.1
    * @iOS 1.5
    * @Harmony 2.14
@@ -101,11 +102,15 @@ export interface ImageProps extends StandardProps {
    * @ClayMacOS 2.14
    * @ClayWindows 2.14
    * @ClayHarmony 2.14
+   * @defaultValue "0px"
    */
   'blur-radius'?: string;
 
   /**
-   * Stretchable area for 9patch images, in percentage or decimal, four values for top, right, bottom, left
+   * Defines the stretchable area for 9-patch images. Four `px` lengths in top,
+   * right, bottom, and left order are supported across all declared platforms.
+   * Percentage support varies by platform. When unset, 9-patch stretching is
+   * disabled.
    *
    * :::note
    * Using cap-insets does not require the original image to be a 9-patch image.
@@ -119,6 +124,7 @@ export interface ImageProps extends StandardProps {
    * @ClayMacOS 1.5
    * @ClayWindows 1.5
    * @ClayHarmony 2.14
+   * @defaultValue undefined
    */
   'cap-insets'?: string;
 

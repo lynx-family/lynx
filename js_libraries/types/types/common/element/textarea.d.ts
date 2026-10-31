@@ -136,7 +136,6 @@ export interface TextAreaProps extends Omit<StandardProps, 'bindfocus' | 'bindbl
    * @ClayIOS 3.4
    * @ClayMacOS 3.4
    * @ClayWindows 3.4
-   * @defaultValue 'done'
    */
   'confirm-type'?: 'send' | 'search' | 'go' | 'done' | 'next';
   /**
@@ -150,7 +149,6 @@ export interface TextAreaProps extends Omit<StandardProps, 'bindfocus' | 'bindbl
    * @ClayMacOS 3.4
    * @ClayWindows 3.4
    * @ClayHarmony 2.16
-   * @defaultValue 140
    */
   maxlength?: number;
   /**

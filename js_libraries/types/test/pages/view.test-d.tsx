@@ -700,6 +700,8 @@ function invoke<T extends BoundingClientRectMethod | TakeScreenShotMethod | SetF
     params: {
       relativeTo: 'screen',
       androidEnableTransformProps: true,
+      iOSEnableAnimationProps: true,
+      harmonyEnableTransformProps: true,
     },
     success: (result) => {
       assertType<string>(result.id);
@@ -719,10 +721,16 @@ function invoke<T extends BoundingClientRectMethod | TakeScreenShotMethod | SetF
     params: {
       format: 'jpeg',
       scale: 0.8,
+      androidEnablePixelCopy: true,
     },
     success: (result) => {
       assertType<string>(result.data);
     },
+  });
+
+  invoke({
+    method: 'takeScreenshot',
+    params: {},
   });
 
   // SetFocus method

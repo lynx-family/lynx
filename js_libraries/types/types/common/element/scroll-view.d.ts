@@ -79,7 +79,7 @@ export interface ScrollViewProps extends StandardProps, ScrollbarProps {
    * @ClayMacOS 4.0
    * @ClayWindows 4.0
    * @ClayHarmony 4.0
-   * @defaultValue true
+   * @defaultValue false
    */
   'scroll-bar-enable'?: boolean;
 

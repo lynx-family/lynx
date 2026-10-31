@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.6
+
+- Audit built-in Element declarations against runtime behavior, add `<cover-view>` typings, and correct confirmed property defaults, types, event payloads, and generic method parameters.
+
 ## 4.4.5
 
 - Add `thread-strategy` to `<frame>` typings and declare the `FrameThreadStrategy` enum for rendering thread models.

@@ -5,6 +5,7 @@
 import { StandardProps } from '../props';
 import { NoProps } from '../props';
 import { ComponentProps } from './component';
+import { CoverViewProps } from './cover-view';
 import { FilterImageProps } from './filter-image';
 import { ImageProps, ImageUIMethods } from './image';
 import { InlineImageProps } from './inline-image';
@@ -63,6 +64,12 @@ export interface IntrinsicElements {
    * @compatOverride method takeScreenshot Android=3.5 iOS=3.8
    */
   'component': LynxComponentProps;
+  /**
+   * @ClayMacOS 4.1
+   * @ClayWindows 4.1
+   * @compatOverride attribute event-through ClayMacOS=false ClayWindows=false
+   */
+  'cover-view': CoverViewProps;
   /**
    * @Web
    * @compatOverride method setFocus ClayAndroid=2.14
@@ -362,6 +369,7 @@ declare module 'react' {
     // Should copy from above IntrinsicElements
     interface IntrinsicElements {
       'component': LynxComponentProps;
+      'cover-view': CoverViewProps;
       'filter-image': FilterImageProps;
       'image': ImageProps;
       'inline-image': InlineImageProps;

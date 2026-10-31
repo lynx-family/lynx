@@ -39,6 +39,18 @@ interface BoundingClientRectMethod extends BaseMethod {
      * @Android
      */
     androidEnableTransformProps?: boolean;
+    /**
+     * Whether to use presentation-layer animation geometry on iOS.
+     * @defaultValue false
+     * @iOS
+     */
+    iOSEnableAnimationProps?: boolean;
+    /**
+     * Whether to include transform props when calculating geometry on Harmony.
+     * @defaultValue false
+     * @Harmony
+     */
+    harmonyEnableTransformProps?: boolean;
   };
   success?: Callback<{
     /**
@@ -126,14 +138,14 @@ interface TakeScreenShotMethod extends BaseMethod {
   method: 'takeScreenshot';
   params: {
     /**
-     * Specify the image format.
-     * @defaultValue 'jpeg'
+     * Specify the image format. Android, iOS, and Harmony default to `jpeg`;
+     * Clay defaults to `png`.
      * @Android
      * @iOS
      * @Harmony
      * @PC
      */
-    format: 'jpeg' | 'png';
+    format?: 'jpeg' | 'png';
     /**
      * Specify the image quality, within [0, 1], the smaller the value, the blurrier and smaller the size.
      * @defaultValue 1
@@ -143,6 +155,12 @@ interface TakeScreenShotMethod extends BaseMethod {
      * @PC
      */
     scale?: number;
+    /**
+     * Whether Android uses PixelCopy-compatible rendering for platform views.
+     * @defaultValue false
+     * @Android
+     */
+    androidEnablePixelCopy?: boolean;
   };
   success?: Callback<{
     /**

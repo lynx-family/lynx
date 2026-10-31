@@ -100,7 +100,6 @@ export interface FrameProps extends StandardProps {
    * @Android 3.9
    * @iOS 3.9
    * @Harmony 4.2
-   * @defaultValue false
    */
   'enable-multi-async-thread'?: boolean;
 
