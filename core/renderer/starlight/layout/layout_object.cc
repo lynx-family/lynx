@@ -134,9 +134,10 @@ void LayoutObject::RoundToPixelGrid(const float container_absolute_left,
                                     const float container_absolute_top,
                                     const float container_rounded_left,
                                     const float container_rounded_top,
-                                    bool ancestors_have_new_layout) {
+                                    bool ancestors_have_new_layout,
+                                    bool ancestors_display_none) {
   const LayoutObject* container =
-      IsNewFixed() ? GetRoot() : ParentLayoutObject();
+      IsNewFixed() ? GetRoot() : ContainingBlockEstablisher();
   float absolute_left =
       container_absolute_left +
       GetBoundLeftFrom(container, BoundType::kBorder, BoundType::kBorder);
@@ -146,6 +147,7 @@ void LayoutObject::RoundToPixelGrid(const float container_absolute_left,
   bool layout_changed_since_root = ancestors_have_new_layout ||
                                    (!is_layout_occurred) ||
                                    current_node_has_new_layout_;
+  const bool had_new_layout = current_node_has_new_layout_;
   current_node_has_new_layout_ = false;
 
   // The top / left of list item is decided by platform layout, the top / left
@@ -153,11 +155,9 @@ void LayoutObject::RoundToPixelGrid(const float container_absolute_left,
   // Reset top to 0 when scroll orientation is vertical and left to 0 when
   // horizontal, to achieve unified layout result.
   if (!GetEnableFixedNew() || (GetEnableFixedNew() && !IsFixed())) {
-    if (parent() && ParentLayoutObject()->IsList()) {
+    if (container && container->IsList()) {
       const LinearOrientationType scroll_orientation =
-          ParentLayoutObject()
-              ->GetCSSStyle()
-              ->linear_data_->linear_orientation_;
+          container->GetCSSStyle()->linear_data_->linear_orientation_;
       if (scroll_orientation == LinearOrientationType::kVertical ||
           scroll_orientation == LinearOrientationType::kVerticalReverse) {
         absolute_top = 0.f;
@@ -185,7 +185,21 @@ void LayoutObject::RoundToPixelGrid(const float container_absolute_left,
   float rounded_absolute_left = LayoutStyleUtils::RoundValueToPixelGrid(
       absolute_left, physical_pixels_per_layout_unit);
 
-  if (layout_changed_since_root) {
+  const auto display = css_style_->GetDisplay(configs_, attr_map());
+  const bool display_none =
+      ancestors_display_none || display == DisplayType::kNone;
+  if (display_none || display == DisplayType::kContents) {
+    if (SetNewLayoutResult(LayoutResultForRendering()) || !is_layout_occurred ||
+        had_new_layout) {
+      MarkHasNewLayout();
+    }
+    // Boxless nodes pass through the container's coordinate system. Hidden
+    // descendants still need the traversal below to clear their final results.
+    absolute_left = container_absolute_left;
+    absolute_top = container_absolute_top;
+    rounded_absolute_left = container_rounded_left;
+    rounded_absolute_top = container_rounded_top;
+  } else if (layout_changed_since_root) {
     const float absolute_right = absolute_left + offset_width_;
     const float absolute_bottom = absolute_top + offset_height_;
 
@@ -284,13 +298,16 @@ void LayoutObject::RoundToPixelGrid(const float container_absolute_left,
     LayoutObject* child = static_cast<LayoutObject*>(FirstChild());
     while (child) {
       if (child->IsNewFixed()) {
-        child->RoundToPixelGrid(0.f, 0.f, 0.f, 0.f, true);
+        const bool hidden =
+            display_none &&
+            !child->GetLayoutConfigs().IsFixedNodeWithDisplayNoneQuirksMode();
+        child->RoundToPixelGrid(0.f, 0.f, 0.f, 0.f, true, hidden);
         child = static_cast<LayoutObject*>(child->Next());
         continue;
       }
       child->RoundToPixelGrid(absolute_left, absolute_top,
                               rounded_absolute_left, rounded_absolute_top,
-                              layout_changed_since_root);
+                              layout_changed_since_root, display_none);
       child = static_cast<LayoutObject*>(child->Next());
     }
   }
@@ -638,6 +655,7 @@ bool LayoutObject::CanReuseLayoutWithSameSizeAsGivenConstraint(
 
 FloatSize LayoutObject::UpdateMeasureByPlatform(const Constraints& constraints,
                                                 bool final_measure) {
+  UpdateContainingBlockForPlatform();
   Constraints item_constraints =
       property_utils::GenerateDefaultConstraints(*this, constraints);
   box_info_.InitializeBoxInfo(item_constraints, *this, GetLayoutConfigs());
@@ -649,13 +667,23 @@ FloatSize LayoutObject::UpdateMeasureByPlatform(const Constraints& constraints,
 }
 
 void LayoutObject::AlignmentByPlatform(float offset_top, float offset_left) {
-  const LayoutObject* container =
-      IsNewFixed() ? GetRoot() : ParentLayoutObject();
+  UpdateContainingBlockForPlatform();
+  const LayoutObject* container = ContainingBlockEstablisher();
   SetBoundLeftFrom(container, offset_left, BoundType::kMargin,
                    BoundType::kContent);
   SetBoundTopFrom(container, offset_top, BoundType::kMargin,
                   BoundType::kContent);
   UpdateAlignment();
+}
+
+void LayoutObject::UpdateContainingBlockForPlatform() {
+  auto* container = IsNewFixed() ? root_node_ : ParentLayoutObject();
+  while (container && container->GetCSSStyle()->GetDisplay(
+                          container->GetLayoutConfigs(),
+                          container->attr_map()) == DisplayType::kContents) {
+    container = container->ParentLayoutObject();
+  }
+  SetContainingBlockEstablisher(container);
 }
 
 FloatSize LayoutObject::UpdateMeasure(const Constraints& given_constraints,
@@ -878,10 +906,6 @@ void LayoutObject::HideLayoutObject() {
   MarkHasNewLayout();
   current_node_should_display_none_ =
       !GetLayoutConfigs().IsFixedNodeWithDisplayNoneQuirksMode();
-  for (int i = 0; i < GetChildCount(); ++i) {
-    LayoutObject* child = static_cast<LayoutObject*>(Find(i));
-    child->HideLayoutObject();
-  }
   // When hiding layout, insert an empty cache with negative constraints
   // area, to mark the last cached measurement is not in sync with the current
   // state of the layout object.
@@ -891,7 +915,14 @@ void LayoutObject::HideLayoutObject() {
   cache_manager_.InsertCacheEntry(constraints, 0.f, 0.f);
 }
 
-void LayoutObject::LayoutDisplayNone() { HideLayoutObject(); }
+void LayoutObject::LayoutDisplayNone() {
+  SetContainingBlockEstablisher(nullptr);
+  HideLayoutObject();
+  for (int i = 0; i < GetChildCount(); ++i) {
+    LayoutObject* child = static_cast<LayoutObject*>(Find(i));
+    child->LayoutDisplayNone();
+  }
+}
 
 std::vector<double> LayoutObject::GetBoxModel() {
   std::vector<double> res;
