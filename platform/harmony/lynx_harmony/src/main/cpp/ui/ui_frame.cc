@@ -490,13 +490,19 @@ void UIFrame::TryLoadBundle() {
          << src_ << ", status: " << base::NapiUtil::StatusToString(status));
     return;
   }
-  napi_value bundle =
-      lynx::harmony::LynxTemplateBundleHarmony::CreateFromNative(
-          env_, *pending_bundle_);
-  if (!bundle) {
+  // Construct the ArkTS subclass so the child can use TemplateBundle methods.
+  napi_value bundle = nullptr;
+  if (!CallHostMethod("createTemplateBundle", 0, nullptr, &bundle) || !bundle) {
     LOGE("UIFrame failed to create template bundle value, url: " << src_);
     return;
   }
+  lynx::harmony::LynxTemplateBundleHarmony* native_bundle = nullptr;
+  status = napi_unwrap(env_, bundle, reinterpret_cast<void**>(&native_bundle));
+  if (status != napi_ok || !native_bundle) {
+    LOGE("UIFrame failed to unwrap template bundle, url: " << src_);
+    return;
+  }
+  native_bundle->SetBundle(*pending_bundle_);
   napi_value argv[4] = {src, bundle,
                         CreateMetaDataValue(has_frame_data_, frame_data_),
                         CreateMetaDataValue(has_global_props_, global_props_)};
