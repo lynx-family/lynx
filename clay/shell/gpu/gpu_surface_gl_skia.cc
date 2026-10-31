@@ -332,8 +332,8 @@ bool GPUSurfaceGLSkia::PresentSurface(const SurfaceFrame& frame) {
   }
 
   {
-    TRACE_EVENT("clay", "SkCanvas::Flush");
-    onscreen_surface_->getCanvas()->flush();
+    TRACE_EVENT("clay", "SkSurface::FlushAndSubmit");
+    onscreen_surface_->flushAndSubmit();
   }
 
   GLPresentInfo present_info = {
