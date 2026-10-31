@@ -104,6 +104,15 @@ bool ParseTemplateDataAttribute(std::string_view key, base::String* name) {
   return true;
 }
 
+bool IsOrdinaryTemplateAttribute(const base::String& key) {
+  base::String data_name;
+  return key != kElementClass && key != kElementStyle && key != kElementId &&
+         key != kElementAttrCSSID &&
+         !TreeResolver::IsTemplateEventAttribute(key) &&
+         !ListElement::IsTemplateCallbackAttribute(key) &&
+         !ParseTemplateDataAttribute(key.string_view(), &data_name);
+}
+
 void RegisterSlotTarget(base::Vector<fml::RefPtr<Element>>* targets,
                         int32_t slot_index,
                         const fml::RefPtr<Element>& element) {
@@ -498,7 +507,7 @@ ResolvedTemplateGesture ResolveEffectiveTemplateGesture(
 void ClearPreviousTemplateSpreadAttributes(
     Element* element, const TemplateAttributes& template_attributes,
     const lepus::Value& previous_attribute_slots,
-    TemplateAttributeApplyMode mode) {
+    const lepus::Value& attribute_slots, TemplateAttributeApplyMode mode) {
   if (!previous_attribute_slots.IsArrayOrJSArray()) {
     return;
   }
@@ -512,8 +521,25 @@ void ClearPreviousTemplateSpreadAttributes(
     if (!previous_value.IsObject()) {
       continue;
     }
-    tasm::ForEachLepusValue(previous_value, [element, mode](const auto& key,
-                                                            const auto&) {
+    tasm::ForEachLepusValue(previous_value, [element, mode,
+                                             &template_attributes,
+                                             &attribute_slots](const auto& key,
+                                                               const auto&) {
+      // Clearing a retained ordinary key can change synchronous state before
+      // its later setter restores it. Explicit nulls still replay in order.
+      if (IsOrdinaryTemplateAttribute(key.String()) &&
+          std::any_of(template_attributes.begin(), template_attributes.end(),
+                      [&](const auto& current) {
+                        if (current.type_ != ATTRIBUTE_BINDING_TYPE_SPREAD) {
+                          return current.key_ == key.String();
+                        }
+                        auto spread = ResolveAttributeSlotValue(
+                            attribute_slots, current.slot_index_);
+                        return spread.IsObject() &&
+                               spread.Contains(key.String());
+                      })) {
+        return;
+      }
       if (mode != TemplateAttributeApplyMode::kEventOnly &&
           RemoveTemplateDataAttribute(element, key.String())) {
         return;
@@ -540,7 +566,8 @@ void ApplyTemplateAttributesToElementInternal(
          mode != TemplateAttributeApplyMode::kEventOnly);
   if (rebuild_static_attributes) {
     ClearPreviousTemplateSpreadAttributes(element, *template_attributes,
-                                          *previous_attribute_slots, mode);
+                                          *previous_attribute_slots,
+                                          attribute_slots, mode);
   }
   bool has_applied_spread = false;
   for (const auto& attr : *template_attributes) {
