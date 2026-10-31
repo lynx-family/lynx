@@ -3,7 +3,7 @@
 RTF is a testing management framework for transparent testing management, simplifying the testing configuration process, and enabling quick integration for new projects.
 
 Related resources:
- * User Guide in [RTF Tool User Guide](reference to lynx official website)
+ * See plugin documentation under [plugins](./plugins/README.md) and [core options](./core/options/README.md) for usage details
 
 
 ## What RTF is for
