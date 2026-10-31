@@ -67,8 +67,8 @@ fml::TimeDelta Animation::GetCurrentTime() const {
 
 fml::TimeDelta Animation::GetCurrentTimeAt(
     fml::TimePoint reference_time) const {
-  // Effect replacement keeps this clock. Animations whose effects have
-  // never been replaced use the local timing fields below.
+  // Once created, the shared clock is used by either backend. Animations that
+  // never needed shared playback use the local timing fields below.
   if (playback_) {
     return playback_->CurrentTime(reference_time);
   }
@@ -123,7 +123,7 @@ void Animation::SeekTo(fml::TimeDelta current_time,
   current_time_at_pause_ = current_time;
   current_run_start_system_time_ = reference_time;
   keyframe_effect_->SeekTo(current_time, reference_time, keep_paused);
-  // The explicit seek replaces any pending effect timing transfer.
+  // The explicit seek replaces any pending backend timing transfer.
   pending_run_state_.reset();
   if (playback_) {
     playback_->SetPaused(keep_paused, reference_time);
@@ -279,7 +279,7 @@ void Animation::Destroy(bool need_clear_effect) {
   current_time_at_pause_ = GetCurrentTime();
   ClearSampleHistory();
   ClearTransitionPreviousEndValue();
-  if (need_clear_effect) {
+  if (need_clear_effect && keyframe_effect_) {
     keyframe_effect_->ClearEffect();
   }
   if (state_ == State::kPlay || state_ == State::kPause) {
@@ -381,6 +381,9 @@ void Animation::BindDelegate(AnimationDelegate* target) {
 }
 
 void Animation::RequestNextFrame() {
+  if (platform_execution_) {
+    return;
+  }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_REQUEST_NEXT_FRAME);
   if (animation_delegate_) {
     animation_delegate_->RequestNextFrame(
@@ -389,6 +392,9 @@ void Animation::RequestNextFrame() {
 }
 
 void Animation::DoFrame(fml::TimePoint& frame_time) {
+  if (platform_execution_) {
+    return;
+  }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_DOFRAME,
               [this](lynx::perfetto::EventContext ctx) {
                 auto* curveTypeInfo = ctx.event()->add_debug_annotations();
@@ -455,7 +461,8 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     fml::TimePoint& frame_time, bool events_only) {
   KeyframeEffect::KeyframeSampleResult result;
   // Invalid time and missing effect produce no sampled style changes.
-  if (frame_time == fml::TimePoint::Min() || !keyframe_effect_) {
+  if (frame_time == fml::TimePoint::Min() || !keyframe_effect_ ||
+      platform_execution_) {
     return result;
   }
   RebaseEffectTiming(frame_time);
@@ -603,10 +610,22 @@ void Animation::UpdatePlaybackState() {
   state_ = paused ? State::kPause : State::kPlay;
 }
 
+void Animation::SetPlatformExecution(bool platform) {
+  EnsurePlaybackState();
+  if (platform_execution_ != platform) {
+    executor_ = playback_->ChangeExecutor();
+    platform_execution_ = platform;
+    if (platform) {
+      keyframe_effect_.reset();
+    }
+  }
+}
+
 void Animation::ReplaceEffectFrom(Animation& replacement) {
   EnsurePlaybackState();
-  // For forward playback, only max(delay, 0) is needed to detect the old
-  // before-delay phase; completion is tracked by event_state.
+  // Native start notifications can precede the active interval. For forward
+  // playback, max(delay, 0) detects that old before-delay phase; event_state
+  // tracks completion.
   const auto delay =
       fml::TimeDelta::FromMilliseconds(std::max(animation_data_.delay, 0L));
   const auto event_state = playback_->event_state();
@@ -623,6 +642,7 @@ void Animation::ReplaceEffectFrom(Animation& replacement) {
   raw_style_set_.swap(replacement.raw_style_set_);
   raw_custom_property_set_.swap(replacement.raw_custom_property_set_);
   UpdateAnimationData(replacement.animation_data_);
+  SetPlatformExecution(false);
   UpdatePlaybackState();
   ClearSampleHistory();
   NotifyInspectorUpdated();
@@ -721,7 +741,7 @@ void Animation::ClearTransitionPreviousEndValue() {
 
 void Animation::SendStartEvent() {
   event_state_ = gfx::AnimationPlaybackState::EventState::kStarted;
-  if (playback_ && !playback_->ClaimEvent(0, event_state_)) {
+  if (playback_ && !playback_->ClaimEvent(executor_, event_state_)) {
     return;
   }
   CreateEventAndSend(is_transition_
@@ -731,7 +751,7 @@ void Animation::SendStartEvent() {
 
 void Animation::SendEndEvent() {
   event_state_ = gfx::AnimationPlaybackState::EventState::kFinished;
-  if (playback_ && !playback_->ClaimEvent(0, event_state_)) {
+  if (playback_ && !playback_->ClaimEvent(executor_, event_state_)) {
     return;
   }
   CreateEventAndSend(is_transition_
@@ -741,7 +761,7 @@ void Animation::SendEndEvent() {
 
 void Animation::SendCancelEvent() {
   event_state_ = gfx::AnimationPlaybackState::EventState::kCanceled;
-  if (playback_ && !playback_->ClaimEvent(0, event_state_)) {
+  if (playback_ && !playback_->ClaimEvent(executor_, event_state_)) {
     return;
   }
   CreateEventAndSend(is_transition_

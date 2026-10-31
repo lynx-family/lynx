@@ -174,11 +174,14 @@ class CSSKeyframeManagerTest : public ::testing::Test {
     tasm_mediator = std::make_shared<
         ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
     manager = std::make_unique<lynx::tasm::ElementManager>(
-        std::make_unique<MockPaintingContext>(), tasm_mediator.get(),
-        lynx_env_config);
+        CreatePaintingContext(), tasm_mediator.get(), lynx_env_config);
     auto config = std::make_shared<PageConfig>();
     config->SetEnableZIndex(true);
     manager->SetConfig(config);
+  }
+
+  virtual std::unique_ptr<MockPaintingContext> CreatePaintingContext() {
+    return std::make_unique<MockPaintingContext>();
   }
 
   std::shared_ptr<animation::Animation> InitTestAnimation() {
@@ -2083,6 +2086,336 @@ TEST_F(CSSKeyframeManagerTest,
            starlight::AnimationPropertyType::kPaddingBottom},
       });
   EXPECT_EQ(test_map, *kIDPropertyPaddingMap);
+}
+
+class CSSAnimationRoutingTest : public CSSKeyframeManagerTest {
+ public:
+  std::unique_ptr<MockPaintingContext> CreatePaintingContext() override {
+    return std::make_unique<RoutingMockPaintingContext>(true);
+  }
+
+  void SetUp() override {
+    CSSKeyframeManagerTest::SetUp();
+    manager->GetConfig()->SetEnableFiberArch(true);
+    manager->supports_platform_animation_routing_ = true;
+    target = manager->CreateFiberElement("view");
+    animator = InitTestKeyframeManager(target.get());
+    data.push_back(InitAnimationData(
+        base::String("test"), 4000, 0, starlight::TimingFunctionData(), 1,
+        starlight::AnimationFillModeType::kBoth,
+        starlight::AnimationDirectionType::kNormal,
+        starlight::AnimationPlayStateType::kRunning));
+  }
+
+  void UpdateMixedKeyframes(Element* element, const base::String& name,
+                            const char* property, const char* from,
+                            const char* to) {
+    auto frames = lepus::Dictionary::Create();
+    for (int i = 0; i < 2; ++i) {
+      auto frame = lepus::Dictionary::Create();
+      frame->SetValue("opacity", lepus::Value(i));
+      frame->SetValue(property, lepus::Value(i ? to : from));
+      frames->SetValue(i ? "100" : "0", lepus::Value(frame));
+    }
+    starlight::CSSStyleUtils::UpdateCSSKeyframes(
+        *element->keyframes_map_, name, lepus::Value(frames),
+        manager->GetCSSParserConfigs());
+  }
+
+  fml::RefPtr<Element> target;
+  std::unique_ptr<animation::MockCSSKeyframeManager> animator;
+  base::Vector<starlight::AnimationData> data;
+};
+
+TEST_F(CSSAnimationRoutingTest, RoutesUsingInitiallyBoundAnimationEvents) {
+  for (const auto* type : {"bindEvent", "global-bindEvent", "worklet"}) {
+    for (const auto* event : {"animationend", "animationiteration"}) {
+      SCOPED_TRACE(type);
+      SCOPED_TRACE(event);
+      auto element = manager->CreateFiberElement("view");
+      auto keyframe_manager = InitTestKeyframeManager(element.get());
+      UpdateOpacityKeyframes(element.get(), data[0].name, 0, 1);
+      if (std::string(type) == "worklet") {
+        element->SetWorkletEventHandler(
+            event, "bindEvent", lepus::Value("worklet"),
+            static_cast<runtime::MTSRuntime*>(nullptr));
+      } else {
+        element->SetJSEventHandler(event, type, "onAnimationEvent");
+      }
+      keyframe_manager->SyncAnimationDataForNewPipeline(data);
+      EXPECT_EQ(keyframe_manager->platform_animations_.empty(),
+                std::string(event) == "animationiteration");
+    }
+  }
+  target->has_explicit_new_animator_attr_ = true;
+  UpdateOpacityKeyframes(target.get(), data[0].name, 0, 1);
+  animator->SyncAnimationDataForNewPipeline(data);
+  EXPECT_TRUE(animator->platform_animations_.empty());
+  EXPECT_EQ(animator->animations_map().size(), 1u);
+}
+
+TEST_F(CSSAnimationRoutingTest, PausedAnimationSurvivesBackendRoundTrip) {
+  for (bool legacy : {false, true}) {
+    SCOPED_TRACE(legacy);
+    animator = InitTestKeyframeManager(target.get());
+    data[0].play_state = starlight::AnimationPlayStateType::kPaused;
+    auto sync = [&](bool rebuild) {
+      animator->SetAnimationDataAndPlayInternal(data, rebuild, legacy, !legacy);
+    };
+    UpdateOpacityKeyframeTiming(target.get(), data[0].name, "ease-in");
+    sync(false);
+    auto logical = animator->animations_map().at(data[0].name);
+    const auto held_time = fml::TimeDelta::FromMilliseconds(1000);
+    logical->SeekTo(held_time, fml::TimePoint::Now());
+    logical->SendStartEvent();
+    auto sample_time = fml::TimePoint::Now();
+    const auto expected = logical->SampleAt(sample_time).styles;
+    ASSERT_FALSE(expected.empty());
+
+    UpdateOpacityKeyframeTiming(target.get(), data[0].name, nullptr);
+    sync(true);
+    EXPECT_EQ(animator->platform_animations_.at(data[0].name).animation,
+              logical);
+    EXPECT_EQ(logical->keyframe_effect(), nullptr);
+    const auto executor = logical->executor();
+    auto playback = logical->playback();
+    animator->ClearUTStatus();
+    logical->DoFrame(sample_time);
+    EXPECT_FALSE(animator->has_request_next_frame());
+    sync(true);
+    EXPECT_EQ(logical->executor(), executor);
+    EXPECT_EQ(logical->GetCurrentTime(), held_time);
+
+    UpdateOpacityKeyframeTiming(target.get(), data[0].name, "ease-in");
+    sync(true);
+    EXPECT_EQ(animator->animations_map().at(data[0].name), logical);
+    EXPECT_EQ(logical->GetState(), animation::Animation::State::kPause);
+    EXPECT_EQ(logical->GetCurrentTime(), held_time);
+    EXPECT_FALSE(playback->IsCurrentExecutor(executor));
+    EXPECT_EQ(target->platform_animation_commands_->back().type,
+              gfx::PlatformAnimationCommandType::kDetach);
+    EXPECT_EQ(
+        logical->SampleAt(animation::Animation::GetAnimationDummyStartTime())
+            .styles,
+        expected);
+    sample_time = TimePointFromMs(100000);
+    EXPECT_EQ(logical->SampleAt(sample_time).styles, expected);
+    EXPECT_TRUE(animator->TakePendingAnimationEventsForNewPipeline().empty());
+  }
+}
+
+TEST_F(CSSAnimationRoutingTest, RunningFallbackPreservesTimeAcrossDelay) {
+  for (long delay : {0L, 6000L}) {
+    SCOPED_TRACE(delay);
+    animator = InitTestKeyframeManager(target.get());
+    data[0].delay = delay;
+    data[0].iteration_count = 10;
+    UpdateOpacityKeyframeTiming(target.get(), data[0].name, nullptr);
+    animator->SyncAnimationDataForNewPipeline(data);
+    auto logical = animator->platform_animations_.at(data[0].name).animation;
+    logical->playback()->SetCurrentTime(fml::TimeDelta::FromMilliseconds(2500));
+    logical->playback()->ClaimEvent(
+        logical->executor(), gfx::AnimationPlaybackState::EventState::kStarted);
+    UpdateOpacityKeyframeTiming(target.get(), data[0].name, "ease-in");
+    animator->SyncAnimationDataForNewPipeline(data, true);
+    auto time = TimePointFromMs(100000);
+    auto sample = logical->SampleAt(time);
+    ASSERT_TRUE(sample.styles.count(kPropertyIDOpacity));
+    EXPECT_GE(time - logical->start_time(),
+              fml::TimeDelta::FromMilliseconds(2500));
+    EXPECT_FALSE(sample.should_send_start_event);
+    EXPECT_FALSE(sample.should_send_end_event);
+    EXPECT_EQ(sample.iteration_events_due, 0);
+    if (delay) {
+      EXPECT_DOUBLE_EQ(sample.styles.at(kPropertyIDOpacity).GetNumber(), 0);
+    }
+  }
+}
+
+TEST_F(CSSAnimationRoutingTest, TimingChangesReevaluateBackend) {
+  UpdateOpacityKeyframeTiming(target.get(), data[0].name, nullptr);
+  data[0].timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
+  animator->SyncAnimationDataForNewPipeline(data);
+  auto logical = animator->animations_map().at(data[0].name);
+  data[0].timing_func = starlight::TimingFunctionData();
+  animator->SyncAnimationDataForNewPipeline(data);
+  ASSERT_TRUE(animator->animations_map().empty());
+  EXPECT_EQ(animator->platform_animations_.at(data[0].name).animation, logical);
+  data[0].timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
+  animator->SyncAnimationDataForNewPipeline(data);
+  EXPECT_EQ(animator->animations_map().at(data[0].name), logical);
+  // A single interval takes its explicit keyframe easing instead of ease-in.
+  UpdateOpacityKeyframeTiming(target.get(), data[0].name, "ease-out");
+  (*target->keyframes_map_)[data[0].name]->GetKeyframesContent().erase(0.5);
+  animator->SyncAnimationDataForNewPipeline(data, true);
+  ASSERT_TRUE(animator->animations_map().empty());
+  auto actual = gfx::CreateTimingFunction(
+      target->platform_animation_commands_->back().animation_data.timing_func);
+  auto expected = gfx::CubicBezierTimingFunction::CreatePreset(
+      gfx::CubicBezierTimingFunction::EaseType::EASE_OUT);
+  EXPECT_NEAR(actual->GetValue(0.25), expected->GetValue(0.25), 1e-6);
+}
+
+TEST_F(CSSAnimationRoutingTest, ReusesKeyframesUntilTheirInputsChange) {
+  UpdateToOnlyOpacityKeyframes(target.get(), data[0].name, 1.0);
+  StyleMap underlying{
+      {kPropertyIDOpacity, CSSValue(0.2f, CSSValuePattern::NUMBER)}};
+  auto sync = [&](bool rebuild = false) {
+    animator->SyncAnimationDataForNewPipeline(data, rebuild, &underlying);
+  };
+  sync();
+  ASSERT_EQ(target->platform_animation_commands_->size(), 1u);
+  const auto& initial = target->platform_animation_commands_->back();
+  const auto initial_id = initial.animation_id;
+  const auto initial_generation = initial.generation;
+  EXPECT_FALSE(target->can_be_layout_only_);
+  EXPECT_FALSE(animator->NeedsFutureTickForNewPipeline());
+  sync();
+  EXPECT_EQ(target->platform_animation_commands_->size(), 1u);
+  data[0].play_state = starlight::AnimationPlayStateType::kPaused;
+  sync();
+  const auto& pause = target->platform_animation_commands_->back();
+  EXPECT_TRUE(pause.reuse_keyframes);
+  EXPECT_EQ(pause.generation, initial_generation + 1);
+  EXPECT_TRUE(pause.properties.empty());
+  for (bool reset : {false, true}) {
+    if (reset) {
+      underlying.clear();
+    } else {
+      underlying[kPropertyIDOpacity] = CSSValue(0.4f, CSSValuePattern::NUMBER);
+    }
+    sync();
+    const auto& update = target->platform_animation_commands_->back();
+    EXPECT_EQ(update.animation_id, initial_id);
+    EXPECT_FALSE(update.reuse_keyframes);
+    EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                        update.properties.front().keyframes.front().get())
+                        ->Value(),
+                    reset ? 1.0f : 0.4f);
+  }
+  UpdateOpacityKeyframes(target.get(), data[0].name, 0.1, 0.9);
+  sync(true);
+  const auto& rebuilt = target->platform_animation_commands_->back();
+  EXPECT_EQ(rebuilt.animation_id, initial_id);
+  EXPECT_FALSE(rebuilt.reuse_keyframes);
+  EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                      rebuilt.properties.front().keyframes.front().get())
+                      ->Value(),
+                  0.1f);
+  data.clear();
+  sync();
+  EXPECT_EQ(target->platform_animation_commands_->back().type,
+            gfx::PlatformAnimationCommandType::kCancel);
+  EXPECT_TRUE(animator->TakePendingAnimationEventsForNewPipeline().empty());
+}
+
+TEST_F(CSSAnimationRoutingTest,
+       ImplicitEndpointsUseIncomingStyleOnEitherBackend) {
+  UpdateToOnlyOpacityKeyframes(target.get(), data[0].name, 1.0);
+  target->computed_css_style()->SetValue(
+      kPropertyIDOpacity, CSSValue(0.2f, CSSValuePattern::NUMBER));
+  for (int backend = 0; backend < 3; ++backend) {
+    SCOPED_TRACE(backend);
+    manager->supports_platform_animation_routing_ = backend != 0;
+    if (backend == 2) {
+      target->SetJSEventHandler("animationiteration", "bindEvent",
+                                "onIteration");
+    }
+    for (bool reset : {false, true}) {
+      StyleMap incoming;
+      if (!reset) {
+        incoming[kPropertyIDOpacity] = CSSValue(0.8f, CSSValuePattern::NUMBER);
+      }
+      auto built = animator->BuildAnimation(data[0], nullptr, &incoming);
+      if (backend == 1) {
+        ASSERT_TRUE(built.platform_animation);
+        EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                            built.platform_animation->properties.front()
+                                .keyframes.front()
+                                .get())
+                            ->Value(),
+                        reset ? 1.0f : 0.8f);
+      } else {
+        ASSERT_NE(built.new_animator_animation, nullptr);
+        auto* curve = built.new_animator_animation->keyframe_effect()
+                          ->GetKeyframeModelByCurveType(
+                              animation::AnimationCurve::CurveType::OPACITY)
+                          ->animation_curve();
+        auto time = fml::TimeDelta::FromMilliseconds(data[0].duration / 2);
+        EXPECT_NEAR(curve->GetValue(time).AsNumber(), reset ? 1.0f : 0.9f,
+                    1e-6);
+      }
+    }
+  }
+}
+
+TEST_F(CSSAnimationRoutingTest, PlatformHandoffsPreserveAnimationListOrder) {
+  auto config = data.front();
+  data.clear();
+  for (const auto* name : {"fade_a", "fade_b", "fade_c"}) {
+    UpdateOpacityKeyframes(target.get(), base::String(name), 0.0, 1.0);
+    config.name = base::String(name);
+    data.push_back(config);
+  }
+  animator->SyncAnimationDataForNewPipeline(data);
+  ASSERT_TRUE(target->HasPendingPlatformAnimationCommands());
+  ASSERT_EQ(target->platform_animation_commands_->size(), 3u);
+  for (size_t i = 0; i < data.size(); ++i) {
+    EXPECT_EQ((*target->platform_animation_commands_)[i].name,
+              data[i].name.str());
+  }
+  target->platform_animation_commands_.reset();
+  std::swap(data[0], data[2]);
+  animator->SyncAnimationDataForNewPipeline(data);
+  ASSERT_EQ(target->platform_animation_commands_->size(), 3u);
+  for (size_t i = 0; i < data.size(); ++i) {
+    const auto& command = (*target->platform_animation_commands_)[i];
+    EXPECT_EQ(command.name, data[i].name.str());
+    EXPECT_EQ(command.type, gfx::PlatformAnimationCommandType::kUpdate);
+    EXPECT_EQ(command.generation, 2u);
+  }
+
+  // A Core layout effect must not compete with a platform opacity effect.
+  // An independent transform can still run on the platform.
+  UpdateOpacityKeyframes(target.get(), data[0].name, 0.2, 0.2);
+  UpdateMixedKeyframes(target.get(), data[1].name, "left", "0px", "100px");
+  UpdateOpacityKeyframes(target.get(), data[2].name, 0.8, 0.8);
+  const base::String translate("translate");
+  UpdateMixedKeyframes(target.get(), translate, "transform", "none",
+                       "translateX(100px)");
+  auto& transform_frames =
+      (*target->keyframes_map_)[translate]->GetKeyframesContent();
+  for (auto& frame : transform_frames) {
+    frame.second->erase(kPropertyIDOpacity);
+  }
+  auto transform_data = data.front();
+  transform_data.name = translate;
+  data.push_back(transform_data);
+  animator->SyncAnimationDataForNewPipeline(data, true);
+  ASSERT_EQ(animator->animations_map().size(), 3u);
+  ASSERT_EQ(animator->platform_animations_.size(), 1u);
+  EXPECT_EQ(animator->platform_animations_.count(translate), 1u);
+  auto time = TimePointFromMs(1000);
+  auto sample = animator->CollectAnimationUpdatesForNewPipeline(time);
+  EXPECT_FLOAT_EQ(sample.property_overrides.at(kPropertyIDOpacity).GetNumber(),
+                  0.8f);
+  std::swap(data[0], data[2]);
+  animator->SyncAnimationDataForNewPipeline(data);
+  time = TimePointFromMs(1016);
+  sample = animator->CollectAnimationUpdatesForNewPipeline(time);
+  EXPECT_FLOAT_EQ(sample.property_overrides.at(kPropertyIDOpacity).GetNumber(),
+                  0.2f);
+
+  // Overlap propagates through a mixed effect to the transform-only effect.
+  UpdateMixedKeyframes(target.get(), data[0].name, "transform", "none",
+                       "translateX(100px)");
+  animator->SyncAnimationDataForNewPipeline(data, true);
+  EXPECT_EQ(animator->animations_map().size(), 4u);
+  EXPECT_TRUE(animator->platform_animations_.empty());
+  data.erase(data.begin() + 1);  // Remove the layout effect.
+  animator->SyncAnimationDataForNewPipeline(data);
+  EXPECT_TRUE(animator->animations_map().empty());
+  EXPECT_EQ(animator->platform_animations_.size(), 3u);
 }
 
 }  // namespace testing

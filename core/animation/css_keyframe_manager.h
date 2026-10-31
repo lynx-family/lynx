@@ -164,8 +164,7 @@ class CSSKeyframeManager : public AnimationDelegate {
   std::shared_ptr<Animation> CreateAnimation(
       starlight::AnimationData& data,
       const tasm::CustomPropertiesMap* base_custom_properties = nullptr,
-      std::optional<Animation::Origin> origin = std::nullopt,
-      bool notify_created = true);
+      std::optional<Animation::Origin> origin = std::nullopt);
 
   void SetAnimationDataAndPlayInternal(
       base::Vector<starlight::AnimationData>& anim_data, bool force_rebuild,
@@ -212,6 +211,40 @@ class CSSKeyframeManager : public AnimationDelegate {
   tasm::CustomPropertiesMap persisted_custom_property_fill_styles_;
   AnimationEventRecordsForNewPipeline pending_event_records_;
 
+  struct PlatformAnimationState {
+    gfx::AnimationId animation_id{0};
+    uint32_t generation{1};
+    gfx::TimingFunctionData platform_timing;
+    std::vector<gfx::PlatformAnimationProperty> properties;
+    bool handed_off{false};
+    // Cleared after submitting data; play-state and ordering updates can reuse
+    // it.
+    bool keyframes_changed{true};
+    // Only properties with implicit endpoints depend on these base values.
+    tasm::StyleMap underlying_endpoint_values;
+    std::shared_ptr<Animation> animation;
+
+    void RetainIdentityFrom(const PlatformAnimationState& previous) {
+      animation_id = previous.animation_id;
+      generation = previous.generation;
+      handed_off = previous.handed_off;
+    }
+  };
+
+  struct AnimationBuildResult {
+    std::shared_ptr<Animation> new_animator_animation;
+    std::optional<PlatformAnimationState> platform_animation;
+  };
+
+  AnimationBuildResult BuildAnimation(
+      starlight::AnimationData& data,
+      const tasm::CustomPropertiesMap* base_custom_properties = nullptr,
+      const tasm::StyleMap* base_resolved_styles = nullptr,
+      std::optional<Animation::Origin> origin = std::nullopt,
+      bool allow_platform = true);
+  void QueuePlatformAnimationCommands(PlatformAnimationState& animation,
+                                      gfx::PlatformAnimationCommandType type);
+
  private:
   struct ParsedKeyframe {
     std::unique_ptr<gfx::Keyframe> keyframe;
@@ -256,9 +289,15 @@ class CSSKeyframeManager : public AnimationDelegate {
   ParsedPropertyMap ParseKeyframes(
       const base::String& animation_name,
       const tasm::CustomPropertiesMap* base_custom_properties);
-  tasm::CSSValue ResolveUnderlyingValue(tasm::CSSPropertyID id) const;
+  tasm::CSSValue ResolveUnderlyingValue(
+      tasm::CSSPropertyID id, const tasm::StyleMap* base_resolved_styles) const;
   AnimationBackendResult EvaluatePlatformSupport(ParsedPropertyMap& properties);
+  PlatformAnimationState CreatePlatformAnimationState(
+      ParsedPropertyMap properties);
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
+  base::LinearFlatMap<base::String, PlatformAnimationState>
+      platform_animations_;
+  gfx::AnimationId next_platform_animation_id_{1};
 };
 
 }  // namespace animation
