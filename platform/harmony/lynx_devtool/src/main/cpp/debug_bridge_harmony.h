@@ -16,7 +16,7 @@ class DebugBridgeHarmony {
 
  private:
   static napi_value Constructor(napi_env env, napi_callback_info info);
-  static napi_value ConnectDevtools(napi_env env, napi_callback_info info);
+  static napi_value Initialize(napi_env env, napi_callback_info info);
 };
 
 }  // namespace devtool

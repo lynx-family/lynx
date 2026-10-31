@@ -6,13 +6,7 @@
 
 #include <js_native_api.h>
 
-#include <string>
-#include <unordered_map>
-#include <vector>
-
-#include "base/include/platform/harmony/napi_util.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
-#include "devtool/lynx_devtool/lynx_devtool_ng.h"
 
 namespace lynx {
 namespace devtool {
@@ -22,7 +16,7 @@ napi_value DebugBridgeHarmony::Init(napi_env env, napi_value exports) {
   {(name), nullptr, (func), nullptr, nullptr, nullptr, napi_static, nullptr}
 
   napi_property_descriptor properties[] = {
-      DECLARE_NAPI_STATIC_FUNCTION("connectDevtools", ConnectDevtools),
+      DECLARE_NAPI_STATIC_FUNCTION("initialize", Initialize),
   };
 #undef DECLARE_NAPI_STATIC_FUNCTION
 
@@ -45,35 +39,12 @@ napi_value DebugBridgeHarmony::Constructor(napi_env env,
   return js_this;
 }
 
-napi_value DebugBridgeHarmony::ConnectDevtools(napi_env env,
-                                               napi_callback_info info) {
-  bool result = false;
-  size_t argc = 3;
-  napi_value args[3] = {nullptr};
-  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-  std::string remote_debug_url = base::NapiUtil::ConvertToString(env, args[0]);
-  std::vector<std::string> keys;
-  base::NapiUtil::ConvertToArrayString(env, args[1], keys);
-  std::vector<std::string> values;
-  base::NapiUtil::ConvertToArrayString(env, args[2], values);
-
-  if (keys.size() == values.size()) {
-    std::unordered_map<std::string, std::string> app_infos;
-    for (size_t i = 0; i < keys.size(); ++i) {
-      app_infos[keys[i]] = values[i];
-    }
-    result =
-        DebugBridgeEmbedder::GetInstance().Enable(remote_debug_url, app_infos);
-    LOGI("ConnectDevtools result:" << result);
-  } else {
-    result = false;
-    LOGE("ConnectDevtools failed, keys.size != values.size()");
-  }
-
-  napi_value value;
-  napi_create_int32(env, result, &value);
-  return value;
+napi_value DebugBridgeHarmony::Initialize(napi_env env,
+                                          napi_callback_info info) {
+  (void)env;
+  (void)info;
+  (void)DebugBridgeEmbedder::GetInstance();
+  return nullptr;
 }
 
 }  // namespace devtool

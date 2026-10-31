@@ -2,18 +2,26 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import util from '@ohos.util';
 import type {
-  DebugRouterMessageHandler,
-  HarmonyGlobalHandler,
-  HarmonySessionHandler,
-  HarmonyStateListener
-} from 'liblynxdevtool.so';
-import { DebugRouterWrapper } from 'liblynxdevtool.so';
-import { LynxView, LynxEnv } from '@lynx/lynx';
+  DebugRouterGlobalHandlerHarmony,
+  DebugRouterMessageHandlerHarmony,
+  DebugRouterSessionHandlerHarmony,
+  DebugRouterStateListenerHarmony
+} from '@lynx/debug_router';
+import { DebugRouter as HarmonyDebugRouter } from '@lynx/debug_router';
+import { LynxView } from '@lynx/lynx';
+
+export type HarmonyGlobalHandler = DebugRouterGlobalHandlerHarmony;
+export type HarmonySessionHandler = DebugRouterSessionHandlerHarmony;
+export type HarmonyStateListener = DebugRouterStateListenerHarmony;
+
+export interface DebugRouterMessageHandler {
+  handle: (params: string) => string;
+}
 
 export class DebugRouter {
-  private static viewMap: Map<LynxView, number> = new Map<LynxView, number>();
+  private static messageHandlers: Map<string, DebugRouterMessageHandlerHarmony> =
+    new Map<string, DebugRouterMessageHandlerHarmony>();
   private static initialized: boolean = false;
 
   static {
@@ -24,75 +32,89 @@ export class DebugRouter {
     if (DebugRouter.initialized) {
       return;
     }
-    let debugRouterId: string = DebugRouter.generateUUID();
-    let options = new Map<string, string>();
-    options.set('debugRouterId', debugRouterId);
-    LynxEnv.setAppInfo(options);
+    HarmonyDebugRouter.createInstance();
     DebugRouter.initialized = true;
   }
 
-  private static generateUUID(): string {
-    let uuid: string = util.generateRandomUUID(true);
-    return uuid;
-  }
-
   public static getSessionIdByView(view: LynxView): number {
-    let sessionId = DebugRouter.viewMap.get(view);
-    return sessionId === undefined ? 0 : sessionId;
+    return HarmonyDebugRouter.getSessionIdByView(view);
   }
 
   public static getViewBySessionId(sessionId: number): LynxView | null {
-    let result: LynxView | null = null;
-    DebugRouter.viewMap.forEach((id, view) => {
-      if (id == sessionId) {
-        result = view;
-      }
-    });
-    return result;
+    return HarmonyDebugRouter.getViewBySessionId(sessionId) as LynxView | null;
   }
 
   public static setSessionIdOfView(view: LynxView, sessionId: number): void {
-    DebugRouter.viewMap.set(view, sessionId);
+    HarmonyDebugRouter.setSessionIdOfView(view, sessionId);
   }
 
   public static removeView(view: LynxView): void {
-    DebugRouter.viewMap.delete(view);
+    HarmonyDebugRouter.removeView(view);
   }
 
   public static addGlobalHandler(handler: HarmonyGlobalHandler): void {
-    DebugRouterWrapper.addGlobalHandler(handler);
+    HarmonyDebugRouter.addGlobalHandler(handler);
   }
 
   public static removeGlobalHandler(handler: HarmonyGlobalHandler): void {
-    DebugRouterWrapper.removeGlobalHandler(handler);
+    HarmonyDebugRouter.removeGlobalHandler(handler);
   }
 
   public static sendDataAsync(type: string, session: number, data: string): void {
-    DebugRouterWrapper.sendDataAsync(type, session, data);
+    HarmonyDebugRouter.sendDataAsync(type, session, data);
   }
 
   public static addSessionHandler(handler: HarmonySessionHandler): void {
-    DebugRouterWrapper.addSessionHandler(handler);
+    HarmonyDebugRouter.addSessionHandler(handler);
   }
 
   public static addMessageHandler(name: string, handler: DebugRouterMessageHandler): void {
-    DebugRouterWrapper.addMessageHandler(name, handler);
+    const oldHandler: DebugRouterMessageHandlerHarmony | undefined = DebugRouter.messageHandlers.get(name);
+    if (oldHandler !== undefined) {
+      HarmonyDebugRouter.removeMessageHandler(oldHandler);
+    }
+    const harmonyHandler: DebugRouterMessageHandlerHarmony = {
+      handle: (params: string): string => handler.handle(params),
+      getName: (): string => name
+    };
+    DebugRouter.messageHandlers.set(name, harmonyHandler);
+    HarmonyDebugRouter.addMessageHandler(harmonyHandler);
   }
 
   public static removeMessageHandler(name: string): void {
-    DebugRouterWrapper.removeMessageHandler(name);
+    const handler: DebugRouterMessageHandlerHarmony | undefined = DebugRouter.messageHandlers.get(name);
+    if (handler === undefined) {
+      return;
+    }
+    HarmonyDebugRouter.removeMessageHandler(handler);
+    DebugRouter.messageHandlers.delete(name);
   }
 
   public static handleSchema(url: string): boolean {
-    let result = DebugRouterWrapper.handleSchema(url);
-    return result;
+    return HarmonyDebugRouter.handleSchema(url);
+  }
+
+  public static isValidSchema(url: string): boolean {
+    return HarmonyDebugRouter.isValidSchema(url);
+  }
+
+  public static isConnected(): boolean {
+    return HarmonyDebugRouter.isConnected();
   }
 
   public static getAppInfoByKey(key: string): string {
-    return DebugRouterWrapper.getAppInfoByKey(key);
+    return HarmonyDebugRouter.getAppInfoByKey(key);
   }
 
   public static addStateListener(listener: HarmonyStateListener): void {
-    DebugRouterWrapper.addStateListener(listener);
+    HarmonyDebugRouter.addStateListener(listener);
+  }
+
+  public static setAppInfo(appInfo: Map<string, string>): void {
+    HarmonyDebugRouter.setAppInfo(appInfo);
+  }
+
+  public static enableAllSessions(): void {
+    HarmonyDebugRouter.enableAllSessions();
   }
 }
