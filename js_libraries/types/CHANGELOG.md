@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.6
+
+- Add `text-spacing-trim` CSS typings.
+
 ## 4.4.5
 
 - Add `thread-strategy` to `<frame>` typings and declare the `FrameThreadStrategy` enum for rendering thread models.
