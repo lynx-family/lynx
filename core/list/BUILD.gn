@@ -52,6 +52,8 @@ if (disable_list_platform_implementation) {
   if (!defined(enable_list_container_animation) ||
       enable_list_container_animation) {
     list_container_shared_sources += [
+      "animation/animation_manager_impl.cc",
+      "animation/animation_manager_impl.h",
       "animation/animation_transaction.cc",
       "animation/animation_transaction.h",
       "animation/item_animation_recorder.cc",
@@ -113,6 +115,7 @@ if (disable_list_platform_implementation) {
   if (!defined(enable_list_container_animation) ||
       enable_list_container_animation) {
     list_container_testset_shared_sources += [
+      "animation/animation_manager_impl_unittest.cc",
       "animation/animation_transaction_unittest.cc",
       "animation/animation_types_unittest.cc",
       "animation/item_animation_recorder_unittest.cc",

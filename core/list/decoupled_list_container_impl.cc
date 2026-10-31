@@ -28,6 +28,7 @@ ListContainerImpl::ListContainerImpl(
       list_children_helper_(std::make_unique<ListChildrenHelper>()),
       list_event_manager_(std::make_unique<ListEventManager>(this)),
       list_animation_manager_(CreateListAnimationManager(this)),
+      animation_manager_(CreateAnimationManager(this)),
       value_factory_(value_factory) {
   DLIST_LOGI("ListContainerImpl::ListContainerImpl() this=" << this);
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),

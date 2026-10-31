@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "core/list/animation/animation_manager.h"
 #include "core/list/decoupled_list_adapter.h"
 #include "core/list/decoupled_list_children_helper.h"
 #include "core/list/decoupled_list_event_manager.h"
@@ -129,6 +130,9 @@ class ListContainerImpl : public ContainerDelegate {
   SearchRefAnchorStrategy search_ref_anchor_strategy() const {
     return search_ref_anchor_strategy_;
   }
+  AnimationManager* animation_manager() const {
+    return animation_manager_.get();
+  }
 
  protected:
   // Currently, the list container does not copy any member variables and is an
@@ -173,6 +177,7 @@ class ListContainerImpl : public ContainerDelegate {
   bool need_preload_section_on_next_frame_{false};
   bool enable_parallel_element_{false};
   bool enable_batch_render_{false};
+  std::unique_ptr<AnimationManager> animation_manager_;
   ListAdapterDiffResult animation_diff_result_{ListAdapterDiffResult::kNone};
   std::shared_ptr<pub::PubValueFactory> value_factory_;
 };
