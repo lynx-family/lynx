@@ -28,7 +28,8 @@ class InnerTextShadowNode : public TextShadowNode {
   }
 
   void ProcessParagraph(ShadowLayoutContextMeasure* context_measure,
-                        std::unique_ptr<txt::Paragraph> paragraph);
+                        std::unique_ptr<txt::Paragraph> paragraph,
+                        double layout_width);
 
   MeasureResult Measure(const MeasureConstraint& constraint) override;
 
@@ -46,8 +47,8 @@ class InnerTextShadowNode : public TextShadowNode {
   };
   UpdateFlag update_flag_ = kUpdateFlagNone;
   float prev_layout_width_ = 0;
-  int measured_width_;
-  int measured_height_;
+  float measured_width_ = 0.f;
+  float measured_height_ = 0.f;
   MeasureConstraint constraint_;
 };
 
