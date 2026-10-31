@@ -847,4 +847,17 @@ TEST_F_UI(ScrollViewTest, BounceView) {
   EXPECT_EQ(scroll_view->GetScrollView()->TotalScrollOffset().x(), 100);
 }
 
+TEST_F_UI(ScrollViewTest, FadingEdgeLength) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+
+  scroll_view->SetAttribute("fading-edge-length", Value("20px"));
+  EXPECT_EQ(scroll_view->GetScrollView()->GetRenderScroll()->FadingEdgeLength(),
+            20);
+
+  scroll_view->SetAttribute("fading-edge-length", Value("-1px"));
+  EXPECT_EQ(scroll_view->GetScrollView()->GetRenderScroll()->FadingEdgeLength(),
+            0);
+}
+
 }  // namespace clay

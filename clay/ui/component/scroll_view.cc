@@ -350,6 +350,10 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
     if (attribute_utils::TryGetString(value, tag)) {
       SetScrollMonitorTag(tag);
     }
+  } else if (kw == KeywordID::kFadingEdgeLength) {
+    GetRenderScroll()->SetFadingEdgeLength(
+        attribute_utils::ToPxWithDisplayMetrics(
+            attribute_utils::GetCString(value), page_view()));
   } else if (kw == KeywordID::kScrollOrientation) {
     std::string orientation;
     attribute_utils::TryGetString(value, orientation);
