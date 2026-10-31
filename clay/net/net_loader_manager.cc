@@ -210,6 +210,10 @@ RawResource NetLoaderManager::RequestSync(const std::string& uri) {
   std::unique_ptr<HttpResourceFetcher> fetcher =
       HttpResourceFetcherFactory::CreateFetcher(host_net_loader_, parsed_uri,
                                                 request_sep);
+  if (!fetcher) {
+    FML_LOG(ERROR) << "No available fetcher for synchronous resource request.";
+    return {0, nullptr};
+  }
   resource = fetcher->LoadSync();
   NET_LOG << " request finish " << parsed_uri.Spec()
           << "\tlength:" << resource.length;
