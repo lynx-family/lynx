@@ -257,6 +257,146 @@ class LynxLibraryScannerTest {
         assertEquals(file.absoluteFile, LynxLibraryScanner.canonicalOrAbsolute(file))
     }
 
+    // A blank/absent sources property enables every known source.
+    @Test
+    void enabledSourcesDefaultsToAllWhenBlank() {
+        assertEquals(LynxLibraryScanner.KNOWN_SOURCES, LynxLibraryScanner.enabledSources(null))
+        assertEquals(LynxLibraryScanner.KNOWN_SOURCES, LynxLibraryScanner.enabledSources('  '))
+    }
+
+    // A comma-separated value enables only the listed subset.
+    @Test
+    void enabledSourcesParsesSubset() {
+        assertEquals(['node_modules'], LynxLibraryScanner.enabledSources('node_modules'))
+        assertEquals(['node_modules', 'aar'],
+            LynxLibraryScanner.enabledSources(' node_modules , aar '))
+    }
+
+    // Unknown source names are rejected with the list of valid ones.
+    @Test
+    void enabledSourcesRejectsUnknown() {
+        try {
+            LynxLibraryScanner.enabledSources('node_modules,bogus')
+            assertTrue('Expected GradleException', false)
+        } catch (GradleException e) {
+            assertTrue(e.message.contains('bogus'))
+            assertTrue(e.message.contains('node_modules'))
+        }
+    }
+
+    // local_project reads the project dir's own lynx.lib.json; the info is not a
+    // plugin-managed dependency and carries no sourceDir.
+    @Test
+    void scanLocalProjectReadsManifestFromProjectDir() {
+        File projectDir = temporaryFolder.newFolder('my-lib')
+        new File(projectDir, 'lynx.lib.json').text =
+            '{"platforms":{"android":{"packageName":"com.example.local"}}}'
+
+        LynxLibraryInfo info = LynxLibraryScanner.scanLocalProject(projectDir, ':my-lib')
+
+        assertEquals('com.example.local.LynxLibraryProviderImpl', info.providerClassName)
+        assertEquals(':my-lib', info.projectPath)
+        assertEquals(projectDir, info.androidDir)
+        assertEquals(LynxLibraryScanner.SOURCE_LOCAL_PROJECT, info.source)
+    }
+
+    // A project without lynx.lib.json or without a platforms.android entry is not
+    // a Lynx library; scanLocalProject returns null instead of failing.
+    @Test
+    void scanLocalProjectReturnsNullWhenNotALynxLibrary() {
+        File noManifest = temporaryFolder.newFolder('plain-project')
+        assertEquals(null, LynxLibraryScanner.scanLocalProject(noManifest, ':plain-project'))
+
+        File noAndroid = temporaryFolder.newFolder('ios-only')
+        new File(noAndroid, 'lynx.lib.json').text = '{"platforms":{"ios":{}}}'
+        assertEquals(null, LynxLibraryScanner.scanLocalProject(noAndroid, ':ios-only'))
+    }
+
+    // local_project still requires a packageName once it opts into autolink.
+    @Test
+    void scanLocalProjectRejectsMissingPackageName() {
+        File projectDir = temporaryFolder.newFolder('bad-local')
+        new File(projectDir, 'lynx.lib.json').text = '{"platforms":{"android":{}}}'
+
+        try {
+            LynxLibraryScanner.scanLocalProject(projectDir, ':bad-local')
+            assertTrue('Expected GradleException', false)
+        } catch (GradleException e) {
+            assertTrue(e.message.contains('platforms.android.packageName'))
+        }
+    }
+
+    // aar flow reads a manifest string (from the AAR's top-level META-INF/lynx/);
+    // a valid one yields a SOURCE_AAR library with the provider derived from
+    // packageName, and no packageDir/androidDir/projectPath.
+    @Test
+    void parseAarManifestReadsValidManifest() {
+        LynxLibraryInfo info = LynxLibraryScanner.parseAarManifest(
+            '{"platforms":{"android":{"packageName":"com.example.aar"}}}',
+            'com.example:aar-lib:1.0.0')
+
+        assertEquals('com.example.aar.LynxLibraryProviderImpl', info.providerClassName)
+        assertEquals(LynxLibraryScanner.SOURCE_AAR, info.source)
+        assertEquals('com.example:aar-lib:1.0.0', info.npmName)
+        assertNull(info.packageDir)
+        assertNull(info.androidDir)
+        assertNull(info.projectPath)
+    }
+
+    // Unlike source flows (which throw), the aar flow is skip+warn: malformed or
+    // non-participating AARs return null so the consumer build is never broken.
+    @Test
+    void parseAarManifestSkipsWhenNotParticipating() {
+        // No platforms.android entry: ships a manifest but not an Android lib.
+        assertNull(LynxLibraryScanner.parseAarManifest(
+            '{"platforms":{"ios":{}}}', 'com.example:ios-only:1.0.0'))
+        // Missing packageName: declared but cannot derive a provider.
+        assertNull(LynxLibraryScanner.parseAarManifest(
+            '{"platforms":{"android":{}}}', 'com.example:no-pkg:1.0.0'))
+        // Invalid JSON: parse failure is skipped, not thrown.
+        assertNull(LynxLibraryScanner.parseAarManifest(
+            'not json', 'com.example:broken:1.0.0'))
+        // platforms.android is not an object.
+        assertNull(LynxLibraryScanner.parseAarManifest(
+            '{"platforms":{"android":"nope"}}', 'com.example:bad-type:1.0.0'))
+    }
+
+    // aar addons ship their .so inside the AAR, so hasPrebuiltLibrary() is false
+    // (no jniLibsDir); only System.loadLibrary is emitted, no copy.
+    @Test
+    void parseAarManifestParsesNodeApiAddonsWithoutJniLibsDir() {
+        LynxLibraryInfo info = LynxLibraryScanner.parseAarManifest('''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.aar",
+              "nodeApiAddons": [{"name": "demo_addon", "required": false}]
+            }
+          }
+        }''', 'com.example:aar-lib:1.0.0')
+
+        assertEquals(1, info.nodeApiAddons.size())
+        LynxNodeApiAddonInfo addon = info.nodeApiAddons.first()
+        assertEquals('demo_addon', addon.name)
+        assertEquals('demo_addon', addon.libraryName)
+        assertNull(addon.jniLibsDir)
+        assertTrue(!addon.hasPrebuiltLibrary())
+        assertTrue(!addon.required)
+    }
+
+    // A malformed addon block makes the whole AAR skip+warn (returns null) rather
+    // than throwing, keeping the consumer build alive.
+    @Test
+    void parseAarManifestSkipsOnInvalidAddon() {
+        assertNull(LynxLibraryScanner.parseAarManifest('''{
+          "platforms": {
+            "android": {
+              "packageName": "com.example.aar",
+              "nodeApiAddons": [{"name": "@bad/name"}]
+            }
+          }
+        }''', 'com.example:aar-lib:1.0.0'))
+    }
+
     private static File writeLibrary(
         File root, String npmName, String packageName, String sourceDir) {
         File packageDir = new File(root, "node_modules/${npmName}")
