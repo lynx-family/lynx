@@ -43,6 +43,26 @@ using InitializationMode = ProcessRuntime::InitializationMode;
 enum class ProcessState { kRunning, kStopping, kStopped };
 enum class CompletionValue { kJSON, kSynchronous, kIgnored };
 
+struct EventSinkState {
+  std::mutex mutex;
+  ProcessRuntime::EventSink sink;
+};
+
+EventSinkState& GetEventSinkState() {
+  static auto* state = new EventSinkState();
+  return *state;
+}
+
+void PublishEvent(ProcessRuntime::Event event, Guard guard) {
+  ProcessRuntime::EventSink sink;
+  {
+    auto& state = GetEventSinkState();
+    std::lock_guard<std::mutex> lock(state.mutex);
+    sink = state.sink;
+  }
+  if (sink && guard()) sink(std::move(event), std::move(guard));
+}
+
 std::string CurrentThread() {
   std::ostringstream stream;
   stream << std::this_thread::get_id();
@@ -139,6 +159,15 @@ class DomainRuntime final {
                            ProcessState::kRunning &&
                        (!guard || guard());
               });
+        },
+        [lifetime = lifetime_, thread = identity_.domain,
+         runtime_id = identity_.runtime_id](std::string payload_json) {
+          PublishEvent({thread, runtime_id, std::move(payload_json)},
+                       [lifetime] {
+                         return lifetime->load(std::memory_order_acquire) ==
+                                    ProcessState::kRunning &&
+                                IsHostScriptRuntimeEnabled();
+                       });
         });
     if (!thread_bindings_ || !thread_bindings_->Install(identity_.domain))
       return WithError(Identity(), "HOST_SCRIPT_THREAD_BINDINGS_ATTACH_FAILED");
@@ -156,6 +185,11 @@ class DomainRuntime final {
   void NotifyViewCreated(const ProcessRuntime::ViewCreated& event) {
     DCHECK(runner_->RunsTasksOnCurrentThread());
     if (bindings_) bindings_->NotifyViewCreated(event);
+  }
+
+  void NotifyViewError(const ProcessRuntime::ViewError& event) {
+    DCHECK(runner_->RunsTasksOnCurrentThread());
+    if (bindings_) bindings_->NotifyViewError(event);
   }
 
   Result Execute(const std::string& source, const std::string& url,
@@ -327,6 +361,12 @@ class DomainState final {
     AssertOwner();
     if (IsHostScriptRuntimeEnabled() && IsRunning() && runtime_)
       runtime_->NotifyViewCreated(event);
+  }
+
+  void NotifyViewError(const ProcessRuntime::ViewError& event) {
+    AssertOwner();
+    if (IsHostScriptRuntimeEnabled() && IsRunning() && runtime_)
+      runtime_->NotifyViewError(event);
   }
 
  private:
@@ -605,6 +645,21 @@ class ProcessRuntime::Impl {
     }
   }
 
+  void NotifyViewError(const ViewError& event) {
+    for (size_t i = 0; i < current_.size(); ++i) {
+      auto generation = Current(static_cast<Domain>(i));
+      if (!generation || generation->State() != ProcessState::kRunning ||
+          !generation->Find(static_cast<Domain>(i))
+               ->publication->ready.load(std::memory_order_acquire))
+        continue;
+      // Always queue error observers: their script must not reenter the
+      // platform's original error dispatch or suppress its normal clients.
+      generation->Post(*generation->Find(static_cast<Domain>(i)), [&] {
+        return [event](auto& owner) { owner->NotifyViewError(event); };
+      });
+    }
+  }
+
   void Shutdown(Completion completion) {
     std::array<std::shared_ptr<RuntimeGeneration>, kHostScriptDomainCount>
         domains;
@@ -830,6 +885,12 @@ ProcessRuntime& ProcessRuntime::GetInstance() {
 ProcessRuntime::ProcessRuntime() : impl_(std::make_unique<Impl>()) {}
 ProcessRuntime::~ProcessRuntime() = default;
 
+void ProcessRuntime::SetEventSink(EventSink sink) {
+  auto& state = GetEventSinkState();
+  std::lock_guard<std::mutex> lock(state.mutex);
+  state.sink = std::move(sink);
+}
+
 bool ProcessRuntime::Initialize(Runners runners, Completion per_domain_ready,
                                 BindingFactory binding_factory,
                                 std::string bootstrap,
@@ -847,6 +908,10 @@ bool ProcessRuntime::IsReady(Domain domain) const {
 
 void ProcessRuntime::NotifyViewCreated(ViewCreated event) {
   impl_->NotifyViewCreated(event);
+}
+
+void ProcessRuntime::NotifyViewError(ViewError event) {
+  impl_->NotifyViewError(event);
 }
 
 void ProcessRuntime::Evaluate(Domain domain, std::string source,

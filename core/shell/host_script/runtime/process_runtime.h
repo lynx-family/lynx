@@ -38,6 +38,13 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
     std::string url;
   };
 
+  struct ViewError {
+    std::string view_id;
+    int32_t code;
+    std::string message;
+    std::string level = {};
+  };
+
   // Optional capabilities are created, attached and destroyed on their owner.
   // They do not participate in cross-runtime scheduling.
   class RuntimeBindings {
@@ -46,6 +53,7 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
     virtual bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime> runtime,
                         fml::RefPtr<fml::TaskRunner> runner) = 0;
     virtual void NotifyViewCreated(const ViewCreated& event) {}
+    virtual void NotifyViewError(const ViewError& event) {}
   };
   using BindingFactory =
       std::function<std::unique_ptr<RuntimeBindings>(Domain)>;
@@ -74,6 +82,19 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   using Completion = std::function<void(Result)>;
   // Runs on the target runner just before evaluation; must be thread-safe.
   using Guard = std::function<bool()>;
+
+  struct Event {
+    std::string thread;
+    uint64_t runtime_id;
+    std::string payload_json;
+  };
+  // Receives copied JSON on the emitting runtime's owner. A consumer posting
+  // delivery elsewhere must check the guard there to discard stale generations.
+  using EventSink = std::function<void(Event, Guard)>;
+
+  // Process-wide transport adapter. Replacing it is thread-safe; callbacks
+  // already in flight retain their sink. No buffering or replay is provided.
+  void SetEventSink(EventSink sink);
 
   static ProcessRuntime& GetInstance();
 
@@ -124,6 +145,8 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   // waiting, replay, or initialization of unused runtimes. Only creation
   // metadata is copied.
   void NotifyViewCreated(ViewCreated event);
+  // Observation only: cannot change or suppress the original page error.
+  void NotifyViewError(ViewError event);
 
   // Closes admission immediately, then frees each VM on its owner. Completes
   // on the UI lifecycle runner after all three owners acknowledge cleanup.

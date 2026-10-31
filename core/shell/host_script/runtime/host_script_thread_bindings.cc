@@ -37,17 +37,20 @@ bool IsFunction(Runtime& runtime, const Value& value) {
 }  // namespace
 
 std::shared_ptr<HostScriptThreadBindings> HostScriptThreadBindings::Create(
-    Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner, Executor executor) {
+    Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner, Executor executor,
+    EventEmitter emit_event) {
   if (!runner || !runner->RunsTasksOnCurrentThread() || !executor) return {};
   return std::shared_ptr<HostScriptThreadBindings>(new HostScriptThreadBindings(
-      runtime, std::move(runner), std::move(executor)));
+      runtime, std::move(runner), std::move(executor), std::move(emit_event)));
 }
 
 HostScriptThreadBindings::HostScriptThreadBindings(
-    Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner, Executor executor)
+    Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner, Executor executor,
+    EventEmitter emit_event)
     : runtime_(runtime),
       runner_(std::move(runner)),
-      executor_(std::move(executor)) {}
+      executor_(std::move(executor)),
+      emit_event_(std::move(emit_event)) {}
 
 bool HostScriptThreadBindings::Install(const std::string& domain) {
   if (domain != "bts" && domain != "mts" && domain != "ui") return false;
@@ -59,7 +62,8 @@ bool HostScriptThreadBindings::Install(const std::string& domain) {
   auto json = runtime_.global().getPropertyAsObject(runtime_, "JSON");
   if (!promise_ || !error_ || !object || !json) return false;
   parse_json_ = json->getPropertyAsFunction(runtime_, "parse");
-  if (!parse_json_) return false;
+  stringify_json_ = json->getPropertyAsFunction(runtime_, "stringify");
+  if (!parse_json_ || !stringify_json_) return false;
   define_property_ = object->getPropertyAsFunction(runtime_, "defineProperty");
   create_object_ = object->getPropertyAsFunction(runtime_, "create");
   get_prototype_ = object->getPropertyAsFunction(runtime_, "getPrototypeOf");
@@ -80,6 +84,19 @@ bool HostScriptThreadBindings::Install(const std::string& domain) {
   Object target(runtime_);
   if (!DefineProperty(target, "thread",
                       String::createFromUtf8(runtime_, domain), false))
+    return false;
+  auto emit = Function::createFromHostFunction(
+      runtime_, PropNameID::forAscii(runtime_, "emitEvent"), 1,
+      [weak = weak_from_this()](Runtime&, const Value&, const Value* args,
+                                size_t count) -> CallResult {
+        auto self = weak.lock();
+        if (!self || !self->attached_) {
+          return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+              "The Host Script runtime was detached"));
+        }
+        return self->EmitEvent(args, count);
+      });
+  if (!DefineProperty(target, "emitEvent", Value(std::move(emit))))
     return false;
   const std::pair<const char*, Domain> methods[] = {
       {"runOnMainThread", Domain::kMTS},
@@ -109,6 +126,36 @@ bool HostScriptThreadBindings::Install(const std::string& domain) {
   domain_ = domain;
   attached_ = true;
   return true;
+}
+
+HostScriptThreadBindings::CallResult HostScriptThreadBindings::EmitEvent(
+    const Value* args, size_t count) {
+  if (count != 1 || !args[0].isObject() ||
+      args[0].getObject(runtime_).isFunction(runtime_)) {
+    return base::unexpected(
+        BUILD_JSI_NATIVE_EXCEPTION("emitEvent expects a JSON object"));
+  }
+  // Capture the built-in serializer before user code runs. Only its copied
+  // UTF-8 result leaves this runtime; circular values and BigInt fail here.
+  auto encoded = stringify_json_->call(runtime_, args, size_t{1});
+  if (!encoded) {
+    return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+        "emitEvent payload is not JSON serializable"));
+  }
+  if (!encoded->isString()) {
+    return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+        "emitEvent payload is not JSON serializable"));
+  }
+  auto json = encoded->getString(runtime_).utf8(runtime_);
+  if (json.size() > 64 * 1024 || json.empty() || json.front() != '{') {
+    return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+        "emitEvent expects a JSON object of at most 64 KiB"));
+  }
+  // Serialization may invoke user-defined toJSON methods. Recheck admission
+  // after those calls before forwarding the copied value.
+  if (attached_ && IsHostScriptRuntimeEnabled() && emit_event_)
+    emit_event_(std::move(json));
+  return Value::undefined();
 }
 
 bool HostScriptThreadBindings::DefineProperty(Object& target, const char* name,
@@ -321,6 +368,7 @@ void HostScriptThreadBindings::Detach() {
   promise_.reset();
   error_.reset();
   parse_json_.reset();
+  stringify_json_.reset();
   define_property_.reset();
   create_object_.reset();
   get_prototype_.reset();
@@ -329,6 +377,7 @@ void HostScriptThreadBindings::Detach() {
   function_prototype_.reset();
   domain_.clear();
   executor_ = {};
+  emit_event_ = {};
 }
 
 }  // namespace shell

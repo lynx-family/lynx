@@ -34,10 +34,11 @@ class HostScriptThreadBindings final
   using Completion = ProcessRuntime::Completion;
   using Executor = std::function<void(Domain, std::string, std::string,
                                       Completion, std::function<bool()>)>;
+  using EventEmitter = std::function<void(std::string)>;
 
   static std::shared_ptr<HostScriptThreadBindings> Create(
       runtime::js::Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner,
-      Executor executor);
+      Executor executor, EventEmitter emit_event = {});
 
   // Installs runOn* and __hostScriptThread function/source bindings.
   // Same-domain functions keep their closure; cross-domain functions must use
@@ -58,8 +59,9 @@ class HostScriptThreadBindings final
 
   HostScriptThreadBindings(Runtime& runtime,
                            fml::RefPtr<fml::TaskRunner> runner,
-                           Executor executor);
+                           Executor executor, EventEmitter emit_event);
   CallResult Run(Domain domain, const Value* args, size_t count);
+  CallResult EmitEvent(const Value* args, size_t count);
   bool DefineProperty(runtime::js::Object& target, const char* name,
                       Value value, bool mutable_export = true);
   void Complete(uint64_t request, const Result& result);
@@ -68,11 +70,13 @@ class HostScriptThreadBindings final
   Runtime& runtime_;
   fml::RefPtr<fml::TaskRunner> runner_;
   Executor executor_;
+  EventEmitter emit_event_;
   std::atomic<bool> attached_{false};
   // Owner-thread state; Detach clears every engine reference explicitly.
   std::optional<Function> promise_;
   std::optional<Function> error_;
   std::optional<Function> parse_json_;
+  std::optional<Function> stringify_json_;
   std::optional<Function> define_property_;
   std::optional<Function> create_object_;
   std::optional<Function> get_prototype_;

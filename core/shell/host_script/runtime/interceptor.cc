@@ -38,8 +38,8 @@ std::atomic<size_t>& HandlerCount(InterceptKind kind,
 
 const char* Interceptor::Name(InterceptKind kind) {
   static constexpr const char* names[] = {
-      "view.created", "view.loadTemplate", "view.updateMetaData",
-      "jsb.call",     "jsb.result",        "jsb.callback"};
+      "view.created", "view.loadTemplate", "view.updateMetaData", "jsb.call",
+      "jsb.result",   "jsb.callback",      "view.error"};
   return names[static_cast<size_t>(kind)];
 }
 

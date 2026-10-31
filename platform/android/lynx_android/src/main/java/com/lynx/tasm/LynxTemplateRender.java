@@ -2733,6 +2733,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
   }
 
   private void dispatchError(int type, LynxError lynxError) {
+    LynxHostScriptViewHooks.onError(this, lynxError);
     // Compatible with old API
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_DISPATCH_ERROR);
     int errorCode = lynxError.getErrorCode();

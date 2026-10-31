@@ -4,6 +4,7 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_hsr_agent.h"
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
@@ -228,6 +229,37 @@ TEST_F(InspectorHSRAgentTest, PublishesEventWithoutCompletingPendingCommand) {
   EXPECT_EQ(response["result"]["value"].asInt(), 4);
   callback = nullptr;
   Drain();
+  EXPECT_EQ(dispatcher_.sender->MessageCount(), 0u);
+}
+
+TEST_F(InspectorHSRAgentTest, DropsEventsInvalidatedBeforeTransportDelivery) {
+  auto runner = LynxDevToolMediatorBase::GetDevToolsThread().GetTaskRunner();
+  auto entered = std::make_shared<std::promise<void>>();
+  auto entered_future = entered->get_future();
+  auto release = std::make_shared<std::promise<void>>();
+  runner->PostTask([entered, wait = release->get_future().share()] {
+    MockReceiver::GetInstance().ResetAll();
+    entered->set_value();
+    wait.wait_for(std::chrono::seconds(2));
+  });
+  ASSERT_EQ(entered_future.wait_for(std::chrono::seconds(2)),
+            std::future_status::ready);
+  auto current = std::make_shared<std::atomic<bool>>(true);
+  GlobalDevToolPlatformFacade::GetInstance().SendHSRMessageReceived(
+      "old generation", [current, runner] {
+        EXPECT_TRUE(runner->RunsTasksOnCurrentThread());
+        return current->load();
+      });
+  current->store(false);
+  release->set_value();
+  auto received = std::make_shared<std::promise<std::string>>();
+  auto received_future = received->get_future();
+  runner->PostTask([received] {
+    received->set_value(MockReceiver::GetInstance().received_message_.second);
+  });
+  ASSERT_EQ(received_future.wait_for(std::chrono::seconds(2)),
+            std::future_status::ready);
+  EXPECT_TRUE(received_future.get().empty());
   EXPECT_EQ(dispatcher_.sender->MessageCount(), 0u);
 }
 
