@@ -234,6 +234,8 @@ inline constexpr const char* const TEMPLATE_ASSEMBLER_UPDATE_DATA =
     "UpdateData";
 inline constexpr const char* const LYNX_UPDATE_GLOBAL_PROPS =
     "LynxUpdateGlobalProps";
+inline constexpr const char* const LYNX_UPDATE_DATA_BY_PREPARSED_DATA =
+    "LynxUpdateData";
 inline constexpr const char* const TEMPLATE_ENTRY_SET_INIT_DATA =
     "TemplateEntry::SetInitData";
 inline constexpr const char* const PATCH_FINISH_INNER_FOR_AIR =
