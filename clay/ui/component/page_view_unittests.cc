@@ -10,9 +10,12 @@
 #include <vector>
 
 #include "clay/shell/common/pointer_data_to_event.h"
+#include "clay/ui/component/image_view.h"
 #include "clay/ui/component/overlay_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/scroll_view.h"
+#include "clay/ui/component/text/inline_text_view.h"
+#include "clay/ui/component/text/text_view.h"
 #include "clay/ui/component/view.h"
 #include "clay/ui/gesture/drag_gesture_recognizer.h"
 #include "clay/ui/gesture/long_press_gesture_recognizer.h"
@@ -155,6 +158,120 @@ class TapReturnTest : public UITest {
   std::vector<int> tap_targets_;
   std::vector<int> long_press_targets_;
 };
+
+class MeaningfulPaintingAreaTest : public UITest {};
+
+constexpr size_t kMeaningfulPaintingAreaRecordSize = 10;
+
+const float* MeaningfulPaintingAreaRecord(const std::vector<float>& records,
+                                          size_t index) {
+  return records.data() + index * kMeaningfulPaintingAreaRecordSize;
+}
+
+TEST_F_UI(MeaningfulPaintingAreaTest, EmptyTreeReturnsNoRecords) {
+  EXPECT_TRUE(page_->CollectMeaningfulPaintingAreas().empty());
+}
+
+TEST_F_UI(MeaningfulPaintingAreaTest, InlineTextIsNotAnIndependentParagraph) {
+  auto* text = new TextView(1, page_.get());
+  text->SetBound(10, 20, 100, 50);
+  page_->AddChild(text);
+  auto* inline_text = new InlineTextView(2, page_.get());
+  inline_text->SetBound(0, 0, 40, 20);
+  text->AddChild(inline_text);
+
+  auto records = page_->CollectMeaningfulPaintingAreas();
+  ASSERT_EQ(records.size(), kMeaningfulPaintingAreaRecordSize);
+  EXPECT_FLOAT_EQ(MeaningfulPaintingAreaRecord(records, 0)[2], 100.f);
+}
+
+TEST_F_UI(MeaningfulPaintingAreaTest,
+          NativeRightAndBottomBoundariesPruneSubtrees) {
+  page_->SetBound(0, 0, 200, 200);
+  auto* outside = new View(1, page_.get());
+  outside->SetBound(200, 0, 100, 100);
+  page_->AddChild(outside);
+  auto* escaped_text = new TextView(2, page_.get());
+  escaped_text->SetBound(-100, 0, 40, 20);
+  outside->AddChild(escaped_text);
+  auto* bottom_text = new TextView(3, page_.get());
+  bottom_text->SetBound(0, 200, 40, 20);
+  page_->AddChild(bottom_text);
+
+  EXPECT_TRUE(page_->CollectMeaningfulPaintingAreas().empty());
+}
+
+TEST_F_UI(MeaningfulPaintingAreaTest,
+          NativePartialOverlapAndRootSiblingsRemain) {
+  page_->SetBound(0, 0, 200, 200);
+  auto* first_text = new TextView(1, page_.get());
+  first_text->SetBound(-10, -20, 40, 50);
+  page_->AddChild(first_text);
+  auto* later_text = new TextView(2, page_.get());
+  later_text->SetBound(190, 190, 40, 50);
+  page_->AddChild(later_text);
+
+  auto records = page_->CollectMeaningfulPaintingAreas();
+  ASSERT_EQ(records.size(), 2u * kMeaningfulPaintingAreaRecordSize);
+  EXPECT_FLOAT_EQ(MeaningfulPaintingAreaRecord(records, 0)[0], 190.f);
+  EXPECT_FLOAT_EQ(MeaningfulPaintingAreaRecord(records, 0)[2], 40.f);
+  EXPECT_FLOAT_EQ(MeaningfulPaintingAreaRecord(records, 1)[0], -10.f);
+  EXPECT_FLOAT_EQ(MeaningfulPaintingAreaRecord(records, 1)[1], -20.f);
+}
+
+TEST_F_UI(MeaningfulPaintingAreaTest, PendingTextAndImageUsePageCoordinates) {
+  auto* container = new View(1, page_.get());
+  container->SetBound(10, 20, 300, 300);
+  page_->AddChild(container);
+
+  auto* text = new TextView(2, page_.get());
+  text->SetBound(30, 40, 100, 50);
+  container->AddChild(text);
+
+  auto* image = new ImageView(3, page_.get());
+  image->SetBound(60, 80, 120, 70);
+  container->AddChild(image);
+
+  auto records = page_->CollectMeaningfulPaintingAreas();
+  ASSERT_EQ(records.size(), 2u * kMeaningfulPaintingAreaRecordSize);
+  const auto* image_record = MeaningfulPaintingAreaRecord(records, 0);
+  EXPECT_EQ(image_record[5], 1);
+  EXPECT_EQ(image_record[4], 0);
+  EXPECT_FLOAT_EQ(image_record[0], 70.f);
+  EXPECT_FLOAT_EQ(image_record[1], 100.f);
+  EXPECT_FLOAT_EQ(image_record[2], 120.f);
+  EXPECT_FLOAT_EQ(image_record[3], 70.f);
+
+  const auto* text_record = MeaningfulPaintingAreaRecord(records, 1);
+  EXPECT_EQ(text_record[5], 1);
+  EXPECT_EQ(text_record[4], 1);
+  EXPECT_FLOAT_EQ(text_record[0], 40.f);
+  EXPECT_FLOAT_EQ(text_record[1], 60.f);
+  EXPECT_FLOAT_EQ(text_record[2], 100.f);
+  EXPECT_FLOAT_EQ(text_record[3], 50.f);
+}
+
+TEST_F_UI(MeaningfulPaintingAreaTest,
+          VisibilityAndAlphaPreserveNativeSnapshotSemantics) {
+  auto* hidden = new View(1, page_.get());
+  page_->AddChild(hidden);
+  auto* hidden_text = new TextView(2, page_.get());
+  hidden_text->SetBound(0, 0, 100, 50);
+  hidden_text->SetVisible(false);
+  hidden->AddChild(hidden_text);
+
+  auto* transparent = new View(3, page_.get());
+  page_->AddChild(transparent);
+  auto* transparent_image = new ImageView(4, page_.get());
+  transparent_image->SetBound(0, 0, 100, 50);
+  transparent_image->SetOpacity(0.f);
+  transparent->AddChild(transparent_image);
+
+  auto records = page_->CollectMeaningfulPaintingAreas();
+  ASSERT_EQ(records.size(), 2u * kMeaningfulPaintingAreaRecordSize);
+  EXPECT_FLOAT_EQ(MeaningfulPaintingAreaRecord(records, 0)[7], 0.f);
+  EXPECT_EQ(MeaningfulPaintingAreaRecord(records, 1)[6], 4);
+}
 
 class TapReturnDefaultSettingTest : public TapReturnTest {
  protected:

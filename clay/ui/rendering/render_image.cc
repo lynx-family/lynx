@@ -48,6 +48,14 @@ RenderImage::~RenderImage() {
 const char* RenderImage::GetName() const { return "RenderImage"; }
 
 #ifndef ENABLE_SKITY
+bool RenderImage::HasContent() const {
+  const ImageResource* resource =
+      image_resource_ ? image_resource_.get() : placeholder_resource_.get();
+  return resource != nullptr && resource->GetImage() != nullptr &&
+         (resource->GetImage()->TryGetGraphicsImage() != nullptr ||
+          resource->GetImage()->UsePromise());
+}
+
 void RenderImage::SetImage(std::unique_ptr<ImageResource> resource) {
   bool resource_is_pending = false;
 
@@ -136,6 +144,12 @@ void RenderImage::SetPlaceholderImage(
   AdjustSizeIfNeeded();
 }
 #else
+bool RenderImage::HasContent() const {
+  const BaseImageInstance* resource =
+      image_resource_ ? image_resource_.get() : placeholder_resource_.get();
+  return resource != nullptr && resource->GetGraphicsImage() != nullptr;
+}
+
 void RenderImage::SetImage(std::unique_ptr<BaseImageInstance> image_instance) {
   if (image_instance) {
     image_instance->SetVisibleCallback([this]() { return IsActualVisible(); });
