@@ -26,7 +26,7 @@ export class UIGroup extends UIBase {
 
   removeChild(nativeContent: lynx.NativeContent) {
     const index = this.children.indexOf(nativeContent);
-    if (index > 0) {
+    if (index >= 0) {
       this.children.splice(index, 1);
     }
   }
