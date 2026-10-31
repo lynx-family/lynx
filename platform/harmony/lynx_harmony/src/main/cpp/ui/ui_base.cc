@@ -29,6 +29,7 @@
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/lepus/lepus_date.h"
 #include "gfx/public/display_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/animation_info.h"
@@ -2221,6 +2222,11 @@ UIBase* UIBase::FindViewById(const std::string& id, bool by_ref_id,
     }
   }
   return nullptr;
+}
+
+// Component libraries must not depend on DevTool-only exported symbols.
+bool UIBase::IsDevToolEnabled() const {
+  return LynxEnv::GetInstance().IsDevToolEnabled();
 }
 
 void UIBase::InvokeMethod(
