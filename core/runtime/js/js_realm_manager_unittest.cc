@@ -4,7 +4,13 @@
 
 #include "core/runtime/js/js_realm_manager.h"
 
+#include "base/include/fml/message_loop.h"
+#include "base/include/fml/synchronization/waitable_event.h"
 #include "core/runtime/js/js_executor.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_api.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_runtime_wrapper.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -73,6 +79,72 @@ class JSRealmManagerTest : public ::testing::Test {
     executor.realm_state_->sharing = JSRealmState::Sharing::kNone;
   }
 
+  void CheckQuickJSHighMemory(bool shared_vm, bool initially_shared) {
+    using tasm::performance::MemoryMonitor;
+    fml::MessageLoop::EnsureInitializedForCurrentThread();
+    struct RestoreSettings {
+      MemoryMonitor::Settings& settings =
+          const_cast<MemoryMonitor::Settings&>(MemoryMonitor::GetSettings());
+      MemoryMonitor::Settings saved = settings;
+      ~RestoreSettings() { settings = saved; }
+    } config;
+    config.settings.global.enabled = 0;
+    config.settings.global.large_vm_threshold_mb = 0;
+    auto runtime = js::makeQuickJsRuntime();
+    js::JSRuntimeExternalParams params;
+    params.group_id = initially_shared ? kGroupId : "-1";
+    auto context = manager_->CreateJSIContext(*runtime, params);
+    auto engine =
+        std::static_pointer_cast<js::QuickjsRuntimeInstance>(context->getVM());
+    void* allocation = lepus_malloc_rt(engine->Runtime(), 2 * 1024 * 1024,
+                                       ALLOC_TAG_WITHOUT_PTR);
+    ASSERT_NE(allocation, nullptr);
+    config.settings.global.large_vm_threshold_mb = 1;
+    std::vector<lepus::Value> events;
+    base::NotificationCallback callback(
+        tasm::performance::kHighMemoryEventNotification,
+        [&](const std::string&, intptr_t data) {
+          events.push_back(*reinterpret_cast<const lepus::Value*>(data));
+        });
+    int destroyed = 0;
+    if (initially_shared) {
+      AddRealm(destroyed, shared_vm, context);
+      Retain(shared_vm);
+    }
+    const auto heap_size = LEPUS_GetHeapSize(engine->Runtime());
+    engine->OnGC("{}");  // Any existing notification can detect high memory.
+    auto drain = [&] {
+      fml::AutoResetWaitableEvent barrier;
+      tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask(
+          [&barrier] { barrier.Signal(); });
+      barrier.Wait();
+    };
+    drain();
+    EXPECT_EQ(events.size(), initially_shared ? 1u : 0u);
+    engine->OnGC("{is_full_gc}");
+    drain();
+    EXPECT_EQ(events.size(), initially_shared ? 1u : 0u);
+    engine->OnGC("{is_full_gc}");
+    drain();
+    EXPECT_EQ(events.size(), initially_shared ? 1u : 0u);
+    if (!events.empty()) {
+      const auto& event = events.front();
+      EXPECT_EQ(event.GetProperty("type").StdString(), "large_vm");
+      EXPECT_EQ(event.GetProperty("key").StdString(), kGroupId);
+      EXPECT_EQ(event.GetProperty("bytes").UInt64(),
+                static_cast<uint64_t>(heap_size));
+      EXPECT_EQ(event.GetProperty("vm_type").StdString(), "quickjs");
+      EXPECT_TRUE(event.GetProperty("slots").IsNil());
+      EXPECT_TRUE(event.GetProperty("total_page_count").IsNil());
+    }
+    if (initially_shared) {
+      Release(shared_vm);
+    }
+    lepus_free_rt(engine->Runtime(), allocation);
+    context.reset();
+    engine.reset();
+  }
+
   static constexpr const char* kGroupId = "js-realm-manager-test";
   JSRealmManager* manager_ = nullptr;
 };
@@ -91,6 +163,19 @@ TEST_F(JSRealmManagerTest, LastExecutorReleasesRealmDespiteExternalContextRef) {
   EXPECT_EQ(destroyed, 1);
   // Keeping a JSI context alive must not keep its realm/global state alive.
   EXPECT_NE(context, nullptr);
+}
+
+TEST_F(JSRealmManagerTest, QuickJSHighMemoryUsesLegacyGroupWithoutMonitoring) {
+  CheckQuickJSHighMemory(false, true);
+}
+
+TEST_F(JSRealmManagerTest,
+       QuickJSHighMemoryUsesSharedVMGroupWithoutMonitoring) {
+  CheckQuickJSHighMemory(true, true);
+}
+
+TEST_F(JSRealmManagerTest, QuickJSHighMemoryIgnoresStandaloneVM) {
+  CheckQuickJSHighMemory(true, false);
 }
 
 TEST_F(JSRealmManagerTest, SharingModesWithSameGroupIdHaveSeparateLifetimes) {

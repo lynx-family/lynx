@@ -9,6 +9,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/memory/memory_pressure_level.h"
+#include "base/include/no_destructor.h"
 #include "base/include/notification_center.h"
 #include "core/base/android/jni_helper.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -17,9 +18,12 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bytecode/android/bytecode_callback.h"
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/ssr/ssr_type_info.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/shell/host_script/android/runtime/process_runtime_init_android.h"
+#include "core/value_wrapper/android/value_impl_android.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxEnv_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxEnv_register_jni.h"
 
@@ -102,6 +106,18 @@ jstring GetDebugEnvDescription(JNIEnv* env, jobject jcaller) {
 
 void InitUIThread(JNIEnv* env, jclass jcaller) {
   lynx::base::UIThread::Init();
+  static lynx::base::NoDestructor<lynx::base::NotificationCallback>
+      high_memory_callback(
+          lynx::tasm::performance::kHighMemoryEventNotification,
+          [](const std::string&, intptr_t data) {
+            lynx::pub::ValueImplLepus value(
+                *reinterpret_cast<const lynx::lepus::Value*>(data));
+            auto event =
+                lynx::pub::ValueUtilsAndroid::ConvertValueToJavaValue(value);
+            Java_LynxEnv_onHighMemoryEvent(
+                lynx::base::android::AttachCurrentThread(),
+                event.Map()->jni_object());
+          });
   // Records UI readiness even while debugging is off. Prepare checks the
   // effective LynxEnv debug state before creating any routing or bindings.
   lynx::shell::PrepareHostScriptRuntime();

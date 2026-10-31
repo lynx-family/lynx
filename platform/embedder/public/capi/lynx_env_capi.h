@@ -29,6 +29,26 @@ LYNX_CAPI_EXPORT int lynx_env_prewarm_async();
 typedef void (*lynx_env_open_card_callback)(void* user_data, const char* url);
 typedef void (*lynx_env_close_card_callback)(void* user_data);
 
+struct lynx_value;
+/**
+ * Receives one high-memory event dictionary asynchronously on the UI thread.
+ * The value is borrowed and valid only during the callback. Retain it with
+ * lynx_value_add_reference if it must outlive the callback.
+ */
+typedef void (*lynx_env_high_memory_callback)(void* user_data,
+                                              const struct lynx_value* event);
+
+/**
+ * Appends a process-wide callback, or clears all callbacks with NULL.
+ * Callbacks run in registration order using a snapshot taken at UI delivery.
+ * Changes during callbacks affect later events.
+ * Must be called on the UI thread.
+ * Events are not replayed; each VM or page event type consumes its one-shot
+ * budget even without a callback. user_data is passed through unchanged.
+ */
+LYNX_CAPI_EXPORT void lynx_env_set_high_memory_callback(
+    lynx_env_high_memory_callback callback, void* user_data);
+
 LYNX_CAPI_EXPORT void lynx_env_set_devtool_app_info(const char* name,
                                                     const char* value);
 LYNX_CAPI_EXPORT void lynx_env_enable_devtool(int enable);

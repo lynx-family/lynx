@@ -465,6 +465,16 @@ export class LynxUIMethodConstants {
   public static OPERATION_ERROR: any; = 8
 }
 
+export interface LynxHighMemoryEvent {
+  type: string;
+  key: string;
+  bytes: number;
+  vm_type?: string;
+  total_page_count?: number;
+  slots?: Array<string | number>;
+  counts?: Array<string | number>;
+}
+
 export interface LynxJSVMInitOptions {
   incrementalMarkingHardTrigger: number;
   minSemiSpaceSize: number;
@@ -481,6 +491,7 @@ export interface LynxEmojiResourceFetcher {
 }
 
 export const LynxEnv: LynxEnvironment {
+  public setHighMemoryCallback(callback: LynxHighMemoryCallback | null): void;
   public setJSVMInitOptions(options: LynxJSVMInitOptions): boolean;
   public initialize(context: common.Context): void;
   setAppInfo(appInfo: Map<string, string>): void;
@@ -508,6 +519,9 @@ export const LynxEnv: LynxEnvironment {
   public getDisplayInfo(): void;
   public getDensity(): number;
   public updateDisplayInfo(width: number, height: number, densityPixels: number, densityDPI: number, refreshRate: number): void;
+}
+
+export type LynxHighMemoryCallback = (event: LynxHighMemoryEvent) => void {
 }
 
 export interface LynxResourceProvider {

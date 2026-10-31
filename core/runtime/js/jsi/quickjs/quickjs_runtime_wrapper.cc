@@ -219,7 +219,17 @@ void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
   ReportMemoryForTrace(is_full_gc);
 #endif
 
-  if (tasm::performance::MemoryMonitor::Enable()) {
+  const auto heap_size = LEPUS_GetHeapSize(rt_);
+  const bool monitoring = tasm::performance::MemoryMonitor::Enable();
+  const bool report_large_vm =
+      !large_vm_checked_ &&
+      tasm::performance::MemoryMonitor::ReachesThreshold(
+          heap_size, tasm::performance::MemoryMonitor::GetSettings()
+                         .global.large_vm_threshold_mb);
+  // Consume even when this VM has no shared group. Standalone VMs are not
+  // registered solely for high-memory reporting.
+  if (report_large_vm) large_vm_checked_ = true;
+  if (monitoring) {
     // Copy on the owner JS thread. Only a completed full GC can qualify
     // exited-page residuals; scheduled reporting never forces collection.
     tasm::performance::BtsMemorySample sample;
@@ -230,12 +240,14 @@ void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
     sample.heap_valid = true;
     sample.slots_valid &= sample.heap_valid;
     tasm::performance::GlobalMemoryMonitor::GetInstance().OnBtsVMMemoryUpdate(
-        this, std::move(sample));
+        this, std::move(sample), report_large_vm);
+  } else if (report_large_vm && !group_id_.empty()) {
+    tasm::performance::GlobalMemoryMonitor::GetInstance().OnLargeVM(group_id_,
+                                                                    heap_size);
   }
 
   for (auto* observer : obs_set_ptr_) {
-    observer->OnRuntimeGC(
-        {{kRawRuntimeHeapSize, std::to_string(LEPUS_GetHeapSize(rt_))}});
+    observer->OnRuntimeGC({{kRawRuntimeHeapSize, std::to_string(heap_size)}});
   }
 }
 

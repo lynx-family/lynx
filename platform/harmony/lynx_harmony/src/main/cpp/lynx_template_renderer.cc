@@ -15,6 +15,7 @@
 #include "base/include/fml/platform/harmony/message_loop_harmony.h"
 #include "base/include/log/logging.h"
 #include "base/include/memory/memory_pressure_level.h"
+#include "base/include/no_destructor.h"
 #include "base/include/notification_center.h"
 #include "base/include/platform/harmony/harmony_vsync_manager.h"
 #include "base/include/platform/harmony/napi_util.h"
@@ -34,6 +35,7 @@
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/common/platform_call_back.h"
 #include "core/shell/event_tracker_proxy_impl.h"
@@ -983,12 +985,35 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
     napi_get_uv_event_loop(env, &loop);
     lynx::base::UIThread::Init(loop);
 
-    size_t argc = 1;
-    napi_value args[1] = {nullptr};
+    size_t argc = 2;
+    napi_value args[2] = {nullptr, nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     harmony::LynxResourceLoaderHarmony::resource_manager =
         OH_ResourceManager_InitNativeResourceManager(env, args[0]);
+    if (argc == 2 && IsNapiFunction(env, args[1])) {
+      napi_ref callback = nullptr;
+      napi_create_reference(env, args[1], 1, &callback);
+      static base::NoDestructor<base::NotificationCallback>
+          high_memory_callback(
+              tasm::performance::kHighMemoryEventNotification,
+              [env, callback](const std::string&, intptr_t data) {
+                auto event = *reinterpret_cast<const lepus::Value*>(data);
+                base::UIThread::GetRunner()->PostTask(
+                    [env, callback, event = std::move(event)] {
+                      base::NapiHandleScope scope(env);
+                      napi_value function = nullptr;
+                      napi_get_reference_value(env, callback, &function);
+                      if (!function) return;
+                      napi_value receiver = nullptr;
+                      napi_get_undefined(env, &receiver);
+                      napi_value argument =
+                          base::NapiConvertHelper::CreateNapiValue(env, event);
+                      napi_call_function(env, receiver, function, 1, &argument,
+                                         nullptr);
+                    });
+              });
+    }
   });
 
   return nullptr;

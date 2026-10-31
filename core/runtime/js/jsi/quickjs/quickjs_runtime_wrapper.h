@@ -29,6 +29,7 @@ namespace lynx {
 namespace runtime {
 namespace js {
 using LepusIdContainer = std::unordered_map<LEPUSRuntime*, LEPUSClassID>;
+
 class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
  public:
   QuickjsRuntimeInstance();
@@ -101,13 +102,18 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   void RebindMemoryTrackSlot();
   int32_t AllocatePageMemorySlot();
 
+  void SetGroupId(const std::string& group_id) { group_id_ = group_id; }
+
  private:
   LEPUSRuntime* rt_;
   base::LinearFlatSet<JSIObserver*> obs_set_ptr_;
   static LEPUSClassID s_function_id_;
   static LEPUSClassID s_object_id_;
 
+  // Empty for standalone VMs; assigned on the owner JS thread.
+  std::string group_id_;
   bool per_instance_memory_track_{false};
+  bool large_vm_checked_{false};
 #if ENABLE_TRACE_PERFETTO
   // When tracing is enabled, the initial snapshot of a BTS VM will only be
   // captured once.

@@ -11,11 +11,13 @@
 #include <optional>
 #include <utility>
 
+#include "base/include/algorithm.h"
 #include "base/include/fml/message_loop.h"
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/memory/process_memory_info.h"
 #include "base/include/no_destructor.h"
+#include "base/include/value/table.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_defines.h"
 #include "core/runtime/js/js_realm_manager.h"
@@ -28,10 +30,14 @@ namespace tasm {
 namespace performance {
 namespace {
 
-constexpr uint32_t kPageSlotCapacity = fml::JSMemoryTrackSlotType::Count -
-                                       fml::JSMemoryTrackSlotType::Overflow - 1;
+constexpr uint32_t kFirstPageSlot = fml::JSMemoryTrackSlotType::Overflow + 1;
+constexpr uint32_t kPageSlotCapacity =
+    fml::JSMemoryTrackSlotType::Count - kFirstPageSlot;
 constexpr int64_t kMiB = 1024 * 1024;
 constexpr int64_t kResidencyThresholdMs = 600000;
+
+constexpr char kTotalPageCountKey[] = "total_page_count";
+constexpr char kSlotsKey[] = "slots";
 
 struct VmHeapQueryResult {
   fml::AutoResetWaitableEvent event;
@@ -51,8 +57,8 @@ bool SameOwner(const std::weak_ptr<runtime::js::VMInstance>& a,
 void AccumulateResidualSlots(BtsVmState& state, int64_t until_ms) {
   if (until_ms <= state.full_gc_at_ms) return;
   const double duration = until_ms - state.full_gc_at_ms;
-  for (size_t slot = fml::JSMemoryTrackSlotType::Overflow + 1;
-       slot < state.residual_slots.size(); ++slot) {
+  for (size_t slot = kFirstPageSlot; slot < state.residual_slots.size();
+       ++slot) {
     auto& residual = state.residual_slots[slot];
     // The first full GC strictly after exit establishes the baseline. Late
     // exit delivery starts at the last saved GC; unavailable history is not
@@ -361,12 +367,64 @@ GlobalMemoryMonitor::TakeResidualPersistenceEvent(BtsVmState* only_vm) {
 }
 
 void GlobalMemoryMonitor::OnBtsVMMemoryUpdate(runtime::js::VMInstance* vm,
-                                              BtsMemorySample sample) {
-  fml::TaskRunner::RunNowOrPostTask(ReportRunner(),
-                                    [this, vm, sample = std::move(sample)] {
-                                      if (auto* state = FindVM(vm))
-                                        StoreSample(*state, sample);
-                                    });
+                                              BtsMemorySample sample,
+                                              bool report_large_vm) {
+  fml::TaskRunner::RunNowOrPostTask(
+      ReportRunner(), [this, vm, sample = std::move(sample), report_large_vm] {
+        if (auto* state = FindVM(vm)) {
+          StoreSample(*state, sample);
+          if (report_large_vm) ReportLargeVM(*state);
+        }
+      });
+}
+
+void GlobalMemoryMonitor::OnLargeVM(std::string vm_name, size_t heap_size) {
+  ReportRunner()->PostTask([vm_name = std::move(vm_name), heap_size] {
+    MemoryMonitor::ReportHighMemoryEvent(MemoryMonitor::MakeHighMemoryEvent(
+        "large_vm", vm_name, heap_size, "quickjs"));
+  });
+}
+
+void GlobalMemoryMonitor::ReportLargeVM(const BtsVmState& vm) {
+  auto event = MemoryMonitor::MakeHighMemoryEvent(
+      "large_vm", vm.vm_name(), vm.heap_size, RuntimeName(vm.type));
+  auto dictionary = event.Table();
+  dictionary->SetValue(BASE_STATIC_STRING(kTotalPageCountKey),
+                       vm.total_page_count);
+  if (vm.has_per_instance_data) {
+    std::array<const std::string*, fml::JSMemoryTrackSlotType::Count> keys{};
+    for (const auto& [id, page] : instance_state_) {
+      if (page.bts_vm == vm.vm_ptr && fml::IsValidInstanceSlot(page.slot)) {
+        keys[page.slot] = &page.page_key;
+      }
+    }
+    std::array<uint16_t, fml::JSMemoryTrackSlotType::Count> occupied;
+    const auto count = std::min(vm.memory_slots.size(),
+                                size_t{vm.allocated_slots} + kFirstPageSlot);
+    for (size_t slot = 0; slot < count; ++slot) {
+      occupied[slot] = static_cast<uint16_t>(slot);
+    }
+    base::InsertionSort(occupied.data(), count, [&](uint16_t a, uint16_t b) {
+      return vm.memory_slots[a] != vm.memory_slots[b]
+                 ? vm.memory_slots[a] > vm.memory_slots[b]
+                 : a < b;
+    });
+    constexpr const char* reserved[kFirstPageSlot] = {"unknown", "common",
+                                                      "overflow"};
+    const std::string empty_name;
+    auto slots = lepus::CArray::Create();
+    for (size_t i = 0; i < count; ++i) {
+      const auto slot = occupied[i];
+      if (slot < kFirstPageSlot) {
+        slots->emplace_back(reserved[slot]);
+      } else {
+        slots->emplace_back(keys[slot] ? *keys[slot] : empty_name);
+      }
+      slots->emplace_back(static_cast<uint64_t>(vm.memory_slots[slot]));
+    }
+    dictionary->SetValue(BASE_STATIC_STRING(kSlotsKey), std::move(slots));
+  }
+  MemoryMonitor::ReportHighMemoryEvent(event);
 }
 
 void GlobalMemoryMonitor::OnBtsVMSlotAllocate(runtime::js::VMInstance* vm,
@@ -482,7 +540,7 @@ const InstanceState* GlobalMemoryMonitor::ResolveInstancePageKey(int32_t id) {
   return &state;
 }
 
-const InstanceState* GlobalMemoryMonitor::GetInstanceState(int32_t id) {
+InstanceState* GlobalMemoryMonitor::GetInstanceState(int32_t id) {
   assert(ReportRunner()->RunsTasksOnCurrentThread());
   auto it = instance_state_.find(id);
   return it == instance_state_.end() ? nullptr : &it->second;
@@ -849,6 +907,13 @@ void GlobalMemoryMonitor::RefreshVmHeap(BtsVmState& vm, Snapshot& snapshot,
     vm.heap_size = *heap_size;
     vm.heap_valid = true;
     vm.measured_at_ms = measured_at_ms;
+    if (heap_only && MemoryMonitor::Enable() && !vm.large_vm_reported &&
+        MemoryMonitor::ReachesThreshold(
+            *heap_size,
+            MemoryMonitor::GetSettings().global.large_vm_threshold_mb)) {
+      vm.large_vm_reported = true;
+      ReportLargeVM(vm);
+    }
     return;
   }
   // Preserve the candidate and old cache for later recovery. Builders

@@ -2,7 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <utility>
+#include <vector>
+
+#include "base/include/no_destructor.h"
+#include "base/include/notification_center.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #if ENABLE_INSPECTOR
 #include "devtool/embedder/common/debugger_embedder.h"
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
@@ -22,6 +29,43 @@ LYNX_EXTERN_C int lynx_env_prewarm_async() {
 
 namespace {
 static std::string g_icu_data_path;
+
+struct HighMemoryCallbackState {
+  struct Entry {
+    lynx_env_high_memory_callback callback;
+    void* user_data;
+  };
+  std::vector<Entry> callbacks;
+  lynx::base::NotificationCallback listener{
+      lynx::tasm::performance::kHighMemoryEventNotification,
+      [this](const std::string&, intptr_t data) {
+        auto event = *reinterpret_cast<const lynx::lepus::Value*>(data);
+        if (auto runner = lynx::base::UIThread::GetRunner()) {
+          runner->PostTask([this, event = std::move(event)] {
+            const auto snapshot = callbacks;
+            for (const auto& entry : snapshot) {
+              entry.callback(entry.user_data, &event.value());
+            }
+          });
+        }
+      }};
+};
+
+HighMemoryCallbackState& GetHighMemoryCallbackState() {
+  static lynx::base::NoDestructor<HighMemoryCallbackState> state;
+  return *state;
+}
+}  // namespace
+
+LYNX_EXTERN_C void lynx_env_set_high_memory_callback(
+    lynx_env_high_memory_callback callback, void* user_data) {
+  DCHECK(lynx::base::UIThread::GetRunner()->RunsTasksOnCurrentThread());
+  auto& state = GetHighMemoryCallbackState();
+  if (callback) {
+    state.callbacks.push_back({callback, user_data});
+  } else {
+    state.callbacks.clear();
+  }
 }
 
 LYNX_EXTERN_C const char* lynx_env_get_sdk_version() {

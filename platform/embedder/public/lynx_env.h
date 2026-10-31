@@ -35,6 +35,12 @@ class LynxEnv {
                            void* user_data);
   void SetCloseCardCallback(lynx_env_close_card_callback callback,
                             void* user_data);
+  // Receives a borrowed event dictionary asynchronously on the UI thread.
+  // Appends a callback; pass nullptr to clear all callbacks.
+  // Registration and clearing must run on the UI thread.
+  // See lynx_env_set_high_memory_callback for delivery semantics.
+  void SetHighMemoryCallback(lynx_env_high_memory_callback callback,
+                             void* user_data);
   void SetLogboxEnabled(bool enable);
   bool IsLogboxEnabled();
   void RegisterNativeModule(const std::string& module_name,
@@ -96,6 +102,11 @@ inline void LynxEnv::SetOpenCardCallback(lynx_env_open_card_callback callback,
 inline void LynxEnv::SetCloseCardCallback(lynx_env_close_card_callback callback,
                                           void* user_data) {
   lynx_env_set_close_card_callback(callback, user_data);
+}
+
+inline void LynxEnv::SetHighMemoryCallback(
+    lynx_env_high_memory_callback callback, void* user_data) {
+  lynx_env_set_high_memory_callback(callback, user_data);
 }
 
 inline void LynxEnv::SetLogboxEnabled(bool enable) {

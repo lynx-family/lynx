@@ -21,7 +21,8 @@ export { HttpStreamingDelegate } from './jsbridge/network/HttpStreamingDelegate'
 
 export { LynxUIMethodConstants } from './tasm/behavior/util/LynxUIMethodConstants'
 
-export { LynxEnv, LynxEmojiResource, LynxEmojiResourceFetcher, LynxJSVMInitOptions } from './tasm/LynxEnv'
+export { LynxEnv, LynxEmojiResource, LynxEmojiResourceFetcher, LynxJSVMInitOptions,
+  LynxHighMemoryEvent, LynxHighMemoryCallback } from './tasm/LynxEnv'
 
 export {
   LynxResourceProvider
