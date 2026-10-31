@@ -30,6 +30,7 @@ inline void InsertionSort(T* left, size_t count, const C& less_than) {
   if (count <= 1) {
     return;
   }
+
   T* right = left + count - 1;
   for (T* next = left + 1; next <= right; ++next) {
     if (!less_than(*next, *(next - 1))) {
