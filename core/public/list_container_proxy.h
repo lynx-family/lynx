@@ -24,7 +24,7 @@ class LYNX_EXPORT ListContainerProxy {
   void ScrollStopped(int32_t tag);
 
  private:
-  ListEngineProxy* list_engine_proxy_;
+  [[maybe_unused]] ListEngineProxy* list_engine_proxy_;
 };
 
 }  // namespace shell
