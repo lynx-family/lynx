@@ -146,6 +146,7 @@ deps = {
     # setup corepack and pnpm
     'setup_corepack_pnpm': {
         "type": "action",
+        "retry": 3,
         "cwd": root_dir,
         "env": {
             "NODE_CHANNEL_FD": "1" if not system == "windows" else "",
