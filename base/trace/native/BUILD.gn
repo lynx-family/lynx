@@ -3,12 +3,17 @@
 # LICENSE file in the root directory of this source tree.
 
 import("../../../config.gni")
+import("../../../core/native_codegen.gni")
 import("../../../testing/test.gni")
 import("hook_systrace/hook_systrace.gni")
 import("platform/platform.gni")
 
 config("trace_public_config") {
-  include_dirs = [
+  include_dirs = []
+  if (is_android) {
+    include_dirs += lynx_native_codegen_include_dirs
+  }
+  include_dirs += [
     "//third_party/perfetto",
     "$root_gen_dir/lynx",
   ]
@@ -134,6 +139,8 @@ source_set("trace") {
   }
 
   if (is_android) {
+    include_dirs = lynx_native_codegen_include_dirs
+    public_deps += [ "../../../core:native_generated_headers" ]
     if (!is_headless) {
       public_deps += [ "../android:trace_jni_files" ]
     } else {

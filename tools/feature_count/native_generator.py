@@ -3,6 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 import os
 import sys
+import io
 from base import *
 
 def generate(all_features, code_file):
@@ -10,8 +11,7 @@ def generate(all_features, code_file):
     print("native code file is not specified")
     sys.exit(1)
   print(("native feature file: ", code_file))
-  os.makedirs(os.path.dirname(code_file), exist_ok=True)
-  with open(code_file, 'w') as file:
+  with io.StringIO() as file:
     generate_head(file, all_features)
     # print(spec)
     generate_enum_header(file)
@@ -23,6 +23,16 @@ def generate(all_features, code_file):
     generate_to_string_footer(file)
 
     generate_footer(file)
+    new_content = file.getvalue()
+  try:
+    with open(code_file, 'r', encoding='utf-8') as file:
+      if file.read() == new_content:
+        return
+  except FileNotFoundError:
+    pass
+  os.makedirs(os.path.dirname(code_file), exist_ok=True)
+  with open(code_file, 'w', encoding='utf-8') as file:
+    file.write(new_content)
 
 def generate_head(file, all_features):
   header = """// Copyright 2023 The Lynx Authors. All rights reserved.
@@ -91,5 +101,4 @@ def generate_to_string_footer(file):
 }
 """
   file.write(to_string)
-
 

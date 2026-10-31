@@ -245,14 +245,14 @@ deps = {
        "type": "action",
         "cwd": root_dir,
         "commands": [
-            python_path + " tools/feature_count/generate_feature_count.py",
+            python_path + " tools/feature_count/generate_feature_count.py --lang java objc typescript",
         ]
     },
     'gen_error_code': {
         "type": "action",
         "cwd": root_dir,
         "commands": [
-            python_path + " tools/error_code/gen_error_code.py",
+            python_path + " tools/error_code/gen_error_code.py --lang java oc ts ets",
         ]
     },
     'gen_lynx_performance_entry': {
