@@ -575,6 +575,11 @@ public class UIBody extends UIGroup<UIBodyView> {
     }
 
     public void clearNodeIndexImageMap() {
+      for (LynxImageManager imageManager : mImageMap.values()) {
+        if (imageManager != null) {
+          imageManager.destroy();
+        }
+      }
       mImageMap.clear();
     }
 
