@@ -52,4 +52,5 @@ dependencies {
     implementation 'androidx.core:core:1.5.0'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation project(':LynxAndroid')
+    androidTestImplementation project(':TestingBase')
 }
