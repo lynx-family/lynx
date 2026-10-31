@@ -215,6 +215,8 @@ ElementManager::ElementManager(
   platform_computed_css_->SetCSSParserConfigs(GetCSSParserConfigs());
   task_runner_ = std::make_shared<tasm::TasmWorkerTaskRunner>();
   enable_new_animator_fiber_ = LynxEnv::GetInstance().EnableNewAnimatorFiber();
+  enable_pause_element_vsync_in_background_ = LynxEnv::GetInstance().GetBoolEnv(
+      LynxEnv::Key::ENABLE_PAUSE_ELEMENT_VSYNC_IN_BACKGROUND, true);
   // Capture the routing policy once per page. Settings updates must not switch
   // execution backends for animations that are already running. When disabled,
   // the existing New Animator configuration continues to select the executor.
@@ -1382,17 +1384,15 @@ void ElementManager::StopAnimationVsync() {
 }
 
 void ElementManager::SetElementVsyncPaused(bool paused) {
-  if (animation_vsync_stopped_ || element_vsync_paused_ == paused) {
+  if (!enable_pause_element_vsync_in_background_ || animation_vsync_stopped_ ||
+      element_vsync_paused_ == paused) {
     return;
   }
 
   element_vsync_paused_ = paused;
-  if (element_vsync_proxy_) {
-    element_vsync_proxy_->CancelBackgroundFrame();
-    if (!paused) {
-      auto now = fml::TimePoint::Now();
-      SyncInfiniteAnimationEvents(now);
-    }
+  if (element_vsync_proxy_ && !paused) {
+    element_vsync_proxy_->SetMinFrameTime(fml::TimePoint::Now());
+    SuppressNextAnimationIterationEvents();
     if (!animation_element_set_.empty()) {
       element_vsync_proxy_->RequestNextFrame();
     }
@@ -1417,34 +1417,11 @@ void ElementManager::NotifyElementDestroy(Element *element) {
   paused_animation_element_set_.erase(element);
 }
 
-fml::TimePoint ElementManager::ProcessAnimationEvents(
-    fml::TimePoint &frame_time, bool dispatch_events) {
-  auto next = fml::TimePoint::Max();
-  // Retain elements while dispatching events, without consuming pending frames.
-  std::vector<fml::RefPtr<Element>> elements;
-  elements.reserve(animation_element_set_.size());
+void ElementManager::SuppressNextAnimationIterationEvents() {
+  // Only mark pending frames; this does not sample styles or dispatch events.
   for (auto *element : animation_element_set_) {
-    elements.emplace_back(element);
-  }
-  for (const auto &element : elements) {
     if (!element->IsDetached()) {
-      next = std::min(
-          next, element->ProcessAnimationEvents(frame_time, dispatch_events,
-                                                element_vsync_paused_));
-    }
-  }
-  return next;
-}
-
-void ElementManager::SyncInfiniteAnimationEvents(fml::TimePoint &frame_time) {
-  std::vector<fml::RefPtr<Element>> elements;
-  elements.reserve(animation_element_set_.size());
-  for (auto *element : animation_element_set_) {
-    elements.emplace_back(element);
-  }
-  for (const auto &element : elements) {
-    if (!element->IsDetached()) {
-      element->SyncInfiniteAnimationEvents(frame_time);
+      element->SuppressNextAnimationIterationEvents();
     }
   }
 }

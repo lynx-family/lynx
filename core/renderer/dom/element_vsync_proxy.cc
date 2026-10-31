@@ -4,7 +4,6 @@
 
 #include "core/renderer/dom/element_vsync_proxy.h"
 
-#include <algorithm>
 #include <memory>
 #include <set>
 
@@ -56,14 +55,9 @@ void ElementVsyncProxy::SetPreferredFps(const std::string &preferred_fps) {
 
 // The first animation starts an infinite loop.
 void ElementVsyncProxy::RequestNextFrame() {
-  if (!element_manager_ || element_manager_->IsPause() || !vsync_monitor_ ||
+  if (!element_manager_ || element_manager_->IsPause() ||
+      element_manager_->IsElementVsyncPaused() || !vsync_monitor_ ||
       !vsync_monitor_->GetTaskRunner()) {
-    return;
-  }
-  if (element_manager_->IsElementVsyncPaused()) {
-    auto now = fml::TimePoint::Now();
-    ScheduleBackgroundFrame(
-        element_manager_->ProcessAnimationEvents(now, false));
     return;
   }
   if (!has_requested_next_frame_) {
@@ -89,7 +83,7 @@ void ElementVsyncProxy::RequestNextFrame() {
             // monitor owns its timeline and may intentionally use synthetic
             // time.
             if (!shared_ptr->vsync_monitor_->UsesCustomVSync() &&
-                (frame_time < shared_ptr->last_background_event_time_ ||
+                (frame_time < shared_ptr->min_frame_time_ ||
                  frame_time < now - fml::TimeDelta::FromSeconds(1) ||
                  frame_time > now + fml::TimeDelta::FromSeconds(1))) {
               frame_time = now;
@@ -99,51 +93,6 @@ void ElementVsyncProxy::RequestNextFrame() {
         });
     has_requested_next_frame_ = true;
   }
-}
-
-void ElementVsyncProxy::ScheduleBackgroundFrame(fml::TimePoint next) {
-  if (!element_manager_ || element_manager_->IsPause() ||
-      !element_manager_->IsElementVsyncPaused()) {
-    return;
-  }
-  if (next == fml::TimePoint::Max()) {
-    CancelBackgroundFrame();
-    return;
-  }
-  if (!background_timer_) {
-    if (!vsync_monitor_ || !vsync_monitor_->GetTaskRunner()) {
-      return;
-    }
-    // Keep background events on the same runner as foreground animation frames,
-    // including delegate runners without an FML MessageLoop.
-    background_timer_ =
-        std::make_unique<fml::OneshotTimer>(vsync_monitor_->GetTaskRunner());
-  }
-  if (!background_timer_->Stopped() && background_frame_time_ <= next) {
-    return;
-  }
-  background_frame_time_ = next;
-  background_timer_->Start(
-      std::max(next - fml::TimePoint::Now(),
-               fml::TimeDelta::FromMilliseconds(1)),
-      [weak = weak_from_this()]() {
-        auto proxy = weak.lock();
-        if (!proxy || !proxy->element_manager_) {
-          return;
-        }
-        proxy->background_frame_time_ = fml::TimePoint::Max();
-        if (proxy->element_manager_->IsPause() ||
-            !proxy->element_manager_->IsElementVsyncPaused()) {
-          return;
-        }
-        auto time = fml::TimePoint::Now();
-        proxy->last_background_event_time_ = time;
-        auto next = proxy->element_manager_->ProcessAnimationEvents(time, true);
-        // Event handlers may schedule new animations outside the snapshot.
-        // Preserve their deadline when consuming this pass's result.
-        proxy->ScheduleBackgroundFrame(
-            std::min(next, proxy->background_frame_time_));
-      });
 }
 
 }  // namespace tasm

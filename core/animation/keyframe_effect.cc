@@ -153,24 +153,6 @@ void KeyframeEffect::SeekTo(fml::TimeDelta current_time,
   }
 }
 
-fml::TimePoint KeyframeEffect::GetNextEventTime(
-    fml::TimePoint now, bool needs_iteration_event) const {
-  if (!keyframe_models_.empty()) {
-    // Models in one CSS effect share the same timing and iteration count.
-    return gfx::GetNextAnimationEventTime(
-        keyframe_models_.front()->gfx_model_->CreateTimingInput(), now,
-        gfx_effect_->current_iteration_count_, needs_iteration_event);
-  }
-  if (has_custom_property_keyframes_ && animation_) {
-    auto data = ToGfxAnimationData(*animation_->animation_data());
-    return gfx::GetNextAnimationEventTime(
-        CreateCustomPropertyTimingInput(*animation_, data,
-                                        custom_property_run_state_),
-        now, custom_property_current_iteration_count_, needs_iteration_event);
-  }
-  return fml::TimePoint::Max();
-}
-
 KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
     fml::TimePoint monotonic_time, bool events_only) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_EFFECT_SAMPLE_KEYFRAME_MODEL);
