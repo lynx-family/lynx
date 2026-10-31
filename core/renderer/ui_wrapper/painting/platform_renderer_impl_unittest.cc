@@ -4,6 +4,8 @@
 
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 
+#include <functional>
+
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx::tasm {
@@ -14,6 +16,8 @@ class TestPlatformRenderer : public PlatformRendererImpl {
   explicit TestPlatformRenderer(int id)
       : PlatformRendererImpl(id, PlatformRendererType::kView, base::String()) {}
 
+  std::function<void()> on_remove;
+
   bool HasParent() const { return GetParent() != nullptr; }
 
   int remove_from_parent_count() const { return remove_from_parent_count_; }
@@ -22,7 +26,12 @@ class TestPlatformRenderer : public PlatformRendererImpl {
   void OnUpdateDisplayList(DisplayList) override {}
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>&) override {}
   void OnAddChild(PlatformRenderer*, int, bool) override {}
-  void OnRemoveFromParent(bool) override { ++remove_from_parent_count_; }
+  void OnRemoveFromParent(bool) override {
+    ++remove_from_parent_count_;
+    if (on_remove) {
+      on_remove();
+    }
+  }
   void OnUpdateSubtreeProperties(const DisplayList&) override {}
 
  private:
@@ -43,6 +52,21 @@ TEST(PlatformRendererImplTest, ClearsChildParentWhenParentIsReleased) {
   ASSERT_FALSE(child->HasParent());
   child->RemoveFromParent();
   EXPECT_EQ(child->remove_from_parent_count(), 0);
+}
+
+TEST(PlatformRendererImplTest, RetainsParentDuringRemovalCallback) {
+  auto parent = fml::MakeRefCounted<TestPlatformRenderer>(1);
+  auto child = fml::MakeRefCounted<TestPlatformRenderer>(2);
+  parent->AddChild(child);
+  child->on_remove = [&] {
+    parent = nullptr;
+    EXPECT_TRUE(child->HasParent());
+  };
+
+  child->RemoveFromParent();
+
+  EXPECT_FALSE(child->HasParent());
+  EXPECT_EQ(child->remove_from_parent_count(), 1);
 }
 
 }  // namespace lynx::tasm
