@@ -551,6 +551,14 @@ export class Lynx {
     this.getNativeLynx().queueMicrotask(callback);
   };
 
+  pause = (): void => {
+    this.getNativeLynx().pause();
+  };
+
+  resume = (): void => {
+    this.getNativeLynx().resume();
+  };
+
   loadScript = <LoadScript>(<T>(
     url: string,
     options?: { bundleName?: string; useModuleWrapper?: boolean }
