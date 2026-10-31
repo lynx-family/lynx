@@ -7,6 +7,10 @@
 #import <Lynx/LynxURL.h>
 #import <UIKit/UIKit.h>
 
+// Unknown observations remain NSNull instead of implying frame zero.
+FOUNDATION_EXPORT NSDictionary<NSString*, id>* _Nonnull LynxImageAnimationInfo(
+    UIImage* _Nullable image, UIImageView* _Nullable view);
+
 @class LynxUIContext;
 
 #if defined(__cplusplus)
@@ -44,6 +48,8 @@ struct ImagePaintInfo;
               paintInfo:(const lynx::tasm::ImagePaintInfo&)paintInfo
                 changes:(uint32_t)changes;
 #endif
+
+- (NSDictionary<NSString*, id>* _Nonnull)animationInfo;
 
 - (void)reset;
 
