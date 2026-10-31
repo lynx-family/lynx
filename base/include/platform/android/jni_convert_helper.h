@@ -43,6 +43,8 @@ class BASE_EXPORT JNIConvertHelper {
   static lynx::base::android::ScopedLocalJavaRef<jbyteArray>
   ConvertToJNIByteArray(JNIEnv* env, const std::string& str);
 
+  static std::vector<uint8_t> ConvertJavaBinary(JNIEnv* env, jobject j_binary);
+
   static std::vector<uint8_t> ConvertJavaBinary(JNIEnv* env,
                                                 jbyteArray j_binary);
 
