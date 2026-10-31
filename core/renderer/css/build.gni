@@ -131,6 +131,8 @@ lynx_css_core_sources = [
   "parser/clip_path_handler.h",
   "parser/color_handler.cc",
   "parser/color_handler.h",
+  "parser/corner_shape_handler.cc",
+  "parser/corner_shape_handler.h",
   "parser/css_parser_configs.h",
   "parser/css_string_parser.cc",
   "parser/css_string_parser.h",

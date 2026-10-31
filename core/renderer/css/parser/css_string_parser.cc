@@ -20,6 +20,7 @@
 
 #include "base/include/float_comparison.h"
 #include "base/include/string/string_number_convert.h"
+#include "base/include/string/string_utils.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "core/renderer/css/css_color.h"
@@ -281,6 +282,81 @@ static void Complete4Sides(CSSValue side[4]) {
     side[2] = side[0];
   }
   side[3] = side[1];
+}
+
+bool CSSStringParser::ParseCornerShape(CSSValue shapes[4], bool shorthand) {
+  Advance();
+  SkipWhitespaceToken();
+  const size_t max_shapes = shorthand ? 4 : 1;
+  size_t count = 0;
+  while (count < max_shapes && current_token_.type != TokenType::TOKEN_EOF) {
+    auto shape = CornerShape();
+    if (shape.IsEmpty()) {
+      return false;
+    }
+    shapes[count++] = std::move(shape);
+    SkipWhitespaceToken();
+  }
+  if (count == 0 || current_token_.type != TokenType::TOKEN_EOF ||
+      current_token_.start != scanner_.content() + scanner_.Length()) {
+    return false;
+  }
+  Complete4Sides(shapes);
+  return true;
+}
+
+CSSValue CSSStringParser::CornerShape() {
+  double parameter = 0;
+  switch (current_token_.type) {
+    case TokenType::ROUND:
+      parameter = 1;
+      break;
+    case TokenType::SQUIRCLE:
+      parameter = 2;
+      break;
+    case TokenType::SQUARE:
+      parameter = std::numeric_limits<double>::infinity();
+      break;
+    case TokenType::BEVEL:
+      parameter = 0;
+      break;
+    case TokenType::SCOOP:
+      parameter = -1;
+      break;
+    case TokenType::NOTCH:
+      parameter = -std::numeric_limits<double>::infinity();
+      break;
+    case TokenType::SUPERELLIPSE: {
+      const char *function_end = current_token_.start + current_token_.length;
+      Advance();
+      if (current_token_.type != TokenType::LEFT_PAREN ||
+          current_token_.start != function_end) {
+        return CSSValue();
+      }
+      Advance();
+      Token argument;
+      if (ConsumeAndSave(TokenType::NUMBER, argument)) {
+        if (!base::StringToDouble(std::string(argument.start, argument.length),
+                                  parameter, true)) {
+          return CSSValue();
+        }
+      } else if (Consume(TokenType::INFINITY_TOKEN)) {
+        parameter = std::numeric_limits<double>::infinity();
+      } else if (Consume(TokenType::NEGATIVE_INFINITY)) {
+        parameter = -std::numeric_limits<double>::infinity();
+      } else {
+        return CSSValue();
+      }
+      if (!Consume(TokenType::RIGHT_PAREN)) {
+        return CSSValue();
+      }
+      return CSSValue(parameter, CSSValuePattern::NUMBER);
+    }
+    default:
+      return CSSValue();
+  }
+  Advance();
+  return CSSValue(parameter, CSSValuePattern::NUMBER);
 }
 
 bool CSSStringParser::ParseBorderRadius(CSSValue horizontal_radii[4],

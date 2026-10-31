@@ -32,6 +32,7 @@ unittest_set("css_parser_testset") {
     "border_radius_handler_unittest.cc",
     "clip_path_handler_unittest.cc",
     "color_handler_unittest.cc",
+    "corner_shape_handler_unittest.cc",
     "css_string_parser_unittest.cc",
     "css_string_scanner_unittest.cc",
     "enum_handler_unittest.cc",
