@@ -265,6 +265,8 @@ source_set("txt") {
       "src/tttext/paragraph_builder_tt_text.h",
       "src/tttext/paragraph_tt_text.cc",
       "src/tttext/paragraph_tt_text.h",
+      "src/tttext/tttext_index_mapper.cc",
+      "src/tttext/tttext_index_mapper.h",
       "src/tttext/tttext_headers.h",
     ]
 
@@ -468,6 +470,8 @@ if (enable_unittests) {
           ":txt_fixtures",
           "../../third_party/skity:skity_lib",
         ]
+      } else {
+        deps += [ "//third_party/skia" ]
       }
 
       if (is_mac) {
