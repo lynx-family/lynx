@@ -10,7 +10,18 @@ ClayServiceManagerServiceDarwin::ClayServiceManagerServiceDarwin(ClayServiceMana
     : service_manager_(manager) {}
 
 ClayServiceManager* ClayServiceManagerServiceDarwin::GetClayServiceManager() {
+  std::lock_guard<std::mutex> lock(mutex_);
   return service_manager_;
+}
+
+void ClayServiceManagerServiceDarwin::SetClayServiceManager(ClayServiceManager* manager) {
+  // Page service destruction can call back into the bridge.
+  NS_VALID_UNTIL_END_OF_SCOPE __unused ClayServiceManager* previous;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    previous = service_manager_;
+    service_manager_ = manager;
+  }
 }
 
 }  // namespace clay
