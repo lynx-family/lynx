@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "platform/embedder/lynx_recorder/test_bench_fixture.h"
 #include "platform/embedder/lynx_recorder/test_bench_replay_config.h"
 #include "platform/embedder/lynx_recorder/test_bench_replay_data_module.h"
 #include "platform/embedder/lynx_recorder/test_bench_utils.h"
@@ -85,6 +86,7 @@ class TestBenchActionManager
   std::shared_ptr<TestBenchReplayDataModule> data_module_;
   std::atomic<uint64_t> replay_generation_{0};
 
+  std::shared_ptr<TestBenchFixture> fixture_;
   std::string preloaded_source_;
   std::string component_list_;
   std::string template_bundle_param_;

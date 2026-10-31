@@ -25,6 +25,7 @@ source_set("fml") {
 
   public_configs = [ ":fml_config" ]
   public_deps = [
+    ":command_line",
     ":file_util",
     ":fml_log",
     ":string_conversion",
@@ -63,6 +64,9 @@ source_set("command_line") {
     "command_line.h",
   ]
   public_configs = [ ":fml_config" ]
+  if (is_win) {
+    public_deps = [ "../../base/src:base_public_headers" ]
+  }
 }
 
 source_set("string_conversion") {
@@ -121,11 +125,57 @@ source_set("file_util") {
     frameworks = [ "Foundation.framework" ]
   }
   if (is_win) {
-    public_deps += [ "../../base/src:base_group" ]
+    public_deps += [
+      ":command_line",
+      ":string_conversion",
+      "../../base/src:base_group",
+    ]
+  }
+}
+
+if (is_win) {
+  config("sdk_consumer") {
+    # Core configs define lynx_EXPORTS transitively. An SDK consumer must import
+    # both functions and data from lynx.dll, especially the log-level globals.
+    cflags = [ "/Ulynx_EXPORTS" ]
+  }
+
+  source_set("string_conversion_for_sdk_consumer") {
+    sources = fml_string_conversion_sources
+    configs += [ ":sdk_consumer" ]
+    defines = [
+      "_LIBCPP_DISABLE_DEPRECATION_WARNINGS",
+      "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING",
+    ]
+    public_configs = [ ":fml_config" ]
+    deps = [
+      "../../base/src:base_public_headers",
+      "../../base/src:string_conversion_win",
+    ]
+  }
+
+  # Compile the same IO code for applications without changing its DLL-side
+  # export semantics. Unit tests use file_util and link base directly.
+  source_set("file_util_for_sdk_consumer") {
+    sources = fml_file_sources + fml_native_library_sources
+    configs += [ ":sdk_consumer" ]
+    public_configs = [ ":fml_config" ]
+    public_deps = [
+      ":command_line",
+      ":string_conversion_for_sdk_consumer",
+      "../../base/src:base_public_headers",
+      "../../base/src:unique_fd_win",
+    ]
   }
 }
 
 source_set("native_library_util") {
   sources = fml_native_library_sources
   public_configs = [ ":fml_config" ]
+  if (is_win) {
+    public_deps = [
+      ":string_conversion",
+      "../../base/src:base_public_headers",
+    ]
+  }
 }

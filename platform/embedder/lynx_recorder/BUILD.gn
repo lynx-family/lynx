@@ -21,9 +21,32 @@ lynx_core_source_set("lynx_recorder") {
   ]
 
   deps = [
+    ":fixture",
     "../../../../lynx/third_party/rapidjson",
     "//third_party/zlib",
   ]
 
   configs = [ "../../../../lynx/platform/embedder:public_api" ]
+  if (is_win && !enable_unittests) {
+    configs += [ "../../../clay/fml:sdk_consumer" ]
+  }
+}
+
+# Package IO stays outside the SDK, like the JSON replay adapter. The evaluator
+# is called through the SDK C ABI; it is not linked into the application twice.
+lynx_core_source_set("fixture") {
+  sources = [
+    "test_bench_fixture.cc",
+    "test_bench_fixture.h",
+  ]
+  if (is_win && !enable_unittests) {
+    public_deps = [ "../../../clay/fml:file_util_for_sdk_consumer" ]
+    configs = [ "../../../clay/fml:sdk_consumer" ]
+  } else {
+    public_deps = [ "../../../clay/fml:file_util" ]
+  }
+  deps = [
+    "../../../../lynx/third_party/rapidjson",
+    "//third_party/zlib:minizip",
+  ]
 }

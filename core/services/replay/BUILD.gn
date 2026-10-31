@@ -96,6 +96,19 @@ unittest_set("replay_testset") {
 unittest_exec("replay_unittest_exec") {
   sources = []
   deps = [ ":replay_testset" ]
+  if (enable_testbench_replay && (is_mac || is_win)) {
+    # Keep desktop package tests in the replay executable without adding
+    # platform dependencies to the shared replay library or test set.
+    sources += [
+      "../../../platform/embedder/lynx_recorder/test_bench_fixture_evaluator.cc",
+      "../../../platform/embedder/lynx_recorder/test_bench_fixture_unittest.cc",
+      "../../../platform/embedder/lynx_recorder/test_bench_utils.cc",
+    ]
+    deps += [ "../../../platform/embedder/lynx_recorder:fixture" ]
+    if (is_win) {
+      defines = [ "lynx_EXPORTS" ]
+    }
+  }
 }
 
 group("replay_unit_test") {

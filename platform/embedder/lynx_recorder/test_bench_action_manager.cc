@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "platform/embedder/lynx_recorder/test_bench_utils.h"
 
 namespace lynx {
@@ -44,6 +45,7 @@ void TestBenchActionManager::StartWithUrl(
   }
   replay_generation_.fetch_add(1, std::memory_order_relaxed);
   data_module_->Reset();
+  fixture_.reset();
   preloaded_source_.clear();
   component_list_.clear();
   template_bundle_param_.clear();
@@ -87,6 +89,17 @@ void TestBenchActionManager::FetchRecordFile(const std::string& url) {
   std::string record_file = fetch_future.get();
   if (record_file.empty()) {
     // Handle error.
+    return;
+  }
+  if (TestBenchFixture::IsArchive(record_file)) {
+    std::string error;
+    fixture_ = TestBenchFixture::Open(record_file, &error);
+    if (!fixture_) {
+      LOGE("Fixture replay stopped: " << error);
+      return;
+    }
+    data_module_->SetFixture(fixture_);
+    HandleRecordFileData(fixture_->record());
     return;
   }
   size_t raw_json_start = FindRawJsonStart(record_file);
@@ -213,7 +226,8 @@ void TestBenchActionManager::HandleActionList(
       }
       ReplayAction replay_action;
       replay_action.interval =
-          std::max<int64_t>(record_time - replay_start_time, 0);
+          fixture_ ? std::max<int64_t>(record_time, 0)
+                   : std::max<int64_t>(record_time - replay_start_time, 0);
       replay_action.function_id =
           replay_config_->GetCanMockFuncId(function_name_str);
       replay_action.params = param;
@@ -364,8 +378,14 @@ void TestBenchActionManager::LoadTemplate(const std::string& param) {
     return;
   }
   std::string source = preloaded_source_;
-  if (preloaded_source_.empty() && dom.HasMember("source") &&
-      dom["source"].IsString()) {
+  if (preloaded_source_.empty() && fixture_) {
+    if (!dom.HasMember("templateAsset") || !dom["templateAsset"].IsString())
+      return;
+    const auto* data = fixture_->Template(dom["templateAsset"].GetString());
+    if (!data) return;
+    source = *data;
+  } else if (preloaded_source_.empty() && dom.HasMember("source") &&
+             dom["source"].IsString()) {
     source = TestBenchDecode(dom["source"].GetString());
   }
   std::shared_ptr<lynx::pub::LynxTemplateData> template_data;
