@@ -2779,6 +2779,8 @@ public interface com::lynx::tasm::behavior::ILynxUIRenderer {
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onDestroyTemplateRenderer();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onDestroy();
   public LynxUIOwner com.lynx.tasm.behavior.ILynxUIRenderer.lynxUIOwner();
+  public default List< MeaningfulPaintingArea > com.lynx.tasm.behavior.ILynxUIRenderer.getMeaningfulPaintingAreas();
+  public default void com.lynx.tasm.behavior.ILynxUIRenderer.getMeaningfulPaintingAreas(LynxConsumer< List< MeaningfulPaintingArea > > callback);
   public UIGroup< UIBody.UIBodyView > com.lynx.tasm.behavior.ILynxUIRenderer.getLynxRootUI();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.pauseRootLayoutAnimation();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.resumeRootLayoutAnimation();
@@ -7861,6 +7863,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.updateFontScacle(float scale);
   public LynxConfigInfo com.lynx.tasm.LynxView.getLynxConfigInfo();
   public List< MeaningfulPaintingArea > com.lynx.tasm.LynxView.getMeaningfulPaintingAreas();
+  public void com.lynx.tasm.LynxView.getMeaningfulPaintingAreas( @NonNull LynxConsumer< List< MeaningfulPaintingArea > > callback);
   public void com.lynx.tasm.LynxView.setEnableUserCodeCache(boolean enableUserCodeCache, String url);
   public void com.lynx.tasm.LynxView.setAttachLynxPageUICallback(attachLynxPageUICallback callback);
   public void com.lynx.tasm.LynxView.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
