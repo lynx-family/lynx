@@ -15,6 +15,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/ui_wrapper/layout/harmony/layout_context_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/painting_context_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/devtool/harmony_devtool_coordinates.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
@@ -171,6 +172,12 @@ void EmbedderPlatformHarmony::TakeSnapshot(
         if (!self) {
           return;
         }
+        const tasm::harmony::HarmonyDevToolCoordinates coordinates(
+            self->DevicePixelRatio());
+        // Metadata describes the logical viewport, independently of bitmap
+        // downscaling performed while capturing or packing the snapshot.
+        result.width = coordinates.PhysicalToLogical(result.width);
+        result.height = coordinates.PhysicalToLogical(result.height);
         screenshot_runner->PostTask(
             [result = std::move(result), callback = std::move(callback)]() {
               std::string str(result.data.begin(), result.data.end());

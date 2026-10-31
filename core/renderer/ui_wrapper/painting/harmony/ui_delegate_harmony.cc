@@ -25,6 +25,7 @@
 #include "core/renderer/ui_wrapper/painting/harmony/native_painting_context_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/painting_context_harmony.h"
 #include "core/shell/harmony/embedder_platform_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/devtool/harmony_devtool_coordinates.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/module/module_factory_capi.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
@@ -348,20 +349,14 @@ int UIDelegateHarmony::GetNodeForLocation(int x, int y) {
     if (!root) {
       return 0;
     }
-    float scaled_density = root->GetContext()->ScaledDensity();
-    if (scaled_density <= 0.f) {
-      scaled_density = 1.f;
-    }
-    float local_x = static_cast<float>(x);
-    float local_y = static_cast<float>(y);
+    float pos[2] = {static_cast<float>(x), static_cast<float>(y)};
     if (GetActualScreenshotMode() == kScreenShotModeFullScreen) {
       ArkUI_IntOffset root_offset = {0, 0};
       OH_ArkUI_NodeUtils_GetPositionWithTranslateInWindow(root->GetProxyNode(),
                                                           &root_offset);
-      local_x -= root_offset.x;
-      local_y -= root_offset.y;
+      HarmonyDevToolCoordinates(root->GetContext()->ScaledDensity())
+          .WindowToRoot(pos, root_offset.x, root_offset.y);
     }
-    float pos[2] = {local_x / scaled_density, local_y / scaled_density};
     tasm::harmony::EventTarget* ui = root->HitTest(pos);
     return ui ? ui->Sign() : 0;
   }
@@ -384,6 +379,7 @@ std::vector<float> UIDelegateHarmony::GetTransformValue(
   if (!ui) {
     return {};
   }
+  const HarmonyDevToolCoordinates coordinates(lynx_context->ScaledDensity());
   ArkUI_IntOffset root_offset = {0, 0};
   auto root = lynx_context->GetUIOwner()->Root();
   if (root) {
@@ -435,10 +431,7 @@ std::vector<float> UIDelegateHarmony::GetTransformValue(
               pad_border_margin_layout[BoxModelOffset::LAYOUT_BOTTOM],
           point);
     }
-    for (int j = 0; j < 8; j += 2) {
-      point[j] += root_offset.x;
-      point[j + 1] += root_offset.y;
-    }
+    coordinates.QuadToWindow(point, root_offset.x, root_offset.y);
     res[i * 8] = point[0];
     res[i * 8 + 1] = point[1];
     res[i * 8 + 2] = point[2];
