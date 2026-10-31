@@ -54,7 +54,7 @@ public final class StaticPageHost {
     synchronized (mLock) {
       unregisterLocked();
       mGeneration++;
-      Map<String, Object> platformData = getStaticPageData(data);
+      Map<String, Object> platformData = getTemplateDataMap(data);
       if (platformData != null) {
         if (mCurrentData.isEmpty()) {
           mCurrentData = platformData;
@@ -98,7 +98,7 @@ public final class StaticPageHost {
     Map<String, Object> mergedData = null;
     Map<String, Object> mergedGlobalProps = null;
     synchronized (mLock) {
-      Map<String, Object> platformData = getStaticPageData(data);
+      Map<String, Object> platformData = getTemplateDataMap(data);
       if (platformData != null) {
         if (mCurrentData.isEmpty()) {
           mCurrentData = platformData;
@@ -109,7 +109,7 @@ public final class StaticPageHost {
         }
         mergedData = mCurrentData;
       }
-      Map<String, Object> globalPropsUpdateData = getStaticPageData(globalPropsUpdate);
+      Map<String, Object> globalPropsUpdateData = getTemplateDataMap(globalPropsUpdate);
       if (globalPropsUpdateData != null) {
         if (mCurrentGlobalProps == null) {
           mCurrentGlobalProps = globalPropsUpdateData;
@@ -242,7 +242,7 @@ public final class StaticPageHost {
     Map<String, Object> mergedGlobalProps = null;
     TemplateData[] sources = {currentGlobalProps, groupGlobalProps, loadGlobalProps};
     for (TemplateData source : sources) {
-      Map<String, Object> sourceData = getStaticPageData(source);
+      Map<String, Object> sourceData = getTemplateDataMap(source);
       if (sourceData == null) {
         continue;
       }
@@ -259,7 +259,9 @@ public final class StaticPageHost {
 
   @Nullable
   @SuppressWarnings("unchecked")
-  private static Map<String, Object> getStaticPageData(@Nullable TemplateData data) {
+  private static Map<String, Object> getTemplateDataMap(@Nullable TemplateData data) {
+    // Static-page data returns its retained platform map. Standard TemplateData is accepted only
+    // for load-time global props and is materialized here at the direct-load boundary.
     return data == null ? null : (Map<String, Object>) (Map<?, ?>) data.toMap();
   }
 
