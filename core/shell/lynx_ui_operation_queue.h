@@ -64,6 +64,10 @@ class LynxUIOperationQueue {
   virtual bool IsInFlush() { return false; }
   virtual bool FlushPendingOperations() { return false; }
 
+  // Called on the UI thread after the old producers have been transferred.
+  // Preserve queued mutations when a cached engine binds a new shell.
+  void TransferOperationsTo(LynxUIOperationQueue& destination);
+
  protected:
   void ConsumeOperations(
       const base::ConcurrentQueue<UIOperation>::IterableContainer&
