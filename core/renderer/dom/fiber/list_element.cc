@@ -383,8 +383,16 @@ void ListElement::EnqueueComponent(int32_t sign) {
                 UpdateTraceDebugInfo(ctx.event());
               });
   if (is_element_template_list_) {
-    // TODO: The initial-render prototype does not recycle physical subtrees
-    // or allow JS callbacks to remove native logical items.
+    if (element_manager_ && element_manager_->DisableListCallbackIfDetached() &&
+        IsDetached()) {
+      return;
+    }
+    auto instance =
+        fml::RefPtr<ElementTemplateInstance>(element_template_instance_.get());
+    if (instance) {
+      static_cast<ListElementTemplateInstance*>(instance.get())
+          ->EnqueueComponent(sign);
+    }
     return;
   }
   if (ssr_helper_ && !ssr_helper_->HasHydrate()) {

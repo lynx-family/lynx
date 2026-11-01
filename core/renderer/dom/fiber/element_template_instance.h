@@ -13,6 +13,7 @@
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/ref_counted_class.h"
 #include "base/include/vector.h"
+#include "base/trace/native/trace_event.h"
 #include "core/base/thread/once_task.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/generated_elements_result.h"
@@ -70,6 +71,8 @@ class ElementTemplateInstance
   const base::String& GetBundleUrl() const { return bundle_url_; }
   const lepus::Value& GetUid() const { return uid_; }
   ElementTemplateInstance* GetLogicalParent() const { return logical_parent_; }
+  const lepus::Value& GetChildSlots() const { return child_slots_; }
+
   // Provides a consistent template identity for the List data source and reuse
   // pool: tag for typed templates, templateKey for compiled templates, and
   // bundleUrl:templateKey for external bundles.
@@ -77,6 +80,8 @@ class ElementTemplateInstance
   lepus::Value GetListItemPlatformInfoFromOptions() const;
 
   fml::RefPtr<Element> GetRoot();
+  // Reads the materialized result without triggering subtree materialization.
+  fml::RefPtr<Element> PeekMaterializedRoot() const;
   // Materializes this instance on demand, then returns the slot target.
   // This does not complete pending parent mounts or layout.
   fml::RefPtr<Element> GetElementByAttrSlot(uint32_t slot_index);
@@ -86,7 +91,8 @@ class ElementTemplateInstance
   virtual void InsertNodeIntoChildSlot(uint32_t slot_index,
                                        const lepus::Value& child,
                                        const lepus::Value& ref_node);
-  void RemoveNodeFromChildSlot(uint32_t slot_index, const lepus::Value& child);
+  virtual void RemoveNodeFromChildSlot(uint32_t slot_index,
+                                       const lepus::Value& child);
   bool HasPendingChildMounts() const;
   FlushPendingChildMountsResult FlushPendingChildMounts(Element* flush_root);
   // Checks whether the materialized root is in the flush subtree without
@@ -102,6 +108,10 @@ class ElementTemplateInstance
     pending_child_mounts_enqueued_ = enqueued;
   }
 
+#if ENABLE_TRACE_PERFETTO
+  void UpdateTraceDebugInfo(TraceEvent* event) const;
+#endif
+
  protected:
   // Regular ETs materialize child slots with the parent tree. Lists materialize
   // items on demand when requested by index.
@@ -115,8 +125,6 @@ class ElementTemplateInstance
   // materialization.
   fml::RefPtr<ElementTemplateInstance> GetChildInstanceAt(
       uint32_t slot_index, uint32_t child_index) const;
-  // Reads the materialized result without triggering subtree materialization.
-  fml::RefPtr<Element> PeekMaterializedRoot() const;
   lepus::Value GetOrCreateMutableChildSlot(uint32_t slot_index);
   // The caller validates the arguments. Updates only the logical order and
   // parent-child links, returning the actual insertion position. Regular ETs

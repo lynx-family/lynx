@@ -727,7 +727,8 @@ void ElementManager::DrainPendingElementTemplateChildMounts(
   if (pending_element_template_child_mounts_.empty()) {
     return;
   }
-
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              ELEMENT_MANAGER_DRAIN_PENDING_ELEMENT_TEMPLATE_CHILD_MOUNTS);
   auto pending_instances = std::move(pending_element_template_child_mounts_);
   pending_element_template_child_mounts_.clear();
   base::Vector<fml::WeakPtr<ElementTemplateInstance>> out_of_scope_instances;
