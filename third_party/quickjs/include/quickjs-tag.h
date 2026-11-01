@@ -3,9 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 //
 // clang-format off
-#ifndef THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_TAG_H_
-#define THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_TAG_H_
-
+#ifdef DEFTAG
 
 #ifndef deftag
 #define deftag(type, description) DEFTAG(type, description)
@@ -61,7 +59,7 @@ DEFTAG(JSSTDFile, "JSSTDFile")
 
 deftag(JSSymbol, "JSSymbol")
 deftag(JSValueArray, "JSValueArray")
-deftag(JSConstString, "JSConstString")
+deftag(JSStringWithAux, "JSStringWithAux")
 deftag(JsonStrArray, "JsonStrArray")
 // array
 deftag(LabelSlotArray, "LabelSlotArray")
@@ -75,12 +73,10 @@ deftag(JSResolveEntryArray, "JSResolveEntryArray")
 
 deftag(LEPUSBreakpointArray, "LEPUSBreakpointArray")
 deftag(JSPropertyArray, "JSPropertyArray")
-deftag(ValueSlotArray, "ValueSlotArray")
 deftag(AtomArray, "AtomArray")
 
 deftag(JSAsyncGeneratorRequest, "JSAsyncGeneratorRequest")
 deftag(JSAsyncVarRef, "JSAsyncVarRef")
+deftag(JSLinkedHashMap, "JSLinkedHashMap")
 #undef deftag
 #endif
-
-#endif  // THIRD_PARTY_QUICKJS_INCLUDE_QUICKJS_TAG_H_

@@ -37,6 +37,14 @@ extern "C" {
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/types.h>
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+#ifndef _SSIZE_T_DEFINED
+#define _SSIZE_T_DEFINED
+typedef SSIZE_T ssize_t;
+#endif
+#endif
 
 #include "base_export.h"
 #include "list.h"
@@ -144,7 +152,7 @@ enum {
   ALLOC_TAG_JSSTDFile,
   ALLOC_TAG_JSSymbol,
   ALLOC_TAG_JSValueArray,
-  ALLOC_TAG_JSConstString,
+  ALLOC_TAG_JSStringWithAux,
   ALLOC_TAG_JsonStrArray,
   ALLOC_TAG_LabelSlotArray,
   ALLOC_TAG_CallerStrSlotArray,
@@ -156,10 +164,10 @@ enum {
   ALLOC_TAG_JSResolveEntryArray,
   ALLOC_TAG_LEPUSBreakpointArray,
   ALLOC_TAG_JSPropertyArray,
-  ALLOC_TAG_ValueSlotArray,
   ALLOC_TAG_AtomArray,
   ALLOC_TAG_JSAsyncGeneratorRequest,
   ALLOC_TAG_JSAsyncVarRef,
+  ALLOC_TAG_JSLinkedHashMap,
   ALLOC_TAG_END,
 };
 // <Primjs begin>
@@ -782,6 +790,22 @@ typedef enum LEPUSGCMemoryPolicyLevel {
 
 // <Primjs end>
 
+/*
+ * Runtime creation mode bit layout:
+ * - Bits 0-23: reserved; pass zero.
+ * - Bits 24-31: allocation interval for GC info reporting in MiB (0..255).
+ *   Encode as ((uint32_t)interval_mb <<
+ *              LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_SHIFT);
+ *   the field mask is LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_MASK.
+ * These fields can be combined with bitwise OR. They are independent of
+ * GetSettingsFlag(); mode does not select RC versus GC.
+ */
+typedef enum LEPUSRuntimeMode {
+  LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_SHIFT = 24,
+  LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_MASK =
+      0xFFu << LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_SHIFT,
+} LEPUSRuntimeMode;
+
 LEPUSRuntime *LEPUS_NewRuntime(void);
 LEPUSRuntime *LEPUS_NewRuntimeWithMode(uint32_t mode);
 /*
@@ -821,8 +845,10 @@ LEPUS_BOOL LEPUS_IsMemorySlotTrackingEnabled(LEPUSRuntime *rt);
  * Runtime. Must be called from the Runtime's owning thread. */
 int32_t LEPUS_AllocateMemorySlot(LEPUSRuntime *rt);
 /* Copies the current per-slot memory usage without freeing the Runtime.
- * Must be called from the Runtime's owning thread when concurrent GC is not
- * running. Returns max_slot_index. */
+ * Must be called from the Runtime's owning thread. Pending GC allocations are
+ * flushed before copying. During concurrent GC, each slot is sampled
+ * atomically, but collection may advance between slots. Returns max_slot_index.
+ */
 int32_t LEPUS_DumpMemorySlots(
     LEPUSRuntime *rt, size_t memory_size_slots[LEPUS_MEMORY_SIZE_SLOTS]);
 /* info lifetime must exceed that of rt */
@@ -830,7 +856,27 @@ int32_t LEPUS_DumpMemorySlots(
    Only effective when is_lepusng is also true. Default: enabled. */
 void LEPUS_SetOptLepusNGPackageSize(LEPUSRuntime *rt, int enable);
 void LEPUS_SetRuntimeInfo(LEPUSRuntime *rt, const char *info);
+/* Caps heap malloc bytes (RC) or in-use pages (GC), excluding external memory.
+   SIZE_MAX removes the cap. Call from rt's owning thread. */
 void LEPUS_SetMemoryLimit(LEPUSRuntime *rt, size_t limit);
+
+/* Snapshot valid only during the callback. */
+typedef struct LEPUSOutOfMemoryInfo {
+  size_t limit_bytes;   /* cap set by LEPUS_SetMemoryLimit, SIZE_MAX if none */
+  size_t used_bytes;    /* usage compared with the cap */
+  size_t request_bytes; /* size of the failed allocation */
+  size_t heap_bytes;    /* LEPUS_GetHeapSize at the failure */
+} LEPUSOutOfMemoryInfo;
+
+/* Each rt reports once; requests above cap or GC maximum never report.
+   Only LEPUS_GetHeapSize/LEPUS_DumpMemorySlots may use rt in cb. */
+typedef void LEPUSOutOfMemoryCallback(LEPUSRuntime *rt,
+                                      const LEPUSOutOfMemoryInfo *info,
+                                      void *opaque);
+/* NULL disables cb; failures without cb still consume the report.
+   Runs before throwing. Owning thread only; opaque passes unchanged. */
+void LEPUS_SetOutOfMemoryCallback(LEPUSRuntime *rt,
+                                  LEPUSOutOfMemoryCallback *cb, void *opaque);
 /* Must be called from the owning thread of rt. */
 int LEPUS_SetGCMemoryPolicyLevel(LEPUSRuntime *rt,
                                  LEPUSGCMemoryPolicyLevel level);
@@ -842,6 +888,26 @@ void LEPUS_MarkValue(LEPUSRuntime *rt, LEPUSValueConst val,
 void LEPUS_RunGC(LEPUSRuntime *rt);
 void LEPUS_RunAllGC();
 LEPUS_BOOL LEPUS_IsInGCSweep(LEPUSRuntime *rt);
+
+// <Primjs begin>
+/* Host uswap page-out callback, run on the runtime thread; < 0 on failure. */
+typedef ssize_t (*uswap_pageout_func)(void *addr, size_t len);
+/* Process-wide and shared by every runtime; NULL disables page-out. */
+void LEPUS_SetUswapFunctions(uswap_pageout_func pageout_func);
+/* -1 is never returned: older engines used it for every failure. */
+typedef enum LEPUSPageOutResult {
+  LEPUS_PAGE_OUT_OK = 0,
+  LEPUS_PAGE_OUT_NULL_RUNTIME = -2,
+  LEPUS_PAGE_OUT_NO_CALLBACKS = -3,
+  LEPUS_PAGE_OUT_REENTERED = -4,
+  LEPUS_PAGE_OUT_GC_FORBIDDEN = -5,
+  LEPUS_PAGE_OUT_GC_PAUSE_SUPPRESSED = -6,
+  /* -7 is retired and not reused. */
+  LEPUS_PAGE_OUT_PAGEOUT_FAILED = -8,
+} LEPUSPageOutResult;
+/* Pages out each normal page group of rt without running GC first. */
+int LEPUS_PageOutGCMemory(LEPUSRuntime *rt);
+// <Primjs end>
 
 LEPUSContext *LEPUS_NewContext(LEPUSRuntime *rt);
 void LEPUS_FreeContext(LEPUSContext *s);
