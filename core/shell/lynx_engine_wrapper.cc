@@ -25,6 +25,10 @@ void LynxEngineWrapper::SetupCore(
 }
 
 void LynxEngineWrapper::BindShell(lynx::shell::LynxShell *shell) {
+  // Drain pending engine updates while the old layout actor is still valid.
+  // These updates can enqueue layout tasks that must finish before handoff.
+  this->engine_actor_->ActSync([](auto &) {});
+
   // Transfer the layout actor first so all layout tasks from the previous
   // shell finish while its engine actor is still available. A finishing
   // layout task may post OnLayoutAfter work to the engine actor; transferring

@@ -42,6 +42,22 @@ void LynxUIOperationQueue::Destroy() { destroyed_ = true; }
 
 void LynxUIOperationQueue::ForceFlush() { Flush(); }
 
+void LynxUIOperationQueue::TransferOperationsTo(
+    LynxUIOperationQueue& destination) {
+  if (this == &destination) {
+    return;
+  }
+  FlushPendingOperations();
+  auto high_priority_operations = high_priority_operations_.PopAll();
+  auto operations = operations_.PopAll();
+  for (auto& operation : high_priority_operations) {
+    destination.EnqueueHighPriorityOperation(std::move(operation));
+  }
+  for (auto& operation : operations) {
+    destination.EnqueueUIOperation(std::move(operation));
+  }
+}
+
 void LynxUIOperationQueue::ConsumeOperations(
     const base::ConcurrentQueue<UIOperation>::IterableContainer&
         high_priority_operations,
