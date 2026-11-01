@@ -15,6 +15,7 @@
 #include "core/renderer/dom/fiber/list_update_info_recorder.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
 #include "core/services/timing_handler/timing.h"
 
@@ -47,6 +48,69 @@ bool IsListTemplateCallbackAttribute(const base::String& key) {
          key.IsEqual(kComponentAtIndexesAttribute);
 }
 
+// Enumerates native logical children without materializing their roots.
+template <typename Callback>
+void ForEachLogicalChild(const ElementTemplateInstance& instance,
+                         Callback&& callback) {
+  const auto& child_slots = instance.GetChildSlots();
+  if (!child_slots.IsArray()) {
+    return;
+  }
+  for (size_t slot_index = 0;
+       slot_index < static_cast<size_t>(child_slots.GetLength());
+       ++slot_index) {
+    auto children = child_slots.GetProperty(static_cast<uint32_t>(slot_index));
+    if (!children.IsArray()) {
+      continue;
+    }
+    for (size_t child_index = 0;
+         child_index < static_cast<size_t>(children.GetLength());
+         ++child_index) {
+      auto child = ElementTemplateInstance::ResolveElementTemplateInstanceValue(
+          children.GetProperty(static_cast<uint32_t>(child_index)));
+      if (child) {
+        callback(child);
+      }
+    }
+  }
+}
+
+void VisitElementTemplateInstance(ElementTemplateInstance& instance, void* rt,
+                                  void* mark_func, uint64_t trace_tool);
+
+void VisitLogicalChildren(const ElementTemplateInstance& instance, void* rt,
+                          void* mark_func, uint64_t trace_tool) {
+  ForEachLogicalChild(
+      instance, [&](const fml::RefPtr<ElementTemplateInstance>& child) {
+        VisitElementTemplateInstance(*child, rt, mark_func, trace_tool);
+      });
+}
+
+void VisitElementTemplateInstance(ElementTemplateInstance& instance, void* rt,
+                                  void* mark_func, uint64_t trace_tool) {
+  instance.visitor(rt, mark_func, trace_tool);
+  // Typed Lists are ListElementTemplateInstance objects. Their visitor already
+  // traverses logical children and retained items, so do not descend twice.
+  if (instance.IsTypedTemplate() &&
+      instance.GetTypedTag().IsEqual(kElementListTag)) {
+    return;
+  }
+  // Ordinary ETs inherit the empty visitor, but may contain nested Lists.
+  VisitLogicalChildren(instance, rt, mark_func, trace_tool);
+}
+
+void VisitRetainedItems(const ListElementTemplateReusePool& pool,
+                        const ElementTemplateInstance& list_instance, void* rt,
+                        void* mark_func, uint64_t trace_tool) {
+  pool.ForEachRetainedInstance(
+      [&](const fml::RefPtr<ElementTemplateInstance>& instance) {
+        // Direct children are visited through the logical tree below.
+        if (instance->GetLogicalParent() != &list_instance) {
+          VisitElementTemplateInstance(*instance, rt, mark_func, trace_tool);
+        }
+      });
+}
+
 }  // namespace
 
 ListElementTemplateInstance::ListElementTemplateInstance(
@@ -71,7 +135,8 @@ void ListElementTemplateInstance::visitor(void* rt, void* mark_func,
   mark_callback(component_at_index_);
   mark_callback(enqueue_component_);
   mark_callback(component_at_indexes_);
-  ElementTemplateInstance::visitor(rt, mark_func, trace_tool);
+  VisitRetainedItems(reuse_pool_, *this, rt, mark_func, trace_tool);
+  VisitLogicalChildren(*this, rt, mark_func, trace_tool);
 }
 
 void ListElementTemplateInstance::SetAttributes(
@@ -172,6 +237,32 @@ void ListElementTemplateInstance::InsertNodeIntoChildSlot(
   element_manager()->EnqueuePendingElementTemplateListUpdates(*this);
 }
 
+void ListElementTemplateInstance::RemoveNodeFromChildSlot(
+    uint32_t slot_index, const lepus::Value& child_node) {
+  if (slot_index != kTypedTemplateRootChildSlotIndex) {
+    return;
+  }
+  auto child_instance = ResolveElementTemplateInstanceValue(child_node);
+  if (!child_instance || child_instance->GetLogicalParent() != this) {
+    return;
+  }
+  auto slot_children = GetOrCreateMutableChildSlot(slot_index);
+  if (FindSlotChildIndex(slot_children, child_node) >=
+      static_cast<size_t>(slot_children.GetLength())) {
+    return;
+  }
+  // Capture the old order before removing the first item in this batch.
+  if (!list_update_info_recorder_) {
+    list_update_info_recorder_ =
+        std::make_unique<ListUpdateInfoRecorder>(slot_children);
+  }
+  list_update_info_recorder_->OnRemoveChild(child_node);
+
+  // Preserve logical removal and detachment of an already materialized child.
+  ElementTemplateInstance::RemoveNodeFromChildSlot(slot_index, child_node);
+  element_manager()->EnqueuePendingElementTemplateListUpdates(*this);
+}
+
 void ListElementTemplateInstance::OnListItemPlatformInfoChanged(
     const lepus::Value& child, const lepus::Value& platform_info) {
   if (list_update_info_recorder_ == nullptr) {
@@ -228,34 +319,72 @@ int32_t ListElementTemplateInstance::ComponentAtIndex(
   auto list_item_instance =
       GetChildInstanceAt(kTypedTemplateRootChildSlotIndex, index);
   if (!list_item_instance) {
-    LOGE("[ListET] ComponentAtIndex: get list item instance failed, index="
-         << index);
+    LOGE(
+        "[ListET] ComponentAtIndex: get list item element template instance "
+        "failed with index="
+        << index);
     return list::kInvalidIndex;
   }
 
-  // Materialize the item only when requested. An already materialized instance
-  // returns its existing root.
-  auto list_item_root = list_item_instance->GetRoot();
+  fml::RefPtr<Element> list_item_root = nullptr;
+  const auto action = reuse_pool_.Dequeue(list_item_instance);
+  switch (action.type_) {
+    case ListElementTemplateReusePool::Action::Type::kUseExisting:
+      list_item_root = action.reusable_root_;
+      break;
+    case ListElementTemplateReusePool::Action::Type::kReuse: {
+      auto reusable_instance = action.reusable_instance_;
+      // TODO: impl reuse element in the next mr.
+      // bool reuse_from_element =
+      // list_item_instance->ReuseElementsFrom(*reusable_instance);
+      bool reuse_from_element = false;
+      if (reuse_from_element) {
+        // TODO: impl reuse notify
+      } else {
+        reuse_pool_.CancelDequeue(action);
+        list_item_root = list_item_instance->GetRoot();
+      }
+      break;
+    }
+    case ListElementTemplateReusePool::Action::Type::kCreate:
+      list_item_root = list_item_instance->GetRoot();
+      break;
+    case ListElementTemplateReusePool::Action::Type::kUnavailable:
+    default:
+      return list::kInvalidIndex;
+  }
+
   if (!list_item_root) {
-    LOGE("[ListET] ComponentAtIndex: list item materialization failed, index="
-         << index);
+    return list::kInvalidIndex;
+  } else if (list_item_root->parent() == nullptr) {
+    // New nodes are mounted on first use. A node taken back by its own instance
+    // usually retains its parent, so it is not appended again. Only update the
+    // physical tree and list-item flag here; do not change logical slots or
+    // record another insertion.
+    list_root->InsertNode(list_item_root);
+  }
+
+  const auto list_item_sign = list_item_root->impl_id();
+  // Note: Register the sign before Flush. Native code may enqueue again during
+  // Flush, so the sign must already resolve to the ET that owns this physical
+  // tree rather than being registered after the request returns.
+  if (!reuse_pool_.RegisterNewBinding(list_item_sign, list_item_instance)) {
+    LOGE("[ListET] ComponentAtIndex: register list item binding failed, sign="
+         << list_item_sign);
     return list::kInvalidIndex;
   }
 
-  if (list_item_root->parent() == nullptr) {
-    // Mount the materialized node and set the list-item flag without modifying
-    // the logical slot or collecting the diff again.
-    list_root->InsertNode(list_item_root);
-  } else if (list_item_root->parent() != list_root.get()) {
-    // The initial rendering prototype does not support moves across Lists yet.
-    return list::kInvalidIndex;
-  }
-  const auto list_item_sign = list_item_root->impl_id();
+  LOGI("[ListET] ComponentAtIndex submitted, list.id="
+       << list_root->impl_id() << " index=" << index
+       << " operation_id=" << operation_id << " item.id=" << list_item_sign);
   // Submit even previously materialized and mounted items so this operation
   // receives a completion notification.
   FlushElementTree(tasm, list_element, list_item_root.get(), operation_id);
-
   return list_item_sign;
+}
+
+void ListElementTemplateInstance::EnqueueComponent(int32_t sign) {
+  reuse_pool_.Enqueue(sign);
 }
 
 void ListElementTemplateInstance::FlushElementTree(TemplateAssembler* tasm,

@@ -759,8 +759,10 @@ void ElementTemplateInstance::InitTypedRoot() {
 }
 
 fml::RefPtr<Element> ElementTemplateInstance::GetRoot() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ELEMENT_GET_ROOT, "template_key",
-              template_key_.str(), "bundle_url", bundle_url_.str());
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ELEMENT_GET_ROOT,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
   RequestMaterializationRecursively();
   MaterializeRoot();
 
@@ -860,6 +862,11 @@ bool ElementTemplateInstance::HasPendingChildMounts() const {
 
 ElementTemplateInstance::FlushPendingChildMountsResult
 ElementTemplateInstance::FlushPendingChildMounts(Element* flush_root) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              ELEMENT_TEMPLATE_INSTANCE_FLUSH_PENDING_CHILD_MOUNTS,
+              [this](lynx::perfetto::EventContext ctx) {
+                UpdateTraceDebugInfo(ctx.event());
+              });
   if (!IsMaterializedRootInFlushScope(flush_root)) {
     // A nested ET in a detached subtree still has a physical parent. Keep it
     // queued so reattaching the subtree can bring it back into flush scope.
@@ -1258,10 +1265,6 @@ base::String ElementTemplateInstance::GetTemplateType() const {
   if (IsTypedTemplate()) {
     return typed_tag_;
   }
-  // Match the framework's elementTemplateIdentityKey: an omitted bundle is
-  // equivalent to the main bundle sentinel. UID and item-key identify logical
-  // items and must be excluded from the type so different items can share a
-  // pool.
   if (bundle_url_.empty() || bundle_url_.IsEqual(kDefaultTemplateBundleUrl)) {
     return template_key_;
   }
@@ -1284,6 +1287,42 @@ lepus::Value ElementTemplateInstance::GetListItemPlatformInfoFromOptions()
   return list_item_platform_info.IsObject() ? list_item_platform_info
                                             : lepus::Value();
 }
+
+#if ENABLE_TRACE_PERFETTO
+void ElementTemplateInstance::UpdateTraceDebugInfo(TraceEvent* event) const {
+  auto* bundle_url_info = event->add_debug_annotations();
+  bundle_url_info->set_name("bundle_url");
+  bundle_url_info->set_string_value(bundle_url_.str());
+
+  auto* template_key_info = event->add_debug_annotations();
+  template_key_info->set_name("template_key");
+  template_key_info->set_string_value(
+      template_key_.empty() ? "null" : template_key_.str());
+
+  auto* typed_tag_info = event->add_debug_annotations();
+  typed_tag_info->set_name("typed_tag");
+  typed_tag_info->set_string_value(typed_tag_.empty() ? "null"
+                                                      : typed_tag_.str());
+
+  if (uid_.IsNumber()) {
+    auto* uid_info = event->add_debug_annotations();
+    uid_info->set_name("uid");
+    uid_info->set_double_value(uid_.Number());
+  }
+
+  auto* materialized_info = event->add_debug_annotations();
+  materialized_info->set_name("materialized");
+  materialized_info->set_bool_value(IsMaterialized());
+
+  auto* pending_slots_info = event->add_debug_annotations();
+  pending_slots_info->set_name("pending_child_mount_slot_count");
+  pending_slots_info->set_uint_value(pending_child_mount_slots_.size());
+
+  if (result_ != nullptr) {
+    result_->UpdateTraceDebugInfo(event);
+  }
+}
+#endif
 
 }  // namespace tasm
 }  // namespace lynx

@@ -10,6 +10,7 @@
 
 #include "core/renderer/dom/fiber/element_template_instance.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/list_element_template_reuse_pool.h"
 
 namespace lynx {
 namespace tasm {
@@ -35,6 +36,9 @@ class ListElementTemplateInstance : public ElementTemplateInstance {
   void InsertNodeIntoChildSlot(uint32_t slot_index, const lepus::Value& child,
                                const lepus::Value& ref_node) override;
 
+  void RemoveNodeFromChildSlot(uint32_t slot_index,
+                               const lepus::Value& child) override;
+
   // Submits pending updates and releases the recorder on success.
   // Logs failures and retains the recorder for a later submission.
   void FlushListUpdates();
@@ -44,6 +48,9 @@ class ListElementTemplateInstance : public ElementTemplateInstance {
   int32_t ComponentAtIndex(TemplateAssembler* tasm, ListElement* list_element,
                            uint32_t index, int64_t operation_id,
                            bool enable_reuse_notification);
+
+  // When native code no longer uses this sign, only mark it as reusable.
+  void EnqueueComponent(int32_t sign);
 
   // Expose pending state while keeping recorder ownership in the List instance.
   bool HasPendingListUpdates() const {
@@ -80,6 +87,9 @@ class ListElementTemplateInstance : public ElementTemplateInstance {
   lepus::Value component_at_index_{};
   lepus::Value enqueue_component_{};
   lepus::Value component_at_indexes_{};
+  // Pool owned by this List, managing sign ownership and recycling eligibility
+  // grouped by template type.
+  ListElementTemplateReusePool reuse_pool_;
 };
 
 }  // namespace tasm
