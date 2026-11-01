@@ -678,7 +678,8 @@ TEST_F(LynxShellBuilderTest, EngineHandoffPreservesEngineIdentity) {
   MockNativeFacade* new_facade = nullptr;
   auto new_shell = BuildShellForEngineHandoff(202, nullptr, &new_facade);
   EXPECT_NE(new_shell->GetLogContextSnapshot().engine_id, engine_id);
-  new_shell->ReattachLynxEngineWrapper(&engine_wrapper);
+  new_shell->runners_.GetUITaskRunner()->PostSyncTask(
+      [&] { new_shell->ReattachLynxEngineWrapper(&engine_wrapper); });
   const auto rebound_context = new_shell->GetLogContextSnapshot();
   EXPECT_EQ(rebound_context.view_id, 202);
   EXPECT_EQ(rebound_context.engine_id, engine_id);
@@ -698,7 +699,8 @@ TEST_F(LynxShellBuilderTest, EngineHandoffPreservesEngineIdentity) {
   EXPECT_EQ(new_updates.back().engine_id, engine_id);
 }
 
-TEST_F(LynxShellBuilderTest, EngineHandoffTransfersLayoutActorFirst) {
+TEST_F(LynxShellBuilderTest,
+       EngineHandoffDrainsEngineBeforeTransferringActors) {
   std::vector<std::string> transfer_order;
   LynxEngineWrapper engine_wrapper;
   MockNativeFacade* old_facade = nullptr;
@@ -714,11 +716,13 @@ TEST_F(LynxShellBuilderTest, EngineHandoffTransfersLayoutActorFirst) {
 
   MockNativeFacade* new_facade = nullptr;
   auto new_shell = BuildShellForEngineHandoff(202, nullptr, &new_facade);
-  new_shell->ReattachLynxEngineWrapper(&engine_wrapper);
+  new_shell->runners_.GetUITaskRunner()->PostSyncTask(
+      [&] { new_shell->ReattachLynxEngineWrapper(&engine_wrapper); });
 
-  ASSERT_EQ(transfer_order.size(), 2u);
-  EXPECT_EQ(transfer_order[0], "layout");
-  EXPECT_EQ(transfer_order[1], "engine");
+  ASSERT_EQ(transfer_order.size(), 3u);
+  EXPECT_EQ(transfer_order[0], "engine");
+  EXPECT_EQ(transfer_order[1], "layout");
+  EXPECT_EQ(transfer_order[2], "engine");
 }
 
 }  // namespace shell

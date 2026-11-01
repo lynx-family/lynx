@@ -1779,38 +1779,33 @@ void ElementManager::OnPatchFinishForFiber(
     if (root() && root()->EnableFragmentLayerRender()) {
       Repaint();
     }
-    // A reused engine serves as the setup pipeline of a newly created
-    // LynxView. Even when data diffing produces no patch, complete the skipped
-    // layout stage and register the pipeline for the existing UI completion
-    // path so that setup timing can receive layoutEnd,
-    // layoutUiOperationExecuteEnd, and paintEnd.
+    if (root() && (root()->EnableFragmentLayerRender() ||
+                   root()->EnableLayoutInElementMode())) {
+      root()->element_container()->FinishLayoutOperation(options);
+    } else {
+      catalyzer_->painting_context()->FinishLayoutOperation(options);
+    }
+    // Reuse without a patch completes setup after UI work, without a new draw.
     if (options->is_reuse_engine && options->need_timestamps) {
       const auto timestamp = base::CurrentSystemTimeMicroseconds();
       auto *timing_collector = tasm::TimingCollector::Instance();
       timing_collector->Mark(tasm::timing::kLayoutStart, timestamp);
       timing_collector->Mark(tasm::timing::kLayoutEnd, timestamp);
-      if (root() && (root()->EnableFragmentLayerRender() ||
-                     root()->EnableLayoutInElementMode())) {
-        root()->element_container()->AppendOptionsForTiming(options);
-        root()
-            ->element_container()
-            ->MarkLayoutUIOperationQueueFlushStartIfNeed();
-      } else {
-        catalyzer_->painting_context()->AppendOptionsForTiming(options);
-        catalyzer_->painting_context()
-            ->MarkLayoutUIOperationQueueFlushStartIfNeed();
+      // Complete only this pipeline instead of waiting for a real paint.
+      for (const auto *key :
+           {tasm::timing::kLayoutUiOperationExecuteEnd, tasm::timing::kPaintEnd,
+            tasm::timing::kPipelineEnd}) {
+        painting_context()->MarkUIOperationQueueFlushTiming(
+            key, options->pipeline_id);
       }
     }
     if (root() && (root()->EnableFragmentLayerRender() ||
                    root()->EnableLayoutInElementMode())) {
-      root()->element_container()->FinishLayoutOperation(options);
       // NoPatch skips layout, but still enqueues completion operations.
       // Embedded mode skips LynxEngine::Flush(), so flush here to publish
       // pending operations and notify async queue waiters. Otherwise a
       // subsequent syncFlush can time out despite rendering being finished.
       root()->element_container()->Flush();
-    } else {
-      catalyzer_->painting_context()->FinishLayoutOperation(options);
     }
     delegate_->OnUpdateDataWithoutChange();
     patch_finish_callback(false);
