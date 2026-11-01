@@ -14,6 +14,9 @@ int32_t get_heap_obj_len(void *ptr);
 
 struct LEPUSRuntime;
 
+#ifdef USE_PRIMJS_NAPI
+#include "napi/include/primjs_napi_defines.h"
+#endif
 typedef struct napi_env__ *napi_env;
 typedef struct napi_value__ *napi_value;
 class NAPIHandleScope;
@@ -27,7 +30,8 @@ enum HandleType {
   HANDLE_TYPE_CSTRING,
   HANDLE_TYPE_LEPUS_TOKEN,
   HANDLE_TYPE_BC_READER_STATE,
-  HANDLE_TYPE_VALUE_BUFFER
+  HANDLE_TYPE_VALUE_BUFFER,
+  HANDLE_TYPE_VALUE_SLOT_BUFFER
 };
 
 typedef struct {
@@ -53,6 +57,9 @@ class PtrHandles {
   void SetHeapObjIdx(int idx) { handle_idx = idx; }
   int GetHeapObjIdx() const { return handle_idx; }
   int GetHandleSize() const { return handle_size; }
+#ifdef ENABLE_COMPATIBLE_MM
+  LEPUSValue *AllocateValueSlots(size_t count);
+#endif
 
  private:
   int handle_idx;
@@ -152,6 +159,9 @@ class GCObserver {
   virtual ~GCObserver() = default;
   virtual void OnGC(std::string mem_info) = 0;
 };
+#ifdef USE_PRIMJS_NAPI
+#include "napi/include/primjs_napi_undefs.h"
+#endif
 
 void LEPUS_HeapObjStore(LEPUSContext *ctx, void *fieldAddr, LEPUSValue value);
 void LEPUS_HeapObjStore(LEPUSContext *ctx, void *fieldAddr, void *value);
@@ -161,4 +171,6 @@ void LEPUS_WriteBarrierNoStore(LEPUSContext *ctx, void *value);
 void LEPUS_HeapObjStoreNoCtx(void *fieldAddr, LEPUSValue value);
 void LEPUS_HeapObjStoreNoCtx(void *fieldAddr, void *value);
 
+void JS_AttachDebugger(LEPUSContext *ctx);
+void JS_DetachDebugger(LEPUSContext *ctx);
 #endif  // THIRD_PARTY_QUICKJS_INCLUDE_TRACE_GC_H_

@@ -7,22 +7,21 @@
 #include <unordered_map>
 
 #include "core/runtime/common/napi/napi_runtime_proxy_jsvm_factory.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs_factory.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_v8_factory.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 #include "third_party/binding/napi/callback_helper.h"
 #include "third_party/binding/napi/shim/shim_napi_env.h"
 #include "third_party/binding/napi/shim/shim_napi_runtime.h"
 
-#ifdef USE_PRIMJS_NAPI
-#include "third_party/napi/include/primjs_napi_defines.h"
-#endif
-
-#include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
-#include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
-
 #if defined(OS_IOS) || defined(OS_OSX)
 #include "core/runtime/common/napi/napi_runtime_proxy_jsc.h"
 #include "core/runtime/js/jsi/jsc/jsc_runtime.h"
+#endif
+
+#ifdef USE_PRIMJS_NAPI
+#include "third_party/napi/include/primjs_napi_defines.h"
 #endif
 
 LYNX_EXPORT void RegisterV8RuntimeProxyFactory(

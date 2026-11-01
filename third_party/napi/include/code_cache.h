@@ -12,97 +12,84 @@
 #ifndef SRC_NAPI_COMMON_CODE_CACHE_H_
 #define SRC_NAPI_COMMON_CODE_CACHE_H_
 
+#include <cstdint>
+#include <cstdio>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
-struct CachedData {
-  CachedData() : length_(0), data_(nullptr), file_name_("") {}
-
-  CachedData(int length, const uint8_t* data, const std::string& name)
-      : length_(length), data_(data), file_name_(name) {}
-
-  // carefully copy and move objects of this class
-  ~CachedData() {
-    if (data_) delete[] data_;
-  }
-
-  static bool compare(CachedData* left, CachedData* right) {
-    if (left->used_times_ > right->used_times_) {
-      return true;
-    } else if (left->used_times_ < right->used_times_) {
-      return false;
-    } else {
-      return left->length_ > right->length_;
-    }
-  }
-
-  int used_times_ = 0;
-  int length_;
-  const uint8_t* data_;
-  const std::string file_name_;
-};
-
-typedef std::unordered_map<std::string, CachedData*> CacheMap;
-typedef std::vector<CachedData*> CacheVector;
-#define SHORT_SIZE 2
-#define INT_SIZE 4
-#define DOUBLE_SIZE 8
-
+// In-memory image of one code cache file: bytecode keyed by script filename
+// and bound to the hash of the source it was compiled from. Runtimes opening
+// the same file share one blob (see Open); all public methods are thread-safe.
 class CacheBlob {
- private:
-  enum CacheMode { kWriting, kAppending };
-  static constexpr double MAGIC = 3.14159265;
-
  public:
-  explicit CacheBlob(const std::string& path, int max_cap = 1 << 20)
-      : current_size_(0),
-        target_path_(path),
-        max_capacity_(max_cap),
-        empty_cache_(new CachedData) {}
+  // Persisted in the cache file, so the function must stay stable.
+  static uint64_t HashSource(const char* script, size_t length);
 
-  virtual ~CacheBlob() {
-    for (auto it : cache_map_) delete it.second;
-    if (append_vec_) delete append_vec_;
-  }
+  // The capacity of an already opened blob is kept.
+  static std::shared_ptr<CacheBlob> Open(const std::string& path,
+                                         int max_capacity);
 
-  // NOTE: modifications on CacheBlob can only happen in worker Thread.
-  bool insert(const std::string& filename, const uint8_t* data, int length);
-  const CachedData* find(const std::string& filename, int* len) const;
+  explicit CacheBlob(const std::string& path, int max_capacity = 1 << 20);
+
+  // Replaces any previous entry for `filename`; evicts least used entries
+  // when full and fails when the data cannot fit at all.
+  bool insert(const std::string& filename, uint64_t source_hash,
+              const uint8_t* data, int length);
+
+  // Misses when the entry was compiled from a different source.
+  bool find(const std::string& filename, uint64_t source_hash,
+            std::vector<uint8_t>* out);
+
   void remove(const std::string& filename);
-  void output();
+
+  // Only the first call reads the disk. An invalid file is ignored and
+  // replaced by the next output().
   bool input();
-  int size() const { return current_size_; }
+
+  // Rewrites the file atomically when entries changed since the last
+  // input() or output(). Only the snapshot is taken under the lock, so a
+  // worker publishing on exit never stalls another worker's find().
+  bool output();
+
+  int size() const;
 
 #ifdef PROFILE_CODECACHE
-  void dump_status(void* p);
+  void dump_status(std::vector<std::pair<std::string, int>>* status);
 #endif  // PROFILE_CODECACHE
 
  private:
-  void write_cache_unit(FILE* file_out, const CachedData* unit);
-  void read_cache_unit(FILE* file_in);
-  void remove_from_ranking_list(CachedData* target);
-  // This is a vast-time-costing function
-  bool get_enough_space(int data_size);
+  struct Entry {
+    uint64_t source_hash;
+    std::vector<uint8_t> data;
+    int used_times;
+  };
+  using EntryMap = std::unordered_map<std::string, Entry>;
 
-  CacheMap cache_map_;
-  // ranking list for caches' frequency of being used.
-  CacheVector heat_ranking_;
-  int current_size_;
-  const std::string target_path_;
-  int max_capacity_;
-  mutable std::mutex write_mutex_;
-  std::unique_ptr<CachedData> empty_cache_;
+  // The following require mutex_ to be held.
+  bool make_room(int length);
+  bool read_entries(FILE* file, EntryMap* entries, int* total_size);
+  std::string serialize() const;
+
+  const std::string path_;
+  const int max_capacity_;
+  mutable std::mutex mutex_;
+  // Serializes output() calls; taken before mutex_, never after it.
+  std::mutex publish_mutex_;
+  EntryMap entries_;
+  int current_size_ = 0;
+  bool loaded_ = false;
+  bool load_result_ = false;
+  bool dirty_ = false;
 
 #ifdef PROFILE_CODECACHE
-  mutable int total_query_ = 0;
-  mutable int missed_query_ = 0;
-  mutable int expired_query_ = 0;
+  int total_query_ = 0;
+  int missed_query_ = 0;
+  int expired_query_ = 0;
 #endif  // PROFILE_CODECACHE
-  CacheMode mode_ = kWriting;
-  CacheVector* append_vec_ = nullptr;
 };
 
 #endif  // SRC_NAPI_COMMON_CODE_CACHE_H_

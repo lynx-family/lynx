@@ -480,15 +480,19 @@ struct napi_env__ {
 #ifdef ENABLE_CODECACHE
   napi_status (*napi_post_worker_task)(napi_env env,
                                        std::function<void()> task);
+  // Superseded by napi_store_script_cache; kept for binaries built against
+  // it and always fails, so they run uncached.
   napi_status (*napi_store_code_cache)(napi_env env,
                                        const std::string& filename,
                                        const uint8_t* data, int length);
+  // Superseded by napi_get_script_cache; kept for binaries built against it
+  // and always reports a miss that must not be filled (`data` null,
+  // `length` -1).
   napi_status (*napi_get_code_cache)(napi_env env, const std::string& filename,
                                      const uint8_t** data, int* length);
   napi_status (*napi_output_code_cache)(napi_env env,
                                         unsigned int place_holder);
-  // this interface may be optimized by
-  // discarding the parameter of std::function type
+  // Superseded by napi_open_code_cache; kept for binaries built against it.
   napi_status (*napi_init_code_cache)(napi_env env, int capacity,
                                       const std::string& cache_file,
                                       std::function<void(bool)> callback);
@@ -498,6 +502,7 @@ struct napi_env__ {
                                        napi_value* result);
   napi_status (*napi_run_code_cache)(napi_env env, const uint8_t* data,
                                      int length, napi_value* result);
+  // Superseded by napi_compile_code_cache; kept for binaries built against it.
   napi_status (*napi_gen_code_cache)(napi_env env, const char* script,
                                      size_t script_len, const uint8_t** data,
                                      int* length);
@@ -571,6 +576,34 @@ struct napi_env__ {
                                              uint64_t* words);
 
   napi_status (*napi_detach_arraybuffer)(napi_env env, napi_value arraybuffer);
+
+#ifdef ENABLE_CODECACHE
+  // Appended after the original table so binaries built against it still
+  // load; an engine adapter built that way leaves napi_compile_code_cache
+  // null.
+  // Reads `cache_file` before returning, so the entries serve the very next
+  // napi_run_script_cache. `loaded` tells whether a valid file existed.
+  napi_status (*napi_open_code_cache)(napi_env env, int capacity,
+                                      const std::string& cache_file,
+                                      bool* loaded);
+  // Compiles `script` without running it into malloc()ed cache data.
+  // `filename` may be null; engines that embed it use it for stack traces.
+  napi_status (*napi_compile_code_cache)(napi_env env, const char* script,
+                                         size_t script_len,
+                                         const char* filename,
+                                         const uint8_t** data, int* length);
+  // Entries are keyed by `filename` and bound to the source they were
+  // compiled from, so a changed script never runs stale bytecode.
+  napi_status (*napi_store_script_cache)(napi_env env,
+                                         const std::string& filename,
+                                         const char* script,
+                                         size_t script_length,
+                                         const uint8_t* data, int length);
+  napi_status (*napi_get_script_cache)(napi_env env,
+                                       const std::string& filename,
+                                       const char* script, size_t script_length,
+                                       std::vector<uint8_t>* data);
+#endif  // ENABLE_CODECACHE
 };
 
 #ifdef ENABLE_CODECACHE
@@ -580,12 +613,16 @@ struct napi_env__ {
   V(get_code_cache)                    \
   V(output_code_cache)                 \
   V(init_code_cache)                   \
-  V(dump_code_cache_status)
+  V(dump_code_cache_status)            \
+  V(open_code_cache)                   \
+  V(store_script_cache)                \
+  V(get_script_cache)
 
 #define NAPI_ENGINE_CACHE_CALL(V) \
   V(run_script_cache)             \
   V(run_code_cache)               \
-  V(gen_code_cache)
+  V(gen_code_cache)               \
+  V(compile_code_cache)
 #else
 #define NAPI_RUNTIME_CODECACHE_CALL(V)
 #define NAPI_ENGINE_CACHE_CALL(V)

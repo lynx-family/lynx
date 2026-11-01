@@ -284,9 +284,18 @@ class NAPI_EXTERN Env {
 
 #ifdef ENABLE_CODECACHE
   static constexpr int CACHE_META_NUMS = 6;
+  // Reads the cache file before returning; true when a valid file existed.
+  bool InitCodeCache(int capacity, const std::string& filename);
+  // Kept for binaries built against it; reads on the napi worker thread.
   void InitCodeCache(int capacity, const std::string& filename,
                      std::function<void(bool)> callback);
-  void OutputCodeCache();
+  bool OutputCodeCache();
+  // Compiles `script` and publishes it under `filename` in `cache_file`, so a
+  // runtime opening that file hits on its first RunScriptCache(script,
+  // filename). Blocks on compilation and file IO.
+  bool PrepareCodeCache(int capacity, const std::string& cache_file,
+                        const std::string& filename, const char* script,
+                        size_t length);
   void DumpCacheStatus(std::vector<std::pair<std::string, int>>* dump_vec);
   Value RunScriptCache(const char* utf8script, size_t length,
                        const char* filename = nullptr);
@@ -900,7 +909,7 @@ class NAPI_EXTERN ArrayBuffer : public Object {
 
   void* Data();         ///< Gets a pointer to the data buffer.
   size_t ByteLength();  ///< Gets the length of the array buffer in bytes.
-  void Detach();        ///< Detaches the underlying data buffer.
+  void Detach();        ///< Detaches the data buffer; no-op if unsupported.
 };
 
 /// A JavaScript typed-array value with unknown array type.
