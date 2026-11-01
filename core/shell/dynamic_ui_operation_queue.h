@@ -27,6 +27,7 @@ class DynamicUIOperationQueue : public UIOperationQueueInterface {
   ~DynamicUIOperationQueue() = default;
 
   void Transfer(base::ThreadStrategyForRendering strategy);
+  void TransferOperationsTo(DynamicUIOperationQueue& destination);
   void EnqueueUIOperation(UIOperation operation);
   void EnqueueHighPriorityUIOperation(UIOperation operation);
   void Destroy();

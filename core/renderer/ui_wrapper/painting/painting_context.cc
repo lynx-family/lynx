@@ -17,6 +17,9 @@ constexpr int64_t kExternalMemoryReportDelayMs = 1000;
 
 void PaintingContext::SetUIOperationQueue(
     const std::shared_ptr<shell::DynamicUIOperationQueue>& queue) {
+  if (ui_operation_queue_ && queue && ui_operation_queue_ != queue) {
+    ui_operation_queue_->TransferOperationsTo(*queue);
+  }
   ui_operation_queue_ = queue;
   if (platform_impl_) {
     platform_impl_->SetUIOperationQueue(queue);

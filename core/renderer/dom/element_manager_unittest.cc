@@ -25,6 +25,7 @@
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -247,15 +248,35 @@ TEST_F(ElementManagerTest, ReuseEngineNoPatchCompletesSetupTiming) {
   painting_context->completion_events_.clear();
   manager->need_layout_ = false;
 
+  fml::Thread reporter("no-patch-timing");
+  auto perf_actor =
+      std::make_shared<shell::LynxActor<performance::PerformanceController>>(
+          std::make_unique<performance::PerformanceController>(
+              base::LogContext{}, nullptr, nullptr, -1),
+          reporter.GetTaskRunner());
+  manager->painting_context()->SetPerfActor(perf_actor);
   auto options = std::make_shared<PipelineOptions>();
   options->is_reuse_engine = true;
   options->need_timestamps = true;
   manager->OnPatchFinishForFiber(
       options, [](bool has_patch) { EXPECT_FALSE(has_patch); }, page.get());
 
+  perf_actor->ActSync([&](auto& controller) {
+    const auto& timings =
+        controller->GetTimingHandler()
+            .handler_ng_.timing_info_.pipeline_timing_info_.at(
+                options->pipeline_id);
+    const auto ui_end =
+        timings.GetTimestamp(timing::kLayoutUiOperationExecuteEnd);
+    const auto paint_end = timings.GetTimestamp(timing::kPaintEnd);
+    const auto pipeline_end = timings.GetTimestamp(timing::kPipelineEnd);
+    ASSERT_TRUE(ui_end && paint_end && pipeline_end);
+    EXPECT_LE(*ui_end, *paint_end);
+    EXPECT_LE(*paint_end, *pipeline_end);
+  });
+  manager->painting_context()->SetPerfActor(nullptr);
   EXPECT_EQ(painting_context->completion_events_,
-            (std::vector<std::string>{"FinishTasm", "FinishLayout",
-                                      "SetNeedMarkPaintEndTiming"}));
+            (std::vector<std::string>{"FinishTasm", "FinishLayout"}));
 }
 
 TEST_F(ElementManagerTest, RegularNoPatchDoesNotRequestPaintEndTiming) {
