@@ -124,30 +124,30 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_METHOD(GetNodeForLocation);
 
   // CSS domain -> tasm executor
-  DECLARE_DEVTOOL_METHOD(CSS_Enable);
-  DECLARE_DEVTOOL_METHOD(CSS_Disable);
-  DECLARE_DEVTOOL_METHOD(GetMatchedStylesForNode);
-  DECLARE_DEVTOOL_METHOD(GetLayersForNode);
-  DECLARE_DEVTOOL_METHOD(GetComputedStyleForNode);
-  DECLARE_DEVTOOL_METHOD(GetInlineStylesForNode);
-  DECLARE_DEVTOOL_METHOD(SetStyleTexts);
-  DECLARE_DEVTOOL_METHOD(GetStyleSheetText);
-  DECLARE_DEVTOOL_METHOD(GetBackgroundColors);
-  DECLARE_DEVTOOL_METHOD(SetStyleSheetText);
-  DECLARE_DEVTOOL_METHOD(CreateStyleSheet);
-  DECLARE_DEVTOOL_METHOD(AddRule);
-  DECLARE_DEVTOOL_METHOD(StartRuleUsageTracking);
-  DECLARE_DEVTOOL_METHOD(UpdateRuleUsageTracking);
-  DECLARE_DEVTOOL_METHOD(StopRuleUsageTracking);
-  DECLARE_DEVTOOL_METHOD(GetMediaQueries);
-  DECLARE_DEVTOOL_METHOD(SetMediaText);
-  DECLARE_DEVTOOL_METHOD(SetSupportsText);
+  DECLARE_DEVTOOL_CDP_METHOD(CSS_Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(CSS_Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(GetMatchedStylesForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(GetLayersForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(GetComputedStyleForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(GetInlineStylesForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(SetStyleTexts);
+  DECLARE_DEVTOOL_CDP_METHOD(GetStyleSheetText);
+  DECLARE_DEVTOOL_CDP_METHOD(GetBackgroundColors);
+  DECLARE_DEVTOOL_CDP_METHOD(SetStyleSheetText);
+  DECLARE_DEVTOOL_CDP_METHOD(CreateStyleSheet);
+  DECLARE_DEVTOOL_CDP_METHOD(AddRule);
+  DECLARE_DEVTOOL_CDP_METHOD(StartRuleUsageTracking);
+  DECLARE_DEVTOOL_CDP_METHOD(UpdateRuleUsageTracking);
+  DECLARE_DEVTOOL_CDP_METHOD(StopRuleUsageTracking);
+  DECLARE_DEVTOOL_CDP_METHOD(GetMediaQueries);
+  DECLARE_DEVTOOL_CDP_METHOD(SetMediaText);
+  DECLARE_DEVTOOL_CDP_METHOD(SetSupportsText);
 
   // Performance domain -> ui executor
-  DECLARE_DEVTOOL_METHOD(PerformanceEnable)
-  DECLARE_DEVTOOL_METHOD(PerformanceDisable)
-  DECLARE_DEVTOOL_METHOD(getAllTimingInfo)
-  DECLARE_DEVTOOL_METHOD(getAllPerformanceEntries)
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllTimingInfo);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllPerformanceEntries);
 
   // Input domain -> ui executor
   DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
@@ -156,10 +156,6 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizePinchGesture);
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizeScrollGesture);
-
-  // Inspector domain -> devtools executor
-  DECLARE_DEVTOOL_METHOD(InspectorEnable)
-  DECLARE_DEVTOOL_METHOD(InspectorDetached)
 
   // Log domain -> devtool executor
   DECLARE_DEVTOOL_CDP_METHOD(LogEnable);
@@ -171,10 +167,10 @@ class LynxDevToolMediator
       const lynx::runtime::js::ConsoleMessage& message);
 
   // Network domain -> devtool executor
-  DECLARE_DEVTOOL_METHOD(NetworkEnable)
-  DECLARE_DEVTOOL_METHOD(NetworkDisable)
-  DECLARE_DEVTOOL_METHOD(NetworkGetResponseBody)
-  DECLARE_DEVTOOL_METHOD(NetworkGetRequestPostData)
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkGetResponseBody);
+  DECLARE_DEVTOOL_CDP_METHOD(NetworkGetRequestPostData);
 
   // LynxNativeModule domain -> native module record manager
   DECLARE_DEVTOOL_CDP_METHOD(NativeModuleEnable);
@@ -185,18 +181,17 @@ class LynxDevToolMediator
   void AddNativeModuleRecord(const lepus::Value& record);
 
   // Lynx domain
-  bool LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
-                       int level);
-  DECLARE_DEVTOOL_METHOD(LynxGetProperties)
-  DECLARE_DEVTOOL_METHOD(LynxGetData)
-  DECLARE_DEVTOOL_METHOD(LynxGetComponentId)
-  DECLARE_DEVTOOL_METHOD(LynxSetTraceMode)
-  DECLARE_DEVTOOL_METHOD(LynxGetRectToWindow)
-  DECLARE_DEVTOOL_METHOD(LynxGetVersion)
-  DECLARE_DEVTOOL_METHOD(LynxTransferData)
-  DECLARE_DEVTOOL_METHOD(LynxGetViewLocationOnScreen)
-  DECLARE_DEVTOOL_METHOD(LynxSendEventToVM)
-  DECLARE_DEVTOOL_METHOD(GetScreenshot)
+  DECLARE_DEVTOOL_CDP_METHOD(LynxSetLogLevel);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetProperties);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetData);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetComponentId);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxSetTraceMode);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetRectToWindow);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetVersion);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxTransferData);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetViewLocationOnScreen);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxSendEventToVM);
+  DECLARE_DEVTOOL_CDP_METHOD(GetScreenshot);
 
   // GlobalProps domain -> tasm executor
   DECLARE_DEVTOOL_CDP_METHOD(GlobalPropsEnable);
@@ -229,24 +224,26 @@ class LynxDevToolMediator
   DECLARE_DEVTOOL_CDP_METHOD(AnimationSetPaused);
   DECLARE_DEVTOOL_CDP_METHOD(AnimationReleaseAnimations);
 
-  // Page domain - > ui executor
-  DECLARE_DEVTOOL_METHOD(StartScreencast)
-  DECLARE_DEVTOOL_METHOD(StopScreencast)
-  DECLARE_DEVTOOL_METHOD(ScreencastFrameAck)
-  DECLARE_DEVTOOL_METHOD(PageEnable)
-  DECLARE_DEVTOOL_METHOD(PageCanEmulate)
-  DECLARE_DEVTOOL_METHOD(PageCanScreencast)
-  DECLARE_DEVTOOL_METHOD(PageGetResourceContent)
-  DECLARE_DEVTOOL_METHOD(PageGetResourceTree)
-  DECLARE_DEVTOOL_METHOD(PageReload)
-  DECLARE_DEVTOOL_METHOD(PageNavigate)
+  // Page domain
+  // -> ui executor
+  DECLARE_DEVTOOL_CDP_METHOD(StartScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(StopScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(ScreencastFrameAck);
+  DECLARE_DEVTOOL_CDP_METHOD(PageEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PageCanEmulate);
+  DECLARE_DEVTOOL_CDP_METHOD(PageCanScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceTree);
+  DECLARE_DEVTOOL_CDP_METHOD(PageReload);
+  DECLARE_DEVTOOL_CDP_METHOD(PageNavigate);
+  // -> tasm executor
+  DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceContent);
 
   // UITree domain - > ui executor
-  DECLARE_DEVTOOL_METHOD(UITree_Enable)
-  DECLARE_DEVTOOL_METHOD(UITree_Disable)
-  DECLARE_DEVTOOL_METHOD(GetLynxUITree)
-  DECLARE_DEVTOOL_METHOD(GetUIInfoForNode)
-  DECLARE_DEVTOOL_METHOD(SetUIStyle)
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(GetLynxUITree);
+  DECLARE_DEVTOOL_CDP_METHOD(GetUIInfoForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(SetUIStyle);
 
   // WhiteBoard domain:
   // When tasm_executor_ is not nullptr, dispatch to tasm_executor_.

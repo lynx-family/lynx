@@ -6,10 +6,6 @@
 
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
-#if !defined(OS_WIN)
-#include <unistd.h>
-#endif
-
 namespace lynx {
 namespace devtool {
 
@@ -50,105 +46,107 @@ InspectorCSSAgentNG::InspectorCSSAgentNG(
 
 InspectorCSSAgentNG::~InspectorCSSAgentNG() = default;
 
-void InspectorCSSAgentNG::CreateStyleSheet(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->CreateStyleSheet(sender, message);
-}
-
-void InspectorCSSAgentNG::AddRule(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message) {
-  devtool_mediator_->AddRule(sender, message);
-}
-
-void InspectorCSSAgentNG::SetStyleSheetText(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->SetStyleSheetText(sender, message);
-}
-
-void InspectorCSSAgentNG::Enable(const std::shared_ptr<MessageSender>& sender,
-                                 const Json::Value& message) {
-  devtool_mediator_->CSS_Enable(sender, message);
-}
-
-void InspectorCSSAgentNG::Disable(const std::shared_ptr<MessageSender>& sender,
-                                  const Json::Value& message) {
-  devtool_mediator_->CSS_Disable(sender, message);
-}
-
-void InspectorCSSAgentNG::GetMatchedStylesForNode(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetMatchedStylesForNode(sender, message);
-}
-
-void InspectorCSSAgentNG::GetLayersForNode(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetLayersForNode(sender, message);
-}
-
-void InspectorCSSAgentNG::GetComputedStyleForNode(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetComputedStyleForNode(sender, message);
-}
-
-void InspectorCSSAgentNG::GetInlineStylesForNode(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetInlineStylesForNode(sender, message);
-}
-
-void InspectorCSSAgentNG::SetStyleTexts(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->SetStyleTexts(sender, message);
-}
-
-void InspectorCSSAgentNG::GetStyleSheetText(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetStyleSheetText(sender, message);
-}
-
-void InspectorCSSAgentNG::GetBackgroundColors(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetBackgroundColors(sender, message);
-}
-
 void InspectorCSSAgentNG::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
   std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "'" + method + "' wasn't found");
   } else {
-    (this->*(iter->second))(sender, message);
+    (this->*(iter->second))(responder, message["params"]);
   }
 }
 
+void InspectorCSSAgentNG::CreateStyleSheet(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->CreateStyleSheet(responder, params);
+}
+
+void InspectorCSSAgentNG::AddRule(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->AddRule(responder, params);
+}
+
+void InspectorCSSAgentNG::SetStyleSheetText(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->SetStyleSheetText(responder, params);
+}
+
+void InspectorCSSAgentNG::Enable(const std::shared_ptr<CDPResponder>& responder,
+                                 const Json::Value& params) {
+  devtool_mediator_->CSS_Enable(responder, params);
+}
+
+void InspectorCSSAgentNG::Disable(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->CSS_Disable(responder, params);
+}
+
+void InspectorCSSAgentNG::GetMatchedStylesForNode(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GetMatchedStylesForNode(responder, params);
+}
+
+void InspectorCSSAgentNG::GetLayersForNode(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GetLayersForNode(responder, params);
+}
+
+void InspectorCSSAgentNG::GetComputedStyleForNode(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GetComputedStyleForNode(responder, params);
+}
+
+void InspectorCSSAgentNG::GetInlineStylesForNode(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GetInlineStylesForNode(responder, params);
+}
+
+void InspectorCSSAgentNG::SetStyleTexts(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->SetStyleTexts(responder, params);
+}
+
+void InspectorCSSAgentNG::GetStyleSheetText(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GetStyleSheetText(responder, params);
+}
+
+void InspectorCSSAgentNG::GetBackgroundColors(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GetBackgroundColors(responder, params);
+}
+
 void InspectorCSSAgentNG::StartRuleUsageTracking(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->StartRuleUsageTracking(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->StartRuleUsageTracking(responder, params);
 }
 
 void InspectorCSSAgentNG::UpdateRuleUsageTracking(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->UpdateRuleUsageTracking(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->UpdateRuleUsageTracking(responder, params);
 }
 
 void InspectorCSSAgentNG::StopRuleUsageTracking(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->StopRuleUsageTracking(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->StopRuleUsageTracking(responder, params);
 }
 
 void InspectorCSSAgentNG::GetMediaQueries(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->GetMediaQueries(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->GetMediaQueries(responder, params);
 }
 
 void InspectorCSSAgentNG::SetMediaText(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->SetMediaText(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->SetMediaText(responder, params);
 }
 
 void InspectorCSSAgentNG::SetSupportsText(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  devtool_mediator_->SetSupportsText(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->SetSupportsText(responder, params);
 }
 
 }  // namespace devtool

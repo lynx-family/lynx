@@ -39,41 +39,40 @@ class InspectorUIExecutor
   DECLARE_DEVTOOL_METHOD(GetNodeForLocation)
 
   // page domain
-  DECLARE_DEVTOOL_METHOD(StartScreencast)
-  DECLARE_DEVTOOL_METHOD(StopScreencast)
-  DECLARE_DEVTOOL_METHOD(ScreencastFrameAck)
-  DECLARE_DEVTOOL_METHOD(PageEnable)
-  DECLARE_DEVTOOL_METHOD(PageCanEmulate)
-  DECLARE_DEVTOOL_METHOD(PageCanScreencast)
-  DECLARE_DEVTOOL_METHOD(PageGetResourceTree)
-  DECLARE_DEVTOOL_METHOD(PageReload)
-  DECLARE_DEVTOOL_METHOD(PageNavigate)
+  DECLARE_DEVTOOL_CDP_METHOD(StartScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(StopScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(ScreencastFrameAck);
+  DECLARE_DEVTOOL_CDP_METHOD(PageEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PageCanEmulate);
+  DECLARE_DEVTOOL_CDP_METHOD(PageCanScreencast);
+  DECLARE_DEVTOOL_CDP_METHOD(PageGetResourceTree);
+  DECLARE_DEVTOOL_CDP_METHOD(PageReload);
+  DECLARE_DEVTOOL_CDP_METHOD(PageNavigate);
 
   // uitree domain
-  DECLARE_DEVTOOL_METHOD(UITree_Enable)
-  DECLARE_DEVTOOL_METHOD(UITree_Disable)
-  DECLARE_DEVTOOL_METHOD(GetLynxUITree)
-  DECLARE_DEVTOOL_METHOD(GetUIInfoForNode)
-  DECLARE_DEVTOOL_METHOD(SetUIStyle)
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Enable);
+  DECLARE_DEVTOOL_CDP_METHOD(UITree_Disable);
+  DECLARE_DEVTOOL_CDP_METHOD(GetLynxUITree);
+  DECLARE_DEVTOOL_CDP_METHOD(GetUIInfoForNode);
+  DECLARE_DEVTOOL_CDP_METHOD(SetUIStyle);
 
   // lynx domain
-  void LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
-                       int level);
-  DECLARE_DEVTOOL_METHOD(LynxGetRectToWindow)
-  DECLARE_DEVTOOL_METHOD(LynxTransferData)
-  DECLARE_DEVTOOL_METHOD(LynxGetViewLocationOnScreen)
-  DECLARE_DEVTOOL_METHOD(LynxSendEventToVM)
-  DECLARE_DEVTOOL_METHOD(GetScreenshot)
+  DECLARE_DEVTOOL_CDP_METHOD(LynxSetLogLevel);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetRectToWindow);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxTransferData);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetViewLocationOnScreen);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxSendEventToVM);
+  DECLARE_DEVTOOL_CDP_METHOD(GetScreenshot);
 
   // template domain
   DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateData);
   DECLARE_DEVTOOL_CDP_METHOD(TemplateGetTemplateJsInfo);
 
   // Performance domain
-  DECLARE_DEVTOOL_METHOD(PerformanceEnable)
-  DECLARE_DEVTOOL_METHOD(PerformanceDisable)
-  DECLARE_DEVTOOL_METHOD(getAllTimingInfo)
-  DECLARE_DEVTOOL_METHOD(getAllPerformanceEntries)
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceEnable);
+  DECLARE_DEVTOOL_CDP_METHOD(PerformanceDisable);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllTimingInfo);
+  DECLARE_DEVTOOL_CDP_METHOD(getAllPerformanceEntries);
 
   // Input domain
   DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);

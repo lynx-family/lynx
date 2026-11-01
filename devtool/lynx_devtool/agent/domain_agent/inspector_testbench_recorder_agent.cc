@@ -4,10 +4,8 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_testbench_recorder_agent.h"
 
-#include <fstream>
-
 #include "core/services/recorder/recorder_controller.h"
-#include "devtool/base_devtool/native/public/message_sender.h"
+#include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 
 namespace lynx {
@@ -19,25 +17,27 @@ InspectorTestBenchRecorderAgent::InspectorTestBenchRecorderAgent() {
 }
 
 void InspectorTestBenchRecorderAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
   std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter == functions_map_.end() ||
       !lynx::tasm::recorder::RecorderController::Enable()) {
-    SendNotImplementedResponse(sender, message["id"].asInt64(), method);
+    responder->SendError(CDPErrorCode::MethodNotFound,
+                         "Not implemented: " + method);
   } else {
-    (this->*(iter->second))(sender, message);
+    (this->*(iter->second))(responder, message["params"]);
   }
 }
 
 void InspectorTestBenchRecorderAgent::Start(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().RecordingStart(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().RecordingStart(responder, params);
 }
 
 void InspectorTestBenchRecorderAgent::End(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().RecordingEnd(sender, message);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  LynxGlobalDevToolMediator::GetInstance().RecordingEnd(responder, params);
 }
 
 }  // namespace devtool

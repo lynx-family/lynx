@@ -20,7 +20,11 @@ void InspectorDebuggerAgent::Enable(const Json::Value& message) {
 }
 
 void InspectorDebuggerAgent::CallMethod(
-    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder,
+    const Json::Value& message) {
+  // The JavaScript inspector emits the complete CDP response asynchronously.
+  // Release responder ownership so it does not send a fallback response.
+  (void)responder->RetrieveSender();
   std::string method = message["method"].asString();
   auto iter = functions_map_.find(method);
   if (iter != functions_map_.end()) {

@@ -12,7 +12,7 @@ notes:
   - The threshold is not persisted and is not restored on session disconnect.
   - MONITOR enables M/O/I, OBSERVE enables O/I, and INFO enables ordinary INFO. Accepted M/O logs use the original INFO output severity.
   - Compiled-out logs cannot be enabled at runtime. ERROR is the highest configurable threshold, keeping ERROR and FATAL enabled where compiled in.
-  - Missing or invalid levels return InvalidParams. An unavailable UI runner returns InternalError.
+  - Missing or invalid levels return InvalidParams. An unavailable UI runner or executor returns ServerError.
 examples:
   - title: Enable observation logs
     request:

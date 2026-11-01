@@ -10,7 +10,7 @@ notes:
   - Reads GlobalDevToolPlatformFacade::GetTraceController()->GetStartupTracingConfig().
   - The trace controller stores the configuration as an opaque string. Lynx does not parse or validate it in this CDP method.
   - Returns a CDP error with message Failed to get trace controller when no trace controller is available.
-  - If the global mediator has no default task runner, the current handler does not send an explicit CDP response.
+  - Returns ServerError with message Cannot find default task runner when the global mediator cannot dispatch the command.
 examples:
   - title: Read startup tracing config
     request:

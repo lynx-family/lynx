@@ -5,26 +5,35 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_COMPONENT_AGENT_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_COMPONENT_AGENT_H_
 
+#include <map>
+#include <memory>
+
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
 
+class LynxGlobalDevToolMediator;
+
 class InspectorComponentAgent : public CDPDomainAgentBase {
  public:
   InspectorComponentAgent();
-  virtual ~InspectorComponentAgent();
-  void CallMethod(const std::shared_ptr<MessageSender>& sender,
+  explicit InspectorComponentAgent(
+      const LynxGlobalDevToolMediator& global_devtool_mediator);
+  ~InspectorComponentAgent() override = default;
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
                   const Json::Value& message) override;
 
  private:
-  typedef void (InspectorComponentAgent::*ComponentAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& message);
+  using ComponentAgentMethod = void (InspectorComponentAgent::*)(
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
 
-  void UselessUpdate(const std::shared_ptr<MessageSender>& sender,
-                     const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(UselessUpdate);
 
   std::map<std::string, ComponentAgentMethod> functions_map_;
+  const LynxGlobalDevToolMediator& global_devtool_mediator_;
 };
 
 }  // namespace devtool

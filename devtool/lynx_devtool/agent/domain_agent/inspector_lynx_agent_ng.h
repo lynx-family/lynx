@@ -5,63 +5,44 @@
 #ifndef DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_LYNX_AGENT_NG_H_
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_DOMAIN_AGENT_INSPECTOR_LYNX_AGENT_NG_H_
 
-#include <map>
+#include <unordered_map>
 
 #include "devtool/base_devtool/native/public/cdp_domain_agent_base.h"
+#include "devtool/lynx_devtool/agent/agent_defines.h"
 
 namespace lynx {
 namespace devtool {
 
-class DevToolAgentNG;
 class LynxDevToolMediator;
 
 class InspectorLynxAgentNG : public CDPDomainAgentBase {
  public:
   explicit InspectorLynxAgentNG(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
-  virtual ~InspectorLynxAgentNG();
-  virtual void CallMethod(const std::shared_ptr<MessageSender>& sender,
-                          const Json::Value& message) override;
+  ~InspectorLynxAgentNG() override;
+  void CallMethod(const std::shared_ptr<CDPResponder>& responder,
+                  const Json::Value& message) override;
 
  private:
-  typedef void (InspectorLynxAgentNG::*LynxAgentMethod)(
-      const std::shared_ptr<MessageSender>& sender, const Json::Value& params);
+  using LynxAgentMethod = void (InspectorLynxAgentNG::*)(
+      const std::shared_ptr<CDPResponder>& responder,
+      const Json::Value& params);
 
-  void SetObservePayloadEnabled(const std::shared_ptr<MessageSender>& sender,
-                                const Json::Value& message);
-  void GetLogLevel(const std::shared_ptr<MessageSender>& sender,
-                   const Json::Value& message);
-  void SetLogLevel(const std::shared_ptr<MessageSender>& sender,
-                   const Json::Value& message);
+  DECLARE_DEVTOOL_CDP_METHOD(SetObservePayloadEnabled);
+  DECLARE_DEVTOOL_CDP_METHOD(GetLogLevel);
+  DECLARE_DEVTOOL_CDP_METHOD(SetLogLevel);
+  DECLARE_DEVTOOL_CDP_METHOD(GetProperties);
+  DECLARE_DEVTOOL_CDP_METHOD(GetData);
+  DECLARE_DEVTOOL_CDP_METHOD(GetComponentId);
+  DECLARE_DEVTOOL_CDP_METHOD(GetLynxViewRectToWindow);
+  DECLARE_DEVTOOL_CDP_METHOD(GetLynxVersion);
+  DECLARE_DEVTOOL_CDP_METHOD(TransferData);
+  DECLARE_DEVTOOL_CDP_METHOD(SetTraceMode);
+  DECLARE_DEVTOOL_CDP_METHOD(GetScreenshot);
+  DECLARE_DEVTOOL_CDP_METHOD(GetViewLocationOnScreen);
+  DECLARE_DEVTOOL_CDP_METHOD(SendVMEvent);
 
-  void GetProperties(const std::shared_ptr<MessageSender>& sender,
-                     const Json::Value& message);
-  void GetData(const std::shared_ptr<MessageSender>& sender,
-               const Json::Value& message);
-  void GetComponentId(const std::shared_ptr<MessageSender>& sender,
-                      const Json::Value& message);
-  void GetLynxViewRectToWindow(const std::shared_ptr<MessageSender>& sender,
-                               const Json::Value& message);
-  void GetLynxVersion(const std::shared_ptr<MessageSender>& sender,
-                      const Json::Value& message);
-
-  void TransferData(const std::shared_ptr<MessageSender>& sender,
-                    const Json::Value& message);
-
-  void SetTraceMode(const std::shared_ptr<MessageSender>& sender,
-                    const Json::Value& message);
-
-  void GetScreenshot(const std::shared_ptr<MessageSender>& sender,
-                     const Json::Value& message);
-
-  void GetViewLocationOnScreen(const std::shared_ptr<MessageSender>& sender,
-                               const Json::Value& message);
-
-  void SendVMEvent(const std::shared_ptr<MessageSender>& sender,
-                   const Json::Value& message);
-
-  std::map<std::string, LynxAgentMethod> functions_map_;
-
+  std::unordered_map<std::string, LynxAgentMethod> functions_map_;
   std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
 };
 }  // namespace devtool
