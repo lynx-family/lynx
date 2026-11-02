@@ -37,6 +37,9 @@
     _enableAirStrictMode = [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
                                                                       forKey:@"enableAirStrict"
                                                                 defaultValue:NO];
+    _useBoolLiterals = [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
+                                                                  forKey:@"useBoolLiterals"
+                                                            defaultValue:NO];
 
     _enableSizeOptimization =
         [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
