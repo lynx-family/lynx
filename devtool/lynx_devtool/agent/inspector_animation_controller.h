@@ -23,17 +23,24 @@ class CDPResponder;
 class LynxDevToolMediator;
 
 // Owns Animation-domain state, CDP payload construction, and command
-// semantics. Every method is called on the TASM thread. Animation events are
-// posted to the DevTool thread through the mediator when it is still alive.
+// semantics. Lifecycle notifications and CDP commands are handled on TASM.
+// Animation events are posted to DevTool through the mediator.
 class InspectorAnimationController {
  public:
   explicit InspectorAnimationController(
       std::weak_ptr<LynxDevToolMediator> devtool_mediator);
 
-  void OnAnimationCreated(animation::Animation* animation);
-  void OnAnimationStarted(animation::Animation* animation);
-  void OnAnimationUpdated(animation::Animation* animation);
-  void OnAnimationCanceled(animation::Animation* animation);
+  void OnAnimationCreated(int64_t id,
+                          std::weak_ptr<animation::Animation>&& animation);
+  void OnAnimationStarted(const Json::Value& snapshot);
+  void OnAnimationUpdated(const Json::Value& snapshot);
+  void OnAnimationCanceled(int64_t id);
+
+  // Builds the CDP Animation JSON object for |animation| (id, name, play
+  // state, timing, source AnimationEffect with keyframesRule, backendNodeId,
+  // type). Observers call this on the animation callback thread before posting
+  // the notification to TASM.
+  static Json::Value BuildAnimationSnapshot(animation::Animation* animation);
 
   void Enable(const std::shared_ptr<CDPResponder>& responder,
               const Json::Value& params);
@@ -53,20 +60,15 @@ class InspectorAnimationController {
   void Clear();
 
  private:
-  // Builds the CDP Animation JSON object for |animation| (id, name, play
-  // state, timing, source AnimationEffect with keyframesRule, backendNodeId,
-  // type).
-  Json::Value BuildAnimationSnapshot(animation::Animation* animation);
   void SendEvent(const std::string& method, const Json::Value& params) const;
 
   std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
-  // Maps stable Animation.id values to live, non-owning Animation pointers.
-  // OnAnimationCanceled runs synchronously from Animation destruction and
-  // removes the entry before its animation can be freed.
-  std::unordered_map<int64_t, animation::Animation*> animation_registry_;
-  // Animation IDs are never reused. Keep releases until cancellation or page
-  // teardown so a late started callback cannot make an animation controllable
-  // again.
+  // Maps animation IDs to weak Animation references because an animation may
+  // be freed before the task posted to TASM runs. Accessed only on TASM.
+  std::unordered_map<int64_t, std::weak_ptr<animation::Animation>>
+      animation_registry_;
+  // Keep released IDs until cancellation or page teardown so delayed Created
+  // notifications cannot register them again.
   std::unordered_set<int64_t> released_animation_ids_;
   bool enabled_{false};
 };
