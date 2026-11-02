@@ -6,6 +6,12 @@ import("//${lynx_dir}/build_overrides/bindings_files.gni")
 import("../../testing/test.gni")
 import("../Lynx.gni")
 
+# Export annotations are usable without linking engine base implementations.
+source_set("export_headers") {
+  sources = [ "lynx_export.h" ]
+  public = sources
+}
+
 # base_shared_sources
 base_shared_sources = [
                         "js_constants.h",

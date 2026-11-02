@@ -17,7 +17,7 @@
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #include "core/public/platform_renderer_type.h"
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 #include "gfx/public/display_list.h"
 
 using namespace lynx::tasm;

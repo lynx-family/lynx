@@ -12,7 +12,7 @@
 #include <unordered_map>
 
 #include "base/include/fml/memory/ref_ptr.h"
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 
 namespace lynx {
 namespace tasm {

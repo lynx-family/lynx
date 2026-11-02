@@ -8,7 +8,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/starlight/style/borders_data.h"
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 #include "testing/lynx/android/gen/NativeDisplayListBuilder_jni.h"
 
 namespace {

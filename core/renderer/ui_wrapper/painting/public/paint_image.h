@@ -1,13 +1,14 @@
 // Copyright 2026 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_PAINT_IMAGE_H_
-#define CORE_RENDERER_UI_WRAPPER_PAINTING_PAINT_IMAGE_H_
+#ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_PUBLIC_PAINT_IMAGE_H_
+#define CORE_RENDERER_UI_WRAPPER_PAINTING_PUBLIC_PAINT_IMAGE_H_
 
 #include <cstdint>
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/value/base_string.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx::tasm {
 
@@ -96,7 +97,7 @@ struct ImagePaintInfo {
   }
 };
 
-class PaintImage : public fml::RefCountedThreadSafe<PaintImage> {
+class LYNX_EXPORT PaintImage : public fml::RefCountedThreadSafe<PaintImage> {
  public:
   explicit PaintImage(int32_t image_key) : image_key_(image_key) {}
   virtual ~PaintImage() = default;
@@ -105,4 +106,4 @@ class PaintImage : public fml::RefCountedThreadSafe<PaintImage> {
   int32_t image_key_;
 };
 }  // namespace lynx::tasm
-#endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_PAINT_IMAGE_H_
+#endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_PUBLIC_PAINT_IMAGE_H_

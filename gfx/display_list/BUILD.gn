@@ -13,7 +13,10 @@ lynx_core_source_set("display_list") {
     "display_list.cc",
     "display_list_reader.cc",
   ]
-  public_deps = [ "..:gfx" ]
+  public_deps = [
+    "..:gfx",
+    "../../core/renderer/ui_wrapper/painting/public:images",
+  ]
 }
 
 unittest_set("display_list_testset") {
