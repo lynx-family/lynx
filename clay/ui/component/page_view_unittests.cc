@@ -1052,7 +1052,7 @@ class DesktopEventDelegate : public testing::MockEventDelegate {
                float),
               (override));
   MOCK_METHOD(void, OnTouchEvent,
-              (const std::string&, int, float, float, float, float),
+              (const std::string&, int, float, float, float, float, int),
               (override));
 };
 
@@ -1124,7 +1124,7 @@ TEST_F_UI(DesktopEventTest, BatchedWheelPreservesPhaseAndAxis) {
 }
 
 TEST_F_UI(DesktopEventTest, TrackpadPanZoomPreservesLegacyEvents) {
-  EXPECT_CALL(events_, OnTouchEvent(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(events_, OnTouchEvent(_, _, _, _, _, _, _)).Times(0);
   InSequence sequence;
   EXPECT_CALL(events_, OnWheelEvent("wheel", 1, _, _, _, _, 12, -30));
   EXPECT_CALL(events_, OnMouseEvent("zoom", 1, _, _, 1.5f, _, _, _, _));
@@ -1173,7 +1173,7 @@ TEST_F_UI(DesktopEventTest, MouseButtonsPreserveCompatibilityInBothModes) {
       EXPECT_CALL(events_,
                   OnMouseEvent("mouseclick", 1, button, 0, 1, 50, 50, 50, 50))
           .Times(buttons == PointerEvent::kPrimary ? 1 : 0);
-      EXPECT_CALL(events_, OnTouchEvent("tap", 1, 50, 50, 50, 50))
+      EXPECT_CALL(events_, OnTouchEvent("tap", 1, 50, 50, 50, 50, _))
           .Times(buttons == PointerEvent::kPrimary ? 1 : 0);
       PointerEvent event(PointerEvent::EventType::kDownEvent);
       event.device = PointerEvent::kMouse;
@@ -1195,9 +1195,9 @@ TEST_F_UI(DesktopEventTest, MouseLongPressPreservesTouchCompatibility) {
   InSequence sequence;
   EXPECT_CALL(events_, OnMouseEvent("mousedown", 1, _, _, _, _, _, _, _));
   EXPECT_CALL(events_, OnMouseEvent("mouselongpress", 1, _, _, _, _, _, _, _));
-  EXPECT_CALL(events_, OnTouchEvent("longpress", 1, _, _, _, _));
+  EXPECT_CALL(events_, OnTouchEvent("longpress", 1, _, _, _, _, _));
   EXPECT_CALL(events_, OnMouseEvent("mouseup", 1, _, _, _, _, _, _, _));
-  EXPECT_CALL(events_, OnTouchEvent("tap", _, _, _, _, _)).Times(0);
+  EXPECT_CALL(events_, OnTouchEvent("tap", _, _, _, _, _, _)).Times(0);
   PointerEvent event(PointerEvent::EventType::kDownEvent);
   event.device = PointerEvent::kMouse;
   event.position = {50, 50};
@@ -1216,9 +1216,9 @@ TEST_F_UI(DesktopEventTest, MouseLongPressPreservesTouchCompatibility) {
 
 TEST_F_UI(DesktopEventTest, TouchCaptureSurvivesCrossingAndCancellation) {
   std::vector<std::pair<std::string, int>> touches;
-  EXPECT_CALL(events_, OnTouchEvent(_, _, _, _, _, _))
+  EXPECT_CALL(events_, OnTouchEvent(_, _, _, _, _, _, _))
       .WillRepeatedly([&](const std::string& name, int id, float, float, float,
-                          float) { touches.emplace_back(name, id); });
+                          float, int) { touches.emplace_back(name, id); });
   for (auto device :
        {PointerData::DeviceKind::kTouch, PointerData::DeviceKind::kStylus,
         PointerData::DeviceKind::kInvertedStylus}) {
@@ -1262,13 +1262,13 @@ TEST_F_UI(DesktopEventTest, TouchCaptureSurvivesCrossingAndCancellation) {
 
 TEST_F_UI(DesktopEventTest, BatchedTouchesKeepIndependentTargets) {
   InSequence sequence;
-  EXPECT_CALL(events_, OnTouchEvent("touchstart", 1, _, _, _, _));
-  EXPECT_CALL(events_, OnTouchEvent("touchstart", 2, _, _, _, _));
-  EXPECT_CALL(events_, OnTouchEvent("touchmove", 1, _, _, _, _));
-  EXPECT_CALL(events_, OnTouchEvent("touchmove", 2, _, _, _, _));
-  EXPECT_CALL(events_, OnTouchEvent("touchcancel", 1, _, _, _, _));
-  EXPECT_CALL(events_, OnTouchEvent("touchend", 2, _, _, _, _));
-  EXPECT_CALL(events_, OnTouchEvent("tap", _, _, _, _, _)).Times(0);
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 1, _, _, _, _, _));
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 2, _, _, _, _, _));
+  EXPECT_CALL(events_, OnTouchEvent("touchmove", 1, _, _, _, _, _));
+  EXPECT_CALL(events_, OnTouchEvent("touchmove", 2, _, _, _, _, _));
+  EXPECT_CALL(events_, OnTouchEvent("touchcancel", 1, _, _, _, _, _));
+  EXPECT_CALL(events_, OnTouchEvent("touchend", 2, _, _, _, _, _));
+  EXPECT_CALL(events_, OnTouchEvent("tap", _, _, _, _, _, _)).Times(0);
   auto first = CreatePointer(17, PointerEvent::EventType::kDownEvent, {50, 50});
   auto second =
       CreatePointer(18, PointerEvent::EventType::kDownEvent, {250, 50});
@@ -1284,6 +1284,118 @@ TEST_F_UI(DesktopEventTest, BatchedTouchesKeepIndependentTargets) {
   second.type = PointerEvent::EventType::kUpEvent;
   first.buttons = second.buttons = 0;
   page_->DispatchPointerEvent({first, second});
+}
+
+TEST_F_UI(DesktopEventTest, TouchEventsPreservePointerIdentity) {
+  page_->SetEnableMultiTouch(true);
+  InSequence sequence;
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 1, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 2, 50, 50, 250, 50, 18));
+  EXPECT_CALL(events_, OnTouchEvent("touchend", 1, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("tap", 1, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchmove", 2, 60, 50, 260, 50, 18));
+  EXPECT_CALL(events_, OnTouchEvent("touchcancel", 2, 60, 50, 260, 50, 18));
+  auto first = CreatePointer(17, PointerEvent::EventType::kDownEvent, {50, 50});
+  auto second =
+      CreatePointer(18, PointerEvent::EventType::kDownEvent, {250, 50});
+  page_->DispatchPointerEvent({first, second});
+  first.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({first});
+  second.type = PointerEvent::EventType::kMoveEvent;
+  second.position = {260, 50};
+  second.delta = {10, 0};
+  page_->DispatchPointerEvent({second});
+  second.type = PointerEvent::EventType::kCancel;
+  page_->DispatchPointerEvent({second});
+}
+
+TEST_F_UI(DesktopEventTest,
+          SingleTouchKeepsInitialTargetUntilLastPointerLifts) {
+  page_->SetEnableMultiTouch(false);
+  InSequence sequence;
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 1, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("tap", 1, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchmove", 1, 260, 50, 260, 50, 18));
+  EXPECT_CALL(events_, OnTouchEvent("touchcancel", 1, 260, 50, 260, 50, 18));
+  auto first = CreatePointer(17, PointerEvent::EventType::kDownEvent, {50, 50});
+  auto second =
+      CreatePointer(18, PointerEvent::EventType::kDownEvent, {250, 50});
+  page_->DispatchPointerEvent({first, second});
+  first.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({first});
+  second.type = PointerEvent::EventType::kMoveEvent;
+  second.position = {260, 50};
+  second.delta = {10, 0};
+  page_->DispatchPointerEvent({second});
+  second.type = PointerEvent::EventType::kCancel;
+  page_->DispatchPointerEvent({second});
+}
+
+TEST_F_UI(DesktopEventTest, SingleTouchStartKeepsTransformedHitCoordinates) {
+  page_->SetEnableMultiTouch(false);
+  auto* view = page_->GetChildren().front();
+  struct TestCase {
+    const char* name;
+    lynx::gfx::TransformOperations transform;
+    FloatPoint position;
+    FloatPoint expected_position;
+  };
+  TestCase translated{"translate", {}, {70, 80}, {50, 50}};
+  translated.transform.AppendTranslate({20.f, lynx::gfx::LengthUnit::kNumber},
+                                       {30.f, lynx::gfx::LengthUnit::kNumber},
+                                       {});
+  TestCase scaled{"scale", {}, {50, 50}, {75, 75}};
+  scaled.transform.AppendScale(2.f, 2.f);
+  TestCase rotated{"rotate", {}, {160, 50}, {50, 40}};
+  rotated.transform.AppendRotate(lynx::gfx::TransformOperation::kRotateZ, 90.f);
+
+  for (const auto& test_case : {translated, scaled, rotated}) {
+    SCOPED_TRACE(test_case.name);
+    view->SetTransform(test_case.transform, FloatPoint(100, 100));
+    InSequence sequence;
+    EXPECT_CALL(
+        events_,
+        OnTouchEvent(
+            "touchstart", 1,
+            ::testing::FloatNear(test_case.expected_position.x(), 0.001f),
+            ::testing::FloatNear(test_case.expected_position.y(), 0.001f),
+            test_case.position.x(), test_case.position.y(), 17));
+    EXPECT_CALL(events_, OnTouchEvent("touchend", 1, _, _, _, _, 17));
+    EXPECT_CALL(events_, OnTouchEvent("tap", 1, _, _, _, _, 17));
+    auto event = CreatePointer(17, PointerEvent::EventType::kDownEvent,
+                               test_case.position);
+    page_->DispatchPointerEvent({event});
+    event.type = PointerEvent::EventType::kUpEvent;
+    event.buttons = 0;
+    page_->DispatchPointerEvent({event});
+  }
+}
+
+TEST_F_UI(DesktopEventTest, SingleTouchHandoffUsesInitialTargetTransform) {
+  page_->SetEnableMultiTouch(false);
+  lynx::gfx::TransformOperations transform;
+  transform.AppendScale(2.f, 2.f);
+  page_->GetChildren().front()->SetTransform(transform, FloatPoint(0, 0));
+  InSequence sequence;
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 1, 50, 40, 100, 80, 17));
+  EXPECT_CALL(events_, OnTouchEvent("tap", 1, 50, 40, 100, 80, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchmove", 1, 130, 25, 260, 50, 18));
+  EXPECT_CALL(events_, OnTouchEvent("touchcancel", 1, 130, 25, 260, 50, 18));
+  auto first =
+      CreatePointer(17, PointerEvent::EventType::kDownEvent, {100, 80});
+  auto second =
+      CreatePointer(18, PointerEvent::EventType::kDownEvent, {250, 50});
+  page_->DispatchPointerEvent({first, second});
+  first.type = PointerEvent::EventType::kUpEvent;
+  first.buttons = 0;
+  page_->DispatchPointerEvent({first});
+  second.type = PointerEvent::EventType::kMoveEvent;
+  second.position = {260, 50};
+  second.delta = {10, 0};
+  page_->DispatchPointerEvent({second});
+  second.type = PointerEvent::EventType::kCancel;
+  second.buttons = 0;
+  page_->DispatchPointerEvent({second});
 }
 
 TEST_F_UI(DesktopEventTest, DispatchesMouseDoubleClickOnSecondTap) {

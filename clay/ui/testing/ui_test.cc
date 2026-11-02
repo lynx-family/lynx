@@ -85,7 +85,7 @@ class MockEventDelegate : public clay::EventDelegate {
   MockEventDelegate(UITest* uitest) : uitest_(uitest) {}
 
   void OnTouchEvent(const std::string& event_name, int tag, float x, float y,
-                    float page_x, float page_y) override {
+                    float page_x, float page_y, int pointer_id) override {
     if (uitest_->touch_event_callback_) {
       uitest_->touch_event_callback_(event_name, tag);
     }

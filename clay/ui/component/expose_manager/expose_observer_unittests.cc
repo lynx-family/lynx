@@ -107,8 +107,8 @@ class RecordingEventDelegate final : public EventDelegate {
     global_events_.push_back(event_name);
   }
 
-  void OnTouchEvent(const std::string&, int, float, float, float,
-                    float) override {}
+  void OnTouchEvent(const std::string&, int, float, float, float, float,
+                    int) override {}
   void OnMouseEvent(const std::string&, int, int, int, float, float, float,
                     float, float) override {}
   void OnWheelEvent(const std::string&, int, float, float, float, float, float,
