@@ -182,7 +182,7 @@ if (is_headless && !is_ios) {
   feature_defines_list += [ "ENABLE_HEADLESS" ]
 }
 
-if (is_win || is_mac ||
+if (is_win || is_mac || is_linux ||
     (((is_headless && !is_ios) || (is_android && !enable_clay_lite)) &&
      enable_clay_mouse_tracking)) {
   feature_defines_list += [ "ENABLE_MOUSE_TRACKING" ]

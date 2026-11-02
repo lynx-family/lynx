@@ -217,7 +217,7 @@ TEST_F(TouchEventHandlerTest, SendGlobalEventToCoreContext) {
   EXPECT_EQ(received_params.Array()->get(0), info);
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 TEST_F(TouchEventHandlerTest, HandleAllPointerEventsWithRefactoredDispatcher) {
   auto page_config = std::make_shared<PageConfig>();
   page_config->SetEnableEventHandleRefactor(true);

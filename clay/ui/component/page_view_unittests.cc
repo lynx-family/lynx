@@ -802,7 +802,7 @@ TEST(PageViewTest, PointerDownActivatesPseudoStatusForSupportedDevices) {
     event.position = {50, 50};
     std::vector<PointerEvent> events{event};
     page.gesture_manager()->HandlePointerEvents(&page, events);
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
     const bool should_activate = device != PointerEvent::kMouse;
 #else
     const bool should_activate = device == PointerEvent::kTouch;
@@ -893,7 +893,7 @@ TEST(PageViewTest, AlignsMouseButtonWithW3C) {
   }
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 namespace {
 
 using ::testing::_;

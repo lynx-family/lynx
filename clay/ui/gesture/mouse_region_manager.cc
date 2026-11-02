@@ -34,7 +34,7 @@ bool IsCursorOwnedByPlatformView(BaseView* top_view) {
 }  // namespace
 
 MouseRegionManager::~MouseRegionManager() {
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   Reset();
 #endif
 }
@@ -177,7 +177,7 @@ MouseRegionManager::ViewChain MouseRegionManager::BuildViewChain(
   return view_chain;
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 int MouseRegionManager::GetTargetSign(const ViewChain& chain) {
   for (const auto& target : chain) {
     if (target) {
@@ -416,7 +416,7 @@ void MouseRegionManager::ForceUpdateCursor() {
   mouse_cursor_manager_->HandleHitTestResult(prev_chain_);
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 void MouseRegionManager::Reset() {
   prev_chain_.clear();
   ResetPointerEvents();

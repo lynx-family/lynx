@@ -188,7 +188,7 @@ struct PointerEvent {
   bool down = false;
 
   int64_t buttons = 0;  // bit field to indicate which buttons are pressed
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   enum class DispatchMode { kDefault, kPenWithTouchCompatibility, kLegacyOnly };
   DispatchMode dispatch_mode = DispatchMode::kDefault;
   std::optional<PointerEvent> ToLegacyEvent() const;

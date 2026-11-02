@@ -16,7 +16,7 @@ const char* c_point_event_type_string[] = {
 
 }  // namespace
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 std::optional<PointerEvent> PointerEvent::ToLegacyEvent() const {
   if (type == EventType::kAddEvent) {
     return std::nullopt;

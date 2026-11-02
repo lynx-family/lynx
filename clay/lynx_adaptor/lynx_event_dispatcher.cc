@@ -256,7 +256,7 @@ void LynxEventDispatcher::OnMouseEvent(const std::string& event_name,
   engine_proxy_->SendBubbleEvent(event_name, view_id, params);
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 void LynxEventDispatcher::OnPointerEvent(
     const std::string& event_name, int view_id, int pointer_id,
     ClayPointerDeviceKind device_kind, bool is_primary, int button, int buttons,

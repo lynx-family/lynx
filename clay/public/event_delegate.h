@@ -76,7 +76,7 @@ class EventDelegate {
   virtual void CallJSIntersectionObserver(int observer_id, int callback_id,
                                           clay::Value params) = 0;
   virtual void OnExternalMemoryReport(int64_t, int64_t) {}
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   virtual void OnPointerEvent(const std::string&, int, int,
                               ClayPointerDeviceKind, bool, int, int, float,
                               float, float, float, float, float, float, int64_t,

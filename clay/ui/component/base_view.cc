@@ -2004,7 +2004,7 @@ void BaseView::NotifyBoundChangeIfNeeded(const FloatRect& old_bounds) {
 }
 
 void BaseView::SchedulePointerEventTargetRefresh() {
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   if (auto* manager = page_view_->mouse_region_manager()) {
     manager->SchedulePointerEventTargetRefresh(page_view_);
   }
@@ -3804,7 +3804,7 @@ void BaseView::OnMouseEvent(const ClayEventType type,
   }
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 void BaseView::OnPointerBoundaryEvent(const std::string& event_name,
                                       const PointerEvent& event,
                                       int related_target_sign) {

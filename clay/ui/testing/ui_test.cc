@@ -93,13 +93,13 @@ class MockEventDelegate : public clay::EventDelegate {
   void OnMouseEvent(const std::string& event_name, int view_id, int button,
                     int buttons, float scale, float x, float y, float page_x,
                     float page_y) override {
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
     if (uitest_->mouse_event_callback_) {
       uitest_->mouse_event_callback_(event_name, view_id);
     }
 #endif
   }
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   void OnPointerEvent(const std::string& event_name, int view_id,
                       int pointer_id, ClayPointerDeviceKind device_kind,
                       bool is_primary, int button, int buttons, float width,

@@ -1263,7 +1263,7 @@ TEST_F_UI(BaseViewTest, PointerEventsUsageLatchIsMonotonic) {
   EXPECT_TRUE(page_->HasExplicitPointerEvents());
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 TEST_F_UI(BaseViewTest, PointerEventsChangeRefreshesPointerBoundaries) {
   auto* fallback = new View(1, page_.get());
   auto* top = new View(2, page_.get());
