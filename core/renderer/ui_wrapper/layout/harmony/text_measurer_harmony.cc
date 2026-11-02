@@ -104,6 +104,20 @@ base::UnicodeDecodeProperty DecodePropertyForTextElement(TextElement* element) {
   }
 }
 
+base::String GetRawTextContent(Element* element) {
+  auto* data_model = element->data_model();
+  if (data_model == nullptr) {
+    return base::String();
+  }
+  BASE_STATIC_STRING_DECL(kTextAttr, "text");
+  const auto& attributes = data_model->attributes();
+  auto it = attributes.find(kTextAttr);
+  if (it == attributes.end() || !it->second.IsString()) {
+    return base::String();
+  }
+  return it->second.String();
+}
+
 void AppendDecodedText(harmony::ParagraphBuilderHarmony& builder,
                        const base::String& text,
                        base::UnicodeDecodeProperty decode_property) {
@@ -391,6 +405,10 @@ bool AppendTextSubtree(
       if (child->is_raw_text()) {
         AppendDecodedText(builder,
                           static_cast<RawTextElement*>(child)->content(),
+                          DecodePropertyForTextElement(inherited_text));
+      } else if (child->GetTag().IsEqual(RawTextElement::kRawTextTag)) {
+        // Generic raw-text elements store their content in the text attribute.
+        AppendDecodedText(builder, GetRawTextContent(child),
                           DecodePropertyForTextElement(inherited_text));
       } else if (child->is_text()) {
         if (!AppendTextSubtree(builder, static_cast<TextElement*>(child),

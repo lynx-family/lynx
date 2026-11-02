@@ -29,6 +29,20 @@ namespace {
 
 NSAttributedStringKey const kLynxInlineTextEventTargetSignKey = @"LynxInlineTextEventTargetSignKey";
 
+base::String GetRawTextContent(Element* element) {
+  auto* data_model = element->data_model();
+  if (data_model == nullptr) {
+    return base::String();
+  }
+  BASE_STATIC_STRING_DECL(kTextAttr, "text");
+  const auto& attributes = data_model->attributes();
+  auto it = attributes.find(kTextAttr);
+  if (it == attributes.end() || !it->second.IsString()) {
+    return base::String();
+  }
+  return it->second.String();
+}
+
 NSArray<NSNumber*>* AutoFontSizePresetSizesToNSArray(
     const base::InlineVector<float, 6>& preset_sizes) {
   NSMutableArray<NSNumber*>* result = [NSMutableArray arrayWithCapacity:preset_sizes.size()];
@@ -341,6 +355,11 @@ void TextLayoutDarwin::ProcessChildAttribute(
   if (child->is_raw_text()) {
     RawTextElement* rawText = static_cast<RawTextElement*>(child);
     NSString* content = DecodeTextContentToNSString(rawText->content());
+    NSAttributedString* str = [[NSAttributedString alloc] initWithString:content
+                                                              attributes:baseAttributes];
+    [attributedString appendAttributedString:str];
+  } else if (child->GetTag().IsEqual(RawTextElement::kRawTextTag)) {
+    NSString* content = DecodeTextContentToNSString(GetRawTextContent(child));
     NSAttributedString* str = [[NSAttributedString alloc] initWithString:content
                                                               attributes:baseAttributes];
     [attributedString appendAttributedString:str];

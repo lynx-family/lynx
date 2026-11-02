@@ -33,6 +33,20 @@ namespace lynx {
 namespace tasm {
 namespace {
 
+base::String GetRawTextContent(Element* element) {
+  auto* data_model = element->data_model();
+  if (data_model == nullptr) {
+    return base::String();
+  }
+  BASE_STATIC_STRING_DECL(kTextAttr, "text");
+  const auto& attributes = data_model->attributes();
+  auto it = attributes.find(kTextAttr);
+  if (it == attributes.end() || !it->second.IsString()) {
+    return base::String();
+  }
+  return it->second.String();
+}
+
 base::UnicodeDecodeProperty WordBreakToDecodeProperty(
     starlight::WordBreakType word_break) {
   switch (word_break) {
@@ -374,6 +388,14 @@ void TextLayoutAndroid::ProcessChildProps(Element* child, std::string& output,
   if (child->is_raw_text()) {
     auto* raw_text_child = static_cast<RawTextElement*>(child);
     const auto& raw_content = raw_text_child->content();
+    if (!raw_content.empty()) {
+      AppendDecodedTextContent(
+          std::string_view(raw_content.c_str(), raw_content.length()), output,
+          current_length, use_utf16,
+          DecodePropertyForTextElement(FindParentTextElement(child)));
+    }
+  } else if (child->GetTag().IsEqual(RawTextElement::kRawTextTag)) {
+    const auto raw_content = GetRawTextContent(child);
     if (!raw_content.empty()) {
       AppendDecodedTextContent(
           std::string_view(raw_content.c_str(), raw_content.length()), output,
