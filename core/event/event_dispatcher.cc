@@ -77,6 +77,31 @@ DispatchEventResult EventDispatcher::DispatchEvent(EventTarget& target,
   return event->DispatchEvent(dispatcher);
 }
 
+void EventDispatcher::DispatchTouchEventBatch(
+    const std::string& name, const lepus::Value& params, int64_t timestamp,
+    const std::function<EventTarget*(int)>& get_target,
+    const std::function<TouchEventState*()>& get_page_state) {
+  for (const auto& entry : *params.Table()) {
+    auto* target = get_target(std::stoi(entry.first.str()));
+    if (!target) {
+      LOGE("DispatchTouchEventBatch error: the target is null.");
+      continue;
+    }
+    auto event = fml::MakeRefCounted<TouchEvent>(name, params, timestamp);
+    EventDispatcher dispatcher(*target, event);
+    dispatcher.defer_touch_cancel_cleanup_ = true;
+    event->DispatchEvent(dispatcher);
+  }
+  if (name == EVENT_TOUCH_CANCEL) {
+    // Every target must clone its cancel parameters before contacts are
+    // cleared. Reacquire page state because a listener may have destroyed the
+    // page.
+    if (auto* state = get_page_state()) {
+      state->current_touches = lepus::Value(lepus::CArray::Create());
+    }
+  }
+}
+
 EventDispatcher::EventDispatcher(EventTarget& target, fml::RefPtr<Event> event)
     : target_(target.GetWeakTarget()), event_(std::move(event)) {
   event_->InitEventPath(*target_);
@@ -101,6 +126,14 @@ DispatchEventResult EventDispatcher::Dispatch() {
     return {EventCancelType::kCanceledByEventHandler, false};
   }
   event_->HandleEventCustomDetail();
+  if (!defer_touch_cancel_cleanup_ &&
+      event_->event_type() == Event::EventType::kTouchEvent &&
+      event_->type() == EVENT_TOUCH_CANCEL) {
+    // Standalone events have no remaining target that needs these contacts.
+    if (auto* state = target_->GetTouchEventState()) {
+      state->current_touches = lepus::Value(lepus::CArray::Create());
+    }
+  }
   bool consumed = false;
   auto path = event_->event_path();
 
