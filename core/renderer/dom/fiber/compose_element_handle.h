@@ -31,6 +31,8 @@ enum class ComposeElementKind : int32_t {
   kSvg = 5,
   kOverlay = 6,
   kAnimaX = 7,
+  kInput = 8,
+  kTextarea = 9,
 };
 
 // Stable, opaque identity for one Compose-owned Fiber subtree. The concrete
