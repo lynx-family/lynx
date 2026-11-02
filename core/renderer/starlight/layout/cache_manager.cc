@@ -91,6 +91,7 @@ void CacheManager::ResetCache() {
     entry.is_valid_ = false;
   }
   current_cache_index_ = cache_data_.size() - 1;
+  ResetComposeCache();
 }
 
 void CacheManager::InsertCacheEntry(const Constraints& constraints,
@@ -147,6 +148,49 @@ FindCacheResult CacheManager::FindAvailableCacheEntry(
     }
   }
   return result;
+}
+
+bool CacheManager::CanReuseComposeMeasure(const ComposeConstraints& constraints,
+                                          bool final_measure,
+                                          const LayoutObject& target) const {
+  if (!compose_measure_cache_) return false;
+  const auto& cache = *compose_measure_cache_;
+  return cache.valid && cache.constraints == constraints &&
+         cache.inset_width == target.GetPaddingAndBorderHorizontal() &&
+         cache.inset_height == target.GetPaddingAndBorderVertical() &&
+         cache.final_measure == final_measure &&
+         target.IsInflowSubTreeInSyncWithLastMeasurement() &&
+         !target.GetShouldDisplayNone() &&
+         cache.size.width_ == target.GetBorderBoundWidth() &&
+         cache.size.height_ == target.GetBorderBoundHeight() &&
+         cache.size.baseline_ == target.GetBaseline();
+}
+
+void CacheManager::BeginComposeMeasure(const ComposeConstraints& constraints,
+                                       bool final_measure,
+                                       const LayoutObject& target) {
+  ResetCache();
+  if (!compose_measure_cache_) {
+    compose_measure_cache_ = std::make_unique<ComposeMeasureCacheEntry>();
+  }
+  auto& cache = *compose_measure_cache_;
+  cache.constraints = constraints;
+  cache.inset_width = target.GetPaddingAndBorderHorizontal();
+  cache.inset_height = target.GetPaddingAndBorderVertical();
+  cache.final_measure = final_measure;
+}
+
+void CacheManager::InsertComposeCacheEntry(const LayoutObject& target) {
+  auto& cache = *compose_measure_cache_;
+  cache.size = FloatSize(target.GetBorderBoundWidth(),
+                         target.GetBorderBoundHeight(), target.GetBaseline());
+  cache.valid = true;
+}
+
+void CacheManager::ResetComposeCache() {
+  if (compose_measure_cache_) {
+    compose_measure_cache_->valid = false;
+  }
 }
 
 }  // namespace starlight
