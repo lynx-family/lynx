@@ -101,10 +101,11 @@ class InspectorTasmExecutor
  public:
   // Animation domain (CDP Animation). Observer-driven lifecycle callbacks and
   // CDP request handlers; all run on the TASM thread (the animations' thread).
-  void OnAnimationCreated(animation::Animation* animation);
-  void OnAnimationStarted(animation::Animation* animation);
-  void OnAnimationUpdated(animation::Animation* animation);
-  void OnAnimationCanceled(animation::Animation* animation);
+  void OnAnimationCreated(int64_t id,
+                          std::weak_ptr<animation::Animation>&& animation);
+  void OnAnimationStarted(const Json::Value& snapshot);
+  void OnAnimationUpdated(const Json::Value& snapshot);
+  void OnAnimationCanceled(int64_t id);
 
   DECLARE_DEVTOOL_CDP_METHOD(AnimationEnable);
   DECLARE_DEVTOOL_CDP_METHOD(AnimationDisable);
@@ -255,6 +256,8 @@ class InspectorTasmExecutor
   GetFunctionForElementMap();
 
  private:
+  void PostClearAnimations();
+
   void SendLayoutTreeWithCallback(std::function<void()> callback);
 
   bool dom_use_compression_;

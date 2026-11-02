@@ -14,6 +14,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -28,6 +29,7 @@
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "devtool/base_devtool/native/public/cdp_responder.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
+#include "devtool/lynx_devtool/agent/inspector_animation_observer_impl.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/testing/mock/lynx_devtool_ng_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -62,6 +64,33 @@ std::shared_ptr<devtool::CDPResponder> MakeResponder(
                                                  message["id"].asInt64());
 }
 
+class ScopedTaskRunnerPause {
+ public:
+  explicit ScopedTaskRunnerPause(const fml::RefPtr<fml::TaskRunner>& runner) {
+    std::promise<void> entered;
+    auto ready = entered.get_future();
+    runner->PostTask([entered = std::move(entered),
+                      release = release_.get_future()]() mutable {
+      entered.set_value();
+      release.wait();
+    });
+    ready.wait();
+  }
+
+  ~ScopedTaskRunnerPause() { Resume(); }
+
+  void Resume() {
+    if (!resumed_) {
+      resumed_ = true;
+      release_.set_value();
+    }
+  }
+
+ private:
+  std::promise<void> release_;
+  bool resumed_{false};
+};
+
 class InspectorAnimationControllerTest : public ::testing::Test {
  public:
   void SetUp() override {
@@ -82,8 +111,13 @@ class InspectorAnimationControllerTest : public ::testing::Test {
     ui_thread_ = std::make_unique<fml::Thread>("ui");
     devtool_mediator_->ui_task_runner_ = ui_thread_->GetTaskRunner();
     devtool_mediator_->default_task_runner_ = ui_thread_->GetTaskRunner();
-    controller_ = std::make_unique<devtool::InspectorAnimationController>(
-        devtool_mediator_);
+    tasm_thread_ = std::make_unique<fml::Thread>("animation_tasm");
+    devtool_mediator_->tasm_task_runner_ = tasm_thread_->GetTaskRunner();
+    executor_ =
+        std::make_shared<devtool::InspectorTasmExecutor>(devtool_mediator_, -1);
+    controller_ = executor_->animation_controller_.get();
+    observer_ = std::make_unique<devtool::InspectorAnimationObserverImpl>(
+        executor_, devtool_mediator_);
   }
 
   std::shared_ptr<animation::Animation> BuildAnimationForSnapshot(
@@ -159,8 +193,23 @@ class InspectorAnimationControllerTest : public ::testing::Test {
     ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
   }
 
+  void RunOnTasm(base::closure task) {
+    auto done = std::make_shared<std::promise<void>>();
+    auto future = done->get_future();
+    tasm_thread_->GetTaskRunner()->PostTask(
+        [done, task = std::move(task)]() mutable {
+          task();
+          done->set_value();
+        });
+    ASSERT_EQ(future.wait_for(std::chrono::seconds(5)),
+              std::future_status::ready);
+  }
+
  protected:
-  std::unique_ptr<devtool::InspectorAnimationController> controller_;
+  std::unique_ptr<fml::Thread> tasm_thread_;
+  std::shared_ptr<devtool::InspectorTasmExecutor> executor_;
+  std::unique_ptr<devtool::InspectorAnimationObserverImpl> observer_;
+  devtool::InspectorAnimationController* controller_;
   std::shared_ptr<devtool::LynxDevToolMediator> devtool_mediator_;
   std::shared_ptr<devtool::MessageSender> message_sender_;
   std::shared_ptr<lynx::testing::LynxDevToolNGMock> devtools_ng_;
@@ -313,8 +362,8 @@ TEST_F(InspectorAnimationControllerTest,
   auto second =
       BuildAnimationForSnapshot("corePulse", 1200, {0.0, 1.0},
                                 animation::Animation::Origin::kCSSAnimation);
-  controller_->OnAnimationCreated(first.get());
-  controller_->OnAnimationCreated(second.get());
+  controller_->OnAnimationCreated(first->id(), first->weak_from_this());
+  controller_->OnAnimationCreated(second->id(), second->weak_from_this());
 
   auto event_sender = std::make_shared<RecordingMessageSender>();
   devtools_ng_->message_sender_ = event_sender;
@@ -356,8 +405,8 @@ TEST_F(InspectorAnimationControllerTest,
       "orbit", 3000, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
   auto second = BuildAnimationForSnapshot(
       "pulse", 3000, {0.0, 1.0}, animation::Animation::Origin::kWebAnimation);
-  controller_->OnAnimationCreated(first.get());
-  controller_->OnAnimationCreated(second.get());
+  controller_->OnAnimationCreated(first->id(), first->weak_from_this());
+  controller_->OnAnimationCreated(second->id(), second->weak_from_this());
 
   auto response_sender = std::make_shared<RecordingMessageSender>();
   Json::Value message(Json::objectValue);
@@ -384,7 +433,7 @@ TEST_F(InspectorAnimationControllerTest,
        SeekAnimationsRejectsInvalidBatchAtomically) {
   auto animation = BuildAnimationForSnapshot(
       "orbit", 3000, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
-  controller_->OnAnimationCreated(animation.get());
+  controller_->OnAnimationCreated(animation->id(), animation->weak_from_this());
   const auto original_start_time = animation->start_time();
   const auto original_state = animation->GetState();
 
@@ -452,8 +501,8 @@ TEST_F(InspectorAnimationControllerTest,
   // Give both Inspector clocks the same origin before testing batch controls.
   first->SeekTo(fml::TimeDelta::Zero(), start_time);
   second->SeekTo(fml::TimeDelta::Zero(), start_time);
-  controller_->OnAnimationCreated(first.get());
-  controller_->OnAnimationCreated(second.get());
+  controller_->OnAnimationCreated(first->id(), first->weak_from_this());
+  controller_->OnAnimationCreated(second->id(), second->weak_from_this());
 
   auto response_sender = std::make_shared<RecordingMessageSender>();
   Json::Value message(Json::objectValue);
@@ -494,7 +543,7 @@ TEST_F(InspectorAnimationControllerTest,
   animation->Play(false);
   auto start_time = fml::TimePoint::Now();
   animation->SampleAt(start_time);
-  controller_->OnAnimationCreated(animation.get());
+  controller_->OnAnimationCreated(animation->id(), animation->weak_from_this());
 
   auto response_sender = std::make_shared<RecordingMessageSender>();
   Json::Value message(Json::objectValue);
@@ -541,7 +590,7 @@ TEST_F(InspectorAnimationControllerTest,
        ReleaseAnimationsRejectsInvalidBatchAtomically) {
   auto animation = BuildAnimationForSnapshot(
       "orbit", 3000, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
-  controller_->OnAnimationCreated(animation.get());
+  controller_->OnAnimationCreated(animation->id(), animation->weak_from_this());
 
   auto response_sender = std::make_shared<RecordingMessageSender>();
   Json::Value release(Json::objectValue);
@@ -567,10 +616,10 @@ TEST_F(InspectorAnimationControllerTest,
 }
 
 TEST_F(InspectorAnimationControllerTest,
-       ReleaseAnimationsSurvivesLateStartedCallback) {
+       ReleaseAnimationsSurvivesLateCreatedAndStartedCallbacks) {
   auto animation = BuildAnimationForSnapshot(
       "orbit", 3000, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
-  controller_->OnAnimationCreated(animation.get());
+  controller_->OnAnimationCreated(animation->id(), animation->weak_from_this());
 
   auto response_sender = std::make_shared<RecordingMessageSender>();
   Json::Value release(Json::objectValue);
@@ -582,10 +631,9 @@ TEST_F(InspectorAnimationControllerTest,
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   EXPECT_TRUE(response_sender->json_messages_[0].second.isMember("result"));
 
-  // Created may be missed while the observer is being installed. A later
-  // started callback is normally the fallback registration point, but must not
-  // resurrect an ID the frontend has already released.
-  controller_->OnAnimationStarted(animation.get());
+  // Later lifecycle notifications must not register a released ID again.
+  controller_->OnAnimationCreated(animation->id(), animation->weak_from_this());
+  controller_->OnAnimationStarted(BuildAnimationSnapshot(animation.get()));
 
   response_sender->json_messages_.clear();
   Json::Value get_current_time(Json::objectValue);
@@ -597,6 +645,253 @@ TEST_F(InspectorAnimationControllerTest,
   ASSERT_EQ(response_sender->json_messages_.size(), 1U);
   EXPECT_EQ(response_sender->json_messages_[0].second["error"]["code"].asInt(),
             -32602);
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       StartedNotificationDoesNotRestoreClearedAnimations) {
+  auto animation = BuildAnimationForSnapshot(
+      "orbit", 3000, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
+  controller_->OnAnimationCreated(animation->id(), animation->weak_from_this());
+  auto snapshot = BuildAnimationSnapshot(animation.get());
+
+  controller_->Clear();
+  controller_->OnAnimationStarted(snapshot);
+
+  EXPECT_TRUE(controller_->animation_registry_.empty());
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       WorkerNotificationsDispatchToTasmWithCapturedSnapshots) {
+  auto animation = BuildAnimationForSnapshot(
+      "orbit", 2400, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
+  auto sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = sender;
+  RunOnTasm([this] { controller_->set_enabled(true); });
+  ScopedTaskRunnerPause pause(tasm_thread_->GetTaskRunner());
+
+  std::thread worker([&] {
+    observer_->OnAnimationCreated(animation.get());
+    observer_->OnAnimationStarted(animation.get());
+    observer_->OnAnimationUpdated(animation.get());
+  });
+  worker.join();
+  EXPECT_TRUE(controller_->animation_registry_.empty());
+  // A deferred event must retain callback-time metadata, not reread this value.
+  animation->animation_data()->duration = 4800;
+  pause.Resume();
+  RunOnTasm([&] {
+    ASSERT_EQ(controller_->animation_registry_.size(), 1U);
+    EXPECT_EQ(controller_->animation_registry_.at(animation->id()).lock(),
+              animation);
+  });
+  FlushDevtoolTasks();
+  ASSERT_EQ(sender->json_messages_.size(), 3U);
+  EXPECT_EQ(sender->json_messages_[0].second["method"].asString(),
+            "Animation.animationCreated");
+  EXPECT_EQ(sender->json_messages_[1].second["method"].asString(),
+            "Animation.animationStarted");
+  EXPECT_EQ(sender->json_messages_[2].second["method"].asString(),
+            "Animation.animationUpdated");
+  EXPECT_EQ(sender->json_messages_[1]
+                .second["params"]["animation"]["source"]["duration"]
+                .asInt(),
+            2400);
+  EXPECT_EQ(sender->json_messages_[2]
+                .second["params"]["animation"]["source"]["duration"]
+                .asInt(),
+            2400);
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       PendingNotificationsDoNotRetainDestroyedAnimations) {
+  auto animation = BuildAnimationForSnapshot(
+      "orbit", 2400, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
+  std::weak_ptr<animation::Animation> weak = animation;
+  auto sender = std::make_shared<RecordingMessageSender>();
+  devtools_ng_->message_sender_ = sender;
+  RunOnTasm([this] { controller_->set_enabled(true); });
+  ScopedTaskRunnerPause pause(tasm_thread_->GetTaskRunner());
+  std::thread worker([&] {
+    observer_->OnAnimationCreated(animation.get());
+    observer_->OnAnimationStarted(animation.get());
+    observer_->OnAnimationCanceled(animation.get());
+  });
+  worker.join();
+  animation.reset();
+  EXPECT_TRUE(weak.expired());
+  pause.Resume();
+  RunOnTasm([this] { EXPECT_TRUE(controller_->animation_registry_.empty()); });
+  FlushDevtoolTasks();
+  ASSERT_EQ(sender->json_messages_.size(), 3U);
+  EXPECT_EQ(sender->json_messages_.back().second["method"].asString(),
+            "Animation.animationCanceled");
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       TasmCancellationDoesNotOvertakeWorkerCreation) {
+  auto animation = BuildAnimationForSnapshot(
+      "orbit", 2400, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
+  RunOnTasm([&] {
+    std::thread worker([&] { observer_->OnAnimationCreated(animation.get()); });
+    worker.join();
+    observer_->OnAnimationCanceled(animation.get());
+  });
+  RunOnTasm([this] { EXPECT_TRUE(controller_->animation_registry_.empty()); });
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       ConcurrentWorkersRegisterAndCancelDistinctAnimations) {
+  constexpr size_t kWorkerCount = 4;
+  constexpr size_t kAnimationsPerWorker = 64;
+  std::vector<std::shared_ptr<animation::Animation>> animations;
+  for (size_t i = 0; i < kWorkerCount * kAnimationsPerWorker; ++i) {
+    animations.push_back(
+        std::make_shared<animation::Animation>(base::String("orbit")));
+  }
+  std::vector<std::thread> workers;
+  for (size_t worker = 0; worker < kWorkerCount; ++worker) {
+    workers.emplace_back([&, worker] {
+      for (size_t i = worker * kAnimationsPerWorker;
+           i < (worker + 1) * kAnimationsPerWorker; ++i) {
+        observer_->OnAnimationCreated(animations[i].get());
+        if (i % 2 == 0) {
+          observer_->OnAnimationCanceled(animations[i].get());
+        }
+      }
+    });
+  }
+  for (auto& worker : workers) {
+    worker.join();
+  }
+  RunOnTasm([&] {
+    EXPECT_EQ(controller_->animation_registry_.size(), animations.size() / 2);
+    for (size_t i = 0; i < animations.size(); ++i) {
+      EXPECT_EQ(controller_->animation_registry_.count(animations[i]->id()),
+                i % 2);
+    }
+  });
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       ExpiredRegistryEntriesAreRejectedAndPrunedOnEnable) {
+  auto animation = BuildAnimationForSnapshot(
+      "orbit", 2400, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
+  const auto id = std::to_string(animation->id());
+  controller_->OnAnimationCreated(animation->id(), animation->weak_from_this());
+  animation.reset();
+  auto sender = std::make_shared<RecordingMessageSender>();
+  Json::Value message(Json::objectValue);
+  message["id"] = 216;
+  message["params"]["id"] = id;
+  message["params"]["animations"] = Json::Value(Json::arrayValue);
+  message["params"]["animations"].append(id);
+  message["params"]["currentTime"] = 100;
+  message["params"]["paused"] = true;
+  controller_->GetCurrentTime(MakeResponder(sender, message),
+                              message["params"]);
+  controller_->SeekAnimations(MakeResponder(sender, message),
+                              message["params"]);
+  controller_->SetPaused(MakeResponder(sender, message), message["params"]);
+  ASSERT_EQ(sender->json_messages_.size(), 3U);
+  for (const auto& response : sender->json_messages_) {
+    EXPECT_EQ(response.second["error"]["code"].asInt(), -32602);
+  }
+  controller_->Enable(MakeResponder(sender, message), message["params"]);
+  EXPECT_TRUE(controller_->animation_registry_.empty());
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       TeardownClearFollowsPendingLifecycleNotifications) {
+  auto animation = BuildAnimationForSnapshot(
+      "orbit", 2400, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
+  RunOnTasm([&] {
+    std::thread worker([&] { observer_->OnAnimationCreated(animation.get()); });
+    worker.join();
+    executor_->OnElementManagerWillDestroy();
+  });
+  RunOnTasm([this] { EXPECT_TRUE(controller_->animation_registry_.empty()); });
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       PendingNotificationsDoNotRetainExecutor) {
+  auto animation = BuildAnimationForSnapshot(
+      "orbit", 2400, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
+  std::weak_ptr<devtool::InspectorTasmExecutor> weak = executor_;
+  ScopedTaskRunnerPause pause(tasm_thread_->GetTaskRunner());
+  observer_->OnAnimationCreated(animation.get());
+  observer_->OnAnimationStarted(animation.get());
+  observer_->OnAnimationUpdated(animation.get());
+  observer_->OnAnimationCanceled(animation.get());
+  executor_.reset();
+  controller_ = nullptr;
+  EXPECT_TRUE(weak.expired());
+  pause.Resume();
+  RunOnTasm([] {});
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       ObserverDoesNotRetainOrDispatchWithoutMediator) {
+  auto animation = BuildAnimationForSnapshot(
+      "orbit", 2400, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
+  std::weak_ptr<devtool::LynxDevToolMediator> weak = devtool_mediator_;
+  devtool_mediator_.reset();
+  EXPECT_TRUE(weak.expired());
+  std::thread worker([&] {
+    observer_->OnAnimationCreated(animation.get());
+    observer_->OnAnimationStarted(animation.get());
+    observer_->OnAnimationUpdated(animation.get());
+    observer_->OnAnimationCanceled(animation.get());
+  });
+  worker.join();
+  RunOnTasm([this] { EXPECT_TRUE(controller_->animation_registry_.empty()); });
+}
+
+TEST_F(InspectorAnimationControllerTest,
+       CdpCommandsOnTasmDoNotOvertakeWorkerNotifications) {
+  auto animation = BuildAnimationForSnapshot(
+      "orbit", 2400, {0.0, 1.0}, animation::Animation::Origin::kCSSAnimation);
+  devtool_mediator_->element_executor_ = executor_;
+  auto sender = std::make_shared<RecordingMessageSender>();
+  Json::Value message(Json::objectValue);
+  message["id"] = 217;
+  message["params"]["id"] = std::to_string(animation->id());
+  message["params"]["animations"] = Json::Value(Json::arrayValue);
+  message["params"]["animations"].append(std::to_string(animation->id()));
+  message["params"]["currentTime"] = 100;
+  message["params"]["paused"] = true;
+  std::vector<std::shared_ptr<devtool::CDPResponder>> responders;
+  for (int i = 0; i < 6; ++i) {
+    responders.push_back(
+        std::make_shared<devtool::CDPResponder>(sender, 217 + i));
+  }
+  RunOnTasm([&] {
+    // Created is queued behind this running TASM task. Every CDP command below
+    // must also post, rather than execute inline before that registration.
+    std::thread worker([&] { observer_->OnAnimationCreated(animation.get()); });
+    worker.join();
+    devtool_mediator_->AnimationEnable(responders[0], message["params"]);
+    devtool_mediator_->AnimationGetCurrentTime(responders[1],
+                                               message["params"]);
+    devtool_mediator_->AnimationSeekAnimations(responders[2],
+                                               message["params"]);
+    devtool_mediator_->AnimationSetPaused(responders[3], message["params"]);
+    devtool_mediator_->AnimationReleaseAnimations(responders[4],
+                                                  message["params"]);
+    devtool_mediator_->AnimationDisable(responders[5], message["params"]);
+    EXPECT_TRUE(sender->json_messages_.empty());
+    EXPECT_TRUE(controller_->animation_registry_.empty());
+  });
+  RunOnTasm([&] {
+    ASSERT_EQ(sender->json_messages_.size(), 6U);
+    for (const auto& response : sender->json_messages_) {
+      EXPECT_TRUE(response.second.isMember("result"));
+      EXPECT_FALSE(response.second.isMember("error"));
+    }
+    EXPECT_EQ(animation->GetState(), animation::Animation::State::kPause);
+    EXPECT_TRUE(controller_->animation_registry_.empty());
+    EXPECT_FALSE(controller_->enabled());
+  });
+  FlushDevtoolTasks();
 }
 
 }  // namespace

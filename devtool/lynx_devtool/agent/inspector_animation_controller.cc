@@ -322,74 +322,66 @@ Json::Value InspectorAnimationController::BuildAnimationSnapshot(
 }
 
 void InspectorAnimationController::Clear() {
-  // Navigation or teardown invalidates every live Animation pointer.
+  // Document update or destruction drops all animation records.
   animation_registry_.clear();
   released_animation_ids_.clear();
 }
 
 void InspectorAnimationController::OnAnimationCreated(
-    animation::Animation* animation) {
-  if (animation == nullptr) {
-    return;
+    int64_t id, std::weak_ptr<animation::Animation>&& animation) {
+  if (released_animation_ids_.find(id) == released_animation_ids_.end()) {
+    animation_registry_[id] = std::move(animation);
   }
-  animation_registry_[animation->id()] = animation;
   Json::Value params(Json::objectValue);
-  params["id"] = std::to_string(animation->id());
+  params["id"] = std::to_string(id);
   SendEvent("Animation.animationCreated", params);
 }
 
 void InspectorAnimationController::OnAnimationStarted(
-    animation::Animation* animation) {
-  if (animation == nullptr) {
-    return;
-  }
-  // Preserve the late-observer fallback unless the frontend has released this
-  // stable ID. Animation IDs are never reused, so release must remain
-  // effective across a later started callback.
-  if (released_animation_ids_.find(animation->id()) ==
-      released_animation_ids_.end()) {
-    animation_registry_[animation->id()] = animation;
-  }
+    const Json::Value& snapshot) {
   Json::Value params(Json::objectValue);
-  params["animation"] = BuildAnimationSnapshot(animation);
+  params["animation"] = snapshot;
   SendEvent("Animation.animationStarted", params);
 }
 
 void InspectorAnimationController::OnAnimationUpdated(
-    animation::Animation* animation) {
-  if (animation == nullptr) {
-    return;
-  }
+    const Json::Value& snapshot) {
   Json::Value params(Json::objectValue);
-  params["animation"] = BuildAnimationSnapshot(animation);
+  params["animation"] = snapshot;
   SendEvent("Animation.animationUpdated", params);
 }
 
-void InspectorAnimationController::OnAnimationCanceled(
-    animation::Animation* animation) {
-  if (animation == nullptr) {
-    return;
-  }
+void InspectorAnimationController::OnAnimationCanceled(int64_t id) {
+  animation_registry_.erase(id);
+  released_animation_ids_.erase(id);
   Json::Value params(Json::objectValue);
-  params["id"] = std::to_string(animation->id());
+  params["id"] = std::to_string(id);
   SendEvent("Animation.animationCanceled", params);
-  animation_registry_.erase(animation->id());
-  released_animation_ids_.erase(animation->id());
 }
 
 void InspectorAnimationController::Enable(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   enabled_ = true;
-  // Backfill both lifecycle events so the panel can show animations that
-  // started before the Animation domain was enabled.
-  for (const auto& entry : animation_registry_) {
+  // Retain live animations for the whole backfill and prune expired records.
+  std::vector<std::shared_ptr<animation::Animation>> animations;
+  for (auto it = animation_registry_.begin();
+       it != animation_registry_.end();) {
+    if (auto animation = it->second.lock()) {
+      animations.push_back(std::move(animation));
+      ++it;
+    } else {
+      it = animation_registry_.erase(it);
+    }
+  }
+  // Backfill created events before started events.
+  for (const auto& animation : animations) {
     Json::Value created_params(Json::objectValue);
-    created_params["id"] = std::to_string(entry.first);
+    created_params["id"] = std::to_string(animation->id());
     SendEvent("Animation.animationCreated", created_params);
   }
-  for (const auto& entry : animation_registry_) {
+  for (const auto& animation : animations) {
     Json::Value started_params(Json::objectValue);
-    started_params["animation"] = BuildAnimationSnapshot(entry.second);
+    started_params["animation"] = BuildAnimationSnapshot(animation.get());
     SendEvent("Animation.animationStarted", started_params);
   }
   responder->SendSuccess();
@@ -414,13 +406,15 @@ void InspectorAnimationController::GetCurrentTime(
     return;
   }
   const auto it = animation_registry_.find(id);
-  if (it == animation_registry_.end() || it->second == nullptr) {
+  auto animation =
+      it == animation_registry_.end() ? nullptr : it->second.lock();
+  if (!animation) {
     responder->SendError(CDPErrorCode::InvalidParams, "Animation not found.");
     return;
   }
   Json::Value result(Json::objectValue);
   result["currentTime"] =
-      static_cast<Json::Int64>(it->second->GetCurrentTime().ToMilliseconds());
+      static_cast<Json::Int64>(animation->GetCurrentTime().ToMilliseconds());
   responder->SendSuccess(result);
 }
 
@@ -441,7 +435,7 @@ void InspectorAnimationController::SeekAnimations(
                          "'currentTime' must be a finite, non-negative time.");
     return;
   }
-  std::vector<animation::Animation*> animations;
+  std::vector<std::shared_ptr<animation::Animation>> animations;
   std::unordered_set<int64_t> unique_ids;
   for (const auto& value : params["animations"]) {
     int64_t id = 0;
@@ -451,19 +445,21 @@ void InspectorAnimationController::SeekAnimations(
       return;
     }
     const auto it = animation_registry_.find(id);
-    if (it == animation_registry_.end() || it->second == nullptr) {
+    auto animation =
+        it == animation_registry_.end() ? nullptr : it->second.lock();
+    if (!animation) {
       responder->SendError(CDPErrorCode::InvalidParams, "Animation not found.");
       return;
     }
     if (unique_ids.insert(id).second) {
-      animations.push_back(it->second);
+      animations.push_back(std::move(animation));
     }
   }
   // Validate the whole batch before mutating it, then use one reference time
   // so all animations land on the requested timeline position together.
   const auto current_time = fml::TimeDelta::FromMillisecondsF(current_time_ms);
   const auto reference_time = fml::TimePoint::Now();
-  for (auto* animation : animations) {
+  for (const auto& animation : animations) {
     animation->SeekTo(current_time, reference_time);
   }
   responder->SendSuccess();
@@ -477,7 +473,7 @@ void InspectorAnimationController::SetPaused(
                          "Missing or invalid Animation parameters.");
     return;
   }
-  std::vector<animation::Animation*> animations;
+  std::vector<std::shared_ptr<animation::Animation>> animations;
   std::unordered_set<int64_t> unique_ids;
   for (const auto& value : params["animations"]) {
     int64_t id = 0;
@@ -487,19 +483,21 @@ void InspectorAnimationController::SetPaused(
       return;
     }
     const auto it = animation_registry_.find(id);
-    if (it == animation_registry_.end() || it->second == nullptr) {
+    auto animation =
+        it == animation_registry_.end() ? nullptr : it->second.lock();
+    if (!animation) {
       responder->SendError(CDPErrorCode::InvalidParams, "Animation not found.");
       return;
     }
     if (unique_ids.insert(id).second) {
-      animations.push_back(it->second);
+      animations.push_back(std::move(animation));
     }
   }
   // Validate the whole batch before changing any state. A shared reference
   // time keeps every animation in the group paused or resumed in lockstep.
   const bool paused = params["paused"].asBool();
   const auto reference_time = fml::TimePoint::Now();
-  for (auto* animation : animations) {
+  for (const auto& animation : animations) {
     animation->SetPaused(paused, reference_time);
   }
   responder->SendSuccess();
