@@ -108,8 +108,8 @@ class MockEventDelegate : public EventDelegate {
                Value& additional_params),
               (override));
 
-  void OnTouchEvent(const std::string&, int, float, float, float,
-                    float) override {}
+  void OnTouchEvent(const std::string&, int, float, float, float, float,
+                    int) override {}
   void OnMouseEvent(const std::string&, int, int, int, float, float, float,
                     float, float) override {}
   void OnWheelEvent(const std::string&, int, float, float, float, float, float,

@@ -367,6 +367,8 @@ void PageView::OnDestroy() {
   animation_handler_->ClearCallbacks();
   DestroyAllChildren();
   touch_view_map_.clear();
+  single_touch_pointer_id_.reset();
+  single_touch_target_id_.reset();
   active_touch_pointer_id_.reset();
   active_touch_views_.clear();
 #if defined(OS_WIN) || defined(OS_MAC)
@@ -939,7 +941,7 @@ void PageView::HandleA11yTapEvent(BaseView* view) {
   if (event_delegate_) {
     event_delegate_->OnTouchEvent(
         "tap", view->id(), local_bounds.Center().x(), local_bounds.Center().y(),
-        global_bounds.Center().x(), global_bounds.Center().y());
+        global_bounds.Center().x(), global_bounds.Center().y(), 0);
   }
 
   OnA11yTap();
@@ -953,7 +955,7 @@ void PageView::HandleA11yLongPressEvent(BaseView* view) {
     event_delegate_->OnTouchEvent(
         "longpress", view->id(), local_bounds.Center().x(),
         local_bounds.Center().y(), global_bounds.Center().x(),
-        global_bounds.Center().y());
+        global_bounds.Center().y(), 0);
   }
 
   OnA11yLongPress();
@@ -1662,10 +1664,57 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
         static_cast<NativeView*>(top_view)->SendMotionEvent(
             event, transformed_position);
       }
+      // Embedded native views still receive every physical pointer.
+      if (is_raw_events && !enable_multi_touch_) {
+        if (type == kClayEventTypeTouchStart) {
+          if (touch_view_map_.size() != 1) {
+            return;
+          }
+          single_touch_pointer_id_ = event.pointer_id;
+          single_touch_target_id_ = top_view->id();
+        } else if (type == kClayEventTypeTouchEnd ||
+                   type == kClayEventTypeTouchCancel) {
+          if (!touch_view_map_.empty()) {
+            if (single_touch_pointer_id_ == event.pointer_id) {
+              single_touch_pointer_id_ =
+                  std::min_element(touch_view_map_.begin(),
+                                   touch_view_map_.end(),
+                                   [](const auto& lhs, const auto& rhs) {
+                                     return lhs.first < rhs.first;
+                                   })
+                      ->first;
+            }
+            return;
+          }
+        } else if (single_touch_pointer_id_ != event.pointer_id) {
+          return;
+        }
+
+        // Native single-touch dispatch keeps the initial target until the last
+        // pointer is released, even if the first physical pointer lifts
+        // earlier.
+        const auto target_id = single_touch_target_id_;
+        if (type == kClayEventTypeTouchEnd ||
+            type == kClayEventTypeTouchCancel) {
+          single_touch_pointer_id_.reset();
+          single_touch_target_id_.reset();
+        }
+        auto* single_touch_target =
+            target_id ? render_delegate_->FindViewById(*target_id) : nullptr;
+        if (!single_touch_target || !single_touch_target->attach_to_tree()) {
+          return;
+        }
+        // Preserve the existing coordinate conversion for an unchanged target.
+        if (top_view != single_touch_target) {
+          transformed_position = single_touch_target->GetPointBySelf(position);
+        }
+        top_view = single_touch_target;
+      }
       if (event_delegate_) {
-        event_delegate_->OnTouchEvent(
-            EventTypeToString(type), top_view->id(), transformed_position.x(),
-            transformed_position.y(), position.x(), position.y());
+        event_delegate_->OnTouchEvent(EventTypeToString(type), top_view->id(),
+                                      transformed_position.x(),
+                                      transformed_position.y(), position.x(),
+                                      position.y(), event.pointer_id);
       }
     } break;
     case PointerEvent::DeviceType::kMouse: {
@@ -2348,6 +2397,8 @@ void PageView::ResetPageView(bool recycle) {
   animation_handler_->ClearCallbacks();
   SetupAnimationCallback();
   touch_view_map_.clear();
+  single_touch_pointer_id_.reset();
+  single_touch_target_id_.reset();
   active_touch_pointer_id_.reset();
   active_touch_views_.clear();
 #if defined(OS_WIN) || defined(OS_MAC)

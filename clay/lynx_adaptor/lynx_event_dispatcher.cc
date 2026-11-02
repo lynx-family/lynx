@@ -4,6 +4,7 @@
 
 #include "clay/lynx_adaptor/lynx_event_dispatcher.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -220,10 +221,76 @@ void AddKeyModifierProperties(clay::Value::Map& dict) {
 // clay::EventDelegate override
 void LynxEventDispatcher::OnTouchEvent(const std::string& event_name, int tag,
                                        float x, float y, float page_x,
-                                       float page_y) {
-  if (engine_proxy_) {
-    engine_proxy_->SendTouchEvent(event_name, tag, x, y, x, y, page_x, page_y);
+                                       float page_y, int pointer_id) {
+  if (!engine_proxy_) {
+    return;
   }
+  const bool is_raw_event =
+      event_name == "touchstart" || event_name == "touchmove" ||
+      event_name == "touchend" || event_name == "touchcancel";
+  if (!enable_multi_touch_ || !is_raw_event) {
+    engine_proxy_->SendTouchEvent(event_name, tag, x, y, x, y, page_x, page_y);
+    return;
+  }
+
+  auto touch =
+      std::find_if(active_touch_targets_.begin(), active_touch_targets_.end(),
+                   [pointer_id](const auto& target) {
+                     return target.pointer_id == pointer_id;
+                   });
+  if (event_name == "touchstart" && touch == active_touch_targets_.end()) {
+    // Core uses identifier zero for compatible primary-touch coordinates.
+    int identifier = 0;
+    while (std::any_of(active_touch_targets_.begin(),
+                       active_touch_targets_.end(),
+                       [identifier](const auto& target) {
+                         return target.identifier == identifier;
+                       })) {
+      ++identifier;
+    }
+    active_touch_targets_.push_back({pointer_id, tag, identifier});
+    touch = active_touch_targets_.end() - 1;
+  } else if (touch == active_touch_targets_.end()) {
+    return;
+  }
+
+  const bool is_terminal_event =
+      event_name == "touchend" || event_name == "touchcancel";
+  if (touch_stream_cancelled_) {
+    if (is_terminal_event) {
+      active_touch_targets_.erase(touch);
+      touch_stream_cancelled_ = !active_touch_targets_.empty();
+    }
+    return;
+  }
+
+  Value::Map targets;
+  if (event_name == "touchcancel") {
+    // Core cancels the entire stream before clearing its active pointers.
+    for (const auto& pointer_target : active_touch_targets_) {
+      targets[std::to_string(pointer_target.tag)] = Value(Value::Array{});
+    }
+    // A cancel ends its own contact; other physical contacts must drain before
+    // another stream can begin, even though Core has already cancelled them.
+    active_touch_targets_.erase(touch);
+    touch_stream_cancelled_ = !active_touch_targets_.empty();
+  } else {
+    Value point{Value(touch->identifier),
+                Value(x),
+                Value(y),
+                Value(page_x),
+                Value(page_y),
+                Value(x),
+                Value(y)};
+    Value::Array points;
+    points.emplace_back(std::move(point));
+    targets[std::to_string(tag)] = Value(std::move(points));
+    if (is_terminal_event) {
+      active_touch_targets_.erase(touch);
+    }
+  }
+  engine_proxy_->SendTouchEvent(event_name,
+                                lynx::ClayValue(Value(std::move(targets))));
 }
 
 void LynxEventDispatcher::OnMouseEvent(const std::string& event_name,
