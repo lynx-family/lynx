@@ -12,6 +12,8 @@ starlight_layout_sources = [
   "layout/box_layout_algorithm.h",
   "layout/cache_manager.cc",
   "layout/cache_manager.h",
+  "layout/compose_row_column_layout_algorithm.cc",
+  "layout/compose_row_column_layout_algorithm.h",
   "layout/container_node.cc",
   "layout/container_node.h",
   "layout/direction_selector.h",

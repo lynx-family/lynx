@@ -6,6 +6,7 @@
 #define CORE_RENDERER_STARLIGHT_LAYOUT_LAYOUT_ALGORITHM_H_
 
 #include <array>
+#include <optional>
 
 #include "core/renderer/starlight/layout/box_info.h"
 #include "core/renderer/starlight/layout/direction_selector.h"
@@ -34,8 +35,9 @@ class LayoutAlgorithm : public DirectionSelector {
 
   void Initialize(const Constraints& constraints,
                   const SLNodeSet* fixed_node_set = nullptr);
+  void InitializeWithCompose(const ComposeConstraints& constraints);
   FloatSize SizeDetermination();
-  void Alignment();
+  virtual void Alignment();
 
   void Update(const Constraints& constraints);
 
@@ -72,6 +74,8 @@ class LayoutAlgorithm : public DirectionSelector {
   const LayoutComputedStyle* container_style_;
 
   Constraints container_constraints_;
+  // Content-box bounds retained for Compose measurement and placement.
+  std::optional<ComposeConstraints> compose_constraints_;
 
   LayoutItems sticky_items;
   LayoutItems absolute_or_fixed_items_;
