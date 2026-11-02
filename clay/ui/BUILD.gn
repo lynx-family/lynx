@@ -184,6 +184,8 @@ if (enable_unittests) {
       defines += [ "_USE_MATH_DEFINES" ]
     }
     sources = [
+      "../lynx_adaptor/lynx_event_dispatcher.cc",
+      "../lynx_adaptor/lynx_event_dispatcher_unittests.cc",
       "common/attribute_utils_unittests.cc",
       "component/base_image_view_unittests.cc",
       "component/base_view_unittests.cc",

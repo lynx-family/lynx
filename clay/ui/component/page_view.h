@@ -504,6 +504,7 @@ class PageView : public BaseView,
 
   bool AlignMouseEventWithW3C() const { return align_mouse_event_with_w3c_; }
   void SetEnablePointerEvents(bool enabled);
+  void SetEnableMultiTouch(bool enabled) { enable_multi_touch_ = enabled; }
   void SetAlignMouseEventWithW3C(bool is_aligned) {
     align_mouse_event_with_w3c_ = is_aligned;
   }
@@ -667,6 +668,10 @@ class PageView : public BaseView,
   // view, regardless of whether the touch point remains within the view's
   // boundaries.
   std::unordered_map<int, int> touch_view_map_;
+  // Standalone delegates retain raw pointer delivery until page config is set.
+  bool enable_multi_touch_ = true;
+  std::optional<int> single_touch_pointer_id_;
+  std::optional<int> single_touch_target_id_;
   // Only the initial touch drives :active. Its pointer ID prevents unrelated
   // touch end or cancel events from clearing the active view chain.
   std::optional<int> active_touch_pointer_id_;
