@@ -10,6 +10,7 @@
 #include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
 #include "build/build_config.h"
+#include "core/event/event_dispatcher.h"
 #include "core/event/pointer_event.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/dom/vdom/radon/radon_dispatch_option.h"
@@ -61,6 +62,85 @@ void TouchEventHandlerTest::SetUp() {
 }
 
 void TouchEventHandlerTest::TearDown() {}
+
+TEST_F(TouchEventHandlerTest, RefactoredTouchesBelongToElementManager) {
+  auto* manager = tasm_->page_proxy()->element_manager().get();
+  auto other_manager = std::make_unique<ElementManager>(
+      std::make_unique<MockPaintingContext>(), delegate_.get(),
+      manager->GetLynxEnvConfig());
+  auto first = manager->CreateFiberElement(base::String("view"));
+  auto sibling = manager->CreateFiberElement(base::String("view"));
+  auto other = other_manager->CreateFiberElement(base::String("view"));
+  first->MarkAttached();
+  sibling->MarkAttached();
+  other->MarkAttached();
+  auto dispatch = [](Element& target, const char* name, int identifier) {
+    auto point = lepus::CArray::Create();
+    point->emplace_back(identifier);
+    for (int i = 0; i < 6; ++i) {
+      point->emplace_back(0);
+    }
+    auto points = lepus::CArray::Create();
+    points->emplace_back(std::move(point));
+    auto params = lepus::Dictionary::Create();
+    params->SetValue(std::to_string(target.impl_id()).c_str(),
+                     lepus::Value(std::move(points)));
+    auto event =
+        fml::MakeRefCounted<event::TouchEvent>(name, lepus::Value(params));
+    event::EventDispatcher::DispatchEvent(target, event);
+    return event;
+  };
+
+  dispatch(*first, EVENT_TOUCH_START, 0);
+  auto sibling_start = dispatch(*sibling, EVENT_TOUCH_START, 1);
+  EXPECT_EQ(sibling_start->detail().GetProperty("touches").GetLength(), 2u);
+  auto other_start = dispatch(*other, EVENT_TOUCH_START, 0);
+  EXPECT_EQ(other_start->detail().GetProperty("touches").GetLength(), 1u);
+
+  dispatch(*first, EVENT_TOUCH_CANCEL, 0);
+  auto other_move = dispatch(*other, EVENT_TOUCH_MOVE, 0);
+  EXPECT_EQ(other_move->detail().GetProperty("touches").GetLength(), 1u);
+
+  // Retained elements and event details can outlive their page owner.
+  other_manager.reset();
+  EXPECT_EQ(other->GetTouchEventState(), nullptr);
+  EXPECT_EQ(other_move->detail().GetProperty("touches").GetLength(), 1u);
+}
+
+TEST_F(TouchEventHandlerTest, LongPressListenerCanDestroyPageState) {
+  auto manager = std::make_unique<ElementManager>(
+      std::make_unique<MockPaintingContext>(), delegate_.get(),
+      tasm_->page_proxy()->element_manager()->GetLynxEnvConfig());
+  auto target = manager->CreateFiberElement(base::String("view"));
+  target->MarkAttached();
+  bool called = false;
+  target->AddEventListener(EVENT_LONG_PRESS,
+                           std::make_shared<event::ClosureEventListener>(
+                               [&manager, &called](lepus::Value) {
+                                 called = true;
+                                 manager.reset();
+                               }));
+  auto event = fml::MakeRefCounted<event::TouchEvent>(EVENT_LONG_PRESS);
+
+  auto result = event::EventDispatcher::DispatchEvent(*target, event);
+  EXPECT_TRUE(called);
+  EXPECT_TRUE(result.consumed);
+  EXPECT_EQ(manager, nullptr);
+  EXPECT_EQ(target->GetTouchEventState(), nullptr);
+  EXPECT_EQ(event->detail().GetProperty("touches").GetLength(), 1u);
+}
+
+TEST_F(TouchEventHandlerTest, MouseDownResetsPageTouchLongPressState) {
+  auto state = tasm_->page_proxy()->element_manager()->GetTouchEventState();
+  state->long_press_consumed = true;
+  touch_event_handler_->long_press_consumed_ = true;
+
+  touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", "mousedown", 0,
+                                          lepus::Dictionary::Create());
+
+  EXPECT_FALSE(state->long_press_consumed);
+  EXPECT_FALSE(touch_event_handler_->long_press_consumed_);
+}
 
 TEST_F(TouchEventHandlerTest, DestroyedAssemblerIgnoresObservedEvents) {
   const int min_level = base::logging::GetMinLogLevel();

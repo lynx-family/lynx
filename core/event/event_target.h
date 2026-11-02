@@ -47,6 +47,8 @@
 namespace lynx {
 namespace event {
 
+struct TouchEventState;
+
 class EventTarget {
  public:
   enum class EventTargetType {
@@ -106,6 +108,8 @@ class EventTarget {
   virtual void HandleGlobalEvent(fml::RefPtr<Event> event) {}
   // Get the switch which controls whether compatible multi touch params.
   virtual bool GetEnableMultiTouchParamsCompatible() { return false; }
+  // Borrow the owning page's state. Non-page targets may leave it unset.
+  virtual TouchEventState* GetTouchEventState() { return nullptr; }
   // Get unit to calculate the position.
   virtual float GetLayoutsUnitPerPx() { return 1.f; }
   // Get the unique id for target.

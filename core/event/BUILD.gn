@@ -40,6 +40,7 @@ unittest_set("event_testset") {
     "event_target_test.cc",
     "event_target_test.h",
     "pointer_event_test.cc",
+    "touch_event_test.cc",
   ]
   public_deps = [
     "../../base/src:base_values",
