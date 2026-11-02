@@ -267,6 +267,105 @@ TEST_F(TouchEventHandlerTest,
                   32.f);
 }
 
+TEST_F(TouchEventHandlerTest,
+       RefactoredTouchCancelRetainsContactsAndResetsStream) {
+  for (bool compatible : {false, true}) {
+    SCOPED_TRACE(compatible);
+    auto config = std::make_shared<PageConfig>();
+    config->SetEnableEventHandleRefactor(true);
+    config->SetEnableMultiTouchParamsCompatible(compatible);
+    tasm_->page_config_ = config;
+    auto* manager = tasm_->page_proxy()->element_manager().get();
+    manager->SetConfig(config);
+    auto target = manager->CreateFiberElement("view");
+    target->MarkAttached();
+    auto other = manager->CreateFiberElement("view");
+    other->MarkAttached();
+    std::vector<lepus::Value> received;
+    const auto dispatch = [&](const std::string& name, int id) {
+      auto params = lepus::Dictionary::Create();
+      const auto ids = name == EVENT_TOUCH_CANCEL ? std::vector<int>{7, 11}
+                                                  : std::vector<int>{id};
+      for (int identifier : ids) {
+        auto point = lepus::CArray::Create();
+        for (int value : {identifier, 10, 20, 10, 20, 1, 2}) {
+          point->emplace_back(value);
+        }
+        auto points = lepus::CArray::Create();
+        points->emplace_back(std::move(point));
+        params->SetValue(std::to_string(identifier == 11 ? other->impl_id()
+                                                         : target->impl_id()),
+                         std::move(points));
+      }
+      touch_event_handler_->HandleTouchEvent(tasm_.get(), "", name,
+                                             EventInfo(lepus::Value(params)));
+    };
+    for (auto* element : {target.get(), other.get()}) {
+      for (const char* name : {EVENT_TOUCH_START, EVENT_TOUCH_MOVE,
+                               EVENT_TOUCH_END, EVENT_TOUCH_CANCEL}) {
+        element->AddEventListener(
+            name, std::make_shared<event::ClosureEventListener>(
+                      [&received](lepus::Value args) {
+                        received.push_back(args.Array()->get(1));
+                      }));
+      }
+    }
+    dispatch(EVENT_TOUCH_START, 7);
+    dispatch(EVENT_TOUCH_START, 11);
+    dispatch(EVENT_TOUCH_CANCEL, 7);
+    EXPECT_EQ(manager->GetTouchEventState()->current_touches.GetLength(), 0u);
+    dispatch(EVENT_TOUCH_START, 9);
+    dispatch(EVENT_TOUCH_MOVE, 9);
+    dispatch(EVENT_TOUCH_END, 9);
+    ASSERT_EQ(received.size(), 7u);
+    EXPECT_EQ(received[0].GetProperty("touches").GetLength(), 1u);
+    EXPECT_EQ(received[1].GetProperty("touches").GetLength(), 2u);
+    for (size_t index : {2u, 3u}) {
+      const auto changed = received[index].GetProperty("changedTouches");
+      ASSERT_EQ(changed.GetLength(), 2u);
+      EXPECT_EQ(changed.GetProperty(0).GetProperty("identifier").Number(), 7);
+      EXPECT_EQ(changed.GetProperty(1).GetProperty("identifier").Number(), 11);
+      EXPECT_EQ(received[index].GetProperty("touches").GetLength(),
+                compatible ? 2u : 0u);
+    }
+    for (size_t index : {4u, 5u}) {
+      const auto touches = received[index].GetProperty("touches");
+      ASSERT_EQ(touches.GetLength(), 1u);
+      EXPECT_EQ(touches.GetProperty(0).GetProperty("identifier").Number(), 9);
+    }
+    EXPECT_EQ(received[6].GetProperty("touches").GetLength(),
+              compatible ? 1u : 0u);
+  }
+}
+
+TEST_F(TouchEventHandlerTest, TouchCancelListenerCanDestroyPageState) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableEventHandleRefactor(true);
+  tasm_->page_config_ = config;
+  auto* manager = tasm_->page_proxy()->element_manager().get();
+  manager->SetConfig(config);
+  auto target = manager->CreateFiberElement("view");
+  target->MarkAttached();
+  auto other = manager->CreateFiberElement("view");
+  other->MarkAttached();
+  int call_count = 0;
+  for (auto* element : {target.get(), other.get()}) {
+    element->AddEventListener(EVENT_TOUCH_CANCEL,
+                              std::make_shared<event::ClosureEventListener>(
+                                  [this, &call_count](lepus::Value) {
+                                    ++call_count;
+                                    tasm_->Destroy();
+                                  }));
+  }
+  auto params = lepus::Dictionary::Create();
+  params->SetValue(std::to_string(target->impl_id()), lepus::CArray::Create());
+  params->SetValue(std::to_string(other->impl_id()), lepus::CArray::Create());
+  touch_event_handler_->HandleTouchEvent(tasm_.get(), "", EVENT_TOUCH_CANCEL,
+                                         EventInfo(lepus::Value(params)));
+  EXPECT_EQ(call_count, 1);
+  EXPECT_EQ(tasm_->page_proxy()->element_manager(), nullptr);
+}
+
 TEST_F(TouchEventHandlerTest, SendGlobalEventToCoreContext) {
   auto* native_context_proxy =
       tasm_->GetContextProxy(runtime::ContextProxy::Type::kNative);
