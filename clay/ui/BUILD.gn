@@ -302,6 +302,7 @@ if (enable_unittests) {
       "shadow/text_layout_reuse_unittests.cc",
       "shadow/text_unittests.cc",
       "testing/test_utils_unittests.cc",
+      "window/pointer_data_packet_converter_unittests.cc",
     ]
     sources += rebase_path(ui_component_unittests_sources, "", "component")
     if (!enable_clay_standalone) {
