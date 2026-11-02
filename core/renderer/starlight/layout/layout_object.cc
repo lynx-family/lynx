@@ -116,6 +116,10 @@ SLAlignmentFunc LayoutObject::GetSLAlignmentFunc() const {
 
 void LayoutObject::RemoveAlgorithm() {
   if (algorithm_) {
+    if (IsComposeLayout()) {
+      cache_manager_.ResetComposeCache();
+      inflow_sub_tree_in_sync_with_last_measurement_ = false;
+    }
     delete algorithm_;
     algorithm_ = nullptr;
   }
@@ -126,6 +130,10 @@ void LayoutObject::RemoveAlgorithmRecursive() {
   LayoutObject* child = static_cast<LayoutObject*>(FirstChild());
   while (child) {
     child->RemoveAlgorithmRecursive();
+    if (IsComposeLayout()) {
+      inflow_sub_tree_in_sync_with_last_measurement_ &=
+          child->IsInflowSubTreeInSyncWithLastMeasurement();
+    }
     child = static_cast<LayoutObject*>(child->Next());
   }
 }
@@ -404,10 +412,10 @@ void LayoutObject::UpdateConstraintsForViewport(Constraints& constraints) {
 }
 
 void LayoutObject::MarkDirtyAndRequestLayout(bool force) {
-  MarkDirtyInternal(true, force);
+  MarkDirtyInternal(true, force || IsComposeLayout());
 }
 
-void LayoutObject::MarkDirty() { MarkDirtyInternal(false); }
+void LayoutObject::MarkDirty() { MarkDirtyInternal(false, IsComposeLayout()); }
 
 void LayoutObject::ClearCache() {
   cache_manager_.ResetCache();
