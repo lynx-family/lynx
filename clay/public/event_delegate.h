@@ -27,8 +27,10 @@ class EventDelegate {
  public:
   virtual ~EventDelegate() {}
 
+  // Pointer identity lasts from contact down through its end or cancellation.
   virtual void OnTouchEvent(const std::string& event_name, int tag, float x,
-                            float y, float page_x, float page_y) = 0;
+                            float y, float page_x, float page_y,
+                            int pointer_id) = 0;
   virtual void OnMouseEvent(const std::string& event_name, int view_id,
                             int button, int buttons, float scale, float x,
                             float y, float page_x, float page_y) = 0;

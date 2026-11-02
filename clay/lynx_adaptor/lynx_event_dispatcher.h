@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "clay/lynx_adaptor/perf_controller_clay.h"
 #include "clay/public/event_delegate.h"
@@ -42,7 +43,12 @@ class LynxEventDispatcher : public EventDelegate {
 
   // clay::EventDelegate override
   void OnTouchEvent(const std::string& event_name, int tag, float x, float y,
-                    float page_x, float page_y) override;
+                    float page_x, float page_y, int pointer_id) override;
+  void SetEnableMultiTouch(bool enabled) {
+    enable_multi_touch_ = enabled;
+    active_touch_targets_.clear();
+    touch_stream_cancelled_ = false;
+  }
   void OnMouseEvent(const std::string& event_name, int view_id, int button,
                     int buttons, float scale, float x, float y, float page_x,
                     float page_y) override;
@@ -105,6 +111,17 @@ class LynxEventDispatcher : public EventDelegate {
                               int64_t garbage_size) override;
 
  private:
+  struct TouchTarget {
+    int pointer_id;
+    int tag;
+    int identifier;
+  };
+
+  bool enable_multi_touch_ = false;
+  bool touch_stream_cancelled_ = false;
+  // Contact sets are small and already scanned to allocate reusable
+  // identifiers.
+  std::vector<TouchTarget> active_touch_targets_;
   std::shared_ptr<lynx::shell::LynxEngineProxy> engine_proxy_ = nullptr;
   std::shared_ptr<lynx::shell::LynxRuntimeProxy> runtime_proxy_ = nullptr;
   std::shared_ptr<lynx::tasm::PerfControllerClay> perf_controller_;
