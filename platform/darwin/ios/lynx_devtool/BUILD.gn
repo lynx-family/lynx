@@ -386,7 +386,7 @@ subspec_target("UnitTests") {
     "Helper/LynxUITreeHelperUnitTest.m",
     "LynxDevToolErrorUtilsUnitTest.m",
     "Memory/LynxMemoryControllerUnitTest.m",
-    "lynx_recorder/LynxRecorderReplayConfigUnitTest.m",
+    "lynx_recorder/LynxRecorderReplayConfigUnitTest.mm",
   ]
   dependency = [
     "LynxDevtool/Framework",
