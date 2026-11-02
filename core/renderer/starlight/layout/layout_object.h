@@ -99,6 +99,16 @@ class LayoutObject : public ContainerNode {
   }
 
   SLMeasureFunc GetSLMeasureFunc() const;
+  SLComposeMeasureFunc GetSLComposeMeasureFunc() const {
+    return compose_measure_func_;
+  }
+  // Configured during initialization; live nodes keep their measure policy.
+  void SetSLComposeMeasureFunc(SLComposeMeasureFunc func) {
+    compose_measure_func_ = func;
+  }
+  // Set when building the layout tree; the mode is fixed during layout.
+  void SetComposeLayout(bool value) { compose_layout_ = value; }
+  bool IsComposeLayout() const { return compose_layout_; }
 
   SLAlignmentFunc GetSLAlignmentFunc() const;
 
@@ -296,7 +306,9 @@ class LayoutObject : public ContainerNode {
   void SetTag(const base::String& tag) { tag_ = tag; }
   const base::String& GetTag() const { return tag_; }
 
-  bool need_custom_layout() const { return measure_func_ != nullptr; }
+  bool need_custom_layout() const {
+    return measure_func_ != nullptr || compose_measure_func_ != nullptr;
+  }
   void SendLayoutEvent(LayoutEventType type,
                        const LayoutEventData& data = LayoutEventData());
   void SetEventHandler(LayoutEventHandler* handler) {
@@ -333,6 +345,8 @@ class LayoutObject : public ContainerNode {
   base::String tag_;
 
   SLMeasureFunc measure_func_ = nullptr;
+  SLComposeMeasureFunc compose_measure_func_ = nullptr;
+  bool compose_layout_ = false;
   SLRequestLayoutFunc request_layout_func_ = nullptr;
   SLAlignmentFunc alignment_func_ = nullptr;
   SLCanReuseLayoutWithSameSizeAsGivenConstraintFunc can_reuse_layout_func_ =
