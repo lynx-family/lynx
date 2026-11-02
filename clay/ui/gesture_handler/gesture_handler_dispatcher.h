@@ -23,10 +23,6 @@ class GestureHandlerDispatcher {
  public:
   explicit GestureHandlerDispatcher(PageView* page_view);
 
-  void SetEnableMultiTouch(bool enable_multi_touch) {
-    enable_multi_touch_ = enable_multi_touch;
-  }
-
   void HandlePointerDown(const PointerEvent& pointer_event,
                          HitTestResult& hit_test_result);
   void HandlePointerMove(const PointerEvent& pointer_event,
@@ -51,7 +47,6 @@ class GestureHandlerDispatcher {
                                 const PointerEvent* pointer_event);
 
   std::unique_ptr<GestureArenaManager> gesture_arena_manager_;
-  bool enable_multi_touch_{false};
   std::unordered_set<int> gesture_recognized_target_set_;
   std::unique_ptr<VelocityTracker> velocity_tracker_;
 };

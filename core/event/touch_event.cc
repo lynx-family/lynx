@@ -239,9 +239,6 @@ bool TouchEvent::HandleEventConflictAndParam() {
   if (state->long_press_consumed && type_ == EVENT_TAP) {
     return true;
   }
-  if (type_ == EVENT_TOUCH_CANCEL) {
-    state->current_touches = lepus::Value(lepus::CArray::Create());
-  }
   return false;
 }
 

@@ -540,6 +540,73 @@ TEST(PointerDataPacketConverterTest, CanHandleThreeFingerGesture) {
   // Third cancel should be dropped
 }
 
+TEST(PointerDataPacketConverterTest, IgnoresCancelAfterPointerEnds) {
+  for (auto end : {PointerData::Change::kUp, PointerData::Change::kCancel}) {
+    PointerDataPacketConverter converter;
+    PointerData data;
+    auto packet = std::make_unique<PointerDataPacket>(4);
+    CreateSimulatedPointerData(data, PointerData::Change::kDown, 0, 0.0, 0.0,
+                               1);
+    packet->SetPointerData(0, data);
+    CreateSimulatedPointerData(data, end, 0, 0.0, 0.0, 0);
+    packet->SetPointerData(1, data);
+    CreateSimulatedPointerData(data, PointerData::Change::kCancel, 0, 0.0, 0.0,
+                               0);
+    packet->SetPointerData(2, data);
+    CreateSimulatedPointerData(data, PointerData::Change::kDown, 0, 0.0, 0.0,
+                               1);
+    packet->SetPointerData(3, data);
+    auto result = converter.Convert(std::move(packet));
+    ASSERT_EQ(result->GetLength(), 4u);
+    EXPECT_EQ(result->GetPointerData(2).change, end);
+    EXPECT_EQ(result->GetPointerData(2).pointer_identifier,
+              result->GetPointerData(1).pointer_identifier);
+    auto next_identifier = result->GetPointerData(3).pointer_identifier;
+    EXPECT_GT(next_identifier, result->GetPointerData(1).pointer_identifier);
+
+    packet = std::make_unique<PointerDataPacket>(2);
+    CreateSimulatedPointerData(data, PointerData::Change::kMove, 0, 1.0, 1.0,
+                               1);
+    packet->SetPointerData(0, data);
+    CreateSimulatedPointerData(data, PointerData::Change::kUp, 0, 1.0, 1.0, 0);
+    packet->SetPointerData(1, data);
+    result = converter.Convert(std::move(packet));
+    ASSERT_EQ(result->GetLength(), 2u);
+    EXPECT_EQ(result->GetPointerData(0).pointer_identifier, next_identifier);
+    EXPECT_EQ(result->GetPointerData(1).pointer_identifier, next_identifier);
+  }
+}
+
+TEST(PointerDataPacketConverterTest, IgnoresRepeatedMultiTouchCancel) {
+  PointerDataPacketConverter converter;
+  PointerData data;
+  auto packet = std::make_unique<PointerDataPacket>(6);
+  CreateSimulatedPointerData(data, PointerData::Change::kDown, 0, 0.0, 0.0, 1);
+  packet->SetPointerData(0, data);
+  CreateSimulatedPointerData(data, PointerData::Change::kDown, 1, 1.0, 1.0, 1);
+  packet->SetPointerData(1, data);
+  CreateSimulatedPointerData(data, PointerData::Change::kCancel, 0, 0.0, 0.0,
+                             0);
+  packet->SetPointerData(2, data);
+  CreateSimulatedPointerData(data, PointerData::Change::kCancel, 1, 1.0, 1.0,
+                             0);
+  packet->SetPointerData(3, data);
+  CreateSimulatedPointerData(data, PointerData::Change::kCancel, 0, 0.0, 0.0,
+                             0);
+  packet->SetPointerData(4, data);
+  CreateSimulatedPointerData(data, PointerData::Change::kCancel, 1, 1.0, 1.0,
+                             0);
+  packet->SetPointerData(5, data);
+  auto result = converter.Convert(std::move(packet));
+  ASSERT_EQ(result->GetLength(), 6u);
+  EXPECT_EQ(result->GetPointerData(4).change, PointerData::Change::kCancel);
+  EXPECT_EQ(result->GetPointerData(5).change, PointerData::Change::kCancel);
+  EXPECT_EQ(result->GetPointerData(4).pointer_identifier,
+            result->GetPointerData(1).pointer_identifier);
+  EXPECT_EQ(result->GetPointerData(5).pointer_identifier,
+            result->GetPointerData(3).pointer_identifier);
+}
+
 TEST(PointerDataPacketConverterTest, CanConvertPointerSignals) {
   PointerData::SignalKind signal_kinds[] = {
       PointerData::SignalKind::kScroll,

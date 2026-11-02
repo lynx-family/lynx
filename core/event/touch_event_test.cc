@@ -147,7 +147,7 @@ TEST(TouchEventTest, ConcurrentPagesKeepTouchSequencesIndependent) {
       DispatchTouch(target, EVENT_TOUCH_START, 0, x);
       auto cancel = DispatchTouch(target, EVENT_TOUCH_CANCEL);
       EXPECT_EQ(cancel->detail().GetProperty("touches").GetLength(), 0u);
-      EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(), 0u);
+      ExpectTouch(cancel->detail().GetProperty("changedTouches"), 0, x);
     }
   };
   std::thread first(run_page, 10.f);
@@ -172,10 +172,111 @@ TEST(TouchEventTest, PreservesTouchEndCompatibilityAndCancelParameters) {
 
     DispatchTouch(target, EVENT_TOUCH_START, 0, 30.f);
     auto cancel = DispatchTouch(target, EVENT_TOUCH_CANCEL);
-    EXPECT_EQ(cancel->detail().GetProperty("touches").GetLength(), 0u);
-    EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(), 0u);
+    if (compatible) {
+      ExpectTouch(cancel->detail().GetProperty("touches"), 0, 30.f);
+    } else {
+      EXPECT_EQ(cancel->detail().GetProperty("touches").GetLength(), 0u);
+    }
+    ExpectTouch(cancel->detail().GetProperty("changedTouches"), 0, 30.f);
     auto move = DispatchTouch(target, EVENT_TOUCH_MOVE, 0, 40.f);
     EXPECT_EQ(move->detail().GetProperty("touches").GetLength(), 0u);
+  }
+}
+
+TEST(TouchEventTest, QueuedCancelUsesContactsAtDispatchTime) {
+  TouchEventTarget target;
+  auto first =
+      fml::MakeRefCounted<TouchEvent>(EVENT_TOUCH_START, TouchParams(7, 10.f));
+  auto second =
+      fml::MakeRefCounted<TouchEvent>(EVENT_TOUCH_START, TouchParams(11, 20.f));
+  auto cancel = fml::MakeRefCounted<TouchEvent>(
+      EVENT_TOUCH_CANCEL, lepus::Value(lepus::Dictionary::Create()));
+  EventDispatcher::DispatchEvent(target, first);
+  EventDispatcher::DispatchEvent(target, second);
+  EventDispatcher::DispatchEvent(target, cancel);
+
+  EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(), 2u);
+  EXPECT_EQ(cancel->detail().GetProperty("touches").GetLength(), 0u);
+  EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(), 0u);
+  auto next = DispatchTouch(target, EVENT_TOUCH_START, 9, 30.f);
+  ExpectTouch(next->detail().GetProperty("touches"), 9, 30.f);
+  EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(), 2u);
+}
+
+TEST(TouchEventTest, BatchedCancelClearsAfterAllTargetsEvenWhenCaught) {
+  TouchEventState state;
+  TouchEventTarget first(&state);
+  TouchEventTarget second(&state);
+  DispatchTouch(first, EVENT_TOUCH_START, 7, 10.f);
+  DispatchTouch(second, EVENT_TOUCH_START, 11, 20.f);
+  const EventListener::Options options(false, false, false, false, true);
+  auto first_listener = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "first cancel", "", "",
+      nullptr, options);
+  auto second_listener = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "second cancel", "", "",
+      nullptr, options);
+  first.AddEventListener(EVENT_TOUCH_CANCEL, first_listener);
+  second.AddEventListener(EVENT_TOUCH_CANCEL, second_listener);
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("1", lepus::CArray::Create());
+  params->SetValue("2", lepus::CArray::Create());
+  int cleanup_count = 0;
+  EventDispatcher::DispatchTouchEventBatch(
+      EVENT_TOUCH_CANCEL, lepus::Value(params), 0,
+      [&](int tag) -> EventTarget* { return tag == 1 ? &first : &second; },
+      [&]() {
+        EXPECT_EQ(first_listener->GetCount(), 1);
+        EXPECT_EQ(second_listener->GetCount(), 1);
+        EXPECT_EQ(state.current_touches.GetLength(), 2u);
+        ++cleanup_count;
+        return &state;
+      });
+  EXPECT_EQ(cleanup_count, 1);
+  EXPECT_EQ(state.current_touches.GetLength(), 0u);
+  auto next = DispatchTouch(first, EVENT_TOUCH_START, 9, 30.f);
+  ExpectTouch(next->detail().GetProperty("touches"), 9, 30.f);
+}
+
+TEST(TouchEventTest, BatchedCancelClearsWhenNoTargetsCanBeDispatched) {
+  TouchEventTarget target;
+  for (bool empty_batch : {false, true}) {
+    SCOPED_TRACE(empty_batch);
+    DispatchTouch(target, EVENT_TOUCH_START, 7, 10.f);
+    auto params = lepus::Dictionary::Create();
+    if (!empty_batch) {
+      params->SetValue("1", lepus::CArray::Create());
+    }
+    int cleanup_count = 0;
+    EventDispatcher::DispatchTouchEventBatch(
+        EVENT_TOUCH_CANCEL, lepus::Value(params), 0,
+        [](int) -> EventTarget* { return nullptr; },
+        [&]() {
+          ++cleanup_count;
+          return target.GetTouchEventState();
+        });
+    EXPECT_EQ(cleanup_count, 1);
+    EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(), 0u);
+  }
+}
+
+TEST(TouchEventTest, SingleTouchCancelClearsPreviouslyActiveContacts) {
+  TouchEventTarget target;
+  DispatchTouch(target, EVENT_TOUCH_START, 7, 10.f);
+  auto cancel = fml::MakeRefCounted<TouchEvent>(EVENT_TOUCH_CANCEL, 1.f, 2.f);
+  EventDispatcher::DispatchEvent(target, cancel);
+  EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(), 0u);
+  EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(), 1u);
+}
+
+TEST(TouchEventTest, ScalarGesturesPreserveActiveContacts) {
+  TouchEventTarget target;
+  DispatchTouch(target, EVENT_TOUCH_START, 7, 10.f);
+  for (const char* name : {EVENT_TAP, EVENT_CLICK, EVENT_LONG_PRESS}) {
+    auto gesture = fml::MakeRefCounted<TouchEvent>(name, 1.f, 2.f);
+    EventDispatcher::DispatchEvent(target, gesture);
+    ExpectTouch(target.GetTouchEventState()->current_touches, 7, 10.f);
+    EXPECT_EQ(gesture->detail().GetProperty("changedTouches").GetLength(), 1u);
   }
 }
 
