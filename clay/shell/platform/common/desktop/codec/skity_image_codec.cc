@@ -124,8 +124,10 @@ std::shared_ptr<ImageCodecGenerator> SkityImageCodecGenerator::Create(
     return nullptr;
   }
   const int frame_count = is_animated ? decoded_frame_count : 1;
-  current_pixmap->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
-                               current_pixmap->GetColorType());
+  if (!current_pixmap->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
+                                    current_pixmap->GetColorType())) {
+    return nullptr;
+  }
   std::shared_ptr<skity::MultiFrameDecoder> animation_decoder;
   if (is_animated) {
     animation_decoder = std::move(multi_frame_decoder);
@@ -186,8 +188,21 @@ FrameInfo SkityImageCodecGenerator::DecodeFrame(
   if (!frame_info) {
     return {};
   }
+  // Multi-frame decoders composite in unpremultiplied RGBA.
+  if (previous_frame &&
+      !previous_frame->SetColorInfo(skity::AlphaType::kUnpremul_AlphaType,
+                                    previous_frame->GetColorType())) {
+    return {};
+  }
   auto frame =
       multi_frame_decoder_->DecodeFrame(frame_info, std::move(previous_frame));
+  // Match the premultiplied alpha type advertised by image_info_ before
+  // scaling or uploading the frame to a deferred texture image.
+  if (!IsValidPixmap(frame) ||
+      !frame->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
+                           frame->GetColorType())) {
+    return {};
+  }
   return MakeFrameInfo(std::move(frame), frame_info->GetDuration());
 }
 
