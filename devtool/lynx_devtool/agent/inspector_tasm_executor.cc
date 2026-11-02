@@ -824,9 +824,7 @@ void InspectorTasmExecutor::SendDOMEventMsg(const DomCdpEvent& event_name,
 
 void InspectorTasmExecutor::OnDocumentUpdated() {
   pending_inline_style_updates_.clear();
-  // Navigation: drop every registered animation. New animations get fresh,
-  // never-reused ids, so stale records cannot collide with later ones.
-  animation_controller_->Clear();
+  PostClearAnimations();
   if (tasm_->page_proxy()->element_manager()->IsDomTreeEnabled()) {
     SendDOMEventMsg(DomCdpEvent::DOCUMENT_UPDATED, -1, "", -1);
   }
@@ -974,9 +972,7 @@ void InspectorTasmExecutor::OnElementManagerWillDestroy() {
   pending_inline_style_updates_.clear();
   tasm_ = nullptr;
   element_root_ = nullptr;
-  // The element manager (and all animations) is going away; drop the registry
-  // so no dangling Animation* survives.
-  animation_controller_->Clear();
+  PostClearAnimations();
 }
 
 void InspectorTasmExecutor::OnAddInlineStyle(
@@ -3154,24 +3150,39 @@ Json::Value InspectorTasmExecutor::GetDocumentBodyFromNodeWithBoxModel(
   return res;
 }
 
+void InspectorTasmExecutor::PostClearAnimations() {
+  auto mediator = devtool_mediator_wp_.lock();
+  if (!mediator) {
+    // Without a mediator, skip the clear. Executor destruction will release
+    // the animation records.
+    return;
+  }
+  // Clearing immediately could let a queued Created notification
+  // register an old animation again.
+  mediator->RunOnTASMThread(
+      [executor_wp = weak_from_this()] {
+        if (auto executor = executor_wp.lock()) {
+          executor->animation_controller_->Clear();
+        }
+      },
+      false);
+}
+
 void InspectorTasmExecutor::OnAnimationCreated(
-    animation::Animation* animation) {
-  animation_controller_->OnAnimationCreated(animation);
+    int64_t id, std::weak_ptr<animation::Animation>&& animation) {
+  animation_controller_->OnAnimationCreated(id, std::move(animation));
 }
 
-void InspectorTasmExecutor::OnAnimationStarted(
-    animation::Animation* animation) {
-  animation_controller_->OnAnimationStarted(animation);
+void InspectorTasmExecutor::OnAnimationStarted(const Json::Value& snapshot) {
+  animation_controller_->OnAnimationStarted(snapshot);
 }
 
-void InspectorTasmExecutor::OnAnimationUpdated(
-    animation::Animation* animation) {
-  animation_controller_->OnAnimationUpdated(animation);
+void InspectorTasmExecutor::OnAnimationUpdated(const Json::Value& snapshot) {
+  animation_controller_->OnAnimationUpdated(snapshot);
 }
 
-void InspectorTasmExecutor::OnAnimationCanceled(
-    animation::Animation* animation) {
-  animation_controller_->OnAnimationCanceled(animation);
+void InspectorTasmExecutor::OnAnimationCanceled(int64_t id) {
+  animation_controller_->OnAnimationCanceled(id);
 }
 
 void InspectorTasmExecutor::AnimationEnable(

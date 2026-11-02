@@ -13,13 +13,15 @@
 namespace lynx {
 namespace devtool {
 
-// Concrete InspectorAnimationObserver that forwards animation lifecycle
-// callbacks to the InspectorTasmExecutor (which runs on the TASM thread, the
-// same thread the animations live on).
+class LynxDevToolMediator;
+
+// Animation lifecycle notifications may originate on worker threads. This
+// observer posts them to the TASM executor through the mediator.
 class InspectorAnimationObserverImpl : public tasm::InspectorAnimationObserver {
  public:
-  explicit InspectorAnimationObserverImpl(
-      const std::shared_ptr<InspectorTasmExecutor>& animation_executor);
+  InspectorAnimationObserverImpl(
+      const std::shared_ptr<InspectorTasmExecutor>& animation_executor,
+      const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
   ~InspectorAnimationObserverImpl() override = default;
 
   void OnAnimationCreated(animation::Animation* animation) override;
@@ -29,6 +31,7 @@ class InspectorAnimationObserverImpl : public tasm::InspectorAnimationObserver {
 
  private:
   std::weak_ptr<InspectorTasmExecutor> animation_executor_wp_;
+  std::weak_ptr<LynxDevToolMediator> devtool_mediator_wp_;
 };
 
 }  // namespace devtool

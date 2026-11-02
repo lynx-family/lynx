@@ -124,7 +124,8 @@ void LynxDevToolMediator::Init(
       std::make_shared<InspectorElementObserverImpl>(element_executor_));
   // Install the Animation CDP observer on the TASM thread.
   shell->SetInspectorAnimationObserver(
-      std::make_shared<InspectorAnimationObserverImpl>(element_executor_));
+      std::make_shared<InspectorAnimationObserverImpl>(element_executor_,
+                                                       shared_from_this()));
   shell->SetHierarchyObserver(
       std::make_shared<lynx::devtool::HierarchyObserverImpl>(ui_executor_));
   auto runtime_observer = js_debugger_->GetInspectorRuntimeObserver();
@@ -1440,46 +1441,60 @@ void LynxDevToolMediator::LayerTreeDisable(
   });
 }
 
+// Always post Animation commands, even on TASM, so they run after animation
+// lifecycle notifications already posted by worker threads.
 void LynxDevToolMediator::AnimationEnable(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  RunOnTASMThread([responder, params, executor = element_executor_] {
-    executor->AnimationEnable(responder, params);
-  });
+  RunOnTASMThread(
+      [responder, params, executor = element_executor_] {
+        executor->AnimationEnable(responder, params);
+      },
+      false);
 }
 
 void LynxDevToolMediator::AnimationDisable(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  RunOnTASMThread([responder, params, executor = element_executor_] {
-    executor->AnimationDisable(responder, params);
-  });
+  RunOnTASMThread(
+      [responder, params, executor = element_executor_] {
+        executor->AnimationDisable(responder, params);
+      },
+      false);
 }
 
 void LynxDevToolMediator::AnimationGetCurrentTime(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  RunOnTASMThread([responder, params, executor = element_executor_] {
-    executor->AnimationGetCurrentTime(responder, params);
-  });
+  RunOnTASMThread(
+      [responder, params, executor = element_executor_] {
+        executor->AnimationGetCurrentTime(responder, params);
+      },
+      false);
 }
 
 void LynxDevToolMediator::AnimationSeekAnimations(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  RunOnTASMThread([responder, params, executor = element_executor_] {
-    executor->AnimationSeekAnimations(responder, params);
-  });
+  RunOnTASMThread(
+      [responder, params, executor = element_executor_] {
+        executor->AnimationSeekAnimations(responder, params);
+      },
+      false);
 }
 
 void LynxDevToolMediator::AnimationSetPaused(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  RunOnTASMThread([responder, params, executor = element_executor_] {
-    executor->AnimationSetPaused(responder, params);
-  });
+  RunOnTASMThread(
+      [responder, params, executor = element_executor_] {
+        executor->AnimationSetPaused(responder, params);
+      },
+      false);
 }
 
 void LynxDevToolMediator::AnimationReleaseAnimations(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
-  RunOnTASMThread([responder, params, executor = element_executor_] {
-    executor->AnimationReleaseAnimations(responder, params);
-  });
+  RunOnTASMThread(
+      [responder, params, executor = element_executor_] {
+        executor->AnimationReleaseAnimations(responder, params);
+      },
+      false);
 }
 
 void LynxDevToolMediator::SendLayerTreeDidChangeEvent() {
