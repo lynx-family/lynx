@@ -499,16 +499,30 @@ jobs:
         with:
           path: ~/.gradle/caches/modules-2
           key: gradle-android-explorer-build
+      - name: Setup Maven cache
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: ~/.m2/repository
+          key: maven-android-explorer-${{ runner.os }}-${{ hashFiles('lynx/explorer/android/lynx_explorer/build.gradle', 'lynx/explorer/android/lynx_explorer/src/test/**/*') }}
+          restore-keys: |
+            maven-android-explorer-${{ runner.os }}-
+      # Robolectric 4.7.3 does not retry interrupted Android SDK downloads.
       - name: Test Explorer App
-        run: |-
-          cd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pushd explorer/android
-          ./gradlew :LynxExplorer:testWithoutSparklingNoasanDebugUnitTest \
-            :LynxExplorer:testWithSparklingNoasanDebugUnitTest \
-            :LynxExplorer:verifySparklingAndroidRuntimeSmokeTestArtifacts \
-            -Penable_trace=perfetto -PabiList=x86,arm64-v8a --no-daemon -PIntegrationTest
-          popd
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
+        with:
+          max_attempts: 3
+          retry_wait_seconds: 5
+          timeout_minutes: 20
+          command: |
+            set -e
+            cd $GITHUB_WORKSPACE/lynx
+            source tools/envsetup.sh
+            pushd explorer/android
+            ./gradlew :LynxExplorer:testWithoutSparklingNoasanDebugUnitTest \
+              :LynxExplorer:testWithSparklingNoasanDebugUnitTest \
+              :LynxExplorer:verifySparklingAndroidRuntimeSmokeTestArtifacts \
+              -Penable_trace=perfetto -PabiList=x86,arm64-v8a --no-daemon -PIntegrationTest
+            popd
 
   windows-explorer-build-x64:
     runs-on: lynx-windows-2022-large
