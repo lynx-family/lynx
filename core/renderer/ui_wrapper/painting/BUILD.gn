@@ -14,12 +14,12 @@ ui_wrapper_painting_shared_sources = [
   "native_painting_context.h",
   "native_painting_context_platform_ref.cc",
   "native_painting_context_platform_ref.h",
-  "paint_image.h",
   "painting_context.cc",
   "painting_context.h",
   "platform_renderer.h",
   "platform_renderer_impl.cc",
   "platform_renderer_impl.h",
+  "public/paint_image.h",
 ]
 
 ui_wrapper_painting_shared_deps = [
@@ -28,6 +28,7 @@ ui_wrapper_painting_shared_deps = [
   "../../starlight:starlight",
   "../../trace:renderer_trace",
   "../common",
+  "public:images",
 ]
 
 if (!enable_unittests) {

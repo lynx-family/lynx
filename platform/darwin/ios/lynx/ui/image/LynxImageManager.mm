@@ -17,7 +17,7 @@
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUnitUtils.h>
 #import <QuartzCore/QuartzCore.h>
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 
 static const NSInteger kFlagImageLoadEvent = 1 << 0;
 static const NSInteger kFlagImageErrorEvent = 1 << 1;

@@ -12,7 +12,7 @@
 #include "base/include/auto_create_optional.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 
 namespace lynx {
 namespace tasm {

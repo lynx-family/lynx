@@ -9,7 +9,7 @@
 #include <utility>
 
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 
 namespace lynx::tasm {
 class PaintImageAndroid : public PaintImage {

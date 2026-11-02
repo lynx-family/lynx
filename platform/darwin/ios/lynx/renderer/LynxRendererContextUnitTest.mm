@@ -15,7 +15,7 @@
 #import <Lynx/LynxUIImage.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 
 @interface LynxImageManager (ImageLoadingTest)
 - (void)sendCustomEvent:(NSString *)name withParams:(NSDictionary *)params;

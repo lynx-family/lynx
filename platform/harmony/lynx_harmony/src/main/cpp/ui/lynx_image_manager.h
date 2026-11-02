@@ -12,7 +12,7 @@
 #include <memory>
 #include <string>
 
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/image_drawable.h"
 
 namespace lynx {

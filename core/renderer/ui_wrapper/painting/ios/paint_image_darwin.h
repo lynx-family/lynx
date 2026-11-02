@@ -5,7 +5,7 @@
 #ifndef LYNX_CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PAINT_IMAGE_DARWIN_H_
 #define LYNX_CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PAINT_IMAGE_DARWIN_H_
 
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 
 @class LynxRendererContext;
 

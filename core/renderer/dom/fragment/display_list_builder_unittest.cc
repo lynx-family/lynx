@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "core/renderer/starlight/style/borders_data.h"
-#include "core/renderer/ui_wrapper/painting/paint_image.h"
+#include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 #include "core/style/filter_data.h"
 #include "gfx/geometry/matrix44.h"
 #include "gfx/public/display_list_reader.h"
