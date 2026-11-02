@@ -792,15 +792,21 @@ typedef enum LEPUSGCMemoryPolicyLevel {
 
 /*
  * Runtime creation mode bit layout:
- * - Bits 0-23: reserved; pass zero.
+ * - Bit 0: retain live RC allocation addresses for slot snapshots. Ignored
+ *   when the slot selector is null, the RC platform lacks slot support, or
+ *   neither ENABLE_HEAPPROFILER nor ENABLE_QUICKJS_DEBUGGER is compiled.
+ *   GC uses its existing census.
+ * - Bits 1-23: reserved; pass zero.
  * - Bits 24-31: allocation interval for GC info reporting in MiB (0..255).
  *   Encode as ((uint32_t)interval_mb <<
  *              LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_SHIFT);
  *   the field mask is LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_MASK.
+ *   Zero disables allocation-triggered reports, not forced or full-GC reports.
  * These fields can be combined with bitwise OR. They are independent of
  * GetSettingsFlag(); mode does not select RC versus GC.
  */
 typedef enum LEPUSRuntimeMode {
+  LEPUS_RUNTIME_ENABLE_ALLOCATION_TRACKING = (1u << 0),
   LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_SHIFT = 24,
   LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_MASK =
       0xFFu << LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_SHIFT,
@@ -825,6 +831,13 @@ LEPUSRuntime *LEPUS_NewRuntimeWithMode(uint32_t mode);
  * Runtime without memory tracking. The selector value is unchanged.
  * GC mode stores the slot in the object header and has no usable-size
  * dependency.
+ * Setting LEPUS_RUNTIME_ENABLE_ALLOCATION_TRACKING in mode enables RC slot
+ * snapshots. Its address set uses system memory outside all VM counters.
+ * If the selector is NULL, the RC platform lacks slot support, or neither
+ * ENABLE_HEAPPROFILER nor ENABLE_QUICKJS_DEBUGGER is compiled, this flag is
+ * ignored and Runtime creation continues without address tracking.
+ * This option must be selected at creation; it cannot be enabled on an
+ * existing Runtime.
  */
 LEPUSRuntime *LEPUS_NewRuntimeWithModeMemoryTrackSlot(
     uint32_t mode, int32_t *ptr_to_current_slot);
@@ -1850,12 +1863,82 @@ void UpdateOuterObjSize(LEPUSRuntime *rt, int size);
 void LEPUS_ReportExternalSize(LEPUSRuntime *rt, int64_t total_size,
                               int64_t garbage_size);
 
+/* Registers a borrowed GCObserver for RC or GC. Callbacks are synchronous.
+ * Unregister with NULL before destroying the observer. */
 void LEPUS_SetGCObserver(LEPUSRuntime *rt, void *opaque);
 void *LEPUS_GetGCObserver(LEPUSRuntime *rt);
 
 // Returned pointer should be released with js_profile_free_heap_snapshot().
 // If heap profiler or debugger is not enabled, nullptr will be returned.
+// All snapshot APIs inspect ctx's Runtime, including all its live Contexts.
+// Console messages are preserved unless CLEAR_CONSOLE_MESSAGES is requested.
+// The supplied Context selects the directly exposed global roots. Keep it
+// fixed when comparing snapshots to avoid global-root/name presentation
+// changes. This legacy API uses flags = 0: it does not export function
+// locations or summarize diagnostics. It is equivalent to
+// js_profile_take_heap_snapshot_flags(ctx, 0).
 const char *js_profile_take_heap_snapshot(LEPUSContext *ctx);
+
+typedef enum LEPUSHeapSnapshotFlags {
+  LEPUS_HEAP_SNAPSHOT_SUMMARIZE_DIAGNOSTICS = 1u << 0,
+  LEPUS_HEAP_SNAPSHOT_INCLUDE_LOCATIONS = 1u << 1,
+  LEPUS_HEAP_SNAPSHOT_CLEAR_CONSOLE_MESSAGES = 1u << 2,
+} LEPUSHeapSnapshotFlags;
+
+/* Full-runtime snapshot, including internal allocations. flags is a bitwise
+ * OR of LEPUSHeapSnapshotFlags; 0 disables diagnostic summarization and
+ * function locations. SUMMARIZE_DIAGNOSTICS projects dedicated
+ * debugger/coverage storage and debugger-only retained objects into
+ * [debugger]/[coverage] accounting leaves, preserving the sum of node self_size
+ * in the collected heap. Summarization itself does not modify the Runtime.
+ * Objects independently reachable from
+ * non-diagnostic roots remain visible. INCLUDE_LOCATIONS exports available
+ * function locations and source mapping; it does not change compilation or
+ * retain data for stripped functions or loaded bytecode. Without it, locations
+ * and primjs_sources.scripts are empty. CLEAR_CONSOLE_MESSAGES discards console
+ * messages and invalidates their object IDs in all live Contexts before GC;
+ * without it, messages are preserved even when summarizing diagnostics.
+ * This flag has no effect when the debugger is not compiled in.
+ * Requires a valid Context on the
+ * Runtime's owning thread. Does not require allocation or slot tracking.
+ * Release with js_profile_free_heap_snapshot(). */
+const char *js_profile_take_heap_snapshot_flags(LEPUSContext *ctx,
+                                                uint32_t flags);
+
+/* Snapshot of allocations charged to slot, with strong retainer paths
+ * from other slots retained as zero-size context nodes. Sizes are allocator-
+ * consumed bytes after a full GC. Requires slot tracking and a valid Context
+ * on the Runtime's owning thread. RC additionally requires
+ * LEPUS_RUNTIME_ENABLE_ALLOCATION_TRACKING at Runtime creation. Returns NULL
+ * for invalid slots, unavailable profiling/tracking, or when GC is forbidden
+ * or pause-suppressed. RC's object enumeration list is not a strong root;
+ * allocations without a modeled root path appear under [root path uncovered].
+ * Node names include stable [slot=N] and [holder slot=N] labels.
+ * [cross-slot] and [root path uncovered] are zero-size diagnostic groups with
+ * weak member edges; changes in these states do not rename allocation nodes.
+ * All internal allocations are included. The sum of node self_size equals the
+ * complete slot total from LEPUS_DumpMemorySlots.
+ * flags is a bitwise OR of LEPUSHeapSnapshotFlags constants; 0 disables
+ * diagnostic summarization and function locations.
+ * LEPUS_HEAP_SNAPSHOT_SUMMARIZE_DIAGNOSTICS projects debugger-only
+ * storage/retained objects and coverage storage into [debugger] and [coverage]
+ * accounting leaves. Summarization itself does not modify the Runtime.
+ * LEPUS_HEAP_SNAPSHOT_CLEAR_CONSOLE_MESSAGES discards console messages and
+ * invalidates their object IDs in all live Contexts before GC. Without it,
+ * messages are preserved, including when summarizing diagnostics. This flag
+ * has no effect when the debugger is not compiled in.
+ * Objects independently reachable from non-diagnostic roots remain
+ * visible. Summary sizes include all target-slot physical charges.
+ * LEPUS_HEAP_SNAPSHOT_INCLUDE_LOCATIONS exports available function locations
+ * and their source mapping. These are retained only for non-stripped functions
+ * compiled from JS text; this flag does not change compilation or retain data
+ * for stripped functions or loaded bytecode. Without this flag, locations and
+ * primjs_sources.scripts arrays are empty, including in debugger builds.
+ * Both C and C++ calls must pass all three arguments.
+ * Release the returned buffer with js_profile_free_heap_snapshot(). */
+const char *js_profile_take_heap_snapshot_for_slot(LEPUSContext *ctx,
+                                                   int32_t slot,
+                                                   uint32_t flags);
 void js_profile_free_heap_snapshot(const char *snapshot);
 
 // Coverage `ranges` are encoded as [startOffset, endOffset, count] tuples.

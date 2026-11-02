@@ -134,6 +134,7 @@ source_set("quickjs_source") {
     "src/src/inspector/heapprofiler/heapexplorer.cc",
     "src/src/inspector/heapprofiler/heapprofiler.cc",
     "src/src/inspector/heapprofiler/serialize.cc",
+    "src/src/inspector/heapprofiler/slot_snapshot.cc",
     "src/src/inspector/heapprofiler/snapshot.cc",
     "src/src/inspector/protocols.cc",
     "src/src/inspector/runtime/runtime.cc",
