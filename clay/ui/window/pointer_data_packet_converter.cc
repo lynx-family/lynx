@@ -49,9 +49,9 @@ void PointerDataPacketConverter::ConvertPointerData(
         // is not previously added.
         // https://github.com/flutter/flutter/issues/20517
         auto iter = states_.find(pointer_data.device);
-        if (iter != states_.end()) {
+        // Native cancellation may repeat after a contact has already ended.
+        if (iter != states_.end() && iter->second.is_down) {
           PointerState state = iter->second;
-          FML_DCHECK(state.is_down);
           UpdatePointerIdentifier(pointer_data, state, false);
 
           state.is_down = false;
