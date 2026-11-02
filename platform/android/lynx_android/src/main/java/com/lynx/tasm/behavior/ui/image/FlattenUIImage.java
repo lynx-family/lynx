@@ -9,12 +9,14 @@ import static com.lynx.tasm.behavior.AutoGenStyleConstants.IMAGERENDERING_PIXELA
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.view.View;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
+import com.lynx.tasm.behavior.ui.UIComponentInspectorProvider;
 import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.ViewInfo;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
@@ -22,7 +24,7 @@ import com.lynx.tasm.event.EventsListener;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FlattenUIImage extends LynxFlattenUI {
+public class FlattenUIImage extends LynxFlattenUI implements UIComponentInspectorProvider {
   LynxImageManager mLynxImageManager;
 
   public FlattenUIImage(LynxContext context) {
@@ -105,6 +107,12 @@ public class FlattenUIImage extends LynxFlattenUI {
     mLynxImageManager.onLayoutUpdated(getWidth(), getHeight(), getPaddingLeft(), getPaddingRight(),
         getPaddingTop(), getPaddingBottom());
     mLynxImageManager.onNodeReady();
+  }
+
+  @Override
+  public JavaOnlyMap getSnapshot() {
+    ensureLynxImageManager();
+    return mLynxImageManager.getInspectorSnapshot();
   }
 
   @LynxUIMethod

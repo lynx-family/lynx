@@ -3204,5 +3204,55 @@ void InspectorTasmExecutor::AnimationReleaseAnimations(
   animation_controller_->ReleaseAnimations(responder, params);
 }
 
+void InspectorTasmExecutor::LynxInvokeUIMethod(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!params.isObject() || !params["backendNodeId"].isInt() ||
+      params["backendNodeId"].asInt() < 0 || !params["methodName"].isString() ||
+      params["methodName"].asString().empty() ||
+      (!params["params"].isNull() && !params["params"].isObject())) {
+    responder->SendError(
+        CDPErrorCode::InvalidParams,
+        "backendNodeId, methodName and optional object params are required");
+    return;
+  }
+  auto* element = GetElementById(params["backendNodeId"].asInt());
+  if (!element) {
+    responder->SendError(CDPErrorCode::ServerError, "Node not found");
+    return;
+  }
+  auto mediator = devtool_mediator_wp_.lock();
+  if (!mediator) {
+    responder->SendError(CDPErrorCode::InternalError,
+                         "The TASM thread is not available");
+    return;
+  }
+  PubLepusValue arguments(lepus::jsonValueTolepusValue(
+      Json::FastWriter()
+          .write(params["params"].isNull() ? Json::Value(Json::objectValue)
+                                           : params["params"])
+          .c_str()));
+  element->Invoke(
+      params["methodName"].asString(), arguments,
+      [responder, mediator](int32_t code, const pub::Value& data) {
+        Json::Value result(Json::objectValue);
+        result["code"] = code;
+        const bool valid = Json::Reader().parse(
+            lepus::lepusValueToString(
+                pub::ValueUtils::ConvertValueToLepusValue(data)),
+            result["data"]);
+        // UIMethod callbacks may arrive on the UI thread; serialize replies on
+        // TASM.
+        mediator->RunOnTASMThread(
+            [responder, valid, result = std::move(result)]() mutable {
+              if (!valid) {
+                responder->SendError(CDPErrorCode::InternalError,
+                                     "Invalid UIMethod callback data");
+                return;
+              }
+              responder->SendSuccess(std::move(result));
+            });
+      });
+}
+
 }  // namespace devtool
 }  // namespace lynx

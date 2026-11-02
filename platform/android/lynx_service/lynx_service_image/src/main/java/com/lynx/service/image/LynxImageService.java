@@ -217,6 +217,11 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
               animationListener.onAnimationCurrentLoop(drawable);
             }
           }
+
+          @Override
+          public void onAnimationFrame(AnimatedDrawable2 drawable, int frameNumber) {
+            animationListener.onAnimationFrame(drawable, frameNumber);
+          }
         });
       }
       animatedDrawable.setAnimationBackend(new LoopCountModifyingBackend(
@@ -263,6 +268,16 @@ public class LynxImageService implements ILynxImageService, ILynxImageServiceExt
       return true;
     }
     return false;
+  }
+
+  @Override
+  @Nullable
+  public ImageAnimationInfo getAnimationInfo(@NonNull Drawable animatable) {
+    if (!(animatable instanceof AnimatedDrawable2)) {
+      return null;
+    }
+    AnimatedDrawable2 drawable = (AnimatedDrawable2) animatable;
+    return new ImageAnimationInfo(drawable.getFrameCount(), drawable.getLoopDurationMs());
   }
 
   private void prefetchImageToDiskCache(ImageRequest request, Object callerContext,

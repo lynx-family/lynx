@@ -8,12 +8,14 @@ import static com.lynx.tasm.behavior.AutoGenStyleConstants.IMAGERENDERING_PIXELA
 
 import android.graphics.Canvas;
 import android.view.View;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
+import com.lynx.tasm.behavior.ui.UIComponentInspectorProvider;
 import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.ViewInfo;
 import com.lynx.tasm.behavior.ui.view.UIView;
@@ -21,7 +23,7 @@ import com.lynx.tasm.event.EventsListener;
 import java.util.HashMap;
 import java.util.Map;
 
-public class UIImage extends UIView {
+public class UIImage extends UIView implements UIComponentInspectorProvider {
   LynxImageManager mLynxImageManager;
 
   public UIImage(LynxContext context) {
@@ -105,6 +107,12 @@ public class UIImage extends UIView {
     mLynxImageManager.onLayoutUpdated(getWidth(), getHeight(), getPaddingLeft(), getPaddingRight(),
         getPaddingTop(), getPaddingBottom());
     mLynxImageManager.onNodeReady();
+  }
+
+  @Override
+  public JavaOnlyMap getSnapshot() {
+    ensureLynxImageManager();
+    return mLynxImageManager.getInspectorSnapshot();
   }
 
   // region UIMethod

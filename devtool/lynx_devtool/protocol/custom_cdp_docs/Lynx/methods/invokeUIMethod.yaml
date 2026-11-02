@@ -1,0 +1,41 @@
+summary: Invokes an existing native UIMethod on a node in the current Lynx view.
+parameters:
+  - name: backendNodeId
+    type: integer
+    description: Backend node id from the existing DOM or UITree inspection APIs.
+  - name: methodName
+    type: string
+    description: Existing UIMethod name, with its original parameters and behavior.
+  - name: params
+    type: object
+    optional: true
+    description: Native UIMethod parameters. Defaults to an empty object.
+returns:
+  - name: code
+    type: integer
+    description: Original native UIMethod callback status code. Zero means success.
+  - name: data
+    type: any
+    description: Original native callback data, or null when absent.
+events: []
+notes:
+  - AnimaX controls use play, pause, resume, stop and seek with its original frame parameter. Image controls use startAnimate, pauseAnimation, resumeAnimation and stopAnimation. No image seek method is added.
+  - On Android, getComponentState returns resourceGeneration, state (loading, ready, or error), errorCode and frameCount for supported components when DevTool is enabled. Images also report intrinsicWidth, intrinsicHeight, isAnimating, loopDurationMs and the last rendered frameIndex. Unknown metadata and unobserved image frames remain null. AnimaX keeps its existing getCurrentFrame, isAnimating and getDuration UIMethods; frameCount is the original total frame value without rounding.
+  - Identity and geometry remain available through existing DOM and UITree APIs.
+  - The response follows the native callback. Clients control request timeouts for asynchronous UIMethods.
+  - UIMethods that do not invoke a callback do not report completion. Query state separately to observe their effects.
+examples:
+  - title: Read component state
+    request:
+      id: 1
+      method: Lynx.invokeUIMethod
+      params:
+        backendNodeId: 42
+        methodName: getComponentState
+    response:
+      id: 1
+      result:
+        code: 0
+        data:
+          state: loading
+          resourceGeneration: 1

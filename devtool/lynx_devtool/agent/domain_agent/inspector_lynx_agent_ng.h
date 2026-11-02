@@ -36,6 +36,8 @@ class InspectorLynxAgentNG : public CDPDomainAgentBase {
 
   void GetProperties(const std::shared_ptr<MessageSender>& sender,
                      const Json::Value& message);
+  void InvokeUIMethod(const std::shared_ptr<MessageSender>& sender,
+                      const Json::Value& message);
   void GetData(const std::shared_ptr<MessageSender>& sender,
                const Json::Value& message);
   void GetComponentId(const std::shared_ptr<MessageSender>& sender,
