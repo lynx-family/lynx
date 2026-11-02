@@ -2921,6 +2921,10 @@ bool Element::GetEnableMultiTouchParamsCompatible() {
   return element_manager_->GetEnableMultiTouchParamsCompatible();
 }
 
+event::TouchEventState* Element::GetTouchEventState() {
+  return ShouldDestroy() ? element_manager_->GetTouchEventState() : nullptr;
+}
+
 float Element::GetLayoutsUnitPerPx() {
   return element_manager_->GetLynxEnvConfig().LayoutsUnitPerPx();
 }

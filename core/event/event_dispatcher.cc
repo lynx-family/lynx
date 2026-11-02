@@ -95,11 +95,11 @@ DispatchEventResult EventDispatcher::Dispatch() {
               });
   LOGI("EventDispatcher::Dispatch name: " << event_->type() << " target: "
                                           << target_->GetUniqueID())
-  // handle conflic and param
+  event_->set_target(target_->GetWeakTarget());
+  // Handle conflicts and parameters after initializing the target.
   if (event_->HandleEventConflictAndParam()) {
     return {EventCancelType::kCanceledByEventHandler, false};
   }
-  event_->set_target(target_->GetWeakTarget());
   event_->HandleEventCustomDetail();
   bool consumed = false;
   auto path = event_->event_path();

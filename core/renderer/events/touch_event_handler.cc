@@ -556,8 +556,11 @@ void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
     // Because the mini-program pushes all the new event logic by default, and
     // only `MouseEvent` is triggered on PC (no `TouchEvent` is triggered), the
     // `tap` event cannot be triggered after a long press. Therefore, we need to
-    // modify the `long_press_consumed_` variable of `TouchEvent` accordingly.
-    event::TouchEvent::long_press_consumed_ = false;
+    // reset the page's touch-event long press state accordingly.
+    tasm->page_proxy()
+        ->element_manager()
+        ->GetTouchEventState()
+        ->long_press_consumed = false;
   }
 #if defined(OS_WIN) || defined(OS_MAC)
   const bool is_pointer_event =
