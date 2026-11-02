@@ -983,6 +983,13 @@ LYNX_UI_METHOD(getVisibleCells) {
   return [self.itemHelper indexForItemKey:itemKey];
 }
 
+- (NSArray<LynxListContainerComponentWrapper *> *)visibleCells {
+  if ([self isCUIList]) {
+    return @[];
+  }
+  return (NSArray<LynxListContainerComponentWrapper *> *)self.itemHelper.visibleItemViews;
+}
+
 - (NSArray<NSDictionary *> *)visibleCellsInfo {
   return self.itemHelper.visibleItemInfo;
 }
