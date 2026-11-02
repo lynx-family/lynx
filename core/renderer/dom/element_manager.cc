@@ -17,6 +17,7 @@
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/event/touch_event.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_selector_constants.h"
@@ -185,6 +186,13 @@ ExternalMemorySnapshot NodeManager::GetExternalMemorySnapshot() const {
   snapshot.total_size = live_element_count * element_memory_size;
   snapshot.garbage_size = detached_count * element_memory_size;
   return snapshot;
+}
+
+event::TouchEventState *ElementManager::GetTouchEventState() {
+  if (!touch_event_state_) {
+    touch_event_state_ = std::make_unique<event::TouchEventState>();
+  }
+  return touch_event_state_.get();
 }
 
 ElementManager::ElementManager(

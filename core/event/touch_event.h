@@ -21,11 +21,14 @@
 namespace lynx {
 namespace event {
 
+// Owned by a page and accessed only during engine event dispatch.
+struct TouchEventState {
+  lepus::Value current_touches{lepus::CArray::Create()};
+  bool long_press_consumed{false};
+};
+
 class TouchEvent : public Event {
  public:
-  // Indicates whether a long press event is triggered and consumed.
-  static bool long_press_consumed_;
-
   TouchEvent(const std::string& event_name, float x = 0, float y = 0,
              float page_x = 0, float page_y = 0, float client_x = 0,
              float client_y = 0, int64_t time_stamp = 0,
@@ -48,9 +51,12 @@ class TouchEvent : public Event {
 
   bool HandleEventConflictAndParam() override;
 
-  lepus::Value& GetCurrentTouches();
-
  private:
+  friend class EventTarget;
+
+  void SetLongPressConsumed(bool consumed);
+  TouchEventState* GetTouchEventState();
+
   float x_;
   float y_;
   float page_x_;

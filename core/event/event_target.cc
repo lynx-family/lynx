@@ -108,7 +108,7 @@ DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
 
   if (consumed && event->event_type() == Event::EventType::kTouchEvent &&
       event->type() == EVENT_LONG_PRESS) {
-    TouchEvent::long_press_consumed_ = consumed;
+    static_cast<TouchEvent*>(event.get())->SetLongPressConsumed(consumed);
   }
 
   if (event->is_stop_propagation() || event->is_stop_immediate_propagation() ||

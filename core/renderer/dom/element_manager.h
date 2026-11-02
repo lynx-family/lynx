@@ -268,6 +268,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // std::unique_ptr object
   virtual ~ElementManager();
 
+  event::TouchEventState *GetTouchEventState();
+
   LYNX_EXPORT_FOR_DEVTOOL void OnFinishUpdateProps(
       Element *node, std::shared_ptr<PipelineOptions> &options);
 
@@ -1630,6 +1632,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
       pending_element_template_list_updates_;
 
   std::shared_ptr<tasm::TasmWorkerTaskRunner> task_runner_;
+
+  std::unique_ptr<event::TouchEventState> touch_event_state_;
 
   std::shared_ptr<CSSKeyframesTokenMap> key_frames_;
 
