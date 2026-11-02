@@ -456,7 +456,7 @@ TEST_P(ModifierElementTest,
   EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0, '') === null").Bool());
   EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0, null) === null").Bool());
   EXPECT_TRUE(Eval("__CreateCompose(customPageId, 0, 42) === null").Bool());
-  EXPECT_TRUE(Eval("__CreateCompose(customPageId, 8) === null").Bool());
+  EXPECT_TRUE(Eval("__CreateCompose(customPageId, 10) === null").Bool());
   EXPECT_TRUE(
       Eval("__CreateCompose(customPageId, 0.5, 'sample-widget') === null")
           .Bool());
@@ -466,6 +466,8 @@ TEST_P(ModifierElementTest,
   } cases[] = {{ComposeElementKind::kSvg, "svg"},
                {ComposeElementKind::kOverlay, "overlay"},
                {ComposeElementKind::kAnimaX, "animax-view"},
+               {ComposeElementKind::kInput, "input"},
+               {ComposeElementKind::kTextarea, "textarea"},
                {ComposeElementKind::kCustom, "sample-widget"},
                {ComposeElementKind::kCustom, "svg"},
                {ComposeElementKind::kCustom, "overlay"}};
@@ -581,10 +583,11 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
   padding->SetValue("bottom", lepus::Value(2.0));
 
   const ComposeElementKind kinds[] = {
-      ComposeElementKind::kView,   ComposeElementKind::kText,
-      ComposeElementKind::kImage,  ComposeElementKind::kList,
-      ComposeElementKind::kSvg,    ComposeElementKind::kOverlay,
-      ComposeElementKind::kAnimaX, ComposeElementKind::kCustom};
+      ComposeElementKind::kView,     ComposeElementKind::kText,
+      ComposeElementKind::kImage,    ComposeElementKind::kList,
+      ComposeElementKind::kSvg,      ComposeElementKind::kOverlay,
+      ComposeElementKind::kAnimaX,   ComposeElementKind::kInput,
+      ComposeElementKind::kTextarea, ComposeElementKind::kCustom};
   for (const auto kind : kinds) {
     auto handle =
         CreateComposeHandle(manager, kind, base::String("sample-widget"));
@@ -612,6 +615,12 @@ TEST_P(ModifierElementTest, SupportsEveryComposeOwnerElementKind) {
         break;
       case ComposeElementKind::kAnimaX:
         EXPECT_TRUE(owner->GetTag().IsEqual("animax-view"));
+        break;
+      case ComposeElementKind::kInput:
+        EXPECT_TRUE(owner->GetTag().IsEqual("input"));
+        break;
+      case ComposeElementKind::kTextarea:
+        EXPECT_TRUE(owner->GetTag().IsEqual("textarea"));
         break;
       case ComposeElementKind::kCustom:
         EXPECT_TRUE(owner->GetTag().IsEqual("sample-widget"));

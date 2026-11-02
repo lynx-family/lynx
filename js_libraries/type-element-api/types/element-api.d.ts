@@ -22,6 +22,8 @@ export enum ComposeElementKind {
   View = 1,
   Text = 2,
   Image = 3,
+  Input = 8,
+  Textarea = 9,
 }
 
 /** A detached text measurement in Lynx logical CSS pixels. */
