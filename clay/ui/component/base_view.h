@@ -121,7 +121,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   virtual void OnMouseHoverChange();
   void OnMouseEvent(const ClayEventType type, const PointerEvent& event);
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   void OnPointerBoundaryEvent(const std::string& event_name,
                               const PointerEvent& event,
                               int related_target_sign);

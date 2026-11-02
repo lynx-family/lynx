@@ -55,7 +55,7 @@ TEST_F_UI(MouseRegionManagerTest, EventThroughTextRevealsUnderlyingRegion) {
   EXPECT_FALSE(entered_text);
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 std::string BoundaryRecord(const std::string& event_name, int target,
                            int related_target) {
   return event_name + ":" + std::to_string(target) + ":" +
@@ -186,7 +186,7 @@ TEST_F_UI(MouseRegionManagerTest, EnterLeaveMouseRegion) {
   EXPECT_THAT(views_enter, ElementsAre());
   clear();
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   manager->RegisterLeaveCallback(View3, [&](const PointerEvent& event) {
     on_leave(3);
     EXPECT_EQ(event.type, PointerEvent::EventType::kCancel);
@@ -214,7 +214,7 @@ TEST_F_UI(MouseRegionManagerTest, EnterLeaveMouseRegion) {
 #endif
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 TEST_F_UI(MouseRegionManagerTest, MouseAddDoesNotEnterLegacyRegions) {
   page_->SetBound(0, 0, 100, 100);
   page_->SetAlignMouseEventWithW3C(false);

@@ -170,7 +170,7 @@ clay::Value CreateExposeArray(
 static constexpr int64_t kEventStateUpdateDelayTime = 1000;
 static constexpr int64_t kEventStateUpdateIntervalTime = 100;
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 int ToWebButton(int64_t changed_buttons) {
   if (changed_buttons & PointerEvent::MouseButton::kPrimary) {
     return 0;
@@ -369,7 +369,7 @@ void PageView::OnDestroy() {
   touch_view_map_.clear();
   active_touch_pointer_id_.reset();
   active_touch_views_.clear();
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   pointer_view_map_.clear();
   primary_pointer_ids_.clear();
   active_pointer_ids_.clear();
@@ -391,7 +391,7 @@ void PageView::InitManagers() {
         isolated_gesture_detector_.TrackScrollTapSuppressionForPointerDown(
             event, result);
         BeginTapReturn(event, result);
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
         if (IsTouchLikePointerDevice(event.device)) {
 #else
         if (event.device == PointerEvent::DeviceType::kTouch) {
@@ -1019,7 +1019,7 @@ void PageView::SetEnablePointerEvents(bool enabled) {
     return;
   }
   enable_pointer_events_ = enabled;
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   pointer_view_map_.clear();
   primary_pointer_ids_.clear();
   active_pointer_ids_.clear();
@@ -1028,7 +1028,7 @@ void PageView::SetEnablePointerEvents(bool enabled) {
 }
 
 bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   // Pen compatibility historically completes each input before the next one.
   if (events.size() > 1 &&
       std::any_of(events.begin(), events.end(), [](const auto& event) {
@@ -1067,7 +1067,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
         ConvertFrom<kPixelTypePhysical>(event.scroll_delta_y);
   }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   std::vector<PointerEvent> legacy_events;
   for (const auto& event : events) {
     if (auto legacy_event = event.ToLegacyEvent()) {
@@ -1084,7 +1084,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
     FinishTapReturn(legacy_events, reset_generation);
     return consumed;
   }
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   if (enable_pointer_events_) {
     for (const auto& event : events) {
       if (event.dispatch_mode == PointerEvent::DispatchMode::kLegacyOnly) {
@@ -1168,7 +1168,7 @@ bool PageView::DispatchPointerEvent(std::vector<PointerEvent> events) {
                               });
     }
   }
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   for (const auto& event : events) {
     if (event.dispatch_mode ==
             PointerEvent::DispatchMode::kPenWithTouchCompatibility &&
@@ -1292,7 +1292,7 @@ void PageView::ReportTopViewRawEvents(const std::vector<PointerEvent>& events) {
   }
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 void PageView::PreparePointerEvent(PointerEvent& event) {
   const auto* previous = mouse_region_manager_->GetLastPointerEvent(event);
   if (event.type == PointerEvent::EventType::kCancel) {
@@ -2350,7 +2350,7 @@ void PageView::ResetPageView(bool recycle) {
   touch_view_map_.clear();
   active_touch_pointer_id_.reset();
   active_touch_views_.clear();
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   pointer_view_map_.clear();
   primary_pointer_ids_.clear();
   active_pointer_ids_.clear();
@@ -2846,7 +2846,7 @@ ClayEventType ToClayEventType(const PointerEvent& event,
   return ToClayEventType(event.type, event.device, align_mouse_event_with_w3c);
 }
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 ClayPointerDeviceKind ToClayPointerDeviceKind(
     PointerEvent::DeviceType device_type) {
   switch (device_type) {

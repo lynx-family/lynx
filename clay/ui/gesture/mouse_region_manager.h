@@ -14,7 +14,7 @@
 #include <vector>
 
 #include "build/build_config.h"
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 #include "clay/gfx/animation/animation_handler.h"
 #endif
 #include "clay/ui/event/gesture_event.h"
@@ -27,7 +27,7 @@ class HitTestTarget;
 class BaseView;
 
 class MouseRegionManager
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
     : private AnimationHandler::AnimationFrameCallback
 #endif
 {
@@ -48,7 +48,7 @@ class MouseRegionManager
 
   void HandleEvents(BaseView* root, const std::vector<PointerEvent>& events);
   void HandleEvent(BaseView* root, const PointerEvent& event);
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   void HandlePointerEventBefore(BaseView* root, const PointerEvent& event);
   void HandlePointerEventAfter(BaseView* root, const PointerEvent& event);
   void RefreshPointerEventTarget(BaseView* root, const PointerEvent& event);
@@ -63,7 +63,7 @@ class MouseRegionManager
   void AddCursorHolder(BaseView* holder);
 
   void ForceUpdateCursor();
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   void Reset();
   void ResetPointerEvents();
 #endif
@@ -79,7 +79,7 @@ class MouseRegionManager
 
   ViewChain BuildViewChain(BaseView* root, const PointerEvent& event,
                            BaseView** top_view = nullptr) const;
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   using PointerKey = std::pair<PointerEvent::DeviceType, int>;
   bool DoAnimationFrame(int64_t, bool = true) override;
   void UpdatePointerChain(const PointerEvent& event,
@@ -90,7 +90,7 @@ class MouseRegionManager
 
   std::map<BaseView*, MouseRegionRoute> mouse_region_routes_;
   std::list<fml::WeakPtr<BaseView>> prev_chain_;
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   std::map<PointerKey, ViewChain> pointer_chains_;
   std::map<PointerKey, PointerEvent> last_pointer_events_;
   std::set<PointerKey> implicitly_captured_pointers_;

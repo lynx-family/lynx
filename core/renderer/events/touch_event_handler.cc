@@ -617,7 +617,7 @@ void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
     // modify the `long_press_consumed_` variable of `TouchEvent` accordingly.
     event::TouchEvent::long_press_consumed_ = false;
   }
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   const bool is_pointer_event =
       name == "pointerdown" || name == "pointermove" || name == "pointerup" ||
       name == "pointercancel" || name == "pointerenter" ||

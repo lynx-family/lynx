@@ -85,7 +85,7 @@ ClayEventType ToClayEventType(PointerEvent::EventType event_type,
 ClayEventType ToClayEventType(const PointerEvent& event,
                               bool align_mouse_event_with_w3c);
 
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
 ClayPointerDeviceKind ToClayPointerDeviceKind(
     PointerEvent::DeviceType device_type);
 #endif
@@ -576,7 +576,7 @@ class PageView : public BaseView,
   void DeactivateTouchPseudoStatus(int pointer_id);
   // Report the deepest leaf view in the position to lynx.
   void ReportTopViewRawEvents(const std::vector<PointerEvent>& events);
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   void PreparePointerEvent(PointerEvent& event);
   void FinishPointerEvent(const PointerEvent& event);
   void ReportPointerEvent(const PointerEvent& event);
@@ -621,7 +621,7 @@ class PageView : public BaseView,
   bool force_raster_ = false;
   int button_state_ = 0;   // the one button changed recently
   int buttons_state_ = 0;  // bit field, all buttons pressed
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   std::map<PointerEvent::DeviceType, int> primary_pointer_ids_;
   std::map<PointerEvent::DeviceType, std::unordered_set<int>>
       active_pointer_ids_;
@@ -680,7 +680,7 @@ class PageView : public BaseView,
   std::unordered_set<int> tap_return_touch_ids_;
   uint64_t tap_return_reset_generation_ = 0;
   bool dispatching_isolated_pointer_events_ = false;
-#if defined(OS_WIN) || defined(OS_MAC)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   std::map<std::pair<PointerEvent::DeviceType, int>, fml::WeakPtr<BaseView>>
       pointer_view_map_;
 #endif
