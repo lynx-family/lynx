@@ -135,6 +135,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   NSString* _requestPriority;
 
   __weak UIImageView* _imageView;
+  BOOL _viewPropertiesNeedUpdate;
   __weak CALayer* _imageLayer;
   void (^_imageSizeDidChange)(CGSize);
   __weak LynxUIContext* _context;
@@ -187,6 +188,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 }
 
 - (void)updatePaintInfo:(const ImagePaintInfo&)paintInfo {
+  _viewPropertiesNeedUpdate = YES;
   _contentMode = LynxImageContentModeFromMode(static_cast<int32_t>(paintInfo.mode));
   _blurRadius = LynxImageLengthFromProp(NSStringFromBaseString(paintInfo.blur_radius), _context);
   _autoSize = paintInfo.auto_size;
@@ -618,9 +620,19 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
 }
 
 - (void)setTarget:(UIImageView*)view {
+  BOOL targetChanged = _imageView != view;
+  if (!targetChanged && !_viewPropertiesNeedUpdate) {
+    return;
+  }
   _imageView = view;
+  _viewPropertiesNeedUpdate = NO;
   _imageView.contentMode = _contentMode;
   _imageView.tintColor = _tintColor;
+
+  // Property-only updates must not replay cached animation callbacks.
+  if (!targetChanged) {
+    return;
+  }
 
   // Try set source image first.
   if (_images[@(LynxImageRequestSrc)] != nil) {

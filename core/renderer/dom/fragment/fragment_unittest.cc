@@ -122,6 +122,9 @@ class TestPlatformRenderer : public PlatformRendererImpl {
   TestPlatformRenderer(int id, PlatformRendererType type)
       : PlatformRendererImpl(id, type, base::String()) {}
 
+  void OnRebuildSubRenderers() override { ++rebuild_count; }
+  int rebuild_count = 0;
+
  protected:
   void OnUpdateDisplayList(DisplayList display_list) override {
     if (display_list.GetContentItemsSize() > 0) {
@@ -6213,6 +6216,82 @@ TEST_F(FragmentDrawTest, NativeReadyObservesChildrenAfterDisplayListBatch) {
   EXPECT_THAT(
       platform_ref->ready_child_counts,
       ::testing::ElementsAre(std::make_pair(parent->impl_id(), size_t{1})));
+}
+
+TEST_F(FragmentDrawTest,
+       NoPatchSkipsEmptySubmissionButPreservesCompletionAndDirtyChildren) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto child = manager->CreateFiberNode("native-child");
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  manager->Repaint();
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  context->operations.clear();
+  context->display_list_batch_sizes.clear();
+  context->display_list_batch_ids.clear();
+  context->ResetFlushFlag();
+
+  manager->MarkNeedReconstructEventTargetTreeForExposure();
+  manager->need_layout_ = false;
+  bool completed = false;
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinishForFiber(
+      options,
+      [&completed](bool has_patch) {
+        completed = true;
+        EXPECT_FALSE(has_patch);
+      },
+      page.get());
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(context->HasFlushed());
+  EXPECT_NE(std::find(context->operations.begin(), context->operations.end(),
+                      "finish_layout"),
+            context->operations.end());
+  EXPECT_TRUE(context->display_list_batch_sizes.empty());
+  EXPECT_EQ(std::count(context->operations.begin(), context->operations.end(),
+                       "update_display_list"),
+            0);
+  EXPECT_FALSE(manager->NeedReconstructEventTargetTreeForExposure());
+
+  child->fragment_impl()->InvalidateForRedraw();
+  manager->Repaint();
+  ASSERT_FALSE(context->display_list_batch_ids.empty());
+  ASSERT_EQ(context->display_list_batch_ids.back().size(), 1u);
+  EXPECT_EQ(context->display_list_batch_ids.back()[0], child->impl_id());
+}
+
+TEST_F(FragmentDrawTest, UnchangedNativeChildrenDoNotRebuildHierarchy) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto first = manager->CreateFiberNode("native-first");
+  auto second = manager->CreateFiberNode("native-second");
+  page->InsertNode(first);
+  page->InsertNode(second);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  manager->Repaint();
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto* ref = context->GetNativePlatformRef();
+  auto renderer = fml::static_ref_ptr_cast<TestPlatformRenderer>(
+      ref->renderers_.at(page->impl_id()));
+  int rebuild_count = renderer->rebuild_count;
+
+  page->fragment_impl()->InvalidateForRedraw();
+  manager->Repaint();
+  EXPECT_EQ(renderer->rebuild_count, rebuild_count);
+
+  DisplayListBuilder builder;
+  builder.Begin(page->impl_id(), PlatformRendererType::kPage, 0, 0, 100, 100);
+  builder.DrawView(second->impl_id(), 0, 0)
+      .DrawView(first->impl_id(), 0, 0)
+      .End();
+  ref->UpdateDisplayList(page->impl_id(), builder.Build());
+  EXPECT_EQ(renderer->rebuild_count, rebuild_count + 1);
+  ASSERT_EQ(renderer->Children().size(), 2u);
+  EXPECT_EQ(renderer->Children()[0]->GetId(), second->impl_id());
+  EXPECT_EQ(renderer->Children()[1]->GetId(), first->impl_id());
 }
 
 TEST_F(FragmentDrawTest, RedrawInvalidationStopsAtNearestPaintRoot) {

@@ -3,7 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxContainerView.h>
 #import <Lynx/LynxContext.h>
+#import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxMeasureDelegate.h>
@@ -16,6 +18,23 @@
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
+#include "gfx/public/display_list.h"
+
+namespace {
+lynx::tasm::DisplayList ImageReuseDisplayList(int32_t key) {
+  lynx::tasm::DisplayList list;
+  lynx::tasm::DisplayListItem box{};
+  box.type = lynx::tasm::DisplayListOpType::kRecordBox;
+  box.payload.record_box.w = 100;
+  box.payload.record_box.h = 80;
+  list.AppendItem(box);
+  lynx::tasm::DisplayListItem image{};
+  image.type = lynx::tasm::DisplayListOpType::kImage;
+  image.payload.image.image_id = key;
+  list.AppendItem(image);
+  return list;
+}
+}  // namespace
 
 @interface LynxImageManager (ImageLoadingTest)
 - (void)sendCustomEvent:(NSString *)name withParams:(NSDictionary *)params;
@@ -525,6 +544,150 @@
   _requests[1].completed([UIImage new], nil, url.url);
   XCTAssertEqual(_cancelled.count, 2u);
   XCTAssertEqual([[manager valueForKey:@"images"] count], 0u);
+}
+
+- (void)testAnimatedModeUpdatePreservesCallbacksAndTargetRebinding {
+  UIImageView *view = [UIImageView new];
+  id service = OCMProtocolMock(@protocol(LynxServiceImageProtocol));
+  OCMStub(ClassMethod([_loader imageService])).andReturn(service);
+  OCMStub([service imageView]).andReturn(view);
+  OCMStub([service isAnimatedImage:[OCMArg any]]).andReturn(YES);
+  OCMStub([service checkImageType:[OCMArg any]]).andReturn(YES);
+  __block NSUInteger registrations = 0;
+  __block dispatch_block_t currentLoopCallback = nil;
+  OCMStub([service registerAnimatedImageCallback:[OCMArg any]
+                                   startCallback:[OCMArg any]
+                             currentLoopCallback:[OCMArg any]
+                               finalLoopCallback:[OCMArg any]])
+      .andDo(^(NSInvocation *invocation) {
+        __unsafe_unretained UIImageView *target = nil;
+        __unsafe_unretained dispatch_block_t start = nil;
+        __unsafe_unretained dispatch_block_t loop = nil;
+        [invocation getArgument:&target atIndex:2];
+        [invocation getArgument:&start atIndex:3];
+        [invocation getArgument:&loop atIndex:4];
+        XCTAssertNotNil(target.image);
+        ++registrations;
+        currentLoopCallback = [loop copy];
+        // Model the SDWebImage service reporting an existing player at registration.
+        if (start) start();
+      });
+
+  [self createImage:1 background:NO];
+  LynxImageManager *manager = [_context imageManagerForID:1];
+  const NSInteger startPlayEvent = 1 << 2;
+  const NSInteger currentLoopEvent = 1 << 3;
+  const NSInteger eventMask = startPlayEvent | currentLoopEvent;
+  [manager setEventMask:eventMask];
+  NSMutableArray<NSString *> *events = [NSMutableArray new];
+  id managerSpy = OCMPartialMock(manager);
+  OCMStub([managerSpy sendCustomEvent:[OCMArg any] withParams:[OCMArg any]])
+      .andDo(^(NSInvocation *invocation) {
+        __unsafe_unretained NSString *name = nil;
+        [invocation getArgument:&name atIndex:2];
+        [events addObject:name];
+      });
+  LynxContainerView *host = [[LynxContainerView alloc] initWithRendererContext:_context];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:_context];
+  auto list = ImageReuseDisplayList(1);
+  [applier applyDisplayList:&list];
+  UIImage *loaded = [UIImage new];
+  _requests[0].completed(loaded, nil, _requests[0].imageURL.url);
+  XCTAssertEqual(view.image, loaded);
+  XCTAssertEqualObjects(events, (@[ @"startplay" ]));
+
+  lynx::tasm::ImagePaintInfo info;
+  info.mode = lynx::tasm::ImageFitMode::kAspectFit;
+  [manager setEventMask:eventMask];
+  [manager updateSourceURL:_requests[0].imageURL
+            placeholderURL:_requests[1].imageURL
+                 paintInfo:info
+                   changes:lynx::tasm::ImagePaintInfo::kModeChanged];
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(host.subviews.firstObject, view);
+  XCTAssertEqual(view.contentMode, UIViewContentModeScaleAspectFit);
+  XCTAssertEqual(view.image, loaded);
+  XCTAssertEqual(_requests.count, 2u);
+  XCTAssertEqual(registrations, 1u);
+  XCTAssertEqualObjects(events, (@[ @"startplay" ]));
+
+  // The callback installed at image load remains active after the mode update.
+  XCTAssertNotNil(currentLoopCallback);
+  if (currentLoopCallback) currentLoopCallback();
+  XCTAssertEqualObjects(events, (@[ @"startplay", @"currentloopcomplete" ]));
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(registrations, 1u);
+
+  // A new target must still receive the cached image and animation callbacks.
+  UIImageView *newTarget = [UIImageView new];
+  [manager setTarget:newTarget];
+  XCTAssertEqual(newTarget.image, loaded);
+  XCTAssertEqual(newTarget.contentMode, UIViewContentModeScaleAspectFit);
+  XCTAssertEqual(_requests.count, 2u);
+  XCTAssertEqual(registrations, 2u);
+  XCTAssertEqualObjects(events, (@[ @"startplay", @"currentloopcomplete", @"startplay" ]));
+  [managerSpy stopMocking];
+}
+
+- (void)testApplierReuseRestoresActualTargetAfterDelayedCompletion {
+  [self createImage:1 background:NO];
+  LynxContainerView *hostA = [[LynxContainerView alloc] initWithRendererContext:_context];
+  LynxContainerView *hostB = [[LynxContainerView alloc] initWithRendererContext:_context];
+  LynxDisplayListApplier *applierA = [[LynxDisplayListApplier alloc] initWithView:hostA
+                                                                       andContext:_context];
+  LynxDisplayListApplier *applierB = [[LynxDisplayListApplier alloc] initWithView:hostB
+                                                                       andContext:_context];
+  auto list = ImageReuseDisplayList(1);
+  [applierA applyDisplayList:&list];
+  UIImageView *viewA = (UIImageView *)hostA.subviews.firstObject;
+  [applierB applyDisplayList:&list];
+  UIImageView *viewB = (UIImageView *)hostB.subviews.firstObject;
+  UIImage *loaded = [UIImage new];
+  _requests[0].completed(loaded, nil, _requests[0].imageURL.url);
+  XCTAssertNil(viewA.image);
+  XCTAssertEqual(viewB.image, loaded);
+
+  [applierA applyDisplayList:&list];
+  XCTAssertEqual(hostA.subviews.firstObject, viewA);
+  XCTAssertEqual(viewA.image, loaded);
+  id viewSpy = OCMPartialMock(viewA);
+  OCMReject([viewSpy setImage:[OCMArg any]]);
+  OCMReject([viewSpy removeFromSuperview]);
+  OCMReject([viewSpy setFrame:CGRectMake(0, 0, 100, 80)]);
+  [applierA applyDisplayList:&list];
+  OCMVerifyAll(viewSpy);
+  [viewSpy stopMocking];
+
+  [applierA reset];
+  XCTAssertNil(viewA.superview);
+  [applierA applyDisplayList:&list];
+  UIImageView *replacement = (UIImageView *)hostA.subviews.firstObject;
+  XCTAssertNotEqual(replacement, viewA);
+  XCTAssertEqual(replacement.image, loaded);
+}
+
+- (void)testCompletionAfterApplierResetUsesNewTargetAndIgnoresCancellation {
+  [self createImage:1 background:NO];
+  LynxContainerView *host = [[LynxContainerView alloc] initWithRendererContext:_context];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:_context];
+  auto list = ImageReuseDisplayList(1);
+  [applier applyDisplayList:&list];
+  UIImageView *oldView = (UIImageView *)host.subviews.firstObject;
+  [applier reset];
+  [applier applyDisplayList:&list];
+  UIImageView *currentView = (UIImageView *)host.subviews.firstObject;
+  UIImage *loaded = [UIImage new];
+  _requests[0].completed(loaded, nil, _requests[0].imageURL.url);
+  XCTAssertNil(oldView.image);
+  XCTAssertEqual(currentView.image, loaded);
+
+  [_context destroyImage:1];
+  _requests[0].completed([UIImage new], nil, _requests[0].imageURL.url);
+  XCTAssertEqual(currentView.image, loaded);
+  // The source completed already; only the pending placeholder is cancelled.
+  XCTAssertEqualObjects(_cancelled, (@[ @1 ]));
 }
 
 - (void)testQueuedBackgroundCompletionIsIgnoredAfterDestroy {

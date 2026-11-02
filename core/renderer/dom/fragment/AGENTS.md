@@ -13,3 +13,8 @@
 - A placeholder is a drawable image source even when `src` is empty. Its first assignment, replacement and removal must invalidate drawing; removing the last source must clear the previous image.
 - Parse prefetch, downsampling and priority request options only on iOS until other platform renderers consume them; unsupported attribute updates must not recreate images.
 - Use compile-time `GetOSType()` conditions for platform gates; new `#if OS_*` branches fail the macro checker. Include `macro` when validating platform-specific changes.
+
+## Clean updates
+
+- NoPatch means layout is skipped, not that painting is unchanged. Keep dirty-descendant traversal, subtree-property updates, event synchronization, completion operations and queue flushes. A truly empty display list can be omitted; a Begin/End list used to clear hidden content must still be submitted.
+- Fragment rendering and NoPatch integration tests in `fragment_unittest.cc` belong to `dom_unittest_exec`; `fragment_test_exec` covers the display-list builder and does not run those tests.

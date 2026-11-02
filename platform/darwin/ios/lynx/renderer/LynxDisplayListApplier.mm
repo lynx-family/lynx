@@ -89,6 +89,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 @interface LynxDisplayListApplier ()
 
 - (void)insertHostDecorationLayer:(CALayer *)layer;
+- (void)positionImageLayer:(CALayer *)layer reused:(BOOL)reused;
 - (void)insertLayer:(CALayer *)layer forOp:(DisplayListOpType)op;
 - (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op;
 - (void)applyRoundedRect:(const RoundedRectangle &)box toLayer:(CALayer *)layer;
@@ -141,6 +142,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   CALayer *_hostBackgroundLayer;
 
   NSMutableArray<UIImageView *> *_contentImageViews;
+  NSMutableSet<UIView *> *_previousImageViews;
   NSMutableArray<CALayer *> *_contentLayers;
   NSMutableArray<CALayer *> *_hostDecorationLayers;
   // Resource identities, not display-list positions, own reusable content.
@@ -181,6 +183,15 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   }
 
   NSArray<UIView *> *hostSubviewsSnapshot = [_view.subviews copy];
+  if (_previousImageViews.count != 0) {
+    NSMutableArray<UIView *> *nativeSubviews = [NSMutableArray new];
+    for (UIView *view in hostSubviewsSnapshot) {
+      if (![_previousImageViews containsObject:view]) {
+        [nativeSubviews addObject:view];
+      }
+    }
+    hostSubviewsSnapshot = nativeSubviews;
+  }
   int32_t view_index = 0;
   UIView *refView = nil;
 
@@ -261,6 +272,9 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
       case DisplayListOpType::kText: {
         auto text_id = item.payload.text.text_id;
         auto box_index = item.payload.text.box_index;
+        if (box_index < 0 || static_cast<size_t>(box_index) >= box_array_.size()) {
+          break;
+        }
         CALayer *layer = nil;
         BOOL needsDisplay = YES;
         if ([self isTextServiceModeOn]) {
@@ -322,23 +336,39 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         CGRect rect = CGRectMake(box.GetX(), box.GetY(), box.GetWidth(), box.GetHeight());
         rect.origin.x += left_offset_;
         rect.origin.y += top_offset_;
-        [imageView setFrame:rect];
-        [self applyRoundedRect:box toLayer:imageView.layer];
-        if (!box.HasRadius()) {
-          imageView.clipsToBounds = YES;
+        if (!reused || !CGRectEqualToRect(imageView.frame, rect)) {
+          [imageView setFrame:rect];
         }
-
-        if (!reused) {
-          [imageManager setTarget:imageView];
-        }
-
-        if (refView == nil) {
-          [_view insertSubview:imageView atIndex:0];
+        CALayer *imageLayer = imageView.layer;
+        if (!reused || (box.HasRadius() && !box.IsUniformRadius())) {
+          [self applyRoundedRect:box toLayer:imageLayer];
+          if (!box.HasRadius()) imageView.clipsToBounds = YES;
         } else {
-          [_view insertSubview:imageView aboveSubview:refView];
+          CGFloat radius = box.HasRadius() ? box.GetRadiusXTopLeft() : 0;
+          if (imageLayer.mask != nil) imageLayer.mask = nil;
+          if (imageLayer.cornerRadius != radius) imageLayer.cornerRadius = radius;
+          if (!imageLayer.masksToBounds) imageLayer.masksToBounds = YES;
+        }
+        [imageManager setTarget:imageView];
+
+        BOOL needsInsertion = YES;
+        if (reused) {
+          NSArray<UIView *> *subviews = _view.subviews;
+          NSUInteger index = refView == nil ? 0 : [subviews indexOfObjectIdenticalTo:refView] + 1;
+          needsInsertion = imageView.superview != _view || index >= subviews.count ||
+                           subviews[index] != imageView;
+        }
+        if (needsInsertion) {
+          if (refView == nil) {
+            [_view insertSubview:imageView atIndex:0];
+          } else {
+            [_view insertSubview:imageView aboveSubview:refView];
+          }
         }
 
-        [self insertLayer:imageView.layer forOp:op];
+        // Image layers are owned and removed through their views.
+        [self positionImageLayer:imageLayer reused:reused];
+        if (reused) [_previousImageViews removeObject:imageView];
 
         refView = imageView;
 
@@ -749,12 +779,20 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   }
 
   NSMapTable *previousContent = _reusableContent;
+  NSMutableSet<UIView *> *previousImages = nil;
+  if (_contentImageViews.count != 0) {
+    previousImages = [NSMutableSet setWithArray:_contentImageViews];
+    [_contentImageViews removeAllObjects];
+  }
   [self reset];
   _previousContent = previousContent;
+  _previousImageViews = previousImages;
 
   reader_ = DisplayListReader(*list);
 
   [self processContentOperations];
+  [_previousImageViews makeObjectsPerformSelector:@selector(removeFromSuperview)];
+  _previousImageViews = nil;
   _previousContent = nil;
   [_view setNeedsDisplay];
 }
@@ -772,6 +810,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 - (void)reset {
   _reusableContent = nil;
   _previousContent = nil;
+  _previousImageViews = nil;
   reader_ = DisplayListReader();
   top_offset_ = 0;
   left_offset_ = 0;
@@ -1101,6 +1140,23 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   maskLayer.path = path;
   CGPathRelease(path);
   layer.mask = maskLayer;
+}
+
+- (void)positionImageLayer:(CALayer *)layer reused:(BOOL)reused {
+  if (reused && layer.superlayer == _view.layer) {
+    NSArray<CALayer *> *layers = _view.layer.sublayers;
+    NSUInteger index = _refLayer == nil ? 0 : [layers indexOfObjectIdenticalTo:_refLayer] + 1;
+    if (index < layers.count && layers[index] == layer) {
+      _refLayer = layer;
+      return;
+    }
+  }
+  if (_refLayer == nil) {
+    [_view.layer insertSublayer:layer atIndex:0];
+  } else {
+    [_view.layer insertSublayer:layer above:_refLayer];
+  }
+  _refLayer = layer;
 }
 
 - (void)insertLayer:(CALayer *)layer {

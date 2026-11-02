@@ -1522,7 +1522,7 @@ void Fragment::Draw() {
   //  Collect own displayList.
   DisplayListBuilder builder{render_offset_[0], render_offset_[1]};
 
-  if (draw_node_capacity_ > 0) {
+  if (draw_node_capacity_ > 0 && (NeedRedraw() || !has_platform_renderer_)) {
     builder.Reserve(draw_node_capacity_);
   }
 
@@ -1549,8 +1549,12 @@ void Fragment::Draw() {
     MarkDirtyState(kNeedRedraw);
   }
 
-  painting_context()->impl()->CastToNativeCtx()->UpdateDisplayList(
-      id(), builder.Build());
+  auto display_list = builder.Build();
+  if (display_list.GetContentItemsSize() != 0 ||
+      display_list.GetSubtreePropertiesSize() != 0) {
+    painting_context()->impl()->CastToNativeCtx()->UpdateDisplayList(
+        id(), std::move(display_list));
+  }
 
   ReconstructEventTargetTreeForExposure();
 }
