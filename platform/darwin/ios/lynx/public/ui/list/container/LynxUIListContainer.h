@@ -53,4 +53,7 @@ typedef void (^RestoreNativeStateBlock)(void);
                    align:(int)align
                   smooth:(BOOL)smooth;
 
+// Returns visible wrappers in item order. CUI lists return an empty array.
+- (NSArray<LynxListContainerComponentWrapper *> *_Nullable)visibleCells;
+
 @end

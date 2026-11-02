@@ -5236,6 +5236,7 @@ public class LynxUIListContainer : LynxUIScroller, <LynxUIComponentLayoutObserve
   public void LynxUIListContainer::detachedFromWindow();
   public NSInteger LynxUIListContainer::getIndexFromItemKey:(NSString *_Nullable itemKey);
   public void LynxUIListContainer::scrollToPosition:offset:align:smooth:(NSInteger position,[offset] float offset,[align] int align,[smooth] BOOL smooth);
+  public NSArray< LynxListContainerComponentWrapper * > *_Nullable LynxUIListContainer::visibleCells();
 }
 
 public protocol LynxUIListContainerDelegate-p : <UIViewNSObject> {
