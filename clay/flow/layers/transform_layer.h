@@ -22,6 +22,14 @@ namespace clay {
 // skity::Matrix.
 class TransformLayer : public ContainerLayer {
  public:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool CanSegmentDisplay() const override {
+    auto m = GetMatrix();
+    return m.IsFinite() && m.GetPersp0() == 0 && m.GetPersp1() == 0 &&
+           m.GetPersp2() == 1 && m.Get(2, 0) == 0 && m.Get(2, 1) == 0 &&
+           m.Get(0, 2) == 0 && m.Get(1, 2) == 0 && m.Get(2, 2) == 1;
+  }
+#endif
   explicit TransformLayer(const skity::Matrix& transform = skity::Matrix());
   TransformLayer(const lynx::gfx::TransformOperations& transform,
                  skity::Vec2 origin, skity::Vec2 offset,

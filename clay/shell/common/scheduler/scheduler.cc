@@ -47,6 +47,23 @@ void Scheduler::SetOutputSurfaceValid(bool valid) {
   ProcessScheduledAction();
 }
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+void Scheduler::ResetForNewProduction() {
+  state_machine_.ResetForNewProduction();
+  commit_has_no_updates_ = false;
+  sync_compositor_result_ = false;
+}
+void Scheduler::SetNeedsContentBeginFrame() {
+  // Content only requests work. Drawing is entered from the shared frame tick.
+  state_machine_.SetNeedsContentBeginFrame();
+}
+void Scheduler::NotifyActiveTreeProduced(bool success) {
+  // Advances production only. Display acknowledgments use a different service.
+  state_machine_.NotifyActiveTreeHasBeenDrawn();
+  if (!success) state_machine_.SetNeedsRasterBeginFrame();
+  ProcessScheduledAction();
+}
+#endif
 void Scheduler::SetMeaningfulLayout(bool meaningful_layout) {
   state_machine_.SetMeaningfulLayoutState(
       meaningful_layout ? SchedulerStateMachine::MeaningfulLayoutState::FINISH
@@ -170,6 +187,9 @@ void Scheduler::ProcessScheduledAction() {
         scheduler_client_->ScheduledActionRasterInvalidate();
         break;
       case SchedulerStateMachine::Action::DRAW:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+        if (!scheduler_client_->CanDraw()) return;
+#endif
         // Schedule draw LayerTree.
         state_machine_.WillDraw();
         scheduler_client_->ScheduledActionDraw();

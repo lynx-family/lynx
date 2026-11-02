@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/macros.h"
@@ -150,6 +151,12 @@ class CompositorContext {
     return drawable_image_registry_;
   }
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void SetDrawableImageRegistry(
+      std::shared_ptr<DrawableImageRegistry> registry) {
+    drawable_image_registry_ = std::move(registry);
+  }
+#endif
   const Counter& frame_count() const { return frame_count_; }
 
   const Stopwatch& raster_time() const { return raster_time_; }

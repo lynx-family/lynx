@@ -52,7 +52,9 @@ Rasterizer::Rasterizer(std::shared_ptr<clay::ServiceManager> service_manager)
       raster_frame_service_(service_manager->GetService<RasterFrameService>()),
       instrumentation_service_(
           service_manager->GetService<InstrumentationService>()),
+#ifndef ENABLE_CLAY_DISPLAY_COMPOSITOR
       compositor_service_(service_manager->GetService<CompositorService>()),
+#endif
       compositor_context_(std::make_unique<clay::CompositorContext>(*this)),
       user_override_resource_cache_bytes_(false),
       raster_time_(std::make_shared<FixedRefreshRateStopwatch>()),
@@ -128,6 +130,10 @@ void Rasterizer::CleanForRecycle() {
 }
 
 void Rasterizer::NotifyLowMemoryWarning() const {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  if (staged_) staged_->Trim();
+  return;
+#endif
   if (!surface_) {
     FML_DLOG(INFO)
         << "Rasterizer::NotifyLowMemoryWarning called with no surface.";

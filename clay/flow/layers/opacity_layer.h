@@ -24,6 +24,11 @@ namespace clay {
 // |Preroll| will assert if there are no children.
 class OpacityLayer : public CacheableContainerLayer {
  public:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool CanSegmentDisplay() const override {
+    return children_can_accept_opacity() && layers().size() == 1;
+  }
+#endif
   // An offset is provided here because OpacityLayer.addToScene method in the
   // Flutter framework can take an optional offset argument.
   //
