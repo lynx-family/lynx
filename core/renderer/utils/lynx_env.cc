@@ -6,9 +6,11 @@
 
 #include <algorithm>
 #include <cstdbool>
+#include <random>
 #include <unordered_map>
 #include <utility>
 
+#include "base/include/string/string_number_convert.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/trace/trace_event_def.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
@@ -578,10 +580,20 @@ bool LynxEnv::EnableOptimizeHasOpacity() {
   return enable_optimize_has_opacity;
 }
 
-bool LynxEnv::DisableJSModeStrip() {
-  static bool disable_js_mode_strip =
-      GetBoolEnv(Key::DISABLE_JS_MODE_STRIP, false);
-  return disable_js_mode_strip;
+bool LynxEnv::EnableJSModeStrip() {
+  static const bool enable_js_mode_strip = [this] {
+    const auto config = GetStringEnv(Key::ENABLE_JS_MODE_STRIP);
+    float sample_rate = 0.0f;
+    if (!config || !base::StringToFloat(*config, sample_rate, true) ||
+        !(sample_rate > 0.0f && sample_rate <= 1.0f)) {
+      return false;
+    }
+    if (sample_rate == 1.0f) return true;
+    std::mt19937 random(std::random_device{}());
+    std::uniform_real_distribution<float> distribution(0, 1);
+    return distribution(random) < sample_rate;
+  }();
+  return enable_js_mode_strip;
 }
 
 bool LynxEnv::EnablePlatformDataFix() {

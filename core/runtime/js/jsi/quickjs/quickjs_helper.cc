@@ -17,8 +17,10 @@
 #include "base/include/notification_center.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 #include "core/runtime/js/runtime_constant.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "quickjs/include/quickjs.h"
 extern "C" {
 #include "quickjs/include/quickjs-libc.h"
@@ -33,6 +35,19 @@ namespace lynx {
 namespace runtime {
 namespace js {
 namespace detail {
+namespace {
+
+int ApplyJSModeStripFlag(QuickjsRuntime *rt, int eval_flags) {
+  auto &env = tasm::LynxEnv::GetInstance();
+  if (!tasm::performance::MemoryMonitor::Enable() && !env.IsDevToolEnabled() &&
+      !rt->GetPageOptions().GetDebuggable() && env.EnableJSModeStrip()) {
+    return eval_flags | LEPUS_EVAL_FLAG_STRIP;
+  }
+  return eval_flags & ~LEPUS_EVAL_FLAG_STRIP;
+}
+
+}  // namespace
+
 QuickjsJSValueValue::QuickjsJSValueValue(LEPUSContext *ctx, LEPUSValue val)
     : val_(val), rt_(LEPUS_GetRuntime(ctx)) {
   //  static int calc = 0;
@@ -228,13 +243,7 @@ base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
     QuickjsRuntime *rt, LEPUSContext *ctx, const char *buf, size_t buf_len,
     const char *filename, int eval_flags, int start_line_offset,
     bool enable_js_coverage) {
-#ifdef OS_IOS
-  if (!(tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
-        rt->GetPageOptions().GetDebuggable()) &&
-      !tasm::LynxEnv::GetInstance().DisableJSModeStrip()) {
-    eval_flags |= LEPUS_EVAL_FLAG_STRIP;
-  }
-#endif
+  eval_flags = ApplyJSModeStripFlag(rt, eval_flags);
   LEPUSValue val;
   if (enable_js_coverage) {
     val = LEPUS_Eval_WITH_COVERAGE(ctx, buf, buf_len, filename, eval_flags,
@@ -262,12 +271,7 @@ base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
 base::expected<Value, JSINativeException> QuickjsHelper::evalBin(
     QuickjsRuntime *rt, LEPUSContext *ctx, const char *buf, size_t buf_len,
     const char *filename, int eval_flags) {
-#ifdef OS_IOS
-  if (!tasm::LynxEnv::GetInstance().IsDevToolEnabled() &&
-      !tasm::LynxEnv::GetInstance().DisableJSModeStrip()) {
-    eval_flags |= LEPUS_EVAL_FLAG_STRIP;
-  }
-#endif
+  eval_flags = ApplyJSModeStripFlag(rt, eval_flags);
   LEPUSValue val = LEPUS_EvalBinary(ctx, reinterpret_cast<const uint8_t *>(buf),
                                     buf_len, eval_flags);
   auto maybe_error = QuickjsException::TryCatch(*rt, val);

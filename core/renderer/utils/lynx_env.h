@@ -120,7 +120,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_FILTER_DYNAMIC_UPDATE_BUG,
     ENABLE_CSS_INLINE_VARIABLES,
     ENABLE_OPTIMIZE_HAS_OPACITY,
-    DISABLE_JS_MODE_STRIP,
+    ENABLE_JS_MODE_STRIP,
     ENABLE_PLATFORM_DATA_FIX,
     ENABLE_PLATFORM_DATA_ASYNC_CONSUME_ACTIONS,
     ENABLE_QUICKJS_THREAD_CHECKER,
@@ -293,7 +293,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "fix_radon_transition_property_remove_bug"},
             {Key::ENABLE_CSS_INLINE_VARIABLES, "enable_css_inline_variables"},
             {Key::ENABLE_OPTIMIZE_HAS_OPACITY, "enable_optimize_has_opacity"},
-            {Key::DISABLE_JS_MODE_STRIP, "disable_js_mode_strip"},
+            {Key::ENABLE_JS_MODE_STRIP, "enable_js_mode_strip"},
             {Key::ENABLE_PLATFORM_DATA_FIX, "enable_platform_data_fix"},
             // NOLINT(harmony-trail-key): iOS-only configuration.
             {Key::ENABLE_PLATFORM_DATA_ASYNC_CONSUME_ACTIONS,
@@ -505,7 +505,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixRadonTransitionPropertyRemoveBug();
   bool EnableCSSInlineVariables();
   bool EnableOptimizeHasOpacity();
-  bool DisableJSModeStrip();
+  // Sample once per process using enable_js_mode_strip in [0, 1].
+  // Missing or invalid configuration disables stripping.
+  bool EnableJSModeStrip();
   bool EnablePlatformDataFix();
   bool EnablePlatformDataAsyncConsumeActions();
   bool EnableListNewArchitecture();
