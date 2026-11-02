@@ -841,17 +841,14 @@ public class DisplayListApplier implements Drawable.Callback {
       return;
     }
 
-    // TODO: Keep the full shader tile and clip only the painted region, preserving root
-    // scroll offsets. Normalizing the tile can shrink or shift the gradient; this consumer
-    // bug predates Compose drawing callbacks and also affects CSS linear gradients.
-    // Cover extended and negative-origin tiles, repetition, and scrolling with nonzero
-    // host dimensions before changing this shared path.
-    RoundedRectangle tilingBox = getNormalizedRoundedRectangle(tilingIndex);
+    // Preserve the authored tile. Clipping its bounds would change both the
+    // gradient endpoints and the phase of repeated background tiles.
+    RoundedRectangle tilingBox = getRoundedRectangle(tilingIndex);
     if (tilingBox == null) {
       return;
     }
 
-    RoundedRectangle clipBox = getNormalizedRoundedRectangle(clipIndex);
+    RoundedRectangle clipBox = getRoundedRectangle(clipIndex);
     if (clipBox == null) {
       return;
     }
@@ -885,9 +882,21 @@ public class DisplayListApplier implements Drawable.Callback {
     float startX = 2 * center.x - endX;
     float startY = 2 * center.y - endY;
 
+    final boolean normalizeRoot = shouldNormalizeRootGeometry();
+    if (normalizeRoot) {
+      canvas.save();
+      if (shouldIncludeScrollOffsetForHostBounds()) {
+        IRendererHost host = getRendererHost();
+        canvas.translate(host.getRendererHostScrollX(), host.getRendererHostScrollY());
+      } else {
+        canvas.clipRect(getHostBoundsRectF(false));
+      }
+    }
     drawGradient(canvas,
         new LinearGradient(startX, startY, endX, endY, colors, stops, Shader.TileMode.CLAMP),
         tilingBox, clipBox, repeatX, repeatY);
+    if (normalizeRoot)
+      canvas.restore();
   }
 
   private void drawRadialGradient(Canvas canvas, float centerX, float centerY, float radiusX,

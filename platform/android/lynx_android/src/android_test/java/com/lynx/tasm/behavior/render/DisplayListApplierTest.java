@@ -23,6 +23,7 @@ import android.app.Application;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
@@ -524,6 +525,76 @@ public class DisplayListApplierTest {
     setDisplayList(displayList);
     displayListApplier.drawTillNextView(new Canvas(bitmap));
     return bitmap;
+  }
+
+  @Test
+  public void testRootLinearGradientKeepsExtendedAndNegativeOriginTiles() {
+    when(mockRendererHost.getRendererHostWidth()).thenReturn(100);
+    when(mockRendererHost.getRendererHostHeight()).thenReturn(100);
+    final float[][] tiles = {{-40, 0, 180, 100}, {0, -50, 100, 200}, {-20, -10, 100, 100}};
+    final float[][] endpoints = {{-40, 50, 140, 50}, {50, -50, 50, 150}, {80, 90, -20, -10}};
+    final float[] angles = {90, 180, 315};
+    for (int i = 0; i < tiles.length; i++) {
+      float[] tile = tiles[i];
+      float[] e = endpoints[i];
+      NativeDisplayListBuilder list = createDisplayList();
+      list.begin(0, VIEW_TYPE, 0, 0, 100, 100)
+          .recordBox(tile[0], tile[1], tile[2], tile[3])
+          .recordBox(-10, 10, 80, 50)
+          .linearGradient(
+              new int[] {0x80FF0000, 0x800000FF}, new float[] {.2f, .8f}, 0, 1, 1, 1, angles[i])
+          .end();
+      setDisplayList(list);
+      Bitmap actual = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+      Bitmap expected = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+      try {
+        displayListApplier.drawTillNextView(new Canvas(actual));
+        Paint reference = new Paint(Paint.ANTI_ALIAS_FLAG);
+        reference.setShader(new LinearGradient(e[0], e[1], e[2], e[3],
+            new int[] {0x80FF0000, 0x800000FF}, new float[] {.2f, .8f}, Shader.TileMode.CLAMP));
+        new Canvas(expected).drawRect(-10, 10, 70, 60, reference);
+        assertBitmapColorsNear(expected, actual);
+      } finally {
+        actual.recycle();
+        expected.recycle();
+      }
+    }
+  }
+
+  @Test
+  public void testRootLinearGradientPreservesRepeatedTilePhase() {
+    NativeDisplayListBuilder list = createDisplayList();
+    list.begin(0, VIEW_TYPE, 0, 0, 100, 100)
+        .recordBox(-17, -13, 35, 35)
+        .recordBox(0, 0, 100, 100)
+        .linearGradient(new int[] {0xFFFF0000, 0xFF0000FF}, new float[] {0, 1}, 0, 1, 0, 0, 150)
+        .end();
+    Bitmap expected = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+    Bitmap actual = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+    try {
+      setDisplayList(list);
+      displayListApplier.drawTillNextView(new Canvas(expected));
+      when(mockRendererHost.getRendererHostWidth()).thenReturn(100);
+      when(mockRendererHost.getRendererHostHeight()).thenReturn(100);
+      setDisplayList(list);
+      displayListApplier.drawTillNextView(new Canvas(actual));
+      assertBitmapColorsNear(expected, actual);
+    } finally {
+      expected.recycle();
+      actual.recycle();
+    }
+  }
+
+  private void assertBitmapColorsNear(Bitmap expected, Bitmap actual) {
+    for (int y = 0; y < 100; y++) {
+      for (int x = 0; x < 100; x++) {
+        for (int shift : new int[] {0, 8, 16, 24}) {
+          int a = (expected.getPixel(x, y) >>> shift) & 255;
+          int b = (actual.getPixel(x, y) >>> shift) & 255;
+          assertEquals("pixel " + x + "," + y + " channel " + shift, a, b, 1);
+        }
+      }
+    }
   }
 
   @Test
