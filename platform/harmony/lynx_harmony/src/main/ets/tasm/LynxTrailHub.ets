@@ -98,6 +98,7 @@ export enum LynxTrailKey {
   ENABLE_ELEMENT_API_NEW_REGISTRATION = 'enable_element_api_new_registration',
   ENABLE_ELEMENT_INVOKE_UI_METHOD_PENDING_TASK = 'enable_element_invoke_ui_method_pending_task',
   MEMORY_MONITOR_CONFIG = 'memory_monitor_config',
+  ENABLE_JS_MODE_STRIP = 'enable_js_mode_strip',
   DISABLE_APP_SERVICE_FACTORY_CACHE = 'disable_app_service_factory_cache',
 }
 
