@@ -1559,6 +1559,8 @@ class Element : public lepus::RefCounted,
 
   virtual bool GetEnableMultiTouchParamsCompatible() override;
 
+  event::TouchEventState* GetTouchEventState() override;
+
   virtual float GetLayoutsUnitPerPx() override;
 
   // Updates the latest platform scroll position in layout units. The value is
