@@ -275,7 +275,7 @@ void LayoutObject::RoundToPixelGrid(const float container_absolute_left,
     // if is first layout or has new layout result or has MeasureFunc && dirty,
     // mark and continue visit child
     if (SetNewLayoutResult(new_layout_result) || (!is_layout_occurred) ||
-        (GetSLMeasureFunc() && IsDirty())) {
+        (need_custom_layout() && IsDirty())) {
       MarkHasNewLayout();
     }
   }
@@ -1007,6 +1007,7 @@ void LayoutObject::Reset(LayoutObject* node) {
   }
   measured_position_.Reset(0, 0, 0, 0);
   SetSLMeasureFunc(nullptr);
+  SetSLComposeMeasureFunc(nullptr);
   SetContext(nullptr);
   SetBorderBoundWidth(node->GetBorderBoundWidth());
   SetBorderBoundHeight(node->GetBorderBoundHeight());

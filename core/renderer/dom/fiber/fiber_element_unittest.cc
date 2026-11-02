@@ -175,6 +175,14 @@ fml::RefPtr<PageElement> CreateLayoutInElementPage(FiberElementTest* test) {
   return page;
 }
 
+fml::RefPtr<PageElement> CreateComposeLayoutInElementPage(
+    FiberElementTest* test) {
+  auto page = CreateLayoutInElementPage(test);
+  page->MarkAsComposeLayout();
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  return page;
+}
+
 std::shared_ptr<PipelineOptions> LayoutOptions(FiberElementTest* test,
                                                bool enable_unified,
                                                bool is_first_screen = false,
@@ -528,6 +536,9 @@ TEST_P(FiberElementTest, CustomLayoutFunctionsFlushUpdatesAndClears) {
   page->FlushActionsAsRoot();
   ASSERT_EQ(element->slnode()->GetSLMeasureFunc(), functions.measure);
   ASSERT_EQ(element->slnode()->GetSLAlignmentFunc(), functions.layout);
+  EXPECT_FALSE(element->IsComposeLayout());
+  EXPECT_FALSE(element->slnode()->IsComposeLayout());
+  EXPECT_EQ(element->slnode()->GetContext(), element.get());
   EXPECT_FALSE(element->dirty() & Element::kDirtyCustomLayout);
   manager->OnUpdateViewport(300, SLMeasureModeDefinite, 200,
                             SLMeasureModeDefinite, false);
@@ -569,6 +580,8 @@ TEST_P(FiberElementTest, CustomLayoutFunctionsFlushUpdatesAndClears) {
   page->FlushActionsAsRoot();
   EXPECT_EQ(element->slnode()->GetSLMeasureFunc(), nullptr);
   EXPECT_EQ(element->slnode()->GetSLAlignmentFunc(), nullptr);
+  // Legacy CSS callback cleanup keeps the owning Element as its context.
+  EXPECT_EQ(element->slnode()->GetContext(), element.get());
   EXPECT_FALSE(element->dirty() & Element::kDirtyCustomLayout);
   EXPECT_TRUE(manager->need_layout_);
   manager->RequestLayout(std::make_shared<PipelineOptions>());
@@ -612,6 +625,72 @@ TEST_P(FiberElementTest, CustomLayoutFunctionsCloneBindsOwnContext) {
       page->RemoveNode(source);
     }
   }
+}
+
+TEST_P(FiberElementTest, CustomLayoutFunctionsExternalContextDoesNotClone) {
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto page = CreateComposeLayoutInElementPage(this);
+  FloatSize size(80, 30);
+  starlight::CustomLayoutFunctions functions{
+      [](void* context, const starlight::Constraints&, bool) {
+        return *static_cast<FloatSize*>(context);
+      },
+      nullptr, nullptr, &size};
+  for (bool flush_source : {false, true}) {
+    for (bool clone_resolved_props : {false, true}) {
+      SCOPED_TRACE(flush_source);
+      SCOPED_TRACE(clone_resolved_props);
+      auto source = manager->CreateFiberView();
+      source->MarkAsComposeLayout();
+      source->SetCustomLayoutFunctions(functions);
+      page->InsertNode(source);
+      if (flush_source) page->FlushActionsAsRoot();
+      auto clone = source->CloneElement(clone_resolved_props);
+      clone->AttachToElementManager(
+          manager, tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), false);
+      page->InsertNode(clone);
+      page->FlushActionsAsRoot();
+      EXPECT_EQ(source->slnode()->GetContext(), &size);
+      auto measured = source->slnode()->UpdateMeasureByPlatform(
+          starlight::Constraints(), true);
+      EXPECT_FLOAT_EQ(measured.width_, size.width_);
+      EXPECT_FLOAT_EQ(measured.height_, size.height_);
+      EXPECT_EQ(clone->slnode()->GetSLMeasureFunc(), nullptr);
+      EXPECT_EQ(clone->slnode()->GetSLAlignmentFunc(), nullptr);
+      EXPECT_EQ(clone->custom_layout_functions_, nullptr);
+      page->RemoveNode(clone);
+      page->RemoveNode(source);
+    }
+  }
+}
+
+TEST_P(FiberElementTest, CssCustomLayoutIgnoresComposeOnlyFields) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto element = manager->CreateFiberView();
+  int calls = 0;
+  starlight::CustomLayoutFunctions functions;
+  functions.context = &calls;
+  functions.compose_measure = [](void* context,
+                                 const starlight::ComposeConstraints&, bool) {
+    ++*static_cast<int*>(context);
+    return FloatSize(20, 15);
+  };
+  element->SetCustomLayoutFunctions(functions);
+  EXPECT_FALSE(element->HasCustomLayoutFunctions());
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(element->IsComposeLayout());
+  EXPECT_EQ(element->slnode()->GetSLComposeMeasureFunc(), nullptr);
+  EXPECT_EQ(element->slnode()->GetContext(), element.get());
+  auto clone = element->CloneElement(false);
+  EXPECT_FALSE(clone->HasCustomLayoutFunctions());
+  manager->OnUpdateViewport(100, SLMeasureModeDefinite, 80,
+                            SLMeasureModeDefinite, false);
+  manager->RequestLayout(std::make_shared<PipelineOptions>());
+  EXPECT_EQ(calls, 0);
 }
 
 TEST_P(FiberElementTest, TestSetFontSizeDirectlyToComputedStyle) {
