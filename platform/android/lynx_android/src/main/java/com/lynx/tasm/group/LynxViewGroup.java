@@ -7,6 +7,7 @@ import android.content.Context;
 import androidx.annotation.Nullable;
 import com.lynx.jsbridge.IModuleCreator;
 import com.lynx.jsbridge.LynxEmbeddedModule;
+import com.lynx.jsbridge.LynxModule;
 import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.jsbridge.SharedContextFinder;
 import com.lynx.jsbridge.SharedModuleCreator;
@@ -200,12 +201,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     if (logicExecutor instanceof DefaultLogicExecutor) {
       ((DefaultLogicExecutor) logicExecutor).init(this);
     } else if (this.logicExecutor == null) {
-      if (enableSharedModule) {
-        mSharedModuleFactory.registerModule(
-            LynxEmbeddedModule.NAME, LynxEmbeddedModule.class, this);
-      } else {
-        lynxRuntimeOptions.registerModule(LynxEmbeddedModule.NAME, LynxEmbeddedModule.class, this);
-      }
+      registerModule(LynxEmbeddedModule.NAME, LynxEmbeddedModule.class, this);
     }
   }
 
@@ -523,6 +519,15 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   public LynxView getLynxViewById(int LynxViewId) {
     WeakReference<LynxView> ref = mLynxViewMap.get(LynxViewId);
     return ref != null ? ref.get() : null;
+  }
+
+  @Override
+  public void registerModule(String name, Class<? extends LynxModule> module, Object param) {
+    if (enableSharedModule) {
+      mSharedModuleFactory.registerModule(name, module, param);
+    } else {
+      lynxRuntimeOptions.registerModule(name, module, param);
+    }
   }
 
   private void setFetchResult(LynxResourceResponse<TemplateBundle> result) {
