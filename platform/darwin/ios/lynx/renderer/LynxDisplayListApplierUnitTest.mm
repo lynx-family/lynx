@@ -1263,7 +1263,9 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 }
 
 - (void)testBackgroundImageAutoSizeOnLoad {
-  for (int32_t autoSize : {1, 2, 3}) {
+  for (BackgroundSizeMode sizeMode :
+       {BackgroundSizeMode::kAutoWidth, BackgroundSizeMode::kAutoHeight,
+        BackgroundSizeMode::kAutoBoth}) {
     LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
     view.contentScaleFactor = 2;
     id context = OCMClassMock([LynxRendererContext class]);
@@ -1276,7 +1278,7 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
     DisplayListItem item{};
     item.type = DisplayListOpType::kBackgroundImage;
     item.payload.background_image.image_id = 123;
-    item.payload.background_image.auto_size = autoSize;
+    item.payload.background_image.size_mode = sizeMode;
     item.payload.background_image.position_x = 0.5;
     item.payload.background_image.position_y = 0.5;
     item.payload.background_image.repeat_x = LynxBackgroundRepeatRepeat;
@@ -1294,11 +1296,15 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
     CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
     CALayer *target = horizontal.sublayers.firstObject;
     XCTAssertFalse(vertical.hidden);
-    CGFloat width = autoSize == 1 ? 160 : (autoSize == 2 ? 100 : 40);
-    CGFloat height = autoSize == 1 ? 80 : (autoSize == 2 ? 50 : 20);
+    CGFloat width = sizeMode == BackgroundSizeMode::kAutoWidth
+                        ? 160
+                        : (sizeMode == BackgroundSizeMode::kAutoHeight ? 100 : 40);
+    CGFloat height = sizeMode == BackgroundSizeMode::kAutoWidth
+                         ? 80
+                         : (sizeMode == BackgroundSizeMode::kAutoHeight ? 50 : 20);
     XCTAssertEqualWithAccuracy(target.frame.size.width, width, 0.001);
     XCTAssertEqualWithAccuracy(target.frame.size.height, height, 0.001);
-    if (autoSize == 3) {
+    if (sizeMode == BackgroundSizeMode::kAutoBoth) {
       XCTAssertEqualWithAccuracy(target.frame.origin.x, -10, 0.001);
       XCTAssertEqualWithAccuracy(target.frame.origin.y, -10, 0.001);
       XCTAssertEqual(horizontal.instanceCount, 3);
@@ -1315,6 +1321,110 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
     XCTAssertEqualWithAccuracy(cachedTarget.frame.size.height, height, 0.001);
     [applier reset];
   }
+}
+
+- (void)testBackgroundImageFitSizeOnLoadAndImageReplacement {
+  struct TestCase {
+    BackgroundSizeMode mode;
+    CGRect landscapeFrame;
+    CGRect portraitFrame;
+  };
+  const TestCase cases[] = {
+      {BackgroundSizeMode::kCover, CGRectMake(-22, 17, 160, 80), CGRectMake(8, -43, 100, 200)},
+      {BackgroundSizeMode::kContain, CGRectMake(8, 32, 100, 50), CGRectMake(38, 17, 40, 80)},
+  };
+  for (const auto &test : cases) {
+    LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 140, 120)];
+    view.contentScaleFactor = 3;
+    id context = OCMClassMock([LynxRendererContext class]);
+    LynxImageManager *manager = [[LynxImageManager alloc] initWithContext:nil];
+    OCMStub([context imageManagerForID:123]).andReturn(manager);
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                        andContext:context];
+    DisplayList list;
+    AppendRecordBox(list, 10, 20, 100, 80);
+    float radii[] = {6, 6, 6, 6, 6, 6, 6, 6};
+    AppendRecordBox(list, 2, 3, 140, 120, true, radii);
+    DisplayListItem item{};
+    item.type = DisplayListOpType::kBackgroundImage;
+    item.payload.background_image.image_id = 123;
+    item.payload.background_image.tiling_index = 0;
+    item.payload.background_image.clip_index = 1;
+    item.payload.background_image.size_mode = test.mode;
+    item.payload.background_image.position_x = 0.5;
+    item.payload.background_image.position_y = 0.5;
+    item.payload.background_image.repeat_x = LynxBackgroundRepeatNoRepeat;
+    item.payload.background_image.repeat_y = LynxBackgroundRepeatNoRepeat;
+    list.AppendItem(item);
+    [applier applyDisplayList:&list];
+    CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
+    CALayer *target = vertical.sublayers.firstObject.sublayers.firstObject;
+    XCTAssertTrue(vertical.hidden);
+
+    const CGSize imageSizes[] = {CGSizeMake(40, 20), CGSizeMake(20, 40)};
+    const CGRect frames[] = {test.landscapeFrame, test.portraitFrame};
+    for (size_t index = 0; index < 2; ++index) {
+      UIGraphicsBeginImageContextWithOptions(imageSizes[index], NO, 2);
+      UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+      UIGraphicsEndImageContext();
+      NSMutableDictionary *images = [manager valueForKey:@"images"];
+      images[@(LynxImageRequestSrc)] = image;
+      // Completion updates the existing layers without applying another display list.
+      [manager applyImage:image withType:LynxImageRequestSrc];
+      XCTAssertEqual(view.layer.sublayers.firstObject, vertical);
+      XCTAssertFalse(vertical.hidden);
+      XCTAssertTrue(CGRectEqualToRect(vertical.frame, CGRectMake(2, 3, 140, 120)));
+      XCTAssertTrue(vertical.masksToBounds);
+      XCTAssertEqualWithAccuracy(vertical.cornerRadius, 6, 0.001);
+      XCTAssertTrue(CGRectEqualToRect(target.frame, frames[index]));
+    }
+
+    [manager applyImage:nil withType:LynxImageRequestSrc];
+    XCTAssertTrue(vertical.hidden);
+    [applier reset];
+    [applier applyDisplayList:&list];
+    CALayer *cachedTarget =
+        view.layer.sublayers.firstObject.sublayers.firstObject.sublayers.firstObject;
+    XCTAssertFalse(view.layer.sublayers.firstObject.hidden);
+    XCTAssertTrue(CGRectEqualToRect(cachedTarget.frame, test.portraitFrame));
+    [applier reset];
+  }
+}
+
+- (void)testBackgroundImageContainRepeatUsesResolvedTile {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 120, 100)];
+  view.contentScaleFactor = 3;
+  id context = OCMClassMock([LynxRendererContext class]);
+  LynxImageManager *manager = [[LynxImageManager alloc] initWithContext:nil];
+  OCMStub([context imageManagerForID:123]).andReturn(manager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:context];
+  DisplayList list;
+  AppendRecordBox(list, 10, 20, 100, 80);
+  AppendRecordBox(list, 0, 0, 120, 100);
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kBackgroundImage;
+  item.payload.background_image.image_id = 123;
+  item.payload.background_image.clip_index = 1;
+  item.payload.background_image.size_mode = BackgroundSizeMode::kContain;
+  item.payload.background_image.position_x = 0.5;
+  item.payload.background_image.position_y = 0.5;
+  item.payload.background_image.repeat_x = LynxBackgroundRepeatRepeat;
+  item.payload.background_image.repeat_y = LynxBackgroundRepeatRepeat;
+  list.AppendItem(item);
+  [applier applyDisplayList:&list];
+  UIGraphicsBeginImageContextWithOptions(CGSizeMake(40, 20), NO, 2);
+  UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+  UIGraphicsEndImageContext();
+  [manager applyImage:image withType:LynxImageRequestSrc];
+  CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
+  CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+  CALayer *target = horizontal.sublayers.firstObject;
+  XCTAssertTrue(CGRectEqualToRect(target.frame, CGRectMake(-90, -15, 100, 50)));
+  XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, 100, 0.001);
+  XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, 50, 0.001);
+  XCTAssertEqual(horizontal.instanceCount, 3);
+  XCTAssertEqual(vertical.instanceCount, 3);
 }
 
 - (void)testImageAppliesRoundedContentBox {

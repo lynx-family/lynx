@@ -377,7 +377,8 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
                                                tilingBox.GetWidth(), tilingBox.GetHeight());
         const CGPoint clipOrigin = CGPointMake(clipBox.GetX(), clipBox.GetY());
         const CGPoint hostOffset = CGPointMake(left_offset_, top_offset_);
-        const int32_t autoSize = background.auto_size;
+        const BackgroundSizeMode sizeMode = background.size_mode;
+        const bool needsIntrinsicSize = sizeMode != BackgroundSizeMode::kResolved;
         const CGPoint position = CGPointMake(background.position_x, background.position_y);
         void (^updateGeometry)(CGSize) = ^(CGSize imageSize) {
           CALayer *target = weakImageLayer;
@@ -386,21 +387,36 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
           if (!target || !horizontalLayer || !verticalLayer) {
             return;
           }
-          if (autoSize != 0 && (imageSize.width <= 0 || imageSize.height <= 0)) {
+          if (needsIntrinsicSize && (imageSize.width <= 0 || imageSize.height <= 0)) {
             verticalLayer.hidden = YES;
             return;
           }
           CGFloat width = fallbackRect.size.width;
           CGFloat height = fallbackRect.size.height;
-          const bool autoWidth = (autoSize & 1) != 0;
-          const bool autoHeight = (autoSize & 2) != 0;
-          if (autoWidth && autoHeight) {
-            width = imageSize.width;
-            height = imageSize.height;
-          } else if (autoWidth) {
-            width = height * imageSize.width / imageSize.height;
-          } else if (autoHeight) {
-            height = width * imageSize.height / imageSize.width;
+          switch (sizeMode) {
+            case BackgroundSizeMode::kCover:
+            case BackgroundSizeMode::kContain: {
+              const CGFloat widthScale = width / imageSize.width;
+              const CGFloat heightScale = height / imageSize.height;
+              const CGFloat fitScale = sizeMode == BackgroundSizeMode::kCover
+                                           ? MAX(widthScale, heightScale)
+                                           : MIN(widthScale, heightScale);
+              width = imageSize.width * fitScale;
+              height = imageSize.height * fitScale;
+              break;
+            }
+            case BackgroundSizeMode::kAutoBoth:
+              width = imageSize.width;
+              height = imageSize.height;
+              break;
+            case BackgroundSizeMode::kAutoWidth:
+              width = height * imageSize.width / imageSize.height;
+              break;
+            case BackgroundSizeMode::kAutoHeight:
+              height = width * imageSize.height / imageSize.width;
+              break;
+            case BackgroundSizeMode::kResolved:
+              break;
           }
           CGPoint origin =
               CGPointMake(fallbackRect.origin.x + (fallbackRect.size.width - width) * position.x,
@@ -432,7 +448,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
           target.frame = CGRectMake(x, y, width, height);
           verticalLayer.hidden = NO;
         };
-        if (autoSize != 0) {
+        if (needsIntrinsicSize) {
           [imageManager setLayerTarget:imageLayer imageSizeDidChange:updateGeometry];
         } else {
           updateGeometry(CGSizeZero);

@@ -82,10 +82,11 @@ public class DisplayListItemBufferTest {
     assertEquals(11, getInt(items, 5, DisplayListApplier.BACKGROUND_IMAGE_CLIP_INDEX_OFFSET));
     assertEquals(1, getInt(items, 5, DisplayListApplier.BACKGROUND_IMAGE_REPEAT_X_OFFSET));
     assertEquals(2, getInt(items, 5, DisplayListApplier.BACKGROUND_IMAGE_REPEAT_Y_OFFSET));
-    assertEquals(24, DisplayListApplier.BACKGROUND_IMAGE_AUTO_SIZE_OFFSET);
+    assertEquals(24, DisplayListApplier.BACKGROUND_IMAGE_SIZE_MODE_OFFSET);
     assertEquals(28, DisplayListApplier.BACKGROUND_IMAGE_POSITION_X_OFFSET);
     assertEquals(32, DisplayListApplier.BACKGROUND_IMAGE_POSITION_Y_OFFSET);
-    assertEquals(3, getInt(items, 5, DisplayListApplier.BACKGROUND_IMAGE_AUTO_SIZE_OFFSET));
+    assertEquals(DisplayListApplier.BACKGROUND_SIZE_AUTO_BOTH,
+        getInt(items, 5, DisplayListApplier.BACKGROUND_IMAGE_SIZE_MODE_OFFSET));
     assertFloatEquals(
         0.25f, getFloat(items, 5, DisplayListApplier.BACKGROUND_IMAGE_POSITION_X_OFFSET));
     assertFloatEquals(
@@ -162,7 +163,7 @@ public class DisplayListItemBufferTest {
   }
 
   @Test
-  public void testBackgroundImageLegacyOverloadDefaultsToFixedSize() {
+  public void testBackgroundImageDefaultSizeIsResolved() {
     NativeDisplayListBuilder.ensureRegistered();
     try (NativeDisplayListBuilder builder = new NativeDisplayListBuilder()) {
       builder.backgroundImage(505, 10, 11, 1, 2).end();
@@ -170,12 +171,38 @@ public class DisplayListItemBufferTest {
 
       assertEquals(2 * DisplayListApplier.DISPLAY_LIST_ITEM_SIZE, items.capacity());
       assertItemType(items, 0, DisplayListApplier.OP_BACKGROUND_IMAGE);
-      assertEquals(0, getInt(items, 0, DisplayListApplier.BACKGROUND_IMAGE_AUTO_SIZE_OFFSET));
+      assertEquals(DisplayListApplier.BACKGROUND_SIZE_RESOLVED,
+          getInt(items, 0, DisplayListApplier.BACKGROUND_IMAGE_SIZE_MODE_OFFSET));
       assertFloatEquals(
           0f, getFloat(items, 0, DisplayListApplier.BACKGROUND_IMAGE_POSITION_X_OFFSET));
       assertFloatEquals(
           0f, getFloat(items, 0, DisplayListApplier.BACKGROUND_IMAGE_POSITION_Y_OFFSET));
       assertItemType(items, 1, DisplayListApplier.OP_END);
+    }
+  }
+
+  @Test
+  public void testBackgroundImageSizeModeRoundTripsThroughNativeBuilder() {
+    NativeDisplayListBuilder.ensureRegistered();
+    int[] modes = {DisplayListApplier.BACKGROUND_SIZE_RESOLVED,
+        DisplayListApplier.BACKGROUND_SIZE_AUTO_WIDTH,
+        DisplayListApplier.BACKGROUND_SIZE_AUTO_HEIGHT,
+        DisplayListApplier.BACKGROUND_SIZE_AUTO_BOTH, DisplayListApplier.BACKGROUND_SIZE_COVER,
+        DisplayListApplier.BACKGROUND_SIZE_CONTAIN};
+    for (int sizeMode : modes) {
+      try (NativeDisplayListBuilder builder = new NativeDisplayListBuilder()) {
+        builder.backgroundImage(505, 10, 11, 1, 2, sizeMode, 0.25f, 0.75f).end();
+        ByteBuffer items = builder.toItemsBuffer().order(ByteOrder.nativeOrder());
+
+        assertEquals(2 * DisplayListApplier.DISPLAY_LIST_ITEM_SIZE, items.capacity());
+        assertEquals(
+            sizeMode, getInt(items, 0, DisplayListApplier.BACKGROUND_IMAGE_SIZE_MODE_OFFSET));
+        assertFloatEquals(
+            0.25f, getFloat(items, 0, DisplayListApplier.BACKGROUND_IMAGE_POSITION_X_OFFSET));
+        assertFloatEquals(
+            0.75f, getFloat(items, 0, DisplayListApplier.BACKGROUND_IMAGE_POSITION_Y_OFFSET));
+        assertItemType(items, 1, DisplayListApplier.OP_END);
+      }
     }
   }
 

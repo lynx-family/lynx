@@ -44,6 +44,17 @@ enum class DisplayListSubtreePropertyOpType : int32_t {
   kFilter = 2,
 };
 
+// Serialized background sizing modes. Keep these values in sync with platform
+// readers. Values 0-3 preserve the previous auto-axis encoding.
+enum class BackgroundSizeMode : int32_t {
+  kResolved = 0,
+  kAutoWidth = 1,
+  kAutoHeight = 2,
+  kAutoBoth = 3,
+  kCover = 4,
+  kContain = 5,
+};
+
 enum class DisplayListOpCategory : int8_t {
   kContent = 0,
   kSubtreeProperty = 1,
@@ -147,10 +158,9 @@ typedef struct DisplayListItem {
       int32_t clip_index;
       int32_t repeat_x;
       int32_t repeat_y;
-      // Optional intrinsic-size resolution: bit 0 = auto width, bit 1 = auto
-      // height. tiling_index retains the resolved fallback box for consumers
-      // that do not support intrinsic background sizing.
-      int32_t auto_size;
+      // Lengths and percentages are resolved in tiling_index. Other modes
+      // retain a fallback box until the consumer has intrinsic image sizes.
+      BackgroundSizeMode size_mode;
       // Percentage position coefficients (percentage / 100), or 0 for lengths.
       float position_x;
       float position_y;
@@ -250,7 +260,7 @@ static_assert(offsetof(DisplayListItem, payload.background_image.repeat_x) ==
               16);
 static_assert(offsetof(DisplayListItem, payload.background_image.repeat_y) ==
               20);
-static_assert(offsetof(DisplayListItem, payload.background_image.auto_size) ==
+static_assert(offsetof(DisplayListItem, payload.background_image.size_mode) ==
               24);
 static_assert(offsetof(DisplayListItem, payload.background_image.position_x) ==
               28);
@@ -393,10 +403,11 @@ class DisplayList {
                          int32_t repeat_y);
 
   // Store an owning image reference, moving it when the caller transfers it.
-  void AddBackgroundImage(fml::RefPtr<PaintImage> image, int32_t tiling_index,
-                          int32_t clip_index, int32_t repeat_x,
-                          int32_t repeat_y, int32_t auto_size = 0,
-                          float position_x = 0.f, float position_y = 0.f);
+  void AddBackgroundImage(
+      fml::RefPtr<PaintImage> image, int32_t tiling_index, int32_t clip_index,
+      int32_t repeat_x, int32_t repeat_y,
+      BackgroundSizeMode size_mode = BackgroundSizeMode::kResolved,
+      float position_x = 0.f, float position_y = 0.f);
 
   void AppendItem(const DisplayListItem& item);
 

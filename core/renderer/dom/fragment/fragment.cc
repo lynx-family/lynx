@@ -418,8 +418,8 @@ constexpr int BACKGROUND_SIZE_COVER =
 constexpr int BACKGROUND_SIZE_CONTAIN =
     -1 * static_cast<int>(starlight::BackgroundSizeType::kContain);  // -34
 
-// Calculate background size dimensions
-void CalculateBackgroundSize(
+// Calculate background size dimensions and the deferred sizing mode.
+BackgroundSizeMode CalculateBackgroundSize(
     const starlight::BackgroundData::BackgroundImageData& image_data,
     size_t image_index, float origin_width, float origin_height,
     float& out_width, float& out_height) {
@@ -428,7 +428,7 @@ void CalculateBackgroundSize(
   out_height = origin_height;
 
   if (image_data.size.empty()) {
-    return;
+    return BackgroundSizeMode::kAutoBoth;
   }
 
   // Get size values for this image (cycle if needed)
@@ -449,11 +449,16 @@ void CalculateBackgroundSize(
     // For gradients, cover just fills the origin box
     out_width = origin_width;
     out_height = origin_height;
-    return;
+    return is_cover ? BackgroundSizeMode::kCover : BackgroundSizeMode::kContain;
   }
 
+  const bool auto_width =
+      !size_x.IsPercent() && size_x.GetRawValue() == BACKGROUND_SIZE_AUTO;
+  const bool auto_height =
+      !size_y.IsPercent() && size_y.GetRawValue() == BACKGROUND_SIZE_AUTO;
+
   // Handle auto for width
-  if (!size_x.IsPercent() && size_x.GetRawValue() == BACKGROUND_SIZE_AUTO) {
+  if (auto_width) {
     // auto - use origin width for gradients
     out_width = origin_width;
   } else {
@@ -462,13 +467,20 @@ void CalculateBackgroundSize(
   }
 
   // Handle auto for height
-  if (!size_y.IsPercent() && size_y.GetRawValue() == BACKGROUND_SIZE_AUTO) {
+  if (auto_height) {
     // auto - use origin height for gradients
     out_height = origin_height;
   } else {
     out_height = size_y.IsPercent() ? size_y.GetRawValue() * origin_height / 100
                                     : size_y.GetRawValue();
   }
+
+  if (auto_width) {
+    return auto_height ? BackgroundSizeMode::kAutoBoth
+                       : BackgroundSizeMode::kAutoWidth;
+  }
+  return auto_height ? BackgroundSizeMode::kAutoHeight
+                     : BackgroundSizeMode::kResolved;
 }
 
 // Calculate background position offsets
@@ -748,8 +760,9 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
 
     // Calculate tiling box based on size and position
     float tiling_width, tiling_height;
-    CalculateBackgroundSize(*image_data, i_image, origin_width, origin_height,
-                            tiling_width, tiling_height);
+    const auto size_mode =
+        CalculateBackgroundSize(*image_data, i_image, origin_width,
+                                origin_height, tiling_width, tiling_height);
 
     float offset_x = .0f, offset_y = .0f;
     CalculateBackgroundPosition(*image_data, i_image, origin_width,
@@ -782,20 +795,8 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
           break;
         }
         // URL images acquire their intrinsic size asynchronously on the
-        // platform. Keep the fallback box and defer auto axes and the
-        // corresponding percentage-position adjustment to the image consumer.
-        bool auto_width = true;
-        bool auto_height = true;
-        if (!image_data->size.empty()) {
-          const size_t size_index = (i_image * 2) % image_data->size.size();
-          const auto& width = image_data->size[size_index];
-          const auto& height =
-              image_data->size[(size_index + 1) % image_data->size.size()];
-          auto_width =
-              !width.IsPercent() && width.GetRawValue() == BACKGROUND_SIZE_AUTO;
-          auto_height = !height.IsPercent() &&
-                        height.GetRawValue() == BACKGROUND_SIZE_AUTO;
-        }
+        // platform. Keep the fallback box and defer auto axes, cover/contain,
+        // and percentage-position adjustment to the image consumer.
         float position_x = 0.f;
         float position_y = 0.f;
         if (!image_data->position.empty()) {
@@ -810,7 +811,7 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
         display_list_builder.BackgroundImage(
             std::move(image), tiling_index, define_image_clip_index(i_image),
             static_cast<int32_t>(repeat_x), static_cast<int32_t>(repeat_y),
-            auto_width, auto_height, position_x, position_y);
+            size_mode, position_x, position_y);
         break;
       }
       case starlight::BackgroundImageType::kLinearGradient: {

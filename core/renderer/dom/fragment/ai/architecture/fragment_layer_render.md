@@ -64,7 +64,7 @@ The operation type selects the matching payload:
 | `kDrawView` | view id and final local offset |
 | `kText` | text id and box index |
 | `kImage` | image id and box index |
-| `kBackgroundImage` | image, tiling/clip indices, repeat modes, and optional auto-size/position metadata |
+| `kBackgroundImage` | image, tiling/clip indices, repeat modes, and size mode and percentage-position metadata |
 | `kBorder` | box indices, four colors, and four styles |
 | `kClipRect` | rectangle and optional eight radii |
 | `kRecordBox` | rectangle and optional eight radii |
@@ -80,14 +80,23 @@ first CSS background is painted on top, as required by
 Property lists (size, position, origin, clip, repeat) and image resources remain
 indexed by the original CSS layer index, not by painting order.
 
-Background images retain a fully resolved fallback tiling box. Builder callers
-provide `auto_width` and `auto_height` booleans; `DisplayListBuilder` owns their
-encoding into the display-list bit mask. The appended `auto_size` mask (bit 0: width, bit 1: height) identifies axes whose intrinsic
-size is only available after image loading. `position_x` and `position_y` store
-percentage-position coefficients (percentage / 100), or zero for absolute
-positions. These fields default to zero, fit within the existing 56-byte item,
-and do not move any existing fields. Readers without intrinsic-size support
-continue using the fallback box; gradients do not use this metadata.
+Background images retain a numeric fallback tiling box and a single
+`BackgroundSizeMode`. Lengths and percentages are resolved by Fragment into the
+box dimensions before recording. The `size_mode` field at item offset 24 selects
+resolved (0), auto width (1), auto height (2), auto both (3), cover (4), or contain
+(5). Values 0-3 retain the former auto-axis mask's numeric encoding, but consumers
+now interpret the field as one mode rather than independent flags. The 56-byte
+item size and the existing position offsets are unchanged.
+
+Auto modes defer the indicated dimensions until the consumer has image sizes.
+For cover/contain, the fallback tile dimensions are the background-origin area;
+consumers scale proportionally using the maximum (cover) or minimum (contain) of
+the area-to-image dimension ratios. `position_x` and `position_y` store percentage
+coefficients (percentage / 100), or zero for absolute positions. Consumers apply
+the same position correction, clipping, and repeat after resolving the tile.
+Sizing uses the full origin area before host clipping, without mutating stored
+boxes. Android, iOS, and Harmony retain their existing image completion callbacks.
+Gradients do not use the image sizing mode.
 
 Android resolves auto/auto to the loaded image's dimensions scaled by density,
 and a single auto axis from the other dimension and intrinsic aspect ratio.
