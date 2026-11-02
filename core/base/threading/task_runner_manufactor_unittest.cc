@@ -123,12 +123,18 @@ TEST_F(TaskRunnerManufactorTest, MultiLayoutThreadModeAndCache) {
       TaskRunnerManufactor(MULTI_THREADS, false, true, false, true);
   ASSERT_EQ(multi_layout_manufactor_1.GetTASMTaskRunner()->GetLoop(),
             multi_layout_manufactor_2.GetTASMTaskRunner()->GetLoop());
-  ASSERT_NE(multi_layout_manufactor_1.GetLayoutTaskRunner()->GetLoop(),
-            multi_layout_manufactor_2.GetLayoutTaskRunner()->GetLoop());
-  ASSERT_NE(multi_layout_manufactor_1.GetLayoutTaskRunner()->GetLoop(),
-            multi_layout_manufactor_3.GetLayoutTaskRunner()->GetLoop());
-  ASSERT_EQ(multi_layout_manufactor_1.GetLayoutTaskRunner()->GetLoop(),
-            multi_layout_manufactor_4.GetLayoutTaskRunner()->GetLoop());
+  auto first_loop = multi_layout_manufactor_1.GetLayoutTaskRunner()->GetLoop();
+  auto second_loop = multi_layout_manufactor_2.GetLayoutTaskRunner()->GetLoop();
+  auto third_loop = multi_layout_manufactor_3.GetLayoutTaskRunner()->GetLoop();
+  auto fourth_loop = multi_layout_manufactor_4.GetLayoutTaskRunner()->GetLoop();
+  ASSERT_NE(first_loop, second_loop);
+  if (first_loop == third_loop) {
+    // The available CPU count can limit the layout thread cache to two.
+    ASSERT_EQ(second_loop, fourth_loop);
+  } else {
+    ASSERT_NE(second_loop, third_loop);
+    ASSERT_EQ(first_loop, fourth_loop);
+  }
 }
 
 TEST_F(TaskRunnerManufactorTest, MultiJSGroupThreadMode) {
