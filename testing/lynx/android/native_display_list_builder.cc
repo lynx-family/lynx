@@ -101,13 +101,13 @@ void Image(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr, jint image_id,
 
 void BackgroundImage(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr,
                      jint image_id, jint tiling_index, jint clip_index,
-                     jint repeat_x, jint repeat_y, jboolean auto_width,
-                     jboolean auto_height, jfloat position_x,
-                     jfloat position_y) {
+                     jint repeat_x, jint repeat_y, jint size_mode,
+                     jfloat position_x, jfloat position_y) {
   State(native_ptr)
       ->builder.BackgroundImage(
           fml::MakeRefCounted<lynx::tasm::PaintImage>(image_id), tiling_index,
-          clip_index, repeat_x, repeat_y, auto_width, auto_height, position_x,
+          clip_index, repeat_x, repeat_y,
+          static_cast<lynx::tasm::BackgroundSizeMode>(size_mode), position_x,
           position_y);
 }
 

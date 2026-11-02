@@ -44,6 +44,8 @@ TEST_F(DisplayListTest, BackgroundImageConsumesMovedReference) {
   const auto& item = reader.Next();
   EXPECT_EQ(item.type, DisplayListOpType::kBackgroundImage);
   EXPECT_EQ(item.payload.background_image.image_id, 42);
+  EXPECT_EQ(item.payload.background_image.size_mode,
+            BackgroundSizeMode::kResolved);
   EXPECT_FALSE(reader.HasNext());
 }
 
