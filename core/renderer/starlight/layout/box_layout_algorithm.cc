@@ -36,6 +36,21 @@ void BoxLayoutAlgorithm::MeasureChildren() {
       continue;
     }
 
+    if (container_->IsComposeLayout()) {
+      auto compose_constraints = *compose_constraints_;
+      if (!propagate_min_constraints) {
+        compose_constraints.min_width = 0;
+        compose_constraints.min_height = 0;
+      }
+      const auto size = child->UpdateMeasureWithComposeConstraints(
+          compose_constraints, container_->GetFinalMeasure());
+      max_child_margin_bound_width_ =
+          std::max(max_child_margin_bound_width_, size.width_);
+      max_child_margin_bound_height_ =
+          std::max(max_child_margin_bound_height_, size.height_);
+      continue;
+    }
+
     Constraints child_constraints = property_utils::GenerateDefaultConstraints(
         *child, container_constraints_);
     const bool final_measure = container_->GetFinalMeasure();
@@ -102,6 +117,16 @@ void BoxLayoutAlgorithm::MeasureMatchParentSizeChildren() {
       continue;
     }
 
+    if (container_->IsComposeLayout()) {
+      const float width =
+          std::max(0.f, container_constraints_[kHorizontal].Size());
+      const float height =
+          std::max(0.f, container_constraints_[kVertical].Size());
+      child->UpdateMeasureWithComposeConstraints({width, width, height, height},
+                                                 container_->GetFinalMeasure());
+      continue;
+    }
+
     Constraints child_constraints;
     child_constraints[kHorizontal] = OneSideConstraint::Definite(std::max(
         container_constraints_[kHorizontal].Size() -
@@ -116,6 +141,17 @@ void BoxLayoutAlgorithm::MeasureMatchParentSizeChildren() {
 }
 
 void BoxLayoutAlgorithm::DetermineContainerSize() {
+  if (container_->IsComposeLayout()) {
+    // Publish the chosen content size for shared postprocessing and placement.
+    container_constraints_[kHorizontal] = OneSideConstraint::Definite(
+        compose_constraints_->ConstrainWidth(max_child_margin_bound_width_));
+    container_constraints_[kVertical] = OneSideConstraint::Definite(
+        compose_constraints_->ConstrainHeight(max_child_margin_bound_height_));
+    // Compose hints were resolved against the incoming maximum. Re-resolving
+    // percentages against the chosen size would change padding after measuring.
+    return;
+  }
+
   if (!IsSLDefiniteMode(container_constraints_[kHorizontal].Mode())) {
     container_constraints_[kHorizontal] =
         OneSideConstraint::Definite(ResolveAutoSize(kHorizontal));

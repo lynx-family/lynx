@@ -276,6 +276,11 @@ class LayoutObject : public ContainerNode {
   virtual FloatSize UpdateMeasure(const Constraints& constraints,
                                   bool final_measure,
                                   const SLNodeSet* fixed_node_set = nullptr);
+  // Takes and returns the margin box, matching AlignmentByPlatform. The
+  // callback receives content constraints after margins, padding and borders
+  // are removed.
+  FloatSize UpdateMeasureWithComposeConstraints(
+      const ComposeConstraints& constraints, bool final_measure);
   virtual void UpdateAlignment();
   void LayoutDisplayNone();
   std::vector<double> GetBoxModel();
@@ -331,6 +336,20 @@ class LayoutObject : public ContainerNode {
   void UpdateMeasureWithMeasureFunc(const Constraints& constraints,
                                     bool final_measure);
 
+  // CSS parents resolve border-box constraints before entering Compose.
+  FloatSize UpdateMeasureWithCompose(const Constraints& constraints,
+                                     bool final_measure);
+
+  // Shares Compose measurement after the entry point resolves the border box.
+  // Preserve the caller's percentage bases and apply padding/border only once.
+  void UpdateMeasureWithResolvedComposeConstraints(
+      const ComposeConstraints& border, bool final_measure);
+
+  // Shared measurement core; the CSS and Compose entries own their caches.
+  void UpdateMeasureInternal(
+      const Constraints& constraints, bool final_measure,
+      const SLNodeSet* fixed_node_set = nullptr,
+      const ComposeConstraints* compose_constraints = nullptr);
   void UpdateMeasureWithLeafNode(const Constraints& constraints);
 
   void RemoveAlgorithm();

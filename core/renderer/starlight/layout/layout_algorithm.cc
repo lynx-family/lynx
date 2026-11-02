@@ -42,6 +42,21 @@ void LayoutAlgorithm::Initialize(const Constraints& constraints,
   InitializeAlgorithmEnv();
 }
 
+void LayoutAlgorithm::InitializeWithCompose(
+    const ComposeConstraints& constraints) {
+  compose_constraints_ =
+      constraints.Inset(container_->GetPaddingAndBorderHorizontal(),
+                        container_->GetPaddingAndBorderVertical());
+  inflow_items_.clear();
+  inflow_items_.reserve(container_->GetChildCount());
+  // Compose consumes direct children in source order. Visibility follows tree
+  // membership rather than CSS display or positioning.
+  for (auto* node = container_->FirstChild(); node; node = node->Next()) {
+    inflow_items_.push_back(static_cast<LayoutObject*>(node));
+  }
+  InitializeAlgorithmEnv();
+}
+
 void LayoutAlgorithm::InitializeChildren(const SLNodeSet* fixed_node_set) {
   bool need_order = false;
   const auto container_display = container_->GetCSSStyle()->GetDisplay(
