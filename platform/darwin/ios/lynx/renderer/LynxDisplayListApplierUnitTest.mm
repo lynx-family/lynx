@@ -332,6 +332,25 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertEqual(layer.animationKeys.count, 0u);
 }
 
+- (void)testInvalidTextBoxDropsBackingAndValidBoxRestoresText {
+  [_context updateTextBundle:1 withBundle:&_page];
+  for (int32_t invalidIndex : {-1, 1}) {
+    [self applyTextAtX:0 width:40];
+    CALayer *previous = _host.layer.sublayers.firstObject;
+    [previous display];
+    XCTAssertNotNil(previous.contents);
+    DisplayList invalid;
+    AppendRecordBox(invalid, 0, 0, 40, 20);
+    AppendText(invalid, 1, invalidIndex);
+    [_applier applyDisplayList:&invalid];
+    XCTAssertNil(previous.superlayer);
+    XCTAssertEqual(_host.layer.sublayers.count, 0u);
+    [self applyTextAtX:0 width:40];
+    XCTAssertNotEqual(_host.layer.sublayers.firstObject, previous);
+    XCTAssertTrue(_host.layer.sublayers.firstObject.needsDisplay);
+  }
+}
+
 - (void)testRepeatedPagePublicationReusesBackingButRecycledAddressDoesNot {
   [_context updateTextBundle:1 withBundle:&_page];
   [self applyTextAtX:0 width:40];
@@ -1365,12 +1384,12 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
     @(static_cast<int32_t>(ImageFitMode::kCenter)) : @(UIViewContentModeCenter),
   };
 
+  LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:nil];
+  UIImageView *imageView = [UIImageView new];
   for (NSNumber *mode in expectations) {
-    LynxImageManager *imageManager = [[LynxImageManager alloc] initWithContext:nil];
     ImagePaintInfo paintInfo;
     paintInfo.mode = static_cast<ImageFitMode>(mode.intValue);
     [imageManager updatePaintInfo:paintInfo];
-    UIImageView *imageView = [UIImageView new];
     [imageManager setTarget:imageView];
     XCTAssertEqual(imageView.contentMode,
                    static_cast<UIViewContentMode>(expectations[mode].integerValue));
@@ -1664,6 +1683,35 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertNotEqual(host.layer.sublayers.firstObject, replacement);
 }
 
+- (void)testInvalidTextKitBoxDropsBackingAndValidBoxRestoresText {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxCountingTextRenderer *renderer = [LynxCountingTextRenderer new];
+  id textManager = OCMClassMock([LynxTextRenderManager class]);
+  OCMStub([textManager takeTextRender:1]).andReturn(renderer);
+  id context = OCMClassMock([LynxRendererContext class]);
+  OCMStub([context textRenderManager]).andReturn(textManager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context];
+  DisplayList valid;
+  AppendRecordBox(valid, 0, 0, 40, 20);
+  AppendText(valid, 1, 0);
+  for (int32_t invalidIndex : {-1, 1}) {
+    [applier applyDisplayList:&valid];
+    CALayer *previous = host.layer.sublayers.firstObject;
+    [previous display];
+    XCTAssertNotNil(previous.contents);
+    DisplayList invalid;
+    AppendRecordBox(invalid, 0, 0, 40, 20);
+    AppendText(invalid, 1, invalidIndex);
+    [applier applyDisplayList:&invalid];
+    XCTAssertNil(previous.superlayer);
+    XCTAssertEqual(host.layer.sublayers.count, 0u);
+    [applier applyDisplayList:&valid];
+    XCTAssertNotEqual(host.layer.sublayers.firstObject, previous);
+    XCTAssertTrue(host.layer.sublayers.firstObject.needsDisplay);
+  }
+}
+
 - (void)testImageReuseSurvivesNativeChildRebuildAndPreservesOrder {
   LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
   UIView *child = [UIView new];
@@ -1706,25 +1754,71 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   auto reordered = makeList(true, false);
   [applier applyDisplayList:&reordered];
   XCTAssertEqual(host.subviews.lastObject, imageView);
-  XCTAssertEqual(targetCount, 1);
+  XCTAssertEqual(targetCount, 2);
   XCTAssertEqual(imageView.layer.cornerRadius, 0);
   XCTAssertNil(imageView.layer.mask);
   XCTAssertTrue(imageView.clipsToBounds);
 
-  // Completion after a rebuild still targets the same image view.
+  // Preserve already displayed contents. Real loader completion is covered by
+  // LynxEmbeddedImageLoadingUnitTest.
   UIImage *loaded = [UIImage new];
   target.image = loaded;
   XCTAssertEqual(imageView.image, loaded);
   [applier applyDisplayList:&reordered];
   XCTAssertEqual(imageView.image, loaded);
-  XCTAssertEqual(targetCount, 1);
+  XCTAssertEqual(targetCount, 3);
 
   DisplayList empty;
   [applier applyDisplayList:&empty];
   XCTAssertNil(imageView.superview);
   [applier applyDisplayList:&first];
   XCTAssertNotEqual(target, imageView);
-  XCTAssertEqual(targetCount, 2);
+  XCTAssertEqual(targetCount, 4);
+}
+
+- (void)testRetainedImagesReorderAroundNativeImageViewAndDrawingLayer {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  UIImageView *child = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 10, 10)];
+  child.lynxSign = @9;
+  [host addSubview:child];
+  LynxImageManager *firstManager = [[LynxImageManager alloc] initWithContext:nil];
+  LynxImageManager *secondManager = [[LynxImageManager alloc] initWithContext:nil];
+  id context = OCMClassMock([LynxRendererContext class]);
+  OCMStub([context imageManagerForID:1]).andReturn(firstManager);
+  OCMStub([context imageManagerForID:2]).andReturn(secondManager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context];
+  auto makeList = [](int32_t first, int32_t last) {
+    DisplayList list;
+    AppendRecordBox(list, 0, 0, 40, 40);
+    AppendImage(list, first, 0);
+    AppendFill(list, 0xFF00FF00, 0);
+    AppendDrawView(list, 9, 7, 9);
+    if (last != 0) AppendImage(list, last, 0);
+    return list;
+  };
+  auto initial = makeList(1, 2);
+  [applier applyDisplayList:&initial];
+  UIView *first = host.subviews.firstObject;
+  UIView *second = host.subviews.lastObject;
+  auto reordered = makeList(2, 1);
+  for (int i = 0; i < 2; ++i) {
+    [applier applyDisplayList:&reordered];
+    XCTAssertEqualObjects(host.subviews, (@[ second, child, first ]));
+    NSArray<CALayer *> *layers = host.layer.sublayers;
+    XCTAssertEqual(layers.count, 4u);
+    XCTAssertEqual(layers[0], second.layer);
+    XCTAssertEqual(layers[2], child.layer);
+    XCTAssertEqual(layers[3], first.layer);
+    XCTAssertTrue(CGPointEqualToPoint(child.frame.origin, CGPointMake(7, 9)));
+  }
+  auto removed = makeList(2, 0);
+  [applier applyDisplayList:&removed];
+  XCTAssertNil(first.superview);
+  XCTAssertEqualObjects(host.subviews, (@[ second, child ]));
+  [applier reset];
+  XCTAssertEqualObjects(host.subviews, (@[ child ]));
+  XCTAssertEqualObjects(host.layer.sublayers, (@[ child.layer ]));
 }
 
 - (void)testRemovedImageIsNotRetainedByReuseCache {

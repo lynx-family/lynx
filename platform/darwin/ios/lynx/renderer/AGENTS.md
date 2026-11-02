@@ -15,5 +15,9 @@
 - Use initialized real views and layers for geometry tests. If a mock is necessary, stub every geometry getter consumed by the code, including `bounds`; verify the resulting mask frame and path instead of only asserting that execution did not throw.
 
 - Scope display-list content reuse to consecutive lists and resource identity. A removed resource must leave the cache at the end of the update; explicit reset must discard cached content. Preserve draw order when native children are rebuilt.
+- When retaining image views in the hierarchy between lists, exclude those owned views from the native-child snapshot consumed by DrawView. Validate both UIView order and CALayer order after insertion, removal and reordering.
+- A reused image manager does not prove its current target is the reused view. Exercise actual delayed loader completion after target rebinding and reset; assigning `view.image` manually does not cover that contract.
 - TextKit layout reuse does not imply reusable pixels after a bounds change or backing-content loss. TextService pages can mutate without changing their IDs, so do not infer unchanged text from those IDs.
 - TextService measurement publishes a new Page, while layout may republish the same Page for unchanged text. Reuse follows the context's owned Page lifetime: replacement, removal, or destruction invalidates its identity even if an address is later recycled. The cache token must not prolong Page lifetime. Size changes and missing backing still require redraw; do not add in-place mutations of a published Page without explicit invalidation.
+
+- Native benchmark targets that include internal C++ headers must match the SDK definitions that affect object layout, including `NDEBUG` for ref-counted storage. A successful build and native-only tests do not rule out incompatible inline definitions selected by the linker; validate a real template load before using the performance results.
