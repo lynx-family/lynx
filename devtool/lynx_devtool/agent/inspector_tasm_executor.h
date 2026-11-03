@@ -107,6 +107,9 @@ class InspectorTasmExecutor
   void OnAnimationUpdated(const Json::Value& snapshot);
   void OnAnimationCanceled(int64_t id);
 
+  void LynxInvokeUIMethod(const std::shared_ptr<CDPResponder>& responder,
+                          const Json::Value& params);
+
   DECLARE_DEVTOOL_CDP_METHOD(AnimationEnable);
   DECLARE_DEVTOOL_CDP_METHOD(AnimationDisable);
   DECLARE_DEVTOOL_CDP_METHOD(AnimationGetCurrentTime);

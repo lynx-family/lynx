@@ -26,6 +26,7 @@ InspectorLynxAgentNG::InspectorLynxAgentNG(
   functions_map_["Lynx.getLogLevel"] = &InspectorLynxAgentNG::GetLogLevel;
   functions_map_["Lynx.setLogLevel"] = &InspectorLynxAgentNG::SetLogLevel;
   functions_map_["Lynx.getProperties"] = &InspectorLynxAgentNG::GetProperties;
+  functions_map_["Lynx.invokeUIMethod"] = &InspectorLynxAgentNG::InvokeUIMethod;
   functions_map_["Lynx.getData"] = &InspectorLynxAgentNG::GetData;
   functions_map_["Lynx.getComponentId"] = &InspectorLynxAgentNG::GetComponentId;
   functions_map_["Lynx.getRectToWindow"] =
@@ -100,6 +101,13 @@ void InspectorLynxAgentNG::GetLynxViewRectToWindow(
 void InspectorLynxAgentNG::GetProperties(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   devtool_mediator_->LynxGetProperties(sender, message);
+}
+
+void InspectorLynxAgentNG::InvokeUIMethod(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  devtool_mediator_->LynxInvokeUIMethod(
+      std::make_shared<CDPResponder>(sender, message["id"].asInt64()),
+      message["params"]);
 }
 
 void InspectorLynxAgentNG::GetData(const std::shared_ptr<MessageSender>& sender,
