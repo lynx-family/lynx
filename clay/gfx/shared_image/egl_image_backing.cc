@@ -144,6 +144,14 @@ EGLImageBacking::~EGLImageBacking() {
   if (egl_image_ == EGL_NO_IMAGE_KHR) {
     return;
   }
+  if (release_) {
+    release_([egl_display = egl_display_, egl_image = egl_image_,
+              texture_id = texture_id_] {
+      eglDestroyImageKHR(egl_display, egl_image);
+      glDeleteTextures(1, &texture_id);
+    });
+    return;
+  }
   if (task_runner_) {
     fml::TaskRunner::RunNowOrPostTask(
         task_runner_, [egl_context = egl_context_, egl_display = egl_display_,
