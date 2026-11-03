@@ -2472,7 +2472,7 @@ Element::TakeAnimationSampleTimeForNewPipeline() {
 gfx::PlatformAnimationCommand& Element::AppendPlatformAnimationCommand() {
   if (!platform_animation_commands_) {
     platform_animation_commands_ =
-        std::make_shared<gfx::PlatformAnimationCommandBatch>();
+        fml::MakeRefCounted<gfx::PlatformAnimationCommandBatch>();
   }
   auto& command = platform_animation_commands_->emplace_back();
   // Commands must schedule painting even when no CSS value changes.

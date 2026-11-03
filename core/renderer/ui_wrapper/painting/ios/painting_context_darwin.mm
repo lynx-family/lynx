@@ -280,7 +280,7 @@ void PaintingContextDarwin::SetKeyframes(fml::RefPtr<PropBundle> keyframes_data)
 }
 
 void PaintingContextDarwin::ApplyPlatformAnimationCommands(
-    int id, std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) {
+    int id, fml::RefPtr<gfx::PlatformAnimationCommandBatch> commands) {
   __weak LynxUIOwner* uiOwner = uiOwner_;
   // Use the regular queue without a separate flush, so these commands follow
   // node updates in the existing painting batch.

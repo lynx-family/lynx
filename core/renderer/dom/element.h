@@ -2293,8 +2293,7 @@ class Element : public lepus::RefCounted,
   // An explicit element attribute takes precedence over automatic routing.
   bool has_explicit_new_animator_attr_{false};
 
-  std::shared_ptr<gfx::PlatformAnimationCommandBatch>
-      platform_animation_commands_;
+  fml::RefPtr<gfx::PlatformAnimationCommandBatch> platform_animation_commands_;
 
   bool create_node_async_{false};
 
