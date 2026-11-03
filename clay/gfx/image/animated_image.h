@@ -23,8 +23,8 @@ class AnimatedImage : public BaseImage {
  public:
   static std::shared_ptr<AnimatedImage> Make(
       fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
-      fml::RefPtr<fml::TaskRunner> task_runner,
-      std::shared_ptr<PlatformImage> image);
+      std::shared_ptr<PlatformImage> image,
+      fml::WeakPtr<AnimationHandler> animation_handler);
 
   std::unique_ptr<BaseImageInstance> NewInstance() override;
 
@@ -37,7 +37,7 @@ class AnimatedImage : public BaseImage {
  private:
   AnimatedImage() = default;
 
-  fml::RefPtr<fml::TaskRunner> task_runner_;
+  fml::WeakPtr<AnimationHandler> animation_handler_;
 
   friend class AnimatedImageInstance;
 };

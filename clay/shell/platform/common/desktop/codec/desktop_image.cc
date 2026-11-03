@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <utility>
+#include <vector>
 
 #include "clay/gfx/skity_to_skia_utils.h"
 
@@ -53,111 +54,54 @@ std::shared_ptr<skity::Pixmap> ScalePixmap(
 class DesktopImageAnimation final : public PlatformImageAnimation {
  public:
   explicit DesktopImageAnimation(std::shared_ptr<ImageCodecGenerator> generator)
-      : generator_(std::move(generator)) {
-    if (generator_) {
-      current_frame_.image = generator_->GetImage();
+      : generator_(std::move(generator)), codec_(generator_->CreateCodec()) {
+    for (int i = 0; i < generator_->FrameCount(); ++i) {
+      frame_durations_.push_back(codec_ ? codec_->FrameDuration(i) : 0);
+    }
+  }
+
+  int GetFrameCount() const override { return generator_->FrameCount(); }
+
+  int64_t GetFrameDuration(int frame_index) const override {
+    return frame_index >= 0 && frame_index < GetFrameCount()
+               ? frame_durations_[frame_index]
+               : 0;
+  }
+
+  std::shared_ptr<skity::Pixmap> DecodeFrame(
+      int frame_index, const ImageInfo& render_info) override {
+    std::scoped_lock lock(decoder_mutex_);
+    if (frame_index < 0 || frame_index >= GetFrameCount()) {
+      return nullptr;
+    }
+    if (frame_index == decoded_frame_index_) {
+      return ScalePixmap(PixmapFromFrame(decoded_frame_), render_info);
+    }
+    if (!codec_ || frame_index < decoded_frame_index_) {
       codec_ = generator_->CreateCodec();
+      decoded_frame_index_ = -1;
+      decoded_frame_ = {};
     }
-    frame_count_ = codec_ ? codec_->FrameCount() : 0;
-  }
-
-  int64_t GetDuration() override {
-    std::scoped_lock lock(frame_mutex_);
-    return current_frame_.duration;
-  }
-
-  std::shared_ptr<skity::Pixmap> ToBitmap(
-      const ImageInfo& render_info) override {
-    FrameInfo frame;
-    {
-      std::scoped_lock lock(frame_mutex_);
-      frame = current_frame_;
-    }
-    return ScalePixmap(PixmapFromFrame(frame), render_info);
-  }
-
-  FrameResult DrawFrame() override {
-    if (!is_playing_ || !codec_) {
-      return FrameResult::kNoFrame;
-    }
-    if (frame_count_ <= 1 || current_frame_index_ >= frame_count_) {
-      return FrameResult::kNoFrame;
-    }
-    if (!DrawFrameInternal()) {
-      return FrameResult::kNoFrame;
-    }
-    ++current_frame_index_;
-    if (current_frame_index_ >= frame_count_) {
-      if (remaining_loop_count_ > 0) {
-        --remaining_loop_count_;
-        if (remaining_loop_count_ <= 0) {
-          StopAnimation();
-          current_frame_index_ = 0;
-          return FrameResult::kFinalLoopComplete;
-        }
+    // Sequential codecs must reconstruct dependency frames when seeking. This
+    // cursor tracks decoder progress only; playback is owned by the player.
+    while (codec_ && decoded_frame_index_ < frame_index) {
+      auto frame = DecodeNextFrame(codec_);
+      if (!frame.image) {
+        return nullptr;
       }
-      current_frame_index_ = 0;
-      return FrameResult::kLoopComplete;
+      decoded_frame_ = std::move(frame);
+      ++decoded_frame_index_;
     }
-    return FrameResult::kFrameReady;
+    return ScalePixmap(PixmapFromFrame(decoded_frame_), render_info);
   }
-
-  void SetLoopCount(int loop_count) override {
-    loop_count_ = loop_count;
-    remaining_loop_count_ = loop_count_;
-  }
-
-  void StartAnimation() override {
-    if (is_playing_) {
-      return;
-    }
-    if (!generator_) {
-      return;
-    }
-    codec_ = generator_->CreateCodec();
-    frame_count_ = codec_ ? codec_->FrameCount() : 0;
-    if (frame_count_ <= 1) {
-      return;
-    }
-    current_frame_index_ = 0;
-    remaining_loop_count_ = loop_count_;
-    if (!DrawFrameInternal()) {
-      StopAnimation();
-      return;
-    }
-    ++current_frame_index_;
-    is_playing_ = true;
-  }
-
-  void StopAnimation() override { is_playing_ = false; }
-
-  void PauseAnimation() override { is_playing_ = false; }
-
-  void ResumeAnimation() override { is_playing_ = codec_ != nullptr; }
 
  private:
-  bool DrawFrameInternal() {
-    if (!codec_) {
-      return false;
-    }
-    auto frame = DecodeNextFrame(codec_);
-    if (!frame.image) {
-      return false;
-    }
-    std::scoped_lock lock(frame_mutex_);
-    current_frame_ = std::move(frame);
-    return true;
-  }
-
-  FrameInfo current_frame_;
-  std::shared_ptr<ImageCodecGenerator> generator_;
+  const std::shared_ptr<ImageCodecGenerator> generator_;
+  std::vector<int64_t> frame_durations_;
   fml::RefPtr<Codec> codec_;
-  std::mutex frame_mutex_;
-  int frame_count_ = 0;
-  int loop_count_ = 0;
-  int remaining_loop_count_ = 0;
-  int32_t current_frame_index_ = 0;
-  bool is_playing_ = false;
+  std::mutex decoder_mutex_;
+  FrameInfo decoded_frame_;
+  int decoded_frame_index_ = -1;
 };
 
 }  // namespace

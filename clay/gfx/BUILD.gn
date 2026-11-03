@@ -150,6 +150,7 @@ if (enable_unittests) {
       testonly = true
 
       sources = [
+        "animation/animation_handler.cc",
         "image/animated_image_player.cc",
         "image/animated_image_player_unittests.cc",
       ]

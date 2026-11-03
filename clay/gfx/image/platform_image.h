@@ -16,25 +16,18 @@ namespace clay {
 
 class PlatformImageAnimation {
  public:
-  // Values are also used by the platform animation bridges.
-  enum class FrameResult {
-    kNoFrame = 0,
-    kFrameReady = 1,
-    kLoopComplete = 2,
-    kFinalLoopComplete = 3,
-  };
-
   virtual ~PlatformImageAnimation() = default;
 
-  virtual int64_t GetDuration() = 0;
-  virtual std::shared_ptr<skity::Pixmap> ToBitmap(
-      const ImageInfo& render_info) = 0;
-  virtual FrameResult DrawFrame() = 0;
-  virtual void SetLoopCount(int loop_count) = 0;
-  virtual void StartAnimation() = 0;
-  virtual void StopAnimation() = 0;
-  virtual void PauseAnimation() = 0;
-  virtual void ResumeAnimation() = 0;
+  // Raw frame durations are in milliseconds. Playback timing and loop state
+  // belong exclusively to AnimatedImagePlayer.
+  virtual int GetFrameCount() const = 0;
+  virtual int64_t GetFrameDuration(int frame_index) const = 0;
+
+  // Returns a complete frame snapshot, including any required composition.
+  // Calls may skip frames or seek backwards. Mutable decoder caches must be
+  // synchronized because decoding runs independently of playback updates.
+  virtual std::shared_ptr<skity::Pixmap> DecodeFrame(
+      int frame_index, const ImageInfo& render_info) = 0;
 };
 
 class PlatformImage : public std::enable_shared_from_this<PlatformImage> {
