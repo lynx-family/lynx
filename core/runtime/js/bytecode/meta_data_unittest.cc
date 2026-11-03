@@ -23,7 +23,7 @@ TEST(BytecodeMetaData, Create) {
   EXPECT_EQ(
       meta_data.ToJson(),
       R"({"lynx":{"version":"2.4","engine_sdk_version":"2.2.0-inspector"}})");
-  auto meta2 = MetaData::ParseJson(meta_data.ToJson());
+  auto meta2 = MetaData::ParseJson(meta_data.ToJson().c_str());
   EXPECT_EQ(
       meta2->ToJson(),
       R"({"lynx":{"version":"2.4","engine_sdk_version":"2.2.0-inspector"}})");

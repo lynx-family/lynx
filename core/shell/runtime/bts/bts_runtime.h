@@ -41,7 +41,6 @@ namespace lynx {
 namespace runtime {
 namespace js {
 class NapiEnvironment;
-class HeapSnapshot;
 }  // namespace js
 }  // namespace runtime
 
@@ -151,7 +150,7 @@ class BTSRuntime final {
   void SetLogContext(const base::LogContext& context);
   const base::LogContext& GetLogContext() const { return log_context_; }
 
-  std::unique_ptr<runtime::js::HeapSnapshot> TakeHeapSnapshot();
+  std::unique_ptr<runtime::js::Buffer> TakeHeapSnapshot();
 
 #if ENABLE_NAPI_BINDING
   runtime::js::NapiEnvironment* GetNapiEnvironment() const {

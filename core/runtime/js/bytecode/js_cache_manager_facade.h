@@ -20,8 +20,6 @@ class LynxTemplateBundle;
 namespace runtime {
 
 namespace js {
-class StringBuffer;
-class Buffer;
 class JsContent;
 enum class JSRuntimeType;
 
