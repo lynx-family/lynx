@@ -11,20 +11,18 @@ public final class LynxMarkdownBundle {
   public final LynxUIMarkdownShadowNode mShadowNode;
   public final MarkdownResourceContext mResourceContext;
   public final MarkdownResourceLoader mResourceLoader;
-  public final int mMeasuredWidth;
-  public final int mMeasuredHeight;
+  public final long mMeasuredSize;
   public final String mContentID;
   public final boolean mExposeLinks;
 
   public LynxMarkdownBundle(MarkdownMeasurer markdownMeasurer, LynxUIMarkdownShadowNode shadowNode,
       MarkdownResourceContext resourceContext, MarkdownResourceLoader resourceLoader,
-      int measuredWidth, int measuredHeight) {
+      long measuredSize) {
     mMarkdownMeasurer = markdownMeasurer;
     mShadowNode = shadowNode;
     mResourceContext = resourceContext;
     mResourceLoader = resourceLoader;
-    mMeasuredWidth = measuredWidth;
-    mMeasuredHeight = measuredHeight;
+    mMeasuredSize = measuredSize;
     mContentID = shadowNode.getParseEndContentID();
     mExposeLinks = shadowNode.exposesLinks();
   }
