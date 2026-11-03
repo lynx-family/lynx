@@ -1110,6 +1110,81 @@ TEST_F(CSSKeyframeManagerTest,
 }
 
 TEST_F(CSSKeyframeManagerTest,
+       RunningCustomPropertyAnimationKeepsProgressAcrossDummyResolve) {
+  auto test_element = InitElement();
+  auto keyframes = lepus::Dictionary::Create();
+  for (const auto& entry :
+       {std::make_pair("0", "10px"), std::make_pair("50", "20px")}) {
+    auto frame = lepus::Dictionary::Create();
+    frame->SetValue("--x", lepus::Value(entry.second));
+    keyframes->SetValue(entry.first, lepus::Value(frame));
+  }
+  lynx::tasm::CSSParserConfigs configs;
+  starlight::CSSStyleUtils::UpdateCSSKeyframes(
+      *test_element->keyframes_map_, base::String("test"),
+      lepus::Value(keyframes), configs);
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> data;
+  data.emplace_back(InitAnimationData(
+      "test", 1000, 0, {}, 1, starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+  test_manager->SyncAnimationDataForNewPipeline(data);
+  auto start = TimePointFromMs(1000);
+  test_manager->CollectAnimationUpdatesForNewPipeline(start);
+  test_manager->TakePendingAnimationEventsForNewPipeline();
+  auto mid = TimePointFromMs(1750);
+  test_manager->CollectAnimationUpdatesForNewPipeline(mid);
+
+  auto dummy = animation::Animation::GetAnimationDummyStartTime();
+  auto sample = test_manager->CollectAnimationUpdatesForNewPipeline(dummy);
+  auto* value = FindSampledCustomProperty(sample, base::String("--x"));
+  ASSERT_NE(value, nullptr);
+  EXPECT_TRUE(value->AsString().IsEqual("20px"));
+  EXPECT_TRUE(test_manager->TakePendingAnimationEventsForNewPipeline().empty());
+}
+
+TEST_F(CSSKeyframeManagerTest,
+       CustomPropertyAnimationResumesBeforeFirstRealSample) {
+  auto test_element = InitElement();
+  UpdateCustomPropertyOnlyKeyframes(test_element.get(), base::String("test"));
+  auto test_manager = InitTestKeyframeManager(test_element.get());
+  base::Vector<starlight::AnimationData> data;
+  data.emplace_back(InitAnimationData(
+      "test", 1000, 0, {}, 1, starlight::AnimationFillModeType::kBoth,
+      starlight::AnimationDirectionType::kNormal,
+      starlight::AnimationPlayStateType::kRunning));
+  test_manager->SyncAnimationDataForNewPipeline(data);
+  auto dummy = animation::Animation::GetAnimationDummyStartTime();
+  test_manager->CollectAnimationUpdatesForNewPipeline(dummy);
+  test_manager->TakePendingAnimationEventsForNewPipeline();
+  auto a = test_manager->animations_map().find(base::String("test"))->second;
+  a->Pause();
+  test_manager->CollectAnimationUpdatesForNewPipeline(dummy);
+  a->Play(false);
+  test_manager->CollectAnimationUpdatesForNewPipeline(dummy);
+  auto start = TimePointFromMs(10000);
+  auto sample = test_manager->CollectAnimationUpdatesForNewPipeline(start);
+  const auto* value = FindSampledCustomProperty(sample, base::String("--x"));
+  ASSERT_NE(value, nullptr);
+  EXPECT_TRUE(value->AsString().IsEqual("10px"));
+  EXPECT_EQ(a->total_paused_duration(), fml::TimeDelta::Zero());
+  EXPECT_TRUE(test_manager->TakePendingAnimationEventsForNewPipeline().empty());
+
+  auto end = TimePointFromMs(11000);
+  sample = test_manager->CollectAnimationUpdatesForNewPipeline(end);
+  value = FindSampledCustomProperty(sample, base::String("--x"));
+  ASSERT_NE(value, nullptr);
+  EXPECT_TRUE(value->AsString().IsEqual("20px"));
+  auto events = test_manager->TakePendingAnimationEventsForNewPipeline();
+  ASSERT_EQ(events.size(), 1u);
+  EXPECT_TRUE(events[0].send_end_event);
+  EXPECT_FALSE(events[0].send_start_event);
+  test_manager->CollectAnimationUpdatesForNewPipeline(end);
+  EXPECT_TRUE(test_manager->TakePendingAnimationEventsForNewPipeline().empty());
+}
+
+TEST_F(CSSKeyframeManagerTest,
        CustomPropertyOnlyAnimationSendsEndOnceAndKeepsRepeatedFillSample) {
   auto test_element = InitElement();
   UpdateCustomPropertyOnlyKeyframes(test_element.get(), base::String("test"));

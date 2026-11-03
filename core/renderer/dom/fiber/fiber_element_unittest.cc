@@ -24773,6 +24773,45 @@ TEST_P(FiberElementTest, ImperativeAnimationOriginAcrossStylingPipelines) {
 }
 
 TEST_P(FiberElementTest,
+       NewStylingRunningAnimationKeepsProgressDuringStyleUpdate) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->enable_new_animator_ = true;
+  UpdateLeftKeyframesForTest(element.get(), base::String("move"), "0px",
+                             "200px");
+  element->SetRawInlineStyles(
+      "left: 0px; animation: move 1000ms linear forwards;");
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+
+  Element::NewPipelineResolveRequest request;
+  request.force_resolve = true;
+  auto expect_left = [&](double expected) {
+    const auto& values = element->computed_css_style()->GetResolvedValues();
+    auto it = values.find(kPropertyIDLeft);
+    ASSERT_NE(it, values.end());
+    EXPECT_EQ(it->second.GetPattern(), CSSValuePattern::NUMBER);
+    EXPECT_NEAR(it->second.AsNumber(), expected, 0.01);
+  };
+  for (int64_t ms : {1000, 1500}) {
+    element->SetAnimationSampleTimeForNewPipeline(TimePointFromMs(ms));
+    element->ResolveCSSStylesNewPipelineCore(request);
+  }
+  expect_left(100);
+
+  element->SetRawInlineStyles(
+      "left: 0px; opacity: 0.5; animation: move 1000ms linear forwards;");
+  element->ResolveCSSStylesNewPipelineCore(request);
+  expect_left(100);
+
+  element->SetAnimationSampleTimeForNewPipeline(TimePointFromMs(1750));
+  element->ResolveCSSStylesNewPipelineCore(request);
+  expect_left(150);
+}
+
+TEST_P(FiberElementTest,
        NewStylingForwardsKeyframeFillPersistsAfterLaterResolve) {
   manager->enable_new_styling_pipeline_ = true;
   auto page = manager->CreateFiberPage("page", 11);

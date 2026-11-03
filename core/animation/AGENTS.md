@@ -58,6 +58,8 @@ This directory contains Lynx core animation code: shared animation primitives, C
 ## Invariants And Pitfalls
 
 - Root `animation.cc` uses a dummy start time on first play to force an immediate tick. This is intentionally tied to first-frame style correctness and iOS flicker avoidance; do not remove or change it casually.
+- A pause recorded during dummy priming must be anchored to the first real frame in both `Animation` and its effect models before accumulating paused duration. Regress pause/resume before the first real frame, including a pause that spans that frame; a dummy zero is not a real pause timestamp.
+- Once an animation has a real timeline, dummy-time style resolves must reuse its known progress without advancing its clock or replaying lifecycle events. Keep normal and custom-property samples aligned, preserve cache invalidation, and defer pending resume bookkeeping to a real frame. Regress seeks and background event ticks as well as ordinary style updates.
 - `css_keyframe_manager.*` constructs curves and models based on property and curve type. Adding a new animatable property usually requires wiring the right keyframe curve and validating the property can be converted into keyframe values.
 - `css_transition_manager.*` expands aggregate transition properties such as `all`, `border-width`, `border-color`, `margin`, and `padding`. A seemingly local change here can fan out into many per-property animations.
 - Transition stop conditions depend on start/end value validity and previous-end-value tracking. Regressions here often show up as animations failing to restart or failing to cancel.
