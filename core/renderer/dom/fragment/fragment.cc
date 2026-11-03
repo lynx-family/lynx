@@ -29,6 +29,14 @@
 namespace lynx {
 namespace tasm {
 
+namespace {
+bool IsVisible(Element* element) {
+  auto* style = element->computed_css_style();
+  return style == nullptr ||
+         style->GetVisibilityData() == starlight::VisibilityType::kVisible;
+}
+}  // namespace
+
 // Init value for the draw node capacity.
 const int32_t Fragment::kDefaultDrawNodeCapacity = 1;
 
@@ -1384,6 +1392,12 @@ void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
   SyncEventBundle();
   MarkHasExposureEventIfNeeded();
 
+  if (!IsVisible(element())) {
+    ResetDirtyState(kNeedRedraw);
+    ResetFlattenedDescendantRedrawState();
+    return;
+  }
+
   // Only a fragment backed by a platform layer can skip full draw when its
   // contents haven't changed and only update subtree properties (transform,
   // opacity, filter) instead. Fragments without a platform renderer have no
@@ -1512,12 +1526,12 @@ void Fragment::Draw() {
     builder.Reserve(draw_node_capacity_);
   }
 
-  if (!element()->display_none()) {
+  if (!element()->display_none() && IsVisible(element())) {
     OnDraw(builder);
 
     CheckRootIfNeedClipBounds(builder);
   } else {
-    // display:none: still emit a display list containing only this node's
+    // Hidden subtrees still emit a display list containing only this node's
     // Begin/End so the platform layer receives an update and clears any stale
     // content / sublayers / event-target state instead of keeping the previous
     // frame.
@@ -1531,6 +1545,8 @@ void Fragment::Draw() {
                   computed_style->IsOverflowX(), computed_style->IsOverflowY(),
                   ShouldSyncLayoutOnlyToEventTarget());
     builder.End();
+    // Rebuild this fragment and its paint subtree when it becomes visible.
+    MarkDirtyState(kNeedRedraw);
   }
 
   painting_context()->impl()->CastToNativeCtx()->UpdateDisplayList(
@@ -2012,7 +2028,26 @@ void Fragment::RefreshDrawingOffsetsRecursively(float left, float top) {
   }
 }
 
+void Fragment::ResetFlattenedDescendantRedrawState() {
+  // These contents are rebuilt with their owning paint root when shown.
+  // Clear stale redraw flags so future invalidation can reach that root.
+  // Retain pending properties and independent platform display-list state.
+  for (auto* child : children_) {
+    if (!child->has_platform_renderer_) {
+      child->ResetDirtyState(kNeedRedraw);
+      child->ResetFlattenedDescendantRedrawState();
+    }
+  }
+}
+
 void Fragment::DispatchUpdateDisplayList() {
+  if (!IsVisible(element())) {
+    if (!has_platform_renderer_) {
+      ResetDirtyState(kNeedRedraw);
+    }
+    ResetFlattenedDescendantRedrawState();
+    return;
+  }
   for (auto* child : children_) {
     if (child->has_platform_renderer_) {
       child->Draw();

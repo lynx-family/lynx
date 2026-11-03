@@ -5602,6 +5602,364 @@ TEST_F(FragmentTest, OutsetShadowWithZeroSizeElement) {
   EXPECT_GE(list.GetContentItemsSize(), 1u);
 }
 
+TEST_F(FragmentDrawTest, NonVisibleFragmentsHideVisibleChildren) {
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  element->InsertNode(child);
+  page->InsertNode(element);
+  element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  element->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
+  element->SetStyle(kPropertyIDWidth, lepus::Value("100px"));
+  element->SetStyle(kPropertyIDHeight, lepus::Value("60px"));
+  element->SetStyle(kPropertyIDTransform, lepus::Value("translateX(12px)"));
+  child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+  child->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
+  int parent_draws = 0;
+  int child_draws = 0;
+  CustomDrawFunctions functions;
+  functions.draw_behind = [&parent_draws](Fragment&, DisplayListBuilder&) {
+    ++parent_draws;
+  };
+  functions.draw_foreground = functions.draw_behind;
+  element->SetCustomDrawFunctions(functions);
+  functions.draw_behind = [&child_draws](Fragment&, DisplayListBuilder&) {
+    ++child_draws;
+  };
+  functions.draw_foreground = functions.draw_behind;
+  child->SetCustomDrawFunctions(functions);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+
+  auto* fragment = element->fragment_impl();
+  for (bool has_platform_renderer : {false, true}) {
+    SCOPED_TRACE(has_platform_renderer);
+    fragment->has_platform_renderer_ = has_platform_renderer;
+    for (bool child_has_platform_renderer : {false, true}) {
+      SCOPED_TRACE(child_has_platform_renderer);
+      child->fragment_impl()->has_platform_renderer_ =
+          child_has_platform_renderer;
+      for (auto visibility : {starlight::VisibilityType::kHidden,
+                              starlight::VisibilityType::kNone,
+                              starlight::VisibilityType::kCollapse}) {
+        SCOPED_TRACE(static_cast<int>(visibility));
+        element->SetStyleInternal(kPropertyIDVisibility, CSSValue(visibility));
+        fragment->InvalidateForSubtreeProperty();
+        parent_draws = child_draws = 0;
+        DisplayListBuilder builder;
+        fragment->OnDraw(builder);
+        auto list = builder.Build();
+        EXPECT_EQ(list.GetContentItemsSize(), 0u);
+        EXPECT_EQ(list.GetSubtreePropertiesSize(), 0u);
+        EXPECT_EQ(parent_draws, 0);
+        EXPECT_EQ(child_draws, 0);
+        EXPECT_FALSE(fragment->NeedRedraw());
+        // Cached ancestors must also stop before entering the hidden subtree.
+        page->fragment_impl()->DispatchUpdateDisplayList();
+        EXPECT_EQ(child_draws, 0);
+      }
+    }
+  }
+}
+
+TEST_F(FragmentDrawTest,
+       HiddenPaintSubtreesSuppressAndRestoreCachedDescendants) {
+  // Cover hidden flattened and platform fragments without reparenting.
+  for (int mode : {0, 1}) {
+    SCOPED_TRACE(mode);
+    auto page = manager->CreateFiberPage("0", 0);
+    manager->SetFiberPageElement(page);
+    auto element = manager->CreateFiberView();
+    auto child = manager->CreateFiberView();
+    element->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
+    child->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
+    child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+    int draws = 0;
+    CustomDrawFunctions functions;
+    functions.draw_foreground = [&draws](Fragment&, DisplayListBuilder&) {
+      ++draws;
+    };
+    child->SetCustomDrawFunctions(std::move(functions));
+    element->InsertNode(child);
+    page->InsertNode(element);
+    page->FlushActionsAsRoot();
+    page->Layout(std::make_shared<PipelineOptions>());
+    if (mode == 0) {
+      element->fragment_impl()->has_platform_renderer_ = false;
+    }
+    ASSERT_TRUE(child->fragment_impl()->has_platform_renderer_);
+    ASSERT_EQ(child->fragment_impl()->fragment_parent(),
+              element->fragment_impl());
+    auto* native_ref = static_cast<NativeMockPaintingContext*>(
+                           manager->painting_context()->impl())
+                           ->GetNativePlatformRef();
+    auto* owner = mode == 1 ? element->fragment_impl() : page->fragment_impl();
+    auto has_child_view = [&]() {
+      const auto* list = native_ref->GetDisplayListForRenderer(owner->id());
+      if (list == nullptr) return false;
+      const auto items = CollectDisplayListItems(*list);
+      return std::any_of(items.begin(), items.end(), [&](const auto& item) {
+        return item.type == DisplayListOpType::kDrawView &&
+               item.payload.draw_view.view_id == child->fragment_impl()->id();
+      });
+    };
+
+    page->fragment_impl()->Draw();
+    ASSERT_GT(draws, 0);
+    ASSERT_TRUE(has_child_view());
+    const int initial_draws = draws;
+    element->SetStyleInternal(kPropertyIDVisibility,
+                              CSSValue(starlight::VisibilityType::kHidden));
+    page->fragment_impl()->Draw();
+    page->fragment_impl()->Draw();
+    EXPECT_EQ(draws, initial_draws);
+    EXPECT_FALSE(has_child_view());
+
+    element->ResetStyleInternal(kPropertyIDVisibility);
+    page->fragment_impl()->Draw();
+    EXPECT_TRUE(has_child_view());
+    const auto* list =
+        native_ref->GetDisplayListForRenderer(child->fragment_impl()->id());
+    ASSERT_NE(list, nullptr);
+    const auto items = CollectDisplayListItems(*list);
+    EXPECT_TRUE(std::any_of(items.begin(), items.end(), [](const auto& item) {
+      return item.type == DisplayListOpType::kFill &&
+             item.payload.fill.color == 0xff0000ff;
+    }));
+  }
+}
+
+TEST_F(FragmentDrawTest, HiddenFlattenedDescendantsCanInvalidateAgain) {
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto parent = manager->CreateFiberView();
+  auto middle = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  auto platform_child = manager->CreateFiberView();
+  parent->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
+  child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  platform_child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+  CustomDrawFunctions functions;
+  functions.draw_foreground = [](Fragment&, DisplayListBuilder&) {};
+  parent->SetCustomDrawFunctions(functions);
+  platform_child->SetCustomDrawFunctions(std::move(functions));
+  page->InsertNode(parent);
+  parent->InsertNode(middle);
+  middle->InsertNode(child);
+  parent->InsertNode(platform_child);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  auto* root = page->fragment_impl();
+  auto* parent_fragment = parent->fragment_impl();
+  auto* middle_fragment = middle->fragment_impl();
+  auto* child_fragment = child->fragment_impl();
+  auto* platform_fragment = platform_child->fragment_impl();
+  parent_fragment->has_platform_renderer_ = false;
+  middle_fragment->has_platform_renderer_ = false;
+  child_fragment->has_platform_renderer_ = false;
+  ASSERT_TRUE(root->has_platform_renderer_);
+  ASSERT_TRUE(platform_fragment->has_platform_renderer_);
+  root->Draw();
+  ASSERT_FALSE(root->NeedRedraw());
+  ASSERT_FALSE(child_fragment->NeedRedraw());
+
+  parent->SetStyleInternal(kPropertyIDVisibility,
+                           CSSValue(starlight::VisibilityType::kHidden));
+  child->SetStyleInternal(kPropertyIDBackgroundColor,
+                          CSSValue(0xff0000ff, CSSValuePattern::NUMBER));
+  platform_child->SetStyleInternal(
+      kPropertyIDBackgroundColor,
+      CSSValue(0xffffff00, CSSValuePattern::NUMBER));
+  middle->SetStyleInternal(kPropertyIDOpacity,
+                           CSSValue(0.5, CSSValuePattern::NUMBER));
+  root->Draw();
+  EXPECT_FALSE(root->NeedRedraw());
+  EXPECT_FALSE(parent_fragment->NeedRedraw());
+  EXPECT_FALSE(middle_fragment->NeedRedraw());
+  EXPECT_FALSE(child_fragment->NeedRedraw());
+  EXPECT_TRUE(middle_fragment->NeedUpdateSubtreeProperty());
+  EXPECT_TRUE(platform_fragment->NeedRedraw());
+
+  // A property update uses the cached dispatch path while the ancestor stays
+  // hidden. It must remain pending until the subtree is drawn again.
+  middle->SetStyleInternal(kPropertyIDOpacity,
+                           CSSValue(0.25, CSSValuePattern::NUMBER));
+  ASSERT_FALSE(root->NeedRedraw());
+  root->Draw();
+  EXPECT_TRUE(middle_fragment->NeedUpdateSubtreeProperty());
+  EXPECT_TRUE(platform_fragment->NeedRedraw());
+
+  // A second update must reach the owning display list through clean flattened
+  // ancestors, even though they were skipped by the hidden-parent draw.
+  child->SetStyleInternal(kPropertyIDBackgroundColor,
+                          CSSValue(0xff00ff00, CSSValuePattern::NUMBER));
+  EXPECT_TRUE(child_fragment->NeedRedraw());
+  EXPECT_TRUE(middle_fragment->NeedRedraw());
+  EXPECT_TRUE(parent_fragment->NeedRedraw());
+  EXPECT_TRUE(root->NeedRedraw());
+  root->Draw();
+  EXPECT_FALSE(root->NeedRedraw());
+  EXPECT_FALSE(child_fragment->NeedRedraw());
+  EXPECT_TRUE(platform_fragment->NeedRedraw());
+
+  parent->SetStyleInternal(kPropertyIDVisibility,
+                           CSSValue(starlight::VisibilityType::kVisible));
+  root->Draw();
+  auto* native_ref = static_cast<NativeMockPaintingContext*>(
+                         manager->painting_context()->impl())
+                         ->GetNativePlatformRef();
+  auto has_fill = [&](int id, uint32_t color) {
+    const auto* list = native_ref->GetDisplayListForRenderer(id);
+    if (list == nullptr) return false;
+    const auto items = CollectDisplayListItems(*list);
+    return std::any_of(items.begin(), items.end(), [&](const auto& item) {
+      return item.type == DisplayListOpType::kFill &&
+             item.payload.fill.color == color;
+    });
+  };
+  EXPECT_TRUE(has_fill(root->id(), 0xff00ff00));
+  EXPECT_TRUE(has_fill(platform_fragment->id(), 0xffffff00));
+  const auto* root_list = native_ref->GetDisplayListForRenderer(root->id());
+  ASSERT_NE(root_list, nullptr);
+  const auto* opacity = LastSubtreeProperty(
+      *root_list, DisplayListSubtreePropertyOpType::kOpacity);
+  ASSERT_NE(opacity, nullptr);
+  EXPECT_FLOAT_EQ(opacity->data.opacity, 0.25f);
+  EXPECT_FALSE(root->NeedRedraw());
+  EXPECT_FALSE(platform_fragment->NeedRedraw());
+  EXPECT_FALSE(middle_fragment->NeedUpdateSubtreeProperty());
+}
+
+TEST_F(FragmentDrawTest, ReparentedFragmentsFollowOwnVisibility) {
+  // Legacy native visibility follows the mounted paint tree. A child moved
+  // outside a hidden logical parent remains visible when its own style is.
+  for (int mode : {0, 1, 2}) {
+    SCOPED_TRACE(mode);
+    auto page = manager->CreateFiberPage("0", 0);
+    manager->SetFiberPageElement(page);
+    auto parent = manager->CreateFiberView();
+    auto child = manager->CreateFiberView();
+    parent->SetStyle(kPropertyIDVisibility, lepus::Value("hidden"));
+    child->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
+    child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+    if (mode == 0) {
+      child->SetStyle(kPropertyIDPosition, lepus::Value("fixed"));
+    } else {
+      child->SetStyle(kPropertyIDZIndex, lepus::Value(mode == 1 ? 1 : -1));
+    }
+    int draws = 0;
+    CustomDrawFunctions functions;
+    functions.draw_foreground = [&draws](Fragment&, DisplayListBuilder&) {
+      ++draws;
+    };
+    child->SetCustomDrawFunctions(std::move(functions));
+    parent->InsertNode(child);
+    page->InsertNode(parent);
+    page->FlushActionsAsRoot();
+    page->Layout(std::make_shared<PipelineOptions>());
+    ASSERT_EQ(child->fragment_impl()->fragment_parent(), page->fragment_impl());
+    auto* native_ref = static_cast<NativeMockPaintingContext*>(
+                           manager->painting_context()->impl())
+                           ->GetNativePlatformRef();
+    auto has_blue_content = [&]() {
+      const auto* list =
+          native_ref->GetDisplayListForRenderer(child->fragment_impl()->id());
+      if (list == nullptr) return false;
+      const auto items = CollectDisplayListItems(*list);
+      return std::any_of(items.begin(), items.end(), [](const auto& item) {
+        return item.type == DisplayListOpType::kFill &&
+               item.payload.fill.color == 0xff0000ff;
+      });
+    };
+
+    page->fragment_impl()->Draw();
+    EXPECT_GT(draws, 0);
+    EXPECT_TRUE(has_blue_content());
+    for (auto visibility : {starlight::VisibilityType::kVisible,
+                            starlight::VisibilityType::kHidden}) {
+      parent->SetStyleInternal(kPropertyIDVisibility, CSSValue(visibility));
+      child->fragment_impl()->InvalidateForRedraw();
+      const int previous_draws = draws;
+      page->fragment_impl()->Draw();
+      EXPECT_GT(draws, previous_draws);
+      EXPECT_TRUE(has_blue_content());
+      const int full_draws = draws;
+      page->fragment_impl()->Draw();
+      EXPECT_EQ(draws, full_draws);
+      EXPECT_TRUE(has_blue_content());
+    }
+
+    child->SetStyleInternal(kPropertyIDVisibility,
+                            CSSValue(starlight::VisibilityType::kHidden));
+    const int visible_draws = draws;
+    page->fragment_impl()->Draw();
+    EXPECT_EQ(draws, visible_draws);
+    EXPECT_FALSE(has_blue_content());
+    const auto* hidden_list =
+        native_ref->GetDisplayListForRenderer(child->fragment_impl()->id());
+    ASSERT_NE(hidden_list, nullptr);
+    EXPECT_EQ(hidden_list->GetContentItemsSize(), 2u);
+
+    child->SetStyleInternal(kPropertyIDVisibility,
+                            CSSValue(starlight::VisibilityType::kVisible));
+    page->fragment_impl()->Draw();
+    EXPECT_GT(draws, visible_draws);
+    EXPECT_TRUE(has_blue_content());
+  }
+}
+
+TEST_F(FragmentDrawTest, VisibilityChangesClearAndRestoreRetainedContent) {
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  element->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
+  element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+  auto* fragment = element->fragment_impl();
+  ASSERT_TRUE(fragment->has_platform_renderer_);
+  auto* native_ref = static_cast<NativeMockPaintingContext*>(
+                         manager->painting_context()->impl())
+                         ->GetNativePlatformRef();
+  auto draw = [&]() {
+    fragment->Draw();
+    return native_ref->GetDisplayListForRenderer(fragment->id());
+  };
+
+  const auto* initial_list = draw();
+  ASSERT_NE(initial_list, nullptr);
+  EXPECT_GT(initial_list->GetContentItemsSize(), 2u);
+  EXPECT_FALSE(fragment->NeedRedraw());
+  for (auto visibility :
+       {starlight::VisibilityType::kHidden, starlight::VisibilityType::kNone,
+        starlight::VisibilityType::kCollapse}) {
+    SCOPED_TRACE(static_cast<int>(visibility));
+    for (bool reset : {false, true}) {
+      SCOPED_TRACE(reset);
+      element->SetStyleInternal(kPropertyIDVisibility, CSSValue(visibility));
+      EXPECT_TRUE(fragment->NeedRedraw());
+      const auto items = CollectDisplayListItems(*draw());
+      ASSERT_EQ(items.size(), 2u);
+      EXPECT_EQ(items[0].type, DisplayListOpType::kBegin);
+      EXPECT_EQ(items[1].type, DisplayListOpType::kEnd);
+      EXPECT_TRUE(fragment->NeedRedraw());
+      // Verify style updates request a redraw independently of retained state.
+      fragment->ClearPaintDirtyState();
+      if (reset) {
+        element->ResetStyleInternal(kPropertyIDVisibility);
+      } else {
+        element->SetStyleInternal(
+            kPropertyIDVisibility,
+            CSSValue(starlight::VisibilityType::kVisible));
+      }
+      EXPECT_TRUE(fragment->NeedRedraw());
+      EXPECT_GT(draw()->GetContentItemsSize(), 2u);
+      EXPECT_FALSE(fragment->NeedRedraw());
+    }
+  }
+}
+
 TEST_F(FragmentDrawTest,
        DisplayNoneEmitsEmptyDisplayListAndReconstructsExposure) {
   auto page = manager->CreateFiberPage("0", 0);
