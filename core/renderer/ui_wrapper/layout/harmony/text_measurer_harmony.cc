@@ -40,15 +40,13 @@ constexpr float kTextMaxLayoutWidth = std::numeric_limits<int16_t>::max();
 using InlineElementSizeList = std::vector<std::pair<int32_t, LayoutResult>>;
 
 void LoadCustomFontsIfNeeded(
-    const base::String& font_family,
+    const std::vector<std::string>& raw_font_families,
     const std::shared_ptr<harmony::FontFaceManager>& font_manager,
     const std::shared_ptr<harmony::FontCollectionHarmony>& font_collection) {
   if (font_manager == nullptr || font_collection == nullptr) {
     return;
   }
 
-  std::vector<std::string> raw_font_families;
-  base::SplitString(font_family.str(), ',', raw_font_families);
   for (const auto& raw_font_family : raw_font_families) {
     std::vector<harmony::FontFace::FontSrcData> font_src_data;
     if (!font_manager->TryGetFontSrcData(raw_font_family, font_src_data)) {
@@ -171,11 +169,21 @@ void ApplyTextStyle(TextElement* element, float density,
   }
 
   if (!attributes->font_family.empty() && font_manager != nullptr) {
-    LoadCustomFontsIfNeeded(attributes->font_family, font_manager,
+    std::vector<std::string> raw_font_families;
+    base::SplitString(attributes->font_family.str(), ',', raw_font_families);
+    // Match the font-family normalization used by BaseTextShadowNode.
+    for (auto& family : raw_font_families) {
+      family = base::TrimString(family, std::string(" \"'"), base::TRIM_ALL);
+    }
+    raw_font_families.erase(
+        std::remove_if(
+            raw_font_families.begin(), raw_font_families.end(),
+            [](const std::string& family) { return family.empty(); }),
+        raw_font_families.end());
+    LoadCustomFontsIfNeeded(raw_font_families, font_manager,
                             font_manager->GetFontCollection());
     text_style.SetCustomFontFamilyVector(
-        font_manager->GetCustomFamiliesFromRawString(
-            attributes->font_family.str()));
+        font_manager->GetCustomFamiliesFromRawVector(raw_font_families));
   }
 
   if (attributes->underline_decoration) {
