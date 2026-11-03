@@ -22,6 +22,7 @@ TEST(ErrorStorageTest, GetSetAndRest) {
   std::string err_msg = "Test error.";
   std::string err_msg2 = "Other error.";
 
+  ErrorStorage::GetInstance().Reset();
   ErrorStorage::GetInstance().SetError(-1, "Test error.");
   auto& error = ErrorStorage::GetInstance().GetError();
   ASSERT_NE(error, nullptr);

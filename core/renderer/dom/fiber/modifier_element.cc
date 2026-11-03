@@ -4,15 +4,18 @@
 
 #include "core/renderer/dom/fiber/modifier_element.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <limits>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <utility>
-#include <vector>
 
+#include "base/include/flex_optional.h"
+#include "base/include/string/string_utils.h"
+#include "base/include/value/base_string.h"
+#include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_draw_behind.h"
@@ -44,6 +47,9 @@ constexpr int kModifierOpFill = 9;
 constexpr int kModifierOpAspectRatio = 10;
 constexpr int kModifierOpGraphicsLayer = 11;
 constexpr int kModifierOpDrawBehind = 12;
+constexpr int kModifierOpWeightFill = 13;
+constexpr int kModifierOpOffset = 14;
+constexpr int kModifierOpSizeRange = 15;
 
 bool IsDrawOperation(int op) {
   return op == kModifierOpGraphicsLayer || op == kModifierOpDrawBehind;
@@ -80,7 +86,14 @@ BASE_STATIC_STRING_DECL(kBottom, "bottom");
 BASE_STATIC_STRING_DECL(kWidth, "width");
 BASE_STATIC_STRING_DECL(kHeight, "height");
 BASE_STATIC_STRING_DECL(kFraction, "fraction");
+BASE_STATIC_STRING_DECL(kFill, "fill");
 BASE_STATIC_STRING_DECL(kRatio, "ratio");
+BASE_STATIC_STRING_DECL(kX, "x");
+BASE_STATIC_STRING_DECL(kY, "y");
+BASE_STATIC_STRING_DECL(kMinWidth, "minWidth");
+BASE_STATIC_STRING_DECL(kMinHeight, "minHeight");
+BASE_STATIC_STRING_DECL(kMaxWidth, "maxWidth");
+BASE_STATIC_STRING_DECL(kMaxHeight, "maxHeight");
 BASE_STATIC_STRING_DECL(kTapEventName, "tap");
 BASE_STATIC_STRING_DECL(kBindEventType, "bindEvent");
 
@@ -88,11 +101,14 @@ struct ModifierOperation {
   int op{0};
   size_t carrier_index{0};
   size_t target_frame_index{kNoModifierFrame};
+  std::array<size_t, 2> fill_propagation_start{};
   CSSPropertyID style_id{kPropertyStart};
   int specified_axes{0};
   int applied_axes{0};
   bool apply_aspect_ratio{false};
-  std::array<double, 4> layout_values{};
+  bool wrap_has_prefix{false};
+  int wrap_axes{0};
+  double layout_values[4]{};
   base::String name;
   base::String event_type;
   lepus::Value value;
@@ -100,11 +116,15 @@ struct ModifierOperation {
 };
 
 struct ModifierFramePlan {
-  std::vector<ModifierOperation> operations;
-  std::vector<int> frame_child_constrained_axes;
+  base::Vector<ModifierOperation> operations;
+  base::Vector<int> frame_child_constrained_axes;
   size_t frame_count{0};
   bool owner_uses_layout_box{false};
   bool has_draw_callbacks{false};
+  bool has_offset{false};
+  bool has_size_range{false};
+  bool has_wrap_content{false};
+  base::flex_optional<bool> weight_fill;
 };
 
 lepus::Value ReadModifierProperty(const lepus::Value& node,
@@ -115,17 +135,20 @@ lepus::Value ReadModifierProperty(const lepus::Value& node,
   return node.GetProperty(key).ToLepusValue();
 }
 
-bool ReadIntegerProperty(const lepus::Value& node, const base::String& key,
-                         int* result) {
-  const auto value = ReadModifierProperty(node, key);
-  if (!value.IsNumber() || !std::isfinite(value.Number()) ||
-      std::trunc(value.Number()) != value.Number() ||
-      value.Number() < std::numeric_limits<int>::min() ||
-      value.Number() > std::numeric_limits<int>::max()) {
+bool ReadIntegerValue(const lepus::Value& value, int* result) {
+  if (!value.IsNumber()) return false;
+  const double number = value.Number();
+  // Modifier integers accept negative zero as zero.
+  if (number != 0 && !base::StringConvertHelper::IsInt32Double(number)) {
     return false;
   }
-  *result = static_cast<int>(value.Number());
+  *result = static_cast<int>(number);
   return true;
+}
+
+bool ReadIntegerProperty(const lepus::Value& node, const base::String& key,
+                         int* result) {
+  return ReadIntegerValue(ReadModifierProperty(node, key), result);
 }
 
 bool ReadFiniteNumberProperty(const lepus::Value& node, const base::String& key,
@@ -184,6 +207,8 @@ bool IsLayoutOperation(int op) {
     case kModifierOpSize:
     case kModifierOpFill:
     case kModifierOpAspectRatio:
+    case kModifierOpOffset:
+    case kModifierOpSizeRange:
       return true;
     default:
       return false;
@@ -194,6 +219,37 @@ bool ParseLayoutOperation(const lepus::Value& node,
                           ModifierOperation* operation, std::string* error) {
   auto& values = operation->layout_values;
   switch (operation->op) {
+    case kModifierOpSizeRange:
+      if (!ReadIntegerProperty(node, kSpecifiedAxes,
+                               &operation->specified_axes) ||
+          operation->specified_axes <= 0 ||
+          (operation->specified_axes & ~kLayoutModifierAllAxes) != 0 ||
+          !ReadFiniteNumberProperty(node, kMinWidth, &values[0]) ||
+          !ReadFiniteNumberProperty(node, kMinHeight, &values[1]) ||
+          !ReadFiniteNumberProperty(node, kMaxWidth, &values[2]) ||
+          !ReadFiniteNumberProperty(node, kMaxHeight, &values[3])) {
+        *error = "invalid size range parameters";
+        return false;
+      }
+      for (size_t axis = 0; axis < 2; ++axis) {
+        if (values[axis] < 0 ||
+            (values[axis + 2] != -1 && values[axis + 2] < values[axis]) ||
+            values[axis] > std::numeric_limits<float>::max() ||
+            values[axis + 2] > std::numeric_limits<float>::max()) {
+          *error = "invalid size range bounds";
+          return false;
+        }
+      }
+      return true;
+    case kModifierOpOffset:
+      if (!ReadFiniteNumberProperty(node, kX, &values[0]) ||
+          !ReadFiniteNumberProperty(node, kY, &values[1]) ||
+          std::abs(values[0]) > std::numeric_limits<float>::max() ||
+          std::abs(values[1]) > std::numeric_limits<float>::max()) {
+        *error = "invalid offset parameters";
+        return false;
+      }
+      return true;
     case kModifierOpPadding:
       if (!ReadFiniteNumberProperty(node, kStart, &values[0]) ||
           values[0] < 0 || !ReadFiniteNumberProperty(node, kTop, &values[1]) ||
@@ -245,6 +301,13 @@ bool ParseLayoutOperation(const lepus::Value& node,
 bool ParseModifierOperation(const lepus::Value& node,
                             ModifierOperation* operation, std::string* error) {
   switch (operation->op) {
+    case kModifierOpWeightFill:
+      operation->value = ReadModifierProperty(node, kFill);
+      if (!operation->value.IsBool()) {
+        *error = "weight fill should be boolean";
+        return false;
+      }
+      return true;
     case kModifierOpStyleNumber:
     case kModifierOpStyleString: {
       int property_id = 0;
@@ -313,6 +376,8 @@ bool ParseModifierOperation(const lepus::Value& node,
     case kModifierOpSize:
     case kModifierOpFill:
     case kModifierOpAspectRatio:
+    case kModifierOpOffset:
+    case kModifierOpSizeRange:
       return ParseLayoutOperation(node, operation, error);
     case kModifierOpGraphicsLayer:
     case kModifierOpDrawBehind:
@@ -329,7 +394,7 @@ bool ParseModifierOperation(const lepus::Value& node,
 }
 
 bool FlattenModifierNode(const lepus::Value& node,
-                         std::vector<ModifierOperation>* operations,
+                         base::Vector<ModifierOperation>* operations,
                          int& remaining_visits, std::string* error) {
   if (node.IsEmpty()) {
     return true;
@@ -351,14 +416,10 @@ bool FlattenModifierNode(const lepus::Value& node,
   }
 
   int op = 0;
-  if (!op_value.IsNumber() || !std::isfinite(op_value.Number()) ||
-      std::trunc(op_value.Number()) != op_value.Number() ||
-      op_value.Number() < std::numeric_limits<int>::min() ||
-      op_value.Number() > std::numeric_limits<int>::max()) {
+  if (!ReadIntegerValue(op_value, &op)) {
     *error = "op should be an integer";
     return false;
   }
-  op = static_cast<int>(op_value.Number());
   if (op == kModifierOpConcat) {
     return FlattenModifierNode(node.GetProperty(kLeft), operations,
                                remaining_visits, error) &&
@@ -379,6 +440,44 @@ bool FlattenModifierNode(const lepus::Value& node,
   return true;
 }
 
+int WrapContentStyleAxis(const ModifierOperation& operation) {
+  if (operation.op != kModifierOpStyleString ||
+      (operation.style_id != kPropertyIDWidth &&
+       operation.style_id != kPropertyIDHeight)) {
+    return 0;
+  }
+  const auto value = operation.value.ToLepusValue();
+  if (value.StdString() != "fit-content" &&
+      value.StdString() != "max-content") {
+    return 0;
+  }
+  return operation.style_id == kPropertyIDWidth ? kLayoutModifierAxisWidth
+                                                : kLayoutModifierAxisHeight;
+}
+
+// wrapContentSize emits adjacent width/height styles followed by both
+// alignments. Axis-specific wraps have an alignment between their dimension
+// styles, keeping separately authored modifiers on separate boundaries.
+const ModifierOperation* WrapStyleBeforeAlignment(
+    const base::Vector<ModifierOperation>& operations, size_t position,
+    CSSPropertyID alignment) {
+  if (alignment == kPropertyIDAlignItems && position > 0 &&
+      operations[position - 1].op == kModifierOpStyleString &&
+      operations[position - 1].style_id == kPropertyIDJustifyItems) {
+    --position;
+  }
+  if (position == 0 || !WrapContentStyleAxis(operations[position - 1])) {
+    return nullptr;
+  }
+  const auto& previous = operations[position - 1];
+  const auto* wrap =
+      previous.wrap_axes != 0 ? &previous : &operations[position - 2];
+  const int axis = alignment == kPropertyIDJustifyItems
+                       ? kLayoutModifierAxisWidth
+                       : kLayoutModifierAxisHeight;
+  return (wrap->wrap_axes & axis) != 0 ? wrap : nullptr;
+}
+
 bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
                             ModifierFramePlan* plan, std::string* error,
                             size_t* error_position) {
@@ -389,29 +488,87 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     return false;
   }
 
-  for (const auto& operation : plan->operations) {
-    if (IsDrawOperation(operation.op)) {
+  int sizing_prefix_axes = 0;
+  for (size_t position = 0; position < plan->operations.size(); ++position) {
+    auto& operation = plan->operations[position];
+    if (operation.op == kModifierOpWeightFill) {
+      plan->weight_fill = operation.value.Bool();
+    }
+    if (operation.op == kModifierOpSize || operation.op == kModifierOpFill) {
+      sizing_prefix_axes |= operation.specified_axes;
+    } else if (operation.op == kModifierOpAspectRatio) {
+      sizing_prefix_axes = kLayoutModifierAllAxes;
+    }
+    if (const int axis = WrapContentStyleAxis(operation)) {
+      if (position > 0 && axis == kLayoutModifierAxisHeight &&
+          plan->operations[position - 1].wrap_axes == kLayoutModifierAllAxes) {
+        continue;
+      }
+      operation.wrap_axes = axis;
+      if (axis == kLayoutModifierAxisWidth &&
+          position + 1 < plan->operations.size() &&
+          WrapContentStyleAxis(plan->operations[position + 1]) ==
+              kLayoutModifierAxisHeight) {
+        operation.wrap_axes |= kLayoutModifierAxisHeight;
+      }
+      operation.wrap_has_prefix =
+          (sizing_prefix_axes & operation.wrap_axes) != 0;
+      plan->frame_count += operation.wrap_has_prefix ? 2 : 1;
+      plan->has_wrap_content = true;
+      sizing_prefix_axes = 0;
+    } else if (IsDrawOperation(operation.op)) {
       plan->has_draw_callbacks = true;
       // Keep preceding effects outside the following Element's drawing hook.
       ++plan->frame_count;
-    } else if (operation.op == kModifierOpPadding) {
+      sizing_prefix_axes = 0;
+    } else if (operation.op == kModifierOpPadding ||
+               operation.op == kModifierOpOffset ||
+               operation.op == kModifierOpSizeRange) {
+      plan->has_size_range |= operation.op == kModifierOpSizeRange;
+      plan->has_offset |= operation.op == kModifierOpOffset;
       ++plan->frame_count;
+      sizing_prefix_axes = 0;
     }
   }
-  plan->frame_child_constrained_axes.resize(plan->frame_count);
+  plan->frame_child_constrained_axes.resize<true>(plan->frame_count);
 
   // Padding and drawing hooks introduce physical boundaries. Each hook belongs
   // to the following carrier (possibly the stable Content Element). This keeps
   // earlier drawing outside it and preserves multiple hooks in Modifier order.
   size_t carrier_index = 0;
   int constrained_axes = 0;
+  std::array<size_t, 2> fill_propagation_start{};
   for (size_t position = 0; position < plan->operations.size(); ++position) {
     auto& operation = plan->operations[position];
     operation.carrier_index = carrier_index;
+    operation.fill_propagation_start = fill_propagation_start;
     const size_t target_frame_index =
         carrier_index < plan->frame_count ? carrier_index : kNoModifierFrame;
 
-    if (IsDrawOperation(operation.op)) {
+    if (operation.wrap_axes != 0) {
+      constrained_axes &= ~operation.wrap_axes;
+      if (operation.wrap_has_prefix) {
+        // Keep the outer size/fill separate from intrinsic size styles.
+        plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
+        ++carrier_index;
+      } else if (carrier_index != 0) {
+        // Fixed incoming ranges already carry the sizes. Do not overwrite
+        // intrinsic CSS sizes with the usual 100% carrier hints.
+        plan->frame_child_constrained_axes[carrier_index - 1] &=
+            ~operation.wrap_axes;
+      }
+      operation.target_frame_index = carrier_index;
+      plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
+      ++carrier_index;
+      for (size_t axis = 0; axis < fill_propagation_start.size(); ++axis) {
+        if ((operation.wrap_axes & (1 << axis)) != 0) {
+          fill_propagation_start[axis] = carrier_index;
+        }
+      }
+    } else if (WrapContentStyleAxis(operation)) {
+      operation.target_frame_index =
+          plan->operations[position - 1].target_frame_index;
+    } else if (IsDrawOperation(operation.op)) {
       plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
       ++carrier_index;
       operation.target_frame_index =
@@ -420,15 +577,23 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
       operation.target_frame_index = target_frame_index;
       switch (operation.op) {
         case kModifierOpPadding:
+        case kModifierOpOffset:
+        case kModifierOpSizeRange:
           plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
           ++carrier_index;
+          if (operation.op == kModifierOpSizeRange &&
+              carrier_index == plan->frame_count) {
+            plan->owner_uses_layout_box = true;
+          }
           break;
         case kModifierOpSize:
         case kModifierOpFill:
           operation.applied_axes = operation.specified_axes & ~constrained_axes;
           if (operation.op == kModifierOpFill &&
               operation.layout_values[0] != 1.0 &&
-              operation.applied_axes != 0 && carrier_index != 0) {
+              operation.applied_axes != 0 &&
+              carrier_index != std::max(fill_propagation_start[0],
+                                        fill_propagation_start[1])) {
             *error =
                 "fractional fill inside a padding frame is not representable";
             *error_position = position;
@@ -468,7 +633,24 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
       operation.target_frame_index = target_frame_index;
     } else if (operation.op == kModifierOpStyleNumber ||
                operation.op == kModifierOpStyleString) {
-      if (IsParentDataStyle(operation.style_id) && plan->frame_count != 0) {
+      const auto* wrap =
+          (operation.style_id == kPropertyIDJustifyItems ||
+           operation.style_id == kPropertyIDAlignItems)
+              ? WrapStyleBeforeAlignment(plan->operations, position,
+                                         operation.style_id)
+              : nullptr;
+      if (wrap) {
+        const auto value = operation.value.ToLepusValue();
+        if (!value.IsString() ||
+            (value.StdString() != "start" && value.StdString() != "center" &&
+             value.StdString() != "end")) {
+          *error = "unsupported intrinsic alignment";
+          *error_position = position;
+          return false;
+        }
+        operation.target_frame_index = wrap->target_frame_index;
+      } else if (IsParentDataStyle(operation.style_id) &&
+                 plan->frame_count != 0) {
         operation.target_frame_index = 0;
       } else if (IsBoundaryStyle(operation.style_id)) {
         operation.target_frame_index = target_frame_index;
@@ -484,7 +666,7 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
 
 Element* OperationTarget(
     const ModifierOperation& operation, Element* owner,
-    const std::vector<fml::RefPtr<ModifierElement>>& frames) {
+    const base::Vector<fml::RefPtr<ModifierElement>>& frames) {
   if (operation.target_frame_index == kNoModifierFrame) {
     return owner;
   }
@@ -493,20 +675,63 @@ Element* OperationTarget(
 
 Element* LayoutCarrierAt(
     size_t index, Element* owner,
-    const std::vector<fml::RefPtr<ModifierElement>>& frames) {
+    const base::Vector<fml::RefPtr<ModifierElement>>& frames) {
   return index < frames.size() ? frames[index].get() : owner;
 }
 
 lepus::Value CSSUnitValue(double value, const char* unit) {
-  std::ostringstream css_value;
-  css_value << value << unit;
-  return lepus::Value(css_value.str());
+  return lepus::Value(base::FormatString("%g%s", value, unit));
+}
+
+lepus::Value PreciseCSSPixelValue(double value) {
+  return lepus::Value(base::FormatString(
+      "%.*gpx", std::numeric_limits<double>::max_digits10, value));
 }
 
 void ApplyLayoutOperation(const ModifierOperation& operation,
                           Element* carrier) {
   const auto& values = operation.layout_values;
   switch (operation.op) {
+    case kModifierOpSizeRange: {
+      const auto& env = carrier->element_manager()->GetLynxEnvConfig();
+      const auto set_bound = [&](CSSPropertyID id, double value, bool minimum) {
+        if (value < 0) return;  // Unbounded maximum.
+        double pixels = std::floor(
+            std::min<double>(static_cast<float>(value) * env.DevicePixelRatio(),
+                             std::numeric_limits<int>::max()) +
+            0.5);
+        if (pixels >= std::numeric_limits<int>::max()) {
+          if (!minimum) return;
+          pixels = 0;
+        }
+        carrier->SetStyle(
+            id, PreciseCSSPixelValue(pixels / env.DevicePixelRatio()));
+      };
+      if (operation.specified_axes & kLayoutModifierAxisWidth) {
+        set_bound(kPropertyIDMinWidth, values[0], true);
+        set_bound(kPropertyIDMaxWidth, values[2], false);
+      }
+      if (operation.specified_axes & kLayoutModifierAxisHeight) {
+        set_bound(kPropertyIDMinHeight, values[1], true);
+        set_bound(kPropertyIDMaxHeight, values[3], false);
+      }
+      break;
+    }
+    case kModifierOpOffset: {
+      const auto& env = carrier->element_manager()->GetLynxEnvConfig();
+      const auto offset_value = [&env](double value) {
+        // Round Dp in device pixels before CSS resolves the logical inset.
+        const double pixels = std::clamp<double>(
+            static_cast<float>(value) * env.DevicePixelRatio(),
+            std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+        return PreciseCSSPixelValue(std::floor(pixels + 0.5) /
+                                    env.DevicePixelRatio());
+      };
+      carrier->SetStyle(kPropertyIDPosition, lepus::Value("relative"));
+      carrier->SetStyle(kPropertyIDInsetInlineStart, offset_value(values[0]));
+      carrier->SetStyle(kPropertyIDTop, offset_value(values[1]));
+      break;
+    }
     case kModifierOpPadding:
       carrier->SetStyle(kPropertyIDPaddingLeft, CSSUnitValue(values[0], "px"));
       carrier->SetStyle(kPropertyIDPaddingTop, CSSUnitValue(values[1], "px"));
@@ -553,7 +778,7 @@ void ApplyLayoutChildConstraint(int constrained_axes, Element* child) {
 
 void ApplyLayoutOperations(
     const ModifierFramePlan& plan,
-    const std::vector<fml::RefPtr<ModifierElement>>& frames, Element* owner) {
+    const base::Vector<fml::RefPtr<ModifierElement>>& frames, Element* owner) {
   if (plan.owner_uses_layout_box) {
     owner->SetStyle(kPropertyIDBoxSizing, lepus::Value("border-box"));
   }
@@ -561,15 +786,23 @@ void ApplyLayoutOperations(
     if (!IsLayoutOperation(operation.op)) {
       continue;
     }
+    // Offset and range bounds apply inside their own pass-through boundary.
     ApplyLayoutOperation(
-        operation, LayoutCarrierAt(operation.carrier_index, owner, frames));
+        operation, LayoutCarrierAt(operation.carrier_index +
+                                       ((operation.op == kModifierOpOffset ||
+                                         operation.op == kModifierOpSizeRange)
+                                            ? 1
+                                            : 0),
+                                   owner, frames));
     if (operation.op == kModifierOpFill && operation.layout_values[0] == 1.0) {
       for (size_t index = 0; index < operation.carrier_index; ++index) {
         auto* carrier = LayoutCarrierAt(index, owner, frames);
-        if ((operation.applied_axes & kLayoutModifierAxisWidth) != 0) {
+        if (index >= operation.fill_propagation_start[0] &&
+            (operation.applied_axes & kLayoutModifierAxisWidth) != 0) {
           carrier->SetStyle(kPropertyIDWidth, lepus::Value("100%"));
         }
-        if ((operation.applied_axes & kLayoutModifierAxisHeight) != 0) {
+        if (index >= operation.fill_propagation_start[1] &&
+            (operation.applied_axes & kLayoutModifierAxisHeight) != 0) {
           carrier->SetStyle(kPropertyIDHeight, lepus::Value("100%"));
         }
       }
@@ -579,7 +812,7 @@ void ApplyLayoutOperations(
 
 void ApplyLayoutChildConstraints(
     const ModifierFramePlan& plan,
-    const std::vector<fml::RefPtr<ModifierElement>>& frames, Element* owner) {
+    const base::Vector<fml::RefPtr<ModifierElement>>& frames, Element* owner) {
   for (size_t frame_index = 0; frame_index < frames.size(); ++frame_index) {
     Element* child =
         frame_index + 1 < frames.size() ? frames[frame_index + 1].get() : owner;
@@ -626,7 +859,7 @@ void AddModifierEventListener(Element* element, const base::String& name,
 
 void ApplyNonLayoutOperation(
     const ModifierOperation& operation, Element* owner,
-    const std::vector<fml::RefPtr<ModifierElement>>& frames,
+    const base::Vector<fml::RefPtr<ModifierElement>>& frames,
     runtime::MTSRuntime* registration_context, bool deep_convert) {
   Element* target = OperationTarget(operation, owner, frames);
   switch (operation.op) {
@@ -658,13 +891,21 @@ void ApplyNonLayoutOperation(
 
 void ApplyNonLayoutOperations(
     const ModifierFramePlan& plan, Element* owner,
-    const std::vector<fml::RefPtr<ModifierElement>>& frames,
+    const base::Vector<fml::RefPtr<ModifierElement>>& frames,
     runtime::MTSRuntime* registration_context, bool deep_convert) {
   for (const auto& operation : plan.operations) {
     if (!IsLayoutOperation(operation.op)) {
       ApplyNonLayoutOperation(operation, owner, frames, registration_context,
                               deep_convert);
     }
+  }
+}
+
+void SetWeightFill(Element* element, bool fill) {
+  if (element->computed_css_style()
+          ->GetLayoutComputedStyle()
+          ->SetComposeWeightFill(fill)) {
+    element->MarkLayoutDirtyLite();
   }
 }
 
@@ -760,7 +1001,7 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
   // Match the outer-to-inner frame indices assigned by BuildModifierFramePlan.
   // The stable content Element is not a frame; OperationTarget selects it when
   // the operation has kNoModifierFrame as its target.
-  std::vector<fml::RefPtr<ModifierElement>> frames;
+  base::Vector<fml::RefPtr<ModifierElement>> frames;
   for (auto* target = mount_root; target != content_element;
        target = target->GetChildAt(0)) {
     frames.emplace_back(static_cast<ModifierElement*>(target));
@@ -787,7 +1028,7 @@ fml::RefPtr<Element> InstallModifierFramePlan(
     const ModifierFramePlan& plan, Element* owner, Element* current_mount_root,
     runtime::MTSRuntime* registration_context, bool deep_convert) {
   if (plan.frame_count == 0 && current_mount_root == owner) {
-    const std::vector<fml::RefPtr<ModifierElement>> frames;
+    const base::Vector<fml::RefPtr<ModifierElement>> frames;
     ClearModifierOwnedProperties(owner);
     ApplyLayoutOperations(plan, frames, owner);
     ApplyNonLayoutOperations(plan, owner, frames, registration_context,
@@ -801,14 +1042,15 @@ fml::RefPtr<Element> InstallModifierFramePlan(
                                 ? -1
                                 : external_parent->IndexOf(old_root.get());
 
-  std::vector<fml::RefPtr<ModifierElement>> frames;
+  base::Vector<fml::RefPtr<ModifierElement>> frames;
   frames.reserve(plan.frame_count);
   for (size_t index = 0; index < plan.frame_count; ++index) {
     auto frame = CreateFrame(owner);
     // Pass-through boxes must not introduce implicit clipping around
     // transformed contents. Authored overflow styles are applied afterwards and
     // still win.
-    if (plan.has_draw_callbacks) frame->SetDefaultOverflow(true);
+    if (plan.has_draw_callbacks || plan.has_offset || plan.has_wrap_content)
+      frame->SetDefaultOverflow(true);
     frames.push_back(std::move(frame));
   }
 
@@ -874,6 +1116,34 @@ fml::RefPtr<Element> InstallModifierFramePlan(
 
 }  // namespace
 
+void ModifierElement::AttachToElementManager(
+    ElementManager* manager,
+    const std::shared_ptr<CSSStyleSheetManager>& style_manager,
+    bool keep_element_id) {
+  Element::AttachToElementManager(manager, style_manager, keep_element_id);
+  auto* style = computed_css_style()->GetLayoutComputedStyle();
+  style->SetDisplay(starlight::DisplayType::kXBox);
+  style->SetBoxSizing(starlight::BoxSizingType::kBorderBox);
+  style->SetXBoxPropagateMinConstraints(true);
+}
+
+void ModifierElement::OnNodeAdded(Element* child) {
+  Element::OnNodeAdded(child);
+  if (!(child->dirty() & kDirtyCloned)) return;
+  child->MarkStyleDirty();
+  // Computed-style clones omit scalar positioning fields. Replay the existing
+  // CSS on cloned inner carriers without installing a placement callback.
+  const auto& styles = child->GetParsedStylesMap();
+  for (auto id :
+       {kPropertyIDPosition, kPropertyIDInsetInlineStart, kPropertyIDTop}) {
+    const auto it = styles.find(id);
+    if (it != styles.end()) {
+      child->SetStyleInternal(child->ConvertRtlCSSPropertyID(id).second,
+                              it->second);
+    }
+  }
+}
+
 void ModifierElement::SetupFragmentBehavior(Fragment* fragment) {
   // Fragment::CreateLayerIfNeeded decides whether a platform layer is needed.
   // Use the built-in view renderer type for generated Modifier boxes; the base
@@ -930,6 +1200,36 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
   if (!BuildModifierFramePlan(modifier_tail, &plan, &error, &error_position)) {
     return {false, error_position, std::move(error)};
   }
+  if (plan.weight_fill.has_value() &&
+      !content_element->EnableLayoutInElementMode()) {
+    return {false, 0, "weight fill requires layout in Element"};
+  }
+  if (plan.has_size_range &&
+      (!content_element->EnableLayoutInElementMode() ||
+       !std::isfinite(manager->GetLynxEnvConfig().DevicePixelRatio()) ||
+       manager->GetLynxEnvConfig().DevicePixelRatio() <= 0)) {
+    return {false, 0,
+            "size range requires layout in Element and positive density"};
+  }
+  if (plan.has_wrap_content && !content_element->EnableLayoutInElementMode()) {
+    return {false, 0, "wrapContent requires layout in Element"};
+  }
+  if (plan.has_offset) {
+    if (!content_element->EnableLayoutInElementMode()) {
+      return {false, 0, "offset requires layout in Element"};
+    }
+    const double scale = manager->GetLynxEnvConfig().LayoutsUnitPerPx();
+    for (const auto& operation : plan.operations) {
+      if (operation.op == kModifierOpOffset &&
+          (!std::isfinite(scale) || scale <= 0 ||
+           std::abs(operation.layout_values[0] * scale) >
+               std::numeric_limits<float>::max() ||
+           std::abs(operation.layout_values[1] * scale) >
+               std::numeric_limits<float>::max())) {
+        return {false, 0, "offset exceeds the native layout unit range"};
+      }
+    }
+  }
   // Reject unsupported plans before changing any active callbacks or nodes.
   if (plan.has_draw_callbacks) {
     if (!registration_context) {
@@ -948,6 +1248,13 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
       plan, content_element.get(), previous_mount_root.get(),
       registration_context, manager->GetEnableParallelElement());
   handle->SetMountRoot(std::move(mount_root));
+
+  // Parent data follows the physical mount root regardless of authored Modifier
+  // order. Clear the previous carrier when topology changes.
+  if (previous_mount_root != handle->mount_root()) {
+    SetWeightFill(previous_mount_root.get(), true);
+  }
+  SetWeightFill(handle->mount_root().get(), plan.weight_fill.value_or(true));
 
   if (plan.has_draw_callbacks) {
     BindModifierDrawCallbacks(plan, handle->mount_root().get(),

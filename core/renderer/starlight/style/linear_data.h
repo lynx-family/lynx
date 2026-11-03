@@ -30,6 +30,8 @@ class LinearData : public fml::RefCountedThreadSafeStorage {
   void Reset();
   float linear_weight_sum_;
   float linear_weight_;
+  // Compose weight parent data; ordinary CSS Linear layout ignores this flag.
+  bool compose_weight_fill_ = true;
   LinearOrientationType linear_orientation_;
   LinearLayoutGravityType linear_layout_gravity_;
   LinearGravityType linear_gravity_;

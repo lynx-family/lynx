@@ -22,6 +22,7 @@ LinearData::LinearData()
 LinearData::LinearData(const LinearData& data)
     : linear_weight_sum_(data.linear_weight_sum_),
       linear_weight_(data.linear_weight_),
+      compose_weight_fill_(data.compose_weight_fill_),
       linear_orientation_(data.linear_orientation_),
       linear_layout_gravity_(data.linear_layout_gravity_),
       linear_gravity_(data.linear_gravity_),
@@ -30,6 +31,7 @@ LinearData::LinearData(const LinearData& data)
 void LinearData::Reset() {
   linear_weight_sum_ = DefaultLayoutStyle::SL_DEFAULT_LINEAR_WEIGHT_SUM;
   linear_weight_ = DefaultLayoutStyle::SL_DEFAULT_LINEAR_WEIGHT;
+  compose_weight_fill_ = true;
   linear_orientation_ = DefaultLayoutStyle::SL_DEFAULT_LINEAR_ORIENTATION;
   linear_layout_gravity_ = DefaultLayoutStyle::SL_DEFAULT_LINEAR_LAYOUT_GRAVITY;
   linear_gravity_ = DefaultLayoutStyle::SL_DEFAULT_LINEAR_GRAVITY;
