@@ -178,6 +178,16 @@ struct BtsMemorySample {
   std::array<size_t, fml::JSMemoryTrackSlotType::Count> slots{};
 };
 
+#if ENABLE_TRACE_PERFETTO
+// Copied lifecycle metadata only; never retains a page or an engine context.
+// Only valid page slots whose pages exited before the triggering GC qualify.
+struct BtsResidualPage {
+  int32_t instance_id;
+  int32_t slot;
+  uint64_t post_exit_page_count;
+};
+#endif
+
 class GlobalMemoryMonitor {
  public:
   GlobalMemoryMonitor();
@@ -215,6 +225,17 @@ class GlobalMemoryMonitor {
   // Capture on the owner thread before teardown; identity is never read.
   void OnBtsVMDestroy(runtime::js::VMInstance* vm,
                       int64_t at_ms = MemoryNowMs());
+#if ENABLE_TRACE_PERFETTO
+  using BtsResidualPagesCallback =
+      base::MoveOnlyClosure<void, runtime::js::VMInstance&,
+                            std::vector<BtsResidualPage>>;
+  // Resolve exits on the reporter, then run the callback on the VM's owner
+  // thread under a temporary strong reference. Never capture the raw VM in
+  // the callback. The full-GC time must be strictly later than each exit.
+  void RequestBtsResidualPagesForTrace(runtime::js::VMInstance* vm,
+                                       int64_t full_gc_at_ms,
+                                       BtsResidualPagesCallback&& callback);
+#endif
   void OnBtsVMSlotAllocate(runtime::js::VMInstance* vm, int32_t slot);
   void OnModuleCacheUpdate(const std::shared_ptr<runtime::js::VMInstance>& vm,
                            int32_t creator, size_t type,

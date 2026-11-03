@@ -18,6 +18,7 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
+#include "quickjs/include/quickjs.h"
 #if ENABLE_TRACE_PERFETTO
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"
@@ -192,11 +193,15 @@ void MemoryMonitor::ForceEnableForTesting(ForceEnableMode mode) {
 uint32_t MemoryMonitor::ScriptingEngineMode(bool is_mts) {
   const auto& settings = GetSettings();
   if (!settings.global.enabled) return 0;
-  // Engine callback thresholds configure cache updates, not event
-  // triggers. Bits [31:24] encode MiB; this does not request or force a GC.
-  return std::min<uint32_t>(255, is_mts ? settings.global.mts_threshold_mb
-                                        : settings.global.bts_threshold_mb)
-         << 24;
+  const uint32_t threshold_mb =
+      std::min<uint32_t>(LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_MASK >>
+                             LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_SHIFT,
+                         is_mts ? settings.global.mts_threshold_mb
+                                : settings.global.bts_threshold_mb);
+  uint32_t mode = (threshold_mb << LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_SHIFT) &
+                  LEPUS_RUNTIME_GC_INFO_THRESHOLD_MB_MASK;
+  if (!is_mts) mode |= LEPUS_RUNTIME_ENABLE_ALLOCATION_TRACKING;
+  return mode;
 }
 
 MemoryMonitor::MemoryMonitor(PerformanceEventSender* /*observer*/,

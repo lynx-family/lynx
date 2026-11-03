@@ -117,8 +117,7 @@ GlobalMemoryMonitor::GlobalMemoryMonitor()
           LYNX_ON_DEVTOOL_CONNECTED_NOTIFICATION,
           [](const std::string& tag, intptr_t data) {
             // Production release enables memory monitoring by sampling.
-            // Force-enable it when DevTool connects so local debugging always
-            // has memory data.
+            // DevTool keeps local memory data enabled across restarts.
             MemoryMonitor::ForceEnableForTesting(
                 MemoryMonitor::ForceEnableMode::kPersistent);
           }) {}
@@ -426,6 +425,41 @@ void GlobalMemoryMonitor::ReportLargeVM(const BtsVmState& vm) {
   }
   MemoryMonitor::ReportHighMemoryEvent(event);
 }
+
+#if ENABLE_TRACE_PERFETTO
+void GlobalMemoryMonitor::RequestBtsResidualPagesForTrace(
+    runtime::js::VMInstance* vm, int64_t full_gc_at_ms,
+    BtsResidualPagesCallback&& callback) {
+  // Always enqueue: a full GC may notify while the engine is still collecting.
+  ReportRunner()->PostTask(
+      [this, vm, full_gc_at_ms, callback = std::move(callback)]() mutable {
+        auto* state = FindVM(vm);
+        if (!state || state->type != runtime::js::JSRuntimeType::quickjs ||
+            !state->js_thread_runner || state->created_at_ms >= full_gc_at_ms ||
+            state->full_gc_at_ms < full_gc_at_ms) {
+          return;
+        }
+        std::vector<BtsResidualPage> pages;
+        for (const auto& [id, page] : instance_state_) {
+          if (page.destroyed && page.bts_vm == vm &&
+              fml::IsValidInstanceSlot(page.slot) &&
+              page.exited_at_ms < full_gc_at_ms) {
+            assert(state->total_page_count >= page.bts_vm_page_count_at_exit);
+            pages.push_back(
+                {id, page.slot,
+                 state->total_page_count - page.bts_vm_page_count_at_exit});
+          }
+        }
+        state->js_thread_runner->PostTask(
+            [weak = state->vm, pages = std::move(pages),
+             callback = std::move(callback)]() mutable {
+              if (auto strong = weak.lock()) {
+                callback(*strong, std::move(pages));
+              }
+            });
+      });
+}
+#endif
 
 void GlobalMemoryMonitor::OnBtsVMSlotAllocate(runtime::js::VMInstance* vm,
                                               int32_t slot) {

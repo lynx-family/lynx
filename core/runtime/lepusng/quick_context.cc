@@ -587,8 +587,12 @@ QuickContext::QuickContext(runtime::MTSRuntime* runtime_private,
              if (ctx == static_cast<MTSContext*>(this)) {
                const char* identifier =
                    reinterpret_cast<const char*>(payload[1]);
-               runtime::js::detail::QuickjsHelper::TakeHeapSnapshot(
-                   this->lepus_context_, identifier);
+               if (runtime::js::detail::QuickjsHelper::
+                       TakeHeapSnapshotAndWriteToTrace(this->lepus_context_,
+                                                       identifier)) {
+                 base::NotificationCallback::Notify(
+                     runtime::kVMSnapshotCaptured, 0);
+               }
              }
            }}});
 
