@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 import("../../config.gni")
+import("../../core/Lynx.gni")
 import("../test.gni")
 
 if (is_android) {
@@ -27,6 +28,10 @@ if (is_android) {
       ":lynx_test_jni_files",
       "../../core/renderer/dom/fragment:display_list",
     ]
+    if (lynx_in_debug) {
+      sources += [ "android/host_script_view_hooks_test.cc" ]
+      deps += [ "../../core/shell/host_script/runtime:host_script" ]
+    }
   }
 }
 

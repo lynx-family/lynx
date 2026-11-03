@@ -173,9 +173,12 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
     initLynxTemplateRender(context, builder);
     mDisableDrawChildHook = mLynxUIRender.disableBindDrawChildHook();
-    if (LynxHostScriptViewHooks.isEnabled() && !mReportedCreation) {
+    if (!mReportedCreation) {
       mReportedCreation = true;
-      LynxHostScriptViewHooks.onCreated(this);
+      LynxHostScriptViewHooks.register(this, mLynxTemplateRender);
+      if (LynxHostScriptViewHooks.isEnabled()) {
+        LynxHostScriptViewHooks.onCreated(this);
+      }
     }
   }
 
@@ -1393,6 +1396,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
       return;
     }
     mDestroyed = true;
+    LynxHostScriptViewHooks.unregister(mLynxTemplateRender);
     LLog.i(TAG, "lynxview destroy " + this.toString());
     triggerEmbeddedModeLifecycle(DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DESTROY, true);
     TraceEvent.beginSection(TraceEventDef.DESTORY_LYNXVIEW);

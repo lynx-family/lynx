@@ -14,6 +14,8 @@ lynx_core_source_set("host_script") {
   sources = [
     "../lynx_view/lynx_view_ref_proxy.h",
     "../lynx_view/lynx_view_ref_types.h",
+    "../lynx_view/lynx_view_registry.cc",
+    "../lynx_view/lynx_view_registry.h",
     "host_script_interceptor.cc",
     "host_script_interceptor.h",
     "host_script_js_dispatcher.cc",

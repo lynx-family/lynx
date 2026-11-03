@@ -62,6 +62,7 @@ void PrepareHostScriptRuntime() {
   HostScriptModuleInterceptor::Register();
   base::TaskRunnerManufactor runners(base::MOST_ON_TASM, false, false);
   DCHECK(runners.GetUITaskRunner()->RunsTasksOnCurrentThread());
+  EnableHostScriptViewRegistry(runners.GetUITaskRunner());
   InstallHostScriptViewHooks();
   auto& runtime = ProcessRuntime::GetInstance();
   runtime.Initialize({runners.GetJSTaskRunner(), runners.GetTASMTaskRunner(),

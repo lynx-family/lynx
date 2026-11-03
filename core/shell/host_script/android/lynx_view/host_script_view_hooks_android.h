@@ -5,10 +5,15 @@
 #ifndef CORE_SHELL_HOST_SCRIPT_ANDROID_LYNX_VIEW_HOST_SCRIPT_VIEW_HOOKS_ANDROID_H_
 #define CORE_SHELL_HOST_SCRIPT_ANDROID_LYNX_VIEW_HOST_SCRIPT_VIEW_HOOKS_ANDROID_H_
 
+#include "base/include/fml/task_runner.h"
+
 namespace lynx {
 namespace shell {
 
-// Enables or disables LynxView creation notifications on the UI thread.
+// Lets LynxViews register as operable Views, independent of DevTool. Commands
+// run on `ui_runner`, the platform UI thread.
+void EnableHostScriptViewRegistry(fml::RefPtr<fml::TaskRunner> ui_runner);
+// Enables or disables UI-domain interception on the UI thread.
 void InstallHostScriptViewHooks();
 void UninstallHostScriptViewHooks();
 
