@@ -35,6 +35,37 @@ namespace animation {
 
 namespace {
 
+// Only builds with a platform executor need routing and command generation.
+// Unit tests supply capabilities through their painting context.
+constexpr bool kHasPlatformAnimationBackend =
+    LYNX_HAS_PLATFORM_ANIMATION_BACKEND;
+
+// LOGI may be compiled out depending on LYNX_MIN_LOG_LEVEL.
+[[maybe_unused]] const char* AnimationFallbackReasonToString(
+    AnimationFallbackReason reason) {
+  switch (reason) {
+    case AnimationFallbackReason::kNone:
+      return "none";
+    case AnimationFallbackReason::kRequiresCoreLayout:
+      return "requires-layout";
+    case AnimationFallbackReason::kUnresolvedKeyframe:
+      return "unresolved-keyframe";
+    case AnimationFallbackReason::kUnsupportedProperty:
+      return "unsupported-property";
+    case AnimationFallbackReason::kUnsupportedValue:
+      return "unsupported-value";
+    case AnimationFallbackReason::kUnsupportedTimingFunction:
+      return "unsupported-timing-function";
+    case AnimationFallbackReason::kDynamicDependency:
+      return "dynamic-dependency";
+    case AnimationFallbackReason::kBackendUnavailable:
+      return "backend-unavailable";
+    case AnimationFallbackReason::kUnsupportedEvent:
+      return "unsupported-event";
+  }
+  return "unknown";
+}
+
 template <typename Keyframe>
 bool SetCSSKeyframeValue(Keyframe* keyframe, tasm::CSSPropertyID id,
                          const tasm::CSSValue& value, tasm::Element* element) {
@@ -276,27 +307,25 @@ AnimationBackendResult CSSKeyframeManager::EvaluatePlatformSupport(
   const auto& capabilities =
       painting_context->GetPlatformAnimationCapabilities();
   gfx::AnimationEventCapabilityMask required_events = 0;
-  auto require_if_bound = [&](const char* name,
-                              gfx::AnimationEventCapabilityMask event) {
-    const base::String key(name);
-    if (element_->event_map().count(key) ||
-        element_->lepus_event_map().count(key) ||
-        element_->global_bind_event_map().count(key)) {
-      required_events |= event;
-    }
-  };
   const bool keyframe = GetAnimationKind() == gfx::AnimationKind::kKeyframe;
-  require_if_bound(
-      keyframe ? kKeyframeStartEventName : kTransitionStartEventName,
-      gfx::kAnimationEventStart);
-  require_if_bound(keyframe ? kKeyframeEndEventName : kTransitionEndEventName,
-                   gfx::kAnimationEventEnd);
-  require_if_bound(
-      keyframe ? kKeyframeCancelEventName : kTransitionCancelEventName,
-      gfx::kAnimationEventCancel);
-  if (keyframe) {
-    require_if_bound(kKeyframeIterationEventName,
-                     gfx::kAnimationEventIteration);
+  for (const auto* events :
+       {&element_->event_map(), &element_->lepus_event_map(),
+        &element_->global_bind_event_map()}) {
+    for (const auto& entry : *events) {
+      const auto& name = entry.first;
+      if (name ==
+          (keyframe ? kKeyframeStartEventName : kTransitionStartEventName)) {
+        required_events |= gfx::kAnimationEventStart;
+      } else if (name ==
+                 (keyframe ? kKeyframeEndEventName : kTransitionEndEventName)) {
+        required_events |= gfx::kAnimationEventEnd;
+      } else if (name == (keyframe ? kKeyframeCancelEventName
+                                   : kTransitionCancelEventName)) {
+        required_events |= gfx::kAnimationEventCancel;
+      } else if (keyframe && name == kKeyframeIterationEventName) {
+        required_events |= gfx::kAnimationEventIteration;
+      }
+    }
   }
 
   AnimationBackendResult effect_result;
@@ -413,9 +442,9 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
       // Update an existing animation, add it to temp_active_animations_map_ and
       // delete it from animations_map_;
       if (force_rebuild || invalidated_keyframes_.count(data.name)) {
-        auto replacement =
-            CreateAnimation(data, new_base_custom_properties,
-                            animation->second->GetOrigin(), false);
+        auto replacement = CreateAnimation(
+            data, new_base_custom_properties, new_base_resolved_styles,
+            animation->second->GetOrigin(), false);
         if (replacement) {
           if (use_new_pipeline_cleanup) {
             ClearAnimationEffects(animation->second, new_base_resolved_styles,
@@ -449,8 +478,8 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
         } else {
           animation->second->Destroy();
         }
-        auto recreated_animation =
-            CreateAnimation(data, new_base_custom_properties, origin);
+        auto recreated_animation = CreateAnimation(
+            data, new_base_custom_properties, new_base_resolved_styles, origin);
         if (recreated_animation != nullptr) {
           temp_active_animations_map_[data.name] = recreated_animation;
         }
@@ -471,7 +500,8 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
       animations_map_.erase(animation);
     } else {
       // Create a new animation, add it to temp_active_animations_map_;
-      auto new_animation = CreateAnimation(data, new_base_custom_properties);
+      auto new_animation = CreateAnimation(data, new_base_custom_properties,
+                                           new_base_resolved_styles);
       if (new_animation != nullptr) {
         temp_active_animations_map_[data.name] = new_animation;
       }
@@ -487,12 +517,16 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
     }
   }
 
-  for (auto& active_ani_iter : temp_active_animations_map_) {
-    if (active_ani_iter.second->animation_data()->play_state ==
+  base::InlineVector<std::shared_ptr<Animation>, 4> active;
+  for (const auto& item : temp_active_animations_map_) {
+    active.push_back(item.second);
+  }
+  for (const auto& animation : active) {
+    if (animation->animation_data()->play_state ==
         starlight::AnimationPlayStateType::kPaused) {
-      active_ani_iter.second->Pause(play_handles_initial_frame);
+      animation->Pause(play_handles_initial_frame);
     } else {
-      active_ani_iter.second->Play(play_handles_initial_frame);
+      animation->Play(play_handles_initial_frame);
     }
   }
   // Keep changed and unchanged animations interleaved in CSS declaration order.
@@ -867,24 +901,36 @@ Animation::Origin CSSKeyframeManager::ResolveAnimationOrigin(
 }
 
 tasm::CSSValue CSSKeyframeManager::ResolveUnderlyingValue(
-    tasm::CSSPropertyID id) const {
-  auto value = GetStyleInElement(id, element_);
-  if (value.IsEmpty()) {
-    value = GetDefaultValue(GetPropertyIDToAnimationPropertyTypeMap().at(id));
+    const ParsedPropertyKeyframes& property,
+    const tasm::StyleMap* base_resolved_styles) const {
+  // Incoming styles may not be committed yet. An absent declaration in this
+  // snapshot means the default, not the previous Element value.
+  if (base_resolved_styles != nullptr) {
+    auto it = base_resolved_styles->find(property.css_id);
+    if (it != base_resolved_styles->end() && !it->second.IsEmpty()) {
+      return it->second;
+    }
+  } else {
+    auto value = GetStyleInElement(property.css_id, element_);
+    if (!value.IsEmpty()) {
+      return value;
+    }
   }
-  return value;
+  // Parsing already resolved this property's animation type.
+  return GetDefaultValue(
+      static_cast<starlight::AnimationPropertyType>(property.gfx_property));
 }
 
-std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
+CSSKeyframeManager::PreparedAnimation CSSKeyframeManager::PrepareAnimation(
     starlight::AnimationData& data,
     const tasm::CustomPropertiesMap* base_custom_properties,
-    std::optional<Animation::Origin> origin, bool notify_created) {
-  const auto resolved_origin =
-      origin.has_value() ? *origin : ResolveAnimationOrigin(data);
-  auto parsed_properties = ParseKeyframes(data.name, base_custom_properties);
+    const tasm::StyleMap* base_resolved_styles, bool allow_platform) {
+  PreparedAnimation prepared{ParseKeyframes(data.name, base_custom_properties)};
+  auto& parsed_properties = prepared.properties;
   const auto animation_timing = ToGfxTimingFunctionData(data.timing_func);
   for (auto& [type, property] : parsed_properties) {
-    property.underlying_value = ResolveUnderlyingValue(property.css_id);
+    property.underlying_value =
+        ResolveUnderlyingValue(property, base_resolved_styles);
     for (auto& parsed : property.keyframes) {
       if (parsed.keyframe->timing_source() ==
           gfx::Keyframe::TimingSource::kAnimation) {
@@ -895,31 +941,69 @@ std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
   }
   const auto& custom_property_keyframes =
       GetKeyframesCustomPropertyMap(data.name);
+  prepared.has_custom_property_keyframes =
+      starlight::CSSStyleUtils::HasNonEmptyCSSKeyframesCustomPropertyContent(
+          custom_property_keyframes);
+  const bool routing_enabled = kHasPlatformAnimationBackend && allow_platform &&
+                               element_ != nullptr &&
+                               element_->supports_platform_animation_routing();
+
+  auto& backend_result = prepared.backend;
+  if (routing_enabled && !parsed_properties.empty() &&
+      !prepared.has_custom_property_keyframes) {
+    backend_result = EvaluatePlatformSupport(parsed_properties);
+    if (backend_result.CanRun() && element_->IsShadowNodeVirtual()) {
+      backend_result = {false, AnimationFallbackReason::kBackendUnavailable};
+    }
+    if (!backend_result.CanRun()) {
+      LOGI("[AnimationRouting] executor=new-animator element_id="
+           << element_->impl_id() << " name=" << data.name.str() << " kind="
+           << (GetAnimationKind() == gfx::AnimationKind::kKeyframe
+                   ? "keyframe"
+                   : "transition")
+           << " fallback_reason="
+           << AnimationFallbackReasonToString(backend_result.fallback_reason));
+    }
+  }
+  return prepared;
+}
+
+std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
+    starlight::AnimationData& data,
+    const tasm::CustomPropertiesMap* base_custom_properties,
+    const tasm::StyleMap* base_resolved_styles,
+    std::optional<Animation::Origin> origin, bool notify_created) {
+  const auto resolved_origin =
+      origin.has_value() ? *origin : ResolveAnimationOrigin(data);
+  auto prepared =
+      PrepareAnimation(data, base_custom_properties, base_resolved_styles,
+                       resolved_origin != Animation::Origin::kCSSTransition);
+  auto& parsed_properties = prepared.properties;
+  const auto& custom_property_keyframes =
+      GetKeyframesCustomPropertyMap(data.name);
+  // Parsing keeps only supported curves. Reject empty input before allocating
+  // the animation and effect; custom-property-only animations still need them.
+  if (parsed_properties.empty() && !prepared.has_custom_property_keyframes) {
+    LOGE(
+        "[animation] skip creating animation without sampleable keyframes, "
+        "name:"
+        << data.name.str());
+    return {};
+  }
   auto animation = std::make_shared<Animation>(data.name);
   animation->set_animation_data(data);
   animation->SetOrigin(resolved_origin);
-
-  std::unique_ptr<KeyframeEffect> keyframe_effect = KeyframeEffect::Create();
-  keyframe_effect->BindAnimationDelegate(this);
-  keyframe_effect->BindElement(this->element());
-  const bool has_custom_property_keyframes =
-      starlight::CSSStyleUtils::HasNonEmptyCSSKeyframesCustomPropertyContent(
-          custom_property_keyframes);
-  keyframe_effect->SetHasCustomPropertyKeyframes(has_custom_property_keyframes);
-  animation->SetKeyframeEffect(std::move(keyframe_effect));
   animation->BindDelegate(this);
-  animation->BindElement(this->element());
+  animation->BindElement(element_);
+  auto effect = KeyframeEffect::Create();
+  effect->BindAnimationDelegate(this);
+  effect->BindElement(element_);
+  effect->SetHasCustomPropertyKeyframes(prepared.has_custom_property_keyframes);
+  animation->SetKeyframeEffect(std::move(effect));
   SyncAnimationRawCustomPropertySet(animation.get(), custom_property_keyframes);
-  for (auto& entry : parsed_properties) {
-    animation->SetRawCssId(entry.second.css_id);
-    AddParsedPropertyToNewAnimator(std::move(entry.second), animation.get());
-  }
-  if (HasNoSampleableKeyframes(animation, has_custom_property_keyframes)) {
-    LOGE(
-        "[animation] skip creating invalid animation without sampleable "
-        "keyframes, name:"
-        << data.name.str());
-    return nullptr;
+  for (auto& [type, property] : parsed_properties) {
+    animation->SetRawCssId(property.css_id);
+    AddParsedPropertyToNewAnimator(std::move(property), animation.get());
   }
   if (notify_created) {
     animation->NotifyInspectorCreated();

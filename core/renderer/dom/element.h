@@ -1312,7 +1312,8 @@ class Element : public lepus::RefCounted,
 
   void SetAnimationSampleTimeForNewPipeline(const fml::TimePoint& sample_time);
   base::flex_optional<fml::TimePoint> TakeAnimationSampleTimeForNewPipeline();
-  void QueuePlatformAnimationCommand(gfx::PlatformAnimationCommand command);
+  // Fill the returned record before appending or committing another command.
+  gfx::PlatformAnimationCommand& AppendPlatformAnimationCommand();
   bool HasPendingPlatformAnimationCommands() const {
     return platform_animation_commands_ != nullptr &&
            !platform_animation_commands_->empty();

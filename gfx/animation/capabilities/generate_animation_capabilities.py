@@ -178,6 +178,10 @@ def generate_header(document: dict) -> str:
 
     properties = "\n".join(properties)
     event_capabilities = "\n".join(event_capabilities)
+    event_table = (
+        "  static constexpr AnimationEventCapability events[] = {\n"
+        f"{event_capabilities}\n  }};\n" if event_capabilities else "")
+    event_view = "events" if event_capabilities else "{}"
     guard = (
         f"GFX_ANIMATION_CAPABILITIES_{backend.upper()}_ANIMATION_"
         "CAPABILITIES_GENERATED_H_")
@@ -196,14 +200,11 @@ namespace lynx {{
 namespace gfx {{
 
 inline const AnimationBackendCapabilities& Get{backend_name}AnimationBackendCapabilities() {{
-  static const AnimationBackendCapabilities instance = {{
-      AnimationBackendType::{backend_enum},
-      {{
+  static constexpr AnimationPropertyCapability properties[] = {{
 {properties}
-      }},
-      {{
-{event_capabilities}
-      }}}};
+  }};
+{event_table}  static constexpr AnimationBackendCapabilities instance = {{
+      AnimationBackendType::{backend_enum}, properties, {event_view}}};
   return instance;
 }}
 
