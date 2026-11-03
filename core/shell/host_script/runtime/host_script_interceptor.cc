@@ -5,6 +5,7 @@
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
 
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <optional>
 #include <unordered_set>
@@ -15,6 +16,8 @@
 #include "base/include/value/array.h"
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
+#include "core/shell/host_script/lynx_view/lynx_view_registry.h"
+#include "core/shell/host_script/runtime/host_script_lynx_views.h"
 
 namespace lynx::shell {
 namespace {
@@ -30,6 +33,7 @@ BASE_STATIC_STRING_DECL(kArgumentIndex, "argumentIndex");
 BASE_STATIC_STRING_DECL(kAction, "action");
 BASE_STATIC_STRING_DECL(kPayload, "payload");
 BASE_STATIC_STRING_DECL(kRequest, "request");
+BASE_STATIC_STRING_DECL(kViewId, "viewId");
 
 enum class Action { kInvalid, kProceed, kMock };
 
@@ -273,14 +277,23 @@ bool HostScriptInterceptor::Supports(Domain domain) {
 }
 
 std::shared_ptr<HostScriptInterceptor> HostScriptInterceptor::Install(
-    Napi::Env env, Domain domain, Reporter reporter, Guard guard) {
+    Napi::Env env, Domain domain, Reporter reporter, Guard guard,
+    std::shared_ptr<HostScriptLynxViews> views) {
   Napi::ContextScope context_scope(env);
   Napi::Env napi(env);
   if (!Supports(domain) || napi.Global().Has("interceptor")) return nullptr;
   auto provider = std::shared_ptr<HostScriptInterceptor>(
       new HostScriptInterceptor(env, domain, std::move(reporter)));
   provider->guard_ = std::move(guard);
+  provider->views_ = std::move(views);
   if (!Interceptor::Attach(provider, domain)) return nullptr;
+  if (provider->views_) {
+    provider->views_->SetCreatedHandler(
+        [weak = std::weak_ptr<HostScriptInterceptor>(provider)](
+            base::LynxEntityId view) {
+          if (auto self = weak.lock()) self->NotifyCreated(view);
+        });
+  }
   auto api = Napi::Object::New(env);
   api.Set("on", provider->Bind(env, "on", On));
   provider->api_ = Napi::Persistent(api);
@@ -362,6 +375,15 @@ Napi::Value HostScriptInterceptor::Add(const Napi::CallbackInfo& info) {
   entry->function = Napi::Persistent(info[1].As<Napi::Function>());
   slot = entry;
   HandlerAdded(kind, domain_);
+  if (kind == Kind::kCreated && views_) {
+    // Replay later, so the handler never runs inside its own registration.
+    views_->Post([weak = weak_from_this(), id = entry->id] {
+      auto self = weak.lock();
+      if (!self) return;
+      for (const auto& view : LynxViewRegistry::GetInstance().List())
+        self->NotifyCreated(view.view, id);
+    });
+  }
   auto result = Napi::Object::New(env);
   result.Set("dispose", Bind(env, "dispose", Dispose, entry->id));
   return result;
@@ -384,19 +406,46 @@ void HostScriptInterceptor::ReportError(const std::string& message) {
   if (reporter_) reporter_(message);
 }
 
+Napi::Value HostScriptInterceptor::ViewOf(const Value& event) {
+  Napi::Env env(env_);
+  auto view = event.GetProperty(kViewId);
+  if (!views_ || !view.IsString()) return env.Null();
+  return views_->Get(std::strtoll(view.StdString().c_str(), nullptr, 10));
+}
+
+void HostScriptInterceptor::NotifyCreated(base::LynxEntityId view,
+                                          uint64_t id) {
+  if (!active_ || !IsAttached() || !views_) return;
+  auto entry = entries_[static_cast<size_t>(Kind::kCreated)];
+  if (!entry || (id && entry->id != id)) return;
+  Napi::Env env(env_);
+  Napi::ContextScope context_scope(env);
+  Napi::HandleScope scope(env);
+  // A View destroyed before delivery is skipped rather than handed out stale.
+  auto proxy = views_->Get(view);
+  if (proxy.IsNull() || !entry->created.insert(view).second) return;
+  entry->function.Value().Call({proxy});
+  if (env.IsExceptionPending()) {
+    auto exception = env.GetAndClearPendingException();
+    auto text = exception.ToString();
+    ReportCoverageGap(Kind::kCreated, env.IsExceptionPending()
+                                          ? "view.created handler failed"
+                                          : text.Utf8Value().c_str());
+    if (env.IsExceptionPending()) env.GetAndClearPendingException();
+  }
+}
+
 InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   InterceptResult result;
   if (!active_ || !IsAttached()) return result;
-  if (!HasHandlers(kind)) return result;
-  // Notifications ignore return values, so nested delivery is safe.
-  const bool decision = kind != Kind::kCreated;
-  if (dispatching_ && decision) {
+  // Creation is delivered by NotifyCreated with a View proxy.
+  if (kind == Kind::kCreated || !HasHandlers(kind)) return result;
+  if (dispatching_) {
     ReportCoverageGap(kind, "Reentrant interceptor dispatch is not supported");
     result.failed = true;
     return result;
   }
-  const bool was_dispatching = dispatching_;
-  dispatching_ |= decision;
+  dispatching_ = true;
   Napi::Env env(env_);
   Napi::ContextScope context_scope(env);
   Napi::HandleScope scope(env);
@@ -405,10 +454,10 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   auto entry = entries_[static_cast<size_t>(kind)];
   const bool view_event = kind <= Kind::kUpdateMetaData;
   const Value& original = view_event ? event.GetProperty(kRequest) : event;
-  auto returned =
-      entry->function.Value().Call({ToJS(env, event), CreateChain(env)});
-  bool failed = env.IsExceptionPending() || (decision && returned.IsPromise());
-  if (!failed && decision) {
+  auto returned = entry->function.Value().Call(
+      {ToJS(env, event), CreateChain(env), ViewOf(event)});
+  bool failed = env.IsExceptionPending() || returned.IsPromise();
+  if (!failed) {
     Value patch;
     auto action = ReadDecision(returned, kind, original, &patch);
     if (action == Action::kInvalid) {
@@ -419,7 +468,7 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
       result.patch = std::move(patch);
     }
   }
-  dispatching_ = was_dispatching;
+  dispatching_ = false;
   if (failed) {
     std::string message = "Invalid synchronous interceptor decision";
     if (env.IsExceptionPending()) {

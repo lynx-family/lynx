@@ -357,7 +357,11 @@ TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
       globalThis.names = )" +
                          std::string(names) + R"(;
       for (const name of names) {
-        interceptor.on(name, (e,c) => { calls.push(name); return c.proceed(); });
+        // Without View bindings every proxy is null and creation never fires.
+        interceptor.on(name, (e,c,v) => {
+          calls.push(v === null ? name : 'proxy');
+          return c.proceed();
+        });
         let message = '';
         try { interceptor.on(name, () => { throw Error('duplicate ran'); }); }
         catch (e) { message = e.message; }
@@ -370,7 +374,8 @@ TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
       auto kind = static_cast<InterceptKind>(i);
       if (provider_->HasHandlers(kind)) EXPECT_FALSE(Dispatch(kind).failed);
     }
-    EXPECT_EQ(EvalString("calls.join(',')"), EvalString("names.join(',')"));
+    EXPECT_EQ(EvalString("calls.join(',')"),
+              EvalString("names.slice(1).join(',')"));
     provider_->Uninstall();
     provider_.reset();
   }
@@ -718,54 +723,6 @@ TEST_F(HostScriptInterceptorTest, TracksExistingLogContextIDsIncludingZero) {
   EXPECT_FALSE(Interceptor::IsViewAlive(0));
   EXPECT_TRUE(Interceptor::IsViewAlive(42));
   Interceptor::DestroyView(42);
-}
-
-TEST_F(HostScriptInterceptorTest, CreatedNotificationsIgnoreReturnValues) {
-  for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS,
-                      Interceptor::Domain::kMTS}) {
-    Install(domain);
-    Script(R"(
-      globalThis.created = false;
-      interceptor.on('view.created', e => {
-        if (e.viewId !== '1' || e.url !== '' || 'request' in e)
-          throw Error('creation snapshot');
-        created = true;
-        return Promise.resolve({ignored:true});
-      });
-    )");
-    auto result = Dispatch(InterceptKind::kCreated);
-    EXPECT_FALSE(result.failed);
-    EXPECT_FALSE(result.patch.IsTable());
-    EXPECT_FALSE(result.mock.IsTable());
-    EXPECT_EQ(EvalString("String(created)"), "true");
-    provider_->Uninstall();
-    provider_.reset();
-  }
-}
-
-TEST_F(HostScriptInterceptorTest, CreatedNotificationsAllowReentrantDelivery) {
-  Install();
-  env_.Global().Set(
-      "notifyCreated",
-      Napi::Function::New(
-          env_,
-          [](const Napi::CallbackInfo& info) -> Napi::Value {
-            auto* provider = static_cast<HostScriptInterceptor*>(info.Data());
-            lepus::Value event(lepus::Dictionary::Create());
-            EXPECT_FALSE(
-                provider->Dispatch(InterceptKind::kCreated, event).failed);
-            return info.Env().Undefined();
-          },
-          "notifyCreated", provider_.get()));
-  Script(R"(
-    globalThis.created = 0;
-    interceptor.on('view.created', () => {
-      if (++created === 1) notifyCreated();
-    });
-  )");
-  EXPECT_FALSE(Dispatch(InterceptKind::kCreated).failed);
-  EXPECT_EQ(EvalString("String(created)"), "2");
-  env_.Global().Delete("notifyCreated");
 }
 
 TEST_F(HostScriptSessionTest, SupportsBothAttachAndBindOrders) {
