@@ -1,0 +1,42 @@
+summary: Invokes an existing native UIMethod on a node in the current Lynx view.
+parameters:
+  - name: backendNodeId
+    type: integer
+    description: Backend node id from the existing DOM or UITree inspection APIs.
+  - name: methodName
+    type: string
+    description: Existing UIMethod name, with its original parameters and behavior.
+  - name: params
+    type: object
+    optional: true
+    description: Native UIMethod parameters. Defaults to an empty object.
+returns:
+  - name: code
+    type: integer
+    description: Original native UIMethod callback status code. Zero means success.
+  - name: data
+    type: any
+    description: Original native callback data, or null when absent.
+events: []
+notes:
+  - For a list node, scrollToPosition accepts native parameters such as index, offset and smooth. The list must be initialized and contain the requested item.
+  - Method availability and return values follow the target node's native implementation.
+  - Identity and geometry are available through existing DOM and UITree APIs.
+  - The response follows the native callback. Clients control request timeouts for asynchronous UIMethods. Methods without a callback do not report completion.
+examples:
+  - title: Scroll a list to its first item on iOS
+    request:
+      id: 1
+      method: Lynx.invokeUIMethod
+      params:
+        backendNodeId: 42
+        methodName: scrollToPosition
+        params:
+          index: 0
+          offset: 0
+          smooth: false
+    response:
+      id: 1
+      result:
+        code: 0
+        data: null

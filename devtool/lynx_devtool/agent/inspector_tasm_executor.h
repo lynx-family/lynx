@@ -103,6 +103,9 @@ class InspectorTasmExecutor
   // CDP request handlers; all run on the TASM thread (the animations' thread).
   void OnAnimationCreated(animation::Animation* animation);
   void OnAnimationStarted(animation::Animation* animation);
+  void LynxInvokeUIMethod(const std::shared_ptr<CDPResponder>& responder,
+                          const Json::Value& params);
+
   void OnAnimationUpdated(animation::Animation* animation);
   void OnAnimationCanceled(animation::Animation* animation);
 
