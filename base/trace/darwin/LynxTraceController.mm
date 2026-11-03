@@ -62,9 +62,6 @@ static LynxTraceController *lynxTraceController = nil;
     if ([config valueForKey:@"enable_memory_trace"] != nil) {
       trace_config->enable_memory_trace = [config[@"enable_memory_trace"] boolValue];
     }
-    if ([config valueForKey:@"force_gc"] != nil) {
-      trace_config->memory_trace_force_gc = [config[@"force_gc"] boolValue];
-    }
     trace_config->included_categories = {"*"};
     trace_config->excluded_categories = {"*"};
     _sessionId = _traceController->StartTracing(trace_config);

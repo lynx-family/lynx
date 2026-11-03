@@ -254,23 +254,7 @@ JSRealmManager::JSRealmManager()
           {base::MEMORY_PRESSURE_NOTIFICATION,
            [this](const std::string& tag, intptr_t data) {
              OnMemoryPressure(static_cast<base::MemoryPressureLevel>(data));
-           }}
-#if ENABLE_TRACE_PERFETTO
-          ,
-          {kScheduleVMSnapshot,
-           [this](const std::string& tag, intptr_t data) {
-             const char* group_id = reinterpret_cast<const char*>(data);
-             if (group_id != nullptr) {
-               ScheduleVMSnapshot(group_id);
-             }
-           }}
-#endif
-      }) {
-#if ENABLE_TRACE_PERFETTO
-  pending_vm_snapshot_tasks_ =
-      std::make_unique<std::unordered_map<std::string, uint64_t>>();
-#endif
-}
+           }}}) {}
 
 JSRealmManager::~JSRealmManager() {
   for (const auto& [type, vm] : mVMContainer_) {
@@ -338,10 +322,6 @@ JSRealmState JSRealmManager::CreateSharedVMRealm(
     js_realm_manager_delegate_->OnRuntimeReady(executor, *page_runtime,
                                                group_id);
   }
-
-#if ENABLE_TRACE_PERFETTO
-  CheckAutotakeSnapshot(group_id);
-#endif
 
   return {std::move(page_runtime), std::move(page_realm),
           JSRealmState::Sharing::kVM};
@@ -506,10 +486,6 @@ JSRealmState JSRealmManager::CreateRealm(
                                                  group_id);
     }
   }
-
-#if ENABLE_TRACE_PERFETTO
-  CheckAutotakeSnapshot(group_id);
-#endif
 
   return {std::move(js_runtime), std::move(local_realm),
           is_single_context ? JSRealmState::Sharing::kNone
@@ -886,59 +862,6 @@ std::unique_ptr<runtime::js::Runtime> JSRealmManager::MakeRuntime(
 }
 
 #if ENABLE_TRACE_PERFETTO
-void JSRealmManager::CheckAutotakeSnapshot(const std::string& group_id) {
-  if (!IsSingleJSContext(group_id)) {
-    if (auto config =
-            trace::TraceController::Instance()->GetLastSessionTraceConfig();
-        config && config->enable_memory_trace && config->auto_take_snapshot) {
-      if (config->auto_take_snapshot_group_id.empty() ||
-          config->auto_take_snapshot_group_id == group_id) {
-        TakeVMSnapshot(group_id, true);
-      }
-    }
-  }
-}
-
-void JSRealmManager::TakeVMSnapshot(const std::string& group_id, bool initial) {
-  auto* realm = GetSharedRealm(group_id);
-  if (realm) {
-    auto ctx = realm->GetJSContext();
-    if (ctx) {
-      std::string identifier = group_id + "(shared bts)";
-      intptr_t payload[3] = {reinterpret_cast<intptr_t>(ctx.get()),
-                             reinterpret_cast<intptr_t>(identifier.c_str()),
-                             static_cast<intptr_t>(initial)};
-      base::NotificationCallback::Notify(kBTSTakeVMSnapshot,
-                                         reinterpret_cast<intptr_t>(payload));
-    }
-  }
-}
-
-void JSRealmManager::ScheduleVMSnapshot(const std::string& group_id) {
-  if (!memory_task_runner_) {
-    return;
-  }
-  uint64_t task_id = 0;
-  {
-    std::lock_guard<std::mutex> lock(pending_vm_snapshot_mutex_);
-    task_id = ++((*pending_vm_snapshot_tasks_)[group_id]);
-  }
-  memory_task_runner_->PostDelayedTask(
-      [this, group_id, task_id]() {
-        {
-          std::lock_guard<std::mutex> lock(pending_vm_snapshot_mutex_);
-          auto it = pending_vm_snapshot_tasks_->find(group_id);
-          if (it == pending_vm_snapshot_tasks_->end() ||
-              it->second != task_id) {
-            return;
-          }
-          pending_vm_snapshot_tasks_->erase(it);
-        }
-        TakeVMSnapshot(group_id, false);
-      },
-      fml::TimeDelta::FromMilliseconds(500));
-}
-
 std::shared_ptr<profile::RuntimeProfiler> JSRealmManager::MakeRuntimeProfiler(
     std::shared_ptr<runtime::js::JSIContext> js_context,
     bool force_use_lightweight_js_engine,

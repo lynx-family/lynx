@@ -46,7 +46,7 @@ jint StartTracing(JNIEnv* env, jobject jcaller, jlong ptr, jint buffer_size,
                   jobjectArray include_categories,
                   jobjectArray exclude_categories, jstring trace_file,
                   jboolean enableSystrace, jboolean enableCompress,
-                  jboolean enableMemoryTrace, jboolean forceGC) {
+                  jboolean enableMemoryTrace) {
   auto* controller = reinterpret_cast<lynx::trace::TraceController*>(ptr);
   if (controller) {
     auto trace_config = std::make_shared<lynx::trace::TraceConfig>();
@@ -60,7 +60,6 @@ jint StartTracing(JNIEnv* env, jobject jcaller, jlong ptr, jint buffer_size,
     trace_config->enable_systrace = enableSystrace == JNI_TRUE;
     trace_config->enable_compress = enableCompress == JNI_TRUE;
     trace_config->enable_memory_trace = enableMemoryTrace == JNI_TRUE;
-    trace_config->memory_trace_force_gc = forceGC == JNI_TRUE;
     return controller->StartTracing(trace_config);
   }
   return kInvalidTraceSessionId;

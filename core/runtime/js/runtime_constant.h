@@ -91,7 +91,6 @@ constexpr char kRawRuntimeBaseMemoryInfo[] = "base_usage";
 constexpr char kForceReportMemoryInfo[] = "force_report_memory_info";
 constexpr char kMTSReportMemoryInfo[] = "mts_report_memory_info";
 constexpr char kBTSReportMemoryInfo[] = "bts_report_memory_info";
-constexpr char kScheduleVMSnapshot[] = "schedule_vm_snapshot";
 constexpr char kBTSTakeVMSnapshot[] = "bts_take_vm_snapshot";
 constexpr char kMTSTakeVMSnapshot[] = "mts_take_vm_snapshot";
 constexpr char kTakeVMSnapshotByUrl[] = "take_vm_snapshot_by_url";

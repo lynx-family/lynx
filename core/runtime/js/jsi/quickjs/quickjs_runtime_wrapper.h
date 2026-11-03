@@ -120,9 +120,6 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   bool per_instance_memory_track_{false};
   bool large_vm_checked_{false};
 #if ENABLE_TRACE_PERFETTO
-  // When tracing is enabled, the initial snapshot of a BTS VM will only be
-  // captured once.
-  bool initial_snapshot_captured_{false};
   fml::TimePoint last_trace_event_time_;
   fml::TimePoint creation_time_as_unique_;
   std::unique_ptr<base::NotificationCallback> notification_callback_;

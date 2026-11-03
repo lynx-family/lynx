@@ -337,7 +337,8 @@ void MemoryMonitor::ReportHighMemoryEvent(const lepus::Value& event) {
 void MemoryMonitor::ReportMemoryUsage(bool force_report, bool is_exit) {
   bool tracing = false;
 #if ENABLE_TRACE_PERFETTO
-  tracing = trace::TraceController::Instance()->IsTracingStarted();
+  tracing =
+      trace::TraceController::Instance()->GetMemoryTraceConfig() != nullptr;
 #endif
   const auto now = MemoryNowMs();
   if (!force_report && now - last_refresh_at_ms_ < (tracing ? 16 : 60000)) {

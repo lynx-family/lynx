@@ -538,11 +538,6 @@ void LynxShell::Destroy() {
         tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
       });
   if (runtime_actor_) {
-#if ENABLE_TRACE_PERFETTO
-    [[maybe_unused]] auto group_id =
-        runtime_actor_->Impl() ? runtime_actor_->Impl()->GetGroupId() : "";
-#endif
-
     runtime_actor_->ActAsync(
         [instance_id = runtime_actor_->GetInstanceId()](auto& runtime) {
           DestroyRuntime(instance_id, runtime);
@@ -550,21 +545,9 @@ void LynxShell::Destroy() {
 
 #if ENABLE_TRACE_PERFETTO
     // Execute after runtime destroyed.
-    if (auto config =
-            trace::TraceController::Instance()->GetLastSessionTraceConfig();
-        config && config->enable_memory_trace) {
-      if (config->auto_take_snapshot && !group_id.empty() &&
-          !runtime::JSRealmManager::IsSingleJSContext(group_id) &&
-          (config->auto_take_snapshot_group_id.empty() ||
-           config->auto_take_snapshot_group_id == group_id)) {
-        base::NotificationCallback::Notify(
-            runtime::kScheduleVMSnapshot,
-            reinterpret_cast<intptr_t>(group_id.c_str()));
-      }
-      if (config->memory_trace_force_gc) {
-        lynx::base::NotificationCallback::Notify(
-            LYNX_TRACE_MEMORY_PLUGIN_GC_NOTIFICATION, 0);
-      }
+    if (trace::TraceController::Instance()->GetMemoryTraceConfig()) {
+      lynx::base::NotificationCallback::Notify(
+          LYNX_TRACE_MEMORY_PLUGIN_GC_NOTIFICATION, 0);
     }
 #endif
   }

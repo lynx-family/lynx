@@ -73,19 +73,9 @@ QuickjsRuntimeInstance::QuickjsRuntimeInstance()
                      ctx->getVM().get() == static_cast<VMInstance*>(this)) {
                    const char* identifier =
                        reinterpret_cast<const char*>(payload[1]);
-                   const bool initial = static_cast<bool>(payload[2]);
-                   if (this->initial_snapshot_captured_ && initial) {
-                     LOGI("Initial snapshot already captured of '" << identifier
-                                                                   << "'");
-                     return;
-                   }
                    auto qjs_ctx = static_cast<QuickjsContextWrapper*>(ctx);
-                   if (detail::QuickjsHelper::TakeHeapSnapshot(
-                           qjs_ctx->getContext(), identifier)) {
-                     if (initial) {
-                       this->initial_snapshot_captured_ = true;
-                     }
-                   }
+                   detail::QuickjsHelper::TakeHeapSnapshot(
+                       qjs_ctx->getContext(), identifier);
                  }
                }}}))
 #endif
@@ -128,17 +118,6 @@ void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
 
   per_instance_memory_track_ = tasm::performance::MemoryMonitor::Enable();
 
-#if ENABLE_TRACE_PERFETTO
-  bool tracing_started = trace::TraceController::Instance()->IsTracingStarted();
-  bool tracing_memory = false;
-  if (auto config =
-          trace::TraceController::Instance()->GetLastSessionTraceConfig();
-      config && config->enable_memory_trace) {
-    tracing_memory = true;
-  }
-  per_instance_memory_track_ |= (tracing_started && tracing_memory);
-#endif
-
   if (per_instance_memory_track_) {
     auto& alloc_slot_variable =
         fml::MessageLoop::GetCurrent().GetTaskRunner()->GetCurrentAllocSlot();
@@ -159,7 +138,7 @@ void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
   LEPUS_SetGCObserver(rt_, static_cast<GCObserver*>(this));
 
 #if ENABLE_TRACE_PERFETTO
-  if (tracing_started) {
+  if (trace::TraceController::Instance()->IsTracingStarted()) {
     LEPUS_SetGCInfoThreshold(rt_,
                              lynx::runtime::kMemoryReportDeltaThresholdInTrace);
   }
@@ -253,12 +232,7 @@ void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
 
 #if ENABLE_TRACE_PERFETTO
 void QuickjsRuntimeInstance::ReportMemoryForTrace(bool is_full_gc) {
-  if (!trace::TraceController::Instance()->IsTracingStarted()) {
-    return;
-  }
-
-  auto config = trace::TraceController::Instance()->GetLastSessionTraceConfig();
-  if (!(config && config->enable_memory_trace)) {
+  if (!trace::TraceController::Instance()->GetMemoryTraceConfig()) {
     return;
   }
 
