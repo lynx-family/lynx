@@ -159,12 +159,17 @@ void PaintingContext::RepaintCompositedChild(
                 .height = static_cast<uint32_t>(height),
             };
             auto render_target = gpu_context->CreateRenderTarget(desc);
+            if (!render_target) {
+              return;
+            }
             auto canvas = render_target->GetCanvas();
             dl->Draw(canvas);
             canvas->Flush();
             std::shared_ptr<skity::Image> snapshot =
                 gpu_context->MakeSnapshot(std::move(render_target));
-            deferred_image->SetTexture(*(snapshot->GetTexture()));
+            if (snapshot && snapshot->GetTexture()) {
+              deferred_image->SetTexture(*(snapshot->GetTexture()));
+            }
           });
     }
 #endif  // ENABLE_SKITY
