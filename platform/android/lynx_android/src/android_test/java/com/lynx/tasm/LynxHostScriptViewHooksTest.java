@@ -14,6 +14,7 @@ import android.app.Application;
 import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -23,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -51,6 +53,47 @@ public class LynxHostScriptViewHooksTest {
   public void tearDown() {
     InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> setEnabled(mWasEnabled));
   }
+
+  @Test
+  public void engineRebuildKeepsViewRegisteredUntilViewIsDestroyed() throws Exception {
+    Field registryAvailable = LynxHostScriptViewHooks.class.getDeclaredField("sRegistryAvailable");
+    registryAvailable.setAccessible(true);
+    Assume.assumeTrue(registryAvailable.getBoolean(null));
+    Method reload = LynxTemplateRender.class.getDeclaredMethod("reloadAndInit");
+    reload.setAccessible(true);
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxView view = new LynxViewBuilder().build(context);
+      LynxTemplateRender render = view.mLynxTemplateRender;
+      long viewId = render.getLogContextSnapshot().viewId;
+      AtomicInteger engineDestructions = new AtomicInteger();
+      view.addLynxViewClient(new LynxViewClient() {
+        @Override
+        public void onDestroy() {
+          engineDestructions.incrementAndGet();
+        }
+      });
+      try {
+        assertTrue(nativeIsViewRegistered(viewId));
+        // The first load marks reload; the next load replaces the engine.
+        reload.invoke(render);
+        reload.invoke(render);
+        assertEquals(1, engineDestructions.get());
+        assertEquals(viewId, render.getLogContextSnapshot().viewId);
+        assertTrue(nativeIsViewRegistered(viewId));
+      } catch (ReflectiveOperationException error) {
+        throw new AssertionError(error);
+      } finally {
+        view.destroy();
+      }
+      assertEquals(2, engineDestructions.get());
+      assertFalse(nativeIsViewRegistered(viewId));
+      view.destroy();
+      assertFalse(nativeIsViewRegistered(viewId));
+    });
+  }
+
+  private static native boolean nativeIsViewRegistered(long viewId);
 
   @Test
   public void queuedCreationIsDiscardedAfterDisableAndReenable() {

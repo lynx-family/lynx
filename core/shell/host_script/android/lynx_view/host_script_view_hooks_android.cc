@@ -4,17 +4,22 @@
 
 #include "core/shell/host_script/android/lynx_view/host_script_view_hooks_android.h"
 
+#include <atomic>
 #include <iterator>
+#include <memory>
 #include <string>
 #include <utility>
 
 #include "base/include/platform/android/jni_convert_helper.h"
+#include "base/include/platform/android/scoped_java_ref.h"
+#include "base/include/string/string_utils.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
 #include "core/base/android/android_jni.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/runtime/lepus/json_parser.h"
+#include "core/shell/host_script/lynx_view/lynx_view_registry.h"
 #include "core/shell/host_script/runtime/interceptor.h"
 #include "core/shell/host_script/runtime/process_runtime.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxHostScriptViewHooks_jni.h"
@@ -27,6 +32,12 @@ bool RegisterJNIForLynxHostScriptViewHooks(JNIEnv* env) {
 }
 }  // namespace jni
 namespace shell {
+void EnableHostScriptViewRegistry(fml::RefPtr<fml::TaskRunner> ui_runner) {
+  LynxViewRegistry::GetInstance().SetUIRunner(std::move(ui_runner));
+  Java_LynxHostScriptViewHooks_setRegistryAvailable(
+      base::android::AttachCurrentThread());
+}
+
 void InstallHostScriptViewHooks() {
   if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return;
   Java_LynxHostScriptViewHooks_setEnabled(base::android::AttachCurrentThread(),
@@ -42,8 +53,11 @@ void UninstallHostScriptViewHooks() {
 
 namespace {
 using lynx::base::android::JNIConvertHelper;
+using lynx::base::android::ScopedLocalJavaRef;
+using lynx::base::android::ScopedWeakGlobalJavaRef;
 using lynx::shell::InterceptKind;
 using lynx::shell::Interceptor;
+using lynx::shell::LynxViewRegistry;
 
 BASE_STATIC_STRING_DECL(kUpdateData, "updateData");
 BASE_STATIC_STRING_DECL(kGlobalProps, "globalProps");
@@ -64,6 +78,113 @@ lynx::base::android::ScopedLocalJavaRef<jbyteArray> ToJavaBytes(
   return JNIConvertHelper::ConvertToJNIByteArray(env, bytes);
 }
 
+// Converts through UTF-16: scripts may send text Modified UTF-8 cannot carry.
+ScopedLocalJavaRef<jstring> ToJavaString(JNIEnv* env,
+                                         const std::string& value) {
+  auto utf16 = lynx::base::U8StringToU16(value);
+  return JNIConvertHelper::ConvertToJNIString(
+      env, reinterpret_cast<const jchar*>(utf16.data()),
+      static_cast<jsize>(utf16.size()));
+}
+
+// Runs registry commands on the UI thread against a weakly referenced View.
+// Each command executes synchronously; the registry already posted it.
+class AndroidLynxView final : public lynx::shell::LynxViewRefProxy {
+ public:
+  AndroidLynxView(JNIEnv* env, jobject view, jlong view_id)
+      : view_(env, view), view_id_(view_id) {}
+
+  bool LoadTemplate(
+      lynx::shell::LynxViewRefLoadTemplateRequest request) override {
+    return Run([&](JNIEnv* env, jobject view) {
+      ScopedLocalJavaRef<jbyteArray> bytes;
+      if (request.has_template) {
+        bytes = JNIConvertHelper::ConvertToJNIByteArray(
+            env, request.template_data.data(),
+            static_cast<int32_t>(request.template_data.size()));
+      }
+      Java_LynxHostScriptViewHooks_loadTemplate(
+          env, view, view_id_, bytes.Get(),
+          ToJavaString(env, request.url).Get(),
+          Optional(env, request.initial_data_json).Get(),
+          Optional(env, request.global_props_json).Get(),
+          Optional(env, request.processor_name).Get(), request.read_only);
+    });
+  }
+
+  bool LoadSSR(lynx::shell::LynxViewRefSsrRequest request) override {
+    return Ssr(std::move(request), false);
+  }
+
+  bool HydrateSSR(lynx::shell::LynxViewRefSsrRequest request) override {
+    return Ssr(std::move(request), true);
+  }
+
+  bool UpdateMetaData(
+      lynx::shell::LynxViewRefUpdateMetaDataRequest request) override {
+    return Run([&](JNIEnv* env, jobject view) {
+      ScopedLocalJavaRef<jstring> data;
+      ScopedLocalJavaRef<jstring> props;
+      if (request.has_data) data = ToJavaString(env, request.data_json);
+      if (request.has_global_props)
+        props = ToJavaString(env, request.global_props_json);
+      Java_LynxHostScriptViewHooks_updateMetaData(env, view, view_id_,
+                                                  data.Get(), props.Get());
+    });
+  }
+
+  bool ReloadTemplate(
+      lynx::shell::LynxViewRefReloadTemplateRequest request) override {
+    return Run([&](JNIEnv* env, jobject view) {
+      Java_LynxHostScriptViewHooks_reloadTemplate(
+          env, view, view_id_, ToJavaString(env, request.data_json).Get(),
+          Optional(env, request.global_props_json).Get());
+    });
+  }
+
+  bool SendGlobalEvent(
+      lynx::shell::LynxViewRefGlobalEventRequest request) override {
+    return Run([&](JNIEnv* env, jobject view) {
+      Java_LynxHostScriptViewHooks_sendGlobalEvent(
+          env, view, view_id_, ToJavaString(env, request.name).Get(),
+          ToJavaString(env, request.params_json).Get());
+    });
+  }
+
+  void Invalidate() override { invalidated_.store(true); }
+
+ private:
+  static ScopedLocalJavaRef<jstring> Optional(JNIEnv* env,
+                                              const std::string& value) {
+    return value.empty() ? ScopedLocalJavaRef<jstring>()
+                         : ToJavaString(env, value);
+  }
+
+  template <typename Invoke>
+  bool Run(Invoke invoke) {
+    JNIEnv* env = lynx::base::android::AttachCurrentThread();
+    ScopedLocalJavaRef<jobject> view(view_);
+    if (invalidated_.load() || view.IsNull()) return false;
+    invoke(env, view.Get());
+    return true;
+  }
+
+  bool Ssr(lynx::shell::LynxViewRefSsrRequest request, bool hydrate) {
+    return Run([&](JNIEnv* env, jobject view) {
+      auto bytes = JNIConvertHelper::ConvertToJNIByteArray(
+          env, request.data.data(), static_cast<int32_t>(request.data.size()));
+      Java_LynxHostScriptViewHooks_loadSSR(
+          env, view, view_id_, bytes.Get(),
+          ToJavaString(env, request.url).Get(),
+          Optional(env, request.initial_data_json).Get(), hydrate);
+    });
+  }
+
+  ScopedWeakGlobalJavaRef<jobject> view_;
+  const jlong view_id_;
+  std::atomic<bool> invalidated_{false};
+};
+
 // Returns the patch of a UI view event, or nil when nothing changed.
 lynx::lepus::Value DispatchView(InterceptKind kind, lynx::lepus::Value event) {
   auto provider = Interceptor::Current({kind}, Interceptor::Domain::kUI);
@@ -78,6 +199,34 @@ static void DispatchCreated(JNIEnv* env, jclass, jlong view_id, jstring url) {
   lynx::shell::ProcessRuntime::GetInstance().NotifyViewCreated(
       {std::to_string(view_id),
        lynx::base::android::JNIConvertHelper::ConvertToString(env, url)});
+}
+
+static void RegisterView(JNIEnv* env, jclass, jlong view_id, jobject view,
+                         jstring url) {
+  if (!view) return;
+  LynxViewRegistry::GetInstance().Register(
+      static_cast<lynx::base::LynxEntityId>(view_id),
+      std::make_shared<AndroidLynxView>(env, view, view_id),
+      JNIConvertHelper::ConvertToString(env, url));
+}
+
+static void UnregisterView(JNIEnv*, jclass, jlong view_id) {
+  LynxViewRegistry::GetInstance().Unregister(
+      static_cast<lynx::base::LynxEntityId>(view_id));
+}
+
+static void UpdateUrl(JNIEnv* env, jclass, jlong view_id, jstring url) {
+  LynxViewRegistry::GetInstance().UpdateUrl(
+      static_cast<lynx::base::LynxEntityId>(view_id),
+      JNIConvertHelper::ConvertToString(env, url));
+}
+
+static void NotifyView(JNIEnv* env, jclass, jlong view_id, jstring event,
+                       jint code, jstring message) {
+  LynxViewRegistry::GetInstance().NotifyLifecycle(
+      static_cast<lynx::base::LynxEntityId>(view_id),
+      JNIConvertHelper::ConvertToString(env, event), code,
+      message ? JNIConvertHelper::ConvertToString(env, message) : "");
 }
 
 static jbyteArray DispatchUpdateMetaData(JNIEnv* env, jclass, jlong view_id,
