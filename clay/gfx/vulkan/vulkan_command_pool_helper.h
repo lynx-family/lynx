@@ -23,7 +23,9 @@ class VulkanCommandPoolHelper {
     bool has_signal_semaphore;
   };
 
-  VulkanCommandPoolHelper(VkDevice device, VkPhysicalDevice physical_device);
+  VulkanCommandPoolHelper(
+      VkDevice device, VkPhysicalDevice physical_device,
+      uint32_t graphics_queue_family = VK_QUEUE_FAMILY_IGNORED);
   ~VulkanCommandPoolHelper();
 
   void GetCommandBuffer(VkCommandBuffer* command_buffer);
@@ -39,7 +41,7 @@ class VulkanCommandPoolHelper {
   void Destroy();
 
  private:
-  void CreateCommandPool();
+  void CreateCommandPool(uint32_t graphics_queue_family);
 
   VkDevice device_ = VK_NULL_HANDLE;
   VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
