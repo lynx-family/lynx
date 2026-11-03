@@ -129,6 +129,7 @@ if (enable_unittests) {
         "process_runtime_unittest.cc",
       ]
       deps = [
+        ":host_script",
         ":interceptor_bindings",
         ":process_runtime",
         "../../../../third_party/napi:env",

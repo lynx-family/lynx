@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 #include "core/shell/host_script/runtime/interceptor.h"
@@ -20,8 +21,13 @@ namespace lynx::shell {
 // thread. This component never creates a VM, thread or cross-thread JS handle.
 // Each event kind accepts one active handler. Dispose it before registering
 // another handler of the same kind. Handlers decide with `proceed`, optionally
-// with a patch, or `mock` for jsb.call. The view.created notification accepts
-// handlers in every domain and ignores their return values.
+// with a patch, or `mock` for jsb.call, and receive the event's `LynxView`
+// proxy (or null) as their third argument. The view.created notification
+// accepts handlers in every domain, passes only the proxy and ignores return
+// values. A new view.created handler first receives the existing Views,
+// asynchronously, and each handler is notified at most once per View.
+class HostScriptLynxViews;
+
 class HostScriptInterceptor final
     : public Interceptor,
       public std::enable_shared_from_this<HostScriptInterceptor> {
@@ -30,9 +36,11 @@ class HostScriptInterceptor final
   using Reporter = std::function<void(const std::string&)>;
   // Whether the domain accepts any event kind. Install fails otherwise.
   static bool Supports(Domain domain);
+  // Without `views`, handlers receive null proxies and view.created is never
+  // delivered.
   static std::shared_ptr<HostScriptInterceptor> Install(
       Napi::Env env, Domain domain, Reporter reporter = nullptr,
-      Guard guard = {});
+      Guard guard = {}, std::shared_ptr<HostScriptLynxViews> views = nullptr);
   bool IsAttached() const override {
     return Interceptor::IsAttached() && (!guard_ || guard_());
   }
@@ -41,6 +49,9 @@ class HostScriptInterceptor final
   InterceptResult Dispatch(InterceptKind kind,
                            const lepus::Value& event) override;
   void ReportError(const std::string& message) override;
+  // Delivers one View to the view.created handler `entry`, or to the current
+  // handler when `entry` is 0. Owner thread only.
+  void NotifyCreated(base::LynxEntityId view, uint64_t entry = 0);
 
  private:
   struct CallbackData {
@@ -51,6 +62,8 @@ class HostScriptInterceptor final
     uint64_t id;
     InterceptKind kind;
     Napi::FunctionReference function;
+    // Views already delivered to this view.created handler.
+    std::unordered_set<base::LynxEntityId> created;
   };
   HostScriptInterceptor(Napi::Env env, Domain domain, Reporter reporter)
       : env_(env), domain_(domain), reporter_(std::move(reporter)) {}
@@ -60,11 +73,13 @@ class HostScriptInterceptor final
   static Napi::Value On(const Napi::CallbackInfo& info);
   static Napi::Value Dispose(const Napi::CallbackInfo& info);
   Napi::Value Add(const Napi::CallbackInfo& info);
+  Napi::Value ViewOf(const lepus::Value& event);
   void Remove(uint64_t id);
   Napi::Env env_;
   Domain domain_;
   Reporter reporter_;
   Guard guard_;
+  std::shared_ptr<HostScriptLynxViews> views_;
   uint64_t next_id_ = 1;
   bool active_ = true;
   bool dispatching_ = false;

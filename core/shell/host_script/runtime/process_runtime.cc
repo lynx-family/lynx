@@ -158,11 +158,6 @@ class DomainRuntime final {
     return result;
   }
 
-  void NotifyViewCreated(const ProcessRuntime::ViewCreated& event) {
-    DCHECK(runner_->RunsTasksOnCurrentThread());
-    if (bindings_) bindings_->NotifyViewCreated(event);
-  }
-
   Result Execute(const std::string& source, const std::string& url,
                  CompletionValue completion_value = CompletionValue::kJSON) {
     DCHECK(runner_->RunsTasksOnCurrentThread());
@@ -328,12 +323,6 @@ class DomainState final {
     runtime_.reset();
   }
 
-  void NotifyViewCreated(const ProcessRuntime::ViewCreated& event) {
-    AssertOwner();
-    if (IsHostScriptRuntimeEnabled() && IsRunning() && runtime_)
-      runtime_->NotifyViewCreated(event);
-  }
-
  private:
   void AssertOwner() const { DCHECK(runner_->RunsTasksOnCurrentThread()); }
   bool IsRunning() const {
@@ -402,21 +391,16 @@ class RuntimeGeneration final
     return IsValidDomain(domain) ? &endpoint_ : nullptr;
   }
 
-  // Count admission until work is queued or an inline event returns. Closing
-  // never waits: the last submission wakes the lifecycle runner.
+  // Count admission until work is queued. Closing never waits: the last
+  // submission wakes the lifecycle runner.
   template <typename Factory>
-  bool Post(const Endpoint& endpoint, Factory&& task,
-            bool allow_inline = false) {
+  bool Post(const Endpoint& endpoint, Factory&& task) {
     auto postings = postings_.load(std::memory_order_acquire);
     do {
       if (postings & kClosed) return false;
     } while (!postings_.compare_exchange_weak(postings, postings + 1,
                                               std::memory_order_acq_rel));
-    if (allow_inline) {
-      endpoint.actor->Act(task());
-    } else {
-      endpoint.actor->ActAsync(task());
-    }
+    endpoint.actor->ActAsync(task());
     if (postings_.fetch_sub(1, std::memory_order_acq_rel) == kClosed + 1) {
       control_->PostTask(
           [self = shared_from_this()] { self->StopOnControl(); });
@@ -591,22 +575,6 @@ class ProcessRuntime::Impl {
             }) &&
         completion) {
       completion(WithError(std::move(identity), "RUNTIME_NOT_RUNNING"));
-    }
-  }
-
-  void NotifyViewCreated(const ViewCreated& event) {
-    for (size_t i = 0; i < current_.size(); ++i) {
-      auto generation = Current(static_cast<Domain>(i));
-      if (!generation || generation->State() != ProcessState::kRunning ||
-          !generation->Find(static_cast<Domain>(i))
-               ->publication->ready.load(std::memory_order_acquire))
-        continue;
-      generation->Post(
-          *generation->Find(static_cast<Domain>(i)),
-          [&] {
-            return [event](auto& owner) { owner->NotifyViewCreated(event); };
-          },
-          /*allow_inline=*/true);
     }
   }
 
@@ -848,10 +816,6 @@ void ProcessRuntime::InitializeBindings() { impl_->InitializeBindings(); }
 
 bool ProcessRuntime::IsReady(Domain domain) const {
   return impl_->IsReady(domain);
-}
-
-void ProcessRuntime::NotifyViewCreated(ViewCreated event) {
-  impl_->NotifyViewCreated(event);
 }
 
 void ProcessRuntime::Evaluate(Domain domain, std::string source,

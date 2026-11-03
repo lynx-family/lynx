@@ -21,7 +21,6 @@
 #include "core/runtime/lepus/json_parser.h"
 #include "core/shell/host_script/lynx_view/lynx_view_registry.h"
 #include "core/shell/host_script/runtime/interceptor.h"
-#include "core/shell/host_script/runtime/process_runtime.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxHostScriptViewHooks_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxHostScriptViewHooks_register_jni.h"
 
@@ -193,13 +192,6 @@ lynx::lepus::Value DispatchView(InterceptKind kind, lynx::lepus::Value event) {
   return result.failed ? lynx::lepus::Value() : std::move(result.patch);
 }
 }  // namespace
-
-static void DispatchCreated(JNIEnv* env, jclass, jlong view_id, jstring url) {
-  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) return;
-  lynx::shell::ProcessRuntime::GetInstance().NotifyViewCreated(
-      {std::to_string(view_id),
-       lynx::base::android::JNIConvertHelper::ConvertToString(env, url)});
-}
 
 static void RegisterView(JNIEnv* env, jclass, jlong view_id, jobject view,
                          jstring url) {

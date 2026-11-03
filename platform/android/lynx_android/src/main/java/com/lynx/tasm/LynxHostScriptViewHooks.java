@@ -4,7 +4,6 @@
 package com.lynx.tasm;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.CalledByNative;
@@ -26,9 +25,7 @@ final class LynxHostScriptViewHooks {
   private static final int SOURCE_BYTES = 1;
   private static final int SOURCE_BUFFER = 2;
   private static final int SOURCE_BUNDLE = 3;
-  // A new token separates queued notifications from earlier enabled periods.
-  private static volatile Object sEnabledToken;
-  private static long sNextId;
+  private static volatile boolean sEnabled;
   // Set once by the debug engine; Release engines never register Views.
   private static volatile boolean sRegistryAvailable;
 
@@ -37,11 +34,7 @@ final class LynxHostScriptViewHooks {
   @CalledByNative
   private static void setEnabled(boolean enabled) {
     UIThreadUtils.assertOnUiThread();
-    if (!enabled) {
-      sEnabledToken = null;
-    } else if (sEnabledToken == null) {
-      sEnabledToken = new Object();
-    }
+    sEnabled = enabled;
   }
 
   @CalledByNative
@@ -50,28 +43,7 @@ final class LynxHostScriptViewHooks {
   }
 
   static boolean isEnabled() {
-    return sEnabledToken != null;
-  }
-
-  static void onCreated(LynxView view) {
-    postCreationNotification(() -> {
-      String url = view.getTemplateUrl();
-      nativeDispatchCreated(++sNextId, url == null ? "" : url);
-    });
-  }
-
-  @VisibleForTesting
-  static void postCreationNotification(Runnable notification) {
-    Object token = sEnabledToken;
-    if (token == null) {
-      return;
-    }
-    UIThreadUtils.runOnUiThreadImmediately(() -> {
-      if (sEnabledToken != token) {
-        return;
-      }
-      notification.run();
-    });
+    return sEnabled;
   }
 
   /**
@@ -388,8 +360,6 @@ final class LynxHostScriptViewHooks {
     }
     return data;
   }
-
-  private static native void nativeDispatchCreated(long viewId, String url);
 
   private static native void nativeRegisterView(long viewId, LynxView view, String url);
   private static native void nativeUnregisterView(long viewId);

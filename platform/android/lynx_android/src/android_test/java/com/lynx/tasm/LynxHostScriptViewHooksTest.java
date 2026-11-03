@@ -20,7 +20,6 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.After;
@@ -34,7 +33,6 @@ import org.mockito.Mockito;
 public class LynxHostScriptViewHooksTest {
   private Method mSetEnabled;
   private boolean mWasEnabled;
-  private final AtomicInteger mNotifications = new AtomicInteger();
 
   @Before
   public void setUp() throws Exception {
@@ -94,52 +92,6 @@ public class LynxHostScriptViewHooksTest {
   }
 
   private static native boolean nativeIsViewRegistered(long viewId);
-
-  @Test
-  public void queuedCreationIsDiscardedAfterDisableAndReenable() {
-    queueCreation(true, () -> {
-      setEnabled(false);
-      setEnabled(true);
-    });
-    assertEquals(0, mNotifications.get());
-  }
-
-  @Test
-  public void queuedCreationIsDiscardedAfterDisable() {
-    queueCreation(true, () -> setEnabled(false));
-    assertEquals(0, mNotifications.get());
-  }
-
-  @Test
-  public void creationWhileDisabledIsNotReplayedAfterEnable() {
-    queueCreation(false, () -> setEnabled(true));
-    assertEquals(0, mNotifications.get());
-  }
-
-  @Test
-  public void queuedCreationIsDeliveredWithinEnabledPeriod() {
-    queueCreation(true, () -> {});
-    assertEquals(1, mNotifications.get());
-  }
-
-  @Test
-  public void repeatedEnableKeepsQueuedCreation() {
-    queueCreation(true, () -> setEnabled(true));
-    assertEquals(1, mNotifications.get());
-  }
-
-  @Test
-  public void newCreationIsDeliveredAfterReenable() {
-    queueCreation(true, () -> {
-      setEnabled(false);
-      setEnabled(true);
-    });
-    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
-      LynxHostScriptViewHooks.postCreationNotification(mNotifications::incrementAndGet);
-      assertEquals(1, mNotifications.get());
-    });
-    assertEquals(1, mNotifications.get());
-  }
 
   @Test
   public void disabledInterceptorsKeepRequestsWithoutAccessingRender() {
@@ -375,32 +327,6 @@ public class LynxHostScriptViewHooksTest {
         "applyUpdatePatch", LynxUpdateMeta.class, JSONObject.class);
     method.setAccessible(true);
     return (LynxUpdateMeta) method.invoke(null, meta, new JSONObject(json));
-  }
-
-  private void queueCreation(boolean enabled, Runnable beforeDelivery) {
-    AtomicReference<Throwable> failure = new AtomicReference<>();
-    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
-      setEnabled(enabled);
-      // Hold the UI queue until the worker has posted and the state has changed.
-      Thread worker = new Thread(() -> {
-        try {
-          LynxHostScriptViewHooks.postCreationNotification(mNotifications::incrementAndGet);
-        } catch (Throwable throwable) {
-          failure.set(throwable);
-        }
-      });
-      worker.start();
-      try {
-        worker.join(3000);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new AssertionError(e);
-      }
-      assertFalse(worker.isAlive());
-      beforeDelivery.run();
-    });
-    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-    assertNull(failure.get());
   }
 
   private void setEnabled(boolean enabled) {

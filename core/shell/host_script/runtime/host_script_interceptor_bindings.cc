@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
-#include "base/include/value/table.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
@@ -15,10 +14,6 @@
 
 namespace lynx {
 namespace shell {
-namespace {
-BASE_STATIC_STRING_DECL(kViewId, "viewId");
-BASE_STATIC_STRING_DECL(kUrl, "url");
-}  // namespace
 
 std::unique_ptr<ProcessRuntime::RuntimeBindings>
 HostScriptInterceptorBindings::Create(ProcessRuntime::Domain domain) {
@@ -32,7 +27,8 @@ HostScriptInterceptorBindings::HostScriptInterceptorBindings(
     : domain_(domain) {}
 
 HostScriptInterceptorBindings::~HostScriptInterceptorBindings() {
-  // The provider releases its N-API references before the environment.
+  // The provider and proxies release their N-API references and cancel queued
+  // View commands before the environment goes away.
   if (provider_) provider_->Uninstall();
   provider_.reset();
   if (views_) views_->Detach();
@@ -59,21 +55,12 @@ bool HostScriptInterceptorBindings::Attach(
   napi_->Attach();
   views_ = HostScriptLynxViews::Create(napi_->proxy()->Env(), runner, guard);
   provider_ = HostScriptInterceptor::Install(napi_->proxy()->Env(), domain_,
-                                             nullptr, std::move(guard));
+                                             nullptr, std::move(guard), views_);
   if (!provider_) {
     LOGE("Host Script interceptor: install failed for "
          << HostScriptDomainName(domain_));
   }
   return true;
-}
-
-void HostScriptInterceptorBindings::NotifyViewCreated(
-    const ProcessRuntime::ViewCreated& event) {
-  if (!provider_) return;
-  lepus::Value snapshot(lepus::Dictionary::Create());
-  snapshot.SetProperty(kViewId, lepus::Value(event.view_id));
-  snapshot.SetProperty(kUrl, lepus::Value(event.url));
-  provider_->Dispatch(InterceptKind::kCreated, snapshot);
 }
 
 }  // namespace shell
