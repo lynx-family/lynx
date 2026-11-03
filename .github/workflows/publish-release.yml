@@ -27,7 +27,7 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-  NIGHTLY_BASE_VERSION: '4.4.0'
+  NIGHTLY_BASE_VERSION: '4.5.0'
 
 jobs:
   get-version:
