@@ -193,7 +193,8 @@ TEST_F(ProcessRuntimeTest, ViewCreatedRunsInlineOnOwnerAndDropsAfterShutdown) {
     explicit Binding(std::shared_ptr<std::atomic<int>> calls)
         : calls_(std::move(calls)) {}
     bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime>,
-                fml::RefPtr<fml::TaskRunner> runner) override {
+                fml::RefPtr<fml::TaskRunner> runner,
+                ProcessRuntime::Guard) override {
       runner_ = std::move(runner);
       return true;
     }
@@ -363,7 +364,7 @@ TEST_F(ProcessRuntimeTest, FailedBindingsCleanUpEveryReplacementDomain) {
     explicit Binding(const std::shared_ptr<std::atomic<bool>>& fail)
         : fail_(fail) {}
     bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime>,
-                fml::RefPtr<fml::TaskRunner>) override {
+                fml::RefPtr<fml::TaskRunner>, ProcessRuntime::Guard) override {
       return !fail_->load();
     }
 
