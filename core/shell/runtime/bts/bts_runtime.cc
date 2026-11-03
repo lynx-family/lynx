@@ -1092,7 +1092,7 @@ base::UnsafeWeakPtr<runtime::js::Runtime> BTSRuntime::GetJSRuntimeWeak() {
                       : base::UnsafeWeakPtr<runtime::js::Runtime>();
 }
 
-std::unique_ptr<runtime::js::HeapSnapshot> BTSRuntime::TakeHeapSnapshot() {
+std::unique_ptr<runtime::js::Buffer> BTSRuntime::TakeHeapSnapshot() {
   if (state_ == State::kNotStarted || state_ == State::kDestroying ||
       js_executor_ == nullptr) {
     return nullptr;

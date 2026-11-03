@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/file_utils.h"
+#include "base/include/buffer.h"
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/log/logging.h"
 #include "base/include/md5.h"
@@ -82,19 +82,18 @@ JsCacheManager &JsCacheManager::GetV8Instance() noexcept {
 
 JsCacheManager::JsCacheManager(JSRuntimeType type) : engine_type_(type) {}
 
-bool JsCacheManager::ReadFile(const std::string &filename,
-                              std::string &contents) {
+std::unique_ptr<Buffer> JsCacheManager::ReadFile(const std::string &filename) {
   const std::string file_path = MakePath(filename);
   if (file_path.empty()) {
     LOGE("ReadFile failed (file_path is empty): " << filename);
-    return false;
+    return nullptr;
   }
 
-  if (!base::FileUtils::ReadFileBinary(file_path, MAX_SIZE, contents)) {
+  auto buffer = Buffer::ReadFromFile(file_path, MAX_SIZE);
+  if (!buffer) {
     LOGE("ReadFile failed: " << file_path);
-    return false;
   }
-  return true;
+  return buffer;
 }
 
 bool JsCacheManager::WriteFile(const std::string &filename, uint8_t *out_buf,
@@ -107,7 +106,7 @@ bool JsCacheManager::WriteFile(const std::string &filename, uint8_t *out_buf,
 
   // write to temp file
   std::string temp_file_path = MakePath("temp.tmp");
-  if (!base::FileUtils::WriteFileBinary(temp_file_path, out_buf, out_buf_len)) {
+  if (!base::ByteRefBuffer(out_buf, out_buf_len).WriteToFile(temp_file_path)) {
     LOGE("WriteFile failed: " << file_path);
     return false;
   }
@@ -439,14 +438,14 @@ std::shared_ptr<Buffer> JsCacheManager::LoadCacheFromStorage(
     return nullptr;
   }
   auto file_info = *opt_info;
-  std::string cache;
-  if (file_info.md5 != file_md5 || !ReadFile(MakeFilename(file_md5), cache) ||
-      cache.size() != file_info.cache_size) {
+  auto cache =
+      file_info.md5 == file_md5 ? ReadFile(MakeFilename(file_md5)) : nullptr;
+  if (!cache || cache->size() != file_info.cache_size) {
     if (file_info.md5 != file_md5) {
       LOGI("js file md5 mismatch.");
     } else {
       LOGI("cache file broken. cache size read from storage: "
-           << cache.size()
+           << (cache ? cache->size() : 0)
            << ", size record in metadata: " << file_info.cache_size);
     }
     std::string path = MakePath(MakeFilename(file_info.md5));
@@ -458,7 +457,7 @@ std::shared_ptr<Buffer> JsCacheManager::LoadCacheFromStorage(
   }
 
   UpdateLastAccessTime(locked_meta_data, std::move(file_info));
-  return std::make_shared<StringBuffer>(std::move(cache));
+  return cache;
 }
 
 bool JsCacheManager::SaveCacheContentToStorage(
@@ -621,9 +620,9 @@ void JsCacheManager::InitMetaData() {
   LOGI("bytecode_generate_generate_version: "
        << bytecode_generate_generate_version);
 
-  std::string json;
-  if (ReadFile(METADATA_FILE_NAME, json)) {
-    meta_data_ = MetaData::ParseJson(json);
+  if (auto json = ReadFile(METADATA_FILE_NAME)) {
+    meta_data_ =
+        MetaData::ParseJson(reinterpret_cast<const char *>(json->data()));
     if (meta_data_ != nullptr &&
         base::Version(meta_data_->GetLynxVersion()) == LYNX_VERSION &&
         meta_data_->GetBytecodeGenerateEngineVersion() ==

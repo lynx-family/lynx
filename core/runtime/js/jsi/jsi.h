@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/buffer.h"
 #include "base/include/closure.h"
 #include "base/include/compiler_specific.h"
 #include "base/include/expected.h"
@@ -39,7 +40,6 @@
 #include "core/inspector/console_message_postman.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/public/page_options.h"
-#include "core/runtime/js/jsi/heap_snapshot.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/services/watch_dog/watch_dog.h"
 
@@ -57,63 +57,12 @@ namespace runtime {
 namespace js {
 constexpr char kErrorInfoSeparator[] = " ";
 
-class LYNX_EXPORT Buffer {
- public:
-  LYNX_EXPORT virtual ~Buffer() = default;
-  virtual size_t size() const = 0;
-  virtual const uint8_t* data() const = 0;
-};
-
-class StringBuffer : public Buffer {
- public:
-  StringBuffer(std::string s) : s_(std::move(s)) {}
-  size_t size() const override { return s_.size(); }
-  const uint8_t* data() const override {
-    return reinterpret_cast<const uint8_t*>(s_.data());
-  }
-  std::string& GetString() { return s_; }
-
- private:
-  std::string s_;
-};
-
-class StringRefBuffer : public Buffer {
- public:
-  explicit StringRefBuffer(const std::string& s) : s_(s) {}
-  size_t size() const override { return s_.size(); }
-  const uint8_t* data() const override {
-    return reinterpret_cast<const uint8_t*>(s_.data());
-  }
-
- private:
-  const std::string& s_;
-};
-
-class BaseStringBuffer : public Buffer {
- public:
-  explicit BaseStringBuffer(const base::String& s) : s_(s) {}
-  size_t size() const override { return s_.length(); }
-  const uint8_t* data() const override {
-    return reinterpret_cast<const uint8_t*>(s_.c_str());
-  }
-
- private:
-  base::String s_;
-};
-
-class ByteBuffer : public Buffer {
- public:
-  explicit ByteBuffer(std::shared_ptr<const std::vector<uint8_t>> data)
-      : data_(data == nullptr ? std::make_shared<const std::vector<uint8_t>>()
-                              : std::move(data)) {}
-  size_t size() const override { return data_->size(); }
-  const uint8_t* data() const override {
-    return reinterpret_cast<const uint8_t*>(data_->data());
-  }
-
- private:
-  std::shared_ptr<const std::vector<uint8_t>> data_;
-};
+using base::BaseStringBuffer;
+using base::Buffer;
+using base::ByteBuffer;
+using base::CStringRefBuffer;
+using base::StringBuffer;
+using base::StringRefBuffer;
 
 class JSRuntimeDelegate;
 
@@ -375,7 +324,7 @@ class LYNX_EXPORT Runtime {
   virtual bool Valid() const { return true; }
 
   LYNX_EXPORT virtual ~Runtime() = default;
-  virtual std::unique_ptr<HeapSnapshot> TakeHeapSnapshot() { return nullptr; }
+  virtual std::unique_ptr<Buffer> TakeHeapSnapshot() { return nullptr; }
   void setCreatedType(JSRuntimeCreatedType type) { created_type_ = type; }
   JSRuntimeCreatedType getCreatedType() { return created_type_; }
 

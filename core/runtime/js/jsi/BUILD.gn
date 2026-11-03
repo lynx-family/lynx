@@ -9,7 +9,6 @@ import("v8/v8.gni")
 
 jsi_sources = [
   "args_converter.h",
-  "heap_snapshot.h",
   "instrumentation.h",
   "jsi-inl.h",
   "jsi.cc",
@@ -27,6 +26,7 @@ if (!is_harmony) {
 lynx_core_source_set("jsi") {
   sources = jsi_sources
   deps = [ "../../../../base/src:base_log_headers" ]
+  public_deps = [ "../../../../base/src:base_public_headers" ]
 }
 
 config("jsi_unittest_config") {

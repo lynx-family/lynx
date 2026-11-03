@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -77,7 +78,8 @@ class MetaData {
   MetaData(MetaData &&) = default;
   MetaData &operator=(MetaData &&) = default;
 
-  static std::unique_ptr<MetaData> ParseJson(const std::string &json);
+  // Parses a null-terminated string without retaining the input.
+  static std::unique_ptr<MetaData> ParseJson(const char *json);
   std::string ToJson() const;
 
   std::optional<CacheFileInfo> GetFileInfo(

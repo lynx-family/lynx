@@ -173,7 +173,7 @@ UNITTEST_PUBLIC:
   void InitMetaData();
   LockedMetaData GetLockedMetaData();
 
-  bool ReadFile(const std::string &filename, std::string &contents);
+  std::unique_ptr<Buffer> ReadFile(const std::string &filename);
   UNITTEST_VIRTUAL bool WriteFile(const std::string &filename, uint8_t *out_buf,
                                   size_t out_buf_len);
   std::string MakePath(const std::string &filename);

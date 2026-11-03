@@ -49,9 +49,12 @@ MetaData::MetaData(rapidjson::Document &&doc) {
   json_document_ = std::move(doc);
 }
 
-std::unique_ptr<MetaData> MetaData::ParseJson(const std::string &json) {
+std::unique_ptr<MetaData> MetaData::ParseJson(const char *json) {
+  if (json == nullptr || *json == '\0') {
+    return nullptr;
+  }
   rapidjson::Document document;
-  document.Parse(json.c_str());
+  document.Parse(json);
   if (document.HasParseError()) {
     return nullptr;
   }
