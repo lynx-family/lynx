@@ -142,6 +142,7 @@ bool IsParentDataStyle(CSSPropertyID id) {
   switch (id) {
     case kPropertyIDMinWidth:
     case kPropertyIDMinHeight:
+    case kPropertyIDLinearWeight:
     case kPropertyIDFlexGrow:
     case kPropertyIDFlexShrink:
     case kPropertyIDFlexBasis:
@@ -884,8 +885,10 @@ void ModifierElement::SetupFragmentBehavior(Fragment* fragment) {
 
 ModifierElement::ModifierElement(ElementManager* manager)
     : Element(manager, BASE_STATIC_STRING(kElementViewTag)) {
+  MarkAsComposeLayout();
   SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
   SetStyle(kPropertyIDBoxSizing, lepus::Value("border-box"));
+  SetStyle(kPropertyIDXBoxPropagateMinConstraints, lepus::Value(true));
   if (manager != nullptr) {
     SetDefaultOverflow(manager->GetDefaultOverflowVisible());
   }

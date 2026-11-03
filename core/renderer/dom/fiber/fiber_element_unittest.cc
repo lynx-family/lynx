@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <memory>
@@ -39,6 +40,7 @@
 #include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
+#include "core/renderer/dom/fiber/custom_layout.h"
 #include "core/renderer/dom/fiber/for_element.h"
 #include "core/renderer/dom/fiber/if_element.h"
 #include "core/renderer/dom/fiber/image_element.h"
@@ -510,6 +512,27 @@ void SetDefaultEntryRuntime(
   entry->SetVm(runtime);
   entry->SetName(DEFAULT_ENTRY_NAME);
   template_assembler->template_entries_[DEFAULT_ENTRY_NAME] = std::move(entry);
+}
+
+std::shared_ptr<runtime::MTSRuntime> CreateCustomLayoutRuntime(
+    TemplateAssembler* template_assembler) {
+  auto runtime = CreateRendererRuntime(template_assembler);
+  Renderer::RegisterBuiltin(runtime.get(), ArchOption::FIBER_ARCH);
+  SetDefaultEntryRuntime(template_assembler, runtime);
+  return runtime;
+}
+
+fml::RefPtr<ComposeElementHandle> CreateComposeViewHandle(
+    ElementManager* manager) {
+  return fml::AdoptRef<ComposeElementHandle>(
+      new ComposeElementHandle(manager, ComposeElementKind::kView));
+}
+
+bool EvalCustomLayout(const std::shared_ptr<runtime::MTSRuntime>& runtime,
+                      const char* source) {
+  lepus::Value result;
+  return runtime::MTSRuntime::ToQuickContext(runtime.get())
+      ->EvalBuf(source, strlen(source), result, "custom_layout.js");
 }
 
 }  // namespace
@@ -3476,6 +3499,150 @@ TEST_P(FiberElementTest, TestMarkLayoutDirty) {
   EXPECT_TRUE(parent->sl_node_->is_dirty_);
   EXPECT_TRUE(element->sl_node_->is_dirty_);
   EXPECT_TRUE(element0->sl_node_->is_dirty_);
+}
+
+TEST_P(FiberElementTest, ComposeLayoutIdentitySurvivesNativeContentAndCloning) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  for (auto kind : {ComposeElementKind::kView, ComposeElementKind::kText,
+                    ComposeElementKind::kImage, ComposeElementKind::kList}) {
+    auto handle = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, kind, base::String(), tasm.get()));
+    auto owner = handle->content_element();
+    EXPECT_TRUE(owner->IsComposeLayout());
+    owner->EnsureSLNode();
+    ASSERT_NE(owner->slnode(), nullptr);
+    EXPECT_TRUE(owner->slnode()->IsComposeLayout());
+    EXPECT_EQ(owner->slnode()->GetSLComposeMeasureFunc(), nullptr);
+    auto clone = owner->CloneElement(true);
+    EXPECT_TRUE(clone->IsComposeLayout());
+    clone->AttachToElementManager(
+        manager, tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), false);
+    clone->EnsureSLNode();
+    ASSERT_NE(clone->slnode(), nullptr);
+    EXPECT_TRUE(clone->slnode()->IsComposeLayout());
+  }
+  auto handle = CreateComposeViewHandle(manager);
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    __SetComposeModifier(owner, {op: 7, start: 10, top: 4, end: 0, bottom: 0});
+  )"));
+  page->InsertNode(handle->mount_root());
+  page->FlushActionsAsRoot();
+  for (auto* node = handle->mount_root().get(); node;
+       node = node->first_child()) {
+    EXPECT_TRUE(node->IsComposeLayout());
+    ASSERT_NE(node->slnode(), nullptr);
+    EXPECT_TRUE(node->slnode()->IsComposeLayout());
+    EXPECT_EQ(node->slnode()->GetSLComposeMeasureFunc(), nullptr);
+  }
+  auto* root = handle->mount_root()->slnode();
+  root->GetCSSMutableStyle()->SetMinWidth(
+      starlight::NLength::MakeUnitNLength(50));
+  const auto size =
+      root->UpdateMeasureByPlatform({starlight::OneSideConstraint::AtMost(100),
+                                     starlight::OneSideConstraint::AtMost(80)},
+                                    true);
+  EXPECT_FLOAT_EQ(50, size.width_);
+  EXPECT_FLOAT_EQ(40,
+                  handle->content_element()->slnode()->GetBorderBoundWidth());
+  root->UpdateAlignment();
+  EXPECT_FLOAT_EQ(10, handle->content_element()
+                          ->slnode()
+                          ->GetBorderBoundLeftFromParentPaddingBound());
+  auto css = manager->CreateFiberView();
+  css->EnsureSLNode();
+  EXPECT_FALSE(css->IsComposeLayout());
+  EXPECT_FALSE(css->slnode()->IsComposeLayout());
+}
+
+TEST_P(FiberElementTest, ComposeLinearWeightParentDataSurvivesPaddingAndReset) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto parent = CreateComposeViewHandle(manager);
+  auto child = CreateComposeViewHandle(manager);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("child", lepus::Value(child));
+  runtime->SetGlobalData("weightId", lepus::Value(kPropertyIDLinearWeight));
+  runtime->SetGlobalData("widthId", lepus::Value(kPropertyIDWidth));
+  runtime->SetGlobalData("heightId", lepus::Value(kPropertyIDHeight));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.setWeight = (weight, padded) => {
+      let modifier = {op: 2, propertyId: weightId, value: weight};
+      if (padded) {
+        modifier = {op: 7, start: 5, top: 5, end: 5, bottom: 5, previous: modifier};
+      }
+      modifier = {op: 3, propertyId: widthId, value: "10px", previous: modifier};
+      modifier = {op: 3, propertyId: heightId, value: "10px", previous: modifier};
+      __SetComposeModifier(child, modifier);
+    };
+    setWeight(2, true);
+  )"));
+  auto frame = child->mount_root();
+  ASSERT_NE(frame, child->content_element());
+  parent->content_element()->SetStyle(kPropertyIDDisplay,
+                                      lepus::Value("linear"));
+  parent->content_element()->SetStyle(kPropertyIDLinearOrientation,
+                                      lepus::Value("row"));
+  parent->content_element()->InsertNode(frame);
+  page->InsertNode(parent->mount_root());
+  page->FlushActionsAsRoot();
+  auto* style = frame->computed_css_style()->GetLayoutComputedStyle();
+  EXPECT_FLOAT_EQ(2, style->GetLinearWeight());
+  auto* node = parent->content_element()->slnode();
+  const auto layout = [node] {
+    starlight::Constraints constraints{
+        starlight::OneSideConstraint::Definite(100),
+        starlight::OneSideConstraint::AtMost(100)};
+    node->ReLayoutWithConstraints(constraints);
+  };
+  layout();
+  // Weight fills the allocated width, including the padding frame.
+  EXPECT_FLOAT_EQ(100, frame->slnode()->GetBorderBoundWidth());
+  frame->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  page->FlushActionsAsRoot();
+  EXPECT_FLOAT_EQ(
+      2,
+      frame->computed_css_style()->GetLayoutComputedStyle()->GetLinearWeight());
+  ASSERT_TRUE(EvalCustomLayout(runtime, "setWeight(1, false);"));
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(child->mount_root(), child->content_element());
+  EXPECT_FLOAT_EQ(1, child->content_element()
+                         ->computed_css_style()
+                         ->GetLayoutComputedStyle()
+                         ->GetLinearWeight());
+  EXPECT_EQ(node->FirstChild(), child->content_element()->slnode());
+
+  layout();
+  EXPECT_FLOAT_EQ(100, child->mount_root()->slnode()->GetBorderBoundWidth());
+  ASSERT_TRUE(EvalCustomLayout(runtime, "__SetComposeModifier(child, null);"));
+  page->FlushActionsAsRoot();
+  EXPECT_FLOAT_EQ(0, child->content_element()
+                         ->computed_css_style()
+                         ->GetLayoutComputedStyle()
+                         ->GetLinearWeight());
+}
+
+TEST_P(FiberElementTest, CustomLayoutRejectsPendingElementFunctions) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = CreateComposeViewHandle(manager);
+  auto owner = handle->content_element();
+  page->InsertNode(owner);
+  starlight::CustomLayoutFunctions functions{
+      [](void*, const starlight::Constraints&, bool) {
+        return FloatSize(12, 13);
+      }};
+  owner->SetCustomLayoutFunctions(functions);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto layout = std::make_shared<CustomLayout>(*owner, *runtime, lepus::Value(),
+                                               lepus::Value());
+  EXPECT_FALSE(handle->SetCustomLayout(layout));
+  EXPECT_FALSE(handle->custom_layout());
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(owner->slnode()->GetSLMeasureFunc(), functions.measure);
+  EXPECT_EQ(owner->slnode()->GetContext(), owner.get());
 }
 
 TEST_P(FiberElementTest, LayoutInElementLegacyFirstScreenWithReadyViewport) {
@@ -23033,6 +23200,8 @@ TEST_P(FiberElementTest,
   SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
   tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
   auto page = manager->CreateFiberPage("page", 1);
+  page->MarkAsComposeLayout();
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
   manager->SetFiberPageElement(page);
   auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
       manager, ComposeElementKind::kList, base::String(), tasm.get()));
@@ -23046,6 +23215,7 @@ TEST_P(FiberElementTest,
   lynx::list::testing::FiberDataSource source;
   for (int index = 0; index < 20; ++index) {
     auto item = manager->CreateFiberElement("list-item");
+    item->MarkAsComposeLayout();
     item->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("200px"));
     item->SetStyle(CSSPropertyID::kPropertyIDHeight,
                    lepus::Value(std::to_string(60 + index * 10) + "px"));
