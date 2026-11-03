@@ -234,10 +234,12 @@ void BTSRuntimeMediator::FetchBundle(
                "fetchBundle not supported: lazy bundle loader is null"});
       return;
     }
-    lazy_bundle_loader_->FetchBundle(tasm::lazy_bundle::LynxLazyBundleRequest{
-        .url = bundle_url,
-        .resource_type = pub::LynxResourceType::kLazyBundle,
-        .response_promise = response_promise});
+    lazy_bundle_loader_->FetchBundle(
+        tasm::lazy_bundle::LynxLazyBundleRequest{
+            .url = bundle_url,
+            .resource_type = pub::LynxResourceType::kLazyBundle,
+            .response_promise = response_promise},
+        HostScriptDomain::kBTS);
     return;
   }
   if (!engine_actor_ || !engine_actor_->Impl()) {

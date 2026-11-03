@@ -317,6 +317,7 @@ void LynxShell::BuildEngineActor(
   tasm->SetRecordID(reinterpret_cast<int64_t>(this));
   tasm->SetEnableLayoutOnly(engine_build_options_.enable_layout_only_);
   if (engine_build_options_.lazy_bundle_loader_ != nullptr) {
+    engine_build_options_.lazy_bundle_loader_->SetViewId(log_context_.view_id);
     tasm->SetLazyBundleLoader(engine_build_options_.lazy_bundle_loader_);
   }
   if (engine_build_options_.white_board_ == nullptr) {
@@ -627,6 +628,7 @@ void LynxShell::InitRuntime(
   js_task_runner = runners_.GetJSTaskRunner();
   auto external_resource_loader =
       std::make_unique<ExternalResourceLoader>(resource_loader);
+  external_resource_loader->SetViewId(log_context_.view_id);
   auto external_resource_loader_ptr = external_resource_loader.get();
   auto delegate = std::make_unique<BTSRuntimeMediator>(
       facade_actor_, engine_actor_, perf_controller_actor_,

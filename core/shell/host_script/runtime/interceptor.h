@@ -23,6 +23,8 @@ enum class InterceptKind {
   kCall,
   kResult,
   kCallback,
+  kResourceFetch,
+  kResourceComplete,
   kCount
 };
 
