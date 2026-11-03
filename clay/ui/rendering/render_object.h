@@ -275,7 +275,9 @@ class RenderObject : public AbstractNode {
   void ResizeMask(size_t size);
   void ClearMask();
 
-  bool HasMask() const { return mask_data_.has_value(); }
+  bool HasMask() const {
+    return mask_data_.has_value() && !mask_data_->images.empty();
+  }
   const MaskData& Mask() const { return *mask_data_; }
 
   virtual void DecodeImages();
