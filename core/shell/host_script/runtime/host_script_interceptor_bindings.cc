@@ -11,6 +11,7 @@
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
+#include "core/shell/host_script/runtime/host_script_lynx_views.h"
 
 namespace lynx {
 namespace shell {
@@ -34,17 +35,18 @@ HostScriptInterceptorBindings::~HostScriptInterceptorBindings() {
   // The provider releases its N-API references before the environment.
   if (provider_) provider_->Uninstall();
   provider_.reset();
+  if (views_) views_->Detach();
+  views_.reset();
   if (napi_) napi_->Detach();
 }
 
 bool HostScriptInterceptorBindings::Attach(
     base::UnsafeWeakPtr<runtime::js::Runtime> runtime,
-    fml::RefPtr<fml::TaskRunner> runner) {
+    fml::RefPtr<fml::TaskRunner> runner, ProcessRuntime::Guard guard) {
   auto* js_runtime = runtime.Lock();
   if (!js_runtime) return false;
   auto proxy = runtime::js::NapiRuntimeProxy::Create(
-      *js_runtime,
-      std::make_shared<runtime::js::DelegateObserver>(std::move(runner)));
+      *js_runtime, std::make_shared<runtime::js::DelegateObserver>(runner));
   if (!proxy) {
     LOGE("Host Script interceptor: no N-API proxy for "
          << HostScriptDomainName(domain_));
@@ -55,7 +57,9 @@ bool HostScriptInterceptorBindings::Attach(
       std::make_unique<runtime::js::NapiEnvironment::Delegate>());
   napi_->SetRuntimeProxy(std::move(proxy));
   napi_->Attach();
-  provider_ = HostScriptInterceptor::Install(napi_->proxy()->Env(), domain_);
+  views_ = HostScriptLynxViews::Create(napi_->proxy()->Env(), runner, guard);
+  provider_ = HostScriptInterceptor::Install(napi_->proxy()->Env(), domain_,
+                                             nullptr, std::move(guard));
   if (!provider_) {
     LOGE("Host Script interceptor: install failed for "
          << HostScriptDomainName(domain_));

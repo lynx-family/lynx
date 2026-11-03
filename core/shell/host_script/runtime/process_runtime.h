@@ -32,6 +32,10 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   using Domain = HostScriptDomain;
   enum class InitializationMode { kEager, kLazy };
 
+  // Thread-safe; binding guards become false as soon as their generation
+  // closes.
+  using Guard = std::function<bool()>;
+
   // Creation metadata only; no native View handle crosses runtimes.
   struct ViewCreated {
     std::string view_id;
@@ -44,7 +48,7 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
    public:
     virtual ~RuntimeBindings() = default;
     virtual bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime> runtime,
-                        fml::RefPtr<fml::TaskRunner> runner) = 0;
+                        fml::RefPtr<fml::TaskRunner> runner, Guard guard) = 0;
     virtual void NotifyViewCreated(const ViewCreated& event) {}
   };
   using BindingFactory =
@@ -72,8 +76,6 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
 
   // Callbacks must not block their runner or throw C++ exceptions.
   using Completion = std::function<void(Result)>;
-  // Runs on the target runner just before evaluation; must be thread-safe.
-  using Guard = std::function<bool()>;
 
   static ProcessRuntime& GetInstance();
 
@@ -102,6 +104,7 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   // on the calling thread; callers must marshal callbacks to their own owner.
   void Evaluate(Domain domain, std::string source, std::string url,
                 Completion completion);
+  // The guard runs on the target runner just before evaluation.
   void RunOnThread(Domain domain, std::string source, std::string url,
                    Completion completion, Guard guard = {});
 

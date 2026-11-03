@@ -20,6 +20,8 @@ lynx_core_source_set("host_script") {
     "host_script_interceptor.h",
     "host_script_js_dispatcher.cc",
     "host_script_js_dispatcher.h",
+    "host_script_lynx_views.cc",
+    "host_script_lynx_views.h",
     "host_script_module.cc",
     "host_script_module.h",
     "host_script_session.cc",
