@@ -45,6 +45,7 @@ void SetPlacementZIndex(Element& element,
 }
 
 void RestoreZIndex(Element& element) {
+  if (element.will_destroy()) return;
   SetPlacementZIndex(element, element.GetElementStyle(kPropertyIDZIndex));
 }
 

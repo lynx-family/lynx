@@ -169,7 +169,10 @@ ComposeElementHandle::~ComposeElementHandle() { ClearCustomLayout(); }
 
 void ComposeElementHandle::ClearCustomLayout() {
   if (!custom_layout_) return;
-  content_element_->SetCustomLayoutFunctions({});
+  // Page teardown can precede the runtime's release of retained handles.
+  if (!content_element_->will_destroy()) {
+    content_element_->SetCustomLayoutFunctions({});
+  }
   custom_layout_->Detach();
   custom_layout_.reset();
 }
