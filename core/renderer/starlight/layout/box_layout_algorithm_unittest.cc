@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "core/renderer/starlight/layout/box_info.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -40,6 +41,26 @@ class BoxLayoutAlgorithmTest : public ::testing::Test {
     auto* box = CreateNode();
     box->GetCSSMutableStyle()->SetPaddingLeft(NLength::MakeUnitNLength(12));
     box->GetCSSMutableStyle()->SetPaddingTop(NLength::MakeUnitNLength(4));
+    box->AppendChild(child);
+    return box;
+  }
+
+  LayoutObject* CreatePropagationBox(LayoutObject* child) {
+    auto* box = CreateNode();
+    auto* style = box->GetCSSMutableStyle();
+    style->SetPaddingLeft(NLength::MakeUnitNLength(3));
+    style->SetPaddingRight(NLength::MakeUnitNLength(7));
+    style->SetPaddingTop(NLength::MakeUnitNLength(11));
+    style->SetPaddingBottom(NLength::MakeUnitNLength(13));
+    style->SetBorderLeftWidth(1);
+    style->SetBorderRightWidth(2);
+    style->SetBorderTopWidth(3);
+    style->SetBorderBottomWidth(4);
+    auto* child_style = child->GetCSSMutableStyle();
+    child_style->SetMarginLeft(NLength::MakeUnitNLength(5));
+    child_style->SetMarginRight(NLength::MakeUnitNLength(9));
+    child_style->SetMarginTop(NLength::MakeUnitNLength(6));
+    child_style->SetMarginBottom(NLength::MakeUnitNLength(10));
     box->AppendChild(child);
     return box;
   }
@@ -139,6 +160,92 @@ TEST_F(BoxLayoutAlgorithmTest, FlexRowReservesPaddedBoxWidth) {
 
 TEST_F(BoxLayoutAlgorithmTest, FlexColumnReservesPaddedBoxHeight) {
   ExpectFlexLayout(false);
+}
+
+TEST_F(BoxLayoutAlgorithmTest, PropagatedMinimumWinsOverChildMaximumAndResets) {
+  auto* child = CreateNode();
+  auto* child_style = child->GetCSSMutableStyle();
+  child_style->SetWidth(NLength::MakeUnitNLength(80));
+  child_style->SetHeight(NLength::MakeUnitNLength(40));
+  child_style->SetMaxWidth(NLength::MakeUnitNLength(100));
+  child_style->SetMaxHeight(NLength::MakeUnitNLength(50));
+  auto* box = CreatePropagationBox(child);
+  box->GetCSSMutableStyle()->SetWidth(NLength::MakeUnitNLength(200));
+  box->GetCSSMutableStyle()->SetHeight(NLength::MakeUnitNLength(120));
+  box->ReLayout();
+  EXPECT_FLOAT_EQ(80, child->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(40, child->GetBorderBoundHeight());
+  const auto original_minimum = child->GetBoxInfo()->min_size_;
+  const auto original_maximum = child->GetBoxInfo()->max_size_;
+
+  for (bool propagate : {true, false, true}) {
+    box->MarkUpdated();
+    child->MarkUpdated();
+    box->GetCSSMutableStyle()->SetXBoxPropagateMinConstraints(propagate);
+    box->MarkDirty();
+    box->ReLayout();
+    // Child border box: 200 - (3 + 7 + 1 + 2) - (5 + 9) = 173;
+    // height: 120 - (11 + 13 + 3 + 4) - (6 + 10) = 73.
+    EXPECT_FLOAT_EQ(propagate ? 173 : 80, child->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(propagate ? 73 : 40, child->GetBorderBoundHeight());
+    for (auto dimension : {kHorizontal, kVertical}) {
+      EXPECT_FLOAT_EQ(original_minimum[dimension],
+                      child->GetBoxInfo()->min_size_[dimension]);
+      EXPECT_FLOAT_EQ(original_maximum[dimension],
+                      child->GetBoxInfo()->max_size_[dimension]);
+    }
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, PropagatedMinimumDoesNotFixAnAutoSizedBox) {
+  for (bool larger_child : {false, true}) {
+    auto* child = CreateNode();
+    auto* style = child->GetCSSMutableStyle();
+    style->SetWidth(NLength::MakeUnitNLength(larger_child ? 210 : 80));
+    style->SetHeight(NLength::MakeUnitNLength(larger_child ? 140 : 40));
+    style->SetMaxWidth(NLength::MakeUnitNLength(larger_child ? 250 : 100));
+    style->SetMaxHeight(NLength::MakeUnitNLength(larger_child ? 200 : 50));
+    auto* box = CreatePropagationBox(child);
+    box->GetCSSMutableStyle()->SetMinWidth(NLength::MakeUnitNLength(160));
+    box->GetCSSMutableStyle()->SetMinHeight(NLength::MakeUnitNLength(120));
+    box->GetCSSMutableStyle()->SetXBoxPropagateMinConstraints(true);
+    box->ReLayout();
+    // Minimum child border box is (160 - 13 - 14, 120 - 31 - 16).
+    // Larger content remains free to grow, adding those box-model sums back.
+    EXPECT_FLOAT_EQ(larger_child ? 210 : 133, child->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(larger_child ? 140 : 73, child->GetBorderBoundHeight());
+    EXPECT_FLOAT_EQ(larger_child ? 237 : 160, box->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(larger_child ? 187 : 120, box->GetBorderBoundHeight());
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, NestedBoxControlsFurtherMinimumPropagation) {
+  // Zero spacing isolates the nested propagation boundary; decorated cases
+  // above cover padding, border and margins on both axes.
+  for (bool propagate_inner : {false, true}) {
+    auto* outer = CreateNode();
+    outer->GetCSSMutableStyle()->SetWidth(NLength::MakeUnitNLength(200));
+    outer->GetCSSMutableStyle()->SetHeight(NLength::MakeUnitNLength(120));
+    outer->GetCSSMutableStyle()->SetXBoxPropagateMinConstraints(true);
+    auto* inner = CreateNode();
+    inner->GetCSSMutableStyle()->SetMaxWidth(NLength::MakeUnitNLength(100));
+    inner->GetCSSMutableStyle()->SetMaxHeight(NLength::MakeUnitNLength(60));
+    inner->GetCSSMutableStyle()->SetXBoxPropagateMinConstraints(
+        propagate_inner);
+    auto* content = CreateNode();
+    content->GetCSSMutableStyle()->SetWidth(NLength::MakeUnitNLength(30));
+    content->GetCSSMutableStyle()->SetHeight(NLength::MakeUnitNLength(20));
+    content->GetCSSMutableStyle()->SetMaxWidth(NLength::MakeUnitNLength(50));
+    content->GetCSSMutableStyle()->SetMaxHeight(NLength::MakeUnitNLength(40));
+    inner->AppendChild(content);
+    outer->AppendChild(inner);
+    outer->ReLayout();
+    EXPECT_FLOAT_EQ(200, inner->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(120, inner->GetBorderBoundHeight());
+    EXPECT_FLOAT_EQ(propagate_inner ? 200 : 30, content->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(propagate_inner ? 120 : 20,
+                    content->GetBorderBoundHeight());
+  }
 }
 
 }  // namespace

@@ -40,15 +40,25 @@ void BoxLayoutAlgorithm::MeasureChildren() {
         *child, container_constraints_);
     const bool final_measure = container_->GetFinalMeasure();
     DimensionValue<float> original_min_size;
+    DimensionValue<float> original_max_size;
     if (propagate_min_constraints) {
       const DimensionValue<float> propagated_min_constraints =
           PropagatedMinConstraintsForChild(*child);
       BoxInfo* child_box_info = child->GetBoxInfo();
       original_min_size = child_box_info->min_size_;
-      child_box_info->min_size_[kHorizontal] =
-          child->ClampExactWidth(propagated_min_constraints[kHorizontal]);
-      child_box_info->min_size_[kVertical] =
-          child->ClampExactHeight(propagated_min_constraints[kVertical]);
+      original_max_size = child_box_info->max_size_;
+      child_box_info->min_size_[kHorizontal] = std::max(
+          propagated_min_constraints[kHorizontal],
+          child->ClampExactWidth(propagated_min_constraints[kHorizontal]));
+      child_box_info->min_size_[kVertical] = std::max(
+          propagated_min_constraints[kVertical],
+          child->ClampExactHeight(propagated_min_constraints[kVertical]));
+      // An incoming minimum must not be discarded by the child's preferred
+      // maximum. Keep the temporary range valid for this measurement only.
+      for (auto dimension : {kHorizontal, kVertical}) {
+        child_box_info->max_size_[dimension] = std::max(
+            original_max_size[dimension], child_box_info->min_size_[dimension]);
+      }
       child->ClearCache();
     }
 
@@ -58,6 +68,7 @@ void BoxLayoutAlgorithm::MeasureChildren() {
 
     if (propagate_min_constraints) {
       child->GetBoxInfo()->min_size_ = original_min_size;
+      child->GetBoxInfo()->max_size_ = original_max_size;
       child->ClearCache();
     }
 
