@@ -426,6 +426,23 @@ bool Animation::HasIterationEvent() const {
           element_->global_bind_event_map().count(event));
 }
 
+fml::TimePoint Animation::ResolveStyleSampleTime(
+    fml::TimePoint frame_time) const {
+  if (frame_time != GetAnimationDummyStartTime() ||
+      (state_ != State::kPlay && !pending_final_sample_) ||
+      pending_run_state_ || start_time_ == fml::TimePoint::Min() ||
+      start_time_ == GetAnimationDummyStartTime()) {
+    return frame_time;
+  }
+  // A style resolve has no new frame time. Preserve the latest timeline
+  // position, including seeks and event-only samples, in the sampler's
+  // own clock domain. A pending resume stays at its hold point until VSync.
+  if (was_paused_ && pause_time_ != fml::TimePoint::Min()) {
+    return pause_time_;
+  }
+  return start_time_ + total_paused_duration_ + current_time_at_pause_;
+}
+
 KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     fml::TimePoint& frame_time, bool events_only) {
   KeyframeEffect::KeyframeSampleResult result;
@@ -433,12 +450,13 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
   if (frame_time == fml::TimePoint::Min() || !keyframe_effect_) {
     return result;
   }
-  RebaseEffectTiming(frame_time);
+  auto sample_time = ResolveStyleSampleTime(frame_time);
+  RebaseEffectTiming(sample_time);
   if (state_ == State::kStop && !pending_final_sample_) {
     // A just-finished animation may be sampled repeatedly at the same timestamp
     // in one pipeline pass. Keep style output stable, but do not replay events
     // or fill side effects.
-    if (has_cached_sample_ && cached_sample_time_ == frame_time) {
+    if (has_cached_sample_ && cached_sample_time_ == sample_time) {
       result = cached_sample_result_;
       SuppressSampleSideEffects(result);
     }
@@ -455,17 +473,17 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
   }
 
   // Resume from pause by excluding the paused interval from active time.
-  if (state_ == State::kPlay && was_paused_) {
+  if (state_ == State::kPlay && was_paused_ &&
+      frame_time != GetAnimationDummyStartTime()) {
     total_paused_duration_ =
         total_paused_duration_ + (frame_time - pause_time_);
     was_paused_ = false;
   }
 
-  InitializeSampleTiming(frame_time);
+  InitializeSampleTiming(sample_time);
 
   // Resolve the timestamp that should be sampled. Paused animations keep
   // sampling at pause_time_ so repeated resolves return a frozen style.
-  fml::TimePoint sample_time = frame_time;
   bool suppress_paused_dummy_side_effects = false;
   if (state_ == State::kPause) {
     // The new styling pipeline may resolve a paused animation with dummy time
@@ -518,7 +536,9 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     SuppressSampleEvents(result);
     suppress_next_sample_events_ = false;
   }
-  RecordSampleTime(sample_time);
+  if (frame_time != GetAnimationDummyStartTime()) {
+    RecordSampleTime(sample_time);
+  }
   if (!events_only) {
     has_last_sample_ = true;
     last_sample_time_ = sample_time;
@@ -528,8 +548,10 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
     SuppressSampleSideEffects(result);
   }
 
-  // Keep lifecycle side effects consistent with the sampled state.
-  if (state_ == State::kPause) {
+  // A dummy resolve must also leave a pending resume paused in the effect,
+  // so its models exclude the paused interval on the next real frame.
+  if (state_ == State::kPause ||
+      (was_paused_ && frame_time == GetAnimationDummyStartTime())) {
     keyframe_effect_->SetPauseTime(pause_time_);
   } else if (keyframe_effect_->CheckHasFinished(sample_time, false)) {
     Stop();

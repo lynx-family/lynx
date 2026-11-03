@@ -274,6 +274,104 @@ TEST_F(AnimationTest, CheckStartTime) {
   EXPECT_TRUE(test_animation->start_time() == tick_time);
 }
 
+TEST_F(AnimationTest, RunningAnimationKeepsTimeAcrossDummyStyleSamples) {
+  for (bool is_transition : {false, true}) {
+    SCOPED_TRACE(is_transition);
+    auto a = InitTestAnimation();
+    animation::MockCSSKeyframeManager delegate(element_.get());
+    a->BindDelegate(&delegate);
+    a->keyframe_effect()->BindAnimationDelegate(&delegate);
+    if (is_transition) {
+      a->SetTransitionFlag();
+    }
+    auto data = InitAnimationData(base::String("test_animation"), 1000, 0,
+                                  starlight::TimingFunctionData(), 1,
+                                  starlight::AnimationFillModeType::kBoth,
+                                  starlight::AnimationDirectionType::kNormal,
+                                  starlight::AnimationPlayStateType::kRunning);
+    a->UpdateAnimationData(data);
+    a->Play(false);
+    auto dummy = animation::Animation::GetAnimationDummyStartTime();
+    auto initial = a->SampleAt(dummy);
+    EXPECT_TRUE(initial.should_send_start_event);
+    auto start =
+        fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSeconds(10));
+    EXPECT_FALSE(a->SampleAt(start).should_send_start_event);
+
+    for (int elapsed : {250, 500, 750}) {
+      auto frame = start + fml::TimeDelta::FromMilliseconds(elapsed);
+      auto sample = a->SampleAt(frame);
+      EXPECT_FALSE(sample.should_send_start_event);
+      EXPECT_FALSE(sample.should_send_end_event);
+      ASSERT_EQ(sample.styles.count(kPropertyIDOpacity), 1u);
+      EXPECT_NEAR(sample.styles.at(kPropertyIDOpacity).AsNumber(),
+                  elapsed / 1000.0, 0.001);
+      // A style update between frames must preserve the last presented value
+      // without moving the timeline backwards or replaying lifecycle events.
+      for (int i = 0; i < 2; ++i) {
+        if (i == 1) {
+          a->NotifyElementSizeUpdated();
+        }
+        auto repeated = a->SampleAt(dummy);
+        ASSERT_EQ(repeated.styles.count(kPropertyIDOpacity), 1u);
+        EXPECT_NEAR(repeated.styles.at(kPropertyIDOpacity).AsNumber(),
+                    elapsed / 1000.0, 0.001);
+        EXPECT_FALSE(repeated.should_send_start_event);
+        EXPECT_FALSE(repeated.should_send_end_event);
+        EXPECT_EQ(repeated.iteration_events_due, 0);
+        EXPECT_FALSE(repeated.should_persist_fill_styles);
+        EXPECT_FALSE(repeated.should_clear_fill_styles);
+      }
+    }
+    auto end = start + fml::TimeDelta::FromSeconds(1);
+    EXPECT_TRUE(a->SampleAt(end).should_send_end_event);
+    EXPECT_FALSE(a->SampleAt(dummy).should_send_end_event);
+    EXPECT_FALSE(a->SampleAt(end).should_send_end_event);
+  }
+}
+
+TEST_F(AnimationTest, RunningDummySamplePreservesResumeAndSeekTiming) {
+  auto a = InitTestAnimation();
+  animation::MockCSSKeyframeManager delegate(element_.get());
+  a->BindDelegate(&delegate);
+  a->keyframe_effect()->BindAnimationDelegate(&delegate);
+  auto data = InitAnimationData("test_animation", 2000, 0, {}, 1,
+                                starlight::AnimationFillModeType::kBoth,
+                                starlight::AnimationDirectionType::kNormal,
+                                starlight::AnimationPlayStateType::kRunning);
+  a->UpdateAnimationData(data);
+  a->Play(false);
+  auto start = fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSeconds(10));
+  a->SampleAt(start);
+  a->Pause();
+  auto pause = start + fml::TimeDelta::FromMilliseconds(500);
+  a->SampleAt(pause);
+  a->Play(false);
+  auto dummy = animation::Animation::GetAnimationDummyStartTime();
+  auto sample = a->SampleAt(dummy);
+  ASSERT_EQ(sample.styles.count(kPropertyIDOpacity), 1u);
+  EXPECT_NEAR(sample.styles.at(kPropertyIDOpacity).AsNumber(), 0.25, 0.001);
+  EXPECT_EQ(a->total_paused_duration(), fml::TimeDelta::Zero());
+  auto resume = pause + fml::TimeDelta::FromSeconds(2);
+  sample = a->SampleAt(resume);
+  ASSERT_EQ(sample.styles.count(kPropertyIDOpacity), 1u);
+  EXPECT_NEAR(sample.styles.at(kPropertyIDOpacity).AsNumber(), 0.25, 0.001);
+  EXPECT_EQ(a->total_paused_duration(), fml::TimeDelta::FromSeconds(2));
+
+  auto seek_reference =
+      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSeconds(20));
+  a->SeekTo(fml::TimeDelta::FromSeconds(1), seek_reference);
+  sample = a->SampleAt(dummy);
+  ASSERT_EQ(sample.styles.count(kPropertyIDOpacity), 1u);
+  EXPECT_NEAR(sample.styles.at(kPropertyIDOpacity).AsNumber(), 0.5, 0.001);
+  EXPECT_FALSE(sample.should_send_start_event);
+  EXPECT_FALSE(sample.should_send_end_event);
+  auto next = seek_reference + fml::TimeDelta::FromMilliseconds(500);
+  sample = a->SampleAt(next);
+  ASSERT_EQ(sample.styles.count(kPropertyIDOpacity), 1u);
+  EXPECT_NEAR(sample.styles.at(kPropertyIDOpacity).AsNumber(), 0.75, 0.001);
+}
+
 TEST_F(AnimationTest, PlayFromStoppedStateClearsPauseTimingForReuse) {
   auto test_animation = InitTestAnimation();
   auto test_animation_data =
@@ -1395,6 +1493,32 @@ TEST_F(BackgroundAnimationTest,
     EXPECT_FALSE(a->SampleAt(time).should_persist_fill_styles);
     EXPECT_FALSE(a->SampleAt(time).should_clear_fill_styles);
   }
+}
+
+TEST_F(BackgroundAnimationTest, DummyResolveUsesLatestEventOnlySampleTime) {
+  auto a = CreateAnimation(1000, 1);
+  BackgroundAnimationDelegate delegate;
+  a->BindDelegate(&delegate);
+  a->keyframe_effect()->BindAnimationDelegate(&delegate);
+  auto start = fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSeconds(10));
+  a->SampleAt(start);
+  auto event_time = start + fml::TimeDelta::FromMilliseconds(750);
+  a->SampleAt(event_time, true);
+  auto dummy = animation::Animation::GetAnimationDummyStartTime();
+  auto result = a->SampleAt(dummy);
+  ASSERT_EQ(result.styles.count(kPropertyIDOpacity), 1u);
+  EXPECT_NEAR(result.styles.at(kPropertyIDOpacity).AsNumber(), 0.75, 0.001);
+  EXPECT_FALSE(result.should_send_start_event);
+  EXPECT_FALSE(result.should_send_end_event);
+
+  auto end = start + fml::TimeDelta::FromSeconds(1);
+  EXPECT_TRUE(a->SampleAt(end, true).should_send_end_event);
+  result = a->SampleAt(dummy);
+  ASSERT_EQ(result.styles.count(kPropertyIDOpacity), 1u);
+  EXPECT_FLOAT_EQ(result.styles.at(kPropertyIDOpacity).GetNumber(), 1.f);
+  EXPECT_TRUE(result.should_persist_fill_styles);
+  EXPECT_FALSE(result.should_send_start_event);
+  EXPECT_FALSE(result.should_send_end_event);
 }
 
 TEST_F(BackgroundAnimationTest, TransitionFinishesOnForegroundFrame) {
