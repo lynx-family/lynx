@@ -10,10 +10,9 @@
 namespace lynx {
 namespace shell {
 
-// A non-owning, platform-specific proxy for a platform-created LynxView.
-// Operations return whether the request was accepted, never page completion.
-// Implementations copy request values before returning, recheck the target on
-// execution, and report asynchronous failures/lifecycle through session Notify.
+// A non-owning, platform-specific proxy for a platform-created LynxView, held
+// by LynxViewRegistry. Operations run synchronously on the platform UI thread
+// and report asynchronous failures and lifecycle through the registry.
 class LynxViewRefProxy {
  public:
   virtual ~LynxViewRefProxy() = default;
