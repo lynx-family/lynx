@@ -325,9 +325,10 @@ class Element : public lepus::RefCounted,
   std::vector<float> ScrollBy(float width, float height);
   std::vector<float> GetRectToLynxView();
   std::vector<float> GetRectToScreen();
-  void Invoke(const std::string& method, const pub::Value& params,
-              const std::function<void(int32_t code, const pub::Value& data)>&
-                  callback);
+  LYNX_EXPORT_FOR_DEVTOOL void Invoke(
+      const std::string& method, const pub::Value& params,
+      const std::function<void(int32_t code, const pub::Value& data)>&
+          callback);
   void AppendPendingInvokeTask(base::closure task);
   void EnqueueInvoke(
       const std::string& method, const pub::Value& params,
