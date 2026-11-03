@@ -209,6 +209,7 @@ class Fragment : public BaseElementContainer {
 
   void ReconstructEventTargetTreeForExposure() const;
 
+  void ResetFlattenedDescendantRedrawState();
   void DispatchUpdateDisplayList();
 
   struct BackgroundImageResource {
