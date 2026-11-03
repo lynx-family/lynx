@@ -865,6 +865,17 @@ bool LynxDevToolMediator::RunOnTASMThread(lynx::base::closure&& closure,
   return false;
 }
 
+void LynxDevToolMediator::LynxInvokeUIMethod(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = element_executor_;
+  if (!executor || !RunOnTASMThread([responder, params, executor] {
+        executor->LynxInvokeUIMethod(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::InternalError,
+                         "The TASM thread is not available");
+  }
+}
+
 bool LynxDevToolMediator::RunOnUIThread(lynx::base::closure&& closure,
                                         bool run_now) {
   if (ui_task_runner_) {
