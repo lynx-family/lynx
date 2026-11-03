@@ -155,6 +155,7 @@ lepus::Value LoadEvent(const std::string& view) {
   request.SetProperty("source", source);
   lepus::Value event(lepus::Dictionary::Create());
   event.SetProperty("viewId", lepus::Value(view));
+  event.SetProperty("origin", lepus::Value("host"));
   event.SetProperty("request", request);
   return event;
 }

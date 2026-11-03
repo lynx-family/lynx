@@ -4,6 +4,7 @@
 package com.lynx.tasm;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.CalledByNative;
@@ -28,6 +29,8 @@ final class LynxHostScriptViewHooks {
   private static volatile boolean sEnabled;
   // Set once by the debug engine; Release engines never register Views.
   private static volatile boolean sRegistryAvailable;
+  // The View whose Host Script command is running, until its first load or update consumes it.
+  private static long sScriptCommandView = LynxLogContext.UNAVAILABLE_ID;
 
   private LynxHostScriptViewHooks() {}
 
@@ -106,13 +109,31 @@ final class LynxHostScriptViewHooks {
     }
   }
 
-  // Executes one queued command and reports asynchronous platform errors.
-  private static void runScriptCommand(long viewId, Runnable command) {
+  /**
+   * Runs one Host Script command synchronously on the UI thread. When {@code marksOrigin} is set,
+   * the first load or update of the same View inside the command reports origin "host-script";
+   * nested host operations, including those on other Views, keep origin "host".
+   */
+  @VisibleForTesting
+  static void runScriptCommand(long viewId, boolean marksOrigin, Runnable command) {
+    long previous = sScriptCommandView;
+    sScriptCommandView = marksOrigin ? viewId : LynxLogContext.UNAVAILABLE_ID;
     try {
       command.run();
     } catch (Throwable throwable) {
       nativeNotifyView(viewId, "error", -1, throwable.toString());
+    } finally {
+      sScriptCommandView = previous;
     }
+  }
+
+  @VisibleForTesting
+  static boolean consumeScriptOrigin(long viewId) {
+    if (viewId == LynxLogContext.UNAVAILABLE_ID || sScriptCommandView != viewId) {
+      return false;
+    }
+    sScriptCommandView = LynxLogContext.UNAVAILABLE_ID;
+    return true;
   }
 
   private static long viewId(@Nullable LynxTemplateRender render) {
@@ -131,6 +152,8 @@ final class LynxHostScriptViewHooks {
    * Dispatches view.loadTemplate before the template is fetched. SSR loads are not covered.
    */
   static void beforeLoadTemplate(LynxTemplateRender render, LynxLoadMeta meta) {
+    // Consume the command origin even when this load is not intercepted.
+    boolean fromScript = consumeScriptOrigin(viewId(render));
     if (!isEnabled() || meta.loadMode == LynxLoadMode.RENDER_SSR
         || meta.loadMode == LynxLoadMode.HYDRATE_SSR) {
       commitUrl(render, meta.url);
@@ -151,7 +174,7 @@ final class LynxHostScriptViewHooks {
     String url = meta.url == null ? "" : meta.url;
     Object[] patch = nativeDispatchLoadTemplate(render.getLogContextSnapshot().viewId,
         url.getBytes(StandardCharsets.UTF_8), source, size, nativePtr(meta.initialData),
-        nativePtr(meta.globalProps));
+        nativePtr(meta.globalProps), fromScript);
     if (patch != null) {
       try {
         applyLoadPatch(meta, new JSONObject(new String((byte[]) patch[0], StandardCharsets.UTF_8)),
@@ -165,11 +188,12 @@ final class LynxHostScriptViewHooks {
 
   /** Dispatches view.updateMetaData before platform caches consume the update fragments. */
   static LynxUpdateMeta beforeUpdateMetaData(LynxTemplateRender render, LynxUpdateMeta meta) {
+    boolean fromScript = consumeScriptOrigin(viewId(render));
     if (!isEnabled()) {
       return meta;
     }
     byte[] patch = nativeDispatchUpdateMetaData(render.getLogContextSnapshot().viewId,
-        nativePtr(meta.getUpdatedData()), nativePtr(meta.getUpdatedGlobalProps()));
+        nativePtr(meta.getUpdatedData()), nativePtr(meta.getUpdatedGlobalProps()), fromScript);
     if (patch == null) {
       return meta;
     }
@@ -249,7 +273,7 @@ final class LynxHostScriptViewHooks {
   @CalledByNative
   private static void loadTemplate(LynxView view, long viewId, byte[] templateBytes, String url,
       String initialDataJson, String globalPropsJson, String processorName, boolean readOnly) {
-    runScriptCommand(viewId, () -> {
+    runScriptCommand(viewId, true, () -> {
       LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
       builder.setUrl(url);
       if (templateBytes != null && templateBytes.length > 0) {
@@ -270,7 +294,7 @@ final class LynxHostScriptViewHooks {
   @CalledByNative
   private static void loadSSR(LynxView view, long viewId, byte[] ssrBytes, String url,
       String initialDataJson, boolean hydrate) {
-    runScriptCommand(viewId, () -> {
+    runScriptCommand(viewId, false, () -> {
       TemplateData initialData = createTemplateData(initialDataJson, null, false);
       if (hydrate) {
         view.ssrHydrate(ssrBytes, url, initialData);
@@ -283,7 +307,7 @@ final class LynxHostScriptViewHooks {
   @CalledByNative
   private static void updateMetaData(
       LynxView view, long viewId, String dataJson, String globalPropsJson) {
-    runScriptCommand(viewId, () -> {
+    runScriptCommand(viewId, true, () -> {
       LynxUpdateMeta.Builder builder = new LynxUpdateMeta.Builder();
       if (dataJson != null) {
         builder.setUpdatedData(createTemplateData(dataJson, null, false));
@@ -298,7 +322,7 @@ final class LynxHostScriptViewHooks {
   @CalledByNative
   private static void reloadTemplate(
       LynxView view, long viewId, String dataJson, String globalPropsJson) {
-    runScriptCommand(viewId, () -> {
+    runScriptCommand(viewId, false, () -> {
       TemplateData data = createTemplateData(dataJson, null, false);
       TemplateData globalProps = createTemplateData(globalPropsJson, null, false);
       view.reloadTemplate(data == null ? TemplateData.empty() : data, globalProps);
@@ -307,7 +331,7 @@ final class LynxHostScriptViewHooks {
 
   @CalledByNative
   private static void sendGlobalEvent(LynxView view, long viewId, String name, String paramsJson) {
-    runScriptCommand(viewId, () -> {
+    runScriptCommand(viewId, false, () -> {
       JavaOnlyArray params;
       try {
         params = (JavaOnlyArray) eventParam(new JSONArray(paramsJson));
@@ -368,10 +392,10 @@ final class LynxHostScriptViewHooks {
 
   @Nullable
   private static native byte[] nativeDispatchUpdateMetaData(
-      long viewId, long updateData, long globalProps);
+      long viewId, long updateData, long globalProps, boolean fromScript);
 
   // Returns {patch JSON bytes, replacement template bytes or null}, or null when unchanged.
   @Nullable
-  private static native Object[] nativeDispatchLoadTemplate(
-      long viewId, byte[] url, int source, int size, long initialData, long globalProps);
+  private static native Object[] nativeDispatchLoadTemplate(long viewId, byte[] url, int source,
+      int size, long initialData, long globalProps, boolean fromScript);
 }

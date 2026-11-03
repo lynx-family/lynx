@@ -68,6 +68,7 @@ BASE_STATIC_STRING_DECL(kUrl, "url");
 BASE_STATIC_STRING_DECL(kSource, "source");
 BASE_STATIC_STRING_DECL(kInitialData, "initialData");
 BASE_STATIC_STRING_DECL(kBytes, "bytes");
+BASE_STATIC_STRING_DECL(kOrigin, "origin");
 
 // Source kinds of LynxHostScriptViewHooks.
 constexpr const char* kSourceKinds[] = {"url", "bytes", "buffer", "bundle"};
@@ -84,6 +85,10 @@ ScopedLocalJavaRef<jstring> ToJavaString(JNIEnv* env,
   return JNIConvertHelper::ConvertToJNIString(
       env, reinterpret_cast<const jchar*>(utf16.data()),
       static_cast<jsize>(utf16.size()));
+}
+
+lynx::lepus::Value Origin(jboolean from_script) {
+  return lynx::lepus::Value(from_script ? "host-script" : "host");
 }
 
 // Runs registry commands on the UI thread against a weakly referenced View.
@@ -222,8 +227,8 @@ static void NotifyView(JNIEnv* env, jclass, jlong view_id, jstring event,
 }
 
 static jbyteArray DispatchUpdateMetaData(JNIEnv* env, jclass, jlong view_id,
-                                         jlong update_data,
-                                         jlong global_props) {
+                                         jlong update_data, jlong global_props,
+                                         jboolean from_script) {
   using lynx::lepus::Value;
   if (!Interceptor::IsEnabled()) return nullptr;
   Value request(lynx::lepus::Dictionary::Create());
@@ -233,6 +238,7 @@ static jbyteArray DispatchUpdateMetaData(JNIEnv* env, jclass, jlong view_id,
     request.SetProperty(kGlobalProps, *reinterpret_cast<Value*>(global_props));
   Value event(lynx::lepus::Dictionary::Create());
   event.SetProperty(kViewId, Value(std::to_string(view_id)));
+  event.SetProperty(kOrigin, Origin(from_script));
   event.SetProperty(kRequest, request);
   auto patch = DispatchView(InterceptKind::kUpdateMetaData, std::move(event));
   if (!patch.IsTable() || !patch.GetLength()) return nullptr;
@@ -245,8 +251,8 @@ static jbyteArray DispatchUpdateMetaData(JNIEnv* env, jclass, jlong view_id,
 
 static jobjectArray DispatchLoadTemplate(JNIEnv* env, jclass, jlong view_id,
                                          jbyteArray url, jint source, jint size,
-                                         jlong initial_data,
-                                         jlong global_props) {
+                                         jlong initial_data, jlong global_props,
+                                         jboolean from_script) {
   using lynx::lepus::Value;
   if (!Interceptor::IsEnabled() || source < 0 ||
       source >= static_cast<jint>(std::size(kSourceKinds)))
@@ -264,6 +270,7 @@ static jobjectArray DispatchLoadTemplate(JNIEnv* env, jclass, jlong view_id,
     request.SetProperty(kGlobalProps, *reinterpret_cast<Value*>(global_props));
   Value event(lynx::lepus::Dictionary::Create());
   event.SetProperty(kViewId, Value(std::to_string(view_id)));
+  event.SetProperty(kOrigin, Origin(from_script));
   event.SetProperty(kRequest, request);
   auto patch = DispatchView(InterceptKind::kLoadTemplate, std::move(event));
   if (!patch.IsTable()) return nullptr;

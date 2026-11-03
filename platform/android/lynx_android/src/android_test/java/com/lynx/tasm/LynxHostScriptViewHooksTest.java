@@ -18,7 +18,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -92,6 +95,32 @@ public class LynxHostScriptViewHooksTest {
   }
 
   private static native boolean nativeIsViewRegistered(long viewId);
+
+  @Test
+  public void scriptOriginMarksOnlyTheFirstOperationOfItsView() {
+    List<Boolean> origins = new ArrayList<>();
+    LynxHostScriptViewHooks.runScriptCommand(7, true, () -> {
+      origins.add(LynxHostScriptViewHooks.consumeScriptOrigin(8));
+      origins.add(LynxHostScriptViewHooks.consumeScriptOrigin(7));
+      // A nested host operation on the same View keeps origin "host".
+      origins.add(LynxHostScriptViewHooks.consumeScriptOrigin(7));
+    });
+    origins.add(LynxHostScriptViewHooks.consumeScriptOrigin(7));
+    LynxHostScriptViewHooks.runScriptCommand(
+        7, false, () -> origins.add(LynxHostScriptViewHooks.consumeScriptOrigin(7)));
+    assertEquals(Arrays.asList(false, true, false, false, false), origins);
+  }
+
+  @Test
+  public void nestedScriptCommandsRestoreTheOuterOrigin() {
+    List<Boolean> origins = new ArrayList<>();
+    LynxHostScriptViewHooks.runScriptCommand(7, true, () -> {
+      LynxHostScriptViewHooks.runScriptCommand(
+          8, true, () -> origins.add(LynxHostScriptViewHooks.consumeScriptOrigin(8)));
+      origins.add(LynxHostScriptViewHooks.consumeScriptOrigin(7));
+    });
+    assertEquals(Arrays.asList(true, true), origins);
+  }
 
   @Test
   public void disabledInterceptorsKeepRequestsWithoutAccessingRender() {
