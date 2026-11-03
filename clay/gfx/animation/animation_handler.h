@@ -11,10 +11,16 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/include/fml/memory/weak_ptr.h"
+
 namespace clay {
 
 class AnimationHandler {
  public:
+  fml::WeakPtr<AnimationHandler> GetWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
+
   /**
    * Callbacks that receives notifications for animation timing.
    */
@@ -125,6 +131,7 @@ class AnimationHandler {
   int64_t last_frame_time_ = -1;
   int64_t scheduled_lifecycle_time_ = -1;
   uint64_t lifecycle_schedule_id_ = 0;
+  fml::WeakPtrFactory<AnimationHandler> weak_factory_{this};
 };
 
 }  // namespace clay

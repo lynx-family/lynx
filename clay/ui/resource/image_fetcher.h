@@ -23,6 +23,7 @@ namespace clay {
 
 class ResourceLoaderIntercept;
 class ServiceManager;
+class AnimationHandler;
 
 class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
  public:
@@ -60,6 +61,10 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
 
   void ClearCache();
 
+  void SetAnimationHandler(fml::WeakPtr<AnimationHandler> handler) {
+    animation_handler_ = std::move(handler);
+  }
+
  protected:
   fml::WeakPtr<ImageFetcher> GetWeakPtr() const {
     return weak_factory_.GetWeakPtr();
@@ -91,6 +96,7 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
   std::shared_ptr<ServiceManager> service_manager_;
   clay::TaskRunners task_runners_;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
+  fml::WeakPtr<AnimationHandler> animation_handler_;
   std::unordered_map<std::string, std::shared_ptr<BaseImage>> active_image_map_;
   std::shared_ptr<ImageCache<BaseImage>> inactive_image_cache_;
   std::unordered_map<std::string, std::shared_ptr<ResourceLoader>>

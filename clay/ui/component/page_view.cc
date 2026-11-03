@@ -2257,6 +2257,8 @@ fml::RefPtr<ImageFetcher> PageView::GetImageResourceFetcher() {
     image_resource_fetcher_ =
         ImageFetcher::Create(GetResourceLoaderIntercept(), GetTaskRunners(),
                              unref_queue_, GetServiceManager());
+    image_resource_fetcher_->SetAnimationHandler(
+        animation_handler_->GetWeakPtr());
   }
   return image_resource_fetcher_;
 }
@@ -2264,6 +2266,10 @@ fml::RefPtr<ImageFetcher> PageView::GetImageResourceFetcher() {
 void PageView::SetImageResourceFetcher(
     fml::RefPtr<ImageFetcher> image_resource_fetcher) {
   image_resource_fetcher_ = image_resource_fetcher;
+  if (image_resource_fetcher_) {
+    image_resource_fetcher_->SetAnimationHandler(
+        animation_handler_->GetWeakPtr());
+  }
 }
 #endif  // ENABLE_SKITY
 

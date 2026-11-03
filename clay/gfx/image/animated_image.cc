@@ -12,14 +12,14 @@ namespace clay {
 
 std::shared_ptr<AnimatedImage> AnimatedImage::Make(
     fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
-    fml::RefPtr<fml::TaskRunner> task_runner,
-    std::shared_ptr<PlatformImage> platform_image) {
+    std::shared_ptr<PlatformImage> platform_image,
+    fml::WeakPtr<AnimationHandler> animation_handler) {
   auto image = std::shared_ptr<AnimatedImage>(new AnimatedImage);
   image->type_ = ImageType::kAnimated;
   image->image_fetcher_ = image_fetcher;
   image->url_ = std::move(url);
   image->image_ = std::move(platform_image);
-  image->task_runner_ = std::move(task_runner);
+  image->animation_handler_ = std::move(animation_handler);
   image->orig_info_ =
       ImageInfo::makeWH(image->image_->GetWidth(), image->image_->GetHeight());
   return image;
@@ -52,7 +52,7 @@ AnimatedImageInstance::AnimatedImageInstance(
     std::shared_ptr<AnimatedImage> image)
     : BaseImageInstance(image) {
   player_ = std::make_unique<AnimatedImagePlayer>(
-      image->image_->CreateAnimation(), image->task_runner_,
+      image->image_->CreateAnimation(), image->animation_handler_,
       [this] { OnFrameChanged(); }, [this] { return IsVisible(); }, this);
   if (!player_->IsValid()) {
     FML_LOG(ERROR) << "AnimatedImageInstance: failed to create animation";
@@ -68,7 +68,7 @@ AnimatedImageInstance::AnimatedImageInstance(const AnimatedImageInstance& other)
       loop_count_(other.loop_count_) {
   auto image = std::static_pointer_cast<AnimatedImage>(image_);
   player_ = std::make_unique<AnimatedImagePlayer>(
-      image->image_->CreateAnimation(), image->task_runner_,
+      image->image_->CreateAnimation(), image->animation_handler_,
       [this] { OnFrameChanged(); }, [this] { return IsVisible(); }, this);
   if (!player_->IsValid()) {
     FML_LOG(ERROR) << "AnimatedImageInstance: failed to clone animation";
@@ -129,14 +129,17 @@ void AnimatedImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
   uploaded_info_ = render_info;
   std::weak_ptr<int> weak_lifetime = lifetime_;
   auto animation = player_->GetAnimation();
+  const int frame_index = player_->GetCurrentFrameIndex();
   unref_queue->GetTaskRunner()->PostTask(
       [context = unref_queue->GetContext(), image, render_info,
        mipmapped = need_mipmapped, weak_lifetime,
-       animation = std::move(animation)]() {
+       animation = std::move(animation), frame_index]() {
         if (weak_lifetime.expired()) {
           return;
         }
-        auto pixmap = animation->ToBitmap(render_info);
+        // Each deferred image captures its own frame index. Later playback
+        // updates cannot change the pixels decoded for an earlier scene.
+        auto pixmap = animation->DecodeFrame(frame_index, render_info);
         if (!pixmap) {
           FML_LOG(ERROR) << "AnimatedImageInstance::Upload: Bitmap is null";
           return;

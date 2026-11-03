@@ -2,210 +2,40 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <deque>
+#include <algorithm>
+#include <functional>
+#include <limits>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "base/include/fml/message_loop.h"
-#include "base/include/fml/message_loop_impl.h"
 #include "clay/gfx/image/animated_image_player.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
 namespace {
 
-struct AnimationState {
-  bool playing = false;
-  bool paused = false;
-  int loop_count = 0;
-  int start_count = 0;
-  int stop_count = 0;
-  std::deque<PlatformImageAnimation::FrameResult> frames;
-};
-
+// No playback cursor or control methods: platforms only expose frame data.
 class FakePlatformImageAnimation final : public PlatformImageAnimation {
  public:
-  explicit FakePlatformImageAnimation(std::shared_ptr<AnimationState> state)
-      : state_(std::move(state)) {}
+  explicit FakePlatformImageAnimation(std::vector<int64_t> durations)
+      : durations_(std::move(durations)) {}
 
-  int64_t GetDuration() override { return 100; }
-  std::shared_ptr<skity::Pixmap> ToBitmap(
-      const ImageInfo& render_info) override {
+  int GetFrameCount() const override { return durations_.size(); }
+  int64_t GetFrameDuration(int frame_index) const override {
+    return durations_[frame_index];
+  }
+  std::shared_ptr<skity::Pixmap> DecodeFrame(
+      int frame_index, const ImageInfo& render_info) override {
+    ++decode_count;
     return nullptr;
   }
-  FrameResult DrawFrame() override {
-    if (!state_->playing) {
-      return FrameResult::kNoFrame;
-    }
-    if (state_->frames.empty()) {
-      return FrameResult::kFrameReady;
-    }
-    auto result = state_->frames.front();
-    state_->frames.pop_front();
-    if (result == FrameResult::kFinalLoopComplete) {
-      state_->playing = false;
-    }
-    return result;
-  }
 
-  void SetLoopCount(int loop_count) override {
-    state_->loop_count = loop_count;
-  }
-
-  void StartAnimation() override {
-    state_->start_count++;
-    state_->playing = true;
-    state_->paused = false;
-  }
-
-  void StopAnimation() override {
-    state_->stop_count++;
-    state_->playing = false;
-    state_->paused = false;
-  }
-
-  void PauseAnimation() override {
-    state_->playing = false;
-    state_->paused = true;
-  }
-
-  void ResumeAnimation() override {
-    state_->playing = true;
-    state_->paused = false;
-  }
+  int decode_count = 0;
 
  private:
-  std::shared_ptr<AnimationState> state_;
-};
-
-class FakePlatformImage final : public PlatformImage {
- public:
-  int GetWidth() override { return 100; }
-  int GetHeight() override { return 100; }
-  skity::ColorType GetColorType() override { return skity::ColorType::kRGBA; }
-  skity::AlphaType GetAlphaType() override {
-    return skity::AlphaType::kPremul_AlphaType;
-  }
-  std::shared_ptr<skity::Pixmap> ToBitmap(
-      const ImageInfo& render_info) override {
-    return nullptr;
-  }
-  bool IsAnimated() override { return true; }
-
-  std::unique_ptr<PlatformImageAnimation> CreateAnimation() override {
-    auto state = std::make_shared<AnimationState>();
-    animation_states.push_back(state);
-    return std::make_unique<FakePlatformImageAnimation>(std::move(state));
-  }
-
-  std::vector<std::shared_ptr<AnimationState>> animation_states;
-};
-
-TEST(AnimatedImagePlayerTest, SharedResourceCreatesIndependentPlayers) {
-  fml::MessageLoop::EnsureInitializedForCurrentThread();
-  auto platform_image = std::make_shared<FakePlatformImage>();
-  auto task_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
-  AnimatedImagePlayer first(
-      platform_image->CreateAnimation(), task_runner, [] {},
-      [] { return false; });
-  AnimatedImagePlayer second(
-      platform_image->CreateAnimation(), task_runner, [] {},
-      [] { return false; });
-
-  ASSERT_EQ(platform_image->animation_states.size(), 2u);
-  first.SetAutoPlay(true);
-  second.SetAutoPlay(true);
-  EXPECT_TRUE(platform_image->animation_states[0]->playing);
-  EXPECT_TRUE(platform_image->animation_states[1]->playing);
-
-  first.PauseAnimation();
-  EXPECT_TRUE(platform_image->animation_states[0]->paused);
-  EXPECT_FALSE(platform_image->animation_states[0]->playing);
-  EXPECT_TRUE(platform_image->animation_states[1]->playing);
-
-  second.SetLoopCount(3);
-  EXPECT_EQ(platform_image->animation_states[0]->loop_count, 0);
-  EXPECT_EQ(platform_image->animation_states[1]->loop_count, 3);
-
-  first.ResumeAnimation();
-  second.StopAnimation();
-  EXPECT_TRUE(platform_image->animation_states[0]->playing);
-  EXPECT_FALSE(platform_image->animation_states[1]->playing);
-}
-
-TEST(AnimatedImagePlayerTest, AutoplayStateIsIndependent) {
-  fml::MessageLoop::EnsureInitializedForCurrentThread();
-  auto platform_image = std::make_shared<FakePlatformImage>();
-  auto task_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
-  AnimatedImagePlayer first(
-      platform_image->CreateAnimation(), task_runner, [] {},
-      [] { return false; });
-  AnimatedImagePlayer second(
-      platform_image->CreateAnimation(), task_runner, [] {},
-      [] { return false; });
-
-  first.SetAutoPlay(true);
-  second.SetAutoPlay(false);
-
-  EXPECT_TRUE(platform_image->animation_states[0]->playing);
-  EXPECT_FALSE(platform_image->animation_states[1]->playing);
-}
-
-TEST(AnimatedImagePlayerTest, SetAutoPlayIsIdempotent) {
-  fml::MessageLoop::EnsureInitializedForCurrentThread();
-  auto platform_image = std::make_shared<FakePlatformImage>();
-  AnimatedImagePlayer player(
-      platform_image->CreateAnimation(),
-      fml::MessageLoop::GetCurrent().GetTaskRunner(), [] {},
-      [] { return false; });
-  auto state = platform_image->animation_states[0];
-
-  player.SetAutoPlay(false);
-  EXPECT_EQ(state->start_count, 0);
-  EXPECT_EQ(state->stop_count, 0);
-
-  player.SetAutoPlay(true);
-  EXPECT_TRUE(state->playing);
-  EXPECT_EQ(state->start_count, 1);
-  EXPECT_EQ(state->stop_count, 1);
-
-  player.SetAutoPlay(true);
-  EXPECT_EQ(state->start_count, 1);
-  EXPECT_EQ(state->stop_count, 1);
-
-  player.SetAutoPlay(false);
-  EXPECT_FALSE(state->playing);
-  EXPECT_EQ(state->start_count, 1);
-  EXPECT_EQ(state->stop_count, 2);
-
-  player.SetAutoPlay(false);
-  EXPECT_EQ(state->start_count, 1);
-  EXPECT_EQ(state->stop_count, 2);
-}
-
-class AnimationTaskRunner : public fml::TaskRunner {
- public:
-  AnimationTaskRunner() : TaskRunner(nullptr) {}
-
-  void PostDelayedTask(lynx::base::closure task,
-                       fml::TimeDelta delay) override {
-    tasks_.push_back(std::move(task));
-  }
-
-  bool RunsTasksOnCurrentThread() override { return true; }
-
-  void RunNext() {
-    ASSERT_FALSE(tasks_.empty());
-    auto task = std::move(tasks_.front());
-    tasks_.pop_front();
-    task();
-  }
-
-  bool HasTasks() const { return !tasks_.empty(); }
-
- private:
-  std::deque<lynx::base::closure> tasks_;
+  std::vector<int64_t> durations_;
 };
 
 class RecordingAnimationListener : public ImageAnimationListener {
@@ -234,16 +64,14 @@ class RecordingAnimationListener : public ImageAnimationListener {
   std::vector<std::string>& events_;
 };
 
-class AnimatedImageCallbacksTest : public ::testing::Test {
+class AnimatedImagePlayerTest : public ::testing::Test {
  protected:
-  using FrameResult = PlatformImageAnimation::FrameResult;
+  void SetUp() override { CreatePlayer({100, 200, 50}); }
 
-  void SetUp() override {
-    fml::MessageLoop::EnsureInitializedForCurrentThread();
-    task_runner_ = fml::MakeRefCounted<AnimationTaskRunner>();
-    state_ = std::make_shared<AnimationState>();
+  void CreatePlayer(std::vector<int64_t> durations) {
     player_ = std::make_unique<AnimatedImagePlayer>(
-        std::make_unique<FakePlatformImageAnimation>(state_), task_runner_,
+        std::make_unique<FakePlatformImageAnimation>(std::move(durations)),
+        handler_.GetWeakPtr(),
         [this] {
           events_.push_back("frame");
           if (on_frame_) {
@@ -253,134 +81,319 @@ class AnimatedImageCallbacksTest : public ::testing::Test {
         [this] { return visible_; }, &listener_);
   }
 
+  void Tick(int64_t time) { handler_.DoAnimationFrame(time); }
+
+  AnimationHandler handler_;
   std::vector<std::string> events_;
   RecordingAnimationListener listener_{events_};
-  fml::RefPtr<AnimationTaskRunner> task_runner_;
-  std::shared_ptr<AnimationState> state_;
   bool visible_ = true;
   std::function<void()> on_frame_;
   std::unique_ptr<AnimatedImagePlayer> player_;
 };
 
-TEST_F(AnimatedImageCallbacksTest,
-       StartAndResumeNotifyOnlyPlaybackTransitions) {
+TEST_F(AnimatedImagePlayerTest, UsesExternalTimeAndUnequalFrameDurations) {
+  player_->StartAnimation();
+  Tick(1000);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+  Tick(1099);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+  Tick(1100);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+  Tick(1299);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+  Tick(1300);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 2);
+  Tick(1350);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame", "frame",
+                                               "frame", "frame", "loop"}));
+  // Advancing time never performs decoding on the animation thread.
+  auto animation = std::static_pointer_cast<FakePlatformImageAnimation>(
+      player_->GetAnimation());
+  EXPECT_EQ(animation->decode_count, 0);
+}
+
+TEST_F(AnimatedImagePlayerTest, ZeroTimestampIsAValidPlaybackOrigin) {
+  player_->StartAnimation();
+  Tick(0);
+  Tick(100);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+}
+
+TEST_F(AnimatedImagePlayerTest, DuplicateTicksAndSameFrameDoNotInvalidate) {
+  player_->StartAnimation();
+  Tick(1000);
+  Tick(1100);
+  const auto events = events_;
+  Tick(1100);
+  Tick(1150);
+  EXPECT_EQ(events_, events);
+}
+
+TEST_F(AnimatedImagePlayerTest, TimeJumpSelectsTargetAndCoalescesMissedLoops) {
+  player_->StartAnimation();
+  Tick(1000);
+  Tick(2500);  // Four loops plus 100 ms, directly selects frame 1.
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+  EXPECT_EQ(events_,
+            (std::vector<std::string>{"start", "frame", "frame", "loop"}));
+  EXPECT_TRUE(player_->IsPlaying());
+}
+
+TEST_F(AnimatedImagePlayerTest, LastFrameRemainsForItsEntireDuration) {
+  player_->SetLoopCount(1);
+  player_->StartAnimation();
+  Tick(1000);
+  Tick(1300);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 2);
+  EXPECT_TRUE(player_->IsPlaying());
+  Tick(1349);
+  EXPECT_TRUE(player_->IsPlaying());
+  Tick(1350);
+  EXPECT_FALSE(player_->IsPlaying());
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 2);
+  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame", "frame",
+                                               "loop", "final"}));
+  EXPECT_EQ(handler_.GetAnimationCount(), 0);
+  player_->DoAnimationFrame(1700);
+  EXPECT_EQ(events_.back(), "final");
+  EXPECT_EQ(events_.size(), 5u);
+}
+
+TEST_F(AnimatedImagePlayerTest, FiniteLoopJumpClampsToFinalFrame) {
+  player_->SetLoopCount(2);
+  player_->StartAnimation();
+  Tick(0);
+  Tick(100000);
+  EXPECT_FALSE(player_->IsPlaying());
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 2);
+  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame", "frame",
+                                               "loop", "final"}));
+}
+
+TEST_F(AnimatedImagePlayerTest, PauseResumePreservesPositionWithinFrame) {
+  player_->StartAnimation();
+  Tick(1000);
+  Tick(1150);
+  player_->PauseAnimation();
+  EXPECT_EQ(handler_.GetAnimationCount(), 0);
+  Tick(5000);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+  player_->ResumeAnimation();
+  Tick(6000);  // Resumes at 150 ms, not at the start of frame 1.
+  Tick(6149);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+  Tick(6150);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 2);
+  EXPECT_TRUE(player_->IsPlaying());
+}
+
+TEST_F(AnimatedImagePlayerTest, RestartResetsTimelineAndCompletion) {
+  player_->SetLoopCount(1);
+  player_->StartAnimation();
+  Tick(1000);
+  Tick(1350);
+  player_->StartAnimation();
+  EXPECT_TRUE(player_->IsPlaying());
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+  Tick(5000);
+  Tick(5100);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+  Tick(5350);
+  EXPECT_FALSE(player_->IsPlaying());
+  EXPECT_EQ(events_.back(), "final");
+}
+
+TEST_F(AnimatedImagePlayerTest, RollbackResamplesWithoutReplayingLoopEvents) {
+  player_->StartAnimation();
+  Tick(1000);
+  Tick(1500);  // Loop 1, frame 1.
+  Tick(1050);  // Seek backwards to frame 0.
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+  Tick(1500);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+  EXPECT_EQ(std::count(events_.begin(), events_.end(), "loop"), 1);
+}
+
+TEST_F(AnimatedImagePlayerTest, SeekBeforeOriginClampsToFirstFrame) {
+  player_->StartAnimation();
+  Tick(1000);
+  Tick(1300);
+  Tick(500);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+}
+
+TEST_F(AnimatedImagePlayerTest, VisibilitySuspendsTicksThenCatchesUp) {
+  int wakeups = 0;
+  handler_.SetAnimationCallback([&](int64_t) { ++wakeups; });
+  player_->StartAnimation();
+  Tick(1000);
   visible_ = false;
+  EXPECT_FALSE(handler_.DoAnimationFrame(1100));
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+  EXPECT_EQ(handler_.GetAnimationCount(), 1);
+  visible_ = true;
+  player_->EnsureAnimationScheduled();
+  EXPECT_EQ(wakeups, 2);
+  Tick(1500);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+  EXPECT_EQ(std::count(events_.begin(), events_.end(), "start"), 1);
+}
+
+TEST_F(AnimatedImagePlayerTest, AutoplayAndResumeAreIdempotent) {
   player_->SetAutoPlay(false);
   EXPECT_TRUE(events_.empty());
   player_->SetAutoPlay(true);
   player_->SetAutoPlay(true);
   player_->ResumeAnimation();
   EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame"}));
-
   player_->PauseAnimation();
   player_->ResumeAnimation();
+  EXPECT_EQ(std::count(events_.begin(), events_.end(), "start"), 2);
+}
+
+TEST_F(AnimatedImagePlayerTest, StopCancelsPendingCompletion) {
+  player_->SetLoopCount(1);
+  player_->StartAnimation();
+  Tick(1000);
   player_->StopAnimation();
-  player_->StartAnimation();
-  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame", "start",
-                                               "frame", "start", "frame"}));
-}
-
-TEST_F(AnimatedImageCallbacksTest,
-       FinalLoopNotifiesCurrentLoopBeforeFinalLoop) {
-  state_->frames = {FrameResult::kFrameReady, FrameResult::kLoopComplete,
-                    FrameResult::kFrameReady, FrameResult::kFinalLoopComplete};
-  player_->SetLoopCount(2);
-  player_->StartAnimation();
-  for (int i = 0; i < 4; ++i) {
-    task_runner_->RunNext();
-  }
-  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame", "frame",
-                                               "frame", "loop", "frame",
-                                               "frame", "loop", "final"}));
-  EXPECT_FALSE(player_->IsPlaying());
-  EXPECT_FALSE(task_runner_->HasTasks());
+  Tick(2000);
   player_->EnsureAnimationScheduled();
-  EXPECT_FALSE(task_runner_->HasTasks());
+  EXPECT_EQ(handler_.GetAnimationCount(), 0);
+  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame"}));
 }
 
-TEST_F(AnimatedImageCallbacksTest, InfiniteLoopsDoNotNotifyFinalCompletion) {
-  state_->frames = {FrameResult::kLoopComplete, FrameResult::kLoopComplete};
-  player_->SetLoopCount(0);
+TEST_F(AnimatedImagePlayerTest, PlayersHaveIndependentTimelinesAndControls) {
+  AnimatedImagePlayer other(
+      std::make_unique<FakePlatformImageAnimation>(
+          std::vector<int64_t>{100, 200, 50}),
+      handler_.GetWeakPtr(), [] {}, [] { return true; });
+  other.SetLoopCount(1);
+  other.StartAnimation();
+  Tick(1000);
   player_->StartAnimation();
-  task_runner_->RunNext();
-  task_runner_->RunNext();
+  Tick(1200);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+  EXPECT_EQ(other.GetCurrentFrameIndex(), 1);
+  player_->PauseAnimation();
+  Tick(1350);
+  EXPECT_FALSE(other.IsPlaying());
+  EXPECT_EQ(other.GetCurrentFrameIndex(), 2);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+}
+
+TEST_F(AnimatedImagePlayerTest, EmptyAnimationIsInvalid) {
+  CreatePlayer({});
+  EXPECT_FALSE(player_->IsValid());
+  player_->StartAnimation();
+  EXPECT_FALSE(player_->IsPlaying());
+  EXPECT_TRUE(events_.empty());
+}
+
+TEST_F(AnimatedImagePlayerTest, SingleFrameCompletesAfterItsDuration) {
+  CreatePlayer({100});
+  player_->SetLoopCount(1);
+  player_->StartAnimation();
+  Tick(0);
+  Tick(99);
   EXPECT_TRUE(player_->IsPlaying());
-  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame", "frame",
-                                               "loop", "frame", "loop"}));
-}
-
-TEST_F(AnimatedImageCallbacksTest, DecodeFailureDoesNotNotifyCompletion) {
-  state_->frames = {FrameResult::kNoFrame};
-  player_->StartAnimation();
-  task_runner_->RunNext();
+  Tick(100);
   EXPECT_FALSE(player_->IsPlaying());
-  EXPECT_FALSE(task_runner_->HasTasks());
-  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame"}));
+  EXPECT_EQ(events_,
+            (std::vector<std::string>{"start", "frame", "loop", "final"}));
 }
 
-TEST_F(AnimatedImageCallbacksTest, StoppingCancelsPendingCompletion) {
-  state_->frames = {FrameResult::kFinalLoopComplete};
+TEST_F(AnimatedImagePlayerTest, InvalidDurationsAreNormalizedInPlayer) {
+  CreatePlayer({0, -1, 100});
   player_->StartAnimation();
-  player_->StopAnimation();
-  task_runner_->RunNext();
-  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame"}));
-  EXPECT_FALSE(player_->IsPlaying());
+  Tick(0);
+  Tick(1);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+  Tick(2);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 2);
 }
 
-TEST_F(AnimatedImageCallbacksTest,
-       VisibilityReschedulesWithoutAnotherStartEvent) {
-  visible_ = false;
-  state_->frames = {FrameResult::kFinalLoopComplete};
+TEST_F(AnimatedImagePlayerTest, DurationOverflowIsInvalid) {
+  CreatePlayer({std::numeric_limits<int64_t>::max(), 1});
+  EXPECT_FALSE(player_->IsValid());
+}
+
+TEST_F(AnimatedImagePlayerTest, HugeTimestampDoesNotOverflowPosition) {
   player_->StartAnimation();
-  EXPECT_FALSE(task_runner_->HasTasks());
-  visible_ = true;
-  player_->EnsureAnimationScheduled();
-  task_runner_->RunNext();
-  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame", "frame",
-                                               "frame", "loop", "final"}));
+  Tick(0);
+  Tick(100);
+  player_->PauseAnimation();
+  player_->ResumeAnimation();
+  Tick(0);
+  Tick(std::numeric_limits<int64_t>::max());
+  EXPECT_TRUE(player_->IsPlaying());
+  EXPECT_GE(player_->GetCurrentFrameIndex(), 0);
+  EXPECT_LT(player_->GetCurrentFrameIndex(), 3);
 }
 
-TEST_F(AnimatedImageCallbacksTest, ListenerCanDestroyPlayerOnStart) {
+TEST_F(AnimatedImagePlayerTest, ListenerCanDestroyPlayerOnStart) {
   listener_.on_start = [this] { player_.reset(); };
   player_->StartAnimation();
   EXPECT_FALSE(player_);
-  EXPECT_FALSE(task_runner_->HasTasks());
-  EXPECT_EQ(events_, (std::vector<std::string>{"start"}));
+  EXPECT_EQ(handler_.GetAnimationCount(), 0);
 }
 
-TEST_F(AnimatedImageCallbacksTest, ListenerCanDestroyPlayerOnLoopCompletion) {
-  state_->frames = {FrameResult::kFinalLoopComplete};
+TEST_F(AnimatedImagePlayerTest, ListenerCanDestroyPlayerOnLoopCompletion) {
+  player_->SetLoopCount(1);
   listener_.on_loop = [this] { player_.reset(); };
   player_->StartAnimation();
-  task_runner_->RunNext();
+  Tick(0);
+  Tick(350);
   EXPECT_FALSE(player_);
-  EXPECT_EQ(events_,
-            (std::vector<std::string>{"start", "frame", "frame", "loop"}));
+  EXPECT_EQ(events_.back(), "loop");
 }
 
-TEST_F(AnimatedImageCallbacksTest, FrameCallbackCanDestroyPlayer) {
-  state_->frames = {FrameResult::kFinalLoopComplete};
+TEST_F(AnimatedImagePlayerTest, FrameCallbackCanDestroyPlayer) {
   player_->StartAnimation();
+  Tick(0);
   on_frame_ = [this] { player_.reset(); };
-  task_runner_->RunNext();
+  Tick(100);
   EXPECT_FALSE(player_);
-  EXPECT_EQ(events_, (std::vector<std::string>{"start", "frame", "frame"}));
+  EXPECT_EQ(handler_.GetAnimationCount(), 0);
 }
 
-TEST_F(AnimatedImageCallbacksTest, PlaybackEventsRemainIndependent) {
-  auto second_state = std::make_shared<AnimationState>();
-  std::vector<std::string> second_events;
-  RecordingAnimationListener second_listener(second_events);
-  AnimatedImagePlayer second(
-      std::make_unique<FakePlatformImageAnimation>(second_state), task_runner_,
-      [] {}, [] { return false; }, &second_listener);
-  state_->frames = {FrameResult::kFinalLoopComplete};
+TEST_F(AnimatedImagePlayerTest, LoopCallbackCanRestartWithoutStaleFinalEvent) {
+  player_->SetLoopCount(1);
   player_->StartAnimation();
-  second.StartAnimation();
-  task_runner_->RunNext();
-  EXPECT_EQ(second_events, (std::vector<std::string>{"start"}));
-  EXPECT_TRUE(second.IsPlaying());
+  Tick(0);
+  listener_.on_loop = [this] { player_->StartAnimation(); };
+  Tick(350);
+  EXPECT_TRUE(player_->IsPlaying());
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 0);
+  EXPECT_EQ(std::count(events_.begin(), events_.end(), "final"), 0);
+  Tick(1000);
+  Tick(1100);
+  EXPECT_EQ(player_->GetCurrentFrameIndex(), 1);
+}
+
+TEST_F(AnimatedImagePlayerTest, FrameCallbackCanStopBeforeCompletionEvents) {
+  player_->SetLoopCount(1);
+  player_->StartAnimation();
+  Tick(0);
+  on_frame_ = [this] { player_->StopAnimation(); };
+  Tick(350);
   EXPECT_FALSE(player_->IsPlaying());
+  EXPECT_EQ(events_.back(), "frame");
+}
+
+TEST_F(AnimatedImagePlayerTest, PlayerCanOutliveItsFrameSource) {
+  auto handler = std::make_unique<AnimationHandler>();
+  AnimatedImagePlayer player(
+      std::make_unique<FakePlatformImageAnimation>(
+          std::vector<int64_t>{100, 50}),
+      handler->GetWeakPtr(), [] {}, [] { return true; });
+  player.StartAnimation();
+  handler.reset();
+  player.StopAnimation();
+  player.StartAnimation();
+  player.DoAnimationFrame(1000);
+  player.DoAnimationFrame(1100);
+  EXPECT_EQ(player.GetCurrentFrameIndex(), 1);
 }
 
 }  // namespace
