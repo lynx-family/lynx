@@ -26,6 +26,7 @@
 #import <Lynx/LynxLayoutAnimationManager.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxMeaningfulContentSnapshot.h>
+#import <Lynx/LynxPlatformAnimation.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxService.h>
@@ -1881,11 +1882,8 @@ LYNX_PROP_DEFINE("transform-origin", setTransformOrigin, NSArray*) {
 }
 
 LYNX_PROP_DEFINE("perspective", setPerspective, NSArray*) {
-  if (requestReset) {
-    _perspective = nil;
-    return;
-  }
-  _perspective = value;
+  _didTransformChanged = YES;
+  _perspective = requestReset ? nil : value;
 }
 
 LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
@@ -1958,7 +1956,7 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
 - (void)applyTransform {
   LYNX_ASSERT_ON_MAIN_THREAD;
   [self prepareLastInfo];
-  [_transitionAnimationManager removeTransitionAnimation:TRANSITION_TRANSFORM];
+  [_transitionAnimationManager removeLegacyTransformTransition];
   if (_enableNewTransformOrigin) {
     [self applyTransformOrigin];
   }

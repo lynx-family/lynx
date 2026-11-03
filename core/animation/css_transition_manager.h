@@ -53,6 +53,7 @@ class CSSTransitionManager : public CSSKeyframeManager {
       const tasm::StyleMap& new_underlying_layout_only_styles);
   AnimationSampleForNewPipeline CollectTransitionUpdatesForNewPipeline(
       fml::TimePoint& time);
+  bool NeedsFutureTickForNewPipeline() const;
 
   bool NeedsTransition(tasm::CSSPropertyID css_id);
 
@@ -64,10 +65,24 @@ class CSSTransitionManager : public CSSKeyframeManager {
   void ClearPreviousEndValue(tasm::CSSPropertyID css_id);
 
  private:
+  struct TransitionFallback {
+    starlight::AnimationData data;
+    fml::RefPtr<gfx::PlatformTransitionSnapshot> snapshot;
+  };
+
+  struct PlatformTransition {
+    PlatformAnimationPtr state;
+    std::unique_ptr<TransitionFallback> fallback;
+  };
+
+  void ApplyReadyPlatformFallbacks();
+  void StartCoreTransition(std::shared_ptr<Animation> animation,
+                           bool play_handles_initial_frame);
   void TryToStopTransitionAnimator(
       starlight::AnimationPropertyType property_type);
   void TryToStopTransitionAnimatorWithPendingCleanup(
       starlight::AnimationPropertyType property_type);
+  void CancelPlatformTransition(tasm::CSSPropertyID css_id);
   void PrepareTransitionRemovalCleanup(
       const std::shared_ptr<Animation>& animation);
   void SyncTransitionData(const starlight::TransitionData& transition_data,
@@ -76,7 +91,8 @@ class CSSTransitionManager : public CSSKeyframeManager {
                                 starlight::AnimationPropertyType property_type,
                                 tasm::CSSValue start_value,
                                 tasm::CSSValue end_value,
-                                bool play_handles_initial_frame);
+                                bool play_handles_initial_frame,
+                                bool allow_platform = false);
   bool IsValueValid(starlight::AnimationPropertyType type,
                     const tasm::CSSValue& value,
                     const tasm::CSSParserConfigs& configs);
@@ -97,10 +113,15 @@ class CSSTransitionManager : public CSSKeyframeManager {
     return Animation::Origin::kCSSTransition;
   }
 
+  gfx::AnimationKind GetAnimationKind() const override {
+    return gfx::AnimationKind::kTransition;
+  }
   base::LinearFlatMap<unsigned int, starlight::AnimationData> transition_data_;
   base::LinearFlatMap<base::String, tasm::CSSKeyframesContent> keyframe_tokens_;
   base::LinearFlatSet<unsigned int> property_types_;
   tasm::StyleMap previous_end_values_;
+  base::LinearFlatMap<tasm::CSSPropertyID, PlatformTransition>
+      platform_transition_animations_;
 };
 
 }  // namespace animation

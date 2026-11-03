@@ -51,4 +51,26 @@ typedef LynxKeyframeParsedData* _Nullable (^LynxTypedKeyframesProvider)(LynxUI* 
                   playback:(nullable LynxPlatformAnimationPlayback*)playback;
 @end
 
+@interface LynxUI (TypedTransitions)
+@property(nonatomic, strong, nullable) LynxTransitionAnimationManager* transitionAnimationManager;
+- (void)prepareTransitionAnimationManager;
+@end
+
+@interface LynxTransitionAnimationManager (TypedTransitions)
+- (void)removeLegacyTransformTransition;
+- (nullable NSValue*)capturePlatformTransition:(uint64_t)animationID
+                                    generation:(uint32_t)generation;
+- (void)cancelPlatformTransition:(uint64_t)animationID generation:(uint32_t)generation;
+- (void)applyPlatformOpacityTransition:(nullable LynxAnimationInfo*)info
+                           fromOpacity:(CGFloat)fromOpacity
+                             toOpacity:(CGFloat)toOpacity
+                           animationID:(uint64_t)animationID
+                            generation:(uint32_t)generation;
+- (void)applyPlatformTransformTransition:(nullable LynxAnimationInfo*)info
+                        fromTransformRaw:(nullable NSArray<LynxTransformRaw*>*)fromTransformRaw
+                          toTransformRaw:(nullable NSArray<LynxTransformRaw*>*)toTransformRaw
+                             animationID:(uint64_t)animationID
+                              generation:(uint32_t)generation;
+@end
+
 NS_ASSUME_NONNULL_END

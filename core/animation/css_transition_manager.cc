@@ -4,6 +4,7 @@
 
 #include "core/animation/css_transition_manager.h"
 
+#include <optional>
 #include <utility>
 
 #include "base/include/float_comparison.h"
@@ -13,12 +14,16 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/layout_property.h"
+#include "core/renderer/css/transforms/transform_operations_helper.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 
 namespace lynx {
 namespace animation {
 namespace {
+
+constexpr bool kHasPlatformAnimationBackend =
+    LYNX_HAS_PLATFORM_ANIMATION_BACKEND;
 
 base::flex_optional<tasm::CSSValue> ConvertLengthToTransitionCSSValue(
     const starlight::NLength& length) {
@@ -234,6 +239,13 @@ base::flex_optional<tasm::CSSValue> ConvertComputedFilterForTransition(
   array->emplace_back(std::move(amount->value));
   array->emplace_back(static_cast<int>(amount->pattern));
   return tasm::CSSValue(std::move(array));
+}
+
+bool HasPlatformTransformContext(const starlight::ComputedCSSStyle& style) {
+  const auto& values = style.GetResolvedValues();
+  return style.GetOffsetPath() ||
+         values.contains(tasm::kPropertyIDPerspective) ||
+         values.contains(tasm::kPropertyIDTransformOrigin);
 }
 
 bool ShouldUseLayoutOnlyTransitionSource(tasm::Element* element,
@@ -621,6 +633,20 @@ void CSSTransitionManager::SyncTransitionData(
     }
   }
   animations_map_.swap(active_animations_map);
+  if constexpr (kHasPlatformAnimationBackend) {
+    for (auto it = platform_transition_animations_.begin();
+         it != platform_transition_animations_.end();) {
+      const auto css_id = it->first;
+      if (IsShouldTransitionType(GetAnimationPropertyType(css_id))) {
+        ++it;
+        continue;
+      }
+      QueuePlatformAnimationCommands(
+          *it->second.state, gfx::PlatformAnimationCommandType::kCancel);
+      ClearPreviousEndValue(css_id);
+      it = platform_transition_animations_.erase(it);
+    }
+  }
 }
 
 void CSSTransitionManager::SetTransitionDataInternal(
@@ -731,6 +757,16 @@ void CSSTransitionManager::UpdateTransitionsForNewPipeline(
       continue;
     }
 
+    // The iOS presentation matrix can include these extra transforms.
+    const bool has_transform_context =
+        kHasPlatformAnimationBackend && css_id == tasm::kPropertyIDTransform &&
+        element()->supports_platform_animation_routing() &&
+        (HasPlatformTransformContext(previous_final_style) ||
+         HasPlatformTransformContext(new_base_style));
+    if (has_transform_context) {
+      CancelPlatformTransition(css_id);
+    }
+
     const auto previous_underlying =
         previous_base_style.ExtractCanonicalComputedValue(css_id);
     const auto displayed_start =
@@ -759,7 +795,8 @@ void CSSTransitionManager::UpdateTransitionsForNewPipeline(
     }
 
     UpdateTransitionAnimator(css_id, property_type, std::move(*start_value),
-                             std::move(*end_value), false);
+                             std::move(*end_value), false,
+                             !has_transform_context);
   }
 }
 
@@ -768,7 +805,79 @@ CSSTransitionManager::CollectTransitionUpdatesForNewPipeline(
     fml::TimePoint& frame_time) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               TRANSITION_MANAGER_COLLECT_TRANSITION_UPDATES_FOR_NEW_PIPELINE);
-  return CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(frame_time);
+  if constexpr (kHasPlatformAnimationBackend) {
+    ApplyReadyPlatformFallbacks();
+  }
+  auto sample =
+      CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(frame_time);
+  if constexpr (kHasPlatformAnimationBackend) {
+    // An override means Core has sampled past the delay for this property.
+    for (const auto& [css_id, value] : sample.property_overrides) {
+      auto platform = platform_transition_animations_.find(css_id);
+      if (platform != platform_transition_animations_.end()) {
+        QueuePlatformAnimationCommands(
+            *platform->second.state,
+            gfx::PlatformAnimationCommandType::kCancel);
+        platform_transition_animations_.erase(platform);
+      }
+    }
+  }
+  return sample;
+}
+
+bool CSSTransitionManager::NeedsFutureTickForNewPipeline() const {
+  if constexpr (kHasPlatformAnimationBackend) {
+    for (const auto& [css_id, transition] : platform_transition_animations_) {
+      if (transition.fallback) {
+        return true;
+      }
+    }
+  }
+  return CSSKeyframeManager::NeedsFutureTickForNewPipeline();
+}
+
+void CSSTransitionManager::ApplyReadyPlatformFallbacks() {
+  for (auto it = platform_transition_animations_.begin();
+       it != platform_transition_animations_.end();) {
+    auto& [css_id, transition] = *it;
+    std::optional<gfx::PlatformTransitionSnapshot::Value> captured;
+    if (!transition.fallback ||
+        !transition.fallback->snapshot->Read(captured)) {
+      ++it;
+      continue;
+    }
+
+    auto& keyframes = keyframe_tokens_.at(transition.state->animation->name());
+    auto& start = keyframes.at(0.f)->at(css_id);
+    if (captured) {
+      if (css_id == tasm::kPropertyIDOpacity) {
+        start = tasm::CSSValue((*captured)[0], tasm::CSSValuePattern::NUMBER);
+      } else {
+        gfx::TransformOperations transform;
+        transform.AppendMatrix(gfx::TransformOperation::kMatrix3d, *captured);
+        start = transforms::ConvertToCSSValue(
+            transform, GetLengthContext(element()).layouts_unit_per_px_);
+      }
+    }
+
+    auto core = start == keyframes.at(1.f)->at(css_id)
+                    ? nullptr
+                    : BuildTransitionAnimation(transition.fallback->data, false)
+                          .new_animator_animation;
+    if (core) {
+      StartCoreTransition(std::move(core), false);
+      if (captured) {
+        transition.fallback.reset();
+        ++it;
+        continue;
+      }
+    } else {
+      ClearPreviousEndValue(css_id);
+    }
+    QueuePlatformAnimationCommands(*transition.state,
+                                   gfx::PlatformAnimationCommandType::kCancel);
+    it = platform_transition_animations_.erase(it);
+  }
 }
 
 void CSSTransitionManager::TickAllAnimation(fml::TimePoint& frame_time) {
@@ -810,11 +919,25 @@ void CSSTransitionManager::TryToStopTransitionAnimatorWithPendingCleanup(
     return;
   }
   const auto& animation_iterator = animations_map_.find(data->second.name);
-  if (animation_iterator == animations_map_.end()) {
-    return;
+  if (animation_iterator != animations_map_.end()) {
+    PrepareTransitionRemovalCleanup(animation_iterator->second);
+    animations_map_.erase(animation_iterator);
   }
-  PrepareTransitionRemovalCleanup(animation_iterator->second);
-  animations_map_.erase(animation_iterator);
+  if constexpr (kHasPlatformAnimationBackend) {
+    CancelPlatformTransition(
+        tasm::CSSProperty::GetPropertyID(data->second.name));
+  }
+}
+
+void CSSTransitionManager::CancelPlatformTransition(
+    tasm::CSSPropertyID css_id) {
+  auto platform = platform_transition_animations_.find(css_id);
+  if (platform != platform_transition_animations_.end()) {
+    QueuePlatformAnimationCommands(*platform->second.state,
+                                   gfx::PlatformAnimationCommandType::kCancel);
+    ClearPreviousEndValue(css_id);
+    platform_transition_animations_.erase(platform);
+  }
 }
 
 void CSSTransitionManager::PrepareTransitionRemovalCleanup(
@@ -831,7 +954,7 @@ void CSSTransitionManager::PrepareTransitionRemovalCleanup(
 bool CSSTransitionManager::UpdateTransitionAnimator(
     tasm::CSSPropertyID css_id, starlight::AnimationPropertyType property_type,
     tasm::CSSValue start_value, tasm::CSSValue end_value,
-    bool play_handles_initial_frame) {
+    bool play_handles_initial_frame, bool allow_platform) {
   const auto& configs = element()->element_manager()->GetCSSParserConfigs();
   if (!IsValueValid(property_type, start_value, configs) ||
       !IsValueValid(property_type, end_value, configs) ||
@@ -852,39 +975,87 @@ bool CSSTransitionManager::UpdateTransitionAnimator(
     return false;
   }
 
-  previous_end_values_[css_id] = end_value;
-
   auto start_shared_style_map = std::make_shared<tasm::StyleMap>();
   start_shared_style_map->insert_or_assign(css_id, std::move(start_value));
 
   auto end_shared_style_map = std::make_shared<tasm::StyleMap>();
-  end_shared_style_map->insert_or_assign(css_id, std::move(end_value));
+  end_shared_style_map->insert_or_assign(css_id, end_value);
 
   keyframe_tokens_[ConvertAnimationPropertyTypeToString(property_type)] =
       tasm::CSSKeyframesContent{{0.f, std::move(start_shared_style_map)},
                                 {1.f, std::move(end_shared_style_map)}};
 
-  if (animations_map_.count(data->second.name)) {
+  auto existing_new_animator_animation =
+      animations_map_.find(data->second.name);
+  if (existing_new_animator_animation != animations_map_.end()) {
     // If a transition animation is replaced by another identical transition
     // animation (both animate the same properties), then this transition
     // animation does not require clearing effect and applying the end effect.
     if (play_handles_initial_frame) {
-      animations_map_[data->second.name]->Destroy(false);
+      existing_new_animator_animation->second->Destroy(false);
     } else {
-      auto existing_animation = animations_map_[data->second.name];
-      PrepareTransitionRemovalCleanup(existing_animation);
-      animations_map_.erase(data->second.name);
+      PrepareTransitionRemovalCleanup(existing_new_animator_animation->second);
     }
+    animations_map_.erase(existing_new_animator_animation);
   }
-  std::shared_ptr<Animation> animation = CreateAnimation(data->second);
-  if (animation == nullptr) {
+  // New styling commits the target independently of transition sampling.
+  const bool can_route =
+      kHasPlatformAnimationBackend && allow_platform &&
+      !element()->element_manager()->IsFragmentLayerRenderModeOn() &&
+      data->second.duration > 0 && data->second.delay >= 0;
+  auto current = platform_transition_animations_.end();
+  if constexpr (kHasPlatformAnimationBackend) {
+    current = platform_transition_animations_.find(css_id);
+  }
+  const bool has_platform_transition =
+      current != platform_transition_animations_.end();
+  auto build_result = BuildTransitionAnimation(data->second, can_route,
+                                               has_platform_transition);
+  if (!build_result.new_animator_animation &&
+      !build_result.platform_animation && !has_platform_transition) {
     return false;
   }
-  animation->BindDelegate(this);
-  animation->SetTransitionFlag();
-  animation->Play(play_handles_initial_frame);
-  animations_map_[data->second.name] = std::move(animation);
+  previous_end_values_[css_id] = std::move(end_value);
+  if constexpr (kHasPlatformAnimationBackend) {
+    if (build_result.platform_animation) {
+      auto& next = *build_result.platform_animation;
+      auto command_type = gfx::PlatformAnimationCommandType::kHandoff;
+      if (has_platform_transition) {
+        next.RetainIdentityFrom(*current->second.state);
+        command_type = gfx::PlatformAnimationCommandType::kUpdate;
+      }
+      QueuePlatformAnimationCommands(next, command_type);
+      platform_transition_animations_.insert_or_assign(
+          css_id, PlatformTransition{std::move(build_result.platform_animation),
+                                     nullptr});
+      return true;
+    }
+    if (has_platform_transition) {
+      auto& [state, fallback] = current->second;
+      if (!fallback) {
+        fallback = std::make_unique<TransitionFallback>();
+        fallback->snapshot =
+            fml::MakeRefCounted<gfx::PlatformTransitionSnapshot>();
+        QueuePlatformAnimationCommands(
+            *state, gfx::PlatformAnimationCommandType::kDetach)
+            .transition_snapshot = fallback->snapshot;
+      }
+      fallback->data = data->second;
+      return true;
+    }
+  }
+  StartCoreTransition(std::move(build_result.new_animator_animation),
+                      play_handles_initial_frame);
   return true;
+}
+
+void CSSTransitionManager::StartCoreTransition(
+    std::shared_ptr<Animation> animation, bool play_handles_initial_frame) {
+  animation->SetTransitionFlag();
+  animation->NotifyInspectorCreated();
+  animation->Play(play_handles_initial_frame);
+  auto name = animation->name();
+  animations_map_[name] = std::move(animation);
 }
 
 bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,

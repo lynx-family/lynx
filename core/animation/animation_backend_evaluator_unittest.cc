@@ -145,10 +145,9 @@ TEST(AnimationBackendEvaluatorTest, ChecksOnlyRequiredEventsForEachKind) {
   EXPECT_TRUE(EvaluateAnimationBackend(request, capabilities).CanRun());
 
   request.kind = gfx::AnimationKind::kTransition;
-  request.required_events = gfx::kAnimationEventStart | gfx::kAnimationEventEnd;
-  EXPECT_TRUE(EvaluateAnimationBackend(request, capabilities).CanRun());
   for (const auto event :
-       {gfx::kAnimationEventCancel, gfx::kAnimationEventIteration}) {
+       {gfx::kAnimationEventStart, gfx::kAnimationEventEnd,
+        gfx::kAnimationEventCancel, gfx::kAnimationEventIteration}) {
     request.required_events = event;
     EXPECT_EQ(EvaluateAnimationBackend(request, capabilities).fallback_reason,
               AnimationFallbackReason::kUnsupportedEvent)
@@ -257,9 +256,11 @@ TEST(AnimationBackendEvaluatorTest, IOSChecksTranslateUnitsPerAxis) {
         request.kind = kind;
         const auto result =
             EvaluateAnimationBackend(request, MakeIOSCapabilities());
-        EXPECT_EQ(result.CanRun(), axis != 2)
+        const bool supported =
+            kind == gfx::AnimationKind::kKeyframe && axis != 2;
+        EXPECT_EQ(result.CanRun(), supported)
             << "axis=" << axis << " value=" << value;
-        if (axis == 2) {
+        if (!supported) {
           EXPECT_EQ(result.fallback_reason,
                     AnimationFallbackReason::kUnsupportedValue);
         }

@@ -419,7 +419,8 @@ CSSKeyframeManager::CreatePlatformAnimationState(
   return animation;
 }
 
-void CSSKeyframeManager::QueuePlatformAnimationCommands(
+gfx::PlatformAnimationCommand&
+CSSKeyframeManager::QueuePlatformAnimationCommands(
     PlatformAnimationState& animation, gfx::PlatformAnimationCommandType type) {
   if (type == gfx::PlatformAnimationCommandType::kUpdate) {
     ++animation.generation;
@@ -440,10 +441,11 @@ void CSSKeyframeManager::QueuePlatformAnimationCommands(
     command.animation_data =
         ToGfxAnimationData(animation.animation->get_animation_data());
     command.animation_data.timing_func = animation.platform_timing;
-    // Submit each rebuilt state once. The command takes its keyframes.
+    command.reuse_keyframes = animation.properties.empty();
     command.properties = std::move(animation.properties);
     animation.handed_off = true;
   }
+  return command;
 }
 
 void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
@@ -520,6 +522,21 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
                       [&](const auto& entry) {
                         return &entry != &data && entry.name == data.name;
                       });
+      auto platform =
+          has_duplicate_name ? nullptr : FindPlatformAnimation(data.name);
+      if (platform && !force_rebuild &&
+          !invalidated_keyframes_.count(data.name)) {
+        auto previous_data = (*platform)->animation->get_animation_data();
+        previous_data.play_state = data.play_state;
+        if (previous_data == data && !underlying_values_changed(**platform)) {
+          result = std::make_unique<PreparedAnimation>();
+          result->reused_platform = true;
+          for (auto id : (*platform)->animation->GetRawStyleSet()) {
+            result->property_ids.Set(id);
+          }
+          continue;
+        }
+      }
       result = std::make_unique<PreparedAnimation>(
           *this, data, new_base_custom_properties, new_base_resolved_styles,
           !has_duplicate_name);
@@ -533,13 +550,20 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
     do {
       changed = false;
       for (size_t index = 0; index < animation_data_.size(); ++index) {
+        auto& data = animation_data_[index];
         auto& result = prepared[index].value;
-        if (!result || !result->backend.CanRun()) {
+        if (!result || !result->CanRunOnPlatform()) {
           continue;
         }
         if ((result->property_ids & core_properties).HasAny()) {
           core_properties.Or(result->property_ids);
-          result->backend.can_run = false;
+          if (result->reused_platform) {
+            result = std::make_unique<PreparedAnimation>(
+                *this, data, new_base_custom_properties,
+                new_base_resolved_styles, false);
+          } else {
+            result->backend.can_run = false;
+          }
           changed = true;
         }
       }
@@ -640,9 +664,12 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
     const auto& previous =
         platform ? (*platform)->animation : animation->second;
     if (platform || force_rebuild || invalidated_keyframes_.count(data.name) ||
-        (!prepared.empty() && prepared[index].value->backend.CanRun())) {
+        (!prepared.empty() && prepared[index].value->CanRunOnPlatform())) {
       auto* existing_platform = platform ? platform->get() : nullptr;
-      auto rebuilt = build_animation(index, previous->GetOrigin());
+      auto rebuilt = existing_platform && !prepared.empty() &&
+                             prepared[index].value->reused_platform
+                         ? AnimationBuildResult{nullptr, std::move(*platform)}
+                         : build_animation(index, previous->GetOrigin());
       if (existing_platform && rebuilt.platform_animation) {
         rebuilt.platform_animation->RetainIdentityFrom(*existing_platform);
       } else if (rebuilt.new_animator_animation || rebuilt.platform_animation ||
@@ -1222,6 +1249,18 @@ CSSKeyframeManager::BuildPreparedAnimation(
     AddParsedPropertyToNewAnimator(std::move(property), animation.get());
   }
   return {std::move(animation), nullptr};
+}
+
+CSSKeyframeManager::AnimationBuildResult
+CSSKeyframeManager::BuildTransitionAnimation(starlight::AnimationData& data,
+                                             bool allow_platform,
+                                             bool defer_core) {
+  PreparedAnimation prepared(*this, data, nullptr, nullptr, allow_platform);
+  if (defer_core && !prepared.backend.CanRun()) {
+    return {};
+  }
+  return BuildPreparedAnimation(data, std::move(prepared),
+                                Animation::Origin::kCSSTransition);
 }
 
 std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(

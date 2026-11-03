@@ -27,11 +27,12 @@ TEST(IOSAnimationCapabilitiesTest, DeclaresKeyframeAndTransitionProperties) {
 
   EXPECT_EQ(capabilities.backend, AnimationBackendType::kIOS);
   EXPECT_EQ(capabilities.properties.size(), 4u);
-  EXPECT_EQ(capabilities.event_capabilities.size(), 2u);
+  EXPECT_EQ(capabilities.event_capabilities.size(), 1u);
   for (const auto kind :
        {AnimationKind::kKeyframe, AnimationKind::kTransition}) {
-    EXPECT_TRUE(capabilities.SupportsEvents(
-        kind, kAnimationEventStart | kAnimationEventEnd));
+    EXPECT_EQ(capabilities.SupportsEvents(
+                  kind, kAnimationEventStart | kAnimationEventEnd),
+              kind == AnimationKind::kKeyframe);
     EXPECT_FALSE(capabilities.SupportsEvents(kind, kAnimationEventIteration));
     EXPECT_NE(capabilities.FindProperty(kind, AnimationPropertyType::kOpacity,
                                         KeyframeValueType::kFloat),
@@ -66,8 +67,11 @@ TEST(IOSAnimationCapabilitiesTest, DeclaresDetailedTransformFeatures) {
         kind, AnimationPropertyType::kTransform, KeyframeValueType::kTransform);
 
     ASSERT_NE(transform, nullptr);
-    EXPECT_EQ(transform->transform.translate_x_units, kAllTransformUnits);
-    EXPECT_EQ(transform->transform.translate_y_units, kAllTransformUnits);
+    const auto xy_units = kind == AnimationKind::kKeyframe
+                              ? kAllTransformUnits
+                              : kTransformUnitNumber;
+    EXPECT_EQ(transform->transform.translate_x_units, xy_units);
+    EXPECT_EQ(transform->transform.translate_y_units, xy_units);
     EXPECT_EQ(transform->transform.translate_z_units, kTransformUnitNumber);
     EXPECT_EQ(transform->transform.rotate_axes, kTransformAxesXYZ);
     EXPECT_EQ(transform->transform.scale_axes, kTransformAxesXY);

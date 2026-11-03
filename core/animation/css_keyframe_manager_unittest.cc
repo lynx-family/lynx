@@ -2383,10 +2383,9 @@ TEST_F(CSSAnimationRoutingTest, PlatformKeyframesFollowTheirInputs) {
   sync();
   const auto& pause = commands->back();
   EXPECT_EQ(pause.animation_id, initial_id);
-  EXPECT_FALSE(pause.reuse_keyframes);
+  EXPECT_TRUE(pause.reuse_keyframes);
   EXPECT_EQ(pause.generation, 2u);
-  ASSERT_FALSE(pause.properties.empty());
-  EXPECT_FLOAT_EQ(FirstOpacity(pause.properties), 0.8f);
+  EXPECT_TRUE(pause.properties.empty());
   for (bool reset : {false, true}) {
     if (reset) {
       underlying.clear();
@@ -2473,7 +2472,8 @@ TEST_F(CSSAnimationRoutingTest, PlatformHandoffsPreserveAnimationListOrder) {
       EXPECT_EQ(command.name, data[i].name.str());
       EXPECT_EQ(command.type, type);
       EXPECT_EQ(command.generation, reorder ? 2u : 1u);
-      EXPECT_FALSE(command.properties.empty());
+      EXPECT_EQ(command.reuse_keyframes, reorder);
+      EXPECT_EQ(command.properties.empty(), reorder);
     }
     commands = nullptr;
   }

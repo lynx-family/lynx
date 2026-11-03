@@ -5,10 +5,13 @@
 #ifndef GFX_ANIMATION_PLATFORM_ANIMATION_H_
 #define GFX_ANIMATION_PLATFORM_ANIMATION_H_
 
+#include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <utility>
 
 #include "base/include/fml/memory/ref_counted.h"
@@ -39,7 +42,8 @@ enum class PlatformAnimationCommandType : uint8_t {
   kUpdate,
   kCancel,
   // Remove the platform executor while the logical animation continues in
-  // C++ New Animator, without canceling the animation.
+  // C++ New Animator, without canceling the animation. For a transition,
+  // capture and hold the presentation value until Core commits its first frame.
   kDetach,
 };
 
@@ -280,6 +284,31 @@ struct PlatformAnimationProperty {
   using TriviallyRelocatable = bool;
 };
 
+// An iOS transition detach has one UI-thread writer and a Core reader.
+class PlatformTransitionSnapshot final
+    : public fml::RefCountedThreadSafe<PlatformTransitionSnapshot> {
+ public:
+  // Opacity in the first component, or a CSS matrix3d in layout units.
+  using Value = std::array<float, 16>;
+
+  void Publish(std::optional<Value> value) {
+    value_ = std::move(value);
+    ready_.store(true, std::memory_order_release);
+  }
+
+  bool Read(std::optional<Value>& value) const {
+    if (!ready_.load(std::memory_order_acquire)) {
+      return false;
+    }
+    value = value_;
+    return true;
+  }
+
+ private:
+  std::optional<Value> value_;
+  std::atomic<bool> ready_{false};
+};
+
 struct PlatformAnimationCommand {
   PlatformAnimationCommand() = default;
   PlatformAnimationCommand(PlatformAnimationCommand&&) = default;
@@ -307,6 +336,7 @@ struct PlatformAnimationCommand {
   // New Animator and the platform. Unlike generation, this token does not
   // change for updates that keep the same execution backend.
   uint64_t executor{0};
+  fml::RefPtr<PlatformTransitionSnapshot> transition_snapshot;
 
   // All owning members refer to heap storage, never to this command's address.
   using TriviallyRelocatable = bool;

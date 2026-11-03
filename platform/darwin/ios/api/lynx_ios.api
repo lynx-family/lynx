@@ -4492,6 +4492,19 @@ public class LynxTransitionAnimationManager : NSObject {
   public BOOL LynxTransitionAnimationManager::isTransitionTransform:newTransform:(CATransform3D oldTransform,[newTransform] CATransform3D newTransform);
   public BOOL LynxTransitionAnimationManager::isTransitionTransformRotation:newTransformRotation:(LynxAnimationTransformRotation *oldTransformRotation,[newTransformRotation] LynxAnimationTransformRotation *newTransformRotation);
   public void LynxTransitionAnimationManager::applyTransitionAnimation();
+  public void LynxTransitionAnimationManager(TypedTransitions)::removeLegacyTransformTransition();
+  public nullable NSValue * LynxTransitionAnimationManager(TypedTransitions)::capturePlatformTransition:generation:(uint64_t animationID, [generation] uint32_t generation);
+  public void LynxTransitionAnimationManager(TypedTransitions)::cancelPlatformTransition:generation:(uint64_t animationID, [generation] uint32_t generation);
+  public void LynxTransitionAnimationManager(TypedTransitions)::applyPlatformOpacityTransition:fromOpacity:toOpacity:animationID:generation:(nullable LynxAnimationInfo *info, [fromOpacity] CGFloat fromOpacity, [toOpacity] CGFloat toOpacity, [animationID] uint64_t animationID, [generation] uint32_t generation);
+  public void LynxTransitionAnimationManager(TypedTransitions)::applyPlatformTransformTransition:fromTransformRaw:toTransformRaw:animationID:generation:(nullable LynxAnimationInfo *info, [fromTransformRaw] nullable NSArray< LynxTransformRaw * > *fromTransformRaw, [toTransformRaw] nullable NSArray< LynxTransformRaw * > *toTransformRaw, [animationID] uint64_t animationID, [generation] uint32_t generation);
+}
+
+public interface LynxTransitionAnimationManager(TypedTransitions) {
+  public void LynxTransitionAnimationManager(TypedTransitions)::removeLegacyTransformTransition();
+  public nullable NSValue * LynxTransitionAnimationManager(TypedTransitions)::capturePlatformTransition:generation:(uint64_t animationID,[generation] uint32_t generation);
+  public void LynxTransitionAnimationManager(TypedTransitions)::cancelPlatformTransition:generation:(uint64_t animationID,[generation] uint32_t generation);
+  public void LynxTransitionAnimationManager(TypedTransitions)::applyPlatformOpacityTransition:fromOpacity:toOpacity:animationID:generation:(nullable LynxAnimationInfo *info,[fromOpacity] CGFloat fromOpacity,[toOpacity] CGFloat toOpacity,[animationID] uint64_t animationID,[generation] uint32_t generation);
+  public void LynxTransitionAnimationManager(TypedTransitions)::applyPlatformTransformTransition:fromTransformRaw:toTransformRaw:animationID:generation:(nullable LynxAnimationInfo *info,[fromTransformRaw] nullable NSArray< LynxTransformRaw * > *fromTransformRaw,[toTransformRaw] nullable NSArray< LynxTransformRaw * > *toTransformRaw,[animationID] uint64_t animationID,[generation] uint32_t generation);
 }
 
 public class LynxUI : <__covariant V UIView> {
@@ -4577,6 +4590,7 @@ public class LynxUI : <__covariant V UIView> {
   public NSMutableArray<LynxPropsDidUpdateBlockReadyBlock>* LynxUI()::propsDidUpdateBlockArray propsDidUpdateBlockArray;
   public BOOL LynxUI(Fluency)::enableScrollMonitor enableScrollMonitor;
   public NSString* LynxUI(Fluency)::scrollMonitorTagName scrollMonitorTagName;
+  public LynxTransitionAnimationManager* LynxUI(TypedTransitions)::transitionAnimationManager transitionAnimationManager;
   public NSMutableArray *readyBlockArray LynxUI::__attribute__((deprecated("Do not use this after lynx 2.16, use nodeReadyBlockArray")));
   public instancetype LynxUI::init();
   public instancetype LynxUI::initWithView:(nullable V NS_DESIGNATED_INITIALIZER);
@@ -4693,6 +4707,7 @@ public class LynxUI : <__covariant V UIView> {
   public void LynxUI(Gesture)::consumeInternalGesture:(BOOL consume);
   public void LynxUI(Gesture)::interceptGesture:(BOOL intercept);
   public void LynxUI(Gesture)::resetInterceptGesture();
+  public void LynxUI(TypedTransitions)::prepareTransitionAnimationManager();
   public BOOL LynxUI::needProcessDirection();
   public void LynxUI(AsyncDisplay)::drawRect:withParameters:(CGRect bounds, [withParameters] id drawParameters);
   public UIImage * LynxUI(AsyncDisplay)::imageWithActionBlock:opaque:scale:size:(LynxCGContextImageDrawingActions action, [opaque] BOOL opaque, [scale] CGFloat scale, [size] CGSize size);
@@ -4731,6 +4746,11 @@ public interface LynxUI(Gesture) {
 }
 
 public interface LynxUI(LynxHeroTransition) {
+}
+
+public interface LynxUI(TypedTransitions) {
+  public LynxTransitionAnimationManager* LynxUI(TypedTransitions)::transitionAnimationManager transitionAnimationManager;
+  public void LynxUI(TypedTransitions)::prepareTransitionAnimationManager();
 }
 
 public class LynxUICollection : LynxUIListLoader, <UICollectionView> {

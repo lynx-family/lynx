@@ -216,6 +216,7 @@ class CSSKeyframeManager : public AnimationDelegate {
     gfx::AnimationId animation_id{0};
     uint32_t generation{1};
     gfx::TimingFunctionData platform_timing;
+    // Empty after submission; later commands reuse the platform keyframes.
     base::Vector<gfx::PlatformAnimationProperty> properties;
     bool handed_off{false};
     // Only properties with implicit endpoints depend on these base values.
@@ -238,8 +239,12 @@ class CSSKeyframeManager : public AnimationDelegate {
     PlatformAnimationPtr platform_animation;
   };
 
-  void QueuePlatformAnimationCommands(PlatformAnimationState& animation,
-                                      gfx::PlatformAnimationCommandType type);
+  AnimationBuildResult BuildTransitionAnimation(starlight::AnimationData& data,
+                                                bool allow_platform,
+                                                bool defer_core = false);
+  gfx::PlatformAnimationCommand& QueuePlatformAnimationCommands(
+      PlatformAnimationState& animation,
+      gfx::PlatformAnimationCommandType type);
 
  private:
   struct ParsedKeyframe {
@@ -277,6 +282,7 @@ class CSSKeyframeManager : public AnimationDelegate {
 
   // Plan routing before allocating an Animation, effect, or curve/model.
   struct PreparedAnimation {
+    PreparedAnimation() = default;
     PreparedAnimation(CSSKeyframeManager& manager,
                       starlight::AnimationData& data,
                       const tasm::CustomPropertiesMap* base_custom_properties,
@@ -286,6 +292,11 @@ class CSSKeyframeManager : public AnimationDelegate {
     tasm::CSSIDBitset property_ids;
     AnimationBackendResult backend;
     bool has_custom_property_keyframes{false};
+    bool reused_platform{false};
+
+    bool CanRunOnPlatform() const {
+      return reused_platform || backend.CanRun();
+    }
   };
 
   AnimationBuildResult BuildPreparedAnimation(

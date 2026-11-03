@@ -7,6 +7,7 @@
 #import <Lynx/LynxPlatformAnimation.h>
 #import <Lynx/LynxTransitionAnimationManager.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 
@@ -70,8 +71,12 @@ id HasElapsedTime(NSTimeInterval elapsedTime) {
 // cannot finish animations while the test drains the main queue.
 @interface ManuallyDrivenAnimationLayer : CALayer
 @property(nonatomic, strong) NSMutableDictionary<NSString*, CAAnimation*>* storedAnimations;
+@property(nonatomic, strong) ManuallyDrivenAnimationLayer* displayedLayer;
 @end
 @implementation ManuallyDrivenAnimationLayer
+- (instancetype)presentationLayer {
+  return _displayedLayer;
+}
 - (void)addAnimation:(CAAnimation*)animation forKey:(NSString*)key {
   if (_storedAnimations == nil) {
     _storedAnimations = [NSMutableDictionary new];
@@ -384,5 +389,99 @@ id HasElapsedTime(NSTimeInterval elapsedTime) {
       0.001);
   XCTAssertEqualWithAccuracy([[self animationForKeyPath:@"opacity"].values.lastObject doubleValue],
                              0.8, 0.001);
+}
+
+- (void)testTransformTransitionRetargetsAndPreservesModelStyle {
+  auto commandForTarget = [](float from, float to, uint32_t generation) {
+    gfx::TransformOperations start, end;
+    start.AppendTranslate({from, gfx::LengthUnit::kNumber}, {}, {});
+    end.AppendTranslate({to, gfx::LengthUnit::kNumber}, {}, {});
+    auto command = TransformCommand(start, end);
+    command.kind = gfx::AnimationKind::kTransition;
+    command.type = generation == 1 ? gfx::PlatformAnimationCommandType::kHandoff
+                                   : gfx::PlatformAnimationCommandType::kUpdate;
+    command.generation = generation;
+    return command;
+  };
+  auto* layer = (ManuallyDrivenAnimationLayer*)self.ui.view.layer;
+  Apply(self.ui, commandForTarget(0, 100, 1));
+  CAAnimation* previous = [layer animationForKey:@"transform"];
+  XCTAssertNotNil(previous);
+  DidAnimationStop oldStop = ((LynxAnimationDelegate*)previous.delegate).didStop;
+
+  LynxTransformRaw* model = [LynxTransformRaw new];
+  model.type = LynxTransformTypeMatrix3d;
+  model.transformMatrix = CATransform3DMakeTranslation(200, 0, 0);
+  self.ui.transformRaw = @[ model ];
+  [self.ui setValue:@YES forKey:@"didTransformChanged"];
+  [self.ui onNodeReadyForUIOwner];
+  XCTAssertNotNil([layer animationForKey:@"transform"]);
+
+  layer.displayedLayer = [ManuallyDrivenAnimationLayer layer];
+  layer.displayedLayer.transform = CATransform3DMakeTranslation(50, 0, 0);
+  LynxTransitionAnimationManager* manager = self.ui.transitionAnimationManager;
+  XCTAssertNil([manager capturePlatformTransition:1 generation:0]);
+  auto snapshot = lynx::fml::MakeRefCounted<gfx::PlatformTransitionSnapshot>();
+  gfx::PlatformAnimationCommand detach;
+  detach.kind = gfx::AnimationKind::kTransition;
+  detach.type = gfx::PlatformAnimationCommandType::kDetach;
+  detach.animation_id = 1;
+  detach.generation = 1;
+  detach.transition_snapshot = snapshot;
+  Apply(self.ui, std::move(detach));
+  std::optional<gfx::PlatformTransitionSnapshot::Value> captured;
+  XCTAssertTrue(snapshot->Read(captured));
+  XCTAssertEqualWithAccuracy(captured ? (*captured)[12] : -1, 50, 1e-5);
+  CABasicAnimation* hold = (CABasicAnimation*)[layer animationForKey:@"transform"];
+  XCTAssertEqualWithAccuracy([hold.fromValue CATransform3DValue].m41, 50, 1e-5);
+  XCTAssertEqualWithAccuracy([hold.toValue CATransform3DValue].m41, 50, 1e-5);
+  XCTAssertNil(hold.delegate);
+  [self.ui setValue:@YES forKey:@"didTransformChanged"];
+  [self.ui onNodeReadyForUIOwner];
+  XCTAssertNotNil([layer animationForKey:@"transform"]);
+
+  layer.displayedLayer = nil;
+  Apply(self.ui, commandForTarget(100, 200, 2));
+  CAAnimationGroup* current = (CAAnimationGroup*)[layer animationForKey:@"transform"];
+  CABasicAnimation* transform = (CABasicAnimation*)current.animations.firstObject;
+  XCTAssertEqualWithAccuracy([transform.fromValue CATransform3DValue].m41, 50, 1e-5);
+  XCTAssertEqualWithAccuracy([transform.toValue CATransform3DValue].m41, 200, 1e-5);
+  XCTAssertNotNil(oldStop);
+  if (oldStop) {
+    oldStop(nil, YES);
+  }
+  XCTAssertNotNil([layer animationForKey:@"transform"]);
+
+  [current.delegate animationDidStop:current finished:YES];
+  XCTAssertNil([layer animationForKey:@"transform"]);
+  layer.transform = CATransform3DMakeTranslation(300, 0, 0);
+  NSValue* completed = [manager capturePlatformTransition:1 generation:2];
+  XCTAssertEqualWithAccuracy(completed.CATransform3DValue.m41, 200, 1e-5);
+  hold = (CABasicAnimation*)[layer animationForKey:@"transform"];
+  XCTAssertEqualWithAccuracy([hold.fromValue CATransform3DValue].m41, 200, 1e-5);
+  XCTAssertEqualWithAccuracy(layer.transform.m41, 300, 1e-5);
+}
+
+- (void)testOpacityTransitionCancellationRevealsModelValue {
+  auto command = OpacityCommand();
+  command.kind = gfx::AnimationKind::kTransition;
+  Apply(self.ui, std::move(command));
+  auto* layer = (ManuallyDrivenAnimationLayer*)self.ui.view.layer;
+  layer.displayedLayer = [ManuallyDrivenAnimationLayer layer];
+  layer.displayedLayer.opacity = 0.5;
+  NSNumber* captured = (NSNumber*)[self.ui.transitionAnimationManager capturePlatformTransition:1
+                                                                                     generation:1];
+  XCTAssertEqualWithAccuracy(captured.doubleValue, 0.5, 1e-5);
+  layer.opacity = 0.8;
+
+  gfx::PlatformAnimationCommand cancel;
+  cancel.type = gfx::PlatformAnimationCommandType::kCancel;
+  cancel.kind = gfx::AnimationKind::kTransition;
+  cancel.animation_id = 1;
+  cancel.generation = 1;
+  Apply(self.ui, std::move(cancel));
+  XCTAssertNil([self.ui.view.layer animationForKey:@"opacity"]);
+  XCTAssertNil([self.ui.transitionAnimationManager capturePlatformTransition:1 generation:1]);
+  XCTAssertEqualWithAccuracy(self.ui.view.layer.opacity, 0.8, 1e-5);
 }
 @end

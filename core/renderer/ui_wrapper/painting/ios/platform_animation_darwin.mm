@@ -6,6 +6,7 @@
 
 #import <Lynx/LynxAnimationInfo.h>
 #import <Lynx/LynxKeyframeAnimator.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxPlatformAnimation.h>
 #import <Lynx/LynxTransformRaw.h>
 #import <Lynx/LynxUI+Internal.h>
@@ -231,15 +232,104 @@ LynxPlatformAnimationPlayback* MakePlatformPlayback(
   return platformPlayback;
 }
 
+bool ApplyTransition(LynxTransitionAnimationManager* manager,
+                     const gfx::PlatformAnimationCommand& command) {
+  if (command.properties.size() != 1) {
+    return false;
+  }
+  const auto& property = command.properties.front();
+  const auto& frames = property.keyframes;
+  if (frames.size() != 2 || !frames.front() || !frames.back() || frames.front()->IsEmpty() ||
+      frames.back()->IsEmpty() || frames.front()->ValueType() != frames.back()->ValueType()) {
+    return false;
+  }
+  LynxAnimationInfo* info = MakeAnimationInfo(command);
+  if (!info) {
+    return false;
+  }
+  const auto type = frames.front()->ValueType();
+  if (property.property == gfx::AnimationPropertyType::kOpacity &&
+      type == gfx::KeyframeValueType::kFloat) {
+    [manager applyPlatformOpacityTransition:info
+                                fromOpacity:static_cast<const gfx::FloatKeyframe&>(*frames.front())
+                                                .Value()
+                                  toOpacity:static_cast<const gfx::FloatKeyframe&>(*frames.back())
+                                                .Value()
+                                animationID:command.animation_id
+                                 generation:command.generation];
+    return true;
+  }
+  if (property.property == gfx::AnimationPropertyType::kTransform &&
+      type == gfx::KeyframeValueType::kTransform) {
+    const auto& from = static_cast<const gfx::TransformKeyframe&>(*frames.front());
+    const auto& to = static_cast<const gfx::TransformKeyframe&>(*frames.back());
+    if (from.HasResolvedValue() && to.HasResolvedValue()) {
+      [manager applyPlatformTransformTransition:info
+                               fromTransformRaw:ToLynxTransformRaw(from.ResolvedValue())
+                                 toTransformRaw:ToLynxTransformRaw(to.ResolvedValue())
+                                    animationID:command.animation_id
+                                     generation:command.generation];
+      return true;
+    }
+  }
+  return false;
+}
+
+std::optional<gfx::PlatformTransitionSnapshot::Value> CaptureTransition(
+    LynxUI* ui, const gfx::PlatformAnimationCommand& command) {
+  NSValue* value = [ui.transitionAnimationManager capturePlatformTransition:command.animation_id
+                                                                 generation:command.generation];
+  if (!value) {
+    return std::nullopt;
+  }
+  using Value = gfx::PlatformTransitionSnapshot::Value;
+  if ([value isKindOfClass:[NSNumber class]]) {
+    return Value{[(NSNumber*)value floatValue]};
+  }
+  const CATransform3D t = value.CATransform3DValue;
+  return Value{static_cast<float>(t.m11), static_cast<float>(t.m12), static_cast<float>(t.m13),
+               static_cast<float>(t.m14), static_cast<float>(t.m21), static_cast<float>(t.m22),
+               static_cast<float>(t.m23), static_cast<float>(t.m24), static_cast<float>(t.m31),
+               static_cast<float>(t.m32), static_cast<float>(t.m33), static_cast<float>(t.m34),
+               static_cast<float>(t.m41), static_cast<float>(t.m42), static_cast<float>(t.m43),
+               static_cast<float>(t.m44)};
+}
+
 }  // namespace
 
 void ApplyPlatformAnimationCommands(
     LynxUI* ui, const fml::RefPtr<gfx::PlatformAnimationCommandBatch>& commands) {
-  if (ui == nil || commands == nullptr || commands->empty()) {
+  if (commands == nullptr || commands->empty()) {
     return;
   }
 
+  const long sign = static_cast<long>(ui.sign);
   for (const auto& command : *commands) {
+    const bool transition = command.kind == gfx::AnimationKind::kTransition;
+    if (transition && command.type == gfx::PlatformAnimationCommandType::kDetach) {
+      if (command.transition_snapshot) {
+        command.transition_snapshot->Publish(CaptureTransition(ui, command));
+      }
+      continue;
+    }
+    if (ui == nil) {
+      continue;
+    }
+    if (transition) {
+      [ui prepareTransitionAnimationManager];
+      const bool cancel = command.type == gfx::PlatformAnimationCommandType::kCancel;
+      if (cancel) {
+        [ui.transitionAnimationManager cancelPlatformTransition:command.animation_id
+                                                     generation:command.generation];
+        continue;
+      }
+      if (!ApplyTransition(ui.transitionAnimationManager, command)) {
+        LLogWarn(@"[AnimationRouting] invalid iOS transition command element_id=%ld id=%llu "
+                  "generation=%u",
+                 sign, static_cast<unsigned long long>(command.animation_id), command.generation);
+      }
+      continue;
+    }
     if (command.kind != gfx::AnimationKind::kKeyframe) {
       continue;
     }
