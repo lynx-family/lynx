@@ -327,10 +327,7 @@ subspec_target("Markdown") {
     "markdown/LynxMarkdownView.h",
   ]
 
-  dependency = [ [
-        "ServalMarkdown",
-        "0.2.9",
-      ] ]
+  dependency = [ "ServalMarkdown" ]
 
   dependency += lynx_dependency
 }

@@ -217,6 +217,7 @@ target 'LynxExplorer' do
   ]
   use_pod 'skity'
   use_pod 'LynxTextra'
+  use_pod 'ServalMarkdown'
 
   pod 'XElement', :path => '../../../..', :subspecs => [
     'AnimaX',

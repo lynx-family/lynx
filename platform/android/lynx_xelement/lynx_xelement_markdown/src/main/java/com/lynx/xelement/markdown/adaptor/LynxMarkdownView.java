@@ -6,7 +6,9 @@ package com.lynx.xelement.markdown.adaptor;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.view.Choreographer;
+import android.view.View;
 import com.lynx.markdown.MarkdownMeasurer;
+import com.lynx.markdown.MarkdownValuePack;
 import com.lynx.markdown.ServalMarkdownView;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.xelement.markdown.LynxUIMarkdownShadowNode;
@@ -17,8 +19,7 @@ public class LynxMarkdownView extends AndroidView {
   private LynxUIMarkdownShadowNode mShadowNode;
   private MarkdownResourceLoader mResourceLoader;
   private Choreographer.FrameCallback mFrameCallback = null;
-  private int mMeasuredWidth;
-  private int mMeasuredHeight;
+  private long mMeasuredSize;
   private int mContentLeftOffset;
   private int mContentTopOffset;
   private Runnable mExposureUpdater;
@@ -54,12 +55,13 @@ public class LynxMarkdownView extends AndroidView {
       mMarkdownView = new ServalMarkdownView(getContext(), false);
       mMarkdownView.setMarkdownMeasurer(mMarkdownMeasurer);
       mMarkdownView.disableInternalVSync(true);
+      mMarkdownView.setExternalMeasure(true);
       addView(mMarkdownView);
       setDrawableCallbackOnLayoutThread(mMarkdownView);
     }
     mExposureUpdatePending = true;
-    mMeasuredWidth = bundle.mMeasuredWidth;
-    mMeasuredHeight = bundle.mMeasuredHeight;
+    mMeasuredSize = bundle.mMeasuredSize;
+    mMarkdownView.setExternalMeasuredSize(mMeasuredSize);
     layoutMarkdownView();
     return mMarkdownView;
   }
@@ -78,8 +80,12 @@ public class LynxMarkdownView extends AndroidView {
     if (mMarkdownView == null) {
       return;
     }
-    mMarkdownView.layout(mContentLeftOffset, mContentTopOffset, mContentLeftOffset + mMeasuredWidth,
-        mContentTopOffset + mMeasuredHeight);
+    int width = MarkdownValuePack.unpackMeasureResultWidth(mMeasuredSize);
+    int height = MarkdownValuePack.unpackMeasureResultHeight(mMeasuredSize);
+    mMarkdownView.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+    mMarkdownView.layout(mContentLeftOffset, mContentTopOffset, mContentLeftOffset + width,
+        mContentTopOffset + height);
   }
 
   private void setDrawableCallbackOnLayoutThread(Drawable.Callback callback) {
@@ -124,8 +130,7 @@ public class LynxMarkdownView extends AndroidView {
       mMarkdownView = null;
     }
     mMarkdownMeasurer = null;
-    mMeasuredWidth = 0;
-    mMeasuredHeight = 0;
+    mMeasuredSize = 0;
   }
 
   @Override
