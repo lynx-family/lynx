@@ -9,7 +9,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,6 +32,7 @@ import com.lynx.tasm.provider.LynxResourceCallback;
 import com.lynx.tasm.provider.LynxResourceProvider;
 import com.lynx.tasm.provider.LynxResourceRequest;
 import com.lynx.tasm.provider.LynxResourceResponse;
+import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.service.ILynxResourceService;
 import com.lynx.tasm.service.ILynxResourceServiceRequestOperation;
 import com.lynx.tasm.service.ILynxResourceServiceResponse;
@@ -74,6 +77,38 @@ public class FontFaceManagerContentUriTest {
   public void tearDown() {
     LynxFontFaceLoader.setLoader(null);
     LynxServiceCenter.inst().unregisterAllService();
+  }
+
+  @Test
+  public void genericFontFetcherReceivesRequestUrlTypeAndSyncPreference() throws Exception {
+    String fontUrl = "https://example.com/font.ttf";
+    LynxGenericResourceFetcher fetcher = mock(LynxGenericResourceFetcher.class);
+    when(mContext.getGenericResourceFetcher()).thenReturn(fetcher);
+    doAnswer(invocation -> {
+      com.lynx.tasm.resourceprovider.LynxResourceCallback<byte[]> callback =
+          invocation.getArgument(1);
+      callback.onResponse(
+          com.lynx.tasm.resourceprovider.LynxResourceResponse.onSuccess(new byte[0]));
+      return null;
+    })
+        .when(fetcher)
+        .fetchResource(any(), any());
+
+    Method method = FontFaceManager.class.getDeclaredMethod(
+        "loadTypeFaceFromHttpSRCByGenericResourceFetcher", LynxContext.class, String.class);
+    method.setAccessible(true);
+    assertNull(method.invoke(FontFaceManager.getInstance(), mContext, fontUrl));
+
+    ArgumentCaptor<com.lynx.tasm.resourceprovider.LynxResourceRequest> requestCaptor =
+        ArgumentCaptor.forClass(com.lynx.tasm.resourceprovider.LynxResourceRequest.class);
+    verify(fetcher).fetchResource(requestCaptor.capture(), any());
+    com.lynx.tasm.resourceprovider.LynxResourceRequest request = requestCaptor.getValue();
+    assertEquals(fontUrl, request.getUrl());
+    assertEquals(
+        com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeFont,
+        request.getResourceType());
+    assertEquals(com.lynx.tasm.resourceprovider.LynxResourceRequest.AsyncMode.MOST_SYNC,
+        request.getAsyncMode());
   }
 
   @Test
