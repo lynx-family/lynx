@@ -4,6 +4,7 @@
 
 #include "core/shell/lynx_shell.h"
 
+#include <cstring>
 #include <utility>
 
 #include "base/include/fml/thread.h"
@@ -929,31 +930,37 @@ void LynxShell::RegisterNotificationCallbacks() {
                  return;
                }
                const char* type = reinterpret_cast<const char*>(payload[1]);
-               if (std::strcmp(type, "bts") == 0) {
+               if (std::strncmp(type, "bts_", 4) == 0) {
                  if (!this->runtime_actor_) {
-                   LOGI("No runtime actor, skip take snapshot");
+                   LOGE("No runtime actor");
                    return;
                  }
-                 this->runtime_actor_->Act([&](auto& rt) {
-                   const auto& group_id = rt->GetGroupId();
+                 runtime_actor_->Act([instance_id = instance_id_,
+                                      type = std::string(type)](auto& rt) {
+                   if (!rt) return;
                    auto bts_js_executor = rt->GetJSExecutor();
                    if (bts_js_executor) {
                      auto bts_rt = bts_js_executor->GetJSRuntime().Lock();
                      if (bts_rt) {
-                       std::string identifier;
-                       if (runtime::JSRealmManager::IsSingleJSContext(
-                               group_id)) {
-                         identifier = "instance_" +
-                                      std::to_string(this->instance_id_) +
-                                      "(single bts)";
-                       } else {
-                         identifier = group_id + "(shared bts)";
+                       auto context = bts_rt->getSharedContext();
+                       if (!context) {
+                         LOGE("No context for BTS snapshot");
+                         return;
                        }
-                       intptr_t payload[3] = {
-                           reinterpret_cast<intptr_t>(
-                               bts_rt->getSharedContext().get()),
-                           reinterpret_cast<intptr_t>(identifier.c_str()),
-                           static_cast<intptr_t>(false)};
+                       int32_t slot = fml::JSMemoryTrackSlotType::Unknown;
+                       if (type == "bts_page") {
+                         slot = fml::MessageLoop::GetCurrent()
+                                    .GetTaskRunner()
+                                    ->GetInstanceMemorySlot(instance_id);
+                         if (!fml::IsValidInstanceSlot(slot)) {
+                           LOGE("No valid memory slot for instance");
+                           return;
+                         }
+                       }
+                       intptr_t payload[4] = {
+                           reinterpret_cast<intptr_t>(context.get()),
+                           reinterpret_cast<intptr_t>(type.c_str()),
+                           instance_id, slot};
                        base::NotificationCallback::Notify(
                            runtime::kBTSTakeVMSnapshot,
                            reinterpret_cast<intptr_t>(payload));
@@ -968,8 +975,7 @@ void LynxShell::RegisterNotificationCallbacks() {
                      auto mts_vm = default_entry->GetVm();
                      if (mts_vm) {
                        std::string identifier =
-                           "instance_" + std::to_string(this->instance_id_) +
-                           "(mts)";
+                           "mts_instance/" + std::to_string(this->instance_id_);
                        intptr_t payload[2] = {
                            reinterpret_cast<intptr_t>(mts_vm->GetMTSContext()),
                            reinterpret_cast<intptr_t>(identifier.c_str())};

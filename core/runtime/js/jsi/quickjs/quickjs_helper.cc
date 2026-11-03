@@ -4,7 +4,7 @@
 #include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 
 #include <algorithm>
-#include <string>
+#include <cstring>
 
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_exception.h"
@@ -14,12 +14,13 @@
 #include <string>
 #include <utility>
 
-#include "base/include/notification_center.h"
+#if ENABLE_TRACE_PERFETTO
+#include "base/include/fml/memory/js_memory_track_define.h"
+#endif
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
-#include "core/runtime/js/runtime_constant.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "quickjs/include/quickjs.h"
 extern "C" {
@@ -366,46 +367,128 @@ std::string QuickjsHelper::GetDebugDescription(LEPUSRuntime *runtime) {
   }
 }
 
-bool QuickjsHelper::TakeHeapSnapshot(LEPUSContext *ctx,
-                                     const std::string &identifier) {
 #if ENABLE_TRACE_PERFETTO
+namespace {
+void AddSnapshotAnnotations(lynx::perfetto::EventContext &ctx, int32_t slot,
+                            size_t trigger_bytes, size_t retained_bytes,
+                            const QuickjsHelper::ResidualSnapshotInfo *info) {
+  if (slot < 0 || slot >= LEPUS_MEMORY_SIZE_SLOTS) return;
+  auto *event = ctx.event();
+  trace::WriteTraceEventArgs(ctx, "slot", slot);
+  trace::WriteTraceEventArgs(ctx, "include_internal_allocations", true);
+  trace::WriteTraceEventArgs(ctx, "trigger_retained_bytes", trigger_bytes);
+  trace::WriteTraceEventArgs(ctx, "retained_bytes", retained_bytes);
+  if (!info) return;
+  trace::WriteTraceEventArgs(ctx, "post_exit_page_count",
+                             info->post_exit_page_count);
+  trace::WriteTraceEventArgs(ctx, "previous_retained_bytes",
+                             info->previous_bytes);
+  event->add_debug_annotations("capture_reason", info->reason);
+  if (info->previous_bytes > 0) {
+    const double change = (static_cast<double>(info->trigger_bytes) -
+                           static_cast<double>(info->previous_bytes)) /
+                          info->previous_bytes * 100;
+    trace::WriteTraceEventArgs(ctx, "change_percent", change);
+  }
+}
+
+void WriteHeapSnapshotToTrace(
+    LEPUSContext *ctx, const std::string &identifier,
+    const std::string &snapshot_id, const char *snapshot,
+    uint64_t capture_started_at_ns, int32_t slot = -1, size_t trigger_bytes = 0,
+    size_t retained_bytes = 0,
+    const QuickjsHelper::ResidualSnapshotInfo *info = nullptr) {
   constexpr size_t kMaxHeapSnapshotChunkSize = 128 * 1024;
-  std::string snapshot_id =
-      identifier + "#" + std::to_string(trace::GetTraceTimeNs());
-  if (ctx) {
-    TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, "will_capture_snapshot", "id",
-                        identifier, "snapshot_id", snapshot_id);
-    auto *snapshot = js_profile_take_heap_snapshot(ctx);
-    if (snapshot != nullptr) {
-      size_t total_length = std::strlen(snapshot);
-      size_t chunk_count = (total_length + kMaxHeapSnapshotChunkSize - 1) /
-                           kMaxHeapSnapshotChunkSize;
-      auto time_stamp = trace::GetTraceTimeNs();
-      TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, "capture_snapshot", time_stamp++,
-                          "id", identifier, "snapshot_id", snapshot_id,
-                          "total_length", total_length, "chunk_size",
-                          kMaxHeapSnapshotChunkSize, "chunk_count", chunk_count,
-                          "desc", GetDebugDescription(LEPUS_GetRuntime(ctx)));
-      for (size_t chunk_index = 0; chunk_index < chunk_count; ++chunk_index) {
-        size_t offset = chunk_index * kMaxHeapSnapshotChunkSize;
-        size_t content_length =
-            std::min(kMaxHeapSnapshotChunkSize, total_length - offset);
-        std::string chunk(snapshot + offset, content_length);
-        TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, "snapshot_chunk", time_stamp++,
-                            "id", identifier, "snapshot_id", snapshot_id,
-                            "chunk_index", chunk_index, "offset", offset,
-                            "content_length", content_length, "content", chunk);
-      }
-      js_profile_free_heap_snapshot(snapshot);
-      LOGI("VM heap snapshot captured of '" << snapshot_id << "'");
-      base::NotificationCallback::Notify(kVMSnapshotCaptured, 0);
-      return true;
-    }
+  const size_t total_length = std::strlen(snapshot);
+  const size_t chunk_count = (total_length + kMaxHeapSnapshotChunkSize - 1) /
+                             kMaxHeapSnapshotChunkSize;
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, "capture_snapshot", capture_started_at_ns, "id",
+      identifier, "snapshot_id", snapshot_id, "total_length", total_length,
+      "chunk_size", kMaxHeapSnapshotChunkSize, "chunk_count", chunk_count,
+      "desc", QuickjsHelper::GetDebugDescription(LEPUS_GetRuntime(ctx)),
+      [&](lynx::perfetto::EventContext ctx) {
+        AddSnapshotAnnotations(ctx, slot, trigger_bytes, retained_bytes, info);
+      });
+  auto time_stamp = capture_started_at_ns;
+  for (size_t chunk_index = 0; chunk_index < chunk_count; ++chunk_index) {
+    const size_t offset = chunk_index * kMaxHeapSnapshotChunkSize;
+    const size_t content_length =
+        std::min(kMaxHeapSnapshotChunkSize, total_length - offset);
+    std::string chunk(snapshot + offset, content_length);
+    TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, "snapshot_chunk", time_stamp++,
+                        "id", identifier, "snapshot_id", snapshot_id,
+                        "chunk_index", chunk_index, "offset", offset,
+                        "content_length", content_length, "content", chunk,
+                        [&](lynx::perfetto::EventContext ctx) {
+                          AddSnapshotAnnotations(ctx, slot, trigger_bytes,
+                                                 retained_bytes, info);
+                        });
+  }
+}
+}  // namespace
+
+bool QuickjsHelper::TakeHeapSnapshotAndWriteToTrace(
+    LEPUSContext *ctx, const std::string &identifier) {
+  if (!ctx) {
+    LOGI("Cannot take VM heap snapshot of '" << identifier << "': no context");
+    return false;
+  }
+  const auto capture_started_at_ns = trace::GetTraceTimeNs();
+  auto *snapshot = js_profile_take_heap_snapshot(ctx);
+  const std::string snapshot_id =
+      identifier + "#" + std::to_string(capture_started_at_ns);
+  if (snapshot != nullptr) {
+    WriteHeapSnapshotToTrace(ctx, identifier, snapshot_id, snapshot,
+                             capture_started_at_ns);
+    js_profile_free_heap_snapshot(snapshot);
+    LOGI("VM heap snapshot captured of '" << snapshot_id << "'");
+    return true;
   }
   LOGI("Fail to take VM heap snapshot of '" << snapshot_id << "'");
-#endif
   return false;
 }
+
+bool QuickjsHelper::TakeHeapSnapshotForSlotAndWriteToTrace(
+    LEPUSContext *ctx, const std::string &identifier, int32_t slot,
+    ResidualSnapshotInfo *info, SlotSnapshotFunction take_snapshot) {
+  if (!ctx || slot < 0 || slot >= LEPUS_MEMORY_SIZE_SLOTS) {
+    LOGI("Cannot take slot heap snapshot of '"
+         << identifier << "': no context or invalid slot " << slot);
+    return false;
+  }
+  auto *runtime = LEPUS_GetRuntime(ctx);
+  size_t slots[LEPUS_MEMORY_SIZE_SLOTS]{};
+  if (!info) {
+    LEPUS_DumpMemorySlots(runtime, slots);
+  }
+  const size_t trigger_bytes = info ? info->trigger_bytes : slots[slot];
+  const auto capture_started_at_ns = trace::GetTraceTimeNs();
+  const uint32_t flags = LEPUS_HEAP_SNAPSHOT_SUMMARIZE_DIAGNOSTICS |
+                         LEPUS_HEAP_SNAPSHOT_INCLUDE_LOCATIONS |
+                         LEPUS_HEAP_SNAPSHOT_CLEAR_CONSOLE_MESSAGES;
+  const char *snapshot = take_snapshot(ctx, slot, flags);
+  const std::string snapshot_id =
+      identifier + "#" + std::to_string(capture_started_at_ns);
+  if (!snapshot) {
+    LOGI("Fail to take slot heap snapshot of '" << snapshot_id << "'");
+    return false;
+  }
+  // The snapshot performs a full GC, so its slot bytes may have changed since
+  // the trigger. Use the post-capture value as the next comparison baseline.
+  LEPUS_DumpMemorySlots(runtime, slots);
+  const size_t retained_bytes = slots[slot];
+  if (info) {
+    info->retained_bytes = retained_bytes;
+  }
+  WriteHeapSnapshotToTrace(ctx, identifier, snapshot_id, snapshot,
+                           capture_started_at_ns, slot, trigger_bytes,
+                           retained_bytes, info);
+  js_profile_free_heap_snapshot(snapshot);
+  LOGI("Slot heap snapshot captured of '" << snapshot_id << "'");
+  return true;
+}
+#endif
 
 }  // namespace detail
 }  // namespace js

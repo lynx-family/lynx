@@ -652,6 +652,144 @@ These bytes are already part of shared heap, not additions to accounted memory
 or exited-page residuals. Page totals cannot detect every attribution error
 represented by Unknown bytes.
 
+### 7.6 Exited-page heap snapshots in Trace
+
+With Perfetto tracing enabled, `TraceConfig::enable_memory_trace` includes
+automatic QuickJS page-slot snapshots and forced GC by default. Automatic
+snapshots require an enabled `MemoryMonitor`, slot tracking, and engine slot
+snapshot support. DevTool connection force-enables `MemoryMonitor`; starting
+Trace does not enable monitoring or slot tracking by itself. The VM lazily
+creates a dedicated snapshot context on its owner thread, reuses it across
+capture batches, and releases it before freeing the runtime. Its allocations
+are charged to the Common slot. Capture does not require a surviving page
+context.
+`TraceController::GetMemoryTraceConfig()` returns a config only while Trace is
+started and `enable_memory_trace` is enabled. No separate GC or residual
+snapshot option is required. The slot-snapshot helper only
+captures and writes the result, without checking Trace state.
+
+On Android and iOS, the memory-trace plugin requests forced GC during trace
+setup and stop. Page destruction also notifies the plugin while memory tracing
+is active; the plugin delays and coalesces these requests.
+
+A completed full GC queues a reporter lookup of destroyed pages, followed by
+an owner-thread capture under a temporary strong VM reference. Only page slots
+3..255 with an exit time strictly before that full GC qualify. Active pages and
+reserved slots never qualify. This path does not force a GC to discover
+residuals. The engine's slot-snapshot operation may itself collect; those GC
+callbacks update telemetry but cannot recursively schedule more snapshots.
+
+The first positive residual produces a snapshot. Later captures compare the
+current slot bytes with the bytes observed after the last successful capture:
+
+```text
+abs(current_bytes - previous_snapshot_bytes) / previous_snapshot_bytes > 0.20
+```
+
+Both increases and decreases qualify; exactly 20% does not. Comparing with the
+last successful snapshot allows several small changes to accumulate. A failed
+capture preserves the baseline and sequence for a later full-GC retry. A drop
+to zero produces a final snapshot; subsequent zeros are skipped. Reappearance
+after that zero produces another snapshot. The baseline and per-slot sequence
+are maintained for the VM's lifetime.
+
+When `post_exit_page_count` increases to 1 or 2, the next completed full GC
+also captures positive residuals, even when their bytes have not changed or
+the change is at most 20%. Each successful capture records its page count,
+including captures selected by the existing reasons. Further GCs at the same
+count use only the existing first-capture, cleared/reappeared and strict 20%
+rules. Failed captures leave the recorded count unchanged so a later GC can
+retry. At zero new bindings or more than two, only the existing rules apply.
+Zero residuals still follow the existing rules so repeated empty snapshots
+are skipped.
+
+Successful snapshots use `capture_snapshot` and `snapshot_chunk` events.
+The `capture_snapshot` timestamp is recorded immediately before the engine
+capture; chunk timestamps use that time plus their zero-based chunk index
+in nanoseconds.
+`snapshot_id` identifies one capture and links its
+128-KiB chunks; `id` has the form `bts_residual/<instance_id>/slot_<slot>`.
+Snapshot type and instance identity are derived from `id`. Repeated captures
+for one identifier are ordered by their Trace timestamps.
+The engine includes internal allocations so the graph covers the complete
+charged slot. Both automatic and manual BTS slot captures pass
+`LEPUS_HEAP_SNAPSHOT_SUMMARIZE_DIAGNOSTICS` and
+`LEPUS_HEAP_SNAPSHOT_INCLUDE_LOCATIONS`. Diagnostic-only retained memory is
+summarized without clearing console messages or modifying the Runtime, and
+available function locations are included.
+The following annotations accompany manifests and chunks:
+
+| Annotation | Meaning |
+| --- | --- |
+| `slot` | Captured page slot |
+| `post_exit_page_count` | New bindings to that VM since the target page exited |
+| `previous_retained_bytes` | Previous successful snapshot's slot bytes |
+| `trigger_retained_bytes` | Selected slot bytes before capture |
+| `retained_bytes` | Slot bytes after the engine's snapshot GC |
+| `change_percent` | Signed change from the previous snapshot to trigger bytes; present when the previous bytes are positive |
+| `capture_reason` | First capture, change exceeding 20%, residual cleared/reappeared, or one/two new page bindings after exit |
+| `include_internal_allocations` | `true` |
+
+The reason values are `first_post_exit_full_gc`,
+`residual_change_exceeds_20_percent`, `residual_cleared`,
+`residual_reappeared`, and `post_exit_page_count_within_two`. Existing reasons
+take precedence when their conditions also hold. Capture failures only
+produce a log and preserve the baseline and sequence. Trigger and captured
+bytes can differ because capture
+runs another full GC. The slot bytes are read again after capture to obtain
+`retained_bytes`, which becomes `previous_retained_bytes` for the next capture.
+These snapshots explain retained objects; their bytes overlap the existing
+residual metrics and must not be added to them.
+
+### 7.7 Manual heap snapshots in Trace
+
+The `mts` request continues to run on the engine actor and capture the MTS
+whole heap. All `bts_` requests are dispatched to the runtime actor's JS
+thread. The supported types and identifiers are:
+
+| Request type | Capture scope | Identifier |
+| --- | --- | --- |
+| `mts` | MTS whole heap | `mts_instance/<instance_id>` |
+| `bts_page` | Requesting page's slot (3..255) | `bts_instance/<instance_id>/slot_<slot>` |
+| `bts_vm` | BTS whole VM | `bts_vm/<creation_time_ns>` |
+| `bts_unknown` | BTS Unknown slot (0) | `bts_unknown/<creation_time_ns>` |
+| `bts_common` | BTS Common slot (1) | `bts_common/<creation_time_ns>` |
+| `bts_overflow` | BTS Overflow slot (2) | `bts_overflow/<creation_time_ns>` |
+
+`creation_time_ns` is the VM's `creation_time_as_unique_` in nanoseconds,
+matching the suffix of its `bts_vm_acc_<creation_time_ns>` memory track.
+VM-level identifiers do not contain the requesting page's id or slot.
+
+`bts_page` requires a live page context and valid instance slot. Whole-VM
+capture uses `QuickjsHelper::TakeHeapSnapshotAndWriteToTrace` and does not
+require slot tracking. The other BTS types use
+`QuickjsHelper::TakeHeapSnapshotForSlotAndWriteToTrace` and require tracking
+and engine slot-snapshot support.
+
+A URL notification can match multiple Shells sharing a VM. That VM combines
+VM-level requests in a 100-ms window and captures each requested type once.
+Different VMs and different types are kept independent. A later request can
+capture again after the batch completes. The task weakly references the VM,
+does not retain any requesting page context, and skips capture if the VM is
+gone or the originating Trace config is no longer active. VM-level captures
+reuse the same dedicated context as automatic residual captures.
+
+Slot manifests and chunks carry `slot`, `include_internal_allocations=true`,
+`trigger_retained_bytes` (slot bytes immediately before capture), and
+`retained_bytes` (slot bytes after capture). Residual-only annotations such as
+the previous baseline, exit-page count, and capture reason are absent. Whole
+heap snapshots do not carry slot annotations; slot 0 is a valid slot snapshot.
+The `capture_snapshot` timestamp is recorded before the engine capture for
+both manual BTS slot snapshots and manual MTS whole-heap snapshots.
+Each successful manual capture emits the existing snapshot-completion
+notification from its BTS or MTS caller. Snapshot helpers only capture and
+write the result.
+Unavailable runtimes, contexts, slots, or engine snapshots only produce a log.
+Manual capture has no residual-change threshold and does not update the
+automatic capture's baseline or sequence. Snapshot GC callbacks cannot
+recursively schedule automatic captures. The request caller controls Trace
+eligibility; the slot helper does not check Trace state.
+
 ## 8. Slot transitions and VM reuse
 
 Cross-engine reuse uses timer VM details:

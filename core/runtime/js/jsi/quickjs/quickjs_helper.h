@@ -91,8 +91,27 @@ class QuickjsHelper {
 
   static std::string GetDebugDescription(LEPUSRuntime* runtime);
 
-  static bool TakeHeapSnapshot(LEPUSContext* ctx,
-                               const std::string& identifier);
+#if ENABLE_TRACE_PERFETTO
+  static bool TakeHeapSnapshotAndWriteToTrace(LEPUSContext* ctx,
+                                              const std::string& identifier);
+  struct ResidualSnapshotInfo {
+    uint64_t post_exit_page_count;
+    // Slot bytes after the previous successful snapshot, used as the baseline.
+    size_t previous_bytes;
+    // Slot bytes before this capture, used for the threshold comparison.
+    size_t trigger_bytes;
+    // Slot bytes after this snapshot's full GC; becomes the next baseline.
+    size_t retained_bytes{0};
+    const char* reason;
+  };
+  using SlotSnapshotFunction =
+      decltype(&js_profile_take_heap_snapshot_for_slot);
+  static bool TakeHeapSnapshotForSlotAndWriteToTrace(
+      LEPUSContext* ctx, const std::string& identifier, int32_t slot,
+      ResidualSnapshotInfo* info = nullptr,
+      SlotSnapshotFunction take_snapshot =
+          js_profile_take_heap_snapshot_for_slot);
+#endif
 };
 
 }  // namespace detail

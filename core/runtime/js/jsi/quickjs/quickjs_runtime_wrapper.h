@@ -14,7 +14,10 @@
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
 #if ENABLE_TRACE_PERFETTO
+#include <vector>
+
 #include "base/include/notification_center.h"
+#include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 #endif
 #include "base/include/vector.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -26,6 +29,11 @@
 #endif
 
 namespace lynx {
+namespace tasm {
+namespace performance {
+struct BtsResidualPage;
+}
+}  // namespace tasm
 namespace runtime {
 namespace js {
 using LepusIdContainer = std::unordered_map<LEPUSRuntime*, LEPUSClassID>;
@@ -109,7 +117,7 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   }
 
  private:
-  LEPUSRuntime* rt_;
+  LEPUSRuntime* rt_{nullptr};
   base::LinearFlatSet<JSIObserver*> obs_set_ptr_;
   static LEPUSClassID s_function_id_;
   static LEPUSClassID s_object_id_;
@@ -120,6 +128,41 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   bool per_instance_memory_track_{false};
   bool large_vm_checked_{false};
 #if ENABLE_TRACE_PERFETTO
+  friend class QuickjsResidualSnapshotTest;
+  struct ResidualSnapshotState {
+    size_t bytes{0};
+    uint32_t sequence{0};
+    // New page bindings observed by the last successful capture.
+    uint64_t post_exit_page_count{0};
+
+    bool ShouldCapture(size_t current_bytes) const {
+      if (!sequence) return current_bytes != 0;
+      const size_t delta =
+          current_bytes > bytes ? current_bytes - bytes : bytes - current_bytes;
+      // Exact strict 20% comparison, without overflow or floating-point loss.
+      return delta > bytes / 5;
+    }
+  };
+  // Indexed by slot, allocated only when automatic capture is enabled.
+  std::vector<ResidualSnapshotState> residual_snapshots_;
+  // Shared by VM-level and residual captures; released before the runtime.
+  LEPUSContext* snapshot_context_{nullptr};
+  bool capturing_slot_snapshot_{false};
+  // VM-level types requested during the current coalescing window.
+  uint32_t pending_vm_snapshot_types_{0};
+  void ScheduleVMSnapshot(JSIContext& context, uint32_t type_index);
+  void CaptureVMSnapshots(
+      uint32_t types,
+      detail::QuickjsHelper::SlotSnapshotFunction take_snapshot =
+          js_profile_take_heap_snapshot_for_slot);
+  bool CaptureInstanceSnapshot(
+      LEPUSContext* ctx, const std::string& identifier, int32_t slot,
+      detail::QuickjsHelper::SlotSnapshotFunction take_snapshot =
+          js_profile_take_heap_snapshot_for_slot);
+  void CaptureResidualSnapshots(
+      std::vector<tasm::performance::BtsResidualPage> pages,
+      detail::QuickjsHelper::SlotSnapshotFunction take_snapshot =
+          js_profile_take_heap_snapshot_for_slot);
   fml::TimePoint last_trace_event_time_;
   fml::TimePoint creation_time_as_unique_;
   std::unique_ptr<base::NotificationCallback> notification_callback_;
