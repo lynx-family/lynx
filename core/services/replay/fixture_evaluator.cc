@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include "core/base/json/json_util.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/services/replay/fixture_common.h"
 #include "core/services/replay/fixture_js_runtime.h"
@@ -331,6 +332,33 @@ base::expected<FixtureEvaluationResult, std::string> EvaluateFixture(
     return base::unexpected(std::string("fixture.js evaluation failed"));
   }
   return result;
+}
+
+std::string SerializeFixtureEvaluationResult(
+    const FixtureEvaluationResult& result) {
+  auto quote = [](const std::string& value) {
+    return base::ToJson(rapidjson::Value(
+        value.data(), static_cast<rapidjson::SizeType>(value.size())));
+  };
+  // Payloads are already valid JSON. Append them unchanged to preserve values.
+  std::string json = "{\"actions\":[";
+  bool first = true;
+  for (const auto& action : result.actions) {
+    if (!first) json += ',';
+    first = false;
+    json += "{\"functionName\":" + quote(action.function_name) +
+            ",\"delayMs\":" + std::to_string(action.delay_ms) +
+            ",\"params\":" + action.params_json + '}';
+  }
+  json += "],\"sharedData\":{";
+  first = true;
+  for (const auto& item : result.shared_data) {
+    if (!first) json += ',';
+    first = false;
+    json += quote(item.key) + ':' + item.value_json;
+  }
+  json += "}}";
+  return json;
 }
 
 }  // namespace replay

@@ -34,6 +34,10 @@ struct FixtureEvaluationResult {
   std::vector<FixtureSharedDataEntry> shared_data;
 };
 
+// Serializes evaluator output for platform adapters, preserving JSON payloads.
+LYNX_EXPORT_FOR_DEVTOOL std::string SerializeFixtureEvaluationResult(
+    const FixtureEvaluationResult& result);
+
 struct FixtureEvaluationLimits {
   // These defaults bound one synchronous evaluation. Callers may provide
   // tighter limits for tests or constrained replay environments.
