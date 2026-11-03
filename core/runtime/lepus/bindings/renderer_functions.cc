@@ -1023,6 +1023,21 @@ RENDERER_FUNCTION_CC(ReplaceStyleSheets) {
       std::move(sheets))));
 }
 
+RENDERER_FUNCTION_CC(RemoveStyleSheet) {
+  CHECK_ARGC_EQ(RemoveStyleSheet, 1);
+  CONVERT_ARG(arg0, 0);
+  if (!arg0->IsRefCounted() || !arg0->RefCounted() ||
+      arg0->RefCounted()->GetRefType() != lepus::RefType::kCSSFragment) {
+    RETURN(lepus::Value(false));
+  }
+  auto* tasm = GET_TASM_POINTER();
+  if (!tasm) RETURN_UNDEFINED();
+  auto wrapper =
+      fml::static_ref_ptr_cast<SharedCSSFragmentWrapper>(arg0->RefCounted());
+  RETURN(lepus::Value(
+      tasm->page_proxy()->element_manager()->RemoveStyleSheet(wrapper)));
+}
+
 /* NativeModule Lynx API END */
 
 RENDERER_FUNCTION_CC(FiberAddEventListener) {

@@ -60,6 +60,9 @@ describe('Test Element API Types', () => {
     const sheet = {} as StyleSheetRef;
     expectTypeOf<typeof __LoadStyleSheet>().returns.toEqualTypeOf<StyleSheetRef | undefined>();
     expectTypeOf<typeof __AdoptStyleSheet>().toBeCallableWith(sheet);
+    expectTypeOf<typeof __RemoveStyleSheet>().toBeCallableWith(sheet);
+    expectTypeOf<typeof __RemoveStyleSheet>().parameters.toEqualTypeOf<[StyleSheetRef]>();
+    expectTypeOf<typeof __RemoveStyleSheet>().returns.toBeBoolean();
     expectTypeOf<typeof __ReplaceStyleSheets>().toBeCallableWith([sheet, '.card { color: red; }']);
     expectTypeOf<typeof __ReplaceStyleSheets>().toBeCallableWith([]);
     expectTypeOf<typeof __ReplaceStyleSheets>().returns.toBeBoolean();

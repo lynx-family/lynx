@@ -330,6 +330,20 @@ void ElementManager::InvalidateCascadeLayerMapCache() {
   cascade_layer_map_cache_.clear();
 }
 
+bool ElementManager::RemoveStyleSheet(
+    const fml::RefPtr<SharedCSSFragmentWrapper> &sheet) {
+  if (!sheet || !sheet->fragment_) {
+    return false;
+  }
+  auto remaining = GetAdoptedStyleSheets();
+  const auto end = std::remove(remaining.begin(), remaining.end(), sheet);
+  if (end == remaining.end()) {
+    return false;
+  }
+  remaining.erase(end, remaining.end());
+  return ReplaceStyleSheets(std::move(remaining));
+}
+
 bool ElementManager::ReplaceStyleSheets(
     std::vector<fml::RefPtr<SharedCSSFragmentWrapper>> sheets) {
   if (std::any_of(sheets.begin(), sheets.end(), [](const auto &sheet) {
