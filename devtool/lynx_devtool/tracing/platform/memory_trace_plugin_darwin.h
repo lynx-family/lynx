@@ -27,7 +27,7 @@ class MemoryTracePluginDarwin : public TracePlugin {
  private:
   void RunGC();
 
-  bool force_gc_{false};
+  bool enabled_{false};
   bool gc_task_scheduled_{false};
   std::mutex gc_task_mutex_;
   base::NotificationCallback notification_callback_;

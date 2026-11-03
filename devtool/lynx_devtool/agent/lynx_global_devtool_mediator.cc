@@ -478,17 +478,6 @@ void LynxGlobalDevToolMediator::TracingStart(
                 trace::TraceConfig::kMemoryTraceFileWritePeriodMs;
           }
         }
-        if (trace_config.isMember("forceGC")) {
-          config->memory_trace_force_gc = trace_config["forceGC"].asBool();
-        }
-        if (trace_config.isMember("enableAutoHeapSnapshot")) {
-          config->auto_take_snapshot =
-              trace_config["enableAutoHeapSnapshot"].asBool();
-          if (trace_config.isMember("sharedGroupId")) {
-            config->auto_take_snapshot_group_id =
-                trace_config["sharedGroupId"].asString();
-          }
-        }
 
         config->js_profile_interval =
             trace_config.isMember("JSProfileInterval")

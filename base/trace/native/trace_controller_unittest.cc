@@ -9,6 +9,19 @@
 namespace lynx {
 namespace trace {
 
+namespace {
+class MemoryTraceTestController : public TraceController {
+ public:
+  bool IsTracingStarted() override { return tracing_started; }
+  std::shared_ptr<TraceConfig> GetLastSessionTraceConfig() override {
+    return config;
+  }
+
+  bool tracing_started{false};
+  std::shared_ptr<TraceConfig> config;
+};
+}  // namespace
+
 class TraceControllerTest : public ::testing::Test {
  protected:
   TraceControllerTest() = default;
@@ -18,6 +31,27 @@ class TraceControllerTest : public ::testing::Test {
 
   void TearDown() override {}
 };
+
+TEST_F(TraceControllerTest, MemoryTraceConfigRequiresActiveMemoryTrace) {
+  MemoryTraceTestController controller;
+  for (bool started : {false, true}) {
+    for (bool has_config : {false, true}) {
+      for (bool memory_trace : {false, true}) {
+        SCOPED_TRACE(::testing::Message()
+                     << started << "/" << has_config << "/" << memory_trace);
+        controller.tracing_started = started;
+        controller.config =
+            has_config ? std::make_shared<TraceConfig>() : nullptr;
+        if (controller.config) {
+          controller.config->enable_memory_trace = memory_trace;
+        }
+        EXPECT_EQ(controller.GetMemoryTraceConfig(),
+                  started && has_config && memory_trace ? controller.config
+                                                        : nullptr);
+      }
+    }
+  }
+}
 
 TEST_F(TraceControllerTest, TraceControllerTotalTest) {
   auto controller = TraceController::Instance();

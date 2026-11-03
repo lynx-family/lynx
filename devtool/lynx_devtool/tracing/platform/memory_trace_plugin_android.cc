@@ -58,14 +58,14 @@ MemoryTracePluginAndroid::MemoryTracePluginAndroid(JNIEnv* env, jobject owner)
 
 void MemoryTracePluginAndroid::DispatchSetup(
     const std::shared_ptr<TraceConfig>& config) {
-  force_gc_ = config->memory_trace_force_gc;
-  if (force_gc_) {
+  enabled_ = config->enable_memory_trace;
+  if (enabled_) {
     RunGC();
   }
 }
 
 void MemoryTracePluginAndroid::DispatchEnd() {
-  if (force_gc_) {
+  if (enabled_) {
     RunGC();
   }
 }

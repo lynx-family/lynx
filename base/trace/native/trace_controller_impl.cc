@@ -498,9 +498,6 @@ int TraceControllerImpl::StartTracing(
       nullptr, 0, [&](lynx::perfetto::EventContext ctx) {
         ctx.event()->add_debug_annotations(
             "enable_memory_trace", std::to_string(config->enable_memory_trace));
-        ctx.event()->add_debug_annotations(
-            "memory_trace_force_gc",
-            std::to_string(config->memory_trace_force_gc));
       });
 
   // plugin

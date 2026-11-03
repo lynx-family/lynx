@@ -28,7 +28,7 @@ jint StartTracing(JNIEnv* env, jobject jcaller, jlong ptr, jint buffer_size,
                   jobjectArray include_categories,
                   jobjectArray exclude_categories, jstring trace_file,
                   jboolean enableSystrace, jboolean enableCompress,
-                  jboolean enableMemoryTrace, jboolean forceGC) {
+                  jboolean enableMemoryTrace) {
   return kInvalidTraceSessionId;
 }
 

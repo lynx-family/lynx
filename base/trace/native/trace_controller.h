@@ -39,9 +39,6 @@ struct TRACE_EXPORT TraceConfig {
   RuntimeProfilerType js_profile_type;
   bool enable_compress;
   bool enable_memory_trace;
-  bool memory_trace_force_gc;
-  bool auto_take_snapshot;
-  std::string auto_take_snapshot_group_id;
   TraceConfig()
       : record_mode(RECORD_AS_MUCH_AS_POSSIBLE),
         buffer_size(kDefaultBufferSize),
@@ -51,9 +48,7 @@ struct TRACE_EXPORT TraceConfig {
         js_profile_interval(-1),
         js_profile_type(RuntimeProfilerType::quickjs),
         enable_compress(false),
-        enable_memory_trace(false),
-        memory_trace_force_gc(false),
-        auto_take_snapshot(true) {}
+        enable_memory_trace(false) {}
 };
 
 // DispatchBegin()/DispatchEnd() of TracePlugin that injected into
@@ -125,6 +120,13 @@ class TRACE_EXPORT TraceController {
   virtual bool IsTracingStarted() { return false; }
   virtual std::shared_ptr<TraceConfig> GetLastSessionTraceConfig() {
     return nullptr;
+  }
+  // Returns the config only while tracing with memory collection is active.
+  std::shared_ptr<TraceConfig> GetMemoryTraceConfig() {
+    if (!IsTracingStarted()) return nullptr;
+    auto config = GetLastSessionTraceConfig();
+    if (!config || !config->enable_memory_trace) return nullptr;
+    return config;
   }
 
  protected:
