@@ -165,6 +165,7 @@ class CSSKeyframeManager : public AnimationDelegate {
   std::shared_ptr<Animation> CreateAnimation(
       starlight::AnimationData& data,
       const tasm::CustomPropertiesMap* base_custom_properties = nullptr,
+      const tasm::StyleMap* base_resolved_styles = nullptr,
       std::optional<Animation::Origin> origin = std::nullopt,
       bool notify_created = true);
 
@@ -249,6 +250,17 @@ class CSSKeyframeManager : public AnimationDelegate {
   using ParsedPropertyMap =
       base::OrderedFlatMap<AnimationCurve::CurveType, ParsedPropertyKeyframes>;
 
+  struct PreparedAnimation {
+    ParsedPropertyMap properties;
+    AnimationBackendResult backend;
+    bool has_custom_property_keyframes{false};
+  };
+
+  PreparedAnimation PrepareAnimation(
+      starlight::AnimationData& data,
+      const tasm::CustomPropertiesMap* base_custom_properties,
+      const tasm::StyleMap* base_resolved_styles, bool allow_platform);
+
   ParsedKeyframe CreateParsedKeyframe(
       AnimationCurve::CurveType type, double offset,
       std::unique_ptr<gfx::TimingFunction> timing_function,
@@ -259,7 +271,9 @@ class CSSKeyframeManager : public AnimationDelegate {
   ParsedPropertyMap ParseKeyframes(
       const base::String& animation_name,
       const tasm::CustomPropertiesMap* base_custom_properties);
-  tasm::CSSValue ResolveUnderlyingValue(tasm::CSSPropertyID id) const;
+  tasm::CSSValue ResolveUnderlyingValue(
+      const ParsedPropertyKeyframes& property,
+      const tasm::StyleMap* base_resolved_styles) const;
   AnimationBackendResult EvaluatePlatformSupport(ParsedPropertyMap& properties);
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
 };

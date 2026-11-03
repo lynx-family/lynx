@@ -174,11 +174,14 @@ class CSSKeyframeManagerTest : public ::testing::Test {
     tasm_mediator = std::make_shared<
         ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
     manager = std::make_unique<lynx::tasm::ElementManager>(
-        std::make_unique<MockPaintingContext>(), tasm_mediator.get(),
-        lynx_env_config);
+        CreatePaintingContext(), tasm_mediator.get(), lynx_env_config);
     auto config = std::make_shared<PageConfig>();
     config->SetEnableZIndex(true);
     manager->SetConfig(config);
+  }
+
+  virtual std::unique_ptr<MockPaintingContext> CreatePaintingContext() {
+    return std::make_unique<MockPaintingContext>();
   }
 
   std::shared_ptr<animation::Animation> InitTestAnimation() {
@@ -401,6 +404,61 @@ class CSSKeyframeManagerTest : public ::testing::Test {
     return fml::TimePoint::FromTicks(ms * 1000 * 1000);
   }
 };
+
+class CSSAnimationPreparationTest : public CSSKeyframeManagerTest {
+  std::unique_ptr<MockPaintingContext> CreatePaintingContext() override {
+    return std::make_unique<RoutingMockPaintingContext>(true);
+  }
+};
+
+TEST_F(CSSAnimationPreparationTest, EvaluatesBackendBeforeRouting) {
+  manager->GetConfig()->SetEnableFiberArch(true);
+  auto element = manager->CreateFiberElement("view");
+  auto animator = InitTestKeyframeManager(element.get());
+  starlight::AnimationData data;
+  data.name = base::String("test");
+  data.duration = 1000;
+  UpdateOpacityKeyframes(element.get(), data.name, 0, 1);
+  for (int mode : {0, 1, 2}) {
+    manager->supports_platform_animation_routing_ = mode != 0;
+    if (mode == 2) {
+      element->SetJSEventHandler("animationiteration", "bindEvent",
+                                 "onIteration");
+    }
+    auto prepared = animator->PrepareAnimation(data, nullptr, nullptr, true);
+    EXPECT_EQ(prepared.backend.CanRun(), mode == 1);
+    auto animation = animator->CreateAnimation(data);
+    ASSERT_NE(animation, nullptr);
+    EXPECT_NE(animation->keyframe_effect(), nullptr);
+    EXPECT_FALSE(element->HasPendingPlatformAnimationCommands());
+  }
+}
+
+TEST_F(CSSKeyframeManagerTest, ImplicitEndpointUsesIncomingStyle) {
+  auto element = manager->CreateFiberElement("view");
+  auto animator = InitTestKeyframeManager(element.get());
+  starlight::AnimationData data;
+  data.name = base::String("test");
+  data.duration = 4000;
+  UpdateToOnlyOpacityKeyframes(element.get(), data.name, 1.0);
+  element->computed_css_style()->SetValue(
+      kPropertyIDOpacity, CSSValue(0.2f, CSSValuePattern::NUMBER));
+  for (bool reset : {false, true}) {
+    StyleMap incoming;
+    if (!reset) {
+      incoming[kPropertyIDOpacity] = CSSValue(0.8f, CSSValuePattern::NUMBER);
+    }
+    base::Vector<starlight::AnimationData> animations{data};
+    animator->SyncAnimationDataForNewPipeline(animations, true, &incoming);
+    auto animation = animator->animations_map().at(data.name);
+    auto* curve = animation->keyframe_effect()
+                      ->GetKeyframeModelByCurveType(
+                          animation::AnimationCurve::CurveType::OPACITY)
+                      ->animation_curve();
+    auto time = fml::TimeDelta::FromMilliseconds(2000);
+    EXPECT_NEAR(curve->GetValue(time).AsNumber(), reset ? 1.0f : 0.9f, 1e-6);
+  }
+}
 
 TEST_F(CSSKeyframeManagerTest, ConstructModel) {
   auto test_element = manager->CreateFiberElement("view");

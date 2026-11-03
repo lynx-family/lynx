@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("../../clay/common/config.gni")
 import("../../testing/test.gni")
 import("../Lynx.gni")
 
@@ -31,6 +32,9 @@ animation_shared_sources = [
 
 lynx_core_source_set("animation") {
   sources = animation_shared_sources
+  has_platform_animation_backend = (is_ios && !enable_clay) || enable_unittests
+  defines =
+      [ "LYNX_HAS_PLATFORM_ANIMATION_BACKEND=$has_platform_animation_backend" ]
 
   public_deps = [
     "../../gfx:gfx",

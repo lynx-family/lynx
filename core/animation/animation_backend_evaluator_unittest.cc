@@ -19,12 +19,29 @@ namespace lynx {
 namespace animation {
 namespace {
 
-gfx::AnimationBackendCapabilities MakeIOSCapabilities() {
-  return gfx::GetIOSAnimationBackendCapabilities();
+struct OwnedCapabilities {
+  gfx::AnimationBackendType backend;
+  base::Vector<gfx::AnimationPropertyCapability> properties;
+  base::Vector<gfx::AnimationEventCapability> event_capabilities;
+
+  // Rebuild the views after each mutation, including vector reallocation.
+  operator gfx::AnimationBackendCapabilities() const {
+    return {backend,
+            {properties.data(), properties.size()},
+            {event_capabilities.data(), event_capabilities.size()}};
+  }
+};
+
+OwnedCapabilities MakeIOSCapabilities() {
+  const auto& capabilities = gfx::GetIOSAnimationBackendCapabilities();
+  return {capabilities.backend,
+          {capabilities.properties.begin(), capabilities.properties.end()},
+          {capabilities.event_capabilities.begin(),
+           capabilities.event_capabilities.end()}};
 }
 
 gfx::AnimationPropertyCapability* FindTransformCapability(
-    gfx::AnimationBackendCapabilities& capabilities,
+    OwnedCapabilities& capabilities,
     gfx::AnimationKind kind = gfx::AnimationKind::kKeyframe) {
   auto iter = std::find_if(
       capabilities.properties.begin(), capabilities.properties.end(),
