@@ -158,3 +158,27 @@ static jobjectArray DispatchLoadTemplate(JNIEnv* env, jclass, jlong view_id,
   }
   return result;
 }
+
+static jbyteArray DispatchSendGlobalEvent(JNIEnv* env, jclass, jlong view_id,
+                                          jbyteArray json) {
+  using lynx::lepus::Value;
+  if (!Interceptor::IsEnabled() || !Interceptor::IsViewAlive(view_id))
+    return nullptr;
+  auto provider = Interceptor::Current({InterceptKind::kSendGlobalEvent},
+                                       Interceptor::Domain::kUI);
+  if (!provider) return nullptr;
+  auto event = lynx::lepus::jsonValueTolepusValue(
+      JNIConvertHelper::ConvertToString(env, json).c_str());
+  event.SetProperty(kViewId, Value(std::to_string(view_id)));
+  auto decision = provider->Dispatch(InterceptKind::kSendGlobalEvent, event);
+  if (decision.failed) return nullptr;
+  auto patch = std::move(decision.patch);
+  if (decision.dropped) {
+    patch = Value(lynx::lepus::Dictionary::Create());
+    patch.SetProperty("drop", Value(true));
+  }
+  if (!patch.IsTable() || !patch.GetLength()) return nullptr;
+  auto result = ToJavaBytes(env, lynx::lepus::lepusValueToJSONString(patch));
+  return static_cast<jbyteArray>(
+      env->NewLocalRef(result.Get()));  // NOLINT(lynx_custom/new_java_ref)
+}

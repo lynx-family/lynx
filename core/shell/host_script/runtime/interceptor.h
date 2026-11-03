@@ -20,6 +20,7 @@ enum class InterceptKind {
   kCreated,
   kLoadTemplate,
   kUpdateMetaData,
+  kSendGlobalEvent,
   kCall,
   kResult,
   kCallback,
@@ -31,6 +32,7 @@ struct InterceptResult {
   lepus::Value patch;
   lepus::Value mock;
   bool failed = false;
+  bool dropped = false;
 };
 
 // Optional synchronous, thread-affine extension. No JS engine dependency.

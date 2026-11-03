@@ -112,6 +112,27 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     }
 
     @Override
+    public void sendGlobalEvent(String name, JavaOnlyArray params) {
+      LynxTemplateRender render = mRenderRef.get();
+      if (render != null) {
+        LynxHostScriptViewHooks.GlobalEvent event =
+            LynxHostScriptViewHooks.beforeSendGlobalEvent(render, name, params);
+        if (event != null) {
+          if (event.dropped) {
+            return;
+          }
+          name = event.name;
+          params = event.args;
+        }
+      }
+      super.sendGlobalEvent(name, params);
+    }
+
+    void sendGlobalEventAfterInterception(String name, JavaOnlyArray params) {
+      super.sendGlobalEvent(name, params);
+    }
+
+    @Override
     public void handleException(Exception e) {
       LynxTemplateRender render = mRenderRef.get();
       if (render != null) {
@@ -1237,6 +1258,20 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
   }
 
   public void sendGlobalEvent(String name, JavaOnlyArray params) {
+    LynxHostScriptViewHooks.GlobalEvent event =
+        LynxHostScriptViewHooks.beforeSendGlobalEvent(this, name, params);
+    if (event != null) {
+      if (event.dropped) {
+        return;
+      }
+      name = event.name;
+      params = event.args;
+    }
+    sendGlobalEventAfterInterception(name, params);
+  }
+
+  // Called only after the public View or Render entry has applied its decision.
+  void sendGlobalEventAfterInterception(String name, JavaOnlyArray params) {
     // When SSR hydrate status is pending、beginning or failed, a global event will
     // be sent to SSR
     // runtime to be consumed. But this global event will also be cached so that
@@ -1256,7 +1291,11 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
 
     LynxContext context = mLynxContext;
     if (checkIfEnvPrepared() && context != null) {
-      context.sendGlobalEvent(name, finalParams);
+      if (context instanceof RenderLynxContext) {
+        ((RenderLynxContext) context).sendGlobalEventAfterInterception(name, finalParams);
+      } else {
+        context.sendGlobalEvent(name, finalParams);
+      }
     } else {
       LLog.e(TAG, "sendGlobalEvent error, can't get GlobalEventEmitter in " + this.toString());
     }

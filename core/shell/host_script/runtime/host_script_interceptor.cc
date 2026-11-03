@@ -31,7 +31,7 @@ BASE_STATIC_STRING_DECL(kAction, "action");
 BASE_STATIC_STRING_DECL(kPayload, "payload");
 BASE_STATIC_STRING_DECL(kRequest, "request");
 
-enum class Action { kInvalid, kProceed, kMock };
+enum class Action { kInvalid, kProceed, kMock, kDrop };
 
 // Creation notifications are available in every domain. Decisions stay on
 // the domain owning the intercepted operation.
@@ -39,7 +39,8 @@ bool Accepts(Interceptor::Domain domain, Kind kind) {
   if (kind == Kind::kCreated) return true;
   switch (domain) {
     case Interceptor::Domain::kUI:
-      return kind == Kind::kLoadTemplate || kind == Kind::kUpdateMetaData;
+      return kind == Kind::kLoadTemplate || kind == Kind::kUpdateMetaData ||
+             kind == Kind::kSendGlobalEvent;
     case Interceptor::Domain::kBTS:
       return kind == Kind::kCall || kind == Kind::kResult ||
              kind == Kind::kCallback;
@@ -59,10 +60,12 @@ Napi::Value MakeDecision(const Napi::CallbackInfo& info) {
   return decision;
 }
 
-Napi::Object CreateChain(Napi::Env env) {
-  static const char* actions[] = {"proceed", "mock"};
+Napi::Object CreateChain(Napi::Env env, Kind kind) {
+  static const char* actions[] = {"proceed", "mock", "drop"};
   auto chain = Napi::Object::New(env);
   for (auto& action : actions) {
+    if (std::strcmp(action, "drop") == 0 && kind != Kind::kSendGlobalEvent)
+      continue;
     chain.Set(action, Napi::Function::New(env, MakeDecision, action, &action));
   }
   return chain;
@@ -160,6 +163,24 @@ std::optional<Value> FromJS(Napi::Value input,
 
 bool IsData(const Value& value) { return value.IsNil() || value.IsTable(); }
 
+// Android event arguments cross the platform boundary as JSON. Do not silently
+// turn ArrayBuffers or undefined values into a different payload.
+bool IsEventData(const Value& value) {
+  if (value.IsNil() || value.IsBool() || value.IsNumber() || value.IsString())
+    return true;
+  if (value.IsArray()) {
+    for (int i = 0; i < value.GetLength(); ++i)
+      if (!IsEventData(value.GetProperty(i))) return false;
+    return true;
+  }
+  if (value.IsTable()) {
+    for (const auto& item : *value.Table())
+      if (!IsEventData(item.second)) return false;
+    return true;
+  }
+  return false;
+}
+
 bool ValidPatchField(Kind kind, const std::string& key, const Value& value,
                      const Value& original) {
   switch (kind) {
@@ -179,6 +200,10 @@ bool ValidPatchField(Kind kind, const std::string& key, const Value& value,
       return false;
     case Kind::kUpdateMetaData:
       return (key == "updateData" || key == "globalProps") && IsData(value);
+    case Kind::kSendGlobalEvent:
+      return (key == "name" && value.IsString() &&
+              !value.StdString().empty()) ||
+             (key == "args" && value.IsArray() && IsEventData(value));
     case Kind::kCall:
       if (key != "args" || !value.IsArray() ||
           value.GetLength() != original.GetProperty(kArgs).GetLength())
@@ -247,6 +272,12 @@ Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
   if (!action.IsString()) return Action::kInvalid;
   *payload = decision->GetProperty(kPayload);
   auto name = action.StdString();
+  if (name == "drop") {
+    return kind == Kind::kSendGlobalEvent && payload->IsTable() &&
+                   payload->GetLength() == 0
+               ? Action::kDrop
+               : Action::kInvalid;
+  }
   if (name == "mock") {
     return kind == Kind::kCall && ValidMock(*payload, original)
                ? Action::kMock
@@ -406,7 +437,7 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   const bool view_event = kind <= Kind::kUpdateMetaData;
   const Value& original = view_event ? event.GetProperty(kRequest) : event;
   auto returned =
-      entry->function.Value().Call({ToJS(env, event), CreateChain(env)});
+      entry->function.Value().Call({ToJS(env, event), CreateChain(env, kind)});
   bool failed = env.IsExceptionPending() || (decision && returned.IsPromise());
   if (!failed && decision) {
     Value patch;
@@ -415,6 +446,8 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
       failed = true;
     } else if (action == Action::kMock) {
       result.mock = std::move(patch);
+    } else if (action == Action::kDrop) {
+      result.dropped = true;
     } else if (patch.GetLength()) {
       result.patch = std::move(patch);
     }

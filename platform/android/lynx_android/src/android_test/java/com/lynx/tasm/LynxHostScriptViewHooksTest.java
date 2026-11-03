@@ -14,10 +14,14 @@ import android.app.Application;
 import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.react.bridge.JavaOnlyMap;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONException;
@@ -50,6 +54,57 @@ public class LynxHostScriptViewHooksTest {
   @After
   public void tearDown() {
     InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> setEnabled(mWasEnabled));
+  }
+
+  @Test
+  public void globalEventPatchPreservesOriginalAndRoundTripsNestedUnicode() throws Exception {
+    JavaOnlyArray original = JavaOnlyArray.of("original", 7);
+    LynxHostScriptViewHooks.GlobalEvent event = applyGlobalEventPatch(
+        "before", original, "{\"name\":\"after\",\"args\":[null,{\"nested\":[\"😀\",true,42]}]}");
+    assertEquals("after", event.name);
+    assertFalse(event.dropped);
+    assertNull(event.args.get(0));
+    JavaOnlyMap map = (JavaOnlyMap) event.args.get(1);
+    assertEquals("😀", ((JavaOnlyArray) map.get("nested")).get(0));
+    assertEquals(Arrays.asList("original", 7), original);
+    assertSame(original, applyGlobalEventPatch("before", original, "{\"name\":\"after\"}").args);
+    assertTrue(applyGlobalEventPatch("before", original, "{\"drop\":true}").dropped);
+  }
+
+  @Test
+  public void globalEventSnapshotRejectsCyclesAndUnsupportedValues() throws Exception {
+    Method snapshot = LynxHostScriptViewHooks.class.getDeclaredMethod(
+        "snapshotEventValue", Object.class, IdentityHashMap.class, int.class);
+    snapshot.setAccessible(true);
+    JavaOnlyArray cycle = new JavaOnlyArray();
+    cycle.add(cycle);
+    for (Object value : new Object[] {cycle, JavaOnlyArray.of(new Object()),
+             JavaOnlyArray.of(Double.NaN), JavaOnlyArray.of(Double.POSITIVE_INFINITY)}) {
+      try {
+        snapshot.invoke(null, value, new IdentityHashMap<>(), 0);
+        fail("Expected unsupported event arguments to be rejected");
+      } catch (InvocationTargetException expected) {
+        assertTrue(expected.getCause() instanceof IllegalArgumentException);
+      }
+    }
+    JavaOnlyArray child = JavaOnlyArray.of("shared");
+    assertEquals("[[\"shared\"],[\"shared\"]]",
+        snapshot.invoke(null, JavaOnlyArray.of(child, child), new IdentityHashMap<>(), 0)
+            .toString());
+  }
+
+  @Test
+  public void disabledGlobalEventHookDoesNotAccessRenderOrArguments() {
+    assertNull(LynxHostScriptViewHooks.beforeSendGlobalEvent(null, null, null));
+  }
+
+  private static LynxHostScriptViewHooks.GlobalEvent applyGlobalEventPatch(
+      String name, JavaOnlyArray args, String json) throws Exception {
+    Method method = LynxHostScriptViewHooks.class.getDeclaredMethod(
+        "applyGlobalEventPatch", String.class, JavaOnlyArray.class, JSONObject.class);
+    method.setAccessible(true);
+    return (LynxHostScriptViewHooks.GlobalEvent) method.invoke(
+        null, name, args, new JSONObject(json));
   }
 
   @Test

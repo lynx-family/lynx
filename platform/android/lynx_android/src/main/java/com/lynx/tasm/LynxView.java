@@ -630,11 +630,20 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
               + this.toString());
       return;
     }
+    LynxHostScriptViewHooks.GlobalEvent event =
+        LynxHostScriptViewHooks.beforeSendGlobalEvent(render, name, params);
+    if (event != null) {
+      if (event.dropped) {
+        return;
+      }
+      name = event.name;
+      params = event.args;
+    }
     if (render.shouldSendEventToMainThread()) {
       triggerEventBus(name, params);
     }
     if (render.enableJSRuntime()) {
-      render.sendGlobalEvent(name, params);
+      render.sendGlobalEventAfterInterception(name, params);
     }
   }
 
