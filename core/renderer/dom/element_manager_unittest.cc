@@ -1003,6 +1003,46 @@ TEST_F(ElementManagerTest, ReplaceStyleSheetsSetsOrderClearsAndReusesHandles) {
   EXPECT_EQ(manager->GetAdoptedStyleSheets()[0], first);
 }
 
+TEST_F(ElementManagerTest, RemoveStyleSheetPreservesOrderAndReusesHandles) {
+  auto first = fml::MakeRefCounted<SharedCSSFragmentWrapper>(
+      std::make_unique<SharedCSSFragment>());
+  auto removed = fml::MakeRefCounted<SharedCSSFragmentWrapper>(
+      std::make_unique<SharedCSSFragment>());
+  auto last = fml::MakeRefCounted<SharedCSSFragmentWrapper>(
+      std::make_unique<SharedCSSFragment>());
+  manager->AdoptStyleSheet(first);
+  manager->AdoptStyleSheet(removed);
+  manager->AdoptStyleSheet(last);
+  manager->AdoptStyleSheet(removed);
+
+  EXPECT_TRUE(manager->RemoveStyleSheet(removed));
+  EXPECT_EQ(manager->GetAdoptedStyleSheets(),
+            (std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>{first, last}));
+  EXPECT_FALSE(manager->RemoveStyleSheet(removed));
+  manager->AdoptStyleSheet(removed);
+  EXPECT_EQ(manager->GetAdoptedStyleSheets(),
+            (std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>{first, last,
+                                                                removed}));
+  EXPECT_TRUE(manager->RemoveStyleSheet(first));
+  EXPECT_TRUE(manager->RemoveStyleSheet(last));
+  EXPECT_TRUE(manager->RemoveStyleSheet(removed));
+  EXPECT_FALSE(manager->HasAdoptedStyleSheets());
+}
+
+TEST_F(ElementManagerTest, RemoveStyleSheetRejectsInvalidOrUnadoptedHandles) {
+  auto adopted = fml::MakeRefCounted<SharedCSSFragmentWrapper>(
+      std::make_unique<SharedCSSFragment>());
+  auto unadopted = fml::MakeRefCounted<SharedCSSFragmentWrapper>(
+      std::make_unique<SharedCSSFragment>());
+  manager->AdoptStyleSheet(adopted);
+  EXPECT_FALSE(manager->RemoveStyleSheet(nullptr));
+  EXPECT_FALSE(manager->RemoveStyleSheet(
+      fml::MakeRefCounted<SharedCSSFragmentWrapper>(nullptr)));
+  EXPECT_FALSE(manager->RemoveStyleSheet(unadopted));
+  EXPECT_EQ(manager->GetAdoptedStyleSheets(),
+            (std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>{adopted}));
+}
+
 TEST_F(ElementManagerTest,
        StyleSheetReplacementRefreshesFeaturesAndTouchPseudo) {
   auto make_sheet = [](css::RuleSet::FeatureFlags flags) {
@@ -1023,7 +1063,7 @@ TEST_F(ElementManagerTest,
   EXPECT_EQ(manager->GetAdoptedFeatureFlags(),
             css::RuleSet::kHasSupports | css::RuleSet::kHasCascadeLayers);
   EXPECT_TRUE(manager->push_touch_pseudo_flag_);
-  ASSERT_TRUE(manager->ReplaceStyleSheets({second}));
+  ASSERT_TRUE(manager->RemoveStyleSheet(replacement));
   EXPECT_EQ(manager->GetAdoptedFeatureFlags(), css::RuleSet::kHasSupports);
   EXPECT_FALSE(manager->HasAdoptedCascadeLayers());
   ASSERT_TRUE(manager->ReplaceStyleSheets({}));
@@ -1059,7 +1099,7 @@ TEST_F(ElementManagerTest, StyleSheetChangesInvalidateCascadeLayerOrder) {
   EXPECT_EQ(replaced_map->GetLayerOrder(replacement_layer), 0u);
   EXPECT_EQ(replaced_map->GetLayerOrder(second_layer), 1u);
 
-  ASSERT_TRUE(manager->ReplaceStyleSheets({second}));
+  ASSERT_TRUE(manager->RemoveStyleSheet(replacement));
   auto removed_map = manager->GetCascadeLayerMap(nullptr);
   ASSERT_NE(removed_map, nullptr);
   EXPECT_NE(removed_map, replaced_map);

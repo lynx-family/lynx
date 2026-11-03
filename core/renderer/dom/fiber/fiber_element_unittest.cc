@@ -1060,6 +1060,132 @@ void AddLifecycleKeyframes(SharedCSSFragmentWrapper& sheet, double opacity,
 }
 }  // namespace
 
+TEST_P(FiberElementTest, RemoveStyleSheetRestoresNodesAndKeepsOtherSheets) {
+  for (bool new_styling : {false, true}) {
+    SCOPED_TRACE(new_styling);
+    manager->enable_new_styling_pipeline_ = new_styling;
+    manager->config_->SetEnableStandardCSSSelector(true);
+    auto base = MakeLifecycleSheet(
+        {{".target",
+          {{kPropertyIDFontSize, CSSValue(10, CSSValuePattern::PX)}}}});
+    auto theme = MakeLifecycleSheet(
+        {{".target",
+          {{kPropertyIDFontSize, CSSValue(20, CSSValuePattern::PX)},
+           {kPropertyIDOpacity, CSSValue(0.3, CSSValuePattern::NUMBER)}}}});
+    auto overlay = MakeLifecycleSheet(
+        {{".target",
+          {{kPropertyIDOpacity, CSSValue(0.8, CSSValuePattern::NUMBER)}}}});
+    auto sheets = std::make_shared<CSSStyleSheetManager>(nullptr);
+    sheets->AddSharedCSSFragment(std::move(base->fragment_));
+    auto page = manager->CreateFiberPage("page", 11);
+    page->set_style_sheet_manager(sheets);
+    auto view = manager->CreateFiberView();
+    view->parent_component_element_ = page.get();
+    view->SetClass("target");
+    page->InsertNode(view);
+    auto runtime = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    runtime->Initialize();
+    runtime->SetGlobalData(
+        BASE_STATIC_STRING(tasm::kTemplateAssembler),
+        lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+    auto* context = runtime->GetMTSContext();
+    lepus::Value theme_value(theme);
+    lepus::Value overlay_value(overlay);
+    RendererFunctions::AdoptStyleSheet(context, &theme_value, 1);
+    RendererFunctions::AdoptStyleSheet(context, &overlay_value, 1);
+    RendererFunctions::AdoptStyleSheet(context, &theme_value, 1);
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->GetFontSize(), 20);
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.3);
+
+    ASSERT_TRUE(
+        RendererFunctions::RemoveStyleSheet(context, &theme_value, 1).Bool());
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->GetFontSize(), 10);
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 0.8);
+    EXPECT_FALSE(
+        RendererFunctions::RemoveStyleSheet(context, &theme_value, 1).Bool());
+    ASSERT_TRUE(
+        RendererFunctions::RemoveStyleSheet(context, &overlay_value, 1).Bool());
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->GetFontSize(), 10);
+    EXPECT_FLOAT_EQ(view->computed_css_style()->GetOpacity(), 1);
+    RendererFunctions::AdoptStyleSheet(context, &theme_value, 1);
+    page->FlushActionsAsRoot();
+    EXPECT_FLOAT_EQ(view->GetFontSize(), 20);
+    EXPECT_TRUE(manager->RemoveStyleSheet(theme));
+  }
+}
+
+TEST_P(FiberElementTest, RemoveStyleSheetValidatesHandlesBeforeMutation) {
+  auto runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  runtime->Initialize();
+  runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  auto* context = runtime->GetMTSContext();
+  auto adopted = MakeLifecycleSheet();
+  manager->AdoptStyleSheet(adopted);
+  for (auto invalid :
+       {lepus::Value(), lepus::Value(1), lepus::Value(".target {}"),
+        lepus::Value(lepus::Dictionary::Create()),
+        lepus::Value(manager->CreateFiberView()),
+        lepus::Value(fml::MakeRefCounted<SharedCSSFragmentWrapper>(nullptr)),
+        lepus::Value(MakeLifecycleSheet())}) {
+    EXPECT_FALSE(
+        RendererFunctions::RemoveStyleSheet(context, &invalid, 1).Bool());
+    EXPECT_EQ(manager->GetAdoptedStyleSheets(),
+              (std::vector<fml::RefPtr<SharedCSSFragmentWrapper>>{adopted}));
+  }
+}
+
+TEST_P(FiberElementTest, RemoveStyleSheetClearsPendingInvalidations) {
+  for (bool new_styling : {false, true}) {
+    for (bool detached : {false, true}) {
+      SCOPED_TRACE(::testing::Message() << new_styling << detached);
+      manager->enable_new_styling_pipeline_ = new_styling;
+      manager->config_->SetEnableStandardCSSSelector(true);
+      auto base = MakeLifecycleSheet();
+      auto theme = MakeLifecycleSheet(
+          {{"#before .target",
+            {{kPropertyIDOpacity, CSSValue(0.3, CSSValuePattern::NUMBER)}}}});
+      auto sheets = std::make_shared<CSSStyleSheetManager>(nullptr);
+      sheets->AddSharedCSSFragment(std::move(base->fragment_));
+      auto page = manager->CreateFiberPage("page", 11);
+      page->set_style_sheet_manager(sheets);
+      auto parent = manager->CreateFiberView();
+      parent->parent_component_element_ = page.get();
+      parent->SetIdSelector("before");
+      auto child = manager->CreateFiberView();
+      child->parent_component_element_ = page.get();
+      child->SetClass("target");
+      parent->InsertNode(child);
+      page->InsertNode(parent);
+      manager->AdoptStyleSheet(theme);
+      page->FlushActionsAsRoot();
+      parent->SetIdSelector("after");
+      ASSERT_FALSE(parent->invalidation_lists_.descendants.empty());
+      manager->SetCSSFragmentParsingOnTASMWorkerMTSRender(true);
+      parent->SetIdSelector("before");
+      if (detached) {
+        page->RemoveNode(parent);
+        page->FlushActionsAsRoot();
+      }
+      ASSERT_TRUE(manager->RemoveStyleSheet(theme));
+      ASSERT_TRUE(parent->invalidation_lists_.descendants.empty());
+      manager->SetCSSFragmentParsingOnTASMWorkerMTSRender(false);
+      theme = nullptr;
+      if (detached) {
+        page->InsertNode(parent);
+      }
+      page->FlushActionsAsRoot();
+      EXPECT_FLOAT_EQ(child->computed_css_style()->GetOpacity(), 1);
+    }
+  }
+}
+
 TEST_P(FiberElementTest, ReplaceStyleSheetsRemovesVariables) {
   for (bool new_styling : {false, true}) {
     for (bool inline_variables : {false, true}) {

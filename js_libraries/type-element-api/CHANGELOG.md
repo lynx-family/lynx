@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.0.12
+
+### Patch Changes
+
+- Add `__RemoveStyleSheet` for removing all adoptions of a loaded stylesheet handle.
+
 ## 0.0.11
 
 ### Patch Changes

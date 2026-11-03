@@ -516,6 +516,11 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   bool ReplaceStyleSheets(
       std::vector<fml::RefPtr<tasm::SharedCSSFragmentWrapper>> sheets);
 
+  // Removes every adoption of the handle, preserving the remaining order.
+  // Returns false for invalid or unadopted handles. The handle stays reusable.
+  bool RemoveStyleSheet(
+      const fml::RefPtr<tasm::SharedCSSFragmentWrapper> &sheet);
+
   // Iterates adopted stylesheets under a shared lock without copying.
   // Visitor returns true to continue, false to stop early.
   template <typename Visitor>

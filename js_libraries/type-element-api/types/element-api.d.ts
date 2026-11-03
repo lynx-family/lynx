@@ -251,6 +251,15 @@ declare global {
   function __AdoptStyleSheet(styleSheet: StyleSheetRef): void;
 
   /**
+   * Removes every adoption of this handle from the current page, preserving
+   * the order of other adopted stylesheets and the bundle's base styles.
+   * Returns false for an invalid or unadopted handle. Handles remain reusable.
+   * Existing elements are restyled on the next element-tree flush.
+   * Loaded platform fonts retain their registration/cache lifecycle.
+   */
+  function __RemoveStyleSheet(styleSheet: StyleSheetRef): boolean;
+
+  /**
    * Replaces the page's complete adopted stylesheet set in array order.
    * Entries are loaded stylesheet handles or raw CSS text. All entries are
    * validated and CSS text is parsed before the current set is changed.
