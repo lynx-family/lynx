@@ -181,8 +181,15 @@ void MergeParsedKeyframes(LynxKeyframeParsedData* target, LynxKeyframeParsedData
   target.isPercentTransform |= source.isPercentTransform;
 }
 
+struct RetainedPlatformAnimationCommand {
+  fml::RefPtr<gfx::PlatformAnimationCommandBatch> batch;
+  const gfx::PlatformAnimationCommand* command;
+
+  const gfx::PlatformAnimationCommand* operator->() const { return command; }
+};
+
 LynxPlatformAnimationPlayback* MakePlatformPlayback(
-    const std::shared_ptr<const gfx::PlatformAnimationCommand> command) {
+    const RetainedPlatformAnimationCommand command) {
   if (!command->playback) {
     return nil;
   }
@@ -227,7 +234,7 @@ LynxPlatformAnimationPlayback* MakePlatformPlayback(
 }  // namespace
 
 void ApplyPlatformAnimationCommands(
-    LynxUI* ui, const std::shared_ptr<gfx::PlatformAnimationCommandBatch>& commands) {
+    LynxUI* ui, const fml::RefPtr<gfx::PlatformAnimationCommandBatch>& commands) {
   if (ui == nil || commands == nullptr || commands->empty()) {
     return;
   }
@@ -259,7 +266,7 @@ void ApplyPlatformAnimationCommands(
     }
     // Keep the immutable command alive with its batch; providers can run again
     // after this call when a percentage transform needs the new view size.
-    const std::shared_ptr<const gfx::PlatformAnimationCommand> retained_command(commands, &command);
+    const RetainedPlatformAnimationCommand retained_command{commands, &command};
 
     LynxTypedKeyframesProvider provider = nil;
     if (!command.properties.empty()) {

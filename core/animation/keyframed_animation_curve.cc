@@ -12,6 +12,7 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <utility>
 
 #include "base/include/float_comparison.h"
 #include "base/include/log/logging.h"
@@ -19,6 +20,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_trace_event_def.h"
 #include "core/animation/css_keyframe_manager.h"
+#include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
@@ -29,6 +31,22 @@ namespace lynx {
 namespace animation {
 
 namespace {
+
+template <size_t N>
+constexpr tasm::CSSIDBitset CurvePropertyIds(
+    const AnimationCurve::CurveType (&types)[N]) {
+  tasm::CSSPropertyID ids[N]{};
+  for (size_t i = 0; i < N; ++i) {
+    ids[i] = static_cast<tasm::CSSPropertyID>(types[i]);
+  }
+  return tasm::CSSIDBitset(ids);
+}
+
+bool IsCurveInSet(AnimationCurve::CurveType type,
+                  const tasm::CSSIDBitset& ids) {
+  const auto id = static_cast<tasm::CSSPropertyID>(type);
+  return tasm::CSSProperty::IsPropertyValid(id) && ids.Has(id);
+}
 
 std::optional<gfx::LengthValue> ToLengthValueFromNLength(
     const starlight::NLength& length, tasm::CSSPropertyID id,
@@ -44,8 +62,7 @@ std::optional<gfx::LengthValue> ToLengthValueFromNLength(
       return std::nullopt;
     }
     float parent_length = 0.0f;
-    if (GetOnXAxisCurveTypeSet().count(
-            static_cast<AnimationCurve::CurveType>(id)) != 0) {
+    if (IsXAxisCurveType(static_cast<AnimationCurve::CurveType>(id))) {
       parent_length = element->parent()->width();
     } else {
       parent_length = element->parent()->height();
@@ -656,10 +673,14 @@ tasm::CSSValue HandleCSSVariableValueIfNeed(tasm::CSSPropertyID id,
   return keyframe_value;
 }
 
-const std::unordered_set<AnimationCurve::CurveType>& GetOnXAxisCurveTypeSet() {
-  static const base::NoDestructor<std::unordered_set<AnimationCurve::CurveType>>
-      onXAxisCurveTypeSet({ALL_X_AXIS_CURVE_TYPE});
-  return *onXAxisCurveTypeSet;
+bool IsXAxisCurveType(AnimationCurve::CurveType type) {
+  static constexpr auto kTypes = CurvePropertyIds({ALL_X_AXIS_CURVE_TYPE});
+  return IsCurveInSet(type, kTypes);
+}
+
+bool IsLayoutCurveType(AnimationCurve::CurveType type) {
+  static constexpr auto kTypes = CurvePropertyIds({ALL_LAYOUT_CURVE_TYPE});
+  return IsCurveInSet(type, kTypes);
 }
 
 //====== LayoutValueAnimator begin =======
@@ -800,7 +821,7 @@ tasm::CSSValue KeyframedLayoutAnimationCurve::GetValue(
       return start_result.second;
     }
     float parent_length = 0.0f;
-    if (GetOnXAxisCurveTypeSet().count(Type()) != 0) {
+    if (IsXAxisCurveType(Type())) {
       parent_length = element_->parent()->width();
     } else {
       parent_length = element_->parent()->height();

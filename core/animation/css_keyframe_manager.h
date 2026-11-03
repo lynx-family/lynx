@@ -9,7 +9,6 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -23,6 +22,7 @@
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/style/animation_data.h"
 #include "gfx/animation/platform_animation.h"
@@ -45,16 +45,12 @@ base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForAnimation(
     tasm::CSSPropertyID css_id, const starlight::CanonicalComputedValue& value,
     const tasm::CssMeasureContext& context);
 
-const std::unordered_set<starlight::AnimationPropertyType>&
-GetLayoutPropertyTypeSet();
-const std::unordered_set<AnimationCurve::CurveType>& GetLayoutCurveTypeSet();
 const std::unordered_map<tasm::CSSPropertyID, starlight::AnimationPropertyType>&
 GetPropertyIDToAnimationPropertyTypeMap();
 const std::unordered_map<tasm::CSSPropertyID, starlight::AnimationPropertyType>&
 GetPolymericPropertyIDToAnimationPropertyTypeMap(
     starlight::AnimationPropertyType polymeric_type);
 
-const std::unordered_set<tasm::CSSPropertyID>& GetAnimatablePropertyIDSet();
 // Check that is this property a animatable property for new animator.
 bool IsAnimatableProperty(tasm::CSSPropertyID css_id);
 
@@ -167,9 +163,7 @@ class CSSKeyframeManager : public AnimationDelegate {
   std::shared_ptr<Animation> CreateAnimation(
       starlight::AnimationData& data,
       const tasm::CustomPropertiesMap* base_custom_properties = nullptr,
-      const tasm::StyleMap* base_resolved_styles = nullptr,
-      std::optional<Animation::Origin> origin = std::nullopt,
-      bool notify_created = true);
+      std::optional<Animation::Origin> origin = std::nullopt);
 
   void SetAnimationDataAndPlayInternal(
       base::Vector<starlight::AnimationData>& anim_data, bool force_rebuild,
@@ -218,6 +212,35 @@ class CSSKeyframeManager : public AnimationDelegate {
   tasm::CustomPropertiesMap persisted_custom_property_fill_styles_;
   AnimationEventRecordsForNewPipeline pending_event_records_;
 
+  struct PlatformAnimationState {
+    gfx::AnimationId animation_id{0};
+    uint32_t generation{1};
+    gfx::TimingFunctionData platform_timing;
+    base::Vector<gfx::PlatformAnimationProperty> properties;
+    bool handed_off{false};
+    // Only properties with implicit endpoints depend on these base values.
+    tasm::StyleMap underlying_endpoint_values;
+    std::shared_ptr<Animation> animation;
+
+    void RetainIdentityFrom(const PlatformAnimationState& previous) {
+      animation_id = previous.animation_id;
+      generation = previous.generation;
+      handed_off = previous.handed_off;
+    }
+  };
+
+  using PlatformAnimationPtr = std::unique_ptr<PlatformAnimationState>;
+  using PlatformAnimations = base::Vector<PlatformAnimationPtr>;
+  PlatformAnimationPtr* FindPlatformAnimation(const base::String& name);
+
+  struct AnimationBuildResult {
+    std::shared_ptr<Animation> new_animator_animation;
+    PlatformAnimationPtr platform_animation;
+  };
+
+  void QueuePlatformAnimationCommands(PlatformAnimationState& animation,
+                                      gfx::PlatformAnimationCommandType type);
+
  private:
   struct ParsedKeyframe {
     std::unique_ptr<gfx::Keyframe> keyframe;
@@ -252,16 +275,22 @@ class CSSKeyframeManager : public AnimationDelegate {
   using ParsedPropertyMap =
       base::OrderedFlatMap<AnimationCurve::CurveType, ParsedPropertyKeyframes>;
 
+  // Plan routing before allocating an Animation, effect, or curve/model.
   struct PreparedAnimation {
+    PreparedAnimation(CSSKeyframeManager& manager,
+                      starlight::AnimationData& data,
+                      const tasm::CustomPropertiesMap* base_custom_properties,
+                      const tasm::StyleMap* base_resolved_styles,
+                      bool allow_platform);
     ParsedPropertyMap properties;
+    tasm::CSSIDBitset property_ids;
     AnimationBackendResult backend;
     bool has_custom_property_keyframes{false};
   };
 
-  PreparedAnimation PrepareAnimation(
-      starlight::AnimationData& data,
-      const tasm::CustomPropertiesMap* base_custom_properties,
-      const tasm::StyleMap* base_resolved_styles, bool allow_platform);
+  AnimationBuildResult BuildPreparedAnimation(
+      starlight::AnimationData& data, PreparedAnimation&& prepared,
+      std::optional<Animation::Origin> origin);
 
   ParsedKeyframe CreateParsedKeyframe(
       AnimationCurve::CurveType type, double offset,
@@ -274,10 +303,16 @@ class CSSKeyframeManager : public AnimationDelegate {
       const base::String& animation_name,
       const tasm::CustomPropertiesMap* base_custom_properties);
   tasm::CSSValue ResolveUnderlyingValue(
-      const ParsedPropertyKeyframes& property,
-      const tasm::StyleMap* base_resolved_styles) const;
-  AnimationBackendResult EvaluatePlatformSupport(ParsedPropertyMap& properties);
+      tasm::CSSPropertyID id, const tasm::StyleMap* base_resolved_styles,
+      gfx::AnimationPropertyType type =
+          gfx::AnimationPropertyType::kNone) const;
+  AnimationBackendResult EvaluatePlatformSupport(
+      ParsedPropertyMap& properties, bool can_refresh_underlying_values);
+  PlatformAnimationPtr CreatePlatformAnimationState(
+      ParsedPropertyMap& properties, std::shared_ptr<Animation> logical);
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
+  PlatformAnimations platform_animations_;
+  gfx::AnimationId next_platform_animation_id_{1};
 };
 
 }  // namespace animation

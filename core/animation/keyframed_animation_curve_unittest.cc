@@ -11,6 +11,7 @@
 #include "core/animation/keyframed_animation_curve.h"
 
 #include <memory>
+#include <unordered_set>
 
 #include "core/animation/css_keyframe_manager.h"
 #include "core/base/threading/task_runner_manufactor.h"
@@ -989,8 +990,7 @@ TEST_F(KeyframedAnimationCurveTest, TransformOriginInterPolateTest) {
                   result_3.get()->get(3).Number());
 }
 
-TEST_F(KeyframedAnimationCurveTest, GetOnXAxisCurveTypeSet) {
-  auto test_set = animation::GetOnXAxisCurveTypeSet();
+TEST_F(KeyframedAnimationCurveTest, IsXAxisCurveType) {
   static const base::NoDestructor<std::unordered_set<AnimationCurve::CurveType>>
       base_set({AnimationCurve::CurveType::LEFT,
                 AnimationCurve::CurveType::RIGHT,
@@ -1003,7 +1003,11 @@ TEST_F(KeyframedAnimationCurveTest, GetOnXAxisCurveTypeSet) {
                 AnimationCurve::CurveType::PADDING_RIGHT,
                 AnimationCurve::CurveType::BORDER_LEFT_WIDTH,
                 AnimationCurve::CurveType::BORDER_RIGHT_WIDTH});
-  EXPECT_EQ(test_set, *base_set);
+  for (int id = lynx::tasm::kPropertyStart; id <= lynx::tasm::kPropertyEnd;
+       ++id) {
+    const auto type = static_cast<AnimationCurve::CurveType>(id);
+    EXPECT_EQ(animation::IsXAxisCurveType(type), base_set->count(type) != 0);
+  }
 }
 
 }  // namespace test

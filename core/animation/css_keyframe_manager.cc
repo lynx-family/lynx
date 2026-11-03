@@ -23,6 +23,7 @@
 #include "core/animation/transform_animation_curve.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/layout_property.h"
 #include "core/renderer/dom/element.h"
@@ -134,20 +135,6 @@ void SyncAnimationRawCustomPropertySet(
 
 }  // namespace
 
-const std::unordered_set<starlight::AnimationPropertyType>&
-GetLayoutPropertyTypeSet() {
-  static const base::NoDestructor<
-      std::unordered_set<starlight::AnimationPropertyType>>
-      layoutPropertyTypeSet({ALL_LAYOUT_ANIMATION_PROPERTY});
-  return *layoutPropertyTypeSet;
-}
-
-const std::unordered_set<AnimationCurve::CurveType>& GetLayoutCurveTypeSet() {
-  static const base::NoDestructor<std::unordered_set<AnimationCurve::CurveType>>
-      layoutCurveTypeSet({ALL_LAYOUT_CURVE_TYPE});
-  return *layoutCurveTypeSet;
-}
-
 CSSKeyframeManager::CSSKeyframeManager(tasm::Element* element) {
   element_ = element;
 }
@@ -209,7 +196,7 @@ CSSKeyframeManager::ParsedKeyframe CSSKeyframeManager::CreateParsedKeyframe(
     result.keyframe = std::move(typed_keyframe);
   };
 
-  if (GetLayoutCurveTypeSet().count(type) != 0) {
+  if (IsLayoutCurveType(type)) {
     init_keyframe(LayoutKeyframe::Create(time, std::move(timing_function)));
   } else if (type == AnimationCurve::CurveType::OPACITY ||
              type == AnimationCurve::CurveType::FLEX_GROW ||
@@ -239,7 +226,7 @@ CSSKeyframeManager::ParsedKeyframe CSSKeyframeManager::CreateParsedKeyframe(
 
 std::unique_ptr<AnimationCurve> CSSKeyframeManager::CreateCurve(
     AnimationCurve::CurveType type) {
-  if (GetLayoutCurveTypeSet().count(type) != 0) {
+  if (IsLayoutCurveType(type)) {
     return KeyframedLayoutAnimationCurve::Create();
   }
   if (type == AnimationCurve::CurveType::OPACITY) {
@@ -295,7 +282,7 @@ void CSSKeyframeManager::AddParsedPropertyToNewAnimator(
 }
 
 AnimationBackendResult CSSKeyframeManager::EvaluatePlatformSupport(
-    ParsedPropertyMap& properties) {
+    ParsedPropertyMap& properties, bool can_refresh_underlying_values) {
   // TODO: Profile caching eligibility by kind/property, keyframes/timing,
   // dynamic inputs, events and capabilities. Hits must still resolve endpoints
   // and validate the node.
@@ -342,6 +329,12 @@ AnimationBackendResult CSSKeyframeManager::EvaluatePlatformSupport(
         return {false, AnimationFallbackReason::kUnresolvedKeyframe};
       }
       if (parsed.keyframe->IsEmpty()) {
+        // Legacy styling can update the base value without revisiting routing.
+        // Keep implicit endpoints on Core unless the base snapshot is
+        // refreshed.
+        if (!can_refresh_underlying_values) {
+          return {false, AnimationFallbackReason::kDynamicDependency};
+        }
         const auto& value = property.underlying_value;
         if (value.IsEmpty()) {
           return {false, AnimationFallbackReason::kUnresolvedKeyframe};
@@ -389,6 +382,70 @@ void CSSKeyframeManager::SuppressNextIterationEvents() {
   }
 }
 
+CSSKeyframeManager::PlatformAnimationPtr*
+CSSKeyframeManager::FindPlatformAnimation(const base::String& name) {
+  for (auto& animation : platform_animations_) {
+    if (animation && animation->animation->name() == name) {
+      return &animation;
+    }
+  }
+  return nullptr;
+}
+
+CSSKeyframeManager::PlatformAnimationPtr
+CSSKeyframeManager::CreatePlatformAnimationState(
+    ParsedPropertyMap& properties, std::shared_ptr<Animation> logical) {
+  auto animation = std::make_unique<PlatformAnimationState>();
+  animation->animation = std::move(logical);
+  animation->animation_id = next_platform_animation_id_++;
+  animation->properties.reserve(properties.size());
+  for (auto& entry : properties) {
+    auto& property = entry.second;
+    animation->animation->SetRawCssId(property.css_id);
+    auto& platform_property = animation->properties.emplace_back();
+    platform_property.property = property.gfx_property;
+    platform_property.keyframes.reserve(property.keyframes.size());
+    for (auto& parsed : property.keyframes) {
+      if (parsed.resolved_platform_endpoint) {
+        animation->underlying_endpoint_values.emplace(
+            property.css_id, property.underlying_value);
+      }
+      platform_property.keyframes.emplace_back(
+          parsed.resolved_platform_endpoint
+              ? std::move(parsed.resolved_platform_endpoint)
+              : std::move(parsed.keyframe));
+    }
+  }
+  return animation;
+}
+
+void CSSKeyframeManager::QueuePlatformAnimationCommands(
+    PlatformAnimationState& animation, gfx::PlatformAnimationCommandType type) {
+  if (type == gfx::PlatformAnimationCommandType::kUpdate) {
+    ++animation.generation;
+  }
+  if (type == gfx::PlatformAnimationCommandType::kCancel) {
+    animation.animation->NotifyInspectorCanceled();
+  }
+  auto& command = element_->AppendPlatformAnimationCommand();
+  command.type = type;
+  command.animation_id = animation.animation_id;
+  command.generation = animation.generation;
+  command.kind = GetAnimationKind();
+  command.name = animation.animation->name();
+  command.playback = animation.animation->playback();
+  command.executor = animation.animation->executor();
+  if (type == gfx::PlatformAnimationCommandType::kHandoff ||
+      type == gfx::PlatformAnimationCommandType::kUpdate) {
+    command.animation_data =
+        ToGfxAnimationData(animation.animation->get_animation_data());
+    command.animation_data.timing_func = animation.platform_timing;
+    // Submit each rebuilt state once. The command takes its keyframes.
+    command.properties = std::move(animation.properties);
+    animation.handed_off = true;
+  }
+}
+
 void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_MANAGER_TICK_ALL_ANIMATION);
   base::InlineVector<std::shared_ptr<Animation>, 4> animations;
@@ -418,13 +475,144 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
     const tasm::StyleMap* new_base_resolved_styles,
     const tasm::StyleMap* new_underlying_layout_only_styles,
     const tasm::CustomPropertiesMap* new_base_custom_properties) {
+  auto underlying_values_changed = [&](const PlatformAnimationState& state) {
+    for (const auto& entry : state.underlying_endpoint_values) {
+      if (entry.second !=
+          ResolveUnderlyingValue(entry.first, new_base_resolved_styles)) {
+        return true;
+      }
+    }
+    return false;
+  };
   if (anim_data.size() == animation_data_.size() &&
       std::equal(anim_data.begin(), anim_data.end(), animation_data_.begin()) &&
-      !force_rebuild && invalidated_keyframes_.empty()) {
+      !force_rebuild && invalidated_keyframes_.empty() &&
+      (!kHasPlatformAnimationBackend ||
+       std::none_of(platform_animations_.begin(), platform_animations_.end(),
+                    [&](const auto& entry) {
+                      return entry && underlying_values_changed(*entry);
+                    }))) {
     return;
   }
   animation_data_ = anim_data;
-  for (auto& data : animation_data_) {
+
+  struct PreparedSlot {
+    std::unique_ptr<PreparedAnimation> value;
+    // The default-deleter pointer owns storage independent of this slot.
+    using TriviallyRelocatable = bool;
+  };
+  base::InlineVector<PreparedSlot, 4> prepared;
+  if (kHasPlatformAnimationBackend &&
+      element_->supports_platform_animation_routing()) {
+    // Reserve one slot per declaration before any slot owns a result.
+    prepared.reserve(animation_data_.size());
+    tasm::CSSIDBitset core_properties;
+    for (auto& data : animation_data_) {
+      auto& result = prepared.emplace_back().value;
+      if (data.name.empty()) {
+        continue;
+      }
+      data.duration = std::max(data.duration, 0L);
+      // Core tracks one effect per name. Keep repeated names on that path
+      // so a second occurrence cannot orphan an iOS animation ID.
+      const bool has_duplicate_name =
+          std::any_of(animation_data_.begin(), animation_data_.end(),
+                      [&](const auto& entry) {
+                        return &entry != &data && entry.name == data.name;
+                      });
+      result = std::make_unique<PreparedAnimation>(
+          *this, data, new_base_custom_properties, new_base_resolved_styles,
+          !has_duplicate_name);
+      if (!result->backend.CanRun()) {
+        core_properties.Or(result->property_ids);
+      }
+    }
+    // A layer animation overrides Core's model values regardless of CSS order.
+    // Keep connected effects on Core whenever their properties overlap Core.
+    bool changed;
+    do {
+      changed = false;
+      for (size_t index = 0; index < animation_data_.size(); ++index) {
+        auto& result = prepared[index].value;
+        if (!result || !result->backend.CanRun()) {
+          continue;
+        }
+        if ((result->property_ids & core_properties).HasAny()) {
+          core_properties.Or(result->property_ids);
+          result->backend.can_run = false;
+          changed = true;
+        }
+      }
+    } while (changed);
+  }
+  auto build_animation = [&](size_t index,
+                             std::optional<Animation::Origin> origin) {
+    auto& data = animation_data_[index];
+    if (!prepared.empty()) {
+      return BuildPreparedAnimation(data, std::move(*prepared[index].value),
+                                    origin);
+    }
+    return BuildPreparedAnimation(
+        data,
+        PreparedAnimation(*this, data, new_base_custom_properties,
+                          new_base_resolved_styles, false),
+        origin);
+  };
+  PlatformAnimations next_platform_animations;
+  auto activate_build_result = [&](starlight::AnimationData& data,
+                                   AnimationBuildResult&& result,
+                                   const std::shared_ptr<Animation>& previous =
+                                       nullptr) {
+    if (result.new_animator_animation != nullptr) {
+      if (previous) {
+        previous->ReplaceEffectFrom(*result.new_animator_animation);
+        result.new_animator_animation = previous;
+      } else {
+        // Report only the animation we retain, not a temporary replacement
+        // built to update an existing animation's effect.
+        result.new_animator_animation->NotifyInspectorCreated();
+      }
+      temp_active_animations_map_[data.name] =
+          std::move(result.new_animator_animation);
+    } else if (kHasPlatformAnimationBackend) {
+      if (result.platform_animation != nullptr) {
+        auto& platform = *result.platform_animation;
+        if (previous && previous != platform.animation) {
+          previous->GetRawStyleSet().swap(platform.animation->GetRawStyleSet());
+          previous->ClearRawCustomProperties();
+          platform.animation = previous;
+        }
+        platform.animation->SetPlatformExecution(true);
+        platform.animation->UpdateAnimationData(data);
+        next_platform_animations.push_back(
+            std::move(result.platform_animation));
+      }
+    }
+  };
+
+  auto remove_new_animator_animation =
+      [&](const std::shared_ptr<Animation>& animation) {
+        if (use_new_pipeline_cleanup) {
+          PrepareAnimationRemoval(animation, new_base_resolved_styles,
+                                  new_underlying_layout_only_styles);
+        } else {
+          animation->Destroy();
+        }
+      };
+
+  auto clear_replaced_effect =
+      [&](const std::shared_ptr<Animation>& animation) {
+        if (use_new_pipeline_cleanup) {
+          ClearAnimationEffects(animation, new_base_resolved_styles,
+                                new_underlying_layout_only_styles);
+        } else {
+          SetNeedsAnimationStyleRecalc(animation->name());
+          FlushAnimatedStyle();
+        }
+      };
+
+  for (size_t index = 0; index < animation_data_.size(); ++index) {
+    auto& data = animation_data_[index];
     if (data.name.empty()) {
       continue;
     }
@@ -432,88 +620,91 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
     if (data.duration < 0) {
       data.duration = 0;
     }
-    const bool has_custom_property_keyframes =
-        starlight::CSSStyleUtils::HasNonEmptyCSSKeyframesCustomPropertyContent(
-            GetKeyframesCustomPropertyMap(data.name));
-    // 1. Update data to the existing animation or create a new one, and
-    // temporarily save them to temp_active_animations_map_.
-    auto animation = animations_map_.find(data.name);
-    if (animation != animations_map_.end()) {
-      // Update an existing animation, add it to temp_active_animations_map_ and
-      // delete it from animations_map_;
-      if (force_rebuild || invalidated_keyframes_.count(data.name)) {
-        auto replacement = CreateAnimation(
-            data, new_base_custom_properties, new_base_resolved_styles,
-            animation->second->GetOrigin(), false);
-        if (replacement) {
-          if (use_new_pipeline_cleanup) {
-            ClearAnimationEffects(animation->second, new_base_resolved_styles,
-                                  new_underlying_layout_only_styles);
-          } else {
-            SetNeedsAnimationStyleRecalc(data.name);
-            FlushAnimatedStyle();
-          }
-          animation->second->ReplaceEffectFrom(*replacement);
-          temp_active_animations_map_[data.name] = animation->second;
-        } else if (use_new_pipeline_cleanup) {
-          PrepareAnimationRemoval(animation->second, new_base_resolved_styles,
-                                  new_underlying_layout_only_styles);
-        } else {
-          animation->second->Destroy();
-        }
-        animations_map_.erase(animation);
+    PlatformAnimationPtr* platform = nullptr;
+    if (kHasPlatformAnimationBackend) {
+      platform = FindPlatformAnimation(data.name);
+      // Transfer playback to the last declaration, which Core retains.
+      if (platform &&
+          std::any_of(
+              animation_data_.begin() + index + 1, animation_data_.end(),
+              [&](const auto& entry) { return entry.name == data.name; })) {
         continue;
       }
-      animation->second->keyframe_effect()->SetHasCustomPropertyKeyframes(
-          has_custom_property_keyframes);
-      SyncAnimationRawCustomPropertySet(
-          animation->second.get(), GetKeyframesCustomPropertyMap(data.name));
-      if (animation->second->GetState() == Animation::State::kStop &&
-          HasNoSampleableKeyframes(animation->second,
-                                   has_custom_property_keyframes)) {
-        const auto origin = animation->second->GetOrigin();
-        if (use_new_pipeline_cleanup) {
-          PrepareAnimationRemoval(animation->second, new_base_resolved_styles,
-                                  new_underlying_layout_only_styles);
-        } else {
-          animation->second->Destroy();
+    }
+    auto animation =
+        platform ? animations_map_.end() : animations_map_.find(data.name);
+    if (!platform && animation == animations_map_.end()) {
+      activate_build_result(data, build_animation(index, std::nullopt));
+      continue;
+    }
+    const auto& previous =
+        platform ? (*platform)->animation : animation->second;
+    if (platform || force_rebuild || invalidated_keyframes_.count(data.name) ||
+        (!prepared.empty() && prepared[index].value->backend.CanRun())) {
+      auto* existing_platform = platform ? platform->get() : nullptr;
+      auto rebuilt = build_animation(index, previous->GetOrigin());
+      if (existing_platform && rebuilt.platform_animation) {
+        rebuilt.platform_animation->RetainIdentityFrom(*existing_platform);
+      } else if (rebuilt.new_animator_animation || rebuilt.platform_animation ||
+                 existing_platform) {
+        clear_replaced_effect(previous);
+        if (existing_platform) {
+          QueuePlatformAnimationCommands(
+              *existing_platform,
+              rebuilt.new_animator_animation
+                  ? gfx::PlatformAnimationCommandType::kDetach
+                  : gfx::PlatformAnimationCommandType::kCancel);
         }
-        auto recreated_animation = CreateAnimation(
-            data, new_base_custom_properties, new_base_resolved_styles, origin);
-        if (recreated_animation != nullptr) {
-          temp_active_animations_map_[data.name] = recreated_animation;
-        }
-        animations_map_.erase(animation);
-        continue;
-      }
-      if (animation->second->get_animation_data() != data) {
-        if (use_new_pipeline_cleanup &&
-            animation->second->GetState() == Animation::State::kStop) {
-          ClearAnimationEffects(animation->second, new_base_resolved_styles,
-                                new_underlying_layout_only_styles);
-        }
-        animation->second->UpdateAnimationData(data);
-        temp_active_animations_map_[data.name] = animation->second;
       } else {
-        temp_keep_animations_map_[data.name] = animation->second;
+        remove_new_animator_animation(previous);
       }
-      animations_map_.erase(animation);
+      activate_build_result(data, std::move(rebuilt), previous);
     } else {
-      // Create a new animation, add it to temp_active_animations_map_;
-      auto new_animation = CreateAnimation(data, new_base_custom_properties,
-                                           new_base_resolved_styles);
-      if (new_animation != nullptr) {
-        temp_active_animations_map_[data.name] = new_animation;
+      const auto& custom_property_keyframes =
+          GetKeyframesCustomPropertyMap(data.name);
+      const bool has_custom_property_keyframes = starlight::CSSStyleUtils::
+          HasNonEmptyCSSKeyframesCustomPropertyContent(
+              custom_property_keyframes);
+      previous->keyframe_effect()->SetHasCustomPropertyKeyframes(
+          has_custom_property_keyframes);
+      SyncAnimationRawCustomPropertySet(previous.get(),
+                                        custom_property_keyframes);
+      if (previous->GetState() == Animation::State::kStop &&
+          HasNoSampleableKeyframes(previous, has_custom_property_keyframes)) {
+        const auto origin = previous->GetOrigin();
+        remove_new_animator_animation(previous);
+        activate_build_result(data, build_animation(index, origin));
+        animations_map_.erase(animation);
+        continue;
       }
+      if (previous->get_animation_data() != data) {
+        if (use_new_pipeline_cleanup &&
+            previous->GetState() == Animation::State::kStop) {
+          clear_replaced_effect(previous);
+        }
+        previous->UpdateAnimationData(data);
+        temp_active_animations_map_[data.name] = previous;
+      } else {
+        temp_keep_animations_map_[data.name] = previous;
+      }
+    }
+    if (platform) {
+      // Leave consumed slots empty until we replace the old list.
+      *platform = nullptr;
+    } else {
+      animations_map_.erase(animation);
     }
   }
   //   2. All animations remaining in animations_map_ need to be destroyed.
   for (auto& ani_iter : animations_map_) {
-    if (use_new_pipeline_cleanup) {
-      PrepareAnimationRemoval(ani_iter.second, new_base_resolved_styles,
-                              new_underlying_layout_only_styles);
-    } else {
-      ani_iter.second->Destroy();
+    remove_new_animator_animation(ani_iter.second);
+  }
+  if (kHasPlatformAnimationBackend) {
+    for (auto& platform_animation : platform_animations_) {
+      if (platform_animation) {
+        QueuePlatformAnimationCommands(
+            *platform_animation, gfx::PlatformAnimationCommandType::kCancel);
+      }
     }
   }
 
@@ -529,17 +720,33 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
       animation->Play(play_handles_initial_frame);
     }
   }
-  // Keep changed and unchanged animations interleaved in CSS declaration order.
-  temp_active_animations_map_.merge(temp_keep_animations_map_);
+  if (kHasPlatformAnimationBackend) {
+    // Resubmit in CSS declaration order to preserve platform precedence.
+    for (auto& platform : next_platform_animations) {
+      platform->animation->UpdatePlaybackState();
+      QueuePlatformAnimationCommands(
+          *platform, platform->handed_off
+                         ? gfx::PlatformAnimationCommandType::kUpdate
+                         : gfx::PlatformAnimationCommandType::kHandoff);
+    }
+  }
+  // Rebuild in CSS declaration order, preferring active entries for names
+  // that also occur in the retained map.
   animations_map_.clear();
   for (const auto& data : animation_data_) {
-    auto animation = temp_active_animations_map_.find(data.name);
-    if (animation != temp_active_animations_map_.end()) {
-      animations_map_.insert(*animation);
+    auto active = temp_active_animations_map_.find(data.name);
+    if (active != temp_active_animations_map_.end()) {
+      animations_map_.try_emplace(data.name, std::move(active->second));
+    } else if (auto keep = temp_keep_animations_map_.find(data.name);
+               keep != temp_keep_animations_map_.end()) {
+      animations_map_.try_emplace(data.name, std::move(keep->second));
     }
   }
   temp_keep_animations_map_.clear();
   temp_active_animations_map_.clear();
+  if (kHasPlatformAnimationBackend) {
+    platform_animations_ = std::move(next_platform_animations);
+  }
   invalidated_keyframes_.clear();
 }
 
@@ -904,36 +1111,38 @@ Animation::Origin CSSKeyframeManager::ResolveAnimationOrigin(
 }
 
 tasm::CSSValue CSSKeyframeManager::ResolveUnderlyingValue(
-    const ParsedPropertyKeyframes& property,
-    const tasm::StyleMap* base_resolved_styles) const {
+    tasm::CSSPropertyID id, const tasm::StyleMap* base_resolved_styles,
+    gfx::AnimationPropertyType type) const {
   // Incoming styles may not be committed yet. An absent declaration in this
   // snapshot means the default, not the previous Element value.
   if (base_resolved_styles != nullptr) {
-    auto it = base_resolved_styles->find(property.css_id);
+    auto it = base_resolved_styles->find(id);
     if (it != base_resolved_styles->end() && !it->second.IsEmpty()) {
       return it->second;
     }
   } else {
-    auto value = GetStyleInElement(property.css_id, element_);
+    auto value = GetStyleInElement(id, element_);
     if (!value.IsEmpty()) {
       return value;
     }
   }
-  // Parsing already resolved this property's animation type.
   return GetDefaultValue(
-      static_cast<starlight::AnimationPropertyType>(property.gfx_property));
+      type == gfx::AnimationPropertyType::kNone
+          ? GetPropertyIDToAnimationPropertyTypeMap().at(id)
+          : static_cast<starlight::AnimationPropertyType>(type));
 }
 
-CSSKeyframeManager::PreparedAnimation CSSKeyframeManager::PrepareAnimation(
-    starlight::AnimationData& data,
+CSSKeyframeManager::PreparedAnimation::PreparedAnimation(
+    CSSKeyframeManager& manager, starlight::AnimationData& data,
     const tasm::CustomPropertiesMap* base_custom_properties,
-    const tasm::StyleMap* base_resolved_styles, bool allow_platform) {
-  PreparedAnimation prepared{ParseKeyframes(data.name, base_custom_properties)};
-  auto& parsed_properties = prepared.properties;
+    const tasm::StyleMap* base_resolved_styles, bool allow_platform)
+    : properties(manager.ParseKeyframes(data.name, base_custom_properties)) {
+  auto& parsed_properties = properties;
   const auto animation_timing = ToGfxTimingFunctionData(data.timing_func);
   for (auto& [type, property] : parsed_properties) {
-    property.underlying_value =
-        ResolveUnderlyingValue(property, base_resolved_styles);
+    property_ids.Set(property.css_id);
+    property.underlying_value = manager.ResolveUnderlyingValue(
+        property.css_id, base_resolved_styles, property.gfx_property);
     for (auto& parsed : property.keyframes) {
       if (parsed.keyframe->timing_source() ==
           gfx::Keyframe::TimingSource::kAnimation) {
@@ -943,49 +1152,43 @@ CSSKeyframeManager::PreparedAnimation CSSKeyframeManager::PrepareAnimation(
     }
   }
   const auto& custom_property_keyframes =
-      GetKeyframesCustomPropertyMap(data.name);
-  prepared.has_custom_property_keyframes =
+      manager.GetKeyframesCustomPropertyMap(data.name);
+  has_custom_property_keyframes =
       starlight::CSSStyleUtils::HasNonEmptyCSSKeyframesCustomPropertyContent(
           custom_property_keyframes);
-  const bool routing_enabled = kHasPlatformAnimationBackend && allow_platform &&
-                               element_ != nullptr &&
-                               element_->supports_platform_animation_routing();
+  const bool routing_enabled =
+      kHasPlatformAnimationBackend && allow_platform &&
+      manager.element_ != nullptr &&
+      manager.element_->supports_platform_animation_routing();
 
-  auto& backend_result = prepared.backend;
+  auto& backend_result = backend;
   if (routing_enabled && !parsed_properties.empty() &&
-      !prepared.has_custom_property_keyframes) {
-    backend_result = EvaluatePlatformSupport(parsed_properties);
-    if (backend_result.CanRun() && element_->IsShadowNodeVirtual()) {
+      !has_custom_property_keyframes) {
+    backend_result = manager.EvaluatePlatformSupport(
+        parsed_properties, base_resolved_styles != nullptr);
+    if (backend_result.CanRun() && manager.element_->IsShadowNodeVirtual()) {
       backend_result = {false, AnimationFallbackReason::kBackendUnavailable};
     }
     if (!backend_result.CanRun()) {
       LOGI("[AnimationRouting] executor=new-animator element_id="
-           << element_->impl_id() << " name=" << data.name.str() << " kind="
-           << (GetAnimationKind() == gfx::AnimationKind::kKeyframe
+           << manager.element_->impl_id() << " name=" << data.name.str()
+           << " kind="
+           << (manager.GetAnimationKind() == gfx::AnimationKind::kKeyframe
                    ? "keyframe"
                    : "transition")
            << " fallback_reason="
            << AnimationFallbackReasonToString(backend_result.fallback_reason));
     }
   }
-  return prepared;
 }
 
-std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
-    starlight::AnimationData& data,
-    const tasm::CustomPropertiesMap* base_custom_properties,
-    const tasm::StyleMap* base_resolved_styles,
-    std::optional<Animation::Origin> origin, bool notify_created) {
-  const auto resolved_origin =
-      origin.has_value() ? *origin : ResolveAnimationOrigin(data);
-  auto prepared =
-      PrepareAnimation(data, base_custom_properties, base_resolved_styles,
-                       resolved_origin != Animation::Origin::kCSSTransition);
+CSSKeyframeManager::AnimationBuildResult
+CSSKeyframeManager::BuildPreparedAnimation(
+    starlight::AnimationData& data, PreparedAnimation&& prepared,
+    std::optional<Animation::Origin> origin) {
   auto& parsed_properties = prepared.properties;
-  const auto& custom_property_keyframes =
-      GetKeyframesCustomPropertyMap(data.name);
-  // Parsing keeps only supported curves. Reject empty input before allocating
-  // the animation and effect; custom-property-only animations still need them.
+  // Parsing keeps only supported curves. Custom-property-only animations
+  // still need a C++ effect even without property models.
   if (parsed_properties.empty() && !prepared.has_custom_property_keyframes) {
     LOGE(
         "[animation] skip creating animation without sampleable keyframes, "
@@ -995,20 +1198,43 @@ std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
   }
   auto animation = std::make_shared<Animation>(data.name);
   animation->set_animation_data(data);
-  animation->SetOrigin(resolved_origin);
+  animation->SetOrigin(origin.has_value() ? *origin
+                                          : ResolveAnimationOrigin(data));
   animation->BindDelegate(this);
   animation->BindElement(element_);
+  if (kHasPlatformAnimationBackend && prepared.backend.CanRun() &&
+      element_->PrepareForPlatformAnimation()) {
+    // Platform execution keeps the logical animation without sampling curves.
+    auto platform =
+        CreatePlatformAnimationState(parsed_properties, std::move(animation));
+    platform->platform_timing = prepared.backend.platform_timing;
+    return {nullptr, std::move(platform)};
+  }
   auto effect = KeyframeEffect::Create();
   effect->BindAnimationDelegate(this);
   effect->BindElement(element_);
   effect->SetHasCustomPropertyKeyframes(prepared.has_custom_property_keyframes);
   animation->SetKeyframeEffect(std::move(effect));
-  SyncAnimationRawCustomPropertySet(animation.get(), custom_property_keyframes);
+  SyncAnimationRawCustomPropertySet(animation.get(),
+                                    GetKeyframesCustomPropertyMap(data.name));
   for (auto& [type, property] : parsed_properties) {
     animation->SetRawCssId(property.css_id);
     AddParsedPropertyToNewAnimator(std::move(property), animation.get());
   }
-  if (notify_created) {
+  return {std::move(animation), nullptr};
+}
+
+std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(
+    starlight::AnimationData& data,
+    const tasm::CustomPropertiesMap* base_custom_properties,
+    std::optional<Animation::Origin> origin) {
+  auto animation = BuildPreparedAnimation(
+                       data,
+                       PreparedAnimation(*this, data, base_custom_properties,
+                                         nullptr, false),
+                       origin)
+                       .new_animator_animation;
+  if (animation) {
     animation->NotifyInspectorCreated();
   }
   return animation;
@@ -1217,14 +1443,17 @@ void CSSKeyframeManager::SetNeedsAnimationStyleRecalc(
   // clear effect
   TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_MANAGER_NEEDS_ANIMATION_RECALC);
   if (element_) {
-    auto iter = animations_map_.find(name);
-    if (iter == animations_map_.end()) {
-      iter = temp_active_animations_map_.find(name);
-      if (iter == temp_active_animations_map_.end()) {
-        return;
+    std::shared_ptr<Animation> animation;
+    if (auto it = animations_map_.find(name); it != animations_map_.end()) {
+      animation = it->second;
+    } else if (auto it = temp_active_animations_map_.find(name);
+               it != temp_active_animations_map_.end()) {
+      animation = it->second;
+    } else if (kHasPlatformAnimationBackend) {
+      if (auto it = FindPlatformAnimation(name); it != nullptr) {
+        animation = (*it)->animation;
       }
     }
-    auto animation = iter->second;
     if (animation) {
       tasm::StyleMap reset_origin_css_styles;
       const auto& raw_style_set = animation->GetRawStyleSet();
@@ -1287,10 +1516,7 @@ CSSKeyframeManager::GetEmptyCustomPropertyKeyframeMap() {
 
 tasm::CSSValue CSSKeyframeManager::GetDefaultValue(
     starlight::AnimationPropertyType type) {
-  if (GetLayoutPropertyTypeSet().count(type) != 0) {
-    // the default values of layout properties are 'auto'.
-    return tasm::CSSValue();
-  } else if (type == starlight::AnimationPropertyType::kOpacity) {
+  if (type == starlight::AnimationPropertyType::kOpacity) {
     return tasm::CSSValue(kDefaultOpacity, tasm::CSSValuePattern::NUMBER);
   } else if (type == starlight::AnimationPropertyType::kBackgroundColor ||
              (type >= starlight::AnimationPropertyType::kBorderTopColor &&
@@ -1411,14 +1637,11 @@ void CSSKeyframeManager::NotifyUnitValuesUpdatedToAnimation(
   }
 }
 
-const std::unordered_set<tasm::CSSPropertyID>& GetAnimatablePropertyIDSet() {
-  static const base::NoDestructor<std::unordered_set<tasm::CSSPropertyID>>
-      animatablePropertyIDSet({ALL_ANIMATABLE_PROPERTY_ID});
-  return *animatablePropertyIDSet;
-}
-
 bool IsAnimatableProperty(tasm::CSSPropertyID css_id) {
-  return GetAnimatablePropertyIDSet().count(css_id) != 0;
+  static constexpr tasm::CSSPropertyID kAnimatableProperties[] = {
+      ALL_ANIMATABLE_PROPERTY_ID};
+  static constexpr tasm::CSSIDBitset kAnimatable(kAnimatableProperties);
+  return tasm::CSSProperty::IsPropertyValid(css_id) && kAnimatable.Has(css_id);
 }
 
 }  // namespace animation

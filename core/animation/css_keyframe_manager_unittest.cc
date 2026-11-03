@@ -11,6 +11,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 #include "core/animation/animation.h"
@@ -425,7 +426,8 @@ TEST_F(CSSAnimationPreparationTest, EvaluatesBackendBeforeRouting) {
       element->SetJSEventHandler("animationiteration", "bindEvent",
                                  "onIteration");
     }
-    auto prepared = animator->PrepareAnimation(data, nullptr, nullptr, true);
+    animation::CSSKeyframeManager::PreparedAnimation prepared(
+        *animator, data, nullptr, nullptr, true);
     EXPECT_EQ(prepared.backend.CanRun(), mode == 1);
     auto animation = animator->CreateAnimation(data);
     ASSERT_NE(animation, nullptr);
@@ -1968,38 +1970,13 @@ TEST_F(CSSKeyframeManagerTest, SetNeedsAnimationStyleRecalc) {
   EXPECT_TRUE(update_flag);
 }
 
-TEST_F(CSSKeyframeManagerTest, GetLayoutPropertyTypeSet) {
-  auto test_set = animation::GetLayoutPropertyTypeSet();
-  static const base::NoDestructor<
-      std::unordered_set<starlight::AnimationPropertyType>>
-      base_set({starlight::AnimationPropertyType::kWidth,
-                starlight::AnimationPropertyType::kHeight,
-                starlight::AnimationPropertyType::kTop,
-                starlight::AnimationPropertyType::kLeft,
-                starlight::AnimationPropertyType::kRight,
-                starlight::AnimationPropertyType::kBottom,
-                starlight::AnimationPropertyType::kBorderLeftWidth,
-                starlight::AnimationPropertyType::kBorderRightWidth,
-                starlight::AnimationPropertyType::kBorderTopWidth,
-                starlight::AnimationPropertyType::kBorderBottomWidth,
-                starlight::AnimationPropertyType::kPaddingLeft,
-                starlight::AnimationPropertyType::kPaddingRight,
-                starlight::AnimationPropertyType::kPaddingTop,
-                starlight::AnimationPropertyType::kPaddingBottom,
-                starlight::AnimationPropertyType::kMarginLeft,
-                starlight::AnimationPropertyType::kMarginRight,
-                starlight::AnimationPropertyType::kMarginTop,
-                starlight::AnimationPropertyType::kMarginBottom,
-                starlight::AnimationPropertyType::kMaxWidth,
-                starlight::AnimationPropertyType::kMinWidth,
-                starlight::AnimationPropertyType::kMaxHeight,
-                starlight::AnimationPropertyType::kMinHeight,
-                starlight::AnimationPropertyType::kFlexBasis});
-  EXPECT_EQ(test_set, *base_set);
+TEST_F(CSSKeyframeManagerTest, LayoutAnimationPropertiesDefaultToAuto) {
+  for (const auto type : {ALL_LAYOUT_ANIMATION_PROPERTY}) {
+    EXPECT_TRUE(animation::CSSKeyframeManager::GetDefaultValue(type).IsEmpty());
+  }
 }
 
-TEST_F(CSSKeyframeManagerTest, GetLayoutCurveTypeSet) {
-  auto test_set = animation::GetLayoutCurveTypeSet();
+TEST_F(CSSKeyframeManagerTest, IsLayoutCurveType) {
   static const base::NoDestructor<
       std::unordered_set<animation::AnimationCurve::CurveType>>
       base_set({animation::AnimationCurve::CurveType::LEFT,
@@ -2025,7 +2002,10 @@ TEST_F(CSSKeyframeManagerTest, GetLayoutCurveTypeSet) {
                 animation::AnimationCurve::CurveType::BORDER_TOP_WIDTH,
                 animation::AnimationCurve::CurveType::BORDER_BOTTOM_WIDTH,
                 animation::AnimationCurve::CurveType::FLEX_BASIS});
-  EXPECT_EQ(test_set, *base_set);
+  for (int id = tasm::kPropertyStart; id <= tasm::kPropertyEnd; ++id) {
+    const auto type = static_cast<animation::AnimationCurve::CurveType>(id);
+    EXPECT_EQ(animation::IsLayoutCurveType(type), base_set->count(type) != 0);
+  }
 }
 
 TEST_F(CSSKeyframeManagerTest, GetPropertyIDToAnimationPropertyTypeMap) {
@@ -2105,8 +2085,7 @@ TEST_F(CSSKeyframeManagerTest, GetPropertyIDToAnimationPropertyTypeMap) {
   EXPECT_EQ(test_map, *base_map);
 }
 
-TEST_F(CSSKeyframeManagerTest, GetAnimatablePropertyIDSet) {
-  auto test_set = animation::GetAnimatablePropertyIDSet();
+TEST_F(CSSKeyframeManagerTest, IsAnimatableProperty) {
   static const base::NoDestructor<std::unordered_set<tasm::CSSPropertyID>>
       base_set({
           tasm::kPropertyIDTop,
@@ -2148,10 +2127,11 @@ TEST_F(CSSKeyframeManagerTest, GetAnimatablePropertyIDSet) {
           tasm::kPropertyIDTransformOrigin,
           tasm::kPropertyIDVisibility,
       });
-  EXPECT_EQ(test_set, *base_set);
-  bool test_flag = animation::IsAnimatableProperty(tasm::kPropertyIDOpacity);
-  bool base_flag = *base_set->find(tasm::kPropertyIDOpacity);
-  EXPECT_EQ(test_flag, base_flag);
+  for (int id = tasm::kPropertyStart; id <= tasm::kPropertyEnd; ++id) {
+    const auto property = static_cast<tasm::CSSPropertyID>(id);
+    EXPECT_EQ(animation::IsAnimatableProperty(property),
+              base_set->count(property) != 0);
+  }
 }
 
 TEST_F(CSSKeyframeManagerTest,
@@ -2219,6 +2199,307 @@ TEST_F(CSSKeyframeManagerTest,
            starlight::AnimationPropertyType::kPaddingBottom},
       });
   EXPECT_EQ(test_map, *kIDPropertyPaddingMap);
+}
+
+class CSSAnimationRoutingTest : public CSSAnimationPreparationTest {
+ public:
+  void SetUp() override {
+    CSSAnimationPreparationTest::SetUp();
+    manager->GetConfig()->SetEnableFiberArch(true);
+    manager->supports_platform_animation_routing_ = true;
+    target = manager->CreateFiberElement("view");
+    animator = InitTestKeyframeManager(target.get());
+    auto& animation = data.emplace_back();
+    animation.name = base::String("test");
+    animation.duration = 4000;
+    animation.fill_mode = starlight::AnimationFillModeType::kBoth;
+  }
+
+  void UpdateKeyframes(const base::String& name, const char* property,
+                       const char* from, const char* to, bool with_opacity) {
+    auto frames = lepus::Dictionary::Create();
+    for (int i = 0; i < 2; ++i) {
+      auto frame = lepus::Dictionary::Create();
+      if (with_opacity) {
+        frame->SetValue("opacity", lepus::Value(i));
+      }
+      frame->SetValue(property, lepus::Value(i ? to : from));
+      frames->SetValue(i ? "100" : "0", lepus::Value(frame));
+    }
+    starlight::CSSStyleUtils::UpdateCSSKeyframes(
+        *target->keyframes_map_, name, lepus::Value(frames),
+        manager->GetCSSParserConfigs());
+  }
+
+  static float FirstOpacity(
+      const base::Vector<gfx::PlatformAnimationProperty>& properties) {
+    return static_cast<const gfx::FloatKeyframe*>(
+               properties.front().keyframes.front().get())
+        ->Value();
+  }
+
+  fml::RefPtr<Element> target;
+  std::unique_ptr<animation::MockCSSKeyframeManager> animator;
+  base::Vector<starlight::AnimationData> data;
+};
+
+TEST_F(CSSAnimationRoutingTest, RoutesUsingInitiallyBoundAnimationEvents) {
+  for (const auto* type : {"bindEvent", "global-bindEvent", "worklet"}) {
+    SCOPED_TRACE(type);
+    auto element = manager->CreateFiberElement("view");
+    auto keyframe_manager = InitTestKeyframeManager(element.get());
+    UpdateOpacityKeyframes(element.get(), data[0].name, 0, 1);
+    if (std::string(type) == "worklet") {
+      element->SetWorkletEventHandler("animationiteration", "bindEvent",
+                                      lepus::Value("worklet"), nullptr);
+    } else {
+      element->SetJSEventHandler("animationiteration", type, "onIteration");
+    }
+    keyframe_manager->SyncAnimationDataForNewPipeline(data);
+    EXPECT_TRUE(keyframe_manager->platform_animations_.empty());
+  }
+  target->SetJSEventHandler("animationend", "bindEvent", "onEnd");
+  UpdateOpacityKeyframes(target.get(), data[0].name, 0, 1);
+  animator->SyncAnimationDataForNewPipeline(data);
+  EXPECT_EQ(animator->platform_animations_.size(), 1u);
+}
+
+TEST_F(CSSAnimationRoutingTest, PausedAnimationSurvivesBackendRoundTrip) {
+  for (bool legacy : {false, true}) {
+    SCOPED_TRACE(legacy);
+    animator = InitTestKeyframeManager(target.get());
+    data[0].play_state = starlight::AnimationPlayStateType::kPaused;
+    auto sync = [&](bool rebuild) {
+      animator->SetAnimationDataAndPlayInternal(data, rebuild, legacy, !legacy);
+    };
+    UpdateOpacityKeyframeTiming(target.get(), data[0].name, nullptr);
+    data[0].timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
+    sync(false);
+    auto logical = animator->animations_map().at(data[0].name);
+    const auto held_time = fml::TimeDelta::FromMilliseconds(1000);
+    logical->SeekTo(held_time, fml::TimePoint::Now());
+    logical->SendStartEvent(fml::TimeDelta::Zero());
+    auto sample_time = fml::TimePoint::Now();
+    const auto expected = logical->SampleAt(sample_time).styles;
+    ASSERT_FALSE(expected.empty());
+
+    data[0].timing_func = starlight::TimingFunctionData();
+    sync(false);
+    EXPECT_EQ(animator->platform_animations_.front()->animation, logical);
+    EXPECT_EQ(logical->keyframe_effect(), nullptr);
+    const auto executor = logical->executor();
+    auto playback = logical->playback();
+    sync(true);
+    EXPECT_EQ(logical->executor(), executor);
+    EXPECT_EQ(logical->GetCurrentTime(), held_time);
+
+    data[0].timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
+    sync(false);
+    EXPECT_EQ(animator->animations_map().at(data[0].name), logical);
+    EXPECT_EQ(logical->GetState(), animation::Animation::State::kPause);
+    EXPECT_EQ(logical->GetCurrentTime(), held_time);
+    EXPECT_FALSE(playback->IsCurrentExecutor(executor));
+    EXPECT_EQ(target->platform_animation_commands_->back().type,
+              gfx::PlatformAnimationCommandType::kDetach);
+    EXPECT_EQ(
+        logical->SampleAt(animation::Animation::GetAnimationDummyStartTime())
+            .styles,
+        expected);
+    sample_time = TimePointFromMs(100000);
+    EXPECT_EQ(logical->SampleAt(sample_time).styles, expected);
+  }
+}
+
+TEST_F(CSSAnimationRoutingTest, RunningFallbackPreservesTimeAcrossDelay) {
+  for (long delay : {0L, 6000L}) {
+    SCOPED_TRACE(delay);
+    animator = InitTestKeyframeManager(target.get());
+    data[0].delay = delay;
+    data[0].iteration_count = 10;
+    UpdateOpacityKeyframeTiming(target.get(), data[0].name, nullptr);
+    animator->SyncAnimationDataForNewPipeline(data);
+    auto logical = animator->platform_animations_.front()->animation;
+    logical->playback()->SetCurrentTime(fml::TimeDelta::FromMilliseconds(2500));
+    logical->playback()->ClaimEvent(
+        logical->executor(), gfx::AnimationPlaybackState::EventState::kStarted);
+    UpdateOpacityKeyframeTiming(target.get(), data[0].name, "ease-in");
+    animator->SyncAnimationDataForNewPipeline(data, true);
+    auto time = TimePointFromMs(100000);
+    auto sample = logical->SampleAt(time);
+    ASSERT_TRUE(sample.styles.count(kPropertyIDOpacity));
+    EXPECT_GE(time - logical->start_time(),
+              fml::TimeDelta::FromMilliseconds(2500));
+    EXPECT_FALSE(sample.should_send_start_event);
+    EXPECT_FALSE(sample.should_send_end_event);
+    EXPECT_EQ(sample.iteration_events_due, 0);
+    if (delay) {
+      EXPECT_DOUBLE_EQ(sample.styles.at(kPropertyIDOpacity).GetNumber(), 0);
+    }
+  }
+}
+
+TEST_F(CSSAnimationRoutingTest, KeyframeTimingOverridesAnimationTiming) {
+  data[0].timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
+  // A single interval takes its explicit keyframe easing instead of ease-in.
+  UpdateOpacityKeyframeTiming(target.get(), data[0].name, "ease-out");
+  (*target->keyframes_map_)[data[0].name]->GetKeyframesContent().erase(0.5);
+  animator->SyncAnimationDataForNewPipeline(data, true);
+  ASSERT_TRUE(animator->animations_map().empty());
+  auto actual = gfx::CreateTimingFunction(
+      target->platform_animation_commands_->back().animation_data.timing_func);
+  auto expected = gfx::CubicBezierTimingFunction::CreatePreset(
+      gfx::CubicBezierTimingFunction::EaseType::EASE_OUT);
+  EXPECT_NEAR(actual->GetValue(0.25), expected->GetValue(0.25), 1e-6);
+}
+
+TEST_F(CSSAnimationRoutingTest, LegacyStylingKeepsImplicitEndpointsOnCore) {
+  UpdateToOnlyOpacityKeyframes(target.get(), data[0].name, 1.0);
+  animator->SetAnimationDataAndPlay(data);
+  EXPECT_TRUE(animator->platform_animations_.empty());
+  EXPECT_EQ(animator->animations_map().count(data[0].name), 1u);
+}
+
+TEST_F(CSSAnimationRoutingTest, PlatformKeyframesFollowTheirInputs) {
+  UpdateToOnlyOpacityKeyframes(target.get(), data[0].name, 1.0);
+  target->computed_css_style()->SetValue(
+      kPropertyIDOpacity, CSSValue(0.2f, CSSValuePattern::NUMBER));
+  StyleMap underlying{
+      {kPropertyIDOpacity, CSSValue(0.8f, CSSValuePattern::NUMBER)}};
+  auto sync = [&] {
+    animator->SyncAnimationDataForNewPipeline(data, false, &underlying);
+  };
+  auto& commands = target->platform_animation_commands_;
+  sync();
+  ASSERT_NE(commands, nullptr);
+  ASSERT_EQ(commands->size(), 1u);
+  const auto initial_id = commands->back().animation_id;
+  ASSERT_FALSE(commands->back().properties.empty());
+  EXPECT_FLOAT_EQ(FirstOpacity(commands->back().properties), 0.8f);
+  EXPECT_FALSE(target->can_be_layout_only_);
+  EXPECT_FALSE(animator->NeedsFutureTickForNewPipeline());
+  sync();
+  EXPECT_EQ(commands->size(), 1u);
+  data[0].play_state = starlight::AnimationPlayStateType::kPaused;
+  sync();
+  const auto& pause = commands->back();
+  EXPECT_EQ(pause.animation_id, initial_id);
+  EXPECT_FALSE(pause.reuse_keyframes);
+  EXPECT_EQ(pause.generation, 2u);
+  ASSERT_FALSE(pause.properties.empty());
+  EXPECT_FLOAT_EQ(FirstOpacity(pause.properties), 0.8f);
+  for (bool reset : {false, true}) {
+    if (reset) {
+      underlying.clear();
+    } else {
+      underlying[kPropertyIDOpacity] = CSSValue(0.4f, CSSValuePattern::NUMBER);
+    }
+    sync();
+    const auto& update = commands->back();
+    EXPECT_EQ(update.animation_id, initial_id);
+    EXPECT_FALSE(update.reuse_keyframes);
+    ASSERT_FALSE(update.properties.empty());
+    EXPECT_FLOAT_EQ(FirstOpacity(update.properties), reset ? 1.0f : 0.4f);
+  }
+  UpdateOpacityKeyframes(target.get(), data[0].name, 0.1, 0.9);
+  animator->InvalidateKeyframes(data[0].name);
+  sync();
+  const auto& rebuilt = commands->back();
+  EXPECT_EQ(rebuilt.animation_id, initial_id);
+  EXPECT_FALSE(rebuilt.reuse_keyframes);
+  ASSERT_FALSE(rebuilt.properties.empty());
+  EXPECT_FLOAT_EQ(FirstOpacity(rebuilt.properties), 0.1f);
+  data.clear();
+  sync();
+  EXPECT_EQ(commands->back().type, gfx::PlatformAnimationCommandType::kCancel);
+  EXPECT_TRUE(animator->TakePendingAnimationEventsForNewPipeline().empty());
+}
+
+TEST_F(CSSAnimationRoutingTest,
+       DuplicateAnimationNameDetachesPlatformAnimator) {
+  UpdateOpacityKeyframes(target.get(), data[0].name, 0.0, 1.0);
+  animator->SyncAnimationDataForNewPipeline(data);
+  ASSERT_EQ(animator->platform_animations_.size(), 1u);
+  const auto id = animator->platform_animations_.front()->animation_id;
+  const auto logical = animator->platform_animations_.front()->animation;
+  target->platform_animation_commands_ = nullptr;
+
+  auto duplicate = data.front();
+  duplicate.duration += 1000;
+  duplicate.play_state = starlight::AnimationPlayStateType::kPaused;
+  data.push_back(duplicate);
+  animator->SyncAnimationDataForNewPipeline(data);
+
+  const auto& commands = target->platform_animation_commands_;
+  ASSERT_NE(commands, nullptr);
+  ASSERT_EQ(commands->size(), 1u);
+  const auto& command = commands->front();
+  EXPECT_EQ(command.type, gfx::PlatformAnimationCommandType::kDetach);
+  EXPECT_EQ(command.animation_id, id);
+  EXPECT_TRUE(animator->platform_animations_.empty());
+  EXPECT_EQ(animator->animations_map().at(duplicate.name), logical);
+  EXPECT_EQ(logical->get_animation_data(), duplicate);
+
+  // The updated declaration wins over the unchanged Core entry.
+  data.front() = duplicate;
+  ++data.back().duration;
+  animator->SyncAnimationDataForNewPipeline(data);
+  EXPECT_EQ(animator->animations_map().at(duplicate.name)->get_animation_data(),
+            data.back());
+}
+
+TEST_F(CSSAnimationRoutingTest, PlatformHandoffsPreserveAnimationListOrder) {
+  using CommandType = gfx::PlatformAnimationCommandType;
+  auto config = data.front();
+  data.clear();
+  for (const auto* name : {"fade_a", "fade_b", "translate"}) {
+    config.name = base::String(name);
+    data.push_back(config);
+  }
+  UpdateOpacityKeyframes(target.get(), data[0].name, 0.8, 0.8);
+  UpdateOpacityKeyframes(target.get(), data[1].name, 0.0, 1.0);
+  UpdateKeyframes(data[2].name, "transform", "none", "translateX(100px)",
+                  false);
+  auto& commands = target->platform_animation_commands_;
+  for (auto type : {CommandType::kHandoff, CommandType::kUpdate}) {
+    const bool reorder = type == CommandType::kUpdate;
+    if (reorder) {
+      std::swap(data[0], data[1]);
+    }
+    animator->SyncAnimationDataForNewPipeline(data);
+    ASSERT_NE(commands, nullptr);
+    ASSERT_EQ(commands->size(), data.size());
+    for (size_t i = 0; i < data.size(); ++i) {
+      const auto& command = (*commands)[i];
+      EXPECT_EQ(command.name, data[i].name.str());
+      EXPECT_EQ(command.type, type);
+      EXPECT_EQ(command.generation, reorder ? 2u : 1u);
+      EXPECT_FALSE(command.properties.empty());
+    }
+    commands = nullptr;
+  }
+
+  // A Core layout effect must not compete with a platform opacity effect.
+  // An independent transform can still run on the platform.
+  UpdateKeyframes(data[0].name, "left", "0px", "100px", true);
+  animator->SyncAnimationDataForNewPipeline(data, true);
+  ASSERT_EQ(animator->animations_map().size(), 2u);
+  ASSERT_EQ(animator->platform_animations_.size(), 1u);
+  EXPECT_EQ(animator->platform_animations_.front()->animation->name(),
+            data[2].name);
+  auto time = TimePointFromMs(1000);
+  auto sample = animator->CollectAnimationUpdatesForNewPipeline(time);
+  EXPECT_FLOAT_EQ(sample.property_overrides.at(kPropertyIDOpacity).GetNumber(),
+                  0.8f);
+
+  // Overlap propagates through a mixed effect to the transform-only effect.
+  UpdateKeyframes(data[1].name, "transform", "none", "translateX(100px)", true);
+  animator->SyncAnimationDataForNewPipeline(data, true);
+  EXPECT_EQ(animator->animations_map().size(), 3u);
+  EXPECT_TRUE(animator->platform_animations_.empty());
+  data.erase(data.begin());  // Remove the layout effect.
+  animator->SyncAnimationDataForNewPipeline(data);
+  EXPECT_TRUE(animator->animations_map().empty());
+  EXPECT_EQ(animator->platform_animations_.size(), 2u);
 }
 
 }  // namespace testing

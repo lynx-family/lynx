@@ -11,7 +11,6 @@
 
 #include <memory>
 #include <optional>
-#include <unordered_set>
 #include <utility>
 
 #include "base/include/fml/time/time_delta.h"
@@ -38,7 +37,8 @@ tasm::CSSValue HandleCSSVariableValueIfNeed(tasm::CSSPropertyID id,
 tasm::CSSValue BuildBoxShadowCSSValue(
     const base::Vector<starlight::ShadowData>& shadows);
 
-const std::unordered_set<AnimationCurve::CurveType>& GetOnXAxisCurveTypeSet();
+bool IsXAxisCurveType(AnimationCurve::CurveType type);
+bool IsLayoutCurveType(AnimationCurve::CurveType type);
 
 inline constexpr float kDefaultOpacity = 1.0f;
 inline constexpr uint32_t kDefaultBackgroundColor = 0x0;
