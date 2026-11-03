@@ -117,7 +117,12 @@ class DomainRuntime final {
     auto* runtime = executor_->GetJSRuntime().Lock();
     if (!runtime) return WithError(Identity(), "RUNTIME_ALLOCATION_FAILED");
     runtime->SetEnableJsBindingApiThrowException(true);
-    if (bindings_ && !bindings_->Attach(executor_->GetJSRuntime(), runner_))
+    if (bindings_ &&
+        !bindings_->Attach(executor_->GetJSRuntime(), runner_,
+                           [lifetime = lifetime_] {
+                             return lifetime->load(std::memory_order_acquire) ==
+                                    ProcessState::kRunning;
+                           }))
       return WithError(Identity(), "RUNTIME_BINDINGS_ATTACH_FAILED");
     identity_.context_id =
         reinterpret_cast<uintptr_t>(runtime->getSharedContext().get());

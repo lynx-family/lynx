@@ -18,6 +18,7 @@ class NapiEnvironment;
 namespace shell {
 
 class HostScriptInterceptor;
+class HostScriptLynxViews;
 
 // Exposes `interceptor` in one process runtime context. Each binding owns the
 // N-API environment of its context and the provider attached on its runner.
@@ -31,7 +32,8 @@ class HostScriptInterceptorBindings final
 
   // Failing to install leaves the context usable without interception.
   bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime> runtime,
-              fml::RefPtr<fml::TaskRunner> runner) override;
+              fml::RefPtr<fml::TaskRunner> runner,
+              ProcessRuntime::Guard guard) override;
   void NotifyViewCreated(const ProcessRuntime::ViewCreated& event) override;
 
  private:
@@ -39,6 +41,7 @@ class HostScriptInterceptorBindings final
 
   ProcessRuntime::Domain domain_;
   std::unique_ptr<runtime::js::NapiEnvironment> napi_;
+  std::shared_ptr<HostScriptLynxViews> views_;
   std::shared_ptr<HostScriptInterceptor> provider_;
 };
 
