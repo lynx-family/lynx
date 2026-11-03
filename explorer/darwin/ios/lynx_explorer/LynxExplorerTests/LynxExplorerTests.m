@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxTemplateData.h>
+#import <Lynx/LynxView.h>
 #import <XCTest/XCTest.h>
 #import "ExplorerLynxTestModule.h"
 #import "LynxNodeAPIModule.h"
@@ -305,6 +306,34 @@
   LynxNodeAPIModule *module = [[LynxNodeAPIModule alloc] initWithParam:token];
 
   XCTAssertEqual([module valueForKey:@"token"], token);
+}
+
+- (void)assertShellReleasesWhileItsLynxViewIsRetainedWithParameters:(NSDictionary *)parameters {
+  XCTestExpectation *checked = [self expectationWithDescription:@"shell controller released"];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    __weak LynxViewShellViewController *weakController;
+    // Keep the module registration alive until both ownership assertions have completed.
+    __attribute__((objc_precise_lifetime)) LynxView *retainedView;
+    @autoreleasepool {
+      LynxViewShellViewController *controller = [[LynxViewShellViewController alloc] init];
+      controller.params = parameters;
+      [controller loadViewIfNeeded];
+      retainedView = [controller valueForKey:@"lynxView"];
+      weakController = controller;
+    }
+    XCTAssertNotNil(retainedView);
+    XCTAssertNil(weakController);
+    [checked fulfill];
+  });
+  [self waitForExpectations:@[ checked ] timeout:5];
+}
+
+- (void)testShellReleasesWhileItsLynxViewIsRetained {
+  [self assertShellReleasesWhileItsLynxViewIsRetainedWithParameters:@{}];
+}
+
+- (void)testShellReleasesWhileItsLynxViewIsRetainedWithNodeAPIAddon {
+  [self assertShellReleasesWhileItsLynxViewIsRetainedWithParameters:@{@"enable_napi_addon" : @YES}];
 }
 
 - (void)testDismissedContainerChoiceResetsPendingScanAndResumesCapture {
