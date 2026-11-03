@@ -5,6 +5,7 @@
 #include "core/renderer/starlight/layout/box_layout_algorithm.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "core/renderer/starlight/layout/box_info.h"
 #include "core/renderer/starlight/layout/layout_object.h"
@@ -41,6 +42,20 @@ void BoxLayoutAlgorithm::MeasureChildren() {
       if (!propagate_min_constraints) {
         compose_constraints.min_width = 0;
         compose_constraints.min_height = 0;
+      }
+      const auto& wrap_width = container_style_->GetWidth();
+      if (wrap_width.IsIntrinsic()) {
+        compose_constraints.min_width = 0;
+        if (wrap_width.IsMaxContent()) {
+          compose_constraints.max_width = ComposeConstraints::kInfinity;
+        }
+      }
+      const auto& wrap_height = container_style_->GetHeight();
+      if (wrap_height.IsIntrinsic()) {
+        compose_constraints.min_height = 0;
+        if (wrap_height.IsMaxContent()) {
+          compose_constraints.max_height = ComposeConstraints::kInfinity;
+        }
       }
       const auto size = child->UpdateMeasureWithComposeConstraints(
           compose_constraints, container_->GetFinalMeasure());
@@ -203,6 +218,16 @@ float BoxLayoutAlgorithm::ResolveAlignmentOffset(LayoutObject* item,
 
     switch (justify) {
       case JustifyType::kCenter:
+        if (container_->IsComposeLayout() &&
+            container_style_->GetWidth().IsIntrinsic()) {
+          const double pixels = container_style_->PhysicalPixelsPerLayoutUnit();
+          const float offset =
+              std::floor(available_space * pixels / 2.f + 0.5f) / pixels;
+          // Compose rounds the physical left offset, including RTL and
+          // negative overflow. Box placement uses the logical front instead.
+          return container_style_->IsAnyRtl() ? available_space - offset
+                                              : offset;
+        }
         return available_space / 2.f;
       case JustifyType::kEnd:
         return available_space;
@@ -220,6 +245,11 @@ float BoxLayoutAlgorithm::ResolveAlignmentOffset(LayoutObject* item,
 
   switch (align) {
     case FlexAlignType::kCenter:
+      if (container_->IsComposeLayout() &&
+          container_style_->GetHeight().IsIntrinsic()) {
+        const double pixels = container_style_->PhysicalPixelsPerLayoutUnit();
+        return std::floor(available_space * pixels / 2.f + 0.5f) / pixels;
+      }
       return available_space / 2.f;
     case FlexAlignType::kEnd:
     case FlexAlignType::kFlexEnd:

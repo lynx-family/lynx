@@ -1880,10 +1880,17 @@ TEST_F(CSSPatchingTest,
 
   starlight::ComputedCSSStyle previous_style(*manager->platform_computed_css());
   previous_style.SetOverflowDefaultVisible(true);
+  previous_style.GetLayoutComputedStyle()->SetComposeWeightFill(false);
 
   auto style = element->style_resolver_.CreateInitialComputedStyle(
       nullptr, &previous_style);
   ASSERT_NE(style, nullptr);
+
+  EXPECT_FALSE(style->GetConstLayoutComputedStyle()->GetComposeWeightFill());
+  auto child_style = element->style_resolver_.CreateInitialComputedStyle(
+      &previous_style, nullptr);
+  EXPECT_TRUE(
+      child_style->GetConstLayoutComputedStyle()->GetComposeWeightFill());
 
   EXPECT_EQ(style->GetMeasureContext().viewport_width_,
             starlight::LayoutUnit(kWidth));

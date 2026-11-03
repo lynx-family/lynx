@@ -79,13 +79,13 @@ TEST_F(TimedTaskTest, SetTimeout) {
 }
 
 TEST_F(TimedTaskTest, SetInterval) {
-  int32_t expect = 0;
+  uint32_t id = 0;
 
-  thread_.GetTaskRunner()->PostTask([this, &expect]() mutable {
-    manager_->SetInterval(
-        [this, &expect]() mutable {
-          ++result_;
-          if (++expect == LOOP) {
+  thread_.GetTaskRunner()->PostTask([this, &id]() {
+    id = manager_->SetInterval(
+        [this, &id]() {
+          if (++result_ == LOOP) {
+            manager_->StopTask(id);
             arwe_.Signal();
           }
         },
@@ -93,7 +93,7 @@ TEST_F(TimedTaskTest, SetInterval) {
   });
 
   arwe_.Wait();
-  ASSERT_EQ(result_, expect);
+  ASSERT_EQ(result_, LOOP);
 }
 
 TEST_F(TimedTaskTest, StopSetTimeout) {

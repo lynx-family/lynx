@@ -95,6 +95,14 @@ class LayoutComputedStyle {
 
   float GetLinearWeightSum() const { return linear_data_->linear_weight_sum_; }
   float GetLinearWeight() const { return linear_data_->linear_weight_; }
+  bool GetComposeWeightFill() const {
+    return linear_data_->compose_weight_fill_;
+  }
+  bool SetComposeWeightFill(bool fill) {
+    if (GetComposeWeightFill() == fill) return false;
+    linear_data_.Access()->compose_weight_fill_ = fill;
+    return true;
+  }
 
   // RelativeData
   int GetRelativeId() const { return relative_data_->relative_id_; }

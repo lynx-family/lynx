@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_DOM_FIBER_MODIFIER_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_MODIFIER_ELEMENT_H_
 
+#include <memory>
+
 #include "core/renderer/dom/element.h"
 
 namespace lynx {
@@ -21,6 +23,10 @@ class ModifierElement : public Element {
 
   bool is_modifier() const override { return true; }
   void SetupFragmentBehavior(Fragment* fragment) override;
+  void AttachToElementManager(
+      ElementManager* manager,
+      const std::shared_ptr<CSSStyleSheetManager>& style_manager,
+      bool keep_element_id) override;
 
   fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
     return fml::AdoptRef<Element>(
@@ -28,6 +34,8 @@ class ModifierElement : public Element {
   }
 
  private:
+  void OnNodeAdded(Element* child) override;
+
   ModifierElement(const ModifierElement& element, bool clone_resolved_props)
       : Element(element, clone_resolved_props) {}
 };

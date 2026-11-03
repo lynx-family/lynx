@@ -9,6 +9,7 @@
 #define BASE_INCLUDE_TYPE_TRAITS_ADDON_H_
 
 #include <type_traits>
+#include <utility>
 
 namespace lynx {
 namespace base {

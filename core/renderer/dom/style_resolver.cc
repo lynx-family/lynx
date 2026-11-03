@@ -1595,6 +1595,10 @@ void StyleResolver::PrepareInitialComputedStyle(
     if (previous_style != nullptr) {
       style.default_overflow_visible_ =
           previous_style->default_overflow_visible_;
+      // Modifier parent data survives CSS recomputation without inheritance.
+      style.GetLayoutComputedStyle()->SetComposeWeightFill(
+          previous_style->GetConstLayoutComputedStyle()
+              ->GetComposeWeightFill());
     }
     style.ResetOverflow();
   } else {

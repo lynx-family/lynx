@@ -473,6 +473,24 @@ TEST(StyleDataCoverageTest, LayoutComputedStyleCopyOnWriteDataRefs) {
             original.GetRelativeAlignTop());
 }
 
+TEST(StyleDataCoverageTest, ComposeWeightFillCopiesAndResetsWithLinearStyle) {
+  LayoutComputedStyle original(1.f);
+  EXPECT_TRUE(original.GetComposeWeightFill());
+  original.SetComposeWeightFill(false);
+  LayoutComputedStyle shared(original);
+  LayoutComputedStyle copied(1.f);
+  copied.CopyFrom(original);
+  EXPECT_FALSE(shared.GetComposeWeightFill());
+  EXPECT_FALSE(copied.GetComposeWeightFill());
+
+  shared.SetComposeWeightFill(true);
+  EXPECT_FALSE(original.GetComposeWeightFill());
+  EXPECT_TRUE(shared.GetComposeWeightFill());
+  copied.Reset();
+  EXPECT_TRUE(copied.GetComposeWeightFill());
+  EXPECT_FALSE(original.GetComposeWeightFill());
+}
+
 TEST(StyleDataCoverageTest, LayoutComputedStyleCopyFromNullDataRefs) {
   LayoutComputedStyle source(1.f);
   source.box_data_ = nullptr;

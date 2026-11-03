@@ -118,7 +118,8 @@ FloatSize ComposeRowColumnLayoutAlgorithm::MeasureChildren() {
       const float weight = style->GetLinearWeight();
       if (weight <= 0) continue;
       const float allocation = weight_unit * weight;
-      MeasureChild(i, allocation, allocation, cross_max);
+      MeasureChild(i, style->GetComposeWeightFill() ? allocation : 0,
+                   allocation, cross_max);
       weighted_space += SizeDimension(children_[i].size, MainAxis());
     }
     weighted_space = std::max(0.f, std::min(weighted_space + weighted_spacing,

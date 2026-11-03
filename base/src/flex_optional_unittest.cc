@@ -50,13 +50,12 @@ struct s40 {
 
   s40(const s40Convertible& s) : a(s.a) {}
   template <class U>
-  s40(std::initializer_list<U> list) {
-    a = list.begin()[0];
-    b = list.begin()[1];
-    c = list.begin()[2];
-    d = list.begin()[3];
-    e = list.begin()[4];
-  }
+  s40(std::initializer_list<U> list)
+      : a(list.size() > 0 ? list.begin()[0] : 0),
+        b(list.size() > 1 ? list.begin()[1] : 0),
+        c(list.size() > 2 ? list.begin()[2] : 0),
+        d(list.size() > 3 ? list.begin()[3] : 0),
+        e(list.size() > 4 ? list.begin()[4] : 0) {}
 };
 
 struct s40MoveOnly {
