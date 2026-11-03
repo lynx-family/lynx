@@ -122,6 +122,21 @@ TEST_F_UI(NestedScrollableTest, Chain) {
             nullptr);
 }
 
+TEST_F_UI(NestedScrollableTest, DragOwnershipChangesWhenTheSameSourceRestarts) {
+  auto* scrollable = new TestScrollable(page_.get(), 100);
+  page_->AddChild(scrollable);
+  auto* manager = page_->nested_scroll_manager();
+  manager->DragStart(scrollable);
+  const auto first_drag = manager->drag_generation();
+  EXPECT_TRUE(manager->IsDragSource(scrollable, first_drag));
+
+  manager->DragStart(scrollable);
+  EXPECT_FALSE(manager->IsDragSource(scrollable, first_drag));
+  EXPECT_TRUE(manager->IsDragSource(scrollable, manager->drag_generation()));
+  manager->DragEnd(scrollable, {});
+  EXPECT_FALSE(manager->IsDragSource(scrollable, manager->drag_generation()));
+}
+
 TEST_F_UI(NestedScrollableTest, SimpleScroll) {
   TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
   page_->AddChild(scrollable);
