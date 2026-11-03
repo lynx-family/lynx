@@ -21,7 +21,8 @@ class HostScriptInterceptor;
 class HostScriptLynxViews;
 
 // Exposes `interceptor` in one process runtime context. Each binding owns the
-// N-API environment of its context and the provider attached on its runner.
+// N-API environment of its context, the provider attached on its runner, and
+// the context's LynxView proxies. Replacing the context releases them all.
 class HostScriptInterceptorBindings final
     : public ProcessRuntime::RuntimeBindings {
  public:
@@ -34,7 +35,6 @@ class HostScriptInterceptorBindings final
   bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime> runtime,
               fml::RefPtr<fml::TaskRunner> runner,
               ProcessRuntime::Guard guard) override;
-  void NotifyViewCreated(const ProcessRuntime::ViewCreated& event) override;
 
  private:
   explicit HostScriptInterceptorBindings(ProcessRuntime::Domain domain);

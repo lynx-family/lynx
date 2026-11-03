@@ -176,9 +176,6 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     if (!mReportedCreation) {
       mReportedCreation = true;
       LynxHostScriptViewHooks.register(this, mLynxTemplateRender);
-      if (LynxHostScriptViewHooks.isEnabled()) {
-        LynxHostScriptViewHooks.onCreated(this);
-      }
     }
   }
 

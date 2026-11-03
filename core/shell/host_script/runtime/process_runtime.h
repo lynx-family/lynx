@@ -36,12 +36,6 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   // closes.
   using Guard = std::function<bool()>;
 
-  // Creation metadata only; no native View handle crosses runtimes.
-  struct ViewCreated {
-    std::string view_id;
-    std::string url;
-  };
-
   // Optional capabilities are created, attached and destroyed on their owner.
   // They do not participate in cross-runtime scheduling.
   class RuntimeBindings {
@@ -49,7 +43,6 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
     virtual ~RuntimeBindings() = default;
     virtual bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime> runtime,
                         fml::RefPtr<fml::TaskRunner> runner, Guard guard) = 0;
-    virtual void NotifyViewCreated(const ViewCreated& event) {}
   };
   using BindingFactory =
       std::function<std::unique_ptr<RuntimeBindings>(Domain)>;
@@ -121,12 +114,6 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   // runner, or the caller for admission errors.
   void LoadScript(std::string source, std::string url, Completion completion,
                   Domain domain = Domain::kBTS);
-
-  // Delivers to initialized domains: inline on the current owner runner,
-  // posted otherwise. Callbacks may reenter on that runner; no cross-thread
-  // waiting, replay, or initialization of unused runtimes. Only creation
-  // metadata is copied.
-  void NotifyViewCreated(ViewCreated event);
 
   // Closes admission immediately, then frees each VM on its owner. Completes
   // on the UI lifecycle runner after all three owners acknowledge cleanup.
