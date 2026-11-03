@@ -360,7 +360,7 @@ TEST_F(BoxLayoutAlgorithmTest, BoxMatchParentMeasuresDuringPlacement) {
       EXPECT_FLOAT_EQ(30, size.height_);
       EXPECT_EQ(pass == 0 ? 0u : 1u, match_measurement.ranges.size());
       box->AlignmentByPlatform(0, 0);
-      ASSERT_FALSE(match_measurement.ranges.empty());
+      ASSERT_EQ(1u, match_measurement.ranges.size());
       const auto& constraints = match_measurement.ranges.front();
       EXPECT_EQ(SLMeasureModeDefinite, constraints[kHorizontal].Mode());
       EXPECT_EQ(SLMeasureModeDefinite, constraints[kVertical].Mode());
@@ -372,8 +372,7 @@ TEST_F(BoxLayoutAlgorithmTest, BoxMatchParentMeasuresDuringPlacement) {
       EXPECT_FLOAT_EQ(4, match->GetBorderBoundTopFromParentPaddingBound());
       for (auto* node : {box, regular, match}) node->MarkNotDirty();
     }
-    // Compose cache reuse is checked in the dependent integration tests.
-    if (!compose) EXPECT_EQ(1u, regular_measurement.ranges.size());
+    EXPECT_EQ(1u, regular_measurement.ranges.size());
   }
 }
 
@@ -664,10 +663,8 @@ TEST_F(BoxLayoutAlgorithmTest, ComposePaddingCannotExpandPastMaximum) {
     EXPECT_FLOAT_EQ(12, child->GetBorderBoundLeftFromParentPaddingBound());
     EXPECT_FLOAT_EQ(4, child->GetBorderBoundTopFromParentPaddingBound());
   }
-  ASSERT_FALSE(measurement.ranges.empty());
-  for (const auto& measured : measurement.ranges) {
-    ExpectRange(measured, 0, 0, 0, 0);
-  }
+  ASSERT_EQ(1u, measurement.ranges.size());
+  ExpectRange(measurement.ranges.front(), 0, 0, 0, 0);
 
   auto* css_child = CreateNode();
   auto* css_box = CreatePaddedBox(css_child);
@@ -675,6 +672,132 @@ TEST_F(BoxLayoutAlgorithmTest, ComposePaddingCannotExpandPastMaximum) {
       {OneSideConstraint::AtMost(10), OneSideConstraint::AtMost(3)}, true);
   EXPECT_FLOAT_EQ(12, css_size.width_);
   EXPECT_FLOAT_EQ(4, css_size.height_);
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeCacheMatchesAllFourBoundsExactly) {
+  ComposeMeasurement measurement;
+  auto* child = CreateComposeChild(&measurement);
+  constexpr float infinity = ComposeConstraints::kInfinity;
+  for (const auto& range :
+       {ComposeConstraints{0, 100, 0, 80}, ComposeConstraints{1, 100, 0, 80},
+        ComposeConstraints{1, 100, 2, 80},
+        ComposeConstraints{1, 100.0001f, 2, 80},
+        ComposeConstraints{1, 100.0001f, 2, 80.0001f},
+        ComposeConstraints{1, infinity, 2, 80.0001f},
+        ComposeConstraints{1, infinity, 2, infinity},
+        ComposeConstraints{0, 100, 0, 80}}) {
+    const auto previous = measurement.ranges.size();
+    child->UpdateMeasureWithComposeConstraints(range, true);
+    EXPECT_EQ(previous + 1, measurement.ranges.size());
+    child->MarkNotDirty();
+    child->UpdateMeasureWithComposeConstraints(range, true);
+    EXPECT_EQ(previous + 1, measurement.ranges.size());
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeCacheSeparatesSpeculativeAndFinalPasses) {
+  ComposeMeasurement measurement;
+  auto* child = CreateComposeChild(&measurement);
+  const ComposeConstraints range{0, 100, 0, 80};
+  child->UpdateMeasureWithComposeConstraints(range, false);
+  child->UpdateMeasureWithComposeConstraints(range, false);
+  EXPECT_EQ(1u, measurement.ranges.size());
+  EXPECT_FALSE(child->GetFinalMeasure());
+  child->UpdateMeasureWithComposeConstraints(range, true);
+  child->UpdateMeasureWithComposeConstraints(range, true);
+  EXPECT_EQ(2u, measurement.ranges.size());
+  EXPECT_TRUE(child->GetFinalMeasure());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeCacheInvalidatesDirtyAndExplicitClear) {
+  ComposeMeasurement measurement;
+  auto* child = CreateComposeChild(&measurement);
+  const ComposeConstraints range{0, 100, 0, 80};
+  child->UpdateMeasureWithComposeConstraints(range, true);
+  // Geometry already marked this node dirty; Compose dirty still invalidates.
+  ASSERT_TRUE(child->IsDirty());
+  measurement.preferred.width_ = 30;
+  child->MarkDirty();
+  child->UpdateMeasureWithComposeConstraints(range, true);
+  EXPECT_EQ(2u, measurement.ranges.size());
+  EXPECT_FLOAT_EQ(30, child->GetBorderBoundWidth());
+  child->ClearCache();
+  child->UpdateMeasureWithComposeConstraints(range, true);
+  EXPECT_EQ(3u, measurement.ranges.size());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeCacheKeepsNestedBoxPlacementState) {
+  ComposeMeasurement measurement;
+  auto* child = CreateComposeChild(&measurement);
+  auto* box = CreatePaddedBox(child, true);
+  auto* outer = CreateNode();
+  outer->SetComposeLayout(true);
+  outer->GetCSSMutableStyle()->SetXBoxPropagateMinConstraints(true);
+  outer->GetCSSMutableStyle()->SetPaddingLeft(NLength::MakeUnitNLength(5));
+  outer->GetCSSMutableStyle()->SetPaddingTop(NLength::MakeUnitNLength(7));
+  outer->AppendChild(box);
+  const ComposeConstraints range{0, 100, 0, 80};
+  for (int pass = 0; pass < 2; ++pass) {
+    outer->UpdateMeasureWithComposeConstraints(range, true);
+    // A cached measure must still allow alignment to restore child positions.
+    box->SetBorderBoundLeftFromParentPaddingBound(99);
+    child->SetBorderBoundTopFromParentPaddingBound(99);
+    outer->UpdateAlignment();
+    EXPECT_FLOAT_EQ(5, box->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(7, box->GetBorderBoundTopFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(12, child->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(4, child->GetBorderBoundTopFromParentPaddingBound());
+    for (auto* node : {outer, box, child}) node->MarkNotDirty();
+  }
+  EXPECT_EQ(1u, measurement.ranges.size());
+}
+
+TEST_F(BoxLayoutAlgorithmTest,
+       ComposeCacheInvalidatesParentOnDirtyChildMeasure) {
+  for (bool changed_size : {false, true}) {
+    SCOPED_TRACE(changed_size);
+    ComposeMeasurement measurement;
+    auto* child = CreateComposeChild(&measurement);
+    auto* box = CreateNode();
+    box->SetComposeLayout(true);
+    box->AppendChild(child);
+    const ComposeConstraints range{0, 100, 0, 80};
+    box->UpdateMeasureWithComposeConstraints(range, true);
+    box->UpdateMeasureWithComposeConstraints(range, true);
+    ASSERT_EQ(1u, measurement.ranges.size());
+    if (changed_size) measurement.preferred.width_ = 30;
+    child->MarkDirty();
+    child->UpdateMeasureWithComposeConstraints({0, 90, 0, 80}, true);
+    ASSERT_EQ(2u, measurement.ranges.size());
+    box->UpdateMeasureWithComposeConstraints(range, true);
+    EXPECT_EQ(3u, measurement.ranges.size());
+    EXPECT_FLOAT_EQ(changed_size ? 30 : 20, box->GetBorderBoundWidth());
+    child->MarkDirty();
+    box->UpdateMeasureWithComposeConstraints(range, true);
+    EXPECT_EQ(4u, measurement.ranges.size());
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeChildConstraintChangeKeepsParentCache) {
+  ComposeMeasurement measurement;
+  auto* child = CreateComposeChild(&measurement);
+  auto* box = CreateNode();
+  box->SetComposeLayout(true);
+  box->AppendChild(child);
+  const ComposeConstraints range{0, 100, 0, 80};
+  box->UpdateMeasureWithComposeConstraints(range, true);
+  ASSERT_EQ(1u, measurement.ranges.size());
+
+  child->UpdateMeasureWithComposeConstraints({0, 90, 0, 80}, true);
+  ASSERT_EQ(2u, measurement.ranges.size());
+  box->UpdateMeasureWithComposeConstraints(range, true);
+  EXPECT_EQ(2u, measurement.ranges.size());
+  EXPECT_FLOAT_EQ(20, box->GetBorderBoundWidth());
+
+  box->MarkDirty();
+  box->UpdateMeasureWithComposeConstraints(range, true);
+  EXPECT_EQ(3u, measurement.ranges.size());
+  ExpectRange(measurement.ranges.back(), 0, 100, 0, 80);
 }
 
 TEST_F(BoxLayoutAlgorithmTest, CssRepeatedDirtyKeepsMeasurementCache) {
@@ -744,6 +867,72 @@ TEST_F(BoxLayoutAlgorithmTest, CssForceDirtyClearsAlreadyDirtyAncestorCache) {
   EXPECT_EQ(2u, measurement.ranges.size());
 }
 
+TEST_F(BoxLayoutAlgorithmTest,
+       ComposeCacheInvalidatesParentOnDirtyCssChildMeasure) {
+  NativeMeasurement measurement;
+  auto* child = CreateNativeChild(&measurement);
+  auto* flex = CreateNode(DisplayType::kFlex);
+  flex->AppendChild(child);
+  auto* box = CreateNode();
+  box->SetComposeLayout(true);
+  box->AppendChild(flex);
+  const ComposeConstraints range{0, 100, 0, 80};
+  box->UpdateMeasureWithComposeConstraints(range, true);
+  const auto initial = measurement.ranges.size();
+  ASSERT_GT(initial, 0u);
+  box->UpdateMeasureWithComposeConstraints(range, true);
+  EXPECT_EQ(initial, measurement.ranges.size());
+  // CSS dirty propagation begins after the previous layout has been committed.
+  for (auto* node : {box, flex, child}) node->MarkNotDirty();
+  child->MarkDirty();
+  // Fixed dimensions force a real CSS measure; a tighter AtMost range can
+  // legitimately reuse the existing CSS cache.
+  child->UpdateMeasure(
+      {OneSideConstraint::Definite(30), OneSideConstraint::Definite(20)}, true);
+  const auto independent = measurement.ranges.size();
+  ASSERT_GT(independent, initial);
+  box->UpdateMeasureWithComposeConstraints(range, true);
+  EXPECT_GT(measurement.ranges.size(), independent);
+  EXPECT_FLOAT_EQ(20, box->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(20, child->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(15, child->GetBorderBoundHeight());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeCacheIncludesResolvedPercentageInsets) {
+  ComposeMeasurement measurement;
+  auto* child = CreateComposeChild(&measurement);
+  child->GetCSSMutableStyle()->SetWidth(NLength::MakeUnitNLength(50));
+  child->GetCSSMutableStyle()->SetPaddingLeft(
+      NLength::MakePercentageNLength(10));
+  // Equal fixed border widths still resolve different percentage padding.
+  child->UpdateMeasureWithComposeConstraints({0, 100, 0, 80}, true);
+  child->UpdateMeasureWithComposeConstraints({0, 200, 0, 80}, true);
+  ASSERT_EQ(2u, measurement.ranges.size());
+  ExpectRange(measurement.ranges[0], 40, 40, 0, 80);
+  ExpectRange(measurement.ranges[1], 30, 30, 0, 80);
+  EXPECT_FLOAT_EQ(20, child->GetLayoutPaddingLeft());
+  child->UpdateMeasureWithComposeConstraints({0, 200, 0, 80}, true);
+  EXPECT_EQ(2u, measurement.ranges.size());
+}
+
+TEST_F(BoxLayoutAlgorithmTest,
+       RepeatedLayoutModeAssignmentPreservesMeasurementCache) {
+  const ComposeConstraints range{0, 100, 0, 80};
+  for (bool compose : {false, true}) {
+    SCOPED_TRACE(compose);
+    NativeMeasurement measurement;
+    auto* child = CreateNativeChild(&measurement);
+    child->SetComposeLayout(compose);
+    for (int pass = 0; pass < 3; ++pass) {
+      child->SetComposeLayout(compose);
+      child->UpdateMeasureByPlatform(range.ToCssConstraints(), true);
+      ASSERT_EQ(1u, measurement.ranges.size());
+      EXPECT_FLOAT_EQ(20, child->GetBorderBoundWidth());
+      EXPECT_FLOAT_EQ(15, child->GetBorderBoundHeight());
+    }
+  }
+}
+
 TEST_F(BoxLayoutAlgorithmTest, BoxConstraintPathsMeasureBeforePlacement) {
   const SLMeasureFunc css_measure = [](void* context,
                                        const Constraints& constraints, bool) {
@@ -791,6 +980,153 @@ TEST_F(BoxLayoutAlgorithmTest, BoxConstraintPathsMeasureBeforePlacement) {
     ExpectRange(match_measurement.ranges.back(), width, width, height, height);
     EXPECT_FLOAT_EQ(width, match->GetBorderBoundWidth());
     EXPECT_FLOAT_EQ(height, match->GetBorderBoundHeight());
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeIdentityCachesNativeCallbacksAndLeaves) {
+  for (bool with_callback : {false, true}) {
+    SCOPED_TRACE(with_callback);
+    NativeMeasurement measurement;
+    auto* child =
+        with_callback ? CreateNativeChild(&measurement) : CreateNode();
+    child->SetComposeLayout(true);
+    child->GetCSSMutableStyle()->SetMinWidth(NLength::MakeUnitNLength(50));
+    child->GetCSSMutableStyle()->SetMaxWidth(NLength::MakeUnitNLength(100));
+    child->GetCSSMutableStyle()->SetMinHeight(NLength::MakeUnitNLength(30));
+    child->GetCSSMutableStyle()->SetMaxHeight(NLength::MakeUnitNLength(80));
+    for (bool final_measure : {false, true}) {
+      SCOPED_TRACE(final_measure);
+      const auto size =
+          child->UpdateMeasureByPlatform(Constraints(), final_measure);
+      EXPECT_FLOAT_EQ(50, size.width_);
+      EXPECT_FLOAT_EQ(30, size.height_);
+      EXPECT_FLOAT_EQ(50, child->GetBorderBoundWidth());
+      EXPECT_FLOAT_EQ(30, child->GetBorderBoundHeight());
+      const auto count = measurement.ranges.size();
+      child->UpdateMeasureByPlatform(Constraints(), final_measure);
+      EXPECT_EQ(count, measurement.ranges.size());
+      // A geometry change invalidates the Compose cache even without a
+      // layout algorithm, so the next measurement must restore the bounds.
+      child->SetBorderBoundWidth(70);
+      child->UpdateMeasureByPlatform(Constraints(), final_measure);
+      EXPECT_FLOAT_EQ(50, child->GetBorderBoundWidth());
+      if (with_callback) EXPECT_GT(measurement.ranges.size(), count);
+    }
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeCacheRejectsExternallyChangedGeometry) {
+  ComposeMeasurement measurement;
+  auto* child = CreateComposeChild(&measurement);
+  const ComposeConstraints range{0, 100, 0, 80};
+  child->UpdateMeasureWithComposeConstraints(range, true);
+  child->SetBorderBoundWidth(50);
+  child->UpdateMeasureWithComposeConstraints(range, true);
+  EXPECT_EQ(2u, measurement.ranges.size());
+  EXPECT_FLOAT_EQ(20, child->GetBorderBoundWidth());
+  child->SetBaseline(7);
+  child->UpdateMeasureWithComposeConstraints(range, true);
+  EXPECT_EQ(3u, measurement.ranges.size());
+  EXPECT_FLOAT_EQ(15, child->GetBaseline());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeCacheRebuildsRemovedBoxAlgorithm) {
+  struct RemovableBox : LayoutObject {
+    using LayoutObject::LayoutObject;
+    using LayoutObject::RemoveAlgorithm;
+  };
+  LayoutComputedStyle style(1.f);
+  style.SetDisplay(DisplayType::kXBox);
+  style.SetBoxSizing(BoxSizingType::kBorderBox);
+  style.SetPaddingLeft(NLength::MakeUnitNLength(12));
+  ComposeMeasurement measurement;
+  auto* child = CreateComposeChild(&measurement);
+  RemovableBox box(child->GetLayoutConfigs(), &style);
+  box.SetComposeLayout(true);
+  box.AppendChild(child);
+  const ComposeConstraints range{0, 100, 0, 80};
+  box.UpdateMeasureWithComposeConstraints(range, true);
+  box.UpdateAlignment();
+  box.RemoveAlgorithm();
+  child->SetBorderBoundLeftFromParentPaddingBound(99);
+  box.UpdateMeasureWithComposeConstraints(range, true);
+  box.UpdateAlignment();
+  EXPECT_FLOAT_EQ(12, child->GetBorderBoundLeftFromParentPaddingBound());
+  EXPECT_EQ(1u, measurement.ranges.size());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, CacheStoresMeasurementAfterInvalidation) {
+  struct Measurement {
+    LayoutObject* node;
+    int count = 0;
+  };
+  for (bool compose : {false, true}) {
+    SCOPED_TRACE(compose);
+    auto* child = CreateNode();
+    child->SetComposeLayout(compose);
+    Measurement measurement{child};
+    child->SetContext(&measurement);
+    const auto measure = [](void* context, const auto&, bool) {
+      auto* measurement = static_cast<Measurement*>(context);
+      ++measurement->count;
+      measurement->node->ClearCache();
+      return FloatSize(20, 15, 0);
+    };
+    if (compose) {
+      child->SetSLComposeMeasureFunc(measure);
+    } else {
+      child->SetSLMeasureFunc(measure);
+    }
+    const ComposeConstraints range{0, 100, 0, 80};
+    for (int pass = 0; pass < 3; ++pass) {
+      if (compose) {
+        child->UpdateMeasureWithComposeConstraints(range, true);
+      } else {
+        child->UpdateMeasureByPlatform(range.ToCssConstraints(), true);
+      }
+      EXPECT_EQ(1, measurement.count);
+      EXPECT_FLOAT_EQ(20, child->GetBorderBoundWidth());
+      EXPECT_FLOAT_EQ(15, child->GetBorderBoundHeight());
+    }
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, CacheStoresMeasurementAfterDescendantDirty) {
+  struct Measurement {
+    LayoutObject* node;
+    int count = 0;
+  };
+  for (bool compose : {false, true}) {
+    SCOPED_TRACE(compose);
+    auto* child = CreateNode();
+    auto* box = CreateNode();
+    child->SetComposeLayout(compose);
+    box->SetComposeLayout(compose);
+    box->AppendChild(child);
+    Measurement measurement{child};
+    child->SetContext(&measurement);
+    const auto measure = [](void* context, const auto&, bool) {
+      auto* measurement = static_cast<Measurement*>(context);
+      ++measurement->count;
+      measurement->node->MarkDirtyAndRequestLayout(true);
+      return FloatSize(20, 15, 0);
+    };
+    if (compose) {
+      child->SetSLComposeMeasureFunc(measure);
+    } else {
+      child->SetSLMeasureFunc(measure);
+    }
+    const ComposeConstraints range{0, 100, 0, 80};
+    for (int pass = 0; pass < 3; ++pass) {
+      if (compose) {
+        box->UpdateMeasureWithComposeConstraints(range, true);
+      } else {
+        box->UpdateMeasureByPlatform(range.ToCssConstraints(), true);
+      }
+      EXPECT_EQ(1, measurement.count);
+      EXPECT_FLOAT_EQ(20, box->GetBorderBoundWidth());
+      EXPECT_FLOAT_EQ(15, box->GetBorderBoundHeight());
+    }
   }
 }
 

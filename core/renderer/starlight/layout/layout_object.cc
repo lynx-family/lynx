@@ -733,7 +733,10 @@ void LayoutObject::UpdateMeasureWithResolvedComposeConstraints(
   const float inset_width = GetPaddingAndBorderHorizontal();
   const float inset_height = GetPaddingAndBorderVertical();
   final_measure_ = final_measure;
-  cache_manager_.ResetCache();
+  if (cache_manager_.CanReuseComposeMeasure(border, final_measure, *this)) {
+    return;
+  }
+  cache_manager_.BeginComposeMeasure(border, final_measure, *this);
   base::AutoReset<DimensionValue<float>> minimum(
       &box_info_.min_size_,
       DimensionValue<float>{border.min_width, border.min_height});
@@ -792,6 +795,7 @@ void LayoutObject::UpdateMeasureWithResolvedComposeConstraints(
       SetBorderBoundHeight(border.ConstrainHeight(GetBorderBoundHeight()));
     }
   }
+  cache_manager_.InsertComposeCacheEntry(*this);
 }
 
 void LayoutObject::AlignmentByPlatform(float offset_top, float offset_left) {
