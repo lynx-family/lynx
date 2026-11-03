@@ -106,29 +106,35 @@ void NativeRuntimeFacadeHarmony::OnEvaluateJavaScriptEnd(
 // RuntimeLifecycleListenerDelegateHarmony
 RuntimeLifecycleListenerDelegateHarmony::
     RuntimeLifecycleListenerDelegateHarmony(
-        LynxRuntimeLifecycleListener* listener)
+        const LynxRuntimeLifecycleListener& listener, void (*on_release)(void*))
     : RuntimeLifecycleListenerDelegate(
           RuntimeLifecycleListenerDelegate::DelegateType::PART),
-      listener_(listener) {}
+      listener_(listener),
+      on_release_(on_release) {}
+
+RuntimeLifecycleListenerDelegateHarmony::
+    ~RuntimeLifecycleListenerDelegateHarmony() {
+  if (on_release_) on_release_(listener_.user_data);
+}
 
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeAttach(
     void* env_ptr, const char* runtime_type) {
-  if (listener_ && listener_->on_runtime_attach) {
-    void* platform_loop = nullptr;
-    auto& loop_impl = fml::MessageLoop::GetCurrent().GetLoopImpl();
-    if (loop_impl) {
-      platform_loop = static_cast<fml::MessageLoopHarmony*>(loop_impl.get())
-                          ->GetPlatformLoop();
-    }
-    listener_->on_runtime_attach(listener_->user_data, env_ptr, runtime_type,
-                                 platform_loop);
+  if (detached_ || !listener_.on_runtime_attach) return;
+  void* platform_loop = nullptr;
+  auto& loop_impl = fml::MessageLoop::GetCurrent().GetLoopImpl();
+  if (loop_impl) {
+    platform_loop = static_cast<fml::MessageLoopHarmony*>(loop_impl.get())
+                        ->GetPlatformLoop();
   }
+  listener_.on_runtime_attach(listener_.user_data, env_ptr, runtime_type,
+                              platform_loop);
 }
 
 void RuntimeLifecycleListenerDelegateHarmony::OnRuntimeDetach() {
-  if (listener_ && listener_->on_runtime_detach) {
-    listener_->on_runtime_detach(listener_->user_data);
-    listener_ = nullptr;
+  if (detached_) return;
+  detached_ = true;
+  if (listener_.on_runtime_detach) {
+    listener_.on_runtime_detach(listener_.user_data);
   }
 }
 
@@ -194,13 +200,13 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
 LynxRuntimeWrapper::~LynxRuntimeWrapper() { DestroyRuntime(); }
 
 void LynxRuntimeWrapper::DestroyRuntime() {
+  if (destroyed_) return;
   for (auto& it : session_storage_callback_refs_) {
     napi_delete_reference(env_, it.second);
   }
-  if (is_attached_) {
-    return;
-  }
   session_storage_callback_refs_.clear();
+  if (is_attached_) return;
+  destroyed_ = true;
   runtime_standalone_->DestroyRuntime();
 }
 
@@ -232,6 +238,7 @@ napi_value LynxRuntimeWrapper::Init(napi_env env, napi_value exports) {
   napi_property_descriptor properties[] = {
       DECLARE_NAPI_FUNCTION("nativeCreate", NativeCreate),
       DECLARE_NAPI_FUNCTION("nativeEvaluateScript", NativeEvaluateScript),
+      DECLARE_NAPI_FUNCTION("nativeDestroy", NativeDestroy),
       DECLARE_NAPI_FUNCTION("nativeEvaluateBundleScript",
                             NativeEvaluateTemplateBundle),
       DECLARE_NAPI_FUNCTION("nativeTransitionToFullRuntime",
@@ -376,6 +383,24 @@ napi_value LynxRuntimeWrapper::NativeEvaluateScript(napi_env env,
     obj->inspector_owner_->OnLoaded(url);
   }
   obj->RuntimeStandalone().EvaluateScript(std::move(url), std::move(sources));
+  return nullptr;
+}
+
+napi_value LynxRuntimeWrapper::NativeDestroy(napi_env env,
+                                             napi_callback_info info) {
+  napi_value self;
+  napi_get_cb_info(env, info, nullptr, nullptr, &self, nullptr);
+  LynxRuntimeWrapper* wrapper = nullptr;
+  napi_unwrap(env, self, reinterpret_cast<void**>(&wrapper));
+  if (!wrapper) return nullptr;
+  if (wrapper->is_attached_) {
+    napi_throw_error(env, "INVALID_STATE",
+                     "Cannot destroy an attached runtime");
+    return nullptr;
+  }
+  // Release the runtime explicitly; the platform owns the wrapped allocation
+  // until finalization. Removing a wrap may itself invoke its finalizer.
+  wrapper->DestroyRuntime();
   return nullptr;
 }
 
@@ -637,5 +662,21 @@ extern "C" LYNX_RUNTIME_C_API void LynxRuntimeWrapperAddLifecycleListener(
       ->AddLifecycleListener(
           std::make_unique<
               lynx::harmony::RuntimeLifecycleListenerDelegateHarmony>(
-              listener));
+              *listener));
+}
+
+extern "C" LYNX_RUNTIME_C_API int32_t
+LynxRuntimeWrapperAddOwnedLifecycleListener(
+    uint64_t wrapper, const LynxRuntimeLifecycleListener* listener,
+    void (*on_release)(void*)) {
+  if (!wrapper || !listener || !on_release ||
+      listener->size != static_cast<int32_t>(sizeof(*listener))) {
+    return 0;
+  }
+  auto* runtime = reinterpret_cast<lynx::harmony::LynxRuntimeWrapper*>(wrapper);
+  if (!runtime->GetRuntimeProxy()) return 0;
+  runtime->AddLifecycleListener(
+      std::make_unique<lynx::harmony::RuntimeLifecycleListenerDelegateHarmony>(
+          *listener, on_release));
+  return 1;
 }
