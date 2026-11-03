@@ -245,9 +245,10 @@ class ProcessRuntimeTest : public ::testing::Test {
   }
   std::vector<std::string> Commands() const { return commands_->Values(); }
 
-  Result Load(const std::string& source) {
+  Result Load(const std::string& source, Domain domain = Domain::kBTS) {
     auto results = std::make_shared<Results>();
-    runtime_.LoadScript(source, "host-script-entry.js", Collect(results));
+    runtime_.LoadScript(source, "host-script-entry.js", Collect(results),
+                        domain);
     EXPECT_TRUE(results->WaitFor(1));
     return results->Values().front();
   }
@@ -602,29 +603,39 @@ TEST_F(ProcessRuntimeTest, EvaluateStillRejectsAsyncCompletionValue) {
   EXPECT_EQ(evaluated->Values().front().error, "ASYNC_RESULT_UNSUPPORTED");
 }
 
-TEST_F(ProcessRuntimeTest, LoadReplacesAllDomainsAndExecutesEntryOnlyOnBTS) {
+TEST_F(ProcessRuntimeTest, LoadReplacesOnlySelectedDomainAndRunsEntryThere) {
   Initialize("globalThis.helper = () => 42;");
-  std::array<uint64_t, 3> old_ids;
-  for (size_t i = 0; i < old_ids.size(); ++i) {
-    old_ids[i] = Evaluate(static_cast<Domain>(i), "globalThis.oldState = true")
-                     ->Values()
-                     .front()
-                     .runtime_id;
-  }
+  for (auto selected : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
+    SCOPED_TRACE(HostScriptDomainName(selected));
+    std::array<uint64_t, 3> old_ids;
+    for (size_t i = 0; i < old_ids.size(); ++i) {
+      old_ids[i] =
+          Evaluate(static_cast<Domain>(i),
+                   "globalThis.oldState = true; delete globalThis.entry")
+              ->Values()
+              .front()
+              .runtime_id;
+    }
 
-  auto loaded = Load("globalThis.entry = helper();");
-  ASSERT_TRUE(loaded.success) << loaded.error;
-  EXPECT_EQ(loaded.domain, "bts");
-  EXPECT_FALSE(loaded.has_value);
-  for (size_t i = 0; i < old_ids.size(); ++i) {
-    auto result = Evaluate(static_cast<Domain>(i),
-                           "[typeof oldState, typeof entry, helper()]")
-                      ->Values()
-                      .front();
-    EXPECT_TRUE(result.success) << result.error;
-    EXPECT_NE(result.runtime_id, old_ids[i]);
-    EXPECT_EQ(result.value_json, i == 0 ? "[\"undefined\",\"number\",42]"
-                                        : "[\"undefined\",\"undefined\",42]");
+    auto loaded = Load("globalThis.entry = helper();", selected);
+    ASSERT_TRUE(loaded.success) << loaded.error;
+    EXPECT_EQ(loaded.domain, HostScriptDomainName(selected));
+    EXPECT_FALSE(loaded.has_value);
+    for (size_t i = 0; i < old_ids.size(); ++i) {
+      auto domain = static_cast<Domain>(i);
+      auto result =
+          Evaluate(domain, "[typeof oldState, typeof entry, helper()]")
+              ->Values()
+              .front();
+      EXPECT_TRUE(result.success) << result.error;
+      if (domain == selected) {
+        EXPECT_NE(result.runtime_id, old_ids[i]);
+        EXPECT_EQ(result.value_json, "[\"undefined\",\"number\",42]");
+      } else {
+        EXPECT_EQ(result.runtime_id, old_ids[i]);
+        EXPECT_EQ(result.value_json, "[\"boolean\",\"undefined\",42]");
+      }
+    }
   }
 }
 
@@ -673,26 +684,40 @@ TEST_F(ProcessRuntimeTest, InvalidLoadSourcePreservesCurrentGeneration) {
   EXPECT_EQ(after.value_json, "42");
 }
 
-TEST_F(ProcessRuntimeTest, FailedEntryCleansUpReplacement) {
+TEST_F(ProcessRuntimeTest, FailedEntryStopsOnlySelectedDomainAndAllowsRetry) {
   Initialize("");
-  auto loaded =
-      Load("globalThis.partial = true; throw new Error('entry failed')");
-  EXPECT_FALSE(loaded.success);
-  EXPECT_NE(loaded.error.find("entry failed"), std::string::npos);
-  for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
-    EXPECT_FALSE(runtime_.IsReady(domain));
-    EXPECT_EQ(Evaluate(domain, "typeof partial")->Values().front().error,
+  for (auto selected : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
+    SCOPED_TRACE(HostScriptDomainName(selected));
+    std::array<uint64_t, 3> old_ids;
+    for (size_t i = 0; i < old_ids.size(); ++i) {
+      old_ids[i] = Evaluate(static_cast<Domain>(i), "globalThis.keep = 42")
+                       ->Values()
+                       .front()
+                       .runtime_id;
+    }
+    auto loaded = Load(
+        "globalThis.partial = true; throw new Error('entry failed')", selected);
+    EXPECT_FALSE(loaded.success);
+    EXPECT_NE(loaded.error.find("entry failed"), std::string::npos);
+    EXPECT_FALSE(runtime_.IsReady(selected));
+    EXPECT_EQ(Evaluate(selected, "typeof partial")->Values().front().error,
               "RUNTIME_NOT_RUNNING");
+    for (size_t i = 0; i < old_ids.size(); ++i) {
+      auto domain = static_cast<Domain>(i);
+      if (domain == selected) continue;
+      EXPECT_TRUE(runtime_.IsReady(domain));
+      auto result = Evaluate(domain, "keep")->Values().front();
+      EXPECT_TRUE(result.success) << result.error;
+      EXPECT_EQ(result.runtime_id, old_ids[i]);
+      EXPECT_EQ(result.value_json, "42");
+    }
+    ASSERT_TRUE(Load("globalThis.recovered = true", selected).success);
+    EXPECT_EQ(Value(selected, "[typeof partial, recovered]"),
+              "[\"undefined\",true]");
   }
-  EXPECT_TRUE(Load("globalThis.recovered = true").success);
-  EXPECT_EQ(Evaluate(Domain::kBTS, "[typeof partial, recovered]")
-                ->Values()
-                .front()
-                .value_json,
-            "[\"undefined\",true]");
 }
 
-TEST_F(ProcessRuntimeTest, FailedBindingsCleanUpEveryReplacementDomain) {
+TEST_F(ProcessRuntimeTest, FailedBindingsStopOnlySelectedDomainAndAllowRetry) {
   class Binding final : public ProcessRuntime::RuntimeBindings {
    public:
     explicit Binding(const std::shared_ptr<std::atomic<bool>>& fail)
@@ -711,32 +736,76 @@ TEST_F(ProcessRuntimeTest, FailedBindingsCleanUpEveryReplacementDomain) {
     return std::make_unique<Binding>(fail);
   }));
   ASSERT_TRUE(ready->WaitFor(3));
-  fail->store(true);
-  auto loaded = Load("42");
-  EXPECT_FALSE(loaded.success);
-  EXPECT_EQ(loaded.error, "RUNTIME_BINDINGS_ATTACH_FAILED");
-  for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI})
-    EXPECT_FALSE(runtime_.IsReady(domain));
+  for (auto selected : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
+    SCOPED_TRACE(HostScriptDomainName(selected));
+    std::array<uint64_t, 3> old_ids;
+    for (size_t i = 0; i < old_ids.size(); ++i) {
+      old_ids[i] = Evaluate(static_cast<Domain>(i), "globalThis.keep = 42")
+                       ->Values()
+                       .front()
+                       .runtime_id;
+    }
+    fail->store(true);
+    auto loaded = Load("42", selected);
+    EXPECT_FALSE(loaded.success);
+    EXPECT_EQ(loaded.error, "RUNTIME_BINDINGS_ATTACH_FAILED");
+    EXPECT_FALSE(runtime_.IsReady(selected));
+    EXPECT_EQ(Evaluate(selected, "keep")->Values().front().error,
+              "RUNTIME_NOT_RUNNING");
+    for (size_t i = 0; i < old_ids.size(); ++i) {
+      auto domain = static_cast<Domain>(i);
+      if (domain == selected) continue;
+      EXPECT_TRUE(runtime_.IsReady(domain));
+      auto result = Evaluate(domain, "keep")->Values().front();
+      EXPECT_TRUE(result.success) << result.error;
+      EXPECT_EQ(result.runtime_id, old_ids[i]);
+      EXPECT_EQ(result.value_json, "42");
+    }
+    fail->store(false);
+    ASSERT_TRUE(Load("42", selected).success);
+    EXPECT_TRUE(runtime_.IsReady(selected));
+  }
 }
 
-TEST_F(ProcessRuntimeTest, ReplacementRejectsExternalWorkAndInitialization) {
+TEST_F(ProcessRuntimeTest, ReplacementBlocksOnlySelectedDomainAndOtherLoads) {
   Initialize("");
-  RunnerBlock blocked(runners_.bts);
-  auto loaded = std::make_shared<Results>();
-  runtime_.LoadScript("42", "entry.js", Collect(loaded));
-  auto second = std::make_shared<Results>();
-  runtime_.LoadScript("43", "entry.js", Collect(second));
-  ASSERT_TRUE(second->WaitFor(1));
-  EXPECT_EQ(second->Values().front().error, "RUNTIME_LOADING");
-  EXPECT_EQ(Evaluate(Domain::kUI, "1")->Values().front().error,
-            "RUNTIME_LOADING");
-  EXPECT_FALSE(runtime_.Initialize(runners_, {}));
-  runtime_.InitializeBindings();
-  EXPECT_FALSE(runtime_.IsReady(Domain::kBTS));
-  blocked.Release();
-  ASSERT_TRUE(loaded->WaitFor(1));
-  EXPECT_TRUE(loaded->Values().front().success);
-  EXPECT_EQ(loaded->Values().size(), 1u);
+  for (auto selected : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
+    SCOPED_TRACE(HostScriptDomainName(selected));
+    std::array<uint64_t, 3> old_ids;
+    for (size_t i = 0; i < old_ids.size(); ++i) {
+      old_ids[i] = Evaluate(static_cast<Domain>(i), "globalThis.keep = 42")
+                       ->Values()
+                       .front()
+                       .runtime_id;
+    }
+    RunnerBlock blocked(
+        threads_[HostScriptDomainIndex(selected)]->GetTaskRunner());
+    auto loaded = std::make_shared<Results>();
+    runtime_.LoadScript("42", "entry.js", Collect(loaded), selected);
+    for (size_t i = 0; i < old_ids.size(); ++i) {
+      auto domain = static_cast<Domain>(i);
+      auto second = std::make_shared<Results>();
+      runtime_.LoadScript("43", "entry.js", Collect(second), domain);
+      ASSERT_TRUE(second->WaitFor(1));
+      EXPECT_EQ(second->Values().front().error, "RUNTIME_LOADING");
+      auto result = Evaluate(domain, "keep")->Values().front();
+      if (domain == selected) {
+        EXPECT_EQ(result.error, "RUNTIME_LOADING");
+      } else {
+        EXPECT_TRUE(runtime_.IsReady(domain));
+        EXPECT_TRUE(result.success) << result.error;
+        EXPECT_EQ(result.runtime_id, old_ids[i]);
+        EXPECT_EQ(result.value_json, "42");
+      }
+    }
+    EXPECT_FALSE(runtime_.Initialize(runners_, {}));
+    runtime_.InitializeBindings();
+    EXPECT_FALSE(runtime_.IsReady(selected));
+    blocked.Release();
+    ASSERT_TRUE(loaded->WaitFor(1));
+    EXPECT_TRUE(loaded->Values().front().success);
+    EXPECT_EQ(loaded->Values().size(), 1u);
+  }
 }
 
 TEST_F(ProcessRuntimeTest, ShutdownCancelsReplacementWithoutRestarting) {
