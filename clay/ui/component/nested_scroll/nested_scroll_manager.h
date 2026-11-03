@@ -5,6 +5,7 @@
 #ifndef CLAY_UI_COMPONENT_NESTED_SCROLL_NESTED_SCROLL_MANAGER_H_
 #define CLAY_UI_COMPONENT_NESTED_SCROLL_NESTED_SCROLL_MANAGER_H_
 
+#include <cstdint>
 #include <memory>
 #include <tuple>
 #include <vector>
@@ -24,6 +25,13 @@ class PageView;
 class NestedScrollManager : public DynamicAnimator::AnimationListener {
  public:
   explicit NestedScrollManager(PageView* page_view);
+
+  uint64_t drag_generation() const { return drag_generation_; }
+
+  bool IsDragSource(const NestedScrollable* source, uint64_t generation) const {
+    return source_scrollable_ == source && drag_generation_ == generation &&
+           status_ == Scrollable::ScrollStatus::kDragging;
+  }
 
   void DragStart(NestedScrollable* source_scrollable);
   void DragUpdate(NestedScrollable* source_scrollable, FloatPoint delta);
@@ -96,6 +104,7 @@ class NestedScrollManager : public DynamicAnimator::AnimationListener {
   std::vector<fml::WeakPtr<NestedScrollable>> scrollable_chain_;
   fml::WeakPtr<NestedScrollable> current_scrollable_;
   NestedScrollable* source_scrollable_ = nullptr;
+  uint64_t drag_generation_ = 0;
   ScrollDirection direction_ = ScrollDirection::kNone;
   PageView* page_view_;
   std::unique_ptr<FlingAnimator> fling_animator_;

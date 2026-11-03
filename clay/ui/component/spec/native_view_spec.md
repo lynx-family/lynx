@@ -28,6 +28,8 @@ Those live in `map_view_spec.md`.
 ## Harmony Platform Gesture Arbitration
 
 On Harmony, `NativeView` arbitrates with Clay gestures only on mixed hit paths.
+Arbitration covers one Down-to-Up/Cancel sequence; gestures spanning multiple
+taps are not coordinated.
 
 The Harmony bridge uses these `NativeView` interfaces:
 
@@ -36,11 +38,29 @@ The Harmony bridge uses these `NativeView` interfaces:
 - `UpdatePlatformGestureDecision(pointer_id, disposition)` forwards accept/reject
   to the arena for a pending platform pointer.
 
-Pointer records are removed when the platform member wins or is rejected.
+The C++ arena pointer records are removed when the platform member wins or is
+rejected.
 
-The bridge interfaces use pointer IDs; no per-sequence callback token is tracked.
+Gesture decision callbacks use pointer IDs. Once a native vertical pan wins,
+subsequent outward boundary movement can reach a Clay ancestor through a
+separate scroll session; the rejected Clay gesture is not revived. Scroll
+callbacks belong to one touch sequence, and the receiver checks the parent's
+drag generation before updating or ending its drag.
+
+Only moves after the boundary has been established are forwarded. Reversing
+direction restores the inner recognizer before dispatching that move. Additional
+touches delivered to the same platform view stop handoff for its active
+sequences. Native fling movement is not forwarded. Up, Cancel, detach and
+destruction end the scroll sessions and restore any disabled recognizer.
 
 The adapter is cleaned up when the NativeView detaches or is destroyed.
+
+Harmony touch forwarding keeps native finger IDs separate from Clay's
+per-sequence pointer IDs. A native Move updates only its changed finger.
+Position updates batched with an Up, including its synthesized final Move,
+update the converter state without a separate ArkUI dispatch; the Up delivers
+the combined positions using the native event timestamp. Up and Cancel remove
+the released native finger from the converter.
 
 ## 1. Design Goal
 
