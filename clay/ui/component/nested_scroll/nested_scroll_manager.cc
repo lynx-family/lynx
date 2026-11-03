@@ -44,6 +44,7 @@ void NestedScrollManager::DragStart(NestedScrollable* scrollable) {
     }
   }
 
+  ++drag_generation_;
   source_scrollable_ = scrollable;
   direction_ = source_scrollable_->GetScrollDirection();
   ConstructScrollableChain(scrollable);
