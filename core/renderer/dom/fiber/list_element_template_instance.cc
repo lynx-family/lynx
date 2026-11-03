@@ -29,6 +29,7 @@ static constexpr const char kComponentAtIndexAttribute[] = "component-at-index";
 static constexpr const char kEnqueueComponentAttribute[] = "enqueue-component";
 static constexpr const char kComponentAtIndexesAttribute[] =
     "component-at-indexes";
+static constexpr const char kListItemKey[] = "item-key";
 
 void SetListTemplateCallbackAttribute(lepus::Value* target,
                                       const lepus::Value& value) {
@@ -327,6 +328,7 @@ int32_t ListElementTemplateInstance::ComponentAtIndex(
   }
 
   fml::RefPtr<Element> list_item_root = nullptr;
+  bool reused_from_another_item = false;
   const auto action = reuse_pool_.Dequeue(list_item_instance);
   switch (action.type_) {
     case ListElementTemplateReusePool::Action::Type::kUseExisting:
@@ -334,13 +336,13 @@ int32_t ListElementTemplateInstance::ComponentAtIndex(
       break;
     case ListElementTemplateReusePool::Action::Type::kReuse: {
       auto reusable_instance = action.reusable_instance_;
-      // TODO: impl reuse element in the next mr.
-      // bool reuse_from_element =
-      // list_item_instance->ReuseElementsFrom(*reusable_instance);
-      bool reuse_from_element = false;
-      if (reuse_from_element) {
-        // TODO: impl reuse notify
+      reused_from_another_item =
+          list_item_instance->ReuseElementsFrom(*reusable_instance);
+      if (reused_from_another_item) {
+        list_item_root = action.reusable_root_;
       } else {
+        // Hydration failed before transfer. Restore the original FIFO entry
+        // before materializing the target's own tree.
         reuse_pool_.CancelDequeue(action);
         list_item_root = list_item_instance->GetRoot();
       }
@@ -372,6 +374,18 @@ int32_t ListElementTemplateInstance::ComponentAtIndex(
     LOGE("[ListET] ComponentAtIndex: register list item binding failed, sign="
          << list_item_sign);
     return list::kInvalidIndex;
+  }
+
+  if (reused_from_another_item && enable_reuse_notification) {
+    // Register the new owner before notifications or Flush can re-enter native
+    // list callbacks. Taking back an existing root and creating one do not
+    // notify.
+    const auto item_key =
+        list_item_instance->GetListItemPlatformInfoFromOptions().GetProperty(
+            BASE_STATIC_STRING(kListItemKey));
+    if (item_key.IsString()) {
+      list_element->NotifyListReuseNode(list_item_root, item_key.String());
+    }
   }
 
   LOGI("[ListET] ComponentAtIndex submitted, list.id="

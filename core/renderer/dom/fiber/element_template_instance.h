@@ -107,6 +107,7 @@ class ElementTemplateInstance
   void SetPendingChildMountsEnqueued(bool enqueued) {
     pending_child_mounts_enqueued_ = enqueued;
   }
+  bool ReuseElementsFrom(ElementTemplateInstance& previous);
 
 #if ENABLE_TRACE_PERFETTO
   void UpdateTraceDebugInfo(TraceEvent* event) const;
@@ -173,6 +174,24 @@ class ElementTemplateInstance
   bool EraseChildFromSlotStorage(uint32_t slot_index,
                                  const lepus::Value& child);
   void ClearLogicalChildParentLinks();
+
+  /**
+   * Transfers before_instance's physical tree to after_instance.
+   *
+   * Cross-instance reuse requires independent logical subtrees with no shared
+   * ET instances. Physical elements may be shared during the transfer.
+   * Once all actions are complete, the outermost caller recursively clears
+   * the old tree's physical bindings.
+   *
+   * A false return value means that no transfer has occurred.
+   * Cross-instance reuse is currently unsupported if either logical subtree
+   * contains a List ET.
+   */
+  static bool HydrateImpl(ElementTemplateInstance& before_instance,
+                          ElementTemplateInstance& after_instance);
+  bool ContainsListTemplate() const;
+  void ResetMaterializedElements();
+  void ResetOwnMaterializedElements();
 
   ElementManager* element_manager_{nullptr};
   TemplateAssembler* tasm_{nullptr};
