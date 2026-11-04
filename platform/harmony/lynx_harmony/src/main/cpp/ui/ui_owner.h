@@ -218,6 +218,7 @@ class UIOwner {
   ExternalMemorySnapshot GetExternalMemorySnapshot();
   void RequestExternalMemoryReport(int64_t delay_ms);
   const std::shared_ptr<base::VSyncMonitor>& VSyncMonitor();
+  void RequestAnimationFrame(base::VSyncMonitor::UIVSyncCallback callback);
 
   // for lynx fluency metrics
   void StartFluencyTrace(int sign, const std::string& scene,
