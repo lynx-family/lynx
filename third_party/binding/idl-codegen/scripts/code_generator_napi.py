@@ -412,6 +412,14 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
             template_context['hardcoded_includes']+= tracing_headers
         template_context['hardcoded_includes'].sort()
         template_context['macro_prefix'] = self.hardcoded_includes.get(component, {}).get('macro_prefix', '')
+        # Capability-dependent methods may belong on individual instances,
+        # rather than a prototype shared with unsupported implementations.
+        metadata = self.hardcoded_includes.get(component, {})
+        instance_conditions = metadata.get('instance_method_conditions', {}).get(interface_name, {})
+        method_conditions = metadata.get('method_conditions', {}).get(interface_name, {})
+        for method in template_context['methods']:
+            method['instance_condition'] = instance_conditions.get(method['name'])
+            method['registration_condition'] = method_conditions.get(method['name'])
         header_template = self.jinja_env.get_template(header_template_filename)
         cpp_template = self.jinja_env.get_template(cpp_template_filename)
         if template_context['parent_interface']:
