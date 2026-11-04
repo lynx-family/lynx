@@ -4,11 +4,15 @@
 
 export class ExposureManager {
   private readonly _nativeModules: any;
-  private readonly _exposureModule: any;
+  private _cachedExposureModule: any;
 
   constructor(nativeModules: object) {
     this._nativeModules = nativeModules;
-    this._exposureModule = this._nativeModules.LynxExposureModule;
+  }
+
+  private get _exposureModule(): any {
+    // Page modules may become available after a standalone runtime is attached.
+    return (this._cachedExposureModule ??= this._nativeModules.LynxExposureModule);
   }
 
   resumeExposure = (): void => {
