@@ -239,6 +239,62 @@ class HostScriptInterceptorTest : public HostScriptSessionTest {
   std::shared_ptr<HostScriptInterceptor> provider_;
 };
 
+TEST_F(HostScriptInterceptorTest, GlobalDomains) {
+  for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS,
+                      Interceptor::Domain::kMTS}) {
+    Install(domain);
+    if (domain == Interceptor::Domain::kUI) {
+      Script("interceptor.on('view.sendGlobalEvent',(e,c)=>c.proceed())");
+    } else {
+      Script(R"((() => {
+        let message = '';
+        try { interceptor.on('view.sendGlobalEvent',()=>{}); }
+        catch(e) { message = e.message; }
+        if (!message.includes('execution domain')) throw Error('domain');
+      })())");
+    }
+    provider_->Uninstall();
+    provider_.reset();
+  }
+}
+
+TEST_F(HostScriptInterceptorTest, GlobalEventPatchDropAndValidation) {
+  Install();
+  lepus::Value event(lepus::Dictionary::Create());
+  event.SetProperty("name", lepus::Value("original"));
+  event.SetProperty("args", lepus::Value(lepus::CArray::Create()));
+  Script(R"(
+    globalThis.rule = interceptor.on('view.sendGlobalEvent', (e,c) =>
+      c.proceed({name:'changed',args:[null,{nested:['value',true,42]}]}));
+  )");
+  auto result = provider_->Dispatch(InterceptKind::kSendGlobalEvent, event);
+  ASSERT_FALSE(result.failed);
+  EXPECT_EQ(result.patch.GetProperty("name").StdString(), "changed");
+  EXPECT_EQ(result.patch.GetProperty("args").GetLength(), 2);
+  EXPECT_EQ(event.GetProperty("name").StdString(), "original");
+  Script(
+      "rule.dispose(); "
+      "globalThis.rule=interceptor.on('view.sendGlobalEvent',(e,c)=>c.drop())");
+  EXPECT_TRUE(
+      provider_->Dispatch(InterceptKind::kSendGlobalEvent, event).dropped);
+  for (const char* decision :
+       {"c.mock()", "c.drop({extra:true})", "c.proceed({name:'',args:[]})",
+        "c.proceed({args:[undefined]})",
+        "c.proceed({args:[new ArrayBuffer(1)]})",
+        "c.proceed({args:[],extra:true})", "Promise.resolve(c.drop())"}) {
+    Script(
+        (std::string(
+             "rule.dispose(); "
+             "globalThis.rule=interceptor.on('view.sendGlobalEvent',(e,c)=>") +
+         decision + ");")
+            .c_str());
+    auto invalid = provider_->Dispatch(InterceptKind::kSendGlobalEvent, event);
+    EXPECT_TRUE(invalid.failed) << decision;
+    EXPECT_FALSE(invalid.dropped);
+    EXPECT_TRUE(invalid.patch.IsNil());
+  }
+}
+
 TEST_F(HostScriptInterceptorTest, DomainsAcceptOnlyTheirEventKinds) {
   const std::pair<Interceptor::Domain, const char*> cases[] = {
       {Interceptor::Domain::kUI,

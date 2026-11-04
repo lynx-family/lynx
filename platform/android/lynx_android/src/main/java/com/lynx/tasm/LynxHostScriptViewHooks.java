@@ -5,10 +5,17 @@ package com.lynx.tasm;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
+import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.nio.charset.StandardCharsets;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -169,6 +176,125 @@ final class LynxHostScriptViewHooks {
     }
     return data;
   }
+
+  static final class GlobalEvent {
+    final String name;
+    final JavaOnlyArray args;
+    final boolean dropped;
+
+    GlobalEvent(String name, JavaOnlyArray args, boolean dropped) {
+      this.name = name;
+      this.args = args;
+      this.dropped = dropped;
+    }
+  }
+
+  @Nullable
+  static GlobalEvent beforeSendGlobalEvent(
+      LynxTemplateRender render, String name, JavaOnlyArray args) {
+    if (!isEnabled()) {
+      return null;
+    }
+    try {
+      JSONObject event = new JSONObject();
+      event.put("name", name == null ? JSONObject.NULL : name);
+      event.put("args", snapshotEventValue(args, new IdentityHashMap<>(), 0));
+      byte[] patch = nativeDispatchSendGlobalEvent(
+          render.getLogContextSnapshot().viewId, event.toString().getBytes(StandardCharsets.UTF_8));
+      return patch == null ? null
+                           : applyGlobalEventPatch(name, args,
+                               new JSONObject(new String(patch, StandardCharsets.UTF_8)));
+    } catch (JSONException | IllegalArgumentException e) {
+      LLog.e(TAG, "view.sendGlobalEvent was not intercepted: " + e.getMessage());
+      return null;
+    }
+  }
+
+  private static GlobalEvent applyGlobalEventPatch(
+      String name, JavaOnlyArray args, JSONObject patch) throws JSONException {
+    if (patch.optBoolean("drop", false)) {
+      return new GlobalEvent(name, args, true);
+    }
+    String nextName = patch.has("name") ? patch.getString("name") : name;
+    JavaOnlyArray nextArgs =
+        patch.has("args") ? (JavaOnlyArray) decodeEventValue(patch.getJSONArray("args")) : args;
+    return new GlobalEvent(nextName, nextArgs, false);
+  }
+
+  // Unlike toJSONArray(), reject unsupported/cyclic values instead of silently
+  // omitting arguments. The original event remains untouched on any failure.
+  private static Object snapshotEventValue(
+      Object value, IdentityHashMap<Object, Boolean> parents, int depth) throws JSONException {
+    if (depth >= 64) {
+      throw new IllegalArgumentException("Event arguments are too deeply nested");
+    }
+    if (value == null || value == JSONObject.NULL) {
+      return JSONObject.NULL;
+    }
+    if (value instanceof String || value instanceof Boolean) {
+      return value;
+    }
+    if (value instanceof Number) {
+      double number = ((Number) value).doubleValue();
+      if (Double.isNaN(number) || Double.isInfinite(number)) {
+        throw new IllegalArgumentException("Event arguments must contain finite numbers");
+      }
+      return value;
+    }
+    if (parents.put(value, true) != null) {
+      throw new IllegalArgumentException("Cyclic event arguments");
+    }
+    try {
+      if (value instanceof List) {
+        JSONArray array = new JSONArray();
+        for (Object item : (List<?>) value) {
+          array.put(snapshotEventValue(item, parents, depth + 1));
+        }
+        return array;
+      }
+      if (value instanceof Map) {
+        JSONObject object = new JSONObject();
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+          if (!(entry.getKey() instanceof String)) {
+            throw new IllegalArgumentException("Event argument keys must be strings");
+          }
+          object.put(
+              (String) entry.getKey(), snapshotEventValue(entry.getValue(), parents, depth + 1));
+        }
+        return object;
+      }
+      throw new IllegalArgumentException("Unsupported event argument");
+    } finally {
+      parents.remove(value);
+    }
+  }
+
+  private static Object decodeEventValue(Object value) throws JSONException {
+    if (value == JSONObject.NULL) {
+      return null;
+    }
+    if (value instanceof JSONArray) {
+      JSONArray array = (JSONArray) value;
+      JavaOnlyArray result = new JavaOnlyArray();
+      for (int i = 0; i < array.length(); ++i) {
+        result.add(decodeEventValue(array.get(i)));
+      }
+      return result;
+    }
+    if (value instanceof JSONObject) {
+      JSONObject object = (JSONObject) value;
+      JavaOnlyMap result = new JavaOnlyMap();
+      Iterator<String> keys = object.keys();
+      while (keys.hasNext()) {
+        String key = keys.next();
+        result.put(key, decodeEventValue(object.get(key)));
+      }
+      return result;
+    }
+    return value;
+  }
+
+  @Nullable private static native byte[] nativeDispatchSendGlobalEvent(long viewId, byte[] event);
 
   private static long nativePtr(@Nullable TemplateData data) {
     if (data == null) {
