@@ -5,6 +5,7 @@
 #ifndef CORE_ANIMATION_LYNX_BASIC_ANIMATOR_BASIC_ANIMATOR_FRAME_CALLBACK_PROVIDER_H_
 #define CORE_ANIMATION_LYNX_BASIC_ANIMATOR_BASIC_ANIMATOR_FRAME_CALLBACK_PROVIDER_H_
 
+#include <cstdint>
 #include <memory>
 
 #include "core/animation/basic_animation/animation_frame_callback_provider.h"
@@ -13,7 +14,8 @@ namespace lynx {
 
 namespace base {
 class VSyncMonitor;
-}
+enum class GeneratedVSyncCallbackId : uint64_t;
+}  // namespace base
 
 namespace animation {
 namespace basic {
@@ -21,10 +23,12 @@ class BasicAnimatorFrameCallbackProvider
     : public AnimationFrameCallbackProvider {
  public:
   explicit BasicAnimatorFrameCallbackProvider(
-      const std::shared_ptr<base::VSyncMonitor> &vsync_monitor)
-      : vsync_monitor_(vsync_monitor) {}
+      const std::shared_ptr<base::VSyncMonitor> &vsync_monitor);
 
   ~BasicAnimatorFrameCallbackProvider() override = default;
+
+  BasicAnimatorFrameCallbackProvider(
+      const BasicAnimatorFrameCallbackProvider &) = delete;
 
   void RequestNextFrame(
       base::MoveOnlyClosure<void, const fml::TimePoint &> callback) override;
@@ -33,6 +37,7 @@ class BasicAnimatorFrameCallbackProvider
 
  private:
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
+  const base::GeneratedVSyncCallbackId frame_callback_id_;
 };
 }  // namespace basic
 }  // namespace animation

@@ -5,6 +5,7 @@
 #include "core/base/threading/vsync_monitor.h"
 
 #include <algorithm>
+#include <optional>
 #include <thread>
 
 #include "base/include/fml/message_loop.h"
@@ -64,6 +65,102 @@ class ExternalVSyncSource : public VSyncMonitorPlatformImpl {
   int requests = 0;
   Callback pending;
 };
+
+class UIRequestVSyncMonitor : public VSyncMonitor {
+ public:
+  explicit UIRequestVSyncMonitor(bool use_ui = true)
+      : VSyncMonitor(use_ui, false) {}
+
+  void SetUIVSyncRequester(UIVSyncRequester requester) override {
+    requester_ = std::move(requester);
+  }
+
+  void RequestVSync() override { ++legacy_requests; }
+
+  void RequestVSyncOnUIThread() override {
+    requester_([weak = weak_from_this()](std::optional<int64_t> timestamp) {
+      if (timestamp) {
+        if (auto monitor = weak.lock()) {
+          monitor->OnVSync(*timestamp, *timestamp + 16000000);
+        }
+      }
+    });
+  }
+
+  int legacy_requests = 0;
+
+ private:
+  UIVSyncRequester requester_;
+};
+
+TEST_F(VsyncMonitorTest, UIFrameReturnsSourceTimeToTASMAndCoalescesRequests) {
+  fml::Thread tasm("ui-vsync-tasm-test");
+  auto ui = UIThread::GetRunner();
+  auto monitor = std::make_shared<UIRequestVSyncMonitor>();
+  VSyncMonitor::UIVSyncCallback pending;
+  int registrations = 0;
+  int callbacks = 0;
+  constexpr int64_t kSourceTime = 1234567890;
+  monitor->SetUIVSyncRequester([&](VSyncMonitor::UIVSyncCallback callback) {
+    EXPECT_TRUE(tasm.GetTaskRunner()->RunsTasksOnCurrentThread());
+    ui->PostTask([&, callback = std::move(callback)]() mutable {
+      EXPECT_TRUE(ui->RunsTasksOnCurrentThread());
+      ++registrations;
+      pending = std::move(callback);
+    });
+  });
+  tasm.GetTaskRunner()->PostSyncTask([&] {
+    monitor->BindToCurrentThread();
+    monitor->AsyncRequestVSync([&](int64_t start, int64_t target) {
+      EXPECT_TRUE(tasm.GetTaskRunner()->RunsTasksOnCurrentThread());
+      EXPECT_EQ(start, kSourceTime);
+      EXPECT_EQ(target, kSourceTime + 16000000);
+      ++callbacks;
+    });
+    monitor->ScheduleVSyncSecondaryCallback(1, [&](int64_t start, int64_t) {
+      EXPECT_TRUE(tasm.GetTaskRunner()->RunsTasksOnCurrentThread());
+      EXPECT_EQ(start, kSourceTime);
+      ++callbacks;
+    });
+  });
+  fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  ASSERT_EQ(registrations, 1);
+  EXPECT_FALSE(monitor->UsesCustomVSync());
+  EXPECT_EQ(callbacks, 0);
+  ASSERT_TRUE(pending);
+  auto callback = std::move(pending);
+  callback(kSourceTime);
+  tasm.GetTaskRunner()->PostSyncTask([] {});
+  EXPECT_EQ(callbacks, 2);
+  EXPECT_EQ(monitor->legacy_requests, 0);
+}
+
+TEST_F(VsyncMonitorTest, DisabledUIFrameModeKeepsLegacySource) {
+  auto monitor = std::make_shared<UIRequestVSyncMonitor>(false);
+  monitor->BindToCurrentThread();
+  int ui_requests = 0;
+  monitor->SetUIVSyncRequester(
+      [&](VSyncMonitor::UIVSyncCallback) { ++ui_requests; });
+  monitor->ScheduleVSyncSecondaryCallback(1, [](int64_t, int64_t) {});
+  EXPECT_EQ(monitor->legacy_requests, 1);
+  EXPECT_EQ(ui_requests, 0);
+}
+
+TEST_F(VsyncMonitorTest, LateUIFrameDoesNotCallDestroyedMonitor) {
+  auto monitor = std::make_shared<UIRequestVSyncMonitor>();
+  monitor->BindToCurrentThread();
+  VSyncMonitor::UIVSyncCallback pending;
+  monitor->SetUIVSyncRequester([&](VSyncMonitor::UIVSyncCallback callback) {
+    pending = std::move(callback);
+  });
+  bool called = false;
+  monitor->ScheduleVSyncSecondaryCallback(
+      1, [&](int64_t, int64_t) { called = true; });
+  ASSERT_TRUE(pending);
+  monitor.reset();
+  pending(1234567890);
+  EXPECT_FALSE(called);
+}
 
 TEST_F(VsyncMonitorTest, ExternalSourceCoalescesPrimaryAndSecondaryRequests) {
   auto source = std::make_shared<ExternalVSyncSource>();
@@ -231,6 +328,24 @@ TEST_F(VsyncMonitorTest, AsyncRequestVSyncWithId) {
   for (int64_t i = 0; i < kLoop; ++i) {
     ASSERT_EQ(ids[static_cast<size_t>(i)], i);
   }
+}
+
+TEST_F(VsyncMonitorTest, GeneratedAndCallerProvidedIdsAreDistinct) {
+  auto monitor = std::make_shared<TestVSyncMonitor>();
+  monitor->BindToCurrentThread();
+
+  const auto generated_id = VSyncMonitor::GenerateSecondaryCallbackId();
+  int caller_callbacks = 0;
+  int generated_callbacks = 0;
+  monitor->ScheduleVSyncSecondaryCallback(
+      static_cast<uintptr_t>(generated_id),
+      [&](int64_t, int64_t) { ++caller_callbacks; });
+  monitor->ScheduleVSyncSecondaryCallback(
+      generated_id, [&](int64_t, int64_t) { ++generated_callbacks; });
+
+  monitor->TriggerVsync();
+  EXPECT_EQ(caller_callbacks, 1);
+  EXPECT_EQ(generated_callbacks, 1);
 }
 
 TEST_F(VsyncMonitorTest, AsyncRequestVSyncWithDuplicateId) {

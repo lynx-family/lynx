@@ -76,6 +76,28 @@ class TransferOrderTaskRunner : public fml::TaskRunner {
   std::string actor_name_;
 };
 
+class VSyncConfiguringPlatformInvoker : public TasmPlatformInvoker {
+ public:
+  void ConfigureVSyncMonitor(base::VSyncMonitor& monitor) override {
+    configured_monitors.push_back(&monitor);
+  }
+  void OnPageConfigDecoded(const std::shared_ptr<tasm::PageConfig>&) override {}
+  void OnRunPipelineFinished() override {}
+  lepus::Value TriggerLepusMethod(const std::string&,
+                                  const lepus::Value&) override {
+    return lepus::Value();
+  }
+  void TriggerLepusMethodAsync(const std::string&,
+                               const lepus::Value&) override {}
+  std::string TranslateResourceForTheme(const std::string&,
+                                        const std::string&) override {
+    return {};
+  }
+  void GetI18nResource(const std::string&, const std::string&) override {}
+
+  std::vector<base::VSyncMonitor*> configured_monitors;
+};
+
 }  // namespace
 
 class LynxShellBuilderTest : public ::testing::Test {
@@ -144,6 +166,8 @@ TEST_F(LynxShellBuilderTest, CustomSourceSetAfterEnableDrivesCoreAndMTSVSync) {
     int requests = 0;
   };
   auto source = std::make_shared<Source>();
+  auto invoker = std::make_unique<VSyncConfiguringPlatformInvoker>();
+  auto* platform_invoker = invoker.get();
   auto creator = [](LynxShell*) {
     return std::make_unique<tasm::PaintingContextPlatformImpl>();
   };
@@ -157,6 +181,7 @@ TEST_F(LynxShellBuilderTest, CustomSourceSetAfterEnableDrivesCoreAndMTSVSync) {
           .SetStrategy(strategy_)
           .SetShellOption(*option_)
           .SetEnableElementManagerVsyncMonitor(true)
+          .SetTasmPlatformInvoker(std::move(invoker))
           .SetVSyncMonitorPlatformImpl(source)
           .build());
   const auto& monitor =
@@ -178,6 +203,7 @@ TEST_F(LynxShellBuilderTest, CustomSourceSetAfterEnableDrivesCoreAndMTSVSync) {
   mts_monitor->GetTaskRunner()->PostSyncTask(
       [&] { mts_monitor->AsyncRequestVSync([](int64_t, int64_t) {}); });
   EXPECT_EQ(source->requests, 2);
+  EXPECT_TRUE(platform_invoker->configured_monitors.empty());
 }
 
 TEST_F(LynxShellBuilderTest, FinalCoreVSyncConfigurationIsRespected) {

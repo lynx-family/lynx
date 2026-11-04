@@ -271,8 +271,10 @@ void LynxTemplateRenderer::SetUpLynxShell(
   shell_option.page_options_.SetEmbeddedMode(mode);
   shell_option.page_options_.SetDebuggable(debuggable);
   auto lynx_context =
-      static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
-          ->GetLynxContext();
+      is_host_renderer_
+          ? static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+                ->GetLynxContext()
+          : nullptr;
   if (lynx_context != nullptr) {
     lynx_context->SetEmbeddedMode(mode);
   }
@@ -288,7 +290,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
   }
 
   auto invoker = std::make_unique<TasmPlatformInvokerHarmony>(
-      weak_flag_->weak_from_this());
+      weak_flag_->weak_from_this(), lynx_context);
   auto* invoker_ptr = invoker.get();
   auto native_module_manager = std::make_unique<pub::LynxNativeModuleManager>();
   native_module_manager->SetModuleFactory(

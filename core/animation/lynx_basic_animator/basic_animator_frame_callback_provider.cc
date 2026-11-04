@@ -13,6 +13,11 @@ namespace lynx {
 namespace animation {
 namespace basic {
 
+BasicAnimatorFrameCallbackProvider::BasicAnimatorFrameCallbackProvider(
+    const std::shared_ptr<base::VSyncMonitor>& vsync_monitor)
+    : vsync_monitor_(vsync_monitor),
+      frame_callback_id_(base::VSyncMonitor::GenerateSecondaryCallbackId()) {}
+
 std::shared_ptr<base::VSyncMonitor>
 BasicAnimatorFrameCallbackProvider::GetVSyncMonitor() {
   thread_local std::shared_ptr<base::VSyncMonitor> local_vsync_monitor_;
@@ -29,9 +34,9 @@ BasicAnimatorFrameCallbackProvider::GetVSyncMonitor() {
 void BasicAnimatorFrameCallbackProvider::RequestNextFrame(
     base::MoveOnlyClosure<void, const fml::TimePoint&> callback) {
   GetVSyncMonitor()->ScheduleVSyncSecondaryCallback(
-      reinterpret_cast<uintptr_t>(this),
+      frame_callback_id_,
       [callback = std::move(callback)](int64_t frame_start, int64_t frame_end) {
-        callback(fml::TimePoint::FromTicks((frame_start)));
+        callback(fml::TimePoint::FromTicks(frame_start));
       });
 }
 

@@ -30,16 +30,8 @@ class LynxContext;
 
 class LayoutVSyncProxy : public std::enable_shared_from_this<LayoutVSyncProxy> {
  public:
-  explicit LayoutVSyncProxy(
-      const fml::RefPtr<fml::TaskRunner>& layout_task_runner = nullptr) {
-    vsync_monitor_ = base::VSyncMonitor::Create();
-    if (layout_task_runner) {
-      vsync_monitor_->BindTaskRunner(layout_task_runner);
-    } else {
-      vsync_monitor_->BindToCurrentThread();
-    }
-    vsync_monitor_->Init();
-  }
+  LayoutVSyncProxy(const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
+                   const std::shared_ptr<LynxContext>& ui_vsync_context);
   void ScheduleLayout();
   void SetLayoutTriggerCallback(base::closure callback);
   const std::shared_ptr<base::VSyncMonitor>& VSyncMonitor() const {
@@ -118,7 +110,8 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
   static napi_value AlignLayoutNode(napi_env env, napi_callback_info info);
   static napi_value Destroy(napi_env env, napi_callback_info info);
   static napi_value PrefetchFont(napi_env env, napi_callback_info info);
-  const std::shared_ptr<LayoutVSyncProxy>& GetLayoutVSyncProxy();
+  const std::shared_ptr<LayoutVSyncProxy>& GetLayoutVSyncProxy(
+      bool use_ui_vsync = false);
   napi_ref js_{nullptr};
   napi_ref create_{nullptr};
   napi_ref destroy_{nullptr};

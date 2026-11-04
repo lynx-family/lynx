@@ -107,11 +107,17 @@ class LynxContext {
                       TakeSnapshotCompletedCallback callback,
                       const std::string& format = "jpeg");
 
-  void ResetUIOwner() { ui_owner_ = nullptr; }
+  void ResetUIOwner() {
+    ui_owner_ = nullptr;
+    ui_owner_destroyed_ = true;
+  }
 
   UIOwner* GetUIOwner() const { return ui_owner_; }
 
   const std::shared_ptr<base::VSyncMonitor> VSyncMonitor();
+
+  static void ConfigureUIVSyncMonitor(
+      base::VSyncMonitor& monitor, const std::weak_ptr<LynxContext>& context);
 
   const std::shared_ptr<shell::ListEngineProxy>& GetListEngineProxy() {
     return list_engine_proxy_;
@@ -423,6 +429,7 @@ class LynxContext {
   ShadowNodeOwner* node_owner_;
   LynxContextHost* host_{nullptr};
   UIOwner* ui_owner_;
+  bool ui_owner_destroyed_{false};
   fluency::harmony::FluencyTraceHelperHarmony fluency_trace_helper_;
   ArkUI_ContextHandle ark_ui_context_{nullptr};
   int32_t window_id_{-1};

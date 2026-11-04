@@ -5,8 +5,11 @@
 #ifndef CORE_BASE_THREADING_VSYNC_MONITOR_H_
 #define CORE_BASE_THREADING_VSYNC_MONITOR_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 
 #include "base/include/closure.h"
@@ -17,10 +20,16 @@
 namespace lynx {
 namespace base {
 
+enum class GeneratedVSyncCallbackId : uint64_t {};
+
 class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
     : public std::enable_shared_from_this<VSyncMonitor> {
  public:
   using Callback = base::MoveOnlyClosure<void, int64_t, int64_t>;
+  using UIVSyncCallback = base::MoveOnlyClosure<void, std::optional<int64_t>>;
+  // Completes once on UI with the source timestamp in nanoseconds, or nullopt
+  // if the page is alive but the frame request fails.
+  using UIVSyncRequester = base::MoveOnlyClosure<void, UIVSyncCallback>;
 
   VSyncMonitor(bool is_on_ui_thread = false,
                bool is_vsync_post_task_by_emergency = true);
@@ -28,7 +37,7 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
       const std::shared_ptr<VSyncMonitorPlatformImpl> &platform_impl,
       bool is_on_ui_thread = false,
       bool is_vsync_post_task_by_emergency = true);
-  virtual ~VSyncMonitor() = default;
+  virtual ~VSyncMonitor();
 
   static std::shared_ptr<VSyncMonitor> Create(bool is_on_ui_thread = false);
 
@@ -44,8 +53,13 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
   // the callback only be set once on one frame
   void AsyncRequestVSync(Callback callback);
 
-  // the callback is unique per id
+  // Allocates a stable ID separate from caller-provided IDs.
+  static GeneratedVSyncCallbackId GenerateSecondaryCallbackId();
+
+  // The callback is unique per ID within each ID type.
   void ScheduleVSyncSecondaryCallback(uintptr_t id, Callback callback);
+  void ScheduleVSyncSecondaryCallback(GeneratedVSyncCallbackId id,
+                                      Callback callback);
 
   // frame_start_time/frame_target_time is in nanoseconds
   void OnVSync(int64_t frame_start_time, int64_t frame_target_time);
@@ -57,6 +71,12 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
   void StopVSync();
 
   bool UsesCustomVSync() const { return platform_impl_ != nullptr; }
+
+  bool RequestsVSyncOnUIThread() const { return is_on_ui_thread_; }
+
+  // Configured before Init/requests for platform monitors needing a page UI
+  // context. This does not change the runner that owns animation callbacks.
+  virtual void SetUIVSyncRequester(UIVSyncRequester) {}
 
   virtual void RequestVSyncOnUIThread(Callback callback) {}
 
@@ -70,6 +90,22 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
   fml::RefPtr<fml::TaskRunner> runner_;
 
  private:
+  struct SecondaryCallbackId {
+    uint64_t value;
+    bool generated;
+
+    bool operator==(const SecondaryCallbackId &other) const noexcept {
+      return value == other.value && generated == other.generated;
+    }
+  };
+
+  struct SecondaryCallbackIdHash {
+    std::size_t operator()(const SecondaryCallbackId &id) const noexcept {
+      return std::hash<uint64_t>{}(id.value);
+    }
+  };
+
+  void ScheduleSecondaryCallback(SecondaryCallbackId id, Callback &&callback);
   void OnVSyncInternal(int64_t frame_start_time, int64_t frame_target_time);
 
   bool is_vsync_post_task_by_emergency_{false};
@@ -77,7 +113,8 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
   bool requested_{false};
   bool stop_vsync_{false};
   // additional callbacks required to invoke when VSync is requested
-  std::unordered_map<uintptr_t, Callback> secondary_callbacks_;
+  std::unordered_map<SecondaryCallbackId, Callback, SecondaryCallbackIdHash>
+      secondary_callbacks_;
   std::shared_ptr<VSyncMonitorPlatformImpl> platform_impl_;
 
   // disallow copy&assign

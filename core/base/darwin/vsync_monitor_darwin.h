@@ -14,10 +14,15 @@ namespace base {
 class LynxVSyncPulsePuppet;
 
 class VSyncMonitorIOS : public VSyncMonitor {
+  struct ConstructionKey {
+    explicit ConstructionKey() = default;
+  };
+
  public:
-  VSyncMonitorIOS(bool init_in_current_loop = true,
-                  bool is_on_ui_thread = false,
-                  bool is_vsync_post_task_by_emergency = true);
+  static std::shared_ptr<VSyncMonitorIOS> Create(
+      bool is_on_ui_thread, bool is_vsync_post_task_by_emergency = true);
+  VSyncMonitorIOS(ConstructionKey, bool is_on_ui_thread,
+                  bool is_vsync_post_task_by_emergency);
   ~VSyncMonitorIOS() override;
 
   void Init() override;

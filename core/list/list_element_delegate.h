@@ -83,9 +83,9 @@ class ElementDelegate {
   virtual bool IsAttachToElementManager() const { return true; }
   virtual void MarkTiming(ListTiming flag) {}
   virtual void RequestNextFrame() {}
-  // Returns the page monitor using host-provided VSync. A null result lets
-  // the animator create its default platform monitor.
-  virtual std::shared_ptr<base::VSyncMonitor> GetCustomVSyncMonitor() const {
+  // Returns the page monitor when the page uses a custom or UI frame source.
+  // A null result lets the animator create its default platform monitor.
+  virtual std::shared_ptr<base::VSyncMonitor> GetAnimationVSyncMonitor() const {
     return nullptr;
   }
   virtual bool IsInDebugMode() const { return false; }

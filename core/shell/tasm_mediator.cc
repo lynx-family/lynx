@@ -350,6 +350,9 @@ void TasmMediator::InitVSyncMonitorIfNeeded() {
             ? std::make_shared<base::VSyncMonitor>(vsync_monitor_platform_impl_)
             : base::VSyncMonitor::Create(lynx::tasm::LynxEnv::GetInstance()
                                              .EnableAnimationVsyncOnUIThread());
+    if (!vsync_monitor_platform_impl_ && tasm_platform_invoker_) {
+      tasm_platform_invoker_->ConfigureVSyncMonitor(*vsync_monitor_);
+    }
     vsync_monitor_->BindTaskRunner(GetLepusTimedTaskRunner());
     vsync_monitor_->BindToCurrentThread();
     vsync_monitor_->Init();

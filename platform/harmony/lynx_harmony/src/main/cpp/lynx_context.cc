@@ -6,11 +6,13 @@
 
 #include <chrono>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include "base/include/closure.h"
 #include "base/include/fml/task_runner.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/gesture_event.h"
@@ -832,6 +834,28 @@ void LynxContext::RunOnTASMThread(base::closure task) const {
     return;
   }
   engine_proxy_->DispatchTaskToLynxEngine(std::move(task));
+}
+
+void LynxContext::ConfigureUIVSyncMonitor(
+    base::VSyncMonitor& monitor, const std::weak_ptr<LynxContext>& context) {
+  if (!monitor.RequestsVSyncOnUIThread() || context.expired()) {
+    return;
+  }
+  monitor.SetUIVSyncRequester(
+      [weak_context = context](base::VSyncMonitor::UIVSyncCallback callback) {
+        base::UIThread::GetRunner()->PostTask(
+            [weak_context, callback = std::move(callback)]() mutable {
+              auto context = weak_context.lock();
+              if (!context || context->ui_owner_destroyed_) {
+                return;
+              }
+              if (auto* owner = context->GetUIOwner()) {
+                owner->RequestAnimationFrame(std::move(callback));
+              } else {
+                callback(std::nullopt);
+              }
+            });
+      });
 }
 
 void LynxContext::RunOnLayoutThread(base::closure task) const {

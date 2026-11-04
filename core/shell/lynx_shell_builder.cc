@@ -255,6 +255,11 @@ LynxShell* LynxShellBuilder::build() {
             ? std::make_shared<base::VSyncMonitor>(vsync_monitor_platform_impl_)
             : base::VSyncMonitor::Create(tasm::LynxEnv::GetInstance()
                                              .EnableAnimationVsyncOnUIThread());
+    if (!vsync_monitor_platform_impl_ && tasm_platform_invoker_ &&
+        shell->engine_build_options_.element_manager_vsync_monitor_) {
+      tasm_platform_invoker_->ConfigureVSyncMonitor(
+          *shell->engine_build_options_.element_manager_vsync_monitor_);
+    }
   }
   shell->engine_build_options_.vsync_monitor_platform_impl_ =
       vsync_monitor_platform_impl_;

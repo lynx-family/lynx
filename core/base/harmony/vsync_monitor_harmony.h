@@ -5,6 +5,8 @@
 #ifndef CORE_BASE_HARMONY_VSYNC_MONITOR_HARMONY_H_
 #define CORE_BASE_HARMONY_VSYNC_MONITOR_HARMONY_H_
 
+#include <utility>
+
 #include "base/include/fml/time/time_point.h"
 #include "core/base/threading/vsync_monitor.h"
 
@@ -13,13 +15,22 @@ namespace base {
 
 class VSyncMonitorHarmony : public base::VSyncMonitor {
  public:
-  VSyncMonitorHarmony() = default;
+  explicit VSyncMonitorHarmony(bool is_on_ui_thread = false)
+      : VSyncMonitor(is_on_ui_thread) {}
   ~VSyncMonitorHarmony() override = default;
 
   static void OnUpdateRefreshRate(int64_t refresh_rate);
 
+  void SetUIVSyncRequester(UIVSyncRequester requester) override {
+    ui_vsync_requester_ = std::move(requester);
+  }
+
+  void RequestVSyncOnUIThread() override;
+
  private:
   void RequestVSync() override;
+
+  UIVSyncRequester ui_vsync_requester_;
 };
 
 }  // namespace base

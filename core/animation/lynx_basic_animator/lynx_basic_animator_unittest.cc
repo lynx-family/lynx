@@ -5,10 +5,14 @@
 #define protected public
 
 #include <cmath>
+#include <cstddef>
+#include <new>
 #include <numeric>
 
 #include "base/include/fml/message_loop.h"
 #include "core/animation/lynx_basic_animator/basic_animator.h"
+#include "core/animation/lynx_basic_animator/basic_animator_frame_callback_provider.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -115,6 +119,39 @@ TEST_F(LynxBasicAnimatorTest, HowToUseBasicAnimator) {
   EXPECT_FLOAT_EQ(0.0f, res1);
   EXPECT_FLOAT_EQ(0.5f, res2);
   EXPECT_FLOAT_EQ(1.0f, res3);
+}
+
+TEST_F(LynxBasicAnimatorTest, ReusedProviderAddressDoesNotDropFrameRequest) {
+  class CountingVSyncMonitor : public base::VSyncMonitor {
+   public:
+    int requests = 0;
+
+   private:
+    void RequestVSync() override { ++requests; }
+  };
+
+  using Provider = animation::basic::BasicAnimatorFrameCallbackProvider;
+  auto monitor = std::make_shared<CountingVSyncMonitor>();
+  fml::MessageLoop::EnsureInitializedForCurrentThread();
+  monitor->BindTaskRunner(fml::MessageLoop::GetCurrent().GetTaskRunner());
+
+  alignas(Provider) std::byte storage[sizeof(Provider)];
+  auto* provider = new (storage) Provider(monitor);
+  provider->RequestNextFrame([](const fml::TimePoint&) {});
+  provider->~Provider();
+
+  int delivered = 0;
+  auto* replacement = new (storage) Provider(monitor);
+  replacement->RequestNextFrame([&](const fml::TimePoint&) { ++delivered; });
+  replacement->RequestNextFrame([](const fml::TimePoint&) {
+    ADD_FAILURE() << "Duplicate request replaced the pending callback";
+  });
+
+  EXPECT_EQ(monitor->requests, 1);
+  EXPECT_EQ(delivered, 0);
+  monitor->OnVSync(16000000, 32000000);
+  EXPECT_EQ(delivered, 1);
+  replacement->~Provider();
 }
 
 }  // namespace testing

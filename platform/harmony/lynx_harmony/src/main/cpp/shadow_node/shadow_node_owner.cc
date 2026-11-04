@@ -16,6 +16,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/napi_convert_helper.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/inline_placeholder_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/js_shadow_node.h"
@@ -23,6 +24,21 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+LayoutVSyncProxy::LayoutVSyncProxy(
+    const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
+    const std::shared_ptr<LynxContext>& ui_vsync_context) {
+  vsync_monitor_ = base::VSyncMonitor::Create(ui_vsync_context != nullptr);
+  if (ui_vsync_context) {
+    LynxContext::ConfigureUIVSyncMonitor(*vsync_monitor_, ui_vsync_context);
+  }
+  if (layout_task_runner) {
+    vsync_monitor_->BindTaskRunner(layout_task_runner);
+  } else {
+    vsync_monitor_->BindToCurrentThread();
+  }
+  vsync_monitor_->Init();
+}
+
 void LayoutVSyncProxy::ScheduleLayout() {
   if (!layout_scheduled_ && vsync_monitor_) {
     vsync_monitor_->AsyncRequestVSync(
@@ -194,8 +210,9 @@ LayoutResult ShadowNodeOwner::MeasureNode(int id, float width,
 void ShadowNodeOwner::ScheduleLayout() {
   auto task =
       base::MoveOnlyClosure<void>([weak_self = weak_from_this()]() mutable {
-        auto strong_this = weak_self.lock();
-        strong_this->GetLayoutVSyncProxy()->ScheduleLayout();
+        if (auto strong_this = weak_self.lock()) {
+          strong_this->GetLayoutVSyncProxy()->ScheduleLayout();
+        }
       });
   context_->RunOnLayoutThread(std::move(task));
 }
@@ -575,11 +592,11 @@ const fml::RefPtr<fml::TaskRunner>& ShadowNodeOwner::GetLayoutTaskRunner()
   return context_->GetLayoutTaskRunner();
 }
 
-const std::shared_ptr<LayoutVSyncProxy>&
-ShadowNodeOwner::GetLayoutVSyncProxy() {
+const std::shared_ptr<LayoutVSyncProxy>& ShadowNodeOwner::GetLayoutVSyncProxy(
+    bool use_ui_vsync) {
   if (!vsync_proxy_) {
-    const auto& layout_task_runner = GetLayoutTaskRunner();
-    vsync_proxy_ = std::make_shared<LayoutVSyncProxy>(layout_task_runner);
+    vsync_proxy_ = std::make_shared<LayoutVSyncProxy>(
+        GetLayoutTaskRunner(), use_ui_vsync ? context_ : nullptr);
   }
 
   return vsync_proxy_;
@@ -600,7 +617,12 @@ void ShadowNodeOwner::NotifySystemFontUpdated() {
 }
 
 void ShadowNodeOwner::SetTriggerLayoutCallback(base::closure callback) {
-  GetLayoutVSyncProxy()->SetLayoutTriggerCallback(std::move(callback));
+  // The page renderer installs this trigger during setup, after the ArkTS
+  // UIOwner is available to supply frames.
+  const bool use_ui_vsync =
+      LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread();
+  GetLayoutVSyncProxy(use_ui_vsync)
+      ->SetLayoutTriggerCallback(std::move(callback));
 }
 
 }  // namespace harmony

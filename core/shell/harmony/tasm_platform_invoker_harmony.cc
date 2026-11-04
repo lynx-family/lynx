@@ -6,10 +6,16 @@
 
 #include <atomic>
 
+#include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 
 namespace lynx {
 namespace harmony {
+
+void TasmPlatformInvokerHarmony::ConfigureVSyncMonitor(
+    base::VSyncMonitor& monitor) {
+  tasm::harmony::LynxContext::ConfigureUIVSyncMonitor(monitor, weak_context_);
+}
 
 void TasmPlatformInvokerHarmony::OnPageConfigDecoded(
     const std::shared_ptr<tasm::PageConfig>& config) {

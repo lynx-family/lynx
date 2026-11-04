@@ -4,6 +4,7 @@
 
 #include "core/base/threading/vsync_monitor.h"
 
+#include <atomic>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,8 @@ VSyncMonitor::VSyncMonitor(
        << is_vsync_post_task_by_emergency_);
 }
 
+VSyncMonitor::~VSyncMonitor() = default;
+
 void VSyncMonitor::AsyncRequestVSync(Callback callback) {
   // take care: do not call AsyncRequestVSync in multiple threads, or add a
   // mutex to protect
@@ -58,8 +61,25 @@ void VSyncMonitor::AsyncRequestVSync(Callback callback) {
   }
 }
 
+GeneratedVSyncCallbackId VSyncMonitor::GenerateSecondaryCallbackId() {
+  static std::atomic<uint64_t> next_id{1};
+  return static_cast<GeneratedVSyncCallbackId>(
+      next_id.fetch_add(1, std::memory_order_relaxed));
+}
+
 void VSyncMonitor::ScheduleVSyncSecondaryCallback(uintptr_t id,
                                                   Callback callback) {
+  ScheduleSecondaryCallback({id, false}, std::move(callback));
+}
+
+void VSyncMonitor::ScheduleVSyncSecondaryCallback(GeneratedVSyncCallbackId id,
+                                                  Callback callback) {
+  ScheduleSecondaryCallback({static_cast<uint64_t>(id), true},
+                            std::move(callback));
+}
+
+void VSyncMonitor::ScheduleSecondaryCallback(SecondaryCallbackId id,
+                                             Callback &&callback) {
   if (!callback) {
     return;
   }
@@ -68,7 +88,7 @@ void VSyncMonitor::ScheduleVSyncSecondaryCallback(uintptr_t id,
 
   // take care: do not call AsyncRequestVSync in multiple threads
   auto &&[iter, inserted] =
-      secondary_callbacks_.emplace(id, std::move(callback));
+      secondary_callbacks_.try_emplace(id, std::move(callback));
   if (!inserted) {
     // the same callback already post, ignore
     return;

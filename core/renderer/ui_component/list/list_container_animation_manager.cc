@@ -83,12 +83,12 @@ void ListContainerAnimationManager::InitializeAnimator() {
   // basic animator requires a shared_ptr.
   auto* manager = list_container_impl_->element_manager();
   auto monitor = manager ? manager->vsync_monitor() : nullptr;
-  // Share the page monitor only for custom VSync. A null monitor preserves
-  // the animator's default platform VSync behavior.
-  auto custom_monitor =
-      monitor && monitor->UsesCustomVSync() ? monitor : nullptr;
+  if (monitor && !monitor->UsesCustomVSync() &&
+      !monitor->RequestsVSyncOnUIThread()) {
+    monitor.reset();
+  }
   animator_ = std::make_shared<animation::basic::LynxBasicAnimator>(
-      std::move(data), std::move(custom_monitor));
+      std::move(data), std::move(monitor));
 }
 
 void ListContainerAnimationManager::InitializeAnimatorEvent() {
