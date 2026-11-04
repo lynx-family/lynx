@@ -8,6 +8,11 @@
 #import <UIKit/UIKit.h>
 
 @class LynxUIContext;
+@class LynxImageManager;
+
+@protocol LynxImageManagerObserver <NSObject>
+- (void)imageManagerDidChangeImage:(LynxImageManager* _Nonnull)manager;
+@end
 
 #if defined(__cplusplus)
 namespace lynx::tasm {
@@ -16,6 +21,12 @@ struct ImagePaintInfo;
 #endif
 
 @interface LynxImageManager : NSObject
+
+// A weak drawing observer does not replace the image service's native animation target.
+@property(nonatomic, weak, nullable) id<LynxImageManagerObserver> drawingObserver;
+- (UIImage* _Nullable)imageForDrawing;
+- (BOOL)imageRequiresNativeView;
+- (void)drawImageInContext:(CGContextRef _Nonnull)context rect:(CGRect)rect;
 
 - (instancetype _Nonnull)initWithContext:(LynxUIContext* _Nullable)context;
 

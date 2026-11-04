@@ -3,16 +3,22 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxContainerView.h>
+#import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxDisplayListApplier+Internal.h>
+#import <Lynx/LynxDisplayListSurfacePainter.h>
 #import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxSCGLayer.h>
+#import <Lynx/LynxSCGSurfaceRenderer.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxUIContext.h>
 #import <Lynx/UIView+Lynx.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
@@ -36,7 +42,35 @@ using namespace lynx::tasm;
 }
 @end
 
+@interface LynxSCGPaintGroup (Testing)
+- (void)drawInContext:(CGContextRef)context bounds:(CGRect)bounds;
+@end
+
 namespace {
+// Exercise the exact commands recorded for SCGLayer in a readable RGBA context.
+// Actual IOSurface submission/readback is tested separately below.
+NSData *DrawSurfaceCommands(CALayer *group, CGFloat scale = 1) {
+  size_t size = 64 * scale;
+  NSMutableData *pixels = [NSMutableData dataWithLength:size * size * 4];
+  CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+  CGContextRef context =
+      CGBitmapContextCreate(pixels.mutableBytes, size, size, 8, size * 4, colorSpace,
+                            kCGBitmapByteOrder32Big | (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
+  CGColorSpaceRelease(colorSpace);
+  CGContextTranslateCTM(context, 0, size);
+  CGContextScaleCTM(context, scale, -scale);
+  [(LynxSCGPaintGroup *)group drawInContext:context bounds:CGRectMake(0, 0, 64, 64)];
+  CGContextRelease(context);
+  return pixels;
+}
+
+uint32_t SurfacePixel(NSData *pixels, NSUInteger x, NSUInteger y, NSUInteger scale = 1) {
+  const uint8_t *data = static_cast<const uint8_t *>(pixels.bytes);
+  size_t index = ((y * scale) * 64 * scale + x * scale) * 4;
+  return (uint32_t(data[index]) << 24) | (uint32_t(data[index + 1]) << 16) |
+         (uint32_t(data[index + 2]) << 8) | data[index + 3];
+}
+
 constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
 
 void AppendBegin(DisplayList &list, int32_t id, int32_t type, float x, float y, float w, float h) {
@@ -299,6 +333,34 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   AppendRecordBox(list, x, 0, width, 20);
   AppendText(list, 1, 0);
   [_applier applyDisplayList:&list];
+}
+
+- (void)testSurfaceTextServiceUsesCurrentPageWithoutExtendingItsLifetime {
+  XCTSkipIf(!LynxSCGLayer.contextAPIAvailable, @"IOSurface CGContext symbols are unavailable");
+  id lynxContext = OCMClassMock(LynxContext.class);
+  OCMStub([lynxContext isTextServiceModeOn]).andReturn(YES);
+  id uiContext = OCMClassMock(LynxUIContext.class);
+  OCMStub([uiContext lynxContext]).andReturn(lynxContext);
+  _context.uiContext = uiContext;
+  _applier = [[LynxDisplayListApplier alloc] initWithView:_host
+                                               andContext:_context
+                                        useSurfaceDrawing:YES];
+  [_context updateTextBundle:1 withBundle:&_page];
+  [self applyTextAtX:6 width:40];
+  CALayer *group = _host.layer.sublayers.firstObject;
+  NSData *pixels = DrawSurfaceCommands(group);
+  XCTAssertEqual(_drawCount, 1);
+  XCTAssertEqual(SurfacePixel(pixels, 8, 10), 0x000000FFu);
+  XCTAssertEqual(SurfacePixel(pixels, 0, 10), 0u);
+  [_context updateTextBundle:1 withBundle:&_replacementPage];
+  XCTAssertTrue([_destroyedPages containsObject:[NSValue valueWithPointer:&_page]]);
+  DrawSurfaceCommands(group);
+  XCTAssertEqual(_drawCount, 2);
+  OCMVerify([_textService drawPage:&_replacementPage OnContext:(CGContextRef)[OCMArg anyPointer]]);
+  [_context updateTextBundle:1 withBundle:nullptr];
+  pixels = DrawSurfaceCommands(group);
+  XCTAssertEqual(_drawCount, 2);
+  XCTAssertEqual(SurfacePixel(pixels, 8, 10), 0u);
 }
 
 - (void)testUnchangedTextReusesBackingButSizeAndBackingLossRedraw {
@@ -1769,6 +1831,334 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertNotEqual(host.subviews.firstObject, first);
   OCMVerify([secondManager setTarget:[OCMArg any]]);
   XCTAssertNil(first.superview);
+}
+
+- (void)testSurfaceCommandsCoalesceAndPreserveGradientBorderAndRoundedPixels {
+  XCTSkipIf(!LynxSCGLayer.contextAPIAvailable, @"IOSurface CGContext symbols are unavailable");
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 64, 64)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil
+                                                               useSurfaceDrawing:YES];
+  DisplayList list;
+  const float radii[] = {8, 8, 8, 8, 8, 8, 8, 8};
+  AppendRecordBox(list, 0, 0, 64, 64, true, radii);
+  AppendRecordBox(list, 4, 4, 56, 56);
+  lynx::base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops{0, 1};
+  list.AddLinearGradient(90, colors, stops, 0, 0, 1, 1);
+  AppendBorder(list, 0, 1);
+  AppendRecordBox(list, 24, 24, 16, 16);
+  AppendFill(list, 0xFF00FF00, 2);
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(host.layer.sublayers.count, 1u);
+  CALayer *group = host.layer.sublayers.firstObject;
+  XCTAssertTrue([group isKindOfClass:LynxSCGPaintGroup.class]);
+  NSData *pixels = DrawSurfaceCommands(group);
+  XCTAssertEqual(SurfacePixel(pixels, 0, 0), 0u);
+  XCTAssertEqual(SurfacePixel(pixels, 32, 1), 0x000000FFu);
+  XCTAssertEqual(SurfacePixel(pixels, 32, 32), 0x00FF00FFu);
+  XCTAssertGreaterThan(SurfacePixel(pixels, 8, 32) >> 24, 200u);
+  XCTAssertGreaterThan((SurfacePixel(pixels, 55, 32) >> 8) & 255, 200u);
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(host.layer.sublayers.firstObject, group);
+  XCTAssertTrue(group.sublayers.firstObject.needsDisplay);
+  [applier reset];
+  XCTAssertEqual(host.layer.sublayers.count, 0u);
+}
+
+- (void)testSurfaceShadowDoesNotDoubleTranslucentAlpha {
+  XCTSkipIf(!LynxSCGLayer.contextAPIAvailable, @"IOSurface CGContext symbols are unavailable");
+  for (BOOL inset : {NO, YES}) {
+    LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 64, 64)];
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                        andContext:nil
+                                                                 useSurfaceDrawing:YES];
+    DisplayList list;
+    if (inset) {
+      AppendRecordBox(list, 24, 24, 16, 16);
+      AppendRecordBox(list, 8, 8, 48, 48);
+    } else {
+      AppendRecordBox(list, 8, 8, 48, 48);
+      AppendRecordBox(list, 16, 16, 32, 32);
+    }
+    AppendBoxShadow(list, 0, 1, inset, 0);
+    [applier applyDisplayList:&list];
+    for (NSUInteger scale : {1u, 2u}) {
+      NSData *pixels = DrawSurfaceCommands(host.layer.sublayers.firstObject, scale);
+      XCTAssertEqualWithAccuracy(SurfacePixel(pixels, 12, 12, scale) & 255, 128, 1);
+      XCTAssertEqual(SurfacePixel(pixels, 32, 32, scale), 0u);
+      XCTAssertEqual(SurfacePixel(pixels, 0, 0, scale), 0u);
+    }
+    // Check the same translucent shadow on the actual IOSurface context too.
+    for (LynxSCGLayer *tile in host.layer.sublayers.firstObject.sublayers) {
+      if (!CGRectContainsPoint(tile.bounds, CGPointMake(12, 12))) continue;
+      NSError *error = nil;
+      XCTAssertTrue([tile renderWithError:&error], @"%@", error);
+      XCTAssertFalse(tile.usingBitmapFallback);
+      LynxSCGSurfaceRenderer *renderer = [tile valueForKey:@"renderer"];
+      NSData *data = [renderer copyPixels];
+      size_t width = ceil(tile.bounds.size.width * tile.contentsScale);
+      size_t x = (12 - tile.bounds.origin.x) * tile.contentsScale;
+      size_t y = (12 - tile.bounds.origin.y) * tile.contentsScale;
+      size_t index = (y * width + x) * 4 + 3;
+      XCTAssertGreaterThan(data.length, index);
+      if (data.length > index) {
+        XCTAssertEqualWithAccuracy(static_cast<const uint8_t *>(data.bytes)[index], 128, 1);
+      }
+    }
+  }
+}
+
+- (void)testSurfaceTilingDoesNotAllocateEmptySpaceAndOversizedListsFallBack {
+  XCTSkipIf(!LynxSCGLayer.contextAPIAvailable, @"IOSurface CGContext symbols are unavailable");
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 64, 64)];
+  host.contentScaleFactor = 1;
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil
+                                                               useSurfaceDrawing:YES];
+  DisplayList sparse;
+  AppendRecordBox(sparse, 0, 0, 8, 8);
+  AppendRecordBox(sparse, 100000, 100000, 8, 8);
+  AppendFill(sparse, 0xFFFFFFFF, 0);
+  AppendFill(sparse, 0xFFFFFFFF, 1);
+  [applier applyDisplayList:&sparse];
+  CALayer *group = host.layer.sublayers.firstObject;
+  XCTAssertEqual(group.sublayers.count, 2u);
+  for (CALayer *tile in group.sublayers) {
+    XCTAssertEqual(tile.bounds.size.width, 8);
+    XCTAssertEqual(tile.bounds.size.height, 8);
+    XCTAssertTrue(CGPointEqualToPoint(tile.position, tile.bounds.origin));
+  }
+  DisplayList oversized;
+  AppendRecordBox(oversized, 0, 0, 20000, 20000);
+  AppendFill(oversized, 0xFFFFFFFF, 0);
+  [applier applyDisplayList:&oversized];
+  XCTAssertFalse([host.layer.sublayers.firstObject isKindOfClass:LynxSCGPaintGroup.class]);
+  XCTAssertEqual(host.layer.sublayers.firstObject.bounds.size.width, 20000);
+  [applier applyDisplayList:&sparse];
+  XCTAssertTrue([host.layer.sublayers.firstObject isKindOfClass:LynxSCGPaintGroup.class]);
+}
+
+- (void)testSurfaceImageAnimationTransitionsPreserveNativeChildOrder {
+  XCTSkipIf(!LynxSCGLayer.contextAPIAvailable, @"IOSurface CGContext symbols are unavailable");
+  LynxContainerView *host = [[LynxContainerView alloc] initWithFrame:CGRectMake(0, 0, 64, 64)];
+  UIView *child = [UIView new];
+  child.lynxSign = @9;
+  [host addSubview:child];
+  LynxImageManager *manager = [[LynxImageManager alloc] initWithContext:nil];
+  id partial = OCMPartialMock(manager);
+  __block BOOL animated = NO;
+  OCMStub([partial imageRequiresNativeView]).andDo(^(NSInvocation *invocation) {
+    [invocation setReturnValue:&animated];
+  });
+  id context = OCMClassMock(LynxRendererContext.class);
+  OCMStub([context imageManagerForID:1]).andReturn(manager);
+  host.renderer = [host createRendererWithSign:1 andContext:context];
+  DisplayList list;
+  AppendRecordBox(list, 0, 0, 32, 32);
+  AppendFill(list, 0xFFFF0000, 0);
+  AppendImage(list, 1, 0);
+  AppendDrawView(list, 9);
+  AppendFill(list, 0xFF0000FF, 0);
+  [host.renderer updateDisplayList:&list];
+  XCTAssertEqual(host.layer.sublayers.count, 3u);
+  XCTAssertEqual(host.layer.sublayers[1], child.layer);
+  XCTAssertEqualObjects(host.subviews, (@[ child ]));
+  XCTAssertNotNil(manager.drawingObserver);
+  for (BOOL next : {YES, NO}) {
+    animated = next;
+    [manager.drawingObserver imageManagerDidChangeImage:manager];
+    XCTestExpectation *updated = [self expectationWithDescription:@"Image invalidation applied"];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [updated fulfill];
+    });
+    [self waitForExpectations:@[ updated ] timeout:2];
+    XCTAssertEqual(host.layer.sublayers.count, animated ? 4u : 3u);
+    XCTAssertEqual(host.layer.sublayers[animated ? 2 : 1], child.layer);
+    if (animated)
+      XCTAssertTrue([host.subviews.firstObject isKindOfClass:UIImageView.class]);
+    else
+      XCTAssertEqualObjects(host.subviews, (@[ child ]));
+  }
+  DisplayList empty;
+  [host.renderer updateDisplayList:&empty];
+  XCTAssertNil(manager.drawingObserver);
+  XCTAssertEqualObjects(host.layer.sublayers, (@[ child.layer ]));
+  [partial stopMocking];
+}
+
+- (void)testSurfaceTextRedrawsAfterResourceChangeAndBackingLoss {
+  XCTSkipIf(!LynxSCGLayer.contextAPIAvailable, @"IOSurface CGContext symbols are unavailable");
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 64, 64)];
+  __block LynxCountingTextRenderer *text = [LynxCountingTextRenderer new];
+  id textManager = OCMClassMock(LynxTextRenderManager.class);
+  OCMStub([textManager takeTextRender:1]).andDo(^(NSInvocation *invocation) {
+    [invocation setReturnValue:&text];
+  });
+  id context = OCMClassMock(LynxRendererContext.class);
+  OCMStub([context textRenderManager]).andReturn(textManager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context
+                                                               useSurfaceDrawing:YES];
+  DisplayList list;
+  AppendRecordBox(list, 8, 12, 40, 20);
+  AppendText(list, 1, 0);
+  [applier applyDisplayList:&list];
+  DrawSurfaceCommands(host.layer.sublayers.firstObject);
+  XCTAssertEqual(text.drawCount, 1);
+  text = [LynxCountingTextRenderer new];
+  [applier applyDisplayList:&list];
+  DrawSurfaceCommands(host.layer.sublayers.firstObject);
+  XCTAssertEqual(text.drawCount, 1);
+  LynxSCGLayer *tile = (LynxSCGLayer *)host.layer.sublayers.firstObject.sublayers.firstObject;
+  tile.contents = nil;
+  [applier applyDisplayList:&list];
+  XCTAssertTrue(tile.needsDisplay);
+  [applier reset];
+  XCTAssertEqual(host.layer.sublayers.count, 0u);
+}
+
+- (void)testSCGLayerSubmitsReadablePixelsAndReusesBoundedSurfaces {
+  XCTSkipIf(!LynxSCGLayer.contextAPIAvailable, @"IOSurface CGContext symbols are unavailable");
+  LynxSCGLayer *layer = [LynxSCGLayer layer];
+  layer.bounds = CGRectMake(10, 20, 16, 16);
+  layer.contentsScale = 2;
+  layer.drawingBlock = ^(CGContextRef context, CGRect bounds) {
+    CGContextSetRGBFillColor(context, 1, 0, 0, 1);
+    CGContextFillRect(context, bounds);
+  };
+  NSError *error = nil;
+  XCTAssertTrue([layer renderWithError:&error], @"%@", error);
+  XCTAssertFalse(layer.usingBitmapFallback);
+  XCTAssertFalse(layer.needsDisplay);
+  LynxSCGSurfaceRenderer *renderer = [layer valueForKey:@"renderer"];
+  NSData *pixels = [renderer copyPixels];
+  XCTAssertEqual(pixels.length, 32u * 32u * 4u);
+  if (pixels.length >= 4) {
+    const uint8_t *bytes = static_cast<const uint8_t *>(pixels.bytes);
+    XCTAssertEqual(bytes[0], 0);
+    XCTAssertEqual(bytes[1], 0);
+    XCTAssertEqual(bytes[2], 255);
+    XCTAssertEqual(bytes[3], 255);
+  }
+  for (NSUInteger i = 0; i < 5; ++i) {
+    id previousContents = layer.contents;
+    if (![layer renderWithError:&error]) {
+      // Bursty submissions may outrun the consumer even on a simulator.
+      XCTAssertEqual(error.code, LynxSCGLayerErrorRenderingFailed);
+      XCTAssertEqual(layer.contents, previousContents);
+    }
+  }
+  XCTAssertLessThanOrEqual(layer.surfaceCount, 3u);
+  XCTAssertEqual(layer.renderedFrameCount + layer.droppedFrameCount, 6u);
+  XCTAssertFalse(layer.usingBitmapFallback);
+  XCTAssertEqual(layer.animationKeys.count, 0u);
+  layer.bounds = CGRectMake(0, 0, 8, 8);
+  XCTAssertTrue([layer renderWithError:&error]);
+  XCTAssertEqual(layer.surfaceCount, 1u);
+  layer.contents = nil;
+  XCTAssertTrue([layer renderWithError:&error]);
+  XCTAssertNotNil(layer.contents);
+}
+
+- (void)testSCGLayerConstructorFailureUsesBitmapAndBusyBuffersRetry {
+  for (BOOL busy : {NO, YES}) {
+    LynxSCGLayer *layer = [LynxSCGLayer layer];
+    layer.bounds = CGRectMake(0, 0, 16, 16);
+    layer.contentsScale = 1;
+    layer.drawingBlock = ^(CGContextRef context, CGRect bounds) {
+      CGContextSetRGBFillColor(context, 0, 1, 0, 1);
+      CGContextFillRect(context, bounds);
+    };
+    id renderer = OCMClassMock(LynxSCGSurfaceRenderer.class);
+    OCMStub([renderer contextAPIAvailable]).andReturn(YES);
+    OCMStub([(LynxSCGSurfaceRenderer *)renderer status])
+        .andReturn(@"Simulated unavailable presentation buffer");
+    __block NSUInteger drops = 0;
+    OCMStub([renderer droppedFrames]).andDo(^(NSInvocation *invocation) {
+      [invocation setReturnValue:&drops];
+    });
+    OCMStub([renderer renderSize:CGSizeMake(16, 16) scale:1 toLayer:layer draw:[OCMArg any]])
+        .andDo(^(NSInvocation *invocation) {
+          if (busy) ++drops;
+          BOOL rendered = NO;
+          [invocation setReturnValue:&rendered];
+        });
+    [layer setValue:renderer forKey:@"renderer"];
+    NSError *error = nil;
+    XCTAssertEqual([layer renderWithError:&error], !busy);
+    XCTAssertEqual(layer.usingBitmapFallback, !busy);
+    if (busy) {
+      XCTAssertNotNil(error);
+      id layerMock = OCMPartialMock(layer);
+      OCMExpect([layerMock setNeedsDisplay]).andForwardToRealObject();
+      XCTestExpectation *retry = [self expectationWithDescription:@"Busy surface retried"];
+      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 20), dispatch_get_main_queue(),
+                     ^{
+                       [retry fulfill];
+                     });
+      [self waitForExpectations:@[ retry ] timeout:2];
+      XCTAssertTrue(layer.needsDisplay);
+      OCMVerifyAll(layerMock);
+      [layerMock stopMocking];
+    } else {
+      XCTAssertNil(error);
+      XCTAssertNotNil(layer.contents);
+      XCTAssertEqual(CFGetTypeID((__bridge CFTypeRef)layer.contents), CGImageGetTypeID());
+    }
+    [renderer stopMocking];
+  }
+}
+
+- (void)testSurfaceRadialGradientAndRepeatingStaticImagePixels {
+  XCTSkipIf(!LynxSCGLayer.contextAPIAvailable, @"IOSurface CGContext symbols are unavailable");
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 64, 64)];
+  host.contentScaleFactor = 1;
+  UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+  format.scale = 1;
+  UIGraphicsImageRenderer *bitmap = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(4, 4)
+                                                                           format:format];
+  UIImage *pattern = [bitmap imageWithActions:^(UIGraphicsImageRendererContext *context) {
+    [UIColor.redColor setFill];
+    UIRectFill(CGRectMake(0, 0, 2, 4));
+    [UIColor.blueColor setFill];
+    UIRectFill(CGRectMake(2, 0, 2, 4));
+  }];
+  id manager = OCMClassMock(LynxImageManager.class);
+  OCMStub([manager imageForDrawing]).andReturn(pattern);
+  id context = OCMClassMock(LynxRendererContext.class);
+  OCMStub([context imageManagerForID:1]).andReturn(manager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context
+                                                               useSurfaceDrawing:YES];
+  DisplayList list;
+  AppendRecordBox(list, 0, 0, 64, 64);
+  lynx::base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
+  lynx::base::Vector<float> stops{0, 1};
+  list.AddRadialGradient(32, 32, 20, 10, colors, stops, 0, 0, 1, 1);
+  [applier applyDisplayList:&list];
+  NSData *pixels = DrawSurfaceCommands(host.layer.sublayers.firstObject);
+  XCTAssertGreaterThan(SurfacePixel(pixels, 32, 32) >> 24, 220u);
+  XCTAssertEqual(SurfacePixel(pixels, 32, 50), 0x0000FFFFu);
+
+  DisplayList image;
+  AppendRecordBox(image, 0, 0, 64, 64);
+  AppendRecordBox(image, -1, -1, 4, 4);
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kBackgroundImage;
+  item.payload.background_image.image_id = 1;
+  item.payload.background_image.clip_index = 0;
+  item.payload.background_image.tiling_index = 1;
+  item.payload.background_image.repeat_x = LynxBackgroundRepeatRepeat;
+  item.payload.background_image.repeat_y = LynxBackgroundRepeatRepeat;
+  image.AppendItem(item);
+  [applier applyDisplayList:&image];
+  XCTAssertEqual(host.subviews.count, 0u);
+  pixels = DrawSurfaceCommands(host.layer.sublayers.firstObject);
+  XCTAssertEqual(SurfacePixel(pixels, 0, 10), 0xFF0000FFu);
+  XCTAssertEqual(SurfacePixel(pixels, 1, 10), 0x0000FFFFu);
+  XCTAssertEqual(SurfacePixel(pixels, 4, 10), 0xFF0000FFu);
+  XCTAssertEqual(SurfacePixel(pixels, 5, 10), 0x0000FFFFu);
 }
 
 @end

@@ -243,6 +243,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   dispatch_block_t refresh = ^{
     self->_imageView.contentMode = self->_contentMode;
     self->_imageView.tintColor = self->_tintColor;
+    [self.drawingObserver imageManagerDidChangeImage:self];
     if (!reloadSource &&
         (changes & (ImagePaintInfo::kTintColorChanged | ImagePaintInfo::kAutoplayChanged |
                     ImagePaintInfo::kLoopCountChanged))) {
@@ -308,6 +309,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     if (type == LynxImageRequestSrc || self->_images[@(LynxImageRequestSrc)] == nil) {
       [self->_imageView stopAnimating];
       [self applyCachedImage];
+      [self.drawingObserver imageManagerDidChangeImage:self];
     }
   };
   RunOnMainThread(clearPrevious);
@@ -429,6 +431,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
         return;
       }
 
+      [self.drawingObserver imageManagerDidChangeImage:self];
       if (self->_imageView != nil || self->_imageLayer != nil) {
         [self applyImage:image withType:type];
       }
@@ -630,6 +633,50 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
   }
 }
 
+- (UIImage*)imageForDrawing {
+  return _images[@(LynxImageRequestSrc)] ?: _images[@(LynxImageRequestPlaceholder)];
+}
+
+- (BOOL)imageRequiresNativeView {
+  UIImage* image = [self imageForDrawing];
+  return image != nil &&
+         (image.images.count > 1 || [[LynxImageLoader imageService] isAnimatedImage:image]);
+}
+
+- (void)drawImageInContext:(CGContextRef)context rect:(CGRect)rect {
+  UIImage* image = [self imageForDrawing];
+  CGSize size = image.size;
+  if (image == nil || size.width <= 0 || size.height <= 0 || CGRectIsEmpty(rect)) return;
+  CGRect destination = rect;
+  if (_contentMode == UIViewContentModeScaleAspectFit ||
+      _contentMode == UIViewContentModeScaleAspectFill) {
+    CGFloat xScale = rect.size.width / size.width;
+    CGFloat yScale = rect.size.height / size.height;
+    CGFloat scale =
+        _contentMode == UIViewContentModeScaleAspectFit ? MIN(xScale, yScale) : MAX(xScale, yScale);
+    destination.size = CGSizeMake(size.width * scale, size.height * scale);
+  } else if (_contentMode == UIViewContentModeCenter) {
+    destination.size = size;
+  }
+  destination.origin = CGPointMake(CGRectGetMidX(rect) - destination.size.width * 0.5,
+                                   CGRectGetMidY(rect) - destination.size.height * 0.5);
+  CGContextSaveGState(context);
+  CGContextClipToRect(context, rect);
+  UIGraphicsPushContext(context);
+  if (_tintColor != nil && _loopCount == 0) {
+    CGContextBeginTransparencyLayer(context, nullptr);
+    [image drawInRect:destination];
+    CGContextSetBlendMode(context, kCGBlendModeSourceIn);
+    CGContextSetFillColorWithColor(context, _tintColor.CGColor);
+    CGContextFillRect(context, destination);
+    CGContextEndTransparencyLayer(context);
+  } else {
+    [image drawInRect:destination];
+  }
+  UIGraphicsPopContext();
+  CGContextRestoreGState(context);
+}
+
 - (BOOL)invokeUIMethod:(NSString*)method
                 params:(NSDictionary*)params
               callback:(LynxUIMethodCallbackBlock)callback {
@@ -675,6 +722,7 @@ bool ShouldUpdateAutoSizeLayout(CGSize image_size, CGSize layout_size) {
     self->_imageLayer = nil;
     self->_imageSizeDidChange = nil;
     self->_imageView = nil;
+    self.drawingObserver = nil;
     for (dispatch_block_t cancel in cancelBlocks) {
       cancel();
     }

@@ -15,7 +15,9 @@
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/UIView+Lynx.h>
 #import "LynxDisplayListApplier+Internal.h"
+#import "LynxDisplayListSurfacePainter.h"
 #import "LynxTextraLayer.h"
+#import "scglayer/LynxSCGLayer.h"
 
 #include <stack>
 #include "base/include/vector.h"
@@ -88,6 +90,8 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
 @interface LynxDisplayListApplier ()
 
+- (void)clearDrawingLayers;
+- (void)invalidateSurfaceImages;
 - (void)insertHostDecorationLayer:(CALayer *)layer;
 - (void)insertLayer:(CALayer *)layer forOp:(DisplayListOpType)op;
 - (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op;
@@ -147,10 +151,18 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   // Keep only the current list and the previous list while applying an update.
   NSMapTable<id, id> *_reusableContent;
   NSMapTable<id, id> *_previousContent;
+  LynxDisplayListSurfacePainter *_surfacePainter;
+  NSUInteger _surfaceInvalidationToken;
 }
 
 - (instancetype)initWithView:(UIView<LynxRendererHost> *)view
                   andContext:(LynxRendererContext *)context {
+  return [self initWithView:view andContext:context useSurfaceDrawing:NO];
+}
+
+- (instancetype)initWithView:(UIView<LynxRendererHost> *)view
+                  andContext:(LynxRendererContext *)context
+           useSurfaceDrawing:(BOOL)useSurfaceDrawing {
   self = [super init];
   if (self) {
     _view = view;
@@ -166,6 +178,20 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     _contentImageViews = [NSMutableArray new];
     _contentLayers = [NSMutableArray new];
     _hostDecorationLayers = [NSMutableArray new];
+    if (useSurfaceDrawing && LynxSCGLayer.contextAPIAvailable) {
+      __weak LynxDisplayListApplier *weakSelf = self;
+      _surfacePainter = [[LynxDisplayListSurfacePainter alloc] initWithContext:context
+          insertLayer:^(CALayer *layer, BOOL decoration) {
+            if (decoration) {
+              [weakSelf insertHostDecorationLayer:layer];
+            } else {
+              [weakSelf insertLayer:layer];
+            }
+          }
+          invalidate:^{
+            [weakSelf invalidateSurfaceImages];
+          }];
+    }
   }
   return self;
 }
@@ -187,6 +213,13 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   while (reader_.HasNext()) {
     const auto &item = reader_.Next();
     auto op = item.type;
+    if ([_surfacePainter paintItem:item
+                            reader:reader_
+                             boxes:box_array_
+                            offset:CGPointMake(left_offset_, top_offset_)
+                    hostDecoration:[self shouldInsertAsHostDecorationForOp:op]]) {
+      continue;
+    }
     switch (op) {
       case DisplayListOpType::kBegin: {
         // The first Begin describes the host renderer's frame, which is
@@ -233,6 +266,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
       }
       case DisplayListOpType::kDrawView: {
+        [_surfacePainter endGroup];
         auto view_id = item.payload.draw_view.view_id;
         auto offset_x = item.payload.draw_view.offset_x;
         auto offset_y = item.payload.draw_view.offset_y;
@@ -749,12 +783,22 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   }
 
   NSMapTable *previousContent = _reusableContent;
-  [self reset];
+  ++_surfaceInvalidationToken;
+  [self clearDrawingLayers];
   _previousContent = previousContent;
+  [_surfacePainter beginFrameWithBounds:_view.bounds
+                                  scale:_view.window.screen.scale ?: _view.contentScaleFactor];
 
   reader_ = DisplayListReader(*list);
 
   [self processContentOperations];
+  if (_surfacePainter != nil && ![_surfacePainter endFrame]) {
+    LynxDisplayListSurfacePainter *painter = _surfacePainter;
+    [painter reset];
+    _surfacePainter = nil;
+    [self applyDisplayList:list];
+    _surfacePainter = painter;
+  }
   _previousContent = nil;
   [_view setNeedsDisplay];
 }
@@ -770,6 +814,30 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (void)reset {
+  ++_surfaceInvalidationToken;
+  [_surfacePainter reset];
+  [self clearDrawingLayers];
+}
+
+- (void)invalidateSurfaceImages {
+  [_surfacePainter invalidateImages];
+  NSUInteger token = ++_surfaceInvalidationToken;
+  __weak LynxDisplayListApplier *weakSelf = self;
+  // Image completion can occur while targets are being installed. Rebuild on
+  // the next main-queue turn so animated/static transitions preserve paint order.
+  dispatch_async(dispatch_get_main_queue(), ^{
+    LynxDisplayListApplier *self = weakSelf;
+    if (self == nil || self->_surfaceInvalidationToken != token) return;
+    LynxRenderer *renderer = self->_view.renderer;
+    lynx::tasm::DisplayList *list = [renderer getDisplayList];
+    if (list != nullptr) {
+      [self applyDisplayList:list];
+      [self syncHostDecorationLayers];
+    }
+  });
+}
+
+- (void)clearDrawingLayers {
   _reusableContent = nil;
   _previousContent = nil;
   reader_ = DisplayListReader();
@@ -847,7 +915,8 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     layer.transform = CATransform3DIdentity;
     layer.anchorPoint = hostLayer.anchorPoint;
     // Background and shadow children use viewport coordinates, independent of the scroll offset.
-    BOOL usesViewportCoordinates = [layer isKindOfClass:[LynxHostDrawingContainerLayer class]];
+    BOOL usesViewportCoordinates = [layer isKindOfClass:[LynxHostDrawingContainerLayer class]] ||
+                                   [layer isKindOfClass:[LynxSCGPaintGroup class]];
     layer.bounds =
         usesViewportCoordinates ? (CGRect){CGPointZero, hostLayer.bounds.size} : hostLayer.bounds;
     layer.position = hostLayer.position;
