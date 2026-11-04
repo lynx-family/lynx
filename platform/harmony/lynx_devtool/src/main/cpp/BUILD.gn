@@ -8,6 +8,8 @@ import("../../../../../../devtool/lynx_devtool/devtool.gni")
 
 devtool_source_set("cpp") {
   sources = [
+    "cdp_event_listener_sender_harmony.cc",
+    "cdp_event_listener_sender_harmony.h",
     "debug_bridge_harmony.cc",
     "debug_bridge_harmony.h",
     "debug_router_wrapper.cc",
@@ -31,6 +33,8 @@ devtool_source_set("cpp") {
     "inspector_owner_embedder_harmony.h",
     "inspector_owner_harmony.cc",
     "inspector_owner_harmony.h",
+    "invoke_cdp_from_sdk_sender_harmony.cc",
+    "invoke_cdp_from_sdk_sender_harmony.h",
     "message_handler_harmony.cc",
     "message_handler_harmony.h",
   ]
