@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <optional>
 #include <unordered_set>
 #include <utility>
@@ -36,7 +37,9 @@ enum class Action { kInvalid, kProceed, kMock };
 // Creation notifications are available in every domain. Decisions stay on
 // the domain owning the intercepted operation.
 bool Accepts(Interceptor::Domain domain, Kind kind) {
-  if (kind == Kind::kCreated) return true;
+  if (kind == Kind::kCreated || kind == Kind::kResourceFetch ||
+      kind == Kind::kResourceComplete)
+    return true;
   switch (domain) {
     case Interceptor::Domain::kUI:
       return kind == Kind::kLoadTemplate || kind == Kind::kUpdateMetaData;
@@ -163,6 +166,8 @@ bool IsData(const Value& value) { return value.IsNil() || value.IsTable(); }
 bool ValidPatchField(Kind kind, const std::string& key, const Value& value,
                      const Value& original) {
   switch (kind) {
+    case Kind::kResourceFetch:
+      return key == "url" && value.IsString() && !value.StdString().empty();
     case Kind::kLoadTemplate:
       if (key == "url") return value.IsString() && !value.StdString().empty();
       if (key == "initialData" || key == "globalProps") return IsData(value);
@@ -238,6 +243,19 @@ bool ValidMock(const Value& mock, const Value& event) {
   return true;
 }
 
+bool ValidResourceMock(const Value& mock) {
+  if (!mock.IsTable() || mock.GetLength() != 1) return false;
+  if (mock.Contains(kBytes)) return mock.GetProperty(kBytes).IsByteArray();
+  const auto& error = mock.GetProperty("error");
+  if (!error.IsTable() || error.GetLength() != 2) return false;
+  const auto& code = error.GetProperty("code");
+  return code.IsNumber() && code.Number() != 0 &&
+         std::floor(code.Number()) == code.Number() &&
+         code.Number() >= std::numeric_limits<int32_t>::min() &&
+         code.Number() <= std::numeric_limits<int32_t>::max() &&
+         error.GetProperty("message").IsString();
+}
+
 Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
                     Value* payload) {
   std::vector<Napi::Value> parents;
@@ -248,7 +266,8 @@ Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
   *payload = decision->GetProperty(kPayload);
   auto name = action.StdString();
   if (name == "mock") {
-    return kind == Kind::kCall && ValidMock(*payload, original)
+    return ((kind == Kind::kCall && ValidMock(*payload, original)) ||
+            (kind == Kind::kResourceFetch && ValidResourceMock(*payload)))
                ? Action::kMock
                : Action::kInvalid;
   }
@@ -389,7 +408,8 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   if (!active_ || !IsAttached()) return result;
   if (!HasHandlers(kind)) return result;
   // Notifications ignore return values, so nested delivery is safe.
-  const bool decision = kind != Kind::kCreated;
+  const bool decision =
+      kind != Kind::kCreated && kind != Kind::kResourceComplete;
   if (dispatching_ && decision) {
     ReportCoverageGap(kind, "Reentrant interceptor dispatch is not supported");
     result.failed = true;

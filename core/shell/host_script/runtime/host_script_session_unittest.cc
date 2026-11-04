@@ -11,10 +11,12 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/message_loop.h"
 #include "base/include/fml/task_runner.h"
 #include "base/include/value/array.h"
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
+#include "core/public/lynx_resource_loader.h"
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
@@ -1109,6 +1111,178 @@ TEST_F(HostScriptSessionTest, RejectsInvalidArgumentsBeforePlatformDispatch) {
             "ARGUMENT,INVALID_ARGUMENT,INVALID_ARGUMENT,INVALID_ARGUMENT,"
             "INVALID_ARGUMENT,INVALID_ARGUMENT");
   EXPECT_TRUE(state_->calls.empty());
+}
+
+TEST_F(HostScriptInterceptorTest, ResourceDomains) {
+  for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS,
+                      Interceptor::Domain::kMTS}) {
+    Install(domain);
+    Script(R"(
+      interceptor.on('resource.fetch',(e,c)=>c.proceed());
+      interceptor.on('resource.complete',()=>{});
+    )");
+    provider_->Uninstall();
+    provider_.reset();
+  }
+}
+
+class InterceptedResourceLoader final : public pub::LynxResourceLoader {
+ public:
+  int fetches = 0;
+  std::string fetched_url;
+  base::MoveOnlyClosure<void, pub::LynxResourceResponse&> pending;
+
+  void LoadResourceInternal(
+      const pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
+      override {
+    ++fetches;
+    fetched_url = request.url;
+    pending = std::move(callback);
+  }
+};
+
+TEST_F(HostScriptInterceptorTest, ResourceRedirectMockAndFailOpen) {
+  Install(Interceptor::Domain::kBTS);
+  Interceptor::RegisterView(42);
+  InterceptedResourceLoader loader;
+  pub::LynxResourceRequest request{"original",
+                                   pub::LynxResourceType::kExternalJs};
+  request.view_id = 42;
+  request.execution_domain = Interceptor::Domain::kBTS;
+  Script(R"(
+    globalThis.rule = interceptor.on('resource.fetch', (e,c) => {
+      if (e.viewId !== '42' || e.domain !== 'bts' || e.type !== 9) throw Error('identity');
+      return c.proceed({url:'redirected'});
+    });
+  )");
+  int deliveries = 0;
+  loader.LoadResource(request, [&](auto&) { ++deliveries; });
+  EXPECT_EQ(loader.fetches, 1);
+  EXPECT_EQ(loader.fetched_url, "redirected");
+  EXPECT_EQ(request.url, "original");
+  pub::LynxResourceResponse response{};
+  loader.pending(response);
+  EXPECT_EQ(deliveries, 1);
+  Script(R"(
+    rule.dispose();
+    globalThis.bytes = new Uint8Array([0,255,128]).buffer;
+    globalThis.rule = interceptor.on('resource.fetch', (e,c) => c.mock({bytes}));
+  )");
+  loader.LoadResource(request, [&](auto& result) {
+    ++deliveries;
+    EXPECT_TRUE(result.Success());
+    EXPECT_EQ(result.data, (std::vector<uint8_t>{0, 255, 128}));
+  });
+  EXPECT_EQ(loader.fetches, 1);
+  EXPECT_EQ(deliveries, 2);
+  Script(R"(
+    rule.dispose();
+    globalThis.rule = interceptor.on('resource.fetch', (e,c) =>
+      c.mock({error:{code:-7,message:'unavailable'}}));
+  )");
+  loader.LoadResource(request, [&](auto& result) {
+    ++deliveries;
+    EXPECT_EQ(result.err_code, -7);
+    EXPECT_EQ(result.err_msg, "unavailable");
+  });
+  EXPECT_EQ(loader.fetches, 1);
+  for (const char* decision :
+       {"c.mock({})", "c.mock({bytes:new Uint8Array(2)})",
+        "c.mock({bytes:new ArrayBuffer(0),error:{code:-1,message:''}})",
+        "c.mock({error:{code:0,message:''}})",
+        "c.mock({error:{code:1.5,message:''}})",
+        "c.proceed({url:'changed',type:1})", "c.drop()",
+        "Promise.resolve(c.mock({bytes:new ArrayBuffer(1)}))"}) {
+    Script((std::string(
+                "rule.dispose(); "
+                "globalThis.rule=interceptor.on('resource.fetch',(e,c)=>") +
+            decision + ");")
+               .c_str());
+    loader.LoadResource(request, [](auto&) {});
+    EXPECT_EQ(loader.fetched_url, "original") << decision;
+  }
+  Interceptor::DestroyView(42);
+}
+
+TEST_F(HostScriptInterceptorTest, ResourceUsesExplicitDomainAndLivePage) {
+  Install(Interceptor::Domain::kBTS);
+  Interceptor::RegisterView(42);
+  Script(
+      "interceptor.on('resource.fetch',(e,c)=>c.mock({bytes:new "
+      "ArrayBuffer(0)}))");
+  InterceptedResourceLoader loader;
+  pub::LynxResourceRequest request{"original",
+                                   pub::LynxResourceType::kLazyBundle};
+  request.view_id = 42;
+  request.execution_domain = Interceptor::Domain::kMTS;
+  loader.LoadResource(request, [](auto&) {});
+  EXPECT_EQ(loader.fetches, 1);
+  request.execution_domain = Interceptor::Domain::kBTS;
+  int deliveries = 0;
+  loader.LoadResource(request, [&](auto& result) {
+    ++deliveries;
+    EXPECT_TRUE(result.data.empty());
+  });
+  EXPECT_EQ(deliveries, 1);
+  EXPECT_EQ(loader.fetches, 1);
+  request.view_id = 43;
+  loader.LoadResource(request, [](auto&) {});
+  EXPECT_EQ(loader.fetches, 2);
+  Interceptor::DestroyView(42);
+  request.view_id = 42;
+  loader.LoadResource(request, [](auto&) {});
+  EXPECT_EQ(loader.fetches, 3);
+}
+
+TEST_F(HostScriptInterceptorTest,
+       ResourceCompletionKeepsConsumerThreadAndExpires) {
+  auto& loop = fml::MessageLoop::EnsureInitializedForCurrentThread();
+  Install(Interceptor::Domain::kBTS);
+  Interceptor::RegisterView(42);
+  Script(R"(
+    globalThis.completed = [];
+    interceptor.on('resource.complete', e => completed.push(e));
+  )");
+  InterceptedResourceLoader loader;
+  pub::LynxResourceRequest request{"original",
+                                   pub::LynxResourceType::kExternalJs};
+  request.view_id = 42;
+  request.execution_domain = Interceptor::Domain::kBTS;
+  const auto owner = std::this_thread::get_id();
+  int delivered = 0;
+  loader.LoadResource(request, [&](auto& response) {
+    EXPECT_NE(std::this_thread::get_id(), owner);
+    ++delivered;
+    response.data.clear();
+  });
+  std::thread worker([&]() {
+    pub::LynxResourceResponse response{};
+    response.data = {1, 2, 3};
+    loader.pending(response);
+    loader.pending(response);
+  });
+  worker.join();
+  EXPECT_EQ(delivered, 1);
+  EXPECT_EQ(EvalString("completed.length"), "0");
+  loop.RunExpiredTasksNow();
+  EXPECT_EQ(EvalString("completed.length"), "1");
+  EXPECT_EQ(EvalString("completed[0].size"), "3");
+  EXPECT_EQ(EvalString("completed[0].mocked"), "false");
+  loader.LoadResource(request, [](auto&) {});
+  pub::LynxResourceResponse response{};
+  loader.pending(response);
+  provider_->Uninstall();
+  provider_.reset();
+  Install(Interceptor::Domain::kBTS);
+  Script("interceptor.on('resource.complete', e => completed.push(e))");
+  loop.RunExpiredTasksNow();
+  EXPECT_EQ(EvalString("completed.length"), "1");
+  loader.LoadResource(request, [](auto&) {});
+  loader.pending(response);
+  Interceptor::DestroyView(42);
+  loop.RunExpiredTasksNow();
+  EXPECT_EQ(EvalString("completed.length"), "1");
 }
 
 }  // namespace

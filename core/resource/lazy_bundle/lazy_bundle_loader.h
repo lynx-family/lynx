@@ -143,6 +143,8 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
       : engine_actor_(nullptr), resource_loader_(resource_loader) {}
 
   virtual ~LazyBundleLoader() = default;
+
+  void SetViewId(int32_t view_id) { view_id_ = view_id; }
   inline void SetEngineActor(
       std::shared_ptr<shell::LynxActor<shell::LynxEngine>> actor) {
     engine_actor_ = std::move(actor);
@@ -181,7 +183,9 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
    * Load bundle for frame, preload and js fetching, will call DidFetchBundle.
    * TODO(zhoupeng.z): Merge with other apis about fetching bundle.
    */
-  void FetchBundle(lazy_bundle::LynxLazyBundleRequest request);
+  void FetchBundle(
+      lazy_bundle::LynxLazyBundleRequest request,
+      shell::HostScriptDomain domain = shell::HostScriptDomain::kMTS);
 
   /**
    * Callback of FetchBundle, will do predecode
@@ -228,6 +232,7 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
   std::shared_ptr<shell::LynxActor<tasm::performance::PerformanceController>>
       perf_controller_actor_;
+  int32_t view_id_ = -1;
   std::shared_ptr<pub::LynxResourceLoader> resource_loader_ = nullptr;
   std::set<std::string> requiring_urls_{};
   UrlToLifecycleOptionMap url_to_lifecycle_option_map_{};

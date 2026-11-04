@@ -10,6 +10,18 @@ lynx_core_source_set("host_script_domain") {
   sources = [ "host_script_domain.h" ]
 }
 
+# Thread-affine interception contract, independent of any JavaScript engine.
+lynx_core_source_set("interceptor") {
+  sources = [
+    "interceptor.cc",
+    "interceptor.h",
+  ]
+  public_deps = [
+    ":host_script_domain",
+    "../../../../base/src:base_values",
+  ]
+}
+
 lynx_core_source_set("host_script") {
   sources = [
     "../lynx_view/lynx_view_ref_proxy.h",
@@ -24,12 +36,11 @@ lynx_core_source_set("host_script") {
     "host_script_module.h",
     "host_script_session.cc",
     "host_script_session.h",
-    "interceptor.cc",
-    "interceptor.h",
   ]
 
   public_deps = [
     ":host_script_domain",
+    ":interceptor",
     "../../../../base/src:base_values",
   ]
   deps = [
@@ -107,8 +118,10 @@ if (enable_unittests) {
   }
   host_script_test_deps = [
     ":host_script",
+    "../../../../base/src:base_group",
     "../../../../third_party/napi:quickjs",
     "../../../../third_party/quickjs",
+    "../../../resource:resource_loader",
     "../../../runtime/common/napi:napi_binding_quickjs",
     "//third_party/googletest:gtest",
   ]

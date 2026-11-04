@@ -45,6 +45,8 @@ class ExternalResourceLoader
   ExternalResourceLoader() = default;
   virtual ~ExternalResourceLoader() = default;
 
+  void SetViewId(int32_t view_id) { view_id_ = view_id; }
+
   ExternalResourceLoader(
       const std::shared_ptr<pub::LynxResourceLoader>& resource_loader)
       : resource_loader_(resource_loader) {}
@@ -86,6 +88,7 @@ class ExternalResourceLoader
   void ReportResourceError(int error_code, const std::string& message,
                            const std::string& url);
 
+  int32_t view_id_ = -1;
   std::shared_ptr<pub::LynxResourceLoader> resource_loader_ = nullptr;
   std::weak_ptr<LynxActor<LynxEngine>> engine_actor_;
   std::weak_ptr<LynxActor<BTSRuntime>> runtime_actor_;

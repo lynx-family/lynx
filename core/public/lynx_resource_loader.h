@@ -11,6 +11,7 @@
 
 #include "base/include/closure.h"
 #include "core/base/lynx_export.h"
+#include "core/shell/host_script/runtime/host_script_domain.h"
 
 namespace lynx {
 namespace tasm {
@@ -67,6 +68,11 @@ struct LynxResourceRequest {
   // TODO(nihao.royal): used by lazy bundle now, need to be removed in long
   // term.
   bool request_in_current_thread = true;
+
+  // Set by the request owner, never inferred from the OS thread. Unknown
+  // owners bypass Host Script interception.
+  int32_t view_id = -1;
+  shell::HostScriptDomain execution_domain = shell::HostScriptDomain::kCount;
 };
 
 struct LynxResourceResponse {

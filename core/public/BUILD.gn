@@ -50,5 +50,8 @@ lynx_core_source_set("public") {
     "vsync_monitor_platform_impl.h",
     "vsync_observer_interface.h",
   ]
-  public_deps = [ "../../gfx:gfx" ]
+  public_deps = [
+    "../../gfx:gfx",
+    "../shell/host_script/runtime:host_script_domain",
+  ]
 }

@@ -37,6 +37,8 @@ std::atomic<size_t>& HandlerCount(InterceptKind kind,
 }  // namespace
 
 const char* Interceptor::Name(InterceptKind kind) {
+  if (kind == InterceptKind::kResourceFetch) return "resource.fetch";
+  if (kind == InterceptKind::kResourceComplete) return "resource.complete";
   static constexpr const char* names[] = {
       "view.created", "view.loadTemplate", "view.updateMetaData",
       "jsb.call",     "jsb.result",        "jsb.callback"};

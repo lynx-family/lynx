@@ -191,6 +191,8 @@ void LazyBundleLoader::RequireTemplate(RadonLazyComponent* lazy_bundle,
   }
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
+  request.view_id = view_id_;
+  request.execution_domain = shell::HostScriptDomain::kMTS;
   resource_loader_->LoadResource(
       request, [url, weak_self = weak_from_this(), lazy_bundle,
                 instance_id](pub::LynxResourceResponse& response) {
@@ -228,7 +230,8 @@ void LazyBundleLoader::PreloadTemplates(const std::vector<std::string>& urls) {
 }
 
 void LazyBundleLoader::FetchBundle(
-    lazy_bundle::LynxLazyBundleRequest bundle_request) {
+    lazy_bundle::LynxLazyBundleRequest bundle_request,
+    shell::HostScriptDomain domain) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LAZY_BUNDLE_FETCH_BUNDLE, "url",
               bundle_request.url);
 
@@ -244,6 +247,8 @@ void LazyBundleLoader::FetchBundle(
   }
   auto request = pub::LynxResourceRequest{
       bundle_request.url, pub::LynxResourceType::kLazyBundle, false};
+  request.view_id = view_id_;
+  request.execution_domain = domain;
   resource_loader_->LoadResource(
       request, [bundle_request = std::move(bundle_request),
                 weak_self = weak_from_this()](

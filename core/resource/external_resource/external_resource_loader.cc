@@ -47,6 +47,8 @@ ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
   std::future<ExternalResourceInfo> future = promise->get_future();
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalJs};
+  request.view_id = view_id_;
+  request.execution_domain = shell::HostScriptDomain::kBTS;
   resource_loader_->LoadResource(
       request,
       [url, weak_self = weak_from_this(),
@@ -85,6 +87,8 @@ void ExternalResourceLoader::LoadScriptAsync(const std::string& url,
   }
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalJs};
+  request.view_id = view_id_;
+  request.execution_domain = shell::HostScriptDomain::kBTS;
   resource_loader_->LoadResource(
       request, [url, callback_id, weak_self = weak_from_this()](
                    pub::LynxResourceResponse& response) {
@@ -189,6 +193,8 @@ void ExternalResourceLoader::LoadLazyBundle(std::string url,
   }
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
+  request.view_id = view_id_;
+  request.execution_domain = shell::HostScriptDomain::kBTS;
   resource_loader_->LoadResource(
       request, [url = std::move(url), callback_id,
                 component_ids = std::move(ids), weak_self = weak_from_this()](
@@ -258,6 +264,8 @@ std::vector<uint8_t> ExternalResourceLoader::LoadJSSource(
   std::future<std::vector<uint8_t>> future = promise->get_future();
   auto request = pub::LynxResourceRequest{
       .url = url, .type = pub::LynxResourceType::kAssets};
+  request.view_id = view_id_;
+  request.execution_domain = shell::HostScriptDomain::kBTS;
   resource_loader_->LoadResource(
       request,
       [url, weak_self = weak_from_this(),
