@@ -427,6 +427,16 @@ function hook{{interface_name}}(appendTarget, context, idGen) {
   });
   {% endfor %}  
 
+  {% if methods | selectattr('name', 'equalto', 'roundRect') | list %}
+  // The prototype is shared by Skity and Lite contexts. Expose this operation
+  // only on an instance whose native backend implements it.
+  if (context.backend === 'skity') {
+    Object.defineProperty(context, 'roundRect', {
+      value: commandBuffer.roundRect, writable: true, configurable: true,
+    });
+  }
+  {% endif %}
+
   if (protoHooked) return;
   protoHooked = true;
 
@@ -438,7 +448,9 @@ function hook{{interface_name}}(appendTarget, context, idGen) {
   {# exposed for tests #}
   ctxProto.{{method.name}}$ = commandBuffer.{{method.name}};
   {% else %}
+  {% if method.name != 'roundRect' %}
   ctxProto.{{method.name}} = commandBuffer.{{method.name}};
+  {% endif %}
   {% endif %}
   {% endif %}
   {% endfor %}
