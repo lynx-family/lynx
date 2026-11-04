@@ -5798,6 +5798,11 @@ void Element::UpdateLayoutInfo() {
   if (EnableFragmentLayerRender()) {
     static_cast<Fragment *>(element_container())->UpdateLayout(layout_result);
   }
+  // Layout-in-element writes the frame directly instead of UpdateLayout().
+  // Synchronize attached list holders before the parent computes positions.
+  if (is_list_item() && parent_) {
+    parent_->OnListItemLayoutUpdated(this);
+  }
   frame_changed_ = true;
 }
 
