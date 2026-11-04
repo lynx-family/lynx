@@ -276,6 +276,11 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 'remote_ids_filename': template_context['remote_ids_filename'],
                 'fixed_remote_method_ids': template_context['fixed_remote_method_ids'],
             }
+            # Module dependencies belong to the caller's component configuration.
+            imports = self.hardcoded_includes.get(template_context['component'], {}).get('method_script_imports', {})
+            class_context['script_imports'] = sorted({statement
+                for method in class_context['methods']
+                for statement in imports.get(method['name'], [])})
             js_template = self.jinja_env.get_template('opts.js.tmpl')
             js_path = self.js_output_path(js_class['type_name'])
             from code_generator import render_template
@@ -436,6 +441,12 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
             dictionary, interfaces_info, component_info)
         full_path = interface_info.get('full_path')
         component = idl_filename_to_component(full_path)
+        # Some dictionaries are converted by an argument-specific trait and
+        # never cross the native/command-buffer boundary as dictionary objects.
+        custom_dictionaries = self.hardcoded_includes.get(component, {}).get(
+            'custom_dictionaries', [])
+        if dictionary_name in custom_dictionaries:
+            return ()
         template_context['component'] = component
         include_paths = interface_info.get('dependencies_include_paths')
         # Add the include for interface itself

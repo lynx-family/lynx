@@ -163,6 +163,12 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
     {{argument.name}}.push_back(binding::Utf16LeToUtf8((char16_t*)(buffer + current + 1), str_len));
     current += (str_len + 3) / 2;
   }
+  {% elif argument.idl_type_name in ['IDLSequence<IDLDouble>', 'IDLSequence<IDLUnrestrictedDouble>'] %}
+  std::vector<double> {{argument.name}}(command.{{argument.name}}ArrayLengthGen);
+  if (!{{argument.name}}.empty()) {
+    std::memcpy({{argument.name}}.data(), buffer + current, command.{{argument.name}}ArrayLengthGen * sizeof(double));
+  }
+  current += command.{{argument.name}}ArrayLengthGen * sizeof(double) / sizeof(uint32_t);
   {% else %}
   SharedVector<uint32_t> {{argument.name}}((uint32_t*)buffer + current, command.{{argument.name}}ArrayLengthGen);
   current += command.{{argument.name}}ArrayLengthGen;
