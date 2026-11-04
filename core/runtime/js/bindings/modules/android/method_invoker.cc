@@ -517,7 +517,7 @@ MethodInvoker::Invoke(
       } else {
         // If the Callback parameter in JS is undefined, the Callback in
         // LynxModule will be converted to null.
-        LOGE(log_context << " " << expected_callback.error().c_str());
+        LOGE(log_context << " " << expected_callback.error());
         ret = {.l = nullptr};
       }
     } else {

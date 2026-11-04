@@ -870,7 +870,7 @@ RENDERER_FUNCTION_CC(LoadStyleSheet) {
   auto bundle = tasm->FindTemplateBundle(bundle_name);
 
   if (!bundle) {
-    LOGI("FindTemplateBundle failed, bundle_name: " << bundle_name.c_str());
+    LOGI("FindTemplateBundle failed, bundle_name: " << bundle_name);
     RETURN_UNDEFINED();
   }
   auto bundle_options = bundle->GetCompileOptions();

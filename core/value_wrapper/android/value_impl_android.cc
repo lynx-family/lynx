@@ -286,8 +286,8 @@ std::unique_ptr<Value> ValueImplAndroid::GetValueForKey(
   if (!backend_value_.IsMap()) {
     return std::make_unique<ValueImplAndroid>(base::android::JavaValue());
   }
-  auto result = std::make_unique<ValueImplAndroid>(
-      backend_value_.GetValueForKey(key.c_str()));
+  auto result =
+      std::make_unique<ValueImplAndroid>(backend_value_.GetValueForKey(key));
   return std::move(result);
 }
 bool ValueImplAndroid::Contains(const std::string& key) const {

@@ -131,7 +131,7 @@ void NativePropBundle::SetProps(const pub::Value& value) {
       pub::ScopedCircleChecker::InitVectorIfNecessary(value);
   value.ForeachMap([this, &prev_value_vector](const pub::Value& k,
                                               const pub::Value& v) {
-    props_[k.str().c_str()] =
+    props_[k.str()] =
         pub::ValueUtils::ConvertValueToLepusValue(v, prev_value_vector.get(), 0)
             .ToLepusValue();
   });

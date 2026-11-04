@@ -68,7 +68,7 @@ bool ParallelParseTaskScheduler::ParallelParseElementTemplate(
                         [key = key](lynx::perfetto::EventContext ctx) {
                           auto* tagInfo = ctx.event()->add_debug_annotations();
                           tagInfo->set_name("key");
-                          tagInfo->set_string_value(key.c_str());
+                          tagInfo->set_string_value(key);
                         });
                     sub_reader->Seek(start);
                     auto info = sub_reader->DecodeTemplatesInfoWithKey(key);
@@ -127,7 +127,7 @@ void ParallelParseTaskScheduler::ConstructElement(
                     [key](lynx::perfetto::EventContext ctx) {
                       auto* tagInfo = ctx.event()->add_debug_annotations();
                       tagInfo->set_name("key");
-                      tagInfo->set_string_value(key.c_str());
+                      tagInfo->set_string_value(key);
                     });
         promise.set_value(TreeResolver::FromTemplateInfo(*info));
         return;

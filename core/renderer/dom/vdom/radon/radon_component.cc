@@ -195,7 +195,7 @@ void RadonComponent::SetProperties(const base::String& key,
     if (!(v == new_value)) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, RADON_COMPONENT_UPDATE_PROP,
                   [this, &key](lynx::perfetto::EventContext ctx) {
-                    ctx.event()->add_debug_annotations("key", key.c_str());
+                    ctx.event()->add_debug_annotations("key", key.str());
                     UpdateTraceDebugInfo(ctx.event());
                   });
       properties_.SetProperty(key, new_value);

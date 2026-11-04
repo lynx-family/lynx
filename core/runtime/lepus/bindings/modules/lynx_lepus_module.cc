@@ -19,7 +19,7 @@ Value LynxLepusModule::InvokeMethod(runtime::MTSRuntime* context,
                                     const std::string& method_name,
                                     const lepus::Value* args, size_t count) {
   LOGI("NativeModules"
-       << "LynxLepusModule::InvokeMethod: method_name: " << method_name.c_str()
+       << "LynxLepusModule::InvokeMethod: method_name: " << method_name
        << " count: " << count);
   if (native_module_ == nullptr) {
     constexpr const static char* error_msg =

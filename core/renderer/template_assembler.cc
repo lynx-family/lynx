@@ -2588,7 +2588,7 @@ void TemplateAssembler::SendFontScaleChanged(float scale) {
     LOGE("TemplateAssembler::SendFontScaleChanged since the context is null!!");
     return;
   }
-  std::string str_event_name = kOnFontScaleChanged.c_str();
+  std::string str_event_name = kOnFontScaleChanged.str();
   DispatchEventFromEngineToCoreContext(context, str_event_name, str_event_name,
                                        true, lepus_args);
 }
@@ -3076,7 +3076,7 @@ void TemplateAssembler::OnI18nResourceChanged(const std::string& new_data) {
         "TemplateAssembler::OnI18nResourceChanged since the context is null!!");
     return;
   }
-  std::string str_event_name = kOnI18nResourceReady.c_str();
+  std::string str_event_name = kOnI18nResourceReady.str();
   DispatchEventFromEngineToCoreContext(context, str_event_name, str_event_name,
                                        true, lepus_args);
 }
@@ -3101,7 +3101,7 @@ void TemplateAssembler::OnI18nResourceFailed() {
     LOGE("TemplateAssembler::OnI18nResourceFailed since the context is null!!");
     return;
   }
-  std::string str_event_name = kOnI18nResourceFailed.c_str();
+  std::string str_event_name = kOnI18nResourceFailed.str();
   DispatchEventFromEngineToCoreContext(context, str_event_name, str_event_name,
                                        true, lepus_args);
 }
