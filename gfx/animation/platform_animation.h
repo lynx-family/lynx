@@ -5,16 +5,16 @@
 #ifndef GFX_ANIMATION_PLATFORM_ANIMATION_H_
 #define GFX_ANIMATION_PLATFORM_ANIMATION_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
-#include <string>
 #include <utility>
-#include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/time/time_point.h"
+#include "base/include/value/base_string.h"
 #include "base/include/vector.h"
 #include "gfx/animation/animation_keyframe.h"
 #include "gfx/animation/animation_types.h"
@@ -217,11 +217,33 @@ struct AnimationEventCapability {
   AnimationEventCapabilityMask events{0};
 };
 
+// Read-only entries borrowed from backend-owned storage. The storage must
+// outlive every copy of this view.
+template <typename T>
+class AnimationCapabilityView {
+ public:
+  constexpr AnimationCapabilityView() = default;
+  constexpr AnimationCapabilityView(const T* data, std::size_t size)
+      : data_(data), size_(size) {}
+  template <std::size_t N>
+  constexpr AnimationCapabilityView(const T (&data)[N])
+      : AnimationCapabilityView(data, N) {}
+
+  constexpr const T* data() const { return data_; }
+  constexpr std::size_t size() const { return size_; }
+  constexpr const T* begin() const { return data_; }
+  constexpr const T* end() const { return size_ ? data_ + size_ : data_; }
+
+ private:
+  const T* data_{nullptr};
+  std::size_t size_{0};
+};
+
 struct AnimationBackendCapabilities {
   AnimationBackendType backend{AnimationBackendType::kNone};
-  base::Vector<AnimationPropertyCapability> properties;
+  AnimationCapabilityView<AnimationPropertyCapability> properties;
   // Event support belongs to the whole animation, independently of properties.
-  base::Vector<AnimationEventCapability> event_capabilities;
+  AnimationCapabilityView<AnimationEventCapability> event_capabilities;
 
   bool SupportsEvents(AnimationKind kind,
                       AnimationEventCapabilityMask required) const {
@@ -251,9 +273,11 @@ struct AnimationBackendCapabilities {
 
 struct PlatformAnimationProperty {
   AnimationPropertyType property{AnimationPropertyType::kNone};
-  // Parsed keyframes are immutable after handoff. Sharing them keeps the Core
-  // routing state and queued commands on the same typed gfx representation.
-  std::vector<std::shared_ptr<const Keyframe>> keyframes;
+  // Keyframes move into the immutable command batch. Platform providers retain
+  // the batch, so individual keyframes need no separate shared ownership.
+  base::Vector<std::unique_ptr<const Keyframe>> keyframes;
+  // The vector owns heap storage and does not refer to this record's address.
+  using TriviallyRelocatable = bool;
 };
 
 struct PlatformAnimationCommand {
@@ -267,13 +291,13 @@ struct PlatformAnimationCommand {
   AnimationId animation_id{0};
   uint32_t generation{0};
   AnimationKind kind{AnimationKind::kKeyframe};
-  std::string name;
+  base::String name;
   // An update may reuse the previous keyframes when only playback or list order
   // changed. The executor must still rebuild size-dependent platform values.
   bool reuse_keyframes{false};
   // A CSS keyframe animation effect is routed atomically. A CSS transition is
   // already represented as one independently routed property animation.
-  std::vector<PlatformAnimationProperty> properties;
+  base::Vector<PlatformAnimationProperty> properties;
   // The evaluator normalizes timing_func before platform handoff.
   AnimationData animation_data;
   // Present for routed keyframe animations.
@@ -283,9 +307,12 @@ struct PlatformAnimationCommand {
   // New Animator and the platform. Unlike generation, this token does not
   // change for updates that keep the same execution backend.
   uint64_t executor{0};
+
+  // All owning members refer to heap storage, never to this command's address.
+  using TriviallyRelocatable = bool;
 };
 
-using PlatformAnimationCommandBatch = std::vector<PlatformAnimationCommand>;
+using PlatformAnimationCommandBatch = base::Vector<PlatformAnimationCommand>;
 
 }  // namespace gfx
 }  // namespace lynx

@@ -2450,15 +2450,15 @@ Element::TakeAnimationSampleTimeForNewPipeline() {
   return sample_time;
 }
 
-void Element::QueuePlatformAnimationCommand(
-    gfx::PlatformAnimationCommand command) {
+gfx::PlatformAnimationCommand& Element::AppendPlatformAnimationCommand() {
   if (!platform_animation_commands_) {
     platform_animation_commands_ =
         std::make_shared<gfx::PlatformAnimationCommandBatch>();
   }
-  platform_animation_commands_->push_back(std::move(command));
+  auto& command = platform_animation_commands_->emplace_back();
   // Commands must schedule painting even when no CSS value changes.
   MarkDirtyLite(kDirtyForceUpdate);
+  return command;
 }
 
 void Element::CommitPlatformAnimationCommands() {

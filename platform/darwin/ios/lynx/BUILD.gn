@@ -842,6 +842,7 @@ subspec_target("amoeba") {
 }
 
 subspec_target("animation") {
+  compiler_flags = [ "-DLYNX_HAS_PLATFORM_ANIMATION_BACKEND=#{ENV['ENABLE_CLAY'] == 'true' ? 0 : 1}" ]
   deps = [ "../../../../core/animation" ]
 }
 
