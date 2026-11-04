@@ -17,7 +17,9 @@
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/log/log_context.h"
+#include "base/include/memory/memory_pressure_level.h"
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/public/devtool/lynx_devtool_proxy.h"
 #include "core/public/devtool/lynx_inspector_owner.h"
 #include "core/public/lynx_extension_delegate.h"
@@ -188,6 +190,10 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value GenerateViewId(napi_env env, napi_callback_info info);
   static napi_value GetBaseTraceBackend(napi_env env, napi_callback_info info);
   static napi_value InitGlobalEnv(napi_env env, napi_callback_info info);
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  LYNX_EXPORT_FOR_DEVTOOL static void TrimMemory(
+      base::MemoryPressureLevel pressure);
+#endif
   static napi_value SetJSVMInitOptions(napi_env env, napi_callback_info info);
   static napi_value SetupHarmonyMessageLoopPromiseMicrotask(
       napi_env env, napi_callback_info info);

@@ -129,6 +129,10 @@ source_set("trace") {
 
   public_deps = []
 
+  if (is_harmony) {
+    deps = [ "../../src:base_public_headers" ]
+  }
+
   if ((is_android || is_harmony) && enable_trace == "perfetto") {
     public_deps += [ "//third_party/xhook:xhook" ]
   }
