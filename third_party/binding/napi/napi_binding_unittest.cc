@@ -9,6 +9,7 @@
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
 #include "core/runtime/common/napi/shim/shim_napi_env_quickjs.h"
+#include "third_party/binding/napi/canvas_round_rect_radii.h"
 #include "third_party/binding/napi/napi_bridge.h"
 #include "third_party/binding/napi/napi_object.h"
 #include "third_party/binding/napi/napi_object_ref.h"
@@ -35,6 +36,16 @@ Napi::Value ObtainStrongRef(const Napi::CallbackInfo& info) {
   TestNapiBridge bridge(info);
   *ref = bridge.GetStrongRef();
   return info.Env().Undefined();
+}
+
+Napi::Value ConvertRoundRectRadii(const Napi::CallbackInfo& info) {
+  auto radii = NativeValueTraits<IDLCanvasRoundRectRadii>::NativeValue(info, 0);
+  if (info.Env().IsExceptionPending()) return info.Env().Undefined();
+  auto result = Napi::Array::New(info.Env(), radii.size());
+  for (size_t i = 0; i < radii.size(); ++i) {
+    result[static_cast<uint32_t>(i)] = Napi::Number::New(info.Env(), radii[i]);
+  }
+  return result;
 }
 
 }  // namespace
@@ -612,6 +623,39 @@ TEST_F(NapiBindingTest, ValueCopyMoveTest) {
   EXPECT_EQ(moved.GetType(), value.GetType());
   EXPECT_EQ(ToNAPI(*moved.Data<Object>()), obj);
   EXPECT_TRUE(ToNAPI(*value.Data<Object>()).IsEmpty());
+}
+
+TEST_F(NapiBindingTest, CanvasRoundRectRadiiConversion) {
+  env_.Global().Set("convertRadii",
+                    Napi::Function::New(env_, ConvertRoundRectRadii));
+  AssertExp("JSON.stringify(convertRadii()) === '[0,0]'");
+  AssertExp("JSON.stringify(convertRadii(2.5)) === '[2.5,2.5]'");
+  AssertExp("JSON.stringify(convertRadii({x:4,y:2})) === '[4,2]'");
+  AssertExp(
+      "JSON.stringify(convertRadii([2,{x:4,y:1},null])) === '[2,2,4,1,0,0]'");
+  AssertExp("JSON.stringify(convertRadii(new Set([2,3]))) === '[2,2,3,3]'");
+  AssertExp("convertRadii(Infinity)[0] === Infinity");
+  AssertExp(R"JS((() => {
+    const order = [];
+    const point = Object.fromEntries(['w','x','y','z'].map(name =>
+      [name, {valueOf() { order.push(name); return 2; }}]));
+    convertRadii(point);
+    return order.join('') === 'wxyz';
+  })())JS");
+  AssertExp(R"JS((() => {
+    const original = Error('conversion');
+    let closed = false;
+    const radii = {
+      *[Symbol.iterator]() {
+        try { yield {get x() { throw original; }}; }
+        finally { closed = true; }
+      }
+    };
+    try { convertRadii(radii); } catch (error) {
+      return error === original && closed;
+    }
+    return false;
+  })())JS");
 }
 
 }  // namespace binding
