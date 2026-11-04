@@ -111,6 +111,36 @@ public class LynxHostScriptViewHooksTest {
   }
 
   @Test
+  public void disabledErrorObserverDoesNotReadRenderOrError() {
+    LynxTemplateRender render = Mockito.mock(LynxTemplateRender.class);
+    LynxError error = Mockito.mock(LynxError.class);
+    LynxHostScriptViewHooks.onError(render, error);
+    Mockito.verify(render, Mockito.never()).getLogContextSnapshot();
+    Mockito.verify(error, Mockito.never()).getSummaryMessage();
+    Mockito.verify(error, Mockito.never()).getLevel();
+  }
+
+  @Test
+  public void enabledErrorObserverCopiesUnicodeWithoutChangingOriginal() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      setEnabled(true);
+      LynxTemplateRender render = Mockito.mock(LynxTemplateRender.class);
+      Mockito.when(render.getLogContextSnapshot()).thenReturn(new LynxLogContext(1, 2, 3));
+      LynxError error = Mockito.mock(LynxError.class);
+      Mockito.when(error.getSummaryMessage()).thenReturn("later error 🌍");
+      Mockito.when(error.getErrorCode()).thenReturn(1001);
+      Mockito.when(error.getLevel()).thenReturn(LynxError.LEVEL_WARN);
+      LynxHostScriptViewHooks.onError(render, error);
+      Mockito.verify(render).getLogContextSnapshot();
+      Mockito.verify(error).getSummaryMessage();
+      Mockito.verify(error).getErrorCode();
+      Mockito.verify(error).getLevel();
+      Mockito.verifyNoMoreInteractions(error);
+      LynxHostScriptViewHooks.onError(null, null);
+    });
+  }
+
+  @Test
   public void ssrAndHydrateSkipEnabledLoadInterceptor() {
     InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
       setEnabled(true);

@@ -9,10 +9,18 @@ notes:
   - Delivery follows the existing global channel's connection behavior. This domain adds no buffering or replay.
   - Events have no CDP request id and do not imply completion of a particular command. Applications may encode correlation information in the message string.
   - loadScript and evaluate still complete through their own responses. The sendMessage command is not provided.
-  - Host Script JavaScript needs a runtime bridge to invoke the native publisher. This event does not supply that bridge.
+  - On the Android process runtime, __hostScriptThread.emitEvent(object) publishes an explicit script event after HSR.loadScript or HSR.evaluate connects the transport. It copies the JSON object on its owning thread; circular values, non-object JSON results, and payloads over 64 KiB are rejected. Standard JSON.stringify semantics apply to object properties.
+  - Script events encode a JSON object in message with version 1, thread (bts/mts/ui), runtimeId (decimal string), and payload (the script's object). The native opaque-string publishing API remains compatible.
+  - A replaced or stopped runtime's queued script events are discarded before transport delivery. No automatic console or exception forwarding is enabled.
+  - Android interceptor.on('view.error', callback) observes copied viewId, code, message, and level fields on initialized process runtimes. Level preserves the platform severity, or is empty when unavailable. Notifications are asynchronous, have no replay, and cannot alter or suppress the original page error. Dispose the returned subscription to stop observing.
 examples:
   - title: Runtime announces readiness
     event:
       method: HSR.messageReceived
       params:
         message: ready
+  - title: Script explicitly publishes a page error
+    event:
+      method: HSR.messageReceived
+      params:
+        message: '{"version":1,"thread":"bts","runtimeId":"7","payload":{"type":"lynx.error","level":"error","viewId":"42","code":1001,"message":"page failed"}}'

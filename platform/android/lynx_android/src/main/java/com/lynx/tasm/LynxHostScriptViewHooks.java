@@ -47,6 +47,18 @@ final class LynxHostScriptViewHooks {
     });
   }
 
+  /** Copies an error for asynchronous observation without changing normal client dispatch. */
+  static void onError(LynxTemplateRender render, LynxError error) {
+    if (!isEnabled() || error == null) {
+      return;
+    }
+    String message = error.getSummaryMessage();
+    String level = error.getLevel();
+    nativeDispatchError(render.getLogContextSnapshot().viewId, error.getErrorCode(),
+        (message == null ? "" : message).getBytes(StandardCharsets.UTF_8),
+        (level == null ? "" : level).getBytes(StandardCharsets.UTF_8));
+  }
+
   @VisibleForTesting
   static void postCreationNotification(Runnable notification) {
     Object token = sEnabledToken;
@@ -179,6 +191,9 @@ final class LynxHostScriptViewHooks {
   }
 
   private static native void nativeDispatchCreated(long viewId, String url);
+
+  private static native void nativeDispatchError(
+      long viewId, int code, byte[] message, byte[] level);
 
   @Nullable
   private static native byte[] nativeDispatchUpdateMetaData(

@@ -61,20 +61,22 @@ void GlobalDevToolPlatformFacade::HandleHSRScript(HSRScriptRequest request,
 }
 
 void GlobalDevToolPlatformFacade::SendHSRMessageReceived(
-    const std::string& message) {
+    const std::string& message, std::function<bool()> current) {
   auto runner = LynxDevToolMediatorBase::GetDevToolsThread().GetTaskRunner();
   if (!runner) {
     return;
   }
-  fml::TaskRunner::RunNowOrPostTask(runner, [message] {
-    auto sender = AbstractDevTool::GetGlobalSender();
-    if (sender) {
-      Json::Value event(Json::objectValue);
-      event["method"] = "HSR.messageReceived";
-      event["params"]["message"] = message;
-      sender->SendMessage("CDP", event);
-    }
-  });
+  fml::TaskRunner::RunNowOrPostTask(
+      runner, [message, current = std::move(current)] {
+        if (current && !current()) return;
+        auto sender = AbstractDevTool::GetGlobalSender();
+        if (sender) {
+          Json::Value event(Json::objectValue);
+          event["method"] = "HSR.messageReceived";
+          event["params"]["message"] = message;
+          sender->SendMessage("CDP", event);
+        }
+      });
 }
 
 void GlobalDevToolPlatformFacade::LoadHSRScriptFromSchema(

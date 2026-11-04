@@ -33,6 +33,7 @@ class HostScriptInterceptorBindings final
   bool Attach(base::UnsafeWeakPtr<runtime::js::Runtime> runtime,
               fml::RefPtr<fml::TaskRunner> runner) override;
   void NotifyViewCreated(const ProcessRuntime::ViewCreated& event) override;
+  void NotifyViewError(const ProcessRuntime::ViewError& event) override;
 
  private:
   explicit HostScriptInterceptorBindings(ProcessRuntime::Domain domain);

@@ -80,6 +80,15 @@ static void DispatchCreated(JNIEnv* env, jclass, jlong view_id, jstring url) {
        lynx::base::android::JNIConvertHelper::ConvertToString(env, url)});
 }
 
+static void DispatchError(JNIEnv* env, jclass, jlong view_id, jint code,
+                          jbyteArray message, jbyteArray level) {
+  if (!lynx::tasm::DevToolLifecycle::GetInstance().IsEnabled()) return;
+  lynx::shell::ProcessRuntime::GetInstance().NotifyViewError(
+      {std::to_string(view_id), code,
+       JNIConvertHelper::ConvertToString(env, message),
+       JNIConvertHelper::ConvertToString(env, level)});
+}
+
 static jbyteArray DispatchUpdateMetaData(JNIEnv* env, jclass, jlong view_id,
                                          jlong update_data,
                                          jlong global_props) {

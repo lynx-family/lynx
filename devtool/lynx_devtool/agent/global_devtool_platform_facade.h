@@ -6,6 +6,7 @@
 #define DEVTOOL_LYNX_DEVTOOL_AGENT_GLOBAL_DEVTOOL_PLATFORM_FACADE_H_
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -97,7 +98,9 @@ class GlobalDevToolPlatformFacade
   // Publishes HSR.messageReceived through the existing global CDP channel.
   // May be called from any thread; delivery runs on the DevTool thread.
   // The message is an opaque string, independent of command completion.
-  void SendHSRMessageReceived(const std::string& message);
+  // Optional admission is checked on delivery, after any thread hop.
+  void SendHSRMessageReceived(const std::string& message,
+                              std::function<bool()> current = {});
 
   static std::string SendRecordPayload(const base::LogContext& context,
                                        const char* version,
