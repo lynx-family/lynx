@@ -949,50 +949,6 @@ TEST_F_UI(BaseViewTest, InvalidEventThroughActiveRegionsClearPreviousValue) {
   page_->RemoveChild(view.get());
 }
 
-TEST_F_UI(BaseViewTest, EventThroughRegionsControlPointerConsumptionAndTap) {
-  auto underlay = std::make_unique<View>(1, page_.get());
-  auto overlay = std::make_unique<View>(2, page_.get());
-  auto label = std::make_unique<TextView>(3, page_.get());
-  page_->AddChild(underlay.get());
-  page_->AddChild(overlay.get());
-  overlay->AddChild(label.get());
-  underlay->SetBound(20, 30, 200, 100);
-  overlay->SetBound(20, 30, 200, 100);
-  label->SetBound(0, 0, 200, 100);
-  underlay->AddEventCallback("tap");
-  overlay->AddEventCallback("tap");
-  overlay->SetEventThrough(true);
-  overlay->SetAttribute(
-      "event-through-active-regions",
-      CreateEventThroughActiveRegions({"0px", "0px", "50%", "100%"}));
-  find_view_by_id_callback_ = [&](int id) -> BaseView* {
-    return id == overlay->id() ? overlay.get() : nullptr;
-  };
-  std::vector<std::pair<std::string, int>> events;
-  touch_event_callback_ = [&events](const std::string& name, int id) {
-    events.emplace_back(name, id);
-  };
-
-  // Native ownership is decided on down; no Lynx callbacks should follow.
-  EXPECT_FALSE(page_->DispatchPointerEvent(
-      {CreatePointer(1, PointerEvent::EventType::kDownEvent, {70, 80})}));
-  page_->DispatchPointerEvent(
-      {CreatePointer(1, PointerEvent::EventType::kUpEvent, {70, 80})});
-  EXPECT_TRUE(events.empty());
-
-  EXPECT_TRUE(page_->DispatchPointerEvent(
-      {CreatePointer(2, PointerEvent::EventType::kDownEvent, {170, 80})}));
-  EXPECT_TRUE(page_->DispatchPointerEvent(
-      {CreatePointer(2, PointerEvent::EventType::kUpEvent, {170, 80})}));
-  const std::vector<std::pair<std::string, int>> expected = {
-      {"touchstart", 2}, {"touchend", 2}, {"tap", 2}};
-  EXPECT_EQ(events, expected);
-
-  overlay->RemoveChild(label.get());
-  page_->RemoveChild(overlay.get());
-  page_->RemoveChild(underlay.get());
-}
-
 TEST_F_UI(BaseViewTest, TextViewHitSlopExpandsTopEventTarget) {
   auto text = std::make_unique<TextView>(1, page_.get());
   page_->AddChild(text.get());

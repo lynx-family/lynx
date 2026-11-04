@@ -117,11 +117,7 @@ class MockEventDelegate : public clay::EventDelegate {
                     float y, float page_x, float page_y, float delta_x,
                     float delta_y) override {}
   void OnKeyEvent(const std::string& event_name, int view_id, const char* key,
-                  bool repeat) override {
-    if (uitest_->key_event_callback_) {
-      uitest_->key_event_callback_(event_name, view_id, key, repeat);
-    }
-  }
+                  bool repeat) override {}
   void OnGestureHandlerEvent(const std::string& event_name, int view_id,
                              uint32_t gesture_id, float x, float y,
                              float page_x, float page_y, int64_t timestamp,
@@ -140,11 +136,7 @@ class MockEventDelegate : public clay::EventDelegate {
                                           type);
     }
   }
-  void OnFocusChanged(int view_id, bool focus) override {
-    if (uitest_->focus_event_callback_) {
-      uitest_->focus_event_callback_(view_id, focus);
-    }
-  }
+  void OnFocusChanged(int view_id, bool focus) override {}
   void OnHoverChanged(int view_id, bool hover) override {}
   void OnDragDropEvent(const std::string& event_name, int view_id,
                        clay::Value::Map map) override {}

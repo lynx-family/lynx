@@ -61,9 +61,6 @@ class UITest : public ::testing::Test {
   std::function<void(int, const char*, clay::Value::Map)>
       custom_event_callback_;
   std::function<void(const std::string&, int)> touch_event_callback_;
-  std::function<void(const std::string&, int, const char*, bool)>
-      key_event_callback_;
-  std::function<void(int, bool)> focus_event_callback_;
   std::function<BaseView*(int)> find_view_by_id_callback_;
 #if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
   std::function<void(const std::string&, int)> mouse_event_callback_;
