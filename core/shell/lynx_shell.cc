@@ -742,6 +742,20 @@ void LynxShell::StartJsRuntime() {
   }
 }
 
+#ifdef OS_ANDROID
+void LynxShell::PageOutJSRuntimeMemory() {
+  if (!is_destroyed_ && runtime_actor_) {
+    runtime_actor_->ActAsync([](std::unique_ptr<BTSRuntime>& runtime) {
+      auto* js_runtime = runtime->GetJSRuntimeWeak().Lock();
+      if (js_runtime) {
+        lynx::runtime::JSRealmManager::Instance()->PageOutJSRuntimeMemory(
+            runtime->GetGroupId(), js_runtime->getEnableNewShareGroup());
+      }
+    });
+  }
+}
+#endif
+
 void LynxShell::DestroyRuntime(int32_t instance_id,
                                std::unique_ptr<BTSRuntime>& runtime) {
   runtime = nullptr;

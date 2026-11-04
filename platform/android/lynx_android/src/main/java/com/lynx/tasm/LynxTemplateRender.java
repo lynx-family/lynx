@@ -3704,6 +3704,12 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     }
   }
 
+  void pageOutJSRuntimeMemory() {
+    if (mNativePtr != 0) {
+      nativePageOutJSRuntimeMemory(mNativePtr, mNativeLifecycle);
+    }
+  }
+
   @Deprecated
   public void processLayout(@NonNull String templateUrl, final TemplateData templateData) {
     setEnableUIFlush(false);

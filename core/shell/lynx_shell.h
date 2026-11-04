@@ -293,6 +293,10 @@ class LynxShell {
 
   void Resume();
 
+#ifdef OS_ANDROID
+  void PageOutJSRuntimeMemory();
+#endif
+
   void UpdateI18nResource(const std::string& key, const std::string& new_data);
 
   // TODO(heshan):will be deleted, pass when ReportError

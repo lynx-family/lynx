@@ -190,12 +190,11 @@ std::shared_ptr<VMInstance> QuickjsRuntime::getSharedVM() {
   return quickjs_runtime_wrapper_;
 }
 
-void QuickjsRuntime::SetGCPauseSuppressionMode(bool mode) {
-  if (gc_flag_) LEPUS_SetGCPauseSuppressionMode(getJSRuntime(), mode);
+void QuickjsRuntime::EnterGCPauseSuppressionMode() {
+  if (gc_flag_) quickjs_runtime_wrapper_->EnterGCPauseSuppressionMode();
 }
-bool QuickjsRuntime::GetGCPauseSuppressionMode() {
-  if (gc_flag_) return LEPUS_GetGCPauseSuppressionMode(getJSRuntime());
-  return false;
+void QuickjsRuntime::LeaveGCPauseSuppressionMode() {
+  if (gc_flag_) quickjs_runtime_wrapper_->LeaveGCPauseSuppressionMode();
 }
 
 std::shared_ptr<VMInstance> QuickjsRuntime::createVM(

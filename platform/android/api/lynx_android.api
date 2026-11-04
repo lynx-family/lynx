@@ -7778,6 +7778,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.bindDrawChildHook(IDrawChildHook hook);
   public void com.lynx.tasm.LynxView.onEnterForeground();
   public void com.lynx.tasm.LynxView.onEnterBackground();
+  public void com.lynx.tasm.LynxView.pageOutJSRuntimeMemory();
   public void com.lynx.tasm.LynxView.addLynxViewClient(LynxViewClient client);
   public void com.lynx.tasm.LynxView.addLynxViewClientV2(LynxViewClientV2 client);
   public void com.lynx.tasm.LynxView.updateScreenMetrics(int width, int height);

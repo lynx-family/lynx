@@ -61,6 +61,26 @@ TEST_P(QuickjsRuntimeTest, PrepareJavaScriptTest) {
   }
 }
 
+// Apps in one group hold suppression scopes on different runtimes of a shared
+// VM and release them in any order.
+TEST_P(QuickjsRuntimeTest, GCPauseSuppressionEndsWithLastScopeOnSharedVM) {
+  if (!rt.getGCFlag()) {
+    GTEST_SKIP() << "GC pause suppression only applies to tracing GC.";
+  }
+  QuickjsRuntime other;
+  other.InitRuntime(rt.getSharedContext());
+  LEPUSRuntime* vm =
+      std::static_pointer_cast<QuickjsRuntimeInstance>(rt.getSharedVM())
+          ->Runtime();
+
+  auto first = std::make_unique<GCPauseSuppressionMode>(&rt);
+  auto second = std::make_unique<GCPauseSuppressionMode>(&other);
+  first.reset();
+  EXPECT_TRUE(LEPUS_GetGCPauseSuppressionMode(vm));
+  second.reset();
+  EXPECT_FALSE(LEPUS_GetGCPauseSuppressionMode(vm));
+}
+
 INSTANTIATE_TEST_SUITE_P(Runtimes, QuickjsRuntimeTest,
                          ::testing::Values(MakeRuntimeFactory<QuickjsRuntime>));
 }  // namespace test

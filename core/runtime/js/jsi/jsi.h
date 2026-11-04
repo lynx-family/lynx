@@ -251,8 +251,9 @@ class LYNX_EXPORT Runtime {
   // the runtime and its context are still valid.
   virtual void BeforeDestroy() {}
   virtual JSRuntimeType type() = 0;
-  virtual void SetGCPauseSuppressionMode(bool mode){};
-  virtual bool GetGCPauseSuppressionMode() { return false; };
+  // Called in pairs by GCPauseSuppressionMode.
+  virtual void EnterGCPauseSuppressionMode() {}
+  virtual void LeaveGCPauseSuppressionMode() {}
   virtual void SetObserver(JSIObserver* observer){};
   int64_t getRuntimeId() const { return external_params_.runtime_id; }
   bool getGCFlag() { return gc_flag_; }
@@ -648,20 +649,20 @@ class LYNX_EXPORT Runtime {
 };
 
 // GCPauseSuppressionMode is used for performance. In GCPauseSuppressionMode
-// scope, GC will be disabled if the js_heap is small.
+// scope, GC will be disabled if the js_heap is small. Scopes may end in any
+// order: the mode stays on until the last scope on the same VM ends, including
+// scopes held by other runtimes that share the VM.
 class GCPauseSuppressionMode {
  public:
   GCPauseSuppressionMode(Runtime* rt) : runtime_(rt) {
-    origin_mode_ = runtime_->GetGCPauseSuppressionMode();
-    runtime_->SetGCPauseSuppressionMode(true);
+    runtime_->EnterGCPauseSuppressionMode();
   }
-  ~GCPauseSuppressionMode() {
-    runtime_->SetGCPauseSuppressionMode(origin_mode_);
-  }
+  ~GCPauseSuppressionMode() { runtime_->LeaveGCPauseSuppressionMode(); }
 
  private:
   Runtime* runtime_;
-  bool origin_mode_;
+
+  BASE_DISALLOW_COPY_AND_ASSIGN(GCPauseSuppressionMode);
 };
 
 // Base class for pointer-storing types.

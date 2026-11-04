@@ -228,6 +228,48 @@ void QuickjsRuntimeInstance::InitQuickjsRuntime(bool is_sync,
   LOGI("lynx InitQuickjsRuntime success");
 }
 
+#ifdef OS_ANDROID
+int QuickjsRuntimeInstance::PageOutGCMemory() {
+  return LEPUS_PageOutGCMemory(rt_);
+}
+
+const char* QuickjsRuntimeInstance::DescribePageOutResult(int result) {
+  switch (result) {
+    case LEPUS_PAGE_OUT_OK:
+      return "success";
+    case LEPUS_PAGE_OUT_NULL_RUNTIME:
+      return "null runtime";
+    case LEPUS_PAGE_OUT_NO_CALLBACKS:
+      return "no uswap callback";
+    case LEPUS_PAGE_OUT_REENTERED:
+      return "page-out in progress";
+    case LEPUS_PAGE_OUT_GC_FORBIDDEN:
+      return "GC forbidden";
+    case LEPUS_PAGE_OUT_GC_PAUSE_SUPPRESSED:
+      return "GC pause suppressed";
+    case LEPUS_PAGE_OUT_PAGEOUT_FAILED:
+      return "uswap failed";
+    default:
+      // -1 comes from engines that predate LEPUSPageOutResult, -7 from the
+      // engines that also took a region register callback.
+      return "unknown";
+  }
+}
+#endif
+
+void QuickjsRuntimeInstance::EnterGCPauseSuppressionMode() {
+  if (gc_pause_suppression_count_++ == 0) {
+    LEPUS_SetGCPauseSuppressionMode(rt_, true);
+  }
+}
+
+void QuickjsRuntimeInstance::LeaveGCPauseSuppressionMode() {
+  DCHECK(gc_pause_suppression_count_ > 0);
+  if (--gc_pause_suppression_count_ == 0) {
+    LEPUS_SetGCPauseSuppressionMode(rt_, false);
+  }
+}
+
 void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
   [[maybe_unused]] bool is_full_gc =
       mem_info.find("is_full_gc") != std::string::npos;

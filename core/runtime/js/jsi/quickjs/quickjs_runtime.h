@@ -38,9 +38,8 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
 
   void InitRuntime(std::shared_ptr<JSIContext> sharedContext) override;
   void BeforeDestroy() override;
-  // Supress gc pause when the mode is true.
-  void SetGCPauseSuppressionMode(bool mode) override;
-  bool GetGCPauseSuppressionMode() override;
+  void EnterGCPauseSuppressionMode() override;
+  void LeaveGCPauseSuppressionMode() override;
   std::shared_ptr<VMInstance> createVM(const StartupData *) const override;
   // For CreateVM at vm_pool or createVM
   //  sync means in same use thread.

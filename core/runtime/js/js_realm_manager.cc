@@ -923,5 +923,30 @@ void JSRealmManager::OnMemoryPressure(base::MemoryPressureLevel level) {
   });
 }
 
+#ifdef OS_ANDROID
+void JSRealmManager::PageOutJSRuntimeMemory(const std::string& group_id,
+                                            bool enable_new_share_group) {
+  auto* realm = GetSharedRealm(group_id, enable_new_share_group);
+  auto context = realm ? realm->GetJSContext() : nullptr;
+  auto vm = context ? context->getVM() : nullptr;
+  if (!vm || vm->GetRuntimeType() != runtime::js::JSRuntimeType::quickjs) {
+    LOGW("JS page-out: not found VM, group=" << group_id);
+    return;
+  }
+#if JS_ENGINE_TYPE == 1 || JS_ENGINE_TYPE == 2
+  auto* quickjs_runtime =
+      static_cast<runtime::js::QuickjsRuntimeInstance*>(vm.get());
+  int result = quickjs_runtime->PageOutGCMemory();
+  if (result != LEPUS_PAGE_OUT_OK) {
+    LOGE("JS page-out failed, group="
+         << group_id << ", code=" << result << ", reason="
+         << runtime::js::QuickjsRuntimeInstance::DescribePageOutResult(result));
+  }
+#else
+  LOGW("JS page-out: QuickJS disabled");
+#endif
+}
+#endif
+
 }  // namespace runtime
 }  // namespace lynx
