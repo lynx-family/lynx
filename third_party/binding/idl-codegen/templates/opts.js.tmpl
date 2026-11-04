@@ -1,4 +1,4 @@
-{% from 'opts_hardcode.js.tmpl' import overload_resolvers, partial_data_opt, hardcode_for_hook_method, hardcode_for_interface %}
+{% from 'opts_hardcode.js.tmpl' import overload_resolvers, partial_data_opt, hardcode_for_hook_method, hardcode_for_interface, skip_method_registration %}
 {% include 'lynx_copyright_block_js.txt' %}
 {% for statement in script_imports %}
 {{statement}}
@@ -405,7 +405,7 @@ let protoHooked = false;
 
 function hook{{interface_name}}(appendTarget, context, idGen) {
   const commandBuffer = commandBufferCreator(appendTarget, idGen);
-  {{ hardcode_for_hook_method(interface_name) }}
+  {{ hardcode_for_hook_method(interface_name, methods) }}
   {% set attributes = {} %}
   {% for method in methods if method.is_setter or method.is_getter %}
   {% if method.name in attributes %}
@@ -438,7 +438,9 @@ function hook{{interface_name}}(appendTarget, context, idGen) {
   {# exposed for tests #}
   ctxProto.{{method.name}}$ = commandBuffer.{{method.name}};
   {% else %}
+  {% if not skip_method_registration(interface_name, method.name) | trim %}
   ctxProto.{{method.name}} = commandBuffer.{{method.name}};
+  {% endif %}
   {% endif %}
   {% endif %}
   {% endfor %}
