@@ -3,11 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxContainerView.h>
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxView.h>
 #import <QuartzCore/QuartzCore.h>
 #import <UIKit/UIView.h>
 
@@ -68,7 +70,11 @@ void UseTopLeftAnchorAtLayoutOrigin(UIView* view, CGPoint layout_origin) {
     return;
   }
 
-  _applier = [[LynxDisplayListApplier alloc] initWithView:_host andContext:_renderer_context];
+  _applier =
+      [[LynxDisplayListApplier alloc] initWithView:_host
+                                        andContext:_renderer_context
+                                 useSurfaceDrawing:([_host isKindOfClass:LynxContainerView.class] ||
+                                                    [_host isKindOfClass:LynxView.class])];
 }
 
 - (void)updateDisplayList:(lynx::tasm::DisplayList*)list {

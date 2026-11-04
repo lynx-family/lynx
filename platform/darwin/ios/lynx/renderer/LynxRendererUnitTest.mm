@@ -58,7 +58,8 @@
 
   id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
   OCMStub([mockApplier alloc]).andReturn(mockApplier);
-  OCMStub([mockApplier initWithView:host andContext:context]).andReturn(mockApplier);
+  OCMStub([mockApplier initWithView:host andContext:context useSurfaceDrawing:YES])
+      .andReturn(mockApplier);
 
   lynx::tasm::DisplayList list;
   [[mockApplier expect] applyDisplayList:&list];
@@ -82,7 +83,9 @@
   OCMStub([mockApplier alloc]).andReturn(mockApplier);
 
   // Verify initWithView:andContext: is called with the host and context
-  (void)[[[mockApplier expect] andReturn:mockApplier] initWithView:host andContext:context];
+  (void)[[[mockApplier expect] andReturn:mockApplier] initWithView:host
+                                                        andContext:context
+                                                 useSurfaceDrawing:YES];
 
   [renderer ensureLynxDisplayListApplier];
 
@@ -99,7 +102,8 @@
 
   id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
   OCMStub([mockApplier alloc]).andReturn(mockApplier);
-  OCMStub([mockApplier initWithView:host andContext:context]).andReturn(mockApplier);
+  OCMStub([mockApplier initWithView:host andContext:context useSurfaceDrawing:YES])
+      .andReturn(mockApplier);
   [renderer ensureLynxDisplayListApplier];
 
   [[mockApplier expect] detachHostDecorationLayers];
@@ -118,7 +122,8 @@
 
   id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
   OCMStub([mockApplier alloc]).andReturn(mockApplier);
-  OCMStub([mockApplier initWithView:host andContext:context]).andReturn(mockApplier);
+  OCMStub([mockApplier initWithView:host andContext:context useSurfaceDrawing:YES])
+      .andReturn(mockApplier);
   [renderer ensureLynxDisplayListApplier];
 
   [[mockApplier expect] reattachHostDecorationLayers];
@@ -138,7 +143,8 @@
 
   id mockApplier = OCMClassMock([LynxDisplayListApplier class]);
   OCMStub([mockApplier alloc]).andReturn(mockApplier);
-  OCMStub([mockApplier initWithView:hostView andContext:context]).andReturn(mockApplier);
+  OCMStub([mockApplier initWithView:hostView andContext:context useSurfaceDrawing:YES])
+      .andReturn(mockApplier);
   [renderer ensureLynxDisplayListApplier];
 
   lynx::tasm::SubtreeProperty props[2];

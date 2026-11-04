@@ -55,6 +55,7 @@ podspec_target("lynx_podspec") {
     }
     ios = {
       deployment_target = "10.0"
+      weak_frameworks = [ "IOSurface" ]
       framework = [
         "WebKit",
         "AudioToolbox",
@@ -287,6 +288,8 @@ subspec_target("lynx") {
     "renderer/LynxContainerView.mm",
     "renderer/LynxDisplayListApplier+Internal.h",
     "renderer/LynxDisplayListApplier.mm",
+    "renderer/LynxDisplayListSurfacePainter.h",
+    "renderer/LynxDisplayListSurfacePainter.mm",
     "renderer/LynxRenderer+Internal.h",
     "renderer/LynxRenderer.h",
     "renderer/LynxRenderer.mm",
@@ -297,6 +300,10 @@ subspec_target("lynx") {
     "renderer/LynxTextLayer.mm",
     "renderer/LynxTextraLayer.h",
     "renderer/LynxTextraLayer.mm",
+    "renderer/scglayer/LynxSCGLayer.h",
+    "renderer/scglayer/LynxSCGLayer.mm",
+    "renderer/scglayer/LynxSCGSurfaceRenderer.h",
+    "renderer/scglayer/LynxSCGSurfaceRenderer.mm",
     "shadow_node/LynxCustomMeasureShadowNode.mm",
     "shadow_node/LynxLayoutNode.mm",
     "shadow_node/LynxLayoutNodeManager.mm",

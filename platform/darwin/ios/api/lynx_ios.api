@@ -1380,12 +1380,23 @@ public class LynxDevToolPool : NSObject {
 
 public class LynxDisplayListApplier : NSObject {
   public instancetype LynxDisplayListApplier::initWithView:andContext:(UIView< LynxRendererHost > *view,[andContext] LynxRendererContext *context);
+  public instancetype LynxDisplayListApplier::initWithView:andContext:useSurfaceDrawing:(UIView< LynxRendererHost > *view,[andContext] LynxRendererContext *context,[useSurfaceDrawing] BOOL useSurfaceDrawing);
   public void LynxDisplayListApplier::applyDisplayList:(lynx::tasm::DisplayList *list);
   public void LynxDisplayListApplier::detachHostDecorationLayers();
   public void LynxDisplayListApplier::reattachHostDecorationLayers();
   public void LynxDisplayListApplier::syncHostDecorationLayers();
   public void LynxDisplayListApplier::onRebuildSubRenderers();
   public void LynxDisplayListApplier::reset();
+}
+
+public class LynxDisplayListSurfacePainter : NSObject {
+  public instancetype LynxDisplayListSurfacePainter::initWithContext:insertLayer:invalidate:(LynxRendererContext *context,[insertLayer] void(^ insertLayer)(CALayer *, BOOL hostDecoration),[invalidate] dispatch_block_t invalidate);
+  public void LynxDisplayListSurfacePainter::beginFrameWithBounds:scale:(CGRect bounds,[scale] CGFloat scale);
+  public BOOL LynxDisplayListSurfacePainter::paintItem:reader:boxes:offset:hostDecoration:(const lynx::tasm::DisplayListItem &item,[reader] const lynx::tasm::DisplayListReader &reader,[boxes] const lynx::base::Vector< lynx::tasm::RoundedRectangle > &boxes,[offset] CGPoint offset,[hostDecoration] BOOL hostDecoration);
+  public void LynxDisplayListSurfacePainter::endGroup();
+  public BOOL LynxDisplayListSurfacePainter::endFrame();
+  public void LynxDisplayListSurfacePainter::invalidateImages();
+  public void LynxDisplayListSurfacePainter::reset();
 }
 
 public protocol LynxDynamicComponentFetcher-p : <NSObject> {
@@ -2366,6 +2377,10 @@ public class LynxImageLoadOptions : NSObject {
 }
 
 public class LynxImageManager : NSObject {
+  public id<LynxImageManagerObserver> LynxImageManager::drawingObserver drawingObserver;
+  public UIImage *_Nullable LynxImageManager::imageForDrawing();
+  public BOOL LynxImageManager::imageRequiresNativeView();
+  public void LynxImageManager::drawImageInContext:rect:(CGContextRef _Nonnull context,[rect] CGRect rect);
   public instancetype _Nonnull LynxImageManager::initWithContext:(LynxUIContext *_Nullable context);
   public void LynxImageManager::requestImage:withType:(LynxURL *_Nullable imageURL,[withType] LynxImageRequestType type);
   public BOOL LynxImageManager::canReuseOnResize();
@@ -2377,6 +2392,10 @@ public class LynxImageManager : NSObject {
   public void LynxImageManager::updatePaintInfo:(const lynx::tasm::ImagePaintInfo &paintInfo);
   public void LynxImageManager::updateSourceURL:placeholderURL:paintInfo:changes:(LynxURL *_Nullable sourceURL,[placeholderURL] LynxURL *_Nullable placeholderURL,[paintInfo] const lynx::tasm::ImagePaintInfo &paintInfo,[changes] uint32_t changes);
   public void LynxImageManager::reset();
+}
+
+public protocol LynxImageManagerObserver-p : <NSObject> {
+  public void LynxImageManagerObserver-p::imageManagerDidChangeImage:(LynxImageManager *_Nonnull manager);
 }
 
 public protocol LynxImageProcessor-p : <NSObject> {
@@ -3482,6 +3501,33 @@ public protocol LynxRuntimeLifecycleListener-p : <NSObject> {
   public void LynxRuntimeLifecycleListener-p::onRuntimeDetach();
   public void LynxRuntimeLifecycleListener-p::onRuntimeAttach:runtimeType:(void *_Nonnull env,[runtimeType] const char *_Nonnull runtimeType);
   public void LynxRuntimeLifecycleListener-p::onRuntimeAttach:(void *_Nonnull env);
+}
+
+public class LynxSCGLayer : CALayer {
+  public BOOL LynxSCGLayer::contextAPIAvailable contextAPIAvailable;
+  public LynxSCGDrawingBlock LynxSCGLayer::drawingBlock drawingBlock;
+  public NSError* LynxSCGLayer::lastRenderError lastRenderError;
+  public NSUInteger LynxSCGLayer::renderedFrameCount renderedFrameCount;
+  public NSUInteger LynxSCGLayer::droppedFrameCount droppedFrameCount;
+  public NSUInteger LynxSCGLayer::surfaceCount surfaceCount;
+  public size_t LynxSCGLayer::ownedSurfaceBytes ownedSurfaceBytes;
+  public BOOL LynxSCGLayer::usingBitmapFallback usingBitmapFallback;
+  public BOOL LynxSCGLayer::renderWithError:(NSError *_Nullable *_Nullable error);
+}
+
+public class LynxSCGPaintGroup : CALayer {
+}
+
+public class LynxSCGSurfaceRenderer : NSObject {
+  public NSString* LynxSCGSurfaceRenderer::status status;
+  public BOOL LynxSCGSurfaceRenderer::contextAPIAvailable contextAPIAvailable;
+  public size_t LynxSCGSurfaceRenderer::allocatedBytes allocatedBytes;
+  public NSUInteger LynxSCGSurfaceRenderer::bufferCount bufferCount;
+  public NSUInteger LynxSCGSurfaceRenderer::droppedFrames droppedFrames;
+  public instancetype LynxSCGSurfaceRenderer::initWithPrivateAPIEnabled:(BOOL enabled);
+  public BOOL LynxSCGSurfaceRenderer::renderSize:scale:toLayer:draw:(CGSize size,[scale] CGFloat scale,[toLayer] CALayer *layer,[draw] void(^ draw)(CGContextRef));
+  public NSData * LynxSCGSurfaceRenderer::copyPixels();
+  public CGSize LynxSCGSurfaceRenderer::pixelSize();
 }
 
 public protocol LynxSchemaInterceptor-p : <NSObject> {
@@ -7446,6 +7492,10 @@ public enum LynxInterceptGestureState {
   LynxInterceptGestureStateTrue
 }
 
+
+  typedef void(^ LynxSCGDrawingBlock) (CGContextRef context, CGRect bounds)
+  public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT NSErrorDomain const LynxSCGLayerErrorDomain LynxSCGLayerErrorDomain;
+  public typedef NS_ERROR_ENUM(LynxSCGLayerErrorDomain, LynxSCGLayerError);
 
 public enum LynxListProgrammaticScrollCompletionReason {
   LynxListProgrammaticScrollCompletionReasonImmediate

@@ -149,6 +149,50 @@
                       imageKey:key];
 }
 
+- (void)testSurfaceObserverReceivesAcceptedAsyncImagesButNotRetargetOrStaleResults {
+  [self createImage:1 background:NO];
+  LynxImageManager *manager = [_context imageManagerForID:1];
+  id observer = OCMProtocolMock(@protocol(LynxImageManagerObserver));
+  __block NSUInteger updates = 0;
+  OCMStub([observer imageManagerDidChangeImage:manager]).andDo(^(NSInvocation *invocation) {
+    XCTAssertTrue(NSThread.isMainThread);
+    ++updates;
+  });
+  manager.drawingObserver = observer;
+  LynxImageLoadOptions *source = _requests[0];
+  LynxImageLoadOptions *placeholder = _requests[1];
+  UIGraphicsImageRenderer *bitmap = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(4, 4)];
+  UIImage *loaded = [bitmap imageWithActions:^(UIGraphicsImageRendererContext *context) {
+    [UIColor.redColor setFill];
+    UIRectFill(CGRectMake(0, 0, 4, 4));
+  }];
+  [self runOnBackgroundThread:^{
+    source.completed(loaded, nil, source.imageURL.url);
+  }];
+  XCTAssertEqual(updates, 0u);
+  XCTestExpectation *finished =
+      [self expectationWithDescription:@"Main-thread surface invalidation"];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [finished fulfill];
+  });
+  [self waitForExpectations:@[ finished ] timeout:2];
+  XCTAssertEqual(updates, 1u);
+  XCTAssertEqual([manager imageForDrawing], loaded);
+  UIImageView *view = [UIImageView new];
+  [manager setTarget:view];
+  [manager setLayerTarget:[CALayer layer] imageSizeDidChange:nil];
+  XCTAssertEqual(updates, 1u);
+  placeholder.completed([UIImage new], nil, placeholder.imageURL.url);
+  XCTAssertEqual(updates, 1u);
+  XCTAssertEqual([manager imageForDrawing], loaded);
+  [manager reset];
+  XCTAssertNil(manager.drawingObserver);
+  source.completed([UIImage new], nil, source.imageURL.url);
+  XCTAssertEqual(updates, 1u);
+  // Reset cancels requests but retains the existing decoded-image cache.
+  XCTAssertEqual([manager imageForDrawing], loaded);
+}
+
 - (void)testImageUpdatesKeepManagerAndReloadOnlyRequestChanges {
   [self createImage:1 background:NO];
   LynxImageManager *manager = [_context imageManagerForID:1];

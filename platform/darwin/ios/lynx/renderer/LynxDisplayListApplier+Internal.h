@@ -15,6 +15,10 @@
 - (instancetype)initWithView:(UIView<LynxRendererHost> *)view
                   andContext:(LynxRendererContext *)context;
 
+- (instancetype)initWithView:(UIView<LynxRendererHost> *)view
+                  andContext:(LynxRendererContext *)context
+           useSurfaceDrawing:(BOOL)useSurfaceDrawing;
+
 - (void)applyDisplayList:(lynx::tasm::DisplayList *)list;
 
 - (void)detachHostDecorationLayers;
