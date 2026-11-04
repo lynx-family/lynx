@@ -5,7 +5,7 @@
 #   <source_url>:<PodName>:<Version> pod [auto]
 #
 # The source URL matches a `source` declared in Podfile.
-https://github.com/lynx-family/Specs.git:PrimJS:4.5.0-alpha.4 pod
+https://github.com/lynx-family/Specs.git:PrimJS:4.5.0-alpha.5 pod
 https://cdn.cocoapods.org/:AnimaX:1.1.0 pod
 https://cdn.cocoapods.org/:skity:1.1.0-alpha.3 pod
 https://cdn.cocoapods.org/:LynxTextra:0.2.4 pod
