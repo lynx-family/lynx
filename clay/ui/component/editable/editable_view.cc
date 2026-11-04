@@ -822,9 +822,13 @@ bool EditableView::OnKeyEventInternal(const KeyEvent* key_event) {
         }
         return true;
       } else if (is_down && key_event->GetSynthesized() &&
-                 key_event->GetCharacter() == "\r" && max_lines_ > 1) {
-        // Treat as line break in multi-line mode for PC headless mode.
-        OnCommitText("\n");
+                 key_event->GetCharacter() == "\r") {
+        // Treat as line break in multi-line mode for PC headless mode. In
+        // single-line mode, Enter should only trigger confirm on key up and
+        // must not commit "\r" into the value.
+        if (max_lines_ > 1) {
+          OnCommitText("\n");
+        }
         return true;
       }
     }
