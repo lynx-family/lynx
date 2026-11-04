@@ -440,7 +440,9 @@ public abstract class UIGroup<T extends ViewGroup>
     Rect bound = null;
     for (LynxBaseUI ui = mCurrentDrawUI; ui != null; ui = ui.mNextDrawUI) {
       if (!ui.isFlatten()) {
-        if (((LynxUI) ui).getView() == child) {
+        if (((LynxUI) ui).getView() == child
+            || (ui instanceof UIList && ((UIList) ui).getContainer() != null
+                && ((UIList) ui).getContainer() == child)) {
           bound = ui.getBound();
           mCurrentDrawUI = ui.mNextDrawUI;
           break;
