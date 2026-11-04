@@ -2308,18 +2308,12 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     if (!getLynxContext().isEmbeddedModeOn()) {
       return null;
     }
-    return mLynxUIRender.getMeaningfulPaintingAreas();
-  }
-
-  public void getMeaningfulPaintingAreas(
-      @NonNull LynxConsumer<List<MeaningfulPaintingArea>> callback) {
-    UIThreadUtils.runOnUiThreadImmediately(() -> {
-      if (getLynxContext() == null || !getLynxContext().isEmbeddedModeOn()) {
-        callback.accept(java.util.Collections.emptyList());
-        return;
-      }
-      mLynxUIRender.getMeaningfulPaintingAreas(callback);
-    });
+    UIGroup rootUI = getLynxUIRoot();
+    if (rootUI instanceof UIBody) {
+      return ((UIBody) rootUI).getMeaningfulPaintingAreas();
+    } else {
+      return super.getMeaningfulPaintingAreas();
+    }
   }
 
   /**

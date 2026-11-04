@@ -84,7 +84,6 @@ class RenderImage : public RenderBox, public ImageResourceClient {
   PaintFunction FixupPainterIfNeeded(const PaintFunction& painter) override;
 
   bool IsRepaintBoundary() const override;
-  bool HasContent() const;
 
   void StartAnimate();
   void StopAnimation();

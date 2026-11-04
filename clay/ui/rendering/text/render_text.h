@@ -53,7 +53,6 @@ class RenderText : public RenderBox {
   void Paint(PaintingContext& context, const FloatPoint& offset) override;
 
   TextPainter* GetPainter() { return painter_.get(); }
-  const TextPainter* GetPainter() const { return painter_.get(); }
 
   void SetSelection(const TextRange& range);
   void SetAllSelection();
