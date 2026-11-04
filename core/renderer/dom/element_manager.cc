@@ -1808,6 +1808,15 @@ void ElementManager::TickListIfNeeded(
       list_element->OnListItemBatchFinished(options);
     }
   }
+  // Operation-zero item flushes update an already bound item. Its layout can
+  // reset the origin and change its measured size, but dirty-list collection
+  // excludes this parent from the item transaction. Reflow it explicitly.
+  if (options->list_id_ != 0 && options->operation_id == 0 &&
+      options->operation_ids_.empty()) {
+    if (auto *list = node_manager_->Get(options->list_id_); list) {
+      list->OnListElementUpdated(options);
+    }
+  }
 }
 
 void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
