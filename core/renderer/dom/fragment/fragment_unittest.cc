@@ -1162,6 +1162,7 @@ class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
       return {translationX: globalThis.invalidLayer ? NaN : width * globalThis.layerXFactor + globalThis.layerOffset,
           translationY: height * globalThis.layerYFactor, rotationZ: globalThis.layerRotation,
           scaleX: globalThis.layerScaleX, scaleY: globalThis.layerScaleY,
+          pivotFractionX: 0.5, pivotFractionY: 0.5, rotationX: 0, rotationY: 0, cameraDistance: 8,
           alpha: globalThis.layerAlphas ? globalThis.layerAlphas[index] : globalThis.layerAlpha};
     }))") + "; })(" + std::to_string(next_layer_index_++) +
                          ")"));
@@ -1982,12 +1983,13 @@ TEST_F(ComposeGraphicsLayerDrawTest,
 }
 
 TEST_F(ComposeGraphicsLayerDrawTest, ResultWithoutAlphaKeepsTransform) {
-  // A transform-only template's result has no alpha key at all.
+  // Opacity is tested independently of the transform fields.
   auto layer = lepus::Dictionary::Create();
   layer->SetValue("op", lepus::Value(11));
   layer->SetValue("resolve", Eval(R"((function(element, width, height) {
       return {translationX: 15, translationY: 5, rotationZ: 0, scaleX: 1,
-          scaleY: 1};
+          scaleY: 1, pivotFractionX: 0.5, pivotFractionY: 0.5,
+          rotationX: 0, rotationY: 0, cameraDistance: 8};
     }))"));
   auto image_alpha = lepus::Dictionary::Create();
   image_alpha->SetValue("op", lepus::Value(2));
@@ -2109,15 +2111,37 @@ TEST_F(ComposeGraphicsLayerDrawTest, NestedAlphaRemainsOnEachLayerBoundary) {
   EXPECT_FLOAT_EQ(opacity->data.opacity, 0.25f);
 }
 
-TEST_F(ComposeGraphicsLayerDrawTest, InvalidResultRestoresDefaultTransform) {
+TEST_F(ComposeGraphicsLayerDrawTest, InvalidTranslationOnlyResetsThatAxis) {
   Install(Layer());
   auto* layer = handle_->mount_root()->GetChildAt(0);
   Size(layer, 200, 80);
   ExpectTranslation(Draw(layer), 110, 80);
   Eval("globalThis.invalidLayer = true");
   Invalidate(lepus::Value(handle_));
-  ExpectTranslation(Draw(layer), 0, 0);
+  ExpectTranslation(Draw(layer), 0, 80);
   EXPECT_FALSE(layer->computed_css_style()->HasTransform());
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, OverflowResetsTransformButAppliesOpacity) {
+  Install(Layer());
+  auto* layer = handle_->mount_root()->GetChildAt(0);
+  Size(layer, 200, 80);
+  ExpectTranslation(Draw(layer), 110, 80);
+
+  // Both 1e38 and the 100-unit pivot fit in float; their product does not.
+  Eval("globalThis.layerScaleX = 1e38; globalThis.layerAlpha = 0.25");
+  Invalidate(lepus::Value(handle_));
+  const auto list = Draw(layer);
+  const auto* transform =
+      LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kTransform);
+  const auto* opacity =
+      LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kOpacity);
+  ASSERT_NE(transform, nullptr);
+  ASSERT_NE(opacity, nullptr);
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_FLOAT_EQ(transform->data.transform[i], i % 5 == 0 ? 1.f : 0.f);
+  }
+  EXPECT_FLOAT_EQ(opacity->data.opacity, 0.25f);
 }
 
 TEST_F(ComposeGraphicsLayerDrawTest, DeclinedResolverRestoresDefaultTransform) {
@@ -2197,6 +2221,106 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   Size(layer, 200, 80);
   // Scope width=400px, x=210px; the display list uses layout units: x=105.
   ExpectTranslation(Draw(layer), 105, 80);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, PivotAndCameraProjectTheLayerPlane) {
+  // A left-edge hinge, at half height. At density 2 the camera depth of 72
+  // physical pixels is 36 layout units. The pivot stays fixed on a resize.
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
+  auto layer = lepus::Dictionary::Create();
+  layer->SetValue("op", lepus::Value(11));
+  layer->SetValue("resolve", Eval(R"((function() {
+    return {translationX: 10, translationY: 0, rotationZ: 0, scaleX: 1,
+            scaleY: 1, pivotFractionX: 0, pivotFractionY: 0.5,
+            rotationX: 0, rotationY: 60, cameraDistance: globalThis.camera};
+  }))"));
+  Eval("globalThis.camera = 1");
+  Install(lepus::Value(layer));
+  auto* content = handle_->content_element().get();
+  const auto check = [&](float height, float distance) {
+    Size(content, 80, height);
+    const auto list = Draw(content);
+    const auto* property =
+        LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kTransform);
+    ASSERT_NE(property, nullptr);
+    const auto* m = property->data.transform;
+    auto check_point = [&](float x, float y) {
+      const float w = m[3] * x + m[7] * y + m[15];
+      const float weight = 1.f + x * 0.8660254f / (36.f * distance);
+      EXPECT_NEAR((m[0] * x + m[4] * y + m[12]) / w, 5.f + 0.5f * x / weight,
+                  0.0001f);
+      EXPECT_NEAR((m[1] * x + m[5] * y + m[13]) / w,
+                  height / 2.f + (y - height / 2.f) / weight, 0.0001f);
+    };
+    check_point(0, height / 2.f);
+    check_point(40, 10);
+    EXPECT_FLOAT_EQ(m[2], 0.f);
+    EXPECT_FLOAT_EQ(m[7], 0.f);
+  };
+  check(100, 1);
+  Eval("globalThis.camera = 2");
+  check(120, 2);
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest,
+       BadProjectionFieldKeepsOtherLayerProperties) {
+  auto layer = lepus::Dictionary::Create();
+  layer->SetValue("op", lepus::Value(11));
+  layer->SetValue("resolve", Eval(R"((function() {
+    return {translationX: 7, translationY: 0, scaleX: 1, scaleY: 1,
+            rotationZ: 0, rotationX: "bad", rotationY: 60, pivotFractionY: 0,
+            cameraDistance: globalThis.distance, alpha: 0.4};
+  }))"));
+  Install(lepus::Value(layer));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 80);
+  for (const char* distance :
+       {"undefined", "null", "0", "-1", "NaN", "Infinity", "1e100"}) {
+    Eval(std::string("globalThis.distance = ") + distance);
+    Invalidate(lepus::Value(handle_));
+    const auto list = Draw(content);
+    const auto* transform =
+        LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kTransform);
+    const auto* opacity =
+        LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kOpacity);
+    ASSERT_NE(transform, nullptr);
+    ASSERT_NE(opacity, nullptr);
+    const auto* m = transform->data.transform;
+    // Missing pivot X defaults to half width. The hinge (50, 0) still moves by
+    // 7, and the right edge tilts at 60 degrees with the default camera.
+    const float w = 50.f * m[3] + m[15];
+    EXPECT_NEAR((50.f * m[0] + m[12]) / w, 57.f, 0.0001f);
+    EXPECT_NEAR(m[3], 0.8660254f / (8.f * 72.f), 0.0000001f);
+    EXPECT_FLOAT_EQ(m[7], 0.f);
+    EXPECT_FLOAT_EQ(m[13], 0.f);
+    EXPECT_FLOAT_EQ(opacity->data.opacity, 0.4f);
+  }
+}
+
+TEST_F(ComposeGraphicsLayerDrawTest, MixedRotationsProjectBothBasisVectors) {
+  auto layer = lepus::Dictionary::Create();
+  layer->SetValue("op", lepus::Value(11));
+  layer->SetValue("resolve", Eval(R"((function() {
+    return {translationX: 0, translationY: 0, scaleX: 2, scaleY: 3,
+            rotationZ: 90, rotationY: 60, rotationX: 30, cameraDistance: 1,
+            pivotFractionX: 0, pivotFractionY: 0};
+  }))"));
+  Install(lepus::Value(layer));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 80);
+  const auto list = Draw(content);
+  const auto* property =
+      LastSubtreeProperty(list, DisplayListSubtreePropertyOpType::kTransform);
+  ASSERT_NE(property, nullptr);
+  const auto* m = property->data.transform;
+  // (10, 0) rotates to (0, 10*sqrt(3), 10); (0, 10) rotates to
+  // (-15, -7.5*sqrt(3), 22.5). Compare the rendered points after projection.
+  const float wx = 10.f * m[3] + m[15];
+  const float wy = 10.f * m[7] + m[15];
+  EXPECT_NEAR(10.f * m[0] / wx, 0.f, 0.0001f);
+  EXPECT_NEAR(10.f * m[1] / wx, 17.320508f / (1.f - 10.f / 72.f), 0.0001f);
+  EXPECT_NEAR(10.f * m[4] / wy, -15.f / (1.f - 22.5f / 72.f), 0.0001f);
+  EXPECT_NEAR(10.f * m[5] / wy, -12.990381f / (1.f - 22.5f / 72.f), 0.0001f);
 }
 
 TEST_F(ComposeGraphicsLayerDrawTest, RotationAndScaleUseTheLayerCenter) {
