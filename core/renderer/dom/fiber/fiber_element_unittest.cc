@@ -26028,6 +26028,119 @@ TEST_P(FiberElementTest, NewStylingMediaQueryReResolveOnColorSchemeChange) {
                                CSSValue(200, CSSValuePattern::PX)));
 }
 
+void ExpectNativeListRecomposition(FiberElementTest* test, bool horizontal) {
+  PrepareLayoutInElementFirstScreenTest(test);
+  auto* manager = test->manager;
+  auto tasm = test->tasm;
+  tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
+  manager->SetThreadStrategy(base::ThreadStrategyForRendering::ALL_ON_UI);
+  manager->SetEnableNativeListFromShell(true);
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 200,
+                          SLMeasureModeDefinite, true);
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  Renderer::RegisterBuiltin(renderer_runtime.get(), ArchOption::FIBER_ARCH);
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+  auto page = manager->CreateFiberPage("page", 1);
+  page->MarkAsComposeLayout();
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  manager->SetFiberPageElement(page);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
+      manager, ComposeElementKind::kList, base::String(), tasm.get()));
+  auto* list = static_cast<ListElement*>(handle->content_element().get());
+  list->SetStyle(kPropertyIDWidth, lepus::Value("200px"));
+  list->SetStyle(kPropertyIDHeight, lepus::Value("200px"));
+  list->SetAttribute("enable-decoupled-list", lepus::Value(true));
+  list->SetAttribute("scroll-orientation",
+                     lepus::Value(horizontal ? "horizontal" : "vertical"));
+  list->SetAttribute("experimental-batch-render-strategy", lepus::Value(0));
+  page->InsertNode(handle->mount_root());
+  auto items = lepus::CArray::Create();
+  lynx::list::testing::FiberDataSource source;
+  const auto axis = horizontal ? kPropertyIDWidth : kPropertyIDHeight;
+  const auto cross_axis = horizontal ? kPropertyIDHeight : kPropertyIDWidth;
+  for (int index = 0; index < 3; ++index) {
+    auto item = manager->CreateFiberElement("list-item");
+    item->MarkAsComposeLayout();
+    item->SetStyle(axis, lepus::Value(std::to_string(40 + index * 10) + "px"));
+    item->SetStyle(cross_axis, lepus::Value("200px"));
+    items->emplace_back(item);
+    source.insert_action_.insert_ops_.push_back({index, std::to_string(index),
+                                                 40 + index * 10, false, false,
+                                                 false, false});
+  }
+  renderer_runtime->SetGlobalData("recompositionItems", lepus::Value(items));
+  constexpr char kBind[] = R"JS((function(list, id, index, operation) {
+    globalThis.recompositionBindings = (globalThis.recompositionBindings || 0) + 1;
+    var item = recompositionItems[index];
+    __AppendElement(list, item);
+    __FlushElementTree(item, {operationID: operation,
+      elementID: __GetElementUniqueID(item), listID: id});
+    return __GetElementUniqueID(item);
+  }))JS";
+  lepus::Value callback;
+  ASSERT_TRUE(context->EvalBuf(kBind, sizeof(kBind) - 1, callback, "bind.js"));
+  list->UpdateCallbacks(callback, {}, {});
+  list->SetAttribute("update-list-info", lepus::Value(source.Resolve()));
+  page->FlushActionsAsRoot();
+  manager->RequestLayout(LayoutOptions(test, true, true));
+  auto* container = static_cast<lynx::list::ListContainerImpl*>(
+      list->list_mediator_->list_container_delegate_.get());
+  ASSERT_NE(container, nullptr);
+  auto second = fml::static_ref_ptr_cast<Element>(items->get(1).RefCounted());
+  auto third = fml::static_ref_ptr_cast<Element>(items->get(2).RefCounted());
+  auto* second_holder = container->GetItemHolderForIndex(1);
+  auto* third_holder = container->GetItemHolderForIndex(2);
+  ASSERT_NE(second_holder, nullptr);
+  ASSERT_NE(third_holder, nullptr);
+  ASSERT_TRUE(container->list_adapter()->IsFinishedBinding(second_holder));
+  ASSERT_TRUE(container->list_adapter()->IsFinishedBinding(third_holder));
+  auto origin = [horizontal](Element* item) {
+    return horizontal ? item->left() : item->top();
+  };
+  auto holder_origin = [horizontal](const lynx::list::ItemHolder* item) {
+    return horizontal ? item->left() : item->top();
+  };
+  auto holder_size = [horizontal](const lynx::list::ItemHolder* item) {
+    return horizontal ? item->width() : item->height();
+  };
+  EXPECT_FLOAT_EQ(40, origin(second.get()));
+  EXPECT_FLOAT_EQ(90, origin(third.get()));
+  const auto bindings =
+      renderer_runtime->GetGlobalData("recompositionBindings").Number();
+  // Recomposing an already bound item does not complete a native bind, so it
+  // flushes without list binding identifiers. The dirty list must then reflow
+  // with the item's new size, moving the following item.
+  for (int size : {90, 20, 20, 50}) {
+    SCOPED_TRACE(size);
+    second->SetStyle(axis, lepus::Value(std::to_string(size) + "px"));
+    constexpr char kRecompose[] =
+        R"JS(__FlushElementTree(recompositionItems[1], {operationID: 0}))JS";
+    lepus::Value result;
+    ASSERT_TRUE(context->EvalBuf(kRecompose, sizeof(kRecompose) - 1, result,
+                                 "recompose.js"));
+    EXPECT_FLOAT_EQ(size, holder_size(second_holder));
+    EXPECT_FLOAT_EQ(40, origin(second.get()));
+    EXPECT_FLOAT_EQ(40, holder_origin(second_holder));
+    EXPECT_FLOAT_EQ(40 + size, origin(third.get()));
+    EXPECT_FLOAT_EQ(40 + size, holder_origin(third_holder));
+    EXPECT_EQ(
+        bindings,
+        renderer_runtime->GetGlobalData("recompositionBindings").Number());
+    EXPECT_TRUE(container->AreOnScreenItemsReady());
+  }
+}
+
+TEST_P(FiberElementTest, VerticalNativeListReflowsAfterItemRecomposition) {
+  ExpectNativeListRecomposition(this, false);
+}
+
+TEST_P(FiberElementTest, HorizontalNativeListReflowsAfterItemRecomposition) {
+  ExpectNativeListRecomposition(this, true);
+}
+
 TEST_P(FiberElementTest,
        ComposeListScrollMethodsMeasureNewItemsBeforeReturning) {
   PrepareLayoutInElementFirstScreenTest(this);
