@@ -319,6 +319,20 @@ void {{napi_class}}::Init(std::unique_ptr<{{cpp_class}}> impl) {
   impl_->AssociateWithWrapper(this);
   {% endif %}
 
+  {% for method in methods if method.instance_condition %}
+  // Register capability-dependent methods only on supported instances.
+  if ({{method.instance_condition}}) {
+    napi_property_descriptor descriptor = Wrapped::InstanceMethod(
+        "{{method.name}}", &{{napi_class}}::{{method.camel_case_name}}Method,
+        static_cast<napi_property_attributes>(napi_writable | napi_configurable));
+    auto object = NapiObject();
+    object.DefineProperty(Napi::PropertyDescriptor(descriptor));
+    // An extracted function can outlive its original receiver.
+    binding::AttachPropData(object.Get("{{method.name}}").As<Object>(), 1,
+                            &descriptor);
+  }
+  {% endfor %}
+
   {% if attach_native_info %}
   {% for attribute in attributes if attribute.is_same_object and attribute.owned_by_parent %}
   Napi{{attribute.idl_type}}::DefineProperty(Env(), NapiObject(), impl_->Get{{attribute.camel_case_name}}(), "{{attribute.name}}");
@@ -575,7 +589,7 @@ Napi::Class* {{napi_class}}::Class(Napi::Env env) {
 
   // Methods
   {% for method in methods if not method.overload_index or method.overloads %}
-  {% if method.has_binding_version or method.has_binding_resolver %}
+  {% if (method.has_binding_version or method.has_binding_resolver) and not method.instance_condition %}
   {% if method.is_static %}
   props.push_back(
       Wrapped::StaticMethod("{{method.name}}",
@@ -583,7 +597,13 @@ Napi::Class* {{napi_class}}::Class(Napi::Env env) {
                             napi_static
       ));
   {% else %}
+  {% if method.registration_condition %}
+  if ({{method.registration_condition}}) {
+  {% endif %}
   AddInstanceMethod(props, "{{method.name}}{{'_' if method.keep_binding_version or method.keep_binding_resolver }}", &{{napi_class}}::{{method.camel_case_name}}Method);
+  {% if method.registration_condition %}
+  }
+  {% endif %}
   {% endif %}{# static #}
   {% endif %}
   {% endfor %}
