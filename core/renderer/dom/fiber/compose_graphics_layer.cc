@@ -10,6 +10,7 @@
 #include <limits>
 
 #include "base/include/log/logging.h"
+#include "base/include/value/base_string.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
@@ -20,6 +21,81 @@
 
 namespace lynx {
 namespace tasm {
+
+namespace {
+
+BASE_STATIC_STRING_DECL(kPivotFractionX, "pivotFractionX");
+BASE_STATIC_STRING_DECL(kPivotFractionY, "pivotFractionY");
+BASE_STATIC_STRING_DECL(kRotationX, "rotationX");
+BASE_STATIC_STRING_DECL(kRotationY, "rotationY");
+BASE_STATIC_STRING_DECL(kRotationZ, "rotationZ");
+BASE_STATIC_STRING_DECL(kTranslationX, "translationX");
+BASE_STATIC_STRING_DECL(kTranslationY, "translationY");
+BASE_STATIC_STRING_DECL(kScaleX, "scaleX");
+BASE_STATIC_STRING_DECL(kScaleY, "scaleY");
+BASE_STATIC_STRING_DECL(kCameraDistance, "cameraDistance");
+
+gfx::Matrix44 LayerTransform(const lepus::Value& properties, float width,
+                             float height, double pixels) {
+  const auto read = [&](const base::String& key, float fallback) -> float {
+    const auto field = properties.GetProperty(key).ToLepusValue();
+    if (!field.IsNumber()) return fallback;
+    const double n = field.Number();
+    return std::isfinite(n) && std::abs(n) <= std::numeric_limits<float>::max()
+               ? static_cast<float>(n)
+               : fallback;
+  };
+  const float pivot_x = width * read(kPivotFractionX, 0.5f);
+  const float pivot_y = height * read(kPivotFractionY, 0.5f);
+  const float rotation_x = read(kRotationX, 0.f);
+  const float rotation_y = read(kRotationY, 0.f);
+  gfx::Matrix44 matrix, rotation;
+  matrix.preTranslate(pivot_x + read(kTranslationX, 0.f) / pixels,
+                      pivot_y + read(kTranslationY, 0.f) / pixels, 0);
+
+  // Match Compose's projected layer plane: scale, rotate Z/Y/X, project,
+  // then move the pivot back. The camera convention is 72 physical pixels
+  // per unit; the DisplayList is expressed in layout units.
+  constexpr float kMinPerspectiveAngleDegrees = 0.001f;
+  if (std::abs(rotation_x) > kMinPerspectiveAngleDegrees ||
+      std::abs(rotation_y) > kMinPerspectiveAngleDegrees) {
+    constexpr float kDefaultCameraDistance = 8.f;
+    const float distance = read(kCameraDistance, kDefaultCameraDistance);
+    const float camera = distance > 0.f ? distance : kDefaultCameraDistance;
+    gfx::Matrix44 perspective;
+    perspective.setRC(3, 2, -pixels / (72.0 * camera));
+    matrix.preConcat(perspective);
+  }
+  if (rotation_x != 0.f) {
+    rotation.setRotateAboutXAxis(rotation_x);
+    matrix.preConcat(rotation);
+  }
+  if (rotation_y != 0.f) {
+    rotation.setRotateAboutYAxis(rotation_y);
+    matrix.preConcat(rotation);
+  }
+  rotation.setRotateAboutZAxis(read(kRotationZ, 0.f));
+  matrix.preConcat(rotation);
+  matrix.preScale(read(kScaleX, 1.f), read(kScaleY, 1.f), 1);
+  matrix.preTranslate(-pivot_x, -pivot_y, 0);
+  if (rotation_x != 0.f || rotation_y != 0.f) {
+    // The output is a flat layer, not a shared 3D scene. Preserve its planar
+    // homography (including w) without feeding depth into an ancestor layer.
+    for (int axis : {0, 1, 3}) {
+      matrix.setRC(axis, 2, 0.f);
+      matrix.setRC(2, axis, 0.f);
+    }
+    matrix.setRC(2, 2, 1.f);
+  }
+  // Finite inputs can still overflow (e.g. scale times pivot). Reset only
+  // the transform; the layer's opacity is independent.
+  for (size_t i = 0; i < 16; ++i) {
+    if (!std::isfinite(matrix.Data()[i])) return gfx::Matrix44();
+  }
+  return matrix;
+}
+
+}  // namespace
 
 // Fragment owns the hook and property invalidation. No layer state is retained
 // here: each property update evaluates one closure and records its result.
@@ -53,18 +129,6 @@ CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
           LOGE("graphicsLayer resolver returned invalid properties");
           return;
         }
-        constexpr const char* keys[] = {"translationX", "translationY",
-                                        "rotationZ", "scaleX", "scaleY"};
-        float properties[5];
-        for (size_t i = 0; i < 5; ++i) {
-          const auto number = value.GetProperty(keys[i]).ToLepusValue();
-          if (!number.IsNumber() || !std::isfinite(number.Number()) ||
-              std::abs(number.Number()) > std::numeric_limits<float>::max()) {
-            LOGE("graphicsLayer resolver returned invalid numeric properties");
-            return;
-          }
-          properties[i] = static_cast<float>(number.Number());
-        }
         // Alpha is optional so previously built transform-only templates keep
         // their ordinary opacity. An absent key reads like null, so test the
         // key itself. Validate before emitting any custom output.
@@ -81,23 +145,8 @@ CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
           alpha = static_cast<float>(
               std::max(0., std::min(1., alpha_value.Number())));
         }
-        const float center_x = target->width() * 0.5f;
-        const float center_y = target->height() * 0.5f;
-        gfx::Matrix44 matrix;
-        matrix.preTranslate(center_x + properties[0] / pixels,
-                            center_y + properties[1] / pixels, 0);
-        gfx::Matrix44 rotation;
-        rotation.setRotateAboutZAxis(properties[2]);
-        matrix.preConcat(rotation);
-        matrix.preScale(properties[3], properties[4], 1);
-        matrix.preTranslate(-center_x, -center_y, 0);
-        for (size_t i = 0; i < 16; ++i) {
-          if (!std::isfinite(matrix.Data()[i])) {
-            LOGE("graphicsLayer transform matrix overflowed");
-            return;
-          }
-        }
-        builder.Transform(matrix);
+        builder.Transform(
+            LayerTransform(value, target->width(), target->height(), pixels));
         // The innermost layer can bind to the content Element itself. Preserve
         // opacity from the content (for example an image's own alpha) and apply
         // the layer's opacity to that output. Removal restores the ordinary
