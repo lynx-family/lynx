@@ -696,7 +696,7 @@ base::String ComputedCSSStyleCssTextHelper::ConcatStringsWithWhitespace(
     if (i > 0) {
       result += ' ';
     }
-    result += strings[i].c_str();
+    result += strings[i].str();
   }
   return base::String(result);
 }

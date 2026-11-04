@@ -113,7 +113,7 @@ void LazyBundleLoader::LoadFrameBundle(const std::string& src) {
   auto preloaded_bundle = GetTemplateBundle(src);
   if (preloaded_bundle.has_value()) {
     // Hit cache, dispatch directly without network request
-    LOGE("Load Frame Bundle with preloaded bundle. Src： " << src.c_str());
+    LOGE("Load Frame Bundle with preloaded bundle. Src: " << src);
     LazyBundleLoader::CallBackInfo callback_info(
         src, std::vector<uint8_t>(), std::move(preloaded_bundle), std::nullopt);
     lazy_bundle::LynxLazyBundleRequest request{
@@ -384,8 +384,7 @@ lepus::Value LazyBundleLoader::GetPerfInfo(const std::string& url) {
 
 void LazyBundleLoader::InsertTemplateBundle(const std::string& url,
                                             LynxTemplateBundle bundle) {
-  LOGE("LazyBundleLoader::InsertTemplateBundle: " << url.c_str()
-                                                  << "this: " << this);
+  LOGE("LazyBundleLoader::InsertTemplateBundle: " << url << "this: " << this);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LAZY_BUNDLE_LOADER_INSERT_BUNDLE, "url",
               url);
 
@@ -395,8 +394,7 @@ void LazyBundleLoader::InsertTemplateBundle(const std::string& url,
 
 std::optional<LynxTemplateBundle> LazyBundleLoader::GetTemplateBundle(
     const std::string& url) {
-  LOGE("LazyBundleLoader::GetTemplateBundle: " << url.c_str()
-                                               << "this: " << this);
+  LOGE("LazyBundleLoader::GetTemplateBundle: " << url << "this: " << this);
   std::unique_lock<std::mutex> lock(mutex_);
   auto bundle_iter = loaded_bundles_.find(url);
   if (bundle_iter != loaded_bundles_.end()) {
