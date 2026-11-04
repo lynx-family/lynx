@@ -188,70 +188,53 @@ void InspectorUIExecutor::StopScreencast(
 }
 
 void InspectorUIExecutor::PageEnable(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
   // SendWelcomeMessage
-  {
-    Json::Value content;
-    Json::Value params;
-    Json::Value message;
+  Json::Value content;
+  Json::Value params;
+  Json::Value message;
 
-    auto ts = lynx::base::CurrentTimeMilliseconds();
+  auto ts = lynx::base::CurrentTimeMilliseconds();
 
-    message["source"] = "javascript";
-    message["level"] = "verbose";
-    message["text"] = BANNER;
-    message["timestamp"] = ts;
-    params["entry"] = message;
-    content["method"] = "Log.entryAdded";
-    content["params"] = params;
-    sender->SendMessage("CDP", content);
+  message["source"] = "javascript";
+  message["level"] = "verbose";
+  message["text"] = BANNER;
+  message["timestamp"] = ts;
+  params["entry"] = std::move(message);
+  content["method"] = "Log.entryAdded";
+  content["params"] = std::move(params);
+  auto devtool_mediator = devtool_mediator_wp_.lock();
+  if (devtool_mediator) {
+    devtool_mediator->SendCDPEvent(content);
   }
-
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  responder->SendSuccess();
 }
 
 void InspectorUIExecutor::PageCanEmulate(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["result"] = true;
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  Json::Value result(Json::ValueType::objectValue);
+  result["result"] = true;
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::PageCanScreencast(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
-  content["result"] = true;
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  Json::Value result(Json::ValueType::objectValue);
+  result["result"] = true;
+  responder->SendSuccess(std::move(result));
 }
 
 void InspectorUIExecutor::PageGetResourceTree(
-    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
-    const Json::Value& message) {
-  Json::Value response(Json::ValueType::objectValue);
-  Json::Value content(Json::ValueType::objectValue);
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value&) {
+  Json::Value result(Json::ValueType::objectValue);
   Json::Value frameTree(Json::ValueType::objectValue);
   frameTree["frame"] = Json::ValueType::objectValue;
   frameTree["frame"]["url"] = kLynxLocalUrl;
   frameTree["frame"]["securityOrigin"] = kLynxSecurityOrigin;
   frameTree["frame"]["mimeType"] = kLynxMimeType;
   frameTree["resources"] = Json::ValueType::arrayValue;
-  content["frameTree"] = frameTree;
-  response["result"] = content;
-  response["id"] = message["id"].asInt64();
-  sender->SendMessage("CDP", response);
+  result["frameTree"] = std::move(frameTree);
+  responder->SendSuccess(std::move(result));
 
   auto devtool_mediator = devtool_mediator_wp_.lock();
   if (devtool_mediator) {
