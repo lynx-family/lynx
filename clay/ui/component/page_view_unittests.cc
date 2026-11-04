@@ -5,6 +5,7 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -562,6 +563,10 @@ TEST_F_UI(TapReturnTest, BatchedUpAndReusedDownKeepIndependentSequences) {
 }
 
 TEST_F_UI(TapReturnTest, CancelDoesNotTapAndClearsSequence) {
+  std::vector<std::pair<std::string, int>> events;
+  touch_event_callback_ = [&](const std::string& name, int id) {
+    events.emplace_back(name, id);
+  };
   page_->DispatchPointerEvent(
       {CreatePointer(1, PointerEvent::EventType::kDownEvent, {10, 10})});
   page_->DispatchPointerEvent({CreatePointer(
@@ -571,10 +576,24 @@ TEST_F_UI(TapReturnTest, CancelDoesNotTapAndClearsSequence) {
   auto cancel = CreatePointer(1, PointerEvent::EventType::kCancel, {12, 10});
   cancel.buttons = 0;
   page_->DispatchPointerEvent({cancel});
-  EXPECT_TRUE(tap_targets_.empty());
+  page_->DispatchPointerEvent({CreatePointer(
+      1, PointerEvent::EventType::kMoveEvent, {13, 10}, {1, 0})});
+  auto late_up = CreatePointer(1, PointerEvent::EventType::kUpEvent, {13, 10});
+  late_up.buttons = 0;
+  page_->DispatchPointerEvent({late_up});
+  EXPECT_THAT(events, ::testing::ElementsAre(std::make_pair("touchstart", 1),
+                                             std::make_pair("touchmove", 1),
+                                             std::make_pair("touchmove", 1),
+                                             std::make_pair("touchcancel", 1)));
 
+  events.clear();
   DispatchOutAndBack(1);
-  EXPECT_EQ(tap_targets_, std::vector<int>({1}));
+  EXPECT_THAT(events, ::testing::ElementsAre(std::make_pair("touchstart", 1),
+                                             std::make_pair("touchmove", 1),
+                                             std::make_pair("touchmove", 1),
+                                             std::make_pair("touchend", 1),
+                                             std::make_pair("tap", 1)));
+  touch_event_callback_ = nullptr;
 }
 
 TEST_F_UI(TapReturnTest, MainDragRecognizerKeepsLegacyMovementPolicy) {
@@ -886,6 +905,128 @@ TEST(PageViewTest, AncestorTouchTargetDoesNotPreserveFocusedChild) {
 
   EXPECT_FALSE(page_view->ShouldPreserveFocusForTouchTarget(parent));
   EXPECT_TRUE(page_view->ShouldPreserveFocusForTouchTarget(child));
+}
+
+using KeyboardFocusTest = UITest;
+
+TEST_F_UI(KeyboardFocusTest, KeyEventsPreserveTargetKeyAndRepeat) {
+  auto* target = new View(1, page_.get());
+  page_->AddChild(target);
+  target->SetFocusable(true);
+  target->RequestFocus();
+
+  std::vector<std::tuple<std::string, int, std::string, bool>> events;
+  key_event_callback_ = [&](const std::string& name, int id, const char* key,
+                            bool repeat) {
+    events.emplace_back(name, id, key, repeat);
+  };
+  for (auto type :
+       {KeyEventType::kDown, KeyEventType::kRepeat, KeyEventType::kUp}) {
+    page_->DispatchKeyEvent(
+        std::make_unique<KeyEvent>(0, type, PhysicalKeyboardKey::kKeyA,
+                                   LogicalKeyboardKey::kKeyA, false, "a"),
+        [](bool) {});
+  }
+  EXPECT_THAT(events,
+              ::testing::ElementsAre(std::make_tuple("keydown", 1, "a", false),
+                                     std::make_tuple("keydown", 1, "a", true),
+                                     std::make_tuple("keyup", 1, "a", false)));
+  key_event_callback_ = nullptr;
+}
+
+TEST_F_UI(KeyboardFocusTest, UnfocusedKeysUsePageAndTextCommitsAreNotKeys) {
+  std::vector<std::tuple<std::string, int, std::string, bool>> events;
+  key_event_callback_ = [&](const std::string& name, int id, const char* key,
+                            bool repeat) {
+    events.emplace_back(name, id, key, repeat);
+  };
+  for (auto type :
+       {KeyEventType::kCommitText, KeyEventType::kCommitComposingText,
+        KeyEventType::kDown, KeyEventType::kUp}) {
+    page_->DispatchKeyEvent(
+        std::make_unique<KeyEvent>(0, type, PhysicalKeyboardKey::kKeyA,
+                                   LogicalKeyboardKey::kKeyA, false, "a"),
+        [](bool) {});
+  }
+  EXPECT_THAT(events, ::testing::ElementsAre(
+                          std::make_tuple("keydown", page_->id(), "a", false),
+                          std::make_tuple("keyup", page_->id(), "a", false)));
+  key_event_callback_ = nullptr;
+}
+
+TEST_F_UI(KeyboardFocusTest, FocusAndBlurNotifyOnceInSwitchOrder) {
+  auto* first = new View(1, page_.get());
+  auto* second = new View(2, page_.get());
+  for (auto* view : {first, second}) {
+    page_->AddChild(view);
+    view->SetFocusable(true);
+    view->AddEventCallback("focus");
+    view->AddEventCallback("blur");
+  }
+  std::vector<std::pair<std::string, int>> events;
+  std::vector<std::pair<int, bool>> focus_changes;
+  custom_event_callback_ = [&](int id, const char* name, Value::Map params) {
+    EXPECT_TRUE(params.empty());
+    events.emplace_back(name, id);
+  };
+  focus_event_callback_ = [&](int id, bool focused) {
+    focus_changes.emplace_back(id, focused);
+  };
+
+  first->RequestFocus();
+  first->RequestFocus();
+  second->RequestFocus();
+  first->ClearFocus();
+  second->ClearFocus();
+  second->ClearFocus();
+
+  EXPECT_THAT(events, ::testing::ElementsAre(std::make_pair("focus", 1),
+                                             std::make_pair("blur", 1),
+                                             std::make_pair("focus", 2),
+                                             std::make_pair("blur", 2)));
+  EXPECT_THAT(focus_changes, ::testing::ElementsAre(std::make_pair(1, true),
+                                                    std::make_pair(1, false),
+                                                    std::make_pair(2, true),
+                                                    std::make_pair(2, false)));
+  custom_event_callback_ = nullptr;
+  focus_event_callback_ = nullptr;
+}
+
+TEST_F_UI(KeyboardFocusTest, KeyIsReportedBeforeItsHandlerChangesFocus) {
+  auto* first = new View(1, page_.get());
+  auto* second = new View(2, page_.get());
+  for (auto* view : {first, second}) {
+    page_->AddChild(view);
+    view->SetFocusable(true);
+    view->AddEventCallback("focus");
+    view->AddEventCallback("blur");
+  }
+  first->RequestFocus();
+  std::vector<std::pair<std::string, int>> events;
+  // Key delivery must retain the old target when handling moves focus.
+  key_event_callback_ = [&](const std::string& name, int id, const char*,
+                            bool) { events.emplace_back(name, id); };
+  custom_event_callback_ = [&](int id, const char* name, Value::Map) {
+    events.emplace_back(name, id);
+  };
+  first->SetKeyDownCallback([&](KeyCode) {
+    second->RequestFocus();
+    return true;
+  });
+
+  bool handled = false;
+  page_->DispatchKeyEvent(
+      std::make_unique<KeyEvent>(0, KeyEventType::kDown,
+                                 PhysicalKeyboardKey::kKeyA,
+                                 LogicalKeyboardKey::kKeyA, false, "a"),
+      [&](bool result) { handled = result; });
+  EXPECT_TRUE(handled);
+  EXPECT_THAT(events, ::testing::ElementsAre(std::make_pair("keydown", 1),
+                                             std::make_pair("blur", 1),
+                                             std::make_pair("focus", 2)));
+  key_event_callback_ = nullptr;
+  custom_event_callback_ = nullptr;
+  first->SetKeyDownCallback(nullptr);
 }
 
 TEST(PageViewTest, TouchActivePseudoStatusPropagatesToAncestors) {
