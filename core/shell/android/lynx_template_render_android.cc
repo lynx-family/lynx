@@ -583,6 +583,17 @@ void StartRuntime(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
   TryFreeLifecycle(lifecycle_ptr);
 }
 
+void PageOutJSRuntimeMemory(JNIEnv* env, jclass jcaller, jlong ptr,
+                            jlong lifecycle) {
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!TryLockLifecycle(lifecycle_ptr)) {
+    return;
+  }
+  reinterpret_cast<LynxShell*>(ptr)->PageOutJSRuntimeMemory();
+  TryFreeLifecycle(lifecycle_ptr);
+}
+
 void ProcessRender(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);

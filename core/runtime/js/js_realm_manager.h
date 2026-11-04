@@ -110,6 +110,11 @@ class LYNX_EXPORT_FOR_DEVTOOL JSRealmManager {
   JSRealm* GetSharedRealm(const std::string& group_id,
                           bool enable_new_share_group = false);
 
+#ifdef OS_ANDROID
+  void PageOutJSRuntimeMemory(const std::string& group_id,
+                              bool enable_new_share_group = false);
+#endif
+
  private:
   JSRealmManager();
 

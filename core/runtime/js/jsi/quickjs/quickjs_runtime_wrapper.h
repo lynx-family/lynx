@@ -45,6 +45,15 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
 
   void InitQuickjsRuntime(bool is_sync = true, uint32_t runtime_mode = 0,
                           bool force_reference_counting = false);
+#ifdef OS_ANDROID
+  // Returns a LEPUSPageOutResult value.
+  int PageOutGCMemory();
+  static const char* DescribePageOutResult(int result);
+#endif
+  // Runtimes sharing this VM share one suppression flag, so the scopes are
+  // counted here rather than per runtime. Must be called on the VM thread.
+  void EnterGCPauseSuppressionMode();
+  void LeaveGCPauseSuppressionMode();
   inline LEPUSRuntime* Runtime() { return rt_; }
   LEPUSClassID getFunctionId() { return s_function_id_; }
   LEPUSClassID getObjectId() { return s_object_id_; }
@@ -118,6 +127,7 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
 
  private:
   LEPUSRuntime* rt_{nullptr};
+  uint32_t gc_pause_suppression_count_{0};
   base::LinearFlatSet<JSIObserver*> obs_set_ptr_;
   static LEPUSClassID s_function_id_;
   static LEPUSClassID s_object_id_;

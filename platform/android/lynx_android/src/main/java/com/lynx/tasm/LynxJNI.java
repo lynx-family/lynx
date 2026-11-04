@@ -59,6 +59,8 @@ final class LynxJNI {
 
   static native void nativeStartRuntime(long ptr, long lifecycle);
 
+  static native void nativePageOutJSRuntimeMemory(long ptr, long lifecycle);
+
   static native void nativeProcessRender(long ptr, long lifecycle);
 
   static native void nativeSetEnableUIFlush(long ptr, long lifecycle, boolean enableUIFlush);

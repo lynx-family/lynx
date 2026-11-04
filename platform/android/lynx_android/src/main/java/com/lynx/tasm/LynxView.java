@@ -453,6 +453,16 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   }
 
   /**
+   * Requests asynchronous page-out of this view's shared QuickJS runtime memory.
+   */
+  public void pageOutJSRuntimeMemory() {
+    checkAccessFromNonUiThread("pageOutJSRuntimeMemory");
+    if (mLynxTemplateRender != null) {
+      mLynxTemplateRender.pageOutJSRuntimeMemory();
+    }
+  }
+
+  /**
    * @apidoc
    * @brief Register lifecycle event observer for `LynxView`.
    * @param client The structure implemented by the client and registered to
