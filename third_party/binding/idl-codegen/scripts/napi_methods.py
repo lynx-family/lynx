@@ -40,7 +40,7 @@ sys.path.append(
     os.path.join(os.path.dirname(__file__), '..', '..', 'build', 'scripts'))
 from blinkbuild.name_style_converter import NameStyleConverter
 from idl_definitions import IdlArgument, IdlOperation
-from idl_types import IdlTypeBase, IdlUnionType, inherits_interface
+from idl_types import IdlType, IdlSequenceType, IdlTypeBase, IdlUnionType, inherits_interface
 from napi_globals import includes
 import napi_types
 import napi_utilities
@@ -424,6 +424,12 @@ def method_context(interface, method, component_info, interfaces_info, is_visibl
 def argument_context(interface, method, argument, index, interfaces_info={}, is_visible=True):
     extended_attributes = argument.extended_attributes
     idl_type = argument.idl_type
+    # CanvasPath's radii union has a dedicated WebIDL converter. Its native and
+    # command-buffer representation is a sequence of (x, y) double pairs.
+    is_canvas_round_rect_radii = 'CanvasRoundRectRadii' in extended_attributes
+    if is_canvas_round_rect_radii:
+        idl_type = IdlSequenceType(IdlType('double', is_unrestricted=True))
+        includes.add('third_party/binding/napi/canvas_round_rect_radii.h')
     if idl_type.has_string_context:
         includes.add(
             'third_party/blink/renderer/bindings/core/v8/generated_code_helper.h'
@@ -435,7 +441,8 @@ def argument_context(interface, method, argument, index, interfaces_info={}, is_
 
     has_type_checking_interface = idl_type.is_wrapper_type
 
-    set_default_value = argument.set_default_value
+    set_default_value = ('%s = {0, 0}' % argument.name if is_canvas_round_rect_radii
+                         else argument.set_default_value)
     this_cpp_type = idl_type.cpp_type_args(
         extended_attributes=extended_attributes,
         raw_type=True,
@@ -549,7 +556,8 @@ def argument_context(interface, method, argument, index, interfaces_info={}, is_
         'native_value_traits_support':
         native_value_traits_support,
         'raises_exception':
-        raises_exception,
+        raises_exception or any('CanvasRoundRectRadii' in a.extended_attributes
+                                for a in method.arguments),
         'async_created':
         async_created,
         'is_inout_buffer':
@@ -565,6 +573,9 @@ def argument_context(interface, method, argument, index, interfaces_info={}, is_
         # v8_value_to_local_cpp_value(interface.name, method, argument, index),
     }
     context.update({
+        'is_canvas_round_rect_radii': is_canvas_round_rect_radii,
+        'native_value_traits_type': ('lynx::binding::IDLCanvasRoundRectRadii'
+                                     if is_canvas_round_rect_radii else idl_type_name),
         'is_optional_without_default_value':
         context['is_optional'] and not context['has_default'],
     })
