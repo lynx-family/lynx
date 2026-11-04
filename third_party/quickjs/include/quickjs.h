@@ -1914,6 +1914,7 @@ const char *js_profile_take_heap_snapshot_flags(LEPUSContext *ctx,
  * or pause-suppressed. RC's object enumeration list is not a strong root;
  * allocations without a modeled root path appear under [root path uncovered].
  * Node names include stable [slot=N] and [holder slot=N] labels.
+ * The JSON snapshot.slot field records the requested slot.
  * [cross-slot] and [root path uncovered] are zero-size diagnostic groups with
  * weak member edges; changes in these states do not rename allocation nodes.
  * All internal allocations are included. The sum of node self_size equals the
