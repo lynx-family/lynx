@@ -1,5 +1,8 @@
 {% from 'opts_hardcode.js.tmpl' import overload_resolvers, partial_data_opt, hardcode_for_hook_method, hardcode_for_interface %}
 {% include 'lynx_copyright_block_js.txt' %}
+{% for statement in script_imports %}
+{{statement}}
+{% endfor %}
 
 'use strict';
 
@@ -98,6 +101,16 @@ const commandBufferCreator = function(appendTarget, idGen) {
   {% endfor %}
 
   {% macro method_content(interface_name, method) %}
+  {% if method.arguments | selectattr('is_canvas_round_rect_radii') | list %}
+  if (arguments.length < 4) throw new TypeError('roundRect requires at least 4 arguments');
+  x = +x;
+  y = +y;
+  w = +w;
+  h = +h;
+  radii = convertRoundRectRadii(radii);
+  if (!validateRoundRect(x, y, w, h, radii)) return;
+  {% endif %}
+
   {% if method.is_setter %}
   if ({{method.name}} === null || typeof {{method.name}} === 'undefined') {
     return;
@@ -151,7 +164,7 @@ const commandBufferCreator = function(appendTarget, idGen) {
     {% endfor %}
     {% if ns.has_optional_argument %}
     {% set ns.count = ns.count + 1 %}
-    uint32View[$end + 2] = arguments.length;
+    uint32View[$end + 2] = {{method.arguments | length if method.arguments | selectattr('is_canvas_round_rect_radii') | list else 'arguments.length'}};
     {% endif %} 
     {% for argument in method.arguments %}
     {% if argument.is_boolean_type %}
@@ -290,6 +303,11 @@ const commandBufferCreator = function(appendTarget, idGen) {
       uint32View[$end] = s.length;
       str2view(s, dataView, $end + 1);
       $end += Math.ceil(s.length / 2) + 1;
+    }
+    {% elif argument.idl_type_name in ['IDLSequence<IDLDouble>', 'IDLSequence<IDLUnrestrictedDouble>'] %}
+    for (const value of {{argument.name}}) {
+      dataView.setFloat64($end * 4, value, isLittleEndian);
+      $end += 2;
     }
     {% else %}
     uint32View.set({{argument.name}}, $end);
