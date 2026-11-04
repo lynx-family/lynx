@@ -137,3 +137,6 @@ ImplicitBufferSize
 HardcodedForRemote
 OwnedByParent
 AsyncAttributes
+
+# Converts CanvasPath radii to consecutive double pairs for native and buffered calls.
+CanvasRoundRectRadii
