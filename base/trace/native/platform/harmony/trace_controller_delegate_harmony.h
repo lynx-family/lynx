@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/trace/native/trace_controller.h"
 #include "base/trace/native/trace_export.h"
@@ -21,6 +22,7 @@ class TRACE_EXPORT TraceControllerDelegateHarmony
   ~TraceControllerDelegateHarmony() = default;
 
   std::string GenerateTracingFileDir() override;
+  std::vector<std::string> GetMemoryStats() override;
   static void SetTraceDirPath(const std::string& dir);
 
  private:

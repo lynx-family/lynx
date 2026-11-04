@@ -5,6 +5,12 @@
 import("../../../../../../core/Lynx.gni")
 import("../../../../../../core/base_targets.gni")
 
+# Share renderer declarations without linking platform implementation objects.
+lynx_core_source_set("lynx_template_renderer_headers") {
+  check_includes = false
+  sources = [ "lynx_template_renderer.h" ]
+}
+
 lynx_core_source_set("static_task_napi_bridge") {
   sources = [
     "static_task_napi_bridge.cc",

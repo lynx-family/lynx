@@ -86,6 +86,39 @@ bool IsNapiFunction(napi_env env, napi_value value) {
   return type == napi_function;
 }
 
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+struct MemoryTraceTrimCallback {
+  napi_env env = nullptr;
+  napi_ref function = nullptr;
+};
+
+// Accessed only on the UI thread, including the env cleanup hook.
+MemoryTraceTrimCallback& GetMemoryTraceTrimCallback() {
+  static MemoryTraceTrimCallback callback;
+  return callback;
+}
+
+void RegisterMemoryTraceTrimCallback(napi_env env, napi_value function) {
+  auto& callback = GetMemoryTraceTrimCallback();
+  if (napi_create_reference(env, function, 1, &callback.function) != napi_ok) {
+    return;
+  }
+  callback.env = env;
+
+  if (napi_add_env_cleanup_hook(
+          env,
+          [](void* data) {
+            // NAPI releases the reference with the env. Queued tasks read this
+            // state on the UI thread instead of retaining an expired env.
+            *static_cast<MemoryTraceTrimCallback*>(data) = {};
+          },
+          &callback) != napi_ok) {
+    napi_delete_reference(env, callback.function);
+    callback = {};
+  }
+}
+#endif
+
 void PrepareEnvWidthScreenSize(int width, int height, float density,
                                float ratio, float display_density) {
   tasm::Config::InitializeVersion("1.0");
@@ -1001,13 +1034,13 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
     napi_get_uv_event_loop(env, &loop);
     lynx::base::UIThread::Init(loop);
 
-    size_t argc = 2;
-    napi_value args[2] = {nullptr, nullptr};
+    size_t argc = 3;
+    napi_value args[3] = {nullptr, nullptr, nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     harmony::LynxResourceLoaderHarmony::resource_manager =
         OH_ResourceManager_InitNativeResourceManager(env, args[0]);
-    if (argc == 2 && IsNapiFunction(env, args[1])) {
+    if (argc >= 2 && IsNapiFunction(env, args[1])) {
       napi_ref callback = nullptr;
       napi_create_reference(env, args[1], 1, &callback);
       static base::NoDestructor<base::NotificationCallback>
@@ -1030,10 +1063,38 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
                     });
               });
     }
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+    if (argc >= 3 && IsNapiFunction(env, args[2])) {
+      RegisterMemoryTraceTrimCallback(env, args[2]);
+    }
+#endif
   });
 
   return nullptr;
 }
+
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+void LynxTemplateRenderer::TrimMemory(base::MemoryPressureLevel pressure) {
+  fml::TaskRunner::RunNowOrPostTask(base::UIThread::GetRunner(), [pressure] {
+    const auto& callback = GetMemoryTraceTrimCallback();
+    if (!callback.env) {
+      return;
+    }
+    base::NapiHandleScope scope(callback.env);
+    napi_value function = nullptr;
+    if (napi_get_reference_value(callback.env, callback.function, &function) !=
+            napi_ok ||
+        !function) {
+      return;
+    }
+    napi_value receiver = nullptr;
+    napi_get_undefined(callback.env, &receiver);
+    napi_value argument = nullptr;
+    napi_create_int32(callback.env, static_cast<int32_t>(pressure), &argument);
+    napi_call_function(callback.env, receiver, function, 1, &argument, nullptr);
+  });
+}
+#endif
 
 napi_value LynxTemplateRenderer::SetupHarmonyMessageLoopPromiseMicrotask(
     napi_env env, napi_callback_info info) {

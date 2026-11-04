@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/memory/process_memory_info.h"
 
 namespace lynx {
 namespace trace {
@@ -26,6 +27,11 @@ std::string TraceControllerDelegateHarmony::trace_dir_path_ = "";
 std::string TraceControllerDelegateHarmony::GenerateTracingFileDir() {
   DCHECK(trace_dir_path_.size());
   return trace_dir_path_;
+}
+
+std::vector<std::string> TraceControllerDelegateHarmony::GetMemoryStats() {
+  const int64_t pss_bytes = lynx::base::GetProcessPssBytes();
+  return {"summary.total-pss", std::to_string(pss_bytes > 0 ? pss_bytes : 0)};
 }
 
 // static

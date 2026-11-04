@@ -130,6 +130,8 @@ class LynxEnvironment {
       for (const callback of callbacks) {
         callback(highMemoryEvent);
       }
+    }, (pressure: number) => {
+      this.trimMemory(pressure as MemoryPressureLevel);
     });
     this.registerNativeMemoryPressureCallback();
     LynxInfoReporterHelper.initialize();

@@ -587,7 +587,8 @@ bool TraceControllerImpl::StopTracing(int session_id) {
     output.flush();
   }
 
-  if (session->config->enable_systrace && hook_systrace_) {
+  if ((session->config->enable_systrace || enable_memory_trace) &&
+      hook_systrace_) {
     hook_systrace_->Uninstall();
   }
 

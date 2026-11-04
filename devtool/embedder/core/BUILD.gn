@@ -47,6 +47,10 @@ devtool_source_set("lynx_devtool_embedder_core") {
 
   deps = [ "//third_party/httplib:httplib" ]
 
+  if (is_harmony) {
+    deps += [ "../../lynx_devtool/tracing" ]
+  }
+
   if (is_mac || is_win || is_linux) {
     sources += [
       "global_devtool_platform_embedder_memory.cc",

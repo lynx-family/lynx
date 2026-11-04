@@ -35,6 +35,18 @@ devtool_source_set("tracing") {
       "platform/memory_trace_plugin_darwin.h",
       "platform/memory_trace_plugin_darwin.mm",
     ]
+  } else if (is_harmony) {
+    sources += [
+      "platform/memory_trace_plugin_harmony.cc",
+      "platform/memory_trace_plugin_harmony.h",
+    ]
   }
   deps = [ "../../../base/src:base_log_headers" ]
+  if (is_harmony) {
+    deps += [ "../../../platform/harmony/lynx_harmony/src/main/cpp:lynx_template_renderer_headers" ]
+    public_deps = [
+      "../../../base/src:base_public_headers",
+      "../../../base/trace/native:trace_public_headers",
+    ]
+  }
 }

@@ -6,8 +6,14 @@
 
 #include <utility>
 
+#include "build/build_config.h"
+
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 #include "base/trace/native/trace_controller.h"
+#if defined(OS_HARMONY)
+#include "base/include/no_destructor.h"
+#include "devtool/lynx_devtool/tracing/platform/memory_trace_plugin_harmony.h"
+#endif
 #endif
 #include "core/renderer/tasm/config.h"
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
@@ -50,7 +56,14 @@ class GlobalDevtoolPlatformCommon
     return nullptr;
   }
 
-  lynx::trace::TracePlugin* GetMemoryTracePlugin() override { return nullptr; }
+  lynx::trace::TracePlugin* GetMemoryTracePlugin() override {
+#if defined(OS_HARMONY) && (ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE)
+    static base::NoDestructor<lynx::trace::MemoryTracePluginHarmony> plugin;
+    return plugin.get();
+#else
+    return nullptr;
+#endif
+  }
 
   std::string GetLynxVersion() override {
     return lynx::tasm::Config::GetCurrentLynxVersion();
