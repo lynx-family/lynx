@@ -12,6 +12,9 @@
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
+namespace base {
+class VSyncMonitor;
+}
 namespace shell {
 
 // Invoke platform directly from the TASM thread.
@@ -19,6 +22,8 @@ class TasmPlatformInvoker {
  public:
   TasmPlatformInvoker() = default;
   virtual ~TasmPlatformInvoker() = default;
+
+  virtual void ConfigureVSyncMonitor(base::VSyncMonitor&) {}
 
   virtual void OnPageConfigDecoded(
       const std::shared_ptr<tasm::PageConfig>& config) = 0;

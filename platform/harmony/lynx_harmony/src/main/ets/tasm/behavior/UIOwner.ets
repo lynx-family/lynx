@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import lynx, { NativeContent } from 'liblynx.so';
-import { UIContext, window } from '@kit.ArkUI';
+import { FrameCallback, UIContext, window } from '@kit.ArkUI';
 import { BehaviorRegistryMap, NodeType } from './Behavior';
 import { NodeContent } from '@ohos.arkui.node';
 import { TraceCategory, TraceEvent } from '../../base/TraceEvent';
@@ -14,6 +14,19 @@ import { DrawEndTimingFrameCallback } from '../performance/DrawEndTimingFrameCal
 import { PerformanceController } from '../performance/PerformanceController';
 import { LynxResourceLoadInfo, LynxViewClient } from '../LynxViewClient';
 import { FrameHost } from './frame/FrameHost';
+
+class AnimationFrameCallback extends FrameCallback {
+  private callback: (frameTimeNanos: number) => void;
+
+  constructor(callback: (frameTimeNanos: number) => void) {
+    super();
+    this.callback = callback;
+  }
+
+  onFrame(frameTimeNanos: number) {
+    this.callback(frameTimeNanos);
+  }
+}
 
 export class UIOwner {
   native: lynx.UIOwner;
@@ -70,6 +83,10 @@ export class UIOwner {
 
   postDrawEndTimingFrameCallback(pipelineId:string) {
     this.uiContext?.postFrameCallback(new DrawEndTimingFrameCallback(this.perfController, pipelineId));
+  }
+
+  postAnimationFrameCallback(callback: (frameTimeNanos: number) => void) {
+    this.uiContext.postFrameCallback(new AnimationFrameCallback(callback));
   }
 
   getId(): string {

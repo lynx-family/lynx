@@ -12,6 +12,7 @@
 namespace lynx {
 namespace base {
 class LynxVSyncPulsePuppet;
+class LynxUIVSyncPulse;
 
 class VSyncMonitorIOS : public VSyncMonitor {
  public:
@@ -32,6 +33,7 @@ class VSyncMonitorIOS : public VSyncMonitor {
 
  private:
   std::unique_ptr<LynxVSyncPulsePuppet> delegate_;
+  std::shared_ptr<LynxUIVSyncPulse> ui_delegate_;
 };
 
 }  // namespace base

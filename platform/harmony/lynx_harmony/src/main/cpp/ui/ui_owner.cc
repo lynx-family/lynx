@@ -21,6 +21,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/napi_convert_helper.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/services/fluency/fluency_tracer.h"
@@ -52,6 +53,15 @@ struct UIOwner::PositionChangeDispatchState {
   UIOwner* owner;
   bool pending{false};
 };
+
+namespace {
+
+struct AnimationFrameCallback {
+  std::weak_ptr<LynxContext> context;
+  base::VSyncMonitor::UIVSyncCallback callback;
+};
+
+}  // namespace
 
 ImageService* UIOwner::image_service = nullptr;
 
@@ -1840,6 +1850,76 @@ const std::shared_ptr<base::VSyncMonitor>& UIOwner::VSyncMonitor() {
   }
 
   return vsync_monitor_;
+}
+
+void UIOwner::RequestAnimationFrame(
+    base::VSyncMonitor::UIVSyncCallback callback) {
+  DCHECK(base::UIThread::GetRunner()->RunsTasksOnCurrentThread());
+  if (destroyed_ || !env_ || !callback) {
+    return;
+  }
+  base::NapiHandleScope scope(env_);
+  napi_value receiver = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
+  napi_value request_frame;
+  napi_valuetype type;
+  if (!receiver ||
+      napi_get_named_property(env_, receiver, "postAnimationFrameCallback",
+                              &request_frame) != napi_ok ||
+      napi_typeof(env_, request_frame, &type) != napi_ok ||
+      type != napi_function) {
+    LOGE("Harmony UI animation frame requester is unavailable");
+    return;
+  }
+
+  auto frame_callback = std::make_unique<AnimationFrameCallback>();
+  frame_callback->context = context_;
+  frame_callback->callback = std::move(callback);
+  napi_value on_frame;
+  if (napi_create_function(
+          env_, "onAnimationFrame", NAPI_AUTO_LENGTH,
+          [](napi_env env, napi_callback_info info) -> napi_value {
+            DCHECK(base::UIThread::GetRunner()->RunsTasksOnCurrentThread());
+            size_t argc = 1;
+            napi_value argv[1];
+            AnimationFrameCallback* frame_callback = nullptr;
+            if (napi_get_cb_info(env, info, &argc, argv, nullptr,
+                                 reinterpret_cast<void**>(&frame_callback)) !=
+                    napi_ok ||
+                !frame_callback || !frame_callback->callback) {
+              return nullptr;
+            }
+            auto callback = std::move(frame_callback->callback);
+            auto context = frame_callback->context.lock();
+            if (!context || !context->GetUIOwner() ||
+                context->GetUIOwner()->Destroyed()) {
+              return nullptr;
+            }
+            int64_t frame_time_nanos;
+            if (argc == 1 && napi_get_value_int64(
+                                 env, argv[0], &frame_time_nanos) == napi_ok) {
+              callback(frame_time_nanos);
+            } else {
+              LOGE("Invalid Harmony UI animation frame timestamp");
+            }
+            return nullptr;
+          },
+          frame_callback.get(), &on_frame) != napi_ok ||
+      napi_wrap(
+          env_, on_frame, frame_callback.get(),
+          [](napi_env, void* data, void*) {
+            delete static_cast<AnimationFrameCallback*>(data);
+          },
+          nullptr, nullptr) != napi_ok) {
+    LOGE("Failed to create Harmony UI animation frame callback");
+    return;
+  }
+  frame_callback.release();
+
+  napi_value result;
+  if (napi_call_function(env_, receiver, request_frame, 1, &on_frame,
+                         &result) != napi_ok) {
+    LOGE("Failed to request Harmony UI animation frame");
+  }
 }
 
 void UIOwner::MarkHasUIOperations(UIBase* ui) {
