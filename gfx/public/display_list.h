@@ -36,6 +36,8 @@ enum class DisplayListOpType : int32_t {
   kBoxShadow = 13,
   kBackgroundImage = 14,
   kRadialGradient = 15,
+  kRecordPath = 16,
+  kClipPath = 17,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
@@ -177,6 +179,12 @@ typedef struct DisplayListItem {
       float radii[8];
       uint32_t has_radii;
     } clip_rect;
+    struct {
+      uint32_t offset, byte_size, kind, fill_type;
+    } record_path;
+    struct {
+      uint32_t path_index;
+    } clip_path;
     struct {
       uint32_t color_count_offset;
       uint32_t color_count;
@@ -399,6 +407,9 @@ class DisplayList {
                           float position_x = 0.f, float position_y = 0.f);
 
   void AppendItem(const DisplayListItem& item);
+  void AppendContentData(const uint8_t* data, size_t size) {
+    content_data_->append(data, size);
+  }
 
   void AddSubLayer(int id) { sub_layers_.emplace_back(id); }
   const auto& SubLayers() const { return sub_layers_; }

@@ -9778,6 +9778,11 @@ public enum com::lynx::react::bridge::ReadableType {
   public com.lynx.react.bridge.ReadableType.TemplateData TemplateData;
 }
 
+public class com::lynx::tasm::behavior::ui::shapes::RecordedPath :  {
+  public void com.lynx.tasm.behavior.ui.shapes.RecordedPath.clip(Canvas canvas);
+  public static RecordedPath com.lynx.tasm.behavior.ui.shapes.RecordedPath.decode(ByteBuffer items, int item, ByteBuffer data);
+}
+
 public interface com::lynx::tasm::image::ReleasableImage {
   public Bitmap com.lynx.tasm.image.ReleasableImage.getBitmap();
   public Drawable com.lynx.tasm.image.ReleasableImage.getDrawable();
