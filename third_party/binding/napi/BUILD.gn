@@ -16,6 +16,7 @@ napi_private_headers = rebase_path([
                                      "array_buffer_view.h",
                                      "buffered_object_registration.h",
                                      "callback_helper.h",
+                                     "canvas_round_rect_radii.h",
                                      "exception_message.h",
                                      "exception_state.h",
                                      "napi_base_wrap.h",
@@ -43,6 +44,7 @@ source_set("napi_binding_base_headers") {
 source_set("napi_binding_base") {
   sources = [
     "callback_helper.cc",
+    "canvas_round_rect_radii.cc",
     "exception_message.cc",
     "napi_base_wrap.cc",
     "napi_bridge.cc",
