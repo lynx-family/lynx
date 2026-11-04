@@ -6,6 +6,8 @@ import { BusinessError } from '@ohos.base';
 import { window } from '@kit.ArkUI';
 
 import {
+  CDPEventListener,
+  CDPResultCallback,
   LLog,
   LynxBaseInspectorOwner,
   LynxEnv,
@@ -95,6 +97,27 @@ export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspe
 
   public sendMessage(type: string, message: string): void {
     DebugRouter.sendDataAsync(type, this.sessionId, message);
+  }
+
+  public invokeCDPFromSDK(cdpMsg: string, callback: CDPResultCallback): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.nativeOwner.invokeCDPFromSDK(cdpMsg, callback);
+  }
+
+  public addCDPEventListener(name: string, listener: CDPEventListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.nativeOwner.addCDPEventListener(name, listener);
+  }
+
+  public removeCDPEventListener(name: string): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.nativeOwner.removeCDPEventListener(name);
   }
 
   private attachInputWindow(win: window.Window): void {
