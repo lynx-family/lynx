@@ -176,6 +176,8 @@ export class LynxTemplateRenderer {
 
   triggerEventBus(name: string, params: Array<Object>): void;
 
+  sendGlobalEventToMTS(name: string, params: Array<Object>): void;
+
   shouldSendEventToMainThread(): boolean;
 
   callJSApiCallbackWithValue(callbackId: number, params: Object): void;

@@ -644,9 +644,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     if (render.shouldSendEventToMainThread()) {
       triggerEventBus(name, params);
     }
-    if (render.enableJSRuntime()) {
-      render.sendGlobalEvent(name, params);
-    }
+    render.sendGlobalEvent(name, params);
   }
 
   public void sendGlobalEventToLepus(String name, List<Object> params) {

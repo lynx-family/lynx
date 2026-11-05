@@ -1376,6 +1376,11 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)sendGlobalEvent:(nonnull NSString*)name withParams:(nullable NSArray*)params {
+  // Keep the direct MTS route exclusive with the legacy event bus in LynxView.
+  if (![self shouldSendEventToMainThread]) {
+    self->shell_->SendGlobalEventToMTS([(name ?: @"") UTF8String],
+                                       LynxConvertToLepusValue(params ?: @[]));
+  }
   // When SSR hydrate status is pending beginning or failed, a global event will be sent to SSR
   // runtime to be consumed. But this global event will also be cached so that when runtimeReady it
   // behaves as normal global event.
@@ -1389,10 +1394,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     finalParams = [LynxSSRHelper processEventParams:params];
   }
 
-  if (_context != nil) {
-    [_context sendGlobalEvent:name withParams:finalParams];
-  } else {
-    _LogE(@"TemplateRender %p sendGlobalEvent %@ error, can't get LynxContext", self, name);
+  if (self.enableJSRuntime) {
+    if (_context != nil) {
+      [_context sendGlobalEvent:name withParams:finalParams];
+    } else {
+      _LogE(@"TemplateRender %p sendGlobalEvent %@ error, can't get LynxContext", self, name);
+    }
   }
 
   if (_context && _context.isEmbeddedModeOn) {

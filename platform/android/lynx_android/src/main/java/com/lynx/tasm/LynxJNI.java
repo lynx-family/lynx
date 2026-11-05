@@ -148,6 +148,9 @@ final class LynxJNI {
   static native void nativeSendGlobalEventToLepus(
       long ptr, long lifecycle, String name, ByteBuffer buffer, int length);
 
+  static native void nativeSendGlobalEventToMTS(
+      long ptr, long lifecycle, String name, ByteBuffer buffer, int length);
+
   static native void nativeSendSsrGlobalEvent(
       long ptr, long lifecycle, String name, ByteBuffer buffer, int length);
 

@@ -836,6 +836,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("updateScreenMetrics", UpdateScreenMetrics),
       DECLARE_NAPI_METHOD("nativeSetWindowInfo", NativeSetWindowInfo),
       DECLARE_NAPI_METHOD("triggerEventBus", TriggerEventBus),
+      DECLARE_NAPI_METHOD("sendGlobalEventToMTS", SendGlobalEventToMTS),
       DECLARE_NAPI_METHOD("shouldSendEventToMainThread",
                           ShouldSendEventToMainThread),
       DECLARE_NAPI_METHOD("callJSFunction", CallJSFunction),
@@ -1878,6 +1879,26 @@ napi_value LynxTemplateRenderer::CallJSFunction(napi_env env,
   }
   obj->runtime_proxy_->CallJSFunction(module_id, method, std::move(params));
 
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::SendGlobalEventToMTS(napi_env env,
+                                                      napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  std::string name = base::NapiUtil::ConvertToShortString(env, args[0]);
+  auto params = base::NapiConvertHelper::ConvertToLepusValue(env, args[1]);
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "SendGlobalEventToMTS failed")) {
+    return nullptr;
+  }
+  obj->shell_->SendGlobalEventToMTS(name, params);
   return nullptr;
 }
 

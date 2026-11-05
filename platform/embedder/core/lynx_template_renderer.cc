@@ -457,6 +457,7 @@ void LynxTemplateRenderer::TriggerEventBus(const std::string& name,
 
 void LynxTemplateRenderer::SendGlobalEvent(const std::string& name,
                                            const lepus::Value& params) {
+  shell_->SendGlobalEventToMTS(name, params);
   if (!runtime_proxy_) {
     return;
   }

@@ -227,6 +227,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value NativeSetWindowInfo(napi_env env, napi_callback_info info);
   static napi_value CallJSFunction(napi_env env, napi_callback_info info);
   static napi_value TriggerEventBus(napi_env env, napi_callback_info info);
+  static napi_value SendGlobalEventToMTS(napi_env env, napi_callback_info info);
   static napi_value CallJSApiCallbackWithValue(napi_env env,
                                                napi_callback_info info);
   static napi_value CallJSIntersectionObserver(napi_env env,

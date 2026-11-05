@@ -1491,6 +1491,29 @@ void LynxShell::SendSsrGlobalEvent(const std::string& name,
   });
 }
 
+void LynxShell::SendGlobalEventToMTS(const std::string& name,
+                                     const lepus_value& params) {
+  engine_actor_->Act([name, params](auto& engine) {
+    auto* tasm = engine->GetTasm();
+    auto* native_context_proxy =
+        tasm ? tasm->GetContextProxy(runtime::ContextProxy::Type::kNative)
+             : nullptr;
+    if (native_context_proxy == nullptr ||
+        !native_context_proxy->HasEventListener(name)) {
+      return;
+    }
+    auto args = lepus::CArray::Create();
+    args->emplace_back(name);
+    args->emplace_back(lepus_value::ShallowCopy(params));
+    native_context_proxy->DispatchEvent(
+        fml::MakeRefCounted<runtime::MessageEvent>(
+            name, runtime::ContextProxy::Type::kNative,
+            runtime::ContextProxy::Type::kCoreContext,
+            std::make_unique<pub::ValueImplLepus>(
+                lepus_value(std::move(args)))));
+  });
+}
+
 void LynxShell::SendGlobalEventToLepus(const std::string& name,
                                        const lepus_value& params) {
   engine_actor_->Act([name, params](auto& engine) {

@@ -2609,16 +2609,14 @@ void TemplateAssembler::SendGlobalEvent(const std::string& name,
   auto* native_context_proxy =
       GetContextProxy(runtime::ContextProxy::Type::kNative);
   if (native_context_proxy != nullptr &&
-      native_context_proxy->HasEventListener(
-          runtime::kMessageEventTypeGlobalEvent)) {
+      native_context_proxy->HasEventListener(name)) {
     auto native_context_args = lepus::CArray::Create();
     native_context_args->emplace_back(name);
     auto native_context_params = lepus::CArray::Create();
     native_context_params->emplace_back(lepus_value::ShallowCopy(info));
     native_context_args->emplace_back(std::move(native_context_params));
     auto native_context_event = fml::MakeRefCounted<runtime::MessageEvent>(
-        runtime::kMessageEventTypeGlobalEvent,
-        runtime::ContextProxy::Type::kNative,
+        name, runtime::ContextProxy::Type::kNative,
         runtime::ContextProxy::Type::kCoreContext,
         std::make_unique<pub::ValueImplLepus>(
             lepus::Value(std::move(native_context_args))));
