@@ -99,6 +99,27 @@ class FixtureEvaluatorTest : public ::testing::Test {
   }
 };
 
+TEST(FixtureEvaluationSerializationTest, PreservesPayloadsAndEscapesNames) {
+  FixtureEvaluationResult result;
+  result.actions.push_back(
+      {"quoted\"name\\", 75,
+       R"({"nan":"NaN","function":"function","value":null,"large":9007199254740993})"});
+  result.shared_data.push_back({std::string("key\0suffix", 10), "[true,null]"});
+  auto json = SerializeFixtureEvaluationResult(result);
+  EXPECT_NE(json.find(result.actions[0].params_json), std::string::npos);
+  rapidjson::Document data;
+  data.Parse(json.data(), json.size());
+  ASSERT_FALSE(data.HasParseError());
+  ASSERT_EQ(data["actions"].Size(), 1u);
+  EXPECT_STREQ(data["actions"][0]["functionName"].GetString(),
+               "quoted\"name\\");
+  EXPECT_EQ(data["actions"][0]["delayMs"].GetInt64(), 75);
+  EXPECT_EQ(data["sharedData"].MemberBegin()->name.GetStringLength(), 10u);
+  EXPECT_EQ(data["sharedData"].MemberBegin()->value.Size(), 2u);
+  EXPECT_EQ(SerializeFixtureEvaluationResult({}),
+            R"({"actions":[],"sharedData":{}})");
+}
+
 TEST_F(FixtureEvaluatorTest, ReportsMissingFixtureScript) {
   auto result = EvaluateFixture(fixture_directory_);
 

@@ -22,8 +22,6 @@ void StartRecord(JNIEnv* env, jclass jcaller) {
 jbyteArray EvaluateFixture(JNIEnv* env, jclass, jstring directory) {
   std::string json;
 #if ENABLE_TESTBENCH_REPLAY
-  // Reuse the exported JSON serializer for string escaping. Evaluator payloads
-  // are already valid JSON; append them unchanged to preserve business data.
   auto quote = [](const std::string& value) {
     return lynx::base::ToJson(rapidjson::Value(
         value.data(), static_cast<rapidjson::SizeType>(value.size())));
@@ -31,29 +29,7 @@ jbyteArray EvaluateFixture(JNIEnv* env, jclass, jstring directory) {
   auto result = lynx::tasm::replay::EvaluateFixture(
       lynx::base::android::JNIConvertHelper::ConvertToString(env, directory));
   if (result.has_value()) {
-    json = "{\"actions\":[";
-    bool first = true;
-    for (const auto& action : result->actions) {
-      if (!first) json += ',';
-      first = false;
-      json += "{\"functionName\":";
-      json += quote(action.function_name);
-      json += ",\"delayMs\":";
-      json += std::to_string(action.delay_ms);
-      json += ",\"params\":";
-      json += action.params_json;
-      json += '}';
-    }
-    json += "],\"sharedData\":{";
-    first = true;
-    for (const auto& item : result->shared_data) {
-      if (!first) json += ',';
-      first = false;
-      json += quote(item.key);
-      json += ':';
-      json += item.value_json;
-    }
-    json += "}}";
+    json = lynx::tasm::replay::SerializeFixtureEvaluationResult(*result);
   } else {
     json = "{\"error\":";
     json += quote(result.error());
