@@ -2120,6 +2120,7 @@ public class LynxGlobalMemoryUsageResult : NSObject {
   public NSInteger LynxGlobalMemoryUsageResult::completedInstanceCount completedInstanceCount;
   public int64_t LynxGlobalMemoryUsageResult::totalBytes totalBytes;
   public int64_t LynxGlobalMemoryUsageResult::appBytes appBytes;
+  public double LynxGlobalMemoryUsageResult::ratioToApp ratioToApp;
   public int64_t LynxGlobalMemoryUsageResult::elementBytes elementBytes;
   public int32_t LynxGlobalMemoryUsageResult::elementNodeCount elementNodeCount;
   public int64_t LynxGlobalMemoryUsageResult::viewBytes viewBytes;

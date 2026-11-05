@@ -91,6 +91,8 @@ LynxGlobalMemoryUsageResult *LynxBuildGlobalMemoryUsageResult(
   }
   result.destroyedInstances = destroyedInstances;
   result.appBytes = completed ? std::max<int64_t>(0, lynx::base::GetProcessPssBytes()) : 0;
+  result.ratioToApp =
+      result.appBytes > 0 ? static_cast<double>(result.totalBytes) / result.appBytes : 0.0;
   return result;
 }
 

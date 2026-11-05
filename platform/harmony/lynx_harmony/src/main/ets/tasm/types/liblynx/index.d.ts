@@ -36,6 +36,9 @@ export const parserTestBenchRecordData: (source: string) => string;
 
 export const notifyMemoryPressure: (pressure: number) => void;
 
+export const queryGlobalMemoryUsage: (callback: (result: Object) => void,
+  timeoutMs: number) => void;
+
 export const generateViewId: () => number;
 
 export class PaintingContext {

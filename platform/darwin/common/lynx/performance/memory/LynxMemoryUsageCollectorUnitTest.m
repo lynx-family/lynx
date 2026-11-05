@@ -30,6 +30,8 @@
         XCTAssertEqual(result.totalBytes, result.elementBytes + result.viewBytes +
                                               result.mainThreadRuntimeBytes +
                                               result.backgroundThreadRuntimeBytes);
+        XCTAssertEqual(result.ratioToApp,
+                       result.appBytes > 0 ? (double)result.totalBytes / result.appBytes : 0.0);
         [expectation fulfill];
       }
                             timeoutMs:20];

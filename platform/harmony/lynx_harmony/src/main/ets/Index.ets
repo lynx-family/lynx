@@ -160,3 +160,8 @@ export {
 export { LynxImageConfig } from './tasm/image/LynxImageConfig'
 
 export { LynxImageLoadInfo } from './tasm/image/LynxImageLoadInfo'
+
+export {
+  LynxMemoryUsageQuery, LynxMemoryCollectionStatus, LynxGlobalMemoryUsageResult,
+  LynxGlobalMemoryUsageCallback, LynxInstanceMemoryUsage
+} from './tasm/performance/LynxMemoryUsageQuery'

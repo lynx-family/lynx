@@ -36,7 +36,8 @@ public class MemoryUsageResultSerializerTest {
     assertEquals(0L, json.getLong("totalBytes"));
     assertEquals(0, json.getJSONArray("instances").length());
     assertEquals(0, json.getJSONArray("destroyedInstances").length());
-    assertFalse(json.has("ratioToApp"));
+    assertEquals(0.0, result.getRatioToApp(), 0.0);
+    assertEquals(0.0, json.getDouble("ratioToApp"), 0.0);
   }
 
   @Test
@@ -60,6 +61,8 @@ public class MemoryUsageResultSerializerTest {
     assertEquals("timeout", json.getString("collectionStatus"));
     assertEquals(100L, json.getLong("totalBytes"));
     assertEquals(4096L, json.getLong("appBytes"));
+    assertEquals(100.0 / 4096.0, result.getRatioToApp(), 0.0);
+    assertEquals(result.getRatioToApp(), json.getDouble("ratioToApp"), 0.0);
     JSONObject instance = json.getJSONArray("instances").getJSONObject(0);
     assertEquals("", instance.getString("pageId"));
     assertEquals("", instance.getString("url"));
@@ -128,6 +131,7 @@ public class MemoryUsageResultSerializerTest {
                 JSONObject json = new JSONObject(resultJson);
                 assertEquals("error", json.getString("collectionStatus"));
                 assertEquals(0, json.getInt("expectedInstanceCount"));
+                assertEquals(0.0, json.getDouble("ratioToApp"), 0.0);
                 assertEquals(errorMessage, json.getString("errorMessage"));
                 assertTrue(errorMessage.contains("not initialized"));
               } catch (Exception exception) {
