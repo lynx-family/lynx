@@ -2,10 +2,17 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxImageLoader.h>
+#import <Lynx/LynxImageManager.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIImage.h>
+#import <Lynx/LynxUIMethodProcessor.h>
+#import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 
 @interface LynxUIImage (RendererTesting)
@@ -146,6 +153,84 @@
   [LynxPropsProcessor updateProp:@0 withKey:@"not-cache-to-disk" forUI:_UIImage];
   [_UIImage propsDidUpdate];
   XCTAssertEqual(_UIImage.requestOptions, LynxImageDefaultOptions);
+}
+
+- (id)queryAnimationMethod:(NSString*)method {
+  __block id value;
+  __block BOOL called = NO;
+  [LynxUIMethodProcessor invokeMethod:method
+                           withParams:@{}
+                           withResult:^(int code, id data) {
+                             called = YES;
+                             XCTAssertEqual(code, kUIMethodSuccess);
+                             value = data;
+                           }
+                                forUI:_UIImage];
+  XCTAssertTrue(called);
+  return value;
+}
+
+- (void)testAnimationQueriesDoNotInventUnknownFrames {
+  LynxUIContext* context = [LynxUIContext new];
+  context.devtoolEnabled = YES;
+  _UIImage.context = context;
+  XCTAssertEqualObjects([self queryAnimationMethod:@"getCurrentFrame"], NSNull.null);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"getFrameCount"], NSNull.null);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"getDuration"], NSNull.null);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"isAnimating"], @NO);
+}
+
+- (void)testAnimationQueriesRequireDevTool {
+  for (NSString* method in
+       @[ @"getCurrentFrame", @"getFrameCount", @"getDuration", @"isAnimating" ]) {
+    __block BOOL called = NO;
+    [LynxUIMethodProcessor invokeMethod:method
+                             withParams:@{}
+                             withResult:^(int code, id data) {
+                               called = YES;
+                               XCTAssertEqual(code, kUIMethodMethodNotFound);
+                             }
+                                  forUI:_UIImage];
+    XCTAssertTrue(called);
+  }
+}
+
+- (void)testAnimationQueriesReadBackendObservations {
+  LynxUIContext* context = [LynxUIContext new];
+  context.devtoolEnabled = YES;
+  _UIImage.context = context;
+  NSMutableDictionary* info = [@{
+    @"isAnimating" : @YES,
+    @"frameIndex" : @1,
+    @"frameCount" : @2,
+    @"loopDurationMs" : @250,
+  } mutableCopy];
+  id service = OCMProtocolMock(@protocol(LynxServiceImageProtocol));
+  OCMStub([service animationInfo:[OCMArg any]]).andReturn(info);
+  id loader = OCMClassMock([LynxImageLoader class]);
+  OCMStub(ClassMethod([loader imageService])).andReturn(service);
+  UIImage* image = [UIImage new];
+  [_UIImage setValue:image forKey:@"image"];
+  LynxURL* source = [LynxURL new];
+  source.type = LynxImageRequestSrc;
+  [_UIImage onImageReady:image withRequest:source];
+  XCTAssertFalse(_UIImage.view.isAnimating);
+  XCTAssertEqual(image.duration, 0);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"isAnimating"], @YES);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"getCurrentFrame"], @1);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"getFrameCount"], @2);
+  XCTAssertEqualObjects([self queryAnimationMethod:@"getDuration"], @250);
+  XCTAssertEqualObjects(LynxImageAnimationInfo(image, _UIImage.view)[@"isAnimating"], @YES);
+  info[@"isAnimating"] = @NO;
+  XCTAssertEqualObjects([self queryAnimationMethod:@"isAnimating"], @NO);
+  XCTAssertEqualObjects(LynxImageAnimationInfo(image, _UIImage.view)[@"isAnimating"], @NO);
+  info[@"isAnimating"] = @YES;
+  NSDictionary* placeholderInfo = LynxImageAnimationInfo(nil, _UIImage.view);
+  XCTAssertEqualObjects(placeholderInfo[@"isAnimating"], @YES);
+  for (NSString* key in @[ @"frameIndex", @"frameCount", @"loopDurationMs" ]) {
+    XCTAssertEqualObjects(placeholderInfo[key], NSNull.null);
+  }
+  [loader stopMocking];
 }
 
 @end

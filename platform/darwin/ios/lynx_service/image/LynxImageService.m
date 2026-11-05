@@ -109,6 +109,29 @@
   return [NSNumber numberWithInteger:ECLynxResourceException];
 }
 
+- (NSDictionary<NSString*, NSNumber*>*)animationInfo:(UIImageView*)view {
+  if (![view isKindOfClass:SDAnimatedImageView.class] ||
+      ![view.image isKindOfClass:SDAnimatedImage.class]) {
+    return @{};
+  }
+  SDAnimatedImageView* imageView = (SDAnimatedImageView*)view;
+  SDAnimatedImage* image = (SDAnimatedImage*)view.image;
+  NSUInteger frameCount = image.animatedImageFrameCount;
+  // Single-frame SDAnimatedImage instances discard their animated coder.
+  NSMutableDictionary* info = [@{@"frameCount" : @(MAX(frameCount, 1))} mutableCopy];
+  NSTimeInterval duration = 0;
+  for (NSUInteger index = 0; index < frameCount; ++index) {
+    duration += [image animatedImageDurationAtIndex:index];
+  }
+  if (duration > 0) {
+    info[@"loopDurationMs"] = @(duration * 1000);
+  }
+  if (imageView.currentFrame != nil) {
+    info[@"frameIndex"] = @(imageView.currentFrameIndex);
+  }
+  return info;
+}
+
 - (nonnull UIImageView*)imageView {
   SDAnimatedImageView* imageView = [[SDAnimatedImageView alloc] init];
   imageView.shouldCustomLoopCount = YES;

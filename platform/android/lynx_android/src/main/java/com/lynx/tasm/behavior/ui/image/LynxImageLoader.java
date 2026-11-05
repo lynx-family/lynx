@@ -12,6 +12,7 @@ import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.image.model.AnimationListener;
+import com.lynx.tasm.image.model.ImageAnimationInfo;
 import com.lynx.tasm.image.model.ImageLoadListener;
 import com.lynx.tasm.image.model.ImageRequestInfo;
 import com.lynx.tasm.image.model.LynxImageFetcher;
@@ -87,6 +88,15 @@ class LynxImageLoader {
       return imageService != null && imageService.stopAnimation(animatable);
     }
     return false;
+  }
+
+  @Nullable
+  public ImageAnimationInfo getAnimationInfo(@Nullable Drawable animatable) {
+    if (mEnableImageFetcher || animatable == null) {
+      return null;
+    }
+    ILynxImageService imageService = getImageService();
+    return imageService == null ? null : imageService.getAnimationInfo(animatable);
   }
 
   public void releaseImage(ImageRequestInfo imageRequestInfo) {
