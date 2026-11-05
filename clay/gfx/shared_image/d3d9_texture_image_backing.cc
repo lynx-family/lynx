@@ -459,6 +459,10 @@ D3D9TextureImageBacking::CreateSkiaRepresentation(GrDirectContext* gr_context) {
 
 bool D3D9TextureImageBacking::ReadbackToMemory(
     SharedImageReadbackPixmap* pixmaps, uint32_t planes) {
+  if (!SharedImagePixmapsWritable(pixmaps, planes)) {
+    FML_LOG(ERROR) << "Invalid readback pixmap, pixels not allocated.";
+    return false;
+  }
   IDirect3DTexture9* staging_texture = GetOrCreateStagingTexture();
   if (!staging_texture) {
     return false;

@@ -1110,6 +1110,11 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
           width, height, skity::AlphaType::kUnpremul_AlphaType,
           skity::ColorType::kBGRA);
 #endif
+      if (!SharedImagePixmapWritableAddr(*readback_pixmap)) {
+        FML_LOG(ERROR) << "Failed to allocate readback pixmap: " << width << "x"
+                       << height;
+        return;
+      }
       if (!backing->ReadbackToMemory(readback_pixmap.get(), 1)) {
         FML_LOG(ERROR) << "Failed to ReadbackToMemory";
         return;
