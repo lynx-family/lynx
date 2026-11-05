@@ -12,6 +12,7 @@
 #include "base/include/fml/time/time_delta.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/event/custom_event.h"
 #include "core/event/event.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
@@ -113,6 +114,7 @@ void NativePaintingCtxPlatformRef::RemovePaintingNode(int parent, int child,
   if (destroyed_.load(std::memory_order_acquire)) {
     return;
   }
+  MarkEventTargetTreeDirty(parent);
   if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
     it_child->second->RemoveFromParent();
   }
@@ -125,6 +127,9 @@ void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
   }
   MarkEventTargetTreeDirty(parent);
   if (event_target_helper_->IsActiveEventRoot(child)) {
+    if (IsRawInputEnabled() && event_handler_->EventRootSign() == child) {
+      event_handler_->ClearActivePointers();
+    }
     event_target_exposure_->RemoveExposureTargetsInEventRoot(child);
     event_target_helper_->RemoveActiveEventRoot(child);
     ClearEventTargetRootDirty(child);
@@ -223,6 +228,10 @@ void NativePaintingCtxPlatformRef::SetTapSlop(const std::string &tap_slop) {
   event_handler_->SetTapSlop(tap_slop);
 }
 
+void NativePaintingCtxPlatformRef::SetRawInputEnabled(bool enabled) {
+  event_handler_->SetRawInputEnabled(enabled);
+}
+
 void NativePaintingCtxPlatformRef::SetEventScreenWidth(float screen_width) {
   event_target_helper_->SetScreenWidthForRpx(screen_width);
 }
@@ -242,6 +251,32 @@ bool NativePaintingCtxPlatformRef::DispatchPlatformInputEvent(
                                       float_event_data);
 }
 
+void NativePaintingCtxPlatformRef::NotifyInputRootStateChanged(int32_t root_id,
+                                                               bool attached,
+                                                               bool focused) {
+  BASE_STATIC_STRING_DECL(kInputPageSign, "pageSign");
+  BASE_STATIC_STRING_DECL(kInputEventRoot, "eventRoot");
+  BASE_STATIC_STRING_DECL(kInputFocused, "focused");
+  BASE_STATIC_STRING_DECL(kInputAttached, "attached");
+  if (destroyed_.load(std::memory_order_acquire) || !IsRawInputEnabled()) {
+    return;
+  }
+  auto detail = lepus::Value(lepus::Dictionary::Create());
+  detail.SetProperty(kInputPageSign, lepus::Value(kRootId));
+  detail.SetProperty(kInputEventRoot, lepus::Value(root_id));
+  if (attached) {
+    detail.SetProperty(kInputFocused, lepus::Value(focused));
+    // Only the main root can restore the Page's attachment state.
+    if (root_id == kRootId) {
+      detail.SetProperty(kInputAttached, lepus::Value(true));
+    }
+  }
+  GetEventEmitter()->SendEvent(kRootId,
+                               fml::MakeRefCounted<event::CustomEvent>(
+                                   attached ? "rootfocuschanged" : "rootdetach",
+                                   std::move(detail), "detail"));
+}
+
 void NativePaintingCtxPlatformRef::DispatchPlatformLongPress() {
   event_handler_->OnLongPress();
 }
@@ -253,10 +288,6 @@ void NativePaintingCtxPlatformRef::DispatchPlatformTap() {
 uint32_t NativePaintingCtxPlatformRef::HitTestAndCachePlatformEventBehavior(
     int32_t event_target_root_id, float point_x, float point_y) {
   auto event_target_tree = EnsureEventTargetTree(event_target_root_id);
-  if (event_target_tree == nullptr) {
-    return kEventBehaviorNone;
-  }
-
   float root_point[2] = {point_x, point_y};
   return event_handler_->HitTestAndCacheEventBehavior(
       event_target_tree, root_point, event_through_config_);
@@ -319,15 +350,12 @@ std::vector<float> NativePaintingCtxPlatformRef::GetRectToLynxView(int32_t id) {
 
 void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
     int32_t id, PlatformEventBundle bundle) {
-  // TODO(hexionghui): When an Attribute does not trigger a rebuild, the
-  // ApplyEventBundle needs to be executed actively for the PlatformEventTarget.
+  MergeHitSlopEventProp(&bundle, GetPlatformEventBundle(id));
   if (bundle.Empty()) {
     platform_event_bundles_.erase(id);
-    MarkEventTargetTreeDirty(id);
-    return;
+  } else {
+    platform_event_bundles_.insert_or_assign(id, std::move(bundle));
   }
-  MergeHitSlopEventProp(&bundle, GetPlatformEventBundle(id));
-  platform_event_bundles_.insert_or_assign(id, std::move(bundle));
   MarkEventTargetTreeDirty(id);
 }
 
@@ -654,7 +682,11 @@ void NativePaintingCtxPlatformRef::SetPlatformEventRootActive(int32_t root_id,
     return;
   }
 
+  NotifyInputRootStateChanged(root_id, false, false);
   event_target_exposure_->RemoveExposureTargetsInEventRoot(root_id);
+  if (IsRawInputEnabled() && event_handler_->EventRootSign() == root_id) {
+    event_handler_->ClearActivePointers();
+  }
   event_target_helper_->RemoveActiveEventRoot(root_id);
   ClearEventTargetRootDirty(root_id);
 }

@@ -83,11 +83,41 @@ void TouchEvent::HandleEventBaseDetail(bool is_core_event) {
                             std::move(mutable_changed_touches));
 }
 
+void TouchEvent::RestoreInputPaths() {
+  BASE_STATIC_STRING_DECL(kInputRawInput, "rawInput");
+  BASE_STATIC_STRING_DECL(kInputPaths, "paths");
+  BASE_STATIC_STRING_DECL(kInputPointerId, "pointerId");
+  BASE_STATIC_STRING_DECL(kInputTargets, "targets");
+  auto input = detail_.GetProperty(kInputRawInput);
+  const auto leaf_paths = input.GetProperty(kInputPaths);
+  if (!leaf_paths.IsArray() || leaf_paths.Array()->size() == 0) {
+    return;
+  }
+  auto paths = lepus::CArray::Create();
+  for (size_t index = 0; index < leaf_paths.Array()->size(); ++index) {
+    const auto& entry = leaf_paths.Array()->get(index);
+    const auto pointer_id = entry.GetProperty(kInputPointerId);
+    auto targets = target_->ResolveTouchTargetPath(
+        entry.GetProperty(kInputTargets).GetProperty(0).Number());
+    if (!targets.IsArray() || targets.Array()->size() == 0) {
+      continue;
+    }
+    auto path = lepus::Dictionary::Create();
+    path->SetValue(kInputPointerId, pointer_id);
+    path->SetValue(kInputTargets, std::move(targets));
+    paths->emplace_back(std::move(path));
+  }
+  input.SetProperty(kInputPaths, lepus::Value(std::move(paths)));
+}
+
 void TouchEvent::HandleEventCustomDetail() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_CUSTOM_DETAIL, "name", type_);
   auto* state = GetTouchEventState();
   if (!state) {
     return;
+  }
+  if (is_multi_touch_ && type_ == EVENT_TOUCH_START) {
+    RestoreInputPaths();
   }
   BASE_STATIC_STRING_DECL(kX, "x");
   BASE_STATIC_STRING_DECL(kY, "y");
