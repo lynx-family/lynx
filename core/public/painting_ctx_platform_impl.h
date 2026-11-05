@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/lynx_actor.h"
 #include "core/public/layout_node_value.h"
 #include "core/public/pipeline_option.h"
@@ -62,6 +63,7 @@ class PaintingCtxPlatformRef {
   virtual void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) {}
   virtual void UpdateEventInfo(bool has_touch_pseudo) {}
   virtual void SetTapSlop(const std::string& tap_slop) {}
+  virtual void SetRawInputEnabled(bool enabled) {}
   // The page's configured screen width in layout units, for event-region rpx.
   // This is independent of the physical window used by exposure checks.
   virtual void SetEventScreenWidth(float screen_width) {}

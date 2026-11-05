@@ -16,7 +16,8 @@ class PlatformPointerEvent : public PlatformInputEvent {
   using PointerIntVec = base::InlineVector<int, 4>;
 
  public:
-  PlatformPointerEvent(int int_event_data[], float float_event_data[]);
+  PlatformPointerEvent(int int_event_data[], float float_event_data[],
+                       int64_t time_stamp = 0);
 
   int PointerCount() const { return pointer_count_; }
   const PointerIntVec& PointerID() const { return pointer_id_; }
