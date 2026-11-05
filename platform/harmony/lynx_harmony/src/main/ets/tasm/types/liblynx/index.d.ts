@@ -304,6 +304,8 @@ export class UIOwner {
 
   updateRootTarget(node: NativeContent): void;
 
+  onWindowFocusChanged(focused: boolean): void;
+
   setLynxImageConfig(config?: Object): void;
 
   onEnterForeground(): void;
