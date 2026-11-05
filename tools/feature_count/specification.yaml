@@ -46,6 +46,7 @@ cpp:
   - disable_standard_css_selector
   - enable_native_list_from_env
   - element_from_binary
+  - element_clone
 typescript:
   - bundle_support_load_script
 objc:
