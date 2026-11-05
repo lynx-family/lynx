@@ -55,6 +55,18 @@ void NativePaintingCtxPlatformHarmonyRef::GetRootViewLocationOnScreen(
   }
 }
 
+bool NativePaintingCtxPlatformHarmonyRef::GetRootViewLocationInWindow(
+    float location[2]) {
+  auto renderer_context = renderer_context_.lock();
+  auto* ui_owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
+  if (ui_owner == nullptr || ui_owner->Destroyed()) {
+    return false;
+  }
+  auto* root = ui_owner->Root();
+  return root != nullptr && root->IsAttachedToViewTree() &&
+         root->GetOffsetToWindow(location);
+}
+
 void NativePaintingCtxPlatformHarmonyRef::GetScreenSize(float size[2]) {
   if (size == nullptr) {
     return;
@@ -100,6 +112,7 @@ void NativePaintingCtxPlatformHarmonyRef::UpdateContentOffsetForListContainer(
   ui_owner->UpdateContentOffsetForListContainer(
       container_id, content_size, delta_x, delta_y, is_init_scroll_offset,
       from_layout);
+  RequestPositionChangeCheck();
 }
 
 void NativePaintingCtxPlatformHarmonyRef::GetPlatformRendererScrollOffset(

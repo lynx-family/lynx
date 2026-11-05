@@ -164,6 +164,15 @@ void PaintingContext::SetEventScreenWidth(float screen_width) {
   });
 }
 
+void PaintingContext::SetPositionEventConfig(
+    bool enable_current_target_touch_position, int observer_frame_rate) {
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(),
+           enable_current_target_touch_position, observer_frame_rate]() {
+    platform_ref->SetPositionEventConfig(enable_current_target_touch_position,
+                                         observer_frame_rate);
+  });
+}
+
 void PaintingContext::SetEventThroughConfig(
     bool enable_event_through, bool enable_event_through_inherit_from_page) {
   Enqueue([platform_ref = platform_impl_->GetPlatformRef(),

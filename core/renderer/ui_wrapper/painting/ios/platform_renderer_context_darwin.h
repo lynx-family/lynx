@@ -30,6 +30,8 @@ class PlatformRendererContextDarwin {
   LynxComponentScopeRegistry* GetComponentRegistry() { return component_registry_; }
 
   CGPoint GetRootViewLocationOnScreen();
+  // Returns false while the container view is not in a window.
+  bool GetRootViewLocationInWindow(CGPoint* location);
   CGSize GetScreenSize();
 
  private:

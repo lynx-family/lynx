@@ -32,6 +32,16 @@ CGPoint PlatformRendererContextDarwin::GetRootViewLocationOnScreen() {
   return [view convertPoint:CGPointZero toView:nil];
 }
 
+bool PlatformRendererContextDarwin::GetRootViewLocationInWindow(CGPoint* location) {
+  UIView<LUIBodyView>* view = GetContainerView();
+  UIWindow* window = view.window;
+  if (window == nil) {
+    return false;
+  }
+  *location = [view convertPoint:CGPointZero toView:window];
+  return true;
+}
+
 CGSize PlatformRendererContextDarwin::GetScreenSize() {
   // TODO(xiamengfei.moonface): [ResizableWindowSize] Check whether this should use window or
   // physical screen metrics.

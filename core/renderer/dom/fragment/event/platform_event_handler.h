@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "core/public/event/touch_event_data.h"
 #include "core/renderer/dom/fragment/event/platform_event_target.h"
 
 namespace lynx {
@@ -53,7 +54,8 @@ class PlatformEventHandler {
   void OnTap();
   void OnLongPress();
   void DispatchPointerEvent(const std::string& name,
-                            const lepus::Value& target_pointer_map);
+                            const lepus::Value& target_pointer_map,
+                            float root_point[2]);
 
   bool EventThrough();
   int32_t FirstTargetSign() const { return first_target_sign_; }
@@ -66,6 +68,9 @@ class PlatformEventHandler {
 
   void SetTapSlop(const std::string& tap_slop);
   void SetHasPointerPseudo(bool has_pointer_pseudo);
+  void SetEnableCurrentTargetTouchPosition(bool enable) {
+    enable_current_target_touch_position_ = enable;
+  }
 
  private:
   uint32_t ResolveEventBehavior(
@@ -97,10 +102,13 @@ class PlatformEventHandler {
   void ActivePseudoStatus();
   void DeactivatePseudoStatus(LynxPseudoStatus status);
   bool IsPointerMoveOutside(fml::RefPtr<PlatformEventTarget> target);
-  void GetTargetPoint(fml::RefPtr<PlatformEventTarget> target,
+  bool GetTargetPoint(fml::RefPtr<PlatformEventTarget> target,
                       float target_point[2], float page_point[2]);
   void AddTargetPointerMap(lepus::Value& target_pointer_map,
                            PlatformPointerEvent& event);
+  // Points local to each first-target ancestor that listens to the event.
+  event::TouchEventTargetPoints GetCurrentTargetPoints(const std::string& name,
+                                                       float root_point[2]);
 
   // owned by NativePaintingCtxPlatformRef
   NativePaintingCtxPlatformRef* platform_ref_{nullptr};
@@ -127,6 +135,7 @@ class PlatformEventHandler {
   // config
   float tap_slop_{50.f};
   bool has_pointer_pseudo_{false};
+  bool enable_current_target_touch_position_{false};
 };
 
 }  // namespace tasm

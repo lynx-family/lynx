@@ -2680,7 +2680,17 @@ ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
                   UpdateTraceDebugInfo(ctx.event());
                 });
     // OPTME(linxs): pass event diff result later?
+    // Rebuild Fragment event names from the current handlers so removed
+    // events are cleared.
+    auto *fragment = EnableFragmentLayerRender() ? fragment_impl() : nullptr;
+    if (fragment != nullptr) {
+      fragment->ClearEventNames();
+    }
     element_manager_->ResolveEvents(data_model_.get(), this);
+    if (fragment != nullptr) {
+      // Event-only updates may not redraw, so sync the bundle now.
+      fragment->SyncEventBundle();
+    }
     dirty_ &= ~kDirtyEvent;
   }
 

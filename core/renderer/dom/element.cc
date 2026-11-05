@@ -1276,7 +1276,6 @@ void Element::SetEventHandler(const base::String& name, EventHandler* handler) {
     has_event_listener_ = true;
   }
   if (EnableFragmentLayerRender()) {
-    // TODO(hexionghui): This also needs to be set when the event is cleared.
     if (auto fragment = fragment_impl();
         fragment && !handler->IsGlobalBindEvent()) {
       auto event_name = PlatformEventNameFromString(name.str());
@@ -1291,6 +1290,11 @@ void Element::SetEventHandler(const base::String& name, EventHandler* handler) {
 void Element::ResetEventHandlers() {
   if (prop_bundle_ != nullptr) {
     prop_bundle_->ResetEventHandler();
+  }
+  if (EnableFragmentLayerRender()) {
+    if (auto* fragment = fragment_impl()) {
+      fragment->ClearEventNames();
+    }
   }
   has_event_listener_ = false;
 }

@@ -55,6 +55,10 @@ class Fragment : public BaseElementContainer {
   void RemoveElementContainerAccordingToElement(Element* child,
                                                 bool destroy) override;
   void Destroy() override {
+    // Unregister event targets, including flattened ones without a renderer.
+    ClearEventNames();
+    ClearEventProps();
+    SyncEventBundle();
     if (behavior_) {
       behavior_->Destroy();
     }
@@ -134,6 +138,9 @@ class Fragment : public BaseElementContainer {
     return event_names_;
   }
 
+  // Send pending event names and props to the platform event targets.
+  void SyncEventBundle();
+
   void DrawChildren(DisplayListBuilder& display_list_builder);
 
   size_t PlatformLayerCount() const { return platform_layer_count_; }
@@ -202,7 +209,6 @@ class Fragment : public BaseElementContainer {
 
   void MoveDirectStackingChildren(Fragment* parent, Fragment* child);
 
-  void SyncEventBundle();
   void SyncEventBundlesRecursively();
 
   void MarkHasExposureEventIfNeeded() const;

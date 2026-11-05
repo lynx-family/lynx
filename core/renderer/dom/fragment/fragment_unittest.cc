@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <limits>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -26,6 +27,7 @@
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/event/platform_pointer_event.h"
+#include "core/renderer/dom/fragment/event/platform_position_change_observer.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
 #include "core/renderer/lynx_env_config.h"
@@ -255,6 +257,12 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
     return scrollable_signs.count(sign) > 0;
   }
 
+  bool GetRootViewLocationInWindow(float location[2]) override {
+    location[0] = root_view_location[0];
+    location[1] = root_view_location[1];
+    return root_view_in_window;
+  }
+
   PlatformTextEventTargetRegions GetTextEventTargetRegions(
       int32_t text_id) override {
     ++get_text_event_target_regions_call_count;
@@ -284,6 +292,8 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
 
   std::unordered_map<int32_t, std::array<float, 2>> scroll_offsets;
   std::unordered_set<int32_t> scrollable_signs;
+  std::array<float, 2> root_view_location{0.f, 0.f};
+  bool root_view_in_window{true};
   std::unordered_map<int32_t, PlatformTextEventTargetRegions>
       text_event_target_regions;
   int get_text_event_target_regions_call_count{0};
@@ -936,6 +946,32 @@ TEST_F(FragmentDrawTest, CustomDrawBehindIsRetainedOnPropertyOnlyUpdates) {
   EXPECT_EQ(behind, 1);
   EXPECT_EQ(draws, 1);
   EXPECT_EQ(properties.Build().GetContentItemsSize(), 0u);
+}
+
+TEST_F(FragmentDrawTest, EventBindingSyncsPositionChangeTarget) {
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto element = manager->CreateFiberView();
+  page->InsertNode(element);
+  auto* ref = static_cast<NativeMockPaintingContext*>(
+                  element->fragment_impl()->painting_context()->impl())
+                  ->GetNativePlatformRef();
+  auto& targets = ref->position_change_observer_.targets_;
+  const int32_t id = element->impl_id();
+
+  element->SetJSEventHandler("positionchange", "bindEvent", "onChange");
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(targets.count(id), 1u);
+
+  element->RemoveEvent("positionchange", "bindEvent");
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(targets.count(id), 0u);
+
+  element->SetJSEventHandler("positionchange", "bindEvent", "onChange");
+  page->FlushActionsAsRoot();
+  ASSERT_EQ(targets.count(id), 1u);
+  element->DestroyPlatformNode();
+  EXPECT_EQ(targets.count(id), 0u);
 }
 
 TEST_F(FragmentDrawTest, CustomDrawHooksPreserveNestedBeforeAfterOrder) {
@@ -3200,6 +3236,233 @@ TEST_F(FragmentTest, PlatformEventHandlerUsesRebuiltTargetsForPointerState) {
   EXPECT_FLOAT_EQ(pointer->get(4).Number(), 50.f);
   EXPECT_FLOAT_EQ(pointer->get(5).Number(), 5.f);
   EXPECT_FLOAT_EQ(pointer->get(6).Number(), 3.f);
+}
+
+TEST_F(FragmentTest, PositionChangeTracksListenerWindowRect) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .Begin(1, PlatformRendererType::kView, 10.f, 20.f, 50.f, 40.f)
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(builder.Build());
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  // The event bundle registers the listener.
+  platform_ref.UpdatePlatformEventBundle(
+      1, PlatformEventBundle({}, {PlatformEventName::kPositionChange}));
+  platform_ref.root_view_location = {100.f, 200.f};
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  auto& observer = platform_ref.position_change_observer_;
+  ASSERT_EQ(observer.targets_.count(1), 1u);
+  observer.DispatchPositionChange();
+  using Rect = std::array<float, 4>;
+  EXPECT_EQ(observer.targets_[1], (Rect{110.f, 220.f, 50.f, 40.f}));
+
+  // Moving the host view is picked up by the frame-rate sampling.
+  platform_ref.root_view_location = {100.f, 150.f};
+  observer.CheckRootViewLocation();
+  EXPECT_TRUE(observer.check_pending_);
+  observer.DispatchPositionChange();
+  EXPECT_EQ(observer.targets_[1], (Rect{110.f, 170.f, 50.f, 40.f}));
+
+  // A tap flushes the latest position first.
+  platform_ref.root_view_location = {100.f, 100.f};
+  platform_ref.DispatchPlatformTap();
+  EXPECT_EQ(observer.targets_[1], (Rect{110.f, 120.f, 50.f, 40.f}));
+
+  // While detached nothing is sent; re-attaching at the same location still
+  // forces a check and drops the dedup cache so every target is reported.
+  platform_ref.root_view_in_window = false;
+  observer.DispatchPositionChange();
+  EXPECT_TRUE(observer.window_origin_lost_);
+  observer.UpdateTarget(99, true);
+  observer.targets_[99] = Rect{};
+  platform_ref.root_view_in_window = true;
+  observer.CheckRootViewLocation();
+  EXPECT_TRUE(observer.check_pending_);
+  observer.DispatchPositionChange();
+  EXPECT_FALSE(observer.window_origin_lost_);
+  EXPECT_FALSE(observer.targets_[99].has_value());
+  observer.UpdateTarget(99, false);
+  EXPECT_EQ(observer.targets_[1], (Rect{110.f, 120.f, 50.f, 40.f}));
+
+  platform_ref.UpdatePlatformEventBundle(1, PlatformEventBundle());
+  EXPECT_TRUE(observer.targets_.empty());
+}
+
+TEST_F(FragmentTest, PositionChangeTasksUsePlatformRefLifetime) {
+  fml::MessageLoop::EnsureInitializedForCurrentThread();
+  auto& loop = fml::MessageLoop::GetCurrent();
+  auto ref = std::make_shared<TestNativePaintingCtxPlatformRef>();
+  auto& observer = ref->position_change_observer_;
+  observer.task_runner_ = loop.GetTaskRunner();
+  observer.UpdateTarget(1, true);
+  EXPECT_TRUE(observer.check_pending_);
+  loop.RunExpiredTasksNow();
+  EXPECT_FALSE(observer.check_pending_);
+
+  observer.RequestCheck();
+  std::weak_ptr<TestNativePaintingCtxPlatformRef> weak_ref = ref;
+  ref.reset();
+  EXPECT_TRUE(weak_ref.expired());
+  loop.RunExpiredTasksNow();
+}
+
+TEST_F(FragmentTest, PositionChangeTracksIndependentRootOffset) {
+  constexpr int32_t kIndependentRootId = 20;
+  auto page_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  auto independent_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kIndependentRootId, PlatformRendererType::kView);
+  DisplayListBuilder page_builder;
+  page_builder
+      .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .End();
+  page_renderer->UpdateDisplayList(page_builder.Build());
+  DisplayListBuilder independent_builder;
+  independent_builder
+      .Begin(kIndependentRootId, PlatformRendererType::kView, 0.f, 0.f, 100.f,
+             100.f)
+      .Begin(21, PlatformRendererType::kView, 3.f, 4.f, 50.f, 50.f)
+      .End()
+      .End();
+  independent_renderer->UpdateDisplayList(independent_builder.Build());
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, page_renderer);
+  platform_ref.renderers_.insert_or_assign(kIndependentRootId,
+                                           independent_renderer);
+  platform_ref.UpdatePlatformEventBundle(
+      21, PlatformEventBundle({}, {PlatformEventName::kPositionChange}));
+  auto& observer = platform_ref.position_change_observer_;
+  observer.DispatchPositionChange();
+  ASSERT_FALSE(observer.check_pending_);
+  platform_ref.SetPlatformEventRootActive(kIndependentRootId, true);
+  EXPECT_TRUE(observer.check_pending_);
+  platform_ref.SetPlatformEventRootOffset(kIndependentRootId, 30.f, 40.f);
+  observer.DispatchPositionChange();
+  using Rect = std::array<float, 4>;
+  EXPECT_EQ(observer.targets_[21], (Rect{33.f, 44.f, 50.f, 50.f}));
+
+  platform_ref.SetPlatformEventRootOffset(kIndependentRootId, 60.f, 40.f);
+  EXPECT_TRUE(observer.check_pending_);
+  observer.DispatchPositionChange();
+  EXPECT_EQ(observer.targets_[21], (Rect{63.f, 44.f, 50.f, 50.f}));
+
+  // A dirty independent root is rebuilt before positions are read.
+  DisplayListBuilder moved_builder;
+  moved_builder
+      .Begin(kIndependentRootId, PlatformRendererType::kView, 0.f, 0.f, 100.f,
+             100.f)
+      .Begin(21, PlatformRendererType::kView, 13.f, 4.f, 50.f, 50.f)
+      .End()
+      .End();
+  independent_renderer->UpdateDisplayList(moved_builder.Build());
+  platform_ref.MarkEventTargetRootDirty(kIndependentRootId);
+  observer.DispatchPositionChange();
+  EXPECT_EQ(observer.targets_[21], (Rect{73.f, 44.f, 50.f, 50.f}));
+}
+
+TEST_F(FragmentTest, PlatformEventHandlerCollectsCurrentTargetPoints) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .Begin(1, PlatformRendererType::kView, 10.f, 20.f, 100.f, 100.f)
+      .Begin(2, PlatformRendererType::kView, 5.f, 7.f, 40.f, 40.f)
+      .End()
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(builder.Build());
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.SetPositionEventConfig(true, 10);
+  EXPECT_EQ(platform_ref.GetExposureIntervalMs(), 100);
+  auto* helper = platform_ref.GetEventTargetHelper();
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  helper->GetEventTarget(1)->SetEventSet({PlatformEventName::kTouchStart});
+  helper->GetEventTarget(2)->SetEventSet({PlatformEventName::kTap});
+
+  int down_data[] = {0, 0, 0, 1};
+  float down_point[] = {0.f, 30.f, 40.f};
+  ASSERT_TRUE(
+      platform_ref.DispatchPlatformInputEvent(down_data, down_point, kRootId));
+  auto* handler = platform_ref.event_handler_.get();
+  float root_point[2] = {30.f, 40.f};
+
+  auto points = handler->GetCurrentTargetPoints("touchstart", root_point);
+  ASSERT_EQ(points.size(), 1u);
+  EXPECT_EQ(points[0].element_id, 1);
+  EXPECT_FLOAT_EQ(points[0].x, 20.f);
+  EXPECT_FLOAT_EQ(points[0].y, 20.f);
+
+  points = handler->GetCurrentTargetPoints("tap", root_point);
+  ASSERT_EQ(points.size(), 1u);
+  EXPECT_EQ(points[0].element_id, 2);
+  EXPECT_FLOAT_EQ(points[0].x, 15.f);
+  EXPECT_FLOAT_EQ(points[0].y, 13.f);
+
+  platform_ref.SetPositionEventConfig(false, 0);
+  EXPECT_TRUE(handler->GetCurrentTargetPoints("tap", root_point).empty());
+}
+
+TEST_F(FragmentTest, PlatformEventHandlerSkipsInvalidCurrentTargetPoints) {
+  auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .Begin(1, PlatformRendererType::kView, 10.f, 20.f, 100.f, 100.f)
+      .Begin(2, PlatformRendererType::kView, 5.f, 7.f, 40.f, 40.f)
+      .End()
+      .End()
+      .End();
+  root_renderer->UpdateDisplayList(builder.Build());
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+  platform_ref.SetPositionEventConfig(true, 10);
+  auto* helper = platform_ref.GetEventTargetHelper();
+  ASSERT_NE(platform_ref.EnsureEventTargetTree(kRootId), nullptr);
+  helper->GetEventTarget(1)->SetEventSet({PlatformEventName::kTap});
+  auto child = helper->GetEventTarget(2);
+  child->SetEventSet({PlatformEventName::kTap});
+
+  int down_data[] = {0, 0, 0, 1};
+  float down_point[] = {0.f, 30.f, 40.f};
+  ASSERT_TRUE(
+      platform_ref.DispatchPlatformInputEvent(down_data, down_point, kRootId));
+  auto* handler = platform_ref.event_handler_.get();
+  float root_point[2] = {30.f, 40.f};
+
+  // A transform can become non-invertible after pointer down. Skip the child
+  // while preserving the valid coordinates of its listening ancestor.
+  float transform[16] = {};
+  transform[5] = transform[10] = transform[15] = 1.f;
+  child->SetTransform(transform);
+  auto points = handler->GetCurrentTargetPoints("tap", root_point);
+  ASSERT_EQ(points.size(), 1u);
+  EXPECT_EQ(points[0].element_id, 1);
+  EXPECT_FLOAT_EQ(points[0].x, 20.f);
+  EXPECT_FLOAT_EQ(points[0].y, 20.f);
+
+  child->SetTransform(nullptr);
+  points = handler->GetCurrentTargetPoints("tap", root_point);
+  ASSERT_EQ(points.size(), 2u);
+  EXPECT_EQ(points[0].element_id, 2);
+  EXPECT_FLOAT_EQ(points[0].x, 15.f);
+  EXPECT_FLOAT_EQ(points[0].y, 13.f);
+
+  for (float invalid : {std::numeric_limits<float>::quiet_NaN(),
+                        std::numeric_limits<float>::infinity()}) {
+    float invalid_x[2] = {invalid, root_point[1]};
+    EXPECT_TRUE(handler->GetCurrentTargetPoints("tap", invalid_x).empty());
+    float invalid_y[2] = {root_point[0], invalid};
+    EXPECT_TRUE(handler->GetCurrentTargetPoints("tap", invalid_y).empty());
+  }
 }
 
 TEST_F(FragmentTest, PlatformEventHandlerSkipsDeletedPointerTargets) {

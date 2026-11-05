@@ -142,6 +142,18 @@ void NativePaintingCtxPlatformDarwinRef::GetRootViewLocationOnScreen(float locat
   location[1] = res.y;
 }
 
+bool NativePaintingCtxPlatformDarwinRef::GetRootViewLocationInWindow(float location[2]) {
+  auto* factory = static_cast<PlatformRendererDarwinFactory*>(view_factory_.get());
+  auto* context = factory != nullptr ? factory->GetContext() : nullptr;
+  CGPoint point = CGPointZero;
+  if (context == nullptr || !context->GetRootViewLocationInWindow(&point)) {
+    return false;
+  }
+  location[0] = point.x;
+  location[1] = point.y;
+  return true;
+}
+
 void NativePaintingCtxPlatformDarwinRef::GetScreenSize(float size[2]) {
   if (size == nullptr) {
     return;
@@ -205,6 +217,7 @@ void NativePaintingCtxPlatformDarwinRef::UpdateContentOffsetForListContainer(
                                    contentSize:content_size
                                         deltaX:delta_x
                                         deltaY:delta_y];
+  RequestPositionChangeCheck();
 }
 
 void NativePaintingCtxPlatformDarwinRef::GetPlatformRendererScrollOffset(int32_t sign,
