@@ -18,6 +18,9 @@ export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspe
   public subscribeMessage(type: string, handler: MessageHandler): void;
   public unsubscribeMessage(type: string): void;
   public sendMessage(type: string, message: string): void;
+  public invokeCDPFromSDK(cdpMsg: string, callback: CDPResultCallback): void;
+  public addCDPEventListener(name: string, listener: CDPEventListener): void;
+  public removeCDPEventListener(name: string): void;
 }
 
 export class LynxDebugBridge {
@@ -1480,6 +1483,16 @@ export interface LynxBaseInspectorOwner {
   subscribeMessage(type: string, handler: MessageHandler): void;
   unsubscribeMessage(type: string): void;
   sendMessage(type: string, message: string): void;
+  invokeCDPFromSDK(cdpMsg: string, callback: CDPResultCallback): void;
+  addCDPEventListener(name: string, listener: CDPEventListener): void;
+  removeCDPEventListener(name: string): void;
+}
+
+export type CDPResultCallback = (result: string) => void {
+}
+
+export interface CDPEventListener {
+  onEvent: (event: string) => void;
 }
 
 export interface LynxInspectorConsoleDelegate {

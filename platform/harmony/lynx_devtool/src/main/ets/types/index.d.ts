@@ -17,6 +17,9 @@ export class InspectorOwnerHarmony {
   getConsoleObject: (objectId: string, needStringify: boolean, callbackId: number) => void;
   subscribeMessage: (type: string, handler: MessageHandler) => void;
   unsubscribeMessage: (type: string) => void;
+  invokeCDPFromSDK: (cdpMsg: string, callback: (result: string) => void) => void;
+  addCDPEventListener: (name: string, listener: Object) => void;
+  removeCDPEventListener: (name: string) => void;
   updateInputWindowInfo: (windowId: number, displayId: number,
     leftPx: number, topPx: number, widthPx: number, heightPx: number,
     pixelRatio: number) => void;
