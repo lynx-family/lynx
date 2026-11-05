@@ -15,6 +15,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -618,6 +619,327 @@ TEST_P(ElementTemplateInstanceTest, ClassUpdatesInvalidateDescendantSelectors) {
       instance->SetAttributeSlot(0, lepus::Value());
       expect_opacity(typed ? 0.75 : 0.5);
     }
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest, SpreadCleanupPreservesClassTransmission) {
+  for (bool class_first : {false, true}) {
+    SCOPED_TRACE(class_first);
+    for (const char* fallback : {"none", "static", "dynamic"}) {
+      SCOPED_TRACE(fallback);
+      auto instance = CreateCompiledSpreadInstance();
+      auto info =
+          tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+              ->template_bundle_.element_template_infos_.at("spread_template");
+      TemplateAttributes attributes{Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                                              base::String("class"),
+                                              lepus::Value(), 0}};
+      const bool has_fallback = std::string_view(fallback) != "none";
+      if (has_fallback) {
+        attributes.emplace_back(Attribute{std::string_view(fallback) == "static"
+                                              ? ATTRIBUTE_BINDING_TYPE_STATIC
+                                              : ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                                          base::String("transmit-class-change"),
+                                          lepus::Value(true), 3});
+        instance->SetAttributeSlot(3, lepus::Value(true));
+      }
+      for (uint32_t slot : {1u, 2u}) {
+        attributes.emplace_back(Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
+                                          base::String("spread"),
+                                          lepus::Value(), slot});
+      }
+      if (!class_first) {
+        std::rotate(attributes.begin(), attributes.begin() + 1,
+                    attributes.end());
+      }
+      info->elements_[0].attributes_ =
+          std::make_shared<const TemplateAttributes>(std::move(attributes));
+      auto flag = [](const lepus::Value& value) {
+        auto spread = lepus::Dictionary::Create();
+        spread->SetValue("transmit-class-change", value);
+        return lepus::Value(std::move(spread));
+      };
+      instance->SetAttributeSlot(0, lepus::Value("before"));
+      instance->SetAttributeSlot(1, flag(lepus::Value(true)));
+      instance->SetAttributeSlot(2, flag(lepus::Value(true)));
+      auto root = instance->GetRoot();
+      auto child = manager->CreateFiberNode("view");
+      root->InsertNode(child);
+      auto page = manager->CreateFiberPage("page", 0);
+      page->InsertNode(root);
+      int update = 0;
+      auto expect_transmission = [&](bool enabled) {
+        page->FlushActionsAsRoot();
+        platform_impl_->Flush();
+        ASSERT_FALSE(child->StyleDirty());
+        EXPECT_EQ(root->enable_class_change_transmit_, enabled);
+        instance->SetAttributeSlot(0, lepus::Value(std::to_string(++update)));
+        EXPECT_EQ(child->StyleDirty(), enabled);
+      };
+      expect_transmission(true);
+      // Removing one source must retain another spread or an explicit fallback.
+      instance->SetAttributeSlot(2, lepus::Value());
+      expect_transmission(true);
+      instance->SetAttributeSlot(1, lepus::Value());
+      expect_transmission(has_fallback);
+      instance->SetAttributeSlot(2, flag(lepus::Value(true)));
+      expect_transmission(true);
+      // Explicit null overrides the fallback; an absent key reveals it again.
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+      ASSERT_FALSE(child->StyleDirty());
+      instance->SetAttributeSlot(2, flag(lepus::Value()));
+      // Observe the update before flush: null must run at its declaration
+      // position.
+      EXPECT_EQ(child->StyleDirty(), class_first);
+      expect_transmission(false);
+      instance->SetAttributeSlot(2, lepus::Value(lepus::Dictionary::Create()));
+      expect_transmission(has_fallback);
+    }
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       SpreadOverriddenOrdinarySourcesDoNotBreakClassTransmission) {
+  auto make_flag_spread = [](const lepus::Value& value) {
+    auto spread = lepus::Dictionary::Create();
+    spread->SetValue("transmit-class-change", value);
+    return lepus::Value(std::move(spread));
+  };
+
+  struct EarlierSourceCase {
+    const char* label;
+    AttributeBindingType type;
+    bool empty_value;
+  };
+  const EarlierSourceCase cases[] = {
+      {"static_false", ATTRIBUTE_BINDING_TYPE_STATIC, false},
+      {"dynamic_false", ATTRIBUTE_BINDING_TYPE_DYNAMIC, false},
+      {"dynamic_null", ATTRIBUTE_BINDING_TYPE_DYNAMIC, true},
+      {"spread_false", ATTRIBUTE_BINDING_TYPE_SPREAD, false},
+      {"spread_null", ATTRIBUTE_BINDING_TYPE_SPREAD, true},
+  };
+
+  for (bool prepared : {false, true}) {
+    SCOPED_TRACE(prepared);
+    for (const auto& test_case : cases) {
+      SCOPED_TRACE(test_case.label);
+      auto instance = CreateCompiledSpreadInstance();
+      auto info =
+          tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+              ->template_bundle_.element_template_infos_.at("spread_template");
+      TemplateAttributes attributes;
+      if (test_case.type == ATTRIBUTE_BINDING_TYPE_STATIC) {
+        attributes.emplace_back(Attribute{ATTRIBUTE_BINDING_TYPE_STATIC,
+                                          base::String("transmit-class-change"),
+                                          lepus::Value(false), 0});
+      } else if (test_case.type == ATTRIBUTE_BINDING_TYPE_DYNAMIC) {
+        attributes.emplace_back(Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                                          base::String("transmit-class-change"),
+                                          lepus::Value(), 1});
+      } else {
+        attributes.emplace_back(Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
+                                          base::String("spread"),
+                                          lepus::Value(), 1});
+      }
+      attributes.emplace_back(Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                                        base::String("class"), lepus::Value(),
+                                        0});
+      attributes.emplace_back(Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD,
+                                        base::String("spread"), lepus::Value(),
+                                        2});
+      info->elements_[0].attributes_ =
+          std::make_shared<const TemplateAttributes>(std::move(attributes));
+
+      const lepus::Value overridden_value =
+          test_case.empty_value ? lepus::Value() : lepus::Value(false);
+      instance->SetAttributeSlot(0, lepus::Value("initial"));
+      if (test_case.type == ATTRIBUTE_BINDING_TYPE_DYNAMIC) {
+        instance->SetAttributeSlot(1, overridden_value);
+      } else if (test_case.type == ATTRIBUTE_BINDING_TYPE_SPREAD) {
+        instance->SetAttributeSlot(1, make_flag_spread(overridden_value));
+      }
+      instance->SetAttributeSlot(2, make_flag_spread(lepus::Value(true)));
+
+      if (prepared) {
+        instance->EnsureCreateElementTreeTaskScheduled();
+        ASSERT_NE(instance->create_element_tree_task_, nullptr);
+        instance->create_element_tree_task_->Run();
+        instance->SetAttributeSlot(0, lepus::Value("prepared"));
+      }
+
+      auto root = instance->GetRoot();
+      ASSERT_NE(root, nullptr);
+      auto child = manager->CreateFiberNode("view");
+      root->InsertNode(child);
+      auto page = manager->CreateFiberPage("page", 0);
+      page->InsertNode(root);
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+      ASSERT_FALSE(child->StyleDirty());
+      EXPECT_TRUE(root->enable_class_change_transmit_);
+
+      // Updating class must not transiently apply the overridden false/null
+      // source declared before class.
+      instance->SetAttributeSlot(0, lepus::Value("updated"));
+      EXPECT_TRUE(root->enable_class_change_transmit_);
+      EXPECT_TRUE(child->StyleDirty());
+
+      // Deleting the winning spread key reveals the earlier false/null source.
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+      ASSERT_FALSE(child->StyleDirty());
+      instance->SetAttributeSlot(2, lepus::Value(lepus::Dictionary::Create()));
+      EXPECT_FALSE(root->enable_class_change_transmit_);
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+      ASSERT_FALSE(child->StyleDirty());
+      instance->SetAttributeSlot(0, lepus::Value("after-fallback"));
+      EXPECT_FALSE(child->StyleDirty());
+    }
+  }
+
+  // Typed templates replay a single spread dictionary whose key iteration order
+  // is unspecified; retaining transmit-class-change must keep propagation live.
+  auto typed = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  typed->SetTASM(tasm.get());
+  typed->SetTypedTag(base::String("view"));
+  auto set_typed_attrs = [&](const char* cls, bool include_flag) {
+    auto attrs = lepus::Dictionary::Create();
+    attrs->SetValue("class", lepus::Value(cls));
+    if (include_flag) {
+      attrs->SetValue("transmit-class-change", lepus::Value(true));
+    }
+    typed->SetAttributes(lepus::Value(std::move(attrs)));
+  };
+  set_typed_attrs("typed-a", true);
+  auto typed_root = typed->GetRoot();
+  ASSERT_NE(typed_root, nullptr);
+  auto typed_child = manager->CreateFiberNode("view");
+  typed_root->InsertNode(typed_child);
+  auto page = manager->CreateFiberPage("page", 0);
+  page->InsertNode(typed_root);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+  ASSERT_FALSE(typed_child->StyleDirty());
+  set_typed_attrs("typed-b", true);
+  EXPECT_TRUE(typed_root->enable_class_change_transmit_);
+  EXPECT_TRUE(typed_child->StyleDirty());
+
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+  ASSERT_FALSE(typed_child->StyleDirty());
+  set_typed_attrs("typed-c", false);
+  EXPECT_FALSE(typed_root->enable_class_change_transmit_);
+  page->FlushActionsAsRoot();
+  platform_impl_->Flush();
+  ASSERT_FALSE(typed_child->StyleDirty());
+  set_typed_attrs("typed-d", false);
+  EXPECT_FALSE(typed_child->StyleDirty());
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       SpreadWinningOrdinarySourceSkipsOverriddenSideEffects) {
+  auto make_spread = [](const lepus::Value* name,
+                        const lepus::Value* placeholder) {
+    auto spread = lepus::Dictionary::Create();
+    if (name != nullptr) {
+      spread->SetValue("name", *name);
+    }
+    if (placeholder != nullptr) {
+      spread->SetValue("placeholder", *placeholder);
+    }
+    return lepus::Value(std::move(spread));
+  };
+
+  for (bool prepared : {false, true}) {
+    SCOPED_TRACE(prepared);
+    auto instance = CreateCompiledSpreadInstance();
+    auto info =
+        tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+            ->template_bundle_.element_template_infos_.at("spread_template");
+    info->elements_[0].attributes_ =
+        std::make_shared<const TemplateAttributes>(TemplateAttributes{
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC, base::String("name"),
+                      lepus::Value(), 0},
+            Attribute{ATTRIBUTE_BINDING_TYPE_DYNAMIC,
+                      base::String("placeholder"), lepus::Value(), 1},
+            Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                      lepus::Value(), 2},
+            Attribute{ATTRIBUTE_BINDING_TYPE_SPREAD, base::String("spread"),
+                      lepus::Value(), 3}});
+
+    const lepus::Value spread_name("spread-card");
+    const lepus::Value spread_placeholder("spread-hint");
+    const lepus::Value explicit_null;
+    instance->SetAttributeSlot(0, lepus::Value("direct-card"));
+    instance->SetAttributeSlot(1, lepus::Value("direct-hint"));
+    instance->SetAttributeSlot(2,
+                               make_spread(&spread_name, &spread_placeholder));
+    instance->SetAttributeSlot(3, make_spread(&explicit_null, &explicit_null));
+
+    if (prepared) {
+      instance->EnsureCreateElementTreeTaskScheduled();
+      ASSERT_NE(instance->create_element_tree_task_, nullptr);
+      instance->create_element_tree_task_->Run();
+      instance->SetAttributeSlot(0, lepus::Value("prepared-card"));
+      instance->SetAttributeSlot(1, lepus::Value("prepared-hint"));
+    }
+
+    auto root = instance->GetRoot();
+    ASSERT_NE(root, nullptr);
+    auto page = manager->CreateFiberPage("page", 0);
+    page->InsertNode(root);
+    auto expect_platform_props = [&](const char* expected_name,
+                                     const char* expected_placeholder) {
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+      const auto found = platform_impl_->node_map_.find(root->impl_id());
+      ASSERT_NE(found, platform_impl_->node_map_.end());
+      const auto& props = found->second->props_;
+      ASSERT_NE(props.find("name"), props.end());
+      ASSERT_NE(props.find("placeholder"), props.end());
+      if (expected_name == nullptr) {
+        EXPECT_TRUE(props.at("name").IsEmpty());
+      } else {
+        EXPECT_EQ(props.at("name").StdString(), expected_name);
+      }
+      if (expected_placeholder == nullptr) {
+        EXPECT_TRUE(props.at("placeholder").IsEmpty());
+      } else {
+        EXPECT_EQ(props.at("placeholder").StdString(), expected_placeholder);
+      }
+    };
+
+    // Overridden non-empty values must not enter updated_attr_map_ ahead of an
+    // explicit null reset and pollute flatten or placeholder flags.
+    expect_platform_props(nullptr, nullptr);
+    EXPECT_FALSE(root->has_non_flatten_attrs_);
+    EXPECT_FALSE(root->HasPlaceHolder());
+
+    // Updating overridden earlier slots while explicit null still wins keeps
+    // both flags clean.
+    instance->SetAttributeSlot(0, lepus::Value("updated-card"));
+    instance->SetAttributeSlot(1, lepus::Value("updated-hint"));
+    expect_platform_props(nullptr, nullptr);
+    EXPECT_FALSE(root->has_non_flatten_attrs_);
+    EXPECT_FALSE(root->HasPlaceHolder());
+
+    // Deleting keys from the winning spread falls back to the earlier spread.
+    instance->SetAttributeSlot(3, lepus::Value(lepus::Dictionary::Create()));
+    expect_platform_props("spread-card", "spread-hint");
+    EXPECT_TRUE(root->has_non_flatten_attrs_);
+    EXPECT_TRUE(root->HasPlaceHolder());
+
+    // Clearing the earlier spread falls back to direct dynamic slots.
+    instance->SetAttributeSlot(2, lepus::Value());
+    expect_platform_props("updated-card", "updated-hint");
+
+    // Clearing the remaining direct slots resets the platform properties.
+    instance->SetAttributeSlot(0, lepus::Value());
+    instance->SetAttributeSlot(1, lepus::Value());
+    expect_platform_props(nullptr, nullptr);
   }
 }
 
