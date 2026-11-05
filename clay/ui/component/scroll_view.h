@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/fml/time/time_point.h"
 #include "clay/gfx/scroll_direction.h"
 #include "clay/ui/component/bounce_view/bounce_view.h"
 #include "clay/ui/component/nested_scroll/nested_scrollable.h"
@@ -175,7 +176,8 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
 
   BounceView* bounce_view_ = nullptr;
   bool auto_scroll_ = false;
-  int auto_scroll_rate_;
+  float auto_scroll_rate_ = 0.f;
+  fml::TimePoint auto_scroll_last_tick_;
   std::optional<int> pending_scroll_offset_ = std::nullopt;
   int pending_scroll_index_ = -1;
   fml::WeakPtrFactory<ScrollView> weak_factory_;
@@ -196,6 +198,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   bool skip_correct_scroll_offset_ = false;
 
   FRIEND_TEST(ScrollViewTest, NestedScrollOnPC);
+  FRIEND_TEST(ScrollViewTest, AutoScrollUsesElapsedTime);
   FRIEND_TEST(ScrollViewTest, NestedScrollGestureOnPC);
   FRIEND_TEST(ScrollViewTest, ScrollToId);
 };

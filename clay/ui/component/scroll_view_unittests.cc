@@ -740,6 +740,28 @@ TEST_F_UI(ScrollViewTest, VoidUIMethodsReturnEmptySuccessData) {
   EXPECT_TRUE(auto_scroll_callback_invoked);
 }
 
+TEST_F_UI(ScrollViewTest, AutoScrollUsesElapsedTime) {
+  outer_view_->OnLayoutUpdated();
+  inner_view_->OnLayoutUpdated();
+
+  for (auto* view : {outer_view_.get(), inner_view_.get()}) {
+    view->AutoScroll(true, 100.f);
+    view->auto_scroll_last_tick_ =
+        fml::TimePoint::Now() - fml::TimeDelta::FromMilliseconds(500);
+    view->StartSmoothScroll();
+    const float offset = view == outer_view_.get()
+                             ? view->GetScrollOffset().y()
+                             : view->GetScrollOffset().x();
+    EXPECT_NEAR(offset, 50.f, 1.f);
+    view->AutoScroll(false, 0.f);
+    view->StartSmoothScroll();
+    const float stopped_offset = view == outer_view_.get()
+                                     ? view->GetScrollOffset().y()
+                                     : view->GetScrollOffset().x();
+    EXPECT_FLOAT_EQ(stopped_offset, offset);
+  }
+}
+
 TEST_F_UI(ScrollViewTest, ScrollToUpperLowerEvent) {
   auto scroll_view = std::make_unique<ScrollWrapper>(
       -1, ScrollDirection::kVertical, page_.get());

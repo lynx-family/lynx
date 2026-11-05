@@ -875,7 +875,7 @@ BaseView* TextView::GetViewAtPosition(const FloatPoint& point_by_paragraph,
       point_by_paragraph.x(), point_by_paragraph.y());
 
   // If there is no click on the text, no event response is required
-  if (!ClickOnText(text_pos.position, point_by_paragraph, paragraph)) {
+  if (!ClickOnText(text_pos, point_by_paragraph, paragraph)) {
     return nullptr;
   }
 
@@ -902,14 +902,19 @@ BaseView* TextView::GetViewAtPosition(const FloatPoint& point_by_paragraph,
   return nullptr;
 }
 
-bool TextView::ClickOnText(size_t glyph_index,
+bool TextView::ClickOnText(txt::Paragraph::PositionWithAffinity text_pos,
                            const FloatPoint& point_by_paragraph,
                            txt::Paragraph* paragraph) {
   if (paragraph) {
+    const auto glyph_index = text_pos.position;
     auto line_metrics = paragraph->GetLineMetrics();
     for (auto line_metric : line_metrics) {
+      // A hit on the trailing half of the last glyph can resolve to the
+      // position after the line, with upstream affinity to that glyph.
       if (glyph_index < line_metric.start_index ||
-          glyph_index >= line_metric.end_index) {
+          glyph_index > line_metric.end_index ||
+          (glyph_index == line_metric.end_index &&
+           text_pos.affinity != txt::Paragraph::UPSTREAM)) {
         continue;
       }
       auto text_boxes = paragraph->GetRectsForRange(
