@@ -271,8 +271,6 @@ public abstract class LynxBaseUI
   // detection.
   private EnableStatus mEnableExposureUIClip = EnableStatus.Undefined;
 
-  private boolean mEnableBitmapGradient;
-
   private int mBorderSpacingIndex;
   private int mBorderWidth;
 
@@ -1369,7 +1367,6 @@ public abstract class LynxBaseUI
       mLynxMask = new LynxMask(mContext);
       mLynxMask.setDrawableCallback(mDrawableCallback);
       mLynxMask.setFontSize(mFontSize);
-      mLynxMask.setEnableBitmapGradient(mEnableBitmapGradient);
       mLynxMask.setBitmapConfig(mBitmapConfig);
       mLynxMask.setBorderWidth(SPACING_TYPES[mBorderSpacingIndex], mBorderWidth);
       mLynxMask.updatePaddingWidths(mPaddingTop, mPaddingRight, mPaddingBottom, mPaddingLeft);
@@ -1425,16 +1422,6 @@ public abstract class LynxBaseUI
   @LynxProp(name = PropsConstants.IMAGE_RENDERING)
   public void setImageRendering(int imageRendering) {
     mImageRendering = imageRendering;
-  }
-
-  @LynxProp(name = PropsConstants.BITMAP_GRADIENT)
-  public void setEnableBitmapGradient(boolean enable) {
-    mEnableBitmapGradient = enable;
-    mLynxBackground.setEnableBitmapGradient(enable);
-    if (mLynxMask != null) {
-      mLynxMask.setEnableBitmapGradient(enable);
-    }
-    invalidate();
   }
 
   @LynxProp(name = PropsConstants.BACKGROUND_IMAGE)

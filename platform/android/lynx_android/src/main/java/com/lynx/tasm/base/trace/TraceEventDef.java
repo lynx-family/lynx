@@ -238,7 +238,6 @@ public class TraceEventDef {
   public static final String FLATTEN_UI_DRAW = "LynxFlattenUI.draw.";
   public static final String LYNX_UI_MEASURE = "LynxUI.measure.";
   public static final String LYNX_UI_LAYOUT = "LynxUI.layout.";
-  public static final String CREATE_BITMAP_SHADER = "createBitmapShader";
   public static final String IMAGE_SERVICE_PROXY_FETCH_IMAGE = "LynxImageServiceProxy.fetchImage";
 
   public static final String IMAGE_MANAGER_UPDATE_PROPS_INTERVAL =
