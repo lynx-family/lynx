@@ -681,7 +681,6 @@ TEST_F(FragmentDrawTest, CustomDrawBehindRecordsCommandsBeforeDefaultContent) {
 TEST_P(CustomDrawFlushTest,
        CustomLayerPropertiesReuseContentAndRestoreCSSProperties) {
   auto page = manager->CreateFiberPage("0", 0);
-  manager->SetFiberPageElement(page);
   auto element = manager->CreateFiberView();
   element->SetStyle(kPropertyIDTransform, lepus::Value("translate(7px, 9px)"));
   element->SetStyle(kPropertyIDOpacity, lepus::Value(0.4));
@@ -1177,7 +1176,6 @@ class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
     page_ = manager->CreateFiberPage("0", 0);
     page_->MarkAsComposeLayout();
     page_->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
-    manager->SetFiberPageElement(page_);
     handle_ = fml::AdoptRef(new ComposeElementHandle(manager.get(), kind));
     ASSERT_TRUE(
         ComposeModifierApplicator::Apply(handle_.get(), plan, runtime_.get())
