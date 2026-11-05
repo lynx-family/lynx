@@ -72,6 +72,10 @@ class LynxOverlayDialog(context: Context, private val overlay: LynxOverlayView):
     // Override dialog's dispatchTouchEvent, if dialog needs to consume,
     // call super.dispatchTouchEvent. Otherwise, call LynxOverlayManager.dispatchTouchEvent.
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (overlay.isRawInputExclusiveForEvent(ev)) {
+            overlay.dispatchRawInputTouchEvent(ev)
+            return true
+        }
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
             cancelPassThroughGesture()
         } else if (passThroughTarget != null) {
