@@ -74,7 +74,7 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
   }
 
   MarkEventTargetTreeDirty(id);
-  const auto &layer = it->second;
+  const auto layer = it->second;
   // Rebuild the sublayers according to the new SubLayers in the display list
   // with MyersDiff. And generate actual addChild and removeChild actions for
   // PlatformRenderer here.
@@ -114,7 +114,8 @@ void NativePaintingCtxPlatformRef::RemovePaintingNode(int parent, int child,
     return;
   }
   if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
-    it_child->second->RemoveFromParent();
+    const auto renderer = it_child->second;
+    renderer->RemoveFromParent();
   }
 }
 
@@ -130,7 +131,8 @@ void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
     ClearEventTargetRootDirty(child);
   }
   if (auto it_child = renderers_.find(child); it_child != renderers_.end()) {
-    it_child->second->RemoveFromParent();
+    const auto renderer = it_child->second;
+    renderer->RemoveFromParent();
     renderers_.erase(child);
   }
   event_target_helper_->InvalidateScrollContainerCache(child);
@@ -683,7 +685,8 @@ void NativePaintingCtxPlatformRef::UpdateAttributes(
   if (it == renderers_.end()) {
     return;
   }
-  it->second->UpdateAttributes(attributes);
+  const auto renderer = it->second;
+  renderer->UpdateAttributes(attributes);
 }
 
 void NativePaintingCtxPlatformRef::UpdateNodeReadyPatching(
@@ -764,7 +767,8 @@ bool NativePaintingCtxPlatformRef::TryInvokePlatformRendererUIMethod(
   if (it == renderers_.end() || !it->second) {
     return false;
   }
-  return it->second->InvokeUIMethod(method, params, callback);
+  const auto renderer = it->second;
+  return renderer->InvokeUIMethod(method, params, callback);
 }
 
 void NativePaintingCtxPlatformRef::InvokePlatformViewUIMethod(
