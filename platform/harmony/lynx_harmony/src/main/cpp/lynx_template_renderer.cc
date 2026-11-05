@@ -35,6 +35,7 @@
 #include "core/runtime/js/bytecode/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/common/platform_call_back.h"
@@ -84,6 +85,45 @@ bool IsNapiFunction(napi_env env, napi_value value) {
   napi_valuetype type = napi_undefined;
   napi_typeof(env, value, &type);
   return type == napi_function;
+}
+
+runtime::HeapSnapshotCallback CreateHeapSnapshotCallback(napi_env env,
+                                                         napi_value callback) {
+  if (!callback || !IsNapiFunction(env, callback)) {
+    napi_throw_type_error(env, nullptr, "Invalid snapshot callback");
+    return {};
+  }
+  napi_value name = nullptr;
+  napi_create_string_utf8(env, "LynxHeapSnapshot", NAPI_AUTO_LENGTH, &name);
+  napi_threadsafe_function function = nullptr;
+  auto status = napi_create_threadsafe_function(
+      env, callback, nullptr, name, 0, 1, nullptr, nullptr, nullptr,
+      [](napi_env env, napi_value callback, void*, void* data) {
+        const auto* error = static_cast<const char*>(data);
+        // NAPI may drain queued data after env teardown without calling JS.
+        if (!env || !callback) return;
+        napi_value receiver = nullptr;
+        napi_get_undefined(env, &receiver);
+        napi_value arg = receiver;
+        if (error) {
+          napi_create_string_utf8(env, error, NAPI_AUTO_LENGTH, &arg);
+        }
+        napi_call_function(env, receiver, callback, 1, &arg, nullptr);
+      },
+      &function);
+  if (status != napi_ok) {
+    napi_throw_error(env, nullptr, "Snapshot callback creation failed");
+    return {};
+  }
+  napi_unref_threadsafe_function(env, function);
+  return [function](const char* error) {
+    // Snapshot errors are static and can be passed directly across threads.
+    auto status = napi_call_threadsafe_function(
+        function, const_cast<char*>(error), napi_tsfn_nonblocking);
+    if (status != napi_closing) {
+      napi_release_threadsafe_function(function, napi_tsfn_release);
+    }
+  };
 }
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
@@ -872,6 +912,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
                           UnsubscribeSessionStorage),
       DECLARE_NAPI_METHOD("nativeGetAllJsSource", GetAllJsSource),
       DECLARE_NAPI_METHOD("nativeGetAllJsSourceAsync", GetAllJsSourceAsync),
+      DECLARE_NAPI_METHOD("nativeTakeHeapSnapshot", TakeHeapSnapshot),
       DECLARE_NAPI_METHOD("invokeLepusCallback", InvokeLepusCallback),
   };
 
@@ -904,6 +945,8 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   NAPI_CREATE_FUNCTION(env, exports, "notifyMemoryPressure",
                        NotifyMemoryPressure);
   NAPI_CREATE_FUNCTION(env, exports, "generateViewId", GenerateViewId);
+  NAPI_CREATE_FUNCTION(env, exports, "takeBtsResidualHeapSnapshot",
+                       TakeBtsResidualHeapSnapshot);
 
   return exports;
 }
@@ -967,6 +1010,44 @@ napi_value LynxTemplateRenderer::GetAllJsSourceAsync(napi_env env,
   }
 
   obj->shell_->GetAllJsSourceAsync(std::move(callback));
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::TakeHeapSnapshot(napi_env env,
+                                                  napi_callback_info info) {
+  size_t argc = 3;
+  napi_value args[3] = {};
+  napi_value receiver = nullptr;
+  napi_get_cb_info(env, info, &argc, args, &receiver, nullptr);
+  auto callback = CreateHeapSnapshotCallback(env, args[1]);
+  if (!callback) return nullptr;
+  auto path = base::NapiUtil::ConvertToString(env, args[0]);
+  LynxTemplateRenderer* obj = nullptr;
+  auto status = napi_unwrap(env, receiver, reinterpret_cast<void**>(&obj));
+  if (status != napi_ok || !obj || !obj->shell_) {
+    runtime::HeapSnapshotRequest(std::move(path), std::move(callback))
+        .Fail("LynxView unavailable");
+  } else {
+    obj->shell_->TakeHeapSnapshot(
+        std::move(path), std::move(callback),
+        base::NapiUtil::ConvertToString(env, args[2]));
+  }
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::TakeBtsResidualHeapSnapshot(
+    napi_env env, napi_callback_info info) {
+  size_t argc = 3;
+  napi_value args[3] = {};
+  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  auto callback = CreateHeapSnapshotCallback(env, args[1]);
+  if (!callback) return nullptr;
+  auto path = base::NapiUtil::ConvertToString(env, args[0]);
+  int32_t instance_id = -1;
+  napi_get_value_int32(env, args[2], &instance_id);
+  tasm::performance::GlobalMemoryMonitor::GetInstance()
+      .TakeBtsResidualHeapSnapshot(std::move(path), std::move(callback),
+                                   instance_id);
   return nullptr;
 }
 

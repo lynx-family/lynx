@@ -268,6 +268,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                                               napi_callback_info info);
   static napi_value GetAllJsSource(napi_env env, napi_callback_info info);
   static napi_value GetAllJsSourceAsync(napi_env env, napi_callback_info info);
+  static napi_value TakeHeapSnapshot(napi_env env, napi_callback_info info);
+  static napi_value TakeBtsResidualHeapSnapshot(napi_env env,
+                                                napi_callback_info info);
   static napi_value InvokeLepusCallback(napi_env env, napi_callback_info info);
 
   struct WeakFlag : public std::enable_shared_from_this<WeakFlag> {
