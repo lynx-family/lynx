@@ -102,9 +102,20 @@ const commandBufferCreator = function(appendTarget, idGen) {
   if ({{method.name}} === null || typeof {{method.name}} === 'undefined') {
     return;
   }
-
-  this.__{{method.name}} = {{method.name}};
   {% endif %}
+  {% if method.public_buffered %}
+  {# This method is buffered on its public name, so malformed calls must match
+     the binding: too few arguments throw, and non-string arguments go through
+     DOMString coercion. Defer both cases to the binding version. #}
+  if (arguments.length < {{method.number_of_required_arguments}}{% for argument in method.arguments if argument.is_string_type %} || typeof {{argument.name}} !== 'string'{% endfor %}) {
+    return this.{{method.name}}_(...arguments);
+  }
+  {% endif %}
+  {% for argument in method.arguments if argument.enum_type %}
+  if ({{argument.name}} !== undefined && {% for value in argument.enum_values %}{{argument.name}} !== '{{value}}'{{ ' && ' if not loop.last }}{% endfor %}) {
+    throw new TypeError("Invalid type for {{ argument.name if method.is_setter else 'argument ' ~ argument.index }}, expecting: [{% for value in argument.enum_values %}'{{value}}'{{ ', ' if not loop.last }}{% endfor %}]");
+  }
+  {% endfor %}
   {% for argument in method.arguments if argument.is_string_type and method.is_setter %}
   if (typeof {{argument.name}} !== 'string') {
     {{argument.name}} = String({{argument.name}});
@@ -112,6 +123,23 @@ const commandBufferCreator = function(appendTarget, idGen) {
   let {{argument.name}}Len = {{argument.name}}.length;
   if ({{argument.name}}Len / 2  > cmdLengthCutoff) {
     cb.flush();
+    if ({{argument.name}}Len / 2 > flushThresh) {
+      // Setters have no binding fallback; a string this long can never fit
+      // in the command buffer, so it is dropped as pathological input.
+      console.warn('{{interface_name}}.{{method.name}}: attribute string too long, dropped');
+      return;
+    }
+  }
+  {% endfor %}
+  {% for argument in method.arguments if argument.union_types and method.is_setter %}
+  if (typeof {{argument.name}} === 'string' && {{argument.name}}.length / 2 > cmdLengthCutoff) {
+    cb.flush();
+    if ({{argument.name}}.length / 2 > flushThresh) {
+      // Setters have no binding fallback; a string this long can never fit
+      // in the command buffer, so it is dropped as pathological input.
+      console.warn('{{interface_name}}.{{method.name}}: attribute string too long, dropped');
+      return;
+    }
   }
   {% endfor %}
   {% if interface_name.startswith(partial_data_opt_prefix) %}
@@ -151,7 +179,13 @@ const commandBufferCreator = function(appendTarget, idGen) {
     {% endfor %}
     {% if ns.has_optional_argument %}
     {% set ns.count = ns.count + 1 %}
+    {% if method.name in ['fillText', 'strokeText'] %}
+    {# Mirror NonUndefinedArgumentLength: a trailing undefined maxWidth selects
+       the shorter overload, and extra arguments are ignored. #}
+    uint32View[$end + 2] = (arguments.length >= {{method.arguments | length}} && {{method.arguments[-1].name}} !== undefined) ? {{method.arguments | length}} : {{(method.arguments | length) - 1}};
+    {% else %}
     uint32View[$end + 2] = arguments.length;
+    {% endif %}
     {% endif %} 
     {% for argument in method.arguments %}
     {% if argument.is_boolean_type %}
@@ -170,6 +204,8 @@ const commandBufferCreator = function(appendTarget, idGen) {
       // wrapper type
       uint32View[$end + {{ns.count}}] = Object2TypeId(appendTarget, {{argument.name}});
       uint32View[$end + {{ns.count}} + 1] = {{argument.name}}.__id;
+      // Keep the wrapper alive until the buffered command is flushed.
+      objects.push({{argument.name}});
     }
     {% set ns.count = ns.count + 2 %}
     {% elif argument.enum_type %}
@@ -341,8 +377,10 @@ const commandBufferCreator = function(appendTarget, idGen) {
 
   {% for method in methods if method.is_getter or method.is_setter %}
   {% if method.is_getter %}
-  function {{method.name}}Getter({{ method.arguments | map(attribute='name') | join(', ')}}) { 
-    return this.__{{method.name}};
+  {# Read through to the native getter (sync flush + call) so reads always
+     reflect native state, e.g. value normalization and save/restore. #}
+  function {{method.name}}Getter({{ method.arguments | map(attribute='name') | join(', ')}}) {
+    {{ method_content(interface_name, method) }}
   }
 
   {% endif %}
@@ -398,6 +436,9 @@ function hook{{interface_name}}(appendTarget, context, idGen) {
   {% endfor %}
   {% for attribute, methods in attributes.items() %}
   Object.defineProperty(context, '{{attribute}}', {
+  {% if interface_name == 'BatchedCanvasRenderingContext2D' %}
+  configurable: true,
+  {% endif %}
   {%for method in methods %}
   {% if method.is_getter %}
   get: commandBuffer.{{method.name}}Getter,
@@ -415,7 +456,12 @@ function hook{{interface_name}}(appendTarget, context, idGen) {
   let ctxProto = context.__proto__;
   {% for method in methods if not method.is_setter and not method.is_getter %}
   {% if not method.overload_index or method.overloads %}
-  {% if method.slow_if_buffered %}
+  {% if method.public_buffered %}
+  {# Public name goes through the buffer; the binding version stays reachable
+     at {{method.name}}_ as the long-string fallback. #}
+  ctxProto.{{method.name}} = commandBuffer.{{method.name}};
+  ctxProto.{{method.name}}$ = commandBuffer.{{method.name}};
+  {% elif method.slow_if_buffered %}
   ctxProto.{{method.name}} = ctxProto.{{method.name}}_;
   {# exposed for tests #}
   ctxProto.{{method.name}}$ = commandBuffer.{{method.name}};
