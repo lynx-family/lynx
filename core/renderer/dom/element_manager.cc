@@ -1426,6 +1426,8 @@ void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
 
   if (IsFragmentLayerRenderModeOn()) {
     painting_context()->SetEventScreenWidth(GetLynxEnvConfig().ScreenWidth());
+    painting_context()->SetRawInputEnabled(config_ &&
+                                           config_->GetEnableRawInput());
     painting_context()->SetEventThroughConfig(
         config_ != nullptr && config_->GetEnableEventThrough(),
         config_ != nullptr && config_->GetEnableEventThroughInheritFromPage());
