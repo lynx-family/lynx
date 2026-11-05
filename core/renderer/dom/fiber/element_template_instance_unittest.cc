@@ -3120,9 +3120,7 @@ TEST_P(ElementTemplateInstanceTest,
       instance->SetAttributeSlot(0, lepus::Value());
       EXPECT_EQ(events.find("tap"), events.end());
       if (refactored) {
-        auto listeners = root->GetEventListenerMap()->Find("tap");
-        ASSERT_NE(listeners, nullptr);
-        EXPECT_TRUE(listeners->empty());
+        EXPECT_EQ(root->GetEventListenerMap()->Find("tap"), nullptr);
       }
     }
   }

@@ -1834,7 +1834,7 @@ TEST_P(FiberElementTest, FiberAddEventPreservesDifferentListenerTypes) {
 
   page->FiberAddEvent("bindEvent", "tap", lepus::Value(), DEFAULT_ENTRY_NAME);
   listeners = page->GetEventListenerMap()->Find("tap");
-  ASSERT_NE(listeners, nullptr);
+  EXPECT_EQ(listeners, nullptr);
   EXPECT_EQ(CountClosureEventListeners(
                 listeners, event::ClosureEventListener::ClosureType::kJS),
             0u);

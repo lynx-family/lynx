@@ -1286,6 +1286,12 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
   }
 
   public void sendGlobalEvent(String name, JavaOnlyArray params) {
+    // Keep the direct MTS route exclusive with the legacy event bus in LynxView.
+    if (!shouldSendEventToMainThread() && checkIfEnvPrepared() && mNativePtr != 0) {
+      ByteBuffer buffer = LepusBuffer.INSTANCE.encodeMessage(params);
+      nativeSendGlobalEventToMTS(
+          mNativePtr, mNativeLifecycle, name, buffer, buffer == null ? 0 : buffer.position());
+    }
     // When SSR hydrate status is pending、beginning or failed, a global event will
     // be sent to SSR
     // runtime to be consumed. But this global event will also be cached so that
@@ -1304,10 +1310,12 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     }
 
     LynxContext context = mLynxContext;
-    if (checkIfEnvPrepared() && context != null) {
-      context.sendGlobalEvent(name, finalParams);
-    } else {
-      LLog.e(TAG, "sendGlobalEvent error, can't get GlobalEventEmitter in " + this.toString());
+    if (enableJSRuntime()) {
+      if (checkIfEnvPrepared() && context != null) {
+        context.sendGlobalEvent(name, finalParams);
+      } else {
+        LLog.e(TAG, "sendGlobalEvent error, can't get GlobalEventEmitter in " + this.toString());
+      }
     }
     context = mLynxContext;
     if (context != null && context.isEmbeddedModeOn()) {

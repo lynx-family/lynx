@@ -912,9 +912,7 @@
   if ([_templateRender shouldSendEventToMainThread]) {
     [self triggerEventBus:name withParams:params];
   }
-  if (_templateRender.enableJSRuntime) {
-    RUN_RENDER_SAFELY([_templateRender sendGlobalEvent:name withParams:params];);
-  }
+  RUN_RENDER_SAFELY([_templateRender sendGlobalEvent:name withParams:params];);
 }
 
 - (void)sendGlobalEventToLepus:(nonnull NSString*)name withParams:(nullable NSArray*)params {
