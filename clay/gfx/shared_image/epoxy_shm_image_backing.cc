@@ -20,6 +20,11 @@
 #include "clay/gfx/shared_image/epoxy_shm_image_representation.h"
 #include "clay/gfx/shared_image/linux_shm_image_representation.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
+#ifndef ENABLE_SKITY
+#include "clay/gfx/shared_image/skia_gl_image_representation.h"
+#else
+#include "clay/gfx/shared_image/skity_gl_image_representation.h"
+#endif
 #include "clay/public/clay.h"
 
 namespace clay {

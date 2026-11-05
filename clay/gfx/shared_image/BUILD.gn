@@ -4,10 +4,10 @@
 
 import("../../common/config.gni")
 
-# Linux Skity currently supports only software rendering through ANGLE
-# SwiftShader.
-assert(!is_linux || !enable_skity || enable_software_rendering,
-       "Linux Skity requires enable_software_rendering=true.")
+# Linux Skity supports two headless GL backends:
+#   * Epoxy with the host EGL implementation (Mesa/llvmpipe when selected by
+#     the environment), when enable_software_rendering is false.
+#   * ANGLE Vulkan with SwiftShader, when enable_software_rendering is true.
 
 if (!enable_skity) {
   import("//third_party/skia/gn/skia.gni")
@@ -62,6 +62,13 @@ source_set("shared_image") {
         "skity_gl_image_representation.h",
         "utils/gl_texture_converter.cc",
         "utils/gl_texture_converter.h",
+      ]
+    } else if (is_linux && !enable_software_rendering) {
+      # Epoxy SHM produces ordinary GL_TEXTURE_2D images, so Linux does not
+      # need the Android/Windows external-OES texture converter.
+      sources += [
+        "skity_gl_image_representation.cc",
+        "skity_gl_image_representation.h",
       ]
     } else if (is_ios || is_mac) {
       sources += [
@@ -193,7 +200,9 @@ source_set("shared_image") {
   }
 
   if (is_linux) {
-    if (!enable_skity) {
+    # Epoxy owns the ordinary Linux SHM/GL bridge for both Skia and Skity. The
+    # software-rendering build uses the separate ANGLE SHM bridge below.
+    if (!enable_software_rendering) {
       sources += [
         "epoxy_shm_image_backing.cc",
         "epoxy_shm_image_backing.h",

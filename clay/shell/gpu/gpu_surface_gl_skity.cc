@@ -20,6 +20,33 @@
 #include "skity/gpu/gpu_context_gl.hpp"
 namespace clay {
 
+#if defined(OS_LINUX)
+namespace {
+
+thread_local const GPUSurfaceGLDelegate::GLProcResolver*
+    g_skity_gl_proc_resolver = nullptr;
+
+void* ResolveSkityGLProc(const char* name) {
+  return g_skity_gl_proc_resolver ? (*g_skity_gl_proc_resolver)(name) : nullptr;
+}
+
+class ScopedSkityGLProcResolver {
+ public:
+  explicit ScopedSkityGLProcResolver(
+      const GPUSurfaceGLDelegate::GLProcResolver& resolver)
+      : previous_(g_skity_gl_proc_resolver) {
+    g_skity_gl_proc_resolver = &resolver;
+  }
+
+  ~ScopedSkityGLProcResolver() { g_skity_gl_proc_resolver = previous_; }
+
+ private:
+  const GPUSurfaceGLDelegate::GLProcResolver* previous_;
+};
+
+}  // namespace
+#endif  // defined(OS_LINUX)
+
 std::shared_ptr<skity::GPUContext> GPUSurfaceGLSkity::MakeGLContext(
     GPUSurfaceGLDelegate* delegate) {
   auto context_switch = delegate->GLContextMakeCurrent();
@@ -29,6 +56,17 @@ std::shared_ptr<skity::GPUContext> GPUSurfaceGLSkity::MakeGLContext(
     return nullptr;
   }
 #if !defined(OS_OSX)
+#if defined(OS_LINUX)
+  // Do not use the process-global eglGetProcAddress symbol here. Linux builds
+  // can contain both ANGLE and Epoxy/Mesa; resolving through the wrong EGL
+  // implementation produces a valid-looking GL table whose calls see no
+  // current context. Let the platform renderer select the matching resolver.
+  auto resolver = delegate->GetGLProcResolver();
+  if (resolver) {
+    ScopedSkityGLProcResolver scoped_resolver(resolver);
+    return skity::GLContextCreate(reinterpret_cast<void*>(ResolveSkityGLProc));
+  }
+#endif  // defined(OS_LINUX)
   return skity::GLContextCreate(reinterpret_cast<void*>(eglGetProcAddress));
 #elif defined(ENABLE_HEADLESS) && defined(ENABLE_SOFTWARE_RENDERING)
   // macOS headless software rendering uses ANGLE EGL. This Skity GL integration
