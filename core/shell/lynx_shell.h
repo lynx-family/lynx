@@ -241,6 +241,9 @@ class LynxShell {
   void SendGlobalEventToLepus(const std::string& name,
                               const lepus_value& params);
 
+  // params is the listener argument array supplied by the host.
+  void SendGlobalEventToMTS(const std::string& name, const lepus_value& params);
+
   void SendSsrGlobalEvent(const std::string& name, const lepus_value& params);
 
   void TriggerEventBus(const std::string& name, const lepus_value& params);

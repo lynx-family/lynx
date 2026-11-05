@@ -290,9 +290,8 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSRemoveEventListenerTest) {
                 ->context_proxy_vector_[static_cast<int32_t>(
                     runtime::ContextProxy::Type::kCoreContext)]
                 ->GetEventListenerMap()
-                ->Find("1")
-                ->size(),
-            0);
+                ->Find("1"),
+            nullptr);
 }
 
 TEST_P(ContextProxyInJSTest, ContextProxyInJSOnTriggerEventTest) {
