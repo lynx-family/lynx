@@ -281,6 +281,11 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     return this.nativeGetAllJsSource();
   }
 
+  takeHeapSnapshot(outputFile: string, callback: (error?: string) => void,
+    type: 'mts' | 'bts_page' | 'bts_vm'): void {
+    this.nativeTakeHeapSnapshot(outputFile, callback, type);
+  }
+
   getAllJsSourceAsync(callback: (source: Record<string, string>) => void): void {
     this.nativeGetAllJsSourceAsync((source: Record<string, string>) => {
       callback(source ?? {});

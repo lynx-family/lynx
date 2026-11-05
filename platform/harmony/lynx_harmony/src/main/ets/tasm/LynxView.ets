@@ -1078,4 +1078,38 @@ export struct LynxView {
     module.setup();
     module.onTemplateLoad(this.url); // no other timing to set, may various with other platform
   }
+
+  /**
+   * Captures a QuickJS heap snapshot asynchronously. Capture triggers GC, clears
+   * retained console messages, summarizes diagnostics and includes source locations.
+   * @param outputFile Absolute destination path. The parent directory must exist;
+   * existing file content is replaced.
+   * @param callback Called on the ArkTS thread with undefined on success or an error message.
+   * @param type "mts" captures the main MTS VM; "bts_page" captures the page's tracked
+   * slot in a shared BTS VM, or the whole VM if not shared; "bts_vm" captures the
+   * whole BTS VM. Shared page captures require previously enabled slot tracking.
+   * Unsupported engines fail.
+   */
+  public takeHeapSnapshot(outputFile: string, callback: (error?: string) => void,
+    type: 'mts' | 'bts_page' | 'bts_vm'): void {
+    if (!this.templateRenderer || this.templateRenderer.isDestroyed()) {
+      Promise.resolve().then(() => callback('LynxView unavailable'));
+      return;
+    }
+    this.templateRenderer.takeHeapSnapshot(outputFile, callback, type);
+  }
+
+  /**
+   * Captures allocations remaining in a destroyed page's QuickJS BTS memory slot.
+   * Requires previously enabled slot tracking and a surviving shared VM. Capture
+   * triggers GC and clears console messages; diagnostics and locations are included.
+   * @param outputFile Absolute destination path. The parent directory must exist;
+   * existing file content is replaced.
+   * @param callback Called on the ArkTS thread with undefined on success or an error message.
+   * @param instanceId The instance ID saved before destroying the LynxView.
+   */
+  public static takeBtsResidualHeapSnapshot(outputFile: string,
+    callback: (error?: string) => void, instanceId: number): void {
+    lynx.takeBtsResidualHeapSnapshot(outputFile, callback, instanceId);
+  }
 }
