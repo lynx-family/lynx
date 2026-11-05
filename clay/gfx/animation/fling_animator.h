@@ -28,6 +28,9 @@ class FlingAnimator : public DynamicAnimator {
 
   static void InitParams();
 
+  // Configure the physical-pixel stopping tolerance where required.
+  void SetDevicePixelRatio(float pixel_ratio);
+
   /**
    * Sets the friction for the fling animation. The greater the friction is, the
    * sooner the animation will slow down. When not set, the friction defaults
@@ -88,6 +91,7 @@ class FlingAnimator : public DynamicAnimator {
   static constexpr float kVelocityThresholdMultiplier = 1000.f / 16.f;
 
   float friction_ = kDefaultFriction;
+  float start_velocity_ = 0.f;
   float velocity_threshold_;
   float duration_ = 0.f;
   float distance_ = 0.f;
