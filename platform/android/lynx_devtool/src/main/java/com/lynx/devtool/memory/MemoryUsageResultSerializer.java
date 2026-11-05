@@ -66,6 +66,7 @@ public final class MemoryUsageResultSerializer {
     json.put("completedInstanceCount", result.getCompletedInstanceCount());
     json.put("totalBytes", result.getTotalBytes());
     json.put("appBytes", result.getAppBytes());
+    json.put("ratioToApp", result.getRatioToApp());
     json.put("elementBytes", result.getElementBytes());
     json.put("elementNodeCount", result.getElementNodeCount());
     json.put("viewBytes", result.getViewBytes());

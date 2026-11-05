@@ -5954,6 +5954,7 @@ public class com::lynx::tasm::LynxGlobalMemoryUsageResult :  {
   public int com.lynx.tasm.LynxGlobalMemoryUsageResult.getCompletedInstanceCount();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getTotalBytes();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getAppBytes();
+  public double com.lynx.tasm.LynxGlobalMemoryUsageResult.getRatioToApp();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getElementBytes();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getElementNodeCount();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getViewBytes();

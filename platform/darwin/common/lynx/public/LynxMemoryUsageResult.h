@@ -81,6 +81,8 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 @property(nonatomic, assign) int64_t totalBytes;
 // Current app physical footprint sampled when the global result is built.
 @property(nonatomic, assign) int64_t appBytes;
+// Global Lynx-attributed total divided by appBytes, or zero when appBytes is unavailable.
+@property(nonatomic, assign) double ratioToApp;
 // Aggregated element bytes across completed instances.
 @property(nonatomic, assign) int64_t elementBytes;
 // Aggregated element node count across completed instances.

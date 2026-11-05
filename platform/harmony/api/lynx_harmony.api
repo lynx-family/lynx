@@ -1562,6 +1562,57 @@ export interface LynxImageLoadInfo {
   origin?: number;
 }
 
+export class LynxMemoryUsageQuery {
+  public static inst(): LynxMemoryUsageQuery;
+  public queryLynxGlobalMemoryUsageAsync(callback: LynxGlobalMemoryUsageCallback, timeoutMs: number): void;
+}
+
+export interface LynxInstanceMemoryUsage {
+  instanceId: number;
+  pageId: string;
+  url: string;
+  totalBytes?: number;
+  elementBytes?: number;
+  elementNodeCount?: number;
+  viewBytes?: number;
+  viewDetail?: Record<string, Object>;
+  mainThreadRuntimeBytes?: number;
+  backgroundThreadRuntimeBytes?: number;
+  btsRuntimeGroupId: string;
+  btsRuntimeType: string;
+  btsRuntimeTotalBytes: number;
+  backgroundThreadRuntimeResidualBytes?: number;
+}
+
+export interface LynxGlobalMemoryUsageResult {
+  collectionStartMs: number;
+  collectionStatus: LynxMemoryCollectionStatus;
+  errorMessage: string;
+  collectionDurationMs: number;
+  collectionTimeoutMs: number;
+  expectedInstanceCount: number;
+  completedInstanceCount: number;
+  totalBytes: number;
+  appBytes: number;
+  ratioToApp: number;
+  elementBytes: number;
+  elementNodeCount: number;
+  viewBytes: number;
+  mainThreadRuntimeBytes: number;
+  backgroundThreadRuntimeBytes: number;
+  instances: LynxInstanceMemoryUsage[];
+  destroyedInstances: LynxInstanceMemoryUsage[];
+}
+
+export enum LynxMemoryCollectionStatus {
+  COMPLETED = 'completed'
+  TIMEOUT = 'timeout'
+  ERROR = 'error'
+}
+
+export type LynxGlobalMemoryUsageCallback = (result: LynxGlobalMemoryUsageResult) => void {
+}
+
 export enum LynxServiceType {
   Trail
   EventReporter
