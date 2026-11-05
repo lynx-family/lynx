@@ -69,6 +69,11 @@ class LynxView {
       return *this;
     }
 
+    Builder& SetEnableLayoutInElement(bool enable) {
+      lynx_view_builder_set_enable_layout_in_element(builder_, enable);
+      return *this;
+    }
+
     Builder& SetEnableSoftwareRendering(bool enable) {
       lynx_view_builder_set_enable_software_rendering(builder_, enable);
       return *this;

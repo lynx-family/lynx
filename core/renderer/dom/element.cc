@@ -695,6 +695,13 @@ bool Element::EnableLayoutInElementMode() const {
   return element_manager() && element_manager()->IsLayoutInElementModeOn();
 }
 
+bool Element::EnableTextLayoutInElement() const {
+  // Platform text hosts keep their shadow-node measurer while Starlight still
+  // lays out the surrounding elements in place.
+  return EnableLayoutInElementMode() &&
+         !element_manager()->painting_context()->UsesShadowNodeTextLayout();
+}
+
 void Element::EnsureLayoutBundle() {
   if (EnableLayoutInElementMode()) {
     return;

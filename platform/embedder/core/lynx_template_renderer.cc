@@ -168,6 +168,10 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
       settings_.enable_js_group_thread ? settings_.group_id : "";
   shell_option.enable_js_group_thread_ = settings_.enable_js_group_thread;
   shell_option.enable_js_ = settings_.enable_js;
+  if (settings_.enable_layout_in_element) {
+    shell_option.page_options_.SetEmbeddedMode(
+        tasm::EmbeddedMode::LAYOUT_IN_ELEMENT);
+  }
   // The manager belongs to this MTS shell and is recreated on every Reset().
   auto native_module_manager = settings_.native_module_manager_creator
                                    ? settings_.native_module_manager_creator()

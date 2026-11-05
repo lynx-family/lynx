@@ -17,7 +17,7 @@ RawTextElement::RawTextElement(ElementManager* manager)
     : Element(manager, BASE_STATIC_STRING(kRawTextTag)) {}
 
 void RawTextElement::SetText(const lepus::Value& text) {
-  if (!EnableLayoutInElementMode()) {
+  if (!EnableTextLayoutInElement()) {
     SetAttribute(BASE_STATIC_STRING(kTextAttr), text);
   } else {
     auto content = ConvertTextContent(text);
@@ -34,7 +34,7 @@ void RawTextElement::SetText(const lepus::Value& text) {
 
 bool RawTextElement::SetAttributeInternal(const base::String& key,
                                           const lepus::Value& value) {
-  if (EnableLayoutInElementMode()) {
+  if (EnableTextLayoutInElement()) {
     // TODO(songshourui.null): we may need other attributes here.
     if (key.IsEqual(kTextAttr)) {
       auto content = ConvertTextContent(value);

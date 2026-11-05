@@ -18,6 +18,7 @@
 #include "base/include/debug/lynx_error.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/shared_css_fragment.h"
+#include "core/renderer/dom/element_layout_node_manager.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/element_utils.h"
@@ -46,6 +47,59 @@ namespace testing {
 class TextElementTest : public FiberElementTest {};
 
 namespace {
+
+class ShadowTextMeasureProbe : public MeasureFunc {
+ public:
+  explicit ShadowTextMeasureProbe(int& measure_count)
+      : measure_count_(measure_count) {}
+
+  LayoutResult Measure(float width, int32_t width_mode, float height,
+                       int32_t height_mode, bool final_measure) override {
+    ++measure_count_;
+    return {74, 19, 13};
+  }
+
+  void Alignment() override {}
+
+ private:
+  int& measure_count_;
+};
+
+class ShadowTextPlatformProbe : public test::MockPlatformImpl {
+ public:
+  void SetLayoutNodeManager(LayoutNodeManager* manager) override {
+    manager_ = manager;
+  }
+
+  int CreateLayoutNode(int id, const std::string& tag, PropBundle* props,
+                       bool allow_inline) override {
+    CaptureProps(id, props);
+    if (tag == "text") {
+      manager_->SetMeasureFunc(
+          id, std::make_unique<ShadowTextMeasureProbe>(measure_count));
+      return LayoutNodeType::CUSTOM;
+    }
+    return LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL;
+  }
+
+  void UpdateLayoutNode(int id, PropBundle* props) override {
+    CaptureProps(id, props);
+    manager_->MarkDirtyAndRequestLayout(id);
+  }
+
+  void CaptureProps(int id, PropBundle* props) {
+    if (props) {
+      for (const auto& [key, value] :
+           static_cast<PropBundleMock*>(props)->props_) {
+        properties[id][key] = value;
+      }
+    }
+  }
+
+  LayoutNodeManager* manager_{};
+  int measure_count{};
+  std::unordered_map<int, std::map<std::string, lepus::Value>> properties;
+};
 
 // Keep the shared mock's zero-size default unchanged. This probe exists only
 // for detached measurement tests, where native calls must be observable.
@@ -101,6 +155,69 @@ class DetachedTextLayoutProbe : public TextLayoutMock {
 };
 
 }  // namespace
+
+TEST_P(TextElementTest, LayoutInElementWithoutTextServiceUsesShadowText) {
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+  platform_impl_->text_layout_impl_.reset();
+  platform_impl_->use_shadow_node_text_layout_ = true;
+  // As on Clay, tag discovery knows about a custom node, while creation
+  // provides the final virtual-node classification.
+  for (auto tag : {"text", "raw-text", "inline-text"}) {
+    platform_impl_->mock_virtuality_map[tag] = LayoutNodeType::CUSTOM;
+  }
+  auto platform = std::make_unique<ShadowTextPlatformProbe>();
+  auto* probe = platform.get();
+  platform->SetLayoutNodeManager(manager->layout_node_manager_.get());
+  manager->platform_layout_context_ = std::move(platform);
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetRawInlineStyles(base::String("align-items:flex-start"));
+  auto text = manager->CreateFiberText("text");
+  text->SetAttribute("text", lepus::Value("hello"));
+  text->SetAttribute("text-maxline", lepus::Value(2));
+  text->SetStyle(kPropertyIDFontSize, lepus::Value("18px"));
+  page->InsertNode(text);
+  page->FlushActionsAsRoot();
+  ASSERT_NE(text->customized_layout_node_, nullptr);
+  EXPECT_EQ(probe->properties[text->impl_id()]["text"], lepus::Value("hello"));
+  EXPECT_EQ(probe->properties[text->impl_id()]["text-maxline"],
+            lepus::Value(2));
+  EXPECT_FLOAT_EQ(probe->properties[text->impl_id()]["font-size"].Number(), 18);
+  auto measure = [&] {
+    page->Layout(std::make_shared<PipelineOptions>());
+    EXPECT_FLOAT_EQ(text->width(), 74);
+    EXPECT_FLOAT_EQ(text->height(), 19);
+  };
+  measure();
+  EXPECT_GT(probe->measure_count, 0);
+  EXPECT_EQ(platform_impl_->first_meaningful_layout_count_, 1);
+  EXPECT_EQ(probe->before_ids, std::vector<int32_t>{text->impl_id()});
+  int previous_measures = probe->measure_count;
+  text->SetAttribute("text", lepus::Value("updated"));
+  text->SetStyle(kPropertyIDFontSize, lepus::Value("24px"));
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(probe->properties[text->impl_id()]["text"],
+            lepus::Value("updated"));
+  EXPECT_FLOAT_EQ(probe->properties[text->impl_id()]["font-size"].Number(), 24);
+  measure();
+  EXPECT_GT(probe->measure_count, previous_measures);
+  EXPECT_EQ(platform_impl_->first_meaningful_layout_count_, 1);
+
+  auto raw = manager->CreateFiberRawText();
+  raw->SetText(lepus::Value("child"));
+  text->InsertNode(raw);
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(raw->is_virtual());
+  ASSERT_NE(raw->customized_layout_node_, nullptr);
+  EXPECT_EQ(probe->properties[raw->impl_id()]["text"], lepus::Value("child"));
+  ASSERT_FALSE(probe->inserted_layout_nodes.empty());
+  EXPECT_EQ(probe->inserted_layout_nodes.back().parent, text->impl_id());
+  EXPECT_EQ(probe->inserted_layout_nodes.back().child, raw->impl_id());
+  text->RemoveNode(raw);
+  page->FlushActionsAsRoot();
+  ASSERT_FALSE(probe->removed_layout_nodes.empty());
+  EXPECT_EQ(probe->removed_layout_nodes.back().parent, text->impl_id());
+  EXPECT_EQ(probe->removed_layout_nodes.back().child, raw->impl_id());
+}
 
 class DetachedTextMeasurementTest : public FiberElementTest {
  public:

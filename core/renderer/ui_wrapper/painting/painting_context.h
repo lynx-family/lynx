@@ -278,6 +278,10 @@ class PaintingContext {
     perf_controller_actor_ = perf_controller_actor;
   };
 
+  bool UsesShadowNodeTextLayout() const {
+    return platform_impl_->UsesShadowNodeTextLayout();
+  }
+
   LayoutResult MeasureText(Element* element, float width, int width_mode,
                            float height, int height_mode) {
     return platform_impl_->MeasureText(element, width, width_mode, height,

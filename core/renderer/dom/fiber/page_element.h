@@ -45,6 +45,9 @@ class PageElement : public ComponentElement {
 
  protected:
   PageElement(const PageElement& element, bool clone_resolved_props);
+
+ private:
+  bool has_first_meaningful_layout_{false};
 };
 
 }  // namespace tasm
