@@ -56,6 +56,7 @@ class TouchEvent : public Event {
 
   void SetLongPressConsumed(bool consumed);
   TouchEventState* GetTouchEventState();
+  void RestoreInputPaths();
 
   float x_;
   float y_;

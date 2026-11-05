@@ -136,6 +136,12 @@ void PaintingContext::SetTapSlop(const std::string& tap_slop) {
   });
 }
 
+void PaintingContext::SetRawInputEnabled(bool enabled) {
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(), enabled]() {
+    platform_ref->SetRawInputEnabled(enabled);
+  });
+}
+
 void PaintingContext::SetEventScreenWidth(float screen_width) {
   Enqueue([platform_ref = platform_impl_->GetPlatformRef(), screen_width]() {
     platform_ref->SetEventScreenWidth(screen_width);

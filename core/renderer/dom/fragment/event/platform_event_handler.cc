@@ -42,16 +42,18 @@ void PlatformEventHandler::PlatformEventTargetDetail::SetPrePoint(
 
 bool PlatformEventHandler::OnInputEvent(
     fml::RefPtr<PlatformEventTarget> target_tree, int int_event_data[],
-    float float_event_data[]) {
+    float float_event_data[], int64_t time_stamp) {
   target_tree_sign_ = target_tree ? target_tree->Sign() : -1;
   // int_event_data: [event_type, action_type, event_source, pointer_count, ...]
   int event_type = int_event_data[0];
   switch (event_type) {
     // pointer event
-    case 0: {
+    case PlatformInputEvent::kPointerEvent: {
+      starts_pointer_sequence_ = false;
+      pointer_hit_targets_.clear();
       // float_event_data: [pointer_id, pointer_x, pointer_y, ...]
       auto pointer_event =
-          PlatformPointerEvent(int_event_data, float_event_data);
+          PlatformPointerEvent(int_event_data, float_event_data, time_stamp);
       switch (pointer_event.ActionType()) {
         case 0: {
           HandlePointerDown(pointer_event);
@@ -73,7 +75,7 @@ bool PlatformEventHandler::OnInputEvent(
       break;
     }
     // TODO(hexionghui): support keyboard event
-    case 1: {
+    case PlatformInputEvent::kKeyboardEvent: {
       break;
     }
     default:
@@ -92,11 +94,15 @@ bool PlatformEventHandler::OnInputEvent(
 uint32_t PlatformEventHandler::HitTestAndCacheEventBehavior(
     fml::RefPtr<PlatformEventTarget> target_tree, float root_point[2],
     const PlatformEventThroughConfig& config) {
-  auto hit_target = target_tree ? target_tree->HitTest(root_point) : nullptr;
+  const auto hit_test_mode =
+      raw_input_enabled_ ? PlatformEventTarget::HitTestMode::kRegisteredTargets
+                         : PlatformEventTarget::HitTestMode::kDefault;
+  auto hit_target =
+      target_tree ? target_tree->HitTest(root_point, hit_test_mode) : nullptr;
   event_behavior_ =
       ResolveEventBehavior(target_tree, hit_target, root_point, config);
   pending_event_behavior_root_sign_ = target_tree ? target_tree->Sign() : -1;
-  return event_behavior_;
+  return EventBehavior();
 }
 
 uint32_t PlatformEventHandler::ResolveEventBehavior(
@@ -197,18 +203,81 @@ void PlatformEventHandler::DispatchGestureEvent(const std::string& name,
                                               gesture_event);
 }
 
+lepus::Value PlatformEventHandler::CreatePointerHitPaths() const {
+  BASE_STATIC_STRING_DECL(kInputPointerId, "pointerId");
+  BASE_STATIC_STRING_DECL(kInputTargets, "targets");
+  auto paths = lepus::CArray::Create();
+  for (const auto& [pointer_identifier, target_identifiers] :
+       pointer_hit_targets_) {
+    // Shared siblings remain separate paths for the same pointer. The Engine
+    // restores each selected leaf's complete Element ancestry before delivery.
+    for (int32_t target_identifier : target_identifiers) {
+      auto path_targets = lepus::CArray::Create();
+      path_targets->emplace_back(target_identifier);
+      auto path = lepus::Dictionary::Create();
+      path->SetValue(kInputPointerId, pointer_identifier);
+      path->SetValue(kInputTargets, std::move(path_targets));
+      paths->emplace_back(std::move(path));
+    }
+  }
+  return lepus::Value(std::move(paths));
+}
+
 void PlatformEventHandler::DispatchPointerEvent(
-    const std::string& name, const lepus::Value& target_pointer_map) {
-  auto first_target = GetEventTarget(first_target_sign_);
-  if (!first_target) {
+    const std::string& name, const lepus::Value& target_pointer_map,
+    const PlatformPointerEvent& source_event) {
+  const int32_t recipient = raw_input_enabled_ ? kRootId : first_target_sign_;
+  if (!raw_input_enabled_ && !GetEventTarget(recipient)) {
     return;
   }
-  auto event = fml::MakeRefCounted<event::TouchEvent>(name, target_pointer_map);
-  platform_ref_->GetEventEmitter()->SendEvent(first_target->Sign(), event);
+  auto event =
+      raw_input_enabled_
+          ? CreateRawTouchEvent(name, target_pointer_map, source_event)
+          : fml::MakeRefCounted<event::TouchEvent>(name, target_pointer_map);
+  platform_ref_->GetEventEmitter()->SendEvent(recipient, std::move(event));
+}
+
+fml::RefPtr<event::TouchEvent> PlatformEventHandler::CreateRawTouchEvent(
+    const std::string& event_name, const lepus::Value& target_touches,
+    const PlatformPointerEvent& source_event) {
+  BASE_STATIC_STRING_DECL(kInputEventRoot, "eventRoot");
+  BASE_STATIC_STRING_DECL(kInputStartsSequence, "startsSequence");
+  BASE_STATIC_STRING_DECL(kInputPaths, "paths");
+  BASE_STATIC_STRING_DECL(kInputCoordinateScale, "coordinateScale");
+  BASE_STATIC_STRING_DECL(kInputScreenOriginXPx, "screenOriginXPx");
+  BASE_STATIC_STRING_DECL(kInputScreenOriginYPx, "screenOriginYPx");
+  BASE_STATIC_STRING_DECL(kInputRawInput, "rawInput");
+  auto touch_event = fml::MakeRefCounted<event::TouchEvent>(
+      event_name, target_touches, source_event.TimeStamp());
+  auto* event_target_helper = platform_ref_->GetEventTargetHelper();
+  float screen_origin[2] = {0.f, 0.f};
+  event_target_helper->GetRootViewLocationOnScreen(screen_origin);
+  const float physical_pixels_per_layout_unit =
+      event_target_helper->GetPhysicalPixelsPerLayoutUnit();
+
+  auto raw_input_metadata = lepus::Value(lepus::Dictionary::Create());
+  raw_input_metadata.SetProperty(kInputEventRoot,
+                                 lepus::Value(target_tree_sign_));
+  raw_input_metadata.SetProperty(kInputStartsSequence,
+                                 lepus::Value(starts_pointer_sequence_));
+  raw_input_metadata.SetProperty(kInputPaths, CreatePointerHitPaths());
+  raw_input_metadata.SetProperty(
+      kInputCoordinateScale,
+      lepus::Value(physical_pixels_per_layout_unit *
+                   event_target_helper->GetLayoutsUnitPerPx()));
+  raw_input_metadata.SetProperty(
+      kInputScreenOriginXPx,
+      lepus::Value(screen_origin[0] * physical_pixels_per_layout_unit));
+  raw_input_metadata.SetProperty(
+      kInputScreenOriginYPx,
+      lepus::Value(screen_origin[1] * physical_pixels_per_layout_unit));
+  touch_event->detail().SetProperty(kInputRawInput,
+                                    std::move(raw_input_metadata));
+  return touch_event;
 }
 
 bool PlatformEventHandler::EventThrough() {
-  return event_behavior_ & kEventBehaviorEventThrough;
+  return EventBehavior() & kEventBehaviorEventThrough;
 }
 
 void PlatformEventHandler::SetTapSlop(const std::string& tap_slop) {
@@ -231,19 +300,24 @@ void PlatformEventHandler::SetHasPointerPseudo(bool has_pointer_pseudo) {
 
 void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
   // Pointer identifiers can be reused while another pointer remains active.
-  const bool starts_pointer_sequence = target_pointer_map_.empty();
+  starts_pointer_sequence_ = target_pointer_map_.empty();
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
     int pointer_id = event.PointerID()[i];
     float pointer_x = event.PointerX()[i];
     float pointer_y = event.PointerY()[i];
-    auto hit_target = FindTarget(pointer_x, pointer_y);
+    PlatformEventTarget::HitTestTargets hit_targets;
+    auto hit_target = FindTarget(pointer_x, pointer_y,
+                                 raw_input_enabled_ ? &hit_targets : nullptr);
+    if (!hit_targets.empty()) {
+      pointer_hit_targets_.emplace_back(pointer_id, std::move(hit_targets));
+    }
     LOGI("PlatformEventHandler::InitPointerEnv pointer id:" +
          std::to_string(pointer_id) + " x:" + std::to_string(pointer_x) +
          " y:" + std::to_string(pointer_y) + " target:" +
          (hit_target ? std::to_string(hit_target->Sign()) : "null"))
     float down_point[2] = {pointer_x, pointer_y};
-    if (starts_pointer_sequence && pointer_id == 0) {
+    if (starts_pointer_sequence_ && pointer_id == 0) {
       // Resolve once for the sequence, before touchstart or :active can rebuild
       // the target tree. Additional pointers must not change native
       // arbitration.
@@ -265,6 +339,12 @@ void PlatformEventHandler::InitPointerEnv(PlatformPointerEvent& event) {
 }
 
 void PlatformEventHandler::ResetPointerEnv(PlatformPointerEvent& event) {
+  if (event.ActionType() == 3) {
+    // CANCEL terminates the whole sequence, including packets without points.
+    target_pointer_map_.clear();
+    has_pointer_moved_ = false;
+    return;
+  }
   int num = event.PointerCount();
   for (int i = 0; i < num; ++i) {
     target_pointer_map_.erase(event.PointerID()[i]);
@@ -440,15 +520,9 @@ void PlatformEventHandler::OnPointerUp(PlatformPointerEvent& event) {
 }
 
 void PlatformEventHandler::OnPointerCancel(PlatformPointerEvent& event) {
-  int num = event.PointerCount();
-  for (int i = 0; i < num; ++i) {
-    if (event.PointerID()[i] == 0) {
-      ResetClickEnv();
-      scroll_offset_for_tap_.clear();
-      DeactivatePseudoStatus(LynxPseudoStatus::kAll);
-      break;
-    }
-  }
+  ResetClickEnv();
+  scroll_offset_for_tap_.clear();
+  DeactivatePseudoStatus(LynxPseudoStatus::kAll);
 }
 
 void PlatformEventHandler::HandlePointerDown(PlatformPointerEvent& event) {
@@ -459,7 +533,7 @@ void PlatformEventHandler::HandlePointerDown(PlatformPointerEvent& event) {
   }
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchstart", target_pointer_map);
+  DispatchPointerEvent("touchstart", target_pointer_map, event);
   OnPointerDown(event);
 }
 
@@ -470,13 +544,13 @@ void PlatformEventHandler::HandlePointerMove(PlatformPointerEvent& event) {
   }
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchmove", target_pointer_map);
+  DispatchPointerEvent("touchmove", target_pointer_map, event);
 }
 
 void PlatformEventHandler::HandlePointerUp(PlatformPointerEvent& event) {
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchend", target_pointer_map);
+  DispatchPointerEvent("touchend", target_pointer_map, event);
   OnPointerUp(event);
   ResetPointerEnv(event);
 }
@@ -484,7 +558,7 @@ void PlatformEventHandler::HandlePointerUp(PlatformPointerEvent& event) {
 void PlatformEventHandler::HandlePointerCancel(PlatformPointerEvent& event) {
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchcancel", target_pointer_map);
+  DispatchPointerEvent("touchcancel", target_pointer_map, event);
   OnPointerCancel(event);
   ResetPointerEnv(event);
 }
@@ -504,13 +578,18 @@ fml::RefPtr<PlatformEventTarget> PlatformEventHandler::GetEventTarget(
 }
 
 fml::RefPtr<PlatformEventTarget> PlatformEventHandler::FindTarget(
-    float pointer_x, float pointer_y) {
+    float pointer_x, float pointer_y,
+    PlatformEventTarget::HitTestTargets* hit_targets) {
   auto target_tree = GetTargetTree();
   if (!target_tree) {
     return nullptr;
   }
   float point[] = {pointer_x, pointer_y};
-  return target_tree->HitTest(point);
+  return target_tree->HitTest(
+      point,
+      raw_input_enabled_ ? PlatformEventTarget::HitTestMode::kRegisteredTargets
+                         : PlatformEventTarget::HitTestMode::kDefault,
+      hit_targets);
 }
 
 bool PlatformEventHandler::CanRespondFocus() {
@@ -643,7 +722,12 @@ void PlatformEventHandler::AddTargetPointerMap(lepus::Value& target_pointer_map,
     int pointer_id = event.PointerID()[i];
     if (auto pointer_target = target_pointer_map_.find(pointer_id);
         pointer_target != target_pointer_map_.end()) {
-      auto target = GetEventTarget(pointer_target->second.TargetSign());
+      // Raw samples belong to the Page's capture, even when a selected carrier
+      // was rebuilt or this pointer hit no registered target. Compose retains
+      // the logical paths; only ordinary events need the original leaf here.
+      auto target = raw_input_enabled_
+                        ? target_tree
+                        : GetEventTarget(pointer_target->second.TargetSign());
       if (!target) {
         continue;
       }

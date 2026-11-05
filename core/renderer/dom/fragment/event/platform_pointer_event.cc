@@ -8,8 +8,9 @@ namespace lynx {
 namespace tasm {
 
 PlatformPointerEvent::PlatformPointerEvent(int int_event_data[],
-                                           float float_event_data[])
-    : PlatformInputEvent(int_event_data, float_event_data) {
+                                           float float_event_data[],
+                                           int64_t time_stamp)
+    : PlatformInputEvent(int_event_data, float_event_data, time_stamp) {
   pointer_count_ = int_event_data[3];
   for (int i = 0; i < pointer_count_; ++i) {
     int offset = i * 3;

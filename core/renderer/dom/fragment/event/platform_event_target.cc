@@ -5,7 +5,9 @@
 #include "core/renderer/dom/fragment/event/platform_event_target.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <limits>
 #include <utility>
 
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
@@ -55,67 +57,106 @@ void PlatformEventTarget::UpdateScrollOffsetIfNeeded() {
   scroll_offset_y_ = offset[1];
 }
 
-fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(float point[2]) {
-  fml::RefPtr<PlatformEventTarget> target = nullptr;
-  const auto& children = ChildrenTargets();
-  int children_size = static_cast<int>(children.size());
-  int target_idx = -1;
-  float child_point[2] = {0.f};
-  float target_point[2] = {point[0], point[1]};
-  // find hit_target by traversing the sibling nodes in reverse.
-  for (int i = children_size - 1; i >= 0; --i) {
-    const auto& child = children[i];
-    if (!child->ShouldHitTest()) {
-      continue;
-    }
-    if (!child->GetPointInTarget(
-            child_point, fml::RefPtr<PlatformEventTarget>(this), point)) {
-      continue;
-    }
-    if (child->ContainsPoint(child_point)) {
-      memcpy(target_point, child_point, sizeof(float) * 2);
-      target_idx = i;
-      target = child;
-      break;
-    }
+float PlatformEventTarget::DistanceToTouchTarget(const float point[2]) const {
+  if (minimum_touch_target_px_ < 0.f || !ShouldHitTest() ||
+      PointerEvents() == LynxPointerEventsValue::kNone) {
+    return std::numeric_limits<float>::infinity();
   }
+  // Minimum target sizes are physical pixels; geometry uses platform units.
+  const float minimum = minimum_touch_target_px_ /
+                        target_helper_->GetPhysicalPixelsPerLayoutUnit();
+  const float padding_x = std::max(0.f, minimum - Width()) / 2;
+  const float padding_y = std::max(0.f, minimum - Height()) / 2;
+  if (point[0] < -padding_x || point[0] >= Width() + padding_x ||
+      point[1] < -padding_y || point[1] >= Height() + padding_y) {
+    return std::numeric_limits<float>::infinity();
+  }
+  const float dx = std::max({0.f, -point[0], point[0] - Width()});
+  const float dy = std::max({0.f, -point[1], point[1] - Height()});
+  return dx * dx + dy * dy;
+}
 
-  auto hit_target =
-      target ? target->HitTest(target_point)
-             : (is_layout_only_ ? nullptr
-                                : fml::RefPtr<PlatformEventTarget>(this));
-  // when a node has pointer-events:none set, the hit_target needs to be found
-  // again.
-  if (!hit_target ||
-      hit_target->PointerEvents() == LynxPointerEventsValue::kNone) {
-    hit_target = nullptr;
-    for (int i = target_idx - 1; i >= 0; --i) {
-      auto sibling_target = children[i];
-      if (!sibling_target || !sibling_target->ShouldHitTest()) {
+PlatformEventTarget::HitTestResult PlatformEventTarget::HitTestInternal(
+    float point[2], HitTestMode mode, bool visit_children) {
+  const bool event_targets_only = mode == HitTestMode::kRegisteredTargets;
+  HitTestResult result;
+  if (visit_children) {
+    const auto& children = ChildrenTargets();
+    // Traverse siblings in reverse paint order, as for ordinary FLR input.
+    for (auto child = children.rbegin(); child != children.rend(); ++child) {
+      if (!(*child)->ShouldHitTest()) {
         continue;
       }
-      float sibling_point[2] = {0.f};
-      if (!sibling_target->GetPointInTarget(
-              sibling_point, fml::RefPtr<PlatformEventTarget>(this), point)) {
+      float local[2];
+      if (!(*child)->GetPointInTarget(
+              local, fml::RefPtr<PlatformEventTarget>(this), point)) {
         continue;
       }
-      if (!sibling_target->ContainsPoint(sibling_point)) {
+      const bool inside = (*child)->ContainsPoint(local);
+      if (!inside && (!event_targets_only ||
+                      !std::isfinite((*child)->DistanceToTouchTarget(local)))) {
         continue;
       }
-      hit_target = sibling_target->HitTest(sibling_point);
-      if (hit_target &&
-          hit_target->PointerEvents() != LynxPointerEventsValue::kNone) {
+      auto hit = (*child)->HitTestInternal(local, mode, inside);
+      if (hit.targets.empty()) {
+        continue;
+      }
+      if (result.targets.empty() || (hit.direct && !result.direct) ||
+          (!hit.direct && !result.direct && hit.distance < result.distance)) {
+        result = std::move(hit);
+      } else if (result.direct && result.share && hit.direct) {
+        for (auto& target : hit.targets) {
+          result.targets.emplace_back(std::move(target));
+        }
+        result.share = hit.share;
+      }
+      // Expanded targets must not obscure a lower sibling's direct hit.
+      if (result.direct && !result.share) {
         break;
       }
-      hit_target = nullptr;
     }
   }
-  if (hit_target) {
-    return hit_target;
+  const float distance = event_targets_only
+                             ? DistanceToTouchTarget(point)
+                             : std::numeric_limits<float>::infinity();
+  const bool direct = point[0] >= 0.f && point[0] < Width() &&
+                      point[1] >= 0.f && point[1] < Height();
+  if (!result.targets.empty()) {
+    if (std::isfinite(distance)) {
+      // An eligible ancestor also receives this branch. Its sharing policy
+      // remains effective when separate handlers occupy separate Elements.
+      result.share = result.share || share_touch_target_;
+      if (direct) {
+        result.direct = true;
+        result.distance = 0.f;
+      }
+    }
+    return result;
   }
-  return is_layout_only_ || PointerEvents() == LynxPointerEventsValue::kNone
-             ? nullptr
-             : fml::RefPtr<PlatformEventTarget>(this);
+  if (std::isfinite(distance)) {
+    result.targets.emplace_back(this);
+    result.distance = distance;
+    result.direct = direct;
+    result.share = share_touch_target_;
+  } else if (!event_targets_only && !is_layout_only_ &&
+             PointerEvents() != LynxPointerEventsValue::kNone) {
+    // Preserve the ordinary traversal root fallback, including overflow boxes.
+    result.targets.emplace_back(this);
+    result.direct = true;
+  }
+  return result;
+}
+
+fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(
+    float point[2], HitTestMode mode, HitTestTargets* targets) {
+  auto result = HitTestInternal(point, mode, true);
+  if (targets) {
+    targets->clear();
+    for (const auto& target : result.targets) {
+      targets->emplace_back(target->Sign());
+    }
+  }
+  return result.targets.empty() ? nullptr : result.targets.front();
 }
 
 bool PlatformEventTarget::ShouldHitTest() const {
