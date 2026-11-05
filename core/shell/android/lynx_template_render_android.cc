@@ -1162,6 +1162,20 @@ void SendSsrGlobalEvent(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   TryFreeLifecycle(lifecycle_ptr);
 }
 
+void SendGlobalEventToMTS(JNIEnv* env, jclass jcaller, jlong ptr,
+                          jlong lifecycle, jstring name, jobject buffer,
+                          jint length) {
+  std::string event_name = JNIConvertHelper::ConvertToString(env, name);
+  Value params = ConvertJavaData(env, buffer, length);
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!TryLockLifecycle(lifecycle_ptr)) {
+    return;
+  }
+  reinterpret_cast<LynxShell*>(ptr)->SendGlobalEventToMTS(event_name, params);
+  TryFreeLifecycle(lifecycle_ptr);
+}
+
 void SendGlobalEventToLepus(JNIEnv* env, jclass jcaller, jlong ptr,
                             jlong lifecycle, jstring name, jobject buffer,
                             jint length) {

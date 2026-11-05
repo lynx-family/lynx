@@ -97,6 +97,65 @@ TEST_F(EventListenerMapTest, RemoveEventTypeMarksListenersAsRemoved) {
   EXPECT_TRUE(listener_1->removed());
   EXPECT_TRUE(listener_2->removed());
   EXPECT_TRUE(map_->IsEmpty());
+  EXPECT_FALSE(map_->Contains("test"));
+  EXPECT_EQ(map_->Find("test"), nullptr);
+  EXPECT_FALSE(map_->Remove("test"));
+}
+
+TEST_F(EventListenerMapTest, ContainsRequiresNonemptyListenerList) {
+  map_->Add("test", std::make_shared<MockEventListener>(
+                        EventListener::Type::kJSClosureEventListener, "1"));
+  ASSERT_TRUE(map_->Contains("test"));
+
+  map_->Find("test")->clear();
+  EXPECT_FALSE(map_->Contains("test"));
+  EXPECT_TRUE(map_->IsEmpty());
+  EXPECT_TRUE(map_->Remove("test"));
+  EXPECT_EQ(map_->Find("test"), nullptr);
+}
+
+TEST_F(EventListenerMapTest, RemoveLastListenerErasesOnlyMatchingEventType) {
+  auto first = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "1");
+  auto second = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "2");
+  auto other = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "other");
+  auto third = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "third");
+  map_->Add("test", first);
+  map_->Add("test", second);
+  map_->Add("other", other);
+  map_->Add("third", third);
+
+  EXPECT_FALSE(map_->Remove("test", other));
+  EXPECT_EQ(map_->Find("test")->size(), 2U);
+  EXPECT_TRUE(map_->Remove("test", first));
+  EXPECT_TRUE(first->removed());
+  EXPECT_TRUE(map_->Contains("test"));
+  EXPECT_TRUE(map_->Remove("test", second));
+  EXPECT_TRUE(second->removed());
+  EXPECT_FALSE(map_->Contains("test"));
+  EXPECT_EQ(map_->Find("test"), nullptr);
+  EXPECT_FALSE(map_->Remove("test", second));
+  EXPECT_TRUE(map_->Contains("other"));
+  EXPECT_TRUE(map_->Contains("third"));
+  EXPECT_FALSE(other->removed());
+  EXPECT_FALSE(third->removed());
+
+  auto replacement = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "replacement");
+  EXPECT_TRUE(map_->Add("test", replacement));
+  EXPECT_TRUE(map_->Contains("test"));
+  ASSERT_EQ(map_->Find("test")->size(), 1U);
+  EXPECT_EQ(map_->Find("test")->front(), replacement);
+
+  EXPECT_TRUE(map_->Remove("other"));
+  EXPECT_TRUE(other->removed());
+  EXPECT_FALSE(map_->Contains("other"));
+  EXPECT_EQ(map_->Find("other"), nullptr);
+  EXPECT_TRUE(map_->Contains("test"));
+  EXPECT_TRUE(map_->Contains("third"));
 }
 
 TEST_F(EventListenerMapTest, RemoveAllMarksListenersAsRemoved) {

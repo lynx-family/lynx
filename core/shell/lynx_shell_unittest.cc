@@ -15,10 +15,15 @@
 #include "base/include/debug/lynx_error.h"
 #include "base/include/value/base_value.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/inspector/observer/native_module_record_observer.h"
 #include "core/public/pub_value.h"
+#include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/tasm/testing/event_tracker_mock.h"
 #include "core/renderer/ui_wrapper/painting/empty/painting_context_implementation.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/js/js_executor.h"
+#include "core/runtime/js/mock_template_delegate.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
@@ -128,6 +133,9 @@ class LynxShellTest : public ::testing::Test {
             .SetPropBundleCreator(
                 std::make_shared<lynx::tasm::PropBundleCreatorDefault>())
             .build());
+
+    // Finish engine initialization on the original runner before replacing it.
+    shell_->engine_actor_->ActSync([](auto&) {});
 
     // hook runners, use for test
     shell_->runners_ =
@@ -261,6 +269,236 @@ TEST_F(LynxShellTest, OnConfigUpdated) {
   arwe_->Wait();
   ASSERT_TRUE(*facade_);
   ASSERT_EQ(std::any_cast<lepus::Value>((*facade_)["data"]), data);
+}
+
+TEST_F(LynxShellTest, SendGlobalEventToMTSWithoutBackgroundRuntime) {
+  shell_->runtime_actor_.reset();
+  int event_count = 0;
+  lepus::Value received_args;
+  shell_->engine_actor_->ActSync([&](auto& engine) {
+    auto* proxy = engine->GetTasm()->GetContextProxy(
+        runtime::ContextProxy::Type::kNative);
+    proxy->AddEventListener(
+        "custom-event",
+        std::make_shared<event::ClosureEventListener>([&](lepus::Value args) {
+          EXPECT_TRUE(MockRunnerManufactor::InOnTASMThread());
+          ++event_count;
+          received_args = lepus::Value::ShallowCopy(args);
+        }));
+  });
+
+  auto params = lepus::CArray::Create();
+  params->emplace_back("first");
+  auto detail = lepus::Dictionary::Create();
+  detail->SetValue("value", lepus::Value(42));
+  params->emplace_back(std::move(detail));
+  shell_->SendGlobalEventToMTS("custom-event", lepus::Value(params));
+  shell_->engine_actor_->ActSync([](auto&) {});
+
+  EXPECT_EQ(event_count, 1);
+  ASSERT_TRUE(received_args.IsArray());
+  ASSERT_EQ(received_args.GetLength(), 2U);
+  EXPECT_EQ(received_args.GetProperty(0), lepus::Value("custom-event"));
+  auto received_params = received_args.GetProperty(1);
+  ASSERT_TRUE(received_params.IsArray());
+  ASSERT_EQ(received_params.GetLength(), 2U);
+  EXPECT_EQ(received_params.GetProperty(0), lepus::Value("first"));
+  EXPECT_EQ(received_params.GetProperty(1).GetProperty("value"),
+            lepus::Value(42));
+}
+
+TEST_F(LynxShellTest, SendGlobalEventToMTSPreservesEmptyArguments) {
+  shell_->runtime_actor_.reset();
+  int event_count = 0;
+  shell_->engine_actor_->ActSync([&](auto& engine) {
+    auto* proxy = engine->GetTasm()->GetContextProxy(
+        runtime::ContextProxy::Type::kNative);
+    proxy->AddEventListener(
+        "empty-event",
+        std::make_shared<event::ClosureEventListener>([&](lepus::Value args) {
+          ++event_count;
+          EXPECT_EQ(args.GetProperty(0), lepus::Value("empty-event"));
+          auto params = args.GetProperty(1);
+          ASSERT_TRUE(params.IsArray());
+          EXPECT_EQ(params.GetLength(), 0U);
+        }));
+  });
+
+  shell_->SendGlobalEventToMTS("empty-event",
+                               lepus::Value(lepus::CArray::Create()));
+  shell_->engine_actor_->ActSync([](auto&) {});
+  EXPECT_EQ(event_count, 1);
+}
+
+TEST_F(LynxShellTest, GlobalEventToMTSRequiresMatchingNamedListener) {
+  shell_->runtime_actor_.reset();
+  tasm_mediator_->runtime_actor_.reset();
+
+  for (bool from_template_assembler : {false, true}) {
+    SCOPED_TRACE(from_template_assembler);
+    int dispatched_events = 0;
+    int matching_events = 0;
+    int unrelated_events = 0;
+    lepus::Value received_args;
+    auto info = lepus::Value(lepus::Dictionary::Create());
+    info.SetProperty("value", lepus::Value(42));
+    auto params = lepus::CArray::Create();
+    params->push_back(info);
+
+    shell_->engine_actor_->ActSync([&](auto& engine) {
+      auto* tasm = engine->GetTasm();
+      tasm->SetEnableBTSRuntime(true);
+      EXPECT_FALSE(tasm->ShouldSendEventToMainThread());
+      auto* proxy = tasm->GetContextProxy(runtime::ContextProxy::Type::kNative);
+      proxy->SetListenerBeforePublishEvent(
+          std::make_unique<event::ClosureEventListener>(
+              [&](lepus::Value) { ++dispatched_events; }));
+      for (const auto& name :
+           {"other-event", runtime::kMessageEventTypeGlobalEvent}) {
+        proxy->AddEventListener(name,
+                                std::make_shared<event::ClosureEventListener>(
+                                    [&](lepus::Value) { ++unrelated_events; }));
+      }
+    });
+
+    auto send_event = [&]() {
+      if (from_template_assembler) {
+        shell_->engine_actor_->Act([&](auto& engine) {
+          engine->GetTasm()->SendGlobalEvent("named-event", info);
+        });
+      } else {
+        shell_->SendGlobalEventToMTS("named-event", lepus::Value(params));
+      }
+      shell_->engine_actor_->ActSync([](auto&) {});
+    };
+
+    send_event();
+    EXPECT_EQ(dispatched_events, 0);
+    EXPECT_EQ(unrelated_events, 0);
+
+    shell_->engine_actor_->ActSync([&](auto& engine) {
+      auto* proxy = engine->GetTasm()->GetContextProxy(
+          runtime::ContextProxy::Type::kNative);
+      proxy->AddEventListener(
+          "named-event",
+          std::make_shared<event::ClosureEventListener>([&](lepus::Value args) {
+            EXPECT_TRUE(MockRunnerManufactor::InOnTASMThread());
+            ++matching_events;
+            received_args = lepus::Value::ShallowCopy(args);
+          }));
+    });
+
+    send_event();
+    EXPECT_EQ(dispatched_events, 1);
+    EXPECT_EQ(matching_events, 1);
+    EXPECT_EQ(unrelated_events, 0);
+    ASSERT_TRUE(received_args.IsArray());
+    ASSERT_EQ(received_args.GetLength(), 2U);
+    EXPECT_EQ(received_args.GetProperty(0), lepus::Value("named-event"));
+    EXPECT_EQ(received_args.GetProperty(1), lepus::Value(params));
+
+    shell_->engine_actor_->ActSync([](auto& engine) {
+      engine->GetTasm()
+          ->GetContextProxy(runtime::ContextProxy::Type::kNative)
+          ->RemoveEventListeners("named-event");
+    });
+    send_event();
+    EXPECT_EQ(dispatched_events, 1);
+    EXPECT_EQ(matching_events, 1);
+    EXPECT_EQ(unrelated_events, 0);
+
+    shell_->engine_actor_->ActSync([](auto& engine) {
+      auto* proxy = engine->GetTasm()->GetContextProxy(
+          runtime::ContextProxy::Type::kNative);
+      proxy->SetListenerBeforePublishEvent(nullptr);
+      proxy->RemoveEventListeners("other-event");
+      proxy->RemoveEventListeners(runtime::kMessageEventTypeGlobalEvent);
+    });
+  }
+}
+
+TEST_F(LynxShellTest, BTSGlobalEventKeepsJSDeliveryWithoutForwardingToMTS) {
+  class RecordingDelegate : public runtime::test::MockTemplateDelegate {
+   public:
+    event::DispatchEventResult DispatchMessageEvent(
+        fml::RefPtr<runtime::MessageEvent> event) override {
+      if (event->GetOriginType() == runtime::ContextProxy::Type::kNative &&
+          event->GetTargetType() == runtime::ContextProxy::Type::kCoreContext) {
+        ++forwarded_global_events;
+      }
+      return {event::EventCancelType::kNotCanceled, false};
+    }
+    int forwarded_global_events = 0;
+  };
+  class RecordingObserver : public runtime::js::NativeModuleRecordObserver {
+   public:
+    void OnRecord(const lepus::Value&) override {}
+    std::shared_ptr<runtime::js::NativeModuleInvocationContext>
+    CreateInvocation(const std::string&, const std::string&) override {
+      return nullptr;
+    }
+    void OnGlobalEvent(const std::string& name,
+                       const lepus::Value& arguments) override {
+      names.push_back(name);
+      params.push_back(arguments);
+    }
+    std::vector<std::string> names;
+    std::vector<lepus::Value> params;
+  };
+
+  auto delegate = std::make_unique<RecordingDelegate>();
+  auto* delegate_ptr = delegate.get();
+  BTSRuntime bts_runtime("-1", {}, 18, std::move(delegate), "",
+                         LynxRuntimeFlags::PENDING_CORE_JS_LOAD |
+                             LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE,
+                         tasm::PageOptions(18));
+  bts_runtime.Init(std::make_shared<pub::LynxNativeModuleManager>(), nullptr,
+                   {});
+  bts_runtime.state_ = BTSRuntime::State::kRuntimeReady;
+  auto* js_runtime = bts_runtime.GetJSRuntimeWeak().Lock();
+  ASSERT_NE(js_runtime, nullptr);
+  runtime::js::Scope scope(*js_runtime);
+  auto js_app = js_runtime->evaluateJavaScript(
+      std::make_shared<runtime::js::StringBuffer>(
+          "({callFunction: function(module, method, args) {"
+          "  globalThis.receivedGlobalEvents.push([module, method, args]);"
+          "}})"),
+      "global-event-test.js");
+  ASSERT_TRUE(js_app.has_value());
+  js_runtime->global().setProperty(
+      *js_runtime, "receivedGlobalEvents",
+      *runtime::js::Array::createWithLength(*js_runtime, 0));
+  bts_runtime.app_->SetJsAppObj(js_app->getObject(*js_runtime));
+  auto observer = std::make_shared<RecordingObserver>();
+  bts_runtime.app_->SetNativeModuleRecordObserver(observer);
+
+  auto listener_params = lepus::CArray::Create();
+  listener_params->emplace_back("payload");
+  listener_params->emplace_back(42);
+  for (const auto& params : {lepus::Value(lepus::CArray::Create()),
+                             lepus::Value(std::move(listener_params))}) {
+    auto args = lepus::CArray::Create();
+    args->emplace_back("native-event");
+    args->push_back(params);
+    bts_runtime.CallJSFunction("GlobalEventEmitter", "emit",
+                               lepus::Value(std::move(args)));
+  }
+
+  auto received = bts_runtime.app_->ParseJSValueToLepusValue(
+      *js_runtime->global().getProperty(*js_runtime, "receivedGlobalEvents"),
+      PAGE_GROUP_ID);
+  ASSERT_TRUE(received.has_value());
+  ASSERT_EQ(received->GetLength(), 2U);
+  ASSERT_EQ(observer->names.size(), 2U);
+  for (size_t i = 0; i < 2; ++i) {
+    auto call = received->GetProperty(i);
+    EXPECT_EQ(call.GetProperty(0), lepus::Value("GlobalEventEmitter"));
+    EXPECT_EQ(call.GetProperty(1), lepus::Value("emit"));
+    EXPECT_EQ(call.GetProperty(2).GetProperty(0), lepus::Value("native-event"));
+    EXPECT_EQ(observer->names[i], "native-event");
+    EXPECT_EQ(observer->params[i], call.GetProperty(2).GetProperty(1));
+  }
+  EXPECT_EQ(delegate_ptr->forwarded_global_events, 0);
 }
 
 TEST_F(LynxShellTest, OnShouldSendEventToMainThreadChanged) {

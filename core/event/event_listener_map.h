@@ -57,12 +57,16 @@ class EventListenerMap {
   void Clear();
   void RemoveAll();
   bool IsEmpty() const;
+  // Returns whether the event type has at least one listener.
   bool Contains(const std::string& type) const;
 
   bool Add(const std::string& type, std::shared_ptr<EventListener> listener);
+  // Removes matching listeners and erases the event type if none remain.
   bool Remove(const std::string& type, std::shared_ptr<EventListener> listener);
+  // Removes all listeners for the event type and erases its entry.
   bool Remove(const std::string& type);
 
+  // The returned pointer may be invalidated by subsequent map mutations.
   EventListenerVector* Find(const std::string& type);
 
  private:
