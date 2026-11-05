@@ -303,6 +303,21 @@ void TextLayoutTextra::ApplyTextStyle(Element* element,
                                            sizeof(int));
           break;
         }
+        case kPropertyIDFontVariationSettings: {
+          std::string settings;
+          const auto& axes = text_attributes->font_variation_settings;
+          for (size_t i = 0; axes && i + 1 < axes->size(); i += 2) {
+            if (!settings.empty()) {
+              settings += ",";
+            }
+            settings += "'" + axes->get(i).String().str() + "' " +
+                        base::StringConvertHelper::DoubleToString(
+                            axes->get(i + 1).Number());
+          }
+          paragraph_builder_->SetTextStyle(kTextPropFontVariationSettings,
+                                           settings.data(), settings.size());
+          break;
+        }
         case kPropertyIDFontFamily: {
           auto family = text_attributes->font_family;
           paragraph_builder_->SetTextStyle(kTextPropFontFamily,

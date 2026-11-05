@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include "core/renderer/css/unit_handler.h"
@@ -47,6 +48,7 @@ struct BackendState {
   text::MeasureResult result{0, 0, 0};
   text::MeasureParams params{};
   std::optional<float> line_height;
+  std::optional<std::string> font_variations;
 };
 
 class FakeParagraphBuilder : public text::ParagraphBuilder {
@@ -54,6 +56,7 @@ class FakeParagraphBuilder : public text::ParagraphBuilder {
   explicit FakeParagraphBuilder(BackendState& state) : state_(state) {
     ++state_.live_builder_count;
     state_.line_height.reset();
+    state_.font_variations.reset();
   }
   ~FakeParagraphBuilder() override { --state_.live_builder_count; }
 
@@ -68,7 +71,13 @@ class FakeParagraphBuilder : public text::ParagraphBuilder {
   void PopTextStyle() override {}
   void PushEventTarget(const text::EventTargetInfo&) override {}
   void PopEventTarget() override {}
-  void SetTextStyle(TextPropertyKeyID, void*, size_t) override {}
+  void SetTextStyle(TextPropertyKeyID key, void* value,
+                    size_t length) override {
+    if (key == kTextPropFontVariationSettings) {
+      state_.font_variations =
+          std::string(static_cast<const char*>(value), length);
+    }
+  }
   void AddText(const char*, size_t) override {}
   void AddInlineView(std::unique_ptr<text::InlineView>) override {}
   void AddImage(const char*, size_t) override {}
@@ -289,6 +298,28 @@ TEST_F(TextLayoutTextraTest, NormalLineHeightUsesFontMetrics) {
     layout_->DispatchLayoutBefore(&element_);
     EXPECT_FALSE(state_.line_height.has_value());
   }
+}
+
+TEST_F(TextLayoutTextraTest, FontVariationsPreserveAxesAndReset) {
+  layout_->DispatchLayoutBefore(&element_);
+  EXPECT_FALSE(state_.font_variations.has_value());
+
+  StyleMap styles;
+  ASSERT_TRUE(UnitHandler::Process(kPropertyIDFontVariationSettings,
+                                   lepus::Value("'wght' 500, 'opsz' 17.25"),
+                                   styles, CSSParserConfigs()));
+  element_.computed_css_style()->SetValue(
+      kPropertyIDFontVariationSettings,
+      styles.at(kPropertyIDFontVariationSettings));
+  element_.property_bits().Set(kPropertyIDFontVariationSettings);
+  layout_->DispatchLayoutBefore(&element_);
+  ASSERT_TRUE(state_.font_variations.has_value());
+  EXPECT_EQ(*state_.font_variations, "'wght' 500,'opsz' 17.25");
+
+  element_.computed_css_style()->ResetValue(kPropertyIDFontVariationSettings);
+  layout_->DispatchLayoutBefore(&element_);
+  ASSERT_TRUE(state_.font_variations.has_value());
+  EXPECT_TRUE(state_.font_variations->empty());
 }
 
 TEST_F(TextLayoutTextraTest, LineHeightUpdatesRestoreFontMetrics) {
