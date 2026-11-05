@@ -6,6 +6,7 @@
 
 #include "clay/flow/testing/mock_shared_image_backing.h"
 #include "clay/gfx/shared_image/fence_sync.h"
+#include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -101,4 +102,120 @@ INSTANTIATE_TEST_SUITE_P(DoubleAndTripleBuffer, SharedImageSinkDamageTest,
 
 }  // namespace
 }  // namespace testing
+
+namespace {
+
+class TestBacking final : public SharedImageBacking {
+ public:
+  explicit TestBacking(skity::Vec2 size)
+      : SharedImageBacking(PixelFormat::kNative8888, size) {}
+  BackingType GetType() const override { return BackingType::kMocking; }
+  GraphicsMemoryHandle GetGFXHandle() const override { return nullptr; }
+  fml::RefPtr<SharedImageRepresentation> CreateRepresentation(
+      const ClaySharedImageRepresentationConfig*) override {
+    return nullptr;
+  }
+#ifndef ENABLE_SKITY
+  fml::RefPtr<SkiaImageRepresentation> CreateSkiaRepresentation(
+      GrContext*) override {
+    return nullptr;
+  }
+#else
+  fml::RefPtr<SkityImageRepresentation> CreateSkityRepresentation(
+      GrContext*) override {
+    return nullptr;
+  }
+#endif
+};
+
+auto MakeBacking(skity::Vec2 size,
+                 std::optional<SharedImageSink::GraphicsMemoryHandle>) {
+  return fml::MakeRefCounted<TestBacking>(size);
+}
+
+using Status = SharedImageSink::AcquireBackStatus;
+const skity::Vec2 kSize(16, 16);
+
+TEST(SharedImageSinkTest, ForcedAcquireDetachedWithAvailableBack) {
+  SharedImageSinkManaged sink(SharedImageSink::kDoubleBuffer, MakeBacking);
+  sink.SetFrameAvailableCallback([] {});
+  Status status;
+  auto [back, age] = sink.AcquireBackForced(kSize, {}, &status);
+  ASSERT_NE(back, nullptr);
+  ASSERT_EQ(status, Status::kSuccess);
+  sink.SetFrameAvailableCallback(nullptr);
+  auto [detached, detached_age] = sink.AcquireBackForced(kSize, {}, &status);
+  EXPECT_EQ(detached, nullptr);
+  EXPECT_EQ(status, Status::kDetached);
+
+  sink.SetFrameAvailableCallback([] {});
+  auto [reattached, reattached_age] =
+      sink.AcquireBackForced(kSize, {}, &status);
+  EXPECT_EQ(reattached, back);
+  EXPECT_EQ(status, Status::kSuccess);
+}
+
+TEST(SharedImageSinkTest, ForcedAcquireDetachedWithFullQueueAndReattach) {
+  SharedImageSinkManaged sink(SharedImageSink::kDoubleBuffer, MakeBacking);
+  sink.SetFrameAvailableCallback([] {});
+  auto [current, age] = sink.AcquireBackForced(kSize);
+  ASSERT_NE(current, nullptr);
+  ASSERT_TRUE(sink.SwapBack(nullptr));
+  ASSERT_EQ(sink.UpdateFront(nullptr), current);
+  auto [pending, pending_age] = sink.AcquireBackForced(kSize);
+  ASSERT_NE(pending, nullptr);
+  ASSERT_NE(pending, current);
+  ASSERT_TRUE(sink.SwapBack(nullptr));
+
+  sink.SetFrameAvailableCallback(nullptr);
+  Status status;
+  auto [detached, detached_age] = sink.AcquireBackForced(kSize, {}, &status);
+  EXPECT_EQ(detached, nullptr);
+  EXPECT_EQ(status, Status::kDetached);
+  sink.SetFrameAvailableCallback([] {});
+  auto [recycled, recycled_age] = sink.AcquireBackForced(kSize, {}, &status);
+  EXPECT_EQ(recycled, pending);
+  EXPECT_NE(recycled, current);
+  EXPECT_EQ(status, Status::kSuccess);
+  ASSERT_TRUE(sink.SwapBack(nullptr));
+  EXPECT_EQ(sink.UpdateFrontToLatest(nullptr), pending);
+}
+
+TEST(SharedImageSinkTest, ForcedAcquireNeverStealsCurrentFront) {
+  SharedImageSinkManaged sink(SharedImageSink::kSingleBuffer, MakeBacking);
+  sink.SetFrameAvailableCallback([] {});
+  auto [back, age] = sink.AcquireBack(kSize);
+  ASSERT_NE(back, nullptr);
+  ASSERT_TRUE(sink.SwapBack(nullptr));
+  ASSERT_EQ(sink.UpdateFront(nullptr), back);
+  Status status;
+  auto [unavailable, unavailable_age] =
+      sink.AcquireBackForced(kSize, {}, &status);
+  EXPECT_EQ(unavailable, nullptr);
+  EXPECT_EQ(status, Status::kFullAttach);
+  sink.ReleaseFront(nullptr);
+  auto [released, released_age] = sink.AcquireBackForced(kSize, {}, &status);
+  EXPECT_EQ(released, back);
+  EXPECT_EQ(status, Status::kSuccess);
+}
+
+TEST(SharedImageSinkTest, ForcedAcquireAllocationFailureIsNotDetached) {
+  bool fail_allocation = true;
+  SharedImageSinkManaged sink(
+      SharedImageSink::kDoubleBuffer,
+      [&](skity::Vec2 size, auto handle) -> fml::RefPtr<SharedImageBacking> {
+        return fail_allocation ? nullptr : MakeBacking(size, handle);
+      });
+  sink.SetFrameAvailableCallback([] {});
+  Status status = Status::kDetached;
+  auto [failed, age] = sink.AcquireBackForced(kSize, {}, &status);
+  EXPECT_EQ(failed, nullptr);
+  EXPECT_EQ(status, Status::kUnkown);
+  fail_allocation = false;
+  auto [retried, retried_age] = sink.AcquireBackForced(kSize, {}, &status);
+  EXPECT_NE(retried, nullptr);
+  EXPECT_EQ(status, Status::kSuccess);
+}
+
+}  // namespace
 }  // namespace clay

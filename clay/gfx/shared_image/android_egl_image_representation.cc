@@ -41,6 +41,8 @@ AndroidEGLFenceSync::AndroidEGLFenceSync() {
   if (fence_ == EGL_NO_SYNC_KHR) {
     FML_LOG(ERROR) << "Failed to create fence sync in EGL env, error: "
                    << eglGetError();
+    // Publishing without a fence is safe only after the GPU has finished.
+    glFinish();
   }
   glFlush();
 }
@@ -94,6 +96,7 @@ void AndroidEGLFenceSync::ServerWait() {
   if (result == EGL_FALSE) {
     FML_LOG(ERROR) << "Failed to eglWaitSyncKHR in EGL env, error: "
                    << eglGetError();
+    ClientWait();
   }
 }
 
@@ -103,7 +106,7 @@ bool AndroidEGLFenceSync::CheckAndroidNativeFenceSupported() {
   static bool supported;
   auto func = [] {
     const char* extensions = eglQueryString(display, EGL_EXTENSIONS);
-    if (!strstr(extensions, "EGL_ANDROID_native_fence_sync")) {
+    if (!extensions || !strstr(extensions, "EGL_ANDROID_native_fence_sync")) {
       supported = false;
     } else {
       supported = true;
@@ -120,7 +123,8 @@ bool AndroidEGLFenceSync::CheckEGLFenceSupported() {
   auto init_func = [] {
     display = eglGetCurrentDisplay();
     const char* extensions = eglQueryString(display, EGL_EXTENSIONS);
-    if (!strstr(extensions, "EGL_KHR_fence_sync")) {
+    if (!extensions || !strstr(extensions, "EGL_KHR_fence_sync") ||
+        !strstr(extensions, "EGL_KHR_wait_sync")) {
       supported = false;
     } else {
       eglCreateSyncKHR = reinterpret_cast<PFNEGLCREATESYNCKHRPROC>(
@@ -180,7 +184,11 @@ NativeBufferEGLImageRepresentation::GetTexImage() {
         egl_image_ =
             static_cast<AHardwareBufferImageBacking*>(backing)->CreateEGLImage(
                 egl_display_);
-        FML_DCHECK(egl_image_ != EGL_NO_IMAGE_KHR);
+        if (egl_image_ == EGL_NO_IMAGE_KHR) {
+          FML_LOG(ERROR) << "Failed to import hardware buffer into EGL";
+          glDeleteTextures(1, &texture);
+          return std::nullopt;
+        }
         glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, egl_image_);
         FML_DCHECK(static_cast<EGLint>(EGL_SUCCESS) == eglGetError());
         break;
@@ -226,6 +234,9 @@ std::optional<GLImageRepresentation::FramebufferInfo>
 NativeBufferEGLImageRepresentation::BindFrameBuffer() {
   if (fbo_id_ == 0) {
     auto texture_info = GetTexImage();
+    if (!texture_info) {
+      return std::nullopt;
+    }
     GLuint backend_texture = texture_info->name;
     GLuint fbo_id;
     glGenFramebuffers(1, &fbo_id);
@@ -256,6 +267,8 @@ NativeBufferEGLImageRepresentation::BindFrameBuffer() {
     if (status != GL_FRAMEBUFFER_COMPLETE) {
       FML_LOG(ERROR) << "Failed to create FBO, error: " << status;
       glDeleteFramebuffers(1, &fbo_id);
+      glDeleteRenderbuffers(1, &depth_stencil_id_);
+      depth_stencil_id_ = 0;
       return std::nullopt;
     }
     fbo_id_ = fbo_id;

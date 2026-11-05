@@ -51,6 +51,9 @@ AHardwareBufferImageBacking::AHardwareBufferImageBacking(
 
 EGLImageKHR AHardwareBufferImageBacking::CreateEGLImage(
     EGLDisplay egl_display) {
+  if (!buffer_) {
+    return EGL_NO_IMAGE_KHR;
+  }
   EGLClientBuffer client_buffer =
       AHardwareBufferUtils::GetInstance().GetNativeClientBuffer(buffer_);
   if (!client_buffer) {
