@@ -348,6 +348,12 @@ void ListContainerImpl::FlushPatching() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_CONTAINER_FLUSH_PATCHING);
   bool should_flush_finish_layout = should_flush_finish_layout_;
   should_flush_finish_layout_ = false;
+  if (compose_scroll_managed_) {
+    // A layout commit can change item geometry without changing the extent
+    // or first visible index. Observers must still see a newer snapshot.
+    ++compose_scroll_revision_;
+    PublishComposeScrollState();
+  }
   list_delegate_->FlushPatching(should_flush_finish_layout);
 }
 
@@ -355,14 +361,16 @@ void ListContainerImpl::FlushPatching() {
 void ListContainerImpl::UpdateContentOffsetAndSizeToPlatform(
     float content_size, float delta_x, float delta_y,
     bool is_init_scroll_offset, bool from_layout) {
-  list_delegate_->UpdateContentOffsetAndSizeToPlatform(
-      content_size, delta_x, delta_y, is_init_scroll_offset, from_layout);
+  if (!compose_scroll_managed_) {
+    list_delegate_->UpdateContentOffsetAndSizeToPlatform(
+        content_size, delta_x, delta_y, is_init_scroll_offset, from_layout);
+  }
 }
 
 // Update scroll info to platform view.
 void ListContainerImpl::UpdateScrollInfo(float estimated_offset, bool smooth,
                                          bool scrolling) {
-  if (smooth) {
+  if (smooth && !compose_scroll_managed_) {
     float platform_estimated_offset = estimated_offset;
     // List layout uses logical offsets, while native horizontal scroll views
     // use physical offsets. Convert at the platform boundary with the content
@@ -632,7 +640,11 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     sticky_offset_ = value.Number();
   } else if (key_str == kPropSticky && value.IsBool()) {
     // sticky
-    sticky_enabled_ = value.Bool();
+    sticky_enabled_ = value.Bool() && !compose_scroll_managed_;
+    if (value.Bool() && compose_scroll_managed_) {
+      DLIST_LOGW("CMP-managed lists do not support native sticky items");
+      should_set_props = false;
+    }
   } else if (key_str == kPropExperimentalRecycleStickyItem && value.IsBool()) {
     // experimental-recycle-sticky-item
     // TODO(dingwang.wxx): experimental prop, the default value is true in
@@ -745,6 +757,9 @@ void ListContainerImpl::OnLayoutChildren(
       }
       // Record completion of the initial layout.
       has_completed_first_layout_ = true;
+      if (compose_scroll_managed_) {
+        PublishComposeScrollState();
+      }
     }
     if (options->need_timestamps) {
       list_delegate_->MarkTiming(ListTiming::kRenderChildrenEnd);
@@ -856,12 +871,172 @@ void ListContainerImpl::ScrollByPlatformContainer(float content_offset_x,
                                                   float content_offset_y,
                                                   float original_x,
                                                   float original_y) {
-  if (list_layout_manager_) {
+  if (list_layout_manager_ && !compose_scroll_managed_) {
     // reset should_flush_finish_layout_ flag to false.
     should_flush_finish_layout_ = false;
     list_layout_manager_->ScrollByPlatformContainer(
         content_offset_x, content_offset_y, original_x, original_y);
   }
+}
+
+void ListContainerImpl::SetComposeScrollManaged(bool managed) {
+  if (compose_scroll_managed_ == managed) {
+    return;
+  }
+  compose_scroll_managed_ = managed;
+  compose_projection_sent_ = false;
+  if (managed && sticky_enabled_) {
+    DLIST_LOGW("CMP-managed lists do not support native sticky items");
+    sticky_enabled_ = false;
+  }
+  list_layout_manager_->ScrollStopped();
+  PublishComposeScrollState();
+}
+
+ListScrollState ListContainerImpl::GetScrollState() const {
+  ListScrollState state;
+  state.revision = compose_scroll_revision_;
+  if (!compose_scroll_managed_ || !has_completed_first_layout_ ||
+      !list_layout_manager_ || list_layout_manager_->main_axis_size() <= 0.f) {
+    return state;
+  }
+  state.valid = true;
+  // Compose keeps a nonnegative position even when the list has no items.
+  state.first_visible_index = 0;
+  const float logical_offset = list_layout_manager_->content_offset();
+  state.viewport = list_layout_manager_->main_axis_size();
+  state.content = list_layout_manager_->content_size();
+  state.horizontal = list_layout_manager_->CanScrollHorizontally();
+  state.rtl = IsRTL();
+  state.offset = logical_offset;
+  state.can_scroll_backward = logical_offset > 0.f;
+  state.can_scroll_forward =
+      logical_offset < std::max(0.f, state.content - state.viewport);
+  auto* orientation = list_layout_manager_->orientation_helper();
+  list_children_helper_->ForEachChild(
+      list_children_helper_->on_screen_children(), [&](ItemHolder* item) {
+        if (!item->VisibleInList(orientation, logical_offset) ||
+            orientation->GetDecoratedEnd(item) <=
+                logical_offset + orientation->GetStartAfterPadding() ||
+            list_adapter_->IsRemoved(item)) {
+          return false;
+        }
+        // A linear list's inter-item spacing belongs to the preceding item's
+        // scroll interval, even when that item's pixels are already offscreen.
+        // The native layout stores the gap before the next holder instead.
+        if (layout_type_ == LayoutType::kSingle && item->index() > 0 &&
+            orientation->GetStart(item) >
+                logical_offset + orientation->GetStartAfterPadding()) {
+          auto* previous =
+              list_adapter_->GetItemHolderForIndex(item->index() - 1);
+          if (previous && !list_adapter_->IsRemoved(previous)) item = previous;
+        }
+        state.first_visible_index = item->index();
+        state.first_visible_scroll_offset =
+            std::max(0.f, logical_offset + orientation->GetStartAfterPadding() -
+                              orientation->GetStart(item));
+        return true;
+      });
+  return state;
+}
+
+int ListContainerImpl::ClampScrollTargetIndex(int index) const {
+  const int count = GetDataCount();
+  return count > 0 ? std::min(index, count - 1) : kInvalidIndex;
+}
+
+ListScrollState ListContainerImpl::PublishComposeScrollState() {
+  ListScrollState state = GetScrollState();
+  const auto& previous = published_compose_scroll_state_;
+  if (state.valid != previous.valid || state.offset != previous.offset ||
+      state.viewport != previous.viewport ||
+      state.content != previous.content ||
+      state.first_visible_index != previous.first_visible_index ||
+      state.first_visible_scroll_offset !=
+          previous.first_visible_scroll_offset ||
+      state.horizontal != previous.horizontal || state.rtl != previous.rtl) {
+    state.revision = ++compose_scroll_revision_;
+  }
+  published_compose_scroll_state_ = state;
+  if (compose_projection_sent_ &&
+      compose_projection_revision_ == state.revision) {
+    return state;
+  }
+  compose_projection_sent_ = true;
+  compose_projection_revision_ = state.revision;
+  const bool horizontal = list_layout_manager_->CanScrollHorizontally();
+  const float extent = list_layout_manager_->content_size();
+  const float offset = list_layout_manager_->content_offset();
+  const float physical_offset =
+      horizontal && IsRTL()
+          ? std::max(0.f,
+                     extent - list_layout_manager_->main_axis_size() - offset)
+          : offset;
+  list_delegate_->ApplyListScrollState(
+      horizontal ? physical_offset : 0.f, horizontal ? 0.f : physical_offset,
+      horizontal ? extent : list_layout_manager_->GetWidth(),
+      horizontal ? list_layout_manager_->GetHeight() : extent,
+      compose_scroll_managed_);
+  return state;
+}
+
+ListScrollResult ListContainerImpl::ScrollByDelta(float delta) {
+  list_layout_manager_->ScrollStopped();
+  ListScrollResult result;
+  result.remaining = delta;
+  result.state = GetScrollState();
+  if (result.state.valid && intercept_depth_ == 0 && std::isfinite(delta)) {
+    should_flush_finish_layout_ = true;
+    do {
+      const float consumed =
+          list_layout_manager_->ScrollByComposeDelta(result.remaining);
+      result.consumed += consumed;
+      result.remaining = delta - result.consumed;
+      if (consumed == 0.f || result.remaining == 0.f) break;
+      const float offset = list_layout_manager_->content_offset();
+      const float range =
+          std::max(0.f, list_layout_manager_->content_size() -
+                            list_layout_manager_->main_axis_size());
+      // Filling can synchronously discover a larger extent. Keep consuming
+      // the request against that new range rather than reporting a false edge.
+      if (result.remaining > 0.f ? offset >= range : offset <= 0.f) break;
+    } while (true);
+    result.state = PublishComposeScrollState();
+  }
+  return result;
+}
+
+ListScrollState ListContainerImpl::ScrollToItem(int index, float offset) {
+  list_layout_manager_->ScrollStopped();
+  const auto state = GetScrollState();
+  if (!state.valid || intercept_depth_ != 0 || index < 0 ||
+      !std::isfinite(offset)) {
+    return {};
+  }
+  index = ClampScrollTargetIndex(index);
+  if (index == kInvalidIndex) {
+    return state;
+  }
+  ItemHolder* target = GetItemHolderForIndex(index);
+  if (!target) {
+    return {};
+  }
+  const auto weak_target = target->WeakFromThis();
+  should_flush_finish_layout_ = true;
+  // Top alignment subtracts its offset. Keep before-content padding visible,
+  // and let a positive Compose offset advance into the target item. The item's
+  // own gap is already included in GetStart, so it is not added a second time.
+  list_layout_manager_->ScrollToPosition(
+      index,
+      list_layout_manager_->orientation_helper()->GetStartAfterPadding() -
+          offset,
+      static_cast<int>(ScrollingInfoAlignment::kTop), false);
+  target = weak_target.get();
+  const auto result = PublishComposeScrollState();
+  if (!target || list_adapter_->IsRemoved(target)) {
+    return {};
+  }
+  return result;
 }
 
 void ListContainerImpl::ScrollToPosition(int index, float offset, int align,
@@ -915,12 +1090,12 @@ std::unique_ptr<pub::Value> ListContainerImpl::ScrollToPositionSync(
     return nullptr;
   }
   base::AutoReset<bool> guard(&synchronous_scroll_active_, true);
-  const int count = GetDataCount();
-  if (count > 0) {
+  const int target_index = ClampScrollTargetIndex(index);
+  if (target_index != kInvalidIndex) {
     // The existing positioning layout rebinds dirty items itself. Readiness is
     // required after it finishes, not before it gets a chance to lay them out.
-    list_layout_manager_->ScrollToPosition(std::min(index, count - 1),
-                                           layout_offset, 0, false);
+    list_layout_manager_->ScrollToPosition(target_index, layout_offset, 0,
+                                           false);
     list_layout_manager_->ScrollStopped();
   }
   if (!AreOnScreenItemsReady()) {

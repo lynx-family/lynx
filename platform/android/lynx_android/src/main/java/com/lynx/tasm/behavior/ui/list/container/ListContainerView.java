@@ -67,6 +67,7 @@ public class ListContainerView extends NestedScrollContainerView
   private boolean mHasPendingEndDrawTraversalWork = false;
   private final ArrayDeque<Runnable> mPendingDrawTasks = new ArrayDeque<>();
   private boolean mShouldBlockScrollByListContainer = false;
+  private boolean mComposeScrollManaged;
   private int mPreviousOffsetX;
   private int mPreviousOffsetY;
   private boolean mForceCanScroll = false;
@@ -479,6 +480,25 @@ public class ListContainerView extends NestedScrollContainerView
     mForceCanScroll = forceCanScroll;
   }
 
+  void setComposeScrollManaged(boolean managed) {
+    mComposeScrollManaged = managed;
+  }
+
+  void applyComposeScrollState(int x, int y, int width, int height) {
+    setMeasuredSize(Math.max(width, mUiListContainer.getWidth()),
+        Math.max(height, mUiListContainer.getHeight()));
+    mShouldBlockScrollByListContainer = true;
+    try {
+      // Absolute Engine document offsets already include horizontal RTL.
+      super.scrollTo(x, y);
+      mPreviousOffsetX = mUiListContainer.isRtl() ? contentOffsetXRTL(x) : x;
+      mPreviousOffsetY = y;
+    } finally {
+      mShouldBlockScrollByListContainer = false;
+    }
+    invalidate();
+  }
+
   void updateContentSizeAndOffset(int contentSize, int deltaX, int deltaY) {
     if (mIsVertical && contentSize != mMeasuredHeight) {
       setMeasuredSize(mMeasuredWidth, Math.max(contentSize, mUiListContainer.getHeight()));
@@ -516,7 +536,7 @@ public class ListContainerView extends NestedScrollContainerView
     if (DEBUG) {
       LLog.i(TAG, "onScrollChanged: " + oldt + " -> " + t + ", " + oldl + " -> " + l);
     }
-    if (!mShouldBlockScrollByListContainer && mUiListContainer != null
+    if (!mShouldBlockScrollByListContainer && !mComposeScrollManaged && mUiListContainer != null
         && mUiListContainer.getLynxContext() != null) {
       mPreviousOffsetY = t;
       mPreviousOffsetX = mUiListContainer.isRtl() ? contentOffsetXRTL(l) : l;

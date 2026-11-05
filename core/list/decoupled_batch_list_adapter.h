@@ -149,7 +149,6 @@ class BatchListAdapter : public ListAdapter {
     }
     return false;
   }
-
   // Return whether the ItemHolder is in finish binding, if return true, it
   // means the ItemHolder is a no dirty node with valid list item element.
   bool IsFinishedBinding(const ItemHolder* item_holder) override {

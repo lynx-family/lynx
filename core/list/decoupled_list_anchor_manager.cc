@@ -106,7 +106,7 @@ void ListAnchorManager::AdjustAnchorInfoAfterLayout(AnchorInfo& anchor_info) {
 void ListAnchorManager::AdjustContentOffsetWithAnchor(
     ListAnchorManager::AnchorInfo& anchor_info, float content_offset) {
   if (anchor_info.valid_) {
-    list_layout_manager_->SetContentOffset(
+    list_layout_manager_->SetContentOffsetFromAnchor(
         list_orientation_helper_->GetStart(anchor_info.item_holder_) -
         anchor_info.start_alignment_delta_);
   } else {
