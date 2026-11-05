@@ -111,6 +111,7 @@ NSDictionary* LynxDevtoolGlobalMemoryUsageToDictionary(LynxGlobalMemoryUsageResu
     @"completedInstanceCount" : @(result.completedInstanceCount),
     @"totalBytes" : @(result.totalBytes),
     @"appBytes" : @(result.appBytes),
+    @"ratioToApp" : @(result.ratioToApp),
     @"elementBytes" : @(result.elementBytes),
     @"elementNodeCount" : @(result.elementNodeCount),
     @"viewBytes" : @(result.viewBytes),

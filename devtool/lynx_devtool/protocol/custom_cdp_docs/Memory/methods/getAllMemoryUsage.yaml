@@ -35,6 +35,9 @@ returns:
   - name: appBytes
     type: integer
     description: Current app memory footprint in bytes when the platform reports it.
+  - name: ratioToApp
+    type: number
+    description: Global Lynx-attributed totalBytes divided by appBytes. Zero when appBytes is unavailable.
   - name: elementBytes
     type: integer
     description: Aggregated element memory in bytes across completed instance results.

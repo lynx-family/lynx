@@ -98,6 +98,7 @@
   queryResult.completedInstanceCount = 2;
   queryResult.totalBytes = 110;
   queryResult.appBytes = 220;
+  queryResult.ratioToApp = 0.5;
   queryResult.elementBytes = 20;
   queryResult.elementNodeCount = 3;
   queryResult.viewBytes = 40;
@@ -144,6 +145,7 @@
                                 XCTAssertEqualObjects(result[@"completedInstanceCount"], @2);
                                 XCTAssertEqualObjects(result[@"totalBytes"], @110);
                                 XCTAssertEqualObjects(result[@"appBytes"], @220);
+                                XCTAssertEqualObjects(result[@"ratioToApp"], @0.5);
                                 XCTAssertEqualObjects(result[@"elementBytes"], @20);
                                 XCTAssertEqualObjects(result[@"elementNodeCount"], @3);
                                 XCTAssertEqualObjects(result[@"viewBytes"], @40);
@@ -169,7 +171,6 @@
                                 XCTAssertEqualObjects(detail[@"source"], @"test");
                                 XCTAssertEqualObjects(firstInstance[@"btsRuntimeType"], @"quickjs");
                                 XCTAssertEqualObjects(firstInstance[@"btsRuntimeTotalBytes"], @200);
-                                XCTAssertNil(result[@"ratioToApp"]);
                                 NSArray* destroyedInstances = result[@"destroyedInstances"];
                                 XCTAssertEqual(destroyedInstances.count, 1);
                                 NSDictionary* destroyed = destroyedInstances[0];
@@ -218,11 +219,13 @@
       queryAllMemoryUsageWithTimeoutMs:123
                               callback:^(NSString* resultJson, NSString* errorMessage) {
                                 XCTAssertEqualObjects(errorMessage, queryResult.errorMessage);
+                                XCTAssertEqual(queryResult.ratioToApp, 0.0);
                                 NSData* data = [resultJson dataUsingEncoding:NSUTF8StringEncoding];
                                 NSDictionary* result = [NSJSONSerialization JSONObjectWithData:data
                                                                                        options:0
                                                                                          error:nil];
                                 XCTAssertTrue([result isKindOfClass:[NSDictionary class]]);
+                                XCTAssertEqualObjects(result[@"ratioToApp"], @0.0);
                                 XCTAssertEqualObjects(result[@"collectionStatus"], @"error");
                                 XCTAssertEqualObjects(result[@"errorMessage"], errorMessage);
                                 XCTAssertEqualObjects(result[@"destroyedInstances"], @[]);
