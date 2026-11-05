@@ -21,6 +21,14 @@ NativePaintingCtxAndroidRef::NativePaintingCtxAndroidRef(
 
 NativePaintingCtxAndroidRef::~NativePaintingCtxAndroidRef() { Destroy(); }
 
+void NativePaintingCtxAndroidRef::ApplyListScrollState(
+    int32_t sign, float scroll_x, float scroll_y, float content_width,
+    float content_height, bool cmp_managed) {
+  if (!destroyed_.load(std::memory_order_acquire))
+    view_manager_->ApplyListScrollState(sign, scroll_x, scroll_y, content_width,
+                                        content_height, cmp_managed);
+}
+
 PlatformRendererContext::PreparationScheduler::TaskRef
 NativePaintingCtxAndroidRef::PrepareRenderer(
     int id, PlatformRendererType type, const base::String& tag_name,

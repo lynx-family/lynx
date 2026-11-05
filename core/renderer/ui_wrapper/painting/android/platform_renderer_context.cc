@@ -516,6 +516,27 @@ int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {
                                                  tag_ref.Get());
 }
 
+void PlatformRendererContext::ApplyListScrollState(int32_t sign, float scroll_x,
+                                                   float scroll_y,
+                                                   float content_width,
+                                                   float content_height,
+                                                   bool cmp_managed) {
+  if (destroyed_) {
+    return;
+  }
+  base::android::ScopedLocalJavaRef<jobject> ref(java_ref_);
+  if (ref.IsNull()) {
+    return;
+  }
+  EnsureAndroidViewCreated(sign);
+  if (destroyed_) {
+    return;
+  }
+  Java_PlatformRendererContext_applyListScrollState(
+      base::android::AttachCurrentThread(), ref.Get(), sign, scroll_x, scroll_y,
+      content_width, content_height, cmp_managed);
+}
+
 std::vector<float> PlatformRendererContext::GetRootViewLocationOnScreen() {
   std::vector<float> res;
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);

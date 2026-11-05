@@ -58,6 +58,8 @@ class MockListElement : public ElementDelegate {
                                             float delta_y,
                                             bool is_init_scroll_offset,
                                             bool from_layout) override {}
+  void ApplyListScrollState(float scroll_x, float scroll_y, float content_width,
+                            float content_height, bool cmp_managed) override {}
   bool HasBoundEvent(const std::string& event_name) const override {
     return events_.find(event_name) != events_.end();
   }

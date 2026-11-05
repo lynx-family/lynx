@@ -514,6 +514,12 @@ void UIList::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
   NodeManager::Instance().SetMeasuredSize(
       container_layout_, context_->ScaledDensity() * content_width_,
       context_->ScaledDensity() * content_height_);
+  if (engine_scroll_managed_) {
+    // A new content size takes effect after measurement. Reapply the absolute
+    // target in case the immediate scroll was clamped to the previous range.
+    ScheduleComposeScrollProjection();
+    return;
+  }
   if (base::FloatsLarger(pending_delta_offset_, 0)) {
     if (is_horizontal_) {
       ScrollToAsync(pending_delta_offset_, 0);
@@ -553,6 +559,14 @@ void UIList::ScrollToAsync(float delta_x, float delta_y) {
 
 void UIList::OnNodeEvent(ArkUI_NodeEvent* event) {
   auto type = OH_ArkUI_NodeEvent_GetEventType(event);
+  // Applying Engine offsets can emit native scroll callbacks. Keep them from
+  // feeding the projected state back into Engine.
+  if (engine_scroll_managed_ && (type == NODE_SCROLL_EVENT_ON_SCROLL_START ||
+                                 type == NODE_SCROLL_EVENT_ON_SCROLL ||
+                                 type == NODE_SCROLL_EVENT_ON_SCROLL_STOP ||
+                                 type == NODE_SCROLL_EVENT_ON_WILL_SCROLL)) {
+    return;
+  }
   if (type == NODE_SCROLL_EVENT_ON_SCROLL_START) {
     HandleScrollStartEvent();
   } else if (type == NODE_SCROLL_EVENT_ON_SCROLL) {
@@ -1188,6 +1202,40 @@ void UIList::UpdateContentSize(float width, float height) {
   BaseScrollContainer::UpdateContentSize(width, height);
   NodeManager::Instance().SetAttributeWithNumberValue(container_layout_,
                                                       NODE_SIZE, width, height);
+}
+
+std::pair<float, float> UIList::GetScrollOffset() const {
+  return engine_scroll_managed_ ? compose_scroll_offset_
+                                : BaseScrollContainer::GetScrollOffset();
+}
+
+void UIList::ApplyListScrollState(float scroll_x, float scroll_y,
+                                  float content_width, float content_height,
+                                  bool cmp_managed) {
+  engine_scroll_managed_ = cmp_managed;
+  compose_scroll_offset_ = {scroll_x, scroll_y};
+  const bool content_size_changed =
+      content_width_ != content_width || content_height_ != content_height;
+  if (content_size_changed) UpdateContentSize(content_width, content_height);
+  BaseScrollContainer::ScrollTo(scroll_x, scroll_y, false);
+  UpdateStickyView();
+}
+
+void UIList::ScheduleComposeScrollProjection() {
+  const auto& monitor = context_->VSyncMonitor();
+  if (!monitor) return;
+  monitor->ScheduleVSyncSecondaryCallback(
+      reinterpret_cast<uintptr_t>(&compose_scroll_offset_),
+      [weak_this = weak_from_this()](int64_t, int64_t) {
+        auto shared_this = weak_this.lock();
+        if (!shared_this) return;
+        auto* list = static_cast<UIList*>(shared_this.get());
+        if (!list->engine_scroll_managed_) return;
+        list->BaseScrollContainer::ScrollTo(list->compose_scroll_offset_.first,
+                                            list->compose_scroll_offset_.second,
+                                            false);
+        list->UpdateStickyView();
+      });
 }
 
 void UIList::StartScroller() {

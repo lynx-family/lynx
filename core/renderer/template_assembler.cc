@@ -3833,6 +3833,10 @@ void TemplateAssembler::RunPixelPipeline() {
         .layout_triggered = false,
         .pipeline_version = pipeline_option->version};
     OnLayoutAfter(layout_data);
+    // Reused items may have no layout work. Complete their bindings only after
+    // the current context is closed, since completion can start another render.
+    page_proxy()->element_manager()->FlushPendingListItemUpdates(
+        pipeline_option);
   }
 
   // Trigger DataUpdated If Needed;
