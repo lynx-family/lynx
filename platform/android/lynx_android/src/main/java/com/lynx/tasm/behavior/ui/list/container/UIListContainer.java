@@ -1354,6 +1354,13 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
+  public void applyComposeScrollState(
+      float x, float y, float width, float height, boolean managed) {
+    mView.setComposeScrollManaged(managed);
+    mView.applyComposeScrollState(
+        Math.round(x), Math.round(y), Math.round(width), Math.round(height));
+  }
+
   public void updateScrollInfo(boolean smooth, float estimatedOffset, boolean scrolling) {
     // ListElement flush scrolling to platform
     mScrollingEstimatedOffset = (int) estimatedOffset;

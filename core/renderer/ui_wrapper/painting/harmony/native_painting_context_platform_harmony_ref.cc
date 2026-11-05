@@ -11,6 +11,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 
@@ -24,6 +25,19 @@ NativePaintingCtxPlatformHarmonyRef::NativePaintingCtxPlatformHarmonyRef(
 
 NativePaintingCtxPlatformHarmonyRef::~NativePaintingCtxPlatformHarmonyRef() {
   Destroy();
+}
+
+void NativePaintingCtxPlatformHarmonyRef::ApplyListScrollState(
+    int32_t sign, float scroll_x, float scroll_y, float content_width,
+    float content_height, bool cmp_managed) {
+  auto context = renderer_context_.lock();
+  auto* owner = context ? context->GetUIOwner() : nullptr;
+  if (!owner || owner->Destroyed()) return;
+  auto* ui = owner->FindUIBySign(sign);
+  if (ui && ui->IsList()) {
+    static_cast<harmony::UIList*>(ui)->ApplyListScrollState(
+        scroll_x, scroll_y, content_width, content_height, cmp_managed);
+  }
 }
 
 void NativePaintingCtxPlatformHarmonyRef::SetNeedMarkPaintEndTiming(
