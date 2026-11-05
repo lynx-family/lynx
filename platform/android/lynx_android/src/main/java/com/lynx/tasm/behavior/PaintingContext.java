@@ -331,6 +331,12 @@ public final class PaintingContext implements IPaintingContext {
   }
 
   @Override
+  public void setPlatformEventRootActive(int rootSign, boolean active) {}
+
+  @Override
+  public void setPlatformEventRootOffset(int rootSign, float offsetX, float offsetY) {}
+
+  @Override
   public int getPlatformTouchTargetSign() {
     return -1;
   }

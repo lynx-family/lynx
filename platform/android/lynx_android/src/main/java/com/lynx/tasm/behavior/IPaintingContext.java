@@ -14,6 +14,7 @@ public interface IPaintingContext {
   int EVENT_BEHAVIOR_BLOCK_NATIVE_EVENT = 1 << 2;
   int EVENT_BEHAVIOR_ENABLE_SIMULTANEOUS_TOUCH = 1 << 3;
   int EVENT_BEHAVIOR_HAS_CONSUME_SLIDE_EVENT = 1 << 4;
+  int EVENT_BEHAVIOR_RAW_INPUT_EXCLUSIVE = 1 << 5;
 
   // this func will be execed on main thread.
   void destroy();
@@ -29,6 +30,10 @@ public interface IPaintingContext {
   void setLynxEngineActorForPlatformContextRef(long ptr);
 
   boolean dispatchPlatformMotionEvent(MotionEvent ev, int rootSign);
+
+  void setPlatformEventRootActive(int rootSign, boolean active);
+
+  void setPlatformEventRootOffset(int rootSign, float offsetX, float offsetY);
 
   // Returns the hit target sign cached for the current pointer sequence.
   int getPlatformTouchTargetSign();

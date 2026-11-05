@@ -42,6 +42,7 @@ import com.lynx.tasm.behavior.ui.frame.LynxFrameView;
 import com.lynx.tasm.core.JSProxy;
 import com.lynx.tasm.core.LynxEngineProxy;
 import com.lynx.tasm.core.LynxLayoutProxy;
+import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.fluency.FluencyTraceHelper;
 import com.lynx.tasm.fontface.FontFace;
@@ -550,6 +551,10 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return false;
   }
 
+  public boolean getEnableRawInput() {
+    return mPageConfig != null && mPageConfig.getEnableRawInput();
+  }
+
   public boolean getEnableMultiTouch() {
     if (null != mPageConfig) {
       return mPageConfig.getEnableMultiTouch();
@@ -1016,17 +1021,39 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   public void setPlatformEventRootActive(int rootSign, boolean active) {
     LynxUIOwner owner = mLynxUIOwner.get();
-    if (owner != null && owner.getPaintingContext() instanceof NativePaintingContext) {
-      ((NativePaintingContext) owner.getPaintingContext())
-          .setPlatformEventRootActive(rootSign, active);
+    if (owner != null && owner.getPaintingContext() != null) {
+      owner.getPaintingContext().setPlatformEventRootActive(rootSign, active);
     }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void notifyInputRootStateChanged(int rootSign, boolean attached, boolean focused) {
+    if (!getEnableRawInput()) {
+      return;
+    }
+    LynxUIOwner owner = mLynxUIOwner.get();
+    if (owner == null || owner.getRootSign() < 0) {
+      return;
+    }
+    int pageSign = owner.getRootSign();
+    LynxCustomEvent event =
+        new LynxCustomEvent(pageSign, attached ? "rootfocuschanged" : "rootdetach");
+    event.addDetail("pageSign", pageSign);
+    event.addDetail("eventRoot", rootSign);
+    if (attached) {
+      event.addDetail("focused", focused);
+      // Only the main root can restore the Page's attachment state.
+      if (rootSign == pageSign) {
+        event.addDetail("attached", true);
+      }
+    }
+    getEventEmitter().sendCustomEvent(event);
   }
 
   public void setPlatformEventRootOffset(int rootSign, float offsetX, float offsetY) {
     LynxUIOwner owner = mLynxUIOwner.get();
-    if (owner != null && owner.getPaintingContext() instanceof NativePaintingContext) {
-      ((NativePaintingContext) owner.getPaintingContext())
-          .setPlatformEventRootOffset(rootSign, offsetX, offsetY);
+    if (owner != null && owner.getPaintingContext() != null) {
+      owner.getPaintingContext().setPlatformEventRootOffset(rootSign, offsetX, offsetY);
     }
   }
 

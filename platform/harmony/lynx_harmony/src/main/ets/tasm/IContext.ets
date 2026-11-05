@@ -38,6 +38,7 @@ export interface IContext {
   getDensity(): number;
 
   canConsumeTouchEvent(x: number, y: number): boolean;
+  isRawInputEnabled?(): boolean;
 
   canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean;
 

@@ -66,7 +66,7 @@ void SetLynxEngineActorForPlatformContextRef(JNIEnv *env, jobject /*jcaller*/,
 
 jint DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
                                 jlong nativePtr, jintArray iEventData,
-                                jfloatArray fEventData) {
+                                jfloatArray fEventData, jlong eventTime) {
   // Get the NativePaintingCtxAndroid instance from the native pointer
   if (nativePtr == 0 || iEventData == nullptr || fEventData == nullptr) {
     return lynx::tasm::kEventBehaviorEventThrough;
@@ -76,8 +76,16 @@ jint DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
       reinterpret_cast<lynx::tasm::NativePaintingCtxAndroid *>(nativePtr);
 
   jsize i_event_data_size = env->GetArrayLength(iEventData);
+  if (i_event_data_size < 4) {
+    return lynx::tasm::kEventBehaviorEventThrough;
+  }
   jint *i_event_data = env->GetIntArrayElements(iEventData, JNI_FALSE);
   if (i_event_data == nullptr) {
+    return lynx::tasm::kEventBehaviorEventThrough;
+  }
+  if (i_event_data[3] < 0 ||
+      i_event_data[3] > env->GetArrayLength(fEventData) / 3) {
+    env->ReleaseIntArrayElements(iEventData, i_event_data, 0);
     return lynx::tasm::kEventBehaviorEventThrough;
   }
   jfloat *f_event_data = env->GetFloatArrayElements(fEventData, JNI_FALSE);
@@ -99,9 +107,11 @@ jint DispatchPlatformInputEvent(JNIEnv *env, jobject /*jcaller*/,
     event_target_root_id = i_event_data[4];
   }
   platform_ref->DispatchPlatformInputEvent(i_event_data, f_event_data,
-                                           event_target_root_id);
+                                           event_target_root_id, eventTime);
   jint result = lynx::tasm::kEventBehaviorEventThrough;
-  if (platform_ref->GetEventTargetHelper()->GetEventRootTree(
+  if ((platform_ref->GetCachedPlatformEventBehavior() &
+       lynx::tasm::kEventBehaviorRawInputExclusive) ||
+      platform_ref->GetEventTargetHelper()->GetEventRootTree(
           event_target_root_id)) {
     result = platform_ref->GetCachedPlatformEventBehavior();
   }
