@@ -119,6 +119,7 @@ class UIOwner {
   static constexpr const char* kDefaultComponentId = "-1";
 
   UIRoot* Root();
+  bool RequestRootFocus(int32_t sign, bool focused);
 
   void CreateNodeContent(UIBase* ui) const;
   napi_value CreateFrameHost(napi_value native_frame, int sign) const;
@@ -239,6 +240,7 @@ class UIOwner {
 
   void OnEnterForeground();
   void OnEnterBackground();
+  void OnWindowFocusChanged(bool focused);
 
   void PrepareForDestroy();
   bool Destroyed() const { return destroyed_; }
@@ -282,6 +284,7 @@ class UIOwner {
   static napi_value UpdateRootTarget(napi_env env, napi_callback_info info);
   static napi_value OnEnterForeground(napi_env env, napi_callback_info info);
   static napi_value OnEnterBackground(napi_env env, napi_callback_info info);
+  static napi_value OnWindowFocusChanged(napi_env env, napi_callback_info info);
   static napi_value SetLynxImageConfig(napi_env env, napi_callback_info info);
 
   void DestroySubTree(UIBase* root);

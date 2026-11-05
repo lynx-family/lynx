@@ -161,6 +161,21 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
+  public boolean requestRootFocus(int rootSign, boolean focused) {
+    IRendererHost host = mViewHolder.get(rootSign);
+    View view = host != null ? host.getView() : mRootView != null ? mRootView.get() : null;
+    if (view == null || view.getWindowToken() == null || (focused && !view.hasWindowFocus())) {
+      return false;
+    }
+    if (focused) {
+      view.setFocusableInTouchMode(true);
+      return view.requestFocus();
+    }
+    view.clearFocus();
+    return !view.hasFocus();
+  }
+
+  @CalledByNative
   public void applyListScrollState(
       int sign, float x, float y, float width, float height, boolean managed) {
     UIListContainer list = getCUIListContainer(sign);

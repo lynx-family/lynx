@@ -166,6 +166,8 @@ UIOverlay::~UIOverlay() {
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_EVENT_ON_DETACH);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_TOUCH_EVENT);
+  NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_FOCUS);
+  NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_BLUR);
   NodeManager::Instance().DisposeNode(stack_);
   stack_ = nullptr;
 }
@@ -197,6 +199,8 @@ UIOverlay::UIOverlay(LynxContext* context, int sign, const std::string& tag)
   NodeManager::Instance().RegisterNodeEvent(stack_, NODE_EVENT_ON_DETACH, this);
   NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT,
                                             this);
+  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_FOCUS, this);
+  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_BLUR, this);
   native_dialog_ = NodeManager::DialogInstance()->create();
   LOGI("overlay construction create dialog sign="
        << Sign() << " tag=" << tag << " this=" << static_cast<const void*>(this)
@@ -303,6 +307,15 @@ void UIOverlay::OnNodeEvent(ArkUI_NodeEvent* event) {
       input_context->SetPlatformEventRootActive(Sign(), false);
     }
     context_->NotifyUIScroll();
+  } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS ||
+             OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_BLUR) {
+    const bool focused =
+        OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS && dispatcher &&
+        dispatcher->InputWindowFocused();
+    if (auto input_context = context_->GetNativePaintingContext()) {
+      input_context->NotifyInputRootStateChanged(Sign(), is_root_attached_,
+                                                 focused);
+    }
   }
 }
 

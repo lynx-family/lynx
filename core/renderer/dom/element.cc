@@ -3103,6 +3103,7 @@ lepus::Value Element::QueryGeometry(const lepus::Value& request) {
 lepus::Value Element::InvokeMethod(const base::String& method,
                                    const lepus::Value& params,
                                    std::string* error) {
+  BASE_STATIC_STRING_DECL(kInputRequestToken, "requestToken");
   const auto request = params.ToLepusValue(true);
   if (method == "getGeometry") {
     return QueryGeometry(request);
@@ -3113,6 +3114,21 @@ lepus::Value Element::InvokeMethod(const base::String& method,
       ancestors->emplace_back(node->impl_id());
     }
     return lepus::Value(std::move(ancestors));
+  }
+  if (method == "requestInputFocus" || method == "clearInputFocus") {
+    const bool focused = method == "requestInputFocus";
+    const auto token = request.GetProperty(kInputRequestToken);
+    if (!token.IsString() || token.String().empty()) {
+      *error = "Input focus requires a nonempty requestToken";
+      return {};
+    }
+    if (!element_manager_->root()) {
+      *error = "Input focus requires a Page";
+      return {};
+    }
+    element_manager_->painting_context()->RequestInputFocus(impl_id(), focused,
+                                                            token.StdString());
+    return lepus::Value(true);
   }
   *error = "Unsupported element method: " + method.str();
   return {};

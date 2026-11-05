@@ -93,6 +93,9 @@ class EventDispatcher {
   void OnTouchEvent(const ArkUI_UIInputEvent* event, UIBase* root,
                     bool from_overlay = false);
   bool RawInputExclusive() const;
+  bool InputWindowFocused() const { return input_window_focused_; }
+  bool IsRawInputEventRootActive(int32_t sign) const;
+  void SetInputWindowFocused(bool focused) { input_window_focused_ = focused; }
   void EmulateTouch(const std::string& event_type, int x, int y,
                     const std::string& button, float delta_x, float delta_y,
                     int modifiers, int click_count);
@@ -351,6 +354,8 @@ class EventDispatcher {
   ConsumeSlideDirection cached_consume_slide_direction_{
       ConsumeSlideDirection::kNone};
   bool platform_touch_active_{false};
+  bool input_window_focused_{true};
+  std::unordered_map<int32_t, std::weak_ptr<UIBase>> input_event_roots_;
   ArkUI_GestureRecognizer* long_press_gesture_{nullptr};
   ArkUI_GestureRecognizer* tap_gesture_{nullptr};
   ArkUI_GestureRecognizer* block_outer_pan_gesture_{nullptr};

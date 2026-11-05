@@ -516,6 +516,17 @@ int32_t PlatformRendererContext::GetTagInfo(const std::string& tag_name) {
                                                  tag_ref.Get());
 }
 
+bool PlatformRendererContext::RequestRootFocus(int32_t root_sign,
+                                               bool focused) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return false;
+  }
+  return Java_PlatformRendererContext_requestRootFocus(
+      base::android::AttachCurrentThread(), local_ref.Get(), root_sign,
+      focused);
+}
+
 void PlatformRendererContext::ApplyListScrollState(int32_t sign, float scroll_x,
                                                    float scroll_y,
                                                    float content_width,
