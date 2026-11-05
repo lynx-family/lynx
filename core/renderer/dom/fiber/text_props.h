@@ -40,6 +40,7 @@ enum TextPropertyKeyID {
   kTextPropTextDecorationGap = 22,
   kTextPropWordBreak = 23,
   kTextPropTextSpacingTrim = 24,
+  kTextPropFontVariationSettings = 25,
 
   // attributes
   kTextPropTextMaxLine = 99,
@@ -139,6 +140,7 @@ static const uint8_t kUtf8ToUtf16Units[256] = {
   V(FontWeight, 1)                        \
   V(FontStyle, 1)                         \
   V(FontFamily, 1)                        \
+  V(FontVariationSettings, 1)             \
   V(LineHeight, 1)                        \
   V(LetterSpacing, 1)                     \
   V(WordBreak, 1)                         \
