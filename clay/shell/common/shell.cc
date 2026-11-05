@@ -1499,6 +1499,21 @@ void Shell::UpdateSemantics(const clay::SemanticsUpdateNodes& update_nodes) {
       });
 }
 
+void Shell::RequestAccessibilityFocus(int32_t view_id, bool without_update,
+                                      std::function<void(bool)> callback) {
+  auto ui_task_runner = task_runners_.GetUITaskRunner();
+  fml::TaskRunner::RunNowOrPostTask(
+      task_runners_.GetPlatformTaskRunner(),
+      [weak = weak_platform_view_, ui_task_runner, view_id, without_update,
+       callback = std::move(callback)]() mutable {
+        bool success =
+            weak && weak->RequestAccessibilityFocus(view_id, without_update);
+        fml::TaskRunner::RunNowOrPostTask(
+            ui_task_runner,
+            [callback = std::move(callback), success]() { callback(success); });
+      });
+}
+
 void Shell::SetSemanticsEnabled(bool enabled) {
   if (engine_) {
     engine_->SetSemanticsEnabled(enabled);
