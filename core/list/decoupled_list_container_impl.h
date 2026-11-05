@@ -172,9 +172,14 @@ class ListContainerImpl : public ContainerDelegate {
   void UpdateListLayoutManager(LayoutType layout_type);
   int ClampScrollTargetIndex(int index) const;
   ListScrollState PublishComposeScrollState();
+  void CompleteComposeScrollToItemIfNeeded();
   //  fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
 
  private:
+  struct ComposeScrollTarget {
+    int index{kInvalidIndex};
+    float offset{0.f};
+  };
   bool enable_dynamic_span_count_{true};
   bool enable_insert_platform_view_operation_{false};
   bool span_count_changed_{false};
@@ -210,6 +215,8 @@ class ListContainerImpl : public ContainerDelegate {
   bool enable_batch_render_{false};
   bool has_completed_first_layout_{false};
   bool compose_scroll_managed_{false};
+  bool completing_compose_scroll_{false};
+  std::optional<ComposeScrollTarget> compose_scroll_target_;
   ListScrollState published_compose_scroll_state_;
   uint64_t compose_scroll_revision_{0};
   uint64_t compose_projection_revision_{0};

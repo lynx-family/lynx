@@ -114,6 +114,8 @@ lepus::Value ComposeListScrollStateValue(
   BASE_STATIC_STRING_DECL(kInputConsumedPx, "consumedPx");
   BASE_STATIC_STRING_DECL(kInputRemainingPx, "remainingPx");
   BASE_STATIC_STRING_DECL(kInputValid, "valid");
+  BASE_STATIC_STRING_DECL(kInputPending, "pending");
+  BASE_STATIC_STRING_DECL(kInputMeasurePending, "measurePending");
   BASE_STATIC_STRING_DECL(kInputScrollOffsetPx, "scrollOffsetPx");
   BASE_STATIC_STRING_DECL(kInputViewportExtentPx, "viewportExtentPx");
   BASE_STATIC_STRING_DECL(kInputContentExtentPx, "contentExtentPx");
@@ -127,6 +129,8 @@ lepus::Value ComposeListScrollStateValue(
   result->SetValue(kInputConsumedPx, consumed);
   result->SetValue(kInputRemainingPx, remaining);
   result->SetValue(kInputValid, state.valid);
+  result->SetValue(kInputPending, state.pending);
+  result->SetValue(kInputMeasurePending, state.measure_pending);
   result->SetValue(kInputScrollOffsetPx,
                    state.offset * physical_pixels_per_unit);
   result->SetValue(kInputViewportExtentPx,
@@ -827,7 +831,9 @@ lepus::Value ListElement::InvokeMethod(const base::String& method,
   BASE_STATIC_STRING_DECL(kInputIndex, "index");
   BASE_STATIC_STRING_DECL(kInputOffsetPx, "offsetPx");
   if (method == "composeList") {
-    // Compose binds and lays out items synchronously before returning state.
+    // Reuse the synchronous element entry point while preserving Compose's
+    // pending-measurement result. The public scrollBy method has a different
+    // contract and may reject asynchronous item resolution.
     const auto request = params.ToLepusValue(true);
     if (will_destroy() || !CanUseComposeScroll()) {
       return ComposeListScrollStateValue({}, 1.0);

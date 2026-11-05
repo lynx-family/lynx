@@ -2,6 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "core/runtime/lepus/json_parser.h"
 
 #define private public
@@ -13,6 +18,7 @@
 #include "testing/fiber_data_source.h"
 #include "testing/mock_animation_manager.h"
 #include "testing/mock_list_element.h"
+#include "testing/mock_list_item_element.h"
 #include "testing/radon_data_source.h"
 #include "testing/utils.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -822,6 +828,111 @@ TEST_LIST_CONTAINER_RESOLVE_PROP(ExperimentalSearchRefAnchorStrategy) {
   EXPECT_FALSE(list_container_impl_->ResolveAttribute(*key, *value));
   EXPECT_EQ(list_container_impl_->search_ref_anchor_strategy_,
             SearchRefAnchorStrategy::kToEnd);
+}
+
+TEST_F(ListContainerImplTest,
+       ComposeScrollCompletesAsyncNavigationAndHandlesUpdates) {
+  using ::testing::_;
+  mock_list_element_->height_ = 200.f;
+  mock_list_element_->width_ = 200.f;
+  list_container_impl_->SetComposeScrollManaged(true);
+
+  testing::FiberDataSource source;
+  for (int i = 0; i < 10; ++i) {
+    source.insert_action_.insert_ops_.push_back(
+        {i, "item_" + std::to_string(i), 100, false, false, false, true});
+  }
+  {
+    LIST_CONTAINER_DEFINE_PROP_LEPUS_VALUE(FiberUpdateListInfo,
+                                           lepus::Value(source.Resolve()));
+    list_container_impl_->ResolveAttribute(*key, value);
+    list_container_impl_->PropsUpdateFinish();
+  }
+
+  std::vector<std::pair<uint32_t, int64_t>> pending_binds;
+  EXPECT_CALL(*mock_list_element_, ComponentAtIndex(_, _, _))
+      .WillRepeatedly([&](uint32_t index, int64_t operation_id, bool) {
+        pending_binds.emplace_back(index, operation_id);
+        return true;
+      });
+
+  auto finish_all_pending = [&](float measured_height) {
+    auto batch = std::exchange(pending_binds, {});
+    for (const auto& [idx, op_id] : batch) {
+      auto* holder = list_adapter_->GetItemHolderForIndex(idx);
+      if (!holder) continue;
+      const auto& item_key = holder->item_key();
+      if (!mock_list_element_->GetListItemElement(item_key)) {
+        auto item = std::make_unique<MockListItemElement>(100 + idx);
+        item->height_ = measured_height;
+        mock_list_element_->AddListItemElement(item_key, std::move(item));
+      } else {
+        mock_list_element_->GetListItemElement(item_key)->height_ =
+            measured_height;
+      }
+      auto options = std::make_shared<tasm::PipelineOptions>();
+      options->operation_id = op_id;
+      list_container_impl_->FinishBindItemHolder(
+          mock_list_element_->GetListItemElement(item_key), options);
+    }
+  };
+
+  list_container_impl_->OnLayoutChildren(
+      std::make_shared<tasm::PipelineOptions>());
+  ASSERT_TRUE(list_container_impl_->GetScrollState().valid);
+  EXPECT_TRUE(list_container_impl_->GetScrollState().measure_pending);
+  finish_all_pending(140.f);
+  EXPECT_FALSE(list_container_impl_->GetScrollState().measure_pending);
+
+  // Asynchronous scrollToItem settles once target and visible items finish
+  // binding with their measured heights.
+  auto state = list_container_impl_->ScrollToItem(5, 25.f);
+  EXPECT_TRUE(state.pending);
+  while (!pending_binds.empty()) finish_all_pending(140.f);
+  state = list_container_impl_->GetScrollState();
+  EXPECT_FALSE(state.pending);
+  EXPECT_FALSE(state.measure_pending);
+  EXPECT_EQ(state.first_visible_index, 5);
+  EXPECT_FLOAT_EQ(state.first_visible_scroll_offset, 25.f);
+
+  // Offsets past the target item's measured height recycle the target offscreen
+  // yet still clear pending once aligned.
+  ASSERT_TRUE(list_container_impl_->ScrollToItem(2, 160.f).pending);
+  while (!pending_binds.empty()) finish_all_pending(140.f);
+  state = list_container_impl_->GetScrollState();
+  EXPECT_FALSE(state.pending);
+  EXPECT_EQ(state.first_visible_index, 3);
+  EXPECT_FLOAT_EQ(state.first_visible_scroll_offset, 20.f);
+
+  // Zero-delta scrollBy cancels an active jump while preserving measure_pending
+  // for on-screen items still binding.
+  ASSERT_TRUE(list_container_impl_->ScrollToItem(8, 10.f).pending);
+  const auto cancelled = list_container_impl_->ScrollByDelta(0.f);
+  EXPECT_FALSE(cancelled.state.pending);
+  EXPECT_TRUE(cancelled.state.measure_pending);
+  while (!pending_binds.empty()) finish_all_pending(140.f);
+  EXPECT_FALSE(list_container_impl_->GetScrollState().measure_pending);
+
+  // Clearing the dataset during a pending jump keeps scroll state valid and
+  // clears pending.
+  ASSERT_TRUE(list_container_impl_->ScrollToItem(0, 0.f).pending);
+  testing::FiberDataSource cleared;
+  for (int i = 0; i < 10; ++i) {
+    cleared.remove_action_.remove_ops_.push_back(i);
+  }
+  {
+    LIST_CONTAINER_DEFINE_PROP_LEPUS_VALUE(FiberUpdateListInfo,
+                                           lepus::Value(cleared.Resolve()));
+    list_container_impl_->ResolveAttribute(*key, value);
+    list_container_impl_->PropsUpdateFinish();
+  }
+  list_container_impl_->OnLayoutChildren(
+      std::make_shared<tasm::PipelineOptions>());
+  state = list_container_impl_->GetScrollState();
+  EXPECT_TRUE(state.valid);
+  EXPECT_FALSE(state.pending);
+  EXPECT_FALSE(state.measure_pending);
+  EXPECT_EQ(state.first_visible_index, 0);
 }
 
 }  // namespace list

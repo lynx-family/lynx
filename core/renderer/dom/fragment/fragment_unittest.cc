@@ -19,12 +19,16 @@
 
 #include "base/include/fml/message_loop.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/list/decoupled_list_container_impl.h"
+#include "core/list/testing/fiber_data_source.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
@@ -32,6 +36,7 @@
 #include "core/renderer/dom/fragment/event/platform_position_change_observer.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
+#include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -41,6 +46,7 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/runtime/lepus/bindings/renderer.h"
 #include "core/runtime/lepus/bindings/renderer_functions.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
@@ -550,6 +556,190 @@ class NativeMockPaintingContext : public MockPaintingContext,
     return static_cast<TestNativePaintingCtxPlatformRef*>(platform_ref_.get());
   }
 };
+
+// The command requires a real FLR-capable painting interface, including repaint
+// when synchronous binding completes. Keep it on the same route as device
+// lists.
+class ManagedListCommandTest : public testing::FiberElementTest {
+ public:
+  void SetUp() override {
+    testing::FiberElementTest::SetUp();
+    manager->painting_context()->platform_impl_ =
+        std::make_unique<NativeMockPaintingContext>();
+  }
+};
+INSTANTIATE_TEST_SUITE_P(
+    FlushStrategies, ManagedListCommandTest,
+    ::testing::ValuesIn(testing::fiber_element_generation_params));
+
+TEST_P(ManagedListCommandTest, ManagedHorizontalListCommandsUsePhysicalPixels) {
+  manager->GetConfig()->SetEnableRawInput(true);
+  manager->SetLayoutTick(
+      [this](const auto& options) { manager->RequestLayout(options); });
+  PageOptions options;
+  options.SetEmbeddedMode(static_cast<EmbeddedMode>(
+      EmbeddedMode::EMBEDDED_MODE_BASE | EmbeddedMode::LAYOUT_IN_ELEMENT |
+      EmbeddedMode::FRAGMENT_LAYER_RENDER));
+  tasm->SetPageOptions(options);
+  constexpr double kScale = 2.5;
+  manager->GetLynxEnvConfig().physical_pixels_per_layout_unit_ = kScale;
+  tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
+  manager->SetEnableNativeListFromShell(true);
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 200,
+                          SLMeasureModeDefinite, true);
+  auto renderer_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(renderer_runtime, nullptr);
+  renderer_runtime->Initialize();
+  renderer_runtime->SetGlobalData(
+      BASE_STATIC_STRING(kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  Renderer::RegisterBuiltin(renderer_runtime.get(), ArchOption::FIBER_ARCH);
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  auto entry = std::make_shared<TemplateEntry>();
+  entry->SetVm(renderer_runtime);
+  entry->SetName(DEFAULT_ENTRY_NAME);
+  tasm->template_entries_[DEFAULT_ENTRY_NAME] = entry;
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
+      manager, ComposeElementKind::kList, base::String(), tasm.get()));
+  auto* list = static_cast<ListElement*>(handle->content_element().get());
+  list->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("200px"));
+  list->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("200px"));
+  list->SetAttribute("enable-decoupled-list", lepus::Value(true));
+  list->SetAttribute("compose-scroll-managed", lepus::Value(true));
+  list->SetAttribute("scroll-orientation", lepus::Value("horizontal"));
+  list->SetStyle(CSSPropertyID::kPropertyIDPaddingLeft, lepus::Value("12px"));
+  list->SetStyle(CSSPropertyID::kPropertyIDPaddingRight, lepus::Value("20px"));
+  list->SetAttribute("experimental-batch-render-strategy", lepus::Value(0));
+  page->InsertNode(handle->mount_root());
+  auto items = lepus::CArray::Create();
+  lynx::list::testing::FiberDataSource source;
+  for (int index = 0; index < 20; ++index) {
+    auto item = manager->CreateFiberElement("list-item");
+    item->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("80px"));
+    item->SetStyle(CSSPropertyID::kPropertyIDWidth,
+                   lepus::Value(std::to_string(60 + index * 10) + "px"));
+    items->emplace_back(item);
+    // Deliberately differ from measured sizes so estimates cannot pass.
+    source.insert_action_.insert_ops_.push_back(
+        {index, std::to_string(index), 100, false, false, false, false});
+  }
+  renderer_runtime->SetGlobalData("measuredItems", lepus::Value(items));
+  lepus::Value callback;
+  constexpr char kBind[] = R"JS((function(list, id, index, operation) {
+    globalThis.measuredBindings = (globalThis.measuredBindings || 0) + 1;
+    var item = measuredItems[index];
+    __AppendElement(list, item);
+    __FlushElementTree(item, {operationID: operation,
+      elementID: __GetElementUniqueID(item), listID: id});
+    return __GetElementUniqueID(item);
+  }))JS";
+  ASSERT_TRUE(
+      context->EvalBuf(kBind, sizeof(kBind) - 1, callback, "measure.js"));
+  list->UpdateCallbacks(callback, {}, {});
+  list->SetAttribute("update-list-info", lepus::Value(source.Resolve()));
+  page->FlushActionsAsRoot();
+  auto layout_options = std::make_shared<PipelineOptions>();
+  layout_options->is_first_screen = true;
+  manager->RequestLayout(layout_options);
+  ASSERT_EQ(list->height(), 200);
+  auto* container = static_cast<lynx::list::ListContainerImpl*>(
+      list->list_mediator_->list_container_delegate_.get());
+  ASSERT_NE(container, nullptr);
+  auto target = fml::static_ref_ptr_cast<Element>(items->get(10).RefCounted());
+  ASSERT_EQ(target->width(), 0);
+  auto dispatch = [&](const char* type, int index, double value) {
+    auto command = lepus::Dictionary::Create();
+    command->SetValue("type", lepus::Value(type));
+    command->SetValue("index", lepus::Value(index));
+    command->SetValue("offsetPx", lepus::Value(value));
+    command->SetValue("deltaPx", lepus::Value(value));
+    std::string error;
+    auto result = handle->content_element()->InvokeMethod(
+        base::String("composeList"), lepus::Value(command), &error);
+    EXPECT_TRUE(error.empty()) << error;
+    return result;
+  };
+  auto initial = dispatch("getState", 0, 0);
+  if constexpr (GetOSType() != OSType::kAndroid &&
+                GetOSType() != OSType::kIOS &&
+                GetOSType() != OSType::kHarmony) {
+    EXPECT_FALSE(initial.GetProperty("valid").Bool());
+    return;
+  }
+  ASSERT_TRUE(initial.GetProperty("valid").Bool());
+  EXPECT_DOUBLE_EQ(initial.GetProperty("viewportExtentPx").Number(),
+                   200 * kScale);
+  EXPECT_DOUBLE_EQ(initial.GetProperty("scrollOffsetPx").Number(), 0);
+  EXPECT_FALSE(initial.GetProperty("canScrollBackward").Bool());
+  auto jump = dispatch("scrollToItem", 10, 15);
+  ASSERT_TRUE(jump.GetProperty("valid").Bool());
+  EXPECT_FALSE(jump.GetProperty("pending").Bool());
+  EXPECT_FALSE(jump.GetProperty("measurePending").Bool());
+  EXPECT_EQ(target->width(), 160);
+  EXPECT_EQ(target->height(), 80);
+  EXPECT_EQ(jump.GetProperty("firstVisibleIndex").Number(), 10);
+  EXPECT_NEAR(jump.GetProperty("firstVisibleScrollOffsetPx").Number(), 15,
+              0.01);
+  EXPECT_TRUE(container->GetScrollState().horizontal);
+  EXPECT_TRUE(container->AreOnScreenItemsReady());
+  auto moved = dispatch("scrollBy", 0, 40.25);
+  EXPECT_NEAR(moved.GetProperty("consumedPx").Number(), 40.25, 0.001);
+  EXPECT_NEAR(moved.GetProperty("remainingPx").Number(), 0, 0.001);
+  EXPECT_NEAR(moved.GetProperty("scrollOffsetPx").Number() -
+                  jump.GetProperty("scrollOffsetPx").Number(),
+              40.25, 0.001);
+  auto queried = dispatch("getState", 0, 0);
+  EXPECT_DOUBLE_EQ(queried.GetProperty("scrollOffsetPx").Number(),
+                   moved.GetProperty("scrollOffsetPx").Number());
+  auto start = dispatch("scrollBy", 0, -1000000);
+  EXPECT_DOUBLE_EQ(start.GetProperty("scrollOffsetPx").Number(), 0);
+  EXPECT_FALSE(start.GetProperty("canScrollBackward").Bool());
+  EXPECT_LT(start.GetProperty("remainingPx").Number(), 0);
+  {
+    auto invalid_command = lepus::Dictionary::Create();
+    invalid_command->SetValue("type", lepus::Value("scrollToItem"));
+    invalid_command->SetValue("index", lepus::Value(-1));
+    invalid_command->SetValue("offsetPx", lepus::Value(0));
+    std::string invalid_error;
+    auto rejected = handle->content_element()->InvokeMethod(
+        base::String("composeList"), lepus::Value(invalid_command),
+        &invalid_error);
+    EXPECT_FALSE(invalid_error.empty());
+    EXPECT_FALSE(rejected.GetProperty("valid").Bool());
+  }
+  auto clamped = dispatch("scrollToItem", 100000, 0);
+  ASSERT_TRUE(clamped.GetProperty("valid").Bool());
+  EXPECT_FALSE(clamped.GetProperty("pending").Bool());
+  ASSERT_TRUE(dispatch("scrollToItem", 19, 0).GetProperty("valid").Bool());
+  auto end = dispatch("scrollBy", 0, 1000000);
+  ASSERT_TRUE(end.GetProperty("valid").Bool());
+  EXPECT_FALSE(end.GetProperty("pending").Bool());
+  EXPECT_FALSE(end.GetProperty("canScrollForward").Bool());
+  EXPECT_TRUE(end.GetProperty("canScrollBackward").Bool());
+  // Item recomposition omits native binding identifiers so dirty-list
+  // collection reflows the parent and synchronizes its updated item holder
+  // sizes.
+  ASSERT_TRUE(dispatch("scrollToItem", 0, 0).GetProperty("valid").Bool());
+  auto first = fml::static_ref_ptr_cast<Element>(items->get(0).RefCounted());
+  auto second = fml::static_ref_ptr_cast<Element>(items->get(1).RefCounted());
+  list->SetStyle(CSSPropertyID::kPropertyIDHeight, lepus::Value("180px"));
+  first->SetStyle(CSSPropertyID::kPropertyIDWidth, lepus::Value("90px"));
+  page->FlushActionsAsRoot();
+  auto flush_options = lepus::Dictionary::Create();
+  flush_options->SetValue("operationID", lepus::Value(0));
+  lepus::Value flush_args[] = {lepus::Value(first),
+                               lepus::Value(flush_options)};
+  RendererFunctions::FiberFlushElementTree(context, flush_args, 2);
+  EXPECT_EQ(list->height(), 180);
+  EXPECT_FLOAT_EQ(first->left(), 12);
+  EXPECT_FLOAT_EQ(second->left(), 102);
+  EXPECT_TRUE(container->AreOnScreenItemsReady());
+}
 
 TEST(NativePaintingCtxPlatformRefTest,
      ScheduleDestroyImageUsesWeakRefAndNoOpsAfterDestroy) {

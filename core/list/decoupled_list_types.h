@@ -28,6 +28,8 @@ class ItemHolder;
 // can_scroll_* follow data order, including for horizontal RTL lists.
 struct ListScrollState {
   bool valid{false};
+  bool pending{false};
+  bool measure_pending{false};
   float offset{0.f};
   float viewport{0.f};
   float content{0.f};
