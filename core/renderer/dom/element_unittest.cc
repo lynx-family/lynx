@@ -11,6 +11,7 @@
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/runtime/js/bindings/java_script_element.h"
@@ -70,6 +71,42 @@ TEST_F(ElementTest, FragmentLayerIgnoresNewAnimatorOptOut) {
         element->CheckNewAnimatorAttr(base::String("enable-new-animator"),
                                       value);
         EXPECT_EQ(element->enable_new_animator(), flr) << "fiber=" << fiber;
+      }
+    }
+  }
+}
+
+TEST_F(ElementTest, PositionChangeOnlyUsesFragmentObserverInFragmentLayer) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  for (bool fragment_layer : {false, true}) {
+    manager->page_options_.SetEmbeddedMode(
+        fragment_layer ? EmbeddedMode::FRAGMENT_LAYER_RENDER
+                       : static_cast<EmbeddedMode>(0));
+    for (const auto* tag : {"view", "scroll-view", "list"}) {
+      for (const auto* type : {"bindEvent", "catchEvent", "global-bindEvent"}) {
+        SCOPED_TRACE(tag);
+        SCOPED_TRACE(type);
+        SCOPED_TRACE(fragment_layer);
+        auto element = manager->CreateFiberElement(tag);
+        EventHandler position_handler(type, "positionchange", "onChange");
+        element->SetEventHandler("positionchange", &position_handler);
+        auto* bundle =
+            static_cast<PropBundleMock*>(element->prop_bundle_.get());
+        ASSERT_NE(bundle, nullptr);
+        const bool platform_event =
+            !fragment_layer || position_handler.IsGlobalBindEvent();
+        EXPECT_EQ(bundle->GetEventHandlers().count("positionchange"),
+                  platform_event ? 1u : 0u);
+        if (fragment_layer) {
+          EXPECT_EQ(element->fragment_impl()->EventNames().empty(),
+                    platform_event);
+        }
+        EventHandler tap_handler("bindEvent", "tap", "onTap");
+        element->SetEventHandler("tap", &tap_handler);
+        EXPECT_EQ(bundle->GetEventHandlers().count("tap"), 1u);
+        EXPECT_FALSE(element->has_layout_only_props_);
       }
     }
   }

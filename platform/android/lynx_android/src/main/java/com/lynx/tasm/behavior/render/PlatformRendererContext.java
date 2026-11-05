@@ -160,6 +160,18 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return res;
   }
 
+  // Returns null while the root view is not attached to a window.
+  @CalledByNative
+  float[] getRootViewLocationInWindow() {
+    UIBody.UIBodyView view = mRootView != null ? mRootView.get() : null;
+    if (view == null || view.getWindowToken() == null) {
+      return null;
+    }
+    int[] location = new int[2];
+    view.getLocationInWindow(location);
+    return new float[] {location[0], location[1]};
+  }
+
   @CalledByNative
   public boolean requestRootFocus(int rootSign, boolean focused) {
     IRendererHost host = mViewHolder.get(rootSign);

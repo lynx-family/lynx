@@ -1121,14 +1121,16 @@ void PlatformEventTargetHelper::ConvertRectFromTargetToRootTarget(
   ConvertRectFromDescendantToAncestor(res, target, root, rect);
 }
 
-void PlatformEventTargetHelper::ConvertRectFromTargetToPageRootTarget(
+bool PlatformEventTargetHelper::ConvertRectFromTargetToPageRootTarget(
     float res[4], const fml::RefPtr<PlatformEventTarget>& target,
     float rect[4]) {
   ConvertRectFromTargetToRootTarget(res, target, rect);
   float offset[2] = {0.f, 0.f};
-  if (GetTreeRootOffsetToPageRootTarget(target, offset)) {
-    OffsetRect(res, offset);
+  if (!GetTreeRootOffsetToPageRootTarget(target, offset)) {
+    return false;
   }
+  OffsetRect(res, offset);
+  return true;
 }
 
 void PlatformEventTargetHelper::ConvertRectFromTargetToScreen(

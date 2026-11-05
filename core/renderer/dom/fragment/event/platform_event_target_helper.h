@@ -104,7 +104,8 @@ class PlatformEventTargetHelper {
       float res[4], const fml::RefPtr<PlatformEventTarget>& target,
       float rect[4]);
 
-  void ConvertRectFromTargetToPageRootTarget(
+  // Returns false if the target is not in an event target tree.
+  bool ConvertRectFromTargetToPageRootTarget(
       float res[4], const fml::RefPtr<PlatformEventTarget>& target,
       float rect[4]);
 

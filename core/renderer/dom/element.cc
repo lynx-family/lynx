@@ -1267,27 +1267,35 @@ void Element::SetProp(const char* key, const lepus::Value& value) {
 // TODO: just so easy?
 void Element::SetEventHandler(const base::String& name, EventHandler* handler) {
   PreparePropBundleIfNeed();
-  prop_bundle_->SetEventHandler(handler->ToPubLepusValue());
+  has_layout_only_props_ = false;
   if (handler->name().IsEquals("attach") ||
       handler->name().IsEquals("detach")) {
     has_event_listener_ = true;
   }
   if (EnableFragmentLayerRender()) {
-    // TODO(hexionghui): This also needs to be set when the event is cleared.
     if (auto fragment = fragment_impl();
         fragment && !handler->IsGlobalBindEvent()) {
       auto event_name = PlatformEventNameFromString(name.str());
       if (event_name != PlatformEventName::kUnknown) {
         fragment->AddEventName(event_name);
       }
+      if (event_name == PlatformEventName::kPositionChange) {
+        // The native observer owns this event; keep platform observers unbound.
+        return;
+      }
     }
   }
-  has_layout_only_props_ = false;
+  prop_bundle_->SetEventHandler(handler->ToPubLepusValue());
 }
 
 void Element::ResetEventHandlers() {
   if (prop_bundle_ != nullptr) {
     prop_bundle_->ResetEventHandler();
+  }
+  if (EnableFragmentLayerRender()) {
+    if (auto* fragment = fragment_impl()) {
+      fragment->ClearEventNames();
+    }
   }
   has_event_listener_ = false;
 }
