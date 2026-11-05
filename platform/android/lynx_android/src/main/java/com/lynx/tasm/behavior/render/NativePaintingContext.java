@@ -124,7 +124,8 @@ public class NativePaintingContext implements IPaintingContext {
       fEventData[base + 1] = ev.getX(pointerIndex);
       fEventData[base + 2] = ev.getY(pointerIndex);
     }
-    int eventBehavior = nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData);
+    int eventBehavior =
+        nativeDispatchPlatformInputEvent(mNativePtr, iEventData, fEventData, ev.getEventTime());
     if (actionMasked == MotionEvent.ACTION_DOWN) {
       mEventBehavior = eventBehavior;
     }
@@ -246,7 +247,8 @@ public class NativePaintingContext implements IPaintingContext {
 
   native void nativeSetLynxEngineActorForPlatformContextRef(long nativePtr, long ptr);
 
-  native int nativeDispatchPlatformInputEvent(long nativePtr, int[] iEventData, float[] fEventData);
+  native int nativeDispatchPlatformInputEvent(
+      long nativePtr, int[] iEventData, float[] fEventData, long eventTime);
 
   native void nativeDispatchPlatformLongPress(long nativePtr);
 
