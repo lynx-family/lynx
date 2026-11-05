@@ -19,7 +19,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Calculate the explorer directory
 explorer_dir = os.path.abspath(os.path.join(script_dir, '..', '..', '..'))
-print(f"explorer_dir: {explorer_dir}")
+# print(f"explorer_dir: {explorer_dir}")
 
 # Define the Android assets directory
 android_assets_dir = os.path.join(explorer_dir, 'explorer', 'android',
