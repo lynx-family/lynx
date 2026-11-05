@@ -28,13 +28,24 @@ void InlineImageShadowNode::TextLayout(LayoutContext* context) {
   }
   TextParagraphBuilder* builder =
       static_cast<LayoutContextText*>(context)->builder();
-  builder->PushStyle(text_style_.value());
+  auto placeholder_style = text_style_.value();
+  auto placeholder_alignment = tag_ == "x-inline-image"
+                                   ? txt::PlaceholderAlignment::kMiddle
+                                   : txt::PlaceholderAlignment::kBaseline;
+#ifdef CLAY_ENABLE_TTTEXT
+  if (baseline_offset_.has_value()) {
+    // Preprocessing already encoded middle in the placeholder baseline.
+    // Keep the node style intact for subsequent property updates.
+    placeholder_style.align_type = kVerticalAlignBaseline;
+    placeholder_style.baseline_shift = 0.f;
+    placeholder_alignment = txt::PlaceholderAlignment::kBaseline;
+  }
+#endif
+  builder->PushStyle(placeholder_style);
   txt::PlaceholderRun placeholder(
-      Width(), Height() + MarginTop() + MarginBottom(),
-      tag_ == "x-inline-image" ? txt::PlaceholderAlignment::kMiddle
-                               : txt::PlaceholderAlignment::kBaseline,
+      Width(), Height() + MarginTop() + MarginBottom(), placeholder_alignment,
       txt::TextBaseline::kAlphabetic,
-      Height() + MarginTop() + MarginBottom() + baseline_offset_);
+      Height() + MarginTop() + MarginBottom() + baseline_offset_.value_or(0.0));
   auto* text_context = static_cast<LayoutContextText*>(context);
   start_glyph_ = text_context->TextSizeIncludingPlaceholders();
   end_glyph_ = start_glyph_ + 1;
