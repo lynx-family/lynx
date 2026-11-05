@@ -31,7 +31,11 @@ source_set("skity") {
     public_deps += [ "//third_party/skia" ]
   } else {
     if (is_win || is_mac || is_linux) {
-      public_deps += [ "//clay/third_party/skity:skity_lib" ]
+      if (enable_clay_standalone) {
+        public_deps += [ "../../third_party/skity:skity_lib" ]
+      } else {
+        public_deps += [ "../../../../clay/third_party/skity:skity_lib" ]
+      }
     }
   }
 }
