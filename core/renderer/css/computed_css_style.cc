@@ -4929,7 +4929,7 @@ bool ComputedCSSStyle::SetFontVariationSettings(const tasm::CSSValue& value,
   auto old_value = text_attributes_->font_variation_settings;
   if (reset) {
     if (old_value) {
-      old_value = nullptr;
+      text_attributes_->font_variation_settings = nullptr;
       return true;
     }
     return false;
