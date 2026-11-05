@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <string>
 
+#include "core/base/lynx_export.h"
+
 namespace lynx {
 namespace tasm {
 namespace replay {
@@ -41,9 +43,9 @@ std::string ReadFixtureScript(const std::string& fixture_directory,
 // absolute paths, schemes, backslashes and empty/dot path components. The
 // caller must supply an extracted directory whose links cannot escape its asset
 // root; this check validates path syntax, not filesystem links.
-std::string ReadFixtureAsset(const std::string& fixture_directory,
-                             std::string path,
-                             size_t max_bytes = kDefaultFixtureMaxAssetBytes);
+LYNX_EXPORT_FOR_DEVTOOL std::string ReadFixtureAsset(
+    const std::string& fixture_directory, std::string path,
+    size_t max_bytes = kDefaultFixtureMaxAssetBytes);
 
 }  // namespace replay
 }  // namespace tasm

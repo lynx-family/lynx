@@ -38,7 +38,8 @@ bool IsSafeAssetPath(const std::string& path) {
   // ordinary filename character.
   if (path.empty() || path.front() == '/' ||
       path.find('\\') != std::string::npos ||
-      path.find(':') != std::string::npos) {
+      path.find(':') != std::string::npos ||
+      path.find('\0') != std::string::npos) {
     return false;
   }
   size_t start = 0;
