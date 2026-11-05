@@ -113,8 +113,9 @@ SharedImageSinkAccessor::AcquireBack(const skity::Vec2& size) {
 }
 
 std::tuple<fml::RefPtr<SharedImageRepresentation>, uint32_t>
-SharedImageSinkAccessor::AcquireBackForced(const skity::Vec2& size) {
-  auto [backing, buffer_age] = sink_->AcquireBackForced(size);
+SharedImageSinkAccessor::AcquireBackForced(
+    const skity::Vec2& size, SharedImageSink::AcquireBackStatus* status) {
+  auto [backing, buffer_age] = sink_->AcquireBackForced(size, {}, status);
   if (!backing) {
     return std::make_tuple(nullptr, 0);
   }
