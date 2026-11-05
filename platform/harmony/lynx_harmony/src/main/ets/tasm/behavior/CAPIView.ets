@@ -9,13 +9,29 @@ import { NativeContent } from 'liblynx.so';
 export struct CAPIView {
   renderer!: HarmonyUIRenderer;
   nativeContent!: NativeContent;
+  @State private rawInputEnabled: boolean = false;
 
   aboutToAppear() {
+    this.renderer.uiOwner.setRawInputEnabledListener((enabled: boolean) => {
+      this.rawInputEnabled = enabled;
+    });
     this.nativeContent = this.renderer.uiOwner.createNativeContent();
     this.renderer?.uiOwner.attachPageRoot(this.nativeContent)
   }
 
+  aboutToDisappear() {
+    this.renderer.uiOwner.setRawInputEnabledListener(undefined);
+  }
+
   build() {
-    ContentSlot(this.nativeContent.content);
+    if (this.rawInputEnabled) {
+      // Hit-test shielding excludes components; monopolization excludes ancestors.
+      Stack() {
+        ContentSlot(this.nativeContent.content);
+      }
+      .monopolizeEvents(true)
+    } else {
+      ContentSlot(this.nativeContent.content);
+    }
   }
 }

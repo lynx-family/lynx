@@ -11,6 +11,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -309,11 +310,13 @@ GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
   if (!event_dispatcher) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
+  auto gesture = OH_ArkUI_GestureInterruptInfo_GetRecognizer(info);
+  if (event_dispatcher->RawInputExclusive()) {
+    return GESTURE_INTERRUPT_RESULT_REJECT;
+  }
   if (event_dispatcher->EventThrough()) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
-
-  auto gesture = OH_ArkUI_GestureInterruptInfo_GetRecognizer(info);
   if (gesture == event_dispatcher->long_press_gesture_ ||
       gesture == event_dispatcher->tap_gesture_) {
     return GESTURE_INTERRUPT_RESULT_CONTINUE;
@@ -1644,8 +1647,14 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
   DispatchTouchEventToGestureArena(event_name, event);
 }
 
+bool EventDispatcher::RawInputExclusive() const {
+  auto context = ui_owner_->Context()->GetNativePaintingContext();
+  return context && context->IsRawInputEnabled();
+}
+
 void EventDispatcher::DispatchPlatformTouchEvent(
     const ArkUI_UIInputEvent* event, UIBase* root, bool from_overlay) {
+  const auto action = OH_ArkUI_UIInputEvent_GetAction(event);
   auto context = ui_owner_->Context()->GetNativePaintingContext();
   if (!context || !root) {
     cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
@@ -1653,7 +1662,7 @@ void EventDispatcher::DispatchPlatformTouchEvent(
     return;
   }
 
-  const auto action = OH_ArkUI_UIInputEvent_GetAction(event);
+  const auto pointer_count = OH_ArkUI_PointerEvent_GetPointerCount(event);
   int action_type;
   switch (action) {
     case UI_TOUCH_EVENT_ACTION_DOWN:
@@ -1675,8 +1684,11 @@ void EventDispatcher::DispatchPlatformTouchEvent(
     InitPlatformTouchEnv(event, root, from_overlay, *context);
   }
 
+  const bool terminal =
+      action == UI_TOUCH_EVENT_ACTION_CANCEL ||
+      (action == UI_TOUCH_EVENT_ACTION_UP && pointer_count <= 1);
   auto pointer_data = CollectPlatformTouchPoints(event);
-  if (pointer_data.empty()) {
+  if (pointer_data.empty() && action != UI_TOUCH_EVENT_ACTION_CANCEL) {
     cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
     platform_touch_active_ = false;
     return;
@@ -1693,8 +1705,7 @@ void EventDispatcher::DispatchPlatformTouchEvent(
     platform_touch_active_ = true;
   } else if (action == UI_TOUCH_EVENT_ACTION_UP ||
              action == UI_TOUCH_EVENT_ACTION_CANCEL) {
-    if (action == UI_TOUCH_EVENT_ACTION_CANCEL ||
-        OH_ArkUI_PointerEvent_GetPointerCount(event) <= 1) {
+    if (terminal) {
       cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
       platform_touch_active_ = false;
     }
