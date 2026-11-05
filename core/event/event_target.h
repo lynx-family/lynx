@@ -112,6 +112,10 @@ class EventTarget {
   virtual TouchEventState* GetTouchEventState() { return nullptr; }
   // Get unit to calculate the position.
   virtual float GetLayoutsUnitPerPx() { return 1.f; }
+  // Resolves a selected touch leaf to its complete root-to-leaf Element IDs.
+  virtual lepus::Value ResolveTouchTargetPath(int32_t leaf_sign) {
+    return lepus::Value();
+  }
   // Get the unique id for target.
   virtual std::string GetUniqueID() { return std::to_string(0); }
 

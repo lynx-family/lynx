@@ -5,6 +5,8 @@
 #ifndef CORE_RENDERER_DOM_ELEMENT_POINT_CONVERTER_H_
 #define CORE_RENDERER_DOM_ELEMENT_POINT_CONVERTER_H_
 
+#include <cstddef>
+
 #include "base/include/flex_optional.h"
 #include "base/include/geometry/point.h"
 #include "base/include/geometry/rect.h"
@@ -19,6 +21,12 @@ class Element;
 // enabled or the Elements do not share an attached layout tree.
 base::flex_optional<base::geometry::FloatPoint> ConvertPointBetweenElements(
     const base::geometry::FloatPoint& point, Element* from, Element* to);
+
+// Converts a batch using one layout-tree traversal and one inverse per
+// transform. The input is updated in place; discard the batch when conversion
+// fails.
+bool ConvertPointsBetweenElements(base::geometry::FloatPoint* points,
+                                  size_t count, Element* from, Element* to);
 
 // Converts a rect between Element-local border-box coordinate systems. The
 // result is the axis-aligned bounding box of the four converted corners. When
