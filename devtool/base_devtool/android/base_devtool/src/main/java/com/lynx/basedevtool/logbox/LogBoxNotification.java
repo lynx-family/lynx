@@ -37,8 +37,11 @@ class LogBoxNotification {
     private LogBoxLogLevel mLevel;
 
     public NotificationViewHolder(Context context, ViewGroup rootView, LogBoxLogLevel level) {
-      mNotificationView = LayoutInflater.from(context).inflate(
-          R.layout.devtool_logbox_notification, rootView, false);
+      // Use application context to resolve notification resources.
+      Context applicationContext = context.getApplicationContext();
+      Context resourceContext = applicationContext != null ? applicationContext : context;
+      mNotificationView = LayoutInflater.from(resourceContext)
+                              .inflate(R.layout.devtool_logbox_notification, rootView, false);
       mBriefLogInfoView = mNotificationView.findViewById(R.id.notification_text_brief_log);
       mLogCountView = mNotificationView.findViewById(R.id.notification_text_log_count);
       mLevel = level;
@@ -63,9 +66,9 @@ class LogBoxNotification {
           mNotificationView.findViewById(R.id.notification_view_log_count_circle);
       GradientDrawable circle = (GradientDrawable) logCountCircle.getDrawable();
       if (mLevel == LogBoxLogLevel.Error) {
-        circle.setColor(context.getResources().getColor(R.color.logbox_red));
+        circle.setColor(resourceContext.getResources().getColor(R.color.logbox_red));
       } else if (mLevel == LogBoxLogLevel.Warn) {
-        circle.setColor(context.getResources().getColor(R.color.logbox_yellow));
+        circle.setColor(resourceContext.getResources().getColor(R.color.logbox_yellow));
       }
     }
 
