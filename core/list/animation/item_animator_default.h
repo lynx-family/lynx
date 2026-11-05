@@ -44,25 +44,9 @@ class ItemAnimatorDefault
                          const ItemLayoutInfo& post_layout_info) override;
 
  private:
-  struct RemoveInfo {
-    WeakAnimationTarget target;
-    ItemLayoutInfo pre_layout_info;
-  };
-
-  struct AddInfo {
-    WeakAnimationTarget target;
-    ItemLayoutInfo post_layout_info;
-  };
-
-  struct MoveInfo {
-    WeakAnimationTarget target;
-    ItemLayoutInfo pre_layout_info;
-    ItemLayoutInfo post_layout_info;
-  };
-
-  // ChangeInfo intentionally contains one target. This implementation does not
-  // support cross-animation between separate old and new targets.
-  struct ChangeInfo {
+  // Remove uses PRE, Add uses POST, and Move uses both snapshots. Change also
+  // uses one target; cross-animation between separate targets is unsupported.
+  struct PendingAnimationInfo {
     WeakAnimationTarget target;
     ItemLayoutInfo pre_layout_info;
     ItemLayoutInfo post_layout_info;
@@ -84,10 +68,14 @@ class ItemAnimatorDefault
   virtual std::shared_ptr<::lynx::animation::basic::LynxBasicAnimator>
   CreateBasicAnimator(starlight::AnimationData animation_data);
 
-  void StartRemoveAnimation(const RemoveInfo& info, int32_t delay_ms);
-  void StartAddAnimation(const AddInfo& info, int32_t delay_ms);
-  void StartMoveAnimation(const MoveInfo& info, int32_t delay_ms);
-  void StartChangeAnimation(const ChangeInfo& info, int32_t delay_ms) {
+  void StartAnimation(RunningAnimation animation, int32_t duration_ms,
+                      int32_t delay_ms);
+  void ApplyAnimationFrame(const RunningAnimation& animation, float progress);
+  void StartRemoveAnimation(const PendingAnimationInfo& info, int32_t delay_ms);
+  void StartAddAnimation(const PendingAnimationInfo& info, int32_t delay_ms);
+  void StartMoveAnimation(const PendingAnimationInfo& info, int32_t delay_ms);
+  void StartChangeAnimation(const PendingAnimationInfo& info,
+                            int32_t delay_ms) {
     // TODO: impl change animation
   }
   void ApplyRemoveFrame(AnimationTarget* target, float progress);
@@ -95,7 +83,7 @@ class ItemAnimatorDefault
   void ApplyMoveFrame(AnimationTarget* target,
                       const ItemLayoutInfo& pre_layout_info,
                       const ItemLayoutInfo& post_layout_info, float progress);
-  void ApplyChangeFrame(const ChangeInfo& info, float progress) {
+  void ApplyChangeFrame(const PendingAnimationInfo& info, float progress) {
     // TODO: impl change animation
   }
 
@@ -120,10 +108,10 @@ class ItemAnimatorDefault
   bool in_starting_animations_{false};
   bool in_cancelling_animations_{false};
 
-  std::vector<RemoveInfo> pending_removals_;
-  std::vector<AddInfo> pending_adds_;
-  std::vector<MoveInfo> pending_moves_;
-  std::vector<ChangeInfo> pending_changes_;
+  std::vector<PendingAnimationInfo> pending_removals_;
+  std::vector<PendingAnimationInfo> pending_adds_;
+  std::vector<PendingAnimationInfo> pending_moves_;
+  std::vector<PendingAnimationInfo> pending_changes_;
 
   // The target-address key permits at most one running record per target.
   // animation_id prevents callbacks for a replaced record from operating on
