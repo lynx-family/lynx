@@ -36,6 +36,7 @@ import org.mockito.Mockito;
 public class LynxHostScriptViewHooksTest {
   private Method mSetEnabled;
   private boolean mWasEnabled;
+  private boolean mHostScriptInstalled;
 
   @Before
   public void setUp() throws Exception {
@@ -45,6 +46,7 @@ public class LynxHostScriptViewHooksTest {
     mSetEnabled = LynxHostScriptViewHooks.class.getDeclaredMethod("setEnabled", boolean.class);
     mSetEnabled.setAccessible(true);
     InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      mHostScriptInstalled = isHostScriptAvailable();
       mWasEnabled = LynxHostScriptViewHooks.isEnabled();
       setEnabled(false);
     });
@@ -57,6 +59,7 @@ public class LynxHostScriptViewHooksTest {
 
   @Test
   public void engineRebuildKeepsViewRegisteredUntilViewIsDestroyed() throws Exception {
+    Assume.assumeTrue(mHostScriptInstalled);
     Field registryAvailable = LynxHostScriptViewHooks.class.getDeclaredField("sRegistryAvailable");
     registryAvailable.setAccessible(true);
     Assume.assumeTrue(registryAvailable.getBoolean(null));
@@ -152,6 +155,7 @@ public class LynxHostScriptViewHooksTest {
 
   @Test
   public void enabledInterceptorsWithoutHandlersKeepRequests() {
+    Assume.assumeTrue(mHostScriptInstalled);
     TemplateBundle bundle = new TemplateBundle();
     assertFalse(bundle.isValid());
     try {
@@ -363,6 +367,16 @@ public class LynxHostScriptViewHooksTest {
       mSetEnabled.invoke(null, enabled);
     } catch (ReflectiveOperationException e) {
       throw new AssertionError(e);
+    }
+  }
+
+  private static boolean isHostScriptAvailable() {
+    try {
+      Field available = LynxHostScriptViewHooks.class.getDeclaredField("sRegistryAvailable");
+      available.setAccessible(true);
+      return available.getBoolean(null);
+    } catch (ReflectiveOperationException error) {
+      throw new AssertionError(error);
     }
   }
 }

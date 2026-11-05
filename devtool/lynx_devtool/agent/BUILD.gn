@@ -126,10 +126,11 @@ if (is_android) {
       "android/global_devtool_platform_android.cc",
       "android/global_devtool_platform_android.h",
     ]
-    if (lynx_in_debug && enable_inspector && !enable_unittests &&
-        !is_oliver_ssr) {
+
+    # Execution and load state live in the optional Host Script library.
+    if (enable_inspector && !enable_unittests && !is_oliver_ssr) {
       devtool_agent_shared_sources +=
-          [ "android/global_devtool_hsr_android.cc" ]
+          [ "android/global_devtool_hsr_android_bridge.cc" ]
     } else {
       devtool_agent_shared_sources +=
           [ "android/global_devtool_hsr_android_stub.cc" ]
@@ -165,6 +166,12 @@ devtool_source_set("agent") {
     "//third_party/modp_b64",
     "//third_party/zlib",
   ]
+  if (is_android && !is_headless && enable_inspector && !enable_unittests &&
+      !is_oliver_ssr) {
+    deps += [
+      "../../../core/shell/host_script/android:host_script_runtime_headers",
+    ]
+  }
   public_configs = [ ":common_config" ]
 }
 
