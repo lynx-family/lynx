@@ -75,6 +75,15 @@ void UIView::OnNodeEvent(ArkUI_NodeEvent* event) {
         input_context->SetPlatformEventRootActive(Sign(), false);
       }
       context_->NotifyUIScroll();
+    } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS ||
+               OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_BLUR) {
+      const bool focused =
+          OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS &&
+          dispatcher && dispatcher->InputWindowFocused();
+      if (auto input_context = context_->GetNativePaintingContext()) {
+        input_context->NotifyInputRootStateChanged(Sign(), is_root_attached_,
+                                                   focused);
+      }
     }
   }
 }
@@ -97,6 +106,8 @@ UIView::~UIView() {
                                                 NODE_ON_TOUCH_INTERCEPT);
     NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_EVENT_ON_ATTACH);
     NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_EVENT_ON_DETACH);
+    NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_ON_FOCUS);
+    NodeManager::Instance().UnregisterNodeEvent(Node(), NODE_ON_BLUR);
   }
 }
 

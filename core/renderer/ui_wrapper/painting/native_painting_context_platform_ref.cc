@@ -277,6 +277,52 @@ void NativePaintingCtxPlatformRef::NotifyInputRootStateChanged(int32_t root_id,
                                    std::move(detail), "detail"));
 }
 
+void NativePaintingCtxPlatformRef::RequestInputFocus(
+    int32_t anchor_sign, bool focused, const std::string &request_token) {
+  BASE_STATIC_STRING_DECL(kInputPageSign, "pageSign");
+  BASE_STATIC_STRING_DECL(kInputRequestToken, "requestToken");
+  BASE_STATIC_STRING_DECL(kInputSuccess, "success");
+  BASE_STATIC_STRING_DECL(kInputFocused, "focused");
+  BASE_STATIC_STRING_DECL(kInputEventRoot, "eventRoot");
+  BASE_STATIC_STRING_DECL(kInputCancelled, "cancelled");
+  if (destroyed_.load(std::memory_order_acquire) || !IsRawInputEnabled()) {
+    return;
+  }
+  auto complete = [&](bool success, int32_t event_root, bool cancelled) {
+    auto packet = lepus::Value(lepus::Dictionary::Create());
+    packet.SetProperty(kInputPageSign, lepus::Value(kRootId));
+    packet.SetProperty(kInputRequestToken, lepus::Value(request_token));
+    packet.SetProperty(kInputSuccess, lepus::Value(success && !cancelled));
+    packet.SetProperty(kInputFocused, lepus::Value(focused));
+    packet.SetProperty(kInputEventRoot,
+                       lepus::Value(cancelled ? 0 : event_root));
+    packet.SetProperty(kInputCancelled, lepus::Value(cancelled));
+    GetEventEmitter()->SendEvent(
+        kRootId, fml::MakeRefCounted<event::CustomEvent>(
+                     "focusresult", std::move(packet), "detail"));
+  };
+  int32_t event_root = input_focused_event_root_;
+  if (focused) {
+    event_root = 0;
+    if (EnsureEventTargetTreeForTarget(anchor_sign, false)) {
+      auto target = event_target_helper_->GetEventTarget(anchor_sign);
+      if (target) {
+        event_root = target->RootId();
+      }
+    }
+    if (!event_root) {
+      complete(false, 0, true);
+      return;
+    }
+  }
+  const bool success = event_root && RequestRootFocus(event_root, focused);
+  const bool cancelled = destroyed_.load(std::memory_order_acquire);
+  if (success && !cancelled) {
+    input_focused_event_root_ = focused ? event_root : 0;
+  }
+  complete(success, event_root, cancelled);
+}
+
 void NativePaintingCtxPlatformRef::DispatchPlatformLongPress() {
   event_handler_->OnLongPress();
 }
@@ -460,7 +506,8 @@ void NativePaintingCtxPlatformRef::ScheduleEnsureEventTargetTree(
 }
 
 fml::RefPtr<PlatformEventTarget>
-NativePaintingCtxPlatformRef::EnsureEventTargetTree(int32_t root_id) {
+NativePaintingCtxPlatformRef::EnsureEventTargetTree(
+    int32_t root_id, bool refresh_scroll_offsets) {
   if (root_id != kRootId && !event_target_helper_->IsActiveEventRoot(root_id)) {
     return nullptr;
   }
@@ -474,7 +521,9 @@ NativePaintingCtxPlatformRef::EnsureEventTargetTree(int32_t root_id) {
   if (requested_tree == nullptr || IsEventTargetRootDirty(root_id)) {
     return ReconstructEventTargetTreeForRoot(root_id);
   }
-  event_target_helper_->RefreshScrollOffsets(requested_tree);
+  if (refresh_scroll_offsets) {
+    event_target_helper_->RefreshScrollOffsets(requested_tree);
+  }
   return requested_tree;
 }
 
@@ -505,15 +554,15 @@ NativePaintingCtxPlatformRef::ReconstructEventTargetTreeForRoot(
 }
 
 bool NativePaintingCtxPlatformRef::EnsureEventTargetTreeForTarget(
-    int32_t target_id) {
-  if (EnsureEventTargetTree(kRootId) == nullptr) {
+    int32_t target_id, bool refresh_scroll_offsets) {
+  if (EnsureEventTargetTree(kRootId, refresh_scroll_offsets) == nullptr) {
     return false;
   }
   auto target = event_target_helper_->GetEventTarget(target_id);
   if (target != nullptr) {
     const auto root_id = target->RootId();
     if (root_id != kRootId) {
-      EnsureEventTargetTree(root_id);
+      EnsureEventTargetTree(root_id, refresh_scroll_offsets);
     }
     target = event_target_helper_->GetEventTarget(target_id);
     if (target != nullptr &&
@@ -522,7 +571,7 @@ bool NativePaintingCtxPlatformRef::EnsureEventTargetTreeForTarget(
     }
   }
   for (auto root_id : event_target_helper_->GetActiveEventRootIds()) {
-    EnsureEventTargetTree(root_id);
+    EnsureEventTargetTree(root_id, refresh_scroll_offsets);
     if (event_target_helper_->GetEventTarget(target_id) != nullptr) {
       return true;
     }
@@ -834,6 +883,7 @@ void NativePaintingCtxPlatformRef::Destroy() {
   }
   renderers_.clear();
   platform_event_bundles_.clear();
+  input_focused_event_root_ = 0;
   text_event_target_ranges_.clear();
   scheduled_event_target_tree_update_.store(false);
   dirty_event_root_ids_.clear();

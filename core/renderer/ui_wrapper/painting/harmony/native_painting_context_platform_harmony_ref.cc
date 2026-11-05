@@ -27,6 +27,13 @@ NativePaintingCtxPlatformHarmonyRef::~NativePaintingCtxPlatformHarmonyRef() {
   Destroy();
 }
 
+bool NativePaintingCtxPlatformHarmonyRef::RequestRootFocus(int32_t root_id,
+                                                           bool focused) {
+  auto renderer_context = renderer_context_.lock();
+  auto* owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
+  return owner && owner->RequestRootFocus(root_id, focused);
+}
+
 void NativePaintingCtxPlatformHarmonyRef::ApplyListScrollState(
     int32_t sign, float scroll_x, float scroll_y, float content_width,
     float content_height, bool cmp_managed) {

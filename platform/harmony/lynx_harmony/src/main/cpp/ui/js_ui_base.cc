@@ -27,6 +27,8 @@ void JSUIBase::SetOverlayContent(UIBase* ui, bool is_overlay_content) {
     manager.RegisterNodeEvent(ui->Node(), NODE_EVENT_ON_DETACH, ui);
     manager.RegisterNodeEvent(ui->Node(), NODE_ON_TOUCH_INTERCEPT, ui);
     manager.RegisterNodeEvent(ui->Node(), NODE_TOUCH_EVENT, ui);
+    manager.RegisterNodeEvent(ui->Node(), NODE_ON_FOCUS, ui);
+    manager.RegisterNodeEvent(ui->Node(), NODE_ON_BLUR, ui);
     manager.AddNodeCustomEventReceiver(ui->Node(), UIBase::CustomEventReceiver);
   } else {
     manager.RemoveNodeCustomEventReceiver(ui->Node(),
@@ -35,6 +37,8 @@ void JSUIBase::SetOverlayContent(UIBase* ui, bool is_overlay_content) {
     manager.UnregisterNodeEvent(ui->Node(), NODE_ON_TOUCH_INTERCEPT);
     manager.UnregisterNodeEvent(ui->Node(), NODE_EVENT_ON_ATTACH);
     manager.UnregisterNodeEvent(ui->Node(), NODE_EVENT_ON_DETACH);
+    manager.UnregisterNodeEvent(ui->Node(), NODE_ON_FOCUS);
+    manager.UnregisterNodeEvent(ui->Node(), NODE_ON_BLUR);
   }
 }
 
