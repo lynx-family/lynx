@@ -132,6 +132,9 @@ class PlatformRendererContext {
   int32_t GetTagInfo(const std::string& tag_name);
 
   std::vector<float> GetRootViewLocationOnScreen();
+  void ApplyListScrollState(int32_t sign, float scroll_x, float scroll_y,
+                            float content_width, float content_height,
+                            bool cmp_managed);
   std::vector<float> GetScreenSize();
   std::vector<float> GetRendererHostScrollOffset(int32_t sign);
   bool IsRendererHostScrollable(int32_t sign);

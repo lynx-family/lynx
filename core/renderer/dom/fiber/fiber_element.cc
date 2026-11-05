@@ -3592,15 +3592,16 @@ void Element::HandleInsertChildAction(Element *child, int to_index,
   child->element_container()->UpdateGlobalInsertionOrder();
 
   if (child->render_parent() != nullptr) {
-    LOGE("FiberElement do re-insert child action");
-    this->LogNodeInfo();
-    child->LogNodeInfo();
     if (element_manager()->FixFiberReinsertDetachFromOldRenderParent()) {
       // A moved child may still be attached to its old render parent when the
       // new parent's insert action flushes before the old parent's queued
       // remove action. Detach it first so render sibling links stay local to
       // one parent.
       child->render_parent()->HandleRemoveChildAction(child);
+    } else {
+      LOGE("FiberElement do re-insert child action");
+      this->LogNodeInfo();
+      child->LogNodeInfo();
     }
   }
 
