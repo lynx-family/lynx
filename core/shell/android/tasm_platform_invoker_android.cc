@@ -73,6 +73,8 @@ constexpr const char* kUseNewSwiper = "useNewSwiper";
 constexpr const char* kEnableAsyncInitVideoEngine =
     "enableAsyncInitVideoEngine";
 constexpr const char* kEnableNewGesture = "enableNewGesture";
+constexpr const char* kEnableUnifiedGestureHandler =
+    "enableUnifiedGestureHandler";
 constexpr const char* kEnablePlatformGesture = "enablePlatformGesture";
 constexpr const char* kTargetSdkVersion = "targetSdkVersion";
 constexpr const char* kLepusVersion = "lepusVersion";
@@ -171,6 +173,8 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
                           config->GetEnableAsyncInitTTVideoEngine());
   java_config.PushString(kTargetSdkVersion, config->GetTargetSDKVersion());
   java_config.PushBoolean(kEnableNewGesture, config->GetEnableNewGesture());
+  java_config.PushBoolean(kEnableUnifiedGestureHandler,
+                          config->GetEnableUnifiedGestureHandler());
   java_config.PushBoolean(kEnablePlatformGesture,
                           config->GetEnablePlatformGesture());
   java_config.PushString(kLepusVersion, config->GetLepusVersion());
