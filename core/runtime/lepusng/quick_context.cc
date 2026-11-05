@@ -757,6 +757,12 @@ void QuickContext::UpdateGCTiming(bool is_start) {
   }
 }
 
+std::unique_ptr<base::Buffer> QuickContext::TakeHeapSnapshot(
+    const char*& error) {
+  return runtime::js::detail::QuickjsHelper::TakeHeapSnapshot(lepus_context_,
+                                                              error);
+}
+
 int64_t QuickContext::GetCurrentHeapSizeBytes() {
   // Read current heap stats only. Active memory queries must not trigger GC
   // because doing so would change the memory state being observed.

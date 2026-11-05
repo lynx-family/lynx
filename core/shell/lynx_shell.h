@@ -30,6 +30,7 @@
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/ui_wrapper/common/prop_bundle_creator_default.h"
+#include "core/runtime/common/heap_snapshot.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/template_delegate.h"
 #include "core/services/performance/performance_controller.h"
@@ -304,9 +305,9 @@ class LynxShell {
 
   void GetAllJsSourceAsync(std::unique_ptr<shell::PlatformCallBack> callback);
 
-  bool TakeBTSHeapSnapshotToFileAsync(
-      std::string output_path,
-      base::MoveOnlyClosure<void, bool> completion_callback);
+  void TakeHeapSnapshot(std::string output_path,
+                        runtime::HeapSnapshotCallback callback,
+                        const std::string& type);
 
   void GetLynxElementRootSignAsync(
       std::unique_ptr<shell::PlatformCallBack> callback);

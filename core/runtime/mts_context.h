@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/buffer.h"
 #include "base/include/debug/lynx_error.h"
 #include "base/include/fml/task_runner.h"
 #include "base/include/value/base_string.h"
@@ -88,6 +89,11 @@ class MTSContext {
   virtual void UpdateGCTiming(bool is_start) {}
   virtual void TriggerVmGC() {}
   virtual int64_t GetCurrentHeapSizeBytes() { return 0; }
+  // Set error to a static message on failure, or nullptr on success.
+  virtual std::unique_ptr<base::Buffer> TakeHeapSnapshot(const char*& error) {
+    error = "QuickJS required";
+    return nullptr;
+  }
 
   virtual void RegisterGlobalFunction(const RenderBindingFunction* funcs,
                                       size_t size) = 0;

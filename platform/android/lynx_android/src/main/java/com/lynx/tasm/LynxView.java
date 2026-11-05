@@ -70,6 +70,7 @@ import com.lynx.tasm.utils.UIThreadUtils;
 import java.io.File;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1833,24 +1834,68 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
    *     file content is replaced.
    * @param callback Receives true on a background thread if the snapshot is saved successfully, or
    *     false if validation, scheduling, capture, or file output fails. May be null.
+   * @deprecated Use {@link #takeHeapSnapshot(File, LynxConsumer, String)} with type "bts_vm".
    */
   @AnyThread
+  @Deprecated
   public void takeBTSHeapSnapshot(
       @NonNull File outputFile, @Nullable LynxConsumer<Boolean> callback) {
+    takeHeapSnapshot(
+        outputFile, callback == null ? null : error -> callback.accept(error == null), "bts_vm");
+  }
+
+  /**
+   * @apidoc
+   * @brief Captures a QuickJS heap snapshot and writes it asynchronously. Capture triggers GC and
+   *     clears retained console messages. Diagnostics are summarized and source locations included.
+   * @param outputFile Absolute destination file. Its parent directory must exist. Existing content
+   *     is replaced.
+   * @param callback Receives null on success or an error message on failure, on a background
+   *     thread. May be null.
+   * @param type "mts" captures the page's main MTS VM; "bts_page" captures its tracked slot in a
+   *     shared BTS VM, or the whole VM if not shared; "bts_vm" captures the whole BTS VM. Shared
+   *     page captures require memory slot tracking to have been enabled. Unsupported engines fail.
+   */
+  @AnyThread
+  public void takeHeapSnapshot(
+      @NonNull File outputFile, @Nullable LynxConsumer<String> callback, @NonNull String type) {
     LynxTemplateRender templateRender = mLynxTemplateRender;
-    boolean accepted = false;
     if (outputFile == null || !outputFile.isAbsolute()) {
-      LLog.e(TAG, "Heap snapshot output file must use an absolute path.");
+      dispatchHeapSnapshotError(callback, "Absolute output path required");
     } else if (templateRender == null) {
-      LLog.e(TAG, "Cannot take a heap snapshot after LynxView is destroyed.");
+      dispatchHeapSnapshotError(callback, "LynxView destroyed");
     } else {
-      accepted = templateRender.takeBTSHeapSnapshot(outputFile.getAbsolutePath(), callback);
-      if (!accepted) {
-        LLog.e(TAG, "Failed to schedule a BTS heap snapshot.");
-      }
+      templateRender.takeHeapSnapshot(outputFile.getAbsolutePath(), callback, type);
     }
-    if (!accepted && callback != null) {
-      LynxThreadPool.getBriefIOExecutor().execute(() -> callback.accept(false));
+  }
+
+  /**
+   * @apidoc
+   * @brief Captures allocations remaining in a destroyed page's QuickJS BTS memory slot. Requires
+   *     previously enabled memory slot tracking and a surviving shared VM. Capture triggers GC and
+   *     clears retained console messages; diagnostics are summarized and source locations included.
+   * @param outputFile Absolute destination file. Its parent directory must exist. Existing content
+   *     is replaced.
+   * @param callback Receives null on success or an error message on failure, on a background
+   *     thread. May be null.
+   * @param instanceId The instance ID saved before destroying the LynxView.
+   */
+  @AnyThread
+  public static void takeBtsResidualHeapSnapshot(
+      @NonNull File outputFile, @Nullable LynxConsumer<String> callback, int instanceId) {
+    if (outputFile == null || !outputFile.isAbsolute()) {
+      dispatchHeapSnapshotError(callback, "Absolute output path required");
+    } else if (!LynxEnv.inst().isNativeLibraryLoaded()) {
+      dispatchHeapSnapshotError(callback, "Native library unavailable");
+    } else {
+      LynxJNI.nativeTakeBtsResidualHeapSnapshot(
+          outputFile.getAbsolutePath().getBytes(StandardCharsets.UTF_8), callback, instanceId);
+    }
+  }
+
+  static void dispatchHeapSnapshotError(@Nullable LynxConsumer<String> callback, String error) {
+    if (callback != null) {
+      LynxThreadPool.getBriefIOExecutor().execute(() -> callback.accept(error));
     }
   }
 

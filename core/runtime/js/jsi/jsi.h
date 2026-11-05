@@ -325,7 +325,6 @@ class LYNX_EXPORT Runtime {
   virtual bool Valid() const { return true; }
 
   LYNX_EXPORT virtual ~Runtime() = default;
-  virtual std::unique_ptr<Buffer> TakeHeapSnapshot() { return nullptr; }
   void setCreatedType(JSRuntimeCreatedType type) { created_type_ = type; }
   JSRuntimeCreatedType getCreatedType() { return created_type_; }
 
@@ -1714,6 +1713,13 @@ class VMInstance {
   virtual JSRuntimeType GetRuntimeType() const = 0;
   virtual std::string GetDebugDescription() const = 0;
   virtual size_t GetHeapSize() const { return 0; }
+  // Use -1 for the whole VM or a tracked page slot. Owner thread only.
+  // Set error to a static message on failure, or nullptr on success.
+  virtual std::unique_ptr<Buffer> TakeHeapSnapshot(int32_t slot,
+                                                   const char*& error) {
+    error = "QuickJS required";
+    return nullptr;
+  }
   virtual bool CaptureJavaScriptStack(
       base::MoveOnlyClosure<void, std::string> callback) {
     return false;

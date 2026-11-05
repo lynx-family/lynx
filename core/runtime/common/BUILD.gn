@@ -15,6 +15,8 @@ lynx_core_source_set("reporter") {
 
 lynx_core_source_set("common") {
   sources = [
+    "heap_snapshot.cc",
+    "heap_snapshot.h",
     "js_call_native_frequency_monitor.cc",
     "js_call_native_frequency_monitor.h",
     "lynx_console_helper.h",
@@ -35,7 +37,10 @@ unittest_set("reporter_unittests_testset") {
 unittest_set("common_unittests_testset") {
   configs = [ "../../:lynx_public_config" ]
 
-  sources = [ "js_call_native_frequency_monitor_unittests.cc" ]
+  sources = [
+    "heap_snapshot_unittest.cc",
+    "js_call_native_frequency_monitor_unittests.cc",
+  ]
   deps = [
     ":common",
     "../../renderer/utils:lynx_env",

@@ -161,8 +161,11 @@ final class LynxJNI {
 
   static native JavaOnlyMap nativeGetAllJsSource(long ptr, long lifecycle);
 
-  static native boolean nativeTakeBTSHeapSnapshotToFile(
-      long ptr, long lifecycle, String outputPath, Object callback);
+  static native void nativeTakeHeapSnapshot(
+      long ptr, long lifecycle, byte[] outputPath, Object callback, String type);
+
+  static native void nativeTakeBtsResidualHeapSnapshot(
+      byte[] outputPath, Object callback, int instanceId);
 
   // list methods
   static native void nativeRenderChild(
@@ -257,9 +260,9 @@ final class LynxJNI {
   }
 
   @CalledByNative
-  static void dispatchBTSHeapSnapshotResult(LynxConsumer<Boolean> callback, boolean success) {
+  static void dispatchHeapSnapshotResult(LynxConsumer<String> callback, String error) {
     if (callback != null) {
-      callback.accept(success);
+      callback.accept(error);
     }
   }
 }
