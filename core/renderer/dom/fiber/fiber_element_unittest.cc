@@ -6538,7 +6538,7 @@ TEST_P(FiberElementTest, ConvertPointUsesLayoutTreeAndSkipsVirtualNodes) {
   EXPECT_FLOAT_EQ(in_target->X(), -35.f);
   EXPECT_FLOAT_EQ(in_target->Y(), -53.f);
 
-  manager->page_options_.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::UNSET);
   EXPECT_FALSE(
       ConvertPointBetweenElements({5.f, 7.f}, source.get(), target.get())
           .has_value());

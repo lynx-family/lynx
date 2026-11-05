@@ -66,6 +66,9 @@ bool BuildPathToRoot(Element* element, Element* root,
 }
 
 gfx::Matrix44 LocalTransform(Element* element) {
+  if (const auto* transform = element->CustomLayerTransform()) {
+    return *transform;
+  }
   gfx::Matrix44 result;
   auto* style = element->computed_css_style();
   if (style == nullptr || !style->HasTransform()) {
@@ -146,32 +149,44 @@ void IntersectAxisAlignedBounds(base::geometry::FloatRect& rect,
 
 base::flex_optional<base::geometry::FloatPoint> ConvertPointBetweenElements(
     const base::geometry::FloatPoint& point, Element* from, Element* to) {
-  if (from == nullptr || to == nullptr || from->element_manager() == nullptr ||
-      from->element_manager() != to->element_manager() ||
-      !std::isfinite(point.X()) || !std::isfinite(point.Y())) {
+  auto converted = point;
+  if (!ConvertPointsBetweenElements(&converted, 1, from, to)) {
     return {};
+  }
+  return converted;
+}
+
+bool ConvertPointsBetweenElements(base::geometry::FloatPoint* points,
+                                  size_t count, Element* from, Element* to) {
+  if (from == nullptr || to == nullptr || from->element_manager() == nullptr ||
+      from->element_manager() != to->element_manager()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < count; ++i) {
+    if (!std::isfinite(points[i].X()) || !std::isfinite(points[i].Y())) {
+      return false;
+    }
   }
 
   auto* manager = from->element_manager();
-  const auto embedded_mode = manager->GetPageOptions().GetEmbeddedMode();
-  if ((static_cast<int32_t>(embedded_mode) &
-       static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT)) == 0) {
-    return {};
+  if (!manager->IsLayoutInElementModeOn()) {
+    return false;
   }
 
   auto* root = manager->root();
   if (root == nullptr || root->slnode() == nullptr) {
-    return {};
+    return false;
   }
 
   base::InlineVector<Element*, 8> source_path;
   base::InlineVector<Element*, 8> target_path;
   if (!BuildPathToRoot(from, root, source_path) ||
       !BuildPathToRoot(to, root, target_path)) {
-    return {};
+    return false;
   }
   if (from == to) {
-    return point;
+    return true;
   }
 
   size_t source_common_ancestor_index = source_path.size() - 1;
@@ -183,43 +198,55 @@ base::flex_optional<base::geometry::FloatPoint> ConvertPointBetweenElements(
     --target_common_ancestor_index;
   }
 
-  float converted[2] = {point.X(), point.Y()};
   for (size_t index = 0; index < source_common_ancestor_index; ++index) {
     auto* child = source_path[index];
     auto* parent = source_path[index + 1];
-    LocalTransform(child).mapPoint(converted, converted);
-    converted[0] += child->left();
-    converted[1] += child->top();
-    converted[0] += child->sticky_translation_x();
-    converted[1] += child->sticky_translation_y();
-    if (ParentScrolls(parent, child)) {
-      converted[0] -= parent->scroll_offset_x();
-      converted[1] -= parent->scroll_offset_y();
+    const auto transform = LocalTransform(child);
+    const bool scrolls = ParentScrolls(parent, child);
+    for (size_t i = 0; i < count; ++i) {
+      float converted[2] = {points[i].X(), points[i].Y()};
+      transform.mapPoint(converted, converted);
+      converted[0] += child->left();
+      converted[1] += child->top();
+      converted[0] += child->sticky_translation_x();
+      converted[1] += child->sticky_translation_y();
+      if (scrolls) {
+        converted[0] -= parent->scroll_offset_x();
+        converted[1] -= parent->scroll_offset_y();
+      }
+      points[i] = {converted[0], converted[1]};
     }
   }
 
   for (size_t index = target_common_ancestor_index; index > 0; --index) {
     auto* child = target_path[index - 1];
     auto* parent = target_path[index];
-    if (ParentScrolls(parent, child)) {
-      converted[0] += parent->scroll_offset_x();
-      converted[1] += parent->scroll_offset_y();
-    }
-    converted[0] -= child->sticky_translation_x();
-    converted[1] -= child->sticky_translation_y();
-    converted[0] -= child->left();
-    converted[1] -= child->top();
     gfx::Matrix44 inverse;
     if (!LocalTransform(child).invert(&inverse)) {
-      return {};
+      return false;
     }
-    inverse.mapPoint(converted, converted);
+    const bool scrolls = ParentScrolls(parent, child);
+    for (size_t i = 0; i < count; ++i) {
+      float converted[2] = {points[i].X(), points[i].Y()};
+      if (scrolls) {
+        converted[0] += parent->scroll_offset_x();
+        converted[1] += parent->scroll_offset_y();
+      }
+      converted[0] -= child->sticky_translation_x();
+      converted[1] -= child->sticky_translation_y();
+      converted[0] -= child->left();
+      converted[1] -= child->top();
+      inverse.mapPoint(converted, converted);
+      points[i] = {converted[0], converted[1]};
+    }
   }
 
-  if (!std::isfinite(converted[0]) || !std::isfinite(converted[1])) {
-    return {};
+  for (size_t i = 0; i < count; ++i) {
+    if (!std::isfinite(points[i].X()) || !std::isfinite(points[i].Y())) {
+      return false;
+    }
   }
-  return base::geometry::FloatPoint(converted[0], converted[1]);
+  return true;
 }
 
 base::flex_optional<base::geometry::FloatRect> ConvertRectBetweenElements(
@@ -231,20 +258,15 @@ base::flex_optional<base::geometry::FloatRect> ConvertRectBetweenElements(
     return {};
   }
 
-  const base::geometry::FloatPoint input_corners[] = {
+  base::geometry::FloatPoint converted_corners[] = {
       {rect.X(), rect.Y()},
       {rect.MaxX(), rect.Y()},
       {rect.X(), rect.MaxY()},
       {rect.MaxX(), rect.MaxY()},
   };
-  base::geometry::FloatPoint converted_corners[4];
-  for (size_t index = 0; index < std::size(input_corners); ++index) {
-    auto converted =
-        ConvertPointBetweenElements(input_corners[index], from, to);
-    if (!converted.has_value()) {
-      return {};
-    }
-    converted_corners[index] = *converted;
+  if (!ConvertPointsBetweenElements(converted_corners,
+                                    std::size(converted_corners), from, to)) {
+    return {};
   }
   auto result = BoundsOfConvertedCorners(converted_corners);
   if (!clip_bounds) {
