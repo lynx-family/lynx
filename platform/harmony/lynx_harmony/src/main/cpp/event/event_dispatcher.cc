@@ -19,6 +19,7 @@
 #include "base/include/float_comparison.h"
 #include "base/include/fml/task_runner.h"
 #include "core/base/harmony/harmony_function_loader.h"
+#include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -466,6 +467,7 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
     return;
   }
   root_target_ = root->weak_from_this();
+  input_event_roots_[root->Sign()] = root->weak_from_this();
   if (root->IsRoot()) {
     fallback_hit_test_root_ = root->weak_from_this();
     if (active_overlay_hit_test_roots_.empty()) {
@@ -529,7 +531,11 @@ void EventDispatcher::AttachGesturesToOverlayRoot(UIBase* root, int32_t level) {
 }
 
 void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
-  if (!root || !root->RootNode()) {
+  if (!root) {
+    return;
+  }
+  input_event_roots_.erase(root->Sign());
+  if (!root->RootNode()) {
     return;
   }
   if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
@@ -2150,6 +2156,18 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
   bool can_consume = !active_target->EventThrough(target_point);
   UpdateOverlayPassThroughState(root, can_consume);
   return can_consume;
+}
+
+bool EventDispatcher::IsRawInputEventRootActive(int32_t sign) const {
+  const auto root = input_event_roots_.find(sign);
+  if (root == input_event_roots_.end()) return false;
+  auto ui = root->second.lock();
+  if (!ui) return false;
+  if (ui->IsRoot()) {
+    return static_cast<UIRoot*>(ui.get())->IsAttachedToViewTree();
+  }
+  auto context = ui_owner_->Context()->GetNativePaintingContext();
+  return context && context->GetEventTargetHelper()->IsActiveEventRoot(sign);
 }
 
 void EventDispatcher::ActivateOverlayHitTestRoot(UIBase* root, int32_t level) {

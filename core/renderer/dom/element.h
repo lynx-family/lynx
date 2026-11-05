@@ -1398,7 +1398,8 @@ class Element : public lepus::RefCounted,
 
   lepus::Value QueryGeometry(const lepus::Value& request);
 
-  // Synchronous element methods called on the owning engine thread.
+  // Element methods run on the owning Engine thread. Asynchronous focus
+  // results use the Page's focusresult event.
   // Failures return an empty value and describe the reason in |error|.
   virtual lepus::Value InvokeMethod(const base::String& method,
                                     const lepus::Value& params,

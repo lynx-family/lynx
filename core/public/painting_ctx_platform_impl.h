@@ -69,6 +69,9 @@ class PaintingCtxPlatformRef {
   virtual void SetEventScreenWidth(float screen_width) {}
   virtual void SetEventThroughConfig(
       bool enable_event_through, bool enable_event_through_inherit_from_page) {}
+  // Results are delivered through the registered Page's focusresult event.
+  virtual void RequestInputFocus(int32_t anchor_sign, bool focused,
+                                 const std::string& request_token) {}
   virtual void UpdateFlattenStatus(int id, bool flatten) {}
 
   virtual void ListReusePaintingNode(int id, const std::string& item_key){};

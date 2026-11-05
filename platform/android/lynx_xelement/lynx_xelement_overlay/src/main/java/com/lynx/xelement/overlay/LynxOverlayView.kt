@@ -129,6 +129,14 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         }
     )
     private var mOverlayContainer = object : AndroidView(context) {
+        override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+            super.onWindowFocusChanged(hasWindowFocus)
+            if (mPlatformEventRootActive) {
+                lynxContext.notifyInputRootStateChanged(
+                    sign, mPlatformEventRootActive, hasWindowFocus && mView.hasFocus()
+                )
+            }
+        }
         override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
             // layout overlay when dialog decor view onLayout
             this@LynxOverlayView.layout()
@@ -148,6 +156,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mGlobalLayoutListener : ViewTreeObserver.OnGlobalLayoutListener? = null
     private var mScrollChangedListener : ViewTreeObserver.OnScrollChangedListener? = null
     private var mDrawListener : ViewTreeObserver.OnDrawListener? = null
+    private var mRawInputFocusListener: ViewTreeObserver.OnGlobalFocusChangeListener? = null
 
     init {
         mOverlayContainer.addView(mView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -814,6 +823,12 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             return
         }
         mObserver = mOverlayContainer.viewTreeObserver
+        mRawInputFocusListener = ViewTreeObserver.OnGlobalFocusChangeListener { _, _ ->
+            lynxContext.notifyInputRootStateChanged(
+                sign, mPlatformEventRootActive, mView.hasWindowFocus() && mView.hasFocus()
+            )
+        }
+        mObserver?.addOnGlobalFocusChangeListener(mRawInputFocusListener)
         mGlobalLayoutListener =
             ViewTreeObserver.OnGlobalLayoutListener { lynxContext.exposure?.requestCheckUI() }
         mObserver?.addOnGlobalLayoutListener(mGlobalLayoutListener)
@@ -831,6 +846,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             mOverlayContainer.viewTreeObserver.takeIf { it.isAlive }
         }
         observer?.let {
+            mRawInputFocusListener?.let { listener -> it.removeOnGlobalFocusChangeListener(listener) }
             mGlobalLayoutListener?.let { listener ->
                 it.removeOnGlobalLayoutListener(listener)
             }
@@ -842,6 +858,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             }
         }
         mObserver = null
+        mRawInputFocusListener = null
         mGlobalLayoutListener = null
         mScrollChangedListener = null
         mDrawListener = null

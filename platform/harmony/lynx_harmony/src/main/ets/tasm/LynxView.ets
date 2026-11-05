@@ -215,6 +215,7 @@ export struct LynxView {
   private moduleManager: LynxModuleManager = new LynxModuleManager(this.context);
   private sendableModuleManager: SendableLynxModuleManager = new SendableLynxModuleManager();
   private currentWindow?: window.Window;
+  private windowEventCallback?: (type: window.WindowEventType) => void;
   private enableLogBox: boolean = false;
   private keyboardHeightChangeCallback?: (height: number) => void;
   private keyboardWillShowCallback?: (keyboardInfo: window.KeyboardInfo) => void;
@@ -529,8 +530,21 @@ export struct LynxView {
       this.onCreate(this.context)
     }
     this.getCurrentWindow().then((win) => {
+      if (!this.hasAppeared) {
+        return;
+      }
       this.currentWindow = win;
       this.syncWindowInfoToNative(win);
+      this.windowEventCallback = (type: window.WindowEventType) => {
+        if (type === window.WindowEventType.WINDOW_ACTIVE) {
+          this.context.getUIOwner()?.onWindowFocusChanged(true);
+        } else if (type === window.WindowEventType.WINDOW_INACTIVE ||
+                   type === window.WindowEventType.WINDOW_HIDDEN ||
+                   type === window.WindowEventType.WINDOW_DESTROYED) {
+          this.context.getUIOwner()?.onWindowFocusChanged(false);
+        }
+      };
+      win.on('windowEvent', this.windowEventCallback);
       this.keyboardHeightChangeCallback = (height: number) => {
         const keyBoardHeight = Math.floor(px2vp(height));
         this.sendGlobalEvent('keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]);
@@ -581,6 +595,14 @@ export struct LynxView {
   aboutToDisappear() {
     LLog.d(TAG, 'aboutToDisappear.')
     this.hasAppeared = false;
+    if (this.windowEventCallback !== undefined) {
+      try {
+        this.currentWindow?.off('windowEvent', this.windowEventCallback);
+      } catch (e) {
+        LLog.e(TAG, `Failed to remove the windowEvent listener. Code: ${e.code}, message: ${e.message}`);
+      }
+      this.windowEventCallback = undefined;
+    }
     this.perfController?.destroy();
     this.perfController = undefined;
     this.uiRenderer?.aboutToDisappear();
