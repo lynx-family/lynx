@@ -269,6 +269,58 @@ TEST(TouchEventTest, SingleTouchCancelClearsPreviouslyActiveContacts) {
   EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(), 1u);
 }
 
+TEST(TouchEventTest, StandaloneCancelClearsAfterListenersEvenWhenCaught) {
+  for (bool compatible : {false, true}) {
+    for (bool scalar : {false, true}) {
+      SCOPED_TRACE(compatible);
+      SCOPED_TRACE(scalar);
+      TouchEventTarget target(nullptr, compatible);
+      DispatchTouch(target, EVENT_TOUCH_START, 7, 10.f);
+      DispatchTouch(target, EVENT_TOUCH_START, 11, 20.f);
+      const EventListener::Options options(false, false, false, false, true);
+      auto listener = std::make_shared<MockEventListener>(
+          EventListener::Type::kJSClosureEventListener, "cancel", "", "",
+          nullptr, options);
+      target.AddEventListener(EVENT_TOUCH_CANCEL, listener);
+      auto cancel =
+          scalar ? fml::MakeRefCounted<TouchEvent>(EVENT_TOUCH_CANCEL, 1.f, 2.f)
+                 : fml::MakeRefCounted<TouchEvent>(
+                       EVENT_TOUCH_CANCEL,
+                       lepus::Value(lepus::Dictionary::Create()));
+      int cleanup_count = 0;
+      auto result =
+          EventDispatcher::DispatchTouchEventBatch(target, cancel, [&]() {
+            EXPECT_EQ(listener->GetCount(), 1);
+            EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(),
+                      2u);
+            ++cleanup_count;
+            return target.GetTouchEventState();
+          });
+      EXPECT_TRUE(result.IsCanceled());
+      EXPECT_EQ(cleanup_count, 1);
+      EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(), 0u);
+      EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(),
+                scalar ? 1u : 2u);
+      auto next = DispatchTouch(target, EVENT_TOUCH_START, 9, 30.f);
+      ExpectTouch(next->detail().GetProperty("touches"), 9, 30.f);
+    }
+  }
+}
+
+TEST(TouchEventTest, GenericDispatchPreservesEventTypeBasedCleanup) {
+  for (auto type :
+       {Event::EventType::kTouchEvent, Event::EventType::kCustomEvent}) {
+    TouchEventTarget target;
+    DispatchTouch(target, EVENT_TOUCH_START, 7, 10.f);
+    auto cancel = fml::MakeRefCounted<Event>(
+        EVENT_TOUCH_CANCEL, type, Event::Capture::kYes, Event::Bubbles::kYes,
+        Event::Cancelable::kYes, Event::ComposedMode::kScoped);
+    EventDispatcher::DispatchEvent(target, cancel);
+    EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(),
+              type == Event::EventType::kTouchEvent ? 0u : 1u);
+  }
+}
+
 TEST(TouchEventTest, ScalarGesturesPreserveActiveContacts) {
   TouchEventTarget target;
   DispatchTouch(target, EVENT_TOUCH_START, 7, 10.f);

@@ -73,8 +73,28 @@ bool HasBubbleEventListener(EventTarget& target, Event& event) {
 
 DispatchEventResult EventDispatcher::DispatchEvent(EventTarget& target,
                                                    fml::RefPtr<Event> event) {
+  if (event->event_type() == Event::EventType::kTouchEvent) {
+    auto weak_target = target.GetWeakTarget();
+    return DispatchTouchEventBatch(target, std::move(event), [weak_target]() {
+      return weak_target ? weak_target->GetTouchEventState() : nullptr;
+    });
+  }
   EventDispatcher dispatcher(target, event);
   return event->DispatchEvent(dispatcher);
+}
+
+DispatchEventResult EventDispatcher::DispatchTouchEventBatch(
+    EventTarget& target, fml::RefPtr<Event> event,
+    const std::function<TouchEventState*()>& get_page_state) {
+  EventDispatcher dispatcher(target, event);
+  auto result = event->DispatchEvent(dispatcher);
+  if (event->type() == EVENT_TOUCH_CANCEL) {
+    // Resolve page state after listeners, which may destroy the page or target.
+    if (auto* state = get_page_state()) {
+      state->current_touches = lepus::Value(lepus::CArray::Create());
+    }
+  }
+  return result;
 }
 
 void EventDispatcher::DispatchTouchEventBatch(
@@ -89,7 +109,6 @@ void EventDispatcher::DispatchTouchEventBatch(
     }
     auto event = fml::MakeRefCounted<TouchEvent>(name, params, timestamp);
     EventDispatcher dispatcher(*target, event);
-    dispatcher.defer_touch_cancel_cleanup_ = true;
     event->DispatchEvent(dispatcher);
   }
   if (name == EVENT_TOUCH_CANCEL) {
@@ -126,14 +145,6 @@ DispatchEventResult EventDispatcher::Dispatch() {
     return {EventCancelType::kCanceledByEventHandler, false};
   }
   event_->HandleEventCustomDetail();
-  if (!defer_touch_cancel_cleanup_ &&
-      event_->event_type() == Event::EventType::kTouchEvent &&
-      event_->type() == EVENT_TOUCH_CANCEL) {
-    // Standalone events have no remaining target that needs these contacts.
-    if (auto* state = target_->GetTouchEventState()) {
-      state->current_touches = lepus::Value(lepus::CArray::Create());
-    }
-  }
   bool consumed = false;
   auto path = event_->event_path();
 
