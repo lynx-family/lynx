@@ -259,6 +259,8 @@ class PaintingContext {
                                            float delta_y,
                                            bool is_init_scroll_offset,
                                            bool from_layout);
+  void RequestInputFocus(int32_t anchor_sign, bool focused,
+                         const std::string& request_token);
   void ApplyListScrollState(int32_t container_id, float scroll_x,
                             float scroll_y, float content_width,
                             float content_height, bool cmp_managed);

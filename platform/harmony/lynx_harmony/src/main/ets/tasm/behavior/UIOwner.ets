@@ -199,4 +199,8 @@ export class UIOwner {
   public onEnterBackground(): void {
     this.native.onEnterBackground();
   }
+
+  public onWindowFocusChanged(focused: boolean): void {
+    this.native.onWindowFocusChanged(focused);
+  }
 }

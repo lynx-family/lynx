@@ -9065,6 +9065,7 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public LynxContext com.lynx.tasm.behavior.render.PlatformRendererContext.getLynxContext();
   public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.getRootViewLocationOnScreen();
+  public boolean com.lynx.tasm.behavior.render.PlatformRendererContext.requestRootFocus(int rootSign, boolean focused);
   public void com.lynx.tasm.behavior.render.PlatformRendererContext.applyListScrollState(int sign, float x, float y, float width, float height, boolean managed);
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.getScreenSize();
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetWidth(int sign);
@@ -11380,6 +11381,7 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.sendGlobalEvent(String name, JavaOnlyArray params);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context, AttributeSet attrs);
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.onWindowFocusChanged(boolean hasWindowFocus);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.cacheLayoutInfo(int width, int height);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.performMeasure(int widthMeasureSpec, int width, int heightMeasureSpec, int height);
   public boolean com.lynx.tasm.behavior.ui.UIBody.UIBodyView.containsViewForNodeIndex(int nodeIndex);

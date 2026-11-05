@@ -211,6 +211,14 @@ void PaintingContext::UpdateContentOffsetForListContainer(
   });
 }
 
+void PaintingContext::RequestInputFocus(int32_t anchor_sign, bool focused,
+                                        const std::string& request_token) {
+  Enqueue([ref = platform_impl_->GetPlatformRef(), focused, anchor_sign,
+           request_token] {
+    ref->RequestInputFocus(anchor_sign, focused, request_token);
+  });
+}
+
 void PaintingContext::ApplyListScrollState(int32_t container_id, float scroll_x,
                                            float scroll_y, float content_width,
                                            float content_height,

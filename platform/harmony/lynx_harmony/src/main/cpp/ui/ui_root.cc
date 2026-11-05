@@ -49,6 +49,8 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
                                             NODE_ON_TOUCH_INTERCEPT, this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_TOUCH_EVENT,
                                             this);
+  NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_ON_FOCUS, this);
+  NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_ON_BLUR, this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_EVENT_ON_ATTACH,
                                             this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_EVENT_ON_DETACH,
@@ -77,6 +79,8 @@ UIRoot::~UIRoot() {
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
                                               NODE_ON_TOUCH_INTERCEPT);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_, NODE_TOUCH_EVENT);
+  NodeManager::Instance().UnregisterNodeEvent(root_proxy_, NODE_ON_FOCUS);
+  NodeManager::Instance().UnregisterNodeEvent(root_proxy_, NODE_ON_BLUR);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
                                               NODE_EVENT_ON_ATTACH);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
@@ -144,6 +148,15 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
       }
     }
     context_->OnRootDetachedFromViewTree();
+  } else if (event_type == NODE_ON_FOCUS || event_type == NODE_ON_BLUR) {
+    if (dispatcher) {
+      const bool focused =
+          event_type == NODE_ON_FOCUS && dispatcher->InputWindowFocused();
+      if (auto input_context = context_->GetNativePaintingContext()) {
+        input_context->NotifyInputRootStateChanged(Sign(), is_root_attached_,
+                                                   focused);
+      }
+    }
   } else if (event_type == NODE_EVENT_ON_AREA_CHANGE) {
     if (auto* owner = context_->GetUIOwner(); owner != nullptr) {
       owner->RequestPositionChangeEvents();
