@@ -9,7 +9,9 @@
 
 #include <d3d11_3.h>
 
+#include <chrono>
 #include <memory>
+#include <thread>
 
 #include "base/include/no_destructor.h"
 #include "clay/gfx/shared_image/utils/image_utils.h"
@@ -512,8 +514,23 @@ bool D3DTextureImageBacking::ReadbackToMemory(
     }
 
     D3D11_MAPPED_SUBRESOURCE mapped_resource = {};
-    HRESULT hr = device_context->Map(staging_texture, 0, D3D11_MAP_READ, 0,
-                                     &mapped_resource);
+    constexpr auto kMapRetryInterval = std::chrono::milliseconds(1);
+    constexpr auto kMapTimeout = std::chrono::milliseconds(16);
+    const auto map_deadline = std::chrono::steady_clock::now() + kMapTimeout;
+    HRESULT hr;
+    do {
+      // Keep every driver call non-blocking so renderer destruction has a
+      // bounded wait when the GPU stalls.
+      hr = device_context->Map(staging_texture, 0, D3D11_MAP_READ,
+                               D3D11_MAP_FLAG_DO_NOT_WAIT, &mapped_resource);
+      if (hr != DXGI_ERROR_WAS_STILL_DRAWING) {
+        break;
+      }
+      std::this_thread::sleep_for(kMapRetryInterval);
+    } while (std::chrono::steady_clock::now() < map_deadline);
+    if (hr == DXGI_ERROR_WAS_STILL_DRAWING) {
+      return false;
+    }
     if (FAILED(hr)) {
       FML_LOG(ERROR) << "Failed to map texture for read. hr=" << hr;
       return false;
