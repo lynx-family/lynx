@@ -61,6 +61,9 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 
 namespace lynx {
+namespace gfx {
+class Matrix44;
+}  // namespace gfx
 namespace runtime {
 class MessageEvent;
 }  // namespace runtime
@@ -1393,14 +1396,13 @@ class Element : public lepus::RefCounted,
 
   virtual bool is_text() const { return false; }
 
+  lepus::Value QueryGeometry(const lepus::Value& request);
+
   // Synchronous element methods called on the owning engine thread.
   // Failures return an empty value and describe the reason in |error|.
   virtual lepus::Value InvokeMethod(const base::String& method,
                                     const lepus::Value& params,
-                                    std::string* error) {
-    *error = "Unsupported element method: " + method.str();
-    return lepus::Value();
-  }
+                                    std::string* error);
 
   virtual bool is_list() const { return false; }
 
@@ -1617,6 +1619,8 @@ class Element : public lepus::RefCounted,
 
   virtual float GetLayoutsUnitPerPx() override;
 
+  lepus::Value ResolveTouchTargetPath(int32_t leaf_sign) override;
+
   // Updates the latest platform scroll position in layout units. The value is
   // consumed on the engine thread by Element point conversion.
   void UpdateScrollOffset(float x, float y);
@@ -1654,6 +1658,17 @@ class Element : public lepus::RefCounted,
   bool HasCustomDrawFunctions() const {
     return custom_draw_functions_ != nullptr;
   }
+
+  // Custom layer callbacks publish their resolved local matrix in layout units.
+  // Geometry queries keep the previous result while the callback is evaluated.
+  const gfx::Matrix44* CustomLayerTransform() const {
+    return custom_layer_transform_.get();
+  }
+  void SetCustomLayerTransform(const gfx::Matrix44& transform);
+  void BeginCustomLayerTransformUpdate() {
+    custom_layer_transform_updated_ = false;
+  }
+  void EndCustomLayerTransformUpdate();
 
   void SetDefaultOverflow(bool visible);
 
@@ -2288,6 +2303,7 @@ class Element : public lepus::RefCounted,
   // Should be set to true if related platform node need process direction to
   // work properly in RTL mode
   bool need_process_direction_{false};
+  bool custom_layer_transform_updated_{false};
 
   // enable_component_layout_only_ & enable_extended_layout_only_opt_
   // optimization is enabled by default in Fiber Arch.
@@ -2328,6 +2344,7 @@ class Element : public lepus::RefCounted,
 
   std::unique_ptr<BaseElementContainer> element_container_;
   std::shared_ptr<const CustomDrawFunctions> custom_draw_functions_;
+  std::unique_ptr<gfx::Matrix44> custom_layer_transform_;
 
   fml::RefPtr<AttributeHolder> data_model_;
 

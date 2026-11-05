@@ -1514,8 +1514,8 @@ void TemplateAssembler::DidComponentLoaded(
   if (component_entry != nullptr) {
     component_entry->GetVm()->UpdateTopLevelVariable(kGlobalPropsKey,
                                                      global_props_);
-    component_entry->GetVm()->UpdateTopLevelVariable(
-        kSystemInfo, GenerateSystemInfo(nullptr));
+    component_entry->GetVm()->UpdateTopLevelVariable(kSystemInfo,
+                                                     GetSystemInfo());
   }
 }
 
@@ -1574,8 +1574,8 @@ bool TemplateAssembler::BuildComponentEntryInternal(
   if (!component_entry->EnableReuseContext()) {
     component_entry->GetVm()->SetPropertyToLynx(
         BASE_STATIC_STRING(kGlobalPropsKey), global_props_);
-    component_entry->GetVm()->SetPropertyToLynx(
-        BASE_STATIC_STRING(kSystemInfo), tasm::GenerateSystemInfo(nullptr));
+    component_entry->GetVm()->SetPropertyToLynx(BASE_STATIC_STRING(kSystemInfo),
+                                                GetSystemInfo());
   }
 
   if (!component_entry->Execute()) {
@@ -2565,6 +2565,16 @@ void TemplateAssembler::OnFontScaleChanged(float scale) {
 }
 
 void TemplateAssembler::SendFontScaleChanged(float scale) {
+  if (EnableFiberArch()) {
+    ForEachEntry([scale](const auto& entry) {
+      if (auto context = entry->GetVm()) {
+        context->UpdateTopLevelVariable("lynx.SystemInfo.fontScale",
+                                        lepus::Value(scale));
+        context->UpdateTopLevelVariable("SystemInfo.fontScale",
+                                        lepus::Value(scale));
+      }
+    });
+  }
   // SendFontScaleChanged to front-end
   auto arguments = lepus::CArray::Create();
   auto params = lepus::CArray::Create();
@@ -2655,6 +2665,24 @@ float TemplateAssembler::GetDevicePixelRatio() const {
   return client->GetLynxEnvConfig().DevicePixelRatio();
 }
 
+lepus::Value TemplateAssembler::GetSystemInfo() {
+  BASE_STATIC_STRING_DECL(kInputPixelRatio, "pixelRatio");
+  BASE_STATIC_STRING_DECL(kInputFontScale, "fontScale");
+  auto config = page_proxy_.GetConfig();
+  auto system_info = GenerateSystemInfo(&config);
+  if (!EnableFiberArch()) {
+    return system_info;
+  }
+  const auto& client = page_proxy_.element_manager();
+  system_info.SetProperty(kInputPixelRatio,
+                          lepus::Value(GetDevicePixelRatio()));
+  system_info.SetProperty(
+      kInputFontScale,
+      lepus::Value(client ? client->GetLynxEnvConfig().FontScale()
+                          : font_scale_));
+  return system_info;
+}
+
 void TemplateAssembler::OnScreenMetricsSet(float width, float height,
                                            float device_pixel_ratio) {
   LOGI("TemplateAssembler::OnScreenMetricsSet with width: "
@@ -2671,6 +2699,8 @@ void TemplateAssembler::OnScreenMetricsSet(float width, float height,
     // update MTS `SystemInfo.pixelRatio`
     ForEachEntry([device_pixel_ratio](const auto& entry) {
       if (auto ctx = entry->GetVm()) {
+        ctx->UpdateTopLevelVariable("lynx.SystemInfo.pixelRatio",
+                                    lepus::Value(device_pixel_ratio));
         ctx->UpdateTopLevelVariable("SystemInfo.pixelRatio",
                                     lepus::Value(device_pixel_ratio));
       }
@@ -2969,7 +2999,7 @@ void TemplateAssembler::ExecuteDataProcessor(TemplateData& input) {
 
   lepus::Value env = lepus::Value(lepus::Dictionary::Create());
   env.SetProperty(BASE_STATIC_STRING(kGlobalPropsKey), global_props_);
-  env.SetProperty(BASE_STATIC_STRING(kSystemInfo), GenerateSystemInfo(nullptr));
+  env.SetProperty(BASE_STATIC_STRING(kSystemInfo), GetSystemInfo());
 
   auto card = FindEntry(DEFAULT_ENTRY_NAME);
   input.SetValue(card->GetVm()->CallClosure(closure, input.GetValue(), env));
