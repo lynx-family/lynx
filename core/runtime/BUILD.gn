@@ -18,6 +18,7 @@ lynx_core_source_set("runtime") {
     "mts_context.h",
     "mts_context_factory.h",
   ]
+  sources += runtime_extend_sources
 
   deps = [
     "../../third_party/rapidjson",
