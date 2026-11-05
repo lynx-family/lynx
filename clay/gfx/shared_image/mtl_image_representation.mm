@@ -207,17 +207,19 @@ std::unique_ptr<FenceSync> MTLImageRepresentation::ProduceFence() {
       // TODO(youfeng) Use MTLEvent instead of MTLSharedEvent for shared device
       event_.reset([device_ newSharedEvent]);
     }
-    event_value_++;
-    id<MTLCommandBuffer> buffer = [queue_ commandBuffer];
-    fence_sync = std::make_unique<MTLSharedEventFenceSync>(buffer, event_, event_value_);
-    [buffer encodeSignalEvent:event_ value:event_value_];
-    [buffer commit];
-  } else {
-    id<MTLCommandBuffer> buffer = [queue_ commandBuffer];
-    fence_sync = std::make_unique<MTLCompleteFenceSync>(buffer);
-    [buffer commit];
+    if (event_ != nil) {
+      event_value_++;
+      id<MTLCommandBuffer> buffer = [queue_ commandBuffer];
+      fence_sync = std::make_unique<MTLSharedEventFenceSync>(buffer, event_, event_value_);
+      [buffer encodeSignalEvent:event_ value:event_value_];
+      [buffer commit];
+      return fence_sync;
+    }
   }
 
+  id<MTLCommandBuffer> buffer = [queue_ commandBuffer];
+  fence_sync = std::make_unique<MTLCompleteFenceSync>(buffer);
+  [buffer commit];
   return fence_sync;
 }
 
