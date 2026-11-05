@@ -5,6 +5,7 @@
 #include "gfx/public/display_list.h"
 
 #include <cstdint>
+#include <limits>
 #include <utility>
 
 namespace lynx {
@@ -25,6 +26,10 @@ void DisplayList::Clear() {
   if (content_data_.has_value()) {
     content_data_->clear();
   }
+  if (paths_.has_value()) {
+    paths_->refs.clear();
+    paths_->keys.clear();
+  }
   ClearSubtreeProperties();
 }
 
@@ -37,6 +42,26 @@ void DisplayList::ClearSubtreeProperties() {
 
 void DisplayList::AppendItem(const DisplayListItem& item) {
   content_items_->push_back(item);
+}
+
+uint32_t DisplayList::RetainPath(fml::RefPtr<gfx::Path> path) {
+  if (!path) return std::numeric_limits<uint32_t>::max();
+  for (size_t i = 0; i < paths_->refs.size(); ++i) {
+    if (paths_->refs[i].get() == path.get()) return static_cast<uint32_t>(i);
+  }
+  if (paths_->refs.size() >= std::numeric_limits<uint32_t>::max()) {
+    return std::numeric_limits<uint32_t>::max();
+  }
+  const auto index = static_cast<uint32_t>(paths_->refs.size());
+  paths_->keys.push_back(path->GetKey());
+  paths_->refs.push_back(std::move(path));
+  return index;
+}
+
+const gfx::Path* DisplayList::GetPath(uint32_t index) const {
+  return paths_.has_value() && index < paths_->refs.size()
+             ? paths_->refs[index].get()
+             : nullptr;
 }
 
 void DisplayList::AddLinearGradient(float angle,

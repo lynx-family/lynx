@@ -41,6 +41,8 @@ import java.util.ArrayList;
 import java.util.Stack;
 
 public class DisplayListApplier implements Drawable.Callback {
+  static final int OP_FILL_PATH = 16;
+  static final int OP_CLIP_PATH = 17;
   private static String TAG = "DisplayListApplier";
 
   static final int OP_BEGIN = 0;
@@ -124,6 +126,8 @@ public class DisplayListApplier implements Drawable.Callback {
 
   private ByteBuffer mItemsBuffer;
   private ByteBuffer mDataBuffer;
+  private PathResourceCache.Table mPathResources = PathResourceCache.Table.EMPTY;
+  private final Matrix mPathSavedMatrix = new Matrix();
   private TextMeasurer mTextMeasurer;
   private Paint mPaint;
 
@@ -168,6 +172,52 @@ public class DisplayListApplier implements Drawable.Callback {
     mItemIndex = 0;
     mFragmentDepth = 0;
     mRoundedRectangleArray.clear();
+  }
+
+  void setPathResources(PathResourceCache.Table table) {
+    PathResourceCache.Table next = table == null ? PathResourceCache.Table.EMPTY : table;
+    // Acquire root-bound variants while the previous table still retains them.
+    if (next != PathResourceCache.Table.EMPTY && mItemsBuffer != null
+        && mItemsBuffer.capacity() % DISPLAY_LIST_ITEM_SIZE == 0) {
+      mItemsBuffer.order(ByteOrder.nativeOrder());
+      int depth = 0;
+      for (int offset = 0; offset < mItemsBuffer.capacity(); offset += DISPLAY_LIST_ITEM_SIZE) {
+        int op = getIntAt(offset);
+        if (op == OP_BEGIN)
+          depth++;
+        else if (op == OP_END)
+          depth--;
+        else if (depth == 1 && (op == OP_FILL_PATH || op == OP_CLIP_PATH)) {
+          IRendererHost host = getRendererHost();
+          if (host == null || host.getRendererHostWidth() <= 0 || host.getRendererHostHeight() <= 0)
+            continue;
+          PathResourceCache.Entry path = next.get(getIntAt(offset + 4), getIntAt(offset + 8));
+          float x = getFloatAt(offset + 12);
+          float y = getFloatAt(offset + 16);
+          if (path == null || !path.isPrimitive() || Float.isNaN(x) || Float.isInfinite(x)
+              || Float.isNaN(y) || Float.isInfinite(y))
+            continue;
+          boolean clip = op == OP_CLIP_PATH;
+          if (!clip && shouldIncludeScrollOffsetForHostBounds())
+            continue;
+          if (clip && (host instanceof AndroidScrollView || host instanceof ListContainerView)) {
+            x += host.getRendererHostScrollX();
+            y += host.getRendererHostScrollY();
+          }
+          normalizePathToHost(next, offset / DISPLAY_LIST_ITEM_SIZE, path, x, y, clip);
+        }
+      }
+    }
+    mPathResources = next;
+  }
+
+  private PathResourceCache.Entry normalizePathToHost(PathResourceCache.Table table, int itemIndex,
+      PathResourceCache.Entry path, float x, float y, boolean clip) {
+    path.getPlacedBounds(mReusableRectF, x, y);
+    if (!mReusableRectF.intersect(getHostBoundsRectF(clip)))
+      mReusableRectF.setEmpty();
+    mReusableRectF.offset(-x, -y);
+    return table.atBounds(itemIndex, path, mReusableRectF);
   }
 
   public void drawTillNextView(Canvas canvas) {
@@ -631,6 +681,55 @@ public class DisplayListApplier implements Drawable.Callback {
             } else {
               canvas.drawRect(roundedRectangle.getRectF(), mPaint);
             }
+          }
+          break;
+        }
+
+        case OP_FILL_PATH:
+        case OP_CLIP_PATH: {
+          int index = getIntAt(itemByteOffset + 4);
+          int rule = getIntAt(itemByteOffset + 8);
+          float x = getFloatAt(itemByteOffset + 12);
+          float y = getFloatAt(itemByteOffset + 16);
+          PathResourceCache.Entry path = mPathResources.get(index, rule);
+          boolean validPlacement =
+              !Float.isNaN(x) && !Float.isInfinite(x) && !Float.isNaN(y) && !Float.isInfinite(y);
+          if (op == OP_CLIP_PATH) {
+            if (path == null || !validPlacement) {
+              canvas.clipRect(0, 0, 0, 0);
+            } else {
+              if (getRendererHost() instanceof AndroidScrollView
+                  || getRendererHost() instanceof ListContainerView) {
+                x += getRendererHost().getRendererHostScrollX();
+                y += getRendererHost().getRendererHostScrollY();
+              }
+              if (shouldNormalizeRootGeometry()) {
+                if (path.isPrimitive()) {
+                  path = normalizePathToHost(mPathResources, currentItemIndex, path, x, y, true);
+                } else {
+                  canvas.clipRect(getHostBoundsRectF(true));
+                }
+              }
+              path.clip(canvas, x, y, mPathSavedMatrix);
+            }
+          } else if (path != null && validPlacement) {
+            mPaint.reset();
+            mPaint.setColor(getIntAt(itemByteOffset + 20));
+            if (shouldNormalizeRootGeometry() && shouldIncludeScrollOffsetForHostBounds()) {
+              x += getRendererHost().getRendererHostScrollX();
+              y += getRendererHost().getRendererHostScrollY();
+            } else if (shouldNormalizeRootGeometry()) {
+              if (path.isPrimitive()) {
+                path = normalizePathToHost(mPathResources, currentItemIndex, path, x, y, false);
+              } else {
+                canvas.save();
+                canvas.clipRect(getHostBoundsRectF(false));
+                path.draw(canvas, mPaint, x, y);
+                canvas.restore();
+                break;
+              }
+            }
+            path.draw(canvas, mPaint, x, y);
           }
           break;
         }

@@ -11,7 +11,8 @@ DisplayListReader::DisplayListReader(const DisplayList& list)
     : items_(list.GetContentItemsData()),
       data_(list.GetContentData()),
       item_count_(list.GetContentItemsSize()),
-      item_index_(0) {}
+      item_index_(0),
+      list_(&list) {}
 
 }  // namespace tasm
 }  // namespace lynx

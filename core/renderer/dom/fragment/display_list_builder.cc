@@ -82,6 +82,34 @@ DisplayListBuilder& DisplayListBuilder::DrawView(int view_id, float offset_x,
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::FillPath(fml::RefPtr<gfx::Path> path,
+                                                 uint32_t color,
+                                                 gfx::PathFillRule rule,
+                                                 float x, float y) {
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kFillPath;
+  item.payload.fill_path.path_index = display_list_.RetainPath(std::move(path));
+  item.payload.fill_path.fill_rule = rule;
+  item.payload.fill_path.x = x;
+  item.payload.fill_path.y = y;
+  item.payload.fill_path.color = color;
+  display_list_.AppendItem(item);
+  return *this;
+}
+
+DisplayListBuilder& DisplayListBuilder::ClipPath(fml::RefPtr<gfx::Path> path,
+                                                 gfx::PathFillRule rule,
+                                                 float x, float y) {
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kClipPath;
+  item.payload.clip_path.path_index = display_list_.RetainPath(std::move(path));
+  item.payload.clip_path.fill_rule = rule;
+  item.payload.clip_path.x = x;
+  item.payload.clip_path.y = y;
+  display_list_.AppendItem(item);
+  return *this;
+}
+
 DisplayListBuilder& DisplayListBuilder::Transform(const gfx::Matrix44& matrix) {
   SubtreeProperty prop;
   prop.type = DisplayListSubtreePropertyOpType::kTransform;

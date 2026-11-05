@@ -219,6 +219,10 @@ public class Renderer {
     } else if (mRepaintType == REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW) {
       mDisplayListApplier.setBuffer(mDisplayListItemsBuffer, mDisplayListDataBuffer);
     }
+    if (mRepaintType == REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW) {
+      mDisplayListApplier.setPathResources(
+          mPlatformRendererContext.preparePathResources(mSign, mDisplayListItemsBuffer));
+    }
     mRepaintType = REPAINT_TYPE_DRAW_ONLY;
   }
 
@@ -307,6 +311,11 @@ public class Renderer {
   }
 
   public void updateExtraData(Object extraData) {}
+  void releasePathResources() {
+    if (mDisplayListApplier != null) {
+      mDisplayListApplier.setPathResources(PathResourceCache.Table.EMPTY);
+    }
+  }
   public void onDestroy() {
     mDisplayListApplier = null;
     mDisplayListItemsBuffer = null;

@@ -4,10 +4,12 @@
 
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/starlight/style/borders_data.h"
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 #include "testing/lynx/android/gen/NativeDisplayListBuilder_jni.h"
 
@@ -17,6 +19,8 @@ class NativeDisplayListBuilderState {
  public:
   lynx::tasm::DisplayListBuilder builder;
   std::optional<lynx::tasm::DisplayList> display_list;
+  std::vector<fml::RefPtr<lynx::gfx::Path>> paths;
+  fml::RefPtr<lynx::tasm::PlatformRendererAndroid> renderer;
 };
 
 NativeDisplayListBuilderState* State(jlong native_ptr) {
@@ -77,9 +81,83 @@ void End(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr) {
   State(native_ptr)->builder.End();
 }
 
+void CreateRenderer(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr,
+                    jlong context_ptr, jint id) {
+  auto* context =
+      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(context_ptr);
+  State(native_ptr)->renderer =
+      fml::MakeRefCounted<lynx::tasm::PlatformRendererAndroid>(
+          context, id, PlatformRendererType::kPage, nullptr);
+}
+
+void Submit(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr,
+            jlong renderer_owner_ptr) {
+  auto* state = State(native_ptr);
+  State(renderer_owner_ptr)
+      ->renderer->UpdateDisplayList(std::move(state->display_list.value()));
+  state->display_list.reset();
+}
+
 void Fill(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr, jint color,
           jint clip_index) {
   State(native_ptr)->builder.Fill(static_cast<uint32_t>(color), clip_index);
+}
+
+jint AddPath(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr, jfloat width,
+             jfloat height, jfloatArray radii, jintArray commands,
+             jfloatArray points) {
+  fml::RefPtr<lynx::gfx::Path> path;
+  if (commands != nullptr && points != nullptr) {
+    const auto count = env->GetArrayLength(commands);
+    const auto point_values = env->GetArrayLength(points);
+    if (point_values % 2 != 0) return -1;
+    std::vector<jint> verbs(count);
+    std::vector<jfloat> coords(point_values);
+    env->GetIntArrayRegion(commands, 0, count, verbs.data());
+    env->GetFloatArrayRegion(points, 0, point_values, coords.data());
+    std::vector<lynx::gfx::PathVerb> path_verbs;
+    std::vector<lynx::gfx::PathPoint> path_points;
+    for (jint verb : verbs)
+      path_verbs.push_back(static_cast<lynx::gfx::PathVerb>(verb));
+    for (jsize i = 0; i < point_values; i += 2)
+      path_points.push_back({coords[i], coords[i + 1]});
+    path = lynx::gfx::Path::MakeCommands(std::move(path_verbs),
+                                         std::move(path_points));
+  } else if (radii != nullptr && env->GetArrayLength(radii) == 8) {
+    float values[8];
+    env->GetFloatArrayRegion(radii, 0, 8, values);
+    path = lynx::gfx::Path::MakeRoundedRect(width, height, values);
+  } else {
+    path = lynx::gfx::Path::MakeRect(width, height);
+  }
+  if (!path) return -1;
+  auto& paths = State(native_ptr)->paths;
+  paths.push_back(std::move(path));
+  return static_cast<jint>(paths.size() - 1);
+}
+
+jint CopyPath(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr,
+              jlong source_ptr, jint index) {
+  auto& source = State(source_ptr)->paths;
+  if (index < 0 || static_cast<size_t>(index) >= source.size()) return -1;
+  auto& paths = State(native_ptr)->paths;
+  paths.push_back(source[index]);
+  return static_cast<jint>(paths.size() - 1);
+}
+
+void PathOp(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr, jint index,
+            jint color, jint rule, jfloat x, jfloat y, jboolean clip) {
+  auto* state = State(native_ptr);
+  auto path = index >= 0 && static_cast<size_t>(index) < state->paths.size()
+                  ? state->paths[index]
+                  : fml::RefPtr<lynx::gfx::Path>();
+  if (clip) {
+    state->builder.ClipPath(std::move(path),
+                            static_cast<lynx::gfx::PathFillRule>(rule), x, y);
+  } else {
+    state->builder.FillPath(std::move(path), static_cast<uint32_t>(color),
+                            static_cast<lynx::gfx::PathFillRule>(rule), x, y);
+  }
 }
 
 void DrawView(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr,
@@ -248,4 +326,33 @@ jobject GetDataBuffer(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr) {
   return env->NewDirectByteBuffer(
       const_cast<uint8_t*>(data),
       static_cast<jlong>(display_list.GetContentDataSize()));
+}
+
+jobject GetPathKeysBuffer(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr) {
+  const auto& list = State(native_ptr)->display_list.value();
+  return list.GetPathCount() == 0
+             ? nullptr
+             : env->NewDirectByteBuffer(
+                   const_cast<uint64_t*>(list.GetPathKeysData()),
+                   list.GetPathCount() * sizeof(uint64_t));
+}
+
+jobject GetPathBuffer(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr,
+                      jint index, jlong key, jint part) {
+  if (index < 0) return nullptr;
+  const auto* path = State(native_ptr)->display_list->GetPath(index);
+  if (!path || path->GetKey() != static_cast<uint64_t>(key)) return nullptr;
+  if (part == 0)
+    return env->NewDirectByteBuffer(
+        const_cast<lynx::gfx::PathHeader*>(&path->GetHeader()),
+        sizeof(lynx::gfx::PathHeader));
+  if (part == 1 && !path->GetCommands().empty())
+    return env->NewDirectByteBuffer(
+        const_cast<lynx::gfx::PathVerb*>(path->GetCommands().data()),
+        path->GetCommands().size() * sizeof(lynx::gfx::PathVerb));
+  if (part == 2 && !path->GetPoints().empty())
+    return env->NewDirectByteBuffer(
+        const_cast<lynx::gfx::PathPoint*>(path->GetPoints().data()),
+        path->GetPoints().size() * sizeof(lynx::gfx::PathPoint));
+  return nullptr;
 }

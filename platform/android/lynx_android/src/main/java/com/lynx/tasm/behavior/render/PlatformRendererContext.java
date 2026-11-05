@@ -109,6 +109,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   private long mNativePtr = 0;
   private TextLayout mTextLayout;
   private volatile boolean mDestroyed = false;
+  private final PathResourceCache mPathResourceCache = new PathResourceCache();
 
   private ConcurrentHashMap<Integer, Object> mExtraDatas = new ConcurrentHashMap<>();
 
@@ -1248,6 +1249,16 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return buffer == null ? null : buffer.asReadOnlyBuffer();
   }
 
+  PathResourceCache.Table preparePathResources(int id, ByteBuffer items) {
+    if (mDestroyed || mNativePtr == 0)
+      return PathResourceCache.Table.EMPTY;
+    return mPathResourceCache.prepare(
+        makeReadOnlyDisplayListBuffer(nativeGetDisplayListPathKeysBuffer(mNativePtr, id)), items,
+        (index, key, part)
+            -> makeReadOnlyDisplayListBuffer(
+                nativeGetDisplayListPathBuffer(mNativePtr, id, index, key, part)));
+  }
+
   public TextLayout getTextLayout() {
     return mTextLayout;
   }
@@ -1299,6 +1310,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       long nativePtr, int id, int expectedItemSize);
 
   private native ByteBuffer nativeGetDisplayListDataBuffer(long nativePtr, int id);
+  private native ByteBuffer nativeGetDisplayListPathKeysBuffer(long nativePtr, int id);
+  private native ByteBuffer nativeGetDisplayListPathBuffer(
+      long nativePtr, int id, int index, long expectedKey, int part);
 
   native void nativeDestroy(long nativePtr);
 
@@ -1306,10 +1320,17 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       long nativePtr, int callbackId, int code, Object params);
 
   public void destroy() {
+    mPathResourceCache.clear();
     if (mDestroyed) {
       return;
     }
     mDestroyed = true;
+
+    for (IRendererHost host : mViewHolder.values()) {
+      Renderer renderer = host.getRenderer();
+      if (renderer != null)
+        renderer.releasePathResources();
+    }
 
     if (mNativePtr != 0) {
       nativeDestroy(mNativePtr);

@@ -59,6 +59,7 @@ lynx_core_source_set("display_list") {
     "display_list_builder.h",
     "layout_info.cc",
     "layout_info.h",
+    "path_cache.h",
   ]
   public_deps = [
     "../../../../gfx:gfx",
@@ -74,6 +75,7 @@ unittest_set("display_list_testset") {
     "box_model_recorder_unittest.cc",
     "display_list_builder_unittest.cc",
     "layout_info_unittest.cc",
+    "path_cache_unittest.cc",
   ]
   public_deps = [
     ":display_list",

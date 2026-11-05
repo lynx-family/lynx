@@ -49,6 +49,14 @@ class DisplayListBuilder {
 
   // Fill with color
   DisplayListBuilder& Fill(uint32_t color, int32_t clip_index = -1);
+  DisplayListBuilder& FillPath(
+      fml::RefPtr<gfx::Path> path, uint32_t color,
+      gfx::PathFillRule rule = gfx::PathFillRule::kNonzero, float x = 0,
+      float y = 0);
+  DisplayListBuilder& ClipPath(
+      fml::RefPtr<gfx::Path> path,
+      gfx::PathFillRule rule = gfx::PathFillRule::kNonzero, float x = 0,
+      float y = 0);
 
   // Draw a view at its final position relative to the platform parent.
   DisplayListBuilder& DrawView(int view_id, float offset_x, float offset_y);

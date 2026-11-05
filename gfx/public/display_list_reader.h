@@ -16,7 +16,11 @@ namespace tasm {
 class DisplayListReader {
  public:
   DisplayListReader()
-      : items_(nullptr), data_(nullptr), item_count_(0), item_index_(0) {}
+      : items_(nullptr),
+        data_(nullptr),
+        item_count_(0),
+        item_index_(0),
+        list_(nullptr) {}
 
   explicit DisplayListReader(const DisplayList& list);
 
@@ -63,11 +67,23 @@ class DisplayListReader {
 
   void Reset() { item_index_ = 0; }
 
+  const gfx::Path* Path(const DisplayListItem& item) const {
+    if (!list_) return nullptr;
+    if (item.type == DisplayListOpType::kFillPath) {
+      return list_->GetPath(item.payload.fill_path.path_index);
+    }
+    if (item.type == DisplayListOpType::kClipPath) {
+      return list_->GetPath(item.payload.clip_path.path_index);
+    }
+    return nullptr;
+  }
+
  private:
   const uint8_t* items_;
   const uint8_t* data_;
   size_t item_count_;
   size_t item_index_;
+  const DisplayList* list_;
 };
 
 }  // namespace tasm

@@ -36,6 +36,7 @@ class NativePaintingContext {
 
   NativePaintingContext() = default;
   virtual ~NativePaintingContext() = default;
+  virtual bool SupportsDisplayListPathResources() const { return false; }
   virtual void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) = 0;
   virtual void FinishLayoutOperation(

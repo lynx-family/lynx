@@ -8,6 +8,9 @@ import static org.mockito.Mockito.*;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.PointF;
 import android.util.DisplayMetrics;
 import android.view.ViewGroup;
@@ -96,6 +99,55 @@ public class PlatformRendererContextTest {
     Field field = target.getClass().getDeclaredField(fieldName);
     field.setAccessible(true);
     return field.get(target);
+  }
+
+  @Test
+  public void testRetainedPathsSurviveNativeReplacementAndDestroy() throws Exception {
+    NativeDisplayListBuilder.ensureRegistered();
+    try (NativeDisplayListBuilder owner = new NativeDisplayListBuilder();
+         NativeDisplayListBuilder first = new NativeDisplayListBuilder();
+         NativeDisplayListBuilder second = new NativeDisplayListBuilder();
+         NativeDisplayListBuilder cleared = new NativeDisplayListBuilder()) {
+      owner.createRenderer(rendererContext, 1);
+      Renderer renderer = rootRendererRef.get();
+      assertNotNull(renderer);
+      int path = first.addPath(30, 20, 5, 5, 5, 5, 5, 5, 5, 5);
+      int shared = second.copyPath(first, path);
+      first.begin(1, 1, 0, 0, 64, 64).pathOp(path, Color.RED, 0, 2, 3, false).end();
+      first.submitTo(owner);
+      first.close();
+      Bitmap bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888);
+      Canvas canvas = new Canvas(bitmap);
+      renderer.onDraw(canvas);
+      renderer.afterDispatchDraw(canvas);
+      assertEquals(Color.RED, bitmap.getPixel(15, 15));
+      PathResourceCache cache = (PathResourceCache) getField(rendererContext, "mPathResourceCache");
+      assertEquals(1, cache.getCompilationCount());
+      second.begin(1, 1, 0, 0, 64, 64).pathOp(shared, Color.BLUE, 0, 10, 12, false).end();
+      second.submitTo(owner);
+      second.close();
+      for (int frame = 0; frame < 20; frame++) {
+        bitmap.eraseColor(Color.TRANSPARENT);
+        renderer.onDraw(canvas);
+        renderer.afterDispatchDraw(canvas);
+        assertEquals(Color.BLUE, bitmap.getPixel(20, 20));
+      }
+      assertEquals(1, cache.getCompilationCount());
+      cleared.begin(1, 1, 0, 0, 64, 64).end();
+      cleared.submitTo(owner);
+      bitmap.eraseColor(Color.TRANSPARENT);
+      renderer.onDraw(canvas);
+      renderer.afterDispatchDraw(canvas);
+      assertEquals(Color.TRANSPARENT, bitmap.getPixel(20, 20));
+      Object applier = getField(renderer, "mDisplayListApplier");
+      assertSame(PathResourceCache.Table.EMPTY, getField(applier, "mPathResources"));
+      rendererContext.destroy();
+      assertNull(rendererContext.getDisplayListItemsBuffer(1));
+      assertNull(rendererContext.preparePathResources(1, null).get(0, 0));
+      assertSame(PathResourceCache.Table.EMPTY, getField(applier, "mPathResources"));
+      renderer.onDestroy();
+      bitmap.recycle();
+    }
   }
 
   @Test
