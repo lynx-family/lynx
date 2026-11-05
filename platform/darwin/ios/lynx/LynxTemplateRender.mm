@@ -32,6 +32,7 @@
 #import <Lynx/LynxThreadManager.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIRenderer.h>
+#import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxViewportMetrics.h>
 #import "LynxAccessibilityModule.h"
@@ -87,6 +88,7 @@
 #include "core/resource/lynx_resource_loader_darwin.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/services/performance/darwin/performance_controller_darwin.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/common/platform_call_back.h"
 #include "core/shell/ios/data_utils.h"
@@ -116,6 +118,18 @@
 #pragma pop_macro("LynxElement")
 #undef LYNX_RESTORE_LYNX_ELEMENT_TEMPLATE_RENDER
 #endif
+
+namespace {
+
+lynx::runtime::HeapSnapshotCallback CreateHeapSnapshotCallback(
+    void (^callback)(NSString* _Nullable)) {
+  if (!callback) return {};
+  return [callback](const char* error) {
+    callback(error ? [NSString stringWithUTF8String:error] : nil);
+  };
+}
+
+}  // namespace
 
 @implementation LynxTemplateRender
 
@@ -1999,6 +2013,41 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     }
   }
   return dict;
+}
+
++ (void)takeHeapSnapshot:(NSString*)outputFile
+                callback:(void (^)(NSString* _Nullable))callback
+                    type:(NSString*)type
+                lynxView:(LynxView*)lynxView {
+  outputFile = [outputFile copy];
+  type = [type copy];
+  [LynxTemplateRender runOnMainThread:^{
+    auto completion = CreateHeapSnapshotCallback(callback);
+    LynxTemplateRender* templateRender = lynxView.templateRender;
+    if (!templateRender || !templateRender->shell_ || templateRender.isDestroyed) {
+      lynx::runtime::HeapSnapshotRequest("", std::move(completion))
+          .Fail(templateRender ? "LynxView unavailable" : "LynxView destroyed");
+    } else {
+      const char* path = outputFile.UTF8String;
+      const char* snapshotType = type.UTF8String;
+      templateRender->shell_->TakeHeapSnapshot(
+          std::string(path ? path : "",
+                      [outputFile lengthOfBytesUsingEncoding:NSUTF8StringEncoding]),
+          std::move(completion),
+          snapshotType
+              ? std::string(snapshotType, [type lengthOfBytesUsingEncoding:NSUTF8StringEncoding])
+              : "");
+    }
+  }];
+}
+
++ (void)takeBtsResidualHeapSnapshot:(NSString*)outputFile
+                           callback:(void (^)(NSString* _Nullable))callback
+                         instanceId:(int32_t)instanceId {
+  const char* path = outputFile.UTF8String;
+  lynx::tasm::performance::GlobalMemoryMonitor::GetInstance().TakeBtsResidualHeapSnapshot(
+      std::string(path ? path : "", [outputFile lengthOfBytesUsingEncoding:NSUTF8StringEncoding]),
+      CreateHeapSnapshotCallback(callback), instanceId);
 }
 
 - (nullable NSNumber*)getLynxRuntimeId {
