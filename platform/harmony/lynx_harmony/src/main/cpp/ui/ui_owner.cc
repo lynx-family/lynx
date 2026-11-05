@@ -23,6 +23,7 @@
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/services/fluency/fluency_tracer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -1122,6 +1123,13 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   napi_status status =
       napi_remove_wrap(env, js_this, reinterpret_cast<void**>(&obj));
   NAPI_THROW_IF_FAILED_NULL(env, status, "UIOwner napi_remove_wrap failed!");
+  // Invalidate the root before releasing its native owner. Runtime destruction
+  // owns the Page's final cleanup.
+  if (auto input_context = obj->context_->GetNativePaintingContext();
+      input_context && obj->root_) {
+    input_context->NotifyInputRootStateChanged(obj->root_->Sign(), false,
+                                               false);
+  }
   obj->context_->ResetUIOwner();
   obj->PrepareForDestroy();
   napi_delete_reference(env, obj->js_create_);
@@ -1596,6 +1604,26 @@ void UIOwner::SetEnableFiberTargetOnlyDestroy(bool enable) {
 
 void UIOwner::SetLongPressDuration(int32_t long_press_duration) {
   event_dispatcher_->SetLongPressDuration(long_press_duration);
+}
+
+void UIOwner::SetRawInputEnabled(bool enabled) {
+  if (!js_this_) {
+    return;
+  }
+  base::NapiHandleScope scope(env_);
+  napi_value receiver = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
+  napi_value callback;
+  if (!receiver || napi_get_named_property(env_, receiver, "setRawInputEnabled",
+                                           &callback) != napi_ok) {
+    return;
+  }
+  napi_value argument;
+  napi_get_boolean(env_, enabled, &argument);
+  napi_value result;
+  if (napi_call_function(env_, receiver, callback, 1, &argument, &result) !=
+      napi_ok) {
+    LOGE("Failed to configure raw input event ownership");
+  }
 }
 
 void UIOwner::SendEvent(const LynxEvent& event) const {

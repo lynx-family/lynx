@@ -312,6 +312,7 @@ export class LynxContext implements IContext {
   public setShadowNodeOwner(nodeOwner: ShadowNodeOwner): void;
   public setUIOwner(uiOwner: UIOwner): void;
   public getUIOwner(): UIOwner | undefined;
+  public isRawInputEnabled(): boolean;
   public measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number, finalMeasure: boolean): void;
   public alignNativeNode(sign: number, left: number, top: number): void;
   setRenderer(renderer: LynxTemplateRenderer): void;
@@ -1299,6 +1300,7 @@ export interface IContext {
   getMediaResourceFetcher(): LynxMediaResourceFetcher | undefined;
   getDensity(): number;
   canConsumeTouchEvent(x: number, y: number): boolean;
+  isRawInputEnabled(): boolean;
   canConsumeTouchEventAtRoot(x: number, y: number, content: NativeContent): boolean;
   updateRootTarget(content: NativeContent): void;
 }

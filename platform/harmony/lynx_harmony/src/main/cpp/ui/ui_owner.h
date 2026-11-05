@@ -162,6 +162,7 @@ class UIOwner {
   void SetHasTouchPseudo(bool has_touch_pseudo);
   void SetEnableFiberTargetOnlyDestroy(bool enable);
   void SetLongPressDuration(int32_t long_press_duration);
+  void SetRawInputEnabled(bool enabled);
   void SendEvent(const LynxEvent& event) const;
   bool StartEventGenerate(const TouchEvent& touch_event) const;
   void SetEventID(int64_t event_id);

@@ -30,6 +30,7 @@ import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.LynxUIRenderer;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.render.ContainerRenderer;
@@ -508,6 +509,28 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     public UIBodyView(Context context, AttributeSet attrs) {
       super(context, attrs);
+    }
+
+    private void notifyInputRootStateChanged(boolean attached, boolean focused) {
+      if (mLynxContext == null || !mLynxContext.getEnableRawInput()) {
+        return;
+      }
+      LynxUIOwner owner = mLynxContext.getLynxUIOwner();
+      if (owner != null) {
+        mLynxContext.notifyInputRootStateChanged(owner.getRootSign(), attached, focused);
+      }
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+      super.onAttachedToWindow();
+      notifyInputRootStateChanged(true, hasWindowFocus() && hasFocus());
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+      notifyInputRootStateChanged(false, false);
+      super.onDetachedFromWindow();
     }
 
     public void cacheLayoutInfo(int width, int height) {

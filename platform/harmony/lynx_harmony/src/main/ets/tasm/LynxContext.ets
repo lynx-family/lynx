@@ -82,6 +82,10 @@ export class LynxContext implements IContext {
     return this.uiOwner;
   }
 
+  public isRawInputEnabled(): boolean {
+    return this.uiOwner?.isRawInputEnabled() ?? false;
+  }
+
   public measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number,
     finalMeasure: boolean) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_MEASURE_NATIVE);
