@@ -5,18 +5,17 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/no_destructor.h"
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "base/include/string/string_utils.h"
-#include "core/renderer/utils/devtool_lifecycle.h"
-#include "core/shell/host_script/android/runtime/process_runtime_android.h"
-#include "devtool/lynx_devtool/agent/android/global_devtool_platform_android.h"
-#include "devtool/lynx_devtool/agent/lynx_devtool_mediator_base.h"
+#include "core/shell/host_script/runtime/platform/android/process_runtime_android.h"
+#include "devtool/lynx_devtool/agent/hsr_script_request.h"
 
 namespace lynx {
 namespace devtool {
 namespace {
 using shell::ProcessRuntime;
-using Callback = GlobalDevToolPlatformFacade::HSRScriptCallback;
+using Callback = shell::HostScriptTransport::Callback;
 
 // Accessed only on the DevTool runner. IDs make late resource callbacks safe
 // after timeout, without passing native callback pointers through Java.
@@ -26,15 +25,12 @@ struct PendingLoad {
   ProcessRuntime::Domain domain = ProcessRuntime::Domain::kBTS;
   std::string url;
   Callback callback;
+  fml::RefPtr<fml::TaskRunner> runner;
 };
 
 PendingLoad& Load() {
   static base::NoDestructor<PendingLoad> load;
   return *load;
-}
-
-auto DevToolRunner() {
-  return LynxDevToolMediatorBase::GetDevToolsThread().GetTaskRunner();
 }
 
 ProcessRuntime::Domain RuntimeDomain(HSRScriptRequest::Thread thread);
@@ -45,6 +41,7 @@ void FinishLoad(uint64_t id, const std::string& error) {
   auto callback = std::move(load.callback);
   load.fetching = false;
   load.url.clear();
+  load.runner = nullptr;
   std::move(callback)(Json::Value(Json::objectValue), error);
 }
 
@@ -58,16 +55,18 @@ void SourceLoaded(uint64_t id, std::string source, const std::string& error) {
   }
   shell::LoadHostScriptRuntime(
       std::move(source), load.url,
-      [id](const ProcessRuntime::Result& result) {
+      [id, runner = load.runner](const ProcessRuntime::Result& result) {
         std::string error = result.error;
         if (!result.success && error.empty()) error = "HSR_LOAD_FAILED";
-        DevToolRunner()->PostTask(
+        runner->PostTask(
             [id, error = std::move(error)] { FinishLoad(id, error); });
       },
       load.domain);
 }
 
-void StartLoad(HSRScriptRequest request, Callback callback) {
+void StartLoad(HSRScriptRequest request, Callback callback,
+               fml::RefPtr<fml::TaskRunner> runner,
+               shell::HostScriptTransport::Fetcher fetch) {
   auto& load = Load();
   if (load.callback) {
     std::move(callback)(Json::Value(), "HSR_LOAD_IN_PROGRESS");
@@ -76,6 +75,7 @@ void StartLoad(HSRScriptRequest request, Callback callback) {
   const auto id = ++load.id;
   load.fetching = true;
   load.callback = std::move(callback);
+  load.runner = std::move(runner);
   load.domain = RuntimeDomain(request.thread);
   load.url = request.source_type == HSRScriptRequest::SourceType::kUrl
                  ? request.source
@@ -91,13 +91,13 @@ void StartLoad(HSRScriptRequest request, Callback callback) {
   }
   // A broken resource provider must not retain the global load slot forever.
   // This only expires fetching; it never cancels executing JavaScript.
-  DevToolRunner()->PostDelayedTask(
+  load.runner->PostDelayedTask(
       [id] {
         if (Load().id == id && Load().fetching)
           FinishLoad(id, "HSR_SOURCE_LOAD_TIMEOUT");
       },
       fml::TimeDelta::FromSeconds(30));
-  GlobalDevToolPlatformAndroid::FetchHSRScript(load.url, id);
+  fetch(load.url, id);
 }
 
 ProcessRuntime::Domain RuntimeDomain(HSRScriptRequest::Thread thread) {
@@ -140,26 +140,27 @@ void Evaluate(HSRScriptRequest request, Callback callback) {
 }
 }  // namespace
 
-void GlobalDevToolPlatformAndroid::HandleHSRScript(HSRScriptRequest request,
-                                                   HSRScriptCallback callback) {
+void HandleHSRScript(HSRScriptRequest request, Callback callback,
+                     fml::RefPtr<fml::TaskRunner> runner,
+                     shell::HostScriptTransport::Fetcher fetch) {
   if (!callback) return;
   // Schema callers may arrive from a platform thread. CDP already runs here.
-  fml::TaskRunner::RunNowOrPostTask(
-      DevToolRunner(),
-      [request = std::move(request), callback = std::move(callback)]() mutable {
-        if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) {
-          std::move(callback)(Json::Value(), "HSR_DEBUG_DISABLED");
-        } else if (request.operation ==
-                   HSRScriptRequest::Operation::kLoadScript) {
-          StartLoad(std::move(request), std::move(callback));
-        } else {
-          Evaluate(std::move(request), std::move(callback));
-        }
-      });
+  fml::TaskRunner::RunNowOrPostTask(runner, [request = std::move(request),
+                                             callback = std::move(callback),
+                                             runner, fetch]() mutable {
+    if (!shell::IsHostScriptDebugEnabled()) {
+      std::move(callback)(Json::Value(), "HSR_DEBUG_DISABLED");
+    } else if (request.operation == HSRScriptRequest::Operation::kLoadScript) {
+      StartLoad(std::move(request), std::move(callback), runner, fetch);
+    } else {
+      Evaluate(std::move(request), std::move(callback));
+    }
+  });
 }
 
-void GlobalDevToolPlatformAndroid::OnHSRScriptFetched(
-    JNIEnv* env, jlong request_id, jbyteArray bytes, jbyteArray error_message) {
+void OnHSRScriptFetched(JNIEnv* env, jlong request_id, jbyteArray bytes,
+                        jbyteArray error_message,
+                        fml::RefPtr<fml::TaskRunner> runner) {
   using base::android::JNIConvertHelper;
   std::string error;
   if (error_message) {
@@ -175,10 +176,20 @@ void GlobalDevToolPlatformAndroid::OnHSRScriptFetched(
       source = JNIConvertHelper::ConvertToString(env, bytes);
     }
   }
-  DevToolRunner()->PostTask([request_id, source = std::move(source),
-                             error = std::move(error)]() mutable {
+  runner->PostTask([request_id, source = std::move(source),
+                    error = std::move(error)]() mutable {
     SourceLoaded(request_id, std::move(source), error);
   });
 }
 }  // namespace devtool
+}  // namespace lynx
+
+namespace lynx {
+namespace shell {
+const HostScriptTransport* GetStandaloneHostScriptTransport() {
+  static const HostScriptTransport transport{devtool::HandleHSRScript,
+                                             devtool::OnHSRScriptFetched};
+  return &transport;
+}
+}  // namespace shell
 }  // namespace lynx

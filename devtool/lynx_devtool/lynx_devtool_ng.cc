@@ -70,6 +70,9 @@ LynxDevToolNG::LynxDevToolNG(bool debuggable)
     tasm::recorder::SetRecordPayloadCallback(
         GlobalDevToolPlatformFacade::SendRecordPayload);
 
+    global_dispatcher.RegisterAgent("HSR",
+                                    std::make_unique<InspectorHSRAgent>());
+
     if (lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
         lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
       RegisterGlobalDomainAgents(global_dispatcher);
@@ -132,7 +135,6 @@ void LynxDevToolNG::RegisterGlobalDomainAgents(
                                   std::make_unique<InspectorComponentAgent>());
   global_dispatcher.RegisterAgent(
       "LynxSetting", std::make_unique<InspectorLynxSettingAgent>());
-  global_dispatcher.RegisterAgent("HSR", std::make_unique<InspectorHSRAgent>());
 }
 
 void LynxDevToolNG::RegisterGlobalDomainAgents(

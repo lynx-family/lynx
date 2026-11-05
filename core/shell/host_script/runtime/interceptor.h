@@ -12,6 +12,7 @@
 
 #include "base/include/log/log_context.h"
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/shell/host_script/runtime/host_script_domain.h"
 
 namespace lynx::shell {
@@ -34,7 +35,7 @@ struct InterceptResult {
 };
 
 // Optional synchronous, thread-affine extension. No JS engine dependency.
-class Interceptor {
+class LYNX_EXPORT Interceptor {
  public:
   using Domain = HostScriptDomain;
   virtual ~Interceptor() = default;

@@ -16,6 +16,9 @@
 #include "core/runtime/js/bindings/modules/module_interceptor_registry.h"
 #include "core/shell/host_script/runtime/host_script_value_snapshot.h"
 #include "core/shell/host_script/runtime/interceptor.h"
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+#include "core/shell/host_script/runtime/platform/android/process_runtime_android.h"
+#endif
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx::shell {
@@ -48,12 +51,38 @@ BASE_STATIC_STRING_DECL(kCallbacks, "callbacks");
 constexpr std::initializer_list<Kind> kStages = {Kind::kCall, Kind::kResult,
                                                  Kind::kCallback};
 
+#if !defined(LYNX_HOST_SCRIPT_STANDALONE)
 std::unique_ptr<runtime::js::ModuleInterceptor> Create() {
   return std::make_unique<HostScriptModuleInterceptor>();
 }
+#endif
 
 bool IsFunction(Runtime& rt, const Value& value) {
   return value.isObject() && value.getObject(rt).isFunction(rt);
+}
+
+Value CopyValue(Runtime& rt, const Value& value) {
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+  if (value.isUndefined()) return Value::undefined();
+  if (value.isNull()) return Value::null();
+  if (value.isBool()) return Value(value.getBool());
+  if (value.isNumber()) return Value(value.getNumber());
+  if (value.isSymbol()) return Value(value.getSymbol(rt));
+  if (value.isString()) return Value(value.getString(rt));
+  return Value(value.getObject(rt));
+#else
+  return Value(rt, value);
+#endif
+}
+
+lepus::Value ToLepusValue(const pub::Value& value) {
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+  lepus::Value result;
+  GetHostScriptEngineOps()->pub_to_lepus(&value, &result);
+  return result;
+#else
+  return pub::ValueUtils::ConvertValueToLepusValue(value);
+#endif
 }
 
 // The patched field, or nil when the decision leaves it unchanged.
@@ -118,9 +147,11 @@ class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
   lepus::Value mock_;
 };
 
+#if !defined(LYNX_HOST_SCRIPT_STANDALONE)
 void HostScriptModuleInterceptor::Register() {
   runtime::js::ModuleInterceptorRegistry::RegisterLeading(&Create);
 }
+#endif
 
 HostScriptModuleInterceptor::Call* HostScriptModuleInterceptor::GetCall(
     ModuleCallContext* context) {
@@ -187,7 +218,7 @@ HostScriptModuleInterceptor::BeforeConvertArgs(
     replaced.reserve(count);
     for (size_t i = 0; i < count; ++i) {
       replaced.push_back(
-          kept[i] ? Value(rt, args[i])
+          kept[i] ? CopyValue(rt, args[i])
                   : RestoreJSValue(
                         rt, patched.GetProperty(static_cast<uint32_t>(i))));
     }
@@ -222,7 +253,12 @@ ModuleInterceptorResult HostScriptModuleInterceptor::InterceptModuleMethod(
     callback->SetArgs(
         std::make_unique<pub::ValueImplLepus>(delivery.GetProperty(kArgs)));
     if (callback->timing_collector_) {
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+      GetHostScriptEngineOps()->callback_thread_switch_start(
+          callback->timing_collector_.get());
+#else
       callback->timing_collector_->CallbackThreadSwitchStart();
+#endif
     }
     delegate->CallJSCallback(callback, nullptr,
                              ModuleCallback::kInvalidCallbackId,
@@ -281,7 +317,7 @@ void HostScriptModuleInterceptor::WillInvokeCallback(
   if (!handler || !args->IsArray() || !CanSnapshot(*args)) return;
   auto event = call->Event();
   event.SetProperty(kArgumentIndex, lepus::Value(callback.argument_index()));
-  event.SetProperty(kArgs, pub::ValueUtils::ConvertValueToLepusValue(*args));
+  event.SetProperty(kArgs, ToLepusValue(*args));
   auto patched = Patched(handler->Dispatch(Kind::kCallback, event), kArgs);
   if (!patched.IsNil()) {
     args = std::make_unique<pub::ValueImplLepus>(std::move(patched));

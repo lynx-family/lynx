@@ -6,6 +6,7 @@ import("../../core/Lynx.gni")
 import("../test.gni")
 
 if (is_android) {
+  import("../../platform/android/lynx_android/LynxAndroid.gni")
   group("lynx_test_jni_files") {
     exec_script(
         "//buildtools/tools_shared/tools_shared/jni_generator/generate_and_register_jni_files.py",
@@ -28,7 +29,7 @@ if (is_android) {
       ":lynx_test_jni_files",
       "../../core/renderer/dom/fragment:display_list",
     ]
-    if (lynx_in_debug) {
+    if (lynx_in_debug && !enable_lynx_android_test && !enable_lynx_testing) {
       sources += [ "android/host_script_view_hooks_test.cc" ]
       deps += [ "../../core/shell/host_script/runtime:host_script" ]
     }

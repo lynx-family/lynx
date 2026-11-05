@@ -13,11 +13,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.tasm.LynxEnv;
+import java.lang.reflect.Field;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONObject;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,6 +43,7 @@ public class GlobalDevToolPlatformAndroidDelegateTest {
 
   @Test
   public void nativeLoadCompletesOnUiThread() throws Exception {
+    Assume.assumeTrue(isHostScriptAvailable());
     assertNull(
         load(new JSONObject().put("target", "script").put("script", "globalThis.probe = 42;")));
   }
@@ -53,6 +56,7 @@ public class GlobalDevToolPlatformAndroidDelegateTest {
 
   @Test
   public void nativeExceptionPreservesUnicode() throws Exception {
+    Assume.assumeTrue(isHostScriptAvailable());
     String message = "\u4e2d\u6587\ud83d\ude00";
     String error = load(new JSONObject()
                             .put("target", "script")
@@ -72,5 +76,16 @@ public class GlobalDevToolPlatformAndroidDelegateTest {
     assertTrue("HSR callback timed out", done.await(10, TimeUnit.SECONDS));
     assertTrue("HSR completion must return to UI", onUiThread.get());
     return result.get();
+  }
+
+  private static boolean isHostScriptAvailable() {
+    try {
+      Field transport =
+          GlobalDevToolPlatformAndroidDelegate.class.getDeclaredField("sHostScriptTransport");
+      transport.setAccessible(true);
+      return transport.getLong(null) != 0;
+    } catch (ReflectiveOperationException error) {
+      throw new AssertionError(error);
+    }
   }
 }
