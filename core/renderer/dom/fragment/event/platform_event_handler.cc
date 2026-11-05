@@ -234,6 +234,9 @@ void PlatformEventHandler::DispatchPointerEvent(
       raw_input_enabled_
           ? CreateRawTouchEvent(name, target_pointer_map, source_event)
           : fml::MakeRefCounted<event::TouchEvent>(name, target_pointer_map);
+  if (name == EVENT_TOUCH_END) {
+    platform_ref_->DispatchPositionChangeEvents();
+  }
   platform_ref_->GetEventEmitter()->SendEvent(recipient, std::move(event));
 }
 

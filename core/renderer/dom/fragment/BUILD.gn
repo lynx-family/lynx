@@ -23,6 +23,8 @@ lynx_core_source_set("fragment") {
     "event/platform_input_event.h",
     "event/platform_pointer_event.cc",
     "event/platform_pointer_event.h",
+    "event/platform_position_change_observer.cc",
+    "event/platform_position_change_observer.h",
     "event/platform_text_event_target.h",
     "fragment.cc",
     "fragment.h",

@@ -245,6 +245,7 @@ class PaintingContext {
   void SetTapSlop(const std::string& tap_slop);
   void SetRawInputEnabled(bool enabled);
   void SetEventScreenWidth(float screen_width);
+  void SetPositionEventConfig(int observer_frame_rate);
   void SetEventThroughConfig(bool enable_event_through,
                              bool enable_event_through_inherit_from_page);
   void UpdateFlattenStatus(int id, bool flatten);
