@@ -216,10 +216,12 @@ Enter the `explorer/android` directory from the project root directory and execu
 
 ```
 cd explorer/android
-./gradlew :LynxExplorer:assembleNoAsanDebug --no-daemon
+./gradlew :LynxExplorer:assembleWithoutSparklingNoasanDebug --no-daemon
 ```
 
-This command will generate LynxExplorer-noasan-debug.apk in the `lynx_explorer/build/outputs/apk/noasan/debug/` folder.
+This command will generate LynxExplorer-withoutSparkling-noasan-debug.apk in the `lynx_explorer/build/outputs/apk/withoutSparklingNoasan/debug/` folder.
+
+To include the optional Sparkling runtime, use `assembleWithSparklingNoasanDebug` instead. See [Use Sparkling containers in Android Lynx Explorer](../docs/android-sparkling-container.md).
 
 > notice: If you have just setup the development environment in the same terminal session, some environment variables might not take effect. Please restart a terminal session (or VS Code, Android Studio) then retry.
 
@@ -228,7 +230,7 @@ This command will generate LynxExplorer-noasan-debug.apk in the `lynx_explorer/b
 You can install the above .apk file on your device using the adb command.
 
 ```
-adb install lynx_explorer/build/outputs/apk/noasan/debug/LynxExplorer-noasan-debug.apk
+adb install lynx_explorer/build/outputs/apk/withoutSparklingNoasan/debug/LynxExplorer-withoutSparkling-noasan-debug.apk
 ```
 
 If the adb command is not found, you can add the path to the adb command in the environment configuration file on Linux or MacOS (~/.zshrc or ~/.bash_profile or ~/.bashrc):

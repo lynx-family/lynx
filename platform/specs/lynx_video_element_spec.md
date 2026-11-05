@@ -313,13 +313,13 @@ From repo root:
 ```bash
 source tools/envsetup.sh
 cd explorer/android
-./gradlew :LynxExplorer:assembleNoAsanDebug -PIntegrationTest --no-daemon --stacktrace
+./gradlew :LynxExplorer:assembleWithoutSparklingNoasanDebug -PIntegrationTest --no-daemon --stacktrace
 ```
 
 Expected APK:
 
 ```text
-explorer/android/lynx_explorer/build/outputs/apk/noasan/debug/LynxExplorer-noasan-debug.apk
+explorer/android/lynx_explorer/build/outputs/apk/withoutSparklingNoasan/debug/LynxExplorer-withoutSparkling-noasan-debug.apk
 ```
 
 ##### Start Appium And Emulator
@@ -365,15 +365,15 @@ re-sign the Explorer APK with Appium's Espresso test key:
 $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
   --key node_modules/.pnpm/appium-adb@12.13.1/node_modules/appium-adb/keys/testkey.pk8 \
   --cert node_modules/.pnpm/appium-adb@12.13.1/node_modules/appium-adb/keys/testkey.x509.pem \
-  --out /tmp/LynxExplorer-noasan-debug-espresso-testkey.apk \
-  explorer/android/lynx_explorer/build/outputs/apk/noasan/debug/LynxExplorer-noasan-debug.apk
+  --out /tmp/LynxExplorer-withoutSparkling-noasan-debug-espresso-testkey.apk \
+  explorer/android/lynx_explorer/build/outputs/apk/withoutSparklingNoasan/debug/LynxExplorer-withoutSparkling-noasan-debug.apk
 ```
 
 Install it:
 
 ```bash
 adb uninstall com.lynx.explorer || true
-adb install -r /tmp/LynxExplorer-noasan-debug-espresso-testkey.apk
+adb install -r /tmp/LynxExplorer-withoutSparkling-noasan-debug-espresso-testkey.apk
 ```
 
 Confirm signature match if needed:
@@ -445,7 +445,7 @@ source tools/envsetup.sh
 python3 testing/integration_test/demo_pages/build_and_copy.py
 
 cd explorer/android
-./gradlew :LynxExplorer:assembleNoAsanDebug -PIntegrationTest --no-daemon --stacktrace
+./gradlew :LynxExplorer:assembleWithoutSparklingNoasanDebug -PIntegrationTest --no-daemon --stacktrace
 
 cd ../../testing/integration_test/test_script
 platform=android /tmp/lynx-e2e-venv/bin/python manage.py runtest android_test.xelement
