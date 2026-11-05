@@ -1036,6 +1036,20 @@
   }
 }
 
+- (void)takeHeapSnapshot:(NSString*)outputFile
+                callback:(void (^)(NSString* _Nullable))callback
+                    type:(NSString*)type {
+  [LynxTemplateRender takeHeapSnapshot:outputFile callback:callback type:type lynxView:self];
+}
+
++ (void)takeBtsResidualHeapSnapshot:(NSString*)outputFile
+                           callback:(void (^)(NSString* _Nullable))callback
+                         instanceId:(int32_t)instanceId {
+  [LynxTemplateRender takeBtsResidualHeapSnapshot:outputFile
+                                         callback:callback
+                                       instanceId:instanceId];
+}
+
 // Used by LynxUIContext
 - (nullable NSNumber*)getLynxRuntimeId {
   if (_templateRender != nil) {

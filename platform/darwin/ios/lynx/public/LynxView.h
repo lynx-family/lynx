@@ -281,6 +281,39 @@
 - (void)getLynxElementRoot:(void (^_Nullable)(LynxElement* _Nullable root))callback;
 
 /**
+ * @apidoc
+ * @brief Asynchronously captures a QuickJS heap snapshot. Capture triggers GC, clears retained
+ * console messages, summarizes diagnostics, and includes available source locations.
+ * @param outputFile Absolute destination path. Its parent directory must exist. Existing content
+ * is replaced.
+ * @param callback Called on a background thread with nil on success, or an error message on
+ * failure.
+ * @param type "mts" captures the main MTS VM; "bts_page" captures the page's tracked slot in a
+ * shared BTS VM, or the whole VM if not shared; "bts_vm" captures the whole BTS VM. Shared page
+ * captures require previously enabled slot tracking. Unsupported engines fail. May be called on any
+ * thread.
+ */
+- (void)takeHeapSnapshot:(nonnull NSString*)outputFile
+                callback:(void (^_Nullable)(NSString* _Nullable error))callback
+                    type:(nonnull NSString*)type;
+
+/**
+ * @apidoc
+ * @brief Captures allocations remaining in a destroyed page's QuickJS BTS slot. Requires previously
+ * enabled slot tracking and a surviving shared VM. Capture triggers GC and clears retained console
+ * messages; diagnostics are summarized and available source locations included.
+ * @param outputFile Absolute destination path. Its parent directory must exist. Existing content
+ * is replaced.
+ * @param callback Called on a background thread with nil on success, or an error message on
+ * failure.
+ * @param instanceId The instance ID saved before destroying the LynxView. May be called on any
+ * thread.
+ */
++ (void)takeBtsResidualHeapSnapshot:(nonnull NSString*)outputFile
+                           callback:(void (^_Nullable)(NSString* _Nullable error))callback
+                         instanceId:(int32_t)instanceId;
+
+/**
  * @brief Update the preferred color scheme for this LynxView.
  * @param scheme The color scheme value.
  */
