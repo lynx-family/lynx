@@ -213,6 +213,11 @@ public final class LynxGlobalMemoryUsageResult {
     return mAppBytes;
   }
 
+  /** Global Lynx-attributed total divided by app bytes, or zero when app bytes are unavailable. */
+  public double getRatioToApp() {
+    return mAppBytes > 0 ? (double) mTotalBytes / mAppBytes : 0.0;
+  }
+
   /** Aggregated element bytes across active instances. */
   public long getElementBytes() {
     return mElementBytes;

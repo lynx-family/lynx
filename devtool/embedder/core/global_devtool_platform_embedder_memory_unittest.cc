@@ -36,7 +36,7 @@ TEST(EmbedderMemoryUsageTest, PreservesSharedVmTotalsAndPageAttribution) {
   // or add each page's whole VM heap again at the protocol boundary.
   EXPECT_EQ(result["totalBytes"].asInt64(), 3000);
   EXPECT_EQ(result["backgroundThreadRuntimeBytes"].asInt64(), 2500);
-  EXPECT_FALSE(result.isMember("ratioToApp"));
+  EXPECT_DOUBLE_EQ(result["ratioToApp"].asDouble(), 0.5);
   EXPECT_EQ(result["elementNodeCount"].asInt(), 12);
   const auto& instance = result["instances"][0];
   EXPECT_EQ(instance["instanceId"].asInt(), 1);
@@ -65,7 +65,7 @@ TEST(EmbedderMemoryUsageTest, EmptySnapshotKeepsArrayAndUnavailableAppMemory) {
   EXPECT_EQ(result["expectedInstanceCount"].asUInt64(), 0u);
   EXPECT_EQ(result["completedInstanceCount"].asUInt64(), 0u);
   EXPECT_EQ(result["appBytes"].asInt64(), 0);
-  EXPECT_FALSE(result.isMember("ratioToApp"));
+  EXPECT_DOUBLE_EQ(result["ratioToApp"].asDouble(), 0.0);
 }
 
 TEST(EmbedderMemoryUsageTest,
@@ -105,6 +105,7 @@ TEST(EmbedderMemoryUsageTest, MonitoringDisabledIsAnError) {
   EXPECT_EQ(result["collectionStatus"].asString(), "error");
   EXPECT_EQ(result["errorMessage"].asString(),
             tasm::performance::kMemoryMonitoringDisabledError);
+  EXPECT_DOUBLE_EQ(result["ratioToApp"].asDouble(), 0.0);
   EXPECT_TRUE(result["instances"].empty());
   EXPECT_TRUE(result["destroyedInstances"].empty());
 }

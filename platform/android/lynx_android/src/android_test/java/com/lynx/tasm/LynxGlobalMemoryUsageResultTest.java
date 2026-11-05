@@ -27,6 +27,7 @@ public class LynxGlobalMemoryUsageResultTest {
     assertEquals(largeInstance, result.getInstances().get(0));
     assertEquals(mediumInstance, result.getInstances().get(1));
     assertEquals(smallInstance, result.getInstances().get(2));
+    assertEquals(0.0, result.getRatioToApp(), 0.0);
   }
 
   @Test
@@ -85,6 +86,8 @@ public class LynxGlobalMemoryUsageResultTest {
     assertEquals(24L, result.getMainThreadRuntimeBytes());
     assertEquals(100L, result.getBackgroundThreadRuntimeBytes());
     assertEquals(784L, result.getTotalBytes());
+    assertEquals(
+        result.getAppBytes() > 0 ? 784.0 / result.getAppBytes() : 0.0, result.getRatioToApp(), 0.0);
     assertEquals(3, result.getInstances().get(0).getInstanceId());
     assertEquals(2, result.getInstances().get(1).getInstanceId());
     assertEquals(1, result.getInstances().get(2).getInstanceId());
@@ -142,6 +145,7 @@ public class LynxGlobalMemoryUsageResultTest {
 
     assertEquals(2, result.getCompletedInstanceCount());
     assertEquals(300L, result.getTotalBytes());
+    assertEquals(0.25, result.getRatioToApp(), 0.0);
     assertEquals(first, result.getInstances().get(0));
     assertEquals(second, result.getInstances().get(1));
     try {
@@ -191,6 +195,7 @@ public class LynxGlobalMemoryUsageResultTest {
         100, 50, 2000, 1, new long[0], new long[0], new String[0], new long[0], new String[0]);
     assertEquals(LynxMemoryCollectionStatus.ERROR, result.getCollectionStatus());
     assertEquals("Memory monitoring disabled", result.getErrorMessage());
+    assertEquals(0.0, result.getRatioToApp(), 0.0);
     assertTrue(result.getInstances().isEmpty());
     assertTrue(result.getDestroyedInstances().isEmpty());
   }

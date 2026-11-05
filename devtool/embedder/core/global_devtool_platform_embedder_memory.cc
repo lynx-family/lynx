@@ -47,6 +47,8 @@ Json::Value BuildEmbedderMemoryUsageResult(
   result["backgroundThreadRuntimeBytes"] = Json::Int64(total.bts_bytes);
   app_bytes = std::max<int64_t>(0, app_bytes);
   result["appBytes"] = Json::Int64(app_bytes);
+  result["ratioToApp"] =
+      app_bytes > 0 ? static_cast<double>(total.total_bytes) / app_bytes : 0.0;
 
   std::vector<const tasm::performance::InstanceMemoryUsage*> sorted;
   sorted.reserve(usage.instances.size());

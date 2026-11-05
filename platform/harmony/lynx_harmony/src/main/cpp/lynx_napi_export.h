@@ -23,6 +23,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/memory_usage_query.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/js_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/js_ui_base.h"
 
@@ -41,6 +42,7 @@
 #endif
 
 void LynxNapiInit(napi_env env, napi_value exports) {
+  lynx::harmony::InitMemoryUsageQuery(env, exports);
   lynx::tasm::NativeTemplateDataHarmony::Init(env, exports);
   lynx::harmony::LynxTemplateRenderer::Init(env, exports);
   lynx::harmony::LynxWhiteBoard::Init(env, exports);
