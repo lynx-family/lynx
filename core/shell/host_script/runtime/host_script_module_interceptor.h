@@ -5,6 +5,7 @@
 #ifndef CORE_SHELL_HOST_SCRIPT_RUNTIME_HOST_SCRIPT_MODULE_INTERCEPTOR_H_
 #define CORE_SHELL_HOST_SCRIPT_RUNTIME_HOST_SCRIPT_MODULE_INTERCEPTOR_H_
 
+#include <cstring>
 #include <memory>
 #include <vector>
 
