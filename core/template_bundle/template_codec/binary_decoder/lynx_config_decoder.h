@@ -789,6 +789,11 @@ class LynxConfigDecoder final {
       page_config->SetEnableCSSRule(doc[config::kEnableCSSRule].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableRawInput) &&
+        doc[config::kEnableRawInput].IsBool()) {
+      page_config->SetEnableRawInput(doc[config::kEnableRawInput].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableMultiTouch) &&
         doc[config::kEnableMultiTouch].IsBool()) {
       page_config->SetEnableMultiTouch(

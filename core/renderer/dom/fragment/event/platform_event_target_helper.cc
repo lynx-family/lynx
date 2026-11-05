@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <limits>
 #include <stack>
 #include <unordered_map>
 #include <utility>
@@ -397,6 +398,20 @@ void SetDataset(PlatformEventTarget* target, const lepus::Value& value) {
   target->SetDataset(value);
 }
 
+void SetMinimumTouchTargetSize(PlatformEventTarget* target,
+                               const lepus::Value& value) {
+  const double size_px = value.IsNumber() ? value.Number() : -1.;
+  target->SetMinimumTouchTargetSize(
+      size_px >= 0. && size_px <= std::numeric_limits<float>::max()
+          ? static_cast<float>(size_px)
+          : -1.f);
+}
+
+void SetShareTouchTarget(PlatformEventTarget* target,
+                         const lepus::Value& value) {
+  target->SetShareTouchTarget(value.IsBool() && value.Bool());
+}
+
 const std::unordered_map<PlatformEventPropName, EventPropValueSetter,
                          PlatformEventPropNameHash>&
 GetEventPropSetterMap() {
@@ -443,6 +458,9 @@ GetEventPropSetterMap() {
            &SetEnableSimultaneousTouch},
           {PlatformEventPropName::kPointerEvents, &SetPointerEvents},
           {PlatformEventPropName::kConsumeSlideEvent, &SetConsumeSlideEvent},
+          {PlatformEventPropName::kMinimumTouchTargetSize,
+           &SetMinimumTouchTargetSize},
+          {PlatformEventPropName::kShareTouchTarget, &SetShareTouchTarget},
       };
   return map;
 }
@@ -719,7 +737,11 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
       }
       // create the sub event target tree.
       case DisplayListOpType::kDrawView: {
-        if (child_renderer_idx < child_renderer_size) {
+        // Removed renderers can leave DrawView entries until the next repaint.
+        // Consume a surviving child only at its own display-list entry.
+        if (child_renderer_idx < child_renderer_size &&
+            children_renderer[child_renderer_idx]->GetId() ==
+                item.payload.draw_view.view_id) {
           auto child_renderer = fml::static_ref_ptr_cast<PlatformRendererImpl>(
               children_renderer[child_renderer_idx++]);
           if (child_renderer->GetId() != tree_root_id &&

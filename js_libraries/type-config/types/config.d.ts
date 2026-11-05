@@ -312,6 +312,18 @@ export interface Config {
   enableParseIntFlex?: boolean;
 
   /**
+   * Enables exclusive platform touch ownership and platform lifecycle and focus notifications for an Android or HarmonyOS Fragment Layer Rendering page. This setting is fixed when the page is initialized. When enabled, the Page receives standard touch events with raw-input metadata and named CustomEvents for lifecycle and focus changes. When disabled, the page keeps ordinary platform touch handling. Adding or removing event listeners does not change this setting.
+   *
+   * @Android
+   * @Harmony
+   *
+   * Since: LynxSDK 4.3
+   *
+   * @defaultValue false
+   */
+  enableRawInput?: boolean;
+
+  /**
    * Controls whether reload patching triggers the LynxUI onNodeReload lifecycle on affected elements. When enabled, refresh patching walks reloaded elements and calls onNodeReload; when disabled, reload updates skip that lifecycle callback.
    *
    * @Android
