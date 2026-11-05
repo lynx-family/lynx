@@ -31,6 +31,10 @@ This directory contains painting-wrapper objects such as `PaintingContext`, nati
 ## Invariants And Pitfalls
 
 - Shared painting-context abstractions should remain platform-neutral even when one platform needs an adapter tweak.
+- Node insertion, removal, destruction, ready callbacks, and external-memory
+  report requests dispatch through `PaintingCtxPlatformRef` and the normal UI
+  operation queue. Test doubles must implement this path; the retired UI-op
+  batching switch is not a test dispatch mechanism.
 - Platform renderer and UI delegate files are tightly coupled to context handoff; changing one side in isolation can produce stale handle or lifecycle bugs.
 
 ## Common Regression Symptoms

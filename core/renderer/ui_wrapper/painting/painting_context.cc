@@ -36,13 +36,9 @@ void PaintingContext::OnNodeReload(int tag) {
 
 void PaintingContext::InsertPaintingNode(int parent, int child, int index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_INSERT_NODE);
-  if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->InsertPaintingNode(parent, child, index);
-  } else {
-    Enqueue(
-        [platform_ref = platform_impl_->GetPlatformRef(), parent, child,
-         index]() { platform_ref->InsertPaintingNode(parent, child, index); });
-  }
+  Enqueue(
+      [platform_ref = platform_impl_->GetPlatformRef(), parent, child,
+       index]() { platform_ref->InsertPaintingNode(parent, child, index); });
 }
 
 // The `is_move` flag indicates that this is a part of a move operation. For
@@ -56,14 +52,10 @@ void PaintingContext::InsertPaintingNode(int parent, int child, int index) {
 void PaintingContext::RemovePaintingNode(int parent, int child, int index,
                                          bool is_move) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_REMOVE_NODE);
-  if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->RemovePaintingNode(parent, child, index, is_move);
-  } else {
-    Enqueue([platform_ref = platform_impl_->GetPlatformRef(), parent, child,
-             index, is_move]() {
-      platform_ref->RemovePaintingNode(parent, child, index, is_move);
-    });
-  }
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(), parent, child,
+           index, is_move]() {
+    platform_ref->RemovePaintingNode(parent, child, index, is_move);
+  });
 
   if (!is_move) {
     // only add child sign to remove_ids_ vector when it is not a move
@@ -72,43 +64,29 @@ void PaintingContext::RemovePaintingNode(int parent, int child, int index,
 }
 
 void PaintingContext::EnqueueExternalMemoryReportRequest(int64_t delay_ms) {
-  if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->RequestExternalMemoryReport(delay_ms);
-  } else {
-    Enqueue([platform_ref = platform_impl_->GetPlatformRef(), delay_ms]() {
-      platform_ref->RequestExternalMemoryReport(delay_ms);
-    });
-  }
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(), delay_ms]() {
+    platform_ref->RequestExternalMemoryReport(delay_ms);
+  });
 }
 
 void PaintingContext::DestroyPaintingNode(int parent, int child, int index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_DESTROY_NODE);
-  if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->DestroyPaintingNode(parent, child, index);
-  } else {
-    Enqueue(
-        [platform_ref = platform_impl_->GetPlatformRef(), parent, child,
-         index]() { platform_ref->DestroyPaintingNode(parent, child, index); });
-  }
+  Enqueue(
+      [platform_ref = platform_impl_->GetPlatformRef(), parent, child,
+       index]() { platform_ref->DestroyPaintingNode(parent, child, index); });
 }
 
 void PaintingContext::UpdateNodeReadyPatching() {
   const bool should_request_external_memory_report =
       enable_external_memory_report_ && !patching_node_remove_ids_.empty();
-  if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->UpdateNodeReadyPatching(patching_node_ready_ids_,
-                                            patching_node_remove_ids_,
-                                            enable_external_memory_report_);
-  } else {
-    Enqueue([platform_ref = platform_impl_->GetPlatformRef(),
-             ready_ids = patching_node_ready_ids_,
-             remove_ids = patching_node_remove_ids_,
-             enable_external_memory_report = enable_external_memory_report_]() {
-      platform_ref->UpdateNodeReadyPatching(std::move(ready_ids),
-                                            std::move(remove_ids),
-                                            enable_external_memory_report);
-    });
-  }
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(),
+           ready_ids = patching_node_ready_ids_,
+           remove_ids = patching_node_remove_ids_,
+           enable_external_memory_report = enable_external_memory_report_]() {
+    platform_ref->UpdateNodeReadyPatching(std::move(ready_ids),
+                                          std::move(remove_ids),
+                                          enable_external_memory_report);
+  });
   if (should_request_external_memory_report) {
     EnqueueExternalMemoryReportRequest(kExternalMemoryReportDelayMs);
   }

@@ -701,12 +701,13 @@ asyncRedirect:
   supportPlatform:
     - Android
 enableUIOperationOptimize:
-  description: Controls whether ElementManager enables UI-operation batching for create-view and update work. When enabled, TemplateAssembler turns on UI operation batching and Android UI work can be grouped before flush; when disabled, runtime keeps the normal non-batched path. When unset, LynxEnv can still enable batching.
+  description: Deprecated. UI-operation batching has been removed and this setting has no effect.
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   readNative: true
   author: nhsprite
   since: '2.16'
+  deprecated: '4.4'
   supportPlatform:
     - Android
     - HarmonyOS

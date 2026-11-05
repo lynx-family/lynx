@@ -16,8 +16,6 @@ import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.WritableArray;
-import com.lynx.react.bridge.mapbuffer.CompactArrayBuffer;
-import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.TemplateBundle;
@@ -42,7 +40,6 @@ import com.lynx.tasm.recording.LynxFrameRecorder;
 import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -73,18 +70,6 @@ class IntValueIndex {
   public static final int MAX_HEIGHT = 18;
   public static final int DISPLAY_NONE = 19;
   public static final int SIZE = 20;
-}
-
-class UIOperationType {
-  public static final int INSERT = 0;
-  public static final int REMOVE = 1;
-  public static final int DESTROY = 2;
-  public static final int READY_BATCHING = 3;
-  public static final int REMOVE_BATCHING = 4;
-  public static final int UPDATE_LAYOUT_PATCHING = 5;
-  public static final int TASM_FINISH = 6;
-  public static final int LAYOUT_FINISH = 7;
-  public static final int REQUEST_EXTERNAL_MEMORY_REPORT = 8;
 }
 
 public final class PaintingContext implements IPaintingContext {
@@ -586,106 +571,6 @@ public final class PaintingContext implements IPaintingContext {
   public void destroyNode(int parentSign, int childSign) {
     recordNodeRelation(LynxFrameRecorder.EVENT_LYNX_UI_DESTROY_NODE, parentSign, childSign, null);
     mUIOwner.destroy(parentSign, childSign);
-  }
-
-  @CalledByNative
-  private void flushUIOperationBatch(ReadableCompactArrayBuffer ui_operation_batch) {
-    if (ui_operation_batch == null) {
-      return;
-    }
-    Iterator<CompactArrayBuffer.Entry> iterator = ui_operation_batch.iterator();
-    while (iterator.hasNext()) {
-      int operation = iterator.next().getInt();
-      switch (operation) {
-        case UIOperationType.INSERT: {
-          int parent = iterator.next().getInt();
-          int child = iterator.next().getInt();
-          int index = iterator.next().getInt();
-          insertNode(parent, child, index);
-        } break;
-        case UIOperationType.REMOVE: {
-          int parent = iterator.next().getInt();
-          int child = iterator.next().getInt();
-          removeNode(parent, child);
-        } break;
-        case UIOperationType.DESTROY: {
-          int parent = iterator.next().getInt();
-          int child = iterator.next().getInt();
-          destroyNode(parent, child);
-        } break;
-        case UIOperationType.READY_BATCHING: {
-          int size = iterator.next().getInt();
-          int[] readyIds = new int[size];
-          for (int i = 0; i < size; i++) {
-            readyIds[i] = iterator.next().getInt();
-          }
-          updateNodeReadyPatching(readyIds);
-        } break;
-        case UIOperationType.REMOVE_BATCHING: {
-          boolean shouldCacheExternalMemoryCandidates = iterator.next().getInt() != 0;
-          int size = iterator.next().getInt();
-          int[] removeIds = new int[size];
-          for (int i = 0; i < size; i++) {
-            removeIds[i] = iterator.next().getInt();
-          }
-          updateNodeRemovePatching(removeIds, shouldCacheExternalMemoryCandidates);
-        } break;
-        case UIOperationType.UPDATE_LAYOUT_PATCHING: {
-          // patching id
-          int patching_id_count = iterator.next().getInt();
-          int[] patching_id = new int[patching_id_count];
-          for (int i = 0; i < patching_id_count; i++) {
-            patching_id[i] = iterator.next().getInt();
-          }
-
-          // patching ints
-          int patching_ints_count = iterator.next().getInt();
-          int[] patching_ints = new int[patching_ints_count];
-          for (int i = 0; i < patching_ints_count; i++) {
-            patching_ints[i] = iterator.next().getInt();
-          }
-
-          // patching bounds
-          int patching_bounds_count = iterator.next().getInt();
-          float[] patching_bounds = new float[patching_bounds_count];
-          for (int i = 0; i < patching_bounds_count; i++) {
-            patching_bounds[i] = (float) iterator.next().getDouble();
-          }
-
-          // patching stickies
-          int patching_stickies_count = iterator.next().getInt();
-          float[] patching_stickies = new float[patching_stickies_count];
-          for (int i = 0; i < patching_stickies_count; i++) {
-            patching_stickies[i] = (float) iterator.next().getDouble();
-          }
-
-          // patching node index
-          int patching_node_index_count = iterator.next().getInt();
-          int[] patching_node_index = new int[patching_node_index_count];
-          for (int i = 0; i < patching_node_index_count; i++) {
-            patching_node_index[i] = iterator.next().getInt();
-          }
-          UpdateLayoutPatching(
-              patching_id, patching_ints, patching_bounds, patching_stickies, patching_node_index);
-        } break;
-        case UIOperationType.TASM_FINISH: {
-          long operationId = iterator.next().getLong();
-          finishTasmOperation(operationId);
-        } break;
-        case UIOperationType.LAYOUT_FINISH: {
-          int listComponentId = iterator.next().getInt();
-          long operationId = iterator.next().getLong();
-          // isFirstScreen is useless now, just pass true. Should delete later.
-          FinishLayoutOperation(listComponentId, operationId, true);
-        } break;
-        case UIOperationType.REQUEST_EXTERNAL_MEMORY_REPORT: {
-          requestExternalMemoryReport(iterator.next().getLong());
-        } break;
-        default:
-          LLog.e(TAG, "flushUIOperationBatch with unknown UIOperationType: " + operation);
-          return;
-      }
-    }
   }
 
   @CalledByNative

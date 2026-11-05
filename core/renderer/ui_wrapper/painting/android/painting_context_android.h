@@ -18,7 +18,6 @@
 #include "core/base/android/java_only_map.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
-#include "core/renderer/tasm/react/android/mapbuffer/compact_array_buffer_builder.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/renderer/ui_wrapper/painting/create_view_scheduler.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
@@ -88,10 +87,6 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
                           const fml::RefPtr<PropBundle>& painting_data,
                           bool flatten, bool create_node_async,
                           uint32_t node_index) override;
-  void InsertPaintingNode(int parent, int child, int index) override;
-  void RemovePaintingNode(int parent, int child, int index,
-                          bool is_move) override;
-  void DestroyPaintingNode(int parent, int child, int index) override;
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override;
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info) override;
@@ -148,11 +143,6 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   void UpdateLayoutPatching() override;
 
   void OnFirstMeaningfulLayout() override;
-  // TODO(liting.src): remove this method after ui operation queue refactor.
-  void UpdateNodeReadyPatching(
-      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
-      bool should_cache_external_memory_candidates) override;
-  void RequestExternalMemoryReport(int64_t delay_ms) override;
   void SetContextHasAttached() override;
 
   void SetEnableVsyncAlignedFlush(bool enabled) override {
@@ -173,13 +163,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
 
   bool NeedAnimationProps() override { return false; }
 
-  void EnableUIOperationBatching() override;
-
   bool EnableUIOperationQueue() override { return true; }
-
-  bool HasEnableUIOperationBatching() override {
-    return ui_operation_batch_builder_.has_value();
-  }
 
  private:
   shell::UIOperation CreateInvokeUIMethodOperation(
@@ -208,18 +192,6 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
     MAX_HEIGHT,
     DISPLAY_NONE,
     SIZE
-  };
-
-  enum class UIOperationType : int32_t {
-    kInsert = 0,
-    kRemove = 1,
-    kDestroy = 2,
-    kReadyBatching = 3,
-    kRemoveBatching = 4,
-    kUpdateLayoutPatching = 5,
-    kTasmFinish = 6,
-    kLayoutFinish = 7,
-    kRequestExternalMemoryReport = 8,
   };
 
   void Enqueue(shell::UIOperation op);
@@ -260,9 +232,6 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
       create_view_scheduler_;
 
   int32_t instance_id_ = 0;
-
-  std::optional<base::android::CompactArrayBufferBuilder>
-      ui_operation_batch_builder_{std::nullopt};
 };
 }  // namespace tasm
 }  // namespace lynx

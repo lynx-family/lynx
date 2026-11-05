@@ -16,6 +16,7 @@ namespace tasm {
 namespace testing {
 FiberMockPaintingContext::FiberMockPaintingContext() {
   text_layout_impl_ = std::make_unique<TextLayoutMock>();
+  platform_ref_ = std::make_shared<MockPaintingContextPlatformRef>(this);
 }
 
 void FiberMockPaintingContext::ResetFlushFlag() { flush_ = false; }
@@ -37,9 +38,6 @@ std::unique_ptr<pub::Value> FiberMockPaintingContext::GetTextInfo(
 }
 
 std::unordered_map<int, std::string> captured_create_tags_map_;
-
-// TODO(liting.src): remove after painting context refactor.
-bool FiberMockPaintingContext::HasEnableUIOperationBatching() { return true; }
 
 void FiberMockPaintingContext::CreatePaintingNode(
     int id, const std::string& tag,

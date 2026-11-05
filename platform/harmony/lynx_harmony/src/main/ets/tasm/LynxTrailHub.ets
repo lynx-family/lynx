@@ -50,6 +50,7 @@ export enum LynxTrailKey {
   ENABLE_REPORT_THREADED_ELEMENT_FLUSH_STATISTIC = 'enable_report_threaded_element_flush_statistic',
   GLOBAL_QUICK_CONTEXT_POOL_SIZE = 'global_quick_context_pool_size',
   CLIP_RADIUS_FLATTEN = 'clip_radius_flatten',
+  /** @deprecated UI-operation batching has been removed. This key has no effect. */
   ENABLE_UI_OP_BATCH = 'enable_ui_op_batch',
   ENABLE_LAYOUT_ONLY_STATISTIC = 'enable_layout_only_statistic',
   DISABLE_PERF_COLLECTOR = 'disable_perf_collector',

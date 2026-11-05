@@ -2140,13 +2140,6 @@ void ElementManager::OnErrorOccurred(base::LynxError error) {
   delegate_->OnErrorOccurred(std::move(error));
 }
 
-void ElementManager::SetEnableUIOperationOptimize(TernaryBool enable) {
-  if (enable == TernaryBool::TRUE_VALUE ||
-      LynxEnv::GetInstance().EnableUIOpBatch()) {
-    painting_context()->EnableUIOperationBatching();
-  }
-}
-
 bool ElementManager::CSSFragmentParsingOnTASMWorkerMTSRender() {
   return css_fragment_parsing_tasm_worker_thread_;
 }

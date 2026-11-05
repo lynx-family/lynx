@@ -41,6 +41,20 @@ struct MockNode {
 
 class MockPaintingContextPlatformRef : public PaintingCtxPlatformRef {
  public:
+  explicit MockPaintingContextPlatformRef(PaintingCtxPlatformImpl* context)
+      : context_(context) {}
+
+  void InsertPaintingNode(int parent, int child, int index) override {
+    context_->InsertPaintingNode(parent, child, index);
+  }
+  void RemovePaintingNode(int parent, int child, int index,
+                          bool is_move) override {
+    context_->RemovePaintingNode(parent, child, index, is_move);
+  }
+  void DestroyPaintingNode(int parent, int child, int index) override {
+    context_->DestroyPaintingNode(parent, child, index);
+  }
+
   void UpdateNodeReadyPatching(
       std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
       bool should_cache_external_memory_candidates) override {
@@ -64,12 +78,15 @@ class MockPaintingContextPlatformRef : public PaintingCtxPlatformRef {
   int64_t external_memory_report_delay_ms_{0};
   bool should_cache_external_memory_candidates_{false};
   int node_ready_patching_update_count_{0};
+
+ private:
+  PaintingCtxPlatformImpl* context_;
 };
 
 class MockPaintingContext : public PaintingContextPlatformImpl {
  public:
   MockPaintingContext() {
-    platform_ref_ = std::make_shared<MockPaintingContextPlatformRef>();
+    platform_ref_ = std::make_shared<MockPaintingContextPlatformRef>(this);
   }
   void ResetFlushFlag() { flush_ = false; }
 
@@ -79,20 +96,6 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
   virtual std::unique_ptr<pub::Value> GetTextInfo(
       const std::string& content, const pub::Value& info) override {
     return tasm::TextUtils::GetTextInfo(content, info);
-  }
-
-  // TODO(liting.src): remove after painting context refactor.
-  bool HasEnableUIOperationBatching() override { return true; }
-
-  void UpdateNodeReadyPatching(
-      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
-      bool should_cache_external_memory_candidates) override {
-    platform_ref_->UpdateNodeReadyPatching(
-        std::move(ready_ids), std::move(remove_ids),
-        should_cache_external_memory_candidates);
-  }
-  void RequestExternalMemoryReport(int64_t delay_ms) override {
-    platform_ref_->RequestExternalMemoryReport(delay_ms);
   }
 
  private:

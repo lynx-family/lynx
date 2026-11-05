@@ -440,10 +440,6 @@ int32_t LynxEnv::GetGlobalQuickContextPoolSize(int32_t default_value) {
                                          default_value, EnvType::EXTERNAL));
 }
 
-bool LynxEnv::EnableUIOpBatch() {
-  return GetBoolEnv(Key::ENABLE_UI_OP_BATCH, false);
-}
-
 bool LynxEnv::EnableCSSLazyImport() {
   static bool cached_enable_lazy_import_css_result =
       GetBoolEnv(Key::ENABLE_LAZY_IMPORT_CSS, false);
