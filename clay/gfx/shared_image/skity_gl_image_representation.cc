@@ -6,10 +6,15 @@
 
 #include <utility>
 
+#include "build/build_config.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
+#if defined(OS_LINUX)
+#include <epoxy/gl.h>
+#else
 #include "clay/gfx/shared_image/utils/gl_texture_converter.h"
+#endif
 #include "clay/gfx/skity/skity_image.h"
 #include "skity/gpu/gpu_context.hpp"
 #include "skity/gpu/gpu_context_gl.hpp"
@@ -41,8 +46,14 @@ std::shared_ptr<SkityImage> SkityGLImageRepresentation::GetSkityImage() {
   uint32_t texture_width = result.opengl_texture.size.width;
   uint32_t texture_height = result.opengl_texture.size.height;
   if (result.opengl_texture.target == GL_TEXTURE_EXTERNAL_OES) {
+#if defined(OS_LINUX)
+    FML_LOG(ERROR) << "External OES textures are not supported by the Linux "
+                      "Skity Epoxy path";
+    return nullptr;
+#else
     texture_2d = Get2DTextureFromExternalTextureOES(
         result.opengl_texture.name, texture_width, texture_height);
+#endif
   } else {
     texture_2d = result.opengl_texture.name;
   }
