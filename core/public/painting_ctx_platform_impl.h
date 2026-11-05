@@ -67,6 +67,7 @@ class PaintingCtxPlatformRef {
   // The page's configured screen width in layout units, for event-region rpx.
   // This is independent of the physical window used by exposure checks.
   virtual void SetEventScreenWidth(float screen_width) {}
+  virtual void SetPositionEventConfig(int observer_frame_rate) {}
   virtual void SetEventThroughConfig(
       bool enable_event_through, bool enable_event_through_inherit_from_page) {}
   // Results are delivered through the registered Page's focusresult event.
