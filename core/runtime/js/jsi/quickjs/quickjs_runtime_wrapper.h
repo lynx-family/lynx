@@ -108,6 +108,8 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   }
   std::string GetDebugDescription() const override;
   size_t GetHeapSize() const override;
+  std::unique_ptr<Buffer> TakeHeapSnapshot(int32_t slot,
+                                           const char*& error) override;
 
   // Must exec in use thread.
   void AddToIdContainer();
@@ -137,6 +139,9 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   std::string reporting_name_;
   bool per_instance_memory_track_{false};
   bool large_vm_checked_{false};
+  // Shared by explicit and trace captures; released before the runtime.
+  LEPUSContext* snapshot_context_{nullptr};
+  bool capturing_slot_snapshot_{false};
 #if ENABLE_TRACE_PERFETTO
   friend class QuickjsResidualSnapshotTest;
   struct ResidualSnapshotState {
@@ -155,9 +160,6 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
   };
   // Indexed by slot, allocated only when automatic capture is enabled.
   std::vector<ResidualSnapshotState> residual_snapshots_;
-  // Shared by VM-level and residual captures; released before the runtime.
-  LEPUSContext* snapshot_context_{nullptr};
-  bool capturing_slot_snapshot_{false};
   // VM-level types requested during the current coalescing window.
   uint32_t pending_vm_snapshot_types_{0};
   void ScheduleVMSnapshot(JSIContext& context, uint32_t type_index);

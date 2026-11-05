@@ -17,6 +17,7 @@
 #include "base/include/fml/memory/js_memory_track_define.h"
 #include "base/include/fml/time/timer.h"
 #include "base/include/notification_center.h"
+#include "core/runtime/common/heap_snapshot.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/mts_context.h"
 #include "core/services/event_report/event_tracker.h"
@@ -225,6 +226,11 @@ class GlobalMemoryMonitor {
   // Capture on the owner thread before teardown; identity is never read.
   void OnBtsVMDestroy(runtime::js::VMInstance* vm,
                       int64_t at_ms = MemoryNowMs());
+  // Any-thread explicit capture. Resolve exited metadata on the reporter,
+  // then lock/release the weak VM only on its owner JS thread.
+  void TakeBtsResidualHeapSnapshot(std::string output_path,
+                                   runtime::HeapSnapshotCallback callback,
+                                   int32_t instance_id);
 #if ENABLE_TRACE_PERFETTO
   using BtsResidualPagesCallback =
       base::MoveOnlyClosure<void, runtime::js::VMInstance&,

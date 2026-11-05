@@ -7845,6 +7845,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public UIGroup< UIBodyView > com.lynx.tasm.LynxView.getLynxUIRoot();
   public void com.lynx.tasm.LynxView.getLynxElementRoot(@NonNull LynxElementCallback< LynxElement > callback);
   public void com.lynx.tasm.LynxView.takeBTSHeapSnapshot( @NonNull File outputFile, @Nullable LynxConsumer< Boolean > callback);
+  public void com.lynx.tasm.LynxView.takeHeapSnapshot( @NonNull File outputFile, @Nullable LynxConsumer< String > callback, @NonNull String type);
   public void com.lynx.tasm.LynxView.syncFlush();
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByIndex(int index);
   public void com.lynx.tasm.LynxView.setOnClickListener(@Nullable OnClickListener listener);
@@ -7886,6 +7887,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.setAttachLynxPageUICallback(attachLynxPageUICallback callback);
   public void com.lynx.tasm.LynxView.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
   public LynxViewBuilder com.lynx.tasm.LynxView.getLynxViewBuilder();
+  public static void com.lynx.tasm.LynxView.takeBtsResidualHeapSnapshot( @NonNull File outputFile, @Nullable LynxConsumer< String > callback, int instanceId);
   public static LynxViewBuilder com.lynx.tasm.LynxView.builder();
   public static LynxViewBuilder com.lynx.tasm.LynxView.builder(Context context);
 }

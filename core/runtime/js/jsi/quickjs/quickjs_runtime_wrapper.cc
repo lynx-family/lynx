@@ -106,7 +106,7 @@ QuickjsRuntimeInstance::QuickjsRuntimeInstance()
                          return;
                        }
                      }
-                     LOGI("Unsupported BTS snapshot type: " << type);
+                     LOGI("Invalid snapshot type: " << type);
                    }
                  }
                }}}))
@@ -120,11 +120,9 @@ QuickjsRuntimeInstance::~QuickjsRuntimeInstance() {
   }
   if (rt_) {
     LEPUS_SetGCObserver(rt_, nullptr);
-#if ENABLE_TRACE_PERFETTO
     if (snapshot_context_) {
       LEPUS_FreeContext(snapshot_context_);
     }
-#endif
     LEPUS_FreeRuntime(rt_);
   }
   GetFunctionIdContainer().erase(rt_);
@@ -330,6 +328,30 @@ void QuickjsRuntimeInstance::OnGC(std::string mem_info) {
   }
 }
 
+std::unique_ptr<Buffer> QuickjsRuntimeInstance::TakeHeapSnapshot(
+    int32_t slot, const char*& error) {
+  if (!rt_ || capturing_slot_snapshot_) {
+    error = "VM unavailable/busy";
+    return nullptr;
+  }
+  if (slot != -1 &&
+      (!per_instance_memory_track_ || !fml::IsValidInstanceSlot(slot))) {
+    error = "Slot unavailable";
+    return nullptr;
+  }
+  // Context creation and capture can trigger GC. Suppress recursive trace
+  // capture, without changing the automatic residual capture baselines.
+  capturing_slot_snapshot_ = true;
+  if (!snapshot_context_) {
+    fml::JSMemoryTrackAsCommon scope;
+    snapshot_context_ = LEPUS_NewContext(rt_);
+  }
+  auto snapshot =
+      detail::QuickjsHelper::TakeHeapSnapshot(snapshot_context_, error, slot);
+  capturing_slot_snapshot_ = false;
+  return snapshot;
+}
+
 #if ENABLE_TRACE_PERFETTO
 void QuickjsRuntimeInstance::ScheduleVMSnapshot(JSIContext& context,
                                                 uint32_t type_index) {
@@ -365,7 +387,7 @@ void QuickjsRuntimeInstance::CaptureVMSnapshots(
     if (!(types & (1u << i))) continue;
     const auto& type = kVMSnapshotTypes[i];
     if (type.slot >= 0 && !per_instance_memory_track_) {
-      LOGI("Cannot take " << type.name << " snapshot: tracking unavailable");
+      LOGI("Slot tracking unavailable: " << type.name);
       continue;
     }
     if (!snapshot_context_) {
@@ -395,8 +417,7 @@ bool QuickjsRuntimeInstance::CaptureInstanceSnapshot(
     detail::QuickjsHelper::SlotSnapshotFunction take_snapshot) {
   if (!rt_ || !per_instance_memory_track_ || capturing_slot_snapshot_ ||
       !fml::IsValidInstanceSlot(slot)) {
-    LOGI("Cannot take instance slot snapshot of '"
-         << identifier << "': tracking unavailable or capture in progress");
+    LOGI("Slot unavailable or snapshot busy: " << identifier);
     return false;
   }
   capturing_slot_snapshot_ = true;

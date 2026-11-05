@@ -153,6 +153,7 @@ lynx_core_source_set("shell") {
     "../../third_party/rapidjson",
     "../resource",
     "../runtime",
+    "../runtime/common:common",
     "../runtime/lepus:lepus",
     "../services/timing_handler",
     "../services/timing_handler:timing_handler_delegate",

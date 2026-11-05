@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 #ifndef CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_HELPER_H_
 #define CORE_RUNTIME_JS_JSI_QUICKJS_QUICKJS_HELPER_H_
+
+#include <memory>
 #include <string>
 
 #include "base/include/log/logging.h"
@@ -91,6 +93,13 @@ class QuickjsHelper {
 
   static std::string GetDebugDescription(LEPUSRuntime* runtime);
 
+  using SlotSnapshotFunction =
+      decltype(&js_profile_take_heap_snapshot_for_slot);
+  static std::unique_ptr<Buffer> TakeHeapSnapshot(
+      LEPUSContext* ctx, const char*& error, int32_t slot = -1,
+      SlotSnapshotFunction take_slot_snapshot =
+          js_profile_take_heap_snapshot_for_slot);
+
 #if ENABLE_TRACE_PERFETTO
   static bool TakeHeapSnapshotAndWriteToTrace(LEPUSContext* ctx,
                                               const std::string& identifier);
@@ -104,8 +113,6 @@ class QuickjsHelper {
     size_t retained_bytes{0};
     const char* reason;
   };
-  using SlotSnapshotFunction =
-      decltype(&js_profile_take_heap_snapshot_for_slot);
   static bool TakeHeapSnapshotForSlotAndWriteToTrace(
       LEPUSContext* ctx, const std::string& identifier, int32_t slot,
       ResidualSnapshotInfo* info = nullptr,

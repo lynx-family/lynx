@@ -73,6 +73,45 @@ TEST_F(QuickJSHelperTest, GetErrorMessageFailedTest) {
   }
 }
 
+TEST_F(QuickJSHelperTest, HeapSnapshotPassesAllFlagsToSlotCapture) {
+  const char* error = nullptr;
+  auto snapshot = QuickjsHelper::TakeHeapSnapshot(
+      ctx, error, 3, [](LEPUSContext* ctx, int32_t slot, uint32_t flags) {
+        EXPECT_NE(ctx, nullptr);
+        EXPECT_EQ(slot, 3);
+        EXPECT_EQ(flags, LEPUS_HEAP_SNAPSHOT_SUMMARIZE_DIAGNOSTICS |
+                             LEPUS_HEAP_SNAPSHOT_INCLUDE_LOCATIONS |
+                             LEPUS_HEAP_SNAPSHOT_CLEAR_CONSOLE_MESSAGES);
+        return static_cast<const char*>(nullptr);
+      });
+  EXPECT_EQ(snapshot, nullptr);
+  EXPECT_STREQ(error, "Capture failed");
+}
+
+TEST_F(QuickJSHelperTest, HeapSnapshotValidatesContextAndSlot) {
+  const char* error = nullptr;
+  EXPECT_EQ(QuickjsHelper::TakeHeapSnapshot(nullptr, error), nullptr);
+  EXPECT_STREQ(error, "No QuickJS context");
+  error = nullptr;
+  EXPECT_EQ(
+      QuickjsHelper::TakeHeapSnapshot(ctx, error, LEPUS_MEMORY_SIZE_SLOTS),
+      nullptr);
+  EXPECT_STREQ(error, "Slot unavailable");
+}
+
+TEST_F(QuickJSHelperTest, HeapSnapshotOwnsBytesBeyondRuntimeLifetime) {
+  auto* runtime = LEPUS_NewRuntime();
+  auto* context = LEPUS_NewContext(runtime);
+  const char* error = "previous error";
+  auto snapshot = QuickjsHelper::TakeHeapSnapshot(context, error);
+  LEPUS_FreeContext(context);
+  LEPUS_FreeRuntime(runtime);
+  ASSERT_NE(snapshot, nullptr) << error;
+  EXPECT_EQ(error, nullptr);
+  EXPECT_GT(snapshot->size(), 0u);
+  EXPECT_EQ(snapshot->data()[0], '{');
+}
+
 }  // namespace test
 }  // namespace js
 }  // namespace runtime

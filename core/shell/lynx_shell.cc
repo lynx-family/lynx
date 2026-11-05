@@ -1754,35 +1754,49 @@ void LynxShell::GetAllJsSourceAsync(
   });
 }
 
-bool LynxShell::TakeBTSHeapSnapshotToFileAsync(
-    std::string output_path,
-    base::MoveOnlyClosure<void, bool> completion_callback) {
-  if (output_path.empty() || IsDestroyed() || runtime_actor_ == nullptr ||
-      !enable_runtime_) {
-    return false;
+void LynxShell::TakeHeapSnapshot(std::string output_path,
+                                 runtime::HeapSnapshotCallback callback,
+                                 const std::string& type) {
+  auto request = std::make_unique<runtime::HeapSnapshotRequest>(
+      std::move(output_path), std::move(callback));
+  if (type != "mts" && type != "bts_page" && type != "bts_vm") {
+    request->Fail("Invalid type");
+    return;
   }
-
-  static base::NoDestructor<fml::Thread> io_thread(fml::Thread::ThreadConfig(
-      "LynxHeapSnapshotIO", fml::Thread::ThreadPriority::LOW));
-  auto io_task_runner = io_thread->GetTaskRunner();
-
-  runtime_actor_->ActAsync(
-      [output_path = std::move(output_path),
-       completion_callback = std::move(completion_callback),
-       io_task_runner](auto& runtime) mutable {
-        auto snapshot = runtime->TakeHeapSnapshot();
-        io_task_runner->PostTask(
-            [output_path = std::move(output_path),
-             completion_callback = std::move(completion_callback),
-             snapshot = std::move(snapshot)]() mutable {
-              const bool success =
-                  snapshot != nullptr && snapshot->WriteToFile(output_path);
-              if (completion_callback) {
-                completion_callback(success);
-              }
-            });
-      });
-  return true;
+  if (IsDestroyed()) {
+    request->Fail("View destroyed");
+    return;
+  }
+  if (type == "mts") {
+    if (!engine_actor_) {
+      request->Fail("MTS unavailable");
+      return;
+    }
+    engine_actor_->ActAsync([request = std::move(request)](auto& engine) {
+      auto entry =
+          engine->GetTasm()->FindTemplateEntry(tasm::DEFAULT_ENTRY_NAME);
+      auto vm = entry ? entry->GetVm() : nullptr;
+      auto* context = vm ? vm->GetMTSContext() : nullptr;
+      if (!context) {
+        request->Fail("MTS unavailable");
+        return;
+      }
+      const char* error = nullptr;
+      auto snapshot = context->TakeHeapSnapshot(error);
+      request->Finish(std::move(snapshot), error);
+    });
+  } else {
+    if (!enable_runtime_ || !runtime_actor_) {
+      request->Fail("BTS unavailable");
+      return;
+    }
+    runtime_actor_->ActAsync([request = std::move(request),
+                              page_only = type == "bts_page"](auto& runtime) {
+      const char* error = nullptr;
+      auto snapshot = runtime->TakeHeapSnapshot(page_only, error);
+      request->Finish(std::move(snapshot), error);
+    });
+  }
 }
 
 void LynxShell::GetLynxElementRootSignAsync(

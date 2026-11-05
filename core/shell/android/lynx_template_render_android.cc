@@ -25,6 +25,7 @@
 #include "core/runtime/js/bindings/modules/android/module_factory_android.h"
 #include "core/runtime/js/js_execution_control.h"
 #include "core/services/performance/android/performance_controller_android.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/shell/android/javascript_execution_callback_android.h"
 #include "core/shell/android/lynx_engine_proxy_android.h"
 #include "core/shell/android/lynx_runtime_wrapper_android.h"
@@ -140,14 +141,16 @@ void AddToJavaMap(JavaOnlyMap& map, const std::string& key, const T& vec) {
   map.PushArray(key, ConvertToJavaArray(vec).get());
 }
 
-void DispatchBTSHeapSnapshotResult(ScopedGlobalJavaRef<jobject> callback,
-                                   bool success) {
+void DispatchHeapSnapshotResult(const ScopedGlobalJavaRef<jobject>& callback,
+                                const char* error) {
   if (callback.IsNull()) {
     return;
   }
   JNIEnv* env = AttachCurrentThread();
-  Java_LynxJNI_dispatchBTSHeapSnapshotResult(env, callback.Get(),
-                                             static_cast<jboolean>(success));
+  // Native snapshot errors are fixed ASCII messages, never user-provided text.
+  jstring message = error ? env->NewStringUTF(error) : nullptr;  // NOLINT
+  Java_LynxJNI_dispatchHeapSnapshotResult(env, callback.Get(), message);
+  env->DeleteLocalRef(message);
 }
 
 std::shared_ptr<lynx::tasm::PipelineOptions> ProcessLoadTemplateTimingOption(
@@ -1246,30 +1249,40 @@ jobject GetAllJsSource(JNIEnv* env, jclass jcaller, jlong ptr,
   return env->NewLocalRef(jni_map.jni_object());  // NOLINT
 }
 
-jboolean TakeBTSHeapSnapshotToFile(JNIEnv* env, jclass jcaller, jlong ptr,
-                                   jlong lifecycle, jstring output_path,
-                                   jobject callback) {
-  if (ptr == 0 || output_path == nullptr) {
-    return JNI_FALSE;
-  }
+void TakeHeapSnapshot(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
+                      jbyteArray output_path, jobject callback, jstring type) {
   std::string native_output_path =
       JNIConvertHelper::ConvertToString(env, output_path);
-  ScopedGlobalJavaRef<jobject> global_callback(env, callback);
-
+  lynx::runtime::HeapSnapshotCallback completion =
+      [callback = ScopedGlobalJavaRef<jobject>(env, callback)](
+          const char* error) mutable {
+        DispatchHeapSnapshotResult(callback, error);
+      };
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!TryLockLifecycle(lifecycle_ptr)) {
-    return JNI_FALSE;
+  if (ptr == 0 || !TryLockLifecycle(lifecycle_ptr)) {
+    lynx::runtime::HeapSnapshotRequest(std::move(native_output_path),
+                                       std::move(completion))
+        .Fail("View destroyed");
+    return;
   }
-
-  const bool accepted =
-      reinterpret_cast<LynxShell*>(ptr)->TakeBTSHeapSnapshotToFileAsync(
-          std::move(native_output_path),
-          [callback = std::move(global_callback)](bool success) mutable {
-            DispatchBTSHeapSnapshotResult(std::move(callback), success);
-          });
+  reinterpret_cast<LynxShell*>(ptr)->TakeHeapSnapshot(
+      std::move(native_output_path), std::move(completion),
+      JNIConvertHelper::ConvertToString(env, type));
   TryFreeLifecycle(lifecycle_ptr);
-  return accepted ? JNI_TRUE : JNI_FALSE;
+}
+
+void TakeBtsResidualHeapSnapshot(JNIEnv* env, jclass jcaller,
+                                 jbyteArray output_path, jobject callback,
+                                 jint instance_id) {
+  lynx::tasm::performance::GlobalMemoryMonitor::GetInstance()
+      .TakeBtsResidualHeapSnapshot(
+          JNIConvertHelper::ConvertToString(env, output_path),
+          [callback = ScopedGlobalJavaRef<jobject>(env, callback)](
+              const char* error) mutable {
+            DispatchHeapSnapshotResult(callback, error);
+          },
+          instance_id);
 }
 
 void RenderChild(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
