@@ -492,13 +492,16 @@ std::vector<LineInfo> TextRender::GetLineInfo() {
   if (res.size() == 0) {
     return res;
   }
-  int text_length = static_cast<int>(end_glyph_position_);
-  if (res.back().end < text_length) {
-    res.back().ellipsis_count = text_length - res.back().end + 1;
-  }
+  const int text_length = static_cast<int>(inline_truncation_hidden_count_ >= 0
+                                               ? inline_truncation_text_length_
+                                               : end_glyph_position_);
   if (inline_truncation_hidden_count_ >= 0) {
     res.back().ellipsis_count = inline_truncation_hidden_count_;
+  } else if (res.back().end < text_length) {
+    res.back().ellipsis_count = text_length - res.back().end;
   }
+  // The last line's event range includes the hidden source text.
+  res.back().end = text_length;
   return res;
 }
 
@@ -928,7 +931,8 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
         auto end_dx = truncation_direction_ == TextDirection::kRtl
                           ? truncation_size.width()
                           : truncation_layout_width - truncation_size.width();
-        auto last_line_height = line_metrics.back().height;
+        const auto& last_line = line_metrics.back();
+        const auto last_line_height = last_line.ascent + last_line.descent;
         auto end_dy = constraint.height_mode == MeasureMode::kIndefinite
                           ? cache_paragraph_->GetHeight()
                           : std::min<double>(cache_paragraph_->GetHeight(),
@@ -1001,6 +1005,7 @@ void TextRender::HandleInlineTruncation(const MeasureConstraint& constraint,
           truncation_node->SetNeedLayout(true);
           size_t remaining_glyph_num = visible_glyph_num;
           ProcessTruncationContent(remaining_glyph_num, measure_node_);
+          inline_truncation_text_length_ = original_end_glyph_position;
           inline_truncation_hidden_count_ = static_cast<int>(
               original_end_glyph_position > visible_glyph_num
                   ? original_end_glyph_position - visible_glyph_num

@@ -644,9 +644,29 @@ TEST_F_UI(TextTest, GetLineInfoReportsMaxLineEllipsis) {
   ASSERT_EQ(lines.size(), 1u);
   EXPECT_EQ(lines.front().start, 0);
   EXPECT_GT(lines.front().end, lines.front().start);
-  EXPECT_GT(lines.front().ellipsis_count, 0);
-  EXPECT_LT(static_cast<size_t>(lines.front().end),
+  const auto& metrics = text_render.GetCacheParagraph()->GetLineMetrics();
+  EXPECT_EQ(lines.front().ellipsis_count,
+            raw_text_shadow_node_->Text().size() - metrics.back().end_index);
+  EXPECT_EQ(static_cast<size_t>(lines.front().end),
             raw_text_shadow_node_->Text().size());
+}
+
+TEST_F_UI(TextTest, GetLineInfoReportsMaxLineClip) {
+  text_shadow_node_->SetTextMaxLine(1);
+  raw_text_shadow_node_->SetText(
+      "one two three four five six seven eight nine ten eleven twelve");
+  MeasureConstraint constraint{120.f, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
+  TextRender text_render(text_shadow_node_.get());
+  auto* paragraph = MeasureParagraph(text_render, constraint);
+  ASSERT_NE(paragraph, nullptr);
+  auto lines = text_render.GetLineInfo();
+  ASSERT_EQ(lines.size(), 1u);
+  const int text_length = raw_text_shadow_node_->Text().size();
+  const int visible_end = paragraph->GetLineMetrics().back().end_index;
+  EXPECT_LT(visible_end, text_length);
+  EXPECT_EQ(lines.front().end, text_length);
+  EXPECT_EQ(lines.front().ellipsis_count, text_length - visible_end);
 }
 
 TEST_F_UI(TextTest, GetLineInfoReportsEllipsisOnlyOnLastVisibleLine) {
@@ -669,7 +689,9 @@ TEST_F_UI(TextTest, GetLineInfoReportsEllipsisOnlyOnLastVisibleLine) {
   ASSERT_EQ(lines.size(), 3u);
   EXPECT_EQ(lines[0].ellipsis_count, 0);
   EXPECT_EQ(lines[1].ellipsis_count, 0);
-  EXPECT_GT(lines[2].ellipsis_count, 0);
+  const auto& metrics = text_render.GetCacheParagraph()->GetLineMetrics();
+  EXPECT_EQ(lines[2].ellipsis_count,
+            raw_text_shadow_node_->Text().size() - metrics.back().end_index);
   EXPECT_EQ(lines[0].start, 0);
   EXPECT_LE(lines[0].end, lines[1].start);
   EXPECT_LE(lines[1].end, lines[2].start);
@@ -1388,9 +1410,93 @@ TEST_F_UI(TextTest, InlineTruncationMountsAndReportsHiddenText) {
   EXPECT_LT(raw_text_shadow_node_->GetEndIndex(), text.size());
   auto lines = text_render.GetLineInfo();
   ASSERT_EQ(lines.size(), 1u);
+  EXPECT_EQ(lines.front().end, static_cast<int>(text.size()));
   EXPECT_EQ(
       lines.front().ellipsis_count,
       static_cast<int>(text.size() - raw_text_shadow_node_->GetEndIndex()));
+}
+
+TEST_F_UI(TextTest, InlineTruncationKeepsLastLineWithUnusedHeight) {
+  InlineTruncationShadowNode marker(owner_, "x-inline-truncation", -1);
+  InlineTextShadowNode label(owner_, "x-inline-text", -1);
+  RawTextShadowNode label_raw(owner_, "raw-text", -1);
+  label_raw.SetText("MORE");
+  label.AddChild(&label_raw);
+  marker.AddChild(&label);
+  text_shadow_node_->AddChild(&marker);
+  text_shadow_node_->SetTextMaxLine(2);
+  raw_text_shadow_node_->SetText(std::string(200, 'a'));
+
+  for (auto mode : {MeasureMode::kAtMost, MeasureMode::kDefinite}) {
+    SCOPED_TRACE(static_cast<int>(mode));
+    text_shadow_node_->ResetEndIndex();
+    TextRender text_render(text_shadow_node_.get());
+    auto* paragraph = MeasureParagraph(
+        text_render, {240.f, MeasureMode::kDefinite, 600.f, mode});
+    ASSERT_NE(paragraph, nullptr);
+    EXPECT_TRUE(marker.IfNeedMount());
+    EXPECT_EQ(paragraph->GetLineMetrics().size(), 2u);
+  }
+}
+
+TEST_F_UI(TextTest, HiddenInlineImagePreservesTruncationTapTarget) {
+  TextShadowNode text(owner_, "x-text", 1);
+  InlineTextShadowNode body(owner_, "x-inline-text", 2);
+  RawTextShadowNode raw(owner_, "raw-text", 3);
+  InlineImageShadowNode image(owner_, "x-inline-image", 4);
+  InlineTruncationShadowNode marker(owner_, "x-inline-truncation", 5);
+  InlineTextShadowNode label(owner_, "x-inline-text", 6);
+  RawTextShadowNode label_raw(owner_, "raw-text", 7);
+  raw.SetText(std::string(200, 'a'));
+  label_raw.SetText("MORE");
+  text.SetTextMaxLine(2);
+  body.SetFontSize(20);
+  label.SetFontSize(20);
+  image.SetWidth(20);
+  image.SetHeight(30);
+  text.AddChild(&body);
+  body.AddChild(&raw);
+  text.AddChild(&image);
+  text.AddChild(&marker);
+  marker.AddChild(&label);
+  label.AddChild(&label_raw);
+  const char* tags[] = {
+      "x-text",         "x-inline-text",       "raw-text",
+      "x-inline-image", "x-inline-truncation", "x-inline-text",
+      "raw-text"};
+  for (int id = 1; id <= 7; ++id) {
+    view_context_->CreateView(id, tags[id - 1]);
+  }
+  auto* view = static_cast<TextView*>(page_->FindViewByViewId(1));
+  page_->AddChild(view);
+  view->AddChild(page_->FindViewByViewId(4));
+  MeasureConstraint constraint{240.f, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
+  auto measured = text.Measure(constraint);
+  EXPECT_TRUE(marker.IfNeedMount());
+  EXPECT_LT(image.placeholder_index(), 0);
+  EXPECT_FALSE(label.range_in_paragraph_.empty());
+  text.OnLayout(240, MeasureMode::kDefinite, measured.height,
+                MeasureMode::kDefinite, {}, {});
+  text.GetTextBundle()->UpdateExtraData(view);
+  view->SetBound(0, 0, 240, measured.height);
+  EXPECT_EQ(page_->FindViewByViewId(4)->Parent(), nullptr);
+  auto* paragraph = view->GetRenderText()->GetPainter()->GetParagraph();
+  for (const auto& range : label.range_in_paragraph_) {
+    auto boxes = paragraph->GetRectsForRange(
+        range.start(), range.end(), txt::Paragraph::RectHeightStyle::kTight,
+        txt::Paragraph::RectWidthStyle::kTight);
+    EXPECT_FALSE(boxes.empty());
+    for (const auto& box : boxes) {
+      FloatPoint point((box.rect.Left() + box.rect.Right()) / 2,
+                       (box.rect.Top() + box.rect.Bottom()) / 2);
+      FloatPoint relative;
+      EXPECT_EQ(static_cast<BaseView*>(view)->GetTopViewToAcceptEvent(
+                    point, &relative),
+                page_->FindViewByViewId(6));
+    }
+  }
+  view_context_->CleanLeakedViews();
 }
 
 TEST_F_UI(TextTest,

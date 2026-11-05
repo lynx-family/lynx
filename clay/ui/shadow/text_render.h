@@ -116,8 +116,9 @@ class TextRender {
   bool cache_uses_auto_font_size_ = false;
   size_t end_glyph_position_ = 0;
   TextDirection truncation_direction_ = TextDirection::kLtr;
-  // Override ellipsis count for inline truncation because line metrics are
-  // based on the rebuilt truncated paragraph.
+  // Preserve source offsets and the hidden count when inline truncation
+  // rebuilds the paragraph with a truncation marker.
+  size_t inline_truncation_text_length_ = 0;
   int inline_truncation_hidden_count_ = -1;
 };
 

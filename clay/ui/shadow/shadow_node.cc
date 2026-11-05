@@ -263,7 +263,8 @@ void ShadowNode::CreateTextInfo(txt::Paragraph* paragraph) {
           static_cast<InlineImageShadowNode*>(child)->StartGlyph() >
               last_glyph) {
         info.need_mount = false;
-        return;
+        bundle->PushTextInfo(info);
+        continue;
       }
       info.placeholder_index = placeholder_index;
       info.view_style = child->styles_;
