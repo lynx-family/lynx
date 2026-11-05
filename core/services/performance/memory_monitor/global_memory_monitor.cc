@@ -461,6 +461,41 @@ void GlobalMemoryMonitor::RequestBtsResidualPagesForTrace(
 }
 #endif
 
+void GlobalMemoryMonitor::TakeBtsResidualHeapSnapshot(
+    std::string output_path, runtime::HeapSnapshotCallback callback,
+    int32_t instance_id) {
+  auto request = std::make_unique<runtime::HeapSnapshotRequest>(
+      std::move(output_path), std::move(callback));
+  if (!MemoryMonitor::Enable()) {
+    request->Fail("Monitor disabled");
+    return;
+  }
+  ReportRunner()->PostTask([this, instance_id,
+                            request = std::move(request)]() mutable {
+    do {
+      auto* page = GetInstanceState(instance_id);
+      if (!page || !page->destroyed || !fml::IsValidInstanceSlot(page->slot)) {
+        break;
+      }
+      auto* state = FindVM(page->bts_vm);
+      if (!state || !state->js_thread_runner) break;
+      state->js_thread_runner->PostTask([weak = state->vm, slot = page->slot,
+                                         request = std::move(request)]() {
+        auto vm = weak.lock();
+        if (!vm) {
+          request->Fail("BTS VM destroyed");
+          return;
+        }
+        const char* error = nullptr;
+        auto snapshot = vm->TakeHeapSnapshot(slot, error);
+        request->Finish(std::move(snapshot), error);
+      });
+      return;
+    } while (false);
+    request->Fail("No residual snapshot");
+  });
+}
+
 void GlobalMemoryMonitor::OnBtsVMSlotAllocate(runtime::js::VMInstance* vm,
                                               int32_t slot) {
   if (!MemoryMonitor::Enable()) return;
