@@ -156,8 +156,7 @@ void ElementAPIError(const char* fmt, Args&&... a) {
 }
 
 lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
-  auto config = tasm->page_proxy()->GetConfig();
-  return GenerateSystemInfo(&config);
+  return tasm->GetSystemInfo();
 }
 
 bool ParseComposeElementKind(const lepus::Value& value, const char* function,
@@ -1042,7 +1041,7 @@ RENDERER_FUNCTION_CC(RemoveStyleSheet) {
 
 RENDERER_FUNCTION_CC(FiberAddEventListener) {
   // parameter size = 4
-  // [0] RefCounted -> element
+  // [0] RefCounted -> Element or Compose handle
   // [1] String -> name
   // [2] Function -> callback
   // [3] Object -> options
@@ -1061,7 +1060,7 @@ RENDERER_FUNCTION_CC(FiberAddEventListener) {
   BASE_STATIC_STRING_DECL(kSignal, "signal");
   BASE_STATIC_STRING_DECL(kClosureType, "closure_type");
   BASE_STATIC_STRING_DECL(kBindType, "bind_type");
-  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto element = GetComposeContentOrFiberElementFromValue(*arg0);
   bool capture = options->Contains(kCapture)
                      ? options->GetProperty(kCapture).Bool()
                      : false;
@@ -1146,7 +1145,7 @@ RENDERER_FUNCTION_CC(FiberAddEventListener) {
 
 RENDERER_FUNCTION_CC(FiberRemoveEventListener) {
   // parameter size = 4
-  // [0] RefCounted -> element
+  // [0] RefCounted -> Element or Compose handle
   // [1] String -> name
   // [2] Function -> callback
   // [3] Object -> options
@@ -1162,7 +1161,7 @@ RENDERER_FUNCTION_CC(FiberRemoveEventListener) {
   BASE_STATIC_STRING_DECL(kCapture, "capture");
   BASE_STATIC_STRING_DECL(kClosureType, "closure_type");
   BASE_STATIC_STRING_DECL(kBindType, "bind_type");
-  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto element = GetComposeContentOrFiberElementFromValue(*arg0);
   bool capture = options->Contains(kCapture)
                      ? options->GetProperty(kCapture).Bool()
                      : false;
@@ -6881,7 +6880,7 @@ RENDERER_FUNCTION_CC(TriggerComponentEvent) {
 }
 
 RENDERER_FUNCTION_CC(FiberInvokeMethod) {
-  CHECK_ARGC_EQ(FiberInvokeMethod, 3);
+  CHECK_ARGC_GE(FiberInvokeMethod, 3);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberInvokeMethod);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, String, FiberInvokeMethod);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Object, FiberInvokeMethod);

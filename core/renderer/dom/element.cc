@@ -31,8 +31,10 @@
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
+#include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/element_property.h"
 #include "core/renderer/dom/fiber/component_element.h"
+#include "core/renderer/dom/fiber/fiber_node_info.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/platform_types.h"
@@ -63,6 +65,7 @@
 #endif
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "gfx/geometry/matrix44.h"
 
 namespace lynx {
 namespace tasm {
@@ -82,6 +85,7 @@ const uint32_t Element::kDirtyRefreshCSSVariables = 0x01 << 12;
 const uint32_t Element::kDirtyStyleObjects = 0x01 << 13;
 
 namespace {
+
 constexpr std::array<starlight::Direction,
                      starlight::Direction::kDirectionCount>
     kDefaultDirectionValueOrder =
@@ -890,7 +894,8 @@ void Element::ResetAttribute(const base::String& key) {
     if (auto name = PlatformEventPropNameFromString(key.str());
         name != PlatformEventPropName::kUnknown) {
       if (auto fragment = fragment_impl()) {
-        if (name == PlatformEventPropName::kEventThrough ||
+        if (name == PlatformEventPropName::kMinimumTouchTargetSize ||
+            name == PlatformEventPropName::kEventThrough ||
             name == PlatformEventPropName::kConsumeSlideEvent ||
             name == PlatformEventPropName::kIgnoreFocus ||
             name == PlatformEventPropName::kHitSlop ||
@@ -971,7 +976,6 @@ void Element::RemoveAllClass() {
 void Element::SetAttribute(const base::String& key, const lepus::Value& value,
                            bool need_update_data_model) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_SET_ATTRIBUTE);
-
   CheckClassChangeTransmitAttribute(key, value);
 
   if (!value.IsEmpty()) {
@@ -1001,14 +1005,6 @@ void Element::SetAttribute(const base::String& key, const lepus::Value& value,
 
 void Element::SetModifierAttribute(const base::String& key,
                                    const lepus::Value& value) {
-  // Drop any pending reset for this key: ConsumeAllAttributes applies updates
-  // before resets, so a stale reset would wipe the value we set this frame.
-  if (!value.IsEmpty() && reset_attr_vec_.has_value()) {
-    auto& reset_attributes = *reset_attr_vec_;
-    reset_attributes.erase(
-        std::remove(reset_attributes.begin(), reset_attributes.end(), key),
-        reset_attributes.end());
-  }
   SetAttribute(key, value);
   modifier_attribute_names_->insert(key);
 }
@@ -3018,6 +3014,123 @@ event::TouchEventState* Element::GetTouchEventState() {
 
 float Element::GetLayoutsUnitPerPx() {
   return element_manager_->GetLynxEnvConfig().LayoutsUnitPerPx();
+}
+
+lepus::Value Element::ResolveTouchTargetPath(int32_t leaf_sign) {
+  auto* leaf = element_manager()->node_manager()->Get(leaf_sign);
+  base::InlineVector<int32_t, 4> ancestors;
+  // Paint parents can differ after fixed/z-index promotion. Preserve the
+  // UI-selected leaf and restore its complete logical Element ancestry.
+  for (auto* node = leaf; node; node = node->parent()) {
+    ancestors.emplace_back(node->impl_id());
+  }
+  auto targets = lepus::CArray::Create();
+  for (auto node = ancestors.rbegin(); node != ancestors.rend(); ++node) {
+    targets->emplace_back(*node);
+  }
+  return lepus::Value(std::move(targets));
+}
+
+lepus::Value Element::QueryGeometry(const lepus::Value& request) {
+  BASE_STATIC_STRING_DECL(kInputValid, "valid");
+  BASE_STATIC_STRING_DECL(kInputPoints, "points");
+  BASE_STATIC_STRING_DECL(kInputXPx, "xPx");
+  BASE_STATIC_STRING_DECL(kInputYPx, "yPx");
+  BASE_STATIC_STRING_DECL(kInputLeftPx, "leftPx");
+  BASE_STATIC_STRING_DECL(kInputTopPx, "topPx");
+  BASE_STATIC_STRING_DECL(kInputRightPx, "rightPx");
+  BASE_STATIC_STRING_DECL(kInputBottomPx, "bottomPx");
+  BASE_STATIC_STRING_DECL(kInputTreePath, "treePath");
+  BASE_STATIC_STRING_DECL(kInputWidthPx, "widthPx");
+  BASE_STATIC_STRING_DECL(kInputHeightPx, "heightPx");
+  auto result = lepus::Value(lepus::Dictionary::Create());
+  result.SetProperty(kInputValid, lepus::Value(false));
+  auto* page = element_manager_->root();
+  const float scale =
+      element_manager_->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  const auto points = request.GetProperty(kInputPoints);
+  auto projected = lepus::CArray::Create();
+  if (points.IsArray()) {
+    base::InlineVector<base::geometry::FloatPoint, 8> converted;
+    for (size_t index = 0; index < points.Array()->size(); ++index) {
+      const auto& point = points.Array()->get(index);
+      const auto x = point.GetProperty(kInputXPx);
+      const auto y = point.GetProperty(kInputYPx);
+      if (!x.IsNumber() || !y.IsNumber()) {
+        return result;
+      }
+      converted.emplace_back(static_cast<float>(x.Number()) / scale,
+                             static_cast<float>(y.Number()) / scale);
+    }
+    if (!ConvertPointsBetweenElements(converted.data(), converted.size(), page,
+                                      this)) {
+      return result;
+    }
+    for (const auto& point : converted) {
+      auto value = lepus::Value(lepus::Dictionary::Create());
+      value.SetProperty(kInputXPx, lepus::Value(point.X() * scale));
+      value.SetProperty(kInputYPx, lepus::Value(point.Y() * scale));
+      projected->emplace_back(std::move(value));
+    }
+  } else {
+    auto rect = ConvertRectBetweenElements({{0, 0}, {width(), height()}}, this,
+                                           page, true);
+    if (!rect) {
+      return result;
+    }
+    result.SetProperty(kInputLeftPx, lepus::Value(rect->X() * scale));
+    result.SetProperty(kInputTopPx, lepus::Value(rect->Y() * scale));
+    result.SetProperty(kInputRightPx, lepus::Value(rect->MaxX() * scale));
+    result.SetProperty(kInputBottomPx, lepus::Value(rect->MaxY() * scale));
+    auto tree_path = lepus::CArray::Create();
+    std::vector<int32_t> indices;
+    for (auto* node = this; node->parent(); node = node->parent()) {
+      indices.push_back(node->parent()->IndexOf(node));
+    }
+    for (auto index = indices.rbegin(); index != indices.rend(); ++index) {
+      tree_path->emplace_back(*index);
+    }
+    result.SetProperty(kInputTreePath, lepus::Value(std::move(tree_path)));
+  }
+  result.SetProperty(kInputValid, lepus::Value(true));
+  result.SetProperty(kInputWidthPx, lepus::Value(width() * scale));
+  result.SetProperty(kInputHeightPx, lepus::Value(height() * scale));
+  result.SetProperty(kInputPoints, lepus::Value(std::move(projected)));
+  return result;
+}
+
+lepus::Value Element::InvokeMethod(const base::String& method,
+                                   const lepus::Value& params,
+                                   std::string* error) {
+  const auto request = params.ToLepusValue(true);
+  if (method == "getGeometry") {
+    return QueryGeometry(request);
+  }
+  if (method == "getInputAncestors") {
+    auto ancestors = lepus::CArray::Create();
+    for (auto* node : FiberNodeInfo::PathToRoot(this)) {
+      ancestors->emplace_back(node->impl_id());
+    }
+    return lepus::Value(std::move(ancestors));
+  }
+  *error = "Unsupported element method: " + method.str();
+  return {};
+}
+
+void Element::SetCustomLayerTransform(const gfx::Matrix44& transform) {
+  if (!custom_layer_transform_) {
+    custom_layer_transform_ = std::make_unique<gfx::Matrix44>(transform);
+  } else {
+    *custom_layer_transform_ = transform;
+  }
+  custom_layer_transform_updated_ = true;
+}
+
+void Element::EndCustomLayerTransformUpdate() {
+  // A callback that omits its transform restores the CSS/default matrix.
+  if (!custom_layer_transform_updated_) {
+    custom_layer_transform_.reset();
+  }
 }
 
 void Element::UpdateScrollOffset(float x, float y) {
