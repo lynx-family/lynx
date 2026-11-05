@@ -211,6 +211,18 @@ void PaintingContext::UpdateContentOffsetForListContainer(
   });
 }
 
+void PaintingContext::ApplyListScrollState(int32_t container_id, float scroll_x,
+                                           float scroll_y, float content_width,
+                                           float content_height,
+                                           bool cmp_managed) {
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(), container_id,
+           scroll_x, scroll_y, content_width, content_height, cmp_managed] {
+    platform_ref->ApplyListScrollState(container_id, scroll_x, scroll_y,
+                                       content_width, content_height,
+                                       cmp_managed);
+  });
+}
+
 void PaintingContext::Enqueue(shell::UIOperation op, bool high_priority) {
   if (!platform_impl_->EnableUIOperationQueue() || !ui_operation_queue_) {
     op();
@@ -300,7 +312,24 @@ void PaintingContext::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_FINISH_LAYOUT_OPERATION);
   if (has_first_screen_) {
-    platform_impl_->FinishLayoutOperation(options);
+    if (options->list_item_updates_.empty()) {
+      platform_impl_->FinishLayoutOperation(options);
+    } else {
+      // Native lists still use the platform completion to attach item views.
+      // Publish the same bindings that C++ consumes after this layout flush.
+      auto item_options = *options;
+      item_options.ResetListRelatedFlag();
+      for (const auto& update : options->list_item_updates_) {
+        item_options.list_id_ = update.list_id;
+        item_options.list_comp_id_ = update.item_id;
+        item_options.operation_id = update.operation_id;
+        platform_impl_->FinishLayoutOperation(
+            std::make_shared<PipelineOptions>(item_options));
+      }
+      if (options->operation_id != 0 || !options->operation_ids_.empty()) {
+        platform_impl_->FinishLayoutOperation(options);
+      }
+    }
   }
   // timing
   // Pass the opions to the tasm thread through the tasm queue, and mount

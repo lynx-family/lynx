@@ -41,9 +41,12 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
       return manager->CreateFiberText(BASE_STATIC_STRING(kElementTextTag));
     case ComposeElementKind::kImage:
       return manager->CreateFiberImage(BASE_STATIC_STRING(kElementImageTag));
-    case ComposeElementKind::kList:
-      return manager->CreateFiberList(tasm, BASE_STATIC_STRING(kElementListTag),
-                                      {}, {}, {});
+    case ComposeElementKind::kList: {
+      auto list = manager->CreateFiberList(
+          tasm, BASE_STATIC_STRING(kElementListTag), {}, {}, {});
+      list->SetComposeScrollManaged(true);
+      return list;
+    }
     case ComposeElementKind::kSvg:
       return manager->CreateFiberElement(BASE_STATIC_STRING(kSvgTag));
     case ComposeElementKind::kOverlay:

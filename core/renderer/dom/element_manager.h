@@ -1323,6 +1323,8 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
    * @param options the pipeline options passed to layout context
    */
   void RequestLayout(const std::shared_ptr<PipelineOptions> &options) override;
+  void FlushPendingListItemUpdates(
+      const std::shared_ptr<PipelineOptions> &options);
 
   void MarkLayoutDirtyAndRequestLayout(
       int32_t id, const std::shared_ptr<PipelineOptions> &options);

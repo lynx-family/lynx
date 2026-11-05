@@ -5468,6 +5468,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   }
 
   bool trigger_data_updated = false;
+  PipelineOptions::ListItemUpdate list_item_update{};
   // If argc >= 2, get PipelineOptions from arg1.
   // The options->triggerLayout's default value is true, set it to false if do
   // need call DispatchLayoutUpdates. The options->operationID's default value
@@ -5520,6 +5521,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
       if (arg1->Contains(kOperationID)) {
         current_option->operation_id =
             static_cast<int64_t>(arg1->GetProperty(kOperationID).Number());
+        list_item_update.operation_id = current_option->operation_id;
       }
 
       // the elementID is used for the list on multi-thread mode
@@ -5527,6 +5529,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
       if (arg1->Contains(kElementID)) {
         current_option->list_comp_id_ =
             static_cast<int>(arg1->GetProperty(kElementID).Number());
+        list_item_update.item_id = current_option->list_comp_id_;
       }
 
       BASE_STATIC_STRING_DECL(kOperationIDs, "operationIDs");
@@ -5563,6 +5566,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
       if (arg1->Contains(kListID)) {
         current_option->list_id_ =
             static_cast<int>(arg1->GetProperty(kListID).Number());
+        list_item_update.list_id = current_option->list_id_;
       }
 
       // TODO(dingwang.wxx): Remove this logic by using timing api to record the
@@ -5694,6 +5698,20 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
   // redundant logic here.
   if (current_option->enable_unified_pixel_pipeline) {
+    if (self->page_proxy()->element_manager()->IsLayoutInElementModeOn() &&
+        list_item_update.list_id != 0 && list_item_update.item_id != 0 &&
+        list_item_update.operation_id != 0) {
+      auto* list = self->page_proxy()->element_manager()->node_manager()->Get(
+          list_item_update.list_id);
+      if (list && list->DisableListPlatformImplementation()) {
+        current_option->list_item_updates_.push_back(list_item_update);
+        // Both painting and C++ list completion consume this batch after
+        // layout. Do not also publish the last binding through the scalar path.
+        current_option->list_id_ = 0;
+        current_option->list_comp_id_ = 0;
+        current_option->operation_id = 0;
+      }
+    }
     if (!is_empty_patch) {
       const int32_t incoming_target_node =
           element ? element->impl_id() : PipelineOptions::kInvalidTargetNodeId;

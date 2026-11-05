@@ -25,7 +25,7 @@ class BaseScrollContainer : public UIView {
  public:
   void OnNodeReady() override;
   void ScrollTo(float x, float y, bool smooth);
-  std::pair<float, float> GetScrollOffset() const;
+  virtual std::pair<float, float> GetScrollOffset() const;
   float GetScrollDistance() const;
   float GetViewPortSize() const;
   bool IsHorizontal() const { return is_horizontal_; };

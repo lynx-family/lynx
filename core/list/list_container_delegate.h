@@ -62,6 +62,12 @@ class ContainerDelegate {
   virtual void SetEnableParallelElement(bool enable_parallel_element) = 0;
   virtual void SetEnableBatchRender(bool enable_batch_render) = 0;
   virtual void SetEnableScrollToThresholdEventOnDiffLayout(bool enable) = 0;
+  virtual void SetComposeScrollManaged(bool managed) {}
+  virtual ListScrollResult ScrollByDelta(float delta) {
+    return {ListScrollState{}, 0.f, delta};
+  }
+  virtual ListScrollState ScrollToItem(int index, float offset) { return {}; }
+  virtual ListScrollState GetScrollState() const { return {}; }
 };
 
 }  // namespace list
