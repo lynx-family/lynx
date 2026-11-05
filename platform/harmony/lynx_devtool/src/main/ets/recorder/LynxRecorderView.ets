@@ -41,6 +41,8 @@ import {
 } from './DataType';
 import { util } from '@kit.ArkTS';
 import LynxRecorderEnv from './LynxRecorderEnv';
+import LynxRecorderFixture from './LynxRecorderFixture';
+import common from '@ohos.app.ability.common';
 
 const TAG = 'LynxRecorderView';
 
@@ -194,28 +196,41 @@ export default struct LynxRecorderView {
   private extraTiming: LynxExtraTiming = new LynxExtraTiming();
   private replayOptions: LynxRecorderReplayOptions = new LynxRecorderReplayOptions();
   private templateBundleOption: TemplateBundleOption = new TemplateBundleOption(5, true);
-  private replayGeneration: number = 0;
+  @State private replayGeneration: number = 0;
+  private fixture?: LynxRecorderFixture;
+  private replayTimers: number[] = [];
 
   private isReplaySharedData(value: Object | string | number | boolean | null | undefined): boolean {
     return value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
   }
 
   private download(replayGeneration: number) {
-    let httpRequest = http.createHttp();
     let urlObject = Url.URL.parseURL(this.url);
     let url = this.sanitizeRecordedUrl(urlObject.params.get('url'));
     if (url.length === 0) {
       LLog.e(TAG, 'Unsupported artifact link：' + this.url);
+      this.statusText = 'Replay failed: invalid artifact link.';
       return;
     }
 
-    let res = new ArrayBuffer(0);
+    let httpRequest = http.createHttp();
+    let chunks: ArrayBuffer[] = [];
+    let size = 0;
+    let oversized = false;
+    const signature = new Uint8Array(2);
+    let signatureSize = 0;
     httpRequest.on('dataReceive', (data: ArrayBuffer) => {
-      const newRes = new ArrayBuffer(res.byteLength + data.byteLength);
-      const resView = new Uint8Array(newRes);
-      resView.set(new Uint8Array(res));
-      resView.set(new Uint8Array(data), res.byteLength);
-      res = newRes;
+      // Identify ZIP even when its signature spans two download chunks.
+      const prefix = new Uint8Array(data).subarray(0, 2 - signatureSize);
+      signature.set(prefix, signatureSize);
+      signatureSize += prefix.length;
+      size += data.byteLength;
+      if (size > LynxRecorderFixture.MAX_BYTES && LynxRecorderFixture.isArchive(signature.buffer as ArrayBuffer)) {
+        oversized = true;
+        chunks = [];
+        return;
+      }
+      if (!oversized) chunks.push(data);
     });
 
     httpRequest.requestInStream(
@@ -227,22 +242,55 @@ export default struct LynxRecorderView {
         httpRequest.destroy();
         return;
       }
-      if (data != 200) {
+      if (err || data != 200 || oversized) {
+        this.statusText = 'Replay failed: artifact download failed or exceeded size limit.';
         LLog.e(TAG, 'Unsupported artifact link：' + this.url);
       } else {
-        let decoder = util.TextDecoder.create('utf-8');
-        let stringResult = decoder.decodeToString(new Uint8Array(res));
-        if (stringResult.startsWith('{')) {
-          this.data = stringResult;
-        } else {
-          this.data = LynxEnv.parserTestBenchRecordData(stringResult);
+        const buffer = new ArrayBuffer(size);
+        const res = new Uint8Array(buffer);
+        let offset = 0;
+        for (const chunk of chunks) {
+          res.set(new Uint8Array(chunk), offset);
+          offset += chunk.byteLength;
         }
-        this.registerJSBModule();
-        this.handleActionList(replayGeneration);
+        this.loadArtifact(buffer, replayGeneration);
       }
       httpRequest.off('dataReceive');
       httpRequest.destroy();
     });
+  }
+
+  private async loadArtifact(buffer: ArrayBuffer, replayGeneration: number): Promise<void> {
+    let fixture: LynxRecorderFixture | undefined;
+    try {
+      let data: string;
+      if (LynxRecorderFixture.isArchive(buffer)) {
+        fixture = await LynxRecorderFixture.open(buffer, (getContext(this) as common.UIAbilityContext).cacheDir);
+        data = fixture.data;
+      } else {
+        const text = util.TextDecoder.create('utf-8').decodeToString(new Uint8Array(buffer)).trim();
+        data = text.startsWith('{') ? text : LynxEnv.parserTestBenchRecordData(text);
+      }
+      if (replayGeneration !== this.replayGeneration) {
+        fixture?.release();
+        return;
+      }
+      this.fixture?.release();
+      this.fixture = fixture;
+      fixture = undefined;
+      this.data = data;
+      this.registerJSBModule();
+      await this.handleActionList(replayGeneration);
+    } catch (error) {
+      fixture?.release();
+      if (replayGeneration === this.replayGeneration) {
+        this.resetReplayLoadState();
+        this.fixture?.release();
+        this.fixture = undefined;
+        this.statusText = 'Replay failed: ' + error;
+        LLog.e(TAG, this.statusText);
+      }
+    }
   }
 
   private downloadSourceOverride(replayGeneration: number) {
@@ -317,6 +365,9 @@ export default struct LynxRecorderView {
 
   aboutToDisappear(): void {
     this.replayGeneration++;
+    this.clearReplayTimers();
+    this.fixture?.release();
+    this.fixture = undefined;
     if (LynxRecorderReplayDataModule.jsbInvokers) {
       LynxRecorderReplayDataModule.jsbInvokers = []
     }
@@ -349,7 +400,8 @@ export default struct LynxRecorderView {
     LLog.i(TAG,
       `[replay-shared-data] registerJSBModule | keys=${JSON.stringify(Object.keys(LynxRecorderReplayDataModule.sharedData))}`);
     this.jsbModule.set('LynxRecorderReplayDataModule', {
-      moduleClass: LynxRecorderReplayDataModule
+      moduleClass: LynxRecorderReplayDataModule,
+      param: this.fixture
     });
     this.modules?.forEach((module: ModuleClassWrapper, name: string) => {
       this.jsbModule.set(name, module);
@@ -433,7 +485,8 @@ export default struct LynxRecorderView {
         return;
       }
     }
-    let startTime: number | undefined;
+    // Fixture delays are relative already; only JSON uses absolute timestamps.
+    let startTime: number | undefined = this.fixture ? 0 : undefined;
     for (const action of actions) {
       if (startTime == undefined) {
         startTime = action['RecordMillisecond'] as number;
@@ -443,7 +496,8 @@ export default struct LynxRecorderView {
       if (function_name === 'LoadComponentWithCallback') {
         continue;
       }
-      setTimeout(this.dispatchMessage, delayTime, this, replayGeneration, function_name, action['Params']);
+      this.replayTimers.push(setTimeout(this.dispatchMessage, delayTime, this,
+        replayGeneration, function_name, action['Params']));
     }
   }
 
@@ -643,6 +697,7 @@ export default struct LynxRecorderView {
   }
 
   private resetReplayLoadState() {
+    this.clearReplayTimers();
     this.ready = false;
     this.pageUrl = LynxRecorderEnv.RECORDER_URL_PREFIX;
     this.buffer = undefined;
@@ -650,12 +705,18 @@ export default struct LynxRecorderView {
     this.bufferReady = false;
     this.loadFromUrl = false;
     this.templateData = undefined;
+    this.globalProps = undefined;
     this.templateDataReady = false;
     this.localLynxContext = undefined;
     this.viewportWidth = 0;
     this.viewportHeight = 0;
     this.loadPending = false;
     this.statusText = 'Loading...';
+  }
+
+  private clearReplayTimers(): void {
+    for (const timer of this.replayTimers) clearTimeout(timer);
+    this.replayTimers = [];
   }
 
   private loadTemplate(params: LoadTemplateParams) {
@@ -834,29 +895,32 @@ export default struct LynxRecorderView {
       .borderWidth({ bottom: 1 })
 
       if (this.ready) {
-        LynxView({
-          url: '',
-          embeddedMode: this.replayOptions.embeddedMode,
-          enableAirStrictMode: this.replayOptions.enableAirStrictMode,
-          uiRendererCreator: this.uiRendererCreator,
-          genericResourceFetcher: this.genericFetcher,
-          mediaResourceFetcher: this.mediaFetcher,
-          templateResourceFetcher: this.templateFetcher,
-          modules: this.jsbModule,
-          metaData: new MetaData(this.templateData, this.globalProps),
-          beforeLoadTemplate: (context: LynxContext) => {
-            context.updateViewport(this.viewportWidth, MeasureMode.DEFINITE,
-              this.viewportHeight, MeasureMode.DEFINITE);
-          },
-          onCreate: (context) => {
-            this.localLynxContext = context;
-            this.onCreate?.(context);
-            this.tryLoadTemplate();
-          }
-        })
-          .onAreaChange((_oldValue: Area, newValue: Area) => {
-            this.onLynxViewAreaChange(newValue);
+        // A new view also creates a fresh FixtureContext on every replay.
+        ForEach([this.replayGeneration], (generation: number) => {
+          LynxView({
+            url: '',
+            embeddedMode: this.replayOptions.embeddedMode,
+            enableAirStrictMode: this.replayOptions.enableAirStrictMode,
+            uiRendererCreator: this.uiRendererCreator,
+            genericResourceFetcher: this.genericFetcher,
+            mediaResourceFetcher: this.mediaFetcher,
+            templateResourceFetcher: this.templateFetcher,
+            modules: this.jsbModule,
+            metaData: new MetaData(this.templateData, this.globalProps),
+            beforeLoadTemplate: (context: LynxContext) => {
+              context.updateViewport(this.viewportWidth, MeasureMode.DEFINITE,
+                this.viewportHeight, MeasureMode.DEFINITE);
+            },
+            onCreate: (context) => {
+              this.localLynxContext = context;
+              this.onCreate?.(context);
+              this.tryLoadTemplate();
+            }
           })
+            .onAreaChange((_oldValue: Area, newValue: Area) => {
+              this.onLynxViewAreaChange(newValue);
+            })
+        }, (generation: number) => generation.toString())
       } else {
           Text(this.statusText).fontSize(24).textAlign(TextAlign.Center).padding(24)
       }

@@ -221,6 +221,7 @@ TEST_F(FixtureReplayHelperTest, RejectsUnsafeAssetPathForms) {
                                "C:/state.json",
                                "file:state.json",
                                "assets\\state.json",
+                               std::string("state.json\0suffix", 17),
                                fixture_directory_ + "/assets/state.json"};
   for (const auto& path : paths) {
     SCOPED_TRACE(path);

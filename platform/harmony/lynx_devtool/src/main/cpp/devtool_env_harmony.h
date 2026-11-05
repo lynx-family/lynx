@@ -40,6 +40,7 @@ class DevToolEnvHarmony {
   static napi_value GetSwitchNAPI(napi_env env, napi_callback_info info);
   static napi_value InitDevToolEnvNAPI(napi_env env, napi_callback_info info);
   static napi_value InitDevToolSetModule(napi_env env, napi_callback_info info);
+  static napi_value LoadFixture(napi_env env, napi_callback_info info);
 
   static std::unordered_map<std::string, bool> s_persistent_default_value_;
   OH_Preferences* preference_ = nullptr;
