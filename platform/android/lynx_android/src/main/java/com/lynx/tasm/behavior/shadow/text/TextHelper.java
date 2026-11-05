@@ -26,6 +26,7 @@ import androidx.annotation.Nullable;
 import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableType;
 import com.lynx.tasm.base.LLog;
@@ -867,6 +868,29 @@ public class TextHelper {
     return formatDoubleToString(num);
   }
 
+  @Nullable
+  static String fontVariationSettingsToString(@Nullable ReadableArray settings) {
+    if (settings == null || settings.size() == 0) {
+      return null;
+    }
+    StringBuilder result = new StringBuilder();
+    for (int i = 0; i < settings.size() / 2; i++) {
+      if (i > 0) {
+        result.append(",");
+      }
+      String tag = settings.getString(i * 2);
+      double value = settings.getDouble(i * 2 + 1);
+      result.append("'").append(tag).append("' ");
+      if ("wght".equals(tag)) {
+        // Some Android versions reject integral weight axes with a .0 suffix.
+        appendDoubleWithoutRedundantDecimal(result, value);
+      } else {
+        result.append(value);
+      }
+    }
+    return result.toString();
+  }
+
   static void appendDoubleWithoutRedundantDecimal(StringBuilder builder, double value) {
     // Omit a redundant ".0" for integral values while preserving fractional values.
     if (value < Long.MAX_VALUE && value > Long.MIN_VALUE) {
@@ -941,7 +965,7 @@ public class TextHelper {
     }
   }
 
-  private static boolean enableSetFontVariation() {
+  static boolean enableSetFontVariation() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
       return false;
     }
