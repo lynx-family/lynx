@@ -38,6 +38,9 @@ export const notifyMemoryPressure: (pressure: number) => void;
 
 export const generateViewId: () => number;
 
+export const takeBtsResidualHeapSnapshot: (
+  outputFile: string, callback: (error?: string) => void, instanceId: number) => void;
+
 export class PaintingContext {
   static create(ref: Object, create: Function, update: Function, insert: Function, remove: Function, destroy: Function,
     layout: Function, flush: Function, layoutFinish: Function, updateContentSizeAndOffset: Function,
@@ -233,6 +236,9 @@ export class LynxTemplateRenderer {
   nativeGetAllJsSource(): Record<string, string>;
 
   nativeGetAllJsSourceAsync(callback: (source: Record<string, string>) => void): void;
+
+  nativeTakeHeapSnapshot(outputFile: string, callback: (error?: string) => void,
+    type: 'mts' | 'bts_page' | 'bts_vm'): void;
 
   nativeSetSessionStorageItem(key: string, data?: Object | string): void;
 
