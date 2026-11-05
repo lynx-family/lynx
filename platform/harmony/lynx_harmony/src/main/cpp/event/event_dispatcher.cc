@@ -203,6 +203,18 @@ std::optional<std::string> ExtractInlineCSSText(const std::string& response) {
   return css_text;
 }
 
+// Installed when gestures are detached from a root. Passing nullptr to
+// SetGestureInterrupterToNode does not clear the interrupter: some ArkUI
+// versions wrap the null pointer into the node's gesture judge callback and
+// call it unconditionally, so a recognizer still alive in the current touch
+// sequence crashes at pc 0 once it reaches accept; newer versions ignore
+// nullptr and keep the previous interrupter. Rejecting keeps recognizers left
+// on a detached root from being accepted.
+ArkUI_GestureInterruptResult RejectGestureOnDetachedRoot(
+    ArkUI_GestureInterruptInfo* /* info */) {
+  return GESTURE_INTERRUPT_RESULT_REJECT;
+}
+
 }  // namespace
 
 ConsumeSlideDirection EventDispatcher::ConsumeSlideDirectionFromAngleRanges(
@@ -523,7 +535,8 @@ void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
     }
   }
   auto* root_node = root->RootNode();
-  NodeManager::Instance().SetGestureInterrupterToNode(root_node, nullptr);
+  NodeManager::Instance().SetGestureInterrupterToNode(
+      root_node, RejectGestureOnDetachedRoot);
   if (long_press_gesture_) {
     NodeManager::Instance().RemoveGestureFromNode(root_node,
                                                   long_press_gesture_);
