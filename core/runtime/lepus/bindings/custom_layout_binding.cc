@@ -34,8 +34,7 @@ Element* LayoutChild(const lepus::Value& value) {
 
 bool Owns(runtime::MTSRuntime* runtime, Element* element) {
   auto* tasm = static_cast<TemplateAssembler*>(runtime->GetDelegate());
-  return runtime->IsLepusNGContext() && element && !element->will_destroy() &&
-         tasm &&
+  return element && !element->will_destroy() && tasm &&
          element->element_manager() ==
              tasm->page_proxy()->element_manager().get();
 }
