@@ -65,6 +65,21 @@ inline size_t SharedImagePixmapMinRowBytes(
 #endif  // ENABLE_SKITY
 }
 
+// Pixel allocation of a readback pixmap may fail under memory pressure, in
+// which case its writable address is null.
+inline bool SharedImagePixmapsWritable(SharedImageReadbackPixmap* pixmaps,
+                                       uint32_t planes) {
+  if (!pixmaps) {
+    return false;
+  }
+  for (uint32_t plane = 0; plane < planes; ++plane) {
+    if (!SharedImagePixmapWritableAddr(pixmaps[plane])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 class SharedImageBacking
     : public fml::RefCountedThreadSafe<SharedImageBacking> {
  public:

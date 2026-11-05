@@ -454,6 +454,10 @@ D3DTextureImageBacking::CreateSkiaRepresentation(GrDirectContext* gr_context) {
 
 bool D3DTextureImageBacking::ReadbackToMemory(
     SharedImageReadbackPixmap* pixmaps, uint32_t planes) {
+  if (!SharedImagePixmapsWritable(pixmaps, planes)) {
+    FML_LOG(ERROR) << "Invalid readback pixmap, pixels not allocated.";
+    return false;
+  }
   D3DTextureFactory::ScopedDevice scoped_device =
       D3DTextureFactory::Instance().GetDeviceScoped();
   ID3D11Device* d3d11_device = scoped_device.GetDevice();
