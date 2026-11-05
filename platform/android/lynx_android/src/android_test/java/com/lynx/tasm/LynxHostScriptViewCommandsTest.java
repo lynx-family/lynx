@@ -29,6 +29,7 @@ import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -40,12 +41,15 @@ public class LynxHostScriptViewCommandsTest {
   private static final String URL = "assets://command.js";
   private LynxView mView;
   private LynxTemplateRender mRender;
+  private boolean mHostScriptInstalled;
 
   @Before
   public void setUp() {
     Context context =
         InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
     LynxEnv.inst().init((Application) context, null, null, null, null);
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(
+        () -> mHostScriptInstalled = isHostScriptAvailable());
     mView = mock(LynxView.class);
     mRender = mock(LynxTemplateRender.class);
     when(mRender.getLogContextSnapshot()).thenReturn(new LynxLogContext(VIEW_ID, 1, 2));
@@ -212,6 +216,7 @@ public class LynxHostScriptViewCommandsTest {
 
   @Test
   public void registeredViewForwardsLifecycleAndErrorDetails() {
+    Assume.assumeTrue(mHostScriptInstalled);
     onUiThread(() -> {
       LynxError error = new LynxError(123, "failure \uD83D\uDE00");
       JSONArray events = captureEvents(() -> {
@@ -267,6 +272,7 @@ public class LynxHostScriptViewCommandsTest {
 
   @Test
   public void malformedGlobalEventReportsAnErrorWithoutDispatching() {
+    Assume.assumeTrue(mHostScriptInstalled);
     onUiThread(() -> {
       JSONArray events = captureEvents(() -> sendGlobalEvent("{\"invalid\":true}"));
       verify(mView, never()).sendGlobalEvent(any(), any());
@@ -282,6 +288,7 @@ public class LynxHostScriptViewCommandsTest {
 
   @Test
   public void platformCommandFailureIsReportedWithoutEscaping() {
+    Assume.assumeTrue(mHostScriptInstalled);
     onUiThread(() -> {
       doThrow(new IllegalStateException("platform failure \uD83D\uDE00"))
           .when(mView)
@@ -366,6 +373,16 @@ public class LynxHostScriptViewCommandsTest {
 
   private static void onUiThread(Runnable command) {
     InstrumentationRegistry.getInstrumentation().runOnMainSync(command);
+  }
+
+  private static boolean isHostScriptAvailable() {
+    try {
+      Field available = LynxHostScriptViewHooks.class.getDeclaredField("sRegistryAvailable");
+      available.setAccessible(true);
+      return available.getBoolean(null);
+    } catch (ReflectiveOperationException error) {
+      throw new AssertionError(error);
+    }
   }
 
   private static native byte[] nativeCaptureEvents(long viewId, Runnable command);

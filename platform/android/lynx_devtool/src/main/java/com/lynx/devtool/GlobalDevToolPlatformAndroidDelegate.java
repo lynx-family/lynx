@@ -24,6 +24,18 @@ public class GlobalDevToolPlatformAndroidDelegate {
   private static final String TAG = "GlobalDevToolPlatformAndroidDelegate";
   private static final String EMPTY_RESULT_JSON = "{}";
 
+  private static volatile long sHostScriptTransport;
+
+  @CalledByNative
+  private static long getHostScriptTransport() {
+    return sHostScriptTransport;
+  }
+
+  /** Binds the transport supplied by the host's optional Host Script runtime. */
+  public static void setHostScriptTransport(long transport) {
+    sHostScriptTransport = transport;
+  }
+
   @CalledByNative
   public static void startMemoryTracing() {
     MemoryController.getInstance().startMemoryTracing();

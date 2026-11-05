@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/shell/host_script/android/lynx_view/host_script_view_hooks_android.h"
+#include "core/shell/host_script/runtime/platform/android/host_script_view_hooks_android.h"
 
 #include <atomic>
 #include <iterator>
@@ -17,12 +17,12 @@
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
 #include "core/base/android/android_jni.h"
-#include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/shell/host_script/lynx_view/lynx_view_registry.h"
 #include "core/shell/host_script/runtime/interceptor.h"
-#include "platform/android/lynx_android/src/main/jni/gen/LynxHostScriptViewHooks_jni.h"
-#include "platform/android/lynx_android/src/main/jni/gen/LynxHostScriptViewHooks_register_jni.h"
+#include "core/shell/host_script/runtime/platform/android/process_runtime_android.h"
+#include "platform/android/lynx_host_script/src/main/jni/gen/LynxHostScriptViewHooks_jni.h"
+#include "platform/android/lynx_host_script/src/main/jni/gen/LynxHostScriptViewHooks_register_jni.h"
 
 namespace lynx {
 namespace jni {
@@ -38,7 +38,7 @@ void EnableHostScriptViewRegistry(fml::RefPtr<fml::TaskRunner> ui_runner) {
 }
 
 void InstallHostScriptViewHooks() {
-  if (!tasm::DevToolLifecycle::GetInstance().IsEnabled()) return;
+  if (!lynx::shell::IsHostScriptDebugEnabled()) return;
   Java_LynxHostScriptViewHooks_setEnabled(base::android::AttachCurrentThread(),
                                           true);
 }
@@ -242,7 +242,7 @@ static jbyteArray DispatchUpdateMetaData(JNIEnv* env, jclass, jlong view_id,
   event.SetProperty(kRequest, request);
   auto patch = DispatchView(InterceptKind::kUpdateMetaData, std::move(event));
   if (!patch.IsTable() || !patch.GetLength()) return nullptr;
-  auto result = ToJavaBytes(env, lynx::lepus::lepusValueToJSONString(patch));
+  auto result = ToJavaBytes(env, lynx::lepus::lepusValueToString(patch));
   // Transfer a separate local reference to Java before the scoped wrapper is
   // destroyed.
   return static_cast<jbyteArray>(
@@ -294,7 +294,7 @@ static jobjectArray DispatchLoadTemplate(JNIEnv* env, jclass, jlong view_id,
   jobjectArray result = env->NewObjectArray(2, env->FindClass("[B"), nullptr);
   env->SetObjectArrayElement(
       result, 0,
-      ToJavaBytes(env, lynx::lepus::lepusValueToJSONString(changes)).Get());
+      ToJavaBytes(env, lynx::lepus::lepusValueToString(changes)).Get());
   if (bytes.IsByteArray()) {
     auto array = bytes.ByteArray();
     env->SetObjectArrayElement(

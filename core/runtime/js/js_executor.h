@@ -24,6 +24,12 @@
 #include "core/services/replay/lynx_module_manager_testbench.h"
 #endif
 
+#if defined(__ANDROID__) && ENABLE_NAPI_BINDING
+#define LYNX_HSR_EXECUTOR_EXPORT LYNX_EXPORT
+#else
+#define LYNX_HSR_EXECUTOR_EXPORT
+#endif
+
 namespace lynx {
 
 namespace runtime {
@@ -57,9 +63,9 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   const base::LogContext& GetLogContext() const { return log_context_; }
 
-  void Destroy();
+  LYNX_HSR_EXECUTOR_EXPORT void Destroy();
 
-  void loadPreJSBundle(
+  LYNX_HSR_EXECUTOR_EXPORT void loadPreJSBundle(
       base::MoveOnlyClosure<
           std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>>
           js_pre_sources_getter,
@@ -81,7 +87,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
   JSRuntimeCreatedType getJSRuntimeType();
 
-  base::UnsafeWeakPtr<Runtime> GetJSRuntime();
+  LYNX_HSR_EXECUTOR_EXPORT base::UnsafeWeakPtr<Runtime> GetJSRuntime();
 
   void SetUrl(const std::string& url);
 
@@ -119,4 +125,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
 
 }  // namespace runtime
 }  // namespace lynx
+
+#undef LYNX_HSR_EXECUTOR_EXPORT
+
 #endif  // CORE_RUNTIME_JS_JS_EXECUTOR_H_

@@ -14,10 +14,10 @@
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/include/string/string_utils.h"
 #include "core/base/android/android_jni.h"
-#include "core/shell/host_script/android/runtime/host_script_android_session.h"
 #include "core/shell/host_script/lynx_view/lynx_view_ref_proxy.h"
-#include "platform/android/lynx_android/src/main/jni/gen/LynxHostScriptLynxViewBinding_jni.h"
-#include "platform/android/lynx_android/src/main/jni/gen/LynxHostScriptLynxViewBinding_register_jni.h"
+#include "core/shell/host_script/runtime/platform/android/host_script_android_session.h"
+#include "platform/android/lynx_host_script/src/main/jni/gen/LynxHostScriptLynxViewBinding_jni.h"
+#include "platform/android/lynx_host_script/src/main/jni/gen/LynxHostScriptLynxViewBinding_register_jni.h"
 
 namespace {
 

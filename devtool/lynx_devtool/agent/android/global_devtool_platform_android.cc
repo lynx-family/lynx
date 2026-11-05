@@ -175,6 +175,11 @@ GlobalDevToolPlatformFacade& GlobalDevToolPlatformFacade::GetInstance() {
   return *(instance.get());
 }
 
+jlong GlobalDevToolPlatformAndroid::GetHSRTransport() {
+  return Java_GlobalDevToolPlatformAndroidDelegate_getHostScriptTransport(
+      base::android::AttachCurrentThread());
+}
+
 void GlobalDevToolPlatformAndroid::FetchHSRScript(const std::string& source_url,
                                                   uint64_t request_id) {
   JNIEnv* env = base::android::AttachCurrentThread();
