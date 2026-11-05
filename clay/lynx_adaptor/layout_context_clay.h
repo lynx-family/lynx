@@ -65,7 +65,7 @@ class LayoutContextClay : public LayoutCtxPlatformImpl,
   ClayLayoutStyles OnGetLayoutStyles(int32_t id) override;
 
   friend class MeasureFuncImpl;
-  LayoutResult MeasureImpl(int sign, int width, int width_mode, int height,
+  LayoutResult MeasureImpl(int sign, float width, int width_mode, float height,
                            int height_mode);
   void AlignmentImpl(int sign);
 
