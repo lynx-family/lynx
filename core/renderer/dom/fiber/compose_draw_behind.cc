@@ -175,13 +175,12 @@ bool ParseRect(const lepus::Value& value, double pixels, DrawRect* rect) {
   return true;
 }
 
-}  // namespace
-
-CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
-                                               lepus::Value callback) {
+CustomDrawFunctions ComposeDrawFunctions(runtime::MTSRuntime* runtime,
+                                         lepus::Value callback,
+                                         bool foreground) {
   CustomDrawFunctions functions;
-  functions.draw_behind = [runtime, callback](Fragment& fragment,
-                                              DisplayListBuilder& builder) {
+  auto draw = [runtime, callback](Fragment& fragment,
+                                  DisplayListBuilder& builder) {
     auto* target = fragment.element();
     if (!target->IsAttached() || !target->HasCustomDrawFunctions() ||
         (target->dirty() & Element::kDirtyCustomDraw))
@@ -199,17 +198,17 @@ CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
                            .ToLepusValue();
     if (value.IsEmpty()) return;
     if (!value.IsArrayOrJSArray()) {
-      LOGE("drawBehind resolver returned invalid commands");
+      LOGE("Compose draw resolver returned invalid commands");
       return;
     }
     // Validate the entire result before recording, so malformed commands never
-    // leave a partially drawn background in the new DisplayList.
+    // leave partially drawn content in the new DisplayList.
     std::vector<DrawRect> commands;
     for (int i = 0; i < value.GetLength(); ++i) {
       DrawRect rect;
       if (!ParseRect(value.GetProperty(static_cast<uint32_t>(i)).ToLepusValue(),
                      pixels, &rect)) {
-        LOGE("drawBehind resolver returned an invalid rectangle");
+        LOGE("Compose draw resolver returned an invalid rectangle");
         return;
       }
       commands.push_back(std::move(rect));
@@ -236,7 +235,24 @@ CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
       }
     }
   };
+  if (foreground) {
+    functions.draw_foreground = std::move(draw);
+  } else {
+    functions.draw_behind = std::move(draw);
+  }
   return functions;
+}
+
+}  // namespace
+
+CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
+                                               lepus::Value callback) {
+  return ComposeDrawFunctions(runtime, std::move(callback), false);
+}
+
+CustomDrawFunctions ComposeDrawForegroundFunctions(runtime::MTSRuntime* runtime,
+                                                   lepus::Value callback) {
+  return ComposeDrawFunctions(runtime, std::move(callback), true);
 }
 
 }  // namespace tasm

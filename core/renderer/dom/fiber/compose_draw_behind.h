@@ -16,8 +16,11 @@ namespace tasm {
 
 // Calls the runtime during full content drawing. Cache construction and State
 // observation belong to the producer; this bridge retains no draw cache.
+// Both phases use the same commands; foreground runs after native content.
 CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
                                                lepus::Value callback);
+CustomDrawFunctions ComposeDrawForegroundFunctions(runtime::MTSRuntime* runtime,
+                                                   lepus::Value callback);
 
 }  // namespace tasm
 }  // namespace lynx
