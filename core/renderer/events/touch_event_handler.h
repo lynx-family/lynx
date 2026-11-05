@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/vector.h"
+#include "core/event/touch_event.h"
 #include "core/public/event/pseudo_status.h"
 #include "core/public/event/touch_event_data.h"
 #include "core/renderer/dom/element.h"
@@ -54,39 +55,6 @@ struct EventOperation {
     return this->current_target_ == that.current_target_ &&
            this->handler_->GetEventPhase() == that.handler_->GetEventPhase();
   }
-};
-
-struct EventInfo {
-  explicit EventInfo(const lepus_value &params, int64_t timestamp = 0)
-      : params(params), is_multi_finger(true), timestamp(timestamp) {}
-  EventInfo(int tag, float x, float y, float client_x, float client_y,
-            float page_x, float page_y, int64_t timestamp = 0,
-            event::TouchEventTargetPoints current_target_points = {})
-      : tag(tag),
-        x(x),
-        y(y),
-        client_x(client_x),
-        client_y(client_y),
-        page_x(page_x),
-        page_y(page_y),
-        timestamp(timestamp),
-        current_target_points(std::move(current_target_points)) {}
-  EventInfo(const EventInfo &info) = delete;
-  EventInfo &operator=(const EventInfo &info) = delete;
-  EventInfo(EventInfo &&info) noexcept = default;
-  EventInfo &operator=(EventInfo &&info) noexcept = default;
-
-  lepus_value params;
-  bool is_multi_finger{false};
-  int32_t tag{0};
-  float x{0};
-  float y{0};
-  float client_x{0};
-  float client_y{0};
-  float page_x{0};
-  float page_y{0};
-  int64_t timestamp{0};
-  event::TouchEventTargetPoints current_target_points;
 };
 
 enum class EventType : unsigned int {

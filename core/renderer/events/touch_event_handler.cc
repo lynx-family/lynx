@@ -198,28 +198,16 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
   }
 
   if (tasm->EnableEventHandleRefactor()) {
-    if (info.is_multi_finger) {
-      event::EventDispatcher::DispatchTouchEventBatch(
-          name, info.params, info.timestamp,
-          [tasm](int tag) -> event::EventTarget * {
-            auto *manager = tasm->page_proxy()->element_manager().get();
-            return manager ? manager->node_manager()->Get(tag) : nullptr;
-          },
-          [tasm]() -> event::TouchEventState * {
-            auto *manager = tasm->page_proxy()->element_manager().get();
-            return manager ? manager->GetTouchEventState() : nullptr;
-          });
-    } else {
-      auto target = node_manager_->Get(info.tag);
-      if (!target) {
-        LOGE("HandleTouchEvent error: the target is null.");
-        return;
-      }
-      auto event = fml::MakeRefCounted<event::TouchEvent>(
-          name, info.x, info.y, info.page_x, info.page_y, info.client_x,
-          info.client_y, info.timestamp, info.current_target_points);
-      event::EventDispatcher::DispatchEvent(*target, std::move(event));
-    }
+    event::EventDispatcher::DispatchTouchEventBatch(
+        name, info,
+        [tasm](int tag) -> event::EventTarget * {
+          auto *manager = tasm->page_proxy()->element_manager().get();
+          return manager ? manager->node_manager()->Get(tag) : nullptr;
+        },
+        [tasm]() -> event::TouchEventState * {
+          auto *manager = tasm->page_proxy()->element_manager().get();
+          return manager ? manager->GetTouchEventState() : nullptr;
+        });
     return;
   }
 
