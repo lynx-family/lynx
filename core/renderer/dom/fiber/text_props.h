@@ -39,6 +39,7 @@ enum TextPropertyKeyID {
   kTextPropTextDecorationWidth = 21,
   kTextPropTextDecorationGap = 22,
   kTextPropWordBreak = 23,
+  kTextPropFontVariationSettings = 25,
 
   // attributes
   kTextPropTextMaxLine = 99,

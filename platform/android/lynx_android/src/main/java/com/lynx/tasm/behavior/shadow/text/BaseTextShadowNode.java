@@ -79,7 +79,6 @@ import java.util.Set;
 
 public class BaseTextShadowNode extends ShadowNode {
   private static final String TAG = "lynx_BaseTextShadowNode";
-  private static final String FONT_WEIGHT_VARIATION_TAG = "wght";
   private TextAttributes mTextAttributes;
   private boolean mEnableFontScaling = false;
   private boolean mForceFakeBold = false;
@@ -880,30 +879,8 @@ public class BaseTextShadowNode extends ShadowNode {
 
   @LynxProp(name = PropsConstants.FONT_VARIATION_SETTINGS)
   public void setFontVariationSettings(ReadableArray fontVariationSettings) {
-    if (fontVariationSettings == null || fontVariationSettings.size() == 0) {
-      mTextAttributes.setFontVariationSettings(null);
-    } else {
-      StringBuilder fontVariationSettingsStr = new StringBuilder();
-      for (int i = 0; i < fontVariationSettings.size() / 2; i++) {
-        if (i > 0) {
-          fontVariationSettingsStr.append(",");
-        }
-        String tag = fontVariationSettings.getString(i * 2);
-        double value = fontVariationSettings.getDouble(i * 2 + 1);
-        fontVariationSettingsStr.append("'").append(tag).append("' ");
-        if (FONT_WEIGHT_VARIATION_TAG.equals(tag)) {
-          // Some Android system implementations cannot parse integral "wght" values with a ".0"
-          // suffix. Strip the suffix only for integral values (for example, 400.0 -> 400) and leave
-          // fractional values (for example, 400.5) unchanged. Remove this workaround once affected
-          // system implementations fix the parsing issue.
-          TextHelper.appendDoubleWithoutRedundantDecimal(fontVariationSettingsStr, value);
-        } else {
-          fontVariationSettingsStr.append(value);
-        }
-      }
-      mTextAttributes.setFontVariationSettings(fontVariationSettingsStr.toString());
-    }
-
+    mTextAttributes.setFontVariationSettings(
+        TextHelper.fontVariationSettingsToString(fontVariationSettings));
     markDirty();
   }
 
