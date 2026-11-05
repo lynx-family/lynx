@@ -536,6 +536,18 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
           props->AddProp(static_cast<int>(text_attributes->font_style));
           break;
 
+        case kPropertyIDFontVariationSettings: {
+          props->AddProp(kTextPropFontVariationSettings);
+          const auto& axes = text_attributes->font_variation_settings;
+          const size_t axis_count = axes ? axes->size() / 2 : 0;
+          props->AddProp(static_cast<int>(axis_count));
+          for (size_t i = 0; i < axis_count; ++i) {
+            props->AddProp(axes->get(i * 2).String().c_str());
+            props->AddProp(axes->get(i * 2 + 1).Number());
+          }
+          break;
+        }
+
         case kPropertyIDFontFamily:
           props->AddProp(kTextPropFontFamily);
           props->AddProp(text_attributes->font_family.c_str());

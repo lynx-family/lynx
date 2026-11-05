@@ -65,6 +65,7 @@ public class TextMeasurer {
   private final static int kTextPropFontWeight = 7;
   private final static int kTextPropFontStyle = 8;
   private final static int kTextPropFontFamily = 9;
+  private final static int kTextPropFontVariationSettings = 25;
   private final static int kTextPropLineHeight = 10;
   private final static int kTextPropLetterSpacing = 11;
   private final static int kTextPropLineSpacing = 12;
@@ -109,6 +110,7 @@ public class TextMeasurer {
   public void dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer valueArray) {
     CharSequence span;
     boolean mHasImageSpan = false;
+    boolean hasFontVariations = false;
     List<BaseTextShadowNode.SetSpanOperation> ops = new ArrayList<>();
     SpannableStringBuilder spannableString = new SpannableStringBuilder();
 
@@ -188,6 +190,20 @@ public class TextMeasurer {
           textAttributes.setFontSize((float) iterator.next().getDouble());
           maxFontSize = Math.max(maxFontSize, textAttributes.mFontSize);
           break;
+        case kTextPropFontVariationSettings: {
+          hasFontVariations = true;
+          int axisCount = iterator.next().getInt();
+          JavaOnlyArray axes = new JavaOnlyArray();
+          for (int i = 0; i < axisCount; ++i) {
+            axes.pushString(iterator.next().getString());
+            axes.pushDouble(iterator.next().getDouble());
+          }
+          textAttributes = ensureTextAttributes(textAttributes);
+          String settings = TextHelper.fontVariationSettingsToString(axes);
+          // Empty means an explicit reset; null means no inline override.
+          textAttributes.setFontVariationSettings(settings == null ? "" : settings);
+          break;
+        }
         case kTextPropFontFamily:
           textAttributes = ensureTextAttributes(textAttributes);
           textAttributes.setFontFamily(iterator.next().getString());
@@ -550,8 +566,26 @@ public class TextMeasurer {
     }
 
     // generate spannableString
+    List<BaseTextShadowNode.SetSpanOperation> variationAncestors = null;
     for (int i = ops.size() - 1; i >= 0; i--) {
       BaseTextShadowNode.SetSpanOperation op = ops.get(i);
+      if (hasFontVariations && op.what instanceof FontVariationSpan) {
+        if (variationAncestors == null) {
+          variationAncestors = new ArrayList<>();
+        }
+        int parent = variationAncestors.size() - 1;
+        while (parent >= 0
+            && (op.start < variationAncestors.get(parent).start
+                || op.end > variationAncestors.get(parent).end)) {
+          variationAncestors.remove(parent--);
+        }
+        String inherited = parent >= 0
+            ? ((FontVariationSpan) variationAncestors.get(parent).what)
+                  .getFontVariationSettingsForReset()
+            : (textAttributes != null ? textAttributes.getFontVariationSettings() : null);
+        ((FontVariationSpan) op.what).setInheritedFontVariationSettings(inherited);
+        variationAncestors.add(op);
+      }
       op.execute(spannableString);
     }
 
@@ -756,6 +790,13 @@ public class TextMeasurer {
           start, end, new ForegroundColorSpan(attributes.mFontColor)));
     }
 
+    // Ops are installed in reverse order; apply axes after the typeface spans.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        && attributes.getFontVariationSettings() != null) {
+      ops.add(new BaseTextShadowNode.SetSpanOperation(
+          start, end, new FontVariationSpan(attributes.getFontVariationSettings())));
+    }
+
     // Set font family
     if (!TextUtils.isEmpty(attributes.mFontFamily)) {
       int style = 0;
@@ -776,8 +817,8 @@ public class TextMeasurer {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         ops.add(new BaseTextShadowNode.SetSpanOperation(start, end,
             new CustomStyleSpan(attributes.mFontStyle, attributes.mFontWeight,
-                attributes.mFontFamily, attributes.getFontVariationSettings(),
-                attributes.getFontFeatureSettings(), attributes.mHasValidTypeface)));
+                attributes.mFontFamily, null, attributes.getFontFeatureSettings(),
+                attributes.mHasValidTypeface)));
       } else {
         ops.add(new BaseTextShadowNode.SetSpanOperation(
             start, end, new StyleSpan(attributes.getTypefaceStyle())));
