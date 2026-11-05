@@ -57,7 +57,8 @@ CustomLayout::CustomLayout(Element& owner, runtime::MTSRuntime& runtime,
                            const lepus::Value& measure_callback,
                            const lepus::Value& place_callback)
     : owner_(&owner), runtime_(runtime) {
-  // Match ListElement callbacks: weak values plus the handle's GC visitor.
+  // JS callbacks stay weak and are traced by the handle's GC visitor.
+  // CopyWeakValue retains reference-counted ownership for native closures.
   // Keep weak Values in place; moving them can promote them to strong roots.
   measure_callback_.CopyWeakValue(measure_callback);
   place_callback_.CopyWeakValue(place_callback);
@@ -66,8 +67,11 @@ CustomLayout::CustomLayout(Element& owner, runtime::MTSRuntime& runtime,
 void CustomLayout::visitor(void* rt, void* func, uint64_t trace_tool) const {
   auto* runtime = static_cast<LEPUSRuntime*>(rt);
   auto* mark = reinterpret_cast<LEPUS_MarkFunc*>(func);
-  mark(runtime, WRAP_AS_JS_VALUE(measure_callback_.value()), trace_tool);
-  mark(runtime, WRAP_AS_JS_VALUE(place_callback_.value()), trace_tool);
+  // Native closures are retained by Value and do not belong to the JS heap.
+  if (measure_callback_.IsJSValue())
+    mark(runtime, WRAP_AS_JS_VALUE(measure_callback_.value()), trace_tool);
+  if (place_callback_.IsJSValue())
+    mark(runtime, WRAP_AS_JS_VALUE(place_callback_.value()), trace_tool);
 }
 
 void CustomLayout::ResetPlacementOrder() {
