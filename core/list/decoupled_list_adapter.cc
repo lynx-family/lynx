@@ -700,8 +700,10 @@ void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
     // Remove platform view and enqueue list item.
     list_container_->list_delegate()->RemoveListItemPaintingNode(list_item_id);
     list_container_->list_delegate()->EnqueueComponent(list_item_id);
-    // Detach child.
-    if (list_container_->list_children_helper()) {
+    // UpdateItemHolderToLatest() rebuilds the attached set without removed
+    // holders. Only holders that are still part of the latest data source need
+    // to be detached here.
+    if (!IsRemoved(item_holder) && list_container_->list_children_helper()) {
       list_container_->list_children_helper()->DetachChild(item_holder,
                                                            list_item_delegate);
     }

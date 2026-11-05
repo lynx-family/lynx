@@ -69,6 +69,11 @@ struct ListItemLifeOption {
 class Element;
 
 struct PipelineOptions {
+  struct ListItemUpdate {
+    int32_t list_id;
+    int32_t item_id;
+    int64_t operation_id;
+  };
   // TODO(songshourui.null): The platform layer's LoadTemplate can accept these
   // options, which are directly mapped to the platform-layer LynxLoadOption
   // enums. A centralized source of truth should be maintained, with other
@@ -93,6 +98,7 @@ struct PipelineOptions {
     operation_id = 0;
     list_item_ids_.clear();
     operation_ids_.clear();
+    list_item_updates_.clear();
     updated_list_elements_.clear();
   }
 
@@ -141,13 +147,16 @@ struct PipelineOptions {
   std::vector<int64_t> operation_ids_;
   // The array of list item id in list batch render
   std::vector<int32_t> list_item_ids_;
+  // Individual native-list commits coalesced by the unified pixel pipeline.
+  std::vector<ListItemUpdate> list_item_updates_;
   // The ids of layout updated list elements.
   mutable std::vector<int32_t> updated_list_elements_;
   mutable ListItemLifeOption list_item_life_option_;
   bool enable_report_list_item_life_statistic_{false};
   // Return true if this pipeline is triggered by render list item.
   bool IsRenderListItem() const {
-    return operation_id != 0 && list_id_ != 0 && list_comp_id_ != 0;
+    return (operation_id != 0 && list_id_ != 0 && list_comp_id_ != 0) ||
+           !list_item_updates_.empty();
   }
 #if ENABLE_TRACE_PERFETTO
   void UpdateTraceDebugInfo(TraceEvent* event) const {

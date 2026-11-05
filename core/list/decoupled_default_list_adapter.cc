@@ -143,11 +143,48 @@ bool DefaultListAdapter::BindItemHolder(ItemHolder* item_holder, int index,
 void DefaultListAdapter::OnFinishBindItemHolder(
     ItemElementDelegate* list_item_delegate,
     const std::shared_ptr<tasm::PipelineOptions>& option) {
+  const int index = OnFinishBindInternal(list_item_delegate, option);
+  if (index != kInvalidIndex && list_container_->intercept_depth() == 0) {
+    list_container_->list_layout_manager()->OnLayoutChildren(true, index);
+  }
+}
+
+void DefaultListAdapter::OnFinishBindItemHolders(
+    const std::vector<ItemElementDelegate*>& list_item_delegate_array,
+    const std::shared_ptr<tasm::PipelineOptions>& options) {
+  if (list_item_delegate_array.empty() ||
+      list_item_delegate_array.size() != options->operation_ids_.size()) {
+    return;
+  }
+  // Finish the whole batch before laying out. Otherwise finishing one item can
+  // recycle a neighbor whose completion is still in this batch.
+  auto item_options = *options;
+  item_options.ResetListRelatedFlag();
+  item_options.list_id_ = options->list_id_;
+  bool has_valid_bind = false;
+  for (size_t i = 0; i < list_item_delegate_array.size(); ++i) {
+    item_options.operation_id = options->operation_ids_[i];
+    if (list_item_delegate_array[i]) {
+      item_options.list_comp_id_ = list_item_delegate_array[i]->GetImplId();
+    }
+    has_valid_bind |=
+        OnFinishBindInternal(list_item_delegate_array[i],
+                             std::make_shared<tasm::PipelineOptions>(
+                                 item_options)) != kInvalidIndex;
+  }
+  if (has_valid_bind && list_container_->intercept_depth() == 0) {
+    list_container_->list_layout_manager()->OnLayoutChildren(true);
+  }
+}
+
+int DefaultListAdapter::OnFinishBindInternal(
+    ItemElementDelegate* list_item_delegate,
+    const std::shared_ptr<tasm::PipelineOptions>& option) {
   if (!list_item_delegate) {
     DLIST_LOGE("[" << list_container_
                    << "] DefaultListAdapter::OnFinishBindItemHolder: "
                    << "list_item_delegate is nullptr");
-    return;
+    return kInvalidIndex;
   }
   int64_t operation_id = option->operation_id;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, DEFAULT_LIST_ADAPTER_FINISH_BIND_ITEM_HOLDER,
@@ -187,10 +224,8 @@ void DefaultListAdapter::OnFinishBindItemHolder(
       // Note: Mark should_flush_finish_layout_ to determine whether needs to
       // invoke FinishLayoutOperation().
       list_container_->MarkShouldFlushFinishLayout(option->has_layout);
-      if (list_container_->intercept_depth() == 0) {
-        list_container_->list_layout_manager()->OnLayoutChildren(true, index);
-      }
       list_delegate->ReportListItemLifecycleStatistic(option, item_key);
+      return index;
     } else {
       DLIST_LOGI("[" << list_container_
                      << "] DefaultListAdapter::OnFinishBindItemHolder: "
@@ -215,6 +250,7 @@ void DefaultListAdapter::OnFinishBindItemHolder(
       list_delegate->EnqueueComponent(list_item_delegate->GetImplId());
     }
   }
+  return kInvalidIndex;
 }
 
 // Recycle ItemHolder.

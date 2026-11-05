@@ -161,6 +161,15 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
+  public void applyListScrollState(
+      int sign, float x, float y, float width, float height, boolean managed) {
+    UIListContainer list = getCUIListContainer(sign);
+    if (list != null) {
+      list.applyComposeScrollState(x, y, width, height, managed);
+    }
+  }
+
+  @CalledByNative
   public float[] getScreenSize() {
     float[] res = new float[] {0, 0};
     if (mContext != null) {

@@ -16,6 +16,7 @@
 #include "core/list/decoupled_list_types.h"
 #include "core/renderer/dom/fiber/element_template_instance.h"
 #include "core/renderer/dom/fiber/list_element_template_instance.h"
+#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
@@ -105,6 +106,41 @@ lepus::Value ToInvokeMethodResult(const std::unique_ptr<pub::Value>& result,
     return lepus::Value();
   }
   return pub::ValueUtils::ConvertValueToLepusValue(*result);
+}
+
+lepus::Value ComposeListScrollStateValue(
+    const lynx::list::ListScrollState& state, double physical_pixels_per_unit,
+    double consumed = 0, double remaining = 0) {
+  BASE_STATIC_STRING_DECL(kInputConsumedPx, "consumedPx");
+  BASE_STATIC_STRING_DECL(kInputRemainingPx, "remainingPx");
+  BASE_STATIC_STRING_DECL(kInputValid, "valid");
+  BASE_STATIC_STRING_DECL(kInputScrollOffsetPx, "scrollOffsetPx");
+  BASE_STATIC_STRING_DECL(kInputViewportExtentPx, "viewportExtentPx");
+  BASE_STATIC_STRING_DECL(kInputContentExtentPx, "contentExtentPx");
+  BASE_STATIC_STRING_DECL(kInputCanScrollForward, "canScrollForward");
+  BASE_STATIC_STRING_DECL(kInputCanScrollBackward, "canScrollBackward");
+  BASE_STATIC_STRING_DECL(kInputFirstVisibleIndex, "firstVisibleIndex");
+  BASE_STATIC_STRING_DECL(kInputFirstVisibleScrollOffsetPx,
+                          "firstVisibleScrollOffsetPx");
+  BASE_STATIC_STRING_DECL(kInputRevision, "revision");
+  auto result = lepus::Dictionary::Create();
+  result->SetValue(kInputConsumedPx, consumed);
+  result->SetValue(kInputRemainingPx, remaining);
+  result->SetValue(kInputValid, state.valid);
+  result->SetValue(kInputScrollOffsetPx,
+                   state.offset * physical_pixels_per_unit);
+  result->SetValue(kInputViewportExtentPx,
+                   state.viewport * physical_pixels_per_unit);
+  result->SetValue(kInputContentExtentPx,
+                   state.content * physical_pixels_per_unit);
+  result->SetValue(kInputCanScrollForward, state.can_scroll_forward);
+  result->SetValue(kInputCanScrollBackward, state.can_scroll_backward);
+  result->SetValue(kInputFirstVisibleIndex, state.first_visible_index);
+  result->SetValue(
+      kInputFirstVisibleScrollOffsetPx,
+      state.first_visible_scroll_offset * physical_pixels_per_unit);
+  result->SetValue(kInputRevision, static_cast<int64_t>(state.revision));
+  return lepus::Value(std::move(result));
 }
 
 }  // namespace
@@ -579,6 +615,7 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
       // Create the mediator after resolving attributes so its constructor can
       // get PhysicalPixelsPerLayoutUnit from the element manager.
       list_mediator_ = std::make_unique<ListMediator>(this);
+      SetComposeScrollManaged(compose_scroll_managed_);
       // Note: if enable native list only from env, we should not send scroll
       // to threshold event on diff layout to avoid breaking change.
       list_mediator_->SetEnableScrollToThresholdEventOnDiffLayout(
@@ -649,6 +686,9 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
 
 bool ListElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
+  if (key.IsEqual("compose-scroll-managed")) {
+    SetComposeScrollManaged(value.IsBool() && value.Bool());
+  }
   if (!DisableListPlatformImplementation() ||
       (UseNativeList() && list_mediator_->ResolveAttribute(key, value))) {
     Element::SetAttributeInternal(key, value);
@@ -783,6 +823,41 @@ void ListElement::ScrollToPosition(int index, float offset, int align,
 lepus::Value ListElement::InvokeMethod(const base::String& method,
                                        const lepus::Value& params,
                                        std::string* error) {
+  BASE_STATIC_STRING_DECL(kInputType, "type");
+  BASE_STATIC_STRING_DECL(kInputDeltaPx, "deltaPx");
+  BASE_STATIC_STRING_DECL(kInputIndex, "index");
+  BASE_STATIC_STRING_DECL(kInputOffsetPx, "offsetPx");
+  if (method == "composeList") {
+    // Compose binds and lays out items synchronously before returning state.
+    const auto request = params.ToLepusValue(true);
+    if (will_destroy() || !CanUseComposeScroll()) {
+      return ComposeListScrollStateValue({}, 1.0);
+    }
+    const auto type = request.GetProperty(kInputType);
+    const double scale =
+        element_manager()->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+    if (type.IsString() && type.StdString() == "getState") {
+      return ComposeListScrollStateValue(GetScrollState(), scale);
+    }
+    if (type.IsString() && type.StdString() == "scrollBy") {
+      const auto delta = ReadFiniteFloatParam(request, kInputDeltaPx);
+      if (delta) {
+        const auto result = ScrollByDelta(static_cast<float>(*delta / scale));
+        return ComposeListScrollStateValue(result.state, scale,
+                                           result.consumed * scale,
+                                           result.remaining * scale);
+      }
+    } else if (type.IsString() && type.StdString() == "scrollToItem") {
+      const auto index = ReadNonNegativeIntParam(request, kInputIndex);
+      const auto offset = ReadFiniteFloatParam(request, kInputOffsetPx);
+      if (index && offset) {
+        return ComposeListScrollStateValue(
+            ScrollToItem(*index, static_cast<float>(*offset / scale)), scale);
+      }
+    }
+    *error = "Invalid Compose list command";
+    return ComposeListScrollStateValue({}, 1.0);
+  }
   static constexpr std::pair<const char*, MethodHandler> kHandlers[] = {
       {lynx::list::kScrollToPositionMethod,
        &ListElement::InvokeScrollToPosition},
@@ -888,6 +963,44 @@ void ListElement::ScrollStopped() {
   if (UseNativeList()) {
     list_mediator_->ScrollStopped();
   }
+}
+
+void ListElement::SetComposeScrollManaged(bool managed) {
+  compose_scroll_managed_ = managed && CanUseComposeScroll();
+  if (list_mediator_) {
+    list_mediator_->SetComposeScrollManaged(compose_scroll_managed_);
+  }
+}
+
+bool ListElement::CanUseComposeScroll() const {
+  // Absolute-offset projection is implemented by the Android and Harmony FLR
+  // hosts. Native gesture scrolling is excluded by the Page's raw input mode.
+  auto* manager = element_manager();
+  return manager && manager->GetConfig() &&
+         manager->GetConfig()->GetEnableRawInput() &&
+         manager->IsFragmentLayerRenderModeOn() &&
+         (GetOSType() == OSType::kAndroid || GetOSType() == OSType::kHarmony);
+}
+
+lynx::list::ListScrollResult ListElement::ScrollByDelta(float delta) {
+  if (UseNativeList() && !will_destroy() && !IsDetached() &&
+      element_manager()) {
+    return list_mediator_->ScrollByDelta(delta);
+  }
+  return {lynx::list::ListScrollState{}, 0.f, delta};
+}
+
+lynx::list::ListScrollState ListElement::ScrollToItem(int index, float offset) {
+  return UseNativeList() && !will_destroy() && !IsDetached() &&
+                 element_manager()
+             ? list_mediator_->ScrollToItem(index, offset)
+             : lynx::list::ListScrollState{};
+}
+
+lynx::list::ListScrollState ListElement::GetScrollState() const {
+  return UseNativeList() && !will_destroy_ && !IsDetached() && element_manager()
+             ? list_mediator_->GetScrollState()
+             : lynx::list::ListScrollState{};
 }
 
 bool ListElement::ResolveStyleValue(CSSPropertyID id, const CSSValue& value) {

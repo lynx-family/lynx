@@ -60,6 +60,13 @@ class ElementDelegate {
   virtual void UpdateScrollInfo(float estimated_offset, bool smooth,
                                 bool scrolling) = 0;
 
+  // Absolute document-axis projection. The platform must not consume or feed
+  // this state back into the Engine-owned layout manager. Legacy delegates do
+  // not project Compose-managed scroll state.
+  virtual void ApplyListScrollState(float scroll_x, float scroll_y,
+                                    float content_width, float content_height,
+                                    bool cmp_managed) {}
+
   virtual void ComponentAtIndexes(
       std::unique_ptr<pub::Value> index_array,
       std::unique_ptr<pub::Value> operation_id_array,

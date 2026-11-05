@@ -86,10 +86,10 @@ class DefaultListAdapter : public ListAdapter {
       ItemElementDelegate* list_item_delegate,
       const std::shared_ptr<tasm::PipelineOptions>& options) override;
 
-  // Finish bind item holders with elements. Note: no need to implement.
+  // Complete individual bindings coalesced into one layout pipeline.
   void OnFinishBindItemHolders(
       const std::vector<ItemElementDelegate*>& list_item_delegate_array,
-      const std::shared_ptr<tasm::PipelineOptions>& options) override {}
+      const std::shared_ptr<tasm::PipelineOptions>& options) override;
 
   // Recycle ItemHolder.
   void RecycleItemHolder(ItemHolder* item_holder,
@@ -107,7 +107,6 @@ class DefaultListAdapter : public ListAdapter {
   bool IsBinding(const ItemHolder* item_holder) override {
     return item_holder->operation_id_ != 0;
   }
-
   // Return whether the ItemHolder is in finish binding, if return true, it
   // means the ItemHolder is a no dirty node with valid list item element.
   bool IsFinishedBinding(const ItemHolder* item_holder) override {
@@ -136,6 +135,9 @@ class DefaultListAdapter : public ListAdapter {
   }
 
  private:
+  int OnFinishBindInternal(
+      ItemElementDelegate* list_item_delegate,
+      const std::shared_ptr<tasm::PipelineOptions>& options);
   std::unique_ptr<BindingItemHolderWeakMap> binding_item_holder_weak_map_{
       nullptr};
 };
