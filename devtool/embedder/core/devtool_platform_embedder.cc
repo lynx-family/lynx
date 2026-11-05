@@ -92,6 +92,14 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     embedder->InsertText(text);
   }
 
+  void DispatchKeyEvent(const std::string& type, const std::string& key,
+                        const std::string& text, int modifiers,
+                        bool auto_repeat) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
+    embedder->DispatchKeyEvent(type, key, text, modifiers, auto_repeat);
+  }
+
   std::vector<float> GetRectToWindow() const override { return {}; }
 
   std::string GetLynxVersion() const override {
@@ -361,6 +369,15 @@ void DevtoolPlatformEmbedder::Focus(int node_id) {
 void DevtoolPlatformEmbedder::InsertText(const std::string& text) {
   CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
   proxy_->InsertText(text);
+}
+
+void DevtoolPlatformEmbedder::DispatchKeyEvent(const std::string& type,
+                                               const std::string& key,
+                                               const std::string& text,
+                                               int modifiers,
+                                               bool auto_repeat) {
+  CHECK_NULL_AND_LOG_RETURN(proxy_, "proxy_ is null");
+  proxy_->DispatchKeyEvent(type, key, text, modifiers, auto_repeat);
 }
 
 std::string DevtoolPlatformEmbedder::GetLynxUITree() {

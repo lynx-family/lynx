@@ -51,6 +51,7 @@ class LynxUIRendererImpl : public LynxUIRenderer {
 
  private:
   void SendPointerEvent(const ClayPointerEvent& event) override;
+  void SendKeyEvent(const ClayKeyEvent& event) override;
 
   void* lynx_ui_renderer_ = nullptr;
   std::unique_ptr<lynx::tasm::UIDelegateClay> ui_delegate_;

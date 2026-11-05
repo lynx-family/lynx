@@ -740,6 +740,11 @@ void InspectorUIExecutor::InsertText(
   input_request_handler_->InsertText(responder, params);
 }
 
+void InspectorUIExecutor::DispatchKeyEvent(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  input_request_handler_->DispatchKeyEvent(responder, params);
+}
+
 void InspectorUIExecutor::SynthesizeTapGesture(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   input_request_handler_->SynthesizeTapGesture(responder, params);

@@ -2,8 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <string>
 #include <vector>
 
+#include "clay/ui/event/key_codes.h"
 #include "platform/embedder/clay_input_event_target.h"
 #include "platform/embedder/lynx_ui_renderer.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -27,10 +29,18 @@ class CapturingLynxUIRenderer : public LynxUIRenderer {
   void RegisterIMEHandler(void* handler, void* opaque) override {}
 
   std::vector<ClayPointerEvent> events;
+  std::vector<ClayKeyEvent> key_events;
+  // ClayKeyEvent::character is only valid during SendKeyEvent.
+  std::vector<std::string> key_characters;
 
  private:
   void SendPointerEvent(const ClayPointerEvent& event) override {
     events.push_back(event);
+  }
+  void SendKeyEvent(const ClayKeyEvent& event) override {
+    key_events.push_back(event);
+    key_events.back().character = nullptr;
+    key_characters.push_back(event.character ? event.character : "");
   }
 };
 
@@ -287,6 +297,60 @@ TEST(LynxUIRendererTest,
   EXPECT_TRUE(target->GetPointerCapabilities().supports_mouse);
   renderer.reset();
   EXPECT_FALSE(target->GetPointerCapabilities().supports_mouse);
+}
+
+TEST(LynxUIRendererTest, KeyEventTypesMapToClayKeyEvents) {
+  lynx_view_builder_t builder = {};
+  CapturingLynxUIRenderer renderer(&builder);
+
+  renderer.DispatchKeyEvent("keyDown", "a", "a", 0, false);
+  renderer.DispatchKeyEvent("keyDown", "a", "a", 0, true);
+  renderer.DispatchKeyEvent("rawKeyDown", "a", "a", 0, false);
+  renderer.DispatchKeyEvent("char", "a", "a", 0, true);
+  renderer.DispatchKeyEvent("keyUp", "a", "a", 0, false);
+  renderer.DispatchKeyEvent("keyPress", "a", "a", 0, false);
+
+  ASSERT_EQ(renderer.key_events.size(), 5u);
+  EXPECT_EQ(renderer.key_events[0].type, kClayKeyEventTypeDown);
+  EXPECT_EQ(renderer.key_events[1].type, kClayKeyEventTypeRepeat);
+  EXPECT_EQ(renderer.key_events[2].type, kClayKeyEventTypeDown);
+  EXPECT_EQ(renderer.key_events[3].type, kClayKeyEventTypeDown);
+  EXPECT_EQ(renderer.key_events[4].type, kClayKeyEventTypeUp);
+  EXPECT_EQ(renderer.key_characters,
+            std::vector<std::string>({"a", "a", "", "a", ""}));
+  EXPECT_EQ(renderer.key_events[0].logical, clay::keycodes::kLogicalKeyA);
+  EXPECT_EQ(renderer.key_events[3].logical,
+            clay::keycodes::kLogicalUnidentified);
+  for (const auto& event : renderer.key_events) {
+    EXPECT_EQ(event.struct_size, sizeof(ClayKeyEvent));
+    EXPECT_NE(event.physical, 0u);
+    EXPECT_TRUE(event.synthesized);
+    EXPECT_NE(event.timestamp, 0);
+  }
+}
+
+TEST(LynxUIRendererTest, NamedKeysMapToClayKeyCodes) {
+  lynx_view_builder_t builder = {};
+  CapturingLynxUIRenderer renderer(&builder);
+
+  renderer.DispatchKeyEvent("keyDown", "Enter", "\r", 0, false);
+  renderer.DispatchKeyEvent("rawKeyDown", "Backspace", "", 0, false);
+  renderer.DispatchKeyEvent("rawKeyDown", "ArrowLeft", "", 0, false);
+  renderer.DispatchKeyEvent("rawKeyDown", "Meta", "", 4, false);
+  renderer.DispatchKeyEvent("keyDown", "A", "A", 8, false);
+  renderer.DispatchKeyEvent("keyDown", "Unknown", "", 0, false);
+
+  ASSERT_EQ(renderer.key_events.size(), 6u);
+  EXPECT_EQ(renderer.key_events[0].physical, clay::keycodes::kPhysicalEnter);
+  EXPECT_EQ(renderer.key_events[0].logical, clay::keycodes::kLogicalEnter);
+  EXPECT_EQ(renderer.key_characters[0], "\r");
+  EXPECT_EQ(renderer.key_events[1].logical, clay::keycodes::kLogicalBackspace);
+  EXPECT_EQ(renderer.key_events[2].logical, clay::keycodes::kLogicalArrowLeft);
+  EXPECT_EQ(renderer.key_events[3].logical, clay::keycodes::kLogicalMetaLeft);
+  EXPECT_EQ(renderer.key_events[4].logical, clay::keycodes::kLogicalKeyA);
+  EXPECT_EQ(renderer.key_characters[4], "A");
+  EXPECT_EQ(renderer.key_events[5].logical,
+            clay::keycodes::kLogicalUnidentified);
 }
 }  // namespace
 }  // namespace embedder

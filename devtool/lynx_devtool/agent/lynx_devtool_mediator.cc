@@ -1256,6 +1256,13 @@ void LynxDevToolMediator::InsertText(
   });
 }
 
+void LynxDevToolMediator::DispatchKeyEvent(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  RunOnUIThread([responder, params, executor = ui_executor_] {
+    executor->DispatchKeyEvent(responder, params);
+  });
+}
+
 void LynxDevToolMediator::SynthesizeTapGesture(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   RunOnUIThread([responder, params, executor = ui_executor_] {

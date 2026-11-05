@@ -485,6 +485,43 @@ void InputRequestHandler::InsertText(
   responder->SendSuccess();
 }
 
+void InputRequestHandler::DispatchKeyEvent(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!devtool_platform_facade_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Input target is unavailable");
+    return;
+  }
+  std::string type;
+  if (!params.isObject() || !ReadStringParam(params["type"], type) ||
+      (type != "keyDown" && type != "rawKeyDown" && type != "keyUp" &&
+       type != "char")) {
+    responder->SendError(
+        CDPErrorCode::InvalidParams,
+        "Invalid params: type must be keyDown, rawKeyDown, keyUp, or char");
+    return;
+  }
+  std::string key;
+  std::string text;
+  int modifiers = 0;
+  bool auto_repeat = false;
+  if ((params.isMember("key") && !ReadStringParam(params["key"], key)) ||
+      (params.isMember("code") && !params["code"].isString()) ||
+      (params.isMember("text") && !ReadStringParam(params["text"], text)) ||
+      (params.isMember("modifiers") &&
+       !ReadIntParam(params["modifiers"], modifiers)) ||
+      (params.isMember("autoRepeat") &&
+       !ReadBoolParam(params["autoRepeat"], auto_repeat))) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid params: expected string key, code, text, "
+                         "integer modifiers, and boolean autoRepeat");
+    return;
+  }
+  devtool_platform_facade_->DispatchKeyEvent(type, key, text, modifiers,
+                                             auto_repeat);
+  responder->SendSuccess();
+}
+
 void InputRequestHandler::EnsureSyntheticGestureController(
     const fml::RefPtr<fml::TaskRunner>& task_runner) {
   if (synthetic_gesture_controller_) {

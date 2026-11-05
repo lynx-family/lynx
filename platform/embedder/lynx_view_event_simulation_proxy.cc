@@ -51,5 +51,15 @@ void LynxViewEventSimulationProxy::InsertText(const std::string& text) {
   }
 }
 
+void LynxViewEventSimulationProxy::DispatchKeyEvent(const std::string& type,
+                                                    const std::string& key,
+                                                    const std::string& text,
+                                                    int modifiers,
+                                                    bool auto_repeat) {
+  if (target_) {
+    target_->DispatchKeyEvent(type, key, text, modifiers, auto_repeat);
+  }
+}
+
 }  // namespace embedder
 }  // namespace lynx

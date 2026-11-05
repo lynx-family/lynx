@@ -95,6 +95,13 @@ class LynxViewEventSimulationTargetImpl final
     view_->lynx_ui_renderer->InsertText(text);
   }
 
+  void DispatchKeyEvent(const std::string& type, const std::string& key,
+                        const std::string& text, int modifiers,
+                        bool auto_repeat) override {
+    view_->lynx_ui_renderer->DispatchKeyEvent(type, key, text, modifiers,
+                                              auto_repeat);
+  }
+
  private:
   lynx_view_t* view_;
 };

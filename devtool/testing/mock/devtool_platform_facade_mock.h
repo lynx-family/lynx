@@ -116,6 +116,11 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
   void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent> input) override {
   }
   void InsertText(const std::string& text) override { inserted_text_ = text; }
+  void DispatchKeyEvent(const std::string& type, const std::string& key,
+                        const std::string& text, int modifiers,
+                        bool auto_repeat) override {
+    key_events_.push_back({type, key, text, modifiers, auto_repeat});
+  }
 
   std::string GetDebugInfoByUrl(const std::string& url) override {
     return devtool::DevToolStatus::NO_DEBUG_INFO_FOUND_BY_URL;
@@ -137,6 +142,14 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
 
   std::unordered_map<std::string, bool> devtools_switch_;
   std::string inserted_text_;
+  struct KeyEventRecord {
+    std::string type;
+    std::string key;
+    std::string text;
+    int modifiers;
+    bool auto_repeat;
+  };
+  std::vector<KeyEventRecord> key_events_;
   std::vector<devtool::InspectorBoxModelQuery> box_model_queries_;
   std::vector<devtool::ScreenshotRequest> screen_cast_requests_;
   std::vector<double> box_model_response_;

@@ -312,6 +312,73 @@ TEST_F(InspectorInputAgentTest,
             "Invalid params: expected string text");
 }
 
+TEST_F(InspectorInputAgentTest, DispatchKeyEventForwardsKeyInput) {
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 41;
+  message["method"] = "Input.dispatchKeyEvent";
+  message["params"]["type"] = "keyDown";
+  message["params"]["key"] = "a";
+  message["params"]["code"] = "KeyA";
+  message["params"]["text"] = "a";
+  message["params"]["modifiers"] = 4;
+  message["params"]["autoRepeat"] = true;
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  const auto& events = platform_facade_->key_events_;
+  ASSERT_EQ(events.size(), 1u);
+  EXPECT_EQ(events[0].type, "keyDown");
+  EXPECT_EQ(events[0].key, "a");
+  EXPECT_EQ(events[0].text, "a");
+  EXPECT_EQ(events[0].modifiers, 4);
+  EXPECT_TRUE(events[0].auto_repeat);
+  EXPECT_EQ(LastResponse()["id"].asInt64(), 41);
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest, DispatchKeyEventWithoutFacadeReturnsError) {
+  SetDevToolPlatformFacade(nullptr);
+  Json::Value message(Json::ValueType::objectValue);
+  message["id"] = 42;
+  message["method"] = "Input.dispatchKeyEvent";
+  message["params"]["type"] = "keyDown";
+
+  Dispatch(message);
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Input target is unavailable");
+}
+
+TEST_F(InspectorInputAgentTest, DispatchKeyEventRejectsInvalidParams) {
+  const std::vector<std::pair<std::string, Json::Value>> invalid_params = {
+      {"type", Json::Value("keyPress")}, {"key", Json::Value(1)},
+      {"code", Json::Value(1)},          {"text", Json::Value(1)},
+      {"modifiers", Json::Value("1")},   {"autoRepeat", Json::Value(1)},
+  };
+  int64_t id = 43;
+  for (const auto& [name, value] : invalid_params) {
+    Json::Value message(Json::ValueType::objectValue);
+    message["id"] = id;
+    message["method"] = "Input.dispatchKeyEvent";
+    message["params"]["type"] = "keyDown";
+    message["params"][name] = value;
+
+    Dispatch(message);
+
+    ASSERT_TRUE(message_sender_->WaitForMessageCount(id - 42));
+    EXPECT_EQ(LastResponse()["id"].asInt64(), id) << name;
+    EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+              static_cast<int>(CDPErrorCode::InvalidParams))
+        << name;
+    ++id;
+  }
+  EXPECT_TRUE(platform_facade_->key_events_.empty());
+}
+
 TEST_F(InspectorInputAgentTest,
        EmulateTouchFromMouseEventWithoutFacadeReturnsServerError) {
   SetDevToolPlatformFacade(nullptr);

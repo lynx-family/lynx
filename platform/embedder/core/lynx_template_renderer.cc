@@ -762,6 +762,15 @@ void LynxTemplateRenderer::InsertText(const std::string& text) {
   }
 }
 
+void LynxTemplateRenderer::DispatchKeyEvent(const std::string& type,
+                                            const std::string& key,
+                                            const std::string& text,
+                                            int modifiers, bool auto_repeat) {
+  if (event_proxy_) {
+    event_proxy_->DispatchKeyEvent(type, key, text, modifiers, auto_repeat);
+  }
+}
+
 std::shared_ptr<shell::LynxRuntimeProxy> LynxTemplateRenderer::GetRuntimeProxy()
     const {
   return runtime_proxy_;

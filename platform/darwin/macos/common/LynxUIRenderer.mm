@@ -16,6 +16,7 @@
 #import "clay/shell/platform/darwin/macos/framework/Source/FlutterTextInputPlugin.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
+#include "clay/ui/event/key_codes.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "platform/embedder/lynx_view_clients.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
@@ -454,6 +455,32 @@ void LynxUIRendererImpl::SendPointerEvent(const ClayPointerEvent& event) {
   }
   LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
   [lynx_ui_renderer.clayViewProvider.engine sendPointerEvent:event];
+}
+
+void LynxUIRendererImpl::SendKeyEvent(const ClayKeyEvent& event) {
+  if (!lynx_ui_renderer_) {
+    return;
+  }
+  LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+  ClayViewProvider* clay_view_provider = lynx_ui_renderer.clayViewProvider;
+  if (event.type != kClayKeyEventTypeDown || event.physical != clay::keycodes::kPhysicalEnter) {
+    [clay_view_provider.engine sendKeyEvent:event callback:nullptr userData:nullptr];
+    return;
+  }
+  // Like a native Enter, an unhandled Enter confirms the focused input.
+  __weak FlutterTextInputPlugin* weak_text_input_plugin = clay_view_provider.textInputPlugin;
+  dispatch_block_t on_unhandled = ^{
+    [weak_text_input_plugin insertNewline:nil];
+  };
+  [clay_view_provider.engine sendKeyEvent:event
+                                 callback:[](bool handled, void* user_data) {
+                                   dispatch_block_t block =
+                                       (__bridge_transfer dispatch_block_t)user_data;
+                                   if (!handled) {
+                                     dispatch_async(dispatch_get_main_queue(), block);
+                                   }
+                                 }
+                                 userData:(__bridge_retained void*)on_unhandled];
 }
 
 void LynxUIRendererImpl::AddClient(LynxViewClients* client) {
