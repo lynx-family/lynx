@@ -33,6 +33,9 @@ class AutoCache {
 
 class CacheableContainerLayer : public ContainerLayer {
  public:
+#ifdef ENABLE_SKITY
+  bool CanSegmentDisplay() const override { return false; }
+#endif
   explicit CacheableContainerLayer(
       int layer_cached_threshold =
           RasterCacheUtil::kMinimumRendersBeforeCachingFilterLayer,

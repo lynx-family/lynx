@@ -57,6 +57,12 @@ class LayerTree {
   void Paint(CompositorContext::ScopedFrame& frame,
              bool ignore_raster_cache = false) const;
 
+#ifdef ENABLE_SKITY
+  // Optional recording sink; a null sink keeps direct painting.
+  void SetSegmentRecorder(display::SegmentRecorder* recorder) {
+    segment_recorder_ = recorder;
+  }
+#endif
   Layer* root_layer() const { return root_layer_.get(); }
 
   void set_root_layer(std::shared_ptr<Layer> root_layer) {
@@ -158,6 +164,9 @@ class LayerTree {
   }
 
  private:
+#ifdef ENABLE_SKITY
+  display::SegmentRecorder* segment_recorder_ = nullptr;
+#endif
   void MarkFrameTimingsForPipelineIfNeeded();
 
   std::shared_ptr<Layer> root_layer_;
