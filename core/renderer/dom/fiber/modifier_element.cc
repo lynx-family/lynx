@@ -52,9 +52,11 @@ constexpr int kModifierOpWeightFill = 13;
 constexpr int kModifierOpOffset = 14;
 constexpr int kModifierOpSizeRange = 15;
 constexpr int kModifierOpAttachment = 16;
+constexpr int kModifierOpDrawForeground = 17;
 
 bool IsDrawOperation(int op) {
-  return op == kModifierOpGraphicsLayer || op == kModifierOpDrawBehind;
+  return op == kModifierOpGraphicsLayer || op == kModifierOpDrawBehind ||
+         op == kModifierOpDrawForeground;
 }
 
 constexpr int kModifierCallbackKindClick = 1;
@@ -443,6 +445,7 @@ bool ParseModifierOperation(const lepus::Value& node,
       return ParseLayoutOperation(node, operation, error);
     case kModifierOpGraphicsLayer:
     case kModifierOpDrawBehind:
+    case kModifierOpDrawForeground:
       operation->callback = node.GetProperty(kResolve);
       if (!operation->callback.ToLepusValue().IsCallable()) {
         *error = "drawing resolve should be callable";
@@ -973,6 +976,7 @@ void ApplyNonLayoutOperation(
       break;
     case kModifierOpGraphicsLayer:
     case kModifierOpDrawBehind:
+    case kModifierOpDrawForeground:
       // The following Element records the callback result during Draw.
       break;
     case kModifierOpAttribute:
@@ -1158,6 +1162,9 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
         operation.op == kModifierOpGraphicsLayer
             ? GraphicsLayerDrawFunctions(registration_context,
                                          operation.callback)
+        : operation.op == kModifierOpDrawForeground
+            ? ComposeDrawForegroundFunctions(registration_context,
+                                             operation.callback)
             : ComposeDrawBehindFunctions(registration_context,
                                          operation.callback));
   }
