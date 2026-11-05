@@ -228,6 +228,10 @@ typedef void (^LynxImageLoadCompletionBlock)(UIImage *_Nullable image, NSError *
 @optional
 - (BOOL)requiresAnimatedImageCallbackBeforeSettingImage;
 
+// Returns observed frame metadata. Unavailable fields are omitted.
+@optional
+- (NSDictionary<NSString *, NSNumber *> *)animationInfo:(UIImageView *)view;
+
 /**
  * Loads a image with LynxImageLoadOptions, and returns a block that can be used to cancel the
  * operation. Add this method as optional to avoid break the existing code.
