@@ -14,6 +14,13 @@ namespace clay {
 class GlPipelineHelper {
  public:
   static GlPipelineHelper* GetInstance();
+#if defined(OS_ANDROID)
+  // Optional context-local storage for producers sharing a task runner.
+  static GlPipelineHelper* GetForCurrentContext();
+  // Called with the owning EGL context current, before that context is torn
+  // down.
+  static void DestroyCurrentContext();
+#endif
   bool Initialize();
   void Destroy();
 
