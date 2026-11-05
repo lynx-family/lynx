@@ -17,13 +17,13 @@ import android.graphics.Rect;
 import android.util.DisplayMetrics;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.react.bridge.DynamicFromMap;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.LynxHostEnvironment;
-import com.lynx.tasm.LynxTemplateRender;
+import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo;
 import com.lynx.tasm.TemplateData;
@@ -67,25 +67,33 @@ public class LynxFrameViewTest extends TestCase {
     params.put("scene", "frame-image");
     LynxViewBuilder builder =
         new LynxViewBuilder().setLynxImageConfig(config).setImageCustomParam(params);
-    LynxTemplateRender render =
-        mock(LynxTemplateRender.class, org.mockito.Mockito.CALLS_REAL_METHODS);
-    Field builderField = LynxTemplateRender.class.getDeclaredField("mLynxViewBuilder");
-    builderField.setAccessible(true);
-    builderField.set(render, builder);
-    Field hostEnvironmentField = LynxTemplateRender.class.getDeclaredField("mHostEnvironment");
-    hostEnvironmentField.setAccessible(true);
-    hostEnvironmentField.set(render,
-        new LynxHostEnvironment(builder.getLynxRuntimeOptions(), builder.getBehaviorRegistry()));
-
-    LynxViewBuilder child = render.getLynxViewBuilder();
-    assertSame(config, child.getLynxImageConfig());
-    assertSame(delegate, child.getLynxImageConfig().getImageRequestDelegate());
-    assertTrue(child.getLynxImageConfig().getEnableImageLoadCallback());
     Field paramsField = LynxViewBuilder.class.getDeclaredField("mImageCustomParam");
     paramsField.setAccessible(true);
-    assertSame(params, paramsField.get(child));
-    builderField.set(render, child);
-    assertSame(config, render.getLynxViewBuilder().getLynxImageConfig());
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      Context context = ApplicationProvider.getApplicationContext();
+      LynxView view = new LynxView(context, builder);
+      LynxView childView = null;
+      try {
+        LynxViewBuilder child = view.getLynxViewBuilder();
+        assertSame(config, child.getLynxImageConfig());
+        assertSame(delegate, child.getLynxImageConfig().getImageRequestDelegate());
+        assertTrue(child.getLynxImageConfig().getEnableImageLoadCallback());
+        assertSame(params, paramsField.get(child));
+        params.put("scene", "updated");
+        childView = new LynxView(context, child);
+        LynxViewBuilder grandchild = childView.getLynxViewBuilder();
+        assertSame(config, grandchild.getLynxImageConfig());
+        assertSame(params, paramsField.get(grandchild));
+        assertEquals("updated", ((Map<?, ?>) paramsField.get(grandchild)).get("scene"));
+      } catch (IllegalAccessException error) {
+        throw new AssertionError(error);
+      } finally {
+        if (childView != null) {
+          childView.destroy();
+        }
+        view.destroy();
+      }
+    });
   }
 
   @Test
