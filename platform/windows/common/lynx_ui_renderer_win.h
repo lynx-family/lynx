@@ -55,6 +55,7 @@ class LynxUIRendererWin : public LynxUIRenderer {
 
  private:
   void SendPointerEvent(const ClayPointerEvent& event) override;
+  void SendKeyEvent(const ClayKeyEvent& event) override;
 
   void AdjustWindowRect();
 

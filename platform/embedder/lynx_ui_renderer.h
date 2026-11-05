@@ -84,6 +84,11 @@ class LynxUIRenderer {
 
   virtual void InsertText(const std::string& text) {}
 
+  // Dispatches DevTool synthetic keys for key event bindings and shortcuts.
+  void DispatchKeyEvent(const std::string& type, const std::string& key,
+                        const std::string& text, int modifiers,
+                        bool auto_repeat);
+
   virtual void InjectBubbleEvent(const char* params) {}
 
   virtual void RegisterNativeView(const char* name,
@@ -100,6 +105,7 @@ class LynxUIRenderer {
 
  protected:
   virtual void SendPointerEvent(const ClayPointerEvent& event) {}
+  virtual void SendKeyEvent(const ClayKeyEvent& event) {}
   void CancelInputEvents();
   // Derived destructors must call this before tearing down their engine.
   void InvalidateInputEvents();
