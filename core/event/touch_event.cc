@@ -38,12 +38,14 @@ TouchEvent::TouchEvent(const std::string& event_name, float x, float y,
 }
 
 TouchEvent::TouchEvent(const std::string& event_name,
-                       const lepus::Value& targets_touches, int64_t time_stamp)
+                       const lepus::Value& targets_touches, int64_t time_stamp,
+                       TouchEventTargetPoints current_target_points)
     : Event(event_name, time_stamp, EventType::kTouchEvent, Capture::kYes,
             Bubbles::kYes, Cancelable::kYes, ComposedMode::kScoped,
             PhaseType::kNone),
       is_multi_touch_(true),
-      targets_touches_(targets_touches) {
+      targets_touches_(targets_touches),
+      current_target_points_(std::move(current_target_points)) {
   event_type_ = EventType::kTouchEvent;
 }
 

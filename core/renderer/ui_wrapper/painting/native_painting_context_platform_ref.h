@@ -22,6 +22,7 @@
 #include "core/renderer/dom/fragment/event/platform_event_emitter.h"
 #include "core/renderer/dom/fragment/event/platform_event_handler.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
+#include "core/renderer/dom/fragment/event/platform_position_change_observer.h"
 #include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "gfx/public/display_list.h"
@@ -72,6 +73,8 @@ class NativePaintingCtxPlatformRef
   void UpdateEventInfo(bool has_touch_pseudo) override;
   void SetTapSlop(const std::string &tap_slop) override;
   void SetEventScreenWidth(float screen_width) override;
+  void SetPositionEventConfig(bool enable_current_target_touch_position,
+                              int observer_frame_rate) override;
   void UpdateAttributes(int id, const fml::RefPtr<PropBundle> &attributes);
   void UpdateNodeReadyPatching(
       std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
@@ -155,6 +158,9 @@ class NativePaintingCtxPlatformRef
                                   float offset_y);
   void StopExposure(const lepus::Value &options);
   void ResumeExposure();
+  // Recheck positionchange targets after layout or scroll offsets change.
+  void RequestPositionChangeCheck();
+  int GetExposureIntervalMs() const;
   // Invoke the method of the ui element.
   void InvokeUIMethod(
       int32_t id, const std::string &method, const lepus::Value &params,
@@ -162,6 +168,10 @@ class NativePaintingCtxPlatformRef
 
   // Get the location of the root view on the screen.
   virtual void GetRootViewLocationOnScreen(float location[2]) {}
+
+  // Get the location of the root view in its window. Returns false while the
+  // root view is not attached to a window.
+  virtual bool GetRootViewLocationInWindow(float location[2]) { return false; }
 
   // Get the size of the screen.
   virtual void GetScreenSize(float size[2]) {}
@@ -220,6 +230,7 @@ class NativePaintingCtxPlatformRef
       std::make_unique<PlatformEventTargetHelper>(this);
   fml::RefPtr<fml::TaskRunner> event_target_task_runner_;
   std::shared_ptr<PlatformEventTargetExposure> event_target_exposure_;
+  PlatformPositionChangeObserver position_change_observer_;
   base::InlineOrderedFlatMap<int32_t, PlatformEventBundle, 64>
       platform_event_bundles_;
   base::InlineOrderedFlatMap<int32_t, std::vector<PlatformTextEventTargetRange>,

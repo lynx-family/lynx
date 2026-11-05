@@ -4,6 +4,8 @@
 
 #include "core/renderer/dom/fragment/event/platform_event_handler.h"
 
+#include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include "base/include/float_comparison.h"
@@ -192,19 +194,45 @@ void PlatformEventHandler::DispatchGestureEvent(const std::string& name,
       client_point, target_tree, client_point);
   auto gesture_event = fml::MakeRefCounted<event::TouchEvent>(
       name, target_point[0], target_point[1], page_point[0], page_point[1],
-      client_point[0], client_point[1]);
+      client_point[0], client_point[1], 0,
+      GetCurrentTargetPoints(name, root_point));
   platform_ref_->GetEventEmitter()->SendEvent(first_target->Sign(),
                                               gesture_event);
 }
 
 void PlatformEventHandler::DispatchPointerEvent(
-    const std::string& name, const lepus::Value& target_pointer_map) {
+    const std::string& name, const lepus::Value& target_pointer_map,
+    float root_point[2]) {
   auto first_target = GetEventTarget(first_target_sign_);
   if (!first_target) {
     return;
   }
-  auto event = fml::MakeRefCounted<event::TouchEvent>(name, target_pointer_map);
+  auto event = fml::MakeRefCounted<event::TouchEvent>(
+      name, target_pointer_map, 0, GetCurrentTargetPoints(name, root_point));
   platform_ref_->GetEventEmitter()->SendEvent(first_target->Sign(), event);
+}
+
+event::TouchEventTargetPoints PlatformEventHandler::GetCurrentTargetPoints(
+    const std::string& name, float root_point[2]) {
+  event::TouchEventTargetPoints points;
+  auto target_tree = GetTargetTree();
+  if (!enable_current_target_touch_position_ || !target_tree) {
+    return points;
+  }
+  const auto event_name = PlatformEventNameFromString(name);
+  auto target = GetEventTarget(first_target_sign_);
+  while (target && target->ParentTarget() != target) {
+    const auto& events = target->EventSet();
+    if (std::find(events.begin(), events.end(), event_name) != events.end()) {
+      float point[2] = {root_point[0], root_point[1]};
+      if (GetTargetPoint(target, point, root_point)) {
+        points.push_back(
+            event::TouchEventTargetPoint{target->Sign(), point[0], point[1]});
+      }
+    }
+    target = target->ParentTarget();
+  }
+  return points;
 }
 
 bool PlatformEventHandler::EventThrough() {
@@ -459,7 +487,8 @@ void PlatformEventHandler::HandlePointerDown(PlatformPointerEvent& event) {
   }
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchstart", target_pointer_map);
+  float root_point[2] = {event.PointerX()[0], event.PointerY()[0]};
+  DispatchPointerEvent("touchstart", target_pointer_map, root_point);
   OnPointerDown(event);
 }
 
@@ -470,13 +499,15 @@ void PlatformEventHandler::HandlePointerMove(PlatformPointerEvent& event) {
   }
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchmove", target_pointer_map);
+  float root_point[2] = {event.PointerX()[0], event.PointerY()[0]};
+  DispatchPointerEvent("touchmove", target_pointer_map, root_point);
 }
 
 void PlatformEventHandler::HandlePointerUp(PlatformPointerEvent& event) {
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchend", target_pointer_map);
+  float root_point[2] = {event.PointerX()[0], event.PointerY()[0]};
+  DispatchPointerEvent("touchend", target_pointer_map, root_point);
   OnPointerUp(event);
   ResetPointerEnv(event);
 }
@@ -484,7 +515,8 @@ void PlatformEventHandler::HandlePointerUp(PlatformPointerEvent& event) {
 void PlatformEventHandler::HandlePointerCancel(PlatformPointerEvent& event) {
   auto target_pointer_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetPointerMap(target_pointer_map, event);
-  DispatchPointerEvent("touchcancel", target_pointer_map);
+  float root_point[2] = {event.PointerX()[0], event.PointerY()[0]};
+  DispatchPointerEvent("touchcancel", target_pointer_map, root_point);
   OnPointerCancel(event);
   ResetPointerEnv(event);
 }
@@ -620,15 +652,17 @@ bool PlatformEventHandler::IsPointerMoveOutside(
   return false;
 }
 
-void PlatformEventHandler::GetTargetPoint(
+bool PlatformEventHandler::GetTargetPoint(
     fml::RefPtr<PlatformEventTarget> target, float target_point[2],
     float page_point[2]) {
   auto root_target = GetTargetTree();
   if (!root_target) {
-    return;
+    return false;
   }
-  platform_ref_->GetEventTargetHelper()->ConvertPointFromAncestorToDescendant(
-      target_point, root_target, target, page_point);
+  return platform_ref_->GetEventTargetHelper()
+             ->ConvertPointFromAncestorToDescendant(target_point, root_target,
+                                                    target, page_point) &&
+         std::isfinite(target_point[0]) && std::isfinite(target_point[1]);
 }
 
 void PlatformEventHandler::AddTargetPointerMap(lepus::Value& target_pointer_map,

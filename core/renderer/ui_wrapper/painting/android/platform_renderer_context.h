@@ -132,6 +132,8 @@ class PlatformRendererContext {
   int32_t GetTagInfo(const std::string& tag_name);
 
   std::vector<float> GetRootViewLocationOnScreen();
+  // Returns false while the root view is not attached to a window.
+  bool GetRootViewLocationInWindow(float location[2]);
   std::vector<float> GetScreenSize();
   std::vector<float> GetRendererHostScrollOffset(int32_t sign);
   bool IsRendererHostScrollable(int32_t sign);

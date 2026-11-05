@@ -34,7 +34,8 @@ class TouchEvent : public Event {
              float client_y = 0, int64_t time_stamp = 0,
              TouchEventTargetPoints current_target_points = {});
   TouchEvent(const std::string& event_name, const lepus::Value& targets_touches,
-             int64_t time_stamp = 0);
+             int64_t time_stamp = 0,
+             TouchEventTargetPoints current_target_points = {});
 
   float x() const { return x_; }
   float y() const { return y_; }
