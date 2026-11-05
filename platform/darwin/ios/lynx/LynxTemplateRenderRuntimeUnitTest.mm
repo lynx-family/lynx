@@ -202,4 +202,65 @@
   XCTAssertFalse(shell->GetTasm()->GetPageOptions().HasLogicExecutor());
 }
 
+- (void)testHeapSnapshotAfterDestroyCompletesOnBackgroundThread {
+  XCTAssertTrue(NSThread.isMainThread);
+  LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+    builder.enableJSRuntime = NO;
+  }];
+  [view clearForDestroy];
+  XCTAssertNotNil(view);
+  XCTAssertNil(view.templateRender);
+  XCTestExpectation *completion = [self expectationWithDescription:@"snapshot failure"];
+  completion.assertForOverFulfill = YES;
+  [view takeHeapSnapshot:@""
+                callback:^(NSString *error) {
+                  XCTAssertFalse(NSThread.isMainThread);
+                  XCTAssertEqualObjects(error, @"LynxView destroyed");
+                  [completion fulfill];
+                }
+                    type:@"mts"];
+  [self waitForExpectationsWithTimeout:30 handler:nil];
+}
+
+- (void)testHeapSnapshotCopiesTypeBeforeMainThreadDispatch {
+  XCTAssertTrue(NSThread.isMainThread);
+  LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+    builder.enableJSRuntime = NO;
+  }];
+  NSMutableString *type = [@"invalid" mutableCopy];
+  XCTestExpectation *completion = [self expectationWithDescription:@"original snapshot type"];
+  completion.assertForOverFulfill = YES;
+  dispatch_semaphore_t submitted = dispatch_semaphore_create(0);
+  dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+    [view takeHeapSnapshot:@""
+                  callback:^(NSString *error) {
+                    XCTAssertFalse(NSThread.isMainThread);
+                    XCTAssertEqualObjects(error, @"Invalid type");
+                    [completion fulfill];
+                  }
+                      type:type];
+    [type setString:@"bts_vm"];
+    dispatch_semaphore_signal(submitted);
+  });
+  // Keep the main queue blocked until the caller has mutated its input.
+  XCTAssertEqual(
+      dispatch_semaphore_wait(submitted, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC)), 0L);
+  [self waitForExpectationsWithTimeout:30 handler:nil];
+}
+
+- (void)testResidualHeapSnapshotFailureCompletesOnBackgroundThread {
+  XCTestExpectation *completion = [self expectationWithDescription:@"residual snapshot failure"];
+  completion.assertForOverFulfill = YES;
+  dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
+    [LynxView takeBtsResidualHeapSnapshot:@""
+                                 callback:^(NSString *error) {
+                                   XCTAssertFalse(NSThread.isMainThread);
+                                   XCTAssertNotNil(error);
+                                   [completion fulfill];
+                                 }
+                               instanceId:-1];
+  });
+  [self waitForExpectationsWithTimeout:30 handler:nil];
+}
+
 @end

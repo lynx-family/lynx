@@ -4000,6 +4000,8 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public BOOL LynxTemplateRender(StaticPage)::shouldHandleStaticPageMetaData:globalProps:(nullable LynxTemplateData *data, [globalProps] nullable LynxTemplateData *globalProps);
   public BOOL LynxTemplateRender(StaticPage)::isStaticPageHostRegistered();
   public void LynxTemplateRender(StaticPage)::destroyStaticPageHost();
+  public void LynxTemplateRender()::takeHeapSnapshot:callback:type:lynxView:(nonnull NSString *outputFile, [callback] void(^_Nullable callback)(NSString *_Nullable error), [type] nonnull NSString *type, [lynxView] LynxView *lynxView);
+  public void LynxTemplateRender()::takeBtsResidualHeapSnapshot:callback:instanceId:(nonnull NSString *outputFile, [callback] void(^_Nullable callback)(NSString *_Nullable error), [instanceId] int32_t instanceId);
 }
 
 public interface LynxTemplateRender(Helper) {
@@ -5556,6 +5558,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::updateScreenMetrics:(nonnull LynxScreenMetrics *screenMetrics);
   public void LynxView::updateFontScale:(CGFloat scale);
   public void LynxView::getLynxElementRoot:(void(^_Nullable callback)(LynxElement *_Nullable root));
+  public void LynxView::takeHeapSnapshot:callback:type:(nonnull NSString *outputFile,[callback] void(^_Nullable callback)(NSString *_Nullable error),[type] nonnull NSString *type);
   public void LynxView::updateColorScheme:(LynxColorScheme scheme);
   public void LynxView::pauseRootLayoutAnimation();
   public void LynxView::resumeRootLayoutAnimation();
@@ -5638,6 +5641,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public id< LynxBaseInspectorController > _Nullable LynxView()::baseInspectorController();
   public void LynxView()::setIntrinsicContentSize:(CGSize size);
   public void LynxView()::dispatchError:(LynxError *error);
+  public void LynxView::takeBtsResidualHeapSnapshot:callback:instanceId:(nonnull NSString *outputFile,[callback] void(^_Nullable callback)(NSString *_Nullable error),[instanceId] int32_t instanceId);
 }
 
 public interface LynxView(Identify) {
