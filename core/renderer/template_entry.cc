@@ -154,6 +154,12 @@ bool TemplateEntry::ConstructContext(
             ? template_bundle_.page_configs_->GetEnableSignalAPIBoolValue()
             : false);
   }
+  if (assembler->EnableFiberArch()) {
+    // Fiber reads page metrics from Lynx.SystemInfo; Radon initializes its own
+    // data.
+    vm_context_->SetPropertyToLynx(BASE_STATIC_STRING(kSystemInfo),
+                                   assembler->GetSystemInfo());
+  }
   std::string file_name = GenerateLepusJSFileName(name_);
 
   auto observer = lepus_observer_.lock();
