@@ -39,6 +39,29 @@ static constexpr const char* const CLAY_VIEW_CONTEXT_CREATE_SHADOW_NODE =
     "ViewContext::CreateShadowNode";
 static constexpr const char* const CLAY_VIEW_CONTEXT_SYNC_NATIVE_VIEW_TAGS =
     "ViewContext::SyncNativeViewTags";
+static constexpr const char* const CLAY_VIEW_CONTEXT_STOP_EXPOSURE =
+    "ViewContext::StopExposure";
+static constexpr const char* const CLAY_VIEW_CONTEXT_RESUME_EXPOSURE =
+    "ViewContext::ResumeExposure";
+static constexpr const char* const CLAY_VIEW_CONTEXT_SET_EXPOSURE_HOST_VISIBLE =
+    "ViewContext::SetExposureHostVisible";
+static constexpr const char* const CLAY_EXPOSE_OBSERVER_NOTIFY_EXPOSURE_EVENT =
+    "ExposeObserver::NotifyExposureEvent";
+static constexpr const char* const
+    CLAY_EXPOSE_OBSERVER_CHECK_FOR_INTERSECTION_WITH_TARGET =
+        "ExposeObserver::CheckForIntersectionWithTarget";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_STOP_EXPOSURE =
+        "IntersectionObserverManager::StopExposure";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_RESUME_EXPOSURE =
+        "IntersectionObserverManager::ResumeExposure";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_NOTIFY_EXPOSURES =
+        "IntersectionObserverManager::NotifyExposures";
+static constexpr const char* const
+    CLAY_INTERSECTION_OBSERVER_MANAGER_VISIT_EXPOSURE_OBSERVERS =
+        "IntersectionObserverManager::VisitExposureObservers";
 static constexpr const char* const
     CLAY_VIEW_REGISTRY_CREATE_NATIVE_VIEW_IF_AVAILABLE =
         "ViewRegistry::CreateNativeViewIfAvailable";
