@@ -3646,13 +3646,15 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     return mNativePtr != 0 ? nativeGetAllJsSource(mNativePtr, mNativeLifecycle) : null;
   }
 
-  boolean takeBTSHeapSnapshot(
-      @NonNull String outputPath, @Nullable LynxConsumer<Boolean> callback) {
+  void takeHeapSnapshot(
+      @NonNull String outputPath, @Nullable LynxConsumer<String> callback, @NonNull String type) {
     if (!checkIfEnvPrepared() || mNativePtr == 0 || !isNativeLifecycleValid(mNativeLifecycle)
         || mIsDestroyed.get() || mHasDestroy || mDestroying) {
-      return false;
+      LynxView.dispatchHeapSnapshotError(callback, "LynxView unavailable");
+      return;
     }
-    return nativeTakeBTSHeapSnapshotToFile(mNativePtr, mNativeLifecycle, outputPath, callback);
+    nativeTakeHeapSnapshot(
+        mNativePtr, mNativeLifecycle, outputPath.getBytes(StandardCharsets.UTF_8), callback, type);
   }
 
   public boolean enableJSRuntime() {

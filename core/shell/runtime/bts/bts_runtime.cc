@@ -1092,17 +1092,31 @@ base::UnsafeWeakPtr<runtime::js::Runtime> BTSRuntime::GetJSRuntimeWeak() {
                       : base::UnsafeWeakPtr<runtime::js::Runtime>();
 }
 
-std::unique_ptr<runtime::js::Buffer> BTSRuntime::TakeHeapSnapshot() {
-  if (state_ == State::kNotStarted || state_ == State::kDestroying ||
-      js_executor_ == nullptr) {
-    return nullptr;
-  }
-
-  auto* js_runtime = GetJSRuntimeWeak().Lock();
-  if (js_runtime == nullptr || !js_runtime->Valid()) {
-    return nullptr;
-  }
-  return js_runtime->TakeHeapSnapshot();
+std::unique_ptr<runtime::js::Buffer> BTSRuntime::TakeHeapSnapshot(
+    bool page_only, const char*& error) {
+  do {
+    if (state_ == State::kNotStarted || state_ == State::kDestroying ||
+        js_executor_ == nullptr) {
+      break;
+    }
+    auto* js_runtime = GetJSRuntimeWeak().Lock();
+    if (js_runtime == nullptr || !js_runtime->Valid()) break;
+    auto vm = js_runtime->getSharedVM();
+    if (!vm) break;
+    int32_t slot = -1;
+    if (page_only && !runtime::JSRealmManager::IsSingleJSContext(group_id_)) {
+      slot =
+          fml::MessageLoop::GetCurrent().GetTaskRunner()->GetInstanceMemorySlot(
+              page_options_.GetInstanceID());
+      if (!fml::IsValidInstanceSlot(slot)) {
+        error = "Slot unavailable";
+        return nullptr;
+      }
+    }
+    return vm->TakeHeapSnapshot(slot, error);
+  } while (false);
+  error = "BTS unavailable";
+  return nullptr;
 }
 
 int64_t BTSRuntime::GenerateRuntimeId() {
