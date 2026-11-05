@@ -5416,6 +5416,7 @@ TEST_F(FragmentDrawTest, BackgroundUrlGeneratesBackgroundImageOp) {
 }
 
 TEST_F(FragmentDrawTest, BackgroundUrlPreservesAutoSizeAndPosition) {
+  using Mode = BackgroundSizeMode;
   const float auto_size =
       -static_cast<float>(starlight::BackgroundSizeType::kAuto);
   struct TestCase {
@@ -5423,16 +5424,24 @@ TEST_F(FragmentDrawTest, BackgroundUrlPreservesAutoSizeAndPosition) {
     bool omit_size;
     float width;
     float height;
-    int32_t auto_axes;
+    Mode mode;
     float fallback_width;
     float fallback_height;
+    bool percent_width = false;
+    bool percent_height = false;
   };
   const TestCase cases[] = {
-      {"initial", true, 0.f, 0.f, 3, 100.f, 80.f},
-      {"auto auto", false, auto_size, auto_size, 3, 100.f, 80.f},
-      {"auto length", false, auto_size, 20.f, 1, 100.f, 20.f},
-      {"length auto", false, 40.f, auto_size, 2, 40.f, 80.f},
-      {"length length", false, 40.f, 20.f, 0, 40.f, 20.f},
+      {"initial", true, 0.f, 0.f, Mode::kAutoBoth, 100.f, 80.f},
+      {"auto auto", false, auto_size, auto_size, Mode::kAutoBoth, 100.f, 80.f},
+      {"auto length", false, auto_size, 20.f, Mode::kAutoWidth, 100.f, 20.f},
+      {"length auto", false, 40.f, auto_size, Mode::kAutoHeight, 40.f, 80.f},
+      {"length length", false, 40.f, 20.f, Mode::kResolved, 40.f, 20.f},
+      {"percent auto", false, 50.f, auto_size, Mode::kAutoHeight, 50.f, 80.f,
+       true, false},
+      {"auto percent", false, auto_size, 25.f, Mode::kAutoWidth, 100.f, 20.f,
+       false, true},
+      {"percent percent", false, 50.f, 25.f, Mode::kResolved, 50.f, 20.f, true,
+       true},
   };
   for (const auto& test : cases) {
     SCOPED_TRACE(test.name);
@@ -5452,9 +5461,13 @@ TEST_F(FragmentDrawTest, BackgroundUrlPreservesAutoSizeAndPosition) {
     image_data.image_count = 1;
     if (!test.omit_size) {
       image_data.size.push_back(
-          starlight::NLength::MakeUnitNLength(test.width));
+          test.percent_width
+              ? starlight::NLength::MakePercentageNLength(test.width)
+              : starlight::NLength::MakeUnitNLength(test.width));
       image_data.size.push_back(
-          starlight::NLength::MakeUnitNLength(test.height));
+          test.percent_height
+              ? starlight::NLength::MakePercentageNLength(test.height)
+              : starlight::NLength::MakeUnitNLength(test.height));
     }
     image_data.position.push_back(
         starlight::NLength::MakePercentageNLength(50.f));
@@ -5476,7 +5489,7 @@ TEST_F(FragmentDrawTest, BackgroundUrlPreservesAutoSizeAndPosition) {
     EXPECT_FLOAT_EQ(tiling.x, (100.f - test.fallback_width) * 0.5f);
     EXPECT_FLOAT_EQ(tiling.y, (80.f - test.fallback_height) * 0.25f);
     const auto& image = items[3].payload.background_image;
-    EXPECT_EQ(image.auto_size, test.auto_axes);
+    EXPECT_EQ(image.size_mode, test.mode);
     EXPECT_FLOAT_EQ(image.position_x, 0.5f);
     EXPECT_FLOAT_EQ(image.position_y, 0.25f);
 
@@ -5488,9 +5501,74 @@ TEST_F(FragmentDrawTest, BackgroundUrlPreservesAutoSizeAndPosition) {
     fragment.DrawBackground(repaint_builder);
     auto repaint_items = CollectDisplayListItems(repaint_builder.Build());
     const auto& repainted_image = repaint_items.back().payload.background_image;
-    EXPECT_EQ(repainted_image.auto_size, test.auto_axes);
+    EXPECT_EQ(repainted_image.size_mode, test.mode);
     EXPECT_FLOAT_EQ(repainted_image.position_x, 0.f);
     EXPECT_FLOAT_EQ(repainted_image.position_y, 0.f);
+  }
+}
+
+TEST_F(FragmentDrawTest, BackgroundUrlPreservesFitModesAndOrigin) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  starlight::LayoutResultForRendering layout;
+  layout.border_ = starlight::DirectionValue<float>({5.f, 5.f, 5.f, 5.f});
+  layout.padding_ = starlight::DirectionValue<float>({7.f, 7.f, 7.f, 7.f});
+  layout.size_ = FloatSize(100.f, 80.f);
+  fragment.UpdateLayout(layout);
+
+  constexpr char kImages[] =
+      "url(https://example.com/top.png), url(https://example.com/middle.png), "
+      "url(https://example.com/bottom.png)";
+  CSSParserConfigs configs;
+  CSSStringParser image_parser(kImages, sizeof(kImages) - 1, configs);
+  auto* style = element->computed_css_style();
+  ASSERT_TRUE(style->SetValue(CSSPropertyID::kPropertyIDBackgroundImage,
+                              image_parser.ParseBackgroundImage()));
+  constexpr char kSize[] = "cover, contain";
+  CSSStringParser size_parser(kSize, sizeof(kSize) - 1, configs);
+  ASSERT_TRUE(style->SetValue(CSSPropertyID::kPropertyIDBackgroundSize,
+                              size_parser.ParseBackgroundSize()));
+  auto& data = *style->background_data_->image_data;
+  data.origin = {starlight::BackgroundOriginType::kContentBox};
+  data.clip = {starlight::BackgroundClipType::kBorderBox};
+  data.position = {starlight::NLength::MakePercentageNLength(50.f),
+                   starlight::NLength::MakePercentageNLength(25.f),
+                   starlight::NLength::MakeUnitNLength(10.f),
+                   starlight::NLength::MakeUnitNLength(15.f)};
+
+  DisplayListBuilder builder;
+  fragment.DrawBackground(builder);
+  auto list = builder.Build();
+  std::vector<DisplayListItem> boxes;
+  std::vector<DisplayListItem> images;
+  for (const auto& item : CollectDisplayListItems(list)) {
+    if (item.type == DisplayListOpType::kRecordBox) {
+      boxes.push_back(item);
+    } else if (item.type == DisplayListOpType::kBackgroundImage) {
+      images.push_back(item);
+    }
+  }
+  ASSERT_EQ(images.size(), 3u);
+  // Paint back to front while cycling fit and position by the CSS layer index.
+  const BackgroundSizeMode expected_modes[] = {BackgroundSizeMode::kCover,
+                                               BackgroundSizeMode::kContain,
+                                               BackgroundSizeMode::kCover};
+  for (size_t i = 0; i < images.size(); ++i) {
+    SCOPED_TRACE(i);
+    const auto& image = images[i].payload.background_image;
+    EXPECT_EQ(image.size_mode, expected_modes[i]);
+    const auto& tile = boxes.at(image.tiling_index).payload.record_box;
+    EXPECT_FLOAT_EQ(tile.w, 76.f);
+    EXPECT_FLOAT_EQ(tile.h, 56.f);
+    EXPECT_FLOAT_EQ(tile.x, i == 1 ? 22.f : 12.f);
+    EXPECT_FLOAT_EQ(tile.y, i == 1 ? 27.f : 12.f);
+    EXPECT_FLOAT_EQ(image.position_x, i == 1 ? 0.f : 0.5f);
+    EXPECT_FLOAT_EQ(image.position_y, i == 1 ? 0.f : 0.25f);
+    const auto& clip = boxes.at(image.clip_index).payload.record_box;
+    EXPECT_FLOAT_EQ(clip.x, 0.f);
+    EXPECT_FLOAT_EQ(clip.y, 0.f);
+    EXPECT_FLOAT_EQ(clip.w, 100.f);
+    EXPECT_FLOAT_EQ(clip.h, 80.f);
   }
 }
 

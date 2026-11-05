@@ -122,8 +122,8 @@ void DisplayList::AddRadialGradient(float center_x, float center_y,
 void DisplayList::AddBackgroundImage(fml::RefPtr<PaintImage> image,
                                      int32_t tiling_index, int32_t clip_index,
                                      int32_t repeat_x, int32_t repeat_y,
-                                     int32_t auto_size, float position_x,
-                                     float position_y) {
+                                     BackgroundSizeMode size_mode,
+                                     float position_x, float position_y) {
   DisplayListItem item{};
   item.type = DisplayListOpType::kBackgroundImage;
   item.payload.background_image.image_id = image->image_key_;
@@ -131,7 +131,7 @@ void DisplayList::AddBackgroundImage(fml::RefPtr<PaintImage> image,
   item.payload.background_image.clip_index = clip_index;
   item.payload.background_image.repeat_x = repeat_x;
   item.payload.background_image.repeat_y = repeat_y;
-  item.payload.background_image.auto_size = auto_size;
+  item.payload.background_image.size_mode = size_mode;
   item.payload.background_image.position_x = position_x;
   item.payload.background_image.position_y = position_y;
   AppendItem(item);
