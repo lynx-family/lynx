@@ -11015,6 +11015,16 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_REBUILD_VIEW_TREE UI_BODY_REBUILD_VIEW_TREE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_SET_MEASURED_DIMENSION UI_BODY_SET_MEASURED_DIMENSION;
   public final String com.lynx.tasm.base.trace.TraceEventDef.DEVTOOL_INIT DEVTOOL_INIT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.SCREENCAST_CAPTURE SCREENCAST_CAPTURE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.SCREENCAST_SCALE SCREENCAST_SCALE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.SCREENCAST_ENCODE SCREENCAST_ENCODE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.SCREENCAST_ENCODE_COMPRESS SCREENCAST_ENCODE_COMPRESS;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.SCREENCAST_ENCODE_BASE64 SCREENCAST_ENCODE_BASE64;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.SCREENCAST_DIFF SCREENCAST_DIFF;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.SCREENCAST_SEND SCREENCAST_SEND;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.SCREENCAST_ACK SCREENCAST_ACK;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_UI_RENDERER_DRAW_VIEW_TO_BITMAP LYNX_UI_RENDERER_DRAW_VIEW_TO_BITMAP;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_UI_RENDERER_PIXEL_COPY_WAIT LYNX_UI_RENDERER_PIXEL_COPY_WAIT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CANCEL_RESOURCE_PREFETCH CANCEL_RESOURCE_PREFETCH;
   public final String com.lynx.tasm.base.trace.TraceEventDef.REQUEST_RESOURCE_PREFETCH REQUEST_RESOURCE_PREFETCH;
   public final String com.lynx.tasm.base.trace.TraceEventDef.ENGINE_BUILDER_BUILD ENGINE_BUILDER_BUILD;
