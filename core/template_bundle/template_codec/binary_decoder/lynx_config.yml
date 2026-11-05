@@ -1714,6 +1714,16 @@ removeDescendantSelectorScope:
     - HarmonyOS
     - iOS
   export: true
+enableRawInput:
+  description: Enables exclusive platform touch ownership and platform lifecycle and focus notifications for an Android or HarmonyOS Fragment Layer Rendering page. This setting is fixed when the page is initialized. When enabled, the Page receives standard touch events with raw-input metadata and named CustomEvents for lifecycle and focus changes. When disabled, the page keeps ordinary platform touch handling. Adding or removing event listeners does not change this setting.
+  defaultValue: 'false'
+  valueType: bool
+  author: hexionghui
+  since: '4.3'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+  export: true
 enableMultiTouch:
   description: Controls whether Lynx touch events carry multi-finger state instead of collapsing to single-touch behavior. When enabled, touch events include information for multiple active fingers; when disabled, runtime keeps the single-touch event model.
   defaultValue: 'false'
