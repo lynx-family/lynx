@@ -1380,12 +1380,14 @@ void Fragment::DrawLayerProperties(DisplayListBuilder& builder) {
   // Ordinary elements publish only changed CSS properties. An active hook
   // needs a complete baseline before its overrides. Hook removal explicitly
   // resets properties through the same CSS dirty tracking.
+  element()->BeginCustomLayerTransformUpdate();
   DrawTransform(builder);
   DrawOpacity(builder);
   DrawFilter(builder);
   if (HasCustomLayerProperties()) {
     custom_draw_functions_->draw_layer_properties(*this, builder);
   }
+  element()->EndCustomLayerTransformUpdate();
 }
 
 void Fragment::OnDraw(DisplayListBuilder& display_list_builder) {
