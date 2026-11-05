@@ -5,6 +5,8 @@
 #define CORE_RENDERER_DOM_FIBER_ELEMENT_TEMPLATE_INSTANCE_H_
 
 #include <cstddef>
+#include <functional>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -33,6 +35,19 @@ class ElementTemplateInstance
     kOutOfScope,
   };
 
+  struct SlotChildrenDiffResult {
+    static constexpr size_t kNoMove = std::numeric_limits<size_t>::max();
+    // New index -> ET instance to insert, or nullptr when no insertion is
+    // needed.
+    base::Vector<fml::RefPtr<ElementTemplateInstance>> inserts_;
+    // Old indices of instances to remove.
+    base::Vector<size_t> removes_;
+    // Old index -> new index, or kNoMove when the old child does not move.
+    base::Vector<size_t> moves_;
+    size_t insert_count_{0};
+    size_t move_count_{0};
+  };
+
   static fml::RefPtr<ElementTemplateInstance>
   ResolveElementTemplateInstanceValue(const lepus::Value& value);
   static lepus::Value ConvertTemplateValueForStorage(const lepus::Value& value);
@@ -42,6 +57,30 @@ class ElementTemplateInstance
   // the reference node is absent.
   static size_t FindSlotChildIndex(const lepus::Value& slot_children,
                                    const lepus::Value& ref_node);
+  static SlotChildrenDiffResult DiffSlotChildren(
+      const base::Vector<fml::RefPtr<ElementTemplateInstance>>&
+          before_instances,
+      const base::Vector<fml::RefPtr<ElementTemplateInstance>>& after_instances,
+      const std::function<bool(const fml::RefPtr<ElementTemplateInstance>&,
+                               const fml::RefPtr<ElementTemplateInstance>&)>&
+          is_same_type,
+      const std::function<void(const fml::RefPtr<ElementTemplateInstance>&,
+                               const fml::RefPtr<ElementTemplateInstance>&,
+                               size_t, size_t)>& on_diff_children,
+      bool has_item_key);
+  static base::Vector<fml::RefPtr<ElementTemplateInstance>>
+  ApplySlotChildrenDiffResult(
+      const base::Vector<fml::RefPtr<ElementTemplateInstance>>&
+          before_instances,
+      const SlotChildrenDiffResult& diff_result,
+      const std::function<fml::RefPtr<ElementTemplateInstance>(
+          const fml::RefPtr<ElementTemplateInstance>&,
+          const fml::RefPtr<ElementTemplateInstance>&)>& on_insert,
+      const std::function<void(const fml::RefPtr<ElementTemplateInstance>&)>&
+          on_remove,
+      const std::function<void(const fml::RefPtr<ElementTemplateInstance>&,
+                               const fml::RefPtr<ElementTemplateInstance>&)>&
+          on_move);
 
   explicit ElementTemplateInstance(ElementManager* element_manager);
   ~ElementTemplateInstance() override;
