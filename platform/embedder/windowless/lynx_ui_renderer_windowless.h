@@ -67,6 +67,7 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
 
  private:
   void SendPointerEvent(const ClayPointerEvent& event) override;
+  void SendKeyEvent(const ClayKeyEvent& event) override;
 
   lynx::fml::RefPtr<LynxWindowlessRenderer> windowless_renderer_;
   std::thread::id main_thread_id_;

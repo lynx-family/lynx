@@ -456,6 +456,14 @@ void LynxUIRendererImpl::SendPointerEvent(const ClayPointerEvent& event) {
   [lynx_ui_renderer.clayViewProvider.engine sendPointerEvent:event];
 }
 
+void LynxUIRendererImpl::SendKeyEvent(const ClayKeyEvent& event) {
+  if (!lynx_ui_renderer_) {
+    return;
+  }
+  LynxUIRendererMac* lynx_ui_renderer = (__bridge LynxUIRendererMac*)lynx_ui_renderer_;
+  [lynx_ui_renderer.clayViewProvider.engine sendKeyEvent:event callback:nullptr userData:nullptr];
+}
+
 void LynxUIRendererImpl::AddClient(LynxViewClients* client) {
   frame_timing_listener_->AddClient(client);
 }

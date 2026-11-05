@@ -320,6 +320,10 @@ void LynxUIRendererWin::SendPointerEvent(const ClayPointerEvent& event) {
   engine_->SendPointerEvent(event);
 }
 
+void LynxUIRendererWin::SendKeyEvent(const ClayKeyEvent& event) {
+  engine_->SendKeyEvent(event, nullptr, nullptr);
+}
+
 void LynxUIRendererWin::AdjustWindowRect() {
   HWND hwnd = reinterpret_cast<HWND>(GetNativeWindow());
   if (hwnd) {
