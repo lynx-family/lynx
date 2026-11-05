@@ -350,6 +350,11 @@ public class TouchEventDispatcher {
   }
 
   public boolean consumeSlideEvent(MotionEvent ev) {
+    if (mUIOwner.getContext().getEnableRawInput()) {
+      // Own the sequence from DOWN so native child views never receive it.
+      requestNativeDisallowIntercept(true);
+      return true;
+    }
     boolean isFragmentLayerRenderOn = mUIOwner.getContext().isFragmentLayerRenderOn();
     switch (ev.getAction()) {
       case MotionEvent.ACTION_DOWN: {
@@ -1382,6 +1387,15 @@ public class TouchEventDispatcher {
           && (paintingContext.getPlatformEventBehavior()
                  & IPaintingContext.EVENT_BEHAVIOR_BLOCK_NATIVE_EVENT)
               != 0;
+    }
+    if (action == MotionEvent.ACTION_UP && consumed) {
+      paintingContext.dispatchPlatformFocus();
+    }
+    if (mUIOwner.getContext().getEnableRawInput()) {
+      requestNativeDisallowIntercept(true);
+      return true;
+    }
+    if (action == MotionEvent.ACTION_DOWN) {
       mPlatformConsumeSlideEventAngles = consumed
               && (paintingContext.getPlatformEventBehavior()
                      & IPaintingContext.EVENT_BEHAVIOR_HAS_CONSUME_SLIDE_EVENT)
@@ -1396,7 +1410,6 @@ public class TouchEventDispatcher {
         updateLongPressTimeout();
       }
     } else if (action == MotionEvent.ACTION_UP && consumed) {
-      paintingContext.dispatchPlatformFocus();
       paintingContext.dispatchPlatformTap();
     }
     if (!consumed) {

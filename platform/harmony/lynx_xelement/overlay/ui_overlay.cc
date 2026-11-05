@@ -9,11 +9,14 @@
 #include <deviceinfo.h>
 #include <dlfcn.h>
 
+#include <utility>
 #include <vector>
 
 #include "core/base/harmony/harmony_function_loader.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/tasm/config.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
@@ -241,12 +244,23 @@ void UIOverlay::FrameDidChanged() {
 }
 
 void UIOverlay::OnNodeEvent(ArkUI_NodeEvent* event) {
+  auto* owner = context_->GetUIOwner();
+  auto* dispatcher = owner ? owner->GetEventDispatcher() : nullptr;
   if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_TOUCH_INTERCEPT) {
+    if (dispatcher && dispatcher->RawInputExclusive()) {
+      auto* input_event = OH_ArkUI_NodeEvent_GetInputEvent(event);
+      OH_ArkUI_PointerEvent_SetInterceptHitTestMode(input_event, HTM_BLOCK);
+      return;
+    }
     context_->UpdateNativeInteractionEnabledForTree(this);
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_TOUCH_EVENT) {
-    if (ArkUI_UIInputEvent* touch_event =
-            OH_ArkUI_NodeEvent_GetInputEvent(event);
-        OH_ArkUI_UIInputEvent_GetAction(touch_event) ==
+    ArkUI_UIInputEvent* touch_event = OH_ArkUI_NodeEvent_GetInputEvent(event);
+    if (dispatcher && dispatcher->RawInputExclusive()) {
+      OH_ArkUI_PointerEvent_SetStopPropagation(touch_event, true);
+      context_->OnTouchEvent(touch_event, this);
+      return;
+    }
+    if (OH_ArkUI_UIInputEvent_GetAction(touch_event) ==
         UI_TOUCH_EVENT_ACTION_DOWN) {
       size_t num = OH_ArkUI_PointerEvent_GetPointerCount(touch_event);
       for (size_t i = 0; i < num; ++i) {
@@ -278,9 +292,16 @@ void UIOverlay::OnNodeEvent(ArkUI_NodeEvent* event) {
     }
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_ATTACH) {
     is_root_attached_ = true;
+    if (auto input_context = context_->GetNativePaintingContext()) {
+      input_context->SetPlatformEventRootActive(Sign(), true);
+      input_context->NotifyInputRootStateChanged(Sign(), true, false);
+    }
     context_->NotifyUIScroll();
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_DETACH) {
     is_root_attached_ = false;
+    if (auto input_context = context_->GetNativePaintingContext()) {
+      input_context->SetPlatformEventRootActive(Sign(), false);
+    }
     context_->NotifyUIScroll();
   }
 }

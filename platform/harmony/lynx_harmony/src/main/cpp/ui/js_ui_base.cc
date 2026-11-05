@@ -27,10 +27,8 @@ void JSUIBase::SetOverlayContent(UIBase* ui, bool is_overlay_content) {
     manager.RegisterNodeEvent(ui->Node(), NODE_EVENT_ON_DETACH, ui);
     manager.RegisterNodeEvent(ui->Node(), NODE_ON_TOUCH_INTERCEPT, ui);
     manager.RegisterNodeEvent(ui->Node(), NODE_TOUCH_EVENT, ui);
-    manager.AddNodeEventReceiver(ui->Node(), UIBase::EventReceiver);
     manager.AddNodeCustomEventReceiver(ui->Node(), UIBase::CustomEventReceiver);
   } else {
-    manager.RemoveNodeEventReceiver(ui->Node(), UIBase::EventReceiver);
     manager.RemoveNodeCustomEventReceiver(ui->Node(),
                                           UIBase::CustomEventReceiver);
     manager.UnregisterNodeEvent(ui->Node(), NODE_TOUCH_EVENT);

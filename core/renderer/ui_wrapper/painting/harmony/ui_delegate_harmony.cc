@@ -306,6 +306,9 @@ void UIDelegateHarmony::OnPageConfigDecoded(
         config->GetEnableFiberArch() &&
         LynxEnv::GetInstance().FixHarmonyFiberDestroyTargetOnly());
     lynx_context->SetLongPressDuration(config->GetLongPressDuration());
+    if (ui_owner_) {
+      ui_owner_->SetRawInputEnabled(config->GetEnableRawInput());
+    }
     lynx_context->SetEnableHarmonyNewOverlay(
         config->GetEnableHarmonyNewOverlay() ||
         LynxEnv::GetInstance().EnableHarmonyNewOverlay());
