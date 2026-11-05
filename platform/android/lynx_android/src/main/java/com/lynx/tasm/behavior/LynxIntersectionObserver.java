@@ -293,7 +293,7 @@ public class LynxIntersectionObserver {
     if (manager == null)
       return null;
 
-    RectF intersectionRect = targetRect;
+    RectF intersectionRect = new RectF(targetRect);
     LynxBaseUI parent = (LynxBaseUI) target.getParent();
 
     boolean atRoot = false;
@@ -343,19 +343,9 @@ public class LynxIntersectionObserver {
       parent = (LynxBaseUI) parent.getParent();
     }
 
-    // in loop, screen's rect is not interacted
-    if (mRelativeToScreen) {
-      // before stepping in the function, it has already checked whether mManager is null.
-      RectF boundsOfLynxView =
-          manager.getBoundsOnScreenOfLynxBaseUI(manager.getContext().getLynxUIOwner().getRootUI());
-      // from Lynx coordinate to screen coordinate
-      targetRect.offset(boundsOfLynxView.left, boundsOfLynxView.top);
-      if (intersectionRect != null) {
-        intersectionRect.offset(boundsOfLynxView.left, boundsOfLynxView.top);
-        if (!intersectionRect.intersect(rootRect)) {
-          intersectionRect = null;
-        }
-      }
+    // Target and ancestor bounds are already in screen coordinates.
+    if (mRelativeToScreen && intersectionRect != null && !intersectionRect.intersect(rootRect)) {
+      intersectionRect = null;
     }
 
     return intersectionRect;
