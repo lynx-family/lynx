@@ -51,6 +51,8 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
     kFullDetach,
     // When this status is not needed.
     kUnkown,
+    // Forced acquisition stopped because the consumer is detached.
+    kDetached,
   };
 
   using GraphicsMemoryHandle = void*;
@@ -103,18 +105,21 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
   /// Acquire or steal the latest back buffer, only valid for non-single buffer
   /// mode sink.
   ///
-  /// This is a non-blocking call, it will always return the non-current oldest
-  /// back buffer.
-  /// The reader should pay attention if using frame-count buffer consuming,
-  /// since the already available frame may soon be stealed.
+  /// This is a non-blocking call. It may return null if the consumer is
+  /// detached or no non-current buffer can be acquired. An optional status
+  /// distinguishes these cases from allocation failures (kUnkown). The reader
+  /// should pay attention if using frame-count buffer consuming, since the
+  /// already available frame may soon be stealed.
   [[nodiscard]] virtual std::tuple<fml::RefPtr<SharedImageBacking>, uint32_t>
   AcquireBackForced(skity::Vec2 size,
-                    std::optional<GraphicsMemoryHandle> gfx_handle = {}) = 0;
+                    std::optional<GraphicsMemoryHandle> gfx_handle = {},
+                    AcquireBackStatus* status = nullptr) = 0;
 
   /// Swap the current back buffer to pending front
   virtual bool SwapBack(std::unique_ptr<FenceSync> fence_sync) = 0;
 
   virtual uint32_t Capacity() const = 0;
+  virtual bool IsManaged() const { return false; }
   virtual void UpdateBufferMode(BufferMode mode) {}
 
   UpdateFrontMode update_front_mode() const { return update_front_mode_; }
@@ -158,13 +163,14 @@ class SharedImageSinkManaged final : public SharedImageSink {
                  std::optional<GraphicsMemoryHandle> gfx_handle = {}) override;
 
   [[nodiscard]] std::tuple<fml::RefPtr<SharedImageBacking>, uint32_t>
-  AcquireBackForced(
-      skity::Vec2 size,
-      std::optional<GraphicsMemoryHandle> gfx_handle = {}) override;
+  AcquireBackForced(skity::Vec2 size,
+                    std::optional<GraphicsMemoryHandle> gfx_handle = {},
+                    AcquireBackStatus* status = nullptr) override;
 
   bool SwapBack(std::unique_ptr<FenceSync> fence_sync) override;
 
   uint32_t Capacity() const override { return capacity_; }
+  bool IsManaged() const override { return true; }
   void UpdateBufferMode(BufferMode mode) override;
 
   void ClearBackFences() override;
@@ -226,9 +232,9 @@ class SharedImageSinkUnmanaged final : public SharedImageSink {
                  std::optional<GraphicsMemoryHandle> gfx_handle = {}) override;
 
   [[nodiscard]] std::tuple<fml::RefPtr<SharedImageBacking>, uint32_t>
-  AcquireBackForced(
-      skity::Vec2 size,
-      std::optional<GraphicsMemoryHandle> gfx_handle = {}) override;
+  AcquireBackForced(skity::Vec2 size,
+                    std::optional<GraphicsMemoryHandle> gfx_handle = {},
+                    AcquireBackStatus* status = nullptr) override;
 
   bool SwapBack(std::unique_ptr<FenceSync> fence_sync) override;
 
