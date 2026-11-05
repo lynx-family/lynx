@@ -36,16 +36,33 @@ function Lynx-Env-Setup {
 
 
 function Android-Env-Setup {
-  $androidHome = Get-Environment 'ANDROID_HOME'
+  $androidHome = $env:ANDROID_HOME
+  if (-not $androidHome) {
+    $androidHome = Get-Environment 'ANDROID_HOME'
+  }
   
   if ($androidHome) {
-    $androidNdk = Join-Path $androidHome 'ndk/21.1.6352462'
+    $androidSdk = $env:ANDROID_SDK
+    if (-not $androidSdk) {
+      $androidSdk = $androidHome
+    }
+    $ndkProperty = @()
+    if ($env:ANDROID_NDK_PATH) {
+      $androidNdk = $env:ANDROID_NDK_PATH
+      $ndkProperty = @("ndk.dir=$androidNdk")
+    } elseif ($env:ANDROID_NDK) {
+      $androidNdk = $env:ANDROID_NDK
+    } else {
+      $androidNdk = Join-Path $androidHome 'ndk/21.1.6352462'
+    }
+    $env:ANDROID_SDK = $androidSdk
+    $env:ANDROID_NDK = $androidNdk
     Setup-Environment 'ANDROID_NDK' $androidNdk
     
     $local_properties_file1 = Join-Path $lynx_dir_path 'platform\android\local.properties'
     $local_properties_file2 = Join-Path $lynx_dir_path 'explorer\android\local.properties'
     $cmake_dir = Join-Path $lynx_dir_path 'buildtools\cmake'
-    python $lynx_dir_path\tools\android_tools\update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p ndk.dir="$androidNdk" sdk.dir="$androidHome" cmake.dir="$cmake_dir"
+    python $lynx_dir_path\tools\android_tools\update_local_properties.py -f $local_properties_file1 $local_properties_file2 -p @ndkProperty sdk.dir="$androidSdk" cmake.dir="$cmake_dir"
   } else {
     Write-Host "Please setup ANDROID_HOME environment variable for android build first."
   }

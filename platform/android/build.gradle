@@ -9,7 +9,6 @@ buildscript {
         compileSdkVersion = 33
         targetSdkVersion = 29
         buildToolsVersion = "29.0.2"
-        ndkVersion = ndk_version
         bdp_panga_version = '0.0.2.5'
         if(project.hasProperty("buildLynxDebugSo")){
             buildLynxDebugSo = true
@@ -43,6 +42,7 @@ plugins {
 apply from: file("./package.gradle")
 ext.pythonEnvScriptPath = "../../tools/env.sh"
 apply from: file("../../tools/android_tools/gradle/python_env.gradle")
+apply from: file("../../tools/android_tools/gradle/ndk.gradle")
 
 allprojects {
     repositories {
@@ -150,7 +150,7 @@ task generateAllGnCmakeTargets {
     }
     exec {
         workingDir "../../"
-        rootProject.ext.configurePythonExec(delegate, "buildtools/tools_shared/tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
+        rootProject.ext.configureGnExec(delegate, "buildtools/tools_shared/tools_shared/android_tools/generate_cmake_scripts_from_gn.py")
         println commandLine
     }
 }
