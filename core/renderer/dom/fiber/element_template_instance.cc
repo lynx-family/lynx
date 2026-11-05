@@ -5,9 +5,7 @@
 #include "core/renderer/dom/fiber/element_template_instance.h"
 
 #include <algorithm>
-#include <functional>
 #include <future>
-#include <limits>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -291,17 +289,31 @@ GeneratedElementsResult GeneratePreparedElementsResult(
   return generated;
 }
 
-struct SlotChildrenDiffResult {
-  static constexpr size_t kNoMove = std::numeric_limits<size_t>::max();
-  // New index -> ET instance to insert, or nullptr when no insertion is needed.
-  base::Vector<fml::RefPtr<ElementTemplateInstance>> inserts_;
-  // Old indices of instances to remove.
-  base::Vector<size_t> removes_;
-  // Old index -> new index, or kNoMove when the old child does not move.
-  base::Vector<size_t> moves_;
-  size_t insert_count_{0};
-  size_t move_count_{0};
-};
+base::Vector<fml::RefPtr<ElementTemplateInstance>> CollectSlotChildren(
+    const lepus::Value& child_slots, int32_t slot_index) {
+  base::Vector<fml::RefPtr<ElementTemplateInstance>> instances;
+  if (slot_index < 0 || !child_slots.IsArrayOrJSArray() ||
+      slot_index >= child_slots.GetLength()) {
+    return instances;
+  }
+  const auto children =
+      child_slots.GetProperty(static_cast<uint32_t>(slot_index));
+  if (!children.IsArrayOrJSArray()) {
+    return instances;
+  }
+  instances.reserve(children.GetLength());
+  for (size_t index = 0; index < static_cast<size_t>(children.GetLength());
+       ++index) {
+    auto child = ElementTemplateInstance::ResolveElementTemplateInstanceValue(
+        children.GetProperty(static_cast<uint32_t>(index)));
+    if (child) {
+      instances.push_back(std::move(child));
+    }
+  }
+  return instances;
+}
+
+}  // namespace
 
 /**
  * Matches a slot's old and new logical children and records insertions,
@@ -340,7 +352,8 @@ struct SlotChildrenDiffResult {
  * Insertion and move examples list only active entries.
  * C and D match without recorded moves; A matches with a recorded move.
  */
-SlotChildrenDiffResult DiffSlotChildren(
+ElementTemplateInstance::SlotChildrenDiffResult
+ElementTemplateInstance::DiffSlotChildren(
     const base::Vector<fml::RefPtr<ElementTemplateInstance>>& before_instances,
     const base::Vector<fml::RefPtr<ElementTemplateInstance>>& after_instances,
     const std::function<bool(const fml::RefPtr<ElementTemplateInstance>&,
@@ -474,7 +487,8 @@ SlotChildrenDiffResult DiffSlotChildren(
  * reference; D is emitted last. X's final next sibling is A, but its insertion
  * callback still receives D as the reference.
  */
-base::Vector<fml::RefPtr<ElementTemplateInstance>> ApplySlotChildrenDiffResult(
+base::Vector<fml::RefPtr<ElementTemplateInstance>>
+ElementTemplateInstance::ApplySlotChildrenDiffResult(
     const base::Vector<fml::RefPtr<ElementTemplateInstance>>& before_instances,
     const SlotChildrenDiffResult& diff_result,
     const std::function<fml::RefPtr<ElementTemplateInstance>(
@@ -557,32 +571,6 @@ base::Vector<fml::RefPtr<ElementTemplateInstance>> ApplySlotChildrenDiffResult(
   }
   return after_instances;
 }
-
-base::Vector<fml::RefPtr<ElementTemplateInstance>> CollectSlotChildren(
-    const lepus::Value& child_slots, int32_t slot_index) {
-  base::Vector<fml::RefPtr<ElementTemplateInstance>> instances;
-  if (slot_index < 0 || !child_slots.IsArrayOrJSArray() ||
-      slot_index >= child_slots.GetLength()) {
-    return instances;
-  }
-  const auto children =
-      child_slots.GetProperty(static_cast<uint32_t>(slot_index));
-  if (!children.IsArrayOrJSArray()) {
-    return instances;
-  }
-  instances.reserve(children.GetLength());
-  for (size_t index = 0; index < static_cast<size_t>(children.GetLength());
-       ++index) {
-    auto child = ElementTemplateInstance::ResolveElementTemplateInstanceValue(
-        children.GetProperty(static_cast<uint32_t>(index)));
-    if (child) {
-      instances.push_back(std::move(child));
-    }
-  }
-  return instances;
-}
-
-}  // namespace
 
 class ElementTemplateInstanceSerializer {
  public:
