@@ -48,10 +48,54 @@ final class NativeDisplayListBuilder implements AutoCloseable {
     return this;
   }
 
+  void createRenderer(PlatformRendererContext context, int id) {
+    nativeCreateRenderer(mNativePtr, context.getNativePtr(), id);
+  }
+
+  void submitTo(NativeDisplayListBuilder rendererOwner) {
+    ensureBuilt();
+    nativeSubmit(mNativePtr, rendererOwner.mNativePtr);
+  }
+
   NativeDisplayListBuilder fill(int color, int clipIndex) {
     ensureMutable();
     nativeFill(mNativePtr, color, clipIndex);
     return this;
+  }
+
+  int addPath(float width, float height, float... radii) {
+    ensureMutable();
+    validateRadii(radii);
+    return nativeAddPath(mNativePtr, width, height, radii, null, null);
+  }
+
+  int addPath(int[] commands, float[] points) {
+    ensureMutable();
+    return nativeAddPath(mNativePtr, 0, 0, null, commands, points);
+  }
+
+  int copyPath(NativeDisplayListBuilder source, int index) {
+    ensureMutable();
+    source.ensureOpen();
+    return nativeCopyPath(mNativePtr, source.mNativePtr, index);
+  }
+
+  NativeDisplayListBuilder pathOp(int index, int color, int rule, float x, float y, boolean clip) {
+    ensureMutable();
+    nativePathOp(mNativePtr, index, color, rule, x, y, clip);
+    return this;
+  }
+
+  ByteBuffer toPathKeysBuffer() {
+    ensureBuilt();
+    return PlatformRendererContext.makeReadOnlyDisplayListBuffer(
+        nativeGetPathKeysBuffer(mNativePtr));
+  }
+
+  ByteBuffer getPathBuffer(int index, long key, int part) {
+    ensureBuilt();
+    return PlatformRendererContext.makeReadOnlyDisplayListBuffer(
+        nativeGetPathBuffer(mNativePtr, index, key, part));
   }
 
   NativeDisplayListBuilder drawView(int viewId, float offsetX, float offsetY) {
@@ -183,7 +227,17 @@ final class NativeDisplayListBuilder implements AutoCloseable {
   private static native void nativeBegin(
       long nativePtr, int id, int type, float x, float y, float width, float height);
   private static native void nativeEnd(long nativePtr);
+  private static native void nativeCreateRenderer(long nativePtr, long contextPtr, int id);
+  private static native void nativeSubmit(long nativePtr, long rendererOwnerPtr);
   private static native void nativeFill(long nativePtr, int color, int clipIndex);
+  private static native int nativeAddPath(
+      long nativePtr, float width, float height, float[] radii, int[] commands, float[] points);
+  private static native int nativeCopyPath(long nativePtr, long sourcePtr, int index);
+  private static native void nativePathOp(
+      long nativePtr, int index, int color, int rule, float x, float y, boolean clip);
+  private static native ByteBuffer nativeGetPathKeysBuffer(long nativePtr);
+  private static native ByteBuffer nativeGetPathBuffer(
+      long nativePtr, int index, long key, int part);
   private static native void nativeDrawView(
       long nativePtr, int viewId, float offsetX, float offsetY);
   private static native void nativeText(long nativePtr, int textId, int boxIndex);

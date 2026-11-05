@@ -100,6 +100,7 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
   }
 
   bool EnableUIOperationQueue() override { return true; }
+  bool SupportsDisplayListPathResources() const override { return true; }
 
 #pragma region NativePaintingContext
 

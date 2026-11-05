@@ -318,6 +318,10 @@ class TestResizablePaintImage : public PaintImage {
 // Fragment::Draw() and forwards to a TestNativePaintingCtxPlatformRef.
 class TestNativePaintingContext : public NativePaintingContext {
  public:
+  bool supports_path_resources{false};
+  bool SupportsDisplayListPathResources() const override {
+    return supports_path_resources;
+  }
   struct CreatedImage {
     int id;
     base::String src;
@@ -571,6 +575,51 @@ static void RecordCustomDrawRect(DisplayListBuilder& builder, uint32_t color) {
   rect.SetHeight(10);
   int32_t index = -1;
   builder.RecordBoxModel(rect, index).Fill(color, index);
+}
+
+TEST_F(FragmentDrawTest, RetainedPathsReuseGeometryAndKeepLegacyFallback) {
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  view->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  view->SetStyle(kPropertyIDBorderRadius, lepus::Value("10px"));
+  view->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
+  auto child = manager->CreateFiberView();
+  view->InsertNode(child);
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+  view->UpdateLayout(0, 0, 100, 60, {}, {}, {}, nullptr, 0, false);
+  view->fragment_impl()->UpdateLayout(view->layout_result());
+  auto draw = [&] {
+    view->fragment_impl()->MarkDirtyState(
+        BaseElementContainer::DirtyState::kNeedRedraw);
+    DisplayListBuilder builder;
+    view->fragment_impl()->OnDraw(builder);
+    return builder.Build();
+  };
+  auto legacy = draw();
+  EXPECT_EQ(legacy.GetPathCount(), 0u);
+  context->supports_path_resources = true;
+  auto first = draw();
+  ASSERT_GT(first.GetPathCount(), 0u);
+  const auto key = first.GetPathKeysData()[0];
+  view->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+  page->FlushActionsAsRoot();
+  auto repainted = draw();
+  ASSERT_GT(repainted.GetPathCount(), 0u);
+  EXPECT_EQ(repainted.GetPathKeysData()[0], key);
+  view->SetStyle(kPropertyIDBorderRadius, lepus::Value("15px"));
+  page->FlushActionsAsRoot();
+  auto radius_changed = draw();
+  ASSERT_GT(radius_changed.GetPathCount(), 0u);
+  EXPECT_NE(radius_changed.GetPathKeysData()[0], key);
+  EXPECT_FLOAT_EQ(radius_changed.GetPath(0)->GetView().header.radii[0], 15.f);
+  EXPECT_EQ(first.GetPath(0)->GetKey(), key);
+  context->supports_path_resources = false;
+  auto fallback = draw();
+  EXPECT_EQ(fallback.GetPathCount(), 0u);
 }
 
 class CustomDrawFlushTest

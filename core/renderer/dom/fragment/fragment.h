@@ -16,6 +16,7 @@
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/layout_info.h"
+#include "core/renderer/dom/fragment/path_cache.h"
 
 namespace lynx {
 namespace starlight {
@@ -254,6 +255,7 @@ class Fragment : public BaseElementContainer {
   bool custom_outset_shadow_drawn_{false};
 
   BoxModelRecorder box_recorder_;
+  base::auto_create_optional<FragmentPathCache> path_cache_;
 
   std::unique_ptr<FragmentBehavior> behavior_;
 

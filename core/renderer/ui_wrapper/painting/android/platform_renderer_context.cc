@@ -800,6 +800,57 @@ jobject GetDisplayListItemsBuffer(JNIEnv* env, jobject /*jcaller*/,
                                   static_cast<jlong>(items_bytes));
 }
 
+jobject GetDisplayListPathKeysBuffer(JNIEnv* env, jobject /*jcaller*/,
+                                     jlong native_ptr, jint id) {
+  if (native_ptr == 0) return nullptr;
+  auto* context =
+      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(native_ptr);
+  if (context->IsDestroyed()) return nullptr;
+  auto* renderer = context->GetPlatformRenderer(id);
+  if (!renderer) return nullptr;
+  const auto& list = renderer->GetDisplayList();
+  if (list.GetPathCount() == 0) return nullptr;
+  return env->NewDirectByteBuffer(const_cast<uint64_t*>(list.GetPathKeysData()),
+                                  list.GetPathCount() * sizeof(uint64_t));
+}
+
+jobject GetDisplayListPathBuffer(JNIEnv* env, jobject /*jcaller*/,
+                                 jlong native_ptr, jint id, jint index,
+                                 jlong expected_key, jint part) {
+  if (native_ptr == 0 || index < 0) return nullptr;
+  auto* context =
+      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(native_ptr);
+  if (context->IsDestroyed()) return nullptr;
+  auto* renderer = context->GetPlatformRenderer(id);
+  if (!renderer) return nullptr;
+  const auto* path =
+      renderer->GetDisplayList().GetPath(static_cast<uint32_t>(index));
+  if (!path || path->GetKey() != static_cast<uint64_t>(expected_key))
+    return nullptr;
+  switch (part) {
+    case 0:
+      return env->NewDirectByteBuffer(
+          const_cast<lynx::gfx::PathHeader*>(&path->GetHeader()),
+          sizeof(lynx::gfx::PathHeader));
+    case 1:
+      return path->GetCommands().empty()
+                 ? nullptr
+                 : env->NewDirectByteBuffer(const_cast<lynx::gfx::PathVerb*>(
+                                                path->GetCommands().data()),
+                                            path->GetCommands().size() *
+                                                sizeof(lynx::gfx::PathVerb));
+    case 2:
+      return path->GetPoints().empty()
+                 ? nullptr
+                 : env->NewDirectByteBuffer(
+                       const_cast<lynx::gfx::PathPoint*>(
+                           path->GetPoints().data()),
+                       path->GetPoints().size() * sizeof(lynx::gfx::PathPoint));
+    default:
+      return nullptr;
+  }
+}
+
 jobject GetDisplayListDataBuffer(JNIEnv* env, jobject /*jcaller*/,
                                  jlong nativePtr, jint id) {
   if (nativePtr == 0) {
