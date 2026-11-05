@@ -35,6 +35,79 @@ lepus::Value CreateEventTargetInfo(const std::string& id,
 
 }  // namespace
 
+TEST_F(EventTargetTest, HasEventListenerTracksIndividualRemoval) {
+  EXPECT_FALSE(mock_target_->HasEventListener("test"));
+
+  auto first = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "1");
+  auto second = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "2");
+  EXPECT_TRUE(mock_target_->AddEventListener("test", first));
+  EXPECT_TRUE(mock_target_->AddEventListener("test", second));
+  EXPECT_TRUE(mock_target_->HasEventListener("test"));
+  EXPECT_FALSE(mock_target_->HasEventListener("other"));
+
+  EXPECT_TRUE(mock_target_->RemoveEventListener("test", first));
+  EXPECT_TRUE(mock_target_->HasEventListener("test"));
+  EXPECT_TRUE(mock_target_->RemoveEventListener("test", second));
+  EXPECT_FALSE(mock_target_->HasEventListener("test"));
+  EXPECT_FALSE(mock_target_->GetEventListenerMap()->Contains("test"));
+  EXPECT_EQ(mock_target_->GetEventListenerMap()->Find("test"), nullptr);
+}
+
+TEST_F(EventTargetTest, HasEventListenerTracksEventTypeRemovalAndRegistration) {
+  auto add_listener = [&](const std::string& type) {
+    EXPECT_TRUE(mock_target_->AddEventListener(
+        type, std::make_shared<MockEventListener>(
+                  EventListener::Type::kJSClosureEventListener, "1")));
+  };
+  add_listener("test");
+  add_listener("other");
+
+  EXPECT_TRUE(mock_target_->RemoveEventListeners("test"));
+  EXPECT_FALSE(mock_target_->HasEventListener("test"));
+  EXPECT_EQ(mock_target_->GetEventListenerMap()->Find("test"), nullptr);
+  EXPECT_TRUE(mock_target_->HasEventListener("other"));
+
+  add_listener("test");
+  EXPECT_TRUE(mock_target_->HasEventListener("test"));
+
+  mock_target_->GetEventListenerMap()->RemoveAll();
+  EXPECT_FALSE(mock_target_->HasEventListener("test"));
+  EXPECT_FALSE(mock_target_->HasEventListener("other"));
+}
+
+TEST_F(EventTargetTest,
+       RemovingLastListenerDuringDispatchPreservesOtherEventTypes) {
+  auto self_removing = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "self", "test", "self",
+      mock_target_.get());
+  auto other = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "other");
+  auto third = std::make_shared<MockEventListener>(
+      EventListener::Type::kJSClosureEventListener, "third");
+  mock_target_->AddEventListener("test", self_removing);
+  mock_target_->AddEventListener("other", other);
+  mock_target_->AddEventListener("third", third);
+
+  auto dispatch = [&](const std::string& name) {
+    return mock_target_->DispatchEvent(fml::MakeRefCounted<Event>(
+        name, Event::EventType::kNone, Event::Capture::kNo, Event::Bubbles::kNo,
+        Event::Cancelable::kYes, Event::ComposedMode::kComposed,
+        Event::PhaseType::kNone));
+  };
+  EXPECT_TRUE(dispatch("test").consumed);
+  EXPECT_EQ(self_removing->GetCount(), 1);
+  EXPECT_TRUE(self_removing->removed());
+  EXPECT_EQ(mock_target_->GetEventListenerMap()->Find("test"), nullptr);
+  EXPECT_FALSE(dispatch("test").consumed);
+  EXPECT_TRUE(dispatch("other").consumed);
+  EXPECT_TRUE(dispatch("third").consumed);
+  EXPECT_EQ(self_removing->GetCount(), 1);
+  EXPECT_EQ(other->GetCount(), 1);
+  EXPECT_EQ(third->GetCount(), 1);
+}
+
 TEST_F(EventTargetTest, TestEventTargetTest0) {
   auto map = mock_target_->GetEventListenerMap();
 

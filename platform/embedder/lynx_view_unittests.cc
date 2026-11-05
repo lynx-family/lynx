@@ -8,6 +8,8 @@
 
 #include "base/include/fml/message_loop.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/events/closure_event_listener.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "platform/embedder/lynx_view_priv.h"
 #include "platform/embedder/public/lynx_env.h"
@@ -59,6 +61,78 @@ class LynxViewTest : public ::testing::Test {
   bool devtool_enabled_ = false;
   bool logbox_enabled_ = false;
 };
+
+TEST_F(LynxViewTest, SendGlobalEventReachesMTSWithAndWithoutRuntimeProxy) {
+  class RecordingRuntimeProxy : public lynx::shell::LynxBTSRuntimeProxyImpl {
+   public:
+    RecordingRuntimeProxy() : LynxBTSRuntimeProxyImpl(nullptr) {}
+    void CallJSFunction(std::string module_id, std::string method_id,
+                        std::unique_ptr<lynx::pub::Value> params) override {
+      EXPECT_EQ(module_id, "GlobalEventEmitter");
+      EXPECT_EQ(method_id, "emit");
+      arguments = lynx::pub::ValueUtils::ConvertValueToLepusValue(*params);
+      ++call_count;
+    }
+    lynx::lepus::Value arguments;
+    int call_count = 0;
+  };
+  class TestTemplateRenderer : public lynx::embedder::LynxTemplateRenderer {
+   public:
+    using LynxTemplateRenderer::LynxTemplateRenderer;
+    auto GetEngineActor() { return shell_->GetEngineActor(); }
+    void SetRuntimeProxy(
+        const std::shared_ptr<RecordingRuntimeProxy>& runtime_proxy) {
+      runtime_proxy_ = runtime_proxy;
+    }
+  };
+
+  for (bool enable_runtime_proxy : {false, true}) {
+    SCOPED_TRACE(enable_runtime_proxy);
+    lynx::pub::LynxView::Builder builder;
+    lynx::embedder::TestLynxUIRenderer ui_renderer(builder.Impl());
+    lynx::embedder::LynxTemplateRenderer::Settings settings;
+    settings.screen_size = {320, 480};
+    settings.viewport_size = {320, 480};
+    settings.enable_js = false;
+    TestTemplateRenderer renderer(settings, ui_renderer.GetUIDelegate(),
+                                  nullptr, nullptr);
+    auto runtime_proxy = std::make_shared<RecordingRuntimeProxy>();
+    if (enable_runtime_proxy) {
+      renderer.SetRuntimeProxy(runtime_proxy);
+    }
+    auto engine_actor = renderer.GetEngineActor();
+    int event_count = 0;
+    lynx::lepus::Value received_args;
+    engine_actor->ActSync([&](auto& engine) {
+      auto* proxy = engine->GetTasm()->GetContextProxy(
+          lynx::runtime::ContextProxy::Type::kNative);
+      proxy->AddEventListener(
+          "view-event", std::make_shared<lynx::event::ClosureEventListener>(
+                            [&](lynx::lepus::Value args) {
+                              ++event_count;
+                              received_args =
+                                  lynx::lepus::Value::ShallowCopy(args);
+                            }));
+    });
+    auto params = lynx::lepus::CArray::Create();
+    params->emplace_back("payload");
+    params->emplace_back(42);
+    renderer.SendGlobalEvent("view-event",
+                             lynx::lepus::Value(std::move(params)));
+    engine_actor->ActSync([](auto&) {});
+    EXPECT_EQ(event_count, 1);
+    EXPECT_EQ(received_args.GetProperty(0), lynx::lepus::Value("view-event"));
+    auto received_params = received_args.GetProperty(1);
+    ASSERT_TRUE(received_params.IsArray());
+    ASSERT_EQ(received_params.GetLength(), 2U);
+    EXPECT_EQ(received_params.GetProperty(0), lynx::lepus::Value("payload"));
+    EXPECT_EQ(received_params.GetProperty(1), lynx::lepus::Value(42));
+    EXPECT_EQ(runtime_proxy->call_count, enable_runtime_proxy ? 1 : 0);
+    if (enable_runtime_proxy) {
+      EXPECT_EQ(runtime_proxy->arguments, received_args);
+    }
+  }
+}
 
 TEST_F(LynxViewTest, CustomVSyncSurvivesBuilderReplacementAndViewSharing) {
   struct State {

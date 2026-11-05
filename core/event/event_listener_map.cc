@@ -76,7 +76,7 @@ bool EventListenerMap::IsEmpty() const {
 bool EventListenerMap::Contains(const std::string& type) const {
   for (const auto& pair : map_) {
     if (pair.first == type) {
-      return true;
+      return !pair.second.empty();
     }
   }
   return false;
@@ -96,11 +96,14 @@ bool EventListenerMap::Add(const std::string& type,
 
 bool EventListenerMap::Remove(const std::string& type,
                               std::shared_ptr<EventListener> listener) {
-  EventListenerVector* vector = Find(type);
-  if (!vector || vector->empty()) {
+  auto entry =
+      std::find_if(map_.begin(), map_.end(),
+                   [&type](const auto& pair) { return pair.first == type; });
+  if (entry == map_.end()) {
     return false;
   }
-  auto iter = std::remove_if(vector->begin(), vector->end(),
+  auto& vector = entry->second;
+  auto iter = std::remove_if(vector.begin(), vector.end(),
                              [ptr = listener.get()](const auto& item) {
                                if (ptr->Matches(item.get())) {
                                  item->set_removed(true);
@@ -108,20 +111,25 @@ bool EventListenerMap::Remove(const std::string& type,
                                }
                                return false;
                              });
-  if (iter == vector->end()) {
+  if (iter == vector.end()) {
     return false;
   }
-  vector->erase(iter, vector->end());
+  vector.erase(iter, vector.end());
+  if (vector.empty()) {
+    map_.erase(entry);
+  }
   return true;
 }
 
 bool EventListenerMap::Remove(const std::string& type) {
-  EventListenerVector* vector = Find(type);
-  if (!vector || vector->empty()) {
+  auto entry =
+      std::find_if(map_.begin(), map_.end(),
+                   [&type](const auto& pair) { return pair.first == type; });
+  if (entry == map_.end()) {
     return false;
   }
-  MarkAllListenersRemoved(*vector);
-  vector->clear_and_shrink();
+  MarkAllListenersRemoved(entry->second);
+  map_.erase(entry);
   return true;
 }
 
