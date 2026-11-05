@@ -10,6 +10,7 @@
 #include "core/shell/lynx_shell.h"
 
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "base/include/debug/lynx_error.h"
@@ -163,6 +164,50 @@ class LynxShellTest : public ::testing::Test {
   TasmMediator* tasm_mediator_ = nullptr;
   std::shared_ptr<fml::AutoResetWaitableEvent> arwe_;
 };
+
+TEST_F(LynxShellTest, ReportScreenMetricsInLogicalPixels) {
+  struct TestCase {
+    float width;
+    float height;
+    float layout_units_per_px;
+    float physical_pixels_per_layout_unit;
+    float reported_width;
+    float reported_height;
+  };
+  const TestCase cases[] = {
+      {1080, 2400, 3, 1, 360, 800},       // Android native renderer
+      {1050, 2100, 2.625f, 1, 400, 800},  // Fractional density
+      {402.5f, 874, 1, 3, 402.5f, 874},   // iOS and logical-pixel renderers
+  };
+  for (const auto& test_case : cases) {
+    SCOPED_TRACE(test_case.width);
+    shell_->engine_actor_->ActSync([=](auto& engine) {
+      auto& config = engine->GetTasm()
+                         ->page_proxy()
+                         ->element_manager()
+                         ->GetLynxEnvConfig();
+      config = tasm::LynxEnvConfig(test_case.width, test_case.height,
+                                   test_case.layout_units_per_px,
+                                   test_case.physical_pixels_per_layout_unit);
+      engine->UpdateScreenMetrics(test_case.width, test_case.height,
+                                  config.DevicePixelRatio());
+      EXPECT_FLOAT_EQ(config.ScreenWidth(), test_case.width);
+      EXPECT_FLOAT_EQ(config.ScreenHeight(), test_case.height);
+    });
+
+    std::unordered_map<std::string, std::string> props;
+    tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostSyncTask(
+        [&] {
+          props =
+              tasm::report::EventTrackerWaitableEvent::generic_info_by_instance_
+                  .at(shell_->GetInstanceId());
+        });
+    EXPECT_FLOAT_EQ(std::stof(props.at("screen_width")),
+                    test_case.reported_width);
+    EXPECT_FLOAT_EQ(std::stof(props.at("screen_height")),
+                    test_case.reported_height);
+  }
+}
 
 TEST_F(LynxShellTest, LifecycleControlsElementVsyncOnEngineThread) {
   auto is_paused = [this]() {
