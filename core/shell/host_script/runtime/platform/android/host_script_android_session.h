@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_HOST_SCRIPT_ANDROID_SESSION_H_
-#define CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_HOST_SCRIPT_ANDROID_SESSION_H_
+#ifndef CORE_SHELL_HOST_SCRIPT_RUNTIME_PLATFORM_ANDROID_HOST_SCRIPT_ANDROID_SESSION_H_
+#define CORE_SHELL_HOST_SCRIPT_RUNTIME_PLATFORM_ANDROID_HOST_SCRIPT_ANDROID_SESSION_H_
 
 #include <memory>
 #include <string>
@@ -34,4 +34,4 @@ inline base::android::ScopedLocalJavaRef<jstring> HostScriptJavaString(
 }  // namespace shell
 }  // namespace lynx
 
-#endif  // CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_HOST_SCRIPT_ANDROID_SESSION_H_
+#endif  // CORE_SHELL_HOST_SCRIPT_RUNTIME_PLATFORM_ANDROID_HOST_SCRIPT_ANDROID_SESSION_H_

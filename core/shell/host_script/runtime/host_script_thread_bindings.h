@@ -20,7 +20,7 @@
 namespace lynx {
 namespace shell {
 
-// Android runtime availability follows the loaded debug engine. Other
+// Android runtime availability follows the loaded optional library. Other
 // platforms retain their existing DevTool admission policy.
 bool IsHostScriptRuntimeEnabled();
 

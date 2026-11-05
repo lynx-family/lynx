@@ -10,8 +10,12 @@
 
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+#include "core/shell/host_script/runtime/platform/android/process_runtime_android.h"
+#else
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "core/value_wrapper/value_impl_piper.h"
+#endif
 
 namespace lynx::shell {
 namespace {
@@ -23,21 +27,58 @@ using runtime::js::Value;
 
 constexpr size_t kMaxDepth = 64;
 
+std::optional<Object> GetObjectClass(Runtime& rt) {
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+  auto value = rt.global().getProperty(rt, "Object");
+  if (!value || !value->isObject()) return std::nullopt;
+  return value->getObject(rt);
+#else
+  return rt.global().getPropertyAsObject(rt, "Object");
+#endif
+}
+
+bool StrictEquals(Runtime& rt, const Value& a, const Value& b) {
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+  if (a.kind() != b.kind()) return false;
+  if (a.isUndefined() || a.isNull()) return true;
+  if (a.isBool()) return a.getBool() == b.getBool();
+  if (a.isNumber()) return a.getNumber() == b.getNumber();
+  if (a.isSymbol())
+    return runtime::js::Symbol::strictEquals(rt, a.getSymbol(rt),
+                                             b.getSymbol(rt));
+  if (a.isString())
+    return String::strictEquals(rt, a.getString(rt), b.getString(rt));
+  return Object::strictEquals(rt, a.getObject(rt), b.getObject(rt));
+#else
+  return Value::strictEquals(rt, a, b);
+#endif
+}
+
 lepus::Value CopyPrimitive(Runtime& rt, const Value& value) {
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+  lepus::Value result;
+  GetHostScriptEngineOps()->js_to_lepus(&rt, &value, &result);
+  return result;
+#else
   return pub::ValueUtils::ConvertValueToLepusValue(
       pub::ValueImplPiper(rt, value));
+#endif
 }
 
 bool HasPlainPrototype(Runtime& rt, const Value& value) {
-  auto object_class = rt.global().getPropertyAsObject(rt, "Object");
+  auto object_class = GetObjectClass(rt);
   if (!object_class) return false;
   auto get_prototype =
       object_class->getPropertyAsFunction(rt, "getPrototypeOf");
   if (!get_prototype) return false;
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+  auto prototype = get_prototype->call(rt, {Value(value.getObject(rt))});
+#else
   auto prototype = get_prototype->call(rt, {Value(rt, value)});
+#endif
   auto plain = object_class->getProperty(rt, "prototype");
   return prototype && plain &&
-         (prototype->isNull() || Value::strictEquals(rt, *prototype, *plain));
+         (prototype->isNull() || StrictEquals(rt, *prototype, *plain));
 }
 
 // Any failure abandons the whole snapshot, so the ancestor stack is not
@@ -64,11 +105,18 @@ class Snapshot {
   // execute again. Inherited array entries also stay opaque.
   std::optional<Value> DataProperty(Object& object, const String& name) {
     if (!get_descriptor_) {
-      auto object_class = rt_.global().getPropertyAsObject(rt_, "Object");
+      auto object_class = GetObjectClass(rt_);
       if (!object_class) return std::nullopt;
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+      auto descriptor =
+          object_class->getPropertyAsFunction(rt_, "getOwnPropertyDescriptor");
+      if (!descriptor) return std::nullopt;
+      get_descriptor_.emplace(std::move(*descriptor));
+#else
       get_descriptor_ =
           object_class->getPropertyAsFunction(rt_, "getOwnPropertyDescriptor");
       if (!get_descriptor_) return std::nullopt;
+#endif
     }
     auto descriptor =
         get_descriptor_->call(rt_, {Value(rt_, object), Value(rt_, name)});
@@ -163,8 +211,14 @@ std::optional<lepus::Value> SnapshotJSValue(Runtime& rt, const Value& value) {
 bool CanSnapshot(const pub::Value& value) { return CanSnapshotAt(value, 0); }
 
 Value RestoreJSValue(Runtime& rt, const lepus::Value& value) {
+#if defined(LYNX_HOST_SCRIPT_STANDALONE)
+  Value result;
+  GetHostScriptEngineOps()->lepus_to_js(&rt, &value, &result);
+  return result;
+#else
   return pub::ValueUtils::ConvertValueToPiperValue(rt,
                                                    pub::ValueImplLepus(value));
+#endif
 }
 
 }  // namespace lynx::shell
