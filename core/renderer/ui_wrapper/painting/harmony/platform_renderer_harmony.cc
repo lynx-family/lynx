@@ -182,8 +182,7 @@ void PlatformRendererHarmony::OnAddChild(PlatformRenderer* child, int index,
   }
   auto* harmony_child = static_cast<PlatformRendererHarmony*>(child);
   auto child_host = harmony_child->host_.lock();
-  if (child_host == nullptr ||
-      (!should_update_ui_owner && harmony_child->IsOverlay())) {
+  if (child_host == nullptr) {
     return;
   }
   auto* ui_owner = context_ != nullptr ? context_->GetUIOwner() : nullptr;
@@ -198,8 +197,7 @@ void PlatformRendererHarmony::OnRemoveFromParent(bool should_update_ui_owner) {
   auto* parent = static_cast<PlatformRendererHarmony*>(GetParent());
   auto host = host_.lock();
   auto parent_host = parent != nullptr ? parent->host_.lock() : nullptr;
-  if (host == nullptr || parent_host == nullptr ||
-      (!should_update_ui_owner && IsOverlay())) {
+  if (host == nullptr || parent_host == nullptr) {
     return;
   }
   auto* ui_owner = context_ != nullptr ? context_->GetUIOwner() : nullptr;

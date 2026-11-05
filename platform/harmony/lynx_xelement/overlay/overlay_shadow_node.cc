@@ -29,7 +29,7 @@ LayoutResult OverlayShadowNode::Measure(float width, MeasureMode width_mode,
         NodeManager::GetScreenHeight() / context_->ScaledDensity();
 
     child->MeasureLayoutNode(screen_width, MeasureMode::Definite, screen_height,
-                             MeasureMode::Definite, false);
+                             MeasureMode::Definite, final_measure);
   }
   return LayoutResult(0.f, 0.f, 0.f);
 }
