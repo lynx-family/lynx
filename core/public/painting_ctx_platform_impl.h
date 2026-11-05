@@ -215,15 +215,6 @@ class PaintingCtxPlatformImpl {
   virtual void OnFirstScreen() {}
   virtual void OnFirstMeaningfulLayout() {}
 
-  // TODO(liting.src): remove this method after ui operation queue refactor.
-  virtual void UpdateNodeReadyPatching(
-      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids,
-      bool should_cache_external_memory_candidates) {}
-  // TODO(songshourui.null): Forward this request through platform-specific
-  // operation queues in follow-up changes.
-  // Appends an external-memory report request to a batched UI operation stream.
-  virtual void RequestExternalMemoryReport(int64_t) {}
-
   virtual void SetContextHasAttached() {}
   virtual void SetEnableVsyncAlignedFlush(bool enabled) {}
 
@@ -245,15 +236,10 @@ class PaintingCtxPlatformImpl {
     rect[3] = -1.f;
   }
 
-  virtual void EnableUIOperationBatching(){};
-
   virtual bool DefaultOverflowAlwaysVisible() { return false; }
 
   // TODO(chenyouhui): remove this method after ui operation queue refactor.
   virtual bool EnableParallelElement() { return true; }
-
-  // TODO(liting.src): remove this method after ui operation queue refactor.
-  virtual bool HasEnableUIOperationBatching() { return false; }
 
   virtual bool EnableUIOperationQueue() { return false; }
 

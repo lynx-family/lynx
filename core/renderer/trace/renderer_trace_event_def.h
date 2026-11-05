@@ -1390,8 +1390,6 @@ inline constexpr const char* const
     PAINTING_CONTEXT_ANDROID_REINIT_PAINTING_NODE_CONTAINER =
         "PaintingContextAndroid::"
         "ReinitializeCreatePaintingNodeIterableContainer";
-inline constexpr const char* const
-    PAINTING_CONTEXT_ANDROID_FLUSH_UI_OPERATION_BATCH = "FlushUIOperationBatch";
 
 inline constexpr const char* const UI_OPERATION_QUEUE_LIST_REUSE_PAINTING_NODE =
     "UIOperationQueue::ListReusePaintingNodeTask";

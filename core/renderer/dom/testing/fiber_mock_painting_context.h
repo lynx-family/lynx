@@ -37,9 +37,6 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
   std::unordered_map<int, std::string> captured_create_tags_map_;
   std::unordered_set<int> captured_remove_signs_;
 
-  // TODO(liting.src): remove after painting context refactor.
-  bool HasEnableUIOperationBatching() override;
-
  private:
   void CreatePaintingNode(int id, const std::string& tag,
                           const fml::RefPtr<PropBundle>& painting_data,

@@ -1253,8 +1253,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     return task_runner_;
   }
 
-  void SetEnableUIOperationOptimize(TernaryBool enable);
-
   inline void IncreaseElementCount() { element_count_++; }
 
   inline void IncreaseWrapperElementCount() { wrapper_element_count_++; }

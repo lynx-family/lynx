@@ -3163,8 +3163,6 @@ void TemplateAssembler::OnPageConfigDecoded(
   SetEnableQueryComponentSync(config->GetEnableQueryComponentSync());
 
   const auto& element_manager = page_proxy()->element_manager();
-  element_manager->SetEnableUIOperationOptimize(
-      config->GetEnableUIOperationOptimize());
   element_manager->SetEnableLayoutOnlyTransitionOrderFix(
       config->GetEnableLayoutOnlyTransitionOrderFix());
 

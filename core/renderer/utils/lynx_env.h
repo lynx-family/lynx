@@ -70,7 +70,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     STORAGE_DIR,
     VSYNC_TRIGGERED_FROM_UI_THREAD_ANDROID,
     CLIP_RADIUS_FLATTEN,
-    ENABLE_UI_OP_BATCH,
     ENABLE_ELEMENT_STATISTIC,
     VSYNC_POST_TASK_BY_EMERGENCY,
     ENABLE_USE_MAP_BUFFER_FOR_UI_PROPS,
@@ -232,7 +231,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::GLOBAL_QUICK_CONTEXT_POOL_SIZE,
              "global_quick_context_pool_size"},
             {Key::CLIP_RADIUS_FLATTEN, "clip_radius_flatten"},
-            {Key::ENABLE_UI_OP_BATCH, "enable_ui_op_batch"},
             {Key::ENABLE_ELEMENT_STATISTIC, "enable_element_statistic"},
             {Key::VSYNC_TRIGGERED_FROM_UI_THREAD_ANDROID,
              "lynx_vsync_triggered_from_ui_thread_android"},
@@ -473,7 +471,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   std::unordered_set<std::string> GetActivatedCDPDomains();
   bool IsDebugModeEnabled();
   int32_t GetGlobalQuickContextPoolSize(int32_t default_value);
-  bool EnableUIOpBatch();
   bool EnableCSSLazyImport();
   bool EnableNewAnimatorFiber();
   bool EnableAnimationVsyncOnUIThread();

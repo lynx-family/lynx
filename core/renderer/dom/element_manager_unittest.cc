@@ -71,8 +71,10 @@ class RecordingMockPaintingContextPlatformRef
     : public MockPaintingContextPlatformRef {
  public:
   explicit RecordingMockPaintingContextPlatformRef(
+      PaintingCtxPlatformImpl* context,
       std::vector<std::string>* completion_events)
-      : completion_events_(completion_events) {}
+      : MockPaintingContextPlatformRef(context),
+        completion_events_(completion_events) {}
 
   void UpdateEventInfo(bool has_touch_pseudo) override {
     if (has_touch_pseudo) {
@@ -95,7 +97,7 @@ class RecordingMockPaintingContext : public MockPaintingContext {
  public:
   RecordingMockPaintingContext() {
     event_info_ref_ = std::make_shared<RecordingMockPaintingContextPlatformRef>(
-        &completion_events_);
+        this, &completion_events_);
     platform_ref_ = event_info_ref_;
   }
 

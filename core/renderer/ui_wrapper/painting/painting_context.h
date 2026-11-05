@@ -79,10 +79,6 @@ class PaintingContext {
                                        create_node_async, node_index);
   }
 
-  void EnableUIOperationBatching() {
-    platform_impl_->EnableUIOperationBatching();
-  }
-
   void InsertPaintingNode(int parent, int child, int index);
   // The `is_move` flag indicates that this is a part of a move operation. For
   // move operations, we can skip the detach lifecycle and maintain the view
