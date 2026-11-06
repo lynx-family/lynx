@@ -198,6 +198,10 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
   }
 
   if (tasm->EnableEventHandleRefactor()) {
+    const auto get_page_state = [tasm]() -> event::TouchEventState * {
+      auto *manager = tasm->page_proxy()->element_manager().get();
+      return manager ? manager->GetTouchEventState() : nullptr;
+    };
     if (info.is_multi_finger) {
       event::EventDispatcher::DispatchTouchEventBatch(
           name, info.params, info.timestamp,
@@ -205,10 +209,7 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
             auto *manager = tasm->page_proxy()->element_manager().get();
             return manager ? manager->node_manager()->Get(tag) : nullptr;
           },
-          [tasm]() -> event::TouchEventState * {
-            auto *manager = tasm->page_proxy()->element_manager().get();
-            return manager ? manager->GetTouchEventState() : nullptr;
-          });
+          get_page_state);
     } else {
       auto target = node_manager_->Get(info.tag);
       if (!target) {
@@ -218,7 +219,8 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
       auto event = fml::MakeRefCounted<event::TouchEvent>(
           name, info.x, info.y, info.page_x, info.page_y, info.client_x,
           info.client_y, info.timestamp, info.current_target_points);
-      event::EventDispatcher::DispatchEvent(*target, std::move(event));
+      event::EventDispatcher::DispatchTouchEventBatch(*target, std::move(event),
+                                                      get_page_state);
     }
     return;
   }

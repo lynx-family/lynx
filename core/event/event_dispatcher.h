@@ -52,6 +52,9 @@ struct TouchEventState;
 class EventDispatcher {
  public:
   static DispatchEventResult DispatchEvent(EventTarget&, fml::RefPtr<Event>);
+  static DispatchEventResult DispatchTouchEventBatch(
+      EventTarget& target, fml::RefPtr<Event> event,
+      const std::function<TouchEventState*()>& get_page_state);
   static void DispatchTouchEventBatch(
       const std::string& name, const lepus::Value& params, int64_t timestamp,
       const std::function<EventTarget*(int)>& get_target,
@@ -66,7 +69,6 @@ class EventDispatcher {
 
   fml::WeakPtr<EventTarget> target_;
   fml::RefPtr<Event> event_;
-  bool defer_touch_cancel_cleanup_{false};
 };
 
 }  // namespace event

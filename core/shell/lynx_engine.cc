@@ -347,7 +347,15 @@ void LynxEngine::SendEvent(int32_t target_id, fml::RefPtr<event::Event> event) {
   auto target =
       tasm_->page_proxy()->element_manager()->node_manager()->Get(target_id);
   if (target) {
-    event::EventDispatcher::DispatchEvent(*target, std::move(event));
+    if (event->event_type() == event::Event::EventType::kTouchEvent) {
+      event::EventDispatcher::DispatchTouchEventBatch(
+          *target, std::move(event), [this]() -> event::TouchEventState* {
+            auto* manager = tasm_->page_proxy()->element_manager().get();
+            return manager ? manager->GetTouchEventState() : nullptr;
+          });
+    } else {
+      event::EventDispatcher::DispatchEvent(*target, std::move(event));
+    }
   }
 }
 

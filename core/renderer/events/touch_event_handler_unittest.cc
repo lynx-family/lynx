@@ -7,6 +7,8 @@
 
 #include "core/renderer/events/touch_event_handler.h"
 
+#include <utility>
+
 #include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
 #include "build/build_config.h"
@@ -362,6 +364,66 @@ TEST_F(TouchEventHandlerTest, TouchCancelListenerCanDestroyPageState) {
   params->SetValue(std::to_string(other->impl_id()), lepus::CArray::Create());
   touch_event_handler_->HandleTouchEvent(tasm_.get(), "", EVENT_TOUCH_CANCEL,
                                          EventInfo(lepus::Value(params)));
+  EXPECT_EQ(call_count, 1);
+  EXPECT_EQ(tasm_->page_proxy()->element_manager(), nullptr);
+}
+
+TEST_F(TouchEventHandlerTest, ScalarTouchCancelClearsAfterListeners) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableEventHandleRefactor(true);
+  tasm_->page_config_ = config;
+  auto* manager = tasm_->page_proxy()->element_manager().get();
+  manager->SetConfig(config);
+  auto target = manager->CreateFiberElement("view");
+  target->MarkAttached();
+  manager->GetTouchEventState()->current_touches.Array()->emplace_back(7);
+  lepus::Value received;
+  target->AddEventListener(
+      EVENT_TOUCH_CANCEL,
+      std::make_shared<event::ClosureEventListener>([&](lepus::Value args) {
+        EXPECT_EQ(manager->GetTouchEventState()->current_touches.GetLength(),
+                  1u);
+        received = args.Array()->get(1);
+      }));
+  touch_event_handler_->HandleTouchEvent(
+      tasm_.get(), "", EVENT_TOUCH_CANCEL,
+      EventInfo(target->impl_id(), 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7,
+                {{target->impl_id(), 11.f, 12.f}}));
+  EXPECT_EQ(manager->GetTouchEventState()->current_touches.GetLength(), 0u);
+  const auto changed = received.GetProperty("changedTouches");
+  ASSERT_EQ(changed.GetLength(), 1u);
+  const auto touch = changed.GetProperty(0);
+  for (const auto& coordinate : {std::pair<const char*, float>{"x", 1.f},
+                                 {"y", 2.f},
+                                 {"clientX", 3.f},
+                                 {"clientY", 4.f},
+                                 {"pageX", 5.f},
+                                 {"pageY", 6.f},
+                                 {"currentTargetX", 11.f},
+                                 {"currentTargetY", 12.f}}) {
+    EXPECT_FLOAT_EQ(touch.GetProperty(coordinate.first).Number(),
+                    coordinate.second);
+  }
+}
+
+TEST_F(TouchEventHandlerTest, ScalarTouchCancelListenerCanDestroyPageState) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableEventHandleRefactor(true);
+  tasm_->page_config_ = config;
+  auto* manager = tasm_->page_proxy()->element_manager().get();
+  manager->SetConfig(config);
+  auto target = manager->CreateFiberElement("view");
+  target->MarkAttached();
+  int call_count = 0;
+  target->AddEventListener(EVENT_TOUCH_CANCEL,
+                           std::make_shared<event::ClosureEventListener>(
+                               [this, &call_count](lepus::Value) {
+                                 ++call_count;
+                                 tasm_->Destroy();
+                               }));
+  touch_event_handler_->HandleTouchEvent(
+      tasm_.get(), "", EVENT_TOUCH_CANCEL,
+      EventInfo(target->impl_id(), 1.f, 2.f, 3.f, 4.f, 5.f, 6.f));
   EXPECT_EQ(call_count, 1);
   EXPECT_EQ(tasm_->page_proxy()->element_manager(), nullptr);
 }
