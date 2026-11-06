@@ -368,7 +368,7 @@ void PageView::OnDestroy() {
   DestroyAllChildren();
   touch_view_map_.clear();
   single_touch_pointer_id_.reset();
-  single_touch_target_id_.reset();
+  single_touch_target_path_.clear();
   active_touch_pointer_id_.reset();
   active_touch_views_.clear();
 #if defined(OS_WIN) || defined(OS_MAC)
@@ -1608,6 +1608,23 @@ int PageView::GetHitTestingTargetNativeViewId(const FloatPoint& position,
   return -1;
 }
 
+PageView::TouchTargetPath PageView::CaptureTouchTargetPath(BaseView* target) {
+  TouchTargetPath path;
+  for (auto* view = target; view; view = view->Parent()) {
+    path.push_back(view->GetWeakPtr());
+  }
+  return path;
+}
+
+BaseView* PageView::ResolveTouchTarget(const TouchTargetPath& path) {
+  for (const auto& view : path) {
+    if (view && view->attach_to_tree() && !view->IsAnonymousView()) {
+      return view.get();
+    }
+  }
+  return nullptr;
+}
+
 void PageView::ReportTopViewEvent(const PointerEvent& event,
                                   ClayEventType type) {
   overlay_manager_->OnReportTopViewEvent(event, type);
@@ -1623,7 +1640,7 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
                         << " not existed or associated with a anonymous view.";
     }
     if (it != touch_view_map_.end()) {
-      top_view = this->render_delegate_->FindViewById(it->second);
+      top_view = ResolveTouchTarget(it->second);
       if (type == kClayEventTypeTouchEnd || type == kClayEventTypeTouchCancel) {
         FML_DCHECK(touch_view_map_.find(event.pointer_id) !=
                    touch_view_map_.end());
@@ -1651,7 +1668,7 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
       if (type == kClayEventTypeTouchStart) {
         FML_DCHECK(touch_view_map_.find(event.pointer_id) ==
                    touch_view_map_.end());
-        touch_view_map_[event.pointer_id] = top_view->id();
+        touch_view_map_[event.pointer_id] = CaptureTouchTargetPath(top_view);
       }
 
       bool is_raw_events =
@@ -1671,7 +1688,7 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
             return;
           }
           single_touch_pointer_id_ = event.pointer_id;
-          single_touch_target_id_ = top_view->id();
+          single_touch_target_path_ = touch_view_map_.at(event.pointer_id);
         } else if (type == kClayEventTypeTouchEnd ||
                    type == kClayEventTypeTouchCancel) {
           if (!touch_view_map_.empty()) {
@@ -1693,14 +1710,13 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
         // Native single-touch dispatch keeps the initial target until the last
         // pointer is released, even if the first physical pointer lifts
         // earlier.
-        const auto target_id = single_touch_target_id_;
+        auto* single_touch_target =
+            ResolveTouchTarget(single_touch_target_path_);
         if (type == kClayEventTypeTouchEnd ||
             type == kClayEventTypeTouchCancel) {
           single_touch_pointer_id_.reset();
-          single_touch_target_id_.reset();
+          single_touch_target_path_.clear();
         }
-        auto* single_touch_target =
-            target_id ? render_delegate_->FindViewById(*target_id) : nullptr;
         if (!single_touch_target || !single_touch_target->attach_to_tree()) {
           return;
         }
@@ -1711,6 +1727,16 @@ void PageView::ReportTopViewEvent(const PointerEvent& event,
         top_view = single_touch_target;
       }
       if (event_delegate_) {
+        if (enable_multi_touch_ && type == kClayEventTypeTouchCancel) {
+          // The current contact has already been removed from touch_view_map_.
+          // Refresh every other recipient before the delegate cancels the
+          // entire stream; they may have detached without a preceding move.
+          for (const auto& [pointer_id, path] : touch_view_map_) {
+            if (auto* target = ResolveTouchTarget(path)) {
+              event_delegate_->UpdateTouchTarget(pointer_id, target->id());
+            }
+          }
+        }
         event_delegate_->OnTouchEvent(EventTypeToString(type), top_view->id(),
                                       transformed_position.x(),
                                       transformed_position.y(), position.x(),
@@ -2398,7 +2424,7 @@ void PageView::ResetPageView(bool recycle) {
   SetupAnimationCallback();
   touch_view_map_.clear();
   single_touch_pointer_id_.reset();
-  single_touch_target_id_.reset();
+  single_touch_target_path_.clear();
   active_touch_pointer_id_.reset();
   active_touch_views_.clear();
 #if defined(OS_WIN) || defined(OS_MAC)
