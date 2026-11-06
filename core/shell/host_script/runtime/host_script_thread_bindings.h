@@ -12,8 +12,10 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "base/include/fml/task_runner.h"
+#include "base/include/thread/timed_task.h"
 #include "core/runtime/js/jsi/jsi.h"
 #include "core/shell/host_script/runtime/process_runtime.h"
 
@@ -62,11 +64,13 @@ class HostScriptThreadBindings final
   CallResult Run(Domain domain, const Value* args, size_t count);
   bool DefineProperty(runtime::js::Object& target, const char* name,
                       Value value, bool mutable_export = true);
+  CallResult SetTimeout(const Value* args, size_t count);
   void Complete(uint64_t request, const Result& result);
   void Reject(Pending pending, const char* code, const char* message);
 
   Runtime& runtime_;
   fml::RefPtr<fml::TaskRunner> runner_;
+  base::TimedTaskManager timers_;
   Executor executor_;
   std::atomic<bool> attached_{false};
   // Owner-thread state; Detach clears every engine reference explicitly.
