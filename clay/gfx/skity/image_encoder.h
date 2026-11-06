@@ -7,7 +7,13 @@
 
 #include <memory>
 
+#ifdef ENABLE_SKITY_CODEC
 #include "skity/codec/codec.hpp"
+#else
+namespace skity {
+class Codec;
+}  // namespace skity
+#endif
 
 namespace clay {
 
