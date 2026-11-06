@@ -168,6 +168,16 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
     return this.nativePtr;
   }
 
+  /** Releases an unattached standalone runtime. Repeated calls are harmless. */
+  destroy(): void {
+    if (this.nativePtr === BigInt(0)) {
+      return;
+    }
+    this.nativeDestroy();
+    this.nativePtr = BigInt(0);
+    this.clients.clear();
+  }
+
   getLastScriptUrl(): string | undefined {
     return this.lastScriptUrl;
   }

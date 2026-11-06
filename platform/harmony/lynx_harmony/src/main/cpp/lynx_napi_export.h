@@ -20,6 +20,7 @@
 #include "core/shell/harmony/embedder_platform_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/devtool_lifecycle_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/devtool_settings_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/host_script_binding_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_white_board_harmony.h"
@@ -59,6 +60,7 @@ void LynxNapiInit(napi_env env, napi_value exports) {
   lynx::harmony::LynxInfoReporterHelper::Init(env, exports);
   lynx::harmony::LynxTemplateBundleHarmony::Init(env, exports);
   lynx::harmony::LynxRuntimeWrapper::Init(env, exports);
+  lynx::harmony::InitHostScriptBinding(env, exports);
   lynx::tasm::harmony::DevToolLifecycleHarmony::Init(env, exports);
   lynx::tasm::harmony::DevToolSettingsHarmony::Init(env, exports);
 #if LYNX_HARMONY_HAS_RELAX2NATIVE_INIT

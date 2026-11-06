@@ -194,13 +194,13 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
 LynxRuntimeWrapper::~LynxRuntimeWrapper() { DestroyRuntime(); }
 
 void LynxRuntimeWrapper::DestroyRuntime() {
+  if (destroyed_) return;
   for (auto& it : session_storage_callback_refs_) {
     napi_delete_reference(env_, it.second);
   }
-  if (is_attached_) {
-    return;
-  }
   session_storage_callback_refs_.clear();
+  if (is_attached_) return;
+  destroyed_ = true;
   runtime_standalone_->DestroyRuntime();
 }
 
@@ -232,6 +232,7 @@ napi_value LynxRuntimeWrapper::Init(napi_env env, napi_value exports) {
   napi_property_descriptor properties[] = {
       DECLARE_NAPI_FUNCTION("nativeCreate", NativeCreate),
       DECLARE_NAPI_FUNCTION("nativeEvaluateScript", NativeEvaluateScript),
+      DECLARE_NAPI_FUNCTION("nativeDestroy", NativeDestroy),
       DECLARE_NAPI_FUNCTION("nativeEvaluateBundleScript",
                             NativeEvaluateTemplateBundle),
       DECLARE_NAPI_FUNCTION("nativeTransitionToFullRuntime",
@@ -376,6 +377,24 @@ napi_value LynxRuntimeWrapper::NativeEvaluateScript(napi_env env,
     obj->inspector_owner_->OnLoaded(url);
   }
   obj->RuntimeStandalone().EvaluateScript(std::move(url), std::move(sources));
+  return nullptr;
+}
+
+napi_value LynxRuntimeWrapper::NativeDestroy(napi_env env,
+                                             napi_callback_info info) {
+  napi_value self;
+  napi_get_cb_info(env, info, nullptr, nullptr, &self, nullptr);
+  LynxRuntimeWrapper* wrapper = nullptr;
+  napi_unwrap(env, self, reinterpret_cast<void**>(&wrapper));
+  if (!wrapper) return nullptr;
+  if (wrapper->is_attached_) {
+    napi_throw_error(env, "INVALID_STATE",
+                     "Cannot destroy an attached runtime");
+    return nullptr;
+  }
+  // Release the runtime explicitly; the platform owns the wrapped allocation
+  // until finalization. Removing a wrap may itself invoke its finalizer.
+  wrapper->DestroyRuntime();
   return nullptr;
 }
 
