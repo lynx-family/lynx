@@ -7,6 +7,8 @@
 #include "core/public/jsb/extension_module_factory.h"
 #include "core/runtime/js/bindings/interceptor/interceptor_factory.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module.h"
+#include "core/runtime/js/bindings/modules/module_interceptor.h"
+#include "core/runtime/js/bindings/modules/module_interceptor_registry.h"
 
 namespace lynx {
 namespace runtime {
@@ -103,7 +105,8 @@ LynxModuleProviderFunction LynxModuleManager::BindingFunc(
 }
 
 void LynxModuleManager::InitModuleInterceptor() {
-  group_interceptor_ = InterceptorFactory::CreateGroupInterceptor();
+  group_interceptor_ = ModuleInterceptorRegistry::Install(
+      InterceptorFactory::CreateGroupInterceptor());
 }
 
 void LynxModuleManager::SetTemplateUrl(const std::string &url) {

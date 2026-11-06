@@ -31,10 +31,10 @@ class MockModuleDelegate : public ModuleDelegate {
     functions_.push_back(std::move(func));
     return functions_.size() - 1;
   }
-  void CallJSCallback(
-      const std::shared_ptr<ModuleCallback>& callback,
-      base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
-      int64_t id_to_delete = ModuleCallback::kInvalidCallbackId) override {
+  void CallJSCallback(const std::shared_ptr<ModuleCallback>& callback,
+                      base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
+                      int64_t id_to_delete = ModuleCallback::kInvalidCallbackId,
+                      bool force_async = false) override {
     if (rt_) {
       auto index = callback->callback_id();
       functions_[index].call(*rt_, nullptr, 0);
