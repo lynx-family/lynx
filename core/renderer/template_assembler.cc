@@ -3349,6 +3349,18 @@ std::pair<ComponentMould*, std::string> TemplateAssembler::FindComponentMould(
 
 void TemplateAssembler::SendGlobalEventToLepus(const std::string& name,
                                                const lepus_value& params) {
+  // Reserved transfer commands use the Engine event channel, not JS globals.
+  if (name == "__CreateTransfer" || name == "__SetTransferProps" ||
+      name == "__DestroyTransfer") {
+    auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
+    auto proxy = GetContextProxy(runtime::ContextProxy::Type::kEngine);
+    if (context && proxy && proxy->HasEventListener(name) && params.IsArray() &&
+        params.Array()->size() == 1) {
+      DispatchEventFromEngineToCoreContext(context, name, name, true,
+                                          params.Array()->get(0));
+    }
+    return;
+  }
   auto iter = lepus_event_listeners_.find(name);
   if (iter == lepus_event_listeners_.end() || !iter->second.IsCallable()) {
     return;
