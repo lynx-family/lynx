@@ -1095,6 +1095,9 @@ class Element : public lepus::RefCounted,
   std::pair<CSSValuePattern, CSSValuePattern>
   ConvertDynamicStyleFlagToCSSValuePattern(uint32_t style);
   void NotifyElementSizeUpdated();
+
+  // Engine-thread size notifications in logical pixels.
+  void SendSizeChangeEvent();
   void NotifyUnitValuesUpdatedToAnimation(uint32_t style);
 
   inline void set_is_layout_only(bool is_layout_only) {
@@ -2319,6 +2322,8 @@ class Element : public lepus::RefCounted,
    */
   friend class StyleResolver;
   StyleResolver style_resolver_;
+
+  std::array<float, 2> last_size_change_{-1.f, -1.f};
 
   // relevant to layout and frame
   float width_{0};
