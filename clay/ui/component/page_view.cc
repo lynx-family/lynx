@@ -2589,6 +2589,7 @@ void PageView::MakeRasterSnapshot(
     return;
   }
 #endif
+#if !defined(ENABLE_SKITY) || defined(ENABLE_SKITY_CODEC)
   if (!target) {
     callback(nullptr, 0, 0);
     return;
@@ -2706,6 +2707,7 @@ void PageView::MakeRasterSnapshot(
         }
 #endif  // ENABLE_SKITY
       });
+#endif  // !ENABLE_SKITY || ENABLE_SKITY_CODEC
 }
 
 fml::RefPtr<PaintImage> PageView::MakeRasterSnapshot(GrPicturePtr picture,
