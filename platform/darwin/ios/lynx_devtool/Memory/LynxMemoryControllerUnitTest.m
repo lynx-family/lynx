@@ -11,6 +11,8 @@
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 
+#include <math.h>
+
 @interface LynxMemoryListenerUnitTest : XCTestCase
 
 @end
@@ -82,8 +84,6 @@
   largerInstance.mainThreadRuntimeBytes = 30;
   largerInstance.backgroundThreadRuntimeBytes = 10;
   largerInstance.btsRuntimeGroupId = @"group-1";
-  largerInstance.btsRuntimeType = @"quickjs";
-  largerInstance.btsRuntimeTotalBytes = 200;
 
   LynxInstanceMemoryUsage* emptyStringInstance = [[LynxInstanceMemoryUsage alloc] init];
   emptyStringInstance.instanceId = 1;
@@ -98,21 +98,13 @@
   queryResult.completedInstanceCount = 2;
   queryResult.totalBytes = 110;
   queryResult.appBytes = 220;
+  queryResult.ratioToApp = 0.5;
   queryResult.elementBytes = 20;
   queryResult.elementNodeCount = 3;
   queryResult.viewBytes = 40;
   queryResult.mainThreadRuntimeBytes = 30;
   queryResult.backgroundThreadRuntimeBytes = 10;
   queryResult.instances = @[ largerInstance, emptyStringInstance ];
-  LynxInstanceMemoryUsage* residual = [[LynxInstanceMemoryUsage alloc] init];
-  residual.instanceId = 3;
-  residual.pageId = @"native-page-key";
-  residual.url = @"https://host/exited?route=detail#original";
-  residual.btsRuntimeGroupId = @"group-1";
-  residual.btsRuntimeType = @"quickjs";
-  residual.btsRuntimeTotalBytes = 200;
-  residual.backgroundThreadRuntimeResidualBytes = 100;
-  queryResult.destroyedInstances = @[ residual ];
 
   id queryMock = OCMClassMock([LynxMemoryUsageQuery class]);
   OCMStub(ClassMethod([queryMock sharedInstance])).andReturn(queryMock);
@@ -167,24 +159,6 @@
                                 NSDictionary* detail = record[@"detail"];
                                 XCTAssertNil([detail objectForKey:@""]);
                                 XCTAssertEqualObjects(detail[@"source"], @"test");
-                                XCTAssertEqualObjects(firstInstance[@"btsRuntimeType"], @"quickjs");
-                                XCTAssertEqualObjects(firstInstance[@"btsRuntimeTotalBytes"], @200);
-                                XCTAssertNil(result[@"ratioToApp"]);
-                                NSArray* destroyedInstances = result[@"destroyedInstances"];
-                                XCTAssertEqual(destroyedInstances.count, 1);
-                                NSDictionary* destroyed = destroyedInstances[0];
-                                XCTAssertEqualObjects(destroyed[@"instanceId"], @3);
-                                XCTAssertEqualObjects(destroyed[@"pageId"], @"native-page-key");
-                                XCTAssertEqualObjects(destroyed[@"url"], residual.url);
-                                XCTAssertEqualObjects(
-                                    destroyed[@"backgroundThreadRuntimeResidualBytes"], @100);
-                                for (NSString* key in @[
-                                       @"totalBytes", @"elementBytes", @"elementNodeCount",
-                                       @"viewBytes", @"viewDetail", @"mainThreadRuntimeBytes",
-                                       @"backgroundThreadRuntimeBytes"
-                                     ]) {
-                                  XCTAssertNil(destroyed[key]);
-                                }
                                 NSDictionary* secondInstance = instances[1];
                                 XCTAssertEqualObjects(secondInstance[@"instanceId"], @1);
                                 XCTAssertEqualObjects(secondInstance[@"pageId"], @"");
@@ -197,10 +171,9 @@
   [queryMock stopMocking];
 }
 
-- (void)testQueryAllMemoryUsagePropagatesMonitoringDisabledError {
+- (void)testQueryAllMemoryUsageReturnsEmptyObjectOnSerializationFailure {
   LynxGlobalMemoryUsageResult* queryResult = [[LynxGlobalMemoryUsageResult alloc] init];
-  queryResult.collectionStatus = LynxMemoryCollectionStatusError;
-  queryResult.errorMessage = @"Memory monitoring disabled";
+  queryResult.ratioToApp = NAN;
 
   id queryMock = OCMClassMock([LynxMemoryUsageQuery class]);
   OCMStub(ClassMethod([queryMock sharedInstance])).andReturn(queryMock);
@@ -217,15 +190,13 @@
   [[LynxMemoryController shareInstance]
       queryAllMemoryUsageWithTimeoutMs:123
                               callback:^(NSString* resultJson, NSString* errorMessage) {
-                                XCTAssertEqualObjects(errorMessage, queryResult.errorMessage);
+                                XCTAssertEqualObjects(resultJson, @"{}");
+                                XCTAssertGreaterThan(errorMessage.length, 0);
                                 NSData* data = [resultJson dataUsingEncoding:NSUTF8StringEncoding];
                                 NSDictionary* result = [NSJSONSerialization JSONObjectWithData:data
                                                                                        options:0
                                                                                          error:nil];
                                 XCTAssertTrue([result isKindOfClass:[NSDictionary class]]);
-                                XCTAssertEqualObjects(result[@"collectionStatus"], @"error");
-                                XCTAssertEqualObjects(result[@"errorMessage"], errorMessage);
-                                XCTAssertEqualObjects(result[@"destroyedInstances"], @[]);
                                 [expectation fulfill];
                               }];
   [self waitForExpectations:@[ expectation ] timeout:1.0];

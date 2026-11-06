@@ -16,7 +16,7 @@ import org.junit.Test;
 
 public class LynxMemoryUsageQueryTest {
   @Test
-  public void queryGlobalMemoryUsageReturnsErrorWithoutNativeLibraryAsync() throws Exception {
+  public void queryGlobalMemoryUsageReturnsEmptyCompletedResultAsync() throws Exception {
     LynxEnv env = LynxEnv.inst();
     boolean wasNativeLibraryLoaded = env.mIsNativeLibraryLoaded;
     env.setNativeLibraryLoaded(false);
@@ -41,21 +41,20 @@ public class LynxMemoryUsageQueryTest {
     LynxGlobalMemoryUsageResult result = resultRef.get();
     assertNotNull(result);
     assertTrue(result.getCollectionStartMs() >= beforeQueryMs);
-    assertEquals(LynxMemoryCollectionStatus.ERROR, result.getCollectionStatus());
-    assertTrue(result.getErrorMessage().contains("not initialized"));
+    assertEquals(LynxMemoryCollectionStatus.COMPLETED, result.getCollectionStatus());
     assertTrue(result.getCollectionDurationMs() >= 0L);
     assertEquals(2000L, result.getCollectionTimeoutMs());
     assertEquals(0, result.getExpectedInstanceCount());
     assertEquals(0, result.getCompletedInstanceCount());
     assertEquals(0L, result.getTotalBytes());
     assertTrue(result.getAppBytes() >= 0L);
+    assertEquals(0D, result.getRatioToApp(), 0D);
     assertEquals(0L, result.getElementBytes());
     assertEquals(0L, result.getElementNodeCount());
     assertEquals(0L, result.getViewBytes());
     assertEquals(0L, result.getMainThreadRuntimeBytes());
     assertEquals(0L, result.getBackgroundThreadRuntimeBytes());
     assertTrue(result.getInstances().isEmpty());
-    assertTrue(result.getDestroyedInstances().isEmpty());
   }
 
   @Test
@@ -88,12 +87,7 @@ public class LynxMemoryUsageQueryTest {
     }
     LynxGlobalMemoryUsageResult result = resultRef.get();
     assertNotNull(result);
-    assertTrue(result.getCollectionStatus() == LynxMemoryCollectionStatus.COMPLETED
-        || result.getCollectionStatus() == LynxMemoryCollectionStatus.ERROR);
-    if (result.getCollectionStatus() == LynxMemoryCollectionStatus.ERROR) {
-      assertEquals("Memory monitoring disabled", result.getErrorMessage());
-      assertTrue(result.getDestroyedInstances().isEmpty());
-    }
+    assertEquals(LynxMemoryCollectionStatus.COMPLETED, result.getCollectionStatus());
     assertEquals(result.getExpectedInstanceCount(), result.getCompletedInstanceCount());
   }
 

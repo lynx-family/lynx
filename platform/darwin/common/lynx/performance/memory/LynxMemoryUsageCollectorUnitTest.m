@@ -19,13 +19,7 @@
       queryLynxGlobalMemoryUsageAsync:^(LynxGlobalMemoryUsageResult *result) {
         XCTAssertFalse(callbackCanRunSynchronously);
         XCTAssertNotNil(result);
-        XCTAssertTrue(result.collectionStatus == LynxMemoryCollectionStatusCompleted ||
-                      result.collectionStatus == LynxMemoryCollectionStatusError);
-        if (result.collectionStatus == LynxMemoryCollectionStatusError) {
-          XCTAssertGreaterThan(result.errorMessage.length, 0);
-          XCTAssertEqual(result.instances.count, 0);
-          XCTAssertEqual(result.destroyedInstances.count, 0);
-        }
+        XCTAssertEqual(result.collectionStatus, LynxMemoryCollectionStatusCompleted);
         XCTAssertEqual(result.expectedInstanceCount, result.completedInstanceCount);
         XCTAssertEqual(result.totalBytes, result.elementBytes + result.viewBytes +
                                               result.mainThreadRuntimeBytes +
