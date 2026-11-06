@@ -97,7 +97,7 @@ declare_args() {
 # Image-producing capabilities bring their required codec implementation.
 # A false request does not remove a dependency required by another capability.
 use_skity_codec =
-    enable_skity_codec || !is_android ||
+    enable_skity_codec || !(is_android || is_ios) ||
     (enable_skity && (enable_clay_map || enable_screenshot_service))
 
 if (enable_skity) {
