@@ -37,7 +37,7 @@ public final class MemoryUsageResultSerializer {
             @Override
             public void onResult(@NonNull LynxGlobalMemoryUsageResult result) {
               String resultJson = EMPTY_RESULT_JSON;
-              String errorMessage = "";
+              String errorMessage = result.getErrorMessage();
               try {
                 resultJson = toJson(result).toString();
               } catch (Throwable throwable) {
@@ -59,13 +59,13 @@ public final class MemoryUsageResultSerializer {
     JSONObject json = new JSONObject();
     json.put("collectionStartMs", result.getCollectionStartMs());
     json.put("collectionStatus", statusToString(result.getCollectionStatus()));
+    json.put("errorMessage", result.getErrorMessage());
     json.put("collectionDurationMs", result.getCollectionDurationMs());
     json.put("collectionTimeoutMs", result.getCollectionTimeoutMs());
     json.put("expectedInstanceCount", result.getExpectedInstanceCount());
     json.put("completedInstanceCount", result.getCompletedInstanceCount());
     json.put("totalBytes", result.getTotalBytes());
     json.put("appBytes", result.getAppBytes());
-    json.put("ratioToApp", result.getRatioToApp());
     json.put("elementBytes", result.getElementBytes());
     json.put("elementNodeCount", result.getElementNodeCount());
     json.put("viewBytes", result.getViewBytes());
@@ -82,6 +82,20 @@ public final class MemoryUsageResultSerializer {
       }
     }
     json.put("instances", instancesJson);
+    org.json.JSONArray destroyedInstancesJson = new org.json.JSONArray();
+    for (LynxInstanceMemoryUsage instance : result.getDestroyedInstances()) {
+      JSONObject destroyed = new JSONObject();
+      destroyed.put("instanceId", instance.getInstanceId());
+      destroyed.put("pageId", safeString(instance.getPageId()));
+      destroyed.put("url", safeString(instance.getUrl()));
+      destroyed.put("btsRuntimeGroupId", safeString(instance.getBtsRuntimeGroupId()));
+      destroyed.put("btsRuntimeType", instance.getBtsRuntimeType());
+      destroyed.put("btsRuntimeTotalBytes", instance.getBtsRuntimeTotalBytes());
+      destroyed.put("backgroundThreadRuntimeResidualBytes",
+          instance.getBackgroundThreadRuntimeResidualBytes());
+      destroyedInstancesJson.put(destroyed);
+    }
+    json.put("destroyedInstances", destroyedInstancesJson);
     return json;
   }
 
@@ -100,6 +114,8 @@ public final class MemoryUsageResultSerializer {
     json.put("mainThreadRuntimeBytes", instance.getMainThreadRuntimeBytes());
     json.put("backgroundThreadRuntimeBytes", instance.getBackgroundThreadRuntimeBytes());
     json.put("btsRuntimeGroupId", safeString(instance.getBtsRuntimeGroupId()));
+    json.put("btsRuntimeType", instance.getBtsRuntimeType());
+    json.put("btsRuntimeTotalBytes", instance.getBtsRuntimeTotalBytes());
     return json;
   }
 
@@ -158,6 +174,9 @@ public final class MemoryUsageResultSerializer {
   private static String statusToString(@Nullable LynxMemoryCollectionStatus status) {
     if (status == LynxMemoryCollectionStatus.TIMEOUT) {
       return "timeout";
+    }
+    if (status == LynxMemoryCollectionStatus.ERROR) {
+      return "error";
     }
     return "completed";
   }

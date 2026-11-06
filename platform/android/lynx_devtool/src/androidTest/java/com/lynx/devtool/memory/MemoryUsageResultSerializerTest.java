@@ -35,6 +35,8 @@ public class MemoryUsageResultSerializerTest {
     assertEquals(0, json.getInt("completedInstanceCount"));
     assertEquals(0L, json.getLong("totalBytes"));
     assertEquals(0, json.getJSONArray("instances").length());
+    assertEquals(0, json.getJSONArray("destroyedInstances").length());
+    assertFalse(json.has("ratioToApp"));
   }
 
   @Test
@@ -85,6 +87,30 @@ public class MemoryUsageResultSerializerTest {
   }
 
   @Test
+  public void serializesDestroyedInstancesWithoutPageMetrics() throws Exception {
+    Method fromNative = LynxGlobalMemoryUsageResult.class.getDeclaredMethod("fromNative",
+        long.class, long.class, long.class, int.class, long[].class, long[].class, String[].class,
+        long[].class, String[].class);
+    fromNative.setAccessible(true);
+    LynxGlobalMemoryUsageResult result = (LynxGlobalMemoryUsageResult) fromNative.invoke(null, 100L,
+        20L, 2000L, 0, new long[6], new long[0], new String[0], new long[] {2, 900, 400},
+        new String[] {"page-key", "https://host/page#original", "group", "quickjs"});
+    JSONObject page = MemoryUsageResultSerializer.toJson(result)
+                          .getJSONArray("destroyedInstances")
+                          .getJSONObject(0);
+    assertEquals(2, page.getInt("instanceId"));
+    assertEquals("page-key", page.getString("pageId"));
+    assertEquals("https://host/page#original", page.getString("url"));
+    assertEquals("quickjs", page.getString("btsRuntimeType"));
+    assertEquals(900, page.getLong("btsRuntimeTotalBytes"));
+    assertEquals(400, page.getLong("backgroundThreadRuntimeResidualBytes"));
+    for (String key : new String[] {"totalBytes", "elementBytes", "elementNodeCount", "viewBytes",
+             "viewDetail", "mainThreadRuntimeBytes", "backgroundThreadRuntimeBytes"}) {
+      assertFalse(page.has(key));
+    }
+  }
+
+  @Test
   public void queryAllMemoryUsageInvokesCallbackOnce() throws Exception {
     LynxEnv env = LynxEnv.inst();
     boolean wasNativeLibraryLoaded = env.isNativeLibraryLoaded();
@@ -100,9 +126,10 @@ public class MemoryUsageResultSerializerTest {
               callbackCount[0]++;
               try {
                 JSONObject json = new JSONObject(resultJson);
-                assertEquals("completed", json.getString("collectionStatus"));
+                assertEquals("error", json.getString("collectionStatus"));
                 assertEquals(0, json.getInt("expectedInstanceCount"));
-                assertTrue(errorMessage.isEmpty());
+                assertEquals(errorMessage, json.getString("errorMessage"));
+                assertTrue(errorMessage.contains("not initialized"));
               } catch (Exception exception) {
                 throw new AssertionError(exception);
               }
