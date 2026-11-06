@@ -49,9 +49,18 @@ class FakeEventSimulationTarget : public LynxViewEventSimulationTarget {
     inserted_texts.push_back(text);
   }
 
+  void DispatchKeyEvent(const std::string& type, const std::string& key,
+                        const std::string& text, int modifiers,
+                        bool auto_repeat) override {
+    key_events.push_back(type + "|" + key + "|" + text + "|" +
+                         std::to_string(modifiers) + "|" +
+                         (auto_repeat ? "repeat" : "once"));
+  }
+
   std::vector<SyntheticPointerEventRecord> events;
   std::vector<int> focused_node_ids;
   std::vector<std::string> inserted_texts;
+  std::vector<std::string> key_events;
 };
 
 class LynxViewEventSimulationProxyTest : public testing::Test {
@@ -74,6 +83,16 @@ TEST_F(LynxViewEventSimulationProxyTest, ForwardsFocusAndInsertText) {
   EXPECT_EQ(target->focused_node_ids, std::vector<int>({18}));
   EXPECT_EQ(target->inserted_texts,
             std::vector<std::string>({"Lynx DevTool input"}));
+}
+
+TEST_F(LynxViewEventSimulationProxyTest, ForwardsKeyEvent) {
+  FakeEventSimulationTarget* target = nullptr;
+  auto proxy = CreateProxy(&target);
+
+  proxy.DispatchKeyEvent("keyDown", "a", "a", 4, true);
+
+  EXPECT_EQ(target->key_events,
+            std::vector<std::string>({"keyDown|a|a|4|repeat"}));
 }
 
 TEST_F(LynxViewEventSimulationProxyTest, EmulateTouchForwardsUnchanged) {

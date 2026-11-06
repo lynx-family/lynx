@@ -27,6 +27,9 @@ class LynxViewEventSimulationTarget {
                                           int modifiers, int click_count) = 0;
   virtual void Focus(int node_id) = 0;
   virtual void InsertText(const std::string& text) = 0;
+  virtual void DispatchKeyEvent(const std::string& type, const std::string& key,
+                                const std::string& text, int modifiers,
+                                bool auto_repeat) = 0;
 };
 
 class LynxViewEventSimulationProxy final
@@ -43,6 +46,9 @@ class LynxViewEventSimulationProxy final
                     int modifiers, int click_count) override;
   void Focus(int node_id) override;
   void InsertText(const std::string& text) override;
+  void DispatchKeyEvent(const std::string& type, const std::string& key,
+                        const std::string& text, int modifiers,
+                        bool auto_repeat) override;
 
  private:
   std::unique_ptr<LynxViewEventSimulationTarget> target_;

@@ -259,6 +259,10 @@ void LynxUIRendererWindowless::SendPointerEvent(const ClayPointerEvent& event) {
   headless_engine_->SendPointerEvents(&event, 1);
 }
 
+void LynxUIRendererWindowless::SendKeyEvent(const ClayKeyEvent& event) {
+  headless_engine_->SendKeyEvent(&event, nullptr, nullptr);
+}
+
 const char* LynxUIRendererWindowless::GetClipboardData() const {
   if (windowless_renderer_ && windowless_renderer_->get_clipboard_data) {
     return windowless_renderer_->get_clipboard_data(

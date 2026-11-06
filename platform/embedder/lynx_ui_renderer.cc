@@ -4,9 +4,12 @@
 
 #include "platform/embedder/lynx_ui_renderer.h"
 
+#include <cctype>
 #include <string_view>
+#include <utility>
 
 #include "base/include/timer/time_utils.h"
+#include "clay/ui/event/key_codes.h"
 #include "platform/embedder/clay_input_event_target.h"
 
 namespace lynx {
@@ -26,6 +29,57 @@ static constexpr const char* kMouseRightButton = "right";
 static constexpr const char* kMouseMiddleButton = "middle";
 static constexpr const char* kMouseBackButton = "back";
 static constexpr const char* kMouseForwardButton = "forward";
+static constexpr const char* kKeyDown = "keyDown";
+static constexpr const char* kRawKeyDown = "rawKeyDown";
+static constexpr const char* kKeyUp = "keyUp";
+
+namespace keycodes = clay::keycodes;
+
+struct KeyCodes {
+  uint64_t physical;
+  uint64_t logical;
+};
+
+// Clay routes key input by logical key; physical only needs to be non-empty.
+constexpr uint64_t kPlaceholderPhysical = keycodes::kPhysicalKeyA;
+constexpr KeyCodes kUnidentifiedKey = {kPlaceholderPhysical,
+                                       keycodes::kLogicalUnidentified};
+
+constexpr std::pair<std::string_view, KeyCodes> kNamedKeys[] = {
+    {"Enter", {keycodes::kPhysicalEnter, keycodes::kLogicalEnter}},
+    {"Backspace", {keycodes::kPhysicalBackspace, keycodes::kLogicalBackspace}},
+    {"Delete", {keycodes::kPhysicalDelete, keycodes::kLogicalDelete}},
+    {"Tab", {keycodes::kPhysicalTab, keycodes::kLogicalTab}},
+    {"Escape", {keycodes::kPhysicalEscape, keycodes::kLogicalEscape}},
+    {"ArrowLeft", {keycodes::kPhysicalArrowLeft, keycodes::kLogicalArrowLeft}},
+    {"ArrowRight",
+     {keycodes::kPhysicalArrowRight, keycodes::kLogicalArrowRight}},
+    {"ArrowUp", {keycodes::kPhysicalArrowUp, keycodes::kLogicalArrowUp}},
+    {"ArrowDown", {keycodes::kPhysicalArrowDown, keycodes::kLogicalArrowDown}},
+    {"Home", {keycodes::kPhysicalHome, keycodes::kLogicalHome}},
+    {"End", {keycodes::kPhysicalEnd, keycodes::kLogicalEnd}},
+    {"Shift", {keycodes::kPhysicalShiftLeft, keycodes::kLogicalShiftLeft}},
+    {"Control",
+     {keycodes::kPhysicalControlLeft, keycodes::kLogicalControlLeft}},
+    {"Alt", {keycodes::kPhysicalAltLeft, keycodes::kLogicalAltLeft}},
+    {"Meta", {keycodes::kPhysicalMetaLeft, keycodes::kLogicalMetaLeft}},
+};
+
+KeyCodes ResolveKeyCodes(std::string_view key) {
+  for (const auto& [name, codes] : kNamedKeys) {
+    if (key == name) {
+      return codes;
+    }
+  }
+  // Printable ASCII keys use their lowercase code point as the logical key.
+  if (key.size() == 1) {
+    const unsigned char c = key[0];
+    if (std::isprint(c)) {
+      return {kPlaceholderPhysical, static_cast<uint64_t>(std::tolower(c))};
+    }
+  }
+  return kUnidentifiedKey;
+}
 
 int64_t ButtonMask(std::string_view button) {
   if (button == kMouseLeftButton) {
@@ -199,6 +253,33 @@ void LynxUIRenderer::EmulateTouchSyntheticEvent(const char* event_type, float x,
   }
 
   DispatchSyntheticPointerEvent(event);
+}
+
+void LynxUIRenderer::DispatchKeyEvent(const std::string& type,
+                                      const std::string& key,
+                                      const std::string& text, int modifiers,
+                                      bool auto_repeat) {
+  // Key events do not insert text yet; text input uses InsertText.
+  (void)text;
+  // ClayKeyEvent has no modifier field, so modifiers are not applied yet.
+  (void)modifiers;
+  if (type != kKeyDown && type != kRawKeyDown && type != kKeyUp) {
+    return;
+  }
+
+  const KeyCodes codes = ResolveKeyCodes(key);
+  ClayKeyEvent event = {};
+  event.struct_size = sizeof(event);
+  event.timestamp = static_cast<double>(base::CurrentTimeMicroseconds());
+  event.physical = codes.physical;
+  event.logical = codes.logical;
+  event.synthesized = true;
+  if (type == kKeyUp) {
+    event.type = kClayKeyEventTypeUp;
+  } else {
+    event.type = auto_repeat ? kClayKeyEventTypeRepeat : kClayKeyEventTypeDown;
+  }
+  SendKeyEvent(event);
 }
 
 }  // namespace embedder
