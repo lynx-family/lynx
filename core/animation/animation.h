@@ -196,6 +196,7 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void CreateEventAndSend(const base::String& event);
   bool HasIterationEvent() const;
   void InitializeSampleTiming(fml::TimePoint frame_time);
+  fml::TimePoint ResolveStyleSampleTime(fml::TimePoint frame_time) const;
   bool Tick(fml::TimePoint& time);
   bool pending_final_sample_{false};
   // Records one requested frame, including a seek while paused.

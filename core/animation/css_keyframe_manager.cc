@@ -626,6 +626,14 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
       if (animation == nullptr || animation->keyframe_effect() == nullptr) {
         continue;
       }
+      const bool has_custom_property_keyframes =
+          animation->keyframe_effect()->HasCustomPropertyKeyframes();
+      // Capture the same timestamp before SampleAt can finish the animation
+      // and clear its pending foreground sample.
+      const auto custom_property_sample_time =
+          has_custom_property_keyframes
+              ? animation->ResolveStyleSampleTime(frame_time)
+              : frame_time;
       // SampleAt samples normal CSS property curves into styles and advances
       // timeline side effects. For custom-property-only keyframes it still
       // synthesizes start/end/iteration events even though styles stays empty.
@@ -640,8 +648,6 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
               sample_ref.property_resets.end());
         }
       }
-      const bool has_custom_property_keyframes =
-          animation->keyframe_effect()->HasCustomPropertyKeyframes();
       tasm::CustomPropertiesMap custom_property_overrides;
       if (has_custom_property_keyframes) {
         // Custom property declarations such as `--box-padding: 16px` are
@@ -650,7 +656,8 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
         // `padding: var(--box-padding)`, are rebuilt by style resolution after
         // these overrides are applied.
         animation->keyframe_effect()->SampleCustomPropertyKeyframes(
-            frame_time, GetKeyframesCustomPropertyMap(animation->name()),
+            custom_property_sample_time,
+            GetKeyframesCustomPropertyMap(animation->name()),
             custom_property_overrides);
         if (!custom_property_overrides.empty()) {
           auto& sample_ref = ensure_sample();
