@@ -110,6 +110,16 @@ lepus::Value AppendTestStyle(const lepus::Value& previous, CSSPropertyID id,
   return lepus::Value(node);
 }
 
+lepus::Value AppendTestBoxData(const lepus::Value& previous,
+                               const char* horizontal, const char* vertical,
+                               bool match_parent) {
+  return AppendTestStyle(
+      AppendTestStyle(AppendTestStyle(previous, kPropertyIDXBoxMatchParentSize,
+                                      match_parent ? "true" : "false"),
+                      kPropertyIDJustifySelf, horizontal),
+      kPropertyIDAlignSelf, vertical);
+}
+
 lepus::Value AppendTestPadding(const lepus::Value& previous) {
   auto node = lepus::Dictionary::Create();
   node->SetValue("op", lepus::Value(7));
@@ -1619,7 +1629,157 @@ TEST_P(ModifierElementTest,
   }
 }
 
-TEST_P(ModifierElementTest, WeightFillLastOperationWinsWithoutCreatingFrames) {
+TEST_P(ModifierElementTest, ParentDataFirstValuesStayTogetherAcrossPadding) {
+  auto page = CreateComposePage();
+  auto handle = CreateComposeHandle(manager);
+  auto owner = handle->content_element();
+  page->InsertNode(owner);
+  for (bool reversed : {false, true, false}) {
+    const char* weight = reversed ? "2" : "1";
+    const char* alignment = reversed ? "end" : "start";
+    auto source = AppendTestWeightFill(
+        AppendTestStyle({}, kPropertyIDLinearWeight, weight),
+        lepus::Value(reversed));
+    source = AppendTestStyle(source, kPropertyIDAlignSelf, alignment);
+    source = AppendTestPadding(source);
+    source = AppendTestWeightFill(
+        AppendTestStyle(source, kPropertyIDLinearWeight, reversed ? "1" : "2"),
+        lepus::Value(!reversed));
+    source = AppendTestStyle(source, kPropertyIDAlignSelf,
+                             reversed ? "start" : "end");
+    ASSERT_TRUE(ComposeModifierApplicator::Apply(handle.get(), source, nullptr)
+                    .success);
+    FlushAndLayout(page);
+    auto root = handle->mount_root();
+    EXPECT_EQ(lepus::Value(weight),
+              RawStyle(root.get(), kPropertyIDLinearWeight));
+    EXPECT_EQ(lepus::Value(alignment),
+              RawStyle(root.get(), kPropertyIDAlignSelf));
+    EXPECT_EQ(reversed, root->slnode()->GetCSSStyle()->GetComposeWeightFill());
+    EXPECT_TRUE(RawStyle(owner.get(), kPropertyIDLinearWeight).IsEmpty());
+    EXPECT_TRUE(RawStyle(owner.get(), kPropertyIDAlignSelf).IsEmpty());
+  }
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle.get(), {}, nullptr).success);
+  FlushAndLayout(page);
+  EXPECT_EQ(owner, handle->mount_root());
+  EXPECT_TRUE(RawStyle(owner.get(), kPropertyIDLinearWeight).IsEmpty());
+  EXPECT_TRUE(owner->slnode()->GetCSSStyle()->GetComposeWeightFill());
+}
+
+TEST_P(ModifierElementTest, LegacyParentStylesKeepLastValue) {
+  auto page = CreateComposePage();
+  auto handle = CreateComposeHandle(manager);
+  const struct {
+    CSSPropertyID id;
+    const char* first;
+    const char* last;
+  } cases[] = {{kPropertyIDMinWidth, "10px", "20px"},
+               {kPropertyIDMinHeight, "10px", "20px"},
+               {kPropertyIDFlexGrow, "1", "2"},
+               {kPropertyIDFlexShrink, "1", "2"},
+               {kPropertyIDFlexBasis, "10px", "20px"}};
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.id);
+    auto source = AppendTestStyle({}, test.id, test.first);
+    source = AppendTestPadding(source);
+    source = AppendTestStyle(source, test.id, test.last);
+    ASSERT_TRUE(ComposeModifierApplicator::Apply(handle.get(), source, nullptr)
+                    .success);
+    EXPECT_EQ(lepus::Value(test.last),
+              RawStyle(handle->mount_root().get(), test.id));
+  }
+}
+
+TEST_P(ModifierElementTest, MatchParentPaddingUsesOuterCarrierAndResets) {
+  auto page = CreateComposePage();
+  auto parent = CreateComposeHandle(manager);
+  auto* box = parent->content_element().get();
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                  parent.get(), AppendTestSize({}, 60, 40), nullptr)
+                  .success);
+  box->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  auto child = CreateComposeHandle(manager);
+  auto owner = child->content_element();
+  box->InsertNode(owner);
+  page->InsertNode(parent->mount_root());
+  for (bool before_padding : {false, true}) {
+    for (int frame_count : {0, 1, 2, 0}) {
+      SCOPED_TRACE(before_padding);
+      SCOPED_TRACE(frame_count);
+      lepus::Value source;
+      if (before_padding)
+        source = AppendTestBoxData(source, "center", "center", true);
+      for (int i = 0; i < frame_count; ++i) source = AppendTestPadding(source);
+      if (!before_padding)
+        source = AppendTestBoxData(source, "center", "center", true);
+      source = AppendTestStyle(source, kPropertyIDDisplay, "-x-box");
+      ASSERT_TRUE(ComposeModifierApplicator::Apply(child.get(), source, nullptr)
+                      .success);
+      FlushAndLayout(page);
+      auto root = child->mount_root();
+      EXPECT_TRUE(root->slnode()->GetCSSStyle()->GetXBoxMatchParentSize());
+      EXPECT_FLOAT_EQ(60, root->slnode()->GetBorderBoundWidth());
+      EXPECT_FLOAT_EQ(40, root->slnode()->GetBorderBoundHeight());
+      EXPECT_FLOAT_EQ(60 - 16 * frame_count,
+                      owner->slnode()->GetBorderBoundWidth());
+      EXPECT_FLOAT_EQ(40 - 16 * frame_count,
+                      owner->slnode()->GetBorderBoundHeight());
+      EXPECT_FLOAT_EQ(8 * frame_count,
+                      LeftFromAncestor(owner->slnode(), box->slnode()));
+      EXPECT_FLOAT_EQ(8 * frame_count,
+                      TopFromAncestor(owner->slnode(), box->slnode()));
+    }
+  }
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                  child.get(), AppendTestSize({}, 20, 10), nullptr)
+                  .success);
+  FlushAndLayout(page);
+  EXPECT_EQ(owner, child->mount_root());
+  EXPECT_FALSE(owner->slnode()->GetCSSStyle()->GetXBoxMatchParentSize());
+  EXPECT_FLOAT_EQ(20, owner->slnode()->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(10, owner->slnode()->GetBorderBoundHeight());
+}
+
+TEST_P(ModifierElementTest, FirstCompleteBoxDataWinsAcrossPadding) {
+  auto page = CreateComposePage();
+  auto parent = CreateComposeHandle(manager);
+  auto* box = parent->content_element().get();
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                  parent.get(), AppendTestSize({}, 60, 40), nullptr)
+                  .success);
+  box->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  auto child = CreateComposeHandle(manager);
+  auto owner = child->content_element();
+  box->InsertNode(owner);
+  page->InsertNode(parent->mount_root());
+  for (bool matching : {false, true, false}) {
+    auto source = AppendTestBoxData({}, matching ? "center" : "start",
+                                    matching ? "center" : "start", matching);
+    source = AppendTestPadding(source);
+    source = AppendTestBoxData(source, matching ? "end" : "center",
+                               matching ? "end" : "center", !matching);
+    source = AppendTestSize(source, 20, 20);
+    source = AppendTestStyle(source, kPropertyIDDisplay, "-x-box");
+    ASSERT_TRUE(
+        ComposeModifierApplicator::Apply(child.get(), source, nullptr).success);
+    FlushAndLayout(page);
+    auto root = child->mount_root();
+    EXPECT_EQ(matching,
+              root->slnode()->GetCSSStyle()->GetXBoxMatchParentSize());
+    EXPECT_EQ(lepus::Value(matching ? "center" : "start"),
+              RawStyle(root.get(), kPropertyIDAlignSelf));
+    EXPECT_EQ(lepus::Value(matching ? "center" : "start"),
+              RawStyle(root.get(), kPropertyIDJustifySelf));
+    EXPECT_FLOAT_EQ(matching ? 60 : 36, root->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(matching ? 40 : 36, root->slnode()->GetBorderBoundHeight());
+    EXPECT_FLOAT_EQ(matching ? 44 : 20, owner->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(matching ? 24 : 20,
+                    owner->slnode()->GetBorderBoundHeight());
+  }
+}
+
+TEST_P(ModifierElementTest, WeightFillFirstOperationWinsWithoutCreatingFrames) {
   PageOptions options;
   options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
   tasm->SetPageOptions(options);
@@ -1633,9 +1793,9 @@ TEST_P(ModifierElementTest, WeightFillLastOperationWinsWithoutCreatingFrames) {
     ASSERT_TRUE(result.success) << result.error_message;
     EXPECT_EQ(owner, handle->mount_root());
     EXPECT_EQ(0u, owner->GetChildCount());
-    EXPECT_EQ(fill, owner->computed_css_style()
-                        ->GetConstLayoutComputedStyle()
-                        ->GetComposeWeightFill());
+    EXPECT_EQ(!fill, owner->computed_css_style()
+                         ->GetConstLayoutComputedStyle()
+                         ->GetComposeWeightFill());
   }
   ASSERT_TRUE(
       ComposeModifierApplicator::Apply(handle.get(), {}, nullptr).success);
