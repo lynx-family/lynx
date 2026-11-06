@@ -247,6 +247,7 @@ if (enable_unittests) {
       "../lynx_adaptor/lynx_event_dispatcher_unittests.cc",
       "common/attribute_utils_unittests.cc",
       "component/base_image_view_unittests.cc",
+      "component/base_view_attribute_invalidation_unittests.cc",
       "component/base_view_unittests.cc",
       "component/editable/editable_view_unittests.cc",
       "component/editable/textarea_ng_view_unittests.cc",
