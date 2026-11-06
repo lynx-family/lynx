@@ -23,6 +23,7 @@ export class InspectorOwnerHarmony {
 }
 
 export class LynxDevToolEnvHarmony {
+  static loadFixture: (archive: string, directory: string) => Promise<string>;
   static initDevToolEnv: () => void;
   /** @deprecated Use DevToolSettings in @lynx/lynx instead. */
   static setSwitch: (key: string, value: boolean) => void;

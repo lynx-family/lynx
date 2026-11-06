@@ -36,6 +36,25 @@ if (is_mac || is_linux || is_win) {
   }
 }
 
+if (is_mac || is_linux) {
+  unittest_set("harmony_fixture_replay_testset") {
+    sources = [
+      "../../platform/harmony/lynx_devtool/src/main/cpp/fixture_replay_harmony.cc",
+      "../../platform/harmony/lynx_devtool/src/main/cpp/fixture_replay_harmony_unittest.cc",
+    ]
+    deps = [
+      "../../core/services/replay:replay",
+      "//third_party/modp_b64",
+      "//third_party/zlib:minizip",
+    ]
+  }
+
+  unittest_exec("harmony_fixture_replay_unittests_exec") {
+    sources = []
+    deps = [ ":harmony_fixture_replay_testset" ]
+  }
+}
+
 group("devtool_ng_unit_test") {
   testonly = true
   deps = [
@@ -52,5 +71,8 @@ group("devtool_ng_unit_test") {
       deps +=
           [ "../../platform/embedder:clay_input_event_target_unittests_exec" ]
     }
+  }
+  if (is_mac || is_linux) {
+    deps += [ ":harmony_fixture_replay_unittests_exec" ]
   }
 }

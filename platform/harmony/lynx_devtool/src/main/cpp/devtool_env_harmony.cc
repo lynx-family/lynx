@@ -24,6 +24,9 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "devtool/embedder/core/lynx_devtool_set_module.h"
+#if ENABLE_TESTBENCH_REPLAY
+#include "platform/harmony/lynx_devtool/src/main/cpp/fixture_replay_harmony.h"
+#endif
 
 namespace lynx {
 namespace devtool {
@@ -104,6 +107,7 @@ napi_value DevToolEnvHarmony::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_STATIC_FUNCTION("initDevToolEnv", InitDevToolEnvNAPI),
       DECLARE_NAPI_STATIC_FUNCTION("setSwitch", SetSwitchNAPI),
       DECLARE_NAPI_STATIC_FUNCTION("getSwitch", GetSwitchNAPI),
+      DECLARE_NAPI_STATIC_FUNCTION("loadFixture", LoadFixture),
       DECLARE_NAPI_STATIC_FUNCTION("initDevToolSetModule",
                                    InitDevToolSetModule),
   };
@@ -144,6 +148,79 @@ napi_value DevToolEnvHarmony::InitDevToolEnvNAPI(napi_env env,
                                                  napi_callback_info info) {
   InitDevToolEnv();
   return nullptr;
+}
+
+napi_value DevToolEnvHarmony::LoadFixture(napi_env env,
+                                          napi_callback_info info) {
+#if ENABLE_TESTBENCH_REPLAY
+  struct Work {
+    napi_async_work task = nullptr;
+    napi_deferred deferred = nullptr;
+    std::string archive;
+    std::string directory;
+    std::string result;
+    std::string error;
+  };
+  auto work = std::make_unique<Work>();
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  if (argc != 2 ||
+      base::NapiUtil::ConvertToStringChecked(env, args[0], &work->archive) !=
+          base::NapiValueConversionStatus::kSuccess ||
+      base::NapiUtil::ConvertToStringChecked(env, args[1], &work->directory) !=
+          base::NapiValueConversionStatus::kSuccess ||
+      work->archive.find('\0') != std::string::npos ||
+      work->directory.find('\0') != std::string::npos) {
+    napi_throw_type_error(env, nullptr,
+                          "Expected fixture archive and directory");
+    return nullptr;
+  }
+  napi_value promise;
+  NAPI_THROW_IF_FAILED_NULL(env,
+                            napi_create_promise(env, &work->deferred, &promise),
+                            "Cannot create fixture promise");
+  napi_value name;
+  napi_create_string_utf8(env, "LoadFixture", NAPI_AUTO_LENGTH, &name);
+  auto status = napi_create_async_work(
+      env, nullptr, name,
+      [](napi_env, void* data) {
+        auto* work = static_cast<Work*>(data);
+        auto result = LoadFixtureForReplay(work->archive, work->directory);
+        if (result.has_value()) {
+          work->result = std::move(*result);
+        } else {
+          work->error = result.error();
+        }
+      },
+      [](napi_env env, napi_status status, void* data) {
+        std::unique_ptr<Work> work(static_cast<Work*>(data));
+        if (status != napi_ok) work->error = "Fixture loading was cancelled";
+        napi_value value;
+        const auto& text = work->error.empty() ? work->result : work->error;
+        napi_create_string_utf8(env, text.data(), text.size(), &value);
+        if (work->error.empty()) {
+          napi_resolve_deferred(env, work->deferred, value);
+        } else {
+          napi_value error;
+          napi_create_error(env, nullptr, value, &error);
+          napi_reject_deferred(env, work->deferred, error);
+        }
+        napi_delete_async_work(env, work->task);
+      },
+      work.get(), &work->task);
+  if (status == napi_ok) status = napi_queue_async_work(env, work->task);
+  if (status != napi_ok) {
+    if (work->task) napi_delete_async_work(env, work->task);
+    napi_throw_error(env, nullptr, "Cannot schedule fixture loading");
+    return nullptr;
+  }
+  work.release();
+  return promise;
+#else
+  napi_throw_error(env, nullptr, "Fixture replay is disabled in this build");
+  return nullptr;
+#endif
 }
 
 napi_value DevToolEnvHarmony::SetSwitchNAPI(napi_env env,
