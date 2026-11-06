@@ -1860,9 +1860,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   public void takeHeapSnapshot(
       @NonNull File outputFile, @Nullable LynxConsumer<String> callback, @NonNull String type) {
     LynxTemplateRender templateRender = mLynxTemplateRender;
-    if (outputFile == null || !outputFile.isAbsolute()) {
-      dispatchHeapSnapshotError(callback, "Absolute output path required");
-    } else if (templateRender == null) {
+    if (templateRender == null) {
       dispatchHeapSnapshotError(callback, "LynxView destroyed");
     } else {
       templateRender.takeHeapSnapshot(outputFile.getAbsolutePath(), callback, type);
@@ -1883,9 +1881,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   @AnyThread
   public static void takeBtsResidualHeapSnapshot(
       @NonNull File outputFile, @Nullable LynxConsumer<String> callback, int instanceId) {
-    if (outputFile == null || !outputFile.isAbsolute()) {
-      dispatchHeapSnapshotError(callback, "Absolute output path required");
-    } else if (!LynxEnv.inst().isNativeLibraryLoaded()) {
+    if (!LynxEnv.inst().isNativeLibraryLoaded()) {
       dispatchHeapSnapshotError(callback, "Native library unavailable");
     } else {
       LynxJNI.nativeTakeBtsResidualHeapSnapshot(

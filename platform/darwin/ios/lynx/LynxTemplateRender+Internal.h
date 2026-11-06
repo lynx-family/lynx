@@ -84,6 +84,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSArray<NSNumber *> *)GetCachedConsumeSlideEventAngles;
 
+// Used by LynxView to forward snapshot requests to the native shell.
++ (void)takeHeapSnapshot:(nonnull NSString *)outputFile
+                callback:(void (^_Nullable)(NSString *_Nullable error))callback
+                    type:(nonnull NSString *)type
+                lynxView:(LynxView *)lynxView;
+
++ (void)takeBtsResidualHeapSnapshot:(nonnull NSString *)outputFile
+                           callback:(void (^_Nullable)(NSString *_Nullable error))callback
+                         instanceId:(int32_t)instanceId;
+
 @end
 
 NS_ASSUME_NONNULL_END
