@@ -178,6 +178,10 @@ bool ReadFiniteNumberProperty(const lepus::Value& node, const base::String& key,
   return true;
 }
 
+// Route these styles to the outermost frame: it is the child seen by the layout
+// parent. Keep legacy min/flex routing for compatibility. Routing does not
+// decide which value wins when a property appears more than once in the
+// modifier chain.
 bool IsParentDataStyle(CSSPropertyID id) {
   switch (id) {
     case kPropertyIDMinWidth:
@@ -188,9 +192,29 @@ bool IsParentDataStyle(CSSPropertyID id) {
     case kPropertyIDFlexBasis:
     case kPropertyIDAlignSelf:
     case kPropertyIDJustifySelf:
+    case kPropertyIDXBoxMatchParentSize:
       return true;
     default:
       return false;
+  }
+}
+
+// Each bit identifies a Compose parent-data field whose first authored value
+// wins. Zero leaves duplicate handling unchanged, including legacy min/flex
+// styles. WeightFill is a separate operation, collected by
+// BuildModifierFramePlan.
+uint8_t ComposeParentDataStyleFlag(CSSPropertyID id) {
+  switch (id) {
+    case kPropertyIDLinearWeight:
+      return 1 << 0;
+    case kPropertyIDAlignSelf:
+      return 1 << 1;
+    case kPropertyIDJustifySelf:
+      return 1 << 2;
+    case kPropertyIDXBoxMatchParentSize:
+      return 1 << 3;
+    default:
+      return 0;
   }
 }
 
@@ -548,7 +572,12 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
   int sizing_prefix_axes = 0;
   for (size_t position = 0; position < plan->operations.size(); ++position) {
     auto& operation = plan->operations[position];
-    if (operation.op == kModifierOpWeightFill) {
+    // Each Compose weight() emits LinearWeight and WeightFill, even for the
+    // default fill=true. Keep the first fill with the first weight; has_value()
+    // also preserves an explicit false instead of letting a later fill replace
+    // it.
+    if (operation.op == kModifierOpWeightFill &&
+        !plan->weight_fill.has_value()) {
       plan->weight_fill = operation.value.Bool();
     }
     if (operation.op == kModifierOpSize || operation.op == kModifierOpFill) {
@@ -968,8 +997,23 @@ void ApplyNonLayoutOperations(
     const ModifierFramePlan& plan, Element* owner,
     const base::Vector<fml::RefPtr<ModifierElement>>& frames,
     runtime::MTSRuntime* registration_context, bool deep_convert) {
+  // Upstream Compose folds parent data from inner to outer, so the first
+  // authored value wins. Our operations are in authored order: skip later
+  // writes to those fields. Box producers emit both alignment axes and the
+  // match-parent flag on every call, including defaults, so the first complete
+  // Box configuration wins. Legacy CSS min/flex styles keep their existing
+  // last-value rule. This mask is local to one complete application, so
+  // replacement chains can change or remove every field without inheriting the
+  // previous application's deduplication state.
+  uint8_t applied_parent_data = 0;
   for (const auto& operation : plan.operations) {
     if (!IsLayoutOperation(operation.op)) {
+      if (operation.op == kModifierOpStyleNumber ||
+          operation.op == kModifierOpStyleString) {
+        const auto flag = ComposeParentDataStyleFlag(operation.style_id);
+        if ((applied_parent_data & flag) != 0) continue;
+        applied_parent_data |= flag;
+      }
       ApplyNonLayoutOperation(operation, owner, frames, registration_context,
                               deep_convert);
     }
