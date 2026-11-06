@@ -33,6 +33,10 @@ void ShadowNode::SetAttribute(const char* attr_c, const clay::Value& value) {
     id_selector_ = attribute_utils::GetCString(value);
   }
   if (kw == KeywordID::kVerticalAlign) {
+    if (owner_ && owner_->EnableTextRefactor() && !IsInlineTextShadowNode() &&
+        !IsInlineImageShadowNode() && !IsInlineViewShadowNode()) {
+      return;
+    }
     vertical_align_ = std::make_optional<VerticalAlign>();
     const auto& array = attribute_utils::GetArray(value);
     if (array.size() < 2) {
