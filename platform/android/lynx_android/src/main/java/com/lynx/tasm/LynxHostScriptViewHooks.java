@@ -4,17 +4,23 @@
 package com.lynx.tasm;
 
 import android.content.Context;
+import android.util.DisplayMetrics;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -235,6 +241,154 @@ final class LynxHostScriptViewHooks {
     }
   }
 
+  /** Routes a host's direct global props update through view.updateMetaData. */
+  @Nullable
+  static TemplateData beforeUpdateGlobalProps(
+      LynxTemplateRender render, @Nullable TemplateData props) {
+    if (!isEnabled()) {
+      return props;
+    }
+    return beforeUpdateMetaData(
+        render, new LynxUpdateMeta.Builder().setUpdatedGlobalProps(props).build())
+        .getUpdatedGlobalProps();
+  }
+
+  /**
+   * Dispatches view.create before a View reads its builder. A patch applies to an isolated copy,
+   * so the caller's builder, which may build other Views, is never changed.
+   */
+  static LynxViewBuilder beforeCreate(Context context, LynxViewBuilder builder) {
+    if (!isEnabled() || builder == null || !nativeHasCreateHandler()) {
+      return builder;
+    }
+    try {
+      byte[] patch = nativeDispatchCreate(
+          createRequest(context, builder).toString().getBytes(StandardCharsets.UTF_8));
+      if (patch == null) {
+        return builder;
+      }
+      LynxViewBuilder copy = copyBuilder(builder);
+      applyCreatePatch(copy, new JSONObject(new String(patch, StandardCharsets.UTF_8)));
+      return copy;
+    } catch (JSONException | ReflectiveOperationException e) {
+      LLog.e(TAG, "view.create patch was not applied: " + e);
+      return builder;
+    }
+  }
+
+  private static LynxViewBuilder copyBuilder(LynxViewBuilder source)
+      throws ReflectiveOperationException {
+    LynxViewBuilder copy = new LynxViewBuilder();
+    for (Class<?> type = LynxViewBuilder.class; type != null && type != Object.class;
+         type = type.getSuperclass()) {
+      for (Field field : type.getDeclaredFields()) {
+        if (Modifier.isStatic(field.getModifiers())) {
+          continue;
+        }
+        field.setAccessible(true);
+        Object value = field.get(source);
+        if (value instanceof LynxBackgroundRuntimeOptions) {
+          value = new LynxBackgroundRuntimeOptions((LynxBackgroundRuntimeOptions) value);
+        }
+        field.set(copy, value);
+      }
+    }
+    copy.lynxViewConfig =
+        source.lynxViewConfig == null ? new HashMap<>() : new HashMap<>(source.lynxViewConfig);
+    return copy;
+  }
+
+  private static JSONObject createRequest(Context context, LynxViewBuilder builder)
+      throws JSONException {
+    JSONObject request = new JSONObject();
+    request.put("threadStrategy", builder.getThreadStrategy().id());
+    request.put("enableJSRuntime", builder.isEnableJSRuntime());
+    request.put("enableAirStrictMode", builder.isEnableAirStrictMode());
+    request.put("enableMTSModule", builder.isEnableMTSModule());
+    if (builder.hasPresetMeasureSpec()) {
+      request.put("presetMeasuredSpec",
+          size(builder.getPresetWidthMeasureSpec(), builder.getPresetHeightMeasureSpec()));
+    }
+    if (builder.getScreenWidth() > 0 && builder.getScreenHeight() > 0) {
+      request.put("screenSize", size(builder.getScreenWidth(), builder.getScreenHeight()));
+    }
+    Float density = builder.getDensity();
+    if (density != null) {
+      request.put("density", density.doubleValue());
+    }
+    request.put("fontScale", (double) builder.getFontScale());
+    request.put("forceDarkAllowed", builder.getForceDarkAllowed());
+    Map<String, String> config = builder.getLynxViewConfig();
+    if (config != null) {
+      request.put("lynxViewConfig", new JSONObject(config));
+    }
+    DisplayMetrics metrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(context);
+    if (metrics != null) {
+      request.put("deviceScreenSize", size(metrics.widthPixels, metrics.heightPixels));
+    }
+    return request;
+  }
+
+  // Native code validated every field; absent fields keep the builder's value.
+  private static void applyCreatePatch(LynxViewBuilder builder, JSONObject patch)
+      throws JSONException {
+    if (patch.has("threadStrategy")) {
+      int id = patch.getInt("threadStrategy");
+      for (ThreadStrategyForRendering strategy : ThreadStrategyForRendering.values()) {
+        if (strategy.id() == id) {
+          builder.setThreadStrategyForRendering(strategy);
+        }
+      }
+    }
+    if (patch.has("enableJSRuntime")) {
+      builder.setEnableJSRuntime(patch.getBoolean("enableJSRuntime"));
+    }
+    if (patch.has("enableAirStrictMode")) {
+      builder.setEnableAirStrictMode(patch.getBoolean("enableAirStrictMode"));
+    }
+    if (patch.has("enableMTSModule")) {
+      builder.setEnableMTSModule(patch.getBoolean("enableMTSModule"));
+    }
+    if (patch.has("forceDarkAllowed")) {
+      builder.setForceDarkAllowed(patch.getBoolean("forceDarkAllowed"));
+    }
+    if (patch.has("presetMeasuredSpec")) {
+      JSONObject specs = patch.getJSONObject("presetMeasuredSpec");
+      builder.setPresetMeasuredSpec(specs.getInt("width"), specs.getInt("height"));
+    }
+    if (patch.has("screenSize")) {
+      JSONObject screen = patch.getJSONObject("screenSize");
+      builder.setScreenSize(screen.getInt("width"), screen.getInt("height"));
+    }
+    if (patch.has("density")) {
+      builder.setDensity((float) patch.getDouble("density"));
+    }
+    if (patch.has("fontScale")) {
+      builder.setFontScale((float) patch.getDouble("fontScale"));
+    }
+    if (patch.has("lynxViewConfig")) {
+      Map<String, String> config = builder.getLynxViewConfig();
+      JSONObject values = patch.getJSONObject("lynxViewConfig");
+      for (Iterator<String> keys = values.keys(); keys.hasNext();) {
+        String key = keys.next();
+        config.put(key, values.getString(key));
+      }
+    }
+  }
+
+  /** Returns packed (widthMeasureSpec << 32) | (heightMeasureSpec & 0xffffffffL). */
+  static long beforeUpdateViewport(
+      LynxTemplateRender render, int widthMeasureSpec, int heightMeasureSpec) {
+    if (!isEnabled()) {
+      return ((long) widthMeasureSpec << 32) | (heightMeasureSpec & 0xffffffffL);
+    }
+    return nativeDispatchUpdateViewport(viewId(render), widthMeasureSpec, heightMeasureSpec);
+  }
+
+  private static JSONObject size(int width, int height) throws JSONException {
+    return new JSONObject().put("width", width).put("height", height);
+  }
+
   private static LynxUpdateMeta applyUpdatePatch(LynxUpdateMeta meta, JSONObject values)
       throws JSONException {
     TemplateData data = meta.getUpdatedData();
@@ -429,4 +583,11 @@ final class LynxHostScriptViewHooks {
   @Nullable
   private static native Object[] nativeDispatchLoadTemplate(long viewId, byte[] url, int source,
       int size, long initialData, long globalProps, boolean fromScript);
+
+  private static native boolean nativeHasCreateHandler();
+
+  @Nullable private static native byte[] nativeDispatchCreate(byte[] request);
+
+  private static native long nativeDispatchUpdateViewport(
+      long viewId, int widthMeasureSpec, int heightMeasureSpec);
 }

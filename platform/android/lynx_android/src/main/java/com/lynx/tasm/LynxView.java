@@ -146,6 +146,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
    * @param builder
    */
   public void initWithLynxViewBuilder(LynxViewBuilder builder) {
+    builder = LynxHostScriptViewHooks.beforeCreate(getContext(), builder);
     mLynxUIRender = builder.createLynxUIRenderer();
     if (builder.lynxBackgroundRuntime != null) {
       initLynxViewWithRuntime(getContext(), builder);
@@ -1152,6 +1153,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     if (mLynxTemplateRender == null) {
       return;
     }
+    props = LynxHostScriptViewHooks.beforeUpdateGlobalProps(mLynxTemplateRender, props);
     mLynxTemplateRender.updateGlobalProps(props);
   }
 
@@ -1345,7 +1347,14 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     if (mLynxTemplateRender == null) {
       return;
     }
-    mLynxTemplateRender.updateViewport(widthMeasureSpec, heightMeasureSpec, needLayout);
+    if (LynxHostScriptViewHooks.isEnabled()) {
+      long specs = LynxHostScriptViewHooks.beforeUpdateViewport(
+          mLynxTemplateRender, widthMeasureSpec, heightMeasureSpec);
+      mCurrentWidthMeasureSpec = (int) (specs >>> 32);
+      mCurrentHeightMeasureSpec = (int) specs;
+    }
+    mLynxTemplateRender.updateViewport(
+        mCurrentWidthMeasureSpec, mCurrentHeightMeasureSpec, needLayout);
     onTraceEventEnd(TraceEventDef.LYNX_VIEW_UPDATE_VIEWPORT);
   }
 
@@ -2240,7 +2249,9 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     if (mLynxTemplateRender == null) {
       return;
     }
-    mLynxTemplateRender.updateGlobalProps(TemplateData.fromMap(props));
+    TemplateData data = TemplateData.fromMap(props);
+    data = LynxHostScriptViewHooks.beforeUpdateGlobalProps(mLynxTemplateRender, data);
+    mLynxTemplateRender.updateGlobalProps(data);
   }
 
   /**
@@ -2255,6 +2266,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
     if (mLynxTemplateRender == null) {
       return;
     }
+    props = LynxHostScriptViewHooks.beforeUpdateGlobalProps(mLynxTemplateRender, props);
     mLynxTemplateRender.updateGlobalProps(props);
   }
 

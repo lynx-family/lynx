@@ -5,6 +5,8 @@
 #include "core/shell/host_script/runtime/platform/android/host_script_view_hooks_android.h"
 
 #include <atomic>
+#include <cmath>
+#include <cstdint>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -13,6 +15,7 @@
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "base/include/string/string_utils.h"
+#include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
@@ -23,6 +26,8 @@
 #include "core/shell/host_script/runtime/platform/android/process_runtime_android.h"
 #include "platform/android/lynx_host_script/src/main/jni/gen/LynxHostScriptViewHooks_jni.h"
 #include "platform/android/lynx_host_script/src/main/jni/gen/LynxHostScriptViewHooks_register_jni.h"
+#include "third_party/rapidjson/stringbuffer.h"
+#include "third_party/rapidjson/writer.h"
 
 namespace lynx {
 namespace jni {
@@ -77,6 +82,8 @@ BASE_STATIC_STRING_DECL(kSource, "source");
 BASE_STATIC_STRING_DECL(kInitialData, "initialData");
 BASE_STATIC_STRING_DECL(kBytes, "bytes");
 BASE_STATIC_STRING_DECL(kOrigin, "origin");
+BASE_STATIC_STRING_DECL(kWidth, "width");
+BASE_STATIC_STRING_DECL(kHeight, "height");
 
 // Source kinds of LynxHostScriptViewHooks.
 constexpr const char* kSourceKinds[] = {"url", "bytes", "buffer", "bundle"};
@@ -204,6 +211,57 @@ lynx::lepus::Value DispatchView(InterceptKind kind, lynx::lepus::Value event) {
   auto result = provider->Dispatch(kind, event);
   return result.failed ? lynx::lepus::Value() : std::move(result.patch);
 }
+
+void WriteJson(rapidjson::Writer<rapidjson::StringBuffer>& writer,
+               const lynx::lepus::Value& value) {
+  if (value.IsNil() || value.IsUndefined()) {
+    writer.Null();
+  } else if (value.IsBool()) {
+    writer.Bool(value.Bool());
+  } else if (value.IsInt64()) {
+    writer.Int64(value.Int64());
+  } else if (value.IsUInt64()) {
+    writer.Uint64(value.UInt64());
+  } else if (value.IsInt32()) {
+    writer.Int(value.Int32());
+  } else if (value.IsUInt32()) {
+    writer.Uint(value.UInt32());
+  } else if (value.IsNumber()) {
+    double number = value.Number();
+    if (std::isfinite(number) && std::floor(number) == number &&
+        number >= -9007199254740991.0 && number <= 9007199254740991.0 &&
+        !(number == 0.0 && std::signbit(number))) {
+      writer.Int64(static_cast<int64_t>(number));
+    } else if (std::isfinite(number)) {
+      writer.Double(number);
+    } else {
+      writer.Null();
+    }
+  } else if (value.IsString()) {
+    auto text = value.StdString();
+    writer.String(text.data(), static_cast<rapidjson::SizeType>(text.size()));
+  } else if (value.IsArray()) {
+    writer.StartArray();
+    for (size_t i = 0; i < value.Array()->size(); ++i) {
+      WriteJson(writer, value.Array()->get(i));
+    }
+    writer.EndArray();
+  } else if (value.IsTable()) {
+    writer.StartObject();
+    for (const auto& [key, item] : *value.Table()) {
+      writer.Key(key.c_str(), static_cast<rapidjson::SizeType>(key.length()));
+      WriteJson(writer, item);
+    }
+    writer.EndObject();
+  } else {
+    writer.Null();
+  }
+}
+jlong PackMeasureSpecs(jint width, jint height) {
+  return static_cast<jlong>(
+      (static_cast<uint64_t>(static_cast<uint32_t>(width)) << 32) |
+      static_cast<uint64_t>(static_cast<uint32_t>(height)));
+}
 }  // namespace
 
 static void RegisterView(JNIEnv* env, jclass, jlong view_id, jobject view,
@@ -239,6 +297,21 @@ static void NotifyView(JNIEnv* env, jclass, jlong view_id, jstring event,
       message ? JNIConvertHelper::ConvertToString(env, message) : "");
 }
 
+// Returns a nonempty patch as JSON bytes, or null.
+static jbyteArray PatchBytes(JNIEnv* env, const lynx::lepus::Value& patch) {
+  if (!patch.IsTable() || !patch.GetLength()) return nullptr;
+  // Keep MeasureSpec bits and floating-point configuration intact.
+  rapidjson::StringBuffer buffer;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+  WriteJson(writer, patch);
+  auto result =
+      ToJavaBytes(env, std::string(buffer.GetString(), buffer.GetSize()));
+  // Transfer a separate local reference to Java before the scoped wrapper is
+  // destroyed.
+  return static_cast<jbyteArray>(
+      env->NewLocalRef(result.Get()));  // NOLINT(lynx_custom/new_java_ref)
+}
+
 static jbyteArray DispatchUpdateMetaData(JNIEnv* env, jclass, jlong view_id,
                                          jlong update_data, jlong global_props,
                                          jboolean from_script) {
@@ -253,13 +326,51 @@ static jbyteArray DispatchUpdateMetaData(JNIEnv* env, jclass, jlong view_id,
   event.SetProperty(kViewId, Value(std::to_string(view_id)));
   event.SetProperty(kOrigin, Origin(from_script));
   event.SetProperty(kRequest, request);
-  auto patch = DispatchView(InterceptKind::kUpdateMetaData, std::move(event));
-  if (!patch.IsTable() || !patch.GetLength()) return nullptr;
-  auto result = ToJavaBytes(env, lynx::lepus::lepusValueToString(patch));
-  // Transfer a separate local reference to Java before the scoped wrapper is
-  // destroyed.
-  return static_cast<jbyteArray>(
-      env->NewLocalRef(result.Get()));  // NOLINT(lynx_custom/new_java_ref)
+  return PatchBytes(
+      env, DispatchView(InterceptKind::kUpdateMetaData, std::move(event)));
+}
+
+static jboolean HasCreateHandler(JNIEnv*, jclass) {
+  return Interceptor::Current({InterceptKind::kCreate},
+                              Interceptor::Domain::kUI) != nullptr;
+}
+
+// The request is the JSON of the effective builder configuration. A View that
+// is not yet constructed has no identity, proxy or page URL.
+static jbyteArray DispatchCreate(JNIEnv* env, jclass, jbyteArray request_json) {
+  using lynx::lepus::Value;
+  if (!Interceptor::IsEnabled()) return nullptr;
+  auto json = JNIConvertHelper::ConvertToString(env, request_json);
+  auto request = lynx::lepus::jsonValueTolepusValue(json.c_str());
+  if (!request.IsTable()) return nullptr;
+  Value event(lynx::lepus::Dictionary::Create());
+  event.SetProperty(kRequest, request);
+  return PatchBytes(env,
+                    DispatchView(InterceptKind::kCreate, std::move(event)));
+}
+
+static jlong DispatchUpdateViewport(JNIEnv*, jclass, jlong view_id, jint width,
+                                    jint height) {
+  using lynx::lepus::Value;
+  if (!Interceptor::IsEnabled() ||
+      !Interceptor::Current({InterceptKind::kUpdateViewport},
+                            Interceptor::Domain::kUI)) {
+    return PackMeasureSpecs(width, height);
+  }
+  Value request(lynx::lepus::Dictionary::Create());
+  request.SetProperty(kWidth, Value(width));
+  request.SetProperty(kHeight, Value(height));
+  Value event(lynx::lepus::Dictionary::Create());
+  event.SetProperty(kViewId, Value(std::to_string(view_id)));
+  event.SetProperty(kRequest, request);
+  auto patch = DispatchView(InterceptKind::kUpdateViewport, std::move(event));
+  if (!patch.IsTable()) return PackMeasureSpecs(width, height);
+  auto next_width = patch.GetProperty(kWidth);
+  auto next_height = patch.GetProperty(kHeight);
+  return PackMeasureSpecs(
+      next_width.IsNumber() ? static_cast<jint>(next_width.Number()) : width,
+      next_height.IsNumber() ? static_cast<jint>(next_height.Number())
+                             : height);
 }
 
 static jobjectArray DispatchLoadTemplate(JNIEnv* env, jclass, jlong view_id,
