@@ -225,8 +225,12 @@ SharedImageSinkManaged::TryAcquireBack(
 
 std::tuple<fml::RefPtr<SharedImageBacking>, uint32_t>
 SharedImageSinkManaged::AcquireBackForced(
-    skity::Vec2 size, std::optional<GraphicsMemoryHandle> gfx_handle) {
+    skity::Vec2 size, std::optional<GraphicsMemoryHandle> gfx_handle,
+    AcquireBackStatus* status) {
   std::unique_lock<std::mutex> l(mutex_);
+  if (status) {
+    *status = AcquireBackStatus::kUnkown;
+  }
 
   if (capacity_ == BufferMode::kNoBuffer) {
     // When capacity equals to ZERO, always create a new back backing.
@@ -247,6 +251,9 @@ SharedImageSinkManaged::AcquireBackForced(
       // No `frame_available_callback_` means the sink front is detached,
       // return null directly to prevent deadlock.
       if (!frame_available_callback_) {
+        if (status) {
+          *status = AcquireBackStatus::kDetached;
+        }
         return std::make_tuple(nullptr, 0);
       }
 
@@ -254,6 +261,9 @@ SharedImageSinkManaged::AcquireBackForced(
         if (front_backings_.size() == 0 ||
             (front_backings_.size() == 1 &&
              front_backings_.front().is_current)) {
+          if (status) {
+            *status = AcquireBackStatus::kFullAttach;
+          }
           return std::make_tuple(nullptr, 0);
         }
         FML_DCHECK(!front_backings_.back().is_current);
@@ -262,7 +272,8 @@ SharedImageSinkManaged::AcquireBackForced(
                               --front_backings_.end());
       }
 
-      if (back_backings_.front().shared_image->GetSize() != size ||
+      if (!back_backings_.front().shared_image ||
+          back_backings_.front().shared_image->GetSize() != size ||
           (gfx_handle.has_value() && gfx_handle.value())) {
         // maybe resized, discard it
         back_backings_.front() = SharedImageSlot{
@@ -272,12 +283,18 @@ SharedImageSinkManaged::AcquireBackForced(
   }
 
   auto& curr_backing = back_backings_.front();
+  if (!curr_backing.shared_image) {
+    return std::make_tuple(nullptr, 0);
+  }
   curr_backing.is_current = true;
 
   uint32_t buffer_age = 0;
 
   if (curr_backing.swap_id) {
     buffer_age = swap_counter_ - curr_backing.swap_id.value();
+  }
+  if (status) {
+    *status = AcquireBackStatus::kSuccess;
   }
   return std::make_tuple(curr_backing.shared_image, buffer_age);
 }
@@ -415,7 +432,11 @@ SharedImageSinkUnmanaged::TryAcquireBack(
 
 std::tuple<fml::RefPtr<SharedImageBacking>, uint32_t>
 SharedImageSinkUnmanaged::AcquireBackForced(
-    skity::Vec2 size, std::optional<GraphicsMemoryHandle> gfx_handle) {
+    skity::Vec2 size, std::optional<GraphicsMemoryHandle> gfx_handle,
+    AcquireBackStatus* status) {
+  if (status) {
+    *status = AcquireBackStatus::kUnkown;
+  }
   return AcquireBack(size, gfx_handle);
 }
 
