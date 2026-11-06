@@ -6,6 +6,7 @@
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_SHADOW_NODE_TEXT_TEXT_ATTRIBUTES_H_
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -62,6 +63,7 @@ struct TextProps {
   FontStyle font_style{starlight::FontStyleType::kNormal};
   double letter_spacing{0};
   std::string font_family;
+  std::optional<std::map<std::string, int32_t>> font_feature_settings;
   mutable size_t loading_font_sign{
       0};  // indicate font loading unique id: family+id
   LynxVerticalAlignStyle vertical_align_style_;
@@ -82,13 +84,15 @@ struct TextProps {
 
   bool operator==(const TextProps& rhs) const {
     return std::tie(color, font_size, line_height, font_style, letter_spacing,
-                    font_family, loading_font_sign, vertical_align_style_,
-                    max_line, text_align, direction, text_overflow, white_space,
-                    text_decoration_color, text_decoration_line,
-                    text_decoration_style, word_break, stroke_color,
-                    stroke_width, text_indent, gradient_color, shadow_data) ==
+                    font_feature_settings, font_family, loading_font_sign,
+                    vertical_align_style_, max_line, text_align, direction,
+                    text_overflow, white_space, text_decoration_color,
+                    text_decoration_line, text_decoration_style, word_break,
+                    stroke_color, stroke_width, text_indent, gradient_color,
+                    shadow_data) ==
            std::tie(rhs.color, rhs.font_size, rhs.line_height, rhs.font_style,
-                    rhs.letter_spacing, rhs.font_family, rhs.loading_font_sign,
+                    rhs.letter_spacing, rhs.font_feature_settings,
+                    rhs.font_family, rhs.loading_font_sign,
                     rhs.vertical_align_style_, rhs.max_line, rhs.text_align,
                     rhs.direction, rhs.text_overflow, rhs.white_space,
                     rhs.text_decoration_color, rhs.text_decoration_line,
@@ -152,6 +156,13 @@ struct hash<lynx::tasm::harmony::TextProps> {
         text_props.stroke_color, text_props.stroke_width,
         text_props.text_indent, text_props.gradient_color,
         text_props.shadow_data);
+    lynx::fml::HashCombineSeed(seed,
+                               text_props.font_feature_settings.has_value());
+    if (text_props.font_feature_settings) {
+      for (const auto& [tag, value] : *text_props.font_feature_settings) {
+        lynx::fml::HashCombineSeed(seed, tag, value);
+      }
+    }
     return seed;
   }
 };

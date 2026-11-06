@@ -2,7 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+// cSpell:ignore liga
+
+#import <CoreText/CoreText.h>
 #import <Lynx/LynxBaseTextShadowNode.h>
+#import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxTextUtils.h>
@@ -57,6 +61,41 @@
   // Put teardown code here. This method is called after the invocation of each test method in the
   // class.
   textRender = NULL;
+}
+
+- (void)testOpenTypeFontFeaturesPreserveTagsAndValues {
+  UIFont *baseFont = [UIFont systemFontOfSize:25];
+  NSArray *settings = @[ @"liga", @0, @"kern", @1, @"cv01", @2, @"ss20", @1 ];
+  UIFont *font = [LynxFontFaceManager generateFontWithBaseFont:baseFont
+                                         fontVariationSettings:nil
+                                           fontFeatureSettings:settings
+                                             fontOpticalSizing:NO];
+  NSArray *features =
+      [font.fontDescriptor objectForKey:(__bridge NSString *)kCTFontFeatureSettingsAttribute];
+  XCTAssertEqual(features.count, 4u);
+  for (NSUInteger i = 0; i < features.count; ++i) {
+    XCTAssertEqualObjects(features[i][(__bridge NSString *)kCTFontOpenTypeFeatureTag],
+                          settings[2 * i]);
+    XCTAssertEqualObjects(features[i][(__bridge NSString *)kCTFontOpenTypeFeatureValue],
+                          settings[2 * i + 1]);
+  }
+  XCTAssertEqual(font.pointSize, baseFont.pointSize);
+}
+
+- (void)testOpenTypeFontFeaturesResetToBaseFont {
+  UIFont *baseFont = [UIFont systemFontOfSize:25];
+  UIFont *font = [LynxFontFaceManager generateFontWithBaseFont:baseFont
+                                         fontVariationSettings:nil
+                                           fontFeatureSettings:nil
+                                             fontOpticalSizing:NO];
+  XCTAssertEqual(font, baseFont);
+  font = [LynxFontFaceManager generateFontWithBaseFont:baseFont
+                                 fontVariationSettings:nil
+                                   fontFeatureSettings:@[]
+                                     fontOpticalSizing:NO];
+  NSArray *features =
+      [font.fontDescriptor objectForKey:(__bridge NSString *)kCTFontFeatureSettingsAttribute];
+  XCTAssertEqual(features.count, 0u);
 }
 
 - (void)testReleaseTextRenderIsPerSignAndIdempotent {

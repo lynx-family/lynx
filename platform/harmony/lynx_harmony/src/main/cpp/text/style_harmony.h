@@ -10,6 +10,7 @@
 #include <native_drawing/drawing_text_typography.h>
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -218,6 +219,14 @@ class TextStyleHarmony {
   }
 
   void ClearCustomFontFamilies() { custom_font_families_.clear(); }
+
+  void SetFontFeatureSettings(
+      const std::map<std::string, int32_t>& font_feature_settings) const {
+    OH_Drawing_TextStyleClearFontFeature(text_style_);
+    for (const auto& [tag, value] : font_feature_settings) {
+      OH_Drawing_TextStyleAddFontFeature(text_style_, tag.c_str(), value);
+    }
+  }
 
   void SetFontStyle(OH_Drawing_FontStyle style) const {
     OH_Drawing_SetTextStyleFontStyle(text_style_, style);
