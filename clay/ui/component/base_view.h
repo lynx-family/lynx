@@ -321,16 +321,12 @@ class BaseView : public TypeIdentifiable<BaseView>,
 
   bool ConsumeSlideEvent(float angle) override;
 
-  virtual void DidUpdateAttributes() {
-    // Consistent with Lynx-Native behavior, flag dirty nodes after attribute
-    // updates.
-    Invalidate();
-  }
+  virtual void DidUpdateAttributes();
   virtual void OnViewPostionUpdate(FloatPoint scroll_offset);
   virtual void NotifyLowMemory() {}
 
   virtual void SetAttribute(const char* attr, const clay::Value& value);
-  virtual void BeforeSetAttribute(const clay::Value::Map&) {}
+  virtual void BeforeSetAttribute(const clay::Value::Map& attributes);
   virtual void AddEventCallback(const char* event);
 
   // Gesture handler methods
@@ -676,6 +672,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
 #endif
 
  protected:
+  friend class AttributeInvalidationTest;
   friend class BaseListView;
   friend class BaseViewWithChildrenTest;
   friend class BaseViewAnimationMutator;
@@ -759,7 +756,13 @@ class BaseView : public TypeIdentifiable<BaseView>,
   std::string ref_id_selector_;
   std::string name_;
   std::string app_region_;
+  enum class AttributeInvalidation : uint8_t { kContent, kEffect };
+
   bool can_draggable_ = false;
+  AttributeInvalidation pending_attribute_invalidation_ =
+      AttributeInvalidation::kContent;
+  AttributeInvalidation attribute_invalidation_ =
+      AttributeInvalidation::kContent;
   PointerEvent event_draggable_;
   // left_ and top_ are relative to the upper left
   // corner of the parent borderbox

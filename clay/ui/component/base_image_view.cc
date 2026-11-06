@@ -694,6 +694,9 @@ void BaseImageView::TryEndTransition() {
 }
 
 void BaseImageView::DidUpdateAttributes() {
+  if (fetch_delay_source_ || fetch_delay_placeholder_) {
+    pending_attribute_invalidation_ = AttributeInvalidation::kContent;
+  }
   BaseView::DidUpdateAttributes();
   if (fetch_delay_source_) {
     fetch_delay_source_ = false;

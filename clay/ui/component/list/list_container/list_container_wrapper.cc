@@ -254,6 +254,7 @@ void ListContainerWrapper::SetAttribute(const char* attr_c,
 
 void ListContainerWrapper::BeforeSetAttribute(
     const clay::Value::Map& attributes) {
+  BaseView::BeforeSetAttribute(attributes);
   if (auto it = attributes.find(kClayDisablePlatformScrollEvent);
       it != attributes.end()) {
     GetListContainerView()
