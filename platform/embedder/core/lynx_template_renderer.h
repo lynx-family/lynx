@@ -29,11 +29,9 @@
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/perf_controller_proxy_impl.h"
 #include "core/shell/runtime/bts/lynx_bts_runtime_proxy_impl.h"
+#include "platform/embedder/lynx_devtool/lynx_devtool.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
 #include "platform/embedder/public/lynx_event_simulation_proxy.h"
-#if ENABLE_INSPECTOR
-#include "devtool/embedder/common/devtools_embedder.h"
-#endif  // ENABLE_INSPECTOR
 
 namespace lynx {
 namespace tasm {
@@ -143,6 +141,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   base::LynxEntityId GetViewId() const { return log_context_.view_id; }
   void OnLogContextUpdated(const base::LogContext& context);
 
+  // Initialize after the adapter has installed its event proxies.
+  void Initialize();
   void Reset(bool wait_for_runtime_detach = true);
 
   void SetTemplateVerification(TemplateVerification verification) {
@@ -192,13 +192,11 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                       float client_x, float client_y, float page_x,
                       float page_y);
 
-#if ENABLE_INSPECTOR
   void SetInputEventTarget(
       const std::shared_ptr<devtool::input::InputEventTarget>& target);
   void InvokeCDPFromSDK(const std::string& cdp_msg,
                         std::function<void(const std::string&)>&& callback);
   void OnReceiveMessageEvent(const devtool::VMEvent& event);
-#endif  // ENABLE_INSPECTOR
 
   void AddClient(TemplateRendererClient* client);
   void RemoveClient(TemplateRendererClient* client);
@@ -314,6 +312,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::vector<uint8_t> LoadJSSource(const std::string& url);
   void UpdateGenericInfoWithUrl(const std::string& url);
   void ClearGenericInfo(int32_t instance_id);
+  void NotifyInspectorOwnerAttached();
 
   Settings settings_;
   base::LogContext log_context_;
@@ -334,11 +333,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   std::list<TemplateRendererClient*> clients_;
 
-#if ENABLE_INSPECTOR
-  std::unique_ptr<devtool::DevtoolsEmbedder> devtools_;
   std::shared_ptr<devtool::input::InputEventTarget> input_event_target_;
-#endif  // ENABLE_INSPECTOR
   std::shared_ptr<pub::LynxEventSimulationProxy> event_proxy_;
+  std::unique_ptr<EmbedderDevTool> devtools_;
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
 };
 

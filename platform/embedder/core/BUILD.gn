@@ -31,11 +31,9 @@ lynx_core_source_set("renderer") {
     "../../../core:lynx_native",
     "../../../core/renderer/utils:event_converter",
   ]
+  public_deps = [ "../lynx_devtool:devtool_interface" ]
   if (!enable_unittests) {
     deps += [ "../lynx_service:lynx_service" ]
-  }
-  if (enable_inspector) {
-    public_deps = [ "../lynx_devtool:lynx_devtool" ]
   }
 
   include_dirs = [ "../../../base/include/value" ]

@@ -14,7 +14,7 @@
 #include "platform/embedder/module/extension_module_factory_impl.h"
 #include "platform/embedder/module/lynx_module_manager_napi.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
-#if ENABLE_INSPECTOR
+#if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
 #include "platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.h"
 #endif
 
@@ -22,7 +22,7 @@ struct lynx_view_t {
   std::unique_ptr<lynx::embedder::LynxTemplateRenderer> lynx_template_renderer =
       nullptr;
   std::unique_ptr<lynx::embedder::LynxViewClients> lynx_view_clients = nullptr;
-#if ENABLE_INSPECTOR
+#if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
   std::unique_ptr<lynx::embedder::LynxLogBoxWrapperEmbedder>
       lynx_logbox_wrapper = nullptr;
 #endif

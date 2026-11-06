@@ -148,7 +148,7 @@ TEST_F(LynxEnvHighMemoryTest, RegistrationDuringCallbackAffectsNextDelivery) {
 
 }  // namespace
 
-#if ENABLE_INSPECTOR
+#if ENABLE_INSPECTOR && !ENABLE_EMBEDDER_LITE
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
 #include "third_party/debug_router/src/debug_router/common/debug_router.h"
 

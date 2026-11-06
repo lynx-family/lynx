@@ -273,6 +273,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
       std::make_unique<lynx::embedder::LynxViewEventSimulationProxy>(
           std::make_unique<LynxViewEventSimulationTargetImpl>(view)));
 #endif
+  view->lynx_template_renderer->Initialize();
   view->lynx_view_clients =
       std::make_unique<lynx::embedder::LynxViewClients>(view);
   view->lynx_ui_renderer->AddClient(view->lynx_view_clients.get());
@@ -313,7 +314,6 @@ LYNX_EXTERN_C bool lynx_view_get_devtool_target(lynx_view_t* view,
   if (!view || !target) {
     return false;
   }
-#if ENABLE_INSPECTOR
   const int32_t session_id =
       view->lynx_template_renderer->GetDevtoolSessionId();
   if (session_id <= 0) {
@@ -324,9 +324,6 @@ LYNX_EXTERN_C bool lynx_view_get_devtool_target(lynx_view_t* view,
   target->session_id = session_id;
   target->url = view->devtool_target_url.c_str();
   return true;
-#else
-  return false;
-#endif
 }
 
 LYNX_EXTERN_C const char* lynx_view_get_webview2_fixed_runtime_path(
