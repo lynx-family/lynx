@@ -5,6 +5,7 @@
 import { webview } from '@kit.ArkWeb';
 import { LynxUIMethodConstants, UIBase } from '@lynx/lynx';
 import { BuilderNode, NodeController, UIContext } from '@kit.ArkUI';
+import { WebViewGestureModifier } from './WebViewGestureModifier';
 
 interface LynxWebViewErrorEvent {
   errorCode: number,
@@ -97,6 +98,10 @@ export abstract class LynxWebViewNodeController extends NodeController implement
     this.webviewParams = webviewParams;
   }
 
+  createGestureModifier(): WebViewGestureModifier {
+    return new WebViewGestureModifier(this.webviewParams.ui.lynxContext);
+  }
+
   makeNode(uiContext: UIContext): FrameNode | null {
     return this.makeWebViewNode(uiContext, {
       object: this.jsBridge,
@@ -136,6 +141,7 @@ export abstract class LynxWebViewNodeController extends NodeController implement
 
 
 export class LynxDefaultWebViewInitParams {
+  gestureModifier: WebViewGestureModifier;
   nodeController: LynxDefaultWebViewNodeController
   javaScriptProxy: JavaScriptProxy
   javaScriptOnDocumentEnd: Array<ScriptItem>
@@ -144,6 +150,7 @@ export class LynxDefaultWebViewInitParams {
     javaScriptProxy: JavaScriptProxy,
     javaScriptOnDocumentEnd: Array<ScriptItem>) {
     this.nodeController = nodeController
+    this.gestureModifier = nodeController.createGestureModifier();
     this.javaScriptProxy = javaScriptProxy
     this.javaScriptOnDocumentEnd = javaScriptOnDocumentEnd
   }
@@ -156,6 +163,7 @@ struct LynxDefaultWebView {
   build() {
     Stack() {
       Web({ src: '', controller: this.initParams.nodeController.getController() })
+        .attributeModifier(this.initParams.gestureModifier)
         .backgroundColor(Color.Transparent)
         .onControllerAttached(() => {
           this.initParams.nodeController.onControllerAttached()
@@ -313,7 +321,8 @@ export class UIWebView extends UIBase {
         return false;
 
     }
-    return super.invokeMethod(method, params, callback);
+    // A handled method owns its callback; returning false would complete it twice.
+    return true;
   }
 
 

@@ -6,6 +6,7 @@ import deviceInfo from '@ohos.deviceInfo';
 import { IContext } from '../../IContext';
 
 interface PlatformGestureContext extends IContext {
+  onPlatformScrollBoundary?(reached: boolean): void;
   onPlatformTouchTestDone?(recognizers: Array<GestureRecognizer>): void;
   onPlatformGestureRecognizerJudgeBegin?(event: BaseGestureEvent,
     current: GestureRecognizer, others: Array<GestureRecognizer>): GestureJudgeResult;
@@ -33,5 +34,13 @@ export class PlatformGestureModifier<T extends CommonAttribute> implements Attri
         return context.onPlatformGestureRecognizerJudgeBegin!(event, current, others);
       });
     }
+  }
+
+  protected hasPlatformScrollBoundaryCallback(): boolean {
+    return deviceInfo.sdkApiVersion >= 20 && this.context.onPlatformScrollBoundary !== undefined;
+  }
+
+  protected reportPlatformScrollBoundary(reached: boolean): void {
+    this.context.onPlatformScrollBoundary?.(reached);
   }
 }
