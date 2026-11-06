@@ -121,6 +121,24 @@ TEST(ComputedCSSStyleTest, TextSpacingTrimCopy) {
   EXPECT_NE(defaults, trimmed);
 }
 
+TEST(ComputedCSSStyleTest, FontVariationSettingsResetClearsStoredAxes) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  auto axes = lepus::CArray::Create();
+  axes->emplace_back("wght");
+  axes->emplace_back(625.5);
+  axes->emplace_back("opsz");
+  axes->emplace_back(17.0);
+  EXPECT_TRUE(style.SetValue(kPropertyIDFontVariationSettings, CSSValue(axes)));
+  ASSERT_EQ(style.FontVariationSettingsToLepus().Array()->size(), 4u);
+
+  EXPECT_TRUE(style.ResetValue(kPropertyIDFontVariationSettings));
+  EXPECT_EQ(style.FontVariationSettingsToLepus().Array()->size(), 0u);
+  EXPECT_FALSE(style.ResetValue(kPropertyIDFontVariationSettings));
+  EXPECT_TRUE(style.SetValue(kPropertyIDFontVariationSettings, CSSValue(axes)));
+  EXPECT_EQ(style.FontVariationSettingsToLepus().Array()->get(1).Number(),
+            625.5);
+}
+
 TEST(ComputedCSSStyleTest, TracksResolvedValuesOnSetAndReset) {
   starlight::ComputedCSSStyle style{1.f, 1.f};
   CSSValue font_size_value(18.0, CSSValuePattern::PX);
