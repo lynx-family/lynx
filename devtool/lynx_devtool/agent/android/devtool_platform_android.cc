@@ -85,6 +85,34 @@ void SendPageScreencastFrameEvent(JNIEnv* env, jobject jcaller, jlong facadePtr,
       metadata);
 }
 
+void SendOptimizedScreencastFrameEvent(JNIEnv* env, jobject jcaller,
+                                       jlong facadePtr, jstring data,
+                                       jfloat deviceWidth, jfloat deviceHeight,
+                                       jdouble timestamp, jintArray frame) {
+  if (frame == nullptr || env->GetArrayLength(frame) != 8) {
+    return;
+  }
+  jint values[8];
+  env->GetIntArrayRegion(frame, 0, 8, values);
+  auto platform_facade = *reinterpret_cast<
+      std::shared_ptr<lynx::devtool::DevToolPlatformAndroid>*>(facadePtr);
+  auto metadata = std::make_shared<lynx::devtool::ScreenMetadata>();
+  metadata->device_width_ = deviceWidth;
+  metadata->device_height_ = deviceHeight;
+  metadata->capture_timestamp_ = timestamp;
+  metadata->frame_id_ = values[0];
+  metadata->base_frame_id_ = values[1];
+  metadata->full_width_ = values[2];
+  metadata->full_height_ = values[3];
+  metadata->frame_x_ = values[4];
+  metadata->frame_y_ = values[5];
+  metadata->frame_width_ = values[6];
+  metadata->frame_height_ = values[7];
+  platform_facade->SendPageScreencastFrameEvent(
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, data),
+      metadata);
+}
+
 void DispatchScreencastVisibilityChanged(JNIEnv* env, jobject jcaller,
                                          jlong facadePtr, jboolean status) {
   auto platform_facade = *reinterpret_cast<
@@ -330,7 +358,8 @@ void DevToolPlatformAndroid::StartScreenCast(ScreenshotRequest request) {
           env, request.format_);
   Java_DevToolPlatformAndroidDelegate_startCasting(
       env, ref.Get(), request.quality_, request.max_width_, request.max_height_,
-      jni_mode.Get(), jni_format.Get());
+      jni_mode.Get(), jni_format.Get(), request.enable_better_screencast_,
+      request.enable_jpeg_delta_);
 }
 
 void DevToolPlatformAndroid::StopScreenCast() {
@@ -358,6 +387,16 @@ void DevToolPlatformAndroid::OnAckReceived() {
     return;
   }
   Java_DevToolPlatformAndroidDelegate_onAckReceived(env, ref.Get());
+}
+
+void DevToolPlatformAndroid::OnScreencastFrameAck(int session_id,
+                                                  bool frame_applied) {
+  JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (!ref.IsNull()) {
+    Java_DevToolPlatformAndroidDelegate_onScreencastFrameAck(
+        env, ref.Get(), session_id, frame_applied);
+  }
 }
 
 void DevToolPlatformAndroid::OnReceiveTemplateFragment(const std::string& data,

@@ -1,4 +1,4 @@
-summary: Queries monitored Lynx memory across live instances and destroyed pages with residual memory.
+summary: Queries global Lynx-attributed memory usage across live registered Lynx instances.
 parameters:
   - name: timeoutMs
     type: integer
@@ -12,11 +12,8 @@ returns:
     description: Wall-clock collection start time in milliseconds, as reported by the platform memory collector.
   - name: collectionStatus
     type: string
-    enum: [completed, timeout, error]
-    description: Status of the native global snapshot. SDK failures carry errorMessage; DevTool forwards failures as CDP errors.
-  - name: errorMessage
-    type: string
-    description: Empty on success; describes a failed SDK query.
+    enum: [completed, timeout]
+    description: Whether all expected instance fetchers completed or the timeout produced a partial result.
   - name: collectionDurationMs
     type: integer
     description: Elapsed collection time in milliseconds.
@@ -25,7 +22,7 @@ returns:
     description: Timeout in milliseconds used by the platform collector for this request.
   - name: expectedInstanceCount
     type: integer
-    description: Number of active instances in the native snapshot.
+    description: Number of live instance fetchers captured when the request starts.
   - name: completedInstanceCount
     type: integer
     description: Number of completed instance results included in this response.
@@ -35,6 +32,9 @@ returns:
   - name: appBytes
     type: integer
     description: Current app memory footprint in bytes when the platform reports it.
+  - name: ratioToApp
+    type: number
+    description: totalBytes divided by appBytes. The value is 0 when appBytes is unavailable.
   - name: elementBytes
     type: integer
     description: Aggregated element memory in bytes across completed instance results.
@@ -58,7 +58,7 @@ returns:
     description: LynxShell instance id. A value of -1 means the instance was not fully attached.
   - name: 'instances[].pageId'
     type: string
-    description: Native memory-monitor page_key. Empty when unavailable.
+    description: Temporary page identity for the instance memory sample. Empty when unavailable.
   - name: 'instances[].url'
     type: string
     description: Current template URL captured when the instance fetcher completes. Empty when unavailable.
@@ -97,47 +97,13 @@ returns:
     description: Background-thread runtime heap snapshot bytes for the instance.
   - name: 'instances[].btsRuntimeGroupId'
     type: string
-    description: Background runtime group for diagnostics. Same-name VMs remain distinct.
-  - name: 'instances[].btsRuntimeType'
-    type: string
-    enum: [quickjs, v8, jsvm, jsc, unknown]
-    description: BTS engine type.
-  - name: 'instances[].btsRuntimeTotalBytes'
-    type: integer
-    description: Whole BTS VM heap, separate from page-attributed backgroundThreadRuntimeBytes. Zero when unavailable.
-  - name: destroyedInstances
-    type: array
-    description: Up to five destroyed tracked pages per shared QuickJS VM with current slot bytes at least 1024, ordered within each VM by bytes descending. Reuses the instance type but omits totalBytes, elementBytes, elementNodeCount, viewBytes, viewDetail, mainThreadRuntimeBytes, and backgroundThreadRuntimeBytes. Excluded from global totals and instance counts.
-  - name: 'destroyedInstances[].instanceId'
-    type: integer
-    description: Exited LynxShell instance id.
-  - name: 'destroyedInstances[].pageId'
-    type: string
-    description: Exited page's native memory-monitor page_key.
-  - name: 'destroyedInstances[].url'
-    type: string
-    description: Original host URL, including query and fragment.
-  - name: 'destroyedInstances[].btsRuntimeGroupId'
-    type: string
-    description: Background runtime group for diagnostics.
-  - name: 'destroyedInstances[].btsRuntimeType'
-    type: string
-    description: quickjs.
-  - name: 'destroyedInstances[].btsRuntimeTotalBytes'
-    type: integer
-    description: Whole BTS VM heap. Zero when unavailable.
-  - name: 'destroyedInstances[].backgroundThreadRuntimeResidualBytes'
-    type: integer
-    description: Latest cached page slot bytes; not necessarily measured after a full GC.
+    description: Background runtime group id used by the global result to deduplicate shared background runtime memory. Empty when unavailable.
 events: []
 notes:
   - Send this method to the global DevTool handler with session ID -1.
   - The mediator validates params.timeoutMs before dispatch. Non-object params, non-integer timeoutMs, negative timeoutMs, and timeoutMs values greater than 300000 return CDP errors.
   - The platform bridge returns only the result object as JSON. The mediator parses that object and wraps it in the CDP response envelope with the original request id.
   - Runtimes without a platform memory bridge return a CDP error instead of a partial memory result.
-  - Disabled MemoryMonitor returns an SDK error and a CDP error. Production callers should query only processes selected for monitoring.
-  - A DevTool connection continues to force-enable monitoring for local debugging.
-  - Queries do not trigger GC. Heap queries refresh supported VM heaps on their owning JS runners; residual slot data comes from the latest monitor callback.
   - This method differs from Runtime.getHeapUsage, which reports JavaScript heap usage for one target runtime.
 examples:
   - title: Use the platform default timeout

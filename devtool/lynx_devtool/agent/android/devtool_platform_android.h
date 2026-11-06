@@ -29,6 +29,7 @@ class DevToolPlatformAndroid : public DevToolPlatformFacade {
                             std::string screen_shot_mode) override;
   void StartScreenCast(ScreenshotRequest request) override;
   void OnAckReceived() override;
+  void OnScreencastFrameAck(int session_id, bool frame_applied) override;
   void StopScreenCast() override;
   void GetLynxScreenShot() override;
   std::vector<float> GetTransformValue(

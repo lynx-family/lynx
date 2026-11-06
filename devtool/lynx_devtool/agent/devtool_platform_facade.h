@@ -111,6 +111,9 @@ class DevToolPlatformFacade
                           int32_t template_size = 0) = 0;
   virtual void Navigate(const std::string& url) = 0;
   virtual void OnAckReceived() = 0;
+  virtual void OnScreencastFrameAck(int session_id, bool frame_applied) {
+    OnAckReceived();
+  }
   virtual void GetLynxScreenShot() = 0;
 
   virtual void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent>) = 0;
