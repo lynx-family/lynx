@@ -55,7 +55,6 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   private boolean mPreDrawRegistered;
   private boolean mExperimentalUpdateBlurRadius = true;
   private boolean mPreDrawListenerDetached;
-  private boolean mAutoBlurPaused;
   private final Object mRenderScriptLock = new Object();
   private boolean mHasValidBlurContent = false;
 
@@ -255,7 +254,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
     super.onLayout(changed, l, t, r, b);
-    if (isAutoBlurActive()) {
+    if (mEnableBlurAutoUpdate) {
       getTargetParent();
     }
   }
@@ -264,7 +263,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   @Override
   protected void onSizeChanged(int width, int height, int oldWidth, int oleHeight) {
     super.onSizeChanged(width, height, oldWidth, oleHeight);
-    if (isAutoBlurActive()) {
+    if (mEnableBlurAutoUpdate) {
       if (setHasRadiusIfRadiusChanged && getBackground() != null) {
         getBackground().setBounds(0, 0, width, height);
       }
@@ -288,7 +287,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   protected void onAttachedToWindow() {
     super.onAttachedToWindow();
     mIsAttachToWindow = true;
-    if (isAutoBlurActive()) {
+    if (mEnableBlurAutoUpdate) {
       if (!isHardwareAccelerated()) {
         // if view set to LAYER_TYPE_SOFTWARE,may cause stackoverflow error
         LLog.e(TAG, "BlurView can't be used in not hardware-accelerated window!");
@@ -421,7 +420,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
 
   // blur backdrop
   private void updateBlur() {
-    if (!isAutoBlurActive() || !mInitialized) {
+    if (!mEnableBlurAutoUpdate || !mInitialized) {
       return;
     }
     if (mHasCaptureClipBounds) {
@@ -574,7 +573,7 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
         @Override
         public void run() {
           mEnableBlurAutoUpdate = finalEnabled;
-          if (isAutoBlurActive()) {
+          if (finalEnabled) {
             getTargetParent();
             updateBlurViewSize(getWidth(), getHeight());
           } else {
@@ -586,40 +585,17 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
     }
   }
 
-  void pauseBlurAutoUpdate() {
-    if (!mAutoBlurPaused) {
-      mAutoBlurPaused = true;
-      mNeedsBlurUpdate = false;
-      unregisterForPreDraw();
-    }
-  }
-
-  void resumeBlurAutoUpdate() {
-    if (mAutoBlurPaused) {
-      mAutoBlurPaused = false;
-      if (isAutoBlurActive()) {
-        getTargetParent();
-        updateBlurViewSize(getWidth(), getHeight());
-        updateBlur();
-        invalidate();
-      }
-    }
-  }
-
   void setExperimentalUpdateBlurRadius(boolean experimentalUpdateBlurRadius) {
     mExperimentalUpdateBlurRadius = experimentalUpdateBlurRadius;
   }
 
   void updateBlurTarget() {
-    if (!isAutoBlurActive()) {
+    if (!mEnableBlurAutoUpdate) {
       return;
     }
     post(new Runnable() {
       @Override
       public void run() {
-        if (!isAutoBlurActive()) {
-          return;
-        }
         getTargetParent();
         updateBlurViewSize(getWidth(), getHeight());
         updateBlur();
@@ -629,14 +605,10 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   }
 
   private void registerForPreDraw() {
-    if (!mPreDrawRegistered && isAutoBlurActive()) {
+    if (!mPreDrawRegistered && mEnableBlurAutoUpdate) {
       getViewTreeObserver().addOnPreDrawListener(this);
       mPreDrawRegistered = true;
     }
-  }
-
-  private boolean isAutoBlurActive() {
-    return mEnableBlurAutoUpdate && !mAutoBlurPaused;
   }
 
   private void unregisterForPreDraw() {
@@ -648,13 +620,6 @@ public class BlurView extends AndroidView implements ViewTreeObserver.OnPreDrawL
   @Override
   public boolean onPreDraw() {
     TraceEvent.beginSection(TraceEventDef.BLUR_VIEW_UPDATE_BLUR);
-    if (!isAutoBlurActive()) {
-      TraceEvent.endSection(TraceEventDef.BLUR_VIEW_UPDATE_BLUR);
-      return true;
-    }
-    if (getRenderer() != null) {
-      getTargetParent();
-    }
     if (mTargetView != null && (!mHasValidBlurContent || mTargetView.isDirty())) {
       mNeedsBlurUpdate = true;
       post(new Runnable() {

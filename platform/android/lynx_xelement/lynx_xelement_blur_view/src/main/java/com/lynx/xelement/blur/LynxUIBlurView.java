@@ -11,7 +11,6 @@ import android.view.ViewParent;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.react.bridge.ReadableMap;
-import com.lynx.tasm.behavior.ForegroundListener;
 import com.lynx.tasm.behavior.LynxBehavior;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxGeneratorName;
@@ -26,7 +25,7 @@ import com.lynx.tasm.utils.UnitUtils;
 
 @LynxGeneratorName(packageName = "com.lynx.xelement.blur")
 @LynxBehavior(tagName = "blur-view", isCreateAsync = false)
-public class LynxUIBlurView<T extends BlurView> extends UIView implements ForegroundListener {
+public class LynxUIBlurView<T extends BlurView> extends UIView {
   private static final String ANDROID_CAPTURE_TARGET = "android-capture-target";
 
   private int[] mChildLocation = new int[2];
@@ -247,20 +246,6 @@ public class LynxUIBlurView<T extends BlurView> extends UIView implements Foregr
     super.onBorderRadiusUpdated(index);
     if (mView != null) {
       ((BlurView) mView).setHasRadiusIfRadiusChanged(getHasRadius());
-    }
-  }
-
-  @Override
-  public void onLynxViewEnterForeground() {
-    if (mView != null) {
-      ((BlurView) mView).resumeBlurAutoUpdate();
-    }
-  }
-
-  @Override
-  public void onLynxViewEnterBackground() {
-    if (mView != null) {
-      ((BlurView) mView).pauseBlurAutoUpdate();
     }
   }
 
