@@ -4,6 +4,8 @@
 
 #include "core/shell/host_script/runtime/host_script_thread_bindings.h"
 
+#include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include "base/include/log/logging.h"
@@ -30,6 +32,17 @@ constexpr char kInvokeSynchronous[] = R"JS(((Error, String) => function(fn) {
     return [true, value];
   } catch (error) { return [false, String(error)]; }
 })(Error, String))JS";
+
+Value CopyTimerValue(Runtime& runtime, const Value& value) {
+  // The optional library must not depend on the engine's private copy symbol.
+  if (value.isUndefined()) return Value::undefined();
+  if (value.isNull()) return Value::null();
+  if (value.isBool()) return Value(value.getBool());
+  if (value.isNumber()) return Value(value.getNumber());
+  if (value.isSymbol()) return Value(value.getSymbol(runtime));
+  if (value.isString()) return Value(value.getString(runtime));
+  return Value(value.getObject(runtime));
+}
 
 bool IsFunction(Runtime& runtime, const Value& value) {
   return value.isObject() && value.getObject(runtime).isFunction(runtime);
@@ -72,6 +85,7 @@ HostScriptThreadBindings::HostScriptThreadBindings(
     Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner, Executor executor)
     : runtime_(runtime),
       runner_(std::move(runner)),
+      timers_(true, runner_),
       executor_(std::move(executor)) {}
 
 bool HostScriptThreadBindings::Install(const std::string& domain) {
@@ -137,6 +151,29 @@ bool HostScriptThreadBindings::Install(const std::string& domain) {
   }
   auto global = runtime_.global();
   if (!DefineProperty(global, "__hostScriptThread", Value(std::move(target))))
+    return false;
+  auto timeout = Function::createFromHostFunction(
+      runtime_, PropNameID::forAscii(runtime_, "setTimeout"), 2,
+      [weak = weak_from_this()](Runtime&, const Value&, const Value* args,
+                                size_t count) -> CallResult {
+        auto self = weak.lock();
+        if (!self || !self->attached_) return Value::undefined();
+        return self->SetTimeout(args, count);
+      });
+  auto clear = Function::createFromHostFunction(
+      runtime_, PropNameID::forAscii(runtime_, "clearTimeout"), 1,
+      [weak = weak_from_this()](Runtime&, const Value&, const Value* args,
+                                size_t count) -> CallResult {
+        auto self = weak.lock();
+        if (self && self->attached_ && count && args[0].isNumber()) {
+          double id = args[0].getNumber();
+          if (std::isfinite(id) && id > 0 && id <= UINT32_MAX)
+            self->timers_.StopTask(static_cast<uint32_t>(id));
+        }
+        return Value::undefined();
+      });
+  if (!DefineProperty(global, "setTimeout", Value(std::move(timeout))) ||
+      !DefineProperty(global, "clearTimeout", Value(std::move(clear))))
     return false;
   domain_ = domain;
   attached_ = true;
@@ -343,10 +380,41 @@ void HostScriptThreadBindings::Reject(Pending pending, const char* code,
   }
 }
 
+HostScriptThreadBindings::CallResult HostScriptThreadBindings::SetTimeout(
+    const Value* args, size_t count) {
+  if (!count || !IsFunction(runtime_, args[0]))
+    return base::unexpected(BindingException("setTimeout expects a function",
+                                             __FUNCTION__, __FILE__, __LINE__));
+  double delay = count > 1 && args[1].isNumber() ? args[1].getNumber() : 0;
+  if (!std::isfinite(delay) || delay < 0) delay = 0;
+  delay = std::min(delay, 2147483647.0);
+  std::vector<Value> values;
+  values.push_back(CopyTimerValue(runtime_, args[0]));
+  for (size_t i = 2; i < count; ++i)
+    values.push_back(CopyTimerValue(runtime_, args[i]));
+  auto id = timers_.SetTimeout(
+      [weak = weak_from_this(), values = std::move(values)]() mutable {
+        auto self = weak.lock();
+        if (!self || !self->attached_) return;
+        Scope scope(self->runtime_);
+        JSINativeExceptionCollector::Scope exceptions;
+        // Keep handles alive if the callback clears its timer or detaches HSR.
+        auto args = std::move(values);
+        auto callback =
+            args.front().getObject(self->runtime_).getFunction(self->runtime_);
+        callback.call(self->runtime_,
+                      static_cast<const Value*>(args.data() + 1),
+                      args.size() - 1);
+      },
+      static_cast<int64_t>(delay));
+  return Value(static_cast<double>(id));
+}
+
 void HostScriptThreadBindings::Detach() {
   attached_ = false;
   Scope scope(runtime_);
   JSINativeExceptionCollector::Scope exceptions;
+  timers_.StopAllTasks();
   auto pending = std::move(pending_);
   pending_.clear();
   for (auto& request : pending) {

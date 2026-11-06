@@ -26,6 +26,8 @@ ModuleCallback::ModuleCallback(int64_t callback_id)
 
 void ModuleCallback::Invoke(Runtime* runtime,
                             ModuleCallbackFunctionHolder* holder) {
+  if (interception_pending && !interception_resumed) return;
+  if (interception_resumed) interception_pending = false;
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, NATIVE_MODULE_CALLBACK,
               [this](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_terminating_flow_ids(CallbackFlowId());
@@ -38,7 +40,7 @@ void ModuleCallback::Invoke(Runtime* runtime,
   }
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, PUB_VALUE_TO_JS_VALUE);
   uint64_t convert_params_start = base::CurrentSystemTimeMilliseconds();
-  if (custom_args_converter_) {
+  if (custom_args_converter_ && !interception_resumed) {
     args_ = custom_args_converter_(runtime, this);
   }
   if (!args_ || !args_->IsArray()) {
@@ -47,6 +49,10 @@ void ModuleCallback::Invoke(Runtime* runtime,
   }
   if (call_context_ && group_interceptor_) {
     group_interceptor_->WillInvokeCallback(*this, args_);
+    if (interception_pending) {
+      TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
+      return;
+    }
     if (!args_ || !args_->IsArray()) {
       LOGW("NativeModule: Callback's args is invalid after interception.");
       return;

@@ -6,7 +6,7 @@
 
 #include <atomic>
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -136,6 +136,10 @@ class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
   // Consumed once, so callbacks sharing this state never retain the payload.
   lepus::Value TakeMock() { return std::exchange(mock_, lepus::Value()); }
 
+  std::function<void(InterceptCompletion)> pending_callbacks;
+  std::weak_ptr<ModuleDelegate> delegate;
+  std::unordered_map<int64_t, std::weak_ptr<ModuleCallback>> callbacks;
+
  private:
   static inline std::atomic<int64_t> next_id_{1};
   std::weak_ptr<Interceptor> provider_;
@@ -224,6 +228,7 @@ HostScriptModuleInterceptor::BeforeConvertArgs(
     }
     rewritten = std::move(replaced);
   }
+  call.pending_callbacks = std::move(decision.pending);
   call.SetMock(std::move(decision.mock));
   return owned;
 }
@@ -236,38 +241,57 @@ ModuleInterceptorResult HostScriptModuleInterceptor::InterceptModuleMethod(
     const CallbackMap& callbacks, NativeModuleInfoCollectorPtr timing_collector,
     ModuleCallContext* context) const {
   auto* call = GetCall(context);
-  if (!call || !call->mocked()) return {false, Value::null()};
+  if (!call) return {false, Value::null()};
+  call->delegate = delegate;
+  for (const auto& [index, callback] : callbacks)
+    call->callbacks[index] = std::static_pointer_cast<ModuleCallback>(callback);
+  if (!call->mocked()) return {false, Value::null()};
   auto mock = call->TakeMock();
 
-  // Each callback runs at most once, in a later JS task, so it never runs
-  // before this invocation has returned and been recorded.
-  std::unordered_set<int64_t> posted;
-  auto deliveries = mock.GetProperty(kCallbacks);
-  for (int i = 0; deliveries.IsArray() && i < deliveries.GetLength(); ++i) {
-    auto delivery = deliveries.GetProperty(i);
-    auto index =
-        static_cast<int64_t>(delivery.GetProperty(kArgumentIndex).Number());
-    auto entry = callbacks.find(index);
-    if (entry == callbacks.end() || !posted.insert(index).second) continue;
-    auto callback = std::static_pointer_cast<ModuleCallback>(entry->second);
-    callback->SetArgs(
-        std::make_unique<pub::ValueImplLepus>(delivery.GetProperty(kArgs)));
-    if (callback->timing_collector_) {
+  struct Delivery {
+    std::shared_ptr<ModuleDelegate> delegate;
+    CallbackMap callbacks;
+    base::LynxEntityId view;
+    ~Delivery() {
+      for (const auto& [index, callback] : callbacks)
+        delegate->CallJSCallback(nullptr, nullptr, callback->CallbackId());
+    }
+    void Deliver(const lepus::Value& mock) {
+      if (!Interceptor::IsViewAlive(view)) return;
+      auto deliveries = mock.GetProperty(kCallbacks);
+      for (int i = 0; deliveries.IsArray() && i < deliveries.GetLength(); ++i) {
+        auto delivery = deliveries.GetProperty(i);
+        auto index =
+            static_cast<int64_t>(delivery.GetProperty(kArgumentIndex).Number());
+        auto entry = callbacks.find(index);
+        if (entry == callbacks.end()) continue;
+        auto callback = std::static_pointer_cast<ModuleCallback>(entry->second);
+        callbacks.erase(entry);
+        callback->SetArgs(
+            std::make_unique<pub::ValueImplLepus>(delivery.GetProperty(kArgs)));
+        if (callback->timing_collector_) {
 #if defined(LYNX_HOST_SCRIPT_STANDALONE)
-      GetHostScriptEngineOps()->callback_thread_switch_start(
-          callback->timing_collector_.get());
+          GetHostScriptEngineOps()->callback_thread_switch_start(
+              callback->timing_collector_.get());
 #else
-      callback->timing_collector_->CallbackThreadSwitchStart();
+          callback->timing_collector_->CallbackThreadSwitchStart();
 #endif
+        }
+        delegate->CallJSCallback(callback, nullptr,
+                                 ModuleCallback::kInvalidCallbackId, true);
+      }
     }
-    delegate->CallJSCallback(callback, nullptr,
-                             ModuleCallback::kInvalidCallbackId,
-                             /*force_async=*/true);
-  }
-  for (const auto& [index, callback] : callbacks) {
-    if (!posted.count(index)) {
-      delegate->CallJSCallback(nullptr, nullptr, callback->CallbackId());
-    }
+  };
+  auto delivery = std::make_shared<Delivery>();
+  delivery->delegate = delegate;
+  delivery->callbacks = callbacks;
+  delivery->view = module->GetLogContext().view_id;
+  delivery->Deliver(mock);
+  auto pending = std::move(call->pending_callbacks);
+  if (pending) {
+    pending([delivery](InterceptResult result) {
+      if (!result.failed) delivery->Deliver(result.mock);
+    });
   }
   return {true, mock.Contains(kReturnValue)
                     ? RestoreJSValue(*rt, mock.GetProperty(kReturnValue))
@@ -304,6 +328,7 @@ void HostScriptModuleInterceptor::OnInvokeMethodEnd(
   if (!call || !call->mocked()) return;
   call->TakeMock();
   if (args_converted) return;
+  call->pending_callbacks = {};
   for (const auto& [index, callback] : callbacks) {
     delegate->CallJSCallback(nullptr, nullptr, callback->CallbackId());
   }
@@ -318,7 +343,28 @@ void HostScriptModuleInterceptor::WillInvokeCallback(
   auto event = call->Event();
   event.SetProperty(kArgumentIndex, lepus::Value(callback.argument_index()));
   event.SetProperty(kArgs, ToLepusValue(*args));
-  auto patched = Patched(handler->Dispatch(Kind::kCallback, event), kArgs);
+  auto decision = handler->Dispatch(Kind::kCallback, event);
+  if (decision.pending) {
+    auto delegate = call->delegate.lock();
+    auto owned = call->callbacks[callback.argument_index()].lock();
+    if (!delegate || !owned) return;
+    callback.interception_pending = true;
+    decision.pending([owned, delegate,
+                      original = ToLepusValue(*args)](InterceptResult result) {
+      if (result.cancelled) {
+        delegate->CallJSCallback(nullptr, nullptr, owned->callback_id());
+        return;
+      }
+      owned->interception_resumed = true;
+      auto replacement = Patched(result, kArgs);
+      owned->SetArgs(std::make_unique<pub::ValueImplLepus>(
+          replacement.IsArray() ? std::move(replacement) : original));
+      delegate->CallJSCallback(owned, nullptr,
+                               ModuleCallback::kInvalidCallbackId, true);
+    });
+    return;
+  }
+  auto patched = Patched(decision, kArgs);
   if (!patched.IsNil()) {
     args = std::make_unique<pub::ValueImplLepus>(std::move(patched));
   }
