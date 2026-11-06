@@ -10,6 +10,7 @@ _lynx_native_view_*
 _lynx_template_bundle_*
 _lynx_template_data_*
 _lynx_update_meta_*
+_lynx_replay_*
 _lynx_resource_*
 _lynx_generic_resource_fetcher_*
 _lynx_runtime_lifecycle_observer_*

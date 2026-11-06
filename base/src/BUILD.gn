@@ -243,7 +243,6 @@ lynx_base_source_set("base_core") {
               "fml/thread_name_setter.h",
               "fml/time/time_point.cc",
               "fml/time/timer.cc",
-              "fml/unique_fd.cc",
               "md5.cc",
               "memory/process_memory_info.cc",
               "notification_center.cc",
@@ -319,11 +318,18 @@ lynx_base_source_set("base_core") {
       "fml/platform/win/task_runner_win32_window.cc",
       "fml/platform/win/thread_name_setter_win.cc",
       "fml/synchronization/shared_mutex_std.cc",
-      "string/string_conversion_win.cc",
     ]
   }
 
   deps = [ ":datauri_utils" ]
+  if (is_win) {
+    public_deps += [
+      ":string_conversion_win",
+      ":unique_fd_win",
+    ]
+  } else {
+    sources += [ "fml/unique_fd.cc" ]
+  }
 
   libs = []
   if (is_android) {
@@ -336,6 +342,24 @@ lynx_base_source_set("base_core") {
     libs += [
       "psapi.lib",
       "user32.lib",
+    ]
+  }
+}
+
+if (is_win) {
+  lynx_base_source_set("unique_fd_win") {
+    sources = [
+      "../include/fml/unique_fd.h",
+      "fml/unique_fd.cc",
+    ]
+    public_deps = [ ":base_public_headers" ]
+  }
+
+  # File utilities also need UTF conversion without linking the entire base.
+  lynx_base_source_set("string_conversion_win") {
+    sources = [
+      "../include/string/string_conversion_win.h",
+      "string/string_conversion_win.cc",
     ]
   }
 }

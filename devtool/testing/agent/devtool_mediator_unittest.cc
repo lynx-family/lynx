@@ -730,6 +730,10 @@ TEST_F(DevToolMediatorTest, BoxModelDomCommandsRunOnTASMThreadCase) {
   message["params"]["nodeId"] = 0;
   devtool_mediator_->GetDocumentWithBoxModel(message_sender_, message);
   devtool_mediator_->DOM_GetBoxModel(message_sender_, message);
+  // Box model replies run on the DevTool thread. Drain them before the next
+  // command writes to the same MockReceiver from the TASM thread.
+  FlushTasmTasks();
+  FlushDevToolTasks();
   devtool_mediator_->GetComputedStyleForNode(message_sender_, message);
   tasm_thread_->Join();
 
