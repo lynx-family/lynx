@@ -29,6 +29,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <cstdint>
+#include <functional>
+#include <string>
+
 #include "base/include/fml/memory/weak_ptr.h"
 #include "core/event/event_dispatch_result.h"
 
@@ -36,14 +40,22 @@
 #define CORE_EVENT_EVENT_DISPATCHER_H_
 
 namespace lynx {
+namespace lepus {
+class Value;
+}
 namespace event {
 
 class Event;
 class EventTarget;
+struct TouchEventState;
 
 class EventDispatcher {
  public:
   static DispatchEventResult DispatchEvent(EventTarget&, fml::RefPtr<Event>);
+  static void DispatchTouchEventBatch(
+      const std::string& name, const lepus::Value& params, int64_t timestamp,
+      const std::function<EventTarget*(int)>& get_target,
+      const std::function<TouchEventState*()>& get_page_state);
 
   DispatchEventResult Dispatch();
   EventTarget& GetTarget() const { return *target_; }
@@ -54,6 +66,7 @@ class EventDispatcher {
 
   fml::WeakPtr<EventTarget> target_;
   fml::RefPtr<Event> event_;
+  bool defer_touch_cancel_cleanup_{false};
 };
 
 }  // namespace event
