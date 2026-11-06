@@ -11,7 +11,6 @@
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
 #include "core/shell/host_script/runtime/host_script_lynx_views.h"
-#include "core/shell/host_script/runtime/host_script_resources.h"
 
 namespace lynx {
 namespace shell {
@@ -23,23 +22,13 @@ HostScriptInterceptorBindings::Create(ProcessRuntime::Domain domain) {
       new HostScriptInterceptorBindings(domain));
 }
 
-ProcessRuntime::BindingFactory HostScriptInterceptorBindings::CreateFactory(
-    std::string resource_root) {
-  return [root = std::move(resource_root)](ProcessRuntime::Domain domain) {
-    return std::unique_ptr<ProcessRuntime::RuntimeBindings>(
-        new HostScriptInterceptorBindings(domain, root));
-  };
-}
-
 HostScriptInterceptorBindings::HostScriptInterceptorBindings(
-    ProcessRuntime::Domain domain, std::string resource_root)
-    : domain_(domain), resource_root_(std::move(resource_root)) {}
+    ProcessRuntime::Domain domain)
+    : domain_(domain) {}
 
 HostScriptInterceptorBindings::~HostScriptInterceptorBindings() {
-  // Settle pending reads and release the provider and proxies before detaching
-  // the N-API environment.
-  if (resources_) resources_->Detach();
-  resources_.reset();
+  // The provider and proxies release their N-API references and cancel queued
+  // View commands before the environment goes away.
   if (provider_) provider_->Uninstall();
   provider_.reset();
   if (views_) views_->Detach();
@@ -64,12 +53,9 @@ bool HostScriptInterceptorBindings::Attach(
       std::make_unique<runtime::js::NapiEnvironment::Delegate>());
   napi_->SetRuntimeProxy(std::move(proxy));
   napi_->Attach();
-  auto env = napi_->proxy()->Env();
-  views_ = HostScriptLynxViews::Create(env, runner, guard);
-  resources_ =
-      HostScriptResources::Install(env, std::move(runner), resource_root_);
-  provider_ = HostScriptInterceptor::Install(env, domain_, nullptr,
-                                             std::move(guard), views_);
+  views_ = HostScriptLynxViews::Create(napi_->proxy()->Env(), runner, guard);
+  provider_ = HostScriptInterceptor::Install(napi_->proxy()->Env(), domain_,
+                                             nullptr, std::move(guard), views_);
   if (!provider_) {
     LOGE("Host Script interceptor: install failed for "
          << HostScriptDomainName(domain_));

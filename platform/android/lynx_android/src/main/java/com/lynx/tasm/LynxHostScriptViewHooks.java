@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm;
 
-import android.content.Context;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import com.lynx.react.bridge.JavaOnlyArray;
@@ -11,8 +10,6 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.utils.UIThreadUtils;
-import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import org.json.JSONArray;
@@ -36,27 +33,6 @@ final class LynxHostScriptViewHooks {
   private static long sScriptCommandView = LynxLogContext.UNAVAILABLE_ID;
 
   private LynxHostScriptViewHooks() {}
-
-  @CalledByNative
-  private static String getHostScriptResourceRoot() {
-    Context context = LynxEnv.inst().getAppContext();
-    if (context == null) {
-      return "";
-    }
-    try {
-      File parent = context.getExternalFilesDir(null);
-      if (parent == null) {
-        return "";
-      }
-      File root = new File(parent, "hsr");
-      if (!root.isDirectory() && !root.mkdirs()) {
-        return "";
-      }
-      return root.getCanonicalPath();
-    } catch (IOException | SecurityException error) {
-      return "";
-    }
-  }
 
   @CalledByNative
   private static void setEnabled(boolean enabled) {

@@ -6,7 +6,6 @@
 #define CORE_SHELL_HOST_SCRIPT_RUNTIME_HOST_SCRIPT_INTERCEPTOR_BINDINGS_H_
 
 #include <memory>
-#include <string>
 
 #include "core/shell/host_script/runtime/process_runtime.h"
 
@@ -20,19 +19,16 @@ namespace shell {
 
 class HostScriptInterceptor;
 class HostScriptLynxViews;
-class HostScriptResources;
 
-// Owns one process runtime context's N-API environment, interceptor, LynxView
-// proxies and resource reader. Replacing the context releases them all.
+// Exposes `interceptor` in one process runtime context. Each binding owns the
+// N-API environment of its context, the provider attached on its runner, and
+// the context's LynxView proxies. Replacing the context releases them all.
 class HostScriptInterceptorBindings final
     : public ProcessRuntime::RuntimeBindings {
  public:
   // Returns null for a domain without interceptable events.
   static std::unique_ptr<ProcessRuntime::RuntimeBindings> Create(
       ProcessRuntime::Domain domain);
-  // The platform supplies the resource root; scripts cannot change it.
-  static ProcessRuntime::BindingFactory CreateFactory(
-      std::string resource_root);
   ~HostScriptInterceptorBindings() override;
 
   // Failing to install leaves the context usable without interception.
@@ -41,12 +37,9 @@ class HostScriptInterceptorBindings final
               ProcessRuntime::Guard guard) override;
 
  private:
-  explicit HostScriptInterceptorBindings(ProcessRuntime::Domain domain,
-                                         std::string resource_root = {});
+  explicit HostScriptInterceptorBindings(ProcessRuntime::Domain domain);
 
   ProcessRuntime::Domain domain_;
-  std::string resource_root_;
-  std::shared_ptr<HostScriptResources> resources_;
   std::unique_ptr<runtime::js::NapiEnvironment> napi_;
   std::shared_ptr<HostScriptLynxViews> views_;
   std::shared_ptr<HostScriptInterceptor> provider_;
