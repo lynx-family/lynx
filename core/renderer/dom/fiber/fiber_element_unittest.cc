@@ -546,6 +546,117 @@ static std::unordered_map<std::string, uint32_t> kTestColorMap = {
     {"black", 4278190080},
 };
 
+namespace {
+class SizeChangeRecordingDelegate : public FiberElementMockTasmDelegate {
+ public:
+  void SendNativeCustomEvent(const std::string& name, int tag,
+                             const lepus::Value& value,
+                             const std::string& param_name) override {
+    EXPECT_EQ(name, "sizechange");
+    EXPECT_EQ(param_name, "detail");
+    signs.push_back(tag);
+    sizes.push_back(value);
+  }
+  std::vector<int> signs;
+  std::vector<lepus::Value> sizes;
+};
+
+void UpdateMeasuredSize(Element* element, float width, float height) {
+  const std::array<float, 4> edges{};
+  element->UpdateLayout(0, 0, width, height, edges, edges, edges, nullptr, 0,
+                        false);
+}
+}  // namespace
+
+TEST_P(FiberElementTest, SizeChangeReportsFirstZeroResizeAndLogicalPixels) {
+  // Cover logical and physical layout-unit modes at the same device density.
+  for (const auto& config : {LynxEnvConfig(1080, 1920, 1.f, 2.5),
+                             LynxEnvConfig(1080, 1920, 2.5f, 1.0)}) {
+    SCOPED_TRACE(config.LayoutsUnitPerPx());
+    SizeChangeRecordingDelegate recording;
+    base::AutoReset<ElementManager::Delegate*> delegate(&manager->delegate_,
+                                                        &recording);
+    manager->lynx_env_config_ = config;
+    const float units_per_px = config.LayoutsUnitPerPx();
+    auto element = manager->CreateFiberView();
+    element->MarkAttached();
+    element->AddEventListener(
+        "sizechange",
+        std::make_unique<event::ClosureEventListener>([](lepus::Value) {}));
+    EXPECT_TRUE(recording.sizes.empty());
+
+    UpdateMeasuredSize(element.get(), 0, 0);
+    UpdateMeasuredSize(element.get(), 0, 0);
+    UpdateMeasuredSize(element.get(), 30.4f * units_per_px,
+                       40.6f * units_per_px);
+    UpdateMeasuredSize(element.get(), 30.4f * units_per_px,
+                       40.6f * units_per_px);
+    ASSERT_EQ(recording.sizes.size(), 2u);
+    EXPECT_FLOAT_EQ(recording.sizes[0].GetProperty("width").Number(), 0.f);
+    EXPECT_FLOAT_EQ(recording.sizes[1].GetProperty("width").Number(), 30.4f);
+    EXPECT_FLOAT_EQ(recording.sizes[1].GetProperty("height").Number(), 40.6f);
+    EXPECT_EQ(recording.signs[1], element->impl_id());
+  }
+}
+
+TEST_P(FiberElementTest, SizeChangeUsesComposeModifierListener) {
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  tasm->SetPageOptions(options);
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  lepus::Value callback;
+  constexpr char kCallback[] = "(function() {})";
+  ASSERT_TRUE(context->EvalBuf(kCallback, sizeof(kCallback) - 1, callback,
+                               "sizechange.js"));
+
+  SizeChangeRecordingDelegate recording;
+  base::AutoReset<ElementManager::Delegate*> delegate(&manager->delegate_,
+                                                      &recording);
+  auto page = manager->CreateFiberPage("page", 1);
+  manager->SetFiberPageElement(page);
+  auto handle = CreateComposeViewHandle(manager);
+  auto element = handle->content_element();
+  page->InsertNode(element);
+  element->MarkAttached();
+  element->SetJSEventHandler(base::String("sizechange"), base::String(),
+                             base::String());
+  EXPECT_FALSE(element->HasEventListener("sizechange"));
+  UpdateMeasuredSize(element.get(), 100, 50);
+  EXPECT_TRUE(recording.sizes.empty());
+
+  auto modifier = lepus::Dictionary::Create();
+  modifier->SetValue("op", lepus::Value(6));
+  modifier->SetValue("eventName", lepus::Value("sizechange"));
+  modifier->SetValue("eventType", lepus::Value(kEventBindEvent));
+  modifier->SetValue("callback", callback);
+  lepus::Value args[] = {lepus::Value(handle), lepus::Value(modifier)};
+  RendererFunctions::FiberSetComposeModifier(context, args, 2);
+  EXPECT_TRUE(element->HasEventListener("sizechange"));
+  element->SetStyle(kPropertyIDWidth, lepus::Value("100px"));
+  element->SetStyle(kPropertyIDHeight, lepus::Value("50px"));
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  ASSERT_EQ(recording.sizes.size(), 1u);
+  EXPECT_FLOAT_EQ(recording.sizes[0].GetProperty("height").Number(), 50.f);
+
+  element->SetStyle(kPropertyIDHeight, lepus::Value("80px"));
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  ASSERT_EQ(recording.sizes.size(), 2u);
+  EXPECT_FLOAT_EQ(recording.sizes[1].GetProperty("height").Number(), 80.f);
+
+  lepus::Value clear_args[] = {lepus::Value(handle), lepus::Value()};
+  RendererFunctions::FiberSetComposeModifier(context, clear_args, 2);
+  EXPECT_FALSE(element->HasEventListener("sizechange"));
+  element->SetStyle(kPropertyIDHeight, lepus::Value("90px"));
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_EQ(recording.sizes.size(), 2u);
+}
+
 TEST_P(FiberElementTest, CustomLayoutFunctionsFlushUpdatesAndClears) {
   PageOptions options;
   options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
