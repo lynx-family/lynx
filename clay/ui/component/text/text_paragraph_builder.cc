@@ -334,6 +334,8 @@ void ApplyTextStyle(const TextStyle& clay_style, txt::TextStyle& txt_style) {
   if (clay_style.align_type) {
     txt_style.align_type =
         ToTTTextAlign(clay_style.align_type.value(), txt_style, clay_style);
+    txt_style.use_parent_x_height_for_middle =
+        clay_style.align_type.value() == kVerticalAlignMiddle;
     txt_style.enable_text_bounds_ =
         clay_style.enable_text_bounds.value_or(false);
   }
