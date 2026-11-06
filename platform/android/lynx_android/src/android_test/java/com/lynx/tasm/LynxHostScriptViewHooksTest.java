@@ -5,6 +5,8 @@ package com.lynx.tasm;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -12,6 +14,7 @@ import static org.junit.Assert.fail;
 
 import android.app.Application;
 import android.content.Context;
+import android.view.View.MeasureSpec;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.lang.reflect.Field;
@@ -54,7 +57,7 @@ public class LynxHostScriptViewHooksTest {
 
   @After
   public void tearDown() {
-    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> setEnabled(mWasEnabled));
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> { setEnabled(mWasEnabled); });
   }
 
   @Test
@@ -129,12 +132,21 @@ public class LynxHostScriptViewHooksTest {
   public void disabledInterceptorsKeepRequestsWithoutAccessingRender() {
     LynxLoadMeta load = loadMeta();
     TemplateData data = TemplateData.fromString("{\"value\":1}");
+    TemplateData props = TemplateData.fromString("{\"theme\":\"light\"}");
     load.initialData = data;
     LynxUpdateMeta update = new LynxUpdateMeta.Builder().setUpdatedData(data).build();
+    LynxViewBuilder builder = new LynxViewBuilder();
+    int width = MeasureSpec.makeMeasureSpec(720, MeasureSpec.EXACTLY);
+    int height = MeasureSpec.makeMeasureSpec(1280, MeasureSpec.AT_MOST);
 
     LynxHostScriptViewHooks.beforeLoadTemplate(null, load);
     assertSame(data, load.initialData);
     assertSame(update, LynxHostScriptViewHooks.beforeUpdateMetaData(null, update));
+    assertSame(props, LynxHostScriptViewHooks.beforeUpdateGlobalProps(null, props));
+    assertSame(builder, LynxHostScriptViewHooks.beforeCreate(null, builder));
+    long packed = LynxHostScriptViewHooks.beforeUpdateViewport(null, width, height);
+    assertEquals(width, (int) (packed >>> 32));
+    assertEquals(height, (int) packed);
   }
 
   @Test
@@ -193,6 +205,19 @@ public class LynxHostScriptViewHooksTest {
         assertSame(update, LynxHostScriptViewHooks.beforeUpdateMetaData(render, update));
         LynxUpdateMeta empty = new LynxUpdateMeta.Builder().build();
         assertSame(empty, LynxHostScriptViewHooks.beforeUpdateMetaData(render, empty));
+        assertSame(props, LynxHostScriptViewHooks.beforeUpdateGlobalProps(render, props));
+        assertNull(LynxHostScriptViewHooks.beforeUpdateGlobalProps(render, null));
+
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        LynxViewBuilder builder = new LynxViewBuilder();
+        assertNull(LynxHostScriptViewHooks.beforeCreate(context, null));
+        assertSame(builder, LynxHostScriptViewHooks.beforeCreate(context, builder));
+
+        int width = MeasureSpec.makeMeasureSpec(720, MeasureSpec.EXACTLY);
+        int height = MeasureSpec.makeMeasureSpec(1280, MeasureSpec.AT_MOST);
+        long packed = LynxHostScriptViewHooks.beforeUpdateViewport(render, width, height);
+        assertEquals(width, (int) (packed >>> 32));
+        assertEquals(height, (int) packed);
       });
     } finally {
       bundle.release();
@@ -338,6 +363,94 @@ public class LynxHostScriptViewHooksTest {
     assertNull(original.getUpdatedGlobalProps());
   }
 
+  @Test
+  public void createRequestAndPatchHelpersPreserveAndIsolateBuilderOptions() throws Exception {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    LynxViewBuilder defaults = new LynxViewBuilder();
+    defaults.lynxViewConfig = null;
+    defaults.setScreenSize(720, 0);
+    JSONObject minimal = createRequest(context, defaults);
+    assertEquals(ThreadStrategyForRendering.ALL_ON_UI.id(), minimal.getInt("threadStrategy"));
+    assertTrue(minimal.getBoolean("enableJSRuntime"));
+    assertFalse(minimal.getBoolean("enableAirStrictMode"));
+    assertFalse(minimal.getBoolean("enableMTSModule"));
+    assertFalse(minimal.has("presetMeasuredSpec"));
+    assertFalse(minimal.has("screenSize"));
+    assertFalse(minimal.has("density"));
+    assertFalse(minimal.has("lynxViewConfig"));
+    assertEquals(1.0, minimal.getDouble("fontScale"), 0.001);
+    assertFalse(minimal.getBoolean("forceDarkAllowed"));
+    assertTrue(minimal.getJSONObject("deviceScreenSize").getInt("width") > 0);
+    assertTrue(minimal.getJSONObject("deviceScreenSize").getInt("height") > 0);
+
+    LynxViewBuilder emptyConfigCopy = copyBuilder(defaults);
+    assertNotSame(defaults, emptyConfigCopy);
+    assertNotNull(emptyConfigCopy.getLynxViewConfig());
+    assertTrue(emptyConfigCopy.getLynxViewConfig().isEmpty());
+
+    int widthSpec = MeasureSpec.makeMeasureSpec(720, MeasureSpec.EXACTLY);
+    int heightSpec = MeasureSpec.makeMeasureSpec(1280, MeasureSpec.AT_MOST);
+    LynxViewBuilder configured =
+        new LynxViewBuilder()
+            .setThreadStrategyForRendering(ThreadStrategyForRendering.MOST_ON_TASM)
+            .setEnableJSRuntime(false)
+            .setEnableAirStrictMode(true)
+            .setEnableMTSModule(true)
+            .setPresetMeasuredSpec(widthSpec, heightSpec)
+            .setScreenSize(1080, 1920)
+            .setDensity(3.0f)
+            .setFontScale(1.25f)
+            .setForceDarkAllowed(true)
+            .setLynxViewConfig(Collections.singletonMap("host", "yes"));
+    JSONObject full = createRequest(context, configured);
+    assertEquals(ThreadStrategyForRendering.MOST_ON_TASM.id(), full.getInt("threadStrategy"));
+    assertFalse(full.getBoolean("enableJSRuntime"));
+    assertTrue(full.getBoolean("enableAirStrictMode"));
+    assertTrue(full.getBoolean("enableMTSModule"));
+    assertEquals(widthSpec, full.getJSONObject("presetMeasuredSpec").getInt("width"));
+    assertEquals(heightSpec, full.getJSONObject("presetMeasuredSpec").getInt("height"));
+    assertEquals(1080, full.getJSONObject("screenSize").getInt("width"));
+    assertEquals(1920, full.getJSONObject("screenSize").getInt("height"));
+    assertEquals(3.0, full.getDouble("density"), 0.001);
+    assertEquals(1.25, full.getDouble("fontScale"), 0.001);
+    assertTrue(full.getBoolean("forceDarkAllowed"));
+    assertEquals("yes", full.getJSONObject("lynxViewConfig").getString("host"));
+
+    LynxViewBuilder copy = copyBuilder(configured);
+    assertNotSame(configured, copy);
+    assertNotSame(configured.getLynxRuntimeOptions(), copy.getLynxRuntimeOptions());
+    assertNotSame(configured.getLynxViewConfig(), copy.getLynxViewConfig());
+
+    applyCreatePatch(copy, "{}");
+    assertEquals(ThreadStrategyForRendering.MOST_ON_TASM, copy.getThreadStrategy());
+    assertFalse(copy.isEnableJSRuntime());
+    assertEquals("yes", copy.getLynxViewConfig().get("host"));
+
+    int patchedWidth = MeasureSpec.makeMeasureSpec(600, MeasureSpec.EXACTLY);
+    int patchedHeight = MeasureSpec.makeMeasureSpec(900, MeasureSpec.EXACTLY);
+    applyCreatePatch(copy,
+        "{\"threadStrategy\":" + ThreadStrategyForRendering.PART_ON_LAYOUT.id()
+            + ",\"enableJSRuntime\":true,\"enableAirStrictMode\":false,\"enableMTSModule\":false,"
+            + "\"forceDarkAllowed\":false,\"presetMeasuredSpec\":{\"width\":" + patchedWidth
+            + ",\"height\":" + patchedHeight + "},\"screenSize\":{\"width\":600,\"height\":900},"
+            + "\"density\":2.5,\"fontScale\":1.5,\"lynxViewConfig\":{\"patch\":\"applied\"}}");
+    assertEquals(ThreadStrategyForRendering.PART_ON_LAYOUT, copy.getThreadStrategy());
+    assertTrue(copy.isEnableJSRuntime());
+    assertFalse(copy.isEnableAirStrictMode());
+    assertFalse(copy.isEnableMTSModule());
+    assertFalse(copy.getForceDarkAllowed());
+    assertEquals(patchedWidth, copy.getPresetWidthMeasureSpec());
+    assertEquals(patchedHeight, copy.getPresetHeightMeasureSpec());
+    assertEquals(600, copy.getScreenWidth());
+    assertEquals(900, copy.getScreenHeight());
+    assertEquals(2.5f, copy.getDensity(), 0.001f);
+    assertEquals(1.5f, copy.getFontScale(), 0.001f);
+    assertEquals("yes", copy.getLynxViewConfig().get("host"));
+    assertEquals("applied", copy.getLynxViewConfig().get("patch"));
+    assertEquals(1, configured.getLynxViewConfig().size());
+    assertFalse(configured.isEnableJSRuntime());
+  }
+
   private static LynxLoadMeta loadMeta() {
     LynxLoadMeta.Builder builder = new LynxLoadMeta.Builder();
     builder.setUrl("assets://original.js");
@@ -360,6 +473,28 @@ public class LynxHostScriptViewHooksTest {
         "applyUpdatePatch", LynxUpdateMeta.class, JSONObject.class);
     method.setAccessible(true);
     return (LynxUpdateMeta) method.invoke(null, meta, new JSONObject(json));
+  }
+
+  private static LynxViewBuilder copyBuilder(LynxViewBuilder source) throws Exception {
+    Method method =
+        LynxHostScriptViewHooks.class.getDeclaredMethod("copyBuilder", LynxViewBuilder.class);
+    method.setAccessible(true);
+    return (LynxViewBuilder) method.invoke(null, source);
+  }
+
+  private static JSONObject createRequest(Context context, LynxViewBuilder builder)
+      throws Exception {
+    Method method = LynxHostScriptViewHooks.class.getDeclaredMethod(
+        "createRequest", Context.class, LynxViewBuilder.class);
+    method.setAccessible(true);
+    return (JSONObject) method.invoke(null, context, builder);
+  }
+
+  private static void applyCreatePatch(LynxViewBuilder builder, String json) throws Exception {
+    Method method = LynxHostScriptViewHooks.class.getDeclaredMethod(
+        "applyCreatePatch", LynxViewBuilder.class, JSONObject.class);
+    method.setAccessible(true);
+    method.invoke(null, builder, new JSONObject(json));
   }
 
   private void setEnabled(boolean enabled) {

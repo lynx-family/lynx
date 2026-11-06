@@ -115,14 +115,17 @@ class HostScriptInterceptorTest : public HostScriptInterceptorEnvTest {
 TEST_F(HostScriptInterceptorTest, DomainsAcceptOnlyTheirEventKinds) {
   const std::pair<Interceptor::Domain, const char*> cases[] = {
       {Interceptor::Domain::kUI,
-       "[['view.created','view.loadTemplate','view.updateMetaData'],"
-       "['view.create','jsb.call','jsb.result','jsb.callback']]"},
+       "[['view.created','view.create','view.loadTemplate',"
+       "'view.updateMetaData','view.updateViewport'],"
+       "['jsb.call','jsb.result','jsb.callback']]"},
       {Interceptor::Domain::kBTS,
        "[['view.created','jsb.call','jsb.result','jsb.callback'],"
-       "['view.create','view.loadTemplate','view.updateMetaData']]"},
+       "['view.create','view.loadTemplate',"
+       "'view.updateMetaData','view.updateViewport']]"},
       {Interceptor::Domain::kMTS,
-       "[['view.created'],['view.create','view.loadTemplate',"
-       "'view.updateMetaData','jsb.call','jsb.result','jsb.callback']]"}};
+       "[['view.created'],['view.create',"
+       "'view.loadTemplate','view.updateMetaData','view.updateViewport',"
+       "'jsb.call','jsb.result','jsb.callback']]"}};
   for (const auto& [domain, names] : cases) {
     Install(domain);
     std::string script =
@@ -221,9 +224,10 @@ TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
   for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS}) {
     Install(domain);
     const char* names =
+        // In InterceptKind order, which is the dispatch order below.
         domain == Interceptor::Domain::kUI
-            ? "['view.created','view.loadTemplate',"
-              "'view.updateMetaData']"
+            ? "['view.created','view.loadTemplate','view.updateMetaData',"
+              "'view.create','view.updateViewport']"
             : "['view.created','jsb.call','jsb.result','jsb.callback']";
     std::string script = R"(
       globalThis.calls = [];
@@ -727,6 +731,72 @@ TEST_F(HostScriptInterceptorTest,
     EXPECT_EQ(EvalString("urls.pop()"), "");
     provider_->Uninstall();
     provider_.reset();
+  }
+}
+
+TEST_F(HostScriptInterceptorTest, CreatePatchesValidateEveryField) {
+  Install();
+  lepus::Value request(lepus::Dictionary::Create());
+  request.SetProperty("threadStrategy", lepus::Value(1));
+  request.SetProperty("fontScale", lepus::Value(1));
+  lepus::Value device(lepus::Dictionary::Create());
+  device.SetProperty("width", lepus::Value(1080));
+  device.SetProperty("height", lepus::Value(2400));
+  request.SetProperty("deviceScreenSize", device);
+  // A View under construction has no identity.
+  lepus::Value event(lepus::Dictionary::Create());
+  event.SetProperty("request", request);
+  Script(R"(
+    globalThis.patch = undefined;
+    interceptor.on('view.create', (e, c, v) => {
+      if (e.viewURL !== '' || v !== null || 'viewId' in e)
+        throw Error('unexpected View identity');
+      return c.proceed(patch);
+    });
+  )");
+  Script(R"(patch = {threadStrategy: 3, enableJSRuntime: false,
+      enableAirStrictMode: true, enableMTSModule: true,
+      forceDarkAllowed: true, density: 2.5, fontScale: 1.5,
+      presetMeasuredSpec: {width: 0x400002d0, height: -2147482368},
+      screenSize: {width: 720, height: 1280}, lynxViewConfig: {a: 'b'},
+      deviceScreenSize: {width: 1080, height: 2400}})");
+  auto result = provider_->Dispatch(InterceptKind::kCreate, event);
+  ASSERT_FALSE(result.failed);
+  EXPECT_EQ(result.patch.GetProperty("threadStrategy").Number(), 3);
+  EXPECT_EQ(result.patch.GetProperty("presetMeasuredSpec").GetLength(), 2);
+  EXPECT_EQ(result.patch.GetProperty("presetMeasuredSpec")
+                .GetProperty("height")
+                .Number(),
+            -2147482368.0);
+  for (const char* invalid :
+       {"{threadStrategy: 4}", "{threadStrategy: 1.5}",
+        "{deviceScreenSize: {width: 1, height: 2400}}",
+        "{presetMeasuredSpec: {widthMode: 'fill'}}", "{presetMeasuredSpec: {}}",
+        "{screenSize: {width: 0, height: 1}}", "{screenSize: {width: 1}}",
+        "{density: 0}", "{fontScale: -1}", "{enableJSRuntime: 1}",
+        "{lynxViewConfig: {a: 1}}", "{backgroundColor: 0xff00ff00}",
+        "{independentJSContext: true}"}) {
+    Script(("patch = " + std::string(invalid)).c_str());
+    EXPECT_TRUE(provider_->Dispatch(InterceptKind::kCreate, event).failed)
+        << invalid;
+  }
+}
+
+TEST_F(HostScriptInterceptorTest, ViewportPatchesAreValidatedPerField) {
+  Install();
+  Script(R"(
+    globalThis.patch = undefined;
+    interceptor.on('view.updateViewport', (e, c) => c.proceed(patch));
+  )");
+  Script("patch = {height: -2147482048}");
+  auto result = Dispatch(InterceptKind::kUpdateViewport);
+  ASSERT_FALSE(result.failed);
+  EXPECT_EQ(result.patch.GetProperty("height").Number(), -2147482048.0);
+  for (const char* invalid :
+       {"{width: -1}", "{width: 2147483648}", "{width: 1.5}",
+        "{widthMode: 'exact'}", "{height: '1'}", "{url: 'x'}"}) {
+    Script(("patch = " + std::string(invalid)).c_str());
+    EXPECT_TRUE(Dispatch(InterceptKind::kUpdateViewport).failed) << invalid;
   }
 }
 

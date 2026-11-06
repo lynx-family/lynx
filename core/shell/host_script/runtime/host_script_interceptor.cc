@@ -4,6 +4,7 @@
 
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <optional>
@@ -34,6 +35,8 @@ BASE_STATIC_STRING_DECL(kPayload, "payload");
 BASE_STATIC_STRING_DECL(kRequest, "request");
 BASE_STATIC_STRING_DECL(kViewId, "viewId");
 BASE_STATIC_STRING_DECL(kUrl, "url");
+BASE_STATIC_STRING_DECL(kWidth, "width");
+BASE_STATIC_STRING_DECL(kHeight, "height");
 
 enum class Action { kInvalid, kProceed, kMock };
 
@@ -43,13 +46,20 @@ bool Accepts(Interceptor::Domain domain, Kind kind) {
   if (kind == Kind::kCreated) return true;
   switch (domain) {
     case Interceptor::Domain::kUI:
-      return kind == Kind::kLoadTemplate || kind == Kind::kUpdateMetaData;
+      return kind == Kind::kCreate || kind == Kind::kLoadTemplate ||
+             kind == Kind::kUpdateMetaData || kind == Kind::kUpdateViewport;
     case Interceptor::Domain::kBTS:
       return kind == Kind::kCall || kind == Kind::kResult ||
              kind == Kind::kCallback;
     default:
       return false;
   }
+}
+
+// Operation events carry the operation in `request`; JSB events are flat.
+bool HasRequest(Kind kind) {
+  return kind == Kind::kCreate || kind == Kind::kLoadTemplate ||
+         kind == Kind::kUpdateMetaData || kind == Kind::kUpdateViewport;
 }
 
 Napi::Value MakeDecision(const Napi::CallbackInfo& info) {
@@ -162,6 +172,55 @@ std::optional<Value> FromJS(Napi::Value input,
 
 bool IsData(const Value& value) { return value.IsNil() || value.IsTable(); }
 
+bool IsInteger(const Value& value, double min, double max) {
+  if (!value.IsNumber()) return false;
+  double number = value.Number();
+  return number >= min && number <= max && std::floor(number) == number;
+}
+
+bool IsPositive(const Value& value) {
+  return value.IsNumber() && std::isfinite(value.Number()) &&
+         value.Number() > 0;
+}
+
+// Android MeasureSpec encodes the mode in the top two bits of an int32.
+bool IsMeasureSpec(const Value& value) {
+  return IsInteger(value, -2147483648.0, 2147483647.0) &&
+         (static_cast<uint32_t>(static_cast<int32_t>(value.Number())) >> 30) !=
+             3;
+}
+
+bool ValidSize(const Value& value, bool measure_spec) {
+  return value.IsTable() && value.GetLength() == 2 &&
+         (measure_spec
+              ? IsMeasureSpec(value.GetProperty(kWidth)) &&
+                    IsMeasureSpec(value.GetProperty(kHeight))
+              : IsInteger(value.GetProperty(kWidth), 1, 2147483647.0) &&
+                    IsInteger(value.GetProperty(kHeight), 1, 2147483647.0));
+}
+
+bool ValidStringRecord(const Value& value) {
+  if (!value.IsTable()) return false;
+  for (const auto& item : *value.Table())
+    if (!item.second.IsString()) return false;
+  return true;
+}
+
+bool ValidCreateField(const std::string& key, const Value& value,
+                      const Value& original) {
+  if (key == "threadStrategy") return IsInteger(value, 0, 3);
+  if (key == "enableJSRuntime" || key == "enableAirStrictMode" ||
+      key == "enableMTSModule" || key == "forceDarkAllowed")
+    return value.IsBool();
+  if (key == "presetMeasuredSpec") return ValidSize(value, true);
+  if (key == "screenSize") return ValidSize(value, false);
+  if (key == "density" || key == "fontScale") return IsPositive(value);
+  if (key == "lynxViewConfig") return ValidStringRecord(value);
+  // Read-only; tolerated unchanged so a spread request remains a valid patch.
+  if (key == "deviceScreenSize") return value == original.GetProperty(key);
+  return false;
+}
+
 bool ValidPatchField(Kind kind, const std::string& key, const Value& value,
                      const Value& original) {
   switch (kind) {
@@ -202,6 +261,10 @@ bool ValidPatchField(Kind kind, const std::string& key, const Value& value,
       return key == "value";
     case Kind::kCallback:
       return key == "args" && value.IsArray();
+    case Kind::kCreate:
+      return ValidCreateField(key, value, original);
+    case Kind::kUpdateViewport:
+      return (key == "width" || key == "height") && IsMeasureSpec(value);
     default:
       return false;
   }
@@ -601,8 +664,8 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   // Keep the current handler alive if it disposes itself or uninstalls HSR.
   // Release its reference while the owning NAPI context is still entered.
   auto entry = entries_[static_cast<size_t>(kind)];
-  const bool view_event = kind <= Kind::kUpdateMetaData;
-  const Value& original = view_event ? event.GetProperty(kRequest) : event;
+  const Value& original =
+      HasRequest(kind) ? event.GetProperty(kRequest) : event;
   const auto view_id = event.GetProperty(kViewId);
   const auto view = view_id.IsString()
                         ? static_cast<base::LynxEntityId>(std::strtoll(
