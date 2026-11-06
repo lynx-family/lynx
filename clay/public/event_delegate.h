@@ -31,6 +31,10 @@ class EventDelegate {
   virtual void OnTouchEvent(const std::string& event_name, int tag, float x,
                             float y, float page_x, float page_y,
                             int pointer_id) = 0;
+  // Refresh a retained contact's recipient without dispatching an event.
+  // PageView calls this before cancellation for the other active contacts so
+  // delegates that cancel the whole stream can include every live recipient.
+  virtual void UpdateTouchTarget(int pointer_id, int tag) {}
   virtual void OnMouseEvent(const std::string& event_name, int view_id,
                             int button, int buttons, float scale, float x,
                             float y, float page_x, float page_y) = 0;

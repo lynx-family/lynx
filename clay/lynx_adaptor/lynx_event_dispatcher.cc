@@ -264,6 +264,9 @@ void LynxEventDispatcher::OnTouchEvent(const std::string& event_name, int tag,
     return;
   }
 
+  // PageView may fall back to a surviving ancestor after the original target
+  // detaches. Keep cancellation routing on that live target as well.
+  touch->tag = tag;
   Value::Map targets;
   if (event_name == "touchcancel") {
     // Core cancels the entire stream before clearing its active pointers.
@@ -291,6 +294,15 @@ void LynxEventDispatcher::OnTouchEvent(const std::string& event_name, int tag,
   }
   engine_proxy_->SendTouchEvent(event_name,
                                 lynx::ClayValue(Value(std::move(targets))));
+}
+
+void LynxEventDispatcher::UpdateTouchTarget(int pointer_id, int tag) {
+  for (auto& target : active_touch_targets_) {
+    if (target.pointer_id == pointer_id) {
+      target.tag = tag;
+      return;
+    }
+  }
 }
 
 void LynxEventDispatcher::OnMouseEvent(const std::string& event_name,

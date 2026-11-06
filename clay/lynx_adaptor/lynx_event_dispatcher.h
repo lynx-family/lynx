@@ -44,6 +44,7 @@ class LynxEventDispatcher : public EventDelegate {
   // clay::EventDelegate override
   void OnTouchEvent(const std::string& event_name, int tag, float x, float y,
                     float page_x, float page_y, int pointer_id) override;
+  void UpdateTouchTarget(int pointer_id, int tag) override;
   void SetEnableMultiTouch(bool enabled) {
     enable_multi_touch_ = enabled;
     active_touch_targets_.clear();
