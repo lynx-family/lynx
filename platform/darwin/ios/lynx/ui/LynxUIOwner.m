@@ -513,7 +513,9 @@ static NSString* const kPositionChangeEvent = @"positionchange";
     NSDictionary* userInfo = @{@"LynxErrorCustomInfo" : info};
     @throw [NSException
         exceptionWithName:@"LynxCreateUIException"
-                   reason:[NSString stringWithFormat:@"%@ ui not found when create UI", tagName]
+                   reason:[NSString stringWithFormat:@"Native Element <%@> is not registered. UI "
+                                                     @"not found when create UI \"%@\".",
+                                                     tagName, tagName]
                  userInfo:userInfo];
   }
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
@@ -575,7 +577,9 @@ static NSString* const kPositionChangeEvent = @"positionchange";
     NSDictionary* userInfo = @{@"LynxErrorCustomInfo" : info};
     @throw [NSException
         exceptionWithName:@"LynxCreateUIException"
-                   reason:[NSString stringWithFormat:@"%@ ui not found when create UI", tagName]
+                   reason:[NSString stringWithFormat:@"Native Element <%@> is not registered. UI "
+                                                     @"not found when create UI \"%@\".",
+                                                     tagName, tagName]
                  userInfo:userInfo];
   }
   return ui;
