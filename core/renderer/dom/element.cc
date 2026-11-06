@@ -534,6 +534,7 @@ void Element::UpdateLayout(float left, float top, float width, float height,
   UpdateStickyPosition(sticky_positions);
   MarkSubtreeNeedUpdate();
   NotifyElementSizeUpdated();
+  SendSizeChangeEvent();
 }
 
 void Element::UpdateLayout(float left, float top) {
@@ -2246,6 +2247,27 @@ void Element::MarkSubtreeNeedUpdate() {
       parent_->MarkSubtreeNeedUpdate();
     }
   }
+}
+
+void Element::SendSizeChangeEvent() {
+  if (!IsAttached() || will_destroy() || !HasEventListener("sizechange")) {
+    return;
+  }
+  const float units_per_px =
+      element_manager()->GetLynxEnvConfig().LayoutsUnitPerPx();
+  const std::array<float, 2> size{width_ / units_per_px,
+                                  height_ / units_per_px};
+  if (size == last_size_change_) {
+    return;
+  }
+  last_size_change_ = size;
+  auto detail = lepus::Dictionary::Create();
+  BASE_STATIC_STRING_DECL(kWidth, "width");
+  BASE_STATIC_STRING_DECL(kHeight, "height");
+  detail->SetValue(kWidth, size[0]);
+  detail->SetValue(kHeight, size[1]);
+  element_manager()->SendNativeCustomEvent(
+      "sizechange", impl_id(), lepus::Value(std::move(detail)), "detail");
 }
 
 void Element::NotifyElementSizeUpdated() {

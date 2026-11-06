@@ -5794,6 +5794,7 @@ void Element::UpdateLayoutInfo() {
     element_manager_->layout_context()->OnLayout(id_, left_, top_, width_,
                                                  height_, paddings_, borders_);
   }
+  SendSizeChangeEvent();
   DispatchLayoutAfter();
   if (EnableFragmentLayerRender()) {
     static_cast<Fragment *>(element_container())->UpdateLayout(layout_result);
