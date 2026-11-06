@@ -3,6 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 #ifndef BASE_INCLUDE_VALUE_ARRAY_H_
 #define BASE_INCLUDE_VALUE_ARRAY_H_
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -18,6 +22,12 @@ namespace lynx {
 namespace lepus {
 class BASE_EXPORT CArray : public RefCountedBase {
  public:
+  // The largest number of elements an array can hold. base::Vector keeps its
+  // capacity in an int32_t and computes its buffer size in size_t.
+  static constexpr size_t kMaxSize =
+      std::min(static_cast<size_t>(std::numeric_limits<int32_t>::max()),
+               std::numeric_limits<size_t>::max() / sizeof(Value));
+
   static fml::RefPtr<CArray> Create() {
     return fml::AdoptRef<CArray>(new CArray());
   }
@@ -129,27 +139,40 @@ class BASE_EXPORT CArray : public RefCountedBase {
     return vec_[index];
   }
 
-  void resize(long size) { vec_.resize(size); }
+  // Returns false and leaves the array unchanged if |size| is negative, exceeds
+  // kMaxSize, or the storage cannot be allocated.
+  bool resize(long size) {
+    if (size < 0 || static_cast<size_t>(size) > kMaxSize) {
+      return false;
+    }
+    const size_t new_size = static_cast<size_t>(size);
+    if (new_size > vec_.capacity()) {
+      // base::Vector::resize does not report allocation failures.
+      vec_.reserve(new_size);
+      if (new_size > vec_.capacity()) {
+        return false;
+      }
+    }
+    vec_.resize(new_size);
+    return true;
+  }
 
   void reserve(long size) { vec_.reserve(size); }
 
+  // The set overloads grow the array when |index| is past its end. They return
+  // false and leave the array unchanged if the array is const or |index| cannot
+  // be made a valid position.
   bool set(size_t index, const Value& v) {
-    if (IsConstLog()) {
+    if (IsConstLog() || !EnsureIndex(index)) {
       return false;
-    }
-    if (static_cast<size_t>(index) >= vec_.size()) {
-      resize(index + 1);
     }
     vec_[index] = v;
     return true;
   }
 
   bool set(size_t index, Value&& v) {
-    if (IsConstLog()) {
+    if (IsConstLog() || !EnsureIndex(index)) {
       return false;
-    }
-    if (static_cast<size_t>(index) >= vec_.size()) {
-      resize(index + 1);
     }
     vec_[index] = std::move(v);
     return true;
@@ -158,11 +181,8 @@ class BASE_EXPORT CArray : public RefCountedBase {
   template <class ValueType, typename = typename std::enable_if<!std::is_same_v<
                                  std::decay_t<ValueType>, Value>>::type>
   bool set(size_t index, ValueType&& v) {
-    if (IsConstLog()) {
+    if (IsConstLog() || !EnsureIndex(index)) {
       return false;
-    }
-    if (index >= vec_.size()) {
-      resize(index + 1);
     }
     std::decay_t<ValueType>::Assign(vec_[index], std::forward<ValueType>(v));
     return true;
@@ -235,6 +255,11 @@ class BASE_EXPORT CArray : public RefCountedBase {
   base::InlineVector<Value, 2> vec_;
 
   friend class LEPUSValueHelper;
+
+  BASE_INLINE bool EnsureIndex(size_t index) {
+    return index < vec_.size() ||
+           (index < kMaxSize && resize(static_cast<long>(index + 1)));
+  }
 
   BASE_INLINE bool IsConstLog() const {
     if (IsConst()) {

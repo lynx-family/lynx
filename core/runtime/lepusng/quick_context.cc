@@ -99,9 +99,10 @@ static LEPUSValue LepusRefSetPropertyCallBack(LEPUSContext* ctx,
       CArray* array = reinterpret_cast<CArray*>(ref_ptr);
       uint32_t old_size = static_cast<uint32_t>(array->size());
       if (idx >= 0) {
-        array->set(idx, lepus_val);
-        for (auto i = old_size; i < static_cast<uint32_t>(idx); ++i) {
-          const_cast<lepus::Value&>(array->get(i)).SetUndefined();
+        if (array->set(idx, lepus_val)) {
+          for (auto i = old_size; i < static_cast<uint32_t>(idx); ++i) {
+            const_cast<lepus::Value&>(array->get(i)).SetUndefined();
+          }
         }
       } else {
         LEPUSAtom prop_atom = LEPUS_ValueToAtom(ctx, prop);
@@ -110,9 +111,10 @@ static LEPUSValue LepusRefSetPropertyCallBack(LEPUSContext* ctx,
         if (prop_atom == len_atom) {
           uint32_t new_array_len = 0;
           if (LEPUS_ToUint32(ctx, &new_array_len, val) == 0) {
-            array->resize(new_array_len);
-            for (auto i = old_size; i < new_array_len; ++i) {
-              const_cast<lepus::Value&>(array->get(i)).SetUndefined();
+            if (array->resize(new_array_len)) {
+              for (auto i = old_size; i < new_array_len; ++i) {
+                const_cast<lepus::Value&>(array->get(i)).SetUndefined();
+              }
             }
           }
         }

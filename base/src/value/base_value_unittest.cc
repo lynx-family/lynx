@@ -4,12 +4,15 @@
 
 #include "base/include/value/base_value.h"
 
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <unordered_set>
 
 #include "base/include/value/array.h"
 #include "base/include/value/byte_array.h"
 #include "base/include/value/lynx_value_api.h"
+#include "base/include/value/path_parser.h"
 #include "base/include/value/table.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -668,6 +671,113 @@ TEST_F(BaseValueTest, LynxValueAPI) {
   lynx_value_create_uint64(env, 10001, &v8);
   ASSERT_TRUE(v8.type == lynx_value_uint64);
   ASSERT_TRUE(v8.val_uint64 == 10001);
+}
+
+namespace {
+
+fml::RefPtr<lepus::CArray> CreateArrayOfSize(size_t size) {
+  auto array = lepus::CArray::Create();
+  for (size_t i = 0; i < size; ++i) {
+    array->push_back(lepus::Value(static_cast<int64_t>(i)));
+  }
+  return array;
+}
+
+void ExpectArrayUnchanged(const fml::RefPtr<lepus::CArray>& array,
+                          size_t size) {
+  ASSERT_EQ(array->size(), size);
+  for (size_t i = 0; i < size; ++i) {
+    EXPECT_EQ(array->get(i).Int64(), static_cast<int64_t>(i));
+  }
+  EXPECT_FALSE(array->IsConst());
+}
+
+}  // namespace
+
+TEST_F(BaseValueTest, ArraySetRejectsInvalidIndex) {
+  struct AssignCounter {
+    static void Assign(lepus::Value&, const AssignCounter& counter) {
+      ++*counter.calls;
+    }
+    int* calls;
+  };
+
+  const size_t invalid_indices[] = {
+      std::numeric_limits<size_t>::max(),
+      std::numeric_limits<size_t>::max() - 1,
+      lepus::CArray::kMaxSize,
+  };
+  // Two elements fit in the inline storage while three move to the heap.
+  for (const size_t size : {size_t{0}, size_t{2}, size_t{3}}) {
+    auto array = CreateArrayOfSize(size);
+    int assign_calls = 0;
+    for (const size_t index : invalid_indices) {
+      const lepus::Value value(int64_t{100});
+      EXPECT_FALSE(array->set(index, value));
+      EXPECT_FALSE(array->set(index, lepus::Value(int64_t{100})));
+      EXPECT_FALSE(array->set(index, AssignCounter{&assign_calls}));
+    }
+    EXPECT_EQ(assign_calls, 0);
+    ExpectArrayUnchanged(array, size);
+  }
+}
+
+TEST_F(BaseValueTest, ArraySetGrowsForValidIndex) {
+  auto array = lepus::CArray::Create();
+  EXPECT_TRUE(array->set(0, lepus::Value(int64_t{1})));
+  EXPECT_TRUE(array->set(3, lepus::Value(int64_t{2})));
+  ASSERT_EQ(array->size(), 4u);
+  EXPECT_EQ(array->get(0).Int64(), 1);
+  EXPECT_TRUE(array->get(1).IsNil());
+  EXPECT_TRUE(array->get(2).IsNil());
+  EXPECT_EQ(array->get(3).Int64(), 2);
+}
+
+TEST_F(BaseValueTest, ArrayResizeRejectsInvalidSize) {
+  auto array = CreateArrayOfSize(2);
+  EXPECT_FALSE(array->resize(-1));
+  EXPECT_FALSE(array->resize(std::numeric_limits<long>::min()));
+  if (static_cast<size_t>(std::numeric_limits<long>::max()) >
+      lepus::CArray::kMaxSize) {
+    EXPECT_FALSE(array->resize(std::numeric_limits<long>::max()));
+  }
+  ExpectArrayUnchanged(array, 2);
+
+  EXPECT_TRUE(array->resize(4));
+  EXPECT_EQ(array->size(), 4u);
+  EXPECT_TRUE(array->resize(1));
+  ExpectArrayUnchanged(array, 1);
+  EXPECT_TRUE(array->resize(0));
+  EXPECT_EQ(array->size(), 0u);
+}
+
+TEST_F(BaseValueTest, SetPropertyIgnoresInvalidArrayIndex) {
+  auto array = CreateArrayOfSize(2);
+  lepus::Value target(array);
+  const lepus::Value value(int64_t{100});
+  EXPECT_FALSE(target.SetProperty(std::numeric_limits<uint32_t>::max(), value));
+  EXPECT_FALSE(target.SetProperty(std::numeric_limits<uint32_t>::max(),
+                                  lepus::Value(int64_t{100})));
+  ExpectArrayUnchanged(array, 2);
+}
+
+TEST_F(BaseValueTest, UpdateValueByPathIgnoresInvalidArrayIndex) {
+  auto array = CreateArrayOfSize(2);
+  auto table = lepus::Dictionary::Create();
+  table->SetValue("list", lepus::Value(array));
+  lepus::Value target(table);
+  const lepus::Value value(int64_t{100});
+  for (const char* path : {"list.-1", "list.-2", "list.2147483647",
+                           "list.4294967295", "list.-2147483648"}) {
+    EXPECT_FALSE(lepus::Value::UpdateValueByPath(target, value,
+                                                 lepus::ParseValuePath(path)))
+        << path;
+  }
+  ExpectArrayUnchanged(array, 2);
+
+  EXPECT_TRUE(lepus::Value::UpdateValueByPath(
+      target, value, lepus::ParseValuePath("list[1]")));
+  EXPECT_EQ(array->get(1).Int64(), 100);
 }
 
 }  // namespace base
