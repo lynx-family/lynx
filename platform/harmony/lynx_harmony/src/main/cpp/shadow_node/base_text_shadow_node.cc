@@ -4,6 +4,7 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/base_text_shadow_node.h"
 
+#include <map>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -58,6 +59,21 @@ void BaseTextShadowNode::OnPropsUpdate(const std::string& name,
   } else if (base::StringEqual(attr, kFontStyle)) {
     text_props_->font_style = static_cast<FontStyle>(value.Number());
     style_.SetFontStyleToStyle(text_props_->font_style);
+  } else if (base::StringEqual(attr, kFontFeatureSettings)) {
+    text_props_->font_feature_settings.reset();
+    if (value.IsArray()) {
+      text_props_->font_feature_settings.emplace();
+      const auto& settings = value.Array();
+      for (size_t i = 0; i + 1 < settings->size(); i += 2) {
+        const auto& tag = settings->get(i);
+        const auto& feature_value = settings->get(i + 1);
+        if (tag.IsString() && tag.StdString().size() == 4 &&
+            feature_value.IsNumber() && feature_value.Number() >= 0) {
+          (*text_props_->font_feature_settings)[tag.StdString()] =
+              feature_value.Int32();
+        }
+      }
+    }
   } else if (base::StringEqual(attr, kLetterSpacing)) {
     text_props_->letter_spacing = value.Number() * ScaleDensity();
     style_.SetLetterSpacing(text_props_->letter_spacing);
@@ -131,7 +147,8 @@ void BaseTextShadowNode::SetCustomFontFamiliesToStyle() {
 
 void BaseTextShadowNode::UpdateInheritedTextStyle(
     uint32_t color, std::shared_ptr<BackgroundGradientLayer> gradient,
-    const std::vector<std::string>& raw_font_families) {
+    const std::vector<std::string>& raw_font_families,
+    const std::map<std::string, int32_t>& font_feature_settings) {
   const std::vector<std::string>& effective_raw_font_families =
       raw_font_families_.empty() ? raw_font_families : raw_font_families_;
 
@@ -181,10 +198,16 @@ void BaseTextShadowNode::UpdateInheritedTextStyle(
     style_.SetColor(color);
   }
 
+  const auto& effective_font_features =
+      has_props && text_props_->font_feature_settings
+          ? *text_props_->font_feature_settings
+          : font_feature_settings;
+  style_.SetFontFeatureSettings(effective_font_features);
+
   for (const auto& child : GetChildren()) {
     auto* text_node = static_cast<BaseTextShadowNode*>(child);
-    text_node->UpdateInheritedTextStyle(color, gradient,
-                                        effective_raw_font_families);
+    text_node->UpdateInheritedTextStyle(
+        color, gradient, effective_raw_font_families, effective_font_features);
   }
 }
 

@@ -2,7 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+// cSpell:ignore liga
+
+#import <CoreText/CoreText.h>
 #import <Lynx/LynxBaseTextShadowNode.h>
+#import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxTextUtils.h>
@@ -11,6 +15,10 @@
 #import <Lynx/LynxUIText.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
+
+@interface LynxFontFaceManager (FontFeatureSettingsTesting)
++ (NSArray *)getFontFeatureAttribute:(NSArray *)fontFeatureSettings;
+@end
 
 @interface LynxTextRenderer (LynxInlineEventTarget)
 - (nullable NSNumber *)inlineTextEventTargetAtPoint:(CGPoint)point;
@@ -57,6 +65,63 @@
   // Put teardown code here. This method is called after the invocation of each test method in the
   // class.
   textRender = NULL;
+}
+
+- (void)testOpenTypeFontFeaturesPreserveTagsAndValues {
+  NSArray *settings = @[ @"liga", @0, @"kern", @1, @"cv01", @2, @"ss20", @1 ];
+  // UIKit resolves supported features and can replace tags with AAT selectors.
+  // Check the complete CSS input before that platform-specific normalization.
+  NSArray *features = [LynxFontFaceManager getFontFeatureAttribute:settings];
+  XCTAssertEqual(features.count, 4u);
+  for (NSUInteger i = 0; i < features.count; ++i) {
+    XCTAssertEqualObjects(features[i][(__bridge NSString *)kCTFontOpenTypeFeatureTag],
+                          settings[2 * i]);
+    XCTAssertEqualObjects(features[i][(__bridge NSString *)kCTFontOpenTypeFeatureValue],
+                          settings[2 * i + 1]);
+  }
+}
+
+- (void)testOpenTypeFontFeaturesIgnoreMalformedPairs {
+  // cSpell:ignore liga
+  NSArray *features = [LynxFontFaceManager getFontFeatureAttribute:@[
+    @42, @1, @"liga", NSNull.null, @"kern", @-1, @"cv01", @2, @"unpaired"
+  ]];
+  XCTAssertEqual(features.count, 1u);
+  XCTAssertEqualObjects(features[0][(__bridge NSString *)kCTFontOpenTypeFeatureTag], @"cv01");
+  XCTAssertEqualObjects(features[0][(__bridge NSString *)kCTFontOpenTypeFeatureValue], @2);
+}
+
+- (void)testOpenTypeFontFeaturesPreserveSystemFontAndTraits {
+  for (UIFont *baseFont in @[ [UIFont systemFontOfSize:25], [UIFont boldSystemFontOfSize:25] ]) {
+    UIFont *font = [LynxFontFaceManager generateFontWithBaseFont:baseFont
+                                           fontVariationSettings:nil
+                                             fontFeatureSettings:@[ @"tnum", @1 ]
+                                               fontOpticalSizing:NO];
+    XCTAssertEqualObjects(font.fontName, baseFont.fontName);
+    XCTAssertEqualObjects(font.familyName, baseFont.familyName);
+    XCTAssertEqual(font.pointSize, baseFont.pointSize);
+    XCTAssertEqual(font.fontDescriptor.symbolicTraits, baseFont.fontDescriptor.symbolicTraits);
+
+    NSDictionary *attributes = @{NSFontAttributeName : font};
+    XCTAssertEqualWithAccuracy([@"1111" sizeWithAttributes:attributes].width,
+                               [@"0000" sizeWithAttributes:attributes].width, 0.01);
+  }
+}
+
+- (void)testOpenTypeFontFeaturesResetToBaseFont {
+  UIFont *baseFont = [UIFont systemFontOfSize:25];
+  UIFont *font = [LynxFontFaceManager generateFontWithBaseFont:baseFont
+                                         fontVariationSettings:nil
+                                           fontFeatureSettings:nil
+                                             fontOpticalSizing:NO];
+  XCTAssertEqual(font, baseFont);
+  font = [LynxFontFaceManager generateFontWithBaseFont:baseFont
+                                 fontVariationSettings:nil
+                                   fontFeatureSettings:@[]
+                                     fontOpticalSizing:NO];
+  XCTAssertEqualObjects(font.fontName, baseFont.fontName);
+  XCTAssertEqual(font.pointSize, baseFont.pointSize);
+  XCTAssertEqual([LynxFontFaceManager getFontFeatureAttribute:@[]].count, 0u);
 }
 
 - (void)testReleaseTextRenderIsPerSignAndIdempotent {

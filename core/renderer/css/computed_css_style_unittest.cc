@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+// cSpell:ignore liga
+
 #define private public
 #define protected public
 
@@ -119,6 +121,26 @@ TEST(ComputedCSSStyleTest, TextSpacingTrimCopy) {
   auto trimmed = defaults;
   trimmed.text_spacing_trim = TextSpacingTrimType::kTrimAll;
   EXPECT_NE(defaults, trimmed);
+}
+
+TEST(ComputedCSSStyleTest, FontFeatureSettingsResetClearsStoredFeatures) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  auto settings = lepus::CArray::Create();
+  settings->emplace_back("liga");
+  settings->emplace_back(0);
+  settings->emplace_back("cv01");
+  settings->emplace_back(2);
+  style.SetValue(kPropertyIDFontFeatureSettings, CSSValue(settings));
+  ASSERT_EQ(style.FontFeatureSettingsToLepus().Array()->size(), 4u);
+
+  style.ResetValue(kPropertyIDFontFeatureSettings);
+  EXPECT_EQ(style.FontFeatureSettingsToLepus().Array()->size(), 0u);
+  EXPECT_EQ(style.GetTextAttributes()->font_feature_settings, nullptr);
+
+  style.SetValue(kPropertyIDFontFeatureSettings, CSSValue(settings));
+  style.SetValue(kPropertyIDFontFeatureSettings,
+                 CSSValue(lepus::CArray::Create()));
+  EXPECT_EQ(style.FontFeatureSettingsToLepus().Array()->size(), 0u);
 }
 
 TEST(ComputedCSSStyleTest, TracksResolvedValuesOnSetAndReset) {

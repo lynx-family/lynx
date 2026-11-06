@@ -5,6 +5,7 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_SHADOW_NODE_BASE_TEXT_SHADOW_NODE_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_SHADOW_NODE_BASE_TEXT_SHADOW_NODE_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -93,7 +94,8 @@ class BaseTextShadowNode : public ShadowNode, public ParagraphContent {
   void SetCustomFontFamiliesToStyle();
   void UpdateInheritedTextStyle(
       uint32_t color, std::shared_ptr<BackgroundGradientLayer> gradient,
-      const std::vector<std::string>& raw_font_families);
+      const std::vector<std::string>& raw_font_families,
+      const std::map<std::string, int32_t>& font_feature_settings);
 
   std::optional<TextProps> text_props_;
   mutable TextStyleHarmony style_;

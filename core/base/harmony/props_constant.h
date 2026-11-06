@@ -22,6 +22,7 @@ static constexpr const char* kDirection = "direction";
 static constexpr const char* kVerticalAlign = "vertical-align";
 static constexpr const char* kFontWeight = "font-weight";
 static constexpr const char* kFontStyle = "font-style";
+static constexpr const char* kFontFeatureSettings = "font-feature-settings";
 static constexpr const char* kLetterSpacing = "letter-spacing";
 static constexpr const char* kWhiteSpace = "white-space";
 static constexpr const char* kTextDecoration = "text-decoration";
