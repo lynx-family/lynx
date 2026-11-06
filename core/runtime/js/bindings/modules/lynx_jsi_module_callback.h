@@ -74,6 +74,10 @@ class ModuleCallback : public LynxModuleCallback {
   uint64_t StartTimeMS() const { return start_time_ms_; }
 
   NativeModuleInfoCollectorPtr timing_collector_;
+  // Owning JS thread only. A deferred callback retains its registered ID.
+  bool interception_pending = false;
+  bool interception_resumed = false;
+  size_t next_callback_interceptor = 0;
 
   void SetArgs(std::unique_ptr<pub::Value> args) override;
 

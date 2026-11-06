@@ -105,11 +105,19 @@ void GroupInterceptor::OnInvokeMethodEnd(
 
 void GroupInterceptor::WillInvokeCallback(ModuleCallback& callback,
                                           std::unique_ptr<pub::Value>& args) {
-  ForEachTarget(callback.call_context().get(), [&](ModuleInterceptor& i) {
-    if (args) {
-      i.WillInvokeCallback(callback, args);
+  auto context = callback.call_context();
+  auto resolver = context ? context->resolver() : nullptr;
+  for (size_t index = callback.next_callback_interceptor;
+       index < interceptors_.size(); ++index) {
+    auto& interceptor = interceptors_[index];
+    if (args) interceptor->WillInvokeCallback(callback, args);
+    callback.next_callback_interceptor = index + 1;
+    if (interceptor.get() == resolver) {
+      callback.next_callback_interceptor = interceptors_.size();
+      break;
     }
-  });
+    if (callback.interception_pending) break;
+  }
 }
 
 void GroupInterceptor::OnCallbackInvoked(
