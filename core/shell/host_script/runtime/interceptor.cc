@@ -6,6 +6,7 @@
 
 #include <array>
 #include <atomic>
+#include <iterator>
 #include <mutex>
 #include <unordered_map>
 #include <utility>
@@ -40,8 +41,10 @@ std::atomic<size_t>& HandlerCount(InterceptKind kind,
 
 const char* Interceptor::Name(InterceptKind kind) {
   static constexpr const char* names[] = {
-      "view.created", "view.loadTemplate", "view.updateMetaData",
-      "jsb.call",     "jsb.result",        "jsb.callback"};
+      "view.created", "view.loadTemplate",  "view.updateMetaData",
+      "jsb.call",     "jsb.result",         "jsb.callback",
+      "view.create",  "view.updateViewport"};
+  static_assert(std::size(names) == kKinds);
   return names[static_cast<size_t>(kind)];
 }
 
