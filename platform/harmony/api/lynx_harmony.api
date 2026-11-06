@@ -207,6 +207,8 @@ export abstract class LynxNodeController extends NodeController {
   build(): void;
   setEnableBytecode(enable: boolean, sourceUrl: string): void;
   setupExtensionModules(): void;
+  public takeHeapSnapshot(outputFile: string, callback: (error?: string) => void, type: 'mts' | 'bts_page' | 'bts_vm'): void;
+  public static takeBtsResidualHeapSnapshot(outputFile: string, callback: (error?: string) => void, instanceId: number): void;
   genericResourceFetcher?: LynxGenericResourceFetcher;
   mediaResourceFetcher?: LynxMediaResourceFetcher;
   templateResourceFetcher?: LynxTemplateResourceFetcher;
