@@ -25,12 +25,25 @@ public final class LynxInstanceMemoryUsage {
   @NonNull private final Map<String, MemoryRecord> mViewDetail;
   private final long mMainThreadRuntimeBytes;
   private final long mBackgroundThreadRuntimeBytes;
+  private final long mBackgroundThreadRuntimeResidualBytes;
   @Nullable private final String mBtsRuntimeGroupId;
+  @NonNull private final String mBtsRuntimeType;
+  private final long mBtsRuntimeTotalBytes;
 
   LynxInstanceMemoryUsage(int instanceId, @Nullable String pageId, @Nullable String url,
       long totalBytes, long elementBytes, long elementNodeCount, long viewBytes,
       @Nullable Map<String, MemoryRecord> viewDetail, long mainThreadRuntimeBytes,
       long backgroundThreadRuntimeBytes, @Nullable String btsRuntimeGroupId) {
+    this(instanceId, pageId, url, totalBytes, elementBytes, elementNodeCount, viewBytes, viewDetail,
+        mainThreadRuntimeBytes, backgroundThreadRuntimeBytes, btsRuntimeGroupId, "unknown", 0, 0);
+  }
+
+  LynxInstanceMemoryUsage(int instanceId, @Nullable String pageId, @Nullable String url,
+      long totalBytes, long elementBytes, long elementNodeCount, long viewBytes,
+      @Nullable Map<String, MemoryRecord> viewDetail, long mainThreadRuntimeBytes,
+      long backgroundThreadRuntimeBytes, @Nullable String btsRuntimeGroupId,
+      @NonNull String btsRuntimeType, long btsRuntimeTotalBytes,
+      long backgroundThreadRuntimeResidualBytes) {
     mInstanceId = instanceId;
     mPageId = pageId;
     mUrl = url;
@@ -46,6 +59,9 @@ public final class LynxInstanceMemoryUsage {
     mMainThreadRuntimeBytes = mainThreadRuntimeBytes;
     mBackgroundThreadRuntimeBytes = backgroundThreadRuntimeBytes;
     mBtsRuntimeGroupId = btsRuntimeGroupId;
+    mBtsRuntimeType = btsRuntimeType;
+    mBtsRuntimeTotalBytes = btsRuntimeTotalBytes;
+    mBackgroundThreadRuntimeResidualBytes = backgroundThreadRuntimeResidualBytes;
   }
 
   /** LynxShell instance id. -1 means the instance was not fully attached. */
@@ -53,7 +69,7 @@ public final class LynxInstanceMemoryUsage {
     return mInstanceId;
   }
 
-  /** Temporary page identity for the instance memory sample. */
+  /** Native memory-monitor page key. */
   @Nullable
   public String getPageId() {
     return mPageId;
@@ -116,5 +132,21 @@ public final class LynxInstanceMemoryUsage {
   @Nullable
   public String getBtsRuntimeGroupId() {
     return mBtsRuntimeGroupId;
+  }
+
+  /** Background runtime engine: quickjs, v8, jsvm, jsc, or unknown. */
+  @NonNull
+  public String getBtsRuntimeType() {
+    return mBtsRuntimeType;
+  }
+
+  /** Whole background runtime heap, separate from the page-attributed bytes. */
+  public long getBtsRuntimeTotalBytes() {
+    return mBtsRuntimeTotalBytes;
+  }
+
+  /** Current tracked slot bytes for a destroyed instance; zero for live instances. */
+  public long getBackgroundThreadRuntimeResidualBytes() {
+    return mBackgroundThreadRuntimeResidualBytes;
   }
 }

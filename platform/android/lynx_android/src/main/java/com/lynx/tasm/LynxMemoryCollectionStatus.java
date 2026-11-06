@@ -7,4 +7,4 @@ package com.lynx.tasm;
 /**
  * Global Lynx memory collection status.
  */
-public enum LynxMemoryCollectionStatus { COMPLETED, TIMEOUT }
+public enum LynxMemoryCollectionStatus { COMPLETED, TIMEOUT, ERROR }

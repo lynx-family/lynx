@@ -48,6 +48,10 @@ struct InstanceMemoryUsage {
   // from page.bts_bytes, which contains only the page-attributed slot.
   int64_t bts_heap_bytes{0};
   std::string bts_runtime_group_id;
+  // Runtime names are static literals returned by RuntimeName.
+  const char* bts_runtime_type{""};
+  // Only populated for destroyed instances, from the current tracked slot.
+  int64_t bts_residual_bytes{0};
 };
 
 enum class MemoryUsageQueryStatus : int32_t {
@@ -62,12 +66,18 @@ struct InstanceMemoryUsageResult {
   int64_t bts_heap_bytes{0};
 };
 
+inline constexpr char kMemoryMonitoringDisabledError[] =
+    "Memory monitoring disabled";
+
 struct GlobalMemoryUsage {
+  MemoryUsageQueryStatus status{MemoryUsageQueryStatus::kOk};
   // Aggregated page-owned categories plus each active BTS VM heap exactly once.
   // Bundle-local MTS pools are process overhead, not page-owned MTS memory, so
   // they are intentionally excluded from this query result.
   PageMemoryUsage total;
   std::vector<InstanceMemoryUsage> instances;
+  // Up to five exited pages per shared QuickJS VM. Page totals stay empty.
+  std::vector<InstanceMemoryUsage> destroyed_instances;
 };
 
 struct MTSRuntimePoolState {

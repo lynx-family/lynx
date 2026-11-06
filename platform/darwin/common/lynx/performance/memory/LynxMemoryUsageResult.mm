@@ -16,6 +16,7 @@
     _url = @"";
     _viewDetail = @{};
     _btsRuntimeGroupId = @"";
+    _btsRuntimeType = @"unknown";
   }
   return self;
 }
@@ -28,6 +29,8 @@
   self = [super init];
   if (self) {
     _instances = @[];
+    _destroyedInstances = @[];
+    _errorMessage = @"";
   }
   return self;
 }
