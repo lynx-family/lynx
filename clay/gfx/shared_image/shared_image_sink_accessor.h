@@ -44,7 +44,8 @@ class SharedImageSinkAccessor {
   TryAcquireBack(const skity::Vec2& size);
 
   std::tuple<fml::RefPtr<SharedImageRepresentation>, uint32_t>
-  AcquireBackForced(const skity::Vec2& size);
+  AcquireBackForced(const skity::Vec2& size,
+                    SharedImageSink::AcquireBackStatus* status = nullptr);
 
   bool SwapBack();
 
