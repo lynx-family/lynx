@@ -74,6 +74,12 @@ LYNX_UI_METHOD_END(BaseView);
 
 constexpr int64_t FORCE_CACHE_ANIMATION_DURATION = 500;
 
+bool IsEffectOnlyAttribute(KeywordID attribute) {
+  return attribute == KeywordID::kOpacity ||
+         attribute == KeywordID::kTransform ||
+         attribute == KeywordID::kTransformOrigin;
+}
+
 #ifdef ENABLE_ACCESSIBILITY
 BaseView* A11yScrollTargetForSemantics(BaseView* view) {
   if (!view) {
@@ -3076,7 +3082,11 @@ void BaseView::OnAttachToTree() {
 }
 
 void BaseView::Invalidate() {
-  render_object()->MarkNeedsPaint();
+  if (attribute_invalidation_ == AttributeInvalidation::kEffect) {
+    render_object()->MarkNeedsEffect();
+  } else {
+    render_object()->MarkNeedsPaint();
+  }
 #ifdef ENABLE_ACCESSIBILITY
   if (SemanticsOwner* owner = GetSemanticsOwner()) {
     owner->AddDirtySemanticsForDescendants(this);
@@ -3222,6 +3232,32 @@ bool BaseView::IsVisibleForAnimationTick() {
   return IsViewIntersecting(this, page_view(), false);
 }
 
+void BaseView::BeforeSetAttribute(const clay::Value::Map& attributes) {
+  const bool effect_only =
+      !attributes.empty() &&
+      std::all_of(attributes.begin(), attributes.end(),
+                  [](const auto& attribute) {
+                    return IsEffectOnlyAttribute(GetKeywordID(attribute.first));
+                  });
+  pending_attribute_invalidation_ = effect_only
+                                        ? AttributeInvalidation::kEffect
+                                        : AttributeInvalidation::kContent;
+}
+
+void BaseView::DidUpdateAttributes() {
+  auto invalidation = std::exchange(pending_attribute_invalidation_,
+                                    AttributeInvalidation::kContent);
+  // Flattened content and raster animations keep their full update path.
+  if (!render_object()->IsRepaintBoundary() ||
+      render_object()->HasRasterAnimation()) {
+    invalidation = AttributeInvalidation::kContent;
+  }
+  // Keep component-specific virtual invalidation hooks for both paths.
+  lynx::base::AutoReset<AttributeInvalidation> scope(&attribute_invalidation_,
+                                                     invalidation);
+  Invalidate();
+}
+
 void BaseView::SetAttribute(const char* attr, const clay::Value& value) {
   // NOTE: new attributes should be added to `HandleCommonAttribute`
   HandleCommonAttribute(attr, value);
@@ -3230,6 +3266,9 @@ void BaseView::SetAttribute(const char* attr, const clay::Value& value) {
 bool BaseView::HandleCommonAttribute(const char* attr,
                                      const clay::Value& value) {
   auto kw = GetKeywordID(attr);
+  if (!IsEffectOnlyAttribute(kw)) {
+    pending_attribute_invalidation_ = AttributeInvalidation::kContent;
+  }
   switch (kw) {
     case KeywordID::kIdselector:
       id_selector_ = utils::GetCString(value);

@@ -63,6 +63,7 @@ class SemanticsOwner {
 
  private:
   friend class SemanticsNode;
+  friend class AttributeInvalidationTest;
   friend class PageView;
 
   std::unordered_map<int, fml::RefPtr<SemanticsNode>> nodes_;
