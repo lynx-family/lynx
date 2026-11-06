@@ -10,6 +10,19 @@ config("lynx_devtool_config") {
   include_dirs = [ "../../../third_party/debug_router/src/" ]
 }
 
+lynx_core_source_set("devtool_interface") {
+  sources = [
+    "lynx_devtool.h",
+    "lynx_devtool_provider.cc",
+    "lynx_devtool_provider.h",
+  ]
+  public_deps = [
+    "../:lynx_embedder_capi",
+    "../../../core/public",
+  ]
+  defines = [ "ENABLE_EMBEDDER_LITE=${enable_embedder_lite}" ]
+}
+
 devtool_source_set("lynx_devtool") {
   sources = [
     "devtool_env_embedder.cc",

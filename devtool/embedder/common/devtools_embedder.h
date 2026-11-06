@@ -10,6 +10,7 @@
 
 #include "core/public/devtool/lynx_devtool_proxy.h"
 #include "core/public/devtool/lynx_inspector_owner.h"
+#include "platform/embedder/lynx_devtool/lynx_devtool.h"
 
 namespace lynx {
 
@@ -19,15 +20,17 @@ namespace input {
 class InputEventTarget;
 }  // namespace input
 
-class DevtoolsEmbedder {
+class DevtoolsEmbedder : public embedder::EmbedderDevTool {
  public:
   explicit DevtoolsEmbedder(devtool::LynxDevToolProxy* proxy);
-  virtual ~DevtoolsEmbedder() = default;
+  ~DevtoolsEmbedder() override;
 
-  devtool::LynxInspectorOwner* GetInspectorOwner() { return owner_.get(); }
+  devtool::LynxInspectorOwner* GetInspectorOwner() override {
+    return owner_.get();
+  }
 
   void SetInputEventTarget(
-      const std::shared_ptr<input::InputEventTarget>& target);
+      const std::shared_ptr<input::InputEventTarget>& target) override;
 
  private:
   std::shared_ptr<devtool::LynxInspectorOwner> owner_;

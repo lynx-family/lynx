@@ -6,20 +6,17 @@
 
 #include "base/include/log/logging.h"
 #include "core/renderer/utils/base/event_converter.h"
+#include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/lepus/json_parser.h"
+#include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/performance_controller.h"
+#include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/event_tracker_proxy_impl.h"
 #include "core/shell/runtime/common/module_delegate_impl.h"
 #include "platform/embedder/core/native_facade_impl.h"
 #include "platform/embedder/core/performance/performance_controller_impl.h"
 #include "platform/embedder/core/tasm_platform_invoker_impl.h"
-#if ENABLE_INSPECTOR
-#include "devtool/embedder/core/lynx_devtool_set_module.h"
-#include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
-#endif
-#include "core/renderer/utils/base/tasm_constants.h"
-#include "core/services/event_report/event_tracker.h"
-#include "core/services/timing_handler/timing_constants.h"
+#include "platform/embedder/lynx_devtool/lynx_devtool_provider.h"
 
 namespace lynx {
 namespace embedder {
@@ -101,16 +98,16 @@ LynxTemplateRenderer::LynxTemplateRenderer(
       weak_flag_(std::make_shared<WeakFlag>(this)),
       preset_module_manager_(module_manager),
       perf_controller_ptr_(std::move(perf_controller_ptr)),
-      runtime_proxy_callback_(runtime_proxy_callback) {
-  if (!perf_controller_ptr_) {
-    perf_controller_ptr_ = std::make_unique<PerformanceControllerImpl>(
-        weak_flag_->weak_from_this());
-  }
-  Reset();
+      runtime_proxy_callback_(runtime_proxy_callback) {}
+
+void LynxTemplateRenderer::Initialize() {
+  CHECK(!shell_);
+  Reset(false);
 }
 
 LynxTemplateRenderer::~LynxTemplateRenderer() {
   auto instance_id = GetInstanceId();
+  devtools_.reset();
   shell_.reset();
   runtime_proxy_.reset();
   engine_proxy_.reset();
@@ -153,12 +150,19 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
       tasm::LynxEnvConfig(view_size.cx, view_size.cy, density, ratio);
   auto instance_id = GetInstanceId();
   shell_.reset();
-#if ENABLE_INSPECTOR
-  auto& devtool_env = DevToolEnvEmbedder::GetInstance();
-  bool is_devtool_enabled =
-      devtool_env.IsLynxDebugEnabled() && devtool_env.IsDevToolEnabled();
-#endif
   ClearGenericInfo(instance_id);
+  if (!perf_controller_ptr_) {
+    perf_controller_ptr_ = std::make_unique<PerformanceControllerImpl>(
+        weak_flag_->weak_from_this());
+  }
+#if ENABLE_INSPECTOR
+  if (!devtools_) {
+    devtools_ = CreateEmbedderDevTool(this);
+    if (devtools_) {
+      inspector_owner_ = devtools_->GetInspectorOwner();
+    }
+  }
+#endif
   auto native_facade = std::make_unique<NativeFacadeImpl>(this);
   auto loader =
       std::make_shared<tasm::LazyBundleLoader>(settings_.resource_loader);
@@ -195,6 +199,9 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
           .SetPerformanceControllerPlatform(std::move(perf_controller_ptr_))
           .SetNativeModuleManager(std::move(native_module_manager))
           .build());
+#if ENABLE_INSPECTOR
+  NotifyInspectorOwnerAttached();
+#endif
 
   engine_proxy_ =
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
@@ -203,33 +210,23 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
   layout_proxy_ =
       std::make_shared<shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
 
-  // InitJSBridge
-  module_manager_ = preset_module_manager_;
-  if (!module_manager_) {
-    module_manager_ = std::make_shared<runtime::js::LynxModuleManager>();
-  }
-  module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
-#if ENABLE_INSPECTOR
-  if (is_devtool_enabled) {
-    if (!devtools_) {
-      devtools_ = std::make_unique<devtool::DevtoolsEmbedder>(this);
-      devtools_->SetInputEventTarget(input_event_target_);
-    }
-    devtools_->GetInspectorOwner()->OnTemplateAssemblerCreated(
-        reinterpret_cast<intptr_t>(shell_.get()));
-  }
-  std::unique_ptr<runtime::NativeModuleFactory> devtool_module_factory_ =
-      std::make_unique<runtime::NativeModuleFactory>();
-  devtool_module_factory_->Register(devtool::LynxDevToolSetModule::GetName(),
-                                    devtool::LynxDevToolSetModule::Create);
-  module_manager_->SetModuleFactory(std::move(devtool_module_factory_));
-#endif
+  runtime_proxy_.reset();
+  module_manager_.reset();
 
   if (settings_.global_props) {
     shell_->UpdateGlobalProps(*settings_.global_props);
   }
 
   if (settings_.enable_js) {
+    // InitJSBridge
+    module_manager_ = preset_module_manager_;
+    if (!module_manager_) {
+      module_manager_ = std::make_shared<runtime::js::LynxModuleManager>();
+    }
+    module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
+#if ENABLE_INSPECTOR
+    InitializeEmbedderDevToolModuleManager(module_manager_.get());
+#endif
     auto on_runtime_actor_created = [this](auto& actor) {
       auto module_delegate = std::make_shared<shell::ModuleDelegateImpl>(
           shell_->GetRuntimeActor(), shell_->GetFacadeActor());
@@ -477,7 +474,6 @@ bool LynxTemplateRenderer::SendTouchEvent(const std::string& name, int32_t tag,
                                        page_x, page_y);
 }
 
-#if ENABLE_INSPECTOR
 void LynxTemplateRenderer::SetInputEventTarget(
     const std::shared_ptr<devtool::input::InputEventTarget>& target) {
   input_event_target_ = target;
@@ -489,19 +485,17 @@ void LynxTemplateRenderer::SetInputEventTarget(
 void LynxTemplateRenderer::InvokeCDPFromSDK(
     const std::string& cdp_msg,
     std::function<void(const std::string&)>&& callback) {
-  if (devtools_) {
-    devtools_->GetInspectorOwner()->InvokeCDPFromSDK(cdp_msg,
-                                                     std::move(callback));
+  if (inspector_owner_) {
+    inspector_owner_->InvokeCDPFromSDK(cdp_msg, std::move(callback));
   }
 }
 
 void LynxTemplateRenderer::OnReceiveMessageEvent(
     const devtool::VMEvent& event) {
-  if (devtools_) {
-    devtools_->GetInspectorOwner()->OnReceiveMessageEvent(event);
+  if (inspector_owner_) {
+    inspector_owner_->OnReceiveMessageEvent(event);
   }
 }
-#endif  // ENABLE_INSPECTOR
 
 void LynxTemplateRenderer::AddClient(TemplateRendererClient* client) {
   if (std::find(clients_.begin(), clients_.end(), client) == clients_.end()) {
@@ -718,6 +712,19 @@ void LynxTemplateRenderer::SetInspectorOwner(
   inspector_owner_ = owner;
 }
 
+void LynxTemplateRenderer::NotifyInspectorOwnerAttached() {
+#if ENABLE_INSPECTOR
+  if (inspector_owner_ && shell_) {
+    inspector_owner_->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
+    if (devtools_) {
+      devtools_->SetInputEventTarget(input_event_target_);
+    }
+    inspector_owner_->OnTemplateAssemblerCreated(
+        reinterpret_cast<intptr_t>(shell_.get()));
+  }
+#endif
+}
+
 void LynxTemplateRenderer::EmulateTouch(const std::string& event_type, int x,
                                         int y, const std::string& button,
                                         float delta_x, float delta_y,
@@ -817,20 +824,16 @@ void LynxTemplateRenderer::DispatchMessageEvent(
 }
 
 int32_t LynxTemplateRenderer::GetDevtoolSessionId() {
-#if ENABLE_INSPECTOR
-  if (devtools_) {
-    return devtools_->GetInspectorOwner()->GetSessionId();
+  if (inspector_owner_) {
+    return inspector_owner_->GetSessionId();
   }
-#endif
   return 0;
 }
 
 std::string LynxTemplateRenderer::GetDevtoolTemplateUrl() {
-#if ENABLE_INSPECTOR
-  if (devtools_) {
-    return devtools_->GetInspectorOwner()->GetTemplateUrl();
+  if (inspector_owner_) {
+    return inspector_owner_->GetTemplateUrl();
   }
-#endif
   return {};
 }
 

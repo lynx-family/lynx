@@ -10,6 +10,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/runtime/js/runtime_constant.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "platform/embedder/lynx_view_priv.h"
 #include "platform/embedder/public/lynx_env.h"
@@ -19,6 +20,13 @@
 #include "third_party/jsoncpp/include/json/json.h"
 
 namespace {
+
+class InspectableTemplateRenderer
+    : public lynx::embedder::LynxTemplateRenderer {
+ public:
+  using LynxTemplateRenderer::LynxTemplateRenderer;
+  lynx::shell::LynxShell* shell() { return shell_.get(); }
+};
 
 class RecordingViewClient : public lynx::pub::LynxViewClient {
  public:
@@ -96,6 +104,7 @@ TEST_F(LynxViewTest, SendGlobalEventReachesMTSWithAndWithoutRuntimeProxy) {
     settings.enable_js = false;
     TestTemplateRenderer renderer(settings, ui_renderer.GetUIDelegate(),
                                   nullptr, nullptr);
+    renderer.Initialize();
     auto runtime_proxy = std::make_shared<RecordingRuntimeProxy>();
     if (enable_runtime_proxy) {
       renderer.SetRuntimeProxy(runtime_proxy);
@@ -131,6 +140,53 @@ TEST_F(LynxViewTest, SendGlobalEventReachesMTSWithAndWithoutRuntimeProxy) {
     if (enable_runtime_proxy) {
       EXPECT_EQ(runtime_proxy->arguments, received_args);
     }
+  }
+}
+
+TEST_F(LynxViewTest, ResetRecreatesPlatformPerformanceController) {
+  lynx::pub::LynxView::Builder builder;
+  lynx::embedder::TestLynxUIRenderer ui_renderer(builder.Impl());
+  InspectableTemplateRenderer::Settings settings;
+  settings.screen_size = {320, 480};
+  settings.viewport_size = {320, 480};
+  settings.enable_js = false;
+  InspectableTemplateRenderer renderer(settings, ui_renderer.GetUIDelegate(),
+                                       nullptr, nullptr);
+  renderer.Initialize();
+  ASSERT_NE(
+      renderer.shell()->GetPerfControllerActor()->Impl()->GetPlatformImpl(),
+      nullptr);
+
+  renderer.Reset();
+  EXPECT_NE(
+      renderer.shell()->GetPerfControllerActor()->Impl()->GetPlatformImpl(),
+      nullptr);
+}
+
+TEST_F(LynxViewTest, DisabledJSInitializesMTSWithoutBTS) {
+  lynx::pub::LynxView::Builder builder;
+  lynx::embedder::TestLynxUIRenderer ui_renderer(builder.Impl());
+  InspectableTemplateRenderer::Settings settings;
+  settings.screen_size = {320, 480};
+  settings.viewport_size = {320, 480};
+  settings.enable_js = false;
+  int native_manager_count = 0;
+  settings.native_module_manager_creator = [&]() {
+    ++native_manager_count;
+    return std::make_unique<lynx::pub::LynxNativeModuleManager>();
+  };
+  InspectableTemplateRenderer renderer(settings, ui_renderer.GetUIDelegate(),
+                                       nullptr, nullptr);
+
+  for (int reset_count = 1; reset_count <= 2; ++reset_count) {
+    if (reset_count == 1) {
+      renderer.Initialize();
+    } else {
+      renderer.Reset();
+    }
+    EXPECT_EQ(native_manager_count, reset_count);
+    EXPECT_EQ(renderer.GetModuleManager(), nullptr);
+    EXPECT_EQ(renderer.GetRuntimeProxy(), nullptr);
   }
 }
 

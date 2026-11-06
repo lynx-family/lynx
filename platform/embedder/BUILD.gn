@@ -136,6 +136,10 @@ lynx_core_source_set("embedder") {
   if (enable_inspector && enable_logbox) {
     deps += [ "./lynx_devtool:lynx_devtool_logbox" ]
   }
+  if (enable_inspector && !enable_embedder_lite) {
+    sources += [ "lynx_devtool_provider_builtin.cc" ]
+    deps += [ "./lynx_devtool:lynx_devtool" ]
+  }
 
   public_configs = [
     ":public_api",
@@ -302,6 +306,7 @@ if (enable_unittests) {
   executable("lynx_embedder_unittests") {
     testonly = true
     include_dirs = [ "../../base/include/value" ]
+    defines = [ "ENABLE_EMBEDDER_LITE=${enable_embedder_lite}" ]
     sources = [
       "lynx_env_unittests.cc",
       "lynx_group_unittests.cc",
@@ -340,7 +345,8 @@ if (enable_unittests) {
       "./lynx_service:lynx_service_unittests",
     ]
 
-    if (enable_inspector) {
+    if (enable_inspector && !enable_embedder_lite) {
+      sources += [ "lynx_devtool_provider_unittest.cc" ]
       deps += [ "./lynx_devtool" ]
     }
 
