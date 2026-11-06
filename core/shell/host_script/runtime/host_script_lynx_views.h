@@ -44,6 +44,9 @@ class HostScriptLynxViews final
   void Post(std::function<void()> task);
   // Receives live View creations on the owner.
   void SetCreatedHandler(CreatedHandler handler);
+  void SetDestroyedHandler(CreatedHandler handler) {
+    destroyed_handler_ = std::move(handler);
+  }
 
   void OnViewEvent(const LynxViewEvent& event) override;
 
@@ -87,6 +90,7 @@ class HostScriptLynxViews final
   const std::shared_ptr<std::atomic<bool>> alive_;
   const Guard guard_;
   CreatedHandler created_handler_;
+  CreatedHandler destroyed_handler_;
   std::unordered_map<base::LynxEntityId, View> views_;
 };
 
