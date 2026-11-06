@@ -104,8 +104,9 @@ bool IsOverlayTag(const base::String& tag) {
 }
 
 bool IsSubtreeProperty(CSSPropertyID css_id) {
+  // Fragment visibility changes must rebuild content to hide or restore it.
   return css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform ||
-         css_id == kPropertyIDVisibility || css_id == kPropertyIDFilter;
+         css_id == kPropertyIDFilter;
 }
 
 #if ENABLE_TESTBENCH_REPLAY
