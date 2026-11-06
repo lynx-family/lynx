@@ -2113,19 +2113,20 @@ public class LynxGestureVelocityTracker : NSObject {
 public class LynxGlobalMemoryUsageResult : NSObject {
   public int64_t LynxGlobalMemoryUsageResult::collectionStartMs collectionStartMs;
   public LynxMemoryCollectionStatus LynxGlobalMemoryUsageResult::collectionStatus collectionStatus;
+  public NSString* LynxGlobalMemoryUsageResult::errorMessage errorMessage;
   public int64_t LynxGlobalMemoryUsageResult::collectionDurationMs collectionDurationMs;
   public int64_t LynxGlobalMemoryUsageResult::collectionTimeoutMs collectionTimeoutMs;
   public NSInteger LynxGlobalMemoryUsageResult::expectedInstanceCount expectedInstanceCount;
   public NSInteger LynxGlobalMemoryUsageResult::completedInstanceCount completedInstanceCount;
   public int64_t LynxGlobalMemoryUsageResult::totalBytes totalBytes;
   public int64_t LynxGlobalMemoryUsageResult::appBytes appBytes;
-  public double LynxGlobalMemoryUsageResult::ratioToApp ratioToApp;
   public int64_t LynxGlobalMemoryUsageResult::elementBytes elementBytes;
   public int32_t LynxGlobalMemoryUsageResult::elementNodeCount elementNodeCount;
   public int64_t LynxGlobalMemoryUsageResult::viewBytes viewBytes;
   public int64_t LynxGlobalMemoryUsageResult::mainThreadRuntimeBytes mainThreadRuntimeBytes;
   public int64_t LynxGlobalMemoryUsageResult::backgroundThreadRuntimeBytes backgroundThreadRuntimeBytes;
   public NSArray<LynxInstanceMemoryUsage *>* LynxGlobalMemoryUsageResult::instances instances;
+  public NSArray<LynxInstanceMemoryUsage *>* LynxGlobalMemoryUsageResult::destroyedInstances destroyedInstances;
 }
 
 public class LynxGlobalObserver : NSObject {
@@ -2426,7 +2427,10 @@ public class LynxInstanceMemoryUsage : NSObject {
   public NSDictionary<NSString *, LynxMemoryRecord *>* LynxInstanceMemoryUsage::viewDetail viewDetail;
   public int64_t LynxInstanceMemoryUsage::mainThreadRuntimeBytes mainThreadRuntimeBytes;
   public int64_t LynxInstanceMemoryUsage::backgroundThreadRuntimeBytes backgroundThreadRuntimeBytes;
+  public int64_t LynxInstanceMemoryUsage::backgroundThreadRuntimeResidualBytes backgroundThreadRuntimeResidualBytes;
   public NSString* LynxInstanceMemoryUsage::btsRuntimeGroupId btsRuntimeGroupId;
+  public NSString* LynxInstanceMemoryUsage::btsRuntimeType btsRuntimeType;
+  public int64_t LynxInstanceMemoryUsage::btsRuntimeTotalBytes btsRuntimeTotalBytes;
 }
 
 public class LynxIntersectionObserverModule : NSObject, <LynxContextModule> {
@@ -6626,6 +6630,7 @@ public enum LynxLoadMode {
 public enum LynxMemoryCollectionStatus {
   LynxMemoryCollectionStatusCompleted
   LynxMemoryCollectionStatusTimeout
+  LynxMemoryCollectionStatusError
 }
 
 

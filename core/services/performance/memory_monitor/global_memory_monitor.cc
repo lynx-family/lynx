@@ -789,6 +789,12 @@ void GlobalMemoryMonitor::GetGlobalMemoryUsage(
     GlobalMemoryUsageCallback&& callback) {
   fml::TaskRunner::RunNowOrPostTask(
       ReportRunner(), [this, callback = std::move(callback)]() mutable {
+        if (!MemoryMonitor::Enable()) {
+          GlobalMemoryUsage result;
+          result.status = MemoryUsageQueryStatus::kMonitoringDisabled;
+          callback(std::move(result));
+          return;
+        }
         callback(BuildGlobalMemoryUsage(CollectSnapshot({}, true)));
       });
 }
@@ -810,7 +816,10 @@ InstanceMemoryUsage GlobalMemoryMonitor::BuildInstanceMemoryUsage(
   result.url = page.url();
   result.page = page.usage;
   result.bts_runtime_group_id = page.group_id;
+  result.bts_runtime_type =
+      page.bts_known ? RuntimeName(page.bts_runtime_type) : "unknown";
   if (auto* vm = FindVM(page.bts_vm)) {
+    result.bts_runtime_type = RuntimeName(vm->type);
     if (IsHeapAvailable(*vm, failed_heap_vms) &&
         vm->heap_size <=
             static_cast<size_t>(std::numeric_limits<int64_t>::max())) {
@@ -850,11 +859,52 @@ GlobalMemoryUsage GlobalMemoryMonitor::BuildGlobalMemoryUsage(
   }
   for (const auto& entry : bts_vm_state_) {
     const auto& vm = *entry;
+    const bool heap_available =
+        IsHeapAvailable(vm, snapshot.failed_heap_vms) &&
+        vm.heap_size <=
+            static_cast<size_t>(std::numeric_limits<int64_t>::max());
+    if (vm.type == runtime::js::JSRuntimeType::quickjs &&
+        vm.has_per_instance_data) {
+      // Insertion into five fixed slots avoids a general sorting instantiation.
+      constexpr size_t kResidualPageLimit = 5;
+      std::array<std::pair<int32_t, const InstanceState*>, kResidualPageLimit>
+          top{};
+      size_t count = 0;
+      for (const auto& item : instance_state_) {
+        const auto& page = item.second;
+        if (!page.destroyed || page.bts_vm != vm.vm_ptr ||
+            !fml::IsValidInstanceSlot(page.slot)) {
+          continue;
+        }
+        const auto bytes = vm.memory_slots[page.slot];
+        if (bytes < 1024) continue;
+        size_t position = 0;
+        for (; position < count; ++position) {
+          const auto previous_bytes =
+              vm.memory_slots[top[position].second->slot];
+          if (bytes > previous_bytes) break;
+        }
+        if (position == top.size()) continue;
+        for (size_t i = std::min(count, top.size() - 1); i > position; --i) {
+          top[i] = top[i - 1];
+        }
+        top[position] = {item.first, &page};
+        count = std::min(count + 1, top.size());
+      }
+      for (size_t i = 0; i < count; ++i) {
+        const auto& item = top[i];
+        const auto& page = *item.second;
+        auto destroyed = BuildInstanceMemoryUsage(item.first, page,
+                                                  snapshot.failed_heap_vms);
+        destroyed.page = {};
+        destroyed.bts_residual_bytes =
+            static_cast<int64_t>(vm.memory_slots[page.slot]);
+        result.destroyed_instances.push_back(std::move(destroyed));
+      }
+    }
     if (std::find(active_vms.begin(), active_vms.end(), vm.vm_ptr) ==
             active_vms.end() ||
-        !IsHeapAvailable(vm, snapshot.failed_heap_vms) ||
-        vm.heap_size >
-            static_cast<size_t>(std::numeric_limits<int64_t>::max())) {
+        !heap_available) {
       continue;
     }
     const auto heap = static_cast<int64_t>(vm.heap_size);

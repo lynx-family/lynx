@@ -6,6 +6,7 @@ package com.lynx.tasm;
 
 import static com.lynx.tasm.LynxMemoryUsageTestUtils.createInstance;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ public class LynxGlobalMemoryUsageResultTest {
         100L,
         7L,
         70L,
+        1000L,
         2L,
         308L,
         20L,
@@ -46,6 +48,7 @@ public class LynxGlobalMemoryUsageResultTest {
         200L,
         8L,
         80L,
+        1000L,
         3L,
         359L,
         30L,
@@ -53,21 +56,25 @@ public class LynxGlobalMemoryUsageResultTest {
         300L,
         9L,
         20L,
+        20L,
     };
     String[] instanceStrings = {
         "page-1",
         "url-1",
         "same-name",
+        "quickjs",
         "page-2",
         "url-2",
         "same-name",
+        "quickjs",
         "page-3",
         "url-3",
         "-1",
+        "jsc",
     };
 
-    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(
-        100L, 50L, 2000L, globalValues, instanceValues, instanceStrings);
+    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(100L, 50L, 2000L, 0,
+        globalValues, instanceValues, instanceStrings, new long[0], new String[0]);
 
     assertEquals(3, result.getExpectedInstanceCount());
     assertEquals(3, result.getCompletedInstanceCount());
@@ -82,12 +89,15 @@ public class LynxGlobalMemoryUsageResultTest {
     assertEquals(2, result.getInstances().get(1).getInstanceId());
     assertEquals(1, result.getInstances().get(2).getInstanceId());
     assertEquals("same-name", result.getInstances().get(2).getBtsRuntimeGroupId());
+    assertEquals("quickjs", result.getInstances().get(2).getBtsRuntimeType());
+    assertEquals(1000L, result.getInstances().get(2).getBtsRuntimeTotalBytes());
+    assertTrue(result.getInstances().get(2).getViewDetail().isEmpty());
   }
 
   @Test
   public void fallsBackToEmptyResultForIncompleteGlobalSnapshot() {
-    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(
-        100L, 50L, 20L, new long[] {1L}, new long[] {1L, 2L}, new String[] {"page-1"});
+    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(100L, 50L, 20L, 0,
+        new long[] {1L}, new long[] {1L, 2L}, new String[] {"page-1"}, new long[0], new String[0]);
 
     assertEquals(100L, result.getCollectionStartMs());
     assertEquals(LynxMemoryCollectionStatus.COMPLETED, result.getCollectionStatus());
@@ -96,7 +106,6 @@ public class LynxGlobalMemoryUsageResultTest {
     assertEquals(0, result.getExpectedInstanceCount());
     assertEquals(0, result.getCompletedInstanceCount());
     assertEquals(0L, result.getTotalBytes());
-    assertEquals(0L, result.getRatioToApp(), 0L);
     assertEquals(0L, result.getElementBytes());
     assertEquals(0L, result.getElementNodeCount());
     assertEquals(0L, result.getViewBytes());
@@ -108,10 +117,10 @@ public class LynxGlobalMemoryUsageResultTest {
   @Test
   public void ignoresIncompleteNativeInstanceSnapshot() {
     long[] globalValues = {10L, 1L, 2L, 3L, 4L, 5L};
-    long[] instanceValues = {1L, 10L, 1L, 2L, 3L, 4L, 5L};
+    long[] instanceValues = {1L, 10L, 1L, 2L, 3L, 4L, 5L, 50L};
 
-    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(
-        100L, 50L, 20L, globalValues, instanceValues, new String[] {"page-1", "url-1"});
+    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(100L, 50L, 20L, 0,
+        globalValues, instanceValues, new String[] {"page-1", "url-1"}, new long[0], new String[0]);
 
     assertEquals(0, result.getExpectedInstanceCount());
     assertEquals(0, result.getCompletedInstanceCount());
@@ -133,7 +142,6 @@ public class LynxGlobalMemoryUsageResultTest {
 
     assertEquals(2, result.getCompletedInstanceCount());
     assertEquals(300L, result.getTotalBytes());
-    assertEquals(0.25D, result.getRatioToApp(), 0D);
     assertEquals(first, result.getInstances().get(0));
     assertEquals(second, result.getInstances().get(1));
     try {
@@ -142,5 +150,48 @@ public class LynxGlobalMemoryUsageResultTest {
     } catch (UnsupportedOperationException expected) {
       // Expected.
     }
+  }
+
+  @Test
+  public void mapsDestroyedInstancesWithoutPageMetrics() {
+    long[] destroyedValues = {11, 900, 500, 12, 900, 400, 21, 600, 300};
+    String[] destroyedStrings = {"page-11", "https://host/page?route=detail#original😀",
+        "same-name", "quickjs", "page-12", "url-12", "same-name", "quickjs", "page-21", "url-21",
+        "same-name", "quickjs"};
+    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(100, 50, 2000, 0,
+        new long[6], new long[0], new String[0], destroyedValues, destroyedStrings);
+    assertEquals(3, result.getDestroyedInstances().size());
+    LynxInstanceMemoryUsage first = result.getDestroyedInstances().get(0);
+    assertEquals(11, first.getInstanceId());
+    assertEquals("page-11", first.getPageId());
+    assertEquals(destroyedStrings[1], first.getUrl());
+    assertEquals("quickjs", first.getBtsRuntimeType());
+    assertEquals(900, first.getBtsRuntimeTotalBytes());
+    assertEquals(500, first.getBackgroundThreadRuntimeResidualBytes());
+    assertEquals(0, first.getTotalBytes());
+    assertEquals(0, first.getElementBytes());
+    assertEquals(0, first.getElementNodeCount());
+    assertEquals(0, first.getViewBytes());
+    assertTrue(first.getViewDetail().isEmpty());
+    assertEquals(0, first.getMainThreadRuntimeBytes());
+    assertEquals(0, first.getBackgroundThreadRuntimeBytes());
+    assertEquals(21, result.getDestroyedInstances().get(2).getInstanceId());
+    assertEquals(0, result.getCompletedInstanceCount());
+    try {
+      result.getDestroyedInstances().clear();
+      fail("Expected immutable destroyed instances list.");
+    } catch (UnsupportedOperationException expected) {
+      // Expected.
+    }
+  }
+
+  @Test
+  public void disabledMonitoringReturnsErrorWithoutReadingArrays() {
+    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(
+        100, 50, 2000, 1, new long[0], new long[0], new String[0], new long[0], new String[0]);
+    assertEquals(LynxMemoryCollectionStatus.ERROR, result.getCollectionStatus());
+    assertEquals("Memory monitoring disabled", result.getErrorMessage());
+    assertTrue(result.getInstances().isEmpty());
+    assertTrue(result.getDestroyedInstances().isEmpty());
   }
 }
