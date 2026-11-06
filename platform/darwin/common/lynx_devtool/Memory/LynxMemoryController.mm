@@ -22,6 +22,7 @@ NSString* LynxDevtoolSafeString(NSString* value) { return value ?: @""; }
 bool LynxDevtoolIsValidJsonKey(NSString* key) { return key && key.length > 0; }
 
 NSString* LynxDevtoolMemoryStatusString(LynxMemoryCollectionStatus status) {
+  if (status == LynxMemoryCollectionStatusError) return @"error";
   return status == LynxMemoryCollectionStatusTimeout ? @"timeout" : @"completed";
 }
 
@@ -67,43 +68,56 @@ NSDictionary* LynxDevtoolViewDetailToDictionary(
   return result;
 }
 
-NSDictionary* LynxDevtoolInstanceMemoryUsageToDictionary(LynxInstanceMemoryUsage* instance) {
-  return @{
-    @"instanceId" : @(instance.instanceId),
-    @"pageId" : LynxDevtoolSafeString(instance.pageId),
-    @"url" : LynxDevtoolSafeString(instance.url),
-    @"totalBytes" : @(instance.totalBytes),
-    @"elementBytes" : @(instance.elementBytes),
-    @"elementNodeCount" : @(instance.elementNodeCount),
-    @"viewBytes" : @(instance.viewBytes),
-    @"viewDetail" : LynxDevtoolViewDetailToDictionary(instance.viewDetail),
-    @"mainThreadRuntimeBytes" : @(instance.mainThreadRuntimeBytes),
-    @"backgroundThreadRuntimeBytes" : @(instance.backgroundThreadRuntimeBytes),
-    @"btsRuntimeGroupId" : LynxDevtoolSafeString(instance.btsRuntimeGroupId)
-  };
+NSDictionary* LynxDevtoolInstanceMemoryUsageToDictionary(LynxInstanceMemoryUsage* instance,
+                                                         bool destroyed) {
+  NSMutableDictionary* result = [[NSMutableDictionary alloc] initWithCapacity:destroyed ? 7 : 13];
+  result[@"instanceId"] = @(instance.instanceId);
+  result[@"pageId"] = LynxDevtoolSafeString(instance.pageId);
+  result[@"url"] = LynxDevtoolSafeString(instance.url);
+  result[@"btsRuntimeGroupId"] = LynxDevtoolSafeString(instance.btsRuntimeGroupId);
+  result[@"btsRuntimeType"] = LynxDevtoolSafeString(instance.btsRuntimeType);
+  result[@"btsRuntimeTotalBytes"] = @(instance.btsRuntimeTotalBytes);
+  if (destroyed) {
+    result[@"backgroundThreadRuntimeResidualBytes"] =
+        @(instance.backgroundThreadRuntimeResidualBytes);
+  } else {
+    result[@"totalBytes"] = @(instance.totalBytes);
+    result[@"elementBytes"] = @(instance.elementBytes);
+    result[@"elementNodeCount"] = @(instance.elementNodeCount);
+    result[@"viewBytes"] = @(instance.viewBytes);
+    result[@"viewDetail"] = LynxDevtoolViewDetailToDictionary(instance.viewDetail);
+    result[@"mainThreadRuntimeBytes"] = @(instance.mainThreadRuntimeBytes);
+    result[@"backgroundThreadRuntimeBytes"] = @(instance.backgroundThreadRuntimeBytes);
+  }
+  return result;
 }
 
 NSDictionary* LynxDevtoolGlobalMemoryUsageToDictionary(LynxGlobalMemoryUsageResult* result) {
   NSMutableArray* instances = [[NSMutableArray alloc] init];
   for (LynxInstanceMemoryUsage* instance in result.instances) {
-    [instances addObject:LynxDevtoolInstanceMemoryUsageToDictionary(instance)];
+    [instances addObject:LynxDevtoolInstanceMemoryUsageToDictionary(instance, false)];
+  }
+  NSMutableArray* destroyedInstances = [[NSMutableArray alloc] init];
+  for (LynxInstanceMemoryUsage* instance in result.destroyedInstances) {
+    [destroyedInstances addObject:LynxDevtoolInstanceMemoryUsageToDictionary(instance, true)];
   }
   return @{
     @"collectionStartMs" : @(result.collectionStartMs),
     @"collectionStatus" : LynxDevtoolMemoryStatusString(result.collectionStatus),
+    @"errorMessage" : LynxDevtoolSafeString(result.errorMessage),
     @"collectionDurationMs" : @(result.collectionDurationMs),
     @"collectionTimeoutMs" : @(result.collectionTimeoutMs),
     @"expectedInstanceCount" : @(result.expectedInstanceCount),
     @"completedInstanceCount" : @(result.completedInstanceCount),
     @"totalBytes" : @(result.totalBytes),
     @"appBytes" : @(result.appBytes),
-    @"ratioToApp" : @(result.ratioToApp),
     @"elementBytes" : @(result.elementBytes),
     @"elementNodeCount" : @(result.elementNodeCount),
     @"viewBytes" : @(result.viewBytes),
     @"mainThreadRuntimeBytes" : @(result.mainThreadRuntimeBytes),
     @"backgroundThreadRuntimeBytes" : @(result.backgroundThreadRuntimeBytes),
-    @"instances" : instances
+    @"instances" : instances,
+    @"destroyedInstances" : destroyedInstances
   };
 }
 
@@ -193,7 +207,7 @@ NSString* LynxDevtoolGlobalMemoryUsageToJSONString(LynxGlobalMemoryUsageResult* 
             callback(@"{}", errorMessage ?: @"Failed to serialize Lynx memory usage result");
             return;
           }
-          callback(resultJson, @"");
+          callback(resultJson, LynxDevtoolSafeString(result.errorMessage));
         }
                               timeoutMs:timeoutMs];
   } @catch (NSException* exception) {

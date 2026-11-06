@@ -5,7 +5,7 @@
 #include <jni.h>
 
 #include <cstdint>
-#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -19,8 +19,13 @@
 namespace {
 
 constexpr size_t kGlobalValueCount = 6;
-constexpr size_t kInstanceValueCount = 7;
-constexpr size_t kInstanceStringCount = 3;
+constexpr size_t kInstanceValueCount = 8;
+constexpr size_t kInstanceStringCount = 4;
+// Matches LynxGlobalMemoryUsageResult.fromNative:
+// Live values: id, total, element, count, view, MTS, BTS, whole BTS heap.
+// Destroyed values: id, whole BTS heap, residual.
+// Both strings: page key, URL, group, type.
+constexpr size_t kDestroyedValueCount = 3;
 
 lynx::base::android::ScopedLocalJavaRef<jlongArray> ToJavaLongArray(
     JNIEnv* env, const std::vector<jlong>& values) {
@@ -34,17 +39,26 @@ lynx::base::android::ScopedLocalJavaRef<jlongArray> ToJavaLongArray(
 }
 
 lynx::base::android::ScopedLocalJavaRef<jobjectArray> ToJavaStringArray(
-    JNIEnv* env, const std::vector<std::string>& values) {
+    JNIEnv* env,
+    const std::vector<lynx::tasm::performance::InstanceMemoryUsage>&
+        instances) {
   lynx::base::android::ScopedLocalJavaRef<jclass> string_class(
       env, env->FindClass("java/lang/String"));
   lynx::base::android::ScopedLocalJavaRef<jobjectArray> result(
-      env, env->NewObjectArray(static_cast<jsize>(values.size()),
-                               string_class.Get(), nullptr));
-  for (size_t i = 0; i < values.size(); ++i) {
-    auto value = lynx::base::android::JNIConvertHelper::U16StringToJNIString(
-        env, lynx::base::U8StringToU16(values[i]));
-    env->SetObjectArrayElement(result.Get(), static_cast<jsize>(i),
-                               value.Get());
+      env, env->NewObjectArray(
+               static_cast<jsize>(instances.size() * kInstanceStringCount),
+               string_class.Get(), nullptr));
+  size_t index = 0;
+  for (const auto& instance : instances) {
+    const std::string_view values[kInstanceStringCount] = {
+        instance.page_id, instance.url, instance.bts_runtime_group_id,
+        instance.bts_runtime_type};
+    for (const auto value : values) {
+      auto string = lynx::base::android::JNIConvertHelper::U16StringToJNIString(
+          env, lynx::base::U8StringToU16(value));
+      env->SetObjectArrayElement(result.Get(), static_cast<jsize>(index++),
+                                 string.Get());
+    }
   }
   return result;
 }
@@ -76,11 +90,8 @@ static void QueryGlobalMemoryUsageAsync(JNIEnv* env, jclass jcaller,
                                   static_cast<jlong>(total.bts_bytes)});
 
             std::vector<jlong> instance_values;
-            std::vector<std::string> instance_strings;
             instance_values.reserve(usage.instances.size() *
                                     kInstanceValueCount);
-            instance_strings.reserve(usage.instances.size() *
-                                     kInstanceStringCount);
             for (const auto& instance : usage.instances) {
               const auto& page = instance.page;
               instance_values.insert(instance_values.end(),
@@ -90,19 +101,31 @@ static void QueryGlobalMemoryUsageAsync(JNIEnv* env, jclass jcaller,
                                       static_cast<jlong>(page.element_count),
                                       static_cast<jlong>(page.ui_bytes),
                                       static_cast<jlong>(page.mts_bytes),
-                                      static_cast<jlong>(page.bts_bytes)});
-              instance_strings.insert(instance_strings.end(),
-                                      {instance.page_id, instance.url,
-                                       instance.bts_runtime_group_id});
+                                      static_cast<jlong>(page.bts_bytes),
+                                      instance.bts_heap_bytes});
+            }
+
+            std::vector<jlong> destroyed_values;
+            destroyed_values.reserve(usage.destroyed_instances.size() *
+                                     kDestroyedValueCount);
+            for (const auto& instance : usage.destroyed_instances) {
+              destroyed_values.insert(
+                  destroyed_values.end(),
+                  {instance.instance_id, instance.bts_heap_bytes,
+                   instance.bts_residual_bytes});
             }
 
             auto j_global_values = ToJavaLongArray(env, global_values);
             auto j_instance_values = ToJavaLongArray(env, instance_values);
-            auto j_instance_strings = ToJavaStringArray(env, instance_strings);
+            auto j_instance_strings = ToJavaStringArray(env, usage.instances);
+            auto j_destroyed_values = ToJavaLongArray(env, destroyed_values);
+            auto j_destroyed_strings =
+                ToJavaStringArray(env, usage.destroyed_instances);
             Java_LynxMemoryUsageQuery_onNativeMemoryUsageResult(
                 env, callback.Get(), collection_start_ms, collection_timeout_ms,
-                j_global_values.Get(), j_instance_values.Get(),
-                j_instance_strings.Get());
+                static_cast<jint>(usage.status), j_global_values.Get(),
+                j_instance_values.Get(), j_instance_strings.Get(),
+                j_destroyed_values.Get(), j_destroyed_strings.Get());
           });
 }
 

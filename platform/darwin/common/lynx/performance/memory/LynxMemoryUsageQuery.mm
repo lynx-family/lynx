@@ -7,7 +7,7 @@
 #import <Lynx/LynxLog.h>
 
 #include <algorithm>
-#include <utility>
+#include <string_view>
 
 #include "base/include/memory/process_memory_info.h"
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
@@ -20,23 +20,32 @@ int64_t LynxMemoryUsageNowMs() {
   return static_cast<int64_t>([[NSDate date] timeIntervalSince1970] * 1000);
 }
 
-NSString *LynxMemoryUsageString(const std::string &value) {
+NSString *LynxMemoryUsageString(std::string_view value) {
   return [[NSString alloc] initWithBytes:value.data()
                                   length:value.size()
                                 encoding:NSUTF8StringEncoding]
              ?: @"";
 }
 
+LynxInstanceMemoryUsage *LynxBuildInstanceMemoryUsage(
+    const lynx::tasm::performance::InstanceMemoryUsage &source) {
+  LynxInstanceMemoryUsage *instance = [[LynxInstanceMemoryUsage alloc] init];
+  instance.instanceId = source.instance_id;
+  instance.pageId = LynxMemoryUsageString(source.page_id);
+  instance.url = LynxMemoryUsageString(source.url);
+  instance.btsRuntimeGroupId = LynxMemoryUsageString(source.bts_runtime_group_id);
+  instance.btsRuntimeType = LynxMemoryUsageString(source.bts_runtime_type);
+  instance.btsRuntimeTotalBytes = source.bts_heap_bytes;
+  return instance;
+}
+
 LynxGlobalMemoryUsageResult *LynxBuildGlobalMemoryUsageResult(
     int64_t collectionStartMs, int64_t collectionTimeoutMs,
-    lynx::tasm::performance::GlobalMemoryUsage usage) {
+    const lynx::tasm::performance::GlobalMemoryUsage &usage) {
   NSMutableArray<LynxInstanceMemoryUsage *> *instances =
       [NSMutableArray arrayWithCapacity:usage.instances.size()];
   for (const auto &source : usage.instances) {
-    LynxInstanceMemoryUsage *instance = [[LynxInstanceMemoryUsage alloc] init];
-    instance.instanceId = source.instance_id;
-    instance.pageId = LynxMemoryUsageString(source.page_id);
-    instance.url = LynxMemoryUsageString(source.url);
+    LynxInstanceMemoryUsage *instance = LynxBuildInstanceMemoryUsage(source);
     instance.totalBytes = source.page.total_bytes;
     instance.elementBytes = source.page.element_bytes;
     instance.elementNodeCount = source.page.element_count;
@@ -44,7 +53,6 @@ LynxGlobalMemoryUsageResult *LynxBuildGlobalMemoryUsageResult(
     instance.viewDetail = @{};
     instance.mainThreadRuntimeBytes = source.page.mts_bytes;
     instance.backgroundThreadRuntimeBytes = source.page.bts_bytes;
-    instance.btsRuntimeGroupId = LynxMemoryUsageString(source.bts_runtime_group_id);
     [instances addObject:instance];
   }
   [instances sortUsingComparator:^NSComparisonResult(LynxInstanceMemoryUsage *left,
@@ -56,7 +64,13 @@ LynxGlobalMemoryUsageResult *LynxBuildGlobalMemoryUsageResult(
 
   LynxGlobalMemoryUsageResult *result = [[LynxGlobalMemoryUsageResult alloc] init];
   result.collectionStartMs = collectionStartMs;
-  result.collectionStatus = LynxMemoryCollectionStatusCompleted;
+  const bool completed = usage.status == lynx::tasm::performance::MemoryUsageQueryStatus::kOk;
+  result.collectionStatus =
+      completed ? LynxMemoryCollectionStatusCompleted : LynxMemoryCollectionStatusError;
+  if (!completed) {
+    result.errorMessage =
+        LynxMemoryUsageString(lynx::tasm::performance::kMemoryMonitoringDisabledError);
+  }
   result.collectionDurationMs = LynxMemoryUsageNowMs() - collectionStartMs;
   result.collectionTimeoutMs = collectionTimeoutMs;
   result.expectedInstanceCount = instances.count;
@@ -68,9 +82,15 @@ LynxGlobalMemoryUsageResult *LynxBuildGlobalMemoryUsageResult(
   result.mainThreadRuntimeBytes = usage.total.mts_bytes;
   result.backgroundThreadRuntimeBytes = usage.total.bts_bytes;
   result.instances = instances;
-  result.appBytes = std::max<int64_t>(0, lynx::base::GetProcessPssBytes());
-  result.ratioToApp =
-      result.appBytes > 0 ? static_cast<double>(result.totalBytes) / result.appBytes : 0;
+  NSMutableArray<LynxInstanceMemoryUsage *> *destroyedInstances =
+      [NSMutableArray arrayWithCapacity:usage.destroyed_instances.size()];
+  for (const auto &source : usage.destroyed_instances) {
+    LynxInstanceMemoryUsage *instance = LynxBuildInstanceMemoryUsage(source);
+    instance.backgroundThreadRuntimeResidualBytes = source.bts_residual_bytes;
+    [destroyedInstances addObject:instance];
+  }
+  result.destroyedInstances = destroyedInstances;
+  result.appBytes = completed ? std::max<int64_t>(0, lynx::base::GetProcessPssBytes()) : 0;
   return result;
 }
 
@@ -111,8 +131,8 @@ void LynxInvokeGlobalMemoryUsageCallback(LynxGlobalMemoryUsageCallback callback,
       [callbackCopy, collectionStartMs,
        collectionTimeoutMs](lynx::tasm::performance::GlobalMemoryUsage usage) {
         LynxInvokeGlobalMemoryUsageCallback(
-            callbackCopy, LynxBuildGlobalMemoryUsageResult(collectionStartMs, collectionTimeoutMs,
-                                                           std::move(usage)));
+            callbackCopy,
+            LynxBuildGlobalMemoryUsageResult(collectionStartMs, collectionTimeoutMs, usage));
       });
 }
 

@@ -10,7 +10,6 @@ import androidx.annotation.Nullable;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.core.LynxThreadPool;
-import java.util.Collections;
 
 /**
  * Public entry for querying current global Lynx memory usage across live Lynx instances.
@@ -30,7 +29,7 @@ public final class LynxMemoryUsageQuery {
    * Queries current global Lynx memory usage asynchronously.
    *
    * <p>The callback runs on the Lynx report thread after native initialization. Before that, it
-   * runs asynchronously on a background executor with an empty completed result.
+   * runs asynchronously on a background executor with an error result.
    */
   @AnyThread
   public void queryLynxGlobalMemoryUsageAsync(@Nullable LynxGlobalMemoryUsageCallback callback) {
@@ -55,10 +54,9 @@ public final class LynxMemoryUsageQuery {
       LynxThreadPool.getAsyncServiceExecutor().execute(
           ()
               -> invokeCallbackSafely(callback,
-                  LynxGlobalMemoryUsageResult.build(collectionStartMs,
-                      LynxMemoryCollectionStatus.COMPLETED,
-                      System.currentTimeMillis() - collectionStartMs, collectionTimeoutMs, 0, 0L,
-                      Collections.emptyList())));
+                  LynxGlobalMemoryUsageResult.error(collectionStartMs,
+                      System.currentTimeMillis() - collectionStartMs, collectionTimeoutMs,
+                      "Native library not initialized")));
       return;
     }
     nativeQueryGlobalMemoryUsageAsync(callback, collectionStartMs, collectionTimeoutMs);
@@ -67,12 +65,13 @@ public final class LynxMemoryUsageQuery {
   @Keep
   @CalledByNative
   private static void onNativeMemoryUsageResult(LynxGlobalMemoryUsageCallback callback,
-      long collectionStartMs, long collectionTimeoutMs, long[] globalValues, long[] instanceValues,
-      String[] instanceStrings) {
+      long collectionStartMs, long collectionTimeoutMs, int status, long[] globalValues,
+      long[] instanceValues, String[] instanceStrings, long[] destroyedValues,
+      String[] destroyedStrings) {
     invokeCallbackSafely(callback,
         LynxGlobalMemoryUsageResult.fromNative(collectionStartMs,
-            System.currentTimeMillis() - collectionStartMs, collectionTimeoutMs, globalValues,
-            instanceValues, instanceStrings));
+            System.currentTimeMillis() - collectionStartMs, collectionTimeoutMs, status,
+            globalValues, instanceValues, instanceStrings, destroyedValues, destroyedStrings));
   }
 
   private static void invokeCallbackSafely(

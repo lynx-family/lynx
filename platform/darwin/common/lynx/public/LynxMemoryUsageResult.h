@@ -7,10 +7,12 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
-  // Every expected Lynx instance fetcher returned before the fixed timeout.
+  // The native global snapshot completed.
   LynxMemoryCollectionStatusCompleted = 0,
   // The fixed timeout fired first; the result contains only completed instances.
   LynxMemoryCollectionStatusTimeout = 1,
+  // Monitoring is disabled or the query failed.
+  LynxMemoryCollectionStatusError = 2,
 };
 
 @class LynxMemoryRecord;
@@ -25,8 +27,7 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 
 // LynxShell instance id. -1 means the instance was not fully attached.
 @property(nonatomic, assign) int32_t instanceId;
-// TODO(lynx-memory): Replace this temporary view-derived identity with the real page id once the
-// page id source is available to the instance fetcher.
+// Native memory-monitor page key.
 @property(nonatomic, copy) NSString *pageId;
 // Current template URL captured when the instance fetcher completes.
 @property(nonatomic, copy) NSString *url;
@@ -44,9 +45,14 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 @property(nonatomic, assign) int64_t mainThreadRuntimeBytes;
 // Background-thread bytes attributed to this page.
 @property(nonatomic, assign) int64_t backgroundThreadRuntimeBytes;
+// Current tracked slot bytes for a destroyed instance; zero for live instances.
+@property(nonatomic, assign) int64_t backgroundThreadRuntimeResidualBytes;
 // Background runtime group id for diagnostics. It is not a unique VM identity.
 @property(nonatomic, copy) NSString *btsRuntimeGroupId;
-
+// Background runtime engine: quickjs, v8, jsvm, jsc, or unknown.
+@property(nonatomic, copy) NSString *btsRuntimeType;
+// Whole background runtime heap, separate from the page-attributed bytes.
+@property(nonatomic, assign) int64_t btsRuntimeTotalBytes;
 @end
 
 /**
@@ -61,6 +67,8 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 @property(nonatomic, assign) int64_t collectionStartMs;
 // The direct native global snapshot completes as one operation.
 @property(nonatomic, assign) LynxMemoryCollectionStatus collectionStatus;
+// Empty on success; explains why the query failed otherwise.
+@property(nonatomic, copy) NSString *errorMessage;
 // Elapsed collection time in milliseconds.
 @property(nonatomic, assign) int64_t collectionDurationMs;
 // Timeout metadata retained for API compatibility.
@@ -73,8 +81,6 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 @property(nonatomic, assign) int64_t totalBytes;
 // Current app physical footprint sampled when the global result is built.
 @property(nonatomic, assign) int64_t appBytes;
-// totalBytes divided by appBytes. Zero when appBytes is unavailable.
-@property(nonatomic, assign) double ratioToApp;
 // Aggregated element bytes across completed instances.
 @property(nonatomic, assign) int64_t elementBytes;
 // Aggregated element node count across completed instances.
@@ -87,6 +93,8 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 @property(nonatomic, assign) int64_t backgroundThreadRuntimeBytes;
 // Completed instance list, sorted by instance totalBytes descending.
 @property(nonatomic, copy) NSArray<LynxInstanceMemoryUsage *> *instances;
+// Up to five destroyed pages per shared QuickJS VM, ordered by residual bytes within each VM.
+@property(nonatomic, copy) NSArray<LynxInstanceMemoryUsage *> *destroyedInstances;
 
 @end
 
