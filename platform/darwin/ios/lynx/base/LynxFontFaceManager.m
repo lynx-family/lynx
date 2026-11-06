@@ -5,7 +5,6 @@
 #import <CoreText/CTFont.h>
 #import <CoreText/CTFontDescriptor.h>
 #import <CoreText/CTFontManager.h>
-#import <CoreText/SFNTLayoutTypes.h>
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxEnv.h>
@@ -1120,28 +1119,22 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
     return baseFont;
   }
 
-  NSArray *fontFeatureAttributeArray = [self getFontFeatureAttribute:fontFeatureSettings];
-  NSDictionary *fontVariationDic = [self getFontVariationAttribute:fontVariationSettings
-                                                 fontOpticalSizing:fontOpticalSizing
-                                                          fontSize:baseFont.pointSize];
-
-  CTFontDescriptorRef ctBaseDesc = CTFontDescriptorCreateWithNameAndSize(
-      (__bridge CFStringRef)baseFont.fontName, baseFont.pointSize);
-  NSMutableDictionary *ctAttrs = [NSMutableDictionary dictionary];
-  ctAttrs[(id)kCTFontFeatureSettingsAttribute] = fontFeatureAttributeArray;
-  ctAttrs[(id)kCTFontVariationAttribute] = fontVariationDic;
-  id cascadeList = [baseFont.fontDescriptor
-      objectForKey:(__bridge UIFontDescriptorAttributeName)kCTFontCascadeListAttribute];
-  if (cascadeList != nil) {
-    ctAttrs[(id)kCTFontCascadeListAttribute] = cascadeList;
+  NSMutableDictionary *fontAttributes = [NSMutableDictionary dictionary];
+  if (fontFeatureSettings != nil) {
+    fontAttributes[(__bridge NSString *)kCTFontFeatureSettingsAttribute] =
+        [self getFontFeatureAttribute:fontFeatureSettings];
   }
-  CTFontDescriptorRef ctNewDesc =
-      CTFontDescriptorCreateCopyWithAttributes(ctBaseDesc, (__bridge CFDictionaryRef)ctAttrs);
+  if (fontVariationSettings != nil || fontOpticalSizing) {
+    fontAttributes[(__bridge NSString *)kCTFontVariationAttribute] =
+        [self getFontVariationAttribute:fontVariationSettings
+                      fontOpticalSizing:fontOpticalSizing
+                               fontSize:baseFont.pointSize];
+  }
 
-  UIFontDescriptor *newDesc = (__bridge UIFontDescriptor *)ctNewDesc;
+  // Keep the original system font descriptor, traits and fallback cascade.
+  UIFontDescriptor *newDesc =
+      [baseFont.fontDescriptor fontDescriptorByAddingAttributes:fontAttributes];
   UIFont *newFont = [UIFont fontWithDescriptor:newDesc size:baseFont.pointSize];
-  CFRelease(ctBaseDesc);
-  CFRelease(ctNewDesc);
 
   return newFont;
 }
@@ -1174,142 +1167,21 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
 }
 
 + (NSArray *)getFontFeatureAttribute:(NSArray *)fontFeatureSettings {
-  static NSDictionary *fontFeatureDic;
-  static dispatch_once_t onceToken;
-  dispatch_once(&onceToken, ^{
-    NSDictionary *baseDic = @{
-      // Substitution Features
-      @"hlig" : @{
-        // Historical Ligatures
-        UIFontFeatureTypeIdentifierKey : @(kLigaturesType),
-        UIFontFeatureSelectorIdentifierKey : @(kHistoricalLigaturesOnSelector),
-      },
-      @"clig" : @{
-        // Contextual Ligatures
-        UIFontFeatureTypeIdentifierKey : @(kLigaturesType),
-        UIFontFeatureSelectorIdentifierKey : @(kContextualLigaturesOnSelector),
-      },
-      // Glyph Shaping / Alternates
-      @"c2sc" : @{
-        // Small Capitals From Capitals
-        UIFontFeatureTypeIdentifierKey : @(kUpperCaseType),
-        UIFontFeatureSelectorIdentifierKey : @(kUpperCaseSmallCapsSelector),
-      },
-      @"smcp" : @{
-        // Small Capitals
-        UIFontFeatureTypeIdentifierKey : @(kLowerCaseType),
-        UIFontFeatureSelectorIdentifierKey : @(kLowerCaseSmallCapsSelector),
-      },
-      @"pcap" : @{
-        // Petite Capitals
-        UIFontFeatureTypeIdentifierKey : @(kLowerCaseType),
-        UIFontFeatureSelectorIdentifierKey : @(kLowerCasePetiteCapsSelector),
-      },
-      @"c2pc" : @{
-        // Petite Capitals From Capitals
-        UIFontFeatureTypeIdentifierKey : @(kLowerCaseType),
-        UIFontFeatureSelectorIdentifierKey : @(kLowerCasePetiteCapsSelector),
-      },
-      // Numeric Features
-      @"onum" : @{
-        // Oldstyle Figures
-        UIFontFeatureTypeIdentifierKey : @(kNumberCaseType),
-        UIFontFeatureSelectorIdentifierKey : @(kLowerCaseNumbersSelector),
-      },
-      @"lnum" : @{
-        // Lining Figures
-        UIFontFeatureTypeIdentifierKey : @(kNumberCaseType),
-        UIFontFeatureSelectorIdentifierKey : @(kUpperCaseNumbersSelector),
-      },
-      @"pnum" : @{
-        // Proportional Figures
-        UIFontFeatureTypeIdentifierKey : @(kNumberSpacingType),
-        UIFontFeatureSelectorIdentifierKey : @(kProportionalNumbersSelector),
-      },
-      @"tnum" : @{
-        // Tabular Figures
-        UIFontFeatureTypeIdentifierKey : @(kNumberSpacingType),
-        UIFontFeatureSelectorIdentifierKey : @(kMonospacedNumbersSelector),
-      },
-      @"frac" : @{
-        // Fractions (Diagonal Fractions)
-        UIFontFeatureTypeIdentifierKey : @(kFractionsType),
-        UIFontFeatureSelectorIdentifierKey : @(kDiagonalFractionsSelector),
-      },
-      @"afrc" : @{
-        // Alternative Fractions (Vertical Fractions)
-        UIFontFeatureTypeIdentifierKey : @(kFractionsType),
-        UIFontFeatureSelectorIdentifierKey : @(kVerticalFractionsSelector),
-      },
-      @"zero" : @{
-        // Slashed Zero
-        UIFontFeatureTypeIdentifierKey : @(kTypographicExtrasType),
-        UIFontFeatureSelectorIdentifierKey : @(kSlashedZeroOnSelector),
-      },
-      // Other Typography Features
-      @"ordn" : @{
-        // Ordinals
-        UIFontFeatureTypeIdentifierKey : @(kVerticalPositionType),
-        UIFontFeatureSelectorIdentifierKey : @(kOrdinalsSelector),
-      },
-      @"sups" : @{
-        // Superscripts
-        UIFontFeatureTypeIdentifierKey : @(kVerticalPositionType),
-        UIFontFeatureSelectorIdentifierKey : @(kSuperiorsSelector),
-      },
-      @"subs" : @{
-        // Subscript
-        UIFontFeatureTypeIdentifierKey : @(kVerticalPositionType),
-        UIFontFeatureSelectorIdentifierKey : @(kInferiorsSelector),
-      },
-      @"case" : @{
-        // Case-sensitive Forms
-        UIFontFeatureTypeIdentifierKey : @(kCaseSensitiveLayoutType),
-        UIFontFeatureSelectorIdentifierKey : @(kCaseSensitiveLayoutOnSelector),
-      },
-      @"titl" : @{
-        // Titling Alternates
-        UIFontFeatureTypeIdentifierKey : @(kStyleOptionsType),
-        UIFontFeatureSelectorIdentifierKey : @(kTitlingCapsSelector),
-      },
-      @"sinf" : @{
-        // Scientific Inferiors
-        UIFontFeatureTypeIdentifierKey : @(kVerticalPositionType),
-        UIFontFeatureSelectorIdentifierKey : @(kScientificInferiorsSelector),
-      },
-    };
-    NSMutableDictionary *mutableDic = [baseDic mutableCopy];
-    // Stylistic Sets ss01–ss20
-    for (int i = 1; i <= 20; i++) {
-      // format tag "ss01", "ss02", … "ss20"
-      NSString *tag = [NSString stringWithFormat:@"ss%02d", i];
-
-      // selectors are consecutive enums, starting at kStylisticAltOneOnSelector
-      // so for ssNN we use (kStylisticAltOneOnSelector + NN - 1)
-      NSInteger selector = kStylisticAltOneOnSelector + (i - 1);
-
-      mutableDic[tag] = @{
-        UIFontFeatureTypeIdentifierKey : @(kStylisticAlternativesType),
-        UIFontFeatureSelectorIdentifierKey : @(selector)
-      };
+  NSMutableArray *attributes = [NSMutableArray new];
+  for (NSUInteger i = 0; i + 1 < fontFeatureSettings.count; i += 2) {
+    id tag = fontFeatureSettings[i];
+    id featureValue = fontFeatureSettings[i + 1];
+    if (![tag isKindOfClass:NSString.class] || [tag length] != 4 ||
+        ![featureValue isKindOfClass:NSNumber.class] || [featureValue integerValue] < 0) {
+      continue;
     }
-
-    fontFeatureDic = [mutableDic copy];
-    ;
-  });
-  NSMutableArray *ret = [NSMutableArray new];
-
-  for (NSUInteger i = 0; i < fontFeatureSettings.count / 2; i++) {
-    NSInteger value = [fontFeatureSettings[2 * i + 1] intValue];
-    if (value == 1) {
-      NSString *tag = [fontFeatureSettings[2 * i] stringValue];
-      NSDictionary *dic = [fontFeatureDic valueForKey:tag];
-      if (dic) {
-        [ret addObject:dic];
-      }
-    }
+    NSInteger value = [featureValue integerValue];
+    [attributes addObject:@{
+      (__bridge NSString *)kCTFontOpenTypeFeatureTag : tag,
+      (__bridge NSString *)kCTFontOpenTypeFeatureValue : @(value),
+    }];
   }
-  return ret;
+  return attributes;
 }
 
 @end

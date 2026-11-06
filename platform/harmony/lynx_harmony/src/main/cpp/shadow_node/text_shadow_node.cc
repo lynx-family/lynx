@@ -350,7 +350,7 @@ void TextShadowNode::OnLayoutBefore() {
       color = text_props_->color.value();
     }
   }
-  UpdateInheritedTextStyle(color, std::move(gradient), {});
+  UpdateInheritedTextStyle(color, std::move(gradient), {}, {});
 }
 
 void TextShadowNode::UpdateLayout(float left, float top, float width,
