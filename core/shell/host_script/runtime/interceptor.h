@@ -25,6 +25,8 @@ enum class InterceptKind {
   kCall,
   kResult,
   kCallback,
+  kCreate,
+  kUpdateViewport,
   kCount
 };
 
