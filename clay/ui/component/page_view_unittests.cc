@@ -1405,4 +1405,161 @@ TEST_F_UI(DesktopEventTest, DispatchesMouseDoubleClickOnSecondTap) {
 }  // namespace
 #endif
 
+namespace {
+
+using ::testing::_;
+using ::testing::InSequence;
+
+class MultiTouchEventDelegate : public testing::MockEventDelegate {
+ public:
+  MOCK_METHOD(void, OnTouchEvent,
+              (const std::string&, int, float, float, float, float, int),
+              (override));
+};
+
+class MultiTouchEventTest : public UITest {
+ protected:
+  void UISetUp() override {
+    page_->SetEventDelegate(&events_);
+    page_->SetBound(0, 0, 400, 200);
+    for (int id : {1, 2}) {
+      auto* view = new View(id, page_.get());
+      page_->AddChild(view);
+      view->SetBound((id - 1) * 200, 0, 200, 200);
+    }
+    find_view_by_id_callback_ = [this](int id) -> BaseView* {
+      std::vector<BaseView*> pending{page_.get()};
+      while (!pending.empty()) {
+        auto* view = pending.back();
+        pending.pop_back();
+        if (view->id() == id) return view;
+        pending.insert(pending.end(), view->GetChildren().begin(),
+                       view->GetChildren().end());
+      }
+      return nullptr;
+    };
+    EXPECT_CALL(events_, OnTouchEvent("tap", _, _, _, _, _, _))
+        .Times(::testing::AnyNumber());
+  }
+
+  ::testing::NiceMock<MultiTouchEventDelegate> events_;
+};
+
+}  // namespace
+
+TEST_F_UI(MultiTouchEventTest, DetachedTouchTargetUsesSurvivingAncestor) {
+  page_->SetEnableMultiTouch(true);
+  auto* parent = page_->GetChildren().front();
+  auto* target = new View(3, page_.get());
+  target->SetBound(10, 20, 100, 100);
+  parent->AddChild(target);
+  InSequence sequence;
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 3, 40, 40, 50, 60, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchmove", 1, 70, 80, 70, 80, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchend", 1, 70, 80, 70, 80, 17));
+  auto event = CreatePointer(17, PointerEvent::EventType::kDownEvent, {50, 60});
+  page_->DispatchPointerEvent({event});
+  parent->RemoveChild(target);
+  event.type = PointerEvent::EventType::kMoveEvent;
+  event.position = {70, 80};
+  page_->DispatchPointerEvent({event});
+  event.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({event});
+  delete target;
+}
+
+TEST_F_UI(MultiTouchEventTest, RemovedTouchTargetDoesNotUseRecycledViewId) {
+  page_->SetEnableMultiTouch(true);
+  InSequence sequence;
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 1, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchend", 0, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 1, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchend", 1, 50, 50, 50, 50, 17));
+  auto event = CreatePointer(17, PointerEvent::EventType::kDownEvent, {50, 50});
+  page_->DispatchPointerEvent({event});
+  auto* target = page_->GetChildren().front();
+  page_->RemoveChild(target);
+  delete target;
+  auto* replacement = new View(1, page_.get());
+  replacement->SetBound(0, 0, 200, 200);
+  page_->AddChild(replacement);
+  event.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({event});
+  event.type = PointerEvent::EventType::kDownEvent;
+  page_->DispatchPointerEvent({event});
+  event.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({event});
+}
+
+TEST_F_UI(MultiTouchEventTest, DetachedSubtreeCancelsOnAttachedPage) {
+  page_->SetEnableMultiTouch(true);
+  auto* parent = page_->GetChildren().front();
+  auto* target = new View(3, page_.get());
+  target->SetBound(10, 20, 100, 100);
+  parent->AddChild(target);
+  InSequence sequence;
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 3, 40, 40, 50, 60, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchcancel", 0, 50, 60, 50, 60, 17));
+  auto event = CreatePointer(17, PointerEvent::EventType::kDownEvent, {50, 60});
+  page_->DispatchPointerEvent({event});
+  page_->RemoveChild(parent);
+  event.type = PointerEvent::EventType::kCancel;
+  page_->DispatchPointerEvent({event});
+  parent->RemoveChild(target);
+  delete target;
+  delete parent;
+}
+
+TEST_F_UI(MultiTouchEventTest, RemovedTargetDoesNotEndOtherContact) {
+  page_->SetEnableMultiTouch(true);
+  InSequence sequence;
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 1, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 2, 50, 50, 250, 50, 18));
+  EXPECT_CALL(events_, OnTouchEvent("touchend", 0, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchmove", 2, 60, 50, 260, 50, 18));
+  EXPECT_CALL(events_, OnTouchEvent("touchend", 2, 60, 50, 260, 50, 18));
+  auto first = CreatePointer(17, PointerEvent::EventType::kDownEvent, {50, 50});
+  auto second =
+      CreatePointer(18, PointerEvent::EventType::kDownEvent, {250, 50});
+  page_->DispatchPointerEvent({first, second});
+  auto* target = page_->GetChildren().front();
+  page_->RemoveChild(target);
+  delete target;
+  first.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({first});
+  second.type = PointerEvent::EventType::kMoveEvent;
+  second.position = {260, 50};
+  page_->DispatchPointerEvent({second});
+  second.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({second});
+}
+
+TEST_F_UI(MultiTouchEventTest, SingleTouchRemovedTargetEndsAfterLastContact) {
+  page_->SetEnableMultiTouch(false);
+  InSequence sequence;
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 1, 50, 50, 50, 50, 17));
+  EXPECT_CALL(events_, OnTouchEvent("touchmove", 0, 260, 50, 260, 50, 18));
+  EXPECT_CALL(events_, OnTouchEvent("touchend", 0, 260, 50, 260, 50, 18));
+  EXPECT_CALL(events_, OnTouchEvent("touchstart", 2, 60, 50, 260, 50, 19));
+  EXPECT_CALL(events_, OnTouchEvent("touchend", 2, 60, 50, 260, 50, 19));
+  auto first = CreatePointer(17, PointerEvent::EventType::kDownEvent, {50, 50});
+  auto second =
+      CreatePointer(18, PointerEvent::EventType::kDownEvent, {250, 50});
+  page_->DispatchPointerEvent({first, second});
+  auto* target = page_->GetChildren().front();
+  page_->RemoveChild(target);
+  delete target;
+  first.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({first});
+  second.type = PointerEvent::EventType::kMoveEvent;
+  second.position = {260, 50};
+  page_->DispatchPointerEvent({second});
+  second.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({second});
+  auto next = CreatePointer(19, PointerEvent::EventType::kDownEvent, {260, 50});
+  page_->DispatchPointerEvent({next});
+  next.type = PointerEvent::EventType::kUpEvent;
+  page_->DispatchPointerEvent({next});
+}
+
 }  // namespace clay

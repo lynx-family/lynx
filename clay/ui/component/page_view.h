@@ -581,6 +581,10 @@ class PageView : public BaseView,
       const std::vector<PointerEvent>& events);
   void ActivateTouchPseudoStatus(int pointer_id, BaseView* target);
   void DeactivateTouchPseudoStatus(int pointer_id);
+  using TouchTargetPath = std::vector<fml::WeakPtr<BaseView>>;
+  static TouchTargetPath CaptureTouchTargetPath(BaseView* target);
+  static BaseView* ResolveTouchTarget(const TouchTargetPath& path);
+
   // Report the deepest leaf view in the position to lynx.
   void ReportTopViewRawEvents(const std::vector<PointerEvent>& events);
 #if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
@@ -669,15 +673,15 @@ class PageView : public BaseView,
   std::string base_uri_;
   clay::FixedRefreshRateStopwatch layout_and_animation_time_;
   std::unordered_map<int64_t, fml::closure> first_frame_callbacks_;
-  // This records the views that received touch down events. Subsequent
-  // touch events with the same pointer_id should be dispatched to the same
-  // view, regardless of whether the touch point remains within the view's
-  // boundaries.
-  std::unordered_map<int, int> touch_view_map_;
+  // Capture the original target and its ancestors without retaining views.
+  // If the target detaches, raw events continue on the nearest attached
+  // ancestor so the delegate can finish the contact. Never hit test a new
+  // target or resolve a recycled view id for an existing contact.
+  std::unordered_map<int, TouchTargetPath> touch_view_map_;
   // Standalone delegates retain raw pointer delivery until page config is set.
   bool enable_multi_touch_ = true;
   std::optional<int> single_touch_pointer_id_;
-  std::optional<int> single_touch_target_id_;
+  TouchTargetPath single_touch_target_path_;
   // Only the initial touch drives :active. Its pointer ID prevents unrelated
   // touch end or cancel events from clearing the active view chain.
   std::optional<int> active_touch_pointer_id_;
