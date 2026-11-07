@@ -847,4 +847,105 @@ TEST_F_UI(ScrollViewTest, BounceView) {
   EXPECT_EQ(scroll_view->GetScrollView()->TotalScrollOffset().x(), 100);
 }
 
+TEST_F_UI(ScrollViewTest, DoubleSidedBounceView) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kHorizontal, page_.get());
+  scroll_view->SetBound(50, 50, 100, 100);
+
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 200, 100);
+  scroll_view->AddChild(content_view.get());
+
+  auto start_bounce_view = std::make_unique<BounceView>(-1, page_.get());
+  start_bounce_view->SetBound(0, 0, 20, 20);
+  scroll_view->AddChild(start_bounce_view.get());
+  EXPECT_EQ(start_bounce_view->Parent(), scroll_view->GetScrollView());
+  start_bounce_view->SetAttribute("direction", Value("left"));
+
+  auto end_bounce_view = std::make_unique<BounceView>(-1, page_.get());
+  end_bounce_view->SetBound(0, 0, 20, 20);
+  scroll_view->AddChild(end_bounce_view.get());
+  EXPECT_EQ(end_bounce_view->Parent(), scroll_view->GetScrollView());
+  end_bounce_view->SetAttribute("direction", Value("right"));
+
+  page_->AddChild(scroll_view.get());
+  Layout();
+
+  EXPECT_EQ(start_bounce_view->BoundsRelativeTo(scroll_view.get()).x(), -20);
+  EXPECT_EQ(start_bounce_view->BoundsRelativeTo(nullptr).x(), 30);
+  EXPECT_EQ(end_bounce_view->BoundsRelativeTo(scroll_view.get()).x(), 200);
+  EXPECT_EQ(end_bounce_view->BoundsRelativeTo(nullptr).x(), 250);
+}
+
+TEST_F_UI(ScrollViewTest, EndBounceViewStartsOutsideShortContentViewport) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  scroll_view->SetBound(0, 0, 100, 100);
+
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 100, 40);
+  scroll_view->AddChild(content_view.get());
+
+  auto bounce_view = std::make_unique<BounceView>(-1, page_.get());
+  bounce_view->SetBound(0, 0, 100, 20);
+  bounce_view->SetAttribute("direction", Value("bottom"));
+  scroll_view->AddChild(bounce_view.get());
+
+  page_->AddChild(scroll_view.get());
+  Layout();
+
+  EXPECT_EQ(bounce_view->BoundsRelativeTo(scroll_view.get()).y(), 100);
+}
+
+TEST_F_UI(ScrollViewTest, BounceChildrenPreserveBouncesAttribute) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  auto start_bounce_view = std::make_unique<BounceView>(-1, page_.get());
+  auto end_bounce_view = std::make_unique<BounceView>(-1, page_.get());
+  auto* inner_scroll_view = scroll_view->GetScrollView();
+
+#if defined(OS_IOS) || defined(OS_OSX)
+  EXPECT_TRUE(inner_scroll_view->IsOverscrollEnabled(false));
+  EXPECT_TRUE(inner_scroll_view->IsOverscrollEnabled(true));
+#else
+  EXPECT_FALSE(inner_scroll_view->IsOverscrollEnabled(false));
+  EXPECT_FALSE(inner_scroll_view->IsOverscrollEnabled(true));
+#endif
+
+  scroll_view->SetAttribute("bounces", Value(false));
+  scroll_view->AddChild(start_bounce_view.get());
+  scroll_view->AddChild(end_bounce_view.get());
+  EXPECT_FALSE(inner_scroll_view->IsOverscrollEnabled(false));
+  EXPECT_FALSE(inner_scroll_view->IsOverscrollEnabled(true));
+
+  scroll_view->SetAttribute("bounces", Value(true));
+  inner_scroll_view->RemoveChild(start_bounce_view.get());
+  EXPECT_TRUE(inner_scroll_view->IsOverscrollEnabled(false));
+  EXPECT_TRUE(inner_scroll_view->IsOverscrollEnabled(true));
+  EXPECT_EQ(end_bounce_view->Parent(), inner_scroll_view);
+  inner_scroll_view->RemoveChild(end_bounce_view.get());
+  EXPECT_TRUE(inner_scroll_view->IsOverscrollEnabled(false));
+  EXPECT_TRUE(inner_scroll_view->IsOverscrollEnabled(true));
+
+  scroll_view->SetAttribute("bounces", Value(false));
+  EXPECT_FALSE(inner_scroll_view->IsOverscrollEnabled(false));
+  EXPECT_FALSE(inner_scroll_view->IsOverscrollEnabled(true));
+  scroll_view->SetAttribute("bounce", Value(true));
+  EXPECT_TRUE(inner_scroll_view->IsOverscrollEnabled(false));
+  EXPECT_TRUE(inner_scroll_view->IsOverscrollEnabled(true));
+}
+
+TEST_F_UI(ScrollViewTest, FadingEdgeLength) {
+  auto scroll_view = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+
+  scroll_view->SetAttribute("fading-edge-length", Value("20px"));
+  EXPECT_EQ(scroll_view->GetScrollView()->GetRenderScroll()->FadingEdgeLength(),
+            20);
+
+  scroll_view->SetAttribute("fading-edge-length", Value("-1px"));
+  EXPECT_EQ(scroll_view->GetScrollView()->GetRenderScroll()->FadingEdgeLength(),
+            0);
+}
+
 }  // namespace clay

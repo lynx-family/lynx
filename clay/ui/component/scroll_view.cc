@@ -119,7 +119,7 @@ ScrollView::~ScrollView() {}
 
 void ScrollView::AddChild(BaseView* child, int index) {
   if (child->Is<BounceView>()) {
-    bounce_view_ = static_cast<BounceView*>(child);
+    bounce_views_.push_back(static_cast<BounceView*>(child));
     MarkNeedsLayout();
   }
   BaseView::AddChild(child, index);
@@ -139,7 +139,9 @@ void ScrollView::AddChild(BaseView* child, int index) {
 
 void ScrollView::RemoveChild(BaseView* child) {
   if (child->Is<BounceView>()) {
-    bounce_view_ = nullptr;
+    bounce_views_.erase(
+        std::remove(bounce_views_.begin(), bounce_views_.end(), child),
+        bounce_views_.end());
     MarkNeedsLayout();
   }
   BaseView::RemoveChild(child);
@@ -173,24 +175,23 @@ void ScrollView::OnLayout(LayoutContext* context) {
     SetScrollToIndex(pending_scroll_index_);
     pending_scroll_index_ = -1;
   }
-  if (!bounce_view_) {
-    return;
-  }
-  auto bounce_direction = bounce_view_->GetDirection();
-  if (bounce_direction == Direction::kTop) {
-    bounce_view_->SetY(Top() - bounce_view_->Height() -
-                       bounce_view_->MarginBottom());
-  } else if (bounce_direction == Direction::kLeft) {
-    bounce_view_->SetX(Left() - bounce_view_->Width() -
-                       bounce_view_->MarginRight());
-  } else if (bounce_direction == Direction::kBottom) {
-    auto render_box = static_cast<RenderBox*>(render_object());
-    auto height = render_box->OverflowRect().MaxY();
-    bounce_view_->SetY(height + bounce_view_->MarginTop());
-  } else if (bounce_direction == Direction::kRight) {
-    auto render_box = static_cast<RenderBox*>(render_object());
-    auto width = render_box->OverflowRect().MaxX();
-    bounce_view_->SetX(width + bounce_view_->MarginLeft());
+  for (auto* bounce_view : bounce_views_) {
+    auto bounce_direction = bounce_view->GetDirection();
+    if (bounce_direction == Direction::kTop) {
+      bounce_view->SetY(-bounce_view->Height() - bounce_view->MarginBottom());
+    } else if (bounce_direction == Direction::kLeft) {
+      bounce_view->SetX(-bounce_view->Width() - bounce_view->MarginRight());
+    } else if (bounce_direction == Direction::kBottom) {
+      auto render_box = static_cast<RenderBox*>(render_object());
+      auto height = std::max(render_box->OverflowRect().MaxY(),
+                             render_box->ClientHeight());
+      bounce_view->SetY(height + bounce_view->MarginTop());
+    } else if (bounce_direction == Direction::kRight) {
+      auto render_box = static_cast<RenderBox*>(render_object());
+      auto width = std::max(render_box->OverflowRect().MaxX(),
+                            render_box->ClientWidth());
+      bounce_view->SetX(width + bounce_view->MarginLeft());
+    }
   }
 }
 
@@ -350,6 +351,10 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
     if (attribute_utils::TryGetString(value, tag)) {
       SetScrollMonitorTag(tag);
     }
+  } else if (kw == KeywordID::kFadingEdgeLength) {
+    GetRenderScroll()->SetFadingEdgeLength(
+        attribute_utils::ToPxWithDisplayMetrics(
+            attribute_utils::GetCString(value), page_view()));
   } else if (kw == KeywordID::kScrollOrientation) {
     std::string orientation;
     attribute_utils::TryGetString(value, orientation);
@@ -383,12 +388,8 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
       }
     }
   } else if (kw == KeywordID::kBounce || kw == KeywordID::kBounces) {
-    // Align with Android system-rendering behavior, disable bounce effect on
-    // Android platform.
-#if !defined(OS_ANDROID)
     auto enable_bounce = attribute_utils::GetBool(value);
     SetOverscrollEnabled(enable_bounce);
-#endif
   } else if (kw == KeywordID::kScrollForwardMode) {
     scroll_forward_mode_ =
         ParseNestedScrollMode(attribute_utils::GetCString(value));
@@ -648,22 +649,22 @@ void ScrollView::ScrollTo(bool smooth, float offset, int index) {
 }
 
 void ScrollView::OnBounceStart(float start_offset) {
-  bool trigger_event = false;
-  if (start_offset < 0) {
-    trigger_event =
-        bounce_view_ && (bounce_view_->GetDirection() == Direction::kLeft ||
-                         bounce_view_->GetDirection() == Direction::kTop);
-  } else if (start_offset > 0) {
-    trigger_event =
-        bounce_view_ && (bounce_view_->GetDirection() == Direction::kRight ||
-                         bounce_view_->GetDirection() == Direction::kBottom);
+  BounceView* bounce_view = nullptr;
+  for (auto* candidate : bounce_views_) {
+    const auto direction = candidate->GetDirection();
+    const bool is_start =
+        direction == Direction::kLeft || direction == Direction::kTop;
+    if ((start_offset < 0) == is_start) {
+      bounce_view = candidate;
+      break;
+    }
   }
-  if (trigger_event) {
+  if (bounce_view && start_offset != 0) {
     auto bounce_threshold = scroll_direction_ == ScrollDirection::kVertical
-                                ? bounce_view_->ContentHeight()
-                                : bounce_view_->ContentWidth();
+                                ? bounce_view->ContentHeight()
+                                : bounce_view->ContentWidth();
     if (HasEvent(event_attr::kEventScrollToBounce) &&
-        std::abs(start_offset) > bounce_threshold * 0.8 && trigger_event) {
+        std::abs(start_offset) > bounce_threshold * 0.8) {
       page_view()->SendEvent(callback_id_, event_attr::kEventScrollToBounce,
                              {});
     }
