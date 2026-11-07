@@ -5,11 +5,33 @@
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 
 #include <atomic>
+#include <utility>
 
+#include "core/base/threading/task_runner_manufactor.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
 namespace lynx {
 namespace harmony {
+
+void TasmPlatformInvokerHarmony::ConfigureVSyncMonitor(
+    base::VSyncMonitor& monitor) {
+  monitor.SetUIVSyncRequester(
+      [weak_context =
+           weak_context_](base::VSyncMonitor::UIVSyncCallback callback) {
+        base::UIThread::GetRunner()->PostTask(
+            [weak_context, callback = std::move(callback)]() mutable {
+              auto context = weak_context.lock();
+              if (!context) {
+                return;
+              }
+              auto* owner = context->GetUIOwner();
+              if (owner && !owner->Destroyed()) {
+                owner->RequestAnimationFrame(std::move(callback));
+              }
+            });
+      });
+}
 
 void TasmPlatformInvokerHarmony::OnPageConfigDecoded(
     const std::shared_ptr<tasm::PageConfig>& config) {

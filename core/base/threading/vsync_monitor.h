@@ -21,6 +21,10 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
     : public std::enable_shared_from_this<VSyncMonitor> {
  public:
   using Callback = base::MoveOnlyClosure<void, int64_t, int64_t>;
+  using UIVSyncCallback = base::MoveOnlyClosure<void, int64_t>;
+  // Registers one frame callback with the page's UI frame source. The callback
+  // runs on UI and supplies the source timestamp in nanoseconds.
+  using UIVSyncRequester = std::function<void(UIVSyncCallback)>;
 
   VSyncMonitor(bool is_on_ui_thread = false,
                bool is_vsync_post_task_by_emergency = true);
@@ -57,6 +61,10 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
   void StopVSync();
 
   bool UsesCustomVSync() const { return platform_impl_ != nullptr; }
+
+  // Configured before Init/requests for platform monitors needing a page UI
+  // context. This does not change the runner that owns animation callbacks.
+  virtual void SetUIVSyncRequester(UIVSyncRequester) {}
 
   virtual void RequestVSyncOnUIThread(Callback callback) {}
 

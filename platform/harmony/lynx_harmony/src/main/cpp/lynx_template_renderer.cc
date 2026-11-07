@@ -275,7 +275,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
   }
 
   auto invoker = std::make_unique<TasmPlatformInvokerHarmony>(
-      weak_flag_->weak_from_this());
+      weak_flag_->weak_from_this(), lynx_context);
   auto* invoker_ptr = invoker.get();
   auto native_module_manager = std::make_unique<pub::LynxNativeModuleManager>();
   native_module_manager->SetModuleFactory(
