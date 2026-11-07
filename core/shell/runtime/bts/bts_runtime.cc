@@ -662,9 +662,7 @@ void BTSRuntime::CallFunction(const std::string& module_id,
   RECORD_OPTIONAL(module_id == "GlobalEventEmitter", GlobalEvent,
                   GetLogContext(), module_id, method_id, arguments, js_runtime,
                   record_id_);
-  // GlobalEventEmitter.emit already receives the JSModule argument shape
-  // [name, params]. Snapshot it for CoreContext without replacing the original
-  // JS call, since standalone runtimes do not have a CoreContext target.
+  // Snapshot listener arguments before invoking JS for event recording.
   std::optional<lepus_value> lepus_arguments;
   if (module_id == "GlobalEventEmitter" && method_id == "emit") {
     lepus_arguments = app_->ParseJSValueToLepusValue(
@@ -674,12 +672,6 @@ void BTSRuntime::CallFunction(const std::string& module_id,
   if (lepus_arguments) {
     const auto& event_args = lepus_arguments->Array();
     app_->RecordGlobalEvent(event_args->get(0).StdString(), event_args->get(1));
-    auto core_context_event = fml::MakeRefCounted<runtime::MessageEvent>(
-        runtime::kMessageEventTypeGlobalEvent,
-        runtime::ContextProxy::Type::kNative,
-        runtime::ContextProxy::Type::kCoreContext,
-        std::make_unique<pub::ValueImplLepus>(std::move(*lepus_arguments)));
-    delegate_->DispatchMessageEvent(std::move(core_context_event));
   }
 }
 

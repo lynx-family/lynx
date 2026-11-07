@@ -172,6 +172,13 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   }
 
   sendGlobalEvent(name: string, params: Object[]) {
+    if (this.hasDestroyed) {
+      return;
+    }
+    // Keep the direct MTS route exclusive with the legacy event bus in LynxView.
+    if (!this.shouldSendEventToMainThread()) {
+      this.sendGlobalEventToMTS(name, params);
+    }
     if (this.enableJSRuntime) {
       this.callJSFunction('GlobalEventEmitter', 'emit', [name, params]);
     }
