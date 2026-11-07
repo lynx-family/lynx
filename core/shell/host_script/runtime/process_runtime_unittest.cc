@@ -513,6 +513,59 @@ TEST_F(ProcessRuntimeTest, ClosingContextDropsQueuedViewLifecycleCallbacks) {
   EXPECT_TRUE(loaded->Values().front().success);
 }
 
+// A host can talk to a loaded entry by evaluating in its context: it drains
+// the entry's queued requests and delivers replies that resume its Promises.
+TEST_F(ProcessRuntimeTest, EvaluateSharesLoadedEntryGlobalsForHostPolling) {
+  InitializeWithInterceptor();
+  auto loaded = Load(R"(
+    const queue = [];
+    const waiting = new Map();
+    let next = 1;
+    globalThis.__e2e = {
+      request(method, args) {
+        const id = next++;
+        queue.push([id, method, JSON.stringify(args)]);
+        return new Promise((resolve, reject) =>
+            waiting.set(id, { resolve, reject }));
+      },
+      drain: () => queue.splice(0),
+      deliver(id, json, error) {
+        const entry = waiting.get(id);
+        if (!entry) return false;
+        waiting.delete(id);
+        if (error) entry.reject(new Error(error));
+        else entry.resolve(JSON.parse(json));
+        return true;
+      },
+    };
+    globalThis.log = [];
+    (async () => {
+      log.push((await __e2e.request('getConfig', [])).caseId);
+      try {
+        await __e2e.request('fail', ['x']);
+      } catch (error) {
+        log.push(error.message);
+      }
+    })();)");
+  ASSERT_TRUE(loaded.success) << loaded.error;
+
+  EXPECT_EQ(Value(Domain::kBTS, "__e2e.drain()"), R"([[1,"getConfig","[]"]])");
+  EXPECT_EQ(Value(Domain::kBTS, "__e2e.drain()"), "[]");
+  EXPECT_EQ(Value(Domain::kBTS, R"(__e2e.deliver(1, '{"caseId":"c1"}'))"),
+            "true");
+  // The resumed entry queued its next request before the following poll.
+  EXPECT_EQ(Value(Domain::kBTS, "[log, __e2e.drain()]"),
+            R"([["c1"],[[2,"fail","[\"x\"]"]]])");
+  EXPECT_EQ(Value(Domain::kBTS, "__e2e.deliver(2, null, 'host failed')"),
+            "true");
+  EXPECT_EQ(Value(Domain::kBTS, "log"), R"(["c1","host failed"])");
+  EXPECT_EQ(Value(Domain::kBTS, "__e2e.deliver(2, 'null')"), "false");
+
+  // Unloading the entry also removes its channel.
+  ASSERT_TRUE(Load("").success);
+  EXPECT_EQ(Value(Domain::kBTS, "typeof __e2e"), R"("undefined")");
+}
+
 TEST_F(ProcessRuntimeTest, BootstrapIgnoresSynchronousCompletionValue) {
   auto ready = Initialize("globalThis.helper = () => 42;");
   for (const auto& result : ready->Values()) {
