@@ -284,6 +284,7 @@ Element::Element(const Element& element, bool clone_resolved_props)
       builtin_attr_map_(element.builtin_attr_map_),
       reset_attr_vec_(element.reset_attr_vec_),
       modifier_attribute_names_(element.modifier_attribute_names_),
+      layout_modifiers_(element.layout_modifiers_),
       part_id_(element.part_id_),
       is_compose_layout_(element.is_compose_layout_) {
   if (element.custom_layout_functions_ &&
