@@ -735,6 +735,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void SetPlatformConfig(std::string platform_config_json_string);
 
   float GetDevicePixelRatio() const;
+  lepus::Value GetSystemInfo();
   void OnScreenMetricsSet(float width, float height, float device_pixel_ratio);
 
   void SendFontScaleChanged(float scale);

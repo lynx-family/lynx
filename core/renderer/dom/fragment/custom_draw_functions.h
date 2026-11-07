@@ -33,6 +33,8 @@ struct CustomDrawFunctions {
   // omitted by the callback retain their CSS/default values, not its previous
   // output. This hook also runs on property-only updates without redrawing
   // content. Removing the hook restores the CSS/default properties.
+  // Transform overrides must also publish the same local matrix through
+  // Element::SetCustomLayerTransform for geometry queries.
   std::function<void(Fragment&, DisplayListBuilder&)> draw_layer_properties;
 };
 }  // namespace lynx::tasm
