@@ -8,6 +8,7 @@
 #include <cstdint>
 
 #include "core/public/platform_renderer_type.h"
+#include "core/renderer/dom/fragment/path.h"
 #include "gfx/public/display_list.h"
 #include "gfx/public/rounded_rectangle.h"
 
@@ -73,6 +74,10 @@ class DisplayListBuilder {
   // Set clip rect
   DisplayListBuilder& ClipRect(const RoundedRectangle& border);
 
+  uint32_t RecordPath(const PathGeometry& geometry);
+  void ClipPath(uint32_t path_index);
+  void ClipPath(const PathGeometry& path) { ClipPath(RecordPath(path)); }
+
   // Record box model
   DisplayListBuilder& RecordBoxModel(const RoundedRectangle& rect,
                                      int32_t& index);
@@ -128,8 +133,11 @@ class DisplayListBuilder {
 
  private:
   DisplayList display_list_;
-
-  int32_t current_index_of_box_model = 0;
+  // Each record type is indexed separately within the current display list.
+  struct {
+    int32_t box = 0;
+    uint32_t path = 0;
+  } next_index_;
 };
 
 }  // namespace tasm

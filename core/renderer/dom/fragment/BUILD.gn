@@ -36,6 +36,10 @@ lynx_core_source_set("fragment") {
     "list_item_fragment_behavior.h",
     "page_fragment_behavior.cc",
     "page_fragment_behavior.h",
+    "path_geometry.cc",
+    "path_geometry.h",
+    "path_parser.cc",
+    "path_parser.h",
     "platform_extended_fragment_behavior.cc",
     "platform_extended_fragment_behavior.h",
     "text_fragment_behavior.cc",
@@ -59,6 +63,7 @@ lynx_core_source_set("display_list") {
     "display_list_builder.h",
     "layout_info.cc",
     "layout_info.h",
+    "path.h",
   ]
   public_deps = [
     "../../../../gfx:gfx",

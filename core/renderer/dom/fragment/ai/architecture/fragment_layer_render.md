@@ -68,8 +68,15 @@ The operation type selects the matching payload:
 | `kBorder` | box indices, four colors, and four styles |
 | `kClipRect` | rectangle and optional eight radii |
 | `kRecordBox` | rectangle and optional eight radii |
+| `kRecordPath` | shape kind, data offset and byte length, and fill rule; primitives retain their numeric parameters and CSS path strings are converted to local-space commands by Fragment |
+| `kClipPath` | applies a previously recorded path by its zero-based index in this list; an empty path clips everything |
 | `kLinearGradient` | data offsets/counts and gradient parameters |
 | `kBoxShadow` | box indices, color, blur radius, and clip mode |
+
+Fragment records the CSS path clip before decorations and the overflow clip
+before content on every platform. Android applies both on the same Canvas.
+Backends without path replay skip the path operations and still apply the
+overflow clip.
 
 Unknown operation types can be skipped by advancing one fixed-size item.
 

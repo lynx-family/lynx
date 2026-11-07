@@ -447,7 +447,7 @@ public class BasicShape {
   }
 
   // Add Lamé curve in the target quadrant to the target path.
-  private static void addLameCurveToPath(
+  static void addLameCurveToPath(
       Path path, float rx, float ry, float cx, float cy, float ex, float ey, int quadrant) {
     double cosI, sinI, x, y;
     float fx = (quadrant == 1 || quadrant == 4) ? 1 : -1;

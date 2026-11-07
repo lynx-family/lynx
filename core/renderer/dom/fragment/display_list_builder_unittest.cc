@@ -40,6 +40,42 @@ class DisplayListBuilderTest : public ::testing::Test {
 
 TEST_F(DisplayListBuilderTest, EmptyBuilder) {}
 
+TEST_F(DisplayListBuilderTest, RecordPathReferencesKeepTheirKindAndFillRule) {
+  Path path{PathFillType::kEvenOdd, {{PathVerb::kMove, 3, 4, 0, 0, 0, 0}}};
+  auto commands = builder_->RecordPath(path);
+  auto circle = builder_->RecordPath(CirclePath{10.f, 20.f, 5.f});
+  builder_->ClipPath(circle);
+  builder_->ClipPath(commands);
+  auto list = builder_->Build();
+  DisplayListReader reader(list);
+  auto a = reader.Next().payload.record_path;
+  auto b = reader.Next().payload.record_path;
+  EXPECT_EQ(a.kind, static_cast<uint32_t>(PathKind::kCommands));
+  EXPECT_EQ(a.fill_type, static_cast<uint32_t>(PathFillType::kEvenOdd));
+  EXPECT_EQ(a.byte_size, sizeof(PathCommand));
+  EXPECT_EQ(b.kind, static_cast<uint32_t>(PathKind::kCircle));
+  EXPECT_EQ(b.byte_size, 12u);
+  EXPECT_EQ(b.offset, a.byte_size);
+  EXPECT_EQ(reader.Next().payload.clip_path.path_index, 1u);
+  EXPECT_EQ(reader.Next().payload.clip_path.path_index, 0u);
+}
+
+TEST_F(DisplayListBuilderTest, BoxAndPathIndicesRestartAfterBuildOrClear) {
+  auto record = [&](int32_t expected) {
+    int32_t box = -1;
+    builder_->RecordBoxModel(RoundedRectangle{}, box);
+    EXPECT_EQ(box, expected);
+    EXPECT_EQ(builder_->RecordPath(Path{}), static_cast<uint32_t>(expected));
+  };
+  record(0);
+  record(1);
+  auto first = builder_->Build();
+  EXPECT_EQ(first.GetContentItemsSize(), 4u);
+  record(0);
+  builder_->Clear();
+  record(0);
+}
+
 TEST_F(DisplayListBuilderTest, BeginOperation) {
   auto& result = builder_->Begin(0, PlatformRendererType::kView, 10.0f, 20.0f,
                                  100.0f, 200.0f);
