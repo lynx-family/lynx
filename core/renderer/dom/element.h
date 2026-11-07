@@ -1250,6 +1250,8 @@ class Element : public lepus::RefCounted,
   void UpdateTagToLayoutBundle();
 
   void UpdateLayoutNodeByBundle();
+  void SetLayoutModifiers(
+      std::shared_ptr<const starlight::ComposeLayoutModifiers> modifiers);
 
   void MarkCustomPropertiesDirty() { custom_properties_ = nullptr; }
 
@@ -2494,6 +2496,7 @@ class Element : public lepus::RefCounted,
       parallel_before_flush_action_tasks_;
 
   std::unique_ptr<LayoutBundle> layout_bundle_;
+  std::shared_ptr<const starlight::ComposeLayoutModifiers> layout_modifiers_;
 
   base::String part_id_;
 

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include "base/include/auto_reset.h"
 #include "core/renderer/starlight/layout/box_layout_algorithm.h"
@@ -46,6 +47,70 @@ ComposeConstraints ComposeRangeFromCss(const LayoutObject& node,
   const auto width = axis(kHorizontal);
   const auto height = axis(kVertical);
   return {width.first, width.second, height.first, height.second};
+}
+
+// Applies Compose size/fill/aspect-ratio modifiers in order. Each modifier
+// narrows the border-box range seen by the next one, as in Compose.
+ComposeConstraints ApplyLayoutModifiers(const ComposeLayoutModifiers* modifiers,
+                                        ComposeConstraints bounds) {
+  if (!modifiers) return bounds;
+  const auto fix_width = [&bounds](double width) {
+    const float constrained = bounds.ConstrainWidth(width);
+    if (std::isfinite(constrained)) {
+      bounds.min_width = constrained;
+      bounds.max_width = constrained;
+    }
+  };
+  const auto fix_height = [&bounds](double height) {
+    const float constrained = bounds.ConstrainHeight(height);
+    if (std::isfinite(constrained)) {
+      bounds.min_height = constrained;
+      bounds.max_height = constrained;
+    }
+  };
+  for (const auto& modifier : *modifiers) {
+    const bool width = modifier.axes & ComposeLayoutModifier::kWidth;
+    const bool height = modifier.axes & ComposeLayoutModifier::kHeight;
+    switch (modifier.type) {
+      case ComposeLayoutModifier::Type::kSize:
+        if (width) fix_width(modifier.value);
+        if (height) fix_height(modifier.height);
+        break;
+      case ComposeLayoutModifier::Type::kFill:
+        // Fill has no effect in unbounded space.
+        if (width && std::isfinite(bounds.max_width)) {
+          fix_width(bounds.max_width * modifier.value);
+        }
+        if (height && std::isfinite(bounds.max_height)) {
+          fix_height(bounds.max_height * modifier.value);
+        }
+        break;
+      case ComposeLayoutModifier::Type::kAspectRatio: {
+        const double ratio = modifier.value;
+        if (bounds.min_width == bounds.max_width) {
+          fix_height(bounds.max_width / ratio);
+        } else if (bounds.min_height == bounds.max_height) {
+          fix_width(bounds.max_height * ratio);
+        } else {
+          const double min_width =
+              std::max<double>(bounds.min_width, bounds.min_height * ratio);
+          const double max_width =
+              std::min<double>(bounds.max_width, bounds.max_height * ratio);
+          const double resolved =
+              std::isfinite(max_width) ? max_width : min_width;
+          constexpr double kMaxLayoutSize = std::numeric_limits<float>::max();
+          if (resolved > 0 && resolved >= min_width &&
+              resolved <= kMaxLayoutSize &&
+              resolved / ratio <= kMaxLayoutSize) {
+            fix_width(resolved);
+            fix_height(resolved / ratio);
+          }
+        }
+        break;
+      }
+    }
+  }
+  return bounds;
 }
 
 inline float GetBoundLeftOffsetFromPaddingBound(const LayoutObject& target,
@@ -120,6 +185,16 @@ void LayoutObject::SetSLMeasureFunc(SLMeasureFunc measure_func) {
 }
 
 SLMeasureFunc LayoutObject::GetSLMeasureFunc() const { return measure_func_; }
+
+bool LayoutObject::SetLayoutModifiers(
+    std::shared_ptr<const ComposeLayoutModifiers> modifiers) {
+  if (layout_modifiers_ == modifiers) return false;
+  layout_modifiers_ = std::move(modifiers);
+  // Modifier replacement invalidates even an ancestor awaiting layout
+  // acknowledgement, which may still have usable measurement entries.
+  MarkDirtyInternal(false, true);
+  return true;
+}
 
 void LayoutObject::SetSLRequestLayoutFunc(
     SLRequestLayoutFunc request_layout_func) {
@@ -713,7 +788,9 @@ FloatSize LayoutObject::UpdateMeasureWithComposeConstraints(
   resolve_bounds(border.min_height, border.max_height,
                  box_info_.min_size_[kVertical],
                  box_info_.max_size_[kVertical]);
+  border = ApplyLayoutModifiers(layout_modifiers_.get(), border);
   // Explicit size/fill modifiers are hints constrained by the incoming range.
+  // An axis already fixed by the ordered modifiers above keeps its size.
   if (css_constraints[kHorizontal].Mode() == SLMeasureModeDefinite) {
     border.min_width = border.max_width =
         border.ConstrainWidth(css_constraints[kHorizontal].Size());
@@ -838,9 +915,12 @@ FloatSize LayoutObject::UpdateMeasureWithCompose(
     const Constraints& given_constraints, bool final_measure) {
   Constraints constraints = given_constraints;
   property_utils::ApplyMinMaxToConstraints(constraints, *this);
-  // CSS has already resolved percentages against the containing block.
+  // CSS has already resolved percentages against the containing block. When
+  // it could not, the range still carries the available maximum for fill.
   UpdateMeasureWithResolvedComposeConstraints(
-      ComposeRangeFromCss(*this, constraints), final_measure);
+      ApplyLayoutModifiers(layout_modifiers_.get(),
+                           ComposeRangeFromCss(*this, constraints)),
+      final_measure);
   return FloatSize(GetBorderBoundWidth(), GetBorderBoundHeight(),
                    GetBaseline());
 }
@@ -1200,6 +1280,7 @@ void LayoutObject::Reset(LayoutObject* node) {
 
   RemoveAlgorithm();
   css_style_->Reset();
+  SetLayoutModifiers(nullptr);
   is_dirty_ = false;
 }
 
