@@ -69,6 +69,10 @@ class ListContainerImpl : public ContainerDelegate {
 
   std::unique_ptr<pub::Value> ScrollBySync(float delta) override;
   void ScrollStopped() override;
+  void SetComposeScrollManaged(bool managed) override;
+  ListScrollResult ScrollByDelta(float delta) override;
+  ListScrollState ScrollToItem(int index, float offset) override;
+  ListScrollState GetScrollState() const override;
   void EnableInsertPlatformView() override {
     enable_insert_platform_view_operation_ = true;
   }
@@ -166,6 +170,8 @@ class ListContainerImpl : public ContainerDelegate {
   bool synchronous_scroll_active_ = false;
 
   void UpdateListLayoutManager(LayoutType layout_type);
+  int ClampScrollTargetIndex(int index) const;
+  ListScrollState PublishComposeScrollState();
   //  fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
 
  private:
@@ -203,6 +209,11 @@ class ListContainerImpl : public ContainerDelegate {
   bool enable_parallel_element_{false};
   bool enable_batch_render_{false};
   bool has_completed_first_layout_{false};
+  bool compose_scroll_managed_{false};
+  ListScrollState published_compose_scroll_state_;
+  uint64_t compose_scroll_revision_{0};
+  uint64_t compose_projection_revision_{0};
+  bool compose_projection_sent_{false};
   // The optional distinguishes an undecided selection from a locked boolean.
   // The first explicit property value selects the pipeline; if the property is
   // absent, the first PropsUpdateFinish permanently selects false.

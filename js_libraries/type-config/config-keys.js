@@ -31,6 +31,7 @@ const configKeys = [
   'enableNewGesture',
   'enableNewTransformOrigin',
   'enableParseIntFlex',
+  'enableRawInput',
   'enableReloadLifecycle',
   'enableSimultaneousTap',
   'enableTextOverflow',

@@ -39,6 +39,9 @@ class NativePaintingCtxPlatformHarmonyRef
                                            bool from_layout) override;
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override;
   bool IsPlatformRendererScrollable(int32_t sign) override;
+  void ApplyListScrollState(int32_t sign, float scroll_x, float scroll_y,
+                            float content_width, float content_height,
+                            bool cmp_managed) override;
   PlatformTextEventTargetRegions GetTextEventTargetRegions(
       int32_t text_id) override;
   void InvokePlatformViewUIMethod(

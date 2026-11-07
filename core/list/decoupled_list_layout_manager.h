@@ -51,6 +51,16 @@ class ListLayoutManager {
   }
 
   void ScrollStopped();
+  // CMP permits pending item bindings and reports progress through its state
+  // protocol; the synchronous ScrollByDelta contract above requires ready
+  // items.
+  float ScrollByComposeDelta(float delta);
+  void SetContentOffsetFromAnchor(float offset) {
+    if (engine_scroll_in_progress_) {
+      engine_scroll_anchor_adjustment_ += offset - content_offset_;
+    }
+    SetContentOffset(offset);
+  }
   float GetWidth() const;
   float GetHeight() const;
   float GetPaddingLeft() const;
@@ -124,6 +134,9 @@ class ListLayoutManager {
   float main_axis_gap() const { return main_axis_gap_; }
   float cross_axis_gap() const { return cross_axis_gap_; }
   float content_offset() const { return content_offset_; }
+  ListOrientationHelper* orientation_helper() const {
+    return list_orientation_helper_.get();
+  }
   bool enable_preload_section() const { return enable_preload_section_; }
   float main_axis_size() const {
     return list_orientation_helper_ ? list_orientation_helper_->GetMeasurement()
@@ -179,6 +192,8 @@ class ListLayoutManager {
   float content_size_{0.f};
   float content_offset_{0.f};
   float last_content_offset_{0.f};
+  bool engine_scroll_in_progress_{false};
+  float engine_scroll_anchor_adjustment_{0.f};
   float main_axis_gap_{0.f};
   float cross_axis_gap_{0.f};
   int preload_buffer_count_{0};
