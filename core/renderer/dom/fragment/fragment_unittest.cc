@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -1263,7 +1264,7 @@ TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
       kPropertyIDBackgroundColor, "red",
       Behind(
           "[[3, 0, 0, width, height, 24, 24, 8, 8, 0, 6, 16, 2, 0x40000000],"
-          " [1, 0, 0, width, height, 0xffffffff],"
+          " [4, [1, 0, 0, width, height], [1, 0xffffffff]],"
           " [3, 0, 0, width, height, 24, 24, 8, 8, 0, 0, 8, 0, 0x20000000]]")));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
@@ -1309,7 +1310,7 @@ TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
 }
 
 TEST_F(ComposeDrawBehindTest, InvalidOutsetShadowRecordsNothing) {
-  const std::string fill = "[1, 0, 0, width, height, 0xffffffff], ";
+  const std::string fill = "[4, [1, 0, 0, width, height], [1, 0xffffffff]], ";
   for (const char* shadow : {
            "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, -1, 0, 0xff000000]",
            "[3, 0, 0, width, height, 0, -1, 0, 0, 0, 0, 4, 0, 0xff000000]",
@@ -1448,8 +1449,8 @@ TEST_F(ComposeDrawBehindTest, DrawsBeforeContentAndOnlyOnFullRedraw) {
   background->SetValue("op", lepus::Value(3));
   background->SetValue("propertyId", lepus::Value(kPropertyIDBackgroundColor));
   background->SetValue("value", lepus::Value("blue"));
-  background->SetValue("previous",
-                       Behind("[[1, 0, 0, width, height, 0xffff0000]]"));
+  background->SetValue(
+      "previous", Behind("[[4, [1, 0, 0, width, height], [1, 0xffff0000]]]"));
   Install(lepus::Value(background));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
@@ -1469,8 +1470,9 @@ TEST_F(ComposeDrawBehindTest, DrawsBeforeContentAndOnlyOnFullRedraw) {
 }
 
 TEST_F(ComposeDrawBehindTest, MultipleHooksAndLayersKeepSeparateTargets) {
-  Install(Behind("[[1, 0, 0, width, height, 0xff0000ff]]",
-                 Layer(Behind("[[1, 0, 0, width, height, 0xffff0000]]"))));
+  Install(Behind(
+      "[[4, [1, 0, 0, width, height], [1, 0xff0000ff]]]",
+      Layer(Behind("[[4, [1, 0, 0, width, height], [1, 0xffff0000]]]"))));
   auto* first = handle_->mount_root()->GetChildAt(0);
   auto* layer = first->GetChildAt(0);
   auto* last = layer->GetChildAt(0);
@@ -1495,7 +1497,8 @@ TEST_F(ComposeDrawBehindTest, MultipleHooksAndLayersKeepSeparateTargets) {
 
 TEST_F(ComposeDrawBehindTest, ConvertsPhysicalRectCoordinatesOnce) {
   manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
-  Install(Behind("[[1, 10, 20, width - 10, height - 20, 0x80ffffff]]"));
+  Install(
+      Behind("[[4, [1, 10, 20, width - 10, height - 20], [1, 0x80ffffff]]]"));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   bool found = false;
@@ -1524,7 +1527,8 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
     for (const auto* side : {"start", "top", "end", "bottom"}) {
       padding->SetValue(side, lepus::Value(8.0));
     }
-    const std::string commands = "[[1, 0, 0, width, height, 0xffffffff]]";
+    const std::string commands =
+        "[[4, [1, 0, 0, width, height], [1, 0xffffffff]]]";
     padding->SetValue("previous", padding_before
                                       ? lepus::Value(size)
                                       : Behind(commands, lepus::Value(size)));
@@ -1548,7 +1552,8 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
 
 TEST_F(ComposeDrawBehindTest, GradientKeepsEndpointsAndClampsOutsideTile) {
   Install(
-      Behind("[[2, 5, -10, 40, 50, 0, 16, [0x80ffffff, 0x80000000], [0, 1]]]"));
+      Behind("[[4, [1, 5, -10, 40, 50], [2, 0, 0, 0, 16, [0x80ffffff, "
+             "0x80000000], [0, 1], 0]]]"));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   auto list = Draw(content);
@@ -1571,9 +1576,121 @@ TEST_F(ComposeDrawBehindTest, GradientKeepsEndpointsAndClampsOutsideTile) {
   EXPECT_TRUE(found);
 }
 
-TEST_F(ComposeDrawBehindTest, MalformedTailDoesNotRecordPartialBackground) {
+TEST_F(ComposeDrawBehindTest,
+       LinearPaintReusesGradientWithoutChangingColorPositions) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
+  // Horizontal, vertical, reversed, diagonal and endpoints outside the shape.
+  const std::array<float, 4> endpoints[] = {
+      {-40, 80, 200, -20}, {20, 40, 100, 40},  {100, 40, 20, 40},
+      {20, -80, 20, 160},  {20, 160, 20, -80}, {0, 0, 120, 80}};
+  for (const auto& e : endpoints) {
+    Install(Behind("[[4,[2,10,20,80,60,2,4,6,8],[2," + std::to_string(e[0]) +
+                   "," + std::to_string(e[1]) + "," + std::to_string(e[2]) +
+                   "," + std::to_string(e[3]) +
+                   ",[0x80ffffff,0x80000000],[0.2,0.8],0]]]"));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    auto list = Draw(content);
+    DisplayListReader reader(list);
+    std::vector<DisplayListItem> boxes;
+    bool found = false;
+    while (reader.HasNext()) {
+      const auto& item = reader.Next();
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kLinearGradient) continue;
+      found = true;
+      const auto& paint = item.payload.linear_gradient;
+      const auto& clip = boxes[paint.clip_index].payload.record_box;
+      EXPECT_FLOAT_EQ(clip.x, 5);
+      EXPECT_FLOAT_EQ(clip.w, 40);
+      EXPECT_FLOAT_EQ(clip.radii[0], 1);
+      EXPECT_FLOAT_EQ(clip.radii[6], 4);
+      EXPECT_EQ(paint.repeat_x,
+                static_cast<int>(starlight::BackgroundRepeatType::kNoRepeat));
+      EXPECT_EQ(paint.repeat_y,
+                static_cast<int>(starlight::BackgroundRepeatType::kNoRepeat));
+      EXPECT_EQ(paint.color_count, 4u);
+      EXPECT_EQ(reader.Colors(item)[0], 0x80ffffff);
+      EXPECT_EQ(reader.Colors(item)[1], 0x80ffffff);
+      EXPECT_EQ(reader.Colors(item)[2], 0x80000000);
+      EXPECT_EQ(reader.Colors(item)[3], 0x80000000);
+      const float* stops = reader.Stops(item);
+      EXPECT_FLOAT_EQ(stops[0], 0);
+      EXPECT_FLOAT_EQ(stops[3], 1);
+      const auto& tile = boxes[paint.tiling_index].payload.record_box;
+      EXPECT_LE(tile.x, clip.x);
+      EXPECT_LE(tile.y, clip.y);
+      EXPECT_GE(tile.x + tile.w, clip.x + clip.w);
+      EXPECT_GE(tile.y + tile.h, clip.y + clip.h);
+      const double radians = paint.angle * std::acos(-1.0) / 180;
+      const double ux = std::sin(radians), uy = -std::cos(radians);
+      const double span = std::abs(tile.w * ux) + std::abs(tile.h * uy);
+      const double origin =
+          (tile.x + tile.w / 2) * ux + (tile.y + tile.h / 2) * uy - span / 2;
+      const double dx = (e[2] - e[0]) / 2, dy = (e[3] - e[1]) / 2;
+      // At every sampled point, the transformed stops must yield the same
+      // interpolation progress as the authored endpoints, including Clamp.
+      for (double x : {5.0, 15.0, 45.0}) {
+        for (double y : {10.0, 25.0, 40.0}) {
+          const double position = (x * ux + y * uy - origin) / span;
+          const double actual = std::clamp(
+              (position - stops[1]) / (stops[2] - stops[1]), 0.0, 1.0);
+          const double t =
+              ((x - e[0] / 2) * dx + (y - e[1] / 2) * dy) / (dx * dx + dy * dy);
+          const double expected = std::clamp((t - .2) / .6, 0.0, 1.0);
+          EXPECT_NEAR(actual, expected, 0.00001);
+        }
+      }
+    }
+    EXPECT_TRUE(found);
+  }
+}
+
+TEST_F(ComposeDrawBehindTest, SolidAndLinearPaintsKeepTheirAuthoredOrder) {
   Install(Behind(
-      "[[1, 0, 0, 10, 10, 0xffff0000], [1, 0, 0, NaN, 10, 0xff000000]]"));
+      "[[4, [1, 0, 0, 10, 10], [1, 0xffff0000]], "
+      "[4,[1,0,0,10,10],[1,0xff00ff00]],"
+      "[4,[1,0,0,10,10],[2,10,0,0,0,[0xff000000,0xffffffff],[0,1],0]],"
+      "[4,[1,0,0,10,10],[2,0,0,0,10,[0xff000000,0xffffffff],[0,1],0]]]"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  std::vector<DisplayListOpType> paints;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kFill ||
+        item.type == DisplayListOpType::kLinearGradient)
+      paints.push_back(item.type);
+  }
+  EXPECT_THAT(paints, ::testing::ElementsAre(
+                          DisplayListOpType::kFill, DisplayListOpType::kFill,
+                          DisplayListOpType::kLinearGradient,
+                          DisplayListOpType::kLinearGradient));
+}
+
+TEST_F(ComposeDrawBehindTest, InvalidPaintRejectsTheWholeBatch) {
+  const char* invalid[] = {"[2,0,0,0,0,[0xff000000,0xffffffff],[0,1],0]",
+                           "[2,0,0,10,0,[0xff000000,0xffffffff],[0.8,0.2],0]",
+                           "[2,0,0,10,0,[0xff000000,0xffffffff],[0,1],1]",
+                           "[2,NaN,0,10,0,[0xff000000,0xffffffff],[0,1],0]",
+                           "[1,-1]",
+                           "[99,0]"};
+  for (const auto* paint : invalid) {
+    Install(Behind(
+        std::string(
+            "[[4, [1, 0, 0, 10, 10], [1, 0xffffffff]],[4,[1,0,0,10,10],") +
+        paint + "]]"));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    for (const auto& item : CollectDisplayListItems(Draw(content))) {
+      EXPECT_NE(item.type, DisplayListOpType::kFill);
+      EXPECT_NE(item.type, DisplayListOpType::kLinearGradient);
+    }
+  }
+}
+
+TEST_F(ComposeDrawBehindTest, MalformedTailDoesNotRecordPartialBackground) {
+  Install(
+      Behind("[[4, [1, 0, 0, 10, 10], [1, 0xffff0000]], [4, [1, 0, 0, NaN, "
+             "10], [1, 0xff000000]]]"));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   for (const auto& item : CollectDisplayListItems(Draw(content))) {

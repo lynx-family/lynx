@@ -267,3 +267,17 @@ When adding an operation:
 3. Record it once in the builder.
 4. Update native, Android, and Darwin readers.
 5. Add typed-buffer and behavior tests.
+
+### Custom linear paint
+
+The custom drawing bridge accepts shape and paint separately, then lowers linear
+paint to the existing `kLinearGradient` operation. Its tile covers the shape and
+shader endpoints. The bridge projects color stops onto the CSS gradient line and
+adds endpoint colors for Clamp. The clip box limits the filled shape without
+resizing the gradient tile. No additional DisplayList operation or buffer fields
+are needed; the existing platform gradient consumers remain in use.
+
+Solid and linear fills use the geometry/paint command directly. The replaced
+flat fill and vertical-gradient command encodings are not accepted. Outset
+shadows keep their independent command. Framework and SDK revisions must agree
+on the drawing protocol.
