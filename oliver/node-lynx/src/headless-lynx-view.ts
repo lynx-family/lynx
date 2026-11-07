@@ -9,6 +9,8 @@ export type HeadlessRenderer = 'software';
 export interface HeadlessLynxViewOptions {
   /** Enable the background JavaScript runtime. Defaults to true. */
   enableJSRuntime?: boolean;
+  /** Enables element-owned layout for custom layout callbacks. Defaults to false. */
+  enableLayoutInElement?: boolean;
   width?: number;
   height?: number;
   devicePixelRatio?: number;
@@ -96,7 +98,8 @@ export type NativeBinding = {
     resourceFetcher: ResourceFetcher,
     resourceRootPaths: string[],
     groupName: string,
-    enableJSRuntime?: boolean
+    enableJSRuntime?: boolean,
+    enableLayoutInElement?: boolean
   ) => NativeHeadlessLynxView;
   initGlobalEnv(): void;
   LynxEnv: {
@@ -477,7 +480,8 @@ export class HeadlessLynxView {
       defaultResourceFetcher,
       options.resourceRootPaths ?? [],
       options.groupName ?? '',
-      options.enableJSRuntime ?? true
+      options.enableJSRuntime ?? true,
+      options.enableLayoutInElement ?? false
     );
     if (options.onErrorOccurred) {
       this.native._setErrorHandler(options.onErrorOccurred);

@@ -59,6 +59,11 @@ LYNX_EXTERN_C void lynx_view_builder_set_enable_js_runtime(
   builder->enable_js_runtime = enable;
 }
 
+LYNX_EXTERN_C void lynx_view_builder_set_enable_layout_in_element(
+    lynx_view_builder_t* builder, bool enable) {
+  builder->enable_layout_in_element = enable;
+}
+
 LYNX_EXTERN_C void lynx_view_builder_set_enable_software_rendering(
     lynx_view_builder_t* builder, bool enable) {
   if (builder) {
