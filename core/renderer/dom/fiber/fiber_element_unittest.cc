@@ -4446,23 +4446,23 @@ TEST_P(FiberElementTest, CustomLayoutPolicyChangesFollowElementFlush) {
   EXPECT_EQ(node->GetContext(), handle->custom_layout().get());
   EXPECT_FLOAT_EQ(node->GetBorderBoundHeight(), 20);
 
-  auto previous = handle->custom_layout();
+  std::weak_ptr<CustomLayout> previous = handle->custom_layout();
   manager->need_layout_ = false;
   ASSERT_TRUE(EvalCustomLayout(runtime, R"(
     __SetCustomLayout(owner, () => ({width: 30, height: 40}), () => true);
   )"));
-  EXPECT_EQ(node->GetContext(), previous.get());
+  EXPECT_EQ(node->GetContext(), nullptr);
+  EXPECT_TRUE(previous.expired());
   EXPECT_FALSE(manager->need_layout_);
   flush();
   EXPECT_EQ(node->GetContext(), handle->custom_layout().get());
   EXPECT_FLOAT_EQ(node->GetBorderBoundHeight(), 40);
 
-  // A clear followed by an install in the same patch replaces the pending
-  // configuration, even though the old SL hooks remain until Flush.
-  auto measure = node->GetSLComposeMeasureFunc();
+  // Clearing revokes the installed hooks immediately. A subsequent install
+  // in the same patch still publishes its new configuration during Flush.
   ASSERT_TRUE(
       EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null)"));
-  EXPECT_EQ(node->GetSLComposeMeasureFunc(), measure);
+  EXPECT_EQ(node->GetSLComposeMeasureFunc(), nullptr);
   ASSERT_TRUE(EvalCustomLayout(runtime, R"(
     __SetCustomLayout(owner, () => ({width: 30, height: 60}), () => true);
   )"));
@@ -4473,7 +4473,7 @@ TEST_P(FiberElementTest, CustomLayoutPolicyChangesFollowElementFlush) {
   manager->need_layout_ = false;
   ASSERT_TRUE(
       EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null)"));
-  EXPECT_EQ(node->GetSLComposeMeasureFunc(), measure);
+  EXPECT_EQ(node->GetSLComposeMeasureFunc(), nullptr);
   EXPECT_FALSE(manager->need_layout_);
   flush();
   EXPECT_EQ(node->GetSLComposeMeasureFunc(), nullptr);
@@ -5823,6 +5823,38 @@ TEST_P(FiberElementTest, CustomLayoutHandleReleaseRestoresHooksAndStyles) {
   EXPECT_EQ(owner->slnode()->GetSLAlignmentFunc(), nullptr);
   EXPECT_EQ(owner->slnode()->GetContext(), nullptr);
   EXPECT_EQ(child->ZIndex(), 7);
+}
+
+TEST_P(FiberElementTest, CustomLayoutReleasedBeforePendingMeasure) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto handle = CreateComposeViewHandle(manager);
+  auto owner = handle->content_element();
+  page->InsertNode(owner);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.measures = 0;
+    __SetCustomLayout(owner, () => {
+      globalThis.measures++;
+      return {width: 30, height: 20};
+    }, () => true);
+  )"));
+  page->FlushActionsAsRoot();
+  auto* node = owner->slnode();
+  ASSERT_NE(node->GetSLComposeMeasureFunc(), nullptr);
+  std::weak_ptr<CustomLayout> layout = handle->custom_layout();
+  ASSERT_TRUE(handle->SetCustomLayout(nullptr));
+  EXPECT_TRUE(layout.expired());
+  // Another policy can measure this live element before its pending actions
+  // are flushed. Released adapters must never remain callable through SL.
+  node->MarkDirty();
+  node->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  node->AlignmentByPlatform(0, 0);
+  EXPECT_EQ(runtime->GetGlobalData("measures"), lepus::Value(0));
+  EXPECT_EQ(node->GetSLComposeMeasureFunc(), nullptr);
+  EXPECT_EQ(node->GetSLAlignmentFunc(), nullptr);
+  EXPECT_EQ(node->GetContext(), nullptr);
 }
 
 TEST_P(FiberElementTest, CustomLayoutHandleReleaseDuringPlacement) {
