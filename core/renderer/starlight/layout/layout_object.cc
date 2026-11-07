@@ -870,12 +870,18 @@ void LayoutObject::UpdateMeasureInternal(
     return;
   }
 
+  // Older Compose templates express Row and Column with CSS Flex properties.
+  // Use CSS child initialization and space allocation for these containers.
+  // Native List keeps its scroll container's CSS layout.
+  const bool use_compose_algorithm =
+      IsComposeLayout() && !IsList() &&
+      css_style_->GetDisplay(configs_, attr_map()) != DisplayType::kFlex;
   const bool needs_initialization = !algorithm_;
   if (!algorithm_) {
     const auto type = css_style_->GetDisplay(configs_, attr_map());
     if (type == DisplayType::kNone) return;
 
-    if (IsComposeLayout()) {
+    if (use_compose_algorithm) {
       if (type == DisplayType::kLinear) {
         algorithm_ = new ComposeRowColumnLayoutAlgorithm(this);
       } else if (type == DisplayType::kXBox) {
@@ -904,7 +910,7 @@ void LayoutObject::UpdateMeasureInternal(
     DCHECK(algorithm_);
   }
 
-  if (IsComposeLayout()) {
+  if (use_compose_algorithm) {
     algorithm_->InitializeWithCompose(*compose_constraints);
   } else if (needs_initialization) {
     algorithm_->Initialize(constraints, fixed_node_set);
