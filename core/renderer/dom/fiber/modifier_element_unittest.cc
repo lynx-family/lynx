@@ -216,6 +216,14 @@ lepus::Value AppendTestWidthFill(const lepus::Value& previous,
   return lepus::Value(node);
 }
 
+lepus::Value AppendTestAspectRatio(const lepus::Value& previous, double ratio) {
+  auto node = lepus::Dictionary::Create();
+  node->SetValue("op", lepus::Value(10));
+  node->SetValue("ratio", lepus::Value(ratio));
+  node->SetValue("previous", previous);
+  return lepus::Value(node);
+}
+
 lepus::Value RawStyle(Element* element, CSSPropertyID id) {
   const auto& styles = element->GetCurrentRawInlineStyles();
   if (styles.has_value()) {
@@ -1549,6 +1557,169 @@ TEST_P(ModifierElementTest, OffsetRequiresLayoutInElement) {
   EXPECT_EQ(root, handle->mount_root());
 }
 
+TEST_P(ModifierElementTest, SizingModifiersApplyCssWithoutLayoutInElement) {
+  auto handle = CreateComposeHandle(manager);
+  auto owner = handle->content_element();
+  ASSERT_FALSE(owner->EnableLayoutInElementMode());
+
+  // A fixed outer size constrains the content behind padding.
+  auto source = AppendTestPadding(AppendTestSize({}, 100, 50));
+  auto result = ComposeModifierApplicator::Apply(handle.get(), source, nullptr);
+  ASSERT_TRUE(result.success) << result.error_message;
+  auto root = handle->mount_root();
+  ASSERT_NE(root, owner);
+  EXPECT_EQ(lepus::Value("100px"), RawStyle(root.get(), kPropertyIDWidth));
+  EXPECT_EQ(lepus::Value("50px"), RawStyle(root.get(), kPropertyIDHeight));
+  EXPECT_EQ(lepus::Value("100%"), RawStyle(owner.get(), kPropertyIDWidth));
+  EXPECT_EQ(lepus::Value("100%"), RawStyle(owner.get(), kPropertyIDHeight));
+
+  // Inner size and visual styles are applied to the content.
+  source = AppendTestSize(AppendTestPadding({}), 60, 40);
+  source = AppendTestStyle(source, kPropertyIDBackgroundColor, "#ffffff");
+  result = ComposeModifierApplicator::Apply(handle.get(), source, nullptr);
+  ASSERT_TRUE(result.success) << result.error_message;
+  EXPECT_TRUE(RawStyle(handle->mount_root().get(), kPropertyIDWidth).IsEmpty());
+  EXPECT_EQ(lepus::Value("60px"), RawStyle(owner.get(), kPropertyIDWidth));
+  EXPECT_EQ(lepus::Value("40px"), RawStyle(owner.get(), kPropertyIDHeight));
+  EXPECT_EQ(lepus::Value("#ffffff"),
+            RawStyle(owner.get(), kPropertyIDBackgroundColor));
+
+  // A full inner fill propagates through both padding frames.
+  source = AppendTestAspectRatio(
+      AppendTestWidthFill(AppendTestPadding(AppendTestPadding({})), 1), 2);
+  result = ComposeModifierApplicator::Apply(handle.get(), source, nullptr);
+  ASSERT_TRUE(result.success) << result.error_message;
+  const auto frames =
+      CollectModifierFrames(handle->mount_root().get(), owner.get());
+  ASSERT_EQ(frames.size(), 2u);
+  for (auto* frame : frames) {
+    EXPECT_EQ(lepus::Value("100%"), RawStyle(frame, kPropertyIDWidth));
+  }
+  EXPECT_EQ(lepus::Value("100%"), RawStyle(owner.get(), kPropertyIDWidth));
+  EXPECT_EQ(lepus::Value(2.0), RawStyle(owner.get(), kPropertyIDAspectRatio));
+
+  result = ComposeModifierApplicator::Apply(handle.get(), {}, nullptr);
+  ASSERT_TRUE(result.success) << result.error_message;
+  EXPECT_EQ(owner, handle->mount_root());
+  EXPECT_TRUE(RawStyle(owner.get(), kPropertyIDWidth).IsEmpty());
+  EXPECT_TRUE(RawStyle(owner.get(), kPropertyIDHeight).IsEmpty());
+  EXPECT_TRUE(RawStyle(owner.get(), kPropertyIDAspectRatio).IsEmpty());
+}
+
+TEST_P(ModifierElementTest, CssSizingRejectsUnsupportedModifierChains) {
+  auto handle = CreateComposeHandle(manager);
+  auto owner = handle->content_element();
+  ASSERT_FALSE(owner->EnableLayoutInElementMode());
+  const auto valid = AppendTestPadding(AppendTestWidthFill({}, 0.5));
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle.get(), valid, nullptr).success);
+  auto root = handle->mount_root();
+  ASSERT_NE(root, owner);
+  for (const auto& source : {AppendTestAspectRatio({}, 2),
+                             AppendTestWidthFill(AppendTestPadding({}), 0.5)}) {
+    const auto result =
+        ComposeModifierApplicator::Apply(handle.get(), source, nullptr);
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(root, handle->mount_root());
+    EXPECT_EQ(lepus::Value("50%"), RawStyle(root.get(), kPropertyIDWidth));
+    EXPECT_EQ(lepus::Value("100%"), RawStyle(owner.get(), kPropertyIDWidth));
+  }
+}
+
+TEST_P(ModifierElementTest, SizingStylesStayOnMountRoot) {
+  auto page = CreateComposePage();
+  struct TestCase {
+    lepus::Value source;
+    const char* root_width;
+    float root_size[2];
+    float content_size[2];
+  };
+  const TestCase cases[] = {
+      // The outer size is what a CSS parent must see.
+      {AppendTestPadding(AppendTestSize({}, 100, 50)),
+       "100px",
+       {100, 50},
+       {84, 34}},
+      // An inner size is measured from the ordered modifiers alone.
+      {AppendTestSize(AppendTestPadding({}), 100, 50),
+       nullptr,
+       {116, 66},
+       {100, 50}},
+  };
+  for (const auto& test : cases) {
+    auto handle = CreateComposeHandle(manager);
+    const auto result =
+        ComposeModifierApplicator::Apply(handle.get(), test.source, nullptr);
+    ASSERT_TRUE(result.success) << result.error_message;
+    auto root = handle->mount_root();
+    auto owner = handle->content_element();
+    ASSERT_NE(root, owner);
+    EXPECT_EQ(test.root_width ? lepus::Value(test.root_width) : lepus::Value(),
+              RawStyle(root.get(), kPropertyIDWidth));
+    for (auto id : {kPropertyIDWidth, kPropertyIDHeight}) {
+      EXPECT_TRUE(RawStyle(owner.get(), id).IsEmpty());
+    }
+    page->InsertNode(root);
+    FlushAndLayout(page);
+    EXPECT_FLOAT_EQ(test.root_size[0], root->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(test.root_size[1], root->slnode()->GetBorderBoundHeight());
+    EXPECT_FLOAT_EQ(test.content_size[0],
+                    owner->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(test.content_size[1],
+                    owner->slnode()->GetBorderBoundHeight());
+    page->RemoveNode(root);
+  }
+
+  // A full fill behind padding still fills the mount root for CSS parents.
+  auto handle = CreateComposeHandle(manager);
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(
+          handle.get(), AppendTestWidthFill(AppendTestPadding({}), 1), nullptr)
+          .success);
+  EXPECT_EQ(lepus::Value("100%"),
+            RawStyle(handle->mount_root().get(), kPropertyIDWidth));
+  EXPECT_TRUE(
+      RawStyle(handle->content_element().get(), kPropertyIDWidth).IsEmpty());
+}
+
+TEST_P(ModifierElementTest, FractionalFillBehindPaddingUsesInsetRange) {
+  auto page = CreateComposePage();
+  auto handle = CreateComposeHandle(manager);
+  // widthIn(max = 200).padding(8).fillMaxWidth(0.5)
+  const auto result = ComposeModifierApplicator::Apply(
+      handle.get(),
+      AppendTestWidthFill(
+          AppendTestPadding(AppendTestSizeRange({}, 1, 0, 0, 200)), 0.5),
+      nullptr);
+  ASSERT_TRUE(result.success) << result.error_message;
+  page->InsertNode(handle->mount_root());
+  FlushAndLayout(page);
+  EXPECT_FLOAT_EQ(92,
+                  handle->content_element()->slnode()->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(108, handle->mount_root()->slnode()->GetBorderBoundWidth());
+}
+
+TEST_P(ModifierElementTest, AspectRatioWithoutConstrainedAxisUsesRange) {
+  auto page = CreateComposePage();
+  for (double max_height : {300., 50.}) {
+    auto handle = CreateComposeHandle(manager);
+    // sizeIn(maxWidth = 200, maxHeight).aspectRatio(2)
+    const auto result = ComposeModifierApplicator::Apply(
+        handle.get(),
+        AppendTestAspectRatio(AppendTestSizeRange({}, 3, 0, 0, 200, max_height),
+                              2),
+        nullptr);
+    ASSERT_TRUE(result.success) << result.error_message;
+    page->InsertNode(handle->mount_root());
+    FlushAndLayout(page);
+    auto* content = handle->content_element()->slnode();
+    const float height = std::min<float>(100, max_height);
+    EXPECT_FLOAT_EQ(height * 2, content->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(height, content->GetBorderBoundHeight());
+    page->RemoveNode(handle->mount_root());
+  }
+}
+
 TEST_P(ModifierElementTest, OffsetClonePreservesRelativeStyles) {
   auto page = CreateComposePage();
   auto handle = CreateComposeHandle(manager);
@@ -1985,6 +2156,7 @@ TEST_P(ModifierElementTest, ResolvesFiberAndComposeElements) {
 }
 
 TEST_P(ModifierElementTest, MaterializesOnlyPaddingAsDetachedFrame) {
+  auto page = CreateComposePage();
   auto padding = lepus::Dictionary::Create();
   padding->SetValue("op", lepus::Value(7));
   padding->SetValue("start", lepus::Value(1.0));
@@ -2017,8 +2189,10 @@ TEST_P(ModifierElementTest, MaterializesOnlyPaddingAsDetachedFrame) {
 
   const auto& owner_styles = owner->GetCurrentRawInlineStyles();
   ASSERT_TRUE(owner_styles.has_value());
-  EXPECT_EQ(owner_styles->at(kPropertyIDWidth), lepus::Value("100px"));
-  EXPECT_EQ(owner_styles->at(kPropertyIDHeight), lepus::Value("50px"));
+  // The size behind padding is measured from the ordered modifiers; only the
+  // mount root carries size styles for a CSS parent.
+  EXPECT_EQ(owner_styles->count(kPropertyIDWidth), 0u);
+  EXPECT_EQ(owner_styles->count(kPropertyIDHeight), 0u);
   EXPECT_EQ(owner_styles->at(kPropertyIDBoxSizing), lepus::Value("border-box"));
 }
 
@@ -2186,6 +2360,7 @@ TEST_P(ModifierElementTest, CoalescesPendingMovesBeforeSingleFlush) {
 }
 
 TEST_P(ModifierElementTest, AcceptsComposeModifierSingletonAsChainEnd) {
+  auto page = CreateComposePage();
   auto compose_modifier = lepus::Dictionary::Create();
   auto size = lepus::Dictionary::Create();
   size->SetValue("op", lepus::Value(8));

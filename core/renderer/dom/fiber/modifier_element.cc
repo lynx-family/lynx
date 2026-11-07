@@ -27,6 +27,7 @@
 #include "core/renderer/dom/fragment/view_fragment_behavior.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/events/events.h"
+#include "core/renderer/starlight/types/layout_constraints.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 
@@ -34,6 +35,9 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+
+using starlight::ComposeLayoutModifier;
+using starlight::ComposeLayoutModifiers;
 
 // Modifier IR operation codes shared with the JavaScript and native producers.
 constexpr int kModifierOpConcat = 1;
@@ -135,7 +139,13 @@ struct ModifierOperation {
 
 struct ModifierFramePlan {
   base::Vector<ModifierOperation> operations;
+  // Axes constrained at each frame boundary, used for CSS child sizing and
+  // the Content Element's box sizing.
   base::Vector<int> frame_child_constrained_axes;
+  // Ordered size/fill/aspect-ratio modifiers in frame_count + 1 carrier slots.
+  // The last slot belongs to the Content Element. Compose measurement consumes
+  // these lists directly in Element mode. A null array selects CSS sizing.
+  std::unique_ptr<ComposeLayoutModifiers[]> layout_modifiers;
   size_t frame_count{0};
   bool owner_uses_layout_box{false};
   bool has_draw_callbacks{false};
@@ -544,6 +554,7 @@ const ModifierOperation* WrapStyleBeforeAlignment(
 }
 
 bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
+                            bool layout_in_element, float layouts_unit_per_px,
                             ModifierFramePlan* plan, std::string* error,
                             size_t* error_position) {
   int remaining_visits = kMaxModifierNodeVisits;
@@ -623,6 +634,10 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     }
   }
   plan->frame_child_constrained_axes.resize<true>(plan->frame_count);
+  if (layout_in_element) {
+    plan->layout_modifiers =
+        std::make_unique<ComposeLayoutModifiers[]>(plan->frame_count + 1);
+  }
 
   // Padding and drawing hooks introduce physical boundaries. Each hook belongs
   // to the following carrier (possibly the stable Content Element). This keeps
@@ -644,8 +659,8 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
         plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
         ++carrier_index;
       } else if (carrier_index != 0) {
-        // Fixed incoming ranges already carry the sizes. Do not overwrite
-        // intrinsic CSS sizes with the usual 100% carrier hints.
+        // Fixed incoming ranges already carry the sizes; the intrinsic frame
+        // does not inherit them as constrained axes.
         plan->frame_child_constrained_axes[carrier_index - 1] &=
             ~operation.wrap_axes;
       }
@@ -680,8 +695,10 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
           break;
         case kModifierOpSize:
         case kModifierOpFill:
+          // CSS sizing uses the first modifier on each axis. Element
+          // measurement applies every modifier in order.
           operation.applied_axes = operation.specified_axes & ~constrained_axes;
-          if (operation.op == kModifierOpFill &&
+          if (!layout_in_element && operation.op == kModifierOpFill &&
               operation.layout_values[0] != 1.0 &&
               operation.applied_axes != 0 &&
               carrier_index != std::max(fill_propagation_start[0],
@@ -696,23 +713,43 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
               operation.applied_axes != 0) {
             plan->owner_uses_layout_box = true;
           }
+          if (!layout_in_element) break;
+          if (operation.op == kModifierOpSize) {
+            plan->layout_modifiers[carrier_index].push_back(
+                {ComposeLayoutModifier::Type::kSize, operation.specified_axes,
+                 operation.layout_values[0] * layouts_unit_per_px,
+                 operation.layout_values[1] * layouts_unit_per_px});
+          } else {
+            plan->layout_modifiers[carrier_index].push_back(
+                {ComposeLayoutModifier::Type::kFill, operation.specified_axes,
+                 operation.layout_values[0]});
+          }
           break;
         case kModifierOpAspectRatio:
+          if (layout_in_element) {
+            plan->layout_modifiers[carrier_index].push_back(
+                {ComposeLayoutModifier::Type::kAspectRatio, 0,
+                 operation.layout_values[0]});
+          }
+          if (constrained_axes == kLayoutModifierAllAxes) {
+            break;
+          }
+          // The CSS hint can only derive one axis from the other. Measurement
+          // also resolves a ratio without a constrained axis from the
+          // incoming range; either way the ratio determines both axes.
           if (constrained_axes == kLayoutModifierAxisWidth) {
             operation.applied_axes = kLayoutModifierAxisHeight;
           } else if (constrained_axes == kLayoutModifierAxisHeight) {
             operation.applied_axes = kLayoutModifierAxisWidth;
-          } else if (constrained_axes == kLayoutModifierAllAxes) {
-            break;
-          } else {
+          } else if (!layout_in_element) {
             *error =
                 "aspect ratio without one constrained axis is not "
                 "representable";
             *error_position = position;
             return false;
           }
-          operation.apply_aspect_ratio = true;
-          constrained_axes |= operation.applied_axes;
+          operation.apply_aspect_ratio = operation.applied_axes != 0;
+          constrained_axes = kLayoutModifierAllAxes;
           if (target_frame_index == kNoModifierFrame) {
             plan->owner_uses_layout_box = true;
           }
@@ -864,18 +901,10 @@ void ApplyLayoutOperation(const ModifierOperation& operation,
   }
 }
 
-void ApplyLayoutChildConstraint(int constrained_axes, Element* child) {
-  if ((constrained_axes & kLayoutModifierAxisWidth) != 0) {
-    child->SetStyle(kPropertyIDWidth, lepus::Value("100%"));
-  }
-  if ((constrained_axes & kLayoutModifierAxisHeight) != 0) {
-    child->SetStyle(kPropertyIDHeight, lepus::Value("100%"));
-  }
-}
-
 void ApplyLayoutOperations(
-    const ModifierFramePlan& plan,
+    ModifierFramePlan& plan,
     const base::Vector<fml::RefPtr<ModifierElement>>& frames, Element* owner) {
+  const bool layout_in_element = plan.layout_modifiers != nullptr;
   if (plan.owner_uses_layout_box) {
     owner->SetStyle(kPropertyIDBoxSizing, lepus::Value("border-box"));
   }
@@ -883,16 +912,24 @@ void ApplyLayoutOperations(
     if (!IsLayoutOperation(operation.op)) {
       continue;
     }
-    // Offset and range bounds apply inside their own pass-through boundary.
-    ApplyLayoutOperation(
-        operation, LayoutCarrierAt(operation.carrier_index +
-                                       ((operation.op == kModifierOpOffset ||
-                                         operation.op == kModifierOpSizeRange)
-                                            ? 1
-                                            : 0),
-                                   owner, frames));
+    const bool sizing = operation.op == kModifierOpSize ||
+                        operation.op == kModifierOpFill ||
+                        operation.op == kModifierOpAspectRatio;
+    // CSS layout reads size styles on every carrier. With Element
+    // measurement, retain the size hints for the mount root's CSS parent.
+    if (!layout_in_element || !sizing || operation.carrier_index == 0) {
+      // Offset and range bounds apply inside their own pass-through boundary.
+      const size_t carrier_index =
+          operation.carrier_index + (operation.op == kModifierOpOffset ||
+                                     operation.op == kModifierOpSizeRange);
+      ApplyLayoutOperation(operation,
+                           LayoutCarrierAt(carrier_index, owner, frames));
+    }
     if (operation.op == kModifierOpFill && operation.layout_values[0] == 1.0) {
-      for (size_t index = 0; index < operation.carrier_index; ++index) {
+      const size_t end = layout_in_element
+                             ? std::min<size_t>(1, operation.carrier_index)
+                             : operation.carrier_index;
+      for (size_t index = 0; index < end; ++index) {
         auto* carrier = LayoutCarrierAt(index, owner, frames);
         if (index >= operation.fill_propagation_start[0] &&
             (operation.applied_axes & kLayoutModifierAxisWidth) != 0) {
@@ -905,16 +942,17 @@ void ApplyLayoutOperations(
       }
     }
   }
-}
-
-void ApplyLayoutChildConstraints(
-    const ModifierFramePlan& plan,
-    const base::Vector<fml::RefPtr<ModifierElement>>& frames, Element* owner) {
-  for (size_t frame_index = 0; frame_index < frames.size(); ++frame_index) {
-    Element* child =
-        frame_index + 1 < frames.size() ? frames[frame_index + 1].get() : owner;
-    ApplyLayoutChildConstraint(plan.frame_child_constrained_axes[frame_index],
-                               child);
+  if (!layout_in_element) {
+    owner->SetLayoutModifiers(nullptr);
+    return;
+  }
+  for (size_t index = 0; index <= plan.frame_count; ++index) {
+    auto& modifiers = plan.layout_modifiers[index];
+    LayoutCarrierAt(index, owner, frames)
+        ->SetLayoutModifiers(
+            modifiers.empty() ? nullptr
+                              : std::make_shared<const ComposeLayoutModifiers>(
+                                    std::move(modifiers)));
   }
 }
 
@@ -1171,7 +1209,7 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
 }
 
 fml::RefPtr<Element> InstallModifierFramePlan(
-    const ModifierFramePlan& plan, Element* owner, Element* current_mount_root,
+    ModifierFramePlan& plan, Element* owner, Element* current_mount_root,
     runtime::MTSRuntime* registration_context, bool deep_convert) {
   if (plan.frame_count == 0 && current_mount_root == owner) {
     const base::Vector<fml::RefPtr<ModifierElement>> frames;
@@ -1224,7 +1262,18 @@ fml::RefPtr<Element> InstallModifierFramePlan(
   ApplyLayoutOperations(plan, frames, owner);
   ApplyNonLayoutOperations(plan, owner, frames, registration_context,
                            deep_convert);
-  ApplyLayoutChildConstraints(plan, frames, owner);
+  if (!plan.layout_modifiers) {
+    for (size_t index = 0; index < frames.size(); ++index) {
+      auto* child = LayoutCarrierAt(index + 1, owner, frames);
+      const int axes = plan.frame_child_constrained_axes[index];
+      if (axes & kLayoutModifierAxisWidth) {
+        child->SetStyle(kPropertyIDWidth, lepus::Value("100%"));
+      }
+      if (axes & kLayoutModifierAxisHeight) {
+        child->SetStyle(kPropertyIDHeight, lepus::Value("100%"));
+      }
+    }
+  }
 
   if (frames.empty()) {
     auto owner_ref = fml::RefPtr<Element>(owner);
@@ -1343,28 +1392,30 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
   auto content_element = handle->content_element();
   auto previous_mount_root = handle->mount_root();
   auto* manager = content_element->element_manager();
+  const bool layout_in_element = content_element->EnableLayoutInElementMode();
 
   ModifierFramePlan plan;
   size_t error_position = 0;
-  if (!BuildModifierFramePlan(modifier_tail, &plan, &error, &error_position)) {
+  if (!BuildModifierFramePlan(modifier_tail, layout_in_element,
+                              content_element->GetLayoutsUnitPerPx(), &plan,
+                              &error, &error_position)) {
     return {false, error_position, std::move(error)};
   }
-  if (plan.weight_fill.has_value() &&
-      !content_element->EnableLayoutInElementMode()) {
+  if (plan.weight_fill.has_value() && !layout_in_element) {
     return {false, 0, "weight fill requires layout in Element"};
   }
   if (plan.has_size_range &&
-      (!content_element->EnableLayoutInElementMode() ||
+      (!layout_in_element ||
        !std::isfinite(manager->GetLynxEnvConfig().DevicePixelRatio()) ||
        manager->GetLynxEnvConfig().DevicePixelRatio() <= 0)) {
     return {false, 0,
             "size range requires layout in Element and positive density"};
   }
-  if (plan.has_wrap_content && !content_element->EnableLayoutInElementMode()) {
+  if (plan.has_wrap_content && !layout_in_element) {
     return {false, 0, "wrapContent requires layout in Element"};
   }
   if (plan.has_offset) {
-    if (!content_element->EnableLayoutInElementMode()) {
+    if (!layout_in_element) {
       return {false, 0, "offset requires layout in Element"};
     }
     const double scale = manager->GetLynxEnvConfig().LayoutsUnitPerPx();
