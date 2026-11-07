@@ -585,6 +585,64 @@ TEST_F(BoxLayoutAlgorithmTest, ComposeBoxKeepsPercentagePaddingAcrossMeasures) {
   }
 }
 
+TEST_F(BoxLayoutAlgorithmTest, ComposeBoxMeasuresLegacyFlexContainers) {
+  for (bool is_row : {true, false}) {
+    SCOPED_TRACE(is_row);
+    auto* box = CreateNode();
+    box->SetComposeLayout(true);
+    box->GetCSSMutableStyle()->SetXBoxPropagateMinConstraints(true);
+    auto* flex = CreateNode(DisplayType::kFlex);
+    flex->SetComposeLayout(true);
+    flex->GetCSSMutableStyle()->SetFlexDirection(
+        is_row ? FlexDirectionType::kRow : FlexDirectionType::kColumn);
+    auto* weighted = CreateNode();
+    weighted->SetComposeLayout(true);
+    weighted->GetCSSMutableStyle()->SetFlexBasis(NLength::MakeUnitNLength(0));
+    weighted->GetCSSMutableStyle()->SetFlexGrow(1);
+    auto* fixed = CreateFixedChild();
+    fixed->SetComposeLayout(true);
+    flex->AppendChild(weighted);
+    flex->AppendChild(fixed);
+    box->AppendChild(flex);
+
+    box->UpdateMeasureWithComposeConstraints({332, 332, 200, 200}, true);
+    box->UpdateAlignment();
+
+    EXPECT_FLOAT_EQ(71, fixed->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(93, fixed->GetBorderBoundHeight());
+    if (is_row) {
+      EXPECT_FLOAT_EQ(261, weighted->GetBorderBoundWidth());
+      EXPECT_FLOAT_EQ(261, fixed->GetBorderBoundLeftFromParentPaddingBound());
+    } else {
+      EXPECT_FLOAT_EQ(107, weighted->GetBorderBoundHeight());
+      EXPECT_FLOAT_EQ(107, fixed->GetBorderBoundTopFromParentPaddingBound());
+    }
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeBoxPreservesNativeListGravity) {
+  auto* box = CreateNode();
+  box->SetComposeLayout(true);
+  box->GetCSSMutableStyle()->SetXBoxPropagateMinConstraints(true);
+  auto* list = CreateNode(DisplayType::kLinear);
+  list->SetComposeLayout(true);
+  list->MarkList();
+  list->GetCSSMutableStyle()->SetLinearOrientation(
+      LinearOrientationType::kHorizontal);
+  auto* item = CreateFixedChild();
+  item->GetCSSMutableStyle()->SetLinearLayoutGravity(
+      LinearLayoutGravityType::kCenterVertical);
+  list->AppendChild(item);
+  box->AppendChild(list);
+
+  box->UpdateMeasureWithComposeConstraints({332, 332, 120, 120}, true);
+  box->UpdateAlignment();
+
+  EXPECT_FLOAT_EQ(120, list->GetBorderBoundHeight());
+  EXPECT_FLOAT_EQ(93, item->GetBorderBoundHeight());
+  EXPECT_FLOAT_EQ(13.5, item->GetBorderBoundTopFromParentPaddingBound());
+}
+
 TEST_F(BoxLayoutAlgorithmTest, ComposeBoxMeasuresNativeContentWithoutPolicy) {
   NativeMeasurement measurement;
   auto* content = CreateNode();
