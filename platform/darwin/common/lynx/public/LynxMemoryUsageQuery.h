@@ -29,9 +29,8 @@ typedef void (^LynxGlobalMemoryUsageCallback)(LynxGlobalMemoryUsageResult *resul
  * update UIKit must dispatch back to the main thread.
  *
  * The current implementation accepts nil as a no-op. When a callback is
- * provided, it receives a native snapshot or an error result if memory
- * monitoring is disabled. With monitoring enabled and no live instances,
- * the callback receives zero Lynx-attributed bytes and any living BTS VMs.
+ * provided, it receives a completed native snapshot. If no live instances
+ * exist, the callback receives zero Lynx-attributed bytes.
  */
 - (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback;
 

@@ -27,8 +27,10 @@ void GlobalDevtoolPlatformEmbedder::GetAllMemoryUsage(
         callback) {
   if (!callback) return;
   if (!tasm::performance::MemoryMonitor::Enable()) {
-    std::move(callback)("{}",
-                        tasm::performance::kMemoryMonitoringDisabledError);
+    std::move(callback)(
+        "{}",
+        "Lynx memory monitoring is disabled. Enable it before creating "
+        "Lynx instances.");
     return;
   }
   auto* loop = fml::MessageLoop::IsInitializedForCurrentThread();
@@ -58,11 +60,6 @@ void GlobalDevtoolPlatformEmbedder::GetAllMemoryUsage(
                 .count();
         if (duration_ms >= timeout_ms) {
           request->Complete("{}", kMemoryUsageTimeout);
-          return;
-        }
-        if (usage.status != tasm::performance::MemoryUsageQueryStatus::kOk) {
-          request->Complete("{}",
-                            tasm::performance::kMemoryMonitoringDisabledError);
           return;
         }
         auto result = BuildEmbedderMemoryUsageResult(
