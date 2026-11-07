@@ -14,6 +14,7 @@
 
 #include "base/include/flex_optional.h"
 #include "base/include/string/string_utils.h"
+#include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
@@ -50,6 +51,7 @@ constexpr int kModifierOpDrawBehind = 12;
 constexpr int kModifierOpWeightFill = 13;
 constexpr int kModifierOpOffset = 14;
 constexpr int kModifierOpSizeRange = 15;
+constexpr int kModifierOpAttachment = 16;
 
 bool IsDrawOperation(int op) {
   return op == kModifierOpGraphicsLayer || op == kModifierOpDrawBehind;
@@ -65,6 +67,16 @@ constexpr int kLayoutModifierAllAxes =
 // branching concat chain stays bounded while long linear chains still parse.
 constexpr int kMaxModifierNodeVisits = 512;
 constexpr size_t kNoModifierFrame = std::numeric_limits<size_t>::max();
+
+// IR fields use camelCase; Element attributes use kebab-case. Target sizes
+// remain physical pixels on both sides of this mapping.
+BASE_STATIC_STRING_DECL(kShareWithSiblingsField, "shareWithSiblings");
+BASE_STATIC_STRING_DECL(kShareTouchTargetAttribute, "share-touch-target");
+BASE_STATIC_STRING_DECL(kMinimumTouchTargetSizeAttribute,
+                        "minimum-touch-target-size");
+BASE_STATIC_STRING_DECL(kMinimumTouchTargetPxField, "minTouchTargetPx");
+BASE_STATIC_STRING_DECL(kEventTargetField, "eventTarget");
+BASE_STATIC_STRING_DECL(kAttachField, "attach");
 
 BASE_STATIC_STRING_DECL(kOp, "op");
 BASE_STATIC_STRING_DECL(kPrevious, "previous");
@@ -109,6 +121,10 @@ struct ModifierOperation {
   bool wrap_has_prefix{false};
   int wrap_axes{0};
   double layout_values[4]{};
+  bool introduces_frame{false};
+  bool event_target{false};
+  bool share_touch_target{false};
+  float minimum_touch_target_px{0.f};
   base::String name;
   base::String event_type;
   lepus::Value value;
@@ -125,6 +141,7 @@ struct ModifierFramePlan {
   bool has_size_range{false};
   bool has_wrap_content{false};
   base::flex_optional<bool> weight_fill;
+  bool has_attachments{false};
 };
 
 lepus::Value ReadModifierProperty(const lepus::Value& node,
@@ -372,6 +389,27 @@ bool ParseModifierOperation(const lepus::Value& node,
       operation->event_type = event_type.String();
       return true;
     }
+    case kModifierOpAttachment: {
+      operation->callback = node.GetProperty(kAttachField);
+      double minimum = 0;
+      if (!operation->callback.ToLepusValue().IsCallable() ||
+          !ReadFiniteNumberProperty(node, kMinimumTouchTargetPxField,
+                                    &minimum) ||
+          minimum < 0) {
+        *error = "invalid Modifier attachment";
+        return false;
+      }
+      const auto event_target = ReadModifierProperty(node, kEventTargetField);
+      if (!event_target.IsBool()) {
+        *error = "invalid event target marker";
+        return false;
+      }
+      operation->event_target = event_target.Bool();
+      operation->share_touch_target =
+          ReadModifierProperty(node, kShareWithSiblingsField).Bool();
+      operation->minimum_touch_target_px = minimum;
+      return true;
+    }
     case kModifierOpPadding:
     case kModifierOpSize:
     case kModifierOpFill:
@@ -488,6 +526,25 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     return false;
   }
 
+  // Reuse physical layout/layer boundaries for attachments. Only pointer
+  // attachments sharing one carrier need an additional boundary.
+  ModifierOperation* previous_target = nullptr;
+  for (auto& operation : plan->operations) {
+    if (operation.op == kModifierOpAttachment) {
+      plan->has_attachments = true;
+      if (operation.event_target) {
+        if (previous_target) previous_target->introduces_frame = true;
+        previous_target = &operation;
+      }
+    } else if (IsDrawOperation(operation.op) ||
+               operation.op == kModifierOpPadding ||
+               operation.op == kModifierOpOffset ||
+               operation.op == kModifierOpSizeRange ||
+               WrapContentStyleAxis(operation)) {
+      previous_target = nullptr;
+    }
+  }
+
   int sizing_prefix_axes = 0;
   for (size_t position = 0; position < plan->operations.size(); ++position) {
     auto& operation = plan->operations[position];
@@ -499,7 +556,10 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     } else if (operation.op == kModifierOpAspectRatio) {
       sizing_prefix_axes = kLayoutModifierAllAxes;
     }
-    if (const int axis = WrapContentStyleAxis(operation)) {
+    if (operation.introduces_frame) {
+      ++plan->frame_count;
+      sizing_prefix_axes = 0;
+    } else if (const int axis = WrapContentStyleAxis(operation)) {
       if (position > 0 && axis == kLayoutModifierAxisHeight &&
           plan->operations[position - 1].wrap_axes == kLayoutModifierAllAxes) {
         continue;
@@ -628,9 +688,14 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
         default:
           break;
       }
-    } else if (operation.op == kModifierOpCallback ||
+    } else if (operation.op == kModifierOpAttachment ||
+               operation.op == kModifierOpCallback ||
                operation.op == kModifierOpEvent) {
       operation.target_frame_index = target_frame_index;
+      if (operation.introduces_frame) {
+        plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
+        ++carrier_index;
+      }
     } else if (operation.op == kModifierOpStyleNumber ||
                operation.op == kModifierOpStyleString) {
       const auto* wrap =
@@ -867,6 +932,16 @@ void ApplyNonLayoutOperation(
     case kModifierOpStyleString:
       target->SetStyle(operation.style_id, operation.value.ToLepusValue());
       break;
+    case kModifierOpAttachment:
+      if (operation.event_target) {
+        target->SetModifierAttribute(
+            kMinimumTouchTargetSizeAttribute,
+            lepus::Value(operation.minimum_touch_target_px));
+        target->SetModifierAttribute(
+            kShareTouchTargetAttribute,
+            lepus::Value(operation.share_touch_target));
+      }
+      break;
     case kModifierOpGraphicsLayer:
     case kModifierOpDrawBehind:
       // The following Element records the callback result during Draw.
@@ -906,6 +981,26 @@ void SetWeightFill(Element* element, bool fill) {
           ->GetLayoutComputedStyle()
           ->SetComposeWeightFill(fill)) {
     element->MarkLayoutDirtyLite();
+  }
+}
+
+// Publish physical identities only after installing the complete chain. The
+// runtime owns callback identities and their lifetime; Elements retain no
+// parallel list of logical input nodes.
+void BindModifierAttachments(const ModifierFramePlan& plan, Element* mount_root,
+                             Element* content_element,
+                             runtime::MTSRuntime* registration_context) {
+  base::Vector<fml::RefPtr<ModifierElement>> frames;
+  for (auto* target = mount_root; target != content_element;
+       target = target->GetChildAt(0)) {
+    frames.emplace_back(static_cast<ModifierElement*>(target));
+  }
+  for (const auto& operation : plan.operations) {
+    if (operation.op == kModifierOpAttachment) {
+      auto* target = OperationTarget(operation, content_element, frames);
+      registration_context->CallClosure(operation.callback,
+                                        lepus::Value(target->impl_id()));
+    }
   }
 }
 
@@ -1158,6 +1253,9 @@ ModifierElement::ModifierElement(ElementManager* manager)
   MarkAsComposeLayout();
   SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
   SetStyle(kPropertyIDBoxSizing, lepus::Value("border-box"));
+  // Modifier frames pass parent-imposed sizes through to their content,
+  // including dimensions allocated by weight rather than an explicit size
+  // modifier.
   SetStyle(kPropertyIDXBoxPropagateMinConstraints, lepus::Value(true));
   if (manager != nullptr) {
     SetDefaultOverflow(manager->GetDefaultOverflowVisible());
@@ -1231,6 +1329,9 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     }
   }
   // Reject unsupported plans before changing any active callbacks or nodes.
+  if (plan.has_attachments && !registration_context) {
+    return {false, 0, "Modifier attachment requires a registering runtime"};
+  }
   if (plan.has_draw_callbacks) {
     if (!registration_context) {
       return {false, 0, "drawing modifiers require a registering runtime"};
@@ -1248,6 +1349,10 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
       plan, content_element.get(), previous_mount_root.get(),
       registration_context, manager->GetEnableParallelElement());
   handle->SetMountRoot(std::move(mount_root));
+  if (plan.has_attachments) {
+    BindModifierAttachments(plan, handle->mount_root().get(),
+                            content_element.get(), registration_context);
+  }
 
   // Parent data follows the physical mount root regardless of authored Modifier
   // order. Clear the previous carrier when topology changes.
