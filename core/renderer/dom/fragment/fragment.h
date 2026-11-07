@@ -226,6 +226,7 @@ class Fragment : public BaseElementContainer {
   std::shared_ptr<const CustomDrawFunctions> custom_draw_functions_;
   bool has_platform_renderer_{false};
   bool pending_node_ready_{false};
+  bool stacking_style_pending_{false};
 
   // If the fragment has positon fixed or z-index != 0, store the fragment from
   // element parent using this pointer. Which means if the

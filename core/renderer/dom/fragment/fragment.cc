@@ -116,6 +116,12 @@ void Fragment::StyleChanged() {
   if (element() == nullptr) {
     return;
   }
+  if (element()->parent() == nullptr && !element()->is_page()) {
+    // Element removal is immediate. Keep the previous stacking state for the
+    // queued Fragment removal, then use the new style on reinsertion.
+    stacking_style_pending_ = true;
+    return;
+  }
 
   // There are four cases for z-index:
   // z.0. z-index does not change.
@@ -1578,41 +1584,52 @@ bool Fragment::HasUIPrimitive() const { return has_platform_renderer_; }
 
 void Fragment::InsertElementContainerAccordingToElement(Element* child,
                                                         Element* ref) {
-  if (child == nullptr || child->fragment_impl() == nullptr) {
+  auto* child_fragment = child ? child->fragment_impl() : nullptr;
+  if (child_fragment == nullptr) {
     return;
   }
 
-  if (child->fragment_impl()->was_position_fixed()) {
-    // If the child is fixed, insert it to the root fragment.
-    fixed_children_.insert(child->fragment_impl());
-    child->fragment_impl()->set_fragment_from_element_parent(this);
+  const bool sync_style =
+      std::exchange(child_fragment->stacking_style_pending_, false);
+  if (sync_style) {
+    child_fragment->set_was_position_fixed(child->is_fixed());
+    child_fragment->set_old_z_index(child->ZIndex());
+  }
+  const bool is_fixed = child_fragment->was_position_fixed();
+  const bool has_z_index = child_fragment->old_z_index() != 0;
 
-    element_manager()->root()->fragment_impl()->AddChildBefore(
-        child->fragment_impl(), nullptr);
-    return;
-  } else if (child->fragment_impl()->old_z_index() != 0) {
+  if (is_fixed) {
+    // If the child is fixed, insert it to the root fragment.
+    fixed_children_.insert(child_fragment);
+    child_fragment->set_fragment_from_element_parent(this);
+
+    element_manager()->root()->fragment_impl()->AddChildBefore(child_fragment,
+                                                               nullptr);
+  } else if (has_z_index) {
     // If the child is not fixed, insert it to the enclosing stacking context
     // node.
-    z_children_.insert(child->fragment_impl());
-    child->fragment_impl()->set_fragment_from_element_parent(this);
+    z_children_.insert(child_fragment);
+    child_fragment->set_fragment_from_element_parent(this);
 
     auto* parent_stacking_context =
         EnclosingStackingContextNode()->CastToFragment();
-    parent_stacking_context->AddChildBefore(child->fragment_impl(), nullptr);
-    return;
+    parent_stacking_context->AddChildBefore(child_fragment, nullptr);
   } else {
     // If the child is not fixed and z-index is 0, insert it to the first
     // reliable sibling.
     while (ref != nullptr && !ref->fragment_impl()->IsReliableSibling()) {
       ref = ref->next_render_sibling();
     }
-    AddChildBefore(child->fragment_impl(),
-                   ref ? ref->fragment_impl() : nullptr);
+    AddChildBefore(child_fragment, ref ? ref->fragment_impl() : nullptr);
   }
 
-  // Reinsert the child's descendants with fixed or z-index !=0 to the correct
-  // parent.
-  child->fragment_impl()->ReinsertDescendantsToCorrectParent();
+  if (sync_style || (!is_fixed && !has_z_index)) {
+    // Reinsert descendants removed using the previous stacking context.
+    child_fragment->ReinsertDescendantsToCorrectParent();
+  }
+  if (sync_style) {
+    child_fragment->StyleChanged();
+  }
 }
 
 void Fragment::RemoveElementContainerAccordingToElement(Element* child,
