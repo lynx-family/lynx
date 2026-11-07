@@ -280,6 +280,7 @@ std::shared_ptr<HostScriptInterceptor> HostScriptInterceptor::Install(
     Napi::Env env, Domain domain, Reporter reporter, Guard guard,
     std::shared_ptr<HostScriptLynxViews> views) {
   Napi::ContextScope context_scope(env);
+  Napi::HandleScope scope(env);
   Napi::Env napi(env);
   if (!Supports(domain) || napi.Global().Has("interceptor")) return nullptr;
   auto provider = std::shared_ptr<HostScriptInterceptor>(
@@ -304,6 +305,7 @@ std::shared_ptr<HostScriptInterceptor> HostScriptInterceptor::Install(
 void HostScriptInterceptor::Uninstall() {
   if (!active_) return;
   Napi::ContextScope context_scope(env_);
+  Napi::HandleScope scope(env_);
   active_ = false;
   Interceptor::Detach(this);
   for (auto& entry : entries_) {
