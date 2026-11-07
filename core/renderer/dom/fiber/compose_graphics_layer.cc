@@ -145,8 +145,10 @@ CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
           alpha = static_cast<float>(
               std::max(0., std::min(1., alpha_value.Number())));
         }
-        builder.Transform(
-            LayerTransform(value, target->width(), target->height(), pixels));
+        const auto transform =
+            LayerTransform(value, target->width(), target->height(), pixels);
+        target->SetCustomLayerTransform(transform);
+        builder.Transform(transform);
         // The innermost layer can bind to the content Element itself. Preserve
         // opacity from the content (for example an image's own alpha) and apply
         // the layer's opacity to that output. Removal restores the ordinary

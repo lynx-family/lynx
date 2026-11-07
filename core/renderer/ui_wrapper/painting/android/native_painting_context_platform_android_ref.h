@@ -39,6 +39,10 @@ class NativePaintingCtxAndroidRef : public NativePaintingCtxPlatformRef {
   void GetScreenSize(float size[2]) override;
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override;
   bool IsPlatformRendererScrollable(int32_t sign) override;
+  bool RequestRootFocus(int32_t root_id, bool focused) override;
+  void ApplyListScrollState(int32_t sign, float scroll_x, float scroll_y,
+                            float content_width, float content_height,
+                            bool cmp_managed) override;
   PlatformTextEventTargetRegions GetTextEventTargetRegions(
       int32_t text_id) override;
   void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;

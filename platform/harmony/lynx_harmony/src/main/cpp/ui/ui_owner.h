@@ -119,6 +119,7 @@ class UIOwner {
   static constexpr const char* kDefaultComponentId = "-1";
 
   UIRoot* Root();
+  bool RequestRootFocus(int32_t sign, bool focused);
 
   void CreateNodeContent(UIBase* ui) const;
   napi_value CreateFrameHost(napi_value native_frame, int sign) const;
@@ -162,6 +163,7 @@ class UIOwner {
   void SetHasTouchPseudo(bool has_touch_pseudo);
   void SetEnableFiberTargetOnlyDestroy(bool enable);
   void SetLongPressDuration(int32_t long_press_duration);
+  void SetRawInputEnabled(bool enabled);
   void SendEvent(const LynxEvent& event) const;
   bool StartEventGenerate(const TouchEvent& touch_event) const;
   void SetEventID(int64_t event_id);
@@ -238,6 +240,7 @@ class UIOwner {
 
   void OnEnterForeground();
   void OnEnterBackground();
+  void OnWindowFocusChanged(bool focused);
 
   void PrepareForDestroy();
   bool Destroyed() const { return destroyed_; }
@@ -281,6 +284,7 @@ class UIOwner {
   static napi_value UpdateRootTarget(napi_env env, napi_callback_info info);
   static napi_value OnEnterForeground(napi_env env, napi_callback_info info);
   static napi_value OnEnterBackground(napi_env env, napi_callback_info info);
+  static napi_value OnWindowFocusChanged(napi_env env, napi_callback_info info);
   static napi_value SetLynxImageConfig(napi_env env, napi_callback_info info);
 
   void DestroySubTree(UIBase* root);

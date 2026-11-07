@@ -156,8 +156,7 @@ void ElementAPIError(const char* fmt, Args&&... a) {
 }
 
 lepus::Value GetSystemInfoFromTasm(TemplateAssembler* tasm) {
-  auto config = tasm->page_proxy()->GetConfig();
-  return GenerateSystemInfo(&config);
+  return tasm->GetSystemInfo();
 }
 
 bool ParseComposeElementKind(const lepus::Value& value, const char* function,
@@ -1042,7 +1041,7 @@ RENDERER_FUNCTION_CC(RemoveStyleSheet) {
 
 RENDERER_FUNCTION_CC(FiberAddEventListener) {
   // parameter size = 4
-  // [0] RefCounted -> element
+  // [0] RefCounted -> Element or Compose handle
   // [1] String -> name
   // [2] Function -> callback
   // [3] Object -> options
@@ -1061,7 +1060,7 @@ RENDERER_FUNCTION_CC(FiberAddEventListener) {
   BASE_STATIC_STRING_DECL(kSignal, "signal");
   BASE_STATIC_STRING_DECL(kClosureType, "closure_type");
   BASE_STATIC_STRING_DECL(kBindType, "bind_type");
-  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto element = GetComposeContentOrFiberElementFromValue(*arg0);
   bool capture = options->Contains(kCapture)
                      ? options->GetProperty(kCapture).Bool()
                      : false;
@@ -1146,7 +1145,7 @@ RENDERER_FUNCTION_CC(FiberAddEventListener) {
 
 RENDERER_FUNCTION_CC(FiberRemoveEventListener) {
   // parameter size = 4
-  // [0] RefCounted -> element
+  // [0] RefCounted -> Element or Compose handle
   // [1] String -> name
   // [2] Function -> callback
   // [3] Object -> options
@@ -1162,7 +1161,7 @@ RENDERER_FUNCTION_CC(FiberRemoveEventListener) {
   BASE_STATIC_STRING_DECL(kCapture, "capture");
   BASE_STATIC_STRING_DECL(kClosureType, "closure_type");
   BASE_STATIC_STRING_DECL(kBindType, "bind_type");
-  auto element = fml::static_ref_ptr_cast<Element>(arg0->RefCounted());
+  auto element = GetComposeContentOrFiberElementFromValue(*arg0);
   bool capture = options->Contains(kCapture)
                      ? options->GetProperty(kCapture).Bool()
                      : false;
@@ -5469,6 +5468,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   }
 
   bool trigger_data_updated = false;
+  PipelineOptions::ListItemUpdate list_item_update{};
   // If argc >= 2, get PipelineOptions from arg1.
   // The options->triggerLayout's default value is true, set it to false if do
   // need call DispatchLayoutUpdates. The options->operationID's default value
@@ -5521,6 +5521,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
       if (arg1->Contains(kOperationID)) {
         current_option->operation_id =
             static_cast<int64_t>(arg1->GetProperty(kOperationID).Number());
+        list_item_update.operation_id = current_option->operation_id;
       }
 
       // the elementID is used for the list on multi-thread mode
@@ -5528,6 +5529,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
       if (arg1->Contains(kElementID)) {
         current_option->list_comp_id_ =
             static_cast<int>(arg1->GetProperty(kElementID).Number());
+        list_item_update.item_id = current_option->list_comp_id_;
       }
 
       BASE_STATIC_STRING_DECL(kOperationIDs, "operationIDs");
@@ -5564,6 +5566,7 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
       if (arg1->Contains(kListID)) {
         current_option->list_id_ =
             static_cast<int>(arg1->GetProperty(kListID).Number());
+        list_item_update.list_id = current_option->list_id_;
       }
 
       // TODO(dingwang.wxx): Remove this logic by using timing api to record the
@@ -5695,6 +5698,20 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
   // redundant logic here.
   if (current_option->enable_unified_pixel_pipeline) {
+    if (self->page_proxy()->element_manager()->IsLayoutInElementModeOn() &&
+        list_item_update.list_id != 0 && list_item_update.item_id != 0 &&
+        list_item_update.operation_id != 0) {
+      auto* list = self->page_proxy()->element_manager()->node_manager()->Get(
+          list_item_update.list_id);
+      if (list && list->DisableListPlatformImplementation()) {
+        current_option->list_item_updates_.push_back(list_item_update);
+        // Both painting and C++ list completion consume this batch after
+        // layout. Do not also publish the last binding through the scalar path.
+        current_option->list_id_ = 0;
+        current_option->list_comp_id_ = 0;
+        current_option->operation_id = 0;
+      }
+    }
     if (!is_empty_patch) {
       const int32_t incoming_target_node =
           element ? element->impl_id() : PipelineOptions::kInvalidTargetNodeId;
@@ -6881,7 +6898,7 @@ RENDERER_FUNCTION_CC(TriggerComponentEvent) {
 }
 
 RENDERER_FUNCTION_CC(FiberInvokeMethod) {
-  CHECK_ARGC_EQ(FiberInvokeMethod, 3);
+  CHECK_ARGC_GE(FiberInvokeMethod, 3);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted, FiberInvokeMethod);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, String, FiberInvokeMethod);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg2, 2, Object, FiberInvokeMethod);

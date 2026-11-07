@@ -24,6 +24,28 @@ namespace list {
 
 class ItemHolder;
 
+// Engine-owned list geometry in layout units. Offset, consumed deltas and
+// can_scroll_* follow data order, including for horizontal RTL lists.
+struct ListScrollState {
+  bool valid{false};
+  float offset{0.f};
+  float viewport{0.f};
+  float content{0.f};
+  bool can_scroll_forward{false};
+  bool can_scroll_backward{false};
+  int first_visible_index{-1};
+  float first_visible_scroll_offset{0.f};
+  uint64_t revision{0};
+  bool horizontal{false};
+  bool rtl{false};
+};
+
+struct ListScrollResult {
+  ListScrollState state;
+  float consumed{0.f};
+  float remaining{0.f};
+};
+
 using ItemKeySet = std::unordered_set<std::string>;
 using ItemHolderMap =
     std::unordered_map<std::string, std::unique_ptr<list::ItemHolder>>;

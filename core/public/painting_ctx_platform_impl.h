@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/lynx_actor.h"
 #include "core/public/layout_node_value.h"
 #include "core/public/pipeline_option.h"
@@ -62,11 +63,15 @@ class PaintingCtxPlatformRef {
   virtual void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) {}
   virtual void UpdateEventInfo(bool has_touch_pseudo) {}
   virtual void SetTapSlop(const std::string& tap_slop) {}
+  virtual void SetRawInputEnabled(bool enabled) {}
   // The page's configured screen width in layout units, for event-region rpx.
   // This is independent of the physical window used by exposure checks.
   virtual void SetEventScreenWidth(float screen_width) {}
   virtual void SetEventThroughConfig(
       bool enable_event_through, bool enable_event_through_inherit_from_page) {}
+  // Results are delivered through the registered Page's focusresult event.
+  virtual void RequestInputFocus(int32_t anchor_sign, bool focused,
+                                 const std::string& request_token) {}
   virtual void UpdateFlattenStatus(int id, bool flatten) {}
 
   virtual void ListReusePaintingNode(int id, const std::string& item_key){};
@@ -83,6 +88,14 @@ class PaintingCtxPlatformRef {
                                                    float delta_x, float delta_y,
                                                    bool is_init_scroll_offset,
                                                    bool from_layout) {}
+  // A CMP-managed list projects Engine-owned scroll state to its host. All
+  // values use layout units; offsets already include any horizontal RTL
+  // mapping. Applying this state must not feed a platform scroll callback back
+  // to Engine. A false cmp_managed projects the final absolute state and
+  // returns scroll ownership to the platform.
+  virtual void ApplyListScrollState(int32_t container_id, float scroll_x,
+                                    float scroll_y, float content_width,
+                                    float content_height, bool cmp_managed) {}
   virtual void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) {}
 
   virtual void MarkUIOperationQueueFlushForRecreateEngine(bool enable) {}

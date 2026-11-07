@@ -75,6 +75,10 @@ void ListMediator::FinishBindItemHolders(
         }
         list_item_delegate_array.emplace_back(
             list_item_delegate_map_[list_item].get());
+      } else {
+        // Keep operation IDs aligned when an item was removed before
+        // completion.
+        list_item_delegate_array.emplace_back(nullptr);
       }
     }
     list_container_delegate_->FinishBindItemHolders(list_item_delegate_array,
@@ -118,6 +122,23 @@ void ListMediator::ScrollStopped() {
   if (list_container_delegate_) {
     list_container_delegate_->ScrollStopped();
   }
+}
+
+void ListMediator::SetComposeScrollManaged(bool managed) {
+  list_container_delegate_->SetComposeScrollManaged(managed);
+}
+
+lynx::list::ListScrollResult ListMediator::ScrollByDelta(float delta) {
+  return list_container_delegate_->ScrollByDelta(delta);
+}
+
+lynx::list::ListScrollState ListMediator::ScrollToItem(int index,
+                                                       float offset) {
+  return list_container_delegate_->ScrollToItem(index, offset);
+}
+
+lynx::list::ListScrollState ListMediator::GetScrollState() const {
+  return list_container_delegate_->GetScrollState();
 }
 
 void ListMediator::ResolveListAxisGap(CSSPropertyID id, float gap) {
@@ -311,6 +332,18 @@ void ListMediator::UpdateContentOffsetAndSizeToPlatform(
     bool is_init_scroll_offset, bool from_layout) {
   list_element_->element_container()->UpdateContentOffsetForListContainer(
       content_size, delta_x, delta_y, is_init_scroll_offset, from_layout);
+}
+
+void ListMediator::ApplyListScrollState(float scroll_x, float scroll_y,
+                                        float content_width,
+                                        float content_height,
+                                        bool cmp_managed) {
+  list_element_->UpdateScrollOffset(scroll_x, scroll_y);
+  if (auto* manager = list_element_->element_manager()) {
+    manager->painting_context()->ApplyListScrollState(
+        list_element_->impl_id(), scroll_x, scroll_y, content_width,
+        content_height, cmp_managed);
+  }
 }
 
 bool ListMediator::HasBoundEvent(const std::string& event_name) const {

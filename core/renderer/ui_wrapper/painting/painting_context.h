@@ -243,6 +243,7 @@ class PaintingContext {
 
   void UpdateEventInfo(bool has_touch_pseudo);
   void SetTapSlop(const std::string& tap_slop);
+  void SetRawInputEnabled(bool enabled);
   void SetEventScreenWidth(float screen_width);
   void SetEventThroughConfig(bool enable_event_through,
                              bool enable_event_through_inherit_from_page);
@@ -258,6 +259,11 @@ class PaintingContext {
                                            float delta_y,
                                            bool is_init_scroll_offset,
                                            bool from_layout);
+  void RequestInputFocus(int32_t anchor_sign, bool focused,
+                         const std::string& request_token);
+  void ApplyListScrollState(int32_t container_id, float scroll_x,
+                            float scroll_y, float content_width,
+                            float content_height, bool cmp_managed);
 
   void FinishLayoutOperation(const std::shared_ptr<PipelineOptions>& options);
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id);

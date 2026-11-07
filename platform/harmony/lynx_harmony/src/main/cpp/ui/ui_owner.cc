@@ -6,6 +6,8 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
 #include <arkui/native_node_napi.h>
+#include <deviceinfo.h>
+#include <dlfcn.h>
 
 #include <algorithm>
 #include <cmath>
@@ -19,10 +21,12 @@
 #include "base/include/fml/time/time_delta.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "base/trace/native/trace_event.h"
+#include "core/base/harmony/harmony_function_loader.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/services/fluency/fluency_tracer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
@@ -55,6 +59,38 @@ struct UIOwner::PositionChangeDispatchState {
 
 ImageService* UIOwner::image_service = nullptr;
 
+bool UIOwner::RequestRootFocus(int32_t sign, bool focused) {
+  if (Destroyed() || (focused && !event_dispatcher_->InputWindowFocused())) {
+    return false;
+  }
+  auto* root = FindUIBySign(sign);
+  while (root && !root->RootNode()) root = root->Parent();
+  if (!root || (focused &&
+                (!event_dispatcher_->IsRawInputEventRootActive(root->Sign()) ||
+                 (root->IsRoot() &&
+                  !static_cast<UIRoot*>(root)->IsAttachedToViewTree())))) {
+    return false;
+  }
+  auto* node = root->IsRoot() ? static_cast<UIRoot*>(root)->GetProxyNode()
+                              : root->RootNode();
+  auto& manager = NodeManager::Instance();
+  if (focused) {
+    manager.SetAttributeWithNumberValue(node, NODE_FOCUSABLE, 1);
+    if (OH_GetSdkApiVersion() >= 15) {
+      using RequestFocus = int32_t (*)(ArkUI_NodeHandle);
+      static auto request_focus = reinterpret_cast<RequestFocus>(dlsym(
+          base::harmony::GetSharedObjectHandler(base::harmony::kAceNdkSoName),
+          "OH_ArkUI_FocusRequest"));
+      if (request_focus) return request_focus(node) == 0;
+    }
+  }
+  ArkUI_NumberValue value{.i32 = focused ? 1 : 0};
+  ArkUI_AttributeItem item{.value = &value, .size = 1};
+  return manager.SetAttribute(node, NODE_FOCUS_STATUS, &item) &&
+         (manager.GetAttribute<int32_t>(node, NODE_FOCUS_STATUS) != 0) ==
+             focused;
+}
+
 napi_value UIOwner::Init(napi_env env, napi_value exports) {
 #define DECLARE_NAPI_FUNCTION(name, func) \
   {(name), nullptr, (func), nullptr, nullptr, nullptr, napi_default, nullptr}
@@ -72,6 +108,7 @@ napi_value UIOwner::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("updateRootTarget", UpdateRootTarget),
       DECLARE_NAPI_FUNCTION("onEnterForeground", OnEnterForeground),
       DECLARE_NAPI_FUNCTION("onEnterBackground", OnEnterBackground),
+      DECLARE_NAPI_FUNCTION("onWindowFocusChanged", OnWindowFocusChanged),
       DECLARE_NAPI_FUNCTION("setLynxImageConfig", SetLynxImageConfig),
   };
 #undef DECLARE_NAPI_FUNCTION
@@ -1122,6 +1159,13 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   napi_status status =
       napi_remove_wrap(env, js_this, reinterpret_cast<void**>(&obj));
   NAPI_THROW_IF_FAILED_NULL(env, status, "UIOwner napi_remove_wrap failed!");
+  // Invalidate the root before releasing its native owner. Runtime destruction
+  // owns the Page's final cleanup.
+  if (auto input_context = obj->context_->GetNativePaintingContext();
+      input_context && obj->root_) {
+    input_context->NotifyInputRootStateChanged(obj->root_->Sign(), false,
+                                               false);
+  }
   obj->context_->ResetUIOwner();
   obj->PrepareForDestroy();
   napi_delete_reference(env, obj->js_create_);
@@ -1251,6 +1295,22 @@ napi_value UIOwner::OnEnterBackground(napi_env env, napi_callback_info info) {
   return nullptr;
 }
 
+napi_value UIOwner::OnWindowFocusChanged(napi_env env,
+                                         napi_callback_info info) {
+  napi_value js_this;
+  napi_value argument;
+  size_t argc = 1;
+  napi_get_cb_info(env, info, &argc, &argument, &js_this, nullptr);
+  UIOwner* owner = nullptr;
+  napi_unwrap(env, js_this, reinterpret_cast<void**>(&owner));
+  bool focused = false;
+  if (owner && argc == 1 &&
+      napi_get_value_bool(env, argument, &focused) == napi_ok) {
+    owner->OnWindowFocusChanged(focused);
+  }
+  return nullptr;
+}
+
 napi_value UIOwner::SetLynxImageConfig(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   napi_value argv[argc];
@@ -1304,6 +1364,19 @@ void UIOwner::OnEnterForeground() {
 void UIOwner::OnEnterBackground() {
   for (const auto& it : window_state_listeners_) {
     it->OnEnterBackground();
+  }
+}
+
+void UIOwner::OnWindowFocusChanged(bool focused) {
+  event_dispatcher_->SetInputWindowFocused(focused);
+  if (auto input_context = context_->GetNativePaintingContext();
+      input_context && input_context->IsRawInputEnabled() && root_) {
+    auto* root = static_cast<UIRoot*>(root_.get());
+    const bool root_focused =
+        focused && NodeManager::Instance().GetAttribute<int32_t>(
+                       root->GetProxyNode(), NODE_FOCUS_STATUS) != 0;
+    input_context->NotifyInputRootStateChanged(
+        root->Sign(), root->IsAttachedToViewTree(), root_focused);
   }
 }
 
@@ -1596,6 +1669,26 @@ void UIOwner::SetEnableFiberTargetOnlyDestroy(bool enable) {
 
 void UIOwner::SetLongPressDuration(int32_t long_press_duration) {
   event_dispatcher_->SetLongPressDuration(long_press_duration);
+}
+
+void UIOwner::SetRawInputEnabled(bool enabled) {
+  if (!js_this_) {
+    return;
+  }
+  base::NapiHandleScope scope(env_);
+  napi_value receiver = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
+  napi_value callback;
+  if (!receiver || napi_get_named_property(env_, receiver, "setRawInputEnabled",
+                                           &callback) != napi_ok) {
+    return;
+  }
+  napi_value argument;
+  napi_get_boolean(env_, enabled, &argument);
+  napi_value result;
+  if (napi_call_function(env_, receiver, callback, 1, &argument, &result) !=
+      napi_ok) {
+    LOGE("Failed to configure raw input event ownership");
+  }
 }
 
 void UIOwner::SendEvent(const LynxEvent& event) const {

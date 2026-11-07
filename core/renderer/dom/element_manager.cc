@@ -46,6 +46,7 @@
 #include "core/renderer/dom/vdom/radon/radon_list_base.h"
 #include "core/renderer/events/touch_event_handler.h"
 #include "core/renderer/lynx_env_config.h"
+#include "core/renderer/pipeline/pipeline_context.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
@@ -1426,6 +1427,8 @@ void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
 
   if (IsFragmentLayerRenderModeOn()) {
     painting_context()->SetEventScreenWidth(GetLynxEnvConfig().ScreenWidth());
+    painting_context()->SetRawInputEnabled(config_ &&
+                                           config_->GetEnableRawInput());
     painting_context()->SetEventThroughConfig(
         config_ != nullptr && config_->GetEnableEventThrough(),
         config_ != nullptr && config_->GetEnableEventThroughInheritFromPage());
@@ -1830,6 +1833,59 @@ void ElementManager::TickListIfNeeded(
       list_element->OnListItemBatchFinished(options);
     }
   }
+  FlushPendingListItemUpdates(options);
+}
+
+void ElementManager::FlushPendingListItemUpdates(
+    const std::shared_ptr<PipelineOptions> &options) {
+  if (options->list_item_updates_.empty()) {
+    return;
+  }
+  // Completing a binding can render more items. Detach this batch before any
+  // callbacks so reentrant pipelines cannot consume it twice.
+  std::vector<PipelineOptions::ListItemUpdate> updates;
+  updates.swap(options->list_item_updates_);
+  if (updates.size() == 1) {
+    const auto &update = updates.front();
+    if (auto *list = node_manager_->Get(update.list_id); list) {
+      auto item_options = std::make_shared<PipelineOptions>(*options);
+      item_options->ResetListRelatedFlag();
+      item_options->list_id_ = update.list_id;
+      item_options->list_comp_id_ = update.item_id;
+      item_options->operation_id = update.operation_id;
+      list->OnComponentFinished(node_manager_->Get(update.item_id),
+                                item_options);
+    }
+    return;
+  }
+  std::unordered_map<int32_t, std::shared_ptr<PipelineOptions>> batches;
+  std::vector<int32_t> list_order;
+  for (const auto &update : updates) {
+    auto &batch = batches[update.list_id];
+    if (!batch) {
+      batch = std::make_shared<PipelineOptions>(*options);
+      batch->ResetListRelatedFlag();
+      batch->list_id_ = update.list_id;
+      list_order.push_back(update.list_id);
+    }
+    batch->operation_ids_.push_back(update.operation_id);
+    batch->list_item_ids_.push_back(update.item_id);
+  }
+  for (auto list_id : list_order) {
+    if (auto *list = node_manager_->Get(list_id); list) {
+      const auto &batch = batches.at(list_id);
+      if (batch->operation_ids_.size() == 1) {
+        batch->operation_id = batch->operation_ids_.front();
+        batch->list_comp_id_ = batch->list_item_ids_.front();
+        batch->operation_ids_.clear();
+        batch->list_item_ids_.clear();
+        list->OnComponentFinished(node_manager_->Get(batch->list_comp_id_),
+                                  batch);
+      } else {
+        list->OnListItemBatchFinished(batch);
+      }
+    }
+  }
 }
 
 void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
@@ -2050,6 +2106,12 @@ void ElementManager::OnPatchFinishForFiber(
 bool ElementManager::ResolveSubtree(Element *root) {
   base::AutoReset<bool> layout_request(&need_layout_, need_layout_);
   FirePostMTSRenderTasks();
+  // FlushActionsAsRoot() already walks through dirty ancestors. Select that
+  // root here so callers that intentionally resolve a nested subtree do not
+  // report a wrong-parent warning before performing the same flush.
+  while (root->parent() && root->parent()->dirty()) {
+    root = root->parent();
+  }
   root->FlushActionsAsRoot();
   return need_layout_;
 }

@@ -5,6 +5,7 @@
 #include "core/list/decoupled_list_layout_manager.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include "base/include/log/logging.h"
@@ -167,6 +168,30 @@ void ListLayoutManager::ScrollByPlatformContainer(float content_offset_x,
       orientation_ == Orientation::kHorizontal ? content_offset_x
                                                : content_offset_y,
       orientation_ == Orientation::kHorizontal ? original_x : original_y, true);
+}
+
+float ListLayoutManager::ScrollByComposeDelta(float delta) {
+  if (!std::isfinite(delta) || !list_container_ || !list_orientation_helper_ ||
+      engine_scroll_in_progress_) {
+    return 0.f;
+  }
+  const float previous_offset = content_offset_;
+  const float target =
+      ClampContentOffsetToEdge(previous_offset + delta, content_size_);
+  if (target == previous_offset) {
+    return 0.f;
+  }
+  engine_scroll_anchor_adjustment_ = 0.f;
+  engine_scroll_in_progress_ = true;
+  ScrollByInternal(target, previous_offset, false);
+  engine_scroll_in_progress_ = false;
+  // Measured item sizes can rebase an anchor during Fill. That rebase is not
+  // finger movement. Only the requested motion which survived edge clamping
+  // is consumed, with the original direction and magnitude preserved.
+  const float movement =
+      content_offset_ - previous_offset - engine_scroll_anchor_adjustment_;
+  return delta > 0.f ? std::clamp(movement, 0.f, delta)
+                     : std::clamp(movement, delta, 0.f);
 }
 
 // Platform UI will invoke this function when scrollToPosition UI method is

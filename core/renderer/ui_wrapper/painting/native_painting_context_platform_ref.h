@@ -9,6 +9,7 @@
 #include <atomic>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -71,6 +72,7 @@ class NativePaintingCtxPlatformRef
   void DestroyPaintingNode(int parent, int child, int index) override;
   void UpdateEventInfo(bool has_touch_pseudo) override;
   void SetTapSlop(const std::string &tap_slop) override;
+  void SetRawInputEnabled(bool enabled) override;
   void SetEventScreenWidth(float screen_width) override;
   void UpdateAttributes(int id, const fml::RefPtr<PropBundle> &attributes);
   void UpdateNodeReadyPatching(
@@ -82,10 +84,19 @@ class NativePaintingCtxPlatformRef
       std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor);
   // The event data from the platform layer is forwarded to PlatformEventHandler
   // for subsequent event processing.
+  // DOWN/UP contain only affected pointers, with actions normalized by the
+  // platform adapter.
   bool DispatchPlatformInputEvent(int int_event_data[],
                                   float float_event_data[],
                                   int32_t event_target_root_id);
-  // Returns behavior cached for the current or next pointer sequence.
+  bool IsRawInputEnabled() const { return event_handler_->IsRawInputEnabled(); }
+  // Notify Compose of native root availability without changing input
+  // ownership.
+  void NotifyInputRootStateChanged(int32_t root_id, bool attached,
+                                   bool focused);
+  void RequestInputFocus(int32_t anchor_sign, bool focused,
+                         const std::string &request_token) override;
+  // Returns RawInputExclusive when enabled, otherwise the cached behavior.
   uint32_t GetCachedPlatformEventBehavior() const {
     return event_handler_->EventBehavior();
   }
@@ -98,7 +109,7 @@ class NativePaintingCtxPlatformRef
   // Dispatch a tap recognized by the platform layer. The event payload is
   // derived from the pending platform pointer state in PlatformEventHandler.
   void DispatchPlatformTap();
-  // Hit-tests once and caches behavior for the next pointer-down sequence.
+  // Caches preflight behavior for the next pointer-down sequence on this root.
   uint32_t HitTestAndCachePlatformEventBehavior(int32_t event_target_root_id,
                                                 float point_x, float point_y);
   // Returns [hit target sign, renderer host sign] for platform-side caching.
@@ -134,7 +145,8 @@ class NativePaintingCtxPlatformRef
   // Ensure the event target tree for the given root is available. It rebuilds
   // only when the cached tree is missing or dirty, and refreshes scroll
   // offsets.
-  fml::RefPtr<PlatformEventTarget> EnsureEventTargetTree(int32_t root_id);
+  fml::RefPtr<PlatformEventTarget> EnsureEventTargetTree(
+      int32_t root_id, bool refresh_scroll_offsets = true);
   void ScheduleEnsureEventTargetTree(int32_t root_id);
   bool HasScheduledEventTargetTreeUpdate() const {
     return scheduled_event_target_tree_update_.load();
@@ -180,9 +192,11 @@ class NativePaintingCtxPlatformRef
   bool IsNativePaintingCtxPlatformRef() override { return true; }
 
  protected:
+  virtual bool RequestRootFocus(int32_t sign, bool focused) { return false; }
+
   // Query on the platform thread. Returns content, padding, border and margin
   // quads with the root's platform position, or an empty result when
-  // unavailable. Called by the Android and iOS GetTransformValue overrides.
+  // unavailable. Shared by platform GetTransformValue overrides.
   std::vector<float> GetTransformValueForEventTarget(
       int32_t sign, const std::vector<float> &offsets);
 
@@ -199,7 +213,8 @@ class NativePaintingCtxPlatformRef
 
   void RebuildSubLayers(const fml::RefPtr<PlatformRenderer> &renderer,
                         const base::InlineVector<int, 16> &new_children);
-  bool EnsureEventTargetTreeForTarget(int32_t target_id);
+  bool EnsureEventTargetTreeForTarget(int32_t target_id,
+                                      bool refresh_scroll_offsets = true);
   int32_t GetEventTargetRootIdForRenderer(int32_t renderer_id);
   void MarkEventTargetTreeDirty(int32_t renderer_id);
   void MarkEventTargetRootDirty(int32_t root_id);
@@ -214,6 +229,7 @@ class NativePaintingCtxPlatformRef
   PlatformEventThroughConfig event_through_config_;
   std::unique_ptr<PlatformEventHandler> event_handler_ =
       std::make_unique<PlatformEventHandler>(this);
+  int32_t input_focused_event_root_{0};
   std::unique_ptr<PlatformEventEmitter> event_emitter_ =
       std::make_unique<PlatformEventEmitter>(this);
   std::unique_ptr<PlatformEventTargetHelper> event_target_helper_ =

@@ -10,6 +10,8 @@
 #include "base/include/float_comparison.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 namespace lynx {
@@ -45,6 +47,10 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
                                             this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_,
                                             NODE_ON_TOUCH_INTERCEPT, this);
+  NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_TOUCH_EVENT,
+                                            this);
+  NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_ON_FOCUS, this);
+  NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_ON_BLUR, this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_EVENT_ON_ATTACH,
                                             this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_EVENT_ON_DETACH,
@@ -72,6 +78,9 @@ UIRoot::~UIRoot() {
                                               NODE_TOUCH_EVENT);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
                                               NODE_ON_TOUCH_INTERCEPT);
+  NodeManager::Instance().UnregisterNodeEvent(root_proxy_, NODE_TOUCH_EVENT);
+  NodeManager::Instance().UnregisterNodeEvent(root_proxy_, NODE_ON_FOCUS);
+  NodeManager::Instance().UnregisterNodeEvent(root_proxy_, NODE_ON_BLUR);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
                                               NODE_EVENT_ON_ATTACH);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
@@ -112,6 +121,8 @@ void UIRoot::UpdateLayout(float left, float top, float width, float height,
 
 void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
   auto event_type = OH_ArkUI_NodeEvent_GetEventType(event);
+  auto* owner = context_->GetUIOwner();
+  auto* dispatcher = owner ? owner->GetEventDispatcher() : nullptr;
   if (is_child_lynx_page_ui_ && (event_type == NODE_ON_TOUCH_INTERCEPT ||
                                  event_type == NODE_TOUCH_EVENT)) {
     return;
@@ -124,17 +135,40 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
   } else if (event_type == NODE_EVENT_ON_ATTACH) {
     is_root_attached_ = true;
     context_->OnRootAttachedToViewTree();
+    if (dispatcher) {
+      if (auto input_context = context_->GetNativePaintingContext()) {
+        input_context->NotifyInputRootStateChanged(Sign(), true, false);
+      }
+    }
   } else if (event_type == NODE_EVENT_ON_DETACH) {
     is_root_attached_ = false;
+    if (dispatcher) {
+      if (auto input_context = context_->GetNativePaintingContext()) {
+        input_context->NotifyInputRootStateChanged(Sign(), false, false);
+      }
+    }
     context_->OnRootDetachedFromViewTree();
+  } else if (event_type == NODE_ON_FOCUS || event_type == NODE_ON_BLUR) {
+    if (dispatcher) {
+      const bool focused =
+          event_type == NODE_ON_FOCUS && dispatcher->InputWindowFocused();
+      if (auto input_context = context_->GetNativePaintingContext()) {
+        input_context->NotifyInputRootStateChanged(Sign(), is_root_attached_,
+                                                   focused);
+      }
+    }
   } else if (event_type == NODE_EVENT_ON_AREA_CHANGE) {
     if (auto* owner = context_->GetUIOwner(); owner != nullptr) {
       owner->RequestPositionChangeEvents();
     }
   } else if (event_type == NODE_ON_TOUCH_INTERCEPT) {
-    context_->OnTouchEvent(OH_ArkUI_NodeEvent_GetInputEvent(event),
-                           context_->Root());
-    if (context_->EventThrough()) {
+    auto* input = OH_ArkUI_NodeEvent_GetInputEvent(event);
+    const bool raw_input_enabled =
+        dispatcher && dispatcher->RawInputExclusive();
+    if (!raw_input_enabled) {
+      context_->OnTouchEvent(input, context_->Root());
+    }
+    if (raw_input_enabled || context_->EventThrough()) {
       NodeManager::Instance().SetAttributeWithNumberValue(
           transparent_sibling_, NODE_HIT_TEST_BEHAVIOR,
           static_cast<int32_t>(ARKUI_HIT_TEST_MODE_DEFAULT));
@@ -142,11 +176,21 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
     context_->UpdateNativeInteractionEnabledForTree(context_->Root());
   } else if (event_type == NODE_TOUCH_EVENT) {
     ArkUI_UIInputEvent* touch_event = OH_ArkUI_NodeEvent_GetInputEvent(event);
+    if (OH_ArkUI_NodeEvent_GetNodeHandle(event) == root_proxy_) {
+      if (dispatcher && dispatcher->RawInputExclusive()) {
+        OH_ArkUI_PointerEvent_SetStopPropagation(touch_event, true);
+        context_->OnTouchEvent(touch_event, this);
+      }
+      return;
+    }
     if (OH_ArkUI_NodeEvent_GetNodeHandle(event) == normal_sibling_ &&
         context_->ShouldBlockNativeEvent()) {
       OH_ArkUI_PointerEvent_SetStopPropagation(touch_event, true);
     }
     if (OH_ArkUI_NodeEvent_GetNodeHandle(event) != transparent_sibling_) {
+      return;
+    }
+    if (dispatcher && dispatcher->RawInputExclusive()) {
       return;
     }
     auto touch_action = OH_ArkUI_UIInputEvent_GetAction(touch_event);

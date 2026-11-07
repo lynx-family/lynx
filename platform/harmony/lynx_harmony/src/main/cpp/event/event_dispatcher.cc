@@ -11,6 +11,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -18,6 +19,7 @@
 #include "base/include/float_comparison.h"
 #include "base/include/fml/task_runner.h"
 #include "core/base/harmony/harmony_function_loader.h"
+#include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -309,11 +311,13 @@ GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
   if (!event_dispatcher) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
+  auto gesture = OH_ArkUI_GestureInterruptInfo_GetRecognizer(info);
+  if (event_dispatcher->RawInputExclusive()) {
+    return GESTURE_INTERRUPT_RESULT_REJECT;
+  }
   if (event_dispatcher->EventThrough()) {
     return GESTURE_INTERRUPT_RESULT_REJECT;
   }
-
-  auto gesture = OH_ArkUI_GestureInterruptInfo_GetRecognizer(info);
   if (gesture == event_dispatcher->long_press_gesture_ ||
       gesture == event_dispatcher->tap_gesture_) {
     return GESTURE_INTERRUPT_RESULT_CONTINUE;
@@ -463,6 +467,7 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
     return;
   }
   root_target_ = root->weak_from_this();
+  input_event_roots_[root->Sign()] = root->weak_from_this();
   if (root->IsRoot()) {
     fallback_hit_test_root_ = root->weak_from_this();
     if (active_overlay_hit_test_roots_.empty()) {
@@ -526,7 +531,11 @@ void EventDispatcher::AttachGesturesToOverlayRoot(UIBase* root, int32_t level) {
 }
 
 void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
-  if (!root || !root->RootNode()) {
+  if (!root) {
+    return;
+  }
+  input_event_roots_.erase(root->Sign());
+  if (!root->RootNode()) {
     return;
   }
   if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
@@ -1644,8 +1653,14 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
   DispatchTouchEventToGestureArena(event_name, event);
 }
 
+bool EventDispatcher::RawInputExclusive() const {
+  auto context = ui_owner_->Context()->GetNativePaintingContext();
+  return context && context->IsRawInputEnabled();
+}
+
 void EventDispatcher::DispatchPlatformTouchEvent(
     const ArkUI_UIInputEvent* event, UIBase* root, bool from_overlay) {
+  const auto action = OH_ArkUI_UIInputEvent_GetAction(event);
   auto context = ui_owner_->Context()->GetNativePaintingContext();
   if (!context || !root) {
     cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
@@ -1653,7 +1668,7 @@ void EventDispatcher::DispatchPlatformTouchEvent(
     return;
   }
 
-  const auto action = OH_ArkUI_UIInputEvent_GetAction(event);
+  const auto pointer_count = OH_ArkUI_PointerEvent_GetPointerCount(event);
   int action_type;
   switch (action) {
     case UI_TOUCH_EVENT_ACTION_DOWN:
@@ -1675,8 +1690,11 @@ void EventDispatcher::DispatchPlatformTouchEvent(
     InitPlatformTouchEnv(event, root, from_overlay, *context);
   }
 
+  const bool terminal =
+      action == UI_TOUCH_EVENT_ACTION_CANCEL ||
+      (action == UI_TOUCH_EVENT_ACTION_UP && pointer_count <= 1);
   auto pointer_data = CollectPlatformTouchPoints(event);
-  if (pointer_data.empty()) {
+  if (pointer_data.empty() && action != UI_TOUCH_EVENT_ACTION_CANCEL) {
     cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
     platform_touch_active_ = false;
     return;
@@ -1693,8 +1711,7 @@ void EventDispatcher::DispatchPlatformTouchEvent(
     platform_touch_active_ = true;
   } else if (action == UI_TOUCH_EVENT_ACTION_UP ||
              action == UI_TOUCH_EVENT_ACTION_CANCEL) {
-    if (action == UI_TOUCH_EVENT_ACTION_CANCEL ||
-        OH_ArkUI_PointerEvent_GetPointerCount(event) <= 1) {
+    if (terminal) {
       cached_consume_slide_direction_ = ConsumeSlideDirection::kNone;
       platform_touch_active_ = false;
     }
@@ -2139,6 +2156,18 @@ bool EventDispatcher::CanConsumeTouchEventAtRoot(float point[2], UIBase* root) {
   bool can_consume = !active_target->EventThrough(target_point);
   UpdateOverlayPassThroughState(root, can_consume);
   return can_consume;
+}
+
+bool EventDispatcher::IsRawInputEventRootActive(int32_t sign) const {
+  const auto root = input_event_roots_.find(sign);
+  if (root == input_event_roots_.end()) return false;
+  auto ui = root->second.lock();
+  if (!ui) return false;
+  if (ui->IsRoot()) {
+    return static_cast<UIRoot*>(ui.get())->IsAttachedToViewTree();
+  }
+  auto context = ui_owner_->Context()->GetNativePaintingContext();
+  return context && context->GetEventTargetHelper()->IsActiveEventRoot(sign);
 }
 
 void EventDispatcher::ActivateOverlayHitTestRoot(UIBase* root, int32_t level) {

@@ -8,6 +8,7 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Rect
 import android.os.Build
 import android.os.IBinder
@@ -128,6 +129,14 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         }
     )
     private var mOverlayContainer = object : AndroidView(context) {
+        override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+            super.onWindowFocusChanged(hasWindowFocus)
+            if (mPlatformEventRootActive) {
+                lynxContext.notifyInputRootStateChanged(
+                    sign, mPlatformEventRootActive, hasWindowFocus && mView.hasFocus()
+                )
+            }
+        }
         override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
             // layout overlay when dialog decor view onLayout
             this@LynxOverlayView.layout()
@@ -147,6 +156,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mGlobalLayoutListener : ViewTreeObserver.OnGlobalLayoutListener? = null
     private var mScrollChangedListener : ViewTreeObserver.OnScrollChangedListener? = null
     private var mDrawListener : ViewTreeObserver.OnDrawListener? = null
+    private var mRawInputFocusListener: ViewTreeObserver.OnGlobalFocusChangeListener? = null
 
     init {
         mOverlayContainer.addView(mView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -813,6 +823,12 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             return
         }
         mObserver = mOverlayContainer.viewTreeObserver
+        mRawInputFocusListener = ViewTreeObserver.OnGlobalFocusChangeListener { _, _ ->
+            lynxContext.notifyInputRootStateChanged(
+                sign, mPlatformEventRootActive, mView.hasWindowFocus() && mView.hasFocus()
+            )
+        }
+        mObserver?.addOnGlobalFocusChangeListener(mRawInputFocusListener)
         mGlobalLayoutListener =
             ViewTreeObserver.OnGlobalLayoutListener { lynxContext.exposure?.requestCheckUI() }
         mObserver?.addOnGlobalLayoutListener(mGlobalLayoutListener)
@@ -830,6 +846,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             mOverlayContainer.viewTreeObserver.takeIf { it.isAlive }
         }
         observer?.let {
+            mRawInputFocusListener?.let { listener -> it.removeOnGlobalFocusChangeListener(listener) }
             mGlobalLayoutListener?.let { listener ->
                 it.removeOnGlobalLayoutListener(listener)
             }
@@ -841,6 +858,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             }
         }
         mObserver = null
+        mRawInputFocusListener = null
         mGlobalLayoutListener = null
         mScrollChangedListener = null
         mDrawListener = null
@@ -1017,6 +1035,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
                     )
             }
             if ((mPlatformEventBehavior and
+                    IPaintingContext.EVENT_BEHAVIOR_RAW_INPUT_EXCLUSIVE) != 0) {
+                return true
+            }
+            if ((mPlatformEventBehavior and
                     IPaintingContext.EVENT_BEHAVIOR_EVENT_THROUGH) != 0) {
                 return false
             }
@@ -1043,6 +1065,61 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         }
 
         return false
+    }
+
+    internal fun isRawInputExclusiveForEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            mPlatformEventBehavior = IPaintingContext.EVENT_BEHAVIOR_NONE
+            if (mVisible && mPresentationState == PresentationState.PRESENTED) {
+                val local = rawInputEventInRoot(event)
+                if (local != null) {
+                    try {
+                        mPlatformEventBehavior = lynxContext.hitTestAndCachePlatformEventBehavior(
+                            sign, local.x, local.y
+                        )
+                    } finally {
+                        local.recycle()
+                    }
+                }
+            }
+        }
+        return (mPlatformEventBehavior and IPaintingContext.EVENT_BEHAVIOR_RAW_INPUT_EXCLUSIVE) != 0
+    }
+
+    // Dialog events bypass ViewGroup's native child-coordinate conversion.
+    // Apply native matrices only: this root's Canvas skew belongs to its children.
+    private fun rawInputEventInRoot(event: MotionEvent): MotionEvent? {
+        val decor = mDialog.window?.decorView ?: return null
+        val localToDecor = Matrix()
+        var current: View = mView
+        while (current !== decor) {
+            val parent = current.parent as? View ?: return null
+            val step = Matrix(current.matrix)
+            step.postTranslate(
+                (current.left - parent.scrollX).toFloat(),
+                (current.top - parent.scrollY).toFloat()
+            )
+            localToDecor.postConcat(step)
+            current = parent
+        }
+        val inverse = Matrix()
+        if (!localToDecor.invert(inverse)) return null
+        val values = FloatArray(9)
+        inverse.getValues(values)
+        if (values.any { it.isNaN() || it.isInfinite() }) return null
+        return MotionEvent.obtain(event).also { it.transform(inverse) }
+    }
+
+    internal fun dispatchRawInputTouchEvent(event: MotionEvent) {
+        val local = rawInputEventInRoot(event)
+        if (local == null) {
+            return
+        }
+        try {
+            getTouchEventDispatcher()?.onTouchEvent(local, this)
+        } finally {
+            local.recycle()
+        }
     }
 
 

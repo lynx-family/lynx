@@ -25,6 +25,8 @@ export class UIOwner {
   private avoidKeyboardListener?: (translateY: number, isKeyboardTransition: boolean) => void;
   lynxContext: LynxContext;
   private clients?: LynxViewClient[];
+  private rawInputEnabled: boolean = false;
+  private rawInputEnabledListener?: (enabled: boolean) => void;
 
   constructor(behaviors: BehaviorRegistryMap, uiContext: UIContext, lynxContext: LynxContext,
     perfCollector: PerformanceController) {
@@ -74,6 +76,20 @@ export class UIOwner {
 
   getId(): string {
     return this.id;
+  }
+
+  setRawInputEnabled(enabled: boolean): void {
+    this.rawInputEnabled = enabled;
+    this.rawInputEnabledListener?.(enabled);
+  }
+
+  isRawInputEnabled(): boolean {
+    return this.rawInputEnabled;
+  }
+
+  setRawInputEnabledListener(listener?: (enabled: boolean) => void): void {
+    this.rawInputEnabledListener = listener;
+    listener?.(this.rawInputEnabled);
   }
 
   getWindowScale(): number[] {
@@ -141,6 +157,7 @@ export class UIOwner {
 
   destroy() {
     this.setAvoidKeyboardListener(undefined);
+    this.setRawInputEnabledListener(undefined);
     this.native.destroy(this.id);
     if (this.fluencyTraceHelper) {
       this.fluencyTraceHelper.destroy();
@@ -181,5 +198,9 @@ export class UIOwner {
 
   public onEnterBackground(): void {
     this.native.onEnterBackground();
+  }
+
+  public onWindowFocusChanged(focused: boolean): void {
+    this.native.onWindowFocusChanged(focused);
   }
 }

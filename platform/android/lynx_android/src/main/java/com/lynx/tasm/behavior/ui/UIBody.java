@@ -14,6 +14,7 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -30,6 +31,7 @@ import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.LynxUIRenderer;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.render.ContainerRenderer;
@@ -453,6 +455,19 @@ public class UIBody extends UIGroup<UIBodyView> {
     private boolean mInterceptRequestLayout;
     private boolean mHasPendingRequestLayout;
     private LynxContext mLynxContext = null;
+    private final ViewTreeObserver.OnGlobalFocusChangeListener mRawInputFocusListener =
+        (previous, focusedView) -> {
+      boolean ownsFocus = false;
+      View current = focusedView;
+      while (current != null) {
+        if (current == this) {
+          ownsFocus = true;
+          break;
+        }
+        current = current.getParent() instanceof View ? (View) current.getParent() : null;
+      }
+      notifyInputRootStateChanged(isAttachedToWindow(), ownsFocus && hasWindowFocus());
+    };
 
     private WeakReference<ITimingCollector> mTimingCollector = new WeakReference<>(null);
 
@@ -508,6 +523,38 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     public UIBodyView(Context context, AttributeSet attrs) {
       super(context, attrs);
+    }
+
+    private void notifyInputRootStateChanged(boolean attached, boolean focused) {
+      if (mLynxContext == null || !mLynxContext.getEnableRawInput()) {
+        return;
+      }
+      LynxUIOwner owner = mLynxContext.getLynxUIOwner();
+      if (owner != null) {
+        mLynxContext.notifyInputRootStateChanged(owner.getRootSign(), attached, focused);
+      }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasWindowFocus) {
+      super.onWindowFocusChanged(hasWindowFocus);
+      notifyInputRootStateChanged(isAttachedToWindow(), hasWindowFocus && hasFocus());
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+      super.onAttachedToWindow();
+      getViewTreeObserver().addOnGlobalFocusChangeListener(mRawInputFocusListener);
+      notifyInputRootStateChanged(true, hasWindowFocus() && hasFocus());
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+      if (getViewTreeObserver().isAlive()) {
+        getViewTreeObserver().removeOnGlobalFocusChangeListener(mRawInputFocusListener);
+      }
+      notifyInputRootStateChanged(false, false);
+      super.onDetachedFromWindow();
     }
 
     public void cacheLayoutInfo(int width, int height) {
