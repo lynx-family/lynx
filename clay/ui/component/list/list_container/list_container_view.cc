@@ -264,11 +264,75 @@ void ListContainerView::UpdateContentOffsetForListContainer(
     float content_size, float target_content_offset_x,
     float target_content_offset_y) {
   lynx::base::AutoReset<bool> resetter(&should_block_did_scroll_, true);
+  // Three-offset model (see spec/list_scroll_offset_spec.md):
+  //   * scroll_offset_      - purely logical scroll position, always clamped.
+  //   * ClampedOverscrollOffset() - visible rubber-band displacement beyond an
+  //                                 edge, separate from the logical offset.
+  //   * paint offset        - scroll_offset_ + overscroll, composed at paint.
+  //
+  // The ListElement delta (target_content_offset_*) is relative to the logical
+  // offset *before* this resize. We compose the base offset explicitly instead
+  // of reading it back from the paint offset:
+  //
+  //   * content grows  -> the overscroll displacement that used to sit beyond
+  //     the old max range becomes valid scroll room, so fold it into the base
+  //     (before + overscroll). When not overscrolled this is just `before`.
+  //   * content shrinks or unchanged -> use the pre-resize logical offset only;
+  //     folding a clamp on top would double-count and leave a blank strip.
+  //
+  // Snapshot inputs *before* SetMaxContent(): it overwrites max_content_ and
+  // clears the overscroll state.
+  const bool is_vertical = CanScrollY();
+  const bool content_unchanged = content_size == max_content_;
+  const bool content_is_growing = content_size > max_content_;
+  const float logical_before =
+      is_vertical ? scroll_offset_.y() : scroll_offset_.x();
+  const float overscroll_before = is_vertical ? ClampedOverscrollOffset().y()
+                                              : ClampedOverscrollOffset().x();
+  const float target_delta =
+      is_vertical ? target_content_offset_y : target_content_offset_x;
+
   SetMaxContent(content_size);
-  if (CanScrollY()) {
-    OnScrollUpdate(scroll_offset_.y() + target_content_offset_y);
-  } else {
-    OnScrollUpdate(scroll_offset_.x() + target_content_offset_x);
+
+  if (content_unchanged && IsUnderOverscroll()) {
+    if (target_delta == 0.f) {
+      // DoScroll with a zero delta still copies the render offset into the
+      // logical offset. A redundant layout update must preserve the stretch.
+      return;
+    }
+    // An explicit anchor adjustment leaves the old edge. Its delta is relative
+    // to the logical position, so retire the old bounce before applying it.
+    Scrollable::StopAnimation();
+    ClearOverscrollState();
+    GetRenderScroll()->ScrollTo(scroll_offset_.x(), scroll_offset_.y());
+  }
+
+  // Growing consumes the pending overscroll displacement; shrinking/steady does
+  // not (avoids double clamp). OnScrollUpdate() -> DoScroll() clamps the result
+  // to the freshly-updated max range, so the base itself need not be clamped.
+  const float base_offset =
+      content_is_growing ? logical_before + overscroll_before : logical_before;
+  OnScrollUpdate(base_offset + target_delta);
+
+  if (content_is_growing && overscroll_before != 0.f && delegate_) {
+    const float max_offset = is_vertical ? GetRenderScroll()->MaxScrollHeight()
+                                         : GetRenderScroll()->MaxScrollWidth();
+    const float layout_offset =
+        std::clamp(logical_before + target_delta, 0.f, max_offset);
+    const float final_offset =
+        is_vertical ? scroll_offset_.y() : scroll_offset_.x();
+    if (final_offset != layout_offset) {
+      // The layout manager did not include the consumed stretch in its delta.
+      // Report only the final logical position so it fills newly exposed cells
+      // without requiring another gesture. Intermediate resize offsets remain
+      // blocked, and the resulting same-size layout cannot echo this
+      // correction.
+      delegate_->OnScrollByListContainer(scroll_offset_.x(), scroll_offset_.y(),
+                                         scroll_offset_.x(),
+                                         scroll_offset_.y());
+      UpdateStickyStarts(scroll_offset_.x(), scroll_offset_.y());
+      UpdateStickyEnds(scroll_offset_.x(), scroll_offset_.y());
+    }
   }
 }
 
