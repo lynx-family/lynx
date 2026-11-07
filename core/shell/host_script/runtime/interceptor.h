@@ -6,6 +6,7 @@
 #define CORE_SHELL_HOST_SCRIPT_RUNTIME_INTERCEPTOR_H_
 
 #include <cstdint>
+#include <functional>
 #include <initializer_list>
 #include <memory>
 #include <string>
@@ -27,14 +28,21 @@ enum class InterceptKind {
   kCount
 };
 
+// Decisions and callback completions stay on the owning thread.
+struct InterceptResult;
+using InterceptCompletion = std::function<void(InterceptResult)>;
 struct InterceptResult {
   // Only explicitly changed fields are returned. The caller commits them once.
   lepus::Value patch;
   lepus::Value mock;
   bool failed = false;
+  bool cancelled = false;
+  // Start waiting once the native callback registrations are ready.
+  std::function<void(InterceptCompletion)> pending;
 };
 
-// Optional synchronous, thread-affine extension. No JS engine dependency.
+// Optional thread-affine extension. Only callback delivery may be deferred.
+// No JS engine dependency.
 class LYNX_EXPORT Interceptor {
  public:
   using Domain = HostScriptDomain;

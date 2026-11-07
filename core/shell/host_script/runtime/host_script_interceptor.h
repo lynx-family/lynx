@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -73,6 +74,21 @@ class HostScriptInterceptor final
   static Napi::Value On(const Napi::CallbackInfo& info);
   static Napi::Value Dispose(const Napi::CallbackInfo& info);
   Napi::Value Add(const Napi::CallbackInfo& info);
+  struct Pending {
+    InterceptCompletion complete;
+    lepus::Value event;
+    uint64_t handler;
+    bool mock;
+  };
+  std::function<void(InterceptCompletion)> WaitForCallbacks(
+      Napi::Array promises, const lepus::Value& event, uint64_t handler,
+      bool mock);
+  void Complete(uint64_t id, Napi::Value value, bool failed,
+                bool cancelled = false);
+  void CancelPending(uint64_t handler = 0, const std::string& view = {});
+  static Napi::Value Settled(const Napi::CallbackInfo& info);
+  InterceptResult ReadReturned(Napi::Value returned, InterceptKind kind,
+                               const lepus::Value& event, uint64_t handler);
   Napi::Value ViewOf(const lepus::Value& event);
   void Remove(uint64_t id);
   Napi::Env env_;
@@ -84,6 +100,9 @@ class HostScriptInterceptor final
   bool active_ = true;
   bool dispatching_ = false;
   Napi::ObjectReference api_;
+  Napi::FunctionReference then_;
+  uint64_t next_pending_ = 1;
+  std::unordered_map<uint64_t, Pending> pending_;
   std::array<std::shared_ptr<Entry>, static_cast<size_t>(InterceptKind::kCount)>
       entries_{};
 };

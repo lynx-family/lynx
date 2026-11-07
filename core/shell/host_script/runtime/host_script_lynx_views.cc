@@ -129,6 +129,7 @@ void HostScriptLynxViews::Detach() {
   if (!alive_->exchange(false)) return;
   LynxViewRegistry::GetInstance().RemoveObserver(this);
   created_handler_ = nullptr;
+  destroyed_handler_ = nullptr;
   Napi::ContextScope context_scope(env_);
   views_.clear();
 }
@@ -164,6 +165,7 @@ void HostScriptLynxViews::HandleEvent(const LynxViewEvent& event) {
       Emit(event.view, event.name, event.code, event.message);
       break;
     case LynxViewEvent::Type::kDestroyed: {
+      if (destroyed_handler_) destroyed_handler_(event.view);
       if (!views_.count(event.view)) break;
       Emit(event.view, "destroyed", 0, {});
       // A listener may have detached this context.
