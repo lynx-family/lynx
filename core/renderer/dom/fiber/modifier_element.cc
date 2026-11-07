@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/include/flex_optional.h"
 #include "base/include/string/string_utils.h"
@@ -26,6 +27,7 @@
 #include "core/renderer/dom/fragment/view_fragment_behavior.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/events/events.h"
+#include "core/renderer/starlight/types/layout_constraints.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 
@@ -33,6 +35,9 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+
+using starlight::ComposeLayoutModifier;
+using starlight::ComposeLayoutModifiers;
 
 // Modifier IR operation codes shared with the JavaScript and native producers.
 constexpr int kModifierOpConcat = 1;
@@ -118,6 +123,9 @@ struct ModifierOperation {
 struct ModifierFramePlan {
   base::Vector<ModifierOperation> operations;
   base::Vector<int> frame_child_constrained_axes;
+  // Ordered size/fill/aspect-ratio modifiers per carrier; the last entry is
+  // the Content Element. CSS styles only approximate them for CSS parents.
+  std::vector<ComposeLayoutModifiers> layout_modifiers;
   size_t frame_count{0};
   bool owner_uses_layout_box{false};
   bool has_draw_callbacks{false};
@@ -479,8 +487,8 @@ const ModifierOperation* WrapStyleBeforeAlignment(
 }
 
 bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
-                            ModifierFramePlan* plan, std::string* error,
-                            size_t* error_position) {
+                            float layouts_unit_per_px, ModifierFramePlan* plan,
+                            std::string* error, size_t* error_position) {
   int remaining_visits = kMaxModifierNodeVisits;
   if (!FlattenModifierNode(modifier_tail, &plan->operations, remaining_visits,
                            error)) {
@@ -531,6 +539,7 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     }
   }
   plan->frame_child_constrained_axes.resize<true>(plan->frame_count);
+  plan->layout_modifiers.resize(plan->frame_count + 1);
 
   // Padding and drawing hooks introduce physical boundaries. Each hook belongs
   // to the following carrier (possibly the stable Content Element). This keeps
@@ -604,6 +613,16 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
               operation.applied_axes != 0) {
             plan->owner_uses_layout_box = true;
           }
+          if (operation.op == kModifierOpSize) {
+            plan->layout_modifiers[carrier_index].push_back(
+                {ComposeLayoutModifier::Type::kSize, operation.specified_axes,
+                 operation.layout_values[0] * layouts_unit_per_px,
+                 operation.layout_values[1] * layouts_unit_per_px});
+          } else {
+            plan->layout_modifiers[carrier_index].push_back(
+                {ComposeLayoutModifier::Type::kFill, operation.specified_axes,
+                 operation.layout_values[0]});
+          }
           break;
         case kModifierOpAspectRatio:
           if (constrained_axes == kLayoutModifierAxisWidth) {
@@ -611,6 +630,9 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
           } else if (constrained_axes == kLayoutModifierAxisHeight) {
             operation.applied_axes = kLayoutModifierAxisWidth;
           } else if (constrained_axes == kLayoutModifierAllAxes) {
+            plan->layout_modifiers[carrier_index].push_back(
+                {ComposeLayoutModifier::Type::kAspectRatio, 0,
+                 operation.layout_values[0]});
             break;
           } else {
             *error =
@@ -620,6 +642,9 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
             return false;
           }
           operation.apply_aspect_ratio = true;
+          plan->layout_modifiers[carrier_index].push_back(
+              {ComposeLayoutModifier::Type::kAspectRatio, 0,
+               operation.layout_values[0]});
           constrained_axes |= operation.applied_axes;
           if (target_frame_index == kNoModifierFrame) {
             plan->owner_uses_layout_box = true;
@@ -807,6 +832,17 @@ void ApplyLayoutOperations(
         }
       }
     }
+  }
+  // The styles above are what CSS parents see. Compose measurement resolves
+  // the ordered modifiers against the incoming range, including bounded space
+  // where a percentage has no definite base.
+  for (size_t index = 0; index < plan.layout_modifiers.size(); ++index) {
+    const auto& modifiers = plan.layout_modifiers[index];
+    LayoutCarrierAt(index, owner, frames)
+        ->SetLayoutModifiers(
+            modifiers.empty()
+                ? nullptr
+                : std::make_shared<const ComposeLayoutModifiers>(modifiers));
   }
 }
 
@@ -1197,7 +1233,9 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
 
   ModifierFramePlan plan;
   size_t error_position = 0;
-  if (!BuildModifierFramePlan(modifier_tail, &plan, &error, &error_position)) {
+  if (!BuildModifierFramePlan(modifier_tail,
+                              content_element->GetLayoutsUnitPerPx(), &plan,
+                              &error, &error_position)) {
     return {false, error_position, std::move(error)};
   }
   if (plan.weight_fill.has_value() &&
