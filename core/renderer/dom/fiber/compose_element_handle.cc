@@ -172,6 +172,17 @@ void ComposeElementHandle::ClearCustomLayout() {
   // Page teardown can precede the runtime's release of retained handles.
   if (!content_element_->will_destroy()) {
     content_element_->SetCustomLayoutFunctions({});
+    // The pending flush still owns layout invalidation, but another policy can
+    // measure this live node before that flush. Remove its raw adapter context
+    // before releasing the adapter, including during a reentrant callback.
+    if (auto* node = content_element_->slnode()) {
+      node->SetContext(nullptr);
+      node->SetSLMeasureFunc(nullptr);
+      node->SetSLComposeMeasureFunc(nullptr);
+      node->SetSLAlignmentFunc(nullptr);
+      node->SetCanReuseLayoutWithSameSizeAsGivenConstraintFunc(nullptr);
+      node->MarkDirty();
+    }
   }
   custom_layout_->Detach();
   custom_layout_.reset();
