@@ -166,6 +166,8 @@ enum class PlatformEventPropName : int32_t {
   kExposureUIMarginBottom = 24,
   kEnableExposureUIClip = 25,
   kEventThroughActiveRegions = 26,
+  kMinimumTouchTargetSize = 31,
+  kShareTouchTarget = 32,
 };
 
 inline PlatformEventPropName PlatformEventPropNameFromString(
@@ -247,6 +249,12 @@ inline PlatformEventPropName PlatformEventPropNameFromString(
   }
   if (name == "event-through-active-regions") {
     return PlatformEventPropName::kEventThroughActiveRegions;
+  }
+  if (name == "minimum-touch-target-size") {
+    return PlatformEventPropName::kMinimumTouchTargetSize;
+  }
+  if (name == "share-touch-target") {
+    return PlatformEventPropName::kShareTouchTarget;
   }
   return PlatformEventPropName::kUnknown;
 }

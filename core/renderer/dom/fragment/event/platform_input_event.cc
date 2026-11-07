@@ -5,7 +5,6 @@
 #include "core/renderer/dom/fragment/event/platform_input_event.h"
 
 #include <chrono>
-#include <utility>
 
 namespace lynx {
 namespace tasm {
@@ -16,7 +15,7 @@ PlatformInputEvent::PlatformInputEvent(int int_event_data[],
   action_type_ = int_event_data[1];
   event_source_ = int_event_data[2];
   time_stamp_ = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch())
+                    std::chrono::steady_clock::now().time_since_epoch())
                     .count();
 }
 

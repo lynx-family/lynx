@@ -48,6 +48,7 @@ enum PlatformEventBehavior : uint32_t {
   kEventBehaviorBlockNativeEvent = 1 << 2,
   kEventBehaviorEnableSimultaneousTouch = 1 << 3,
   kEventBehaviorHasConsumeSlideEvent = 1 << 4,
+  kEventBehaviorRawInputExclusive = 1 << 5,
 };
 
 enum class LynxPointerEventsValue {
@@ -75,6 +76,8 @@ class PlatformEventTarget
       base::InlineVector<fml::RefPtr<PlatformEventTarget>, 4>;
 
  public:
+  using HitTestTargets = base::InlineVector<int32_t, 1>;
+
   struct EventRegionSizeValue {
     // Layout coordinates match native pointer coordinates: physical pixels on
     // Android, points on iOS, and vp on Harmony. They are not always physical
@@ -199,8 +202,16 @@ class PlatformEventTarget
     children_->push_back(child);
     child->SetParentTarget(fml::RefPtr<PlatformEventTarget>(this));
   }
-
-  fml::RefPtr<PlatformEventTarget> HitTest(float point[2]);
+  enum class HitTestMode { kDefault, kRegisteredTargets };
+  // Optional leaf collection does not change selection. Registered targets
+  // opt into minimum target sizes and sibling sharing on the same traversal.
+  fml::RefPtr<PlatformEventTarget> HitTest(
+      float point[2], HitTestMode mode = HitTestMode::kDefault,
+      HitTestTargets* targets = nullptr);
+  void SetMinimumTouchTargetSize(float size_px) {
+    minimum_touch_target_px_ = size_px;
+  }
+  void SetShareTouchTarget(bool share) { share_touch_target_ = share; }
   bool ShouldHitTest() const;
   bool GetPointInTarget(float target_point[2],
                         fml::RefPtr<PlatformEventTarget> parent_target,
@@ -338,6 +349,16 @@ class PlatformEventTarget
   }
 
  private:
+  struct HitTestResult {
+    base::InlineVector<fml::RefPtr<PlatformEventTarget>, 1> targets;
+    float distance{0.f};
+    bool direct{false};
+    bool share{false};
+  };
+  HitTestResult HitTestInternal(float point[2], HitTestMode mode,
+                                bool visit_children);
+  float DistanceToTouchTarget(const float point[2]) const;
+
   template <typename T>
   static const T& GetOptionalValueOrDefault(
       const base::auto_create_optional<T>& value) {
@@ -413,6 +434,9 @@ class PlatformEventTarget
   base::auto_create_optional<std::string> exposure_id_;
   base::auto_create_optional<std::string> exposure_scene_;
   base::auto_create_optional<lepus::Value> dataset_;
+  // A negative size leaves this Element out of registered-target hit testing.
+  float minimum_touch_target_px_{-1.f};
+  bool share_touch_target_{false};
 
   // event/expose target tree
   fml::WeakPtr<PlatformEventTarget> parent_;
