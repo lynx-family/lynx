@@ -22,7 +22,7 @@ BoxData::BoxData(const BoxData& other)
     : width_(other.width_),
       height_(other.height_),
       min_width_(other.min_width_),
-      max_width_(other.max_height_),
+      max_width_(other.max_width_),
       min_height_(other.min_height_),
       max_height_(other.max_height_),
       aspect_ratio_(other.aspect_ratio_) {}
