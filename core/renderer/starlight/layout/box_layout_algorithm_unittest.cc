@@ -27,6 +27,24 @@ class BoxLayoutAlgorithmTest : public ::testing::Test {
     return nodes_.back().get();
   }
 
+  // Mirrors ModifierElement: a Compose carrier holds the ordered modifiers,
+  // and CSS parents see percentage/size styles as hints.
+  void SetModifiers(LayoutObject* node, ComposeLayoutModifiers modifiers) {
+    node->SetComposeLayout(true);
+    node->SetLayoutModifiers(
+        modifiers.empty() ? nullptr
+                          : std::make_shared<const ComposeLayoutModifiers>(
+                                std::move(modifiers)));
+  }
+
+  void SetFill(LayoutObject* node, int axes, float fraction) {
+    auto* style = node->GetCSSMutableStyle();
+    const auto hint = NLength::MakePercentageNLength(fraction * 100);
+    if (axes & ComposeLayoutModifier::kWidth) style->SetWidth(hint);
+    if (axes & ComposeLayoutModifier::kHeight) style->SetHeight(hint);
+    SetModifiers(node, {{ComposeLayoutModifier::Type::kFill, axes, fraction}});
+  }
+
   LayoutObject* CreateFixedChild() {
     auto* child = CreateNode();
     child->GetCSSMutableStyle()->SetWidth(NLength::MakeUnitNLength(71));
@@ -1128,6 +1146,288 @@ TEST_F(BoxLayoutAlgorithmTest, CacheStoresMeasurementAfterDescendantDirty) {
       EXPECT_FLOAT_EQ(15, box->GetBorderBoundHeight());
     }
   }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, FillThroughAutoAncestorPreservesPadding) {
+  auto* root = CreateNode(DisplayType::kFlex);
+  root->GetCSSMutableStyle()->SetWidth(NLength::MakeUnitNLength(400));
+  root->GetCSSMutableStyle()->SetHeight(NLength::MakeUnitNLength(800));
+  root->GetCSSMutableStyle()->SetFlexDirection(FlexDirectionType::kColumn);
+  root->GetCSSMutableStyle()->SetAlignItems(FlexAlignType::kFlexStart);
+  // A CSS ancestor with auto width has no percentage base for its children.
+  auto* ancestor = CreateNode();
+  auto* padding = CreateNode();
+  auto* content = CreateNode();
+  auto* viewport = CreateNode();
+  root->AppendChild(ancestor);
+  ancestor->AppendChild(padding);
+  padding->AppendChild(content);
+  content->AppendChild(viewport);
+  auto* style = padding->GetCSSMutableStyle();
+  style->SetPaddingLeft(NLength::MakeUnitNLength(16));
+  style->SetPaddingRight(NLength::MakeUnitNLength(16));
+  style->SetPaddingTop(NLength::MakeUnitNLength(6));
+  style->SetPaddingBottom(NLength::MakeUnitNLength(8));
+  content->GetCSSMutableStyle()->SetHeight(NLength::MakeUnitNLength(88));
+  SetFill(padding, ComposeLayoutModifier::kWidth, 1.f);
+  SetFill(content, ComposeLayoutModifier::kWidth, 1.f);
+  SetFill(viewport,
+          ComposeLayoutModifier::kWidth | ComposeLayoutModifier::kHeight, 1.f);
+  root->ReLayout();
+  EXPECT_FLOAT_EQ(400, ancestor->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(400, padding->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(368, content->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(368, viewport->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(102, padding->GetBorderBoundHeight());
+  EXPECT_FLOAT_EQ(88, viewport->GetBorderBoundHeight());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, FillAxesInBoxRowAndColumn) {
+  for (auto display : {DisplayType::kXBox, DisplayType::kFlex}) {
+    for (auto direction :
+         {FlexDirectionType::kRow, FlexDirectionType::kColumn}) {
+      for (int axes : {1, 2, 3}) {
+        SCOPED_TRACE(axes);
+        auto* root = CreateNode(display);
+        root->GetCSSMutableStyle()->SetFlexDirection(direction);
+        root->GetCSSMutableStyle()->SetAlignItems(FlexAlignType::kFlexStart);
+        auto* child = CreateNode();
+        // fill(.5).size(10, 20): the size only applies to axes without fill.
+        child->GetCSSMutableStyle()->SetWidth(NLength::MakeUnitNLength(10));
+        child->GetCSSMutableStyle()->SetHeight(NLength::MakeUnitNLength(20));
+        SetFill(child, axes, .5f);
+        SetModifiers(child, {{ComposeLayoutModifier::Type::kFill, axes, .5},
+                             {ComposeLayoutModifier::Type::kSize,
+                              ComposeLayoutModifier::kWidth |
+                                  ComposeLayoutModifier::kHeight,
+                              10, 20}});
+        // Exercise speculative and final layout of a non-leaf child.
+        child->AppendChild(CreateNode());
+        root->AppendChild(child);
+        for (auto mode : {SLMeasureModeAtMost, SLMeasureModeDefinite}) {
+          SCOPED_TRACE(static_cast<int>(mode));
+          Constraints constraints{OneSideConstraint(401, mode),
+                                  OneSideConstraint(801, mode)};
+          auto predicted = root->UpdateMeasureByPlatform(constraints, false);
+          auto measured = root->UpdateMeasureByPlatform(constraints, true);
+          EXPECT_FLOAT_EQ(predicted.width_, measured.width_);
+          EXPECT_FLOAT_EQ(predicted.height_, measured.height_);
+          EXPECT_FLOAT_EQ(axes & 1 ? 200.5 : 10, child->GetBorderBoundWidth());
+          EXPECT_FLOAT_EQ(axes & 2 ? 400.5 : 20, child->GetBorderBoundHeight());
+        }
+      }
+    }
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, FillTracksAvailableSizeAndConstraintMode) {
+  auto* root = CreateNode();
+  auto* ancestor = CreateNode();
+  auto* child = CreateNode();
+  root->AppendChild(ancestor);
+  ancestor->AppendChild(child);
+  child->AppendChild(CreateNode());
+  // fill(fraction).size(100): the size is the fallback in unbounded space.
+  const auto set_fill = [&](float fraction) {
+    ComposeLayoutModifiers modifiers;
+    if (fraction >= 0) {
+      modifiers.push_back({ComposeLayoutModifier::Type::kFill,
+                           ComposeLayoutModifier::kWidth, fraction});
+    }
+    modifiers.push_back({ComposeLayoutModifier::Type::kSize,
+                         ComposeLayoutModifier::kWidth, 100});
+    child->GetCSSMutableStyle()->SetWidth(
+        fraction >= 0 ? NLength::MakePercentageNLength(fraction * 100)
+                      : NLength::MakeUnitNLength(100));
+    SetModifiers(child, std::move(modifiers));
+  };
+  set_fill(.5f);
+  // Shrinking the at-most constraint would otherwise reuse the cached size.
+  for (float available : {400.f, 500.f, 400.f, -1.f, 400.f, 0.f, 500.f}) {
+    SCOPED_TRACE(available);
+    Constraints constraints;
+    if (available >= 0) {
+      constraints[kHorizontal] = OneSideConstraint::AtMost(available);
+    }
+    root->UpdateMeasureByPlatform(constraints, true);
+    EXPECT_FLOAT_EQ(available < 0 ? 100 : available * .5f,
+                    child->GetBorderBoundWidth());
+  }
+  Constraints constraints{OneSideConstraint::AtMost(400),
+                          OneSideConstraint::AtMost(800)};
+  for (float fraction : {0.f, .5f, 1.f, -1.f}) {
+    SCOPED_TRACE(fraction);
+    // The platform acknowledges layout updates between style mutations.
+    root->MarkUpdated();
+    ancestor->MarkUpdated();
+    child->MarkUpdated();
+    set_fill(fraction);
+    root->UpdateMeasureByPlatform(constraints, true);
+    EXPECT_FLOAT_EQ(fraction < 0 ? 100 : 400 * fraction,
+                    child->GetBorderBoundWidth());
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, FillKeepsFractionalAvailableSize) {
+  auto* root = CreateNode();
+  auto* child = CreateNode();
+  root->AppendChild(child);
+  Constraints constraints{OneSideConstraint::AtMost(359.4f),
+                          OneSideConstraint::AtMost(800)};
+  for (float fraction : {1.f, .5f}) {
+    SCOPED_TRACE(fraction);
+    root->MarkUpdated();
+    child->MarkUpdated();
+    SetFill(child, ComposeLayoutModifier::kWidth, fraction);
+    root->UpdateMeasureByPlatform(constraints, true);
+    // Pixel snapping happens after layout, so fill keeps layout units exact.
+    EXPECT_FLOAT_EQ(359.4f * fraction, child->GetBorderBoundWidth());
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, FillHeightSubtractsPaddingAndBorderOnce) {
+  auto* root = CreateNode();
+  auto* padding = CreateNode();
+  auto* child = CreateNode();
+  root->AppendChild(padding);
+  padding->AppendChild(child);
+  auto* style = padding->GetCSSMutableStyle();
+  SetFill(padding, ComposeLayoutModifier::kHeight, 1.f);
+  style->SetPaddingTop(NLength::MakeUnitNLength(6));
+  style->SetPaddingBottom(NLength::MakeUnitNLength(8));
+  SetFill(child, ComposeLayoutModifier::kHeight, 1.f);
+  Constraints constraints{OneSideConstraint::AtMost(400),
+                          OneSideConstraint::AtMost(800)};
+  root->UpdateMeasureByPlatform(constraints, true);
+  EXPECT_FLOAT_EQ(800, padding->GetBorderBoundHeight());
+  EXPECT_FLOAT_EQ(786, child->GetBorderBoundHeight());
+  style->SetBorderTopWidth(2);
+  style->surround_data_.border_data_->style_top = BorderStyleType::kSolid;
+  style->SetBorderBottomWidth(4);
+  style->surround_data_.border_data_->style_bottom = BorderStyleType::kSolid;
+  root->ClearCache();
+  padding->ClearCache();
+  root->UpdateMeasureByPlatform(constraints, true);
+  EXPECT_FLOAT_EQ(800, padding->GetBorderBoundHeight());
+  EXPECT_FLOAT_EQ(780, child->GetBorderBoundHeight());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, FixedFlexChildKeepsDescendantFillDependency) {
+  auto* root = CreateNode(DisplayType::kFlex);
+  root->GetCSSMutableStyle()->SetFlexDirection(FlexDirectionType::kRow);
+  auto* fixed = CreateNode();
+  auto* fill = CreateNode();
+  root->AppendChild(fixed);
+  fixed->AppendChild(fill);
+  auto* style = fixed->GetCSSMutableStyle();
+  style->SetWidth(NLength::MakeUnitNLength(200));
+  style->SetFlexBasis(NLength::MakePercentageNLength(50));
+  style->SetFlexGrow(0);
+  style->SetFlexShrink(0);
+  SetFill(fill, ComposeLayoutModifier::kWidth, .5f);
+
+  Constraints constraints{OneSideConstraint::AtMost(400),
+                          OneSideConstraint::Definite(60)};
+  root->ReLayoutWithConstraints(constraints);
+  EXPECT_FLOAT_EQ(200, root->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(100, fill->GetBorderBoundWidth());
+
+  // The root still measures 200px, but the now-resolvable flex basis changes
+  // the constraint seen by the fill descendant.
+  constraints[kHorizontal] = OneSideConstraint::Definite(200);
+  root->ReLayoutWithConstraints(constraints);
+  EXPECT_FLOAT_EQ(200, root->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(100, fixed->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(50, fill->GetBorderBoundWidth());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, FillHonorsPropagatedMinimum) {
+  auto* root = CreateNode();
+  auto* child = CreateNode();
+  root->AppendChild(child);
+  root->GetCSSMutableStyle()->SetMinWidth(NLength::MakeUnitNLength(80));
+  root->GetCSSMutableStyle()->SetXBoxPropagateMinConstraints(true);
+  // fill(0).aspectRatio(2), with the styles ModifierElement emits.
+  child->GetCSSMutableStyle()->SetWidth(NLength::MakePercentageNLength(0));
+  child->GetCSSMutableStyle()->SetAspectRatio(2.f);
+  SetModifiers(child, {{ComposeLayoutModifier::Type::kFill,
+                        ComposeLayoutModifier::kWidth, 0},
+                       {ComposeLayoutModifier::Type::kAspectRatio, 0, 2}});
+  Constraints constraints{OneSideConstraint::AtMost(400),
+                          OneSideConstraint::Indefinite()};
+  root->UpdateMeasureByPlatform(constraints, true);
+  EXPECT_FLOAT_EQ(80, child->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(40, child->GetBorderBoundHeight());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeFillClampsBeforeAspectRatio) {
+  auto* node = CreateNode();
+  SetModifiers(node, {{ComposeLayoutModifier::Type::kFill,
+                       ComposeLayoutModifier::kWidth, .5},
+                      {ComposeLayoutModifier::Type::kAspectRatio, 0, 2}});
+  const auto size =
+      node->UpdateMeasureWithComposeConstraints({300, 400, 0, 800}, true);
+  EXPECT_FLOAT_EQ(300, size.width_);
+  EXPECT_FLOAT_EQ(150, size.height_);
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ModifierAspectRatioUsesAllocatedMainAxis) {
+  for (const auto display : {DisplayType::kFlex, DisplayType::kLinear}) {
+    SCOPED_TRACE(static_cast<int>(display));
+    auto* root = CreateNode(display);
+    auto* child = CreateNode();
+    auto* sibling = CreateNode();
+    root->AppendChild(child);
+    root->AppendChild(sibling);
+    root->GetCSSMutableStyle()->SetWidth(NLength::MakeUnitNLength(200));
+    root->GetCSSMutableStyle()->SetFlexDirection(FlexDirectionType::kRow);
+    root->GetCSSMutableStyle()->SetLinearOrientation(
+        LinearOrientationType::kHorizontal);
+    sibling->GetCSSMutableStyle()->SetWidth(NLength::MakeUnitNLength(100));
+    sibling->GetCSSMutableStyle()->SetFlexShrink(0);
+    auto* style = child->GetCSSMutableStyle();
+    style->SetFlexShrink(1);
+    style->linear_data_.Access()->linear_weight_ = 1;
+    // size(width = 200).aspectRatio(2), with the styles ModifierElement emits.
+    style->SetWidth(NLength::MakeUnitNLength(200));
+    style->SetAspectRatio(2.f);
+    SetModifiers(child, {{ComposeLayoutModifier::Type::kSize,
+                          ComposeLayoutModifier::kWidth, 200},
+                         {ComposeLayoutModifier::Type::kAspectRatio, 0, 2}});
+
+    root->ReLayout();
+    EXPECT_FLOAT_EQ(100, child->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(50, child->GetBorderBoundHeight());
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest, PlatformFillUsesCurrentMarginsOnFirstMeasure) {
+  auto* node = CreateNode();
+  auto* style = node->GetCSSMutableStyle();
+  style->SetMarginLeft(NLength::MakeUnitNLength(10));
+  style->SetMarginRight(NLength::MakeUnitNLength(10));
+  SetFill(node, ComposeLayoutModifier::kWidth, 1.f);
+  const Constraints constraints{OneSideConstraint::AtMost(400),
+                                OneSideConstraint::Definite(60)};
+  const auto first = node->UpdateMeasureByPlatform(constraints, true);
+  const auto second = node->UpdateMeasureByPlatform(constraints, true);
+  EXPECT_FLOAT_EQ(400, first.width_);
+  EXPECT_FLOAT_EQ(first.width_, second.width_);
+}
+
+TEST_F(BoxLayoutAlgorithmTest, LayoutStyleCopiesPreserveMaxDimensions) {
+  LayoutComputedStyle original(1.f);
+  original.SetMaxWidth(NLength::MakeUnitNLength(300));
+  original.SetMaxHeight(NLength::MakeUnitNLength(600));
+  LayoutComputedStyle shared(original);
+  LayoutComputedStyle copied(1.f);
+  copied.CopyFrom(original);
+  original.SetMaxWidth(NLength::MakeUnitNLength(100));
+  for (auto* style : {&shared, &copied}) {
+    EXPECT_EQ(NLength::MakeUnitNLength(300), style->GetMaxWidth());
+    EXPECT_EQ(NLength::MakeUnitNLength(600), style->GetMaxHeight());
+  }
+  EXPECT_EQ(NLength::MakeUnitNLength(100), original.GetMaxWidth());
 }
 
 }  // namespace

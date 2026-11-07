@@ -125,13 +125,17 @@ FindCacheResult CacheManager::FindAvailableCacheEntry(
   FindCacheResult result;
   const auto CheckCacheHit = [&constraints,
                               &target](const CacheEntry& entry) -> bool {
-    return (entry.is_valid_ &&
-            CheckCache(constraints[kHorizontal],
-                       entry.resolved_constraints_[kHorizontal],
-                       entry.border_bound_width_, true, &target) &&
-            CheckCache(constraints[kVertical],
-                       entry.resolved_constraints_[kVertical],
-                       entry.border_bound_height_, false, &target));
+    if (!entry.is_valid_) return false;
+    if (entry.resolved_constraints_ == constraints) return true;
+    // A fill modifier can change the layout of a descendant even when the old
+    // measured size would still fit the new constraints.
+    return CheckCache(constraints[kHorizontal],
+                      entry.resolved_constraints_[kHorizontal],
+                      entry.border_bound_width_, true, &target) &&
+           CheckCache(constraints[kVertical],
+                      entry.resolved_constraints_[kVertical],
+                      entry.border_bound_height_, false, &target) &&
+           !target.HasFillModifierInSubtree();
   };
   if (current_cache_index_ < cache_data_.size() &&
       CheckCacheHit(cache_data_[current_cache_index_])) {

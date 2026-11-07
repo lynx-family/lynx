@@ -110,6 +110,12 @@ class LayoutObject : public ContainerNode {
   void SetComposeLayout(bool value) { compose_layout_ = value; }
   bool IsComposeLayout() const { return compose_layout_; }
 
+  bool SetLayoutModifiers(
+      std::shared_ptr<const ComposeLayoutModifiers> modifiers);
+  const ComposeLayoutModifiers* GetLayoutModifiers() const {
+    return layout_modifiers_.get();
+  }
+
   SLAlignmentFunc GetSLAlignmentFunc() const;
 
   FloatSize UpdateMeasureByPlatform(const Constraints& constraints,
@@ -150,6 +156,8 @@ class LayoutObject : public ContainerNode {
   // result size, but the previous layout constraint is not the same as the
   // current constraint.
   bool CanReuseLayoutWithSameSizeAsGivenConstraint(bool is_horizontal) const;
+  // Fill depends on the available maximum, not only on the measured size.
+  bool HasFillModifierInSubtree() const;
 
   const LayoutResultForRendering& GetLayoutResult() const {
     return layout_result_;
@@ -365,6 +373,7 @@ class LayoutObject : public ContainerNode {
 
   SLMeasureFunc measure_func_ = nullptr;
   SLComposeMeasureFunc compose_measure_func_ = nullptr;
+  std::shared_ptr<const ComposeLayoutModifiers> layout_modifiers_;
   bool compose_layout_ = false;
   SLRequestLayoutFunc request_layout_func_ = nullptr;
   SLAlignmentFunc alignment_func_ = nullptr;
@@ -380,6 +389,7 @@ class LayoutObject : public ContainerNode {
   BoxInfo box_info_;
   base::Position measured_position_;
   mutable DimensionValue<std::optional<bool>> cached_can_reuse_layout_result_;
+  mutable std::optional<bool> cached_has_fill_modifier_;
   LayoutResultForRendering layout_result_;
 
   AttributesMap attr_map_;
