@@ -100,6 +100,13 @@ class UIExposure : public UIObserverCallback,
   int time_interval_for_exposure_check_{50};
   long long last_lynxview_check_time_{0};
   int time_interval_for_lynxview_check_{50};
+  // Full exposure re-check cadence. Outer (host-side) scrolling does not
+  // reach Lynx-internal layout/scroll observers, and the root proxy's
+  // NODE_EVENT_ON_VISIBLE_AREA_CHANGE is not reliably delivered for
+  // ContentSlot-hosted trees, so periodically re-evaluate exposure even
+  // when no Lynx-internal change is detected.
+  int time_interval_for_full_check_{250};
+  long long last_full_check_time_{0};
   float old_lynx_origin_rect_[4] = {0};
   float old_window_scale_[2] = {1.f, 1.f};
   bool exposure_check_flag_{false};
