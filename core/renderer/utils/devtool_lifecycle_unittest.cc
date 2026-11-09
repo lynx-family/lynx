@@ -4,6 +4,8 @@
 
 #include "core/renderer/utils/devtool_lifecycle.h"
 
+#include "base/include/notification_center.h"
+#include "base/trace/native/trace_defines.h"
 #include "core/renderer/utils/devtool_state.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -137,6 +139,33 @@ TEST_F(DevToolLifecycleTest, SyncStateFromPlatform) {
 
   lifecycle.SyncStateFromPlatform(DevToolState::UNAVAILABLE);
   EXPECT_EQ(GetState(lifecycle), DevToolState::UNAVAILABLE);
+}
+
+TEST_F(DevToolLifecycleTest, PlatformConnectNotifiesOncePerTransition) {
+  auto& lifecycle = DevToolLifecycle::GetInstance();
+  int notifications = 0;
+  base::NotificationCallback observer(LYNX_ON_DEVTOOL_CONNECTED_NOTIFICATION,
+                                      [&](const std::string&, intptr_t) {
+                                        // Reading the state in a callback must
+                                        // not hold the lifecycle mutex.
+                                        EXPECT_EQ(GetState(lifecycle),
+                                                  DevToolState::CONNECTED);
+                                        ++notifications;
+                                      });
+
+  lifecycle.SyncStateFromPlatform(DevToolState::INITIALIZED);
+  EXPECT_EQ(notifications, 0);
+  lifecycle.SyncStateFromPlatform(DevToolState::CONNECTED);
+  EXPECT_EQ(notifications, 1);
+  lifecycle.SyncStateFromPlatform(DevToolState::CONNECTED);
+  lifecycle.OnConnected();
+  EXPECT_EQ(notifications, 1);
+  lifecycle.SyncStateFromPlatform(DevToolState::INITIALIZED);
+  EXPECT_EQ(notifications, 1);
+  lifecycle.SyncStateFromPlatform(DevToolState::CONNECTED);
+  EXPECT_EQ(notifications, 2);
+  lifecycle.SyncStateFromPlatform(DevToolState::UNAVAILABLE);
+  EXPECT_EQ(notifications, 2);
 }
 
 class MockDelegate : public DevToolLifecycle::Delegate {
