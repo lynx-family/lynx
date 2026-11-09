@@ -312,6 +312,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong view_id,
   auto* runtime_wrapper =
       reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid*>(
           runtime_wrapper_ptr);
+  const auto vsync_source = ui_delegate->GetVSyncMonitorPlatformImpl();
   // TODO(chenyouhui): Create LazyBundleLoader in LynxShellBuilder
   auto loader = std::make_shared<lynx::tasm::LazyBundleLoader>(
       std::make_shared<lynx::shell::LynxResourceLoaderAndroid>(
@@ -365,6 +366,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong view_id,
                   : ui_delegate->CreatePaintingContext())
           .SetLynxEnvConfig(lynx_env_config)
           .SetEnableElementManagerVsyncMonitor(true)
+          .SetVSyncMonitorPlatformImpl(vsync_source)
           .SetEnableLayoutOnly(enable_layout_only)
           .SetEnableNativeList(ui_delegate->EnableNativeList())
           .SetWhiteBoard(white_board)
@@ -515,7 +517,8 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
   };
   shell->InitRuntime(group_id, loader, native_module_manager,
                      std::move(on_runtime_actor_created), std::move(paths),
-                     runtime_flag, source_url, nullptr,
+                     runtime_flag, source_url,
+                     shell->GetVSyncMonitorPlatformImpl(),
                      std::move(monitoring_group_label));
 }
 

@@ -16,7 +16,7 @@
 
 #include "base/include/fml/time/time_point.h"
 #include "clay/common/task_runners.h"
-#include "clay/common/vsync_callback.h"
+#include "clay/common/vsync/vsync_callback.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/shell/common/variable_refresh_rate_reporter.h"
 namespace clay {

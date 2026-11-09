@@ -207,7 +207,7 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
     std::shared_ptr<clay::ServiceManager> service_manager,
     const std::shared_ptr<ResourceCacheLimitCalculator>&
         resource_cache_limit_calculator,
-    const TaskRunners& task_runners, const Settings& settings,
+    const TaskRunners& task_runners, Settings settings,
     const Shell::CreateCallback<PlatformView>& on_create_platform_view,
     const Shell::CreateCallbackFnPtr<Rasterizer>& on_create_rasterizer,
     const Shell::EngineCreateCallback& on_create_engine, bool is_gpu_disabled) {
@@ -215,6 +215,9 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
     FML_LOG(ERROR) << "Task runners to run the shell were invalid.";
     return nullptr;
   }
+  // Consume the callback before keeping long-lived settings copies.
+  auto initial_custom_vsync_request =
+      std::exchange(settings.custom_vsync_request, {});
   auto shell = std::unique_ptr<Shell>(new Shell(service_manager, task_runners,
                                                 resource_cache_limit_calculator,
                                                 settings, is_gpu_disabled));
@@ -281,8 +284,9 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
   fml::TaskRunner::RunNowOrPostTask(
       task_runners.GetRasterTaskRunner(),
       [service_manager, on_create_rasterizer, render_settings, unref_queue,
+       initial_custom_vsync_request = std::move(initial_custom_vsync_request),
        page_id = static_cast<uint32_t>(
-           shell->GetEngine()->GetPageView()->PageUniqueId())]() {
+           shell->GetEngine()->GetPageView()->PageUniqueId())]() mutable {
         TRACE_EVENT("clay", "ShellSetupGPUSubsystem");
         std::unique_ptr<Rasterizer> rasterizer(
             on_create_rasterizer(service_manager));
@@ -293,8 +297,11 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
         rasterizer->set_unref_queue(unref_queue);
         rasterizer->SetRenderSettings(render_settings);
         service_manager->Attach<clay::Owner::kRaster>(
-            clay::RasterServiceContext{.rasterizer = rasterizer.release(),
-                                       .page_unique_id = page_id});
+            clay::RasterServiceContext{
+                .rasterizer = rasterizer.release(),
+                .page_unique_id = page_id,
+                .initial_custom_vsync_request =
+                    std::move(initial_custom_vsync_request)});
       });
 
   fml::TaskRunner::RunNowOrPostTask(
@@ -517,7 +524,8 @@ std::unique_ptr<Shell> Shell::Spawn(
     std::shared_ptr<clay::ServiceManager> service_manager,
     const std::string& initial_route,
     const CreateCallback<PlatformView>& on_create_platform_view,
-    const CreateCallbackFnPtr<Rasterizer>& on_create_rasterizer) const {
+    const CreateCallbackFnPtr<Rasterizer>& on_create_rasterizer,
+    VsyncRequestCallback custom_vsync_request) const {
   FML_DCHECK(task_runners_.IsValid());
   // It's safe to store this value since it is set on the platform thread.
   bool is_gpu_disabled = false;
@@ -526,9 +534,11 @@ std::unique_ptr<Shell> Shell::Spawn(
           .SetIfFalse([&is_gpu_disabled] { is_gpu_disabled = false; })
           .SetIfTrue([&is_gpu_disabled] { is_gpu_disabled = true; }));
 
+  auto settings = GetSettings();
+  settings.custom_vsync_request = std::move(custom_vsync_request);
   std::unique_ptr<Shell> result = CreateWithSnapshot(
       service_manager, task_runners_, resource_cache_limit_calculator_,
-      GetSettings(), on_create_platform_view, on_create_rasterizer,
+      std::move(settings), on_create_platform_view, on_create_rasterizer,
       [engine = this->engine_.get()](
           std::shared_ptr<clay::ServiceManager> service_manager,
           TaskRunners task_runners, Settings settings,
@@ -1545,7 +1555,9 @@ void Shell::CleanForRecycle() {
   devtool_instrumentation_.reset();
 }
 
-void Shell::PrepareForRecycle() {
+void Shell::PrepareForRecycle() { PrepareForRecycle({}); }
+
+void Shell::PrepareForRecycle(VsyncRequestCallback custom_vsync_request) {
   if (engine_) {
     engine_->PrepareForRecycle();
   }
@@ -1563,7 +1575,10 @@ void Shell::PrepareForRecycle() {
   clay::Puppet<clay::Owner::kPlatform, RasterFrameService>
       raster_frame_service =
           GetServiceManager()->GetService<RasterFrameService>();
-  raster_frame_service.Act([](auto& impl) { impl.PrepareForRecycle(); });
+  raster_frame_service.Act(
+      [request = std::move(custom_vsync_request)](auto& impl) mutable {
+        impl.PrepareForRecycle(std::move(request));
+      });
 }
 
 }  // namespace clay

@@ -168,7 +168,8 @@ class Shell final : public PlatformView::Delegate,
       std::shared_ptr<clay::ServiceManager> service_manager,
       const std::string& initial_route,
       const CreateCallback<PlatformView>& on_create_platform_view,
-      const CreateCallbackFnPtr<Rasterizer>& on_create_rasterizer) const;
+      const CreateCallbackFnPtr<Rasterizer>& on_create_rasterizer,
+      VsyncRequestCallback custom_vsync_request = {}) const;
 
   std::shared_ptr<clay::ServiceManager> SpawnServiceManager() const;
 
@@ -425,6 +426,7 @@ class Shell final : public PlatformView::Delegate,
 
   void CleanForRecycle() override;
   void PrepareForRecycle() override;
+  void PrepareForRecycle(VsyncRequestCallback custom_vsync_request);
 
   void RegisterDrawableImage(
       std::shared_ptr<DrawableImage> drawable_image) override;
@@ -529,7 +531,7 @@ class Shell final : public PlatformView::Delegate,
       std::shared_ptr<clay::ServiceManager> service_manager,
       const std::shared_ptr<ResourceCacheLimitCalculator>&
           resource_cache_limit_calculator,
-      const TaskRunners& task_runners, const Settings& settings,
+      const TaskRunners& task_runners, Settings settings,
       const Shell::CreateCallback<PlatformView>& on_create_platform_view,
       const Shell::CreateCallbackFnPtr<Rasterizer>& on_create_rasterizer,
       const EngineCreateCallback& on_create_engine, bool is_gpu_disabled);
