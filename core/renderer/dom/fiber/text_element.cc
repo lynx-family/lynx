@@ -4,7 +4,9 @@
 
 #include "core/renderer/dom/fiber/text_element.h"
 
+#include <cmath>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -164,6 +166,94 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
     }
     return true;
   }
+
+  const bool is_line_height_alignment =
+      key.IsEqual("compose-line-height-alignment");
+  const bool is_line_height_trim = key.IsEqual("compose-line-height-trim");
+  const bool is_line_height_mode = key.IsEqual("compose-line-height-mode");
+  if (is_line_height_alignment || is_line_height_trim || is_line_height_mode) {
+    std::optional<float> top_ratio;
+    std::optional<uint32_t> trim;
+    std::optional<uint32_t> mode;
+    if (!is_reset) {
+      if (is_line_height_alignment) {
+        if (value.IsNumber()) {
+          const double number = value.Number();
+          if (std::isfinite(number) && number >= 0 && number <= 1) {
+            top_ratio = static_cast<float>(number);
+          }
+        } else if (value.IsString()) {
+          const auto& alignment = value.StdString();
+          if (alignment == "top") {
+            top_ratio = 0;
+          } else if (alignment == "center") {
+            top_ratio = 0.5f;
+          } else if (alignment == "bottom") {
+            top_ratio = 1;
+          } else if (alignment == "proportional") {
+            top_ratio = -1;
+          }
+        }
+        if (!top_ratio) {
+          return false;
+        }
+      } else {
+        if (!value.IsString()) {
+          return false;
+        }
+        const auto& string_value = value.StdString();
+        if (is_line_height_trim) {
+          if (string_value == "none") {
+            trim = kLineHeightTrimNone;
+          } else if (string_value == "first-line-top") {
+            trim = kLineHeightTrimFirstLineTop;
+          } else if (string_value == "last-line-bottom") {
+            trim = kLineHeightTrimLastLineBottom;
+          } else if (string_value == "both") {
+            trim = kLineHeightTrimBoth;
+          } else {
+            return false;
+          }
+        } else if (string_value == "fixed") {
+          mode = static_cast<uint32_t>(LineHeightMode::kFixed);
+        } else if (string_value == "minimum") {
+          mode = static_cast<uint32_t>(LineHeightMode::kMinimum);
+        } else {
+          return false;
+        }
+      }
+    }
+    auto update_property = [&](auto property, auto new_value) {
+      if (is_reset) {
+        if (!text_props_ || !((*text_props_).*property)) {
+          return false;
+        }
+        ((*text_props_).*property).reset();
+      } else {
+        if (text_props_ && ((*text_props_).*property) == new_value) {
+          return false;
+        }
+        EnsureTextProps();
+        ((*text_props_).*property) = std::move(new_value);
+      }
+      return true;
+    };
+    const bool changed =
+        is_line_height_alignment
+            ? update_property(&TextProps::line_height_top_ratio, top_ratio)
+        : is_line_height_trim
+            ? update_property(&TextProps::line_height_trim, trim)
+            : update_property(&TextProps::line_height_mode, mode);
+    if (!changed) {
+      return false;
+    }
+    if (!preparing_detached_measurement_) {
+      MarkLayoutDirty();
+      element_container_->InvalidateForRedraw();
+    }
+    return true;
+  }
+
   if (is_reset) {
     Element::ResetAttribute(key);
     return true;
