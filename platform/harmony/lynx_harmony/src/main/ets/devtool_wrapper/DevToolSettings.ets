@@ -3,6 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 import lynx from 'liblynx.so';
+import { LLog } from '../base/LLog';
+
+const TAG = 'DevToolSettings';
 
 export class DevToolSettings {
   public static readonly SP_KEY_ENABLE_DEVTOOL: string = 'enable_devtool';
@@ -19,6 +22,17 @@ export class DevToolSettings {
   public static readonly SP_KEY_ENABLE_PERF_MONITOR_DEBUG: string = 'enable_perf_monitor_debug';
   public static readonly SP_KEY_ENABLE_IGNORE_ERROR_CSS: string = 'error_code_css';
 
+  // CDP domain keys use the format "enable_cdp_domain_{domain_name}".
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_CSS: string = 'enable_cdp_domain_css';
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_DEBUGGER: string = 'enable_cdp_domain_debugger';
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_DOM: string = 'enable_cdp_domain_dom';
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_OVERLAY: string = 'enable_cdp_domain_overlay';
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_PAGE: string = 'enable_cdp_domain_page';
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME: string = 'enable_cdp_domain_runtime';
+
+  private static readonly SP_KEY_ACTIVATED_CDP_DOMAINS: string = 'activated_cdp_domains';
+  private static readonly CDP_DOMAIN_KEY_PREFIX: string = 'enable_cdp_domain_';
+
   private static highlightTouchEnabled: boolean = false;
   private static previewScreenshotEnabled: boolean = true;
   private static perfMonitorDebugEnabled: boolean = true;
@@ -34,6 +48,7 @@ export class DevToolSettings {
       DevToolSettings.SP_KEY_ENABLE_DOM_TREE, DevToolSettings.isDOMTreeEnabled());
     DevToolSettings.syncToNative(
       DevToolSettings.SP_KEY_ENABLE_QUICKJS_CACHE, DevToolSettings.isQuickjsCacheEnabled());
+    DevToolSettings.syncEnabledCDPDomainsToNative(DevToolSettings.getEnabledCDPDomains());
   }
 
   /**
@@ -208,6 +223,81 @@ export class DevToolSettings {
 
   public static setCSSErrorIgnored(ignored: boolean): void {
     DevToolSettings.setPersistedBoolean(DevToolSettings.SP_KEY_ENABLE_IGNORE_ERROR_CSS, ignored);
+  }
+
+  /**
+   * Persistence: true
+   * Sync to native: true
+   * Default: empty set
+   */
+  public static getEnabledCDPDomains(): Set<string> {
+    const raw = lynx.DevToolSettingsHarmony.getPersistedString(DevToolSettings.SP_KEY_ACTIVATED_CDP_DOMAINS, '');
+    if (raw.length === 0) {
+      return new Set<string>();
+    }
+    try {
+      return new Set<string>(JSON.parse(raw) as string[]);
+    } catch (e) {
+      LLog.e(TAG, `Failed to parse enabled CDP domains: ${raw}`);
+      return new Set<string>();
+    }
+  }
+
+  /**
+   * Replaces the enabled CDP domain set. Duplicate entries are ignored. If any
+   * key is invalid, the whole update is rejected.
+   */
+  public static setEnabledCDPDomains(domains: Set<string> | string[]): void {
+    // Take a stable snapshot before validation, persistence, and native sync.
+    const domainSnapshot: string[] = Array.from(domains);
+    for (const key of domainSnapshot) {
+      if (!DevToolSettings.verifyCDPDomainKey(key)) {
+        return;
+      }
+    }
+    DevToolSettings.persistAndSyncEnabledCDPDomains(new Set<string>(domainSnapshot));
+  }
+
+  public static isCDPDomainEnabled(key: string): boolean {
+    if (!DevToolSettings.verifyCDPDomainKey(key)) {
+      return false;
+    }
+    return DevToolSettings.getEnabledCDPDomains().has(key);
+  }
+
+  public static setCDPDomainEnabled(key: string, enabled: boolean): void {
+    if (!DevToolSettings.verifyCDPDomainKey(key)) {
+      return;
+    }
+    const enabledDomains = DevToolSettings.getEnabledCDPDomains();
+    if (enabledDomains.has(key) === enabled) {
+      return;
+    }
+    if (enabled) {
+      enabledDomains.add(key);
+    } else {
+      enabledDomains.delete(key);
+    }
+    DevToolSettings.persistAndSyncEnabledCDPDomains(enabledDomains);
+  }
+
+  private static verifyCDPDomainKey(key: string): boolean {
+    if (!key.startsWith(DevToolSettings.CDP_DOMAIN_KEY_PREFIX)) {
+      LLog.e(TAG, `Invalid CDP domain key: ${key}`);
+      return false;
+    }
+    return true;
+  }
+
+  private static persistAndSyncEnabledCDPDomains(domains: Set<string>): void {
+    lynx.DevToolSettingsHarmony.setPersistedString(
+      DevToolSettings.SP_KEY_ACTIVATED_CDP_DOMAINS, JSON.stringify(Array.from(domains)));
+    DevToolSettings.syncEnabledCDPDomainsToNative(domains);
+  }
+
+  private static syncEnabledCDPDomainsToNative(domains: Set<string>): void {
+    lynx.DevToolSettingsHarmony.syncStringSetToNative(
+      DevToolSettings.SP_KEY_ACTIVATED_CDP_DOMAINS, Array.from(domains));
   }
 
   private static setPersistedBoolean(key: string, value: boolean): void {

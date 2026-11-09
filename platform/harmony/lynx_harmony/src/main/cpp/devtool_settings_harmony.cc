@@ -10,6 +10,7 @@
 
 #include <cassert>
 #include <iterator>
+#include <vector>
 
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
@@ -54,6 +55,12 @@ napi_value DevToolSettingsHarmony::Init(napi_env env, napi_value exports) {
                                    GetPersistedBooleanNAPI),
       DECLARE_NAPI_STATIC_FUNCTION("syncBooleanToNative",
                                    SyncBooleanToNativeNAPI),
+      DECLARE_NAPI_STATIC_FUNCTION("setPersistedString",
+                                   SetPersistedStringNAPI),
+      DECLARE_NAPI_STATIC_FUNCTION("getPersistedString",
+                                   GetPersistedStringNAPI),
+      DECLARE_NAPI_STATIC_FUNCTION("syncStringSetToNative",
+                                   SyncStringSetToNativeNAPI),
   };
 #undef DECLARE_NAPI_STATIC_FUNCTION
 
@@ -122,6 +129,49 @@ napi_value DevToolSettingsHarmony::SyncBooleanToNativeNAPI(
   return CreateUndefined(env);
 }
 
+napi_value DevToolSettingsHarmony::SetPersistedStringNAPI(
+    napi_env env, napi_callback_info info) {
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  std::string key = base::NapiUtil::ConvertToString(env, args[0]);
+  std::string value = base::NapiUtil::ConvertToString(env, args[1]);
+  DevToolSettingsHarmony::GetInstance().SetPersistedString(key, value);
+  return CreateUndefined(env);
+}
+
+napi_value DevToolSettingsHarmony::GetPersistedStringNAPI(
+    napi_env env, napi_callback_info info) {
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  std::string key = base::NapiUtil::ConvertToString(env, args[0]);
+  std::string default_value = base::NapiUtil::ConvertToString(env, args[1]);
+  std::string value = DevToolSettingsHarmony::GetInstance().GetPersistedString(
+      key, default_value);
+  napi_value result = nullptr;
+  napi_status status =
+      napi_create_string_utf8(env, value.c_str(), value.length(), &result);
+  if (status != napi_ok) {
+    LOGW("DevToolSettingsHarmony failed to convert string to napi_value");
+    return nullptr;
+  }
+  return result;
+}
+
+napi_value DevToolSettingsHarmony::SyncStringSetToNativeNAPI(
+    napi_env env, napi_callback_info info) {
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  std::string group_key = base::NapiUtil::ConvertToString(env, args[0]);
+  std::vector<std::string> values;
+  base::NapiUtil::ConvertToArrayString(env, args[1], values);
+  DevToolSettingsHarmony::GetInstance().SyncStringSetToNative(
+      group_key, std::unordered_set<std::string>(values.begin(), values.end()));
+  return CreateUndefined(env);
+}
+
 bool DevToolSettingsHarmony::InitPreferences() {
   OH_PreferencesOption* option = OH_PreferencesOption_Create();
   if (option == nullptr) {
@@ -167,6 +217,37 @@ bool DevToolSettingsHarmony::GetPersistedBoolean(const std::string& key,
 void DevToolSettingsHarmony::SyncBooleanToNative(const std::string& key,
                                                  bool value) {
   LynxEnv::GetInstance().SetBoolLocalEnv(key, value);
+}
+
+void DevToolSettingsHarmony::SetPersistedString(const std::string& key,
+                                                const std::string& value) {
+  if (preference_ == nullptr) {
+    return;
+  }
+  (void)OH_Preferences_SetString(preference_, key.c_str(), value.c_str());
+}
+
+std::string DevToolSettingsHarmony::GetPersistedString(
+    const std::string& key, const std::string& default_value) {
+  if (preference_ == nullptr) {
+    return default_value;
+  }
+  char* value = nullptr;
+  uint32_t value_len = 0;
+  auto result =
+      OH_Preferences_GetString(preference_, key.c_str(), &value, &value_len);
+  if (result != OH_Preferences_ErrCode::PREFERENCES_OK || value == nullptr) {
+    return default_value;
+  }
+  std::string string_value(value);
+  OH_Preferences_FreeString(value);
+  return string_value;
+}
+
+void DevToolSettingsHarmony::SyncStringSetToNative(
+    const std::string& group_key,
+    const std::unordered_set<std::string>& values) {
+  LynxEnv::GetInstance().SetGroupedEnv(values, group_key);
 }
 
 }  // namespace harmony

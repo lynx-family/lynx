@@ -14,16 +14,16 @@ import { UIContext } from '@kit.ArkUI';
 export class LynxDevTool {
   private owner: LynxBaseInspectorController | null = null;
 
-  constructor(embedderProxy: number[]) {
-    this.initDevTool(embedderProxy);
+  constructor(embedderProxy: number[], debuggable: boolean = false) {
+    this.initDevTool(embedderProxy, debuggable);
   }
 
-  private initDevTool(embedderProxy: number[]) {
+  private initDevTool(embedderProxy: number[], debuggable: boolean) {
     if (LynxEnv.isLynxDebugEnabled()) {
-      if (LynxEnv.isDevtoolEnabled()) {
+      if (LynxEnv.isDevtoolEnabled() || debuggable) {
         const devToolService = LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool);
         if (devToolService?.isDevToolModuleLoaded()) {
-          this.owner = devToolService.createInspectorOwner(embedderProxy) ?? null;
+          this.owner = devToolService.createInspectorOwner(embedderProxy, debuggable) ?? null;
         }
       }
     }

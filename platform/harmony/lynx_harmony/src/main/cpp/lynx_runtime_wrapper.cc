@@ -140,7 +140,7 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
     bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
     bool enable_bytecode, std::string bytecode_source_url,
     std::unique_ptr<ModuleFactoryHarmony> module_factory,
-    lepus::Value global_props, bool enable_new_share_group)
+    lepus::Value global_props, bool enable_new_share_group, bool debuggable)
     : env_(env) {
   napi_create_reference(env, js_this, 0, &runtime_wrapper_ref_);
 
@@ -188,7 +188,7 @@ LynxRuntimeWrapper::LynxRuntimeWrapper(
           std::move(inspector_observer), resource_loader, module_manager,
           bundle_creator, white_board, on_runtime_actor_created,
           std::move(preload_js_paths), bytecode_source_url, runtime_flags,
-          &global_props);
+          &global_props, debuggable);
 }
 
 LynxRuntimeWrapper::~LynxRuntimeWrapper() { DestroyRuntime(); }
@@ -267,8 +267,8 @@ napi_value LynxRuntimeWrapper::New(napi_env env, napi_callback_info info) {
 napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
                                             napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 15;
-  napi_value args[15] = {nullptr};
+  size_t argc = 16;
+  napi_value args[16] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // providers
@@ -328,13 +328,18 @@ napi_value LynxRuntimeWrapper::NativeCreate(napi_env env,
     napi_get_value_bool(env, args[14], &enable_new_share_group);
   }
 
+  bool debuggable = false;
+  if (argc > 15) {
+    napi_get_value_bool(env, args[15], &debuggable);
+  }
+
   // LynxTemplateRenderer
   LynxRuntimeWrapper* wrapper = new LynxRuntimeWrapper(
       env, js_this, resource_loader, std::move(group_id),
       std::move(js_group_thread_name), use_quickjs, enable_js_group_thread,
       std::move(preload_js_paths), enable_bytecode,
       std::move(bytecode_source_url), std::move(module_factory),
-      std::move(global_props), enable_new_share_group);
+      std::move(global_props), enable_new_share_group, debuggable);
 
   static auto finalizer = [](napi_env env, void* data, void* hint) {
     if (data != nullptr) {

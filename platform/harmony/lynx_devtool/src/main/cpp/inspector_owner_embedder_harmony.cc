@@ -14,8 +14,9 @@ namespace lynx {
 namespace devtool {
 
 InspectorOwnerEmbedderHarmony::InspectorOwnerEmbedderHarmony(napi_env env,
-                                                             napi_ref ref)
-    : env_(env), ref_(ref) {}
+                                                             napi_ref ref,
+                                                             bool debuggable)
+    : InspectorOwnerEmbedder(debuggable), env_(env), ref_(ref) {}
 
 void InspectorOwnerEmbedderHarmony::OnConsoleMessage(
     const std::string& message) {
