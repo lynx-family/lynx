@@ -4,30 +4,35 @@
 
 #include "base/include/base_trace/trace_event_utils.h"
 
+#include <atomic>
+
 #include "base/include/log/logging.h"
 
 namespace lynx {
 namespace base {
 namespace trace {
 namespace {
-static trace_backend_ptr trace_backend = nullptr;
-}
+std::atomic<trace_backend_ptr> trace_backend{nullptr};
+}  // namespace
+
 void TraceEventBegin(const char* category, const char* name) {
-  if (trace_backend == nullptr) {
+  trace_backend_ptr backend = trace_backend.load(std::memory_order_acquire);
+  if (backend == nullptr) {
     return;
   }
-  trace_backend(category, name, BaseTraceEventType::TYPE_SLICE_BEGIN);
+  backend(category, name, BaseTraceEventType::TYPE_SLICE_BEGIN);
 }
 void TraceEventEnd(const char* category, const char* name) {
-  if (trace_backend == nullptr) {
+  trace_backend_ptr backend = trace_backend.load(std::memory_order_acquire);
+  if (backend == nullptr) {
     return;
   }
-  trace_backend(category, name, BaseTraceEventType::TYPE_SLICE_END);
+  backend(category, name, BaseTraceEventType::TYPE_SLICE_END);
 }
 
 void SetTraceBackend(trace_backend_ptr backend) {
   if (backend != nullptr) {
-    trace_backend = backend;
+    trace_backend.store(backend, std::memory_order_release);
     LOGI("base trace init success, backend: "
          << reinterpret_cast<uint64_t>(backend));
     return;
