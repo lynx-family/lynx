@@ -5947,20 +5947,19 @@ public class abstract com::lynx::tasm::LynxGlobalMemoryUsageCallback :  {
 public class com::lynx::tasm::LynxGlobalMemoryUsageResult :  {
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionStartMs();
   public LynxMemoryCollectionStatus com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionStatus();
-  public String com.lynx.tasm.LynxGlobalMemoryUsageResult.getErrorMessage();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionDurationMs();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionTimeoutMs();
   public int com.lynx.tasm.LynxGlobalMemoryUsageResult.getExpectedInstanceCount();
   public int com.lynx.tasm.LynxGlobalMemoryUsageResult.getCompletedInstanceCount();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getTotalBytes();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getAppBytes();
+  public double com.lynx.tasm.LynxGlobalMemoryUsageResult.getRatioToApp();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getElementBytes();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getElementNodeCount();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getViewBytes();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getMainThreadRuntimeBytes();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getBackgroundThreadRuntimeBytes();
   public List< LynxInstanceMemoryUsage > com.lynx.tasm.LynxGlobalMemoryUsageResult.getInstances();
-  public List< LynxInstanceMemoryUsage > com.lynx.tasm.LynxGlobalMemoryUsageResult.getDestroyedInstances();
 }
 
 public class com::lynx::tasm::LynxGroup :  {
@@ -6213,9 +6212,6 @@ public class com::lynx::tasm::LynxInstanceMemoryUsage :  {
   public long com.lynx.tasm.LynxInstanceMemoryUsage.getMainThreadRuntimeBytes();
   public long com.lynx.tasm.LynxInstanceMemoryUsage.getBackgroundThreadRuntimeBytes();
   public String com.lynx.tasm.LynxInstanceMemoryUsage.getBtsRuntimeGroupId();
-  public String com.lynx.tasm.LynxInstanceMemoryUsage.getBtsRuntimeType();
-  public long com.lynx.tasm.LynxInstanceMemoryUsage.getBtsRuntimeTotalBytes();
-  public long com.lynx.tasm.LynxInstanceMemoryUsage.getBackgroundThreadRuntimeResidualBytes();
 }
 
 public class com::lynx::tasm::event::LynxInternalEvent :  {
@@ -6425,7 +6421,6 @@ public class abstract com::lynx::tasm::resourceprovider::media::LynxMediaResourc
 public enum com::lynx::tasm::LynxMemoryCollectionStatus {
   public com.lynx.tasm.LynxMemoryCollectionStatus.COMPLETED COMPLETED;
   public com.lynx.tasm.LynxMemoryCollectionStatus.TIMEOUT TIMEOUT;
-  public com.lynx.tasm.LynxMemoryCollectionStatus.ERROR ERROR;
 }
 
 public class com::lynx::tasm::service::LynxMemoryInfo :  {

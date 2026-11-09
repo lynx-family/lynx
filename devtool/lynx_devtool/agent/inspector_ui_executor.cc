@@ -158,6 +158,12 @@ void InspectorUIExecutor::StartScreencast(
   screen_request.max_width_ = params["maxWidth"].asInt();
   screen_request.max_height_ = params["maxHeight"].asInt();
   screen_request.every_nth_frame_ = params["everyNthFrame"].asInt();
+  screen_request.enable_better_screencast_ =
+      params["enableBetterScreencast"].isBool() &&
+      params["enableBetterScreencast"].asBool();
+  screen_request.enable_jpeg_delta_ =
+      params["screencastEncoding"].isString() &&
+      params["screencastEncoding"].asString() == "jpeg-delta-v1";
   if (params["mode"].isString()) {
     std::string mode = params["mode"].asString();
     if (IsValidScreencastMode(mode)) {
@@ -458,7 +464,10 @@ void InspectorUIExecutor::ScreencastFrameAck(
 
   CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
                             "devtool_platform_facade_ is null");
-  devtool_platform_facade_->OnAckReceived();
+  const auto& params = message["params"];
+  devtool_platform_facade_->OnScreencastFrameAck(
+      params["sessionId"].isInt() ? params["sessionId"].asInt() : 0,
+      !params["frameApplied"].isBool() || params["frameApplied"].asBool());
 
   sender->SendMessage("CDP", response);
 }
@@ -557,6 +566,22 @@ void InspectorUIExecutor::SendPageScreencastFrameEvent(
   metadata_json["scrollOffsetX"] = metadata->scroll_off_set_x_;
   metadata_json["scrollOffsetY"] = metadata->scroll_off_set_y_;
   metadata_json["timestamp"] = metadata->timestamp_;
+
+  if (metadata->frame_id_ != 0) {
+    metadata_json["timestamp"] = metadata->capture_timestamp_;
+    auto& frame = metadata_json["screencastFrame"];
+    frame["encoding"] = "jpeg-delta-v1";
+    frame["frameId"] = metadata->frame_id_;
+    frame["baseFrameId"] = metadata->base_frame_id_;
+    frame["isDelta"] = metadata->base_frame_id_ != 0;
+    frame["fullWidth"] = metadata->full_width_;
+    frame["fullHeight"] = metadata->full_height_;
+    frame["x"] = metadata->frame_x_;
+    frame["y"] = metadata->frame_y_;
+    frame["width"] = metadata->frame_width_;
+    frame["height"] = metadata->frame_height_;
+    params["sessionId"] = metadata->frame_id_;
+  }
 
   params["data"] = data;
   params["metadata"] = metadata_json;
