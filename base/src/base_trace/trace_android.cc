@@ -57,16 +57,20 @@ bool GetDefaultTraceBackend() {
 
 void TraceBackend(const char* category, const char* name,
                   BaseTraceEventType phase) {
-  if (!trace_runtime_enabled_func()) {
+  if (trace_runtime_enabled_func == nullptr || !trace_runtime_enabled_func()) {
     return;
   }
   switch (phase) {
     case BaseTraceEventType::TYPE_SLICE_BEGIN:
-      trace_begin_section_func(category, name, -1, nullptr, nullptr, nullptr,
-                               nullptr);
+      if (trace_begin_section_func != nullptr) {
+        trace_begin_section_func(category, name, -1, nullptr, nullptr, nullptr,
+                                 nullptr);
+      }
       break;
     case BaseTraceEventType::TYPE_SLICE_END:
-      trace_end_section_func(category, name, -1);
+      if (trace_end_section_func != nullptr) {
+        trace_end_section_func(category, name, -1);
+      }
       break;
     default:
       break;
