@@ -20,19 +20,23 @@ namespace tasm {
 namespace {
 
 lepus::Value ConvertNapiValue(napi_env env, napi_value raw_value,
-                              bool& from_json, std::string& json_string) {
+                              bool& from_json, std::string& json_string,
+                              std::string* error_message) {
   napi_valuetype type;
   napi_typeof(env, raw_value, &type);
 
+  if (type == napi_valuetype::napi_object) {
+    return base::NapiConvertHelper::ConvertToLepusValue(env, raw_value,
+                                                        error_message);
+  }
+  if (error_message != nullptr) {
+    error_message->clear();
+  }
   if (type == napi_valuetype::napi_string) {
     from_json = true;
     json_string = base::NapiUtil::ConvertToString(env, raw_value);
     return lepus::jsonValueTolepusValue(json_string.c_str());
   }
-  if (type == napi_valuetype::napi_object) {
-    return base::NapiConvertHelper::ConvertToLepusValue(env, raw_value);
-  }
-
   LOGE("Error in TemplateDataHarmony, type should be string or object");
   return lepus::Value();
 }
@@ -84,12 +88,15 @@ napi_value NativeTemplateDataHarmony::New(napi_env env,
 
   bool from_json = false;
   std::string json_string;
-  lepus::Value value =
-      argc == 1 ? ConvertNapiValue(env, args[0], from_json, json_string)
-                : lepus::Value();
+  std::string conversion_error;
+  lepus::Value value = argc == 1
+                           ? ConvertNapiValue(env, args[0], from_json,
+                                              json_string, &conversion_error)
+                           : lepus::Value();
 
-  auto* native_data = new NativeTemplateDataHarmony(std::move(value), from_json,
-                                                    std::move(json_string));
+  auto* native_data = new NativeTemplateDataHarmony(
+      std::move(value), from_json, std::move(json_string),
+      std::move(conversion_error));
   static napi_finalize finalize = [](napi_env env, void* data, void* hint) {
     delete static_cast<NativeTemplateDataHarmony*>(data);
   };
@@ -137,19 +144,30 @@ NativeTemplateDataHarmony* NativeTemplateDataHarmony::FromNapiValue(
 std::shared_ptr<tasm::TemplateData> TemplateDataHarmony::GenerateTemplateData(
     napi_env env, napi_value raw_value, napi_value raw_read_only,
     napi_value raw_processor_name) {
+  return GenerateTemplateData(env, raw_value, raw_read_only, raw_processor_name,
+                              nullptr);
+}
+
+std::shared_ptr<tasm::TemplateData> TemplateDataHarmony::GenerateTemplateData(
+    napi_env env, napi_value raw_value, napi_value raw_read_only,
+    napi_value raw_processor_name, std::string* error_message) {
   bool from_json = false;
   std::string json_str;
   lepus::Value result;
 
   auto* native_data = NativeTemplateDataHarmony::FromNapiValue(env, raw_value);
   if (native_data != nullptr) {
+    if (error_message != nullptr) {
+      *error_message = native_data->GetConversionError();
+    }
     result = lepus::Value::ShallowCopy(native_data->GetValue());
     from_json = native_data->IsFromJson();
     if (from_json) {
       json_str = native_data->GetJsonString();
     }
   } else {
-    result = ConvertNapiValue(env, raw_value, from_json, json_str);
+    result =
+        ConvertNapiValue(env, raw_value, from_json, json_str, error_message);
   }
 
   if (result.IsNil()) {
@@ -206,11 +224,20 @@ std::shared_ptr<tasm::TemplateData> TemplateDataHarmony::GenerateTemplateData(
 
 lepus::Value TemplateDataHarmony::GenerateLepusValue(napi_env env,
                                                      napi_value raw_value) {
+  return GenerateLepusValue(env, raw_value, nullptr);
+}
+
+lepus::Value TemplateDataHarmony::GenerateLepusValue(
+    napi_env env, napi_value raw_value, std::string* error_message) {
   auto* native_data = NativeTemplateDataHarmony::FromNapiValue(env, raw_value);
   if (native_data != nullptr) {
+    if (error_message != nullptr) {
+      *error_message = native_data->GetConversionError();
+    }
     return lepus::Value::ShallowCopy(native_data->GetValue());
   }
-  return base::NapiConvertHelper::JSONToLepusValue(env, raw_value);
+  return base::NapiConvertHelper::JSONToLepusValue(env, raw_value,
+                                                   error_message);
 }
 
 const lepus::Value& TemplateDataHarmony::GetValue() const {
