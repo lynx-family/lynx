@@ -282,7 +282,7 @@ public class LynxEnv {
     LynxServiceCenter.inst().initialize(context);
 
     // init Lynx Base
-    initBase(nativeLibraryLoader);
+    initBase(context, nativeLibraryLoader);
 
     // The DevTool needs to be initialized as early as possible because LLog requires the state of
     // the DevTool to determine whether to output logs to the console.
@@ -607,7 +607,7 @@ public class LynxEnv {
         mLibraryLoader.loadLibrary("quick");
       }
       if (!LynxBaseEnv.inst().isNativeLibraryLoaded()) {
-        initBase(mLibraryLoader);
+        initBase(getAppContext(), mLibraryLoader);
       }
       mLibraryLoader.loadLibrary("lynxgfx");
       mLibraryLoader.loadLibrary("lynx");
@@ -1606,7 +1606,7 @@ public class LynxEnv {
         getBooleanFromExternalEnv(LynxEnvKey.ENABLE_CLEAR_UPDATED_DATA_LIST, false);
   }
 
-  private void initBase(INativeLibraryLoader nativeLibraryLoader) {
+  private void initBase(Context context, INativeLibraryLoader nativeLibraryLoader) {
     IBaseNativeLibraryLoader baseNativeLibraryLoader = null;
     if (nativeLibraryLoader != null) {
       baseNativeLibraryLoader = new IBaseNativeLibraryLoader() {
@@ -1616,7 +1616,7 @@ public class LynxEnv {
         }
       };
     }
-    LynxBaseEnv.inst().init(baseNativeLibraryLoader, isDevtoolEnabled());
+    LynxBaseEnv.inst().init(context, baseNativeLibraryLoader, isDevtoolEnabled());
   }
 
   public void initNativeUIThread() {

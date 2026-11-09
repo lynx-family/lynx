@@ -235,13 +235,13 @@ class MemoryMonitor {
   enum class ForceEnableMode {
     // Enable only this process. Used by tests and explicit host switches.
     kCurrentProcess,
-    // In Perfetto builds, also persist a marker for subsequent app launches.
+    // Also persist a marker for subsequent app launches.
     // Allows users to enable monitoring without overriding sampling settings.
     kPersistent,
   };
 
-  // Enable monitoring and all sources before creating pages/VMs. In Perfetto
-  // builds, persistent mode records the choice in the platform trace directory.
+  // Enable monitoring and all sources before creating pages/VMs. Persistent
+  // mode records the choice in the application's data directory.
   static void ForceEnableForTesting(ForceEnableMode mode);
 
   /// @brief Generates a bitmask for scripting engine memory monitoring
