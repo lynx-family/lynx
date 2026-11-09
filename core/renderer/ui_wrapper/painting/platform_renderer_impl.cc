@@ -183,8 +183,14 @@ void PlatformRendererImpl::UpdateSubtreeProperty(
         break;
       case DisplayListSubtreePropertyOpType::kFilter:
         break;
-      case DisplayListSubtreePropertyOpType::kClipPath:
+      case DisplayListSubtreePropertyOpType::kClipPath: {
+        const auto& clip = p->data.clip_path;
+        clip_path_.path = fml::Ref(display_list.GetPath(clip.path_index));
+        clip_path_.fill_rule = clip.fill_rule;
+        clip_path_.offset[0] = clip.x;
+        clip_path_.offset[1] = clip.y;
         break;
+      }
     }
   }
   OnUpdateSubtreeProperties(display_list);

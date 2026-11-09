@@ -11,6 +11,7 @@
 #include "base/include/value/base_string.h"
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/fragment/box_model_recorder.h"
+#include "core/renderer/dom/fragment/clip_path_resolver.h"
 #include "core/renderer/dom/fragment/custom_draw_functions.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
@@ -73,6 +74,7 @@ class Fragment : public BaseElementContainer {
 
   void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) override {}
   void StyleChanged() override;
+  void CaptureClipPathStyleChange();
   void UpdateZIndexList() override;
 
   void CreatePaintingNode(
@@ -183,6 +185,11 @@ class Fragment : public BaseElementContainer {
   Fragment* ResolveEnclosingStackingContextParent() const;
   void DrawBorder(DisplayListBuilder& display_list_builder);
   void DrawClip(DisplayListBuilder& display_list_builder);
+  void DrawCSSClipPath(DisplayListBuilder& display_list_builder);
+  void DrawClipPathProperty(DisplayListBuilder& display_list_builder);
+  void UpdateCachedClipPath();
+  void InvalidateClipPath();
+  void InvalidateClipPathIfSourceScaleChanged();
 
   void DrawBackground(DisplayListBuilder& display_list_builder);
   void DrawBoxShadow(DisplayListBuilder& display_list_builder);
@@ -232,6 +239,12 @@ class Fragment : public BaseElementContainer {
   bool list_item_animation_opacity_changed_{false};
   bool has_platform_renderer_{false};
   bool pending_node_ready_{false};
+  struct {
+    ResolvedClipPath resolved;
+    float source_to_layout_scale{1.f};
+    bool dirty{true};
+    bool restore_css_clip{false};
+  } cached_clip_path_;
 
   // If the fragment has positon fixed or z-index != 0, store the fragment from
   // element parent using this pointer. Which means if the

@@ -45,6 +45,7 @@ lynx_core_source_set("css") {
     "../../base",
     "../../runtime/lepus:lepus",
     "../../style",
+    "../../style:basic_shape_data",
     "../trace:renderer_trace",
   ]
 

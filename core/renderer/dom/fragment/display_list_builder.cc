@@ -136,6 +136,25 @@ DisplayListBuilder& DisplayListBuilder::Border(
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::ClipPath(fml::RefPtr<gfx::Path> path,
+                                                 gfx::PathFillRule rule,
+                                                 float x, float y) {
+  if (!path) return *this;
+  const auto index = display_list_.RetainPath(std::move(path));
+  display_list_.EmplaceItem(DisplayListOpType::kClipPath).payload.clip_path = {
+      index, rule, x, y};
+  return *this;
+}
+
+DisplayListBuilder& DisplayListBuilder::ClipPathProperty(
+    fml::RefPtr<gfx::Path> path, gfx::PathFillRule rule, float x, float y) {
+  SubtreeProperty prop{};
+  prop.type = DisplayListSubtreePropertyOpType::kClipPath;
+  prop.data.clip_path = {display_list_.RetainPath(std::move(path)), rule, x, y};
+  display_list_.AddSubtreeProperty(prop);
+  return *this;
+}
+
 DisplayListBuilder& DisplayListBuilder::ClipRect(const RoundedRectangle& rect) {
   DisplayListItem item{};
   item.type = DisplayListOpType::kClipRect;

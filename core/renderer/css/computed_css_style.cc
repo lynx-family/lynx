@@ -729,7 +729,7 @@ void ComputedCSSStyle::CopyFrom(const ComputedCSSStyle& o) {
   copy_flex_optional(filter_, o.filter_);
   copy_flex_optional(perspective_data_, o.perspective_data_);
   copy_flex_optional(cursor_, o.cursor_);
-  clip_path_ = o.clip_path_;
+  copy_flex_optional(clip_path_, o.clip_path_);
   offset_path_ = o.offset_path_;
   z_index_ = o.z_index_;
   enable_z_index_ = o.enable_z_index_;
@@ -815,7 +815,7 @@ void ComputedCSSStyle::Reset() {
   filter_.reset();
   perspective_data_.reset();
   cursor_.reset();
-  clip_path_ = nullptr;
+  clip_path_.reset();
   offset_path_ = nullptr;
 
   raw_custom_properties_.reset();
@@ -3562,72 +3562,23 @@ bool ComputedCSSStyle::SetListCrossAxisGap(const tasm::CSSValue& value,
 
 bool ComputedCSSStyle::SetClipPath(const tasm::CSSValue& value,
                                    const bool reset) {
-  // ref to old array
-  fml::RefPtr<lepus::CArray> last_path = clip_path_;
-  clip_path_ = lepus::CArray::Create();
-
-  fml::RefPtr<lepus::CArray> raw_array;
-  BasicShapeType type = BasicShapeType::kUnknown;
   if (reset || !value.IsArray() || value.GetArray()->size() == 0) {
-    // if not reset, it means value is invalid and launch warning.
     LynxWarning(reset, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
-                "clip-path must be an array")
-  } else {
-    raw_array = value.GetArray();
-    type = static_cast<starlight::BasicShapeType>(raw_array->get(0).Number());
+                "clip-path must be an array") bool changed =
+        clip_path_.has_value();
+    clip_path_.reset();
+    return changed;
   }
-
-  switch (type) {
-    case BasicShapeType::kUnknown:
-      // Unknown type, reset the clip-path.
-      break;
-    case BasicShapeType::kCircle:
-      if (raw_array->size() != 7) {
-        LOGW("Error in parsing basic shape circle.");
-        return false;
-      }
-      CSSStyleUtils::ComputeBasicShapeCircle(raw_array, reset, clip_path_,
-                                             length_context_, parser_configs_);
-      break;
-    case BasicShapeType::kEllipse:
-      if (raw_array->size() != 9) {
-        LOGW("Error in parsing basic shape circle.");
-        return false;
-      }
-      CSSStyleUtils::ComputeBasicShapeEllipse(raw_array, reset, clip_path_,
-                                              length_context_, parser_configs_);
-      break;
-    case BasicShapeType::kPath:
-      if (raw_array->size() != 2) {
-        LOGW("Error in parsing basic shape path.");
-        return false;
-      }
-      CSSStyleUtils::ComputeBasicShapePath(raw_array, reset, clip_path_);
-      break;
-    case BasicShapeType::kSuperEllipse:
-      if (raw_array->size() != 11) {
-        LOGW("Error in parsing super ellipse.");
-        return false;
-      }
-      CSSStyleUtils::ComputeSuperEllipse(raw_array, reset, clip_path_,
-                                         length_context_, parser_configs_);
-      break;
-    case BasicShapeType::kInset:
-      constexpr int INSET_ARRAY_LENGTH_RECT = 9;
-      constexpr int INSET_ARRAY_LENGTH_ROUND = 25;
-      constexpr int INSET_ARRAY_LENGTH_SUPER_ELLIPSE = 27;
-      if (raw_array->size() != INSET_ARRAY_LENGTH_RECT &&
-          raw_array->size() != INSET_ARRAY_LENGTH_ROUND &&
-          raw_array->size() != INSET_ARRAY_LENGTH_SUPER_ELLIPSE) {
-        LOGW("Error in parsing basic shape inset.");
-        return false;
-      }
-      CSSStyleUtils::ComputeBasicShapeInset(raw_array, reset, clip_path_,
-                                            length_context_, parser_configs_);
-      break;
+  BasicShapeData shape;
+  if (!CSSStyleUtils::ComputeBasicShape(*value.GetArray(), shape,
+                                        length_context_, parser_configs_)) {
+    bool changed = clip_path_.has_value();
+    clip_path_.reset();
+    return changed;
   }
-  // Check last path equals to current path.
-  return last_path.get() == nullptr || *last_path != *clip_path_;
+  if (clip_path_ && *clip_path_ == shape) return false;
+  clip_path_.emplace(std::move(shape));
+  return true;
 }
 
 bool ComputedCSSStyle::SetOffsetDistance(const tasm::CSSValue& value,
@@ -4738,9 +4689,9 @@ lepus_value ComputedCSSStyle::TextStrokeWidthToLepus() {
 }
 
 lepus::Value ComputedCSSStyle::ClipPathToLepus() {
-  // Parse failed or reset, return an empty array.
-  return clip_path_.get() ? lepus::Value(clip_path_)
-                          : lepus::Value(lepus::CArray::Create());
+  auto array = lepus::CArray::Create();
+  if (clip_path_) CSSStyleUtils::BasicShapeToArray(*clip_path_, array);
+  return lepus::Value(std::move(array));
 }
 
 lepus::Value ComputedCSSStyle::OffsetPathToLepus() {

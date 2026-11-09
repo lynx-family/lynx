@@ -28,6 +28,7 @@
 #include "core/renderer/tasm/config.h"
 #include "core/style/animation_data.h"
 #include "core/style/background_data.h"
+#include "core/style/basic_shape_data.h"
 #include "core/style/default_computed_style.h"
 #include "core/style/filter_data.h"
 #include "core/style/layout_animation_data.h"
@@ -473,7 +474,9 @@ class ComputedCSSStyle {
 
   base::flex_optional<lepus::Value>& GetCursor() { return cursor_; }
 
-  fml::RefPtr<lepus::CArray>& GetClipPath() { return clip_path_; }
+  const BasicShapeData* GetClipPath() const {
+    return clip_path_ ? &*clip_path_ : nullptr;
+  }
 
   XAppRegionType GetAppRegion() { return app_region_; }
 
@@ -552,6 +555,10 @@ class ComputedCSSStyle {
   bool IsClean() { return !IsDirty(); }
 
   void ClearDirtyBits();
+  void ClearDirtyBits(tasm::CSSPropertyID id) {
+    changed_bitset_.Reset(id);
+    reset_bitset_.Reset(id);
+  }
   // Replaces this style's dirty state with |source|'s dirty state.
   void CopyDirtyBitsFrom(const ComputedCSSStyle& source);
 
@@ -625,8 +632,7 @@ class ComputedCSSStyle {
   base::flex_optional<PerspectiveData> perspective_data_;
   // [type, [url, x, y], type, keyword ]
   base::flex_optional<lepus_value> cursor_;
-  // clip-path array [type, args..]
-  fml::RefPtr<lepus::CArray> clip_path_{nullptr};
+  base::flex_optional<BasicShapeData> clip_path_;
   // offset-path array [type, args..]
   fml::RefPtr<lepus::CArray> offset_path_{nullptr};
 

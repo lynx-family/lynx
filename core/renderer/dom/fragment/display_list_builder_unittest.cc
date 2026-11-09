@@ -38,6 +38,98 @@ class DisplayListBuilderTest : public ::testing::Test {
   std::unique_ptr<DisplayListBuilder> builder_;
 };
 
+TEST(DisplayListPathTest, ClipPathAbiAndSourceSurviveBuildMoveAndClear) {
+  auto path = gfx::Path::MakeSvgPathData("M0 0A1 2 30 01 4 5z", 2);
+  ASSERT_TRUE(path);
+  auto key = path->GetKey();
+  DisplayListBuilder builder;
+  builder.Begin(1, PlatformRendererType::kView, 0, 0, 100, 100)
+      .ClipPath(path, gfx::PathFillRule::kEvenOdd, 10, 20)
+      .ClipPath(path)
+      .End();
+  auto list = builder.Build();
+  builder.Clear();
+  ASSERT_EQ(list.GetPathCount(), 1u);
+  EXPECT_EQ(list.GetContentDataSize(), 0u);
+  auto ptr = list.GetPath(0);
+  path = nullptr;
+  ASSERT_NE(ptr, nullptr);
+  EXPECT_EQ(ptr->GetKey(), key);
+  EXPECT_EQ(std::get<gfx::SvgPathView>(ptr->GetSourceView()).data,
+            "M0 0A1 2 30 01 4 5z");
+  DisplayListReader reader(list);
+  EXPECT_EQ(reader.Next().type, DisplayListOpType::kBegin);
+  const auto& item = reader.Next();
+  EXPECT_EQ(item.type, DisplayListOpType::kClipPath);
+  EXPECT_EQ(static_cast<int32_t>(item.type), 17);
+  EXPECT_EQ(item.payload.clip_path.path_index, 0u);
+  EXPECT_EQ(item.payload.clip_path.fill_rule, gfx::PathFillRule::kEvenOdd);
+  EXPECT_EQ(item.payload.clip_path.x, 10);
+  EXPECT_EQ(item.payload.clip_path.y, 20);
+  EXPECT_EQ(sizeof(item), 56u);
+  const auto* bytes = reinterpret_cast<const unsigned char*>(&item);
+  for (size_t i = 20; i < sizeof(item); ++i) EXPECT_EQ(bytes[i], 0);
+  EXPECT_EQ(reader.Next().payload.clip_path.path_index, 0u);
+  DisplayList moved(std::move(list));
+  EXPECT_EQ(moved.GetPath(0), ptr);
+  EXPECT_EQ(list.GetPathCount(), 0u);
+}
+
+TEST(DisplayListPathTest, EmplacedClipsPreserveAbiAcrossGrowth) {
+  auto path = gfx::Path::MakeRect(10, 20);
+  DisplayListBuilder builder;
+  builder.Begin(1, PlatformRendererType::kView, 0, 0, 100, 100);
+  for (int i = 0; i < 32; ++i)
+    builder.ClipPath(path, gfx::PathFillRule::kEvenOdd, i, -i);
+  builder.End();
+  auto list = builder.Build();
+  ASSERT_EQ(list.GetPathCount(), 1u);
+  ASSERT_EQ(list.GetContentItemsSize(), 34u);
+  DisplayListReader reader(list);
+  EXPECT_EQ(reader.Next().type, DisplayListOpType::kBegin);
+  for (int i = 0; i < 32; ++i) {
+    const auto& item = reader.Next();
+    EXPECT_EQ(item.type, DisplayListOpType::kClipPath);
+    EXPECT_EQ(item.payload.clip_path.path_index, 0u);
+    EXPECT_EQ(item.payload.clip_path.fill_rule, gfx::PathFillRule::kEvenOdd);
+    EXPECT_EQ(item.payload.clip_path.x, i);
+    EXPECT_EQ(item.payload.clip_path.y, -i);
+    const auto* bytes = reinterpret_cast<const unsigned char*>(&item);
+    for (size_t j = 20; j < sizeof(item); ++j) EXPECT_EQ(bytes[j], 0);
+  }
+  EXPECT_EQ(reader.Next().type, DisplayListOpType::kEnd);
+  EXPECT_FALSE(reader.HasNext());
+  EXPECT_EQ(list.GetPath(0), path.get());
+}
+
+TEST(DisplayListPathTest, ClipPathPropertyRetainsSourceAndExplicitlyResets) {
+  auto path = gfx::Path::MakeRect(10, 20);
+  DisplayListBuilder builder;
+  builder.ClipPathProperty(path, gfx::PathFillRule::kEvenOdd, 3, 4);
+  auto list = builder.Build();
+  EXPECT_EQ(list.GetContentItemsSize(), 0u);
+  ASSERT_EQ(list.GetSubtreePropertiesSize(), 1u);
+  ASSERT_EQ(list.GetPathCount(), 1u);
+  const auto& prop = list.GetSubtreePropertiesData()[0];
+  EXPECT_EQ(prop.type, DisplayListSubtreePropertyOpType::kClipPath);
+  EXPECT_EQ(prop.data.clip_path.path_index, 0u);
+  EXPECT_EQ(prop.data.clip_path.fill_rule, gfx::PathFillRule::kEvenOdd);
+  EXPECT_EQ(prop.data.clip_path.x, 3);
+  EXPECT_EQ(prop.data.clip_path.y, 4);
+  const auto* bytes = reinterpret_cast<const unsigned char*>(&prop);
+  for (size_t i = 20; i < sizeof(prop); ++i) EXPECT_EQ(bytes[i], 0);
+  auto moved = std::move(list);
+  EXPECT_EQ(moved.GetPath(0), path.get());
+  builder.Clear();
+  builder.ClipPathProperty(nullptr);
+  auto reset = builder.Build();
+  EXPECT_EQ(reset.GetContentItemsSize(), 0u);
+  EXPECT_EQ(reset.GetPathCount(), 0u);
+  EXPECT_EQ(reset.GetPath(
+                reset.GetSubtreePropertiesData()[0].data.clip_path.path_index),
+            nullptr);
+}
+
 TEST_F(DisplayListBuilderTest, EmptyBuilder) {}
 
 TEST_F(DisplayListBuilderTest, BeginOperation) {

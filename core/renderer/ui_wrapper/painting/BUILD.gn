@@ -100,7 +100,9 @@ lynx_core_source_set("painting") {
 unittest_set("platform_renderer_testset") {
   testonly = true
   sources = [
+    "platform_renderer.h",
     "platform_renderer_impl.cc",
+    "platform_renderer_impl.h",
     "platform_renderer_impl_unittest.cc",
   ]
   public_deps = [
@@ -108,6 +110,7 @@ unittest_set("platform_renderer_testset") {
     "../../../../base/src:base_values_extended",
     "../../../public",
     "../../dom/fragment:display_list",
+    "../../utils:renderer_utils",
   ]
 }
 

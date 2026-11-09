@@ -28,6 +28,7 @@
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/style/animation_data.h"
+#include "core/style/basic_shape_data.h"
 #include "core/style/color.h"
 #include "core/style/default_computed_style.h"
 #include "core/style/filter_data.h"
@@ -1515,6 +1516,111 @@ void CSSStyleUtils::AddLengthToArray(const fml::RefPtr<lepus::CArray>& array,
   }
 }
 
+bool CSSStyleUtils::ComputeBasicShape(const lepus::CArray& raw,
+                                      BasicShapeData& out,
+                                      const tasm::CssMeasureContext& context,
+                                      const tasm::CSSParserConfigs& configs) {
+  if (raw.size() == 0 || !raw.get(0).IsNumber()) return false;
+  out = BasicShapeData{};
+  out.type = static_cast<BasicShapeType>(raw.get(0).Number());
+  const auto length = [&](size_t index) {
+    NLength result = NLength::MakeAutoNLength();
+    GetLengthData(result, raw.get(index), raw.get(index + 1), context, configs);
+    const auto& numeric = result.NumericLength();
+    if (!numeric.ContainsPercentage())
+      return NLength::MakeUnitNLength(numeric.GetFixedPart());
+    if (!numeric.ContainsFixedValue())
+      return NLength::MakePercentageNLength(numeric.GetPercentagePart());
+    return NLength::MakeCalcNLength(numeric.GetFixedPart(),
+                                    numeric.GetPercentagePart());
+  };
+  switch (out.type) {
+    case BasicShapeType::kPath:
+      if (raw.size() != 2 || !raw.get(1).IsString()) return false;
+      out.path_data = raw.get(1).String();
+      return true;
+    case BasicShapeType::kCircle:
+      if (raw.size() != 7) return false;
+      out.RadiusX() = length(1);
+      out.CenterX() = length(3);
+      out.CenterY() = length(5);
+      return true;
+    case BasicShapeType::kEllipse:
+    case BasicShapeType::kSuperEllipse: {
+      const bool super = out.type == BasicShapeType::kSuperEllipse;
+      if (raw.size() != (super ? 11u : 9u)) return false;
+      out.RadiusX() = length(1);
+      out.RadiusY() = length(3);
+      if (super) {
+        out.exponent_x = raw.get(5).Number();
+        out.exponent_y = raw.get(6).Number();
+      }
+      out.CenterX() = length(super ? 7 : 5);
+      out.CenterY() = length(super ? 9 : 7);
+      return true;
+    }
+    case BasicShapeType::kInset:
+      if (raw.size() != 9 && raw.size() != 25 && raw.size() != 27) return false;
+      for (size_t i = 0; i < BasicShapeData::kInsetCount; ++i)
+        out.Inset(i) = length(1 + 2 * i);
+      if (raw.size() == 9) return true;
+      out.corner_type = raw.size() == 27
+                            ? BasicShapeData::CornerType::kSuperEllipse
+                            : BasicShapeData::CornerType::kRounded;
+      if (raw.size() == 27) {
+        out.exponent_x = raw.get(9).Number();
+        out.exponent_y = raw.get(10).Number();
+      }
+      for (size_t i = 0; i < BasicShapeData::kCornerRadiusCount; ++i)
+        out.CornerRadius(i) = length((raw.size() == 27 ? 11 : 9) + 2 * i);
+      return true;
+    default:
+      return false;
+  }
+}
+
+void CSSStyleUtils::BasicShapeToArray(const BasicShapeData& shape,
+                                      const fml::RefPtr<lepus::CArray>& out) {
+  out->emplace_back(static_cast<uint32_t>(shape.type));
+  const auto append = [&](const NLength& length) {
+    AddLengthToArray(out, length);
+  };
+  if (shape.type == BasicShapeType::kPath) {
+    out->emplace_back(shape.path_data);
+  } else if (shape.type == BasicShapeType::kInset) {
+    for (size_t i = 0; i < BasicShapeData::kInsetCount; ++i)
+      append(shape.Inset(i));
+    if (shape.corner_type == BasicShapeData::CornerType::kSuperEllipse) {
+      out->emplace_back(shape.exponent_x);
+      out->emplace_back(shape.exponent_y);
+    }
+    if (shape.corner_type != BasicShapeData::CornerType::kRect)
+      for (size_t i = 0; i < BasicShapeData::kCornerRadiusCount; ++i)
+        append(shape.CornerRadius(i));
+  } else {
+    append(shape.RadiusX());
+    if (shape.type != BasicShapeType::kCircle) append(shape.RadiusY());
+    if (shape.type == BasicShapeType::kSuperEllipse) {
+      out->emplace_back(shape.exponent_x);
+      out->emplace_back(shape.exponent_y);
+    }
+    append(shape.CenterX());
+    append(shape.CenterY());
+  }
+}
+
+namespace {
+void ComputeBasicShapeArray(const fml::RefPtr<lepus::CArray>& raw, bool reset,
+                            const fml::RefPtr<lepus::CArray>& out,
+                            const tasm::CssMeasureContext& context,
+                            const tasm::CSSParserConfigs& configs) {
+  if (reset) return;
+  BasicShapeData shape;
+  if (CSSStyleUtils::ComputeBasicShape(*raw, shape, context, configs))
+    CSSStyleUtils::BasicShapeToArray(shape, out);
+}
+}  // namespace
+
 /**
  *  Compute the basic shape ellipse function to lepus::array.
  *  [type ellipse, radiusX, platformUnit, radiusY,  platformUnit, centerX,
@@ -1528,40 +1634,7 @@ void CSSStyleUtils::ComputeBasicShapeEllipse(
     const fml::RefPtr<lepus::CArray>& raw, bool reset,
     fml::RefPtr<lepus::CArray>& out, const tasm::CssMeasureContext& context,
     const tasm::CSSParserConfigs& configs) {
-  if (reset) {
-    // Keep the array empty.
-    return;
-  }
-  constexpr int INDEX_ELLIPSE_TYPE = 0;
-  constexpr int INDEX_ELLIPSE_RADIUS_X = 1;
-  constexpr int INDEX_ELLIPSE_RADIUS_X_UNIT = 2;
-  constexpr int INDEX_ELLIPSE_RADIUS_Y = 3;
-  constexpr int INDEX_ELLIPSE_RADIUS_Y_UNIT = 4;
-  constexpr int INDEX_ELLIPSE_CENTER_X = 5;
-  constexpr int INDEX_ELLIPSE_CENTER_X_UNIT = 6;
-  constexpr int INDEX_ELLIPSE_CENTER_Y = 7;
-  constexpr int INDEX_ELLIPSE_CENTER_Y_UNIT = 8;
-
-  out->push_back(raw->get(INDEX_ELLIPSE_TYPE));
-  NLength radius_x = NLength::MakeAutoNLength(),
-          radius_y = NLength::MakeAutoNLength(),
-          center_x = NLength::MakeAutoNLength(),
-          center_y = NLength::MakeAutoNLength();
-  // Compute the CSSValue to NLength according to unit and length context.
-  GetLengthData(radius_x, raw->get(INDEX_ELLIPSE_RADIUS_X),
-                raw->get(INDEX_ELLIPSE_RADIUS_X_UNIT), context, configs);
-  GetLengthData(radius_y, raw->get(INDEX_ELLIPSE_RADIUS_Y),
-                raw->get(INDEX_ELLIPSE_RADIUS_Y_UNIT), context, configs);
-  GetLengthData(center_x, raw->get(INDEX_ELLIPSE_CENTER_X),
-                raw->get(INDEX_ELLIPSE_CENTER_X_UNIT), context, configs);
-  GetLengthData(center_y, raw->get(INDEX_ELLIPSE_CENTER_Y),
-                raw->get(INDEX_ELLIPSE_CENTER_Y_UNIT), context, configs);
-
-  // Change the unit to platform unit and append to target array.
-  AddLengthToArray(out, radius_x);
-  AddLengthToArray(out, radius_y);
-  AddLengthToArray(out, center_x);
-  AddLengthToArray(out, center_y);
+  ComputeBasicShapeArray(raw, reset, out, context, configs);
 }
 
 /**
@@ -1574,34 +1647,7 @@ void CSSStyleUtils::ComputeBasicShapeCircle(
     const fml::RefPtr<lepus::CArray>& raw, bool reset,
     fml::RefPtr<lepus::CArray>& out, const tasm::CssMeasureContext& context,
     const tasm::CSSParserConfigs& configs) {
-  if (reset) {
-    // Keep the array empty.
-    return;
-  }
-
-  constexpr int INDEX_CIRCLE_TYPE = 0;
-  constexpr int INDEX_CIRCLE_RADIUS = 1;
-  constexpr int INDEX_CIRCLE_RADIUS_UNIT = 2;
-  constexpr int INDEX_CIRCLE_CENTER_X = 3;
-  constexpr int INDEX_CIRCLE_CENTER_X_UNIT = 4;
-  constexpr int INDEX_CIRCLE_CENTER_Y = 5;
-  constexpr int INDEX_CIRCLE_CENTER_Y_UNIT = 6;
-
-  out->push_back(raw->get(INDEX_CIRCLE_TYPE));
-  NLength radius = NLength::MakeAutoNLength(),
-          center_x = NLength::MakeAutoNLength(),
-          center_y = NLength::MakeAutoNLength();
-  GetLengthData(radius, raw->get(INDEX_CIRCLE_RADIUS),
-                raw->get(INDEX_CIRCLE_RADIUS_UNIT), context, configs);
-  GetLengthData(center_x, raw->get(INDEX_CIRCLE_CENTER_X),
-                raw->get(INDEX_CIRCLE_CENTER_X_UNIT), context, configs);
-  GetLengthData(center_y, raw->get(INDEX_CIRCLE_CENTER_Y),
-                raw->get(INDEX_CIRCLE_CENTER_Y_UNIT), context, configs);
-
-  // Convert unit to platformUnit and append to output array.
-  AddLengthToArray(out, radius);
-  AddLengthToArray(out, center_x);
-  AddLengthToArray(out, center_y);
+  ComputeBasicShapeArray(raw, reset, out, context, configs);
 }
 
 /**
@@ -1631,47 +1677,7 @@ void CSSStyleUtils::ComputeSuperEllipse(const fml::RefPtr<lepus::CArray>& raw,
                                         fml::RefPtr<lepus::CArray>& out,
                                         const tasm::CssMeasureContext& context,
                                         const tasm::CSSParserConfigs& configs) {
-  if (reset) {
-    // Keep the array empty.
-    return;
-  }
-  constexpr int INDEX_SUPER_ELLIPSE_TYPE = 0;
-  constexpr int INDEX_SUPER_ELLIPSE_RADIUS_X = 1;
-  constexpr int INDEX_SUPER_ELLIPSE_RADIUS_X_UNIT = 2;
-  constexpr int INDEX_SUPER_ELLIPSE_RADIUS_Y = 3;
-  constexpr int INDEX_SUPER_ELLIPSE_RADIUS_Y_UNIT = 4;
-  constexpr int INDEX_SUPER_ELLIPSE_EXPONENT_X = 5;
-  constexpr int INDEX_SUPER_ELLIPSE_EXPONENT_Y = 6;
-  constexpr int INDEX_SUPER_ELLIPSE_CENTER_X = 7;
-  constexpr int INDEX_SUPER_ELLIPSE_CENTER_X_UNIT = 8;
-  constexpr int INDEX_SUPER_ELLIPSE_CENTER_Y = 9;
-  constexpr int INDEX_SUPER_ELLIPSE_CENTER_Y_UNIT = 10;
-
-  // Append type
-  out->push_back(raw->get(INDEX_SUPER_ELLIPSE_TYPE));
-
-  // Convert style length to platform length
-  NLength radius_x = NLength::MakeAutoNLength();
-  NLength radius_y = NLength::MakeAutoNLength();
-  NLength center_x = NLength::MakeAutoNLength();
-  NLength center_y = NLength::MakeAutoNLength();
-
-  GetLengthData(radius_x, raw->get(INDEX_SUPER_ELLIPSE_RADIUS_X),
-                raw->get(INDEX_SUPER_ELLIPSE_RADIUS_X_UNIT), context, configs);
-  GetLengthData(radius_y, raw->get(INDEX_SUPER_ELLIPSE_RADIUS_Y),
-                raw->get(INDEX_SUPER_ELLIPSE_RADIUS_Y_UNIT), context, configs);
-  GetLengthData(center_x, raw->get(INDEX_SUPER_ELLIPSE_CENTER_X),
-                raw->get(INDEX_SUPER_ELLIPSE_CENTER_X_UNIT), context, configs);
-  GetLengthData(center_y, raw->get(INDEX_SUPER_ELLIPSE_CENTER_Y),
-                raw->get(INDEX_SUPER_ELLIPSE_CENTER_Y_UNIT), context, configs);
-
-  // re-build array, [type, rx, urx, ry, ury, ex, ey, cx, ucx, cy, ucy]
-  AddLengthToArray(out, radius_x);
-  AddLengthToArray(out, radius_y);
-  out->push_back(raw->get(INDEX_SUPER_ELLIPSE_EXPONENT_X));
-  out->push_back(raw->get(INDEX_SUPER_ELLIPSE_EXPONENT_Y));
-  AddLengthToArray(out, center_x);
-  AddLengthToArray(out, center_y);
+  ComputeBasicShapeArray(raw, reset, out, context, configs);
 }
 
 void CSSStyleUtils::ComputeBasicShapeInset(
@@ -1679,49 +1685,7 @@ void CSSStyleUtils::ComputeBasicShapeInset(
     const fml::RefPtr<lepus::CArray>& dst,
     const tasm::CssMeasureContext& context,
     const tasm::CSSParserConfigs& configs) {
-  if (reset) {
-    // keep the dst array empty.
-    return;
-  }
-  constexpr int INDEX_INSET_TYPE = 0;
-  dst->push_back(raw->get(INDEX_INSET_TYPE));
-  NLength length = NLength::MakeAutoNLength();
-
-  // Get inset for the four sides.
-  constexpr int ARRAY_LENGTH_INSET_RECT = 8;
-  for (int i = 1; i < ARRAY_LENGTH_INSET_RECT; i += 2) {
-    GetLengthData(length, raw->get(i), raw->get(i + 1), context, configs);
-    AddLengthToArray(dst, length);
-  }
-  constexpr int ARRAY_LENGTH_INSET_ROUNDED = 25;
-  // raw array is arranged [type, top, unit, right, unit, bottom, unit, left,
-  // unit, top-left-x, unit, top-left-y, unit, top-right-x, unit, top-right-y,
-  // unit, bottom-right-x, unit, bottom-right-y, unit, bottom-left-x, unit,
-  // bottom-left-y, unit]
-  if (raw->size() == ARRAY_LENGTH_INSET_ROUNDED) {
-    // Get <border-radius> for the four sides.
-    for (int i = ARRAY_LENGTH_INSET_RECT + 1; i < ARRAY_LENGTH_INSET_ROUNDED;
-         i += 2) {
-      GetLengthData(length, raw->get(i), raw->get(i + 1), context, configs);
-      AddLengthToArray(dst, length);
-    }
-  }
-  constexpr int ARRAY_LENGTH_INSET_SUPER_ELLIPSE = 27;
-  // raw array is arranged [type, top, unit, right, unit, bottom, unit, left,
-  // unit, ex, ey, top-left-x, unit, top-left-y, unit, top-right-x, unit,
-  // top-right-y, unit, bottom-right-x, unit, bottom-right-y, unit,
-  // bottom-left-x, unit, bottom-left-y, unit]
-  if (raw->size() == ARRAY_LENGTH_INSET_SUPER_ELLIPSE) {
-    // get exponent for [ex, ey]
-    dst->push_back(raw->get(ARRAY_LENGTH_INSET_RECT + 1));
-    dst->push_back(raw->get(ARRAY_LENGTH_INSET_RECT + 2));
-    // Get <border-radius> for the four sides.
-    for (int i = ARRAY_LENGTH_INSET_RECT + 3;
-         i < ARRAY_LENGTH_INSET_SUPER_ELLIPSE; i += 2) {
-      GetLengthData(length, raw->get(i), raw->get(i + 1), context, configs);
-      AddLengthToArray(dst, length);
-    }
-  }
+  ComputeBasicShapeArray(raw, reset, dst, context, configs);
 }
 
 bool CSSStyleUtils::IsBorderLengthLegal(std::string value) {

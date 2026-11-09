@@ -111,7 +111,7 @@ bool IsOverlayTag(const base::String& tag) {
 bool IsSubtreeProperty(CSSPropertyID css_id) {
   // Fragment visibility changes must rebuild content to hide or restore it.
   return css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform ||
-         css_id == kPropertyIDFilter;
+         css_id == kPropertyIDFilter || css_id == kPropertyIDClipPath;
 }
 
 #if ENABLE_TESTBENCH_REPLAY
@@ -376,6 +376,7 @@ void Element::PushStyleToBundle() {
     // the dirty bits. Copy CSS hit-test state to the event bundle first.
     auto* style = computed_css_style();
     if (auto* fragment = fragment_impl()) {
+      fragment->CaptureClipPathStyleChange();
       if (style->HasResetProperty(kPropertyIDPointerEvents)) {
         fragment->SetEventProp(PlatformEventPropName::kPointerEvents,
                                lepus::Value());
@@ -2200,6 +2201,12 @@ void Element::CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value) {
 }
 
 bool Element::IsStackingContextNode() {
+  if (EnableFragmentLayerRender()) {
+    const auto& clip_path = computed_css_style()->GetClipPath();
+    if (element_manager()->root() == this || clip_path) {
+      return true;
+    }
+  }
   if (!GetEnableZIndex()) return false;
   return element_manager()->root() == this || has_z_props() || is_fixed_ ||
          computed_css_style()->HasTransform() ||

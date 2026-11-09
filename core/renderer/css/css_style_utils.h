@@ -40,6 +40,7 @@ struct TimingFunctionData;
 struct FilterData;
 
 class NLength;
+struct BasicShapeData;
 
 class CSSStyleUtils {
  public:
@@ -262,6 +263,11 @@ class CSSStyleUtils {
 
   static void AddLengthToArray(const fml::RefPtr<lepus::CArray>& array,
                                const NLength& length);
+  static bool ComputeBasicShape(const lepus::CArray& raw, BasicShapeData& out,
+                                const tasm::CssMeasureContext& context,
+                                const tasm::CSSParserConfigs& configs);
+  static void BasicShapeToArray(const BasicShapeData& shape,
+                                const fml::RefPtr<lepus::CArray>& out);
   static void ComputeBasicShapeEllipse(const fml::RefPtr<lepus::CArray>& raw,
                                        bool reset,
                                        fml::RefPtr<lepus::CArray>& out,
