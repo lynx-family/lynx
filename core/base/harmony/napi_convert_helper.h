@@ -20,7 +20,16 @@ class NapiConvertHelper {
  public:
   static lepus_value JSONToLepusValue(napi_env env, napi_value obj);
 
+  // Parses JSON strings; objects use ConvertToLepusValue and its diagnostics.
+  static lepus_value JSONToLepusValue(napi_env env, napi_value obj,
+                                      std::string* error_message);
+
   static lepus_value ConvertToLepusValue(napi_env env, napi_value obj);
+
+  // Retries deep inputs with cycle detection without modifying the input.
+  // Records the initial depth limit; the retry adds no further diagnostics.
+  static lepus_value ConvertToLepusValue(napi_env env, napi_value obj,
+                                         std::string* error_message);
 
   static void AssembleArray(napi_env env, napi_value array, uint32_t index,
                             const lepus::Value& value);
