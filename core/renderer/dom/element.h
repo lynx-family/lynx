@@ -2527,6 +2527,9 @@ class Element : public lepus::RefCounted,
  private:
   bool FlushCustomLayoutFunctions();
 
+  void EnsureExplicitChildActionsForInsertion(
+      const fml::RefPtr<Element>& child);
+
   // Updates logical and scoped ownership without enqueueing platform actions.
   void AttachNodeToElementTree(const fml::RefPtr<Element>& child,
                                Element* ref_node, int32_t index,
