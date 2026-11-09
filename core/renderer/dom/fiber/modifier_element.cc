@@ -1170,94 +1170,118 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
   }
 }
 
+using ModifierFrames = base::Vector<fml::RefPtr<ModifierElement>>;
+
+ModifierFrames CollectModifierFrames(Element* mount_root, Element* owner) {
+  ModifierFrames frames;
+  // ValidateTopology has checked the single-child chain ending at owner.
+  for (auto* frame = mount_root; frame != owner; frame = frame->GetChildAt(0)) {
+    frames.emplace_back(static_cast<ModifierElement*>(frame));
+  }
+  return frames;
+}
+
+ModifierFrames PrepareModifierFrames(const ModifierFramePlan& plan,
+                                     Element* owner,
+                                     const ModifierFrames& previous_frames) {
+  // Keep the innermost suffix; only a missing outer prefix needs new nodes.
+  const size_t reused_count =
+      std::min(previous_frames.size(), plan.frame_count);
+  const size_t created_count = plan.frame_count - reused_count;
+  ModifierFrames frames;
+  frames.reserve(plan.frame_count);
+  for (size_t index = 0; index < created_count; ++index) {
+    frames.push_back(CreateFrame(owner));
+  }
+  for (size_t index = previous_frames.size() - reused_count;
+       index < previous_frames.size(); ++index) {
+    auto frame = previous_frames[index];
+    ClearModifierOwnedProperties(frame.get());
+    // Restore constructor defaults after clearing the previous plan's styles.
+    frame->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+    frame->SetStyle(kPropertyIDBoxSizing, lepus::Value("border-box"));
+    frame->SetStyle(kPropertyIDXBoxPropagateMinConstraints, lepus::Value(true));
+    frames.push_back(std::move(frame));
+  }
+  for (const auto& frame : frames) {
+    frame->SetDefaultOverflow(
+        plan.has_draw_callbacks || plan.has_offset || plan.has_wrap_content ||
+        owner->element_manager()->GetDefaultOverflowVisible());
+  }
+  return frames;
+}
+
+void AttachModifierSubtree(Element* parent, const fml::RefPtr<Element>& child,
+                           int32_t index) {
+  if (child->parent() != nullptr) {
+    NotifyNodeRemoved(child.get());
+    parent->MoveNodeToIndex(child, index);
+  } else {
+    parent->InsertNode(child, index);
+  }
+  NotifyNodeAdded(child.get());
+}
+
+fml::RefPtr<Element> WrapNewModifierFrames(Element* owner,
+                                           const ModifierFrames& frames,
+                                           size_t created_count) {
+  auto root = created_count == frames.size()
+                  ? fml::RefPtr<Element>(owner)
+                  : fml::RefPtr<Element>(frames[created_count]);
+  // Wire the new outer prefix from inside out. Retained child links stay put.
+  for (size_t index = created_count; index > 0; --index) {
+    AttachModifierSubtree(frames[index - 1].get(), root, 0);
+    root = frames[index - 1];
+  }
+  return root;
+}
+
+fml::RefPtr<Element> UpdateModifierFrameTree(
+    Element* owner, Element* previous_root,
+    const ModifierFrames& previous_frames, const ModifierFrames& frames) {
+  auto* parent = previous_root->parent();
+  const int32_t old_index =
+      parent == nullptr ? -1 : parent->IndexOf(previous_root);
+  const size_t reused_count = std::min(previous_frames.size(), frames.size());
+  auto root =
+      WrapNewModifierFrames(owner, frames, frames.size() - reused_count);
+  if (root.get() == previous_root) return root;
+
+  if (parent == nullptr) {
+    if (root->parent() != nullptr) {
+      NotifyNodeRemoved(root.get());
+      root->parent()->RemoveNode(root, false);
+    }
+    return root;
+  }
+
+  const bool shrinking = frames.size() < previous_frames.size();
+  // Insert after the old root so the queued insertion references the following
+  // sibling, not an ancestor that this update is about to discard.
+  AttachModifierSubtree(parent, root, old_index + (shrinking ? 1 : 0));
+  // Shrinking has detached the retained suffix from the old prefix; growing
+  // has already wrapped the previous root with the new prefix.
+  if (shrinking) {
+    NotifyNodeRemoved(previous_root);
+    parent->RemoveNode(fml::RefPtr<Element>(previous_root), false);
+  }
+  return root;
+}
+
 fml::RefPtr<Element> InstallModifierFramePlan(
     const ModifierFramePlan& plan, Element* owner, Element* current_mount_root,
     runtime::MTSRuntime* registration_context, bool deep_convert) {
-  if (plan.frame_count == 0 && current_mount_root == owner) {
-    const base::Vector<fml::RefPtr<ModifierElement>> frames;
-    ClearModifierOwnedProperties(owner);
-    ApplyLayoutOperations(plan, frames, owner);
-    ApplyNonLayoutOperations(plan, owner, frames, registration_context,
-                             deep_convert);
-    return fml::RefPtr<Element>(owner);
-  }
-
-  fml::RefPtr<Element> old_root(current_mount_root);
-  Element* external_parent = old_root->parent();
-  const int32_t old_index = external_parent == nullptr
-                                ? -1
-                                : external_parent->IndexOf(old_root.get());
-
-  base::Vector<fml::RefPtr<ModifierElement>> frames;
-  frames.reserve(plan.frame_count);
-  for (size_t index = 0; index < plan.frame_count; ++index) {
-    auto frame = CreateFrame(owner);
-    // Pass-through boxes must not introduce implicit clipping around
-    // transformed contents. Authored overflow styles are applied afterwards and
-    // still win.
-    if (plan.has_draw_callbacks || plan.has_offset || plan.has_wrap_content)
-      frame->SetDefaultOverflow(true);
-    frames.push_back(std::move(frame));
-  }
-
-  // When replacing a mounted, non-empty frame chain, move the attached owner
-  // from the old innermost frame to the new innermost frame. First mounts,
-  // detached chains, and zero-frame plans keep the existing remove-and-insert
-  // path.
-  const bool move_attached_owner =
-      external_parent != nullptr && current_mount_root != owner &&
-      !frames.empty() && owner->render_parent() != nullptr;
-
-  if (external_parent != nullptr) {
-    NotifyNodeRemoved(old_root.get());
-    external_parent->RemoveNode(old_root, false);
-  }
-  if (current_mount_root != owner) {
-    NotifyNodeRemoved(owner);
-    if (!move_attached_owner) {
-      owner->parent()->RemoveNode(fml::RefPtr<Element>(owner), false);
-    }
-  }
+  const auto previous_frames = CollectModifierFrames(current_mount_root, owner);
+  const auto frames = PrepareModifierFrames(plan, owner, previous_frames);
 
   ClearModifierOwnedProperties(owner);
-
   ApplyLayoutOperations(plan, frames, owner);
   ApplyNonLayoutOperations(plan, owner, frames, registration_context,
                            deep_convert);
   ApplyLayoutChildConstraints(plan, frames, owner);
 
-  if (frames.empty()) {
-    auto owner_ref = fml::RefPtr<Element>(owner);
-    if (external_parent != nullptr) {
-      external_parent->InsertNode(owner_ref, old_index);
-      NotifyNodeAdded(owner);
-    }
-    return owner_ref;
-  }
-
-  fml::RefPtr<Element> new_root;
-  auto frame = frames.rbegin();
-  if (move_attached_owner) {
-    (*frame)->MoveNodeToIndex(fml::RefPtr<Element>(owner), 0);
-    NotifyNodeAdded(owner);
-    new_root = *frame;
-    ++frame;
-  } else {
-    new_root = fml::RefPtr<Element>(owner);
-  }
-
-  for (auto it = frame; it != frames.rend(); ++it) {
-    auto frame = fml::RefPtr<Element>(*it);
-    frame->InsertNode(new_root);
-    NotifyNodeAdded(new_root.get());
-    new_root = std::move(frame);
-  }
-
-  if (external_parent != nullptr) {
-    external_parent->InsertNode(new_root, old_index);
-    NotifyNodeAdded(new_root.get());
-  }
-  return new_root;
+  return UpdateModifierFrameTree(owner, current_mount_root, previous_frames,
+                                 frames);
 }
 
 }  // namespace
@@ -1338,7 +1362,7 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     return {false, 0, std::move(error)};
   }
   // The content Element keeps its identity while the surrounding Modifier
-  // frames are replaced. The mount root is the outermost of those frames, or
+  // frames are updated. The mount root is the outermost of those frames, or
   // the content Element itself when no frames are needed.
   auto content_element = handle->content_element();
   auto previous_mount_root = handle->mount_root();
@@ -1392,7 +1416,7 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     }
   }
 
-  // Remove old bindings before replacing the chain, including any binding on
+  // Remove old bindings before updating the chain, including any binding on
   // the content Element that will be reused by the new plan.
   ClearModifierDrawCallbacks(previous_mount_root.get(), content_element.get());
 
