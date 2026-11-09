@@ -2,16 +2,19 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxUIImage.h>
 #import <XCTest/XCTest.h>
+#import "LynxUIUnitTestUtils.h"
 
 @interface LynxUIImage (RendererTesting)
 - (void)requestImage;
 - (void)requestImage:(LynxURL*)url;
 - (void)onImageReady:(UIImage*)image withRequest:(LynxURL*)url;
+- (void)sendImageResult:(LynxDetailEvent*)event;
 @end
 
 @interface LynxUIImageRequestProbe : LynxUIImage
@@ -98,6 +101,69 @@
   [LynxPropsProcessor updateProp:@0 withKey:@"not-cache-to-disk" forUI:_UIImage];
   [_UIImage propsDidUpdate];
   XCTAssertEqual(_UIImage.requestOptions, LynxImageDefaultOptions);
+}
+
+- (LynxUIMockContext*)reloadContextForImage:(LynxUIImage*)image {
+  LynxUIMockContext* context = [LynxUIUnitTestUtils initUIMockContextWithUI:image];
+  [image setRawEvents:[NSSet setWithArray:@[ @"load(bindEvent)", @"error(bindEvent)" ]]
+      andLepusRawEvents:[NSSet set]];
+  [image onNodeReady];
+  return context;
+}
+
+- (LynxDetailEvent*)loadResult {
+  return [[LynxDetailEvent alloc] initWithName:@"load"
+                                    targetSign:42
+                                        detail:@{@"width" : @80, @"height" : @40, @"origin" : @1}];
+}
+
+- (void)testReloadReplaysResultWithoutPropertyChanges {
+  LynxDetailEvent* error = [[LynxDetailEvent alloc] initWithName:@"error"
+                                                      targetSign:42
+                                                          detail:@{@"errMsg" : @"missing image"}];
+  for (LynxDetailEvent* result in @[ [self loadResult], error ]) {
+    LynxUIImageRequestProbe* image = [[LynxUIImageRequestProbe alloc] init];
+    LynxUIMockContext* context = [self reloadContextForImage:image];
+    LynxUIOwner* owner = [[LynxUIOwner alloc] initWithContainerView:nil
+                                                  componentRegistry:[LynxComponentScopeRegistry new]
+                                                      screenMetrics:nil];
+    image.sign = 42;
+    NSMutableDictionary* uiHolder = [owner valueForKey:@"uiHolder"];
+    uiHolder[@42] = image;
+    image.requestCount = 0;
+    [image sendImageResult:result];
+    [image finishLayoutOperation];
+    XCTAssertEqual(context.mockEventEmitter.cachedEvents.count, 1);
+    [owner onNodeReload:42];
+    [owner finishLayoutOperation:0 componentID:0];
+    [owner finishLayoutOperation:0 componentID:0];
+    XCTAssertEqual(context.mockEventEmitter.cachedEvents.count, 2);
+    XCTAssertEqualObjects(context.mockEventEmitter.event.eventName, result.eventName);
+    XCTAssertEqualObjects(context.mockEventEmitter.event.params, result.params);
+    XCTAssertEqual(image.requestCount, 0);
+  }
+}
+
+- (void)testReloadWithNewSourceDoesNotReplayOldResult {
+  LynxUIImage* image = [[LynxUIImage alloc] init];
+  LynxUIMockContext* context = [self reloadContextForImage:image];
+  [image sendImageResult:[self loadResult]];
+  [image onNodeReload];
+  [LynxPropsProcessor updateProp:@"https://example.com/new.png" withKey:@"src" forUI:image];
+  [image finishLayoutOperation];
+  XCTAssertEqual(context.mockEventEmitter.cachedEvents.count, 1);
+}
+
+- (void)testRealCallbackConsumesReplayWithoutSuppressingLaterLoads {
+  LynxUIImage* image = [[LynxUIImage alloc] init];
+  LynxUIMockContext* context = [self reloadContextForImage:image];
+  [image sendImageResult:[self loadResult]];
+  [image onNodeReload];
+  [image sendImageResult:[self loadResult]];
+  [image finishLayoutOperation];
+  XCTAssertEqual(context.mockEventEmitter.cachedEvents.count, 2);
+  [image sendImageResult:[self loadResult]];
+  XCTAssertEqual(context.mockEventEmitter.cachedEvents.count, 3);
 }
 
 @end

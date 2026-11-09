@@ -1092,6 +1092,8 @@ extern NSString* const kDefaultComponentID;
 - (void)onNodeReload:(NSInteger)sign {
   LynxUI* ui = _uiHolder[[NSNumber numberWithInteger:sign]];
   if (ui) {
+    // Complete reload even when no properties or layout changed.
+    [self markHasUIOperations:ui];
     [ui onNodeReload];
   }
 }

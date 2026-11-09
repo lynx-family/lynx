@@ -1952,7 +1952,7 @@ public interface com::lynx::tasm::service::ILynxTrailService::FetchCallback {
   public void com.lynx.tasm.service.ILynxTrailService.FetchCallback.onResult(boolean success, @Nullable String errorMessage);
 }
 
-public class com::lynx::tasm::behavior::ui::image::FlattenUIImage : com.lynx.tasm.behavior.ui.LynxFlattenUI {
+public class com::lynx::tasm::behavior::ui::image::FlattenUIImage : com.lynx.tasm.behavior.ui.LynxFlattenUI, com.lynx.tasm.behavior.PatchFinishListener {
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context);
   public com.lynx.tasm.behavior.ui.image.FlattenUIImage.FlattenUIImage(LynxContext context, Object params);
   public MeaningfulContentStatus com.lynx.tasm.behavior.ui.image.FlattenUIImage.getMeaningfulContentStatus();
@@ -1965,6 +1965,8 @@ public class com::lynx::tasm::behavior::ui::image::FlattenUIImage : com.lynx.tas
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.updatePropertiesInterval(StylesDiffMap props);
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.onPropsUpdated();
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.setImageRendering(int imageRendering);
+  public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.onNodeReload();
+  public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.onPatchFinish();
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.onNodeReady();
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.destroy();
   public void com.lynx.tasm.behavior.ui.image.FlattenUIImage.onDraw(Canvas canvas);
@@ -6020,6 +6022,8 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public final String com.lynx.tasm.behavior.ui.image.LynxImageManager.EVENT_LOAD EVENT_LOAD;
   public final String com.lynx.tasm.behavior.ui.image.LynxImageManager.EVENT_ERROR EVENT_ERROR;
   public com.lynx.tasm.behavior.ui.image.LynxImageManager.LynxImageManager(LynxContext context);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.onNodeReload();
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.onPatchFinish();
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setSkipRedirection(boolean skipRedirection);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setDeferInvalidation(boolean defer);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setDisableDefaultPlaceholder(boolean disable);
@@ -11381,7 +11385,7 @@ public class abstract com::lynx::tasm::behavior::ui::UIGroup : com.lynx.tasm.beh
   public static Integer com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.getViewZIndex(View view);
 }
 
-public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behavior.ui.view.UIView {
+public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behavior.ui.view.UIView, com.lynx.tasm.behavior.PatchFinishListener {
   public com.lynx.tasm.behavior.ui.image.UIImage.UIImage(LynxContext context);
   public com.lynx.tasm.behavior.ui.image.UIImage.UIImage(LynxContext context, Object params);
   public MeaningfulContentStatus com.lynx.tasm.behavior.ui.image.UIImage.getMeaningfulContentStatus();
@@ -11395,6 +11399,8 @@ public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behav
   public void com.lynx.tasm.behavior.ui.image.UIImage.updatePropertiesInterval(StylesDiffMap props);
   public int com.lynx.tasm.behavior.ui.image.UIImage.getInitialOverflowType();
   public void com.lynx.tasm.behavior.ui.image.UIImage.onPropsUpdated();
+  public void com.lynx.tasm.behavior.ui.image.UIImage.onNodeReload();
+  public void com.lynx.tasm.behavior.ui.image.UIImage.onPatchFinish();
   public void com.lynx.tasm.behavior.ui.image.UIImage.onNodeReady();
   public void com.lynx.tasm.behavior.ui.image.UIImage.destroy();
   public void com.lynx.tasm.behavior.ui.image.UIImage.beforeDraw(Canvas canvas);

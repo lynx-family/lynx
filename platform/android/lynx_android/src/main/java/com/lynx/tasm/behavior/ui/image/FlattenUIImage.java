@@ -12,6 +12,7 @@ import android.view.View;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
+import com.lynx.tasm.behavior.PatchFinishListener;
 import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
@@ -22,7 +23,7 @@ import com.lynx.tasm.event.EventsListener;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FlattenUIImage extends LynxFlattenUI {
+public class FlattenUIImage extends LynxFlattenUI implements PatchFinishListener {
   LynxImageManager mLynxImageManager;
 
   public FlattenUIImage(LynxContext context) {
@@ -150,6 +151,21 @@ public class FlattenUIImage extends LynxFlattenUI {
     ensureLynxImageManager();
     super.setImageRendering(imageRendering);
     mLynxImageManager.setIsPixelated(imageRendering == IMAGERENDERING_PIXELATED);
+  }
+
+  @Override
+  public void onNodeReload() {
+    super.onNodeReload();
+    if (mLynxImageManager != null) {
+      mLynxImageManager.onNodeReload();
+    }
+  }
+
+  @Override
+  public void onPatchFinish() {
+    if (mLynxImageManager != null) {
+      mLynxImageManager.onPatchFinish();
+    }
   }
 
   @Override

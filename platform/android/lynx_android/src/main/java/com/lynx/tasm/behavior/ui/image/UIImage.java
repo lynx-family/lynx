@@ -11,6 +11,7 @@ import android.view.View;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
+import com.lynx.tasm.behavior.PatchFinishListener;
 import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIParams;
@@ -20,7 +21,7 @@ import com.lynx.tasm.event.EventsListener;
 import java.util.HashMap;
 import java.util.Map;
 
-public class UIImage extends UIView {
+public class UIImage extends UIView implements PatchFinishListener {
   LynxImageManager mLynxImageManager;
 
   public UIImage(LynxContext context) {
@@ -160,6 +161,21 @@ public class UIImage extends UIView {
     ensureLynxImageManager();
     super.onPropsUpdated();
     mLynxImageManager.onPropsUpdated();
+  }
+
+  @Override
+  public void onNodeReload() {
+    super.onNodeReload();
+    if (mView.getRenderer() == null && mLynxImageManager != null) {
+      mLynxImageManager.onNodeReload();
+    }
+  }
+
+  @Override
+  public void onPatchFinish() {
+    if (mView.getRenderer() == null && mLynxImageManager != null) {
+      mLynxImageManager.onPatchFinish();
+    }
   }
 
   @Override
