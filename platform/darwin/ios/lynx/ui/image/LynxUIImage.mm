@@ -250,6 +250,8 @@ typedef NS_ENUM(NSInteger, LynxImagePlayState) {
 @property(nonatomic, assign) NSInteger logBoxSizeWarningThreshold;
 @property(nonatomic) CGSize prevSize;
 @property(nonatomic) NSDate* startRequestTime;
+@property(nonatomic) LynxDetailEvent* lastImageResult;
+@property(nonatomic) BOOL pendingReload;
 @property(nonatomic) BOOL useNewImage;
 @property(nonatomic) NSDate* finishRequestTime;
 @property(nonatomic) BOOL autoPlay;
@@ -622,6 +624,50 @@ LYNX_REGISTER_UI("image")
   [super propsDidUpdate];
 }
 
+- (void)onNodeReload {
+  [super onNodeReload];
+  if (((id<LynxRendererHost>)self.view).renderer == nil) {
+    @synchronized(self) {
+      _pendingReload = YES;
+    }
+  }
+}
+
+- (void)finishLayoutOperation {
+  [super finishLayoutOperation];
+  LynxDetailEvent* result;
+  @synchronized(self) {
+    result = _pendingReload ? _lastImageResult : nil;
+    _pendingReload = NO;
+  }
+  if (result && !_isDirty && ((id<LynxRendererHost>)self.view).renderer == nil &&
+      [self.eventSet valueForKey:result.eventName]) {
+    [self.context.eventEmitter
+        dispatchCustomEvent:[[LynxDetailEvent alloc] initWithName:result.eventName
+                                                       targetSign:self.sign
+                                                           detail:result.params]];
+  }
+}
+
+- (void)sendImageResult:(LynxDetailEvent*)event {
+  @synchronized(self) {
+    // Dispatch may mutate the original event's parameters, so cache a separate copy.
+    _lastImageResult = [[LynxDetailEvent alloc] initWithName:event.eventName
+                                                  targetSign:event.targetSign
+                                                      detail:event.params];
+    // A real callback fulfills the pending notification for this request.
+    _pendingReload = NO;
+  }
+  [self.context.eventEmitter dispatchCustomEvent:event];
+}
+
+- (void)onNodeRemoved {
+  @synchronized(self) {
+    _pendingReload = NO;
+  }
+  [super onNodeRemoved];
+}
+
 - (void)onNodeReady {
   [super onNodeReady];
   if (_isDirty) {
@@ -779,18 +825,16 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
                   strongSelf.image = image;
                   [strongSelf updateLayerMaskOnFrameChangedInner:YES URL:requestUrl];
                   if ([strongSelf.eventSet valueForKey:LynxImageEventLoad]) {
-                    [strongSelf.context.eventEmitter
-                        dispatchCustomEvent:[[LynxDetailEvent alloc]
-                                                initWithName:LynxImageEventLoad
-                                                  targetSign:strongSelf.sign
-                                                      detail:@{
-                                                        @"height" : [NSNumber
-                                                            numberWithFloat:roundf(
-                                                                                image.size.height)],
-                                                        @"width" : [NSNumber
-                                                            numberWithFloat:roundf(
-                                                                                image.size.width)]
-                                                      }]];
+                    [strongSelf
+                        sendImageResult:[[LynxDetailEvent alloc]
+                                            initWithName:LynxImageEventLoad
+                                              targetSign:strongSelf.sign
+                                                  detail:@{
+                                                    @"height" : [NSNumber
+                                                        numberWithFloat:roundf(image.size.height)],
+                                                    @"width" : [NSNumber
+                                                        numberWithFloat:roundf(image.size.width)]
+                                                  }]];
                   }
                 }];
   return true;
@@ -799,6 +843,11 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 - (void)requestImage:(LynxURL*)requestUrl {
   if (((id<LynxRendererHost>)self.view).renderer != nil) {
     return;
+  }
+  if (requestUrl && requestUrl.type == LynxImageRequestSrc) {
+    @synchronized(self) {
+      _lastImageResult = nil;
+    }
   }
   if (_cancelBlocks[@(requestUrl.type)]) {
     _cancelBlocks[@(requestUrl.type)]();
@@ -952,27 +1001,25 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
         if (strongSelf.enableReportInfo) {
           NSMutableDictionary* reportInfo =
               [strongSelf createReportInfo:requestUrl isNewImage:[strongSelf shouldUseNewImage]];
-          [strongSelf.context.eventEmitter
-              dispatchCustomEvent:[[LynxDetailEvent alloc] initWithName:LynxImageEventLoad
-                                                             targetSign:strongSelf.sign
-                                                                 detail:reportInfo]];
+          [strongSelf sendImageResult:[[LynxDetailEvent alloc] initWithName:LynxImageEventLoad
+                                                                 targetSign:strongSelf.sign
+                                                                     detail:reportInfo]];
         } else if (strongSelf.enableExtraLoadInfo) {
           [strongSelf addReportInfo:requestUrl];
-          [strongSelf.context.eventEmitter
-              dispatchCustomEvent:[[LynxDetailEvent alloc] initWithName:LynxImageEventLoad
-                                                             targetSign:strongSelf.sign
-                                                                 detail:requestUrl.reportInfo]];
+          [strongSelf sendImageResult:[[LynxDetailEvent alloc] initWithName:LynxImageEventLoad
+                                                                 targetSign:strongSelf.sign
+                                                                     detail:requestUrl.reportInfo]];
         } else {
-          [strongSelf.context.eventEmitter
-              dispatchCustomEvent:[[LynxDetailEvent alloc]
-                                      initWithName:LynxImageEventLoad
-                                        targetSign:strongSelf.sign
-                                            detail:@{
-                                              @"height" : [NSNumber
-                                                  numberWithFloat:roundf(image.size.height)],
-                                              @"width" : [NSNumber
-                                                  numberWithFloat:roundf(image.size.width)]
-                                            }]];
+          [strongSelf
+              sendImageResult:[[LynxDetailEvent alloc]
+                                  initWithName:LynxImageEventLoad
+                                    targetSign:strongSelf.sign
+                                        detail:@{
+                                          @"height" :
+                                              [NSNumber numberWithFloat:roundf(image.size.height)],
+                                          @"width" :
+                                              [NSNumber numberWithFloat:roundf(image.size.width)]
+                                        }]];
         }
       } else {
         if (strongSelf.context.devtoolEnabled || strongSelf.context.imageMonitorEnabled) {
@@ -1153,10 +1200,9 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
       @"error_code" : errorCode,
       @"lynx_categorized_code" : categorizedErrorCode ?: @(-1)
     };
-    [self.context.eventEmitter
-        dispatchCustomEvent:[[LynxDetailEvent alloc] initWithName:LynxImageEventError
-                                                       targetSign:self.sign
-                                                           detail:detail]];
+    [self sendImageResult:[[LynxDetailEvent alloc] initWithName:LynxImageEventError
+                                                     targetSign:self.sign
+                                                         detail:detail]];
   }
 
   NSInteger subErrCode =
@@ -1376,6 +1422,9 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
 LYNX_PROP_SETTER("src", setSrc, NSString*) {
   [self markAsDirty];
   if (requestReset || value == nil) {
+    @synchronized(self) {
+      _lastImageResult = nil;
+    }
     self.image = nil;
     self.imageFromSrc = NO;
     [self resetImage];
@@ -1390,6 +1439,9 @@ LYNX_PROP_SETTER("src", setSrc, NSString*) {
     _src.type = LynxImageRequestSrc;
   }
   if (!newURL || ![newURL.absoluteString isEqualToString:_src.url.absoluteString]) {
+    @synchronized(self) {
+      _lastImageResult = nil;
+    }
     self.imageFromSrc = NO;
     self.image = nil;
     if (!_deferSrcInvalidation) {
