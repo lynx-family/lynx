@@ -116,6 +116,10 @@ static void LBSArcToBezier(CGMutablePathRef p, double cx, double cy, double a, d
 
 static void LBSCoreGraphicsEllipticTo(void *ctx, float cpx, float cpy, float a, float b,
                                       float theta, bool isLarge, bool isSweep, float x, float y) {
+  if (a == 0 || b == 0) {
+    CGPathAddLineToPoint(ctx, NULL, x, y);
+    return;
+  }
   float thetaD = M_PI * theta / 180.f;
   float cosTheta = cosf(thetaD);
   float sinTheta = sinf(thetaD);
@@ -167,6 +171,7 @@ static void LBSCoreGraphicsEllipticTo(void *ctx, float cpx, float cpy, float a, 
   double tCx = cx;
   cx = cx * cosTheta - cy * sinTheta;
   cy = tCx * sinTheta + cy * cosTheta;
+  if (!isfinite(cx) || !isfinite(cy) || !isfinite(sweep)) return;
   LBSArcToBezier(ctx, cx, cy, a, b, cpx, cpy, thetaD, eta0, sweep);
 }
 
