@@ -1084,6 +1084,65 @@ TEST_P(TextElementTest, ResetTextMaxlineClearsLayoutInElementProp) {
   EXPECT_FALSE(text->text_props_->text_max_line.has_value());
 }
 
+TEST_P(TextElementTest, LineHeightStyleAttributesUpdateAndReset) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+  auto page = manager->CreateFiberPage("page", 11);
+  auto text = manager->CreateFiberText("text");
+  page->InsertNode(text);
+
+  text->SetAttribute("compose-line-height-alignment", lepus::Value("center"));
+  text->SetAttribute("compose-line-height-trim", lepus::Value("both"));
+  text->SetAttribute("compose-line-height-mode", lepus::Value("fixed"));
+  page->FlushActionsAsRoot();
+
+  ASSERT_NE(text->text_props_, nullptr);
+  EXPECT_EQ(text->text_props_->line_height_alignment,
+            static_cast<uint32_t>(LineHeightAlignment::kCenter));
+  EXPECT_EQ(text->text_props_->line_height_trim, kLineHeightTrimBoth);
+  EXPECT_EQ(text->text_props_->line_height_mode,
+            static_cast<uint32_t>(LineHeightMode::kFixed));
+
+  text->SetAttribute("compose-line-height-alignment", lepus::Value("bottom"));
+  text->SetAttribute("compose-line-height-trim", lepus::Value("invalid"));
+  text->SetAttribute("compose-line-height-mode", lepus::Value("minimum"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(text->text_props_->line_height_alignment,
+            static_cast<uint32_t>(LineHeightAlignment::kBottom));
+  EXPECT_EQ(text->text_props_->line_height_trim, kLineHeightTrimBoth);
+  EXPECT_EQ(text->text_props_->line_height_mode,
+            static_cast<uint32_t>(LineHeightMode::kMinimum));
+
+  text->SetAttribute("compose-line-height-alignment", lepus::Value("top"));
+  text->SetAttribute("compose-line-height-trim",
+                     lepus::Value("first-line-top"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(text->text_props_->line_height_alignment,
+            static_cast<uint32_t>(LineHeightAlignment::kTop));
+  EXPECT_EQ(text->text_props_->line_height_trim, kLineHeightTrimFirstLineTop);
+
+  text->SetAttribute("compose-line-height-alignment", lepus::Value(0.25));
+  text->SetAttribute("compose-line-height-alignment",
+                     lepus::Value("proportional"));
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(text->text_props_->line_height_alignment,
+            static_cast<uint32_t>(LineHeightAlignment::kTop));
+
+  text->ResetAttribute("compose-line-height-alignment");
+  text->ResetAttribute("compose-line-height-trim");
+  text->ResetAttribute("compose-line-height-mode");
+  text->FlushActionsAsRoot();
+
+  EXPECT_FALSE(text->text_props_->line_height_alignment.has_value());
+  EXPECT_FALSE(text->text_props_->line_height_trim.has_value());
+  EXPECT_FALSE(text->text_props_->line_height_mode.has_value());
+}
+
 TEST_P(TextElementTest, SameTextAttributesDoNotInvalidateLayoutInElement) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
