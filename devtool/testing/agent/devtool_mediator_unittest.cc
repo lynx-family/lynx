@@ -2,12 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "third_party/jsoncpp/include/json/value.h"
 #define private public
 #define protected public
 
 #include <chrono>
+#include <cstdlib>
 #include <future>
 #include <memory>
 #include <thread>
@@ -28,6 +30,7 @@
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
+#include "devtool/lynx_devtool/base/file_stream.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 #include "devtool/testing/mock/cdp_event_listener_sender_mock.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
@@ -315,14 +318,122 @@ TEST_F(DevToolMediatorTest, ReplayStartCase) {
   EXPECT_TRUE(lynx::tasm::replay::TestBenchTestReplay::GetInstance().IsStart());
 }
 
-TEST_F(DevToolMediatorTest, ReplayEndCase) {
-  EXPECT_TRUE(lynx::tasm::replay::ReplayController::Enable());
-  Json::Value param;
-  devtool::LynxGlobalDevToolMediator::GetInstance().ReplayEnd(message_sender_,
-                                                              param);
-  ui_thread_->Join();
-  // TODO: Here are some concerns: why wasn't the state set to false during the
-  // specific implementation?
+namespace {
+
+void FlushGlobalDevToolTasks(devtool::LynxGlobalDevToolMediator& mediator) {
+  std::promise<void> p;
+  auto f = p.get_future();
+  mediator.default_task_runner_->PostTask([&p]() { p.set_value(); });
+  ASSERT_EQ(f.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+}
+
+Json::Value LastReceivedMessage() {
+  Json::Value res;
+  Json::Reader reader;
+  EXPECT_TRUE(reader.parse(
+      devtool::MockReceiver::GetInstance().received_message_.second, res));
+  return res;
+}
+
+std::string ReadStream(const std::string& handle) {
+  char buf[64] = {0};
+  int count = devtool::FileStream::Read(std::stoi(handle), buf, sizeof(buf));
+  devtool::FileStream::Close(std::stoi(handle));
+  return count > 0 ? std::string(buf, count) : std::string();
+}
+
+std::string WriteTempReplayDump(const std::string& content) {
+  char path[] = "/tmp/lynx_replay_dump_XXXXXX";
+  int fd = mkstemp(path);
+  EXPECT_NE(fd, -1);
+  EXPECT_EQ(write(fd, content.data(), content.size()),
+            static_cast<ssize_t>(content.size()));
+  close(fd);
+  return path;
+}
+
+}  // namespace
+
+TEST_F(DevToolMediatorTest, ReplayEndWithoutDumpReturnsError) {
+  ASSERT_TRUE(lynx::tasm::replay::ReplayController::Enable());
+  devtool::LynxGlobalDevToolMediator mediator;
+  Json::Value message;
+  message["id"] = 7;
+  message["method"] = "Replay.end";
+  mediator.ReplayEnd(message_sender_, message);
+  FlushGlobalDevToolTasks(mediator);
+
+  Json::Value res = LastReceivedMessage();
+  EXPECT_EQ(res["id"].asInt64(), 7);
+  EXPECT_NE(res["error"]["message"].asString().find("not available"),
+            std::string::npos);
+}
+
+TEST_F(DevToolMediatorTest, ReplayEndIgnoresClientSuppliedPath) {
+  ASSERT_TRUE(lynx::tasm::replay::ReplayController::Enable());
+  devtool::LynxGlobalDevToolMediator mediator;
+  const std::string secret = WriteTempReplayDump("not-a-replay-dump");
+  Json::Value message;
+  message["id"] = 8;
+  message["method"] = "Replay.end";
+  message["params"] = secret;
+  mediator.ReplayEnd(message_sender_, message);
+  FlushGlobalDevToolTasks(mediator);
+
+  // No dump has been produced by native code, so the client path is never
+  // opened and no stream is returned.
+  Json::Value res = LastReceivedMessage();
+  EXPECT_EQ(res["id"].asInt64(), 8);
+  EXPECT_TRUE(res.isMember("error"));
+  EXPECT_FALSE(res.isMember("params"));
+  unlink(secret.c_str());
+}
+
+TEST_F(DevToolMediatorTest, EndReplayTestSendsReplayEndEvent) {
+  ASSERT_TRUE(lynx::tasm::replay::ReplayController::Enable());
+  devtool::LynxGlobalDevToolMediator mediator;
+  const std::string dump = WriteTempReplayDump("replay-dump");
+  mediator.EndReplayTest(message_sender_, dump);
+  FlushGlobalDevToolTasks(mediator);
+
+  Json::Value res = LastReceivedMessage();
+  EXPECT_EQ(res["method"].asString(), "Replay.end");
+  ASSERT_TRUE(res["params"]["stream"].isString());
+  EXPECT_EQ(ReadStream(res["params"]["stream"].asString()), "replay-dump");
+  unlink(dump.c_str());
+}
+
+TEST_F(DevToolMediatorTest, ReplayEndOpensLatestNativeDumpOnly) {
+  ASSERT_TRUE(lynx::tasm::replay::ReplayController::Enable());
+  devtool::LynxGlobalDevToolMediator mediator;
+  const std::string dump = WriteTempReplayDump("replay-dump");
+  const std::string secret = WriteTempReplayDump("not-a-replay-dump");
+  mediator.EndReplayTest(message_sender_, dump);
+  FlushGlobalDevToolTasks(mediator);
+  devtool::MockReceiver::GetInstance().ResetAll();
+
+  Json::Value message;
+  message["id"] = 9;
+  message["method"] = "Replay.end";
+  message["params"] = secret;
+  mediator.ReplayEnd(message_sender_, message);
+  FlushGlobalDevToolTasks(mediator);
+
+  Json::Value res = LastReceivedMessage();
+  EXPECT_EQ(res["method"].asString(), "Replay.end");
+  ASSERT_TRUE(res["params"]["stream"].isString());
+  EXPECT_EQ(ReadStream(res["params"]["stream"].asString()), "replay-dump");
+  unlink(dump.c_str());
+  unlink(secret.c_str());
+}
+
+TEST_F(DevToolMediatorTest, EndReplayTestWithMissingDumpSendsNothing) {
+  ASSERT_TRUE(lynx::tasm::replay::ReplayController::Enable());
+  devtool::LynxGlobalDevToolMediator mediator;
+  mediator.EndReplayTest(message_sender_, "/nonexistent/lynx_replay_dump");
+  FlushGlobalDevToolTasks(mediator);
+  EXPECT_TRUE(
+      devtool::MockReceiver::GetInstance().received_message_.second.empty());
 }
 
 TEST_F(DevToolMediatorTest, IOReadCase) {
