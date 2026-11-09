@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "clay/lynx_adaptor/lynx_event_dispatcher.h"
@@ -29,7 +30,9 @@ class UIDelegateClay : public UIDelegate {
  public:
   UIDelegateClay(
       clay::ViewContext* view_context,
-      std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory);
+      std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory,
+      std::shared_ptr<base::VSyncMonitorPlatformImpl>
+          vsync_monitor_platform_impl = nullptr);
   ~UIDelegateClay() override;
 
   std::unique_ptr<PaintingCtxPlatformImpl> CreatePaintingContext() override;
@@ -38,6 +41,15 @@ class UIDelegateClay : public UIDelegate {
   std::unique_ptr<runtime::NativeModuleFactory> GetCustomModuleFactory()
       override;
   bool UsesLogicalPixels() const override;
+
+  std::shared_ptr<base::VSyncMonitorPlatformImpl> GetVSyncMonitorPlatformImpl()
+      const override {
+    return vsync_monitor_platform_impl_;
+  }
+  void SetVSyncMonitorPlatformImpl(
+      std::shared_ptr<base::VSyncMonitorPlatformImpl> monitor) {
+    vsync_monitor_platform_impl_ = std::move(monitor);
+  }
 
   double GetScreenScaleFactor() const override;
 
@@ -80,6 +92,7 @@ class UIDelegateClay : public UIDelegate {
  private:
   clay::ViewContext* view_context_;
   std::unique_ptr<runtime::NativeModuleFactory> module_factory_;
+  std::shared_ptr<base::VSyncMonitorPlatformImpl> vsync_monitor_platform_impl_;
   std::unique_ptr<clay::LynxEventDispatcher> event_dispatcher_;
   // Save a PaintingContextClay raw pointer to set the LynxEngineProxy and
   // LynxRuntimeProxy objects after the Lynx instance is created.

@@ -15,6 +15,7 @@
 #include "clay/lynx_adaptor/native_module/lynx_module_factory.h"
 #include "clay/lynx_adaptor/native_view_service_embedder.h"
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
+#include "clay/lynx_adaptor/vsync/vsync_monitor_adaptor.h"
 #include "clay/net/loader/resource_loader_creator_service.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
@@ -83,16 +84,10 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
 #endif
   }
 
-  clay::VsyncRequestCallback custom_vsync_request;
-  if (auto monitor = builder->custom_vsync_monitor) {
-    custom_vsync_request =
-        [monitor = std::move(monitor)](clay::VsyncSignalCallback signal) {
-          monitor->RequestVSync(std::move(signal));
-        };
-  }
   headless_engine_ = std::make_unique<clay::ClayHeadlessEngine>(
       icu_data_path, windowless_renderer_->GetRendererConfig(), &description_,
-      windowless_renderer_.get(), std::move(custom_vsync_request));
+      windowless_renderer_.get(),
+      clay::MakeVsyncRequestCallback(builder->custom_vsync_monitor));
   headless_engine_->SetHeadlessDelegate(this);
 
   auto* view_context =
