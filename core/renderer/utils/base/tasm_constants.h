@@ -169,6 +169,12 @@ static constexpr const char kSpanCount[] = "span-count";
 static constexpr const char kSrc[] = "src";
 static constexpr const char kTextAttr[] = "text";
 static constexpr const char kTextMaxlineAttr[] = "text-maxline";
+static constexpr const char kTextLineHeightAlignmentAttr[] =
+    "compose-line-height-alignment";
+static constexpr const char kTextLineHeightTrimAttr[] =
+    "compose-line-height-trim";
+static constexpr const char kTextLineHeightModeAttr[] =
+    "compose-line-height-mode";
 static constexpr const char kTextOverflowAttr[] = "text-overflow";
 static constexpr const char kImageAutoSize[] = "auto-size";
 
