@@ -82,6 +82,37 @@ void CustomEvent::HandleEventCustomDetail() {
   if (param_name_ == "params" && !from_frontend_) {
     BASE_STATIC_STRING_DECL(kDetail, "detail");
     dict->SetValue(kDetail, event_param_);
+    AddAnimationElapsedTime(*dict, type_, event_param_);
+  }
+}
+
+void CustomEvent::AddAnimationElapsedTime(lepus::Dictionary& event,
+                                          const std::string& name,
+                                          const lepus::Value& params) {
+  const bool keyframe = name == "animationstart" ||
+                        name == "animationiteration" ||
+                        name == "animationend" || name == "animationcancel";
+  if (!params.IsTable() ||
+      (!keyframe && name != "transitionstart" && name != "transitionend" &&
+       name != "transitioncancel")) {
+    return;
+  }
+
+  BASE_STATIC_STRING_DECL(kAnimationType, "animation_type");
+  const auto type = params.Table()->GetValue(kAnimationType);
+  if (!type.IsString()) {
+    return;
+  }
+  const auto animation_type = type.StringView();
+  if (keyframe ? animation_type != "keyframe-animation"
+               : animation_type.rfind("transition-", 0) != 0) {
+    return;
+  }
+
+  BASE_STATIC_STRING_DECL(kElapsedTime, "elapsedTime");
+  const auto elapsed_time = params.Table()->GetValue(kElapsedTime);
+  if (elapsed_time.IsNumber()) {
+    event.SetValue(kElapsedTime, *elapsed_time);
   }
 }
 

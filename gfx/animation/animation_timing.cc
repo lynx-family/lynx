@@ -109,17 +109,28 @@ fml::TimeDelta CalculateActiveTime(const AnimationTimingInput& input,
 }
 
 fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
-                                  fml::TimePoint monotonic_time) {
+                                  fml::TimeDelta local_time) {
   if (!input.animation_data) {
     return fml::TimeDelta::Min();
   }
-  const auto elapsed =
-      ConvertMonotonicTimeToLocalTime(input, monotonic_time) -
-      fml::TimeDelta::FromMilliseconds(input.animation_data->delay);
+  if (input.duration == fml::TimeDelta::Zero()) {
+    return fml::TimeDelta::Zero();
+  }
+  const auto elapsed = local_time - fml::TimeDelta::FromMilliseconds(
+                                        input.animation_data->delay);
   const auto active_duration =
       GetRepeatDuration(input.animation_data, input.duration) /
       std::abs(input.playback_rate);
   return std::max(std::min(elapsed, active_duration), fml::TimeDelta::Zero());
+}
+
+fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
+                                  fml::TimePoint monotonic_time) {
+  if (!input.animation_data) {
+    return fml::TimeDelta::Min();
+  }
+  return CalculateEventTime(
+      input, ConvertMonotonicTimeToLocalTime(input, monotonic_time));
 }
 
 AnimationTimingStateUpdate UpdateTimingState(const AnimationTimingInput& input,
@@ -164,6 +175,22 @@ AnimationTimingStateUpdate UpdateTimingState(const AnimationTimingInput& input,
         update.start_event_due = true;
       }
       break;
+  }
+  if (input.animation_data && input.duration != fml::TimeDelta::Zero() &&
+      (update.start_event_due || update.end_event_due)) {
+    const auto interval_end =
+        GetRepeatDuration(input.animation_data, input.duration) /
+        std::abs(input.playback_rate);
+    const auto delay =
+        fml::TimeDelta::FromMilliseconds(input.animation_data->delay);
+    const auto interval_start =
+        std::max(std::min(fml::TimeDelta::Zero() - delay, interval_end),
+                 fml::TimeDelta::Zero());
+    update.start_elapsed_time = input.run_state == TimingRunState::FINISHED
+                                    ? interval_end
+                                    : interval_start;
+    update.end_elapsed_time =
+        phase == TimingPhase::BEFORE ? interval_start : interval_end;
   }
   return update;
 }

@@ -279,13 +279,14 @@ void Animation::Destroy(bool need_clear_effect) {
     playback_->SetPaused(true);
   }
   current_time_at_pause_ = GetCurrentTime();
+  const auto elapsed_time = CancelElapsedTime(current_time_at_pause_);
   ClearSampleHistory();
   ClearTransitionPreviousEndValue();
   if (need_clear_effect) {
     keyframe_effect_->ClearEffect();
   }
   if (state_ == State::kPlay || state_ == State::kPause) {
-    SendCancelEvent();
+    SendCancelEvent(elapsed_time);
     LOGI("Lynx Animation cancel, name is: " << name_.str());
   }
   // The animation is being canceled/replaced/destroyed; always notify the
@@ -297,7 +298,16 @@ void Animation::Destroy(bool need_clear_effect) {
   }
 }
 
-void Animation::CreateEventAndSend(const base::String& event) {
+fml::TimeDelta Animation::CancelElapsedTime(fml::TimeDelta current_time) const {
+  const auto data = ToGfxAnimationData(animation_data_);
+  gfx::AnimationTimingInput timing;
+  timing.animation_data = &data;
+  timing.duration = fml::TimeDelta::FromMilliseconds(data.duration);
+  return gfx::CalculateEventTime(timing, current_time);
+}
+
+void Animation::CreateEventAndSend(const base::String& event,
+                                   double elapsed_seconds) {
   if (element_->event_map().find(event) == element_->event_map().end() &&
       element_->lepus_event_map().find(event) ==
           element_->lepus_event_map().end() &&
@@ -309,11 +319,13 @@ void Animation::CreateEventAndSend(const base::String& event) {
   BASE_STATIC_STRING_DECL(kNewAnimator, "new_animator");
   BASE_STATIC_STRING_DECL(kAnimationType, "animation_type");
   BASE_STATIC_STRING_DECL(kAnimationName, "animation_name");
+  BASE_STATIC_STRING_DECL(kElapsedTime, "elapsedTime");
   dict->SetValue(kNewAnimator, true);
   dict->SetValue(kAnimationType,
                  is_transition_ ? BASE_STATIC_STRING(kTransitionAnimationName)
                                 : BASE_STATIC_STRING(kKeyframeAnimationName));
   dict->SetValue(kAnimationName, this->get_animation_data().name);
+  dict->SetValue(kElapsedTime, elapsed_seconds);
   element_->element_manager()->SendAnimationEvent(
       event.str(), element_->impl_id(), lepus::Value(std::move(dict)));
 }
@@ -701,43 +713,49 @@ void Animation::ClearTransitionPreviousEndValue() {
   }
 }
 
-void Animation::SendStartEvent() {
+void Animation::SendStartEvent(fml::TimeDelta elapsed_time) {
   event_state_ = gfx::AnimationPlaybackState::EventState::kStarted;
   if (playback_ && !playback_->ClaimEvent(0, event_state_)) {
     return;
   }
   CreateEventAndSend(is_transition_
                          ? BASE_STATIC_STRING(kTransitionStartEventName)
-                         : BASE_STATIC_STRING(kKeyframeStartEventName));
+                         : BASE_STATIC_STRING(kKeyframeStartEventName),
+                     elapsed_time.ToSecondsF());
 }
 
-void Animation::SendEndEvent() {
+void Animation::SendEndEvent(fml::TimeDelta elapsed_time) {
   event_state_ = gfx::AnimationPlaybackState::EventState::kFinished;
   if (playback_ && !playback_->ClaimEvent(0, event_state_)) {
     return;
   }
   CreateEventAndSend(is_transition_
                          ? BASE_STATIC_STRING(kTransitionEndEventName)
-                         : BASE_STATIC_STRING(kKeyframeEndEventName));
+                         : BASE_STATIC_STRING(kKeyframeEndEventName),
+                     elapsed_time.ToSecondsF());
 }
 
-void Animation::SendCancelEvent() {
+void Animation::SendCancelEvent(fml::TimeDelta elapsed_time) {
   event_state_ = gfx::AnimationPlaybackState::EventState::kCanceled;
   if (playback_ && !playback_->ClaimEvent(0, event_state_)) {
     return;
   }
   CreateEventAndSend(is_transition_
                          ? BASE_STATIC_STRING(kTransitionCancelEventName)
-                         : BASE_STATIC_STRING(kKeyframeCancelEventName));
+                         : BASE_STATIC_STRING(kKeyframeCancelEventName),
+                     elapsed_time.ToSecondsF());
 }
 
-void Animation::SendIterationEvents(int count) {
+void Animation::SendIterationEvents(int count,
+                                    const gfx::AnimationEventTiming& timing) {
   // Unobserved animations can cross many iterations while backgrounded.
   if (suppress_next_iteration_events_ || count <= 0 || !HasIterationEvent()) {
     return;
   }
+  const auto iteration_seconds = timing.iteration_duration.ToSecondsF();
   for (int i = 0; i < count; ++i) {
-    CreateEventAndSend(BASE_STATIC_STRING(kKeyframeIterationEventName));
+    CreateEventAndSend(BASE_STATIC_STRING(kKeyframeIterationEventName),
+                       (timing.first_iteration + i) * iteration_seconds);
   }
 }
 

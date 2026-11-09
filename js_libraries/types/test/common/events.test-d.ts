@@ -38,6 +38,7 @@ describe('Test Basic Event Binding', () => {
     expectTypeOf<StandardProps['main-thread:bindtap']>().parameter(0).toEqualTypeOf<MainThread.TouchEvent>();
     expectTypeOf<StandardProps['main-thread:bindanimationstart']>().parameter(0).toEqualTypeOf<MainThread.AnimationEvent>();
     expectTypeOf<StandardProps['main-thread:bindtransitionstart']>().parameter(0).toEqualTypeOf<MainThread.TransitionEvent>();
+    expectTypeOf<MainThread.TransitionEvent['elapsedTime']>().toEqualTypeOf<number | undefined>();
     expectTypeOf<StandardProps['main-thread:bindlayoutchange']>().parameter(0).toEqualTypeOf<MainThread.LayoutChangeEvent>();
     expectTypeOf<StandardProps['main-thread:binduiappear']>().parameter(0).toEqualTypeOf<MainThread.UIAppearanceEvent>();
   });
@@ -57,6 +58,7 @@ describe('Test Animation Events', () => {
 
     expectTypeOf<StandardProps['bindanimationstart']>().exclude(undefined).parameter(0).toHaveProperty('type').toEqualTypeOf<string>();
     expectTypeOf<StandardProps['bindanimationstart']>().exclude(undefined).parameter(0).toHaveProperty('target').toEqualTypeOf<Target>();
+    expectTypeOf<AnimationEvent['elapsedTime']>().toEqualTypeOf<number | undefined>();
     expectTypeOf<StandardProps['bindanimationstart']>().exclude(undefined).parameter(0).toHaveProperty('params').toEqualTypeOf<{
       animation_type: 'keyframe-animation';
       animation_name: string;

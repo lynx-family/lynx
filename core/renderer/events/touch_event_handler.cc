@@ -1269,6 +1269,7 @@ lepus::Value TouchEventHandler::GetCustomEventParam(
   if (pname_str.IsEqual(kParams) && !option.from_frontend_) {
     BASE_STATIC_STRING_DECL(kDetail, "detail");
     dict.get()->SetValue(kDetail, data);
+    event::CustomEvent::AddAnimationElapsedTime(*dict, name, data);
   }
   // CustomEvent should contain type, timestamp, target, currentTarget and
   // detail. In the previous version (<= 1.5), FeCustomEvent is actually

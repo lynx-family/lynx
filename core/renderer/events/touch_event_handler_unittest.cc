@@ -172,11 +172,16 @@ TEST_F(TouchEventHandlerTest, TestGetCustomEventParamName) {
   EXPECT_EQ(res1.IsObject(), true);
   EXPECT_EQ(res1.Table().get()->Contains("detail"), true);
   EXPECT_EQ(!res1.Table().get()->Contains("params"), true);
+
+  params.Table()->SetValue("animation_type", "transition-opacity");
+  params.Table()->SetValue("elapsedTime", 0.25);
   lepus::Value res2 = touch_event_handler_->GetCustomEventParam(
-      "xxx", "params", option, element.get(), element.get(), params, false);
+      "transitionstart", "params", option, element.get(), element.get(), params,
+      false);
   EXPECT_EQ(res2.IsObject(), true);
   EXPECT_EQ(res2.Table().get()->Contains("detail"), true);
   EXPECT_EQ(res2.Table().get()->Contains("params"), true);
+  EXPECT_DOUBLE_EQ(res2.GetProperty("elapsedTime").Number(), 0.25);
 }
 
 TEST_F(TouchEventHandlerTest, TestGetTargetInfoNodeIndex) {

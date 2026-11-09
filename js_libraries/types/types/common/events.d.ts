@@ -278,6 +278,11 @@ export interface BaseKeyEvent<T> extends BaseEventOrig<{}, T> {
 export interface KeyEvent extends BaseKeyEvent<Target> {}
 
 export interface BaseAnimationEvent<T> extends BaseEventOrig<{}, T> {
+  /**
+   * Animation time in seconds at the event boundary, excluding pauses and positive delay.
+   */
+  readonly elapsedTime?: number;
+
   /** 
    * Animation params.
    * @Android
@@ -316,6 +321,9 @@ export interface BaseAnimationEvent<T> extends BaseEventOrig<{}, T> {
 export interface AnimationEvent extends BaseAnimationEvent<Target> {}
 
 export interface BaseTransitionEvent<T> extends BaseEventOrig<{}, T> {
+  /** Transition time in seconds at the event boundary, excluding positive delay. */
+  readonly elapsedTime?: number;
+
   params:
     | {
         animation_type: 'transition-animation';

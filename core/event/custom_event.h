@@ -24,6 +24,12 @@ class CustomEvent : public Event {
 
   void HandleEventBaseDetail(bool is_core_event = false) override;
   void HandleEventCustomDetail() override;
+
+  // Expose the native animation event's elapsed time on the event object.
+  static void AddAnimationElapsedTime(lepus::Dictionary& event,
+                                      const std::string& name,
+                                      const lepus::Value& params);
+
   void set_enable_legacy_native_event_param(bool enable) {
     enable_legacy_native_event_param_ = enable;
   }

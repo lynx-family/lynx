@@ -554,20 +554,24 @@ TEST_F(EventTargetTest, FrontendCustomEventBubbleCompatibleDisabled) {
 
 TEST_F(EventTargetTest, CustomEventParamsDetailOnlyForNativeEvent) {
   auto params = lepus::Dictionary::Create();
-  params->SetValue("foo", "bar");
+  params->SetValue("animation_type", "keyframe-animation");
+  params->SetValue("elapsedTime", 0.25);
 
   auto native_event = fml::MakeRefCounted<CustomEvent>(
-      "custom", lepus::Value(params), "params");
+      "animationstart", lepus::Value(params), "params");
   native_event->HandleEventCustomDetail();
   ASSERT_TRUE(native_event->detail().IsTable());
   EXPECT_TRUE(native_event->detail().Table()->GetValue("detail").IsObject());
+  EXPECT_DOUBLE_EQ(native_event->detail().GetProperty("elapsedTime").Number(),
+                   0.25);
 
   auto frontend_event = fml::MakeRefCounted<CustomEvent>(
-      "custom", lepus::Value(params), "params");
+      "animationstart", lepus::Value(params), "params");
   frontend_event->set_from_frontend(true);
   frontend_event->HandleEventCustomDetail();
   ASSERT_TRUE(frontend_event->detail().IsTable());
   EXPECT_TRUE(frontend_event->detail().Table()->GetValue("detail").IsNil());
+  EXPECT_FALSE(frontend_event->detail().Contains("elapsedTime"));
 }
 
 TEST_F(EventTargetTest, LegacyNativeCustomEventParam) {
