@@ -158,6 +158,18 @@
   _enableMultiTouch = enable;
 }
 
+- (void)syncConfigWith:(LynxTouchHandler*)touchHandler {
+  if (touchHandler == nil || touchHandler == self) {
+    return;
+  }
+
+  [self setEnableTouchRefactor:touchHandler->_enableTouchRefactor];
+  [self setEnableEndGestureAtLastFingerUp:touchHandler->_enableEndGestureAtLastFingerUp];
+  [self setEnableTouchPseudo:touchHandler->_enableTouchPseudo];
+  [self setEnableMultiTouch:touchHandler->_enableMultiTouch];
+  self.enableNewGesture = touchHandler.enableNewGesture;
+}
+
 - (BOOL)isEnableAndGetMultiTouch {
   return _enableMultiTouch && _hasMultiTouch;
 }
@@ -309,6 +321,10 @@
     LynxUI* ui = (LynxUI*)target;
     targetViewPoint = [touch locationInView:ui.view];
   }
+  if (_eventHandler.touchEventSource != nil) {
+    pagePoint = [_eventHandler pagePointFromTouch:touch];
+    targetViewPoint = [_eventHandler viewPointFromTouch:touch target:target];
+  }
 
   LynxTouchEvent* event = [[LynxTouchEvent alloc] initWithName:eventName
                                                      targetTag:target.signature
@@ -328,6 +344,10 @@
   if ([_target isKindOfClass:[LynxUI class]]) {
     LynxUI* ui = (LynxUI*)_target;
     viewPoint = [touch locationInView:ui.view];
+  }
+  if (_eventHandler.touchEventSource != nil) {
+    pagePoint = [_eventHandler pagePointFromTouch:touch];
+    viewPoint = [_eventHandler viewPointFromTouch:touch target:target];
   }
 
   return [self dispatchEvent:eventName
@@ -591,6 +611,10 @@
   if ([detail.ui isKindOfClass:[LynxUI class]]) {
     LynxUI* ui = (LynxUI*)detail.ui;
     viewPoint = [touch locationInView:ui.view];
+  }
+  if (_eventHandler.touchEventSource != nil) {
+    pagePoint = [_eventHandler pagePointFromTouch:touch];
+    viewPoint = [_eventHandler viewPointFromTouch:touch target:detail.ui];
   }
 
   [event addObject:detail.identifier];

@@ -344,7 +344,7 @@ public class UIExposure extends LynxObserverManager {
 
     LynxBaseUI parent = ui;
     ArrayList<LynxBaseUI> parentList = new ArrayList<>();
-    boolean isInOverlay = false;
+    boolean skipRootClipping = false;
     while (parent != null && parent != mRootBodyRef.get()) {
       if (parent instanceof LynxUI && !((LynxUI) parent).isVisible()) {
         return false;
@@ -354,8 +354,8 @@ public class UIExposure extends LynxObserverManager {
               && parent.isScrollContainer())) {
         parentList.add(parent);
       }
-      if (parent.isOverlay()) {
-        isInOverlay = true;
+      if (parent.isExternalExposureRoot()) {
+        skipRootClipping = true;
         break;
       }
       parent = (LynxBaseUI) parent.getParent();
@@ -375,7 +375,7 @@ public class UIExposure extends LynxObserverManager {
       mWindowRect = getWindowRect(ui.getLynxContext());
     }
     boolean isIntersectWithRoot =
-        !isInOverlay ? checkIntersect(uiRect, viewRect, exposureAreaRatio) : true;
+        !skipRootClipping ? checkIntersect(uiRect, viewRect, exposureAreaRatio) : true;
     if (mWindowRect != null) {
       RectF borderOfWindowRect = getBorderOfWindowRect(ui);
       boolean isIntersectWithWindow = checkIntersect(uiRect, borderOfWindowRect, exposureAreaRatio);

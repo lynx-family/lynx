@@ -1680,6 +1680,7 @@ public class LynxEventHandler : NSObject {
   public BOOL LynxEventHandler::enableSimultaneousTap enableSimultaneousTap;
   public BOOL LynxEventHandler::customizedEndEditingStrategy customizedEndEditingStrategy;
   public id<LynxEventTarget> LynxEventHandler::focusedInputTarget focusedInputTarget;
+  public UIView* LynxEventHandler()::touchEventSource touchEventSource;
   public instancetype LynxEventHandler::initWithRootView:(UIView *rootView);
   public instancetype LynxEventHandler::initWithRootView:andFlag:(UIView *rootView,[andFlag] BOOL isFragmentLayerRenderOn);
   public instancetype LynxEventHandler::initWithRootView:withRootUI:(UIView *rootView,[withRootUI] nullable LynxUI *rootUI);
@@ -1708,6 +1709,11 @@ public class LynxEventHandler : NSObject {
   public id< LynxEventTarget > LynxEventHandler::touchTarget();
   public LynxUIOwner * LynxEventHandler::uiOwner();
   public NSInteger LynxEventHandler::eventRootSign();
+  public void LynxEventHandler()::syncConfigWith:(LynxEventHandler *eventHandler);
+  public void LynxEventHandler()::setTouchEventSource:payloadRootView:(nullable UIView *sourceView, [payloadRootView] nullable UIView *rootView);
+  public CGPoint LynxEventHandler()::pagePointFromTouch:(UITouch *touch);
+  public CGPoint LynxEventHandler()::viewPointFromPagePoint:target:(CGPoint point, [target] id< LynxEventTarget > target);
+  public CGPoint LynxEventHandler()::viewPointFromTouch:target:(UITouch *touch, [target] nullable id< LynxEventTarget > target);
   public void LynxEventHandler()::setEnableViewReceiveTouch:(BOOL enable);
   public void LynxEventHandler()::setEnableSimultaneousTap:(BOOL enable);
   public void LynxEventHandler()::setDisableLongpressAfterScroll:(bool value);
@@ -4462,6 +4468,7 @@ public class LynxTouchHandler : UIGestureRecognizer {
   public void LynxTouchHandler::touchesCancelledInner:withEvent:(NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
   public void LynxTouchHandler()::setupVelocityTracker:(UIView *rootView);
   public void LynxTouchHandler()::setEnableTouchRefactor:(BOOL enable);
+  public void LynxTouchHandler()::syncConfigWith:(LynxTouchHandler *touchHandler);
   public void LynxTouchHandler()::setEnableEndGestureAtLastFingerUp:(BOOL enable);
   public void LynxTouchHandler()::setEnableTouchPseudo:(BOOL enable);
   public void LynxTouchHandler()::setEnableMultiTouch:(BOOL enable);
@@ -4475,6 +4482,41 @@ public class LynxTouchHandler : UIGestureRecognizer {
 }
 
 public class LynxTouchHandlerUnitTest : XCTestCase {
+}
+
+public class LynxTransferHostView : UIView {
+}
+
+public protocol LynxTransferListener-p : <NSObject> {
+  public BOOL LynxTransferListener-p::onCreate:view:dataset:(NSString *transferId,[view] UIView *view,[dataset] NSDictionary *dataset);
+  public void LynxTransferListener-p::onDatasetUpdate:dataset:(NSString *transferId,[dataset] NSDictionary *dataset);
+  public void LynxTransferListener-p::onRemove:view:(NSString *transferId,[view] UIView *view);
+  public void LynxTransferListener-p::transferViewDidChangeIntrinsicContentSize:(LynxTransferWrapperView *view);
+}
+
+public class LynxTransferManager : NSObject {
+  public void LynxTransferManager::registerTransferListener:(id< LynxTransferListener > listener);
+  public void LynxTransferManager::unregisterTransferListener:(id< LynxTransferListener > listener);
+  public void LynxTransferManager::dispatchTransferCreate:view:dataset:(NSString *transferId,[view] UIView *view,[dataset] NSDictionary *dataset);
+  public void LynxTransferManager::dispatchTransferDatasetUpdate:dataset:(UIView *view,[dataset] NSDictionary *dataset);
+  public void LynxTransferManager::dispatchTransferIntrinsicContentSizeChange:(LynxTransferWrapperView *view);
+  public void LynxTransferManager::dispatchTransferRemove:view:(NSString *transferId,[view] UIView *view);
+  public void LynxTransferManager::clearTransfers();
+}
+
+public class LynxTransferShadowNode : LynxCustomMeasureShadowNode {
+  public void LynxTransferShadowNode::updateHostConstraintsWithWidth:widthMode:height:heightMode:(CGFloat width,[widthMode] LynxMeasureMode widthMode,[height] CGFloat height,[heightMode] LynxMeasureMode heightMode);
+}
+
+public class LynxTransferWrapperView : UIView {
+  public LynxViewSizeMode LynxTransferWrapperView::layoutWidthMode layoutWidthMode;
+  public LynxViewSizeMode LynxTransferWrapperView::layoutHeightMode layoutHeightMode;
+  public CGFloat LynxTransferWrapperView::preferredLayoutWidth preferredLayoutWidth;
+  public CGFloat LynxTransferWrapperView::preferredLayoutHeight preferredLayoutHeight;
+  public CGFloat LynxTransferWrapperView::preferredMaxLayoutWidth preferredMaxLayoutWidth;
+  public CGFloat LynxTransferWrapperView::preferredMaxLayoutHeight preferredMaxLayoutHeight;
+  public BOOL LynxTransferWrapperView::enableAutoLayout enableAutoLayout;
+  public void LynxTransferWrapperView::triggerLayout();
 }
 
 public class LynxTransformOriginRaw : NSObject {
@@ -4612,6 +4654,7 @@ public class LynxUI : <__covariant V UIView> {
   public BOOL LynxUI()::hasSharedBackingLayer hasSharedBackingLayer;
   public uint32_t LynxUI()::nodeIndex nodeIndex;
   public NSDictionary<NSNumber *, LynxGestureDetectorDarwin *>* _Nullable LynxUI()::gestureMap gestureMap;
+  public UIView* LynxUI()::touchEventSourceView touchEventSourceView;
   public BOOL LynxUI()::useDefaultAccessibilityLabel useDefaultAccessibilityLabel;
   public BOOL LynxUI()::enableAccessibilityByDefault enableAccessibilityByDefault;
   public UIAccessibilityTraits LynxUI()::accessibilityTraitsByDefault accessibilityTraitsByDefault;
@@ -4696,6 +4739,8 @@ public class LynxUI : <__covariant V UIView> {
   public CGRect LynxUI()::getHitTestFrame();
   public CGRect LynxUI()::getHitTestFrameWithFrame:(CGRect frame);
   public CGPoint LynxUI()::getHitTestPoint:(CGPoint inPoint);
+  public UIView * LynxUI()::childrenContainerView();
+  public void LynxUI()::setTouchEventSourceView:(nullable UIView *view);
   public BOOL LynxUI()::enableExposureUIMargin();
   public void LynxUI()::setImplicitAnimation();
   public void LynxUI()::scrollIntoViewWithSmooth:blockType:inlineType:callback:(BOOL isSmooth, [blockType] NSString *blockType, [inlineType] NSString *inlineType, [callback] LynxUIMethodCallbackBlock callback);
@@ -5522,6 +5567,9 @@ public class LynxUIText : LynxUI, <LynxTextView> {
   public BOOL LynxUIText::enableLayerRender();
 }
 
+public class LynxUITransfer : LynxUIView {
+}
+
 public class LynxUIUnitTestUtils : NSObject {
   public LynxUIMockContext * LynxUIUnitTestUtils::initUIMockContextWithUI:(LynxUI *ui);
   public LynxUIMockContext * LynxUIUnitTestUtils::updateUIMockContext:sign:tag:eventSet:lepusEventSet:props:(nullable LynxUIMockContext *mockContext,[sign] NSInteger sign,[tag] NSString *tagName,[eventSet] NSSet *eventSet,[lepusEventSet] NSSet *lepusEventSet,[props] nonnull NSDictionary *props);
@@ -5674,6 +5722,8 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::resumeRootLayoutAnimation();
   public void LynxView::resetAnimation();
   public void LynxView::restartAnimation();
+  public void LynxView::registerTransferListener:(nonnull id< LynxTransferListener > listener);
+  public void LynxView::unregisterTransferListener:(nonnull id< LynxTransferListener > listener);
   public void LynxView::setTheme:(nonnull LynxTheme *theme);
   public nullable LynxTheme * LynxView::theme();
   public void LynxView::setNeedPendingUIOperation:(BOOL needPendingUIOperation);
