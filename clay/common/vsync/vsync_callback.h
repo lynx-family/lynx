@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CLAY_COMMON_VSYNC_CALLBACK_H_
-#define CLAY_COMMON_VSYNC_CALLBACK_H_
+#ifndef CLAY_COMMON_VSYNC_VSYNC_CALLBACK_H_
+#define CLAY_COMMON_VSYNC_VSYNC_CALLBACK_H_
 
 #include <cstdint>
 #include <functional>
@@ -19,4 +19,4 @@ using VsyncRequestCallback = std::function<void(VsyncSignalCallback)>;
 
 }  // namespace clay
 
-#endif  // CLAY_COMMON_VSYNC_CALLBACK_H_
+#endif  // CLAY_COMMON_VSYNC_VSYNC_CALLBACK_H_

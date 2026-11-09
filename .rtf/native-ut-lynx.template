@@ -84,6 +84,12 @@ coverage({
 })
 
 targets({
+    "lynx_vsync_monitor_unittests": {
+        "cwd": ".",
+        "owners": ["zuojinglong.9"],
+        "coverage": True,
+        "enable_parallel": True,
+    },
     "harmony_gesture_baseline_unittests_exec": {
         "cwd": ".",
         "owners": ["luochangan.adrian"],
