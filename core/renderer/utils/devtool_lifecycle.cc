@@ -152,19 +152,27 @@ void DevToolLifecycle::OnDisconnected() {
 }
 
 void DevToolLifecycle::SyncStateFromPlatform(DevToolState state) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  // We use direct assignment here instead of calling OnAttached/OnEnabled/etc.
-  // because:
-  // 1. Ambiguity: Some states (like ATTACHED) can be reached via multiple
-  // transitions (OnAttached vs OnDisabled), making it hard to choose the right
-  // method.
-  // 2. Robustness: Platform sync should be authoritative. If we missed an
-  // intermediate event (e.g. ATTACHED), calling OnEnabled() would fail due to
-  // strict state checks. We want to force the state to match the platform.
-  if (state_ != state) {
-    LOGI("SyncStateFromPlatform: Transitioning from "
-         << static_cast<int>(state_) << " to " << static_cast<int>(state));
-    state_ = state;
+  bool connected = false;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    // We use direct assignment here instead of calling
+    // OnAttached/OnEnabled/etc. because:
+    // 1. Ambiguity: Some states (like ATTACHED) can be reached via multiple
+    // transitions (OnAttached vs OnDisabled), making it hard to choose the
+    // right method.
+    // 2. Robustness: Platform sync should be authoritative. If we missed an
+    // intermediate event (e.g. ATTACHED), calling OnEnabled() would fail due to
+    // strict state checks. We want to force the state to match the platform.
+    if (state_ != state) {
+      LOGI("SyncStateFromPlatform: Transitioning from "
+           << static_cast<int>(state_) << " to " << static_cast<int>(state));
+      state_ = state;
+      connected = state == DevToolState::CONNECTED;
+    }
+  }
+  if (connected) {
+    base::NotificationCallback::Notify(LYNX_ON_DEVTOOL_CONNECTED_NOTIFICATION,
+                                       0);
   }
 }
 

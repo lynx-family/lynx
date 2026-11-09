@@ -183,11 +183,15 @@ Missed periodic deadlines are skipped, not replayed after suspension. Monitoring
 that starts after process launch cannot reconstruct earlier samples. Crashes or
 forced termination may prevent a final event.
 
-Starting a Perfetto trace with memory tracing enabled forces collection for the
-current process and writes a marker in the platform trace directory. On
-subsequent app launches, that marker overrides the configured sample rates so
-collection begins before pages and VMs are created. The marker remains until the
-app's data is removed.
+Connecting DevTool, or starting a Perfetto trace with memory tracing enabled,
+forces collection for the current process and writes a marker in the application's
+data directory. This directory comes from LynxBase and does not require Trace:
+Android uses `filesDir` initialized by LynxBase, and iOS uses Documents.
+On subsequent app launches, that marker overrides the configured sample rates
+so collection begins before pages and VMs are created. The marker remains until
+it or the app's data is removed. If the
+directory is unavailable or read-only, collection is still enabled for the current
+process, but the choice cannot be persisted.
 
 ### 3.2 PSS high-water buckets
 

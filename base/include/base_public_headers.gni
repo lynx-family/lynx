@@ -42,6 +42,7 @@ base_trace_public_headers = rebase_path(base_trace_public_headers_list)
 # base_core_public_headers begin
 base_core_public_headers_list = [
   "algorithm.h",
+  "application_directory.h",
   "auto_create_optional.h",
   "auto_reset.h",
   "base_defines.h",

@@ -11,6 +11,7 @@
 #include <string_view>
 #include <utility>
 
+#include "base/include/application_directory.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_controller.h"
@@ -35,12 +36,10 @@ constexpr char kBytesKey[] = "bytes";
 constexpr char kCountsKey[] = "counts";
 constexpr char kVMTypeKey[] = "vm_type";
 
-#if ENABLE_TRACE_PERFETTO
 constexpr char kForceEnableMarkerName[] = ".lynx-memory-monitor-force-enabled";
 
 std::string ForceEnableMarkerPath() {
-  auto directory =
-      trace::GetTraceControllerInstance()->GenerateTracingFileDir();
+  auto directory = base::GetApplicationDataDirectory();
   if (directory.empty()) return {};
   if (directory.back() != '/' && directory.back() != '\\') {
     directory.push_back('/');
@@ -63,11 +62,6 @@ void PersistForceEnableMarker() {
   auto* file = std::fopen(path.c_str(), "ab");
   if (file) std::fclose(file);
 }
-#else
-bool HasForceEnableMarker() { return false; }
-
-void PersistForceEnableMarker() {}
-#endif
 
 void EnableAllMemorySources(MemoryMonitor::Settings& settings) {
   for (auto* entry :
