@@ -186,10 +186,15 @@ forced termination may prevent a final event.
 Connecting DevTool, or starting a Perfetto trace with memory tracing enabled,
 forces collection for the current process and writes a marker in the application's
 data directory. This directory comes from LynxBase and does not require Trace:
-Android uses `filesDir` initialized by LynxBase, and iOS uses Documents.
-On subsequent app launches, that marker overrides the configured sample rates
-so collection begins before pages and VMs are created. The marker remains until
-it or the app's data is removed. If the
+Android and Harmony use `filesDir`, and iOS uses Documents. Desktop platforms
+create a `lynx` subdirectory in the current user's application data directory:
+Application Support on macOS, Local AppData on Windows, and `XDG_DATA_HOME`
+(or `$HOME/.local/share`) on Linux. Applications can override the complete path
+with `SetApplicationDataDirectory` before initializing memory monitoring; the
+caller must create the custom directory. Desktop defaults share the marker
+across applications using the same user directory. On subsequent app launches,
+that marker overrides the configured sample rates so collection begins before
+pages and VMs are created. The marker remains until it or the app's data is removed. If the
 directory is unavailable or read-only, collection is still enabled for the current
 process, but the choice cannot be persisted.
 

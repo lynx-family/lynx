@@ -4,7 +4,6 @@
 
 #include "base/include/application_directory.h"
 
-#include "base/src/application_directory/application_directory_impl.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #if defined(_WIN32)
 #include <windows.h>
