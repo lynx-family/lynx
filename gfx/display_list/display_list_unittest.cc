@@ -29,6 +29,26 @@ TEST_F(DisplayListTest, EmptyDisplayList) {
   EXPECT_EQ(display_list_->GetSubtreePropertiesSize(), 0u);
 }
 
+TEST_F(DisplayListTest, RetainsUniquePathsAcrossMoveAndClear) {
+  auto path = gfx::Path::MakeRect(10, 20);
+  const auto* identity = path.get();
+  const auto key = path->GetKey();
+  EXPECT_EQ(display_list_->RetainPath(path), 0u);
+  EXPECT_EQ(display_list_->RetainPath(std::move(path)), 0u);
+  EXPECT_FALSE(path);
+  EXPECT_EQ(display_list_->GetPathCount(), 1u);
+  DisplayList moved = std::move(*display_list_);
+  EXPECT_EQ(moved.GetPath(0), identity);
+  EXPECT_EQ(moved.GetPathKeysData()[0], key);
+  EXPECT_TRUE(moved.GetPath(0)->HasOneRef());
+  EXPECT_EQ(moved.GetPath(1), nullptr);
+  moved.ClearSubtreeProperties();
+  EXPECT_EQ(moved.GetPathCount(), 1u);
+  moved.Clear();
+  EXPECT_EQ(moved.GetPathCount(), 0u);
+  EXPECT_EQ(moved.GetPath(0), nullptr);
+}
+
 TEST_F(DisplayListTest, BackgroundImageConsumesMovedReference) {
   auto image = fml::MakeRefCounted<PaintImage>(42);
   const auto* image_ptr = image.get();

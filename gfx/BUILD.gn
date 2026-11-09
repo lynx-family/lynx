@@ -7,10 +7,13 @@ import("../testing/test.gni")
 import("animation/animation.gni")
 import("geometry/geometry.gni")
 
-gfx_public_headers =
-    [ "gfx_export.h" ] + gfx_animation_headers + gfx_geometry_headers
+gfx_public_headers = [
+                       "gfx_export.h",
+                       "public/path.h",
+                     ] + gfx_animation_headers + gfx_geometry_headers
 
-gfx_source_files = gfx_animation_sources + gfx_geometry_sources
+gfx_source_files =
+    gfx_animation_sources + gfx_geometry_sources + [ "path/path.cc" ]
 
 gfx_builds_shared_library = (is_android || is_harmony) && !is_headless
 

@@ -61,6 +61,8 @@ The operation type selects the matching payload:
 | `kBegin` | fragment id/type and frame |
 | `kEnd` | no payload |
 | `kFill` | color and clip-box index |
+| `kFillPath` | list-local path index, fill rule, placement, and color |
+| `kClipPath` | list-local path index, fill rule, and placement |
 | `kDrawView` | view id and final local offset |
 | `kText` | text id and box index |
 | `kImage` | image id and box index |
@@ -71,7 +73,10 @@ The operation type selects the matching payload:
 | `kLinearGradient` | data offsets/counts and gradient parameters |
 | `kBoxShadow` | box indices, color, blur radius, and clip mode |
 
-Unknown operation types can be skipped by advancing one fixed-size item.
+Unknown operation types can be skipped by advancing one fixed-size item. Path
+producers must check `SupportsDisplayListPathResources()` before emitting path
+operations: an unsupported consumer must receive the existing fill/clip-box
+operations so it does not lose a clip.
 
 Background color is recorded before background images, using the bottommost
 CSS image layer's clip. Image layers are recorded from last to first, so the
@@ -118,6 +123,46 @@ base::auto_create_optional<base::InlineVector<SubtreeProperty, 1>>
 Image references are retained separately so resources remain alive while a
 display list is being consumed. Sublayer ids are also retained for platform
 renderer hierarchy updates.
+
+Paths are immutable, thread-safe reference-counted geometry from
+`gfx/public/path.h`. `PathView` borrows a header plus verb/point buffers from an
+owning `Path` reference. Rectangles and rounded rectangles keep primitive tags;
+generic paths retain begin, line, quadratic, cubic, close, and end verbs.
+Publication checks finite coordinates and bounds, subpath state, and buffer
+counts. Geometry has no platform path or graphics-context dependency.
+
+Each display list lazily retains its own path references and a 64-bit key
+manifest. Repeated references use one list-local index; stable keys identify a
+resource across lists. Moving a list transfers ownership, `Clear()` releases
+it, and subtree-property updates preserve content resources. Queued lists keep
+geometry alive after their producer is destroyed.
+
+`FragmentPathCache` compares resolved width, height, and eight corner radii for
+content, padding, border, and overflow slots. Placement and paint are separate
+item fields, so movement and color changes reuse geometry. Full redraw refreshes
+resolved radii before comparing shapes, including style updates without layout.
+The Android pilot uses retained paths for rounded background color and overflow
+clips; plain rectangles and consumers without the capability keep existing ops.
+
+Android's `PlatformRendererContext` owns a weak lookup by path key and fill
+rule. Each renderer strongly retains a prepared table. It acquires a replacement
+table before releasing the old one, enabling reuse across consecutive content
+lists. Only misses read native header/verb/point buffers, synchronously during
+preparation; Java retains completed private `android.graphics.Path` objects.
+Draw-only frames reuse the prepared table. Cached paths are never reset or
+transformed. Canvas placement is applied during draw/clip. When native root
+bounds differ from recorded primitive bounds, prepared tables retain normalized
+variants per operation, and the base entry indexes them weakly by bounds.
+Replacement prepares variants before releasing the previous table. Repeated
+draws with unchanged bounds reuse every active variant, including multiple
+placements of the same geometry; inactive variants can be collected.
+Missing fills draw nothing; missing clips use an empty clip until the enclosing
+Canvas scope is restored. Renderer/context teardown releases prepared tables.
+
+Compiled paths are geometry resources. Shaders, tessellation, masks, and pixels
+remain subject to their backend's target and context lifetime. Other native
+platforms and Clay can opt into the same owning geometry and borrowed-view
+contract after implementing their adapter and rendering tests.
 
 Image recording methods take `fml::RefPtr<PaintImage>` by value and move the
 reference into display-list storage. Passing an lvalue keeps the caller's

@@ -13,6 +13,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
+#include "gfx/public/path.h"
 
 namespace lynx {
 namespace tasm {
@@ -36,6 +37,8 @@ enum class DisplayListOpType : int32_t {
   kBoxShadow = 13,
   kBackgroundImage = 14,
   kRadialGradient = 15,
+  kFillPath = 16,
+  kClipPath = 17,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
@@ -128,6 +131,19 @@ typedef struct DisplayListItem {
       uint32_t color;
       int32_t clip_index;
     } fill;
+    struct {
+      uint32_t path_index;
+      gfx::PathFillRule fill_rule;
+      float x;
+      float y;
+      uint32_t color;
+    } fill_path;
+    struct {
+      uint32_t path_index;
+      gfx::PathFillRule fill_rule;
+      float x;
+      float y;
+    } clip_path;
     struct {
       int32_t view_id;
       float offset_x;
@@ -233,6 +249,15 @@ static_assert(offsetof(DisplayListItem, payload.begin.overflow_y) == 32);
 static_assert(offsetof(DisplayListItem, payload.begin.is_layout_only) == 36);
 static_assert(offsetof(DisplayListItem, payload.fill.color) == 4);
 static_assert(offsetof(DisplayListItem, payload.fill.clip_index) == 8);
+static_assert(offsetof(DisplayListItem, payload.fill_path.path_index) == 4);
+static_assert(offsetof(DisplayListItem, payload.fill_path.fill_rule) == 8);
+static_assert(offsetof(DisplayListItem, payload.fill_path.x) == 12);
+static_assert(offsetof(DisplayListItem, payload.fill_path.y) == 16);
+static_assert(offsetof(DisplayListItem, payload.fill_path.color) == 20);
+static_assert(offsetof(DisplayListItem, payload.clip_path.path_index) == 4);
+static_assert(offsetof(DisplayListItem, payload.clip_path.fill_rule) == 8);
+static_assert(offsetof(DisplayListItem, payload.clip_path.x) == 12);
+static_assert(offsetof(DisplayListItem, payload.clip_path.y) == 16);
 static_assert(offsetof(DisplayListItem, payload.draw_view.view_id) == 4);
 static_assert(offsetof(DisplayListItem, payload.draw_view.offset_x) == 8);
 static_assert(offsetof(DisplayListItem, payload.draw_view.offset_y) == 12);
@@ -400,6 +425,15 @@ class DisplayList {
 
   void AppendItem(const DisplayListItem& item);
 
+  uint32_t RetainPath(fml::RefPtr<gfx::Path> path);
+  const gfx::Path* GetPath(uint32_t index) const;
+  const uint64_t* GetPathKeysData() const {
+    return paths_.has_value() ? paths_->keys.data() : nullptr;
+  }
+  size_t GetPathCount() const {
+    return paths_.has_value() ? paths_->keys.size() : 0;
+  }
+
   void AddSubLayer(int id) { sub_layers_.emplace_back(id); }
   const auto& SubLayers() const { return sub_layers_; }
 
@@ -410,6 +444,12 @@ class DisplayList {
   base::InlineVector<fml::RefPtr<PaintImage>, 16>& Images() { return images_; }
 
  private:
+  struct PathResources {
+    base::InlineVector<fml::RefPtr<gfx::Path>, 4> refs;
+    base::InlineVector<uint64_t, 4> keys;
+  };
+  base::auto_create_optional<PathResources> paths_;
+
   // Content operations (stable during animations) - lazy allocated
   base::auto_create_optional<base::InlineVector<DisplayListItem, 8>>
       content_items_;

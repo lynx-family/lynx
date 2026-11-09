@@ -19,6 +19,41 @@
 namespace lynx {
 namespace tasm {
 
+TEST(DisplayListPathTest, FillAndClipShareRetainedGeometry) {
+  auto path = gfx::Path::MakeRect(30, 40);
+  const auto key = path->GetKey();
+  DisplayListBuilder builder;
+  builder.FillPath(path, 0xff123456, gfx::PathFillRule::kEvenOdd, 5, 6)
+      .ClipPath(std::move(path), gfx::PathFillRule::kNonzero, 7, 8);
+  auto list = builder.Build();
+  EXPECT_FALSE(path);
+  ASSERT_EQ(list.GetPathCount(), 1u);
+  DisplayListReader reader(list);
+  const auto& fill = reader.Next();
+  EXPECT_EQ(fill.type, DisplayListOpType::kFillPath);
+  EXPECT_EQ(fill.payload.fill_path.path_index, 0u);
+  EXPECT_EQ(fill.payload.fill_path.color, 0xff123456u);
+  EXPECT_EQ(fill.payload.fill_path.fill_rule, gfx::PathFillRule::kEvenOdd);
+  EXPECT_FLOAT_EQ(fill.payload.fill_path.x, 5);
+  EXPECT_EQ(reader.Path(fill)->GetKey(), key);
+  const auto& clip = reader.Next();
+  EXPECT_EQ(clip.type, DisplayListOpType::kClipPath);
+  EXPECT_EQ(reader.Path(clip), reader.Path(fill));
+  EXPECT_FLOAT_EQ(clip.payload.clip_path.y, 8);
+  EXPECT_EQ(sizeof(DisplayListItem), 56u);
+}
+
+TEST(DisplayListPathTest, MissingPathIsRecordedForClosedClipFallback) {
+  DisplayListBuilder builder;
+  builder.ClipPath(nullptr);
+  auto list = builder.Build();
+  DisplayListReader reader(list);
+  const auto& item = reader.Next();
+  EXPECT_EQ(item.type, DisplayListOpType::kClipPath);
+  EXPECT_EQ(reader.Path(item), nullptr);
+  EXPECT_EQ(list.GetPathCount(), 0u);
+}
+
 class DestructionTrackedPaintImage : public PaintImage {
  public:
   DestructionTrackedPaintImage(int32_t image_key, bool& destroyed)

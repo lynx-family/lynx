@@ -681,8 +681,32 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
       clip_type = image_data.clip[bottom_layer_index % image_data.clip.size()];
     }
   }
-  display_list_builder.Fill(background_data->color,
-                            define_clip_index(clip_type));
+  const int32_t clip_index = define_clip_index(clip_type);
+  RoundedRectangle color_box;
+  FragmentPathCache::Slot path_slot;
+  switch (clip_type) {
+    case starlight::BackgroundClipType::kPaddingBox:
+      color_box = layout_info_.GeneratePaddingRectangle();
+      path_slot = FragmentPathCache::Slot::kPadding;
+      break;
+    case starlight::BackgroundClipType::kContentBox:
+      color_box = layout_info_.GenerateContentRectangle();
+      path_slot = FragmentPathCache::Slot::kContent;
+      break;
+    default:
+      color_box = layout_info_.GenerateBorderRectangle();
+      path_slot = FragmentPathCache::Slot::kBorder;
+      break;
+  }
+  auto* native_context = painting_context()->impl()->CastToNativeCtx();
+  if (color_box.HasRadius() && native_context &&
+      native_context->SupportsDisplayListPathResources()) {
+    display_list_builder.FillPath(
+        path_cache_->Get(path_slot, color_box), background_data->color,
+        gfx::PathFillRule::kNonzero, color_box.GetX(), color_box.GetY());
+  } else {
+    display_list_builder.Fill(background_data->color, clip_index);
+  }
 
   if (!background_data->image_data) {
     background_image_resources_.clear();
@@ -1221,7 +1245,15 @@ void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
                    2 * element_manager()->GetLynxEnvConfig().ScreenHeight());
   }
 
-  display_list_builder.ClipRect(rect);
+  auto* native_context = painting_context()->impl()->CastToNativeCtx();
+  if (rect.HasRadius() && native_context &&
+      native_context->SupportsDisplayListPathResources()) {
+    display_list_builder.ClipPath(
+        path_cache_->Get(FragmentPathCache::Slot::kOverflow, rect),
+        gfx::PathFillRule::kNonzero, rect.GetX(), rect.GetY());
+  } else {
+    display_list_builder.ClipRect(rect);
+  }
 }
 
 // A non-null fragment_parent() indicates that the fragment has been added to

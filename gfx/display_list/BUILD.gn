@@ -21,6 +21,7 @@ lynx_core_source_set("display_list") {
 
 unittest_set("display_list_testset") {
   sources = [
+    "../path/path_unittest.cc",
     "display_list_unittest.cc",
     "rounded_rectangle_unittest.cc",
   ]
