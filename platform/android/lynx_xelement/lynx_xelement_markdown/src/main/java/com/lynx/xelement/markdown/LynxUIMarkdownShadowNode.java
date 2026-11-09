@@ -72,9 +72,6 @@ public class LynxUIMarkdownShadowNode
     mMarkdownMeasurer = new MarkdownMeasurer(context);
     mMarkdownMeasurer.setResourceLoader(mResourceLoader);
     mMarkdownMeasurer.setEventListener(mEventListener);
-    setSelectionBackgroundColor(0);
-    setSelectionHandleColor(0);
-    setSelectionHandleSize(0);
     setAnimationFrameRate(15);
     mMarkdownMeasurer.setRequestMeasureCallback(this::markDirty);
     if (mLayoutLooper != null) {
@@ -145,37 +142,6 @@ public class LynxUIMarkdownShadowNode
       mMarkdownMeasurer = null;
     }
   }
-  @LynxProp(name = "text-selection", defaultBoolean = false)
-  public void setEnableTextSelection(boolean enable) {
-    MarkdownMeasurer markdown = mMarkdownMeasurer;
-    if (markdown != null) {
-      markdown.setBooleanProp(Constants.MARKDOWN_PROPS_ENABLE_TEXT_SELECTION, enable);
-    }
-  }
-  @LynxProp(name = "selection-background-color", defaultInt = 0)
-  public void setSelectionBackgroundColor(int color) {
-    MarkdownMeasurer markdown = mMarkdownMeasurer;
-    if (markdown != null) {
-      markdown.setColorProp(
-          Constants.MARKDOWN_PROPS_SELECTION_HIGHLIGHT_COLOR, color == 0 ? 0x141b7df0 : color);
-    }
-  }
-  @LynxProp(name = "selection-handle-color", defaultInt = 0)
-  public void setSelectionHandleColor(int color) {
-    MarkdownMeasurer markdown = mMarkdownMeasurer;
-    if (markdown != null) {
-      markdown.setColorProp(
-          Constants.MARKDOWN_PROPS_SELECTION_HANDLE_COLOR, color == 0 ? 0xff1b7df0 : color);
-    }
-  }
-  @LynxProp(name = "selection-handle-size", defaultInt = 0)
-  public void setSelectionHandleSize(int size) {
-    MarkdownMeasurer markdown = mMarkdownMeasurer;
-    if (markdown != null) {
-      markdown.setNumberProp(Constants.MARKDOWN_PROPS_SELECTION_HANDLE_SIZE,
-          size <= 0 ? 15 * getLynxContext().getScreenMetrics().density : size);
-    }
-  }
   @LynxProp(name = "markdown-effect")
   public void setMarkdownEffect(ReadableMap map) {
     MarkdownMeasurer markdown = mMarkdownMeasurer;
@@ -193,9 +159,6 @@ public class LynxUIMarkdownShadowNode
       markdown.setArrayProp(Constants.MARKDOWN_PROPS_TEXT_MARK_ATTACHMENTS, value);
     }
   }
-
-  @LynxProp(name = "enable-region-view")
-  public void setEnableRegionView(boolean value) {}
 
   @LynxProp(name = "image-downsampling")
   public void setImageDownSampling(boolean value) {

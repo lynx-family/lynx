@@ -26,11 +26,6 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   __weak LynxNativeLayoutNode *_layoutNode;
   __weak id<LynxMarkdownResourceLoaderHost> _host;
   __weak LynxUI *_ui;
-  CGFloat _width;
-  CGFloat _height;
-  CGFloat _baseline;
-  CGFloat _left;
-  CGFloat _top;
 }
 
 - (BOOL)isForNode:(LynxNativeLayoutNode *)layoutNode {
@@ -43,11 +38,6 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   if (self != nil) {
     _layoutNode = layoutNode;
     _host = host;
-    _width = 0.f;
-    _height = 0.f;
-    _baseline = 0.f;
-    _left = 0.f;
-    _top = 0.f;
   }
   return self;
 }
@@ -70,10 +60,8 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
                                HeightMode:LynxMarkdownToLynxMeasureMode(heightMode)];
   MeasureResult result = [layoutNode measureWithMeasureParam:param
                                               MeasureContext:[_host markdownHostMeasureContext]];
-  _width = result.size.width;
-  _height = result.size.height;
-  _baseline = result.baseline;
-  return (ServalMarkdownMeasureResult){(float)_width, (float)_height, (float)_baseline};
+  return (ServalMarkdownMeasureResult){(float)result.size.width, (float)result.size.height,
+                                       (float)result.baseline};
 }
 
 - (void)align:(CGFloat)left top:(CGFloat)top {
@@ -81,8 +69,6 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   if (layoutNode == nil || layoutNode.isDestroy) {
     return;
   }
-  _left = left;
-  _top = top;
 
   AlignParam *alignParam = [[AlignParam alloc] init];
   // Native alignment uses the markdown content box as its coordinate origin. Lynx adds the
@@ -95,55 +81,16 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   [layoutNode alignWithAlignParam:alignParam AlignContext:alignContext];
 }
 
-- (CGSize)getSize {
-  return CGSizeMake(_width, _height);
-}
-
-- (CGPoint)getPosition {
-  return CGPointMake(_left, _top);
-}
-
-- (void)setSize:(CGFloat)width height:(CGFloat)height {
-  _width = width;
-  _height = height;
-
+- (void)setRenderBounds:(CGRect)bounds {
   LynxUI *ui = [self findUI];
   if (ui == nil || ui.view == nil) {
     return;
   }
-  void (^updateUI)(void) = ^{
-    CGRect frame = ui.frame;
-    frame.size = CGSizeMake(width, height);
-    [ui setFrame:frame];
-    [ui frameDidChange];
-  };
-  if ([NSThread isMainThread]) {
-    updateUI();
-  } else {
-    dispatch_async(dispatch_get_main_queue(), updateUI);
-  }
-}
-
-- (void)setPosition:(CGFloat)left top:(CGFloat)top {
-  _left = left;
-  _top = top;
-
-  LynxUI *ui = [self findUI];
-  if (ui == nil || ui.view == nil) {
-    return;
-  }
-  void (^updateUI)(void) = ^{
-    CGRect frame = ui.frame;
-    CGPoint contentOffset = [self->_host markdownHostContentOffset];
-    frame.origin = CGPointMake(left + contentOffset.x, top + contentOffset.y);
-    [ui setFrame:frame];
-    [ui frameDidChange];
-  };
-  if ([NSThread isMainThread]) {
-    updateUI();
-  } else {
-    dispatch_async(dispatch_get_main_queue(), updateUI);
-  }
+  CGPoint contentOffset = [_host markdownHostContentOffset];
+  bounds.origin.x += contentOffset.x;
+  bounds.origin.y += contentOffset.y;
+  [ui setFrame:bounds];
+  [ui frameDidChange];
 }
 
 - (void)setVisibility:(BOOL)visible {
