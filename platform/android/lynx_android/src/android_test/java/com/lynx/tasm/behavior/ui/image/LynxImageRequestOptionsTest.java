@@ -5,6 +5,9 @@
 package com.lynx.tasm.behavior.ui.image;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import com.lynx.tasm.image.LynxImageRequestOptions;
@@ -14,6 +17,30 @@ import java.util.List;
 import org.junit.Test;
 
 public class LynxImageRequestOptionsTest {
+  @Test
+  public void testDefaultOptions() {
+    LynxImageRequestOptions options = LynxImageRequestOptions.newBuilder().build();
+
+    assertNull(options.getFinalUrl());
+    assertNull(options.getFallbackUrls());
+    assertFalse(options.getUseRGB565());
+    assertFalse(options.isPiercedImage());
+    assertNull(options.getPriority());
+  }
+
+  @Test
+  public void testPiercedImageKeepsBuiltOptionsUnchanged() {
+    LynxImageRequestOptions.Builder builder = LynxImageRequestOptions.newBuilder();
+    assertSame(builder, builder.setPiercedImage(true));
+    LynxImageRequestOptions piercedOptions = builder.build();
+
+    assertSame(builder, builder.setPiercedImage(false));
+    LynxImageRequestOptions defaultOptions = builder.build();
+
+    assertTrue(piercedOptions.isPiercedImage());
+    assertFalse(defaultOptions.isPiercedImage());
+  }
+
   @Test
   public void testOptionsKeepImmutableFallbackSnapshot() {
     List<String> fallbackUrls = new ArrayList<>(Arrays.asList("fallback-1", "fallback-2"));
