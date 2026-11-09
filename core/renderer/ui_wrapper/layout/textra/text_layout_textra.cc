@@ -480,6 +480,21 @@ void TextLayoutTextra::ApplyParagraphStyle(TextElement* text_element) {
       paragraph_builder_->SetParagraphStyle(kTextPropTextMaxLine,
                                             &(text_max_line), sizeof(int));
     }
+    if (text_props->line_height_alignment) {
+      uint32_t alignment = *text_props->line_height_alignment;
+      paragraph_builder_->SetParagraphStyle(kTextPropLineHeightAlignment,
+                                            &alignment, sizeof(alignment));
+    }
+    if (text_props->line_height_trim) {
+      uint32_t trim = *text_props->line_height_trim;
+      paragraph_builder_->SetParagraphStyle(kTextPropLineHeightTrim, &trim,
+                                            sizeof(trim));
+    }
+    if (text_props->line_height_mode) {
+      uint32_t mode = *text_props->line_height_mode;
+      paragraph_builder_->SetParagraphStyle(kTextPropLineHeightMode, &mode,
+                                            sizeof(mode));
+    }
   }
   if (props_set.Has(kPropertyIDTextOverflow)) {
     auto text_overflow = static_cast<int>(text_attributes->text_overflow);

@@ -51,6 +51,9 @@ struct BackendState {
   std::optional<float> line_height;
   std::optional<std::string> font_variations;
   std::vector<int> text_backgrounds;
+  std::optional<uint32_t> line_height_alignment;
+  std::optional<uint32_t> line_height_trim;
+  std::optional<uint32_t> line_height_mode;
 };
 
 class FakeParagraphBuilder : public text::ParagraphBuilder {
@@ -60,6 +63,9 @@ class FakeParagraphBuilder : public text::ParagraphBuilder {
     state_.line_height.reset();
     state_.font_variations.reset();
     state_.text_backgrounds.clear();
+    state_.line_height_alignment.reset();
+    state_.line_height_trim.reset();
+    state_.line_height_mode.reset();
   }
   ~FakeParagraphBuilder() override { --state_.live_builder_count; }
 
@@ -68,6 +74,13 @@ class FakeParagraphBuilder : public text::ParagraphBuilder {
                          size_t length) override {
     if (key == kTextPropLineHeight && length == sizeof(float)) {
       state_.line_height = *static_cast<float*>(value);
+    } else if (key == kTextPropLineHeightAlignment &&
+               length == sizeof(uint32_t)) {
+      state_.line_height_alignment = *static_cast<uint32_t*>(value);
+    } else if (key == kTextPropLineHeightTrim && length == sizeof(uint32_t)) {
+      state_.line_height_trim = *static_cast<uint32_t*>(value);
+    } else if (key == kTextPropLineHeightMode && length == sizeof(uint32_t)) {
+      state_.line_height_mode = *static_cast<uint32_t*>(value);
     }
   }
   void PushTextStyle() override {}
@@ -388,6 +401,29 @@ TEST_F(TextLayoutTextraTest, ExplicitLineHeightsRemainSupported) {
     ASSERT_TRUE(state_.line_height.has_value());
     EXPECT_FLOAT_EQ(*state_.line_height, value[0] == '0' ? 0.f : 24.f);
   }
+}
+
+TEST_F(TextLayoutTextraTest, LineHeightStyleAttributesAreForwarded) {
+  auto handle = CreateDetachedComposeText();
+  auto* element = handle->content_element().get();
+  auto* layout = event_context_->text_layout();
+  layout->DispatchLayoutBefore(element);
+  EXPECT_FALSE(state_.line_height_alignment.has_value());
+  EXPECT_FALSE(state_.line_height_trim.has_value());
+  EXPECT_FALSE(state_.line_height_mode.has_value());
+
+  element->SetAttribute("compose-line-height-alignment",
+                        lepus::Value("center"));
+  element->SetAttribute("compose-line-height-trim", lepus::Value("both"));
+  element->SetAttribute("compose-line-height-mode", lepus::Value("minimum"));
+  static_cast<TextElement*>(element)->PrepareForDetachedMeasurement();
+  layout->DispatchLayoutBefore(element);
+
+  EXPECT_EQ(state_.line_height_alignment,
+            static_cast<uint32_t>(LineHeightAlignment::kCenter));
+  EXPECT_EQ(state_.line_height_trim, kLineHeightTrimBoth);
+  EXPECT_EQ(state_.line_height_mode,
+            static_cast<uint32_t>(LineHeightMode::kMinimum));
 }
 
 TEST_F(TextLayoutTextraTest, PreservesBackendMetricsAndConstraints) {
