@@ -7,15 +7,10 @@
 
 #include <string>
 
-#include "base/include/base_export.h"
-
 namespace lynx {
 namespace base {
 
 std::string GetDefaultApplicationDataDirectory();
-
-// The Android base bridge initializes the application directory before SDK use.
-BASE_EXPORT void SetApplicationDataDirectory(std::string path);
 
 }  // namespace base
 }  // namespace lynx
