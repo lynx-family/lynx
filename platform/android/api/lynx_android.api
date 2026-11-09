@@ -7701,6 +7701,7 @@ public class com::lynx::tasm::behavior::ui::scroll::LynxUIScrollView : com.lynx.
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setForwardsNestedScroll(int value);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setBackwardsNestedScroll(int value);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setInitialScrollIndex(int value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setInitialScrollToIndex(int value);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setInitialScrollOffset(String value);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setLowerThreshold(String value);
   public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setUpperThreshold(String value);

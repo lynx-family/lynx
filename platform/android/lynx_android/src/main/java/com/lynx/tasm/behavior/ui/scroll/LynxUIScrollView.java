@@ -44,6 +44,10 @@ public class LynxUIScrollView extends LynxUIScrollViewInternal {
   public void setInitialScrollIndex(int value) {
     super.setInitialScrollIndex(value);
   }
+  @LynxProp(name = "initial-scroll-to-index")
+  public void setInitialScrollToIndex(int value) {
+    super.setInitialScrollIndex(value);
+  }
   @LynxProp(name = "initial-scroll-offset")
   public void setInitialScrollOffset(String value) {
     super.setInitialScrollOffset(value);

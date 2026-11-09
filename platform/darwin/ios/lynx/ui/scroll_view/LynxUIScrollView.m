@@ -27,6 +27,8 @@ LYNX_PROPS_GROUP_DECLARE(
 
     LYNX_PROP_DECLARE("initial-scroll-index", setInitialScrollIndex, NSInteger),
 
+    LYNX_PROP_DECLARE("initial-scroll-to-index", setInitialScrollIndex, NSInteger),
+
     LYNX_PROP_DECLARE("initial-scroll-offset", setInitialScrollOffset, NSString *),
 
     LYNX_PROP_DECLARE("upper-threshold", setUpperThreshold, NSString *),

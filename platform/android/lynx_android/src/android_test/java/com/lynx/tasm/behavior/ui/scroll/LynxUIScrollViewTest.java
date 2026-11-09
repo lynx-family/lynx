@@ -22,6 +22,7 @@ import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.LynxUIOwner;
+import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.UIImage;
 import com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller;
@@ -115,20 +116,28 @@ public class LynxUIScrollViewTest {
 
   @Test
   public void setInitialScrollIndex() {
-    // Re-create the UI to test initial scroll
-    LynxUIScrollView scrollView = new LynxUIScrollView(mContext);
-    for (int i = 0; i < 5; i++) {
-      UIImage child = new UIImage(mContext);
-      child.setLeft(0);
-      child.setTop(i * 100);
-      child.setWidth(200);
-      child.setHeight(100);
-      scrollView.insertChild(child, i);
+    for (String attributeName : new String[] {"initial-scroll-index", "initial-scroll-to-index"}) {
+      LynxUIScrollView scrollView = new LynxUIScrollView(mContext);
+      for (int i = 0; i < 5; i++) {
+        UIImage child = new UIImage(mContext);
+        child.setLeft(0);
+        child.setTop(i * 100);
+        child.setWidth(200);
+        child.setHeight(100);
+        scrollView.insertChild(child, i);
+      }
+      JavaOnlyMap props = new JavaOnlyMap();
+      props.putInt(attributeName, 2);
+      scrollView.updateProperties(new StylesDiffMap(props));
+      scrollView.measure();
+      scrollView.onNodeReady();
+      assertEquals(200, scrollView.getScrollY());
+
+      props.putInt(attributeName, 3);
+      scrollView.updateProperties(new StylesDiffMap(props));
+      scrollView.onNodeReady();
+      assertEquals(200, scrollView.getScrollY());
     }
-    scrollView.setInitialScrollIndex(2);
-    scrollView.measure();
-    scrollView.onNodeReady();
-    assertEquals(200, scrollView.getScrollY());
   }
 
   @Test
