@@ -36,6 +36,27 @@ TEST(PathTest, MovedSourceRemainsAValidEmptyValue) {
             0u);
 }
 
+TEST(PathTest, RoundedRectNormalization) {
+  float radii[8] = {100, 50, 100, 50, 10, 10, 10, 10};
+  auto path = Path::MakeRoundedRect(100, 100, radii);
+  ASSERT_TRUE(path);
+  const auto& h = std::get<PathView>(path->GetSourceView()).header;
+  EXPECT_EQ(h.radii[0], 50);
+  EXPECT_EQ(h.radii[1], 25);
+  EXPECT_EQ(h.radii[4], 5);
+}
+TEST(PathTest, InvalidConstruction) {
+  float inf = std::numeric_limits<float>::infinity();
+  float radii[8] = {};
+  radii[0] = -1;
+  EXPECT_FALSE(Path::MakeRect(inf, 1));
+  EXPECT_FALSE(Path::MakeRect(-1, 1));
+  EXPECT_FALSE(Path::MakeRoundedRect(10, 10, radii));
+  PathBuilder builder;
+  builder.MoveTo(inf, 0);
+  EXPECT_FALSE(builder.Build());
+  EXPECT_TRUE(Path::MakeRect(0, 0));
+}
 TEST(PathTest, BuilderPublicationAndEnd) {
   PathBuilder b;
   b.MoveTo(1, 2);
@@ -183,12 +204,18 @@ TEST(PathTest, DrawingMethodsRejectNaNAndInfinity) {
     ASSERT_TRUE(builder.Build());
   }
 }
-TEST(PathTest, RelativeCoordinatesRejectOverflowAfterParsing) {
+TEST(PathTest, ParserStopsRelativeCoordinateOverflowBeforeDrawing) {
   PathBuilder builder;
   auto consumer = builder.GetConsumer();
   LBSParsePathWithConsumer("M3e38 0 l3e38 0", &consumer);
-  EXPECT_EQ(consumer.error, 0);
-  EXPECT_FALSE(builder.Build());
+  EXPECT_EQ(consumer.error, 1);
+  auto path = builder.Build();
+  ASSERT_TRUE(path);
+  const auto view = std::get<PathView>(path->GetSourceView());
+  EXPECT_EQ(view.header.point_count, 1u);
+  EXPECT_FLOAT_EQ(view.points[0].x, 3e38f);
+  EXPECT_EQ(view.header.command_count, 2u);
+  EXPECT_EQ(view.commands[1], PathVerb::kEnd);
   builder.MoveTo(1, 2);
   EXPECT_TRUE(builder.Build());
 }
@@ -399,5 +426,56 @@ TEST(PathTest, SvgSharesComputedStringAcrossScaleAndSourceCopies) {
   first = nullptr;
   second = nullptr;
   EXPECT_EQ(c, "M0 0 L1 2 C3 4 5 6 7 8 Z");
+}
+TEST(PathTest, SuperEllipseSamplesMatchLegacyFormula) {
+  constexpr double half_pi = 1.57079632679489661923;
+  const float exponents[][2] = {{2, 2}, {4, 3}, {0.2f, 2.3f}, {10, 10}};
+  for (const auto& exponent : exponents) {
+    auto path = Path::MakeSuperEllipse(60, 40, exponent[0], exponent[1]);
+    ASSERT_TRUE(path);
+    auto view = std::get<PathView>(path->GetSourceView());
+    size_t index = 0;
+    for (int q = 0; q < 4; ++q) {
+      float sx = (q == 0 || q == 3) ? 1.f : -1.f;
+      float sy = q < 2 ? 1.f : -1.f;
+      ++index;  // The exact axis-aligned start precedes the sampled points.
+      for (double angle = q * half_pi + 0.01; angle < (q + 1) * half_pi;
+           angle += 0.01) {
+        ASSERT_LT(index, view.header.point_count);
+        float x =
+            sx * 60 * std::pow(std::abs(std::cos(angle)), 2. / exponent[0]);
+        float y =
+            sy * 40 * std::pow(std::abs(std::sin(angle)), 2. / exponent[1]);
+        EXPECT_NEAR(view.points[index].x, x, 0.00001f);
+        EXPECT_NEAR(view.points[index].y, y, 0.00001f);
+        ++index;
+      }
+      ++index;  // The exact endpoint is preserved independently of sampling.
+    }
+    EXPECT_EQ(index, view.header.point_count);
+  }
+}
+TEST(PathTest, EllipseAndSuperEllipseEndpoints) {
+  auto ellipse = Path::MakeEllipse(20, 10);
+  ASSERT_TRUE(ellipse);
+  auto e = std::get<PathView>(ellipse->GetSourceView());
+  EXPECT_EQ(e.points[0].x, 20);
+  EXPECT_EQ(e.points[0].y, 0);
+  EXPECT_EQ(e.points[3].x, 0);
+  EXPECT_EQ(e.points[3].y, 10);
+  EXPECT_EQ(e.points[6].x, -20);
+  EXPECT_EQ(e.points[9].y, -10);
+  EXPECT_EQ(e.commands[e.header.command_count - 1], PathVerb::kClose);
+  auto super = Path::MakeSuperEllipse(20, 10, 4, 3);
+  ASSERT_TRUE(super);
+  auto s = std::get<PathView>(super->GetSourceView());
+  EXPECT_EQ(s.points[0].x, 20);
+  EXPECT_EQ(s.points[0].y, 0);
+  EXPECT_EQ(s.points[s.header.point_count - 1].x, 20);
+  EXPECT_EQ(s.points[s.header.point_count - 1].y, 0);
+  EXPECT_FALSE(Path::MakeSuperEllipse(1, 1, 0, 2));
+  EXPECT_EQ(std::get<PathView>(Path::MakeEllipse(0, 10)->GetSourceView())
+                .header.width,
+            0);
 }
 }  // namespace lynx::gfx

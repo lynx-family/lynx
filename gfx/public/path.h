@@ -15,6 +15,15 @@ class Path final : public fml::RefCountedThreadSafe<Path> {
  public:
   static constexpr size_t kMaxPoints = 1u << 20;
   GFX_EXPORT static fml::RefPtr<Path> MakeRect(float width, float height);
+  GFX_EXPORT static fml::RefPtr<Path> MakeRoundedRect(float width, float height,
+                                                      const float (&radii)[8]);
+  GFX_EXPORT static fml::RefPtr<Path> MakeEllipse(float rx, float ry);
+  GFX_EXPORT static fml::RefPtr<Path> MakeSuperEllipse(float rx, float ry,
+                                                       float exponent_x,
+                                                       float exponent_y);
+  GFX_EXPORT static fml::RefPtr<Path> MakeSuperRoundedRect(
+      float width, float height, const float (&radii)[8], float exponent_x,
+      float exponent_y);
   static constexpr size_t kMaxSvgBytes = 1u << 20;
   // Retains bounded source bytes without parsing SVG syntax. Consumers must
   // check parser errors before publishing native geometry.
