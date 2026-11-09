@@ -41,6 +41,9 @@ class PlatformRendererImpl : public PlatformRenderer {
   void UpdateAttributes(const fml::RefPtr<PropBundle>& attributes) override;
   const DisplayList& GetDisplayList() const { return display_list_; }
   const SubtreeProperty* GetTransform() const { return transform_.get(); }
+  const gfx::Path* GetClipPath() const { return clip_path_.path.get(); }
+  gfx::PathFillRule GetClipPathFillRule() const { return clip_path_.fill_rule; }
+  const float* GetClipPathOffset() const { return clip_path_.offset; }
   void UpdateLayoutMetrics(float left, float top, float width, float height,
                            const float* paddings, const float* margins,
                            const float* borders);
@@ -119,6 +122,12 @@ class PlatformRendererImpl : public PlatformRenderer {
 
   SubtreeProperty opacity_;
   base::auto_create_optional<SubtreeProperty> transform_;
+  // Property-only lists are temporary; the renderer owns the active clip.
+  struct {
+    fml::RefPtr<const gfx::Path> path;
+    gfx::PathFillRule fill_rule{gfx::PathFillRule::kNonzero};
+    float offset[2]{0.f, 0.f};
+  } clip_path_;
 
   PlatformRendererImpl* parent_ = nullptr;
 

@@ -55,6 +55,8 @@ lynx_core_source_set("display_list") {
   sources = [
     "box_model_recorder.cc",
     "box_model_recorder.h",
+    "clip_path_resolver.cc",
+    "clip_path_resolver.h",
     "display_list_builder.cc",
     "display_list_builder.h",
     "layout_info.cc",
@@ -63,6 +65,8 @@ lynx_core_source_set("display_list") {
   public_deps = [
     "../../../../gfx:gfx",
     "../../../../gfx/display_list:display_list",
+    "../../../public:public",
+    "../../../style:basic_shape_data",
     "../../../style:style",
     "../../starlight:starlight",
   ]
@@ -72,13 +76,14 @@ unittest_set("display_list_testset") {
   testonly = true
   sources = [
     "box_model_recorder_unittest.cc",
+    "clip_path_resolver_unittest.cc",
     "display_list_builder_unittest.cc",
     "layout_info_unittest.cc",
   ]
   public_deps = [
     ":display_list",
     "../../../../base/src:base_values",
-    "../../../../base/src:base_values_extended",
+    "../../css:css",
     "../../starlight:starlight",
   ]
 }
@@ -86,6 +91,7 @@ unittest_set("display_list_testset") {
 unittest_exec("fragment_test_exec") {
   deps = [
     ":display_list_testset",
+    "..:dom",
     "../../../../gfx/display_list:display_list_testset",
   ]
 }

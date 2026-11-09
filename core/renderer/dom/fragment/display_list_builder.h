@@ -57,6 +57,11 @@ class DisplayListBuilder {
   DisplayListBuilder& Transform(const gfx::Matrix44& matrix);
   DisplayListBuilder& Opacity(float alpha);
   DisplayListBuilder& Filter(const starlight::FilterData& filter);
+  // Replace the owner layer's clip. A null path clears it.
+  DisplayListBuilder& ClipPathProperty(
+      fml::RefPtr<gfx::Path> path,
+      gfx::PathFillRule fill_rule = gfx::PathFillRule::kNonzero, float x = 0,
+      float y = 0);
 
   // Record an image and retain its reference. Rvalues transfer ownership;
   // lvalues keep the caller's reference and add one for the display list.
@@ -69,6 +74,12 @@ class DisplayListBuilder {
   // Set all border properties at once (color, width, style for all four sides)
   DisplayListBuilder& Border(int32_t out_index, int32_t inner_index,
                              const starlight::BordersData& border);
+
+  // Intersect the current Begin/End scope with a retained path.
+  DisplayListBuilder& ClipPath(
+      fml::RefPtr<gfx::Path> path,
+      gfx::PathFillRule fill_rule = gfx::PathFillRule::kNonzero, float x = 0,
+      float y = 0);
 
   // Set clip rect
   DisplayListBuilder& ClipRect(const RoundedRectangle& border);

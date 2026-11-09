@@ -17,6 +17,7 @@
 #include "core/renderer/css/dynamic_css_styles_manager.h"
 #include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/fiber/text_props.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -31,6 +32,17 @@ CSSValue ParseVariableValue(const char* raw_value) {
   lepus::Value value(raw_value);
   CSSStringParser parser = CSSStringParser::FromLepusString(value, configs);
   return parser.ParseVariable();
+}
+
+CSSValue ParseClipPathValue(const char* css) {
+  StyleMap parsed;
+  CSSParserConfigs configs;
+  if (!UnitHandler::Process(kPropertyIDClipPath, lepus::Value(css), parsed,
+                            configs)) {
+    ADD_FAILURE() << "Invalid clip-path test input: " << css;
+    return CSSValue();
+  }
+  return parsed.at(kPropertyIDClipPath);
 }
 
 lepus::Value MakeTextGradientValue(int marker) {
@@ -65,6 +77,130 @@ CSSValue MakeTextDecorationValue(bool with_thickness, double thickness = 2.0) {
 }
 
 }  // namespace
+
+TEST(ComputedCSSStyleTest, ClipPathRetainsComputedLengths) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  ASSERT_TRUE(style.SetValue(kPropertyIDClipPath,
+                             ParseClipPathValue("ellipse(calc(2px + 25%) 10% "
+                                                "at 50% 30px)")));
+  const auto* shape = style.GetClipPath();
+  ASSERT_NE(shape, nullptr);
+  EXPECT_EQ(shape->type, starlight::BasicShapeType::kEllipse);
+  EXPECT_TRUE(shape->RadiusX().IsCalc());
+  EXPECT_EQ(shape->RadiusX().NumericLength().GetFixedPart(), 2);
+  EXPECT_EQ(shape->RadiusX().NumericLength().GetPercentagePart(), 25);
+  EXPECT_TRUE(shape->RadiusY().IsPercent());
+  EXPECT_EQ(shape->RadiusY().GetRawValue(), 10);
+  EXPECT_EQ(shape->CenterX().GetRawValue(), 50);
+  EXPECT_EQ(shape->CenterY().GetRawValue(), 30);
+}
+
+TEST(ComputedCSSStyleTest, ClipPathCopyResetAndChangeDetection) {
+  for (const char* css :
+       {"circle(10% at 20px 30%)", "ellipse(calc(2px + 25%) 10px)",
+        "super-ellipse(20px 30px 4 3 at 40px 50%)", "inset(10% 20px)",
+        "inset(10px round 20% / 30%)",
+        "inset(10px super-ellipse 4 3 calc(10% + 2px))",
+        "path(\"M0 0 L10 10 Z\")"}) {
+    SCOPED_TRACE(css);
+    starlight::ComputedCSSStyle style{1.f, 1.f};
+    const auto value = ParseClipPathValue(css);
+    ASSERT_TRUE(style.SetValue(kPropertyIDClipPath, value));
+    ASSERT_NE(style.GetClipPath(), nullptr);
+    const auto* original = style.GetClipPath();
+    style.ClearDirtyBits();
+    EXPECT_FALSE(style.SetValue(kPropertyIDClipPath, value));
+    EXPECT_EQ(style.GetClipPath(), original);
+    EXPECT_FALSE(style.HasChangedProperty(kPropertyIDClipPath));
+
+    starlight::ComputedCSSStyle copy{1.f, 1.f};
+    copy.CopyFrom(style);
+    ASSERT_NE(copy.GetClipPath(), nullptr);
+    EXPECT_EQ(*copy.GetClipPath(), *style.GetClipPath());
+    const auto exported = copy.ClipPathToLepus();
+    EXPECT_TRUE(style.ResetValue(kPropertyIDClipPath));
+    EXPECT_EQ(style.GetClipPath(), nullptr);
+    EXPECT_FALSE(style.ResetValue(kPropertyIDClipPath));
+    EXPECT_EQ(style.ClipPathToLepus().Array()->size(), 0u);
+    EXPECT_EQ(copy.ClipPathToLepus(), exported);
+    copy.Reset();
+    EXPECT_EQ(copy.GetClipPath(), nullptr);
+    EXPECT_EQ(copy.ClipPathToLepus().Array()->size(), 0u);
+    copy.CopyFrom(style);
+    EXPECT_EQ(copy.GetClipPath(), nullptr);
+  }
+}
+
+TEST(ComputedCSSStyleTest, ClipPathEquivalentCalcKeepsComputedState) {
+  const char* cases[][2] = {
+      {"circle(20px at 0px 0px)", "circle(calc(10px + 10px) at 0px 0px)"},
+      {"ellipse(25% 10px at 0px 0px)",
+       "ellipse(calc(25% + 0px) 10px at 0px 0px)"},
+  };
+  for (const auto& test : cases) {
+    starlight::ComputedCSSStyle style{1.f, 1.f};
+    ASSERT_TRUE(
+        style.SetValue(kPropertyIDClipPath, ParseClipPathValue(test[0])));
+    const auto* original = style.GetClipPath();
+    EXPECT_FALSE(
+        style.SetValue(kPropertyIDClipPath, ParseClipPathValue(test[1])));
+    EXPECT_EQ(style.GetClipPath(), original);
+  }
+}
+
+TEST(ComputedCSSStyleTest, ClipPathEqualityUsesActiveFields) {
+  using Shape = starlight::BasicShapeData;
+  using Type = starlight::BasicShapeType;
+  for (const char* css :
+       {"circle(10px)", "ellipse(10px 20px)", "super-ellipse(10px 20px 4 3)",
+        "inset(10px)", "inset(10px round 5px)",
+        "inset(10px super-ellipse 4 3 5px)", "path(\"M0 0 L10 10\")"}) {
+    SCOPED_TRACE(css);
+    starlight::ComputedCSSStyle style{1.f, 1.f};
+    ASSERT_TRUE(style.SetValue(kPropertyIDClipPath, ParseClipPathValue(css)));
+    ASSERT_NE(style.GetClipPath(), nullptr);
+    const auto& original = *style.GetClipPath();
+    auto changed = original;
+    changed.exponent_x += 1;
+    const bool super =
+        original.type == Type::kSuperEllipse ||
+        (original.type == Type::kInset &&
+         original.corner_type == Shape::CornerType::kSuperEllipse);
+    EXPECT_EQ(changed != original, super);
+    changed = original;
+    if (original.type == Type::kPath) {
+      changed.RadiusX() = starlight::NLength::MakeUnitNLength(42);
+      EXPECT_EQ(changed, original);
+      changed.path_data = "M0 0 L20 20";
+    } else if (original.type == Type::kInset) {
+      changed.CornerRadius(0) = starlight::NLength::MakeUnitNLength(42);
+      EXPECT_EQ(changed != original,
+                original.corner_type != Shape::CornerType::kRect);
+      changed.Inset(0) = starlight::NLength::MakeUnitNLength(42);
+    } else {
+      if (original.type == Type::kCircle) {
+        changed.RadiusY() = starlight::NLength::MakeUnitNLength(42);
+      } else {
+        changed.CornerRadius(0) = starlight::NLength::MakeUnitNLength(42);
+      }
+      EXPECT_EQ(changed, original);
+      changed.CenterX() = starlight::NLength::MakeUnitNLength(42);
+    }
+    EXPECT_NE(changed, original);
+  }
+}
+
+TEST(ComputedCSSStyleTest, ClipPathInvalidShapeClearsComputedState) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  ASSERT_TRUE(
+      style.SetValue(kPropertyIDClipPath, ParseClipPathValue("circle(10px)")));
+  auto invalid = lepus::CArray::Create();
+  invalid->emplace_back(static_cast<int>(starlight::BasicShapeType::kCircle));
+  EXPECT_TRUE(style.SetValue(kPropertyIDClipPath, CSSValue(invalid)));
+  EXPECT_EQ(style.GetClipPath(), nullptr);
+  EXPECT_EQ(style.ClipPathToLepus().Array()->size(), 0u);
+  EXPECT_FALSE(style.SetValue(kPropertyIDClipPath, CSSValue(invalid)));
+}
 
 TEST(ComputedCSSStyleTest, TextSpacingTrimSetResetAndDecode) {
   using starlight::TextSpacingTrimType;

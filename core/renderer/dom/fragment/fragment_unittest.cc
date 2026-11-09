@@ -19,6 +19,7 @@
 #include "base/include/fml/message_loop.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
@@ -139,9 +140,13 @@ class TestPlatformRenderer : public PlatformRendererImpl {
 
   void OnRebuildSubRenderers() override { ++rebuild_count; }
   int rebuild_count = 0;
+  size_t last_content_items_size = 0;
+  size_t last_subtree_properties_size = 0;
 
  protected:
   void OnUpdateDisplayList(DisplayList display_list) override {
+    last_content_items_size = display_list.GetContentItemsSize();
+    last_subtree_properties_size = display_list.GetSubtreePropertiesSize();
     if (display_list.GetContentItemsSize() > 0) {
       display_list_ = std::move(display_list);
     }
@@ -588,6 +593,418 @@ class FragmentDrawTest : public ::testing::Test {
   std::unique_ptr<lynx::tasm::ElementManager> manager;
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
 };
+
+class ClipPathFragmentTest : public FragmentDrawTest {
+ public:
+  static void SetUpTestSuite() { base::UIThread::Init(); }
+  void SetUp() override {
+    FragmentDrawTest::SetUp();
+    context = static_cast<NativeMockPaintingContext*>(
+        manager->painting_context()->impl());
+    element = manager->CreateFiberView();
+    fragment = element->fragment_impl();
+    layout.size_ = FloatSize(100, 100);
+    fragment->UpdateLayout(layout);
+  }
+  void SetClip(const char* css) {
+    CSSParserConfigs config;
+    StyleMap styles;
+    ASSERT_TRUE(UnitHandler::Process(kPropertyIDClipPath, lepus::Value(css),
+                                     styles, config));
+    auto* style = element->computed_css_style();
+    style->ClearDirtyBits();
+    element->SetStyleInternal(kPropertyIDClipPath,
+                              styles.at(kPropertyIDClipPath));
+    element->PushStyleToBundle();
+    // Recording must rely on Fragment's flag, after CSS state is consumed.
+    style->ClearDirtyBits();
+  }
+  DisplayList Record() {
+    DisplayListBuilder builder;
+    fragment->DrawFull(builder);
+    return builder.Build();
+  }
+  NativeMockPaintingContext* context;
+  fml::RefPtr<ViewElement> element;
+  Fragment* fragment;
+  LayoutResultForRendering layout;
+};
+
+TEST_F(ClipPathFragmentTest, DiffResetAndRetainedListLifetime) {
+  SetClip("circle(10px at 20px 30px)");
+  auto old = Record();
+  ASSERT_EQ(old.GetPathCount(), 1u);
+  EXPECT_FALSE(fragment->cached_clip_path_.dirty);
+  auto old_key = old.GetPath(0)->GetKey();
+  SetClip("circle(20px at 20px 30px)");
+  EXPECT_TRUE(fragment->cached_clip_path_.dirty);
+  EXPECT_TRUE(fragment->NeedRedraw());
+  auto updated = Record();
+  ASSERT_EQ(updated.GetPathCount(), 1u);
+  EXPECT_NE(updated.GetPath(0)->GetKey(), old_key);
+  EXPECT_EQ(old.GetPath(0)->GetKey(), old_key);
+  auto* style = element->computed_css_style();
+  style->ResetValue(kPropertyIDClipPath);
+  element->PushStyleToBundle();
+  style->ClearDirtyBits();
+  auto reset = Record();
+  EXPECT_EQ(reset.GetPathCount(), 0u);
+  auto items = CollectDisplayListItems(reset);
+  ASSERT_GE(items.size(), 2u);
+  EXPECT_EQ(items.front().type, DisplayListOpType::kBegin);
+  EXPECT_EQ(items.back().type, DisplayListOpType::kEnd);
+  EXPECT_EQ(old.GetPath(0)->GetKey(), old_key);
+  element = nullptr;
+  EXPECT_EQ(old.GetPath(0)->GetKey(), old_key);
+}
+
+TEST_F(ClipPathFragmentTest, RedrawTranslationAndSameSizeReusePath) {
+  SetClip("path(\"m1e2 3 A10 20 45 01-2.5 .3z\")");
+  auto first = Record();
+  ASSERT_EQ(first.GetPathCount(), 1u);
+  auto* path = first.GetPath(0);
+  auto construction_marker = gfx::Path::MakeRect(0, 0);
+  fragment->ClearPaintDirtyState();
+  element->SetStyleInternal(kPropertyIDBackgroundColor, CSSValue(0xff010203u));
+  fragment->InvalidateForRedraw();
+  auto repaint = Record();
+  EXPECT_EQ(repaint.GetPath(0), path);
+  fragment->drawing_offset_[0] = 25;
+  fragment->drawing_offset_[1] = 35;
+  fragment->UpdateLayout(layout);
+  auto moved = Record();
+  EXPECT_EQ(moved.GetPath(0), path);
+  layout.size_ = FloatSize(200, 300);
+  fragment->UpdateLayout(layout);
+  auto resized = Record();
+  EXPECT_EQ(resized.GetPath(0), path);
+  // A flattened fragment is recorded repeatedly into its parent list.
+  EXPECT_FALSE(fragment->has_platform_renderer_);
+  auto parent_record = Record();
+  EXPECT_EQ(parent_record.GetPath(0), path);
+  auto after_redraws = gfx::Path::MakeRect(0, 0);
+  EXPECT_EQ(after_redraws->GetKey(), construction_marker->GetKey() + 1);
+  EXPECT_EQ(std::get<gfx::SvgPathView>(path->GetSourceView()).data,
+            "m1e2 3 A10 20 45 01-2.5 .3z");
+}
+
+TEST_F(ClipPathFragmentTest, OnlyRelevantReferenceDimensionsInvalidate) {
+  SetClip("ellipse(50% 10px at 20px 30px)");
+  auto initial = Record();
+  ASSERT_EQ(initial.GetPathCount(), 1u);
+  auto key = initial.GetPath(0)->GetKey();
+  layout.size_ = FloatSize(100, 200);
+  fragment->UpdateLayout(layout);
+  auto height = Record();
+  EXPECT_EQ(height.GetPath(0)->GetKey(), key);
+  layout.size_ = FloatSize(200, 200);
+  fragment->UpdateLayout(layout);
+  auto width = Record();
+  EXPECT_NE(width.GetPath(0)->GetKey(), key);
+  const auto view = std::get<gfx::PathView>(width.GetPath(0)->GetSourceView());
+  ASSERT_EQ(view.header.point_count, 13u);
+  EXPECT_EQ(view.points[0].x, 100);
+  EXPECT_EQ(view.points[3].y, 10);
+  SetClip("circle(10px at 20px 30px)");
+  auto absolute = Record();
+  layout.size_ = FloatSize(300, 400);
+  fragment->UpdateLayout(layout);
+  EXPECT_EQ(Record().GetPath(0), absolute.GetPath(0));
+}
+
+TEST_F(ClipPathFragmentTest, SvgUnitChangeAndVisibilityPreserveOldSources) {
+  SetClip("path(\"M0 0 L10 10Z\")");
+  auto old = Record();
+  ASSERT_EQ(old.GetPathCount(), 1u);
+  element->computed_css_style()->length_context_.layouts_unit_per_px_ = 2;
+  fragment->InvalidateClipPathIfSourceScaleChanged();
+  EXPECT_TRUE(fragment->NeedRedraw());
+  EXPECT_TRUE(fragment->cached_clip_path_.dirty);
+  EXPECT_EQ(fragment->cached_clip_path_.source_to_layout_scale, 1);
+  auto updated = Record();
+  ASSERT_EQ(updated.GetPathCount(), 1u);
+  EXPECT_FALSE(fragment->cached_clip_path_.dirty);
+  EXPECT_EQ(fragment->cached_clip_path_.source_to_layout_scale, 2);
+  EXPECT_EQ(Record().GetPath(0), updated.GetPath(0));
+  EXPECT_NE(updated.GetPath(0)->GetKey(), old.GetPath(0)->GetKey());
+  EXPECT_EQ(std::get<gfx::SvgPathView>(old.GetPath(0)->GetSourceView())
+                .source_to_layout_scale,
+            1);
+  EXPECT_EQ(std::get<gfx::SvgPathView>(updated.GetPath(0)->GetSourceView())
+                .source_to_layout_scale,
+            2);
+  element->display_none_ = true;
+  EXPECT_EQ(Record().GetPathCount(), 0u);
+  element->display_none_ = false;
+  EXPECT_EQ(Record().GetPath(0), updated.GetPath(0));
+}
+
+TEST_F(ClipPathFragmentTest, ClipPrecedesDecorationsAndOverflowRemains) {
+  SetClip("inset(10px round 5px)");
+  auto child = manager->CreateFiberView();
+  fragment->children_.push_back(child->fragment_impl());
+  element->SetStyleInternal(kPropertyIDBackgroundColor, CSSValue(0xff010203u));
+  element->computed_css_style()->origin_overflow_ =
+      starlight::ComputedCSSStyle::OVERFLOW_HIDDEN;
+  auto list = Record();
+  auto items = CollectDisplayListItems(list);
+  ASSERT_GT(items.size(), 3u);
+  EXPECT_EQ(items[0].type, DisplayListOpType::kBegin);
+  EXPECT_EQ(items[1].type, DisplayListOpType::kClipPath);
+  auto fill = std::find_if(items.begin(), items.end(), [](const auto& item) {
+    return item.type == DisplayListOpType::kFill;
+  });
+  EXPECT_NE(fill, items.end());
+  EXPECT_TRUE(std::any_of(items.begin(), items.end(), [](const auto& item) {
+    return item.type == DisplayListOpType::kClipRect;
+  }));
+}
+
+TEST_F(ClipPathFragmentTest, OwnerClipUpdatesPreserveContentAndOverflow) {
+  fragment->has_platform_renderer_ = true;
+  SetClip("inset(10px round 5px)");
+  element->SetStyleInternal(kPropertyIDBackgroundColor, CSSValue(0xff010203u));
+  element->computed_css_style()->origin_overflow_ =
+      starlight::ComputedCSSStyle::OVERFLOW_HIDDEN;
+  auto child = manager->CreateFiberView();
+  fragment->children_.push_back(child->fragment_impl());
+  DisplayListBuilder initial_builder;
+  fragment->OnDraw(initial_builder);
+  auto initial = initial_builder.Build();
+  const auto* clip =
+      LastSubtreeProperty(initial, DisplayListSubtreePropertyOpType::kClipPath);
+  ASSERT_NE(clip, nullptr);
+  EXPECT_EQ(clip->data.clip_path.x, 10);
+  EXPECT_EQ(clip->data.clip_path.y, 10);
+  auto items = CollectDisplayListItems(initial);
+  EXPECT_TRUE(std::any_of(items.begin(), items.end(), [](const auto& item) {
+    return item.type == DisplayListOpType::kClipRect;
+  }));
+  EXPECT_FALSE(std::any_of(items.begin(), items.end(), [](const auto& item) {
+    return item.type == DisplayListOpType::kClipPath;
+  }));
+  SetClip("path(\"M0 0L20 20Z\")");
+  EXPECT_FALSE(fragment->NeedRedraw());
+  DisplayListBuilder update_builder;
+  fragment->OnDraw(update_builder);
+  auto update = update_builder.Build();
+  EXPECT_EQ(update.GetContentItemsSize(), 0u);
+  EXPECT_EQ(update.GetSubtreePropertiesSize(), 1u);
+  auto* path = update.GetPath(0);
+  ASSERT_NE(path, nullptr);
+
+  element->computed_css_style()->length_context_.layouts_unit_per_px_ = 2;
+  DisplayListBuilder scale_builder;
+  fragment->OnDraw(scale_builder);
+  auto scale = scale_builder.Build();
+  EXPECT_EQ(scale.GetContentItemsSize(), 0u);
+  EXPECT_EQ(scale.GetSubtreePropertiesSize(), 1u);
+  ASSERT_NE(scale.GetPath(0), nullptr);
+  EXPECT_NE(scale.GetPath(0), path);
+  EXPECT_EQ(std::get<gfx::SvgPathView>(scale.GetPath(0)->GetSourceView())
+                .source_to_layout_scale,
+            2);
+
+  DisplayListBuilder clean_builder;
+  fragment->OnDraw(clean_builder);
+  auto clean = clean_builder.Build();
+  EXPECT_EQ(clean.GetContentItemsSize(), 0u);
+  EXPECT_EQ(clean.GetSubtreePropertiesSize(), 0u);
+}
+
+class ClipPathPipelineTest : public ClipPathFragmentTest,
+                             public ::testing::WithParamInterface<bool> {};
+
+TEST_P(ClipPathPipelineTest, StyleFlushAndQueuedListsReuseAndResetClip) {
+  manager->enable_new_styling_pipeline_ = GetParam();
+  auto page = manager->CreateFiberPage("0", 0);
+  page->SetStyle(kPropertyIDClipPath, lepus::Value("path(\"M0 0L10 10Z\")"));
+  page->FlushActionsAsRoot();
+  auto* owner = page->fragment_impl();
+  ASSERT_NE(owner, nullptr);
+  owner->UpdateLayout(layout);
+  owner->Draw();
+  auto* platform = context->GetNativePlatformRef();
+  const auto* initial = platform->GetDisplayListForRenderer(owner->id());
+  auto* renderer = static_cast<TestPlatformRenderer*>(
+      platform->renderers_.at(owner->id()).get());
+  ASSERT_NE(initial, nullptr);
+  ASSERT_EQ(initial->GetPathCount(), 1u);
+  auto retained_path = owner->cached_clip_path_.resolved.path;
+  const auto key = retained_path->GetKey();
+
+  page->SetStyle(kPropertyIDBackgroundColor, lepus::Value("#123456"));
+  page->FlushActionsAsRoot();
+  owner->Draw();
+  const auto* repaint = platform->GetDisplayListForRenderer(owner->id());
+  EXPECT_EQ(renderer->GetClipPath()->GetKey(), key);
+  const auto* retained_content = repaint->GetContentItemsData();
+
+  page->SetStyle(kPropertyIDClipPath, lepus::Value("path(\"M0 0L20 20Z\")"));
+  page->FlushActionsAsRoot();
+  owner->Draw();
+  ASSERT_NE(renderer->GetClipPath(), nullptr);
+  EXPECT_NE(renderer->GetClipPath()->GetKey(), key);
+  EXPECT_EQ(renderer->last_content_items_size, 0u);
+  EXPECT_EQ(renderer->last_subtree_properties_size, 1u);
+  EXPECT_EQ(renderer->GetDisplayList().GetContentItemsData(), retained_content);
+  EXPECT_EQ(std::get<gfx::SvgPathView>(retained_path->GetSourceView()).data,
+            "M0 0L10 10Z");
+
+  page->SetStyle(kPropertyIDClipPath, lepus::Value());
+  page->FlushActionsAsRoot();
+  owner->Draw();
+  EXPECT_EQ(renderer->GetClipPath(), nullptr);
+  EXPECT_EQ(renderer->last_content_items_size, 0u);
+  EXPECT_EQ(renderer->last_subtree_properties_size, 1u);
+  EXPECT_EQ(renderer->GetDisplayList().GetContentItemsData(), retained_content);
+
+  page->SetStyle(kPropertyIDClipPath, lepus::Value("path(\"M0 0L30 30Z\")"));
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(owner->NeedRedraw());
+  owner->Draw();
+  ASSERT_NE(renderer->GetClipPath(), nullptr);
+  EXPECT_EQ(renderer->last_content_items_size, 0u);
+  const auto restored_key = renderer->GetClipPath()->GetKey();
+  EXPECT_EQ(
+      std::get<gfx::SvgPathView>(renderer->GetClipPath()->GetSourceView()).data,
+      "M0 0L30 30Z");
+  page->SetStyle(kPropertyIDOpacity, lepus::Value(0.75));
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(owner->NeedRedraw());
+  owner->Draw();
+  EXPECT_EQ(renderer->GetClipPath()->GetKey(), restored_key);
+}
+
+TEST_P(ClipPathPipelineTest, ClipChangesReparentZIndexDescendants) {
+  manager->enable_new_styling_pipeline_ = GetParam();
+  auto page = manager->CreateFiberPage("0", 0);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  page->InsertNode(parent);
+  parent->InsertNode(child);
+  child->SetStyle(kPropertyIDZIndex, lepus::Value(1));
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(child->fragment_impl()->fragment_parent(), page->fragment_impl());
+
+  parent->SetStyle(kPropertyIDClipPath, lepus::Value("circle(10px)"));
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(parent->IsStackingContextNode());
+  EXPECT_TRUE(parent->fragment_impl()->has_platform_renderer_);
+  EXPECT_EQ(child->fragment_impl()->fragment_parent(), parent->fragment_impl());
+
+  parent->SetStyle(kPropertyIDClipPath, lepus::Value());
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(parent->IsStackingContextNode());
+  EXPECT_EQ(child->fragment_impl()->fragment_parent(), page->fragment_impl());
+}
+
+TEST_P(ClipPathPipelineTest, ClipPathCreatesOwnerLayerWithZIndexDisabled) {
+  manager->enable_new_styling_pipeline_ = GetParam();
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(false);
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("0", 0);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(page->IsStackingContextNode());
+  EXPECT_FALSE(view->IsStackingContextNode());
+
+  view->SetStyle(kPropertyIDClipPath, lepus::Value("circle(10px)"));
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(view->IsStackingContextNode());
+  auto* owner = view->fragment_impl();
+  ASSERT_TRUE(owner->has_platform_renderer_);
+  owner->UpdateLayout(layout);
+  owner->Draw();
+  auto* platform = context->GetNativePlatformRef();
+  auto* renderer = static_cast<TestPlatformRenderer*>(
+      platform->renderers_.at(owner->id()).get());
+  ASSERT_NE(renderer->GetClipPath(), nullptr);
+  const auto* content = renderer->GetDisplayList().GetContentItemsData();
+
+  view->SetStyle(kPropertyIDClipPath, lepus::Value());
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(view->IsStackingContextNode());
+  EXPECT_TRUE(page->IsStackingContextNode());
+  owner->Draw();
+  EXPECT_EQ(renderer->GetClipPath(), nullptr);
+  EXPECT_EQ(renderer->last_content_items_size, 0u);
+  EXPECT_EQ(renderer->last_subtree_properties_size, 1u);
+  EXPECT_EQ(renderer->GetDisplayList().GetContentItemsData(), content);
+}
+
+TEST_P(ClipPathPipelineTest, CustomClipOverridesRestoreCSSAndDefault) {
+  manager->enable_new_styling_pipeline_ = GetParam();
+  for (bool has_css_clip : {false, true}) {
+    auto page = manager->CreateFiberPage("0", 0);
+    auto view = manager->CreateFiberView();
+    if (has_css_clip) {
+      view->SetStyle(kPropertyIDClipPath,
+                     lepus::Value("circle(10px at 20px 30px)"));
+    }
+    auto override_path = gfx::Path::MakeRect(30, 40);
+    bool emit_override = true;
+    CustomDrawFunctions functions;
+    functions.draw_layer_properties = [&](Fragment&,
+                                          DisplayListBuilder& builder) {
+      if (emit_override) {
+        builder.ClipPathProperty(override_path, gfx::PathFillRule::kEvenOdd, 3,
+                                 4);
+      }
+    };
+    view->SetCustomDrawFunctions(std::move(functions));
+    page->InsertNode(view);
+    page->FlushActionsAsRoot();
+    auto* owner = view->fragment_impl();
+    ASSERT_TRUE(owner->has_platform_renderer_);
+    owner->UpdateLayout(layout);
+    owner->Draw();
+    auto* platform = context->GetNativePlatformRef();
+    auto* renderer = static_cast<TestPlatformRenderer*>(
+        platform->renderers_.at(owner->id()).get());
+    EXPECT_EQ(renderer->GetClipPath(), override_path.get());
+    auto css_path = owner->cached_clip_path_.resolved.path;
+    EXPECT_EQ(static_cast<bool>(css_path), has_css_clip);
+    const auto* content = renderer->GetDisplayList().GetContentItemsData();
+
+    emit_override = false;
+    owner->InvalidateForSubtreeProperty();
+    owner->Draw();
+    EXPECT_EQ(renderer->GetClipPath(), css_path.get());
+    EXPECT_EQ(renderer->GetClipPathFillRule(), gfx::PathFillRule::kNonzero);
+    EXPECT_EQ(renderer->GetClipPathOffset()[0], has_css_clip ? 20 : 0);
+    EXPECT_EQ(renderer->GetClipPathOffset()[1], has_css_clip ? 30 : 0);
+    EXPECT_EQ(renderer->last_content_items_size, 0u);
+    EXPECT_EQ(renderer->GetDisplayList().GetContentItemsData(), content);
+
+    emit_override = true;
+    owner->InvalidateForSubtreeProperty();
+    owner->Draw();
+    EXPECT_EQ(renderer->GetClipPath(), override_path.get());
+    view->SetCustomDrawFunctions({});
+    page->FlushActionsAsRoot();
+    owner->Draw();
+    EXPECT_EQ(renderer->GetClipPath(), css_path.get());
+    EXPECT_EQ(renderer->GetClipPathFillRule(), gfx::PathFillRule::kNonzero);
+    EXPECT_EQ(renderer->GetClipPathOffset()[0], has_css_clip ? 20 : 0);
+    EXPECT_EQ(renderer->GetClipPathOffset()[1], has_css_clip ? 30 : 0);
+
+    view->computed_css_style()->ClearDirtyBits();
+    owner->InvalidateForSubtreeProperty();
+    DisplayListBuilder unchanged;
+    owner->OnDraw(unchanged);
+    auto list = unchanged.Build();
+    EXPECT_EQ(list.GetContentItemsSize(), 0u);
+    EXPECT_EQ(list.GetSubtreePropertiesSize(), 0u);
+    EXPECT_EQ(renderer->GetClipPath(), css_path.get());
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(StylingPipelines, ClipPathPipelineTest,
+                         ::testing::Bool());
 
 static void RecordCustomDrawRect(DisplayListBuilder& builder, uint32_t color) {
   RoundedRectangle rect;

@@ -9,3 +9,11 @@ lynx_core_source_set("style") {
   sources = style_shared_sources
   deps = [ "../../base/src:base_log_headers" ]
 }
+
+lynx_core_source_set("basic_shape_data") {
+  sources = [ "basic_shape_data.h" ]
+  public_deps = [
+    "../../base/src:base_public_headers",
+    "../renderer/starlight:starlight",
+  ]
+}

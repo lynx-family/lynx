@@ -7,6 +7,8 @@
 
 #include "core/renderer/utils/prop_bundle_style_writer_unittest.h"
 
+#include <initializer_list>
+
 #include "core/renderer/css/computed_css_style.h"
 
 namespace lynx {
@@ -65,6 +67,72 @@ TEST_F(PropBundleStyleWriterTest, TestWriteOpacity) {
   TEST_SPECIFIC_STYLE_WRITER(Opacity);
 
   EXPECT_EQ(new_bundle_.props_["opacity"], lepus::Value(2.0f));
+}
+
+TEST_F(PropBundleStyleWriterTest, ClipPathPreservesLegacyShapeArrays) {
+  const auto numbers = [](std::initializer_list<float> values) {
+    auto array = lepus::CArray::Create();
+    for (float value : values) array->emplace_back(value);
+    return lepus::Value(std::move(array));
+  };
+  auto ellipse = numbers({2, 0, 2, 10, 0, 0, 0, 0, 0});
+  ellipse.Array()->set(1, numbers({0.25f, 1, 2, 0}));
+  auto path = numbers({3, 0});
+  path.Array()->set(1, lepus::Value("M0 0 L10 10 Z"));
+  struct {
+    const char* css;
+    lepus::Value expected;
+  } cases[] = {
+      {"circle(10px at 25% 75%)", numbers({1, 10, 0, 0.25f, 1, 0.75f, 1})},
+      {"ellipse(calc(25% + 2px) 10px at 0px 0px)", std::move(ellipse)},
+      {"super-ellipse(20px 30px 4 3 at 40px 50%)",
+       numbers({4, 20, 0, 30, 0, 4, 3, 40, 0, 0.5f, 1})},
+      {"inset(10% 20px 30px 5%)",
+       numbers({5, 0.1f, 1, 20, 0, 30, 0, 0.05f, 1})},
+      {"inset(10px round 4px 8px 12px 16px / 2px 6px 10px 14px)",
+       numbers({5, 10, 0, 10, 0,  10, 0,  10, 0,  4, 0,  2, 0,
+                8, 0,  6, 0,  12, 0,  10, 0,  16, 0, 14, 0})},
+      {"inset(10px super-ellipse 4 3 5px)",
+       numbers({5, 10, 0, 10, 0, 10, 0, 10, 0, 4, 3, 5, 0, 5,
+                0, 5,  0, 5,  0, 5,  0, 5,  0, 5, 0, 5, 0})},
+      {"path(\"M0 0 L10 10 Z\")", std::move(path)},
+      {nullptr, numbers({})},
+  };
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.css ? test.css : "reset");
+    if (test.css) {
+      StyleMap parsed;
+      CSSParserConfigs configs;
+      ASSERT_TRUE(UnitHandler::Process(
+          kPropertyIDClipPath, lepus::Value(test.css), parsed, configs));
+      style_.SetValue(kPropertyIDClipPath, parsed.at(kPropertyIDClipPath));
+    } else {
+      style_.ResetValue(kPropertyIDClipPath);
+    }
+    PropBundleStyleWriter::PushStyleToBundle(&new_bundle_, kPropertyIDClipPath,
+                                             &style_);
+    EXPECT_EQ(new_bundle_.props_["clip-path"], test.expected);
+    EXPECT_EQ(style_.ClipPathToLepus(), test.expected);
+  }
+}
+
+TEST_F(PropBundleStyleWriterTest, ClipPathPreservesExponentsAndResetOutput) {
+  StyleMap parsed;
+  CSSParserConfigs configs;
+  ASSERT_TRUE(UnitHandler::Process(kPropertyIDClipPath,
+                                   lepus::Value("super-ellipse(20px 30px 4 3)"),
+                                   parsed, configs));
+  auto raw = parsed.at(kPropertyIDClipPath).GetArray();
+  raw->set(5, lepus::Value(4.123456789));
+  style_.SetValue(kPropertyIDClipPath, parsed.at(kPropertyIDClipPath));
+  PropBundleStyleWriter::PushStyleToBundle(&new_bundle_, kPropertyIDClipPath,
+                                           &style_);
+  EXPECT_EQ(new_bundle_.props_["clip-path"].Array()->get(5).Number(),
+            4.123456789);
+  style_.ResetValue(kPropertyIDClipPath);
+  PropBundleStyleWriter::PushStyleToBundle(&new_bundle_, kPropertyIDClipPath,
+                                           &style_);
+  EXPECT_EQ(new_bundle_.props_["clip-path"].Array()->size(), 0u);
 }
 
 TEST_F(PropBundleStyleWriterTest, TestWriteColorRadialGradient) {

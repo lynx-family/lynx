@@ -75,6 +75,35 @@ TEST_F(ElementTest, FragmentLayerIgnoresNewAnimatorOptOut) {
   }
 }
 
+TEST_F(ElementTest, ClipPathCreatesStackingContextOnlyInFragmentLayerRender) {
+  for (bool fiber : {false, true}) {
+    auto config = std::make_shared<PageConfig>();
+    config->SetEnableFiberArch(fiber);
+    manager->SetConfig(config);
+    for (bool z_index : {false, true}) {
+      config->SetEnableZIndex(z_index);
+      for (bool flr : {false, true}) {
+        manager->page_options_.SetEmbeddedMode(
+            flr ? EmbeddedMode::FRAGMENT_LAYER_RENDER
+                : static_cast<EmbeddedMode>(0));
+        auto element = fiber ? manager->CreateFiberElement(base::String("view"))
+                             : fml::MakeRefCounted<Element>(
+                                   manager.get(), base::String("view"));
+        EXPECT_FALSE(element->IsStackingContextNode());
+        CSSParserConfigs parser_configs;
+        auto styles = UnitHandler::Process(
+            kPropertyIDClipPath, lepus::Value("circle(10px)"), parser_configs);
+        ASSERT_TRUE(element->computed_css_style()->SetValue(
+            kPropertyIDClipPath, styles.at(kPropertyIDClipPath)));
+        EXPECT_EQ(element->IsStackingContextNode(), flr)
+            << "fiber=" << fiber << ", z_index=" << z_index;
+        element->computed_css_style()->ResetValue(kPropertyIDClipPath);
+        EXPECT_FALSE(element->IsStackingContextNode());
+      }
+    }
+  }
+}
+
 TEST_F(ElementTest, CheckHasFilterProps) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableComponentLayoutOnly(true);

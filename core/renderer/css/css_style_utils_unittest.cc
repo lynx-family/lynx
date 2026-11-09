@@ -252,6 +252,24 @@ TEST(CssStyleUtils, GetLengthData) {
   EXPECT_FLOAT_EQ(len.GetRawValue(), 1.0f / 3.0f);
 }
 
+TEST(CSSStyleUtils, TypedShapeReplacesPreviousInsetCorners) {
+  ComputedCSSStyle style(1.f, 1.f);
+  tasm::CSSParserConfigs configs;
+  BasicShapeData shape;
+  for (const auto* css : {"inset(10px round 5px)", "inset(10px)"}) {
+    tasm::StyleMap parsed;
+    ASSERT_TRUE(tasm::UnitHandler::Process(tasm::kPropertyIDClipPath,
+                                           lepus::Value(css), parsed, configs));
+    ASSERT_TRUE(CSSStyleUtils::ComputeBasicShape(
+        *parsed.at(tasm::kPropertyIDClipPath).GetArray(), shape,
+        style.GetMeasureContext(), configs));
+  }
+  auto array = lepus::CArray::Create();
+  CSSStyleUtils::BasicShapeToArray(shape, array);
+  EXPECT_EQ(array->size(), 9u);
+  EXPECT_EQ(shape.corner_type, BasicShapeData::CornerType::kRect);
+}
+
 TEST(CSSStyleUtils, ComputeBasicShapes) {
   tasm::CSSParserConfigs configs;
   ComputedCSSStyle computed_css_style(1.0f, 1.0f);
