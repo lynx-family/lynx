@@ -13,6 +13,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/vector.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
+#include "gfx/public/path.h"
 
 namespace lynx {
 namespace tasm {
@@ -36,12 +37,14 @@ enum class DisplayListOpType : int32_t {
   kBoxShadow = 13,
   kBackgroundImage = 14,
   kRadialGradient = 15,
+  kClipPath = 17,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
   kTransform = 0,
   kOpacity = 1,
   kFilter = 2,
+  kClipPath = 3,
 };
 
 // Serialized background sizing modes. Keep these values in sync with platform
@@ -75,7 +78,8 @@ struct DisplayListOpCategoryTraits<DisplayListOpCategory::kSubtreeProperty> {
  * fragment.
  *
  * The DisplayList separates content operations from subtree-influencing group
- * properties (transform, opacity, filter) to optimize animation performance.
+ * properties (transform, opacity, filter, clip-path) to optimize animation
+ * performance.
  * Group
  * properties affect the entire subtree and only apply to owner layers, making
  * them special operations that can be updated independently.
@@ -96,6 +100,13 @@ typedef struct SubtreeProperty {
       int32_t type;
       float amount;
     } filter;
+    struct {
+      // UINT32_MAX clears the owner layer's clip.
+      uint32_t path_index;
+      gfx::PathFillRule fill_rule;
+      float x;
+      float y;
+    } clip_path;
   } data;
 } SubtreeProperty;
 
@@ -115,6 +126,10 @@ static_assert(offsetof(SubtreeProperty, data.filter.type) == 4,
               "filter.type must be at offset 4 (union shared)");
 static_assert(offsetof(SubtreeProperty, data.filter.amount) == 8,
               "filter.amount must be at offset 8");
+static_assert(offsetof(SubtreeProperty, data.clip_path.path_index) == 4);
+static_assert(offsetof(SubtreeProperty, data.clip_path.fill_rule) == 8);
+static_assert(offsetof(SubtreeProperty, data.clip_path.x) == 12);
+static_assert(offsetof(SubtreeProperty, data.clip_path.y) == 16);
 static_assert(std::is_standard_layout<SubtreeProperty>::value,
               "SubtreeProperty must be standard layout for JNI");
 static_assert(
@@ -187,6 +202,12 @@ typedef struct DisplayListItem {
       float radii[8];
       uint32_t has_radii;
     } clip_rect;
+    struct {
+      uint32_t path_index;
+      gfx::PathFillRule fill_rule;
+      float x;
+      float y;
+    } clip_path;
     struct {
       uint32_t color_count_offset;
       uint32_t color_count;
@@ -330,6 +351,10 @@ static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_box_index) ==
 static_assert(offsetof(DisplayListItem, payload.box_shadow.color) == 12);
 static_assert(offsetof(DisplayListItem, payload.box_shadow.blur_radius) == 16);
 static_assert(offsetof(DisplayListItem, payload.box_shadow.clip_mode) == 20);
+static_assert(offsetof(DisplayListItem, payload.clip_path.path_index) == 4);
+static_assert(offsetof(DisplayListItem, payload.clip_path.fill_rule) == 8);
+static_assert(offsetof(DisplayListItem, payload.clip_path.x) == 12);
+static_assert(offsetof(DisplayListItem, payload.clip_path.y) == 16);
 static_assert(std::is_standard_layout<DisplayListItem>::value,
               "DisplayListItem must be standard layout for JNI");
 static_assert(
@@ -350,6 +375,12 @@ class DisplayList {
 
   DisplayList(DisplayList&&) = default;
   DisplayList& operator=(DisplayList&&) = default;
+
+  // Indices belong to this list. Lookup borrows a reference until Clear or
+  // destruction; retaining the list preserves immutable Path sources.
+  uint32_t RetainPath(fml::RefPtr<gfx::Path> path);
+  const gfx::Path* GetPath(uint32_t index) const;
+  size_t GetPathCount() const;
 
   void Reserve(int32_t capacity);
 
@@ -410,6 +441,12 @@ class DisplayList {
       float position_x = 0.f, float position_y = 0.f);
 
   void AppendItem(const DisplayListItem& item);
+  // Fill the zero-initialized item before another append can invalidate it.
+  DisplayListItem& EmplaceItem(DisplayListOpType type) {
+    auto& item = content_items_->emplace_back();
+    item.type = type;
+    return item;
+  }
 
   void AddSubLayer(int id) { sub_layers_.emplace_back(id); }
   const auto& SubLayers() const { return sub_layers_; }
@@ -421,6 +458,8 @@ class DisplayList {
   base::InlineVector<fml::RefPtr<PaintImage>, 16>& Images() { return images_; }
 
  private:
+  base::auto_create_optional<base::InlineVector<fml::RefPtr<gfx::Path>, 1>>
+      paths_;
   // Content operations (stable during animations) - lazy allocated
   base::auto_create_optional<base::InlineVector<DisplayListItem, 8>>
       content_items_;

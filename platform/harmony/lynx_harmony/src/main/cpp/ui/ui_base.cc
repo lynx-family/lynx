@@ -1629,6 +1629,9 @@ void UIBase::UpdateFragmentLayerSubtreeProperties(
         SetFilter(lepus::Value(std::move(filter)));
         break;
       }
+      case DisplayListSubtreePropertyOpType::kClipPath:
+        // Native path clipping is applied by the renderer when supported.
+        break;
     }
   }
 }
