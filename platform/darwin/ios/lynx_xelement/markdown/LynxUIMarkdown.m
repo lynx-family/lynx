@@ -6,6 +6,7 @@
 
 #import <stdint.h>
 
+#import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <ServalMarkdown/ServalMarkdownConstants.h>
@@ -15,11 +16,56 @@
 #import "adaptor/LynxMarkdownBundle.h"
 #import "adaptor/LynxMarkdownLinkExposureUI.h"
 
+static uint32_t LynxMarkdownColorComponentToByte(CGFloat value) {
+  if (value < 0.f) {
+    value = 0.f;
+  } else if (value > 1.f) {
+    value = 1.f;
+  }
+  return (uint32_t)(value * 255.f + 0.5f);
+}
+
+static uint32_t LynxUIMarkdownColorToARGB(UIColor *color) {
+  if (color == nil) {
+    return 0;
+  }
+  CGFloat red = 0.f;
+  CGFloat green = 0.f;
+  CGFloat blue = 0.f;
+  CGFloat alpha = 0.f;
+  if (![color getRed:&red green:&green blue:&blue alpha:&alpha]) {
+    CGFloat white = 0.f;
+    if ([color getWhite:&white alpha:&alpha]) {
+      red = white;
+      green = white;
+      blue = white;
+    }
+  }
+  return (LynxMarkdownColorComponentToByte(alpha) << 24) |
+         (LynxMarkdownColorComponentToByte(red) << 16) |
+         (LynxMarkdownColorComponentToByte(green) << 8) | LynxMarkdownColorComponentToByte(blue);
+}
+
 @implementation LynxUIMarkdownV2 {
   ServalMarkdownView *_markdownView;
   __weak LynxUIMarkdownShadowNodeV2 *_shadowNode;
   NSString *_contentID;
   BOOL _exposeLinks;
+  BOOL _enableTextSelection;
+  uint32_t _selectionBackgroundColor;
+  uint32_t _selectionHandleColor;
+  CGFloat _selectionHandleSize;
+  BOOL _enableRegionView;
+}
+
+- (instancetype)initWithView:(LynxMarkdownViewV2 *)view {
+  self = [super initWithView:view];
+  if (self != nil) {
+    _selectionBackgroundColor = 0x141b7df0;
+    _selectionHandleColor = 0xff1b7df0;
+    _selectionHandleSize = 10.f;
+  }
+  return self;
 }
 
 - (LynxMarkdownViewV2 *)createView {
@@ -45,8 +91,50 @@
     _contentID = bundle.contentID;
     _exposeLinks = bundle.exposeLinks;
     [self updateContentOffset];
-    _markdownView = [self.view setBundle:bundle];
+    ServalMarkdownView *markdownView = [self.view setBundle:bundle];
+    if (_markdownView != markdownView) {
+      _markdownView = markdownView;
+      [self applyMarkdownUIProps];
+    }
   }
+}
+
+- (void)applyMarkdownUIProps {
+  // Properties can arrive before the layout bundle binds a Markdown view.
+  [_markdownView setColorProp:kServalMarkdownPropsSelectionHighlightColor
+                        Value:_selectionBackgroundColor];
+  [_markdownView setColorProp:kServalMarkdownPropsSelectionHandleColor Value:_selectionHandleColor];
+  [_markdownView setNumberProp:kServalMarkdownPropsSelectionHandleSize Value:_selectionHandleSize];
+  [_markdownView setBooleanProp:kServalMarkdownPropsEnableTextSelection Value:_enableTextSelection];
+  [_markdownView setEnableRegionView:_enableRegionView];
+}
+
+LYNX_PROP_SETTER("text-selection", setEnableTextSelection, BOOL) {
+  _enableTextSelection = requestReset ? NO : value;
+  [_markdownView setBooleanProp:kServalMarkdownPropsEnableTextSelection Value:_enableTextSelection];
+}
+
+LYNX_PROP_SETTER("selection-background-color", setSelectionBackgroundColor, UIColor *) {
+  _selectionBackgroundColor =
+      requestReset || value == nil ? 0x141b7df0 : LynxUIMarkdownColorToARGB(value);
+  [_markdownView setColorProp:kServalMarkdownPropsSelectionHighlightColor
+                        Value:_selectionBackgroundColor];
+}
+
+LYNX_PROP_SETTER("selection-handle-color", setSelectionHandleColor, UIColor *) {
+  _selectionHandleColor =
+      requestReset || value == nil ? 0xff1b7df0 : LynxUIMarkdownColorToARGB(value);
+  [_markdownView setColorProp:kServalMarkdownPropsSelectionHandleColor Value:_selectionHandleColor];
+}
+
+LYNX_PROP_SETTER("selection-handle-size", setSelectionHandleSize, CGFloat) {
+  _selectionHandleSize = requestReset || value <= 0.f ? 10.f : value;
+  [_markdownView setNumberProp:kServalMarkdownPropsSelectionHandleSize Value:_selectionHandleSize];
+}
+
+LYNX_PROP_SETTER("enable-region-view", setEnableRegionView, BOOL) {
+  _enableRegionView = requestReset ? NO : value;
+  [_markdownView setEnableRegionView:_enableRegionView];
 }
 
 - (void)frameDidChange {

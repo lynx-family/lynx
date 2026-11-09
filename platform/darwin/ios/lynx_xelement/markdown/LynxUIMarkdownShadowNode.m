@@ -44,36 +44,6 @@ static ServalMarkdownAnimationType LynxMarkdownToServalAnimationType(NSString *t
   return kServalMarkdownAnimationTypeNone;
 }
 
-static uint32_t LynxMarkdownColorComponentToByte(CGFloat value) {
-  if (value < 0.f) {
-    value = 0.f;
-  } else if (value > 1.f) {
-    value = 1.f;
-  }
-  return (uint32_t)(value * 255.f + 0.5f);
-}
-
-static uint32_t LynxUIMarkdownColorToARGB(UIColor *color) {
-  if (color == nil) {
-    return 0;
-  }
-  CGFloat red = 0.f;
-  CGFloat green = 0.f;
-  CGFloat blue = 0.f;
-  CGFloat alpha = 0.f;
-  if (![color getRed:&red green:&green blue:&blue alpha:&alpha]) {
-    CGFloat white = 0.f;
-    if ([color getWhite:&white alpha:&alpha]) {
-      red = white;
-      green = white;
-      blue = white;
-    }
-  }
-  return (LynxMarkdownColorComponentToByte(alpha) << 24) |
-         (LynxMarkdownColorComponentToByte(red) << 16) |
-         (LynxMarkdownColorComponentToByte(green) << 8) | LynxMarkdownColorComponentToByte(blue);
-}
-
 @implementation LynxUIMarkdownShadowNodeV2 {
   MarkdownMeasurer *_markdownMeasurer;
   LynxMarkdownResourceLoader *_resourceLoader;
@@ -97,9 +67,6 @@ static uint32_t LynxUIMarkdownColorToARGB(UIColor *color) {
     _markdownMeasurer = [[MarkdownMeasurer alloc] init];
     _markdownMeasurer.resourceDelegate = _resourceLoader;
     _markdownMeasurer.eventDelegate = _eventDispatcher;
-    [_markdownMeasurer setColorProp:kServalMarkdownPropsSelectionHighlightColor Value:0x141b7df0];
-    [_markdownMeasurer setColorProp:kServalMarkdownPropsSelectionHandleColor Value:0xff1b7df0];
-    [_markdownMeasurer setNumberProp:kServalMarkdownPropsSelectionHandleSize Value:10.f];
     [_markdownMeasurer setNumberProp:kServalMarkdownPropsAnimationFrameRate Value:15.f];
 
     __weak typeof(self) weakSelf = self;
@@ -171,36 +138,6 @@ LYNX_PROP_SETTER("content", setContent, NSString *) {
   }
   _content = value;
   _markdownMeasurer.content = value;
-}
-
-LYNX_PROP_SETTER("text-selection", setEnableTextSelection, BOOL) {
-  if (requestReset) {
-    value = NO;
-  }
-  [_markdownMeasurer setBooleanProp:kServalMarkdownPropsEnableTextSelection Value:value];
-}
-
-LYNX_PROP_SETTER("selection-background-color", setSelectionBackgroundColor, UIColor *) {
-  if (requestReset) {
-    value = nil;
-  }
-  [_markdownMeasurer setColorProp:kServalMarkdownPropsSelectionHighlightColor
-                            Value:value == nil ? 0x141b7df0 : LynxUIMarkdownColorToARGB(value)];
-}
-
-LYNX_PROP_SETTER("selection-handle-color", setSelectionHandleColor, UIColor *) {
-  if (requestReset) {
-    value = nil;
-  }
-  [_markdownMeasurer setColorProp:kServalMarkdownPropsSelectionHandleColor
-                            Value:value == nil ? 0xff1b7df0 : LynxUIMarkdownColorToARGB(value)];
-}
-
-LYNX_PROP_SETTER("selection-handle-size", setSelectionHandleSize, CGFloat) {
-  if (requestReset || value <= 0.f) {
-    value = 10.f;
-  }
-  [_markdownMeasurer setNumberProp:kServalMarkdownPropsSelectionHandleSize Value:value];
 }
 
 LYNX_PROP_SETTER("markdown-effect", setMarkdownEffect, NSDictionary *) {

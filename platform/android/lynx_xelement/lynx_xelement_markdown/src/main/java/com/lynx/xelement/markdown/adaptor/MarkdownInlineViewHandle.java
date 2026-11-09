@@ -25,10 +25,6 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
   private final NativeLayoutNodeRef mLayoutNodeRef;
   private final MarkdownResourceContext mHost;
   private @Nullable LynxBaseUI mUI;
-  private int mWidth = 0;
-  private int mHeight = 0;
-  private int mLeft = 0;
-  private int mTop = 0;
 
   public MarkdownInlineViewHandle(
       NativeLayoutNodeRef layoutNodeRef, @Nullable LynxBaseUI ui, MarkdownResourceContext host) {
@@ -56,10 +52,10 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
     param.mWidthMode = MeasureMode.fromInt(widthMode);
     param.mHeightMode = MeasureMode.fromInt(heightMode);
     MeasureResult result = mLayoutNodeRef.measureNativeNodeWithBaseline(measureContext, param);
-    mWidth = (int) result.getWidthResult();
-    mHeight = (int) result.getHeightResult();
+    int widthResult = (int) result.getWidthResult();
+    int heightResult = (int) result.getHeightResult();
     int baseline = (int) result.getBaselineResult();
-    return MarkdownValuePack.packMeasureResult(mWidth, mHeight, baseline);
+    return MarkdownValuePack.packMeasureResult(widthResult, heightResult, baseline);
   }
 
   @Override
@@ -67,8 +63,6 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
     if (mLayoutNodeRef.isDestroyed()) {
       return;
     }
-    mLeft = left;
-    mTop = top;
     AlignParam alignParam = new AlignParam();
     // Native alignment uses the markdown node's content box as its coordinate origin, so Lynx
     // applies the parent's padding and border while converting this position to the UI frame.
@@ -82,38 +76,11 @@ public class MarkdownInlineViewHandle implements IMarkdownViewHandle {
   }
 
   @Override
-  public long getSize() {
-    LynxBaseUI ui = getUI();
-    if (ui != null) {
-      return MarkdownValuePack.packIntPair(ui.getWidth(), ui.getHeight());
-    }
-    return MarkdownValuePack.packIntPair(mWidth, mHeight);
-  }
-
-  @Override
-  public long getPosition() {
-    // Serval coordinates are relative to the markdown content box, while the Lynx UI position also
-    // contains the parent's padding and border offset.
-    return MarkdownValuePack.packIntPair(mLeft, mTop);
-  }
-
-  @Override
-  public void setSize(int width, int height) {
-    mWidth = width;
-    mHeight = height;
+  public void setBounds(int left, int top, int width, int height) {
     LynxBaseUI ui = getUI();
     if (ui != null) {
       ui.setWidth(width);
       ui.setHeight(height);
-    }
-  }
-
-  @Override
-  public void setPosition(int left, int top) {
-    mLeft = left;
-    mTop = top;
-    LynxBaseUI ui = getUI();
-    if (ui != null) {
       ui.setLeft(left + mHost.getContentLeftOffset());
       ui.setTop(top + mHost.getContentTopOffset());
     }
