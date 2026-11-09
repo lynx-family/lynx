@@ -37,6 +37,7 @@ class KeyframeEffect {
     bool should_send_start_event{false};
     bool should_send_end_event{false};
     int iteration_events_due{0};
+    gfx::AnimationEventTiming event_timing;
     bool should_persist_fill_styles{false};
     bool should_clear_fill_styles{false};
   };

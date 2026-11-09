@@ -11,7 +11,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <tuple>
 #include <utility>
 
 #include "base/include/fml/time/time_point.h"
@@ -81,7 +80,7 @@ class GFX_EXPORT KeyframeModel {
   fml::TimeDelta ConvertMonotonicTimeToLocalTime(
       fml::TimePoint monotonic_time) const;
   fml::TimeDelta CalculateActiveTime(fml::TimePoint monotonic_time) const;
-  std::tuple<bool, bool> UpdateState(const fml::TimePoint& monotonic_time);
+  AnimationTimingStateUpdate UpdateState(const fml::TimePoint& monotonic_time);
   bool InEffect(fml::TimePoint monotonic_time) const;
   fml::TimeDelta TrimTimeToCurrentIteration(fml::TimePoint monotonic_time,
                                             int& current_iteration_count,

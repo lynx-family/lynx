@@ -225,7 +225,7 @@ TEST_F(AnimationTest,
     a->Play(false);
     auto initial_frame = fml::TimePoint::FromTicks(1000);
     a->SampleAt(initial_frame);
-    a->SendStartEvent();
+    a->SendStartEvent(fml::TimeDelta::Zero());
     a->Pause();
     const auto paused_time = fml::TimeDelta::FromMilliseconds(2500);
     a->SeekTo(paused_time, fml::TimePoint::Now());
@@ -508,11 +508,12 @@ TEST_F(AnimationTest, SendStartEvent) {
   test_animation->GetElement()->data_model()->SetStaticEvent(
       "bindEvent", "animationcancel", "onanimationcancel");
   // keyframe test
-  test_animation->SendStartEvent();
+  test_animation->SendStartEvent(fml::TimeDelta::FromMilliseconds(250));
   EXPECT_TRUE(std::string(tasm_mediator->GetAnimationEventType()) ==
               "animationstart");
   lepus::Value params = tasm_mediator->GetAnimationEventParams();
   EXPECT_TRUE(params.IsTable());
+  EXPECT_DOUBLE_EQ(0.25, params.Table()->GetValue("elapsedTime").Number());
   EXPECT_TRUE(params.Table()->Contains("new_animator") &&
               params.Table()->GetValue("new_animator").Bool());
   EXPECT_TRUE(params.Table()->Contains("animation_type") &&
@@ -540,11 +541,12 @@ TEST_F(AnimationTest, SendStartEvent) {
   test_animation->SetTransitionFlag();
   test_animation->UpdateAnimationData(test_animation_data);
 
-  test_animation->SendStartEvent();
+  test_animation->SendStartEvent(fml::TimeDelta::FromMilliseconds(250));
   EXPECT_TRUE(std::string(tasm_mediator->GetAnimationEventType()) ==
               "transitionstart");
   params = tasm_mediator->GetAnimationEventParams();
   EXPECT_TRUE(params.IsTable());
+  EXPECT_DOUBLE_EQ(0.25, params.Table()->GetValue("elapsedTime").Number());
   EXPECT_TRUE(params.Table()->Contains("new_animator") &&
               params.Table()->GetValue("new_animator").Bool());
   EXPECT_TRUE(params.Table()->Contains("animation_type") &&
@@ -573,7 +575,7 @@ TEST_F(AnimationTest, SendEndEvent) {
       "bindEvent", "animationend", "onanimationend");
 
   // keyframe test
-  test_animation->SendEndEvent();
+  test_animation->SendEndEvent(fml::TimeDelta::Zero());
   EXPECT_TRUE(std::string(tasm_mediator->GetAnimationEventType()) ==
               "animationend");
 
@@ -583,7 +585,7 @@ TEST_F(AnimationTest, SendEndEvent) {
   test_animation->UpdateAnimationData(test_animation_data);
   test_animation->GetElement()->data_model()->SetStaticEvent(
       "bindEvent", "transitionend", "ontransitionend");
-  test_animation->SendEndEvent();
+  test_animation->SendEndEvent(fml::TimeDelta::Zero());
   EXPECT_TRUE(std::string(tasm_mediator->GetAnimationEventType()) ==
               "transitionend");
 }
@@ -597,7 +599,7 @@ TEST_F(AnimationTest, SendCancelEvent) {
       "bindEvent", "animationcancel", "onanimationcancel");
 
   // keyframe test
-  test_animation->SendCancelEvent();
+  test_animation->SendCancelEvent(fml::TimeDelta::Zero());
   EXPECT_TRUE(std::string(tasm_mediator->GetAnimationEventType()) ==
               "animationcancel");
 
@@ -608,7 +610,7 @@ TEST_F(AnimationTest, SendCancelEvent) {
   test_animation->GetElement()->data_model()->SetStaticEvent(
       "bindEvent", "transitioncancel", "ontransitioncancel");
 
-  test_animation->SendCancelEvent();
+  test_animation->SendCancelEvent(fml::TimeDelta::Zero());
   EXPECT_TRUE(std::string(tasm_mediator->GetAnimationEventType()) ==
               "transitioncancel");
 }
@@ -622,9 +624,39 @@ TEST_F(AnimationTest, SendIterationEvent) {
       "bindEvent", "animationiteration", "onanimationiteration");
 
   // keyframe test
-  test_animation->SendIterationEvents(1);
+  gfx::AnimationEventTiming timing;
+  timing.first_iteration = 3;
+  timing.iteration_duration = fml::TimeDelta::FromMilliseconds(250);
+  test_animation->SendIterationEvents(2, timing);
   EXPECT_TRUE(std::string(tasm_mediator->GetAnimationEventType()) ==
               "animationiteration");
+  EXPECT_DOUBLE_EQ(1, tasm_mediator->GetAnimationEventParams()
+                          .Table()
+                          ->GetValue("elapsedTime")
+                          .Number());
+}
+
+TEST_F(AnimationTest, ElapsedTimeAtCancelUsesPausedClockAndExcludesDelay) {
+  auto animation = InitTestAnimation();
+  starlight::AnimationData data;
+  data.name = "test_animation";
+  data.duration = 1000;
+  data.delay = 500;
+  animation->UpdateAnimationData(data);
+  animation->GetElement()->data_model()->SetStaticEvent(
+      "bindEvent", "animationcancel", "onanimationcancel");
+
+  animation->Play(false);
+  const auto now = fml::TimePoint::Now();
+  animation->SetPaused(true, now);
+  animation->SeekTo(fml::TimeDelta::FromMilliseconds(750), now);
+  animation->Destroy(false);
+
+  EXPECT_STREQ("animationcancel", tasm_mediator->GetAnimationEventType());
+  EXPECT_DOUBLE_EQ(0.25, tasm_mediator->GetAnimationEventParams()
+                             .Table()
+                             ->GetValue("elapsedTime")
+                             .Number());
 }
 
 TEST_F(AnimationTest, TestDelayEvent) {

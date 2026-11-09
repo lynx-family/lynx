@@ -832,6 +832,7 @@ TEST_F(CSSTransitionManagerTest,
   starlight::ComputedCSSStyle new_base_style{1.f, 1.f};
   SetTransitionProperties(new_base_style,
                           {starlight::AnimationPropertyType::kOpacity});
+  new_base_style.transition_data().delays[0] = 500;
   previous_base_style.SetValue(tasm::kPropertyIDOpacity,
                                tasm::CSSValue(0.2, CSSValuePattern::NUMBER));
   previous_final_style.SetValue(tasm::kPropertyIDOpacity,
@@ -843,7 +844,13 @@ TEST_F(CSSTransitionManagerTest,
   test_manager->UpdateTransitionsForNewPipeline(
       previous_base_style, previous_final_style, new_base_style,
       empty_layout_only_styles, empty_layout_only_styles);
-  ASSERT_TRUE(test_manager->animations_map().count(base::String("opacity")));
+  const auto& animations = test_manager->animations_map();
+  auto opacity_animation = animations.find(base::String("opacity"));
+  ASSERT_NE(animations.end(), opacity_animation);
+  const auto& animation = opacity_animation->second;
+  const auto now = fml::TimePoint::Now();
+  animation->SetPaused(true, now);
+  animation->SeekTo(fml::TimeDelta::FromMilliseconds(750), now);
 
   starlight::ComputedCSSStyle stop_previous_base_style{1.f, 1.f};
   starlight::ComputedCSSStyle stop_previous_final_style{1.f, 1.f};
@@ -865,6 +872,8 @@ TEST_F(CSSTransitionManagerTest,
   auto cancel_events = test_manager->TakePendingAnimationEventsForNewPipeline();
   ASSERT_EQ(1U, cancel_events.size());
   EXPECT_TRUE(cancel_events[0].send_cancel_event);
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(250),
+            cancel_events[0].cancel_elapsed_time);
 }
 
 }  // namespace testing

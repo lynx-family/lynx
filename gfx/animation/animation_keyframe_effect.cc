@@ -82,12 +82,11 @@ KeyframeEffect::TickResult KeyframeEffect::Tick(fml::TimePoint monotonic_time,
       continue;
     }
 
-    bool start_event_due = false;
-    bool end_event_due = false;
-    std::tie(start_event_due, end_event_due) =
-        model->UpdateState(monotonic_time);
-    result.start_event_due = start_event_due;
-    result.end_event_due = end_event_due;
+    const auto update = model->UpdateState(monotonic_time);
+    result.start_event_due = update.start_event_due;
+    result.end_event_due = update.end_event_due;
+    result.event_timing.start_elapsed_time = update.start_elapsed_time;
+    result.event_timing.end_elapsed_time = update.end_elapsed_time;
 
     if (!events_only && !model->InEffect(monotonic_time)) {
       continue;
@@ -102,8 +101,13 @@ KeyframeEffect::TickResult KeyframeEffect::Tick(fml::TimePoint monotonic_time,
     const int old_iteration_count = current_iteration_count_;
     fml::TimeDelta trimmed = model->TrimTimeToCurrentIteration(
         monotonic_time, current_iteration_count_, events_only);
-    result.iteration_events_due +=
+    const int iterations_due =
         CountIterationEventsDue(old_iteration_count, current_iteration_count_);
+    if (iterations_due > 0 && result.iteration_events_due == 0) {
+      result.event_timing.first_iteration = old_iteration_count + 1;
+      result.event_timing.iteration_duration = model->curve()->Duration();
+    }
+    result.iteration_events_due += iterations_due;
     if (!events_only) {
       result.samples.push_back({model->curve(), trimmed});
     }

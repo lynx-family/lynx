@@ -2488,14 +2488,15 @@ void Element::DispatchAnimationEventsForNewPipeline(
       continue;
     }
     if (event_record.send_cancel_event) {
-      animation->SendCancelEvent();
+      animation->SendCancelEvent(event_record.cancel_elapsed_time);
     }
     if (event_record.send_start_event) {
-      animation->SendStartEvent();
+      animation->SendStartEvent(event_record.event_timing.start_elapsed_time);
     }
-    animation->SendIterationEvents(event_record.iteration_events_due);
+    animation->SendIterationEvents(event_record.iteration_events_due,
+                                   event_record.event_timing);
     if (event_record.send_end_event) {
-      animation->SendEndEvent();
+      animation->SendEndEvent(event_record.event_timing.end_elapsed_time);
     }
   }
 }

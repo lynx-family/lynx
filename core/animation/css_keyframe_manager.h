@@ -64,7 +64,9 @@ struct AnimationSampleForNewPipeline {
     bool send_start_event{false};
     bool send_end_event{false};
     int iteration_events_due{0};
+    gfx::AnimationEventTiming event_timing;
     bool send_cancel_event{false};
+    fml::TimeDelta cancel_elapsed_time;
   };
 
   tasm::StyleMap property_overrides;

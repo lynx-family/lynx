@@ -112,14 +112,14 @@ fml::TimeDelta KeyframeModel::CalculateActiveTime(
   return gfx::CalculateActiveTime(CreateTimingInput(), monotonic_time);
 }
 
-std::tuple<bool, bool> KeyframeModel::UpdateState(
+AnimationTimingStateUpdate KeyframeModel::UpdateState(
     const fml::TimePoint& monotonic_time) {
   auto update = gfx::UpdateTimingState(CreateTimingInput(), monotonic_time);
   auto new_run_state = ToKeyframeModelRunState(update.run_state);
   if (new_run_state != run_state_) {
     SetRunState(new_run_state, monotonic_time);
   }
-  return {update.start_event_due, update.end_event_due};
+  return update;
 }
 
 bool KeyframeModel::InEffect(fml::TimePoint monotonic_time) const {
