@@ -61,6 +61,32 @@ class ScrollCoordinatorLayout(
   private var adaptToEmptySlot = false
   private val slotScrollChangedListener =
     ViewTreeObserver.OnScrollChangedListener { cachedNonScrollableRoot = null }
+  private var slotScrollObserver: ViewTreeObserver? = null
+  private val slotAttachListener = object : View.OnAttachStateChangeListener {
+    override fun onViewAttachedToWindow(view: View) {
+      if (slotView !== view) {
+        return
+      }
+      // Native reparenting can bypass removeSlotView.
+      if (view.parent !== this@ScrollCoordinatorLayout) {
+        updateSlotView(null)
+        return
+      }
+      unregisterSlotScrollListener()
+      cachedScrollableView = null
+      cachedNonScrollableRoot = null
+      // Android merges the unattached observer into the window observer before this callback.
+      val observer = view.viewTreeObserver
+      observer.addOnScrollChangedListener(slotScrollChangedListener)
+      slotScrollObserver = observer
+    }
+
+    override fun onViewDetachedFromWindow(view: View) {
+      if (slotView === view) {
+        unregisterSlotScrollListener()
+      }
+    }
+  }
   private val offsetStateRestorer =
     AppBarLayout.OnOffsetChangedListener { _, offset ->
       if (offset != appBarLayoutView.topAndBottomOffset) {
@@ -201,12 +227,18 @@ class ScrollCoordinatorLayout(
     if (slotView === view) {
       return
     }
-    slotView?.viewTreeObserver?.takeIf { it.isAlive }
-      ?.removeOnScrollChangedListener(slotScrollChangedListener)
+    unregisterSlotScrollListener()
+    slotView?.removeOnAttachStateChangeListener(slotAttachListener)
     slotView = view
     cachedScrollableView = null
     cachedNonScrollableRoot = null
-    view?.viewTreeObserver?.addOnScrollChangedListener(slotScrollChangedListener)
+    view?.addOnAttachStateChangeListener(slotAttachListener)
+  }
+
+  private fun unregisterSlotScrollListener() {
+    slotScrollObserver?.takeIf { it.isAlive }
+      ?.removeOnScrollChangedListener(slotScrollChangedListener)
+    slotScrollObserver = null
   }
 
   private fun invalidateSlotScrollCache() {
