@@ -1,0 +1,107 @@
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+package com.lynx.tasm.behavior.ui.transfer;
+
+import android.content.Context;
+import android.view.MotionEvent;
+import android.view.ViewTreeObserver;
+import com.lynx.tasm.behavior.TouchEventDispatcher;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.UIExposure;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
+
+final class TransferWrapperView extends AndroidView {
+  private final UITransfer mTransferView;
+  private final ViewTreeObserver.OnGlobalLayoutListener mGlobalLayoutListener;
+  private final ViewTreeObserver.OnScrollChangedListener mScrollChangedListener;
+  private final ViewTreeObserver.OnDrawListener mDrawListener;
+  private ViewTreeObserver mExposureObserver;
+
+  TransferWrapperView(Context context, UITransfer transferView) {
+    super(context);
+    mTransferView = transferView;
+    mGlobalLayoutListener = this::requestExposureCheck;
+    mScrollChangedListener = this::requestExposureCheck;
+    mDrawListener = this::requestExposureCheck;
+  }
+
+  @Override
+  protected void onAttachedToWindow() {
+    super.onAttachedToWindow();
+    registerExposureObservers();
+    requestExposureCheck();
+  }
+
+  @Override
+  protected void onDetachedFromWindow() {
+    unregisterExposureObservers();
+    super.onDetachedFromWindow();
+    requestExposureCheck();
+  }
+
+  private void registerExposureObservers() {
+    ViewTreeObserver observer = getViewTreeObserver();
+    if (!observer.isAlive() || observer == mExposureObserver) {
+      return;
+    }
+    unregisterExposureObservers();
+    mExposureObserver = observer;
+    observer.addOnGlobalLayoutListener(mGlobalLayoutListener);
+    observer.addOnScrollChangedListener(mScrollChangedListener);
+    observer.addOnDrawListener(mDrawListener);
+  }
+
+  private void unregisterExposureObservers() {
+    if (mExposureObserver == null) {
+      return;
+    }
+    if (mExposureObserver.isAlive()) {
+      mExposureObserver.removeOnGlobalLayoutListener(mGlobalLayoutListener);
+      mExposureObserver.removeOnScrollChangedListener(mScrollChangedListener);
+      mExposureObserver.removeOnDrawListener(mDrawListener);
+    }
+    mExposureObserver = null;
+  }
+
+  private void requestExposureCheck() {
+    UIExposure exposure = mTransferView.getLynxContext().getExposure();
+    if (exposure != null) {
+      exposure.requestCheckUI();
+    }
+  }
+
+  @Override
+  public boolean dispatchTouchEvent(MotionEvent ev) {
+    TouchEventDispatcher eventDispatcher = mTransferView.getTouchEventDispatcher();
+    boolean consumed = eventDispatcher.onTouchEvent(ev, mTransferView);
+    if (consumed && !eventDispatcher.consumeSlideEvent(ev)) {
+      super.dispatchTouchEvent(ev);
+    }
+    return consumed;
+  }
+
+  @Override
+  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    mTransferView.updateHostConstraints(widthMeasureSpec, heightMeasureSpec);
+
+    // The owning-tree placeholder is zero-sized; this external container measures its content.
+    mTransferView.measureChildren();
+    int contentWidth = 0;
+    int contentHeight = 0;
+    for (LynxBaseUI child : mTransferView.getChildren()) {
+      contentWidth =
+          Math.max(contentWidth, child.getLeft() + child.getWidth() + child.getMarginRight());
+      contentHeight =
+          Math.max(contentHeight, child.getTop() + child.getHeight() + child.getMarginBottom());
+    }
+    setMeasuredDimension(
+        resolveSize(contentWidth, widthMeasureSpec), resolveSize(contentHeight, heightMeasureSpec));
+  }
+
+  @Override
+  protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    super.onLayout(changed, l, t, r, b);
+    mTransferView.layoutChildren();
+  }
+}

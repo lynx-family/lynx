@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setupVelocityTracker:(UIView *)rootView;
 - (void)setEnableTouchRefactor:(BOOL)enable;
+- (void)syncConfigWith:(LynxTouchHandler *)touchHandler;
 - (void)setEnableEndGestureAtLastFingerUp:(BOOL)enable;
 - (void)setEnableTouchPseudo:(BOOL)enable;
 - (void)setEnableMultiTouch:(BOOL)enable;

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.3.3
+
+- Add `<transfer-view>` typings with a required string `transfer-id` for Android and iOS.
+
 ## 4.3.0
 
 - Add missing `repeat`, `altKey`, `shiftKey`, `ctrlKey`, and `metaKey` fields to `BaseKeyEvent`.

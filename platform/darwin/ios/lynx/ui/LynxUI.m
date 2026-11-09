@@ -186,6 +186,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   BOOL _enableReuseAnimationState;
   NSMutableArray<LynxAnimationInfo*>* _animationInfos;
   LynxUILastInfo* _lastInfo;
+  __weak UIView* _touchEventSourceView;
 }
 
 @dynamic lastTransformRotation;
@@ -1099,15 +1100,20 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
   return NO;
 }
 
+- (UIView*)childrenContainerView {
+  return self.view;
+}
+
 - (void)insertChild:(LynxUI*)child atIndex:(NSInteger)index {
+  UIView* containerView = [self childrenContainerView];
   // main layer and its super layer
   CALayer* mainLayer = child.view.layer;
-  CALayer* superLayer = self.view.layer;
+  CALayer* superLayer = containerView.layer;
   LynxBackgroundManager* mgr = [child backgroundManager];
 
   // insert the child & its view into the proper position;
   [self didInsertChild:child atIndex:index];
-  [self.view insertSubview:[child view] atIndex:index];
+  [containerView insertSubview:[child view] atIndex:index];
 
   // adjust its layer's position
   // if the current LynxUI is not at the beginning of children
@@ -1124,7 +1130,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
         [superLayer.sublayers indexOfObject:mainLayer]) {
       // view operations
       [child.view removeFromSuperview];
-      [self.view insertSubview:child.view aboveSubview:siblingUI.view];
+      [containerView insertSubview:child.view aboveSubview:siblingUI.view];
       // layer operations
       [mainLayer removeFromSuperlayer];
       [superLayer insertSublayer:mainLayer above:[siblingUI topLayer]];
@@ -1145,7 +1151,7 @@ static CGFloat LynxDecodeAutoOffsetRotateAngle(CGFloat rotate) {
         [superLayer.sublayers indexOfObject:mainLayer]) {
       // view operations
       [child.view removeFromSuperview];
-      [self.view insertSubview:child.view belowSubview:siblingUI.view];
+      [containerView insertSubview:child.view belowSubview:siblingUI.view];
       // layer operations
       [mainLayer removeFromSuperlayer];
       [superLayer insertSublayer:mainLayer below:[siblingUI bottomLayer]];
@@ -1546,6 +1552,14 @@ LYNX_UI_METHOD(boundingClientRect) {
         @"width" : @(rect.size.width),
         @"height" : @(rect.size.height)
       });
+}
+
+- (UIView*)touchEventSourceView {
+  return _touchEventSourceView;
+}
+
+- (void)setTouchEventSourceView:(UIView*)view {
+  _touchEventSourceView = view;
 }
 
 // TODO(zhixuan): Deprecated API, remove me.
@@ -3911,6 +3925,10 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
       }
 
       CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+      if (self.touchEventSourceView != nil) {
+        parentLayer = self.touchEventSourceView.layer.presentationLayer
+                          ?: self.touchEventSourceView.layer.modelLayer;
+      }
       CALayer* childLayer = child.view.layer.presentationLayer ?: child.view.layer.modelLayer;
       CGPoint targetPoint = [parentLayer convertPoint:point toLayer:childLayer];
       bool contain = false;
@@ -3948,6 +3966,10 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
         continue;
       }
       CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+      if (self.touchEventSourceView != nil) {
+        parentLayer = self.touchEventSourceView.layer.presentationLayer
+                          ?: self.touchEventSourceView.layer.modelLayer;
+      }
       CALayer* childLayer = sibling.view.layer.presentationLayer ?: sibling.view.layer.modelLayer;
       CGPoint siblingPoint = [parentLayer convertPoint:originPoint toLayer:childLayer];
       if (!_context.enableEventRefactor) {

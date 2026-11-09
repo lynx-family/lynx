@@ -57,9 +57,10 @@ public abstract class UIGroup<T extends ViewGroup>
   @Override
   public void initialize() {
     super.initialize();
-    mDrawingOrderHelper = new ViewGroupDrawingOrderHelper(getView());
-    if (mView instanceof IDrawChildHookBinding) {
-      ((IDrawChildHookBinding) mView).bindDrawChildHook(this);
+    ViewGroup childViewGroup = getChildViewGroup();
+    mDrawingOrderHelper = new ViewGroupDrawingOrderHelper(childViewGroup);
+    if (childViewGroup instanceof IDrawChildHookBinding) {
+      ((IDrawChildHookBinding) childViewGroup).bindDrawChildHook(this);
     }
   }
 
@@ -68,8 +69,9 @@ public abstract class UIGroup<T extends ViewGroup>
     if (detached) {
       mViewInfo = new ViewInfo(this, mView);
       mViewInfo.markNeedGenerateMeaningfulPaintingArea(needGenerateMeaningfulPaintingArea());
-      if (mView instanceof IDrawChildHookBinding) {
-        ((IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
+      ViewGroup childViewGroup = getChildViewGroup();
+      if (childViewGroup instanceof IDrawChildHookBinding) {
+        ((IDrawChildHookBinding) childViewGroup).bindDrawChildHook(mViewInfo);
       }
     }
     super.markDetachWithViewRecursively(detached);
@@ -207,6 +209,11 @@ public abstract class UIGroup<T extends ViewGroup>
   }
 
   protected View getRealParentView() {
+    return mView;
+  }
+
+  /** Returns the ViewGroup that actually contains this UI's child views. */
+  protected ViewGroup getChildViewGroup() {
     return mView;
   }
 
@@ -709,10 +716,11 @@ public abstract class UIGroup<T extends ViewGroup>
   }
 
   private void setChildrenDrawingOrderEnabledHelper(boolean enable) {
-    if (mView instanceof AndroidView) {
-      ((AndroidView) mView).setChildrenDrawingOrderEnabled(enable);
-    } else if (mView instanceof UIBody.UIBodyView) {
-      ((UIBody.UIBodyView) mView).setChildrenDrawingOrderEnabled(enable);
+    ViewGroup childViewGroup = getChildViewGroup();
+    if (childViewGroup instanceof AndroidView) {
+      ((AndroidView) childViewGroup).setChildrenDrawingOrderEnabled(enable);
+    } else if (childViewGroup instanceof UIBody.UIBodyView) {
+      ((UIBody.UIBodyView) childViewGroup).setChildrenDrawingOrderEnabled(enable);
     }
   }
 
