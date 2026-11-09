@@ -139,6 +139,7 @@ public class LynxImageManager implements Drawable.Callback {
 
   private boolean mEnableCustomGifDecoder;
   private boolean mSkipContentLengthCheck;
+  private boolean mEnableLowMemoryDecode;
 
   private LynxScaleTypeDrawable mImageDrawable;
 
@@ -393,7 +394,16 @@ public class LynxImageManager implements Drawable.Callback {
       }
       mImageWidth = imageInfo.getWidth();
       mImageHeight = imageInfo.getHeight();
-      mBitmapMemorySizeBytes = calculateBitmapMemorySizeBytes();
+      Bitmap bitmap = imageContent != null ? imageContent.getBitmap() : null;
+      Bitmap.Config bitmapConfig = mBitmapConfig;
+      if (bitmap != null && !bitmap.isRecycled()) {
+        bitmapConfig = bitmap.getConfig();
+        mBitmapMemorySizeBytes =
+            calculateBitmapMemorySizeBytes(bitmap.getWidth(), bitmap.getHeight(), bitmapConfig);
+      } else {
+        mBitmapMemorySizeBytes =
+            calculateBitmapMemorySizeBytes(mImageWidth, mImageHeight, bitmapConfig);
+      }
       ILynxViewRuntimeCacheManager cacheManager = mContext.getRuntimeCacheManager();
       if (cacheManager != null) {
         cacheManager.setBitmapSizeCache(requestInfo.getUrl(), mImageWidth, mImageHeight);
@@ -405,7 +415,7 @@ public class LynxImageManager implements Drawable.Callback {
       configureBounds(mImageDrawable);
       startImageTransitionIfNeeded();
       onImageLoadSuccess(mImageWidth, mImageHeight);
-      reportImageSuccess(imageInfo);
+      reportImageSuccess(imageInfo, bitmapConfig);
       invalidate();
       onImageRequestFinished(requestInfo, 0, null, imageInfo.getOrigin());
     }
@@ -529,6 +539,10 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void setEnableResourceHint(boolean enable) {
     mEnableResourceHint = enable;
+  }
+
+  public void setEnableLowMemoryDecode(boolean enable) {
+    mEnableLowMemoryDecode = enable;
   }
 
   public void setSkipContentLengthCheck(boolean skip) {
@@ -761,6 +775,9 @@ public class LynxImageManager implements Drawable.Callback {
           break;
         case PropsConstants.DISABLE_DEFAULT_RESIZE:
           setDisableDefaultResize(props.getBoolean(name, false));
+          break;
+        case PropsConstants.ANDROID_ENABLE_LOW_MEMORY_DECODE:
+          setEnableLowMemoryDecode(props.getBoolean(name, false));
           break;
         case PropsConstants.ANDROID_SKIP_CONTENT_LENGTH_CHECK:
           setSkipContentLengthCheck(props.getBoolean(name, false));
@@ -1105,6 +1122,7 @@ public class LynxImageManager implements Drawable.Callback {
         .setEnableAsyncRequest(mEnableAsyncRequest)
         .setEnableGifLiteDecoder(mEnableCustomGifDecoder)
         .setSkipContentLengthCheck(mSkipContentLengthCheck)
+        .setEnableLowMemoryDecode(mEnableLowMemoryDecode)
         .setEnableResourceHint(mEnableResourceHint)
         .setSmoothAnimation(mEnableSmoothAnimation)
         .setProgressiveRendering(mEnableProgressiveRendering)
@@ -1125,6 +1143,7 @@ public class LynxImageManager implements Drawable.Callback {
     if (mContext.getEnableImageSmallDiskCache()) {
       builder.setDiskCacheChoice(DiskCacheChoice.SMALL_DISK);
     }
+    boolean hasBlurPostProcessor = false;
     if (!TextUtils.isEmpty(mBlurRadius)) {
       float radius = UnitUtils.toPxWithDisplayMetrics(
           mBlurRadius, 0, 0, 0, 0, -1, mContext.getScreenMetrics());
@@ -1133,6 +1152,9 @@ public class LynxImageManager implements Drawable.Callback {
         List<BitmapPostProcessor> postProcessors = new ArrayList<>();
         postProcessors.add(postProcessor);
         builder.setBitmapPostProcessor(postProcessors);
+        // The native blur processor requires ARGB_8888.
+        builder.setBitmapConfig(Bitmap.Config.ARGB_8888);
+        hasBlurPostProcessor = true;
       }
     }
     if (mRegionToDecode != null) {
@@ -1147,7 +1169,7 @@ public class LynxImageManager implements Drawable.Callback {
         if (requestOptions.getFallbackUrls() != null) {
           builder.setFallbackUrls(requestOptions.getFallbackUrls());
         }
-        if (requestOptions.getUseRGB565()) {
+        if (requestOptions.getUseRGB565() && !hasBlurPostProcessor) {
           builder.setBitmapConfig(
               mImageSRScale <= 0 ? Bitmap.Config.RGB_565 : Bitmap.Config.ARGB_8888);
         }
@@ -1630,9 +1652,9 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
-  private void reportImageSuccess(ImageInfo imageInfo) {
+  private void reportImageSuccess(ImageInfo imageInfo, @Nullable Bitmap.Config bitmapConfig) {
     mFinishTimeStamp = System.currentTimeMillis();
-    JSONObject info = getSizeInfo(imageInfo.isAnim());
+    JSONObject info = getSizeInfo(imageInfo.isAnim(), bitmapConfig);
     int memoryCost = (int) mBitmapMemorySizeBytes;
     boolean hitMemoryCache = imageInfo.getOrigin() == IMAGE_ORIGIN_MEMORY_BITMAP;
     monitorReporter(
@@ -1674,14 +1696,14 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
-  private JSONObject getSizeInfo(boolean isAnim) {
+  private JSONObject getSizeInfo(boolean isAnim, @Nullable Bitmap.Config bitmapConfig) {
     try {
       JSONObject info = new JSONObject();
       info.put("viewWidth", mViewWidth);
       info.put("viewHeight", mViewHeight);
       info.put("width", mImageWidth);
       info.put("height", mImageHeight);
-      info.put("config", mBitmapConfig == null ? Bitmap.Config.ARGB_8888 : mBitmapConfig);
+      info.put("config", bitmapConfig == null ? Bitmap.Config.ARGB_8888 : bitmapConfig);
       info.put("isFlattenAnim", isAnim && isFlattenUI() ? 1 : 0);
       return info;
     } catch (JSONException e) {
@@ -1712,15 +1734,16 @@ public class LynxImageManager implements Drawable.Callback {
     return mBitmapMemorySizeBytes;
   }
 
-  private long calculateBitmapMemorySizeBytes() {
-    if (mImageWidth <= 0 || mImageHeight <= 0) {
+  private long calculateBitmapMemorySizeBytes(
+      int width, int height, @Nullable Bitmap.Config bitmapConfig) {
+    if (width <= 0 || height <= 0) {
       return 0;
     }
     try {
-      return ImageUtils.getSizeInByteForBitmap(mImageWidth, mImageHeight,
-          mBitmapConfig == null ? Bitmap.Config.ARGB_8888 : mBitmapConfig);
+      return ImageUtils.getSizeInByteForBitmap(
+          width, height, bitmapConfig == null ? Bitmap.Config.ARGB_8888 : bitmapConfig);
     } catch (UnsupportedOperationException e) {
-      LLog.w(TAG, "Unsupported bitmap config when reporting image memory usage: " + mBitmapConfig);
+      LLog.w(TAG, "Unsupported bitmap config when reporting image memory usage: " + bitmapConfig);
       return 0;
     }
   }
