@@ -7064,6 +7064,61 @@ TEST_P(FiberElementTest, InsertNode) {
   EXPECT_EQ(parent->GetChildAt(0), element.get());
 }
 
+TEST_P(FiberElementTest, ReinsertComposeChildPreservesPendingChildren) {
+  for (bool target_first : {false, true}) {
+    for (bool pending_move : {false, true}) {
+      SCOPED_TRACE(::testing::PrintToString(
+          std::make_tuple(target_first, pending_move)));
+      auto page = manager->CreateFiberPage("page", 11);
+      auto source = manager->CreateFiberView();
+      auto target = manager->CreateFiberView();
+      auto child = manager->CreateFiberView();
+      auto x = manager->CreateFiberView();
+      auto y = manager->CreateFiberView();
+      auto z = manager->CreateFiberView();
+      for (const auto& node : {source, target, child, x, y, z})
+        node->MarkCanBeLayoutOnly(false);
+      child->MarkAsComposeLayout();
+      page->InsertNode(target_first ? target : source);
+      page->InsertNode(target_first ? source : target);
+      source->InsertNode(child);
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+
+      target->InsertNode(x);
+      target->InsertNode(y, 0);  // Y X
+      ASSERT_FALSE(target->has_to_store_insert_remove_actions_);
+      if (pending_move) target->MoveNodeToIndex(x, 0);  // X Y
+      source->RemoveNode(child);
+      target->InsertNode(child, 1);
+      // Promotion happens at Insert, before any parent starts flushing.
+      ASSERT_TRUE(target->has_to_store_insert_remove_actions_);
+      target->RemoveNode(x);
+      target->InsertNode(z, 1);
+      page->FlushActionsAsRoot();
+      platform_impl_->Flush();
+
+      const base::Vector<Element*> expected =
+          pending_move ? base::Vector<Element*>{child.get(), z.get(), y.get()}
+                       : base::Vector<Element*>{y.get(), z.get(), child.get()};
+      ASSERT_EQ(target->GetChildCount(), expected.size());
+      const auto& native = platform_impl_->node_map_.at(target->impl_id());
+      ASSERT_EQ(native->children_.size(), expected.size());
+      auto* rendered = target->first_render_child();
+      for (size_t index = 0; index < expected.size(); ++index) {
+        EXPECT_EQ(target->GetChildAt(index), expected[index]);
+        ASSERT_EQ(rendered, expected[index]);
+        EXPECT_EQ(rendered->render_parent(), target.get());
+        EXPECT_EQ(native->children_[index]->id_, expected[index]->impl_id());
+        rendered = rendered->next_render_sibling();
+      }
+      EXPECT_EQ(rendered, nullptr);
+      EXPECT_EQ(source->first_render_child(), nullptr);
+      EXPECT_EQ(x->render_parent(), nullptr);
+    }
+  }
+}
+
 TEST_P(FiberElementTest, TestAttachedState) {
   auto parent = manager->CreateFiberNode("view");
   EXPECT_EQ(static_cast<int>(parent->GetChildCount()), 0);
