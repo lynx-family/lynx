@@ -27,6 +27,5 @@ unittest_set("display_list_testset") {
   public_deps = [
     ":display_list",
     "../../base/src:base_values",
-    "../../base/src:base_values_extended",
   ]
 }

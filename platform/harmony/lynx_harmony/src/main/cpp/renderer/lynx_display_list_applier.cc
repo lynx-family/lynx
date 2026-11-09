@@ -486,6 +486,8 @@ base::Vector<DisplayListSegment> SegmentDisplayList(
       case DisplayListOpType::kClipRect:
         state.push_back(i);
         break;
+      case DisplayListOpType::kClipPath:
+        break;
       case DisplayListOpType::kRecordBox:
         boxes.emplace_back(RecordBox(items[i]));
         break;

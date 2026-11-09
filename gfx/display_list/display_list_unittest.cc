@@ -23,6 +23,52 @@ class DisplayListTest : public ::testing::Test {
   std::unique_ptr<DisplayList> display_list_;
 };
 
+TEST_F(DisplayListTest, PathTableDeduplicatesAndOwnsReferences) {
+  auto path = gfx::Path::MakeRect(10, 20);
+  EXPECT_TRUE(path->HasOneRef());
+  auto index = display_list_->RetainPath(path);
+  EXPECT_EQ(index, 0u);
+  EXPECT_FALSE(path->HasOneRef());
+  EXPECT_EQ(display_list_->RetainPath(path), index);
+  EXPECT_EQ(display_list_->GetPathCount(), 1u);
+  EXPECT_EQ(display_list_->GetPath(index), path.get());
+  EXPECT_EQ(display_list_->GetPath(1), nullptr);
+  display_list_->ClearSubtreeProperties();
+  EXPECT_EQ(display_list_->GetPathCount(), 1u);
+  DisplayList next;
+  auto other = gfx::Path::MakeRect(1, 2);
+  EXPECT_EQ(next.RetainPath(other), 0u);
+  EXPECT_EQ(next.RetainPath(path), 1u);
+  next = std::move(*display_list_);
+  EXPECT_TRUE(other->HasOneRef());
+  EXPECT_EQ(next.GetPathCount(), 1u);
+  EXPECT_EQ(display_list_->GetPathCount(), 0u);
+  next.Clear();
+  EXPECT_TRUE(path->HasOneRef());
+  EXPECT_EQ(next.GetPathCount(), 0u);
+}
+
+TEST_F(DisplayListTest, PathTableGrowthMoveAndClearKeepSourcesAlive) {
+  base::InlineVector<fml::RefPtr<gfx::Path>, 32> paths;
+  for (uint32_t i = 0; i < 32; ++i) {
+    auto path = gfx::Path::MakeRect(10, 20);
+    paths.push_back(path);
+    EXPECT_EQ(display_list_->RetainPath(std::move(path)), i);
+    EXPECT_FALSE(path);
+  }
+  ASSERT_EQ(display_list_->GetPathCount(), paths.size());
+  for (uint32_t i = 0; i < paths.size(); ++i) {
+    EXPECT_EQ(display_list_->GetPath(i), paths[i].get());
+    EXPECT_EQ(display_list_->RetainPath(paths[i]), i);
+  }
+  DisplayList moved(std::move(*display_list_));
+  EXPECT_EQ(display_list_->GetPathCount(), 0u);
+  for (uint32_t i = 0; i < paths.size(); ++i)
+    EXPECT_EQ(moved.GetPath(i), paths[i].get());
+  moved.Clear();
+  for (const auto& path : paths) EXPECT_TRUE(path->HasOneRef());
+}
+
 TEST_F(DisplayListTest, EmptyDisplayList) {
   EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
   EXPECT_EQ(display_list_->GetContentDataSize(), 0u);

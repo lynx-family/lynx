@@ -5,10 +5,32 @@
 #include "gfx/public/display_list.h"
 
 #include <cstdint>
+#include <cstdlib>
+#include <limits>
 #include <utility>
 
 namespace lynx {
 namespace tasm {
+
+uint32_t DisplayList::RetainPath(fml::RefPtr<gfx::Path> path) {
+  if (!path) return std::numeric_limits<uint32_t>::max();
+  auto& paths = *paths_;
+  for (size_t i = 0; i < paths.size(); ++i) {
+    if (paths[i].get() == path.get()) return static_cast<uint32_t>(i);
+  }
+  if (paths.size() >= std::numeric_limits<uint32_t>::max()) std::abort();
+  auto index = static_cast<uint32_t>(paths.size());
+  // Skip an intermediate two-slot allocation when the inline slot fills.
+  if (index == 1) paths.reserve(4);
+  paths.push_back(std::move(path));
+  return index;
+}
+const gfx::Path* DisplayList::GetPath(uint32_t index) const {
+  return index < GetPathCount() ? (*paths_)[index].get() : nullptr;
+}
+size_t DisplayList::GetPathCount() const {
+  return paths_.has_value() ? paths_->size() : 0;
+}
 
 void DisplayList::Reserve(int32_t capacity) {
   constexpr static const int32_t kPreAllocatedCapacityForItems = 10;
@@ -19,6 +41,7 @@ void DisplayList::Reserve(int32_t capacity) {
 }
 
 void DisplayList::Clear() {
+  paths_.reset();
   if (content_items_.has_value()) {
     content_items_->clear();
   }

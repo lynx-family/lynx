@@ -183,6 +183,8 @@ void PlatformRendererImpl::UpdateSubtreeProperty(
         break;
       case DisplayListSubtreePropertyOpType::kFilter:
         break;
+      case DisplayListSubtreePropertyOpType::kClipPath:
+        break;
     }
   }
   OnUpdateSubtreeProperties(display_list);
