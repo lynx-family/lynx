@@ -37,12 +37,20 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   private sendableModuleManager: SendableLynxModuleManager = new SendableLynxModuleManager();
   private lastScriptUrl?: string;
   private nativePtr: bigint = BigInt(0);
+  private readonly debuggable: boolean;
 
+  /**
+   * @param debuggable Enables page-level debugging for this runtime. It takes
+   * effect only when LynxEnv.isLynxDebugEnabled() is true.
+   */
   constructor(backgroundRuntimeOptions: LynxBackgroundRuntimeOptions, genericResourceFetcher : LynxGenericResourceFetcher | undefined,
     mediaResourceFetcher: LynxMediaResourceFetcher | undefined,
     templateResourceFetcher: LynxTemplateResourceFetcher | undefined,  modules: Map<string, ModuleClassWrapper> | undefined,
-    sendableModules: Map<string, SendableModuleClassWrapper> | undefined, data: MetaData | undefined) {
+    sendableModules: Map<string, SendableModuleClassWrapper> | undefined, data: MetaData | undefined,
+    debuggable: boolean = false) {
     super();
+    // Must be set before nativeCreate(), which calls createDevTool() synchronously.
+    this.debuggable = debuggable;
     this.providers = [genericResourceFetcher, mediaResourceFetcher, templateResourceFetcher];
     this.backgroundRuntimeOptions = new LynxBackgroundRuntimeOptions(backgroundRuntimeOptions);
     registerGlobalLynxModules(this.moduleManager);
@@ -62,7 +70,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
       convertModuleArgs(this.sendableModuleManager), data?.templateData?.processor,
       data?.templateData?.getDataForNative(), data?.templateData?.readOnly,
       data?.globalProps?.getDataForNative(),
-      this.backgroundRuntimeOptions.enableNewShareGroup());
+      this.backgroundRuntimeOptions.enableNewShareGroup(), this.debuggable);
   }
 
   addLifecycleClient(client: LynxBackgroundRuntimeClient) {
@@ -106,7 +114,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   
   // devtool
   createDevTool(embedderProxy: number[]) {
-    this.lynxDevTool = new LynxDevTool(embedderProxy);
+    this.lynxDevTool = new LynxDevTool(embedderProxy, this.debuggable);
   }
 
   getDevTool() {

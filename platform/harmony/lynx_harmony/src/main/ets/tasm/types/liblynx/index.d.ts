@@ -130,6 +130,9 @@ export class DevToolSettingsHarmony {
   static setPersistedBoolean: (key: string, value: boolean) => void;
   static getPersistedBoolean: (key: string, defaultValue: boolean) => boolean;
   static syncBooleanToNative: (key: string, value: boolean) => void;
+  static setPersistedString: (key: string, value: string) => void;
+  static getPersistedString: (key: string, defaultValue: string) => string;
+  static syncStringSetToNative: (groupKey: string, values: string[]) => void;
 }
 
 export class NativeTemplateData {
@@ -147,7 +150,8 @@ export class LynxTemplateRenderer {
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime,
     whiteBoard: LynxWhiteBoard | undefined, enableMultiAsyncThread: boolean, viewId: number,
-    embeddedMode?: number, enableNewShareGroup?: boolean, enablePendingJsTask?: boolean): void;
+    embeddedMode?: number, enableNewShareGroup?: boolean, enablePendingJsTask?: boolean,
+    debuggable?: boolean): void;
 
   nativeDetach(): void;
 
@@ -460,7 +464,7 @@ export class LynxRuntimeWrapper {
     jsGroupThreadName: string, useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], processor?: string, data?: Object | string, readonly?: boolean,
-    props?: Object | string, enableNewShareGroup?: boolean): bigint;
+    props?: Object | string, enableNewShareGroup?: boolean, debuggable?: boolean): bigint;
 
   protected nativeEvaluateScript(url: string, sources: string): void;
 

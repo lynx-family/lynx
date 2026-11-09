@@ -7,7 +7,7 @@ export class DebugBridgeHarmony {
 }
 
 export class InspectorOwnerHarmony {
-  constructor(owner: LynxInspectorOwner, embedderProxy: number[]);
+  constructor(owner: LynxInspectorOwner, embedderProxy: number[], debuggable?: boolean);
 
   attachProxy: (embedderProxy: number[]) => void;
   getSessionId: () => number;

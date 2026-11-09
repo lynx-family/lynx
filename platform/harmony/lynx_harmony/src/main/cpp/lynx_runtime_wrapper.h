@@ -78,7 +78,8 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
       bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
       bool enable_bytecode, std::string bytecode_source_url,
       std::unique_ptr<ModuleFactoryHarmony> module_factory,
-      lepus::Value global_props, bool enable_new_share_group = false);
+      lepus::Value global_props, bool enable_new_share_group = false,
+      bool debuggable = false);
 
   virtual ~LynxRuntimeWrapper();
   LynxRuntimeWrapper(const LynxRuntimeWrapper& facade) = delete;

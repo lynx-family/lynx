@@ -33,8 +33,8 @@ export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspe
   private windowRequestId: number = 0;
   private destroyed: boolean = false;
 
-  constructor(embedderProxy: number[]) {
-    this.nativeOwner = new lynxdevtool.InspectorOwnerHarmony(this, embedderProxy);
+  constructor(embedderProxy: number[], debuggable: boolean = false) {
+    this.nativeOwner = new lynxdevtool.InspectorOwnerHarmony(this, embedderProxy, debuggable);
     this.consoleDelegateManager = new ConsoleDelegateManager();
   }
 

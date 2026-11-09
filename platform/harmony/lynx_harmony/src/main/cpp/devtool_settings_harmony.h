@@ -9,6 +9,7 @@
 #include <napi/native_api.h>
 
 #include <string>
+#include <unordered_set>
 
 namespace lynx {
 namespace tasm {
@@ -25,6 +26,11 @@ class DevToolSettingsHarmony {
   void SetPersistedBoolean(const std::string& key, bool value);
   bool GetPersistedBoolean(const std::string& key, bool default_value);
   void SyncBooleanToNative(const std::string& key, bool value);
+  void SetPersistedString(const std::string& key, const std::string& value);
+  std::string GetPersistedString(const std::string& key,
+                                 const std::string& default_value);
+  void SyncStringSetToNative(const std::string& group_key,
+                             const std::unordered_set<std::string>& values);
 
  private:
   DevToolSettingsHarmony(const DevToolSettingsHarmony&) = delete;
@@ -39,6 +45,12 @@ class DevToolSettingsHarmony {
                                             napi_callback_info info);
   static napi_value SyncBooleanToNativeNAPI(napi_env env,
                                             napi_callback_info info);
+  static napi_value SetPersistedStringNAPI(napi_env env,
+                                           napi_callback_info info);
+  static napi_value GetPersistedStringNAPI(napi_env env,
+                                           napi_callback_info info);
+  static napi_value SyncStringSetToNativeNAPI(napi_env env,
+                                              napi_callback_info info);
 
   OH_Preferences* preference_ = nullptr;
 };

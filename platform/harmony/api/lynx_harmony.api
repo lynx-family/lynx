@@ -7,7 +7,7 @@
  */
 
 export class LynxInspectorOwner implements LynxBaseInspectorOwner, LynxBaseInspectorController {
-  constructor(embedderProxy: number[]);
+  constructor(embedderProxy: number[], debuggable: boolean);
   public attachProxy(embedderProxy: number[]): void;
   public onLoaded(lynxView: LynxView): void;
   public destroy(lynxView: LynxView): void;
@@ -112,7 +112,7 @@ export class LynxDevToolService implements ILynxDevToolService {
   public devtoolEnvSetSwitch(key: string, value: boolean): void;
   public devtoolEnvGetSwitch(key: string): boolean;
   public devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
-  public createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null;
+  public createInspectorOwner(embedderProxy: number[], debuggable: boolean): LynxBaseInspectorController | null;
   public createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
   public registerLogBox(logBox: ILogBox, uiContext: UIContext): void;
   public unregisterLogBox(logBox: ILogBox): void;
@@ -247,6 +247,7 @@ export abstract class LynxNodeController extends NodeController {
   templateLoaded: boolean; = false
   threadMode: ThreadStrategyForRendering; = ThreadStrategyForRendering.ALL_ON_UI
   embeddedMode: EmbeddedMode; = EmbeddedMode.UNSET
+  debuggable: boolean; = false
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions; = new LynxBackgroundRuntimeOptions()
   enableAirStrictMode?: any; = false
   lynxImageConfig?: LynxImageConfig;
@@ -280,6 +281,7 @@ export interface LynxViewBuilder {
   enableMultiAsyncThread?: boolean;
   embeddedMode?: EmbeddedMode;
   enablePendingJsTask?: boolean;
+  debuggable?: boolean;
 }
 
 export enum MeasureMode {
@@ -1473,6 +1475,10 @@ export class DevToolSettings {
   public static setPerfMonitorDebugEnabled(enabled: boolean): void;
   public static isCSSErrorIgnored(): boolean;
   public static setCSSErrorIgnored(ignored: boolean): void;
+  public static getEnabledCDPDomains(): Set<string>;
+  public static setEnabledCDPDomains(domains: Set<string> | string[]): void;
+  public static isCDPDomainEnabled(key: string): boolean;
+  public static setCDPDomainEnabled(key: string, enabled: boolean): void;
   public static readonly SP_KEY_ENABLE_DEVTOOL: string; = 'enable_devtool'
   public static readonly SP_KEY_ENABLE_LOGBOX: string; = 'enable_logbox'
   public static readonly SP_KEY_ENABLE_DEBUG_MODE: string; = 'enable_debug_mode'
@@ -1486,6 +1492,12 @@ export class DevToolSettings {
   public static readonly SP_KEY_ENABLE_PIXEL_COPY: string; = 'enable_pixel_copy'
   public static readonly SP_KEY_ENABLE_PERF_MONITOR_DEBUG: string; = 'enable_perf_monitor_debug'
   public static readonly SP_KEY_ENABLE_IGNORE_ERROR_CSS: string; = 'error_code_css'
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_CSS: string; = 'enable_cdp_domain_css'
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_DEBUGGER: string; = 'enable_cdp_domain_debugger'
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_DOM: string; = 'enable_cdp_domain_dom'
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_OVERLAY: string; = 'enable_cdp_domain_overlay'
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_PAGE: string; = 'enable_cdp_domain_page'
+  public static readonly SP_KEY_ENABLE_CDP_DOMAIN_RUNTIME: string; = 'enable_cdp_domain_runtime'
 }
 
 export interface LynxBaseInspectorOwner {
@@ -1521,7 +1533,7 @@ export abstract class LynxBackgroundRuntimeClient {
 }
 
 export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
-  constructor(backgroundRuntimeOptions: LynxBackgroundRuntimeOptions, genericResourceFetcher: LynxGenericResourceFetcher | undefined, mediaResourceFetcher: LynxMediaResourceFetcher | undefined, templateResourceFetcher: LynxTemplateResourceFetcher | undefined, modules: Map<string, ModuleClassWrapper> | undefined, sendableModules: Map<string, SendableModuleClassWrapper> | undefined, data: MetaData | undefined);
+  constructor(backgroundRuntimeOptions: LynxBackgroundRuntimeOptions, genericResourceFetcher: LynxGenericResourceFetcher | undefined, mediaResourceFetcher: LynxMediaResourceFetcher | undefined, templateResourceFetcher: LynxTemplateResourceFetcher | undefined, modules: Map<string, ModuleClassWrapper> | undefined, sendableModules: Map<string, SendableModuleClassWrapper> | undefined, data: MetaData | undefined, debuggable: boolean);
   addLifecycleClient(client: LynxBackgroundRuntimeClient): void;
   removeLifecycleClient(client: LynxBackgroundRuntimeClient): void;
   onErrorOccurred(level: string, errorCode: number, message: string, suggestion: string, customInfo: Record<string, string>, logboxOnly: boolean, rootCause: string): void;
@@ -1701,7 +1713,7 @@ export interface ILynxDevToolService {
   devtoolEnvSetSwitch(key: string, value: boolean): void;
   devtoolEnvGetSwitch(key: string): boolean;
   devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void;
-  createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null;
+  createInspectorOwner(embedderProxy: number[], debuggable: boolean): LynxBaseInspectorController | null;
   createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null;
   registerLogBox(logBox: ILogBox, uiContext: UIContext): void;
   unregisterLogBox(logBox: ILogBox): void;
