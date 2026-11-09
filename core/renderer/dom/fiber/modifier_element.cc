@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/include/flex_optional.h"
 #include "base/include/string/string_utils.h"
@@ -27,6 +28,7 @@
 #include "core/renderer/dom/fragment/view_fragment_behavior.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/events/events.h"
+#include "core/renderer/starlight/types/layout_constraints.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 
@@ -34,6 +36,9 @@ namespace lynx {
 namespace tasm {
 
 namespace {
+
+using starlight::ComposeLayoutModifier;
+using starlight::ComposeLayoutModifiers;
 
 // Modifier IR operation codes shared with the JavaScript and native producers.
 constexpr int kModifierOpConcat = 1;
@@ -135,7 +140,14 @@ struct ModifierOperation {
 
 struct ModifierFramePlan {
   base::Vector<ModifierOperation> operations;
+  // Axes constrained at each frame boundary. The innermost one decides the
+  // Content Element's box sizing.
   base::Vector<int> frame_child_constrained_axes;
+  // Ordered size/fill/aspect-ratio modifiers per carrier; the last entry is
+  // the Content Element. Compose measurement consumes them directly. Only the
+  // mount root also carries CSS hints, for a parent laid out by CSS.
+  std::vector<ComposeLayoutModifiers> layout_modifiers;
+  bool has_layout_modifiers{false};
   size_t frame_count{0};
   bool owner_uses_layout_box{false};
   bool has_draw_callbacks{false};
@@ -195,6 +207,12 @@ bool IsParentDataStyle(CSSPropertyID id) {
     case kPropertyIDAlignSelf:
     case kPropertyIDJustifySelf:
     case kPropertyIDXBoxMatchParentSize:
+    case kPropertyIDGridRowStart:
+    case kPropertyIDGridRowEnd:
+    case kPropertyIDGridRowSpan:
+    case kPropertyIDGridColumnStart:
+    case kPropertyIDGridColumnEnd:
+    case kPropertyIDGridColumnSpan:
       return true;
     default:
       return false;
@@ -544,8 +562,8 @@ const ModifierOperation* WrapStyleBeforeAlignment(
 }
 
 bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
-                            ModifierFramePlan* plan, std::string* error,
-                            size_t* error_position) {
+                            float layouts_unit_per_px, ModifierFramePlan* plan,
+                            std::string* error, size_t* error_position) {
   int remaining_visits = kMaxModifierNodeVisits;
   if (!FlattenModifierNode(modifier_tail, &plan->operations, remaining_visits,
                            error)) {
@@ -623,6 +641,7 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     }
   }
   plan->frame_child_constrained_axes.resize<true>(plan->frame_count);
+  plan->layout_modifiers.resize(plan->frame_count + 1);
 
   // Padding and drawing hooks introduce physical boundaries. Each hook belongs
   // to the following carrier (possibly the stable Content Element). This keeps
@@ -644,8 +663,8 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
         plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
         ++carrier_index;
       } else if (carrier_index != 0) {
-        // Fixed incoming ranges already carry the sizes. Do not overwrite
-        // intrinsic CSS sizes with the usual 100% carrier hints.
+        // Fixed incoming ranges already carry the sizes; the intrinsic frame
+        // does not inherit them as constrained axes.
         plan->frame_child_constrained_axes[carrier_index - 1] &=
             ~operation.wrap_axes;
       }
@@ -680,39 +699,44 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
           break;
         case kModifierOpSize:
         case kModifierOpFill:
+          plan->has_layout_modifiers = true;
+          // applied_axes only selects the CSS hint; measurement applies every
+          // modifier in order.
           operation.applied_axes = operation.specified_axes & ~constrained_axes;
-          if (operation.op == kModifierOpFill &&
-              operation.layout_values[0] != 1.0 &&
-              operation.applied_axes != 0 &&
-              carrier_index != std::max(fill_propagation_start[0],
-                                        fill_propagation_start[1])) {
-            *error =
-                "fractional fill inside a padding frame is not representable";
-            *error_position = position;
-            return false;
-          }
           constrained_axes |= operation.applied_axes;
           if (target_frame_index == kNoModifierFrame &&
               operation.applied_axes != 0) {
             plan->owner_uses_layout_box = true;
           }
+          if (operation.op == kModifierOpSize) {
+            plan->layout_modifiers[carrier_index].push_back(
+                {ComposeLayoutModifier::Type::kSize, operation.specified_axes,
+                 operation.layout_values[0] * layouts_unit_per_px,
+                 operation.layout_values[1] * layouts_unit_per_px});
+          } else {
+            plan->layout_modifiers[carrier_index].push_back(
+                {ComposeLayoutModifier::Type::kFill, operation.specified_axes,
+                 operation.layout_values[0]});
+          }
           break;
         case kModifierOpAspectRatio:
+          plan->has_layout_modifiers = true;
+          plan->layout_modifiers[carrier_index].push_back(
+              {ComposeLayoutModifier::Type::kAspectRatio, 0,
+               operation.layout_values[0]});
+          if (constrained_axes == kLayoutModifierAllAxes) {
+            break;
+          }
+          // The CSS hint can only derive one axis from the other. Measurement
+          // also resolves a ratio without a constrained axis from the
+          // incoming range; either way the ratio determines both axes.
           if (constrained_axes == kLayoutModifierAxisWidth) {
             operation.applied_axes = kLayoutModifierAxisHeight;
           } else if (constrained_axes == kLayoutModifierAxisHeight) {
             operation.applied_axes = kLayoutModifierAxisWidth;
-          } else if (constrained_axes == kLayoutModifierAllAxes) {
-            break;
-          } else {
-            *error =
-                "aspect ratio without one constrained axis is not "
-                "representable";
-            *error_position = position;
-            return false;
           }
-          operation.apply_aspect_ratio = true;
-          constrained_axes |= operation.applied_axes;
+          operation.apply_aspect_ratio = operation.applied_axes != 0;
+          constrained_axes = kLayoutModifierAllAxes;
           if (target_frame_index == kNoModifierFrame) {
             plan->owner_uses_layout_box = true;
           }
@@ -864,15 +888,6 @@ void ApplyLayoutOperation(const ModifierOperation& operation,
   }
 }
 
-void ApplyLayoutChildConstraint(int constrained_axes, Element* child) {
-  if ((constrained_axes & kLayoutModifierAxisWidth) != 0) {
-    child->SetStyle(kPropertyIDWidth, lepus::Value("100%"));
-  }
-  if ((constrained_axes & kLayoutModifierAxisHeight) != 0) {
-    child->SetStyle(kPropertyIDHeight, lepus::Value("100%"));
-  }
-}
-
 void ApplyLayoutOperations(
     const ModifierFramePlan& plan,
     const base::Vector<fml::RefPtr<ModifierElement>>& frames, Element* owner) {
@@ -883,6 +898,30 @@ void ApplyLayoutOperations(
     if (!IsLayoutOperation(operation.op)) {
       continue;
     }
+    const bool sizing = operation.op == kModifierOpSize ||
+                        operation.op == kModifierOpFill ||
+                        operation.op == kModifierOpAspectRatio;
+    if (sizing) {
+      // Compose parents and the Modifier frames measure carriers with the
+      // ordered modifiers below. Only a CSS parent of the mount root reads
+      // size styles before measuring it, for example to decide stretching.
+      if (operation.carrier_index == 0) {
+        ApplyLayoutOperation(operation, LayoutCarrierAt(0, owner, frames));
+      } else if (operation.op == kModifierOpFill &&
+                 operation.layout_values[0] == 1.0) {
+        // A full fill behind padding still fills the mount root.
+        auto* root = LayoutCarrierAt(0, owner, frames);
+        if (operation.fill_propagation_start[0] == 0 &&
+            (operation.applied_axes & kLayoutModifierAxisWidth) != 0) {
+          root->SetStyle(kPropertyIDWidth, lepus::Value("100%"));
+        }
+        if (operation.fill_propagation_start[1] == 0 &&
+            (operation.applied_axes & kLayoutModifierAxisHeight) != 0) {
+          root->SetStyle(kPropertyIDHeight, lepus::Value("100%"));
+        }
+      }
+      continue;
+    }
     // Offset and range bounds apply inside their own pass-through boundary.
     ApplyLayoutOperation(
         operation, LayoutCarrierAt(operation.carrier_index +
@@ -891,30 +930,14 @@ void ApplyLayoutOperations(
                                             ? 1
                                             : 0),
                                    owner, frames));
-    if (operation.op == kModifierOpFill && operation.layout_values[0] == 1.0) {
-      for (size_t index = 0; index < operation.carrier_index; ++index) {
-        auto* carrier = LayoutCarrierAt(index, owner, frames);
-        if (index >= operation.fill_propagation_start[0] &&
-            (operation.applied_axes & kLayoutModifierAxisWidth) != 0) {
-          carrier->SetStyle(kPropertyIDWidth, lepus::Value("100%"));
-        }
-        if (index >= operation.fill_propagation_start[1] &&
-            (operation.applied_axes & kLayoutModifierAxisHeight) != 0) {
-          carrier->SetStyle(kPropertyIDHeight, lepus::Value("100%"));
-        }
-      }
-    }
   }
-}
-
-void ApplyLayoutChildConstraints(
-    const ModifierFramePlan& plan,
-    const base::Vector<fml::RefPtr<ModifierElement>>& frames, Element* owner) {
-  for (size_t frame_index = 0; frame_index < frames.size(); ++frame_index) {
-    Element* child =
-        frame_index + 1 < frames.size() ? frames[frame_index + 1].get() : owner;
-    ApplyLayoutChildConstraint(plan.frame_child_constrained_axes[frame_index],
-                               child);
+  for (size_t index = 0; index < plan.layout_modifiers.size(); ++index) {
+    const auto& modifiers = plan.layout_modifiers[index];
+    LayoutCarrierAt(index, owner, frames)
+        ->SetComposeLayoutModifiers(
+            modifiers.empty()
+                ? nullptr
+                : std::make_shared<const ComposeLayoutModifiers>(modifiers));
   }
 }
 
@@ -1224,7 +1247,6 @@ fml::RefPtr<Element> InstallModifierFramePlan(
   ApplyLayoutOperations(plan, frames, owner);
   ApplyNonLayoutOperations(plan, owner, frames, registration_context,
                            deep_convert);
-  ApplyLayoutChildConstraints(plan, frames, owner);
 
   if (frames.empty()) {
     auto owner_ref = fml::RefPtr<Element>(owner);
@@ -1346,7 +1368,9 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
 
   ModifierFramePlan plan;
   size_t error_position = 0;
-  if (!BuildModifierFramePlan(modifier_tail, &plan, &error, &error_position)) {
+  if (!BuildModifierFramePlan(modifier_tail,
+                              content_element->GetLayoutsUnitPerPx(), &plan,
+                              &error, &error_position)) {
     return {false, error_position, std::move(error)};
   }
   if (plan.weight_fill.has_value() &&
@@ -1359,6 +1383,11 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
        manager->GetLynxEnvConfig().DevicePixelRatio() <= 0)) {
     return {false, 0,
             "size range requires layout in Element and positive density"};
+  }
+  if (plan.has_layout_modifiers &&
+      !content_element->EnableLayoutInElementMode()) {
+    // Only Element-mode layout nodes receive the ordered modifiers.
+    return {false, 0, "size, fill and aspect ratio require layout in Element"};
   }
   if (plan.has_wrap_content && !content_element->EnableLayoutInElementMode()) {
     return {false, 0, "wrapContent requires layout in Element"};

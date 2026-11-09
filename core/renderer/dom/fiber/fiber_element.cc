@@ -4464,9 +4464,20 @@ void Element::UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
   layout_bundle_->attrs.emplace_back(std::make_pair(key, value));
 }
 
+void Element::SetComposeLayoutModifiers(
+    std::shared_ptr<const starlight::ComposeLayoutModifiers> modifiers) {
+  if (layout_modifiers_ == modifiers) return;
+  layout_modifiers_ = std::move(modifiers);
+  MarkPropsDirty();
+  MarkLayoutDirty();
+}
+
 void Element::UpdateLayoutNodeByBundle() {
   if (EnableLayoutInElementMode()) {
     EnsureSLNode();
+    // Modifier layout is resolved by Compose measurement, which is only
+    // available when layout runs in Element mode.
+    sl_node_->SetComposeLayoutModifiers(layout_modifiers_);
     return;
   }
 

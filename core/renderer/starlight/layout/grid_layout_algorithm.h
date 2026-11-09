@@ -62,6 +62,7 @@ class GridLayoutAlgorithm : public LayoutAlgorithm {
   void GridItemSizing();
   void InitTrackSize(Dimension dimension, std::vector<float>& base_size,
                      std::vector<LayoutUnit>& grow_limit);
+  LayoutUnit TrackPercentBase(Dimension dimension);
   void CalcInlineAxisSizeContributions(MeasureItemCache& item_size_infos);
   void CalcBlockAxisSizeContributions(MeasureItemCache& item_size_infos);
   void ResolveIntrinsicTrackSizes(Dimension dimension,
@@ -98,6 +99,10 @@ class GridLayoutAlgorithm : public LayoutAlgorithm {
   }
   // measure grid items with containing block.
   void MeasureGridItems();
+  FloatSize MeasureGridItem(LayoutObject& child, const Constraints& available,
+                            bool final_measure,
+                            const DimensionValue<bool>& stretch = {false,
+                                                                   false});
 
   // alignment
   float InlineAxisAlignment(const GridItemInfo& item_info);

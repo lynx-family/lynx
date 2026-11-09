@@ -44,9 +44,7 @@ void LayoutAlgorithm::Initialize(const Constraints& constraints,
 
 void LayoutAlgorithm::InitializeWithCompose(
     const ComposeConstraints& constraints) {
-  compose_constraints_ =
-      constraints.Inset(container_->GetPaddingAndBorderHorizontal(),
-                        container_->GetPaddingAndBorderVertical());
+  SetComposeConstraints(&constraints);
   inflow_items_.clear();
   inflow_items_.reserve(container_->GetChildCount());
   // Compose consumes direct children in source order. Visibility follows tree
@@ -55,6 +53,17 @@ void LayoutAlgorithm::InitializeWithCompose(
     inflow_items_.push_back(static_cast<LayoutObject*>(node));
   }
   InitializeAlgorithmEnv();
+}
+
+void LayoutAlgorithm::SetComposeConstraints(
+    const ComposeConstraints* constraints) {
+  if (!constraints) {
+    compose_constraints_.reset();
+    return;
+  }
+  compose_constraints_ =
+      constraints->Inset(container_->GetPaddingAndBorderHorizontal(),
+                         container_->GetPaddingAndBorderVertical());
 }
 
 void LayoutAlgorithm::InitializeChildren(const SLNodeSet* fixed_node_set) {
@@ -277,8 +286,12 @@ FloatSize LayoutAlgorithm::SizeDetermination() {
 
 Constraints LayoutAlgorithm::GenerateDefaultConstraint(
     const LayoutObject& child) const {
-  return property_utils::GenerateDefaultConstraints(child,
-                                                    container_constraints_);
+  return GenerateDefaultConstraint(child, container_constraints_);
+}
+
+Constraints LayoutAlgorithm::GenerateDefaultConstraint(
+    const LayoutObject& child, const Constraints& containing_block) {
+  return property_utils::GenerateDefaultConstraints(child, containing_block);
 }
 
 float LayoutAlgorithm::CalculateFloatSizeFromLength(
