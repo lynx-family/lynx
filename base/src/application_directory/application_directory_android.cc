@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "base/include/application_directory.h"
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "base/platform/android/src/main/jni/gen/LynxBaseEnv_jni.h"
 #include "base/platform/android/src/main/jni/gen/LynxBaseEnv_register_jni.h"
-#include "base/src/application_directory/application_directory_impl.h"
 
 namespace lynxbase {
 namespace jni {

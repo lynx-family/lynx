@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "base/include/application_directory.h"
+#include "base/include/file_utils.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_controller.h"
@@ -50,7 +51,7 @@ std::string ForceEnableMarkerPath() {
 bool HasForceEnableMarker() {
   const auto path = ForceEnableMarkerPath();
   if (path.empty()) return false;
-  auto* file = std::fopen(path.c_str(), "rb");
+  auto* file = base::OpenFile(path, "rb");
   if (!file) return false;
   std::fclose(file);
   return true;
@@ -59,7 +60,7 @@ bool HasForceEnableMarker() {
 void PersistForceEnableMarker() {
   const auto path = ForceEnableMarkerPath();
   if (path.empty()) return;
-  auto* file = std::fopen(path.c_str(), "ab");
+  auto* file = base::OpenFile(path, "ab");
   if (file) std::fclose(file);
 }
 

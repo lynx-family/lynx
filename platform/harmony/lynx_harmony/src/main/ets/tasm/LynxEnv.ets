@@ -113,7 +113,7 @@ class LynxEnvironment {
       return;
     }
     DevToolSettings.initialize();
-    this.initLynxBaseEnv();
+    this.initLynxBaseEnv(context);
     if (!this.performanceEnable) {
       this.setTracingDirPath(context.filesDir);
     }
@@ -149,9 +149,9 @@ class LynxEnvironment {
     LynxDebugger.setAppInfo(Array.from(appInfo.keys()), Array.from(appInfo.values()));
   }
 
-  private initLynxBaseEnv() {
+  private initLynxBaseEnv(context: common.Context) {
     LynxBaseServiceCenter.registerService(LynxBaseServiceType.Trace, LynxBaseTraceService.instance);
-    LynxBaseEnv.initialize(this.isDevtoolEnabled());
+    LynxBaseEnv.initialize(this.isDevtoolEnabled(), context);
   }
 
   private setDefaultAppInfo() {
