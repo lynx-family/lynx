@@ -41,6 +41,7 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.base.trace.TransferTrace;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.behavior.ImageInterceptor;
 import com.lynx.tasm.behavior.KeyboardEvent;
@@ -306,7 +307,15 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
 
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   public void dispatchTransferRemove(@NonNull String id, @NonNull View view) {
+    // UI teardown can remove transfers after the template context has been cleared.
+    LynxContext context = getLynxContext();
+    if (context != null) {
+      TransferTrace.begin(TraceEventDef.TRANSFER_REMOVE, context.getInstanceId(), id, -1);
+    }
     mTransferManager.dispatchTransferRemove(id, view);
+    if (context != null) {
+      TransferTrace.end(TraceEventDef.TRANSFER_REMOVE);
+    }
   }
 
   public void reloadAndInit() {

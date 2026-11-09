@@ -10929,6 +10929,16 @@ public class com::lynx::tasm::behavior::TouchEventDispatcher :  {
 }
 
 public class com::lynx::tasm::base::trace::TraceEventDef :  {
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_LOAD TRANSFER_LOAD;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_SET_PROPS TRANSFER_SET_PROPS;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_CREATE TRANSFER_CREATE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_DISPOSE TRANSFER_DISPOSE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_REMOVE TRANSFER_REMOVE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_CONSTRAINTS_APPLY TRANSFER_CONSTRAINTS_APPLY;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_MEASURE TRANSFER_MEASURE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_ALIGN TRANSFER_ALIGN;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_RESOLVE_SIZE TRANSFER_RESOLVE_SIZE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_LAYOUT TRANSFER_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_MEASURE LYNX_VIEW_ON_MEASURE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_LAYOUT LYNX_VIEW_ON_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_DRAW LYNX_VIEW_ON_DRAW;
@@ -11119,6 +11129,11 @@ public class com::lynx::tasm::behavior::ui::transfer::TransferShadowNode : com.l
   public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.updateHostConstraints(float width, MeasureMode widthMode, float height, MeasureMode heightMode);
   public MeasureResult com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.measure(MeasureParam param, MeasureContext context);
   public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.align(AlignParam param, AlignContext context);
+}
+
+public class com::lynx::tasm::base::trace::TransferTrace :  {
+  public static void com.lynx.tasm.base.trace.TransferTrace.begin(String stage, int instanceId, @Nullable String transferId, int nodeId);
+  public static void com.lynx.tasm.base.trace.TransferTrace.end(String stage);
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {
