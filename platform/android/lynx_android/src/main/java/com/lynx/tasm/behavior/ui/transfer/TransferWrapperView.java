@@ -6,6 +6,8 @@ package com.lynx.tasm.behavior.ui.transfer;
 import android.content.Context;
 import android.view.MotionEvent;
 import android.view.ViewTreeObserver;
+import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.base.trace.TransferTrace;
 import com.lynx.tasm.behavior.TouchEventDispatcher;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.UIExposure;
@@ -84,7 +86,8 @@ final class TransferWrapperView extends AndroidView {
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
     mTransferView.updateHostConstraints(widthMeasureSpec, heightMeasureSpec);
-
+    TransferTrace.begin(TraceEventDef.TRANSFER_RESOLVE_SIZE,
+        mTransferView.getLynxContext().getInstanceId(), null, mTransferView.getSign());
     // The owning-tree placeholder is zero-sized; this external container measures its content.
     mTransferView.measureChildren();
     int contentWidth = 0;
@@ -97,11 +100,15 @@ final class TransferWrapperView extends AndroidView {
     }
     setMeasuredDimension(
         resolveSize(contentWidth, widthMeasureSpec), resolveSize(contentHeight, heightMeasureSpec));
+    TransferTrace.end(TraceEventDef.TRANSFER_RESOLVE_SIZE);
   }
 
   @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    TransferTrace.begin(TraceEventDef.TRANSFER_LAYOUT,
+        mTransferView.getLynxContext().getInstanceId(), null, mTransferView.getSign());
     super.onLayout(changed, l, t, r, b);
     mTransferView.layoutChildren();
+    TransferTrace.end(TraceEventDef.TRANSFER_LAYOUT);
   }
 }

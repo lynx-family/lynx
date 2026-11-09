@@ -13,6 +13,8 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.base.trace.TransferTrace;
 import com.lynx.tasm.utils.UIThreadUtils;
 
 /**
@@ -25,6 +27,7 @@ import com.lynx.tasm.utils.UIThreadUtils;
 public final class LynxTransferredView extends FrameLayout {
   @Nullable private LynxView mOwner;
   private final String mTransferId;
+  private final int mInstanceId;
   @Nullable private LynxTransferClient mClient;
   @Nullable private ReadableMap mPendingProps;
   private boolean mCreateDispatched;
@@ -35,6 +38,7 @@ public final class LynxTransferredView extends FrameLayout {
     super(owner.getContext());
     mOwner = owner;
     mTransferId = transferId;
+    mInstanceId = owner.getLynxContext().getInstanceId();
     mClient = client;
   }
 
@@ -80,9 +84,11 @@ public final class LynxTransferredView extends FrameLayout {
       mPendingProps = nextProps;
       return;
     }
+    TransferTrace.begin(TraceEventDef.TRANSFER_SET_PROPS, mInstanceId, mTransferId, -1);
     JavaOnlyMap data = createEventData();
     data.put("props", nextProps);
     mOwner.dispatchTransferEvent(LynxTransferManager.SET_TRANSFER_PROPS, data);
+    TransferTrace.end(TraceEventDef.TRANSFER_SET_PROPS);
   }
 
   /** Releases the component and its content. Repeated calls have no effect. */
@@ -139,6 +145,7 @@ public final class LynxTransferredView extends FrameLayout {
     if (mOwner == null) {
       return;
     }
+    TransferTrace.begin(TraceEventDef.TRANSFER_DISPOSE, mInstanceId, mTransferId, -1);
     mOwner = null;
     mPendingProps = null;
     LynxTransferClient client = mClient;
@@ -147,6 +154,7 @@ public final class LynxTransferredView extends FrameLayout {
     if (client != null) {
       dispatchClientCallback(() -> client.onReleased(this, reason));
     }
+    TransferTrace.end(TraceEventDef.TRANSFER_DISPOSE);
   }
 
   private void dispatchClientCallback(Runnable callback) {

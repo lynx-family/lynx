@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.ui.transfer;
 
+import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.base.trace.TransferTrace;
 import com.lynx.tasm.behavior.shadow.AlignContext;
 import com.lynx.tasm.behavior.shadow.AlignParam;
 import com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode;
@@ -48,6 +50,8 @@ public class TransferShadowNode extends CustomLayoutShadowNode implements Custom
     if (!mHasHostConstraints) {
       return new MeasureResult(0.0f, 0.0f);
     }
+    TransferTrace.begin(TraceEventDef.TRANSFER_MEASURE,
+        getContext() == null ? -1 : getContext().getInstanceId(), null, getSignature());
     MeasureParam childParam = new MeasureParam();
     // Detached content is measured exclusively in the external host's coordinate space.
     childParam.mWidth = mHostWidth;
@@ -60,16 +64,20 @@ public class TransferShadowNode extends CustomLayoutShadowNode implements Custom
         ((NativeLayoutNodeRef) child).measureNativeNode(context, childParam);
       }
     }
+    TransferTrace.end(TraceEventDef.TRANSFER_MEASURE);
     return new MeasureResult(0.0f, 0.0f);
   }
 
   @Override
   public void align(AlignParam param, AlignContext context) {
+    TransferTrace.begin(TraceEventDef.TRANSFER_ALIGN,
+        getContext() == null ? -1 : getContext().getInstanceId(), null, getSignature());
     for (int i = 0; i < getChildCount(); i++) {
       ShadowNode child = getChildAt(i);
       if (child instanceof NativeLayoutNodeRef) {
         ((NativeLayoutNodeRef) child).alignNativeNode(context, new AlignParam());
       }
     }
+    TransferTrace.end(TraceEventDef.TRANSFER_ALIGN);
   }
 }

@@ -10,6 +10,8 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.LynxView;
+import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.base.trace.TransferTrace;
 import com.lynx.tasm.behavior.ui.transfer.UITransfer;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -38,17 +40,22 @@ public final class LynxTransferManager {
     String id = MANAGED_ID_PREFIX + NEXT_TRANSFER_ID.incrementAndGet();
     LynxTransferredView view = new LynxTransferredView(owner, id, client);
     mTransferredViews.put(id, view);
+    TransferTrace.begin(
+        TraceEventDef.TRANSFER_LOAD, owner.getLynxContext().getInstanceId(), id, -1);
     try {
       view.notifyLoadStart();
       if (view.isReleased()) {
+        TransferTrace.end(TraceEventDef.TRANSFER_LOAD);
         return view;
       }
       owner.dispatchTransferEvent(CREATE_TRANSFER, view.prepareCreate(componentName, initialProps));
     } catch (RuntimeException exception) {
       mTransferredViews.remove(id);
       view.dispose(TransferReleaseReason.LOAD_FAILED);
+      TransferTrace.end(TraceEventDef.TRANSFER_LOAD);
       throw exception;
     }
+    TransferTrace.end(TraceEventDef.TRANSFER_LOAD);
     return view;
   }
 
@@ -107,12 +114,15 @@ public final class LynxTransferManager {
     // Late listeners get a chance to claim existing pending transfers synchronously.
     List<TransferRecord> pending = new ArrayList<>(mPendingTransfers.values());
     for (TransferRecord record : pending) {
+      TransferTrace.begin(TraceEventDef.TRANSFER_CREATE,
+          record.owner.getLynxContext().getInstanceId(), record.id, record.owner.getSign());
       removeFromParent(record.view);
       if (listener.onCreate(record.id, record.view, record.owner.getDataset())) {
         mPendingTransfers.remove(record.view);
         mActiveTransfers.put(
             record.view, new TransferRecord(record.id, record.owner, record.view, listener));
       }
+      TransferTrace.end(TraceEventDef.TRANSFER_CREATE);
     }
   }
 
@@ -122,6 +132,8 @@ public final class LynxTransferManager {
 
   public boolean dispatchTransferCreate(
       @NonNull String id, @NonNull UITransfer owner, @NonNull View view) {
+    TransferTrace.begin(
+        TraceEventDef.TRANSFER_CREATE, owner.getLynxContext().getInstanceId(), id, owner.getSign());
     // A fresh create for the same wrapper replaces stale state from prior ids or retries.
     mPendingTransfers.remove(view);
     mActiveTransfers.remove(view);
@@ -134,18 +146,21 @@ public final class LynxTransferManager {
       }
       // Released or reloaded instances must never become pending transfers or be claimed by
       // unrelated listeners. The frontend owns disposal of their element trees.
+      TransferTrace.end(TraceEventDef.TRANSFER_CREATE);
       return true;
     }
 
     for (LynxTransferListener listener : getTransferListenersSnapshot()) {
       if (listener.onCreate(id, view, owner.getDataset())) {
         mActiveTransfers.put(view, new TransferRecord(id, owner, view, listener));
+        TransferTrace.end(TraceEventDef.TRANSFER_CREATE);
         return true;
       }
     }
 
     // No listener accepted this transfer yet; keep it for future listener registration.
     mPendingTransfers.put(view, new TransferRecord(id, owner, view, null));
+    TransferTrace.end(TraceEventDef.TRANSFER_CREATE);
     return false;
   }
 
