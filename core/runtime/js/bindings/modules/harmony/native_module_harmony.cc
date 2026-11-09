@@ -14,6 +14,8 @@
 #include "core/base/harmony/harmony_napi_env_holder.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/napi_convert_helper.h"
+#include "core/build/gen/lynx_sub_error_code.h"
+#include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -21,14 +23,15 @@ namespace harmony {
 
 struct CallbackData {
   CallbackData(const std::shared_ptr<runtime::LynxModuleCallback>& c,
-               const std::weak_ptr<runtime::LynxNativeModule::Delegate>& d)
-      : callback(c), delegate(d) {}
+               const std::weak_ptr<runtime::LynxNativeModule::Delegate>& d,
+               const std::string& module, const std::string& method)
+      : callback(c), delegate(d), module_name(module), method_name(method) {}
   std::shared_ptr<runtime::LynxModuleCallback> callback;
   std::weak_ptr<runtime::LynxNativeModule::Delegate> delegate;
+  const std::string module_name;
+  const std::string method_name;
   bool invoked = false;
 #if ENABLE_TRACE_PERFETTO
-  std::string module_name;
-  std::string method_name;
   uint64_t flow_id;
   std::string first_arg;
 #endif
@@ -81,11 +84,9 @@ napi_value NativeModuleHarmony::InvokePlatformMethod(
     // corresponding callback instance can be found in the callback map using
     // the current index.
     if (value.IsInt64() && callbacks.find(i) != callbacks.end()) {
-      auto callback_data =
-          std::make_unique<CallbackData>(callbacks.at(i), delegate);
+      auto callback_data = std::make_unique<CallbackData>(
+          callbacks.at(i), delegate, module_name, method_name);
 #if ENABLE_TRACE_PERFETTO
-      callback_data->module_name = module_name;
-      callback_data->method_name = method_name;
       callback_data->flow_id = flow_id;
       callback_data->first_arg = first_arg;
 #endif
@@ -259,13 +260,34 @@ napi_value NativeModuleHarmony::Callback(napi_env env,
   }
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, NAPI_VALUE_TO_LEPUS_VALUE);
   auto callback_args = lepus::CArray::Create();
+  std::string error_message;
   for (size_t i = 0; i < argc; i++) {
-    callback_args->push_back(
-        base::NapiConvertHelper::ConvertToLepusValue(env, args[i]));
+    std::string argument_error;
+    callback_args->push_back(base::NapiConvertHelper::ConvertToLepusValue(
+        env, args[i], &argument_error));
+    if (error_message.empty()) {
+      error_message = std::move(argument_error);
+    }
   }
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
   data->callback->SetArgs(
       std::make_unique<PubLepusValue>(lepus::Value(callback_args)));
+  if (!error_message.empty()) {
+    auto error = base::LynxError{error::E_NATIVE_MODULES_COMMON_RETURN_ERROR,
+                                 "NativeModule: " + data->module_name + "." +
+                                     data->method_name + ": " + error_message,
+                                 "Remove cycles or reduce data nesting.",
+                                 base::LynxErrorLevel::Error};
+    if (data->callback->GetType() == runtime::LynxModuleCallback::Type::JSI) {
+      // Report async callback errors on the JS thread.
+      std::static_pointer_cast<runtime::js::ModuleCallback>(data->callback)
+          ->GetErrorsRef()
+          .push_back(std::move(error));
+    } else {
+      delegate->OnErrorOccurred(data->module_name, data->method_name,
+                                std::move(error));
+    }
+  }
 #if ENABLE_TRACE_PERFETTO
   data->callback->SetCallbackFlowId(data->flow_id);
 #endif

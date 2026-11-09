@@ -24,6 +24,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/build/gen/lynx_sub_error_code.h"
 #include "core/public/page_options.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
@@ -85,6 +86,17 @@ bool IsNapiFunction(napi_env env, napi_value value) {
   napi_valuetype type = napi_undefined;
   napi_typeof(env, value, &type);
   return type == napi_function;
+}
+
+void ReportDataConversionError(LynxTemplateRenderer* renderer,
+                               const std::string& message) {
+  if (message.empty()) {
+    return;
+  }
+  renderer->OnErrorOccurred(static_cast<int>(base::LynxErrorLevel::Error),
+                            error::E_DATA_FLOW_UPDATE_EXCEPTION, message,
+                            "Remove cycles or reduce data nesting.", {}, false,
+                            "");
 }
 
 runtime::HeapSnapshotCallback CreateHeapSnapshotCallback(napi_env env,
@@ -1708,8 +1720,10 @@ napi_value LynxTemplateRenderer::UpdateGlobalProps(napi_env env,
     return nullptr;
   }
 
-  lepus_value global_props =
-      tasm::TemplateDataHarmony::GenerateLepusValue(env, args[0]);
+  std::string conversion_error;
+  lepus_value global_props = tasm::TemplateDataHarmony::GenerateLepusValue(
+      env, args[0], &conversion_error);
+  ReportDataConversionError(obj, conversion_error);
   obj->UpdateGlobalProps(std::move(global_props));
 
   return nullptr;
@@ -1729,11 +1743,15 @@ napi_value LynxTemplateRenderer::UpdateMetaData(napi_env env,
     return nullptr;
   }
 
+  std::string conversion_error;
   auto template_data = tasm::TemplateDataHarmony::GenerateTemplateData(
-      env, args[1], args[2], args[0]);
+      env, args[1], args[2], args[0], &conversion_error);
 
-  lepus_value global_props =
-      tasm::TemplateDataHarmony::GenerateLepusValue(env, args[3]);
+  std::string global_props_error;
+  lepus_value global_props = tasm::TemplateDataHarmony::GenerateLepusValue(
+      env, args[3], &global_props_error);
+  ReportDataConversionError(
+      obj, conversion_error.empty() ? global_props_error : conversion_error);
   shell::LynxUpdateMode update_mode = shell::LynxUpdateMode::UPDATE;
   if (argc >= 5) {
     napi_valuetype type;
@@ -1772,8 +1790,10 @@ napi_value LynxTemplateRenderer::LoadTemplate(napi_env env,
   std::vector<uint8_t> source;
   base::NapiUtil::ConvertToArrayBuffer(env, args[1], source);
 
+  std::string conversion_error;
   auto template_data = tasm::TemplateDataHarmony::GenerateTemplateData(
-      env, args[3], args[4], args[2]);
+      env, args[3], args[4], args[2], &conversion_error);
+  ReportDataConversionError(obj, conversion_error);
 
   napi_valuetype type;
   napi_typeof(env, args[5], &type);
@@ -1805,11 +1825,15 @@ napi_value LynxTemplateRenderer::ReloadTemplate(napi_env env,
     return nullptr;
   }
 
+  std::string conversion_error;
   auto template_data = tasm::TemplateDataHarmony::GenerateTemplateData(
-      env, args[1], args[2], args[0]);
+      env, args[1], args[2], args[0], &conversion_error);
 
-  lepus_value global_props =
-      tasm::TemplateDataHarmony::GenerateLepusValue(env, args[3]);
+  std::string global_props_error;
+  lepus_value global_props = tasm::TemplateDataHarmony::GenerateLepusValue(
+      env, args[3], &global_props_error);
+  ReportDataConversionError(
+      obj, conversion_error.empty() ? global_props_error : conversion_error);
 
   obj->ResetTimingBeforeReload();
   auto pipeline_options = obj->ProcessLoadTemplateTimingOption(
@@ -1842,8 +1866,10 @@ napi_value LynxTemplateRenderer::LoadTemplateBundle(napi_env env,
     return nullptr;
   }
 
+  std::string conversion_error;
   auto template_data = tasm::TemplateDataHarmony::GenerateTemplateData(
-      env, args[3], args[4], args[2]);
+      env, args[3], args[4], args[2], &conversion_error);
+  ReportDataConversionError(obj, conversion_error);
 
   napi_valuetype type;
   napi_typeof(env, args[5], &type);
@@ -2473,8 +2499,10 @@ napi_value LynxTemplateRenderer::SetSessionStorageItem(
 
   napi_value undefined_value = nullptr;
   napi_get_undefined(env, &undefined_value);
+  std::string conversion_error;
   auto template_data = tasm::TemplateDataHarmony::GenerateTemplateData(
-      env, args[1], undefined_value, undefined_value);
+      env, args[1], undefined_value, undefined_value, &conversion_error);
+  ReportDataConversionError(obj, conversion_error);
   if (!template_data) {
     return nullptr;
   }

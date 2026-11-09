@@ -18,10 +18,14 @@
 namespace lynx {
 namespace base {
 
+namespace {
+
 static constexpr int kMaxDepth = 100;
 
-void create_lepus_value_from_js_object(napi_env env, napi_value obj,
-                                       lepus_value& result, int depth) {
+// A null path skips cycle detection and can request a retry by returning false.
+bool create_lepus_value_from_js_object(
+    napi_env env, napi_value obj, lepus_value& result, int depth,
+    std::string& error_message, std::vector<napi_value>* path = nullptr) {
   napi_valuetype type;
   napi_typeof(env, obj, &type);
   switch (type) {
@@ -61,21 +65,38 @@ void create_lepus_value_from_js_object(napi_env env, napi_value obj,
           result.SetUndefined();
         }
       } else {
-        if (depth >= kMaxDepth) {
-          napi_value object_keys;
-          napi_get_all_property_names(
-              env, obj, napi_key_own_only, napi_key_enumerable,
-              napi_key_numbers_to_strings, &object_keys);
-          std::vector<std::string> array_string;
-          NapiUtil::ConvertToArrayString(env, object_keys, array_string);
-          std::string output;
-          for (const auto& item : array_string) {
-            output.append(item + ", ");
+        if (path != nullptr) {
+          for (auto ancestor : *path) {
+            bool same = false;
+            if (napi_strict_equals(env, obj, ancestor, &same) == napi_ok &&
+                same) {
+              result.SetUndefined();
+              return true;
+            }
           }
-          LOGE("Maybe circular structure: " << output);
-#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-          abort();
-#endif
+        }
+        if (depth >= kMaxDepth) {
+          if (path == nullptr) {
+            napi_value keys = nullptr;
+            std::vector<std::string> names;
+            if (napi_get_all_property_names(
+                    env, obj, napi_key_own_only, napi_key_enumerable,
+                    napi_key_numbers_to_strings, &keys) == napi_ok) {
+              NapiUtil::ConvertToArrayString(env, keys, names);
+            }
+            error_message = "N-API nesting depth limit reached: " +
+                            std::to_string(kMaxDepth) + ". Keys: ";
+            for (const auto& name : names) {
+              error_message.append(name + ", ");
+            }
+            LOGE(error_message);
+            return false;
+          }
+          result.SetUndefined();
+          return true;
+        }
+        if (path != nullptr) {
+          path->push_back(obj);
         }
         if (base::NapiUtil::IsArray(env, obj)) {
           auto arr = lepus::CArray::Create();
@@ -85,7 +106,10 @@ void create_lepus_value_from_js_object(napi_env env, napi_value obj,
             napi_value item;
             napi_get_element(env, obj, i, &item);
             lepus_value value;
-            create_lepus_value_from_js_object(env, item, value, depth + 1);
+            if (!create_lepus_value_from_js_object(env, item, value, depth + 1,
+                                                   error_message, path)) {
+              return false;
+            }
             arr->push_back(value);
           }
           result = lepus_value(arr);
@@ -105,10 +129,16 @@ void create_lepus_value_from_js_object(napi_env env, napi_value obj,
             napi_get_property(env, obj, k, &v);
             std::string key = NapiUtil::ConvertToString(env, k);
             lepus_value value;
-            create_lepus_value_from_js_object(env, v, value, depth + 1);
+            if (!create_lepus_value_from_js_object(env, v, value, depth + 1,
+                                                   error_message, path)) {
+              return false;
+            }
             dict->SetValue(key, value);
           }
           result = lepus_value(dict);
+        }
+        if (path != nullptr) {
+          path->pop_back();
         }
       }
     } break;
@@ -116,19 +146,28 @@ void create_lepus_value_from_js_object(napi_env env, napi_value obj,
       result.SetUndefined();
       break;
   }
+  return true;
 }
 
+}  // namespace
+
 lepus_value NapiConvertHelper::JSONToLepusValue(napi_env env, napi_value obj) {
+  return JSONToLepusValue(env, obj, nullptr);
+}
+
+lepus_value NapiConvertHelper::JSONToLepusValue(napi_env env, napi_value obj,
+                                                std::string* error_message) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, NAPI_CONVERT_HELPER_JSON_TO_LEPUS_VALUE);
+  if (error_message != nullptr) {
+    error_message->clear();
+  }
   napi_valuetype type;
   napi_typeof(env, obj, &type);
   if (type == napi_valuetype::napi_string) {
     std::string s = base::NapiUtil::ConvertToString(env, obj);
     return lepus::jsonValueTolepusValue(s.c_str());
   } else if (type == napi_valuetype::napi_object) {
-    lepus_value result;
-    create_lepus_value_from_js_object(env, obj, result, 0);
-    return result;
+    return ConvertToLepusValue(env, obj, error_message);
   } else {
     LOGD("JSONToLepusValue:: type should be string or object");
   }
@@ -137,8 +176,25 @@ lepus_value NapiConvertHelper::JSONToLepusValue(napi_env env, napi_value obj) {
 
 lepus_value NapiConvertHelper::ConvertToLepusValue(napi_env env,
                                                    napi_value obj) {
+  return ConvertToLepusValue(env, obj, nullptr);
+}
+
+lepus_value NapiConvertHelper::ConvertToLepusValue(napi_env env, napi_value obj,
+                                                   std::string* error_message) {
+  std::string local_error;
+  std::string& conversion_error =
+      error_message != nullptr ? *error_message : local_error;
+  conversion_error.clear();
   lepus_value result;
-  create_lepus_value_from_js_object(env, obj, result, 0);
+  if (!create_lepus_value_from_js_object(env, obj, result, 0,
+                                         conversion_error)) {
+    // The first pass has fully unwound. Retry the original root exactly once;
+    // cycle detection and depth truncation now handle branches silently.
+    result.SetUndefined();
+    std::vector<napi_value> path;
+    create_lepus_value_from_js_object(env, obj, result, 0, conversion_error,
+                                      &path);
+  }
   return result;
 }
 

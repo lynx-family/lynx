@@ -29,15 +29,18 @@ class NativeTemplateDataHarmony {
                                                   napi_value value);
 
   NativeTemplateDataHarmony(lepus::Value value, bool from_json,
-                            std::string json_string)
+                            std::string json_string,
+                            std::string conversion_error = {})
       : value_(std::move(value)),
         from_json_(from_json),
-        json_string_(std::move(json_string)) {}
+        json_string_(std::move(json_string)),
+        conversion_error_(std::move(conversion_error)) {}
   ~NativeTemplateDataHarmony() = default;
 
   const lepus::Value& GetValue() const { return value_; }
   bool IsFromJson() const { return from_json_; }
   const std::string& GetJsonString() const { return json_string_; }
+  const std::string& GetConversionError() const { return conversion_error_; }
 
  private:
   static napi_ref constructor_ref_;
@@ -45,6 +48,7 @@ class NativeTemplateDataHarmony {
   lepus::Value value_;
   bool from_json_{false};
   std::string json_string_;
+  std::string conversion_error_;
 };
 
 class TemplateDataHarmony : public TemplateData {
@@ -52,7 +56,12 @@ class TemplateDataHarmony : public TemplateData {
   static std::shared_ptr<tasm::TemplateData> GenerateTemplateData(
       napi_env env, napi_value obj, napi_value raw_read_only,
       napi_value raw_processor_name);
+  static std::shared_ptr<tasm::TemplateData> GenerateTemplateData(
+      napi_env env, napi_value obj, napi_value raw_read_only,
+      napi_value raw_processor_name, std::string* error_message);
   static lepus::Value GenerateLepusValue(napi_env env, napi_value obj);
+  static lepus::Value GenerateLepusValue(napi_env env, napi_value obj,
+                                         std::string* error_message);
 
   TemplateDataHarmony() = default;
   ~TemplateDataHarmony() override = default;
