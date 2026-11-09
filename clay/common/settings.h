@@ -21,7 +21,7 @@
 #include "base/include/fml/time/time_point.h"
 #include "base/include/fml/unique_fd.h"
 #include "build/build_config.h"
-#include "clay/common/vsync_callback.h"
+#include "clay/common/vsync/vsync_callback.h"
 #include "clay/fml/mapping.h"
 
 namespace clay {
@@ -127,7 +127,8 @@ struct Settings {
 
   // Configure before creating the shell. Used by the asynchronous compositor
   // instead of platform VSync, without a system-clock fallback. The callback
-  // must retain its source for the lifetime of the shell.
+  // retains its source until the current page is cleaned for recycling.
+  // Shell consumes this field before keeping its settings snapshot.
   VsyncRequestCallback custom_vsync_request;
   int gpu_resource_cache_multiplier = 1;
 

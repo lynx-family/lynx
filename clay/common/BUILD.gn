@@ -27,7 +27,6 @@ source_set("common") {
     "thread_host_holder.h",
     "trail_settings.cc",
     "trail_settings.h",
-    "vsync_callback.h",
   ]
 
   if (!is_android || is_headless) {
@@ -35,6 +34,7 @@ source_set("common") {
   }
 
   deps = [ "../fml:fml" ]
+  public_deps = [ "vsync:vsync_callback" ]
 
   include_dirs = [ "//third_party/boringssl/src/include" ]
 

@@ -14,6 +14,7 @@
 #include "clay/shell/common/scheduler/scheduler_client.h"
 #include "clay/shell/common/services/sync_compositor_service.h"
 #include "clay/shell/common/services/ui_frame_service.h"
+#include "clay/shell/common/services/vsync_waiter_service.h"
 #include "clay/shell/common/vsync_waiter.h"
 
 namespace clay {
@@ -66,7 +67,7 @@ class RasterFrameService
   void ScheduledActionDraw() override;
   void ScheduledActionUploadImage() override;
 
-  void PrepareForRecycle();
+  void PrepareForRecycle(VsyncRequestCallback custom_vsync_request = {});
   void CleanForRecycle();
 
   void NotifyUploadTaskRegistered();
@@ -84,11 +85,14 @@ class RasterFrameService
   void OnDestroy() override;
 
   void StopSchedulerAndCleanLayerTree();
+  void CreateVsyncWaiter(VsyncRequestCallback custom_vsync_request);
 
   Rasterizer* rasterizer_ = nullptr;
   std::unique_ptr<Scheduler> scheduler_;
 
   std::shared_ptr<VsyncWaiter> vsync_waiter_;
+  fml::RefPtr<fml::TaskRunner> raster_task_runner_;
+  clay::Puppet<clay::Owner::kRaster, VsyncWaiterService> vsync_waiter_service_;
   bool vsync_source_active_ = true;
   bool vsync_requested_ = false;
   uint64_t vsync_request_generation_ = 0;

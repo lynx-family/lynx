@@ -280,12 +280,21 @@ copy("lynx_napi_api") {
 if (enable_unittests) {
   executable("lynx_vsync_monitor_unittests") {
     testonly = true
+
     sources = [
+      "../../clay/lynx_adaptor/vsync/vsync_monitor_adaptor_unittest.cc",
       "lynx_vsync_monitor.cc",
+      "lynx_vsync_monitor_priv.h",
       "lynx_vsync_monitor_unittests.cc",
+      "public/capi/lynx_export.h",
+      "public/capi/lynx_vsync_monitor_capi.h",
     ]
     deps = [
+      "../../base/src:base_public_headers",
       "../../base/src:base_static",
+      "../../clay/lynx_adaptor/vsync:vsync_monitor_adaptor",
+      "../../core/public",
+      "//third_party/googletest:gtest",
       "//third_party/googletest:gtest_main",
     ]
   }

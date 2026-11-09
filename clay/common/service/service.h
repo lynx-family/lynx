@@ -15,6 +15,7 @@
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/fml/task_runner.h"
+#include "clay/common/vsync/vsync_callback.h"
 #include "clay/fml/logging.h"
 
 namespace clay {
@@ -74,6 +75,13 @@ struct UIServiceContext {
 struct RasterServiceContext {
   clay::Rasterizer* rasterizer = nullptr;
   uint32_t page_unique_id = 0;
+  // Consumed once on the raster thread through OnInit's const context.
+  // The stored context must not retain a recycled page's source.
+  mutable VsyncRequestCallback initial_custom_vsync_request;
+
+  VsyncRequestCallback TakeInitialCustomVsyncRequest() const {
+    return std::exchange(initial_custom_vsync_request, {});
+  }
 };
 
 struct IOServiceContext {
