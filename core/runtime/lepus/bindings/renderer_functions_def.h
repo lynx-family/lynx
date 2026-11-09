@@ -70,6 +70,8 @@
   V(FiberCreateList)                    \
   V(FiberCreateView)                    \
   V(FiberCreateCompose)                 \
+  V(FiberGetComposeMountElement)        \
+  V(FiberGetComposeContentElement)      \
   V(FiberMeasureTextElement)            \
   V(FiberCreateScrollView)              \
   V(FiberCreateText)                    \
