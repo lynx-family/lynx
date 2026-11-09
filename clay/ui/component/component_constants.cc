@@ -122,6 +122,7 @@ const char* kEventAnimationCancel = "animationcancel";
 const char* kEventAnimationIteration = "animationiteration";
 const char* kEventTransitionStart = "transitionstart";
 const char* kEventTransitionEnd = "transitionend";
+const char* kEventTransitionCancel = "transitioncancel";
 
 const char* kEventChange = "change";
 const char* kEventWillChange = "willchange";

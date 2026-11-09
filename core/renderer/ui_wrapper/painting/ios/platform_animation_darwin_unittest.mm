@@ -5,6 +5,7 @@
 #import <Lynx/LynxAnimationDelegate.h>
 #import <Lynx/LynxConverter+Transform.h>
 #import <Lynx/LynxPlatformAnimation.h>
+#import <Lynx/LynxTransitionAnimationManager.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
@@ -56,6 +57,12 @@ void Apply(LynxUI* ui, gfx::PlatformAnimationCommand command) {
   auto commands = std::make_shared<gfx::PlatformAnimationCommandBatch>();
   commands->push_back(std::move(command));
   tasm::ApplyPlatformAnimationCommands(ui, commands);
+}
+
+id HasElapsedTime(NSTimeInterval elapsedTime) {
+  return [OCMArg checkWithBlock:^BOOL(NSDictionary* params) {
+    return [params[@"elapsedTime"] isEqual:@(elapsedTime)];
+  }];
 }
 }  // namespace
 
@@ -197,6 +204,7 @@ void Apply(LynxUI* ui, gfx::PlatformAnimationCommand command) {
   update.properties.clear();
   update.playback = playback;
   update.executor = executor;
+  update.animation_data.delay = 1000;
   Apply(self.ui, std::move(update));
   [previous.delegate animationDidStop:previous finished:YES];
   XCTAssertTrue([self.ui.animationManager hasAnimationRunning]);
@@ -204,7 +212,7 @@ void Apply(LynxUI* ui, gfx::PlatformAnimationCommand command) {
 
   OCMExpect([self.events sendAnimationEvent:self.ui
                                   eventName:@"animationcancel"
-                                eventParams:[OCMArg any]]);
+                                eventParams:HasElapsedTime(2.0)]);
   auto cancel = OpacityCommand(2, 20000);
   cancel.type = gfx::PlatformAnimationCommandType::kCancel;
   cancel.playback = playback;
@@ -213,6 +221,48 @@ void Apply(LynxUI* ui, gfx::PlatformAnimationCommand command) {
   OCMVerifyAll(self.events);
   XCTAssertTrue(playback->event_state() == EventState::kCanceled);
   XCTAssertNil([self animationForKeyPath:@"opacity"]);
+}
+
+- (void)testElapsedTimeUsesStartAndEndBoundaries {
+  auto playback = lynx::fml::MakeRefCounted<gfx::AnimationPlaybackState>(
+      lynx::fml::TimeDelta::FromSeconds(2), true, EventState::kNotStarted);
+  auto command = OpacityCommand(1, 2500, 2);
+  command.playback = playback;
+  command.executor = playback->ChangeExecutor();
+  command.animation_data.delay = -1500;
+
+  OCMExpect([self.events sendAnimationEvent:self.ui
+                                  eventName:@"animationstart"
+                                eventParams:HasElapsedTime(1.5)]);
+  OCMExpect([self.events sendAnimationEvent:self.ui
+                                  eventName:@"animationend"
+                                eventParams:HasElapsedTime(5.0)]);
+  Apply(self.ui, std::move(command));
+  CAAnimation* animation = [self animationForKeyPath:@"opacity"];
+  [animation.delegate animationDidStop:animation finished:YES];
+  OCMVerifyAll(self.events);
+}
+
+- (void)testLegacyTransitionForcedStopReportsActiveTime {
+  auto* manager = [[LynxTransitionAnimationManager alloc] initWithLynxUI:self.ui];
+  CALayer* layer = self.ui.view.layer;
+  layer.speed = 0;
+  layer.timeOffset = 10;
+  // Configure a two-second opacity transition with a 250ms delay.
+  [manager assembleTransitions:@[ @[ @(OPACITY), @2000, @0, @0, @0, @0, @0, @0, @250 ] ]];
+  [manager performTransitionAnimationsWithOpacity:0.8
+                                         callback:^(BOOL finished) {
+                                           XCTAssertFalse(finished);
+                                         }];
+  [manager applyTransitionAnimation];
+  CAAnimation* animation = [layer animationForKey:@"transition-opacity"];
+  XCTAssertNotNil(animation);
+  layer.timeOffset = animation.beginTime + 0.75;
+  OCMExpect([self.events sendAnimationEvent:self.ui
+                                  eventName:@"transitionend"
+                                eventParams:HasElapsedTime(0.75)]);
+  [manager removeTransitionAnimation:OPACITY];
+  OCMVerifyAll(self.events);
 }
 
 - (void)testInstantEffectsApplyFillAndSendEvents {

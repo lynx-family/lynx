@@ -115,9 +115,10 @@ class MockEventDelegate : public EventDelegate {
   void OnWheelEvent(const std::string&, int, float, float, float, float, float,
                     float) override {}
   void OnKeyEvent(const std::string&, int, const char*, bool) override {}
-  void OnAnimationEvent(const std::string&, const char*, int) override {}
+  void OnAnimationEvent(const std::string&, const char*, int, double) override {
+  }
   void OnTransitionEvent(const std::string&, const char*, int,
-                         ClayAnimationPropertyType) override {}
+                         ClayAnimationPropertyType, double) override {}
   void OnFocusChanged(int, bool) override {}
   void OnHoverChanged(int, bool) override {}
   void OnDragDropEvent(const std::string&, int, clay::Value::Map) override {}

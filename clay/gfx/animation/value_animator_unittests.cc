@@ -25,7 +25,7 @@ class ReentrantEndListener : public AnimatorListenerAdapter {
   explicit ReentrantEndListener(ValueAnimator* animator)
       : animator_(animator) {}
 
-  void OnAnimationEnd(Animator& animation) override {
+  void OnAnimationEnd(Animator& animation, double) override {
     end_count_++;
     animator_->End();
   }
@@ -39,23 +39,32 @@ class ReentrantEndListener : public AnimatorListenerAdapter {
 
 class RecordingAnimatorListener : public AnimatorListenerAdapter {
  public:
-  void OnAnimationStart(Animator& animation) override { start_count_++; }
-  void OnAnimationEnd(Animator& animation) override { end_count_++; }
-  void OnAnimationCancel(Animator& animation) override { cancel_count_++; }
-  void OnAnimationRepeat(Animator& animation) override { repeat_count_++; }
+  void OnAnimationStart(Animator& animation, double elapsed_time) override {
+    start_elapsed_times.push_back(elapsed_time);
+  }
+  void OnAnimationRepeat(Animator& animation, double elapsed_time) override {
+    repeat_elapsed_times.push_back(elapsed_time);
+  }
+  void OnAnimationEnd(Animator& animation, double elapsed_time) override {
+    end_elapsed_times.push_back(elapsed_time);
+  }
+  void OnAnimationCancel(Animator& animation, double elapsed_time) override {
+    cancel_elapsed_times.push_back(elapsed_time);
+  }
   void OnAnimationRemove(Animator& animation) override { remove_count_++; }
 
-  int start_count() const { return start_count_; }
-  int end_count() const { return end_count_; }
-  int cancel_count() const { return cancel_count_; }
-  int repeat_count() const { return repeat_count_; }
+  int start_count() const {
+    return static_cast<int>(start_elapsed_times.size());
+  }
+  int end_count() const { return static_cast<int>(end_elapsed_times.size()); }
   int remove_count() const { return remove_count_; }
 
+  std::vector<double> start_elapsed_times;
+  std::vector<double> repeat_elapsed_times;
+  std::vector<double> end_elapsed_times;
+  std::vector<double> cancel_elapsed_times;
+
  private:
-  int start_count_ = 0;
-  int end_count_ = 0;
-  int cancel_count_ = 0;
-  int repeat_count_ = 0;
   int remove_count_ = 0;
 };
 
@@ -326,11 +335,37 @@ TEST(ValueAnimatorTest, LifecycleFrameReportsAllCrossedRepeats) {
 
   animator.DoAnimationFrame(1000, false);
   animator.DoAnimationFrame(1350, false);
-  EXPECT_EQ(listener.repeat_count(), 3);
+  EXPECT_THAT(
+      listener.repeat_elapsed_times,
+      ::testing::ElementsAre(::testing::DoubleEq(0.1), ::testing::DoubleEq(0.2),
+                             ::testing::DoubleEq(0.3)));
   EXPECT_EQ(listener.end_count(), 0);
 
   animator.DoAnimationFrame(1400, false);
+  EXPECT_THAT(listener.end_elapsed_times,
+              ::testing::ElementsAre(::testing::DoubleEq(0.4)));
+}
+
+TEST(ValueAnimatorTest, StartElapsedTimeUsesActiveIntervalBoundaries) {
+  AnimationData data;
+  data.duration = 100;
+  data.delay = -25;
+  data.fill_mode = ClayAnimationFillModeType::kForwards;
+  ValueAnimator animator(data);
+  RecordingAnimatorListener listener;
+  animator.AddListener(&listener);
+  animator.SetFrameUpdateMode(ValueAnimator::FrameUpdateMode::kLifecycleOnly);
+  animator.Start();
+  animator.DoAnimationFrame(1000, false);
+  animator.DoAnimationFrame(1075, false);
   EXPECT_EQ(listener.end_count(), 1);
+
+  data.duration = 200;
+  animator.UpdateAnimationData(data, 1100);
+  animator.DoAnimationFrame(1100, false);
+  EXPECT_THAT(listener.start_elapsed_times,
+              ::testing::ElementsAre(::testing::DoubleEq(0.025),
+                                     ::testing::DoubleEq(0.2)));
 }
 
 TEST(ValueAnimatorTest, CancelDuringDelayDoesNotEmitStart) {
@@ -345,8 +380,28 @@ TEST(ValueAnimatorTest, CancelDuringDelayDoesNotEmitStart) {
   animator.Cancel();
 
   EXPECT_EQ(listener.start_count(), 0);
-  EXPECT_EQ(listener.cancel_count(), 1);
+  EXPECT_EQ(listener.cancel_elapsed_times.size(), 1u);
   EXPECT_EQ(listener.end_count(), 0);
+}
+
+TEST(ValueAnimatorTest, CancelWhilePausedReportsHeldElapsedTime) {
+  AnimationHandler handler;
+  ValueAnimator animator;
+  animator.SetAnimationHandler(&handler);
+  animator.SetDuration(100);
+  animator.SetStartDelay(25);
+  animator.OverrideDurationScale(2.f);
+  animator.SetFrameUpdateMode(ValueAnimator::FrameUpdateMode::kLifecycleOnly);
+  RecordingAnimatorListener listener;
+  animator.AddListener(&listener);
+  animator.Start();
+  handler.DoAnimationFrame(1000);
+
+  animator.PauseForTest(1150);
+  animator.Cancel();
+
+  EXPECT_THAT(listener.cancel_elapsed_times,
+              ::testing::ElementsAre(::testing::DoubleEq(0.05)));
 }
 
 TEST(ValueAnimatorTest, PresentationFractionHonorsFillAndDirection) {

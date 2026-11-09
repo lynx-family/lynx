@@ -21,17 +21,21 @@ class AnimatorListener {
   // OnAnimationStart(), this may happen during the delay phase when backwards
   // fill is enabled.
   virtual void OnAnimationPrepare(Animator& animation) {}
-  virtual void OnAnimationStart(Animator& animation) = 0;
-  virtual void OnAnimationEnd(Animator& animation) = 0;
-  virtual void OnAnimationCancel(Animator& animation) = 0;
-  virtual void OnAnimationRepeat(Animator& animation) = 0;
+  virtual void OnAnimationStart(Animator& animation,
+                                double elapsed_time = 0.0) = 0;
+  virtual void OnAnimationEnd(Animator& animation,
+                              double elapsed_time = 0.0) = 0;
+  virtual void OnAnimationCancel(Animator& animation,
+                                 double elapsed_time = 0.0) = 0;
+  virtual void OnAnimationRepeat(Animator& animation,
+                                 double elapsed_time = 0.0) = 0;
   // the OnAnimationRemove tells the callback removed from handler. so, the
   // value needs to reset in this method. On the other hand, OnAnimationEnd is
   // used to fire event to frontend.
   virtual void OnAnimationRemove(Animator& animation) {}
 
   virtual void OnAnimationStart(Animator& animation, bool isReverse) {
-    OnAnimationStart(animation);
+    OnAnimationStart(animation, 0.0);
   }
 
   virtual ~AnimatorListener() = default;

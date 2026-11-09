@@ -36,9 +36,10 @@ void AnimationEventServiceImpl::OnAnimationEvent(
   fml::TaskRunner::RunNowOrPostTask(
       task_runners_->SelectTaskRunner<clay::Owner::kUI>(),
       [engine = engine_, element_id, type = animation_params.event_type,
-       name = animation_name] {
+       name = animation_name, elapsed_time = animation_params.elapsed_time] {
         if (engine) {
-          engine->OnAnimationEvent(element_id, {type, name.c_str()});
+          engine->OnAnimationEvent(element_id,
+                                   {type, name.c_str(), elapsed_time});
         }
       });
 }
@@ -51,10 +52,11 @@ void AnimationEventServiceImpl::OnTransitionEvent(
   fml::TaskRunner::RunNowOrPostTask(
       task_runners_->SelectTaskRunner<clay::Owner::kUI>(),
       [engine = engine_, element_id, type = animation_params.event_type,
-       name = animation_name, property_type] {
+       name = animation_name, elapsed_time = animation_params.elapsed_time,
+       property_type] {
         if (engine) {
-          engine->OnTransitionEvent(element_id, {type, name.c_str()},
-                                    property_type);
+          engine->OnTransitionEvent(
+              element_id, {type, name.c_str(), elapsed_time}, property_type);
         }
       });
 }

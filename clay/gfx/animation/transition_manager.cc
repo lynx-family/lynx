@@ -15,7 +15,10 @@ namespace clay {
 
 TransitionManager::TransitionManager(AnimatorTarget* target)
     : target_(target) {}
-TransitionManager::~TransitionManager() { CancelAllAnimators(); }
+TransitionManager::~TransitionManager() {
+  event_handler_ = nullptr;
+  CancelAllAnimators();
+}
 
 void TransitionManager::AppendData(const TransitionData& data) {
   EndAllAnimators();
@@ -115,20 +118,32 @@ void TransitionManager::CancelAllAnimators() {
 }
 
 void TransitionManager::OnAnimationStart(const Animator& animation,
-                                         ClayAnimationPropertyType type) {
+                                         ClayAnimationPropertyType type,
+                                         double elapsed_time) {
   if (event_handler_) {
     const std::string& animation_name = animation.GetAnimationName();
     AnimationParams params{ClayEventType::kClayEventTypeTransitionStart,
-                           animation_name.c_str()};
+                           animation_name.c_str(), elapsed_time};
     event_handler_->OnTransitionEvent(params, type);
   }
 }
 void TransitionManager::OnAnimationEnd(const Animator& animation,
-                                       ClayAnimationPropertyType type) {
+                                       ClayAnimationPropertyType type,
+                                       double elapsed_time) {
   if (event_handler_) {
     const std::string& animation_name = animation.GetAnimationName();
     AnimationParams params{ClayEventType::kClayEventTypeTransitionEnd,
-                           animation_name.c_str()};
+                           animation_name.c_str(), elapsed_time};
+    event_handler_->OnTransitionEvent(params, type);
+  }
+}
+void TransitionManager::OnAnimationCancel(const Animator& animation,
+                                          ClayAnimationPropertyType type,
+                                          double elapsed_time) {
+  if (event_handler_) {
+    const std::string& animation_name = animation.GetAnimationName();
+    AnimationParams params{ClayEventType::kClayEventTypeTransitionCancel,
+                           animation_name.c_str(), elapsed_time};
     event_handler_->OnTransitionEvent(params, type);
   }
 }

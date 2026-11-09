@@ -131,6 +131,7 @@ extern const char* kEventAnimationCancel;
 extern const char* kEventAnimationIteration;
 extern const char* kEventTransitionStart;
 extern const char* kEventTransitionEnd;
+extern const char* kEventTransitionCancel;
 
 extern const char* kEventChange;
 extern const char* kEventWillChange;

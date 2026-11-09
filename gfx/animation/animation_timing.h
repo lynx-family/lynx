@@ -5,6 +5,8 @@
 #ifndef GFX_ANIMATION_ANIMATION_TIMING_H_
 #define GFX_ANIMATION_ANIMATION_TIMING_H_
 
+#include <cstdint>
+
 #include "base/include/fml/time/time_point.h"
 #include "gfx/animation/animation_types.h"
 #include "gfx/gfx_export.h"
@@ -52,6 +54,8 @@ struct TrimmedAnimationTime {
   int current_iteration_count{0};
 };
 
+GFX_EXPORT fml::TimeDelta GetRepeatDuration(int64_t iteration_count,
+                                            fml::TimeDelta duration);
 GFX_EXPORT fml::TimeDelta GetRepeatDuration(const AnimationData* data,
                                             fml::TimeDelta duration);
 GFX_EXPORT fml::TimeDelta ConvertMonotonicTimeToLocalTime(
@@ -64,6 +68,8 @@ GFX_EXPORT fml::TimeDelta CalculateActiveTime(const AnimationTimingInput& input,
                                               fml::TimePoint monotonic_time);
 // Elapsed time since the start delay, clamped to [0, active duration]. Unlike
 // Web Animations active time, event time is independent of fill-mode.
+GFX_EXPORT fml::TimeDelta CalculateEventTime(
+    fml::TimeDelta elapsed_since_active_start, fml::TimeDelta active_duration);
 GFX_EXPORT fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
                                              fml::TimeDelta local_time);
 GFX_EXPORT fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
