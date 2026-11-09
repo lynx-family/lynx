@@ -25,6 +25,7 @@ public final class LynxImageRequestOptions {
   private final @Nullable String mFinalUrl;
   private final @Nullable List<String> mFallbackUrls;
   private final boolean mUseRGB565;
+  private final boolean mIsPiercedImage;
   private final @Nullable @RequestPriority String mPriority;
 
   private LynxImageRequestOptions(@NonNull Builder builder) {
@@ -33,6 +34,7 @@ public final class LynxImageRequestOptions {
         ? null
         : Collections.unmodifiableList(new ArrayList<>(builder.mFallbackUrls));
     mUseRGB565 = builder.mUseRGB565;
+    mIsPiercedImage = builder.mIsPiercedImage;
     mPriority = builder.mPriority;
   }
 
@@ -55,6 +57,11 @@ public final class LynxImageRequestOptions {
     return mUseRGB565;
   }
 
+  /** Returns whether Lynx clears the image and placeholder and skips loading. Defaults to false. */
+  public boolean isPiercedImage() {
+    return mIsPiercedImage;
+  }
+
   @Nullable
   @RequestPriority
   public String getPriority() {
@@ -66,6 +73,7 @@ public final class LynxImageRequestOptions {
     private @Nullable String mFinalUrl;
     private @Nullable List<String> mFallbackUrls;
     private boolean mUseRGB565;
+    private boolean mIsPiercedImage;
     private @Nullable @RequestPriority String mPriority;
 
     private Builder() {}
@@ -85,6 +93,13 @@ public final class LynxImageRequestOptions {
     @NonNull
     public Builder setUseRGB565(boolean useRGB565) {
       mUseRGB565 = useRGB565;
+      return this;
+    }
+
+    /** Clears the image and placeholder and skips loading when true. The default is false. */
+    @NonNull
+    public Builder setPiercedImage(boolean piercedImage) {
+      mIsPiercedImage = piercedImage;
       return this;
     }
 
