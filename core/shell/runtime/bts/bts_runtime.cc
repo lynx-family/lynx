@@ -552,6 +552,7 @@ void BTSRuntime::CallJSCallback(
   }
   uint64_t callback_call_start_time = base::CurrentSystemTimeMilliseconds();
   js_executor_->invokeCallback(callback, &iterator->second);
+  if (callback->interception_pending) return;
   callback->ReportLynxErrors(delegate_.get());
   LOGV(log_context_
        << " LynxModule, LynxRuntime::CallJSCallback did invoke callback, id: "

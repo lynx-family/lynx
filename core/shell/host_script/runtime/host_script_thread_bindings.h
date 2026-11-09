@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "base/include/fml/task_runner.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -39,7 +40,7 @@ class HostScriptThreadBindings final
       runtime::js::Runtime& runtime, fml::RefPtr<fml::TaskRunner> runner,
       Executor executor);
 
-  // Installs runOn* and __hostScriptThread function/source bindings.
+  // Installs runOn*, __hostScriptThread and cancellable setTimeout bindings.
   // Same-domain functions keep their closure; cross-domain functions must use
   // target globals or local variables. Only copied source crosses runners.
   // Install and Detach must run on the owning runner, before engine teardown.
@@ -62,6 +63,10 @@ class HostScriptThreadBindings final
   CallResult Run(Domain domain, const Value* args, size_t count);
   bool DefineProperty(runtime::js::Object& target, const char* name,
                       Value value, bool mutable_export = true);
+  CallResult SetTimeout(const Value* args, size_t count);
+  void FireTimer(uint64_t id);
+  uint64_t next_timer_ = 0;
+  std::unordered_map<uint64_t, std::vector<Value>> timers_;
   void Complete(uint64_t request, const Result& result);
   void Reject(Pending pending, const char* code, const char* message);
 
