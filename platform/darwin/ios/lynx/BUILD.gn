@@ -402,8 +402,6 @@ subspec_target("lynx") {
     "ui/list/lynx_collection/layout/LynxCollectionViewLayoutSectionModel.m",
     "ui/lynx_basic_shapes/LBSCoreGraphicsPathParser.h",
     "ui/lynx_basic_shapes/LBSCoreGraphicsPathParser.m",
-    "ui/lynx_basic_shapes/LBSPathParser.h",
-    "ui/lynx_basic_shapes/LBSPathParser.m",
     "ui/lynx_basic_shapes/LynxBasicShape.m",
     "ui/scroll_view/AbsLynxUIScroller.m",
     "ui/scroll_view/LynxBounceView.m",

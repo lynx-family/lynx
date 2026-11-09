@@ -6,11 +6,13 @@ import("../config.gni")
 import("../testing/test.gni")
 import("animation/animation.gni")
 import("geometry/geometry.gni")
+import("path/path.gni")
 
-gfx_public_headers =
-    [ "gfx_export.h" ] + gfx_animation_headers + gfx_geometry_headers
+gfx_public_headers = [ "gfx_export.h" ] + gfx_animation_headers +
+                     gfx_geometry_headers + gfx_path_headers
 
-gfx_source_files = gfx_animation_sources + gfx_geometry_sources
+gfx_source_files =
+    gfx_animation_sources + gfx_geometry_sources + gfx_path_sources
 
 gfx_builds_shared_library = (is_android || is_harmony) && !is_headless
 
@@ -95,6 +97,7 @@ unittest_exec("geometry_unittests_exec") {
     "geometry/quaternion_unittest.cc",
     "geometry/transform_operation_unittest.cc",
     "geometry/transform_operations_unittest.cc",
+    "path/lbs_path_parser_unittest.cc",
   ]
   deps = [
     ":gfx_sources",

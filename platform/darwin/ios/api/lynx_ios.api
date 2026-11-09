@@ -127,18 +127,6 @@ public class JSModule : NSObject {
   public void JSModule()::setJSProxy:(const std::shared_ptr< lynx::shell::JSProxyDarwin > &proxy);
 }
 
-public struct LBSPathConsumer {
-  public int LBSPathConsumer::type type;
-  public void* LBSPathConsumer::ctx ctx;
-  public int LBSPathConsumer::error error;
-  public void(* LBSPathConsumer::MoveToPoint) (void *ctx, float x, float y) MoveToPoint;
-  public void(* LBSPathConsumer::LineToPoint) (void *ctx, float x, float y) LineToPoint;
-  public void(* LBSPathConsumer::CubicToPoint) (void *ctx, float cp1x, float cp1y, float cp2x, float cp2y, float x, float y) CubicToPoint;
-  public void(* LBSPathConsumer::QuadToPoint) (void *ctx, float cpx, float cpy, float x, float y) QuadToPoint;
-  public void(* LBSPathConsumer::EllipticToPoint) (void *ctx, float cpx, float cpy, float rx, float ry, float angle, bool large, bool sweep, float x, float y) EllipticToPoint;
-  public void(* LBSPathConsumer::ClosePath) (void *ctx) ClosePath;
-}
-
 public class LineSpacingAdaptation : NSObject, <NSLayoutManagerDelegate> {
   public CGFloat LineSpacingAdaptation::calculatedLineSpacing calculatedLineSpacing;
   public BOOL LineSpacingAdaptation::adjustBaseLineOffsetForVerticalAlignCenter adjustBaseLineOffsetForVerticalAlignCenter;
@@ -7476,16 +7464,6 @@ public enum LynxListContainerScrollState {
 
   typedef struct LBSPathConsumer LBSPathConsumer
   public CGPathRef LBSCreatePathFromData(const char *data);
-
-public enum LBSPathConsumerType {
-  kLBSPathConsumerTypeUnknown
-  kLBSPathConsumerTypeCoreGraphics
-  kLBSPathConsumerTypeString
-}
-
-  typedef enum LBSPathConsumerType LBSPathConsumerType
-  typedef struct LBSPathConsumer LBSPathConsumer
-  public void LBSParsePathWithConsumer(const char *data, LBSPathConsumer *consumer);
 
   typedef void(^ LynxPropsDidUpdateBlockReadyBlock) (LynxUI *)
 
