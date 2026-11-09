@@ -1143,6 +1143,8 @@ TEST_F(CSSKeyframeManagerTest,
   auto end_events = test_manager->TakePendingAnimationEventsForNewPipeline();
   ASSERT_EQ(1U, end_events.size());
   EXPECT_TRUE(end_events[0].send_end_event);
+  EXPECT_EQ(fml::TimeDelta::FromSeconds(1),
+            end_events[0].event_timing.end_elapsed_time);
 
   auto repeated_sample =
       test_manager->CollectAnimationUpdatesForNewPipeline(end_time);
@@ -1631,7 +1633,8 @@ TEST_F(CSSKeyframeManagerTest,
             test_manager->animations_map()[base::String("move")]->GetState());
 
   // Rebuild a completed effect without replaying its already delivered end.
-  end_events[0].animation->SendEndEvent();
+  end_events[0].animation->SendEndEvent(
+      end_events[0].event_timing.end_elapsed_time);
   animation_data[0].duration = 500;
   test_manager->SyncAnimationDataForNewPipeline(animation_data, true);
   auto rebuild_time = TimePointFromMs(2008);

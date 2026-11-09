@@ -12,7 +12,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <tuple>
 #include <vector>
 
 #include "base/include/fml/time/time_point.h"
@@ -36,6 +35,7 @@ class GFX_EXPORT KeyframeEffect {
     bool start_event_due{false};
     bool end_event_due{false};
     int iteration_events_due{0};
+    AnimationEventTiming event_timing;
     bool has_finished_all{false};
     std::optional<fml::TimeDelta> active_time;
     std::vector<Sample> samples;

@@ -675,6 +675,7 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
         event_record.send_start_event = sample_result.should_send_start_event;
         event_record.send_end_event = sample_result.should_send_end_event;
         event_record.iteration_events_due = sample_result.iteration_events_due;
+        event_record.event_timing = sample_result.event_timing;
         pending_event_records_.push_back(std::move(event_record));
       }
       if (sample_result.should_persist_fill_styles &&
@@ -747,6 +748,8 @@ void CSSKeyframeManager::QueueCancelEvent(
   AnimationSampleForNewPipeline::EventRecord event_record;
   event_record.animation = animation;
   event_record.send_cancel_event = true;
+  event_record.cancel_elapsed_time =
+      animation->ElapsedTimeAtCancel(animation->GetCurrentTime());
   pending_event_records_.push_back(std::move(event_record));
 }
 
@@ -813,6 +816,7 @@ void CSSKeyframeManager::PrepareAnimationRemoval(
     const std::shared_ptr<Animation>& animation,
     const tasm::StyleMap* new_base_resolved_styles,
     const tasm::StyleMap* new_underlying_layout_only_styles) {
+  QueueCancelEvent(animation);
   if (animation != nullptr) {
     // This path does not call Destroy(). Retire the Inspector record even for
     // finished animations, which do not dispatch a page cancel event.
@@ -820,7 +824,6 @@ void CSSKeyframeManager::PrepareAnimationRemoval(
   }
   ClearAnimationEffects(animation, new_base_resolved_styles,
                         new_underlying_layout_only_styles);
-  QueueCancelEvent(animation);
 }
 
 void CSSKeyframeManager::ClearPersistedFillStyle(

@@ -9,7 +9,6 @@
 #include "core/animation/keyframe_effect.h"
 
 #include <algorithm>
-#include <tuple>
 #include <utility>
 
 #include "base/include/log/logging.h"
@@ -42,16 +41,6 @@ gfx::AnimationTimingInput CreateCustomPropertyTimingInput(
                     animation.pause_time() != fml::TimePoint::Min();
   input.run_state = run_state;
   return input;
-}
-
-std::tuple<bool, bool> UpdateCustomPropertyAnimationState(
-    const Animation& animation, const gfx::AnimationData& data,
-    fml::TimePoint monotonic_time, gfx::TimingRunState& run_state) {
-  auto update = gfx::UpdateTimingState(
-      CreateCustomPropertyTimingInput(animation, data, run_state),
-      monotonic_time);
-  run_state = update.run_state;
-  return {update.start_event_due, update.end_event_due};
 }
 
 }  // namespace
@@ -161,14 +150,16 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
   if (keyframe_models_.empty() && has_custom_property_keyframes_ &&
       animation_ != nullptr) {
     auto gfx_animation_data = ToGfxAnimationData(*animation_->animation_data());
-    std::tie(tick_result.start_event_due, tick_result.end_event_due) =
-        UpdateCustomPropertyAnimationState(*animation_, gfx_animation_data,
-                                           monotonic_time,
-                                           custom_property_run_state_);
+    const auto timing_input = CreateCustomPropertyTimingInput(
+        *animation_, gfx_animation_data, custom_property_run_state_);
+    const auto update = gfx::UpdateTimingState(timing_input, monotonic_time);
+    custom_property_run_state_ = update.run_state;
+    tick_result.start_event_due = update.start_event_due;
+    tick_result.end_event_due = update.end_event_due;
+    tick_result.event_timing.start_elapsed_time = update.start_elapsed_time;
+    tick_result.event_timing.end_elapsed_time = update.end_elapsed_time;
     tick_result.has_finished_all =
         custom_property_run_state_ == gfx::TimingRunState::FINISHED;
-    auto timing_input = CreateCustomPropertyTimingInput(
-        *animation_, gfx_animation_data, custom_property_run_state_);
     auto elapsed_time =
         events_only ? gfx::CalculateEventTime(timing_input, monotonic_time)
                     : gfx::CalculateActiveTime(timing_input, monotonic_time);
@@ -180,8 +171,12 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
           custom_property_current_iteration_count_, events_only);
       custom_property_current_iteration_count_ =
           trimmed.current_iteration_count;
-      tick_result.iteration_events_due += gfx::CountIterationEventsDue(
+      tick_result.iteration_events_due = gfx::CountIterationEventsDue(
           old_iteration_count, custom_property_current_iteration_count_);
+      if (tick_result.iteration_events_due > 0) {
+        tick_result.event_timing.first_iteration = old_iteration_count + 1;
+        tick_result.event_timing.iteration_duration = timing_input.duration;
+      }
     }
   }
   if (animation_ != nullptr && tick_result.active_time) {
@@ -191,6 +186,7 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
   result.should_send_start_event = tick_result.start_event_due;
   result.should_send_end_event = tick_result.end_event_due;
   result.iteration_events_due = tick_result.iteration_events_due;
+  result.event_timing = tick_result.event_timing;
 
   if (events_only) {
     return result;
@@ -254,7 +250,8 @@ void KeyframeEffect::ApplyTickResult(
   style_map.reserve(keyframe_models_.size());
 
   if (animation_ != nullptr && !suppress_animation_events) {
-    animation_->SendIterationEvents(tick_result.iteration_events_due);
+    animation_->SendIterationEvents(tick_result.iteration_events_due,
+                                    tick_result.event_timing);
   }
 
   for (const auto& sample : tick_result.samples) {
@@ -300,11 +297,11 @@ void KeyframeEffect::ApplyTickResult(
 
   if (animation_ && !suppress_animation_events) {
     if (tick_result.start_event_due) {
-      animation_->SendStartEvent();
+      animation_->SendStartEvent(tick_result.event_timing.start_elapsed_time);
       LOGI("Lynx Animation play, name is: " << animation_->name().str());
     }
     if (tick_result.end_event_due) {
-      animation_->SendEndEvent();
+      animation_->SendEndEvent(tick_result.event_timing.end_elapsed_time);
       LOGI("Lynx Animation end, name is: " << animation_->name().str());
     }
   }

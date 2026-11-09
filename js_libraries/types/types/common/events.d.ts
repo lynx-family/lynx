@@ -286,6 +286,8 @@ export interface BaseAnimationEvent<T> extends BaseEventOrig<{}, T> {
    * @PC
    */
   params: {
+    /** Animation time in seconds at the event boundary, excluding pauses and positive delay. */
+    readonly elapsedTime?: number;
     /**
      * Animation type.
      * @Android
@@ -316,7 +318,7 @@ export interface BaseAnimationEvent<T> extends BaseEventOrig<{}, T> {
 export interface AnimationEvent extends BaseAnimationEvent<Target> {}
 
 export interface BaseTransitionEvent<T> extends BaseEventOrig<{}, T> {
-  params:
+  params: (
     | {
         animation_type: 'transition-animation';
         animation_name: 'width' | 'height' | 'left' | 'top' | 'right' | 'bottom' | 'background-color' | 'opacity';
@@ -335,7 +337,11 @@ export interface BaseTransitionEvent<T> extends BaseEventOrig<{}, T> {
           | 'transition-transform'
           | 'transition-background-color'
           | 'transition-opacity';
-      };
+      }
+  ) & {
+    /** Transition time in seconds at the event boundary, excluding positive delay. */
+    readonly elapsedTime?: number;
+  };
 }
 export interface TransitionEvent extends BaseTransitionEvent<Target> {}
 
