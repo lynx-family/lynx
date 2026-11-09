@@ -9,7 +9,7 @@
 #import <stdlib.h>
 
 #import <CoreGraphics/CGPath.h>
-#import "LBSPathParser.h"
+#include "gfx/public/path_parser.h"
 
 // Member functions of path segment consumer.
 static void LBSCoreGraphicsMoveTo(void *ctx, float x, float y);

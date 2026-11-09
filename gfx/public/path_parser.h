@@ -2,10 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef LYNX_BASIC_SHAPE_PATH_CONSUMER_H_
-#define LYNX_BASIC_SHAPE_PATH_CONSUMER_H_
+#ifndef GFX_PUBLIC_PATH_PARSER_H_
+#define GFX_PUBLIC_PATH_PARSER_H_
+#include <stdbool.h>
+#include <stdint.h>
 
-#import <stdbool.h>
+#include "gfx/gfx_export.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,9 +57,9 @@ typedef struct LBSPathConsumer {
  caller to ensure correct implementation and memory management of the path
  consumer.
  */
-void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer);
+GFX_EXPORT void LBSParsePathWithConsumer(const char* data,
+                                         LBSPathConsumer* consumer);
 #ifdef __cplusplus
 }
 #endif
-
-#endif  // LYNX_BASIC_SHAPE_PATH_CONSUMER_H_
+#endif  // GFX_PUBLIC_PATH_PARSER_H_
