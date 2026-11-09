@@ -1,12 +1,13 @@
 // Copyright 2026 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-package com.lynx.tasm;
+package com.lynx.tasm.transfer;
 
 import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.LynxView;
 
 /**
  * Receives transfer views created by {@code <transfer-view>} nodes.

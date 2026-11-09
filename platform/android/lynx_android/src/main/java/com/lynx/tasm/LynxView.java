@@ -64,6 +64,10 @@ import com.lynx.tasm.featurecount.LynxFeatureCounter;
 import com.lynx.tasm.group.ILynxViewGroup;
 import com.lynx.tasm.service.security.ILynxSecurityTarget;
 import com.lynx.tasm.theme.LynxTheme;
+import com.lynx.tasm.transfer.LynxTransferClient;
+import com.lynx.tasm.transfer.LynxTransferListener;
+import com.lynx.tasm.transfer.LynxTransferManager;
+import com.lynx.tasm.transfer.LynxTransferredView;
 import com.lynx.tasm.utils.CallStackUtil;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -209,6 +213,62 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   }
 
   /**
+   * Experimental API. Creates a component in this view's loaded template and returns a stable
+   * native container. Call on the UI thread after {@link LynxViewClient#onLoadSuccess()}.
+   * The template must register the component and listen for transfer events on lynx.getNative().
+   *
+   * <p>The returned container may initially be empty. Rendering errors use this LynxView's existing
+   * error callbacks. This method does not load another template or create another runtime.
+   *
+   * @param componentName the registered component name
+   * @param initialProps initial component props
+   * @throws IllegalStateException if the template has not finished loading or has been destroyed
+   * @throws IllegalArgumentException if the component name is empty
+   */
+  @UiThread
+  @NonNull
+  public LynxTransferredView loadTransfer(
+      @NonNull String componentName, @NonNull ReadableMap initialProps) {
+    return loadTransfer(componentName, initialProps, null);
+  }
+
+  /**
+   * Creates a managed transfer with optional synchronous UI-thread lifecycle callbacks.
+   * onLoadStart is called before this method returns; use the view passed to the callback.
+   */
+  @UiThread
+  @NonNull
+  public LynxTransferredView loadTransfer(@NonNull String componentName,
+      @NonNull ReadableMap initialProps, @Nullable LynxTransferClient client) {
+    UIThreadUtils.assertOnUiThread();
+    if (componentName == null || componentName.isEmpty()) {
+      throw new IllegalArgumentException("componentName must not be empty.");
+    }
+    if (mDestroyed || mLynxTemplateRender == null || !mLynxTemplateRender.isTransferReady()) {
+      throw new IllegalStateException("loadTransfer requires a loaded template.");
+    }
+    return mTransferManager.loadTransfer(this, componentName, initialProps, client);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void dispatchTransferEvent(String type, JavaOnlyMap data) {
+    if (mDestroyed || mLynxTemplateRender == null || !mLynxTemplateRender.isTransferReady()) {
+      LLog.w(TAG, "Ignoring " + type + ": the transfer's template is no longer available.");
+      return;
+    }
+    mLynxTemplateRender.dispatchTransferEvent(type, data);
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void releaseTransferredView(String id) {
+    mTransferManager.releaseTransferredView(id);
+  }
+
+  void clearTransferredViews() {
+    mTransferManager.clearTransferredViews();
+  }
+
+  /**
    * Experimental API. This API is unstable and may change or be removed without notice.
    *
    * <p>Registers a listener that can take ownership of views created by {@code <transfer-view>}
@@ -250,6 +310,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   }
 
   public void reloadAndInit() {
+    clearTransferredViews();
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
     if (lynxUIRenderer != null) {
       lynxUIRenderer.onReloadAndInitUIThreadPart();
