@@ -137,39 +137,6 @@ void LynxDevToolNG::RegisterGlobalDomainAgents(
       "LynxSetting", std::make_unique<InspectorLynxSettingAgent>());
 }
 
-void LynxDevToolNG::RegisterGlobalDomainAgents(
-    DevToolMessageDispatcher& global_dispatcher,
-    const std::string& domain_key) {
-  std::string domain_key_prefix(kDomainKeyPrefix);
-  if (!domain_key.compare(domain_key_prefix + "tracing")) {
-    global_dispatcher.RegisterAgent("Tracing",
-                                    std::make_unique<InspectorTracingAgent>());
-  } else if (!domain_key.compare(domain_key_prefix + "recording")) {
-    global_dispatcher.RegisterAgent(
-        "Recording", std::make_unique<InspectorTestBenchRecorderAgent>());
-  } else if (!domain_key.compare(domain_key_prefix + "replay")) {
-    global_dispatcher.RegisterAgent(
-        "Replay", std::make_unique<InspectorTestBenchReplayAgent>());
-  } else if (!domain_key.compare(domain_key_prefix + "io")) {
-    global_dispatcher.RegisterAgent("IO", std::make_unique<InspectorIOAgent>());
-  } else if (!domain_key.compare(domain_key_prefix + "memory")) {
-    global_dispatcher.RegisterAgent("Memory",
-                                    std::make_unique<InspectorMemoryAgent>());
-  } else if (!domain_key.compare(domain_key_prefix + "systeminfo")) {
-    global_dispatcher.RegisterAgent("SystemInfo",
-                                    std::make_unique<SystemInfoAgent>());
-  } else if (!domain_key.compare(domain_key_prefix + "component")) {
-    global_dispatcher.RegisterAgent(
-        "Component", std::make_unique<InspectorComponentAgent>());
-  } else if (!domain_key.compare(domain_key_prefix + "lynxsetting")) {
-    global_dispatcher.RegisterAgent(
-        "LynxSetting", std::make_unique<InspectorLynxSettingAgent>());
-  } else if (!domain_key.compare(domain_key_prefix + "hsr")) {
-    global_dispatcher.RegisterAgent("HSR",
-                                    std::make_unique<InspectorHSRAgent>());
-  }
-}
-
 void LynxDevToolNG::RegisterInstanceDomainAgents() {
   RegisterAgent("Inspector",
                 std::make_unique<InspectorAgent>(devtool_mediator_));
