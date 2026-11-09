@@ -317,6 +317,8 @@ void UIOwner::OnNodeReady(int sign) {
 
 void UIOwner::OnNodeReload(int sign) {
   if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
+    // Complete reload even when no properties or layout changed.
+    MarkHasUIOperations(it->second.get());
     it->second->OnNodeReload();
   }
 }

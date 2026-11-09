@@ -130,6 +130,8 @@ public class LynxImageManager implements Drawable.Callback {
   private final @Nullable Object mImageCallerContext;
 
   private String mSrc;
+  private LynxDetailEvent mLastImageResult;
+  private boolean mPendingReload;
 
   private String mPlaceholder;
 
@@ -531,6 +533,33 @@ public class LynxImageManager implements Drawable.Callback {
     mEnableImageEventReport = LynxEnv.inst().enableImageEventReport();
   }
 
+  public void onNodeReload() {
+    mPendingReload = true;
+  }
+
+  public void onPatchFinish() {
+    LynxDetailEvent result = mPendingReload ? mLastImageResult : null;
+    mPendingReload = false;
+    // Property updates can precede onNodeReady, which starts the new request.
+    if (result == null
+        || isDirty(SRC_CHANGED | BLUR_RADIUS_CHANGED | DOWN_SAMPLING_SCALE_CHANGED
+            | REGION_TO_DECODE_CHANGED)) {
+      return;
+    }
+    if (mContext != null && getEventSign() >= 0
+        && (EVENT_LOAD.equals(result.getName()) ? shouldEmitLoadEvent() : shouldEmitErrorEvent())) {
+      mContext.getEventEmitter().sendCustomEvent(new LynxDetailEvent(
+          getEventSign(), result.getName(), new HashMap<>(result.eventParams())));
+    }
+  }
+
+  private void sendImageResult(LynxDetailEvent result) {
+    mLastImageResult = result;
+    // A real callback fulfills the pending notification for this request.
+    mPendingReload = false;
+    mContext.getEventEmitter().sendCustomEvent(result);
+  }
+
   // region setProps
   public void setSkipRedirection(boolean skipRedirection) {
     mSkipRedirection = skipRedirection;
@@ -562,6 +591,7 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void setSrc(String src) {
     if (!TextUtils.equals(src, mSrc)) {
+      mLastImageResult = null;
       mSrc = src;
       dirtyFlags |= SRC_CHANGED;
     }
@@ -1012,6 +1042,7 @@ public class LynxImageManager implements Drawable.Callback {
   public void onPropsUpdated() {}
 
   private void updateImageSource() {
+    mLastImageResult = null;
     if (TraceEvent.isTracingStarted()) {
       TraceEvent.beginSection(TraceEventDef.IMAGE_MANAGER_UPDATE_IMAGE_SOURCE);
     }
@@ -1227,6 +1258,7 @@ public class LynxImageManager implements Drawable.Callback {
         : null;
     ImageRequestInfo requestInfo = createImageRequest(width, height, mSrc, true);
     if (requestInfo != null) {
+      mLastImageResult = null;
       mCurImageRequest = requestInfo;
       mStartTimeStamp = System.currentTimeMillis();
       if (shouldEmitLoadStartEvent() && getEventSign() >= 0) {
@@ -1276,6 +1308,7 @@ public class LynxImageManager implements Drawable.Callback {
   }
 
   public void destroy() {
+    mLastImageResult = null;
     releaseAllImage();
   }
 
@@ -1649,7 +1682,7 @@ public class LynxImageManager implements Drawable.Callback {
       LynxDetailEvent event = new LynxDetailEvent(sign, EVENT_LOAD);
       event.addDetail("height", height);
       event.addDetail("width", width);
-      mContext.getEventEmitter().sendCustomEvent(event);
+      sendImageResult(event);
     }
   }
 
@@ -1678,7 +1711,7 @@ public class LynxImageManager implements Drawable.Callback {
       event.addDetail("load_finish", mFinishTimeStamp);
       event.addDetail("cost", mFinishTimeStamp - mStartTimeStamp);
 
-      mContext.getEventEmitter().sendCustomEvent(event);
+      sendImageResult(event);
     }
   }
 
@@ -1697,7 +1730,7 @@ public class LynxImageManager implements Drawable.Callback {
       event.addDetail("errMsg", lynxError.getSummaryMessage() + ": " + lynxError.getRootCause());
       event.addDetail(ImageErrorCodeUtils.LYNX_IMAGE_CATEGORIZED_CODE_KEY, categorizedCode);
       event.addDetail(ImageErrorCodeUtils.LYNX_IMAGE_ERROR_CODE_KEY, imageErrorCode);
-      mContext.getEventEmitter().sendCustomEvent(event);
+      sendImageResult(event);
     }
 
     if (mUI != null) {
