@@ -22,6 +22,8 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.transfer.UITransfer;
+import com.lynx.tasm.transfer.LynxTransferListener;
+import com.lynx.tasm.transfer.LynxTransferManager;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

@@ -14,6 +14,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.lynx.tasm.behavior.LayoutNodeManager;
+import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.shadow.AlignContext;
 import com.lynx.tasm.behavior.shadow.AlignParam;
 import com.lynx.tasm.behavior.shadow.MeasureContext;
@@ -33,6 +34,7 @@ public class TransferShadowNodeTest {
   public void setUp() {
     mLayoutNodeManager = mock(LayoutNodeManager.class);
     mShadowNode = new TransferShadowNode();
+    mShadowNode.setContext(mock(LynxContext.class));
     mShadowNode.setLayoutNodeManager(mLayoutNodeManager);
     mShadowNode.setSignature(10);
   }
