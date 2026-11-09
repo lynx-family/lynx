@@ -2,59 +2,52 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LBSPathParser.h"
+#include <ctype.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#import <ctype.h>
-#import <stdbool.h>
-#import <stdio.h>
-#import <stdlib.h>
-#import <string.h>
+#include "gfx/public/path_parser.h"
+
+static bool LBSIsDigit(char c) { return c >= '0' && c <= '9'; }
+static bool LBSReadNumber(const char** s, float* result) {
+  const char* begin = *s;
+  const char* end = begin;
+  if (*end == '+' || *end == '-') ++end;
+  bool digits = false;
+  while (LBSIsDigit(*end)) {
+    digits = true;
+    ++end;
+  }
+  if (*end == '.') {
+    ++end;
+    while (LBSIsDigit(*end)) {
+      digits = true;
+      ++end;
+    }
+  }
+  if (!digits) return false;
+  if (*end == 'e' || *end == 'E') {
+    ++end;
+    if (*end == '+' || *end == '-') ++end;
+    if (!LBSIsDigit(*end)) return false;
+    while (LBSIsDigit(*end)) ++end;
+  }
+  char* parsed_end = NULL;
+  *result = strtof(begin, &parsed_end);
+  if (parsed_end != end || !isfinite(*result)) return false;
+  *s = end;
+  return true;
+}
 
 static float LBSNextNumber(char** s, bool* error) {
-  char* start = *s;
-  uint32_t len = 0;
-  // sign
-  if (**s == '-' || **s == '+') {
-    len++;
-    (*s)++;
-  }
-
-  // integer
-  while (**s && isdigit(**s)) {
-    (*s)++;
-    len++;
-  }
-
-  // decimal
-  if (**s == '.') {
-    len++;
-    (*s)++;
-    while (**s && isdigit(**s)) {
-      (*s)++;
-      len++;
-    }
-  }
-
-  // exponent
-  if ((**s == 'e' || **s == 'E') && (isdigit(*s[1]) || *s[1] == '+' || *s[1] == '-')) {
-    (*s)++;
-    len++;
-    if (**s == '-' || **s == '+') {
-      (*s)++;
-      len++;
-    }
-  }
-  while (**s && isdigit(**s)) {
-    (*s)++;
-    len++;
-  }
-  char number[len + 1];
-  strncpy(number, start, len);
-  number[len] = 0;
-  char* err;
-  float res = strtof(number, &err);
-  *error = *err != '\0' || len == 0;
-  return res;
+  const char* cursor = *s;
+  float value = 0;
+  if (!LBSReadNumber(&cursor, &value)) *error = true;
+  *s = (char*)cursor;
+  return value;
 }
 
 static void LBSSkipSep(char** s) {
@@ -81,7 +74,8 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
   LBSSkipSep(&s);
   if (s) {
     char cmd = 0, lastCmd = 0;
-    float currentPointX = 0, currentPointY = 0, controlPointX = 0, controlPointY = 0;
+    float currentPointX = 0, currentPointY = 0, controlPointX = 0,
+          controlPointY = 0;
     bool error = false;
     while (*s && !error) {
       if (isalpha(*s)) {
@@ -148,8 +142,8 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
               args[2 * i + 1] += currentPointY;
             }
           }
-          consumer->CubicToPoint(consumer->ctx, args[0], args[1], args[2], args[3], args[4],
-                                 args[5]);
+          consumer->CubicToPoint(consumer->ctx, args[0], args[1], args[2],
+                                 args[3], args[4], args[5]);
           currentPointX = args[4];
           currentPointY = args[5];
           controlPointX = args[2];
@@ -176,8 +170,8 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
             args[0] = currentPointX;
             args[1] = currentPointY;
           }
-          consumer->CubicToPoint(consumer->ctx, args[0], args[1], args[2], args[3], args[4],
-                                 args[5]);
+          consumer->CubicToPoint(consumer->ctx, args[0], args[1], args[2],
+                                 args[3], args[4], args[5]);
           controlPointX = args[2];
           controlPointY = args[3];
           currentPointX = args[4];
@@ -195,7 +189,8 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           }
           controlPointX = args[0];
           controlPointY = args[1];
-          consumer->QuadToPoint(consumer->ctx, args[0], args[1], args[2], args[3]);
+          consumer->QuadToPoint(consumer->ctx, args[0], args[1], args[2],
+                                args[3]);
           currentPointX = args[2];
           currentPointY = args[3];
           lastCmd = cmd;
@@ -223,7 +218,8 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
 
           args[0] = controlPointX;
           args[1] = controlPointY;
-          consumer->QuadToPoint(consumer->ctx, args[0], args[1], args[2], args[3]);
+          consumer->QuadToPoint(consumer->ctx, args[0], args[1], args[2],
+                                args[3]);
           currentPointX = args[2];
           currentPointY = args[3];
           lastCmd = cmd;
@@ -240,8 +236,9 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
             args[3] += currentPointX;
             args[4] += currentPointY;
           }
-          consumer->EllipticToPoint(consumer->ctx, currentPointX, currentPointY, args[0], args[1],
-                                    args[2], largeArcFlag, sweepArcFlag, args[3], args[4]);
+          consumer->EllipticToPoint(consumer->ctx, currentPointX, currentPointY,
+                                    args[0], args[1], args[2], largeArcFlag,
+                                    sweepArcFlag, args[3], args[4]);
           controlPointX = currentPointX = args[3];
           controlPointY = currentPointY = args[4];
           lastCmd = cmd;

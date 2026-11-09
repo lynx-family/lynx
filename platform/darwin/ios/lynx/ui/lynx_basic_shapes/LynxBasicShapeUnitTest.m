@@ -7,7 +7,7 @@
 #import <Lynx/LynxCSSType.h>
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
-#import "LBSPathParser.h"
+#include "gfx/public/path_parser.h"
 
 static void LBSStringMoveTo(void* ctx, float x, float y) {
   char op[20];
