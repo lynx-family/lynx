@@ -30,6 +30,8 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
  public:
   static LynxGlobalDevToolMediator& GetInstance();
 
+  // Called by native replay code after the replay dump has been saved to
+  // |file_path|. Remembers the path and emits the Replay.end event.
   void EndReplayTest(
       const std::shared_ptr<lynx::devtool::MessageSender>& sender,
       const std::string& file_path);
@@ -80,8 +82,14 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
       lynx::base::closure&& task);
   static const char* RecordFormatFromFiles(
       const std::vector<std::string>& files);
+  static void SendReplayEndEvent(
+      const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+      int stream_handle);
 
   std::unique_ptr<base::NotificationCallback> tracing_notification_callback_;
+  // Path of the latest replay dump saved by native replay code. Replay.end
+  // requests never provide this path. Accessed only on default_task_runner_.
+  std::string last_replay_dump_path_;
 };
 
 }  // namespace devtool

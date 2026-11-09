@@ -225,27 +225,41 @@ void LynxGlobalDevToolMediator::ReplayStart(
   sender->SendMessage("CDP", res);
 }
 
+void LynxGlobalDevToolMediator::SendReplayEndEvent(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    int stream_handle) {
+  LOGI("send replay end");
+  Json::Value content(Json::ValueType::objectValue);
+  content["method"] = "Replay.end";
+  content["params"]["stream"] = std::to_string(stream_handle);
+  sender->SendMessage("CDP", content);
+}
+
 void LynxGlobalDevToolMediator::ReplayEnd(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
   if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, message] {
+    RunOnTaskRunner(default_task_runner_, [this, sender, message] {
       int64_t id = message["id"].asInt64();
-      if (lynx::tasm::replay::ReplayController::Enable()) {
-        LOGI("send replay end");
-        Json::Value content(Json::ValueType::objectValue);
-        content["method"] = "Replay.end";
-        std::string file_path = message["params"].asString();
-        int stream_handle = FileStream::Open(file_path);
-        if (stream_handle == -1) {
-          sender->SendErrorResponse(id, "file path doesn't exist");
-          return;
-        }
-        content["params"]["stream"] = std::to_string(stream_handle);
-        sender->SendMessage("CDP", content);
-      } else {
+      if (!lynx::tasm::replay::ReplayController::Enable()) {
         sender->SendErrorResponse(id, "Replay doesn't enable");
+        return;
       }
+      // The dump path is chosen by native replay code. Request params are
+      // ignored so that clients cannot open arbitrary files.
+      if (!message["params"].isNull()) {
+        LOGW("Replay.end params are ignored; the latest replay dump is used");
+      }
+      if (last_replay_dump_path_.empty()) {
+        sender->SendErrorResponse(id, "Replay dump file is not available");
+        return;
+      }
+      int stream_handle = FileStream::Open(last_replay_dump_path_);
+      if (stream_handle == -1) {
+        sender->SendErrorResponse(id, "Replay dump file doesn't exist");
+        return;
+      }
+      SendReplayEndEvent(sender, stream_handle);
     });
   }
 }
@@ -254,11 +268,14 @@ void LynxGlobalDevToolMediator::EndReplayTest(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const std::string& file_path) {
   if (default_task_runner_) {
-    RunOnTaskRunner(default_task_runner_, [sender, file_path] {
-      Json::Value msg(Json::ValueType::objectValue);
-      msg["method"] = "Replay.end";
-      msg["params"] = file_path;
-      GetInstance().ReplayEnd(sender, msg);
+    RunOnTaskRunner(default_task_runner_, [this, sender, file_path] {
+      last_replay_dump_path_ = file_path;
+      int stream_handle = FileStream::Open(file_path);
+      if (stream_handle == -1) {
+        LOGE("Failed to open replay dump file");
+        return;
+      }
+      SendReplayEndEvent(sender, stream_handle);
     });
   }
 }
