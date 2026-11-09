@@ -39,7 +39,9 @@ class InspectorOwnerEmbedder
     : public std::enable_shared_from_this<InspectorOwnerEmbedder>,
       public devtool::LynxInspectorOwner {
  public:
-  InspectorOwnerEmbedder();
+  // `debuggable` is forwarded to LynxDevToolNG. When DevTool is not globally
+  // enabled, a debuggable owner registers only the activated CDP domains.
+  explicit InspectorOwnerEmbedder(bool debuggable = true);
   ~InspectorOwnerEmbedder() override;
 
   void SetUITaskRunner(
@@ -111,6 +113,7 @@ class InspectorOwnerEmbedder
 
   int32_t connection_id_;
   int64_t record_id_;
+  bool debuggable_;
   devtool::LynxDevToolProxy* embedder_proxy_;
 
   std::shared_ptr<DevToolNGDelegateEmbedder> devtoolng_delegate_;

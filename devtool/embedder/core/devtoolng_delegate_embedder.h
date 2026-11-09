@@ -17,7 +17,7 @@ namespace devtool {
 
 class DevToolNGDelegateEmbedder : public lynx::devtool::LynxDevToolNG {
  public:
-  DevToolNGDelegateEmbedder();
+  explicit DevToolNGDelegateEmbedder(bool debuggable = true);
   int32_t getSessionId() { return session_id_; }
   bool isAttachToDebugRouter() { return session_id_ != 0; }
   void attachToDebug(const std::string &url);

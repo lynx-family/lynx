@@ -220,7 +220,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
     LynxRuntimeWrapper* runtime_wrapper, LynxWhiteBoard* white_board,
     bool enable_multi_async_thread, base::LynxEntityId view_id,
     int32_t embedded_mode, bool enable_new_share_group,
-    bool enable_pending_js_task) {
+    bool enable_pending_js_task, bool debuggable) {
   ui_delegate_ = ui_delegate;
   resource_loader_ = resource_loader;
   is_host_renderer_ = is_host_renderer;
@@ -257,6 +257,7 @@ void LynxTemplateRenderer::SetUpLynxShell(
                       : -1;
   auto mode = static_cast<tasm::EmbeddedMode>(embedded_mode);
   shell_option.page_options_.SetEmbeddedMode(mode);
+  shell_option.page_options_.SetDebuggable(debuggable);
   auto lynx_context =
       static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
           ->GetLynxContext();
@@ -1261,8 +1262,8 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
 napi_value LynxTemplateRenderer::NativeReset(napi_env env,
                                              napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 24;
-  napi_value args[24] = {nullptr};
+  size_t argc = 25;
+  napi_value args[25] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // UIDelegate
@@ -1368,6 +1369,11 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
     napi_get_value_bool(env, args[23], &enable_pending_js_task);
   }
 
+  bool debuggable = false;
+  if (argc > 24) {
+    napi_get_value_bool(env, args[24], &debuggable);
+  }
+
   LynxTemplateRenderer* obj = nullptr;
   napi_status status =
       napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
@@ -1392,7 +1398,7 @@ napi_value LynxTemplateRenderer::NativeReset(napi_env env,
       std::move(jsbridge_module_factory), std::move(main_thread_module_factory),
       runtime_wrapper, white_board, enable_multi_async_thread,
       static_cast<base::LynxEntityId>(view_id), embedded_mode,
-      enable_new_share_group, enable_pending_js_task);
+      enable_new_share_group, enable_pending_js_task, debuggable);
   return nullptr;
 }
 

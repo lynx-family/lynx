@@ -118,6 +118,12 @@ export interface LynxViewBuilder {
    * Defers Lynx JS runtime initialization until LynxContext.startLynxRuntime() is called.
    */
   enablePendingJsTask?: boolean;
+  /**
+   * Enables page-level debugging for this LynxView. It takes effect only when
+   * LynxEnv.isLynxDebugEnabled() is true. When DevTool is not globally enabled,
+   * only the CDP domains activated by DevToolSettings are available.
+   */
+  debuggable?: boolean;
 }
 
 @Builder
@@ -241,6 +247,7 @@ export struct LynxView {
   private hasAppeared: boolean = false;
   threadMode: ThreadStrategyForRendering = ThreadStrategyForRendering.ALL_ON_UI;
   embeddedMode: EmbeddedMode = EmbeddedMode.UNSET;
+  debuggable: boolean = false;
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions = new LynxBackgroundRuntimeOptions();
   enableAirStrictMode? = false;
   lynxImageConfig?: LynxImageConfig;
@@ -271,6 +278,7 @@ export struct LynxView {
     });
     this.threadMode = builder.threadMode ?? ThreadStrategyForRendering.ALL_ON_UI;
     this.embeddedMode = builder.embeddedMode ?? EmbeddedMode.UNSET;
+    this.debuggable = builder.debuggable ?? false;
     this.backgroundRuntimeOptions = new LynxBackgroundRuntimeOptions(builder.backgroundRuntimeOptions);
     this.enableAirStrictMode = builder.enableAirStrictMode ?? false;
     this.lynxImageConfig = builder.lynxImageConfig;
@@ -316,6 +324,7 @@ export struct LynxView {
       colorScheme: this.colorScheme,
       enableMultiAsyncThread: this.enableMultiAsyncThread,
       enablePendingJsTask: this.enablePendingJsTask,
+      debuggable: this.debuggable,
     };
   }
 
@@ -388,7 +397,7 @@ export struct LynxView {
         this.uiRendererCreator ? ThreadStrategyForRendering.ALL_ON_UI : this.threadMode,
         this.backgroundRuntimeOptions, this, !this.enableAirStrictMode,
         this.moduleManager, this.sendableModuleManager, this.enableMultiAsyncThread, this.enablePendingJsTask,
-        this.screenSize, this.embeddedMode);
+        this.screenSize, this.embeddedMode, this.debuggable);
     if (this.platformConfig) {
       this.templateRenderer.setPlatformConfig(this.platformConfig);
     }

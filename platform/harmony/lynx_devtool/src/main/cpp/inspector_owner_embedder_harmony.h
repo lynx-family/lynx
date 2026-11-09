@@ -20,7 +20,7 @@ class InspectorOwnerHarmony;
 
 class InspectorOwnerEmbedderHarmony : public InspectorOwnerEmbedder {
  public:
-  InspectorOwnerEmbedderHarmony(napi_env env, napi_ref ref);
+  InspectorOwnerEmbedderHarmony(napi_env env, napi_ref ref, bool debuggable);
   ~InspectorOwnerEmbedderHarmony() override = default;
 
   void OnConsoleMessage(const std::string& message) override;

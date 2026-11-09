@@ -100,10 +100,10 @@ export class LynxDevToolService implements ILynxDevToolService {
     }
   }
 
-  public createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null {
+  public createInspectorOwner(embedderProxy: number[], debuggable?: boolean): LynxBaseInspectorController | null {
     let lynxInspectorOwner: ESObject = LynxDevToolService.devtoolModule?.LynxInspectorOwner;
     if (lynxInspectorOwner) {
-      return new lynxInspectorOwner(embedderProxy);
+      return new lynxInspectorOwner(embedderProxy, debuggable ?? false);
     } else {
       LLog.i(LynxDevToolService.TAG, "createInspectorOwner lynxInspectorOwner is null");
       return null;

@@ -46,14 +46,20 @@ napi_value InspectorOwnerHarmony::Init(napi_env env, napi_value exports) {
 napi_value InspectorOwnerHarmony::Constructor(napi_env env,
                                               napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 2;
-  napi_value args[2] = {nullptr};
+  size_t argc = 3;
+  napi_value args[3] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   uint64_t proxy_num = base::NapiUtil::ConvertToPtr(env, args[1]);
 
+  bool debuggable = false;
+  if (argc > 2) {
+    napi_get_value_bool(env, args[2], &debuggable);
+  }
+
   auto owner_harmony_ptr = new InspectorOwnerHarmony(
-      env, args[0], reinterpret_cast<LynxDevToolProxy *>(proxy_num));
+      env, args[0], reinterpret_cast<LynxDevToolProxy *>(proxy_num),
+      debuggable);
   napi_wrap(
       env, js_this, owner_harmony_ptr, [](napi_env env, void *data, void *) {},
       nullptr, nullptr);
@@ -262,10 +268,12 @@ napi_value InspectorOwnerHarmony::InvalidateInputWindow(
 }
 
 InspectorOwnerHarmony::InspectorOwnerHarmony(napi_env env, napi_value js_ref,
-                                             LynxDevToolProxy *proxy)
+                                             LynxDevToolProxy *proxy,
+                                             bool debuggable)
     : env_(env) {
   napi_create_reference(env_, js_ref, 0, &ref_);
-  owner_ = std::make_shared<InspectorOwnerEmbedderHarmony>(env_, ref_);
+  owner_ =
+      std::make_shared<InspectorOwnerEmbedderHarmony>(env_, ref_, debuggable);
   owner_->Init(proxy, owner_);
 }
 

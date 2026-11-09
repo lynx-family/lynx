@@ -42,6 +42,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private sendableModuleManager: SendableLynxModuleManager;
   private readonly enableMultiAsyncThread: boolean;
   private readonly embeddedMode: EmbeddedMode;
+  private readonly debuggable: boolean;
   private enablePendingJsTask: boolean = false;
   private hasDestroyed = false;
   private displayInfo = LynxEnv.getDisplayInfo().clone();
@@ -57,7 +58,8 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     enableMultiAsyncThread?: boolean,
     enablePendingJsTask?: boolean,
     screenSize?: Size,
-    embeddedMode: EmbeddedMode = EmbeddedMode.UNSET) {
+    embeddedMode: EmbeddedMode = EmbeddedMode.UNSET,
+    debuggable: boolean = false) {
     super();
     this.logContext = LynxLogContext.forView(viewId);
     this.clients = clients;
@@ -73,6 +75,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     this.enableMultiAsyncThread = enableMultiAsyncThread ?? true;
     this.enablePendingJsTask = enablePendingJsTask ?? false;
     this.embeddedMode = embeddedMode;
+    this.debuggable = debuggable;
     if (screenSize) {
       LLog.i(TAG, `screen size, w: ${screenSize.width}, h: ${screenSize.height}`);
       this.displayInfo.updateDisplayInfo(screenSize.width, screenSize.height);
@@ -104,7 +107,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       convertModuleArgs(this.sendableModuleManager), this.lynxView?.backgroundRuntime, whiteBoard,
       this.enableMultiAsyncThread, this.logContext.viewId, this.embeddedMode,
       this.backgroundRuntimeOptions.enableNewShareGroup(),
-      this.enablePendingJsTask);
+      this.enablePendingJsTask, this.debuggable);
   }
 
   override startLynxRuntime(): void {
@@ -220,7 +223,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       return;
     }
     if (!this.lynxDevTool) {
-      this.lynxDevTool = new LynxDevTool(embedderProxy);
+      this.lynxDevTool = new LynxDevTool(embedderProxy, this.debuggable);
     }
   }
 

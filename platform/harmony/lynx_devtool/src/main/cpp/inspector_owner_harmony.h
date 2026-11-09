@@ -18,7 +18,7 @@ namespace devtool {
 class InspectorOwnerHarmony {
  public:
   InspectorOwnerHarmony(napi_env env, napi_value js_ref,
-                        LynxDevToolProxy *proxy);
+                        LynxDevToolProxy *proxy, bool debuggable);
   ~InspectorOwnerHarmony();
 
  public:
