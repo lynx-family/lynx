@@ -3733,6 +3733,34 @@ RENDERER_FUNCTION_CC(FiberSwapElement) {
   RETURN_UNDEFINED();
 }
 
+RENDERER_FUNCTION_CC(FiberGetComposeMountElement) {
+  CHECK_ARGC_EQ(FiberGetComposeMountElement, 1);
+  CONVERT_ARG(arg0, 0);
+  if (!arg0->IsRefCounted() || arg0->RefCounted()->GetRefType() !=
+                                   lepus::RefType::kComposeElementHandle) {
+    ElementAPIError("FiberGetComposeMountElement requires a Compose handle");
+    RETURN_UNDEFINED();
+  }
+  auto handle =
+      fml::static_ref_ptr_cast<ComposeElementHandle>(arg0->RefCounted());
+  // Resolve on each call: a modifier update may replace the physical root while
+  // the Compose handle remains stable. The returned value retains that Element.
+  RETURN(lepus::Value(handle->mount_root()));
+}
+
+RENDERER_FUNCTION_CC(FiberGetComposeContentElement) {
+  CHECK_ARGC_EQ(FiberGetComposeContentElement, 1);
+  CONVERT_ARG(arg0, 0);
+  if (!arg0->IsRefCounted() || arg0->RefCounted()->GetRefType() !=
+                                   lepus::RefType::kComposeElementHandle) {
+    ElementAPIError("FiberGetComposeContentElement requires a Compose handle");
+    RETURN_UNDEFINED();
+  }
+  auto handle =
+      fml::static_ref_ptr_cast<ComposeElementHandle>(arg0->RefCounted());
+  RETURN(lepus::Value(handle->content_element()));
+}
+
 // This function accepts only one parameter, the 0th is the element. The return
 // value is the element's parent.
 RENDERER_FUNCTION_CC(FiberGetParent) {
