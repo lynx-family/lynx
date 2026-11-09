@@ -122,6 +122,7 @@ ArkUI_ObjectFit UIImage::ConvertMode(const std::string& mode) {
 void UIImage::UpdateImageSource(const lepus::Value& value) {
   const auto& value_str = value.StdString();
   if (src_ != value_str) {
+    last_image_result_.reset();
     src_ = value_str;
     redirected_src_.clear();
     dirty_flags_ |= image::kFlagSrcChanged;
@@ -215,7 +216,7 @@ void UIImage::HandleImageSuccessCallback(float image_width,
       dict->SetValue(image::kLoadEventImageWidth, image_width_);
       CustomEvent event{Sign(), image::kLoadEventName, "detail",
                         lepus_value(dict)};
-      context_->SendEvent(event);
+      SendImageResult(event);
     }
   }
 }
@@ -234,7 +235,7 @@ void UIImage::HandleImageFailCallback(float error_code,
     dict->SetValue(image::kErrorEventMsg, error_msg);
     CustomEvent event{Sign(), image::kErrorEventName, "detail",
                       lepus_value(dict)};
-    context_->SendEvent(event);
+    SendImageResult(event);
   }
 }
 void UIImage::AutoSizeIfNeeded() {
@@ -321,6 +322,9 @@ void UIImage::LoadImageWithTransform(const std::string& url, bool placeholder) {
 }
 
 bool UIImage::LoadImageFromURL(bool placeholder) {
+  if (!placeholder) {
+    last_image_result_.reset();
+  }
   const std::string& url = placeholder ? place_holder_ : src_;
   bool is_base64 = base::BeginsWith(url, image::kBase64Scheme);
   bool is_local = base::BeginsWith(url, image::kLocalScheme) ||
@@ -366,6 +370,34 @@ bool UIImage::LoadImageFromURL(bool placeholder) {
     LoadImageWithTransform(url, placeholder);
   }
   return true;
+}
+
+void UIImage::OnNodeReload() {
+  UIBase::OnNodeReload();
+  pending_reload_ = true;
+}
+
+void UIImage::FinishLayoutOperation() {
+  UIBase::FinishLayoutOperation();
+  if (!std::exchange(pending_reload_, false) || !last_image_result_ ||
+      !context_) {
+    return;
+  }
+  for (const auto& name : events_) {
+    if (name == last_image_result_->Name()) {
+      CustomEvent event{Sign(), name, "detail",
+                        last_image_result_->ParamValue()};
+      context_->SendEvent(event);
+      break;
+    }
+  }
+}
+
+void UIImage::SendImageResult(const CustomEvent& result) {
+  last_image_result_ = result;
+  // A real callback fulfills the pending notification for this request.
+  pending_reload_ = false;
+  context_->SendEvent(result);
 }
 
 void UIImage::OnNodeReady() {

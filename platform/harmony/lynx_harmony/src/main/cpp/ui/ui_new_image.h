@@ -6,6 +6,7 @@
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UI_NEW_IMAGE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -44,6 +45,9 @@ class UINewImage : public UIBase,
 
   int64_t GetMemoryUsageBytes() const override;
 
+  void OnNodeReload() override;
+  void FinishLayoutOperation() override;
+
  protected:
   UINewImage(LynxContext* context, int sign, const std::string& tag);
   ~UINewImage() override;
@@ -60,6 +64,10 @@ class UINewImage : public UIBase,
                         callback) override;
 
  private:
+  void SendImageResult(const CustomEvent& event);
+  std::optional<CustomEvent> last_image_result_;
+  bool pending_reload_{false};
+
   std::string src_;
   std::string redirected_src_;
   std::string placeholder_;

@@ -188,7 +188,7 @@ void UINewImage::OnImageLoadSuccess(float image_width, float image_height) {
       dict->SetValue(image::kLoadEventImageWidth, image_width_);
       CustomEvent event{Sign(), image::kLoadEventName, "detail",
                         lepus_value(dict)};
-      context_->SendEvent(event);
+      SendImageResult(event);
     }
   }
 }
@@ -229,7 +229,7 @@ void UINewImage::OnImageMonitorInfo(const ImageMonitorInfo& data) {
       dict->SetValue("origin", static_cast<int32_t>(data.origin));
       CustomEvent event{Sign(), image::kLoadEventName, "detail",
                         lepus_value(dict)};
-      context_->SendEvent(event);
+      SendImageResult(event);
     }
   }
 }
@@ -257,7 +257,7 @@ void UINewImage::OnImageLoadFailure(int error_code,
     dict->SetValue(image::kErrorEventMsg, error_msg);
     CustomEvent event{Sign(), image::kErrorEventName, "detail",
                       lepus_value(dict)};
-    context_->SendEvent(event);
+    SendImageResult(event);
   }
 }
 
@@ -319,6 +319,7 @@ ArkUI_ObjectFit UINewImage::ConvertMode(const std::string& mode) {
 void UINewImage::UpdateImageSource(const lepus::Value& value) {
   const auto& value_str = value.StdString();
   if (src_ != value_str) {
+    last_image_result_.reset();
     src_ = value_str;
     redirected_src_.clear();
     dirty_flags_ |= image::kFlagSrcChanged;
@@ -612,6 +613,34 @@ bool UINewImage::LoadSvgImage() {
   return true;
 }
 
+void UINewImage::OnNodeReload() {
+  UIBase::OnNodeReload();
+  pending_reload_ = true;
+}
+
+void UINewImage::FinishLayoutOperation() {
+  UIBase::FinishLayoutOperation();
+  if (!std::exchange(pending_reload_, false) || !last_image_result_ ||
+      !context_) {
+    return;
+  }
+  for (const auto& name : events_) {
+    if (name == last_image_result_->Name()) {
+      CustomEvent event{Sign(), name, "detail",
+                        last_image_result_->ParamValue()};
+      context_->SendEvent(event);
+      break;
+    }
+  }
+}
+
+void UINewImage::SendImageResult(const CustomEvent& result) {
+  last_image_result_ = result;
+  // A real callback fulfills the pending notification for this request.
+  pending_reload_ = false;
+  context_->SendEvent(result);
+}
+
 void UINewImage::OnNodeReady() {
   UIBase::OnNodeReady();
   if (!init_listener_) {
@@ -628,6 +657,7 @@ void UINewImage::OnNodeReady() {
     if (!defer_src_invalidation_ || use_svg_loader) {
       image_node_->Clear();
     }
+    last_image_result_.reset();
     const bool is_alive = use_svg_loader ? LoadSvgImage() : LoadImage();
     if (!is_alive) {
       return;

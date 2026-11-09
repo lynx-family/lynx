@@ -6,6 +6,7 @@
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UI_IMAGE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -33,6 +34,9 @@ class UIImage : public UIBase {
 
   int64_t GetMemoryUsageBytes() const override;
 
+  void OnNodeReload() override;
+  void FinishLayoutOperation() override;
+
   bool HasContent() override { return true; }
 
  protected:
@@ -50,6 +54,10 @@ class UIImage : public UIBase {
   bool HasOverlappingRendering() override { return overlap_ && HasBackground(); }
 
  private:
+  void SendImageResult(const CustomEvent& event);
+  std::optional<CustomEvent> last_image_result_;
+  bool pending_reload_{false};
+
   std::string src_;
   std::string redirected_src_;
   std::string place_holder_;
