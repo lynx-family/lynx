@@ -458,11 +458,11 @@ double NestedScrollable::CalculateVelocity(float time) {
   return slope * (delta / duration);
 }
 
-void NestedScrollable::OnAnimationEnd(Animator& animation) {
+void NestedScrollable::OnAnimationEnd(Animator& animation, double) {
   SetScrollStatus(ScrollStatus::kIdle);
 }
 
-void NestedScrollable::OnAnimationCancel(Animator& animation) {
+void NestedScrollable::OnAnimationCancel(Animator& animation, double) {
   SetScrollStatus(ScrollStatus::kIdle);
 }
 

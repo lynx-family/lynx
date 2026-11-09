@@ -126,6 +126,10 @@ public class LynxKeyframeAnimator {
       mPauseTime = sTimeNotInit;
       return pauseDuration;
     }
+
+    public long getCurrentOrPausedTime() {
+      return mPauseTime == sTimeNotInit ? System.currentTimeMillis() : mPauseTime;
+    }
   }
   private PauseTimeHelper mPauseTimeHelper = new PauseTimeHelper();
 
@@ -138,6 +142,8 @@ public class LynxKeyframeAnimator {
 
   private static final long sTimeNotInit = -1;
   private long mKeyframeStartTime = sTimeNotInit;
+  // Holds the event time while paused, before the first frame after resume, or after cancellation.
+  private double mHeldElapsedTime = sTimeNotInit;
 
   private KeyframeParsedData mKeyframeParsedData = null;
 
@@ -198,12 +204,9 @@ public class LynxKeyframeAnimator {
         || mState == LynxKFAnimatorState.PAUSED) {
       LynxUI ui = getUI();
       AnimationInfo info = getAnimationInfo();
-      String animationName = "";
-      if (info != null) {
-        animationName = info.getName();
-      }
+      String animationName = info == null ? "" : info.getName();
       KeyframeAnimationListener.sendAnimationEvent(
-          ui, KeyframeAnimationListener.EVENT_CANCEL, animationName);
+          ui, KeyframeAnimationListener.EVENT_CANCEL, animationName, getActiveElapsedTime(info));
     }
   }
 
@@ -265,6 +268,32 @@ public class LynxKeyframeAnimator {
     return mInfo;
   }
 
+  private static double getActiveDuration(AnimationInfo info) {
+    if (info.getIterationCount() >= StyleConstants.ANIMATIONITERATIONCOUNT_INFINITE - 1) {
+      return Double.POSITIVE_INFINITY;
+    }
+    return info.getDuration() * (info.getIterationCount() + 1.0);
+  }
+
+  private double getActiveElapsedTime(@Nullable AnimationInfo info) {
+    if (info == null || mKeyframeStartTime == sTimeNotInit) {
+      return 0;
+    }
+    if (mHeldElapsedTime != sTimeNotInit) {
+      return mHeldElapsedTime;
+    }
+    ObjectAnimator animator = getLastAnimator();
+    double activeTime;
+    if (animator != null && animator.isStarted()) {
+      // During start delay the animator is started but not running.
+      activeTime = animator.isRunning() ? animator.getCurrentPlayTime() : 0;
+    } else {
+      long localTime = mPauseTimeHelper.getCurrentOrPausedTime() - mKeyframeStartTime;
+      activeTime = localTime - (double) info.getDelay();
+    }
+    return Math.max(0, Math.min(activeTime, getActiveDuration(info))) / 1000.0;
+  }
+
   private boolean isAnimationExpired(AnimationInfo info) {
     if (mKeyframeStartTime == sTimeNotInit) {
       return false;
@@ -295,6 +324,7 @@ public class LynxKeyframeAnimator {
     LLog.DCHECK(info.getPlayState() == ANIMATIONPLAYSTATE_PAUSED);
     LLog.DCHECK(mState == LynxKFAnimatorState.RUNNING);
 
+    mHeldElapsedTime = getActiveElapsedTime(info);
     mState = LynxKFAnimatorState.PAUSED;
     if (mInternalAnimators != null) {
       // only work when android version >= 19
@@ -324,6 +354,9 @@ public class LynxKeyframeAnimator {
       }
     }
     mKeyframeStartTime += mPauseTimeHelper.getPauseDuration();
+    if (getLastAnimator() == null) {
+      mHeldElapsedTime = sTimeNotInit;
+    }
     mInfo = info;
   }
 
@@ -331,6 +364,7 @@ public class LynxKeyframeAnimator {
     if (mState != LynxKFAnimatorState.RUNNING && mState != LynxKFAnimatorState.PAUSED) {
       return;
     }
+    mHeldElapsedTime = getActiveElapsedTime(mInfo);
     if (mInternalAnimators != null && mInternalAnimators.length > 0) {
       // only work when android version >= 19
       if (Build.VERSION.SDK_INT >= 19) {
@@ -393,6 +427,10 @@ public class LynxKeyframeAnimator {
       animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
         @Override
         public void onAnimationUpdate(ValueAnimator animation) {
+          // Android rebases its playhead in the first frame after resume.
+          if (mHeldElapsedTime != sTimeNotInit && isRunning() && animation == getLastAnimator()) {
+            mHeldElapsedTime = sTimeNotInit;
+          }
           LynxUI lynxUI = mUI.get();
           if (lynxUI != null && lynxUI.getParent() instanceof UIShadowProxy) {
             ((UIShadowProxy) (lynxUI.getParent())).notifyAnimating();
@@ -459,11 +497,14 @@ public class LynxKeyframeAnimator {
       // Send animation start event
       // only send start event when state is IDLE.
       if (mState == LynxKFAnimatorState.IDLE) {
+        double elapsedTime =
+            Math.min(Math.max(0, -(double) info.getDelay()), getActiveDuration(info)) / 1000.0;
         KeyframeAnimationListener.sendAnimationEvent(
-            ui, KeyframeAnimationListener.EVENT_START, info.getName());
+            ui, KeyframeAnimationListener.EVENT_START, info.getName(), elapsedTime);
       }
 
       // Change animator state
+      mHeldElapsedTime = sTimeNotInit;
       run();
       if (info.getPlayState() == ANIMATIONPLAYSTATE_PAUSED) {
         pause(info);
@@ -809,16 +850,20 @@ public class LynxKeyframeAnimator {
     return null;
   }
 
+  @Nullable
+  private ObjectAnimator getLastAnimator() {
+    return mInternalAnimators == null || mInternalAnimators.length == 0
+        ? null
+        : mInternalAnimators[mInternalAnimators.length - 1];
+  }
+
   private void addListenerToLastAnimator() {
-    if (mInternalAnimators == null) {
-      return;
-    }
-    int length = mInternalAnimators.length;
-    if (length > 0) {
+    ObjectAnimator animator = getLastAnimator();
+    if (animator != null) {
       // as all animator's time info is the same, we need only one end listener
       // We should add listener to last animator to ensure all animators completed when
       // onAnimationEnd has been invoked.
-      mInternalAnimators[length - 1].addListener(new KeyframeAnimationListener(this));
+      animator.addListener(new KeyframeAnimationListener(this));
     }
   }
 
@@ -835,24 +880,23 @@ public class LynxKeyframeAnimator {
     private static final String EVENT_ITERATION = "animationiteration";
     private static final String EVENT_END = "animationend";
     private static final String EVENT_CANCEL = "animationcancel";
-    private static Map<String, Object> sEventParams = new HashMap<String, Object>();
-    static {
-      sEventParams.put("animation_type", "keyframe-animation");
-      sEventParams.put("animation_name", "");
-    }
     private static void sendAnimationEvent(
-        @Nullable LynxUI ui, String event_name, String animation_name) {
+        @Nullable LynxUI ui, String eventName, String animationName, double elapsedTime) {
       if (ui == null) {
         return;
       }
-      if (ui.getEvents() != null && ui.getEvents().containsKey(event_name)) {
-        sEventParams.put("animation_name", animation_name);
+      if (ui.getEvents() != null && ui.getEvents().containsKey(eventName)) {
+        Map<String, Object> eventParams = new HashMap<>();
+        eventParams.put("animation_type", "keyframe-animation");
+        eventParams.put("animation_name", animationName);
+        eventParams.put("elapsedTime", elapsedTime);
         ui.getLynxContext().getEventEmitter().sendCustomEvent(
-            new LynxCustomEvent(ui.getSign(), event_name, sEventParams));
+            new LynxCustomEvent(ui.getSign(), eventName, eventParams));
       }
     }
 
     WeakReference<LynxKeyframeAnimator> mLynxAnimatorRef;
+    private long mLastRepeatIteration;
     public KeyframeAnimationListener(LynxKeyframeAnimator lynxAnimator) {
       this.mLynxAnimatorRef = new WeakReference<>(lynxAnimator);
     }
@@ -879,12 +923,20 @@ public class LynxKeyframeAnimator {
       if (lynxAnimator == null) {
         return;
       }
-      String animationName = "";
       AnimationInfo info = lynxAnimator.getAnimationInfo();
-      if (info != null) {
-        animationName = info.getName();
+      ValueAnimator valueAnimator = (ValueAnimator) animator;
+      long duration = valueAnimator.getDuration();
+      // Android may coalesce repeats when a frame crosses several iterations.
+      // Use the playhead to identify the latest boundary reached by this callback.
+      if (duration > 0) {
+        mLastRepeatIteration =
+            Math.max(mLastRepeatIteration + 1, valueAnimator.getCurrentPlayTime() / duration);
+        if (valueAnimator.getRepeatCount() != ValueAnimator.INFINITE) {
+          mLastRepeatIteration = Math.min(mLastRepeatIteration, valueAnimator.getRepeatCount());
+        }
       }
-      sendAnimationEvent(lynxAnimator.getUI(), EVENT_ITERATION, animationName);
+      sendAnimationEvent(lynxAnimator.getUI(), EVENT_ITERATION, info == null ? "" : info.getName(),
+          mLastRepeatIteration * (duration / 1000.0));
     }
 
     @Override
@@ -904,7 +956,10 @@ public class LynxKeyframeAnimator {
       // Send animation end event and change animator's state only if animator's state is running.
       if (lynxAnimator.isRunning()) {
         LynxUI ui = lynxAnimator.getUI();
-        sendAnimationEvent(ui, EVENT_END, animationName);
+        double duration = info == null ? 0 : getActiveDuration(info);
+        double elapsedTime = Double.isInfinite(duration) ? lynxAnimator.getActiveElapsedTime(info)
+                                                         : duration / 1000.0;
+        sendAnimationEvent(ui, EVENT_END, animationName, elapsedTime);
 
         if (null != ui) {
           ui.onAnimationEnd(animationName);

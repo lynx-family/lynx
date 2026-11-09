@@ -68,6 +68,8 @@ const char* EventTypeToString(ClayEventType type) {
       return "transitionstart";
     case kClayEventTypeTransitionEnd:
       return "transitionend";
+    case kClayEventTypeTransitionCancel:
+      return "transitioncancel";
     default:
       FML_DLOG(ERROR) << "unsupported event type:" << type;
       return "";

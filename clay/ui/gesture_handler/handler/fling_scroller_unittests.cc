@@ -88,7 +88,7 @@ TEST_F(FlingScrollerTest, AnimationEnd_InvokesIdleCallback) {
                  [&](uint8_t s, float, float) { states.push_back(s); });
 
   DummyAnimator anim;
-  scroller.OnAnimationEnd(anim);
+  scroller.OnAnimationEnd(anim, 0.0);
 
   EXPECT_FALSE(states.empty());
   EXPECT_EQ(states.back(),
@@ -104,7 +104,7 @@ TEST_F(FlingScrollerTest, AnimationCancel_InvokesIdleCallback) {
                  [&](uint8_t s, float, float) { states.push_back(s); });
 
   DummyAnimator anim;
-  scroller.OnAnimationCancel(anim);
+  scroller.OnAnimationCancel(anim, 0.0);
 
   EXPECT_FALSE(states.empty());
   EXPECT_EQ(states.back(),

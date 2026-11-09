@@ -19,6 +19,15 @@
 static const CFTimeInterval kTimeNotInit = 0;
 static const double kAnimationIterationCountInfinite = 1E9;
 
+static NSTimeInterval GetActiveDuration(LynxAnimationInfo* info) {
+  if (info.duration <= 0 || info.iterationCount <= 0) {
+    return 0;
+  }
+  return info.iterationCount >= kAnimationIterationCountInfinite
+             ? DBL_MAX
+             : info.duration * info.iterationCount;
+}
+
 #pragma mark - PauseTimeHelper
 @interface PauseTimeHelper : NSObject
 @property(nonatomic) CFTimeInterval pauseTime;
@@ -91,6 +100,7 @@ static const double kAnimationIterationCountInfinite = 1E9;
 @implementation LynxKeyframeAnimator {
   LynxKeyframeParsedData* _keyframeParsedData;
   CFTimeInterval _keyframeStartTime;
+  NSTimeInterval _elapsedTimeAtCancel;
   NSMutableDictionary<NSString*, CAKeyframeAnimation*>* _internalAnimators;
   PauseTimeHelper* _pauseTimeHelper;
   LynxAnimationDelegate* _delegate;
@@ -250,6 +260,22 @@ static const CATransform3D kEmptyCATransform3D = {0};
   }
 }
 
+- (NSTimeInterval)activeElapsedTime:(LynxAnimationInfo*)info {
+  NSTimeInterval localTime;
+  if (_platformPlayback != nil) {
+    localTime = _platformPlayback.currentTime();
+  } else if (_keyframeStartTime == kTimeNotInit) {
+    return 0;
+  } else {
+    CFTimeInterval sampleTime = _pauseTimeHelper.pauseTime;
+    if (sampleTime == kTimeNotInit) {
+      sampleTime = [_ui.view.layer convertTime:CACurrentMediaTime() fromLayer:nil];
+    }
+    localTime = sampleTime - _keyframeStartTime;
+  }
+  return MIN(MAX(0, localTime - info.delay), GetActiveDuration(info));
+}
+
 - (void)sendCancelEvent {
   // Routed cancellation is a lifecycle event regardless of auto-resume.
   if ((_platformPlayback != nil || _autoResumeAnimation) &&
@@ -258,11 +284,15 @@ static const CATransform3D kEmptyCATransform3D = {0};
     if (![self claimPlatformEvent:(NSString*)kAnimationEventCancel]) {
       return;
     }
+    NSTimeInterval elapsedTime = _state == LynxKFAnimatorStateCanceled && _platformPlayback == nil
+                                     ? _elapsedTimeAtCancel
+                                     : [self activeElapsedTime:_info];
     [LynxAnimationDelegate sendAnimationEvent:_ui
                                     eventName:(NSString*)kAnimationEventCancel
                                   eventParams:@{
                                     @"animation_type" : @"keyframe-animation",
                                     @"animation_name" : _info.name,
+                                    @"elapsedTime" : @(elapsedTime),
                                     @"finished" : @YES
                                   }];
   }
@@ -280,22 +310,28 @@ static const CATransform3D kEmptyCATransform3D = {0};
 
 - (void)sendStartEvent:(LynxAnimationInfo*)info {
   if ([self claimPlatformEvent:(NSString*)kAnimationEventStart]) {
+    NSTimeInterval elapsedTime = MIN(MAX(0, -info.delay), GetActiveDuration(info));
     [LynxAnimationDelegate sendAnimationEvent:_ui
                                     eventName:(NSString*)kAnimationEventStart
                                   eventParams:@{
                                     @"animation_type" : @"keyframe-animation",
-                                    @"animation_name" : info.name
+                                    @"animation_name" : info.name,
+                                    @"elapsedTime" : @(elapsedTime)
                                   }];
   }
 }
 
 - (void)sendEndEvent:(LynxAnimationInfo*)info finished:(BOOL)finished {
   if ([self claimPlatformEvent:(NSString*)kAnimationEventEnd]) {
+    NSTimeInterval elapsedTime = finished && info.iterationCount < kAnimationIterationCountInfinite
+                                     ? GetActiveDuration(info)
+                                     : [self activeElapsedTime:info];
     [LynxAnimationDelegate sendAnimationEvent:_ui
                                     eventName:(NSString*)kAnimationEventEnd
                                   eventParams:@{
                                     @"animation_type" : @"keyframe-animation",
                                     @"animation_name" : info.name,
+                                    @"elapsedTime" : @(elapsedTime),
                                     @"finished" : @(finished)
                                   }];
   }
@@ -752,6 +788,9 @@ static const CATransform3D kEmptyCATransform3D = {0};
   // Cancel may be called externally anytime, so check state here.
   if (_state != LynxKFAnimatorStateRunning && _state != LynxKFAnimatorStatePaused) {
     return;
+  }
+  if (_platformPlayback == nil) {
+    _elapsedTimeAtCancel = [self activeElapsedTime:_info];
   }
   ++_instantAnimationRevision;
   _state = LynxKFAnimatorStateCanceled;

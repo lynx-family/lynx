@@ -31,10 +31,9 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
 - (BOOL)isTransitionSize:(CGRect)oldFrame newFrame:(CGRect)newFrame;
 - (BOOL)isTransitionPosition:(CGRect)oldFrame newFrame:(CGRect)newFrame;
 - (BOOL)hasTransition:(LynxAnimationProp)prop;
-- (void)enqueueTransitionAnimation:(CAAnimation*)c
-                        withConfig:(LynxAnimationInfo*)config
-                      withDelegate:(LynxAnimationDelegate*)delegate;
-- (LynxAnimationDelegate*)createTransitionDelegate:(LynxAnimationInfo*)info;
+- (void)enqueueTransitionAnimation:(CAAnimation*)animation withConfig:(LynxAnimationInfo*)config;
+- (LynxAnimationDelegate*)createTransitionDelegate:(LynxAnimationInfo*)info
+                                         animation:(CAAnimation*)transition;
 - (void)setupTransitionAnimationForContents:(CABasicAnimation*)content
                                  withConfig:(LynxAnimationInfo*)config
                                    forLayer:(CALayer*)layer
@@ -397,7 +396,6 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
                      callback:(CompletionBlock)block
        needAdditionalAnimator:(BOOL)needAdditionalAnimator {
   info.completeBlock = block;
-  LynxAnimationDelegate* delegate = [self createTransitionDelegate:info];
   CAAnimation* animator = nil;
   switch (info.prop) {
     case TRANSITION_LEFT:
@@ -472,7 +470,7 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
       break;
   }
   if (animator != nil) {
-    [self enqueueTransitionAnimation:animator withConfig:info withDelegate:delegate];
+    [self enqueueTransitionAnimation:animator withConfig:info];
   }
 }
 
@@ -505,8 +503,7 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
                                             to:toValue
                                           info:config];
 
-  LynxAnimationDelegate* delegate = [self createTransitionDelegate:config];
-  [self enqueueTransitionAnimation:c withConfig:config withDelegate:delegate];
+  [self enqueueTransitionAnimation:c withConfig:config];
 }
 
 #pragma mark - transition visibility
@@ -545,8 +542,7 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
                                             to:[NSNumber numberWithFloat:endOpacity]
                                           info:config];
 
-  LynxAnimationDelegate* delegate = [self createTransitionDelegate:config];
-  [self enqueueTransitionAnimation:animation withConfig:config withDelegate:delegate];
+  [self enqueueTransitionAnimation:animation withConfig:config];
 }
 
 #pragma mark - transition opacity
@@ -570,8 +566,7 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
                                             to:[NSNumber numberWithFloat:newOpacity]
                                           info:config];
 
-  LynxAnimationDelegate* delegate = [self createTransitionDelegate:config];
-  [self enqueueTransitionAnimation:animation withConfig:config withDelegate:delegate];
+  [self enqueueTransitionAnimation:animation withConfig:config];
 }
 
 #pragma mark - transition transform
@@ -629,23 +624,18 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
   }
 
   group.animations = animations;
-  LynxAnimationDelegate* delegate = [self createTransitionDelegate:config];
-
-  [self enqueueTransitionAnimation:group withConfig:config withDelegate:delegate];
+  [self enqueueTransitionAnimation:group withConfig:config];
 }
 
 #pragma mark - prepare && start transition
 
-- (void)enqueueTransitionAnimation:(CAAnimation*)animation
-                        withConfig:(LynxAnimationInfo*)config
-                      withDelegate:(LynxAnimationDelegate*)delegate {
-  if (delegate != nil) {
-    animation.delegate = delegate;
-    _transitionDelegates[[NSNumber numberWithUnsignedInteger:config.prop]] = delegate;
-  }
+- (void)enqueueTransitionAnimation:(CAAnimation*)animation withConfig:(LynxAnimationInfo*)config {
   [LynxAnimationUtils applyAnimationProperties:animation withInfo:config forLayer:_ui.view.layer];
-  [_transitionAnimations setObject:animation
-                            forKey:[NSNumber numberWithUnsignedInteger:config.prop]];
+  LynxAnimationDelegate* delegate = [self createTransitionDelegate:config animation:animation];
+  animation.delegate = delegate;
+  NSNumber* prop = @(config.prop);
+  _transitionDelegates[prop] = delegate;
+  _transitionAnimations[prop] = animation;
 }
 
 - (void)applyTransitionAnimation {
@@ -723,7 +713,12 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
   [self removeTransitionAnimation:TRANSITION_BOTTOM];
 }
 
-- (LynxAnimationDelegate*)createTransitionDelegate:(LynxAnimationInfo*)info {
+- (LynxAnimationDelegate*)createTransitionDelegate:(LynxAnimationInfo*)info
+                                         animation:(CAAnimation*)transition {
+  const NSTimeInterval duration = MAX(transition.duration, 0);
+  const NSTimeInterval startElapsedTime = MIN(MAX(-info.delay, 0), duration);
+  // A forced stop has no CAAnimation argument, so retain its scheduled begin time.
+  const CFTimeInterval beginTime = transition.beginTime;
   __weak LynxTransitionAnimationManager* weakSelf = self;
   return [LynxAnimationDelegate
       initWithDidStart:^(CAAnimation* animation) {
@@ -738,12 +733,21 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
         [LynxAnimationDelegate
             sendAnimationEvent:strongSelf.ui
                      eventName:(NSString*)kTransitionEventStart
-                   eventParams:@{@"animation_type" : [LynxConverter toLynxPropName:info.prop]}];
+                   eventParams:@{
+                     @"animation_type" : [LynxConverter toLynxPropName:info.prop],
+                     @"elapsedTime" : @(startElapsedTime)
+                   }];
       }
       didStop:^(CAAnimation* animation, BOOL finished) {
         __strong LynxTransitionAnimationManager* strongSelf = weakSelf;
         if (!strongSelf) {
           return;
+        }
+        NSTimeInterval elapsedTime = duration;
+        if (!finished) {
+          CFTimeInterval localTime = [strongSelf.ui.view.layer convertTime:CACurrentMediaTime()
+                                                                 fromLayer:nil];
+          elapsedTime = MIN(MAX(localTime - beginTime, 0), duration);
         }
         if (info.completeBlock) {
           info.completeBlock(finished);
@@ -758,6 +762,7 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
                      eventName:(NSString*)kTransitionEventEnd
                    eventParams:@{
                      @"animation_type" : [LynxConverter toLynxPropName:info.prop],
+                     @"elapsedTime" : @(elapsedTime),
                      @"finished" : [NSNumber numberWithBool:finished]
                    }];
 

@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/closure.h"
+#include "clay/gfx/animation/transition_manager.h"
 #include "clay/lynx_adaptor/lynx_event_dispatcher.h"
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/public/value.h"
@@ -104,6 +106,71 @@ class LynxEventDispatcherTest : public ::testing::Test {
   LynxEventDispatcher dispatcher_;
   std::shared_ptr<RecordingEngineProxy> engine_;
 };
+
+TEST_F(LynxEventDispatcherTest, AnimationElapsedTimeIsSentInParams) {
+  EXPECT_CALL(*engine_,
+              SendCustomEvent("animationstart", 10, ::testing::_, "params"))
+      .WillOnce(::testing::WithArg<2>([](const lynx::pub::Value& params) {
+        const auto elapsed_time = params.GetValueForKey("elapsedTime");
+        ASSERT_TRUE(elapsed_time && elapsed_time->IsNumber());
+        EXPECT_DOUBLE_EQ(elapsed_time->Number(), 0.25);
+      }));
+  EXPECT_CALL(*engine_,
+              SendCustomEvent("transitionend", 10, ::testing::_, "params"))
+      .WillOnce(::testing::WithArg<2>([](const lynx::pub::Value& params) {
+        const auto elapsed_time = params.GetValueForKey("elapsedTime");
+        ASSERT_TRUE(elapsed_time && elapsed_time->IsNumber());
+        EXPECT_DOUBLE_EQ(elapsed_time->Number(), 0.5);
+      }));
+
+  dispatcher_.OnAnimationEvent("animationstart", "opacity", 10, 0.25);
+  dispatcher_.OnTransitionEvent("transitionend", "", 10,
+                                ClayAnimationPropertyType::kOpacity, 0.5);
+}
+
+using TransitionCancellationTest = UITest;
+
+TEST_F_UI(TransitionCancellationTest, ReplacedTransitionReportsElapsedTime) {
+  constexpr auto property = ClayAnimationPropertyType::kOpacity;
+  auto engine = std::make_shared<RecordingEngineProxy>();
+  LynxEventDispatcher dispatcher;
+  dispatcher.SetEngineProxy(engine);
+  auto* previous_delegate = page_->GetEventDelegate();
+  page_->SetEventDelegate(&dispatcher);
+  page_->SetRasterAnimationEnabled(false);
+  View view(10, page_.get());
+  page_->AddChild(&view);
+  fml::ScopedCleanupClosure cleanup([&] {
+    page_->RemoveChild(&view);
+    view.Destroy();
+    page_->SetEventDelegate(previous_delegate);
+  });
+  view.SetBound(0, 0, 100, 100);
+  view.AddEventCallback("transitioncancel");
+  TransitionData transition;
+  transition.duration = 100;
+  transition.property = property;
+  view.SetTransition({transition});
+  view.OnNodeReady();
+  view.SetOpacity(0.25f);
+
+  page_->GetAnimationHandler()->DoAnimationFrame(1000);
+  const auto animators = view.TransitionMgr()->GetRunningAnimators();
+  ASSERT_EQ(animators.size(), 1u);
+  animators.front()->PauseForTest(1050);
+  EXPECT_CALL(*engine,
+              SendCustomEvent("transitioncancel", 10, ::testing::_, "params"))
+      .WillOnce(::testing::WithArg<2>([](const lynx::pub::Value& params) {
+        const auto type = params.GetValueForKey("animation_type");
+        ASSERT_TRUE(type && type->IsString());
+        EXPECT_EQ(type->str(), "transition-opacity");
+        const auto elapsed_time = params.GetValueForKey("elapsedTime");
+        ASSERT_TRUE(elapsed_time && elapsed_time->IsNumber());
+        EXPECT_DOUBLE_EQ(elapsed_time->Number(), 0.05);
+      }));
+
+  view.SetOpacity(0.75f);
+}
 
 class TouchCancellationEventDispatcher : public LynxEventDispatcher {
  public:
@@ -447,7 +514,7 @@ TEST_F(LynxEventDispatcherTest, AnimationCancelForwardsKeyframeIdentity) {
         EXPECT_EQ(name->str(), "fade-out");
       }));
 
-  dispatcher_.OnAnimationEvent("animationcancel", "fade-out", 42);
+  dispatcher_.OnAnimationEvent("animationcancel", "fade-out", 42, 0.0);
 }
 
 }  // namespace

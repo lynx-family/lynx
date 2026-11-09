@@ -26,6 +26,7 @@
 #include <memory>
 #include <optional>
 
+#include "base/include/fml/time/time_delta.h"
 #include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animation_handler.h"
 #include "clay/gfx/animation/animator.h"
@@ -394,9 +395,12 @@ class ValueAnimator : public Animator,
   float GetCurrentIterationFraction(float fraction, bool in_reverse) const;
   float ClampFraction(float fraction) const;
   bool ShouldPlayBackward(int iteration, bool in_reverse) const;
-  int64_t GetCurrentPlayTime();
+  fml::TimeDelta ActiveDuration() const;
+  double StartEventElapsedTime() const;
+  double EndEventElapsedTime();
+  double ActiveElapsedTime();
 
-  void NotifyStartListeners();
+  void NotifyStartListeners(double elapsed_time);
   void PrepareAnimation();
   void ApplyBackwardsFill(bool update_values);
   void Start(bool play_backwards);
