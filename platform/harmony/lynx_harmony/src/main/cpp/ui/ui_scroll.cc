@@ -312,6 +312,16 @@ void UIScroll::OnNodeReady() {
   RefreshStickyChildrenIfNeeded();
 }
 
+void UIScroll::OnNodeReload() {
+  BaseScrollContainer::OnNodeReload();
+  ResetScrollTarget();
+  pending_scroll_offset_ = scroll::kInvalidScrollOffset;
+  // TODO: Handle scroll requests already scheduled through VSync that may
+  // still run after reload:
+  // ScrollToAsyncIfNeeded -> OnNodeReload -> VSyncCallback.
+  ScrollTo(0.f, 0.f, false);
+}
+
 void UIScroll::ScrollToOffset(const float scroll_offset) {
   if (layout_changed_) {
     pending_scroll_offset_ = scroll_offset;

@@ -87,6 +87,8 @@ class UIScroll : public BaseScrollContainer, public UIStickyScroller {
 
   void OnNodeReady() override;
 
+  void OnNodeReload() override;
+
   void InvokeMethod(const std::string& method, const lepus::Value& args,
                     base::MoveOnlyClosure<void, int32_t, const lepus::Value&>
                         callback) override;
