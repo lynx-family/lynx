@@ -169,6 +169,10 @@ constexpr static const char* kCFunctionReplaceElement = "__ReplaceElement";
 constexpr static const char* kCFunctionReplaceElements = "__ReplaceElements";
 constexpr static const char* kCFunctionSwapElement = "__SwapElement";
 constexpr static const char* kCFunctionGetParent = "__GetParent";
+constexpr static const char* kCFunctionGetComposeMountElement =
+    "__GetComposeMountElement";
+constexpr static const char* kCFunctionGetComposeContentElement =
+    "__GetComposeContentElement";
 constexpr static const char* kCFunctionGetChildren = "__GetChildren";
 constexpr static const char* kCFunctionCloneElement = "__CloneElement";
 constexpr static const char* kCFunctionElementIsEqual = "__ElementIsEqual";
