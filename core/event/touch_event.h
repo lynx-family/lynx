@@ -5,7 +5,9 @@
 #ifndef CORE_EVENT_TOUCH_EVENT_H_
 #define CORE_EVENT_TOUCH_EVENT_H_
 
+#include <cstdint>
 #include <string>
+#include <utility>
 
 #include "core/event/event.h"
 #include "core/public/event/touch_event_data.h"
@@ -19,6 +21,43 @@
 #define EVENT_LONG_PRESS "longpress"
 
 namespace lynx {
+namespace tasm {
+
+// Carries either scalar coordinates or a touch table keyed by target ID.
+struct EventInfo {
+  explicit EventInfo(const lepus::Value& params, int64_t timestamp = 0)
+      : params(params), is_multi_finger(true), timestamp(timestamp) {}
+  EventInfo(int tag, float x, float y, float client_x, float client_y,
+            float page_x, float page_y, int64_t timestamp = 0,
+            event::TouchEventTargetPoints current_target_points = {})
+      : tag(tag),
+        x(x),
+        y(y),
+        client_x(client_x),
+        client_y(client_y),
+        page_x(page_x),
+        page_y(page_y),
+        timestamp(timestamp),
+        current_target_points(std::move(current_target_points)) {}
+  EventInfo(const EventInfo& info) = delete;
+  EventInfo& operator=(const EventInfo& info) = delete;
+  EventInfo(EventInfo&& info) noexcept = default;
+  EventInfo& operator=(EventInfo&& info) noexcept = default;
+
+  lepus::Value params;
+  bool is_multi_finger{false};
+  int32_t tag{0};
+  float x{0};
+  float y{0};
+  float client_x{0};
+  float client_y{0};
+  float page_x{0};
+  float page_y{0};
+  int64_t timestamp{0};
+  event::TouchEventTargetPoints current_target_points;
+};
+
+}  // namespace tasm
 namespace event {
 
 // Owned by a page and accessed only during engine event dispatch.

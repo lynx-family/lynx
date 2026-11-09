@@ -40,9 +40,9 @@
 #define CORE_EVENT_EVENT_DISPATCHER_H_
 
 namespace lynx {
-namespace lepus {
-class Value;
-}
+namespace tasm {
+struct EventInfo;
+}  // namespace tasm
 namespace event {
 
 class Event;
@@ -51,9 +51,11 @@ struct TouchEventState;
 
 class EventDispatcher {
  public:
-  static DispatchEventResult DispatchEvent(EventTarget&, fml::RefPtr<Event>);
+  static DispatchEventResult DispatchEvent(
+      EventTarget& target, fml::RefPtr<Event> event,
+      const std::function<TouchEventState*()>& get_page_state = {});
   static void DispatchTouchEventBatch(
-      const std::string& name, const lepus::Value& params, int64_t timestamp,
+      const std::string& name, const tasm::EventInfo& info,
       const std::function<EventTarget*(int)>& get_target,
       const std::function<TouchEventState*()>& get_page_state);
 
@@ -66,7 +68,6 @@ class EventDispatcher {
 
   fml::WeakPtr<EventTarget> target_;
   fml::RefPtr<Event> event_;
-  bool defer_touch_cancel_cleanup_{false};
 };
 
 }  // namespace event

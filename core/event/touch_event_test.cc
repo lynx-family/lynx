@@ -223,7 +223,7 @@ TEST(TouchEventTest, BatchedCancelClearsAfterAllTargetsEvenWhenCaught) {
   params->SetValue("2", lepus::CArray::Create());
   int cleanup_count = 0;
   EventDispatcher::DispatchTouchEventBatch(
-      EVENT_TOUCH_CANCEL, lepus::Value(params), 0,
+      EVENT_TOUCH_CANCEL, tasm::EventInfo(lepus::Value(params)),
       [&](int tag) -> EventTarget* { return tag == 1 ? &first : &second; },
       [&]() {
         EXPECT_EQ(first_listener->GetCount(), 1);
@@ -249,7 +249,7 @@ TEST(TouchEventTest, BatchedCancelClearsWhenNoTargetsCanBeDispatched) {
     }
     int cleanup_count = 0;
     EventDispatcher::DispatchTouchEventBatch(
-        EVENT_TOUCH_CANCEL, lepus::Value(params), 0,
+        EVENT_TOUCH_CANCEL, tasm::EventInfo(lepus::Value(params)),
         [](int) -> EventTarget* { return nullptr; },
         [&]() {
           ++cleanup_count;
@@ -267,6 +267,71 @@ TEST(TouchEventTest, SingleTouchCancelClearsPreviouslyActiveContacts) {
   EventDispatcher::DispatchEvent(target, cancel);
   EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(), 0u);
   EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(), 1u);
+}
+
+TEST(TouchEventTest, StandaloneCancelClearsAfterListenersEvenWhenCaught) {
+  for (bool compatible : {false, true}) {
+    for (bool scalar : {false, true}) {
+      SCOPED_TRACE(compatible);
+      SCOPED_TRACE(scalar);
+      TouchEventTarget target(nullptr, compatible);
+      DispatchTouch(target, EVENT_TOUCH_START, 7, 10.f);
+      DispatchTouch(target, EVENT_TOUCH_START, 11, 20.f);
+      const EventListener::Options options(false, false, false, false, true);
+      auto listener = std::make_shared<MockEventListener>(
+          EventListener::Type::kJSClosureEventListener, "cancel", "", "",
+          nullptr, options);
+      target.AddEventListener(EVENT_TOUCH_CANCEL, listener);
+      auto cancel =
+          scalar ? fml::MakeRefCounted<TouchEvent>(EVENT_TOUCH_CANCEL, 1.f, 2.f)
+                 : fml::MakeRefCounted<TouchEvent>(
+                       EVENT_TOUCH_CANCEL,
+                       lepus::Value(lepus::Dictionary::Create()));
+      int cleanup_count = 0;
+      auto result = EventDispatcher::DispatchEvent(target, cancel, [&]() {
+        EXPECT_EQ(listener->GetCount(), 1);
+        EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(), 2u);
+        ++cleanup_count;
+        return target.GetTouchEventState();
+      });
+      EXPECT_TRUE(result.IsCanceled());
+      EXPECT_EQ(cleanup_count, 1);
+      EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(), 0u);
+      EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(),
+                scalar ? 1u : 2u);
+      auto next = DispatchTouch(target, EVENT_TOUCH_START, 9, 30.f);
+      ExpectTouch(next->detail().GetProperty("touches"), 9, 30.f);
+    }
+  }
+}
+
+TEST(TouchEventTest, GenericDispatchPreservesEventTypeBasedCleanup) {
+  for (auto type :
+       {Event::EventType::kTouchEvent, Event::EventType::kCustomEvent}) {
+    TouchEventTarget target;
+    DispatchTouch(target, EVENT_TOUCH_START, 7, 10.f);
+    auto cancel = fml::MakeRefCounted<Event>(
+        EVENT_TOUCH_CANCEL, type, Event::Capture::kYes, Event::Bubbles::kYes,
+        Event::Cancelable::kYes, Event::ComposedMode::kScoped);
+    EventDispatcher::DispatchEvent(target, cancel);
+    EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(),
+              type == Event::EventType::kTouchEvent ? 0u : 1u);
+  }
+}
+
+TEST(TouchEventTest, DispatchEventCanResolvePageWithoutTargetState) {
+  TouchEventTarget page_target;
+  MockEventTarget target;
+  DispatchTouch(page_target, EVENT_TOUCH_START, 7, 10.f);
+  auto cancel = fml::MakeRefCounted<Event>(
+      EVENT_TOUCH_CANCEL, Event::EventType::kTouchEvent, Event::Capture::kYes,
+      Event::Bubbles::kYes, Event::Cancelable::kYes,
+      Event::ComposedMode::kScoped);
+
+  EventDispatcher::DispatchEvent(
+      target, cancel, [&]() { return page_target.GetTouchEventState(); });
+
+  EXPECT_EQ(page_target.GetTouchEventState()->current_touches.GetLength(), 0u);
 }
 
 TEST(TouchEventTest, ScalarGesturesPreserveActiveContacts) {

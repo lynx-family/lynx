@@ -71,25 +71,55 @@ bool HasBubbleEventListener(EventTarget& target, Event& event) {
 
 }  // namespace
 
-DispatchEventResult EventDispatcher::DispatchEvent(EventTarget& target,
-                                                   fml::RefPtr<Event> event) {
+DispatchEventResult EventDispatcher::DispatchEvent(
+    EventTarget& target, fml::RefPtr<Event> event,
+    const std::function<TouchEventState*()>& get_page_state) {
+  const bool is_touch_cancel =
+      event->event_type() == Event::EventType::kTouchEvent &&
+      event->type() == EVENT_TOUCH_CANCEL;
   EventDispatcher dispatcher(target, event);
-  return event->DispatchEvent(dispatcher);
+  auto result = event->DispatchEvent(dispatcher);
+  if (is_touch_cancel) {
+    // A listener may destroy the target while leaving its page alive.
+    TouchEventState* state = nullptr;
+    if (get_page_state) {
+      state = get_page_state();
+    } else if (dispatcher.target_) {
+      state = dispatcher.target_->GetTouchEventState();
+    }
+    if (state) {
+      state->current_touches = lepus::Value(lepus::CArray::Create());
+    }
+  }
+  return result;
 }
 
 void EventDispatcher::DispatchTouchEventBatch(
-    const std::string& name, const lepus::Value& params, int64_t timestamp,
+    const std::string& name, const tasm::EventInfo& info,
     const std::function<EventTarget*(int)>& get_target,
     const std::function<TouchEventState*()>& get_page_state) {
-  for (const auto& entry : *params.Table()) {
+  if (!info.is_multi_finger) {
+    auto* target = get_target(info.tag);
+    if (!target) {
+      LOGE("DispatchTouchEventBatch error: the target is null.");
+      return;
+    }
+    auto event = fml::MakeRefCounted<TouchEvent>(
+        name, info.x, info.y, info.page_x, info.page_y, info.client_x,
+        info.client_y, info.timestamp, info.current_target_points);
+    DispatchEvent(*target, std::move(event), get_page_state);
+    return;
+  }
+
+  for (const auto& entry : *info.params.Table()) {
     auto* target = get_target(std::stoi(entry.first.str()));
     if (!target) {
       LOGE("DispatchTouchEventBatch error: the target is null.");
       continue;
     }
-    auto event = fml::MakeRefCounted<TouchEvent>(name, params, timestamp);
+    auto event =
+        fml::MakeRefCounted<TouchEvent>(name, info.params, info.timestamp);
     EventDispatcher dispatcher(*target, event);
-    dispatcher.defer_touch_cancel_cleanup_ = true;
     event->DispatchEvent(dispatcher);
   }
   if (name == EVENT_TOUCH_CANCEL) {
@@ -126,14 +156,6 @@ DispatchEventResult EventDispatcher::Dispatch() {
     return {EventCancelType::kCanceledByEventHandler, false};
   }
   event_->HandleEventCustomDetail();
-  if (!defer_touch_cancel_cleanup_ &&
-      event_->event_type() == Event::EventType::kTouchEvent &&
-      event_->type() == EVENT_TOUCH_CANCEL) {
-    // Standalone events have no remaining target that needs these contacts.
-    if (auto* state = target_->GetTouchEventState()) {
-      state->current_touches = lepus::Value(lepus::CArray::Create());
-    }
-  }
   bool consumed = false;
   auto path = event_->event_path();
 
