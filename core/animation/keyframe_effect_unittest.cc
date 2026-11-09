@@ -351,6 +351,9 @@ TEST_F(KeyframeEffectTest, TickCountsSkippedIterationsAndIgnoresRollback) {
       fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(2500));
   auto skipped_result = effect->Tick(third_iteration);
   EXPECT_EQ(2, skipped_result.iteration_events_due);
+  EXPECT_EQ(1, skipped_result.event_timing.first_iteration);
+  EXPECT_EQ(fml::TimeDelta::FromSeconds(1),
+            skipped_result.event_timing.iteration_duration);
   EXPECT_EQ(1u, skipped_result.samples.size());
 
   fml::TimePoint second_iteration =
