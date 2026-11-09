@@ -238,6 +238,15 @@ public interface ILynxImageService extends IServiceProvider {
   default void setSkipContentLengthCheck(@NonNull Object builder, boolean skip) {}
 
   /**
+   * Sets whether low-memory decoding is enabled for this image request.
+   * Unsupported image backends ignore this optional setting.
+   *
+   * @param builder The image request builder object.
+   * @param enable Whether to enable low-memory decoding.
+   */
+  default void setLowMemoryDecode(@NonNull Object builder, boolean enable) {}
+
+  /**
    * Set the decode region for this image request.
    *
    * <p>The builder is passed as {@link Object} to avoid directly depending on Fresco classes in
