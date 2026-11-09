@@ -1,0 +1,13 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+gfx_path_resource_headers = [
+  "public/path_types.h",
+  "public/path_impl.h",
+  "public/path.h",
+]
+gfx_path_resource_sources = [
+  "path/path.cc",
+  "path/path_impl.cc",
+]
