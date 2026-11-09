@@ -75,6 +75,49 @@ typedef void (*ClayNetLoadResultCallback)(size_t request_seq, bool success,
                                           const uint8_t* data, size_t length);
 
 //------------------------------------------------------------------------------
+// Host VSync (Android only)
+//------------------------------------------------------------------------------
+/// Opaque source handle; never dereference it.
+typedef struct ClayCustomVSyncMonitor* ClayCustomVSyncMonitorRef;
+/// Reply with monotonic nanoseconds (CLOCK_MONOTONIC on Android), target >=
+/// start. Echo request_data unchanged; never dereference or free it. Late and
+/// duplicate replies are ignored.
+typedef void (*ClayVSyncReply)(void* request_data, int64_t frame_start_time_ns,
+                               int64_t frame_target_time_ns);
+/// Requests and replies may run on any thread. Register the request and return
+/// promptly; reply on the next host tick. Unanswered requests have no system
+/// VSync fallback.
+typedef void (*ClayVSyncRequest)(void* user_data, ClayVSyncReply reply,
+                                 void* request_data);
+
+/// Android only. Creates a source for Clay's asynchronous compositor and its
+/// Lynx consumers. Select an asynchronous Clay mode and configure
+/// LynxUIRendererClayCreator before View creation. Do not supply a pre-created
+/// LynxBackgroundRuntime or shared logic executor; keep the same source when
+/// reusing Core engines. Callers enforce these constraints.
+/// Returns an owned handle, or NULL for a missing request/exhausted handles.
+/// On failure, user_data stays caller-owned. On success, finalizer (if
+/// provided) runs on any thread after all source references are released.
+CLAY_EXPORT ClayCustomVSyncMonitorRef ClayCreateCustomVSyncMonitor(
+    void* user_data, ClayVSyncRequest request, ClayVoidCallback finalizer);
+
+/// Android only. Returns an independently owned handle to the same source.
+/// Use the returned value, which may differ; input ownership is unchanged.
+/// Returns NULL for invalid/released input or exhausted handles.
+/// Creator configuration already retains its own source reference.
+CLAY_EXPORT ClayCustomVSyncMonitorRef
+ClayRetainCustomVSyncMonitor(ClayCustomVSyncMonitorRef monitor);
+
+/// Android only. Releases one owned handle. Pair each successful Create/Retain
+/// with one call. Release is safe after
+/// LynxUIRendererClayCreator.setCustomVSyncMonitorHandle returns successfully,
+/// even before View creation: the Creator retains its own source reference.
+/// Complete all borrowing calls before release; never use the handle
+/// afterwards.
+CLAY_EXPORT void ClayReleaseCustomVSyncMonitor(
+    ClayCustomVSyncMonitorRef monitor);
+
+//------------------------------------------------------------------------------
 // Enumerations
 //------------------------------------------------------------------------------
 typedef enum {

@@ -342,6 +342,11 @@ class LynxShell {
     return runtime_actor_;
   }
 
+  const std::shared_ptr<base::VSyncMonitorPlatformImpl>&
+  GetVSyncMonitorPlatformImpl() const {
+    return engine_build_options_.vsync_monitor_platform_impl_;
+  }
+
   std::shared_ptr<LynxActor<shell::LynxEngine>> GetEngineActor() {
     return engine_actor_;
   }

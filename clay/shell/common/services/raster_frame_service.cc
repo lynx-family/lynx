@@ -25,8 +25,9 @@ std::shared_ptr<RasterFrameService> RasterFrameService::Create() {
 
 void RasterFrameService::OnInit(clay::ServiceManager& service_manager,
                                 const clay::RasterServiceContext& ctx) {
-  auto raster_task_runner = service_manager.GetTaskRunners()
-                                ->SelectTaskRunner<clay::Owner::kRaster>();
+  raster_task_runner_ = service_manager.GetTaskRunners()
+                            ->SelectTaskRunner<clay::Owner::kRaster>();
+  vsync_waiter_service_ = service_manager.GetService<VsyncWaiterService>();
   rasterizer_ = ctx.rasterizer;
   page_unique_id_ = ctx.page_unique_id;
   clay::Puppet<clay::Owner::kRaster, PlatformConstService>
@@ -34,14 +35,7 @@ void RasterFrameService::OnInit(clay::ServiceManager& service_manager,
           service_manager.GetService<PlatformConstService>();
   const auto& settings = platform_const_service->GetSettings();
   using_sync_compositor_ = settings.enable_sync_compositor;
-  if (!using_sync_compositor_ && settings.custom_vsync_request) {
-    vsync_waiter_ = std::make_shared<VsyncWaiterCustom>(
-        raster_task_runner, settings.custom_vsync_request);
-  } else {
-    clay::Puppet<clay::Owner::kRaster, VsyncWaiterService>
-        vsync_waiter_service = service_manager.GetService<VsyncWaiterService>();
-    vsync_waiter_ = vsync_waiter_service->CreateVsyncWaiter(raster_task_runner);
-  }
+  CreateVsyncWaiter(ctx.TakeInitialCustomVsyncRequest());
   if (using_sync_compositor_) {
     sync_compositor_service_ =
         service_manager.GetService<SyncCompositorService>();
@@ -54,16 +48,27 @@ void RasterFrameService::OnInit(clay::ServiceManager& service_manager,
           ->SelectTaskRunner<clay::Owner::kRaster>());
 }
 
+void RasterFrameService::CreateVsyncWaiter(
+    VsyncRequestCallback custom_vsync_request) {
+  if (custom_vsync_request) {
+    vsync_waiter_ = std::make_shared<VsyncWaiterCustom>(
+        raster_task_runner_, std::move(custom_vsync_request));
+  } else {
+    vsync_waiter_ =
+        vsync_waiter_service_->CreateVsyncWaiter(raster_task_runner_);
+  }
+}
+
 void RasterFrameService::OnDestroy() {
   if (raster_frame_deadline_timer_) {
     raster_frame_deadline_timer_->Stop();
   }
   StopSchedulerAndCleanLayerTree();
-#if OS_MAC
-  // Keep the waiter across recycling. On detach, invalidate the macOS display
-  // link on the raster thread even if the service itself is still retained.
+  // Release display links and custom sources on the raster thread even if
+  // the service itself is still retained.
   vsync_waiter_.reset();
-#endif
+  vsync_waiter_service_ = nullptr;
+  raster_task_runner_ = nullptr;
 }
 
 void RasterFrameService::SetOutputSurfaceValid(bool valid) {
@@ -384,14 +389,14 @@ void RasterFrameService::ScheduledActionUploadImage() {
   scheduler_->OnImageUploadTaskFinished(left_tasks);
 }
 
-void RasterFrameService::PrepareForRecycle() {
+void RasterFrameService::PrepareForRecycle(
+    VsyncRequestCallback custom_vsync_request) {
+  // Clean and prepare run in order on the same raster runner. A new waiter
+  // keeps a late signal for the previous page away from the new callback.
+  CreateVsyncWaiter(std::move(custom_vsync_request));
   vsync_source_active_ = true;
   vsync_requested_ = false;
   ++vsync_request_generation_;
-  if (vsync_waiter_) {
-    vsync_waiter_->ResetPendingCallbacks();
-    vsync_waiter_->SetEngineIsActive(true);
-  }
   scheduler_->Resume();
 }
 
@@ -412,6 +417,7 @@ void RasterFrameService::CleanForRecycle() {
     vsync_waiter_->ResetPendingCallbacks();
     vsync_waiter_->SetEngineIsActive(false);
   }
+  vsync_waiter_.reset();
   StopSchedulerAndCleanLayerTree();
 }
 

@@ -24,8 +24,11 @@ namespace tasm {
 
 UIDelegateClay::UIDelegateClay(
     clay::ViewContext* view_context,
-    std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory)
-    : view_context_(view_context), module_factory_(std::move(module_factory)) {
+    std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory,
+    std::shared_ptr<base::VSyncMonitorPlatformImpl> vsync_monitor_platform_impl)
+    : view_context_(view_context),
+      module_factory_(std::move(module_factory)),
+      vsync_monitor_platform_impl_(std::move(vsync_monitor_platform_impl)) {
   event_dispatcher_ = std::make_unique<clay::LynxEventDispatcher>();
   view_context->SetEventDelegate(event_dispatcher_.get());
 }

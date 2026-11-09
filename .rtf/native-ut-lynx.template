@@ -84,6 +84,12 @@ coverage({
 })
 
 targets({
+    "lynx_vsync_monitor_unittests": {
+        "cwd": ".",
+        "owners": ["zuojinglong.9"],
+        "coverage": True,
+        "enable_parallel": True,
+    },
     "create_view_scheduler_unittest_exec": {
         "cwd": ".",
         "owners":["renzhongyue"],

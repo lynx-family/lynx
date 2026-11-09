@@ -21,6 +21,7 @@
 #include "core/public/lynx_runtime_proxy.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/perf_controller_proxy.h"
+#include "core/public/vsync_monitor_platform_impl.h"
 
 namespace lynx {
 namespace tasm {
@@ -93,6 +94,13 @@ class UIDelegate {
 
   // Whether enable native list for the different renderer backend.
   virtual bool EnableNativeList() const { return false; }
+
+  // Returns the source configured before this renderer creates its engine.
+  // A null source uses the platform display clock.
+  virtual std::shared_ptr<base::VSyncMonitorPlatformImpl>
+  GetVSyncMonitorPlatformImpl() const {
+    return nullptr;
+  }
 
   // WeakFlag is used to create a weak reference to the UIDelegate instance.
   // This allows checking if the UIDelegate is still alive before accessing it.
