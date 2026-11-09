@@ -24638,6 +24638,74 @@ TEST_P(FiberElementTest,
   EXPECT_NEAR(opacity_it->second.Number(), 0.2, 1e-6);
 }
 
+TEST_P(FiberElementTest,
+       NewStylingLegacyAnimateReplacementPreservesAnimationDuringCleanup) {
+  int32_t page_id = 11;
+  for (bool enable_new_styling_pipeline : {false, true}) {
+    SCOPED_TRACE(enable_new_styling_pipeline);
+    manager->enable_new_styling_pipeline_ = enable_new_styling_pipeline;
+    auto page = manager->CreateFiberPage("page", page_id++);
+    manager->SetFiberPageElement(page);
+    auto element = manager->CreateFiberView();
+    element->enable_new_animator_ = false;
+    element->has_explicit_new_animator_attr_ = true;
+    element->SetRawInlineStyles("background-color: blue;");
+    page->InsertNode(element);
+    page->FlushActionsAsRoot();
+    ASSERT_FALSE(element->use_cpp_animation_builder());
+
+    auto start = [&](const char* name, const char* property, const char* from,
+                     const char* to) {
+      auto args = lepus::CArray::Create();
+      args->set(
+          0, lepus::Value(static_cast<int32_t>(
+                 runtime::js::JavaScriptElement::AnimationOperation::START)));
+      args->set(1, lepus::Value(name));
+      auto keyframes = lepus::Dictionary::Create();
+      for (const auto& frame : {std::pair{"0%", from}, std::pair{"100%", to}}) {
+        auto styles = lepus::Dictionary::Create();
+        styles->SetValue(property, lepus::Value(frame.second));
+        keyframes->SetValue(frame.first, lepus::Value(std::move(styles)));
+      }
+      args->set(2, lepus::Value(std::move(keyframes)));
+      auto options = lepus::Dictionary::Create();
+      options->SetValue("duration", lepus::Value(2000));
+      options->SetValue("fill", lepus::Value("forwards"));
+      args->set(3, lepus::Value(std::move(options)));
+      auto pipeline_options = std::make_shared<PipelineOptions>();
+      pipeline_options->enable_unified_pixel_pipeline = true;
+      element->Animate(lepus::Value(args), pipeline_options);
+      page->FlushActionsAsRoot();
+    };
+
+    start("color-animation", "background-color", "blue", "red");
+    ASSERT_EQ(element->computed_css_style()->animation_data().size(), 1u);
+    EXPECT_EQ(element->computed_css_style()->animation_data()[0].name,
+              base::String("color-animation"));
+    start("transform-animation", "transform", "rotate(0deg)", "rotate(225deg)");
+    EXPECT_FALSE(element->HasPendingImperativeAnimationCleanupProperties());
+    ASSERT_EQ(element->computed_css_style()->animation_data().size(), 1u);
+    EXPECT_EQ(element->computed_css_style()->animation_data()[0].name,
+              base::String("transform-animation"));
+    EXPECT_EQ(element->HasImperativeAnimations(), enable_new_styling_pipeline);
+
+    element->SetRawInlineStyles("background-color: blue; width: 20px;");
+    page->FlushActionsAsRoot();
+    ASSERT_EQ(element->computed_css_style()->animation_data().size(), 1u);
+    EXPECT_EQ(element->computed_css_style()->animation_data()[0].name,
+              base::String("transform-animation"));
+
+    element->SetRawInlineStyles(
+        "background-color: blue; width: 20px; animation: authored 1s "
+        "forwards;");
+    page->FlushActionsAsRoot();
+    EXPECT_FALSE(element->HasImperativeAnimations());
+    ASSERT_EQ(element->computed_css_style()->animation_data().size(), 1u);
+    EXPECT_EQ(element->computed_css_style()->animation_data()[0].name,
+              base::String("authored"));
+  }
+}
+
 TEST_P(FiberElementTest, ImperativeAnimationOriginAcrossStylingPipelines) {
   int32_t page_id = 11;
   for (const bool enable_new_styling_pipeline : {false, true}) {
