@@ -6,9 +6,11 @@
 #include <memory>
 #include <utility>
 
+#include "core/public/layout_node_value.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
+#include "core/renderer/starlight/types/nlength.h"
 
 namespace lynx {
 namespace tasm {
@@ -45,17 +47,73 @@ FlexDirection ElementLayoutNodeManager::GetFlexDirection(int32_t id) {
   return FlexDirection::kRow;
 }
 
-float ElementLayoutNodeManager::GetWidth(int32_t id) { return 0; }
+float ElementLayoutNodeManager::GetWidth(int32_t id) {
+  auto* element = GetElement(id);
+  if (element == nullptr || element->slnode() == nullptr) {
+    return 0.0f;
+  }
+  const auto& style = element->slnode()->GetCSSStyle();
+  return starlight::NLengthToFakeLayoutUnit(style->GetWidth())
+      .ClampIndefiniteToZero()
+      .ToFloat();
+}
 
-float ElementLayoutNodeManager::GetHeight(int32_t id) { return 0; }
+float ElementLayoutNodeManager::GetHeight(int32_t id) {
+  auto* element = GetElement(id);
+  if (element == nullptr || element->slnode() == nullptr) {
+    return 0.0f;
+  }
+  const auto& style = element->slnode()->GetCSSStyle();
+  return starlight::NLengthToFakeLayoutUnit(style->GetHeight())
+      .ClampIndefiniteToZero()
+      .ToFloat();
+}
 
-float ElementLayoutNodeManager::GetMinWidth(int32_t id) { return 0; }
+float ElementLayoutNodeManager::GetMinWidth(int32_t id) {
+  auto* element = GetElement(id);
+  if (element == nullptr || element->slnode() == nullptr) {
+    return LayoutNodeStyle::UNDEFINED_MIN_SIZE;
+  }
+  const auto& style = element->slnode()->GetCSSStyle();
+  return starlight::NLengthToFakeLayoutUnit(style->GetMinWidth())
+      .ClampIndefiniteToZero()
+      .ToFloat();
+}
 
-float ElementLayoutNodeManager::GetMaxWidth(int32_t id) { return 0; }
+float ElementLayoutNodeManager::GetMaxWidth(int32_t id) {
+  auto* element = GetElement(id);
+  if (element == nullptr || element->slnode() == nullptr) {
+    return LayoutNodeStyle::UNDEFINED_MAX_SIZE;
+  }
+  const auto& style = element->slnode()->GetCSSStyle();
+  const auto max_width =
+      starlight::NLengthToFakeLayoutUnit(style->GetMaxWidth());
+  return max_width.IsIndefinite() ? LayoutNodeStyle::UNDEFINED_MAX_SIZE
+                                  : max_width.ToFloat();
+}
 
-float ElementLayoutNodeManager::GetMinHeight(int32_t id) { return 0; }
+float ElementLayoutNodeManager::GetMinHeight(int32_t id) {
+  auto* element = GetElement(id);
+  if (element == nullptr || element->slnode() == nullptr) {
+    return LayoutNodeStyle::UNDEFINED_MIN_SIZE;
+  }
+  const auto& style = element->slnode()->GetCSSStyle();
+  return starlight::NLengthToFakeLayoutUnit(style->GetMinHeight())
+      .ClampIndefiniteToZero()
+      .ToFloat();
+}
 
-float ElementLayoutNodeManager::GetMaxHeight(int32_t id) { return 0; }
+float ElementLayoutNodeManager::GetMaxHeight(int32_t id) {
+  auto* element = GetElement(id);
+  if (element == nullptr || element->slnode() == nullptr) {
+    return LayoutNodeStyle::UNDEFINED_MAX_SIZE;
+  }
+  const auto& style = element->slnode()->GetCSSStyle();
+  const auto max_height =
+      starlight::NLengthToFakeLayoutUnit(style->GetMaxHeight());
+  return max_height.IsIndefinite() ? LayoutNodeStyle::UNDEFINED_MAX_SIZE
+                                   : max_height.ToFloat();
+}
 
 float ElementLayoutNodeManager::GetPaddingLeft(int32_t id) { return 0; }
 
