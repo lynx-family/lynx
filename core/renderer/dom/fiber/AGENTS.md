@@ -14,6 +14,7 @@ This directory contains fiber-specific element implementations and tree-resoluti
 ## Edit Rules
 
 - Keep per-element behavior in the owning element type and shared traversal logic in `tree_resolver.*`.
+- New styling resolves must retain imperative animation timing for both C++ and legacy animators. Replacing an animation can trigger a cleanup-only resolve; preserve the replacement's timing while restoring properties owned only by its predecessor. Author animation changes still clear imperative state.
 - Control-flow elements such as `if`, `for`, and slots are high fan-out changes because they affect tree shape, scheduling, and selection.
 - List-related fiber changes often need to stay aligned with list scheduler adapters and renderer list integrations.
 - Frame load callbacks must return through the parallel reduce phase before accessing engine-owned state, then use the pipeline's deferred queue if rendering is active. Keep weak-pointer creation on the engine thread and validate the frame's lifetime and current source when dispatching deferred callbacks.

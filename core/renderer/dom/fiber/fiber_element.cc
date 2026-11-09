@@ -388,7 +388,7 @@ Element::NewPipelineStyleResolveResult Element::ResolveComputedStyles(
   if (UpdateAuthorAnimationDataForNewPipeline(*resolved_base_style) &&
       HasImperativeAnimations()) {
     ClearImperativeAnimationsForStyleAnimationUpdate();
-  } else if (use_cpp_animation_builder()) {
+  } else if (HasImperativeAnimations()) {
     ReplayImperativeAnimationsToStyle(*resolved_base_style);
   }
   const auto new_base_font_size = resolved_base_style->GetFontSize();
