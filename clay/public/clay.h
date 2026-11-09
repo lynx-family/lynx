@@ -277,6 +277,7 @@ typedef enum {
   kClayEventTypeAnimationCancel,
   kClayEventTypeTransitionStart,
   kClayEventTypeTransitionEnd,
+  kClayEventTypeTransitionCancel,
 } ClayEventType;
 
 //------------------------------------------------------------------------------

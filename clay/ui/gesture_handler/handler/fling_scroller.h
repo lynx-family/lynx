@@ -45,10 +45,10 @@ class FlingScroller : public std::enable_shared_from_this<FlingScroller>,
 
   bool IsIdle();
 
-  void OnAnimationStart(Animator& animation) override;
-  void OnAnimationEnd(Animator& animation) override;
-  void OnAnimationCancel(Animator& animation) override;
-  void OnAnimationRepeat(Animator& animation) override;
+  void OnAnimationStart(Animator& animation, double) override;
+  void OnAnimationEnd(Animator& animation, double) override;
+  void OnAnimationCancel(Animator& animation, double) override;
+  void OnAnimationRepeat(Animator& animation, double) override;
   void OnAnimationUpdate(ValueAnimator& animation) override;
 
  private:

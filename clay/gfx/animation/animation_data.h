@@ -15,6 +15,7 @@ namespace clay {
 struct AnimationParams {
   ClayEventType event_type;
   const char* animation_name;
+  double elapsed_time{0.0};
 };
 
 struct AnimationData {

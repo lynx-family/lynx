@@ -116,9 +116,10 @@ class RecordingEventDelegate final : public EventDelegate {
   void OnKeyEvent(const std::string&, int, const char*, bool) override {}
   void OnGestureHandlerEvent(const std::string&, int, uint32_t, float, float,
                              float, float, int64_t, Value&) override {}
-  void OnAnimationEvent(const std::string&, const char*, int) override {}
+  void OnAnimationEvent(const std::string&, const char*, int, double) override {
+  }
   void OnTransitionEvent(const std::string&, const char*, int,
-                         ClayAnimationPropertyType) override {}
+                         ClayAnimationPropertyType, double) override {}
   void OnFocusChanged(int, bool) override {}
   void OnHoverChanged(int, bool) override {}
   void OnDragDropEvent(const std::string&, int, Value::Map) override {}

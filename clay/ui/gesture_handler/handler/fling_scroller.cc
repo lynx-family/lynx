@@ -39,18 +39,18 @@ FlingScroller::FlingScroller(AnimationHandler* animation_handler) {
 
 FlingScroller::~FlingScroller() = default;
 
-void FlingScroller::OnAnimationStart(Animator& animation) {}
+void FlingScroller::OnAnimationStart(Animator& animation, double) {}
 
-void FlingScroller::OnAnimationEnd(Animator& animation) {
+void FlingScroller::OnAnimationEnd(Animator& animation, double) {
   current_fling_state_ = static_cast<uint8_t>(FlingState::IDLE);
   callback_(static_cast<uint8_t>(FlingState::IDLE), 0.f, 0.f);
 }
 
-void FlingScroller::OnAnimationCancel(Animator& animation) {
+void FlingScroller::OnAnimationCancel(Animator& animation, double) {
   current_fling_state_ = static_cast<uint8_t>(FlingState::IDLE);
   callback_(static_cast<uint8_t>(FlingState::IDLE), 0.f, 0.f);
 }
-void FlingScroller::OnAnimationRepeat(Animator& animation) {}
+void FlingScroller::OnAnimationRepeat(Animator& animation, double) {}
 
 void FlingScroller::OnAnimationUpdate(ValueAnimator& animation) {
   if (stopping_) {

@@ -11,20 +11,25 @@
 namespace lynx {
 namespace gfx {
 
-fml::TimeDelta GetRepeatDuration(const AnimationData* data,
+fml::TimeDelta GetRepeatDuration(int64_t iteration_count,
                                  fml::TimeDelta duration) {
-  if (data == nullptr || data->iteration_count == 0) {
+  if (iteration_count == 0) {
     return fml::TimeDelta::Zero();
   }
-  if (data->iteration_count < 0) {
+  if (iteration_count < 0) {
     return fml::TimeDelta::Max();
   }
   if (duration.ToNanoseconds() >=
       (static_cast<double>(std::numeric_limits<int64_t>::max()) /
-       static_cast<double>(data->iteration_count))) {
+       static_cast<double>(iteration_count))) {
     return fml::TimeDelta::Max();
   }
-  return duration * static_cast<double>(data->iteration_count);
+  return duration * static_cast<double>(iteration_count);
+}
+
+fml::TimeDelta GetRepeatDuration(const AnimationData* data,
+                                 fml::TimeDelta duration) {
+  return GetRepeatDuration(data ? data->iteration_count : 0, duration);
 }
 
 fml::TimeDelta ConvertMonotonicTimeToLocalTime(
@@ -108,6 +113,12 @@ fml::TimeDelta CalculateActiveTime(const AnimationTimingInput& input,
   return fml::TimeDelta::Min();
 }
 
+fml::TimeDelta CalculateEventTime(fml::TimeDelta elapsed_since_active_start,
+                                  fml::TimeDelta active_duration) {
+  return std::max(std::min(elapsed_since_active_start, active_duration),
+                  fml::TimeDelta::Zero());
+}
+
 fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
                                   fml::TimeDelta local_time) {
   if (!input.animation_data) {
@@ -121,7 +132,7 @@ fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
   const auto active_duration =
       GetRepeatDuration(input.animation_data, input.duration) /
       std::abs(input.playback_rate);
-  return std::max(std::min(elapsed, active_duration), fml::TimeDelta::Zero());
+  return CalculateEventTime(elapsed, active_duration);
 }
 
 fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
@@ -184,8 +195,7 @@ AnimationTimingStateUpdate UpdateTimingState(const AnimationTimingInput& input,
     const auto delay =
         fml::TimeDelta::FromMilliseconds(input.animation_data->delay);
     const auto interval_start =
-        std::max(std::min(fml::TimeDelta::Zero() - delay, interval_end),
-                 fml::TimeDelta::Zero());
+        CalculateEventTime(fml::TimeDelta::Zero() - delay, interval_end);
     update.start_elapsed_time = input.run_state == TimingRunState::FINISHED
                                     ? interval_end
                                     : interval_start;
