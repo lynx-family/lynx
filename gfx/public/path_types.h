@@ -32,8 +32,8 @@ struct PathPoint {
   float y;
 };
 
-// In-memory metadata, exposed by reference through PathView. Bounds include
-// control points, not just endpoints.
+// In-memory metadata, exposed by reference through PathView. Rectangle kinds
+// use x/y/width/height; command paths leave those fields zero.
 struct PathHeader {
   PathKind kind;
   uint32_t command_count;
