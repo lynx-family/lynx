@@ -9,6 +9,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +19,7 @@ import android.graphics.RectF;
 import android.view.View;
 import androidx.test.annotation.UiThreadTest;
 import com.lynx.tasm.EventEmitter;
+import com.lynx.tasm.LynxError;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.RoundedRectangle;
@@ -37,6 +39,7 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 public class LynxImageManagerTest {
   private LynxContext mContext;
@@ -274,5 +277,75 @@ public class LynxImageManagerTest {
     manager.updateInnerClipPathForBorderRadius(null);
     roundRectPath = getRoundRectPath(manager);
     assertNull(roundRectPath);
+  }
+
+  private LynxImageManager reloadManager(EventEmitter emitter) {
+    mContext.setEventEmitter(emitter);
+    LynxImageManager manager = new LynxImageManager(mContext);
+    manager.setFallbackSign(42);
+    manager.setEventMask(
+        LynxImageManager.kFlagImageLoadEvent | LynxImageManager.kFlagImageErrorEvent);
+    manager.setSrc("https://example.com/image.png");
+    // Zero size defers the request, but consumes the initial property changes.
+    manager.onNodeReady();
+    return manager;
+  }
+
+  @Test
+  @UiThreadTest
+  public void reloadReplaysLoadOnlyAfterReloadLifecycle() {
+    EventEmitter emitter = mock(EventEmitter.class);
+    LynxImageManager manager = reloadManager(emitter);
+    manager.onImageLoadSuccess(80, 40);
+    manager.onPatchFinish();
+    verify(emitter).sendCustomEvent(any(LynxCustomEvent.class));
+
+    manager.onNodeReload();
+    manager.setSrc("https://example.com/image.png");
+    manager.onPatchFinish();
+    manager.onPatchFinish();
+    ArgumentCaptor<LynxCustomEvent> events = ArgumentCaptor.forClass(LynxCustomEvent.class);
+    verify(emitter, times(2)).sendCustomEvent(events.capture());
+    assertEquals("load", events.getValue().getName());
+    assertEquals(80, events.getValue().eventParams().get("width"));
+    assertEquals(40, events.getValue().eventParams().get("height"));
+
+    // A later size-dependent request retains its normal callback behavior.
+    manager.onImageLoadSuccess(160, 80);
+    verify(emitter, times(3)).sendCustomEvent(any(LynxCustomEvent.class));
+  }
+
+  @Test
+  @UiThreadTest
+  public void reloadReplaysErrorDetails() {
+    EventEmitter emitter = mock(EventEmitter.class);
+    LynxImageManager manager = reloadManager(emitter);
+    LynxError error = new LynxError(1, "Image failed", "", LynxError.LEVEL_ERROR);
+    error.setRootCause("missing image");
+    manager.onImageLoadError(error, 2, 3);
+    manager.onNodeReload();
+    manager.onPatchFinish();
+    ArgumentCaptor<LynxCustomEvent> events = ArgumentCaptor.forClass(LynxCustomEvent.class);
+    verify(emitter, times(2)).sendCustomEvent(events.capture());
+    assertEquals("error", events.getValue().getName());
+    assertEquals(events.getAllValues().get(0).eventParams(), events.getValue().eventParams());
+  }
+
+  @Test
+  @UiThreadTest
+  public void reloadWithNewSourceWaitsForResult() {
+    EventEmitter emitter = mock(EventEmitter.class);
+    LynxImageManager manager = reloadManager(emitter);
+    manager.onImageLoadSuccess(80, 40);
+    manager.onNodeReload();
+    manager.setSrc("https://example.com/new-image.png");
+    manager.onPatchFinish();
+    verify(emitter).sendCustomEvent(any(LynxCustomEvent.class));
+    manager.onNodeReady();
+    // A real result arriving during reload must not be replayed again.
+    manager.onNodeReload();
+    manager.onImageLoadSuccess(160, 80);
+    manager.onPatchFinish();
+    verify(emitter, times(2)).sendCustomEvent(any(LynxCustomEvent.class));
   }
 }
