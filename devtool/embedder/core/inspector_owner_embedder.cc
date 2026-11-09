@@ -36,8 +36,9 @@ void InspectorOwnerEmbedder::OnReceiveMessageEvent(const VMEvent& event) {
   platform_embedder_->SendCDPEvent(writer.write(message));
 }
 
-InspectorOwnerEmbedder::InspectorOwnerEmbedder()
+InspectorOwnerEmbedder::InspectorOwnerEmbedder(bool debuggable)
     : connection_id_(0),
+      debuggable_(debuggable),
       embedder_proxy_(nullptr),
       devtoolng_delegate_(nullptr),
       platform_embedder_(nullptr) {}
@@ -78,7 +79,8 @@ void InspectorOwnerEmbedder::DetachProxy() {
 }
 
 void InspectorOwnerEmbedder::InitDevToolNGDelegate() {
-  devtoolng_delegate_ = std::make_shared<DevToolNGDelegateEmbedder>();
+  devtoolng_delegate_ =
+      std::make_shared<DevToolNGDelegateEmbedder>(debuggable_);
 }
 
 void InspectorOwnerEmbedder::SetInputEventTarget(

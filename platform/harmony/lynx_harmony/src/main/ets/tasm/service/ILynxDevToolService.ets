@@ -31,7 +31,7 @@ export interface ILynxDevToolService extends IServiceProvider {
 
   devtoolEnvSetAppInfo(optionKeys: Array<string>, optionValues: Array<string>): void
 
-  createInspectorOwner(embedderProxy: number[]): LynxBaseInspectorController | null
+  createInspectorOwner(embedderProxy: number[], debuggable?: boolean): LynxBaseInspectorController | null
 
   createLogBox(onError: OnErrorCallback, getJsSource: GetJSSourceCallback): ILogBox | null
 
