@@ -1618,6 +1618,7 @@ void Element::InsertNodeBeforeInternal(const fml::RefPtr<Element> &child,
     old_parent->LogNodeInfo();
     old_parent->RemoveNode(child);
   }
+  EnsureExplicitChildActionsForInsertion(child);
   AttachNodeToElementTree(child, ref_node, index, update_logical_children);
 
   // the insert Action should be inserted to Child, should make sure the child
@@ -1638,6 +1639,33 @@ void Element::InsertNodeBeforeInternal(const fml::RefPtr<Element> &child,
   }
 
   MarkDirty(kDirtyTree);
+}
+
+void Element::EnsureExplicitChildActionsForInsertion(
+    const fml::RefPtr<Element> &child) {
+  // TODO: Handle all insertion cases, including deferred fixed-state changes,
+  // so this Compose-only restriction can be removed.
+  if (!child->IsComposeLayout()) {
+    return;
+  }
+  if (has_to_store_insert_remove_actions_ || !child->render_parent()) {
+    return;
+  }
+  // The empty-parent fast path only mounts children without a render parent.
+  // Reinserted children need an explicit action to detach their old mount.
+  // Preserve the initial insertions before any already queued moves, just as
+  // the fast path would have done before consuming those actions.
+  auto pending_actions = std::move(action_param_list_);
+  for (const auto &existing : scoped_children_) {
+    if (!existing->render_parent()) {
+      action_param_list_.emplace_back(Action::kInsertChildAct, this, existing,
+                                      -1, nullptr, existing->is_fixed());
+    }
+  }
+  for (auto &action : pending_actions) {
+    action_param_list_.push_back(std::move(action));
+  }
+  has_to_store_insert_remove_actions_ = true;
 }
 
 void Element::AttachNodeToElementTree(const fml::RefPtr<Element> &child,
