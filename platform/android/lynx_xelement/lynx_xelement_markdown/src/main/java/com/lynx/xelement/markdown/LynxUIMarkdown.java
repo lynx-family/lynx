@@ -16,6 +16,7 @@ import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxBehavior;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -34,6 +35,11 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
   private MarkdownResourceContext mResourceContext;
   private String mContentID = "";
   private boolean mExposeLinks;
+  private boolean mEnableTextSelection;
+  private int mSelectionBackgroundColor = 0x141b7df0;
+  private int mSelectionHandleColor = 0xff1b7df0;
+  private int mSelectionHandleSize;
+  private boolean mEnableRegionView;
 
   public LynxUIMarkdown(LynxContext context) {
     this(context, null);
@@ -60,7 +66,63 @@ public class LynxUIMarkdown extends UIGroup<LynxMarkdownView> {
       mExposeLinks = bundle.mExposeLinks;
       mResourceContext = bundle.mResourceContext;
       updateContentOffset();
-      mMarkdown = mView.setBundle(bundle);
+      ServalMarkdownView markdown = mView.setBundle(bundle);
+      if (mMarkdown != markdown) {
+        mMarkdown = markdown;
+        applyMarkdownUIProps();
+      }
+    }
+  }
+
+  private void applyMarkdownUIProps() {
+    // Properties can arrive before the layout bundle binds a Markdown view.
+    setSelectionBackgroundColor(mSelectionBackgroundColor);
+    setSelectionHandleColor(mSelectionHandleColor);
+    setSelectionHandleSize(mSelectionHandleSize);
+    setEnableTextSelection(mEnableTextSelection);
+    setEnableRegionView(mEnableRegionView);
+  }
+
+  @LynxProp(name = "text-selection", defaultBoolean = false)
+  public void setEnableTextSelection(boolean enable) {
+    mEnableTextSelection = enable;
+    if (mMarkdown != null) {
+      mMarkdown.setBooleanProp(Constants.MARKDOWN_PROPS_ENABLE_TEXT_SELECTION, enable);
+    }
+  }
+
+  @LynxProp(name = "selection-background-color", defaultInt = 0)
+  public void setSelectionBackgroundColor(int color) {
+    mSelectionBackgroundColor = color == 0 ? 0x141b7df0 : color;
+    if (mMarkdown != null) {
+      mMarkdown.setColorProp(
+          Constants.MARKDOWN_PROPS_SELECTION_HIGHLIGHT_COLOR, mSelectionBackgroundColor);
+    }
+  }
+
+  @LynxProp(name = "selection-handle-color", defaultInt = 0)
+  public void setSelectionHandleColor(int color) {
+    mSelectionHandleColor = color == 0 ? 0xff1b7df0 : color;
+    if (mMarkdown != null) {
+      mMarkdown.setColorProp(
+          Constants.MARKDOWN_PROPS_SELECTION_HANDLE_COLOR, mSelectionHandleColor);
+    }
+  }
+
+  @LynxProp(name = "selection-handle-size", defaultInt = 0)
+  public void setSelectionHandleSize(int size) {
+    mSelectionHandleSize = size;
+    if (mMarkdown != null) {
+      mMarkdown.setNumberProp(Constants.MARKDOWN_PROPS_SELECTION_HANDLE_SIZE,
+          size <= 0 ? 15 * getLynxContext().getScreenMetrics().density : size);
+    }
+  }
+
+  @LynxProp(name = "enable-region-view", defaultBoolean = false)
+  public void setEnableRegionView(boolean enable) {
+    mEnableRegionView = enable;
+    if (mMarkdown != null) {
+      mMarkdown.setEnableRegionView(enable);
     }
   }
 
