@@ -225,7 +225,10 @@ lynx_base_source_set("base_core") {
   sources = base_core_public_headers + [
               "./fml/raster_thread_merger.cc",
               "./fml/shared_thread_merger.cc",
+              "application_directory/application_directory.cc",
+              "application_directory/application_directory_impl.h",
               "buffer.cc",
+              "file_utils.cc",
               "fml/concurrent_message_loop.cc",
               "fml/cpu_affinity.cc",
               "fml/memory/task_runner_checker.cc",
@@ -251,12 +254,14 @@ lynx_base_source_set("base_core") {
               "vector.cc",
             ]
 
-  sources += [
-    "application_directory/application_directory.cc",
-    "application_directory/application_directory_impl.h",
-  ]
   if (is_ios) {
     sources += [ "application_directory/application_directory_ios.mm" ]
+  } else if (is_apple) {
+    sources += [ "application_directory/application_directory_darwin.mm" ]
+  } else if (is_win) {
+    sources += [ "application_directory/application_directory_win.cc" ]
+  } else if (is_linux) {
+    sources += [ "application_directory/application_directory_linux.cc" ]
   } else {
     sources += [ "application_directory/application_directory_default.cc" ]
   }
@@ -346,6 +351,7 @@ lynx_base_source_set("base_core") {
   if (is_win) {
     libs += [
       "psapi.lib",
+      "shell32.lib",
       "user32.lib",
     ]
   }
@@ -411,10 +417,10 @@ if (enable_unittests) {
       "vector_unittest.cc",
       "version_unittest.cc",
     ]
-    if (is_android) {
+    if (is_android || is_harmony) {
       sources +=
           [ "application_directory/application_directory_mobile_unittest.cc" ]
-    } else if (is_ios) {
+    } else if (is_apple || is_win || is_linux) {
       sources += [ "application_directory/application_directory_unittest.cc" ]
     }
     if (is_mac) {

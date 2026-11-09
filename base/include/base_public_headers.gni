@@ -56,6 +56,7 @@ base_core_public_headers_list = [
   "concurrent_queue.h",
   "expected.h",
   "expected_internal.h",
+  "file_utils.h",
   "flex_optional.h",
   "float_comparison.h",
   "fml/concurrent_message_loop.h",
