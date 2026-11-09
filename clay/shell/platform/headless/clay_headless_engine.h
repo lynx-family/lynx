@@ -12,7 +12,7 @@
 #include "base/include/fml/macros.h"
 #include "clay/common/service/service_manager.h"
 #include "clay/common/task_runners.h"
-#include "clay/common/vsync_callback.h"
+#include "clay/common/vsync/vsync_callback.h"
 #include "clay/public/clay.h"
 #include "clay/shell/platform/embedder/embedder_engine.h"
 #include "clay/shell/platform/embedder/platform_view_embedder_delegate.h"

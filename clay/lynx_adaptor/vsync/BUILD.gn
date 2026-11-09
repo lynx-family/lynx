@@ -1,0 +1,17 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../core/Lynx.gni")
+
+# Shared by production and standalone tests without Clay/FML dependencies.
+lynx_core_source_set("vsync_monitor_adaptor") {
+  sources = [
+    "vsync_monitor_adaptor.cc",
+    "vsync_monitor_adaptor.h",
+  ]
+  public_deps = [
+    "../../../core/public",
+    "../../common/vsync:vsync_callback",
+  ]
+}
