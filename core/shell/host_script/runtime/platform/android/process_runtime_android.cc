@@ -23,6 +23,12 @@ std::atomic<bool> view_created{false};
 std::atomic<bool (*)()> debug_enabled_reader{nullptr};
 std::atomic<const HostScriptExecutorFactory*> executor_factory{nullptr};
 std::atomic<const HostScriptEngineOps*> engine_ops{nullptr};
+
+ProcessRuntime::BindingFactory CreateAndroidProcessBindings() {
+  return HostScriptInterceptorBindings::CreateFactory(
+      GetHostScriptResourceRoot());
+}
+
 // UI setup is published once and stays valid for the process lifetime.
 bool CheckUIInitialized(const ProcessRuntime::Completion& completion) {
   if (ui_initialized.load(std::memory_order_acquire)) return true;
@@ -58,8 +64,8 @@ bool InitializeHostScriptRuntime(ProcessRuntime::Completion ready,
                              std::memory_order_release);
   engine_ops.store(runners.engine_ops, std::memory_order_release);
   return ProcessRuntime::GetInstance().Initialize(
-      {runners.bts, runners.mts, runners.ui}, std::move(ready), {},
-      std::move(bootstrap));
+      {runners.bts, runners.mts, runners.ui}, std::move(ready),
+      CreateAndroidProcessBindings(), std::move(bootstrap));
 }
 
 void LoadHostScriptRuntime(std::string source, std::string url,
@@ -100,7 +106,7 @@ void PrepareStandaloneHostScriptRuntime(bool had_view) {
     InstallHostScriptViewHooks();
     auto& runtime = ProcessRuntime::GetInstance();
     runtime.Initialize({runners.bts, runners.mts, runners.ui}, {},
-                       &HostScriptInterceptorBindings::Create, {},
+                       CreateAndroidProcessBindings(), {},
                        ProcessRuntime::InitializationMode::kLazy);
     if (view_created.load(std::memory_order_acquire))
       runtime.InitializeBindings();
