@@ -241,6 +241,87 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
     }
     EnsureTextProps();
     text_props_->punctuation_trim_rules = std::move(rules);
+  } else if (key.IsEqual(kTextLineHeightAlignmentAttr)) {
+    if (is_reset) {
+      if (!text_props_ || !text_props_->line_height_alignment.has_value()) {
+        return false;
+      }
+      text_props_->line_height_alignment.reset();
+    } else {
+      if (!value.IsString()) {
+        return false;
+      }
+      uint32_t alignment;
+      const auto& string_value = value.StdString();
+      if (string_value == "top") {
+        alignment = static_cast<uint32_t>(LineHeightAlignment::kTop);
+      } else if (string_value == "center") {
+        alignment = static_cast<uint32_t>(LineHeightAlignment::kCenter);
+      } else if (string_value == "bottom") {
+        alignment = static_cast<uint32_t>(LineHeightAlignment::kBottom);
+      } else {
+        return false;
+      }
+      if (text_props_ && text_props_->line_height_alignment == alignment) {
+        return false;
+      }
+      EnsureTextProps();
+      text_props_->line_height_alignment = alignment;
+    }
+  } else if (key.IsEqual(kTextLineHeightTrimAttr)) {
+    if (is_reset) {
+      if (!text_props_ || !text_props_->line_height_trim.has_value()) {
+        return false;
+      }
+      text_props_->line_height_trim.reset();
+    } else {
+      if (!value.IsString()) {
+        return false;
+      }
+      uint32_t trim;
+      const auto& string_value = value.StdString();
+      if (string_value == "none") {
+        trim = kLineHeightTrimNone;
+      } else if (string_value == "first-line-top") {
+        trim = kLineHeightTrimFirstLineTop;
+      } else if (string_value == "last-line-bottom") {
+        trim = kLineHeightTrimLastLineBottom;
+      } else if (string_value == "both") {
+        trim = kLineHeightTrimBoth;
+      } else {
+        return false;
+      }
+      if (text_props_ && text_props_->line_height_trim == trim) {
+        return false;
+      }
+      EnsureTextProps();
+      text_props_->line_height_trim = trim;
+    }
+  } else if (key.IsEqual(kTextLineHeightModeAttr)) {
+    if (is_reset) {
+      if (!text_props_ || !text_props_->line_height_mode.has_value()) {
+        return false;
+      }
+      text_props_->line_height_mode.reset();
+    } else {
+      if (!value.IsString()) {
+        return false;
+      }
+      uint32_t mode;
+      const auto& string_value = value.StdString();
+      if (string_value == "fixed") {
+        mode = static_cast<uint32_t>(LineHeightMode::kFixed);
+      } else if (string_value == "minimum") {
+        mode = static_cast<uint32_t>(LineHeightMode::kMinimum);
+      } else {
+        return false;
+      }
+      if (text_props_ && text_props_->line_height_mode == mode) {
+        return false;
+      }
+      EnsureTextProps();
+      text_props_->line_height_mode = mode;
+    }
   } else if (is_reset) {
     Element::ResetAttribute(key);
     return true;

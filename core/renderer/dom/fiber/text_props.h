@@ -14,6 +14,20 @@ namespace lynx {
 namespace tasm {
 using starlight::VerticalAlignType;
 constexpr const char* kInlinePlaceHolder = "I";
+enum class LineHeightAlignment : uint32_t {
+  kTop = 0,
+  kCenter = 1,
+  kBottom = 2,
+};
+enum class LineHeightMode : uint32_t { kFixed = 0, kMinimum = 1 };
+enum LineHeightTrim : uint32_t {
+  kLineHeightTrimNone = 0,
+  kLineHeightTrimFirstLineTop = 1u << 0,
+  kLineHeightTrimLastLineBottom = 1u << 1,
+  kLineHeightTrimBoth =
+      kLineHeightTrimFirstLineTop | kLineHeightTrimLastLineBottom,
+};
+
 enum TextPropertyKeyID {
   kPropInlineStart = 0,
   kPropInlineEnd = 1,
@@ -43,6 +57,9 @@ enum TextPropertyKeyID {
   kTextPropWordBreak = 23,
   kTextPropTextSpacingTrim = 24,
   kTextPropFontVariationSettings = 25,
+  kTextPropLineHeightAlignment = 26,
+  kTextPropLineHeightTrim = 27,
+  kTextPropLineHeightMode = 28,
 
   // attributes
   kTextPropTextMaxLine = 99,
@@ -95,6 +112,9 @@ struct TextProps {
   std::optional<int> text_max_line;        //=-1
   std::optional<base::String> image_mode;  //""
   base::Vector<PunctuationTrimRule> punctuation_trim_rules;
+  std::optional<uint32_t> line_height_alignment;
+  std::optional<uint32_t> line_height_trim;
+  std::optional<uint32_t> line_height_mode;
 };
 
 // A lookup table to determine the number of UTF-16 code units contributed
