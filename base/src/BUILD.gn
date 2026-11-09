@@ -251,12 +251,23 @@ lynx_base_source_set("base_core") {
               "vector.cc",
             ]
 
+  sources += [
+    "application_directory/application_directory.cc",
+    "application_directory/application_directory_impl.h",
+  ]
+  if (is_ios) {
+    sources += [ "application_directory/application_directory_ios.mm" ]
+  } else {
+    sources += [ "application_directory/application_directory_default.cc" ]
+  }
+
   if (is_android || is_linux) {
     sources += [ "fml/platform/linux/timerfd.cc" ]
   }
 
   if (is_android) {
     sources += [
+      "application_directory/application_directory_android.cc",
       "fml/platform/android/cpu_affinity.cc",
       "fml/platform/android/thread_config_setter_android.cc",
       "fml/platform/posix/thread_name_setter_posix.cc",
@@ -400,6 +411,12 @@ if (enable_unittests) {
       "vector_unittest.cc",
       "version_unittest.cc",
     ]
+    if (is_android) {
+      sources +=
+          [ "application_directory/application_directory_mobile_unittest.cc" ]
+    } else if (is_ios) {
+      sources += [ "application_directory/application_directory_unittest.cc" ]
+    }
     if (is_mac) {
       sources += [ "fml/platform/darwin/cf_utils_unittests.mm" ]
     }

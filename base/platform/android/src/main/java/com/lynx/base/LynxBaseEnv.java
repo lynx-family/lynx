@@ -3,10 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.base;
 
+import android.content.Context;
 import android.util.Log;
 import com.lynx.base.IBaseNativeLibraryLoader;
 import com.lynx.base.LynxBaseTrace;
 import com.lynx.base.log.LynxLog;
+import java.io.File;
 
 public class LynxBaseEnv {
   private static LynxBaseEnv sInstance;
@@ -31,13 +33,26 @@ public class LynxBaseEnv {
 
   public boolean init(
       IBaseNativeLibraryLoader nativeLibraryLoader, boolean isPrintLogsToAllChannels) {
+    return init(null, nativeLibraryLoader, isPrintLogsToAllChannels);
+  }
+
+  public boolean init(Context context, IBaseNativeLibraryLoader nativeLibraryLoader,
+      boolean isPrintLogsToAllChannels) {
     if (!mIsNativeLibraryLoaded) {
       mIsNativeLibraryLoaded = loadNativeTraceLibrary(nativeLibraryLoader);
+    }
+    if (mIsNativeLibraryLoaded && context != null) {
+      File directory = context.getFilesDir();
+      if (directory != null) {
+        nativeSetApplicationDataDirectory(directory.getAbsolutePath());
+      }
     }
     LynxLog.initLynxLog(isPrintLogsToAllChannels);
     LynxBaseTrace.init();
     return true;
   }
+
+  private static native void nativeSetApplicationDataDirectory(String directory);
 
   public synchronized boolean loadNativeTraceLibrary(IBaseNativeLibraryLoader nativeLibraryLoader) {
     if (mIsNativeLibraryLoaded) {
