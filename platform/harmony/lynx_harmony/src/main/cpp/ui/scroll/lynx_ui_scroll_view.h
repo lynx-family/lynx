@@ -44,6 +44,8 @@ class LynxUIScrollView : public LynxUIScrollViewInternal {
        &LynxUIScrollViewInternal::SetBackwardsNestedScroll},
       {"initial-scroll-index",
        &LynxUIScrollViewInternal::SetInitialScrollIndex},
+      {"initial-scroll-to-index",
+       &LynxUIScrollViewInternal::SetInitialScrollIndex},
       {"initial-scroll-offset",
        &LynxUIScrollViewInternal::SetInitialScrollOffset},
       {"upper-threshold", &LynxUIScrollViewInternal::SetUpperThreshold},

@@ -4,6 +4,7 @@
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/LynxUIScrollView.h>
 #import <Lynx/LynxUIScroller.h>
 #import <XCTest/XCTest.h>
 #import "LynxUIScrollerUnitTestUtils.h"
@@ -55,6 +56,28 @@
                                                  props:@{@"scroll-y" : @YES, @"scroll-top" : @100}];
   LynxUIScroller *scroller = (LynxUIScroller *)[mockContext.UIOwner findUIBySign:0];
   XCTAssert(CGPointEqualToPoint(scroller.view.contentOffset, CGPointMake(0, 100)));
+}
+
+- (void)testNewArchitectureInitialScrollIndexAliases {
+  for (NSString *attributeName in @[ @"initial-scroll-index", @"initial-scroll-to-index" ]) {
+    LynxUIMockContext *mockContext =
+        [LynxUIUnitTestUtils initUIMockContextWithUI:[[LynxUIScrollView alloc] init]];
+    LynxUIScrollView *scroller = (LynxUIScrollView *)mockContext.mockUI;
+    [scroller updateFrame:CGRectMake(0, 0, 200, 200)
+                withPadding:UIEdgeInsetsZero
+                     border:UIEdgeInsetsZero
+        withLayoutAnimation:NO];
+    [LynxPropsProcessor updateProp:@2 withKey:attributeName forUI:scroller];
+    [LynxUIScrollerUnitTestUtils mockChildren:5
+                                      context:mockContext
+                                      scrollY:YES
+                                         size:CGSizeMake(200, 100)];
+    XCTAssertEqualWithAccuracy(scroller.view.contentOffset.y, 200, 0.001);
+
+    [LynxPropsProcessor updateProp:@3 withKey:attributeName forUI:scroller];
+    [scroller layoutDidFinished];
+    XCTAssertEqualWithAccuracy(scroller.view.contentOffset.y, 200, 0.001);
+  }
 }
 
 - (void)assertScrollPinsExternallyOwnedMaskWithBorderRadii:(LynxBorderRadii)radii
