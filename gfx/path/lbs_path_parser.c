@@ -5,9 +5,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "gfx/public/path_parser.h"
 
@@ -54,7 +52,7 @@ static void LBSSkipSep(char** s) {
   if (!*s) {
     return;
   }
-  while (**s && (isspace(**s) || **s == ',')) {
+  while (**s && (isspace((unsigned char)**s) || **s == ',')) {
     (*s)++;
   }
 }
@@ -68,17 +66,29 @@ static bool LBSExtractPathArgs(char** s, float args[], int nArgs) {
   return error;
 }
 
+static bool LBSArgsAreFinite(const float args[], int count) {
+  for (int i = 0; i < count; ++i) {
+    if (!isfinite(args[i])) return false;
+  }
+  return true;
+}
+
 void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
+  if (!consumer) return;
+  consumer->error = 1;
+  if (!data) return;
+  consumer->error = 0;
   char* s = (char*)data;
   float args[6] = {0};
   LBSSkipSep(&s);
   if (s) {
     char cmd = 0, lastCmd = 0;
     float currentPointX = 0, currentPointY = 0, controlPointX = 0,
-          controlPointY = 0;
+          controlPointY = 0, subpathStartX = 0, subpathStartY = 0;
     bool error = false;
     while (*s && !error) {
-      if (isalpha(*s)) {
+      char previousCmd = lastCmd;
+      if (isalpha((unsigned char)*s)) {
         cmd = lastCmd = *s++;
       } else {
         cmd = lastCmd;
@@ -86,25 +96,27 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
       switch (cmd) {
         case 'm':
         case 'M': {
-          error = LBSExtractPathArgs(&s, args, 2);
+          if (LBSExtractPathArgs(&s, args, 2)) goto invalid;
           if (cmd == 'm') {
             args[0] += currentPointX;
             args[1] += currentPointY;
+            if (!LBSArgsAreFinite(args, 2)) goto invalid;
             lastCmd = 'l';
           } else {
             lastCmd = 'L';
           }
           consumer->MoveToPoint(consumer->ctx, args[0], args[1]);
-          currentPointX = args[0];
-          currentPointY = args[1];
+          currentPointX = subpathStartX = args[0];
+          currentPointY = subpathStartY = args[1];
           break;
         }
         case 'l':
         case 'L':
-          error = LBSExtractPathArgs(&s, args, 2);
+          if (LBSExtractPathArgs(&s, args, 2)) goto invalid;
           if (cmd == 'l') {
             args[0] += currentPointX;
             args[1] += currentPointY;
+            if (!LBSArgsAreFinite(args, 2)) goto invalid;
           }
           consumer->LineToPoint(consumer->ctx, args[0], args[1]);
           currentPointX = args[0];
@@ -113,9 +125,10 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           break;
         case 'h':
         case 'H':
-          error = LBSExtractPathArgs(&s, args, 1);
+          if (LBSExtractPathArgs(&s, args, 1)) goto invalid;
           if (cmd == 'h') {
             args[0] += currentPointX;
+            if (!isfinite(args[0])) goto invalid;
           }
           args[1] = currentPointY;
           consumer->LineToPoint(consumer->ctx, args[0], args[1]);
@@ -124,9 +137,10 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           break;
         case 'v':
         case 'V':
-          error = LBSExtractPathArgs(&s, args + 1, 1);
+          if (LBSExtractPathArgs(&s, args + 1, 1)) goto invalid;
           if (cmd == 'v') {
             args[1] += currentPointY;
+            if (!isfinite(args[1])) goto invalid;
           }
           args[0] = currentPointX;
           consumer->LineToPoint(consumer->ctx, args[0], args[1]);
@@ -135,12 +149,13 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           break;
         case 'c':
         case 'C':
-          error = LBSExtractPathArgs(&s, args, 6);
+          if (LBSExtractPathArgs(&s, args, 6)) goto invalid;
           if (cmd == 'c') {
             for (int i = 0; i < 3; i++) {
               args[2 * i] += currentPointX;
               args[2 * i + 1] += currentPointY;
             }
+            if (!LBSArgsAreFinite(args, 6)) goto invalid;
           }
           consumer->CubicToPoint(consumer->ctx, args[0], args[1], args[2],
                                  args[3], args[4], args[5]);
@@ -152,7 +167,7 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           break;
         case 's':
         case 'S':
-          error = LBSExtractPathArgs(&s, args + 2, 4);
+          if (LBSExtractPathArgs(&s, args + 2, 4)) goto invalid;
           if ('s' == cmd) {
             for (int i = 1; i < 3; i++) {
               args[2 * i] += currentPointX;
@@ -163,13 +178,15 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           // If there is no previous command or if the previous command was not
           // an C, c, S or s, assume the first control point is coincident with
           // the current point.
-          if (strchr("cCsS", lastCmd)) {
-            args[0] = 2 * currentPointX - controlPointX;
-            args[1] = 2 * currentPointY - controlPointY;
+          if (previousCmd == 'C' || previousCmd == 'c' || previousCmd == 'S' ||
+              previousCmd == 's') {
+            args[0] = currentPointX + (currentPointX - controlPointX);
+            args[1] = currentPointY + (currentPointY - controlPointY);
           } else {
             args[0] = currentPointX;
             args[1] = currentPointY;
           }
+          if (!LBSArgsAreFinite(args, 6)) goto invalid;
           consumer->CubicToPoint(consumer->ctx, args[0], args[1], args[2],
                                  args[3], args[4], args[5]);
           controlPointX = args[2];
@@ -180,12 +197,13 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           break;
         case 'q':
         case 'Q':
-          error = LBSExtractPathArgs(&s, args, 4);
+          if (LBSExtractPathArgs(&s, args, 4)) goto invalid;
           if (cmd == 'q') {
             for (int i = 0; i < 2; i++) {
               args[2 * i] += currentPointX;
               args[2 * i + 1] += currentPointY;
             }
+            if (!LBSArgsAreFinite(args, 4)) goto invalid;
           }
           controlPointX = args[0];
           controlPointY = args[1];
@@ -197,7 +215,7 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           break;
         case 't':
         case 'T':
-          error = LBSExtractPathArgs(&s, args + 2, 2);
+          if (LBSExtractPathArgs(&s, args + 2, 2)) goto invalid;
           if (cmd == 't') {
             args[2] += currentPointX;
             args[3] += currentPointY;
@@ -208,9 +226,10 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           // there is no previous command or if the previous command was not a
           // Q, q, T or t, assume the control point is coincident with the
           // current point.)
-          if (strchr("tTqQ", lastCmd)) {
-            controlPointX = 2 * currentPointX - controlPointX;
-            controlPointY = 2 * currentPointY - controlPointY;
+          if (previousCmd == 'Q' || previousCmd == 'q' || previousCmd == 'T' ||
+              previousCmd == 't') {
+            controlPointX = currentPointX + (currentPointX - controlPointX);
+            controlPointY = currentPointY + (currentPointY - controlPointY);
           } else {
             controlPointX = currentPointX;
             controlPointY = currentPointY;
@@ -218,6 +237,7 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
 
           args[0] = controlPointX;
           args[1] = controlPointY;
+          if (!LBSArgsAreFinite(args, 4)) goto invalid;
           consumer->QuadToPoint(consumer->ctx, args[0], args[1], args[2],
                                 args[3]);
           currentPointX = args[2];
@@ -226,15 +246,18 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
           break;
         case 'a':
         case 'A':
-          error = LBSExtractPathArgs(&s, args, 3);
+          if (LBSExtractPathArgs(&s, args, 3)) goto invalid;
           LBSSkipSep(&s);
-          bool largeArcFlag = *s++ == '1' ? 1.f : 0.f;
+          if (!*s) goto invalid;
+          bool largeArcFlag = *s++ == '1';
           LBSSkipSep(&s);
-          bool sweepArcFlag = *s++ == '1' ? 1.f : 0.f;
-          error |= LBSExtractPathArgs(&s, args + 3, 2);
+          if (!*s) goto invalid;
+          bool sweepArcFlag = *s++ == '1';
+          if (LBSExtractPathArgs(&s, args + 3, 2)) goto invalid;
           if (cmd == 'a') {
             args[3] += currentPointX;
             args[4] += currentPointY;
+            if (!LBSArgsAreFinite(args + 3, 2)) goto invalid;
           }
           consumer->EllipticToPoint(consumer->ctx, currentPointX, currentPointY,
                                     args[0], args[1], args[2], largeArcFlag,
@@ -246,6 +269,9 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
         case 'z':
         case 'Z':
           consumer->ClosePath(consumer->ctx);
+          currentPointX = subpathStartX;
+          currentPointY = subpathStartY;
+          lastCmd = 0;
           break;
         default:
           // Unknown command
@@ -257,4 +283,7 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
     }
     consumer->error = error;
   }
+  return;
+invalid:
+  consumer->error = 1;
 }

@@ -7,6 +7,7 @@
 #import <Lynx/LynxCSSType.h>
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
+#import "LBSCoreGraphicsPathParser.h"
 #include "gfx/public/path_parser.h"
 
 static void LBSStringMoveTo(void* ctx, float x, float y) {
@@ -44,7 +45,7 @@ static void LBSStringClosePath(void* ctx) { strcat(ctx, "Z"); }
 LBSPathConsumer* LBSMakeStringPathConsumer(void) {
   LBSPathConsumer* consumer = (LBSPathConsumer*)malloc(sizeof(LBSPathConsumer));
   *consumer = (LBSPathConsumer){.type = kLBSPathConsumerTypeString,
-                                .ctx = (char*)malloc(512),
+                                .ctx = (char*)calloc(512, 1),
                                 .MoveToPoint = LBSStringMoveTo,
                                 .LineToPoint = LBSStringLineTo,
                                 .CubicToPoint = LBSStringCubicTo,
@@ -72,6 +73,41 @@ void LBSReleaseStringPathConsumer(LBSPathConsumer* consumer) {
 @end
 
 @implementation LynxBasicShapeUnitTest
+
+- (void)testSharedPathParserRegressions {
+  const char* inputs[] = {"M1e2 3", "M0 0 L10 0 S20 10 30 0", "M10 10 L20 20 Z l5 0"};
+  const char* expected[] = {"M 100 3 ", "M 0 0 L 10 0 C 10 0 20 10 30 0 ",
+                            "M 10 10 L 20 20 ZL 15 10 "};
+  for (size_t i = 0; i < 3; ++i) {
+    LBSPathConsumer* consumer = LBSMakeStringPathConsumer();
+    LBSParsePathWithConsumer(inputs[i], consumer);
+    XCTAssertFalse(consumer->error);
+    XCTAssertEqual(strcmp(consumer->ctx, expected[i]), 0);
+    LBSReleaseStringPathConsumer(consumer);
+  }
+  LBSPathConsumer* consumer = LBSMakeStringPathConsumer();
+  LBSParsePathWithConsumer("M0 0 A1 1 0 0", consumer);
+  XCTAssertTrue(consumer->error);
+  XCTAssertEqual(strcmp(consumer->ctx, "M 0 0 "), 0);
+  LBSReleaseStringPathConsumer(consumer);
+}
+
+- (void)testInvalidPathDataDoesNotPublishPartialPath {
+  for (NSString* data in @[ @"M0 0 A1", @"M0 0 L1 1 L2", @"M0 0 L1e40 2" ]) {
+    XCTAssertNil(LBSCreateBasicShapeFromPathData(data));
+  }
+  XCTAssertNotNil(LBSCreateBasicShapeFromPathData(@"M0 0 L1 1 Z"));
+}
+
+- (void)testDegenerateAndOverflowingArcDoesNotCrash {
+  CGPathRef path = LBSCreatePathFromData("M1 2 A0 1 0 0 1 3 4");
+  XCTAssertNotEqual(path, NULL);
+  CGPoint end = CGPathGetCurrentPoint(path);
+  XCTAssertEqual(end.x, 3);
+  XCTAssertEqual(end.y, 4);
+  CGPathRelease(path);
+  XCTAssertNotNil(LBSCreateBasicShapeFromPathData(@"M3e38 3e38 A1 1 45 0 1 1 2"));
+}
 
 - (void)testCreateBasicShapeInset {
   NSNumber* type = [NSNumber numberWithInt:LynxBasicShapeTypeInset];

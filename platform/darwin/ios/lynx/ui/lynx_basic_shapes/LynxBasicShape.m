@@ -296,10 +296,11 @@ CGPathRef LBSCreatePathFromBasicShape(LynxBasicShape* shape, CGSize viewport) {
 }
 
 LynxBasicShape* LBSCreateBasicShapeFromPathData(NSString* data) {
-  LynxBasicShape* path = [[LynxBasicShape alloc] init];
-  path->_type = LynxBasicShapeTypePath;
   const char* cData = [data UTF8String];
   CGPathRef cPath = LBSCreatePathFromData(cData);
+  if (!cPath) return nil;
+  LynxBasicShape* path = [[LynxBasicShape alloc] init];
+  path->_type = LynxBasicShapeTypePath;
   path->_path = [UIBezierPath bezierPathWithCGPath:cPath];
   CGPathRelease(cPath);
   return path;
