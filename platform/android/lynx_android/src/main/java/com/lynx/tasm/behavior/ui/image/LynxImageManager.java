@@ -148,6 +148,7 @@ public class LynxImageManager implements Drawable.Callback {
   private LynxScaleTypeDrawable mImageDrawable;
 
   private LynxScaleTypeDrawable mPlaceholderDrawable;
+  private boolean mIsPiercedImage;
 
   private String mCapInsets;
   private String mCapInsetsScale;
@@ -1204,6 +1205,16 @@ public class LynxImageManager implements Drawable.Callback {
     }
     if (isSrc) {
       LynxImageRequestOptions requestOptions = prepareImageRequest(builder.build());
+      mIsPiercedImage = requestOptions != null && requestOptions.isPiercedImage();
+      if (mIsPiercedImage) {
+        if (mPreImageRequestInfo != mCurImageRequest) {
+          releaseImage(mPreImageRequestInfo);
+        }
+        mPreImageRequestInfo = null;
+        releaseAllImage();
+        invalidate();
+        return null;
+      }
       if (requestOptions != null) {
         if (!TextUtils.isEmpty(requestOptions.getFinalUrl())) {
           builder.setUrl(requestOptions.getFinalUrl());
