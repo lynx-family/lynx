@@ -1141,6 +1141,7 @@ public class com::lynx::tasm::image::LynxImageRequestOptions::Builder :  {
   public Builder com.lynx.tasm.image.LynxImageRequestOptions.Builder.setFinalUrl(@NonNull String finalUrl);
   public Builder com.lynx.tasm.image.LynxImageRequestOptions.Builder.setFallbackUrls(@NonNull List< String > fallbackUrls);
   public Builder com.lynx.tasm.image.LynxImageRequestOptions.Builder.setUseRGB565(boolean useRGB565);
+  public Builder com.lynx.tasm.image.LynxImageRequestOptions.Builder.setPiercedImage(boolean piercedImage);
   public Builder com.lynx.tasm.image.LynxImageRequestOptions.Builder.setPriority(@NonNull @RequestPriority String priority);
   public LynxImageRequestOptions com.lynx.tasm.image.LynxImageRequestOptions.Builder.build();
 }
@@ -6178,6 +6179,7 @@ public class com::lynx::tasm::image::LynxImageRequestOptions :  {
   public String com.lynx.tasm.image.LynxImageRequestOptions.getFinalUrl();
   public List< String > com.lynx.tasm.image.LynxImageRequestOptions.getFallbackUrls();
   public boolean com.lynx.tasm.image.LynxImageRequestOptions.getUseRGB565();
+  public boolean com.lynx.tasm.image.LynxImageRequestOptions.isPiercedImage();
   public String com.lynx.tasm.image.LynxImageRequestOptions.getPriority();
 }
 
