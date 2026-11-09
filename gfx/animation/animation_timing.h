@@ -32,10 +32,19 @@ struct AnimationTimingInput {
   double playback_rate{1.0};
 };
 
+struct AnimationEventTiming {
+  fml::TimeDelta start_elapsed_time;
+  fml::TimeDelta end_elapsed_time;
+  int first_iteration{0};
+  fml::TimeDelta iteration_duration;
+};
+
 struct AnimationTimingStateUpdate {
   TimingRunState run_state{TimingRunState::STARTING};
   bool start_event_due{false};
   bool end_event_due{false};
+  fml::TimeDelta start_elapsed_time;
+  fml::TimeDelta end_elapsed_time;
 };
 
 struct TrimmedAnimationTime {
@@ -55,6 +64,8 @@ GFX_EXPORT fml::TimeDelta CalculateActiveTime(const AnimationTimingInput& input,
                                               fml::TimePoint monotonic_time);
 // Elapsed time since the start delay, clamped to [0, active duration]. Unlike
 // Web Animations active time, event time is independent of fill-mode.
+GFX_EXPORT fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
+                                             fml::TimeDelta local_time);
 GFX_EXPORT fml::TimeDelta CalculateEventTime(const AnimationTimingInput& input,
                                              fml::TimePoint monotonic_time);
 GFX_EXPORT AnimationTimingStateUpdate UpdateTimingState(

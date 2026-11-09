@@ -77,13 +77,13 @@ class Animation : public std::enable_shared_from_this<Animation> {
       suppress_next_iteration_events_ = true;
     }
   }
-  void SendStartEvent();
+  void SendStartEvent(fml::TimeDelta elapsed_time);
 
-  void SendEndEvent();
+  void SendEndEvent(fml::TimeDelta elapsed_time);
 
-  void SendCancelEvent();
+  void SendCancelEvent(fml::TimeDelta elapsed_time);
 
-  void SendIterationEvents(int count);
+  void SendIterationEvents(int count, const gfx::AnimationEventTiming& timing);
 
   const base::String& name() { return name_; }
 
@@ -193,7 +193,8 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   void MaybeReportOverTime(fml::TimeDelta active_time);
   void ReportAnimationOverTime();
-  void CreateEventAndSend(const base::String& event);
+  void CreateEventAndSend(const base::String& event, double elapsed_seconds);
+  fml::TimeDelta ElapsedTimeAtCancel(fml::TimeDelta current_time) const;
   bool HasIterationEvent() const;
   void InitializeSampleTiming(fml::TimePoint frame_time);
   fml::TimePoint ResolveStyleSampleTime(fml::TimePoint frame_time) const;

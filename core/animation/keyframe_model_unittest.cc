@@ -188,17 +188,20 @@ TEST(AnimationTimingTest, UpdateTimingStateCoversRunStateTransitions) {
   EXPECT_EQ(gfx::TimingRunState::RUNNING, update.run_state);
   EXPECT_TRUE(update.start_event_due);
   EXPECT_FALSE(update.end_event_due);
+  EXPECT_EQ(fml::TimeDelta::Zero(), update.start_elapsed_time);
 
   update = gfx::UpdateTimingState(input, TimePointFromMs(1600));
   EXPECT_EQ(gfx::TimingRunState::FINISHED, update.run_state);
   EXPECT_TRUE(update.start_event_due);
   EXPECT_TRUE(update.end_event_due);
+  EXPECT_EQ(fml::TimeDelta::FromSeconds(1), update.end_elapsed_time);
 
   input.run_state = gfx::TimingRunState::RUNNING;
   update = gfx::UpdateTimingState(input, TimePointFromMs(200));
   EXPECT_EQ(gfx::TimingRunState::STARTING, update.run_state);
   EXPECT_FALSE(update.start_event_due);
   EXPECT_TRUE(update.end_event_due);
+  EXPECT_EQ(fml::TimeDelta::Zero(), update.end_elapsed_time);
 
   update = gfx::UpdateTimingState(input, TimePointFromMs(1600));
   EXPECT_EQ(gfx::TimingRunState::FINISHED, update.run_state);
@@ -223,6 +226,31 @@ TEST(AnimationTimingTest, UpdateTimingStateCoversRunStateTransitions) {
   EXPECT_EQ(gfx::TimingRunState::RUNNING, update.run_state);
   EXPECT_TRUE(update.start_event_due);
   EXPECT_FALSE(update.end_event_due);
+  EXPECT_EQ(fml::TimeDelta::FromSeconds(1), update.start_elapsed_time);
+}
+
+TEST(AnimationTimingTest, StartElapsedTimeClampsToActiveDuration) {
+  auto data = MakeTimingData(1, gfx::AnimationFillModeType::kNone,
+                             gfx::AnimationDirectionType::kNormal, -250);
+  auto input = MakeTimingInput(&data);
+  auto update = gfx::UpdateTimingState(input, TimePointFromMs(50));
+  EXPECT_TRUE(update.start_event_due);
+  EXPECT_EQ(fml::TimeDelta::FromMilliseconds(250), update.start_elapsed_time);
+
+  data.delay = -1200;
+  update = gfx::UpdateTimingState(input, TimePointFromMs(0));
+  EXPECT_TRUE(update.start_event_due);
+  EXPECT_TRUE(update.end_event_due);
+  EXPECT_EQ(fml::TimeDelta::FromSeconds(1), update.start_elapsed_time);
+  EXPECT_EQ(fml::TimeDelta::FromSeconds(1), update.end_elapsed_time);
+
+  data.iteration_count = -1;
+  input.duration = fml::TimeDelta::Zero();
+  update = gfx::UpdateTimingState(input, TimePointFromMs(0));
+  EXPECT_TRUE(update.start_event_due);
+  EXPECT_EQ(fml::TimeDelta::Zero(), update.start_elapsed_time);
+  EXPECT_EQ(fml::TimeDelta::Zero(),
+            gfx::CalculateEventTime(input, TimePointFromMs(10)));
 }
 
 TEST(AnimationTimingTest, TrimTimeHandlesDirectionPlaybackAndInvalidInput) {
@@ -650,13 +678,10 @@ TEST(KeyframeModelTest, UpdateState) {
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(0.5f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::STARTING, test_model->GetRunState());
-    EXPECT_FALSE(should_send_start_event);
-    EXPECT_FALSE(should_send_end_event);
+    EXPECT_FALSE(update.start_event_due);
+    EXPECT_FALSE(update.end_event_due);
   }
 
   {
@@ -670,13 +695,10 @@ TEST(KeyframeModelTest, UpdateState) {
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(1.5f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::STARTING, test_model->GetRunState());
-    EXPECT_FALSE(should_send_start_event);
-    EXPECT_FALSE(should_send_end_event);
+    EXPECT_FALSE(update.start_event_due);
+    EXPECT_FALSE(update.end_event_due);
     EXPECT_EQ(fml::TimeDelta::FromSecondsF(1.0f),
               test_model->total_paused_duration());
   }
@@ -684,25 +706,19 @@ TEST(KeyframeModelTest, UpdateState) {
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(2.1f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::RUNNING, test_model->GetRunState());
-    EXPECT_TRUE(should_send_start_event);
-    EXPECT_FALSE(should_send_end_event);
+    EXPECT_TRUE(update.start_event_due);
+    EXPECT_FALSE(update.end_event_due);
   }
 
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(2.5f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::RUNNING, test_model->GetRunState());
-    EXPECT_FALSE(should_send_start_event);
-    EXPECT_FALSE(should_send_end_event);
+    EXPECT_FALSE(update.start_event_due);
+    EXPECT_FALSE(update.end_event_due);
   }
 
   {
@@ -716,13 +732,10 @@ TEST(KeyframeModelTest, UpdateState) {
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(3.5f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::RUNNING, test_model->GetRunState());
-    EXPECT_FALSE(should_send_start_event);
-    EXPECT_FALSE(should_send_end_event);
+    EXPECT_FALSE(update.start_event_due);
+    EXPECT_FALSE(update.end_event_due);
     EXPECT_EQ(fml::TimeDelta::FromSecondsF(2.0f),
               test_model->total_paused_duration());
   }
@@ -730,25 +743,19 @@ TEST(KeyframeModelTest, UpdateState) {
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(4.1f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::FINISHED, test_model->GetRunState());
-    EXPECT_FALSE(should_send_start_event);
-    EXPECT_TRUE(should_send_end_event);
+    EXPECT_FALSE(update.start_event_due);
+    EXPECT_TRUE(update.end_event_due);
   }
 
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(4.5f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::FINISHED, test_model->GetRunState());
-    EXPECT_FALSE(should_send_start_event);
-    EXPECT_FALSE(should_send_end_event);
+    EXPECT_FALSE(update.start_event_due);
+    EXPECT_FALSE(update.end_event_due);
   }
 
   {
@@ -762,13 +769,10 @@ TEST(KeyframeModelTest, UpdateState) {
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(5.5f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::FINISHED, test_model->GetRunState());
-    EXPECT_FALSE(should_send_start_event);
-    EXPECT_FALSE(should_send_end_event);
+    EXPECT_FALSE(update.start_event_due);
+    EXPECT_FALSE(update.end_event_due);
     EXPECT_EQ(fml::TimeDelta::FromSecondsF(3.0f),
               test_model->total_paused_duration());
   }
@@ -782,25 +786,19 @@ TEST(KeyframeModelTest, UpdateState) {
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(6.0f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::STARTING, test_model->GetRunState());
-    EXPECT_FALSE(should_send_start_event);
-    EXPECT_FALSE(should_send_end_event);
+    EXPECT_FALSE(update.start_event_due);
+    EXPECT_FALSE(update.end_event_due);
   }
 
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(8.1f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::FINISHED, test_model->GetRunState());
-    EXPECT_TRUE(should_send_start_event);
-    EXPECT_TRUE(should_send_end_event);
+    EXPECT_TRUE(update.start_event_due);
+    EXPECT_TRUE(update.end_event_due);
   }
 
   gfx::AnimationData data2 = gfx::AnimationData();
@@ -812,13 +810,10 @@ TEST(KeyframeModelTest, UpdateState) {
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(8.5f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::RUNNING, test_model->GetRunState());
-    EXPECT_TRUE(should_send_start_event);
-    EXPECT_FALSE(should_send_end_event);
+    EXPECT_TRUE(update.start_event_due);
+    EXPECT_FALSE(update.end_event_due);
   }
 
   gfx::AnimationData data3 = gfx::AnimationData();
@@ -830,13 +825,10 @@ TEST(KeyframeModelTest, UpdateState) {
   {
     fml::TimePoint tick_time =
         fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromSecondsF(9.0f));
-    bool should_send_start_event = false;
-    bool should_send_end_event = false;
-    std::tie(should_send_start_event, should_send_end_event) =
-        test_model->UpdateState(tick_time);
+    const auto update = test_model->UpdateState(tick_time);
     EXPECT_EQ(gfx::KeyframeModel::STARTING, test_model->GetRunState());
-    EXPECT_FALSE(should_send_start_event);
-    EXPECT_TRUE(should_send_end_event);
+    EXPECT_FALSE(update.start_event_due);
+    EXPECT_TRUE(update.end_event_due);
   }
 }
 
