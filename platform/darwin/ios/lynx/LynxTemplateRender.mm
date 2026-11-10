@@ -33,6 +33,7 @@
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxView.h>
+#import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/LynxViewportMetrics.h>
 #import "LynxAccessibilityModule.h"
 #import "LynxBaseConfigurator+Internal.h"
@@ -2882,6 +2883,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.screenScale = [[self->_lynxUIRenderer getScreenMetrics] scale];
     builder.lynxBackgroundRuntimeOptions =
         [[LynxBackgroundRuntimeOptions alloc] initWithOptions:self->_runtimeOptions];
+    [builder setVSyncMonitorPlatformImpl:[self->_builder vsyncMonitorPlatformImpl]];
     builder.group = self->_group;
 
     // effectiveLynxRuntimeOptions relies on _has*Set flags to decide whether builder

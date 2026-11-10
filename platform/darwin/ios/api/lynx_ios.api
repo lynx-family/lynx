@@ -1316,6 +1316,10 @@ public protocol LynxCustomScrollDelegate-p :  {
   public void LynxCustomScrollDelegate-p::autoScrollStop();
 }
 
+public protocol LynxCustomVsyncMonitor-p : <NSObject> {
+  public void LynxCustomVsyncMonitor-p::requestVsync:(LynxCustomVsyncCallback callback);
+}
+
 public class LynxDebugger : NSObject {
   public BOOL LynxDebugger::enable:withOptions:(NSURL *schema,[withOptions] NSDictionary *options);
   public void LynxDebugger::setOpenCardCallback:((deprecated("Use addOpenCardCallback instead after lynx 2.6")) __attribute__);
@@ -5830,8 +5834,11 @@ public class LynxViewBuilder : LynxBaseConfigurator {
   public id LynxViewBuilder::lynxModuleExtraData lynxModuleExtraData;
   public NSURL* LynxViewBuilder::uri uri;
   public BOOL isUIRunningMode LynxViewBuilder::__attribute__((deprecated("try to set 'threadStrategy' variable if you want to change the thread strategy for rendering")));
+  public void LynxViewBuilder::setCustomVsyncMonitor:(nullable id< LynxCustomVsyncMonitor > monitor);
   public void LynxViewBuilder::insertLynxViewConfig:forKey:(id _Nonnull config,[forKey] NSString *_Nonnull key);
   public NSMutableDictionary< NSString *, id > * LynxViewBuilder()::getModuleWrapper();
+  public std::shared_ptr< lynx::base::VSyncMonitorPlatformImpl > LynxViewBuilder()::vsyncMonitorPlatformImpl();
+  public void LynxViewBuilder()::setVSyncMonitorPlatformImpl:(const std::shared_ptr< lynx::base::VSyncMonitorPlatformImpl > &monitor);
 }
 
 public class LynxViewGroup : LynxBaseConfigurator {
@@ -7349,6 +7356,8 @@ public enum LynxBackgroundJsRuntimeType {
   LynxBackgroundJsRuntimeTypeV8
 }
 
+
+  public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxCustomVsyncCallback) (int64_t frameStartTimeNanos, int64_t frameTargetTimeNanos) LynxCustomVsyncCallback;
 
   typedef NSString* LynxElementStatus NS_STRING_ENUM
   typedef void(^ LynxElementResultCallback) (id _Nullable result)
