@@ -4,7 +4,6 @@
 
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
 
-#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <optional>
@@ -113,9 +112,7 @@ std::optional<Value> FromJS(Napi::Value input,
   if (input.IsNull()) return Value();
   if (input.IsBoolean()) return Value(input.As<Napi::Boolean>().Value());
   if (input.IsNumber()) {
-    double number = input.As<Napi::Number>().DoubleValue();
-    return std::isfinite(number) ? std::optional<Value>(Value(number))
-                                 : std::nullopt;
+    return Value(input.As<Napi::Number>().DoubleValue());
   }
   if (input.IsString()) return Value(input.As<Napi::String>().Utf8Value());
   if (input.IsArrayBuffer()) {
@@ -184,6 +181,9 @@ bool ValidPatchField(Kind kind, const std::string& key, const Value& value,
     case Kind::kUpdateMetaData:
       return (key == "updateData" || key == "globalProps") && IsData(value);
     case Kind::kCall:
+      if (key == "context") return true;  // Already validated/copied by FromJS.
+      if (key == "method")
+        return value.IsString() && !value.StdString().empty();
       if (key != "args" || !value.IsArray() ||
           value.GetLength() != original.GetProperty(kArgs).GetLength())
         return false;
