@@ -1139,14 +1139,25 @@ void Fragment::DrawTransform(DisplayListBuilder& display_list_builder) {
   display_list_builder.Transform(final_matrix);
 }
 
+void Fragment::SetListItemAnimationOpacity(float factor) {
+  if (list_item_animation_opacity_ == factor) {
+    return;
+  }
+  list_item_animation_opacity_ = factor;
+  list_item_animation_opacity_changed_ = true;
+  InvalidateForSubtreeProperty();
+}
+
 void Fragment::DrawOpacity(DisplayListBuilder& display_list_builder) {
-  if (!element()->computed_css_style()->OpacityChanged() &&
+  const auto* style = element()->computed_css_style();
+  if (!style->OpacityChanged() && !list_item_animation_opacity_changed_ &&
       !HasCustomLayerProperties()) {
     return;
   }
 
-  auto opacity = element()->computed_css_style()->GetOpacity();
-  display_list_builder.Opacity(opacity);
+  display_list_builder.Opacity(style->GetOpacity() *
+                               list_item_animation_opacity_);
+  list_item_animation_opacity_changed_ = false;
 }
 
 void Fragment::DrawFilter(DisplayListBuilder& display_list_builder) {
