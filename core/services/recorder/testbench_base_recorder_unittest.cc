@@ -24,6 +24,7 @@
 #undef private
 #include <mutex>
 
+#include "base/include/application_directory.h"
 #include "core/services/recorder/fixture_writer.h"
 #include "testing/utils/make_js_runtime.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -93,10 +94,38 @@ int64_t NowMillis() {
 }
 
 std::string ReadFileContent(const std::string& path) {
-  std::ifstream in(path, std::ios::binary);
+  std::ifstream in(std::filesystem::u8path(path), std::ios::binary);
   return std::string((std::istreambuf_iterator<char>(in)),
                      std::istreambuf_iterator<char>());
 }
+
+class RecorderDirectoryTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    wait(ark_.thread_);
+    ark_.ResetForTesting();
+    previous_directory_ = base::GetApplicationDataDirectory();
+    directory_ =
+        (std::filesystem::temp_directory_path() /
+         std::filesystem::u8path(u8"lynx recorder \u5e94\u7528 \U0001f680"))
+            .u8string();
+    std::filesystem::remove_all(std::filesystem::u8path(directory_));
+    std::filesystem::create_directories(std::filesystem::u8path(directory_));
+    base::SetApplicationDataDirectory(directory_);
+  }
+
+  void TearDown() override {
+    wait(ark_.thread_);
+    ark_.ResetForTesting();
+    ark_.SetRecorderPath(previous_directory_);
+    base::SetApplicationDataDirectory(previous_directory_);
+    std::filesystem::remove_all(std::filesystem::u8path(directory_));
+  }
+
+  TestBenchBaseRecorder& ark_ = TestBenchBaseRecorder::GetInstance();
+  std::string directory_;
+  std::string previous_directory_;
+};
 
 }  // namespace
 
@@ -879,7 +908,8 @@ TEST(TestBenchBaseRecorder, EndRecordOutput) {
   wait(ark.thread_);
   ark.ResetForTesting();
   wait(ark.thread_);
-  const std::string temp_dir = std::filesystem::temp_directory_path().string();
+  const std::string temp_dir =
+      std::filesystem::temp_directory_path().generic_string();
   ark.SetRecorderPath(temp_dir);
   ark.StartRecord();
 
@@ -905,8 +935,9 @@ TEST(TestBenchBaseRecorder, EndRecordOutput) {
   ASSERT_EQ(sessions.size(), 2u);
   for (size_t i = 0; i < filenames.size(); ++i) {
     const int64_t expected_id = sessions[i] == 777 ? recorded_id : bare_id;
-    EXPECT_EQ(filenames[i],
-              temp_dir + "/" + std::to_string(expected_id) + ".json");
+    EXPECT_EQ(filenames[i], (std::filesystem::path(temp_dir) /
+                             (std::to_string(expected_id) + ".json"))
+                                .generic_string());
     const std::string encoded = ReadFileContent(filenames[i]);
     EXPECT_FALSE(encoded.empty());
     const std::string plain = ZlibDecompress(DecodeBase64(encoded));
@@ -1011,9 +1042,7 @@ constexpr const char* kTestBase64Source =
 
 bool ReadZipEntries(const std::string& path,
                     std::map<std::string, std::string>* entries) {
-  std::ifstream ifs(path, std::ios::binary);
-  const std::string data((std::istreambuf_iterator<char>(ifs)),
-                         std::istreambuf_iterator<char>());
+  const std::string data = ReadFileContent(path);
   auto read16 = [&data](size_t at) -> uint32_t {
     return static_cast<uint32_t>(static_cast<uint8_t>(data[at])) |
            (static_cast<uint32_t>(static_cast<uint8_t>(data[at + 1])) << 8);
@@ -1060,6 +1089,147 @@ bool ReadZipEntries(const std::string& path,
     pos = content_at + compressed_size;
   }
   return !entries->empty();
+}
+
+TEST_F(RecorderDirectoryTest, DefaultDirectoryIsCapturedBeforeQueuedConfig) {
+  constexpr int64_t record_id = 62520;
+  constexpr int64_t session_id = 8899;
+  const auto next_directory = directory_ + "/next";
+  std::filesystem::create_directory(std::filesystem::u8path(next_directory));
+
+  // Hold the recorder queue until the root changes, proving InitConfig captures
+  // the effective directory on its caller rather than inside the queued task.
+  std::mutex queue_mutex;
+  std::unique_lock<std::mutex> queue_lock(queue_mutex);
+  ark_.thread_.GetTaskRunner()->PostTask(
+      [&queue_mutex]() { std::lock_guard<std::mutex> lock(queue_mutex); });
+  ark_.InitConfig("", session_id, 390, 844, record_id);
+  base::SetApplicationDataDirectory(next_directory);
+  queue_lock.unlock();
+  wait(ark_.thread_);
+
+  ark_.StartRecord(ArtifactFormat::kBoth);
+  rapidjson::Document params;
+  params.Parse(
+      R"({"url":"https://example.com/page.lynx.bundle","source":"dGVtcGxhdGUtYmluYXJ5"})");
+  ark_.RecordAction(kFuncLoadTemplate, params, record_id);
+  std::vector<std::string> filenames;
+  std::vector<int64_t> sessions;
+  ark_.EndRecord(
+      [&](std::vector<std::string>& files, std::vector<int64_t>& ids) {
+        filenames = files;
+        sessions = ids;
+      });
+  wait(ark_.thread_);
+
+  const auto json_path = directory_ + "/testbench/62520.json";
+  const auto zip_path = directory_ + "/testbench/62520.zip";
+  ASSERT_EQ(filenames, (std::vector<std::string>{json_path, zip_path}));
+  EXPECT_EQ(sessions, (std::vector<int64_t>{session_id, session_id}));
+  rapidjson::Document recorded;
+  recorded.Parse(
+      ZlibDecompress(DecodeBase64(ReadFileContent(json_path))).c_str());
+  ASSERT_FALSE(recorded.HasParseError());
+  ASSERT_TRUE(recorded.HasMember(kActionList));
+  EXPECT_EQ(recorded[kActionList].Size(), 1u);
+  EXPECT_FLOAT_EQ(recorded[kConfig]["screenWidth"].GetFloat(), 390);
+  std::map<std::string, std::string> entries;
+  ASSERT_TRUE(ReadZipEntries(zip_path, &entries));
+  EXPECT_EQ(entries["assets/template/template.bin"], "template-binary");
+  EXPECT_FALSE(entries["fixture.js"].empty());
+  EXPECT_FALSE(std::filesystem::exists(
+      std::filesystem::u8path(directory_ + "/62520.json")));
+  EXPECT_FALSE(std::filesystem::exists(
+      std::filesystem::u8path(directory_ + "/62520.zip")));
+  EXPECT_TRUE(
+      std::filesystem::is_empty(std::filesystem::u8path(next_directory)));
+}
+
+TEST_F(RecorderDirectoryTest, ExplicitDirectoryOverridesBaseDefault) {
+  constexpr int64_t record_id = 62521;
+  const auto explicit_directory = directory_ + "/explicit";
+  std::filesystem::create_directory(
+      std::filesystem::u8path(explicit_directory));
+  ark_.InitConfig(explicit_directory, 8900, 390, 844, record_id);
+  ark_.StartRecord();
+  rapidjson::Document params(rapidjson::kObjectType);
+  ark_.RecordAction("TestFunction", params, record_id);
+  std::vector<std::string> filenames;
+  ark_.EndRecord([&](std::vector<std::string>& files, std::vector<int64_t>&) {
+    filenames = files;
+  });
+  wait(ark_.thread_);
+
+  const auto output = explicit_directory + "/62521.json";
+  ASSERT_EQ(filenames, (std::vector<std::string>{output}));
+  EXPECT_FALSE(ZlibDecompress(DecodeBase64(ReadFileContent(output))).empty());
+  EXPECT_FALSE(std::filesystem::exists(
+      std::filesystem::u8path(directory_ + "/62521.json")));
+  EXPECT_FALSE(std::filesystem::exists(
+      std::filesystem::u8path(explicit_directory + "/testbench")));
+}
+
+TEST_F(RecorderDirectoryTest, DefaultDirectoryCreationFailureCanRetry) {
+  constexpr int64_t record_id = 62525;
+  const auto child = std::filesystem::u8path(directory_ + "/testbench");
+  std::ofstream(child) << "occupied";
+  ark_.InitConfig("", 8901, 390, 844, record_id);
+  wait(ark_.thread_);
+  EXPECT_TRUE(ark_.file_path_.empty());
+  ark_.StartRecord();
+  rapidjson::Document params(rapidjson::kObjectType);
+  ark_.RecordAction("TestFunction", params, record_id);
+  bool completed = false;
+  ark_.EndRecord(
+      [&](std::vector<std::string>& files, std::vector<int64_t>& sessions) {
+        completed = true;
+        EXPECT_TRUE(files.empty());
+        EXPECT_TRUE(sessions.empty());
+      });
+  wait(ark_.thread_);
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(std::filesystem::is_regular_file(child));
+  EXPECT_FALSE(std::filesystem::exists("62525.json"));
+
+  std::filesystem::remove(child);
+  ark_.InitConfig("", 8901, 390, 844, record_id);
+  ark_.StartRecord();
+  ark_.RecordAction("TestFunction", params, record_id);
+  std::vector<std::string> filenames;
+  ark_.EndRecord(
+      [&](std::vector<std::string>& files, std::vector<int64_t>& sessions) {
+        filenames = files;
+        EXPECT_EQ(sessions, (std::vector<int64_t>{8901}));
+      });
+  wait(ark_.thread_);
+  const auto output = directory_ + "/testbench/62525.json";
+  ASSERT_EQ(filenames, (std::vector<std::string>{output}));
+  EXPECT_FALSE(ZlibDecompress(DecodeBase64(ReadFileContent(output))).empty());
+}
+
+TEST_F(RecorderDirectoryTest, EmptyDirectorySkipsRelativeArtifacts) {
+  constexpr int64_t record_id = 62522;
+  ASSERT_FALSE(std::filesystem::exists("62522.json"));
+  ASSERT_FALSE(std::filesystem::exists("62522.zip"));
+  ark_.SetRecorderPath("");
+  ark_.StartRecord(ArtifactFormat::kBoth);
+  rapidjson::Document params;
+  params.Parse(
+      R"({"url":"https://example.com/page.lynx.bundle","source":"dGVtcGxhdGUtYmluYXJ5"})");
+  ark_.RecordAction(kFuncLoadTemplate, params, record_id);
+  bool completed = false;
+  ark_.EndRecord(
+      [&](std::vector<std::string>& files, std::vector<int64_t>& sessions) {
+        completed = true;
+        EXPECT_TRUE(files.empty());
+        EXPECT_TRUE(sessions.empty());
+      });
+  wait(ark_.thread_);
+
+  EXPECT_TRUE(completed);
+  EXPECT_FALSE(ark_.IsRecordingProcess());
+  EXPECT_FALSE(std::filesystem::exists("62522.json"));
+  EXPECT_FALSE(std::filesystem::exists("62522.zip"));
 }
 
 // Builds a JSON object string with the given member count, used to cross the
@@ -1110,11 +1280,14 @@ TEST(TestBenchBaseRecorder, RecordsJsonAndFixtureFromOneSession) {
   constexpr int64_t record_id = 52520;
   constexpr int64_t session_id = 8899;
   constexpr int64_t callback_id = 42;
-  const std::string temp_dir = std::filesystem::temp_directory_path().string();
+  const std::string temp_dir =
+      std::filesystem::temp_directory_path().generic_string();
   const std::string json_path =
-      temp_dir + "/" + std::to_string(record_id) + ".json";
+      (std::filesystem::path(temp_dir) / (std::to_string(record_id) + ".json"))
+          .generic_string();
   const std::string zip_path =
-      temp_dir + "/" + std::to_string(record_id) + ".zip";
+      (std::filesystem::path(temp_dir) / (std::to_string(record_id) + ".zip"))
+          .generic_string();
   std::remove(json_path.c_str());
   std::remove(zip_path.c_str());
 
@@ -1324,9 +1497,11 @@ TEST(TestBenchBaseRecorder, FixtureOnlyReportsZip) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
   ark.ResetForTesting();
   constexpr int64_t record_id = 52522;
-  const std::string temp_dir = std::filesystem::temp_directory_path().string();
+  const std::string temp_dir =
+      std::filesystem::temp_directory_path().generic_string();
   const std::string zip_path =
-      temp_dir + "/" + std::to_string(record_id) + ".zip";
+      (std::filesystem::path(temp_dir) / (std::to_string(record_id) + ".zip"))
+          .generic_string();
   std::remove(zip_path.c_str());
   ark.SetRecorderPath(temp_dir);
   ark.StartRecord(ArtifactFormat::kFixture);

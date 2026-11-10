@@ -25,6 +25,8 @@
 
 #include <cstring>
 
+#include "base/include/application_directory.h"
+
 #define SCREEN_WIDTH [UIScreen mainScreen].bounds.size.width
 #define SCREEN_HEIGHT [UIScreen mainScreen].bounds.size.height
 
@@ -1398,14 +1400,17 @@ static void ConfigureRuntimeOptions(LynxViewBuilder* builder, LynxRecorderReplay
 }
 
 - (NSString*)getDumpFilePath {
+  const auto directory = lynx::base::GetApplicationDataSubDirectory("testbench");
+  if (directory.empty()) {
+    return @"";
+  }
   NSDate* currentDate =
       [[NSDate alloc] initWithTimeIntervalSinceNow:[[NSDate date] timeIntervalSinceNow]];
   NSDateFormatter* dateFormat = [[NSDateFormatter alloc] init];
   [dateFormat setDateFormat:@"yyyy-MM-dd-HHmmss"];
   NSString* dateString = [dateFormat stringFromDate:currentDate];
-  NSString* filePath =
-      [[NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject]
-          stringByAppendingFormat:@"/lynx-testbench-%@", dateString];
+  NSString* filePath = [[NSString stringWithUTF8String:directory.c_str()]
+      stringByAppendingPathComponent:[NSString stringWithFormat:@"lynx-testbench-%@", dateString]];
   return filePath;
 }
 

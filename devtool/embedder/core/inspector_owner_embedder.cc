@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include "core/renderer/utils/lynx_env.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
 #include "devtool/embedder/core/devtool_platform_embedder.h"
@@ -121,12 +120,11 @@ InspectorOwnerEmbedder::OnBackgroundRuntimeCreated(
 
 void InspectorOwnerEmbedder::InitRecord() {
   CHECK_NULL_AND_LOG_RETURN(devtoolng_delegate_, "devtoolng_delegate_ is null");
-  std::string dir_path = tasm::LynxEnv::GetInstance().GetStorageDirectory();
   // TODO(zhaosong.lmm):Use the actual device screen width and height.
   float default_screen_width = 0;
   float default_screen_height = 0;
   tasm::recorder::RecorderController::InitConfig(
-      dir_path, devtoolng_delegate_->getSessionId(), default_screen_width,
+      "", devtoolng_delegate_->getSessionId(), default_screen_width,
       default_screen_height, record_id_);
 }
 

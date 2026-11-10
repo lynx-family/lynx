@@ -207,7 +207,6 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value NativeReset(napi_env env, napi_callback_info info);
   static napi_value NativeQueryLynxElement(napi_env env,
                                            napi_callback_info info);
-  static napi_value SetTracingDirPath(napi_env env, napi_callback_info info);
   static napi_value SetCacheDirPath(napi_env env, napi_callback_info info);
   static napi_value TraceEventBegin(napi_env env, napi_callback_info info);
   static napi_value TraceEventEnd(napi_env env, napi_callback_info info);

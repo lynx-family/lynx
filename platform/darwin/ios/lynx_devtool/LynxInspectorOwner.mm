@@ -313,12 +313,8 @@
 
 - (void)initRecord {
   CGSize size = [UIScreen mainScreen].bounds.size;
-  NSString* filePath =
-      [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject];
-  if (filePath) {
-    lynx::tasm::recorder::RecorderController::InitConfig([filePath UTF8String], [self getSessionId],
-                                                         size.width, size.height, self->record_id);
-  }
+  lynx::tasm::recorder::RecorderController::InitConfig("", [self getSessionId], size.width,
+                                                       size.height, self->record_id);
 }
 
 - (void)dispatchMessageEvent:(NSDictionary*)event {

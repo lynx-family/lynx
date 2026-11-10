@@ -47,6 +47,7 @@ class RecorderController {
 extern "C" {
 LYNX_EXPORT_FOR_DEVTOOL bool LynxTestBenchRecorderIsRecording();
 LYNX_EXPORT_FOR_DEVTOOL uint64_t LynxTestBenchRecorderRecordingGeneration();
+// A null or empty path selects the base application data directory.
 LYNX_EXPORT_FOR_DEVTOOL void LynxTestBenchRecorderInitConfig(
     const char* path, int64_t session_id, float screen_width,
     float screen_height, int64_t record_id);

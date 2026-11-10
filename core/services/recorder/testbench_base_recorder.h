@@ -77,6 +77,7 @@ class TestBenchBaseRecorder {
   bool TryRecordExternalScriptUrl(int64_t record_id, const std::string& url);
 
   rapidjson::Document::AllocatorType& GetAllocator();
+  // An empty path snapshots the base application data directory for output.
   void InitConfig(const std::string& path, int64_t session_id,
                   float screen_width, float screen_height, int64_t record_id);
   void SetRecorderPath(const std::string& path);
