@@ -13,12 +13,28 @@
 #import <Lynx/LynxViewBuilder.h>
 #import <Lynx/LynxViewGroup.h>
 #import "LynxBaseConfigurator+Internal.h"
+#import "LynxCustomVsyncMonitorBridge.h"
 #import "LynxTraceEventDef.h"
 #import "LynxUIRendererCreator.h"
 
 #include <cmath>
 
-@implementation LynxViewBuilder
+@implementation LynxViewBuilder {
+  std::shared_ptr<lynx::base::VSyncMonitorPlatformImpl> _vsyncMonitorPlatformImpl;
+}
+
+- (std::shared_ptr<lynx::base::VSyncMonitorPlatformImpl>)vsyncMonitorPlatformImpl {
+  return _vsyncMonitorPlatformImpl;
+}
+
+- (void)setCustomVsyncMonitor:(id<LynxCustomVsyncMonitor>)monitor {
+  _vsyncMonitorPlatformImpl = lynx::platform::CreateVSyncMonitorPlatformImpl(monitor);
+}
+
+- (void)setVSyncMonitorPlatformImpl:
+    (const std::shared_ptr<lynx::base::VSyncMonitorPlatformImpl> &)monitor {
+  _vsyncMonitorPlatformImpl = monitor;
+}
 
 - (LynxConfig *)config {
   if (_lynxViewGroup) {

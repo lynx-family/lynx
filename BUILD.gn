@@ -34,6 +34,7 @@ group("default") {
 
   if (enable_unittests) {
     deps += [
+      "platform/common:custom_vsync_monitor_unittests",
       "platform/embedder:lynx_vsync_monitor_unittests",
       "tools/gn_tools/test:gn_tools_test",
     ]

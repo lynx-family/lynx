@@ -8,15 +8,26 @@
 #import <Lynx/LynxThreadSafeDictionary.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
+#import <Lynx/LynxViewBuilder+Internal.h>
 #import <XCTest/XCTest.h>
 
 #include <atomic>
+#include <memory>
 
+#include "core/base/threading/vsync_monitor.h"
+#include "core/public/vsync_observer_interface.h"
+#include "core/renderer/dom/element_manager.h"
+#include "core/shell/runtime/bts/bts_runtime.h"
+
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import "LynxTemplateRender+Protected.h"
+
+using RuntimeTestBTSActor = std::shared_ptr<lynx::shell::LynxActor<lynx::shell::BTSRuntime>>;
 
 @interface LynxTemplateRender (RuntimeUnitTest)
 - (lynx::shell::LynxShell *)shellForTest;
 - (LynxShadowNodeOwner *)shadowNodeOwnerForTest;
+- (LynxViewBuilder *)builderForTest;
 @end
 
 @implementation LynxTemplateRender (RuntimeUnitTest)
@@ -26,6 +37,44 @@
 
 - (LynxShadowNodeOwner *)shadowNodeOwnerForTest {
   return _shadowNodeOwner;
+}
+
+- (LynxViewBuilder *)builderForTest {
+  return _builder;
+}
+
+@end
+
+@interface RuntimeTestCustomVsyncMonitor : NSObject <LynxCustomVsyncMonitor>
+@property(nonatomic, strong) NSMutableArray *callbacks;
+@property(atomic, assign) NSUInteger requestCount;
+- (LynxCustomVsyncCallback)takeCallback;
+@end
+
+@implementation RuntimeTestCustomVsyncMonitor
+- (instancetype)init {
+  if (self = [super init]) {
+    _callbacks = [NSMutableArray array];
+  }
+  return self;
+}
+
+- (void)requestVsync:(LynxCustomVsyncCallback)callback {
+  @synchronized(self) {
+    self.requestCount += 1;
+    [self.callbacks addObject:[callback copy]];
+  }
+}
+
+- (LynxCustomVsyncCallback)takeCallback {
+  @synchronized(self) {
+    if (self.callbacks.count == 0) {
+      return nil;
+    }
+    LynxCustomVsyncCallback callback = self.callbacks.firstObject;
+    [self.callbacks removeObjectAtIndex:0];
+    return callback;
+  }
 }
 @end
 
@@ -45,6 +94,330 @@
 @end
 
 @implementation LynxTemplateRenderRuntimeUnitTest
+
+- (NSArray<Class> *)rendererCreatorClasses {
+  Class nativeCreatorClass = NSClassFromString(@"LynxUIRendererCreator");
+  XCTAssertNotNil(nativeCreatorClass);
+  if (!nativeCreatorClass) {
+    return @[];
+  }
+  NSMutableArray<Class> *creatorClasses = [NSMutableArray arrayWithObject:nativeCreatorClass];
+  Class clayCreatorClass = NSClassFromString(@"LynxUIRendererCreatorClay");
+#if defined(ENABLE_CLAY)
+  XCTAssertNotNil(clayCreatorClass);
+#endif
+  if (clayCreatorClass) {
+    [creatorClasses addObject:clayCreatorClass];
+  }
+  return creatorClasses;
+}
+
+- (void)testViewCreatedRuntimeUsesConfiguredOrSystemVSyncSource {
+  const BOOL customSourceCases[] = {NO, YES};
+  for (Class creatorClass in [self rendererCreatorClasses]) {
+    for (BOOL hasCustomSource : customSourceCases) {
+      @autoreleasepool {
+        RuntimeTestCustomVsyncMonitor *viewMonitor = [RuntimeTestCustomVsyncMonitor new];
+
+        LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+          builder.disableMTSPoolWarmup = YES;
+          builder.uiRendererCreator = [[creatorClass alloc] init];
+          [builder setCustomVsyncMonitor:hasCustomSource ? viewMonitor : nil];
+        }];
+        XCTAssertNotNil(view);
+        auto *shell = [view.templateRender shellForTest];
+        XCTAssertNotEqual(shell, nullptr);
+        if (!shell) {
+          [view clearForDestroy];
+          continue;
+        }
+        auto source = shell->GetVSyncMonitorPlatformImpl();
+        XCTAssertEqual(source, [[view.templateRender builderForTest] vsyncMonitorPlatformImpl]);
+        XCTAssertEqual(source != nullptr, hasCustomSource);
+        [view clearForDestroy];
+      }
+    }
+  }
+}
+
+- (void)testCopiedViewConfigurationSharesCustomVSyncSource {
+  for (Class creatorClass in [self rendererCreatorClasses]) {
+    @autoreleasepool {
+      RuntimeTestCustomVsyncMonitor *monitor = [RuntimeTestCustomVsyncMonitor new];
+      LynxView *parent = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+        builder.disableMTSPoolWarmup = YES;
+        builder.enableJSRuntime = NO;
+        builder.uiRendererCreator = [[creatorClass alloc] init];
+        [builder setCustomVsyncMonitor:monitor];
+      }];
+      XCTAssertNotNil(parent);
+      if (!parent) {
+        continue;
+      }
+      auto source = [[parent.templateRender builderForTest] vsyncMonitorPlatformImpl];
+      XCTAssertNotEqual(source, nullptr);
+
+      LynxViewBuilderBlock copyConfiguration = [parent.templateRender getLynxViewBuilderBlock];
+      XCTAssertNotNil(copyConfiguration);
+      if (!copyConfiguration) {
+        [parent clearForDestroy];
+        continue;
+      }
+      LynxView *child = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+        copyConfiguration(builder);
+        builder.disableMTSPoolWarmup = YES;
+        builder.enableJSRuntime = NO;
+        builder.uiRendererCreator = [[creatorClass alloc] init];
+      }];
+      XCTAssertNotNil(child);
+      if (!child) {
+        [parent clearForDestroy];
+        continue;
+      }
+      XCTAssertEqual([[child.templateRender builderForTest] vsyncMonitorPlatformImpl], source);
+      auto *parentShell = [parent.templateRender shellForTest];
+      auto *childShell = [child.templateRender shellForTest];
+      XCTAssertNotEqual(parentShell, nullptr);
+      XCTAssertNotEqual(childShell, nullptr);
+      if (parentShell && childShell) {
+        XCTAssertEqual(parentShell->GetVSyncMonitorPlatformImpl(), source);
+        XCTAssertEqual(childShell->GetVSyncMonitorPlatformImpl(), source);
+      }
+
+      [parent clearForDestroy];
+      [child clearForDestroy];
+    }
+  }
+}
+
+- (void)assertAnimationFrameForActor:(const RuntimeTestBTSActor &)actor
+                             monitor:(RuntimeTestCustomVsyncMonitor *)monitor
+                          frameStart:(int64_t)frameStart
+                         frameTarget:(int64_t)frameTarget {
+  XCTestExpectation *registered = [self expectationWithDescription:@"BTS VSync registered"];
+  XCTestExpectation *delivered = [self expectationWithDescription:@"BTS VSync delivered"];
+  delivered.assertForOverFulfill = YES;
+  auto runner = actor->GetRunner();
+  actor->ActAsync([registered, delivered, runner, frameStart, frameTarget](auto &runtime) {
+    auto observer = runtime->GetVSyncObserver();
+    XCTAssertNotEqual(observer, nullptr);
+    if (observer) {
+      observer->RequestAnimationFrame(
+          1, [delivered, runner, frameStart, frameTarget](int64_t start, int64_t target) {
+            XCTAssertTrue(runner->RunsTasksOnCurrentThread());
+            XCTAssertFalse(NSThread.isMainThread);
+            XCTAssertEqual(start, frameStart);
+            XCTAssertEqual(target, frameTarget);
+            [delivered fulfill];
+          });
+    }
+    [registered fulfill];
+  });
+  [self waitForExpectations:@[ registered ] timeout:5];
+  LynxCustomVsyncCallback reply = [monitor takeCallback];
+  XCTAssertNotNil(reply);
+  if (reply) {
+    // Deliver from the UI thread; the BTS callback must run on its JS runner.
+    reply(frameStart, frameTarget);
+    [self waitForExpectations:@[ delivered ] timeout:5];
+  } else {
+    [delivered fulfill];
+  }
+}
+
+- (void)testViewCreatedRuntimeReceivesCustomVSyncOnJSThread {
+  for (Class creatorClass in [self rendererCreatorClasses]) {
+    @autoreleasepool {
+      RuntimeTestCustomVsyncMonitor *monitor = [RuntimeTestCustomVsyncMonitor new];
+      LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+        builder.disableMTSPoolWarmup = YES;
+        builder.uiRendererCreator = [[creatorClass alloc] init];
+        [builder setCustomVsyncMonitor:monitor];
+      }];
+      auto *shell = [view.templateRender shellForTest];
+      XCTAssertNotEqual(shell, nullptr);
+      if (!shell) {
+        [view clearForDestroy];
+        continue;
+      }
+      auto actor = shell->GetRuntimeActor();
+      XCTAssertNotEqual(actor, nullptr);
+      if (actor) {
+        [self assertAnimationFrameForActor:actor
+                                   monitor:monitor
+                                frameStart:INT64_C(9007199254740993)
+                               frameTarget:INT64_C(9007199263074326)];
+      }
+      [view clearForDestroy];
+    }
+  }
+}
+
+- (void)testDestroyWithPendingVSyncReleasesViewSourceAndHost {
+  for (Class creatorClass in [self rendererCreatorClasses]) {
+    __weak LynxView *weakView;
+    __weak RuntimeTestCustomVsyncMonitor *weakMonitor;
+    std::weak_ptr<lynx::base::VSyncMonitorPlatformImpl> weakSource;
+    LynxCustomVsyncCallback staleReply;
+    auto deliveries = std::make_shared<std::atomic<size_t>>(0);
+    @autoreleasepool {
+      RuntimeTestCustomVsyncMonitor *monitor = [RuntimeTestCustomVsyncMonitor new];
+      weakMonitor = monitor;
+      LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+        builder.disableMTSPoolWarmup = YES;
+        builder.uiRendererCreator = [[creatorClass alloc] init];
+        [builder setCustomVsyncMonitor:weakMonitor];
+      }];
+      weakView = view;
+      auto *shell = [view.templateRender shellForTest];
+      XCTAssertNotEqual(shell, nullptr);
+      if (!shell) {
+        [view clearForDestroy];
+        continue;
+      }
+      weakSource = shell->GetVSyncMonitorPlatformImpl();
+      auto runtimeActor = shell->GetRuntimeActor();
+      auto engineActor = shell->GetEngineActor();
+      XCTAssertNotEqual(runtimeActor, nullptr);
+      XCTAssertNotEqual(engineActor, nullptr);
+      if (!runtimeActor || !engineActor) {
+        [view clearForDestroy];
+        continue;
+      }
+      XCTestExpectation *runtimeRegistered =
+          [self expectationWithDescription:@"pending BTS subscription"];
+      XCTestExpectation *pageRegistered =
+          [self expectationWithDescription:@"pending MTS and Core subscriptions"];
+      runtimeActor->ActAsync([runtimeRegistered, deliveries](auto &runtime) {
+        auto observer = runtime->GetVSyncObserver();
+        XCTAssertNotEqual(observer, nullptr);
+        if (observer) {
+          observer->RequestAnimationFrame(1, [deliveries](int64_t, int64_t) { ++*deliveries; });
+        }
+        [runtimeRegistered fulfill];
+      });
+      engineActor->ActAsync([pageRegistered, deliveries](auto &engine) {
+        auto *tasm = engine->GetTasm();
+        XCTAssertNotEqual(tasm, nullptr);
+        if (tasm) {
+          auto pageMonitor = tasm->page_proxy()->element_manager()->vsync_monitor();
+          XCTAssertNotEqual(pageMonitor, nullptr);
+          if (pageMonitor) {
+            pageMonitor->ScheduleVSyncSecondaryCallback(
+                1, [deliveries](int64_t, int64_t) { ++*deliveries; });
+          }
+          tasm->RequestVsync(1, [deliveries](int64_t, int64_t) { ++*deliveries; });
+        }
+        [pageRegistered fulfill];
+      });
+      [self waitForExpectations:@[ runtimeRegistered, pageRegistered ] timeout:5];
+      staleReply = [monitor takeCallback];
+      XCTAssertNotNil(staleReply);
+      // Teardown must complete without requiring the host to deliver its signal.
+      [view clearForDestroy];
+      view = nil;
+      monitor = nil;
+      runtimeActor.reset();
+      engineActor.reset();
+    }
+    // Native shell destruction is deferred to the main queue. Poll only weak
+    // references after draining autoreleased configuration and callback objects.
+    NSPredicate *released =
+        [NSPredicate predicateWithBlock:^BOOL(id object, NSDictionary *bindings) {
+          @autoreleasepool {
+            return weakView == nil && weakMonitor == nil && weakSource.expired();
+          }
+        }];
+    XCTestExpectation *allReleased = [self expectationForPredicate:released
+                                               evaluatedWithObject:nil
+                                                           handler:nil];
+    [self waitForExpectations:@[ allReleased ] timeout:5];
+    XCTAssertNil(weakView);
+    XCTAssertNil(weakMonitor);
+    XCTAssertTrue(weakSource.expired());
+    if (staleReply) {
+      staleReply(10, 20);
+    }
+    XCTAssertEqual(deliveries->load(), 0u);
+  }
+}
+
+- (void)testMTSAndCoreAnimationShareCustomVSyncSource {
+  constexpr int64_t frameStart = INT64_C(9007199254740993);
+  constexpr int64_t frameTarget = INT64_C(9007199263074326);
+  for (Class creatorClass in [self rendererCreatorClasses]) {
+    @autoreleasepool {
+      RuntimeTestCustomVsyncMonitor *monitor = [RuntimeTestCustomVsyncMonitor new];
+      LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
+        builder.disableMTSPoolWarmup = YES;
+        builder.enableJSRuntime = NO;
+        builder.uiRendererCreator = [[creatorClass alloc] init];
+        [builder setCustomVsyncMonitor:monitor];
+      }];
+      auto *shell = [view.templateRender shellForTest];
+      XCTAssertNotEqual(shell, nullptr);
+      if (!shell) {
+        [view clearForDestroy];
+        continue;
+      }
+      auto actor = shell->GetEngineActor();
+      XCTAssertNotEqual(actor, nullptr);
+      if (!actor) {
+        [view clearForDestroy];
+        continue;
+      }
+      XCTestExpectation *registered =
+          [self expectationWithDescription:@"page consumers registered"];
+      XCTestExpectation *coreFrame = [self expectationWithDescription:@"Core animation VSync"];
+      XCTestExpectation *mtsFrame = [self expectationWithDescription:@"MTS VSync"];
+      coreFrame.assertForOverFulfill = YES;
+      mtsFrame.assertForOverFulfill = YES;
+      auto runner = actor->GetRunner();
+      actor->ActAsync([registered, coreFrame, mtsFrame, runner](auto &engine) {
+        auto *tasm = engine->GetTasm();
+        XCTAssertNotEqual(tasm, nullptr);
+        if (tasm) {
+          auto pageMonitor = tasm->page_proxy()->element_manager()->vsync_monitor();
+          XCTAssertNotEqual(pageMonitor, nullptr);
+          if (pageMonitor) {
+            XCTAssertTrue(pageMonitor->UsesCustomVSync());
+            auto pageRunner = pageMonitor->GetTaskRunner();
+            XCTAssertNotEqual(pageRunner, nullptr);
+            if (pageRunner) {
+              XCTAssertTrue(pageRunner->RunsTasksOnCurrentThread());
+              pageMonitor->ScheduleVSyncSecondaryCallback(
+                  1, [coreFrame, runner](int64_t start, int64_t target) {
+                    XCTAssertTrue(runner->RunsTasksOnCurrentThread());
+                    XCTAssertEqual(start, frameStart);
+                    XCTAssertEqual(target, frameTarget);
+                    [coreFrame fulfill];
+                  });
+            }
+          }
+          tasm->RequestVsync(1, [mtsFrame, runner](int64_t start, int64_t target) {
+            XCTAssertTrue(runner->RunsTasksOnCurrentThread());
+            XCTAssertEqual(start, frameStart);
+            XCTAssertEqual(target, frameTarget);
+            [mtsFrame fulfill];
+          });
+        }
+        [registered fulfill];
+      });
+      [self waitForExpectations:@[ registered ] timeout:5];
+      XCTAssertEqual(monitor.requestCount, 1U);
+      LynxCustomVsyncCallback reply = [monitor takeCallback];
+      XCTAssertNotNil(reply);
+      if (reply) {
+        reply(frameStart, frameTarget);
+        [self waitForExpectations:@[ coreFrame, mtsFrame ] timeout:5];
+      } else {
+        [coreFrame fulfill];
+        [mtsFrame fulfill];
+      }
+      [view clearForDestroy];
+    }
+  }
+}
 
 - (void)testShadowNodeStorageRespectsRenderingMode {
   const struct {
