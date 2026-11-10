@@ -38,6 +38,9 @@ constexpr int64_t kResidencyThresholdMs = 600000;
 
 constexpr char kTotalPageCountKey[] = "total_page_count";
 constexpr char kSlotsKey[] = "slots";
+constexpr char kKey[] = "key";
+constexpr char kBytesKey[] = "bytes";
+constexpr char kInstanceIdKey[] = "instance_id";
 
 struct VmHeapQueryResult {
   fml::AutoResetWaitableEvent event;
@@ -391,10 +394,12 @@ void GlobalMemoryMonitor::ReportLargeVM(const BtsVmState& vm) {
   dictionary->SetValue(BASE_STATIC_STRING(kTotalPageCountKey),
                        vm.total_page_count);
   if (vm.has_per_instance_data) {
-    std::array<const std::string*, fml::JSMemoryTrackSlotType::Count> keys{};
-    for (const auto& [id, page] : instance_state_) {
+    using InstanceEntry = decltype(instance_state_)::value_type;
+    std::array<const InstanceEntry*, fml::JSMemoryTrackSlotType::Count> pages{};
+    for (const auto& entry : instance_state_) {
+      const auto& page = entry.second;
       if (page.bts_vm == vm.vm_ptr && fml::IsValidInstanceSlot(page.slot)) {
-        keys[page.slot] = &page.page_key;
+        pages[page.slot] = &entry;
       }
     }
     std::array<uint16_t, fml::JSMemoryTrackSlotType::Count> occupied;
@@ -414,12 +419,20 @@ void GlobalMemoryMonitor::ReportLargeVM(const BtsVmState& vm) {
     auto slots = lepus::CArray::Create();
     for (size_t i = 0; i < count; ++i) {
       const auto slot = occupied[i];
+      const auto* page = pages[slot];
+      auto slot_info = lepus::Dictionary::Create();
       if (slot < kFirstPageSlot) {
-        slots->emplace_back(reserved[slot]);
+        slot_info->SetValue(BASE_STATIC_STRING(kKey), reserved[slot]);
       } else {
-        slots->emplace_back(keys[slot] ? *keys[slot] : empty_name);
+        slot_info->SetValue(BASE_STATIC_STRING(kKey),
+                            page ? page->second.page_key : empty_name);
       }
-      slots->emplace_back(static_cast<uint64_t>(vm.memory_slots[slot]));
+      slot_info->SetValue(BASE_STATIC_STRING(kBytesKey),
+                          static_cast<uint64_t>(vm.memory_slots[slot]));
+      if (page) {
+        slot_info->SetValue(BASE_STATIC_STRING(kInstanceIdKey), page->first);
+      }
+      slots->emplace_back(std::move(slot_info));
     }
     dictionary->SetValue(BASE_STATIC_STRING(kSlotsKey), std::move(slots));
   }

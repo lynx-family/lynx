@@ -34,6 +34,8 @@ struct lynx_value;
  * Receives one high-memory event dictionary asynchronously on the UI thread.
  * The value is borrowed and valid only during the callback. Retain it with
  * lynx_value_add_reference if it must outlive the callback.
+ * Page events include instance_id. VM slots are dictionaries containing key
+ * and bytes, with instance_id for associated page slots.
  */
 typedef void (*lynx_env_high_memory_callback)(void* user_data,
                                               const struct lynx_value* event);

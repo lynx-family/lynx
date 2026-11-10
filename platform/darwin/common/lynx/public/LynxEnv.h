@@ -238,9 +238,10 @@ typedef NS_ENUM(NSInteger, LynxMTSContextType) {
  * Events are not replayed. The type is large_vm, large_bts, or large_ui.
  * Events contain key (VM name or page key) and bytes; large_vm and large_bts add vm_type
  * (quickjs, v8, jsvm, jsc, or unknown). large_ui adds counts with alternating category
- * names and instance counts.
- * Monitored VM events add total_page_count and slots with alternating names and byte counts,
- * sorted by descending bytes. Page and V8/JSVM events require memory monitoring;
+ * names and instance counts. large_bts and large_ui add the page instance_id.
+ * Monitored VM events add total_page_count and slots sorted by descending bytes.
+ * Each slot dictionary contains key and bytes; associated page slots add instance_id.
+ * Page and V8/JSVM events require memory monitoring;
  * shared QuickJS VM events do not.
  */
 + (void)setHighMemoryCallback:(nullable LynxHighMemoryCallback)callback;
