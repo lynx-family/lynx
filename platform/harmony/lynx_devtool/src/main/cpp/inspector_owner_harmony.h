@@ -33,6 +33,7 @@ class InspectorOwnerHarmony {
   static napi_value GetConsoleObject(napi_env env, napi_callback_info info);
   static napi_value SubscribeMessage(napi_env env, napi_callback_info info);
   static napi_value UnsubscribeMessage(napi_env env, napi_callback_info info);
+  static napi_value InvokeCDPFromSDK(napi_env env, napi_callback_info info);
   static napi_value AddCDPEventListener(napi_env env, napi_callback_info info);
   static napi_value RemoveCDPEventListener(napi_env env,
                                            napi_callback_info info);

@@ -23,6 +23,8 @@ devtool_source_set("cpp") {
     "inspector_owner_embedder_harmony.h",
     "inspector_owner_harmony.cc",
     "inspector_owner_harmony.h",
+    "invoke_cdp_from_sdk_sender_harmony.cc",
+    "invoke_cdp_from_sdk_sender_harmony.h",
     "message_handler_harmony.cc",
     "message_handler_harmony.h",
   ]
