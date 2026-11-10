@@ -16,6 +16,9 @@ namespace base {
 // fopen/remove equivalents accepting UTF-8 paths, including on Windows.
 BASE_EXPORT std::FILE* OpenFile(const std::string& path, const char* mode);
 BASE_EXPORT int RemoveFile(const std::string& path);
+// open equivalent accepting UTF-8 paths. Windows descriptors use binary mode.
+BASE_EXPORT int OpenFileDescriptor(const std::string& path, int flags,
+                                   int permissions);
 
 }  // namespace base
 }  // namespace lynx
