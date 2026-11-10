@@ -7,7 +7,9 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <utility>
 
+#include "platform/embedder/lynx_recorder/test_bench_fixture.h"
 #include "platform/embedder/lynx_recorder/test_bench_utils.h"
 #include "platform/embedder/public/capi/lynx_native_module_capi.h"
 
@@ -29,20 +31,24 @@ class ReplayDataModulesHolder {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = data_modules_.find(context);
     if (it != data_modules_.end()) {
-      return it->second.lock();
+      return it->second.provider.lock();
     }
     return nullptr;
   }
 
-  void AddDataModule(void* context,
+  void AddDataModule(void* context, TestBenchReplayDataModule* identity,
                      std::weak_ptr<TestBenchReplayDataModule> m) {
     std::lock_guard<std::mutex> lock(mutex_);
-    data_modules_[context] = m;
+    data_modules_[context] = {identity, std::move(m)};
   }
 
-  void RemoveDataModule(void* context) {
+  void RemoveDataModule(void* context, TestBenchReplayDataModule* identity) {
     std::lock_guard<std::mutex> lock(mutex_);
-    data_modules_.erase(context);
+    auto it = data_modules_.find(context);
+    // A JS getter can keep the old provider alive across a replay restart.
+    // Its delayed destructor must not remove the replacement provider.
+    if (it != data_modules_.end() && it->second.identity == identity)
+      data_modules_.erase(it);
   }
 
   ReplayDataModulesHolder(const ReplayDataModulesHolder&) = delete;
@@ -53,8 +59,11 @@ class ReplayDataModulesHolder {
   ~ReplayDataModulesHolder() = default;
 
   std::mutex mutex_;
-  std::unordered_map<void*, std::weak_ptr<TestBenchReplayDataModule>>
-      data_modules_;
+  struct Entry {
+    TestBenchReplayDataModule* identity;
+    std::weak_ptr<TestBenchReplayDataModule> provider;
+  };
+  std::unordered_map<void*, Entry> data_modules_;
 };
 
 napi_value GetData(napi_env env, napi_callback_info info) {
@@ -78,18 +87,152 @@ napi_value GetData(napi_env env, napi_callback_info info) {
   return nullptr;
 }
 
+namespace {
+// Module environments cannot access the JS global object (including
+// JSON.parse). Convert JSON directly, defining object keys as own data
+// properties.
+napi_value SharedDataValue(napi_env env, const rapidjson::Value& value) {
+  napi_value result = nullptr;
+  if (value.IsNull()) {
+    napi_get_null(env, &result);
+  } else if (value.IsBool()) {
+    napi_get_boolean(env, value.GetBool(), &result);
+  } else if (value.IsNumber()) {
+    napi_create_double(env, value.GetDouble(), &result);
+  } else if (value.IsString()) {
+    napi_create_string_utf8(env, value.GetString(), value.GetStringLength(),
+                            &result);
+  } else if (value.IsArray()) {
+    napi_create_array_with_length(env, value.Size(), &result);
+    for (rapidjson::SizeType i = 0; i < value.Size(); ++i) {
+      napi_value child = SharedDataValue(env, value[i]);
+      if (!child || napi_set_element(env, result, i, child) != napi_ok)
+        return nullptr;
+    }
+  } else if (value.IsObject()) {
+    napi_create_object(env, &result);
+    for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it) {
+      napi_property_descriptor property{};
+      napi_create_string_utf8(env, it->name.GetString(),
+                              it->name.GetStringLength(), &property.name);
+      property.value = SharedDataValue(env, it->value);
+      property.attributes = static_cast<napi_property_attributes>(
+          napi_writable | napi_enumerable | napi_configurable);
+      if (!property.value ||
+          napi_define_properties(env, result, 1, &property) != napi_ok)
+        return nullptr;
+    }
+  }
+  return result;
+}
+
+napi_value GetSharedData(napi_env env, napi_callback_info info) {
+  size_t argc = 1;
+  napi_value argument = nullptr;
+  napi_get_cb_info(env, info, &argc, &argument, nullptr, nullptr);
+  std::string json = "\"\"";
+  size_t length = 0;
+  if (argc && napi_get_value_string_utf8(env, argument, nullptr, 0, &length) ==
+                  napi_ok) {
+    std::string key(length + 1, '\0');
+    if (napi_get_value_string_utf8(env, argument, key.data(), key.size(),
+                                   &length) != napi_ok)
+      return nullptr;
+    key.resize(length);
+    void* context = nullptr;
+    lynx_napi_get_instance_data(env, LYNX_NAPI_ENV_LYNX_VIEW_TAG, &context);
+    if (auto provider =
+            ReplayDataModulesHolder::GetInstance().GetDataModule(context))
+      json = provider->GetSharedData(key);
+  }
+  rapidjson::Document value;
+  value.Parse(json);
+  napi_value result = nullptr;
+  napi_create_object(env, &result);
+  napi_value data = SharedDataValue(env, value);
+  if (!data || napi_set_named_property(env, result, "value", data) != napi_ok)
+    return nullptr;
+  return result;
+}
+
+struct FixtureLease {
+  std::shared_ptr<TestBenchFixture> fixture;
+};
+
+napi_value GetFixtureDirectory(napi_env env, napi_callback_info info) {
+  void* data = nullptr;
+  napi_get_cb_info(env, info, nullptr, nullptr, nullptr, &data);
+  auto& lease = **static_cast<std::shared_ptr<FixtureLease>*>(data);
+  if (!lease.fixture) {
+    void* context = nullptr;
+    lynx_napi_get_instance_data(env, LYNX_NAPI_ENV_LYNX_VIEW_TAG, &context);
+    // Native modules can outlive an ActionManager when replaying in the same
+    // view. Resolve the provider for this replay, not the module creation.
+    if (auto provider =
+            ReplayDataModulesHolder::GetInstance().GetDataModule(context))
+      lease.fixture = provider->AcquireFixture();
+  }
+  std::string path = lease.fixture ? lease.fixture->directory() : "";
+  napi_value result;
+  napi_create_string_utf8(env, path.data(), path.size(), &result);
+  return result;
+}
+napi_value ReleaseFixture(napi_env env, napi_callback_info info) {
+  void* data = nullptr;
+  napi_get_cb_info(env, info, nullptr, nullptr, nullptr, &data);
+  (*static_cast<std::shared_ptr<FixtureLease>*>(data))->fixture.reset();
+  napi_value result;
+  napi_get_undefined(env, &result);
+  return result;
+}
+
+// Each function owns a lease reference: Core may retain releaseFixture after
+// the exports object or the view's ActionManager has been destroyed.
+void ExportFixtureFunction(napi_env env, napi_value exports, const char* name,
+                           napi_callback callback,
+                           const std::shared_ptr<FixtureLease>& lease) {
+  auto* holder = new std::shared_ptr<FixtureLease>(lease);
+  napi_value function;
+  if (napi_create_function(env, name, NAPI_AUTO_LENGTH, callback, holder,
+                           &function) != napi_ok) {
+    delete holder;
+    napi_throw_error(env, nullptr, "Failed to create Fixture replay module");
+    return;
+  }
+  if (napi_add_finalizer(
+          env, function, holder,
+          [](napi_env, void* data, void*) {
+            delete static_cast<std::shared_ptr<FixtureLease>*>(data);
+          },
+          nullptr, nullptr) != napi_ok) {
+    delete holder;
+    napi_throw_error(env, nullptr, "Failed to create Fixture replay module");
+    return;
+  }
+  if (napi_set_named_property(env, exports, name, function) != napi_ok)
+    napi_throw_error(env, nullptr, "Failed to export Fixture replay module");
+}
+}  // namespace
+
 napi_value TestBenchReplayDataModuleCreator(napi_env env, napi_value exports,
                                             const char* module_name,
                                             void* opaque) {
   napi_value func;
   napi_create_function(env, "getData", 1, &GetData, 0, &func);
   napi_set_named_property(env, exports, "getData", func);
+  napi_create_function(env, "getSharedData", NAPI_AUTO_LENGTH, &GetSharedData,
+                       nullptr, &func);
+  napi_set_named_property(env, exports, "getSharedData", func);
+  auto lease = std::make_shared<FixtureLease>();
+  ExportFixtureFunction(env, exports, "getFixtureDirectory",
+                        GetFixtureDirectory, lease);
+  ExportFixtureFunction(env, exports, "releaseFixture", ReleaseFixture, lease);
   return exports;
 }
 
 TestBenchReplayDataModule::~TestBenchReplayDataModule() {
   if (context_) {
-    ReplayDataModulesHolder::GetInstance().RemoveDataModule(context_);
+    ReplayDataModulesHolder::GetInstance().RemoveDataModule(context_, this);
   }
 }
 
@@ -101,7 +244,7 @@ void TestBenchReplayDataModule::RegisterJSB(
 
 void TestBenchReplayDataModule::BindContext(void* context) {
   context_ = context;
-  ReplayDataModulesHolder::GetInstance().AddDataModule(context_,
+  ReplayDataModulesHolder::GetInstance().AddDataModule(context_, this,
                                                        weak_from_this());
 }
 
@@ -125,13 +268,46 @@ void TestBenchReplayDataModule::SetCallbackData(const std::string& data) {
   callback_data_ = data;
 }
 
+void TestBenchReplayDataModule::SetSharedData(const std::string& data) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  shared_data_ = data;
+}
+
+std::string TestBenchReplayDataModule::GetSharedData(const std::string& key) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  rapidjson::Document data;
+  data.Parse(shared_data_);
+  if (ready_ && data.IsObject()) {
+    // Last declaration wins, as with lynx.setSharedData.
+    for (auto it = data.MemberEnd(); it != data.MemberBegin();) {
+      --it;
+      if (key == std::string(it->name.GetString(), it->name.GetStringLength()))
+        return ToJson(it->value);
+    }
+  }
+  return "\"\"";
+}
+
+void TestBenchReplayDataModule::SetFixture(
+    std::shared_ptr<TestBenchFixture> fixture) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  fixture_ = std::move(fixture);
+}
+
+std::shared_ptr<TestBenchFixture> TestBenchReplayDataModule::AcquireFixture() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return fixture_;
+}
+
 void TestBenchReplayDataModule::Reset() {
   std::lock_guard<std::mutex> lock(mutex_);
   ready_ = false;
+  fixture_.reset();
   jsb_ignored_info_.clear();
   jsb_settings_.clear();
   function_call_.clear();
   callback_data_.clear();
+  shared_data_.clear();
 }
 
 void TestBenchReplayDataModule::MarkReady() {
