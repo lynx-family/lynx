@@ -58,7 +58,7 @@
   if (_event.eventType != kCustomEvent) {
     return nil;
   }
-  return [(LynxCustomEvent*)_event generateEventBody];
+  return ((LynxCustomEvent*)_event).params ?: @{};
 }
 
 @end

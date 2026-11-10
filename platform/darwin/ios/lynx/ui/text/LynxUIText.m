@@ -143,6 +143,10 @@ static NSDictionary<NSString *, LynxEventSpec *> *LynxTextServiceBuildEventSet(
   return _dataset;
 }
 
+- (BOOL)hasEventListener:(NSString *)eventName {
+  return [[self eventSet] objectForKey:eventName] != nil;
+}
+
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
   return self;
 }

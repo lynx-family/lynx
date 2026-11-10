@@ -119,10 +119,7 @@ public class EventTargetSpan extends ClickableSpan implements EventTarget {
 
   @Override
   public EventTargetBase parentResponder() {
-    if (mParent instanceof EventTargetBase) {
-      return (EventTargetBase) mParent.get();
-    }
-    return null;
+    return mParent == null ? null : mParent.get();
   }
 
   @Override

@@ -12,6 +12,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (nullable NSDictionary*)getDataset;
 
+@optional
+
+// Returns whether this target's native event bindings contain eventName, excluding ancestors.
+// For compatibility with existing targets, check respondsToSelector: before calling this method
+// and use NO when it is unavailable.
+- (BOOL)hasEventListener:(NSString*)eventName;
+
 @end
 
 NS_ASSUME_NONNULL_END

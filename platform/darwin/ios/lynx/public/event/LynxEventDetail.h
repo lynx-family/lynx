@@ -32,6 +32,7 @@ enum EVENT_TYPE {
 - (CGPoint)targetPoint;
 - (BOOL)isMultiTouch;
 - (nullable NSDictionary*)targetPointMap;
+// Returns the custom payload, or an empty dictionary if absent; nil for non-custom events.
 - (nullable NSDictionary*)params;
 
 @end

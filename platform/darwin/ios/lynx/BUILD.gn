@@ -506,6 +506,8 @@ subspec_target("UnitTests") {
     "base/LynxFPSMonitorUnitTest.m",
     "base/LynxLogUnitTest.m",
     "base/background/LynxBackgroundManagerUnitTest.m",
+    "event/LynxEventDetailUnitTest.m",
+    "event/LynxEventTargetUnitTest.m",
     "event/Test/LynxEventHandlerUnitTest.h",
     "event/Test/LynxEventHandlerUnitTest.mm",
     "event/Test/LynxTouchHandlerUnitTest.h",

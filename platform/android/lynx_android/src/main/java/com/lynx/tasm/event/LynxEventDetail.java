@@ -88,8 +88,9 @@ public class LynxEventDetail {
   }
 
   public HashMap<Integer, Point> getTargetPointMap() {
-    boolean isMultiTouch = ((LynxTouchEvent) mEvent).getIsMultiTouch();
-    if (mEvent.getType() != LynxEvent.LynxEventType.kTouch || !isMultiTouch) {
+    boolean isMultiTouch = mEvent.getType() == LynxEvent.LynxEventType.kTouch
+        && ((LynxTouchEvent) mEvent).getIsMultiTouch();
+    if (!isMultiTouch) {
       LLog.w(TAG,
           "getTargetPointMap error, event type is not touch event. type is " + mEvent.getType()
               + ", isMultiTouch:" + isMultiTouch);

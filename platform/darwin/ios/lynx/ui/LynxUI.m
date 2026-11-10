@@ -3887,6 +3887,10 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   return _dataset;
 }
 
+- (BOOL)hasEventListener:(NSString*)eventName {
+  return [[self eventSet] objectForKey:eventName] != nil;
+}
+
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
   [self resetInterceptGesture];
   CGPoint originPoint = point;

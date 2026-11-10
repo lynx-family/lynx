@@ -4,9 +4,18 @@
 
 package com.lynx.tasm.behavior.event;
 
+import androidx.annotation.NonNull;
 import com.lynx.react.bridge.ReadableMap;
 
 public interface EventTargetBase {
   public EventTargetBase parentResponder();
   public ReadableMap getDataset();
+
+  /**
+   * Returns whether this target's native event bindings contain {@code eventName}.
+   * Ancestor bindings are not included.
+   */
+  default boolean hasEventListener(@NonNull String eventName) {
+    return false;
+  }
 }
