@@ -12,7 +12,7 @@ The `LynxDevToolService` acts as a bridge to connect Lynx applications with the 
 
 The service is exposed as `LynxDevToolService.instance`. Registering it loads the
 DevTool module asynchronously. Debugging remains disabled until the host explicitly
-prepares development DevTool support after initializing `LynxEnv`.
+calls `LynxEnv.initializeDevTool()` after initializing `LynxEnv`.
 
 
 ## Installation
@@ -33,7 +33,7 @@ You can add dependency in oh-package.json5 like this:
 }
 ```
 
-Register the service, initialize Lynx, then prepare DevTool:
+For online development, register the service, initialize Lynx, then initialize DevTool:
 
 ```ts
 import { LynxEnv, LynxServiceCenter, LynxServiceType } from '@lynx/lynx';
@@ -41,11 +41,23 @@ import { LynxDevToolService } from '@lynx/lynx_devtool_service';
 
 LynxServiceCenter.registerService(LynxServiceType.DevTool, LynxDevToolService.instance);
 LynxEnv.initialize(context);
-await LynxEnv.prepareDevToolForDevelopmentAfterInit();
+await LynxEnv.initializeDevTool();
 ```
 
-The preparation method waits for module loading, initializes DevTool, and enables
-all DebugRouter sessions. It preserves persisted DevTool switches and is safe to
-call repeatedly. Handle a rejected Promise if initialization order is incorrect,
-the service is missing, or module loading fails. Custom services that load their
-module asynchronously should implement `waitForDevToolModuleLoaded()`.
+For offline development, call `LynxEnv.prepareDevToolForDevelopmentAfterInit()`
+between `LynxEnv.initialize(context)` and `LynxEnv.initializeDevTool()`.
+Preparation requests all DebugRouter sessions.
+
+```ts
+LynxEnv.initialize(context);
+LynxEnv.prepareDevToolForDevelopmentAfterInit();
+await LynxEnv.initializeDevTool();
+```
+
+`initializeDevTool()` waits for the module to load, then initializes DevTool and
+applies any pending session request. Repeated calls are safe. Handle a rejected
+Promise if initialization order is incorrect, the service is missing, or module
+loading fails. Custom services that load their module asynchronously should
+implement `waitForDevToolModuleLoaded()`.
+
+For production, initialize Lynx without either DevTool call.

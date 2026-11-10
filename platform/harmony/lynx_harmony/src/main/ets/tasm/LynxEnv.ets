@@ -73,6 +73,7 @@ export interface LynxEmojiResourceFetcher {
 
 class LynxEnvironment {
   private hasInitLynxDebug: boolean = false;
+  private shouldEnableAllDevToolSessions: boolean = false;
   private performanceEnable: boolean = false;
   private appInfo?: Map<string, string>;
   private tracingDirPath: string = '';
@@ -194,20 +195,30 @@ class LynxEnvironment {
   }
 
   /**
-   * Initializes development DevTool support after LynxEnv.initialize().
-   * Register the DevTool service before calling this method. It waits for the
-   * service's asynchronous module import before initializing DevTool and enabling
-   * all DebugRouter sessions. Persisted DevTool settings are preserved.
+   * Requests all DebugRouter sessions for offline development.
+   * Call after LynxEnv.initialize() and before initializeDevTool().
+   */
+  public prepareDevToolForDevelopmentAfterInit(): void {
+    if (!this.initialized) {
+      throw new Error('Call LynxEnv.initialize() before preparing offline DevTool support.');
+    }
+    this.shouldEnableAllDevToolSessions = true;
+  }
+
+  /**
+   * Initializes DevTool after LynxEnv.initialize().
+   * Register the DevTool service first. This method waits for its module import
+   * and enables all DebugRouter sessions only if offline development was prepared.
    * Repeated calls do not initialize DevTool again.
    * @throws If LynxEnv is not initialized, the service is missing, or its module fails to load.
    */
-  public async prepareDevToolForDevelopmentAfterInit(): Promise<void> {
+  public async initializeDevTool(): Promise<void> {
     if (!this.initialized) {
-      throw new Error('Call LynxEnv.initialize() before preparing development DevTool support.');
+      throw new Error('Call LynxEnv.initialize() before initializing DevTool.');
     }
     const devToolService = LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool);
     if (!devToolService) {
-      throw new Error('Register the DevTool service before preparing development DevTool support.');
+      throw new Error('Register the DevTool service before initializing DevTool.');
     }
     if (!devToolService.isDevToolModuleLoaded()) {
       // Only the host's explicit request waits for loading and initializes DevTool.
@@ -217,13 +228,19 @@ class LynxEnvironment {
         throw new Error('The DevTool module is not available.');
       }
     }
+    // TODO(mitchell): Inline the initialization logic and its one-time guard here when
+    // the deprecated tryInitLynxDebug() API is removed.
     this.tryInitLynxDebug();
-    devToolService.enableAllSessions?.();
+    if (this.shouldEnableAllDevToolSessions) {
+      devToolService.enableAllSessions?.();
+      this.shouldEnableAllDevToolSessions = false;
+    }
   }
 
   /**
    * Initializes Lynx debug functionality if LynxEnv and the DevTool module are ready.
-   * Called by prepareDevToolForDevelopmentAfterInit() after waiting for module loading.
+   * Returns immediately without initializing if either is not ready.
+   * @deprecated Use initializeDevTool(), which waits for the DevTool module to load.
    */
   public tryInitLynxDebug() {
     if (!this.initialized || this.hasInitLynxDebug) {
