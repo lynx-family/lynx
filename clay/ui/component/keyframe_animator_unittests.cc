@@ -936,6 +936,66 @@ TEST_F_UI(KeyFrameTest, PureRasterAnimationUsesLifecycleOnlyUiAnimator) {
             ValueAnimator::FrameUpdateMode::kUpdateValues);
 }
 
+TEST_F_UI(KeyFrameTest, RasterAnimationReportsAllIterationsBeforeEnd) {
+  page_->SetRasterAnimationEnabled(true);
+  page_->SetKeyframesData(CreateKeyFrameData3());
+  animator_view_->SetBound(0, 0, 100, 100);
+  animator_view_->AddEventCallback("animationstart");
+  animator_view_->AddEventCallback("animationiteration");
+  animator_view_->AddEventCallback("animationend");
+
+  std::vector<std::string> events;
+  lynx::base::AutoReset<decltype(animation_event_callback_)> callback(
+      &animation_event_callback_,
+      [&](const std::string& event_name, const char* animation_name, int id) {
+        EXPECT_EQ(id, animator_view_->id());
+        events.emplace_back(event_name + ":" + animation_name);
+      });
+
+  start_data_.iteration_count = 3;
+  animator_view_->SetAnimation({start_data_});
+  animator_view_->OnNodeReady();
+  auto* handler = page_->GetAnimationHandler();
+  handler->DoAnimationFrame(10000);
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test"));
+
+  // A lifecycle frame can cross both repeat boundaries and the final end.
+  handler->DoAnimationFrame(10480);
+  handler->DoAnimationFrame(10640);
+  EXPECT_THAT(events, ::testing::ElementsAre("animationstart:opacity_test",
+                                             "animationiteration:opacity_test",
+                                             "animationiteration:opacity_test",
+                                             "animationend:opacity_test"));
+}
+
+TEST_F_UI(KeyFrameTest, RemovingDelayedAnimationOnlyReportsCancel) {
+  page_->SetKeyframesData(CreateKeyFrameData3());
+  animator_view_->SetBound(0, 0, 100, 100);
+  animator_view_->AddEventCallback("animationstart");
+  animator_view_->AddEventCallback("animationend");
+  animator_view_->AddEventCallback("animationcancel");
+
+  std::vector<std::string> events;
+  lynx::base::AutoReset<decltype(animation_event_callback_)> callback(
+      &animation_event_callback_,
+      [&](const std::string& event_name, const char* animation_name, int id) {
+        EXPECT_EQ(id, animator_view_->id());
+        events.emplace_back(event_name + ":" + animation_name);
+      });
+
+  start_data_.delay = 200;
+  animator_view_->SetAnimation({start_data_});
+  animator_view_->OnNodeReady();
+  auto* handler = page_->GetAnimationHandler();
+  handler->DoAnimationFrame(10000);
+  EXPECT_TRUE(events.empty());
+
+  animator_view_->SetAnimation(std::vector<AnimationData>{});
+  animator_view_->OnNodeReady();
+  handler->DoAnimationFrame(10500);
+  EXPECT_THAT(events, ::testing::ElementsAre("animationcancel:opacity_test"));
+}
+
 TEST_F_UI(KeyFrameTest, MixedAnimationKeepsUiValueUpdates) {
   page_->SetRasterAnimationEnabled(true);
   page_->SetKeyframesData(CreateMixedRasterAndUiKeyframes());

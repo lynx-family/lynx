@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/auto_reset.h"
 #include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/layout_context_clay.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
@@ -179,6 +180,48 @@ TEST_F_UI(BaseViewTest, BackgroundLoadUsesCallbackId) {
 
   EXPECT_EQ(received_id, kCallbackId);
   EXPECT_EQ(received_event, event_attr::kEventBgLoad);
+}
+
+TEST_F_UI(BaseViewTest, LayoutChangeReportsLogicalBoundsOnlyWithListener) {
+  auto metrics = page_->GetViewportMetrics();
+  metrics.device_pixel_ratio = 2;
+  page_->SetViewportMetrics(metrics);
+
+  View view(42, page_.get());
+  view.SetIdSelector("layout-target");
+  int event_count = 0;
+  int event_id = -1;
+  Value::Map detail;
+  lynx::base::AutoReset<decltype(layout_change_callback_)> callback(
+      &layout_change_callback_, [&](int id, Value::Map bounds) {
+        ++event_count;
+        event_id = id;
+        detail = std::move(bounds);
+      });
+
+  view.SetBound(0, 0, 5, 5);
+  EXPECT_EQ(event_count, 0);
+
+  // Clay stores physical bounds on Android but reports logical coordinates.
+  constexpr float scale = kPixelTypeClay == kPixelTypePhysical ? 2.f : 1.f;
+  view.AddEventCallback("layoutchange");
+  view.SetBound(12 * scale, 8 * scale, 40 * scale, 25 * scale);
+
+  ASSERT_EQ(event_count, 1);
+  EXPECT_EQ(event_id, 42);
+  const auto selector = detail.find("id");
+  ASSERT_NE(selector, detail.end());
+  ASSERT_TRUE(selector->second.IsString());
+  EXPECT_EQ(selector->second.GetString(), "layout-target");
+  const std::initializer_list<std::pair<const char*, float>> expected_bounds = {
+      {"left", 12},   {"top", 8},    {"right", 52},
+      {"bottom", 33}, {"width", 40}, {"height", 25}};
+  for (const auto& [key, expected] : expected_bounds) {
+    const auto value = detail.find(key);
+    ASSERT_NE(value, detail.end()) << key;
+    ASSERT_TRUE(value->second.IsFloat()) << key;
+    EXPECT_FLOAT_EQ(value->second.GetFloat(), expected) << key;
+  }
 }
 
 TEST_F_UI(BaseViewTest, StableRasterAnimationStateDoesNotInvalidate) {
