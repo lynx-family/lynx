@@ -14,5 +14,6 @@
     "@lynx/lynx": "@param:dependencies.lynx_version",
     "@lynx/lynx_base": "@param:dependencies.lynx_version",
     "liblynxdevtool.so": "file:./src/main/ets/types/",
+    "liblynxdevtool_qjs_bridge.so": "file:./src/main/ets/types/qjs_bridge/",
   }
 }

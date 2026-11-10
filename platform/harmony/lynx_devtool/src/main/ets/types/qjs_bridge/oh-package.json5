@@ -1,0 +1,6 @@
+{
+  "name": "liblynxdevtool_qjs_bridge.so",
+  "types": "./index.d.ts",
+  "version": "",
+  "description": "Lynx DevTool QuickJS bridge"
+}

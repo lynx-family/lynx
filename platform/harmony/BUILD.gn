@@ -10,7 +10,7 @@ group("harmony") {
   deps = [
     "../../base/platform/harmony:lynx_base",
     "../../gfx/platform/harmony:lynx_gfx",
-    "lynx_devtool",
+    "lynx_devtool:lynx_devtool_package",
     "lynx_harmony",
     "lynx_jsvm_initializer",
     "lynx_services/lynx_image_service",

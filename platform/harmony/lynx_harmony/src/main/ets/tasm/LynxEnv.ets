@@ -195,7 +195,8 @@ class LynxEnvironment {
   }
 
   /**
-   * Requests all DebugRouter sessions for offline development.
+   * Enables QuickJS bridge loading and requests all DebugRouter sessions
+   * for offline development.
    * Call after LynxEnv.initialize() and before initializeDevTool().
    */
   public prepareDevToolForDevelopmentAfterInit(): void {
@@ -203,6 +204,7 @@ class LynxEnvironment {
       throw new Error('Call LynxEnv.initialize() before preparing offline DevTool support.');
     }
     this.shouldEnableAllDevToolSessions = true;
+    DevToolSettings.setLoadQJSBridge(true);
   }
 
   /**

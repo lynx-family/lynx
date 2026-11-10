@@ -7,6 +7,13 @@ import("../../../core/Lynx.gni")
 import("../../../devtool/lynx_devtool/devtool.gni")
 import("../harmony.gni")
 
+group("lynx_devtool_package") {
+  deps = [
+    ":lynx_devtool",
+    ":lynxdevtool_qjs_bridge",
+  ]
+}
+
 source_set("native") {
   public_deps = [ "src/main/cpp" ]
 }
@@ -54,20 +61,30 @@ target(lynx_devtool_type, "lynx_devtool") {
     "../lynx_harmony",
   ]
 
-  lib_dirs = [
-    primjs_native_lib_dir,
-    "oh_modules/@lynx/debug_router/libs/${harmony_app_abi}",
-  ]
+  lib_dirs = [ "oh_modules/@lynx/debug_router/libs/${harmony_app_abi}" ]
   if (defined(enable_rts_runtime) && enable_rts_runtime) {
     lib_dirs += [ "//third_party/rts/harmony" ]
   }
   libs = [
     "ace_napi.z",
     "debugrouter",
-    "quick",
     "uv",
     "native_vsync",
     "ohpreferences",
+  ]
+}
+
+target(lynx_devtool_type, "lynxdevtool_qjs_bridge") {
+  deps = [
+    ":lynx_devtool",
+    "../../../base/platform/harmony:lynx_base",
+    "../../../devtool/lynx_devtool/js_debug:devtool_qjs_bridge",
+    "../lynx_harmony",
+  ]
+  lib_dirs = [ primjs_native_lib_dir ]
+  libs = [
+    "ace_napi.z",
+    "quick",
   ]
 }
 
