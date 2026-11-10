@@ -9,7 +9,7 @@ import { AsyncCallback, BusinessError } from '@ohos.base';
 import { abilityAccessCtrl } from '@kit.AbilityKit';
 import { customScan, scanBarcode, scanCore } from '@kit.ScanKit';
 import { display, promptAction } from '@kit.ArkUI';
-import { LLog, LynxDebugger, LynxEnv } from '@lynx/lynx';
+import { LLog, LynxDebugger } from '@lynx/lynx';
 import deviceInfo from '@ohos.deviceInfo';
 import { LynxRecorderEnv } from '@lynx/lynx_devtool';
 
@@ -80,7 +80,6 @@ struct Scan {
         if (this.url.length !== 0) {
           LLog.d(TAG, 'open lynx, ' + this.url)
           if (this.url.startsWith(Constants.DEVTOOL)) {
-            LynxEnv.setTracingDirPath(getContext(this).filesDir);
             let options = new Map<string, string>();
             options.set('App', 'LynxPlayground');
             options.set('AppVersion', '0.0.1');

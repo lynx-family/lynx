@@ -22,6 +22,7 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.BuildConfig;
+import com.lynx.base.LynxBaseEnv;
 import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.recorder.LynxDebugInfoRecorder;
 import com.lynx.tasm.EmbeddedMode;
@@ -1800,6 +1801,9 @@ public class LynxRecorderActionManager {
 
   private void endTestbench() {
     final String path = this.getDumpFilePath();
+    if (path.isEmpty()) {
+      Log.e(TAG, "Application data directory is unavailable");
+    }
     Runnable runnable = new Runnable() {
       @Override
       public void run() {
@@ -1816,7 +1820,11 @@ public class LynxRecorderActionManager {
   private String getDumpFilePath() {
     SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HHmmss", Locale.US);
     formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-    File dir = mContext.getExternalFilesDir(null);
+    String directory = LynxBaseEnv.inst().getApplicationDataSubDirectory("testbench");
+    if (directory.isEmpty()) {
+      return "";
+    }
+    File dir = new File(directory);
     File file = new File(dir, "lynx-testbench-" + formatter.format(new Date()));
     return file.getPath();
   }

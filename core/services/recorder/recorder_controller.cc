@@ -124,11 +124,11 @@ extern "C" void LynxTestBenchRecorderInitConfig(const char* path,
                                                 float screen_height,
                                                 int64_t record_id) {
 #if ENABLE_TESTBENCH_RECORDER
-  if (path == nullptr || path[0] == '\0' || record_id == 0) {
+  if (record_id == 0) {
     return;
   }
   lynx::tasm::recorder::RecorderController::InitConfig(
-      path, session_id, screen_width, screen_height, record_id);
+      path ? path : "", session_id, screen_width, screen_height, record_id);
 #endif
 }
 

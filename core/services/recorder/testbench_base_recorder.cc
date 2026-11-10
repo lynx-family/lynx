@@ -12,7 +12,9 @@
 #include <sstream>
 #include <utility>
 
+#include "base/include/application_directory.h"
 #include "base/include/closure.h"
+#include "base/include/file_utils.h"
 #include "base/include/log/logging.h"
 #include "base/include/string/string_number_convert.h"
 #include "third_party/modp_b64/modp_b64.h"
@@ -20,6 +22,10 @@
 #include "third_party/rapidjson/prettywriter.h"
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/zlib/zlib.h"
+
+#if defined(_WIN32)
+#include "base/include/string/string_conversion_win.h"
+#endif
 
 #if OS_IOS
 #include <TargetConditionals.h>
@@ -113,7 +119,12 @@ std::string TestBenchBaseRecorder::CompressToBase64String(const char* data,
 bool TestBenchBaseRecorder::WriteRecordJson(const std::string& filename,
                                             rapidjson::Value& doc) {
   std::ofstream ifs;
+#if defined(_WIN32)
+  ifs.open(base::Utf16FromUtf8(filename).c_str(),
+           std::ios::binary | std::ios::out);
+#else
   ifs.open(filename, std::ios::binary | std::ios::out);
+#endif
   if (!ifs.is_open()) {
     return false;
   }
@@ -135,7 +146,7 @@ bool TestBenchBaseRecorder::WriteRecordJson(const std::string& filename,
   }
   ifs.close();
   if (!ok) {
-    std::remove(filename.c_str());
+    base::RemoveFile(filename);
   }
   return ok;
 }
@@ -178,7 +189,9 @@ TestBenchBaseRecorder::TestBenchBaseRecorder() : thread_("ark_recorder") {}
 
 void TestBenchBaseRecorder::SetRecorderPath(const std::string& path) {
   file_path_ = path;
-  file_path_ += "/";
+  if (!file_path_.empty() && file_path_.back() != '/') {
+    file_path_ += "/";
+  }
 }
 
 void TestBenchBaseRecorder::SetScreenSize(int64_t record_id, float screen_width,
@@ -261,9 +274,11 @@ TestBenchBaseRecorder& TestBenchBaseRecorder::GetInstance() {
 void TestBenchBaseRecorder::InitConfig(const std::string& path,
                                        int64_t session_id, float screen_width,
                                        float screen_height, int64_t record_id) {
-  auto init_config_task = [this, path, session_id, screen_width, screen_height,
-                           record_id]() {
-    SetRecorderPath(path);
+  const auto directory =
+      path.empty() ? base::GetApplicationDataSubDirectory("testbench") : path;
+  auto init_config_task = [this, directory, session_id, screen_width,
+                           screen_height, record_id]() {
+    SetRecorderPath(directory);
     AddLynxViewSessionID(record_id, session_id);
     InsertReplayConfig(record_id, "screenWidth", screen_width);
     InsertReplayConfig(record_id, "screenHeight", screen_height);
@@ -335,6 +350,10 @@ void TestBenchBaseRecorder::EndRecord(
           session_it == session_ids_.end() ? -1 : session_it->second;
       auto config_it = replay_config_map_.find(shell_id);
 
+      if (file_path_.empty()) {
+        LOGE("[TestBench] application data directory is unavailable");
+        continue;
+      }
       if (IncludesJson(format)) {
         std::string filename = file_path_ + std::to_string(shell_id) + ".json";
         rapidjson::Value& doc = lynx_view_pair.second;
@@ -371,7 +390,7 @@ void TestBenchBaseRecorder::EndRecord(
           filenames.push_back(filename);
           sessions.push_back(session);
         } else {
-          std::remove(filename.c_str());
+          base::RemoveFile(filename);
           LOGE("[TestBench] failed to write fixture zip: " << filename);
         }
       }

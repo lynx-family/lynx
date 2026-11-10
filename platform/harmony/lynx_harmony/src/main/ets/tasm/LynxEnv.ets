@@ -76,7 +76,6 @@ class LynxEnvironment {
   private shouldEnableAllDevToolSessions: boolean = false;
   private performanceEnable: boolean = false;
   private appInfo?: Map<string, string>;
-  private tracingDirPath: string = '';
   private defaultDensityEnabled = false;
   private commonEmojiPreloadScheduled = false;
   private displayInfo = new DisplayInfo();
@@ -126,9 +125,6 @@ class LynxEnvironment {
     }
     DevToolSettings.initialize();
     this.initLynxBaseEnv(context);
-    if (!this.performanceEnable) {
-      this.setTracingDirPath(context.filesDir);
-    }
     const imageService = LynxServiceCenter.getService<ILynxImageService>(LynxServiceType.Image);
     if (imageService) {
       lynx.registerImageService(imageService.initNativeService(context.resourceManager));
@@ -297,15 +293,6 @@ class LynxEnvironment {
     DevToolSettings.setQuickjsDebugEnabled(enabled);
   }
 
-  public setTracingDirPath(tracingDirPath: string) {
-    this.tracingDirPath = tracingDirPath;
-    lynx.setTracingDirPath(tracingDirPath);
-  }
-
-  public getTracingDirPath(): string {
-    return this.tracingDirPath;
-  }
-
   public setEmojiResourceFetcher(fetcher: LynxEmojiResourceFetcher): void {
     lynx.setEmojiResourceFetcher(fetcher);
     this.scheduleCommonEmojiPreload();
@@ -383,11 +370,6 @@ class LynxEnvironment {
       this.nativeOnMemoryPressure(pressure);
     };
     MemoryPressureCallbackDispatcher.getInstance().addCallback(handler);
-  }
-
-  // Be called by Benchmark or performance action before initialize
-  public setPerformanceEnable(isOpen: boolean): void {
-    this.performanceEnable = isOpen;
   }
 
   public setDefaultDensityEnabled(enabled: boolean) {

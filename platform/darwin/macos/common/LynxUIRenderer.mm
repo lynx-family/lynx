@@ -38,16 +38,6 @@
 
 - (instancetype)initWithSoftwareRendering:(BOOL)softwareRendering {
   self = [super init];
-#if ENABLE_TESTBENCH_RECORDER
-  // Set storage directory for testbench recorder.
-  if (lynx::tasm::LynxEnv::GetInstance().GetStorageDirectory().empty()) {
-    NSString* filePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask,
-                                                              YES) lastObject];
-    if (filePath) {
-      lynx::tasm::LynxEnv::GetInstance().SetStorageDirectory([filePath UTF8String]);
-    }
-  }
-#endif
   if (self) {
     _clayViewProvider = [[ClayViewProvider alloc] initWithSoftwareRendering:softwareRendering];
   }

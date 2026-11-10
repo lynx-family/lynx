@@ -2,14 +2,17 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <chrono>
 #include <condition_variable>
 #include <cstdio>
+#include <filesystem>
 #include <mutex>
 
 #define private public
 #include "core/services/recorder/testbench_base_recorder.h"
 #undef private
 
+#include "base/include/application_directory.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -31,6 +34,39 @@ void WaitForRecorderTasks(fml::Thread& thread) {
 }
 
 }  // namespace
+
+TEST(TestBenchRecorderBridge, NullAndEmptyDirectoryUseBaseDefault) {
+  auto& ark = TestBenchBaseRecorder::GetInstance();
+  WaitForRecorderTasks(ark.thread_);
+  ark.ResetForTesting();
+  const auto previous_directory = base::GetApplicationDataDirectory();
+  const auto directory =
+      (std::filesystem::temp_directory_path() /
+       std::filesystem::u8path(
+           u8"recorder bridge \u5e94\u7528 \U0001f680 " +
+           std::to_string(
+               std::chrono::steady_clock::now().time_since_epoch().count())))
+          .u8string();
+  std::filesystem::create_directory(std::filesystem::u8path(directory));
+  base::SetApplicationDataDirectory(directory);
+  LynxTestBenchRecorderInitConfig(nullptr, 901, 390, 844, 62523);
+  LynxTestBenchRecorderInitConfig("", 902, 400, 850, 62524);
+  WaitForRecorderTasks(ark.thread_);
+  base::SetApplicationDataDirectory(previous_directory);
+
+  EXPECT_EQ(ark.file_path_, directory + "/testbench/");
+  EXPECT_TRUE(std::filesystem::is_directory(
+      std::filesystem::u8path(directory + "/testbench")));
+  std::filesystem::remove_all(std::filesystem::u8path(directory));
+  EXPECT_EQ(ark.session_ids_[62523], 901);
+  EXPECT_EQ(ark.session_ids_[62524], 902);
+  ASSERT_EQ(ark.replay_config_map_.count(62523), 1u);
+  EXPECT_FLOAT_EQ(ark.replay_config_map_[62523]["screenWidth"].GetFloat(), 390);
+  ASSERT_EQ(ark.replay_config_map_.count(62524), 1u);
+  EXPECT_FLOAT_EQ(ark.replay_config_map_[62524]["screenWidth"].GetFloat(), 400);
+  ark.SetRecorderPath(previous_directory);
+  ark.ResetForTesting();
+}
 
 TEST(TestBenchRecorderBridge, ExternalScriptBridgePreservesBinaryData) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
