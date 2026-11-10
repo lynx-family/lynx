@@ -376,23 +376,24 @@ width: 23.4rem;
 
 ### 4. Adjust Positioning
 
-**Web**:
+**Web**: `z-index` applies to positioned elements and to Flexbox or Grid items. An ordinary `position: static` box does not gain a stacking level from `z-index` alone.
 
 ```css
 .element {
-  /* Default: position: static */
+  position: relative;
   z-index: 10;
 }
 ```
 
-**Lynx**:
+**Lynx**: An explicit integer `z-index`, including `0`, creates a stacking context without requiring an explicit `position`. Do not add `position` solely to make `z-index` work; the default is `relative`.
 
 ```css
 .element {
-  position: relative; /* Must be set explicitly. */
   z-index: 10;
 }
 ```
+
+An ancestor's explicit `z-index`, including `0`, can constrain its descendants' stacking order. Check ancestor stacking contexts when migrating layered content. See [the z-index differences](css-differences/positioning-and-stacking.md#z-index) for stacking and scroll-container behavior.
 
 ### 5. Enable Text Wrapping
 

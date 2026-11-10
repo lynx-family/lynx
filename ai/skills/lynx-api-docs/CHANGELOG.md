@@ -2,6 +2,13 @@
 
 All notable changes to the public Lynx API documentation bundle.
 
+## 0.3.11 — 2026-11-10
+
+### Documentation
+
+- Correct the Web-to-Lynx positioning example: an explicit integer `z-index`, including `0`, creates a stacking context without requiring an explicit `position`.
+- Align the migration guide with the CSS differences index, positioning and stacking reference, and migration checklists. Link the example to the detailed stacking guidance.
+
 ## 0.3.10 — 2026-11-03
 
 ### Documentation
