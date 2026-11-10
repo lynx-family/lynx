@@ -100,6 +100,10 @@ class Fragment : public BaseElementContainer {
 
   void OnDraw(DisplayListBuilder& display_list_builder);
 
+  // List update animations modulate CSS opacity. A factor of 1 clears the
+  // animation's contribution.
+  void SetListItemAnimationOpacity(float factor);
+
   // Install bindings after style resolution so removal can reset properties.
   void SetCustomDrawFunctions(
       std::shared_ptr<const CustomDrawFunctions> functions);
@@ -224,6 +228,8 @@ class Fragment : public BaseElementContainer {
   void ClearBackgroundImage(size_t image_index);
 
   std::shared_ptr<const CustomDrawFunctions> custom_draw_functions_;
+  float list_item_animation_opacity_{1.f};
+  bool list_item_animation_opacity_changed_{false};
   bool has_platform_renderer_{false};
   bool pending_node_ready_{false};
 

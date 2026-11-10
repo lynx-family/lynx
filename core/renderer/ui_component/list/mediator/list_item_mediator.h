@@ -64,6 +64,8 @@ class ListItemMediator : public lynx::list::ItemElementDelegate {
   Element* list_item_element() { return list_item_element_; }
 
  private:
+  void FlushFragmentPainting();
+
   Element* list_item_element_{nullptr};
 };
 
