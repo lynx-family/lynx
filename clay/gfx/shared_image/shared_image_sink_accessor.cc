@@ -48,8 +48,8 @@ SharedImageSinkAccessor::UpdateFrontSequence() {
   if (front_repr_) {
     if (!front_repr_->EndRead()) {
       FML_LOG(ERROR) << "Failed to end read";
-      return nullptr;
     }
+    // Return the slot even after failed access, preserving its failure fence.
     front_fence = front_repr_->ProduceFence();
     front_repr_ = nullptr;
   }
@@ -59,12 +59,24 @@ SharedImageSinkAccessor::UpdateFrontSequence() {
     return nullptr;
   }
   front_repr_ = GetRepresentation(backing.get());
+  if (!front_repr_) {
+    // No read was started. Return the slot with its original dependency so
+    // allocation failure cannot strand a single-buffer producer or lose sync.
+    sink_->ReleaseFront(backing->GetFenceSync());
+    return nullptr;
+  }
   front_repr_->ConsumeFence(backing->GetFenceSync());
   return front_repr_;
 }
 
 fml::RefPtr<SharedImageRepresentation>
 SharedImageSinkAccessor::UpdateFrontToLatest() {
+  if (front_repr_ &&
+      front_repr_->GetBacking()->RequiresReadCompletionBeforeUpdate()) {
+    // The backing identity is unchanged when SurfaceTexture latches a new
+    // image. Close the previous read and consume dependencies on every update.
+    return UpdateFrontSequence();
+  }
   std::unique_ptr<FenceSync> front_fence;
   if (front_repr_) {
     front_fence = front_repr_->ProduceFence();
@@ -81,6 +93,12 @@ SharedImageSinkAccessor::UpdateFrontToLatest() {
     FML_LOG(ERROR) << "Failed to end read";
   }
   front_repr_ = GetRepresentation(backing.get());
+  if (!front_repr_) {
+    // No read was started. Return the slot with its original dependency so
+    // allocation failure cannot strand a single-buffer producer or lose sync.
+    sink_->ReleaseFront(backing->GetFenceSync());
+    return nullptr;
+  }
   front_repr_->ConsumeFence(backing->GetFenceSync());
   return front_repr_;
 }
@@ -90,7 +108,6 @@ void SharedImageSinkAccessor::ReleaseFront() {
   if (front_repr_) {
     if (!front_repr_->EndRead()) {
       FML_LOG(ERROR) << "Failed to end read";
-      return;
     }
     front_fence = front_repr_->ProduceFence();
     front_repr_ = nullptr;
@@ -146,16 +163,18 @@ bool SharedImageSinkAccessor::SwapBack() {
   if (!back_repr_) {
     return false;
   }
-  if (!back_repr_->EndWrite()) {
+  const bool write_succeeded = back_repr_->EndWrite();
+  if (!write_succeeded) {
     FML_LOG(ERROR) << "Failed to end write";
-    return false;
   }
-  std::unique_ptr<FenceSync> fence = back_repr_->ProduceFence();
-  if (!sink_->SwapBack(std::move(fence))) {
-    return false;
+  // Return the slot even after failed access, passing on the failed dependency.
+  const bool swapped = sink_->SwapBack(back_repr_->ProduceFence());
+  if (swapped) {
+    back_repr_ = nullptr;
   }
-  back_repr_ = nullptr;
-  return true;
+  // On rejection, keep the representation for retry. A detached managed sink
+  // retains the current slot and stores the produced fence on its backing.
+  return swapped && write_succeeded;
 }
 
 fml::RefPtr<SharedImageRepresentation>

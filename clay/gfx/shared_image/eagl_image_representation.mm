@@ -8,6 +8,10 @@
 #import <OpenGLES/ES2/glext.h>
 #include <OpenGLES/ES3/gl.h>
 
+#include <utility>
+
+#include "clay/gfx/shared_image/apple_gl_fence_sync.h"
+
 #include "base/include/fml/memory/ref_ptr.h"
 #include "clay/common/graphics/gl/scoped_framebuffer_binder.h"
 #include "clay/common/graphics/gl/scoped_texture_binder.h"
@@ -166,78 +170,73 @@ bool EAGLImageRepresentation::UnbindFrameBuffer() {
   return true;
 }
 
-// Note that EAGL fence sync requires producer and consumer
-// in the same shared group
-class EAGLFenceSync final : public FenceSync {
- public:
-  EAGLFenceSync() {
-    fence_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-    GLenum error = glGetError();
-    if (!fence_ || error != GL_NO_ERROR) {
-      FML_LOG(ERROR) << "Failed to create fence sync in EAGL env, glGetError: " << error;
-    }
-    FML_DCHECK(glIsSync(fence_));
-    glFlush();
-  }
-
-  ~EAGLFenceSync() override {
-    FML_DCHECK(glIsSync(fence_));
-    glDeleteSync(fence_);
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR) {
-      FML_LOG(ERROR) << "Failed to delete fence sync in EAGL env, glGetError: " << error;
-    }
-  }
-
-  bool ClientWait() override {
-    FML_DCHECK(glIsSync(fence_));
-    GLenum result = glClientWaitSync(fence_, 0, GL_TIMEOUT_IGNORED);
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR) {
-      FML_LOG(ERROR) << "Failed to glClientWaitSync in EAGL env, glGetError: " << error;
-    }
-    return result == GL_CONDITION_SATISFIED || result == GL_ALREADY_SIGNALED;
-  }
-
-  Type GetType() const override { return Type::kEAGL; }
-
-  void ServerWait() {
-    FML_DCHECK(glIsSync(fence_));
-    glWaitSync(fence_, 0, GL_TIMEOUT_IGNORED);
-    GLenum gl_error = glGetError();
-    if (gl_error != GL_NO_ERROR) {
-      FML_LOG(ERROR) << "Failed to glWaitSync in EAGL env, glGetError: " << gl_error;
-    }
-  }
-
- private:
-  GLsync fence_;
-};
-
 void EAGLImageRepresentation::ConsumeFence(std::unique_ptr<FenceSync> fence_sync) {
-  if (!fence_sync) {
-    return;
-  }
-  if (fence_sync->GetType() == FenceSync::Type::kEAGL) {
-    EAGLFenceSync* eagl_fence_sync = static_cast<EAGLFenceSync*>(fence_sync.get());
-    eagl_fence_sync->ServerWait();
-    return;
-  }
-  fence_sync->ClientWait();
+  if (fence_sync && fence_sync->EnqueueWait()) return;
+  WaitForFence(std::move(fence_sync));
 }
 
-class DummyFenceSync final : public FenceSync {
-  bool ClientWait() override { return true; }
+class EAGLFenceContext {
+ public:
+  static constexpr FenceSync::Type kType = FenceSync::Type::kEAGL;
+  explicit EAGLFenceContext(EAGLContext* producer)
+      : context_([[EAGLContext alloc] initWithAPI:producer.API sharegroup:producer.sharegroup]),
+        es3_(producer.API == kEAGLRenderingAPIOpenGLES3),
+        supported_(es3_ || HasAppleGLFenceExtension("GL_APPLE_sync")) {}
+  bool valid() const { return context_ != nil; }
+  bool supported() const { return supported_; }
+  bool IsCurrentCompatible() const {
+    EAGLContext* current = [EAGLContext currentContext];
+    return current && current.sharegroup == context_.sharegroup;
+  }
+  GLsync CreateSync() {
+    return es3_ ? glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0)
+                : glFenceSyncAPPLE(GL_SYNC_GPU_COMMANDS_COMPLETE_APPLE, 0);
+  }
+  void DeleteSync(GLsync sync) {
+    if (es3_)
+      glDeleteSync(sync);
+    else
+      glDeleteSyncAPPLE(sync);
+  }
+  GLenum PollSync(GLsync sync) {
+    return es3_ ? glClientWaitSync(sync, 0, 0) : glClientWaitSyncAPPLE(sync, 0, 0);
+  }
+  void WaitSync(GLsync sync) {
+    if (es3_)
+      glWaitSync(sync, 0, GL_TIMEOUT_IGNORED);
+    else
+      glWaitSyncAPPLE(sync, 0, GL_TIMEOUT_IGNORED_APPLE);
+  }
+  class ScopedCurrent {
+   public:
+    explicit ScopedCurrent(EAGLFenceContext* context)
+        : previous_([EAGLContext currentContext]),
+          valid_([EAGLContext setCurrentContext:context->context_]) {}
+    ~ScopedCurrent() {
+      if (valid_) [EAGLContext setCurrentContext:previous_];
+    }
+    bool valid() const { return valid_; }
 
-  Type GetType() const override { return Type::kClientWaitOnly; }
+   private:
+    EAGLContext* previous_;
+    bool valid_;
+  };
+  std::mutex mutex;
+
+ private:
+  EAGLContext* context_;
+  bool es3_;
+  bool supported_;
 };
 
 std::unique_ptr<FenceSync> EAGLImageRepresentation::ProduceFence() {
-  // It seems that glFlush is enough for gl<->gl
-  glFlush();
-  // TODO(youfeng): use EAGLFenceSync if consumer and producer are in the same
-  // group
-  return std::make_unique<DummyFenceSync>();
+  if (HasFailedFence()) return TakeFailedFence();
+  if (!(gl_context_ && [EAGLContext currentContext] == gl_context_)) {
+    MarkFenceFailed();
+    return TakeFailedFence();
+  }
+  if (!fence_context_) fence_context_ = std::make_shared<EAGLFenceContext>(gl_context_);
+  return std::make_unique<AppleGLFenceSync<EAGLFenceContext>>(fence_context_, true);
 }
 
 fml::RefPtr<RepresentationStorageManager> EAGLImageRepresentation::GetTextureManager() const {

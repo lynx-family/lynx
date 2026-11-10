@@ -301,10 +301,6 @@ SharedImageSinkManaged::AcquireBackForced(
 
 bool SharedImageSinkManaged::SwapBack(std::unique_ptr<FenceSync> fence_sync) {
   std::lock_guard<std::mutex> l(mutex_);
-  if (!frame_available_callback_) {
-    return false;
-  }
-
   if (back_backings_.empty() || !back_backings_.front().is_current) {
     FML_LOG(ERROR) << "no current backing to swap";
     return false;
@@ -312,7 +308,16 @@ bool SharedImageSinkManaged::SwapBack(std::unique_ptr<FenceSync> fence_sync) {
 
   auto& curr_backing = back_backings_.front();
 
-  curr_backing.shared_image->SetFenceSync(std::move(fence_sync));
+  // Take ownership before checking attachment: rejection keeps the current
+  // slot, so its dependency must survive accessor or representation recreation.
+  // A retry without a new fence must not clear the retained dependency.
+  if (fence_sync) {
+    curr_backing.shared_image->SetFenceSync(std::move(fence_sync));
+  }
+  if (!frame_available_callback_) {
+    return false;
+  }
+
   curr_backing.swap_id = swap_counter_++;
   curr_backing.is_current = false;
 
@@ -375,10 +380,14 @@ void SharedImageSinkUnmanaged::SetFrameAvailableCallback(
 fml::RefPtr<SharedImageBacking> SharedImageSinkUnmanaged::UpdateFront(
     std::unique_ptr<FenceSync> produced_fence_sync) {
   if (produced_fence_sync) {
-    FML_LOG(WARNING) << "Unmanaged shared image sink does not support fence";
+    if (!buffer_unmanaged_->AcceptFence(std::move(produced_fence_sync))) {
+      FML_LOG(WARNING) << "Unmanaged shared image sink does not support fence";
+    }
   }
   if (!buffer_unmanaged_->UpdateFront()) {
-    FML_LOG(ERROR) << "Failed to UpdateFront";
+    if (!buffer_unmanaged_->RequiresReadCompletionBeforeUpdate()) {
+      FML_LOG(ERROR) << "Failed to UpdateFront";
+    }
     return nullptr;
   }
   return buffer_unmanaged_;
@@ -392,7 +401,9 @@ fml::RefPtr<SharedImageBacking> SharedImageSinkUnmanaged::UpdateFrontToLatest(
 void SharedImageSinkUnmanaged::ReleaseFront(
     std::unique_ptr<FenceSync> produced_fence_sync) {
   if (produced_fence_sync) {
-    FML_LOG(WARNING) << "Unmanaged shared image sink does not support fence";
+    if (!buffer_unmanaged_->AcceptFence(std::move(produced_fence_sync))) {
+      FML_LOG(WARNING) << "Unmanaged shared image sink does not support fence";
+    }
   }
   buffer_unmanaged_->ReleaseFront();
 }
@@ -413,6 +424,9 @@ SharedImageSinkUnmanaged::AcquireBack(
 }
 
 bool SharedImageSinkUnmanaged::SwapBack(std::unique_ptr<FenceSync> fence_sync) {
+  if (fence_sync && !buffer_unmanaged_->AcceptFence(std::move(fence_sync))) {
+    FML_LOG(WARNING) << "Unmanaged shared image sink does not support fence";
+  }
   return buffer_unmanaged_->SwapBack();
 }
 

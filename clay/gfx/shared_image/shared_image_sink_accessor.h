@@ -47,6 +47,8 @@ class SharedImageSinkAccessor {
   AcquireBackForced(const skity::Vec2& size,
                     SharedImageSink::AcquireBackStatus* status = nullptr);
 
+  // Returns true only when both EndWrite and the sink swap succeed.
+  // A rejected swap retains the back representation for retry.
   bool SwapBack();
 
   BASE_DISALLOW_COPY_AND_ASSIGN(SharedImageSinkAccessor);

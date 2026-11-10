@@ -789,13 +789,130 @@ CLAY_EXPORT ClayFenceSyncRef
 ClayCreateExternalFenceSync(ClayVoidCallback wait_callback,
                             ClayVoidCallback delete_callback, void* user_data);
 
+/// Blocking CPU wait. Android EGL fences use EGL_FOREVER_KHR (no timeout).
+/// Metal errors and unsubmitted command buffers fail without waiting.
+/// A null fence is already complete. False indicates a synchronization error.
 CLAY_EXPORT bool ClayFenceSyncClientWait(ClayFenceSyncRef fence_sync);
+
+/// Nonblocking synchronization reports completion separately from establishing
+/// GPU order or transferring ownership of an exported resource.
+typedef enum {
+  kClayFenceSyncSignaled,
+  kClayFenceSyncPending,
+  kClayFenceSyncUnsupported,
+  kClayFenceSyncFailed,
+  kClayFenceSyncSuccess,
+} ClayFenceSyncResult;
+
+/// Never waits for CPU completion or invokes an external CPU wait callback.
+/// A null fence is Signaled. Metal buffers not yet committed report Failed.
+/// Unsupported/Failed never mean ready.
+/// Android Vulkan fences query vkGetFenceStatus without waiting.
+/// Linux EGL fences (libepoxy or ANGLE) use zero-timeout EGL queries; keep the
+/// producing EGLDisplay initialized until every fence has been destroyed.
+/// Apple GL fences use zero-timeout queries on a retained private shared
+/// context; the caller need not have a current GL context. Legacy production
+/// may finish GPU work if sync creation is unavailable, preserving ClientWait.
+/// Poll, ServerWait and Export never invoke that blocking fallback.
+/// SurfaceTexture fences describe commands after updateTexImage or submitted
+/// reads. They cannot predict whether a subsequent updateTexImage will block.
+CLAY_EXPORT ClayFenceSyncResult ClayFenceSyncPoll(ClayFenceSyncRef fence_sync);
+
+typedef enum {
+  kClayFenceSyncWaitCurrentGL,
+  kClayFenceSyncWaitMetalCommandBuffer,
+} ClayFenceSyncWaitType;
+
+typedef struct {
+  size_t struct_size;
+  ClayFenceSyncWaitType type;
+  /// Metal: borrowed MTLCommandBuffer bridged as void*, uncommitted, retaining
+  /// references, with no active encoder. GL: nullptr, using the caller's
+  /// current GL context. EGL requires a compatible display; Apple GL requires
+  /// the producer's share group. No context is created or switched for waits.
+  void* command_buffer;
+} ClayFenceSyncWaitContext;
+
+/// GL/Metal GPU wait on the actual consumer command stream. Never CPU waits,
+/// commits a Metal buffer, or consumes fence_sync. Success establishes GPU
+/// order, not CPU completion. A null fence is Signaled. Invalid arguments are
+/// Failed; unsupported backends are Unsupported. Retain the fence/backing for
+/// retry. A sufficiently sized context is required; larger structs are
+/// accepted.
+/// Android Vulkan producer fences support CurrentGL through native fence FD
+/// import into the current EGL context. Missing import support reports Failed.
+/// Linux EGL requires the producer's EGL implementation and display to be
+/// current; EGL 1.5 core wait or EGL_KHR_wait_sync is required. Poll remains
+/// available without a current context. SHM readback/legacy acquisition may
+/// still block and are not made asynchronous by these fence operations.
+/// Apple GL supports CurrentGL only within its share group; unrelated GL
+/// contexts and Metal consumers report Unsupported and may poll/retry instead.
+/// Apple GL has no native FD or Metal event export.
+/// SurfaceTexture EGL fences require EGL_KHR_wait_sync for CurrentGL; missing
+/// support reports Unsupported without falling back to a CPU wait. GPU order
+/// does not allow sampling the OES texture outside its owning context.
+CLAY_EXPORT ClayFenceSyncResult ClayFenceSyncServerWait(
+    ClayFenceSyncRef fence_sync, const ClayFenceSyncWaitContext* context);
+
+typedef enum {
+  kClayFenceSyncExportNativeFD,
+  kClayFenceSyncExportMetalSharedEvent,
+} ClayFenceSyncExportType;
+
+typedef struct {
+  size_t struct_size;
+  /// NativeFD: duplicated caller-owned FD; close or transfer to EGL.
+  /// eglCreateSyncKHR takes ownership on the call, even on creation failure.
+  int native_fence_fd;
+  /// MetalSharedEvent: owned MTLSharedEventHandle plus its exact timeline
+  /// value. Release exactly once via release_metal_shared_event_handle(handle),
+  /// even when import fails. Do not close as an FD. Import on the consuming
+  /// MTLDevice with newSharedEventWithHandle:, then encode a GPU wait for
+  /// metal_event_value before the first dependent pass. No separate release
+  /// export is needed.
+  void* metal_shared_event_handle;
+  uint64_t metal_event_value;
+  ClayVoidCallback release_metal_shared_event_handle;
+} ClayFenceSyncExportInfo;
+
+/// Export without CPU waiting or consuming fence_sync. Success transfers the
+/// requested resource to the caller; it does not mean GPU completion. A null
+/// fence is Signaled and needs no resource. Unknown types/backends report
+/// Unsupported. Invalid arguments or export errors report Failed. Neither means
+/// ready: preserve the exact fence/backing for poll/retry.
+/// A non-null, sufficiently sized output is required. Valid output is reset to
+/// fd=-1/handle=null/value=0/release=null before validation. Larger structs are
+/// accepted and fields beyond this version's known size are left untouched.
+/// Release or transfer any earlier output resource before reusing the output.
+/// Resources outlive the original fence but do not retain the image backing.
+/// Metal handles use shared events (iOS 12/macOS 10.14+) and carry no producer
+/// error notification; preserve the caller's error/abandonment policy. Invoke
+/// release callbacks before unloading this library.
+/// Linux EGL supports NativeFD when EGL_ANDROID_native_fence_sync is exposed;
+/// otherwise export reports Unsupported. Every successful export owns a new FD.
+/// Android Vulkan supports NativeFD. Repeated exports duplicate the same
+/// semaphore payload; a completed payload may report Signaled with fd=-1.
+/// SurfaceTexture supports NativeFD when EGL_ANDROID_native_fence_sync is
+/// available. Exports duplicate the same snapshot independently; they are not
+/// the original BufferQueue producer's acquire fence.
+CLAY_EXPORT ClayFenceSyncResult
+ClayFenceSyncExport(ClayFenceSyncRef fence_sync, ClayFenceSyncExportType type,
+                    ClayFenceSyncExportInfo* output);
 
 CLAY_EXPORT void ClayDestroyFenceSync(ClayFenceSyncRef);
 
 CLAY_EXPORT void ClaySharedImageSetFenceSync(
     ClaySharedImageRef shared_image_ref, ClayFenceSyncRef fence_sync_ref);
 
+/// Transfers a fence installed by SetFenceSync to the caller. SurfaceTexture,
+/// when no installed fence remains, returns an owned completion snapshot:
+/// after updateTexImage, after EndRead, or of work submitted so far during a
+/// read. Retrieve on its owning EGL context and destroy with
+/// ClayDestroyFenceSync. Repeated closed-read snapshots share the sync
+/// lifetime. Before a successful update or after synchronization failure,
+/// returns a non-null failed fence; unavailable EGL fence capabilities use the
+/// legacy producer-side completion fallback, so ClientWait remains usable
+/// without the optional extension.
 CLAY_EXPORT ClayFenceSyncRef
 ClaySharedImageGetFenceSync(ClaySharedImageRef shared_image_ref);
 
@@ -835,6 +952,11 @@ CLAY_EXPORT bool ClaySharedImageSinkAcquireBack(ClaySharedImageSinkRef sink_ref,
                                                 const ClaySize* size,
                                                 ClaySharedImageRef* out,
                                                 uint32_t* out_buffer_age);
+/// Legacy acquisition: does not wait for a free slot, but may CPU-wait for
+/// its fence. A failed wait returns false without changing outputs and keeps
+/// the dependency on the back slot for retry. This is not a nonblocking fence
+/// operation; use the raw acquisition/get-fence APIs with explicit Poll or
+/// ServerWait when managing synchronization yourself.
 CLAY_EXPORT bool ClaySharedImageSinkTryAcquireBack(
     ClaySharedImageSinkRef sink_ref, const ClaySize* size,
     ClaySharedImageRef* out, uint32_t* out_buffer_age,
