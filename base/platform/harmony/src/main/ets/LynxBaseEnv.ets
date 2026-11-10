@@ -12,6 +12,18 @@ const TAG = 'LynxBaseEnv';
 class LynxBaseEnvironment {
   private initialized = false;
 
+  public getApplicationDataDirectory(): string {
+    return lynxbase.nativeGetApplicationDataDirectory();
+  }
+
+  public getApplicationDataSubDirectory(name: string): string {
+    return lynxbase.nativeGetApplicationDataSubDirectory(name);
+  }
+
+  public setApplicationDataDirectory(directory: string): void {
+    lynxbase.nativeSetApplicationDataDirectory(directory);
+  }
+
   public initialize(printLogsToAllChannels: boolean, context?: common.Context) {
     if (context) {
       lynxbase.nativeSetApplicationDataDirectory(context.getApplicationContext().filesDir);

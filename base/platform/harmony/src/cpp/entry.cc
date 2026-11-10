@@ -11,6 +11,14 @@
 #include "base/src/base_trace/trace_harmony.h"
 #include "base/src/log/logging_harmony.h"
 
+static napi_value GetApplicationDataDirectory(napi_env env,
+                                              napi_callback_info info) {
+  const auto directory = lynx::base::GetApplicationDataDirectory();
+  napi_value result = nullptr;
+  napi_create_string_utf8(env, directory.data(), directory.size(), &result);
+  return result;
+}
+
 static napi_value SetApplicationDataDirectory(napi_env env,
                                               napi_callback_info info) {
   size_t argc = 1;
@@ -26,8 +34,30 @@ static napi_value SetApplicationDataDirectory(napi_env env,
   return nullptr;
 }
 
+static napi_value GetApplicationDataSubDirectory(napi_env env,
+                                                 napi_callback_info info) {
+  size_t argc = 1;
+  napi_value argument = nullptr;
+  std::string name;
+  std::string directory;
+  if (napi_get_cb_info(env, info, &argc, &argument, nullptr, nullptr) ==
+          napi_ok &&
+      argc == 1 &&
+      lynx::base::NapiUtil::ConvertToStringChecked(env, argument, &name) ==
+          lynx::base::NapiValueConversionStatus::kSuccess) {
+    directory = lynx::base::GetApplicationDataSubDirectory(name);
+  }
+  napi_value result = nullptr;
+  napi_create_string_utf8(env, directory.data(), directory.size(), &result);
+  return result;
+}
+
 EXTERN_C_START static napi_value InitLynxBase(napi_env env,
                                               napi_value exports) {
+  NAPI_CREATE_FUNCTION(env, exports, "nativeGetApplicationDataDirectory",
+                       GetApplicationDataDirectory);
+  NAPI_CREATE_FUNCTION(env, exports, "nativeGetApplicationDataSubDirectory",
+                       GetApplicationDataSubDirectory);
   NAPI_CREATE_FUNCTION(env, exports, "nativeSetApplicationDataDirectory",
                        SetApplicationDataDirectory);
   lynx::base::logging::LynxLog::Init(env, exports);

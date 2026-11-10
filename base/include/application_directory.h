@@ -21,6 +21,12 @@ namespace base {
 // are cached.
 BASE_EXPORT std::string GetApplicationDataDirectory();
 
+// Returns a UTF-8 path to a child of the effective application data directory,
+// creating it when necessary. The name must be a single nonempty component,
+// excluding "." and "..". Returns empty if the root is unavailable or the child
+// cannot be created. Does not create an overridden root directory.
+BASE_EXPORT std::string GetApplicationDataSubDirectory(const std::string& name);
+
 // Overrides the cached directory on all platforms, including after a lookup.
 // The caller supplies the complete absolute UTF-8 path and creates the
 // directory before use. No subdirectory is appended. An empty path clears the

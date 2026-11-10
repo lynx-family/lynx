@@ -126,6 +126,13 @@ class ScopedLocalJavaRef final : public JavaRef<T> {
 
   ~ScopedLocalJavaRef() { this->ReleaseLocalRef(env_); }
 
+  // Transfers ownership of the local reference to the caller.
+  T Release() {
+    T obj = this->Get();
+    JavaRef<T>::obj_ = nullptr;
+    return obj;
+  }
+
   // NOLINTNEXTLINE
   void Reset(JNIEnv* env, jobject obj) { this->ResetNewLocalRef(env, obj); }
   void Reset() { this->ReleaseLocalRef(env_); }

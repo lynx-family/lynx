@@ -13,8 +13,24 @@ bool RegisterJNIForLynxBaseEnv(JNIEnv* env) { return RegisterNativesImpl(env); }
 }  // namespace jni
 }  // namespace lynxbase
 
+static jbyteArray GetApplicationDataDirectory(JNIEnv* env, jclass) {
+  const auto directory = lynx::base::GetApplicationDataDirectory();
+  return lynx::base::android::JNIConvertHelper::ConvertToJNIByteArray(env,
+                                                                      directory)
+      .Release();
+}
+
 static void SetApplicationDataDirectory(JNIEnv* env, jclass,
                                         jstring directory) {
   lynx::base::SetApplicationDataDirectory(
       lynx::base::android::JNIConvertHelper::ConvertToString(env, directory));
+}
+
+static jbyteArray GetApplicationDataSubDirectory(JNIEnv* env, jclass,
+                                                 jstring name) {
+  const auto directory = lynx::base::GetApplicationDataSubDirectory(
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, name));
+  return lynx::base::android::JNIConvertHelper::ConvertToJNIByteArray(env,
+                                                                      directory)
+      .Release();
 }

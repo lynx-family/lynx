@@ -15,3 +15,5 @@ export const nativeSetMinLogLevel: (level: number) => void;
 export const nativeInitLynxBaseTrace: (address: number) => void;
 
 export const nativeSetApplicationDataDirectory: (directory: string) => void;
+export const nativeGetApplicationDataDirectory: () => string;
+export const nativeGetApplicationDataSubDirectory: (name: string) => string;

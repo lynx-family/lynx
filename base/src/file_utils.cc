@@ -6,7 +6,11 @@
 
 #include "base/include/file_utils.h"
 
+#include <fcntl.h>
+
 #if defined(_WIN32)
+#include <io.h>
+
 #include "base/include/string/string_conversion_win.h"
 #endif
 
@@ -27,6 +31,14 @@ int RemoveFile(const std::string& path) {
   return _wremove(Utf16FromUtf8(path).c_str());
 #else
   return std::remove(path.c_str());
+#endif
+}
+
+int OpenFileDescriptor(const std::string& path, int flags, int permissions) {
+#if defined(_WIN32)
+  return _wopen(Utf16FromUtf8(path).c_str(), flags | _O_BINARY, permissions);
+#else
+  return open(path.c_str(), flags, permissions);
 #endif
 }
 

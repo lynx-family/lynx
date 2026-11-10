@@ -9,6 +9,7 @@ import com.lynx.base.IBaseNativeLibraryLoader;
 import com.lynx.base.LynxBaseTrace;
 import com.lynx.base.log.LynxLog;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 public class LynxBaseEnv {
   private static LynxBaseEnv sInstance;
@@ -52,6 +53,27 @@ public class LynxBaseEnv {
     return true;
   }
 
+  /** Returns the effective native application data directory, or empty before initialization. */
+  public String getApplicationDataDirectory() {
+    return mIsNativeLibraryLoaded
+        ? new String(nativeGetApplicationDataDirectory(), StandardCharsets.UTF_8)
+        : "";
+  }
+
+  /** Returns a child directory, creating it if needed, or empty if unavailable. */
+  public String getApplicationDataSubDirectory(String name) {
+    return mIsNativeLibraryLoaded
+        ? new String(nativeGetApplicationDataSubDirectory(name), StandardCharsets.UTF_8)
+        : "";
+  }
+
+  /** Overrides the complete directory after base initialization and before consumers start. */
+  public void setApplicationDataDirectory(String directory) {
+    nativeSetApplicationDataDirectory(directory);
+  }
+
+  private static native byte[] nativeGetApplicationDataDirectory();
+  private static native byte[] nativeGetApplicationDataSubDirectory(String name);
   private static native void nativeSetApplicationDataDirectory(String directory);
 
   public synchronized boolean loadNativeTraceLibrary(IBaseNativeLibraryLoader nativeLibraryLoader) {
