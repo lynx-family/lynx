@@ -12,6 +12,7 @@
 
 #include "base/include/platform/harmony/napi_util.h"
 #include "platform/harmony/lynx_devtool/src/main/cpp/cdp_event_listener_sender_harmony.h"
+#include "platform/harmony/lynx_devtool/src/main/cpp/invoke_cdp_from_sdk_sender_harmony.h"
 #include "platform/harmony/lynx_devtool/src/main/cpp/message_handler_harmony.h"
 
 namespace lynx {
@@ -28,6 +29,7 @@ napi_value InspectorOwnerHarmony::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("getConsoleObject", GetConsoleObject),
       DECLARE_NAPI_FUNCTION("subscribeMessage", SubscribeMessage),
       DECLARE_NAPI_FUNCTION("unsubscribeMessage", UnsubscribeMessage),
+      DECLARE_NAPI_FUNCTION("invokeCDPFromSDK", InvokeCDPFromSDK),
       DECLARE_NAPI_FUNCTION("addCDPEventListener", AddCDPEventListener),
       DECLARE_NAPI_FUNCTION("removeCDPEventListener", RemoveCDPEventListener),
       DECLARE_NAPI_FUNCTION("updateInputWindowInfo", UpdateInputWindowInfo),
@@ -216,6 +218,44 @@ napi_value InspectorOwnerHarmony::UnsubscribeMessage(napi_env env,
     owner_harmony_ptr->owner_->UnsubscribeMessage(type);
   }
 
+  return nullptr;
+}
+
+napi_value InspectorOwnerHarmony::InvokeCDPFromSDK(napi_env env,
+                                                   napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value args[2] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  InspectorOwnerHarmony *owner_harmony_ptr = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void **>(&owner_harmony_ptr));
+  NAPI_THROW_IF_FAILED_NULL(env, status,
+                            "InspectorOwnerHarmony InvokeCDPFromSDK failed!");
+
+  if (!owner_harmony_ptr) {
+    LOGE("napi unwrap object is null when InvokeCDPFromSDK");
+    return nullptr;
+  }
+  if (argc < std::size(args) || args[0] == nullptr || args[1] == nullptr) {
+    LOGE("Invalid arguments when invoking CDP from SDK");
+    return nullptr;
+  }
+  napi_valuetype callback_type = napi_undefined;
+  napi_typeof(env, args[1], &callback_type);
+  if (callback_type != napi_function) {
+    LOGE("CDP result callback is not a function");
+    return nullptr;
+  }
+
+  auto callback_sender =
+      std::make_shared<InvokeCDPFromSDKSenderHarmony>(env, args[1]);
+  owner_harmony_ptr->owner_->InvokeCDPFromSDK(
+      base::NapiUtil::ConvertToString(env, args[0]),
+      [callback_sender](const std::string &result) {
+        callback_sender->SendMessage("CDP", result);
+      });
   return nullptr;
 }
 
