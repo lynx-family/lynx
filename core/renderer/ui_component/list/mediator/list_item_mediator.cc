@@ -4,8 +4,12 @@
 
 #include "core/renderer/ui_component/list/mediator/list_item_mediator.h"
 
+#include <utility>
+
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 
 namespace lynx {
 namespace tasm {
@@ -76,6 +80,7 @@ void ListItemMediator::OnListItemDisappear(bool is_exist,
 }
 
 void ListItemMediator::FlushPatching() {
+  FlushFragmentPainting();
   list_item_element_->element_container()->UpdateLayoutPatching();
   list_item_element_->OnNodeReady();
   list_item_element_->element_container()->UpdateNodeReadyPatching();
@@ -83,17 +88,21 @@ void ListItemMediator::FlushPatching() {
 }
 
 void ListItemMediator::FlushAnimatedStyle(CSSPropertyID id, CSSValue value) {
-  list_item_element_->FlushAnimatedStyle(id, value);
-  list_item_element_->OnNodeReady();
-  list_item_element_->element_container()->UpdateNodeReadyPatching();
-  list_item_element_->element_container()->FlushImmediately();
+  UpdateAnimatedStyle(id, std::move(value), true);
 }
 
 void ListItemMediator::UpdateAnimatedStyle(CSSPropertyID id, CSSValue value,
                                            bool flush_immediately) {
-  list_item_element_->FlushAnimatedStyle(id, value);
+  if (list_item_element_->EnableFragmentLayerRender() &&
+      id == kPropertyIDOpacity) {
+    list_item_element_->fragment_impl()->SetListItemAnimationOpacity(
+        static_cast<float>(value.GetNumber()));
+  } else {
+    list_item_element_->FlushAnimatedStyle(id, value);
+  }
   list_item_element_->OnNodeReady();
   if (flush_immediately) {
+    FlushFragmentPainting();
     list_item_element_->element_container()->UpdateNodeReadyPatching();
     list_item_element_->element_container()->FlushImmediately();
   }
@@ -106,9 +115,26 @@ void ListItemMediator::UpdateAnimatedLayout(float left, float top,
   list_item_element_->element_container()->UpdateLayoutPatching();
   list_item_element_->OnNodeReady();
   if (flush_immediately) {
+    FlushFragmentPainting();
     list_item_element_->element_container()->UpdateNodeReadyPatching();
     list_item_element_->element_container()->FlushImmediately();
   }
+}
+
+void ListItemMediator::FlushFragmentPainting() {
+  if (!list_item_element_->EnableFragmentLayerRender()) return;
+  auto* fragment = list_item_element_->element_container()->CastToFragment();
+  while (fragment && !fragment->HasUIPrimitive()) {
+    fragment = fragment->fragment_parent();
+  }
+  if (!fragment) return;
+  // Item animation clocks run outside the normal render pipeline. Publish
+  // the owning paint root before flushing its native ready notifications.
+  auto* native_context =
+      list_item_element_->painting_context()->impl()->CastToNativeCtx();
+  NativePaintingContext::ScopedDisplayListBatch display_list_batch(
+      native_context, fragment->PlatformLayerCount());
+  fragment->Draw();
 }
 
 }  // namespace tasm

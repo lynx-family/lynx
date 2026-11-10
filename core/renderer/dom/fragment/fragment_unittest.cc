@@ -32,6 +32,7 @@
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
+#include "core/renderer/ui_component/list/mediator/list_item_mediator.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
@@ -367,6 +368,12 @@ class TestNativePaintingContext : public NativePaintingContext {
   }
   void EnqueueDisplayList(int id, DisplayList list) override {
     operations.emplace_back("update_display_list");
+    for (size_t i = 0; i < list.GetSubtreePropertiesSize(); ++i) {
+      const auto& property = list.GetSubtreePropertiesData()[i];
+      if (property.type == DisplayListSubtreePropertyOpType::kOpacity) {
+        enqueued_opacity_updates.push_back(property.data.opacity);
+      }
+    }
     if (ref_) {
       ref_->UpdateDisplayList(id, std::move(list));
     }
@@ -433,6 +440,7 @@ class TestNativePaintingContext : public NativePaintingContext {
   std::vector<CreatedImage> created_images_;
   bool fail_image_creation_{false};
   bool can_reuse_image_on_resize_{false};
+  std::vector<float> enqueued_opacity_updates;
   bool can_update_image_{false};
   std::vector<int32_t> updated_image_keys_;
   std::vector<uint32_t> updated_image_changes_;
@@ -6518,6 +6526,123 @@ TEST_F(FragmentDrawTest, ReparentToCurrentParentPreservesOrderAndCleanState) {
   EXPECT_FALSE(page_fragment->NeedRedraw());
   EXPECT_FALSE(page_fragment->NeedSortZChild());
   EXPECT_FALSE(page_fragment->NeedSortFixedChild());
+}
+
+TEST_F(FragmentDrawTest, ListAnimationFramesSubmitPaintedPositions) {
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  auto item = manager->CreateFiberElement("list-item");
+  item->MarkAsListItem();
+  item->SetRawInlineStyles("width:80px;height:40px;background-color:red;");
+  page->InsertNode(item);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  page->fragment_impl()->UpdateLayout(0, 0);
+  page->fragment_impl()->Draw();
+  ASSERT_TRUE(item->fragment_impl()->HasUIPrimitive());
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto* ref = context->GetNativePlatformRef();
+  ListItemMediator mediator(item.get());
+  auto painted_top = [&]() {
+    const auto* list = ref->GetDisplayListForRenderer(item->impl_id());
+    EXPECT_NE(list, nullptr);
+    if (!list) return -1.f;
+    for (const auto& op : CollectDisplayListItems(*list)) {
+      if (op.type == DisplayListOpType::kBegin &&
+          op.payload.begin.id == item->impl_id()) {
+        return op.payload.begin.y;
+      }
+    }
+    ADD_FAILURE() << "Missing painted list item";
+    return -1.f;
+  };
+  context->operations.clear();
+  mediator.UpdateAnimatedLayout(12, 34, true);
+  EXPECT_FLOAT_EQ(painted_top(), 34);
+  EXPECT_THAT(context->operations,
+              ::testing::ElementsAre("update_display_list"));
+  ASSERT_FALSE(context->display_list_batch_ids.empty());
+  EXPECT_THAT(context->display_list_batch_ids.back(),
+              ::testing::ElementsAre(item->impl_id()));
+
+  context->operations.clear();
+  mediator.UpdateAnimatedLayout(21, 55, false);
+  EXPECT_TRUE(context->operations.empty());
+  EXPECT_FLOAT_EQ(painted_top(), 34);
+  mediator.FlushPatching();
+  EXPECT_FLOAT_EQ(painted_top(), 55);
+}
+
+TEST_F(FragmentDrawTest, ListAnimationFramesSubmitPaintedOpacity) {
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  auto item = manager->CreateFiberElement("list-item");
+  item->MarkAsListItem();
+  item->SetRawInlineStyles(
+      "width:80px;height:40px;background-color:red;opacity:0.4;");
+  page->InsertNode(item);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  page->fragment_impl()->UpdateLayout(0, 0);
+  page->fragment_impl()->Draw();
+  ASSERT_TRUE(item->fragment_impl()->HasUIPrimitive());
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto* style = item->computed_css_style();
+  ListItemMediator mediator(item.get());
+  ASSERT_FLOAT_EQ(style->GetOpacity(), .4f);
+  ASSERT_THAT(context->enqueued_opacity_updates, ::testing::Contains(.4f));
+  context->operations.clear();
+  context->enqueued_opacity_updates.clear();
+  auto expect_painted_opacity = [&](float opacity) {
+    EXPECT_THAT(context->enqueued_opacity_updates,
+                ::testing::ElementsAre(::testing::FloatEq(opacity)));
+    EXPECT_THAT(context->operations,
+                ::testing::ElementsAre("update_display_list"));
+    context->operations.clear();
+    context->enqueued_opacity_updates.clear();
+  };
+
+  style->ClearChanged();
+  mediator.UpdateAnimatedStyle(kPropertyIDOpacity,
+                               CSSValue(.5, CSSValuePattern::NUMBER), true);
+  expect_painted_opacity(.2f);
+  EXPECT_FLOAT_EQ(style->GetOpacity(), .4f);
+  EXPECT_FALSE(style->OpacityChanged());
+  mediator.UpdateAnimatedStyle(kPropertyIDOpacity,
+                               CSSValue(1., CSSValuePattern::NUMBER), true);
+  expect_painted_opacity(.4f);
+
+  // Deferred frames use the latest CSS value. The cancellation reset is also
+  // deferred and must publish the CSS opacity even when CSS is clean.
+  style->SetValue(kPropertyIDOpacity, CSSValue(.6, CSSValuePattern::NUMBER));
+  ASSERT_TRUE(style->OpacityChanged());
+  mediator.UpdateAnimatedStyle(kPropertyIDOpacity,
+                               CSSValue(.25, CSSValuePattern::NUMBER), false);
+  EXPECT_FLOAT_EQ(style->GetOpacity(), .6f);
+  EXPECT_TRUE(context->operations.empty());
+  mediator.FlushPatching();
+  expect_painted_opacity(.15f);
+  style->ClearChanged();
+  mediator.UpdateAnimatedStyle(kPropertyIDOpacity,
+                               CSSValue(1., CSSValuePattern::NUMBER), false);
+  EXPECT_TRUE(context->operations.empty());
+  mediator.FlushPatching();
+  expect_painted_opacity(.6f);
+
+  style->SetValue(kPropertyIDOpacity, CSSValue(.4, CSSValuePattern::NUMBER));
+  item->fragment_impl()->InvalidateForSubtreeProperty();
+  mediator.FlushPatching();
+  expect_painted_opacity(.4f);
+  style->ClearChanged();
+  mediator.FlushAnimatedStyle(kPropertyIDOpacity,
+                              CSSValue(.5, CSSValuePattern::NUMBER));
+  expect_painted_opacity(.2f);
+  mediator.FlushAnimatedStyle(kPropertyIDOpacity,
+                              CSSValue(1., CSSValuePattern::NUMBER));
+  expect_painted_opacity(.4f);
+  EXPECT_FLOAT_EQ(style->GetOpacity(), .4f);
 }
 
 }  // namespace tasm
