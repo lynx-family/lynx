@@ -97,7 +97,7 @@ LYNX_PROP_SETTER("blur-effect", setBlurEffect, NSString*) {
   if (self.style != style || self.mode != mode) {
     self.style = style;
     self.mode = mode;
-    _shouldUpdateEffect = YES;
+    [self setNeedsEffectUpdate];
   }
 }
 
@@ -132,7 +132,7 @@ LYNX_PROP_SETTER("blur-radius", setBlurRadius, CGFloat) {
   }
   if (self.radius != value) {
     self.radius = value;
-    _shouldUpdateEffect = YES;
+    [self setNeedsEffectUpdate];
   }
 }
 
@@ -148,7 +148,7 @@ LYNX_PROP_SETTER("spacing", setSpacing, CGFloat) {
   }
   if (self.spacing != value) {
     self.spacing = value;
-    _shouldUpdateEffect = YES;
+    [self setNeedsEffectUpdate];
   }
 }
 
@@ -166,7 +166,7 @@ LYNX_PROP_SETTER("glass-interactive", setGlassInteractive, BOOL) {
   }
   if (self.glassInteractive != value) {
     self.glassInteractive = value;
-    _shouldUpdateEffect = YES;
+    [self setNeedsEffectUpdate];
   }
 }
 
@@ -182,9 +182,9 @@ LYNX_PROP_SETTER("glass-tint-color", setGlassTintColor, NSString*) {
     value = nil;
   }
   UIColor* newColor = [LynxColorUtils convertNSStringToUIColor:value];
-  if (![self.glassTintColor isEqual:newColor]) {
+  if (self.glassTintColor != newColor && ![self.glassTintColor isEqual:newColor]) {
     self.glassTintColor = newColor;
-    _shouldUpdateEffect = YES;
+    [self setNeedsEffectUpdate];
   }
 }
 
@@ -205,7 +205,7 @@ LYNX_PROP_SETTER("glass-style", setGlassStyle, NSString*) {
   }
   if (self.glassStyle != style) {
     self.glassStyle = style;
-    _shouldUpdateEffect = YES;
+    [self setNeedsEffectUpdate];
   }
 }
 
@@ -227,17 +227,30 @@ LYNX_PROP_SETTER("ios-user-interface-style", setUserInterfaceStyle, NSString*) {
 
 #endif
 
-- (void)propsDidUpdate {
+- (void)setNeedsEffectUpdate {
+  if (_shouldUpdateEffect) {
+    return;
+  }
+  _shouldUpdateEffect = YES;
+  [self.nodeReadyBlockArray addObject:^(LynxUI* ui) {
+    [(LynxUIBlurView*)ui updateEffect];
+  }];
+}
+
+- (void)updateEffect {
   if (!_shouldUpdateEffect) {
     return;
   }
 
-  // Remove the current effect to ensure 'effectSettings' to be invoked. If
-  // the effect style doesn't change, the 'effectSettings' will not be invoke
-  // again.
-  self.view.effect = nil;
+  // Apply effects after layout and child insertion.
+  BOOL shouldResetEffect = YES;
+  UIVisualEffect* effect = [self createEffectForCurrentModeWithReset:&shouldResetEffect];
+  if (shouldResetEffect) {
+    // Blur effects must be removed so effectSettings runs again for radius
+    // changes. Preserve the interactive glass response for tint/style updates.
+    self.view.effect = nil;
+  }
 
-  UIVisualEffect* effect = [self createEffectForCurrentMode];
   if (effect) {
     self.view.effect = effect;
   }
@@ -299,13 +312,17 @@ LYNX_PROP_SETTER("ios-user-interface-style", setUserInterfaceStyle, NSString*) {
   *mode = LynxEffectModeBlur;
 }
 
-- (UIVisualEffect*)createEffectForCurrentMode {
+- (UIVisualEffect*)createEffectForCurrentModeWithReset:(BOOL*)shouldResetEffect {
   switch (self.mode) {
     case LynxEffectModeBlur:
       return [self createBlurEffect];
 #if LYNX_GLASS_EFFECT_AVAILABLE
     case LynxEffectModeGlass:
       if (@available(iOS 26, *)) {
+        if ([self.view.effect isKindOfClass:[UIGlassEffect class]]) {
+          UIGlassEffect* currentEffect = (UIGlassEffect*)self.view.effect;
+          *shouldResetEffect = currentEffect.isInteractive != self.glassInteractive;
+        }
         UIGlassEffect* effect = [UIGlassEffect effectWithStyle:self.glassStyle];
         effect.interactive = self.glassInteractive;
         if (self.glassTintColor) {
