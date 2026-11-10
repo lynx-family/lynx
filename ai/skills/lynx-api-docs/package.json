@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/lynx-api-docs",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "description": "Install the public Lynx engine AI context bundle into a project and inject AGENTS.md references.",
   "keywords": [
     "lynx",
