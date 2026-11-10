@@ -5,9 +5,11 @@
 gfx_path_resource_headers = [
   "public/path_types.h",
   "public/path_impl.h",
+  "public/path_impl_factory.h",
   "public/path.h",
 ]
 gfx_path_resource_sources = [
   "path/path.cc",
   "path/path_impl.cc",
+  "path/path_impl_factory.cc",
 ]

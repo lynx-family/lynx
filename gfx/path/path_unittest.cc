@@ -8,11 +8,12 @@
 #include <limits>
 #include <string>
 
+#include "gfx/testing/path_stream_impl.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 namespace lynx::gfx {
 TEST(PathTest, ImmutableSourceAndIdentity) {
-  auto a = Path::MakeRect(10, 20);
-  auto b = Path::MakeRect(10, 20);
+  auto a = Path::MakeRect(10, 20, GetTestPathImplFactory());
+  auto b = Path::MakeRect(10, 20, GetTestPathImplFactory());
   ASSERT_TRUE(a);
   ASSERT_TRUE(b);
   EXPECT_NE(a->GetKey(), 0u);
@@ -21,16 +22,16 @@ TEST(PathTest, ImmutableSourceAndIdentity) {
   auto view = std::get<PathView>(a->GetSourceView());
   EXPECT_EQ(view.header.width, 10);
   EXPECT_EQ(view.header.height, 20);
-  PathImpl impl(a->GetImpl().GetSource());
+  PathStreamImpl impl(a->GetImpl().GetSource());
   EXPECT_NE(impl.GetKey(), a->GetKey());
   EXPECT_EQ(std::get<PathView>(impl.GetSourceView()).header.width, 10);
 }
 TEST(PathTest, MovedSourceRemainsAValidEmptyValue) {
-  auto path = Path::MakeSvgPathData("M0 0L1 1", 1);
+  auto path = Path::MakeSvgPathData("M0 0L1 1", 1, GetTestPathImplFactory());
   auto source = path->GetImpl().GetSource();
-  PathImpl impl(std::move(source));
+  PathStreamImpl impl(std::move(source));
   EXPECT_EQ(std::get<SvgPathView>(impl.GetSourceView()).data, "M0 0L1 1");
-  PathImpl moved_from(std::move(source));
+  PathStreamImpl moved_from(std::move(source));
   EXPECT_EQ(std::get<PathView>(moved_from.GetSourceView()).header.width, 0);
   EXPECT_EQ(std::get<PathView>(moved_from.GetSourceView()).header.command_count,
             0u);
@@ -38,7 +39,7 @@ TEST(PathTest, MovedSourceRemainsAValidEmptyValue) {
 
 TEST(PathTest, RoundedRectNormalization) {
   float radii[8] = {100, 50, 100, 50, 10, 10, 10, 10};
-  auto path = Path::MakeRoundedRect(100, 100, radii);
+  auto path = Path::MakeRoundedRect(100, 100, radii, GetTestPathImplFactory());
   ASSERT_TRUE(path);
   const auto& h = std::get<PathView>(path->GetSourceView()).header;
   EXPECT_EQ(h.radii[0], 50);
@@ -49,19 +50,19 @@ TEST(PathTest, InvalidConstruction) {
   float inf = std::numeric_limits<float>::infinity();
   float radii[8] = {};
   radii[0] = -1;
-  EXPECT_FALSE(Path::MakeRect(inf, 1));
-  EXPECT_FALSE(Path::MakeRect(-1, 1));
-  EXPECT_FALSE(Path::MakeRoundedRect(10, 10, radii));
+  EXPECT_FALSE(Path::MakeRect(inf, 1, GetTestPathImplFactory()));
+  EXPECT_FALSE(Path::MakeRect(-1, 1, GetTestPathImplFactory()));
+  EXPECT_FALSE(Path::MakeRoundedRect(10, 10, radii, GetTestPathImplFactory()));
   PathBuilder builder;
   builder.MoveTo(inf, 0);
-  EXPECT_FALSE(builder.Build());
-  EXPECT_TRUE(Path::MakeRect(0, 0));
+  EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
+  EXPECT_TRUE(Path::MakeRect(0, 0, GetTestPathImplFactory()));
 }
 TEST(PathTest, BuilderPublicationAndEnd) {
   PathBuilder b;
   b.MoveTo(1, 2);
   b.LineTo(3, 4);
-  auto a = b.Build();
+  auto a = b.Build(GetTestPathImplFactory());
   ASSERT_TRUE(a);
   auto view = std::get<PathView>(a->GetSourceView());
   EXPECT_EQ(view.header.command_count, 3u);
@@ -70,16 +71,16 @@ TEST(PathTest, BuilderPublicationAndEnd) {
   b.QuadTo(7, 8, 9, 10);
   b.CubicTo(1, 2, 3, 4, 5, 6);
   b.Close();
-  auto other = b.Build();
+  auto other = b.Build(GetTestPathImplFactory());
   ASSERT_TRUE(other);
   EXPECT_EQ(view.points[0].x, 1);
   EXPECT_EQ(view.points[1].y, 4);
   EXPECT_EQ(std::get<PathView>(other->GetSourceView()).commands[3],
             PathVerb::kClose);
   b.LineTo(0, 0);
-  EXPECT_FALSE(b.Build());
+  EXPECT_FALSE(b.Build(GetTestPathImplFactory()));
   b.MoveTo(1, 1);
-  EXPECT_TRUE(b.Build());
+  EXPECT_TRUE(b.Build(GetTestPathImplFactory()));
 }
 TEST(PathTest, BuiltCommandsAndCopiedSourceOwnTheirBytes) {
   PathPoint points[] = {{1, 2}, {-30, 40}, {50, -60}, {3, 4}};
@@ -87,10 +88,10 @@ TEST(PathTest, BuiltCommandsAndCopiedSourceOwnTheirBytes) {
   builder.MoveTo(points[0].x, points[0].y);
   builder.CubicTo(points[1].x, points[1].y, points[2].x, points[2].y,
                   points[3].x, points[3].y);
-  auto path = builder.Build();
+  auto path = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(path);
   auto source = path->GetImpl().GetSource();
-  PathImpl copy(source);
+  PathStreamImpl copy(source);
   points[1] = {0, 0};
   auto original = std::get<PathView>(path->GetSourceView());
   auto copied = std::get<PathView>(copy.GetSourceView());
@@ -99,9 +100,11 @@ TEST(PathTest, BuiltCommandsAndCopiedSourceOwnTheirBytes) {
   EXPECT_EQ(copied.points[1].x, -30);
   EXPECT_EQ(original.points, copied.points);
   path = nullptr;
-  source = Path::MakeSvgPathData("M0 0", 1)->GetImpl().GetSource();
+  source = Path::MakeSvgPathData("M0 0", 1, GetTestPathImplFactory())
+               ->GetImpl()
+               .GetSource();
   EXPECT_EQ(copied.points[2].x, 50);
-  PathImpl moved(std::move(source));
+  PathStreamImpl moved(std::move(source));
   EXPECT_EQ(std::get<SvgPathView>(moved.GetSourceView()).data, "M0 0");
   EXPECT_EQ(std::get<PathView>(source.GetSourceView()).header.point_count, 0u);
 }
@@ -113,7 +116,7 @@ TEST(PathTest, BuilderGrowthPreservesSeparateCommandAndPointRegions) {
     for (int i = 0; i < 1000; ++i)
       builder.CubicTo(i, -i, i + 1, -i - 1, i + 2, -i - 2);
     builder.Close();
-    auto retained = builder.Build();
+    auto retained = builder.Build(GetTestPathImplFactory());
     ASSERT_TRUE(retained);
     auto view = std::get<PathView>(retained->GetSourceView());
     EXPECT_EQ(view.header.command_count, 1002u);
@@ -124,19 +127,19 @@ TEST(PathTest, BuilderGrowthPreservesSeparateCommandAndPointRegions) {
       EXPECT_EQ(view.points[3 * i + 3].y, -i - 2);
     }
     builder.MoveTo(7, 8);
-    ASSERT_TRUE(builder.Build());
+    ASSERT_TRUE(builder.Build(GetTestPathImplFactory()));
     EXPECT_EQ(view.points[3000].x, 1001);
   }
   PathBuilder oversized(0, Path::kMaxPoints + 1);
-  EXPECT_FALSE(oversized.Build());
+  EXPECT_FALSE(oversized.Build(GetTestPathImplFactory()));
   oversized.MoveTo(1, 2);
-  EXPECT_TRUE(oversized.Build());
+  EXPECT_TRUE(oversized.Build(GetTestPathImplFactory()));
 }
 TEST(PathTest, CloseAtCapacityPreservesPoint) {
   PathBuilder builder(1, 1);
   builder.MoveTo(-4, 7);
   builder.Close();
-  auto path = builder.Build();
+  auto path = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(path);
   auto view = std::get<PathView>(path->GetSourceView());
   EXPECT_EQ(view.header.command_count, 2u);
@@ -151,10 +154,10 @@ TEST(PathTest, CurveWithNaNRejectsWholeBuildAndAllowsReuse) {
   builder.CubicTo(-10, -20, std::numeric_limits<float>::quiet_NaN(), 30, 40,
                   50);
   builder.LineTo(60, 70);
-  EXPECT_FALSE(builder.Build());
+  EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
   builder.MoveTo(3, 4);
   builder.LineTo(5, 6);
-  auto path = builder.Build();
+  auto path = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(path);
   auto view = std::get<PathView>(path->GetSourceView());
   EXPECT_EQ(view.header.command_count, 3u);
@@ -165,7 +168,7 @@ TEST(PathTest, CommandGeometryHasNoRecordedBounds) {
   const float limit = std::numeric_limits<float>::max();
   builder.MoveTo(-limit, -limit);
   builder.LineTo(limit, limit);
-  auto path = builder.Build();
+  auto path = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(path);
   auto view = std::get<PathView>(path->GetSourceView());
   EXPECT_EQ(view.points[0].x, -limit);
@@ -186,22 +189,22 @@ TEST(PathTest, DrawingMethodsRejectNaNAndInfinity) {
       p[i] = value;
       if (i < 2) {
         builder.MoveTo(p[0], p[1]);
-        EXPECT_FALSE(builder.Build());
+        EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
         builder.MoveTo(0, 0);
         builder.LineTo(p[0], p[1]);
-        EXPECT_FALSE(builder.Build());
+        EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
       }
       if (i < 4) {
         builder.MoveTo(0, 0);
         builder.QuadTo(p[0], p[1], p[2], p[3]);
-        EXPECT_FALSE(builder.Build());
+        EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
       }
       builder.MoveTo(0, 0);
       builder.CubicTo(p[0], p[1], p[2], p[3], p[4], p[5]);
-      EXPECT_FALSE(builder.Build());
+      EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
     }
     builder.MoveTo(7, 8);
-    ASSERT_TRUE(builder.Build());
+    ASSERT_TRUE(builder.Build(GetTestPathImplFactory()));
   }
 }
 TEST(PathTest, ParserStopsRelativeCoordinateOverflowBeforeDrawing) {
@@ -209,7 +212,7 @@ TEST(PathTest, ParserStopsRelativeCoordinateOverflowBeforeDrawing) {
   auto consumer = builder.GetConsumer();
   LBSParsePathWithConsumer("M3e38 0 l3e38 0", &consumer);
   EXPECT_EQ(consumer.error, 1);
-  auto path = builder.Build();
+  auto path = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(path);
   const auto view = std::get<PathView>(path->GetSourceView());
   EXPECT_EQ(view.header.point_count, 1u);
@@ -217,16 +220,16 @@ TEST(PathTest, ParserStopsRelativeCoordinateOverflowBeforeDrawing) {
   EXPECT_EQ(view.header.command_count, 2u);
   EXPECT_EQ(view.commands[1], PathVerb::kEnd);
   builder.MoveTo(1, 2);
-  EXPECT_TRUE(builder.Build());
+  EXPECT_TRUE(builder.Build(GetTestPathImplFactory()));
 }
 TEST(PathTest, AppendingPastPointLimitRejectsBuildAndAllowsReuse) {
   PathBuilder builder(Path::kMaxPoints + 2, Path::kMaxPoints);
   builder.MoveTo(0, 0);
   for (size_t i = 1; i < Path::kMaxPoints; ++i) builder.LineTo(1, 2);
   builder.LineTo(3, 4);
-  EXPECT_FALSE(builder.Build());
+  EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
   builder.MoveTo(5, 6);
-  EXPECT_TRUE(builder.Build());
+  EXPECT_TRUE(builder.Build(GetTestPathImplFactory()));
 }
 TEST(PathTest, SharedConsumerBuildsCurvesAndRejectsUnsupportedArcs) {
   PathBuilder builder;
@@ -234,7 +237,7 @@ TEST(PathTest, SharedConsumerBuildsCurvesAndRejectsUnsupportedArcs) {
   LBSParsePathWithConsumer("M1 2 Q3 4 5 6 C7 8 9 10 11 12 Z M13 14 L15 16",
                            &consumer);
   ASSERT_EQ(consumer.error, 0);
-  auto path = builder.Build();
+  auto path = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(path);
   auto view = std::get<PathView>(path->GetSourceView());
   EXPECT_EQ(view.header.command_count, 7u);
@@ -245,7 +248,7 @@ TEST(PathTest, SharedConsumerBuildsCurvesAndRejectsUnsupportedArcs) {
   EXPECT_EQ(view.commands[6], PathVerb::kEnd);
   EXPECT_EQ(view.points[7].y, 16);
   LBSParsePathWithConsumer("M0 0 A1 2 30 0 1 3 4", &consumer);
-  EXPECT_FALSE(builder.Build());
+  EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
 }
 TEST(PathTest, ConsumerContinuesDrawingAfterClose) {
   const struct {
@@ -271,7 +274,7 @@ TEST(PathTest, ConsumerContinuesDrawingAfterClose) {
       auto consumer = builder.GetConsumer();
       LBSParsePathWithConsumer(test.data, &consumer);
       ASSERT_EQ(consumer.error, 0);
-      auto path = builder.Build();
+      auto path = builder.Build(GetTestPathImplFactory());
       ASSERT_TRUE(path);
       auto view = std::get<PathView>(path->GetSourceView());
       const PathVerb expected[] = {PathVerb::kBegin, PathVerb::kLine,
@@ -292,7 +295,7 @@ TEST(PathTest, ConsumerUsesLatestStartAfterRepeatedClose) {
   auto consumer = builder.GetConsumer();
   LBSParsePathWithConsumer("M1 2 L3 4 Z M5 6 L7 8 Z Z L9 10", &consumer);
   ASSERT_EQ(consumer.error, 0);
-  auto path = builder.Build();
+  auto path = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(path);
   auto view = std::get<PathView>(path->GetSourceView());
   ASSERT_EQ(view.header.command_count, 9u);
@@ -309,18 +312,18 @@ TEST(PathTest, ConsumerContinuationSharesStateAndResetsAtBuild) {
   builder.MoveTo(5, 6);
   builder.Close();
   consumer.LineToPoint(consumer.ctx, 7, 8);
-  auto first = builder.Build();
+  auto first = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(first);
   auto view = std::get<PathView>(first->GetSourceView());
   ASSERT_EQ(view.header.point_count, 3u);
   EXPECT_EQ(view.points[1].x, 5);
   EXPECT_EQ(view.points[1].y, 6);
   consumer.LineToPoint(consumer.ctx, 9, 10);
-  EXPECT_FALSE(builder.Build());
+  EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
   consumer.MoveToPoint(consumer.ctx, 1, 2);
   consumer.ClosePath(consumer.ctx);
   consumer.QuadToPoint(consumer.ctx, 3, 4, 5, 6);
-  ASSERT_TRUE(builder.Build());
+  ASSERT_TRUE(builder.Build(GetTestPathImplFactory()));
   EXPECT_EQ(view.points[2].x, 7);
   EXPECT_EQ(view.points[2].y, 8);
 }
@@ -331,7 +334,7 @@ TEST(PathTest, DirectDrawingContinuesFromClosedStart) {
   builder.Close();
   builder.Close();
   builder.QuadTo(7, 8, 9, 10);
-  auto path = builder.Build();
+  auto path = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(path);
   auto view = std::get<PathView>(path->GetSourceView());
   ASSERT_EQ(view.header.command_count, 6u);
@@ -348,7 +351,7 @@ TEST(PathTest, DirectMethodsAndConsumerShareStateAcrossBuilds) {
   builder.QuadTo(5, 6, 7, 8);
   consumer.CubicToPoint(consumer.ctx, 9, 10, 11, 12, 13, 14);
   builder.Close();
-  auto first = builder.Build();
+  auto first = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(first);
   auto view = std::get<PathView>(first->GetSourceView());
   ASSERT_EQ(view.header.command_count, 5u);
@@ -360,17 +363,17 @@ TEST(PathTest, DirectMethodsAndConsumerShareStateAcrossBuilds) {
   EXPECT_EQ(view.commands[4], PathVerb::kClose);
   EXPECT_EQ(view.points[6].x, 13);
   builder.Close();
-  EXPECT_FALSE(builder.Build());
+  EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
   consumer.MoveToPoint(consumer.ctx, 20, 21);
   builder.LineTo(22, 23);
-  auto second = builder.Build();
+  auto second = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(second);
   EXPECT_EQ(std::get<PathView>(second->GetSourceView()).points[0].x, 20);
   EXPECT_EQ(view.points[6].y, 14);
 }
 TEST(PathTest, EmptyBuilderPublishesEmptyGeometryAndCanBeReused) {
   PathBuilder builder;
-  auto empty = builder.Build();
+  auto empty = builder.Build(GetTestPathImplFactory());
   ASSERT_TRUE(empty);
   auto view = std::get<PathView>(empty->GetSourceView());
   EXPECT_EQ(view.header.kind, PathKind::kCommands);
@@ -379,30 +382,32 @@ TEST(PathTest, EmptyBuilderPublishesEmptyGeometryAndCanBeReused) {
   EXPECT_EQ(view.commands, nullptr);
   EXPECT_EQ(view.points, nullptr);
   builder.MoveTo(1, 2);
-  EXPECT_TRUE(builder.Build());
+  EXPECT_TRUE(builder.Build(GetTestPathImplFactory()));
   EXPECT_EQ(view.header.point_count, 0u);
 }
 TEST(PathTest, SvgPreservesBytesAndScale) {
   std::string source = "m1e2 3 A10 20 45 01-2.5 .3z\n";
-  auto path = Path::MakeSvgPathData(source, 2.f);
+  auto path = Path::MakeSvgPathData(source, 2.f, GetTestPathImplFactory());
   ASSERT_TRUE(path);
   auto a = std::get<SvgPathView>(path->GetSourceView());
   auto b = std::get<SvgPathView>(path->GetSourceView());
   EXPECT_EQ(a.data, source);
   EXPECT_EQ(&a.data, &b.data);
   EXPECT_EQ(a.source_to_layout_scale, 2);
-  EXPECT_FALSE(Path::MakeSvgPathData(source, 0));
-  EXPECT_FALSE(
-      Path::MakeSvgPathData(source, std::numeric_limits<float>::quiet_NaN()));
-  EXPECT_FALSE(Path::MakeSvgPathData(std::string("M0 0\0L1 1", 10), 1));
-  EXPECT_FALSE(
-      Path::MakeSvgPathData(std::string(Path::kMaxSvgBytes + 1, ' '), 1));
-  EXPECT_TRUE(Path::MakeSvgPathData("", 1));
+  EXPECT_FALSE(Path::MakeSvgPathData(source, 0, GetTestPathImplFactory()));
+  EXPECT_FALSE(Path::MakeSvgPathData(source,
+                                     std::numeric_limits<float>::quiet_NaN(),
+                                     GetTestPathImplFactory()));
+  EXPECT_FALSE(Path::MakeSvgPathData(std::string("M0 0\0L1 1", 10), 1,
+                                     GetTestPathImplFactory()));
+  EXPECT_FALSE(Path::MakeSvgPathData(std::string(Path::kMaxSvgBytes + 1, ' '),
+                                     1, GetTestPathImplFactory()));
+  EXPECT_TRUE(Path::MakeSvgPathData("", 1, GetTestPathImplFactory()));
 }
 TEST(PathTest, SvgSourceRetentionDoesNotRequireParsing) {
   for (const char* text : {"M0 0 A1", "M0 0 L1 1 L2", "M0 0 L1e40 2", "L1 2"}) {
     base::String data(text);
-    auto path = Path::MakeSvgPathData(data, 1);
+    auto path = Path::MakeSvgPathData(data, 1, GetTestPathImplFactory());
     ASSERT_TRUE(path) << text;
     const auto& source = std::get<SvgPathView>(path->GetSourceView()).data;
     EXPECT_EQ(&source, &data.str());
@@ -411,11 +416,11 @@ TEST(PathTest, SvgSourceRetentionDoesNotRequireParsing) {
 }
 TEST(PathTest, SvgSharesComputedStringAcrossScaleAndSourceCopies) {
   base::String data("M0 0 L1 2 C3 4 5 6 7 8 Z");
-  auto first = Path::MakeSvgPathData(data, 1);
-  auto second = Path::MakeSvgPathData(data, 2);
+  auto first = Path::MakeSvgPathData(data, 1, GetTestPathImplFactory());
+  auto second = Path::MakeSvgPathData(data, 2, GetTestPathImplFactory());
   ASSERT_TRUE(first);
   ASSERT_TRUE(second);
-  PathImpl copy(first->GetImpl().GetSource());
+  PathStreamImpl copy(first->GetImpl().GetSource());
   const auto& a = std::get<SvgPathView>(first->GetSourceView()).data;
   const auto& b = std::get<SvgPathView>(second->GetSourceView()).data;
   const auto& c = std::get<SvgPathView>(copy.GetSourceView()).data;
@@ -431,7 +436,8 @@ TEST(PathTest, SuperEllipseSamplesMatchLegacyFormula) {
   constexpr double half_pi = 1.57079632679489661923;
   const float exponents[][2] = {{2, 2}, {4, 3}, {0.2f, 2.3f}, {10, 10}};
   for (const auto& exponent : exponents) {
-    auto path = Path::MakeSuperEllipse(60, 40, exponent[0], exponent[1]);
+    auto path = Path::MakeSuperEllipse(60, 40, exponent[0], exponent[1],
+                                       GetTestPathImplFactory());
     ASSERT_TRUE(path);
     auto view = std::get<PathView>(path->GetSourceView());
     size_t index = 0;
@@ -456,7 +462,7 @@ TEST(PathTest, SuperEllipseSamplesMatchLegacyFormula) {
   }
 }
 TEST(PathTest, EllipseAndSuperEllipseEndpoints) {
-  auto ellipse = Path::MakeEllipse(20, 10);
+  auto ellipse = Path::MakeEllipse(20, 10, GetTestPathImplFactory());
   ASSERT_TRUE(ellipse);
   auto e = std::get<PathView>(ellipse->GetSourceView());
   EXPECT_EQ(e.points[0].x, 20);
@@ -466,16 +472,18 @@ TEST(PathTest, EllipseAndSuperEllipseEndpoints) {
   EXPECT_EQ(e.points[6].x, -20);
   EXPECT_EQ(e.points[9].y, -10);
   EXPECT_EQ(e.commands[e.header.command_count - 1], PathVerb::kClose);
-  auto super = Path::MakeSuperEllipse(20, 10, 4, 3);
+  auto super = Path::MakeSuperEllipse(20, 10, 4, 3, GetTestPathImplFactory());
   ASSERT_TRUE(super);
   auto s = std::get<PathView>(super->GetSourceView());
   EXPECT_EQ(s.points[0].x, 20);
   EXPECT_EQ(s.points[0].y, 0);
   EXPECT_EQ(s.points[s.header.point_count - 1].x, 20);
   EXPECT_EQ(s.points[s.header.point_count - 1].y, 0);
-  EXPECT_FALSE(Path::MakeSuperEllipse(1, 1, 0, 2));
-  EXPECT_EQ(std::get<PathView>(Path::MakeEllipse(0, 10)->GetSourceView())
-                .header.width,
-            0);
+  EXPECT_FALSE(Path::MakeSuperEllipse(1, 1, 0, 2, GetTestPathImplFactory()));
+  EXPECT_EQ(
+      std::get<PathView>(
+          Path::MakeEllipse(0, 10, GetTestPathImplFactory())->GetSourceView())
+          .header.width,
+      0);
 }
 }  // namespace lynx::gfx

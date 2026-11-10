@@ -4,9 +4,11 @@
 
 #ifndef GFX_PUBLIC_PATH_H_
 #define GFX_PUBLIC_PATH_H_
+#include <memory>
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "gfx/public/path_impl.h"
+#include "gfx/public/path_impl_factory.h"
 #include "gfx/public/path_parser.h"
 namespace lynx::gfx {
 // Retaining the facade keeps its immutable source views and impl key alive
@@ -14,32 +16,38 @@ namespace lynx::gfx {
 class Path final : public fml::RefCountedThreadSafe<Path> {
  public:
   static constexpr size_t kMaxPoints = 1u << 20;
-  GFX_EXPORT static fml::RefPtr<Path> MakeRect(float width, float height);
-  GFX_EXPORT static fml::RefPtr<Path> MakeRoundedRect(float width, float height,
-                                                      const float (&radii)[8]);
-  GFX_EXPORT static fml::RefPtr<Path> MakeEllipse(float rx, float ry);
-  GFX_EXPORT static fml::RefPtr<Path> MakeSuperEllipse(float rx, float ry,
-                                                       float exponent_x,
-                                                       float exponent_y);
+  GFX_EXPORT static fml::RefPtr<Path> MakeRect(float width, float height,
+                                               const PathImplFactory& factory);
+  GFX_EXPORT static fml::RefPtr<Path> MakeRoundedRect(
+      float width, float height, const float (&radii)[8],
+      const PathImplFactory& factory);
+  GFX_EXPORT static fml::RefPtr<Path> MakeEllipse(
+      float rx, float ry, const PathImplFactory& factory);
+  GFX_EXPORT static fml::RefPtr<Path> MakeSuperEllipse(
+      float rx, float ry, float exponent_x, float exponent_y,
+      const PathImplFactory& factory);
   GFX_EXPORT static fml::RefPtr<Path> MakeSuperRoundedRect(
       float width, float height, const float (&radii)[8], float exponent_x,
-      float exponent_y);
+      float exponent_y, const PathImplFactory& factory);
   static constexpr size_t kMaxSvgBytes = 1u << 20;
   // Retains bounded source bytes without parsing SVG syntax. Consumers must
   // check parser errors before publishing native geometry.
   GFX_EXPORT static fml::RefPtr<Path> MakeSvgPathData(
-      base::String data, float source_to_layout_scale);
+      base::String data, float source_to_layout_scale,
+      const PathImplFactory& factory);
 
-  uint64_t GetKey() const { return impl_.GetKey(); }
-  PathSourceView GetSourceView() const { return impl_.GetSourceView(); }
-  const PathImpl& GetImpl() const { return impl_; }
+  uint64_t GetKey() const { return impl_->GetKey(); }
+  PathSourceView GetSourceView() const { return impl_->GetSourceView(); }
+  const PathImpl& GetImpl() const { return *impl_; }
 
  private:
   friend class fml::RefCountedThreadSafe<Path>;
   friend class PathBuilder;
-  explicit Path(PathSource source);
+  static fml::RefPtr<Path> MakeFromSource(PathSource source,
+                                          const PathImplFactory& factory);
+  explicit Path(std::unique_ptr<PathImpl> impl);
   GFX_EXPORT ~Path();
-  const PathImpl impl_;
+  const std::unique_ptr<PathImpl> impl_;
 };
 
 // Builds packed immutable geometry. Known-size producers
@@ -65,7 +73,7 @@ class PathBuilder {
   // unsupported. Check parser errors before publishing preceding segments.
   GFX_EXPORT LBSPathConsumer GetConsumer();
   // Ends the last open subpath and transfers immutable storage to the Path.
-  GFX_EXPORT fml::RefPtr<Path> Build();
+  GFX_EXPORT fml::RefPtr<Path> Build(const PathImplFactory& factory);
 
  private:
   void End();

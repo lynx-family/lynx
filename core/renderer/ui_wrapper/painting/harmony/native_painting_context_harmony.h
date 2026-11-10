@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
+#include "core/renderer/ui_wrapper/painting/harmony/path_harmony.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 #include "gfx/public/display_list.h"
@@ -28,6 +29,9 @@ class LynxRendererContext;
 class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
                                  public NativePaintingContext {
  public:
+  const gfx::PathImplFactory& GetPathImplFactory() const override {
+    return path_impl_factory_;
+  }
   explicit NativePaintingCtxHarmony(
       const std::shared_ptr<harmony::LynxContext>& context);
   ~NativePaintingCtxHarmony() override;
@@ -112,6 +116,7 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
   void EnqueueReconstructEventTargetTreeRecursively() override;
 
  private:
+  PathHarmonyFactory path_impl_factory_;
   void Enqueue(shell::UIOperation operation);
   int32_t GenerateUniqueImageKey() { return ++image_key_; }
 

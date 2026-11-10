@@ -20,6 +20,7 @@
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_api.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
+#include "gfx/testing/path_stream_impl.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -146,6 +147,9 @@ class FakeTextLayoutAPI : public text::TextLayoutAPI {
 class TextEventRangePaintingContext : public MockPaintingContext,
                                       public NativePaintingContext {
  public:
+  const gfx::PathImplFactory& GetPathImplFactory() const override {
+    return gfx::GetTestPathImplFactory();
+  }
   void SetTextLayout(std::unique_ptr<TextLayoutImpl> layout) {
     text_layout_impl_ = std::move(layout);
   }

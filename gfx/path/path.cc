@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "base/include/compiler_specific.h"
+#include "gfx/public/path_impl_factory.h"
 
 namespace lynx::gfx {
 namespace {
@@ -107,27 +108,36 @@ PathSourceView PathSource::GetSourceView() const {
       geometry_ ? GeometryPoints(geometry_.get(), header_.command_count)
                 : nullptr};
 }
-Path::Path(PathSource source) : impl_(std::move(source)) {}
+Path::Path(std::unique_ptr<PathImpl> impl) : impl_(std::move(impl)) {}
+fml::RefPtr<Path> Path::MakeFromSource(PathSource source,
+                                       const PathImplFactory& factory) {
+  auto impl = factory.Create(std::move(source));
+  if (!impl) std::abort();
+  return fml::AdoptRef(new Path(std::move(impl)));
+}
 Path::~Path() = default;
 
-fml::RefPtr<Path> Path::MakeRect(float width, float height) {
+fml::RefPtr<Path> Path::MakeRect(float width, float height,
+                                 const PathImplFactory& factory) {
   if (!ValidSize(width, height)) return nullptr;
   PathHeader header{};
   header.kind = PathKind::kRect;
   header.width = width;
   header.height = height;
-  return fml::AdoptRef(new Path(PathSource(header)));
+  return MakeFromSource(PathSource(header), factory);
 }
 fml::RefPtr<Path> Path::MakeRoundedRect(float width, float height,
-                                        const float (&radii)[8]) {
+                                        const float (&radii)[8],
+                                        const PathImplFactory& factory) {
   PathHeader header{};
   if (!NormalizeRoundedRect(width, height, radii, header)) return nullptr;
-  return fml::AdoptRef(new Path(PathSource(header)));
+  return MakeFromSource(PathSource(header), factory);
 }
-fml::RefPtr<Path> Path::MakeEllipse(float rx, float ry) {
+fml::RefPtr<Path> Path::MakeEllipse(float rx, float ry,
+                                    const PathImplFactory& factory) {
   if (!std::isfinite(rx) || !std::isfinite(ry) || rx < 0 || ry < 0)
     return nullptr;
-  if (rx == 0 || ry == 0) return Path::MakeRect(0, 0);
+  if (rx == 0 || ry == 0) return Path::MakeRect(0, 0, factory);
   PathBuilder b(6, 13);
   b.MoveTo(rx, 0);
   b.CubicTo(rx, kCircleControl * ry, kCircleControl * rx, ry, 0, ry);
@@ -135,29 +145,30 @@ fml::RefPtr<Path> Path::MakeEllipse(float rx, float ry) {
   b.CubicTo(-rx, -kCircleControl * ry, -kCircleControl * rx, -ry, 0, -ry);
   b.CubicTo(kCircleControl * rx, -ry, rx, -kCircleControl * ry, rx, 0);
   b.Close();
-  return b.Build();
+  return b.Build(factory);
 }
-fml::RefPtr<Path> Path::MakeSuperEllipse(float rx, float ry, float ex,
-                                         float ey) {
+fml::RefPtr<Path> Path::MakeSuperEllipse(float rx, float ry, float ex, float ey,
+                                         const PathImplFactory& factory) {
   if (!std::isfinite(rx) || !std::isfinite(ry) || rx < 0 || ry < 0 ||
       !ValidExponent(ex) || !ValidExponent(ey))
     return nullptr;
-  if (rx == 0 || ry == 0) return Path::MakeRect(0, 0);
+  if (rx == 0 || ry == 0) return Path::MakeRect(0, 0, factory);
   LameSample samples[kQuarterSamples];
   SampleLame(ex, ey, samples);
   PathBuilder b(kSuperPoints + 1, kSuperPoints);
   for (int q = 0; q < 4; ++q) LameQuarter(b, rx, ry, 0, 0, samples, q);
   b.Close();
-  return b.Build();
+  return b.Build(factory);
 }
 fml::RefPtr<Path> Path::MakeSuperRoundedRect(float width, float height,
                                              const float (&radii)[8], float ex,
-                                             float ey) {
+                                             float ey,
+                                             const PathImplFactory& factory) {
   if (!ValidExponent(ex) || !ValidExponent(ey)) return nullptr;
   PathHeader header{};
   if (!NormalizeRoundedRect(width, height, radii, header)) return nullptr;
   if (width == 0 || height == 0)
-    return Path::MakeRoundedRect(width, height, radii);
+    return Path::MakeRoundedRect(width, height, radii, factory);
   const auto& r = header.radii;
   LameSample samples[kQuarterSamples];
   SampleLame(ex, ey, samples);
@@ -167,13 +178,14 @@ fml::RefPtr<Path> Path::MakeSuperRoundedRect(float width, float height,
   LameQuarter(b, r[0], r[1], r[0], r[1], samples, 2);
   LameQuarter(b, r[2], r[3], width - r[2], r[3], samples, 3);
   b.Close();
-  return b.Build();
+  return b.Build(factory);
 }
-fml::RefPtr<Path> Path::MakeSvgPathData(base::String data, float scale) {
+fml::RefPtr<Path> Path::MakeSvgPathData(base::String data, float scale,
+                                        const PathImplFactory& factory) {
   if (!std::isfinite(scale) || scale <= 0 || data.length() > kMaxSvgBytes ||
       std::memchr(data.c_str(), '\0', data.length()))
     return nullptr;
-  return fml::AdoptRef(new Path(PathSource(std::move(data), scale)));
+  return MakeFromSource(PathSource(std::move(data), scale), factory);
 }
 
 PathBuilder::PathBuilder(size_t commands, size_t points)
@@ -321,7 +333,7 @@ LBSPathConsumer PathBuilder::GetConsumer() {
   };
   return c;
 }
-fml::RefPtr<Path> PathBuilder::Build() {
+fml::RefPtr<Path> PathBuilder::Build(const PathImplFactory& factory) {
   if (in_subpath_) End();
   fml::RefPtr<Path> result;
   if (valid_) {
@@ -329,7 +341,7 @@ fml::RefPtr<Path> PathBuilder::Build() {
       std::memmove(GeometryPoints(geometry_, header_.command_count),
                    GeometryPoints(geometry_, command_capacity_),
                    header_.point_count * sizeof(PathPoint));
-    result = fml::AdoptRef(new Path(PathSource(header_, geometry_)));
+    result = Path::MakeFromSource(PathSource(header_, geometry_), factory);
     geometry_ = nullptr;
   }
   std::free(geometry_);

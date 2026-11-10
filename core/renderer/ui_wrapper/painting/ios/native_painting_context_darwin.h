@@ -13,6 +13,7 @@
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
+#include "core/renderer/ui_wrapper/painting/ios/path_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "gfx/public/display_list.h"
@@ -26,6 +27,7 @@ namespace tasm {
 class PaintImage;
 class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePaintingContext {
  public:
+  const gfx::PathImplFactory &GetPathImplFactory() const override { return path_impl_factory_; }
   NativePaintingCtxDarwin(LynxUIOwner *owner, LynxComponentScopeRegistry *component_registry,
                           void *textra);
   ~NativePaintingCtxDarwin() override = default;
@@ -131,6 +133,7 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
 #pragma endregion  // NativePaintingContext
 
  private:
+  PathDarwinFactory path_impl_factory_;
   int32_t GenerateUniqueImageKey() { return ++image_key_; }
 
   template <typename F>

@@ -7,11 +7,13 @@
 #include "gfx/gfx_export.h"
 #include "gfx/public/path_types.h"
 namespace lynx::gfx {
-// Path owns this immutable value directly; it has no separate reference count.
-class GFX_EXPORT PathImpl final {
+// The facade owns one implementation. Native realizations remain
+// backend-private and are created on the consumer executor, after source-only
+// construction.
+class GFX_EXPORT PathImpl {
  public:
   explicit PathImpl(PathSource source);
-  ~PathImpl();
+  virtual ~PathImpl() = 0;
   PathImpl(const PathImpl&) = delete;
   PathImpl& operator=(const PathImpl&) = delete;
   uint64_t GetKey() const { return key_; }

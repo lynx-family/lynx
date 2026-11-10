@@ -83,6 +83,7 @@ unittest_set("display_list_testset") {
   public_deps = [
     ":display_list",
     "../../../../base/src:base_values",
+    "../../../../gfx:path_test_utils",
     "../../css:css",
     "../../starlight:starlight",
   ]

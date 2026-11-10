@@ -26,6 +26,7 @@ unittest_set("display_list_testset") {
   ]
   public_deps = [
     ":display_list",
+    "..:path_test_utils",
     "../../base/src:base_values",
   ]
 }

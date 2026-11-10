@@ -16,6 +16,7 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 #include "gfx/public/display_list.h"
+#include "gfx/public/path_impl_factory.h"
 
 namespace lynx::tasm {
 class PlatformEventBundle;
@@ -36,6 +37,7 @@ class NativePaintingContext {
 
   NativePaintingContext() = default;
   virtual ~NativePaintingContext() = default;
+  virtual const gfx::PathImplFactory& GetPathImplFactory() const = 0;
   virtual void FinishTasmOperation(
       const std::shared_ptr<PipelineOptions>& options) = 0;
   virtual void FinishLayoutOperation(
