@@ -8,6 +8,7 @@
 
 #import <Lynx/LynxBackgroundRuntime.h>
 #import <Lynx/LynxBaseConfigurator.h>
+#import <Lynx/LynxCustomVsyncMonitor.h>
 #import <Lynx/LynxImageConfig.h>
 #import <Lynx/LynxViewGroup.h>
 
@@ -45,6 +46,21 @@ static NSString* _Nonnull const KEY_LYNX_ENABLE_FETCH_UIIMAGE = @"lynx_enable_fe
 
 @property(nonatomic, assign) CGRect frame;
 @property(nonatomic, nullable) LynxBackgroundRuntime* lynxBackgroundRuntime;
+
+/**
+ * The frame source for this View and the runtime it creates. Nil uses the system source.
+ * Only runtimes created by the View support a custom source. A pre-created
+ * lynxBackgroundRuntime is not supported with custom VSync in this version.
+ * Configure before building the View.
+ * Lynx strongly retains the monitor while it is configured on the View.
+ * Controls consumers that request Lynx VSync. Forced frames and independently clocked
+ * platform animations keep their existing behavior.
+ * Custom VSync drives Clay raster frames only with the asynchronous compositor.
+ * Selecting a source does not change the compositor configuration.
+ * Views reusing a Core engine must configure the same monitor instance, or all use nil.
+ */
+- (void)setCustomVsyncMonitor:(nullable id<LynxCustomVsyncMonitor>)monitor;
+
 @property(nonatomic, nullable) LynxViewGroup* lynxViewGroup;
 @property(nonatomic, nullable, strong) NSMutableDictionary<NSString*, id>* lynxViewConfig;
 
