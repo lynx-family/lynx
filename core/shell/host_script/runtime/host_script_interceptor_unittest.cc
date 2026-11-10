@@ -4,6 +4,7 @@
 
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <thread>
@@ -429,6 +430,87 @@ TEST_F(HostScriptInterceptorTest, DataRoundTripCopiesNestedRecordsAndBuffers) {
   EXPECT_EQ(event.GetProperty("value"), value);
 }
 
+TEST_F(HostScriptInterceptorTest, SpecialNumbersRoundTrip) {
+  Install(Interceptor::Domain::kBTS);
+  Script(R"(
+    interceptor.on('jsb.result', (e,c) => {
+      if (e.value && !Object.is(e.value.nested[0], expected))
+        throw Error('number changed during round trip');
+      return c.proceed({value:{nested:[expected]}});
+    });
+  )");
+  for (const char* source : {"NaN", "Infinity", "-Infinity", "-0", "0"}) {
+    SCOPED_TRACE(source);
+    Script((std::string("globalThis.expected = ") + source).c_str());
+    const auto expected =
+        env_.Global().Get("expected").As<Napi::Number>().DoubleValue();
+    lepus::Value event(lepus::Dictionary::Create());
+    auto result = provider_->Dispatch(InterceptKind::kResult, event);
+    ASSERT_FALSE(result.failed);
+    auto value = result.patch.GetProperty("value");
+    auto number = value.GetProperty("nested").GetProperty(0);
+    ASSERT_TRUE(number.IsNumber());
+    if (std::isnan(expected)) {
+      EXPECT_TRUE(std::isnan(number.Number()));
+    } else {
+      EXPECT_EQ(number.Number(), expected);
+      EXPECT_EQ(std::signbit(number.Number()), std::signbit(expected));
+    }
+    event.SetProperty("value", value);
+    EXPECT_FALSE(provider_->Dispatch(InterceptKind::kResult, event).failed);
+  }
+}
+
+TEST_F(HostScriptInterceptorTest, SpecialNumbersInPromiseCallbacks) {
+  Install(Interceptor::Domain::kBTS);
+  Script(R"(
+    globalThis.numbers = [NaN, Infinity, -Infinity, -0];
+    interceptor.on('jsb.call', (e,c) => c.mock({
+      returnValue: NaN,
+      callbacks: [new Promise(resolve => {
+        globalThis.resume = () => resolve({argumentIndex:0, args:numbers});
+      })]
+    }));
+    interceptor.on('jsb.callback', async (e,c) => {
+      await new Promise(resolve => { globalThis.resume = resolve; });
+      return c.proceed({args:numbers});
+    });
+  )");
+  lepus::Value event(lepus::Dictionary::Create());
+  auto indices = lepus::CArray::Create();
+  indices->push_back(lepus::Value(0));
+  event.SetProperty("callbackIndices", lepus::Value(indices));
+  for (auto kind : {InterceptKind::kCall, InterceptKind::kCallback}) {
+    auto result = provider_->Dispatch(kind, event);
+    ASSERT_FALSE(result.failed);
+    if (kind == InterceptKind::kCall)
+      EXPECT_TRUE(std::isnan(result.mock.GetProperty("returnValue").Number()));
+    ASSERT_TRUE(result.pending);
+    bool completed = false;
+    result.pending([&](InterceptResult settled) {
+      completed = true;
+      ASSERT_FALSE(settled.failed);
+      auto payload = kind == InterceptKind::kCall
+                         ? settled.mock.GetProperty("callbacks").GetProperty(0)
+                         : settled.patch;
+      auto args = payload.GetProperty("args");
+      EXPECT_TRUE(std::isnan(args.GetProperty(0).Number()));
+      EXPECT_EQ(args.GetProperty(1).Number(), INFINITY);
+      EXPECT_EQ(args.GetProperty(2).Number(), -INFINITY);
+      EXPECT_EQ(args.GetProperty(3).Number(), 0);
+      EXPECT_TRUE(std::signbit(args.GetProperty(3).Number()));
+    });
+    EXPECT_FALSE(completed);
+    Script("resume()");
+    LEPUSContext* pending_context = nullptr;
+    int status;
+    while ((status = LEPUS_ExecutePendingJob(runtime_, &pending_context)) > 0) {
+    }
+    ASSERT_EQ(status, 0);
+    EXPECT_TRUE(completed);
+  }
+}
+
 TEST_F(HostScriptInterceptorTest,
        InvalidNestedDataRollsBackAndClearsExceptions) {
   const char* invalid[] = {
@@ -437,8 +519,6 @@ TEST_F(HostScriptInterceptorTest,
       "new Date(0)",
       "new Uint8Array(1)",
       "Object.create({n:1})",
-      "NaN",
-      "Infinity",
       "Symbol('value')",
       "{get value() { throw Error('getter'); }}",
       "new Proxy({}, {getPrototypeOf() { throw Error('prototype'); }})",

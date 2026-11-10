@@ -78,11 +78,9 @@ void LynxJSIModule::Destroy() {
 }
 
 base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
-    const MethodMetadata& method, Runtime* rt, const Value* args,
+    const MethodMetadata& original_method, Runtime* rt, const Value* args,
     size_t count) {
   uint64_t call_func_start = lynx::base::CurrentSystemTimeMilliseconds();
-  LOGI(GetLogContext() << " NativeModule: invoke " << name_ << "."
-                       << method.name);
   Scope scope(*rt);
   [[maybe_unused]] std::vector<int64_t> callback_ids;
   CallbackMap callback_map;
@@ -90,14 +88,28 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   auto interceptor = group_interceptor_;
   std::shared_ptr<ModuleCallContext> context;
   std::vector<Value> rewritten_args;
+  const MethodMetadata* selected_method = &original_method;
   InvokeMethodEndScope end_scope{nullptr, nullptr, delegate_, callback_map};
   if (interceptor && interceptor->HasInvocationHooks()) {
     end_scope.interceptor = interceptor.get();
-    context = interceptor->BeforeConvertArgs(self, method, rt, args, count,
-                                             rewritten_args);
+    context = interceptor->BeforeConvertArgs(self, original_method, rt, args,
+                                             count, rewritten_args);
     end_scope.context = context.get();
+    if (context && !context->method_name.empty() &&
+        context->method_name != original_method.name) {
+      auto target = methodMap_.find(context->method_name);
+      if (target == methodMap_.end()) {
+        return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+            "NativeModule: redirected method not found: " +
+            context->method_name));
+      }
+      selected_method = target->second.get();
+    }
     if (!rewritten_args.empty()) args = rewritten_args.data();
   }
+  const auto& method = *selected_method;
+  LOGI(GetLogContext() << " NativeModule: invoke " << name_ << "."
+                       << method.name);
 
   // timing
   std::string first_arg_str;

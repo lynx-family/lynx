@@ -38,6 +38,7 @@ BASE_STATIC_STRING_DECL(kModule, "module");
 BASE_STATIC_STRING_DECL(kMethod, "method");
 BASE_STATIC_STRING_DECL(kViewId, "viewId");
 BASE_STATIC_STRING_DECL(kInvocationId, "invocationId");
+BASE_STATIC_STRING_DECL(kContext, "context");
 BASE_STATIC_STRING_DECL(kArgs, "args");
 BASE_STATIC_STRING_DECL(kCallback, "callback");
 BASE_STATIC_STRING_DECL(kOpaque, "opaque");
@@ -105,8 +106,9 @@ class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
       : provider_(std::move(provider)),
         id_(next_id_.fetch_add(1, std::memory_order_relaxed)),
         view_(view),
-        module_(std::move(module)),
-        method_(std::move(method)) {}
+        module_(std::move(module)) {
+    method_name = std::move(method);
+  }
 
   // The provider selected at the start, while it still handles `kind`.
   std::shared_ptr<Interceptor> Provider(Kind kind) const {
@@ -121,9 +123,10 @@ class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
   lepus::Value Event() const {
     auto event = lepus::Value(lepus::Dictionary::Create());
     event.SetProperty(kModule, lepus::Value(module_));
-    event.SetProperty(kMethod, lepus::Value(method_));
+    event.SetProperty(kMethod, lepus::Value(method_name));
     event.SetProperty(kViewId, lepus::Value(std::to_string(view_)));
     event.SetProperty(kInvocationId, lepus::Value(std::to_string(id_)));
+    if (!context.IsUndefined()) event.SetProperty(kContext, context);
     return event;
   }
 
@@ -137,6 +140,8 @@ class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
   lepus::Value TakeMock() { return std::exchange(mock_, lepus::Value()); }
 
   std::function<void(InterceptCompletion)> pending_callbacks;
+  // Copied data owned by this invocation and its callbacks, not JS handles.
+  lepus::Value context{lepus::Value::kCreateAsUndefinedTag};
   std::weak_ptr<ModuleDelegate> delegate;
   std::unordered_map<int64_t, std::weak_ptr<ModuleCallback>> callbacks;
 
@@ -146,7 +151,6 @@ class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
   int64_t id_ = 0;
   base::LynxEntityId view_ = -1;
   std::string module_;
-  std::string method_;
   bool mocked_ = false;
   lepus::Value mock_;
 };
@@ -215,6 +219,11 @@ HostScriptModuleInterceptor::BeforeConvertArgs(
   event.SetProperty(kOpaqueIndices, lepus::Value(std::move(opaque)));
   auto decision = handler->Dispatch(Kind::kCall, event);
   if (decision.failed) return owned;
+  auto target_method = Patched(decision, kMethod);
+  if (target_method.IsString()) call.method_name = target_method.StdString();
+  if (decision.patch.IsTable() && decision.patch.Contains(kContext)) {
+    call.context = decision.patch.GetProperty(kContext);
+  }
 
   auto patched = Patched(decision, kArgs);
   if (patched.IsArray()) {
