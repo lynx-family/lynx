@@ -12,6 +12,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -48,6 +49,41 @@ public class LynxImageManagerTest {
 
   @After
   public void tearDown() {}
+
+  @Test
+  @UiThreadTest
+  public void hiddenImageUpdatesBoundsAndSkipsDrawing() throws Exception {
+    LynxImageManager manager = new LynxImageManager(mContext);
+    LynxScaleTypeDrawable drawable = mock(LynxScaleTypeDrawable.class);
+    Field image = LynxImageManager.class.getDeclaredField("mImageDrawable");
+    image.setAccessible(true);
+    image.set(manager, drawable);
+    Field flags = LynxImageManager.class.getDeclaredField("dirtyFlags");
+    flags.setAccessible(true);
+    Field sampling = LynxImageManager.class.getDeclaredField("DOWN_SAMPLING_SCALE_CHANGED");
+    sampling.setAccessible(true);
+
+    manager.onLayoutUpdated(317, 259, 0, 0, 0, 0);
+    manager.updateDrawingBoundsIfNeeded();
+    flags.setLong(manager, 0);
+
+    manager.onLayoutUpdated(0, 0, 0, 0, 0, 0);
+    manager.updateDrawingBoundsIfNeeded();
+    verify(drawable).setBounds(new Rect(0, 0, 0, 0));
+    Canvas canvas = new Canvas();
+    manager.onDraw(canvas);
+    verify(drawable, never()).draw(any(Canvas.class));
+    assertEquals(0L, flags.getLong(manager));
+
+    manager.onLayoutUpdated(317, 259, 0, 0, 0, 0);
+    manager.updateDrawingBoundsIfNeeded();
+    assertNotEquals(0L, flags.getLong(manager) & sampling.getLong(null));
+    manager.onDraw(canvas);
+    verify(drawable).draw(canvas);
+
+    manager.onLayoutUpdated(400, 300, 0, 0, 0, 0);
+    assertNotEquals(0L, flags.getLong(manager) & sampling.getLong(null));
+  }
 
   @Test
   @UiThreadTest
