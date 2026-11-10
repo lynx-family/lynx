@@ -9,8 +9,17 @@
 #include <wrl/client.h>
 
 #include "base/include/fml/macros.h"
+#include "clay/gfx/shared_image/fence_sync.h"
 
 namespace clay {
+
+// Keyed-mutex failures have no fence dependency to retain.
+class FailedD3DFenceSync final : public FenceSync {
+ public:
+  bool ClientWait() override { return false; }
+  Type GetType() const override { return Type::kClientWaitOnly; }
+  PollResult Poll() override { return PollResult::kFailed; }
+};
 
 class ScopedDXGIKeyedMutex {
  public:

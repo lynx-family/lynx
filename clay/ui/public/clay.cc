@@ -36,6 +36,15 @@ namespace clay {
 
 namespace {
 
+ClayFenceSyncResult UnsupportedFenceOperation(const char* operation) {
+#if defined(OS_WIN)
+  FML_LOG(WARNING) << operation
+                   << " is unsupported for this fence on Windows; "
+                      "no GPU wait or completion is implied.";
+#endif
+  return kClayFenceSyncUnsupported;
+}
+
 SharedImageBacking::BackingType ClaySharedImageBackingTypeToBackingType(
     ClaySharedImageBackingType type) {
   switch (type) {
@@ -301,6 +310,9 @@ CLAY_EXTERN_C void ClaySharedImageGetBacking(
       case SharedImageBacking::BackingType::kIOSurface:
         *out_type = kClaySharedImageBackingTypeIOSurface;
         break;
+      case SharedImageBacking::BackingType::kCVPixelBuffer:
+        *out_type = kClaySharedImageBackingTypeCVPixelBuffer;
+        break;
       case SharedImageBacking::BackingType::kD3DTexture:
         *out_type = kClaySharedImageBackingTypeD3DTexture;
         break;
@@ -391,6 +403,109 @@ CLAY_EXTERN_C bool ClayFenceSyncClientWait(ClayFenceSyncRef fence_sync) {
   return true;
 }
 
+// Keep optional entry points discovered by name in statically linked hosts.
+#if defined(_WIN32)
+#define CLAY_KEEP_OPTIONAL_FENCE
+#else
+#define CLAY_KEEP_OPTIONAL_FENCE __attribute__((used))
+#endif
+
+CLAY_EXTERN_C CLAY_KEEP_OPTIONAL_FENCE ClayFenceSyncResult
+ClayFenceSyncPoll(ClayFenceSyncRef fence_sync) {
+  if (!fence_sync) return kClayFenceSyncSignaled;
+  switch (reinterpret_cast<FenceSync*>(fence_sync)->Poll()) {
+    case FenceSync::PollResult::kSignaled:
+      return kClayFenceSyncSignaled;
+    case FenceSync::PollResult::kPending:
+      return kClayFenceSyncPending;
+    case FenceSync::PollResult::kUnsupported:
+      return UnsupportedFenceOperation("ClayFenceSyncPoll");
+    case FenceSync::PollResult::kFailed:
+      return kClayFenceSyncFailed;
+  }
+  return kClayFenceSyncFailed;
+}
+
+CLAY_EXTERN_C CLAY_KEEP_OPTIONAL_FENCE ClayFenceSyncResult
+ClayFenceSyncServerWait(ClayFenceSyncRef fence_sync,
+                        const ClayFenceSyncWaitContext* context) {
+  if (!context || context->struct_size < sizeof(ClayFenceSyncWaitContext)) {
+    return kClayFenceSyncFailed;
+  }
+  switch (context->type) {
+    case kClayFenceSyncWaitCurrentGL:
+      if (context->command_buffer) return kClayFenceSyncFailed;
+      break;
+    case kClayFenceSyncWaitMetalCommandBuffer:
+      if (!context->command_buffer) return kClayFenceSyncFailed;
+      break;
+    default:
+      return UnsupportedFenceOperation("ClayFenceSyncServerWait");
+  }
+  if (!fence_sync) return kClayFenceSyncSignaled;
+  auto* fence = reinterpret_cast<FenceSync*>(fence_sync);
+  if (context->type == kClayFenceSyncWaitCurrentGL) {
+    switch (fence->EnqueueWaitResult()) {
+      case FenceSync::WaitResult::kSuccess:
+        return kClayFenceSyncSuccess;
+      case FenceSync::WaitResult::kFailed:
+        return kClayFenceSyncFailed;
+      case FenceSync::WaitResult::kUnsupported:
+        return UnsupportedFenceOperation("ClayFenceSyncServerWait");
+    }
+    return kClayFenceSyncFailed;
+  }
+#if OS_MACOSX || OS_IOS
+  if (fence->EncodeMetalWait(context->command_buffer))
+    return kClayFenceSyncSuccess;
+  return fence->GetType() == FenceSync::Type::kMetalEvent
+             ? kClayFenceSyncFailed
+             : UnsupportedFenceOperation("ClayFenceSyncServerWait");
+#else
+  return UnsupportedFenceOperation("ClayFenceSyncServerWait");
+#endif
+}
+
+CLAY_EXTERN_C CLAY_KEEP_OPTIONAL_FENCE ClayFenceSyncResult
+ClayFenceSyncExport(ClayFenceSyncRef fence_sync, ClayFenceSyncExportType type,
+                    ClayFenceSyncExportInfo* output) {
+  if (!output || output->struct_size < sizeof(ClayFenceSyncExportInfo)) {
+    return kClayFenceSyncFailed;
+  }
+  output->native_fence_fd = -1;
+  output->metal_shared_event_handle = nullptr;
+  output->metal_event_value = 0;
+  output->release_metal_shared_event_handle = nullptr;
+  if (type != kClayFenceSyncExportNativeFD &&
+      type != kClayFenceSyncExportMetalSharedEvent) {
+    return UnsupportedFenceOperation("ClayFenceSyncExport");
+  }
+  if (!fence_sync) return kClayFenceSyncSignaled;
+  auto* fence = reinterpret_cast<FenceSync*>(fence_sync);
+  const auto result =
+      type == kClayFenceSyncExportNativeFD
+          ? fence->DupNativeFenceFD(&output->native_fence_fd)
+          : fence->CopyMetalSharedEvent(
+                &output->metal_shared_event_handle, &output->metal_event_value,
+                &output->release_metal_shared_event_handle);
+  switch (result) {
+    case FenceSync::NativeExportResult::kExported:
+      return kClayFenceSyncSuccess;
+    case FenceSync::NativeExportResult::kSignaled:
+      return kClayFenceSyncSignaled;
+    case FenceSync::NativeExportResult::kUnsupported:
+      return UnsupportedFenceOperation(
+          type == kClayFenceSyncExportNativeFD
+              ? "ClayFenceSyncExport(NativeFD)"
+              : "ClayFenceSyncExport(MetalSharedEvent)");
+    case FenceSync::NativeExportResult::kFailed:
+      return kClayFenceSyncFailed;
+  }
+  return kClayFenceSyncFailed;
+}
+
+#undef CLAY_KEEP_OPTIONAL_FENCE
+
 CLAY_EXTERN_C void ClayDestroyFenceSync(ClayFenceSyncRef fence_sync) {
   delete reinterpret_cast<FenceSync*>(fence_sync);
 }
@@ -405,7 +520,8 @@ CLAY_EXTERN_C void ClaySharedImageSetFenceSync(
 CLAY_EXTERN_C ClayFenceSyncRef
 ClaySharedImageGetFenceSync(ClaySharedImageRef shared_image_ref) {
   std::unique_ptr<FenceSync> fence_sync =
-      reinterpret_cast<SharedImageBacking*>(shared_image_ref)->GetFenceSync();
+      reinterpret_cast<SharedImageBacking*>(shared_image_ref)
+          ->GetFenceSyncForClient();
   return reinterpret_cast<ClayFenceSyncRef>(fence_sync.release());
 }
 
@@ -565,8 +681,11 @@ CLAY_EXTERN_C bool ClaySharedImageSinkTryAcquireBack(
     return false;
   }
   auto fenceSync = backing->GetFenceSync();
-  if (fenceSync) {
-    fenceSync->ClientWait();
+  if (fenceSync && !fenceSync->ClientWait()) {
+    // Keep the back slot and its dependency available for retry. Publishing
+    // the image here would let callers overwrite storage still in GPU use.
+    backing->SetFenceSync(std::move(fenceSync));
+    return false;
   }
   if (out) {
     *out = reinterpret_cast<ClaySharedImageRef>(backing.get());

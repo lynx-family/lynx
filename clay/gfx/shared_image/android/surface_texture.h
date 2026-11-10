@@ -27,7 +27,7 @@ class SurfaceTexture : public fml::RefCountedThreadSafe<SurfaceTexture> {
   void SetFrameAvailableCallback(fml::closure callback);
 
   // Update the texture image to the most recent frame from the image stream.
-  void UpdateTexImage();
+  bool UpdateTexImage();
 
   // Retrieve the 4x4 texture coordinate transform matrix associated with the
   // texture image set by the most recent call to updateTexImage.
@@ -35,11 +35,11 @@ class SurfaceTexture : public fml::RefCountedThreadSafe<SurfaceTexture> {
 
   // Attach the SurfaceTexture to the texture currently bound to
   // GL_TEXTURE_EXTERNAL_OES.
-  void AttachToGLContext(int texture_id);
+  bool AttachToGLContext(int texture_id);
 
   // Detaches the SurfaceTexture from the context that owns its current GL
   // texture. Must be called with that context current on the calling thread.
-  void DetachFromGLContext();
+  bool DetachFromGLContext();
 
   // Creates a native render surface for this surface texture.
   ScopedANativeWindow CreateSurface();

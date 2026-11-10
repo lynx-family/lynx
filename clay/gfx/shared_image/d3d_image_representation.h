@@ -42,6 +42,9 @@ class D3DImageRepresentation final : public SharedImageRepresentation {
  private:
   bool LockKeyedMutex();
   bool UnlockKeyedMutex();
+  bool FailAccess(std::unique_ptr<FenceSync> dependency = nullptr);
+
+  bool access_ready_ = true;
 
   bool FlushD3D9();
 

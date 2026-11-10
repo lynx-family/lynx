@@ -13,6 +13,7 @@
 #include <Windows.h>
 #include <d3d11_1.h>
 
+#include <utility>
 #include <vector>
 
 #include "base/include/closure.h"
@@ -150,31 +151,37 @@ AngleD3DImageRepresentation::~AngleD3DImageRepresentation() {
 }
 
 bool AngleD3DImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
-  if (!GLImageRepresentation::BeginRead(out)) {
+  if (!access_ready_ || !LockKeyedMutex()) {
     return false;
   }
-  return LockKeyedMutex();
+  if (!GLImageRepresentation::BeginRead(out)) {
+    UnlockKeyedMutex();
+    return false;
+  }
+  return true;
 }
 
 bool AngleD3DImageRepresentation::EndRead() {
-  if (!GLImageRepresentation::EndRead()) {
-    return false;
-  }
-  return UnlockKeyedMutex();
+  const bool ended = GLImageRepresentation::EndRead();
+  const bool unlocked = UnlockKeyedMutex();
+  return access_ready_ && ended && unlocked;
 }
 
 bool AngleD3DImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
-  if (!GLImageRepresentation::BeginWrite(out)) {
+  if (!access_ready_ || !LockKeyedMutex()) {
     return false;
   }
-  return LockKeyedMutex();
+  if (!GLImageRepresentation::BeginWrite(out)) {
+    UnlockKeyedMutex();
+    return false;
+  }
+  return true;
 }
 
 bool AngleD3DImageRepresentation::EndWrite() {
-  if (!GLImageRepresentation::EndWrite()) {
-    return false;
-  }
-  return UnlockKeyedMutex();
+  const bool ended = GLImageRepresentation::EndWrite();
+  const bool unlocked = UnlockKeyedMutex();
+  return access_ready_ && ended && unlocked;
 }
 
 bool AngleD3DImageRepresentation::LockKeyedMutex() {
@@ -183,8 +190,13 @@ bool AngleD3DImageRepresentation::LockKeyedMutex() {
   }
   if (scoped_keyed_mutex_) {
     FML_LOG(ERROR) << "Keyed mutex is already locked.";
+    return false;
   }
   scoped_keyed_mutex_.emplace(keyed_mutex_.Get());
+  if (!scoped_keyed_mutex_->Valid()) {
+    scoped_keyed_mutex_.reset();
+    return FailAccess();
+  }
   return true;
 }
 
@@ -194,9 +206,21 @@ bool AngleD3DImageRepresentation::UnlockKeyedMutex() {
   }
   if (!scoped_keyed_mutex_) {
     FML_LOG(ERROR) << "Keyed mutex is not locked.";
+    return false;
   }
   scoped_keyed_mutex_.reset();
   return true;
+}
+
+bool AngleD3DImageRepresentation::FailAccess(
+    std::unique_ptr<FenceSync> dependency) {
+  if (dependency) {
+    GetBacking()->SetFenceSync(std::move(dependency));
+  } else if (access_ready_) {
+    GetBacking()->SetFenceSync(std::make_unique<FailedD3DFenceSync>());
+  }
+  access_ready_ = false;
+  return false;
 }
 
 ImageRepresentationType AngleD3DImageRepresentation::GetType() const {
@@ -487,7 +511,7 @@ bool AngleD3DImageRepresentation::UnbindFrameBuffer() {
 class AngleFenceSync final : public FenceSync {
  public:
   explicit AngleFenceSync(FunctionsAngle* functions_angle)
-      : functions_angle_(functions_angle) {
+      : functions_angle_(std::make_unique<FunctionsAngle>(*functions_angle)) {
     FML_DCHECK(functions_angle_->angle_fence_supported_);
     display_ = functions_angle_->eglGetCurrentDisplay();
     FML_DCHECK(display_ != EGL_NO_DISPLAY);
@@ -501,7 +525,9 @@ class AngleFenceSync final : public FenceSync {
   }
 
   ~AngleFenceSync() override {
-    FML_DCHECK(fence_ != EGL_NO_SYNC_KHR);
+    if (fence_ == EGL_NO_SYNC_KHR) {
+      return;
+    }
     EGLBoolean success = functions_angle_->eglDestroySyncKHR(display_, fence_);
     if (success == EGL_FALSE) {
       FML_LOG(ERROR) << "Failed to delete fence sync in ANGLE env, error: "
@@ -510,7 +536,9 @@ class AngleFenceSync final : public FenceSync {
   }
 
   bool ClientWait() override {
-    FML_DCHECK(fence_ != EGL_NO_SYNC_KHR);
+    if (fence_ == EGL_NO_SYNC_KHR) {
+      return false;
+    }
     EGLint result = functions_angle_->eglClientWaitSyncKHR(display_, fence_, 0,
                                                            EGL_FOREVER_KHR);
     if (result != EGL_CONDITION_SATISFIED_KHR) {
@@ -522,19 +550,25 @@ class AngleFenceSync final : public FenceSync {
 
   Type GetType() const override { return Type::kANGLE; }
 
-  void ServerWait() {
-    FML_DCHECK(fence_ != EGL_NO_SYNC_KHR);
+  bool ServerWait() {
+    if (fence_ == EGL_NO_SYNC_KHR || !functions_angle_->eglWaitSyncKHRProc ||
+        functions_angle_->eglGetCurrentDisplay() != display_ ||
+        functions_angle_->eglGetCurrentContext() == EGL_NO_CONTEXT) {
+      return false;
+    }
     EGLint result = functions_angle_->eglWaitSyncKHR(display_, fence_, 0);
     if (result == EGL_FALSE) {
       FML_LOG(ERROR) << "Failed to eglWaitSyncKHR in ANGLE env, error: "
                      << functions_angle_->eglGetError();
     }
+    return result == EGL_TRUE;
   }
 
  private:
   EGLSyncKHR fence_;
   EGLDisplay display_ = EGL_NO_DISPLAY;
-  FunctionsAngle* functions_angle_ = nullptr;
+  // A failed fence may outlive the representation that consumed it.
+  std::unique_ptr<FunctionsAngle> functions_angle_;
 };
 
 class DummyFenceSync final : public FenceSync {
@@ -548,16 +582,31 @@ void AngleD3DImageRepresentation::ConsumeFence(
   if (!fence_sync) {
     return;
   }
+  if (!access_ready_) {
+    GetBacking()->SetFenceSync(std::make_unique<FailedD3DFenceSync>());
+    return;
+  }
+  bool waited;
   if (fence_sync->GetType() == FenceSync::Type::kANGLE) {
     AngleFenceSync* angle_fence_sync =
         static_cast<AngleFenceSync*>(fence_sync.get());
-    angle_fence_sync->ServerWait();
-    return;
+    waited = angle_fence_sync->ServerWait();
+  } else {
+    waited = fence_sync->ClientWait();
   }
-  fence_sync->ClientWait();
+  if (!waited) {
+    FailAccess(std::move(fence_sync));
+  }
 }
 
 std::unique_ptr<FenceSync> AngleD3DImageRepresentation::ProduceFence() {
+  if (!access_ready_) {
+    auto failed = GetBacking()->GetFenceSync();
+    if (failed) {
+      return failed;
+    }
+    return std::make_unique<FailedD3DFenceSync>();
+  }
   // Sadly it seems that Angle sync doesn't support usage without context
   // if (functions_angle_->angle_fence_supported_) {
   //   return std::make_unique<AngleFenceSync>();

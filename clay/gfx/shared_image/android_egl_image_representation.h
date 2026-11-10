@@ -22,6 +22,8 @@ class SurfaceTextureImageBacking;
 class AndroidEGLFenceSync final : public FenceSync {
  public:
   AndroidEGLFenceSync();
+  enum class CreationMode { kAllowBlockingFallback, kNonblocking };
+  explicit AndroidEGLFenceSync(CreationMode mode);
 
   ~AndroidEGLFenceSync() override;
 
@@ -32,18 +34,27 @@ class AndroidEGLFenceSync final : public FenceSync {
   Type GetType() const override { return Type::kEGL; }
 
   void ServerWait();
+  WaitResult EnqueueWaitResult() override;
+  PollResult Poll() override;
+  NativeExportResult DupNativeFenceFD(int* out_fd) override;
 
   static bool CheckEGLFenceSupported();
   static bool CheckAndroidNativeFenceSupported();
+  static bool CheckEGLWaitSupported();
 
  private:
   friend class NativeBufferEGLImageRepresentation;
   friend class VulkanFenceHelper;
   int32_t GetCurrentFD();
+  static bool WaitEGLSync(EGLDisplay display, EGLSyncKHR sync);
 
   EGLSyncKHR fence_ = EGL_NO_SYNC_KHR;
 
-  static EGLDisplay display;
+  // A missing fence is complete only when construction finished the GPU.
+  bool completed_ = false;
+  bool unsupported_ = false;
+  bool native_fence_ = false;
+  EGLDisplay fence_display_ = EGL_NO_DISPLAY;
   static PFNEGLCREATESYNCKHRPROC eglCreateSyncKHR;
   static PFNEGLDESTROYSYNCKHRPROC eglDestroySyncKHR;
   static PFNEGLCLIENTWAITSYNCKHRPROC eglClientWaitSyncKHR;
@@ -61,6 +72,11 @@ class NativeBufferEGLImageRepresentation final : public GLImageRepresentation {
   ~NativeBufferEGLImageRepresentation() override;
 
   ImageRepresentationType GetType() const override;
+
+  bool BeginRead(ClaySharedImageReadResult* out) override;
+  bool EndRead() override;
+  bool BeginWrite(ClaySharedImageWriteResult* out) override;
+  bool EndWrite() override;
   void ConsumeFence(std::unique_ptr<FenceSync>) override;
   std::unique_ptr<FenceSync> ProduceFence() override;
 
@@ -71,6 +87,7 @@ class NativeBufferEGLImageRepresentation final : public GLImageRepresentation {
   bool UnbindFrameBuffer() override;
 
  private:
+  bool access_ready_ = true;
   uint32_t texture_id_ = 0;
   uint32_t fbo_id_ = 0;
   uint32_t depth_stencil_id_ = 0;
@@ -92,6 +109,7 @@ class SurfaceTextureEGLImageRepresentation final
   ImageRepresentationType GetType() const override;
   void ConsumeFence(std::unique_ptr<FenceSync>) override;
   std::unique_ptr<FenceSync> ProduceFence() override;
+  bool EndRead() override;
 
  private:
   std::optional<TextureInfo> GetTexImage() override;

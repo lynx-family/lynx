@@ -86,6 +86,10 @@ std::unique_ptr<FenceSync> SharedImageBacking::GetFenceSync() {
   return std::move(fence_sync_);
 }
 
+std::unique_ptr<FenceSync> SharedImageBacking::GetFenceSyncForClient() {
+  return GetFenceSync();
+}
+
 fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
     BackingType type, PixelFormat pixel_format, skity::Vec2 size,
     std::optional<GraphicsMemoryHandle> gfx_handle) {
@@ -194,5 +198,10 @@ void SharedImageBacking::DumpToPng(const std::string& file_name) {
 SharedImageBackingUnmanaged::SharedImageBackingUnmanaged(
     PixelFormat pixel_format, skity::Vec2 size)
     : SharedImageBacking(pixel_format, size) {}
+
+bool SharedImageBackingUnmanaged::AcceptFence(
+    std::unique_ptr<FenceSync> fence) {
+  return false;
+}
 
 }  // namespace clay

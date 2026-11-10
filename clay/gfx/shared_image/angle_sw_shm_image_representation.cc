@@ -24,17 +24,16 @@ ImageRepresentationType AngleSwShmImageRepresentation::GetType() const {
 
 void AngleSwShmImageRepresentation::ConsumeFence(
     std::unique_ptr<FenceSync> fence_sync) {
-  if (!fence_sync) {
-    return;
-  }
-  fence_sync->ClientWait();
+  WaitForFence(std::move(fence_sync));
 }
 
 std::unique_ptr<FenceSync> AngleSwShmImageRepresentation::ProduceFence() {
+  if (HasFailedFence()) return TakeFailedFence();
   return nullptr;
 }
 
 bool AngleSwShmImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
+  if (HasFailedFence()) return false;
   memset(out, 0, sizeof(ClaySharedImageReadResult));
   out->struct_size = sizeof(ClaySharedImageReadResult);
   out->type = kClaySharedImageRepresentationTypeShm;
@@ -51,10 +50,11 @@ bool AngleSwShmImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
   return true;
 }
 
-bool AngleSwShmImageRepresentation::EndRead() { return true; }
+bool AngleSwShmImageRepresentation::EndRead() { return !HasFailedFence(); }
 
 bool AngleSwShmImageRepresentation::BeginWrite(
     ClaySharedImageWriteResult* out) {
+  if (HasFailedFence()) return false;
   memset(out, 0, sizeof(ClaySharedImageWriteResult));
   out->struct_size = sizeof(ClaySharedImageWriteResult);
   out->type = kClaySharedImageRepresentationTypeShm;
@@ -72,6 +72,7 @@ bool AngleSwShmImageRepresentation::BeginWrite(
 }
 
 bool AngleSwShmImageRepresentation::EndWrite() {
+  if (HasFailedFence()) return false;
   static_cast<AngleSoftwareShmImageBacking*>(GetBacking())->CopyPixelsToShm();
   return true;
 }
