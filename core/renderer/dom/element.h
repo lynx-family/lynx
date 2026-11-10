@@ -1104,6 +1104,7 @@ class Element : public lepus::RefCounted,
   void NotifyElementSizeUpdated();
 
   // Engine-thread size notifications in logical pixels.
+  // Reports the measured local size in physical pixels.
   void SendSizeChangeEvent();
   void NotifyUnitValuesUpdatedToAnimation(uint32_t style);
 

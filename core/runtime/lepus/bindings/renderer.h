@@ -234,6 +234,8 @@ constexpr static const char* kCFunctionGetElementUniqueID =
     "__GetElementUniqueID";
 constexpr static const char* kCFunctionGetElementByUniqueID =
     "__GetElementByUniqueID";
+constexpr static const char* kCFunctionQueryLayoutCoordinates =
+    "__QueryLayoutCoordinates";
 constexpr static const char* kCFunctionGetTag = "__GetTag";
 constexpr static const char* kCFunctionSetAttribute = "__SetAttribute";
 constexpr static const char* kCFunctionGetAttributes = "__GetAttributes";
