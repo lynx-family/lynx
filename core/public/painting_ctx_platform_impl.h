@@ -103,6 +103,13 @@ class PaintingCtxPlatformRef {
 
   virtual bool IsNativePaintingCtxPlatformRef() { return false; }
 
+  // Called on the UI thread. The origin uses platform layout units.
+  // Android uses physical pixels; iOS/Harmony use points/vp. Convert to
+  // physical pixels with the engine's PhysicalPixelsPerLayoutUnit(), not device
+  // density. Returns false while the host is detached or the platform is
+  // unsupported.
+  virtual bool GetRootViewLocationInWindow(float location[2]) { return false; }
+
   // Called on the UI thread. Returns content, padding, border and margin quads
   // in screen coordinates, or an empty result when unavailable.
   virtual std::vector<float> GetTransformValue(

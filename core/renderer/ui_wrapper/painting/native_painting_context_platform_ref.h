@@ -187,10 +187,6 @@ class NativePaintingCtxPlatformRef
   // Get the location of the root view on the screen.
   virtual void GetRootViewLocationOnScreen(float location[2]) {}
 
-  // Get the location of the root view in its window. Returns false while the
-  // root view is not attached to a window.
-  virtual bool GetRootViewLocationInWindow(float location[2]) { return false; }
-
   // Get the size of the screen.
   virtual void GetScreenSize(float size[2]) {}
 

@@ -2263,10 +2263,10 @@ void Element::SendSizeChangeEvent() {
   if (!IsAttached() || will_destroy() || !HasEventListener("sizechange")) {
     return;
   }
-  const float units_per_px =
-      element_manager()->GetLynxEnvConfig().LayoutsUnitPerPx();
-  const std::array<float, 2> size{width_ / units_per_px,
-                                  height_ / units_per_px};
+  const float pixels_per_unit =
+      element_manager()->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  const std::array<float, 2> size{width_ * pixels_per_unit,
+                                  height_ * pixels_per_unit};
   if (size == last_size_change_) {
     return;
   }

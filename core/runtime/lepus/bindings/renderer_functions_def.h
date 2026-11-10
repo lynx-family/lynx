@@ -253,5 +253,6 @@
   V(LoadStyleSheet)                     \
   V(AdoptStyleSheet)                    \
   V(ReplaceStyleSheets)                 \
-  V(RemoveStyleSheet)
+  V(RemoveStyleSheet)                   \
+  V(FiberQueryLayoutCoordinates)
 #endif  // CORE_RUNTIME_LEPUS_BINDINGS_RENDERER_FUNCTIONS_DEF_H_
