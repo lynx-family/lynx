@@ -54,6 +54,9 @@ sk_sp<SkImage> SkiaGLImageRepresentation::GetSkImage() {
 }
 
 bool SkiaGLImageRepresentation::EndRead() {
+  if (GetBacking()->RequiresReadCompletionBeforeUpdate()) {
+    gr_context_->flushAndSubmit();
+  }
   return gl_representation_->EndRead();
 }
 

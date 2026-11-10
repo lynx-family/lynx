@@ -47,7 +47,7 @@ class EpoxyShmImageBacking : public SharedImageBacking {
 
   GLuint texture_id_ = 0;
   GraphicsMemoryHandle shm_buffer_ = nullptr;
-  int shm_fd_ = 0;
+  int shm_fd_ = -1;
 
   fml::RefPtr<fml::TaskRunner> task_runner_;
 

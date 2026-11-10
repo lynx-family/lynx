@@ -14,27 +14,36 @@ namespace clay {
 VulkanImage::VulkanImage(VkDevice device, VkPhysicalDevice physical_device)
     : device_(device), physical_device_(physical_device) {}
 
-VulkanImage::~VulkanImage() {
+VulkanImage::~VulkanImage() { Reset(); }
+
+void VulkanImage::Reset() {
   if (image_view_ != VK_NULL_HANDLE) {
     VulkanHelper::GetInstance().DestroyImageView(device_, image_view_, nullptr);
     image_view_ = VK_NULL_HANDLE;
   }
   if (image_ != VK_NULL_HANDLE) {
     VulkanHelper::GetInstance().DestroyImage(device_, image_, nullptr);
+    image_ = VK_NULL_HANDLE;
   }
 
   if (image_device_memory_ != VK_NULL_HANDLE) {
     VulkanHelper::GetInstance().FreeMemory(device_, image_device_memory_,
                                            nullptr);
+    image_device_memory_ = VK_NULL_HANDLE;
   }
+  width_ = height_ = 0;
 }
 
-void VulkanImage::CreateFromAndroidBuffer(AHardwareBuffer* buffer) {
-  CreateImage(buffer);
-  CreateImageView();
+bool VulkanImage::CreateFromAndroidBuffer(AHardwareBuffer* buffer) {
+  if (IsValid()) return true;
+  if (!buffer || !CreateImage(buffer) || !CreateImageView()) {
+    Reset();
+    return false;
+  }
+  return true;
 }
 
-void VulkanImage::CreateImage(AHardwareBuffer* hw_buffer) {
+bool VulkanImage::CreateImage(AHardwareBuffer* hw_buffer) {
   VkAndroidHardwareBufferPropertiesANDROID buffer_properties = {};
   buffer_properties.sType =
       VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID;
@@ -43,7 +52,7 @@ void VulkanImage::CreateImage(AHardwareBuffer* hw_buffer) {
           device_, hw_buffer, &buffer_properties);
   if (!LogVkIfNotSuccess(result,
                          "vkGetAndroidHardwareBufferPropertiesANDROID")) {
-    return;
+    return false;
   }
 
   AHardwareBuffer_Desc desc;
@@ -84,17 +93,17 @@ void VulkanImage::CreateImage(AHardwareBuffer* hw_buffer) {
   image_create_info.pQueueFamilyIndices = nullptr,
   image_create_info.pNext = &external_memory_image_create_info;
 
-  VkImage image;
   result = VulkanHelper::GetInstance().CreateImage(device_, &image_create_info,
-                                                   nullptr, &image);
+                                                   nullptr, &image_);
   if (!LogVkIfNotSuccess(result, "vkCreateImage")) {
-    return;
+    image_ = VK_NULL_HANDLE;
+    return false;
   }
 
   VkMemoryDedicatedAllocateInfo dedicated_info = {};
   dedicated_info.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
   dedicated_info.pNext = nullptr;
-  dedicated_info.image = image;
+  dedicated_info.image = image_;
 
   VkImportAndroidHardwareBufferInfoANDROID import_info = {};
   import_info.sType =
@@ -110,25 +119,23 @@ void VulkanImage::CreateImage(AHardwareBuffer* hw_buffer) {
       FindMemoryType(buffer_properties.memoryTypeBits, physical_device_,
                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-  VkDeviceMemory memory;
-  result = VulkanHelper::GetInstance().AllocateMemory(device_, &alloc_info,
-                                                      nullptr, &memory);
+  result = VulkanHelper::GetInstance().AllocateMemory(
+      device_, &alloc_info, nullptr, &image_device_memory_);
   if (!LogVkIfNotSuccess(result, "vkAllocateMemory")) {
-    return;
+    image_device_memory_ = VK_NULL_HANDLE;
+    return false;
   }
 
-  result =
-      VulkanHelper::GetInstance().BindImageMemory(device_, image, memory, 0);
+  result = VulkanHelper::GetInstance().BindImageMemory(device_, image_,
+                                                       image_device_memory_, 0);
   if (!LogVkIfNotSuccess(result, "vkBindImageMemory")) {
-    return;
+    return false;
   }
-
-  image_ = image;
-  image_device_memory_ = memory;
+  return true;
 }
 
-void VulkanImage::CreateImageView() {
-  FML_DCHECK(image_ != VK_NULL_HANDLE);
+bool VulkanImage::CreateImageView() {
+  if (image_ == VK_NULL_HANDLE) return false;
   VkImageViewCreateInfo view_info;
   memset(&view_info, 0, sizeof(VkImageViewCreateInfo));
   view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -147,10 +154,11 @@ void VulkanImage::CreateImageView() {
   auto result = VulkanHelper::GetInstance().CreateImageView(
       device_, &view_info, nullptr, &image_view);
   if (!LogVkIfNotSuccess(result, "vkCreateImageView")) {
-    return;
+    return false;
   }
 
   image_view_ = image_view;
+  return true;
 }
 
 void VulkanImage::ApplyImagerBarrier(VkCommandBuffer command_buffer,
@@ -160,6 +168,7 @@ void VulkanImage::ApplyImagerBarrier(VkCommandBuffer command_buffer,
                                      VkAccessFlags dst_access_mask,
                                      VkPipelineStageFlagBits src_stage_mask,
                                      VkPipelineStageFlagBits dst_stage_mask) {
+  if (!IsValid() || command_buffer == VK_NULL_HANDLE) return;
   VkImageMemoryBarrier barrier;
   memset(&barrier, 0, sizeof(VkImageMemoryBarrier));
   barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;

@@ -7,6 +7,10 @@
 #import <CoreVideo/CoreVideo.h>
 #import <OpenGL/gl3.h>
 
+#include <utility>
+
+#include "clay/gfx/shared_image/apple_gl_fence_sync.h"
+
 #include "base/include/fml/memory/ref_ptr.h"
 #include "clay/common/graphics/gl/scoped_framebuffer_binder.h"
 #include "clay/common/graphics/gl/scoped_texture_binder.h"
@@ -208,78 +212,62 @@ bool CGLImageRepresentation::UnbindFrameBuffer() {
   return true;
 }
 
-// Note that CGL fence sync requires producer and consumer
-// in the same shared group
-class CGLFenceSync final : public FenceSync {
- public:
-  CGLFenceSync() {
-    fence_ = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-    GLenum error = glGetError();
-    if (!fence_ || error != GL_NO_ERROR) {
-      FML_LOG(ERROR) << "Failed to create fence sync in CGL env, glGetError: " << error;
-    }
-    FML_DCHECK(glIsSync(fence_));
-    glFlush();
-  }
-
-  ~CGLFenceSync() override {
-    FML_DCHECK(glIsSync(fence_));
-    glDeleteSync(fence_);
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR) {
-      FML_LOG(ERROR) << "Failed to delete fence sync in CGL env, glGetError: " << error;
-    }
-  }
-
-  bool ClientWait() override {
-    FML_DCHECK(glIsSync(fence_));
-    GLenum result = glClientWaitSync(fence_, 0, GL_TIMEOUT_IGNORED);
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR) {
-      FML_LOG(ERROR) << "Failed to glClientWaitSync in CGL env, glGetError: " << error;
-    }
-    return result == GL_CONDITION_SATISFIED || result == GL_ALREADY_SIGNALED;
-  }
-
-  Type GetType() const override { return Type::kCGL; }
-
-  void ServerWait() {
-    FML_DCHECK(glIsSync(fence_));
-    glWaitSync(fence_, 0, GL_TIMEOUT_IGNORED);
-    GLenum gl_error = glGetError();
-    if (gl_error != GL_NO_ERROR) {
-      FML_LOG(ERROR) << "Failed to glWaitSync in CGL env, glGetError: " << gl_error;
-    }
-  }
-
- private:
-  GLsync fence_;
-};
-
 void CGLImageRepresentation::ConsumeFence(std::unique_ptr<FenceSync> fence_sync) {
-  if (!fence_sync) {
-    return;
-  }
-  if (fence_sync->GetType() == FenceSync::Type::kCGL) {
-    CGLFenceSync* cgl_fence_sync = static_cast<CGLFenceSync*>(fence_sync.get());
-    cgl_fence_sync->ServerWait();
-    return;
-  }
-  fence_sync->ClientWait();
+  if (fence_sync && fence_sync->EnqueueWait()) return;
+  WaitForFence(std::move(fence_sync));
 }
 
-class DummyFenceSync final : public FenceSync {
-  bool ClientWait() override { return true; }
+class CGLFenceContext {
+ public:
+  static constexpr FenceSync::Type kType = FenceSync::Type::kCGL;
+  explicit CGLFenceContext(CGLContextObj producer) {
+    const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+    supported_ = (version && version[0] >= '3' && version[0] <= '9') ||
+                 HasAppleGLFenceExtension("GL_ARB_sync");
+    if (supported_) CGLCreateContext(CGLGetPixelFormat(producer), producer, &context_);
+  }
+  ~CGLFenceContext() {
+    if (context_) CGLReleaseContext(context_);
+  }
+  bool valid() const { return context_ != nullptr; }
+  bool supported() const { return supported_; }
+  bool IsCurrentCompatible() const {
+    auto current = CGLGetCurrentContext();
+    return current && CGLGetShareGroup(current) == CGLGetShareGroup(context_);
+  }
+  GLsync CreateSync() { return glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); }
+  void DeleteSync(GLsync sync) { glDeleteSync(sync); }
+  GLenum PollSync(GLsync sync) { return glClientWaitSync(sync, 0, 0); }
+  void WaitSync(GLsync sync) { glWaitSync(sync, 0, GL_TIMEOUT_IGNORED); }
+  class ScopedCurrent {
+   public:
+    explicit ScopedCurrent(CGLFenceContext* context)
+        : previous_(CGLGetCurrentContext()),
+          valid_(CGLSetCurrentContext(context->context_) == kCGLNoError) {}
+    ~ScopedCurrent() {
+      if (valid_) CGLSetCurrentContext(previous_);
+    }
+    bool valid() const { return valid_; }
 
-  Type GetType() const override { return Type::kClientWaitOnly; }
+   private:
+    CGLContextObj previous_;
+    bool valid_;
+  };
+  std::mutex mutex;
+
+ private:
+  CGLContextObj context_ = nullptr;
+  bool supported_ = false;
 };
 
 std::unique_ptr<FenceSync> CGLImageRepresentation::ProduceFence() {
-  // It seems that glFlush is enough for gl<->gl
-  glFlush();
-  // TODO(youfeng): use CGLFenceSync if consumer and producer are in the same
-  // group
-  return std::make_unique<DummyFenceSync>();
+  if (HasFailedFence()) return TakeFailedFence();
+  if (!(gl_context_ && CGLGetCurrentContext() == gl_context_)) {
+    MarkFenceFailed();
+    return TakeFailedFence();
+  }
+  if (!fence_context_) fence_context_ = std::make_shared<CGLFenceContext>(gl_context_);
+  return std::make_unique<AppleGLFenceSync<CGLFenceContext>>(fence_context_, true);
 }
 
 fml::RefPtr<RepresentationStorageManager> CGLImageRepresentation::GetTextureManager() const {
