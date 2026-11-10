@@ -167,6 +167,8 @@ class SharedImageSinkManaged final : public SharedImageSink {
                     std::optional<GraphicsMemoryHandle> gfx_handle = {},
                     AcquireBackStatus* status = nullptr) override;
 
+  // If detached, retain both the acquired back slot and its fence for retry.
+  // A null fence leaves any dependency already on that backing intact.
   bool SwapBack(std::unique_ptr<FenceSync> fence_sync) override;
 
   uint32_t Capacity() const override { return capacity_; }

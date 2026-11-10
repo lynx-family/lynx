@@ -40,10 +40,19 @@ std::tuple<void*, int> CreateShmBuffer(
   size_t shm_size = size.x * size.y * 4;
 
   int shm_fd = shm_open(shm_name.c_str(), O_CREAT | O_RDWR, 0666);
-  ftruncate(shm_fd, shm_size);
+  if (shm_fd < 0) return {nullptr, -1};
   shm_unlink(shm_name.c_str());
-
-  return {mmap(NULL, shm_size, PROT_WRITE, MAP_SHARED, shm_fd, 0), shm_fd};
+  if (ftruncate(shm_fd, shm_size) != 0) {
+    close(shm_fd);
+    return {nullptr, -1};
+  }
+  void* buffer =
+      mmap(nullptr, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+  if (buffer == MAP_FAILED) {
+    close(shm_fd);
+    return {nullptr, -1};
+  }
+  return {buffer, shm_fd};
 }
 
 }  // namespace
@@ -207,25 +216,24 @@ void EpoxyShmImageBacking::CopyPixelsToShm() {
 int EpoxyShmImageBacking::GetShmFd() const { return shm_fd_; }
 
 EpoxyShmImageBacking::~EpoxyShmImageBacking() {
+  // Only internally allocated storage has an owned descriptor. The EGL image
+  // uses its own texture storage and does not retain this CPU mapping.
+  if (shm_fd_ >= 0) {
+    if (shm_buffer_ && munmap(shm_buffer_, size_.x * size_.y * 4) == -1) {
+      FML_LOG(ERROR) << "EpoxyShmImageBacking munmap failed";
+    }
+    close(shm_fd_);
+  }
   if (egl_image_ == EGL_NO_IMAGE_KHR) {
     return;
   }
   if (task_runner_) {
     fml::TaskRunner::RunNowOrPostTask(
-        task_runner_, [task_runner = task_runner_, egl_display = egl_display_,
-                       egl_image = egl_image_, texture_id = texture_id_,
-                       shm_buffer = shm_buffer_, shm_size = size_,
-                       shm_fd = shm_fd_]() mutable {
+        task_runner_,
+        [task_runner = task_runner_, egl_display = egl_display_,
+         egl_image = egl_image_, texture_id = texture_id_]() mutable {
           eglDestroyImageKHR(egl_display, egl_image);
           glDeleteTextures(1, &texture_id);
-
-          if (munmap(shm_buffer, shm_size.x * shm_size.y * 4) == -1) {
-            FML_LOG(ERROR) << "EpoxyShmImageBacking munmap failed";
-            return;
-          }
-          close(shm_fd);
-          shm_buffer = nullptr;
-          shm_fd = 0;
         });
   }
 }

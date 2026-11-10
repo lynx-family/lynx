@@ -65,10 +65,10 @@ void SurfaceTexture::SetFrameAvailableCallback(fml::closure callback) {
       env, j_surface_texture_.Get(), reinterpret_cast<intptr_t>(listener));
 }
 
-void SurfaceTexture::UpdateTexImage() {
+bool SurfaceTexture::UpdateTexImage() {
   JNIEnv* env = fml::jni::AttachCurrentThread();
-  Java_SurfaceTexturePlatformWrapper_updateTexImage(env,
-                                                    j_surface_texture_.Get());
+  return Java_SurfaceTexturePlatformWrapper_updateTexImage(
+      env, j_surface_texture_.Get());
 }
 
 void SurfaceTexture::GetTransformMatrix(float mtx[16]) {
@@ -86,17 +86,17 @@ void SurfaceTexture::GetTransformMatrix(float mtx[16]) {
   env->ReleaseFloatArrayElements(j_matrix.Get(), elements, JNI_ABORT);
 }
 
-void SurfaceTexture::AttachToGLContext(int texture_id) {
+bool SurfaceTexture::AttachToGLContext(int texture_id) {
   FML_DCHECK(texture_id);
 
   JNIEnv* env = fml::jni::AttachCurrentThread();
-  Java_SurfaceTexturePlatformWrapper_attachToGLContext(
+  return Java_SurfaceTexturePlatformWrapper_attachToGLContext(
       env, j_surface_texture_.Get(), texture_id);
 }
 
-void SurfaceTexture::DetachFromGLContext() {
+bool SurfaceTexture::DetachFromGLContext() {
   JNIEnv* env = fml::jni::AttachCurrentThread();
-  Java_SurfaceTexturePlatformWrapper_detachFromGLContext(
+  return Java_SurfaceTexturePlatformWrapper_detachFromGLContext(
       env, j_surface_texture_.Get());
 }
 

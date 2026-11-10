@@ -82,6 +82,7 @@ source_set("shared_image") {
 
   if (is_apple) {
     sources += [
+      "apple_gl_fence_sync.h",
       "cv_pixelbuffer_image_backing.h",
       "cv_pixelbuffer_image_backing.mm",
       "iosurface_image_backing.h",
@@ -200,6 +201,8 @@ source_set("shared_image") {
   }
 
   if (is_linux) {
+    sources += [ "linux_egl_fence_sync.h" ]
+
     # Epoxy owns the ordinary Linux SHM/GL bridge for both Skia and Skity. The
     # software-rendering build uses the separate ANGLE SHM bridge below.
     if (!enable_software_rendering) {

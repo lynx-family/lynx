@@ -15,7 +15,11 @@ class VulkanImage {
   VulkanImage(VkDevice device, VkPhysicalDevice physical_device);
   ~VulkanImage();
 
-  void CreateFromAndroidBuffer(AHardwareBuffer* buffer);
+  bool CreateFromAndroidBuffer(AHardwareBuffer* buffer);
+  bool IsValid() const {
+    return image_ != VK_NULL_HANDLE && image_view_ != VK_NULL_HANDLE &&
+           image_device_memory_ != VK_NULL_HANDLE;
+  }
 
   void ApplyImagerBarrier(VkCommandBuffer command_buffer,
                           VkImageLayout old_layout, VkImageLayout new_layout,
@@ -31,8 +35,9 @@ class VulkanImage {
   int Height() const { return height_; }
 
  private:
-  void CreateImage(AHardwareBuffer* buffer);
-  void CreateImageView();
+  bool CreateImage(AHardwareBuffer* buffer);
+  bool CreateImageView();
+  void Reset();
 
   VkDevice device_;
   VkPhysicalDevice physical_device_;

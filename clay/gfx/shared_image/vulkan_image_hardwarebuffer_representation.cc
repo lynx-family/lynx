@@ -8,18 +8,19 @@
 #include <utility>
 
 #include "base/include/fml/unique_fd.h"
-#include "clay/gfx/shared_image/android_egl_image_representation.h"
 #include "clay/gfx/vulkan/vulkan_helper.h"
 
 namespace clay {
 
 VkFenceSync::VkFenceSync(std::shared_ptr<VulkanFenceHelper> fence_semaphore)
-    : fence_semaphore_(fence_semaphore) {}
+    : fence_semaphore_(std::move(fence_semaphore)) {
+  if (fence_semaphore_) fence_semaphore_->RetainFenceSync();
+}
 
 // VkFence and VkSemaphore would be destroyed by the VulkanCommandPoolHelper.
 VkFenceSync::~VkFenceSync() {
   if (fence_semaphore_) {
-    fence_semaphore_->MarkCanDestroy();
+    fence_semaphore_->ReleaseFenceSync();
   }
 }
 
@@ -32,16 +33,25 @@ bool VkFenceSync::ClientWait() {
 }
 
 void VkFenceSync::ServerWait() {
-  if (!fence_semaphore_) {
-    FML_LOG(ERROR) << "VkFenceSync::ServerWait: fence_semaphore_ is null";
-    return;
-  }
-  if (!fence_semaphore_->WaitSemaphore()) {
-    // Fallback to client wait.
-    FML_LOG(INFO) << "Vulkan fence sync fd is -1, fallback to client wait.";
+  if (!EnqueueWait()) {
     ClientWait();
-    return;
   }
+}
+
+FenceSync::WaitResult VkFenceSync::EnqueueWaitResult() {
+  return fence_semaphore_ && fence_semaphore_->WaitSemaphore()
+             ? WaitResult::kSuccess
+             : WaitResult::kFailed;
+}
+
+FenceSync::PollResult VkFenceSync::Poll() {
+  return fence_semaphore_ ? fence_semaphore_->Poll() : PollResult::kFailed;
+}
+
+FenceSync::NativeExportResult VkFenceSync::DupNativeFenceFD(int* out_fd) {
+  if (out_fd) *out_fd = -1;
+  return fence_semaphore_ ? fence_semaphore_->DupNativeFenceFD(out_fd)
+                          : NativeExportResult::kFailed;
 }
 
 VulkanImageHardwareBufferRepresentation::
@@ -58,7 +68,9 @@ VulkanImageHardwareBufferRepresentation::
 }
 
 VulkanImageHardwareBufferRepresentation::
-    ~VulkanImageHardwareBufferRepresentation() = default;
+    ~VulkanImageHardwareBufferRepresentation() {
+  if (last_fence_semaphore_) last_fence_semaphore_->MarkCanDestroy();
+}
 
 ImageRepresentationType VulkanImageHardwareBufferRepresentation::GetType()
     const {
@@ -67,6 +79,8 @@ ImageRepresentationType VulkanImageHardwareBufferRepresentation::GetType()
 
 bool VulkanImageHardwareBufferRepresentation::BeginRead(
     ClaySharedImageReadResult* out) {
+  if (!access_ready_ || !vulkan_image_ || !vulkan_image_->IsValid())
+    return false;
   memset(out, 0, sizeof(ClaySharedImageReadResult));
   out->struct_size = sizeof(ClaySharedImageReadResult);
   out->type = kClaySharedImageRepresentationTypeVulkan;
@@ -88,10 +102,13 @@ void VulkanImageHardwareBufferRepresentation::CreateVulkanImage(void* buffer) {
   }
   vulkan_image_ = std::make_unique<VulkanImage>(device_, physical_device_);
   AHardwareBuffer* hw_buffer = reinterpret_cast<AHardwareBuffer*>(buffer);
-  vulkan_image_->CreateFromAndroidBuffer(hw_buffer);
+  access_ready_ = vulkan_image_->CreateFromAndroidBuffer(hw_buffer);
+  if (!access_ready_) vulkan_image_.reset();
 }
 
-bool VulkanImageHardwareBufferRepresentation::EndRead() { return true; }
+bool VulkanImageHardwareBufferRepresentation::EndRead() {
+  return access_ready_;
+}
 
 bool VulkanImageHardwareBufferRepresentation::BeginWrite(
     ClaySharedImageWriteResult* out) {
@@ -109,8 +126,18 @@ void VulkanImageHardwareBufferRepresentation::ConsumeFence(
   if (!fence_sync) {
     return;
   }
-  if (fence_sync->GetType() == FenceSync::Type::kEGL) {
-    VkSemaphore semaphore;
+  access_ready_ = vulkan_image_ && vulkan_image_->IsValid() &&
+                  ConsumeFenceInternal(fence_sync.get());
+  if (!access_ready_) GetBacking()->SetFenceSync(std::move(fence_sync));
+}
+
+bool VulkanImageHardwareBufferRepresentation::ConsumeFenceInternal(
+    FenceSync* fence_sync) {
+  int fd = -1;
+  auto exported = fence_sync->DupNativeFenceFD(&fd);
+  fml::UniqueFD sync_fd(fd);
+  VkSemaphore semaphore = VK_NULL_HANDLE;
+  if (exported == FenceSync::NativeExportResult::kExported) {
     VkSemaphoreCreateInfo semaphore_info = {};
     semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     semaphore_info.pNext = nullptr;
@@ -118,15 +145,7 @@ void VulkanImageHardwareBufferRepresentation::ConsumeFence(
     auto result = VulkanHelper::GetInstance().CreateSemaphore(
         device_, &semaphore_info, nullptr, &semaphore);
     if (!LogVkIfNotSuccess(result, "vkCreateSemaphore")) {
-      return;
-    }
-
-    fml::UniqueFD sync_fd(
-        static_cast<AndroidEGLFenceSync*>(fence_sync.get())->GetSyncFD());
-    if (!sync_fd.is_valid()) {
-      VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
-      fence_sync->ClientWait();
-      return;
+      return false;
     }
 
     VkImportSemaphoreFdInfoKHR import_semaphore_info = {};
@@ -141,42 +160,45 @@ void VulkanImageHardwareBufferRepresentation::ConsumeFence(
         device_, &import_semaphore_info);
     if (!LogVkIfNotSuccess(result, "vkImportSemaphoreFdKHR")) {
       VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
-      return;
+      return false;
     }
     [[maybe_unused]] const int transferred_fd = sync_fd.release();
-
-    VkFence fence;
-    VkFenceCreateInfo fence_info;
-    memset(&fence_info, 0, sizeof(VkFenceCreateInfo));
-    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence_info.pNext = nullptr;
-    fence_info.flags = 0;
-    result = VulkanHelper::GetInstance().CreateFence(device_, &fence_info,
-                                                     nullptr, &fence);
-    if (!LogVkIfNotSuccess(result, "vkCreateFence")) {
-      VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
-      return;
-    }
-
-    VkPipelineStageFlags wait_stages[] = {
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT};
-
-    if (!ChangeImageLayout(
-            old_layout_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 1, &semaphore, wait_stages,
-            0, nullptr, fence)) {
-      VulkanHelper::GetInstance().DestroyFence(device_, fence, nullptr);
-      VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
-      return;
-    }
-    if (old_layout_ == VK_IMAGE_LAYOUT_UNDEFINED) {
-      old_layout_ = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    }
-    return;
+  } else if (exported != FenceSync::NativeExportResult::kSignaled &&
+             !fence_sync->ClientWait()) {
+    return false;
   }
-  fence_sync->ClientWait();
+
+  // Even a completed fence or a CPU fallback still needs the image barrier.
+  VkFence fence = VK_NULL_HANDLE;
+  VkFenceCreateInfo fence_info = {};
+  fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  auto result = VulkanHelper::GetInstance().CreateFence(device_, &fence_info,
+                                                        nullptr, &fence);
+  if (!LogVkIfNotSuccess(result, "vkCreateFence")) {
+    if (semaphore != VK_NULL_HANDLE) {
+      VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
+    }
+    return false;
+  }
+
+  VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT};
+
+  if (!ChangeImageLayout(old_layout_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         semaphore != VK_NULL_HANDLE ? 1 : 0, &semaphore,
+                         wait_stages, 0, nullptr, fence)) {
+    VulkanHelper::GetInstance().DestroyFence(device_, fence, nullptr);
+    if (semaphore != VK_NULL_HANDLE) {
+      VulkanHelper::GetInstance().DestroySemaphore(device_, semaphore, nullptr);
+    }
+    return false;
+  }
+  if (old_layout_ == VK_IMAGE_LAYOUT_UNDEFINED) {
+    old_layout_ = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  }
+  return true;
 }
 
 bool VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
@@ -187,6 +209,8 @@ bool VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
     const VkSemaphore* wait_semaphores, const VkPipelineStageFlags* wait_stages,
     uint32_t signal_semaphore_count, const VkSemaphore* signal_semaphores,
     VkFence fence) {
+  if (!command_pool_helper_ || !vulkan_image_ || !vulkan_image_->IsValid())
+    return false;
   VkCommandBuffer command_buffer = VK_NULL_HANDLE;
   command_pool_helper_->GetCommandBuffer(&command_buffer);
   if (command_buffer == VK_NULL_HANDLE) {
@@ -244,6 +268,14 @@ bool VulkanImageHardwareBufferRepresentation::ChangeImageLayout(
 
 std::unique_ptr<FenceSync>
 VulkanImageHardwareBufferRepresentation::ProduceFence() {
+  if (!vulkan_image_ || !vulkan_image_->IsValid()) {
+    return std::make_unique<VkFenceSync>(nullptr);
+  }
+  if (!access_ready_) {
+    auto failed = GetBacking()->GetFenceSync();
+    if (failed) return failed;
+    return std::make_unique<VkFenceSync>(nullptr);
+  }
   return std::make_unique<VkFenceSync>(last_fence_semaphore_);
 }
 
@@ -253,7 +285,11 @@ void VulkanImageHardwareBufferRepresentation::SetCommandPoolHelper(
 }
 
 void VulkanImageHardwareBufferRepresentation::PostDrawVk() {
-  auto previous_fence_helper = last_fence_semaphore_;
+  if (!access_ready_) return;
+  if (last_fence_semaphore_) last_fence_semaphore_->MarkCanDestroy();
+  last_fence_semaphore_.reset();
+  // A failed submission must not publish the preceding frame's proof.
+  access_ready_ = false;
 
   // We need to change the VkImage's imageLayout from
   // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL to
@@ -309,13 +345,7 @@ void VulkanImageHardwareBufferRepresentation::PostDrawVk() {
   command_pool_helper_->InsertFenceSemaphore(fence_helper);
 
   last_fence_semaphore_ = fence_helper;
-
-  // If previous helper is only retained by
-  // {last_fence_semaphore_, fence_semaphores_} and never exported via
-  // ProduceFence(), mark it destroyable to avoid accumulating stale helpers.
-  if (previous_fence_helper && previous_fence_helper.use_count() == 2) {
-    previous_fence_helper->MarkCanDestroy();
-  }
+  access_ready_ = true;
 }
 
 }  // namespace clay
