@@ -1357,7 +1357,9 @@ public class LynxImageManager implements Drawable.Callback {
     if (mInnerClipPathForBorderRadius != null && mInnerClipPathForBorderRadius.path != null) {
       canvas.clipPath(mInnerClipPathForBorderRadius.path);
     }
-    drawImageWithTransition(canvas);
+    if (mViewWidth > 0 && mViewHeight > 0) {
+      drawImageWithTransition(canvas);
+    }
     canvas.restore();
   }
 
@@ -1515,9 +1517,6 @@ public class LynxImageManager implements Drawable.Callback {
 
   public void onLayoutUpdated(
       int width, int height, int paddingLeft, int paddingRight, int paddingTop, int paddingBottom) {
-    if (width <= 0 && height <= 0) {
-      return;
-    }
     if (width != mViewWidth || height != mViewHeight) {
       if (width > mViewWidth || height > mViewHeight) {
         dirtyFlags |= DOWN_SAMPLING_SCALE_CHANGED;
