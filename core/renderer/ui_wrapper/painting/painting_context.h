@@ -70,6 +70,8 @@ class PaintingContext {
     platform_impl_->GetRectToScreen(id, rect);
   }
 
+  bool GetRootViewLocationInWindow(float location[2]);
+
   inline void CreatePaintingNode(int id, const std::string& tag,
                                  const fml::RefPtr<PropBundle>& painting_data,
                                  bool flatten, bool create_node_async,

@@ -485,6 +485,7 @@ const runtime::RenderBindingFunction* Renderer::GetBuiltinFunctionsForFiber(
     /* 149 */ {kCFuncRemoveStyleSheet, &RendererFunctions::RemoveStyleSheet, true, true},
     /* 150 */ {kCFunctionGetComposeMountElement, &RendererFunctions::FiberGetComposeMountElement, true, true},
     /* 151 */ {kCFunctionGetComposeContentElement, &RendererFunctions::FiberGetComposeContentElement, true, true},
+    /* 152 */ {kCFunctionQueryLayoutCoordinates, &RendererFunctions::FiberQueryLayoutCoordinates, false, true},
   };
   // clang-format on
   size = sizeof(kFuncs) / sizeof(kFuncs[0]);

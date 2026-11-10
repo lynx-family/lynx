@@ -39,6 +39,7 @@
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_layout_coordinates.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/component_element.h"
@@ -605,10 +606,12 @@ void UpdateMeasuredSize(Element* element, float width, float height) {
 }
 }  // namespace
 
-TEST_P(FiberElementTest, SizeChangeReportsFirstZeroResizeAndLogicalPixels) {
+TEST_P(FiberElementTest, SizeChangeReportsFirstZeroResizeAndPhysicalPixels) {
   // Cover logical and physical layout-unit modes at the same device density.
   for (const auto& config : {LynxEnvConfig(1080, 1920, 1.f, 2.5),
-                             LynxEnvConfig(1080, 1920, 2.5f, 1.0)}) {
+                             LynxEnvConfig(1080, 1920, 2.5f, 1.0),
+                             LynxEnvConfig(1080, 1920, 1.f, 3.0),
+                             LynxEnvConfig(1080, 1920, 3.f, 1.0)}) {
     SCOPED_TRACE(config.LayoutsUnitPerPx());
     SizeChangeRecordingDelegate recording;
     base::AutoReset<ElementManager::Delegate*> delegate(&manager->delegate_,
@@ -630,8 +633,10 @@ TEST_P(FiberElementTest, SizeChangeReportsFirstZeroResizeAndLogicalPixels) {
                        40.6f * units_per_px);
     ASSERT_EQ(recording.sizes.size(), 2u);
     EXPECT_FLOAT_EQ(recording.sizes[0].GetProperty("width").Number(), 0.f);
-    EXPECT_FLOAT_EQ(recording.sizes[1].GetProperty("width").Number(), 30.4f);
-    EXPECT_FLOAT_EQ(recording.sizes[1].GetProperty("height").Number(), 40.6f);
+    EXPECT_FLOAT_EQ(recording.sizes[1].GetProperty("width").Number(),
+                    30.4f * config.DevicePixelRatio());
+    EXPECT_FLOAT_EQ(recording.sizes[1].GetProperty("height").Number(),
+                    40.6f * config.DevicePixelRatio());
     EXPECT_EQ(recording.signs[1], element->impl_id());
   }
 }
@@ -7054,6 +7059,257 @@ TEST_P(FiberElementTest,
 
   parent->RemoveLayoutNode(child.get());
   EXPECT_FALSE(child->attached_to_layout_parent_);
+}
+
+TEST_P(FiberElementTest, LayoutCoordinatesAttachmentDoesNotRequireGeometry) {
+  auto page = manager->CreateFiberPage("page", 11);
+  auto child = manager->CreateFiberView();
+  const int32_t uid = child->impl_id();
+  auto result =
+      QueryLayoutCoordinates(manager, uid, LayoutCoordinatesQuery::kAttached);
+  EXPECT_FALSE(result.attached);
+  EXPECT_TRUE(result.valid);
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+  result =
+      QueryLayoutCoordinates(manager, uid, LayoutCoordinatesQuery::kAttached);
+  EXPECT_TRUE(result.attached);
+  EXPECT_TRUE(result.valid);
+  manager->GetLynxEnvConfig().UpdateDevicePixelRatio(2.5f);
+  child->UpdateLayout(10, 20, 100, 80, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  result = QueryLayoutCoordinates(manager, uid, LayoutCoordinatesQuery::kSize);
+  ASSERT_TRUE(result.attached);
+  ASSERT_TRUE(result.valid);
+  EXPECT_TRUE(std::isfinite(result.width));
+  EXPECT_TRUE(std::isfinite(result.height));
+  EXPECT_DOUBLE_EQ(result.width, 250.);
+  EXPECT_DOUBLE_EQ(result.height, 200.);
+  EXPECT_FALSE(manager->IsLayoutInElementModeOn());
+  page->RemoveNode(child);
+  result = QueryLayoutCoordinates(manager, uid, LayoutCoordinatesQuery::kSize);
+  EXPECT_FALSE(result.attached);
+  EXPECT_FALSE(result.valid);
+  EXPECT_FALSE(
+      QueryLayoutCoordinates(manager, uid, LayoutCoordinatesQuery::kAttached)
+          .attached);
+  child = nullptr;
+  EXPECT_FALSE(
+      QueryLayoutCoordinates(manager, uid, LayoutCoordinatesQuery::kAttached)
+          .attached);
+}
+
+TEST_P(FiberElementTest, LayoutCoordinatesMapsPhysicalPointsToCoordinateRoot) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  manager->GetLynxEnvConfig().UpdateDevicePixelRatio(2.5f);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  page->InsertNode(parent);
+  parent->InsertNode(child);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0, 0, 1080, 1920, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  parent->UpdateLayout(100, 200, 300, 400, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  child->UpdateLayout(10, 20, 100, 50, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  auto result =
+      QueryLayoutCoordinates(manager, child->impl_id(),
+                             LayoutCoordinatesQuery::kLocalToRoot, 25., 50.);
+  ASSERT_TRUE(result.valid);
+  EXPECT_DOUBLE_EQ(result.x, 300.);
+  EXPECT_DOUBLE_EQ(result.y, 600.);
+  gfx::Matrix44 scale;
+  scale.preScale(2.f, 3.f, 1.f);
+  child->SetCustomLayerTransform(scale);
+  result =
+      QueryLayoutCoordinates(manager, child->impl_id(),
+                             LayoutCoordinatesQuery::kLocalToRoot, 25., 50.);
+  ASSERT_TRUE(result.valid);
+  EXPECT_DOUBLE_EQ(result.x, 325.);
+  EXPECT_DOUBLE_EQ(result.y, 700.);
+  parent->RemoveNode(child);
+  EXPECT_FALSE(QueryLayoutCoordinates(manager, child->impl_id(),
+                                      LayoutCoordinatesQuery::kLocalToRoot, 25.,
+                                      50.)
+                   .valid);
+}
+
+TEST_P(FiberElementTest, LayoutCoordinatesWindowQueriesUseLiveOriginAndClip) {
+  class WindowOriginRef : public PaintingCtxPlatformRef {
+   public:
+    bool GetRootViewLocationInWindow(float location[2]) override {
+      ++queries;
+      location[0] = x;
+      location[1] = y;
+      return available;
+    }
+    bool available{true};
+    int queries{0};
+    float x{30.f}, y{40.f};
+  };
+  auto ref = std::make_shared<WindowOriginRef>();
+  platform_impl_->platform_ref_ = ref;
+  // All parameter sets still query the UI ref on its owning thread.
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto child = manager->CreateFiberView();
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0, 0, 100, 100, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  child->UpdateLayout(80, 90, 40, 30, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  EXPECT_TRUE(QueryLayoutCoordinates(manager, child->impl_id(),
+                                     LayoutCoordinatesQuery::kAttached)
+                  .attached);
+  EXPECT_TRUE(QueryLayoutCoordinates(manager, child->impl_id(),
+                                     LayoutCoordinatesQuery::kSize)
+                  .valid);
+  EXPECT_EQ(ref->queries, 0);
+  auto result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                       LayoutCoordinatesQuery::kBoundsInWindow);
+  ASSERT_TRUE(result.valid);
+  EXPECT_DOUBLE_EQ(result.left, 110.);
+  EXPECT_DOUBLE_EQ(result.top, 130.);
+  EXPECT_DOUBLE_EQ(result.right, 130.);
+  EXPECT_DOUBLE_EQ(result.bottom, 140.);
+  result =
+      QueryLayoutCoordinates(manager, child->impl_id(),
+                             LayoutCoordinatesQuery::kLocalToWindow, 5., 10.);
+  ASSERT_TRUE(result.valid);
+  EXPECT_DOUBLE_EQ(result.x, 115.);
+  EXPECT_DOUBLE_EQ(result.y, 140.);
+  ref->x = 50.f;
+  result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                  LayoutCoordinatesQuery::kBoundsInWindow);
+  EXPECT_DOUBLE_EQ(result.left, 130.);
+  child->UpdateLayout(120, 130, 40, 30, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                  LayoutCoordinatesQuery::kBoundsInWindow);
+  ASSERT_TRUE(result.valid);
+  EXPECT_DOUBLE_EQ(result.left, 0.);
+  EXPECT_DOUBLE_EQ(result.top, 0.);
+  EXPECT_DOUBLE_EQ(result.right, 0.);
+  EXPECT_DOUBLE_EQ(result.bottom, 0.);
+  ref->available = false;
+  result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                  LayoutCoordinatesQuery::kBoundsInWindow);
+  EXPECT_FALSE(result.valid);
+  EXPECT_TRUE(result.attached);
+  page->RemoveNode(child);
+  const int queries = ref->queries;
+  EXPECT_FALSE(QueryLayoutCoordinates(manager, child->impl_id(),
+                                      LayoutCoordinatesQuery::kBoundsInWindow)
+                   .attached);
+  EXPECT_EQ(ref->queries, queries);
+}
+
+TEST_P(FiberElementTest,
+       LayoutCoordinatesWindowQueriesRespectPlatformLayoutUnits) {
+  class WindowOriginRef : public PaintingCtxPlatformRef {
+   public:
+    bool GetRootViewLocationInWindow(float location[2]) override {
+      location[0] = x;
+      location[1] = y;
+      return true;
+    }
+    float x{0.f}, y{0.f};
+  };
+  auto ref = std::make_shared<WindowOriginRef>();
+  platform_impl_->platform_ref_ = ref;
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto child = manager->CreateFiberView();
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+  // Model the same physical geometry at DPR 2.5: Android's layout uses px,
+  // whereas iOS/Harmony use logical units. The window origin is (30, 40) px.
+  for (const auto& config :
+       {LynxEnvConfig(250, 250, 2.5f, 1.), LynxEnvConfig(100, 100, 1.f, 2.5)}) {
+    manager->GetLynxEnvConfig() = config;
+    const float pixels = config.PhysicalPixelsPerLayoutUnit();
+    SCOPED_TRACE(pixels);
+    EXPECT_FLOAT_EQ(config.DevicePixelRatio(), 2.5f);
+    ref->x = 30.f / pixels;
+    ref->y = 40.f / pixels;
+    page->UpdateLayout(0, 0, 250.f / pixels, 250.f / pixels, {0.f}, {0.f},
+                       {0.f}, nullptr, 0);
+    child->UpdateLayout(200.f / pixels, 225.f / pixels, 100.f / pixels,
+                        75.f / pixels, {0.f}, {0.f}, {0.f}, nullptr, 0);
+    auto result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                         LayoutCoordinatesQuery::kLocalToWindow,
+                                         25., 50.);
+    ASSERT_TRUE(result.valid);
+    EXPECT_DOUBLE_EQ(result.x, 255.);
+    EXPECT_DOUBLE_EQ(result.y, 315.);
+    result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                    LayoutCoordinatesQuery::kBoundsInWindow);
+    ASSERT_TRUE(result.valid);
+    EXPECT_DOUBLE_EQ(result.left, 230.);
+    EXPECT_DOUBLE_EQ(result.top, 265.);
+    EXPECT_DOUBLE_EQ(result.right, 280.);
+    EXPECT_DOUBLE_EQ(result.bottom, 290.);
+    ref->x = 50.f / pixels;
+    result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                    LayoutCoordinatesQuery::kLocalToWindow, 25.,
+                                    50.);
+    ASSERT_TRUE(result.valid);
+    EXPECT_DOUBLE_EQ(result.x, 275.);
+    EXPECT_DOUBLE_EQ(result.y, 315.);
+  }
+}
+
+TEST_P(FiberElementTest, LayoutCoordinatesOverlayKeepsItsOwnCoordinateRoot) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto overlay = manager->CreateFiberElement("overlay");
+  auto child = manager->CreateFiberView();
+  page->InsertNode(overlay);
+  overlay->InsertNode(child);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0, 0, 1080, 1920, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  overlay->UpdateLayout(100, 200, 300, 400, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  child->UpdateLayout(10, 20, 100, 50, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  auto result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                       LayoutCoordinatesQuery::kLocalToRoot);
+  ASSERT_TRUE(result.valid);
+  EXPECT_DOUBLE_EQ(result.x, 10.);
+  EXPECT_DOUBLE_EQ(result.y, 20.);
+  result =
+      QueryLayoutCoordinates(manager, overlay->impl_id(),
+                             LayoutCoordinatesQuery::kLocalToRoot, 1.5, 2.5);
+  ASSERT_TRUE(result.valid);
+  EXPECT_DOUBLE_EQ(result.x, 1.5);
+  EXPECT_DOUBLE_EQ(result.y, 2.5);
+  result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                  static_cast<LayoutCoordinatesQuery>(99));
+  EXPECT_FALSE(result.valid);
+  EXPECT_TRUE(result.attached);
+  EXPECT_FALSE(QueryLayoutCoordinates(manager, child->impl_id(),
+                                      LayoutCoordinatesQuery::kLocalToRoot,
+                                      std::numeric_limits<double>::infinity())
+                   .valid);
+}
+
+TEST_P(FiberElementTest,
+       LayoutCoordinatesUsesNearestOverlayThroughVirtualNodes) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto outer = manager->CreateFiberElement("overlay");
+  auto inner = manager->CreateFiberElement("overlay");
+  auto wrapper = manager->CreateFiberNode("inline-text");
+  auto child = manager->CreateFiberView();
+  page->InsertNode(outer);
+  outer->InsertNode(inner);
+  inner->InsertNode(wrapper);
+  wrapper->InsertNode(child);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0, 0, 1080, 1920, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  outer->UpdateLayout(100, 200, 300, 400, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  inner->UpdateLayout(30, 40, 200, 300, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  child->UpdateLayout(10, 20, 100, 50, {0.f}, {0.f}, {0.f}, nullptr, 0);
+  ASSERT_TRUE(wrapper->is_virtual_);
+  auto result = QueryLayoutCoordinates(manager, child->impl_id(),
+                                       LayoutCoordinatesQuery::kLocalToRoot);
+  ASSERT_TRUE(result.valid);
+  EXPECT_DOUBLE_EQ(result.x, 10.);
+  EXPECT_DOUBLE_EQ(result.y, 20.);
 }
 
 TEST_P(FiberElementTest, ConvertPointUsesLayoutTreeAndSkipsVirtualNodes) {

@@ -35,6 +35,7 @@
 #include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_layout_coordinates.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/block_element.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
@@ -6135,6 +6136,69 @@ RENDERER_FUNCTION_CC(FiberGetElementByUniqueID) {
   }
 
   RETURN(lepus::Value(fml::RefPtr<Element>(element)));
+}
+
+RENDERER_FUNCTION_CC(FiberQueryLayoutCoordinates) {
+  CHECK_ARGC_EQ(FiberQueryLayoutCoordinates, 4);
+  for (int i = 0; i < argc; ++i) {
+    if (!argv[i].IsNumber()) {
+      ElementAPIError("FiberQueryLayoutCoordinates params should be Number");
+      RETURN_UNDEFINED();
+    }
+  }
+  const double query_value = argv[1].Number();
+  if (!(query_value >= 0. &&
+        query_value <= static_cast<int32_t>(LayoutCoordinatesQuery::kSize)) ||
+      query_value != std::trunc(query_value)) {
+    RETURN_UNDEFINED();
+  }
+  auto& manager = GET_TASM_POINTER()->page_proxy()->element_manager();
+  const auto query = static_cast<LayoutCoordinatesQuery>(query_value);
+  const auto coordinates = QueryLayoutCoordinates(
+      manager.get(), static_cast<int32_t>(argv[0].Number()), query,
+      argv[2].Number(), argv[3].Number());
+  auto result = lepus::Dictionary::Create();
+  BASE_STATIC_STRING_DECL(kAttached, "attached");
+  result->SetValue(kAttached, coordinates.attached);
+  if (query == LayoutCoordinatesQuery::kAttached) {
+    RETURN(lepus::Value(result));
+  }
+  BASE_STATIC_STRING_DECL(kValid, "valid");
+  result->SetValue(kValid, coordinates.valid);
+  if (!coordinates.valid) {
+    RETURN(lepus::Value(result));
+  }
+  switch (query) {
+    case LayoutCoordinatesQuery::kLocalToRoot:
+    case LayoutCoordinatesQuery::kLocalToWindow: {
+      BASE_STATIC_STRING_DECL(kX, "x");
+      BASE_STATIC_STRING_DECL(kY, "y");
+      result->SetValue(kX, coordinates.x);
+      result->SetValue(kY, coordinates.y);
+      break;
+    }
+    case LayoutCoordinatesQuery::kBoundsInWindow: {
+      BASE_STATIC_STRING_DECL(kLeft, "left");
+      BASE_STATIC_STRING_DECL(kTop, "top");
+      BASE_STATIC_STRING_DECL(kRight, "right");
+      BASE_STATIC_STRING_DECL(kBottom, "bottom");
+      result->SetValue(kLeft, coordinates.left);
+      result->SetValue(kTop, coordinates.top);
+      result->SetValue(kRight, coordinates.right);
+      result->SetValue(kBottom, coordinates.bottom);
+      break;
+    }
+    case LayoutCoordinatesQuery::kSize: {
+      BASE_STATIC_STRING_DECL(kWidth, "width");
+      BASE_STATIC_STRING_DECL(kHeight, "height");
+      result->SetValue(kWidth, coordinates.width);
+      result->SetValue(kHeight, coordinates.height);
+      break;
+    }
+    case LayoutCoordinatesQuery::kAttached:
+      break;
+  }
+  RETURN(lepus::Value(result));
 }
 
 RENDERER_FUNCTION_CC(FiberUpdateIfNodeIndex) {
