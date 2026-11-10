@@ -507,7 +507,8 @@ export const LynxEnv: LynxEnvironment {
   setAppInfo(appInfo: Map<string, string>): void;
   public enableLynxDebug(enabled: boolean): void;
   public isLynxDebugEnabled(): void;
-  public async prepareDevToolForDevelopmentAfterInit(): Promise<void>;
+  public prepareDevToolForDevelopmentAfterInit(): void;
+  public async initializeDevTool(): Promise<void>;
   public tryInitLynxDebug(): void;
   public isDevtoolComponentAttach(): void;
   public isDevtoolEnabled(): void;
