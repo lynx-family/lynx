@@ -43,8 +43,8 @@ All events contain `type` (`large_vm`, `large_bts`, or `large_ui`), `key`
 | Type | Field meanings |
 | --- | --- |
 | `large_vm` | `key`: VM name; `bytes`: VM heap size; `vm_type`: runtime type string |
-| `large_bts` | `key`: page key; `bytes`: page BTS bytes; `vm_type`: runtime type string |
-| `large_ui` | `key`: page key; `bytes`: page UI bytes; `counts`: alternating category names and instance counts |
+| `large_bts` | `key`: page key; `bytes`: page BTS bytes; `instance_id`: page instance ID; `vm_type`: runtime type string |
+| `large_ui` | `key`: page key; `bytes`: page UI bytes; `instance_id`: page instance ID; `counts`: alternating category names and instance counts |
 
 `vm_type` is `quickjs`, `v8`, `jsvm`, or `jsc`; it is `unknown` when the
 runtime type is unavailable. `large_bts` uses the page's cached runtime type.
@@ -55,14 +55,24 @@ monitoring enabled or disabled.
 
 With monitoring enabled, VM events also contain `total_page_count` (lifetime
 accepted page-to-VM bindings, including pages without slots). QuickJS events
-with slot data contain `slots`, a flat array of alternating names (strings) and
-byte counts (integers), such as `["pageA", 2222, "unknown", 111]`. Pairs are
-sorted by descending bytes and then slot index.
+with slot data contain `slots`, an array of dictionaries containing `key`
+(string) and `bytes` (integer). Associated page slots also contain
+`instance_id` (integer), for example:
+
+```json
+[
+  {"key": "pageA", "bytes": 2222, "instance_id": 1},
+  {"key": "unknown", "bytes": 111}
+]
+```
+
+Entries are sorted by descending bytes and then slot index.
 Only occupied slots are returned. Slots 0/1/2 use `unknown`/`common`/`overflow`;
-page slots use `page_key`, including exited pages. Equal page keys remain
-separate entries. An occupied slot whose page has not yet bound has an empty
-name. The event's `bytes` remains the VM heap size; slot values are not summed
-into it.
+page slots use `page_key` and `instance_id`, including exited pages retained in
+the instance registry. Equal page keys remain separate entries with their own
+instance IDs. Reserved slots omit `instance_id`. An occupied slot whose page
+has not yet bound has an empty `key` and no `instance_id`. The event's `bytes`
+remains the VM heap size; slot values are not summed into it.
 
 `counts` is a flat array such as `["view", 3, "lynxTasmElement", 7]`. Pair order
 is unspecified. It includes all cached categories, including

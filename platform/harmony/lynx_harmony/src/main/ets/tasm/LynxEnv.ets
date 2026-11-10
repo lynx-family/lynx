@@ -26,16 +26,26 @@ import { DevToolSettings } from '../devtool_wrapper/DevToolSettings';
 
 const TAG = 'LynxEnv';
 
+/** One occupied QuickJS slot, including reserved slots and exited pages. */
+export interface LynxHighMemorySlot {
+  key: string;
+  bytes: number;
+  /** Present when the slot is associated with a retained page instance. */
+  instance_id?: number;
+}
+
 /** One event dictionary. The type is large_vm, large_bts, or large_ui. */
 export interface LynxHighMemoryEvent {
   type: string;
   key: string;
   bytes: number;
+  /** Page instance ID for large_bts and large_ui. */
+  instance_id?: number;
   /** Runtime type for large_vm and large_bts: quickjs, v8, jsvm, jsc, or unknown. */
   vm_type?: string;
   total_page_count?: number;
-  /** Alternating slot names and byte counts, sorted by descending bytes. */
-  slots?: Array<string | number>;
+  /** Slot dictionaries sorted by descending bytes, then slot index. */
+  slots?: Array<LynxHighMemorySlot>;
   /** Alternating cached category names and instance counts; order is unspecified. */
   counts?: Array<string | number>;
 }
@@ -80,9 +90,10 @@ class LynxEnvironment {
    * even if no callback is registered. Events are not replayed.
    * Page and V8/JSVM events require memory monitoring; shared QuickJS VM events do not.
    * Events contain key (VM name or page key) and bytes; large_vm and large_bts add vm_type.
+   * large_bts and large_ui add the page instance_id.
    * large_ui adds counts with alternating category names and instance counts.
-   * Monitored VM events add total_page_count and slots with alternating names and byte
-   * counts, sorted by descending bytes.
+   * Monitored VM events add total_page_count and slots sorted by descending bytes.
+   * Each slot dictionary contains key and bytes; associated page slots add instance_id.
    */
   public setHighMemoryCallback(callback?: LynxHighMemoryCallback | null): void {
     if (callback) {

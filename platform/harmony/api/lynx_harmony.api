@@ -467,13 +467,20 @@ export class LynxUIMethodConstants {
   public static OPERATION_ERROR: any; = 8
 }
 
+export interface LynxHighMemorySlot {
+  key: string;
+  bytes: number;
+  instance_id?: number;
+}
+
 export interface LynxHighMemoryEvent {
   type: string;
   key: string;
   bytes: number;
+  instance_id?: number;
   vm_type?: string;
   total_page_count?: number;
-  slots?: Array<string | number>;
+  slots?: Array<LynxHighMemorySlot>;
   counts?: Array<string | number>;
 }
 

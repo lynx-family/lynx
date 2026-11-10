@@ -1735,9 +1735,10 @@ public class LynxEnv {
    * Receives one dictionary per high-memory event asynchronously on the main thread.
    * The type is large_vm, large_bts, or large_ui. Events contain key (VM name or page key)
    * and bytes; large_vm and large_bts add vm_type (quickjs, v8, jsvm, jsc, or unknown).
+   * large_bts and large_ui add the page instance_id.
    * large_ui adds counts with alternating category names and instance counts.
-   * Monitored VM events add total_page_count
-   * and slots with alternating names and byte counts, sorted by descending bytes.
+   * Monitored VM events add total_page_count and slots sorted by descending bytes.
+   * Each slot dictionary contains key and bytes; associated page slots add instance_id.
    * Each VM or page event type is emitted once, even if no callback is registered.
    */
   public interface HighMemoryCallback {
