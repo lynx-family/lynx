@@ -27,17 +27,16 @@ ImageRepresentationType LinuxShmImageRepresentation::GetType() const {
 
 void LinuxShmImageRepresentation::ConsumeFence(
     std::unique_ptr<FenceSync> fence_sync) {
-  if (!fence_sync) {
-    return;
-  }
-  fence_sync->ClientWait();
+  WaitForFence(std::move(fence_sync));
 }
 
 std::unique_ptr<FenceSync> LinuxShmImageRepresentation::ProduceFence() {
+  if (HasFailedFence()) return TakeFailedFence();
   return nullptr;
 }
 
 bool LinuxShmImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
+  if (HasFailedFence()) return false;
   memset(out, 0, sizeof(ClaySharedImageReadResult));
   out->struct_size = sizeof(ClaySharedImageReadResult);
   out->type = kClaySharedImageRepresentationTypeShm;
@@ -54,9 +53,10 @@ bool LinuxShmImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
   return true;
 }
 
-bool LinuxShmImageRepresentation::EndRead() { return true; }
+bool LinuxShmImageRepresentation::EndRead() { return !HasFailedFence(); }
 
 bool LinuxShmImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
+  if (HasFailedFence()) return false;
   memset(out, 0, sizeof(ClaySharedImageWriteResult));
   out->struct_size = sizeof(ClaySharedImageWriteResult);
   out->type = kClaySharedImageRepresentationTypeShm;
@@ -74,6 +74,7 @@ bool LinuxShmImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
 }
 
 bool LinuxShmImageRepresentation::EndWrite() {
+  if (HasFailedFence()) return false;
   static_cast<EpoxyShmImageBacking*>(GetBacking())->CopyPixelsToShm();
   return true;
 }

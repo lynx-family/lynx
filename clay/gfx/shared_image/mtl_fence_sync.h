@@ -20,6 +20,7 @@ class MTLCompleteFenceSync final : public FenceSync {
   explicit MTLCompleteFenceSync(id<MTLCommandBuffer> buffer);
 
   bool ClientWait() override;
+  PollResult Poll() override;
 
   Type GetType() const override;
 
@@ -38,6 +39,10 @@ class API_AVAILABLE(macos(10.14), ios(12.0),
   ~MTLSharedEventFenceSync() override;
 
   bool ClientWait() override;
+  PollResult Poll() override;
+  bool EncodeMetalWait(void* command_buffer) override;
+  NativeExportResult CopyMetalSharedEvent(
+      void** handle, uint64_t* value, NativeHandleRelease* release) override;
 
   Type GetType() const override;
 

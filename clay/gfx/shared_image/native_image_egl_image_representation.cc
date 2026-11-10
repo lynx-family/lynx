@@ -7,6 +7,8 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
+#include <utility>
+
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/native_image_image_backing.h"
 
@@ -27,20 +29,21 @@ ImageRepresentationType NativeImageEGLImageRepresentation::GetType() const {
 
 void NativeImageEGLImageRepresentation::ConsumeFence(
     std::unique_ptr<FenceSync> fence) {
-  if (fence) {
-    fence->ClientWait();
-  }
+  WaitForFence(std::move(fence));
 }
 
 std::unique_ptr<FenceSync> NativeImageEGLImageRepresentation::ProduceFence() {
+  if (HasFailedFence()) return TakeFailedFence();
   // The fence is created in NativeImage's internal implementations
   return nullptr;
 }
 
 std::optional<GLImageRepresentation::TextureInfo>
 NativeImageEGLImageRepresentation::GetTexImage() {
+  const auto texture = backing_->EnsureAttachedToGLContext();
+  if (!texture) return std::nullopt;
   return TextureInfo{.target = GL_TEXTURE_EXTERNAL_OES,
-                     .name = backing_->EnsureAttachedToGLContext(),
+                     .name = texture,
                      .format = GL_RGBA8_OES,
                      .size = GetSize()};
 }

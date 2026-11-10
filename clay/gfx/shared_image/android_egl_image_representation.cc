@@ -1,6 +1,7 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+// cspell:ignore EGLAPIENTRYP
 
 #include "clay/gfx/shared_image/android_egl_image_representation.h"
 
@@ -8,8 +9,11 @@
 #include <EGL/eglext.h>
 #include <GLES/gl.h>
 #include <GLES/glext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 #include <GLES3/gl3.h>
 
+#include <cstring>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -23,28 +27,88 @@
 #include "clay/gfx/shared_image/egl_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_representation.h"
-#include "clay/gfx/shared_image/vulkan_image_hardwarebuffer_representation.h"
 
 namespace clay {
+namespace {
+bool HasEGLExtension(EGLDisplay display, const char* name) {
+  const char* extensions = eglQueryString(display, EGL_EXTENSIONS);
+  if (!extensions) return false;
+  const size_t length = std::strlen(name);
+  const char* match = extensions;
+  while ((match = std::strstr(match, name))) {
+    if ((match == extensions || match[-1] == ' ') &&
+        (match[length] == ' ' || match[length] == '\0'))
+      return true;
+    match += length;
+  }
+  return false;
+}
 
-AndroidEGLFenceSync::AndroidEGLFenceSync() {
-  FML_DCHECK(display != EGL_NO_DISPLAY);
-  FML_DCHECK(eglCreateSyncKHR);
-  if (CheckEGLFenceSupported()) {
+using CoreWaitSyncProc = EGLBoolean(EGLAPIENTRYP)(EGLDisplay, EGLSyncKHR,
+                                                  EGLint);
+
+CoreWaitSyncProc CoreWaitSync() {
+  const char* version = eglQueryString(eglGetCurrentDisplay(), EGL_VERSION);
+  if (!version || !((version[0] >= '2' && version[0] <= '9') ||
+                    (version[0] == '1' && version[1] == '.' &&
+                     version[2] >= '5' && version[2] <= '9'))) {
+    return nullptr;
+  }
+  // Resolve dynamically so older Android releases need no EGL 1.5 symbols.
+  return reinterpret_cast<CoreWaitSyncProc>(eglGetProcAddress("eglWaitSync"));
+}
+
+bool FinishGPUWork() {
+  // GL errors belong to the context, not to an individual command. Discard
+  // earlier recoverable errors before checking glFinish's own result. Context
+  // loss and out-of-memory leave completion unproven even if reported earlier.
+  // Bound the drain in case a driver keeps reporting an error.
+  constexpr int kMaxErrorQueries = 16;
+  for (int i = 0; i < kMaxErrorQueries; ++i) {
+    const GLenum error = glGetError();
+    if (error == GL_NO_ERROR) {
+      glFinish();
+      return glGetError() == GL_NO_ERROR;
+    }
+    if (error == GL_CONTEXT_LOST_KHR || error == GL_OUT_OF_MEMORY) {
+      return false;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
+AndroidEGLFenceSync::AndroidEGLFenceSync()
+    : AndroidEGLFenceSync(CreationMode::kAllowBlockingFallback) {}
+
+AndroidEGLFenceSync::AndroidEGLFenceSync(CreationMode mode) {
+  fence_display_ = eglGetCurrentDisplay();
+  unsupported_ = fence_display_ != EGL_NO_DISPLAY &&
+                 eglGetCurrentContext() != EGL_NO_CONTEXT &&
+                 !CheckEGLFenceSupported();
+  if (fence_display_ != EGL_NO_DISPLAY &&
+      eglGetCurrentContext() != EGL_NO_CONTEXT && CheckEGLFenceSupported()) {
     if (CheckAndroidNativeFenceSupported()) {
-      fence_ =
-          eglCreateSyncKHR(display, EGL_SYNC_NATIVE_FENCE_ANDROID, nullptr);
+      fence_ = eglCreateSyncKHR(fence_display_, EGL_SYNC_NATIVE_FENCE_ANDROID,
+                                nullptr);
+      native_fence_ = fence_ != EGL_NO_SYNC_KHR;
     } else {
-      fence_ = eglCreateSyncKHR(display, EGL_SYNC_FENCE_KHR, nullptr);
+      fence_ = eglCreateSyncKHR(fence_display_, EGL_SYNC_FENCE_KHR, nullptr);
     }
   }
   if (fence_ == EGL_NO_SYNC_KHR) {
     FML_LOG(ERROR) << "Failed to create fence sync in EGL env, error: "
                    << eglGetError();
     // Publishing without a fence is safe only after the GPU has finished.
-    glFinish();
+    if (mode == CreationMode::kAllowBlockingFallback) unsupported_ = false;
+    if (mode == CreationMode::kAllowBlockingFallback &&
+        fence_display_ != EGL_NO_DISPLAY &&
+        eglGetCurrentContext() != EGL_NO_CONTEXT) {
+      completed_ = FinishGPUWork();
+    }
   }
-  glFlush();
+  if (eglGetCurrentContext() != EGL_NO_CONTEXT) glFlush();
 }
 
 AndroidEGLFenceSync::~AndroidEGLFenceSync() {
@@ -52,34 +116,50 @@ AndroidEGLFenceSync::~AndroidEGLFenceSync() {
     return;
   }
   FML_DCHECK(eglDestroySyncKHR);
-  EGLBoolean success = eglDestroySyncKHR(display, fence_);
+  EGLBoolean success = eglDestroySyncKHR(fence_display_, fence_);
   if (success == EGL_FALSE) {
     FML_LOG(ERROR) << "Failed to delete fence sync in EGL env, error: "
                    << eglGetError();
   }
 }
 
+FenceSync::NativeExportResult AndroidEGLFenceSync::DupNativeFenceFD(
+    int* out_fd) {
+  if (!out_fd) {
+    return NativeExportResult::kFailed;
+  }
+  *out_fd = -1;
+  if (completed_) {
+    return NativeExportResult::kSignaled;
+  }
+  if (fence_ == EGL_NO_SYNC_KHR) {
+    return unsupported_ ? NativeExportResult::kUnsupported
+                        : NativeExportResult::kFailed;
+  }
+  if (!native_fence_ || !eglDupNativeFenceFDANDROID) {
+    return NativeExportResult::kUnsupported;
+  }
+  const EGLint fd = eglDupNativeFenceFDANDROID(fence_display_, fence_);
+  if (fd == EGL_NO_NATIVE_FENCE_FD_ANDROID) {
+    return NativeExportResult::kFailed;
+  }
+  *out_fd = fd;
+  return NativeExportResult::kExported;
+}
+
 int32_t AndroidEGLFenceSync::GetCurrentFD() {
-  if (!CheckAndroidNativeFenceSupported() || fence_ == EGL_NO_SYNC_KHR) {
-    FML_LOG(INFO) << "EGL Android native fence sync is not supported.";
-    return EGL_NO_NATIVE_FENCE_FD_ANDROID;
-  }
-  FML_DCHECK(eglGetSyncAttribKHR);
-  FML_DCHECK(display != EGL_NO_DISPLAY);
-  EGLint sync_fd = eglDupNativeFenceFDANDROID(display, fence_);
-  if (sync_fd == EGL_NO_NATIVE_FENCE_FD_ANDROID) {
-    FML_LOG(ERROR) << "eglDupNativeFenceFDANDROID copy fd failed "
-                   << eglGetError();
-  }
-  return sync_fd;
+  int fd = -1;
+  DupNativeFenceFD(&fd);
+  return fd;
 }
 
 bool AndroidEGLFenceSync::ClientWait() {
   if (fence_ == EGL_NO_SYNC_KHR) {
-    return false;
+    return completed_;
   }
   FML_DCHECK(eglClientWaitSyncKHR);
-  EGLint result = eglClientWaitSyncKHR(display, fence_, 0, EGL_FOREVER_KHR);
+  EGLint result =
+      eglClientWaitSyncKHR(fence_display_, fence_, 0, EGL_FOREVER_KHR);
   if (result != EGL_CONDITION_SATISFIED_KHR) {
     FML_LOG(ERROR) << "Failed to eglClientWaitSync in EGL env, error: "
                    << eglGetError();
@@ -87,67 +167,99 @@ bool AndroidEGLFenceSync::ClientWait() {
   return result == EGL_CONDITION_SATISFIED_KHR;
 }
 
-void AndroidEGLFenceSync::ServerWait() {
-  if (fence_ == EGL_NO_SYNC_KHR) {
-    return;
+FenceSync::PollResult AndroidEGLFenceSync::Poll() {
+  if (completed_) {
+    return PollResult::kSignaled;
   }
-  FML_DCHECK(eglWaitSyncKHR);
-  EGLint result = eglWaitSyncKHR(display, fence_, 0);
-  if (result == EGL_FALSE) {
-    FML_LOG(ERROR) << "Failed to eglWaitSyncKHR in EGL env, error: "
-                   << eglGetError();
+  if (fence_ == EGL_NO_SYNC_KHR || !eglClientWaitSyncKHR) {
+    return unsupported_ ? PollResult::kUnsupported : PollResult::kFailed;
+  }
+  const EGLint result = eglClientWaitSyncKHR(fence_display_, fence_, 0, 0);
+  if (result == EGL_CONDITION_SATISFIED_KHR) {
+    return PollResult::kSignaled;
+  }
+  if (result == EGL_TIMEOUT_EXPIRED_KHR) {
+    return PollResult::kPending;
+  }
+  return PollResult::kFailed;
+}
+
+FenceSync::WaitResult AndroidEGLFenceSync::EnqueueWaitResult() {
+  if (completed_) {
+    return WaitResult::kSuccess;
+  }
+  if (unsupported_) return WaitResult::kUnsupported;
+  if (fence_ == EGL_NO_SYNC_KHR || eglGetCurrentDisplay() != fence_display_ ||
+      eglGetCurrentContext() == EGL_NO_CONTEXT) {
+    return WaitResult::kFailed;
+  }
+  if (!CheckEGLWaitSupported()) {
+    return WaitResult::kUnsupported;
+  }
+  return WaitEGLSync(fence_display_, fence_) ? WaitResult::kSuccess
+                                             : WaitResult::kFailed;
+}
+
+void AndroidEGLFenceSync::ServerWait() {
+  if (!EnqueueWait()) {
     ClientWait();
   }
 }
 
 // static
+bool AndroidEGLFenceSync::CheckEGLWaitSupported() {
+  return CheckEGLFenceSupported() &&
+         ((eglWaitSyncKHR &&
+           HasEGLExtension(eglGetCurrentDisplay(), "EGL_KHR_wait_sync")) ||
+          CoreWaitSync());
+}
+
+bool AndroidEGLFenceSync::WaitEGLSync(EGLDisplay display, EGLSyncKHR sync) {
+  if (display == EGL_NO_DISPLAY || display != eglGetCurrentDisplay() ||
+      eglGetCurrentContext() == EGL_NO_CONTEXT || !CheckEGLFenceSupported()) {
+    return false;
+  }
+  if (eglWaitSyncKHR && HasEGLExtension(display, "EGL_KHR_wait_sync")) {
+    return eglWaitSyncKHR(display, sync, 0) == EGL_TRUE;
+  }
+  auto wait = CoreWaitSync();
+  return wait && wait(display, sync, 0) == EGL_TRUE;
+}
+
+// static
 bool AndroidEGLFenceSync::CheckAndroidNativeFenceSupported() {
-  static std::once_flag flag;
-  static bool supported;
-  auto func = [] {
-    const char* extensions = eglQueryString(display, EGL_EXTENSIONS);
-    if (!extensions || !strstr(extensions, "EGL_ANDROID_native_fence_sync")) {
-      supported = false;
-    } else {
-      supported = true;
-    }
-  };
-  std::call_once(flag, func);
-  return supported;
+  const EGLDisplay current_display = eglGetCurrentDisplay();
+  return current_display != EGL_NO_DISPLAY && CheckEGLFenceSupported() &&
+         eglDupNativeFenceFDANDROID &&
+         HasEGLExtension(current_display, "EGL_ANDROID_native_fence_sync");
 }
 
 // static
 bool AndroidEGLFenceSync::CheckEGLFenceSupported() {
+  const EGLDisplay current_display = eglGetCurrentDisplay();
+  // Capability belongs to the current display. A probe before make-current
+  // must not permanently cache an unavailable display or disable later fences.
+  if (current_display == EGL_NO_DISPLAY ||
+      !HasEGLExtension(current_display, "EGL_KHR_fence_sync")) {
+    return false;
+  }
   static std::once_flag flag;
-  static bool supported;
-  auto init_func = [] {
-    display = eglGetCurrentDisplay();
-    const char* extensions = eglQueryString(display, EGL_EXTENSIONS);
-    if (!extensions || !strstr(extensions, "EGL_KHR_fence_sync") ||
-        !strstr(extensions, "EGL_KHR_wait_sync")) {
-      supported = false;
-    } else {
-      eglCreateSyncKHR = reinterpret_cast<PFNEGLCREATESYNCKHRPROC>(
-          eglGetProcAddress("eglCreateSyncKHR"));
-      eglDestroySyncKHR = reinterpret_cast<PFNEGLDESTROYSYNCKHRPROC>(
-          eglGetProcAddress("eglDestroySyncKHR"));
-      eglClientWaitSyncKHR = reinterpret_cast<PFNEGLCLIENTWAITSYNCKHRPROC>(
-          eglGetProcAddress("eglClientWaitSyncKHR"));
-      eglWaitSyncKHR = reinterpret_cast<PFNEGLWAITSYNCKHRPROC>(
-          eglGetProcAddress("eglWaitSyncKHR"));
-      eglDupNativeFenceFDANDROID =
-          reinterpret_cast<PFNEGLDUPNATIVEFENCEFDANDROIDPROC>(
-              eglGetProcAddress("eglDupNativeFenceFDANDROID"));
-      supported = eglCreateSyncKHR && eglDestroySyncKHR &&
-                  eglClientWaitSyncKHR && eglWaitSyncKHR &&
-                  eglDupNativeFenceFDANDROID;
-    }
-    if (!supported) {
-      FML_LOG(INFO) << "EGLFenceSync is not supported.";
-    }
-  };
-  std::call_once(flag, init_func);
-  return supported;
+  std::call_once(flag, [] {
+    eglCreateSyncKHR = reinterpret_cast<PFNEGLCREATESYNCKHRPROC>(
+        eglGetProcAddress("eglCreateSyncKHR"));
+    eglDestroySyncKHR = reinterpret_cast<PFNEGLDESTROYSYNCKHRPROC>(
+        eglGetProcAddress("eglDestroySyncKHR"));
+    eglClientWaitSyncKHR = reinterpret_cast<PFNEGLCLIENTWAITSYNCKHRPROC>(
+        eglGetProcAddress("eglClientWaitSyncKHR"));
+    eglWaitSyncKHR = reinterpret_cast<PFNEGLWAITSYNCKHRPROC>(
+        eglGetProcAddress("eglWaitSyncKHR"));
+    eglDupNativeFenceFDANDROID =
+        reinterpret_cast<PFNEGLDUPNATIVEFENCEFDANDROIDPROC>(
+            eglGetProcAddress("eglDupNativeFenceFDANDROID"));
+  });
+  // Native FD export is optional; ordinary EGL fences still support GPU wait
+  // and poll on implementations without the Android native-fence extension.
+  return eglCreateSyncKHR && eglDestroySyncKHR && eglClientWaitSyncKHR;
 }
 
 NativeBufferEGLImageRepresentation::NativeBufferEGLImageRepresentation(
@@ -285,7 +397,6 @@ NativeBufferEGLImageRepresentation::~NativeBufferEGLImageRepresentation() {
   }
 }
 
-EGLDisplay AndroidEGLFenceSync::display = EGL_NO_DISPLAY;
 PFNEGLCREATESYNCKHRPROC AndroidEGLFenceSync::eglCreateSyncKHR = nullptr;
 PFNEGLDESTROYSYNCKHRPROC AndroidEGLFenceSync::eglDestroySyncKHR = nullptr;
 PFNEGLCLIENTWAITSYNCKHRPROC AndroidEGLFenceSync::eglClientWaitSyncKHR = nullptr;
@@ -293,38 +404,41 @@ PFNEGLWAITSYNCKHRPROC AndroidEGLFenceSync::eglWaitSyncKHR = nullptr;
 PFNEGLDUPNATIVEFENCEFDANDROIDPROC
 AndroidEGLFenceSync::eglDupNativeFenceFDANDROID = nullptr;
 
-class DummyFenceSync final : public FenceSync {
-  bool ClientWait() override { return true; }
+bool NativeBufferEGLImageRepresentation::BeginRead(
+    ClaySharedImageReadResult* out) {
+  return access_ready_ && GLImageRepresentation::BeginRead(out);
+}
 
-  Type GetType() const override { return Type::kClientWaitOnly; }
-};
+bool NativeBufferEGLImageRepresentation::EndRead() {
+  return access_ready_ && GLImageRepresentation::EndRead();
+}
+
+bool NativeBufferEGLImageRepresentation::BeginWrite(
+    ClaySharedImageWriteResult* out) {
+  return access_ready_ && GLImageRepresentation::BeginWrite(out);
+}
+
+bool NativeBufferEGLImageRepresentation::EndWrite() {
+  return access_ready_ && GLImageRepresentation::EndWrite();
+}
 
 void NativeBufferEGLImageRepresentation::ConsumeFence(
     std::unique_ptr<FenceSync> fence_sync) {
-  if (!fence_sync) {
-    return;
+  if (!fence_sync) return;
+  access_ready_ = fence_sync->EnqueueWait() || fence_sync->ClientWait();
+  if (!access_ready_) {
+    GetBacking()->SetFenceSync(std::move(fence_sync));
   }
-  if (fence_sync->GetType() == FenceSync::Type::kEGL) {
-    AndroidEGLFenceSync* egl_fence_sync =
-        static_cast<AndroidEGLFenceSync*>(fence_sync.get());
-    egl_fence_sync->ServerWait();
-    return;
-  } else if (fence_sync->GetType() == FenceSync::Type::kVulkan) {
-    // Try server wait.
-    VkFenceSync* vulkan_fence_sync =
-        static_cast<VkFenceSync*>(fence_sync.get());
-    vulkan_fence_sync->ServerWait();
-    return;
-  }
-  fence_sync->ClientWait();
 }
 
 std::unique_ptr<FenceSync> NativeBufferEGLImageRepresentation::ProduceFence() {
-  if (AndroidEGLFenceSync::CheckEGLFenceSupported()) {
-    return std::make_unique<AndroidEGLFenceSync>();
+  if (!access_ready_) {
+    auto failed = GetBacking()->GetFenceSync();
+    if (failed) return failed;
+    return std::make_unique<FailedFenceSync>();
   }
-  glFinish();
-  return std::make_unique<DummyFenceSync>();
+  // Preserve legacy ClientWait when native sync creation is unavailable.
+  return std::make_unique<AndroidEGLFenceSync>();
 }
 
 #ifndef ENABLE_HEADLESS
@@ -343,19 +457,21 @@ ImageRepresentationType SurfaceTextureEGLImageRepresentation::GetType() const {
 
 void SurfaceTextureEGLImageRepresentation::ConsumeFence(
     std::unique_ptr<FenceSync> fence) {
-  if (fence) {
-    fence->ClientWait();
-  }
+  backing_->AcceptFence(std::move(fence));
 }
 
 std::unique_ptr<FenceSync>
 SurfaceTextureEGLImageRepresentation::ProduceFence() {
-  // The fence is created in SurfaceTexture's internal implementations
-  return nullptr;
+  return backing_->ProduceReadFence();
+}
+
+bool SurfaceTextureEGLImageRepresentation::EndRead() {
+  return backing_->EndRead();
 }
 
 std::optional<GLImageRepresentation::TextureInfo>
 SurfaceTextureEGLImageRepresentation::GetTexImage() {
+  if (!backing_->BeginRead()) return std::nullopt;
   return TextureInfo{.target = GL_TEXTURE_EXTERNAL_OES,
                      .name = backing_->EnsureAttachedToGLContext(),
                      .format = GL_RGBA8_OES,

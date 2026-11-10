@@ -63,6 +63,7 @@ class API_AVAILABLE(macos(10.6), ios(11.0),
 
   fml::scoped_nsprotocol<id<MTLDevice> > device_;
   fml::scoped_nsprotocol<id<MTLCommandQueue> > queue_;
+  bool access_ready_ = true;
   fml::scoped_nsprotocol<id> event_;  // MTLSharedEvent
   uint64_t event_value_ = 0;
   fml::scoped_nsprotocol<id<MTLTexture> > texture_;

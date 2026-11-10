@@ -11,6 +11,7 @@
 #include <fstream>
 #include <utility>
 
+#include "base/include/closure.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/shared_image/fence_sync.h"
@@ -36,18 +37,31 @@ sk_sp<SkImage> SkiaShmImageRepresentation::GetSkImage() {
   FML_DCHECK(result.struct_size == sizeof(result));
   FML_DCHECK(result.type == kClaySharedImageRepresentationTypeShm &&
              result.shm_image.struct_size == sizeof(ClaySharedMemoryImage));
+  fml::ScopedCleanupClosure release_result([&result] {
+    if (result.shm_image.destruction_callback) {
+      result.shm_image.destruction_callback(result.shm_image.user_data);
+    }
+  });
 
   GrImageInfo info =
       GrImageInfo::Make(GetSize().x, GetSize().y, kRGBA_8888_SkColorType,
                         kPremul_SkAlphaType, SkColorSpace::MakeSRGB());
 
-  void* shm_buffer = mmap(nullptr, GetSize().x * GetSize().y * 4, PROT_READ,
-                          MAP_SHARED, result.shm_image.shm_fd, 0);
+  const size_t bytes = static_cast<size_t>(GetSize().x) * GetSize().y * 4;
+  void* shm_buffer =
+      mmap(nullptr, bytes, PROT_READ, MAP_SHARED, result.shm_image.shm_fd, 0);
+  if (shm_buffer == MAP_FAILED) {
+    FML_LOG(ERROR) << "Failed to map shared image";
+    return nullptr;
+  }
 
   size_t rowBytes = GetSize().x * 4;
   SkPixmap pixmap(info, shm_buffer, rowBytes);
   sk_sp<SkImage> sk_image = SkImages::RasterFromPixmapCopy(pixmap);
+  munmap(shm_buffer, bytes);
+  if (!sk_image) return nullptr;
   auto surface = SkSurface::MakeRaster(info);
+  if (!surface) return nullptr;
   auto canvas = surface->getCanvas();
   canvas->translate(0, sk_image->height());
   canvas->scale(1, -1);

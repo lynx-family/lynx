@@ -7,6 +7,8 @@
 #import <CoreVideo/CoreVideo.h>
 #import <Metal/Metal.h>
 
+#include <limits>
+
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/cv_pixelbuffer_image_backing.h"
 #include "clay/gfx/shared_image/iosurface_image_backing.h"
@@ -58,7 +60,8 @@ MTLImageRepresentation::MTLImageRepresentation(id<MTLDevice> device, id<MTLComma
     : SharedImageRepresentation(std::move(backing)), device_(device), queue_(queue) {}
 
 MTLImageRepresentation::~MTLImageRepresentation() {
-  id<MTLTexture> tex = GetMTLTexture();
+  // Do not create/import a texture while destroying an unused or failed view.
+  id<MTLTexture> tex = texture_.get();
   if (tex == nil) {
     return;
   }
@@ -145,6 +148,9 @@ bool MTLImageRepresentation::GetMTLTextureFromCVPixelBuffer() {
 }
 
 bool MTLImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
+  if (!access_ready_) {
+    return false;
+  }
   id<MTLTexture> texture = GetMTLTexture();
   if (texture == nil) {
     return false;
@@ -162,8 +168,11 @@ bool MTLImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
   return true;
 }
 
-bool MTLImageRepresentation::EndRead() { return true; }
+bool MTLImageRepresentation::EndRead() { return access_ready_; }
 bool MTLImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
+  if (!access_ready_) {
+    return false;
+  }
   id<MTLTexture> texture = GetMTLTexture();
   if (texture == nil) {
     return false;
@@ -180,47 +189,61 @@ bool MTLImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
   };
   return true;
 }
-bool MTLImageRepresentation::EndWrite() { return true; }
+bool MTLImageRepresentation::EndWrite() { return access_ready_; }
 
 void MTLImageRepresentation::ConsumeFence(std::unique_ptr<FenceSync> fence_sync) {
   if (!fence_sync) {
     return;
   }
+  access_ready_ = false;
   if (@available(macos 10.14, ios 12.0, tvos 12.0, *)) {
     if (fence_sync->GetType() == FenceSync::Type::kMetalEvent) {
-      MTLSharedEventFenceSync* mtl_fence_sync =
-          static_cast<MTLSharedEventFenceSync*>(fence_sync.get());
-      FML_DCHECK(mtl_fence_sync->Event() != nil);
       id<MTLCommandBuffer> buffer = [queue_ commandBuffer];
-      [buffer encodeWaitForEvent:mtl_fence_sync->Event() value:mtl_fence_sync->Value()];
-      [buffer commit];
-      return;
+      if (fence_sync->EncodeMetalWait((__bridge void*)buffer)) {
+        [buffer commit];
+        access_ready_ = true;
+        return;
+      }
     }
   }
-  fence_sync->ClientWait();
+  access_ready_ = fence_sync->ClientWait();
+  if (!access_ready_) {
+    // Retain the failed proof on the backing so recreating a representation
+    // cannot accidentally bypass it. BeginRead/BeginWrite fail closed.
+    GetBacking()->SetFenceSync(std::move(fence_sync));
+  }
 }
 
 std::unique_ptr<FenceSync> MTLImageRepresentation::ProduceFence() {
-  std::unique_ptr<FenceSync> fence_sync;
-  if (@available(macos 10.14, ios 12.0, tvos 12.0, *)) {
-    if (event_ == nil) {
-      // TODO(youfeng) Use MTLEvent instead of MTLSharedEvent for shared device
-      event_.reset([device_ newSharedEvent]);
+  if (!access_ready_) {
+    // Accessors may request a return fence after BeginRead/BeginWrite failed.
+    // Preserve the original failed proof instead of replacing it with a new
+    // successful marker from this queue.
+    auto failed = GetBacking()->GetFenceSync();
+    if (failed) {
+      return failed;
     }
-    if (event_ != nil) {
-      event_value_++;
-      id<MTLCommandBuffer> buffer = [queue_ commandBuffer];
-      fence_sync = std::make_unique<MTLSharedEventFenceSync>(buffer, event_, event_value_);
+    return std::make_unique<MTLCompleteFenceSync>(nil);
+  }
+  id<MTLCommandBuffer> buffer = [queue_ commandBuffer];
+  if (@available(macos 10.14, ios 12.0, tvos 12.0, *)) {
+    if (event_ == nil || event_value_ == std::numeric_limits<uint64_t>::max()) {
+      event_.reset([device_ newSharedEvent]);
+      event_value_ = 0;
+    }
+    if (event_ != nil && buffer != nil) {
+      ++event_value_;
+      auto fence = std::make_unique<MTLSharedEventFenceSync>(buffer, event_, event_value_);
       [buffer encodeSignalEvent:event_ value:event_value_];
       [buffer commit];
-      return fence_sync;
+      return fence;
     }
   }
-
-  id<MTLCommandBuffer> buffer = [queue_ commandBuffer];
-  fence_sync = std::make_unique<MTLCompleteFenceSync>(buffer);
+  // Event allocation failure still has a queryable command-buffer proof. A
+  // nil buffer is an explicit failed fence, never an absent/ready fence.
+  auto fence = std::make_unique<MTLCompleteFenceSync>(buffer);
   [buffer commit];
-  return fence_sync;
+  return fence;
 }
 
 fml::RefPtr<RepresentationStorageManager> MTLImageRepresentation::GetTextureManager() const {

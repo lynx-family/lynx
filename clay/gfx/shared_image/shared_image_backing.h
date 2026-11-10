@@ -123,6 +123,8 @@ class SharedImageBacking
   virtual PixelFormat GetPixelFormat() const { return pixel_format_; }
   virtual const skity::Vec2 GetSize() const { return size_; }
   virtual bool SetSize(skity::Vec2 size) { return false; }
+  // Mutable external textures must close the old read before latching a frame.
+  virtual bool RequiresReadCompletionBeforeUpdate() const { return false; }
   // UV transform
   virtual const skity::Matrix GetTransformation() const {
     return transformation_;
@@ -133,6 +135,9 @@ class SharedImageBacking
 
   void SetFenceSync(std::unique_ptr<FenceSync> fence_sync);
   std::unique_ptr<FenceSync> GetFenceSync();
+  // Public retrieval may expose a backing-owned completion snapshot. Internal
+  // handoffs continue taking only the dependency installed with SetFenceSync.
+  virtual std::unique_ptr<FenceSync> GetFenceSyncForClient();
 
   static fml::RefPtr<SharedImageBacking> Create(
       BackingType backing_type, PixelFormat pixel_format, skity::Vec2 size,
@@ -176,6 +181,9 @@ class SharedImageBackingUnmanaged : public SharedImageBacking {
   virtual bool SwapBack() = 0;
 
   virtual uint32_t Capacity() const = 0;
+
+  // Optional explicit dependencies for externally managed buffer queues.
+  virtual bool AcceptFence(std::unique_ptr<FenceSync> fence);
 };
 
 }  // namespace clay

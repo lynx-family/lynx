@@ -125,7 +125,7 @@ void NativeImageImageBacking::SetFrameAvailableCallback(
 }
 
 bool NativeImageImageBacking::UpdateFront() {
-  EnsureAttachedToGLContext();
+  if (!EnsureAttachedToGLContext()) return false;
   return OH_NativeImage_UpdateSurfaceImage(native_image_) == 0;
 }
 
@@ -155,9 +155,12 @@ bool NativeImageImageBacking::SetSize(skity::Vec2 size) {
 GLuint NativeImageImageBacking::EnsureAttachedToGLContext() {
   if (texture_ == 0) {
     glGenTextures(1, &texture_);
+    if (!texture_) return 0;
     int ret = OH_NativeImage_AttachContext(native_image_, texture_);
     if (ret) {
       FML_LOG(ERROR) << "NativeImageImageBacking attachContext failed " << ret;
+      glDeleteTextures(1, &texture_);
+      texture_ = 0;
     }
   }
   return texture_;

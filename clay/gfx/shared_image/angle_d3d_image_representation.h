@@ -57,6 +57,9 @@ class AngleD3DImageRepresentation : public GLImageRepresentation {
 
   bool LockKeyedMutex();
   bool UnlockKeyedMutex();
+  bool FailAccess(std::unique_ptr<FenceSync> dependency = nullptr);
+
+  bool access_ready_ = true;
 
   std::optional<uint32_t> GetTexFromD3D11Texture();
   std::optional<uint32_t> GetTexFromD3D9Texture();
