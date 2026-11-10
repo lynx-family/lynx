@@ -161,7 +161,11 @@ class MockEventDelegate : public clay::EventDelegate {
   void OnOverlayEvent(int view_id, const char* overlay_id, int overlay_count,
                       const char** overlay_ids,
                       const char* event_name) override {}
-  void OnLayoutChanged(int view_id, clay::Value::Map map) override {}
+  void OnLayoutChanged(int view_id, clay::Value::Map map) override {
+    if (uitest_->layout_change_callback_) {
+      uitest_->layout_change_callback_(view_id, std::move(map));
+    }
+  }
   void OnIntersectionEvent(int view_id, clay::Value::Map map) override {}
   void OnCallJSApiCallback(int callback_id, clay::Value value) override {}
   void CallJSIntersectionObserver(int observer_id, int callback_id,
