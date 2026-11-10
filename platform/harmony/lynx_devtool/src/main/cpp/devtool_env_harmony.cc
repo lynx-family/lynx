@@ -38,7 +38,7 @@ std::unordered_map<std::string, bool>
     DevToolEnvHarmony::s_persistent_default_value_ = {
         {"enable_devtool", false},
         {"enable_debug_mode", false},
-        {"enable_logbox", true},
+        {"enable_logbox", false},
         {"enable_quickjs_debug", true},
         {"enable_dom_tree", true},
         {"enable_launch_record", false},

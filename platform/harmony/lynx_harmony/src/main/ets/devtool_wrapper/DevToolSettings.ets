@@ -53,10 +53,10 @@ export class DevToolSettings {
   /**
    * Persistence: true
    * Sync to native: true
-   * Default: true
+   * Default: false
    */
   public static isLogBoxEnabled(): boolean {
-    return DevToolSettings.getPersistedBoolean(DevToolSettings.SP_KEY_ENABLE_LOGBOX, true);
+    return DevToolSettings.getPersistedBoolean(DevToolSettings.SP_KEY_ENABLE_LOGBOX, false);
   }
 
   public static setLogBoxEnabled(enabled: boolean): void {
