@@ -1,0 +1,38 @@
+From 38751aaece3cb0d746fa6844b731f5809c4f630c Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Fri, 19 Sep 2025 15:54:54 +0800
+Subject: [PATCH] [BugFix] Use flutter icudtl.dat on all platforms.
+
+---
+ BUILD.gn | 15 +--------------
+ 1 file changed, 1 insertion(+), 14 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 37bc6d4b1..5293c797c 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -445,20 +445,7 @@ if (is_android && enable_java_templates) {
+   }
+ }
+ 
+-if (is_android) {
+-  data_dir = "android"
+-} else if (is_ios) {
+-  data_dir = "ios"
+-} else if (is_chromeos) {
+-  data_dir = "chromeos"
+-} else if (current_cpu == "wasm") {
+-  data_dir = "flutter"
+-} else if (icu_is_in_fuchsia && icu_fuchsia_override_data_dir != "") {
+-  # See //config.gni for details.
+-  data_dir = icu_fuchsia_override_data_dir
+-} else {
+-  data_dir = "common"
+-}
++data_dir = "flutter"
+ 
+ if (current_cpu == "mips" || current_cpu == "mips64" ||
+     host_byteorder == "big") {
+-- 
+2.51.1.windows.1
+
