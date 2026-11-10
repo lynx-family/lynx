@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+import { DevToolSettings, LLog } from '@lynx/lynx';
 import lynxdevtool from 'liblynxdevtool.so';
 import { DebugRouter } from './DebugRouter';
 
@@ -9,6 +10,11 @@ export class LynxDevToolEnv {
   public static initDevToolEnv(): void {
     lynxdevtool.DebugBridgeHarmony.initialize();
     DebugRouter.init();
+    const loadQJSBridge = DevToolSettings.shouldLoadQJSBridge();
+    LLog.i('LynxDevToolEnv', 'DevTool bridge settings loadQJSBridge=' + loadQJSBridge);
+    if (loadQJSBridge) {
+      loadNativeModule('liblynxdevtool_qjs_bridge.so');
+    }
     lynxdevtool.LynxDevToolEnvHarmony.initDevToolEnv();
   }
 

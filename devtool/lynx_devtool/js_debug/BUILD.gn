@@ -168,7 +168,7 @@ devtool_source_set("js_debug") {
     ":devtool_lepus_debug",
     "../../../third_party/rapidjson:rapidjson",
   ]
-  if (!is_android || is_headless) {
+  if ((!is_android && !is_harmony) || is_headless) {
     deps += [
       ":devtool_qjs_bridge",
 
@@ -190,6 +190,8 @@ devtool_source_set("devtool_qjs_bridge") {
   ]
   if (is_android && !is_headless) {
     sources += [ "../android/devtool_qjs_bridge.cc" ]
+  } else if (is_harmony && !is_headless) {
+    sources += [ "../../../platform/harmony/lynx_devtool/src/main/cpp/devtool_qjs_bridge.cc" ]
   }
   deps = [
     ":devtool_lepus_debug_manager",

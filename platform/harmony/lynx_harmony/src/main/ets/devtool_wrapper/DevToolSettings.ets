@@ -22,6 +22,7 @@ export class DevToolSettings {
   private static highlightTouchEnabled: boolean = false;
   private static previewScreenshotEnabled: boolean = true;
   private static perfMonitorDebugEnabled: boolean = true;
+  private static loadQJSBridge: boolean = false;
 
   public static initialize(): void {
     DevToolSettings.syncToNative(
@@ -88,6 +89,16 @@ export class DevToolSettings {
 
   public static setLaunchRecordEnabled(enabled: boolean): void {
     DevToolSettings.setPersistedBoolean(DevToolSettings.SP_KEY_ENABLE_LAUNCH_RECORD, enabled);
+  }
+
+  /** Whether to load liblynxdevtool_qjs_bridge.so during DevTool initialization. */
+  public static shouldLoadQJSBridge(): boolean {
+    return DevToolSettings.loadQJSBridge;
+  }
+
+  /** Set before DevTool initialization. */
+  public static setLoadQJSBridge(enabled: boolean): void {
+    DevToolSettings.loadQJSBridge = enabled;
   }
 
   /**

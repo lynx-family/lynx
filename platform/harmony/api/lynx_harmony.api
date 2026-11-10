@@ -1455,6 +1455,8 @@ export class DevToolSettings {
   public static setDebugModeEnabled(enabled: boolean): void;
   public static isLaunchRecordEnabled(): boolean;
   public static setLaunchRecordEnabled(enabled: boolean): void;
+  public static shouldLoadQJSBridge(): boolean;
+  public static setLoadQJSBridge(enabled: boolean): void;
   public static isQuickjsDebugEnabled(): boolean;
   public static setQuickjsDebugEnabled(enabled: boolean): void;
   public static isQuickjsCacheEnabled(): boolean;

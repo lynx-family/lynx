@@ -123,6 +123,9 @@ public class LynxDevtoolEnv {
   }
 
   public void loadNativeDevtoolLibrary() {
+    LLog.i(TAG,
+        "DevTool bridge settings loadQJSBridge=" + shouldLoadQJSBridge()
+            + ", loadV8Bridge=" + shouldLoadV8Bridge());
     if (mDevtoolLibraryLoader != null) {
       mDevtoolLibraryLoader.loadLibrary("lynxdebugrouter");
       mDevtoolLibraryLoader.loadLibrary("basedevtool");
