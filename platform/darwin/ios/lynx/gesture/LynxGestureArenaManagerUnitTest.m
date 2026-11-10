@@ -112,6 +112,10 @@
   return nil;
 }
 
+- (BOOL)hasEventListener:(NSString *)eventName {
+  return [[self eventSet] objectForKey:eventName] != nil;
+}
+
 - (BOOL)shouldHitTest:(CGPoint)point withEvent:(nullable UIEvent *)event {
   return NO;
 }

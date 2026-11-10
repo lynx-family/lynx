@@ -1781,6 +1781,7 @@ public protocol LynxEventTarget-p : <LynxEventTargetBase> {
 public protocol LynxEventTargetBase-p : <NSObject> {
   public nullable id< LynxEventTargetBase > LynxEventTargetBase-p::parentResponder();
   public nullable NSDictionary * LynxEventTargetBase-p::getDataset();
+  public BOOL LynxEventTargetBase-p::hasEventListener:(NSString *eventName);
 }
 
 public class LynxEventTargetSpan : NSObject, <LynxEventTarget> {

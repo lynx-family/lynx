@@ -1818,6 +1818,7 @@ public interface com::lynx::tasm::behavior::event::EventTarget {
   public boolean com.lynx.tasm.behavior.event.EventTarget.containsPoint(float x, float y);
   public boolean com.lynx.tasm.behavior.event.EventTarget.containsPoint(float x, float y, boolean ignoreUserInteraction);
   public Map< String, EventsListener > com.lynx.tasm.behavior.event.EventTarget.getEvents();
+  public default boolean com.lynx.tasm.behavior.event.EventTarget.hasEventListener(@NonNull String eventName);
   public Map< Integer, GestureDetector > com.lynx.tasm.behavior.event.EventTarget.getGestureDetectorMap();
   public Matrix com.lynx.tasm.behavior.event.EventTarget.getTransformMatrix();
   public boolean com.lynx.tasm.behavior.event.EventTarget.isUserInteractionEnabled();
@@ -1861,6 +1862,7 @@ public interface com::lynx::tasm::behavior::event::EventTarget {
 public interface com::lynx::tasm::behavior::event::EventTargetBase {
   public EventTargetBase com.lynx.tasm.behavior.event.EventTargetBase.parentResponder();
   public ReadableMap com.lynx.tasm.behavior.event.EventTargetBase.getDataset();
+  public default boolean com.lynx.tasm.behavior.event.EventTargetBase.hasEventListener(@NonNull String eventName);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::EventTargetSpan : ClickableSpan, com.lynx.tasm.behavior.event.EventTarget {

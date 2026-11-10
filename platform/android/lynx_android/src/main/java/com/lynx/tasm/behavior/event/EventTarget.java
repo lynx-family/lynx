@@ -6,6 +6,7 @@ package com.lynx.tasm.behavior.event;
 
 import android.graphics.Matrix;
 import android.view.MotionEvent;
+import androidx.annotation.NonNull;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxEventDetail;
 import com.lynx.tasm.gesture.detector.GestureDetector;
@@ -56,6 +57,12 @@ public interface EventTarget extends EventTargetBase {
   boolean containsPoint(float x, float y, boolean ignoreUserInteraction);
 
   Map<String, EventsListener> getEvents();
+
+  @Override
+  default boolean hasEventListener(@NonNull String eventName) {
+    Map<String, EventsListener> events = getEvents();
+    return events != null && events.containsKey(eventName);
+  }
 
   Map<Integer, GestureDetector> getGestureDetectorMap();
 
