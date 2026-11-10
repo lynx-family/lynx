@@ -62,6 +62,8 @@ class SharedImageRepresentation
   virtual bool EndWrite() = 0;
 
   virtual void ConsumeFence(std::unique_ptr<FenceSync>) = 0;
+  // Called when returning a slot, including after EndRead/EndWrite fails.
+  // A failed synchronization dependency must remain in the returned fence.
   virtual std::unique_ptr<FenceSync> ProduceFence() = 0;
 
   virtual fml::RefPtr<RepresentationStorageManager> GetTextureManager() const {
@@ -69,7 +71,16 @@ class SharedImageRepresentation
   }
   virtual void SetTextureManager(fml::RefPtr<RepresentationStorageManager>) {}
 
+ protected:
+  // Blocking consumers must preserve an unsuccessful dependency when returning
+  // the slot. A null fence cannot clear a previous synchronization failure.
+  void WaitForFence(std::unique_ptr<FenceSync> fence);
+  bool HasFailedFence() const { return fence_wait_failed_; }
+  void MarkFenceFailed();
+  std::unique_ptr<FenceSync> TakeFailedFence();
+
  private:
+  bool fence_wait_failed_ = false;
   fml::RefPtr<SharedImageBacking> backing_;
 };
 

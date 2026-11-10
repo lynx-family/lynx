@@ -23,6 +23,9 @@ class VkFenceSync final : public FenceSync {
   bool ClientWait() override;
 
   void ServerWait();
+  WaitResult EnqueueWaitResult() override;
+  PollResult Poll() override;
+  NativeExportResult DupNativeFenceFD(int* out_fd) override;
 
   ~VkFenceSync() override;
 
@@ -67,7 +70,9 @@ class VulkanImageHardwareBufferRepresentation
 
  private:
   void CreateVulkanImage(void* buffer);
+  bool ConsumeFenceInternal(FenceSync* fence_sync);
 
+  bool access_ready_ = true;
   VkDevice device_;
   VkPhysicalDevice physical_device_;
   VkQueue queue_;

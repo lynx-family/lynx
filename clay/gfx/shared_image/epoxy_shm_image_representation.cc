@@ -13,9 +13,29 @@
 #include "clay/common/graphics/gl/scoped_texture_binder.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/epoxy_shm_image_backing.h"
+#include "clay/gfx/shared_image/linux_egl_fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 
 namespace clay {
+namespace {
+bool FinishLegacyWork() {
+  for (int i = 0; i < 16; ++i) {
+    const auto error = glGetError();
+    if (error == GL_NO_ERROR) {
+      glFinish();
+      return glGetError() == GL_NO_ERROR;
+    }
+    if (error == GL_OUT_OF_MEMORY || error == 0x0507) return false;
+  }
+  return false;
+}
+LinuxEGLFenceSync::Dispatch FenceDispatch() {
+  static int backend = 0;
+  return {&backend,        eglGetCurrentDisplay, eglGetCurrentContext,
+          eglQueryString,  eglGetProcAddress,    glFlush,
+          FinishLegacyWork};
+}
+}  // namespace
 
 EpoxyShmImageRepresentation::EpoxyShmImageRepresentation(
     fml::RefPtr<SharedImageBacking> backing)
@@ -32,15 +52,17 @@ ImageRepresentationType EpoxyShmImageRepresentation::GetType() const {
 
 void EpoxyShmImageRepresentation::ConsumeFence(
     std::unique_ptr<FenceSync> fence_sync) {
-  if (!fence_sync) {
+  if (fence_sync && fence_sync->GetType() == FenceSync::Type::kLinuxEGL &&
+      static_cast<LinuxEGLFenceSync*>(fence_sync.get())
+          ->CanWaitOn(FenceDispatch()) &&
+      fence_sync->EnqueueWait())
     return;
-  }
-  fence_sync->ClientWait();
+  WaitForFence(std::move(fence_sync));
 }
 
 std::unique_ptr<FenceSync> EpoxyShmImageRepresentation::ProduceFence() {
-  glFinish();
-  return nullptr;
+  if (HasFailedFence()) return TakeFailedFence();
+  return std::make_unique<LinuxEGLFenceSync>(FenceDispatch());
 }
 
 std::optional<GLImageRepresentation::TextureInfo>
@@ -91,6 +113,7 @@ std::optional<GLImageRepresentation::FramebufferInfo>
 EpoxyShmImageRepresentation::BindFrameBuffer() {
   if (fbo_id_ == 0) {
     auto texture_info = GetTexImage();
+    if (!texture_info) return std::nullopt;
     GLuint backend_texture = texture_info->name;
     GLuint fbo_id;
     glGenFramebuffers(1, &fbo_id);
@@ -126,11 +149,13 @@ bool EpoxyShmImageRepresentation::UnbindFrameBuffer() {
 }
 
 bool EpoxyShmImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
+  if (HasFailedFence()) return false;
   static_cast<EpoxyShmImageBacking*>(GetBacking())->CopyPixelsToTexture();
   return GLImageRepresentation::BeginRead(out);
 }
 
 bool EpoxyShmImageRepresentation::EndWrite() {
+  if (HasFailedFence()) return false;
   clay::ScopedFramebufferBinder scoped_framebuffer_binder(GL_FRAMEBUFFER,
                                                           fbo_id_);
   static_cast<EpoxyShmImageBacking*>(GetBacking())->CopyPixelsToShm();

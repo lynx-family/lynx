@@ -16,6 +16,8 @@
 
 namespace clay {
 
+class CGLFenceContext;
+
 class SharedImageBacking;
 
 class CGLStorageManager : public RepresentationStorageManager {
@@ -53,6 +55,7 @@ class CGLImageRepresentation final : public GLImageRepresentation {
   bool GetTexImageFromCVPixelBuffer();
 
   CGLContextObj gl_context_ = nullptr;
+  std::shared_ptr<CGLFenceContext> fence_context_;
   uint32_t texture_id_ = 0;
   uint32_t fbo_id_ = 0;
   uint32_t internal_format_ = 0;

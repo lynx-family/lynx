@@ -8,6 +8,7 @@
 #include <d3d11_1.h>
 
 #include <cstring>
+#include <utility>
 
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/d3d9_texture_image_backing.h"
@@ -75,7 +76,8 @@ ImageRepresentationType D3DImageRepresentation::GetType() const {
 }
 
 bool D3DImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
-  if (!d3d11_texture_ && !d3d9_texture_) {
+  if (!access_ready_ || (!d3d11_texture_ && !d3d9_texture_) ||
+      !LockKeyedMutex()) {
     return false;
   }
   memset(out, 0, sizeof(ClaySharedImageReadResult));
@@ -91,13 +93,17 @@ bool D3DImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
     static_cast<D3DImageRepresentation*>(user_data)->Release();
   };
 
-  return LockKeyedMutex();
+  return true;
 }
 
-bool D3DImageRepresentation::EndRead() { return UnlockKeyedMutex(); }
+bool D3DImageRepresentation::EndRead() {
+  const bool unlocked = UnlockKeyedMutex();
+  return access_ready_ && unlocked;
+}
 
 bool D3DImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
-  if (!d3d11_texture_ && !d3d9_texture_) {
+  if (!access_ready_ || (!d3d11_texture_ && !d3d9_texture_) ||
+      !LockKeyedMutex()) {
     return false;
   }
   memset(out, 0, sizeof(ClaySharedImageWriteResult));
@@ -113,10 +119,13 @@ bool D3DImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
     static_cast<D3DImageRepresentation*>(user_data)->Release();
   };
 
-  return LockKeyedMutex();
+  return true;
 }
 
-bool D3DImageRepresentation::EndWrite() { return UnlockKeyedMutex(); }
+bool D3DImageRepresentation::EndWrite() {
+  const bool unlocked = UnlockKeyedMutex();
+  return access_ready_ && unlocked;
+}
 
 bool D3DImageRepresentation::LockKeyedMutex() {
   if (!keyed_mutex_) {
@@ -124,8 +133,13 @@ bool D3DImageRepresentation::LockKeyedMutex() {
   }
   if (scoped_keyed_mutex_) {
     FML_LOG(ERROR) << "Keyed mutex is already locked.";
+    return false;
   }
   scoped_keyed_mutex_.emplace(keyed_mutex_.Get());
+  if (!scoped_keyed_mutex_->Valid()) {
+    scoped_keyed_mutex_.reset();
+    return FailAccess();
+  }
   return true;
 }
 
@@ -135,9 +149,20 @@ bool D3DImageRepresentation::UnlockKeyedMutex() {
   }
   if (!scoped_keyed_mutex_) {
     FML_LOG(ERROR) << "Keyed mutex is not locked.";
+    return false;
   }
   scoped_keyed_mutex_.reset();
   return true;
+}
+
+bool D3DImageRepresentation::FailAccess(std::unique_ptr<FenceSync> dependency) {
+  if (dependency) {
+    GetBacking()->SetFenceSync(std::move(dependency));
+  } else if (access_ready_) {
+    GetBacking()->SetFenceSync(std::make_unique<FailedD3DFenceSync>());
+  }
+  access_ready_ = false;
+  return false;
 }
 
 class DummyFenceSync final : public FenceSync {
@@ -151,7 +176,13 @@ void D3DImageRepresentation::ConsumeFence(
   if (!fence_sync) {
     return;
   }
-  fence_sync->ClientWait();
+  if (!access_ready_) {
+    GetBacking()->SetFenceSync(std::make_unique<FailedD3DFenceSync>());
+    return;
+  }
+  if (!fence_sync->ClientWait()) {
+    FailAccess(std::move(fence_sync));
+  }
 }
 
 bool D3DImageRepresentation::FlushD3D9() {
@@ -178,6 +209,13 @@ bool D3DImageRepresentation::FlushD3D9() {
 }
 
 std::unique_ptr<FenceSync> D3DImageRepresentation::ProduceFence() {
+  if (!access_ready_) {
+    auto failed = GetBacking()->GetFenceSync();
+    if (failed) {
+      return failed;
+    }
+    return std::make_unique<FailedD3DFenceSync>();
+  }
   // We use keyed mutex when BeginRW/EndRW instead of fence
   if (device_) {
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> device_context;

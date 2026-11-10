@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 
 namespace clay {
@@ -19,6 +20,26 @@ SharedImageRepresentation::SharedImageRepresentation(
     : backing_(std::move(backing)) {}
 
 SharedImageRepresentation::~SharedImageRepresentation() = default;
+
+void SharedImageRepresentation::WaitForFence(std::unique_ptr<FenceSync> fence) {
+  if (!fence) return;
+  if (!fence->ClientWait()) {
+    FML_LOG(ERROR) << "Shared image fence wait failed";
+    fence_wait_failed_ = true;
+    GetBacking()->SetFenceSync(std::move(fence));
+  }
+}
+
+std::unique_ptr<FenceSync> SharedImageRepresentation::TakeFailedFence() {
+  auto fence = GetBacking()->GetFenceSync();
+  if (fence) return fence;
+  return std::make_unique<FailedFenceSync>();
+}
+
+void SharedImageRepresentation::MarkFenceFailed() {
+  fence_wait_failed_ = true;
+  GetBacking()->SetFenceSync(std::make_unique<FailedFenceSync>());
+}
 
 const skity::Vec2 SharedImageRepresentation::GetSize() const {
   return backing_->GetSize();
@@ -84,6 +105,7 @@ GLImageRepresentation::GLImageRepresentation(
     : SharedImageRepresentation(std::move(backing)) {}
 
 bool GLImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
+  if (HasFailedFence()) return false;
   std::optional<TextureInfo> texture_info = GetTexImage();
   if (!texture_info) {
     return false;
@@ -110,10 +132,11 @@ bool GLImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
 
 bool GLImageRepresentation::EndRead() {
   // We don't delete internal texture here since it's time consuming
-  return true;
+  return !HasFailedFence();
 }
 
 bool GLImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
+  if (HasFailedFence()) return false;
   std::optional<FramebufferInfo> fbo_info = BindFrameBuffer();
   if (!fbo_info) {
     return false;
@@ -135,7 +158,7 @@ bool GLImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
 
 bool GLImageRepresentation::EndWrite() {
   // We don't delete internal fbo here since it's time consuming
-  return true;
+  return !HasFailedFence();
 }
 
 }  // namespace clay
