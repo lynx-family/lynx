@@ -36,6 +36,7 @@ constexpr char kKey[] = "key";
 constexpr char kBytesKey[] = "bytes";
 constexpr char kCountsKey[] = "counts";
 constexpr char kVMTypeKey[] = "vm_type";
+constexpr char kInstanceIdKey[] = "instance_id";
 
 constexpr char kForceEnableMarkerName[] = ".lynx-memory-monitor-force-enabled";
 
@@ -290,11 +291,13 @@ PageMemoryUsage MemoryMonitor::RefreshMemoryUsage() {
       last_usage_.bts_bytes >=
           int64_t{settings.large_bts_threshold_mb} * 1024 * 1024) {
     state->large_bts_reported = true;
-    ReportHighMemoryEvent(MakeHighMemoryEvent(
+    auto event = MakeHighMemoryEvent(
         "large_bts", state->page_key, last_usage_.bts_bytes,
         state->bts_known
             ? GlobalMemoryMonitor::RuntimeName(state->bts_runtime_type)
-            : "unknown"));
+            : "unknown");
+    event.Table()->SetValue(BASE_STATIC_STRING(kInstanceIdKey), instance_id_);
+    ReportHighMemoryEvent(event);
   }
   if (!state->large_ui_reported && settings.large_ui_threshold_mb &&
       last_usage_.ui_bytes >=
@@ -302,6 +305,7 @@ PageMemoryUsage MemoryMonitor::RefreshMemoryUsage() {
     state->large_ui_reported = true;
     auto event =
         MakeHighMemoryEvent("large_ui", state->page_key, last_usage_.ui_bytes);
+    event.Table()->SetValue(BASE_STATIC_STRING(kInstanceIdKey), instance_id_);
     auto counts = lepus::CArray::Create();
     for (const auto& [category, record] : memory_records_) {
       counts->emplace_back(category);
