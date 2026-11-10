@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "base/include/closure.h"
+#include "base/include/debug/lynx_assert.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/css_utils.h"
@@ -24,6 +25,7 @@
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "gfx/geometry/matrix44.h"
+#include "gfx/public/path_impl_factory.h"
 #include "gfx/public/rounded_rectangle.h"
 
 namespace lynx {
@@ -154,9 +156,16 @@ void Fragment::UpdateCachedClipPath() {
   auto* style = element()->computed_css_style();
   cache.source_to_layout_scale =
       style->GetMeasureContext().layouts_unit_per_px_;
-  cache.resolved = ResolveClipPath(
-      style->GetClipPath(), layout_info_.GetBorderBoxWidth(),
-      layout_info_.GetBorderBoxHeight(), cache.source_to_layout_scale);
+  if (const auto* shape = style->GetClipPath()) {
+    auto* context = painting_context()->impl()->CastToNativeCtx();
+    DCHECK(context != nullptr);
+    cache.resolved = ResolveClipPath(shape, layout_info_.GetBorderBoxWidth(),
+                                     layout_info_.GetBorderBoxHeight(),
+                                     cache.source_to_layout_scale,
+                                     context->GetPathImplFactory());
+  } else {
+    cache.resolved = {};
+  }
   // The legacy FLR pipeline retains CSS dirty bits after style handoff.
   // Consume this property after the cached Path captures its latest value.
   style->ClearDirtyBits(kPropertyIDClipPath);

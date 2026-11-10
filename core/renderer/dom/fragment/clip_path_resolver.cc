@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "core/renderer/starlight/style/css_type.h"
+#include "gfx/public/path_impl_factory.h"
 namespace lynx::tasm {
 namespace {
 float Length(const starlight::NLength& length, float reference, bool& depends) {
@@ -22,14 +23,15 @@ bool ValidPosition(const ResolvedClipPath& clip) {
 }
 
 fml::RefPtr<gfx::Path> MakeInsetPath(const starlight::BasicShapeData& shape,
-                                     float width, float height) {
+                                     float width, float height,
+                                     const gfx::PathImplFactory& factory) {
   if (width <= 0 || height <= 0) {
     // Check before replacing dimensions with zero, which would hide overflow.
     if (!std::isfinite(width) || !std::isfinite(height)) return nullptr;
-    return gfx::Path::MakeRect(0, 0);
+    return gfx::Path::MakeRect(0, 0, factory);
   }
   if (shape.corner_type == starlight::BasicShapeData::CornerType::kRect)
-    return gfx::Path::MakeRect(width, height);
+    return gfx::Path::MakeRect(width, height, factory);
   const bool super =
       shape.corner_type == starlight::BasicShapeData::CornerType::kSuperEllipse;
   // Insets already depend on both box dimensions, even for fixed lengths.
@@ -43,13 +45,14 @@ fml::RefPtr<gfx::Path> MakeInsetPath(const starlight::BasicShapeData& shape,
     // reject.
     if (radii[i] < 0 && std::isfinite(radii[i])) radii[i] = 0;
   }
-  if (!super) return gfx::Path::MakeRoundedRect(width, height, radii);
+  if (!super) return gfx::Path::MakeRoundedRect(width, height, radii, factory);
   return gfx::Path::MakeSuperRoundedRect(width, height, radii, shape.exponent_x,
-                                         shape.exponent_y);
+                                         shape.exponent_y, factory);
 }
 }  // namespace
 ResolvedClipPath ResolveClipPath(const starlight::BasicShapeData* computed,
-                                 float width, float height, float scale) {
+                                 float width, float height, float scale,
+                                 const gfx::PathImplFactory& factory) {
   ResolvedClipPath out;
   if (!computed) return out;
   const auto& shape = *computed;
@@ -60,7 +63,7 @@ ResolvedClipPath ResolveClipPath(const starlight::BasicShapeData* computed,
     auto type = shape.type;
     if (type == starlight::BasicShapeType::kPath) {
       out.depends_on_source_scale = true;
-      out.path = gfx::Path::MakeSvgPathData(shape.path_data, scale);
+      out.path = gfx::Path::MakeSvgPathData(shape.path_data, scale, factory);
     } else if (type == starlight::BasicShapeType::kCircle ||
                type == starlight::BasicShapeType::kEllipse ||
                type == starlight::BasicShapeType::kSuperEllipse) {
@@ -82,9 +85,9 @@ ResolvedClipPath ResolveClipPath(const starlight::BasicShapeData* computed,
       if (!ValidPosition(out)) break;
       if (type == starlight::BasicShapeType::kSuperEllipse) {
         out.path = gfx::Path::MakeSuperEllipse(rx, ry, shape.exponent_x,
-                                               shape.exponent_y);
+                                               shape.exponent_y, factory);
       } else
-        out.path = gfx::Path::MakeEllipse(rx, ry);
+        out.path = gfx::Path::MakeEllipse(rx, ry, factory);
     } else if (type == starlight::BasicShapeType::kInset) {
       // Even absolute inset distances leave the far edges tied to the box.
       out.depends_on_width = out.depends_on_height = true;
@@ -95,14 +98,14 @@ ResolvedClipPath ResolveClipPath(const starlight::BasicShapeData* computed,
       float w = width - left - right, h = height - top - bottom;
       out.x = left;
       out.y = top;
-      out.path = MakeInsetPath(shape, w, h);
+      out.path = MakeInsetPath(shape, w, h, factory);
     }
   } while (false);
   if (out.path) {
     out.status = ClipPathStatus::kValid;
   } else {
     out.status = ClipPathStatus::kInvalid;
-    out.path = gfx::Path::MakeRect(0, 0);
+    out.path = gfx::Path::MakeRect(0, 0, factory);
     out.x = out.y = 0;
   }
   return out;

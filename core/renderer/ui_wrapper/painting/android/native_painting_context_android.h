@@ -16,6 +16,7 @@
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/platform_renderer_type.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
+#include "core/renderer/ui_wrapper/painting/android/path_android.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 #include "gfx/public/display_list.h"
@@ -27,6 +28,9 @@ class PlatformRendererContext;
 class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
                                  public NativePaintingContext {
  public:
+  const gfx::PathImplFactory &GetPathImplFactory() const override {
+    return path_impl_factory_;
+  }
   NativePaintingCtxAndroid(JNIEnv *env, jobject text_layout, jlong textra,
                            PlatformRendererContext *view_manager);
   NativePaintingCtxAndroid(const NativePaintingCtxAndroid &) = delete;
@@ -139,6 +143,7 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
 #pragma endregion  // NativePaintingContext
 
  private:
+  PathAndroidFactory path_impl_factory_;
   void Enqueue(shell::UIOperation op);
   void BeforeFlush();
   struct PreparationBatch;

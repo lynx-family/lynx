@@ -9,6 +9,7 @@
 
 #include "core/public/platform_renderer_type.h"
 #include "gfx/public/display_list_reader.h"
+#include "gfx/testing/path_stream_impl.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -24,7 +25,7 @@ class DisplayListTest : public ::testing::Test {
 };
 
 TEST_F(DisplayListTest, PathTableDeduplicatesAndOwnsReferences) {
-  auto path = gfx::Path::MakeRect(10, 20);
+  auto path = gfx::Path::MakeRect(10, 20, gfx::GetTestPathImplFactory());
   EXPECT_TRUE(path->HasOneRef());
   auto index = display_list_->RetainPath(path);
   EXPECT_EQ(index, 0u);
@@ -36,7 +37,7 @@ TEST_F(DisplayListTest, PathTableDeduplicatesAndOwnsReferences) {
   display_list_->ClearSubtreeProperties();
   EXPECT_EQ(display_list_->GetPathCount(), 1u);
   DisplayList next;
-  auto other = gfx::Path::MakeRect(1, 2);
+  auto other = gfx::Path::MakeRect(1, 2, gfx::GetTestPathImplFactory());
   EXPECT_EQ(next.RetainPath(other), 0u);
   EXPECT_EQ(next.RetainPath(path), 1u);
   next = std::move(*display_list_);
@@ -51,7 +52,7 @@ TEST_F(DisplayListTest, PathTableDeduplicatesAndOwnsReferences) {
 TEST_F(DisplayListTest, PathTableGrowthMoveAndClearKeepSourcesAlive) {
   base::InlineVector<fml::RefPtr<gfx::Path>, 32> paths;
   for (uint32_t i = 0; i < 32; ++i) {
-    auto path = gfx::Path::MakeRect(10, 20);
+    auto path = gfx::Path::MakeRect(10, 20, gfx::GetTestPathImplFactory());
     paths.push_back(path);
     EXPECT_EQ(display_list_->RetainPath(std::move(path)), i);
     EXPECT_FALSE(path);

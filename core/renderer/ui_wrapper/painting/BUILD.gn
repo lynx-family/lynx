@@ -23,6 +23,7 @@ ui_wrapper_painting_shared_sources = [
 ]
 
 ui_wrapper_painting_shared_deps = [
+  "../../../../gfx:gfx",
   "../../../public",
   "../../../value_wrapper:value_wrapper",
   "../../starlight:starlight",
@@ -43,6 +44,8 @@ if (!enable_unittests) {
 
       # The following implementations are used for FlattenView rendering.
       "android/paint_image_android.h",
+      "android/path_android.cc",
+      "android/path_android.h",
       "android/platform_renderer_android.cc",
       "android/platform_renderer_android.h",
       "android/platform_renderer_context.cc",
@@ -59,6 +62,8 @@ if (!enable_unittests) {
       "harmony/paint_image_harmony.h",
       "harmony/painting_context_harmony.cc",
       "harmony/painting_context_harmony.h",
+      "harmony/path_harmony.cc",
+      "harmony/path_harmony.h",
       "harmony/platform_renderer_harmony.cc",
       "harmony/platform_renderer_harmony.h",
       "harmony/ui_delegate_harmony.cc",
@@ -76,6 +81,8 @@ if (!enable_unittests) {
       "ios/painting_context_darwin.mm",
       "ios/painting_context_darwin_utils.h",
       "ios/painting_context_darwin_utils.mm",
+      "ios/path_darwin.h",
+      "ios/path_darwin.mm",
       "ios/platform_animation_darwin.h",
       "ios/platform_animation_darwin.mm",
       "ios/platform_renderer_context_darwin.h",
@@ -108,6 +115,7 @@ unittest_set("platform_renderer_testset") {
   public_deps = [
     "../../../../base/src:base_values",
     "../../../../base/src:base_values_extended",
+    "../../../../gfx:path_test_utils",
     "../../../public",
     "../../dom/fragment:display_list",
     "../../utils:renderer_utils",

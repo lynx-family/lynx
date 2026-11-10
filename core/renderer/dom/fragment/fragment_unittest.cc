@@ -47,6 +47,8 @@
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "gfx/geometry/matrix44.h"
 #include "gfx/public/display_list_reader.h"
+#include "gfx/public/path_impl_factory.h"
+#include "gfx/testing/path_stream_impl.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -349,10 +351,44 @@ class TestResizablePaintImage : public PaintImage {
   const bool* can_reuse_;
 };
 
+struct ClipPathFactoryState {
+  int constructions = 0;
+  int destructions = 0;
+};
+
+class TestClipPathImpl final : public gfx::PathImpl {
+ public:
+  TestClipPathImpl(gfx::PathSource source,
+                   std::shared_ptr<ClipPathFactoryState> state)
+      : gfx::PathImpl(std::move(source)), state_(std::move(state)) {}
+  ~TestClipPathImpl() override { ++state_->destructions; }
+
+ private:
+  std::shared_ptr<ClipPathFactoryState> state_;
+};
+
+class TestClipPathFactory final : public gfx::PathImplFactory {
+ public:
+  explicit TestClipPathFactory(std::shared_ptr<ClipPathFactoryState> state)
+      : state_(std::move(state)) {}
+  std::unique_ptr<gfx::PathImpl> Create(gfx::PathSource source) const override {
+    ++state_->constructions;
+    return std::make_unique<TestClipPathImpl>(std::move(source), state_);
+  }
+
+ private:
+  std::shared_ptr<ClipPathFactoryState> state_;
+};
+
 // Adapter that exposes the NativePaintingContext interface expected by
 // Fragment::Draw() and forwards to a TestNativePaintingCtxPlatformRef.
 class TestNativePaintingContext : public NativePaintingContext {
  public:
+  const gfx::PathImplFactory& GetPathImplFactory() const override {
+    return path_factory_ ? *path_factory_ : gfx::GetTestPathImplFactory();
+  }
+  std::unique_ptr<gfx::PathImplFactory> path_factory_;
+
   struct CreatedImage {
     int id;
     base::String src;
@@ -678,7 +714,8 @@ TEST_F(ClipPathFragmentTest, RedrawTranslationAndSameSizeReusePath) {
   auto first = Record();
   ASSERT_EQ(first.GetPathCount(), 1u);
   auto* path = first.GetPath(0);
-  auto construction_marker = gfx::Path::MakeRect(0, 0);
+  auto construction_marker =
+      gfx::Path::MakeRect(0, 0, gfx::GetTestPathImplFactory());
   fragment->ClearPaintDirtyState();
   element->SetStyleInternal(kPropertyIDBackgroundColor, CSSValue(0xff010203u));
   fragment->InvalidateForRedraw();
@@ -697,7 +734,7 @@ TEST_F(ClipPathFragmentTest, RedrawTranslationAndSameSizeReusePath) {
   EXPECT_FALSE(fragment->has_platform_renderer_);
   auto parent_record = Record();
   EXPECT_EQ(parent_record.GetPath(0), path);
-  auto after_redraws = gfx::Path::MakeRect(0, 0);
+  auto after_redraws = gfx::Path::MakeRect(0, 0, gfx::GetTestPathImplFactory());
   EXPECT_EQ(after_redraws->GetKey(), construction_marker->GetKey() + 1);
   EXPECT_EQ(std::get<gfx::SvgPathView>(path->GetSourceView()).data,
             "m1e2 3 A10 20 45 01-2.5 .3z");
@@ -715,6 +752,7 @@ TEST_F(ClipPathFragmentTest, OnlyRelevantReferenceDimensionsInvalidate) {
   layout.size_ = FloatSize(200, 200);
   fragment->UpdateLayout(layout);
   auto width = Record();
+  ASSERT_EQ(width.GetPathCount(), 1u);
   EXPECT_NE(width.GetPath(0)->GetKey(), key);
   const auto view = std::get<gfx::PathView>(width.GetPath(0)->GetSourceView());
   ASSERT_EQ(view.header.point_count, 13u);
@@ -891,6 +929,55 @@ TEST_P(ClipPathPipelineTest, StyleFlushAndQueuedListsReuseAndResetClip) {
   EXPECT_EQ(renderer->GetClipPath()->GetKey(), restored_key);
 }
 
+TEST_P(ClipPathPipelineTest,
+       ClipUpdatesPreserveRetainedContentAndImplLifetime) {
+  auto state = std::make_shared<ClipPathFactoryState>();
+  context->path_factory_ = std::make_unique<TestClipPathFactory>(state);
+  manager->enable_new_styling_pipeline_ = GetParam();
+  auto page = manager->CreateFiberPage("0", 0);
+  page->SetStyle(kPropertyIDClipPath, lepus::Value("path(\"M0 0L10 10Z\")"));
+  page->FlushActionsAsRoot();
+  auto* owner = page->fragment_impl();
+  owner->UpdateLayout(layout);
+  owner->Draw();
+  auto* platform = context->GetNativePlatformRef();
+  auto* renderer = static_cast<TestPlatformRenderer*>(
+      platform->renderers_.at(owner->id()).get());
+  auto old = owner->cached_clip_path_.resolved.path;
+  const auto* content = renderer->GetDisplayList().GetContentItemsData();
+  const auto* bytes =
+      std::get<gfx::SvgPathView>(old->GetSourceView()).data.data();
+  EXPECT_EQ(state->constructions, 1);
+  page->SetStyle(kPropertyIDClipPath, lepus::Value("path(\"M0 0L20 20Z\")"));
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(owner->NeedRedraw());
+  owner->Draw();
+  ASSERT_NE(renderer->GetClipPath(), nullptr);
+  EXPECT_NE(renderer->GetClipPath()->GetKey(), old->GetKey());
+  EXPECT_EQ(
+      std::get<gfx::SvgPathView>(renderer->GetClipPath()->GetSourceView()).data,
+      "M0 0L20 20Z");
+  EXPECT_EQ(std::get<gfx::SvgPathView>(old->GetSourceView()).data.data(),
+            bytes);
+  EXPECT_EQ(renderer->last_content_items_size, 0u);
+  EXPECT_EQ(renderer->last_subtree_properties_size, 1u);
+  EXPECT_EQ(renderer->GetDisplayList().GetContentItemsData(), content);
+  EXPECT_EQ(state->constructions, 2);
+  owner->Draw();
+  EXPECT_EQ(state->constructions, 2);
+  page->SetStyle(kPropertyIDClipPath, lepus::Value());
+  page->FlushActionsAsRoot();
+  owner->Draw();
+  EXPECT_EQ(renderer->GetClipPath(), nullptr);
+  EXPECT_EQ(state->destructions, 1);
+  old = nullptr;
+  // The retained content list still owns its original path table after the
+  // layer clip is cleared. Retiring the renderer ends that final ownership.
+  EXPECT_EQ(state->destructions, 1);
+  platform->Destroy();
+  EXPECT_EQ(state->destructions, 2);
+}
+
 TEST_P(ClipPathPipelineTest, ClipChangesReparentZIndexDescendants) {
   manager->enable_new_styling_pipeline_ = GetParam();
   auto page = manager->CreateFiberPage("0", 0);
@@ -960,7 +1047,8 @@ TEST_P(ClipPathPipelineTest, CustomClipOverridesRestoreCSSAndDefault) {
       view->SetStyle(kPropertyIDClipPath,
                      lepus::Value("circle(10px at 20px 30px)"));
     }
-    auto override_path = gfx::Path::MakeRect(30, 40);
+    auto override_path =
+        gfx::Path::MakeRect(30, 40, gfx::GetTestPathImplFactory());
     bool emit_override = true;
     CustomDrawFunctions functions;
     functions.draw_layer_properties = [&](Fragment&,

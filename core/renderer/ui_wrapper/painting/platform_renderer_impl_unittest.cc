@@ -5,6 +5,7 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 
 #include "core/renderer/dom/fragment/display_list_builder.h"
+#include "gfx/testing/path_stream_impl.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx::tasm {
@@ -48,8 +49,8 @@ TEST(PlatformRendererImplTest, ClearsChildParentWhenParentIsReleased) {
 
 TEST(PlatformRendererImplTest, ClipPathPropertyOwnsOnlyTheCurrentResource) {
   auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(1);
-  auto first = gfx::Path::MakeRect(10, 20);
-  auto second = gfx::Path::MakeRect(30, 40);
+  auto first = gfx::Path::MakeRect(10, 20, gfx::GetTestPathImplFactory());
+  auto second = gfx::Path::MakeRect(30, 40, gfx::GetTestPathImplFactory());
   auto update = [&](fml::RefPtr<gfx::Path> path) {
     DisplayListBuilder builder;
     builder.ClipPathProperty(std::move(path), gfx::PathFillRule::kEvenOdd, 3,

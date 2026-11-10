@@ -23,6 +23,7 @@ struct ResolvedClipPath {
 // separate scale and remain in their original source representation.
 ResolvedClipPath ResolveClipPath(const starlight::BasicShapeData* computed,
                                  float width, float height,
-                                 float source_to_layout_scale);
+                                 float source_to_layout_scale,
+                                 const gfx::PathImplFactory& factory);
 }  // namespace lynx::tasm
 #endif  // CORE_RENDERER_DOM_FRAGMENT_CLIP_PATH_RESOLVER_H_

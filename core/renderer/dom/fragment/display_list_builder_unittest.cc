@@ -14,6 +14,7 @@
 #include "core/style/filter_data.h"
 #include "gfx/geometry/matrix44.h"
 #include "gfx/public/display_list_reader.h"
+#include "gfx/testing/path_stream_impl.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -39,7 +40,8 @@ class DisplayListBuilderTest : public ::testing::Test {
 };
 
 TEST(DisplayListPathTest, ClipPathAbiAndSourceSurviveBuildMoveAndClear) {
-  auto path = gfx::Path::MakeSvgPathData("M0 0A1 2 30 01 4 5z", 2);
+  auto path = gfx::Path::MakeSvgPathData("M0 0A1 2 30 01 4 5z", 2,
+                                         gfx::GetTestPathImplFactory());
   ASSERT_TRUE(path);
   auto key = path->GetKey();
   DisplayListBuilder builder;
@@ -76,7 +78,7 @@ TEST(DisplayListPathTest, ClipPathAbiAndSourceSurviveBuildMoveAndClear) {
 }
 
 TEST(DisplayListPathTest, EmplacedClipsPreserveAbiAcrossGrowth) {
-  auto path = gfx::Path::MakeRect(10, 20);
+  auto path = gfx::Path::MakeRect(10, 20, gfx::GetTestPathImplFactory());
   DisplayListBuilder builder;
   builder.Begin(1, PlatformRendererType::kView, 0, 0, 100, 100);
   for (int i = 0; i < 32; ++i)
@@ -103,7 +105,7 @@ TEST(DisplayListPathTest, EmplacedClipsPreserveAbiAcrossGrowth) {
 }
 
 TEST(DisplayListPathTest, ClipPathPropertyRetainsSourceAndExplicitlyResets) {
-  auto path = gfx::Path::MakeRect(10, 20);
+  auto path = gfx::Path::MakeRect(10, 20, gfx::GetTestPathImplFactory());
   DisplayListBuilder builder;
   builder.ClipPathProperty(path, gfx::PathFillRule::kEvenOdd, 3, 4);
   auto list = builder.Build();

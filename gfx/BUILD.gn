@@ -96,6 +96,15 @@ unittest_exec("animation_keyframe_unittests_exec") {
   ]
 }
 
+source_set("path_test_utils") {
+  testonly = true
+  sources = [
+    "testing/path_stream_impl.cc",
+    "testing/path_stream_impl.h",
+  ]
+  public_deps = [ ":gfx_sources" ]
+}
+
 unittest_exec("geometry_unittests_exec") {
   sources = [
     "geometry/quaternion_unittest.cc",
@@ -103,9 +112,13 @@ unittest_exec("geometry_unittests_exec") {
     "geometry/transform_operations_unittest.cc",
     "path/lbs_path_parser_unittest.cc",
   ]
-  sources += [ "path/path_unittest.cc" ]
+  sources += [
+    "path/path_impl_factory_unittest.cc",
+    "path/path_unittest.cc",
+  ]
   deps = [
     ":gfx_sources",
+    ":path_test_utils",
     "//third_party/googletest:gtest",
   ]
 }

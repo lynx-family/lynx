@@ -8,11 +8,14 @@
 
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/unit_handler.h"
+#include "gfx/public/path_impl_factory.h"
+#include "gfx/testing/path_stream_impl.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 namespace lynx::tasm {
 namespace {
-ResolvedClipPath Resolve(const char* css, float w = 100, float h = 200,
-                         float scale = 1) {
+ResolvedClipPath Resolve(
+    const char* css, float w = 100, float h = 200, float scale = 1,
+    const gfx::PathImplFactory& factory = gfx::GetTestPathImplFactory()) {
   CSSParserConfigs config;
   StyleMap parsed;
   if (!UnitHandler::Process(kPropertyIDClipPath, lepus::Value(css), parsed,
@@ -22,7 +25,7 @@ ResolvedClipPath Resolve(const char* css, float w = 100, float h = 200,
   }
   starlight::ComputedCSSStyle style{scale, 1.f};
   style.SetValue(kPropertyIDClipPath, parsed.at(kPropertyIDClipPath));
-  return ResolveClipPath(style.GetClipPath(), w, h, scale);
+  return ResolveClipPath(style.GetClipPath(), w, h, scale, factory);
 }
 void ExpectInvalidClip(const ResolvedClipPath& clip) {
   EXPECT_EQ(clip.status, ClipPathStatus::kInvalid);
@@ -35,6 +38,23 @@ void ExpectInvalidClip(const ResolvedClipPath& clip) {
   EXPECT_EQ(clip.x, 0);
   EXPECT_EQ(clip.y, 0);
 }
+class ResolverPathImpl final : public gfx::PathImpl {
+ public:
+  explicit ResolverPathImpl(gfx::PathSource source)
+      : gfx::PathImpl(std::move(source)) {}
+};
+class ResolverPathFactory final : public gfx::PathImplFactory {
+ public:
+  std::unique_ptr<gfx::PathImpl> Create(gfx::PathSource source) const override {
+    ++constructions;
+    auto impl = std::make_unique<ResolverPathImpl>(std::move(source));
+    last_created = impl.get();
+    return impl;
+  }
+  mutable int constructions = 0;
+  mutable const gfx::PathImpl* last_created = nullptr;
+};
+
 }  // namespace
 TEST(ClipPathResolverTest, CirclePercentageDiagonalAndPlacement) {
   auto p = Resolve("circle(50% at 25% 75%)");
@@ -76,8 +96,10 @@ TEST(ClipPathResolverTest, SameTypedStyleResolvesAgainstMultipleBoxes) {
   starlight::ComputedCSSStyle style{1.f, 1.f};
   style.SetValue(kPropertyIDClipPath, parsed.at(kPropertyIDClipPath));
   const auto* shape = style.GetClipPath();
-  auto first = ResolveClipPath(shape, 100, 200, 1);
-  auto second = ResolveClipPath(shape, 300, 400, 1);
+  auto first =
+      ResolveClipPath(shape, 100, 200, 1, gfx::GetTestPathImplFactory());
+  auto second =
+      ResolveClipPath(shape, 300, 400, 1, gfx::GetTestPathImplFactory());
   ASSERT_EQ(first.status, ClipPathStatus::kValid);
   ASSERT_EQ(second.status, ClipPathStatus::kValid);
   EXPECT_EQ(std::get<gfx::PathView>(first.path->GetSourceView()).points[0].x,
@@ -188,7 +210,8 @@ TEST(ClipPathResolverTest, SvgSourceIsIndependentOfReferenceBox) {
   EXPECT_TRUE(p.depends_on_source_scale);
 }
 TEST(ClipPathResolverTest, NoneInvalidAndZeroAreDistinct) {
-  EXPECT_EQ(ResolveClipPath(nullptr, 100, 100, 1).status,
+  EXPECT_EQ(ResolveClipPath(nullptr, 100, 100, 1, gfx::GetTestPathImplFactory())
+                .status,
             ClipPathStatus::kNoClip);
   auto p = Resolve("ellipse(0px 10px)");
   ASSERT_TRUE(p.path);
@@ -249,7 +272,8 @@ TEST(ClipPathResolverTest, InvalidResultsRetainDependencies) {
   }
 
   starlight::BasicShapeData unknown;
-  auto invalid = ResolveClipPath(&unknown, 100, 100, 1);
+  auto invalid =
+      ResolveClipPath(&unknown, 100, 100, 1, gfx::GetTestPathImplFactory());
   ExpectInvalidClip(invalid);
   EXPECT_FALSE(invalid.depends_on_width);
   EXPECT_FALSE(invalid.depends_on_height);
@@ -275,5 +299,48 @@ TEST(ClipPathResolverTest, NegativeCornerOverflowIsNotClampedToZero) {
     SCOPED_TRACE(css);
     ExpectInvalidClip(Resolve(css, 1e38f, 1e38f));
   }
+}
+TEST(ClipPathResolverTest, EveryShapeAndInvalidEmptyClipUseSelectedFactory) {
+  ResolverPathFactory factory;
+  for (const char* css :
+       {"circle(10px)", "ellipse(20px 10px)", "inset(10px)",
+        "inset(10px round 3px)", "path(\"M0 0L10 10Z\")",
+        "super-ellipse(20px 30px 4 3)", "inset(10px super-ellipse 4 3 10px)",
+        "inset(10px round calc(10% - 20px))", "inset(60%)"}) {
+    SCOPED_TRACE(css);
+    const int before = factory.constructions;
+    auto resolved = Resolve(css, 100, 200, 1, factory);
+    EXPECT_EQ(resolved.status, ClipPathStatus::kValid);
+    ASSERT_TRUE(resolved.path);
+    EXPECT_EQ(&resolved.path->GetImpl(), factory.last_created);
+    EXPECT_EQ(factory.constructions, before + 1);
+  }
+  const int before_empty = factory.constructions;
+  auto empty = Resolve("ellipse(0px 10px)", 100, 200, 1, factory);
+  ASSERT_TRUE(empty.path);
+  EXPECT_EQ(&empty.path->GetImpl(), factory.last_created);
+  EXPECT_EQ(factory.constructions, before_empty + 1);
+  const int before_invalid = factory.constructions;
+  auto invalid = Resolve("path(\"M0 0\")", 100, 200, 0, factory);
+  EXPECT_EQ(invalid.status, ClipPathStatus::kInvalid);
+  ASSERT_TRUE(invalid.path);
+  EXPECT_EQ(&invalid.path->GetImpl(), factory.last_created);
+  EXPECT_EQ(factory.constructions, before_invalid + 1);
+  EXPECT_EQ(std::get<gfx::PathView>(invalid.path->GetSourceView()).header.width,
+            0);
+  for (const char* css :
+       {"circle(1000% at 0px 0px)", "inset(1000% 0px 0px 0px)",
+        "inset(0px round calc(-1000% + 1px))"}) {
+    SCOPED_TRACE(css);
+    const int before = factory.constructions;
+    auto overflow = Resolve(css, 1e38f, 1e38f, 1, factory);
+    ExpectInvalidClip(overflow);
+    EXPECT_EQ(&overflow.path->GetImpl(), factory.last_created);
+    EXPECT_EQ(factory.constructions, before + 1);
+  }
+  const int before = factory.constructions;
+  EXPECT_EQ(ResolveClipPath(nullptr, 100, 200, 1, factory).status,
+            ClipPathStatus::kNoClip);
+  EXPECT_EQ(factory.constructions, before);
 }
 }  // namespace lynx::tasm
