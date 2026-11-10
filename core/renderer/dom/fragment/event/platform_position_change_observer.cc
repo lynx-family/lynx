@@ -127,7 +127,7 @@ void PlatformPositionChangeObserver::DispatchPositionChange() {
   BASE_STATIC_STRING_DECL(kWindowX, "windowX");
   BASE_STATIC_STRING_DECL(kWindowY, "windowY");
 
-  const float unit = helper->GetLayoutsUnitPerPx();
+  const float pixels_per_unit = helper->GetPhysicalPixelsPerLayoutUnit();
 
   // Event callbacks can synchronously change listener registrations.
   signs.clear();
@@ -154,8 +154,10 @@ void PlatformPositionChangeObserver::DispatchPositionChange() {
       continue;
     }
     const std::array<float, 4> window_rect = {
-        rect[0] + origin[0], rect[1] + origin[1], rect[2] - rect[0],
-        rect[3] - rect[1]};
+        (rect[0] + origin[0]) * pixels_per_unit,
+        (rect[1] + origin[1]) * pixels_per_unit,
+        (rect[2] - rect[0]) * pixels_per_unit,
+        (rect[3] - rect[1]) * pixels_per_unit};
     if (last && *last == window_rect) {
       continue;
     }
@@ -167,14 +169,14 @@ void PlatformPositionChangeObserver::DispatchPositionChange() {
     detail->SetValue(kDataset, dataset.IsEmpty()
                                    ? lepus::Value(lepus::Dictionary::Create())
                                    : dataset);
-    detail->SetValue(kLeft, rect[0] / unit);
-    detail->SetValue(kTop, rect[1] / unit);
-    detail->SetValue(kRight, rect[2] / unit);
-    detail->SetValue(kBottom, rect[3] / unit);
-    detail->SetValue(kWidth, window_rect[2] / unit);
-    detail->SetValue(kHeight, window_rect[3] / unit);
-    detail->SetValue(kWindowX, window_rect[0] / unit);
-    detail->SetValue(kWindowY, window_rect[1] / unit);
+    detail->SetValue(kLeft, rect[0] * pixels_per_unit);
+    detail->SetValue(kTop, rect[1] * pixels_per_unit);
+    detail->SetValue(kRight, rect[2] * pixels_per_unit);
+    detail->SetValue(kBottom, rect[3] * pixels_per_unit);
+    detail->SetValue(kWidth, window_rect[2]);
+    detail->SetValue(kHeight, window_rect[3]);
+    detail->SetValue(kWindowX, window_rect[0]);
+    detail->SetValue(kWindowY, window_rect[1]);
     platform_ref_->SendEvent(
         sign, fml::MakeRefCounted<event::CustomEvent>(
                   "positionchange", lepus::Value(std::move(detail)), "detail"));

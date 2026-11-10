@@ -4221,6 +4221,37 @@ TEST_F(FragmentTest, PositionChangeTracksListenerWindowRect) {
   EXPECT_TRUE(observer.targets_.empty());
 }
 
+TEST_F(FragmentTest, PositionChangeUsesPhysicalPixelsAcrossLayoutUnits) {
+  for (const auto& config : {LynxEnvConfig(1080, 1920, 1.f, 3.0),
+                             LynxEnvConfig(1080, 1920, 3.f, 1.0)}) {
+    const float unit = config.LayoutsUnitPerPx();
+    auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+        kRootId, PlatformRendererType::kPage);
+    DisplayListBuilder builder;
+    builder
+        .Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f * unit,
+               200.f * unit)
+        .Begin(1, PlatformRendererType::kView, 10.f * unit, 20.f * unit,
+               50.f * unit, 40.f * unit)
+        .End()
+        .End();
+    root_renderer->UpdateDisplayList(builder.Build());
+    TestNativePaintingCtxPlatformRef platform_ref;
+    platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
+    auto* helper = platform_ref.GetEventTargetHelper();
+    helper->SetLayoutsUnitPerPx(unit);
+    helper->SetPhysicalPixelsPerLayoutUnit(
+        config.PhysicalPixelsPerLayoutUnit());
+    platform_ref.root_view_location = {100.f * unit, 200.f * unit};
+    platform_ref.UpdatePlatformEventBundle(
+        1, PlatformEventBundle({}, {PlatformEventName::kPositionChange}));
+    platform_ref.position_change_observer_.DispatchPositionChange();
+    using Rect = std::array<float, 4>;
+    EXPECT_EQ(platform_ref.position_change_observer_.targets_[1],
+              (Rect{330.f, 660.f, 150.f, 120.f}));
+  }
+}
+
 TEST_F(FragmentTest, PositionChangeTasksUsePlatformRefLifetime) {
   fml::MessageLoop::EnsureInitializedForCurrentThread();
   auto& loop = fml::MessageLoop::GetCurrent();

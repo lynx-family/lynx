@@ -4,6 +4,10 @@
 
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 
+#include <array>
+
+#include "base/include/fml/synchronization/waitable_event.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/services/trace/service_trace_event_def.h"
 
@@ -15,6 +19,35 @@ namespace {
 // delay for external-memory reporting.
 constexpr int64_t kExternalMemoryReportDelayMs = 1000;
 }  // namespace
+
+bool PaintingContext::GetRootViewLocationInWindow(float location[2]) {
+  auto runner = base::UIThread::GetRunner();
+  auto ref = platform_impl_->GetPlatformRef();
+  if (!runner || !ref) return false;
+  if (runner->RunsTasksOnCurrentThread()) {
+    return ref->GetRootViewLocationInWindow(location);
+  }
+  struct WindowOriginResult {
+    fml::AutoResetWaitableEvent event;
+    std::array<float, 2> location{};
+    bool valid{false};
+  };
+  auto result = std::make_shared<WindowOriginResult>();
+  runner->PostTask([ref, result]() {
+    result->valid = ref->GetRootViewLocationInWindow(result->location.data());
+    result->event.Signal();
+  });
+  // Match the existing synchronous native rect-query timeout. The shared
+  // result stays alive if the UI task completes after this query times out.
+  // fml returns true on timeout and false when the event is signaled.
+  if (result->event.WaitWithTimeout(fml::TimeDelta::FromSeconds(1)) ||
+      !result->valid) {
+    return false;
+  }
+  location[0] = result->location[0];
+  location[1] = result->location[1];
+  return true;
+}
 
 void PaintingContext::SetUIOperationQueue(
     const std::shared_ptr<shell::DynamicUIOperationQueue>& queue) {

@@ -17,9 +17,10 @@ namespace lynx::tasm {
 
 class NativePaintingCtxPlatformRef;
 
-// Sends positionchange to targets whose window rect changed. Layout and list
-// scroll updates request a coalesced check; while targets exist, the root view
-// window location is sampled at the exposure interval to catch host movement.
+// Sends positionchange geometry in physical pixels when the window rect
+// changes. Layout and list scroll updates request a coalesced check; while
+// targets exist, the root view window location is sampled at the exposure
+// interval to catch host movement.
 class PlatformPositionChangeObserver {
  public:
   PlatformPositionChangeObserver(NativePaintingCtxPlatformRef* platform_ref,
@@ -40,7 +41,8 @@ class PlatformPositionChangeObserver {
 
   NativePaintingCtxPlatformRef* platform_ref_{nullptr};
   fml::RefPtr<fml::TaskRunner> task_runner_;
-  // Listener sign -> last window rect, absent until the first valid sample.
+  // Listener sign -> last physical-pixel window rect, absent until first
+  // sample.
   base::OrderedFlatMap<int32_t, std::optional<std::array<float, 4>>> targets_;
   std::array<float, 2> root_view_location_{0.f, 0.f};
   bool check_pending_{false};
