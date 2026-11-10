@@ -147,6 +147,8 @@ export { DevToolSettings } from './devtool_wrapper/DevToolSettings'
 
 export { LynxBaseInspectorOwner } from './devtool_wrapper/LynxBaseInspectorOwner'
 
+export { CDPEventListener } from './devtool_wrapper/CDPEventListener'
+
 export { LynxInspectorConsoleDelegate } from './devtool_wrapper/LynxInspectorConsoleDelegate'
 
 export { MessageHandler } from './devtool_wrapper/MessageHandler'
