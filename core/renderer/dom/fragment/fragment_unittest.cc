@@ -2525,6 +2525,85 @@ TEST_F(FragmentDrawTest, NoPatchRepaintSyncsEventBundle) {
   EXPECT_EQ(it->second.StdString(), "target");
 }
 
+TEST_F(FragmentDrawTest, FlattenedTouchTargetsUpdateWithoutContentRedraw) {
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  page->SetStyle(kPropertyIDWidth, lepus::Value("200px"));
+  page->SetStyle(kPropertyIDHeight, lepus::Value("200px"));
+  auto element = manager->CreateFiberView();
+  element->SetStyle(kPropertyIDPosition, lepus::Value("absolute"));
+  element->SetStyle(kPropertyIDLeft, lepus::Value("50px"));
+  element->SetStyle(kPropertyIDTop, lepus::Value("50px"));
+  element->SetStyle(kPropertyIDWidth, lepus::Value("10px"));
+  element->SetStyle(kPropertyIDHeight, lepus::Value("10px"));
+  element->SetAttribute("minimum-touch-target-size", lepus::Value(0.f));
+  page->InsertNode(element);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  manager->Repaint();
+
+  auto* fragment = element->fragment_impl();
+  auto* painting = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto* platform = painting->GetNativePlatformRef();
+  auto hit = [&](float x, float y) {
+    auto root = platform->ReconstructEventTargetTreeRecursively();
+    if (!root) return -1;
+    float point[2] = {x, y};
+    auto target = root->HitTest(
+        point, PlatformEventTarget::HitTestMode::kRegisteredTargets);
+    return target ? target->Sign() : -1;
+  };
+  auto finish_patch = [&]() {
+    manager->need_layout_ = false;
+    bool completed = false;
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinishForFiber(
+        options,
+        [&completed](bool has_patch) {
+          completed = true;
+          EXPECT_FALSE(has_patch);
+        },
+        page.get());
+    EXPECT_TRUE(completed);
+    EXPECT_FALSE(manager->need_repaint_.load());
+    EXPECT_FALSE(page->fragment_impl()->NeedRedraw());
+    EXPECT_TRUE(painting->display_list_batch_sizes.empty());
+    EXPECT_THAT(painting->operations,
+                ::testing::Not(::testing::Contains("update_display_list")));
+  };
+  ASSERT_FALSE(fragment->has_platform_renderer_);
+  ASSERT_FALSE(page->fragment_impl()->NeedRedraw());
+  EXPECT_EQ(hit(55.f, 55.f), element->impl_id());
+  EXPECT_NE(hit(20.f, 55.f), element->impl_id());
+  painting->display_list_batch_sizes.clear();
+  painting->operations.clear();
+
+  // Expand the scalar target without invalidating drawing content.
+  fragment->SetEventProp(PlatformEventPropName::kMinimumTouchTargetSize,
+                         lepus::Value(80.f));
+  ASSERT_TRUE(manager->need_repaint_.load());
+  ASSERT_FALSE(page->fragment_impl()->NeedRedraw());
+  finish_patch();
+  EXPECT_FALSE(fragment->event_bundle_dirty_);
+  EXPECT_EQ(hit(20.f, 55.f), element->impl_id());
+  EXPECT_EQ(hit(55.f, 20.f), element->impl_id());
+
+  // Zero removes the expansion while retaining the registered content target.
+  fragment->SetEventProp(PlatformEventPropName::kMinimumTouchTargetSize,
+                         lepus::Value(0.f));
+  finish_patch();
+  EXPECT_NE(hit(20.f, 55.f), element->impl_id());
+  EXPECT_EQ(hit(55.f, 55.f), element->impl_id());
+
+  fragment->SetEventProp(PlatformEventPropName::kMinimumTouchTargetSize,
+                         lepus::Value());
+  finish_patch();
+  EXPECT_FALSE(fragment->event_bundle_dirty_);
+  EXPECT_NE(hit(20.f, 55.f), element->impl_id());
+  EXPECT_NE(hit(55.f, 55.f), element->impl_id());
+}
+
 TEST_F(FragmentDrawTest, ZIndexChangeKeepsLayerOffsetWithoutRelayout) {
   auto page = manager->CreateFiberPage("0", 0);
   auto outer = manager->CreateFiberView();
