@@ -197,6 +197,7 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
           .SetNativeFacade(std::make_unique<lynx::shell::NativeFacadeDarwin>(self))
           .SetPaintingContextPlatformImpl(std::move(painting_context))
           .SetLynxEnvConfig(lynx_env_config)
+          .SetVSyncMonitorPlatformImpl([_builder vsyncMonitorPlatformImpl])
           .SetEnableElementManagerVsyncMonitor(true)
           .SetEnableLayoutOnly(_enableLayoutOnly)
           .SetEnableNativeList(ui_delegate->EnableNativeList())
@@ -345,7 +346,7 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
   shell_->InitRuntime([[LynxGroup groupNameForLynxGroupOrDefault:_group] UTF8String],
                       resource_loader, native_module_manager, std::move(on_runtime_actor_created),
                       [_runtimeOptions preloadJSPath], runtime_flags,
-                      [_runtimeOptions bytecodeUrlString]);
+                      [_runtimeOptions bytecodeUrlString], [_builder vsyncMonitorPlatformImpl]);
   [self setUpExtensionModules];
 }
 

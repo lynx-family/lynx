@@ -30,6 +30,7 @@ class RasterFrameService
   void SetOutputSurfaceValid(bool valid);
   void SetMeaningfulLayout(bool meaningful_layout);
   void SetVsyncSourceActive(bool active);
+  bool IsVsyncSourceActive() const { return vsync_source_active_; }
 
   // Ask the Rasterizer to submit a new Frame synchronously.
   bool DemandDrawHw();
@@ -73,6 +74,8 @@ class RasterFrameService
   void NotifyUploadTaskRegistered();
 
  private:
+  friend class RasterFrameServiceTestPeer;
+
   void ScheduledFrameDeadline(fml::TimeDelta delay);
   void RequestFrameSignal();
   void RequestVsync();
