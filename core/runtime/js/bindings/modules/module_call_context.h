@@ -5,6 +5,8 @@
 #ifndef CORE_RUNTIME_JS_BINDINGS_MODULES_MODULE_CALL_CONTEXT_H_
 #define CORE_RUNTIME_JS_BINDINGS_MODULES_MODULE_CALL_CONTEXT_H_
 
+#include <string>
+
 namespace lynx::runtime::js {
 class GroupInterceptor;
 class ModuleInterceptor;
@@ -16,6 +18,9 @@ class ModuleInterceptor;
 class ModuleCallContext {
  public:
   virtual ~ModuleCallContext() = default;
+
+  // Optional target selected before argument conversion, within this module.
+  std::string method_name;
 
   // During interception, the interceptor currently handling the call;
   // afterwards, the one that resolved it, or null for a native call.
