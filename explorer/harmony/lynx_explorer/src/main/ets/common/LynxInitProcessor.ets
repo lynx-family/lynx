@@ -26,7 +26,8 @@ export class LynxInitProcessor {
     options.set('AppVersion', '0.0.1');
     LynxEnv.setAppInfo(options);
     this.initXElement();
-    return LynxEnv.prepareDevToolForDevelopmentAfterInit();
+    LynxEnv.prepareDevToolForDevelopmentAfterInit();
+    return LynxEnv.initializeDevTool();
   }
 
   public initLynxService(): void {
