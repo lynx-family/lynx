@@ -199,6 +199,17 @@ void InspectorOwnerEmbedder::UnsubscribeMessage(const std::string& type) {
   devtoolng_delegate_->UnSubscribeMessage(type);
 }
 
+void InspectorOwnerEmbedder::AddCDPEventListener(
+    const std::string& name, const std::shared_ptr<MessageSender>& listener) {
+  CHECK_NULL_AND_LOG_RETURN(devtoolng_delegate_, "devtoolng_delegate_ is null");
+  devtoolng_delegate_->AddCDPEventListener(name, listener);
+}
+
+void InspectorOwnerEmbedder::RemoveCDPEventListener(const std::string& name) {
+  CHECK_NULL_AND_LOG_RETURN(devtoolng_delegate_, "devtoolng_delegate_ is null");
+  devtoolng_delegate_->RemoveCDPEventListener(name);
+}
+
 std::shared_ptr<tasm::TemplateData> InspectorOwnerEmbedder::getTemplateDate() {
   CHECK_NULL_AND_LOG_RETURN_VALUE(platform_embedder_,
                                   "platform_embedder_ is null", nullptr);

@@ -75,6 +75,9 @@ class InspectorOwnerEmbedder
   void SubscribeMessage(const std::string& type,
                         const std::shared_ptr<MessageHandler>& handler);
   void UnsubscribeMessage(const std::string& type);
+  void AddCDPEventListener(const std::string& name,
+                           const std::shared_ptr<MessageSender>& listener);
+  void RemoveCDPEventListener(const std::string& name);
 
   std::shared_ptr<tasm::TemplateData> getTemplateDate();
 

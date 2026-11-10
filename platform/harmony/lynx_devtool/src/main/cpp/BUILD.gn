@@ -8,6 +8,8 @@ import("../../../../../../devtool/lynx_devtool/devtool.gni")
 
 devtool_source_set("cpp") {
   sources = [
+    "cdp_event_listener_sender_harmony.cc",
+    "cdp_event_listener_sender_harmony.h",
     "debug_bridge_harmony.cc",
     "debug_bridge_harmony.h",
     "devtool_env_harmony.cc",
