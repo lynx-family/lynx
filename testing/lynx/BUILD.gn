@@ -65,4 +65,7 @@ group("lynx_test") {
     "../../gfx:geometry_unittests_exec",
     "../../third_party/binding:binding_tests",
   ]
+  if (enable_unittests) {
+    deps += [ "../../platform/common:custom_vsync_monitor_unittests" ]
+  }
 }

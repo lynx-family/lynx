@@ -1,0 +1,26 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../core/Lynx.gni")
+
+lynx_core_source_set("custom_vsync_monitor") {
+  sources = [
+    "custom_vsync_monitor.cc",
+    "custom_vsync_monitor.h",
+  ]
+  public_deps = [ "../../core/public" ]
+}
+
+if (enable_unittests) {
+  executable("custom_vsync_monitor_unittests") {
+    testonly = true
+    sources = [ "custom_vsync_monitor_unittest.cc" ]
+    deps = [
+      ":custom_vsync_monitor",
+      "../../base/src:base_static",
+      "//third_party/googletest:gtest",
+      "//third_party/googletest:gtest_main",
+    ]
+  }
+}

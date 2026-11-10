@@ -139,6 +139,7 @@ subspec_target("Framework") {
 }
 
 subspec_target("lynx") {
+  deps = [ "../../../common:custom_vsync_monitor" ]
   sources = [
     "LUIConfigAdapter.h",
     "LUIConfigAdapter.mm",
@@ -147,6 +148,8 @@ subspec_target("lynx") {
     "LynxBaseConfigurator.mm",
     "LynxConfig+Internal.h",
     "LynxContext+Internal.h",
+    "LynxCustomVsyncMonitorBridge.h",
+    "LynxCustomVsyncMonitorBridge.mm",
     "LynxDefaultLogicExecutor.mm",
     "LynxElement.mm",
     "LynxEngine.h",
@@ -267,6 +270,7 @@ subspec_target("lynx") {
     "module/LynxUIMethodModule.h",
     "module/LynxUIMethodModule.mm",
     "public/LynxBaseConfigurator.h",
+    "public/LynxCustomVsyncMonitor.h",
     "public/LynxDefaultLogicExecutor.h",
     "public/LynxElement.h",
     "public/LynxLogicExecutor.h",
@@ -450,6 +454,7 @@ subspec_target("lynx") {
     "utils/LynxUIUnitUtils.m",
   ]
   public_header_files = [
+    "public/LynxCustomVsyncMonitor.h",
     "public/LynxViewBuilder.h",
     "public/LynxViewGroup.h",
     "public/LynxBaseConfigurator.h",
@@ -507,6 +512,7 @@ subspec_target("UnitTests") {
     "../../common/lynx/performance/memory/LynxMemoryRecordUnitTest.m",
     "../../common/lynx/performance/memory/LynxMemoryUsageCollectorUnitTest.m",
     "../../common/lynx/performance/memory/LynxMemoryUsageQueryUnitTest.m",
+    "LynxCustomVsyncMonitorUnitTest.mm",
     "LynxElementUnitTest.m",
     "LynxLogContextUnitTest.mm",
     "LynxModuleManagerDarwinUnitTest.mm",
