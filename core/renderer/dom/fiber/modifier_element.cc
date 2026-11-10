@@ -77,6 +77,8 @@ BASE_STATIC_STRING_DECL(kShareTouchTargetAttribute, "share-touch-target");
 BASE_STATIC_STRING_DECL(kMinimumTouchTargetSizeAttribute,
                         "minimum-touch-target-size");
 BASE_STATIC_STRING_DECL(kMinimumTouchTargetPxField, "minTouchTargetPx");
+BASE_STATIC_STRING_DECL(kMinimumTouchTargetHeightPxField,
+                        "minTouchTargetHeightPx");
 BASE_STATIC_STRING_DECL(kEventTargetField, "eventTarget");
 BASE_STATIC_STRING_DECL(kAttachField, "attach");
 
@@ -127,6 +129,8 @@ struct ModifierOperation {
   bool event_target{false};
   bool share_touch_target{false};
   float minimum_touch_target_px{0.f};
+  float minimum_touch_target_height_px{0.f};
+  bool has_minimum_touch_target_height{false};
   base::String name;
   base::String event_type;
   lepus::Value value;
@@ -421,7 +425,7 @@ bool ParseModifierOperation(const lepus::Value& node,
       if (!operation->callback.ToLepusValue().IsCallable() ||
           !ReadFiniteNumberProperty(node, kMinimumTouchTargetPxField,
                                     &minimum) ||
-          minimum < 0) {
+          minimum < 0 || minimum > std::numeric_limits<float>::max()) {
         *error = "invalid Modifier attachment";
         return false;
       }
@@ -434,6 +438,19 @@ bool ParseModifierOperation(const lepus::Value& node,
       operation->share_touch_target =
           ReadModifierProperty(node, kShareWithSiblingsField).Bool();
       operation->minimum_touch_target_px = minimum;
+      const auto height_value =
+          ReadModifierProperty(node, kMinimumTouchTargetHeightPxField);
+      if (!height_value.IsEmpty() && !height_value.IsNil() &&
+          !height_value.IsUndefined()) {
+        if (!height_value.IsNumber() || !std::isfinite(height_value.Number()) ||
+            height_value.Number() < 0 ||
+            height_value.Number() > std::numeric_limits<float>::max()) {
+          *error = "invalid Modifier touch target height";
+          return false;
+        }
+        operation->minimum_touch_target_height_px = height_value.Number();
+        operation->has_minimum_touch_target_height = true;
+      }
       return true;
     }
     case kModifierOpPadding:
@@ -966,9 +983,17 @@ void ApplyNonLayoutOperation(
       break;
     case kModifierOpAttachment:
       if (operation.event_target) {
-        target->SetModifierAttribute(
-            kMinimumTouchTargetSizeAttribute,
-            lepus::Value(operation.minimum_touch_target_px));
+        if (operation.has_minimum_touch_target_height) {
+          auto size = lepus::CArray::Create();
+          size->emplace_back(operation.minimum_touch_target_px);
+          size->emplace_back(operation.minimum_touch_target_height_px);
+          target->SetModifierAttribute(kMinimumTouchTargetSizeAttribute,
+                                       lepus::Value(size));
+        } else {
+          target->SetModifierAttribute(
+              kMinimumTouchTargetSizeAttribute,
+              lepus::Value(operation.minimum_touch_target_px));
+        }
         target->SetModifierAttribute(
             kShareTouchTargetAttribute,
             lepus::Value(operation.share_touch_target));

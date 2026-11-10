@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <limits>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -2988,6 +2989,98 @@ TEST_F(FragmentTest, DrawFullSyncsLayoutOnlyWhenPageConfigEnabled) {
   const auto& begin = reader.Next();
   ASSERT_EQ(begin.type, DisplayListOpType::kBegin);
   EXPECT_EQ(begin.payload.begin.is_layout_only, 1);
+}
+
+TEST_F(FragmentTest, MinimumTouchTargetUsesIndependentPhysicalAxesAndClears) {
+  auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0.f, 0.f, 200.f, 200.f)
+      .Begin(1, PlatformRendererType::kView, 50.f, 50.f, 10.f, 10.f)
+      .End()
+      .End();
+  renderer->UpdateDisplayList(builder.Build());
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, renderer);
+  auto root = platform_ref.ReconstructEventTargetTreeRecursively();
+  auto* helper = platform_ref.GetEventTargetHelper();
+  ASSERT_NE(helper->GetEventTarget(1), nullptr);
+  auto apply = [&](const lepus::Value& size) {
+    PlatformEventBundle bundle;
+    bundle.SetEventProp(PlatformEventPropName::kMinimumTouchTargetSize, size);
+    platform_ref.UpdatePlatformEventBundle(1, std::move(bundle));
+    root = platform_ref.ReconstructEventTargetTreeRecursively();
+  };
+  auto hit = [&](float x, float y) {
+    float point[2] = {x, y};
+    auto result = root->HitTest(
+        point, PlatformEventTarget::HitTestMode::kRegisteredTargets);
+    return result ? result->Sign() : -1;
+  };
+  auto pair = [](const lepus::Value& width, const lepus::Value& height) {
+    auto values = lepus::CArray::Create();
+    values->push_back(width);
+    values->push_back(height);
+    return lepus::Value(values);
+  };
+  const auto wide = pair(lepus::Value(80.f), lepus::Value(20.f));
+  for (float scale : {1.f, 2.5f, 3.f}) {
+    SCOPED_TRACE(scale);
+    helper->SetPhysicalPixelsPerLayoutUnit(scale);
+    apply(wide);
+    EXPECT_EQ(hit(44.f, 55.f), 1);
+    EXPECT_NE(hit(55.f, 44.f), 1);
+    apply(pair(lepus::Value(20.f), lepus::Value(80.f)));
+    EXPECT_NE(hit(44.f, 55.f), 1);
+    EXPECT_EQ(hit(55.f, 44.f), 1);
+    apply(pair(lepus::Value(80.f), lepus::Value(0.f)));
+    EXPECT_EQ(hit(44.f, 55.f), 1);
+    EXPECT_NE(hit(55.f, 44.f), 1);
+    apply(pair(lepus::Value(0.f), lepus::Value(80.f)));
+    EXPECT_NE(hit(44.f, 55.f), 1);
+    EXPECT_EQ(hit(55.f, 44.f), 1);
+    apply(lepus::Value(80.f));
+    EXPECT_EQ(hit(44.f, 55.f), 1);
+    EXPECT_EQ(hit(55.f, 44.f), 1);
+    apply(lepus::Value(0.f));
+    EXPECT_NE(hit(44.f, 55.f), 1);
+    EXPECT_EQ(hit(55.f, 55.f), 1);
+  }
+
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double infinity = std::numeric_limits<double>::infinity();
+  const double overflow =
+      static_cast<double>(std::numeric_limits<float>::max()) * 2.;
+  auto one_value = lepus::CArray::Create();
+  one_value->push_back(lepus::Value(80.f));
+  auto three_values = lepus::CArray::Create();
+  for (float value : {80.f, 20.f, 30.f}) {
+    three_values->push_back(lepus::Value(value));
+  }
+  for (const auto& invalid :
+       {pair(lepus::Value(-1.f), lepus::Value(20.f)),
+        pair(lepus::Value(80.f), lepus::Value(-1.f)),
+        pair(lepus::Value(nan), lepus::Value(20.f)),
+        pair(lepus::Value(80.f), lepus::Value(nan)),
+        pair(lepus::Value(infinity), lepus::Value(20.f)),
+        pair(lepus::Value(80.f), lepus::Value(infinity)),
+        pair(lepus::Value(overflow), lepus::Value(20.f)),
+        pair(lepus::Value(80.f), lepus::Value(overflow)),
+        pair(lepus::Value("80"), lepus::Value(20.f)),
+        pair(lepus::Value(80.f), lepus::Value(true)),
+        lepus::Value(lepus::CArray::Create()), lepus::Value(one_value),
+        lepus::Value(three_values), lepus::Value(-1.f), lepus::Value(nan),
+        lepus::Value(infinity), lepus::Value(overflow), lepus::Value("80"),
+        lepus::Value()}) {
+    apply(wide);
+    apply(invalid);
+    EXPECT_NE(hit(55.f, 55.f), 1);
+  }
+  // Removing registration must not change ordinary hit testing.
+  float point[2] = {55.f, 55.f};
+  auto ordinary_hit = root->HitTest(point);
+  ASSERT_NE(ordinary_hit, nullptr);
+  EXPECT_EQ(ordinary_hit->Sign(), 1);
 }
 
 TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {

@@ -2514,6 +2514,132 @@ TEST_P(ModifierElementTest, GetChildrenResolvesComposeContent) {
   }
 }
 
+TEST_P(ModifierElementTest,
+       PointerTargetsPreserveScalarAndValidateIndependentAxes) {
+  auto runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(runtime, nullptr);
+  runtime->Initialize();
+  runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  lepus::Value callback;
+  const std::string script = "(function(carrier) {})";
+  ASSERT_TRUE(
+      runtime::MTSRuntime::ToQuickContext(runtime.get())
+          ->EvalBuf(script.data(), script.size(), callback, "attachment.js"));
+  auto handle = CreateComposeHandle(manager);
+  auto attachment = lepus::Dictionary::Create();
+  attachment->SetValue("op", lepus::Value(16));
+  attachment->SetValue("eventTarget", lepus::Value(true));
+  attachment->SetValue("minTouchTargetPx", lepus::Value(80.f));
+  attachment->SetValue("attach", callback);
+  auto apply = [&]() {
+    return ComposeModifierApplicator::Apply(
+        handle.get(), lepus::Value(attachment), runtime.get());
+  };
+  auto read_size = [&]() {
+    const auto& attributes =
+        handle->content_element()->data_model()->attributes();
+    auto it = attributes.find(base::String("minimum-touch-target-size"));
+    return it == attributes.end() ? lepus::Value() : it->second;
+  };
+  ASSERT_TRUE(apply().success);
+  ASSERT_TRUE(read_size().IsNumber());
+  EXPECT_FLOAT_EQ(read_size().Number(), 80.f);
+
+  attachment->SetValue("minTouchTargetHeightPx", lepus::Value(20.f));
+  ASSERT_TRUE(apply().success);
+  auto size = read_size();
+  ASSERT_TRUE(size.IsArray());
+  ASSERT_EQ(size.Array()->size(), 2u);
+  EXPECT_FLOAT_EQ(size.Array()->get(0).Number(), 80.f);
+  EXPECT_FLOAT_EQ(size.Array()->get(1).Number(), 20.f);
+
+  // Invalid dimensions must leave the active chain and attributes intact.
+  for (double invalid :
+       {-1., std::numeric_limits<double>::infinity(),
+        std::numeric_limits<double>::quiet_NaN(),
+        static_cast<double>(std::numeric_limits<float>::max()) * 2.}) {
+    attachment->SetValue("minTouchTargetHeightPx", lepus::Value(invalid));
+    EXPECT_FALSE(apply().success);
+    auto unchanged = read_size();
+    ASSERT_TRUE(unchanged.IsArray());
+    EXPECT_FLOAT_EQ(unchanged.Array()->get(0).Number(), 80.f);
+    EXPECT_FLOAT_EQ(unchanged.Array()->get(1).Number(), 20.f);
+    attachment->SetValue("minTouchTargetHeightPx", lepus::Value(20.f));
+    attachment->SetValue("minTouchTargetPx", lepus::Value(invalid));
+    EXPECT_FALSE(apply().success);
+    unchanged = read_size();
+    ASSERT_TRUE(unchanged.IsArray());
+    EXPECT_FLOAT_EQ(unchanged.Array()->get(0).Number(), 80.f);
+    EXPECT_FLOAT_EQ(unchanged.Array()->get(1).Number(), 20.f);
+    attachment->SetValue("minTouchTargetPx", lepus::Value(80.f));
+  }
+  for (const auto& invalid : {lepus::Value("20"), lepus::Value(true)}) {
+    attachment->SetValue("minTouchTargetHeightPx", invalid);
+    EXPECT_FALSE(apply().success);
+    auto unchanged = read_size();
+    ASSERT_TRUE(unchanged.IsArray());
+    EXPECT_FLOAT_EQ(unchanged.Array()->get(0).Number(), 80.f);
+    EXPECT_FLOAT_EQ(unchanged.Array()->get(1).Number(), 20.f);
+  }
+
+  attachment->SetValue("minTouchTargetHeightPx", lepus::Value(0.f));
+  ASSERT_TRUE(apply().success);
+  EXPECT_FLOAT_EQ(read_size().Array()->get(1).Number(), 0.f);
+  attachment->SetValue("minTouchTargetHeightPx", lepus::Value());
+  ASSERT_TRUE(apply().success);
+  ASSERT_TRUE(read_size().IsNumber());
+  EXPECT_FLOAT_EQ(read_size().Number(), 80.f);
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(handle.get(), lepus::Value(),
+                                               runtime.get())
+                  .success);
+  EXPECT_TRUE(read_size().IsNil());
+}
+
+TEST_P(ModifierElementTest,
+       PointerTargetsAcceptMissingHeightOnJavaScriptObjects) {
+  auto runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  ASSERT_NE(runtime, nullptr);
+  runtime->Initialize();
+  runtime->SetGlobalData(
+      BASE_STATIC_STRING(tasm::kTemplateAssembler),
+      lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+  for (const char* height : {"", ",minTouchTargetHeightPx:null",
+                             ",minTouchTargetHeightPx:undefined"}) {
+    SCOPED_TRACE(height);
+    for (bool pointer_target : {false, true}) {
+      SCOPED_TRACE(pointer_target);
+      const std::string script =
+          std::string("({op:16,eventTarget:") +
+          (pointer_target ? "true" : "false") +
+          ",minTouchTargetPx:48,shareWithSiblings:false,attach:function(){}" +
+          height + "})";
+      lepus::Value node;
+      ASSERT_TRUE(runtime::MTSRuntime::ToQuickContext(runtime.get())
+                      ->EvalBuf(script.data(), script.size(), node,
+                                "attachment-optional-height.js"));
+      auto handle = CreateComposeHandle(manager);
+      auto result =
+          ComposeModifierApplicator::Apply(handle.get(), node, runtime.get());
+      ASSERT_TRUE(result.success) << result.error_message;
+      const auto& attributes =
+          handle->content_element()->data_model()->attributes();
+      const auto it =
+          attributes.find(base::String("minimum-touch-target-size"));
+      if (!pointer_target) {
+        EXPECT_EQ(it, attributes.end());
+        continue;
+      }
+      ASSERT_NE(it, attributes.end());
+      ASSERT_TRUE(it->second.IsNumber());
+      EXPECT_FLOAT_EQ(it->second.Number(), 48.f);
+    }
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(ModifierElementTestModule, ModifierElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 
