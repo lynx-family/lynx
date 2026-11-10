@@ -2054,6 +2054,9 @@ void Fragment::ResetFlattenedDescendantRedrawState() {
 }
 
 void Fragment::DispatchUpdateDisplayList() {
+  // Flattened descendants can change input properties without invalidating
+  // retained drawing content. Publish their bundles on the cached draw path.
+  SyncEventBundle();
   if (!IsVisible(element())) {
     if (!has_platform_renderer_) {
       ResetDirtyState(kNeedRedraw);
