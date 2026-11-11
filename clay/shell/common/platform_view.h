@@ -13,11 +13,13 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/macros.h"
 #include "base/include/fml/memory/weak_ptr.h"
 #include "clay/common/task_runners.h"
+#include "clay/common/vsync/vsync_callback.h"
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/flow/surface.h"
 #include "clay/fml/mapping.h"
@@ -408,6 +410,15 @@ class PlatformView {
 
   const TaskRunners& GetTaskRunners() const { return task_runners_; }
 
+  // Shares the source with animations created by platform services.
+  void SetCustomVsyncRequest(VsyncRequestCallback request) {
+    custom_vsync_request_ = std::move(request);
+  }
+
+  const VsyncRequestCallback& GetCustomVsyncRequest() const {
+    return custom_vsync_request_;
+  }
+
   virtual void OnTimingSetup(
       const std::unordered_map<std::string, int64_t>& timing) {}
   virtual void OnTimingUpdate(
@@ -440,6 +451,7 @@ class PlatformView {
   PlatformView::Delegate& delegate_;
   const TaskRunners task_runners_;
   PointerDataPacketConverter pointer_data_packet_converter_;
+  VsyncRequestCallback custom_vsync_request_;
   fml::WeakPtrFactory<PlatformView> weak_factory_;  // Must be the last member.
 
  private:
