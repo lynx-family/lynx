@@ -739,7 +739,8 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAll) {
   EXPECT_EQ(custom_properties["--a"].AsStdString(), "blue");
   EXPECT_EQ(custom_properties["--b"].AsStdString(), "blue");
   EXPECT_EQ(custom_properties["--c"].AsStdString(), "blue");
-  EXPECT_EQ(custom_properties["--d"].AsStdString(), "   blue");
+  // A self-reference invalidates the declaration, including its own fallback.
+  EXPECT_TRUE(custom_properties["--d"].AsStdString().empty());
 }
 
 TEST_F(CSSValueSubstitutionTest, SubstituteAllPreservesTransitiveDependencies) {
@@ -804,6 +805,237 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAllPreservesTransitiveDependencies) {
             "blue");
   EXPECT_EQ(dependencies.size(), 1U);
   EXPECT_EQ(dependencies["--c"], "blue");
+}
+
+TEST_F(CSSValueSubstitutionTest,
+       SubstituteAllWithoutPendingReferencesPreservesDependencies) {
+  CustomPropertiesMap properties;
+  properties.insert_or_assign("--base", CSSValue::MakePlainString("blue"));
+  lepus::Value expression("var(--base)");
+  CSSStringParser parser =
+      CSSStringParser::FromLepusString(expression, configs_);
+  properties.insert_or_assign("--accent", parser.ParseVariable());
+  CSSValue::SubstituteAll(properties);
+  ASSERT_FALSE(properties["--accent"].NeedsVariableResolution());
+
+  int dependency_calls = 0;
+  CSSValue::SubstituteAll(
+      properties, 10,
+      [&dependency_calls](const base::String&, const base::String&) {
+        ++dependency_calls;
+      });
+  EXPECT_EQ(dependency_calls, 0);
+  EXPECT_EQ(properties["--accent"].AsStdString(), "blue");
+
+  CSSVariableMap dependencies;
+  auto record_dependency = [&dependencies](const base::String& name,
+                                           const base::String& value) {
+    dependencies.insert_or_assign(name, value);
+  };
+  lepus::Value use_accent("var(--accent)");
+  CSSStringParser use_parser =
+      CSSStringParser::FromLepusString(use_accent, configs_);
+  EXPECT_EQ(CSSValue::SubstitutionResolved(use_parser.ParseVariable(),
+                                           properties, record_dependency),
+            "blue");
+  EXPECT_EQ(dependencies.size(), 2U);
+  EXPECT_EQ(dependencies["--base"], "blue");
+  EXPECT_EQ(dependencies["--accent"], "blue");
+}
+
+TEST_F(CSSValueSubstitutionTest,
+       SubstituteAllResolvesDirectAndFallbackReferences) {
+  CustomPropertiesMap properties;
+  properties.insert_or_assign("--base", CSSValue::MakePlainString("blue"));
+  for (const auto& [name, expression] :
+       {std::pair{"--direct", "var(--base)"},
+        std::pair{"--fallback", "var(--missing,var(--base))"}}) {
+    lepus::Value value(expression);
+    CSSStringParser parser = CSSStringParser::FromLepusString(value, configs_);
+    properties.insert_or_assign(name, parser.ParseVariable());
+    ASSERT_TRUE(properties[name].NeedsVariableResolution());
+  }
+
+  CSSValue::SubstituteAll(properties);
+  for (const char* name : {"--direct", "--fallback"}) {
+    EXPECT_EQ(properties[name].AsStdString(), "blue");
+    EXPECT_FALSE(properties[name].NeedsVariableResolution());
+  }
+}
+
+TEST_F(CSSValueSubstitutionTest,
+       SubstituteAllInvalidatesSelfReferencesIncludingFallbacks) {
+  for (const char* expression :
+       {"var(--self)", "var(--self,red)", "var(--present,var(--self))"}) {
+    SCOPED_TRACE(expression);
+    CustomPropertiesMap properties;
+    properties.insert_or_assign("--present", CSSValue::MakePlainString("blue"));
+    lepus::Value value(expression);
+    CSSStringParser parser = CSSStringParser::FromLepusString(value, configs_);
+    properties.insert_or_assign("--self", parser.ParseVariable());
+    ASSERT_TRUE(properties["--self"].NeedsVariableResolution());
+
+    CSSValue::SubstituteAll(properties);
+    EXPECT_TRUE(properties["--self"].AsStdString().empty());
+    EXPECT_FALSE(properties["--self"].NeedsVariableResolution());
+  }
+}
+
+TEST_F(CSSValueSubstitutionTest,
+       SubstituteAllDetectsCyclesThroughUnusedNestedFallbacks) {
+  CustomPropertiesMap properties;
+  properties.insert_or_assign("--present", CSSValue::MakePlainString("blue"));
+  for (const auto& [name, expression] :
+       {std::pair{"--a", "var(--present,var(--missing,var(--b)))"},
+        std::pair{"--b", "var(--a)"},
+        std::pair{"--result", "var(--a,green)"}}) {
+    lepus::Value value(expression);
+    CSSStringParser parser = CSSStringParser::FromLepusString(value, configs_);
+    properties.insert_or_assign(name, parser.ParseVariable());
+    ASSERT_TRUE(properties[name].NeedsVariableResolution());
+  }
+
+  CSSValue::SubstituteAll(properties);
+  EXPECT_TRUE(properties["--a"].AsStdString().empty());
+  EXPECT_TRUE(properties["--b"].AsStdString().empty());
+  EXPECT_EQ(properties["--result"].AsStdString(), "green");
+}
+
+TEST_F(CSSValueSubstitutionTest,
+       CustomPropertyCacheReusesSnapshotAndUnaffectedResults) {
+  CustomPropertiesMapRef specified;
+  specified.Init();
+  const auto set = [&](const char* name, const char* expression) {
+    lepus::Value value(expression);
+    CSSStringParser parser = CSSStringParser::FromLepusString(value, configs_);
+    specified.Access()->Value().insert_or_assign(name, parser.ParseVariable());
+  };
+  set("--base", "blue");
+  set("--other", "12px");
+  set("--a", "var(--base)");
+  set("--b", "var(--other)");
+  CustomPropertiesMapRef resolved;
+  CSSValue::CustomPropertyResolutionCacheRef cache;
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  const auto first_cache = cache;
+  const auto* first_map = resolved.Get();
+  const auto a = resolved->Value().find("--a")->second.AsString();
+  const auto b = resolved->Value().find("--b")->second.AsString();
+
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(cache, first_cache);
+  EXPECT_EQ(resolved.Get(), first_map);
+
+  set("--unrelated", "green");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(base::String::Unsafe::GetStringRawRef(
+                resolved->Value().find("--a")->second.AsString()),
+            base::String::Unsafe::GetStringRawRef(a));
+  EXPECT_EQ(base::String::Unsafe::GetStringRawRef(
+                resolved->Value().find("--b")->second.AsString()),
+            base::String::Unsafe::GetStringRawRef(b));
+
+  set("--base", "green");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(resolved->Value().find("--a")->second.AsStdString(), "green");
+  EXPECT_EQ(base::String::Unsafe::GetStringRawRef(
+                resolved->Value().find("--b")->second.AsString()),
+            base::String::Unsafe::GetStringRawRef(b));
+}
+
+TEST_F(CSSValueSubstitutionTest,
+       CustomPropertyCacheRefreshesDependenciesWhenComputedValuesMatch) {
+  CustomPropertiesMapRef specified;
+  specified.Init();
+  const auto set = [&](const char* name, const char* expression) {
+    lepus::Value value(expression);
+    CSSStringParser parser = CSSStringParser::FromLepusString(value, configs_);
+    specified.Access()->Value().insert_or_assign(name, parser.ParseVariable());
+  };
+  set("--left", "blue");
+  set("--right", "blue");
+  set("--b", "var(--left)");
+  set("--a", "var(--b)");
+  CustomPropertiesMapRef resolved;
+  CSSValue::CustomPropertyResolutionCacheRef cache;
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  const auto a = resolved->Value().find("--a")->second.AsString();
+
+  set("--b", "var(--right)");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(base::String::Unsafe::GetStringRawRef(
+                resolved->Value().find("--a")->second.AsString()),
+            base::String::Unsafe::GetStringRawRef(a));
+  CSSVariableMap dependencies;
+  const auto& computed_a = resolved->Value().find("--a")->second;
+  computed_a.ReplayCustomPropertyDependencies(
+      [&dependencies](const base::String& name, const base::String& value) {
+        dependencies.insert_or_assign(name, value);
+      });
+  EXPECT_TRUE(dependencies.contains("--right"));
+  EXPECT_FALSE(dependencies.contains("--left"));
+
+  set("--right", "green");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(resolved->Value().find("--a")->second.AsStdString(), "green");
+}
+
+TEST_F(CSSValueSubstitutionTest, CustomPropertyCacheTracksActiveFallbacks) {
+  CustomPropertiesMapRef specified;
+  specified.Init();
+  const auto set = [&](const char* name, const char* expression) {
+    lepus::Value value(expression);
+    CSSStringParser parser = CSSStringParser::FromLepusString(value, configs_);
+    specified.Access()->Value().insert_or_assign(name, parser.ParseVariable());
+  };
+  set("--primary", "blue");
+  set("--fallback", "red");
+  set("--a", "var(--primary,var(--fallback))");
+  CustomPropertiesMapRef resolved;
+  CSSValue::CustomPropertyResolutionCacheRef cache;
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  const auto a = resolved->Value().find("--a")->second.AsString();
+
+  set("--fallback", "green");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(base::String::Unsafe::GetStringRawRef(
+                resolved->Value().find("--a")->second.AsString()),
+            base::String::Unsafe::GetStringRawRef(a));
+  specified.Access()->Value().erase("--primary");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(resolved->Value().find("--a")->second.AsStdString(), "green");
+
+  set("--primary", "red");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(resolved->Value().find("--a")->second.AsStdString(), "red");
+}
+
+TEST_F(CSSValueSubstitutionTest, CustomPropertyCacheInvalidatesChangedCycles) {
+  CustomPropertiesMapRef specified;
+  specified.Init();
+  const auto set = [&](const char* name, const char* expression) {
+    lepus::Value value(expression);
+    CSSStringParser parser = CSSStringParser::FromLepusString(value, configs_);
+    specified.Access()->Value().insert_or_assign(name, parser.ParseVariable());
+  };
+  set("--a", "var(--b)");
+  set("--b", "12px");
+  CustomPropertiesMapRef resolved;
+  CSSValue::CustomPropertyResolutionCacheRef cache;
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(resolved->Value().find("--a")->second.AsStdString(), "12px");
+
+  set("--b", "var(--a)");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_TRUE(resolved->Value().find("--a")->second.AsStdString().empty());
+  EXPECT_TRUE(resolved->Value().find("--b")->second.AsStdString().empty());
+
+  set("--b", "24px");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(resolved->Value().find("--a")->second.AsStdString(), "24px");
+  set("--a", "var(--b) var(--b)");
+  CSSValue::ResolveCustomProperties(specified, resolved, cache);
+  EXPECT_EQ(resolved->Value().find("--a")->second.AsStdString(), "24px 24px");
 }
 
 // Tests for ToVarReference function using Substitution method

@@ -718,6 +718,195 @@ TEST(ComputedCSSStyleTest, InheritCustomPropertiesUsesComputedValues) {
   EXPECT_EQ(parent_value->AsStdString(), "blue");
 }
 
+TEST(ComputedCSSStyleTest,
+     CustomPropertyCachePreservesShadowedAncestorBindings) {
+  starlight::ComputedCSSStyle parent{1.f, 1.f};
+  parent.SetCustomProperty("--base", ParseVariableValue("12px"));
+  parent.SetCustomProperty("--alias", ParseVariableValue("var(--base)"));
+  parent.FinalizeCustomProperties();
+
+  starlight::ComputedCSSStyle child{1.f, 1.f};
+  child.InheritCustomPropertiesFrom(parent);
+  child.SetCustomProperty("--base", ParseVariableValue("24px"));
+  child.SetCustomProperty(
+      "--local", ParseVariableValue("var(--alias) var(--base) var(--alias)"));
+  for (int i = 0; i < 2; ++i) {
+    child.FinalizeCustomProperties();
+    const auto& local = child.GetCustomProperties()->find("--local")->second;
+    EXPECT_EQ(local.AsString(), "12px 24px 12px");
+    CSSVariableMap dependencies;
+    local.ReplayCustomPropertyDependencies(
+        [&dependencies](const base::String& name, const base::String& value) {
+          dependencies.insert_or_assign(name, value);
+        });
+    EXPECT_EQ(dependencies["--base"], "12px");
+    child.SetCustomProperty("--unrelated", ParseVariableValue("green"));
+  }
+}
+
+TEST(ComputedCSSStyleTest, FinalizeInheritedCustomPropertiesKeepsSharedMap) {
+  starlight::ComputedCSSStyle parent{1.f, 1.f};
+  parent.SetCustomProperty(base::String("--base"),
+                           CSSValue::MakePlainString("blue"));
+  parent.SetCustomProperty(base::String("--accent"),
+                           ParseVariableValue("var(--base)"));
+  parent.FinalizeCustomProperties();
+  const auto* inherited_properties = parent.GetCustomProperties();
+  ASSERT_NE(inherited_properties, nullptr);
+
+  starlight::ComputedCSSStyle child{1.f, 1.f};
+  child.InheritCustomPropertiesFrom(parent);
+  child.FinalizeCustomProperties();
+  EXPECT_EQ(child.GetCustomProperties(), inherited_properties);
+  child.FinalizeCustomProperties();
+  EXPECT_EQ(child.GetCustomProperties(), inherited_properties);
+
+  starlight::ComputedCSSStyle grandchild{1.f, 1.f};
+  grandchild.InheritCustomPropertiesFrom(child);
+  grandchild.FinalizeCustomProperties();
+  EXPECT_EQ(grandchild.GetCustomProperties(), inherited_properties);
+  auto accent = grandchild.ResolveVariable(base::String("--accent"));
+  ASSERT_TRUE(accent.has_value());
+  EXPECT_EQ(accent->AsStdString(), "blue");
+
+  starlight::ComputedCSSStyle copied{1.f, 1.f};
+  copied.CopyFrom(child);
+  copied.FinalizeCustomProperties();
+  EXPECT_EQ(copied.GetCustomProperties(), inherited_properties);
+}
+
+TEST(ComputedCSSStyleTest, InheritedCustomPropertiesUseNewParentSnapshot) {
+  starlight::ComputedCSSStyle parent{1.f, 1.f};
+  parent.SetCustomProperty(base::String("--base"),
+                           CSSValue::MakePlainString("blue"));
+  parent.SetCustomProperty(base::String("--accent"),
+                           ParseVariableValue("var(--base)"));
+  parent.FinalizeCustomProperties();
+
+  starlight::ComputedCSSStyle child{1.f, 1.f};
+  child.InheritCustomPropertiesFrom(parent);
+  child.FinalizeCustomProperties();
+
+  parent.SetCustomProperty(base::String("--base"),
+                           CSSValue::MakePlainString("green"));
+  parent.FinalizeCustomProperties();
+  auto previous_accent = child.ResolveVariable(base::String("--accent"));
+  ASSERT_TRUE(previous_accent.has_value());
+  EXPECT_EQ(previous_accent->AsStdString(), "blue");
+
+  child.InheritCustomPropertiesFrom(parent);
+  child.FinalizeCustomProperties();
+  EXPECT_EQ(child.GetCustomProperties(), parent.GetCustomProperties());
+  auto updated_accent = child.ResolveVariable(base::String("--accent"));
+  ASSERT_TRUE(updated_accent.has_value());
+  EXPECT_EQ(updated_accent->AsStdString(), "green");
+
+  starlight::ComputedCSSStyle empty_parent{1.f, 1.f};
+  child.InheritCustomPropertiesFrom(empty_parent);
+  child.FinalizeCustomProperties();
+  EXPECT_EQ(child.GetRawCustomProperties(), nullptr);
+  EXPECT_EQ(child.GetCustomProperties(), nullptr);
+  EXPECT_FALSE(child.ResolveVariable(base::String("--accent")).has_value());
+}
+
+TEST(ComputedCSSStyleTest,
+     FinalizeCustomPropertiesWithoutPendingReferencesKeepsSharedMap) {
+  starlight::ComputedCSSStyle style{1.f, 1.f};
+  style.SetCustomProperty(base::String("--base"),
+                          CSSValue::MakePlainString("blue"));
+  const auto* raw_properties = style.GetRawCustomProperties();
+  ASSERT_NE(raw_properties, nullptr);
+  style.FinalizeCustomProperties();
+  EXPECT_EQ(style.GetCustomProperties(), raw_properties);
+  style.FinalizeCustomProperties();
+  EXPECT_EQ(style.GetCustomProperties(), raw_properties);
+
+  // Adding a reference must detach the shared map and resume resolution.
+  style.SetCustomProperty(base::String("--accent"),
+                          ParseVariableValue("var(--base)"));
+  style.FinalizeCustomProperties();
+  EXPECT_NE(style.GetCustomProperties(), style.GetRawCustomProperties());
+  auto accent = style.ResolveVariable(base::String("--accent"));
+  ASSERT_TRUE(accent.has_value());
+  EXPECT_EQ(accent->AsStdString(), "blue");
+
+  style.SetCustomProperty(base::String("--base"),
+                          CSSValue::MakePlainString("green"));
+  style.FinalizeCustomProperties();
+  auto updated_accent = style.ResolveVariable(base::String("--accent"));
+  ASSERT_TRUE(updated_accent.has_value());
+  EXPECT_EQ(updated_accent->AsStdString(), "green");
+}
+
+TEST(ComputedCSSStyleTest,
+     InheritedCustomPropertiesCannotCreateCrossElementCycles) {
+  // CSS Variables 1 section 2.3: references are substituted before inheritance.
+  starlight::ComputedCSSStyle root{1.f, 1.f};
+  root.SetCustomProperty(base::String("--foo"),
+                         CSSValue::MakePlainString("10px"));
+  root.FinalizeCustomProperties();
+
+  starlight::ComputedCSSStyle parent{1.f, 1.f};
+  parent.InheritCustomPropertiesFrom(root);
+  parent.SetCustomProperty(base::String("--bar"),
+                           ParseVariableValue("var(--foo)"));
+  parent.FinalizeCustomProperties();
+
+  starlight::ComputedCSSStyle child{1.f, 1.f};
+  child.InheritCustomPropertiesFrom(parent);
+  child.FinalizeCustomProperties();
+  EXPECT_EQ(child.GetCustomProperties(), parent.GetCustomProperties());
+
+  starlight::ComputedCSSStyle grandchild{1.f, 1.f};
+  grandchild.InheritCustomPropertiesFrom(child);
+  grandchild.SetCustomProperty(base::String("--foo"),
+                               ParseVariableValue("var(--bar)"));
+  grandchild.FinalizeCustomProperties();
+  auto foo = grandchild.ResolveVariable(base::String("--foo"));
+  ASSERT_TRUE(foo.has_value());
+  EXPECT_EQ(foo->AsStdString(), "10px");
+  auto bar = grandchild.ResolveVariable(base::String("--bar"));
+  ASSERT_TRUE(bar.has_value());
+  EXPECT_EQ(bar->AsStdString(), "10px");
+  auto inherited_foo = child.ResolveVariable(base::String("--foo"));
+  ASSERT_TRUE(inherited_foo.has_value());
+  EXPECT_EQ(inherited_foo->AsStdString(), "10px");
+}
+
+TEST(ComputedCSSStyleTest, LocalCustomPropertyCyclesAfterInheritedFastPath) {
+  starlight::ComputedCSSStyle parent{1.f, 1.f};
+  parent.SetCustomProperty(base::String("--a"),
+                           CSSValue::MakePlainString("10px"));
+  parent.SetCustomProperty(base::String("--b"),
+                           CSSValue::MakePlainString("20px"));
+  parent.FinalizeCustomProperties();
+
+  starlight::ComputedCSSStyle child{1.f, 1.f};
+  child.InheritCustomPropertiesFrom(parent);
+  child.FinalizeCustomProperties();
+  child.SetCustomProperty(base::String("--a"), ParseVariableValue("var(--b)"));
+  child.SetCustomProperty(base::String("--b"), ParseVariableValue("var(--a)"));
+  child.FinalizeCustomProperties();
+  EXPECT_NE(child.GetCustomProperties(), parent.GetCustomProperties());
+  for (const char* name : {"--a", "--b"}) {
+    auto value = child.ResolveVariable(base::String(name));
+    ASSERT_TRUE(value.has_value());
+    EXPECT_TRUE(value->AsStdString().empty());
+  }
+  auto parent_a = parent.ResolveVariable(base::String("--a"));
+  ASSERT_TRUE(parent_a.has_value());
+  EXPECT_EQ(parent_a->AsStdString(), "10px");
+
+  child.SetCustomProperty(base::String("--b"),
+                          CSSValue::MakePlainString("30px"));
+  child.FinalizeCustomProperties();
+  for (const char* name : {"--a", "--b"}) {
+    auto value = child.ResolveVariable(base::String(name));
+    ASSERT_TRUE(value.has_value());
+    EXPECT_EQ(value->AsStdString(), "30px");
+  }
+}
+
 TEST(ComputedCSSStyleTest, InheritHelpersCopyOnlyRequestedState) {
   starlight::ComputedCSSStyle parent{1.f, 1.f};
   starlight::ComputedCSSStyle child{1.f, 1.f};

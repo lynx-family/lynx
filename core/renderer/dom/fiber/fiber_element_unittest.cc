@@ -22773,6 +22773,44 @@ TEST_P(FiberElementTest, TestGetComputedStyleByKey) {
   EXPECT_TRUE(page->GetComputedStyleByKey("opacity").StdString() == "0.9");
 }
 
+TEST_P(FiberElementTest, NewStylingVariableCacheSurvivesUnrelatedStyleChanges) {
+  manager->enable_new_styling_pipeline_ = true;
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+  view->SetRawInlineStyles(
+      "--base: 12px; --alias: var(--base); width: var(--alias); opacity: 0.5;");
+  page->FlushActionsAsRoot();
+  const auto first_cache =
+      view->computed_css_style()->custom_property_resolution_cache_;
+  ASSERT_NE(first_cache, nullptr);
+  EXPECT_TRUE(StyleMapHasValue(view->computed_css_style()->GetResolvedValues(),
+                               kPropertyIDWidth,
+                               CSSValue(12, CSSValuePattern::PX)));
+
+  view->SetRawInlineStyles(
+      "--base: 12px; --alias: var(--base); width: var(--alias); opacity: "
+      "0.75;");
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(view->computed_css_style()->custom_property_resolution_cache_,
+            first_cache);
+  EXPECT_TRUE(StyleMapHasValue(view->computed_css_style()->GetResolvedValues(),
+                               kPropertyIDWidth,
+                               CSSValue(12, CSSValuePattern::PX)));
+
+  view->SetRawInlineStyles(
+      "--base: 24px; --alias: var(--base); width: var(--alias); opacity: "
+      "0.75;");
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(StyleMapHasValue(view->computed_css_style()->GetResolvedValues(),
+                               kPropertyIDWidth,
+                               CSSValue(24, CSSValuePattern::PX)));
+  EXPECT_EQ(view->GetComputedStyleByKey("--alias").StdString(), "24px");
+}
+
 TEST_P(FiberElementTest, TestGetComputedStyleByKeyCustomProperties) {
   lynx::base::AutoReset<bool> css_inline_config(
       &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);

@@ -5,11 +5,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
+#include "base/trace/native/trace_event.h"
 #include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/runtime/lepus/json_parser.h"
 
 namespace lynx {
@@ -461,21 +464,48 @@ struct alignas(4) SCCNode {
 
 class CSSValue::CycleDetector {
  public:
-  explicit CycleDetector(const CustomPropertiesMap& variables)
+  explicit CycleDetector(const CustomPropertiesMap& variables,
+                         bool detect_cycles = true)
       : variables_(variables) {
-    // Process all variables when used_vars is empty
-    FindAllSCCs();
+    if (detect_cycles) {
+      FindAllSCCs();
+    }
   }
 
   bool IsInCycle(const std::string& var_name) const {
     return cycles_.contains(var_name);
   }
 
+  void ReuseCycles(const std::unordered_set<base::String>& cycles) {
+    for (const auto& name : cycles) {
+      cycles_.insert(name.str());
+    }
+  }
+
+  template <typename Visitor>
+  static void ForEachDependency(const CSSValue& value, const Visitor& visitor) {
+    if (!value.IsVariable() ||
+        !value.optionals_.HasValue<VarReferenceField>()) {
+      return;
+    }
+    for (const auto& ref : value.optionals_.Get<VarReferenceField>()) {
+      visitor(std::string(ref.Name(value.AsStdString())));
+      // Fallback references participate in cycles even when the primary
+      // reference exists and the fallback would not be substituted.
+      if (!ref.fallback.empty()) {
+        CSSStringParser parser(ref.fallback.c_str(),
+                               static_cast<uint32_t>(ref.fallback.length()),
+                               ref.parser_configs);
+        ForEachDependency(parser.ParseVariable(), visitor);
+      }
+    }
+  }
+
  private:
   void FindAllSCCs() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_VALUE_FIND_ALL_SCCS);
     index_ = 0;
     nodes_.reserve(variables_.size());
-
     for (const auto& [var_name, _] : variables_) {
       const std::string& var_name_str = var_name.str();
       if (nodes_[var_name_str].index == -1) {
@@ -491,14 +521,11 @@ class CSSValue::CycleDetector {
     stack_.push(var_name);
     node.on_stack = true;
 
-    // Optimized dependency traversal
+    bool has_self_loop = false;
     auto var_it = variables_.find(var_name);
-    if (var_it != variables_.end() && var_it->second.IsVariable() &&
-        var_it->second.optionals_.HasValue<VarReferenceField>()) {
-      const auto& refs = var_it->second.optionals_.Get<VarReferenceField>();
-      for (const auto& var_ref : refs) {
-        const std::string dep_name(var_ref.Name(var_it->second.AsStdString()));
-
+    if (var_it != variables_.end()) {
+      ForEachDependency(var_it->second, [&](const std::string& dep_name) {
+        has_self_loop |= dep_name == var_name;
         if (variables_.find(dep_name) != variables_.end()) {
           auto& dep_node = nodes_[dep_name];
           if (dep_node.index == -1) {
@@ -508,7 +535,7 @@ class CSSValue::CycleDetector {
             node.low_link = std::min(node.low_link, dep_node.index);
           }
         }
-      }
+      });
     }
 
     // Efficient SCC extraction
@@ -520,21 +547,8 @@ class CSSValue::CycleDetector {
         stack_.pop();
         nodes_[w].on_stack = false;
 
-        if (w != var_name) {
+        if (w != var_name || has_self_loop) {
           has_cycle = true;
-        } else {
-          // Check self-loop
-          auto var_it = variables_.find(w);
-          if (var_it != variables_.end() && var_it->second.IsVariable() &&
-              var_it->second.optionals_.HasValue<VarReferenceField>()) {
-            for (const auto& var_ref :
-                 var_it->second.optionals_.Get<VarReferenceField>()) {
-              if (var_ref.Name(var_it->second.AsStdString()) == w) {
-                has_cycle = true;
-                break;
-              }
-            }
-          }
         }
 
         if (has_cycle) {
@@ -551,6 +565,259 @@ class CSSValue::CycleDetector {
   int index_ = 0;
 };
 
+class CSSValue::CustomPropertyResolutionCache {
+ public:
+  struct Graph {
+    std::unordered_map<base::String, std::vector<base::String>> dependencies;
+    std::unordered_set<base::String> cycles;
+  };
+
+  CustomPropertiesMapRef specified;
+  CustomPropertiesMapRef resolved;
+  std::shared_ptr<const Graph> graph;
+  std::unordered_map<base::String, std::vector<base::String>> used_references;
+};
+
+bool CSSValue::HasSameVariableResolutionInput(const CSSValue& other) const {
+  if (*this != other || IsVariable() != other.IsVariable() ||
+      NeedsVariableResolution() != other.NeedsVariableResolution()) {
+    return false;
+  }
+  if (!IsVariable()) {
+    return true;
+  }
+  // Legacy references can have identical text and different fallback metadata.
+  if (GetDefaultValue() != other.GetDefaultValue() ||
+      GetDefaultValueMapOpt() != other.GetDefaultValueMapOpt()) {
+    return false;
+  }
+  const auto* references = GetVarReferences();
+  const auto* other_references = other.GetVarReferences();
+  if (!references || !other_references) {
+    return references == other_references;
+  }
+  return references->size() == other_references->size() &&
+         std::equal(references->begin(), references->end(),
+                    other_references->begin(),
+                    [](const auto& a, const auto& b) {
+                      return a.name_start == b.name_start &&
+                             a.name_end == b.name_end && a.start == b.start &&
+                             a.end == b.end && a.offset == b.offset &&
+                             a.fallback == b.fallback;
+                    });
+}
+
+void CSSValue::ResolveCustomProperties(
+    const CustomPropertiesMapRef& specified, CustomPropertiesMapRef& resolved,
+    CustomPropertyResolutionCacheRef& cache) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_VALUE_RESOLVE_CUSTOM_PROPERTIES);
+  // The two arguments may alias in the legacy element path.
+  const auto specified_snapshot = specified;
+  const auto& inputs = specified_snapshot.Get()->Value();
+  const auto previous = cache;
+  const auto same_value = [](const CSSValue& a, const CSSValue& b) {
+    return a.HasSameVariableResolutionInput(b);
+  };
+  const auto same_dependencies = [](const CSSValue& a, const CSSValue& b) {
+    const bool a_has = a.optionals_.HasValue<CustomPropertyDependencyField>();
+    const bool b_has = b.optionals_.HasValue<CustomPropertyDependencyField>();
+    return a_has == b_has &&
+           (!a_has || a.optionals_.Get<CustomPropertyDependencyField>() ==
+                          b.optionals_.Get<CustomPropertyDependencyField>());
+  };
+
+  const CustomPropertiesMap* old_inputs =
+      previous ? &previous->specified.Get()->Value() : nullptr;
+  bool same_inputs = old_inputs && old_inputs->size() == inputs.size();
+  bool same_graph_inputs = previous != nullptr;
+  size_t pending_count = 0;
+  for (const auto& [name, value] : inputs) {
+    const auto old = old_inputs ? old_inputs->find(name) : inputs.end();
+    const bool same = old_inputs && old != old_inputs->end() &&
+                      same_value(value, old->second);
+    same_inputs &= same && same_dependencies(value, old->second);
+    if (value.NeedsVariableResolution()) {
+      ++pending_count;
+      same_graph_inputs &= same;
+    }
+  }
+  if (same_inputs) {
+    resolved = previous->resolved;
+    return;
+  }
+  if (pending_count == 0) {
+    resolved = specified_snapshot;
+    cache.reset();
+    return;
+  }
+
+  same_graph_inputs &=
+      previous && pending_count == previous->graph->dependencies.size();
+  std::shared_ptr<const CustomPropertyResolutionCache::Graph> graph;
+  std::shared_ptr<CustomPropertyResolutionCache::Graph> new_graph;
+  if (same_graph_inputs) {
+    graph = previous->graph;
+  } else {
+    new_graph = std::make_shared<CustomPropertyResolutionCache::Graph>();
+    for (const auto& [name, value] : inputs) {
+      if (!value.NeedsVariableResolution()) {
+        continue;
+      }
+      auto& references = new_graph->dependencies[name];
+      CycleDetector::ForEachDependency(value,
+                                       [&](const std::string& dependency) {
+                                         references.emplace_back(dependency);
+                                       });
+      std::sort(references.begin(), references.end());
+      references.erase(std::unique(references.begin(), references.end()),
+                       references.end());
+    }
+    if (previous && previous->graph->dependencies == new_graph->dependencies) {
+      graph = previous->graph;
+      new_graph.reset();
+    } else {
+      graph = new_graph;
+    }
+  }
+
+  // Inherited computed values are leaves. Only changes to the local reference
+  // graph can change its SCCs; changing terminal values does not rebuild it.
+  CustomPropertiesMap cycle_inputs;
+  if (new_graph) {
+    for (const auto& [name, _] : graph->dependencies) {
+      cycle_inputs.insert_or_assign(name, inputs.find(name)->second);
+    }
+  }
+  CycleDetector detector(cycle_inputs, new_graph != nullptr);
+  if (new_graph) {
+    for (const auto& [name, _] : graph->dependencies) {
+      if (detector.IsInCycle(name.str())) {
+        new_graph->cycles.insert(name);
+      }
+    }
+  } else {
+    detector.ReuseCycles(graph->cycles);
+  }
+
+  resolved = specified_snapshot;
+  auto& values = resolved.Access()->Value();
+  const auto* old_values =
+      previous ? &previous->resolved.Get()->Value() : nullptr;
+  std::unordered_map<base::String, std::vector<base::String>> used_references;
+  std::unordered_set<base::String> finished;
+  std::vector<base::String> resolution_order;
+  for (const auto& name : graph->cycles) {
+    values.insert_or_assign(name,
+                            CSSValue(base::String(), CSSValuePattern::STRING,
+                                     CSSValueType::DEFAULT));
+    finished.insert(name);
+    resolution_order.push_back(name);
+  }
+  auto resolve_value = [&](auto&& self, const base::String& name) -> void {
+    if (finished.count(name)) {
+      return;
+    }
+    const auto& references = graph->dependencies.at(name);
+    for (const auto& reference : references) {
+      if (graph->dependencies.count(reference)) {
+        self(self, reference);
+      }
+    }
+    bool reuse =
+        old_inputs && old_inputs->contains(name) &&
+        same_value(inputs.find(name)->second, old_inputs->find(name)->second) &&
+        !previous->graph->cycles.count(name);
+    const auto* previous_references =
+        reuse ? &previous->used_references.at(name) : nullptr;
+    for (const auto& reference :
+         previous_references ? *previous_references : references) {
+      if (!reuse) {
+        break;
+      }
+      auto current = values.find(reference);
+      auto old = old_values->find(reference);
+      if ((current == values.end()) != (old == old_values->end()) ||
+          (current != values.end() &&
+           !same_value(current->second, old->second))) {
+        reuse = false;
+      }
+    }
+    if (reuse) {
+      values.insert_or_assign(name, old_values->find(name)->second);
+      used_references[name] = *previous_references;
+    } else {
+      auto& used = used_references[name];
+      const auto record_reference = [&used](const base::String& reference) {
+        used.push_back(reference);
+      };
+      auto result = Substitution(inputs.find(name)->second, values, detector,
+                                 10, nullptr, record_reference);
+      values.insert_or_assign(
+          name, CSSValue(std::move(result), CSSValuePattern::STRING,
+                         CSSValueType::DEFAULT));
+    }
+    finished.insert(name);
+    resolution_order.push_back(name);
+  };
+  for (const auto& [name, _] : graph->dependencies) {
+    resolve_value(resolve_value, name);
+  }
+
+  // Refresh dependency metadata even when a computed string was reused. A
+  // dependency can start referring to another variable without changing value.
+  for (const auto& name : resolution_order) {
+    CustomPropertyDependencyField::Type dependencies;
+    std::unordered_set<base::String> visited;
+    const auto record = [&dependencies](const base::String& dependency,
+                                        const base::String& value) {
+      dependencies.insert_or_assign(dependency, value);
+    };
+    if (!graph->cycles.count(name)) {
+      for (const auto& reference : used_references.at(name)) {
+        auto value = values.find(reference);
+        ReportCustomPropertyDependency(
+            reference.str(), value == values.end() ? nullptr : &value->second,
+            record);
+      }
+    }
+    const auto record_extra = [&dependencies](const base::String& dependency,
+                                              const base::String& value) {
+      if (!dependencies.contains(dependency)) {
+        dependencies.insert_or_assign(dependency, value);
+      }
+    };
+    auto collect = [&](auto&& self, const base::String& current) -> void {
+      for (const auto& dependency : graph->dependencies.at(current)) {
+        if (!visited.insert(dependency).second) {
+          continue;
+        }
+        auto value = values.find(dependency);
+        if (graph->dependencies.count(dependency)) {
+          record_extra(dependency, value->second.AsString());
+          self(self, dependency);
+        } else {
+          ReportCustomPropertyDependency(
+              dependency.str(),
+              value == values.end() ? nullptr : &value->second, record_extra);
+        }
+      }
+    };
+    collect(collect, name);
+    auto& value = values.at(name);
+    if (!value.optionals_.HasValue<CustomPropertyDependencyField>() ||
+        value.optionals_.Get<CustomPropertyDependencyField>() != dependencies) {
+      value.SetCustomPropertyDependencies(std::move(dependencies));
+    }
+  }
+
+  auto next = std::make_shared<CustomPropertyResolutionCache>();
+  next->specified = specified_snapshot;
+  next->resolved = resolved;
+  next->graph = std::move(graph);
+  next->used_references = std::move(used_references);
+  cache = std::move(next);
+}
+
 std::string CSSValue::AsJsonString(bool map_key_ordered) const {
   return lepus::lepusValueToString(GetValue(), map_key_ordered);
 }
@@ -558,7 +825,8 @@ std::string CSSValue::AsJsonString(bool map_key_ordered) const {
 std::string CSSValue::ResolveVariable(
     const std::string& var_name, const CustomPropertiesMap& custom_properties,
     const CycleDetector& detector, int max_depth,
-    const HandleCustomPropertyFunc& handle_func) {
+    const HandleCustomPropertyFunc& handle_func,
+    const HandleVariableReferenceFunc& on_reference) {
   if (max_depth <= 0) {
     return "";
   }
@@ -575,15 +843,24 @@ std::string CSSValue::ResolveVariable(
   }
 
   return CSSValue::Substitution(css_value, custom_properties, detector,
-                                max_depth - 1, handle_func);
+                                max_depth - 1, handle_func, on_reference);
   ;
 }
 
 void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
                              int max_depth,
                              const HandleCustomPropertyFunc& handle_func) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_VALUE_SUBSTITUTE_ALL);
+  auto first_unresolved = std::find_if(
+      custom_properties.begin(), custom_properties.end(),
+      [](const auto& entry) { return entry.second.NeedsVariableResolution(); });
+  if (first_unresolved == custom_properties.end()) {
+    return;
+  }
+
   CycleDetector detector(custom_properties);
-  for (auto& entry : custom_properties) {
+  for (auto it = first_unresolved; it != custom_properties.end(); ++it) {
+    auto& entry = *it;
     auto& value = entry.second;
     if (value.NeedsVariableResolution()) {
       CustomPropertyDependencyField::Type dependencies;
@@ -598,6 +875,10 @@ void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
       std::string property =
           CSSValue::Substitution(value, custom_properties, detector, max_depth,
                                  collecting_handle_func);
+      if (detector.IsInCycle(entry.first.str())) {
+        // A cyclic declaration cannot become valid through its own fallback.
+        property.clear();
+      }
       CSSValue resolved_value(std::move(property), CSSValuePattern::STRING,
                               CSSValueType::DEFAULT);
       resolved_value.SetCustomPropertyDependencies(std::move(dependencies));
@@ -609,8 +890,10 @@ void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
 std::string CSSValue::Substitution(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
     int max_depth, const HandleCustomPropertyFunc& handle_func) {
-  // Build cycle detector for all variables (optimized for performance)
-  CycleDetector detector(custom_properties);
+  const bool has_pending_references = std::any_of(
+      custom_properties.begin(), custom_properties.end(),
+      [](const auto& entry) { return entry.second.NeedsVariableResolution(); });
+  CycleDetector detector(custom_properties, has_pending_references);
 
   return Substitution(css_value, custom_properties, detector, max_depth,
                       handle_func);
@@ -631,13 +914,15 @@ inline std::string StripImportantFromString(std::string value) {
 std::string CSSValue::Substitution(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
     const CycleDetector& detector, int max_depth,
-    const HandleCustomPropertyFunc& handle_func) {
+    const HandleCustomPropertyFunc& handle_func,
+    const HandleVariableReferenceFunc& on_reference) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_VALUE_SUBSTITUTION);
   if (css_value.IsVariable() &&
       !css_value.optionals_.HasValue<VarReferenceField>()) {
     CSSValue normalized_value(css_value);
     if (normalized_value.ToVarReference()) {
       return Substitution(normalized_value, custom_properties, detector,
-                          max_depth, handle_func);
+                          max_depth, handle_func, on_reference);
     }
   }
 
@@ -668,6 +953,10 @@ std::string CSSValue::Substitution(
     const std::string dep_name(var_ref.Name(raw_value));
 
     auto var_it = custom_properties.find(dep_name);
+    if (on_reference) {
+      on_reference(var_it != custom_properties.end() ? var_it->first
+                                                     : base::String(dep_name));
+    }
     ReportCustomPropertyDependency(
         dep_name, var_it != custom_properties.end() ? &var_it->second : nullptr,
         handle_func);
@@ -675,19 +964,22 @@ std::string CSSValue::Substitution(
     // Fast path: check if variable exists and not in cycle
     if (var_it != custom_properties.end() && !detector.IsInCycle(dep_name)) {
       // Variable exists and is not in a cycle - resolve it normally
-      std::string resolved_value = ResolveVariable(
-          dep_name, custom_properties, detector, max_depth, handle_func);
+      std::string resolved_value =
+          ResolveVariable(dep_name, custom_properties, detector, max_depth,
+                          handle_func, on_reference);
 
       if (!resolved_value.empty()) {
         result.append(std::move(resolved_value));
       } else {
-        result.append(CSSValue::ResolveFallback(
-            var_ref, custom_properties, detector, max_depth, handle_func));
+        result.append(CSSValue::ResolveFallback(var_ref, custom_properties,
+                                                detector, max_depth,
+                                                handle_func, on_reference));
       }
     } else if (!var_ref.fallback.empty()) {
       // Variable not found or in cycle - use fallback
-      result.append(CSSValue::ResolveFallback(
-          var_ref, custom_properties, detector, max_depth, handle_func));
+      result.append(CSSValue::ResolveFallback(var_ref, custom_properties,
+                                              detector, max_depth, handle_func,
+                                              on_reference));
     }
 
     last_pos = var_ref.end;
@@ -704,12 +996,21 @@ std::string CSSValue::Substitution(
 std::string CSSValue::SubstitutionResolved(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
     const HandleCustomPropertyFunc& handle_func) {
+  return SubstitutionResolved(css_value, custom_properties, handle_func,
+                              nullptr);
+}
+
+std::string CSSValue::SubstitutionResolved(
+    const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
+    const HandleCustomPropertyFunc& handle_func,
+    const HandleVariableReferenceFunc& on_reference) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_VALUE_SUBSTITUTION_RESOLVED);
   if (css_value.IsVariable() &&
       !css_value.optionals_.HasValue<VarReferenceField>()) {
     CSSValue normalized_value(css_value);
     if (normalized_value.ToVarReference()) {
       return SubstitutionResolved(normalized_value, custom_properties,
-                                  handle_func);
+                                  handle_func, on_reference);
     }
   }
 
@@ -740,6 +1041,10 @@ std::string CSSValue::SubstitutionResolved(
     const std::string dep_name(var_ref.Name(raw_value));
 
     auto var_it = custom_properties.find(dep_name);
+    if (on_reference) {
+      on_reference(var_it != custom_properties.end() ? var_it->first
+                                                     : base::String(dep_name));
+    }
     ReportCustomPropertyDependency(
         dep_name, var_it != custom_properties.end() ? &var_it->second : nullptr,
         handle_func);
@@ -752,7 +1057,7 @@ std::string CSSValue::SubstitutionResolved(
     } else if (!var_ref.fallback.empty()) {
       // Variable not found - use fallback
       result.append(CSSValue::ResolveFallbackResolved(
-          var_ref, custom_properties, handle_func));
+          var_ref, custom_properties, handle_func, on_reference));
     }
 
     last_pos = var_ref.end;
@@ -769,7 +1074,8 @@ std::string CSSValue::SubstitutionResolved(
 std::string CSSValue::ResolveFallback(
     const VarReference& ref, const CustomPropertiesMap& variable_map,
     const CycleDetector& detector, int max_depth,
-    const HandleCustomPropertyFunc& handle_func) {
+    const HandleCustomPropertyFunc& handle_func,
+    const HandleVariableReferenceFunc& on_reference) {
   if (ref.fallback.empty()) {
     return "";
   }
@@ -778,12 +1084,13 @@ std::string CSSValue::ResolveFallback(
                          ref.parser_configs);
   CSSValue css_value = parser.ParseVariable();
   return CSSValue::Substitution(css_value, variable_map, detector,
-                                max_depth - 1, handle_func);
+                                max_depth - 1, handle_func, on_reference);
 }
 
 std::string CSSValue::ResolveFallbackResolved(
     const VarReference& ref, const CustomPropertiesMap& variable_map,
-    const HandleCustomPropertyFunc& handle_func) {
+    const HandleCustomPropertyFunc& handle_func,
+    const HandleVariableReferenceFunc& on_reference) {
   if (ref.fallback.empty()) {
     return "";
   }
@@ -791,7 +1098,8 @@ std::string CSSValue::ResolveFallbackResolved(
                          static_cast<uint32_t>(ref.fallback.length()),
                          ref.parser_configs);
   CSSValue css_value = parser.ParseVariable();
-  return CSSValue::SubstitutionResolved(css_value, variable_map, handle_func);
+  return CSSValue::SubstitutionResolved(css_value, variable_map, handle_func,
+                                        on_reference);
 }
 
 std::string_view VarReference::Name(const std::string& raw_value) const {
