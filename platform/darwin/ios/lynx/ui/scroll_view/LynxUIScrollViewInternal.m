@@ -401,7 +401,7 @@ LYNX_PROP_DEFINE("scroll-event-throttle", setScrollEventThrottle, NSNumber *) {
                                                          NSUInteger idx, BOOL *_Nonnull stop) {
       obj(self);
     }];
-    [_firstRenderBlockArray removeAllObjects];
+    _firstRenderBlockArray = nil;
   }
   self.firstRender = NO;
 }
