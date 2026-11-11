@@ -1192,8 +1192,8 @@ std::list<ParallelFlushReturn> TreeResolver::StyleTrees(
       target->UpdateResolveStatus(Element::AsyncResolveStatus::kResolving);
       target->MarkParallelFlushFlag(Element::kFlagLevelOrderParallel);
       resolve_returns.emplace_back(target->PrepareForCreateOrUpdate());
-      DCHECK((target->dirty() &
-              ~(Element::kDirtyTree | Element::kDirtyReAttachContainer)) == 0);
+      DCHECK((target->dirty() & ~(Element::kDirtyTreeMask |
+                                  Element::kDirtyReAttachContainer)) == 0);
     }
 
     target->InvalidateChildrenIfNeeded();

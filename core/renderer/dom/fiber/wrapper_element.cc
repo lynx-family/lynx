@@ -37,7 +37,7 @@ ParallelFlushReturn WrapperElement::PrepareForCreateOrUpdate() {
     has_painting_node_ = true;
   }
 
-  dirty_ &= kDirtyTree;
+  dirty_ &= kDirtyTreeMask;
   this->ResetParallelFlushFlag();
   return [this]() { this->UpdateResolveStatus(AsyncResolveStatus::kUpdated); };
 }

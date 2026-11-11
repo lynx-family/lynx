@@ -72,6 +72,7 @@ namespace tasm {
 
 const uint32_t Element::kDirtyCreated = 0x01 << 0;
 const uint32_t Element::kDirtyTree = 0x01 << 1;
+const uint32_t Element::kDirtyTreeMask = kDirtyTree | kDirtyMove;
 const uint32_t Element::kDirtyStyle = 0x01 << 2;
 const uint32_t Element::kDirtyAttr = 0x01 << 3;
 const uint32_t Element::kDirtyForceUpdate = 0x01 << 4;

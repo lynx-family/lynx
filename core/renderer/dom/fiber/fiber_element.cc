@@ -9,6 +9,8 @@
 #include <memory>
 #include <stack>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -1071,6 +1073,7 @@ Element::~Element() {
                                                impl_id());
     element_manager()->NotifyElementDestroy(this);
     UpdateFixedNodeSetRecursively(false);
+    if (dirty_ & kDirtyMove) DetachPendingMoveChildren();
     DestroyPlatformNode();
     if (!EnableLayoutInElementMode()) {
       EnqueueLayoutTask([manager = element_manager(), id = impl_id()]() {
@@ -1230,7 +1233,7 @@ void Element::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
 }
 
 void Element::DispatchAsyncResolveProperty() {
-  if ((dirty_ & ~kDirtyTree) != 0 && IsAttached()) {
+  if ((dirty_ & ~kDirtyTreeMask) != 0 && IsAttached()) {
     UpdateResolveStatus(AsyncResolveStatus::kPreparing);
     ResolveParentComponentElement();
     if (parent()) {
@@ -1486,7 +1489,7 @@ void Element::ResetSimpleStyle(const tasm::CSSPropertyID id) {
 #pragma endregion  // simple styling
 
 void Element::AsyncResolveProperty() {
-  if ((dirty_ & ~kDirtyTree) != 0) {
+  if ((dirty_ & ~kDirtyTreeMask) != 0) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_ASYNC_RESOLVE_PROPERTY);
     UpdateResolveStatus(AsyncResolveStatus::kPrepareRequested);
     if (this->IsAttached()) {
@@ -1496,7 +1499,7 @@ void Element::AsyncResolveProperty() {
 }
 
 void Element::AsyncPostResolveTaskToThreadPool() {
-  if ((dirty_ & ~kDirtyTree) != 0) {
+  if ((dirty_ & ~kDirtyTreeMask) != 0) {
     UpdateResolveStatus(AsyncResolveStatus::kPrepareTriggered);
     element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
       UpdateResolveStatus(AsyncResolveStatus::kPreparing);
@@ -1652,37 +1655,44 @@ void Element::InsertNodeBefore(const fml::RefPtr<Element> &child,
   InsertNodeBeforeInternal(child, reference_child.get());
 }
 
-fml::RefPtr<Element> Element::TakeMoveSourceParent(
-    const fml::RefPtr<Element> &child) {
+void Element::RemovePendingMountAction(const fml::RefPtr<Element> &child) {
   auto pending_move =
       std::find_if(action_param_list_.begin(), action_param_list_.end(),
                    [&child](const ActionParam &param) {
-                     return param.type_ == Action::kMoveAct &&
+                     return (param.type_ == Action::kMoveAct ||
+                             param.type_ == Action::kInsertChildAct) &&
                             param.child_.get() == child.get();
                    });
-  if (pending_move == action_param_list_.end()) {
-    return fml::RefPtr<Element>(this);
+  if (pending_move != action_param_list_.end()) {
+    action_param_list_.erase(pending_move);
   }
-
-  auto source_parent = std::move(pending_move->source_parent_);
-  action_param_list_.erase(pending_move);
-  return source_parent;
 }
 
 void Element::MoveNodeToIndex(const fml::RefPtr<Element> &child,
                               int32_t index) {
-  auto *immediate_source = child->parent();
-  const int32_t source_index = immediate_source->IndexOf(child.get());
+  // Indexed moves currently support trees without fixed-position children.
+  // TODO: Support fixed-position children when other DSLs need indexed moves.
+  auto *old_parent = child->parent();
+  const int32_t source_index = old_parent->IndexOf(child.get());
+  old_parent->RemovePendingMountAction(child);
+  const int32_t source_parent_id =
+      child->render_parent() ? child->render_parent()->impl_id() : -1;
+  if (old_parent != this) {
+    // Source-first flush detaches the child; destination-first flush makes
+    // this cleanup a no-op once the child has a different render parent.
+    old_parent->action_param_list_.emplace_back(
+        Action::kMoveOutAct, nullptr, child, source_index, nullptr, false,
+        child->ZIndex() != 0, source_parent_id);
+    old_parent->MarkDirty(kDirtyTree | kDirtyMove);
+  }
+  old_parent->DetachNodeFromElementTree(child, source_index, true);
   Element *ref_node = index < static_cast<int32_t>(scoped_children_.size())
                           ? scoped_children_[index].get()
                           : nullptr;
-  auto source_parent = immediate_source->TakeMoveSourceParent(child);
-
-  immediate_source->DetachNodeFromElementTree(child, source_index, true);
   AttachNodeToElementTree(child, ref_node, index, true);
-  action_param_list_.emplace_back(
-      Action::kMoveAct, this, child, index, ref_node, child->is_fixed(),
-      child->ZIndex() != 0, std::move(source_parent));
+  action_param_list_.emplace_back(Action::kMoveAct, nullptr, child, index,
+                                  ref_node, false, child->ZIndex() != 0,
+                                  source_parent_id);
 
   if (IsCSSInheritanceEnabled()) {
     child->MarkDirty(kDirtyPropagateInherited);
@@ -1690,7 +1700,7 @@ void Element::MoveNodeToIndex(const fml::RefPtr<Element> &child,
   if (ref_node && HasAdjacentSiblingRulesInStyleSheets()) {
     ref_node->MarkStyleDirty(false);
   }
-  MarkDirty(kDirtyTree);
+  MarkDirty(kDirtyTree | kDirtyMove);
 }
 
 void Element::RemoveNode(const fml::RefPtr<Element> &raw_child, bool destroy) {
@@ -3202,7 +3212,7 @@ void Element::FlushSelf() {
     parallel_before_flush_action_tasks_.reset();
   }
 
-  if ((dirty_ & ~kDirtyTree) != 0) {
+  if ((dirty_ & ~kDirtyTreeMask) != 0) {
     // create or update Platform Op
     PrepareForCreateOrUpdate();
   }
@@ -3417,7 +3427,7 @@ void Element::PrepareChildren() {
       element_child->MarkDirtyLite(kDirtyPropagateInherited);
     }
 
-    if ((element_child->dirty() & ~kDirtyTree) != 0) {
+    if ((element_child->dirty() & ~kDirtyTreeMask) != 0) {
       element_child->PrepareForCreateOrUpdate();
     }
 
@@ -3476,33 +3486,38 @@ void Element::PrepareAndGenerateChildrenActions() {
         }
       }
     }
-
-    for (auto &param : action_param_list_) {
+    for (size_t action_index = 0; action_index < action_param_list_.size();
+         ++action_index) {
+      auto &param = action_param_list_[action_index];
       switch (param.type_) {
         case Action::kMoveAct: {
-          auto *param_child = param.child_.get();
-          auto *param_ref = param.ref_node_;
-          auto *source_parent = param.source_parent_.get();
-          if (source_parent == nullptr ||
-              param_child->render_parent() != source_parent) {
-            LOGE("FiberElement move lost its render source");
-            DCHECK(false);
+          auto *child = param.child_.get();
+          if (child->parent() == nullptr || !child->IsAttached()) {
+            // The destination was discarded; only detach the old mount.
+            RemoveMoveSource(param);
             break;
           }
-
-          PrepareChildForInsertion(param_child);
-          if (!param.is_fixed_ || IsFixedNewOrUnifiedEnabled()) {
-            source_parent->HandleRemoveChildAction(param_child);
-            HandleInsertChildAction(param_child, static_cast<int>(param.index_),
-                                    param_ref);
+          if (!UpdateMoveActionReference(param, action_index + 1)) break;
+          // Initial/empty parents may have mounted this child implicitly.
+          if (child->render_parent() == this) {
+            HandleRemoveChildAction(child);
           } else {
-            source_parent->RemoveFixedElement(param_child);
-            InsertFixedElement(param_child, param_ref);
+            RemoveMoveSource(param);
           }
-          param.source_parent_ = nullptr;
+          HandleInsertChildAction(child, param.index_, param.ref_node_);
+        } break;
+
+        case Action::kMoveOutAct: {
+          auto *child = param.child_.get();
+          // A later move may have returned the child to this physical source.
+          if (child->render_parent() != child->parent() ||
+              !child->IsAttached()) {
+            RemoveMoveSource(param);
+          }
         } break;
 
         case Action::kInsertChildAct: {
+          if (!UpdateMoveActionReference(param, action_index + 1)) break;
           auto *param_child = param.child_.get();
           auto *param_ref = param.ref_node_;
           PrepareChildForInsertion(param_child);
@@ -3551,7 +3566,7 @@ void Element::PrepareAndGenerateChildrenActions() {
           break;
       }
     }
-    dirty_ &= ~kDirtyTree;
+    dirty_ &= ~kDirtyTreeMask;
     RequestLayout();
 
     // if has any child, mark the flag true, otherwise set it false
@@ -3578,6 +3593,92 @@ void Element::PrepareAndGenerateChildrenActions() {
     }
     dirty_ &= ~kDirtyReAttachContainer;
   }
+}
+
+void Element::DetachPendingMoveChildren() {
+  // Moved children have already left scoped_children_. Detach them while this
+  // source is still alive; its destruction must not leave dangling render
+  // links.
+  for (const auto &param : action_param_list_) {
+    if ((param.type_ == Action::kMoveAct ||
+         param.type_ == Action::kMoveOutAct) &&
+        param.child_->parent() != this &&
+        param.child_->render_parent() == this) {
+      HandleRemoveChildAction(param.child_.get());
+    }
+  }
+}
+
+void Element::RemoveMoveSource(const ActionParam &param) {
+  auto *source =
+      element_manager()->node_manager()->Get(param.source_parent_id_);
+  // A destroyed source already detached its pending move children. A stale
+  // MoveOut must also leave a child alone after another action has remounted
+  // it.
+  if (source && param.child_->render_parent() == source) {
+    source->HandleRemoveChildAction(param.child_.get());
+  }
+}
+
+// Prepare the current Insert/Move for this parent without mounting the child.
+// param is the current action; its ref is the sibling to insert before.
+// next_action_index starts the remaining actions after the current one.
+// Return true to execute the action, even if its ref did not need to change.
+// Return false to skip a mount superseded by later logical tree operations.
+bool Element::UpdateMoveActionReference(ActionParam &param,
+                                        size_t next_action_index) {
+  // Keep ordinary Insert behavior for batches without indexed moves.
+  if (!(dirty_ & kDirtyMove)) return true;
+
+  // A later Move can give the child another logical parent; Remove sets it to
+  // null. This old mount is no longer needed. Skip only this Insert/Move, not
+  // any queued removal or source cleanup, and leave the action queue intact.
+  if (param.child_->parent() != this) return false;
+
+  // A null ref means append. If the child is also last in the final logical
+  // order, that instruction is already correct and needs no sibling search.
+  if (!param.ref_node_ && param.child_.get() == last_child()) return true;
+
+  // Check whether a candidate sibling still has a mount waiting in this batch.
+  const auto mounts_later = [&](Element *child) {
+    // Earlier actions have already updated the rendered tree. Inspect only the
+    // actions after the current one, through the end of the queue.
+    return std::any_of(
+        action_param_list_.begin() + next_action_index,
+        action_param_list_.end(), [child](const ActionParam &pending) {
+          // Only actions operating on this candidate can make it mount later.
+          // Insert qualifies directly. Move qualifies only while attached:
+          // a detached Move cleans its old source instead of mounting it.
+          return pending.child_.get() == child &&
+                 (pending.type_ == Action::kInsertChildAct ||
+                  (pending.type_ == Action::kMoveAct && child->IsAttached()));
+        });
+  };
+
+  // Start at the child's next sibling in the final logical order, then search
+  // to the right for a sibling that can anchor this mount now.
+  for (size_t index = IndexOf(param.child_.get()) + 1;
+       index < scoped_children_.size(); ++index) {
+    // This is a logical successor, but its physical mount may still be pending.
+    auto *ref = scoped_children_[index].get();
+
+    // Skip siblings not mounted under this parent, or whose later Insert/Move
+    // can change their position. Neither is a stable insertion anchor yet.
+    if (ref->render_parent() != this || mounts_later(ref)) continue;
+
+    // The first usable successor matches the saved ref: keep it unchanged.
+    if (param.ref_node_ == ref) return true;
+
+    // Repair only the current action so it inserts before this successor.
+    // Do not rewrite the refs of actions that have not been consumed yet.
+    param.ref_node_ = ref;
+    return true;
+  }
+
+  // No usable successor is mounted yet. Append the child for now; subsequent
+  // Insert/Move actions will place the remaining siblings in their final order.
+  param.ref_node_ = nullptr;
+  return true;
 }
 
 void Element::HandleInsertChildAction(Element *child, int to_index,
@@ -5652,7 +5753,7 @@ void Element::UpdateLengthContextValueForAllElement(
 // is introduced.
 void Element::AsyncResolveSubtreeProperty() {
   if (element_manager()->GetEnableParallelElement() &&
-      ((dirty_ & ~kDirtyTree) != 0) && scheduler_adapter_.get()) {
+      ((dirty_ & ~kDirtyTreeMask) != 0) && scheduler_adapter_.get()) {
     element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
       scheduler_adapter_->ResolveSubtreeProperty();
 
@@ -5680,7 +5781,7 @@ void Element::CreateListItemScheduler(
 
 void Element::DispatchAsyncResolveSubtreeProperty() {
   if (element_manager()->GetEnableParallelElement() &&
-      ((dirty_ & ~kDirtyTree) != 0) && this->IsAttached()) {
+      ((dirty_ & ~kDirtyTreeMask) != 0) && this->IsAttached()) {
     UpdateResolveStatus(AsyncResolveStatus::kPrepareTriggered);
     element_manager()->GetTasmWorkerTaskRunner()->PostTask([this]() mutable {
       std::deque<Element *> queue;
