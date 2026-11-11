@@ -3442,14 +3442,18 @@ RENDERER_FUNCTION_CC(FiberMoveElements) {
     moving_elements.emplace_back(fml::RefPtr<Element>(child));
   }
 
-  for (const auto& child : moving_elements) {
-    ON_NODE_REMOVED(child);
-    parent->RemoveNode(child, false);
-  }
-  for (int32_t offset = 0; offset < count; ++offset) {
+  const auto move_child = [&](int32_t offset) {
     const auto& child = moving_elements[offset];
-    parent->InsertNode(child, static_cast<int32_t>(destination + offset));
+    ON_NODE_REMOVED(child);
+    parent->MoveNodeToIndex(child, static_cast<int32_t>(destination + offset));
     ON_NODE_ADDED(child);
+  };
+  // Move toward the destination from the nearest edge so each index is the
+  // final position after detaching that child, preserving the range's order.
+  if (from > to) {
+    for (int32_t offset = 0; offset < count; ++offset) move_child(offset);
+  } else {
+    for (int32_t offset = count; offset > 0; --offset) move_child(offset - 1);
   }
   RETURN_UNDEFINED();
 }
