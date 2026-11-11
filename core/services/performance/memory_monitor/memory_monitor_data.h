@@ -21,7 +21,7 @@ namespace lynx {
 namespace tasm {
 namespace performance {
 
-inline constexpr int32_t kMemoryEventSchemaVersion = 11;
+inline constexpr int32_t kMemoryEventSchemaVersion = 12;
 
 inline int64_t MemoryNowMs() {
   return fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
@@ -83,10 +83,10 @@ struct GlobalMemoryUsage {
 struct MTSRuntimePoolState {
   int32_t pool_instance_id{-1};
   int32_t context_type{0};
-  int64_t created_at_ms{0};
-  uint64_t runtime_count{0};
-  int64_t heap_bytes{0};
+  uint32_t runtime_count{0};
   bool page_key_resolved{false};
+  int64_t created_at_ms{0};
+  int64_t heap_bytes{0};
   std::string template_url;
   std::string page_key;
 };

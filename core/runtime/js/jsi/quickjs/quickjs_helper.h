@@ -104,7 +104,7 @@ class QuickjsHelper {
   static bool TakeHeapSnapshotAndWriteToTrace(LEPUSContext* ctx,
                                               const std::string& identifier);
   struct ResidualSnapshotInfo {
-    uint64_t post_exit_page_count;
+    uint32_t post_exit_page_count;
     // Slot bytes after the previous successful snapshot, used as the baseline.
     size_t previous_bytes;
     // Slot bytes before this capture, used for the threshold comparison.

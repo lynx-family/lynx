@@ -9,6 +9,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #include "base/include/algorithm.h"
@@ -24,6 +25,8 @@
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/performance/memory_page_key.h"
+
+// cspell:ignore ebca
 
 namespace lynx {
 namespace tasm {
@@ -47,6 +50,22 @@ struct VmHeapQueryResult {
   std::optional<size_t> heap_size;
   int64_t measured_at_ms{0};
 };
+
+int32_t VmNameBucket(std::string_view name) {
+  // A fixed FNV-1a hash plus the Murmur3 finalizer gives a portable, bounded
+  // name-diversity dimension. Mix before taking low bits: case-only changes
+  // would otherwise affect very few buckets. This does not classify names.
+  uint32_t hash = 2166136261u;
+  for (unsigned char byte : name) {
+    hash = (hash ^ byte) * 16777619u;
+  }
+  hash ^= hash >> 16;
+  hash *= 0x85ebca6bu;
+  hash ^= hash >> 13;
+  hash *= 0xc2b2ae35u;
+  hash ^= hash >> 16;
+  return static_cast<int32_t>(hash & 63u);
+}
 
 auto ReportRunner() {
   return report::EventTrackerPlatformImpl::GetReportTaskRunner();
@@ -207,20 +226,31 @@ void GlobalMemoryMonitor::WithInstance(int32_t id, WithInstanceCallback&& cb) {
         auto& state = it->second;
         const auto previous = state.bts_vm;
         callback(state);
-        if (state.bts_vm != previous) BindInstance(state, previous);
-        if (auto* vm = FindVM(state.bts_vm)) EmitSlotOverflowTrigger(*vm);
+        if (state.bts_vm != previous) BindInstance(id, state, previous);
+        if (auto* vm = FindVM(state.bts_vm)) {
+          if (vm->sampled_page_id == id) vm->sampled_page_key = state.page_key;
+          EmitSlotOverflowTrigger(*vm);
+        }
       });
 }
 
-void GlobalMemoryMonitor::BindInstance(InstanceState& state,
+void GlobalMemoryMonitor::BindInstance(int32_t id, InstanceState& state,
                                        runtime::js::VMInstance* previous) {
   const auto now = MemoryNowMs();
-  if (auto* old = FindVM(previous); old && old->active_page_count > 0) {
-    if (--old->active_page_count == 0) old->idle_since_ms = now;
+  if (auto* old = FindVM(previous)) {
+    if (old->sampled_page_id == id) old->sampled_page_id = -1;
+    if (old->active_page_count > 0 && --old->active_page_count == 0) {
+      old->idle_since_ms = now;
+    }
   }
   if (auto* vm = FindVM(state.bts_vm)) {
     ++vm->active_page_count;
     ++vm->total_page_count;
+    if (vm->total_page_count == 1 ||
+        std::uniform_int_distribution<uint32_t>(
+            1, vm->total_page_count)(random_) == 1) {
+      vm->sampled_page_id = id;
+    }
     vm->idle_since_ms = 0;
     RefreshPageBts(state, *vm);
   }
@@ -272,6 +302,10 @@ void GlobalMemoryMonitor::OnInstanceDestroyed(int32_t id, int64_t at_ms) {
     if (it == instance_state_.end() || it->second.destroyed) return;
     auto& state = it->second;
     auto* vm = FindVM(state.bts_vm);
+    if (vm && vm->sampled_page_id == id) {
+      vm->sampled_page_key = state.page_key;
+      vm->sampled_page_id = -1;
+    }
     if (vm) state.bts_vm_page_count_at_exit = vm->total_page_count;
     if (vm && vm->active_page_count && --vm->active_page_count == 0) {
       vm->idle_since_ms = at_ms;
@@ -534,7 +568,7 @@ void GlobalMemoryMonitor::OnModuleCacheUpdate(
   if (!MemoryMonitor::Enable()) return;
   ReportRunner()->PostTask([this,
                             weak = std::weak_ptr<runtime::js::VMInstance>(vm),
-                            ptr = vm.get(), creator, type, delta] {
+                            ptr = vm.get(), type, creator, delta] {
     auto* state = FindVM(ptr);
     if (!state || !SameOwner(state->vm, weak)) return;
     auto it = state->module_cache_creators.find(creator);
@@ -556,13 +590,14 @@ void GlobalMemoryMonitor::OnModuleCacheUpdate(
 void GlobalMemoryMonitor::OnMTSRuntimePoolUpdate(
     int32_t pool_instance_id, const std::string& template_url,
     runtime::ContextType context_type, int64_t created_at_ms,
-    uint64_t runtime_count, int64_t heap_bytes) {
+    size_t runtime_count, int64_t heap_bytes) {
   if (!MemoryMonitor::Enable() || pool_instance_id < 0) {
     return;
   }
   fml::TaskRunner::RunNowOrPostTask(
-      ReportRunner(), [this, pool_instance_id, template_url, context_type,
-                       created_at_ms, runtime_count, heap_bytes] {
+      ReportRunner(),
+      [this, template_url, created_at_ms, heap_bytes, pool_instance_id,
+       context_type, runtime_count = static_cast<uint32_t>(runtime_count)] {
         Start();
         auto [it, inserted] =
             mts_runtime_pool_state_.try_emplace(pool_instance_id);
@@ -618,6 +653,9 @@ const InstanceState* GlobalMemoryMonitor::ResolveInstancePageKey(int32_t id) {
         report::EventTracker::GetGenericInfoOrExtraParam(id, "page_id");
     if (!page_id.empty() && page_id != "unknown") state.page_key = page_id;
     state.page_key_resolved = true;
+    if (auto* vm = FindVM(state.bts_vm); vm && vm->sampled_page_id == id) {
+      vm->sampled_page_key = state.page_key;
+    }
   }
   return &state;
 }
@@ -659,8 +697,8 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::TakeResidencyReports(
   assert(ReportRunner()->RunsTasksOnCurrentThread());
   if (!next_residency_at_ms_ || now_ms < next_residency_at_ms_) return {};
   struct Counts {
-    uint64_t evaluated{0};
-    uint64_t alive{0};
+    uint32_t evaluated{0};
+    uint32_t alive{0};
   };
   std::unordered_map<std::string, Counts> counts;
   // Move pending unique_ptrs into a replacement vector. Pointee addresses
@@ -1070,9 +1108,13 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     return event;
   };
   double accounted = 0, shared_heap = 0, retained = 0, mts_pool_heap = 0;
-  size_t active_count = 0;
-  size_t sampled_quickjs_pending_gc = 0, quickjs_count = 0;
-  uint64_t mts_pool_runtime_count = 0;
+  uint32_t active_count = 0;
+  uint32_t sampled_quickjs_pending_gc = 0;
+  uint32_t quickjs_count = 0;
+  uint32_t mts_pool_runtime_count = 0;
+  const auto vm_count = static_cast<uint32_t>(bts_vm_state_.size());
+  const auto mts_pool_count =
+      static_cast<uint32_t>(mts_runtime_pool_state_.size());
   double sampled_quickjs_retained = 0;
   const BtsVmState* sampled_vm = nullptr;
   const BtsVmState* sampled_quickjs = nullptr;
@@ -1080,7 +1122,7 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
   const InstanceState* sampled_page = nullptr;
   const InstanceState* sampled_residual = nullptr;
   double residual_bytes = 0;
-  uint64_t residual_post_exit_page_count = 0;
+  uint32_t residual_post_exit_page_count = 0;
   MemoryReservoir page_picker, vm_picker, quickjs_picker, residual_picker,
       mts_pool_picker;
   for (const auto& entry : bts_vm_state_) {
@@ -1153,12 +1195,10 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     auto event = make_event("lynxsdk_memory_process", true);
     event.SetProps("process_pss_bytes", pss);
     event.SetProps("lynx_accounted_memory_bytes", accounted);
-    event.SetProps("active_page_count", static_cast<uint64_t>(active_count));
-    event.SetProps("shared_vm_count",
-                   static_cast<uint64_t>(bts_vm_state_.size()));
+    event.SetProps("active_page_count", active_count);
+    event.SetProps("shared_vm_count", vm_count);
     event.SetProps("shared_vm_heap_bytes_sum", shared_heap);
-    event.SetProps("mts_pool_count",
-                   static_cast<uint64_t>(mts_runtime_pool_state_.size()));
+    event.SetProps("mts_pool_count", mts_pool_count);
     event.SetProps("mts_pool_runtime_count", mts_pool_runtime_count);
     event.SetProps("mts_pool_heap_bytes_sum", mts_pool_heap);
     event.SetProps("shared_vm_tracked_exited_page_retained_bytes", retained);
@@ -1175,7 +1215,7 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     const auto& page = *sampled_page;
     const auto age = snapshot.started_at_ms - page.created_at_ms;
     const double weight = active_count;
-    event.SetProps("active_page_count", static_cast<uint64_t>(active_count));
+    event.SetProps("active_page_count", active_count);
     event.SetProps("page_age_ms", age);
     event.SetProps("page_memory_bytes", page.usage.total_bytes);
     event.SetProps("page_vm_shared", page.usage.bts_shared);
@@ -1186,7 +1226,7 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
                    page.usage.total_bytes * weight);
     // The selected instance chooses a key with probability n/N. N/n is the
     // inverse weight for the same-key aggregate.
-    size_t n = 0;
+    uint32_t n = 0;
     double sum = 0, maximum = 0;
     for (const auto& candidate : instance_state_) {
       if (!candidate.second.destroyed &&
@@ -1199,7 +1239,7 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     }
     const double group_weight = weight / n;
     event.SetProps("page_key", page.page_key);
-    event.SetProps("page_group_instance_count", static_cast<uint64_t>(n));
+    event.SetProps("page_group_instance_count", n);
     event.SetProps("page_group_memory_bytes", sum);
     event.SetProps("page_group_max_instance_bytes", maximum);
     event.SetProps("page_group_selection_weight", group_weight);
@@ -1210,7 +1250,7 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
   if ((snapshot.trigger.reasons & kTimer) && sampled_mts_pool) {
     auto event = make_event("lynxsdk_memory_mts_pool");
     const auto& pool = *sampled_mts_pool;
-    const double weight = mts_runtime_pool_state_.size();
+    const double weight = mts_pool_count;
     event.SetProps("page_key", pool.page_key);
     event.SetProps("mts_context_type", pool.context_type);
     event.SetProps(
@@ -1242,13 +1282,22 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
     // always emitted. Heap fields and their matching denominator are emitted
     // only when this VM has usable data for the current snapshot.
     const auto& vm = *sampled_vm;
-    event.SetProps("vm_name", vm.vm_name());
+    const auto& name = vm.vm_name();
+    event.SetProps("vm_name", name);
+    // Keep the raw bucket: per-page MAX-MIN detects observed name diversity.
+    // Weighting it would make one stable name vary with VM/binding counts.
+    if (!name.empty()) event.SetProps("vm_name_bucket", VmNameBucket(name));
+    if (!vm.sampled_page_key.empty()) {
+      // With V VMs and N historical bindings, this key has marginal weight
+      // V*N, already carried by vm_total_page_count_weighted below.
+      event.SetProps("vm_page_key", vm.sampled_page_key);
+    }
     event.SetProps("vm_runtime_type", RuntimeName(vm.type));
     event.SetProps("vm_age_ms", snapshot.started_at_ms - vm.created_at_ms);
     event.SetProps("vm_idle_ms", vm.idle_since_ms > 0
                                      ? snapshot.started_at_ms - vm.idle_since_ms
                                      : 0);
-    const double vm_weight = bts_vm_state_.size();
+    const double vm_weight = vm_count;
     const bool heap_valid = IsHeapAvailable(vm, snapshot.failed_heap_vms);
     if (heap_valid) {
       event.SetProps("vm_heap_bytes", static_cast<uint64_t>(vm.heap_size));
@@ -1295,11 +1344,11 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
             type == 0 ? "js_cache_factory_" : "js_cache_script_";
         const std::string page_prefix =
             type == 0 ? "js_cache_page_factory_" : "js_cache_page_script_";
-        auto report_count = [&](const char* suffix, uint64_t vm_count,
-                                uint64_t creator_count) {
-          event.SetProps((prefix + suffix).c_str(), vm_count * vm_weight);
+        auto report_count = [&](const char* suffix, uint32_t vm_entries,
+                                uint32_t creator_entries) {
+          event.SetProps((prefix + suffix).c_str(), vm_entries * vm_weight);
           event.SetProps((page_prefix + suffix).c_str(),
-                         creator_count * creator_weight);
+                         creator_entries * creator_weight);
         };
         report_count("inserted", total.inserted, counts.inserted);
         report_count("reused", total.reused, counts.reused);
@@ -1326,7 +1375,7 @@ std::vector<report::MoveOnlyEvent> GlobalMemoryMonitor::BuildEvents(
       if (!persistence) persistence = make_event("lynxsdk_memory_persistence");
       auto& event = *persistence;
       const auto& vm = *sampled_vm;
-      const double weight = bts_vm_state_.size();
+      const double weight = vm_count;
       const auto duration =
           std::max<int64_t>(0, snapshot.started_at_ms -
                                    std::max(interval_start, vm.created_at_ms));

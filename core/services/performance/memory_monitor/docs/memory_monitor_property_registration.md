@@ -1,6 +1,6 @@
 # Memory Monitor Event Property Reference
 
-Applies to `schema_version=11`. The page event keeps its `_v2` name. The global
+Applies to `schema_version=12`. The page event keeps its `_v2` name. The global
 snapshot has been split into analysis-specific events whose names intentionally
 have no `_v2` suffix.
 
@@ -13,7 +13,7 @@ All global events contain:
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `schema_version` | int32 | Event schema version, currently 11. |
+| `schema_version` | int32 | Event schema version, currently 12. |
 
 Global-event deduplication is provided by the data platform rather than
 monitor-owned properties.
@@ -100,24 +100,35 @@ A now-zero slot can carry historical area. Residual field presence does not
 require every exited page to have completed a post-exit GC. Schema 10 used a
 snapshot-endpoint residual estimate; do not merge those Q7.2 semantics.
 
-## `lynxsdk_memory_vm_stat` - up to 27 properties
+## `lynxsdk_memory_vm_stat` - up to 29 properties
 
 Produced only for timer snapshots with a uniform all-engine shared-VM sample.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `vm_name` | string | Stable VM grouping name. |
+| `vm_name` | string | Effective VM name: nonempty monitoring label, otherwise group/runtime name; may be unstable. |
+| `vm_name_bucket` | int32 | Fixed whole-name hash bucket, 0..63, absent for an empty name. Use unweighted MIN/MAX per page for discovery; zero is valid. Not a naming template or randomness verdict. |
+| `vm_page_key` | string | One uniformly sampled historical binding's page key; copied through exit/rebind. Absent for no bindings or an empty sampled key; no redraw. |
 | `vm_runtime_type` | string | `quickjs`, `v8`, `jsvm`, or `jsc`. |
 | `vm_age_ms` | double | VM age at snapshot start. |
 | `vm_idle_ms` | double | Time with no bound active pages, or zero. |
 | `vm_active_page_count` | double | Currently bound active pages. |
 | `vm_total_page_count` | double | Cumulative accepted page-to-VM bindings. |
-| `vm_total_page_count_weighted` | double | Binding count multiplied by all-engine weight V. |
+| `vm_total_page_count_weighted` | double | Binding count N multiplied by all-engine weight V; also the inverse marginal selection probability of `vm_page_key`'s binding. |
 | `vm_selection_weight` | double | All-engine inverse selection probability V. |
 | `vm_heap_bytes` | double | Usable selected heap, including valid zero. |
 | `vm_heap_bytes_weighted` | double | Heap multiplied by V. |
 | `vm_heap_selection_weight` | double | Heap denominator, emitted exactly with heap fields. |
 | `vm_heap_source_age_ms` | double | Age of the heap measurement when known. |
+
+Whole-name hash buckets and historical-page sampling are defined in
+[Q9.3](./memory_monitor_query_guide.md#q93-which-pages-use-vms-with-unstable-names).
+These fields have no heap, slot, active-page, or cache-creator gate. Only the
+selected VM's historical binding is represented; the key does not attribute
+that VM's heap or establish that all its pages belong to the same business.
+Discover page/runtime groups with `MAX(vm_name_bucket)-MIN(vm_name_bucket)>0`,
+then filter by the exact page key/runtime and group by raw `vm_name`.
+The bucket is not a weight; do not multiply it by V or N.
 
 Q12 adds the following 14 optional properties when the selected VM has at
 least one observed cache creator. There is no heap gate. Counts cover observed
@@ -204,7 +215,7 @@ standalone `early_summary`. Planned points and early statistics are unchanged.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `schema_version` | int32 | Event schema version, currently 11. |
+| `schema_version` | int32 | Event schema version, currently 12. |
 | `lynx_ui_memory_enabled` | int32 | Whether Lynx UI memory collection is enabled. |
 | `page_key` | string | Host page ID or URL fallback. |
 | `mts_context_type` | int32 | MTS runtime context. |
