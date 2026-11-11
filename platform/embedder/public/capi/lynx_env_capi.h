@@ -25,10 +25,6 @@ LYNX_CAPI_EXPORT const char* lynx_env_get_icu_data_path();
  */
 LYNX_CAPI_EXPORT int lynx_env_prewarm_async();
 
-// Lynx devtools
-typedef void (*lynx_env_open_card_callback)(void* user_data, const char* url);
-typedef void (*lynx_env_close_card_callback)(void* user_data);
-
 struct lynx_value;
 /**
  * Receives one high-memory event dictionary asynchronously on the UI thread.
@@ -50,6 +46,9 @@ typedef void (*lynx_env_high_memory_callback)(void* user_data,
  */
 LYNX_CAPI_EXPORT void lynx_env_set_high_memory_callback(
     lynx_env_high_memory_callback callback, void* user_data);
+
+typedef void (*lynx_env_open_card_callback)(void* user_data, const char* url);
+typedef void (*lynx_env_close_card_callback)(void* user_data);
 
 LYNX_CAPI_EXPORT void lynx_env_set_devtool_app_info(const char* name,
                                                     const char* value);
