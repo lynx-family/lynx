@@ -1,6 +1,6 @@
 # Global Memory Reporting Design
 
-This document describes the `schema_version=11` global memory event family. It
+This document describes the `schema_version=12` global memory event family. It
 covers process accounting, page residency, concurrent page groups, shared VMs,
 bundle-local MTS pools, post-exit residuals, and memory-pressure observations.
 
@@ -35,6 +35,7 @@ The monitor supports these questions:
    RAM and observed PSS milestones?
 8. Which bundle-local MTS pools have high heap memory or runtime counts?
 9. Are global JS module cache entries reused, and which pages created them?
+10. Which pages have used VMs whose host-provided names are unstable?
 
 | Event | Production gate | Analysis |
 | --- | --- | --- |
@@ -43,7 +44,7 @@ The monitor supports these questions:
 | `lynxsdk_memory_page_residency` | One or more due 10-minute observations | Q3.1 |
 | `lynxsdk_memory_page_residual` | Timer snapshot with a positive residual PPS sample | Q6 |
 | `lynxsdk_memory_persistence` | Valid VM endpoint area or pending residual integral; residual flush on VM destruction | Q7.1 VM heap byte-time and Q7.2 exited-page residual byte-time |
-| `lynxsdk_memory_vm_stat` | Timer snapshot with an all-engine VM sample | Q5.1, Q5.2, Q9.1, and Q12 |
+| `lynxsdk_memory_vm_stat` | Timer snapshot with an all-engine VM sample | Q5.1, Q5.2, Q9.1, Q9.3, and Q12 |
 | `lynxsdk_memory_vm_quickjs` | `report_kind=sample` for usable timer data; `report_kind=slot_overflow` for a first overflow | Q5.3, Q9.2, and Q10 |
 | `lynxsdk_memory_mts_pool` | Timer snapshot with a bundle-local pool sample | Q11 |
 
@@ -105,7 +106,9 @@ vm_runtime_type:
   quickjs | v8 | jsvm | jsc | unknown
 ```
 
-`GlobalMemoryMonitor` derives the name. Local registration uses object identity
+`GlobalMemoryMonitor` derives the base name above; a nonempty host-provided
+`monitoring_group_label` takes precedence. Either input can be unstable.
+Local registration uses object identity
 and weak-reference ownership; pointer addresses are not included in names.
 Same-name VMs remain distinct candidates and contribute separately. A page's
 business group does not necessarily identify its actual VM name.
@@ -115,6 +118,32 @@ reference; registration first removes an expired object that reused the same
 address, so a replacement cannot inherit age or counters. The name is an
 aggregation dimension, not a unique lifecycle ID or a basis for joining
 reconstructed VM lifetimes.
+
+Schema 12 timer VM rows also carry `vm_name_bucket` for nonempty effective
+names. Hash every byte with 32-bit FNV-1a, apply the Murmur3 32-bit finalizer,
+then keep the low 6 bits (0..63). The finalizer mixes higher bits so changes
+such as letter case are not confined to a few buckets. Arithmetic, constants,
+and bucket count are fixed across processes/platforms; changing them requires
+a schema update. There is no process-dependent salt or `std::hash` dependency.
+
+This bounded dimension supports exact filters and grouping without recognizing
+random substrings, delimiters, or host-specific formats. First group by stable
+`vm_page_key` and runtime within a fixed app/version/time cohort. Compute
+`A=MIN(vm_name_bucket)`, `B=MAX(vm_name_bucket)`, and `C=B-A`. Groups with C>0
+have observed different names. Then filter by an exact candidate page key and
+runtime, group by raw `vm_name`, and inspect the returned examples. This
+two-query workflow uses standard aggregations and predicates; discovery does
+not require knowing a page key in advance.
+
+Keep bucket extrema unweighted, include bucket zero, and omit rows without a
+page key or bucket. Apply Top N to the grouped results after sorting by C;
+sorting is for candidate visibility, not a randomness ranking. A stable
+name always occupies the same bucket; changes anywhere in the name participate
+in hashing, but distinct names can collide. Many occupied buckets establish
+multiple observed names, not random naming or a precise distinct-name count.
+Multiple intentional stable names can also spread across buckets. Inspect raw
+`vm_name` examples after selecting the page to determine whether governance is
+needed. No bucket can be interpreted as one naming template or business.
 
 V8/JSVM heap queries post to the owning JS thread and wait for at most one
 second. The JS task locks the weak reference, reads the heap, and releases the
@@ -813,6 +842,32 @@ increment the counter; reload within the same VM does not. Summing over
 snapshots repeats existing binding history rather than counting new loads in
 the query period.
 
+For provenance (Q9.3), each VM keeps one uniformly sampled historical binding.
+At the Nth accepted binding, replace the sample with probability 1/N, including
+untracked pages and pages without a usable key. This uses the existing binding
+counter and reporter-thread random generator. Repeated property updates/reload
+within the same VM do not draw again.
+
+The VM stores only a copied page key and a live instance ID for refreshing that
+key as the URL or first-load host page ID becomes available. Exit and rebind
+detach the ID and retain the last key, so cleanup and later ID reuse cannot
+rewrite the sample. VM destruction releases it. No page/VM ownership, extra
+timer, event, per-page history, or cache-creator dependency is added.
+
+The existing uniform timer VM draw selects one of V VMs; its historical
+binding has marginal probability 1/(V*N). A nonempty key is emitted as
+`vm_page_key`, and the existing `vm_total_page_count_weighted=V*N` weights its
+binding contribution. If the chosen key is empty, omit it without redrawing.
+When grouping by page key, exclude missing keys; their contribution is unknown.
+JSC, zero/missing heaps, disabled tracking, and idle VMs remain eligible.
+
+Each snapshot represents cumulative bindings observed so far, not new loads
+or distinct pages/VMs in the query period. A reservoir can remain unchanged
+across reports, so observations from one VM are correlated. The sample does
+not assign VM heap to a page or prove exclusive business ownership. Use the
+exact-match recipes and coverage denominator in
+[Q9.3](./memory_monitor_query_guide.md#q93-which-pages-use-vms-with-unstable-names).
+
 QuickJS slot layout:
 
 ```text
@@ -1016,7 +1071,7 @@ Collection:
 Example 1GiB crossing query:
 
 ```text
-schema_version = 11
+schema_version = 12
 lynx_ui_memory_enabled = <fixed cohort>
 trigger_pss_previous_milestone_bytes < 1073741824
 trigger_pss_milestone_bytes >= 1073741824
