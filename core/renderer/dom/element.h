@@ -199,13 +199,13 @@ class Element : public lepus::RefCounted,
     kMoveAct,
     kUpdatePropsAct,
     kRemoveIntergenerationAct,
+    kMoveOutAct,
   };
 
   struct ActionParam {
     ActionParam(Action type, Element* parent, const fml::RefPtr<Element>& child,
                 int from, Element* ref_node, bool is_fixed = false,
-                bool has_z_index = false,
-                fml::RefPtr<Element> source_parent = nullptr)
+                bool has_z_index = false, int32_t source_parent_id = -1)
         : type_(type),
           parent_(parent),
           child_(child),
@@ -213,7 +213,7 @@ class Element : public lepus::RefCounted,
           ref_node_(ref_node),
           is_fixed_(is_fixed),
           has_z_index_(has_z_index),
-          source_parent_(std::move(source_parent)) {}
+          source_parent_id_(source_parent_id) {}
     Action type_;
     Element* parent_;
     fml::RefPtr<Element> child_;
@@ -221,7 +221,8 @@ class Element : public lepus::RefCounted,
     Element* ref_node_;
     bool is_fixed_;
     bool has_z_index_;
-    fml::RefPtr<Element> source_parent_;
+    // Source identity does not retain a detached parent or create move cycles.
+    int32_t source_parent_id_;
   };
 
   void AppendActionParam(ActionParam action_param) {
@@ -255,6 +256,8 @@ class Element : public lepus::RefCounted,
 
   static const uint32_t kDirtyCreated;
   static const uint32_t kDirtyTree;
+  // Tree-only work must not trigger property or style resolution.
+  static const uint32_t kDirtyTreeMask;
   static const uint32_t kDirtyStyle;
   static const uint32_t kDirtyAttr;
   static const uint32_t kDirtyForceUpdate;
@@ -271,6 +274,8 @@ class Element : public lepus::RefCounted,
   static constexpr uint32_t kDirtyDynamicStyleObjects = 0x01 << 15;
   static constexpr uint32_t kDirtyInvoke = 0x01 << 16;
   static constexpr uint32_t kDirtyCustomLayout = 0x01 << 17;
+  // Set with kDirtyTree and cleared after deferred child moves are applied.
+  static constexpr uint32_t kDirtyMove = 0x01 << 19;
 
   enum class AsyncResolveStatus : uint8_t {
     kCreated = 0,
@@ -774,7 +779,7 @@ class Element : public lepus::RefCounted,
 
   inline bool ShouldResolveStyle() {
     return !IsAsyncResolveResolving() &&
-           ((dirty_ & ~(kDirtyTree | kDirtyReAttachContainer)) != 0);
+           ((dirty_ & ~(kDirtyTreeMask | kDirtyReAttachContainer)) != 0);
   }
 
   inline void EnqueueReduceTask(base::MoveOnlyClosure<void> operation) {
@@ -869,6 +874,7 @@ class Element : public lepus::RefCounted,
   // caller guarantees that child and index belong to the same valid scoped
   // tree. The target retains the render source until the deferred platform
   // remove-and-insert operations have been generated.
+  // The index is the target position after detaching the child.
   void MoveNodeToIndex(const fml::RefPtr<Element>& child, int32_t index);
   virtual void ReplaceElements(
       const base::Vector<fml::RefPtr<Element>>& inserted,
@@ -2528,9 +2534,11 @@ class Element : public lepus::RefCounted,
                                bool update_logical_children);
   void DetachNodeFromElementTree(const fml::RefPtr<Element>& child,
                                  int32_t index, bool update_logical_children);
-  // Returns the original render source, consuming a pending move when repeated
-  // moves are coalesced before a flush.
-  fml::RefPtr<Element> TakeMoveSourceParent(const fml::RefPtr<Element>& child);
+  // Coalesce repeated moves and pending inserts before recording a new move.
+  void RemovePendingMountAction(const fml::RefPtr<Element>& child);
+  void DetachPendingMoveChildren();
+  void RemoveMoveSource(const ActionParam& param);
+  bool UpdateMoveActionReference(ActionParam& param, size_t next_action_index);
 
   void AttachToElementManagerInner(
       ElementManager* manager,
