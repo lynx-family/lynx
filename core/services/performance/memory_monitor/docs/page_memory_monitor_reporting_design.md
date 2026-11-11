@@ -1,6 +1,6 @@
 # Page Memory Reporting Design
 
-This document describes `schema_version=11` of `lynxsdk_performance_entry_memory_v2`.
+This document describes `schema_version=12` of `lynxsdk_performance_entry_memory_v2`.
 Page observations aggregate cached values without querying producers on demand.
 Their schedule does not depend on app foreground state or page visibility.
 The primary metric is an equal-weight mean of planned observations, published
@@ -434,7 +434,7 @@ Q1.1 cached-memory mean query:
 
 ```text
 event = lynxsdk_performance_entry_memory_v2
-schema_version = 11
+schema_version = 12
 has_early_usage_summary = 1
 early_sample_mean_memory_bytes EXISTS
 
@@ -489,7 +489,7 @@ short-page coverage.
 
 ```text
 event = lynxsdk_performance_entry_memory_v2
-schema_version = 11
+schema_version = 12
 report_kind = scheduled
 scheduled_offset_ms = 5000
 

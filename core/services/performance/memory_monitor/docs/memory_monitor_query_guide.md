@@ -1,6 +1,6 @@
 # Memory Monitor Query Guide
 
-Applies to `schema_version=11` and the memory events below.
+Applies to `schema_version=12` and the memory events below.
 Recipes use top-level property filters, grouping, aggregates, and arithmetic
 **between aggregate results**. They do not require bitwise operations,
 cross-event joins, or custom row-wise expressions.
@@ -152,7 +152,7 @@ See the [global design](./memory_monitor_reporting_design.md), and the
 | --- | --- |
 | Page event | `lynxsdk_performance_entry_memory_v2` |
 | Global events | `lynxsdk_memory_process`, `lynxsdk_memory_page`, `lynxsdk_memory_page_residency`, `lynxsdk_memory_page_residual`, `lynxsdk_memory_persistence`, `lynxsdk_memory_vm_stat`, `lynxsdk_memory_vm_quickjs`, `lynxsdk_memory_mts_pool` |
-| Version | `schema_version=11` |
+| Version | `schema_version=12` |
 | Cohort | Fix SDK/build, date range, platform, experiment, and source configuration |
 | Event deduplication | Provided by the data platform; no monitor-owned deduplication fields |
 | Timer cohort | Encoded by production of the page, residual, VM-stat, and sampled QuickJS events |
@@ -811,7 +811,7 @@ does not prove permanent leakage.
 
 ## Q7. Which memory remains occupied over time?
 
-Event: `lynxsdk_memory_persistence`, filtered to `schema_version=11`.
+Event: `lynxsdk_memory_persistence`, filtered to `schema_version=12`.
 Q7.1 measures VM heap byte-time; Q7.2 measures exited-page residual byte-time.
 Both metrics use byte-ms. Divide by `1048576 × 3600000` for MiB-hours.
 Do not add these time contributions to instantaneous memory.
@@ -947,6 +947,131 @@ The event is emitted only for the first failed page-slot allocation in each VM.
 These rows describe the triggering VM and use no VM selection weights. Window
 censoring and missing delivery prevent treating event-count ratios as complete
 lifecycle conversion rates.
+
+### Q9.3 Which pages use VMs with unstable names?
+
+Event: `lynxsdk_memory_vm_stat`, `schema_version=12`. Keep SDK/corejs version,
+platform, app/app version, and monitoring configuration fixed. No heap, slot,
+cache, or active-page filter is required; an idle VM can identify a page that
+has exited.
+
+Use the stable `vm_page_key` to find businesses. Do not require a recognized
+name format: an arbitrary substring can vary, and one name alone cannot
+establish which parts are random.
+
+`vm_name_bucket` is a deterministic hash of the entire effective `vm_name`
+into 64 integer buckets (0..63). The nonempty monitoring label takes precedence
+over the group/runtime name. Changes at any position participate in hashing.
+The same name always has the same bucket across processes; different names
+can collide. An empty name has no bucket.
+
+Use the following two queries in the standard event UI. They require field
+predicates, grouping, MIN/MAX/SUM, and arithmetic between aggregate results.
+No prior page-key list, fuzzy matching, distinct count, or Python export is
+required.
+
+**Step 1: discover candidate pages across the selected app.**
+
+Require nonempty `vm_page_key` and a present `vm_name_bucket`. Bucket zero is
+valid: do not use `vm_name_bucket>0`. Do not select a particular page or name.
+Group by `vm_page_key` and `vm_runtime_type`, not by bucket or raw name.
+
+```text
+A = MIN(vm_name_bucket)
+B = MAX(vm_name_bucket)
+C = B - A
+```
+
+Inspect groups with C>0. If the UI supports filtering aggregate results,
+apply C>0 there; otherwise sort by C descending and inspect the positive
+results. Apply the requested Top N after grouping and sorting. This prevents
+C=0 groups from hiding positive candidates, but the returned N groups may
+still be only part of the candidate set. Increase N or narrow the app/version/
+time cohort to continue discovery.
+
+C>0 establishes that the observed rows contain different names. C is not a
+randomness score, probability, or name count: a larger range is not stronger
+evidence of random naming. Do not apply sampling weights to A or B; doing so
+would make a stable name appear to vary as VM/binding counts change.
+Top N limits output groups, not the source events used for the extrema.
+
+For illustration, the current hash gives these grouped results:
+
+| `vm_page_key` | A | B | C | Discovery result |
+| --- | ---: | ---: | ---: | --- |
+| `feed/detail` | 22 | 60 | 38 | Candidate |
+| `room/detail` | 26 | 30 | 4 | Candidate |
+| `coupon/detail` | 16 | 16 | 0 | No observed bucket variation |
+| `pay/index` | 27 | 27 | 0 | No observed bucket variation |
+
+**Step 2: inspect raw names for an exact candidate page.**
+
+Keep the same app/version/time and runtime conditions. Select, for example:
+
+```text
+vm_page_key = feed/detail
+vm_name != ""
+```
+
+Group by `vm_name`. Use `A=SUM(vm_total_page_count_weighted)` to display and
+sort historical binding-snapshot contribution, then return the desired N
+name groups. The resulting rows show actual names such as:
+
+| `vm_name` | Bucket in the source event |
+| --- | ---: |
+| `feed_A7q_vm` | 22 |
+| `feed_P9x_vm` | 26 |
+| `feed_K2m_vm` | 60 |
+
+Do not carry a bucket predicate into this query or restrict it to the minimum
+and maximum buckets: the intermediate name at bucket 26 is also relevant.
+The known page key supplies the business lookup; the returned raw names show
+the naming practice to investigate with that business. N limits the examples
+shown, so they are not a complete inventory of associated names.
+
+Bucket numbers have no semantic meaning. They do not merge names from the
+same naming template, and one bucket does not identify one business or name.
+Several intentionally stable names can spread across buckets; collisions can
+hide differences. Occupied buckets are only a lower bound on distinct names
+observed in the sample (capped at 64), not a distinct-VM count or proof of
+randomness. C=0 does not establish stability: for example, `name-6` and
+`name-9` both hash to 29, and sparse sampling may miss other names. Repeated
+reports of one unchanged name do not change its extrema. This query does not
+establish that names came from different processes; that requires an
+independent process/launch identifier. Event counts and weights cannot
+substitute for that identifier.
+
+For a page's estimated share of all historical bindings in an app/runtime
+cohort:
+
+```text
+A = SUM(vm_total_page_count_weighted), filtered to that vm_page_key
+B = SUM(vm_total_page_count_weighted), all rows in the same cohort
+share = A/B
+```
+
+Keep every other filter identical. B includes rows with a missing key.
+Separately report key coverage:
+`C=SUM(vm_total_page_count_weighted)` on nonempty `vm_page_key` rows,
+`D=SUM(vm_total_page_count_weighted)` on all cohort rows, coverage=`C/D`.
+If D is zero there are no observed bindings and the ratio is undefined.
+Missing keys remain unattributed; filtering B to nonempty keys instead gives
+a share only among identifiable bindings.
+
+With V registered VMs and N bindings in the selected VM, a binding's marginal
+selection probability is `1/(V*N)`, so the existing weighted binding count is
+also its inverse selection weight. For example, V=3 and N=10 gives 30.
+Do not multiply by N or V again. Repeated bindings with the same page key add
+to that key; reload within the same VM does not add a binding.
+
+This is partial historical provenance, not a complete VM-to-page inventory.
+The copied key survives exit/rebind and updates while the chosen binding is
+live; an empty selected key is omitted without redrawing. The same sample can
+appear in many timer reports, so event counts are not independent samples.
+Display row and independent-process counts. Contributions are snapshot-weighted
+cumulative history, not period PV, distinct VM counts, or page heap usage.
+Do not attribute `vm_heap_bytes_weighted` to `vm_page_key` or assume the sampled
+page exclusively owns that VM.
 
 ## Q10. Which VMs have high Unknown, Common, or Overflow memory?
 

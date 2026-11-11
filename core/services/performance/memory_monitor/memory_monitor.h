@@ -34,11 +34,11 @@ inline constexpr char kHighMemoryEventNotification[] = "lynx_high_memory_event";
 // Caches page memory by source and emits scheduled observations plus one
 // early summary. GlobalMemoryMonitor owns process snapshots and residency.
 //
-// Monitoring questions and query contract, schema_version=11:
+// Monitoring questions and query contract, schema_version=12:
 // - lynxsdk_performance_entry_memory_v2: Q1/Q2 page observations.
 // - lynxsdk_memory_page_residency: Q3.1 fixed 10min lifecycle cohorts.
 // - lynxsdk_memory_page: Q3.2/Q4 periodic active-page samples.
-// - lynxsdk_memory_vm_stat: Q5.1/Q5.2/Q9.1/Q12 all-engine VM samples.
+// - lynxsdk_memory_vm_stat: Q5.1/Q5.2/Q9.1/Q9.3/Q12 all-engine VM samples.
 // - lynxsdk_memory_vm_quickjs: Q5.3/Q9.2/Q10 QuickJS-only data.
 // - lynxsdk_memory_page_residual: Q6 periodic positive-residual PPS samples.
 // - lynxsdk_memory_persistence: Q7.1 VM endpoints; Q7.2 slot residual
@@ -112,6 +112,10 @@ inline constexpr char kHighMemoryEventNotification[] = "lynx_high_memory_event";
 //    B=SUM(vm_selection_weight); mean bindings per VM snapshot=A/B.
 //    Reloads are not new bindings; a snapshot repeats prior binding history.
 //    Q9.2: report_kind=slot_overflow age and load count, with no entity weight.
+//    Q9.3: group by vm_page_key/runtime; A=MIN(vm_name_bucket),
+//    B=MAX(vm_name_bucket), C=B-A. For C>0, filter by exact page key and
+//    inspect raw vm_name groups. One uniform historical binding per VM;
+//    V*N weights binding-snapshot contribution, not PV or heap attribution.
 // Q10 Which shared QuickJS VM names have high Unknown(0)/Common(1)/Overflow(2)?
 //    Use report_kind=sample.
 //    Group raw slot bytes by vm_name and compare P50/P90/P95/P99.

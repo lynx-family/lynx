@@ -148,7 +148,7 @@ class QuickjsRuntimeInstance : public VMInstance, public GCObserver {
     size_t bytes{0};
     uint32_t sequence{0};
     // New page bindings observed by the last successful capture.
-    uint64_t post_exit_page_count{0};
+    uint32_t post_exit_page_count{0};
 
     bool ShouldCapture(size_t current_bytes) const {
       if (!sequence) return current_bytes != 0;
