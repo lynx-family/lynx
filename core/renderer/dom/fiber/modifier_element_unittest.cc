@@ -278,7 +278,6 @@ class ModifierElementTest : public FiberElementTest {
     auto page = manager->CreateFiberPage("page", 0);
     page->MarkAsComposeLayout();
     page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
-    manager->SetFiberPageElement(page);
     return page;
   }
 
@@ -1834,7 +1833,6 @@ TEST_P(ModifierElementTest, WeightFillUpdateInvalidatesMeasuredAncestor) {
   auto page = manager->CreateFiberPage("page", 0);
   page->MarkAsComposeLayout();
   page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
-  manager->SetFiberPageElement(page);
   auto parent = CreateComposeHandle(manager)->content_element();
   parent->SetStyle(kPropertyIDDisplay, lepus::Value("linear"));
   parent->SetStyle(kPropertyIDLinearOrientation, lepus::Value("row"));
@@ -2057,7 +2055,6 @@ TEST_P(ModifierElementTest, KeepsPhysicalRootsPrivateToEachOwner) {
 
 TEST_P(ModifierElementTest, ReparentAttachedFramesThroughTargetOwnedMove) {
   auto page = manager->CreateFiberPage("page", 0);
-  manager->SetFiberPageElement(page);
   auto handle = CreateComposeHandle(manager);
   auto owner = handle->content_element();
   owner->MarkCanBeLayoutOnly(false);
@@ -2121,7 +2118,6 @@ TEST_P(ModifierElementTest, ReparentAttachedFramesThroughTargetOwnedMove) {
 
 TEST_P(ModifierElementTest, CoalescesPendingMovesBeforeSingleFlush) {
   auto page = manager->CreateFiberPage("page", 0);
-  manager->SetFiberPageElement(page);
   auto handle = CreateComposeHandle(manager);
   auto owner = handle->content_element();
   owner->MarkCanBeLayoutOnly(false);
