@@ -13,6 +13,7 @@ def sparklingAndroidVersion = project.findProperty('sparklingAndroidVersion') ?:
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
+    ndkVersion rootProject.ext.ndkVersion
 
     defaultConfig {
         applicationId "com.lynx.explorer"
