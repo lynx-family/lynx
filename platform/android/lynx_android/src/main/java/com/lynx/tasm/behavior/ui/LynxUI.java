@@ -89,6 +89,7 @@ import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.BitmapUtils;
 import com.lynx.tasm.utils.DeviceUtils;
 import com.lynx.tasm.utils.FloatUtils;
+import com.lynx.tasm.utils.OffscreenViewCapture;
 import com.lynx.tasm.utils.UnitUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -792,7 +793,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
         if (pixelCopy && mContext != null && mContext.getUIBodyView() != null) {
           mContext.getUIBodyView().getLynxUIRendererInternal().drawViewToBitmap(
               mView, bitmap, canvas);
-        } else {
+        } else if (!OffscreenViewCapture.drawIfEnabled(mView, canvas)) {
           boolean dirty = mView.isDirty();
           mView.draw(canvas);
           if (dirty) {
