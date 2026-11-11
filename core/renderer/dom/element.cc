@@ -1812,6 +1812,7 @@ const Element::InheritedProperty Element::GetInheritedProperty() {
 }
 
 bool Element::CollectCustomProperties(AttributeHolder* holder) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_COLLECT_CUSTOM_PROPERTIES);
   if (custom_properties_.Get() != nullptr) {
     return true;
   }
@@ -1834,6 +1835,9 @@ bool Element::CollectCustomProperties(AttributeHolder* holder) {
 
   // If we don't have any new variables, we can just share the parent's map.
   if (variables.empty() && inline_variables.empty()) {
+    if (custom_property_resolution_cache_) {
+      custom_property_resolution_cache_.reset();
+    }
     if (custom_properties_.Get() == nullptr) {
       custom_properties_.Init();
     }
@@ -1860,7 +1864,8 @@ bool Element::CollectCustomProperties(AttributeHolder* holder) {
     map->insert_or_assign(name, parser.ParseVariable());
   }
 
-  CSSValue::SubstituteAll(*map);
+  CSSValue::ResolveCustomProperties(custom_properties_, custom_properties_,
+                                    custom_property_resolution_cache_);
   return true;
 }
 

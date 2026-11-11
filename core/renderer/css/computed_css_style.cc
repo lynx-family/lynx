@@ -4,6 +4,7 @@
 
 #include "core/renderer/css/computed_css_style.h"
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -14,10 +15,12 @@
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
+#include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/css/css_debug_msg.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/style/color.h"
 
 namespace lynx {
@@ -749,6 +752,7 @@ void ComputedCSSStyle::CopyFrom(const ComputedCSSStyle& o) {
   new_animator_interpolation_ = o.new_animator_interpolation_;
   raw_custom_properties_ = o.raw_custom_properties_;
   resolved_custom_properties_ = o.resolved_custom_properties_;
+  custom_property_resolution_cache_ = o.custom_property_resolution_cache_;
   resolved_values_ = o.resolved_values_;
   origin_overflow_ = o.origin_overflow_;
   overflow_ = o.overflow_;
@@ -820,6 +824,7 @@ void ComputedCSSStyle::Reset() {
 
   raw_custom_properties_.reset();
   resolved_custom_properties_.reset();
+  custom_property_resolution_cache_.reset();
   resolved_values_.reset();
 
   ResetOverflow();
@@ -5023,6 +5028,11 @@ void ComputedCSSStyle::InheritCustomPropertiesFrom(
   resolved_custom_properties_ = from.resolved_custom_properties_;
 }
 
+void ComputedCSSStyle::ReuseCustomPropertyResolutionFrom(
+    const ComputedCSSStyle& from) {
+  custom_property_resolution_cache_ = from.custom_property_resolution_cache_;
+}
+
 void ComputedCSSStyle::InheritNormalPropertiesFrom(
     const ComputedCSSStyle& from,
     const std::unordered_set<tasm::CSSPropertyID>& inheritable_props) {
@@ -5208,14 +5218,37 @@ void ComputedCSSStyle::SetCustomProperty(const base::String& key,
 }
 
 void ComputedCSSStyle::FinalizeCustomProperties() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              COMPUTED_CSS_STYLE_FINALIZE_CUSTOM_PROPERTIES);
   if (!raw_custom_properties_ || !raw_custom_properties_.get()->Get()) {
     resolved_custom_properties_.reset();
+    custom_property_resolution_cache_.reset();
+    return;
+  }
+
+  // Inherited properties already contain computed values. A local declaration
+  // detaches the raw map, so this identity check keeps pure inheritance O(1).
+  const auto* raw_properties = raw_custom_properties_.get()->Get();
+  if (resolved_custom_properties_ &&
+      resolved_custom_properties_.get()->Get() == raw_properties) {
+    if (custom_property_resolution_cache_) {
+      custom_property_resolution_cache_.reset();
+    }
     return;
   }
 
   resolved_custom_properties_ = raw_custom_properties_;
-  tasm::CSSValue::SubstituteAll(
-      resolved_custom_properties_.get()->Access()->Value());
+  const auto& properties = raw_properties->Value();
+  if (std::none_of(properties.begin(), properties.end(), [](const auto& entry) {
+        return entry.second.NeedsVariableResolution();
+      })) {
+    custom_property_resolution_cache_.reset();
+    return;
+  }
+
+  tasm::CSSValue::ResolveCustomProperties(*raw_custom_properties_,
+                                          *resolved_custom_properties_,
+                                          custom_property_resolution_cache_);
 }
 
 const tasm::CustomPropertiesMap* ComputedCSSStyle::GetRawCustomProperties()

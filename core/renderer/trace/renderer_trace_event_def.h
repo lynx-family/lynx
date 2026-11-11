@@ -302,6 +302,23 @@ inline constexpr const char* const STYLE_SHEET_MANAGER_GET_STYLE_SHEET =
     "CSSStyleSheetManager::GetCSSStyleSheet";
 inline constexpr const char* const CSS_HANDLER_GET_VARIABLE_BY_RULE =
     "CSSVariableHandler::GetCSSVariableByRule";
+inline constexpr const char* const CSS_HANDLER_RESOLVE_VARIABLES =
+    "CSSVariableHandler::ResolveCSSVariables";
+inline constexpr const char* const CSS_VALUE_FIND_ALL_SCCS =
+    "CSSValue::FindAllSCCs";
+inline constexpr const char* const CSS_VALUE_RESOLVE_CUSTOM_PROPERTIES =
+    "CSSValue::ResolveCustomProperties";
+inline constexpr const char* const CSS_VALUE_SUBSTITUTE_ALL =
+    "CSSValue::SubstituteAll";
+inline constexpr const char* const CSS_VALUE_SUBSTITUTION =
+    "CSSValue::Substitution";
+inline constexpr const char* const CSS_VALUE_SUBSTITUTION_RESOLVED =
+    "CSSValue::SubstitutionResolved";
+inline constexpr const char* const
+    COMPUTED_CSS_STYLE_FINALIZE_CUSTOM_PROPERTIES =
+        "ComputedCSSStyle::FinalizeCustomProperties";
+inline constexpr const char* const ELEMENT_COLLECT_CUSTOM_PROPERTIES =
+    "Element::CollectCustomProperties";
 inline constexpr const char* const SHARED_FRAGMENT_INIT_PSEUDO_NOT_STYLE =
     "SharedCSSFragment::InitPseudoNotStyle";
 inline constexpr const char* const UNIT_HANDLER_PROCESS =

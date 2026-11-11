@@ -2480,6 +2480,8 @@ class Element : public lepus::RefCounted,
       reset_inherited_ids_;
 
   CustomPropertiesMapRef custom_properties_;
+  CSSValue::CustomPropertyResolutionCacheRef custom_property_resolution_cache_;
+  CSSVariableHandler::ResolutionCache css_variable_resolution_cache_;
 
   base::auto_create_optional<
       base::LinearFlatMap<tasm::CSSPropertyID, std::pair<CSSValue, IsLogic>>>

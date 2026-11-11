@@ -17,8 +17,24 @@ namespace tasm {
 
 class CSSVariableHandler {
  public:
-  explicit CSSVariableHandler(bool enable_fiber_arch = false)
-      : enable_fiber_arch_(enable_fiber_arch) {}
+  struct ResolutionCache {
+    struct Input {
+      bool exists;
+      base::String value;
+    };
+    struct Entry {
+      CSSValue expression;
+      base::String result;
+      base::LinearFlatMap<base::String, Input> inputs;
+      base::Vector<base::String> references;
+    };
+    base::LinearFlatMap<base::String, Entry> entries;
+  };
+
+  explicit CSSVariableHandler(bool enable_fiber_arch = false,
+                              ResolutionCache* resolution_cache = nullptr)
+      : enable_fiber_arch_(enable_fiber_arch),
+        resolution_cache_(resolution_cache) {}
 
   // method to handle css variables in style map.
   // If no CSS variables are present in the style map, return false; otherwise,
@@ -55,6 +71,7 @@ class CSSVariableHandler {
       base::MoveOnlyClosure<base::String, const std::string&> rule_matcher);
 
   bool enable_fiber_arch_;
+  ResolutionCache* resolution_cache_;
 };
 }  // namespace tasm
 }  // namespace lynx

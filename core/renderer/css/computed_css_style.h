@@ -246,6 +246,7 @@ class ComputedCSSStyle {
   bool InheritValue(tasm::CSSPropertyID id, const ComputedCSSStyle& from);
 
   void InheritCustomPropertiesFrom(const ComputedCSSStyle& from);
+  void ReuseCustomPropertyResolutionFrom(const ComputedCSSStyle& from);
   void InheritNormalPropertiesFrom(
       const ComputedCSSStyle& from,
       const std::unordered_set<tasm::CSSPropertyID>& inheritable_props);
@@ -656,6 +657,8 @@ class ComputedCSSStyle {
       raw_custom_properties_;
   base::auto_create_optional<tasm::CustomPropertiesMapRef>
       resolved_custom_properties_;
+  tasm::CSSValue::CustomPropertyResolutionCacheRef
+      custom_property_resolution_cache_;
   base::auto_create_optional<tasm::StyleMap> resolved_values_;
 
   static constexpr int32_t OVERFLOW_HIDDEN = 0x00;

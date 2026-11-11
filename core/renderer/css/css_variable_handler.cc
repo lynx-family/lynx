@@ -196,6 +196,7 @@ void CSSVariableHandler::ResolveCSSVariables(
     const CustomPropertiesMap* custom_properties,
     const CSSParserConfigs& configs,
     const CSSValue::HandleCustomPropertyFunc& on_custom_property) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_HANDLER_RESOLVE_VARIABLES);
   if (!enable_fiber_arch_) {
     return;
   }
@@ -203,8 +204,106 @@ void CSSVariableHandler::ResolveCSSVariables(
   if (!effective_properties) {
     effective_properties = EmptyCustomPropertyMap();
   }
-  auto resolved = CSSValue::SubstitutionResolved(value, *effective_properties,
+  const auto* references = value.GetVarReferences();
+  if (value.IsVariable() && !effective_properties->empty() && references &&
+      references->size() == 1) {
+    const auto& reference = references->front();
+    const auto& expression = value.AsStdString();
+    if (reference.start == 0 && reference.end == expression.size()) {
+      const std::string name(reference.Name(expression));
+      auto current = effective_properties->find(name);
+      if (current != effective_properties->end()) {
+        // A whole-value reference already has a computed string. Parse it
+        // directly instead of maintaining another substitution cache entry.
+        CSSValue::ReportCustomPropertyDependency(name, &current->second,
                                                  on_custom_property);
+        const auto& computed = current->second.AsStdString();
+        const char* stripped_start;
+        uint32_t stripped_length;
+        // Keep the parser's temporary string local to avoid contending on an
+        // inherited string's reference count during parallel restyles.
+        base::String resolved =
+            StripImportant(computed.c_str(), computed.length(), &stripped_start,
+                           &stripped_length)
+                ? base::String(stripped_start, stripped_length)
+                : base::String(computed);
+        UnitHandler::Process(id, lepus::Value(std::move(resolved)), result,
+                             configs);
+        return;
+      }
+    }
+  }
+  if (!resolution_cache_) {
+    UnitHandler::Process(
+        id,
+        lepus::Value(base::String(CSSValue::SubstitutionResolved(
+            value, *effective_properties, on_custom_property))),
+        result, configs);
+    return;
+  }
+
+  const auto key = value.AsString();
+  auto cached = resolution_cache_->entries.find(key);
+  const bool same_expression =
+      cached != resolution_cache_->entries.end() &&
+      cached->second.expression.HasSameVariableResolutionInput(value);
+  if (same_expression) {
+    bool valid = true;
+    for (const auto& [name, input] : cached->second.inputs) {
+      auto current = effective_properties->find(name);
+      if (input.exists != (current != effective_properties->end()) ||
+          (input.exists && input.value != current->second.AsString())) {
+        valid = false;
+        break;
+      }
+    }
+    if (valid) {
+      // Replay current metadata through the original direct bindings. A
+      // parent-computed alias may contain an ancestor's shadowed dependency.
+      for (const auto& name : cached->second.references) {
+        auto current = effective_properties->find(name);
+        CSSValue::ReportCustomPropertyDependency(
+            name.str(),
+            current == effective_properties->end() ? nullptr : &current->second,
+            on_custom_property);
+      }
+      UnitHandler::Process(id, lepus::Value(cached->second.result), result,
+                           configs);
+      return;
+    }
+  }
+
+  ResolutionCache::Entry entry;
+  // Reuse storage on misses instead of allocating new dependency containers.
+  if (cached != resolution_cache_->entries.end()) {
+    entry = std::move(cached->second);
+  }
+  if (!same_expression) {
+    entry.expression = value;
+  }
+  entry.inputs.clear();
+  entry.references.clear();
+  const CSSValue::HandleVariableReferenceFunc record_reference =
+      [&entry, effective_properties](const base::String& name) {
+        entry.references.push_back(name);
+        auto current = effective_properties->find(name);
+        entry.inputs.insert_or_assign(
+            name, ResolutionCache::Input{current != effective_properties->end(),
+                                         current != effective_properties->end()
+                                             ? current->second.AsString()
+                                             : base::String()});
+      };
+  base::String resolved(
+      CSSValue::SubstitutionResolved(entry.expression, *effective_properties,
+                                     on_custom_property, record_reference));
+  // Bound per-element storage when runtime styles generate new expressions.
+  constexpr size_t kMaxEntries = 64;
+  if (resolution_cache_->entries.size() >= kMaxEntries &&
+      !resolution_cache_->entries.contains(key)) {
+    resolution_cache_->entries.clear();
+  }
+  entry.result = resolved;
+  resolution_cache_->entries.insert_or_assign(key, std::move(entry));
   UnitHandler::Process(id, lepus::Value(std::move(resolved)), result, configs);
 }
 

@@ -244,6 +244,16 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
 
   using HandleCustomPropertyFunc =
       std::function<void(const base::String&, const base::String&)>;
+  using HandleVariableReferenceFunc = std::function<void(const base::String&)>;
+  class CustomPropertyResolutionCache;
+  using CustomPropertyResolutionCacheRef =
+      std::shared_ptr<const CustomPropertyResolutionCache>;
+
+  // Reuses computed values and cycle analysis while their inputs are unchanged.
+  // Cache snapshots are immutable and can be shared by computed styles.
+  static void ResolveCustomProperties(const CustomPropertiesMapRef& specified,
+                                      CustomPropertiesMapRef& resolved,
+                                      CustomPropertyResolutionCacheRef& cache);
   static void SubstituteAll(
       CustomPropertiesMap& custom_properties, int max_depth = 10,
       const HandleCustomPropertyFunc& handle_func = nullptr);
@@ -268,6 +278,7 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
  private:
   class CycleDetector;
   friend class LynxBinaryBaseCSSReader;
+  friend class CSSVariableHandler;
 
   struct CustomPropertyDependencyField {
     using Type = base::LinearFlatMap<base::String, base::String>;
@@ -281,18 +292,27 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   static std::string Substitution(
       const CSSValue& css_value, const CustomPropertiesMap& variable_map,
       const CycleDetector& detector, int max_depth = 10,
-      const HandleCustomPropertyFunc& handle_func = nullptr);
+      const HandleCustomPropertyFunc& handle_func = nullptr,
+      const HandleVariableReferenceFunc& on_reference = nullptr);
+  static std::string SubstitutionResolved(
+      const CSSValue& css_value, const CustomPropertiesMap& variable_map,
+      const HandleCustomPropertyFunc& handle_func,
+      const HandleVariableReferenceFunc& on_reference);
   static std::string ResolveVariable(
       const std::string& var_name, const CustomPropertiesMap& custom_properties,
       const CycleDetector& detector, int max_depth = 10,
-      const HandleCustomPropertyFunc& handle_func = nullptr);
+      const HandleCustomPropertyFunc& handle_func = nullptr,
+      const HandleVariableReferenceFunc& on_reference = nullptr);
   static std::string ResolveFallback(
       const VarReference& ref, const CustomPropertiesMap& variable_map,
       const CycleDetector& detector, int max_depth = 10,
-      const HandleCustomPropertyFunc& handle_func = nullptr);
+      const HandleCustomPropertyFunc& handle_func = nullptr,
+      const HandleVariableReferenceFunc& on_reference = nullptr);
   static std::string ResolveFallbackResolved(
       const VarReference& ref, const CustomPropertiesMap& variable_map,
-      const HandleCustomPropertyFunc& handle_func = nullptr);
+      const HandleCustomPropertyFunc& handle_func = nullptr,
+      const HandleVariableReferenceFunc& on_reference = nullptr);
+  bool HasSameVariableResolutionInput(const CSSValue& other) const;
   void SetCustomPropertyDependencies(
       CustomPropertyDependencyField::Type dependencies);
   void ClearCustomPropertyDependencies();

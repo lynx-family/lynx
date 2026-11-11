@@ -729,7 +729,7 @@ void StyleResolver::HandleCSSVariables(StyleMap& styles) {
     return;
   }
 
-  CSSVariableHandler handler(true);
+  CSSVariableHandler handler(true, &element_->css_variable_resolution_cache_);
   bool has_css_variable_in_style_map = false;
   bool is_css_inline_variables_enabled =
       element_->IsCSSInlineVariablesEnabled();
@@ -1593,6 +1593,7 @@ void StyleResolver::PrepareInitialComputedStyle(
     InitializeStyleShell(style, previous_style);
     InheritParentStyle(style, parent_style);
     if (previous_style != nullptr) {
+      style.ReuseCustomPropertyResolutionFrom(*previous_style);
       style.default_overflow_visible_ =
           previous_style->default_overflow_visible_;
       // Modifier parent data survives CSS recomputation without inheritance.
@@ -1647,6 +1648,9 @@ std::unique_ptr<starlight::ComputedCSSStyle> StyleResolver::ResolveBaseStyle(
   auto* current_element = element();
   auto style =
       CreateInitialComputedStyle(parent_style, previous_computed_style);
+  if (const auto* previous_base = current_element->base_css_style()) {
+    style->ReuseCustomPropertyResolutionFrom(*previous_base);
+  }
 
   CSSFragment* style_sheet = current_element->GetRelatedCSSFragment();
   CollectMatchedRules(style_sheet);
@@ -2067,7 +2071,8 @@ void StyleResolver::ResolveSpecifiedStyleMap(
   auto* current_element = element();
   const auto& configs = manager()->GetCSSParserConfigs();
   auto* holder = current_element->data_model();
-  CSSVariableHandler handler(true);
+  CSSVariableHandler handler(true,
+                             &current_element->css_variable_resolution_cache_);
 
   const auto handle_custom_property_func =
       [holder](const base::String& name, const base::String& resolved_value) {
