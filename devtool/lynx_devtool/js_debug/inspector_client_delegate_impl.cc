@@ -115,6 +115,10 @@ void InspectorClientDelegateImpl::OnInspectorInited(
 void InspectorClientDelegateImpl::OnRuntimeDestroyed(int view_id,
                                                      int64_t runtime_id) {
   RemoveRuntimeId(runtime_id);
+  auto it = view_id_to_bundle_.find(view_id);
+  if (it != view_id_to_bundle_.end() && it->second.runtime_id_ != runtime_id) {
+    return;
+  }
   if (!IsViewInSingleGroup(view_id)) {
     // When using shared-context, we must clear the messages displayed in the
     // Console panel first, otherwise the messages generated in the progress of

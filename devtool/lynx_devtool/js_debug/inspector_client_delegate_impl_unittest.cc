@@ -66,6 +66,30 @@ TEST_F(InspectorClientDelegateImplTest, GetDelegate) {
   EXPECT_NE(lepus_delegate_, new_lepus_delegate);
 }
 
+TEST_F(InspectorClientDelegateImplTest,
+       StaleRuntimeDestroyedDoesNotInvalidateReplacementSession) {
+  constexpr int kViewId = 11;
+  constexpr int64_t kOldRuntimeId = 201;
+  constexpr int64_t kNewRuntimeId = 202;
+  constexpr int kReplacementScriptId = 88;
+  constexpr char kSharedGroupId[] = "shared-group";
+
+  auto debugger = std::make_shared<JavaScriptDebuggerNGMock>(nullptr);
+  v8_delegate_->InsertDebugger(debugger, false);
+  v8_delegate_->OnInspectorInited(kViewId, kOldRuntimeId, kSharedGroupId);
+  v8_delegate_->OnInspectorInited(kViewId, kNewRuntimeId, kSharedGroupId);
+  v8_delegate_->InsertScriptId(kViewId, kReplacementScriptId);
+
+  v8_delegate_->OnRuntimeDestroyed(kViewId, kOldRuntimeId);
+  EXPECT_EQ(v8_delegate_->GetViewIdByRuntimeId(kOldRuntimeId), kErrorViewID);
+  EXPECT_EQ(v8_delegate_->GetViewIdByRuntimeId(kNewRuntimeId), kViewId);
+  EXPECT_FALSE(v8_delegate_->IsScriptIdInvalid(kReplacementScriptId));
+
+  v8_delegate_->OnRuntimeDestroyed(kViewId, kNewRuntimeId);
+  EXPECT_TRUE(v8_delegate_->IsScriptIdInvalid(kReplacementScriptId));
+  v8_delegate_->RemoveDebugger(kViewId);
+}
+
 }  // namespace testing
 }  // namespace devtool
 }  // namespace lynx
