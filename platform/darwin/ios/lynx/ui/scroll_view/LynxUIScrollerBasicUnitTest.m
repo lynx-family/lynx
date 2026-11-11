@@ -75,6 +75,10 @@
     XCTAssertEqualWithAccuracy(scroller.view.contentOffset.y, 200, 0.001);
 
     [LynxPropsProcessor updateProp:@3 withKey:attributeName forUI:scroller];
+    XCTAssertEqual([[scroller valueForKey:@"firstRenderBlockArray"] count], 0u);
+    [LynxPropsProcessor updateProp:@"300px" withKey:@"initial-scroll-offset" forUI:scroller];
+    XCTAssertEqual([[scroller valueForKey:@"firstRenderBlockArray"] count], 0u);
+
     [scroller layoutDidFinished];
     XCTAssertEqualWithAccuracy(scroller.view.contentOffset.y, 200, 0.001);
   }
