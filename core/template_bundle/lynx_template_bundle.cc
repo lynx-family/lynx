@@ -5,6 +5,7 @@
 #include "core/template_bundle/lynx_template_bundle.h"
 
 #include <algorithm>
+#include <cstring>
 
 #include "base/include/log/logging.h"
 #include "base/include/timer/time_utils.h"
@@ -18,9 +19,23 @@
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_lazy_reader_delegate.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
+#include "core/template_bundle/template_codec/magic_number.h"
 
 namespace lynx {
 namespace tasm {
+
+bool LynxTemplateBundle::HasBinaryHeader(const std::vector<uint8_t> &data) {
+  // The total-size field precedes the magic word in the binary header.
+  constexpr size_t kMagicOffset = sizeof(uint32_t);
+  if (data.size() < kMagicOffset + sizeof(uint32_t)) {
+    return false;
+  }
+  // Match the existing binary reader's byte order without unaligned reads.
+  uint32_t magic;
+  std::memcpy(&magic, data.data() + kMagicOffset, sizeof(magic));
+  return magic == template_codec::kQuickBinaryMagic ||
+         magic == template_codec::kLepusBinaryMagic;
+}
 
 std::string LynxTemplateBundle::FromBinary(std::vector<uint8_t> binary,
                                            bool is_card,
