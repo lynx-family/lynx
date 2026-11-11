@@ -73,6 +73,26 @@ The operation type selects the matching payload:
 
 Unknown operation types can be skipped by advancing one fixed-size item.
 
+Linear gradients optionally exclude a recorded inner rounded rectangle. The
+`inner_clip_index_plus_one` field occupies byte 40 without changing the 56-byte
+stride: zero keeps a filled gradient, positive values reference a prior box at
+index `value - 1`. Invalid negative/out-of-range values skip only that gradient.
+Android and Harmony difference-clip locally; Darwin applies an even-odd mask to
+the gradient layer, not to the host. Radial gradient fields are unchanged.
+
+Compose drawing callbacks accept only the `lynx.draw.recording` v1 envelope.
+The bounded compiler reads and validates the complete input while writing
+supported rectangle and rounded-rectangle paths, solid/Clamp linear paint, and
+uniform-inset border clips into scratch storage in the final `DisplayList`
+format. Modifier operation 12 uses the drawing-behind callback; operation 17
+uses the foreground callback;
+operation 18 records a singleton geometry as an explicit clip in its own
+modifier boundary. Its carrier keeps CSS overflow visible so ordinary DrawClip
+cannot replace the explicit mask. Only a successfully compiled list is checked
+and appended to the destination builder. On Darwin, decorations preceding
+content remain below the host; commands following text, image, or native-child
+content retain foreground order inside the host.
+
 Background color is recorded before background images, using the bottommost
 CSS image layer's clip. Image layers are recorded from last to first, so the
 first CSS background is painted on top, as required by
@@ -169,6 +189,26 @@ typedef struct SubtreeProperty {
 ```
 
 Like `DisplayListItem`, its size and offsets are ABI-checked.
+
+### 2.5 Compose final-list cache
+
+Cache-aware drawing bindings cache the immutable compiled `DisplayList`, not the
+runtime wire or an intermediate command model. Each callback copy owns its cache
+slot, scalar key, eligibility and reentry state; only immutable list storage can
+be shared. The key includes target and binding identity/lifetime, drawing phase,
+width, height and physical pixel scale. Native passes `canReuse=true` only when
+that key matches. If the Kotlin recording remains valid, the producer may return
+a fresh full v1 recording on `false` without rerecording drawing commands. A warm
+hit skips decoding and geometry conversion and appends the cached list.
+
+`AppendDrawingContent` accepts only `RecordBox`, `Fill`, `LinearGradient`,
+`BoxShadow` and `ClipRect` content. It validates the whole source before writing,
+relocates box references and nonempty gradient-data offsets for the destination
+prefix, and does not merge owner-layer properties or resources. Empty success
+replaces a prior cached list. Decode or append failure leaves destination content
+unchanged; append-capacity diagnostics are batch-level because cached items have
+no original wire-command mapping. Fragment shadow state is marked only after a
+successful append. Detach, rebinding, key drift and reentry invalidate reuse.
 
 ## 3. Build Flow
 

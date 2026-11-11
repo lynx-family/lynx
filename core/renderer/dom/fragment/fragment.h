@@ -113,6 +113,12 @@ class Fragment : public BaseElementContainer {
   // Install bindings after style resolution so removal can reset properties.
   void SetCustomDrawFunctions(
       std::shared_ptr<const CustomDrawFunctions> functions);
+  const CustomDrawFunctions* GetCustomDrawFunctions() const {
+    return custom_draw_functions_.get();
+  }
+  uint64_t CustomDrawBindingGeneration() const {
+    return custom_draw_binding_generation_;
+  }
   bool HasCustomDraw() const { return custom_draw_functions_ != nullptr; }
   bool HasCustomLayerProperties() const {
     return custom_draw_functions_ &&
@@ -121,15 +127,11 @@ class Fragment : public BaseElementContainer {
   void DrawBehind(DisplayListBuilder& builder);
   void DrawForeground(DisplayListBuilder& builder);
 
-  // Records one outset shadow of `shape`, given in layout units in this
-  // fragment's coordinates. Custom drawing calls this from draw_behind, so the
-  // shadow is painted below the ordinary background and, like a CSS outset
-  // box-shadow, is kept outside the platform layer's own clip.
-  void DrawCustomOutsetShadow(DisplayListBuilder& builder,
-                              const RoundedRectangle& shape, float offset_x,
-                              float offset_y, float blur, float spread,
-                              uint32_t color);
-
+  // Uses the same CSS shadow geometry, checked before a custom batch emits.
+  static bool PrepareCustomOutsetShadow(const RoundedRectangle& shape,
+                                        float offset_x, float offset_y,
+                                        float spread, RoundedRectangle* output);
+  void MarkCustomOutsetShadowDrawn() { custom_outset_shadow_drawn_ = true; }
   void SetEventProp(PlatformEventPropName name, const lepus::Value& value);
 
   void ClearEventProps();
@@ -241,6 +243,7 @@ class Fragment : public BaseElementContainer {
   void ClearBackgroundImage(size_t image_index);
 
   std::shared_ptr<const CustomDrawFunctions> custom_draw_functions_;
+  uint64_t custom_draw_binding_generation_{0};
   float list_item_animation_opacity_{1.f};
   bool list_item_animation_opacity_changed_{false};
   bool has_platform_renderer_{false};

@@ -111,9 +111,14 @@ final class NativeDisplayListBuilder implements AutoCloseable {
 
   NativeDisplayListBuilder linearGradient(int[] colors, float[] stops, int tilingIndex,
       int clipIndex, int repeatX, int repeatY, float angle) {
+    return linearGradient(colors, stops, tilingIndex, clipIndex, repeatX, repeatY, angle, -1);
+  }
+
+  NativeDisplayListBuilder linearGradient(int[] colors, float[] stops, int tilingIndex,
+      int clipIndex, int repeatX, int repeatY, float angle, int innerClipIndex) {
     ensureMutable();
     nativeLinearGradient(
-        mNativePtr, colors, stops, tilingIndex, clipIndex, repeatX, repeatY, angle);
+        mNativePtr, colors, stops, tilingIndex, clipIndex, repeatX, repeatY, angle, innerClipIndex);
     return this;
   }
 
@@ -198,7 +203,7 @@ final class NativeDisplayListBuilder implements AutoCloseable {
   private static native void nativeRecordBox(
       long nativePtr, float x, float y, float width, float height, float[] radii);
   private static native void nativeLinearGradient(long nativePtr, int[] colors, float[] stops,
-      int tilingIndex, int clipIndex, int repeatX, int repeatY, float angle);
+      int tilingIndex, int clipIndex, int repeatX, int repeatY, float angle, int innerClipIndex);
   private static native void nativeRadialGradient(long nativePtr, int[] colors, float[] stops,
       int tilingIndex, int clipIndex, int repeatX, int repeatY, float centerX, float centerY,
       float radiusX, float radiusY);

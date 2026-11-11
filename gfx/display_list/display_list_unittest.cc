@@ -4,8 +4,11 @@
 
 #include "gfx/public/display_list.h"
 
+#include <limits>
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "core/public/platform_renderer_type.h"
 #include "gfx/public/display_list_reader.h"
@@ -237,6 +240,39 @@ TEST_F(DisplayListTest, AddLinearGradientEmpty) {
   EXPECT_EQ(item.payload.linear_gradient.stop_count, 0u);
   EXPECT_EQ(reader.Colors(item), nullptr);
   EXPECT_EQ(reader.Stops(item), nullptr);
+}
+
+TEST_F(DisplayListTest, LinearExclusionUsesReservedBytesAndRejectsOverflow) {
+  const base::Vector<uint32_t> colors{0x80ff0000, 0x800000ff};
+  const base::Vector<float> stops{0, 1};
+  for (int32_t index : {-2, std::numeric_limits<int32_t>::max()}) {
+    display_list_->AddLinearGradient(90, colors, stops, 0, 1, 1, 1, index);
+    EXPECT_EQ(display_list_->GetContentItemsSize(), 0u);
+    EXPECT_EQ(display_list_->GetContentDataSize(), 0u);
+  }
+  display_list_->AddLinearGradient(90, colors, stops, 0, 1, 1, 1);
+  display_list_->AddLinearGradient(90, colors, stops, 0, 1, 1, 1, 0);
+  display_list_->AddLinearGradient(90, colors, stops, 0, 1, 1, 1, 7);
+  display_list_->AddLinearGradient(90, colors, stops, 0, 1, 1, 1,
+                                   std::numeric_limits<int32_t>::max() - 1);
+  display_list_->AddRadialGradient(2, 3, 4, 5, colors, stops, 0, 1, 1, 1);
+  ASSERT_EQ(display_list_->GetContentItemsByteSize(), 5u * 56);
+  DisplayListReader reader(*display_list_);
+  for (int32_t encoded : {0, 1, 8, std::numeric_limits<int32_t>::max()}) {
+    const auto& item = reader.Next();
+    EXPECT_EQ(item.type, DisplayListOpType::kLinearGradient);
+    EXPECT_EQ(item.payload.linear_gradient.inner_clip_index_plus_one, encoded);
+    const auto* bytes = reinterpret_cast<const uint8_t*>(&item);
+    for (size_t offset = 44; offset < 56; ++offset) EXPECT_EQ(bytes[offset], 0);
+    ASSERT_NE(reader.Colors(item), nullptr);
+    EXPECT_EQ(reader.Colors(item)[1], 0x800000ff);
+  }
+  const auto& radial = reader.Next();
+  EXPECT_EQ(radial.type, DisplayListOpType::kRadialGradient);
+  EXPECT_FLOAT_EQ(radial.payload.radial_gradient.center_y, 3);
+  EXPECT_FLOAT_EQ(radial.payload.radial_gradient.radius_x, 4);
+  EXPECT_FLOAT_EQ(radial.payload.radial_gradient.radius_y, 5);
+  EXPECT_FALSE(reader.HasNext());
 }
 
 TEST_F(DisplayListTest, AddRadialGradient) {
@@ -485,6 +521,437 @@ TEST_F(DisplayListTest, RenderOffset) {
   const float* offset = list.GetRenderOffset();
   EXPECT_FLOAT_EQ(offset[0], 5.0f);
   EXPECT_FLOAT_EQ(offset[1], 10.0f);
+}
+
+namespace {
+
+std::vector<uint8_t> DrawingBytes(const void* data, size_t size) {
+  const auto* bytes = static_cast<const uint8_t*>(data);
+  return size ? std::vector<uint8_t>(bytes, bytes + size)
+              : std::vector<uint8_t>();
+}
+
+std::string DrawingHex(const std::vector<uint8_t>& bytes) {
+  constexpr char digits[] = "0123456789abcdef";
+  std::string result;
+  for (uint8_t byte : bytes) {
+    result += digits[byte >> 4];
+    result += digits[byte & 15];
+  }
+  return result;
+}
+
+struct DrawingSnapshot {
+  explicit DrawingSnapshot(DisplayList& list)
+      : items(DrawingBytes(list.GetContentItemsData(),
+                           list.GetContentItemsByteSize())),
+        data(DrawingBytes(list.GetContentData(), list.GetContentDataSize())),
+        properties(DrawingBytes(
+            list.GetSubtreePropertiesData(),
+            list.GetSubtreePropertiesSize() * sizeof(SubtreeProperty))),
+        layers(list.SubLayers().begin(), list.SubLayers().end()),
+        dx(list.GetRenderOffset()[0]),
+        dy(list.GetRenderOffset()[1]),
+        root_clip(list.RootNeedClipBounds()) {
+    for (const auto& image : list.Images()) images.push_back(image.get());
+    for (size_t i = 0; i < list.GetPathCount(); ++i)
+      paths.push_back(list.GetPath(i));
+  }
+
+  void ExpectUnchanged(DisplayList& list) const {
+    EXPECT_EQ(items, DrawingBytes(list.GetContentItemsData(),
+                                  list.GetContentItemsByteSize()));
+    EXPECT_EQ(data,
+              DrawingBytes(list.GetContentData(), list.GetContentDataSize()));
+    EXPECT_EQ(properties, DrawingBytes(list.GetSubtreePropertiesData(),
+                                       list.GetSubtreePropertiesSize() *
+                                           sizeof(SubtreeProperty)));
+    EXPECT_EQ(layers, std::vector<int>(list.SubLayers().begin(),
+                                       list.SubLayers().end()));
+    ASSERT_EQ(images.size(), list.Images().size());
+    for (size_t i = 0; i < images.size(); ++i)
+      EXPECT_EQ(images[i], list.Images()[i].get());
+    ASSERT_EQ(paths.size(), list.GetPathCount());
+    for (size_t i = 0; i < paths.size(); ++i)
+      EXPECT_EQ(paths[i], list.GetPath(i));
+    EXPECT_EQ(dx, list.GetRenderOffset()[0]);
+    EXPECT_EQ(dy, list.GetRenderOffset()[1]);
+    EXPECT_EQ(root_clip, list.RootNeedClipBounds());
+  }
+
+  std::string Json() const {
+    return "{\"items\":\"" + DrawingHex(items) + "\",\"data\":\"" +
+           DrawingHex(data) + "\",\"properties\":\"" + DrawingHex(properties) +
+           "\",\"layers\":" + std::to_string(layers.size()) +
+           ",\"images\":" + std::to_string(images.size()) +
+           ",\"paths\":" + std::to_string(paths.size()) +
+           ",\"dx\":" + std::to_string(dx) + ",\"dy\":" + std::to_string(dy) +
+           ",\"root_clip\":" + (root_clip ? "true" : "false") + "}";
+  }
+
+  std::vector<uint8_t> items, data, properties;
+  std::vector<int> layers;
+  std::vector<const PaintImage*> images;
+  std::vector<const gfx::Path*> paths;
+  float dx, dy;
+  bool root_clip;
+};
+
+DisplayListItem DrawingBox(float x) {
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kRecordBox;
+  item.payload.record_box = {x, 2, 30, 40, {1, 2, 3, 4, 5, 6, 7, 8}, 1};
+  return item;
+}
+
+DisplayList DrawingPrefix() {
+  DisplayList list(3, 4);
+  list.AppendItem(DrawingBox(-3));
+  list.AddLinearGradient(180, {0xffaabbcc, 0xffddeeff}, {0, 1}, 0, 0, 1, 1);
+  SubtreeProperty property{};
+  property.type = DisplayListSubtreePropertyOpType::kOpacity;
+  property.data.opacity = 0.25f;
+  list.AddSubtreeProperty(property);
+  list.AddSubLayer(123);
+  list.Images().push_back(fml::MakeRefCounted<PaintImage>(456));
+  list.RetainPath(gfx::Path::MakeRect(1, 2));
+  list.MarkRootNeedClipBounds();
+  return list;
+}
+
+}  // namespace
+
+class DisplayListDrawingAppendTest : public ::testing::Test {
+ protected:
+  static bool SizesFit(size_t items, size_t data, size_t source_items,
+                       size_t source_data, size_t base, size_t boxes) {
+    return DisplayList::CanAppendDrawingContentSizes(items, data, source_items,
+                                                     source_data, base, boxes);
+  }
+
+  static void AddUnalignedData(DisplayList& list) {
+    list.content_data_->push_back(0);
+  }
+
+  static void ExpectRejected(DisplayList& source, int32_t base = 1) {
+    static size_t rejection = 0;
+    auto destination = DrawingPrefix();
+    const DrawingSnapshot before(destination), source_before(source);
+    const auto* item_pointer = destination.GetContentItemsData();
+    const auto* data_pointer = destination.GetContentData();
+    size_t count = 987;
+    EXPECT_FALSE(destination.AppendDrawingContent(source, base, count));
+    EXPECT_EQ(count, 987u);
+    before.ExpectUnchanged(destination);
+    source_before.ExpectUnchanged(source);
+    EXPECT_EQ(item_pointer, destination.GetContentItemsData());
+    EXPECT_EQ(data_pointer, destination.GetContentData());
+    RecordProperty("rejection_" + std::to_string(++rejection),
+                   "{\"before\":" + before.Json() +
+                       ",\"after\":" + DrawingSnapshot(destination).Json() +
+                       ",\"source_before\":" + source_before.Json() +
+                       ",\"source_after\":" + DrawingSnapshot(source).Json() +
+                       ",\"base\":" + std::to_string(base) +
+                       ",\"output_count\":" + std::to_string(count) + "}");
+  }
+};
+
+TEST_F(DisplayListDrawingAppendTest, AllFiveOperationsHaveLiteralRelocations) {
+  DisplayList source;
+  source.AppendItem(DrawingBox(5));
+  source.AppendItem(DrawingBox(9));
+  DisplayListItem fill{};
+  fill.type = DisplayListOpType::kFill;
+  fill.payload.fill = {0xff123456, 1};
+  source.AppendItem(fill);
+  fill.payload.fill = {0xff654321, -1};
+  source.AppendItem(fill);
+  source.AddLinearGradient(90, {0xff112233, 0xff445566}, {0.25f, 0.75f}, 0, 1,
+                           1, 0, 1);
+  source.AddLinearGradient(270, {0xff778899, 0xffaabbcc}, {0, 1}, 1, 0, 0, 1);
+  source.AddLinearGradient(45, {}, {}, 1, 0, 0, 1);
+  DisplayListItem shadow{};
+  shadow.type = DisplayListOpType::kBoxShadow;
+  shadow.payload.box_shadow = {1, 0, 0x80123456, 6, 0};
+  source.AppendItem(shadow);
+  shadow.payload.box_shadow = {0, 1, 0x80654321, 8, 1};
+  source.AppendItem(shadow);
+  DisplayListItem clip{};
+  clip.type = DisplayListOpType::kClipRect;
+  clip.payload.clip_rect = {10, 20, 50, 60, {8, 7, 6, 5, 4, 3, 2, 1}, 1};
+  source.AppendItem(clip);
+  const DrawingSnapshot source_before(source);
+  auto destination = DrawingPrefix();
+  const DrawingSnapshot prefix(destination);
+
+  for (int32_t base : {1, 3}) {
+    size_t count = 987;
+    ASSERT_TRUE(destination.AppendDrawingContent(source, base, count));
+    ASSERT_EQ(count, 2u);
+    const size_t first = base == 1 ? 2 : 12;
+    const uint32_t data_base = base == 1 ? 16 : 48;
+    const auto* items = reinterpret_cast<const DisplayListItem*>(
+        destination.GetContentItemsData());
+    std::vector<DisplayListItem> expected{DrawingBox(5), DrawingBox(9)};
+    DisplayListItem item{};
+    item.type = DisplayListOpType::kFill;
+    item.payload.fill = {0xff123456, base + 1};
+    expected.push_back(item);
+    item.payload.fill = {0xff654321, -1};
+    expected.push_back(item);
+    item = {};
+    item.type = DisplayListOpType::kLinearGradient;
+    item.payload.linear_gradient = {
+        data_base, 2, data_base + 8, 2, base, base + 1, 1, 0, 90, base + 2};
+    expected.push_back(item);
+    item.payload.linear_gradient = {
+        data_base + 16, 2, data_base + 24, 2, base + 1, base, 0, 1, 270, 0};
+    expected.push_back(item);
+    item.payload.linear_gradient = {0, 0, 0, 0, base + 1, base, 0, 1, 45, 0};
+    expected.push_back(item);
+    item = {};
+    item.type = DisplayListOpType::kBoxShadow;
+    item.payload.box_shadow = {base + 1, base, 0x80123456, 6, 0};
+    expected.push_back(item);
+    item.payload.box_shadow = {base, base + 1, 0x80654321, 8, 1};
+    expected.push_back(item);
+    expected.push_back(clip);
+    EXPECT_EQ(DrawingBytes(items + first, 10 * sizeof(DisplayListItem)),
+              DrawingBytes(expected.data(), 10 * sizeof(DisplayListItem)));
+    const uint32_t colors[] = {0xff112233, 0xff445566};
+    const float stops[] = {0.25f, 0.75f};
+    EXPECT_EQ(DrawingBytes(destination.GetContentData() + data_base, 8),
+              DrawingBytes(colors, 8));
+    EXPECT_EQ(DrawingBytes(destination.GetContentData() + data_base + 8, 8),
+              DrawingBytes(stops, 8));
+    const uint32_t next_colors[] = {0xff778899, 0xffaabbcc};
+    const float next_stops[] = {0, 1};
+    EXPECT_EQ(DrawingBytes(destination.GetContentData() + data_base + 16, 8),
+              DrawingBytes(next_colors, 8));
+    EXPECT_EQ(DrawingBytes(destination.GetContentData() + data_base + 24, 8),
+              DrawingBytes(next_stops, 8));
+    source_before.ExpectUnchanged(source);
+  }
+  EXPECT_EQ(destination.GetContentItemsSize(), 22u);
+  EXPECT_EQ(destination.GetContentDataSize(), 80u);
+  EXPECT_EQ(prefix.items, DrawingBytes(destination.GetContentItemsData(), 112));
+  EXPECT_EQ(prefix.data, DrawingBytes(destination.GetContentData(), 16));
+  EXPECT_EQ(prefix.properties,
+            DrawingBytes(destination.GetSubtreePropertiesData(),
+                         sizeof(SubtreeProperty)));
+  EXPECT_EQ(destination.GetPathCount(), 1u);
+  EXPECT_EQ(destination.GetPath(0), prefix.paths[0]);
+  EXPECT_EQ(destination.SubLayers().size(), 1u);
+  EXPECT_EQ(destination.SubLayers()[0], 123);
+  EXPECT_EQ(destination.Images().size(), 1u);
+  EXPECT_EQ(destination.Images()[0].get(), prefix.images[0]);
+  EXPECT_TRUE(destination.RootNeedClipBounds());
+  EXPECT_EQ(destination.GetRenderOffset()[0], 3);
+  EXPECT_EQ(destination.GetRenderOffset()[1], 4);
+  RecordProperty("source_before", source_before.Json());
+  RecordProperty("source_after", DrawingSnapshot(source).Json());
+  RecordProperty("prefix", prefix.Json());
+  RecordProperty("destination", DrawingSnapshot(destination).Json());
+}
+
+TEST_F(DisplayListDrawingAppendTest, EmptySuccessAndDifferentPrefix) {
+  DisplayList source, destination;
+  size_t count = 987;
+  EXPECT_TRUE(destination.AppendDrawingContent(source, 0, count));
+  EXPECT_EQ(count, 0u);
+  EXPECT_EQ(destination.GetContentItemsData(), nullptr);
+  EXPECT_EQ(destination.GetContentData(), nullptr);
+  source.AppendItem(DrawingBox(5));
+  DisplayListItem fill{};
+  fill.type = DisplayListOpType::kFill;
+  fill.payload.fill = {0xff112233, 0};
+  source.AppendItem(fill);
+  ASSERT_TRUE(destination.AppendDrawingContent(source, 0, count));
+  EXPECT_EQ(count, 1u);
+  DisplayListReader reader(destination);
+  EXPECT_EQ(reader.Next().payload.record_box.x, 5);
+  EXPECT_EQ(reader.Next().payload.fill.clip_index, 0);
+}
+
+TEST_F(DisplayListDrawingAppendTest,
+       InvalidOperationsRejectLateWithoutMutation) {
+  for (auto type :
+       {DisplayListOpType::kBegin, DisplayListOpType::kEnd,
+        DisplayListOpType::kDrawView, DisplayListOpType::kText,
+        DisplayListOpType::kImage, DisplayListOpType::kCustom,
+        DisplayListOpType::kBackgroundImage, DisplayListOpType::kRadialGradient,
+        DisplayListOpType::kClipPath, static_cast<DisplayListOpType>(12345)}) {
+    SCOPED_TRACE(static_cast<int>(type));
+    DisplayList source;
+    source.AppendItem(DrawingBox(5));
+    source.AddLinearGradient(90, {1, 2}, {0, 1}, 0, 0, 1, 1);
+    DisplayListItem invalid{};
+    invalid.type = type;
+    source.AppendItem(invalid);
+    ExpectRejected(source);
+  }
+}
+
+TEST_F(DisplayListDrawingAppendTest, InvalidReferencesAndShadowMode) {
+  for (int field = 0; field < 9; ++field) {
+    for (int32_t invalid : {-2, -1, 1, std::numeric_limits<int32_t>::max()}) {
+      if ((field == 0 && invalid == -1) || (field == 3 && invalid == 1))
+        continue;
+      SCOPED_TRACE(field);
+      SCOPED_TRACE(invalid);
+      DisplayList source;
+      source.AppendItem(DrawingBox(5));
+      DisplayListItem item{};
+      if (field == 0) {
+        item.type = DisplayListOpType::kFill;
+        item.payload.fill.clip_index = invalid;
+      } else if (field <= 3) {
+        item.type = DisplayListOpType::kLinearGradient;
+        if (field == 1) item.payload.linear_gradient.tiling_index = invalid;
+        if (field == 2) item.payload.linear_gradient.clip_index = invalid;
+        if (field == 3)
+          item.payload.linear_gradient.inner_clip_index_plus_one = invalid;
+      } else if (field <= 6) {
+        item.type = DisplayListOpType::kBoxShadow;
+        if (field == 4) item.payload.box_shadow.shadow_box_index = invalid;
+        if (field == 5) item.payload.box_shadow.clip_box_index = invalid;
+        if (field == 6) {
+          if (invalid == 1) continue;
+          item.payload.box_shadow.clip_mode = invalid;
+        }
+      } else {
+        item.type = DisplayListOpType::kBorder;
+        if (field == 7) item.payload.border.out_index = invalid;
+        if (field == 8) item.payload.border.inner_index = invalid;
+      }
+      source.AppendItem(item);
+      ExpectRejected(source);
+    }
+  }
+  DisplayList forward;
+  DisplayListItem fill{};
+  fill.type = DisplayListOpType::kFill;
+  fill.payload.fill.clip_index = 0;
+  forward.AppendItem(fill);
+  forward.AppendItem(DrawingBox(5));
+  ExpectRejected(forward);
+}
+
+TEST_F(DisplayListDrawingAppendTest, InvalidGradientRangesAndAlignment) {
+  for (int field = 0; field < 6; ++field) {
+    for (uint32_t invalid : {1u, 17u, std::numeric_limits<uint32_t>::max()}) {
+      SCOPED_TRACE(field);
+      SCOPED_TRACE(invalid);
+      DisplayList source;
+      source.AppendItem(DrawingBox(5));
+      source.AddLinearGradient(90, {1, 2}, {0, 1}, 0, 0, 1, 1);
+      auto item = reinterpret_cast<const DisplayListItem*>(
+          source.GetContentItemsData())[1];
+      auto& gradient = item.payload.linear_gradient;
+      if (field == 0) gradient.color_count_offset = invalid;
+      if (field == 1) gradient.stop_count_offset = invalid;
+      if (field == 2) {
+        gradient.color_count = 0;
+        gradient.color_count_offset = invalid;
+      }
+      if (field == 3) {
+        gradient.stop_count = invalid;
+        if (invalid == 1) gradient.stop_count_offset = 16;
+      }
+      if (field == 4) {
+        gradient.color_count = invalid;
+        if (invalid == 1) gradient.color_count_offset = 16;
+      }
+      if (field == 5) {
+        gradient.stop_count = 0;
+        gradient.stop_count_offset = invalid;
+      }
+      source.AppendItem(item);
+      ExpectRejected(source);
+    }
+  }
+}
+
+TEST_F(DisplayListDrawingAppendTest, InvalidDestinationDataAlignment) {
+  DisplayList source;
+  source.AppendItem(DrawingBox(5));
+  source.AddLinearGradient(90, {1, 2}, {0, 1}, 0, 0, 1, 1);
+  auto destination = DrawingPrefix();
+  AddUnalignedData(destination);
+  const DrawingSnapshot before(destination), source_before(source);
+  size_t count = 987;
+  EXPECT_FALSE(destination.AppendDrawingContent(source, 1, count));
+  EXPECT_EQ(count, 987u);
+  before.ExpectUnchanged(destination);
+  source_before.ExpectUnchanged(source);
+  RecordProperty("rejection", "{\"before\":" + before.Json() + ",\"after\":" +
+                                  DrawingSnapshot(destination).Json() + "}");
+}
+
+TEST_F(DisplayListDrawingAppendTest, SourceMetadataRejectsWithoutMutation) {
+  for (int field = 0; field < 7; ++field) {
+    SCOPED_TRACE(field);
+    DisplayList source(field == 0 ? 1 : 0, field == 1 ? 1 : 0);
+    if (field == 2) source.MarkRootNeedClipBounds();
+    if (field == 3) source.AddSubLayer(7);
+    if (field == 4) {
+      SubtreeProperty property{};
+      source.AddSubtreeProperty(property);
+    }
+    if (field == 5) source.RetainPath(gfx::Path::MakeRect(1, 2));
+    if (field == 6)
+      source.Images().push_back(fml::MakeRefCounted<PaintImage>(7));
+    ExpectRejected(source);
+  }
+}
+
+TEST_F(DisplayListDrawingAppendTest, SelfAppendAndNegativeBaseReject) {
+  auto list = DrawingPrefix();
+  const DrawingSnapshot before(list);
+  size_t count = 987;
+  EXPECT_FALSE(list.AppendDrawingContent(list, 1, count));
+  EXPECT_EQ(count, 987u);
+  before.ExpectUnchanged(list);
+  RecordProperty("rejection", "{\"before\":" + before.Json() +
+                                  ",\"after\":" + DrawingSnapshot(list).Json() +
+                                  ",\"output_count\":" + std::to_string(count) +
+                                  "}");
+  DisplayList source;
+  ExpectRejected(source, -1);
+}
+
+TEST_F(DisplayListDrawingAppendTest, OverflowBoxBaseAndEncodedInner) {
+  DisplayList source;
+  source.AppendItem(DrawingBox(5));
+  source.AppendItem(DrawingBox(9));
+  source.AddLinearGradient(90, {}, {}, 0, 1, 1, 1, 1);
+  ExpectRejected(source, std::numeric_limits<int32_t>::max() - 1);
+  DisplayList destination;
+  size_t count = 987;
+  ASSERT_TRUE(destination.AppendDrawingContent(
+      source, std::numeric_limits<int32_t>::max() - 2, count));
+  EXPECT_EQ(count, 2u);
+  const auto* items = reinterpret_cast<const DisplayListItem*>(
+      destination.GetContentItemsData());
+  EXPECT_EQ(items[2].payload.linear_gradient.inner_clip_index_plus_one,
+            std::numeric_limits<int32_t>::max());
+}
+
+TEST_F(DisplayListDrawingAppendTest,
+       OverflowScalarSizesUseProductionPreflight) {
+  const size_t limit = std::numeric_limits<int32_t>::max();
+  const size_t items = limit / sizeof(DisplayListItem);
+  EXPECT_TRUE(SizesFit(items - 1, limit - 4, 1, 4, limit - 1, 1));
+  EXPECT_FALSE(SizesFit(items, 0, 1, 0, 0, 0));
+  EXPECT_FALSE(SizesFit(0, limit, 0, 1, 0, 0));
+  EXPECT_FALSE(SizesFit(0, 0, 0, 0, limit, 1));
+  EXPECT_FALSE(SizesFit(items + 1, 0, 0, 0, 0, 0));
+  EXPECT_FALSE(SizesFit(0, limit + 1, 0, 0, 0, 0));
+  EXPECT_FALSE(SizesFit(0, 0, 0, 0, limit + 1, 0));
+  const size_t maximum = std::numeric_limits<size_t>::max();
+  EXPECT_FALSE(SizesFit(1, 0, maximum, 0, 0, 0));
+  EXPECT_FALSE(SizesFit(0, 1, 0, maximum, 0, 0));
+  EXPECT_FALSE(SizesFit(0, 0, 0, 0, 1, maximum));
 }
 
 }  // namespace tasm

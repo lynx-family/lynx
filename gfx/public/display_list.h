@@ -218,6 +218,8 @@ typedef struct DisplayListItem {
       int32_t repeat_x;
       int32_t repeat_y;
       float angle;
+      // Zero preserves legacy fills; positive values reference box index + 1.
+      int32_t inner_clip_index_plus_one;
     } linear_gradient;
     struct {
       uint32_t color_count_offset;
@@ -320,6 +322,9 @@ static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_x) ==
 static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_y) ==
               32);
 static_assert(offsetof(DisplayListItem, payload.linear_gradient.angle) == 36);
+static_assert(offsetof(DisplayListItem,
+                       payload.linear_gradient.inner_clip_index_plus_one) ==
+              40);
 static_assert(offsetof(DisplayListItem,
                        payload.radial_gradient.color_count_offset) == 4);
 static_assert(offsetof(DisplayListItem, payload.radial_gradient.color_count) ==
@@ -424,8 +429,8 @@ class DisplayList {
 
   void AddLinearGradient(float angle, const base::Vector<uint32_t>& colors,
                          const base::Vector<float>& stops, int32_t tiling_index,
-                         int32_t clip_index, int32_t repeat_x,
-                         int32_t repeat_y);
+                         int32_t clip_index, int32_t repeat_x, int32_t repeat_y,
+                         int32_t inner_clip_index = -1);
 
   void AddRadialGradient(float center_x, float center_y, float radius_x,
                          float radius_y, const base::Vector<uint32_t>& colors,
@@ -441,6 +446,10 @@ class DisplayList {
       float position_x = 0.f, float position_y = 0.f);
 
   void AppendItem(const DisplayListItem& item);
+  // Append standalone drawing content, rebasing its local box references.
+  // Validation failure preserves this list and appended_box_count.
+  bool AppendDrawingContent(const DisplayList& source, int32_t box_index_base,
+                            size_t& appended_box_count);
   // Fill the zero-initialized item before another append can invalidate it.
   DisplayListItem& EmplaceItem(DisplayListOpType type) {
     auto& item = content_items_->emplace_back();
@@ -458,6 +467,13 @@ class DisplayList {
   base::InlineVector<fml::RefPtr<PaintImage>, 16>& Images() { return images_; }
 
  private:
+  friend class DisplayListDrawingAppendTest;
+  static bool CanAppendDrawingContentSizes(size_t item_count, size_t data_size,
+                                           size_t source_item_count,
+                                           size_t source_data_size,
+                                           size_t box_index_base,
+                                           size_t source_box_count);
+
   base::auto_create_optional<base::InlineVector<fml::RefPtr<gfx::Path>, 1>>
       paths_;
   // Content operations (stable during animations) - lazy allocated

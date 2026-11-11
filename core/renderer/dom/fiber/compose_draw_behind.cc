@@ -4,256 +4,181 @@
 
 #include "core/renderer/dom/fiber/compose_draw_behind.h"
 
-#include <algorithm>
 #include <cmath>
-#include <limits>
+#include <memory>
 #include <utility>
-#include <vector>
 
 #include "base/include/log/logging.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/compose_draw_recording_decoder.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/runtime/mts_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 
-namespace lynx {
-namespace tasm {
+namespace lynx::tasm {
 namespace {
+const char* PhaseLabel(ComposeDrawPhase phase) {
+  switch (phase) {
+    case ComposeDrawPhase::kBehind:
+      return "drawBehind";
+    case ComposeDrawPhase::kForeground:
+      return "drawForeground";
+    case ComposeDrawPhase::kClip:
+      return "scopedClip";
+  }
+}
 
-// Arrays shared with the Compose producers, in physical pixels:
-// [1, x, y, width, height, ARGB]
-// [2, x, y, width, height, startY, endY, colors[], stops[]]
-// [3, x, y, width, height, topLeftRadius, topRightRadius, bottomRightRadius,
-//  bottomLeftRadius, offsetX, offsetY, blur, spread, ARGB]
-// Filled rectangles, clamped vertical gradients and outset shadows of a
-// rounded rectangle are supported here.
-constexpr double kCommandFill = 1;
-constexpr double kCommandGradient = 2;
-constexpr double kCommandOutsetShadow = 3;
+void LogError(ComposeDrawPhase phase, const DrawRecordingError& error) {
+  LOGE(PhaseLabel(phase) << " recording rejected: code="
+                         << static_cast<int>(error.code)
+                         << " command=" << error.command_index
+                         << " namespace=" << error.name_space);
+}
 
-struct OutsetShadow {
-  float offset_x;
-  float offset_y;
-  float blur;
-  float spread;
+bool Active(const Element& target) {
+  return target.IsAttached() && target.HasCustomDrawFunctions() &&
+         !(target.dirty() & Element::kDirtyCustomDraw);
+}
+
+struct DrawExecutionState {
+  DrawExecutionState() = default;
+  DrawExecutionState(const DrawExecutionState&) : DrawExecutionState() {}
+
+  bool in_flight{false};
+  bool reentered{false};
 };
 
-struct DrawRect {
-  double kind{0};
-  RoundedRectangle clip;
-  RoundedRectangle tile;
-  base::Vector<uint32_t> colors;
-  base::Vector<float> stops;
-  OutsetShadow shadow{};
+struct CacheKey {
+  const Element* target{nullptr};
+  int32_t target_id{0};
+  const CustomDrawFunctions* binding{nullptr};
+  uint64_t detach_generation{0};
+  uint64_t binding_generation{0};
+  ComposeDrawPhase phase{ComposeDrawPhase::kBehind};
+  float width{0};
+  float height{0};
+  double pixels{0};
+
+  bool operator==(const CacheKey& other) const {
+    return target == other.target && target_id == other.target_id &&
+           binding == other.binding &&
+           detach_generation == other.detach_generation &&
+           binding_generation == other.binding_generation &&
+           phase == other.phase && width == other.width &&
+           height == other.height && pixels == other.pixels;
+  }
 };
 
-bool ReadNumber(const lepus::Value& array, uint32_t index, double* result) {
-  const auto value = array.GetProperty(index).ToLepusValue();
-  if (!value.IsNumber() || !std::isfinite(value.Number())) return false;
-  *result = value.Number();
-  return true;
-}
-
-bool ReadColor(const lepus::Value& array, uint32_t index, uint32_t* result) {
-  double value;
-  if (!ReadNumber(array, index, &value) || value < 0 ||
-      value > std::numeric_limits<uint32_t>::max() ||
-      std::trunc(value) != value) {
-    return false;
-  }
-  *result = static_cast<uint32_t>(value);
-  return true;
-}
-
-bool FitsFloat(double value) {
-  return std::isfinite(value) &&
-         std::abs(value) <= std::numeric_limits<float>::max();
-}
-
-bool ParseRect(const lepus::Value& value, double pixels, DrawRect* rect) {
-  if (!value.IsArrayOrJSArray()) return false;
-  const int length = value.GetLength();
-  if (!ReadNumber(value, 0, &rect->kind)) return false;
-  const double kind = rect->kind;
-  if (!((kind == kCommandFill && length == 6) ||
-        (kind == kCommandGradient && length == 9) ||
-        (kind == kCommandOutsetShadow && length == 14))) {
-    return false;
-  }
-  double bounds[4];
-  for (uint32_t i = 0; i < 4; ++i) {
-    if (!ReadNumber(value, i + 1, &bounds[i])) return false;
-    bounds[i] /= pixels;
-    if (!FitsFloat(bounds[i])) return false;
-  }
-  if (bounds[2] < 0 || bounds[3] < 0 || !FitsFloat(bounds[0] + bounds[2]) ||
-      !FitsFloat(bounds[1] + bounds[3]))
-    return false;
-  rect->clip.SetX(static_cast<float>(bounds[0]));
-  rect->clip.SetY(static_cast<float>(bounds[1]));
-  rect->clip.SetWidth(static_cast<float>(bounds[2]));
-  rect->clip.SetHeight(static_cast<float>(bounds[3]));
-  if (kind == kCommandFill) {
-    uint32_t color;
-    if (!ReadColor(value, 5, &color)) return false;
-    rect->colors.push_back(color);
-    return true;
-  }
-  if (kind == kCommandOutsetShadow) {
-    double radii[4];
-    for (uint32_t i = 0; i < 4; ++i) {
-      if (!ReadNumber(value, i + 5, &radii[i]) || radii[i] < 0) return false;
-      radii[i] /= pixels;
-      if (!FitsFloat(radii[i])) return false;
-    }
-    const auto r = [&radii](int i) { return static_cast<float>(radii[i]); };
-    rect->clip.SetRadiusXTopLeft(r(0));
-    rect->clip.SetRadiusYTopLeft(r(0));
-    rect->clip.SetRadiusXTopRight(r(1));
-    rect->clip.SetRadiusYTopRight(r(1));
-    rect->clip.SetRadiusXBottomRight(r(2));
-    rect->clip.SetRadiusYBottomRight(r(2));
-    rect->clip.SetRadiusXBottomLeft(r(3));
-    rect->clip.SetRadiusYBottomLeft(r(3));
-    double shadow[4];
-    for (uint32_t i = 0; i < 4; ++i) {
-      if (!ReadNumber(value, i + 9, &shadow[i])) return false;
-      shadow[i] /= pixels;
-      if (!FitsFloat(shadow[i])) return false;
-    }
-    if (shadow[2] < 0) return false;
-    rect->shadow = {
-        static_cast<float>(shadow[0]), static_cast<float>(shadow[1]),
-        static_cast<float>(shadow[2]), static_cast<float>(shadow[3])};
-    uint32_t color;
-    if (!ReadColor(value, 13, &color)) return false;
-    rect->colors.push_back(color);
-    return true;
-  }
-  double start, end;
-  if (!ReadNumber(value, 5, &start) || !ReadNumber(value, 6, &end))
-    return false;
-  start /= pixels;
-  end /= pixels;
-  if (!FitsFloat(start) || !FitsFloat(end) || start >= end) return false;
-  const auto colors = value.GetProperty(7u).ToLepusValue();
-  const auto stops = value.GetProperty(8u).ToLepusValue();
-  if (!colors.IsArrayOrJSArray() || !stops.IsArrayOrJSArray() ||
-      colors.GetLength() < 2 || colors.GetLength() != stops.GetLength()) {
-    return false;
-  }
-
-  // Expand the gradient tile to cover the draw rect, preserving the shader's
-  // coordinates. Explicit endpoint colors implement Clamp without painting
-  // translucent pixels twice or stretching the gradient to the clipped rect.
-  const double top = std::min(bounds[1], start);
-  const double height = std::max(bounds[1] + bounds[3], end) - top;
-  if (!FitsFloat(height) || static_cast<float>(height) <= 0) return false;
-  rect->tile = rect->clip;
-  rect->tile.SetY(static_cast<float>(top));
-  rect->tile.SetHeight(static_cast<float>(height));
-  double previous = 0;
-  for (int i = 0; i < colors.GetLength(); ++i) {
-    uint32_t color;
-    double stop;
-    if (!ReadColor(colors, i, &color) || !ReadNumber(stops, i, &stop) ||
-        stop < previous || stop > 1)
-      return false;
-    if (i == 0) {
-      rect->colors.push_back(color);
-      rect->stops.push_back(0);
-    }
-    rect->colors.push_back(color);
-    rect->stops.push_back(
-        static_cast<float>((start + stop * (end - start) - top) / height));
-    previous = stop;
-  }
-  rect->colors.push_back(rect->colors.back());
-  rect->stops.push_back(1);
-  return true;
-}
-
-CustomDrawFunctions ComposeDrawFunctions(runtime::MTSRuntime* runtime,
-                                         lepus::Value callback,
-                                         bool foreground) {
-  CustomDrawFunctions functions;
-  auto draw = [runtime, callback](Fragment& fragment,
-                                  DisplayListBuilder& builder) {
-    auto* target = fragment.element();
-    if (!target->IsAttached() || !target->HasCustomDrawFunctions() ||
-        (target->dirty() & Element::kDirtyCustomDraw))
-      return;
-    const double pixels = target->element_manager()
-                              ->GetLynxEnvConfig()
-                              .PhysicalPixelsPerLayoutUnit();
-    if (!std::isfinite(pixels) || pixels <= 0) return;
-    const lepus::Value element{fml::RefPtr<Element>(target)};
-    const lepus::Value width(target->width() * pixels);
-    const lepus::Value height(target->height() * pixels);
-    const lepus::Value* args[] = {&element, &width, &height};
-    const auto value = runtime->GetMTSContext()
-                           ->CallClosureArgs(callback, args, 3)
-                           .ToLepusValue();
-    if (value.IsEmpty()) return;
-    if (!value.IsArrayOrJSArray()) {
-      LOGE("Compose draw resolver returned invalid commands");
-      return;
-    }
-    // Validate the entire result before recording, so malformed commands never
-    // leave partially drawn content in the new DisplayList.
-    std::vector<DrawRect> commands;
-    for (int i = 0; i < value.GetLength(); ++i) {
-      DrawRect rect;
-      if (!ParseRect(value.GetProperty(static_cast<uint32_t>(i)).ToLepusValue(),
-                     pixels, &rect)) {
-        LOGE("Compose draw resolver returned an invalid rectangle");
-        return;
-      }
-      commands.push_back(std::move(rect));
-    }
-    for (const auto& rect : commands) {
-      if (rect.clip.GetWidth() == 0 || rect.clip.GetHeight() == 0) continue;
-      if (rect.kind == kCommandOutsetShadow) {
-        fragment.DrawCustomOutsetShadow(
-            builder, rect.clip, rect.shadow.offset_x, rect.shadow.offset_y,
-            rect.shadow.blur, rect.shadow.spread, rect.colors[0]);
-        continue;
-      }
-      int32_t clip_index;
-      builder.RecordBoxModel(rect.clip, clip_index);
-      if (rect.kind == kCommandFill) {
-        builder.Fill(rect.colors[0], clip_index);
-      } else {
-        int32_t tile_index;
-        builder.RecordBoxModel(rect.tile, tile_index);
-        const auto no_repeat =
-            static_cast<int32_t>(starlight::BackgroundRepeatType::kNoRepeat);
-        builder.LinearGradient(180, rect.colors, rect.stops, tile_index,
-                               clip_index, no_repeat, no_repeat);
-      }
-    }
-  };
-  if (foreground) {
-    functions.draw_foreground = std::move(draw);
-  } else {
-    functions.draw_behind = std::move(draw);
-  }
-  return functions;
+CacheKey CurrentKey(const Fragment& fragment, ComposeDrawPhase phase) {
+  auto* target = fragment.element();
+  return {target,
+          target->impl_id(),
+          fragment.GetCustomDrawFunctions(),
+          target->CustomDrawDetachGeneration(),
+          fragment.CustomDrawBindingGeneration(),
+          phase,
+          target->width(),
+          target->height(),
+          target->element_manager()
+              ->GetLynxEnvConfig()
+              .PhysicalPixelsPerLayoutUnit()};
 }
 
 }  // namespace
 
 CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
-                                               lepus::Value callback) {
-  return ComposeDrawFunctions(runtime, std::move(callback), false);
+                                               lepus::Value callback,
+                                               ComposeDrawPhase phase,
+                                               bool supports_reuse) {
+  CustomDrawFunctions functions;
+  auto draw = [runtime, callback, phase, supports_reuse,
+               cached = std::shared_ptr<const DisplayList>{}, key = CacheKey{},
+               cached_has_shadow = false, execution = DrawExecutionState{}](
+                  Fragment& fragment, DisplayListBuilder& builder) mutable {
+    if (execution.in_flight) {
+      cached.reset();
+      execution.reentered = true;
+      return;
+    }
+    execution.in_flight = true;
+    execution.reentered = false;
+    struct DrawingScope {
+      bool& in_flight;
+      ~DrawingScope() { in_flight = false; }
+    } scope{execution.in_flight};
+    auto previous = std::move(cached);
+    cached.reset();
+    auto* target = fragment.element();
+    if (!Active(*target)) return;
+    const auto current_key = CurrentKey(fragment, phase);
+    const double pixels = current_key.pixels;
+    if (!std::isfinite(pixels) || pixels <= 0) return;
+    const lepus::Value element{fml::RefPtr<Element>(target)};
+    const lepus::Value width(current_key.width * pixels);
+    const lepus::Value height(current_key.height * pixels);
+    const lepus::Value can_reuse(supports_reuse && previous != nullptr &&
+                                 key == current_key);
+    const lepus::Value* args[] = {&element, &width, &height, &can_reuse};
+    const auto value =
+        runtime->GetMTSContext()
+            ->CallClosureArgs(callback, args, supports_reuse ? 4 : 3)
+            .ToLepusValue();
+    // A resolver may remove/rebind or detach its target while evaluating.
+    if (value.IsEmpty() || execution.reentered || !Active(*target) ||
+        !(current_key == CurrentKey(fragment, phase)))
+      return;
+    DisplayList decoded;
+    const DisplayList* drawing = &decoded;
+    bool has_shadow = false;
+    if (value.IsString() && value.StringView() == kComposeDrawReuseLast) {
+      if (!can_reuse.Bool()) {
+        LogError(phase, {});
+        return;
+      }
+      drawing = previous.get();
+      has_shadow = cached_has_shadow;
+    } else {
+      // The reader observes each runtime property once and owns every result.
+      if (const auto error = detail::DecodeDrawDisplayList(
+              value, pixels, phase, detail::DecodeLimits{}, builder, &decoded,
+              &has_shadow)) {
+        LogError(phase, *error);
+        return;
+      }
+    }
+    if (execution.reentered || !Active(*target) ||
+        !(current_key == CurrentKey(fragment, phase)))
+      return;
+    if (!builder.AppendDrawingContent(*drawing)) {
+      LogError(phase, {DrawRecordingError::Code::kCapacity,
+                       DrawRecordingError::kNoCommand,
+                       {}});
+      return;
+    }
+    if (has_shadow) fragment.MarkCustomOutsetShadowDrawn();
+    if (supports_reuse && !execution.reentered && Active(*target) &&
+        current_key == CurrentKey(fragment, phase)) {
+      cached = drawing == &decoded
+                   ? std::make_shared<const DisplayList>(std::move(decoded))
+                   : std::move(previous);
+      key = current_key;
+      cached_has_shadow = has_shadow;
+    }
+  };
+  if (phase == ComposeDrawPhase::kForeground)
+    functions.draw_foreground = std::move(draw);
+  else
+    functions.draw_behind = std::move(draw);
+  return functions;
 }
 
 CustomDrawFunctions ComposeDrawForegroundFunctions(runtime::MTSRuntime* runtime,
-                                                   lepus::Value callback) {
-  return ComposeDrawFunctions(runtime, std::move(callback), true);
+                                                   lepus::Value callback,
+                                                   bool supports_reuse) {
+  return ComposeDrawBehindFunctions(runtime, std::move(callback),
+                                    ComposeDrawPhase::kForeground,
+                                    supports_reuse);
 }
-
-}  // namespace tasm
-}  // namespace lynx
+}  // namespace lynx::tasm

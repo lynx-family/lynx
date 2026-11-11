@@ -206,6 +206,27 @@ public class DisplayListItemBufferTest {
     }
   }
 
+  @Test
+  public void testLinearGradientExclusionKeepsNativeStrideAndLegacyDefault() {
+    NativeDisplayListBuilder.ensureRegistered();
+    try (NativeDisplayListBuilder builder = new NativeDisplayListBuilder()) {
+      int[] colors = {0x80FF0000, 0x800000FF};
+      float[] stops = {0, 1};
+      builder.recordBox(2, 2, 6, 6)
+          .linearGradient(colors, stops, 0, 0, 1, 1, 90)
+          .linearGradient(colors, stops, 0, 0, 1, 1, 90, 0)
+          .end();
+      ByteBuffer items = builder.toItemsBuffer().order(ByteOrder.nativeOrder());
+      assertEquals(4 * 56, items.capacity());
+      assertEquals(0, getInt(items, 1, 40));
+      assertEquals(1, getInt(items, 2, 40));
+      assertItemType(items, 3, DisplayListApplier.OP_END);
+      for (int offset = 44; offset < 56; offset += 4) {
+        assertEquals(0, getInt(items, 2, offset));
+      }
+    }
+  }
+
   private static void assertItemType(ByteBuffer buffer, int itemIndex, int expectedType) {
     assertEquals(expectedType, getInt(buffer, itemIndex, DisplayListApplier.TYPE_OFFSET));
   }

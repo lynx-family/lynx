@@ -911,6 +911,117 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue(CGRectEqualToRect(fillLayer.frame, CGRectMake(5, 6, 10, 12)));
 }
 
+- (void)testGradientRingMaskUsesLocalCoordinatesAndDoesNotSurviveReplacement {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  const float outer[] = {8, 8, 12, 12, 16, 16, 4, 4};
+  const float inner[] = {4, 4, 8, 8, 12, 12, 0, 0};
+  AppendRecordBox(list, 10, 12, 80, 60, true, outer);
+  AppendRecordBox(list, 14, 16, 72, 52, true, inner);
+  list.AddLinearGradient(90, {0x80ff0000, 0x800000ff}, {0, 1}, 0, 0, 1, 1, 1);
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  CALayer *gradient = view.layer.sublayers.firstObject;
+  XCTAssertTrue(CGRectEqualToRect(gradient.frame, CGRectMake(10, 12, 80, 60)));
+  CAShapeLayer *mask = (CAShapeLayer *)gradient.mask;
+  XCTAssertTrue([mask isKindOfClass:CAShapeLayer.class]);
+  XCTAssertEqualObjects(mask.fillRule, kCAFillRuleEvenOdd);
+  XCTAssertFalse(CGPathContainsPoint(mask.path, nullptr, CGPointMake(40, 30), true));
+  XCTAssertTrue(CGPathContainsPoint(mask.path, nullptr, CGPointMake(40, 2), true));
+  XCTAssertFalse(CGPathContainsPoint(mask.path, nullptr, CGPointMake(0, 0), true));
+
+  DisplayList replacement;
+  AppendRecordBox(replacement, 10, 12, 80, 60);
+  replacement.AddLinearGradient(90, {0xffff0000, 0xff0000ff}, {0, 1}, 0, 0, 1, 1);
+  [applier applyDisplayList:&replacement];
+  XCTAssertNil(gradient.superlayer);
+  XCTAssertEqual(view.layer.sublayers.count, 1u);
+  XCTAssertNil(view.layer.sublayers.firstObject.mask);
+}
+
+- (void)testInvalidRingIndexSkipsOnlyGradient {
+  for (int32_t encoded : {-1, 2}) {
+    LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                        andContext:nil];
+    DisplayList list;
+    AppendRecordBox(list, 0, 0, 100, 100);
+    DisplayListItem invalid{};
+    invalid.type = DisplayListOpType::kLinearGradient;
+    invalid.payload.linear_gradient.inner_clip_index_plus_one = encoded;
+    list.AppendItem(invalid);
+    list.AddLinearGradient(90, {0xffff0000, 0xff0000ff}, {0, 1}, 0, 0, 1, 1);
+    AppendFill(list, 0xff00ff00, 0);
+    [applier applyDisplayList:&list];
+    XCTAssertEqual(view.layer.sublayers.count, 2u);
+    XCTAssertNil(view.layer.sublayers.firstObject.mask);
+    XCTAssertTrue(CGColorEqualToColor(view.layer.sublayers.lastObject.backgroundColor,
+                                      UIColor.greenColor.CGColor));
+  }
+}
+
+- (void)testForegroundAfterNativeChildStaysAboveContentAndResetsForDecorationOnlyList {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
+  [host createRendererWithSign:1 andContext:nil];
+  [parent addSubview:host];
+  UIView *child = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
+  child.lynxSign = @2;
+  [host addSubview:child];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+  AppendRecordBox(list, 0, 0, 100, 80);
+  AppendRecordBox(list, 4, 4, 92, 72);
+  AppendFill(list, 0xff0000ff, 0);
+  AppendDrawView(list, 2);
+  list.AddLinearGradient(90, {0x80ff0000, 0x800000ff}, {0, 1}, 0, 0, 1, 1, 1);
+  AppendEnd(list);
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(parent.layer.sublayers.count, 2u);
+  XCTAssertEqual(parent.layer.sublayers.lastObject, host.layer);
+  XCTAssertEqual(host.layer.sublayers.count, 2u);
+  XCTAssertEqual(host.layer.sublayers.firstObject, child.layer);
+  XCTAssertNotNil(host.layer.sublayers.lastObject.mask);
+
+  DisplayList decorations;
+  AppendBegin(decorations, 1, kViewType, 0, 0, 100, 80);
+  AppendRecordBox(decorations, 0, 0, 100, 80);
+  decorations.AddLinearGradient(90, {0xffff0000, 0xff0000ff}, {0, 1}, 0, 0, 1, 1);
+  AppendEnd(decorations);
+  [applier applyDisplayList:&decorations];
+  XCTAssertEqual(host.layer.sublayers.count, 1u);
+  XCTAssertEqual(host.layer.sublayers.firstObject, child.layer);
+  XCTAssertEqual(parent.layer.sublayers.count, 2u);
+  XCTAssertEqual(parent.layer.sublayers.lastObject, host.layer);
+}
+
+- (void)testForegroundFollowsFlattenedChildFill {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:parent.bounds];
+  [host createRendererWithSign:1 andContext:nil];
+  [parent addSubview:host];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+  AppendRecordBox(list, 0, 0, 100, 80);
+  AppendBegin(list, 2, kViewType, 0, 0, 100, 80);
+  AppendFill(list, 0xff00ff00, 0);
+  AppendEnd(list);
+  list.AddLinearGradient(90, {0x80ff0000, 0x800000ff}, {0, 1}, 0, 0, 1, 1);
+  AppendEnd(list);
+  [applier applyDisplayList:&list];
+  XCTAssertEqual(parent.layer.sublayers.count, 1u);
+  XCTAssertEqual(host.layer.sublayers.count, 2u);
+  XCTAssertTrue(CGColorEqualToColor(host.layer.sublayers.firstObject.backgroundColor,
+                                    UIColor.greenColor.CGColor));
+  XCTAssertTrue([host.layer.sublayers.lastObject isKindOfClass:CAReplicatorLayer.class]);
+}
+
 - (void)testProcessContentOperationsWithLinearGradientRoundedClipAppliesMask {
   LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
@@ -1030,6 +1141,158 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 
   XCTAssertEqualWithAccuracy(view.layer.cornerRadius, 10.0f, 0.001f);
   XCTAssertTrue(view.layer.masksToBounds);
+}
+
+- (void)testScopedClipContainsCSSBackgroundAndChildButNotEarlierShadow {
+  for (bool gradient : {false, true}) {
+    UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+    LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
+    [host createRendererWithSign:1 andContext:nil];
+    [parent addSubview:host];
+    UIView *child = [[UIView alloc] initWithFrame:host.bounds];
+    child.lynxSign = @2;
+    [host addSubview:child];
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                        andContext:nil];
+    DisplayList list;
+    AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+    AppendRecordBox(list, 0, 0, 100, 80);
+    AppendRecordBox(list, -5, -5, 110, 90);
+    AppendBoxShadow(list, 1, 0, false);
+    const float radii[] = {12, 12, 12, 12, 12, 12, 12, 12};
+    AppendClipRect(list, 0, 0, 100, 80, true, radii);
+    // CSS paint has a rectangular box: the preceding clip alone supplies its rounded shape.
+    if (gradient) {
+      list.AddLinearGradient(90, {0xffff0000, 0xff0000ff}, {0, 1}, 0, 0,
+                             LynxBackgroundRepeatNoRepeat, LynxBackgroundRepeatNoRepeat);
+    } else {
+      AppendFill(list, 0xffff0000, 0);
+    }
+    AppendDrawView(list, 2);
+    AppendEnd(list);
+    [applier applyDisplayList:&list];
+    host.alpha = 0.5;
+    [applier syncHostDecorationLayers];
+
+    XCTAssertEqual(parent.layer.sublayers.count, 2u);
+    XCTAssertEqual(parent.layer.sublayers.lastObject, host.layer);
+    CALayer *shadow = parent.layer.sublayers.firstObject;
+    XCTAssertEqual(shadow.superlayer, parent.layer);
+    XCTAssertNil(shadow.mask);
+    XCTAssertFalse(shadow.masksToBounds);
+    XCTAssertEqual(shadow.sublayers.firstObject.shadowRadius, 5.f);
+    XCTAssertEqualWithAccuracy(shadow.opacity, 0.5, 0.001);
+    XCTAssertTrue(CGRectEqualToRect(shadow.frame, host.frame));
+
+    XCTAssertEqual(host.layer.sublayers.count, 2u);
+    CALayer *background = host.layer.sublayers.firstObject;
+    XCTAssertEqual(background.superlayer, host.layer);
+    XCTAssertEqual(host.layer.sublayers.lastObject, child.layer);
+    XCTAssertTrue(CGRectEqualToRect(background.frame, host.bounds));
+    XCTAssertEqual(background.opacity, 1.f);  // Host opacity applies once, through ancestry.
+    XCTAssertNil(background.mask);
+    XCTAssertEqual(background.cornerRadius, 0.f);
+    XCTAssertNil(host.layer.mask);
+    XCTAssertTrue(host.layer.masksToBounds);
+    XCTAssertEqual(host.layer.cornerRadius, 12.f);
+    if (gradient) {
+      CAGradientLayer *paint =
+          (CAGradientLayer *)background.sublayers.firstObject.sublayers.firstObject;
+      XCTAssertTrue([paint isKindOfClass:CAGradientLayer.class]);
+      XCTAssertEqual(paint.colors.count, 2u);
+    } else {
+      XCTAssertTrue(CGColorEqualToColor(background.backgroundColor, UIColor.redColor.CGColor));
+    }
+    [applier reset];
+    XCTAssertNil(background.superlayer);
+    XCTAssertNil(shadow.superlayer);
+    XCTAssertEqualObjects(host.layer.sublayers, (@[ child.layer ]));
+    XCTAssertEqual(host.layer.cornerRadius, 0.f);
+    XCTAssertFalse(host.layer.masksToBounds);
+  }
+}
+
+- (void)testScopedClipCSSBackgroundMaskUpdatesAndLegacyDecorationPlacementReturns {
+  for (bool gradient : {false, true}) {
+    UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+    LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
+    [host createRendererWithSign:1 andContext:nil];
+    [parent addSubview:host];
+    UIView *child = [[UIView alloc] initWithFrame:host.bounds];
+    child.lynxSign = @2;
+    [host addSubview:child];
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                        andContext:nil];
+    auto appendBackground = [gradient](DisplayList &list) {
+      if (gradient) {
+        list.AddLinearGradient(90, {0xffff0000, 0xff0000ff}, {0, 1}, 0, 0,
+                               LynxBackgroundRepeatNoRepeat, LynxBackgroundRepeatNoRepeat);
+      } else {
+        AppendFill(list, 0xffff0000, 0);
+      }
+    };
+    CALayer *background = nil;
+    CAShapeLayer *mask = nil;
+    for (CGFloat width : {100.f, 120.f}) {
+      host.frame = CGRectMake(20, 30, width, 80);
+      DisplayList list;
+      AppendBegin(list, 1, kViewType, 0, 0, width, 80);
+      const float radii[] = {12, 12, 8, 8, 4, 4, 16, 16};
+      AppendClipRect(list, 5, 7, width - 10, 66, true, radii);
+      AppendRecordBox(list, 0, 0, width, 80);
+      appendBackground(list);
+      AppendDrawView(list, 2);
+      AppendEnd(list);
+      [applier applyDisplayList:&list];
+      [applier syncHostDecorationLayers];
+      XCTAssertNil(background.superlayer);
+      XCTAssertNotEqual(host.layer.mask, mask);
+      background = host.layer.sublayers.firstObject;
+      mask = (CAShapeLayer *)host.layer.mask;
+      XCTAssertTrue([mask isKindOfClass:CAShapeLayer.class]);
+      XCTAssertTrue(CGRectEqualToRect(mask.frame, host.bounds));
+      XCTAssertTrue(
+          CGRectEqualToRect(CGPathGetBoundingBox(mask.path), CGRectMake(5, 7, width - 10, 66)));
+      XCTAssertTrue(CGPathContainsPoint(mask.path, nullptr, CGPointMake(50, 40), false));
+      XCTAssertFalse(CGPathContainsPoint(mask.path, nullptr, CGPointMake(6, 8), false));
+      XCTAssertFalse(CGPathContainsPoint(mask.path, nullptr, CGPointMake(1, 40), false));
+      XCTAssertEqualObjects(parent.layer.sublayers, (@[ host.layer ]));
+      XCTAssertEqualObjects(host.layer.sublayers, (@[ background, child.layer ]));
+      XCTAssertEqual(background.superlayer, host.layer);
+      XCTAssertTrue(CGRectEqualToRect(background.frame, host.bounds));
+    }
+
+    // Legacy CSS lists paint decorations before their content clip, not after it.
+    DisplayList legacy;
+    AppendBegin(legacy, 1, kViewType, 0, 0, 120, 80);
+    AppendRecordBox(legacy, 0, 0, 120, 80);
+    appendBackground(legacy);
+    AppendClipRect(legacy, 0, 0, 120, 80);
+    AppendDrawView(legacy, 2);
+    AppendEnd(legacy);
+    [applier applyDisplayList:&legacy];
+    [applier syncHostDecorationLayers];
+    XCTAssertNil(background.superlayer);
+    XCTAssertNil(host.layer.mask);
+    XCTAssertEqual(host.layer.cornerRadius, 0.f);
+    XCTAssertTrue(host.layer.masksToBounds);
+    XCTAssertEqualObjects(host.layer.sublayers, (@[ child.layer ]));
+    XCTAssertEqual(parent.layer.sublayers.count, 2u);
+    XCTAssertEqual(parent.layer.sublayers.lastObject, host.layer);
+    CALayer *decoration = parent.layer.sublayers.firstObject;
+    XCTAssertEqual(decoration.superlayer, parent.layer);
+    XCTAssertNil(decoration.mask);
+    XCTAssertTrue(CGRectEqualToRect(decoration.frame, host.frame));
+
+    DisplayList empty;
+    [applier applyDisplayList:&empty];
+    XCTAssertNil(decoration.superlayer);
+    XCTAssertEqualObjects(parent.layer.sublayers, (@[ host.layer ]));
+    XCTAssertEqualObjects(host.layer.sublayers, (@[ child.layer ]));
+    XCTAssertNil(host.layer.mask);
+    XCTAssertEqual(host.layer.cornerRadius, 0.f);
+    XCTAssertFalse(host.layer.masksToBounds);
+  }
 }
 
 - (void)testClipRectUniformRadiusInsetOnScrollViewPreservesPreciseMask {
