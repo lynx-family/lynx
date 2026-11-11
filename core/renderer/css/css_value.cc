@@ -463,7 +463,6 @@ class CSSValue::CycleDetector {
  public:
   explicit CycleDetector(const CustomPropertiesMap& variables)
       : variables_(variables) {
-    // Process all variables when used_vars is empty
     FindAllSCCs();
   }
 
@@ -472,14 +471,26 @@ class CSSValue::CycleDetector {
   }
 
  private:
+  void CollectGraphNodes() {
+    // A property without a recorded outgoing reference cannot be part of a
+    // cycle in this graph. Keep these properties in the full map for var()
+    // substitution.
+    for (const auto& [var_name, value] : variables_) {
+      if (value.IsVariable() &&
+          value.optionals_.HasValue<VarReferenceField>()) {
+        nodes_.emplace_unique(var_name.str(), SCCNode{});
+      }
+    }
+  }
+
   void FindAllSCCs() {
     index_ = 0;
-    nodes_.reserve(variables_.size());
-
-    for (const auto& [var_name, _] : variables_) {
-      const std::string& var_name_str = var_name.str();
-      if (nodes_[var_name_str].index == -1) {
-        StrongConnect(var_name_str);
+    // Insert all graph nodes before traversal so references stay valid
+    // across recursive calls.
+    CollectGraphNodes();
+    for (const auto& [var_name, node] : nodes_) {
+      if (node.index == -1) {
+        StrongConnect(var_name);
       }
     }
   }
@@ -499,8 +510,9 @@ class CSSValue::CycleDetector {
       for (const auto& var_ref : refs) {
         const std::string dep_name(var_ref.Name(var_it->second.AsStdString()));
 
-        if (variables_.find(dep_name) != variables_.end()) {
-          auto& dep_node = nodes_[dep_name];
+        auto dep = nodes_.find(dep_name);
+        if (dep != nodes_.end()) {
+          auto& dep_node = dep->second;
           if (dep_node.index == -1) {
             StrongConnect(dep_name);
             node.low_link = std::min(node.low_link, dep_node.low_link);

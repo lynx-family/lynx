@@ -573,6 +573,41 @@ TEST_F(CSSValueSubstitutionTest, MixedCycleAndValidVariables) {
                                                  // caller can use fallback
 }
 
+TEST_F(CSSValueSubstitutionTest, SubstituteAllHandlesSparseReferenceGraph) {
+  CustomPropertiesMap variables;
+  auto add_reference = [&](const base::String& name, const char* value) {
+    const lepus::Value raw_value(value);
+    auto parser = CSSStringParser::FromLepusString(raw_value, configs_);
+    variables.insert_or_assign(name, parser.ParseVariable());
+  };
+
+  for (int i = 0; i < 64; ++i) {
+    variables.insert_or_assign("--theme-" + std::to_string(i),
+                               CSSValue::MakePlainString("8px"));
+  }
+  // Use enough references to exceed the graph's inline capacity.
+  for (int i = 0; i < 32; ++i) {
+    add_reference("--alias-" + std::to_string(i), "var(--theme-63)");
+  }
+  add_reference("--chain", "var(--alias-31)");
+  // Nonempty fallbacks inside the cycles make missed cycles observable.
+  add_reference("--cycle-a", "var(--cycle-b, 16px)");
+  add_reference("--cycle-b", "var(--cycle-a, 24px)");
+  add_reference("--self", "var(--self, 32px)");
+  add_reference("--cycle-fallback", "var(--cycle-a, var(--theme-63))");
+  add_reference("--self-fallback", "var(--self, var(--theme-63))");
+
+  CSSValue::SubstituteAll(variables);
+
+  EXPECT_EQ(variables["--theme-63"].AsStdString(), "8px");
+  EXPECT_EQ(variables["--chain"].AsStdString(), "8px");
+  EXPECT_EQ(variables["--cycle-a"].AsStdString(), " 16px");
+  EXPECT_EQ(variables["--cycle-b"].AsStdString(), " 24px");
+  EXPECT_EQ(variables["--self"].AsStdString(), " 32px");
+  EXPECT_EQ(variables["--cycle-fallback"].AsStdString(), " 8px");
+  EXPECT_EQ(variables["--self-fallback"].AsStdString(), " 8px");
+}
+
 TEST_F(CSSValueSubstitutionTest, MixedCycleAndValidVariables2) {
   CustomPropertiesMap variables;
   /**
