@@ -67,6 +67,7 @@ constexpr uint32_t kFlagBackgroundColor = 1 << 13;
 constexpr uint32_t kFlagMaskChanged = 1 << 14;
 constexpr uint32_t kFlagRenderGroup = 1 << 15;
 constexpr uint32_t kFlagOffsetChanged = 1 << 16;
+constexpr uint32_t kFlagAccessibilityDescription = 1 << 17;
 
 // std::sqrt(5.0) is not constexpr in C++17, so we use an approximation
 // to allow this value to be used in compile-time constants.
@@ -172,6 +173,7 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"skip-redirection", &UIBase::SetSkipRedirection},
     {"accessibility-element", &UIBase::SetAccessibilityElement},
     {"accessibility-label", &UIBase::SetAccessibilityLabel},
+    {"accessibility-description", &UIBase::SetAccessibilityDescription},
     {"accessibility-traits", &UIBase::SetAccessibilityTraits},
     {"accessibility-elements-hidden", &UIBase::SetAccessibilityElementsHidden},
     {"accessibility-exclusive-focus", &UIBase::SetAccessibilityExclusiveFocus},
@@ -3265,6 +3267,16 @@ void UIBase::SetAccessibilityLabel(const lepus::Value& value) {
   }
 }
 
+void UIBase::SetAccessibilityDescription(const lepus::Value& value) {
+  if (value.IsString()) {
+    accessibility_description_ = value.StdString();
+    dirty_flags_ |= kFlagAccessibilityDescription;
+  } else if (value.IsNil()) {
+    accessibility_description_.clear();
+    dirty_flags_ |= kFlagAccessibilityDescription;
+  }
+}
+
 void UIBase::SetAccessibilityId(const lepus::Value& value) {
   if (value.IsString()) {
     accessibility_id_ = value.StdString();
@@ -3341,7 +3353,10 @@ bool UIBase::IsImportantForAccessibility() {
 
 void UIBase::ResetAccessibilityAttrs() {
   if (IsImportantForAccessibility()) {
-    if (accessibility_status_ == LynxAccessibilityStatus::kFocus) {
+    if (accessibility_status_ == LynxAccessibilityStatus::kFocus &&
+        (dirty_flags_ &
+         (kFlagAccessibilityMode | kFlagAccessibilityLabel |
+          kFlagAccessibilityTraits | kFlagAccessibilityDescription)) == 0) {
       return;
     }
     accessibility_status_ = LynxAccessibilityStatus::kFocus;
@@ -3353,6 +3368,14 @@ void UIBase::ResetAccessibilityAttrs() {
       ArkUI_AttributeItem item = {.string = label.c_str()};
       NodeManager::Instance().SetAttribute(DrawNode(), NODE_ACCESSIBILITY_TEXT,
                                            &item);
+    }
+    if (!accessibility_description_.empty()) {
+      ArkUI_AttributeItem item = {.string = accessibility_description_.c_str()};
+      NodeManager::Instance().SetAttribute(
+          DrawNode(), NODE_ACCESSIBILITY_DESCRIPTION, &item);
+    } else {
+      NodeManager::Instance().ResetAttribute(DrawNode(),
+                                             NODE_ACCESSIBILITY_DESCRIPTION);
     }
     ArkUI_NodeType type = GetAccessibilityType(accessibility_traits_);
     if (type != ARKUI_NODE_CUSTOM) {
@@ -3368,10 +3391,13 @@ void UIBase::ResetAccessibilityAttrs() {
         DrawNode(), NODE_ACCESSIBILITY_MODE,
         static_cast<int>(LynxAccessibilityMode::kDisable));
     NodeManager::Instance().ResetAttribute(DrawNode(), NODE_ACCESSIBILITY_TEXT);
+    NodeManager::Instance().ResetAttribute(DrawNode(),
+                                           NODE_ACCESSIBILITY_DESCRIPTION);
   }
   dirty_flags_ &= ~kFlagAccessibilityMode;
   dirty_flags_ &= ~kFlagAccessibilityLabel;
   dirty_flags_ &= ~kFlagAccessibilityTraits;
+  dirty_flags_ &= ~kFlagAccessibilityDescription;
 }
 
 void UIBase::OnNodeReadyForAccessibility() {
@@ -3408,6 +3434,18 @@ void UIBase::OnNodeReadyForAccessibility() {
       ArkUI_AttributeItem item = {.string = label.c_str()};
       NodeManager::Instance().SetAttribute(DrawNode(), NODE_ACCESSIBILITY_TEXT,
                                            &item);
+    }
+  }
+  if ((accessibility_mode_ == LynxAccessibilityMode::kEnable) &&
+      (dirty_flags_ &
+       (kFlagAccessibilityDescription | kFlagAccessibilityMode)) != 0) {
+    if (!accessibility_description_.empty()) {
+      ArkUI_AttributeItem item = {.string = accessibility_description_.c_str()};
+      NodeManager::Instance().SetAttribute(
+          DrawNode(), NODE_ACCESSIBILITY_DESCRIPTION, &item);
+    } else {
+      NodeManager::Instance().ResetAttribute(DrawNode(),
+                                             NODE_ACCESSIBILITY_DESCRIPTION);
     }
   }
   if ((accessibility_mode_ == LynxAccessibilityMode::kEnable) &&
