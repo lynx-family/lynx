@@ -18,6 +18,26 @@ namespace lynx {
 namespace tasm {
 namespace test {
 
+TEST(LazyBundleLoaderTest, LoadFrameLynxML) {
+  const std::string url = "https://example.com/frame";
+  const std::string source = R"XML(<!doctype lynx>
+<lynx>
+  <script thread="main">globalThis.frameLoaded = true;</script>
+</lynx>)XML";
+  auto loader = std::make_shared<LazyBundleLoader>(nullptr);
+  LazyBundleLoader::CallBackInfo info(url, {source.begin(), source.end()},
+                                      std::nullopt, std::nullopt);
+  info.request = {.url = url, .resource_type = pub::LynxResourceType::kFrame};
+  loader->DidFetchBundle(std::move(info));
+
+  auto bundle = loader->GetTemplateBundle(url);
+  ASSERT_TRUE(bundle.has_value());
+  EXPECT_TRUE(bundle->IsCard());
+  EXPECT_EQ(bundle->url_, url);
+  EXPECT_TRUE(bundle->GetPageConfig()->GetEnableFiberArch());
+  EXPECT_NE(bundle->GetContextBundle(), nullptr);
+}
+
 // Test that pre-registered bundle can be retrieved via GetTemplateBundle
 TEST(LazyBundleLoaderTest, InsertAndGetTemplateBundle) {
   // Create LazyBundleLoader without resource_loader (for testing cache only)
