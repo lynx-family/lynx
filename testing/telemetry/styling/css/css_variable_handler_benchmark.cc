@@ -53,6 +53,49 @@ static void BM_GetCSSVariableByRule(benchmark::State& state) {
 
 BENCHMARK(BM_GetCSSVariableByRule);
 
+static void BM_SubstituteAllCustomProperties(benchmark::State& state,
+                                             bool has_pending_reference) {
+  const int64_t property_count = state.range(0);
+  CustomPropertiesMap properties;
+  properties.reserve(property_count);
+  const CSSValue resolved_value("8px", CSSValuePattern::STRING,
+                                CSSValueType::DEFAULT);
+  for (int64_t i = 0; i < property_count - 1; ++i) {
+    properties.insert_or_assign("--inherited-" + std::to_string(i),
+                                resolved_value);
+  }
+  const CSSValue local_value = has_pending_reference
+                                   ? CreateVariableValue("var(--inherited-0)")
+                                   : resolved_value;
+  properties.insert_or_assign("--local", local_value);
+
+  constexpr int kBatchSize = 16;
+  std::vector<CustomPropertiesMap> maps(kBatchSize, properties);
+  for (auto _ : state) {
+    for (auto& map : maps) {
+      CSSValue::SubstituteAll(map);
+      benchmark::DoNotOptimize(map.begin());
+    }
+    if (has_pending_reference) {
+      state.PauseTiming();
+      for (auto& map : maps) {
+        map["--local"] = local_value;
+      }
+      state.ResumeTiming();
+    }
+  }
+  state.SetItemsProcessed(state.iterations() * kBatchSize);
+}
+
+BENCHMARK_CAPTURE(BM_SubstituteAllCustomProperties, AllResolved, false)
+    ->Arg(32)
+    ->Arg(256)
+    ->Arg(909);
+BENCHMARK_CAPTURE(BM_SubstituteAllCustomProperties, OnePendingReference, true)
+    ->Arg(32)
+    ->Arg(256)
+    ->Arg(909);
+
 static void BM_HandleCSSVariables_Simple(benchmark::State& state) {
   BenchmarkEnvironment env;
   CSSVariableHandler handler(true);

@@ -582,9 +582,17 @@ std::string CSSValue::ResolveVariable(
 void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
                              int max_depth,
                              const HandleCustomPropertyFunc& handle_func) {
+  const auto end = custom_properties.end();
+  auto first_unresolved = std::find_if(
+      custom_properties.begin(), end,
+      [](const auto& entry) { return entry.second.NeedsVariableResolution(); });
+  if (first_unresolved == end) {
+    return;
+  }
+
   CycleDetector detector(custom_properties);
-  for (auto& entry : custom_properties) {
-    auto& value = entry.second;
+  for (auto entry = first_unresolved; entry != end; ++entry) {
+    auto& value = entry->second;
     if (value.NeedsVariableResolution()) {
       CustomPropertyDependencyField::Type dependencies;
       HandleCustomPropertyFunc collecting_handle_func =
