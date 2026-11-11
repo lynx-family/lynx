@@ -5405,6 +5405,8 @@ public class com::lynx::tasm::LynxEnv :  {
   public void com.lynx.tasm.LynxEnv.enableLogBox(boolean enableLogBox);
   public boolean com.lynx.tasm.LynxEnv.isPixelCopyEnabled();
   public void com.lynx.tasm.LynxEnv.enablePixelCopy(boolean enabled);
+  public void com.lynx.tasm.LynxEnv.enableOffscreenCapture(boolean enabled);
+  public boolean com.lynx.tasm.LynxEnv.isOffscreenCaptureEnabled();
   public boolean com.lynx.tasm.LynxEnv.isHighlightTouchEnabled();
   public void com.lynx.tasm.LynxEnv.enableHighlightTouch(boolean enableHighlightTouch);
   public boolean com.lynx.tasm.LynxEnv.isDebugModeEnabled();
@@ -8653,6 +8655,10 @@ public class com::lynx::tasm::common::NullableConcurrentHashMap : ConcurrentHash
   public void com.lynx.tasm.common.NullableConcurrentHashMap< K, V >.putAll(@NonNull Map<? extends K, ? extends V > m);
   public V com.lynx.tasm.common.NullableConcurrentHashMap< K, V >.get(@NonNull Object key);
   public Set< Entry< K, V > > com.lynx.tasm.common.NullableConcurrentHashMap< K, V >.entrySet();
+}
+
+public class com::lynx::tasm::utils::OffscreenViewCapture :  {
+  public static boolean com.lynx.tasm.utils.OffscreenViewCapture.drawIfEnabled(@NonNull View view, @NonNull Canvas canvas);
 }
 
 public class com::lynx::tasm::base::OnceTask : Runnable {
