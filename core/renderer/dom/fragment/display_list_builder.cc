@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
@@ -92,9 +93,15 @@ DisplayListBuilder& DisplayListBuilder::Transform(const gfx::Matrix44& matrix) {
   return *this;
 }
 
-DisplayList DisplayListBuilder::Build() { return std::move(display_list_); }
+DisplayList DisplayListBuilder::Build() {
+  next_index_ = {};
+  return std::move(display_list_);
+}
 
-void DisplayListBuilder::Clear() { display_list_ = DisplayList(); }
+void DisplayListBuilder::Clear() {
+  display_list_ = DisplayList();
+  next_index_ = {};
+}
 
 DisplayListBuilder& DisplayListBuilder::DrawImage(fml::RefPtr<PaintImage> image,
                                                   int32_t box_index) {
@@ -134,6 +141,66 @@ DisplayListBuilder& DisplayListBuilder::Border(
   item.payload.border.styles[3] = static_cast<int32_t>(border.style_left);
   display_list_.AppendItem(item);
   return *this;
+}
+
+namespace {
+// A record borrows its bytes only until RecordPath copies them into the list.
+struct PathRecord {
+  PathKind kind;
+  const void* data;
+  size_t size;
+  PathFillType fill = PathFillType::kNonZero;
+};
+struct EncodePath {
+  PathRecord operator()(const CirclePath& p) const {
+    static_assert(sizeof(p) == 3 * sizeof(float));
+    return {PathKind::kCircle, &p, sizeof(p)};
+  }
+  PathRecord operator()(const EllipsePath& p) const {
+    static_assert(sizeof(p) == 4 * sizeof(float));
+    return {PathKind::kEllipse, &p, sizeof(p)};
+  }
+  PathRecord operator()(const RectPath& p) const {
+    static_assert(std::is_trivially_copyable_v<RectPath> &&
+                  std::is_standard_layout_v<RectPath> &&
+                  sizeof(RectPath) == 14 * sizeof(float));
+    return {PathKind::kRect, &p, sizeof(p)};
+  }
+  PathRecord operator()(const SuperEllipsePath& p) const {
+    static_assert(sizeof(p) == 6 * sizeof(float));
+    return {PathKind::kSuperEllipse, &p, sizeof(p)};
+  }
+  PathRecord operator()(const Path& p) const {
+    static_assert(sizeof(PathCommand) == 28);
+    return {PathKind::kCommands, p.commands.data(),
+            p.commands.size() * sizeof(PathCommand), p.fill_type};
+  }
+};
+}  // namespace
+
+uint32_t DisplayListBuilder::RecordPath(const PathGeometry& geometry) {
+  auto record = std::visit(EncodePath{}, geometry);
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kRecordPath;
+  auto& payload = item.payload.record_path;
+  payload.kind = static_cast<uint32_t>(record.kind);
+  payload.fill_type = static_cast<uint32_t>(record.fill);
+  size_t offset = display_list_.GetContentDataSize();
+  if (record.size && offset <= UINT32_MAX &&
+      record.size <= UINT32_MAX - offset) {
+    payload.offset = static_cast<uint32_t>(offset);
+    payload.byte_size = static_cast<uint32_t>(record.size);
+    display_list_.AppendContentData(static_cast<const uint8_t*>(record.data),
+                                    record.size);
+  }
+  display_list_.AppendItem(item);
+  return next_index_.path++;
+}
+void DisplayListBuilder::ClipPath(uint32_t path_index) {
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kClipPath;
+  item.payload.clip_path.path_index = path_index;
+  display_list_.AppendItem(item);
 }
 
 DisplayListBuilder& DisplayListBuilder::ClipRect(const RoundedRectangle& rect) {
@@ -182,7 +249,7 @@ DisplayListBuilder& DisplayListBuilder::RecordBoxModel(
     item.payload.record_box.has_radii = 0;
   }
   display_list_.AppendItem(item);
-  index = current_index_of_box_model++;
+  index = next_index_.box++;
   return *this;
 }
 

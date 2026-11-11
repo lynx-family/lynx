@@ -19,6 +19,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.text.Layout;
 import android.text.Spanned;
+import android.util.SparseArray;
 import android.view.View;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.base.LLog;
@@ -28,6 +29,7 @@ import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.list.container.ListContainerView;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
+import com.lynx.tasm.behavior.ui.shapes.RecordedPath;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.ui.utils.BorderDrawingUtil;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
@@ -56,6 +58,8 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int OP_BOX_SHADOW = 13;
   static final int OP_BACKGROUND_IMAGE = 14;
   static final int OP_RADIAL_GRADIENT = 15;
+  static final int OP_RECORD_PATH = 16;
+  static final int OP_CLIP_PATH = 17;
   static final int SUBTREE_OP_TRANSFORM = 0;
   static final int SUBTREE_OP_OPACITY = 1;
   static final int SUBTREE_OP_FILTER = 2;
@@ -156,6 +160,12 @@ public class DisplayListApplier implements Drawable.Callback {
 
   private WeakReference<IRendererHost> mHostLayer;
 
+  // Cache decoded paths for the current buffer, including null entries for invalid records.
+  // Keys are instruction positions, while ClipPath uses the ordinal among RecordPath ops:
+  // records at instructions 2 and 8 have keys [2, 8] and path indices [0, 1].
+  // Sequential replay keeps keys ordered, so valueAt(i) resolves path index i.
+  private SparseArray<RecordedPath> mPaths;
+
   private final ArrayList<RoundedRectangle> mRoundedRectangleArray = new ArrayList<>();
 
   public DisplayListApplier(ByteBuffer itemsBuffer, ByteBuffer dataBuffer,
@@ -171,6 +181,8 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   public void reset() {
+    // Restart playback, not the buffer lifetime. Image loading or animation can invalidate
+    // the host View without replacing its DisplayList, so retain decoded paths for replay.
     mItemIndex = 0;
     mFragmentDepth = 0;
     mRoundedRectangleArray.clear();
@@ -714,6 +726,31 @@ public class DisplayListApplier implements Drawable.Callback {
           break;
         }
 
+        case OP_RECORD_PATH:
+          if (mPaths == null)
+            mPaths = new SparseArray<>();
+          // keyAt(size - 1) is the last cached RecordPath's instruction position.
+          // For cached keys [2, 8], replaying instructions 2 or 8 reuses the cache;
+          // reaching a later RecordPath (e.g. 12) appends it. This also works when
+          // DrawView pauses playback before the remaining paths have been recorded.
+          if (mPaths.size() == 0 || mPaths.keyAt(mPaths.size() - 1) < currentItemIndex) {
+            mPaths.append(
+                currentItemIndex, RecordedPath.decode(mItemsBuffer, itemByteOffset, mDataBuffer));
+          }
+          break;
+        case OP_CLIP_PATH: {
+          int index = getIntAt(itemByteOffset + 4);
+          // A cached entry must still precede this ClipPath in the instruction stream.
+          // Skip missing/invalid records without changing the current clip. A valid
+          // empty path is non-null and must still clip all subsequent drawing away.
+          if (mPaths != null && index >= 0 && index < mPaths.size()
+              && mPaths.keyAt(index) < currentItemIndex) {
+            RecordedPath path = mPaths.valueAt(index);
+            if (path != null)
+              path.clip(canvas);
+          }
+          break;
+        }
         case OP_CLIP_RECT: {
           float left = getFloatAt(itemByteOffset + CLIP_RECT_X_OFFSET);
           float top = getFloatAt(itemByteOffset + CLIP_RECT_Y_OFFSET);
@@ -1149,6 +1186,10 @@ public class DisplayListApplier implements Drawable.Callback {
     mItemsBuffer = itemsBuffer;
     mDataBuffer = dataBuffer;
     mRootShadowBounds = null;
+    // A replacement list reuses path indices for new geometry. Drop the old cache here,
+    // rather than in reset(), which also runs when redrawing the same list.
+    if (mPaths != null)
+      mPaths.clear();
     reset();
   }
 

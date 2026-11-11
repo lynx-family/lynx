@@ -20,6 +20,7 @@
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
+#include "core/renderer/dom/fragment/path_geometry.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
@@ -1159,7 +1160,24 @@ void Fragment::DrawFilter(DisplayListBuilder& display_list_builder) {
   display_list_builder.Filter(filter ? *filter : starlight::FilterData());
 }
 
-void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
+Fragment::~Fragment() = default;
+
+void Fragment::DrawClipPath(DisplayListBuilder& display_list_builder) {
+  const auto& style = element()->computed_css_style()->GetClipPath();
+  if (!style || style->size() == 0) {
+    clip_path_cache_.reset();
+    return;
+  }
+  const auto& size = layout_info_.layout_result.size_;
+  const float scale = element_manager()->GetLynxEnvConfig().LayoutsUnitPerPx();
+  if (!clip_path_cache_) clip_path_cache_ = std::make_unique<ClipPathCache>();
+  if (const auto* path =
+          clip_path_cache_->Resolve(style, size.width_, size.height_, scale)) {
+    display_list_builder.ClipPath(*path);
+  }
+}
+
+void Fragment::DrawOverflowClip(DisplayListBuilder& display_list_builder) {
   if (element()->IsOverlay()) {
     // Overlay keeps a zero-sized layout box while its content is measured
     // against the screen, so clipping by the overlay box hides the content.
@@ -1458,11 +1476,13 @@ void Fragment::DrawFull(DisplayListBuilder& display_list_builder) {
       layout_info_.layout_result.size_.height_, computed_style->IsOverflowX(),
       computed_style->IsOverflowY(), ShouldSyncLayoutOnlyToEventTarget());
 
+  // CSS clip-path includes decorations. Overflow starts after the border.
+  DrawClipPath(display_list_builder);
   DrawBehind(display_list_builder);
   DrawBackground(display_list_builder);
   DrawBoxShadow(display_list_builder);
   DrawBorder(display_list_builder);
-  DrawClip(display_list_builder);
+  DrawOverflowClip(display_list_builder);
   if (behavior_) {
     behavior_->OnDraw(display_list_builder);
   }

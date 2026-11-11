@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.render;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,6 +26,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -44,6 +46,7 @@ import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.PixelUtils;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
@@ -291,6 +294,158 @@ public class DisplayListApplierTest {
     verify(mockPlatformRendererContext).getImage(789);
     verify(mockImageManager).setRendererHost(mockRendererHost);
     verify(mockImageManager).onDraw(mockCanvas);
+  }
+
+  @Test
+  public void testClippingReusesRecordedPathAndReplacementDropsIt() {
+    final int size = DisplayListApplier.DISPLAY_LIST_ITEM_SIZE;
+    ByteBuffer ops = ByteBuffer.allocateDirect(3 * size).order(ByteOrder.nativeOrder());
+    ops.putInt(0, DisplayListApplier.OP_RECORD_PATH);
+    ops.putInt(8, 56); // Move(2,3), Line(12,20).
+    ops.putInt(size, DisplayListApplier.OP_CLIP_PATH);
+    ops.putInt(2 * size, DisplayListApplier.OP_CLIP_PATH); // Both reference path zero.
+    ByteBuffer commands = ByteBuffer.allocateDirect(56).order(ByteOrder.nativeOrder());
+    commands.putInt(0, 0).putFloat(4, 2).putFloat(8, 3);
+    commands.putInt(28, 1).putFloat(32, 12).putFloat(36, 20);
+    displayListApplier.setBuffer(ops, commands);
+    displayListApplier.drawTillNextView(mockCanvas);
+    ArgumentCaptor<android.graphics.Path> paths = forClass(android.graphics.Path.class);
+    verify(mockCanvas, times(2)).clipPath(paths.capture());
+    org.junit.Assert.assertSame(paths.getAllValues().get(0), paths.getAllValues().get(1));
+    RectF bounds = new RectF();
+    paths.getValue().computeBounds(bounds, true);
+    assertEquals(new RectF(2, 3, 12, 20), bounds);
+
+    // Replaying the same buffer must use the same decoded Path.
+    displayListApplier.reset();
+    displayListApplier.drawTillNextView(mockCanvas);
+    ArgumentCaptor<android.graphics.Path> replayed = forClass(android.graphics.Path.class);
+    verify(mockCanvas, times(4)).clipPath(replayed.capture());
+    org.junit.Assert.assertSame(paths.getValue(), replayed.getValue());
+
+    // Path 0 in a new list must never resolve to geometry in the old list.
+    ByteBuffer replacement = ByteBuffer.allocateDirect(size).order(ByteOrder.nativeOrder());
+    replacement.putInt(0, DisplayListApplier.OP_CLIP_PATH);
+    displayListApplier.setBuffer(replacement, null);
+    displayListApplier.drawTillNextView(mockCanvas);
+    verify(mockCanvas, never()).clipRect(0, 0, 0, 0);
+    verify(mockCanvas, times(4)).clipPath(any(android.graphics.Path.class));
+  }
+
+  private Bitmap renderRecordedClip(int kind, ByteBuffer data, int fill) {
+    int stride = DisplayListApplier.DISPLAY_LIST_ITEM_SIZE;
+    ByteBuffer ops = ByteBuffer.allocateDirect(2 * stride).order(ByteOrder.nativeOrder());
+    ops.putInt(0, DisplayListApplier.OP_RECORD_PATH)
+        .putInt(8, data.capacity())
+        .putInt(12, kind)
+        .putInt(16, fill);
+    ops.putInt(stride, DisplayListApplier.OP_CLIP_PATH);
+    displayListApplier.setBuffer(ops, data);
+    Bitmap bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
+    Canvas canvas = new Canvas(bitmap);
+    displayListApplier.drawTillNextView(canvas);
+    canvas.drawColor(0xff00ff00);
+    return bitmap;
+  }
+
+  private ByteBuffer floats(float... values) {
+    ByteBuffer data = ByteBuffer.allocateDirect(values.length * 4).order(ByteOrder.nativeOrder());
+    data.asFloatBuffer().put(values);
+    return data;
+  }
+
+  @Test
+  public void testBasicShapeClipsPreserveTheirGeometry() {
+    int green = 0xff00ff00;
+    Bitmap circle = renderRecordedClip(1, floats(16, 16, 12), 0);
+    assertEquals(green, circle.getPixel(16, 5));
+    assertEquals(0, circle.getPixel(6, 6));
+    Bitmap ellipse = renderRecordedClip(2, floats(16, 16, 12, 5), 0);
+    assertEquals(green, ellipse.getPixel(6, 16));
+    assertEquals(0, ellipse.getPixel(16, 6));
+    Bitmap rect = renderRecordedClip(3, floats(4, 4, 24, 24, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2), 0);
+    assertEquals(green, rect.getPixel(4, 4));
+    assertEquals(0, rect.getPixel(28, 20));
+    Bitmap rounded = renderRecordedClip(3, floats(4, 4, 24, 24, 12, 0, 0, 0, 12, 0, 0, 0, 2, 2), 0);
+    assertEquals(0, rounded.getPixel(4, 4));
+    assertEquals(green, rounded.getPixel(27, 4));
+    Bitmap superCorner =
+        renderRecordedClip(3, floats(4, 4, 24, 24, 12, 0, 0, 0, 12, 0, 0, 0, 6, 6), 0);
+    assertEquals(green, superCorner.getPixel(6, 6));
+    assertEquals(green, superCorner.getPixel(27, 4));
+    Bitmap superEllipse = renderRecordedClip(5, floats(16, 16, 12, 12, 6, 6), 0);
+    assertEquals(green, superEllipse.getPixel(6, 6));
+    assertEquals(0, superEllipse.getPixel(4, 4));
+  }
+
+  @Test
+  public void testNativeRectRecordMatchesAndroidRoundRect() {
+    Bitmap actual = renderRecordedClip(3, floats(3, 5, 24, 20, 11, 2, 7, 4, 8, 9, 3, 6, 2, 2), 0);
+    Bitmap expected = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
+    Canvas canvas = new Canvas(expected);
+    Path path = new Path();
+    path.addRoundRect(
+        new RectF(3, 5, 27, 25), new float[] {11, 8, 2, 9, 7, 3, 4, 6}, Path.Direction.CW);
+    canvas.clipPath(path);
+    canvas.drawColor(0xff00ff00);
+    assertTrue(expected.sameAs(actual));
+  }
+
+  @Test
+  public void testPathFillRuleAndEmptyClip() {
+    // Two clockwise rectangles. The inner one is a hole under even-odd fill.
+    ByteBuffer data = ByteBuffer.allocateDirect(10 * 28).order(ByteOrder.nativeOrder());
+    int i = 0;
+    for (int[] command : new int[][] {{0, 2, 2}, {1, 30, 2}, {1, 30, 30}, {1, 2, 30}, {3, 0, 0},
+             {0, 10, 10}, {1, 22, 10}, {1, 22, 22}, {1, 10, 22}, {3, 0, 0}}) {
+      data.putInt(i, command[0]).putFloat(i + 4, command[1]).putFloat(i + 8, command[2]);
+      i += 28;
+    }
+    Bitmap clip = renderRecordedClip(0, data, 1);
+    assertEquals(0xff00ff00, clip.getPixel(26, 16));
+    assertEquals(0, clip.getPixel(16, 16));
+    assertEquals(0, clip.getPixel(0, 0));
+    Bitmap zeroRadius = renderRecordedClip(1, floats(16, 16, 0), 0);
+    assertEquals(0, zeroRadius.getPixel(16, 16));
+  }
+
+  @Test
+  public void testCssClipAndOverflowClipOnTheChildCanvas() {
+    final int size = DisplayListApplier.DISPLAY_LIST_ITEM_SIZE;
+    ByteBuffer ops = ByteBuffer.allocateDirect(8 * size).order(ByteOrder.nativeOrder());
+    ops.putInt(0, DisplayListApplier.OP_BEGIN);
+    ops.putInt(size, DisplayListApplier.OP_RECORD_PATH).putInt(size + 8, 4 * 28);
+    ops.putInt(2 * size, DisplayListApplier.OP_CLIP_PATH);
+    ops.putInt(3 * size, DisplayListApplier.OP_RECORD_BOX);
+    ops.putFloat(3 * size + DisplayListApplier.RECORD_BOX_W_OFFSET, 32);
+    ops.putFloat(3 * size + DisplayListApplier.RECORD_BOX_H_OFFSET, 32);
+    ops.putInt(4 * size, DisplayListApplier.OP_FILL);
+    ops.putInt(4 * size + DisplayListApplier.FILL_COLOR_OFFSET, 0xffff0000);
+    ops.putInt(5 * size, DisplayListApplier.OP_CLIP_RECT);
+    ops.putFloat(5 * size + DisplayListApplier.CLIP_RECT_X_OFFSET, 8);
+    ops.putFloat(5 * size + DisplayListApplier.CLIP_RECT_Y_OFFSET, 8);
+    ops.putFloat(5 * size + DisplayListApplier.CLIP_RECT_W_OFFSET, 24);
+    ops.putFloat(5 * size + DisplayListApplier.CLIP_RECT_H_OFFSET, 24);
+    ops.putInt(6 * size, DisplayListApplier.OP_DRAW_VIEW);
+    ops.putInt(7 * size, DisplayListApplier.OP_END);
+    // M 0 0 L 32 0 L 0 32 Z: the lower-right corner is outside the CSS clip.
+    ByteBuffer commands = ByteBuffer.allocateDirect(4 * 28).order(ByteOrder.nativeOrder());
+    commands.putInt(28, 1).putFloat(32, 32);
+    commands.putInt(56, 1).putFloat(64, 32);
+    commands.putInt(84, 3);
+    displayListApplier.setBuffer(ops, commands);
+    Bitmap bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
+    Canvas canvas = new Canvas(bitmap);
+    displayListApplier.drawTillNextView(canvas);
+    View child = new View(InstrumentationRegistry.getInstrumentation().getTargetContext());
+    child.setBackgroundColor(0xff00ff00);
+    child.layout(0, 0, 32, 32);
+    child.draw(canvas);
+    displayListApplier.drawTillNextView(canvas);
+    assertEquals(0xffff0000, bitmap.getPixel(4, 4)); // Background only.
+    assertEquals(0xff00ff00, bitmap.getPixel(10, 10)); // Child inside both clips.
+    assertEquals(0, bitmap.getPixel(26, 26)); // Outside the triangle, inside overflow.
+    assertEquals(1, canvas.getSaveCount());
   }
 
   /** Verifies that replacing the typed buffers resets and processes the new display list. */

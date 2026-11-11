@@ -23,6 +23,8 @@ class ComputedCSSStyle;
 }
 namespace tasm {
 
+class ClipPathCache;
+
 using starlight::LayoutResultForRendering;
 
 // Combines layout results and rendering styles to generate display content
@@ -31,7 +33,7 @@ class Fragment : public BaseElementContainer {
  public:
   explicit Fragment(Element* element);
 
-  ~Fragment() override = default;
+  ~Fragment() override;
 
   // Returns the parent of this fragment in the fragment tree.
   Fragment* fragment_parent() const;
@@ -178,7 +180,8 @@ class Fragment : public BaseElementContainer {
   void ReparentStackingNode(Fragment* target_parent, Fragment* sibling);
   Fragment* ResolveEnclosingStackingContextParent() const;
   void DrawBorder(DisplayListBuilder& display_list_builder);
-  void DrawClip(DisplayListBuilder& display_list_builder);
+  void DrawClipPath(DisplayListBuilder& display_list_builder);
+  void DrawOverflowClip(DisplayListBuilder& display_list_builder);
 
   void DrawBackground(DisplayListBuilder& display_list_builder);
   void DrawBoxShadow(DisplayListBuilder& display_list_builder);
@@ -249,6 +252,7 @@ class Fragment : public BaseElementContainer {
       fixed_children_;
 
   LayoutInfoForDraw layout_info_;
+  std::unique_ptr<ClipPathCache> clip_path_cache_;
   // Whether the last full content draw recorded a custom outset shadow. Like a
   // CSS outset box-shadow, it must not be cut by clipping the platform layer.
   bool custom_outset_shadow_drawn_{false};

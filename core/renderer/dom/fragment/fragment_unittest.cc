@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -29,6 +30,7 @@
 #include "core/renderer/dom/fragment/event/platform_pointer_event.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
 #include "core/renderer/dom/fragment/image_fragment_behavior.h"
+#include "core/renderer/dom/fragment/path_geometry.h"
 #include "core/renderer/lynx_env_config.h"
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -4004,6 +4006,114 @@ TEST_F(FragmentTest, DrawBoxShadowInsetWithNegativeSpread) {
   }
 }
 
+static fml::RefPtr<lepus::CArray> SvgClip(const char* commands) {
+  auto style = lepus::CArray::Create();
+  style->emplace_back(static_cast<int32_t>(starlight::BasicShapeType::kPath));
+  style->emplace_back(base::String(commands));
+  return style;
+}
+
+TEST_F(FragmentTest, CSSClipPrecedesOverflowClipAndResets) {
+  auto element = manager->CreateFiberText("text");
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<RecordingFragmentBehavior>(&fragment));
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(100.f, 60.f);
+  fragment.UpdateLayout(layout);
+  auto* style = element->computed_css_style();
+  style->origin_overflow_ = 0;
+  style->GetClipPath() = SvgClip("M10 10h12v12z");
+  auto clips = [&]() {
+    DisplayListBuilder builder;
+    fragment.DrawFull(builder);
+    std::vector<DisplayListOpType> ops;
+    for (const auto& item : CollectDisplayListItems(builder.Build())) {
+      if (item.type == DisplayListOpType::kRecordPath ||
+          item.type == DisplayListOpType::kClipPath ||
+          item.type == DisplayListOpType::kClipRect)
+        ops.push_back(item.type);
+    }
+    return ops;
+  };
+  EXPECT_THAT(clips(), ::testing::ElementsAre(DisplayListOpType::kRecordPath,
+                                              DisplayListOpType::kClipPath,
+                                              DisplayListOpType::kClipRect));
+  style->GetClipPath() = nullptr;
+  EXPECT_THAT(clips(), ::testing::ElementsAre(DisplayListOpType::kClipRect));
+}
+
+TEST(ClipPathGeometryTest, ConvertsRelativeCurvesAndArcsToScaledLocalCommands) {
+  PathGeometry geometry;
+  ASSERT_TRUE(ResolveClipOutline(*SvgClip("M1 2q3 6 6 0t6 0a4 4 0 0110 0z"), 40,
+                                 40, 2, geometry));
+  const auto& cmds = std::get<Path>(geometry).commands;
+  ASSERT_GE(cmds.size(), 5u);
+  EXPECT_EQ(cmds[0].verb, PathVerb::kMove);
+  EXPECT_FLOAT_EQ(cmds[0].x, 2);
+  EXPECT_FLOAT_EQ(cmds[0].y, 4);
+  EXPECT_EQ(cmds[1].verb, PathVerb::kCubic);
+  EXPECT_FLOAT_EQ(cmds[1].x1, 6);
+  EXPECT_FLOAT_EQ(cmds[1].y1, 12);
+  EXPECT_EQ(cmds[2].verb, PathVerb::kCubic);
+  EXPECT_FLOAT_EQ(cmds[2].y1, -4);
+  EXPECT_EQ(cmds[cmds.size() - 2].verb, PathVerb::kCubic);
+  EXPECT_FLOAT_EQ(cmds[cmds.size() - 2].x, 46);
+  EXPECT_FLOAT_EQ(cmds[cmds.size() - 2].y, 4);
+  EXPECT_EQ(cmds.back().verb, PathVerb::kClose);
+}
+
+TEST(ClipPathGeometryTest, InvalidPathIsOmittedRatherThanPartiallyClipping) {
+  PathGeometry geometry;
+  for (auto data :
+       {"L0 0", "M0 0L1", "M0 0,", "M0 0A1 1 0 2 0 1 1", "M0 0z2 3"}) {
+    EXPECT_FALSE(ResolveClipOutline(*SvgClip(data), 40, 40, 1, geometry))
+        << data;
+  }
+}
+
+TEST(ClipPathGeometryTest, RecordsInsetInRoundedRectangleFieldOrder) {
+  auto style = lepus::CArray::Create();
+  style->emplace_back(static_cast<int>(starlight::BasicShapeType::kInset));
+  auto number = [&](int v) {
+    style->emplace_back(v);
+    style->emplace_back(
+        static_cast<int>(starlight::PlatformLengthUnit::NUMBER));
+  };
+  for (int v : {2, 3, 4, 5}) number(v);
+  style->emplace_back(4);
+  style->emplace_back(6);
+  for (int i = 1; i <= 8; ++i) number(i);
+  PathGeometry geometry;
+  ASSERT_TRUE(ResolveClipOutline(*style, 100, 60, 1, geometry));
+  DisplayListBuilder builder;
+  builder.ClipPath(geometry);
+  auto list = builder.Build();
+  auto record = CollectDisplayListItems(list)[0].payload.record_path;
+  ASSERT_EQ(record.kind, static_cast<uint32_t>(PathKind::kRect));
+  ASSERT_EQ(record.byte_size, 14 * sizeof(float));
+  float data[14];
+  std::memcpy(data, list.GetContentData() + record.offset, sizeof(data));
+  EXPECT_THAT(
+      data, ::testing::ElementsAre(5, 2, 92, 54, 1, 3, 5, 7, 2, 4, 6, 8, 4, 6));
+}
+
+TEST(ClipPathGeometryTest, ResolvesEllipsePercentagesAgainstEachAxis) {
+  auto style = lepus::CArray::Create();
+  style->emplace_back(static_cast<int>(starlight::BasicShapeType::kEllipse));
+  for (double fraction : {.25, .5, .5, .25}) {
+    style->emplace_back(fraction);
+    style->emplace_back(
+        static_cast<int>(starlight::PlatformLengthUnit::PERCENTAGE));
+  }
+  PathGeometry geometry;
+  ASSERT_TRUE(ResolveClipOutline(*style, 120, 40, 3, geometry));
+  const auto& ellipse = std::get<EllipsePath>(geometry);
+  EXPECT_FLOAT_EQ(ellipse.rx, 30);
+  EXPECT_FLOAT_EQ(ellipse.ry, 20);
+  EXPECT_FLOAT_EQ(ellipse.cx, 60);
+  EXPECT_FLOAT_EQ(ellipse.cy, 10);
+}
+
 TEST_F(FragmentTest, PlainRectGeneratesClipRectOp) {
   auto element = manager->CreateFiberText("text");
   Fragment fragment(element.get());
@@ -4016,7 +4126,7 @@ TEST_F(FragmentTest, PlainRectGeneratesClipRectOp) {
   element->computed_css_style()->origin_overflow_ = 0;
 
   DisplayListBuilder builder;
-  fragment.DrawClip(builder);
+  fragment.DrawOverflowClip(builder);
 
   DisplayList list = builder.Build();
   auto items = CollectDisplayListItems(list);
@@ -4057,7 +4167,7 @@ TEST_F(FragmentTest, RoundedRectGeneratesClipPathOpParams) {
   fragment.UpdateLayout(layout);
 
   DisplayListBuilder builder;
-  fragment.DrawClip(builder);
+  fragment.DrawOverflowClip(builder);
 
   DisplayList list = builder.Build();
   auto items = CollectDisplayListItems(list);
@@ -4102,7 +4212,7 @@ TEST_F(FragmentTest, DrawClipUsesNormalizedRadiiAfterLayoutUpdates) {
   auto check_clip = [&](float expected_radius) {
     fragment.UpdateLayout(layout);
     DisplayListBuilder builder;
-    fragment.DrawClip(builder);
+    fragment.DrawOverflowClip(builder);
     auto list = builder.Build();
     auto items = CollectDisplayListItems(list);
     ASSERT_EQ(items.size(), 1u);
@@ -4171,7 +4281,7 @@ TEST_F(FragmentTest, DrawClipNormalizesEllipticalRadiiBeforeSubtractingBorder) {
   layout.size_ = FloatSize(240.f, 180.f);
   fragment.UpdateLayout(layout);
   DisplayListBuilder builder;
-  fragment.DrawClip(builder);
+  fragment.DrawOverflowClip(builder);
   auto list = builder.Build();
   auto items = CollectDisplayListItems(list);
   ASSERT_EQ(items.size(), 1u);
