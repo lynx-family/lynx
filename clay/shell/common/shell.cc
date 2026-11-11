@@ -231,6 +231,7 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
   if (!platform_view || !platform_view->GetWeakPtr()) {
     return nullptr;
   }
+  platform_view->SetCustomVsyncRequest(initial_custom_vsync_request);
 
   // Send dispatcher_maker to the engine constructor because shell won't have
   // platform_view set until Shell::Setup is called later.
@@ -1560,6 +1561,9 @@ void Shell::PrepareForRecycle() { PrepareForRecycle({}); }
 void Shell::PrepareForRecycle(VsyncRequestCallback custom_vsync_request) {
   if (engine_) {
     engine_->PrepareForRecycle();
+  }
+  if (platform_view_) {
+    platform_view_->SetCustomVsyncRequest(custom_vsync_request);
   }
 
   frame_timing_collector_ = std::make_shared<clay::FrameTimingCollector>(

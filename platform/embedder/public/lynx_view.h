@@ -23,6 +23,7 @@
 #include "lynx_runtime_lifecycle_observer.h"
 #include "lynx_update_meta.h"
 #include "lynx_view_client.h"
+#include "lynx_vsync_monitor.h"
 #include "lynx_windowless_renderer.h"
 
 // Forward declaration of internal struct
@@ -61,6 +62,17 @@ class LynxView {
 
     Builder& SetFontScale(float scale) {
       lynx_view_builder_set_font_scale(builder_, scale);
+      return *this;
+    }
+
+    // Configure the source before Build() and retain it for the created views.
+    Builder& SetCustomVSyncMonitor(std::shared_ptr<LynxVSyncMonitor> monitor) {
+      if (monitor) {
+        monitor->InitIfNeed();
+      }
+      lynx_view_builder_set_custom_vsync_monitor(
+          builder_, monitor ? monitor->GetCMonitor() : nullptr);
+      custom_vsync_monitor_ = std::move(monitor);
       return *this;
     }
 
@@ -142,6 +154,7 @@ class LynxView {
       std::unique_ptr<LynxView> view = std::make_unique<LynxView>(this);
       view->generic_fetcher_ = std::move(generic_fetcher_);
       view->windowless_renderer_ = std::move(windowless_renderer_);
+      view->custom_vsync_monitor_ = custom_vsync_monitor_;
       return view;
     }
 
@@ -153,6 +166,7 @@ class LynxView {
     std::shared_ptr<LynxGroup> group_;
     std::shared_ptr<LynxWindowlessRenderer> windowless_renderer_;
     std::shared_ptr<LynxGenericResourceFetcher> generic_fetcher_;
+    std::shared_ptr<LynxVSyncMonitor> custom_vsync_monitor_;
     friend class LynxView;
   };
 
@@ -423,6 +437,7 @@ class LynxView {
   std::shared_ptr<LynxGenericResourceFetcher> generic_fetcher_;
   std::vector<std::shared_ptr<LynxViewClient>> lynx_view_clients_;
   std::shared_ptr<LynxWindowlessRenderer> windowless_renderer_;
+  std::shared_ptr<LynxVSyncMonitor> custom_vsync_monitor_;
   std::shared_ptr<LynxRuntimeLifecycleObserver> runtime_lifecycle_observer_;
   std::shared_ptr<LynxEventSimulationProxy> event_proxy_;
 };
