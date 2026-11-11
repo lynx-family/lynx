@@ -742,6 +742,56 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAll) {
   EXPECT_EQ(custom_properties["--d"].AsStdString(), "   blue");
 }
 
+TEST_F(CSSValueSubstitutionTest, SubstituteAllKeepsResolvedProperties) {
+  CustomPropertiesMap custom_properties;
+  custom_properties.insert_or_assign("--base",
+                                     CSSValue::MakePlainString("8px"));
+  const lepus::Value variable("var(--base)");
+  auto parser = CSSStringParser::FromLepusString(variable, configs_);
+  custom_properties.insert_or_assign("--inherited", parser.ParseVariable());
+  CSSValue::SubstituteAll(custom_properties);
+  custom_properties.insert_or_assign("--local",
+                                     CSSValue::MakePlainString("4px"));
+
+  CSSValue::SubstituteAll(
+      custom_properties, 10, [](const base::String&, const base::String&) {
+        ADD_FAILURE() << "Resolved values should not report dependencies again";
+      });
+
+  ASSERT_EQ(custom_properties.size(), 3U);
+  EXPECT_EQ(custom_properties["--local"].AsStdString(), "4px");
+  const auto& inherited = custom_properties["--inherited"];
+  EXPECT_EQ(inherited.AsStdString(), "8px");
+  ASSERT_TRUE(
+      inherited.optionals_.HasValue<CSSValue::CustomPropertyDependencyField>());
+  const auto& dependencies =
+      inherited.optionals_.Get<CSSValue::CustomPropertyDependencyField>();
+  ASSERT_EQ(dependencies.size(), 1U);
+  auto dependency = dependencies.find("--base");
+  ASSERT_NE(dependency, dependencies.end());
+  EXPECT_EQ(dependency->second, "8px");
+}
+
+TEST_F(CSSValueSubstitutionTest, SubstituteAllResolvesAfterConstantPrefix) {
+  CustomPropertiesMap custom_properties;
+  custom_properties.insert_or_assign("--base",
+                                     CSSValue::MakePlainString("8px"));
+  for (const auto& [name, value] :
+       {std::pair{"--alias", "var(--base)"}, std::pair{"--self", "var(--self)"},
+        std::pair{"--fallback", "var(--self, 4px)"}}) {
+    const lepus::Value variable(value);
+    auto parser = CSSStringParser::FromLepusString(variable, configs_);
+    custom_properties.insert_or_assign(name, parser.ParseVariable());
+  }
+
+  CSSValue::SubstituteAll(custom_properties);
+
+  EXPECT_EQ(custom_properties["--base"].AsStdString(), "8px");
+  EXPECT_EQ(custom_properties["--alias"].AsStdString(), "8px");
+  EXPECT_TRUE(custom_properties["--self"].AsStdString().empty());
+  EXPECT_EQ(custom_properties["--fallback"].AsStdString(), " 4px");
+}
+
 TEST_F(CSSValueSubstitutionTest, SubstituteAllPreservesTransitiveDependencies) {
   CustomPropertiesMap custom_properties;
   custom_properties.insert_or_assign("--a", CSSValue::MakePlainString("red"));
