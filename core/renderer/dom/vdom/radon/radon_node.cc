@@ -952,7 +952,8 @@ bool RadonNode::InvalidatePseudoState(
   if (style_sheet && style_sheet->enable_css_selector()) {
     bool should_patch = CollectInvalidationSetsForPseudoAndInvalidate(
         style_sheet, prev, curr, pending_nodes);
-    if (should_patch) {
+    if (should_patch &&
+        !page_proxy_->element_manager()->EnableNewStylingPipeline()) {
       page_proxy_->element_manager()->SetNeedsLayout();
     }
     return should_patch;
@@ -974,7 +975,8 @@ bool RadonNode::InvalidatePseudoState(
   } else {
     should_patch = RefreshOrCollectStyleForPseudo(pending_nodes);
   }
-  if (should_patch) {
+  if (should_patch &&
+      !page_proxy_->element_manager()->EnableNewStylingPipeline()) {
     page_proxy_->element_manager()->SetNeedsLayout();
   }
   return should_patch;
@@ -982,6 +984,12 @@ bool RadonNode::InvalidatePseudoState(
 
 bool RadonNode::RefreshOrCollectStyleForPseudo(
     std::unordered_set<RadonNode*>* pending_nodes) {
+  if (auto* target = element();
+      target && target->element_manager()->EnableNewStylingPipeline()) {
+    // Preserve the committed style for new styling's diff and animation sample.
+    target->MarkStyleDirty(false);
+    return true;
+  }
   if (pending_nodes) {
     if (element()) {
       pending_nodes->insert(this);

@@ -9,6 +9,7 @@
 
 #include "base/include/value/base_string.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/vdom/radon/radon_page.h"
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
@@ -74,6 +75,68 @@ TEST_F(RadonNodeTest, CreateFiberElementText) {
   auto element = radon_node->CreateFiberElement();
 
   EXPECT_TRUE(element->is_text());
+}
+
+TEST_F(RadonNodeTest, PseudoRefreshPreservesCommittedNewStylingValues) {
+  auto* manager = page_proxy->element_manager().get();
+  int32_t page_id = 11;
+  for (bool new_styling : {false, true}) {
+    manager->enable_new_styling_pipeline_ = new_styling;
+    for (bool batched : {false, true}) {
+      SCOPED_TRACE(new_styling);
+      SCOPED_TRACE(batched);
+      auto node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
+      node->CreateElementIfNeeded();
+      auto* element = node->element();
+      element->enable_new_animator_ = false;
+      auto page = manager->CreateFiberPage("page", page_id++);
+      manager->SetFiberPageElement(page);
+      page->InsertNode(fml::RefPtr<Element>(element));
+      element->SetRawInlineStyles("background-color:#eeeeee;");
+      page->FlushActionsAsRoot();
+
+      element->SetRawInlineStyles("background-color:#52c41a;");
+      std::unordered_set<RadonNode*> pending_nodes;
+      const bool needs_resolve = node->RefreshOrCollectStyleForPseudo(
+          batched ? &pending_nodes : nullptr);
+      for (auto* pending : pending_nodes) {
+        pending->RefreshStyle();
+      }
+
+      auto color = element->computed_css_style()->ExtractCanonicalComputedValue(
+          kPropertyIDBackgroundColor);
+      ASSERT_TRUE(color);
+      EXPECT_EQ(*color, starlight::CanonicalComputedValue::Color(
+                            new_styling ? 0xffeeeeee : 0xff52c41a));
+      if (new_styling) {
+        EXPECT_TRUE(needs_resolve);
+        EXPECT_TRUE(pending_nodes.empty());
+      }
+
+      page->FlushActionsAsRoot();
+      color = element->computed_css_style()->ExtractCanonicalComputedValue(
+          kPropertyIDBackgroundColor);
+      ASSERT_TRUE(color);
+      EXPECT_EQ(*color, starlight::CanonicalComputedValue::Color(0xff52c41a));
+    }
+  }
+}
+
+TEST_F(RadonNodeTest, NewStylingPseudoInvalidationDoesNotForceLayout) {
+  auto* manager = page_proxy->element_manager().get();
+  manager->enable_new_styling_pipeline_ = true;
+  auto node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
+  node->CreateElementIfNeeded();
+  for (bool batched : {false, true}) {
+    SCOPED_TRACE(batched);
+    manager->need_layout_ = false;
+    std::unordered_set<RadonNode*> pending_nodes;
+    EXPECT_TRUE(
+        node->InvalidatePseudoState(kPseudoStateNone, kPseudoStateActive,
+                                    batched ? &pending_nodes : nullptr));
+    EXPECT_FALSE(manager->need_layout_);
+    EXPECT_TRUE(pending_nodes.empty());
+  }
 }
 
 TEST_F(RadonNodeTest, CreateFiberElementXText) {
