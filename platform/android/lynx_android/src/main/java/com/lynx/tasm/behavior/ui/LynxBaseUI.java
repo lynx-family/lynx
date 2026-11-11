@@ -2689,8 +2689,8 @@ public abstract class LynxBaseUI
       int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth,
       int borderRightWidth, int borderBottomWidth, Rect bound) {
     if (mContext != null && mContext.isTouchMoving() && Float.compare(mWidth, 0) != 0
-        && Float.compare(mHeight, 0) != 0
-        && (Float.compare(mLeft, left) != 0 || Float.compare(mTop, top) != 0)) {
+        && Float.compare(mHeight, 0) != 0 && (mOriginLeft != left || mOriginTop != top)) {
+      // Drawing positions include flatten ancestor offsets; compare parent-relative positions.
       // The front-end modify the layout properties, causing the UI to slide.
       mContext.onPropsChanged(this);
     }
