@@ -9,22 +9,31 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.graphics.Matrix;
 import android.graphics.Rect;
+import android.os.SystemClock;
+import android.view.MotionEvent;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.EventEmitter;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.LynxUIOwner;
+import com.lynx.tasm.behavior.TouchEventDispatcher;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.utils.LynxBackground;
 import com.lynx.tasm.behavior.ui.view.UIView;
+import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.testing.base.TestingUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 public class LynxBaseUITest {
   private LynxContext mContext;
@@ -53,6 +62,101 @@ public class LynxBaseUITest {
     JavaOnlyMap pageConfig = new JavaOnlyMap();
     pageConfig.putBoolean("enableEventThroughInheritFromPage", enable);
     mContext.onPageConfigDecoded(new PageConfig(pageConfig));
+  }
+
+  private void updateLayoutInfo(LynxBaseUI ui, int left, int top, int width, int height) {
+    ui.updateLayoutInfo(left, top, width, height, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null);
+  }
+
+  private void assertTapAfterLayoutUpdate(
+      boolean flatten, boolean moveParent, int left, int top, boolean expectTap) {
+    UIBody root = TestingUtils.getUIBody(mContext);
+    root.setSign(1, "page");
+    updateLayoutInfo(root, 0, 0, 500, 500);
+    LynxBaseUI parent = flatten ? new LynxFlattenUI(mContext) : new UIView(mContext);
+    parent.setSign(2, "view");
+    updateLayoutInfo(parent, 100, 200, 300, 300);
+    UIView child = new UIView(mContext);
+    child.setSign(3, "view");
+    updateLayoutInfo(child, 10, 20, 100, 100);
+    root.insertChild(parent, 0);
+    parent.insertChild(child, 0);
+    if (flatten) {
+      ((LynxFlattenUI) parent).layout(100, 200, null);
+      assertEquals(110, child.getLeft());
+      assertEquals(220, child.getTop());
+    }
+
+    EventEmitter emitter = mock(EventEmitter.class);
+    mContext.setEventEmitter(emitter);
+    LynxUIOwner owner = mock(LynxUIOwner.class);
+    when(owner.getContext()).thenReturn(mContext);
+    when(owner.getRootUI()).thenReturn(root);
+    TouchEventDispatcher dispatcher = new TouchEventDispatcher(owner);
+    mContext.setTouchEventDispatcher(dispatcher);
+    long downTime = SystemClock.uptimeMillis();
+    MotionEvent down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, 120, 230, 0);
+    MotionEvent move =
+        MotionEvent.obtain(downTime, downTime + 10, MotionEvent.ACTION_MOVE, 121, 231, 0);
+    MotionEvent up =
+        MotionEvent.obtain(downTime, downTime + 20, MotionEvent.ACTION_UP, 121, 231, 0);
+    try {
+      assertTrue(dispatcher.handleFirstTouchDown(down, root));
+      dispatcher.handleTouchMove(move);
+      assertTrue(dispatcher.isTouchMoving());
+      if (moveParent) {
+        updateLayoutInfo(parent, left, top, 300, 300);
+      } else {
+        updateLayoutInfo(child, left, top, 100, 100);
+      }
+      dispatcher.fireTap(up);
+
+      ArgumentCaptor<LynxTouchEvent> events = ArgumentCaptor.forClass(LynxTouchEvent.class);
+      verify(emitter, atLeastOnce()).sendTouchEvent(events.capture());
+      int tapCount = 0;
+      for (LynxTouchEvent event : events.getAllValues()) {
+        if ("tap".equals(event.getName())) {
+          assertEquals(child.getSign(), event.getTag());
+          tapCount++;
+        }
+      }
+      assertEquals(expectTap ? 1 : 0, tapCount);
+    } finally {
+      down.recycle();
+      move.recycle();
+      up.recycle();
+      mContext.setTouchEventDispatcher(null);
+    }
+  }
+
+  @Test
+  public void tapSurvivesUnchangedLayoutUnderFlattenParent() {
+    assertTapAfterLayoutUpdate(true, false, 10, 20, true);
+  }
+
+  @Test
+  public void tapSurvivesUnchangedLayoutWithoutFlattenParent() {
+    assertTapAfterLayoutUpdate(false, false, 10, 20, true);
+  }
+
+  @Test
+  public void tapIsSuppressedWhenChildMovesToPreviousDrawingLeft() {
+    assertTapAfterLayoutUpdate(true, false, 110, 20, false);
+  }
+
+  @Test
+  public void tapIsSuppressedWhenChildMovesToPreviousDrawingTop() {
+    assertTapAfterLayoutUpdate(true, false, 10, 220, false);
+  }
+
+  @Test
+  public void tapIsSuppressedWhenChildMovesToPreviousDrawingPosition() {
+    assertTapAfterLayoutUpdate(true, false, 110, 220, false);
+  }
+
+  @Test
+  public void tapIsSuppressedWhenFlattenParentMoves() {
+    assertTapAfterLayoutUpdate(true, true, 110, 200, false);
   }
 
   @Test
