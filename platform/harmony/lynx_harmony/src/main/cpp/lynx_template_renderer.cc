@@ -1409,8 +1409,6 @@ napi_value LynxTemplateRenderer::SetTracingDirPath(napi_env env,
   napi_value args[1] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
   std::string tracing_dir_path = base::NapiUtil::ConvertToString(env, args[0]);
-  lynx::trace::TraceControllerDelegateHarmony::SetTraceDirPath(
-      tracing_dir_path);
   tasm::LynxEnv::GetInstance().SetStorageDirectory(tracing_dir_path);
 #endif
   return nullptr;

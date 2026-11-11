@@ -11,11 +11,5 @@ TraceController* GetTraceControllerInstance() {
   return TraceController::Instance();
 }
 
-// static
-std::string TraceControllerDelegateWin::GenerateTracingFileDir() {
-  // put trace file on the desktop
-  return "";
-}
-
 }  // namespace trace
 }  // namespace lynx

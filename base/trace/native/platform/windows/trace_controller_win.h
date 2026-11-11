@@ -17,8 +17,6 @@ class TRACE_EXPORT TraceControllerDelegateWin
     : public TraceController::Delegate {
  public:
   TraceControllerDelegateWin() = default;
-
-  std::string GenerateTracingFileDir() override;
 };
 
 }  // namespace trace

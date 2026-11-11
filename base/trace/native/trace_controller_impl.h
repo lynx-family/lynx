@@ -25,7 +25,7 @@ class TraceControllerImpl : public TraceController {
     TracingSession() : id(-1), started(false), all_read(false){};
     ~TracingSession() {
       for (int fd : opened_fds) {
-        if (fd > 0) {
+        if (fd >= 0) {
           close(fd);
         }
       }
@@ -73,6 +73,7 @@ class TraceControllerImpl : public TraceController {
   TracingSession& CreateNewSession(const std::shared_ptr<TraceConfig> config);
 
   std::string GenerateTraceFilePath(const std::string& file_dir);
+  std::string GetStartupTracingConfigPath() const;
 
   TracingSession* last_session_{nullptr};
   std::map<int, std::unique_ptr<TracingSession>> tracing_sessions_;
@@ -80,8 +81,6 @@ class TraceControllerImpl : public TraceController {
   std::map<std::string, TracePlugin*> trace_plugins_;
   std::unique_ptr<HookSystemTrace> hook_systrace_;
 
-  const std::string kStartupTracingFile = "/trace-config.json";
-  std::string trace_file_dir_;
   std::string startup_tracing_file_;
   bool is_tracing_started_ = false;
 };
