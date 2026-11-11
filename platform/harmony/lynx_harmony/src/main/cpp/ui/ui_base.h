@@ -557,6 +557,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   float GetPerspectiveValue();
   void SetAccessibilityElement(const lepus::Value& value);
   void SetAccessibilityLabel(const lepus::Value& value);
+  void SetAccessibilityDescription(const lepus::Value& value);
   void SetAccessibilityTraits(const lepus::Value& value);
   void SetAccessibilityElementsHidden(const lepus::Value& value);
   void SetAccessibilityExclusiveFocus(const lepus::Value& value);
@@ -649,6 +650,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   bool is_auto_offset_rotate_{true};
   std::string accessibility_id_;
   std::string accessibility_label_;
+  std::string accessibility_description_;
   LynxAccessibilityMode accessibility_mode_{LynxAccessibilityMode::kDisable};
   std::string accessibility_traits_{"none"};
   enum class LynxAccessibilityStatus {
