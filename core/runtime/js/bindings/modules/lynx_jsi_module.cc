@@ -15,11 +15,13 @@
 #include "core/runtime/common/js_call_native_frequency_monitor.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
 #include "core/runtime/js/bindings/modules/module_interceptor.h"
+#include "core/runtime/js/bindings/modules/module_invoke_scope.h"
 #include "core/runtime/js/jsi/jsi-inl.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/services/recorder/record.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "core/value_wrapper/value_impl_piper.h"
 
 namespace lynx {
 namespace runtime {
@@ -83,6 +85,19 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
                        << method.name);
   Scope scope(*rt);
   [[maybe_unused]] std::vector<int64_t> callback_ids;
+  CallbackMap callback_map;
+  auto self = shared_from_this();
+  auto interceptor = group_interceptor_;
+  std::shared_ptr<ModuleCallContext> context;
+  std::vector<Value> rewritten_args;
+  InvokeMethodEndScope end_scope{nullptr, nullptr, delegate_, callback_map};
+  if (interceptor && interceptor->HasInvocationHooks()) {
+    end_scope.interceptor = interceptor.get();
+    context = interceptor->BeforeConvertArgs(self, method, rt, args, count,
+                                             rewritten_args);
+    end_scope.context = context.get();
+    if (!rewritten_args.empty()) args = rewritten_args.data();
+  }
 
   // timing
   std::string first_arg_str;
@@ -143,7 +158,6 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
 
   uint64_t convert_params_start = base::CurrentSystemTimeMilliseconds();
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, JS_VALUE_TO_PUB_VALUE);
-  CallbackMap callback_map;
   auto args_array = value_factory_->CreateArray();
   // args is a pointer array. can not use getArray to read value.
   for (size_t i = 0; i < count; i++) {
@@ -183,7 +197,10 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
         callback->SetModuleName(name_);
         callback->SetMethodName(method.name);
         callback->timing_collector_ = timing_collector;
-        callback->SetModuleInterceptor(group_interceptor_);
+        callback->SetModuleInterceptor(interceptor);
+        if (context) {
+          callback->SetCallContext(context, static_cast<int>(i));
+        }
         callback->SetCallbackFlowId(callback_flow_id);
         callback->SetFirstArg(first_arg_str);
         if (invocation_context) {
@@ -216,6 +233,7 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JSB);
 
   timing_collector->EndFuncParamsConvert(convert_params_start);
+  end_scope.args_converted = true;
   lepus::Value observer_arguments =
       invocation_context && args_array
           ? pub::ValueUtils::ConvertValueToLepusValue(*args_array)
@@ -232,36 +250,38 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
   // TODO(liyanbo.monster): after remove native promise, delete this.
   native_module_->EnterInvokeScope(rt, delegate_);
 #endif
-  if (group_interceptor_) {
-    group_interceptor_->BeforeInvokeMethod(method, args_array,
-                                           timing_collector);
+  if (interceptor) {
+    interceptor->BeforeInvokeMethod(method, args_array, timing_collector);
   }
 
   base::expected<Value, JSINativeException> response;
   bool has_intercept = false;
-  if (group_interceptor_) {
-    auto interceptor_result = group_interceptor_->InterceptModuleMethod(
-        shared_from_this(), method, rt, delegate_, args, count, args_array,
-        callback_map, timing_collector);
-    if (interceptor_result.handled) {
-      response = std::move(interceptor_result.result);
+  if (interceptor) {
+    auto result = interceptor->InterceptModuleMethod(
+        self, method, rt, delegate_, args, count, args_array, callback_map,
+        timing_collector, context.get());
+    if (result.handled) {
+      response = std::move(result.result);
       has_intercept = true;
     }
   }
-  if (!has_intercept) {
-    // call method by native module
-    auto ret = native_module_->InvokeMethod(method.name, std::move(args_array),
-                                            count, callback_map);
-    // TODO(liyanbo.monster): after remove native promise, delete this.
-    std::optional<Value> promise_res;
+  // Initialize directly to avoid instantiating expected's variant assignment.
+  auto ret = has_intercept
+                 ? base::expected<std::unique_ptr<pub::Value>, std::string>()
+                 : native_module_->InvokeMethod(
+                       method.name, std::move(args_array), count, callback_map);
+  // TODO(liyanbo.monster): after remove native promise, delete this.
+  std::optional<Value> promise_res;
 #if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
     (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
-    native_module_->ExitInvokeScope();
-    // hack here, this will be deleted later.
-    if (!ret.has_value() && ret.error() == "__IS_NATIVE_PROMISE__") {
-      promise_res = native_module_->TryGetPromiseRet();
-    }
+  native_module_->ExitInvokeScope();
+  // hack here, this will be deleted later.
+  if (!has_intercept && !ret.has_value() &&
+      ret.error() == "__IS_NATIVE_PROMISE__") {
+    promise_res = native_module_->TryGetPromiseRet();
+  }
 #endif
+  if (!has_intercept) {
     if (promise_res) {
       response = std::move(*promise_res);
     } else {
@@ -281,6 +301,19 @@ base::expected<Value, JSINativeException> LynxJSIModule::invokeMethod(
     }
   }
 
+  if (interceptor && response.has_value()) {
+    bool replaced = context && interceptor->AfterInvokeMethod(rt, context.get(),
+                                                              response.value());
+    if (invocation_context && (has_intercept || replaced)) {
+      // A replacement also replaces the recording, including when the new
+      // result is undefined and therefore has no recorded value.
+      observer_result.reset();
+      if (!response.value().isUndefined()) {
+        observer_result = pub::ValueUtils::ConvertValueToLepusValue(
+            pub::ValueImplPiper(*rt, response.value()));
+      }
+    }
+  }
   RECORD_OPTIONAL(response.has_value(), NativeModuleFunctionCall,
                   GetLogContext(), name_.c_str(), method.name.c_str(),
                   static_cast<uint32_t>(count), args, callback_ids.data(),

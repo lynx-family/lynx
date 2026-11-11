@@ -33,11 +33,13 @@ class ModuleDelegate {
   const base::LogContext& GetLogContext() const { return log_context_; }
 
   virtual int64_t RegisterJSCallbackFunction(Function func) = 0;
-  // ret just is post to js thread or not
+  // force_async schedules a later JS task even when already on the JS thread.
+  // A null callback with id_to_delete releases a registered callback function.
   virtual void CallJSCallback(
       const std::shared_ptr<ModuleCallback>& callback,
       base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
-      int64_t id_to_delete = ModuleCallback::kInvalidCallbackId) = 0;
+      int64_t id_to_delete = ModuleCallback::kInvalidCallbackId,
+      bool force_async = false) = 0;
   virtual void OnErrorOccurred(base::LynxError error) = 0;
   virtual void OnMethodInvoked(const std::string& module_name,
                                const std::string& method_name,

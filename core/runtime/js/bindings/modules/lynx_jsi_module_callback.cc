@@ -43,6 +43,14 @@ void ModuleCallback::Invoke(Runtime* runtime,
   }
   if (!args_ || !args_->IsArray()) {
     LOGW("NativeModule: Callback's args is invalid.");
+    return;
+  }
+  if (call_context_ && group_interceptor_) {
+    group_interceptor_->WillInvokeCallback(*this, args_);
+    if (!args_ || !args_->IsArray()) {
+      LOGW("NativeModule: Callback's args is invalid after interception.");
+      return;
+    }
   }
   size_t size = static_cast<size_t>(args_->Length());
   Value values[size];
