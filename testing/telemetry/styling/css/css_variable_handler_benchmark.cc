@@ -387,5 +387,47 @@ static void BM_HandleCSSVariables_Redefinition(benchmark::State& state) {
 }
 BENCHMARK(BM_HandleCSSVariables_Redefinition)->Range(1, 64);
 
+static void BM_SubstituteAllReferenceDensity(benchmark::State& state) {
+  const int64_t property_count = state.range(0);
+  const int64_t reference_count = state.range(1);
+  const int64_t constant_count = property_count - reference_count;
+  CustomPropertiesMap properties;
+  properties.reserve(property_count);
+  const CSSValue constant("8px", CSSValuePattern::STRING,
+                          CSSValueType::DEFAULT);
+  for (int64_t i = 0; i < constant_count; ++i) {
+    properties.insert_or_assign("--constant-" + std::to_string(i), constant);
+  }
+
+  const CSSValue reference = CreateVariableValue("var(--constant-0)");
+  for (int64_t i = 0; i < reference_count; ++i) {
+    properties.insert_or_assign("--reference-" + std::to_string(i), reference);
+  }
+
+  constexpr int kBatchSize = 16;
+  std::vector<CustomPropertiesMap> maps(kBatchSize, properties);
+  for (auto _ : state) {
+    for (auto& map : maps) {
+      CSSValue::SubstituteAll(map);
+      benchmark::DoNotOptimize(map.begin());
+    }
+    if (reference_count > 0) {
+      state.PauseTiming();
+      for (auto& map : maps) {
+        for (auto it = map.begin() + constant_count; it != map.end(); ++it) {
+          it->second = reference;
+        }
+      }
+      state.ResumeTiming();
+    }
+  }
+  state.SetItemsProcessed(state.iterations() * kBatchSize);
+}
+BENCHMARK(BM_SubstituteAllReferenceDensity)
+    ->Args({909, 0})
+    ->Args({909, 1})
+    ->Args({909, 32})
+    ->Args({909, 908});
+
 }  // namespace tasm
 }  // namespace lynx
