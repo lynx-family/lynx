@@ -45,10 +45,6 @@ TraceController* GetTraceControllerInstance() {
   return TraceController::Instance();
 }
 
-std::string TraceControllerDelegateAndroid::GenerateTracingFileDir() {
-  return "";
-}
-
 void TraceControllerDelegateAndroid::RefreshATraceTags() {}
 
 void TraceControllerDelegateAndroid::SetIsTracingStarted(

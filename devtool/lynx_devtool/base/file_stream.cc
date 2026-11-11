@@ -4,6 +4,10 @@
 
 #include "devtool/lynx_devtool/base/file_stream.h"
 
+#if defined(_WIN32)
+#include "base/include/string/string_conversion_win.h"
+#endif
+
 namespace lynx {
 namespace devtool {
 
@@ -11,7 +15,12 @@ std::map<int, std::unique_ptr<std::fstream>> FileStream::streams_;
 
 int FileStream::Open(const std::string& file, std::ios::openmode mode) {
   static int next_handle = 1;
+#if defined(_WIN32)
+  auto file_stream_ptr =
+      std::make_unique<std::fstream>(base::Utf16FromUtf8(file).c_str(), mode);
+#else
   auto file_stream_ptr = std::make_unique<std::fstream>(file, mode);
+#endif
   if (!file_stream_ptr->is_open()) {
     return -1;
   }

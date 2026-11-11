@@ -14,6 +14,7 @@ import android.text.TextUtils;
 import android.util.JsonReader;
 import android.util.Log;
 import android.widget.Toast;
+import com.lynx.base.LynxBaseEnv;
 import com.lynx.tasm.base.LynxTraceEnv;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.trace.BuildConfig;
@@ -25,14 +26,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
-import java.text.SimpleDateFormat;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -62,7 +60,7 @@ public class TraceController {
   private long mNativeTraceController = 0;
   private int tracingSession = -1;
   private static boolean isTraceEnvInit = false;
-  private String traceFilePath;
+  private String traceFilePath = "";
 
   private TraceController() {
     try {
@@ -97,13 +95,14 @@ public class TraceController {
   }
 
   public String startTrace() {
-    File file = getFile();
-    String fileName = file.getPath();
-    startTracing(DEFAULT_BUFFER_SIZE, null, null, fileName, false, false, false);
-    String logMessage = "Trace started at: " + fileName;
+    startTracing(DEFAULT_BUFFER_SIZE, null, null, "", false, false, false);
+    if (traceFilePath.isEmpty()) {
+      return "";
+    }
+    String logMessage = "Trace started at: " + traceFilePath;
     Toast.makeText(mContext, logMessage, Toast.LENGTH_SHORT).show();
     Log.i(TAG, logMessage);
-    return file.getAbsolutePath();
+    return traceFilePath;
   }
 
   public void stopTrace() {
@@ -120,13 +119,12 @@ public class TraceController {
 
   public void startTracing(CompleteCallback callback, String config) {
     mCompleteCallbacks.add(callback);
-    String traceFile = generateTracingFileName();
-    startTracing(DEFAULT_BUFFER_SIZE, null, null, traceFile, false, false, false);
+    startTracing(DEFAULT_BUFFER_SIZE, null, null, "", false, false, false);
   }
 
   public void startTracing(CompleteCallback callback, Map<String, String> config) {
     mCompleteCallbacks.add(callback);
-    String traceFile = generateTracingFileName();
+    String traceFile = "";
     Boolean enableSystrace = false;
     Boolean enableCompress = false;
     Boolean enableMemoryTrace = false;
@@ -177,22 +175,9 @@ public class TraceController {
     mCompleteCallbacks.clear();
   }
 
-  private String generateTracingFileName() {
-    File file = getFile();
-    return file.getPath();
-  }
-
   @CalledByNative
-  private String generateTracingFileDir() {
-    return mContext.getExternalFilesDir(null).getPath();
-  }
-
-  private File getFile() {
-    int pid = android.os.Process.myPid();
-    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HHmmss", Locale.US);
-    formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-    File dir = mContext.getExternalFilesDir(null);
-    return new File(dir, "lynx-profile-trace-" + pid + "-" + formatter.format(new Date()));
+  private void setTraceFilePath(byte[] path) {
+    traceFilePath = new String(path, StandardCharsets.UTF_8);
   }
 
   @CalledByNative
@@ -233,10 +218,15 @@ public class TraceController {
       Log.w(TAG, "tracing not enabled");
       return;
     }
-    mTracingStarted = true;
-    traceFilePath = traceFile.isEmpty() ? getFile().getPath() : traceFile;
-    tracingSession = nativeStartTracing(mNativeTraceController, bufferSize, includeCategories,
-        excludeCategories, traceFilePath, enableSystrace, enableCompress, enableMemoryTrace);
+    traceFilePath = "";
+    tracingSession =
+        nativeStartTracing(mNativeTraceController, bufferSize, includeCategories, excludeCategories,
+            traceFile == null ? "" : traceFile, enableSystrace, enableCompress, enableMemoryTrace);
+    mTracingStarted = tracingSession != -1;
+    if (!mTracingStarted) {
+      Log.w(TAG, "failed to start tracing");
+      return;
+    }
     Map<String, String> args = new HashMap<>();
     args.put("Version", BuildConfig.VERSION);
     TraceEvent.instant(TraceEvent.CATEGORY_VITALS, "Version", args);
@@ -251,6 +241,9 @@ public class TraceController {
 
   public void init(Context context) {
     mContext = context;
+    if (LynxBaseEnv.inst().getApplicationDataDirectory().isEmpty()) {
+      LynxBaseEnv.inst().init(context, null, false);
+    }
     if (TraceEvent.enableTrace()) {
       mBroadcastReceiver = new TraceBroadcastReceiver();
       IntentFilter filter = new TraceIntentFilter(mContext);
@@ -293,12 +286,12 @@ public class TraceController {
         boolean enableMemoryTrace = intent.getBooleanExtra(ENABLE_MEMORY_TRACE, false);
 
         if (filename == null) {
-          filename = generateTracingFileName();
+          filename = "";
         }
 
         startTracing(bufferSize, categories != null ? categories.split(",") : null, null, filename,
             false, enableCompress, enableMemoryTrace);
-        String logMessage = "Trace started at: " + filename;
+        String logMessage = "Trace started at: " + traceFilePath;
         Toast.makeText(context, logMessage, Toast.LENGTH_SHORT).show();
         Log.i(TAG, logMessage);
       } else if (intent.getAction().endsWith(ACTION_STOP)) {

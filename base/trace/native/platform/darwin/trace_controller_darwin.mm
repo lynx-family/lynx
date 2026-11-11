@@ -24,11 +24,6 @@ TraceController* GetTraceControllerInstance() {
   return TraceController::Instance();
 }
 
-std::string TraceControllerDelegateDarwin::GenerateTracingFileDir() {
-  return std::string([[NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask,
-                                                           YES) lastObject] UTF8String]);
-}
-
 std::vector<std::string> TraceControllerDelegateDarwin::GetMemoryStats() {
   const int64_t pss_bytes = lynx::base::GetProcessPssBytes();
   return {"summary.total-pss", std::to_string(pss_bytes > 0 ? pss_bytes : 0)};

@@ -1,6 +1,7 @@
 # Copyright 2022 The Lynx Authors. All rights reserved.
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
+import("../../../testing/test.gni")
 import("../devtool.gni")
 
 devtool_base_shared_sources = [
@@ -14,4 +15,11 @@ devtool_base_shared_sources = [
 
 devtool_source_set("base") {
   sources = devtool_base_shared_sources
+}
+
+unittest_exec("file_stream_unittests_exec") {
+  sources = [
+    "file_stream.cc",
+    "file_stream_unittest.cc",
+  ]
 }

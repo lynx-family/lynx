@@ -60,7 +60,13 @@ jint StartTracing(JNIEnv* env, jobject jcaller, jlong ptr, jint buffer_size,
     trace_config->enable_systrace = enableSystrace == JNI_TRUE;
     trace_config->enable_compress = enableCompress == JNI_TRUE;
     trace_config->enable_memory_trace = enableMemoryTrace == JNI_TRUE;
-    return controller->StartTracing(trace_config);
+    const int session_id = controller->StartTracing(trace_config);
+    if (session_id != kInvalidTraceSessionId) {
+      auto path = lynx::base::android::JNIConvertHelper::ConvertToJNIByteArray(
+          env, trace_config->file_path);
+      Java_TraceController_setTraceFilePath(env, jcaller, path.Get());
+    }
+    return session_id;
   }
   return kInvalidTraceSessionId;
 }
@@ -88,13 +94,6 @@ TraceController* GetTraceControllerInstance() {
   // Android needs the Java owner passed to CreateTraceController to construct
   // its delegate. Normal callers reach this after LynxEnv initializes tracing.
   return TraceController::Instance();
-}
-
-std::string TraceControllerDelegateAndroid::GenerateTracingFileDir() {
-  JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  auto ref =
-      Java_TraceController_generateTracingFileDir(env, weak_owner_.Get());
-  return lynx::base::android::JNIConvertHelper::ConvertToString(env, ref.Get());
 }
 
 void TraceControllerDelegateAndroid::RefreshATraceTags() {

@@ -20,8 +20,6 @@ class TRACE_EXPORT TraceControllerDelegateDarwin
   TraceControllerDelegateDarwin() = default;
   virtual ~TraceControllerDelegateDarwin() = default;
 
-  std::string GenerateTracingFileDir() override;
-
   std::vector<std::string> GetMemoryStats() override;
 
  private:

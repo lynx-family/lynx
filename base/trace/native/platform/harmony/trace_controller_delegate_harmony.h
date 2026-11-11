@@ -21,12 +21,7 @@ class TRACE_EXPORT TraceControllerDelegateHarmony
   TraceControllerDelegateHarmony() = default;
   ~TraceControllerDelegateHarmony() = default;
 
-  std::string GenerateTracingFileDir() override;
   std::vector<std::string> GetMemoryStats() override;
-  static void SetTraceDirPath(const std::string& dir);
-
- private:
-  static std::string trace_dir_path_;
 };
 
 }  // namespace trace

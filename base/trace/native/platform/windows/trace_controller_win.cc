@@ -4,11 +4,6 @@
 
 #include "base/trace/native/platform/windows/trace_controller_win.h"
 
-#include <Shlobj.h>
-#include <Shlwapi.h>
-#include <Windows.h>
-#include <time.h>
-
 #include <memory>
 #include <utility>
 
@@ -23,14 +18,6 @@ TraceController* GetTraceControllerInstance() {
     should_init_delegate = false;
   }
   return TraceController::Instance();
-}
-
-// static
-std::string TraceControllerDelegateWin::GenerateTracingFileDir() {
-  // put trace file on the desktop
-  char path[MAX_PATH];
-  ::SHGetFolderPathA(NULL, CSIDL_DESKTOPDIRECTORY, NULL, 0, path);
-  return path;
 }
 
 }  // namespace trace
