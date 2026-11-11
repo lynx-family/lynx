@@ -36,6 +36,7 @@
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_node_info.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
+#include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
@@ -3040,17 +3041,54 @@ lepus::Value Element::QueryGeometry(const lepus::Value& request) {
   BASE_STATIC_STRING_DECL(kInputTopPx, "topPx");
   BASE_STATIC_STRING_DECL(kInputRightPx, "rightPx");
   BASE_STATIC_STRING_DECL(kInputBottomPx, "bottomPx");
+  BASE_STATIC_STRING_DECL(kInputPageRect, "pageRect");
+  BASE_STATIC_STRING_DECL(kInputScreenRect, "screenRect");
   BASE_STATIC_STRING_DECL(kInputTreePath, "treePath");
   BASE_STATIC_STRING_DECL(kInputWidthPx, "widthPx");
   BASE_STATIC_STRING_DECL(kInputHeightPx, "heightPx");
+  BASE_STATIC_STRING_DECL(kInputOptions, "options");
+  BASE_STATIC_STRING_DECL(kInputClipBounds, "clipBounds");
+  BASE_STATIC_STRING_DECL(kInputCoordinateSpace, "coordinateSpace");
   auto result = lepus::Value(lepus::Dictionary::Create());
   result.SetProperty(kInputValid, lepus::Value(false));
   auto* page = element_manager_->root();
   const float scale =
       element_manager_->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  const auto options = request.GetProperty(kInputOptions);
+  base::flex_optional<base::geometry::FloatPoint> screen_origin;
+  if (auto* fiber_page = element_manager_->GetPageElement()) {
+    screen_origin = fiber_page->ScreenOrigin();
+  }
+  if (screen_origin) {
+    if (!std::isfinite(screen_origin->X()) ||
+        !std::isfinite(screen_origin->Y())) {
+      screen_origin = {};
+    }
+    for (auto* node = this; node != nullptr && node != page;
+         node = node->parent()) {
+      // TODO(songshourui.null): Overlay has an independent native window and
+      // needs its own stored screen origin. Never substitute the Page origin.
+      if (node->IsOverlay()) {
+        screen_origin = {};
+        break;
+      }
+    }
+  }
   const auto points = request.GetProperty(kInputPoints);
   auto projected = lepus::CArray::Create();
   if (points.IsArray()) {
+    // This option identifies input points; rectangle queries always return both
+    // explicitly named coordinate spaces.
+    const auto coordinate_space = options.GetProperty(kInputCoordinateSpace);
+    const bool in_screen =
+        coordinate_space.IsString() && coordinate_space.String() == "screen";
+    if ((!coordinate_space.IsNil() && !coordinate_space.IsUndefined() &&
+         !in_screen &&
+         (!coordinate_space.IsString() ||
+          coordinate_space.String() != "page")) ||
+        (in_screen && !screen_origin)) {
+      return result;
+    }
     base::InlineVector<base::geometry::FloatPoint, 8> converted;
     for (size_t index = 0; index < points.Array()->size(); ++index) {
       const auto& point = points.Array()->get(index);
@@ -3059,8 +3097,11 @@ lepus::Value Element::QueryGeometry(const lepus::Value& request) {
       if (!x.IsNumber() || !y.IsNumber()) {
         return result;
       }
-      converted.emplace_back(static_cast<float>(x.Number()) / scale,
-                             static_cast<float>(y.Number()) / scale);
+      const float offset_x = in_screen ? screen_origin->X() : 0.f;
+      const float offset_y = in_screen ? screen_origin->Y() : 0.f;
+      converted.emplace_back(
+          (static_cast<float>(x.Number()) - offset_x) / scale,
+          (static_cast<float>(y.Number()) - offset_y) / scale);
     }
     if (!ConvertPointsBetweenElements(converted.data(), converted.size(), page,
                                       this)) {
@@ -3073,15 +3114,39 @@ lepus::Value Element::QueryGeometry(const lepus::Value& request) {
       projected->emplace_back(std::move(value));
     }
   } else {
-    auto rect = ConvertRectBetweenElements({{0, 0}, {width(), height()}}, this,
-                                           page, true);
+    // Only explicit false opts out of the existing ancestor clipping policy.
+    const auto clip_bounds = options.GetProperty(kInputClipBounds);
+    auto rect =
+        ConvertRectBetweenElements({{0, 0}, {width(), height()}}, this, page,
+                                   !clip_bounds.IsBool() || clip_bounds.Bool());
     if (!rect) {
       return result;
     }
-    result.SetProperty(kInputLeftPx, lepus::Value(rect->X() * scale));
-    result.SetProperty(kInputTopPx, lepus::Value(rect->Y() * scale));
-    result.SetProperty(kInputRightPx, lepus::Value(rect->MaxX() * scale));
-    result.SetProperty(kInputBottomPx, lepus::Value(rect->MaxY() * scale));
+    auto make_rect = [&](float offset_x, float offset_y) {
+      const float left = rect->X() * scale + offset_x;
+      const float top = rect->Y() * scale + offset_y;
+      const float right = rect->MaxX() * scale + offset_x;
+      const float bottom = rect->MaxY() * scale + offset_y;
+      if (!std::isfinite(left) || !std::isfinite(top) ||
+          !std::isfinite(right) || !std::isfinite(bottom)) {
+        return lepus::Value();
+      }
+      auto value = lepus::Value(lepus::Dictionary::Create());
+      value.SetProperty(kInputLeftPx, lepus::Value(left));
+      value.SetProperty(kInputTopPx, lepus::Value(top));
+      value.SetProperty(kInputRightPx, lepus::Value(right));
+      value.SetProperty(kInputBottomPx, lepus::Value(bottom));
+      return value;
+    };
+    auto page_rect = make_rect(0.f, 0.f);
+    if (page_rect.IsNil()) {
+      return result;
+    }
+    result.SetProperty(kInputPageRect, std::move(page_rect));
+    result.SetProperty(kInputScreenRect,
+                       screen_origin
+                           ? make_rect(screen_origin->X(), screen_origin->Y())
+                           : lepus::Value());
     auto tree_path = lepus::CArray::Create();
     std::vector<int32_t> indices;
     for (auto* node = this; node->parent(); node = node->parent()) {
