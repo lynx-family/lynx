@@ -9,13 +9,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxEmulateTouchHelper : NSObject
 
-@property(nonatomic, weak) LynxView *lynxView;
-@property(nonatomic, assign) Boolean mouseWheelFlag;
-@property(nonatomic, assign) CGPoint last;
-@property(nonatomic, copy) dispatch_block_t task;
+@property(nonatomic, weak, readonly, nullable) LynxView *lynxView;
+@property(nonatomic, assign, readonly) Boolean mouseWheelFlag;
+@property(nonatomic, assign, readonly) CGPoint last;
+@property(nonatomic, copy, readonly, nullable) dispatch_block_t task;
 @property(nonatomic, assign) int deltaScale;
-@property(nonatomic, strong) UITouch *touch;
-@property(nonatomic, strong) UIEvent *event;
+@property(nonatomic, strong, readonly, nullable) UITouch *touch;
+@property(nonatomic, strong, readonly, nullable) UIEvent *event;
 
 - (nonnull instancetype)initWithLynxView:(LynxView *)view;
 
