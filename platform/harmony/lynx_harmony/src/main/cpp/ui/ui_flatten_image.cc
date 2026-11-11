@@ -113,6 +113,7 @@ ImageDrawable::ImageMode UIFlattenImage::ConvertMode(const std::string& mode) {
 void UIFlattenImage::UpdateImageSource(const lepus::Value& value) {
   const auto& value_str = value.StdString();
   if (src_ != value_str) {
+    last_image_result_.reset();
     src_ = value_str;
     redirected_src_.clear();
     dirty_flags_ |= image::kFlagSrcChanged;
@@ -184,7 +185,7 @@ void UIFlattenImage::HandleImageSuccessCallback(float image_width,
       dict->SetValue(image::kLoadEventImageWidth, image_width_);
       CustomEvent event{Sign(), image::kLoadEventName, "detail",
                         lepus_value(dict)};
-      context_->SendEvent(event);
+      SendImageResult(event);
     }
   }
 }
@@ -201,7 +202,7 @@ void UIFlattenImage::HandleImageFailCallback(float error_code,
     dict->SetValue(image::kErrorEventMsg, error_msg);
     CustomEvent event{Sign(), image::kErrorEventName, "detail",
                       lepus_value(dict)};
-    context_->SendEvent(event);
+    SendImageResult(event);
   }
 }
 
@@ -272,6 +273,9 @@ void UIFlattenImage::LoadImageWithTransform(const std::string& url,
 }
 
 bool UIFlattenImage::LoadImageFromURL(bool is_src) {
+  if (is_src) {
+    last_image_result_.reset();
+  }
   const std::string& url = is_src ? src_ : place_holder_;
   bool is_base64 = base::BeginsWith(url, image::kBase64Scheme);
   bool is_local = base::BeginsWith(url, image::kLocalScheme) ||
@@ -315,6 +319,34 @@ bool UIFlattenImage::hasAnimationEvent() {
   return (event_flags_ &
           (image::kFlagImageCurrentLoopEvent | image::kFlagImageFinalLoopEvent |
            image::kFlagImageStartPlayEvent)) != 0;
+}
+
+void UIFlattenImage::OnNodeReload() {
+  UIBase::OnNodeReload();
+  pending_reload_ = true;
+}
+
+void UIFlattenImage::FinishLayoutOperation() {
+  UIBase::FinishLayoutOperation();
+  if (!std::exchange(pending_reload_, false) || !last_image_result_ ||
+      !context_) {
+    return;
+  }
+  for (const auto& name : events_) {
+    if (name == last_image_result_->Name()) {
+      CustomEvent event{Sign(), name, "detail",
+                        last_image_result_->ParamValue()};
+      context_->SendEvent(event);
+      break;
+    }
+  }
+}
+
+void UIFlattenImage::SendImageResult(const CustomEvent& result) {
+  last_image_result_ = result;
+  // A real callback fulfills the pending notification for this request.
+  pending_reload_ = false;
+  context_->SendEvent(result);
 }
 
 void UIFlattenImage::OnNodeReady() {
