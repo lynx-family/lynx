@@ -4955,6 +4955,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getCssAlignWithLegacyW3c();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnableNewGesture();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableRawInput();
+  public boolean com.lynx.tasm.behavior.LynxContext.getEnableIntersectionObserverInitialRatioCompatibility();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableMultiTouch();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnablePlatformGesture();
   public FluencyTraceHelper com.lynx.tasm.behavior.LynxContext.getFluencyTraceHelper();
@@ -8812,6 +8813,7 @@ public class com::lynx::tasm::PageConfig :  {
   public String com.lynx.tasm.PageConfig.getFilePath();
   public boolean com.lynx.tasm.PageConfig.getEnableFiberArc();
   public boolean com.lynx.tasm.PageConfig.getEnableRawInput();
+  public boolean com.lynx.tasm.PageConfig.getEnableIntersectionObserverInitialRatioCompatibility();
   public boolean com.lynx.tasm.PageConfig.getEnableMultiTouch();
   public double com.lynx.tasm.PageConfig.getEnableLynxScrollFluency();
   public boolean com.lynx.tasm.PageConfig.isFSPEnabled();
