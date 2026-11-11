@@ -128,6 +128,7 @@ function buildLynxView(params: ESObject) {
     .width('100%')
     .height(params.fitContentHeight ? 'auto' : '100%')
     .id((params.renderer as HarmonyUIRenderer).uiOwner.getId())
+    .accessibilityLevel('no')
 }
 
 export abstract class LynxNodeController extends NodeController {
@@ -1018,12 +1019,13 @@ export struct LynxView {
 
   build() {
     Stack() {
-      NodeContainer(this.nodeController)
+      NodeContainer(this.nodeController).accessibilityLevel('no')
     }
     .width(this.fitContentWidth ? this.rootSize.width : '100%')
     .height(this.fitContentHeight
       ? (!this.uiRendererCreator && this.experimentalFixFitContent ? 'auto' : this.rootSize.height)
       : '100%')
+    .accessibilityLevel('no')
     // Add 'key' property to locate LynxView during UI automation.
     .key('lynxview')
     .translate({ y: this.translateY })
