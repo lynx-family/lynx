@@ -12,6 +12,7 @@ import org.json.simple.JSONObject
 android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
+    ndkVersion rootProject.ext.ndkVersion
 
     defaultConfig {
         minSdkVersion 16
