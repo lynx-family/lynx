@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_ANDROID_PLATFORM_RENDERER_CONTEXT_H_
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -115,6 +116,9 @@ class PlatformRendererContext {
                    float width, float height, int32_t event_mask);
 
   void DestroyImage(int32_t id);
+
+  static base::android::ScopedLocalJavaRef<jbyteArray> ExportPath(
+      JNIEnv* env, const gfx::Path* path);
 
   void UpdateTextBundle(int32_t id, intptr_t text_bundle);
 

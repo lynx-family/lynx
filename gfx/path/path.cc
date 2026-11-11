@@ -98,6 +98,89 @@ void LameQuarter(PathBuilder& builder, float rx, float ry, float cx, float cy,
   }
   builder.LineTo(odd ? cx + sx * rx : cx, odd ? cy : cy + sy * ry);
 }
+
+// Copyright 2014 The Android Open Source Project.
+bool ArcToCubics(PathBuilder& builder, float x0, float y0, float rx, float ry,
+                 float rotation, bool large, bool positive, float x1,
+                 float y1) {
+  if (!ValidPoint(x0, y0) || !ValidPoint(x1, y1) || !ValidPoint(rx, ry) ||
+      !std::isfinite(rotation))
+    return false;
+  if (x0 == x1 && y0 == y1) return true;
+  rx = std::abs(rx);
+  ry = std::abs(ry);
+  if (rx == 0 || ry == 0) {
+    builder.LineTo(x1, y1);
+    return true;
+  }
+  const double angle = rotation * (kHalfPi / 90);
+  const double cos_angle = std::cos(angle), sin_angle = std::sin(angle);
+  double cx, cy, start, sweep;
+  for (int correction = 0;; ++correction) {
+    const double ax = (x0 * cos_angle + y0 * sin_angle) / rx;
+    const double ay = (-x0 * sin_angle + y0 * cos_angle) / ry;
+    const double bx = (x1 * cos_angle + y1 * sin_angle) / rx;
+    const double by = (-x1 * sin_angle + y1 * cos_angle) / ry;
+    const double dx = ax - bx, dy = ay - by;
+    const double distance = dx * dx + dy * dy;
+    if (distance == 0) return true;
+    const double discriminant = 1 / distance - 0.25;
+    if (discriminant < 0) {
+      if (correction == 1) return false;
+      const float adjust = static_cast<float>(std::sqrt(distance) / 1.99999);
+      rx *= adjust;
+      ry *= adjust;
+      if (!ValidPoint(rx, ry) || rx == 0 || ry == 0) return false;
+      continue;
+    }
+    const double factor = std::sqrt(discriminant);
+    const double sign = large == positive ? 1 : -1;
+    cx = (ax + bx) / 2 - sign * factor * dy;
+    cy = (ay + by) / 2 + sign * factor * dx;
+    start = std::atan2(ay - cy, ax - cx);
+    sweep = std::atan2(by - cy, bx - cx) - start;
+    if (positive != (sweep >= 0))
+      sweep += sweep > 0 ? -4 * kHalfPi : 4 * kHalfPi;
+    const double scaled_x = cx * rx, scaled_y = cy * ry;
+    cx = scaled_x * cos_angle - scaled_y * sin_angle;
+    cy = scaled_x * sin_angle + scaled_y * cos_angle;
+    break;
+  }
+  // Match AndroidX's at-most-45-degree cubic approximation for SVG arcs.
+  const int segments =
+      static_cast<int>(std::ceil(std::abs(sweep * 2 / kHalfPi)));
+  if (segments == 0) return true;
+  if (segments > 8) return false;
+  const double step = sweep / segments;
+  double previous_x = x0, previous_y = y0;
+  double dx =
+      -rx * cos_angle * std::sin(start) - ry * sin_angle * std::cos(start);
+  double dy =
+      -rx * sin_angle * std::sin(start) + ry * cos_angle * std::cos(start);
+  for (int i = 0; i < segments; ++i) {
+    const double end = start + step;
+    const double sin_end = std::sin(end), cos_end = std::cos(end);
+    const double x = cx + rx * cos_angle * cos_end - ry * sin_angle * sin_end;
+    const double y = cy + rx * sin_angle * cos_end + ry * cos_angle * sin_end;
+    const double next_dx = -rx * cos_angle * sin_end - ry * sin_angle * cos_end;
+    const double next_dy = -rx * sin_angle * sin_end + ry * cos_angle * cos_end;
+    const double tangent = std::tan((end - start) / 2);
+    const double alpha =
+        std::sin(end - start) * (std::sqrt(4 + 3 * tangent * tangent) - 1) / 3;
+    builder.CubicTo(static_cast<float>(previous_x + alpha * dx),
+                    static_cast<float>(previous_y + alpha * dy),
+                    static_cast<float>(x - alpha * next_dx),
+                    static_cast<float>(y - alpha * next_dy),
+                    i + 1 == segments ? x1 : static_cast<float>(x),
+                    i + 1 == segments ? y1 : static_cast<float>(y));
+    start = end;
+    previous_x = x;
+    previous_y = y;
+    dx = next_dx;
+    dy = next_dy;
+  }
+  return true;
+}
 }  // namespace
 
 PathSourceView PathSource::GetSourceView() const {
@@ -327,21 +410,27 @@ LBSPathConsumer PathBuilder::GetConsumer() {
     static_cast<PathBuilder*>(ctx)->CubicTo(a, b, c, d, x, y);
   };
   c.ClosePath = [](void* ctx) { static_cast<PathBuilder*>(ctx)->Close(); };
-  c.EllipticToPoint = [](void* ctx, float, float, float, float, float, bool,
-                         bool, float, float) {
-    static_cast<PathBuilder*>(ctx)->valid_ = false;
+  c.EllipticToPoint = [](void* ctx, float x0, float y0, float rx, float ry,
+                         float rotation, bool large, bool positive, float x1,
+                         float y1) {
+    auto* builder = static_cast<PathBuilder*>(ctx);
+    if (!builder->valid_) return;
+    if (!builder->header_.point_count ||
+        !ArcToCubics(*builder, x0, y0, rx, ry, rotation, large, positive, x1,
+                     y1))
+      builder->valid_ = false;
   };
   return c;
 }
-fml::RefPtr<Path> PathBuilder::Build(const PathImplFactory& factory) {
+std::optional<PathSource> PathBuilder::BuildSource() {
   if (in_subpath_) End();
-  fml::RefPtr<Path> result;
+  std::optional<PathSource> result;
   if (valid_) {
     if (header_.point_count && command_capacity_ != header_.command_count)
       std::memmove(GeometryPoints(geometry_, header_.command_count),
                    GeometryPoints(geometry_, command_capacity_),
                    header_.point_count * sizeof(PathPoint));
-    result = Path::MakeFromSource(PathSource(header_, geometry_), factory);
+    result = PathSource(header_, geometry_);
     geometry_ = nullptr;
   }
   std::free(geometry_);
@@ -353,5 +442,9 @@ fml::RefPtr<Path> PathBuilder::Build(const PathImplFactory& factory) {
   in_subpath_ = false;
   valid_ = true;
   return result;
+}
+fml::RefPtr<Path> PathBuilder::Build(const PathImplFactory& factory) {
+  auto source = BuildSource();
+  return source ? Path::MakeFromSource(std::move(*source), factory) : nullptr;
 }
 }  // namespace lynx::gfx

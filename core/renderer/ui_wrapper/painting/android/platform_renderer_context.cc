@@ -4,10 +4,15 @@
 
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_context.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "core/base/android/jni_helper.h"
@@ -20,6 +25,8 @@
 #include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
 #include "core/value_wrapper/value_impl_lepus.h"
+#include "gfx/public/path.h"
+#include "gfx/public/path_parser.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PlatformRendererContext_register_jni.h"
 
@@ -248,6 +255,135 @@ void PlatformRendererContext::DestroyPlatformRenderer(int32_t target) {
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_destroyPlatformRenderer(env, local_ref.Get(),
                                                        target);
+}
+
+base::android::ScopedLocalJavaRef<jbyteArray>
+PlatformRendererContext::ExportPath(JNIEnv* env, const gfx::Path* path) {
+  if (!path || path->GetImpl().GetBackendKind() !=
+                   gfx::PathImpl::BackendKind::kAndroid) {
+    return {};
+  }
+  const auto source = path->GetSourceView();
+  std::optional<gfx::PathSource> parsed;
+  float scale = 1.f;
+  if (const auto* svg = std::get_if<gfx::SvgPathView>(&source)) {
+    scale = svg->source_to_layout_scale;
+    if (!std::isfinite(scale) || scale <= 0.f) return {};
+    gfx::PathBuilder builder;
+    auto consumer = builder.GetConsumer();
+    LBSParsePathWithConsumer(svg->data.c_str(), &consumer);
+    if (consumer.error) return {};
+    parsed = builder.BuildSource();
+    if (!parsed) return {};
+  }
+  const auto geometry_source = parsed ? parsed->GetSourceView() : source;
+  const auto& view = std::get<gfx::PathView>(geometry_source);
+  const auto& header = view.header;
+
+  auto alloc_bytes =
+      [env](size_t byte_size) -> base::android::ScopedLocalJavaRef<jbyteArray> {
+    if (byte_size > static_cast<size_t>(std::numeric_limits<jsize>::max())) {
+      return {};
+    }
+    // NOLINTNEXTLINE(lynx_custom/new_java_ref)
+    jbyteArray raw = env->NewByteArray(static_cast<jsize>(byte_size));
+    base::android::ScopedLocalJavaRef<jbyteArray> out(env, raw);
+    if (out.IsNull() || env->ExceptionCheck()) return {};
+    return out;
+  };
+
+  if (header.kind == gfx::PathKind::kRect) {
+    struct {
+      int32_t kind;
+      float values[4];
+    } payload = {static_cast<int32_t>(header.kind),
+                 {header.x, header.y, header.width, header.height}};
+    static_assert(sizeof(payload) == 20);
+    auto out = alloc_bytes(sizeof(payload));
+    if (out.IsNull()) return {};
+    env->SetByteArrayRegion(out.Get(), 0, sizeof(payload),
+                            reinterpret_cast<const jbyte*>(&payload));
+    return env->ExceptionCheck()
+               ? base::android::ScopedLocalJavaRef<jbyteArray>()
+               : out;
+  }
+  if (header.kind == gfx::PathKind::kRoundedRect) {
+    struct {
+      int32_t kind;
+      float values[12];
+    } payload = {static_cast<int32_t>(header.kind),
+                 {header.x, header.y, header.width, header.height}};
+    std::memcpy(payload.values + 4, header.radii, sizeof(header.radii));
+    static_assert(sizeof(payload) == 52);
+    auto out = alloc_bytes(sizeof(payload));
+    if (out.IsNull()) return {};
+    env->SetByteArrayRegion(out.Get(), 0, sizeof(payload),
+                            reinterpret_cast<const jbyte*>(&payload));
+    return env->ExceptionCheck()
+               ? base::android::ScopedLocalJavaRef<jbyteArray>()
+               : out;
+  }
+  if (header.kind != gfx::PathKind::kCommands ||
+      header.point_count > gfx::Path::kMaxPoints ||
+      header.command_count > 2 * gfx::Path::kMaxPoints) {
+    return {};
+  }
+  static_assert(sizeof(gfx::PathPoint) == 8);
+  static_assert(sizeof(gfx::PathVerb) == 4);
+  const size_t points_bytes = static_cast<size_t>(header.point_count) * 8;
+  const size_t commands_bytes = static_cast<size_t>(header.command_count) * 4;
+  const size_t total_bytes = 12 + points_bytes + commands_bytes;
+  if (scale != 1.f) {
+    for (uint32_t i = 0; i < header.point_count; ++i) {
+      if (!std::isfinite(view.points[i].x * scale) ||
+          !std::isfinite(view.points[i].y * scale)) {
+        return {};
+      }
+    }
+  }
+  auto out = alloc_bytes(total_bytes);
+  if (out.IsNull()) return {};
+  const int32_t meta[3] = {static_cast<int32_t>(header.kind),
+                           static_cast<int32_t>(header.point_count),
+                           static_cast<int32_t>(header.command_count)};
+  env->SetByteArrayRegion(out.Get(), 0, sizeof(meta),
+                          reinterpret_cast<const jbyte*>(meta));
+  if (env->ExceptionCheck()) return {};
+  jsize offset = static_cast<jsize>(sizeof(meta));
+  if (header.point_count > 0) {
+    if (scale == 1.f) {
+      env->SetByteArrayRegion(out.Get(), offset,
+                              static_cast<jsize>(points_bytes),
+                              reinterpret_cast<const jbyte*>(view.points));
+      if (env->ExceptionCheck()) return {};
+    } else {
+      constexpr uint32_t kChunkPoints = 128;
+      float chunk[kChunkPoints * 2];
+      uint32_t done = 0;
+      while (done < header.point_count) {
+        const uint32_t batch =
+            std::min(kChunkPoints, header.point_count - done);
+        for (uint32_t i = 0; i < batch; ++i) {
+          chunk[i * 2] = view.points[done + i].x * scale;
+          chunk[i * 2 + 1] = view.points[done + i].y * scale;
+        }
+        const jsize chunk_bytes = static_cast<jsize>(batch * 8);
+        env->SetByteArrayRegion(
+            out.Get(), offset + static_cast<jsize>(done * 8), chunk_bytes,
+            reinterpret_cast<const jbyte*>(chunk));
+        if (env->ExceptionCheck()) return {};
+        done += batch;
+      }
+    }
+    offset += static_cast<jsize>(points_bytes);
+  }
+  if (header.command_count > 0) {
+    env->SetByteArrayRegion(out.Get(), offset,
+                            static_cast<jsize>(commands_bytes),
+                            reinterpret_cast<const jbyte*>(view.commands));
+    if (env->ExceptionCheck()) return {};
+  }
+  return out;
 }
 
 fml::RefPtr<PaintImage> PlatformRendererContext::CreateImage(
@@ -862,25 +998,35 @@ void Destroy(JNIEnv* env, jobject jcaller, jlong nativePtr) {
   reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr)->Destroy();
 }
 
+namespace {
+lynx::fml::RefPtr<lynx::tasm::PlatformRendererAndroid> RendererFromNative(
+    jlong ptr, jint id) {
+  if (!ptr) return nullptr;
+  auto* context = reinterpret_cast<lynx::tasm::PlatformRendererContext*>(ptr);
+  return context->IsDestroyed()
+             ? nullptr
+             : lynx::fml::Ref(context->GetPlatformRenderer(id));
+}
+
+const lynx::gfx::Path* PathFromRenderer(
+    const lynx::tasm::PlatformRendererAndroid& renderer, jint index) {
+  if (index == -1) return renderer.GetClipPath();
+  const auto& list = renderer.GetDisplayList();
+  return index >= 0 && static_cast<size_t>(index) < list.GetPathCount()
+             ? list.GetPath(static_cast<size_t>(index))
+             : nullptr;
+}
+}  // namespace
+
 jobject GetDisplayListItemsBuffer(JNIEnv* env, jobject /*jcaller*/,
                                   jlong nativePtr, jint id,
                                   jint expectedItemSize) {
-  if (nativePtr == 0) {
-    return nullptr;
-  }
   if (expectedItemSize !=
       static_cast<jint>(sizeof(lynx::tasm::DisplayListItem))) {
     return nullptr;
   }
-
-  lynx::tasm::PlatformRendererContext* context =
-      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr);
-
-  lynx::tasm::PlatformRendererAndroid* renderer =
-      context->GetPlatformRenderer(id);
-  if (renderer == nullptr) {
-    return nullptr;
-  }
+  auto renderer = RendererFromNative(nativePtr, id);
+  if (!renderer) return nullptr;
 
   const lynx::tasm::DisplayList& display_list = renderer->GetDisplayList();
   const uint8_t* items_data = display_list.GetContentItemsData();
@@ -888,25 +1034,14 @@ jobject GetDisplayListItemsBuffer(JNIEnv* env, jobject /*jcaller*/,
   if (items_data == nullptr || items_bytes == 0) {
     return nullptr;
   }
-
   return env->NewDirectByteBuffer(const_cast<uint8_t*>(items_data),
                                   static_cast<jlong>(items_bytes));
 }
 
 jobject GetDisplayListDataBuffer(JNIEnv* env, jobject /*jcaller*/,
                                  jlong nativePtr, jint id) {
-  if (nativePtr == 0) {
-    return nullptr;
-  }
-
-  lynx::tasm::PlatformRendererContext* context =
-      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(nativePtr);
-
-  lynx::tasm::PlatformRendererAndroid* renderer =
-      context->GetPlatformRenderer(id);
-  if (renderer == nullptr) {
-    return nullptr;
-  }
+  auto renderer = RendererFromNative(nativePtr, id);
+  if (!renderer) return nullptr;
 
   const lynx::tasm::DisplayList& display_list = renderer->GetDisplayList();
   const uint8_t* data = display_list.GetContentData();
@@ -914,9 +1049,22 @@ jobject GetDisplayListDataBuffer(JNIEnv* env, jobject /*jcaller*/,
   if (data == nullptr || data_bytes == 0) {
     return nullptr;
   }
-
   return env->NewDirectByteBuffer(const_cast<uint8_t*>(data),
                                   static_cast<jlong>(data_bytes));
+}
+
+jlong GetPathKey(JNIEnv*, jobject, jlong ptr, jint id, jint index) {
+  auto renderer = RendererFromNative(ptr, id);
+  const auto* path = renderer ? PathFromRenderer(*renderer, index) : nullptr;
+  return path ? static_cast<jlong>(path->GetImpl().GetKey()) : 0;
+}
+
+jbyteArray GetPath(JNIEnv* env, jobject, jlong ptr, jint id, jint index) {
+  auto renderer = RendererFromNative(ptr, id);
+  if (!renderer) return nullptr;
+  const auto path = lynx::fml::Ref(PathFromRenderer(*renderer, index));
+  return lynx::tasm::PlatformRendererContext::ExportPath(env, path.get())
+      .Release();
 }
 
 void Java_com_lynx_tasm_behavior_render_PlatformRendererContext_nativeDestroy(

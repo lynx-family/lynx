@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.render;
 
 import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Path;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -30,6 +31,7 @@ public class Renderer {
   private static final int SUBTREE_OP_TRANSFORM = 0;
   private static final int SUBTREE_OP_OPACITY = 1;
   private static final int SUBTREE_OP_FILTER = 2;
+  private static final int SUBTREE_OP_CLIP_PATH = 3;
 
   private final Rect mLynxFrame = new Rect();
   private final Point mRenderOffset = new Point();
@@ -50,6 +52,11 @@ public class Renderer {
   private boolean mNeedsOutsetOpacityLayer;
   private RectF mOpacityLayerBounds;
   private int mOpacityLayerSaveCount;
+  private boolean mHasOwnerClipPath;
+  private Path mOwnerClipPath;
+  private float mOwnerClipX;
+  private float mOwnerClipY;
+  private int mOwnerClipSaveCount;
 
   public void setLynxFrame(boolean needClip, int l, int t, int r, int b, int dx, int dy) {
     mLynxFrame.set(l + dx, t + dy, r + dx, b + dy);
@@ -192,10 +199,18 @@ public class Renderer {
 
   public void onDraw(Canvas canvas) {
     mOpacityLayerSaveCount = 0;
+    mOwnerClipSaveCount = 0;
     mHasDrawCallbacks = true;
     prepareDisplayList();
     mDisplayListApplier.reset();
     updateOpacityLayer();
+    if (mHasOwnerClipPath) {
+      int scrollX = mRenderHost != null ? mRenderHost.getRendererHostScrollX() : 0;
+      int scrollY = mRenderHost != null ? mRenderHost.getRendererHostScrollY() : 0;
+      mOwnerClipSaveCount = canvas.save();
+      DisplayListApplier.clipPath(
+          canvas, mOwnerClipPath, mOwnerClipX + scrollX, mOwnerClipY + scrollY);
+    }
     if (mNeedsOutsetOpacityLayer) {
       mOpacityLayerSaveCount =
           canvas.saveLayerAlpha(mOpacityLayerBounds, (int) (mOpacity * 255), Canvas.ALL_SAVE_FLAG);
@@ -251,6 +266,7 @@ public class Renderer {
     if (mDisplayListApplier == null) {
       mDisplayListApplier = new DisplayListApplier(
           mDisplayListItemsBuffer, mDisplayListDataBuffer, mPlatformRendererContext, mRenderHost);
+      mDisplayListApplier.setOwnerSign(mSign);
     } else if (mRepaintType == REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW) {
       mDisplayListApplier.setBuffer(mDisplayListItemsBuffer, mDisplayListDataBuffer);
     }
@@ -297,13 +313,17 @@ public class Renderer {
       if (viewportSaveCount != 0) {
         canvas.restoreToCount(viewportSaveCount);
       }
-      return;
+    } else {
+      mDisplayListApplier.drawTillNextView(canvas, viewportSaveCount, stopInDrawView);
+      mDisplayListApplier.reset();
     }
-    mDisplayListApplier.drawTillNextView(canvas, viewportSaveCount, stopInDrawView);
-    mDisplayListApplier.reset();
     if (mOpacityLayerSaveCount != 0) {
       canvas.restoreToCount(mOpacityLayerSaveCount);
       mOpacityLayerSaveCount = 0;
+    }
+    if (mOwnerClipSaveCount != 0) {
+      canvas.restoreToCount(mOwnerClipSaveCount);
+      mOwnerClipSaveCount = 0;
     }
   }
 
@@ -346,6 +366,8 @@ public class Renderer {
     mDisplayListApplier = null;
     mDisplayListItemsBuffer = null;
     mDisplayListDataBuffer = null;
+    mOwnerClipPath = null;
+    mHasOwnerClipPath = false;
   }
 
   public void applySubtreeProperties(java.nio.ByteBuffer buffer, int count) {
@@ -353,6 +375,12 @@ public class Renderer {
     if (buffer == null || count <= 0 || rendererHost == null) {
       return;
     }
+
+    boolean hasClipPathUpdate = false;
+    boolean nextHasOwnerClipPath = false;
+    int nextOwnerClipFillRule = 0;
+    float nextOwnerClipX = 0f;
+    float nextOwnerClipY = 0f;
 
     // iterate all SubtreeProperty
     for (int i = 0; i < count; i++) {
@@ -377,7 +405,25 @@ public class Renderer {
         int filterType = buffer.getInt();
         float amount = buffer.getFloat();
         rendererHost.applyRendererHostFilter(filterType, amount);
+      } else if (type == SUBTREE_OP_CLIP_PATH) {
+        hasClipPathUpdate = true;
+        nextHasOwnerClipPath = buffer.getInt() != -1;
+        nextOwnerClipFillRule = buffer.getInt();
+        nextOwnerClipX = buffer.getFloat();
+        nextOwnerClipY = buffer.getFloat();
       }
+    }
+
+    if (hasClipPathUpdate) {
+      mHasOwnerClipPath = nextHasOwnerClipPath;
+      mOwnerClipX = nextOwnerClipX;
+      mOwnerClipY = nextOwnerClipY;
+      // Native has retained the final owner clip before this callback. Resolve
+      // only the last clip-path op in the batch to avoid redundant JNI queries.
+      mOwnerClipPath = mHasOwnerClipPath
+          ? mPlatformRendererContext.getOwnerClipPath(mSign, nextOwnerClipFillRule)
+          : null;
+      rendererHost.invalidateForRenderer();
     }
   }
 

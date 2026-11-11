@@ -12,7 +12,7 @@ namespace lynx::gfx {
 // construction.
 class GFX_EXPORT PathImpl {
  public:
-  enum class BackendKind { kSourceOnly, kHarmony };
+  enum class BackendKind { kSourceOnly, kHarmony, kAndroid };
   explicit PathImpl(PathSource source);
   virtual ~PathImpl() = 0;
   virtual BackendKind GetBackendKind() const {
