@@ -69,14 +69,14 @@ struct InstanceState {
   runtime::ContextType mts_context_type{runtime::VMContextType};
   runtime::js::JSRuntimeType bts_runtime_type{runtime::js::JSRuntimeType::jsc};
   int32_t slot{fml::JSMemoryTrackSlotType::Unknown};
+  // Reporter-owned VM binding count saved once on logical exit. Subtract
+  // from the same VM's current total when this page is sampled for residuals.
+  uint32_t bts_vm_page_count_at_exit{0};
   // Lookup identity only. Never dereferenced on the reporter thread.
   runtime::js::VMInstance* bts_vm{nullptr};
   // Monotonic times: page age uses creation, not the first-load sample anchor.
   int64_t created_at_ms{0};
   int64_t exited_at_ms{0};
-  // Reporter-owned VM binding count saved once on logical exit. Subtract
-  // from the same VM's current total when this page is sampled for residuals.
-  uint64_t bts_vm_page_count_at_exit{0};
   ResidencyObservation* residency_observation{nullptr};
   // Total is duplicated explicitly for the public sampling contract. `usage`
   // retains the BTS component used in that same total, allowing exact dedup.
@@ -89,11 +89,11 @@ struct InstanceState {
 };
 
 struct ModuleCacheCounts {
-  uint64_t inserted{0};
+  uint32_t inserted{0};
   // Entries looked up again at least once.
-  uint64_t reused{0};
+  uint32_t reused{0};
   // Entries looked up by another app at least once.
-  uint64_t cross_app{0};
+  uint32_t cross_app{0};
 };
 
 struct ModuleCacheCreator {
@@ -113,23 +113,9 @@ struct BtsVmState {
     return !monitoring_group_label.empty() ? monitoring_group_label : name_;
   }
 
-  // Stable analytics dimension (group or "runtime_manager/v8"), not a unique
-  // object ID. Same-name VMs remain separate records, identified by vm_ptr/vm.
+  // Host-provided analytics label; callers may supply unstable names.
+  // Same-name VMs remain separate records, identified by vm_ptr/vm.
   std::string monitoring_group_label;
-  runtime::js::JSRuntimeType type{runtime::js::JSRuntimeType::jsc};
-  bool runtime_manager_scope{false};
-  // Valid zero heap differs from unknown JSC/uninitialized/missing data.
-  bool heap_valid{false};
-  // Heap-only engines are checked on the reporter thread. QuickJS owns its
-  // one-shot flag in QuickjsRuntimeInstance instead.
-  bool large_vm_reported{false};
-  // Tracking may be enabled before its first callback has delivered slots.
-  bool has_per_instance_data{false};
-  bool slot_tracking_enabled{false};
-  // First failed allocation; capacity reached alone does not imply overflow.
-  bool overflowed{false};
-  // An erased untracked exit must not turn an incomplete residual into zero.
-  bool has_untracked_exited_pages{false};
   fml::RefPtr<fml::TaskRunner> js_thread_runner;
   std::weak_ptr<runtime::js::VMInstance> vm;
   runtime::js::VMInstance* vm_ptr{nullptr};
@@ -153,13 +139,33 @@ struct BtsVmState {
   int64_t measured_at_ms{0};
   // Time with zero active pages, not "no JS task has executed". Reset on bind.
   int64_t idle_since_ms{0};
+  // One uniform historical binding's copied key. It survives page cleanup,
+  // including pages without slots.
+  std::string sampled_page_key;
+  runtime::js::JSRuntimeType type{runtime::js::JSRuntimeType::jsc};
   // Counts accepted page-to-VM bindings, including untracked pages. Repeated
   // property updates/reload do not increment it; leaving and rebinding can.
   // It counts neither successful loads nor lifetime distinct instances.
-  uint64_t total_page_count{0};
+  uint32_t total_page_count{0};
+  // The live ID only refreshes the sampled key; detach it on exit/rebind so
+  // later ID reuse cannot change the sample.
+  int32_t sampled_page_id{-1};
   uint32_t active_page_count{0};
   uint32_t allocated_slots{0};
-  uint64_t untracked_page_count{0};
+  uint32_t untracked_page_count{0};
+  bool runtime_manager_scope{false};
+  // Valid zero heap differs from unknown JSC/uninitialized/missing data.
+  bool heap_valid{false};
+  // Heap-only engines are checked on the reporter thread. QuickJS owns its
+  // one-shot flag in QuickjsRuntimeInstance instead.
+  bool large_vm_reported{false};
+  // Tracking may be enabled before its first callback has delivered slots.
+  bool has_per_instance_data{false};
+  bool slot_tracking_enabled{false};
+  // First failed allocation; capacity reached alone does not imply overflow.
+  bool overflowed{false};
+  // An erased untracked exit must not turn an incomplete residual into zero.
+  bool has_untracked_exited_pages{false};
   // Emission is deferred until RuntimeManager commits the failed page binding.
   bool pending_overflow{false};
   // First 128 observed creators, retained until this VM is removed.
@@ -185,7 +191,7 @@ struct BtsMemorySample {
 struct BtsResidualPage {
   int32_t instance_id;
   int32_t slot;
-  uint64_t post_exit_page_count;
+  uint32_t post_exit_page_count;
 };
 #endif
 
@@ -251,7 +257,7 @@ class GlobalMemoryMonitor {
   void OnMTSRuntimePoolUpdate(int32_t pool_instance_id,
                               const std::string& template_url,
                               runtime::ContextType context_type,
-                              int64_t created_at_ms, uint64_t runtime_count,
+                              int64_t created_at_ms, size_t runtime_count,
                               int64_t heap_bytes);
   void OnMTSRuntimePoolDestroy(int32_t pool_instance_id);
   // Reporter-thread-only query. Invalid, missing, and destroyed instances
@@ -320,7 +326,8 @@ class GlobalMemoryMonitor {
   PageMemoryUsage RefreshInstanceMemoryUsage(InstanceState& page);
   std::optional<report::MoveOnlyEvent> TakeResidualPersistenceEvent(
       BtsVmState* only_vm = nullptr);
-  void BindInstance(InstanceState& state, runtime::js::VMInstance* previous);
+  void BindInstance(int32_t id, InstanceState& state,
+                    runtime::js::VMInstance* previous);
   // Called only by MemoryMonitor::OnFirstLoadComplete on the reporter thread.
   const InstanceState* ResolveInstancePageKey(int32_t id);
   void ResolveMTSRuntimePoolPageKeys();
