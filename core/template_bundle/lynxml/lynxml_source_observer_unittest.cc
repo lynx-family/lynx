@@ -4,11 +4,23 @@
 
 #include "core/template_bundle/lynxml/lynxml_source_observer.h"
 
+#include "core/template_bundle/lynx_template_bundle.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace lynxml {
 namespace {
+
+TEST(LynxMLSourceObserverTest, BuildsBundleWithReactNoDiffDSL) {
+  tasm::LynxTemplateBundle bundle;
+  const auto error = bundle.FromLynxML(
+      "<!doctype lynx><lynx><script thread=main>void 0;</script></lynx>",
+      "test.lynxml");
+  ASSERT_TRUE(error.empty()) << error;
+  const auto& config = bundle.GetPageConfig();
+  ASSERT_NE(config, nullptr);
+  EXPECT_EQ(config->GetDSL(), tasm::PackageInstanceDSL::REACT_NODIFF);
+}
 
 TEST(LynxMLSourceObserverTest, CollectsSupportedSourceBlocks) {
   auto result = ParseLynxMLSources(
