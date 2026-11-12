@@ -175,7 +175,12 @@ SurfaceFrame::FramebufferInfo
 ClayHeadlessRendererSharedImageGL::GLContextFramebufferInfo() const {
   auto info = SurfaceFrame::FramebufferInfo{};
   info.supports_readback = true;
+#if defined(OS_ANDROID)
+  info.supports_partial_repaint =
+      !disable_partial_repaint_ && partial_repaint_.IsSupported();
+#else
   info.supports_partial_repaint = true;
+#endif
   return info;
 }
 
