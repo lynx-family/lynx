@@ -50,6 +50,9 @@ Current spec files:
   - Covers the three offset models, the platform<->ListElement linkage, the
     conditional base-offset rule in `UpdateContentOffsetForListContainer`, and
     overflow-rect / max-scroll-range semantics
+- `spec/scroll_listener_spec.md`
+  - Normative contract for scroll listener ownership and registration
+  - Covers weak references, tree changes, callback mutation, and destruction
 
 Relationship between the specs:
 
