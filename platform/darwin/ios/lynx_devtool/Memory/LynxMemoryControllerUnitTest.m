@@ -198,10 +198,10 @@
   [queryMock stopMocking];
 }
 
-- (void)testQueryAllMemoryUsagePropagatesMonitoringDisabledError {
+- (void)testQueryAllMemoryUsagePropagatesQueryError {
   LynxGlobalMemoryUsageResult* queryResult = [[LynxGlobalMemoryUsageResult alloc] init];
   queryResult.collectionStatus = LynxMemoryCollectionStatusError;
-  queryResult.errorMessage = @"Memory monitoring disabled";
+  queryResult.errorMessage = @"Memory query failed";
 
   id queryMock = OCMClassMock([LynxMemoryUsageQuery class]);
   OCMStub(ClassMethod([queryMock sharedInstance])).andReturn(queryMock);

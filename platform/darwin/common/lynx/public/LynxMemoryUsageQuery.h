@@ -29,17 +29,18 @@ typedef void (^LynxGlobalMemoryUsageCallback)(LynxGlobalMemoryUsageResult *resul
  * update UIKit must dispatch back to the main thread.
  *
  * The current implementation accepts nil as a no-op. When a callback is
- * provided, it receives a native snapshot or an error result if memory
- * monitoring is disabled. With monitoring enabled and no live instances,
- * the callback receives zero Lynx-attributed bytes and any living BTS VMs.
+ * provided, it receives a native snapshot. Without memory monitoring, the
+ * result has memoryMonitoringEnabled set to NO and contains element, main
+ * runtime and whole BTS VM heap data, without page BTS attribution or UI data.
+ * With no live instances, the callback receives zero Lynx-attributed bytes.
  */
 - (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback;
 
 /**
  * Queries memory usage while retaining the timeout value as result metadata.
  *
- * The native global query has no per-instance fan-out and does not wait for
- * this timeout. Values less than or equal to 0 use 2000ms.
+ * The native global query does not enforce this timeout. Values less than
+ * or equal to 0 use 2000ms.
  */
 - (void)queryLynxGlobalMemoryUsageAsync:(nullable LynxGlobalMemoryUsageCallback)callback
                               timeoutMs:(int64_t)timeoutMs;

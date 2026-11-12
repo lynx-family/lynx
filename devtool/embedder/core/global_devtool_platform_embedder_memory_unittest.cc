@@ -32,6 +32,7 @@ TEST(EmbedderMemoryUsageTest, PreservesSharedVmTotalsAndPageAttribution) {
     usage.instances.push_back(std::move(instance));
   }
   auto result = BuildEmbedderMemoryUsageResult(usage, 100, 10, 2000, 6000);
+  EXPECT_TRUE(result["memoryMonitoringEnabled"].asBool());
   // The monitor already counted the shared VM once. Do not sum page totals
   // or add each page's whole VM heap again at the protocol boundary.
   EXPECT_EQ(result["totalBytes"].asInt64(), 3000);
@@ -98,15 +99,19 @@ TEST(EmbedderMemoryUsageTest,
   }
 }
 
-TEST(EmbedderMemoryUsageTest, MonitoringDisabledIsAnError) {
+TEST(EmbedderMemoryUsageTest, MonitoringDisabledPreservesOnDemandSnapshot) {
   tasm::performance::GlobalMemoryUsage usage;
   usage.status = tasm::performance::MemoryUsageQueryStatus::kMonitoringDisabled;
+  usage.total.bts_bytes = usage.total.total_bytes = 100;
+  usage.instances.emplace_back().bts_heap_bytes = 100;
   const auto result = BuildEmbedderMemoryUsageResult(usage, 100, 10, 2000, 0);
-  EXPECT_EQ(result["collectionStatus"].asString(), "error");
-  EXPECT_EQ(result["errorMessage"].asString(),
-            tasm::performance::kMemoryMonitoringDisabledError);
+  EXPECT_EQ(result["collectionStatus"].asString(), "completed");
+  EXPECT_TRUE(result["errorMessage"].asString().empty());
+  EXPECT_FALSE(result["memoryMonitoringEnabled"].asBool());
+  EXPECT_EQ(result["backgroundThreadRuntimeBytes"].asInt64(), 100);
+  ASSERT_EQ(result["instances"].size(), 1u);
+  EXPECT_EQ(result["instances"][0]["btsRuntimeTotalBytes"].asInt64(), 100);
   EXPECT_DOUBLE_EQ(result["ratioToApp"].asDouble(), 0.0);
-  EXPECT_TRUE(result["instances"].empty());
   EXPECT_TRUE(result["destroyedInstances"].empty());
 }
 

@@ -13,8 +13,11 @@
 #include <utility>
 
 #include "base/include/algorithm.h"
+#include "base/include/compiler_specific.h"
+#include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/message_loop.h"
 #include "base/include/fml/synchronization/waitable_event.h"
+#include "base/include/lynx_actor.h"
 #include "base/include/memory/memory_pressure_level.h"
 #include "base/include/memory/process_memory_info.h"
 #include "base/include/no_destructor.h"
@@ -25,6 +28,9 @@
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/performance/memory_page_key.h"
+#include "core/shell/lynx_engine.h"
+#include "core/shell/runtime/bts/bts_runtime.h"
+#include "core/shell/runtime/mts/mts_runtime.h"
 
 // cspell:ignore ebca
 
@@ -75,6 +81,40 @@ bool SameOwner(const std::weak_ptr<runtime::js::VMInstance>& a,
                const std::weak_ptr<runtime::js::VMInstance>& b) {
   return !a.owner_before(b) && !b.owner_before(a);
 }
+
+struct OnDemandMemoryQuery : fml::RefCountedThreadSafe<OnDemandMemoryQuery> {
+  GlobalMemoryUsage usage;
+  std::unique_ptr<std::weak_ptr<runtime::js::VMInstance>[]> vms;
+  GlobalMemoryMonitor::GlobalMemoryUsageCallback callback;
+
+  NO_INLINE ~OnDemandMemoryQuery() {
+    // The last task capture releases this state even if its actor is disabled
+    // or its implementation has gone away. Each task writes distinct fields
+    // in a fixed-size snapshot; the final ref release joins those writes.
+    // Weak ownership identifies even a VM that exits during the query without
+    // retaining it or confusing a newly allocated VM at the same address.
+    for (size_t i = 0; i < usage.instances.size(); ++i) {
+      auto& instance = usage.instances[i];
+      auto& page = instance.page;
+      page.total_bytes = page.element_bytes + page.mts_bytes;
+      usage.total.element_bytes += page.element_bytes;
+      usage.total.element_count += page.element_count;
+      usage.total.mts_bytes += page.mts_bytes;
+      size_t previous = 0;
+      for (; previous < i; ++previous) {
+        if (SameOwner(vms[previous], vms[i])) break;
+      }
+      if (previous == i) usage.total.bts_bytes += instance.bts_heap_bytes;
+    }
+    usage.total.total_bytes = usage.total.element_bytes +
+                              usage.total.mts_bytes + usage.total.bts_bytes;
+    fml::TaskRunner::RunNowOrPostTask(
+        ReportRunner(),
+        [result = std::move(usage), done = std::move(callback)]() mutable {
+          done(std::move(result));
+        });
+  }
+};
 
 void AccumulateResidualSlots(BtsVmState& state, int64_t until_ms) {
   if (until_ms <= state.full_gc_at_ms) return;
@@ -185,17 +225,20 @@ void GlobalMemoryMonitor::Start() {
 
 void GlobalMemoryMonitor::OnInstanceCreated(int32_t id, int64_t at_ms,
                                             WithInstanceCallback&& callback) {
-  if (!MemoryMonitor::Enable() || id < 0) return;
+  if (id < 0) return;
   fml::TaskRunner::RunNowOrPostTask(
       ReportRunner(),
       [this, id, at_ms, callback = std::move(callback)]() mutable {
-        Start();
+        const bool enabled = MemoryMonitor::Enable();
+        if (enabled) Start();
         auto [it, inserted] = instance_state_.try_emplace(id);
         if (inserted) {
+          it->second.created_at_ms = at_ms;
+        }
+        if (inserted && enabled) {
           // Begin at creation, including pages that never complete loading.
           // Only the first registration enrolls this instance; reload and
           // repeated updates cannot extend its observation window.
-          it->second.created_at_ms = at_ms;
           auto observation = std::make_unique<ResidencyObservation>();
           observation->instance_id = id;
           observation->created_at_ms = at_ms;
@@ -218,7 +261,6 @@ BtsVmState* GlobalMemoryMonitor::FindVM(runtime::js::VMInstance* vm) {
 }
 
 void GlobalMemoryMonitor::WithInstance(int32_t id, WithInstanceCallback&& cb) {
-  if (!MemoryMonitor::Enable()) return;
   fml::TaskRunner::RunNowOrPostTask(
       ReportRunner(), [this, id, callback = std::move(cb)] {
         auto it = instance_state_.find(id);
@@ -226,6 +268,7 @@ void GlobalMemoryMonitor::WithInstance(int32_t id, WithInstanceCallback&& cb) {
         auto& state = it->second;
         const auto previous = state.bts_vm;
         callback(state);
+        if (!MemoryMonitor::Enable()) return;
         if (state.bts_vm != previous) BindInstance(id, state, previous);
         if (auto* vm = FindVM(state.bts_vm)) {
           if (vm->sampled_page_id == id) vm->sampled_page_key = state.page_key;
@@ -296,11 +339,16 @@ void GlobalMemoryMonitor::OnBtsVMCreate(
 }
 
 void GlobalMemoryMonitor::OnInstanceDestroyed(int32_t id, int64_t at_ms) {
-  if (!MemoryMonitor::Enable()) return;
   fml::TaskRunner::RunNowOrPostTask(ReportRunner(), [this, id, at_ms] {
     auto it = instance_state_.find(id);
     if (it == instance_state_.end() || it->second.destroyed) return;
+    if (!MemoryMonitor::Enable()) {
+      instance_state_.erase(it);
+      return;
+    }
     auto& state = it->second;
+    state.engine_actor.reset();
+    state.runtime_actor.reset();
     auto* vm = FindVM(state.bts_vm);
     if (vm && vm->sampled_page_id == id) {
       vm->sampled_page_key = state.page_key;
@@ -327,7 +375,7 @@ void GlobalMemoryMonitor::OnInstanceDestroyed(int32_t id, int64_t at_ms) {
       state.residency_observation->page_key = state.page_key;
       state.residency_observation = nullptr;
     }
-    if (vm && state.bts_expected && !fml::IsValidInstanceSlot(state.slot)) {
+    if (vm && !state.bts_disabled && !fml::IsValidInstanceSlot(state.slot)) {
       vm->has_untracked_exited_pages = true;
     }
     if (vm && fml::IsValidInstanceSlot(state.slot)) {
@@ -841,9 +889,67 @@ void GlobalMemoryMonitor::GetGlobalMemoryUsage(
   fml::TaskRunner::RunNowOrPostTask(
       ReportRunner(), [this, callback = std::move(callback)]() mutable {
         if (!MemoryMonitor::Enable()) {
-          GlobalMemoryUsage result;
-          result.status = MemoryUsageQueryStatus::kMonitoringDisabled;
-          callback(std::move(result));
+          auto query = fml::MakeRefCounted<OnDemandMemoryQuery>();
+          query->callback = std::move(callback);
+          query->usage.status = MemoryUsageQueryStatus::kMonitoringDisabled;
+          auto& instances = query->usage.instances;
+          instances.reserve(instance_state_.size());
+          for (const auto& [id, state] : instance_state_) {
+            if (state.destroyed) continue;
+            InstanceMemoryUsage instance;
+            instance.instance_id = id;
+            instance.url = state.url();
+            const auto page_id =
+                report::EventTracker::GetGenericInfoOrExtraParam(id, "page_id");
+            instance.page_id = !page_id.empty() && page_id != "unknown"
+                                   ? page_id
+                                   : state.page_key;
+            instance.bts_runtime_type = "unknown";
+            instances.push_back(std::move(instance));
+          }
+          query->vms =
+              std::make_unique<std::weak_ptr<runtime::js::VMInstance>[]>(
+                  instances.size());
+          // Finish sizing before dispatch: engine and BTS tasks may run
+          // concurrently, but never resize or share a writable field.
+          for (size_t i = 0; i < instances.size(); ++i) {
+            const auto& state = instance_state_.at(instances[i].instance_id);
+            if (auto actor = state.engine_actor.lock()) {
+              actor->ActLite([query, i](auto& engine) {
+                auto& page = query->usage.instances[i].page;
+                auto* tasm = engine->GetTasm();
+                if (!tasm) return;
+                if (const auto& manager =
+                        tasm->page_proxy()->element_manager()) {
+                  auto* nodes = manager->node_manager();
+                  page.element_bytes = nodes->GetTotalMemoryUsage();
+                  page.element_count = static_cast<int32_t>(nodes->NodeCount());
+                }
+                auto entry = tasm->FindTemplateEntry(DEFAULT_ENTRY_NAME);
+                if (entry && entry->GetVm()) {
+                  page.mts_bytes = entry->GetVm()->GetCurrentHeapSizeBytes();
+                }
+              });
+            }
+            if (auto actor = state.runtime_actor.lock()) {
+              actor->ActLite([query, i](auto& runtime) {
+                auto* js_runtime = runtime->GetJSRuntimeWeak().Lock();
+                if (!js_runtime) return;
+                auto context = js_runtime->getSharedContext();
+                auto vm = context ? context->getVM() : nullptr;
+                if (!vm) return;
+                auto& instance = query->usage.instances[i];
+                query->vms[i] = vm;
+                instance.bts_runtime_group_id = js_runtime->getGroupId();
+                instance.bts_runtime_type = RuntimeName(vm->GetRuntimeType());
+                const auto heap = vm->GetHeapSize();
+                if (heap <=
+                    static_cast<size_t>(std::numeric_limits<int64_t>::max())) {
+                  instance.bts_heap_bytes = static_cast<int64_t>(heap);
+                }
+              });
+            }
+          }
           return;
         }
         callback(BuildGlobalMemoryUsage(CollectSnapshot({}, true)));

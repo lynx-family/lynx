@@ -114,6 +114,19 @@ void InvokePlatformCallbackAndRemove(
   });
 }
 
+void UpdateMemoryQueryActors(
+    int32_t instance_id,
+    const std::shared_ptr<LynxActor<LynxEngine>>& engine_actor,
+    const std::shared_ptr<LynxActor<BTSRuntime>>& runtime_actor) {
+  tasm::performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+      instance_id, [engine = std::weak_ptr<LynxActor<LynxEngine>>(engine_actor),
+                    runtime = std::weak_ptr<LynxActor<BTSRuntime>>(
+                        runtime_actor)](auto& state) {
+        state.engine_actor = engine;
+        state.runtime_actor = runtime;
+      });
+}
+
 }  // namespace
 
 int32_t LynxShell::NextInstanceId() {
@@ -157,8 +170,8 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
   LOGI("LynxShell create, this:" << this);
   tasm::performance::GlobalMemoryMonitor::GetInstance().OnInstanceCreated(
       instance_id_, tasm::performance::MemoryNowMs(),
-      [expected = enable_runtime_](auto& state) {
-        state.bts_expected = expected;
+      [disabled = !enable_runtime_](auto& state) {
+        state.bts_disabled = disabled;
       });
   page_options_.SetInstanceID(instance_id_);
   ui_operation_queue_->SetPageOptions(page_options_);
@@ -337,6 +350,7 @@ void LynxShell::BuildEngineActor(
 void LynxShell::OnLynxEngineBuilt(
     std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator,
     std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager) {
+  UpdateMemoryQueryActors(instance_id_, engine_actor_, runtime_actor_);
   tasm_mediator_->SetEngineActor(engine_actor_);
   if (perf_mediator_) {
     perf_mediator_->SetEngineActor(engine_actor_);
@@ -457,6 +471,7 @@ void LynxShell::RebuildLynxEngine(
 
 void LynxShell::ReattachLynxEngineWrapper(LynxEngineWrapper* engine_wrapper) {
   engine_wrapper->BindShell(this);
+  UpdateMemoryQueryActors(instance_id_, engine_actor_, runtime_actor_);
   PublishLogContextIfReady();
 }
 
@@ -632,6 +647,7 @@ void LynxShell::InitRuntime(
   runtime->SetPaused(paused_);
   runtime_actor_ = std::make_shared<LynxActor<BTSRuntime>>(
       std::move(runtime), js_task_runner, instance_id_, enable_runtime_);
+  UpdateMemoryQueryActors(instance_id_, engine_actor_, runtime_actor_);
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor_);
   PublishLogContextIfReady();
 

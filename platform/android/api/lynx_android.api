@@ -5959,6 +5959,7 @@ public class abstract com::lynx::tasm::LynxGlobalMemoryUsageCallback :  {
 public class com::lynx::tasm::LynxGlobalMemoryUsageResult :  {
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionStartMs();
   public LynxMemoryCollectionStatus com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionStatus();
+  public boolean com.lynx.tasm.LynxGlobalMemoryUsageResult.isMemoryMonitoringEnabled();
   public String com.lynx.tasm.LynxGlobalMemoryUsageResult.getErrorMessage();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionDurationMs();
   public long com.lynx.tasm.LynxGlobalMemoryUsageResult.getCollectionTimeoutMs();

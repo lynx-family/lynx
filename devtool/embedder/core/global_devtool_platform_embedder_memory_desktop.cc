@@ -8,7 +8,6 @@
 #include "base/include/fml/message_loop.h"
 #include "base/include/memory/process_memory_info.h"
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
-#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "devtool/embedder/core/global_devtool_platform_embedder.h"
 #include "devtool/embedder/core/global_devtool_platform_embedder_memory.h"
 
@@ -26,11 +25,6 @@ void GlobalDevtoolPlatformEmbedder::GetAllMemoryUsage(
     base::MoveOnlyClosure<void, const std::string&, const std::string&>
         callback) {
   if (!callback) return;
-  if (!tasm::performance::MemoryMonitor::Enable()) {
-    std::move(callback)("{}",
-                        tasm::performance::kMemoryMonitoringDisabledError);
-    return;
-  }
   auto* loop = fml::MessageLoop::IsInitializedForCurrentThread();
   if (!loop) {
     std::move(callback)("{}", "Lynx memory query requires a task runner.");
@@ -60,9 +54,8 @@ void GlobalDevtoolPlatformEmbedder::GetAllMemoryUsage(
           request->Complete("{}", kMemoryUsageTimeout);
           return;
         }
-        if (usage.status != tasm::performance::MemoryUsageQueryStatus::kOk) {
-          request->Complete("{}",
-                            tasm::performance::kMemoryMonitoringDisabledError);
+        if (!usage.IsComplete()) {
+          request->Complete("{}", "Memory query failed");
           return;
         }
         auto result = BuildEmbedderMemoryUsageResult(

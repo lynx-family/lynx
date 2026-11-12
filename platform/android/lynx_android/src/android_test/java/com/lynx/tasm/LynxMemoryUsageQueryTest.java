@@ -88,10 +88,9 @@ public class LynxMemoryUsageQueryTest {
     }
     LynxGlobalMemoryUsageResult result = resultRef.get();
     assertNotNull(result);
-    assertTrue(result.getCollectionStatus() == LynxMemoryCollectionStatus.COMPLETED
-        || result.getCollectionStatus() == LynxMemoryCollectionStatus.ERROR);
-    if (result.getCollectionStatus() == LynxMemoryCollectionStatus.ERROR) {
-      assertEquals("Memory monitoring disabled", result.getErrorMessage());
+    assertEquals(LynxMemoryCollectionStatus.COMPLETED, result.getCollectionStatus());
+    assertTrue(result.getErrorMessage().isEmpty());
+    if (!result.isMemoryMonitoringEnabled()) {
       assertTrue(result.getDestroyedInstances().isEmpty());
     }
     assertEquals(result.getExpectedInstanceCount(), result.getCompletedInstanceCount());
