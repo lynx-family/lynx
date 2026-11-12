@@ -12,6 +12,7 @@ typedef NS_OPTIONS(NSUInteger, LynxPlatformEventBehavior) {
   LynxPlatformEventBehaviorBlockNativeEvent = 1 << 2,
   LynxPlatformEventBehaviorEnableSimultaneousTouch = 1 << 3,
   LynxPlatformEventBehaviorHasConsumeSlideEvent = 1 << 4,
+  LynxPlatformEventBehaviorRawInputExclusive = 1 << 5,
 };
 
 NS_ASSUME_NONNULL_BEGIN
@@ -20,6 +21,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)DispatchPlatformInputEvent:(NSArray*)iEventData withData:(NSArray*)fEventData;
 - (nullable LynxUI*)platformTouchTarget;
+- (BOOL)isRawInputEnabled;
+- (void)notifyInputRootStateChanged:(NSInteger)rootSign
+                           attached:(BOOL)attached
+                            focused:(BOOL)focused;
 - (void)DispatchPlatformLongPress;
 - (void)DispatchPlatformTap;
 - (void)SetPlatformEventRootActive:(NSInteger)rootSign active:(BOOL)active;
