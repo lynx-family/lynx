@@ -78,6 +78,7 @@ class TextStyle {
 #if defined(CLAY_ENABLE_TTTEXT)
   ttoffice::tttext::CharacterVerticalAlignment align_type =
       ttoffice::tttext::CharacterVerticalAlignment::kBaseLine;
+  bool use_parent_x_height_for_middle = false;
   bool enable_text_bounds_ = false;
   float stroke_width = 0;
   clay::Color stroke_color = clay::Color::kTransparent();
