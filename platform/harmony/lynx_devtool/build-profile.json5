@@ -8,6 +8,9 @@
         "VERSION": "VERSION_PLACE_HOLDER_TO_DISALLOW_PUBLISH_BY_ACCIDENT",
       },
       "runtimeOnly": {
+        "packages": [
+          "liblynxdevtool_qjs_bridge.so"
+        ],
         "sources": [
         ]
       }
