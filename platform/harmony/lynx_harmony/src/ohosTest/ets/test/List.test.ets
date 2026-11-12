@@ -4,8 +4,10 @@
 
 import LynxLogContextTest from './LynxLogContextTest.test';
 import LynxErrorTest from './LynxErrorTest.test';
+import DevToolSettingsTest from './DevToolSettingsTest.test';
 
 export default function testsuite() {
   LynxLogContextTest();
   LynxErrorTest();
+  DevToolSettingsTest();
 }
