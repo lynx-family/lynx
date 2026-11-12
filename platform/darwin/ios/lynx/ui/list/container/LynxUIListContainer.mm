@@ -80,6 +80,7 @@ static const NSInteger kDefaultMaxSnapCount = 1;
 @property(nonatomic, copy) LynxUIMethodCallbackBlock scrollToCallback;
 // True if this setContentOffset is triggered by onNodeReady
 @property(nonatomic, assign) BOOL shouldBlockScrollByListContainer;
+@property(nonatomic, assign) BOOL composeScrollManaged;
 @property(nonatomic, assign) CGPoint previousContentOffset;
 @property(nonatomic, strong) LynxListItemHelper *itemHelper;
 @property(nonatomic, strong) LynxListScrollHelper *scrollHelper;
@@ -201,6 +202,21 @@ LYNX_REGISTER_UI("list-container")
 - (void)updateContentSize {
   // Override the old updateContentSize and do nothing. Use contentSize from
   // c++.
+}
+
+- (void)applyComposeScrollState:(CGPoint)offset
+                    contentSize:(CGSize)contentSize
+                        managed:(BOOL)managed {
+  _composeScrollManaged = managed;
+  // Engine offsets are absolute and already include RTL and anchor corrections.
+  // Discard pending legacy deltas so node-ready cannot apply them a second time.
+  _needAdjustContentOffset = NO;
+  _targetDelta = CGPointZero;
+  ((LynxListContainerView *)self.view).scrollEstimatedOffset = LynxListScrollInvalidEstimatedOffset;
+  self.view.contentSize = CGSizeMake(MAX(contentSize.width, self.view.bounds.size.width),
+                                     MAX(contentSize.height, self.view.bounds.size.height));
+  [self.view setContentOffset:offset animated:NO];
+  [self updatePreviousContentOffset];
 }
 
 - (void)insertChild:(LynxUI *)child atIndex:(NSInteger)index {
@@ -718,7 +734,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 #pragma mark delegate
 
 - (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView {
-  if (scrollView.scrollsToTop && self.verticalOrientation) {
+  if (!_composeScrollManaged && scrollView.scrollsToTop && self.verticalOrientation) {
     return YES;
   }
   return NO;
@@ -741,7 +757,7 @@ LYNX_UI_METHOD(getVisibleCells) {
     return;
   }
 
-  if (!_shouldBlockScrollByListContainer) {
+  if (!_shouldBlockScrollByListContainer && !_composeScrollManaged) {
     // Before sending scrollByListContainer, previousContentOffset should be updated to avoid
     // scrollViewDidScroll->scrollByListContainer->onNodeReady->setContentOffset->scrollViewDidScroll
     // loop

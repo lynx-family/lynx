@@ -21,6 +21,7 @@
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIListContainer+Internal.h>
 #import <Lynx/LynxUIOwner.h>
 #import "LynxTimingConstants.h"
 
@@ -226,6 +227,50 @@ void NativePaintingCtxPlatformDarwinRef::GetPlatformRendererScrollOffset(int32_t
 bool NativePaintingCtxPlatformDarwinRef::IsPlatformRendererScrollable(int32_t sign) {
   UIView* view = GetPlatformRendererView(sign);
   return [view isKindOfClass:[UIScrollView class]];
+}
+
+bool NativePaintingCtxPlatformDarwinRef::RequestRootFocus(int32_t root_id, bool focused) {
+  if (root_id != kRootId && !GetEventTargetHelper()->IsActiveEventRoot(root_id)) {
+    return false;
+  }
+  UIView* view = GetPlatformRendererView(root_id);
+  if (view.window == nil || (focused && !view.window.isKeyWindow)) {
+    return false;
+  }
+  if (focused) {
+    return [view becomeFirstResponder] && view.isFirstResponder;
+  }
+  return !view.isFirstResponder || ([view resignFirstResponder] && !view.isFirstResponder);
+}
+
+void NativePaintingCtxPlatformDarwinRef::NotifyInputRootsStateChanged(UIWindow* window) {
+  if (!IsRawInputEnabled()) {
+    return;
+  }
+  std::vector<int32_t> roots{kRootId};
+  const auto& active_roots = GetEventTargetHelper()->GetActiveEventRootIds();
+  roots.insert(roots.end(), active_roots.begin(), active_roots.end());
+  for (int32_t root_id : roots) {
+    UIView* view = GetPlatformRendererView(root_id);
+    if (window != nil && view.window != window) {
+      continue;
+    }
+    NotifyInputRootStateChanged(root_id, view.window != nil,
+                                view.window.isKeyWindow && view.isFirstResponder);
+  }
+}
+
+void NativePaintingCtxPlatformDarwinRef::ApplyListScrollState(int32_t sign, float scroll_x,
+                                                              float scroll_y, float content_width,
+                                                              float content_height, bool managed) {
+  LynxUI* ui = [GetUIOwner() findUIBySign:sign];
+  if (LynxIsListContainerUI(ui) &&
+      [ui respondsToSelector:@selector(applyComposeScrollState:contentSize:managed:)]) {
+    [(id<LynxListContainerInternal>)ui
+        applyComposeScrollState:CGPointMake(scroll_x, scroll_y)
+                    contentSize:CGSizeMake(content_width, content_height)
+                        managed:managed];
+  }
 }
 
 UIView* NativePaintingCtxPlatformDarwinRef::GetPlatformRendererView(int32_t sign) {
