@@ -59,6 +59,7 @@
 
 @implementation DevToolSettings {
   // Member variables for non-persisted settings
+  NSSet<NSString *> *_enabledCDPDomains;
   BOOL _highlightTouchEnabled;
   BOOL _perfMetricsEnabled;
   BOOL _previewScreenshotEnabled;
@@ -152,6 +153,7 @@ static const NSUInteger kMaxReportedBacktraceFrames = 10;
     _bootstrap = [[DevToolBootstrapSettings alloc] init];
 
     // Initialize default values for non-persisted settings
+    _enabledCDPDomains = [NSSet set];
     _highlightTouchEnabled = NO;
     _perfMetricsEnabled = NO;
     _previewScreenshotEnabled = YES;
@@ -322,24 +324,6 @@ static const NSUInteger kMaxReportedBacktraceFrames = 10;
   [_defaults setBool:value forKey:key];
 }
 
-- (NSSet<NSString *> *)stringSetForArrayKey:(NSString *)key {
-  NSArray *values = [_defaults arrayForKey:key];
-  if (![values isKindOfClass:[NSArray class]]) {
-    return [NSSet set];
-  }
-  NSMutableSet<NSString *> *set = [[NSMutableSet alloc] init];
-  for (id value in values) {
-    if ([value isKindOfClass:[NSString class]]) {
-      [set addObject:value];
-    }
-  }
-  return [set copy];
-}
-
-- (void)setStringSet:(NSSet<NSString *> *)values forArrayKey:(NSString *)key {
-  [_defaults setObject:[values allObjects] forKey:key];
-}
-
 - (NSSet<NSString *> *)stringSetForDictionaryKey:(NSString *)key {
   NSDictionary *values = [_defaults dictionaryForKey:key];
   if (![values isKindOfClass:[NSDictionary class]]) {
@@ -439,22 +423,22 @@ static const NSUInteger kMaxReportedBacktraceFrames = 10;
 - (NSSet<NSString *> *)enabledCDPDomains {
   /*!
    enabledCDPDomains
-   @note Persistence: YES
+   @note Persistence: NO
    @note Sync to native: YES
    @note Default: empty set
    */
-  return [self stringSetForArrayKey:SP_KEY_ACTIVATED_CDP_DOMAINS];
+  return _enabledCDPDomains;
 }
 
 - (void)setEnabledCDPDomains:(NSSet<NSString *> *)domains {
-  // Take ownership of a stable snapshot before validation, persistence, and native sync.
+  // Take ownership of a stable snapshot before validation and native sync.
   NSSet<NSString *> *domainSnapshot = [domains copy];
   for (NSString *key in domainSnapshot) {
     if (![self verifyCDPDomainKey:key]) {
       return;
     }
   }
-  [self setStringSet:domainSnapshot forArrayKey:SP_KEY_ACTIVATED_CDP_DOMAINS];
+  _enabledCDPDomains = domainSnapshot;
   [self syncEnabledCDPDomainsToNative:domainSnapshot];
 }
 
@@ -480,7 +464,7 @@ static const NSUInteger kMaxReportedBacktraceFrames = 10;
   if (!changed) {
     return;
   }
-  [self setStringSet:enabledDomains forArrayKey:SP_KEY_ACTIVATED_CDP_DOMAINS];
+  _enabledCDPDomains = [enabledDomains copy];
   [self syncEnabledCDPDomainsToNative:enabledDomains];
 }
 
