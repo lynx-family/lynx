@@ -35,6 +35,7 @@ unittest_set("lynxml_parser_testset") {
     "lynxml_source_observer_unittest.cc",
   ]
   deps = [
+    "..:template_bundle",
     "../../renderer:tasm_group",
     "../../renderer/dom:renderer_dom",
     "../../runtime/lepus/bindings:bindings",

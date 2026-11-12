@@ -123,7 +123,7 @@ std::string LynxTemplateBundle::BuildFromLynxMLSources(
   page_configs_->SetEnableCSSInvalidation(
       compile_options_.enable_css_invalidation_);
   page_configs_->SetEnableFiberArch(true);
-  page_configs_->SetDSL(PackageInstanceDSL::REACT);
+  page_configs_->SetDSL(PackageInstanceDSL::REACT_NODIFF);
   page_configs_->SetBundleModuleMode(
       PackageInstanceBundleModuleMode::RETURN_BY_FUNCTION_MODE);
 
