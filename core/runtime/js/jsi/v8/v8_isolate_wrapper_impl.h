@@ -29,7 +29,7 @@ class V8IsolateInstanceImpl : public V8IsolateInstance {
   bool TerminateJavaScriptExecution() override;
 
  private:
-  v8::Isolate* isolate_;
+  v8::Isolate* isolate_ = nullptr;
   friend class V8Runtime;
   friend class V8ContextWrapper;
 };
