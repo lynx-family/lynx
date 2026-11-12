@@ -21,6 +21,18 @@
 
 namespace lynx {
 namespace starlight {
+namespace {
+
+float GetFlexGrow(const LayoutObject& item) {
+  return item.GetCSSStyle()->GetFlexGrow();
+}
+
+float GetFlexShrink(const LayoutObject& item) {
+  return item.GetCSSStyle()->GetFlexShrink();
+}
+
+}  // namespace
+
 FlexLayoutAlgorithm::FlexLayoutAlgorithm(LayoutObject* container)
     : LayoutAlgorithm(container) {}
 
@@ -278,18 +290,9 @@ void FlexLayoutAlgorithm::ResolveFlexibleLengths(LineInfo& line_info) {
       flex_info_.hypothetical_main_size_, line_info.is_flex_grow_, *this,
       line_info.start_, line_info.end_, flex_info_.main_gap_size_);
 
-  ElasticLayoutUtils::ElasticFactorGetter factor_getter;
-  if (line_info.is_flex_grow_) {
-    factor_getter = [](const LayoutObject& item) -> float {
-      return item.GetCSSStyle()->GetFlexGrow();
-    };
-  } else {
-    factor_getter = [](const LayoutObject& item) -> float {
-      return item.GetCSSStyle()->GetFlexShrink();
-    };
-  }
   line_info.remaining_free_space_ = ElasticLayoutUtils::ComputeElasticItemSizes(
-      infos, container_constraints_[kMainAxis].Size(), factor_getter,
+      infos, container_constraints_[kMainAxis].Size(),
+      line_info.is_flex_grow_ ? GetFlexGrow : GetFlexShrink,
       flex_info_.flex_main_size_);
 }
 
