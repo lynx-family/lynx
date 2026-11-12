@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
@@ -49,6 +50,7 @@ struct BackendState {
   text::MeasureParams params{};
   std::optional<float> line_height;
   std::optional<std::string> font_variations;
+  std::vector<int> text_backgrounds;
 };
 
 class FakeParagraphBuilder : public text::ParagraphBuilder {
@@ -57,6 +59,7 @@ class FakeParagraphBuilder : public text::ParagraphBuilder {
     ++state_.live_builder_count;
     state_.line_height.reset();
     state_.font_variations.reset();
+    state_.text_backgrounds.clear();
   }
   ~FakeParagraphBuilder() override { --state_.live_builder_count; }
 
@@ -73,6 +76,9 @@ class FakeParagraphBuilder : public text::ParagraphBuilder {
   void PopEventTarget() override {}
   void SetTextStyle(TextPropertyKeyID key, void* value,
                     size_t length) override {
+    if (key == kTextPropBackGroundColor && length == sizeof(int)) {
+      state_.text_backgrounds.push_back(*static_cast<int*>(value));
+    }
     if (key == kTextPropFontVariationSettings) {
       state_.font_variations =
           std::string(static_cast<const char*>(value), length);
@@ -286,6 +292,26 @@ TEST_F(TextLayoutTextraTest, ZeroSizeIsSuccessful) {
   EXPECT_EQ(result->baseline_, 0);
   EXPECT_EQ(state_.measured_count, 1);
   EXPECT_EQ(state_.live_builder_count, 0);
+}
+
+TEST_F(TextLayoutTextraTest, OnlyInlineTextForwardsRunBackground) {
+  auto text = CreateTextWithEventRanges();
+  auto* child = text->first_render_child();
+  ASSERT_NE(child, nullptr);
+  child->ConvertToInlineElement();
+  ASSERT_TRUE(child->is_inline_element());
+  for (const auto& entry : {std::make_pair(text.get(), "#112233"),
+                            std::make_pair(child, "#445566")}) {
+    StyleMap styles;
+    ASSERT_TRUE(UnitHandler::Process(kPropertyIDBackgroundColor,
+                                     lepus::Value(entry.second), styles,
+                                     CSSParserConfigs()));
+    entry.first->computed_css_style()->SetValue(
+        kPropertyIDBackgroundColor, styles.at(kPropertyIDBackgroundColor));
+  }
+  layout_->DispatchLayoutBefore(text.get());
+  ASSERT_EQ(state_.text_backgrounds.size(), 1u);
+  EXPECT_EQ(state_.text_backgrounds.front(), static_cast<int>(0xff445566));
 }
 
 TEST_F(TextLayoutTextraTest, NormalLineHeightUsesFontMetrics) {

@@ -263,7 +263,7 @@ void TextLayoutTextra::ApplyTextStyle(Element* element,
                                    sizeof(float));
 
   const auto& background_data = computed_css_style->GetBackgroundData();
-  if (background_data) {
+  if (background_data && element->is_inline_element()) {
     int color = static_cast<int>(background_data->color);
     paragraph_builder_->SetTextStyle(kTextPropBackGroundColor, &(color),
                                      sizeof(int));
