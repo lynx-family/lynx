@@ -164,6 +164,18 @@ final class LynxHostScriptViewHooks {
     return render == null ? LynxLogContext.UNAVAILABLE_ID : render.getLogContextSnapshot().viewId;
   }
 
+  static void bindInitialUrl(long viewId, @Nullable String url) {
+    if (sRegistryAvailable && url != null) {
+      nativeBindInitialUrl(viewId, url.getBytes(StandardCharsets.UTF_8));
+    }
+  }
+
+  static void clearInitialUrl(long viewId) {
+    if (sRegistryAvailable) {
+      nativeClearInitialUrl(viewId);
+    }
+  }
+
   /** Records the URL a load commits, after any interceptor patch. */
   private static void commitUrl(@Nullable LynxTemplateRender render, @Nullable String url) {
     long viewId = viewId(render);
@@ -411,6 +423,8 @@ final class LynxHostScriptViewHooks {
 
   private static native void nativeRegisterView(long viewId, LynxView view, String url);
   private static native void nativeUnregisterView(long viewId);
+  private static native void nativeBindInitialUrl(long viewId, byte[] url);
+  private static native void nativeClearInitialUrl(long viewId);
   private static native void nativeUpdateUrl(long viewId, String url);
   private static native void nativeNotifyView(long viewId, String event, int code, String message);
 

@@ -1545,6 +1545,15 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     renderTemplateWithBaseUrl(template, data, hydrateUrl);
   }
 
+  private synchronized void bindHostScriptInitialUrl(LynxLoadMeta metaData) {
+    // SSR loads are not intercepted, so they do not define the initial URL.
+    LynxLoadMode loadMode = metaData.getLoadMode();
+    if (!mHasDestroy && !mDestroying && loadMode != LynxLoadMode.RENDER_SSR
+        && loadMode != LynxLoadMode.HYDRATE_SSR) {
+      LynxHostScriptViewHooks.bindInitialUrl(mLogContext.viewId, metaData.getUrl());
+    }
+  }
+
   private void setUrl(String url) {
     if (TextUtils.isEmpty(url)) {
       return;
@@ -1657,6 +1666,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       return;
     }
 
+    bindHostScriptInitialUrl(metaData);
     LynxHostScriptViewHooks.beforeLoadTemplate(this, metaData);
     // Static-page direct data has no standard-data fallback, so a failed preparation must stop
     // this load.
@@ -2689,7 +2699,10 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
   }
 
   private void destroyNative() {
-    mDestroying = true;
+    synchronized (this) {
+      mDestroying = true;
+      LynxHostScriptViewHooks.clearInitialUrl(mLogContext.viewId);
+    }
     LLog.i(TAG, "destroyNative url " + getTemplateUrl() + " in " + this.toString());
     if (mDevTool != null) {
       mDevTool.destroy();
@@ -2703,8 +2716,10 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       destroyLynxEngine();
     }
 
-    mHasDestroy = true;
-    mDestroying = false;
+    synchronized (this) {
+      mHasDestroy = true;
+      mDestroying = false;
+    }
   }
 
   public final ThreadStrategyForRendering getThreadStrategyForRendering() {

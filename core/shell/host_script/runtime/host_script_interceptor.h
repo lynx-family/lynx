@@ -90,7 +90,6 @@ class HostScriptInterceptor final
   std::function<void(InterceptCompletion)> ReadCallbacks(
       Napi::Value& returned, InterceptKind kind, const lepus::Value& event,
       uint64_t handler);
-  Napi::Value ViewOf(const lepus::Value& event);
   void Remove(uint64_t id);
   Napi::Env env_;
   Domain domain_;

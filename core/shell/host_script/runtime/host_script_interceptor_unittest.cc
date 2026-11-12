@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -655,6 +656,39 @@ TEST_F(HostScriptInterceptorTest, MockValidatesAllCallbacksBeforeCommit) {
   EXPECT_TRUE(result.failed);
   EXPECT_FALSE(result.mock.IsTable());
   EXPECT_FALSE(result.patch.IsTable());
+}
+
+TEST_F(HostScriptInterceptorTest, ExposesInitialViewUrlUntilCleared) {
+  const char* url = "https://example.com/card?query=a%2Fb#entry";
+  Interceptor::BindInitialViewUrl(1, "");
+  EXPECT_TRUE(Interceptor::InitialViewUrl(1).empty());
+  Interceptor::BindInitialViewUrl(1, url);
+  Interceptor::BindInitialViewUrl(1, "https://example.com/next");
+  // The URL outlives the native shells registered for the View.
+  Interceptor::RegisterView(1);
+  Interceptor::DestroyView(1);
+  for (auto [domain, kind, name] :
+       {std::tuple{Interceptor::Domain::kUI, InterceptKind::kLoadTemplate,
+                   "view.loadTemplate"},
+        std::tuple{Interceptor::Domain::kBTS, InterceptKind::kCall,
+                   "jsb.call"}}) {
+    Install(domain);
+    Script(("globalThis.urls = [];"
+            "interceptor.on('" +
+            std::string(name) + R"(', (e, c) => {
+              const d = Object.getOwnPropertyDescriptor(e, 'viewURL');
+              urls.push(d.enumerable && !d.writable && !d.configurable
+                            ? e.viewURL : 'mutable');
+              return c.proceed();
+            });)")
+               .c_str());
+    EXPECT_FALSE(Dispatch(kind).failed);
+    EXPECT_EQ(EvalString("urls.join()"), url);
+    provider_->Uninstall();
+    provider_.reset();
+  }
+  Interceptor::ClearInitialViewUrl(1);
+  EXPECT_TRUE(Interceptor::InitialViewUrl(1).empty());
 }
 
 TEST_F(HostScriptInterceptorTest, TracksExistingLogContextIDsIncludingZero) {
