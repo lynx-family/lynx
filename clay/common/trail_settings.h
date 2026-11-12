@@ -20,6 +20,20 @@ namespace setting {
 
 LYNX_SETTING_KEY(CLAY_FORCE_IGNORE_RASTER_CACHE, bool,
                  "clay_force_ignore_raster_cache", false);
+LYNX_SETTING_KEY(CLAY_ANDROID_ENABLE_PARTIAL_REPAINT, bool,
+                 "clay_android_enable_partial_repaint", false);
+// Set the Trail value to one comma-separated string, for example
+// "Adreno (TM) 740,Adreno (TM) 750". Each entry matches the start of
+// GL_RENDERER and is case-sensitive. Spaces and tabs around entries are
+// trimmed, and empty entries are ignored. An empty string adds no prefixes
+// to the built-in blocklist.
+LYNX_SETTING_KEY(CLAY_ANDROID_PARTIAL_REPAINT_BLOCKED_RENDERER_PREFIXES,
+                 std::string,
+                 "clay_android_partial_repaint_blocked_renderer_prefixes", "");
+LYNX_SETTING_KEY(CLAY_ANDROID_ENABLE_SIMPLE_SHAPE_PIPELINE, bool,
+                 "clay_android_enable_simple_shape_pipeline", true);
+LYNX_SETTING_KEY(CLAY_IOS_ENABLE_SIMPLE_SHAPE_PIPELINE, bool,
+                 "clay_ios_enable_simple_shape_pipeline", true);
 LYNX_SETTING_KEY(CLAY_IOS_FULL_PAGE_BUFFER_COUNT, long,
                  "clay_ios_full_page_buffer_count", 3);
 LYNX_SETTING_KEY(CLAY_PRECOMPILE_SKITY_SHADERS, bool,
