@@ -2113,6 +2113,7 @@ public class LynxGestureVelocityTracker : NSObject {
 public class LynxGlobalMemoryUsageResult : NSObject {
   public int64_t LynxGlobalMemoryUsageResult::collectionStartMs collectionStartMs;
   public LynxMemoryCollectionStatus LynxGlobalMemoryUsageResult::collectionStatus collectionStatus;
+  public BOOL LynxGlobalMemoryUsageResult::memoryMonitoringEnabled memoryMonitoringEnabled;
   public NSString* LynxGlobalMemoryUsageResult::errorMessage errorMessage;
   public int64_t LynxGlobalMemoryUsageResult::collectionDurationMs collectionDurationMs;
   public int64_t LynxGlobalMemoryUsageResult::collectionTimeoutMs collectionTimeoutMs;

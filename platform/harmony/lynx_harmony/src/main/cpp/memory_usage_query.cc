@@ -33,6 +33,12 @@ class ObjectWriter {
 
   napi_value Get() const { return object_; }
 
+  void SetBoolean(const char* key, bool value) {
+    napi_value boolean = nullptr;
+    napi_get_boolean(env_, value, &boolean);
+    napi_set_named_property(env_, object_, key, boolean);
+  }
+
   void SetNumber(const char* key, int64_t value) {
     napi_value number = nullptr;
     napi_create_int64(env_, value, &number);
@@ -106,14 +112,14 @@ void DeliverResult(napi_env env, napi_value callback, void*, void* data) {
   // Environment teardown also calls this function to release queued data.
   if (!env || !callback) return;
   const auto& usage = result->usage;
-  const bool completed =
-      usage.status == tasm::performance::MemoryUsageQueryStatus::kOk;
+  const bool completed = usage.IsComplete();
   ObjectWriter writer(env);
   writer.SetNumber("collectionStartMs", result->start_ms);
   writer.SetString("collectionStatus", completed ? "completed" : "error");
-  writer.SetString(
-      "errorMessage",
-      completed ? "" : tasm::performance::kMemoryMonitoringDisabledError);
+  writer.SetBoolean(
+      "memoryMonitoringEnabled",
+      usage.status == tasm::performance::MemoryUsageQueryStatus::kOk);
+  writer.SetString("errorMessage", completed ? "" : "Memory query failed");
   writer.SetNumber("collectionDurationMs", result->duration_ms);
   writer.SetNumber("collectionTimeoutMs", result->timeout_ms);
   writer.SetNumber("expectedInstanceCount", usage.instances.size());
@@ -183,9 +189,7 @@ napi_value QueryGlobalMemoryUsage(napi_env env, napi_callback_info info) {
                 std::chrono::steady_clock::now() - start)
                 .count();
         const int64_t app_bytes =
-            usage.status == tasm::performance::MemoryUsageQueryStatus::kOk
-                ? base::GetProcessPssBytes()
-                : 0;
+            usage.IsComplete() ? base::GetProcessPssBytes() : 0;
         // Construct the snapshot in place instead of moving a temporary again.
         std::unique_ptr<QueryResult> result(new QueryResult{
             std::move(usage), start_ms, duration_ms, timeout_ms, app_bytes});

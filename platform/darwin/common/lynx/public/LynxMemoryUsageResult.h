@@ -11,7 +11,7 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
   LynxMemoryCollectionStatusCompleted = 0,
   // The fixed timeout fired first; the result contains only completed instances.
   LynxMemoryCollectionStatusTimeout = 1,
-  // Monitoring is disabled or the query failed.
+  // The query failed.
   LynxMemoryCollectionStatusError = 2,
 };
 
@@ -67,6 +67,9 @@ typedef NS_ENUM(NSInteger, LynxMemoryCollectionStatus) {
 @property(nonatomic, assign) int64_t collectionStartMs;
 // The direct native global snapshot completes as one operation.
 @property(nonatomic, assign) LynxMemoryCollectionStatus collectionStatus;
+// False when page BTS attribution, UI bytes and destroyed-page residuals are
+// unavailable. Whole BTS VM heaps are still queried without monitoring.
+@property(nonatomic, assign) BOOL memoryMonitoringEnabled;
 // Empty on success; explains why the query failed otherwise.
 @property(nonatomic, copy) NSString *errorMessage;
 // Elapsed collection time in milliseconds.
