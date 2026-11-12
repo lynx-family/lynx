@@ -1475,7 +1475,11 @@ void Fragment::SyncEventBundle() {
   if (!event_bundle_dirty_) {
     return;
   }
-  painting_context()->impl()->CastToNativeCtx()->UpdatePlatformEventBundle(
+  auto* context = painting_context()->impl()->CastToNativeCtx();
+  if (context == nullptr) {
+    return;
+  }
+  context->UpdatePlatformEventBundle(
       id(), PlatformEventBundle(event_props_, event_names_));
   event_bundle_dirty_ = false;
 }

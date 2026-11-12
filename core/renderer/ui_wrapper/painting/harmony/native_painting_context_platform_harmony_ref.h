@@ -29,6 +29,7 @@ class NativePaintingCtxPlatformHarmonyRef
   std::vector<float> GetTransformValue(
       int32_t sign, const std::vector<float>& offsets) override;
   void GetRootViewLocationOnScreen(float location[2]) override;
+  bool GetRootViewLocationInWindow(float location[2]) override;
   void GetScreenSize(float size[2]) override;
   void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;
   void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override;

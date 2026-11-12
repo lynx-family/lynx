@@ -91,6 +91,14 @@ void NativePaintingCtxAndroidRef::GetRootViewLocationOnScreen(
   }
 }
 
+bool NativePaintingCtxAndroidRef::GetRootViewLocationInWindow(
+    float location[2]) {
+  auto* factory =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
+  auto* context = factory != nullptr ? factory->GetContext() : nullptr;
+  return context != nullptr && context->GetRootViewLocationInWindow(location);
+}
+
 void NativePaintingCtxAndroidRef::GetScreenSize(float size[2]) {
   if (size == nullptr) {
     return;

@@ -573,6 +573,22 @@ std::vector<float> PlatformRendererContext::GetRootViewLocationOnScreen() {
   return res;
 }
 
+bool PlatformRendererContext::GetRootViewLocationInWindow(float location[2]) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return false;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto arr = Java_PlatformRendererContext_getRootViewLocationInWindow(
+      env, local_ref.Get());
+  if (arr.IsNull() || env->GetArrayLength(arr.Get()) < 2) {
+    return false;
+  }
+  env->GetFloatArrayRegion(arr.Get(), 0, 2, location);
+  return true;
+}
+
 std::vector<float> PlatformRendererContext::GetScreenSize() {
   std::vector<float> res;
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);

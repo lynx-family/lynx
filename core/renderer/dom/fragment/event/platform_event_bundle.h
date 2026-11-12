@@ -104,6 +104,7 @@ enum class PlatformEventName : int32_t {
   kLongPress = 6,
   kUIAppear = 7,
   kUIDisappear = 8,
+  kPositionChange = 9,
 };
 
 inline PlatformEventName PlatformEventNameFromString(std::string_view name) {
@@ -133,6 +134,9 @@ inline PlatformEventName PlatformEventNameFromString(std::string_view name) {
   }
   if (name == "uidisappear") {
     return PlatformEventName::kUIDisappear;
+  }
+  if (name == "positionchange") {
+    return PlatformEventName::kPositionChange;
   }
   return PlatformEventName::kUnknown;
 }

@@ -15,6 +15,7 @@
 #include "core/event/custom_event.h"
 #include "core/event/event.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
+#include "core/renderer/dom/fragment/event/platform_position_change_observer.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/diff_algorithm.h"
@@ -37,7 +38,8 @@ constexpr int32_t kUnknownEventTargetRootId = -1;
 NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
     std::unique_ptr<PlatformRendererFactory> view_factory)
     : view_factory_(std::move(view_factory)),
-      event_target_task_runner_(base::UIThread::GetRunner()) {
+      event_target_task_runner_(base::UIThread::GetRunner()),
+      position_change_observer_(this, event_target_task_runner_) {
   // TODO(hexionghui): The task runner should be obtained from the shell.
   event_target_exposure_ = std::make_shared<PlatformEventTargetExposure>(
       this, event_target_task_runner_);
@@ -86,6 +88,7 @@ void NativePaintingCtxPlatformRef::UpdateDisplayList(
   }
 
   layer->UpdateDisplayList(std::move(display_list));
+  RequestPositionChangeCheck();
 }
 
 void NativePaintingCtxPlatformRef::UpdateDisplayLists(
@@ -234,6 +237,15 @@ void NativePaintingCtxPlatformRef::SetRawInputEnabled(bool enabled) {
 
 void NativePaintingCtxPlatformRef::SetEventScreenWidth(float screen_width) {
   event_target_helper_->SetScreenWidthForRpx(screen_width);
+}
+
+void NativePaintingCtxPlatformRef::SetPositionEventConfig(
+    int observer_frame_rate) {
+  if (observer_frame_rate > 0) {
+    // Same cap as the platform observers: no faster than 60 checks a second.
+    event_target_exposure_->SetIntervalMs(
+        std::max(16, 1000 / observer_frame_rate));
+  }
 }
 
 void NativePaintingCtxPlatformRef::UpdateEventInfo(bool has_touch_pseudo) {
@@ -397,6 +409,10 @@ std::vector<float> NativePaintingCtxPlatformRef::GetRectToLynxView(int32_t id) {
 void NativePaintingCtxPlatformRef::UpdatePlatformEventBundle(
     int32_t id, PlatformEventBundle bundle) {
   MergeHitSlopEventProp(&bundle, GetPlatformEventBundle(id));
+  const auto &names = bundle.EventNames();
+  position_change_observer_.UpdateTarget(
+      id, std::find(names.begin(), names.end(),
+                    PlatformEventName::kPositionChange) != names.end());
   if (bundle.Empty()) {
     platform_event_bundles_.erase(id);
   } else {
@@ -728,6 +744,7 @@ void NativePaintingCtxPlatformRef::SetPlatformEventRootActive(int32_t root_id,
     event_target_helper_->AddActiveEventRoot(root_id);
     MarkEventTargetRootDirty(root_id);
     EnsureEventTargetTree(root_id);
+    RequestPositionChangeCheck();
     return;
   }
 
@@ -746,8 +763,10 @@ void NativePaintingCtxPlatformRef::SetPlatformEventRootOffset(int32_t root_id,
   if (root_id == kRootId) {
     return;
   }
-  event_target_helper_->SetEventRootOffsetToPageRoot(root_id, offset_x,
-                                                     offset_y);
+  if (event_target_helper_->SetEventRootOffsetToPageRoot(root_id, offset_x,
+                                                         offset_y)) {
+    RequestPositionChangeCheck();
+  }
 }
 
 void NativePaintingCtxPlatformRef::StopExposure(const lepus::Value &options) {
@@ -756,6 +775,18 @@ void NativePaintingCtxPlatformRef::StopExposure(const lepus::Value &options) {
 
 void NativePaintingCtxPlatformRef::ResumeExposure() {
   event_target_exposure_->StartExposureCheck();
+}
+
+void NativePaintingCtxPlatformRef::RequestPositionChangeCheck() {
+  position_change_observer_.RequestCheck();
+}
+
+void NativePaintingCtxPlatformRef::DispatchPositionChangeEvents() {
+  position_change_observer_.DispatchPositionChange();
+}
+
+int NativePaintingCtxPlatformRef::GetExposureIntervalMs() const {
+  return event_target_exposure_->IntervalMs();
 }
 
 void NativePaintingCtxPlatformRef::UpdateAttributes(
@@ -892,6 +923,7 @@ void NativePaintingCtxPlatformRef::Destroy() {
   if (event_target_exposure_) {
     event_target_exposure_->ClearExposureTargetMap();
   }
+  position_change_observer_.Clear();
   engine_actor_.reset();
 }
 

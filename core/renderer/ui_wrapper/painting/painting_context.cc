@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/services/trace/service_trace_event_def.h"
 
 namespace lynx {
@@ -148,6 +149,13 @@ void PaintingContext::SetEventScreenWidth(float screen_width) {
   });
 }
 
+void PaintingContext::SetPositionEventConfig(int observer_frame_rate) {
+  Enqueue(
+      [platform_ref = platform_impl_->GetPlatformRef(), observer_frame_rate]() {
+        platform_ref->SetPositionEventConfig(observer_frame_rate);
+      });
+}
+
 void PaintingContext::SetEventThroughConfig(
     bool enable_event_through, bool enable_event_through_inherit_from_page) {
   Enqueue([platform_ref = platform_impl_->GetPlatformRef(),
@@ -228,6 +236,10 @@ void PaintingContext::ApplyListScrollState(int32_t container_id, float scroll_x,
     platform_ref->ApplyListScrollState(container_id, scroll_x, scroll_y,
                                        content_width, content_height,
                                        cmp_managed);
+    if (platform_ref->IsNativePaintingCtxPlatformRef()) {
+      static_cast<NativePaintingCtxPlatformRef*>(platform_ref.get())
+          ->RequestPositionChangeCheck();
+    }
   });
 }
 
