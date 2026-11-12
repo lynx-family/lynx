@@ -89,10 +89,11 @@ class VsyncWaiter : public VariableRefreshRateReporter,
   // as AwaitVSync().
   virtual void AwaitVSyncForSecondaryCallback() { AwaitVSync(); }
 
-  // Schedules the callback on the UI task runner. Needs to be invoked as close
+  // Dispatches the callback on task_runner_. Needs to be invoked as close
   // to the `frame_start_time` as possible.
-  void FireCallback(fml::TimePoint frame_start_time,
-                    fml::TimePoint frame_target_time);
+  void FireCallback(
+      fml::TimePoint frame_start_time, fml::TimePoint frame_target_time,
+      std::shared_ptr<lynx::base::VSyncFrameTickWork> work = nullptr);
 
  private:
   std::mutex callback_mutex_;
