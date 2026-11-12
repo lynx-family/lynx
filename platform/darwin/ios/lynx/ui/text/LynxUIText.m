@@ -443,6 +443,9 @@ LYNX_PROPS_GROUP_DECLARE(
 - (void)requestDisplayAsynchronously {
   __weak typeof(self) weakSelf = self;
   [self displayAsyncWithCompletionBlock:^(UIImage *_Nonnull image) {
+    if (((id<LynxRendererHost>)weakSelf.view).renderer != nil) {
+      return;
+    }
     CALayer *layer = [weakSelf getOverflowLayer];
     if (weakSelf.overflow != OVERFLOW_HIDDEN_VAL) {
       CGPoint offset = [weakSelf overflowLayerOffset];
@@ -685,6 +688,12 @@ LYNX_PROPS_GROUP_DECLARE(
 
   self.view.border = self.border;
   self.view.padding = self.padding;
+
+  // Fragment rendering owns text presentation on renderer hosts.
+  if (((id<LynxRendererHost>)self.view).renderer != nil) {
+    _isDirty = false;
+    return;
+  }
 
   [_overflow_layer setContents:nil];
   [self.view setNeedsDisplay];

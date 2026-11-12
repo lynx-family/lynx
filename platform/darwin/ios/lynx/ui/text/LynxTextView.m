@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxLayer.h>
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceSystemInvokeProtocol.h>
 #import <Lynx/LynxTextRenderer.h>
@@ -90,8 +91,8 @@ static const float kResponseTouchRadius = 20.f;
 }
 
 - (void)drawRect:(CGRect)rect {
-  if (self.ui.overflow != OVERFLOW_HIDDEN_VAL || !self.ui.enableLayerRender ||
-      !_layerRender.textRenderer) {
+  if (((id<LynxRendererHost>)self).renderer != nil || self.ui.overflow != OVERFLOW_HIDDEN_VAL ||
+      !self.ui.enableLayerRender || !_layerRender.textRenderer) {
     return;
   }
 
