@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,6 +42,16 @@ public class DevToolSettingsTest {
     mSettings.init(mContext);
     mSettings.resetNonPersistedSettingsForTesting();
     mSettings.syncToNative();
+  }
+
+  @After
+  public void tearDown() {
+    mSettings.resetNonPersistedSettingsForTesting();
+    mSettings.syncToNative();
+    mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE)
+        .edit()
+        .remove(SP_KEY_ACTIVATED_CDP_DOMAINS)
+        .apply();
   }
 
   @Test
@@ -213,8 +224,7 @@ public class DevToolSettingsTest {
     assertEquals(enabledDomains, mSettings.getEnabledCDPDomains());
 
     SharedPreferences sp = mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE);
-    assertEquals(enabledDomains,
-        new HashSet<>(sp.getStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS, new HashSet<>())));
+    assertFalse(sp.contains(SP_KEY_ACTIVATED_CDP_DOMAINS));
   }
 
   @Test
@@ -224,24 +234,72 @@ public class DevToolSettingsTest {
     mSettings.setCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS, true);
     assertTrue(mSettings.isCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS));
 
+    SharedPreferences sp = mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE);
+    assertFalse(sp.contains(SP_KEY_ACTIVATED_CDP_DOMAINS));
+
     mSettings.setCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS, false);
     assertFalse(mSettings.isCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS));
 
-    SharedPreferences sp = mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE);
-    assertFalse(new HashSet<>(sp.getStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS, new HashSet<>()))
-                    .contains(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS));
+    assertFalse(sp.contains(SP_KEY_ACTIVATED_CDP_DOMAINS));
   }
 
   @Test
-  public void testSetEnabledCDPDomainsIgnoresNonCDPKeys() {
-    mSettings.setEnabledCDPDomains(
-        new HashSet<>(Arrays.asList(DevToolSettings.SP_KEY_ENABLE_DEVTOOL)));
+  public void testCDPDomainsIgnorePersistedValues() {
+    // Values saved by older versions must not restore enabled domains.
+    SharedPreferences sp = mContext.getSharedPreferences("lynx_env_config", Context.MODE_PRIVATE);
+    Set<String> persistedDomains =
+        new HashSet<>(Arrays.asList(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_DOM));
+    sp.edit().putStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS, persistedDomains).apply();
+    mSettings.init(mContext);
 
+    assertTrue(mSettings.getEnabledCDPDomains().isEmpty());
+    mSettings.setCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS, true);
+    assertFalse(mSettings.isCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_DOM));
+    assertEquals(persistedDomains, sp.getStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS, null));
+
+    mSettings.resetNonPersistedSettingsForTesting();
     assertTrue(mSettings.getEnabledCDPDomains().isEmpty());
   }
 
   @Test
+  public void testCDPDomainsUseSnapshotsAndReplacePreviousValues() {
+    Set<String> domains =
+        new HashSet<>(Arrays.asList(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_DOM));
+    mSettings.setEnabledCDPDomains(domains);
+    // Mutating input or output sets must not change settings.
+    domains.clear();
+    mSettings.getEnabledCDPDomains().clear();
+    assertTrue(mSettings.isCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_DOM));
+
+    mSettings.init(mContext);
+    assertTrue(mSettings.isCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_DOM));
+
+    // Batch updates replace the previous set and ignore duplicates.
+    mSettings.setEnabledCDPDomains(Arrays.asList(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS,
+        DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS));
+    assertEquals(1, mSettings.getEnabledCDPDomains().size());
+    assertFalse(mSettings.isCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_DOM));
+    assertTrue(mSettings.isCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS));
+
+    mSettings.setEnabledCDPDomains(new HashSet<>());
+    assertTrue(mSettings.getEnabledCDPDomains().isEmpty());
+  }
+
+  @Test
+  public void testSetEnabledCDPDomainsIgnoresNonCDPKeys() {
+    Set<String> domains =
+        new HashSet<>(Arrays.asList(DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_DOM));
+    mSettings.setEnabledCDPDomains(domains);
+    // One invalid key rejects the entire batch, including CSS.
+    mSettings.setEnabledCDPDomains(Arrays.asList(
+        DevToolSettings.SP_KEY_ENABLE_CDP_DOMAIN_CSS, DevToolSettings.SP_KEY_ENABLE_DEVTOOL));
+
+    assertEquals(domains, mSettings.getEnabledCDPDomains());
+  }
+
+  @Test
   public void testSetCDPDomainEnabledIgnoresNonCDPKeys() {
+    // The single-domain setter must also reject non-CDP keys.
     mSettings.setCDPDomainEnabled(DevToolSettings.SP_KEY_ENABLE_DEVTOOL, true);
 
     assertTrue(mSettings.getEnabledCDPDomains().isEmpty());
