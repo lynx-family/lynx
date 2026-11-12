@@ -11,6 +11,10 @@
 #include <optional>
 
 #include "base/include/fml/macros.h"
+#include "build/build_config.h"
+#if defined(OS_ANDROID)
+#include "clay/shell/gpu/android_partial_repaint.h"
+#endif
 #include "clay/shell/platform/headless/clay_headless_renderer.h"
 
 namespace clay {
@@ -85,6 +89,9 @@ class ClayHeadlessRendererSharedImageGL : public ClayHeadlessRendererGL {
     skity::Rect damage_rect;
   };
   bool disable_partial_repaint_ = false;
+#if defined(OS_ANDROID)
+  AndroidPartialRepaint partial_repaint_;
+#endif
   std::optional<FBOSlot> fbo_storage_;
   ClaySize size_ = {0, 0};
   std::list<skity::Rect> damage_history_;
