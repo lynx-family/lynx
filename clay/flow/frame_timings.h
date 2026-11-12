@@ -13,11 +13,13 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/macros.h"
 #include "base/include/fml/time/time_delta.h"
 #include "base/include/fml/time/time_point.h"
+#include "base/include/vsync_frame_tick_work.h"
 #include "clay/common/settings.h"
 
 #define TRACE_EVENT_WITH_FRAME_NUMBER(recorder, category_group, name) \
@@ -237,6 +239,20 @@ class FrameTimingsRecorder {
 
   std::vector<FrameTimingItem> TakeFrameTimings();
 
+#if defined(ENABLE_FRAME_TICK_FENCE)
+  void SetFrameTickWork(std::shared_ptr<lynx::base::VSyncFrameTickWork> work) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    frame_tick_work_ = std::move(work);
+  }
+
+  // Consumers take ownership until their updates finish.
+  // Tick work is not copied by CloneUntil.
+  std::shared_ptr<lynx::base::VSyncFrameTickWork> TakeFrameTickWork() {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return std::move(frame_tick_work_);
+  }
+#endif
+
  private:
   static std::atomic<uint64_t> frame_number_gen_;
 
@@ -271,6 +287,9 @@ class FrameTimingsRecorder {
   FrameTiming timing_;
 
   std::vector<FrameTimingItem> frame_timings_;
+#if defined(ENABLE_FRAME_TICK_FENCE)
+  std::shared_ptr<lynx::base::VSyncFrameTickWork> frame_tick_work_;
+#endif
 
   BASE_DISALLOW_COPY_ASSIGN_AND_MOVE(FrameTimingsRecorder);
 };

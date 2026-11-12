@@ -323,7 +323,15 @@ void RasterFrameService::ScheduledActionBeginFrame() {
   // Try to pull a new LayerTree from UI thread if it's async compositor.
   // It will respond with RasterFrameService::Commit when it's done.
   ui_frame_service_.Act([recorder = std::move(recorder)](auto& impl) mutable {
+#if defined(ENABLE_FRAME_TICK_FENCE)
+    auto work = recorder->TakeFrameTickWork();
     impl.BeginFrame(std::move(recorder));
+    if (work) {
+      work->Complete();
+    }
+#else
+    impl.BeginFrame(std::move(recorder));
+#endif
   });
 }
 
@@ -384,6 +392,10 @@ void RasterFrameService::ScheduledActionDraw() {
   } else {
     frame_timings_recorder_.reset();
   }
+#if defined(ENABLE_FRAME_TICK_FENCE)
+  // A raster-only tick must not retain its work in the drawn frame's timings.
+  auto work = recorder->TakeFrameTickWork();
+#endif
   TRACE_EVENT_WITH_FRAME_NUMBER(recorder, "clay",
                                 "RasterFrameService::DrawLayerTree");
   if (active_tree_matches_page_) {

@@ -101,8 +101,9 @@ void VsyncWaiter::ScheduleSecondaryCallback(uintptr_t id,
   AwaitVSyncForSecondaryCallback();
 }
 
-void VsyncWaiter::FireCallback(fml::TimePoint frame_start_time,
-                               fml::TimePoint frame_target_time) {
+void VsyncWaiter::FireCallback(
+    fml::TimePoint frame_start_time, fml::TimePoint frame_target_time,
+    std::shared_ptr<lynx::base::VSyncFrameTickWork> work) {
   // We assume that the FireCallback is triggered on the task_runner thread.
   // Because on most platforms, vsync callbacks are triggered on the registered
   // thread.
@@ -138,6 +139,9 @@ void VsyncWaiter::FireCallback(fml::TimePoint frame_start_time,
     std::unique_ptr<FrameTimingsRecorder> frame_timings_recorder =
         std::make_unique<FrameTimingsRecorder>();
     frame_timings_recorder->RecordVsync(frame_start_time, frame_target_time);
+#if defined(ENABLE_FRAME_TICK_FENCE)
+    frame_timings_recorder->SetFrameTickWork(std::move(work));
+#endif
     callback(std::move(frame_timings_recorder));
   }
 
@@ -163,24 +167,35 @@ void VsyncWaiterCustom::AwaitVSync() {
   auto weak = std::weak_ptr<VsyncWaiterCustom>(
       std::static_pointer_cast<VsyncWaiterCustom>(shared_from_this()));
   const auto generation = ++request_generation_;
-  request_([weak, generation](int64_t start, int64_t target) {
+  auto signal = [weak, generation](
+                    int64_t start, int64_t target,
+                    std::shared_ptr<lynx::base::VSyncFrameTickWork> work) {
     // The host may retain its reply after teardown. Do not keep the raster
     // runner alive through that reply.
     if (auto waiter = weak.lock()) {
       // Always post, including synchronous replies, to avoid re-entering the
       // scheduler while it is requesting a frame.
-      waiter->task_runner_->PostTask([weak, start, target, generation] {
-        if (auto waiter = weak.lock();
-            waiter && waiter->IsEngineActive() &&
-            waiter->request_generation_ == generation) {
-          waiter->FireCallback(fml::TimePoint::FromEpochDelta(
-                                   fml::TimeDelta::FromNanoseconds(start)),
-                               fml::TimePoint::FromEpochDelta(
-                                   fml::TimeDelta::FromNanoseconds(target)));
-        }
-      });
+      waiter->task_runner_->PostTask(
+          [weak, start, target, generation, work = std::move(work)]() mutable {
+            if (auto waiter = weak.lock();
+                waiter && waiter->IsEngineActive() &&
+                waiter->request_generation_ == generation) {
+              waiter->FireCallback(fml::TimePoint::FromEpochDelta(
+                                       fml::TimeDelta::FromNanoseconds(start)),
+                                   fml::TimePoint::FromEpochDelta(
+                                       fml::TimeDelta::FromNanoseconds(target)),
+                                   std::move(work));
+            }
+          });
     }
+  };
+#if defined(ENABLE_FRAME_TICK_FENCE)
+  request_.RequestWithFrameTickWork(std::move(signal));
+#else
+  request_([signal = std::move(signal)](int64_t start, int64_t target) {
+    signal(start, target, nullptr);
   });
+#endif
 }
 
 void VsyncWaiterCustom::ResetPendingCallbacks() {

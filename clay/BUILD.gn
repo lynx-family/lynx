@@ -16,6 +16,9 @@ if (is_win) {
 
 config("config") {
   defines = feature_defines_list
+  if (enable_frame_tick_fence) {
+    defines += [ "ENABLE_FRAME_TICK_FENCE" ]
+  }
 
   if (enable_non_builtin_views) {
     defines += [ "ENABLE_NON_BUILTIN_VIEWS=1" ]
