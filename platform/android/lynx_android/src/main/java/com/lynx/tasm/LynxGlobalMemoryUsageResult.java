@@ -28,6 +28,7 @@ public final class LynxGlobalMemoryUsageResult {
 
   private final long mCollectionStartMs;
   @NonNull private final LynxMemoryCollectionStatus mCollectionStatus;
+  private final boolean mMemoryMonitoringEnabled;
   @NonNull private final String mErrorMessage;
   private final long mCollectionDurationMs;
   private final long mCollectionTimeoutMs;
@@ -49,9 +50,10 @@ public final class LynxGlobalMemoryUsageResult {
       long totalBytes, long appBytes, long elementBytes, long elementNodeCount, long viewBytes,
       long mainThreadRuntimeBytes, long backgroundThreadRuntimeBytes,
       @NonNull List<LynxInstanceMemoryUsage> instances, @NonNull String errorMessage,
-      @NonNull List<LynxInstanceMemoryUsage> destroyedInstances) {
+      @NonNull List<LynxInstanceMemoryUsage> destroyedInstances, boolean memoryMonitoringEnabled) {
     mCollectionStartMs = collectionStartMs;
     mCollectionStatus = collectionStatus;
+    mMemoryMonitoringEnabled = memoryMonitoringEnabled;
     mErrorMessage = errorMessage;
     mCollectionDurationMs = collectionDurationMs;
     mCollectionTimeoutMs = collectionTimeoutMs;
@@ -92,7 +94,7 @@ public final class LynxGlobalMemoryUsageResult {
     return create(collectionStartMs, collectionStatus, collectionDurationMs, collectionTimeoutMs,
         expectedInstanceCount, totalBytes, appBytes, elementBytes, elementNodeCount, viewBytes,
         mainThreadRuntimeBytes, backgroundThreadRuntimeBytes, instances, "",
-        Collections.emptyList());
+        Collections.emptyList(), true);
   }
 
   @NonNull
@@ -100,13 +102,15 @@ public final class LynxGlobalMemoryUsageResult {
       long collectionTimeoutMs, int status, @NonNull long[] globalValues,
       @NonNull long[] instanceValues, @NonNull String[] instanceStrings,
       @NonNull long[] destroyedValues, @NonNull String[] destroyedStrings) {
-    if (status != 0) {
-      return error(collectionStartMs, collectionDurationMs, collectionTimeoutMs,
-          "Memory monitoring disabled");
+    // Native kMonitoringDisabled (1) still carries an on-demand snapshot.
+    if (status != 0 && status != 1) {
+      return error(
+          collectionStartMs, collectionDurationMs, collectionTimeoutMs, "Memory query failed");
     }
     if (globalValues.length < GLOBAL_VALUE_COUNT) {
-      return build(collectionStartMs, LynxMemoryCollectionStatus.COMPLETED, collectionDurationMs,
-          collectionTimeoutMs, 0, sampleAppBytes(), Collections.emptyList());
+      return create(collectionStartMs, LynxMemoryCollectionStatus.COMPLETED, collectionDurationMs,
+          collectionTimeoutMs, 0, 0, sampleAppBytes(), 0, 0, 0, 0, 0, Collections.emptyList(), "",
+          Collections.emptyList(), status == 0);
     }
     int instanceCount = Math.min(instanceValues.length / INSTANCE_VALUE_COUNT,
         instanceStrings.length / INSTANCE_STRING_COUNT);
@@ -137,7 +141,7 @@ public final class LynxGlobalMemoryUsageResult {
     return create(collectionStartMs, LynxMemoryCollectionStatus.COMPLETED, collectionDurationMs,
         collectionTimeoutMs, instanceCount, globalValues[0], appBytes, globalValues[1],
         globalValues[2], globalValues[3], globalValues[4], globalValues[5], instances, "",
-        destroyedInstances);
+        destroyedInstances, status == 0);
   }
 
   @NonNull
@@ -145,7 +149,7 @@ public final class LynxGlobalMemoryUsageResult {
       long collectionTimeoutMs, @NonNull String message) {
     return create(collectionStartMs, LynxMemoryCollectionStatus.ERROR, collectionDurationMs,
         collectionTimeoutMs, 0, 0, 0, 0, 0, 0, 0, 0, Collections.emptyList(), message,
-        Collections.emptyList());
+        Collections.emptyList(), false);
   }
 
   private static LynxGlobalMemoryUsageResult create(long collectionStartMs,
@@ -153,11 +157,13 @@ public final class LynxGlobalMemoryUsageResult {
       long collectionTimeoutMs, int expectedInstanceCount, long totalBytes, long appBytes,
       long elementBytes, long elementNodeCount, long viewBytes, long mainThreadRuntimeBytes,
       long backgroundThreadRuntimeBytes, @NonNull List<LynxInstanceMemoryUsage> instances,
-      @NonNull String errorMessage, @NonNull List<LynxInstanceMemoryUsage> destroyedInstances) {
+      @NonNull String errorMessage, @NonNull List<LynxInstanceMemoryUsage> destroyedInstances,
+      boolean memoryMonitoringEnabled) {
     return new LynxGlobalMemoryUsageResult(collectionStartMs, collectionStatus,
         collectionDurationMs, collectionTimeoutMs, expectedInstanceCount, instances.size(),
         totalBytes, appBytes, elementBytes, elementNodeCount, viewBytes, mainThreadRuntimeBytes,
-        backgroundThreadRuntimeBytes, instances, errorMessage, destroyedInstances);
+        backgroundThreadRuntimeBytes, instances, errorMessage, destroyedInstances,
+        memoryMonitoringEnabled);
   }
 
   private static long sampleAppBytes() {
@@ -175,6 +181,14 @@ public final class LynxGlobalMemoryUsageResult {
   @NonNull
   public LynxMemoryCollectionStatus getCollectionStatus() {
     return mCollectionStatus;
+  }
+
+  /**
+   * Whether monitoring was enabled for this query. When false, page BTS attribution, UI bytes and
+   * destroyed-page residuals are unavailable; whole BTS VM heaps are still queried.
+   */
+  public boolean isMemoryMonitoringEnabled() {
+    return mMemoryMonitoringEnabled;
   }
 
   /** Empty on success; explains why the query failed otherwise. */

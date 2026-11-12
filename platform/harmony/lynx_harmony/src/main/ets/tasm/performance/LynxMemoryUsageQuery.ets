@@ -35,6 +35,9 @@ export interface LynxInstanceMemoryUsage {
 export interface LynxGlobalMemoryUsageResult {
   collectionStartMs: number;
   collectionStatus: LynxMemoryCollectionStatus;
+  // False: page BTS attribution, UI bytes and destroyed-page residuals are
+  // unavailable. Whole BTS VM heaps are still queried without monitoring.
+  memoryMonitoringEnabled: boolean;
   errorMessage: string;
   collectionDurationMs: number;
   // Retained metadata; the native snapshot does not wait for this timeout.
@@ -57,7 +60,7 @@ export interface LynxGlobalMemoryUsageResult {
 
 export type LynxGlobalMemoryUsageCallback = (result: LynxGlobalMemoryUsageResult) => void;
 
-/** Queries current monitored memory; disabled monitoring returns an ERROR result. */
+/** Queries current memory, including an on-demand snapshot when monitoring is disabled. */
 export class LynxMemoryUsageQuery {
   private static readonly instance: LynxMemoryUsageQuery = new LynxMemoryUsageQuery();
 

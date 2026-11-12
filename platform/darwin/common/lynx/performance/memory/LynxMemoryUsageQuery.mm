@@ -64,12 +64,13 @@ LynxGlobalMemoryUsageResult *LynxBuildGlobalMemoryUsageResult(
 
   LynxGlobalMemoryUsageResult *result = [[LynxGlobalMemoryUsageResult alloc] init];
   result.collectionStartMs = collectionStartMs;
-  const bool completed = usage.status == lynx::tasm::performance::MemoryUsageQueryStatus::kOk;
+  const bool completed = usage.IsComplete();
+  result.memoryMonitoringEnabled =
+      usage.status == lynx::tasm::performance::MemoryUsageQueryStatus::kOk;
   result.collectionStatus =
       completed ? LynxMemoryCollectionStatusCompleted : LynxMemoryCollectionStatusError;
   if (!completed) {
-    result.errorMessage =
-        LynxMemoryUsageString(lynx::tasm::performance::kMemoryMonitoringDisabledError);
+    result.errorMessage = @"Memory query failed";
   }
   result.collectionDurationMs = LynxMemoryUsageNowMs() - collectionStartMs;
   result.collectionTimeoutMs = collectionTimeoutMs;

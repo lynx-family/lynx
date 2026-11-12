@@ -104,6 +104,7 @@ NSDictionary* LynxDevtoolGlobalMemoryUsageToDictionary(LynxGlobalMemoryUsageResu
   return @{
     @"collectionStartMs" : @(result.collectionStartMs),
     @"collectionStatus" : LynxDevtoolMemoryStatusString(result.collectionStatus),
+    @"memoryMonitoringEnabled" : @(result.memoryMonitoringEnabled),
     @"errorMessage" : LynxDevtoolSafeString(result.errorMessage),
     @"collectionDurationMs" : @(result.collectionDurationMs),
     @"collectionTimeoutMs" : @(result.collectionTimeoutMs),

@@ -24,6 +24,12 @@
 #include "core/services/performance/memory_monitor/memory_monitor_data.h"
 
 namespace lynx {
+namespace shell {
+template <typename T>
+class LynxActor;
+class LynxEngine;
+class BTSRuntime;
+}  // namespace shell
 namespace tasm {
 namespace performance {
 
@@ -41,12 +47,17 @@ struct ResidencyObservation {
 };
 
 struct InstanceState {
+ private:
+  // Preserve the host URL verbatim, including nested routes in query/fragment.
+  std::string url_;
+
+ public:
   void SetUrl(const std::string& url);
   const std::string& url() const { return url_; }
 
-  // Reporter-thread-only observer, cleared before PerformanceController
-  // teardown. Global snapshots use it to aggregate current producer records.
-  MemoryMonitor* memory_monitor{nullptr};
+  // On-demand queries also work without monitoring. Never keep a page alive.
+  std::weak_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor;
+  std::weak_ptr<shell::LynxActor<shell::BTSRuntime>> runtime_actor;
 
   // Resolved once at first-load completion: nonempty host page_id other than
   // "unknown", otherwise the platform-specific URL fallback. Before that,
@@ -54,6 +65,15 @@ struct InstanceState {
   std::string page_key;
   // Page's business group, not necessarily the actual VM's name (V8/JSVM).
   std::string group_id;
+
+  // Layout: keep non-trivially-copyable members above this block. Add new
+  // trivially-copyable members below so implicit copy/move operations can
+  // use a single memcpy for this contiguous region. Keep zero-initialized
+  // members together and group nonzero defaults at one end.
+
+  // Reporter-thread-only observer, cleared before PerformanceController
+  // teardown. Global snapshots use it to aggregate current producer records.
+  MemoryMonitor* memory_monitor{nullptr};
   bool page_key_resolved{false};
   // Logical shell exit excludes this page from active sampling. Only tracked
   // shared-slot metadata survives for residual attribution; page summaries
@@ -64,10 +84,10 @@ struct InstanceState {
   // Default enum values below are not evidence of an initialized engine.
   bool mts_known{false};
   bool bts_known{false};
-  // False only when the shell explicitly disables BTS, not when it is late.
-  bool bts_expected{true};
+  // True only when the shell explicitly disables BTS, not when it is late.
+  bool bts_disabled{false};
   runtime::ContextType mts_context_type{runtime::VMContextType};
-  runtime::js::JSRuntimeType bts_runtime_type{runtime::js::JSRuntimeType::jsc};
+  runtime::js::JSRuntimeType bts_runtime_type{};
   int32_t slot{fml::JSMemoryTrackSlotType::Unknown};
   // Reporter-owned VM binding count saved once on logical exit. Subtract
   // from the same VM's current total when this page is sampled for residuals.
@@ -82,10 +102,6 @@ struct InstanceState {
   // retains the BTS component used in that same total, allowing exact dedup.
   size_t memory_usage{0};
   PageMemoryUsage usage;
-
- private:
-  // Preserve the host URL verbatim, including nested routes in query/fragment.
-  std::string url_;
 };
 
 struct ModuleCacheCounts {
@@ -103,6 +119,10 @@ struct ModuleCacheCreator {
 };
 
 struct BtsVmState {
+ private:
+  std::string name_;
+
+ public:
   struct ResidualSlot {
     int64_t exited_at_ms{-1};
     double pending_byte_ms{0};
@@ -118,6 +138,20 @@ struct BtsVmState {
   std::string monitoring_group_label;
   fml::RefPtr<fml::TaskRunner> js_thread_runner;
   std::weak_ptr<runtime::js::VMInstance> vm;
+  // Lazily allocated only for exited tracked slots. Full GC closes intervals
+  // using the OLD confirmed bytes; reporting drains area even after zeroing.
+  // No instance lookup or page-key storage is needed on the GC update path.
+  std::vector<ResidualSlot> residual_slots;
+  // One uniform historical binding's copied key. It survives page cleanup,
+  // including pages without slots.
+  std::string sampled_page_key;
+  // First 128 observed creators, retained until this VM is removed.
+  std::unordered_map<int32_t, ModuleCacheCreator> module_cache_creators;
+
+  // Layout: keep non-trivially-copyable members above this block. Add new
+  // trivially-copyable members below so implicit copy/move operations can
+  // use a single memcpy for this contiguous region. Keep zero-initialized
+  // members together and group nonzero defaults at one end.
   runtime::js::VMInstance* vm_ptr{nullptr};
   size_t heap_size{0};
   // Slots survive page exit and are never reused. This current cache serves
@@ -131,25 +165,15 @@ struct BtsVmState {
   // without scanning the instance registry on every GC.
   std::array<size_t, fml::JSMemoryTrackSlotType::Count> full_gc_slots{};
   int64_t full_gc_at_ms{0};
-  // Lazily allocated only for exited tracked slots. Full GC closes intervals
-  // using the OLD confirmed bytes; reporting drains area even after zeroing.
-  // No instance lookup or page-key storage is needed on the GC update path.
-  std::vector<ResidualSlot> residual_slots;
   int64_t created_at_ms{0};
   int64_t measured_at_ms{0};
   // Time with zero active pages, not "no JS task has executed". Reset on bind.
   int64_t idle_since_ms{0};
-  // One uniform historical binding's copied key. It survives page cleanup,
-  // including pages without slots.
-  std::string sampled_page_key;
-  runtime::js::JSRuntimeType type{runtime::js::JSRuntimeType::jsc};
+  runtime::js::JSRuntimeType type{};
   // Counts accepted page-to-VM bindings, including untracked pages. Repeated
   // property updates/reload do not increment it; leaving and rebinding can.
   // It counts neither successful loads nor lifetime distinct instances.
   uint32_t total_page_count{0};
-  // The live ID only refreshes the sampled key; detach it on exit/rebind so
-  // later ID reuse cannot change the sample.
-  int32_t sampled_page_id{-1};
   uint32_t active_page_count{0};
   uint32_t allocated_slots{0};
   uint32_t untracked_page_count{0};
@@ -168,11 +192,9 @@ struct BtsVmState {
   bool has_untracked_exited_pages{false};
   // Emission is deferred until RuntimeManager commits the failed page binding.
   bool pending_overflow{false};
-  // First 128 observed creators, retained until this VM is removed.
-  std::unordered_map<int32_t, ModuleCacheCreator> module_cache_creators;
-
- private:
-  std::string name_;
+  // The live ID only refreshes the sampled key; detach it on exit/rebind so
+  // later ID reuse cannot change the sample.
+  int32_t sampled_page_id{-1};
 };
 
 struct BtsMemorySample {
@@ -206,10 +228,10 @@ class GlobalMemoryMonitor {
 
   using WithInstanceCallback = base::MoveOnlyClosure<void, InstanceState&>;
   using GlobalMemoryUsageCallback =
-      base::MoveOnlyClosure<void, GlobalMemoryUsage>;
+      base::MoveOnlyClosure<void, GlobalMemoryUsage&&>;
 
-  // Register, enroll in residency, and apply initial fields in one reporter
-  // task. Duplicate registration does not restart the observation window.
+  // Always register for queries; enroll in residency only with monitoring.
+  // Duplicate registration does not restart the observation window.
   void OnInstanceCreated(int32_t id, int64_t at_ms,
                          WithInstanceCallback&& callback);
   // Shell-owned logical exit. Idempotently update VM counts and retain only

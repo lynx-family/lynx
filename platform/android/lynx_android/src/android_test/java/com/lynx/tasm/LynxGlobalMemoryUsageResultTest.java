@@ -6,6 +6,7 @@ package com.lynx.tasm;
 
 import static com.lynx.tasm.LynxMemoryUsageTestUtils.createInstance;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -78,6 +79,7 @@ public class LynxGlobalMemoryUsageResultTest {
         globalValues, instanceValues, instanceStrings, new long[0], new String[0]);
 
     assertEquals(3, result.getExpectedInstanceCount());
+    assertTrue(result.isMemoryMonitoringEnabled());
     assertEquals(3, result.getCompletedInstanceCount());
     assertEquals(50L, result.getCollectionDurationMs());
     assertEquals(60L, result.getElementBytes());
@@ -190,13 +192,18 @@ public class LynxGlobalMemoryUsageResultTest {
   }
 
   @Test
-  public void disabledMonitoringReturnsErrorWithoutReadingArrays() {
-    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(
-        100, 50, 2000, 1, new long[0], new long[0], new String[0], new long[0], new String[0]);
-    assertEquals(LynxMemoryCollectionStatus.ERROR, result.getCollectionStatus());
-    assertEquals("Memory monitoring disabled", result.getErrorMessage());
-    assertEquals(0.0, result.getRatioToApp(), 0.0);
-    assertTrue(result.getInstances().isEmpty());
+  public void disabledMonitoringPreservesOnDemandSnapshot() {
+    LynxGlobalMemoryUsageResult result = LynxGlobalMemoryUsageResult.fromNative(100, 50, 2000, 1,
+        new long[] {130, 10, 1, 0, 20, 100}, new long[] {1, 30, 10, 1, 0, 20, 0, 100},
+        new String[] {"page", "url", "group", "quickjs"}, new long[0], new String[0]);
+    assertEquals(LynxMemoryCollectionStatus.COMPLETED, result.getCollectionStatus());
+    assertEquals("", result.getErrorMessage());
+    assertFalse(result.isMemoryMonitoringEnabled());
+    assertEquals(130, result.getTotalBytes());
+    assertEquals(100, result.getBackgroundThreadRuntimeBytes());
+    assertEquals(1, result.getCompletedInstanceCount());
+    assertEquals(100, result.getInstances().get(0).getBtsRuntimeTotalBytes());
+    assertEquals(0, result.getInstances().get(0).getBackgroundThreadRuntimeBytes());
     assertTrue(result.getDestroyedInstances().isEmpty());
   }
 }
