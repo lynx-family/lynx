@@ -487,15 +487,10 @@ public class ListContainerView extends NestedScrollContainerView
   void applyComposeScrollState(int x, int y, int width, int height) {
     setMeasuredSize(Math.max(width, mUiListContainer.getWidth()),
         Math.max(height, mUiListContainer.getHeight()));
-    mShouldBlockScrollByListContainer = true;
-    try {
-      // Absolute Engine document offsets already include horizontal RTL.
-      super.scrollTo(x, y);
-      mPreviousOffsetX = mUiListContainer.isRtl() ? contentOffsetXRTL(x) : x;
-      mPreviousOffsetY = y;
-    } finally {
-      mShouldBlockScrollByListContainer = false;
-    }
+    // Absolute Engine document offsets already include horizontal RTL.
+    super.scrollTo(x, y);
+    mPreviousOffsetX = mUiListContainer.isRtl() ? contentOffsetXRTL(x) : x;
+    mPreviousOffsetY = y;
     invalidate();
   }
 

@@ -515,11 +515,6 @@ void EventDispatcher::AttachGesturesToRoot(UIBase* root) {
   NodeManager::Instance().SetGestureInterrupterToNode(
       root->RootNode(), EventDispatcher::event_gesture_interrupter_callback_,
       gesture_callback_flag_);
-  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
-    if (auto context = ui_owner_->Context()->GetNativePaintingContext()) {
-      context->SetPlatformEventRootActive(root->Sign(), true);
-    }
-  }
 }
 
 void EventDispatcher::AttachGesturesToOverlayRoot(UIBase* root, int32_t level) {
@@ -537,11 +532,6 @@ void EventDispatcher::DetachGesturesFromRoot(UIBase* root) {
   input_event_roots_.erase(root->Sign());
   if (!root->RootNode()) {
     return;
-  }
-  if (ui_owner_->Context()->IsFragmentLayerRenderOn()) {
-    if (auto context = ui_owner_->Context()->GetNativePaintingContext()) {
-      context->SetPlatformEventRootActive(root->Sign(), false);
-    }
   }
   auto* root_node = root->RootNode();
   NodeManager::Instance().SetGestureInterrupterToNode(
