@@ -129,6 +129,9 @@ class LynxShellTest : public ::testing::Test {
                 std::make_shared<lynx::tasm::PropBundleCreatorDefault>())
             .build());
 
+    // Finish engine initialization on the original runner before replacing it.
+    shell_->engine_actor_->ActSync([](auto&) {});
+
     // hook runners, use for test
     shell_->runners_ =
         MockRunnerManufactor(base::ThreadStrategyForRendering::MULTI_THREADS);
