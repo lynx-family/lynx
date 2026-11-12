@@ -83,6 +83,7 @@ public class DevToolSettings {
   private final BootstrapSettings mBootstrapSettings = new BootstrapSettings();
 
   // Member variables to store non-persisted settings
+  private volatile Set<String> mEnabledCDPDomains = Collections.emptySet();
   private volatile boolean mHighlightTouchEnabled = false;
   private volatile boolean mPreviewScreenshotEnabled = true;
   private volatile boolean mPerfMetricsEnabled = false;
@@ -314,6 +315,7 @@ public class DevToolSettings {
 
   void resetNonPersistedSettingsForTesting() {
     mBootstrapSettings.resetForTesting();
+    mEnabledCDPDomains = Collections.emptySet();
     mHighlightTouchEnabled = false;
     mPreviewScreenshotEnabled = true;
     mPerfMetricsEnabled = false;
@@ -569,27 +571,27 @@ public class DevToolSettings {
   }
 
   /**
-   * <b>Persistence:</b> true
+   * <b>Persistence:</b> false
    * <br><b>Sync to Native:</b> true
    * <br><b>Default:</b> empty set
    */
   @NonNull
   public Set<String> getEnabledCDPDomains() {
-    return getPersistedStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS);
+    return new HashSet<>(mEnabledCDPDomains);
   }
 
   /**
    * Replaces the enabled CDP domain set. Duplicate entries are ignored.
    */
   public void setEnabledCDPDomains(@NonNull Collection<String> domains) {
-    // Take ownership of a stable snapshot before validation, persistence, and native sync.
+    // Take ownership of a stable snapshot before validation and native sync.
     Set<String> domainSnapshot = new HashSet<>(domains);
     for (String key : domainSnapshot) {
       if (!verifyCDPDomainKey(key)) {
         return;
       }
     }
-    setPersistedStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS, domainSnapshot);
+    mEnabledCDPDomains = domainSnapshot;
     syncToNativeEnabledCDPDomains(domainSnapshot);
   }
 
@@ -609,7 +611,7 @@ public class DevToolSettings {
     if (!changed) {
       return;
     }
-    setPersistedStringSet(SP_KEY_ACTIVATED_CDP_DOMAINS, enabledDomains);
+    mEnabledCDPDomains = enabledDomains;
     syncToNativeEnabledCDPDomains(enabledDomains);
   }
 

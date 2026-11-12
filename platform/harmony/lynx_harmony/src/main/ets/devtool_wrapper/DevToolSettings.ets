@@ -33,6 +33,7 @@ export class DevToolSettings {
   private static readonly SP_KEY_ACTIVATED_CDP_DOMAINS: string = 'activated_cdp_domains';
   private static readonly CDP_DOMAIN_KEY_PREFIX: string = 'enable_cdp_domain_';
 
+  private static enabledCDPDomains: Set<string> = new Set<string>();
   private static highlightTouchEnabled: boolean = false;
   private static previewScreenshotEnabled: boolean = true;
   private static perfMonitorDebugEnabled: boolean = true;
@@ -226,21 +227,12 @@ export class DevToolSettings {
   }
 
   /**
-   * Persistence: true
+   * Persistence: false
    * Sync to native: true
    * Default: empty set
    */
   public static getEnabledCDPDomains(): Set<string> {
-    const raw = lynx.DevToolSettingsHarmony.getPersistedString(DevToolSettings.SP_KEY_ACTIVATED_CDP_DOMAINS, '');
-    if (raw.length === 0) {
-      return new Set<string>();
-    }
-    try {
-      return new Set<string>(JSON.parse(raw) as string[]);
-    } catch (e) {
-      LLog.e(TAG, `Failed to parse enabled CDP domains: ${raw}`);
-      return new Set<string>();
-    }
+    return new Set<string>(DevToolSettings.enabledCDPDomains);
   }
 
   /**
@@ -248,14 +240,14 @@ export class DevToolSettings {
    * key is invalid, the whole update is rejected.
    */
   public static setEnabledCDPDomains(domains: Set<string> | string[]): void {
-    // Take a stable snapshot before validation, persistence, and native sync.
+    // Take a stable snapshot before validation and native sync.
     const domainSnapshot: string[] = Array.from(domains);
     for (const key of domainSnapshot) {
       if (!DevToolSettings.verifyCDPDomainKey(key)) {
         return;
       }
     }
-    DevToolSettings.persistAndSyncEnabledCDPDomains(new Set<string>(domainSnapshot));
+    DevToolSettings.updateEnabledCDPDomains(new Set<string>(domainSnapshot));
   }
 
   public static isCDPDomainEnabled(key: string): boolean {
@@ -278,7 +270,7 @@ export class DevToolSettings {
     } else {
       enabledDomains.delete(key);
     }
-    DevToolSettings.persistAndSyncEnabledCDPDomains(enabledDomains);
+    DevToolSettings.updateEnabledCDPDomains(enabledDomains);
   }
 
   private static verifyCDPDomainKey(key: string): boolean {
@@ -289,9 +281,8 @@ export class DevToolSettings {
     return true;
   }
 
-  private static persistAndSyncEnabledCDPDomains(domains: Set<string>): void {
-    lynx.DevToolSettingsHarmony.setPersistedString(
-      DevToolSettings.SP_KEY_ACTIVATED_CDP_DOMAINS, JSON.stringify(Array.from(domains)));
+  private static updateEnabledCDPDomains(domains: Set<string>): void {
+    DevToolSettings.enabledCDPDomains = domains;
     DevToolSettings.syncEnabledCDPDomainsToNative(domains);
   }
 

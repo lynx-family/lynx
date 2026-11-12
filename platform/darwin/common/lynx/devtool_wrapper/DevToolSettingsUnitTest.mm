@@ -36,6 +36,14 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
   [defaults removeObjectForKey:kDevToolSettingsTestIgnoreErrorTypesKey];
   [defaults removeObjectForKey:kDevToolSettingsTestActivatedCDPDomainsKey];
   [defaults synchronize];
+  [[DevToolSettings sharedInstance] setEnabledCDPDomains:[NSSet set]];
+}
+
+- (void)tearDown {
+  [[DevToolSettings sharedInstance] setEnabledCDPDomains:[NSSet set]];
+  [[NSUserDefaults standardUserDefaults]
+      removeObjectForKey:kDevToolSettingsTestActivatedCDPDomainsKey];
+  [super tearDown];
 }
 
 - (void)testSingleton {
@@ -133,7 +141,7 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
   XCTAssertFalse([settings isErrorTypeIgnored:EBLynxCSS]);
 }
 
-- (void)testEnabledCDPDomainsPersistence {
+- (void)testEnabledCDPDomainsAreNotPersisted {
   DevToolSettings *settings = [DevToolSettings sharedInstance];
   NSSet<NSString *> *enabledDomains = [NSSet
       setWithObjects:SP_KEY_ENABLE_CDP_DOMAIN_DOM, SP_KEY_ENABLE_CDP_DOMAIN_CSS,
@@ -142,9 +150,8 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
   [settings setEnabledCDPDomains:enabledDomains];
 
   XCTAssertEqualObjects(enabledDomains, [settings enabledCDPDomains]);
-  NSArray *persistedDomains = [[NSUserDefaults standardUserDefaults]
-      arrayForKey:kDevToolSettingsTestActivatedCDPDomainsKey];
-  XCTAssertEqualObjects(enabledDomains, [NSSet setWithArray:persistedDomains]);
+  XCTAssertNil([[NSUserDefaults standardUserDefaults]
+      objectForKey:kDevToolSettingsTestActivatedCDPDomainsKey]);
 }
 
 - (void)testSetCDPDomainEnabled {
@@ -154,9 +161,62 @@ static NSString *const kDevToolSettingsTestActivatedCDPDomainsKey = @"activated_
 
   [settings setCDPDomain:SP_KEY_ENABLE_CDP_DOMAIN_CSS enabled:YES];
   XCTAssertTrue([settings isCDPDomainEnabled:SP_KEY_ENABLE_CDP_DOMAIN_CSS]);
+  XCTAssertNil([[NSUserDefaults standardUserDefaults]
+      objectForKey:kDevToolSettingsTestActivatedCDPDomainsKey]);
 
   [settings setCDPDomain:SP_KEY_ENABLE_CDP_DOMAIN_CSS enabled:NO];
   XCTAssertFalse([settings isCDPDomainEnabled:SP_KEY_ENABLE_CDP_DOMAIN_CSS]);
+  XCTAssertNil([[NSUserDefaults standardUserDefaults]
+      objectForKey:kDevToolSettingsTestActivatedCDPDomainsKey]);
+}
+
+- (void)testCDPDomainsIgnorePersistedValues {
+  // Values saved by older versions must not restore enabled domains.
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  NSArray<NSString *> *persistedDomains = @[ SP_KEY_ENABLE_CDP_DOMAIN_DOM ];
+  [defaults setObject:persistedDomains forKey:kDevToolSettingsTestActivatedCDPDomainsKey];
+  DevToolSettings *settings = [[DevToolSettings alloc] init];
+
+  XCTAssertEqual([settings enabledCDPDomains].count, 0U);
+  [settings setCDPDomain:SP_KEY_ENABLE_CDP_DOMAIN_CSS enabled:YES];
+  XCTAssertFalse([settings isCDPDomainEnabled:SP_KEY_ENABLE_CDP_DOMAIN_DOM]);
+  XCTAssertEqualObjects(persistedDomains,
+                        [defaults arrayForKey:kDevToolSettingsTestActivatedCDPDomainsKey]);
+
+  // A new instance must start empty despite earlier updates.
+  DevToolSettings *freshSettings = [[DevToolSettings alloc] init];
+  XCTAssertEqual([freshSettings enabledCDPDomains].count, 0U);
+}
+
+- (void)testCDPDomainsUseSnapshotsAndReplacePreviousValues {
+  DevToolSettings *settings = [DevToolSettings sharedInstance];
+  NSMutableSet<NSString *> *domains = [NSMutableSet setWithObject:SP_KEY_ENABLE_CDP_DOMAIN_DOM];
+  [settings setEnabledCDPDomains:domains];
+  // Mutating the input set must not change settings.
+  [domains removeAllObjects];
+  XCTAssertTrue([settings isCDPDomainEnabled:SP_KEY_ENABLE_CDP_DOMAIN_DOM]);
+
+  // Batch updates replace the previous set rather than merging it.
+  [settings setEnabledCDPDomains:[NSSet setWithObject:SP_KEY_ENABLE_CDP_DOMAIN_CSS]];
+  XCTAssertFalse([settings isCDPDomainEnabled:SP_KEY_ENABLE_CDP_DOMAIN_DOM]);
+  XCTAssertTrue([settings isCDPDomainEnabled:SP_KEY_ENABLE_CDP_DOMAIN_CSS]);
+
+  [settings setEnabledCDPDomains:[NSSet set]];
+  XCTAssertEqual([settings enabledCDPDomains].count, 0U);
+}
+
+- (void)testCDPDomainsRejectInvalidKeysWithoutChangingState {
+  DevToolSettings *settings = [DevToolSettings sharedInstance];
+  NSSet<NSString *> *domains = [NSSet setWithObject:SP_KEY_ENABLE_CDP_DOMAIN_DOM];
+  [settings setEnabledCDPDomains:domains];
+
+  // One invalid key rejects the entire batch, including CSS.
+  [settings setEnabledCDPDomains:[NSSet setWithObjects:SP_KEY_ENABLE_CDP_DOMAIN_CSS,
+                                                       SP_KEY_ENABLE_DEVTOOL, nil]];
+  // The single-domain setter must also reject non-CDP keys.
+  [settings setCDPDomain:SP_KEY_ENABLE_DEVTOOL enabled:YES];
+  XCTAssertFalse([settings isCDPDomainEnabled:SP_KEY_ENABLE_DEVTOOL]);
+  XCTAssertEqualObjects(domains, [settings enabledCDPDomains]);
 }
 
 - (void)testBuildReportedBacktraceAddresses {

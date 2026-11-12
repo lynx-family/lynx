@@ -130,8 +130,6 @@ export class DevToolSettingsHarmony {
   static setPersistedBoolean: (key: string, value: boolean) => void;
   static getPersistedBoolean: (key: string, defaultValue: boolean) => boolean;
   static syncBooleanToNative: (key: string, value: boolean) => void;
-  static setPersistedString: (key: string, value: string) => void;
-  static getPersistedString: (key: string, defaultValue: string) => string;
   static syncStringSetToNative: (groupKey: string, values: string[]) => void;
 }
 
