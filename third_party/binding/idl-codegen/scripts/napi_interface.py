@@ -431,6 +431,7 @@ k_command_buffer_init = {
     'interfaces': [],
     'async_classes': [],
     'slow_if_buffered_methods': [],
+    'public_buffered_methods': [],
     'buffering_disabled_methods': [],
     'flushed_within_frame_methods': [],
 }
@@ -572,6 +573,11 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
                 if method['name'] in command_buffer_context['slow_if_buffered_methods']:
                     method['slow_if_buffered'] = True
 
+                # These keep the binding version as a fallback, but the public
+                # JS name is still bound to the buffered version.
+                if method['name'] in command_buffer_context['public_buffered_methods']:
+                    method['public_buffered'] = True
+
                 if method.get('slow_if_buffered', False):
                     method['keep_binding_version'] = True
 
@@ -671,6 +677,7 @@ def init_command_buffer_context(component, metadata):
     command_buffer_context['generates_remote'] = metadata.get('has_remote', False)
     command_buffer_context['remote_excludes'] = metadata.get('remote_excluding_regexps', [])
     command_buffer_context['slow_if_buffered_methods'] = metadata.get('slow_if_buffered_methods', [])
+    command_buffer_context['public_buffered_methods'] = metadata.get('public_buffered_methods', [])
     command_buffer_context['buffering_disabled_methods'] = metadata.get('buffering_disabled_methods', [])
     command_buffer_context['flushed_within_frame_methods'] = metadata.get('flushed_within_frame_methods', [])
     command_buffer_context['fixed_remote_method_ids'] = metadata.get('fixed_remote_method_ids', '')
