@@ -7,24 +7,8 @@ Subject: [PATCH] infra: support macos build.
  Makefile.am                   |   4 +-
  config.h.in~                  | 149 ++++++++++++++++++++++++++++++++++
  configure.ac                  |  18 ++--
- java/Makefile.am              |   0
- release/libjpeg-turbo.spec.in |   0
- release/libjpeg.pc.in         |   0
- release/libturbojpeg.pc.in    |   0
- release/makecygwinpkg.in      |   0
- release/makedpkg.in           |   0
- release/makemacpkg.in         |   0
- release/uninstall.in          |   0
- 11 files changed, 160 insertions(+), 11 deletions(-)
+ 3 files changed, 160 insertions(+), 11 deletions(-)
  create mode 100644 config.h.in~
- create mode 100644 java/Makefile.am
- create mode 100644 release/libjpeg-turbo.spec.in
- create mode 100644 release/libjpeg.pc.in
- create mode 100644 release/libturbojpeg.pc.in
- create mode 100644 release/makecygwinpkg.in
- create mode 100644 release/makedpkg.in
- create mode 100644 release/makemacpkg.in
- create mode 100644 release/uninstall.in
 
 diff --git a/Makefile.am b/Makefile.am
 index 80f00598..3ee9c20b 100644
@@ -237,30 +221,5 @@ index 173000fa..e43216e7 100644
 +# AC_CONFIG_FILES([java/Makefile])
 +# AC_CONFIG_FILES([md5/Makefile])
  AC_OUTPUT
-diff --git a/java/Makefile.am b/java/Makefile.am
-new file mode 100644
-index 00000000..e69de29b
-diff --git a/release/libjpeg-turbo.spec.in b/release/libjpeg-turbo.spec.in
-new file mode 100644
-index 00000000..e69de29b
-diff --git a/release/libjpeg.pc.in b/release/libjpeg.pc.in
-new file mode 100644
-index 00000000..e69de29b
-diff --git a/release/libturbojpeg.pc.in b/release/libturbojpeg.pc.in
-new file mode 100644
-index 00000000..e69de29b
-diff --git a/release/makecygwinpkg.in b/release/makecygwinpkg.in
-new file mode 100644
-index 00000000..e69de29b
-diff --git a/release/makedpkg.in b/release/makedpkg.in
-new file mode 100644
-index 00000000..e69de29b
-diff --git a/release/makemacpkg.in b/release/makemacpkg.in
-new file mode 100644
-index 00000000..e69de29b
-diff --git a/release/uninstall.in b/release/uninstall.in
-new file mode 100644
-index 00000000..e69de29b
 -- 
 2.51.0
-

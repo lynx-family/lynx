@@ -90,7 +90,7 @@ deps = {
     },
     "third_party/libjpeg-turbo": {
         "type": "git",
-        "url": "https://fuchsia.googlesource.com/third_party/libjpeg-turbo.git",
+        "url": "https://github.com/libjpeg-turbo/libjpeg-turbo.git",
         "commit": revision.LIBJPEG_TURBO,
         "patches": [
             os.path.join(root_dir, 'patches', 'libjpeg-turbo', '*.patch')
