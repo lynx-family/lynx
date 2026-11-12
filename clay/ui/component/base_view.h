@@ -451,6 +451,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   FloatRect BoundsRelativeTo(BaseView* view) const;
 
   FloatPoint GetPointBySelf(const FloatPoint& point_by_page) const;
+  FloatPoint GetPointBySelfForGesture(const FloatPoint& point_by_page) const;
   Transform LocalToGlobalTransform() const;
 
   // FocusNode
@@ -843,6 +844,8 @@ class BaseView : public TypeIdentifiable<BaseView>,
   std::unique_ptr<BaseViewAnimationMutator> animation_mutator_;
 
  private:
+  FloatPoint GetPointBySelfImpl(const FloatPoint& point_by_page,
+                                bool preserve_fractional_x) const;
   bool ShouldPassEventToNativeAt(const FloatPoint& position) const;
   bool HitEventThroughActiveRegions(const FloatPoint& position) const;
 
