@@ -29,6 +29,8 @@ class LayoutAlgorithm : public DirectionSelector {
   }
 
   Constraints GenerateDefaultConstraint(const LayoutObject& child) const;
+  static Constraints GenerateDefaultConstraint(
+      const LayoutObject& child, const Constraints& containing_block);
   bool IsInflowSubTreeInSync() const;
 
   const LayoutComputedStyle* GetCSSStyle() const { return container_style_; }
@@ -36,6 +38,7 @@ class LayoutAlgorithm : public DirectionSelector {
   void Initialize(const Constraints& constraints,
                   const SLNodeSet* fixed_node_set = nullptr);
   void InitializeWithCompose(const ComposeConstraints& constraints);
+  void SetComposeConstraints(const ComposeConstraints* constraints);
   FloatSize SizeDetermination();
   virtual void Alignment();
 

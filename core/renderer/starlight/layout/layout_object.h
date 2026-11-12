@@ -110,6 +110,12 @@ class LayoutObject : public ContainerNode {
   void SetComposeLayout(bool value) { compose_layout_ = value; }
   bool IsComposeLayout() const { return compose_layout_; }
 
+  bool SetComposeLayoutModifiers(
+      std::shared_ptr<const ComposeLayoutModifiers> modifiers);
+  const ComposeLayoutModifiers* GetComposeLayoutModifiers() const {
+    return layout_modifiers_.get();
+  }
+
   SLAlignmentFunc GetSLAlignmentFunc() const;
 
   FloatSize UpdateMeasureByPlatform(const Constraints& constraints,
@@ -321,6 +327,8 @@ class LayoutObject : public ContainerNode {
   }
 
  protected:
+  friend class GridLayoutAlgorithm;
+
   void MarkDirtyWithoutResetCache();
   void MarkHasNewLayout();
   void MarkDirtyInternal(bool request_layout, bool force = false);
@@ -339,6 +347,13 @@ class LayoutObject : public ContainerNode {
   // CSS parents resolve border-box constraints before entering Compose.
   FloatSize UpdateMeasureWithCompose(const Constraints& constraints,
                                      bool final_measure);
+
+  struct ResolvedComposeConstraints {
+    ComposeConstraints border;
+    Constraints defaults;
+  };
+  ResolvedComposeConstraints ResolveComposeConstraints(
+      const ComposeConstraints& constraints);
 
   // Shares Compose measurement after the entry point resolves the border box.
   // Preserve the caller's percentage bases and apply padding/border only once.
@@ -365,6 +380,7 @@ class LayoutObject : public ContainerNode {
 
   SLMeasureFunc measure_func_ = nullptr;
   SLComposeMeasureFunc compose_measure_func_ = nullptr;
+  std::shared_ptr<const ComposeLayoutModifiers> layout_modifiers_;
   bool compose_layout_ = false;
   SLRequestLayoutFunc request_layout_func_ = nullptr;
   SLAlignmentFunc alignment_func_ = nullptr;
