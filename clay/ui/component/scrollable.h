@@ -5,9 +5,11 @@
 #ifndef CLAY_UI_COMPONENT_SCROLLABLE_H_
 #define CLAY_UI_COMPONENT_SCROLLABLE_H_
 
+#include <forward_list>
 #include <memory>
 #include <string>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "clay/gfx/animation/bounce_animator.h"
 #include "clay/gfx/scroll_direction.h"
 #include "clay/ui/component/base_view.h"
@@ -19,7 +21,15 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
  public:
   class Listener {
    public:
+    virtual ~Listener() = default;
     virtual void OnScrollableScrolled() = 0;
+
+    fml::WeakPtr<Listener> GetScrollListenerWeakPtr() const {
+      return weak_factory_.GetWeakPtr();
+    }
+
+   private:
+    fml::WeakPtrFactory<Listener> weak_factory_{this};
   };
 
   enum class ScrollStatus {
@@ -121,7 +131,7 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
                              float value, float velocity) override;
 
  private:
-  std::forward_list<Listener*> listeners_;
+  std::forward_list<fml::WeakPtr<Listener>> listeners_;
   bool scroll_enabled_ = true;
   bool upper_overscroll_enabled_ = false;
   bool lower_overscroll_enabled_ = false;
