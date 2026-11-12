@@ -59,6 +59,7 @@ public final class MemoryUsageResultSerializer {
     JSONObject json = new JSONObject();
     json.put("collectionStartMs", result.getCollectionStartMs());
     json.put("collectionStatus", statusToString(result.getCollectionStatus()));
+    json.put("memoryMonitoringEnabled", result.isMemoryMonitoringEnabled());
     json.put("errorMessage", result.getErrorMessage());
     json.put("collectionDurationMs", result.getCollectionDurationMs());
     json.put("collectionTimeoutMs", result.getCollectionTimeoutMs());

@@ -269,7 +269,7 @@ PageMemoryUsage MemoryMonitor::RefreshMemoryUsage() {
       usage.element_count += item.second.instance_count_;
     }
   }
-  if (state->bts_expected) {
+  if (!state->bts_disabled) {
     const auto bts = global_->GetInstanceBtsMemoryUsage(instance_id_);
     usage.bts_shared = bts != std::numeric_limits<size_t>::max();
     const auto it = memory_records_.find(kCategoryBTSEngine);

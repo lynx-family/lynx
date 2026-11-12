@@ -29,11 +29,11 @@ Json::Value BuildEmbedderMemoryUsageResult(
   Json::Value result(Json::objectValue);
   result["collectionStartMs"] = Json::Int64(collection_start_ms);
   // Completion describes the monitor query, not source completeness/freshness.
-  const bool completed =
+  const bool completed = usage.IsComplete();
+  result["memoryMonitoringEnabled"] =
       usage.status == tasm::performance::MemoryUsageQueryStatus::kOk;
   result["collectionStatus"] = completed ? "completed" : "error";
-  result["errorMessage"] =
-      completed ? "" : tasm::performance::kMemoryMonitoringDisabledError;
+  result["errorMessage"] = completed ? "" : "Memory query failed";
   result["collectionDurationMs"] = Json::Int64(collection_duration_ms);
   result["collectionTimeoutMs"] = Json::Int64(collection_timeout_ms);
   result["expectedInstanceCount"] = Json::UInt64(usage.instances.size());

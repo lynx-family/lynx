@@ -66,11 +66,15 @@ struct InstanceMemoryUsageResult {
   int64_t bts_heap_bytes{0};
 };
 
-inline constexpr char kMemoryMonitoringDisabledError[] =
-    "Memory monitoring disabled";
-
 struct GlobalMemoryUsage {
+  // kMonitoringDisabled is a completed on-demand query: page BTS attribution,
+  // UI records and destroyed-page residuals are unavailable. Active VM heaps
+  // are still returned and deduplicated in total.
   MemoryUsageQueryStatus status{MemoryUsageQueryStatus::kOk};
+  bool IsComplete() const {
+    return status == MemoryUsageQueryStatus::kOk ||
+           status == MemoryUsageQueryStatus::kMonitoringDisabled;
+  }
   // Aggregated page-owned categories plus each active BTS VM heap exactly once.
   // Bundle-local MTS pools are process overhead, not page-owned MTS memory, so
   // they are intentionally excluded from this query result.

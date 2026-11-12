@@ -1622,6 +1622,7 @@ export interface LynxInstanceMemoryUsage {
 export interface LynxGlobalMemoryUsageResult {
   collectionStartMs: number;
   collectionStatus: LynxMemoryCollectionStatus;
+  memoryMonitoringEnabled: boolean;
   errorMessage: string;
   collectionDurationMs: number;
   collectionTimeoutMs: number;

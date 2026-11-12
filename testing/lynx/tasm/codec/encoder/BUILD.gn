@@ -21,7 +21,10 @@ unittest_set("encoder_testset") {
     "//third_party/modp_b64",
   ]
 
-  sources = [ "encoder_test.cc" ]
+  sources = [
+    "encoder_test.cc",
+    "memory_query_stubs.cc",
+  ]
 }
 
 unittest_exec("encoder_tests_exec") {
