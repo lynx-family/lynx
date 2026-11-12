@@ -13,6 +13,7 @@
 
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/persistent_cache.h"
+#include "clay/common/trail_settings.h"
 #include "clay/fml/base32.h"
 #include "clay/fml/logging.h"
 #include "clay/fml/size.h"
@@ -62,7 +63,12 @@ GPUSurfaceGLSkity::GPUSurfaceGLSkity(
 
   valid_ = gpu_context_ != nullptr;
   if (valid_) {
+#if defined(OS_ANDROID)
+    gpu_context_->SetEnableSimpleShapePipeline(
+        setting::CLAY_ANDROID_ENABLE_SIMPLE_SHAPE_PIPELINE.value());
+#else
     gpu_context_->SetEnableSimpleShapePipeline(true);
+#endif
     gpu_context_->EnableRenderTargetCache(false);
   }
 }

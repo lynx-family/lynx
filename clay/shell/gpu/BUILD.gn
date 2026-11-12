@@ -36,6 +36,10 @@ source_set("gpu_surface_gl") {
     "gpu_surface_gl_delegate.h",
   ]
 
+  if (is_android) {
+    sources += [ "android_partial_repaint.h" ]
+  }
+
   if (!enable_skity) {
     sources += [
       "gpu_surface_gl_skia.cc",
