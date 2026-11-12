@@ -2876,6 +2876,52 @@ TEST_F(FragmentDrawTest, NonZeroZIndexChangeResortsSiblings) {
   EXPECT_EQ(page_fragment->children_[1], lower_fragment);
 }
 
+TEST_F(FragmentDrawTest, RestoreZIndexBetweenRemovalAndFragmentDetach) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto owner = manager->CreateFiberView();
+  auto projected = manager->CreateFiberView();
+  auto descendant = manager->CreateFiberView();
+  auto sibling = manager->CreateFiberView();
+  descendant->SetStyle(kPropertyIDZIndex, lepus::Value(2));
+  page->InsertNode(owner);
+  owner->InsertNode(projected);
+  owner->InsertNode(sibling);
+  projected->InsertNode(descendant);
+  page->FlushActionsAsRoot();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* owner_fragment = owner->fragment_impl();
+  auto* projected_fragment = projected->fragment_impl();
+  auto* descendant_fragment = descendant->fragment_impl();
+  projected->computed_css_style()->SetValue(
+      kPropertyIDZIndex, CSSValue(lepus::Value(1), CSSValuePattern::NUMBER),
+      false);
+  projected_fragment->StyleChanged();
+  ASSERT_EQ(projected_fragment->fragment_parent(), page_fragment);
+  ASSERT_EQ(descendant_fragment->fragment_parent(), projected_fragment);
+
+  owner->RemoveNode(projected, false);
+  ASSERT_EQ(projected->parent(), nullptr);
+  ASSERT_EQ(projected_fragment->fragment_parent(), page_fragment);
+  // CustomLayout restores the authored style before the removal action runs.
+  projected->computed_css_style()->SetValue(kPropertyIDZIndex, CSSValue(),
+                                            true);
+  projected_fragment->StyleChanged();
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(projected_fragment->fragment_parent(), nullptr);
+  EXPECT_TRUE(owner_fragment->z_children_.empty());
+
+  owner->InsertNodeBefore(projected, sibling);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(projected_fragment->old_z_index(), 0);
+  EXPECT_FALSE(projected_fragment->was_stacking_context());
+  EXPECT_EQ(projected_fragment->fragment_parent(), owner_fragment);
+  EXPECT_EQ(descendant_fragment->fragment_parent(), page_fragment);
+  ASSERT_EQ(owner_fragment->children_.size(), 2u);
+  EXPECT_EQ(owner_fragment->children_[0], projected_fragment);
+  EXPECT_EQ(owner_fragment->children_[1], sibling->fragment_impl());
+}
+
 TEST_F(FragmentDrawTest,
        ZIndexAcrossPlatformAncestorAndStackingContextKeepsOffset) {
   auto page = manager->CreateFiberPage("0", 0);
