@@ -143,6 +143,13 @@ class EventDispatcher {
 
   void UpdateRootTarget(UIBase* root);
 
+  bool ShouldInterceptGesture();
+
+  void GetEventPagePoint(float page_point[2], const ArkUI_UIInputEvent* event,
+                         size_t index, float point_scale = 1.f);
+
+  bool IsActiveFinger(const ArkUI_UIInputEvent* event, size_t index);
+
  private:
   enum class ChildLynxPageEventType { kTouch, kClick, kTap, kLongPress };
 
@@ -188,8 +195,6 @@ class EventDispatcher {
 
   void OnClickEvent(const EmulatedTouchPoint& point);
 
-  bool ShouldInterceptGesture();
-
   EventTarget* FindTarget(float point[2]);
 
   bool CanRespondTap(EventTarget* active_target);
@@ -202,9 +207,6 @@ class EventDispatcher {
       const std::string& event_name);
 
   void GetPagePoint(float page_point[2], float node_point[2]);
-
-  void GetEventPagePoint(float page_point[2], const ArkUI_UIInputEvent* event,
-                         size_t index, float point_scale = 1.f);
 
   void AddTargetTouchMap(lepus::Value& target_touch_map,
                          const ArkUI_UIInputEvent* event);
@@ -245,8 +247,6 @@ class EventDispatcher {
   void DeactivatePseudoStatus(PseudoStatus status);
 
   bool IsTouchMoveOutside(EventTarget* target);
-
-  bool IsActiveFinger(const ArkUI_UIInputEvent* event, size_t index);
 
   bool IsPrimaryInput(const ArkUI_UIInputEvent* event, int pointer_id);
 
