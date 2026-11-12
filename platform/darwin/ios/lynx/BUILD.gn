@@ -573,6 +573,7 @@ subspec_target("UnitTests") {
     "ui/scroll_view/base/LynxBaseScrollViewPublicUnitTest.m",
     "ui/scroll_view/base/LynxBaseScrollViewUnitTest.m",
     "ui/scroll_view/base/LynxBaseScrollViewVerticalUnitTest.m",
+    "ui/text/LynxUITextUnitTest.m",
     "utils/LynxColorUtilsUnitTest.m",
     "utils/LynxConvertUtilsUnitTest.m",
     "utils/LynxGradientUtilsUnitTest.m",
