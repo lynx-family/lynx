@@ -1,0 +1,2166 @@
+From 3ff13e651bbe6de9c6f15d05235d1d4f26f63ffc Mon Sep 17 00:00:00 2001
+From: DRC <information@libjpeg-turbo.org>
+Date: Tue, 31 May 2016 22:53:17 -0500
+Subject: [PATCH 1/7] 1.5.0
+
+---
+ CMakeLists.txt | 2 +-
+ configure.ac   | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 5924f0cfbc228e68ebfafd6c270239fc55e269d9..1d82d179ba8b82b353cd76257969810255e9a760 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -9,7 +9,7 @@ if(POLICY CMP0022)
+ endif()
+ 
+ project(libjpeg-turbo C)
+-set(VERSION 1.4.90)
++set(VERSION 1.5.0)
+ string(REPLACE "." ";" VERSION_TRIPLET ${VERSION})
+ list(GET VERSION_TRIPLET 0 VERSION_MAJOR)
+ list(GET VERSION_TRIPLET 1 VERSION_MINOR)
+diff --git a/configure.ac b/configure.ac
+index c728ee8191ae582205fe90e9397b5d41339cfd13..173000fae8cbc10e1a3bab998f521f973817cb86 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -2,7 +2,7 @@
+ # Process this file with autoconf to produce a configure script.
+ 
+ AC_PREREQ([2.56])
+-AC_INIT([libjpeg-turbo], [1.4.90])
++AC_INIT([libjpeg-turbo], [1.5.0])
+ 
+ AM_INIT_AUTOMAKE([-Wall foreign dist-bzip2])
+ AC_PREFIX_DEFAULT(/opt/libjpeg-turbo)
+
+From a9e2849967092a11c6c6d5c695ae43c2512854c5 Mon Sep 17 00:00:00 2001
+From: Michael Jurka <mikejurka@google.com>
+Date: Mon, 8 Aug 2016 19:14:00 -0700
+Subject: [PATCH 2/7] Add BUILD.gn and initial modifications for build
+
+Changes are described in README.fuchsia
+
+Change-Id: If48dbf016679e7f428e2934ed481ae94d0625e27
+---
+ BUILD.gn                  | 189 ++++++++++++++++++++++++++++++++++++++
+ README.fuchsia            |  30 ++++++
+ jconfig.h                 |  71 ++++++++++++++
+ jconfigint.h              |  27 ++++++
+ jdhuff.c                  |   7 +-
+ jdhuff.h                  |   6 +-
+ simd/jccolext-mmx.asm     |   2 +-
+ simd/jccolext-sse2-64.asm |   2 +-
+ simd/jccolext-sse2.asm    |   2 +-
+ simd/jccolor-mmx.asm      |   2 +-
+ simd/jccolor-sse2-64.asm  |   2 +-
+ simd/jccolor-sse2.asm     |   2 +-
+ simd/jcgray-mmx.asm       |   2 +-
+ simd/jcgray-sse2-64.asm   |   2 +-
+ simd/jcgray-sse2.asm      |   2 +-
+ simd/jcgryext-mmx.asm     |   2 +-
+ simd/jcgryext-sse2-64.asm |   2 +-
+ simd/jcgryext-sse2.asm    |   2 +-
+ simd/jchuff-sse2-64.asm   |   4 +-
+ simd/jchuff-sse2.asm      |   4 +-
+ simd/jcsample-mmx.asm     |   4 +-
+ simd/jcsample-sse2-64.asm |   4 +-
+ simd/jcsample-sse2.asm    |   4 +-
+ simd/jdcolext-mmx.asm     |   2 +-
+ simd/jdcolext-sse2-64.asm |   2 +-
+ simd/jdcolext-sse2.asm    |   2 +-
+ simd/jdcolor-mmx.asm      |   2 +-
+ simd/jdcolor-sse2-64.asm  |   2 +-
+ simd/jdcolor-sse2.asm     |   2 +-
+ simd/jdmerge-mmx.asm      |   2 +-
+ simd/jdmerge-sse2-64.asm  |   2 +-
+ simd/jdmerge-sse2.asm     |   2 +-
+ simd/jdmrgext-mmx.asm     |   4 +-
+ simd/jdmrgext-sse2-64.asm |   4 +-
+ simd/jdmrgext-sse2.asm    |   4 +-
+ simd/jdsample-mmx.asm     |  10 +-
+ simd/jdsample-sse2-64.asm |  10 +-
+ simd/jdsample-sse2.asm    |  10 +-
+ simd/jfdctflt-3dn.asm     |   4 +-
+ simd/jfdctflt-sse-64.asm  |   4 +-
+ simd/jfdctflt-sse.asm     |   4 +-
+ simd/jfdctfst-mmx.asm     |   4 +-
+ simd/jfdctfst-sse2-64.asm |   4 +-
+ simd/jfdctfst-sse2.asm    |   4 +-
+ simd/jfdctint-mmx.asm     |   4 +-
+ simd/jfdctint-sse2-64.asm |   4 +-
+ simd/jfdctint-sse2.asm    |   4 +-
+ simd/jidctflt-3dn.asm     |   4 +-
+ simd/jidctflt-sse.asm     |   4 +-
+ simd/jidctflt-sse2-64.asm |   4 +-
+ simd/jidctflt-sse2.asm    |   4 +-
+ simd/jidctfst-mmx.asm     |   4 +-
+ simd/jidctfst-sse2-64.asm |   4 +-
+ simd/jidctfst-sse2.asm    |   4 +-
+ simd/jidctint-mmx.asm     |   4 +-
+ simd/jidctint-sse2-64.asm |   4 +-
+ simd/jidctint-sse2.asm    |   4 +-
+ simd/jidctred-mmx.asm     |   6 +-
+ simd/jidctred-sse2-64.asm |   6 +-
+ simd/jidctred-sse2.asm    |   6 +-
+ simd/jquant-3dn.asm       |   4 +-
+ simd/jquant-mmx.asm       |   4 +-
+ simd/jquant-sse.asm       |   4 +-
+ simd/jquantf-sse2-64.asm  |   4 +-
+ simd/jquantf-sse2.asm     |   4 +-
+ simd/jquanti-sse2-64.asm  |   4 +-
+ simd/jquanti-sse2.asm     |   4 +-
+ simd/jsimd_arm.c          |   4 +-
+ simd/jsimdcfg.inc         |  92 +++++++++++++++++++
+ simd/jsimdcpu.asm         |   2 +-
+ simd/jsimdext.inc         |  10 ++
+ 71 files changed, 543 insertions(+), 121 deletions(-)
+ create mode 100644 BUILD.gn
+ create mode 100644 README.fuchsia
+ create mode 100644 jconfig.h
+ create mode 100644 jconfigint.h
+ create mode 100644 simd/jsimdcfg.inc
+
+diff --git a/BUILD.gn b/BUILD.gn
+new file mode 100644
+index 0000000000000000000000000000000000000000..61b1b412f4f4c3f9c3a3eed14028168cc725e899
+--- /dev/null
++++ b/BUILD.gn
+@@ -0,0 +1,189 @@
++# Copyright 2016 The Fuchsia Authors. All rights reserved.
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++# Do not use the targets in this file unless you need a certain libjpeg
++# implementation. Use the meta target //third_party:jpeg instead.
++
++if (current_cpu == "arm") {
++  import("//build/config/arm.gni")
++}
++
++if (current_cpu == "x86" || current_cpu == "x64") {
++  import("//third_party/yasm/yasm_assemble.gni")
++  yasm_assemble("simd_asm") {
++    defines = []
++    if (current_cpu == "x86") {
++      sources = [
++        "simd/jccolor-mmx.asm",
++        "simd/jccolor-sse2.asm",
++        "simd/jcgray-mmx.asm",
++        "simd/jcgray-sse2.asm",
++        "simd/jchuff-sse2.asm",
++        "simd/jcsample-mmx.asm",
++        "simd/jcsample-sse2.asm",
++        "simd/jdcolor-mmx.asm",
++        "simd/jdcolor-sse2.asm",
++        "simd/jdmerge-mmx.asm",
++        "simd/jdmerge-sse2.asm",
++        "simd/jdsample-mmx.asm",
++        "simd/jdsample-sse2.asm",
++        "simd/jfdctflt-3dn.asm",
++        "simd/jfdctflt-sse.asm",
++        "simd/jfdctfst-mmx.asm",
++        "simd/jfdctfst-sse2.asm",
++        "simd/jfdctint-mmx.asm",
++        "simd/jfdctint-sse2.asm",
++        "simd/jidctflt-3dn.asm",
++        "simd/jidctflt-sse.asm",
++        "simd/jidctflt-sse2.asm",
++        "simd/jidctfst-mmx.asm",
++        "simd/jidctfst-sse2.asm",
++        "simd/jidctint-mmx.asm",
++        "simd/jidctint-sse2.asm",
++        "simd/jidctred-mmx.asm",
++        "simd/jidctred-sse2.asm",
++        "simd/jquant-3dn.asm",
++        "simd/jquant-mmx.asm",
++        "simd/jquant-sse.asm",
++        "simd/jquantf-sse2.asm",
++        "simd/jquanti-sse2.asm",
++        "simd/jsimdcpu.asm",
++      ]
++      defines += [
++        "__x86__",
++        "PIC",
++      ]
++    } else if (current_cpu == "x64") {
++      sources = [
++        "simd/jccolor-sse2-64.asm",
++        "simd/jcgray-sse2-64.asm",
++        "simd/jchuff-sse2-64.asm",
++        "simd/jcsample-sse2-64.asm",
++        "simd/jdcolor-sse2-64.asm",
++        "simd/jdmerge-sse2-64.asm",
++        "simd/jdsample-sse2-64.asm",
++        "simd/jfdctflt-sse-64.asm",
++        "simd/jfdctfst-sse2-64.asm",
++        "simd/jfdctint-sse2-64.asm",
++        "simd/jidctflt-sse2-64.asm",
++        "simd/jidctfst-sse2-64.asm",
++        "simd/jidctint-sse2-64.asm",
++        "simd/jidctred-sse2-64.asm",
++        "simd/jquantf-sse2-64.asm",
++        "simd/jquanti-sse2-64.asm",
++      ]
++      defines += [
++        "__x86_64__",
++        "PIC",
++      ]
++    }
++    if (is_linux || is_android) {
++      defines += [ "ELF" ]
++      include_dirs = [ "linux" ]
++    }
++  }
++}
++static_library("simd") {
++  if (current_cpu == "x86") {
++    deps = [
++      ":simd_asm",
++    ]
++    sources = [
++      "simd/jsimd_i386.c",
++    ]
++  } else if (current_cpu == "x64") {
++    deps = [
++      ":simd_asm",
++    ]
++    sources = [
++      "simd/jsimd_x86_64.c",
++    ]
++  } else if (current_cpu == "arm" && arm_version >= 7 &&
++             (arm_use_neon || arm_optionally_use_neon)) {
++    sources = [
++      "simd/jsimd_arm.c",
++      "simd/jsimd_arm_neon.S",
++    ]
++  } else if (current_cpu == "arm64") {
++    sources = [
++      "simd/jsimd_arm64.c",
++      "simd/jsimd_arm64_neon.S",
++    ]
++  } else {
++    sources = [
++      "jsimd_none.c",
++    ]
++  }
++}
++config("libjpeg_config") {
++  include_dirs = [ "." ]
++}
++static_library("libjpeg") {
++  sources = [
++    "jcapimin.c",
++    "jcapistd.c",
++    "jccoefct.c",
++    "jccolor.c",
++    "jcdctmgr.c",
++    "jchuff.c",
++    "jchuff.h",
++    "jcinit.c",
++    "jcmainct.c",
++    "jcmarker.c",
++    "jcmaster.c",
++    "jcomapi.c",
++    "jconfig.h",
++    "jcparam.c",
++    "jcphuff.c",
++    "jcprepct.c",
++    "jcsample.c",
++    "jdapimin.c",
++    "jdapistd.c",
++    "jdatadst.c",
++    "jdatasrc.c",
++    "jdcoefct.c",
++    "jdcolor.c",
++    "jdct.h",
++    "jddctmgr.c",
++    "jdhuff.c",
++    "jdhuff.h",
++    "jdinput.c",
++    "jdmainct.c",
++    "jdmarker.c",
++    "jdmaster.c",
++    "jdmerge.c",
++    "jdphuff.c",
++    "jdpostct.c",
++    "jdsample.c",
++    "jerror.c",
++    "jerror.h",
++    "jfdctflt.c",
++    "jfdctfst.c",
++    "jfdctint.c",
++    "jidctflt.c",
++    "jidctfst.c",
++    "jidctint.c",
++    "jidctred.c",
++    "jinclude.h",
++    "jmemmgr.c",
++    "jmemnobs.c",
++    "jmemsys.h",
++    "jmorecfg.h",
++    "jpegint.h",
++    "jpeglib.h",
++    "jquant1.c",
++    "jquant2.c",
++    "jutils.c",
++    "jversion.h",
++  ]
++  defines = [
++    "WITH_SIMD",
++    "NO_GETENV",
++  ]
++  configs += [ ":libjpeg_config" ]
++  public_configs = [ ":libjpeg_config" ]
++
++  deps = [
++    ":simd",
++  ]
++}
+diff --git a/README.fuchsia b/README.fuchsia
+new file mode 100644
+index 0000000000000000000000000000000000000000..a0539e08df0d9aa6fcad36ece864b6cd092a58d0
+--- /dev/null
++++ b/README.fuchsia
+@@ -0,0 +1,30 @@
++Name: libjpeg-turbo
++URL: https://github.com/libjpeg-turbo/libjpeg-turbo/
++Version: 1.5.0
++License: Custom license
++License File: LICENSE.md
++Security Critical: yes
++License Android Compatible: yes
++
++Description:
++This consists of the components:
++* libjpeg-turbo 1.5.0
++* This file (README.fuchsia)
++* A build file (BUILD.gn)
++* Deleted unused directories: cmakescripts, doc, java, md5, release, sharedlib,
++  testimages, and win
++* Patched header files used by Chromium
++
++We applied the following changes which are not merged to upstream:
++
++* Added the 'private_extern' flags on Mac (or the 'hidden' flags on Linux) to
++  all the global symbols in '.asm' files to prevent making them external ones.
++  http://crbug.com/608347
++* Fix libjpeg_turbo svn r64 libjpeg6b compat issue: make the fast path Huffman
++  decoder fallback to slow decoding if the Huffman decoding bit sentinel > 16,
++  this to match the exact behavior of jpeg_huff_decode().
++  http://crbug.com/398235
++* Fixed an issue with the ARM NEON build.
++  http://crbug.com/451035
++* Configuration files jconfig.h and jconfigint.h
++  http://crbug.com/608347
+diff --git a/jconfig.h b/jconfig.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..fe4a43764d05b83902d234e85c6e8fba952fa692
+--- /dev/null
++++ b/jconfig.h
+@@ -0,0 +1,71 @@
++/* jconfig.h.  Generated from jconfig.h.in by configure.  */
++/* Version ID for the JPEG library.
++ * Might be useful for tests like "#if JPEG_LIB_VERSION >= 60".
++ */
++#define JPEG_LIB_VERSION 62
++
++/* libjpeg-turbo version */
++#define LIBJPEG_TURBO_VERSION 1.4.2
++
++/* Support arithmetic encoding */
++/* #define C_ARITH_CODING_SUPPORTED 1 */
++
++/* Support arithmetic decoding */
++/* #define D_ARITH_CODING_SUPPORTED 1 */
++
++/*
++ * Define BITS_IN_JSAMPLE as either
++ *   8   for 8-bit sample values (the usual setting)
++ *   12  for 12-bit sample values
++ * Only 8 and 12 are legal data precisions for lossy JPEG according to the
++ * JPEG standard, and the IJG code does not support anything else!
++ * We do not support run-time selection of data precision, sorry.
++ */
++
++#define BITS_IN_JSAMPLE  8      /* use 8 or 12 */
++
++/* Define to 1 if you have the <locale.h> header file. */
++#define HAVE_LOCALE_H 1
++
++/* Define to 1 if you have the <stddef.h> header file. */
++#define HAVE_STDDEF_H 1
++
++/* Define to 1 if you have the <stdlib.h> header file. */
++#define HAVE_STDLIB_H 1
++
++/* Define to 1 if the system has the type `unsigned char'. */
++#define HAVE_UNSIGNED_CHAR 1
++
++/* Define to 1 if the system has the type `unsigned short'. */
++#define HAVE_UNSIGNED_SHORT 1
++
++/* Compiler does not support pointers to undefined structures. */
++/* #undef INCOMPLETE_TYPES_BROKEN */
++
++/* Support in-memory source/destination managers */
++/* #undef MEM_SRCDST_SUPPORTED */
++
++/* Define if you have BSD-like bzero and bcopy in <strings.h> rather than
++   memset/memcpy in <string.h>. */
++/* #undef NEED_BSD_STRINGS */
++
++/* Define if you need to include <sys/types.h> to get size_t. */
++/* #undef NEED_SYS_TYPES_H 1 */
++
++/* Define if your (broken) compiler shifts signed values as if they were
++   unsigned. */
++/* #undef RIGHT_SHIFT_IS_UNSIGNED */
++
++/* Use accelerated SIMD routines. */
++#define WITH_SIMD 1
++
++/* Define to 1 if type `char' is unsigned and you are not using gcc.  */
++#ifndef __CHAR_UNSIGNED__
++/* # undef __CHAR_UNSIGNED__ */
++#endif
++
++/* Define to empty if `const' does not conform to ANSI C. */
++/* #undef const */
++
++/* Define to `unsigned int' if <sys/types.h> does not define. */
++/* #undef size_t */
+diff --git a/jconfigint.h b/jconfigint.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..99bfd4f5eb73da9ab2828f6effefc760e65950d8
+--- /dev/null
++++ b/jconfigint.h
+@@ -0,0 +1,27 @@
++/* jconfigint.h.  Generated from jconfigint.h.in by configure.  */
++/* libjpeg-turbo build number */
++#define BUILD ""
++
++/* How to obtain function inlining. */
++#ifndef INLINE
++#if defined(__GNUC__)
++#define INLINE inline __attribute__((always_inline))
++#elif defined(_MSC_VER)
++#define INLINE __forceinline
++#else
++#define INLINE
++#endif
++#endif
++
++/* Define to the full name of this package. */
++#define PACKAGE_NAME "libjpeg-turbo"
++
++/* Version number of package */
++#define VERSION "1.4.90"
++
++/* The size of `size_t', as computed by sizeof. */
++#if __WORDSIZE==64 || defined(_WIN64)
++#define SIZEOF_SIZE_T 8
++#else
++#define SIZEOF_SIZE_T 4
++#endif
+diff --git a/jdhuff.c b/jdhuff.c
+index 338f2a49243c6db95bd27a5ea2eb9ce6f2009eb3..3c6fdaf184de0a092b45f8c4b23b8557a7f1e24c 100644
+--- a/jdhuff.c
++++ b/jdhuff.c
+@@ -669,7 +669,7 @@ decode_mcu_fast (j_decompress_ptr cinfo, JBLOCKROW *MCU_data)
+     d_derived_tbl *actbl = entropy->ac_cur_tbls[blkn];
+     register int s, k, r, l;
+ 
+-    HUFF_DECODE_FAST(s, l, dctbl);
++    HUFF_DECODE_FAST(s, l, dctbl, slow_decode_mcu);
+     if (s) {
+       FILL_BIT_BUFFER_FAST
+       r = GET_BITS(s);
+@@ -687,7 +687,7 @@ decode_mcu_fast (j_decompress_ptr cinfo, JBLOCKROW *MCU_data)
+     if (entropy->ac_needed[blkn] && block) {
+ 
+       for (k = 1; k < DCTSIZE2; k++) {
+-        HUFF_DECODE_FAST(s, l, actbl);
++        HUFF_DECODE_FAST(s, l, actbl, slow_decode_mcu);
+         r = s >> 4;
+         s &= 15;
+ 
+@@ -706,7 +706,7 @@ decode_mcu_fast (j_decompress_ptr cinfo, JBLOCKROW *MCU_data)
+     } else {
+ 
+       for (k = 1; k < DCTSIZE2; k++) {
+-        HUFF_DECODE_FAST(s, l, actbl);
++        HUFF_DECODE_FAST(s, l, actbl, slow_decode_mcu);
+         r = s >> 4;
+         s &= 15;
+ 
+@@ -723,6 +723,7 @@ decode_mcu_fast (j_decompress_ptr cinfo, JBLOCKROW *MCU_data)
+   }
+ 
+   if (cinfo->unread_marker != 0) {
++slow_decode_mcu:
+     cinfo->unread_marker = 0;
+     return FALSE;
+   }
+diff --git a/jdhuff.h b/jdhuff.h
+index 87d4465ffb7065802740510e4dfbba8820dbbc9e..3f15d71a8140a98f5b9c008c6eb9a6bed996c96d 100644
+--- a/jdhuff.h
++++ b/jdhuff.h
+@@ -208,7 +208,7 @@ slowlabel: \
+   } \
+ }
+ 
+-#define HUFF_DECODE_FAST(s,nb,htbl) \
++#define HUFF_DECODE_FAST(s,nb,htbl,slowlabel) \
+   FILL_BIT_BUFFER_FAST; \
+   s = PEEK_BITS(HUFF_LOOKAHEAD); \
+   s = htbl->lookup[s]; \
+@@ -225,7 +225,9 @@ slowlabel: \
+       s |= GET_BITS(1); \
+       nb++; \
+     } \
+-    s = htbl->pub->huffval[ (int) (s + htbl->valoffset[nb]) & 0xFF ]; \
++    if (nb > 16) \
++      goto slowlabel; \
++    s = htbl->pub->huffval[ (int) (s + htbl->valoffset[nb]) ]; \
+   }
+ 
+ /* Out-of-line case for Huffman code fetching */
+diff --git a/simd/jccolext-mmx.asm b/simd/jccolext-mmx.asm
+index 96a0372b1b3abe48038964c92c8150966c255394..bfc9eca8002ebb4413020469ec98fa4d24315115 100644
+--- a/simd/jccolext-mmx.asm
++++ b/simd/jccolext-mmx.asm
+@@ -39,7 +39,7 @@
+ %define gotptr          wk(0)-SIZEOF_POINTER    ; void * gotptr
+ 
+         align   16
+-        global  EXTN(jsimd_rgb_ycc_convert_mmx)
++        global  EXTN(jsimd_rgb_ycc_convert_mmx) PRIVATE
+ 
+ EXTN(jsimd_rgb_ycc_convert_mmx):
+         push    ebp
+diff --git a/simd/jccolext-sse2-64.asm b/simd/jccolext-sse2-64.asm
+index 8e4642d3bc27a93c6a8c51513a497225cb09ce62..a8142c6c81278d8086af49dead1c16b724030be6 100644
+--- a/simd/jccolext-sse2-64.asm
++++ b/simd/jccolext-sse2-64.asm
+@@ -38,7 +38,7 @@
+ 
+         align   16
+ 
+-        global  EXTN(jsimd_rgb_ycc_convert_sse2)
++        global  EXTN(jsimd_rgb_ycc_convert_sse2) PRIVATE
+ 
+ EXTN(jsimd_rgb_ycc_convert_sse2):
+         push    rbp
+diff --git a/simd/jccolext-sse2.asm b/simd/jccolext-sse2.asm
+index cc38e98a184d1f0ddd374b9581fbdb67b28dc17a..0101460686910a1d2b93be579ad66fe713bb15e2 100644
+--- a/simd/jccolext-sse2.asm
++++ b/simd/jccolext-sse2.asm
+@@ -38,7 +38,7 @@
+ 
+         align   16
+ 
+-        global  EXTN(jsimd_rgb_ycc_convert_sse2)
++        global  EXTN(jsimd_rgb_ycc_convert_sse2) PRIVATE
+ 
+ EXTN(jsimd_rgb_ycc_convert_sse2):
+         push    ebp
+diff --git a/simd/jccolor-mmx.asm b/simd/jccolor-mmx.asm
+index c4e6d88be3769a609cd57e2aadaa6ff1656fa058..ffb394c618de97e859c799861dc1f3813920bcb0 100644
+--- a/simd/jccolor-mmx.asm
++++ b/simd/jccolor-mmx.asm
+@@ -36,7 +36,7 @@ F_0_337 equ     (F_0_587 - F_0_250)     ; FIX(0.58700) - FIX(0.25000)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_rgb_ycc_convert_mmx)
++        global  EXTN(jconst_rgb_ycc_convert_mmx) PRIVATE
+ 
+ EXTN(jconst_rgb_ycc_convert_mmx):
+ 
+diff --git a/simd/jccolor-sse2-64.asm b/simd/jccolor-sse2-64.asm
+index bd2188b4c07703266e6ca8040a59613c186f7c71..2aeaa253c24c3cb0782f7fcc548c27e27d2fd13c 100644
+--- a/simd/jccolor-sse2-64.asm
++++ b/simd/jccolor-sse2-64.asm
+@@ -35,7 +35,7 @@ F_0_337 equ     (F_0_587 - F_0_250)     ; FIX(0.58700) - FIX(0.25000)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_rgb_ycc_convert_sse2)
++        global  EXTN(jconst_rgb_ycc_convert_sse2) PRIVATE
+ 
+ EXTN(jconst_rgb_ycc_convert_sse2):
+ 
+diff --git a/simd/jccolor-sse2.asm b/simd/jccolor-sse2.asm
+index 13124d13d746b1f241a865015278d648eadbb99b..b750b65f22fb6b0138cf860339c2e1c6f227fd63 100644
+--- a/simd/jccolor-sse2.asm
++++ b/simd/jccolor-sse2.asm
+@@ -35,7 +35,7 @@ F_0_337 equ     (F_0_587 - F_0_250)     ; FIX(0.58700) - FIX(0.25000)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_rgb_ycc_convert_sse2)
++        global  EXTN(jconst_rgb_ycc_convert_sse2) PRIVATE
+ 
+ EXTN(jconst_rgb_ycc_convert_sse2):
+ 
+diff --git a/simd/jcgray-mmx.asm b/simd/jcgray-mmx.asm
+index 0819b6ca01416f2d29bd246d4655bfff460e99b5..046cec7aedf74edb5122a4b161fa613a56c9248e 100644
+--- a/simd/jcgray-mmx.asm
++++ b/simd/jcgray-mmx.asm
+@@ -32,7 +32,7 @@ F_0_337 equ     (F_0_587 - F_0_250)     ; FIX(0.58700) - FIX(0.25000)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_rgb_gray_convert_mmx)
++        global  EXTN(jconst_rgb_gray_convert_mmx) PRIVATE
+ 
+ EXTN(jconst_rgb_gray_convert_mmx):
+ 
+diff --git a/simd/jcgray-sse2-64.asm b/simd/jcgray-sse2-64.asm
+index bafd302aa5ce4f25a6e474e0c998522b8355bae5..e0c3a8b890c9b3527142faf153b6634e508070a4 100644
+--- a/simd/jcgray-sse2-64.asm
++++ b/simd/jcgray-sse2-64.asm
+@@ -31,7 +31,7 @@ F_0_337 equ     (F_0_587 - F_0_250)     ; FIX(0.58700) - FIX(0.25000)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_rgb_gray_convert_sse2)
++        global  EXTN(jconst_rgb_gray_convert_sse2) PRIVATE
+ 
+ EXTN(jconst_rgb_gray_convert_sse2):
+ 
+diff --git a/simd/jcgray-sse2.asm b/simd/jcgray-sse2.asm
+index 5b0b4669531f3f1ce40c4ce554a2458d67aacf06..d9813a2712f0a2a08aeb480682d1a650505347c5 100644
+--- a/simd/jcgray-sse2.asm
++++ b/simd/jcgray-sse2.asm
+@@ -31,7 +31,7 @@ F_0_337 equ     (F_0_587 - F_0_250)     ; FIX(0.58700) - FIX(0.25000)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_rgb_gray_convert_sse2)
++        global  EXTN(jconst_rgb_gray_convert_sse2) PRIVATE
+ 
+ EXTN(jconst_rgb_gray_convert_sse2):
+ 
+diff --git a/simd/jcgryext-mmx.asm b/simd/jcgryext-mmx.asm
+index 1c1b8d8bc458cb08eda87c9b64bd0759e194301e..1f74713098cb597bccc317579841c785f4fc3b78 100644
+--- a/simd/jcgryext-mmx.asm
++++ b/simd/jcgryext-mmx.asm
+@@ -40,7 +40,7 @@
+ %define gotptr          wk(0)-SIZEOF_POINTER    ; void * gotptr
+ 
+         align   16
+-        global  EXTN(jsimd_rgb_gray_convert_mmx)
++        global  EXTN(jsimd_rgb_gray_convert_mmx) PRIVATE
+ 
+ EXTN(jsimd_rgb_gray_convert_mmx):
+         push    ebp
+diff --git a/simd/jcgryext-sse2-64.asm b/simd/jcgryext-sse2-64.asm
+index 541355af8682bce4d7d1bf9ec9117474233b5414..33e1749f598033dc13b59c5e3814206f1b9ce59c 100644
+--- a/simd/jcgryext-sse2-64.asm
++++ b/simd/jcgryext-sse2-64.asm
+@@ -38,7 +38,7 @@
+ 
+         align   16
+ 
+-        global  EXTN(jsimd_rgb_gray_convert_sse2)
++        global  EXTN(jsimd_rgb_gray_convert_sse2) PRIVATE
+ 
+ EXTN(jsimd_rgb_gray_convert_sse2):
+         push    rbp
+diff --git a/simd/jcgryext-sse2.asm b/simd/jcgryext-sse2.asm
+index cd16dd1928827d95bc52a8decd23c731aaa7bc8e..2441ceb99e54cd487084a1468a51abaa640d60e0 100644
+--- a/simd/jcgryext-sse2.asm
++++ b/simd/jcgryext-sse2.asm
+@@ -40,7 +40,7 @@
+ 
+         align   16
+ 
+-        global  EXTN(jsimd_rgb_gray_convert_sse2)
++        global  EXTN(jsimd_rgb_gray_convert_sse2) PRIVATE
+ 
+ EXTN(jsimd_rgb_gray_convert_sse2):
+         push    ebp
+diff --git a/simd/jchuff-sse2-64.asm b/simd/jchuff-sse2-64.asm
+index b1144d1cddef3195f92986f0edcddd6f4433cb77..b86b576e7f10a0ec9d237c262cd023678ecbd3f7 100644
+--- a/simd/jchuff-sse2-64.asm
++++ b/simd/jchuff-sse2-64.asm
+@@ -26,7 +26,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_huff_encode_one_block)
++        global  EXTN(jconst_huff_encode_one_block) PRIVATE
+ 
+ EXTN(jconst_huff_encode_one_block):
+ 
+@@ -183,7 +183,7 @@ EXTN(jconst_huff_encode_one_block):
+ %define buffer          rax
+ 
+         align   16
+-        global  EXTN(jsimd_huff_encode_one_block_sse2)
++        global  EXTN(jsimd_huff_encode_one_block_sse2) PRIVATE
+ 
+ EXTN(jsimd_huff_encode_one_block_sse2):
+         push    rbp
+diff --git a/simd/jchuff-sse2.asm b/simd/jchuff-sse2.asm
+index 36d1f2db665d95d59956bf6839491aa2a8ffcfae..cf8f8c6b86eb459047a4c367d14b1edaf3a51f32 100644
+--- a/simd/jchuff-sse2.asm
++++ b/simd/jchuff-sse2.asm
+@@ -26,7 +26,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_huff_encode_one_block)
++        global  EXTN(jconst_huff_encode_one_block) PRIVATE
+ 
+ EXTN(jconst_huff_encode_one_block):
+ 
+@@ -179,7 +179,7 @@ EXTN(jconst_huff_encode_one_block):
+ %define put_bits        edi
+ 
+         align   16
+-        global  EXTN(jsimd_huff_encode_one_block_sse2)
++        global  EXTN(jsimd_huff_encode_one_block_sse2) PRIVATE
+ 
+ EXTN(jsimd_huff_encode_one_block_sse2):
+         push    ebp
+diff --git a/simd/jcsample-mmx.asm b/simd/jcsample-mmx.asm
+index 6cd544e74d5cd4ed0e774211b1b807ed848bf1bc..77ea06e7b9b9ef6713b245aea3fdeba18ef53b9b 100644
+--- a/simd/jcsample-mmx.asm
++++ b/simd/jcsample-mmx.asm
+@@ -39,7 +39,7 @@
+ %define output_data(b)  (b)+28          ; JSAMPARRAY output_data
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_downsample_mmx)
++        global  EXTN(jsimd_h2v1_downsample_mmx) PRIVATE
+ 
+ EXTN(jsimd_h2v1_downsample_mmx):
+         push    ebp
+@@ -181,7 +181,7 @@ EXTN(jsimd_h2v1_downsample_mmx):
+ %define output_data(b)  (b)+28          ; JSAMPARRAY output_data
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_downsample_mmx)
++        global  EXTN(jsimd_h2v2_downsample_mmx) PRIVATE
+ 
+ EXTN(jsimd_h2v2_downsample_mmx):
+         push    ebp
+diff --git a/simd/jcsample-sse2-64.asm b/simd/jcsample-sse2-64.asm
+index 40ee15fcbb55114651ad7bca5a6c586ad3452030..281a97f39eee2ed145a2df274dc704b3b4627aaf 100644
+--- a/simd/jcsample-sse2-64.asm
++++ b/simd/jcsample-sse2-64.asm
+@@ -40,7 +40,7 @@
+ ; r15 = JSAMPARRAY output_data
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_downsample_sse2)
++        global  EXTN(jsimd_h2v1_downsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v1_downsample_sse2):
+         push    rbp
+@@ -184,7 +184,7 @@ EXTN(jsimd_h2v1_downsample_sse2):
+ ; r15 = JSAMPARRAY output_data
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_downsample_sse2)
++        global  EXTN(jsimd_h2v2_downsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v2_downsample_sse2):
+         push    rbp
+diff --git a/simd/jcsample-sse2.asm b/simd/jcsample-sse2.asm
+index 83c9d152a7a7b628b84cd75e63459d63bbe13801..ac02e21d6acf8eb81ae450dc3dac415476145936 100644
+--- a/simd/jcsample-sse2.asm
++++ b/simd/jcsample-sse2.asm
+@@ -39,7 +39,7 @@
+ %define output_data(b)  (b)+28          ; JSAMPARRAY output_data
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_downsample_sse2)
++        global  EXTN(jsimd_h2v1_downsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v1_downsample_sse2):
+         push    ebp
+@@ -194,7 +194,7 @@ EXTN(jsimd_h2v1_downsample_sse2):
+ %define output_data(b)  (b)+28          ; JSAMPARRAY output_data
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_downsample_sse2)
++        global  EXTN(jsimd_h2v2_downsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v2_downsample_sse2):
+         push    ebp
+diff --git a/simd/jdcolext-mmx.asm b/simd/jdcolext-mmx.asm
+index 21e34f6786911734583ec6cb063083e0a56ec954..3702420b9e7e588bcf5be38b03094213567eba2a 100644
+--- a/simd/jdcolext-mmx.asm
++++ b/simd/jdcolext-mmx.asm
+@@ -39,7 +39,7 @@
+ %define gotptr          wk(0)-SIZEOF_POINTER    ; void * gotptr
+ 
+         align   16
+-        global  EXTN(jsimd_ycc_rgb_convert_mmx)
++        global  EXTN(jsimd_ycc_rgb_convert_mmx) PRIVATE
+ 
+ EXTN(jsimd_ycc_rgb_convert_mmx):
+         push    ebp
+diff --git a/simd/jdcolext-sse2-64.asm b/simd/jdcolext-sse2-64.asm
+index 4634066c45c5cbdefd8c24579e9b5ce188d2aec1..0adf0760d79f97144751d8be4596b672cb006e75 100644
+--- a/simd/jdcolext-sse2-64.asm
++++ b/simd/jdcolext-sse2-64.asm
+@@ -38,7 +38,7 @@
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_ycc_rgb_convert_sse2)
++        global  EXTN(jsimd_ycc_rgb_convert_sse2) PRIVATE
+ 
+ EXTN(jsimd_ycc_rgb_convert_sse2):
+         push    rbp
+diff --git a/simd/jdcolext-sse2.asm b/simd/jdcolext-sse2.asm
+index 682aef35fce50b400a8455981a6cab738fa36bff..0c5190ad082a5cdc14a5ec73093fccb2de4b729c 100644
+--- a/simd/jdcolext-sse2.asm
++++ b/simd/jdcolext-sse2.asm
+@@ -40,7 +40,7 @@
+ %define gotptr          wk(0)-SIZEOF_POINTER    ; void * gotptr
+ 
+         align   16
+-        global  EXTN(jsimd_ycc_rgb_convert_sse2)
++        global  EXTN(jsimd_ycc_rgb_convert_sse2) PRIVATE
+ 
+ EXTN(jsimd_ycc_rgb_convert_sse2):
+         push    ebp
+diff --git a/simd/jdcolor-mmx.asm b/simd/jdcolor-mmx.asm
+index 4e58031dd005b06350cf49cdb2c905095b891d33..6bb44b83bf78de77c25fc76459415a004538bbf4 100644
+--- a/simd/jdcolor-mmx.asm
++++ b/simd/jdcolor-mmx.asm
+@@ -34,7 +34,7 @@ F_0_228 equ     (131072 - F_1_772)      ; FIX(2) - FIX(1.77200)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_ycc_rgb_convert_mmx)
++        global  EXTN(jconst_ycc_rgb_convert_mmx) PRIVATE
+ 
+ EXTN(jconst_ycc_rgb_convert_mmx):
+ 
+diff --git a/simd/jdcolor-sse2-64.asm b/simd/jdcolor-sse2-64.asm
+index d2bf21000774798ff0f9df1491ac37a7e9c02906..ed7b93df4e4679cfe1ce8b376cd99bda46177aaa 100644
+--- a/simd/jdcolor-sse2-64.asm
++++ b/simd/jdcolor-sse2-64.asm
+@@ -34,7 +34,7 @@ F_0_228 equ     (131072 - F_1_772)      ; FIX(2) - FIX(1.77200)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_ycc_rgb_convert_sse2)
++        global  EXTN(jconst_ycc_rgb_convert_sse2) PRIVATE
+ 
+ EXTN(jconst_ycc_rgb_convert_sse2):
+ 
+diff --git a/simd/jdcolor-sse2.asm b/simd/jdcolor-sse2.asm
+index 7ff5d05d0ce81c27ef858e6c231bac5888dd5bfd..b1665983b74e71df90ea69d6fddd89cfa7007aa7 100644
+--- a/simd/jdcolor-sse2.asm
++++ b/simd/jdcolor-sse2.asm
+@@ -34,7 +34,7 @@ F_0_228 equ     (131072 - F_1_772)      ; FIX(2) - FIX(1.77200)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_ycc_rgb_convert_sse2)
++        global  EXTN(jconst_ycc_rgb_convert_sse2) PRIVATE
+ 
+ EXTN(jconst_ycc_rgb_convert_sse2):
+ 
+diff --git a/simd/jdmerge-mmx.asm b/simd/jdmerge-mmx.asm
+index ee58bff1c66c1ec0ee7584b52578979a717ad84d..86482c48b200531b4ebf06ac1e658f0830886b31 100644
+--- a/simd/jdmerge-mmx.asm
++++ b/simd/jdmerge-mmx.asm
+@@ -34,7 +34,7 @@ F_0_228 equ     (131072 - F_1_772)      ; FIX(2) - FIX(1.77200)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_merged_upsample_mmx)
++        global  EXTN(jconst_merged_upsample_mmx) PRIVATE
+ 
+ EXTN(jconst_merged_upsample_mmx):
+ 
+diff --git a/simd/jdmerge-sse2-64.asm b/simd/jdmerge-sse2-64.asm
+index 244bd40234c6c55ce94fde1660656e2e6e2c9245..ab03d47f25d311d82ea1580ef437246f15910dc4 100644
+--- a/simd/jdmerge-sse2-64.asm
++++ b/simd/jdmerge-sse2-64.asm
+@@ -34,7 +34,7 @@ F_0_228 equ     (131072 - F_1_772)      ; FIX(2) - FIX(1.77200)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_merged_upsample_sse2)
++        global  EXTN(jconst_merged_upsample_sse2) PRIVATE
+ 
+ EXTN(jconst_merged_upsample_sse2):
+ 
+diff --git a/simd/jdmerge-sse2.asm b/simd/jdmerge-sse2.asm
+index 236de5a385b36e2b671b9f1c6aa66d1e99e2efaf..12f59ec72e748874432e0f90a28a2bc3828ebd9e 100644
+--- a/simd/jdmerge-sse2.asm
++++ b/simd/jdmerge-sse2.asm
+@@ -34,7 +34,7 @@ F_0_228 equ     (131072 - F_1_772)      ; FIX(2) - FIX(1.77200)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_merged_upsample_sse2)
++        global  EXTN(jconst_merged_upsample_sse2) PRIVATE
+ 
+ EXTN(jconst_merged_upsample_sse2):
+ 
+diff --git a/simd/jdmrgext-mmx.asm b/simd/jdmrgext-mmx.asm
+index 63f45cf373db45fb825d86f6ba978a6ce48b9b0c..f429511ff9ebb28d8d294a852d5c8eb9049a3c05 100644
+--- a/simd/jdmrgext-mmx.asm
++++ b/simd/jdmrgext-mmx.asm
+@@ -39,7 +39,7 @@
+ %define gotptr          wk(0)-SIZEOF_POINTER    ; void * gotptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_merged_upsample_mmx)
++        global  EXTN(jsimd_h2v1_merged_upsample_mmx) PRIVATE
+ 
+ EXTN(jsimd_h2v1_merged_upsample_mmx):
+         push    ebp
+@@ -408,7 +408,7 @@ EXTN(jsimd_h2v1_merged_upsample_mmx):
+ %define output_buf(b)           (b)+20          ; JSAMPARRAY output_buf
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_merged_upsample_mmx)
++        global  EXTN(jsimd_h2v2_merged_upsample_mmx) PRIVATE
+ 
+ EXTN(jsimd_h2v2_merged_upsample_mmx):
+         push    ebp
+diff --git a/simd/jdmrgext-sse2-64.asm b/simd/jdmrgext-sse2-64.asm
+index ad74c5ff4de773dd4e231379f50bf11c63975f11..8c3ff3d4b0787d093638f928390f04131f7e0b49 100644
+--- a/simd/jdmrgext-sse2-64.asm
++++ b/simd/jdmrgext-sse2-64.asm
+@@ -38,7 +38,7 @@
+ %define WK_NUM          3
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_merged_upsample_sse2)
++        global  EXTN(jsimd_h2v1_merged_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v1_merged_upsample_sse2):
+         push    rbp
+@@ -445,7 +445,7 @@ EXTN(jsimd_h2v1_merged_upsample_sse2):
+ ; r13 = JSAMPARRAY output_buf
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_merged_upsample_sse2)
++        global  EXTN(jsimd_h2v2_merged_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v2_merged_upsample_sse2):
+         push    rbp
+diff --git a/simd/jdmrgext-sse2.asm b/simd/jdmrgext-sse2.asm
+index b50f698b49844649cc354cbf7b7807005e6c689a..456e0d087c8cb2f8ec47b865800e5778b10a4c3f 100644
+--- a/simd/jdmrgext-sse2.asm
++++ b/simd/jdmrgext-sse2.asm
+@@ -40,7 +40,7 @@
+ %define gotptr          wk(0)-SIZEOF_POINTER    ; void * gotptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_merged_upsample_sse2)
++        global  EXTN(jsimd_h2v1_merged_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v1_merged_upsample_sse2):
+         push    ebp
+@@ -463,7 +463,7 @@ EXTN(jsimd_h2v1_merged_upsample_sse2):
+ %define output_buf(b)           (b)+20          ; JSAMPARRAY output_buf
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_merged_upsample_sse2)
++        global  EXTN(jsimd_h2v2_merged_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v2_merged_upsample_sse2):
+         push    ebp
+diff --git a/simd/jdsample-mmx.asm b/simd/jdsample-mmx.asm
+index 5e4fa7ae226d36e46b3ddf859a4f0df2b247435a..bdd9239a7350a726dea5ae4efc7fc612b737d64a 100644
+--- a/simd/jdsample-mmx.asm
++++ b/simd/jdsample-mmx.asm
+@@ -21,7 +21,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_fancy_upsample_mmx)
++        global  EXTN(jconst_fancy_upsample_mmx) PRIVATE
+ 
+ EXTN(jconst_fancy_upsample_mmx):
+ 
+@@ -57,7 +57,7 @@ PW_EIGHT        times 4 dw  8
+ %define output_data_ptr(b)      (b)+20          ; JSAMPARRAY *output_data_ptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_fancy_upsample_mmx)
++        global  EXTN(jsimd_h2v1_fancy_upsample_mmx) PRIVATE
+ 
+ EXTN(jsimd_h2v1_fancy_upsample_mmx):
+         push    ebp
+@@ -215,7 +215,7 @@ EXTN(jsimd_h2v1_fancy_upsample_mmx):
+ %define gotptr          wk(0)-SIZEOF_POINTER    ; void *gotptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_fancy_upsample_mmx)
++        global  EXTN(jsimd_h2v2_fancy_upsample_mmx) PRIVATE
+ 
+ EXTN(jsimd_h2v2_fancy_upsample_mmx):
+         push    ebp
+@@ -541,7 +541,7 @@ EXTN(jsimd_h2v2_fancy_upsample_mmx):
+ %define output_data_ptr(b)      (b)+20          ; JSAMPARRAY *output_data_ptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_upsample_mmx)
++        global  EXTN(jsimd_h2v1_upsample_mmx) PRIVATE
+ 
+ EXTN(jsimd_h2v1_upsample_mmx):
+         push    ebp
+@@ -642,7 +642,7 @@ EXTN(jsimd_h2v1_upsample_mmx):
+ %define output_data_ptr(b)      (b)+20          ; JSAMPARRAY *output_data_ptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_upsample_mmx)
++        global  EXTN(jsimd_h2v2_upsample_mmx) PRIVATE
+ 
+ EXTN(jsimd_h2v2_upsample_mmx):
+         push    ebp
+diff --git a/simd/jdsample-sse2-64.asm b/simd/jdsample-sse2-64.asm
+index 1faaed648ab9bb3a2b1f8d0bbc2121b746403b6c..9feb524fa8fec4b01b8366098e227b9b13d11cc6 100644
+--- a/simd/jdsample-sse2-64.asm
++++ b/simd/jdsample-sse2-64.asm
+@@ -22,7 +22,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_fancy_upsample_sse2)
++        global  EXTN(jconst_fancy_upsample_sse2) PRIVATE
+ 
+ EXTN(jconst_fancy_upsample_sse2):
+ 
+@@ -58,7 +58,7 @@ PW_EIGHT        times 8 dw  8
+ ; r13 = JSAMPARRAY *output_data_ptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_fancy_upsample_sse2)
++        global  EXTN(jsimd_h2v1_fancy_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v1_fancy_upsample_sse2):
+         push    rbp
+@@ -200,7 +200,7 @@ EXTN(jsimd_h2v1_fancy_upsample_sse2):
+ %define WK_NUM          4
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_fancy_upsample_sse2)
++        global  EXTN(jsimd_h2v2_fancy_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v2_fancy_upsample_sse2):
+         push    rbp
+@@ -497,7 +497,7 @@ EXTN(jsimd_h2v2_fancy_upsample_sse2):
+ ; r13 = JSAMPARRAY *output_data_ptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_upsample_sse2)
++        global  EXTN(jsimd_h2v1_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v1_upsample_sse2):
+         push    rbp
+@@ -586,7 +586,7 @@ EXTN(jsimd_h2v1_upsample_sse2):
+ ; r13 = JSAMPARRAY *output_data_ptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_upsample_sse2)
++        global  EXTN(jsimd_h2v2_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v2_upsample_sse2):
+         push    rbp
+diff --git a/simd/jdsample-sse2.asm b/simd/jdsample-sse2.asm
+index 1d0059e8037946c8eb05d3db0ad75bd648e51dec..1a33f13f54d71915b7a1fc2567b918efef8c09c4 100644
+--- a/simd/jdsample-sse2.asm
++++ b/simd/jdsample-sse2.asm
+@@ -21,7 +21,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_fancy_upsample_sse2)
++        global  EXTN(jconst_fancy_upsample_sse2) PRIVATE
+ 
+ EXTN(jconst_fancy_upsample_sse2):
+ 
+@@ -57,7 +57,7 @@ PW_EIGHT        times 8 dw  8
+ %define output_data_ptr(b)      (b)+20          ; JSAMPARRAY *output_data_ptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_fancy_upsample_sse2)
++        global  EXTN(jsimd_h2v1_fancy_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v1_fancy_upsample_sse2):
+         push    ebp
+@@ -213,7 +213,7 @@ EXTN(jsimd_h2v1_fancy_upsample_sse2):
+ %define gotptr          wk(0)-SIZEOF_POINTER    ; void *gotptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_fancy_upsample_sse2)
++        global  EXTN(jsimd_h2v2_fancy_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v2_fancy_upsample_sse2):
+         push    ebp
+@@ -537,7 +537,7 @@ EXTN(jsimd_h2v2_fancy_upsample_sse2):
+ %define output_data_ptr(b)      (b)+20          ; JSAMPARRAY *output_data_ptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v1_upsample_sse2)
++        global  EXTN(jsimd_h2v1_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v1_upsample_sse2):
+         push    ebp
+@@ -636,7 +636,7 @@ EXTN(jsimd_h2v1_upsample_sse2):
+ %define output_data_ptr(b)      (b)+20          ; JSAMPARRAY *output_data_ptr
+ 
+         align   16
+-        global  EXTN(jsimd_h2v2_upsample_sse2)
++        global  EXTN(jsimd_h2v2_upsample_sse2) PRIVATE
+ 
+ EXTN(jsimd_h2v2_upsample_sse2):
+         push    ebp
+diff --git a/simd/jfdctflt-3dn.asm b/simd/jfdctflt-3dn.asm
+index 219161819a4ff109add0d86942efcae02e5e4e34..e4f3a605faf70069ac46049f136ab201efb70157 100644
+--- a/simd/jfdctflt-3dn.asm
++++ b/simd/jfdctflt-3dn.asm
+@@ -26,7 +26,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_fdct_float_3dnow)
++        global  EXTN(jconst_fdct_float_3dnow) PRIVATE
+ 
+ EXTN(jconst_fdct_float_3dnow):
+ 
+@@ -54,7 +54,7 @@ PD_1_306        times 2 dd  1.306562964876376527856643
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_fdct_float_3dnow)
++        global  EXTN(jsimd_fdct_float_3dnow) PRIVATE
+ 
+ EXTN(jsimd_fdct_float_3dnow):
+         push    ebp
+diff --git a/simd/jfdctflt-sse-64.asm b/simd/jfdctflt-sse-64.asm
+index 4b64ea4bb53bcd92c204160d2b7076488fdc9709..ab09999ba34db2ff3c4076ead1c5bc839342d536 100644
+--- a/simd/jfdctflt-sse-64.asm
++++ b/simd/jfdctflt-sse-64.asm
+@@ -37,7 +37,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_fdct_float_sse)
++        global  EXTN(jconst_fdct_float_sse) PRIVATE
+ 
+ EXTN(jconst_fdct_float_sse):
+ 
+@@ -64,7 +64,7 @@ PD_1_306        times 4 dd  1.306562964876376527856643
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_fdct_float_sse)
++        global  EXTN(jsimd_fdct_float_sse) PRIVATE
+ 
+ EXTN(jsimd_fdct_float_sse):
+         push    rbp
+diff --git a/simd/jfdctflt-sse.asm b/simd/jfdctflt-sse.asm
+index e7ede26c0c12a0fa48600ca9a4922a635b8e567b..cd407d40de5491ac1ef34a2d22628a9b723b4a27 100644
+--- a/simd/jfdctflt-sse.asm
++++ b/simd/jfdctflt-sse.asm
+@@ -36,7 +36,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_fdct_float_sse)
++        global  EXTN(jconst_fdct_float_sse) PRIVATE
+ 
+ EXTN(jconst_fdct_float_sse):
+ 
+@@ -64,7 +64,7 @@ PD_1_306        times 4 dd  1.306562964876376527856643
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_fdct_float_sse)
++        global  EXTN(jsimd_fdct_float_sse) PRIVATE
+ 
+ EXTN(jsimd_fdct_float_sse):
+         push    ebp
+diff --git a/simd/jfdctfst-mmx.asm b/simd/jfdctfst-mmx.asm
+index eb2eb9c50d9721dbff9d0d7e02be94a7e7246425..29ca84699d87480608e2b36821ea5c2f44cc4eaf 100644
+--- a/simd/jfdctfst-mmx.asm
++++ b/simd/jfdctfst-mmx.asm
+@@ -51,7 +51,7 @@ F_1_306 equ     DESCALE(1402911301,30-CONST_BITS)       ; FIX(1.306562965)
+ %define CONST_SHIFT     (16 - PRE_MULTIPLY_SCALE_BITS - CONST_BITS)
+ 
+         alignz  16
+-        global  EXTN(jconst_fdct_ifast_mmx)
++        global  EXTN(jconst_fdct_ifast_mmx) PRIVATE
+ 
+ EXTN(jconst_fdct_ifast_mmx):
+ 
+@@ -79,7 +79,7 @@ PW_F1306        times 4 dw  F_1_306 << CONST_SHIFT
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_fdct_ifast_mmx)
++        global  EXTN(jsimd_fdct_ifast_mmx) PRIVATE
+ 
+ EXTN(jsimd_fdct_ifast_mmx):
+         push    ebp
+diff --git a/simd/jfdctfst-sse2-64.asm b/simd/jfdctfst-sse2-64.asm
+index 4c966854276dd056e186adad71a24ea27c331d4e..1d412dc52a9aeded29a837df9d43cd86c5587a50 100644
+--- a/simd/jfdctfst-sse2-64.asm
++++ b/simd/jfdctfst-sse2-64.asm
+@@ -52,7 +52,7 @@ F_1_306 equ     DESCALE(1402911301,30-CONST_BITS)       ; FIX(1.306562965)
+ %define CONST_SHIFT     (16 - PRE_MULTIPLY_SCALE_BITS - CONST_BITS)
+ 
+         alignz  16
+-        global  EXTN(jconst_fdct_ifast_sse2)
++        global  EXTN(jconst_fdct_ifast_sse2) PRIVATE
+ 
+ EXTN(jconst_fdct_ifast_sse2):
+ 
+@@ -79,7 +79,7 @@ PW_F1306        times 8 dw  F_1_306 << CONST_SHIFT
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_fdct_ifast_sse2)
++        global  EXTN(jsimd_fdct_ifast_sse2) PRIVATE
+ 
+ EXTN(jsimd_fdct_ifast_sse2):
+         push    rbp
+diff --git a/simd/jfdctfst-sse2.asm b/simd/jfdctfst-sse2.asm
+index 54856a2363b211a0a220453240911bc29bbe32ad..3068b4e3973f082284e5749895efc52bef327bc2 100644
+--- a/simd/jfdctfst-sse2.asm
++++ b/simd/jfdctfst-sse2.asm
+@@ -51,7 +51,7 @@ F_1_306 equ     DESCALE(1402911301,30-CONST_BITS)       ; FIX(1.306562965)
+ %define CONST_SHIFT     (16 - PRE_MULTIPLY_SCALE_BITS - CONST_BITS)
+ 
+         alignz  16
+-        global  EXTN(jconst_fdct_ifast_sse2)
++        global  EXTN(jconst_fdct_ifast_sse2) PRIVATE
+ 
+ EXTN(jconst_fdct_ifast_sse2):
+ 
+@@ -79,7 +79,7 @@ PW_F1306        times 8 dw  F_1_306 << CONST_SHIFT
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_fdct_ifast_sse2)
++        global  EXTN(jsimd_fdct_ifast_sse2) PRIVATE
+ 
+ EXTN(jsimd_fdct_ifast_sse2):
+         push    ebp
+diff --git a/simd/jfdctint-mmx.asm b/simd/jfdctint-mmx.asm
+index 9142ad8816e1e3bfd3cbaf7baeb0319cb7c6d4d1..ff06a4af4ce3623c3f54be7e3ecaefb953032447 100644
+--- a/simd/jfdctint-mmx.asm
++++ b/simd/jfdctint-mmx.asm
+@@ -65,7 +65,7 @@ F_3_072 equ     DESCALE(3299298341,30-CONST_BITS)       ; FIX(3.072711026)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_fdct_islow_mmx)
++        global  EXTN(jconst_fdct_islow_mmx) PRIVATE
+ 
+ EXTN(jconst_fdct_islow_mmx):
+ 
+@@ -100,7 +100,7 @@ PW_DESCALE_P2X  times 4 dw  1 << (PASS1_BITS-1)
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_fdct_islow_mmx)
++        global  EXTN(jsimd_fdct_islow_mmx) PRIVATE
+ 
+ EXTN(jsimd_fdct_islow_mmx):
+         push    ebp
+diff --git a/simd/jfdctint-sse2-64.asm b/simd/jfdctint-sse2-64.asm
+index 9a0ca0fd28df61d21b926c224e1639e73f227507..361e88fed974865770e43879547c253125051618 100644
+--- a/simd/jfdctint-sse2-64.asm
++++ b/simd/jfdctint-sse2-64.asm
+@@ -66,7 +66,7 @@ F_3_072 equ     DESCALE(3299298341,30-CONST_BITS)       ; FIX(3.072711026)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_fdct_islow_sse2)
++        global  EXTN(jconst_fdct_islow_sse2) PRIVATE
+ 
+ EXTN(jconst_fdct_islow_sse2):
+ 
+@@ -100,7 +100,7 @@ PW_DESCALE_P2X  times 8 dw  1 << (PASS1_BITS-1)
+ %define WK_NUM          6
+ 
+         align   16
+-        global  EXTN(jsimd_fdct_islow_sse2)
++        global  EXTN(jsimd_fdct_islow_sse2) PRIVATE
+ 
+ EXTN(jsimd_fdct_islow_sse2):
+         push    rbp
+diff --git a/simd/jfdctint-sse2.asm b/simd/jfdctint-sse2.asm
+index db9d0bbe449c4d592db52de2c1b373d4adad06ac..fcbbb23625bd03b11e5e8e326675e791cefabe3e 100644
+--- a/simd/jfdctint-sse2.asm
++++ b/simd/jfdctint-sse2.asm
+@@ -65,7 +65,7 @@ F_3_072 equ     DESCALE(3299298341,30-CONST_BITS)       ; FIX(3.072711026)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_fdct_islow_sse2)
++        global  EXTN(jconst_fdct_islow_sse2) PRIVATE
+ 
+ EXTN(jconst_fdct_islow_sse2):
+ 
+@@ -100,7 +100,7 @@ PW_DESCALE_P2X  times 8 dw  1 << (PASS1_BITS-1)
+ %define WK_NUM          6
+ 
+         align   16
+-        global  EXTN(jsimd_fdct_islow_sse2)
++        global  EXTN(jsimd_fdct_islow_sse2) PRIVATE
+ 
+ EXTN(jsimd_fdct_islow_sse2):
+         push    ebp
+diff --git a/simd/jidctflt-3dn.asm b/simd/jidctflt-3dn.asm
+index 99356f20a4b7d41384d467df0a73a267c87e1827..786ebdcc57977d4728e85ddc6ee42d3c4bf345c3 100644
+--- a/simd/jidctflt-3dn.asm
++++ b/simd/jidctflt-3dn.asm
+@@ -26,7 +26,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_float_3dnow)
++        global  EXTN(jconst_idct_float_3dnow) PRIVATE
+ 
+ EXTN(jconst_idct_float_3dnow):
+ 
+@@ -62,7 +62,7 @@ PB_CENTERJSAMP  times 8 db  CENTERJSAMPLE
+                                         ; FAST_FLOAT workspace[DCTSIZE2]
+ 
+         align   16
+-        global  EXTN(jsimd_idct_float_3dnow)
++        global  EXTN(jsimd_idct_float_3dnow) PRIVATE
+ 
+ EXTN(jsimd_idct_float_3dnow):
+         push    ebp
+diff --git a/simd/jidctflt-sse.asm b/simd/jidctflt-sse.asm
+index 4d4af2fffc643647cb51c9b272e06ec16aad537c..e91957bdc45f0af928c0245e4398ae1817337f1e 100644
+--- a/simd/jidctflt-sse.asm
++++ b/simd/jidctflt-sse.asm
+@@ -36,7 +36,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_float_sse)
++        global  EXTN(jconst_idct_float_sse) PRIVATE
+ 
+ EXTN(jconst_idct_float_sse):
+ 
+@@ -72,7 +72,7 @@ PB_CENTERJSAMP  times 8 db  CENTERJSAMPLE
+                                         ; FAST_FLOAT workspace[DCTSIZE2]
+ 
+         align   16
+-        global  EXTN(jsimd_idct_float_sse)
++        global  EXTN(jsimd_idct_float_sse) PRIVATE
+ 
+ EXTN(jsimd_idct_float_sse):
+         push    ebp
+diff --git a/simd/jidctflt-sse2-64.asm b/simd/jidctflt-sse2-64.asm
+index bdda05d97c5ce4a91605e95d8f2f95c2b911345e..c84ec1e05654a7994e8ae0559c3323a419930acb 100644
+--- a/simd/jidctflt-sse2-64.asm
++++ b/simd/jidctflt-sse2-64.asm
+@@ -37,7 +37,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_float_sse2)
++        global  EXTN(jconst_idct_float_sse2) PRIVATE
+ 
+ EXTN(jconst_idct_float_sse2):
+ 
+@@ -73,7 +73,7 @@ PB_CENTERJSAMP  times 16 db CENTERJSAMPLE
+                                         ; FAST_FLOAT workspace[DCTSIZE2]
+ 
+         align   16
+-        global  EXTN(jsimd_idct_float_sse2)
++        global  EXTN(jsimd_idct_float_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_float_sse2):
+         push    rbp
+diff --git a/simd/jidctflt-sse2.asm b/simd/jidctflt-sse2.asm
+index a15a9c1111281e1325d4f34e7ddeaca22f1bf7d1..43f999b27ccea59c97c27d46752494dc92b0b352 100644
+--- a/simd/jidctflt-sse2.asm
++++ b/simd/jidctflt-sse2.asm
+@@ -36,7 +36,7 @@
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_float_sse2)
++        global  EXTN(jconst_idct_float_sse2) PRIVATE
+ 
+ EXTN(jconst_idct_float_sse2):
+ 
+@@ -72,7 +72,7 @@ PB_CENTERJSAMP  times 16 db CENTERJSAMPLE
+                                         ; FAST_FLOAT workspace[DCTSIZE2]
+ 
+         align   16
+-        global  EXTN(jsimd_idct_float_sse2)
++        global  EXTN(jsimd_idct_float_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_float_sse2):
+         push    ebp
+diff --git a/simd/jidctfst-mmx.asm b/simd/jidctfst-mmx.asm
+index 6e95bfbcafa7cc8610ead6edcc01fa346b9e545f..32a1f869a1ea09e780c5b461940d635169b0be3e 100644
+--- a/simd/jidctfst-mmx.asm
++++ b/simd/jidctfst-mmx.asm
+@@ -58,7 +58,7 @@ F_1_613 equ     (F_2_613 - (1 << CONST_BITS))   ; FIX(2.613125930) - FIX(1)
+ %define CONST_SHIFT     (16 - PRE_MULTIPLY_SCALE_BITS - CONST_BITS)
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_ifast_mmx)
++        global  EXTN(jconst_idct_ifast_mmx) PRIVATE
+ 
+ EXTN(jconst_idct_ifast_mmx):
+ 
+@@ -93,7 +93,7 @@ PB_CENTERJSAMP  times 8 db  CENTERJSAMPLE
+                                         ; JCOEF workspace[DCTSIZE2]
+ 
+         align   16
+-        global  EXTN(jsimd_idct_ifast_mmx)
++        global  EXTN(jsimd_idct_ifast_mmx) PRIVATE
+ 
+ EXTN(jsimd_idct_ifast_mmx):
+         push    ebp
+diff --git a/simd/jidctfst-sse2-64.asm b/simd/jidctfst-sse2-64.asm
+index 48846426d231b3d460481fec9abc730cb788170f..a0f6e1a831f730872d73e6231ba7b2a08ed1839f 100644
+--- a/simd/jidctfst-sse2-64.asm
++++ b/simd/jidctfst-sse2-64.asm
+@@ -59,7 +59,7 @@ F_1_613 equ     (F_2_613 - (1 << CONST_BITS))   ; FIX(2.613125930) - FIX(1)
+ %define CONST_SHIFT     (16 - PRE_MULTIPLY_SCALE_BITS - CONST_BITS)
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_ifast_sse2)
++        global  EXTN(jconst_idct_ifast_sse2) PRIVATE
+ 
+ EXTN(jconst_idct_ifast_sse2):
+ 
+@@ -92,7 +92,7 @@ PB_CENTERJSAMP  times 16 db CENTERJSAMPLE
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_idct_ifast_sse2)
++        global  EXTN(jsimd_idct_ifast_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_ifast_sse2):
+         push    rbp
+diff --git a/simd/jidctfst-sse2.asm b/simd/jidctfst-sse2.asm
+index f591e55f0fe90e2dbb0b5d451cd9377a7fcc5fc3..c2ebfdc86d315820e4c3739aa78d1be30ee50ff5 100644
+--- a/simd/jidctfst-sse2.asm
++++ b/simd/jidctfst-sse2.asm
+@@ -58,7 +58,7 @@ F_1_613 equ     (F_2_613 - (1 << CONST_BITS))   ; FIX(2.613125930) - FIX(1)
+ %define CONST_SHIFT     (16 - PRE_MULTIPLY_SCALE_BITS - CONST_BITS)
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_ifast_sse2)
++        global  EXTN(jconst_idct_ifast_sse2) PRIVATE
+ 
+ EXTN(jconst_idct_ifast_sse2):
+ 
+@@ -91,7 +91,7 @@ PB_CENTERJSAMP  times 16 db CENTERJSAMPLE
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_idct_ifast_sse2)
++        global  EXTN(jsimd_idct_ifast_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_ifast_sse2):
+         push    ebp
+diff --git a/simd/jidctint-mmx.asm b/simd/jidctint-mmx.asm
+index 5bd198120bddaba6984f9588401089d7080ee5a8..bc8b56cb3321eb25fe87cbc6633cf4556d68d6a1 100644
+--- a/simd/jidctint-mmx.asm
++++ b/simd/jidctint-mmx.asm
+@@ -65,7 +65,7 @@ F_3_072 equ     DESCALE(3299298341,30-CONST_BITS)       ; FIX(3.072711026)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_islow_mmx)
++        global  EXTN(jconst_idct_islow_mmx) PRIVATE
+ 
+ EXTN(jconst_idct_islow_mmx):
+ 
+@@ -106,7 +106,7 @@ PB_CENTERJSAMP  times 8 db  CENTERJSAMPLE
+                                         ; JCOEF workspace[DCTSIZE2]
+ 
+         align   16
+-        global  EXTN(jsimd_idct_islow_mmx)
++        global  EXTN(jsimd_idct_islow_mmx) PRIVATE
+ 
+ EXTN(jsimd_idct_islow_mmx):
+         push    ebp
+diff --git a/simd/jidctint-sse2-64.asm b/simd/jidctint-sse2-64.asm
+index afe1d6a73b624f9a7be868c01238c8276ed93217..8cd56bf870f1d21c594b2d627bbbef4df7f68c9e 100644
+--- a/simd/jidctint-sse2-64.asm
++++ b/simd/jidctint-sse2-64.asm
+@@ -66,7 +66,7 @@ F_3_072 equ     DESCALE(3299298341,30-CONST_BITS)       ; FIX(3.072711026)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_islow_sse2)
++        global  EXTN(jconst_idct_islow_sse2) PRIVATE
+ 
+ EXTN(jconst_idct_islow_sse2):
+ 
+@@ -105,7 +105,7 @@ PB_CENTERJSAMP  times 16 db CENTERJSAMPLE
+ %define WK_NUM          12
+ 
+         align   16
+-        global  EXTN(jsimd_idct_islow_sse2)
++        global  EXTN(jsimd_idct_islow_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_islow_sse2):
+         push    rbp
+diff --git a/simd/jidctint-sse2.asm b/simd/jidctint-sse2.asm
+index 6c7e7d9b4fa18d9a99b5f2af500cb957a9070c21..b5bdad9d18baceae04645bd463b520032b66f1f8 100644
+--- a/simd/jidctint-sse2.asm
++++ b/simd/jidctint-sse2.asm
+@@ -65,7 +65,7 @@ F_3_072 equ     DESCALE(3299298341,30-CONST_BITS)       ; FIX(3.072711026)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_islow_sse2)
++        global  EXTN(jconst_idct_islow_sse2) PRIVATE
+ 
+ EXTN(jconst_idct_islow_sse2):
+ 
+@@ -104,7 +104,7 @@ PB_CENTERJSAMP  times 16 db CENTERJSAMPLE
+ %define WK_NUM          12
+ 
+         align   16
+-        global  EXTN(jsimd_idct_islow_sse2)
++        global  EXTN(jsimd_idct_islow_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_islow_sse2):
+         push    ebp
+diff --git a/simd/jidctred-mmx.asm b/simd/jidctred-mmx.asm
+index ba054e31a0d19b76b1efddc2410bf59d11f9ed0c..cae203ed02c4ae0fe8ee5c7fc8ea61709371aa66 100644
+--- a/simd/jidctred-mmx.asm
++++ b/simd/jidctred-mmx.asm
+@@ -71,7 +71,7 @@ F_3_624 equ     DESCALE(3891787747,30-CONST_BITS)       ; FIX(3.624509785)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_red_mmx)
++        global  EXTN(jconst_idct_red_mmx) PRIVATE
+ 
+ EXTN(jconst_idct_red_mmx):
+ 
+@@ -114,7 +114,7 @@ PB_CENTERJSAMP  times 8 db  CENTERJSAMPLE
+                                         ; JCOEF workspace[DCTSIZE2]
+ 
+         align   16
+-        global  EXTN(jsimd_idct_4x4_mmx)
++        global  EXTN(jsimd_idct_4x4_mmx) PRIVATE
+ 
+ EXTN(jsimd_idct_4x4_mmx):
+         push    ebp
+@@ -502,7 +502,7 @@ EXTN(jsimd_idct_4x4_mmx):
+ %define output_col(b)   (b)+20          ; JDIMENSION output_col
+ 
+         align   16
+-        global  EXTN(jsimd_idct_2x2_mmx)
++        global  EXTN(jsimd_idct_2x2_mmx) PRIVATE
+ 
+ EXTN(jsimd_idct_2x2_mmx):
+         push    ebp
+diff --git a/simd/jidctred-sse2-64.asm b/simd/jidctred-sse2-64.asm
+index a54bbe24e033da746409cc2ba61dd698aa0cd14e..bd17bceef3dbd87940316fe6e3c2375de5ed5bd7 100644
+--- a/simd/jidctred-sse2-64.asm
++++ b/simd/jidctred-sse2-64.asm
+@@ -72,7 +72,7 @@ F_3_624 equ     DESCALE(3891787747,30-CONST_BITS)       ; FIX(3.624509785)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_red_sse2)
++        global  EXTN(jconst_idct_red_sse2) PRIVATE
+ 
+ EXTN(jconst_idct_red_sse2):
+ 
+@@ -113,7 +113,7 @@ PB_CENTERJSAMP  times 16 db CENTERJSAMPLE
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_idct_4x4_sse2)
++        global  EXTN(jsimd_idct_4x4_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_4x4_sse2):
+         push    rbp
+@@ -412,7 +412,7 @@ EXTN(jsimd_idct_4x4_sse2):
+ ; r13 = JDIMENSION output_col
+ 
+         align   16
+-        global  EXTN(jsimd_idct_2x2_sse2)
++        global  EXTN(jsimd_idct_2x2_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_2x2_sse2):
+         push    rbp
+diff --git a/simd/jidctred-sse2.asm b/simd/jidctred-sse2.asm
+index 232d9838d6f2d7bfcf41608b583f6941555b1981..be16a814e83e6a87425a4bc95affd17639627b25 100644
+--- a/simd/jidctred-sse2.asm
++++ b/simd/jidctred-sse2.asm
+@@ -71,7 +71,7 @@ F_3_624 equ     DESCALE(3891787747,30-CONST_BITS)       ; FIX(3.624509785)
+         SECTION SEG_CONST
+ 
+         alignz  16
+-        global  EXTN(jconst_idct_red_sse2)
++        global  EXTN(jconst_idct_red_sse2) PRIVATE
+ 
+ EXTN(jconst_idct_red_sse2):
+ 
+@@ -112,7 +112,7 @@ PB_CENTERJSAMP  times 16 db CENTERJSAMPLE
+ %define WK_NUM          2
+ 
+         align   16
+-        global  EXTN(jsimd_idct_4x4_sse2)
++        global  EXTN(jsimd_idct_4x4_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_4x4_sse2):
+         push    ebp
+@@ -423,7 +423,7 @@ EXTN(jsimd_idct_4x4_sse2):
+ %define output_col(b)   (b)+20          ; JDIMENSION output_col
+ 
+         align   16
+-        global  EXTN(jsimd_idct_2x2_sse2)
++        global  EXTN(jsimd_idct_2x2_sse2) PRIVATE
+ 
+ EXTN(jsimd_idct_2x2_sse2):
+         push    ebp
+diff --git a/simd/jquant-3dn.asm b/simd/jquant-3dn.asm
+index 0b4164b261aaefc2f44b6a679cd7c2c7c34a3314..e14cce4a919a01969c93427c11ea3b21825e6233 100644
+--- a/simd/jquant-3dn.asm
++++ b/simd/jquant-3dn.asm
+@@ -34,7 +34,7 @@
+ %define workspace       ebp+16          ; FAST_FLOAT *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_convsamp_float_3dnow)
++        global  EXTN(jsimd_convsamp_float_3dnow) PRIVATE
+ 
+ EXTN(jsimd_convsamp_float_3dnow):
+         push    ebp
+@@ -137,7 +137,7 @@ EXTN(jsimd_convsamp_float_3dnow):
+ %define workspace       ebp+16          ; FAST_FLOAT *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_quantize_float_3dnow)
++        global  EXTN(jsimd_quantize_float_3dnow) PRIVATE
+ 
+ EXTN(jsimd_quantize_float_3dnow):
+         push    ebp
+diff --git a/simd/jquant-mmx.asm b/simd/jquant-mmx.asm
+index aed6071bfcc0a4e8e165c3624cf2980ff2c357d7..bf3060b38b078953378abac668766ef065515823 100644
+--- a/simd/jquant-mmx.asm
++++ b/simd/jquant-mmx.asm
+@@ -34,7 +34,7 @@
+ %define workspace       ebp+16          ; DCTELEM *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_convsamp_mmx)
++        global  EXTN(jsimd_convsamp_mmx) PRIVATE
+ 
+ EXTN(jsimd_convsamp_mmx):
+         push    ebp
+@@ -139,7 +139,7 @@ EXTN(jsimd_convsamp_mmx):
+ %define workspace       ebp+16          ; DCTELEM *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_quantize_mmx)
++        global  EXTN(jsimd_quantize_mmx) PRIVATE
+ 
+ EXTN(jsimd_quantize_mmx):
+         push    ebp
+diff --git a/simd/jquant-sse.asm b/simd/jquant-sse.asm
+index 1baf88f2575c68e9f91fb188131e00925e107254..853d2c76daeb6533f25fd26cfebd0bc4f8b75200 100644
+--- a/simd/jquant-sse.asm
++++ b/simd/jquant-sse.asm
+@@ -34,7 +34,7 @@
+ %define workspace       ebp+16          ; FAST_FLOAT *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_convsamp_float_sse)
++        global  EXTN(jsimd_convsamp_float_sse) PRIVATE
+ 
+ EXTN(jsimd_convsamp_float_sse):
+         push    ebp
+@@ -137,7 +137,7 @@ EXTN(jsimd_convsamp_float_sse):
+ %define workspace       ebp+16          ; FAST_FLOAT *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_quantize_float_sse)
++        global  EXTN(jsimd_quantize_float_sse) PRIVATE
+ 
+ EXTN(jsimd_quantize_float_sse):
+         push    ebp
+diff --git a/simd/jquantf-sse2-64.asm b/simd/jquantf-sse2-64.asm
+index ef5c1f959efbe75b0a62925f815c97092c4f1b00..132590d3f15df9e05ff1fc004681061f4e5fbc79 100644
+--- a/simd/jquantf-sse2-64.asm
++++ b/simd/jquantf-sse2-64.asm
+@@ -35,7 +35,7 @@
+ ; r12 = FAST_FLOAT *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_convsamp_float_sse2)
++        global  EXTN(jsimd_convsamp_float_sse2) PRIVATE
+ 
+ EXTN(jsimd_convsamp_float_sse2):
+         push    rbp
+@@ -109,7 +109,7 @@ EXTN(jsimd_convsamp_float_sse2):
+ ; r12 = FAST_FLOAT *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_quantize_float_sse2)
++        global  EXTN(jsimd_quantize_float_sse2) PRIVATE
+ 
+ EXTN(jsimd_quantize_float_sse2):
+         push    rbp
+diff --git a/simd/jquantf-sse2.asm b/simd/jquantf-sse2.asm
+index 1cbc26740095789d8afbfbd14ebc6e9c94d9ffe3..579268f6e9d6bcba1bdb2f773c7f92e0f149d27e 100644
+--- a/simd/jquantf-sse2.asm
++++ b/simd/jquantf-sse2.asm
+@@ -34,7 +34,7 @@
+ %define workspace       ebp+16          ; FAST_FLOAT *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_convsamp_float_sse2)
++        global  EXTN(jsimd_convsamp_float_sse2) PRIVATE
+ 
+ EXTN(jsimd_convsamp_float_sse2):
+         push    ebp
+@@ -114,7 +114,7 @@ EXTN(jsimd_convsamp_float_sse2):
+ %define workspace       ebp+16          ; FAST_FLOAT *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_quantize_float_sse2)
++        global  EXTN(jsimd_quantize_float_sse2) PRIVATE
+ 
+ EXTN(jsimd_quantize_float_sse2):
+         push    ebp
+diff --git a/simd/jquanti-sse2-64.asm b/simd/jquanti-sse2-64.asm
+index 66c4e5190796f4c9a1916af1008337fec190d5d8..fbccc11d16dbc97b975410a883fd29659ee4a84e 100644
+--- a/simd/jquanti-sse2-64.asm
++++ b/simd/jquanti-sse2-64.asm
+@@ -35,7 +35,7 @@
+ ; r12 = DCTELEM *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_convsamp_sse2)
++        global  EXTN(jsimd_convsamp_sse2) PRIVATE
+ 
+ EXTN(jsimd_convsamp_sse2):
+         push    rbp
+@@ -111,7 +111,7 @@ EXTN(jsimd_convsamp_sse2):
+ ; r12 = DCTELEM *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_quantize_sse2)
++        global  EXTN(jsimd_quantize_sse2) PRIVATE
+ 
+ EXTN(jsimd_quantize_sse2):
+         push    rbp
+diff --git a/simd/jquanti-sse2.asm b/simd/jquanti-sse2.asm
+index aea8604e2200ab70fe325f4d214e4fd67169b1d1..2976a8767389267a07f1987b5509e629f0f8ed95 100644
+--- a/simd/jquanti-sse2.asm
++++ b/simd/jquanti-sse2.asm
+@@ -34,7 +34,7 @@
+ %define workspace       ebp+16          ; DCTELEM *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_convsamp_sse2)
++        global  EXTN(jsimd_convsamp_sse2) PRIVATE
+ 
+ EXTN(jsimd_convsamp_sse2):
+         push    ebp
+@@ -116,7 +116,7 @@ EXTN(jsimd_convsamp_sse2):
+ %define workspace       ebp+16          ; DCTELEM *workspace
+ 
+         align   16
+-        global  EXTN(jsimd_quantize_sse2)
++        global  EXTN(jsimd_quantize_sse2) PRIVATE
+ 
+ EXTN(jsimd_quantize_sse2):
+         push    ebp
+diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
+index 754806dc190e304a9f9f829e5a174f5d74befbcc..c66ddcc55e0efcb6ebf40135ba1a123c807373da 100644
+--- a/simd/jsimd_arm.c
++++ b/simd/jsimd_arm.c
+@@ -29,7 +29,7 @@
+ static unsigned int simd_support = ~0;
+ static unsigned int simd_huffman = 1;
+ 
+-#if defined(__linux__) || defined(ANDROID) || defined(__ANDROID__)
++#if !defined(__ARM_NEON__) && (defined(__linux__) || defined(ANDROID) || defined(__ANDROID__))
+ 
+ #define SOMEWHAT_SANE_PROC_CPUINFO_SIZE_LIMIT (1024 * 1024)
+ 
+@@ -100,7 +100,7 @@ LOCAL(void)
+ init_simd (void)
+ {
+   char *env = NULL;
+-#if !defined(__ARM_NEON__) && defined(__linux__) || defined(ANDROID) || defined(__ANDROID__)
++#if !defined(__ARM_NEON__) && (defined(__linux__) || defined(ANDROID) || defined(__ANDROID__))
+   int bufsize = 1024; /* an initial guess for the line buffer size limit */
+ #endif
+ 
+diff --git a/simd/jsimdcfg.inc b/simd/jsimdcfg.inc
+new file mode 100644
+index 0000000000000000000000000000000000000000..8e71b5d8e475187f31dda615d83dd56f61986200
+--- /dev/null
++++ b/simd/jsimdcfg.inc
+@@ -0,0 +1,92 @@
++;
++; Automatically generated include file from jsimdcfg.inc.h
++;
++;
++; -- jpeglib.h
++;
++%define DCTSIZE 8
++%define DCTSIZE2 64
++;
++; -- jmorecfg.h
++;
++%define RGB_RED 0
++%define RGB_GREEN 1
++%define RGB_BLUE 2
++%define RGB_PIXELSIZE 3
++%define EXT_RGB_RED 0
++%define EXT_RGB_GREEN 1
++%define EXT_RGB_BLUE 2
++%define EXT_RGB_PIXELSIZE 3
++%define EXT_RGBX_RED 0
++%define EXT_RGBX_GREEN 1
++%define EXT_RGBX_BLUE 2
++%define EXT_RGBX_PIXELSIZE 4
++%define EXT_BGR_RED 2
++%define EXT_BGR_GREEN 1
++%define EXT_BGR_BLUE 0
++%define EXT_BGR_PIXELSIZE 3
++%define EXT_BGRX_RED 2
++%define EXT_BGRX_GREEN 1
++%define EXT_BGRX_BLUE 0
++%define EXT_BGRX_PIXELSIZE 4
++%define EXT_XBGR_RED 3
++%define EXT_XBGR_GREEN 2
++%define EXT_XBGR_BLUE 1
++%define EXT_XBGR_PIXELSIZE 4
++%define EXT_XRGB_RED 1
++%define EXT_XRGB_GREEN 2
++%define EXT_XRGB_BLUE 3
++%define EXT_XRGB_PIXELSIZE 4
++%define RGBX_FILLER_0XFF 1
++; Representation of a single sample (pixel element value).
++; On this SIMD implementation, this must be 'unsigned char'.
++;
++%define JSAMPLE byte ; unsigned char
++%define SIZEOF_JSAMPLE SIZEOF_BYTE ; sizeof(JSAMPLE)
++%define CENTERJSAMPLE 128
++; Representation of a DCT frequency coefficient.
++; On this SIMD implementation, this must be 'short'.
++;
++%define JCOEF word ; short
++%define SIZEOF_JCOEF SIZEOF_WORD ; sizeof(JCOEF)
++; Datatype used for image dimensions.
++; On this SIMD implementation, this must be 'unsigned int'.
++;
++%define JDIMENSION dword ; unsigned int
++%define SIZEOF_JDIMENSION SIZEOF_DWORD ; sizeof(JDIMENSION)
++%define JSAMPROW POINTER ; JSAMPLE * (jpeglib.h)
++%define JSAMPARRAY POINTER ; JSAMPROW * (jpeglib.h)
++%define JSAMPIMAGE POINTER ; JSAMPARRAY * (jpeglib.h)
++%define JCOEFPTR POINTER ; JCOEF * (jpeglib.h)
++%define SIZEOF_JSAMPROW SIZEOF_POINTER ; sizeof(JSAMPROW)
++%define SIZEOF_JSAMPARRAY SIZEOF_POINTER ; sizeof(JSAMPARRAY)
++%define SIZEOF_JSAMPIMAGE SIZEOF_POINTER ; sizeof(JSAMPIMAGE)
++%define SIZEOF_JCOEFPTR SIZEOF_POINTER ; sizeof(JCOEFPTR)
++;
++; -- jdct.h
++;
++; A forward DCT routine is given a pointer to a work area of type DCTELEM[];
++; the DCT is to be performed in-place in that buffer.
++; To maximize parallelism, Type DCTELEM is changed to short (originally, int).
++;
++%define DCTELEM word ; short
++%define SIZEOF_DCTELEM SIZEOF_WORD ; sizeof(DCTELEM)
++%define float FP32 ; float
++%define SIZEOF_FAST_FLOAT SIZEOF_FP32 ; sizeof(float)
++; To maximize parallelism, Type short is changed to short.
++;
++%define ISLOW_MULT_TYPE word ; must be short
++%define SIZEOF_ISLOW_MULT_TYPE SIZEOF_WORD ; sizeof(ISLOW_MULT_TYPE)
++%define IFAST_MULT_TYPE word ; must be short
++%define SIZEOF_IFAST_MULT_TYPE SIZEOF_WORD ; sizeof(IFAST_MULT_TYPE)
++%define IFAST_SCALE_BITS 2 ; fractional bits in scale factors
++%define FLOAT_MULT_TYPE FP32 ; must be float
++%define SIZEOF_FLOAT_MULT_TYPE SIZEOF_FP32 ; sizeof(FLOAT_MULT_TYPE)
++;
++; -- jsimd.h
++;
++%define JSIMD_NONE 0x00
++%define JSIMD_MMX 0x01
++%define JSIMD_3DNOW 0x02
++%define JSIMD_SSE 0x04
++%define JSIMD_SSE2 0x08
+diff --git a/simd/jsimdcpu.asm b/simd/jsimdcpu.asm
+index 599083b18227a2752b744f71eb7882e2f23685c9..e2adf14ea964c14e5103d21d184e133dc5c1ecc2 100644
+--- a/simd/jsimdcpu.asm
++++ b/simd/jsimdcpu.asm
+@@ -28,7 +28,7 @@
+ ;
+ 
+         align   16
+-        global  EXTN(jpeg_simd_cpu_support)
++        global  EXTN(jpeg_simd_cpu_support) PRIVATE
+ 
+ EXTN(jpeg_simd_cpu_support):
+         push    ebx
+diff --git a/simd/jsimdext.inc b/simd/jsimdext.inc
+index f28db60b573a16afa1090e01aabb8da12f7f4fd6..4c9306b0d3fa25d16bbe69efb493a0f03c12848b 100644
+--- a/simd/jsimdext.inc
++++ b/simd/jsimdext.inc
+@@ -367,6 +367,16 @@ const_base:
+ 
+ %endif
+ 
++; Begin chromium edits
++%ifdef MACHO ; ----(nasm -fmacho -DMACHO ...)--------
++%define PRIVATE :private_extern
++%elifdef ELF ; ----(nasm -felf[64] -DELF ...)------------
++%define PRIVATE :hidden
++%else
++%define PRIVATE
++%endif
++; End chromium edits
++
+ ; --------------------------------------------------------------------------
+ ;  Defines picked up from the C headers
+ ;
+
+From 268b01f30faa4fc1f61005eb963a830f8240092e Mon Sep 17 00:00:00 2001
+From: Michael Jurka <mikejurka@google.com>
+Date: Wed, 17 Aug 2016 21:11:55 -0700
+Subject: [PATCH 3/7] Fix linker error due to missing flag
+
+Change-Id: I613c2c421799a5515efe68f0fc38fe7544a8536a
+---
+ BUILD.gn | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 61b1b412f4f4c3f9c3a3eed14028168cc725e899..e37c6a3ee55fee26333607e87dad9a4fb06724f6 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -77,10 +77,7 @@ if (current_cpu == "x86" || current_cpu == "x64") {
+         "PIC",
+       ]
+     }
+-    if (is_linux || is_android) {
+-      defines += [ "ELF" ]
+-      include_dirs = [ "linux" ]
+-    }
++    defines += [ "ELF" ]
+   }
+ }
+ static_library("simd") {
+
+From 3a742a14610aacb6527e16113e9231d63f6870f0 Mon Sep 17 00:00:00 2001
+From: "P.Y. Laligand" <pylaligand@google.com>
+Date: Fri, 28 Apr 2017 16:35:40 -0700
+Subject: [PATCH 4/7] Don't use SIMD extensions on host.
+
+Change-Id: I97ac57525a579d1727e381ef240ef086fe6d3ac6
+---
+ BUILD.gn | 20 +++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index e37c6a3ee55fee26333607e87dad9a4fb06724f6..f7093bbd47df7a9e9aa0d9ba722f6306ab44ee53 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -10,8 +10,11 @@ if (current_cpu == "arm") {
+ 
+ if (current_cpu == "x86" || current_cpu == "x64") {
+   import("//third_party/yasm/yasm_assemble.gni")
++
+   yasm_assemble("simd_asm") {
++
+     defines = []
++
+     if (current_cpu == "x86") {
+       sources = [
+         "simd/jccolor-mmx.asm",
+@@ -49,6 +52,7 @@ if (current_cpu == "x86" || current_cpu == "x64") {
+         "simd/jquanti-sse2.asm",
+         "simd/jsimdcpu.asm",
+       ]
++
+       defines += [
+         "__x86__",
+         "PIC",
+@@ -72,19 +76,27 @@ if (current_cpu == "x86" || current_cpu == "x64") {
+         "simd/jquantf-sse2-64.asm",
+         "simd/jquanti-sse2-64.asm",
+       ]
++
+       defines += [
+         "__x86_64__",
+         "PIC",
+       ]
+     }
++
+     defines += [ "ELF" ]
+   }
+ }
++
+ static_library("simd") {
+-  if (current_cpu == "x86") {
++  if (!is_fuchsia) {
++    sources = [
++      "jsimd_none.c",
++    ]
++  } else if (current_cpu == "x86") {
+     deps = [
+       ":simd_asm",
+     ]
++
+     sources = [
+       "simd/jsimd_i386.c",
+     ]
+@@ -92,6 +104,7 @@ static_library("simd") {
+     deps = [
+       ":simd_asm",
+     ]
++
+     sources = [
+       "simd/jsimd_x86_64.c",
+     ]
+@@ -112,9 +125,11 @@ static_library("simd") {
+     ]
+   }
+ }
++
+ config("libjpeg_config") {
+   include_dirs = [ "." ]
+ }
++
+ static_library("libjpeg") {
+   sources = [
+     "jcapimin.c",
+@@ -173,11 +188,14 @@ static_library("libjpeg") {
+     "jutils.c",
+     "jversion.h",
+   ]
++
+   defines = [
+     "WITH_SIMD",
+     "NO_GETENV",
+   ]
++
+   configs += [ ":libjpeg_config" ]
++
+   public_configs = [ ":libjpeg_config" ]
+ 
+   deps = [
+
+From 9587e51cf946f1a1d19bb596bc31ba4e6c9d8893 Mon Sep 17 00:00:00 2001
+From: Jason Simmons <jsimmons@google.com>
+Date: Fri, 5 Jan 2018 10:38:05 -0800
+Subject: [PATCH 5/7] Do not depend on yasm for non-Fuchsia targets
+
+Change-Id: I68cc4b4aca20874271b5b259aa341101a2c4b9e0
+---
+ BUILD.gn | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index f7093bbd47df7a9e9aa0d9ba722f6306ab44ee53..7dd55c3a650235e75e16d389d1e2fe5212b8981e 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -8,7 +8,7 @@ if (current_cpu == "arm") {
+   import("//build/config/arm.gni")
+ }
+ 
+-if (current_cpu == "x86" || current_cpu == "x64") {
++if ((current_cpu == "x86" || current_cpu == "x64") && is_fuchsia) {
+   import("//third_party/yasm/yasm_assemble.gni")
+ 
+   yasm_assemble("simd_asm") {
+
+From 5bd412c6ff5b706336ae214b4511b6a5d3b8759a Mon Sep 17 00:00:00 2001
+From: Damien Miller <djm@google.com>
+Date: Wed, 4 Apr 2018 17:35:24 +1000
+Subject: [PATCH 6/7] Update README.fuchsia
+
+Change-Id: I3229127e5661fb983de70db58f9cf31b60b5f00f
+---
+ README.fuchsia | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/README.fuchsia b/README.fuchsia
+index a0539e08df0d9aa6fcad36ece864b6cd092a58d0..8f4e27e40257f70ce4b1e27e68e440d37a929092 100644
+--- a/README.fuchsia
++++ b/README.fuchsia
+@@ -1,12 +1,12 @@
+ Name: libjpeg-turbo
+-URL: https://github.com/libjpeg-turbo/libjpeg-turbo/
++Upstream git: https://github.com/libjpeg-turbo/libjpeg-turbo/
+ Version: 1.5.0
+ License: Custom license
+ License File: LICENSE.md
+ Security Critical: yes
+ License Android Compatible: yes
+-
+ Description:
++
+ This consists of the components:
+ * libjpeg-turbo 1.5.0
+ * This file (README.fuchsia)
+
+From 0fb821f3b2e570b2783a94ccd9a2fb1f4916ae9f Mon Sep 17 00:00:00 2001
+From: Chinmay Garde <chinmaygarde@google.com>
+Date: Fri, 3 May 2019 15:48:56 -0700
+Subject: [PATCH 7/7] Do not depend on yasm on Fuchsia SDK builds.
+
+This extends the same convention currently used for all non-fuchsia targets to
+Fuchsia targets with SDK builds.
+
+Change-Id: I7f41c36a33f89ea107c6bc6e65d713877a072ea4
+---
+ BUILD.gn | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 7dd55c3a650235e75e16d389d1e2fe5212b8981e..3e9ced00e2ff2c83d2fdd5842a6cb3d2974f8592 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -8,11 +8,13 @@ if (current_cpu == "arm") {
+   import("//build/config/arm.gni")
+ }
+ 
+-if ((current_cpu == "x86" || current_cpu == "x64") && is_fuchsia) {
++import("//build/fuchsia/sdk.gni")
++
++if ((current_cpu == "x86" || current_cpu == "x64") && is_fuchsia &&
++    !using_fuchsia_sdk) {
+   import("//third_party/yasm/yasm_assemble.gni")
+ 
+   yasm_assemble("simd_asm") {
+-
+     defines = []
+ 
+     if (current_cpu == "x86") {
+@@ -88,7 +90,7 @@ if ((current_cpu == "x86" || current_cpu == "x64") && is_fuchsia) {
+ }
+ 
+ static_library("simd") {
+-  if (!is_fuchsia) {
++  if (!is_fuchsia || using_fuchsia_sdk) {
+     sources = [
+       "jsimd_none.c",
+     ]
