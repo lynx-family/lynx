@@ -13,14 +13,22 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 
 namespace lynx {
+namespace tasm {
+namespace harmony {
+class LynxContext;
+}
+}  // namespace tasm
 namespace harmony {
 
 class TasmPlatformInvokerHarmony : public shell::TasmPlatformInvoker {
  public:
   explicit TasmPlatformInvokerHarmony(
-      const std::weak_ptr<LynxTemplateRenderer::WeakFlag>& flag)
-      : weak_flag_(flag) {}
+      const std::weak_ptr<LynxTemplateRenderer::WeakFlag>& flag,
+      const std::weak_ptr<tasm::harmony::LynxContext>& context)
+      : weak_flag_(flag), weak_context_(context) {}
   ~TasmPlatformInvokerHarmony() override = default;
+
+  void ConfigureVSyncMonitor(base::VSyncMonitor& monitor) override;
 
   void OnPageConfigDecoded(
       const std::shared_ptr<tasm::PageConfig>& config) override;
@@ -46,6 +54,7 @@ class TasmPlatformInvokerHarmony : public shell::TasmPlatformInvoker {
  private:
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
   std::weak_ptr<LynxTemplateRenderer::WeakFlag> weak_flag_;
+  std::weak_ptr<tasm::harmony::LynxContext> weak_context_;
 };
 
 }  // namespace harmony
