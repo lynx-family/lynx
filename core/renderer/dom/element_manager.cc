@@ -16,6 +16,7 @@
 #include "base/include/log/logging.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
+#include "core/animation/constants.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/event/touch_event.h"
 #include "core/renderer/css/computed_css_style.h"
@@ -275,6 +276,12 @@ static bool EnableElementStatistic() {
 }
 
 ElementManager::~ElementManager() {
+  for (auto *scope = ScopedCSSTransitionEvents::current_; scope;
+       scope = scope->previous_) {
+    if (scope->manager_ == this) {
+      scope->manager_ = nullptr;
+    }
+  }
   StopAnimationVsync();
   ReportElementStatistic();
   WillDestroy();
@@ -1007,6 +1014,7 @@ void ElementManager::ResolveGestures(AttributeHolder *node, Element *element) {
 }
 
 void ElementManager::UpdateScreenMetrics(float width, float height) {
+  ScopedCSSTransitionEvents transition_events(this);
   LOGI(GetLogContext() << " ElementManager::UpdateScreenMetrics width:" << width
                        << ",height:" << height);
   GetLynxEnvConfig().UpdateScreenSize(width, height);
@@ -1031,6 +1039,7 @@ void ElementManager::UpdateScreenMetrics(float width, float height) {
 }
 
 void ElementManager::UpdateFontScale(float font_scale) {
+  ScopedCSSTransitionEvents transition_events(this);
   GetLynxEnvConfig().SetFontScale(font_scale);
   // update element tree
   delegate_->UpdateLynxEnvForLayoutThread(GetLynxEnvConfig());
@@ -1042,6 +1051,7 @@ void ElementManager::UpdateFontScale(float font_scale) {
 }
 
 void ElementManager::UpdateColorScheme(int scheme) {
+  ScopedCSSTransitionEvents transition_events(this);
   auto value = static_cast<css::MediaPreferredColorScheme>(scheme);
   if (value != css::MediaPreferredColorScheme::kLight &&
       value != css::MediaPreferredColorScheme::kDark) {
@@ -1138,6 +1148,7 @@ void ElementManager::RecordCurrentLynxUITree() {
 void ElementManager::UpdateViewport(float width, SLMeasureMode width_mode,
                                     float height, SLMeasureMode height_mode,
                                     bool need_layout) {
+  ScopedCSSTransitionEvents transition_events(this);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_UPDATE_VIEWPORT);
   auto old_env = GetLynxEnvConfig();
   GetLynxEnvConfig().UpdateViewport(width, width_mode, height, height_mode);
@@ -1275,8 +1286,83 @@ void ElementManager::DestroyLayoutNode(int32_t id) {
   delegate_->DestroyLayoutNode(id);
 }
 
+thread_local ElementManager::ScopedCSSTransitionEvents
+    *ElementManager::ScopedCSSTransitionEvents::current_ = nullptr;
+
+ElementManager::ScopedCSSTransitionEvents::ScopedCSSTransitionEvents(
+    ElementManager *manager)
+    : manager_(manager) {
+  if (manager_ == nullptr || manager_->EnableNewStylingPipeline()) {
+    return;
+  }
+  for (auto *scope = current_; scope; scope = scope->previous_) {
+    if (scope->manager_ == manager_) {
+      return;
+    }
+  }
+  previous_ = current_;
+  current_ = this;
+}
+
+ElementManager::ScopedCSSTransitionEvents::ScopedCSSTransitionEvents(
+    Element &element)
+    : ScopedCSSTransitionEvents(element.element_manager()) {
+  if (current_ == this && element.is_parallel_flush()) {
+    parallel_element_ = &element;
+  }
+}
+
+ElementManager::ScopedCSSTransitionEvents::~ScopedCSSTransitionEvents() {
+  if (current_ != this) {
+    return;
+  }
+  if (manager_ != nullptr && parallel_element_ != nullptr &&
+      !pending_.empty()) {
+    // A worker may resolve styles before the TASM thread commits them. Add
+    // its events to the TASM batch when the element's work is reduced.
+    parallel_element_->HandleDelayTask(
+        [manager = manager_, batch = std::move(pending_)]() {
+          for (const auto &event : batch) {
+            manager->SendAnimationEvent(event.type, event.tag, event.params);
+          }
+        });
+  } else {
+    Dispatch();
+  }
+  current_ = previous_;
+}
+
+bool ElementManager::ScopedCSSTransitionEvents::Dispatch() {
+  if (pending_.empty()) {
+    return false;
+  }
+  // Move each event out before dispatch. A callback can append to the same
+  // queue and reallocate it, while earlier events stay ahead of new ones.
+  for (size_t index = 0; manager_ != nullptr && index < pending_.size();
+       ++index) {
+    auto event = std::move(pending_[index]);
+    manager_->delegate_->SendAnimationEvent(event.type, event.tag,
+                                            event.params);
+  }
+  pending_.clear();
+  return true;
+}
+
 void ElementManager::SendAnimationEvent(const std::string &type, int tag,
                                         const lepus::Value &dict) {
+  if (!EnableNewStylingPipeline() &&
+      (type == animation::kTransitionStartEventName ||
+       type == animation::kTransitionCancelEventName ||
+       type == animation::kTransitionEndEventName)) {
+    for (auto *scope = ScopedCSSTransitionEvents::current_; scope;
+         scope = scope->previous_) {
+      if (scope->manager_ == this) {
+        scope->pending_.push_back(
+            ScopedCSSTransitionEvents::Event{type, tag, dict});
+        return;
+      }
+    }
+  }
   delegate_->SendAnimationEvent(type, tag, dict);
 }
 
@@ -1531,6 +1617,7 @@ void ElementManager::SuppressNextAnimationIterationEvents() {
 void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_TICK_ALL_ELEMENT);
   if (element_vsync_proxy_ && !animation_element_set_.empty()) {
+    ScopedCSSTransitionEvents transition_events(this);
     auto options = std::make_shared<PipelineOptions>();
     auto temp_element_set = animation_element_set_;
     animation_element_set_.clear_keep_buffer();
@@ -1549,7 +1636,6 @@ void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
     }
     if (!has_layout_animated_style) {
       painting_context()->UpdateNodeReadyPatching();
-      painting_context()->Flush();
     } else {
       // Optimization: If there is only an element need to be ticked, take
       // it as root to flush action.
@@ -1558,6 +1644,11 @@ void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
       } else {
         OnPatchFinish(options);
       }
+    }
+    const bool dispatched_events = transition_events.Dispatch();
+    if (transition_events.manager_ != nullptr &&
+        (dispatched_events || !has_layout_animated_style)) {
+      painting_context()->Flush();
     }
   }
 }
@@ -1890,6 +1981,7 @@ void ElementManager::FlushPendingListItemUpdates(
 
 void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
                                    Element *element) {
+  ScopedCSSTransitionEvents transition_events(this);
   if (element == nullptr) {
     element = static_cast<Element *>(root());
   }
@@ -1933,6 +2025,7 @@ void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
 
 void ElementManager::ResolveStyle(std::shared_ptr<PipelineOptions> &option,
                                   int32_t target_node) {
+  ScopedCSSTransitionEvents transition_events(this);
   Element *element = nullptr;
   if (target_node == PipelineOptions::kInvalidTargetNodeId) {
     element = static_cast<Element *>(root());

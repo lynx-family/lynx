@@ -570,6 +570,7 @@ base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
 
 void CSSTransitionManager::setTransitionData(
     const starlight::TransitionData& transition_data) {
+  tasm::ElementManager::ScopedCSSTransitionEvents transition_events(*element());
   SyncTransitionData(transition_data, true);
 }
 
@@ -832,6 +833,7 @@ bool CSSTransitionManager::UpdateTransitionAnimator(
     tasm::CSSPropertyID css_id, starlight::AnimationPropertyType property_type,
     tasm::CSSValue start_value, tasm::CSSValue end_value,
     bool play_handles_initial_frame) {
+  tasm::ElementManager::ScopedCSSTransitionEvents transition_events(*element());
   const auto& configs = element()->element_manager()->GetCSSParserConfigs();
   if (!IsValueValid(property_type, start_value, configs) ||
       !IsValueValid(property_type, end_value, configs) ||

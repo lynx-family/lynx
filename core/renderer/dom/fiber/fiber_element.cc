@@ -1412,6 +1412,8 @@ void Element::FinalizeSimpleStyleUpdate() {
     }
   }
 
+  ElementManager::ScopedCSSTransitionEvents transition_events(
+      element_manager());
   if (has_transition_props_changed_) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_TRANSITION_PROPS,
                 [this](lynx::perfetto::EventContext ctx) {
@@ -3137,6 +3139,8 @@ void Element::ReplayDynamicResolvedStyleSideEffects(
 }
 
 void Element::FlushActionsAsRoot() {
+  ElementManager::ScopedCSSTransitionEvents transition_events(
+      element_manager());
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_FLUSH_ACTIONS_AS_ROOT,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());

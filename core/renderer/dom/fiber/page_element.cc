@@ -92,6 +92,8 @@ void PageElement::AttachToElementManager(
 }
 
 void PageElement::FlushActionsAsRoot() {
+  ElementManager::ScopedCSSTransitionEvents transition_events(
+      element_manager());
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_ELEMENT_FLUSH_ACTIONS_AS_ROOT,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());

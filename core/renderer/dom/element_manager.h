@@ -195,6 +195,37 @@ class ComponentManager {
 
 class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
  public:
+  // When the new styling pipeline is disabled, batch C++ CSS transition events
+  // until the enclosing style update or frame completes. Parallel resolve
+  // workers keep their own batches until reduction.
+  class ScopedCSSTransitionEvents {
+   public:
+    explicit ScopedCSSTransitionEvents(ElementManager *manager);
+    explicit ScopedCSSTransitionEvents(Element &element);
+    ~ScopedCSSTransitionEvents();
+
+    ScopedCSSTransitionEvents(const ScopedCSSTransitionEvents &) = delete;
+    ScopedCSSTransitionEvents &operator=(const ScopedCSSTransitionEvents &) =
+        delete;
+
+   private:
+    friend class ElementManager;
+
+    struct Event {
+      std::string type;
+      int tag;
+      lepus::Value params;
+    };
+
+    bool Dispatch();
+
+    static thread_local ScopedCSSTransitionEvents *current_;
+    ElementManager *manager_;
+    ScopedCSSTransitionEvents *previous_ = nullptr;
+    Element *parallel_element_ = nullptr;
+    base::Vector<Event> pending_;
+  };
+
   class Delegate {
    public:
     Delegate() = default;

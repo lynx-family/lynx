@@ -9,7 +9,9 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <string>
 
+#include "base/include/auto_reset.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "core/animation/animation.h"
@@ -638,6 +640,50 @@ TEST_F(CSSTransitionManagerTest, HasTwoSameAnimation) {
   EXPECT_TRUE(opacity_transition_data.name.IsEqual("opacity"));
   EXPECT_TRUE(opacity_transition_data.duration == 3000);
   EXPECT_TRUE(opacity_transition_data.delay == 100);
+}
+
+TEST_F(CSSTransitionManagerTest, EventsFollowStyleCommit) {
+  class EventDelegate : public test::MockTasmDelegate {
+   public:
+    MOCK_METHOD(void, SendAnimationEvent,
+                (const std::string&, int, const lepus::Value&), (override));
+  };
+
+  ::testing::NiceMock<EventDelegate> delegate;
+  base::AutoReset<ElementManager::Delegate*> use_delegate(&manager->delegate_,
+                                                          &delegate);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetFiberPageElement(page);
+  auto element = InitElement();
+  element->enable_new_animator_ = true;
+  page->InsertNode(element);
+
+  auto update_style = [&](const char* style) {
+    element->SetRawInlineStyles(style);
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options, page.get());
+  };
+  update_style("opacity: 0.5; transition: opacity 1s;");
+
+  element->SetJSEventHandler("transitionstart", "bindEvent", "onStart");
+  element->SetJSEventHandler("transitioncancel", "bindEvent", "onCancel");
+  ::testing::InSequence events;
+  EXPECT_CALL(delegate, SendAnimationEvent("transitionstart",
+                                           element->impl_id(), ::testing::_))
+      .WillOnce([&](const std::string&, int, const lepus::Value&) {
+        ASSERT_TRUE(element->css_transition_manager_);
+        ASSERT_EQ(1u, element->css_transition_manager_->animations_map_.size());
+        element->css_transition_manager_->setTransitionData(
+            starlight::TransitionData());
+      });
+  EXPECT_CALL(delegate, SendAnimationEvent("transitioncancel",
+                                           element->impl_id(), ::testing::_))
+      .WillOnce([&](const std::string&, int, const lepus::Value&) {
+        ASSERT_TRUE(element->css_transition_manager_);
+        EXPECT_TRUE(element->css_transition_manager_->animations_map_.empty());
+      });
+
+  update_style("opacity: 0.8; transition: opacity 1s;");
 }
 
 TEST_F(CSSTransitionManagerTest, ClearEffect) {

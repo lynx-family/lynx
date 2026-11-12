@@ -3783,6 +3783,8 @@ void TemplateAssembler::RunPixelPipeline() {
     return;
   }
 
+  ElementManager::ScopedCSSTransitionEvents transition_events(
+      page_proxy()->element_manager().get());
   auto pipeline_option = current_pipeline_context->GetOptions();
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_PIPELINE_RUN_PIXEL,
               [&pipeline_option](lynx::perfetto::EventContext ctx) {
