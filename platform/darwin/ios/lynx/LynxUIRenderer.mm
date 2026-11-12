@@ -67,6 +67,8 @@ static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorEnableSimultaneousT
               lynx::tasm::kEventBehaviorEnableSimultaneousTouch);
 static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorHasConsumeSlideEvent) ==
               lynx::tasm::kEventBehaviorHasConsumeSlideEvent);
+static_assert(static_cast<uint32_t>(LynxPlatformEventBehaviorRawInputExclusive) ==
+              lynx::tasm::kEventBehaviorRawInputExclusive);
 
 lynx::tasm::NativePaintingCtxPlatformDarwinRef *CastToNativePaintingCtxPlatformRef(
     const std::shared_ptr<lynx::tasm::PaintingCtxPlatformRef> &platform_ref) {
@@ -131,8 +133,21 @@ static id<LynxServiceTextProtocol> getTextService() {
         [self checkEnableGenericResourceFetcher:builder.enableGenericResourceFetcher];
     [self setupUIOwnerWithBuilder:builder];
     [self setupResourceProviderWithBuilder:builder];
+    NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+    [center addObserver:self
+               selector:@selector(inputWindowFocusChanged:)
+                   name:UIWindowDidBecomeKeyNotification
+                 object:nil];
+    [center addObserver:self
+               selector:@selector(inputWindowFocusChanged:)
+                   name:UIWindowDidResignKeyNotification
+                 object:nil];
   }
   return self;
+}
+
+- (void)dealloc {
+  [NSNotificationCenter.defaultCenter removeObserver:self];
 }
 
 - (void)setupUIOwnerWithBuilder:(LynxViewBuilder *)builder {
@@ -267,6 +282,10 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_eventHandler.touchRecognizer setEnableMultiTouch:pageConfig->GetEnableMultiTouch()];
   [_eventHandler.touchRecognizer
       setEnableCurrentTargetTouchPosition:pageConfig->GetEnableCurrentTargetTouchPosition()];
+  [_eventHandler setRawInputEnabled:pageConfig->GetEnableRawInput()];
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    platform_ref->SetRawInputEnabled(pageConfig->GetEnableRawInput());
+  }
 
   // Set config to LynxUIExposure
   [_uiOwner.uiContext.uiExposure
@@ -425,12 +444,32 @@ static id<LynxServiceTextProtocol> getTextService() {
   if (int_event_data_count > 4) {
     event_target_root_id = int_event_data[4];
   }
+  const int64_t time_stamp = iEventData.count > 5 ? [iEventData[5] longLongValue] : 0;
   BOOL consumed = platform_ref->DispatchPlatformInputEvent(int_event_data, float_event_data,
-                                                           event_target_root_id);
+                                                           event_target_root_id, time_stamp);
 
   free(int_event_data);
   free(float_event_data);
   return consumed;
+}
+
+- (BOOL)isRawInputEnabled {
+  auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef);
+  return platform_ref != nullptr && platform_ref->IsRawInputEnabled();
+}
+
+- (void)notifyInputRootStateChanged:(NSInteger)rootSign
+                           attached:(BOOL)attached
+                            focused:(BOOL)focused {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    platform_ref->NotifyInputRootStateChanged(static_cast<int32_t>(rootSign), attached, focused);
+  }
+}
+
+- (void)inputWindowFocusChanged:(NSNotification *)notification {
+  if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    platform_ref->NotifyInputRootsStateChanged(notification.object);
+  }
 }
 
 - (LynxUI *)platformTouchTarget {

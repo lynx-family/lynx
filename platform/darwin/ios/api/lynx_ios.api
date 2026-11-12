@@ -1688,6 +1688,7 @@ public class LynxEventHandler : NSObject {
   public CGPoint LynxEventHandler()::viewPointFromPagePoint:target:(CGPoint point, [target] id< LynxEventTarget > target);
   public CGPoint LynxEventHandler()::viewPointFromTouch:target:(UITouch *touch, [target] nullable id< LynxEventTarget > target);
   public void LynxEventHandler()::setEnableViewReceiveTouch:(BOOL enable);
+  public void LynxEventHandler()::setRawInputEnabled:(BOOL enabled);
   public void LynxEventHandler()::setEnableSimultaneousTap:(BOOL enable);
   public void LynxEventHandler()::setDisableLongpressAfterScroll:(bool value);
   public void LynxEventHandler()::setTapSlop:(NSString *tapSlop);
@@ -2715,6 +2716,7 @@ public protocol LynxListContainerInternal-p : <NSObject> {
   public BOOL LynxListContainerInternal-p::initialPropsFlushed:cacheKey:(NSString *initialPropKey,[cacheKey] NSString *cacheKey);
   public void LynxListContainerInternal-p::setInitialPropsHasFlushed:cacheKey:(NSString *initialPropKey,[cacheKey] NSString *cacheKey);
   public BOOL LynxListContainerInternal-p::isCUIList();
+  public void LynxListContainerInternal-p::applyComposeScrollState:contentSize:managed:(CGPoint offset,[contentSize] CGSize contentSize,[managed] BOOL managed);
 }
 
 public protocol LynxListContainerScrollView-p : <LynxListScrollHelperView> {
@@ -5272,6 +5274,8 @@ public interface LynxUIOwner(Private) {
 public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
   public BOOL LynxUIRenderer::DispatchPlatformInputEvent:withData:(NSArray *iEventData,[withData] NSArray *fEventData);
   public nullable LynxUI * LynxUIRenderer::platformTouchTarget();
+  public BOOL LynxUIRenderer::isRawInputEnabled();
+  public void LynxUIRenderer::notifyInputRootStateChanged:attached:focused:(NSInteger rootSign,[attached] BOOL attached,[focused] BOOL focused);
   public void LynxUIRenderer::DispatchPlatformLongPress();
   public void LynxUIRenderer::DispatchPlatformTap();
   public void LynxUIRenderer::SetPlatformEventRootActive:active:(NSInteger rootSign,[active] BOOL active);
