@@ -42,6 +42,12 @@ const int32_t Fragment::kDefaultDrawNodeCapacity = 1;
 
 Fragment::Fragment(Element* element) : BaseElementContainer(element) {}
 
+Fragment::~Fragment() {
+  if (!element()->will_destroy()) {
+    element_manager()->RemoveDirtyContext(this);
+  }
+}
+
 Fragment* Fragment::fragment_parent() const {
   return static_cast<Fragment*>(parent());
 }

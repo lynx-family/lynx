@@ -31,7 +31,7 @@ class Fragment : public BaseElementContainer {
  public:
   explicit Fragment(Element* element);
 
-  ~Fragment() override = default;
+  ~Fragment() override;
 
   // Returns the parent of this fragment in the fragment tree.
   Fragment* fragment_parent() const;

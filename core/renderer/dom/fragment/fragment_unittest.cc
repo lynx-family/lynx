@@ -99,6 +99,19 @@ class FragmentTest : public ::testing::Test {
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
 };
 
+TEST_F(FragmentTest, DestroyedFragmentIsRemovedFromDirtyStackingContexts) {
+  auto element = manager->CreateFiberView();
+  auto fragment = std::make_unique<Fragment>(element.get());
+  auto* pending_context = fragment.get();
+  fragment->MarkDirtyState(BaseElementContainer::kNeedSortZChild);
+  ASSERT_NE(manager->dirty_stacking_contexts_.find(pending_context),
+            manager->dirty_stacking_contexts_.end());
+
+  fragment.reset();
+  EXPECT_EQ(manager->dirty_stacking_contexts_.find(pending_context),
+            manager->dirty_stacking_contexts_.end());
+}
+
 class RecordingFragmentBehavior : public FragmentBehavior {
  public:
   explicit RecordingFragmentBehavior(Fragment* fragment)
