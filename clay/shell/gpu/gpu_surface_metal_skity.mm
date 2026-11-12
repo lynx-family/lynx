@@ -12,7 +12,9 @@
 #include "base/include/fml/make_copyable.h"
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
+#include "build/build_config.h"
 #include "clay/common/graphics/persistent_cache.h"
+#include "clay/common/trail_settings.h"
 #include "clay/fml/platform/darwin/cf_utils.h"
 #include "clay/fml/platform/darwin/scoped_nsobject.h"
 #include "clay/shell/gpu/gpu_surface_metal_delegate.h"
@@ -82,7 +84,11 @@ GPUSurfaceMetalSkity::GPUSurfaceMetalSkity(GPUSurfaceMetalDelegate* delegate,
       context_(std::move(context)),
       msaa_samples_(msaa_samples),
       render_to_surface_(render_to_surface) {
+#if defined(OS_IOS)
+  context_->SetEnableSimpleShapePipeline(setting::CLAY_IOS_ENABLE_SIMPLE_SHAPE_PIPELINE.value());
+#else
   context_->SetEnableSimpleShapePipeline(true);
+#endif
   context_->EnableRenderTargetCache(false);
 }
 
