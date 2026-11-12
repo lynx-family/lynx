@@ -1046,5 +1046,61 @@ TEST_F(CSSValueSubstitutionTest, SubstitutionResolvedWithFallbackResolved) {
   EXPECT_EQ(result, " green");
 }
 
+TEST_F(CSSValueSubstitutionTest,
+       SubstituteAllWithoutPendingReferencesPreservesDependencies) {
+  CustomPropertiesMap properties;
+  properties.insert_or_assign("--base", CSSValue::MakePlainString("blue"));
+  lepus::Value expression("var(--base)");
+  CSSStringParser parser =
+      CSSStringParser::FromLepusString(expression, configs_);
+  properties.insert_or_assign("--accent", parser.ParseVariable());
+  CSSValue::SubstituteAll(properties);
+  ASSERT_FALSE(properties["--accent"].NeedsVariableResolution());
+
+  int dependency_calls = 0;
+  CSSValue::SubstituteAll(
+      properties, 10,
+      [&dependency_calls](const base::String&, const base::String&) {
+        ++dependency_calls;
+      });
+  EXPECT_EQ(dependency_calls, 0);
+  EXPECT_EQ(properties["--accent"].AsStdString(), "blue");
+
+  CSSVariableMap dependencies;
+  auto record_dependency = [&dependencies](const base::String& name,
+                                           const base::String& value) {
+    dependencies.insert_or_assign(name, value);
+  };
+  lepus::Value use_accent("var(--accent)");
+  CSSStringParser use_parser =
+      CSSStringParser::FromLepusString(use_accent, configs_);
+  EXPECT_EQ(CSSValue::SubstitutionResolved(use_parser.ParseVariable(),
+                                           properties, record_dependency),
+            "blue");
+  EXPECT_EQ(dependencies.size(), 2U);
+  EXPECT_EQ(dependencies["--base"], "blue");
+  EXPECT_EQ(dependencies["--accent"], "blue");
+}
+
+TEST_F(CSSValueSubstitutionTest,
+       SubstituteAllResolvesDirectAndFallbackReferences) {
+  CustomPropertiesMap properties;
+  properties.insert_or_assign("--base", CSSValue::MakePlainString("blue"));
+  for (const auto& [name, expression] :
+       {std::pair{"--direct", "var(--base)"},
+        std::pair{"--fallback", "var(--missing,var(--base))"}}) {
+    lepus::Value value(expression);
+    CSSStringParser parser = CSSStringParser::FromLepusString(value, configs_);
+    properties.insert_or_assign(name, parser.ParseVariable());
+    ASSERT_TRUE(properties[name].NeedsVariableResolution());
+  }
+
+  CSSValue::SubstituteAll(properties);
+  for (const char* name : {"--direct", "--fallback"}) {
+    EXPECT_EQ(properties[name].AsStdString(), "blue");
+    EXPECT_FALSE(properties[name].NeedsVariableResolution());
+  }
+}
+
 }  // namespace tasm
 }  // namespace lynx
