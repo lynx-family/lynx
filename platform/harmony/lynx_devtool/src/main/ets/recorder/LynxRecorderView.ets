@@ -28,7 +28,9 @@ import {
   LynxUpdateMode
 } from '@lynx/lynx';
 import { LynxRecorderReplayOptions } from './LynxRecorderReplayOptions';
-import LynxRecorderReplayDataModule, { ReplaySharedData, ReplaySharedDataValue } from './ReplayDataModule';
+import LynxRecorderReplayDataModule, {
+  LynxRecorderFixtureReplayDataModule, ReplaySharedData, ReplaySharedDataValue
+} from './ReplayDataModule';
 import {
   LoadComponentWithCallbackParams,
   LoadTemplateParams,
@@ -400,7 +402,7 @@ export default struct LynxRecorderView {
     LLog.i(TAG,
       `[replay-shared-data] registerJSBModule | keys=${JSON.stringify(Object.keys(LynxRecorderReplayDataModule.sharedData))}`);
     this.jsbModule.set('LynxRecorderReplayDataModule', {
-      moduleClass: LynxRecorderReplayDataModule,
+      moduleClass: this.fixture ? LynxRecorderFixtureReplayDataModule : LynxRecorderReplayDataModule,
       param: this.fixture
     });
     this.modules?.forEach((module: ModuleClassWrapper, name: string) => {
@@ -895,8 +897,35 @@ export default struct LynxRecorderView {
       .borderWidth({ bottom: 1 })
 
       if (this.ready) {
-        // A new view also creates a fresh FixtureContext on every replay.
-        ForEach([this.replayGeneration], (generation: number) => {
+        if (this.fixture) {
+          // A new view also creates a fresh FixtureContext on every replay.
+          ForEach([this.replayGeneration], (generation: number) => {
+            LynxView({
+              url: '',
+              embeddedMode: this.replayOptions.embeddedMode,
+              enableAirStrictMode: this.replayOptions.enableAirStrictMode,
+              uiRendererCreator: this.uiRendererCreator,
+              genericResourceFetcher: this.genericFetcher,
+              mediaResourceFetcher: this.mediaFetcher,
+              templateResourceFetcher: this.templateFetcher,
+              modules: this.jsbModule,
+              metaData: new MetaData(this.templateData, this.globalProps),
+              beforeLoadTemplate: (context: LynxContext) => {
+                context.updateViewport(this.viewportWidth, MeasureMode.DEFINITE,
+                  this.viewportHeight, MeasureMode.DEFINITE);
+              },
+              onCreate: (context) => {
+                this.localLynxContext = context;
+                this.onCreate?.(context);
+                this.tryLoadTemplate();
+              }
+            })
+              .onAreaChange((_oldValue: Area, newValue: Area) => {
+                this.onLynxViewAreaChange(newValue);
+              })
+          }, (generation: number) => generation.toString())
+        } else {
+          // Preserve the JSON replay view structure without generation-based rebuilding.
           LynxView({
             url: '',
             embeddedMode: this.replayOptions.embeddedMode,
@@ -920,7 +949,7 @@ export default struct LynxRecorderView {
             .onAreaChange((_oldValue: Area, newValue: Area) => {
               this.onLynxViewAreaChange(newValue);
             })
-        }, (generation: number) => generation.toString())
+        }
       } else {
           Text(this.statusText).fontSize(24).textAlign(TextAlign.Center).padding(24)
       }
