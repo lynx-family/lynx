@@ -79,6 +79,8 @@ void LynxResourceLoaderEmbedder::LoadResourceInternal(
           [callback = std::move(callback)](
               lynx_resource_response_t* fetcher_response) mutable {
             pub::LynxResourceResponse response;
+            response.err_code = fetcher_response->code;
+            response.err_msg = fetcher_response->error_message;
             if (fetcher_response->data.length > 0) {
               response.data =
                   std::vector<uint8_t>(fetcher_response->data.content,
