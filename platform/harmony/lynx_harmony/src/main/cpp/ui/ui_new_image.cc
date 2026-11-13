@@ -643,6 +643,10 @@ void UINewImage::SendImageResult(const CustomEvent& result) {
 
 void UINewImage::OnNodeReady() {
   UIBase::OnNodeReady();
+  // Fragment rendering owns image loading and presentation for renderer hosts.
+  if (renderer_) {
+    return;
+  }
   if (!init_listener_) {
     std::weak_ptr weak_self = std::static_pointer_cast<ImageLoadListener>(
         std::static_pointer_cast<UINewImage>(shared_from_this()));
