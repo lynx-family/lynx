@@ -4,6 +4,7 @@
 
 #include "core/renderer/css/css_variable_handler.h"
 
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -18,6 +19,57 @@ class CSSVariableHandlerTest : public ::testing::Test {
 
   void SetUp() override {}
 };
+
+namespace {
+CSSValue ParseDirectReferenceExpression(const char* expression) {
+  CSSParserConfigs configs;
+  lepus::Value value(expression);
+  CSSStringParser parser = CSSStringParser::FromLepusString(value, configs);
+  return parser.ParseVariable();
+}
+}  // namespace
+
+TEST_F(CSSVariableHandlerTest, DirectReferenceTracksBindingsAndStripsPriority) {
+  CSSParserConfigs configs;
+  const auto expression =
+      ParseDirectReferenceExpression("var(--width,var(--fallback))");
+  {
+    CSSVariableHandler handler(true);
+    CustomPropertiesMap properties;
+    properties.insert_or_assign(
+        "--width", ParseDirectReferenceExpression("12px !important"));
+    properties.insert_or_assign("--fallback",
+                                ParseDirectReferenceExpression("24px"));
+    CSSVariableMap dependencies;
+    const auto record = [&dependencies](const base::String& name,
+                                        const base::String& value) {
+      dependencies.insert_or_assign(name, value);
+    };
+    StyleMap result;
+    handler.ResolveCSSVariables(kPropertyIDWidth, expression, result,
+                                &properties, configs, record);
+    EXPECT_EQ(result[kPropertyIDWidth].AsNumber(), 12);
+    EXPECT_EQ(dependencies["--width"], "12px !important");
+    EXPECT_FALSE(dependencies.contains("--fallback"));
+
+    properties.erase("--width");
+    result.clear();
+    dependencies.clear();
+    handler.ResolveCSSVariables(kPropertyIDWidth, expression, result,
+                                &properties, configs, record);
+    EXPECT_EQ(result[kPropertyIDWidth].AsNumber(), 24);
+    EXPECT_TRUE(dependencies.contains("--fallback"));
+
+    properties.insert_or_assign("--width",
+                                ParseDirectReferenceExpression("32px"));
+    result.clear();
+    dependencies.clear();
+    handler.ResolveCSSVariables(kPropertyIDWidth, expression, result,
+                                &properties, configs, record);
+    EXPECT_EQ(result[kPropertyIDWidth].AsNumber(), 32);
+    EXPECT_FALSE(dependencies.contains("--fallback"));
+  }
+}
 
 TEST_F(CSSVariableHandlerTest, FormatStringWithRule0) {
   CSSVariableHandler handler;

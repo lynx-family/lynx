@@ -5213,7 +5213,22 @@ void ComputedCSSStyle::FinalizeCustomProperties() {
     return;
   }
 
+  // Pure inheritance already shares the parent's computed table. A local
+  // declaration detaches the raw table, so this check remains O(1).
+  const auto* raw_properties = raw_custom_properties_.get()->Get();
+  if (resolved_custom_properties_ &&
+      resolved_custom_properties_.get()->Get() == raw_properties) {
+    return;
+  }
+
   resolved_custom_properties_ = raw_custom_properties_;
+  const auto& properties = raw_properties->Value();
+  if (std::none_of(properties.begin(), properties.end(), [](const auto& entry) {
+        return entry.second.NeedsVariableResolution();
+      })) {
+    return;
+  }
+
   tasm::CSSValue::SubstituteAll(
       resolved_custom_properties_.get()->Access()->Value());
 }

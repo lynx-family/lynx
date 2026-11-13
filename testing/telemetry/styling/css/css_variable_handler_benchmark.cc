@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "benchmark/benchmark.h"
+#include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/css_variable_handler.h"
@@ -95,6 +96,51 @@ BENCHMARK_CAPTURE(BM_SubstituteAllCustomProperties, OnePendingReference, true)
     ->Arg(32)
     ->Arg(256)
     ->Arg(909);
+
+// Include creation, declaration parsing and destruction to measure a fresh
+// small variable table rather than an already resolved table's steady state.
+static void BM_CollectCustomProperties_Cold(benchmark::State& state) {
+  BenchmarkEnvironment env;
+  for (auto _ : state) {
+    auto element =
+        fml::AdoptRef(new Element(env.element_manager.get(), "view"));
+    auto* holder = element->data_model();
+    holder->UpdateCSSVariable("--base", "10px");
+    for (int i = 0; i < state.range(0); ++i) {
+      const std::string name = "--local" + std::to_string(i);
+      const std::string value =
+          i == 0 ? "var(--base)" : "var(--local" + std::to_string(i - 1) + ")";
+      holder->UpdateCSSVariable(name, value);
+    }
+    const bool resolved = element->CollectCustomProperties(holder);
+    benchmark::DoNotOptimize(resolved);
+  }
+  state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_CollectCustomProperties_Cold)->Arg(0)->Arg(1)->Arg(4)->Arg(8);
+
+static void BM_FinalizeInheritedCustomProperties(benchmark::State& state) {
+  starlight::ComputedCSSStyle parent{1.f, 1.f};
+  for (int i = 0; i < state.range(0); ++i) {
+    parent.SetCustomProperty(
+        base::String("--inherited" + std::to_string(i)),
+        CSSValue(base::String("10px"), CSSValuePattern::STRING,
+                 CSSValueType::DEFAULT));
+  }
+  parent.FinalizeCustomProperties();
+  for (auto _ : state) {
+    starlight::ComputedCSSStyle child{1.f, 1.f};
+    child.InheritCustomPropertiesFrom(parent);
+    child.FinalizeCustomProperties();
+    benchmark::DoNotOptimize(child.GetCustomProperties());
+  }
+  state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_FinalizeInheritedCustomProperties)
+    ->Arg(1)
+    ->Arg(8)
+    ->Arg(64)
+    ->Arg(512);
 
 static void BM_HandleCSSVariables_Simple(benchmark::State& state) {
   BenchmarkEnvironment env;
