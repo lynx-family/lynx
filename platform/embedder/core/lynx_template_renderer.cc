@@ -5,6 +5,7 @@
 #include "platform/embedder/core/lynx_template_renderer.h"
 
 #include "base/include/log/logging.h"
+#include "base/include/string/string_utils.h"
 #include "core/renderer/utils/base/event_converter.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "core/services/performance/performance_controller.h"
@@ -643,33 +644,40 @@ void LynxTemplateRenderer::ReloadTemplate(
 void LynxTemplateRenderer::LoadTemplateFromURL(
     const std::string& url,
     const std::shared_ptr<tasm::TemplateData> init_data) {
-  static const char* FILE_SCHEME = "file://";
-  static const char* ASSETS_SCHEME = "assets://";
-  std::shared_ptr<lynx::tasm::PipelineOptions> pipeline_options = nullptr;
-  if (memcmp(url.c_str(), FILE_SCHEME, strlen(FILE_SCHEME)) == 0 ||
-      memcmp(url.c_str(), ASSETS_SCHEME, strlen(ASSETS_SCHEME)) == 0) {
-    LoadTemplate(url, LoadJSSource(url), pipeline_options, init_data);
-    return;
-  }
+  static constexpr const char* kFileScheme = "file://";
+  static constexpr const char* kAssetsScheme = "assets://";
+  const bool is_local_scheme = base::BeginsWith(url, kFileScheme) ||
+                               base::BeginsWith(url, kAssetsScheme);
 
+  std::shared_ptr<lynx::tasm::PipelineOptions> pipeline_options = nullptr;
   auto resource_loader = settings_.resource_loader;
   if (!resource_loader) {
+    if (is_local_scheme) {
+      LoadTemplate(url, LoadJSSource(url), pipeline_options, init_data);
+    }
     return;
   }
 
   pub::LynxResourceRequest req{.url = url,
                                .type = pub::LynxResourceType::kTemplate};
   resource_loader->LoadResource(
-      req, [weak_flag = weak_flag_->weak_from_this(),
-            task_runner = shell_->GetRunners()->GetUITaskRunner(), url,
-            init_data, pipeline_options](pub::LynxResourceResponse& response) {
+      req,
+      [weak_flag = weak_flag_->weak_from_this(),
+       task_runner = shell_->GetRunners()->GetUITaskRunner(), url, init_data,
+       pipeline_options, is_local_scheme](pub::LynxResourceResponse& response) {
         auto data_size = response.data.size();
         LOGI("LynxTemplateRenderer LoadTemplateFromURL data_size: "
              << data_size);
+        const bool fallback =
+            is_local_scheme && (!response.Success() || response.data.empty());
         fml::TaskRunner::RunNowOrPostTask(
-            task_runner, [weak_flag, data = std::move(response.data),
-                          url = std::move(url), init_data, pipeline_options] {
+            task_runner,
+            [weak_flag, data = std::move(response.data), url = std::move(url),
+             init_data, pipeline_options, fallback]() mutable {
               if (auto self = weak_flag.lock()) {
+                if (fallback) {
+                  data = self->renderer->LoadJSSource(url);
+                }
                 self->renderer->LoadTemplate(std::move(url), std::move(data),
                                              pipeline_options, init_data);
               }
