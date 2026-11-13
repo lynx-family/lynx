@@ -15,39 +15,13 @@ class ReplaySharedDataResult {
 }
 
 export default class LynxRecorderReplayDataModule extends LynxModule {
-  static syncMethods: string[] = ['getSharedData', 'getFixtureDirectory'];
+  static syncMethods: string[] = ['getSharedData'];
   static jsbInvokers: Map<string, Object>[] = [];
   static jsbCallbacks: Map<string, Object> = new Map();
   static config: Map<string, Object> = new Map();
   static sharedData: ReplaySharedData = {};
-  private fixture?: LynxRecorderFixture;
-  private fixtureAcquired: boolean = false;
-
-  constructor(context: LynxContext, param?: Object) {
-    super(context, param);
-    this.fixture = param as LynxRecorderFixture | undefined;
-  }
-
-  public getFixtureDirectory(): string {
-    if (!this.fixture) return '';
-    if (!this.fixtureAcquired) {
-      this.fixture.retain();
-      this.fixtureAcquired = true;
-    }
-    return this.fixture.directory;
-  }
-
-  public releaseFixture(): void {
-    // Keep this asynchronous: JS runtime teardown must not wait for the UI thread.
-    if (this.fixtureAcquired) {
-      this.fixtureAcquired = false;
-      this.fixture?.release();
-    }
-  }
-
   public getSharedData(key: string): ReplaySharedDataResult {
-    let sharedData = this.fixture?.sharedData ?? LynxRecorderReplayDataModule.sharedData;
-    let value: ReplaySharedDataValue = sharedData[key] ?? null;
+    let value: ReplaySharedDataValue = LynxRecorderReplayDataModule.sharedData[key] ?? null;
     if (value === null) {
       LLog.d(TAG, `[replay-shared-data] getSharedData miss | key=${key}`);
     }
@@ -118,5 +92,41 @@ export default class LynxRecorderReplayDataModule extends LynxModule {
 
   private getJsbSettings() {
     return '{}';
+  }
+}
+
+// Only Fixture replay exposes this contract. Exposing the synchronous directory
+// getter on JSON replay would make its JS thread wait for the UI thread even
+// when no Fixture is loaded.
+export class LynxRecorderFixtureReplayDataModule extends LynxModule {
+  static syncMethods: string[] = ['getSharedData', 'getFixtureDirectory'];
+  private fixture: LynxRecorderFixture;
+  private fixtureAcquired: boolean = false;
+
+  constructor(context: LynxContext, param?: Object) {
+    super(context, param);
+    this.fixture = param as LynxRecorderFixture;
+  }
+
+  public getFixtureDirectory(): string {
+    if (!this.fixtureAcquired) {
+      this.fixture.retain();
+      this.fixtureAcquired = true;
+    }
+    return this.fixture.directory;
+  }
+
+  public releaseFixture(): void {
+    // Keep this asynchronous: JS runtime teardown must not wait for the UI thread.
+    if (this.fixtureAcquired) {
+      this.fixtureAcquired = false;
+      this.fixture.release();
+    }
+  }
+
+  public getSharedData(key: string): ReplaySharedDataResult {
+    let result: ReplaySharedDataResult = new ReplaySharedDataResult();
+    result.value = this.fixture.sharedData[key] ?? null;
+    return result;
   }
 }

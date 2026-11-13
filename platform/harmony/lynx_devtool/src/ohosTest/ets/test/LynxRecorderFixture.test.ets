@@ -8,7 +8,9 @@ import fs from '@ohos.file.fs';
 import { util } from '@kit.ArkTS';
 import { LynxContext, LynxEnv } from '@lynx/lynx';
 import LynxRecorderFixture from '../../../main/ets/recorder/LynxRecorderFixture';
-import LynxRecorderReplayDataModule, { ReplaySharedData } from '../../../main/ets/recorder/ReplayDataModule';
+import LynxRecorderReplayDataModule, {
+  LynxRecorderFixtureReplayDataModule, ReplaySharedData
+} from '../../../main/ets/recorder/ReplayDataModule';
 import { ActionData } from '../../../main/ets/recorder/DataType';
 
 // A ZIP containing fixture.js and assets/page.bin. The first action is delayed
@@ -26,7 +28,7 @@ export default function LynxRecorderFixtureTest() {
       const cache = abilityDelegatorRegistry.getAbilityDelegator().getAppContext().cacheDir;
       const bytes = new util.Base64Helper().decodeSync(ARCHIVE);
       const fixture = await LynxRecorderFixture.open(bytes.buffer as ArrayBuffer, cache);
-      const module = new LynxRecorderReplayDataModule(new LynxContext(), fixture);
+      const module = new LynxRecorderFixtureReplayDataModule(new LynxContext(), fixture);
       try {
         expect(module.getFixtureDirectory()).assertEqual(fixture.directory);
         expect(module.getFixtureDirectory()).assertEqual(fixture.directory);
@@ -56,7 +58,14 @@ export default function LynxRecorderFixtureTest() {
 
     it('keepsJsonReplayWithoutAFixture', 0, () => {
       const module = new LynxRecorderReplayDataModule(new LynxContext());
-      expect(module.getFixtureDirectory()).assertEqual('');
+      // The native module bridge discovers own prototype methods. JSON must not
+      // expose the getter: even an empty result requires a synchronous UI hop.
+      const methods = Object.getOwnPropertyNames((LynxRecorderReplayDataModule as Function).prototype);
+      expect(methods.includes('getFixtureDirectory')).assertFalse();
+      expect(methods.includes('releaseFixture')).assertFalse();
+      expect(methods.includes('getData')).assertTrue();
+      expect(methods.includes('getSharedData')).assertTrue();
+      expect(LynxRecorderReplayDataModule.syncMethods.includes('getFixtureDirectory')).assertFalse();
       LynxRecorderReplayDataModule.jsbInvokers = [];
       const shared: ReplaySharedData = {};
       shared['state'] = 'json';
@@ -66,8 +75,16 @@ export default function LynxRecorderFixtureTest() {
         const data: Record<string, string> = JSON.parse(text);
         expect(data['RecordData']).assertEqual('{}');
       });
-      module.releaseFixture();
       LynxRecorderReplayDataModule.sharedData = {};
+    });
+
+    it('exposesFixtureMethodsToTheNativeBridge', 0, () => {
+      const methods = Object.getOwnPropertyNames((LynxRecorderFixtureReplayDataModule as Function).prototype);
+      expect(methods.includes('getFixtureDirectory')).assertTrue();
+      expect(methods.includes('releaseFixture')).assertTrue();
+      expect(methods.includes('getSharedData')).assertTrue();
+      expect(LynxRecorderFixtureReplayDataModule.syncMethods.includes('getFixtureDirectory')).assertTrue();
+      expect(LynxRecorderFixtureReplayDataModule.syncMethods.includes('releaseFixture')).assertFalse();
     });
 
     it('cleansUpAFailedArchive', 0, async () => {
