@@ -308,6 +308,8 @@ void UIDelegateHarmony::OnPageConfigDecoded(
     lynx_context->SetLongPressDuration(config->GetLongPressDuration());
     if (ui_owner_) {
       ui_owner_->SetRawInputEnabled(config->GetEnableRawInput());
+      ui_owner_->SetEnableIntersectionObserverInitialRatioCompatibility(
+          config->GetEnableIntersectionObserverInitialRatioCompatibility());
     }
     lynx_context->SetEnableHarmonyNewOverlay(
         config->GetEnableHarmonyNewOverlay() ||

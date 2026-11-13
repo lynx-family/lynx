@@ -74,6 +74,8 @@ public class PageConfig {
   private static final String KEY_FILE_PATH = "filePath";
   private static final String KEY_ENABLE_FIBER = "enableFiber";
   private static final String KEY_ENABLE_RAW_INPUT = "enableRawInput";
+  private static final String KEY_ENABLE_INTERSECTION_OBSERVER_INITIAL_RATIO_COMPATIBILITY =
+      "enableIntersectionObserverInitialRatioCompatibility";
   private static final String KEY_ENABLE_MULTITOUCH = "enableMultiTouch";
   private static final String KEY_ENABLE_LYNX_SCROLL_FLUENCY = "enableLynxScrollFluency";
   private static final String KEY_ENABLE_FSP = "enableFSP";
@@ -136,6 +138,7 @@ public class PageConfig {
   private boolean mEnableFiber = false;
   private boolean mEnableMultiTouch = false;
   private boolean mEnableRawInput = false;
+  private boolean mEnableIntersectionObserverInitialRatioCompatibility = false;
   private int mObserverFrameRate = 20;
   private boolean mEnableExposureUIMargin = false;
   // when mLongPressDuration < 0, we think long-press-duration is not set
@@ -366,6 +369,10 @@ public class PageConfig {
 
       if (map.hasKey(KEY_ENABLE_RAW_INPUT)) {
         mEnableRawInput = map.getBoolean(KEY_ENABLE_RAW_INPUT);
+      }
+      if (map.hasKey(KEY_ENABLE_INTERSECTION_OBSERVER_INITIAL_RATIO_COMPATIBILITY)) {
+        mEnableIntersectionObserverInitialRatioCompatibility =
+            map.getBoolean(KEY_ENABLE_INTERSECTION_OBSERVER_INITIAL_RATIO_COMPATIBILITY);
       }
 
       if (map.hasKey(KEY_ENABLE_MULTITOUCH)) {
@@ -631,6 +638,10 @@ public class PageConfig {
 
   public boolean getEnableRawInput() {
     return mEnableRawInput;
+  }
+
+  public boolean getEnableIntersectionObserverInitialRatioCompatibility() {
+    return mEnableIntersectionObserverInitialRatioCompatibility;
   }
 
   public boolean getEnableMultiTouch() {

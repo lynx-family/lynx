@@ -4866,6 +4866,7 @@ public class LynxUIContext : NSObject {
   public BOOL LynxUIContext()::devtoolEnabled devtoolEnabled;
   public BOOL LynxUIContext()::fixNewImageDownSampling fixNewImageDownSampling;
   public BOOL LynxUIContext()::enableEventThroughInheritFromPage enableEventThroughInheritFromPage;
+  public BOOL LynxUIContext()::enableIntersectionObserverInitialRatioCompatibility enableIntersectionObserverInitialRatioCompatibility;
   public LynxScrollFluency* LynxUIContext()::fluencyInnerListener fluencyInnerListener;
   public instancetype LynxUIContext::initWithScreenMetrics:(LynxScreenMetrics *screenMetrics);
   public void LynxUIContext::updateScreenSize:(CGSize screenSize);

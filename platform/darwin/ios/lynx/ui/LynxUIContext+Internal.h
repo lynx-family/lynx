@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LUIConfig.h>
+#import <Lynx/LynxScrollFluency.h>
 #import <Lynx/LynxUIContext.h>
-#import "LynxScrollFluency.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -15,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL devtoolEnabled;
 @property(nonatomic, assign) BOOL fixNewImageDownSampling;
 @property(nonatomic, readonly) BOOL enableEventThroughInheritFromPage;
+@property(nonatomic, assign) BOOL enableIntersectionObserverInitialRatioCompatibility;
 @property(nonatomic, strong, readwrite) LynxScrollFluency *fluencyInnerListener;
 
 - (void)updateScreenMetrics:(LynxScreenMetrics *)screenMetrics;

@@ -18,13 +18,13 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
+#import <Lynx/LynxTouchHandler+Internal.h>
 #import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <Lynx/UIView+Lynx.h>
 #import "LynxBaseConfigurator+Internal.h"
 #import "LynxTemplateRender+Protected.h"
-#import "LynxTouchHandler+Internal.h"
 #import "LynxUIExposure+Internal.h"
 #import "LynxUIIntersectionObserver.h"
 
@@ -280,6 +280,8 @@ static id<LynxServiceTextProtocol> getTextService() {
   LynxUIContext *uiContext = _uiOwner.uiContext;
   LUIConfigAdapter *configAdapter = [[LUIConfigAdapter alloc] initWithConfig:pageConfig.get()];
   [uiContext setUIConfig:configAdapter];
+  uiContext.enableIntersectionObserverInitialRatioCompatibility =
+      pageConfig->GetEnableIntersectionObserverInitialRatioCompatibility();
 
   if (pageConfig->GetSyncXElementRegistry()) {
     [_uiOwner setEnableSyncXelementRegistry];

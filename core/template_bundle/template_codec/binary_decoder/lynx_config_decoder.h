@@ -789,6 +789,15 @@ class LynxConfigDecoder final {
       page_config->SetEnableCSSRule(doc[config::kEnableCSSRule].GetBool());
     }
 
+    if (doc.HasMember(
+            config::kEnableIntersectionObserverInitialRatioCompatibility) &&
+        doc[config::kEnableIntersectionObserverInitialRatioCompatibility]
+            .IsBool()) {
+      page_config->SetEnableIntersectionObserverInitialRatioCompatibility(
+          doc[config::kEnableIntersectionObserverInitialRatioCompatibility]
+              .GetBool());
+    }
+
     if (doc.HasMember(config::kEnableRawInput) &&
         doc[config::kEnableRawInput].IsBool()) {
       page_config->SetEnableRawInput(doc[config::kEnableRawInput].GetBool());
