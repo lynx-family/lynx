@@ -143,8 +143,9 @@ TEST_F(WorkletAPITest, TestLepusLynxSetTimeoutCrash) {
   loop.RunExpiredTasksNow();
   auto* lynx = static_cast<worklet::NapiLoaderUI*>(
                    tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
-                       ->napi_environment_->delegate())
-                   ->lynx_;
+                       ->napi_environment()
+                       ->delegate())
+                   ->lepus_lynx();
   EXPECT_EQ(lynx->task_to_callback_map_.empty(), false);
 }
 
@@ -178,35 +179,166 @@ TEST_F(WorkletAPITest, TestLynxGetModuleLoader) {
   EXPECT_EQ(g_module_load_count, 1);
 }
 
+TEST_F(WorkletAPITest, TestSharedContextUsesOneNapiEnvironment) {
+  fml::MessageLoop::EnsureInitializedForCurrentThread();
+  auto default_entry = tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME);
+  auto* environment = default_entry->napi_environment();
+  auto env = environment->proxy()->Env();
+  auto* loader = static_cast<worklet::NapiLoaderUI*>(environment->delegate());
+  auto* lynx = loader->lepus_lynx();
+  auto finalized = std::make_shared<bool>(false);
+  {
+    Napi::HandleScope scope(env);
+    lynx->NapiObject().AddFinalizer(
+        new std::shared_ptr<bool>(finalized), [](napi_env, void* data, void*) {
+          std::unique_ptr<std::shared_ptr<bool>> state(
+              static_cast<std::shared_ptr<bool>*>(data));
+          **state = true;
+        });
+  }
+
+  std::string js_source = R"(
+    lepusLynx.setTimeout(() => {}, 1000);
+  )";
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
+  ASSERT_TRUE(ctx_->Execute(nullptr));
+  ASSERT_NE(lynx->timer_, nullptr);
+
+  auto component_entry = std::make_shared<tasm::TemplateEntry>();
+  component_entry->SetVm(ctx_);
+  component_entry->AttachNapiEnvironment();
+  tasm_->template_entries_["component_entry"] = component_entry;
+  ASSERT_EQ(component_entry->napi_environment(), environment);
+  {
+    Napi::HandleScope scope(env);
+    EXPECT_EQ(env.Global().Get("lepusLynx"), lynx->NapiObject());
+  }
+
+  auto* quick_context = runtime::MTSRuntime::ToQuickContext(ctx_.get());
+  LEPUS_RunGC(LEPUS_GetRuntime(quick_context->context()));
+  ASSERT_FALSE(*finalized);
+  tasm_->SetPaused(true);
+  EXPECT_TRUE(lynx->paused_);
+  EXPECT_TRUE(lynx->timer_->paused_);
+  tasm_->SetPaused(false);
+  EXPECT_FALSE(lynx->paused_);
+  EXPECT_FALSE(lynx->timer_->paused_);
+
+  // TASM tears down bindings before its delegate and rendering state disappear,
+  // even when an external reference keeps the runtime and entries alive.
+  tasm_.reset();
+  EXPECT_EQ(ctx_->GetNapiEnvironment(), nullptr);
+  EXPECT_EQ(default_entry->napi_environment(), nullptr);
+  EXPECT_EQ(component_entry->napi_environment(), nullptr);
+  EXPECT_EQ(quick_context->napi_env(), nullptr);
+  EXPECT_EQ(worklet::NapiLoaderUI::GetQuickContextFromNapiEnv(env), nullptr);
+  EXPECT_TRUE(*finalized);
+}
+
+TEST_F(WorkletAPITest, TestRuntimeDestructionFinalizesNapiEnvironment) {
+  auto mts_runtime = runtime::MTSRuntime::CreateContext(
+      runtime::ContextType::LepusNGContextType);
+  mts_runtime->Initialize();
+  mts_runtime->SetDelegate(tasm_.get());
+  mts_runtime->RegisterLynx(false);
+  auto entry = std::make_shared<tasm::TemplateEntry>();
+  entry->SetVm(mts_runtime);
+  entry->AttachNapiEnvironment();
+  auto env = entry->napi_environment()->proxy()->Env();
+  struct FinalizerState {
+    runtime::MTSRuntime* runtime;
+    bool finalized = false;
+    bool environment_cleared = false;
+  };
+  auto state = std::make_shared<FinalizerState>();
+  state->runtime = mts_runtime.get();
+  {
+    Napi::HandleScope scope(env);
+    env.Global()
+        .Get("lepusLynx")
+        .As<Napi::Object>()
+        .AddFinalizer(
+            new std::shared_ptr<FinalizerState>(state),
+            [](napi_env, void* data, void*) {
+              std::unique_ptr<std::shared_ptr<FinalizerState>> holder(
+                  static_cast<std::shared_ptr<FinalizerState>*>(data));
+              auto& state = **holder;
+              state.environment_cleared =
+                  state.runtime->GetNapiEnvironment() == nullptr;
+              state.runtime->DetachNapiEnvironment();
+              state.finalized = true;
+            });
+  }
+
+  entry.reset();
+  EXPECT_FALSE(state->finalized);
+  EXPECT_NE(mts_runtime->GetNapiEnvironment(), nullptr);
+  mts_runtime.reset();
+  EXPECT_TRUE(state->finalized);
+  EXPECT_TRUE(state->environment_cleared);
+  EXPECT_EQ(worklet::NapiLoaderUI::GetQuickContextFromNapiEnv(env), nullptr);
+  EXPECT_NE(ctx_->GetNapiEnvironment(), nullptr);
+}
+
 class WorkletAPIDetachTest : public WorkletAPITest,
                              public ::testing::WithParamInterface<bool> {};
 
-TEST_P(WorkletAPIDetachTest, TestLynxGetModuleLoaderAfterDetach) {
+TEST_P(WorkletAPIDetachTest, TestEntryDestructionKeepsModuleLoader) {
   auto default_entry = tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME);
   auto component_entry = std::make_shared<tasm::TemplateEntry>();
   component_entry->SetVm(ctx_);
   component_entry->AttachNapiEnvironment();
   tasm_->template_entries_["component_entry"] = component_entry;
-
+  auto* environment = default_entry->napi_environment();
+  auto env = environment->proxy()->Env();
+  ASSERT_EQ(component_entry->napi_environment(), environment);
   auto* quick_context = runtime::MTSRuntime::ToQuickContext(ctx_.get());
-  EXPECT_EQ(quick_context->napi_env(),
-            static_cast<napi_env>(
-                component_entry->napi_environment()->proxy()->Env()));
 
-  // Cover detaching both the older and the most recently attached environment.
-  auto detached_entry = GetParam() ? component_entry : default_entry;
-  auto attached_entry = GetParam() ? default_entry : component_entry;
-  auto detached_env = detached_entry->napi_environment()->proxy()->Env();
-  auto attached_env = attached_entry->napi_environment()->proxy()->Env();
-  detached_entry->DetachNapiEnvironment();
-
-  EXPECT_EQ(quick_context->napi_env(), nullptr);
-  EXPECT_EQ(worklet::NapiLoaderUI::GetQuickContextFromNapiEnv(detached_env),
-            nullptr);
-  EXPECT_EQ(worklet::NapiLoaderUI::GetQuickContextFromNapiEnv(attached_env),
-            quick_context);
-
+  std::call_once(g_module_registration_once,
+                 []() { napi_module_register_xx(&g_mts_module_loader_test); });
+  g_module_load_count = 0;
   std::string js_source = R"(
+    if (lynx.getModuleLoader().load("mts_module_loader_test").message !==
+        "hello from MTS") {
+      throw new Error("unexpected MTS Node-API module export");
+    }
+  )";
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
+  ASSERT_TRUE(ctx_->Execute(nullptr));
+  EXPECT_EQ(g_module_load_count, 1);
+
+  // Destroy either entry first. The remaining entry still uses the same
+  // runtime, module cache, and bindings.
+  if (GetParam()) {
+    tasm_->template_entries_.erase("component_entry");
+    component_entry.reset();
+  } else {
+    tasm_->template_entries_.erase(tasm::DEFAULT_ENTRY_NAME);
+    default_entry.reset();
+  }
+  auto remaining_entry = GetParam() ? default_entry : component_entry;
+  EXPECT_EQ(remaining_entry->napi_environment(), environment);
+  EXPECT_EQ(quick_context->napi_env(), static_cast<napi_env>(env));
+  EXPECT_EQ(worklet::NapiLoaderUI::GetQuickContextFromNapiEnv(env),
+            quick_context);
+  lepus::BytecodeGenerator::GenerateBytecode(ctx_->GetMTSContext(), js_source,
+                                             "");
+  EXPECT_TRUE(ctx_->Execute(nullptr));
+  EXPECT_EQ(g_module_load_count, 1);
+
+  // Explicit teardown belongs to the whole runtime and remains idempotent.
+  remaining_entry->DetachNapiEnvironment();
+  remaining_entry->DetachNapiEnvironment();
+  EXPECT_EQ(ctx_->GetNapiEnvironment(), nullptr);
+  EXPECT_EQ(quick_context->napi_env(), nullptr);
+  EXPECT_EQ(worklet::NapiLoaderUI::GetQuickContextFromNapiEnv(env), nullptr);
+  remaining_entry->SetPaused(true);
+  remaining_entry->SetPaused(false);
+  remaining_entry->InvokeLepusBridge(1, lepus::Value());
+
+  js_source = R"(
     if (lynx.getModuleLoader() !== undefined) {
       throw new Error("MTS Node-API module loader is available after detach");
     }
@@ -233,7 +365,7 @@ TEST_F(WorkletAPITest, TestLepusGestureAPI) {
   lepus::Value value_1 = MK_JS_LEPUS_VALUE(lepus_context, js_1);
   auto napi_value_1 = worklet::ValueConverter::ConvertLepusValueToNapiValue(
       tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
-          ->napi_environment_.get()
+          ->napi_environment()
           ->proxy()
           ->Env(),
       value_1);
@@ -243,7 +375,7 @@ TEST_F(WorkletAPITest, TestLepusGestureAPI) {
   lepus::Value value_2 = MK_JS_LEPUS_VALUE(lepus_context, js_2);
   auto napi_value_2 = worklet::ValueConverter::ConvertLepusValueToNapiValue(
       tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
-          ->napi_environment_.get()
+          ->napi_environment()
           ->proxy()
           ->Env(),
       value_2);
@@ -253,7 +385,7 @@ TEST_F(WorkletAPITest, TestLepusGestureAPI) {
   lepus::Value value_3 = MK_JS_LEPUS_VALUE(lepus_context, js_3);
   auto napi_value_3 = worklet::ValueConverter::ConvertLepusValueToNapiValue(
       tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
-          ->napi_environment_.get()
+          ->napi_environment()
           ->proxy()
           ->Env(),
       value_3);
@@ -284,8 +416,9 @@ TEST_F(WorkletAPITest, TestLepusLynxSetTimeout) {
 
   auto* lynx = static_cast<worklet::NapiLoaderUI*>(
                    tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
-                       ->napi_environment_->delegate())
-                   ->lynx_;
+                       ->napi_environment()
+                       ->delegate())
+                   ->lepus_lynx();
   EXPECT_EQ(lynx->task_to_callback_map_.empty(), false);
 }
 
@@ -317,8 +450,9 @@ TEST_F(WorkletAPITest, TestLepusLynxClearTimeout) {
 
   auto* lynx = static_cast<worklet::NapiLoaderUI*>(
                    tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
-                       ->napi_environment_->delegate())
-                   ->lynx_;
+                       ->napi_environment()
+                       ->delegate())
+                   ->lepus_lynx();
   EXPECT_EQ(lynx->task_to_callback_map_.empty(), true);
 }
 
@@ -334,8 +468,9 @@ TEST_F(WorkletAPITest, TestLepusLynxSetInterval) {
 
   auto* lynx = static_cast<worklet::NapiLoaderUI*>(
                    tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
-                       ->napi_environment_->delegate())
-                   ->lynx_;
+                       ->napi_environment()
+                       ->delegate())
+                   ->lepus_lynx();
   EXPECT_EQ(lynx->task_to_callback_map_.empty(), false);
 }
 
@@ -352,8 +487,9 @@ TEST_F(WorkletAPITest, TestLepusLynxClearInterval) {
 
   auto* lynx = static_cast<worklet::NapiLoaderUI*>(
                    tasm_->FindEntry(tasm::DEFAULT_ENTRY_NAME)
-                       ->napi_environment_->delegate())
-                   ->lynx_;
+                       ->napi_environment()
+                       ->delegate())
+                   ->lepus_lynx();
   EXPECT_EQ(lynx->task_to_callback_map_.empty(), true);
 }
 

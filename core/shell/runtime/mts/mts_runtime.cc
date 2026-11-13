@@ -24,6 +24,13 @@
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_config_constant_auto_gen.h"
 
+#if ENABLE_LEPUSNG_WORKLET
+#include "core/renderer/worklet/lepus_lynx.h"
+#include "core/runtime/common/napi/napi_environment.h"
+#include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
+#include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
+#endif
+
 namespace lynx {
 namespace runtime {
 
@@ -31,7 +38,7 @@ MTSContextHolder::MTSContextHolder(std::unique_ptr<MTSContext> mts_context)
     : mts_context_(std::move(mts_context)) {}
 
 MTSRuntime::~MTSRuntime() {
-  ClearPendingAnimationFrameCallbacks();
+  DetachNapiEnvironment();
   DestroyInspector();
 }
 
@@ -118,6 +125,41 @@ void MTSRuntime::SetDelegate(Delegate* delegate) {
   }
 }
 
+js::NapiEnvironment* MTSRuntime::GetNapiEnvironment() const {
+#if ENABLE_LEPUSNG_WORKLET
+  return napi_environment_.get();
+#else
+  return nullptr;
+#endif
+}
+
+void MTSRuntime::AttachNapiEnvironment() {
+#if ENABLE_LEPUSNG_WORKLET
+  if (!IsLepusNGContext() || napi_environment_) {
+    return;
+  }
+  napi_environment_ = std::make_unique<js::NapiEnvironment>(
+      std::make_unique<worklet::NapiLoaderUI>(this));
+  napi_environment_->SetRuntimeProxy(
+      js::NapiRuntimeProxyQuickjs::Create(ToQuickContext(this)->context()));
+  napi_environment_->Attach();
+#endif
+}
+
+void MTSRuntime::DetachNapiEnvironment() {
+#if ENABLE_LEPUSNG_WORKLET
+  // Stop exposing the environment before finalizers can reenter this runtime.
+  auto environment = std::move(napi_environment_);
+#endif
+  ClearPendingAnimationFrameCallbacks();
+#if ENABLE_LEPUSNG_WORKLET
+  // Finalize bindings while the context and its delegate are still available.
+  if (environment) {
+    environment->Detach();
+  }
+#endif
+}
+
 void MTSRuntime::SetPaused(bool paused) {
   if (frame_pause_state_->paused == paused) {
     return;
@@ -126,6 +168,16 @@ void MTSRuntime::SetPaused(bool paused) {
   if (callback_manager_) {
     callback_manager_->SetPaused(paused);
   }
+#if ENABLE_LEPUSNG_WORKLET
+  if (napi_environment_) {
+    auto* lepus_lynx =
+        static_cast<worklet::NapiLoaderUI*>(napi_environment_->delegate())
+            ->lepus_lynx();
+    if (lepus_lynx) {
+      lepus_lynx->SetPaused(paused);
+    }
+  }
+#endif
   if (paused) {
     return;
   }
