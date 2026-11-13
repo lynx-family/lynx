@@ -82,6 +82,7 @@ class CLAY_EXPORT NativePlatformView {
                       ClaySharedImageNativeHandle gfx_handle);
   ClaySharedImageNativeHandle AcquireSurface(
       int width, int height, const ClayTransformation* transform = nullptr);
+  ClaySharedImageNativeHandle AcquireSurfaceForSyncDraw(int width, int height);
   bool SwapBack();
   ClaySharedImageSinkRef GetSharedImageSink();
 
@@ -91,6 +92,8 @@ class CLAY_EXPORT NativePlatformView {
   void MarkDirty();
 
  private:
+  ClaySharedImageNativeHandle AcquireSurfaceInternal(
+      int width, int height, const ClayTransformation* transform, bool force);
   virtual void Release() = 0;
 
   friend class NativeViewServiceEmbedder;

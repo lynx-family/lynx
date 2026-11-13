@@ -6,6 +6,7 @@
 #define CLAY_SHELL_COMMON_SERVICES_SYNC_COMPOSITOR_SERVICE_H_
 #include <memory>
 
+#include "build/build_config.h"
 #include "clay/common/service/service.h"
 
 namespace clay {
@@ -17,7 +18,10 @@ class SyncCompositorService
   void Invalidate(bool is_raster_frame);
 
   void OnFirstMeaningfulLayout();
+  // Publish a completion future and dispatch UI/Raster work for a sync draw.
   void DemandDrawHw(bool force_draw);
+  // Prepare UI on the shared Platform/UI thread without drawing on Raster.
+  bool PrepareFrame();
 
  private:
   void OnInit(clay::ServiceManager& service_manager,

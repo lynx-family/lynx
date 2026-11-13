@@ -159,6 +159,7 @@ class PageView : public BaseView,
   void RunAtNextBeginFrame(fml::closure task);
 #endif
   bool BeginFrame(std::unique_ptr<clay::FrameTimingsRecorder>);
+  bool HasMeaningfulLayout() const { return first_meaningful_layout_; }
   void SetRefreshRate(uint32_t refresh_rate);
   void SetRenderSettings(fml::RefPtr<RenderSettings> render_settings);
   fml::RefPtr<RenderSettings> GetRenderSettings() const {
@@ -254,6 +255,9 @@ class PageView : public BaseView,
   LayoutController* GetLayoutController() const {
     return layout_controller_.get();
   }
+
+  // Whether layout, painting, or queued UI methods still need processing.
+  bool HasPendingFrameChanges() const;
 
 #ifndef ENABLE_SKITY
   fml::RefPtr<ImageResourceFetcher> GetImageResourceFetcher();

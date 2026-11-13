@@ -65,6 +65,9 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
   void SetEditableTransform(const float transform_matrix[16]) override;
   void SetCursorPosition(int position) override;
 
+  void OnInvalidate() override;
+  void SubmitFrameFuture(std::future<bool> future) override;
+
  private:
   void SendPointerEvent(const ClayPointerEvent& event) override;
   void SendKeyEvent(const ClayKeyEvent& event) override;
