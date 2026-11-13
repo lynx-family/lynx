@@ -6797,6 +6797,325 @@ TEST_P(FiberElementTest, ConvertPointAppliesLatestListScrollOffset) {
   EXPECT_FLOAT_EQ(converted->Y(), 216.f);
 }
 
+TEST_P(FiberElementTest, QueryGeometryClipBoundsOptions) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto anchor = manager->CreateFiberView();
+  scroll->SetAttribute("scroll-y", lepus::Value(true));
+  scroll->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
+  page->InsertNode(scroll);
+  scroll->InsertNode(anchor);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  scroll->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  anchor->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  const auto scale = manager->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  std::string error;
+
+  // Cover both partial and complete clipping while the anchor stays attached.
+  for (float offset : {30.f, 150.f}) {
+    SCOPED_TRACE(offset);
+    scroll->UpdateScrollOffset(0.f, offset);
+    auto params = lepus::Value(lepus::Dictionary::Create());
+    const auto clipped = anchor->InvokeMethod("getGeometry", params, &error);
+    EXPECT_TRUE(error.empty());
+    ASSERT_TRUE(clipped.GetProperty("valid").Bool());
+    EXPECT_FLOAT_EQ(
+        clipped.GetProperty("pageRect").GetProperty("topPx").Number(),
+        200.f * scale);
+    EXPECT_FLOAT_EQ(
+        clipped.GetProperty("pageRect").GetProperty("bottomPx").Number(),
+        std::max(200.f, 270.f - offset) * scale);
+    ASSERT_TRUE(clipped.GetProperty("treePath").IsArray());
+    EXPECT_EQ(clipped.GetProperty("screenRect"),
+              clipped.GetProperty("pageRect"));
+    EXPECT_TRUE(clipped.GetProperty("leftPx").IsNil());
+
+    // Options are optional; absent, empty and non-object values keep defaults.
+    for (const auto& options :
+         {lepus::Value(), lepus::Value(false), lepus::Value(0),
+          lepus::Value("options"), lepus::Value(lepus::Dictionary::Create())}) {
+      params.SetProperty("options", options);
+      EXPECT_EQ(anchor->InvokeMethod("getGeometry", params, &error), clipped);
+    }
+    auto options = lepus::Value(lepus::Dictionary::Create());
+    // Missing, true and non-boolean clipBounds values preserve the default.
+    for (const auto& option : {lepus::Value(true), lepus::Value("false"),
+                               lepus::Value(0), lepus::Value()}) {
+      options.SetProperty("clipBounds", option);
+      params.SetProperty("options", options);
+      EXPECT_EQ(anchor->InvokeMethod("getGeometry", params, &error), clipped);
+    }
+    options.SetProperty("clipBounds", lepus::Value(false));
+    params.SetProperty("options", options);
+    const auto full = anchor->InvokeMethod("getGeometry", params, &error);
+    EXPECT_TRUE(error.empty());
+    ASSERT_TRUE(full.GetProperty("valid").Bool());
+    EXPECT_FLOAT_EQ(full.GetProperty("pageRect").GetProperty("leftPx").Number(),
+                    110.f * scale);
+    EXPECT_FLOAT_EQ(full.GetProperty("pageRect").GetProperty("topPx").Number(),
+                    (220.f - offset) * scale);
+    EXPECT_FLOAT_EQ(
+        full.GetProperty("pageRect").GetProperty("rightPx").Number(),
+        210.f * scale);
+    EXPECT_FLOAT_EQ(
+        full.GetProperty("pageRect").GetProperty("bottomPx").Number(),
+        (270.f - offset) * scale);
+    EXPECT_FLOAT_EQ(full.GetProperty("widthPx").Number(), 100.f * scale);
+    EXPECT_FLOAT_EQ(full.GetProperty("heightPx").Number(), 50.f * scale);
+    EXPECT_EQ(full.GetProperty("treePath"), clipped.GetProperty("treePath"));
+    EXPECT_TRUE(anchor->IsAttached());
+    // A one-off opt-out must not change subsequent queries or rendering styles.
+    EXPECT_EQ(anchor->InvokeMethod("getGeometry", lepus::Value(), &error),
+              clipped);
+  }
+
+  auto params = lepus::Value(lepus::Dictionary::Create());
+  auto options = lepus::Value(lepus::Dictionary::Create());
+  options.SetProperty("clipBounds", lepus::Value(false));
+  params.SetProperty("options", options);
+  scroll->RemoveNode(anchor);
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(anchor->InvokeMethod("getGeometry", params, &error)
+                   .GetProperty("valid")
+                   .Bool());
+}
+
+TEST_P(FiberElementTest, QueryGeometryClipBoundsDoesNotChangePointProjection) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto anchor = manager->CreateFiberView();
+  scroll->SetAttribute("scroll-y", lepus::Value(true));
+  scroll->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
+  page->InsertNode(scroll);
+  scroll->InsertNode(anchor);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  scroll->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  anchor->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  scroll->UpdateScrollOffset(0.f, 150.f);
+  const auto scale = manager->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  auto point = lepus::Value(lepus::Dictionary::Create());
+  point.SetProperty("xPx", lepus::Value(115.f * scale));
+  point.SetProperty("yPx", lepus::Value(77.f * scale));
+  auto points = lepus::CArray::Create();
+  points->emplace_back(point);
+  auto params = lepus::Value(lepus::Dictionary::Create());
+  params.SetProperty("points", lepus::Value(std::move(points)));
+  std::string error;
+  const auto projected = anchor->InvokeMethod("getGeometry", params, &error);
+  EXPECT_TRUE(error.empty());
+  ASSERT_TRUE(projected.GetProperty("valid").Bool());
+  const auto local_point = projected.GetProperty("points").Array()->get(0);
+  EXPECT_FLOAT_EQ(local_point.GetProperty("xPx").Number(), 5.f * scale);
+  EXPECT_FLOAT_EQ(local_point.GetProperty("yPx").Number(), 7.f * scale);
+  auto options = lepus::Value(lepus::Dictionary::Create());
+  for (bool clip : {false, true}) {
+    options.SetProperty("clipBounds", lepus::Value(clip));
+    params.SetProperty("options", options);
+    EXPECT_EQ(anchor->InvokeMethod("getGeometry", params, &error), projected);
+  }
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::UNSET);
+  EXPECT_FALSE(anchor->InvokeMethod("getGeometry", params, &error)
+                   .GetProperty("valid")
+                   .Bool());
+}
+
+TEST_P(FiberElementTest, QueryGeometryUsesStoredPageScreenOrigin) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  manager->GetLynxEnvConfig().physical_pixels_per_layout_unit_ = 2.f;
+  auto page = manager->CreateFiberPage("page", 11);
+  auto scroll = manager->CreateFiberScrollView("scroll-view");
+  auto anchor = manager->CreateFiberView();
+  scroll->SetAttribute("scroll-y", lepus::Value(true));
+  scroll->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
+  page->InsertNode(scroll);
+  scroll->InsertNode(anchor);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  scroll->UpdateLayout(100.f, 200.f, 300.f, 400.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  anchor->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  const float scale = manager->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  std::string error;
+  auto params = lepus::Value(lepus::Dictionary::Create());
+  auto options = lepus::Value(lepus::Dictionary::Create());
+
+  for (float offset : {30.f, 150.f}) {
+    scroll->UpdateScrollOffset(0.f, offset);
+    for (bool clip : {false, true}) {
+      SCOPED_TRACE(offset);
+      SCOPED_TRACE(clip);
+      options.SetProperty("clipBounds", lepus::Value(clip));
+      params.SetProperty("options", options);
+      page->SetScreenOrigin({});
+      auto zero_origin = anchor->InvokeMethod("getGeometry", params, &error);
+      ASSERT_TRUE(zero_origin.GetProperty("valid").Bool());
+      auto page_rect = zero_origin.GetProperty("pageRect");
+      EXPECT_EQ(zero_origin.GetProperty("screenRect"), page_rect);
+      const float top = clip ? 200.f : 220.f - offset;
+      const float bottom =
+          clip ? std::max(200.f, 270.f - offset) : 270.f - offset;
+      EXPECT_FLOAT_EQ(page_rect.GetProperty("leftPx").Number(), 110.f * scale);
+      EXPECT_FLOAT_EQ(page_rect.GetProperty("topPx").Number(), top * scale);
+      EXPECT_FLOAT_EQ(page_rect.GetProperty("rightPx").Number(), 210.f * scale);
+      EXPECT_FLOAT_EQ(page_rect.GetProperty("bottomPx").Number(),
+                      bottom * scale);
+
+      // The Page position is already physical pixels and must not be scaled
+      // twice.
+      for (const auto& origin : {base::geometry::FloatPoint(40.f, 80.f),
+                                 base::geometry::FloatPoint(-20.f, 110.f),
+                                 base::geometry::FloatPoint(0.f, 0.f)}) {
+        page->SetScreenOrigin(origin);
+        auto result = anchor->InvokeMethod("getGeometry", params, &error);
+        ASSERT_TRUE(result.GetProperty("valid").Bool());
+        EXPECT_EQ(result.GetProperty("pageRect"), page_rect);
+        const auto screen_rect = result.GetProperty("screenRect");
+        EXPECT_FLOAT_EQ(screen_rect.GetProperty("leftPx").Number(),
+                        110.f * scale + origin.X());
+        EXPECT_FLOAT_EQ(screen_rect.GetProperty("topPx").Number(),
+                        top * scale + origin.Y());
+        EXPECT_FLOAT_EQ(screen_rect.GetProperty("rightPx").Number(),
+                        210.f * scale + origin.X());
+        EXPECT_FLOAT_EQ(screen_rect.GetProperty("bottomPx").Number(),
+                        bottom * scale + origin.Y());
+        EXPECT_FLOAT_EQ(result.GetProperty("widthPx").Number(), 100.f * scale);
+        EXPECT_FLOAT_EQ(result.GetProperty("heightPx").Number(), 50.f * scale);
+        EXPECT_EQ(result.GetProperty("treePath"),
+                  zero_origin.GetProperty("treePath"));
+      }
+      page->SetScreenOrigin({});
+      EXPECT_EQ(anchor->InvokeMethod("getGeometry", params, &error),
+                zero_origin);
+    }
+  }
+  page->SetScreenOrigin(base::geometry::FloatPoint(40.f, 80.f));
+  auto root = page->InvokeMethod("getGeometry", lepus::Value(), &error);
+  EXPECT_EQ(root.GetProperty("treePath").Array()->size(), 0u);
+  EXPECT_FLOAT_EQ(root.GetProperty("pageRect").GetProperty("leftPx").Number(),
+                  0.f);
+  EXPECT_FLOAT_EQ(root.GetProperty("screenRect").GetProperty("leftPx").Number(),
+                  40.f);
+  EXPECT_TRUE(error.empty());
+}
+
+TEST_P(FiberElementTest, QueryGeometryProjectsPointsWithStoredScreenOrigin) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  manager->GetLynxEnvConfig().physical_pixels_per_layout_unit_ = 2.f;
+  auto page = manager->CreateFiberPage("page", 11);
+  auto anchor = manager->CreateFiberView();
+  page->InsertNode(anchor);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  anchor->UpdateLayout(100.f, 200.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  const float scale = manager->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  auto params = lepus::Value(lepus::Dictionary::Create());
+  auto options = lepus::Value(lepus::Dictionary::Create());
+  options.SetProperty("coordinateSpace", lepus::Value("screen"));
+  params.SetProperty("options", options);
+  auto point = lepus::Value(lepus::Dictionary::Create());
+  point.SetProperty("xPx", lepus::Value(40.f + 105.f * scale));
+  point.SetProperty("yPx", lepus::Value(80.f + 207.f * scale));
+  auto points = lepus::CArray::Create();
+  points->emplace_back(point);
+  params.SetProperty("points", lepus::Value(points));
+  std::string error;
+  const auto zero_origin = anchor->InvokeMethod("getGeometry", params, &error);
+  ASSERT_TRUE(zero_origin.GetProperty("valid").Bool());
+  const auto zero_local = zero_origin.GetProperty("points").Array()->get(0);
+  EXPECT_FLOAT_EQ(zero_local.GetProperty("xPx").Number(), 40.f + 5.f * scale);
+  EXPECT_FLOAT_EQ(zero_local.GetProperty("yPx").Number(), 80.f + 7.f * scale);
+  page->SetScreenOrigin(base::geometry::FloatPoint(40.f, 80.f));
+  auto projected = anchor->InvokeMethod("getGeometry", params, &error);
+  ASSERT_TRUE(projected.GetProperty("valid").Bool());
+  const auto local = projected.GetProperty("points").Array()->get(0);
+  EXPECT_FLOAT_EQ(local.GetProperty("xPx").Number(), 5.f * scale);
+  EXPECT_FLOAT_EQ(local.GetProperty("yPx").Number(), 7.f * scale);
+  EXPECT_TRUE(projected.GetProperty("pageRect").IsNil());
+  EXPECT_TRUE(projected.GetProperty("screenRect").IsNil());
+  EXPECT_FALSE(projected.Table()->Contains("pageRect"));
+  EXPECT_FALSE(projected.Table()->Contains("screenRect"));
+  EXPECT_TRUE(projected.GetProperty("treePath").IsNil());
+  for (const auto& space :
+       {lepus::Value("window"), lepus::Value(true), lepus::Value(7)}) {
+    options.SetProperty("coordinateSpace", space);
+    params.SetProperty("options", options);
+    EXPECT_FALSE(anchor->InvokeMethod("getGeometry", params, &error)
+                     .GetProperty("valid")
+                     .Bool());
+  }
+  options.SetProperty("coordinateSpace", lepus::Value("page"));
+  options.SetProperty("clipBounds", lepus::Value(false));
+  params.SetProperty("options", options);
+  point.SetProperty("xPx", lepus::Value(105.f * scale));
+  point.SetProperty("yPx", lepus::Value(207.f * scale));
+  page->SetScreenOrigin({});
+  EXPECT_EQ(anchor->InvokeMethod("getGeometry", params, &error), projected);
+  point.SetProperty("xPx", lepus::Value("bad"));
+  EXPECT_FALSE(anchor->InvokeMethod("getGeometry", params, &error)
+                   .GetProperty("valid")
+                   .Bool());
+}
+
+TEST_P(FiberElementTest, QueryGeometryScreenOriginValidityAndClone) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto anchor = manager->CreateFiberView();
+  page->InsertNode(anchor);
+  page->FlushActionsAsRoot();
+  page->UpdateLayout(0.f, 0.f, 1080.f, 1920.f, {0.f}, {0.f}, {0.f}, nullptr,
+                     0.f);
+  anchor->UpdateLayout(10.f, 20.f, 100.f, 50.f, {0.f}, {0.f}, {0.f}, nullptr,
+                       0.f);
+  std::string error;
+  auto zero_origin =
+      anchor->InvokeMethod("getGeometry", lepus::Value(), &error);
+  ASSERT_TRUE(zero_origin.GetProperty("valid").Bool());
+  EXPECT_EQ(zero_origin.GetProperty("screenRect"),
+            zero_origin.GetProperty("pageRect"));
+  page->SetScreenOrigin(base::geometry::FloatPoint(INFINITY, 0.f));
+  auto invalid_origin =
+      anchor->InvokeMethod("getGeometry", lepus::Value(), &error);
+  ASSERT_TRUE(invalid_origin.GetProperty("valid").Bool());
+  EXPECT_EQ(invalid_origin.GetProperty("pageRect"),
+            zero_origin.GetProperty("pageRect"));
+  EXPECT_TRUE(invalid_origin.GetProperty("screenRect").IsNil());
+  page->SetScreenOrigin(base::geometry::FloatPoint(40.f, 80.f));
+  auto clone = page->CloneElement(false);
+  EXPECT_EQ(static_cast<PageElement*>(clone.get())->ScreenOrigin(),
+            base::geometry::FloatPoint(0.f, 0.f));
+  EXPECT_EQ(page->ScreenOrigin(), base::geometry::FloatPoint(40.f, 80.f));
+
+  // An independent Overlay window must not inherit the Page's screen origin.
+  anchor->is_overlay_ = true;
+  EXPECT_EQ(anchor->InvokeMethod("getGeometry", lepus::Value(), &error),
+            invalid_origin);
+  anchor->is_overlay_ = false;
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::UNSET);
+  EXPECT_FALSE(anchor->InvokeMethod("getGeometry", lepus::Value(), &error)
+                   .GetProperty("valid")
+                   .Bool());
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  page->RemoveNode(anchor);
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(anchor->InvokeMethod("getGeometry", lepus::Value(), &error)
+                   .GetProperty("valid")
+                   .Bool());
+}
+
 TEST_P(FiberElementTest, ConvertPointAppliesPlatformStickyTranslation) {
   manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
 

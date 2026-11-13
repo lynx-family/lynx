@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "base/include/geometry/point.h"
 #include "core/renderer/dom/fiber/component_element.h"
 
 namespace lynx {
@@ -43,8 +44,27 @@ class PageElement : public ComponentElement {
   void Layout(const std::shared_ptr<PipelineOptions>& options);
   void SetupFragmentBehavior(Fragment* fragment) override;
 
+  const base::geometry::FloatPoint& ScreenOrigin() const {
+    return screen_origin_;
+  }
+
+  void SetScreenOrigin(base::geometry::FloatPoint origin) {
+    screen_origin_ = origin;
+  }
+
  protected:
   PageElement(const PageElement& element, bool clone_resolved_props);
+
+ private:
+  // Physical screen pixels, owned by the Engine thread. Use (0, 0) until the
+  // host position publisher is connected, so screenRect initially equals
+  // pageRect.
+  // TODO(songshourui.null): Publish/update this position when the host attaches
+  // or moves, and reset it on detach. Geometry queries only read this state;
+  // they must not synchronously query the platform. Host scale/rotation needs
+  // a future Page-to-screen transform contract.
+  // Host-specific state is deliberately not copied when a Page is cloned.
+  base::geometry::FloatPoint screen_origin_{0.f, 0.f};
 };
 
 }  // namespace tasm
