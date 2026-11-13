@@ -2788,6 +2788,14 @@ void Element::ReplayChangedStyleSideEffect(CSSPropertyID id,
     return;
   }
 
+  if (EnableFragmentLayerRender()) {
+    if (IsSubtreeProperty(id)) {
+      element_container()->InvalidateForSubtreeProperty();
+    } else {
+      element_container()->InvalidateForRedraw();
+    }
+  }
+
   ReplayElementSpecificStyleSideEffect(id);
 
   if (id == kPropertyIDOverflow || id == kPropertyIDOverflowX ||
@@ -2845,6 +2853,14 @@ void Element::ReplayResetStyleSideEffect(CSSPropertyID id,
 
   if (is_layout_only) {
     return;
+  }
+
+  if (EnableFragmentLayerRender()) {
+    if (IsSubtreeProperty(id)) {
+      element_container()->InvalidateForSubtreeProperty();
+    } else {
+      element_container()->InvalidateForRedraw();
+    }
   }
 
   ReplayElementSpecificStyleSideEffect(id);

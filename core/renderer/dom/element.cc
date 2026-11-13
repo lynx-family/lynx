@@ -109,12 +109,6 @@ bool IsOverlayTag(const base::String& tag) {
   return tag.IsEquals("overlay") || tag.IsEquals("x-overlay-ng");
 }
 
-bool IsSubtreeProperty(CSSPropertyID css_id) {
-  // Fragment visibility changes must rebuild content to hide or restore it.
-  return css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform ||
-         css_id == kPropertyIDFilter || css_id == kPropertyIDClipPath;
-}
-
 #if ENABLE_TESTBENCH_REPLAY
 bool IsLazyBundleSuccessEventForReplay(const lepus::Value& info) {
   BASE_STATIC_STRING_DECL(kType, "type");

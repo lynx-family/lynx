@@ -1345,6 +1345,12 @@ class Element : public lepus::RefCounted,
 
   bool IsExtendedLayoutOnlyProps(CSSPropertyID css_id);
 
+  static bool IsSubtreeProperty(CSSPropertyID css_id) {
+    // Fragment visibility changes must rebuild content to hide or restore it.
+    return css_id == kPropertyIDOpacity || css_id == kPropertyIDTransform ||
+           css_id == kPropertyIDFilter || css_id == kPropertyIDClipPath;
+  }
+
   // This method should be overridden by the subclass to establish whether the
   // attribute needs updating at the platform. If update is unnecessary, will
   // return false.
