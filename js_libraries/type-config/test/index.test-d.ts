@@ -43,6 +43,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('includeFontPadding').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('keyboardCallbackPassRelativeHeight').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('longPressDuration').toEqualTypeOf<number | undefined>();
+    expectTypeOf<Config>().toHaveProperty('preferredFps').toEqualTypeOf<string | undefined>();
     expectTypeOf<Config>().toHaveProperty('removeDescendantSelectorScope').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('tapSlop').toEqualTypeOf<string | undefined>();
     expectTypeOf<Config>().toHaveProperty('unifyVWVHBehavior').toEqualTypeOf<boolean | undefined>();

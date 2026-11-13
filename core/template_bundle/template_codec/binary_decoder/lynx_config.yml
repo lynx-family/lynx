@@ -409,6 +409,7 @@ preferredFps:
     - Android
     - HarmonyOS
     - iOS
+  export: true
 quirksMode:
   description: Controls the layout compatibility version used by manual config decode for legacy CSS behavior. During decode, boolean or version-string input is converted to a `base::Version` and written into layout configs; older compatibility versions keep legacy layout quirks while newer or default values follow target-SDK behavior.
   defaultValue: base::Version(1, 5)

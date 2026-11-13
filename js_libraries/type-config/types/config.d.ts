@@ -408,6 +408,19 @@ export interface Config {
   longPressDuration?: number;
 
   /**
+   * Controls the preferred frame-rate mode requested for animation-driven frame callbacks. `ElementManager` forwards this string to `ElementVsyncProxy`, so values such as `high`, `low`, or `auto` change the vsync cadence used while CSS animations request frames.
+   *
+   * @Android
+   * @Harmony
+   * @iOS
+   *
+   * Since: LynxSDK 3.2
+   *
+   * @defaultValue "auto"
+   */
+  preferredFps?: string;
+
+  /**
    * Controls whether descendant selectors are allowed to cross component scope boundaries during style resolution. When enabled, `AttributeHolder` and `StyleResolver` stop constraining descendant selectors to the current component scope; when disabled, descendant selectors only match inside the component scope. In Fiber, manual decode keeps the default off unless explicitly set.
    *
    * @Android

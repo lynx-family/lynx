@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 4.4.0
+
+### Minor Changes
+
+- Publish the LynxSDK 4.4 package line and export `Config.preferredFps` with its runtime `configKeys` entry. The preferred frame-rate mode defaults to `auto` and supports `high`, `low`, and `auto`.
+
 ## 4.3.0
 
 ### Minor Changes
