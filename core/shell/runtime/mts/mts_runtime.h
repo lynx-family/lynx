@@ -43,6 +43,9 @@ class VMContext;
 
 namespace runtime {
 class ContextBundle;
+namespace js {
+class NapiEnvironment;
+}  // namespace js
 
 #define LEPUS_DEFAULT_CONTEXT_NAME "__Card__"
 
@@ -109,6 +112,10 @@ class MTSRuntime : private MTSContextHolder,
 
   Delegate* GetDelegate();
   void SetDelegate(Delegate* delegate);
+
+  js::NapiEnvironment* GetNapiEnvironment() const;
+  void AttachNapiEnvironment();
+  void DetachNapiEnvironment();
 
   void SetPaused(bool paused);
   bool IsPaused() const { return frame_pause_state_->paused; }
@@ -349,6 +356,11 @@ class MTSRuntime : private MTSContextHolder,
   lepus::Value lynx_;
   mutable std::shared_ptr<tasm::LepusCallbackManager> callback_manager_;
   mutable std::shared_ptr<tasm::AnimationFrameManager> animate_frame_manager_;
+
+#if ENABLE_LEPUSNG_WORKLET
+  // Entries sharing this runtime must use the same environment and globals.
+  std::unique_ptr<js::NapiEnvironment> napi_environment_;
+#endif
 
   struct FramePauseState {
     bool paused{false};

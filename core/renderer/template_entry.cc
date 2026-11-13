@@ -27,8 +27,6 @@
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
 
 #if ENABLE_LEPUSNG_WORKLET
-#include "core/renderer/worklet/lepus_lynx.h"
-#include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
 #include "core/runtime/lepusng/napi/worklet/napi_loader_ui.h"
 #endif
 
@@ -275,8 +273,12 @@ bool TemplateEntry::InitWithPageConfigger(PageConfigger* configger,
   if (page_config->GetEnableBindICU()) {
     SetEnableBindICU(true);
 #if ENABLE_LEPUSNG_WORKLET
-    Napi::Env env = napi_environment_->proxy()->Env();
-    I18n::Bind(reinterpret_cast<intptr_t>(static_cast<napi_env>(env)));
+    // The environment is only attached for LepusNG contexts outside strict AIR
+    // mode, so it may be absent here.
+    if (auto* environment = napi_environment()) {
+      Napi::Env env = environment->proxy()->Env();
+      I18n::Bind(reinterpret_cast<intptr_t>(static_cast<napi_env>(env)));
+    }
 #endif
   }
 
@@ -408,7 +410,6 @@ bool TemplateEntry::Execute() {
 }
 
 TemplateEntry::~TemplateEntry() {
-  DetachNapiEnvironment();
   template_bundle_.css_style_manager_->SetThreadStopFlag(true);
   template_bundle_.lepus_chunk_manager_->SetThreadStopFlag(true);
 #if ENABLE_TRACE_PERFETTO
@@ -489,63 +490,35 @@ void TemplateEntry::ReInit(TemplateAssembler* assembler) {
 }
 
 runtime::js::NapiEnvironment* TemplateEntry::napi_environment() {
-#if ENABLE_LEPUSNG_WORKLET
-  return napi_environment_.get();
-#else
-  return nullptr;
-#endif
+  return vm_context_ ? vm_context_->GetNapiEnvironment() : nullptr;
 }
 
 void TemplateEntry::InvokeLepusBridge(const int32_t callback_id,
                                       const lepus::Value& data) {
 #if ENABLE_LEPUSNG_WORKLET
-  reinterpret_cast<lynx::worklet::NapiLoaderUI*>(napi_environment_->delegate())
-      ->InvokeLepusBridge(callback_id, data);
+  if (auto* environment = napi_environment()) {
+    static_cast<lynx::worklet::NapiLoaderUI*>(environment->delegate())
+        ->InvokeLepusBridge(callback_id, data);
+  }
 #endif
 }
 
 void TemplateEntry::AttachNapiEnvironment() {
-#if ENABLE_LEPUSNG_WORKLET
-  if (vm_context_->IsLepusNGContext() && !napi_environment_) {
-    lepus::QuickContext* qctx =
-        runtime::MTSRuntime::ToQuickContext(vm_context_.get());
-    napi_environment_ = std::make_unique<lynx::runtime::js::NapiEnvironment>(
-        std::make_unique<lynx::worklet::NapiLoaderUI>(vm_context_.get()));
-    auto proxy =
-        lynx::runtime::js::NapiRuntimeProxyQuickjs::Create(qctx->context());
-    auto napi_proxy = std::unique_ptr<runtime::js::NapiRuntimeProxy>(
-        static_cast<runtime::js::NapiRuntimeProxy*>(proxy.release()));
-    napi_environment_->SetRuntimeProxy(std::move(napi_proxy));
-    napi_environment_->Attach();
+  if (vm_context_) {
+    vm_context_->AttachNapiEnvironment();
   }
-#endif
 }
 
 void TemplateEntry::SetPaused(bool paused) {
   if (vm_context_) {
     vm_context_->SetPaused(paused);
   }
-#if ENABLE_LEPUSNG_WORKLET
-  if (napi_environment_) {
-    auto* lepus_lynx = reinterpret_cast<lynx::worklet::NapiLoaderUI*>(
-                           napi_environment_->delegate())
-                           ->lepus_lynx();
-    if (lepus_lynx) {
-      lepus_lynx->SetPaused(paused);
-    }
-  }
-#endif
 }
 
 void TemplateEntry::DetachNapiEnvironment() {
   if (vm_context_) {
-    vm_context_->ClearPendingAnimationFrameCallbacks();
+    vm_context_->DetachNapiEnvironment();
   }
-#if ENABLE_LEPUSNG_WORKLET
-  if (vm_context_ && vm_context_->IsLepusNGContext() && napi_environment_) {
-    napi_environment_->Detach();
-  }
-#endif
 }
 
 bool TemplateEntry::IsCompatibleWithRootEntry(const TemplateEntry& root,

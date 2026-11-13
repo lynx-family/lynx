@@ -192,6 +192,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   runtime::js::NapiEnvironment* napi_environment();
   void AttachNapiEnvironment();
+  // Used during TASM teardown; detaches the environment for the whole runtime.
   void DetachNapiEnvironment();
 
   // Pause or resume timers of the main thread script.
@@ -332,9 +333,6 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   bool enable_microtask_promise_polyfill_{false};
   bool enable_reuse_load_script_exports_{false};
   bool enable_fetch_api_standard_{false};
-#if ENABLE_LEPUSNG_WORKLET
-  std::unique_ptr<lynx::runtime::js::NapiEnvironment> napi_environment_;
-#endif
 
   // global maps usually used to create component or lazy bundle
   fml::RefPtr<lepus::Dictionary> component_info_map_{
