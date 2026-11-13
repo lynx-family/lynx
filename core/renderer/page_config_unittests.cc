@@ -82,6 +82,23 @@ TEST(PageConfigTest, EnableUseContextPool) {
   CHECK_CONFIG_VALUE(EnableUseContextPool, true, true, false);
 }
 
+TEST(PageConfigTest, IntersectionObserverInitialRatioCompatibility) {
+  auto config = std::make_shared<PageConfig>();
+  EXPECT_FALSE(
+      config->GetEnableIntersectionObserverInitialRatioCompatibility());
+  for (bool enabled : {true, false}) {
+    rapidjson::Document doc;
+    doc.Parse(
+        enabled
+            ? "{\"enableIntersectionObserverInitialRatioCompatibility\":true}"
+            : "{\"enableIntersectionObserverInitialRatioCompatibility\":"
+              "false}");
+    LynxConfigDecoder::DecodePageConfig(config, doc, "");
+    EXPECT_EQ(config->GetEnableIntersectionObserverInitialRatioCompatibility(),
+              enabled);
+  }
+}
+
 TEST(PageConfigTest, EnableFrameNativeData) {
   auto& env = LynxEnv::GetInstance();
   env.external_env_map_.erase(LynxEnv::Key::ENABLE_FRAME_NATIVE_DATA);

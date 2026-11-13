@@ -1713,6 +1713,17 @@ removeDescendantSelectorScope:
     - HarmonyOS
     - iOS
   export: true
+enableIntersectionObserverInitialRatioCompatibility:
+  description: Controls the first IntersectionObserver notification. When enabled, the current intersection ratio must differ from initialRatio and reach at least one configured threshold, including zero when the threshold is zero. When disabled, the first notification requires an intersection ratio strictly greater than initialRatio. Later notifications keep the threshold-crossing behavior.
+  defaultValue: 'false'
+  valueType: bool
+  author: hexionghui
+  since: '4.5'
+  supportPlatform:
+    - Android
+    - HarmonyOS
+    - iOS
+  export: true
 enableRawInput:
   description: Enables exclusive platform touch ownership and platform lifecycle and focus notifications for an Android or HarmonyOS Fragment Layer Rendering page. This setting is fixed when the page is initialized. When enabled, the Page receives standard touch events with raw-input metadata and named CustomEvents for lifecycle and focus changes. When disabled, the page keeps ordinary platform touch handling. Adding or removing event listeners does not change this setting.
   defaultValue: 'false'

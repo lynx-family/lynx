@@ -195,6 +195,19 @@ export interface Config {
   enableGridPlacementShorthands?: boolean;
 
   /**
+   * Controls the first IntersectionObserver notification. When enabled, the current intersection ratio must differ from initialRatio and reach at least one configured threshold, including zero when the threshold is zero. When disabled, the first notification requires an intersection ratio strictly greater than initialRatio. Later notifications keep the threshold-crossing behavior.
+   *
+   * @Android
+   * @Harmony
+   * @iOS
+   *
+   * Since: LynxSDK 4.5
+   *
+   * @defaultValue false
+   */
+  enableIntersectionObserverInitialRatioCompatibility?: boolean;
+
+  /**
    * Controls whether JS binding APIs surface binding failures as JS exceptions. When enabled, the runtime bundle turns on throw-exception behavior for JSI bindings; when disabled, bindings keep the older non-throwing behavior.
    *
    * @Android

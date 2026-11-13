@@ -555,6 +555,11 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return mPageConfig != null && mPageConfig.getEnableRawInput();
   }
 
+  public boolean getEnableIntersectionObserverInitialRatioCompatibility() {
+    return mPageConfig != null
+        && mPageConfig.getEnableIntersectionObserverInitialRatioCompatibility();
+  }
+
   public boolean getEnableMultiTouch() {
     if (null != mPageConfig) {
       return mPageConfig.getEnableMultiTouch();

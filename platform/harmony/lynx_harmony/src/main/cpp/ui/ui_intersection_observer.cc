@@ -360,7 +360,7 @@ void UIIntersectionObserver::CheckIntersectionWithTarget(
   bool trigger_js_callback = false;
   if (is_initial_check) {
     trigger_js_callback =
-        new_entry->IntersectionRatio() >= initial_intersection_ratio_;
+        ShouldNotifyInitialRatio(new_entry->IntersectionRatio());
   } else {
     trigger_js_callback = HasCrossIntersectionRatioThreshold(
         target->IntersectionEntry(), new_entry.get());
@@ -376,6 +376,21 @@ void UIIntersectionObserver::CheckIntersectionWithTarget(
           intersection_observer_id_, target->JSCallbackID(), std::move(params));
     }
   }
+}
+
+bool UIIntersectionObserver::ShouldNotifyInitialRatio(float ratio) const {
+  if (!ui_owner_->EnableIntersectionObserverInitialRatioCompatibility()) {
+    return ratio > initial_intersection_ratio_;
+  }
+  if (ratio == initial_intersection_ratio_) {
+    return false;
+  }
+  for (float threshold : intersection_ratio_thresholds_) {
+    if (ratio >= threshold) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void UIIntersectionObserver::ComputeTargetInteraction(

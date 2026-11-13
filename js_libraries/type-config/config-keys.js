@@ -22,6 +22,7 @@ const configKeys = [
   'enableFixedNew',
   'enableFlexBasisZeroPercent',
   'enableGridPlacementShorthands',
+  'enableIntersectionObserverInitialRatioCompatibility',
   'enableJsBindingApiThrowException',
   'enableLayoutOnlyEventThrough',
   'enableListNewArchitecture',

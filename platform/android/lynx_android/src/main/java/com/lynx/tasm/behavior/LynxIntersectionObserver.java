@@ -248,7 +248,7 @@ public class LynxIntersectionObserver {
 
     final int jsCallbackId = target.jsCallbackId;
 
-    boolean needNotifyJS = isInitial ? (mInitialRatio < entry.intersectionRatio)
+    boolean needNotifyJS = isInitial ? shouldNotifyInitialRatio(entry.intersectionRatio)
                                      : hasCrossedThreshold(oldEntry, entry);
     if (needNotifyJS) {
       if (mIsCustomEventObserver) {
@@ -261,6 +261,21 @@ public class LynxIntersectionObserver {
         manager.callIntersectionObserver(mObserverId, jsCallbackId, entry.toDictionary());
       }
     }
+  }
+
+  private boolean shouldNotifyInitialRatio(float ratio) {
+    if (!getContext().getEnableIntersectionObserverInitialRatioCompatibility()) {
+      return ratio > mInitialRatio;
+    }
+    if (ratio == mInitialRatio) {
+      return false;
+    }
+    for (float threshold : mThresholds) {
+      if (ratio >= threshold) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean hasCrossedThreshold(

@@ -7,6 +7,7 @@
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUnitUtils.h>
 #import <Lynx/LynxView.h>
@@ -86,7 +87,7 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
 @property(nonatomic, strong) NSArray* thresholds;
 
 // default is 0
-@property(nonatomic, assign) NSInteger initialRatio;
+@property(nonatomic, assign) float initialRatio;
 
 // default is false
 @property(nonatomic, assign) BOOL observeAll;  // TODO: not support now
@@ -121,7 +122,7 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
     _thresholds = [NSArray arrayWithArray:options[@"thresholds"] ?: @[ @(0) ]];
 
     NSNumber* initialRatio = [options objectForKey:@"initialRatio"];
-    _initialRatio = initialRatio ? initialRatio.intValue : 0;
+    _initialRatio = initialRatio ? initialRatio.floatValue : 0;
 
     NSNumber* observeAll = [options objectForKey:@"observeAll"];
     _observeAll = observeAll ? observeAll.boolValue : NO;
@@ -276,6 +277,9 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
   CGRect intersectionRect = [self computeTargetAndRootIntersection:target.ui
                                                         targetRect:targetRect
                                                           rootRect:rootRect];
+  if (CGRectIsEmpty(intersectionRect)) {
+    intersectionRect = CGRectZero;
+  }
 
   IntersectionObserverEntry* entry = [[IntersectionObserverEntry alloc] init];
   if (!CGRectEqualToRect(intersectionRect, CGRectZero)) {
@@ -291,7 +295,7 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
   IntersectionObserverEntry* oldEntry = target.entry;
   target.entry = entry;
 
-  BOOL needNotifyJS = isInitial ? _initialRatio < entry.intersectionRatio
+  BOOL needNotifyJS = isInitial ? [self shouldNotifyInitialRatio:entry.intersectionRatio]
                                 : [self hasCrossedThreshold:oldEntry newEntry:entry];
 
   if (needNotifyJS) {
@@ -313,6 +317,21 @@ static NSString* const kIntersectionObserverGlobalEventFlagKey = @"__enableGloba
       }
     }
   }
+}
+
+- (BOOL)shouldNotifyInitialRatio:(float)ratio {
+  if (!_manager.uiOwner.uiContext.enableIntersectionObserverInitialRatioCompatibility) {
+    return ratio > _initialRatio;
+  }
+  if (ratio == _initialRatio) {
+    return NO;
+  }
+  for (NSNumber* threshold in _thresholds) {
+    if (ratio >= threshold.floatValue) {
+      return YES;
+    }
+  }
+  return NO;
 }
 
 - (CGRect)computeTargetAndRootIntersection:(LynxUI*)target

@@ -122,6 +122,8 @@ constexpr const char* kTrailNewImage = "trailNewImage";
 constexpr const char* kEnableNewImage = "enableNewImage";
 constexpr const char* kEnableFiber = "enableFiber";
 constexpr const char* kEnableRawInput = "enableRawInput";
+constexpr const char* kEnableIntersectionObserverInitialRatioCompatibility =
+    "enableIntersectionObserverInitialRatioCompatibility";
 constexpr const char* kEnableMultiTouch = "enableMultiTouch";
 constexpr const char* kEnableFlattenTranslateZ = "enableFlattenTranslateZ";
 constexpr const char* kEnableTextLayoutCache = "enableTextLayoutCache";
@@ -248,6 +250,9 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
   java_config.PushBoolean(kEnableFiber, config->GetEnableFiberArch());
   java_config.PushBoolean(kEnableMultiTouch, config->GetEnableMultiTouch());
   java_config.PushBoolean(kEnableRawInput, config->GetEnableRawInput());
+  java_config.PushBoolean(
+      kEnableIntersectionObserverInitialRatioCompatibility,
+      config->GetEnableIntersectionObserverInitialRatioCompatibility());
   if (config->GetEnableTextLayoutCache() != tasm::TernaryBool::UNDEFINE_VALUE) {
     java_config.PushBoolean(
         kEnableTextLayoutCache,
