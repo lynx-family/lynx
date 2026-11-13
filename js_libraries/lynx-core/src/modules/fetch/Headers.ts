@@ -13,6 +13,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 export class Headers {
   private _headers_map: Map<string, string> = new Map();
 
+  private normalizeName(name: string): string {
+    return String(name).replace(/[A-Z]/g, (character) =>
+      String.fromCharCode(character.charCodeAt(0) + 0x20)
+    );
+  }
+
   constructor(init?: HeadersInit) {
     if (init === null || typeof init === 'number') {
       throw new TypeError(`Headers init with null/number`);
@@ -61,21 +67,21 @@ export class Headers {
    * Returns a boolean stating whether a `Headers` object contains a certain header.
    */
   has(name: string): boolean {
-    return this._headers_map.has(name);
+    return this._headers_map.has(this.normalizeName(name));
   }
 
   /**
    * Returns a `ByteString` sequence of all the values of a header with a given name.
    */
   get(name: string): string | null {
-    return this._headers_map.get(name) ?? null;
+    return this._headers_map.get(this.normalizeName(name)) ?? null;
   }
 
   /**
    * Sets a new value for an existing header inside a `Headers` object, or adds the header if it does not already exist.
    */
   set(name: string, value: string): void {
-    this._headers_map.set(name, String(value));
+    this._headers_map.set(this.normalizeName(name), String(value));
   }
 
   /**
@@ -91,11 +97,7 @@ export class Headers {
    * Deletes a header from the `Headers` object.
    */
   delete(name: string): void {
-    if (!this.has(name)) {
-      return;
-    }
-
-    this._headers_map.delete(name);
+    this._headers_map.delete(this.normalizeName(name));
   }
 
   /**

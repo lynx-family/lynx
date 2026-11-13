@@ -12,7 +12,8 @@
     "build:web": "cross-env TARGET=web npm run build",
     "build": "node esbuild.mjs",
     "build:lib": "tsc",
-    "format": "prettier -w src"
+    "format": "prettier -w src",
+    "test": "vitest --run"
   },
   "author": "Lynx Authors",
   "license": "Apache-2.0",
@@ -44,6 +45,7 @@
     "cross-env": "^7.0.3",
     "esbuild": "0.19.12",
     "regenerator-runtime": "0.13.7",
+    "vitest": "2.1.9",
     "@lynx-js/types": "workspace:*",
     "@lynx-js/runtime-shared": "workspace:*",
     "@lynx-js/ios-polyfill": "workspace:*",
