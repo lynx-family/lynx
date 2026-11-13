@@ -973,13 +973,15 @@ void ListElement::SetComposeScrollManaged(bool managed) {
 }
 
 bool ListElement::CanUseComposeScroll() const {
-  // Absolute-offset projection is implemented by the Android and Harmony FLR
-  // hosts. Native gesture scrolling is excluded by the Page's raw input mode.
+  // Absolute-offset projection is implemented by the Android, iOS and Harmony
+  // FLR hosts. Native gesture scrolling is excluded by the Page's raw input
+  // mode.
   auto* manager = element_manager();
   return manager && manager->GetConfig() &&
          manager->GetConfig()->GetEnableRawInput() &&
          manager->IsFragmentLayerRenderModeOn() &&
-         (GetOSType() == OSType::kAndroid || GetOSType() == OSType::kHarmony);
+         (GetOSType() == OSType::kAndroid || GetOSType() == OSType::kIOS ||
+          GetOSType() == OSType::kHarmony);
 }
 
 lynx::list::ListScrollResult ListElement::ScrollByDelta(float delta) {

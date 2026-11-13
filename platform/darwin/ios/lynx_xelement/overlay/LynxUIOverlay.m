@@ -17,6 +17,7 @@
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/LynxUIRenderer.h>
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxViewVisibleHelper.h>
 #import <Lynx/UIView+Lynx.h>
@@ -600,6 +601,9 @@ LYNX_PROP_DEFINE("ios-not-adjust-top-margin", setIosNotAdjustTopMargin, BOOL) {
 }
 
 - (void)updatePlatformEventRootActiveForFragmentLayer:(BOOL)active {
+  if (!active && !self.platformEventRootActive) {
+    return;
+  }
   LynxUIContext *uiContext = self.context.uiOwner.uiContext;
   if (!uiContext.lynxContext.isFragmentLayerRenderOn) {
     return;
@@ -626,6 +630,16 @@ LYNX_PROP_DEFINE("ios-not-adjust-top-margin", setIosNotAdjustTopMargin, BOOL) {
   }
   self.platformEventRootActive = active;
   [((LynxView *)rootView).templateRender SetPlatformEventRootActive:self.sign active:active];
+  if (active) {
+    // Re-showing an attached overlay does not call didMoveToWindow.
+    id renderer = ((LynxView *)rootView).templateRender.lynxUIRenderer;
+    if ([renderer isKindOfClass:LynxUIRenderer.class]) {
+      [renderer
+          notifyInputRootStateChanged:self.sign
+                             attached:self.view.window != nil
+                              focused:self.view.window.isKeyWindow && self.view.isFirstResponder];
+    }
+  }
 }
 
 @end

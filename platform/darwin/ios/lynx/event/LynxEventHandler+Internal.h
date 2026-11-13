@@ -20,6 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (CGPoint)viewPointFromTouch:(UITouch *)touch target:(nullable id<LynxEventTarget>)target;
 
 - (void)setEnableViewReceiveTouch:(BOOL)enable;
+- (void)setRawInputEnabled:(BOOL)enabled;
 - (void)setEnableSimultaneousTap:(BOOL)enable;
 - (void)setDisableLongpressAfterScroll:(bool)value;
 - (void)setTapSlop:(NSString *)tapSlop;
