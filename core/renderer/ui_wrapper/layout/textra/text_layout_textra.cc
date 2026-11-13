@@ -13,6 +13,7 @@
 
 #include "base/include/string/string_utils.h"
 #include "base/include/string/unicode_decode_utils.h"
+#include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/text_attributes.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
@@ -24,6 +25,7 @@
 #include "core/renderer/starlight/types/layout_constraints.h"
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_api.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
 namespace tasm {
@@ -35,6 +37,28 @@ namespace {
 // For now Textra performs the final destroy to keep teardown ordering correct:
 // ParagraphBuilder/Paragraph state must be released before the API goes away.
 void DestroyTextLayoutAPI(text::TextLayoutAPI* api) { delete api; }
+
+// Resolve center lengths before passing the cloned payload to TextService.
+void ComputeRadialGradientCenter(const lepus::Value& gradient_data,
+                                 const CssMeasureContext& context,
+                                 const CSSParserConfigs& configs) {
+  auto shape = gradient_data.Array()->get(0).Array();
+  for (size_t index : {2u, 4u}) {
+    auto pattern = shape->get(index).Number();
+    if (pattern >= static_cast<int>(starlight::BackgroundPositionType::kTop))
+      continue;
+    const auto length = starlight::CSSStyleUtils::ToLength(
+                            CSSValue(shape->get(index + 1),
+                                     static_cast<CSSValuePattern>(pattern)),
+                            context, configs)
+                            .first;
+    if (length.IsUnit()) {
+      shape->set(index,
+                 lepus::Value(static_cast<int>(CSSValuePattern::NUMBER)));
+      shape->set(index + 1, lepus::Value(length.GetRawValue()));
+    }
+  }
+}
 
 std::vector<float> AutoFontSizePresetSizesToVector(
     const base::InlineVector<float, 6>& preset_sizes) {
@@ -282,7 +306,60 @@ void TextLayoutTextra::ApplyTextStyle(Element* element,
         case kPropertyIDColor: {
           if (text_attributes->text_gradient.has_value() &&
               text_attributes->text_gradient->IsArray()) {
-            // TODO: gradient
+            auto gradient =
+                lepus::Value::Clone(*text_attributes->text_gradient);
+            if (gradient.Array()->size() < 2 ||
+                !gradient.Array()->get(0).IsNumber() ||
+                !gradient.Array()->get(1).IsArray()) {
+              break;
+            }
+            auto type = static_cast<starlight::BackgroundImageType>(
+                gradient.Array()->get(0).Number());
+            auto data = gradient.Array()->get(1);
+            TextPropertyKeyID key = kTextPropEnd;
+            switch (type) {
+              case starlight::BackgroundImageType::kLinearGradient:
+                key = kPropColorLinearGradient;
+                break;
+              case starlight::BackgroundImageType::kRadialGradient:
+                if (data.Array()->size() < 3 ||
+                    !data.Array()->get(0).IsArray() ||
+                    data.Array()->get(0).Array()->size() < 6) {
+                  break;
+                }
+                if (data.Array()->get(0).Array()->get(1).Number() ==
+                        static_cast<int>(
+                            starlight::RadialGradientSizeType::kLength) &&
+                    data.Array()->get(0).Array()->size() < 10) {
+                  break;
+                }
+                starlight::CSSStyleUtils::ComputeRadialGradient(
+                    data, computed_css_style->GetMeasureContext(),
+                    element->element_manager()->GetCSSParserConfigs());
+                ComputeRadialGradientCenter(
+                    data, computed_css_style->GetMeasureContext(),
+                    element->element_manager()->GetCSSParserConfigs());
+                key = kPropColorRadialGradient;
+                break;
+              case starlight::BackgroundImageType::kConicGradient:
+                if (data.Array()->size() < 4 ||
+                    !data.Array()->get(1).IsArray() ||
+                    data.Array()->get(1).Array()->size() < 4) {
+                  break;
+                }
+                starlight::CSSStyleUtils::ComputeConicGradient(
+                    data, computed_css_style->GetMeasureContext(),
+                    element->element_manager()->GetCSSParserConfigs());
+                key = kPropColorConicGradient;
+                break;
+              default:
+                break;
+            }
+            if (key != kTextPropEnd) {
+              pub::ValueImplLepus payload(std::move(data));
+              paragraph_builder_->SetTextStyle(
+                  key, static_cast<pub::Value*>(&payload), sizeof(pub::Value*));
+            }
           } else {
             int color = static_cast<int>(
                 text_attributes->color.has_value()
