@@ -210,6 +210,64 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return res;
   }
 
+  @Nullable
+  @CalledByNative
+  float[] getRendererHostPosition(int sign) {
+    IRendererHost host = mViewHolder.get(sign);
+    Renderer renderer = host != null ? host.getRenderer() : null;
+    LynxBaseUI ui = renderer != null ? renderer.getUIHost() : null;
+    if (ui == null) {
+      return null;
+    }
+    LynxBaseUI parent = ui.getParentBaseUI();
+    boolean isFoldView = parent != null && "x-foldview-ng".equals(parent.getTagName());
+    boolean isPagerItem =
+        ("viewpager-item".equals(ui.getTagName()) || "x-viewpager-item-ng".equals(ui.getTagName()))
+        && parent != null
+        && ("viewpager".equals(parent.getTagName())
+            || "x-viewpager-ng".equals(parent.getTagName()));
+    boolean isSwiper = parent != null
+        && ("swiper".equals(parent.getTagName()) || "x-swiper".equals(parent.getTagName()));
+    boolean isRefresh = parent != null
+        && ("refresh".equals(parent.getTagName()) || "x-refresh-view".equals(parent.getTagName()));
+    if (!(parent instanceof LynxUI) || (!isFoldView && !isPagerItem && !isSwiper && !isRefresh)) {
+      return null;
+    }
+    View parentView = ((LynxUI<?>) parent).getView();
+    View view = host.getView();
+    float left = 0;
+    float top = 0;
+    // Include native layout ancestors. FoldView moves its AppBar and pins its
+    // toolbar through native layout offsets and ancestor translations.
+    // Refresh also translates the content host itself. Its own scroll offset
+    // belongs to the child event target and must not be applied here.
+    while (view != null && view != parentView) {
+      left += view.getLeft();
+      top += view.getTop();
+      if (isRefresh || (isFoldView && view != host.getView())) {
+        left += view.getTranslationX();
+        top += view.getTranslationY();
+        if (view != host.getView()) {
+          left -= view.getScrollX();
+          top -= view.getScrollY();
+        }
+      }
+      ViewParent viewParent = view.getParent();
+      view = viewParent instanceof View ? (View) viewParent : null;
+    }
+    if (view == null) {
+      return null;
+    }
+    if (isFoldView && parentView instanceof IRendererHost) {
+      // Native positions already include folding. Add back the parent offset
+      // because CUI subtracts it separately, including for the fixed toolbar.
+      IRendererHost parentHost = (IRendererHost) parentView;
+      left += parentHost.getRendererHostScrollX();
+      top += parentHost.getRendererHostScrollY();
+    }
+    return new float[] {left, top};
+  }
+
   @CalledByNative
   boolean isRendererHostScrollable(int sign) {
     IRendererHost host = mViewHolder.get(sign);

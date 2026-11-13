@@ -134,6 +134,7 @@ class PlatformEventTarget
     return platform_renderer_type_;
   }
   bool IsScrollContainer() const { return is_scroll_container_; }
+  bool NeedsNativePosition() const { return needs_native_position_; }
   float ScrollOffsetX();
   float ScrollOffsetY();
   void RefreshScrollOffset();
@@ -311,6 +312,13 @@ class PlatformEventTarget
     platform_renderer_type_ = type;
   }
   void SetRendererHostSign(int32_t sign) { renderer_host_sign_ = sign; }
+  void SetPosition(float left, float top) {
+    left_ = left;
+    top_ = top;
+  }
+  void SetNeedsNativePosition(bool needs_native_position) {
+    needs_native_position_ = needs_native_position;
+  }
   void SetScrollContainer(bool is_scroll_container) {
     is_scroll_container_ = is_scroll_container;
   }
@@ -393,6 +401,7 @@ class PlatformEventTarget
   float height_{0.f};
   PlatformRendererType platform_renderer_type_{PlatformRendererType::kUnknown};
   bool is_scroll_container_{false};
+  bool needs_native_position_{false};
   bool overflow_x_{false};
   bool overflow_y_{false};
   bool is_layout_only_{false};

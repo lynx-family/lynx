@@ -149,6 +149,79 @@ bool NativePaintingCtxPlatformHarmonyRef::IsPlatformRendererScrollable(
   return ui != nullptr && ui->IsScrollable();
 }
 
+bool NativePaintingCtxPlatformHarmonyRef::GetPlatformRendererPosition(
+    int32_t sign, float position[2]) {
+  auto renderer_context = renderer_context_.lock();
+  auto* ui_owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
+  if (ui_owner == nullptr || ui_owner->Destroyed()) {
+    return false;
+  }
+  auto* ui = ui_owner->FindUIBySign(sign);
+  if (ui == nullptr) {
+    return false;
+  }
+  auto* parent = ui->Parent();
+  if (parent == nullptr) {
+    return false;
+  }
+  if (parent->Tag() == "refresh" || parent->Tag() == "x-refresh-view") {
+    const float density = ui->GetContext()->ScaledDensity();
+    ArkUI_IntOffset child_offset{0, 0};
+    ArkUI_IntOffset parent_offset{0, 0};
+    if (density <= 0.f ||
+        OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(
+            ui->Node(), &child_offset) != ARKUI_ERROR_CODE_NO_ERROR ||
+        OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(
+            parent->Node(), &parent_offset) != ARKUI_ERROR_CODE_NO_ERROR) {
+      return false;
+    }
+    // Refresh places the header in a native slot and the content in an inner
+    // stack. Include those native ancestors, then restore content coordinates
+    // because CUI applies the parent's pull-down offset separately.
+    float transformed_origin[2] = {0.f, 0.f};
+    if (auto* transform = ui->GetTransform()) {
+      transform->GetTransformMatrix(ui->width_, ui->height_, 1.f, true)
+          .mapPoint(transformed_origin, transformed_origin);
+    }
+    position[0] = (child_offset.x - parent_offset.x) / density +
+                  parent->ScrollX() - transformed_origin[0] +
+                  ui->OffsetXForCalcPosition();
+    position[1] = (child_offset.y - parent_offset.y) / density +
+                  parent->ScrollY() - transformed_origin[1] +
+                  ui->OffsetYForCalcPosition();
+    return true;
+  }
+  if (parent->Tag() == "scroll-coordinator" ||
+      parent->Tag() == "x-foldview-ng") {
+    // The coordinator adjusts header and slot positions after Lynx layout.
+    // Reuse the component's native hit-test geometry for content coordinates.
+    float rect[4];
+    ui->GetOriginRect(rect);
+    position[0] = rect[0];
+    position[1] = rect[1];
+    if (ui->Tag() == "scroll-coordinator-toolbar" ||
+        ui->Tag() == "x-foldview-toolbar-ng") {
+      // The toolbar is fixed outside the scrolling content. Cancel the event
+      // tree's parent scroll compensation to keep its hit region fixed.
+      position[0] += parent->ScrollX();
+      position[1] += parent->ScrollY();
+    }
+    return true;
+  }
+  const bool is_pager_item =
+      (ui->Tag() == "viewpager-item" || ui->Tag() == "x-viewpager-item-ng") &&
+      (parent->Tag() == "viewpager" || parent->Tag() == "x-viewpager-ng");
+  const bool is_swiper_item =
+      (ui->Tag() == "swiper-item" || ui->Tag() == "x-swiper-item") &&
+      parent->Tag() == "x-swiper";
+  if (!is_pager_item && !is_swiper_item) {
+    return false;
+  }
+  position[0] = ui->ViewLeft();
+  position[1] = ui->ViewTop();
+  return true;
+}
+
 PlatformTextEventTargetRegions
 NativePaintingCtxPlatformHarmonyRef::GetTextEventTargetRegions(
     int32_t text_id) {

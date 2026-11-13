@@ -25,6 +25,7 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.tasm.performance.PerformanceController;
@@ -396,6 +397,132 @@ public class PlatformRendererContextTest {
 
     rendererContext.insertPlatformRenderer(1, 2, -1, false);
     verify(mockParentView).addView(mockChildView);
+  }
+
+  @Test
+  public void testRendererHostPositionIncludesPagerLayoutAncestors() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    UIView pager = mock(UIView.class);
+    UIView page = mock(UIView.class);
+    AndroidView pagerView = new AndroidView(context);
+    FrameLayout innerPager = new FrameLayout(context);
+    FrameLayout pageView = new FrameLayout(context);
+    when(page.getParentBaseUI()).thenReturn(pager);
+    when(pager.getView()).thenReturn(pagerView);
+    pagerView.addView(innerPager);
+    innerPager.addView(pageView);
+    innerPager.layout(5, 40, 605, 140);
+    innerPager.scrollTo(100, 0);
+    pageView.layout(300, 0, 400, 100);
+    Renderer renderer = mock(Renderer.class);
+    when(renderer.getUIHost()).thenReturn(page);
+    rendererContext.mViewHolder.put(1, createHost(pageView, renderer));
+
+    for (String[] tags : new String[][] {
+             {"viewpager", "viewpager-item"}, {"x-viewpager-ng", "x-viewpager-item-ng"}}) {
+      when(pager.getTagName()).thenReturn(tags[0]);
+      when(page.getTagName()).thenReturn(tags[1]);
+      assertArrayEquals(new float[] {305, 40}, rendererContext.getRendererHostPosition(1), 0.f);
+    }
+    assertEquals(100, innerPager.getScrollX());
+  }
+
+  @Test
+  public void testRendererHostPositionTracksSwiperRepositioning() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    UIView swiper = mock(UIView.class);
+    UIView item = mock(UIView.class);
+    AndroidView swiperView = new AndroidView(context);
+    FrameLayout innerPager = new FrameLayout(context);
+    FrameLayout itemView = new FrameLayout(context);
+    when(item.getParentBaseUI()).thenReturn(swiper);
+    when(swiper.getTagName()).thenReturn("x-swiper");
+    when(swiper.getView()).thenReturn(swiperView);
+    swiperView.addView(innerPager);
+    innerPager.addView(itemView);
+    innerPager.layout(0, 12, 600, 112);
+    innerPager.scrollTo(100, 0);
+    itemView.layout(300, 0, 400, 100);
+    Renderer renderer = mock(Renderer.class);
+    when(renderer.getUIHost()).thenReturn(item);
+    rendererContext.mViewHolder.put(1, createHost(itemView, renderer));
+
+    assertArrayEquals(new float[] {300, 12}, rendererContext.getRendererHostPosition(1), 0.f);
+
+    // Circular paging can move the same item without updating Lynx layout.
+    itemView.layout(-300, 0, -200, 100);
+    assertArrayEquals(new float[] {-300, 12}, rendererContext.getRendererHostPosition(1), 0.f);
+    assertEquals(100, innerPager.getScrollX());
+  }
+
+  @Test
+  public void testRendererHostPositionTracksFoldViewLayout() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    UIView foldView = mock(UIView.class);
+    UIView header = mock(UIView.class);
+    AndroidView foldRoot = new AndroidView(context);
+    FrameLayout appBar = new FrameLayout(context);
+    FrameLayout headerView = new FrameLayout(context);
+    when(header.getTagName()).thenReturn("x-foldview-header-ng");
+    when(header.getParentBaseUI()).thenReturn(foldView);
+    when(foldView.getTagName()).thenReturn("x-foldview-ng");
+    when(foldView.getView()).thenReturn(foldRoot);
+    foldRoot.addView(appBar);
+    appBar.addView(headerView);
+    appBar.layout(0, 0, 100, 100);
+    headerView.layout(0, 0, 100, 100);
+    Renderer renderer = mock(Renderer.class);
+    when(renderer.getUIHost()).thenReturn(header);
+    rendererContext.mViewHolder.put(1, createHost(headerView, renderer));
+
+    assertArrayEquals(new float[] {0, 0}, rendererContext.getRendererHostPosition(1), 0.f);
+
+    appBar.layout(0, -100, 100, 0);
+    foldRoot.scrollTo(0, 100);
+    assertArrayEquals(new float[] {0, 0}, rendererContext.getRendererHostPosition(1), 0.f);
+
+    // A pinned toolbar ancestor cancels the AppBar displacement.
+    appBar.setTranslationY(100.f);
+    assertArrayEquals(new float[] {0, 100}, rendererContext.getRendererHostPosition(1), 0.f);
+  }
+
+  @Test
+  public void testRendererHostPositionTracksRefreshTranslation() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    UIView refresh = mock(UIView.class);
+    UIView content = mock(UIView.class);
+    AndroidView refreshView = new AndroidView(context);
+    FrameLayout contentView = new FrameLayout(context);
+    when(content.getParentBaseUI()).thenReturn(refresh);
+    when(refresh.getView()).thenReturn(refreshView);
+    refreshView.addView(contentView);
+    contentView.layout(0, 0, 100, 100);
+    contentView.scrollTo(0, 128);
+    Renderer renderer = mock(Renderer.class);
+    when(renderer.getUIHost()).thenReturn(content);
+    rendererContext.mViewHolder.put(1, createHost(contentView, renderer));
+
+    for (String tag : new String[] {"refresh", "x-refresh-view"}) {
+      when(refresh.getTagName()).thenReturn(tag);
+      assertArrayEquals(new float[] {0, 0}, rendererContext.getRendererHostPosition(1), 0.f);
+      contentView.setTranslationY(64.f);
+      assertArrayEquals(new float[] {0, 64}, rendererContext.getRendererHostPosition(1), 0.f);
+      contentView.setTranslationY(0.f);
+      assertArrayEquals(new float[] {0, 0}, rendererContext.getRendererHostPosition(1), 0.f);
+    }
+    assertEquals(128, contentView.getScrollY());
+  }
+
+  @Test
+  public void testRendererHostPositionFallsBackForOrdinaryView() {
+    UIView ui = mock(UIView.class);
+    when(ui.getTagName()).thenReturn("view");
+    Renderer renderer = mock(Renderer.class);
+    when(renderer.getUIHost()).thenReturn(ui);
+    rendererContext.mViewHolder.put(1, createHost(mock(ViewGroup.class), renderer));
+
+    assertNull(rendererContext.getRendererHostPosition(1));
+    assertNull(rendererContext.getRendererHostPosition(2));
   }
 
   @Test

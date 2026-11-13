@@ -17,6 +17,7 @@
 @class LynxRendererContext;
 @class LynxUIOwner;
 @class UIView;
+@class UIScrollView;
 
 namespace lynx {
 namespace tasm {
@@ -31,6 +32,7 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   void GetRootViewLocationOnScreen(float location[2]) override;
   void GetScreenSize(float size[2]) override;
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override;
+  bool GetPlatformRendererPosition(int32_t sign, float position[2]) override;
   bool IsPlatformRendererScrollable(int32_t sign) override;
   LynxRendererContext* GetRendererContext();
   PlatformTextEventTargetRegions GetTextEventTargetRegions(int32_t text_id) override;
@@ -58,6 +60,7 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
  private:
   LynxUIOwner* GetUIOwner();
   UIView* GetPlatformRendererView(int32_t sign);
+  UIScrollView* GetPlatformRendererScrollView(int32_t sign);
   __weak LynxPerformanceController* perf_controller_;
 };
 

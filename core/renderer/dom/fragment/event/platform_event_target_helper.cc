@@ -37,6 +37,28 @@ bool IsOverlayRenderer(const fml::RefPtr<PlatformRendererImpl>& renderer) {
   return renderer != nullptr && renderer->IsOverlay();
 }
 
+namespace {
+
+// Classify host relationships when rebuilding the tree, without querying native
+// geometry. Each platform still decides whether it can supply a position.
+bool NeedsNativePosition(const PlatformRendererImpl& renderer,
+                         const PlatformRendererImpl& parent) {
+  const auto& parent_tag = parent.GetTagName();
+  if (parent_tag.IsEquals("scroll-coordinator") ||
+      parent_tag.IsEquals("x-foldview-ng") || parent_tag.IsEquals("refresh") ||
+      parent_tag.IsEquals("x-refresh-view") || parent_tag.IsEquals("swiper") ||
+      parent_tag.IsEquals("x-swiper")) {
+    return true;
+  }
+  const auto& tag = renderer.GetTagName();
+  return (tag.IsEquals("viewpager-item") ||
+          tag.IsEquals("x-viewpager-item-ng")) &&
+         (parent_tag.IsEquals("viewpager") ||
+          parent_tag.IsEquals("x-viewpager-ng"));
+}
+
+}  // namespace
+
 void CopyPoint(float res[2], const float point[2]) {
   std::memmove(res, point, sizeof(float) * 2);
 }
@@ -641,6 +663,14 @@ void PlatformEventTargetHelper::RefreshScrollOffsetsRecursively(
     return;
   }
   target->RefreshScrollOffset();
+  // Native containers can reposition extended hosts without a display-list
+  // update. Refresh their content positions along with the scroll offsets.
+  if (platform_ref_ && target->NeedsNativePosition()) {
+    float position[2];
+    if (platform_ref_->GetPlatformRendererPosition(target->Sign(), position)) {
+      target->SetPosition(position[0], position[1]);
+    }
+  }
   for (const auto& child : target->ChildrenTargets()) {
     RefreshScrollOffsetsRecursively(child);
   }
@@ -753,6 +783,11 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
           if (target_stack.empty() || child_target == nullptr) {
             break;
           }
+          child_target->SetNeedsNativePosition(
+              child_target->GetPlatformRendererType() ==
+                  PlatformRendererType::kExtended &&
+              child_target->Sign() == child_renderer->GetId() &&
+              NeedsNativePosition(*child_renderer, *page_renderer));
           auto parent_target = target_stack.top();
           parent_target->AddChildTarget(child_target);
         }
