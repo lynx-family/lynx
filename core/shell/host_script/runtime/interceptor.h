@@ -74,6 +74,12 @@ class LYNX_EXPORT Interceptor {
   static void RegisterView(base::LynxEntityId view);
   static void DestroyView(base::LynxEntityId view);
   static bool IsViewAlive(base::LynxEntityId view);
+
+  // The initial URL follows the renderer's identity across shell replacements.
+  static void BindInitialViewUrl(base::LynxEntityId view, std::string url);
+  static void ClearInitialViewUrl(base::LynxEntityId view);
+  static std::string InitialViewUrl(base::LynxEntityId view);
+
   static const char* Name(InterceptKind kind);
 
  private:

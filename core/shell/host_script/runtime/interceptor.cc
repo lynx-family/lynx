@@ -8,6 +8,7 @@
 #include <atomic>
 #include <mutex>
 #include <unordered_map>
+#include <utility>
 
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
@@ -24,6 +25,7 @@ struct State {
   std::atomic<uint64_t> failures{0};
   std::mutex mutex;
   std::unordered_map<base::LynxEntityId, size_t> views;
+  std::unordered_map<base::LynxEntityId, std::string> initial_view_urls;
 };
 State& GetState() {
   static base::NoDestructor<State> state;
@@ -112,5 +114,25 @@ bool Interceptor::IsViewAlive(base::LynxEntityId view) {
   auto& state = GetState();
   std::lock_guard<std::mutex> lock(state.mutex);
   return state.views.count(view) != 0;
+}
+
+void Interceptor::BindInitialViewUrl(base::LynxEntityId view, std::string url) {
+  if (view < 0 || url.empty()) return;
+  auto& state = GetState();
+  std::lock_guard<std::mutex> lock(state.mutex);
+  state.initial_view_urls.try_emplace(view, std::move(url));
+}
+
+void Interceptor::ClearInitialViewUrl(base::LynxEntityId view) {
+  auto& state = GetState();
+  std::lock_guard<std::mutex> lock(state.mutex);
+  state.initial_view_urls.erase(view);
+}
+
+std::string Interceptor::InitialViewUrl(base::LynxEntityId view) {
+  auto& state = GetState();
+  std::lock_guard<std::mutex> lock(state.mutex);
+  auto entry = state.initial_view_urls.find(view);
+  return entry == state.initial_view_urls.end() ? std::string() : entry->second;
 }
 }  // namespace lynx::shell

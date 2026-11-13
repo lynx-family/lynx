@@ -220,6 +220,17 @@ static void UnregisterView(JNIEnv*, jclass, jlong view_id) {
       static_cast<lynx::base::LynxEntityId>(view_id));
 }
 
+static void BindInitialUrl(JNIEnv* env, jclass, jlong view_id, jbyteArray url) {
+  Interceptor::BindInitialViewUrl(
+      static_cast<lynx::base::LynxEntityId>(view_id),
+      JNIConvertHelper::ConvertToString(env, url));
+}
+
+static void ClearInitialUrl(JNIEnv*, jclass, jlong view_id) {
+  Interceptor::ClearInitialViewUrl(
+      static_cast<lynx::base::LynxEntityId>(view_id));
+}
+
 static void UpdateUrl(JNIEnv* env, jclass, jlong view_id, jstring url) {
   LynxViewRegistry::GetInstance().UpdateUrl(
       static_cast<lynx::base::LynxEntityId>(view_id),
