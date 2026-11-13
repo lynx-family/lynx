@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "base/include/compiler_specific.h"
 #include "base/include/vector.h"
 #include "core/base/lynx_export.h"
 #include "core/public/pub_value.h"
@@ -121,16 +122,16 @@ struct MoveOnlyEvent {
     props_.emplace_back(key, value);
   }
 
-  void SetProps(const char* key, uint32_t value) {
-    props_.emplace_back(key, static_cast<double>(value));
+  NO_INLINE void SetProps(const char* key, uint32_t value) {
+    SetProps(key, static_cast<double>(value));
   }
 
-  void SetProps(const char* key, uint64_t value) {
-    props_.emplace_back(key, static_cast<double>(value));
+  NO_INLINE void SetProps(const char* key, uint64_t value) {
+    SetProps(key, static_cast<double>(value));
   }
 
-  void SetProps(const char* key, int64_t value) {
-    props_.emplace_back(key, static_cast<double>(value));
+  NO_INLINE void SetProps(const char* key, int64_t value) {
+    SetProps(key, static_cast<double>(value));
   }
 
   void SetProps(const char* key, const char* value) {
