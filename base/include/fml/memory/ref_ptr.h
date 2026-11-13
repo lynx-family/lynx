@@ -67,6 +67,10 @@ namespace fml {
 template <typename T>
 class RefPtr final {
  public:
+  // Relocation transfers the retained reference. The source must be abandoned
+  // without running its destructor.
+  using TriviallyRelocatable = bool;
+
   RefPtr() : ptr_(nullptr) {}
   RefPtr(std::nullptr_t)  // NOLINT(google-explicit-constructor)
       : ptr_(nullptr) {}
