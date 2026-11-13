@@ -147,6 +147,9 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
 #if defined(OS_WIN) && !defined(ENABLE_SKITY)
   bool InvalidateLaidOutTextNodes();
 #endif
+  void SetEnableTextRefactor(bool enabled) {
+    shadow_node_owner_->SetEnableTextRefactor(enabled);
+  }
 
   void Alignment(int id);
 
