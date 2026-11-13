@@ -8,3 +8,4 @@ jni_class_configs:
   jni_classes:
     - java: platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/render/DisplayListItemBufferTest.java
     - java: platform/android/lynx_android/src/android_test/java/com/lynx/tasm/behavior/render/NativeDisplayListBuilder.java
+    - java: platform/android/lynx_android/src/android_test/java/com/lynx/tasm/performance/fsp/FSPReportDispatcherTestHelper.java
