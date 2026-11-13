@@ -282,4 +282,92 @@ TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
   EXPECT_FLOAT_EQ(painting->nodes.at(child_id).height, 40);
 }
 
+TEST_F(LynxViewTest, CustomLayoutSurvivesRendererReset) {
+  // Encode with the current build's codec instead of storing a binary fixture.
+  Json::Value input;
+  auto& options = input["compilerOptions"];
+  options["enableFiberArch"] = true;
+  options["targetSdkVersion"] = "2.8";
+  options["bundleModuleMode"] = "ReturnByFunction";
+  options["useLepusNG"] = true;
+  input["sourceContent"]["dsl"] = "tt";
+  input["sourceContent"]["appType"] = "card";
+  input["sourceContent"]["config"]["enableUnifiedPipeline"] = true;
+  input["css"]["cssMap"]["0"] = Json::Value(Json::arrayValue);
+  input["css"]["cssSource"]["0"] = "index.css";
+  input["manifest"] = Json::Value(Json::objectValue);
+  input["lepusCode"]["root"] = R"(
+    function processData(data) { return data; }
+    function renderPage() {
+      const page = __CreatePage("0", 0);
+      const child = __CreateCompose(0, 1);
+      __SetCustomLayout(child, (minW, maxW, minH, maxH) => {
+        if (minW !== 100 || maxW !== 100 || minH !== 40 || maxH !== 40) {
+          throw new Error("Unexpected physical-pixel constraints");
+        }
+        return {width: 100, height: 40};
+      }, () => true);
+      __SetInlineStyles(child, "width: 100px; height: 40px; background-color: red;");
+      __InsertElementAt(page, child, 0);
+      __FlushElementTree(page);
+    }
+  )";
+  auto encoded = lynx::tasm::encode(Json::FastWriter().write(input));
+  ASSERT_EQ(encoded.status, 0) << encoded.error_msg;
+  ASSERT_FALSE(encoded.buffer.empty());
+  auto bundle = std::make_shared<lynx::pub::LynxTemplateBundle>(
+      encoded.buffer.data(), encoded.buffer.size());
+  ASSERT_TRUE(bundle->IsValid()) << bundle->GetErrorMessage();
+
+  lynx::pub::LynxView::Builder builder;
+  // Exercise the main-thread rendering path without a background JS runtime.
+  view_ = builder.SetScreenSize(320, 480, 1)
+              .SetFrame(0, 0, 320, 480)
+              .SetEnableJSRuntime(false)
+              .SetEnableLayoutInElement(true)
+              .Build();
+  ASSERT_NE(view_, nullptr);
+  ASSERT_NE(view_->Impl(), nullptr);
+  auto client = std::make_shared<RecordingViewClient>();
+  view_->AddClient(client);
+
+  auto meta = std::make_shared<lynx::pub::LynxLoadMeta>();
+  meta->SetUrl("test://lynx-view/basic");
+  meta->SetTemplateBundle(bundle);
+  auto* renderer = static_cast<lynx::embedder::TestLynxUIRenderer*>(
+      view_->Impl()->lynx_ui_renderer.get());
+  auto painting = renderer->painting_state();
+  for (int load = 0; load < 2; ++load) {
+    if (load > 0) {
+      view_->Impl()->lynx_template_renderer->Reset();
+      view_->Impl()->lynx_template_renderer->UpdateViewport(
+          320, SLMeasureModeDefinite, 480, SLMeasureModeDefinite, true);
+      // The test painting recorder does not remove old nodes on teardown.
+      painting->nodes.clear();
+    }
+    view_->LoadTemplate(meta);
+    lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+
+    EXPECT_TRUE(client->errors.empty())
+        << (client->errors.empty() ? "" : client->errors.front());
+    EXPECT_EQ(client->events.back(), "loaded");
+    EXPECT_EQ(client->loaded_url, "test://lynx-view/basic");
+    // Inspect the node tree and layout emitted by the real rendering engine.
+    ASSERT_EQ(painting->nodes.size(), 2u);
+    int page_id = -1;
+    int child_id = -1;
+    for (const auto& entry : painting->nodes) {
+      if (entry.second.tag == "page") page_id = entry.first;
+      if (entry.second.tag == "view") child_id = entry.first;
+    }
+    ASSERT_NE(page_id, -1);
+    ASSERT_NE(child_id, -1);
+    EXPECT_FLOAT_EQ(painting->nodes.at(page_id).width, 320);
+    EXPECT_FLOAT_EQ(painting->nodes.at(page_id).height, 480);
+    EXPECT_EQ(painting->nodes.at(child_id).parent, page_id);
+    EXPECT_FLOAT_EQ(painting->nodes.at(child_id).width, 100);
+    EXPECT_FLOAT_EQ(painting->nodes.at(child_id).height, 40);
+  }
+}
+
 }  // namespace

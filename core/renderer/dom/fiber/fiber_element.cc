@@ -4373,8 +4373,12 @@ void Element::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
       // CreateLayoutNode, so the wrapper must exist before that callback.
       customized_layout_node_ =
           std::make_unique<PlatformLayoutFunctionWrapper>(*this, props);
-      element_manager()->layout_context()->CreateLayoutNode(
-          id_, tag_.str(), props.get(), allow_layoutnode_inline_);
+      const int node_type =
+          element_manager()->layout_context()->CreateLayoutNode(
+              id_, tag_.str(), props.get(), allow_layoutnode_inline_);
+      // Some hosts discover virtual text nodes only when creating the shadow
+      // node. Keep them out of the painting tree while retaining CUSTOM.
+      layout_node_type_ |= node_type & LayoutNodeType::VIRTUAL;
     } else if (allow_layoutnode_inline_) {
       const int node_type =
           element_manager()->layout_context()->CreateLayoutNode(
@@ -4720,15 +4724,16 @@ void Element::InsertLayoutNode(Element *child, Element *ref) {
           child->sl_node_.get(), ref_node ? ref_node->sl_node_.get() : nullptr);
       child->UpdateFixedNodeSetRecursively(true);
       container->MarkLayoutDirtyLite();
-      if (container->customized_layout_node_ &&
-          child->HasLayoutInElementPlatformNode()) {
-        int index = container->GetLayoutInElementPlatformChildIndex(child);
-        if (index >= 0) {
-          element_manager()->layout_context()->InsertLayoutNode(
-              container->impl_id(), child->impl_id(), index);
-        }
-      }
       inserted = true;
+    }
+    // Virtual text nodes are absent from Starlight's tree, but remain children
+    // of their platform text/shadow node (including nested inline text).
+    if (customized_layout_node_ && child->HasLayoutInElementPlatformNode()) {
+      int index = GetLayoutInElementPlatformChildIndex(child);
+      if (index >= 0) {
+        element_manager()->layout_context()->InsertLayoutNode(
+            impl_id(), child->impl_id(), index);
+      }
     }
     child->attached_to_layout_parent_ = inserted || child->is_virtual();
     return;
@@ -4750,16 +4755,16 @@ void Element::InsertLayoutNode(Element *child, Element *ref) {
 void Element::RemoveLayoutNode(Element *child,
                                int layout_in_element_platform_index) {
   if (EnableLayoutInElementMode()) {
+    if (customized_layout_node_ && child->HasLayoutInElementPlatformNode()) {
+      int index = layout_in_element_platform_index >= 0
+                      ? layout_in_element_platform_index
+                      : GetLayoutInElementPlatformChildIndex(child);
+      element_manager()->layout_context()->RemoveLayoutNode(
+          impl_id(), child->impl_id(), index);
+    }
     if (auto *child_layout_node = child->slnode();
         child_layout_node && child_layout_node->parent()) {
       child->UpdateFixedNodeSetRecursively(false);
-      if (customized_layout_node_ && child->HasLayoutInElementPlatformNode()) {
-        int index = layout_in_element_platform_index >= 0
-                        ? layout_in_element_platform_index
-                        : GetLayoutInElementPlatformChildIndex(child);
-        element_manager()->layout_context()->RemoveLayoutNode(
-            impl_id(), child->impl_id(), index);
-      }
       // FIXME: this->sl_node_ is accidentally not the parent of
       // child->sl_node_->parent_. Should try to figure out why it happens.
       if (child_layout_node->parent() != sl_node_.get()) {

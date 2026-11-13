@@ -89,6 +89,9 @@ class TextElement : public Element {
   CSSIDBitset& property_bits() { return property_bits_; }
 
   int32_t GetBuiltInNodeInfo() const override {
+    if (!EnableTextLayoutInElement()) {
+      return 0;
+    }
     return is_inline_element() ? kVirtualBuiltInNodeInfo
                                : kCommonBuiltInNodeInfo;
   }

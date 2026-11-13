@@ -37,6 +37,7 @@ struct lynx_view_builder_t {
   std::shared_ptr<lynx::embedder::LynxVSyncMonitor> custom_vsync_monitor;
 
   bool enable_js_runtime = true;
+  bool enable_layout_in_element = false;
   bool enable_software_rendering = false;
   std::string icu_data_path;
   std::string webview2_fixed_runtime_path;

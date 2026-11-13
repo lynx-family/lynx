@@ -121,6 +121,7 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   bool NeedAnimationProps() override { return true; }
   bool EnableParallelElement() override { return true; }
   bool EnableUIOperationQueue() override { return true; }
+  bool UsesShadowNodeTextLayout() const override { return true; }
 
   // TODO(chenhyouhui): Use default implementations
   std::vector<float> getWindowSize(int id) override { return floats_; }

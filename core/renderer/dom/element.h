@@ -1238,6 +1238,7 @@ class Element : public lepus::RefCounted,
                                 bool reset);
 
   bool EnableLayoutInElementMode() const;
+  bool EnableTextLayoutInElement() const;
 
   // Returns true if the property should be written to ComputedCSSStyle's
   // value map (not just resolved values). Layout-only properties are skipped
