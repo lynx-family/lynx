@@ -6848,6 +6848,87 @@ TEST_F(FragmentDrawTest, FragmentLayerRenderFinishesLayoutAfterDisplayList) {
                                      additional_options->pipeline_id));
 }
 
+TEST_F(FragmentDrawTest, StylingPipelineInvalidatesChangedAndResetBackground) {
+  for (bool new_styling : {false, true}) {
+    SCOPED_TRACE(new_styling);
+    manager->enable_new_styling_pipeline_ = new_styling;
+    auto page = manager->CreateFiberPage("0", 0);
+    manager->SetFiberPageElement(page);
+    auto view = manager->CreateFiberView();
+    view->config_flatten_ = true;
+    view->SetStyle(kPropertyIDWidth, lepus::Value("100px"));
+    view->SetStyle(kPropertyIDHeight, lepus::Value("100px"));
+    view->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+    page->InsertNode(view);
+    page->FlushActionsAsRoot();
+    page->Layout(std::make_shared<PipelineOptions>());
+    manager->Repaint();
+
+    auto* fragment = view->fragment_impl();
+    auto* context = static_cast<NativeMockPaintingContext*>(
+        manager->painting_context()->impl());
+    auto has_blue_fill = [&]() {
+      const auto* list =
+          context->GetNativePlatformRef()->GetDisplayListForRenderer(
+              page->fragment_impl()->id());
+      if (list == nullptr) return false;
+      for (const auto& item : CollectDisplayListItems(*list)) {
+        if (item.type == DisplayListOpType::kFill &&
+            item.payload.fill.color == 0xFF0000FF) {
+          return true;
+        }
+      }
+      return false;
+    };
+    EXPECT_FALSE(has_blue_fill());
+
+    view->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+    page->FlushActionsAsRoot();
+    EXPECT_TRUE(fragment->NeedRedraw());
+    EXPECT_TRUE(manager->need_repaint_.load());
+    manager->Repaint();
+    EXPECT_TRUE(has_blue_fill());
+
+    view->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
+    page->FlushActionsAsRoot();
+    EXPECT_FALSE(fragment->NeedRedraw());
+    EXPECT_FALSE(manager->need_repaint_.load());
+
+    view->SetStyle(kPropertyIDBackgroundColor, lepus::Value());
+    page->FlushActionsAsRoot();
+    EXPECT_TRUE(fragment->NeedRedraw());
+    EXPECT_TRUE(manager->need_repaint_.load());
+    manager->Repaint();
+    EXPECT_FALSE(has_blue_fill());
+  }
+}
+
+TEST_F(FragmentDrawTest, NewStylingOpacityUpdatesRetainPaintedContent) {
+  manager->enable_new_styling_pipeline_ = true;
+  auto page = manager->CreateFiberPage("0", 0);
+  manager->SetFiberPageElement(page);
+  auto view = manager->CreateFiberView();
+  view->SetStyle(kPropertyIDWidth, lepus::Value("100px"));
+  view->SetStyle(kPropertyIDHeight, lepus::Value("100px"));
+  view->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  view->SetStyle(kPropertyIDOpacity, lepus::Value(0.8));
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  manager->Repaint();
+
+  auto* fragment = view->fragment_impl();
+  ASSERT_TRUE(fragment->has_platform_renderer_);
+  for (const auto& opacity : {lepus::Value(0.3), lepus::Value()}) {
+    view->SetStyle(kPropertyIDOpacity, opacity);
+    page->FlushActionsAsRoot();
+    EXPECT_TRUE(fragment->NeedUpdateSubtreeProperty());
+    EXPECT_FALSE(fragment->NeedRedraw());
+    EXPECT_TRUE(manager->need_repaint_.load());
+    manager->Repaint();
+  }
+}
+
 TEST_F(FragmentDrawTest, NativeReadyObservesChildrenAfterDisplayListBatch) {
   auto page = manager->CreateFiberPage("0", 0);
   auto parent = manager->CreateFiberNode("native-parent");
