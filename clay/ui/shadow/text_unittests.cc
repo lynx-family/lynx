@@ -1616,6 +1616,10 @@ TEST_F_UI(TextTest, InlineTruncationFitsNestedTextAndViewAfterEmoji) {
       end > 0 && end < text.size() && text[end - 1] >= 0xD800 &&
       text[end - 1] <= 0xDBFF && text[end] >= 0xDC00 && text[end] <= 0xDFFF;
   EXPECT_FALSE(splits_surrogate_pair);
+  const auto lines = text_render.GetLineInfo();
+  ASSERT_EQ(lines.size(), 1u);
+  EXPECT_EQ(lines.front().end, static_cast<int>(text.size()));
+  EXPECT_EQ(lines.front().ellipsis_count, static_cast<int>(text.size() - end));
   EXPECT_GE(inline_view->placeholder_index(), 0);
   EXPECT_LT(inline_view->StartGlyph(), inline_view->EndGlyph());
 }

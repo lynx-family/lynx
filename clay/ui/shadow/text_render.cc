@@ -1070,16 +1070,10 @@ void TextRender::ProcessTruncationContent(size_t& display_glyph_num,
   for (auto* child : node->GetChildren()) {
     if (child->IsRawTextShadowNode()) {
       auto* raw_text_node = static_cast<RawTextShadowNode*>(child);
-#if defined(CLAY_ENABLE_TTTEXT)
-      auto layout_text_length = raw_text_node->GetLayoutTextLength();
-      auto raw_end_index =
-          raw_text_node->GetRawEndIndexForLayoutTextLength(display_glyph_num);
-#else
       auto layout_text_length = raw_text_node->GetLayoutTextUtf16Length();
       auto raw_end_index =
           raw_text_node->GetRawEndIndexForLayoutTextUtf16Length(
               display_glyph_num);
-#endif
       if (layout_text_length < display_glyph_num) {
         display_glyph_num = display_glyph_num - layout_text_length;
       } else {
