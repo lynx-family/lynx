@@ -41,6 +41,10 @@ abstract class BaseLynxViewPager<K: BaseCustomViewPager,T : Pager<K>>
   // 提供了一些View的公共属性设置的方法 ,注意注解设置属性的调用时机在这之后
   abstract override fun createView(context: Context?): T?
 
+  override fun isScrollable(): Boolean {
+    return mPager.getRenderer() != null || super.isScrollable()
+  }
+
   protected open fun initListener(context: Context?) {
     initGestureListener()
     initPagerListener()

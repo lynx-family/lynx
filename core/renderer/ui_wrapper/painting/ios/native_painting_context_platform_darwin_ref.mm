@@ -20,6 +20,7 @@
 #import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTextRenderer.h>
+#import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
 #import "LynxTimingConstants.h"
@@ -215,17 +216,114 @@ void NativePaintingCtxPlatformDarwinRef::GetPlatformRendererScrollOffset(int32_t
   offset[0] = 0.f;
   offset[1] = 0.f;
 
-  UIView* view = GetPlatformRendererView(sign);
-  if ([view isKindOfClass:[UIScrollView class]]) {
-    const auto content_offset = ((UIScrollView*)view).contentOffset;
+  UIScrollView* view = GetPlatformRendererScrollView(sign);
+  if (view != nil) {
+    const auto content_offset = view.contentOffset;
     offset[0] = content_offset.x;
     offset[1] = content_offset.y;
   }
 }
 
 bool NativePaintingCtxPlatformDarwinRef::IsPlatformRendererScrollable(int32_t sign) {
+  LynxUI* ui = [GetUIOwner() findUIBySign:sign];
+  if (ui != nil) {
+    return [ui isScrollContainer];
+  }
+  return GetPlatformRendererScrollView(sign) != nil;
+}
+
+UIScrollView* NativePaintingCtxPlatformDarwinRef::GetPlatformRendererScrollView(int32_t sign) {
   UIView* view = GetPlatformRendererView(sign);
-  return [view isKindOfClass:[UIScrollView class]];
+  if ([view isKindOfClass:[UIScrollView class]]) {
+    return (UIScrollView*)view;
+  }
+  LynxUI* ui = [GetUIOwner() findUIBySign:sign];
+  if ([ui.tagName isEqualToString:@"swiper"] || [ui.tagName isEqualToString:@"x-swiper"]) {
+    // Swiper wraps its collection view in an intermediate paging view.
+    for (UIView* pager in view.subviews) {
+      for (UIView* child in pager.subviews) {
+        if ([child isKindOfClass:[UICollectionView class]]) {
+          return (UIScrollView*)child;
+        }
+      }
+    }
+    return nil;
+  }
+  if (![ui.tagName isEqualToString:@"viewpager"] &&
+      ![ui.tagName isEqualToString:@"x-viewpager-ng"] &&
+      ![ui.tagName isEqualToString:@"scroll-coordinator"] &&
+      ![ui.tagName isEqualToString:@"x-foldview-ng"]) {
+    return nil;
+  }
+  for (UIView* child in view.subviews) {
+    if ([child isKindOfClass:[UIScrollView class]]) {
+      return (UIScrollView*)child;
+    }
+  }
+  return nil;
+}
+
+bool NativePaintingCtxPlatformDarwinRef::GetPlatformRendererPosition(int32_t sign,
+                                                                     float position[2]) {
+  LynxUI* ui = [GetUIOwner() findUIBySign:sign];
+  LynxUI* parent = ui.parent;
+  const bool is_coordinator = [parent.tagName isEqualToString:@"scroll-coordinator"] ||
+                              [parent.tagName isEqualToString:@"x-foldview-ng"];
+  const bool is_pager_item = ([ui.tagName isEqualToString:@"viewpager-item"] ||
+                              [ui.tagName isEqualToString:@"x-viewpager-item-ng"]) &&
+                             ([parent.tagName isEqualToString:@"viewpager"] ||
+                              [parent.tagName isEqualToString:@"x-viewpager-ng"]);
+  const bool is_swiper_item =
+      ([ui.tagName isEqualToString:@"swiper-item"] ||
+       [ui.tagName isEqualToString:@"x-swiper-item"]) &&
+      ([parent.tagName isEqualToString:@"swiper"] || [parent.tagName isEqualToString:@"x-swiper"]);
+  const bool is_refresh_child = [parent.tagName isEqualToString:@"refresh"] ||
+                                [parent.tagName isEqualToString:@"x-refresh-view"];
+  if (!is_coordinator && !is_pager_item && !is_swiper_item && !is_refresh_child) {
+    return false;
+  }
+  UIView* parent_view = GetPlatformRendererView(static_cast<int32_t>(parent.sign));
+  UIView* view = GetPlatformRendererView(sign);
+  if (parent_view == nil || view == nil) {
+    return false;
+  }
+  UIView* host_view = view;
+  CGPoint origin = CGPointZero;
+  UIScrollView* scroll_view = GetPlatformRendererScrollView(static_cast<int32_t>(parent.sign));
+  bool inside_scroll_view = false;
+  // Include native wrappers, leaving contentOffset to the event tree's scroll
+  // compensation. CUI applies host transforms separately.
+  while (view != nil && view != parent_view) {
+    inside_scroll_view |= view == scroll_view;
+    origin.x += view.layer.position.x - view.layer.anchorPoint.x * view.bounds.size.width;
+    origin.y += view.layer.position.y - view.layer.anchorPoint.y * view.bounds.size.height;
+    if (is_refresh_child && view != host_view) {
+      // Refresh reparents its header into the content scroll view. Its native
+      // scroll ancestors are not ancestors in the event tree, so include their
+      // bounds offsets here. The content host's own scrolling stays in CUI.
+      origin.x -= view.bounds.origin.x;
+      origin.y -= view.bounds.origin.y;
+    }
+    view = view.superview;
+  }
+  if (view == nil) {
+    return false;
+  }
+  if ((is_coordinator || is_swiper_item) && scroll_view == nil) {
+    return false;
+  }
+  if (is_swiper_item && !inside_scroll_view) {
+    return false;
+  }
+  if (is_coordinator && !inside_scroll_view) {
+    // Fixed children live outside the scroll view. Express their position in
+    // content coordinates so the parent's scroll compensation keeps them fixed.
+    origin.x += scroll_view.contentOffset.x;
+    origin.y += scroll_view.contentOffset.y;
+  }
+  position[0] = origin.x;
+  position[1] = origin.y;
+  return true;
 }
 
 UIView* NativePaintingCtxPlatformDarwinRef::GetPlatformRendererView(int32_t sign) {

@@ -184,6 +184,12 @@ class NativePaintingCtxPlatformRef
   // Get the scroll offset of the platform renderer host.
   virtual void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) {}
 
+  // Return content coordinates when the native parent positions this host.
+  // False preserves the position recorded in the display list.
+  virtual bool GetPlatformRendererPosition(int32_t sign, float position[2]) {
+    return false;
+  }
+
   virtual PlatformTextEventTargetRegions GetTextEventTargetRegions(
       int32_t text_id) {
     return {};

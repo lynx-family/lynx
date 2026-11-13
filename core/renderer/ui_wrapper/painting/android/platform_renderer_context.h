@@ -138,6 +138,7 @@ class PlatformRendererContext {
                             bool cmp_managed);
   std::vector<float> GetScreenSize();
   std::vector<float> GetRendererHostScrollOffset(int32_t sign);
+  std::vector<float> GetRendererHostPosition(int32_t sign);
   bool IsRendererHostScrollable(int32_t sign);
   PlatformTextEventTargetRegions GetTextEventTargetRegions(
       int32_t text_id,

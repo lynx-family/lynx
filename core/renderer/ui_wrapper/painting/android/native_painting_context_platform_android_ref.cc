@@ -138,6 +138,23 @@ void NativePaintingCtxAndroidRef::GetPlatformRendererScrollOffset(
   }
 }
 
+bool NativePaintingCtxAndroidRef::GetPlatformRendererPosition(
+    int32_t sign, float position[2]) {
+  auto* factory =
+      static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());
+  auto* context = factory != nullptr ? factory->GetContext() : nullptr;
+  if (context == nullptr) {
+    return false;
+  }
+  const auto result = context->GetRendererHostPosition(sign);
+  if (result.size() < 2) {
+    return false;
+  }
+  position[0] = result[0];
+  position[1] = result[1];
+  return true;
+}
+
 bool NativePaintingCtxAndroidRef::IsPlatformRendererScrollable(int32_t sign) {
   auto* factory =
       static_cast<PlatformRendererAndroidFactory*>(view_factory_.get());

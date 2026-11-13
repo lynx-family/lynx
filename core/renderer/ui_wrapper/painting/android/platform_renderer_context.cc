@@ -627,6 +627,31 @@ std::vector<float> PlatformRendererContext::GetRendererHostScrollOffset(
   return res;
 }
 
+std::vector<float> PlatformRendererContext::GetRendererHostPosition(
+    int32_t sign) {
+  std::vector<float> result;
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return result;
+  }
+  EnsureAndroidViewCreated(sign);
+  if (destroyed_) {
+    return result;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  auto array = Java_PlatformRendererContext_getRendererHostPosition(
+      env, local_ref.Get(), sign);
+  if (array.IsNull()) {
+    return result;
+  }
+  const jsize size = env->GetArrayLength(array.Get());
+  if (size >= 2) {
+    result.resize(2);
+    env->GetFloatArrayRegion(array.Get(), 0, 2, result.data());
+  }
+  return result;
+}
+
 bool PlatformRendererContext::IsRendererHostScrollable(int32_t sign) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
