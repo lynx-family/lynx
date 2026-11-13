@@ -11,6 +11,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/shell/lynx_engine.h"
+#include "core/template_bundle/template_codec/magic_number.h"
 #ifdef OS_ANDROID
 #include "core/runtime/js/bytecode/js_cache_manager_facade.h"
 #endif
@@ -35,9 +36,16 @@ void DecodeBundle(LazyBundleLoader::CallBackInfo& callback_info, bool is_card) {
   }
   if (callback_info.Success()) {
     lynx::tasm::LynxTemplateBundle bundle;
-    std::string error =
-        bundle.FromBinaryGreedy(std::move(callback_info.data),
-                                callback_info.component_url, false, is_card);
+    std::string error;
+    if (is_card && !template_codec::IsValidBinary(callback_info.data)) {
+      error = bundle.FromLynxML(
+          std::string(callback_info.data.begin(), callback_info.data.end()),
+          callback_info.component_url);
+    } else {
+      error =
+          bundle.FromBinaryGreedy(std::move(callback_info.data),
+                                  callback_info.component_url, false, is_card);
+    }
     if (error.empty()) {
       callback_info.bundle = std::move(bundle);
     } else {
