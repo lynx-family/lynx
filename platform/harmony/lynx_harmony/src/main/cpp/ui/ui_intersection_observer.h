@@ -81,6 +81,7 @@ class UIIntersectionObserver {
   float GetUIMarginVP(const lepus::Value& value);
   void CheckIntersectionWithTarget(UIIntersectionObserverTarget* target,
                                    bool is_initial_check);
+  bool ShouldNotifyInitialRatio(float ratio) const;
   void ComputeTargetInteraction(UIBase* target, float target_rect[4],
                                 float intersection_rect[4]);
   bool HasCrossIntersectionRatioThreshold(

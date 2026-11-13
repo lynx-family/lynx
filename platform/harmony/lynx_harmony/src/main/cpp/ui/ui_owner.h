@@ -164,6 +164,12 @@ class UIOwner {
   void SetEnableFiberTargetOnlyDestroy(bool enable);
   void SetLongPressDuration(int32_t long_press_duration);
   void SetRawInputEnabled(bool enabled);
+  void SetEnableIntersectionObserverInitialRatioCompatibility(bool enabled) {
+    enable_intersection_observer_initial_ratio_compatibility_ = enabled;
+  }
+  bool EnableIntersectionObserverInitialRatioCompatibility() const {
+    return enable_intersection_observer_initial_ratio_compatibility_;
+  }
   void SendEvent(const LynxEvent& event) const;
   bool StartEventGenerate(const TouchEvent& touch_event) const;
   void SetEventID(int64_t event_id);
@@ -353,6 +359,7 @@ class UIOwner {
   std::string id_;
 
   bool destroyed_ = false;
+  bool enable_intersection_observer_initial_ratio_compatibility_{false};
   bool enable_fiber_target_only_destroy_ = false;
   float last_intrinsic_content_width_{0.f};
   float last_intrinsic_content_height_{0.f};

@@ -7,12 +7,14 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.graphics.RectF;
+import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -126,6 +128,79 @@ public class LynxIntersectionObserverScreenTest {
     setBounds(new RectF(0, 0, 600, 1000));
     observeScreen();
     assertEntry(getCallback(), mTargetBounds, mTargetBounds, 1);
+  }
+
+  @Test
+  public void legacyInitialRatioRequiresStrictlyGreaterFraction() {
+    assertInitialNotification(0.3f, 0.5, false, false, 0.3, 0.5, 1);
+    assertInitialNotification(0.5f, 0.5, false, false, 0.3, 0.5, 1);
+    assertInitialNotification(1, 0.5, false, true, 0.3, 0.5, 1);
+    assertInitialNotification(0.2f, 0, false, true, 0.3, 0.5, 1);
+  }
+
+  @Test
+  public void compatibleInitialRatioRequiresDifferenceAndAnyReachedThreshold() {
+    assertInitialNotification(0.3f, 0.5, true, true, 1, 0.5, 0.3);
+    assertInitialNotification(0.5f, 0.5, true, false, 0.3, 0.5, 1);
+    assertInitialNotification(1, 0.5, true, true, 0.3, 0.5, 1);
+    assertInitialNotification(0.2f, 0, true, false, 0.3, 0.5, 1);
+    assertInitialNotification(0.4f, 0.5, true, true, 0.3, 0.5, 1);
+  }
+
+  @Test
+  public void compatibleInitialZeroRequiresDifferentInitialRatioAndZeroThreshold() {
+    assertInitialNotification(0, 1, true, true, 0);
+    assertInitialNotification(0, 0, true, false, 0);
+    assertInitialNotification(0, 1, true, false, 0.3);
+    assertInitialNotification(0, 1, false, false, 0);
+    assertInitialNotification(1, 1, true, false, 0);
+    assertInitialNotification(1, 1, false, false, 0);
+  }
+
+  @Test
+  public void compatibilityDoesNotRepeatInitialNotificationOrChangeLaterThresholds() {
+    assertInitialNotification(0.3f, 0.5, true, true, 0.3, 0.5, 1);
+    mObserver.checkForIntersections();
+    getCallback();
+    clearInvocations(mManager);
+    setRatioBounds(0.4f);
+    mObserver.checkForIntersections();
+    getCallback();
+    clearInvocations(mManager);
+    setRatioBounds(0.45f);
+    mObserver.checkForIntersections();
+    verify(mManager, never()).callIntersectionObserver(anyInt(), anyInt(), any(JavaOnlyMap.class));
+    setRatioBounds(0.6f);
+    mObserver.checkForIntersections();
+    getCallback();
+  }
+
+  private void assertInitialNotification(float ratio, double initialRatio, boolean compatible,
+      boolean expected, double... thresholds) {
+    clearInvocations(mManager);
+    when(mContext.getEnableIntersectionObserverInitialRatioCompatibility()).thenReturn(compatible);
+    JavaOnlyArray thresholdArray = new JavaOnlyArray();
+    for (double threshold : thresholds) {
+      thresholdArray.pushDouble(threshold);
+    }
+    JavaOnlyMap options = new JavaOnlyMap();
+    options.putDouble("initialRatio", initialRatio);
+    options.putArray("thresholds", thresholdArray);
+    mObserver =
+        new LynxIntersectionObserver(mManager, 1, LynxConstants.LYNX_DEFAULT_COMPONENT_ID, options);
+    setRatioBounds(ratio);
+    observeScreen();
+    if (expected) {
+      assertEquals(ratio, getCallback().getDouble("intersectionRatio"), 0.0001);
+    } else {
+      verify(mManager, never())
+          .callIntersectionObserver(anyInt(), anyInt(), any(JavaOnlyMap.class));
+    }
+  }
+
+  private void setRatioBounds(float ratio) {
+    mPageBounds.set(0, 0, 100, 100);
+    mTargetBounds.set(0, 100 * (1 - ratio), 100, 100 * (2 - ratio));
   }
 
   private void setBounds(RectF bounds) {
