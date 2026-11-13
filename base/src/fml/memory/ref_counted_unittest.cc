@@ -12,6 +12,7 @@
 #include "base/include/fml/memory/ref_counted.h"
 
 #include "base/include/fml/macros.h"
+#include "base/include/vector.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 #if defined(__clang__)
@@ -84,6 +85,40 @@ class MySubclass final : public MyClass {
 
   BASE_DISALLOW_COPY_AND_ASSIGN(MySubclass);
 };
+
+TEST(RefCountedTest, VectorRelocationPreservesOwnership) {
+  bool destroyed[6] = {};
+  base::InlineVector<RefPtr<MyClass>, 1> values;
+  for (size_t i = 0; i < 4; ++i) {
+    values.emplace_back(MakeRefCounted<MyClass>(nullptr, &destroyed[i]));
+  }
+  values.emplace(values.begin() + 1,
+                 MakeRefCounted<MyClass>(nullptr, &destroyed[4]));
+  values.emplace(values.begin() + 2,
+                 MakeRefCounted<MyClass>(nullptr, &destroyed[5]));
+  auto copy = values;
+  values.erase(values.begin() + 1, values.end() - 1);
+  for (bool released : destroyed) EXPECT_FALSE(released);
+  copy.clear();
+  EXPECT_FALSE(destroyed[0]);
+  EXPECT_FALSE(destroyed[3]);
+  for (size_t i : {1u, 2u, 4u, 5u}) EXPECT_TRUE(destroyed[i]);
+  auto moved = std::move(values);
+  EXPECT_TRUE(values.empty());
+  EXPECT_EQ(moved.size(), 2u);
+  moved.clear();
+  for (bool released : destroyed) EXPECT_TRUE(released);
+
+  bool inline_destroyed = false;
+  base::InlineVector<RefPtr<MyClass>, 1> single;
+  single.emplace_back(MakeRefCounted<MyClass>(nullptr, &inline_destroyed));
+  auto inline_moved = std::move(single);
+  EXPECT_TRUE(single.empty());
+  EXPECT_EQ(inline_moved.size(), 1u);
+  EXPECT_FALSE(inline_destroyed);
+  inline_moved.clear();
+  EXPECT_TRUE(inline_destroyed);
+}
 
 TEST(RefCountedTest, Constructors) {
   bool was_destroyed;
