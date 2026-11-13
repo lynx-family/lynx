@@ -8,6 +8,27 @@
 
 namespace lynx {
 namespace devtool {
+namespace {
+
+bool ParseThread(const Json::Value& params, HSRScriptRequest& request,
+                 std::string& error) {
+  if (!params.isMember("thread")) return true;
+  const auto& value = params["thread"];
+  const auto thread = value.isString() ? value.asString() : std::string();
+  if (thread == "bts") {
+    request.thread = HSRScriptRequest::Thread::kBTS;
+  } else if (thread == "mts") {
+    request.thread = HSRScriptRequest::Thread::kMTS;
+  } else if (thread == "ui") {
+    request.thread = HSRScriptRequest::Thread::kUI;
+  } else {
+    error = "Expected thread: bts, mts or ui";
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
 
 bool ParseHSRLoadScript(const Json::Value& params, HSRScriptRequest& request,
                         std::string& error) {
@@ -22,6 +43,7 @@ bool ParseHSRLoadScript(const Json::Value& params, HSRScriptRequest& request,
   }
   const auto type = source["type"].asString();
   HSRScriptRequest parsed;
+  if (!ParseThread(params, parsed, error)) return false;
   if (type == "inline") {
     if (!source["script"].isString() || source.isMember("url")) {
       error = "Expected source.script without source.url for inline scripts";
@@ -55,20 +77,7 @@ bool ParseHSREvaluate(const Json::Value& params, HSRScriptRequest& request,
   HSRScriptRequest parsed{HSRScriptRequest::Operation::kEvaluate,
                           HSRScriptRequest::SourceType::kInline,
                           params["expression"].asString()};
-  if (params.isMember("thread")) {
-    const auto& value = params["thread"];
-    const auto thread = value.isString() ? value.asString() : std::string();
-    if (thread == "bts") {
-      parsed.thread = HSRScriptRequest::Thread::kBTS;
-    } else if (thread == "mts") {
-      parsed.thread = HSRScriptRequest::Thread::kMTS;
-    } else if (thread == "ui") {
-      parsed.thread = HSRScriptRequest::Thread::kUI;
-    } else {
-      error = "Expected thread: bts, mts or ui";
-      return false;
-    }
-  }
+  if (!ParseThread(params, parsed, error)) return false;
   request = std::move(parsed);
   return true;
 }
@@ -80,6 +89,7 @@ bool ParseHSRSchemaLoad(const Json::Value& params, HSRScriptRequest& request,
     return false;
   }
   Json::Value normalized(Json::objectValue);
+  if (params.isMember("thread")) normalized["thread"] = params["thread"];
   auto& source = normalized["source"];
   const auto target = params["target"].asString();
   if (target == "script") {
