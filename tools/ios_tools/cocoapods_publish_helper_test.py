@@ -100,6 +100,86 @@ class CocoapodsPublishHelperTest(unittest.TestCase):
             "--tag '1.2.3; echo injected' --cache_path ."
         )
 
+    def test_prepare_build_metadata_does_not_generate_source_zip(self):
+        fake_script = os.path.join(
+            self.temp_dir.name,
+            'tools',
+            'ios_tools',
+            'cocoapods_publish_helper.py',
+        )
+        with mock.patch.object(helper, '__file__', fake_script), \
+                mock.patch.object(helper, 'replace_lynx_version') as replace, \
+                mock.patch.object(helper, 'run_command') as run_command, \
+                mock.patch.object(helper, 'generate_zip_file') as generate_zip:
+            helper.prepare_cocoapods_build_metadata('1.2.3')
+
+        replace.assert_called_once_with('1.2.3')
+        self.assertEqual(run_command.call_count, 2)
+        generate_zip.assert_not_called()
+
+    def test_preparation_exports_selected_components_for_spm(self):
+        import spm_publish_helper
+
+        root = Path(self.temp_dir.name)
+        fake_script = root / 'tools/ios_tools/cocoapods_publish_helper.py'
+        components = ('ExampleCore', 'ExampleUI')
+        for name in components:
+            (root / f'{name}.podspec').write_text('', encoding='utf8')
+            self.write_podspec_json(name, {'name': name})
+        # Unrelated files must not become published components.
+        self.write_podspec_json('Unrelated', {'name': 'Unrelated'})
+        manifest = root / 'out/Components.json'
+        with mock.patch.object(helper, '__file__', str(fake_script)), \
+                mock.patch.object(helper, 'PUBLISH_COMPONENTS', components), \
+                mock.patch.object(helper, 'replace_lynx_version'), \
+                mock.patch.object(helper, 'run_command'):
+            for selection, expected in (
+                    ('all', list(components)), ('ExampleUI', ['ExampleUI'])):
+                with self.subTest(selection=selection):
+                    helper.prepare_cocoapods_build_metadata(
+                        '1.2.3', selection, manifest)
+                    self.assertEqual(json.loads(manifest.read_text()), expected)
+                    self.assertEqual(
+                        list(spm_publish_helper.load_component_specs(root, manifest)),
+                        expected,
+                    )
+
+    def test_preparation_rejects_missing_expected_podspec(self):
+        root = Path(self.temp_dir.name)
+        (root / 'ExampleCore.podspec').write_text('', encoding='utf8')
+        manifest = root / 'Components.json'
+        with mock.patch.object(
+                helper, '__file__', str(root / 'tools/ios_tools/helper.py')), \
+                mock.patch.object(helper, 'PUBLISH_COMPONENTS', ('ExampleCore', 'Missing')), \
+                mock.patch.object(helper, 'replace_lynx_version'), \
+                mock.patch.object(helper, 'run_command'), \
+                self.assertRaisesRegex(FileNotFoundError, 'Missing.podspec'):
+            helper.prepare_cocoapods_build_metadata('1.2.3', 'all', manifest)
+        self.assertFalse(manifest.exists())
+
+    def test_prepare_source_passes_component_manifest_to_metadata_stage(self):
+        with mock.patch.object(
+                helper, 'prepare_cocoapods_build_metadata',
+                return_value=self.temp_dir.name) as prepare, \
+                mock.patch.object(helper, 'generate_zip_file') as generate_zip:
+            helper.prepare_cocoapods_publish_source(
+                '1.2.3', '1.2.3', 'ExampleUI',
+                components_manifest='out/Components.json')
+        prepare.assert_called_once_with('1.2.3', 'ExampleUI', 'out/Components.json')
+        generate_zip.assert_called_once_with(self.temp_dir.name, '1.2.3', 'ExampleUI')
+
+    def test_local_publish_uses_shared_component_order(self):
+        components = ('ExampleCore', 'ExampleUI')
+        with mock.patch.object(helper, 'PUBLISH_COMPONENTS', components), \
+                mock.patch.object(helper, 'create_local_pod_source'), \
+                mock.patch.object(helper, 'skip_pod_lint'), \
+                mock.patch.object(helper, 'publish_component_to_local_source') as publish:
+            helper.publish_to_local('all', 'local_specs')
+        self.assertEqual(
+            publish.call_args_list,
+            [mock.call(name, 'local_specs') for name in components],
+        )
+
     def test_github_release_storage_type_accepts_empty_s3_environment(self):
         with mock.patch.dict(os.environ, {}, clear=True):
             helper.validate_storage_type_options(helper.STORAGE_TYPE_GITHUB_RELEASE)
