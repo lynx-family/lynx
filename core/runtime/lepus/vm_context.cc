@@ -43,6 +43,10 @@ namespace lepus {
 
 namespace {
 
+constexpr size_t kLepusRegisterCount = 1U << 8;
+constexpr char kRegisterStackOverflowMessage[] =
+    "RangeError: Lepus VM register stack overflow.";
+
 std::string MakeInvalidBytecodeIndexMessage(const char* kind, size_t index,
                                             size_t limit) {
   return "Invalid Lepus bytecode " + std::string(kind) + " index " +
@@ -287,22 +291,31 @@ bool VMContext::ExecuteBinaryWithBundle(const runtime::ContextBundle* bundle,
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, VM_CONTEXT_EXECUTE);
 
-  auto* top = heap().top_++;
+  auto* top = heap().Allocate(1);
+  if (unlikely(top == nullptr)) {
+    SetRegisterStackOverflow();
+    ReportUncaughtException();
+    return true;
+  }
   top->SetRefCounted(
       Closure::Create(fml::RefPtr<Function>(root_function_.get())));
 
   RestrictedValue ret;
+  int32_t result;
   if (current_frame_) {
     // not top frame
-    CallFunction(heap().top_ - 1, 0, &ret);
+    result = CallFunction(top, 0, &ret);
   } else {
     // create top frame
     Frame top_frame;
     top_frame.register_ = heap_.base() + top_level_variables_.size() + 1;
     top_frame.prev_frame_ = &top_frame;
     current_frame_ = &top_frame;
-    CallFunction(heap().top_ - 1, 0, &ret);
+    result = CallFunction(top, 0, &ret);
     current_frame_ = nullptr;
+  }
+  if (unlikely(result < 0)) {
+    ReportUncaughtException();
   }
   executed_ = true;
 
@@ -313,32 +326,45 @@ bool VMContext::ExecuteBinaryWithBundle(const runtime::ContextBundle* bundle,
   return true;
 }
 
-RestrictedValue* VMContext::CallPrologue(const base::String& name) {
+RestrictedValue* VMContext::CallPrologue(const base::String& name,
+                                         size_t arg_count) {
   auto reg_info = top_level_variables_.find(name);
   if (reg_info == top_level_variables_.end()) {
     LOGE("lepus-call: not find " << name.str());
     return nullptr;
   }
   long reg = reg_info->second;
-  auto* function = heap_.top_;
-  *(heap_.top_++) = *(heap_.base() + reg + 1);
+  if (unlikely(arg_count >= heap_.capacity())) {
+    SetRegisterStackOverflow();
+    return nullptr;
+  }
+  auto* function = heap_.Allocate(arg_count + 1);
+  if (unlikely(function == nullptr)) {
+    SetRegisterStackOverflow();
+    return nullptr;
+  }
+  *function = *(heap_.base() + reg + 1);
   return function;
 }
 
 RestrictedValue VMContext::CallEpilogue(RestrictedValue* function,
                                         size_t arg_count) {
   RestrictedValue ret;
+  int32_t result;
   if (current_frame_) {
     // not top frame
-    CallFunction(function, arg_count, &ret);
+    result = CallFunction(function, arg_count, &ret);
   } else {
     // create top frame
     Frame top_frame;
     top_frame.register_ = heap_.base() + top_level_variables_.size() + 1;
     top_frame.prev_frame_ = &top_frame;
     current_frame_ = &top_frame;
-    CallFunction(function, arg_count, &ret);
+    result = CallFunction(function, arg_count, &ret);
     current_frame_ = nullptr;
+  }
+  if (unlikely(result < 0)) {
+    ReportUncaughtException();
   }
   return ret;
 }
@@ -351,11 +377,14 @@ Value VMContext::CallArgs(const base::String& name, const Value* args[],
                 ctx.event()->add_debug_annotations("name", name.str());
               });
 
-  if (auto function = CallPrologue(name); function != nullptr) {
+  if (auto function = CallPrologue(name, args_count); function != nullptr) {
     for (size_t i = 0; i < args_count; ++i) {
-      *(heap_.top_++) = *args[i];
+      function[i + 1] = *args[i];
     }
     return Value(CallEpilogue(function, args_count));
+  }
+  if (current_exception_.has_value()) {
+    ReportUncaughtException();
   }
   return Value();
 }
@@ -365,10 +394,20 @@ Value VMContext::CallClosureArgs(const Value& closure, const Value* args[],
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, VM_CONTEXT_CALL_CLOSURE);
 
   Value ret;
-  auto* function = heap_.top_;
-  *(heap_.top_++) = closure;
+  if (unlikely(args_count >= heap_.capacity())) {
+    SetRegisterStackOverflow();
+    ReportUncaughtException();
+    return ret;
+  }
+  auto* function = heap_.Allocate(args_count + 1);
+  if (unlikely(function == nullptr)) {
+    SetRegisterStackOverflow();
+    ReportUncaughtException();
+    return ret;
+  }
+  *function = closure;
   for (size_t i = 0; i < args_count; ++i) {
-    *(heap_.top_++) = *args[i];
+    function[i + 1] = *args[i];
   }
   return Value(CallEpilogue(function, args_count));
 }
@@ -600,8 +639,15 @@ bool VMContext::GetTopLevelVariableByName(const base::String& name,
 
 int32_t VMContext::CallFunction(RestrictedValue* function, size_t argc,
                                 RestrictedValue* ret) {
+  if (unlikely(!heap_.ContainsRange(function, 1))) {
+    return SetRegisterStackOverflow();
+  }
   if (unlikely(function->IsClosure())) {
-    heap_.top_ = function + 1;
+    auto* register_base = function + 1;
+    if (unlikely(!heap_.ContainsRange(register_base, kLepusRegisterCount))) {
+      return SetRegisterStackOverflow();
+    }
+    heap_.top_ = register_base;
     auto lepus_function = fml::static_ref_ptr_cast<Closure>(
                               UnsafeOp::TypeSure::GetRefCounted(*function))
                               ->function();
@@ -622,6 +668,9 @@ int32_t VMContext::CallFunction(RestrictedValue* function, size_t argc,
     return 1;
   } else if (function->IsCFunction()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, VM_CONTEXT_CALL_C_FUNCTION);
+    if (unlikely(!heap_.ContainsRange(function + 1, argc))) {
+      return SetRegisterStackOverflow();
+    }
     heap_.top_ = function + argc + 1;
     Frame frame(function + 1, function, ret, nullptr, nullptr, current_frame_,
                 0);
@@ -664,6 +713,23 @@ int32_t VMContext::CallFunction(RestrictedValue* function, size_t argc,
   } else {
     return 0;
   }
+}
+
+int32_t VMContext::SetRegisterStackOverflow() {
+  current_exception_ = kRegisterStackOverflowMessage;
+  err_code_ = error::E_MTS_RUNTIME_ERROR;
+  return -1;
+}
+
+void VMContext::ReportUncaughtException() {
+  if (!current_exception_.has_value()) {
+    return;
+  }
+  exception_info_ =
+      "lepus exception:\n\n" + *std::exchange(current_exception_, std::nullopt);
+  LOGE("lepus-ReportException: exception happened without catch "
+       << exception_info_);
+  ReportError(exception_info_, err_code_);
 }
 
 // report log box, but the program continues running

@@ -169,6 +169,45 @@ TEST(VMContextSafety, InvalidChildFunctionIndex_IsReportedAsException) {
             std::string::npos);
 }
 
+TEST(HeapSafety, Allocate_RejectsRangesBeyondCapacity) {
+  lepus::Heap heap;
+
+  EXPECT_EQ(heap.Allocate(heap.capacity() + 1), nullptr);
+  EXPECT_EQ(heap.top_, heap.base());
+
+  auto* allocation = heap.Allocate(heap.capacity());
+  ASSERT_EQ(allocation, heap.base());
+  EXPECT_TRUE(heap.ContainsRange(allocation, heap.capacity()));
+  EXPECT_TRUE(heap.ContainsRange(heap.top_, 0));
+  EXPECT_FALSE(heap.ContainsRange(heap.top_, 1));
+  EXPECT_EQ(heap.Allocate(1), nullptr);
+}
+
+TEST(VMContextSafety, RegisterStackOverflow_IsReportedAsException) {
+  lepus::VMContext vm;
+  vm.Initialize();
+
+  auto fn = lepus::Function::Create();
+  // Use the upper end of the bytecode register range for each nested call.
+  fn->AddInstruction(lepus::Instruction::ABCode(lepus::TypeOp_Move, 254, 0));
+  fn->AddInstruction(lepus::Instruction::ABCode(lepus::TypeOp_Move, 255, 0));
+  fn->AddInstruction(
+      lepus::Instruction::ABCCode(lepus::TypeOp_Call, 254, 1, 1));
+  fn->AddInstruction(lepus::Instruction::ACode(lepus::TypeOp_Ret, 1));
+
+  auto closure = lepus::Closure::Create(fn);
+  lepus::Value closure_value{
+      fml::RefPtr<lepus::RefCounted>(std::move(closure))};
+  const lepus::Value* args[] = {&closure_value};
+
+  auto ret = vm.CallClosureArgs(closure_value, args, 1);
+
+  EXPECT_TRUE(ret.IsNil());
+  EXPECT_EQ(vm.err_code_, error::E_MTS_RUNTIME_ERROR);
+  EXPECT_NE(vm.exception_info_.find("Lepus VM register stack overflow"),
+            std::string::npos);
+}
+
 TEST(LepusBytecodeValidation, RejectsOutOfRangeConstantIndices) {
   lepus::BaseBinaryReader reader(nullptr);
   const std::vector<lepus::Instruction> instructions = {
