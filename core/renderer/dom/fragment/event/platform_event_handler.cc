@@ -417,10 +417,9 @@ void PlatformEventHandler::RecordScrollOffsetsForTap() {
   while (target && target->ParentTarget() != target) {
     if (target->RendererHostSign() == target->Sign() &&
         target->IsScrollContainer()) {
-      float offset[2] = {0.f, 0.f};
-      target_helper->GetPlatformRendererScrollOffset(target->Sign(), offset);
       scroll_offset_for_tap_.insert_or_assign(
-          target->Sign(), std::array<float, 2>{offset[0], offset[1]});
+          target->Sign(), std::array<float, 2>{target->ScrollOffsetX(),
+                                               target->ScrollOffsetY()});
     }
     target = target->ParentTarget();
   }
@@ -436,7 +435,10 @@ bool PlatformEventHandler::HasScrollContainerScrolledForTap() {
 
   for (const auto& it : scroll_offset_for_tap_) {
     float offset[2] = {0.f, 0.f};
-    target_helper->GetPlatformRendererScrollOffset(it.first, offset);
+    if (auto target = target_helper->GetEventTarget(it.first)) {
+      offset[0] = target->ScrollOffsetX();
+      offset[1] = target->ScrollOffsetY();
+    }
     if (base::FloatsNotEqual(offset[0], it.second[0]) ||
         base::FloatsNotEqual(offset[1], it.second[1])) {
       return true;

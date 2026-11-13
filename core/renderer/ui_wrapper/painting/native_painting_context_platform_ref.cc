@@ -45,14 +45,27 @@ NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
       this, event_target_task_runner_);
 }
 
+PlatformRendererImpl *NativePaintingCtxPlatformRef::GetPlatformRenderer(
+    int32_t sign) const {
+  auto it = renderers_.find(sign);
+  return it != renderers_.end()
+             ? static_cast<PlatformRendererImpl *>(it->second.get())
+             : nullptr;
+}
+
 void NativePaintingCtxPlatformRef::CreatePlatformRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle> &init_data,
     const PlatformRendererInitConfig &init_config) {
   if (destroyed_.load(std::memory_order_acquire)) {
     return;
   }
-  renderers_.insert_or_assign(
-      id, view_factory_->CreateRenderer(id, type, init_data, init_config));
+  auto renderer =
+      view_factory_->CreateRenderer(id, type, init_data, init_config);
+  if (renderer) {
+    static_cast<PlatformRendererImpl *>(renderer.get())
+        ->SetTagInfo(init_config.tag_info);
+  }
+  renderers_.insert_or_assign(id, std::move(renderer));
 }
 
 void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
@@ -62,8 +75,13 @@ void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
   if (destroyed_.load(std::memory_order_acquire)) {
     return;
   }
-  renderers_.insert_or_assign(id, view_factory_->CreateExtendedRenderer(
-                                      id, tag_name, init_data, init_config));
+  auto renderer = view_factory_->CreateExtendedRenderer(id, tag_name, init_data,
+                                                        init_config);
+  if (renderer) {
+    static_cast<PlatformRendererImpl *>(renderer.get())
+        ->SetTagInfo(init_config.tag_info);
+  }
+  renderers_.insert_or_assign(id, std::move(renderer));
 }
 
 void NativePaintingCtxPlatformRef::UpdateDisplayList(
@@ -141,7 +159,6 @@ void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
     it_child->second->RemoveFromParent();
     renderers_.erase(child);
   }
-  event_target_helper_->InvalidateScrollContainerCache(child);
   platform_event_bundles_.erase(child);
   text_event_target_ranges_.erase(child);
 }
@@ -316,7 +333,7 @@ void NativePaintingCtxPlatformRef::RequestInputFocus(
   int32_t event_root = input_focused_event_root_;
   if (focused) {
     event_root = 0;
-    if (EnsureEventTargetTreeForTarget(anchor_sign, false)) {
+    if (EnsureEventTargetTreeForTarget(anchor_sign)) {
       auto target = event_target_helper_->GetEventTarget(anchor_sign);
       if (target) {
         event_root = target->RootId();
@@ -531,8 +548,7 @@ void NativePaintingCtxPlatformRef::ScheduleEnsureEventTargetTree(
 }
 
 fml::RefPtr<PlatformEventTarget>
-NativePaintingCtxPlatformRef::EnsureEventTargetTree(
-    int32_t root_id, bool refresh_scroll_offsets) {
+NativePaintingCtxPlatformRef::EnsureEventTargetTree(int32_t root_id) {
   if (root_id != kRootId && !event_target_helper_->IsActiveEventRoot(root_id)) {
     return nullptr;
   }
@@ -545,9 +561,6 @@ NativePaintingCtxPlatformRef::EnsureEventTargetTree(
   auto requested_tree = event_target_helper_->GetEventRootTree(root_id);
   if (requested_tree == nullptr || IsEventTargetRootDirty(root_id)) {
     return ReconstructEventTargetTreeForRoot(root_id);
-  }
-  if (refresh_scroll_offsets) {
-    event_target_helper_->RefreshScrollOffsets(requested_tree);
   }
   return requested_tree;
 }
@@ -572,22 +585,21 @@ NativePaintingCtxPlatformRef::ReconstructEventTargetTreeForRoot(
   auto tree = event_target_helper_->ReconstructEventTargetTreeRecursively(
       fml::static_ref_ptr_cast<PlatformRendererImpl>(renderer_it->second));
   ClearEventTargetRootDirty(root_id);
-  event_target_helper_->RefreshScrollOffsets(tree);
   event_target_exposure_->InvalidateWindowRect();
   event_target_exposure_->DidRebuildExposureTargetMap();
   return tree;
 }
 
 bool NativePaintingCtxPlatformRef::EnsureEventTargetTreeForTarget(
-    int32_t target_id, bool refresh_scroll_offsets) {
-  if (EnsureEventTargetTree(kRootId, refresh_scroll_offsets) == nullptr) {
+    int32_t target_id) {
+  if (EnsureEventTargetTree(kRootId) == nullptr) {
     return false;
   }
   auto target = event_target_helper_->GetEventTarget(target_id);
   if (target != nullptr) {
     const auto root_id = target->RootId();
     if (root_id != kRootId) {
-      EnsureEventTargetTree(root_id, refresh_scroll_offsets);
+      EnsureEventTargetTree(root_id);
     }
     target = event_target_helper_->GetEventTarget(target_id);
     if (target != nullptr &&
@@ -596,7 +608,7 @@ bool NativePaintingCtxPlatformRef::EnsureEventTargetTreeForTarget(
     }
   }
   for (auto root_id : event_target_helper_->GetActiveEventRootIds()) {
-    EnsureEventTargetTree(root_id, refresh_scroll_offsets);
+    EnsureEventTargetTree(root_id);
     if (event_target_helper_->GetEventTarget(target_id) != nullptr) {
       return true;
     }
@@ -675,9 +687,6 @@ NativePaintingCtxPlatformRef::CollectMeaningfulPaintingAreaRecords() {
   }
   for (const auto root_id : active_root_ids) {
     EnsureEventTargetTree(root_id);
-  }
-  for (const auto &it : event_target_helper_->GetEventRootTrees()) {
-    event_target_helper_->RefreshScrollOffsets(it.second);
   }
 
   std::vector<int32_t> flattened;

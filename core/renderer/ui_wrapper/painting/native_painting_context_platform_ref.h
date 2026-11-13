@@ -41,6 +41,7 @@ class Event;
 namespace tasm {
 
 class PlatformEventTargetExposure;
+class PlatformRendererImpl;
 
 class NativePaintingCtxPlatformRef
     : public PaintingCtxPlatformRef,
@@ -149,11 +150,9 @@ class NativePaintingCtxPlatformRef
     auto it = text_event_target_ranges_.find(text_sign);
     return it != text_event_target_ranges_.end() ? &it->second : nullptr;
   }
-  // Ensure the event target tree for the given root is available. It rebuilds
-  // only when the cached tree is missing or dirty, and refreshes scroll
-  // offsets.
-  fml::RefPtr<PlatformEventTarget> EnsureEventTargetTree(
-      int32_t root_id, bool refresh_scroll_offsets = true);
+  // Ensure the event target tree is available, rebuilding only if missing or
+  // dirty. Event targets read native geometry directly from their renderers.
+  fml::RefPtr<PlatformEventTarget> EnsureEventTargetTree(int32_t root_id);
   void ScheduleEnsureEventTargetTree(int32_t root_id);
   bool HasScheduledEventTargetTreeUpdate() const {
     return scheduled_event_target_tree_update_.load();
@@ -194,16 +193,14 @@ class NativePaintingCtxPlatformRef
   // Get the size of the screen.
   virtual void GetScreenSize(float size[2]) {}
 
-  // Get the scroll offset of the platform renderer host.
-  virtual void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) {}
+  // Look up only live renderer hosts; event targets may share a host or outlive
+  // it.
+  PlatformRendererImpl *GetPlatformRenderer(int32_t sign) const;
 
   virtual PlatformTextEventTargetRegions GetTextEventTargetRegions(
       int32_t text_id) {
     return {};
   }
-
-  // Whether the platform renderer host is scrollable.
-  virtual bool IsPlatformRendererScrollable(int32_t sign) { return false; }
 
   bool IsNativePaintingCtxPlatformRef() override { return true; }
 
@@ -229,8 +226,7 @@ class NativePaintingCtxPlatformRef
 
   void RebuildSubLayers(const fml::RefPtr<PlatformRenderer> &renderer,
                         const base::InlineVector<int, 16> &new_children);
-  bool EnsureEventTargetTreeForTarget(int32_t target_id,
-                                      bool refresh_scroll_offsets = true);
+  bool EnsureEventTargetTreeForTarget(int32_t target_id);
   int32_t GetEventTargetRootIdForRenderer(int32_t renderer_id);
   void MarkEventTargetTreeDirty(int32_t renderer_id);
   void MarkEventTargetRootDirty(int32_t root_id);

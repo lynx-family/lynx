@@ -15,6 +15,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.PropsConstants;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
+import com.lynx.tasm.utils.ContextUtils;
 
 public class Renderer {
   private static final String TAG = "NativeUIRenderer.Renderer";
@@ -83,8 +84,42 @@ public class Renderer {
     mNativeInteractionEnabled = context != null && context.getEnableNativeInteraction();
   }
 
+  private final View.OnLayoutChangeListener mPlatformLayoutListener =
+      (view, l, t, r, b, oldL, oldT, oldR, oldB) -> notifyPlatformStateChanged();
+
   void setRenderHost(IRendererHost renderHost) {
+    if (mRenderHost != null && mRenderHost.getView() != null) {
+      mRenderHost.getView().removeOnLayoutChangeListener(mPlatformLayoutListener);
+    }
     mRenderHost = renderHost;
+    if (renderHost != null && renderHost.getView() != null) {
+      renderHost.getView().addOnLayoutChangeListener(mPlatformLayoutListener);
+    }
+  }
+
+  public void notifyPlatformStateChanged() {
+    mPlatformRendererContext.onPlatformStateChanged(mSign);
+  }
+
+  // Native components can contain internal scrolling views without their own renderer.
+  public static void notifyPlatformStateChanged(View view) {
+    if (view == null) {
+      return;
+    }
+    LynxContext context = ContextUtils.toLynxContext(view.getContext());
+    if (context != null && !context.isFragmentLayerRenderOn()) {
+      return;
+    }
+    while (view != null) {
+      if (view instanceof IRendererHost) {
+        Renderer renderer = ((IRendererHost) view).getRenderer();
+        if (renderer != null) {
+          renderer.notifyPlatformStateChanged();
+          return;
+        }
+      }
+      view = view.getParent() instanceof View ? (View) view.getParent() : null;
+    }
   }
 
   public IRendererHost getRendererHost() {
@@ -308,6 +343,9 @@ public class Renderer {
 
   public void updateExtraData(Object extraData) {}
   public void onDestroy() {
+    if (mRenderHost != null && mRenderHost.getView() != null) {
+      mRenderHost.getView().removeOnLayoutChangeListener(mPlatformLayoutListener);
+    }
     mDisplayListApplier = null;
     mDisplayListItemsBuffer = null;
     mDisplayListDataBuffer = null;

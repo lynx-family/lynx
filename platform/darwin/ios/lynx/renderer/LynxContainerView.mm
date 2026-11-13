@@ -21,6 +21,11 @@
   return [[LynxRenderer alloc] initWithRenderHost:self andSign:sign andContext:context];
 }
 
+- (void)layoutSubviews {
+  [super layoutSubviews];
+  [self.renderer notifyPlatformStateChanged];
+}
+
 - (UIView*)view {
   return self;
 }

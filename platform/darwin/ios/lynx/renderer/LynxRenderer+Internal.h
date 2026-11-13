@@ -7,6 +7,8 @@
 
 @interface LynxRenderer ()
 
+@property(nonatomic, copy) dispatch_block_t platformStateChanged;
+
 - (void)updateDisplayList:(lynx::tasm::DisplayList *)list;
 
 - (lynx::tasm::DisplayList *)getDisplayList;

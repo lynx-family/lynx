@@ -139,8 +139,9 @@ class RecordingFragmentBehavior : public FragmentBehavior {
 
 class TestPlatformRenderer : public PlatformRendererImpl {
  public:
-  TestPlatformRenderer(int id, PlatformRendererType type)
-      : PlatformRendererImpl(id, type, base::String()) {}
+  TestPlatformRenderer(int id, PlatformRendererType type,
+                       const base::String& tag = base::String())
+      : PlatformRendererImpl(id, type, tag) {}
 
   void OnRebuildSubRenderers() override { ++rebuild_count; }
   int rebuild_count = 0;
@@ -268,20 +269,10 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
 
   void ApplyListScrollState(int32_t sign, float scroll_x, float scroll_y, float,
                             float, bool) override {
-    scroll_offsets[sign] = {scroll_x, scroll_y};
-  }
-
-  void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override {
-    auto it = scroll_offsets.find(sign);
-    if (it == scroll_offsets.end()) {
-      return;
+    if (auto* renderer =
+            static_cast<TestPlatformRenderer*>(GetPlatformRenderer(sign))) {
+      renderer->UpdatePlatformState({false, {}, {scroll_x, scroll_y}});
     }
-    offset[0] = it->second[0];
-    offset[1] = it->second[1];
-  }
-
-  bool IsPlatformRendererScrollable(int32_t sign) override {
-    return scrollable_signs.count(sign) > 0;
   }
 
   bool GetRootViewLocationInWindow(float location[2]) override {
@@ -317,8 +308,6 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
     event_target_task_runner_ = fml::MessageLoop::GetCurrent().GetTaskRunner();
   }
 
-  std::unordered_map<int32_t, std::array<float, 2>> scroll_offsets;
-  std::unordered_set<int32_t> scrollable_signs;
   std::array<float, 2> root_view_location{0.f, 0.f};
   bool root_view_in_window{true};
   std::unordered_map<int32_t, PlatformTextEventTargetRegions>
@@ -3781,8 +3770,7 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   TestNativePaintingCtxPlatformRef platform_ref;
   platform_ref.renderers_.insert_or_assign(kRootId, root_renderer);
   platform_ref.renderers_.insert_or_assign(1, scroll_renderer);
-  platform_ref.scrollable_signs.insert(1);
-  platform_ref.scroll_offsets[1] = {0.f, 0.f};
+  scroll_renderer->UpdatePlatformState({false, {}, {0.f, 0.f}, true});
 
   auto root_target = platform_ref.ReconstructEventTargetTreeRecursively();
   ASSERT_NE(root_target, nullptr);
@@ -3792,13 +3780,307 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   ASSERT_NE(hit_target, nullptr);
   EXPECT_EQ(hit_target->Sign(), 1);
 
-  platform_ref.scroll_offsets[1] = {0.f, 30.f};
+  scroll_renderer->UpdatePlatformState({false, {}, {0.f, 30.f}, true});
   auto reused_root = platform_ref.ReconstructEventTargetTreeRecursively();
 
   EXPECT_EQ(root_target.get(), reused_root.get());
   hit_target = reused_root->HitTest(point);
   ASSERT_NE(hit_target, nullptr);
   EXPECT_EQ(hit_target->Sign(), 2);
+}
+
+TEST_F(FragmentTest, NativePagerPositionsOverrideStackedDisplayListPositions) {
+  auto pager = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kExtended, base::String("viewpager"));
+  pager->SetTagInfo(manager->GetNodeInfoByTag(base::String("viewpager")));
+  DisplayListBuilder pager_builder;
+  pager_builder.Begin(kRootId, PlatformRendererType::kExtended, 0.f, 0.f, 100.f,
+                      80.f);
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.renderers_.insert_or_assign(kRootId, pager);
+  pager->UpdatePlatformState({false, {}, {0.f, 0.f}, true});
+  for (int i = 0; i < 3; ++i) {
+    const int page_id = i + 1;
+    auto page = fml::MakeRefCounted<TestPlatformRenderer>(
+        page_id, PlatformRendererType::kExtended,
+        base::String("viewpager-item"));
+    page->SetTagInfo(manager->GetNodeInfoByTag(base::String("viewpager-item")));
+    DisplayListBuilder page_builder;
+    page_builder
+        .Begin(page_id, PlatformRendererType::kExtended, 0.f, i * 80.f, 100.f,
+               80.f)
+        .Begin(10 + i, PlatformRendererType::kView, 20.f, 20.f, 40.f, 30.f)
+        .End()
+        .End();
+    page->UpdateDisplayList(page_builder.Build());
+    pager->AddChild(page);
+    pager_builder.DrawView(page_id, 0.f, i * 80.f);
+    platform_ref.renderers_.insert_or_assign(page_id, page);
+  }
+  pager_builder.End();
+  pager->UpdateDisplayList(pager_builder.Build());
+  auto root = platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(root, nullptr);
+
+  auto* helper = platform_ref.GetEventTargetHelper();
+  EXPECT_FLOAT_EQ(helper->GetEventTarget(2)->Left(), 0.f);
+  EXPECT_FLOAT_EQ(helper->GetEventTarget(2)->Top(), 80.f);
+  for (int i = 0; i < 3; ++i) {
+    auto* page = static_cast<TestPlatformRenderer*>(
+        platform_ref.GetPlatformRenderer(i + 1));
+    page->UpdatePlatformState({true, {i * 100.f, 0.f}});
+  }
+  for (int i = 0; i < 3; ++i) {
+    pager->UpdatePlatformState({false, {}, {i * 100.f, 0.f}, true});
+    auto reused_root = platform_ref.ReconstructEventTargetTreeRecursively();
+    EXPECT_EQ(root.get(), reused_root.get());
+    float point[2] = {30.f, 30.f};
+    auto target = reused_root->HitTest(point);
+    ASSERT_NE(target, nullptr);
+    EXPECT_EQ(target->Sign(), 10 + i);
+    float local[2];
+    EXPECT_TRUE(helper->ConvertPointFromAncestorToDescendant(local, reused_root,
+                                                             target, point));
+    EXPECT_FLOAT_EQ(local[0], 10.f);
+    EXPECT_FLOAT_EQ(local[1], 10.f);
+    float converted[2];
+    helper->ConvertPointFromDescendantToAncestor(converted, target, reused_root,
+                                                 local);
+    EXPECT_FLOAT_EQ(converted[0], point[0]);
+    EXPECT_FLOAT_EQ(converted[1], point[1]);
+  }
+}
+
+TEST_F(FragmentTest,
+       PlatformPositionTagInfoPreservesPlatformBitsAndCachesClassification) {
+  auto* context = static_cast<MockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+  constexpr int32_t platform_info =
+      LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL | 0x10000 | 0x20000;
+  const std::pair<const char*, int32_t> cases[] = {
+      {"scroll-coordinator", kTagInfoPlatformPositionChildren},
+      {"x-foldview-ng", kTagInfoPlatformPositionChildren},
+      {"refresh", kTagInfoPlatformPositionChildren},
+      {"x-refresh-view", kTagInfoPlatformPositionChildren},
+      {"swiper", kTagInfoPlatformPositionChildren},
+      {"x-swiper", kTagInfoPlatformPositionChildren},
+      {"viewpager", kTagInfoPlatformPositionPager},
+      {"x-viewpager-ng", kTagInfoPlatformPositionPager},
+      {"viewpager-item", kTagInfoPlatformPositionPagerItem},
+      {"x-viewpager-item-ng", kTagInfoPlatformPositionPagerItem},
+      {"svg", 0},
+      {"view", 0}};
+  for (const auto& [tag, flag] : cases) {
+    SCOPED_TRACE(tag);
+    const base::String tag_name(tag);
+    manager->node_info_recorder_.erase(tag_name);
+    context->mock_virtuality_map[tag] = platform_info;
+    EXPECT_EQ(manager->GetNodeInfoByTag(tag_name), platform_info | flag);
+    // Changing the platform response must not affect the already cached result.
+    context->mock_virtuality_map[tag] = LayoutNodeType::COMMON;
+    EXPECT_EQ(manager->GetNodeInfoByTag(tag_name), platform_info | flag);
+  }
+}
+
+TEST_F(FragmentTest, PlatformPositionTagInfoReachesRendererThroughInitConfig) {
+  auto element = manager->CreateFiberNode(base::String("viewpager"));
+  Fragment fragment(element.get());
+  auto behavior = std::make_unique<RecordingFragmentBehavior>(&fragment);
+  auto* recording = behavior.get();
+  fragment.SetBehavior(std::move(behavior));
+  ASSERT_TRUE(fragment.CreateLayerIfNeeded(nullptr));
+  EXPECT_NE(recording->init_config_.tag_info & kTagInfoPlatformPositionPager,
+            0);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.CreatePlatformExtendedRenderer(1, base::String("viewpager"),
+                                              nullptr, recording->init_config_);
+  platform_ref.CreatePlatformRenderer(2, PlatformRendererType::kView, nullptr,
+                                      recording->init_config_);
+  for (int id : {1, 2}) {
+    EXPECT_EQ(
+        static_cast<PlatformRendererImpl*>(platform_ref.renderers_[id].get())
+            ->GetTagInfo(),
+        recording->init_config_.tag_info);
+  }
+}
+
+struct PlatformPositionTestTree {
+  TestNativePaintingCtxPlatformRef platform_ref;
+  fml::RefPtr<TestPlatformRenderer> parent, child;
+
+  explicit PlatformPositionTestTree(
+      PlatformRendererType type = PlatformRendererType::kExtended,
+      int32_t root_id = kRootId, float x = 0.f, float y = 0.f)
+      : parent(fml::MakeRefCounted<TestPlatformRenderer>(
+            root_id, PlatformRendererType::kExtended)),
+        child(fml::MakeRefCounted<TestPlatformRenderer>(1, type)) {
+    parent->SetTagInfo(kTagInfoPlatformPositionChildren);
+    parent->AddChild(child);
+    DisplayListBuilder parent_builder, child_builder;
+    parent_builder
+        .Begin(root_id, PlatformRendererType::kExtended, x, y, 200.f, 200.f)
+        .DrawView(1, 0.f, 0.f)
+        .End();
+    child_builder.Begin(1, type, 0.f, 0.f, 20.f, 20.f)
+        .Begin(2, PlatformRendererType::kView, 0.f, 0.f, 10.f, 10.f)
+        .End()
+        .End();
+    parent->UpdateDisplayList(parent_builder.Build());
+    child->UpdateDisplayList(child_builder.Build());
+    platform_ref.renderers_.insert_or_assign(root_id, parent);
+    platform_ref.renderers_.insert_or_assign(1, child);
+  }
+};
+
+TEST_F(FragmentTest, PlatformPositionConsumersUsePublishedState) {
+  PlatformPositionTestTree tree;
+  tree.parent->SetTagInfo(kTagInfoPlatformPositionPager);
+  EXPECT_FALSE(tree.child->NeedsPlatformPosition());
+  tree.child->SetTagInfo(kTagInfoPlatformPositionPagerItem);
+  EXPECT_TRUE(tree.child->NeedsPlatformPosition());
+  // An inline target must not query an unrelated renderer with the same sign.
+  auto inline_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      2, PlatformRendererType::kExtended);
+  inline_renderer->SetTagInfo(kTagInfoPlatformPositionPagerItem);
+  inline_renderer->UpdatePlatformState({true, {90.f, 90.f}});
+  tree.parent->AddChild(inline_renderer);
+  tree.platform_ref.renderers_.insert_or_assign(2, inline_renderer);
+  auto root = tree.platform_ref.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(root, nullptr);
+
+  // A producer publishes a new position without rebuilding the event tree.
+  tree.child->UpdatePlatformState({true, {20.f, 30.f}});
+  EXPECT_EQ(tree.platform_ref.EnsureEventTargetTree(kRootId), root);
+
+  auto* helper = tree.platform_ref.GetEventTargetHelper();
+  EXPECT_FLOAT_EQ(helper->GetEventTarget(1)->Top(), 30.f);
+  EXPECT_FLOAT_EQ(helper->GetEventTarget(2)->Top(), 0.f);
+
+  PlatformPositionTestTree ordinary;
+  ordinary.parent->SetTagInfo(0);
+  ordinary.child->RemoveFromParent();
+  tree.child->RemoveFromParent();
+  ordinary.parent->AddChild(tree.child);
+  tree.platform_ref.renderers_.insert_or_assign(kRootId, ordinary.parent);
+  tree.platform_ref.MarkEventTargetRootDirty(kRootId);
+  tree.platform_ref.EnsureEventTargetTree(kRootId);
+  EXPECT_FALSE(tree.child->NeedsPlatformPosition());
+
+  EXPECT_FLOAT_EQ(helper->GetEventTarget(1)->Top(), 0.f);
+}
+
+TEST_F(FragmentTest,
+       PlatformStatePublicationReplacesCachedGeometryAndScrollableState) {
+  PlatformPositionTestTree tree;
+  // Consumers accept published state even for a component without tag metadata.
+  tree.parent->SetTagInfo(0);
+  PlatformRendererState state{true, {40.f, 50.f}, {3.f, 4.f}, true};
+  tree.child->UpdatePlatformState(state);
+  auto root = tree.platform_ref.EnsureEventTargetTree(kRootId);
+  auto* helper = tree.platform_ref.GetEventTargetHelper();
+  auto target = helper->GetEventTarget(1);
+  ASSERT_NE(target, nullptr);
+  EXPECT_FLOAT_EQ(target->Top(), 50.f);
+  EXPECT_TRUE(target->IsScrollContainer());
+  EXPECT_FLOAT_EQ(target->ScrollOffsetY(), 4.f);
+
+  // Changing native fields has no effect until the producer publishes them.
+  state = {true, {0.f, 0.f}, {0.f, 0.f}, false};
+  tree.platform_ref.EnsureEventTargetTree(kRootId);
+  EXPECT_FLOAT_EQ(target->Top(), 50.f);
+  EXPECT_TRUE(target->IsScrollContainer());
+  tree.child->UpdatePlatformState(state);
+  EXPECT_FLOAT_EQ(target->Top(), 0.f);
+  EXPECT_FLOAT_EQ(target->ScrollOffsetY(), 0.f);
+  EXPECT_FALSE(target->IsScrollContainer());
+  EXPECT_EQ(tree.platform_ref.EnsureEventTargetTree(kRootId), root);
+
+  tree.child->UpdatePlatformState({true, {40.f, 50.f}});
+  tree.child->ClearPlatformState();
+  EXPECT_FLOAT_EQ(target->Top(), 0.f);
+}
+
+TEST_F(FragmentTest, PlatformStateWeakReferenceExpiresWithRenderer) {
+  PlatformPositionTestTree tree;
+  tree.child->UpdatePlatformState({true, {40.f, 50.f}, {3.f, 4.f}, true});
+  auto root = tree.platform_ref.EnsureEventTargetTree(kRootId);
+  auto target = tree.platform_ref.GetEventTargetHelper()->GetEventTarget(1);
+  ASSERT_NE(root, nullptr);
+  ASSERT_NE(target, nullptr);
+  auto weak_renderer = tree.child->WeakFromThis();
+  EXPECT_FLOAT_EQ(target->Left(), 40.f);
+  EXPECT_FLOAT_EQ(target->ScrollOffsetY(), 4.f);
+
+  tree.platform_ref.DestroyPaintingNode(kRootId, 1, 0);
+  tree.child = nullptr;
+  EXPECT_FALSE(weak_renderer);
+  EXPECT_FLOAT_EQ(target->Left(), 0.f);
+  EXPECT_FLOAT_EQ(target->Top(), 0.f);
+  EXPECT_FLOAT_EQ(target->ScrollOffsetX(), 0.f);
+  EXPECT_FLOAT_EQ(target->ScrollOffsetY(), 0.f);
+  EXPECT_FALSE(target->IsScrollContainer());
+
+  // A cached target must not adopt a different renderer reusing the same sign.
+  auto replacement = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kExtended);
+  replacement->UpdatePlatformState({true, {80.f, 90.f}, {9.f, 10.f}, true});
+  tree.platform_ref.renderers_.insert_or_assign(1, replacement);
+  EXPECT_FLOAT_EQ(target->Left(), 0.f);
+  EXPECT_FLOAT_EQ(target->Top(), 0.f);
+  EXPECT_FLOAT_EQ(target->ScrollOffsetY(), 0.f);
+  EXPECT_FALSE(target->IsScrollContainer());
+}
+
+TEST_F(FragmentTest, PlatformPositionRefreshSupportsViewAndListHosts) {
+  for (auto type : {PlatformRendererType::kView, PlatformRendererType::kList}) {
+    SCOPED_TRACE(static_cast<int>(type));
+    PlatformPositionTestTree tree(type);
+    tree.child->UpdatePlatformState({true, {40.f, 50.f}});
+    auto root = tree.platform_ref.ReconstructEventTargetTreeRecursively();
+    ASSERT_NE(root, nullptr);
+    for (int i = 0; i < 2; ++i) {
+      float point[2] = {45.f + i * 40.f, 55.f + i * 40.f};
+      auto hit = root->HitTest(point);
+      ASSERT_NE(hit, nullptr);
+      EXPECT_EQ(hit->Sign(), 2);
+
+      if (i == 0) {
+        tree.child->UpdatePlatformState({true, {80.f, 90.f}});
+        EXPECT_EQ(tree.platform_ref.EnsureEventTargetTree(kRootId), root);
+        hit = root->HitTest(point);
+        ASSERT_NE(hit, nullptr);
+        EXPECT_EQ(hit->Sign(), kRootId);
+      }
+    }
+  }
+}
+
+TEST_F(FragmentTest, PlatformPositionRefreshExcludesIndependentEventRoot) {
+  constexpr int32_t kIndependentRootId = 20;
+  PlatformPositionTestTree tree(PlatformRendererType::kExtended,
+                                kIndependentRootId, 30.f, 40.f);
+  auto outer = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kExtended);
+  outer->SetTagInfo(kTagInfoPlatformPositionChildren);
+  outer->AddChild(tree.parent);
+  tree.parent->UpdatePlatformState({true, {100.f, 200.f}});
+  tree.child->UpdatePlatformState({true, {7.f, 9.f}});
+  ASSERT_TRUE(tree.parent->NeedsPlatformPosition());
+  tree.platform_ref.renderers_.insert_or_assign(kRootId, outer);
+  tree.platform_ref.SetPlatformEventRootActive(kIndependentRootId, true);
+  auto root = tree.platform_ref.EnsureEventTargetTree(kIndependentRootId);
+  ASSERT_NE(root, nullptr);
+  auto* helper = tree.platform_ref.GetEventTargetHelper();
+  auto child = helper->GetEventTarget(1);
+  ASSERT_NE(child, nullptr);
+  EXPECT_EQ(tree.platform_ref.EnsureEventTargetTree(kIndependentRootId), root);
+  EXPECT_FLOAT_EQ(root->Left(), 30.f);
+  EXPECT_FLOAT_EQ(root->Top(), 40.f);
+  float point[2] = {1.f, 2.f}, page_point[2];
+  helper->ConvertPointFromTargetToPageRootTarget(page_point, child, point);
+  EXPECT_FLOAT_EQ(page_point[0], 38.f);
+  EXPECT_FLOAT_EQ(page_point[1], 51.f);
 }
 
 TEST_F(FragmentTest, PlatformEventTargetHitTestAccountsForTransform) {

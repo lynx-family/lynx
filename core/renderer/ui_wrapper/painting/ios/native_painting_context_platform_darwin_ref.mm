@@ -20,6 +20,7 @@
 #import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTextRenderManager.h>
 #import <Lynx/LynxTextRenderer.h>
+#import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIListContainer+Internal.h>
 #import <Lynx/LynxUIOwner.h>
@@ -218,27 +219,6 @@ void NativePaintingCtxPlatformDarwinRef::UpdateContentOffsetForListContainer(
                                    contentSize:content_size
                                         deltaX:delta_x
                                         deltaY:delta_y];
-}
-
-void NativePaintingCtxPlatformDarwinRef::GetPlatformRendererScrollOffset(int32_t sign,
-                                                                         float offset[2]) {
-  if (offset == nullptr) {
-    return;
-  }
-  offset[0] = 0.f;
-  offset[1] = 0.f;
-
-  UIView* view = GetPlatformRendererView(sign);
-  if ([view isKindOfClass:[UIScrollView class]]) {
-    const auto content_offset = ((UIScrollView*)view).contentOffset;
-    offset[0] = content_offset.x;
-    offset[1] = content_offset.y;
-  }
-}
-
-bool NativePaintingCtxPlatformDarwinRef::IsPlatformRendererScrollable(int32_t sign) {
-  UIView* view = GetPlatformRendererView(sign);
-  return [view isKindOfClass:[UIScrollView class]];
 }
 
 bool NativePaintingCtxPlatformDarwinRef::RequestRootFocus(int32_t root_id, bool focused) {

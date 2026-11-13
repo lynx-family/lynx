@@ -33,10 +33,7 @@ class PlatformEventTargetHelper {
   fml::RefPtr<PlatformEventTarget> GetRootEventTarget();
   fml::RefPtr<PlatformEventTarget> GetEventTarget(int32_t id);
   const auto& GetEventTargets() const { return event_targets_; }
-  void RefreshScrollOffsets();
-  void RefreshScrollOffsets(const fml::RefPtr<PlatformEventTarget>& root);
   void ClearEventTargets();
-  void InvalidateScrollContainerCache(int32_t sign);
   // Remove cached targets belonging to an event root.
   void RemoveEventTargetsInEventRoot(int32_t root_id);
   bool IsActiveEventRoot(int32_t root_id) const;
@@ -144,21 +141,16 @@ class PlatformEventTargetHelper {
   // Uses the same coordinate units as the display list and pointer events:
   // physical pixels on Android, points on iOS, and vp on Harmony.
   void GetScreenSize(float size[2]);
-  void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]);
 
   void InvokeMethod(
       int32_t id, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
 
  private:
-  bool IsScrollContainer(PlatformRendererType type, int32_t sign);
-
   void ApplyEventBundle(const fml::RefPtr<PlatformEventTarget>& target,
                         const PlatformEventBundle* bundle);
   void AppendInlineTextEventTargets(
       const fml::RefPtr<PlatformEventTarget>& text_target);
-  void RefreshScrollOffsetsRecursively(
-      const fml::RefPtr<PlatformEventTarget>& target);
   fml::RefPtr<PlatformEventTarget> GetTreeRoot(
       const fml::RefPtr<PlatformEventTarget>& target);
   fml::RefPtr<PlatformEventTarget> ReconstructEventTargetTreeRecursively(
@@ -188,9 +180,6 @@ class PlatformEventTargetHelper {
   // Derived from LynxEnvConfig's final page screen width, not the physical
   // screen bounds used by exposure. Updated through the UI operation queue.
   float layouts_unit_per_rpx_{0.f};
-  // Keep platform query results across event-tree rebuilds until the renderer
-  // is destroyed. Cache both scrollable and non-scrollable hosts.
-  std::unordered_map<int32_t, bool> scroll_container_cache_;
 };
 
 }  // namespace tasm

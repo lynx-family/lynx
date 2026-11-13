@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxGlobalObserver.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/UIView+Lynx.h>
 #import <XElement/LynxUIViewPager.h>
@@ -70,6 +71,7 @@ static const NSInteger kInvalidViewPagerIndex = -1;
   }
   [super layoutSubviews];
   [self.uiDelegate didLayoutSubviews:self];
+  [(LynxUIViewPager *)self.uiDelegate notifyRendererPlatformStateChanged];
   if (self.uiDelegate.disableImplicitAnimation) {
     [CATransaction commit];
   }
@@ -526,6 +528,7 @@ static const NSInteger kInvalidViewPagerIndex = -1;
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+  [self notifyRendererPlatformStateChanged];
   // Notify viewpager did scroll.
   [self.context.observer notifyScroll:nil];
   if (self.ignoreScrollEvent) {

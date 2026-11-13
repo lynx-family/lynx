@@ -538,23 +538,9 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTargetHelper::GetEventTarget(
   return nullptr;
 }
 
-void PlatformEventTargetHelper::RefreshScrollOffsets() {
-  RefreshScrollOffsets(GetRootEventTarget());
-}
-
-void PlatformEventTargetHelper::RefreshScrollOffsets(
-    const fml::RefPtr<PlatformEventTarget>& root) {
-  RefreshScrollOffsetsRecursively(root);
-}
-
 void PlatformEventTargetHelper::ClearEventTargets() {
   event_targets_.clear();
   event_target_trees_.clear();
-  scroll_container_cache_.clear();
-}
-
-void PlatformEventTargetHelper::InvalidateScrollContainerCache(int32_t sign) {
-  scroll_container_cache_.erase(sign);
 }
 
 void PlatformEventTargetHelper::RemoveEventTargetsInEventRoot(int32_t root_id) {
@@ -635,39 +621,6 @@ void PlatformEventTargetHelper::SetEventRootTree(
   event_target_trees_.insert_or_assign(root_id, root);
 }
 
-void PlatformEventTargetHelper::RefreshScrollOffsetsRecursively(
-    const fml::RefPtr<PlatformEventTarget>& target) {
-  if (target == nullptr) {
-    return;
-  }
-  target->RefreshScrollOffset();
-  for (const auto& child : target->ChildrenTargets()) {
-    RefreshScrollOffsetsRecursively(child);
-  }
-}
-
-bool PlatformEventTargetHelper::IsScrollContainer(PlatformRendererType type,
-                                                  int32_t sign) {
-  switch (type) {
-    case PlatformRendererType::kScroll:
-    case PlatformRendererType::kList:
-      return true;
-    case PlatformRendererType::kExtended: {
-      if (auto it = scroll_container_cache_.find(sign);
-          it != scroll_container_cache_.end()) {
-        return it->second;
-      }
-      const bool is_scroll_container =
-          platform_ref_ != nullptr &&
-          platform_ref_->IsPlatformRendererScrollable(sign);
-      scroll_container_cache_.emplace(sign, is_scroll_container);
-      return is_scroll_container;
-    }
-    default:
-      return false;
-  }
-}
-
 fml::RefPtr<PlatformEventTarget>
 PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
     fml::RefPtr<PlatformRendererImpl> page_renderer) {
@@ -715,7 +668,9 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
             this, tree_root_id, sign, begin.x, begin.y, begin.w, begin.h);
         event_target->SetRendererHostSign(page_renderer->GetId());
         event_target->SetPlatformRendererType(type);
-        event_target->SetScrollContainer(IsScrollContainer(type, sign));
+        if (sign == page_renderer->GetId()) {
+          event_target->SetPlatformRenderer(page_renderer->WeakFromThis());
+        }
         event_target->SetOverflow(begin.overflow_x != 0, begin.overflow_y != 0);
         event_target->SetLayoutOnly(begin.is_layout_only != 0);
         ApplyEventBundle(event_target,
@@ -1184,11 +1139,6 @@ void PlatformEventTargetHelper::GetScreenSize(float size[2]) {
 
 void PlatformEventTargetHelper::GetRootViewLocationOnScreen(float location[2]) {
   platform_ref_->GetRootViewLocationOnScreen(location);
-}
-
-void PlatformEventTargetHelper::GetPlatformRendererScrollOffset(
-    int32_t sign, float offset[2]) {
-  platform_ref_->GetPlatformRendererScrollOffset(sign, offset);
 }
 
 void PlatformEventTargetHelper::InvokeMethod(

@@ -110,6 +110,87 @@ void PlatformRendererHarmony::CleanupRenderer() {
   host_.reset();
 }
 
+void PlatformRendererHarmony::SyncPlatformState() {
+  PlatformRendererState state;
+  auto* ui_owner = context_ ? context_->GetUIOwner() : nullptr;
+  auto* ui = ui_owner && !ui_owner->Destroyed() ? ui_owner->FindUIBySign(id_)
+                                                : nullptr;
+  if (ui) {
+    if (NeedsPlatformPosition()) {
+      state.has_position = ReadPlatformPosition(ui, state.position);
+    }
+    state.scroll_offset[0] = ui->ScrollX();
+    state.scroll_offset[1] = ui->ScrollY();
+    state.scrollable = ui->IsScrollable();
+  }
+  UpdatePlatformState(state);
+}
+
+bool PlatformRendererHarmony::ReadPlatformPosition(harmony::UIBase* ui,
+                                                   float position[2]) {
+  auto* parent = ui->Parent();
+  if (parent == nullptr) {
+    return false;
+  }
+  const bool is_swiper_item =
+      (ui->Tag() == "swiper-item" || ui->Tag() == "x-swiper-item") &&
+      parent->Tag() == "x-swiper";
+  if (parent->Tag() == "refresh" || parent->Tag() == "x-refresh-view" ||
+      is_swiper_item) {
+    const float density = ui->GetContext()->ScaledDensity();
+    ArkUI_IntOffset child_offset{0, 0};
+    ArkUI_IntOffset parent_offset{0, 0};
+    if (density <= 0.f ||
+        OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(
+            ui->Node(), &child_offset) != ARKUI_ERROR_CODE_NO_ERROR ||
+        OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(
+            parent->Node(), &parent_offset) != ARKUI_ERROR_CODE_NO_ERROR) {
+      return false;
+    }
+    // Native slots and circular paging can reposition children independently
+    // of Lynx layout. Restore content coordinates because CUI applies parent
+    // scrolling separately.
+    float transformed_origin[2] = {0.f, 0.f};
+    if (auto* transform = ui->GetTransform()) {
+      transform->GetTransformMatrix(ui->width_, ui->height_, 1.f, true)
+          .mapPoint(transformed_origin, transformed_origin);
+    }
+    position[0] = (child_offset.x - parent_offset.x) / density +
+                  parent->ScrollX() - transformed_origin[0] +
+                  ui->OffsetXForCalcPosition();
+    position[1] = (child_offset.y - parent_offset.y) / density +
+                  parent->ScrollY() - transformed_origin[1] +
+                  ui->OffsetYForCalcPosition();
+    return true;
+  }
+  if (parent->Tag() == "scroll-coordinator" ||
+      parent->Tag() == "x-foldview-ng") {
+    // The coordinator adjusts header and slot positions after Lynx layout.
+    // Reuse the component's native hit-test geometry for content coordinates.
+    float rect[4];
+    ui->GetOriginRect(rect);
+    position[0] = rect[0];
+    position[1] = rect[1];
+    if (ui->Tag() == "scroll-coordinator-toolbar" ||
+        ui->Tag() == "x-foldview-toolbar-ng") {
+      // The toolbar is fixed outside the scrolling content. Cancel the event
+      // tree's parent scroll compensation to keep its hit region fixed.
+      position[0] += parent->ScrollX();
+      position[1] += parent->ScrollY();
+    }
+    return true;
+  }
+  const bool is_pager_item =
+      (ui->Tag() == "viewpager-item" || ui->Tag() == "x-viewpager-item-ng") &&
+      (parent->Tag() == "viewpager" || parent->Tag() == "x-viewpager-ng");
+  if (!is_pager_item) {
+    return false;
+  }
+  position[0] = ui->ViewLeft();
+  position[1] = ui->ViewTop();
+  return true;
+}
+
 void PlatformRendererHarmony::OnUpdateLayoutMetrics() {
   if (GetPlatformRendererType() != PlatformRendererType::kListItem) {
     return;

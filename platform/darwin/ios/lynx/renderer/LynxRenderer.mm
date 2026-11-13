@@ -107,6 +107,12 @@ void UseTopLeftAnchorAtLayoutOrigin(UIView* view, CGPoint layout_origin) {
   [_applier onRebuildSubRenderers];
 }
 
+- (void)notifyPlatformStateChanged {
+  if (self.platformStateChanged != nil) {
+    self.platformStateChanged();
+  }
+}
+
 - (void)onSetFrame:(CGRect)frame {
 }
 
@@ -117,17 +123,20 @@ void UseTopLeftAnchorAtLayoutOrigin(UIView* view, CGPoint layout_origin) {
 - (void)updateRendererLayoutFrame:(CGRect)frame {
   layout_frame_ = frame;
   [self onSetFrame:frame];
+  [self notifyPlatformStateChanged];
 }
 
 - (void)updateRendererLayoutSize:(CGSize)size {
   layout_frame_.size = size;
   [self onSetFrame:layout_frame_];
+  [self notifyPlatformStateChanged];
 }
 
 - (void)updateRendererLayoutCenter:(CGPoint)center {
   layout_frame_.origin = CGPointMake(center.x - layout_frame_.size.width * 0.5f,
                                      center.y - layout_frame_.size.height * 0.5f);
   [self onSetFrame:layout_frame_];
+  [self notifyPlatformStateChanged];
 }
 
 - (void)updateLayoutOffsetIfNeeded:(CGPoint)offset {

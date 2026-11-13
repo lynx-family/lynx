@@ -103,6 +103,9 @@ bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   init_config.is_direct_child_of_compatible_component =
       element()->is_direct_child_of_compatible_component();
 
+  init_config.tag_info =
+      element_manager()->GetNodeInfoByTag(element()->GetTag());
+
   behavior_->CreatePlatformRenderer(init_data, init_config);
   has_platform_renderer_ = true;
   InvalidateClipPath();

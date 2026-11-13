@@ -29,6 +29,8 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
   NSString *_scrollMonitorTagName;
 }
 
+- (void)notifyRendererPlatformStateChanged;
+
 @property(nonatomic, strong) NSMutableDictionary *lynxProps;
 @property(nonatomic, weak, readwrite) LynxUIContext *context;
 @property(nonatomic, readwrite) short overflow;

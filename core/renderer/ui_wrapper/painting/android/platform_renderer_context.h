@@ -63,7 +63,8 @@ class PlatformRendererContext {
       const fml::RefPtr<PropBundle>& init_data);
 
   void InsertPlatformRenderer(int32_t parent, int32_t child, int32_t index,
-                              bool should_update_ui_owner);
+                              bool should_update_ui_owner,
+                              bool needs_platform_position);
 
   void RemovePlatformRenderer(int32_t parent, int32_t target,
                               bool should_update_ui_owner);

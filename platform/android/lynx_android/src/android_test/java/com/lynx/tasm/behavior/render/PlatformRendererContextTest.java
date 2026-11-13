@@ -15,6 +15,7 @@ import android.widget.FrameLayout;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
+import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.INativeLibraryLoader;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.Behavior;
@@ -25,6 +26,7 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.tasm.performance.PerformanceController;
@@ -96,6 +98,72 @@ public class PlatformRendererContextTest {
     Field field = target.getClass().getDeclaredField(fieldName);
     field.setAccessible(true);
     return field.get(target);
+  }
+
+  @Test
+  public void testOrdinaryModeNotificationSkipsViewTraversal() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxContext context = TestingUtils.getLynxContext();
+      context.setEmbeddedMode(0);
+      AndroidView view = spy(new AndroidView(context));
+      Renderer renderer = mock(Renderer.class);
+      Renderer.notifyPlatformStateChanged(view);
+      verify(view, never()).getRenderer();
+
+      context.setEmbeddedMode(EmbeddedMode.FRAGMENT_LAYER_RENDER);
+      doReturn(renderer).when(view).getRenderer();
+      Renderer.notifyPlatformStateChanged(view);
+      verify(renderer).notifyPlatformStateChanged();
+    });
+  }
+
+  @Test
+  public void testPlatformLayoutPublishesWithoutDrawingAndStopsAfterDestroy() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      PlatformRendererContext context = mock(PlatformRendererContext.class);
+      AndroidView host =
+          new AndroidView(InstrumentationRegistry.getInstrumentation().getTargetContext());
+      Renderer renderer = new Renderer(context, 7);
+      renderer.setRenderHost(host);
+      host.setRenderer(renderer);
+      host.layout(0, 0, 100, 100);
+      verify(context).onPlatformStateChanged(7);
+
+      clearInvocations(context);
+      // Identical native bounds do not cause another publication.
+      host.layout(0, 0, 100, 100);
+      verify(context, never()).onPlatformStateChanged(anyInt());
+      renderer.onDestroy();
+      host.layout(0, 20, 100, 120);
+      verify(context, never()).onPlatformStateChanged(anyInt());
+    });
+  }
+
+  @Test
+  public void testPlatformStateChangeOnlyQueriesAffectedHosts() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+      for (int sign : new int[] {1, 2, 3, 4, 5}) {
+        rendererContext.mViewHolder.put(sign, createHost(new FrameLayout(context)));
+      }
+      rendererContext.insertPlatformRenderer(1, 2, -1, false, true);
+      rendererContext.insertPlatformRenderer(2, 3, -1, false, true);
+      rendererContext.insertPlatformRenderer(1, 5, -1, false, false);
+      PlatformRendererContext publisher = spy(rendererContext);
+      publisher.onPlatformStateChanged(1);
+      verify(publisher).getRendererHostScrollOffset(1);
+      verify(publisher).getRendererHostScrollOffset(2);
+      verify(publisher, never()).getRendererHostScrollOffset(3);
+      verify(publisher, never()).getRendererHostScrollOffset(4);
+      verify(publisher, never()).getRendererHostScrollOffset(5);
+      publisher.onPlatformStateChanged(5);
+      verify(publisher).getRendererHostScrollOffset(5);
+
+      publisher.removePlatformRendererFromParent(1, 2, false);
+      clearInvocations(publisher);
+      publisher.onPlatformStateChanged(1);
+      verify(publisher, never()).getRendererHostScrollOffset(2);
+    });
   }
 
   @Test
@@ -394,8 +462,80 @@ public class PlatformRendererContextTest {
     rendererContext.mViewHolder.put(1, parentHost);
     rendererContext.mViewHolder.put(2, childHost);
 
-    rendererContext.insertPlatformRenderer(1, 2, -1, false);
+    rendererContext.insertPlatformRenderer(1, 2, -1, false, false);
     verify(mockParentView).addView(mockChildView);
+  }
+
+  @Test
+  public void testRendererHostPositionIncludesPagerLayoutAncestors() {
+    PositionTree tree = new PositionTree("viewpager", "viewpager-item", true);
+    tree.wrapper.layout(5, 40, 605, 140);
+    tree.wrapper.scrollTo(100, 0);
+    tree.view.layout(300, 0, 400, 100);
+    for (String[] tags : new String[][] {
+             {"viewpager", "viewpager-item"}, {"x-viewpager-ng", "x-viewpager-item-ng"}}) {
+      when(tree.parent.getTagName()).thenReturn(tags[0]);
+      when(tree.child.getTagName()).thenReturn(tags[1]);
+      tree.expectPosition(305, 40);
+    }
+    assertEquals(100, tree.wrapper.getScrollX());
+  }
+
+  @Test
+  public void testRendererHostPositionTracksSwiperRepositioning() {
+    PositionTree tree = new PositionTree("x-swiper", "x-swiper-item", true);
+    tree.wrapper.layout(0, 12, 600, 112);
+    tree.wrapper.scrollTo(100, 0);
+    tree.view.layout(300, 0, 400, 100);
+    tree.expectPosition(300, 12);
+    // Circular paging can move the same item without updating Lynx layout.
+    tree.view.layout(-300, 0, -200, 100);
+    tree.expectPosition(-300, 12);
+    assertEquals(100, tree.wrapper.getScrollX());
+  }
+
+  @Test
+  public void testRendererHostPositionTracksFoldViewLayout() {
+    PositionTree tree = new PositionTree("x-foldview-ng", "x-foldview-header-ng", true);
+    tree.wrapper.layout(0, 0, 100, 100);
+    tree.expectPosition(0, 0);
+    tree.wrapper.layout(0, -100, 100, 0);
+    tree.root.scrollTo(0, 100);
+    tree.expectPosition(0, 0);
+    // A pinned toolbar ancestor cancels the AppBar displacement.
+    tree.wrapper.setTranslationY(100.f);
+    tree.expectPosition(0, 100);
+  }
+
+  @Test
+  public void testRefreshPositionTracksTranslationWithAndWithoutUIParent() {
+    for (String parentTag : new String[] {"refresh", "x-refresh-view"}) {
+      for (String tag : new String[] {"view", "list-container"}) {
+        PositionTree tree = new PositionTree(parentTag, tag, false);
+        tree.view.scrollTo(0, 128);
+        for (LynxBaseUI parent : new LynxBaseUI[] {tree.parent, null}) {
+          when(tree.child.getParentBaseUI()).thenReturn(parent);
+          tree.expectPosition(0, 0);
+          tree.view.setTranslationY(64.f);
+          tree.expectPosition(0, 64);
+          tree.view.setTranslationY(0.f);
+          tree.expectPosition(0, 0);
+        }
+        assertEquals(128, tree.view.getScrollY());
+        assertNull(rendererContext.getRendererHostPosition(1, 99));
+        tree.root.removeView(tree.view);
+        assertNull(rendererContext.getRendererHostPosition(1, 10));
+      }
+    }
+  }
+
+  @Test
+  public void testRendererHostPositionFallsBackForOrdinaryView() {
+    UIView ui = mock(UIView.class);
+    when(ui.getTagName()).thenReturn("view");
+    registerPositionHost(1, mock(ViewGroup.class), ui);
+    assertNull(rendererContext.getRendererHostPosition(1, 10));
+    assertNull(rendererContext.getRendererHostPosition(2, 10));
   }
 
   @Test
@@ -408,7 +548,7 @@ public class PlatformRendererContextTest {
     rendererContext.mViewHolder.put(1, parentHost);
     rendererContext.mViewHolder.put(2, childHost);
 
-    rendererContext.insertPlatformRenderer(1, 2, 3, false);
+    rendererContext.insertPlatformRenderer(1, 2, 3, false, false);
     verify(mockParentView).addView(mockChildView, 3);
   }
 
@@ -429,7 +569,7 @@ public class PlatformRendererContextTest {
     rendererContext.mViewHolder.put(1, createHost(parent));
     rendererContext.mViewHolder.put(2, createHost(child));
 
-    rendererContext.insertPlatformRenderer(1, 2, 1, false);
+    rendererContext.insertPlatformRenderer(1, 2, 1, false, false);
 
     assertEquals(0, oldParent.getChildCount());
     assertSame(parent, child.getParent());
@@ -454,7 +594,7 @@ public class PlatformRendererContextTest {
     rendererContext.mViewHolder.put(2, createHost(child));
 
     // Reinserting an attached View must move it to the requested position.
-    rendererContext.insertPlatformRenderer(1, 2, 1, false);
+    rendererContext.insertPlatformRenderer(1, 2, 1, false, false);
 
     assertEquals(2, parent.getChildCount());
     assertSame(sibling, parent.getChildAt(0));
@@ -470,7 +610,7 @@ public class PlatformRendererContextTest {
     when(mockLynxContext.getLynxUIOwner()).thenReturn(owner);
     when(owner.getNode(1)).thenReturn(parentUI);
     when(owner.getNode(2)).thenReturn(childUI);
-    rendererContext.insertPlatformRenderer(1, 2, -1, true);
+    rendererContext.insertPlatformRenderer(1, 2, -1, true, false);
 
     verify(owner).insert(1, 2, -1);
   }
@@ -708,6 +848,39 @@ public class PlatformRendererContextTest {
     rendererContext.removePlatformRendererFromParent(1, 2, true);
 
     verify(owner).remove(1, 2);
+  }
+
+  private class PositionTree {
+    final UIView parent = mock(UIView.class);
+    final LynxBaseUI child = mock(LynxBaseUI.class);
+    final AndroidView root;
+    final FrameLayout wrapper, view;
+
+    PositionTree(String parentTag, String childTag, boolean wrapped) {
+      Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+      root = new AndroidView(context);
+      wrapper = new FrameLayout(context);
+      view = new FrameLayout(context);
+      when(parent.getTagName()).thenReturn(parentTag);
+      when(child.getTagName()).thenReturn(childTag);
+      when(child.getParentBaseUI()).thenReturn(parent);
+      registerPositionHost(10, root, parent);
+      registerPositionHost(1, view, child);
+      root.addView(wrapped ? wrapper : view);
+      if (wrapped)
+        wrapper.addView(view);
+      view.layout(0, 0, 100, 100);
+    }
+
+    void expectPosition(float x, float y) {
+      assertArrayEquals(new float[] {x, y}, rendererContext.getRendererHostPosition(1, 10), 0.f);
+    }
+  }
+
+  private void registerPositionHost(int sign, ViewGroup view, LynxBaseUI ui) {
+    Renderer renderer = mock(Renderer.class);
+    when(renderer.getUIHost()).thenReturn(ui);
+    rendererContext.mViewHolder.put(sign, createHost(view, renderer));
   }
 
   private IRendererHost createHost(ViewGroup view) {
