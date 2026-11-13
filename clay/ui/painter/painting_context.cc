@@ -4,6 +4,8 @@
 
 #include "clay/ui/painter/painting_context.h"
 
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -120,7 +122,20 @@ void PaintingContext::RepaintCompositedChild(
     child_context.SetCacheStrategy(child->GetCacheStrategy());
   }
 
-  if (child->HasMask()) {
+  bool has_mask = child->HasMask();
+#ifdef ENABLE_SKITY
+  if (has_mask) {
+    const auto bounds = child->GetFrameRect();
+    // Layout can temporarily give a masked object an empty size. Validate
+    // before converting to texture dimensions or scheduling GPU work.
+    const double width = std::ceil(static_cast<double>(bounds.width()));
+    const double height = std::ceil(static_cast<double>(bounds.height()));
+    has_mask = std::isfinite(width) && std::isfinite(height) && width > 0 &&
+               height > 0 && width <= std::numeric_limits<uint32_t>::max() &&
+               height <= std::numeric_limits<uint32_t>::max();
+  }
+#endif
+  if (has_mask) {
     float width = child->GetFrameRect().width(),
           height = child->GetFrameRect().height();
 #ifndef ENABLE_SKITY
@@ -135,8 +150,10 @@ void PaintingContext::RepaintCompositedChild(
     auto composite_color_source =
         std::make_shared<UnknownColorSource>(composite_shader);
 #else
+    const auto pixel_width = static_cast<uint32_t>(std::ceil(width));
+    const auto pixel_height = static_cast<uint32_t>(std::ceil(height));
     auto deferred_image = skity::Image::MakeDeferredTextureImage(
-        skity::TextureFormat::kRGBA, width, height,
+        skity::TextureFormat::kRGBA, pixel_width, pixel_height,
         skity::AlphaType::kPremul_AlphaType);
     auto composite_shader = skity::Shader::MakeShader(deferred_image);
     auto composite_color_source =
@@ -145,31 +162,44 @@ void PaintingContext::RepaintCompositedChild(
     skity::PictureRecorder recorder;
     recorder.BeginRecording(skity::Rect::MakeWH(width, height));
     skity::RecordingCanvas* canvas = recorder.GetRecordingCanvas();
-    ImagePainter(static_cast<RenderBox*>(child))
-        .PaintMaskImage(canvas, unref_queue);
+    if (canvas) {
+      ImagePainter(static_cast<RenderBox*>(child))
+          .PaintMaskImage(canvas, unref_queue);
+    }
     auto dl = recorder.FinishRecording();
 
-    if (unref_queue && unref_queue->GetContext()) {
+    if (dl && deferred_image && unref_queue && unref_queue->GetContext()) {
       unref_queue->GetTaskRunner()->PostTask(
-          [dl = std::move(dl), context = unref_queue->GetContext(), width,
-           height, deferred_image] {
+          [dl = std::move(dl), context = unref_queue->GetContext(), pixel_width,
+           pixel_height, deferred_image] {
             auto gpu_context = context;
+            if (!gpu_context) {
+              return;
+            }
             skity::GPURenderTargetDescriptor desc = {
-                .width = static_cast<uint32_t>(width),
-                .height = static_cast<uint32_t>(height),
+                .width = pixel_width,
+                .height = pixel_height,
             };
             auto render_target = gpu_context->CreateRenderTarget(desc);
             if (!render_target) {
+              FML_LOG(ERROR) << "Could not create the mask render target.";
               return;
             }
             auto canvas = render_target->GetCanvas();
+            if (!canvas) {
+              FML_LOG(ERROR) << "Could not create the mask recording canvas.";
+              return;
+            }
             dl->Draw(canvas);
             canvas->Flush();
             std::shared_ptr<skity::Image> snapshot =
                 gpu_context->MakeSnapshot(std::move(render_target));
-            if (snapshot && snapshot->GetTexture()) {
-              deferred_image->SetTexture(*(snapshot->GetTexture()));
+            if (!snapshot || !snapshot->GetTexture() ||
+                !*snapshot->GetTexture()) {
+              FML_LOG(ERROR) << "Could not create the mask snapshot.";
+              return;
             }
+            deferred_image->SetTexture(*(snapshot->GetTexture()));
           });
     }
 #endif  // ENABLE_SKITY
