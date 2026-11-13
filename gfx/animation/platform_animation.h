@@ -312,7 +312,13 @@ struct PlatformAnimationCommand {
   using TriviallyRelocatable = bool;
 };
 
-using PlatformAnimationCommandBatch = base::Vector<PlatformAnimationCommand>;
+// A submitted batch is immutable. UI providers retain it to reuse its frames.
+class PlatformAnimationCommandBatch final
+    : public fml::RefCountedThreadSafeStorage,
+      public base::Vector<PlatformAnimationCommand> {
+ private:
+  void ReleaseSelf() const override { delete this; }
+};
 
 }  // namespace gfx
 }  // namespace lynx

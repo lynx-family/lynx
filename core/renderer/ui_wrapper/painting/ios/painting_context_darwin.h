@@ -82,7 +82,7 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override;
   void ApplyPlatformAnimationCommands(
       int id,
-      std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) override;
+      fml::RefPtr<gfx::PlatformAnimationCommandBatch> commands) override;
   void UpdatePaintingNode(
       int id, bool tend_to_flatten,
       const fml::RefPtr<PropBundle>& painting_data) override;

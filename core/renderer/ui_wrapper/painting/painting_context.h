@@ -121,7 +121,7 @@ class PaintingContext {
   }
 
   inline void ApplyPlatformAnimationCommands(
-      int id, std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) {
+      int id, fml::RefPtr<gfx::PlatformAnimationCommandBatch> commands) {
     platform_impl_->ApplyPlatformAnimationCommands(id, std::move(commands));
   }
 

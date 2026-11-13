@@ -5,15 +5,14 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PLATFORM_ANIMATION_DARWIN_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PLATFORM_ANIMATION_DARWIN_H_
 
-#include <memory>
-
+#include "base/include/fml/memory/ref_ptr.h"
 #include "gfx/animation/platform_animation.h"
 
 @class LynxUI;
 
 namespace lynx::tasm {
 void ApplyPlatformAnimationCommands(
-    LynxUI* ui, const std::shared_ptr<gfx::PlatformAnimationCommandBatch>& commands);
+    LynxUI* ui, const fml::RefPtr<gfx::PlatformAnimationCommandBatch>& commands);
 }  // namespace lynx::tasm
 
 #endif  // CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PLATFORM_ANIMATION_DARWIN_H_

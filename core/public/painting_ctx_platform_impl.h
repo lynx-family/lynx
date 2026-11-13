@@ -185,7 +185,7 @@ class PaintingCtxPlatformImpl {
   // Submit after the target node's creation and property updates, on the same
   // UI operation queue. Backends without animation routing ignore commands.
   virtual void ApplyPlatformAnimationCommands(
-      int id, std::shared_ptr<gfx::PlatformAnimationCommandBatch> commands) {}
+      int id, fml::RefPtr<gfx::PlatformAnimationCommandBatch> commands) {}
   virtual void Flush() = 0;
   virtual void FlushImmediately() { Flush(); };
   virtual void HandleValidate(int tag) = 0;
