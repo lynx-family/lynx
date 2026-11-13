@@ -119,6 +119,9 @@ class ParagraphBuilder {
   virtual void PopTextStyle() = 0;
   virtual void PushEventTarget(const EventTargetInfo &event_target) = 0;
   virtual void PopEventTarget() = 0;
+  // The kPropColor*Gradient keys pass a pub::Value containing the computed
+  // gradient payload, with length sizeof(pub::Value*). Implementations must
+  // copy it before this call returns.
   virtual void SetTextStyle(TextPropertyKeyID key, void *value,
                             size_t length) = 0;
   // Keeps the text style being built as the default style of the paragraph.
