@@ -39,6 +39,7 @@ const configKeys = [
   'includeFontPadding',
   'keyboardCallbackPassRelativeHeight',
   'longPressDuration',
+  'preferredFps',
   'removeDescendantSelectorScope',
   'tapSlop',
   'unifyVWVHBehavior',
