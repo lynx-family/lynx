@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <limits>
-#include <vector>
 
 #include "base/include/compiler_specific.h"
 #include "base/include/float_comparison.h"
@@ -118,19 +117,6 @@ struct ComposeConstraints {
     return {axis(min_width, max_width), axis(min_height, max_height)};
   }
 };
-
-struct ComposeLayoutModifier {
-  enum class Type { kSize, kFill, kAspectRatio };
-  enum Axis { kWidth = 1, kHeight = 1 << 1 };
-
-  Type type;
-  int axes;
-  // Width (in layout units), fill fraction, or aspect ratio.
-  double value;
-  double height = 0;
-};
-
-using ComposeLayoutModifiers = std::vector<ComposeLayoutModifier>;
 
 // Layout optimized struct for cache.
 struct __attribute__((packed, aligned(1))) CompactConstraints {

@@ -110,12 +110,6 @@ class LayoutObject : public ContainerNode {
   void SetComposeLayout(bool value) { compose_layout_ = value; }
   bool IsComposeLayout() const { return compose_layout_; }
 
-  bool SetLayoutModifiers(
-      std::shared_ptr<const ComposeLayoutModifiers> modifiers);
-  const ComposeLayoutModifiers* GetLayoutModifiers() const {
-    return layout_modifiers_.get();
-  }
-
   SLAlignmentFunc GetSLAlignmentFunc() const;
 
   FloatSize UpdateMeasureByPlatform(const Constraints& constraints,
@@ -371,7 +365,6 @@ class LayoutObject : public ContainerNode {
 
   SLMeasureFunc measure_func_ = nullptr;
   SLComposeMeasureFunc compose_measure_func_ = nullptr;
-  std::shared_ptr<const ComposeLayoutModifiers> layout_modifiers_;
   bool compose_layout_ = false;
   SLRequestLayoutFunc request_layout_func_ = nullptr;
   SLAlignmentFunc alignment_func_ = nullptr;
