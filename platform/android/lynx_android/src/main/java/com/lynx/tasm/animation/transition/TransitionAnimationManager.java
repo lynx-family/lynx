@@ -697,13 +697,10 @@ public class TransitionAnimationManager {
   private static class TransitionListener extends AnimatorListenerAdapter {
     private static final String sEventStart = "transitionstart";
     private static final String sEventEnd = "transitionend";
-    private static final Map<String, Object> sEventParams = new HashMap<String, Object>();
-    static {
-      sEventParams.put("animation_type", "transition");
-    }
 
     WeakReference<LynxBaseUI> mUI;
     int mPropName;
+    private long mCanceledPlayTime = -1;
 
     public TransitionListener(LynxBaseUI ui, int prop) {
       this.mUI = new WeakReference<>(ui);
@@ -713,21 +710,29 @@ public class TransitionAnimationManager {
     @Override
     public void onAnimationStart(Animator animation) {
       super.onAnimationStart(animation);
-      sendAnimationEvent(sEventStart);
+      mCanceledPlayTime = -1;
+      double startTime =
+          Math.max(0, Math.min(-(double) animation.getStartDelay(), animation.getDuration()));
+      sendAnimationEvent(sEventStart, startTime);
     }
 
     @Override
-    public void onAnimationRepeat(Animator animation) {
-      super.onAnimationRepeat(animation);
+    public void onAnimationCancel(Animator animation) {
+      super.onAnimationCancel(animation);
+      // ValueAnimator invokes onAnimationEnd after canceling and clears its play time first.
+      mCanceledPlayTime =
+          animation.isRunning() ? ((ValueAnimator) animation).getCurrentPlayTime() : 0;
+      mCanceledPlayTime = Math.max(0, Math.min(mCanceledPlayTime, animation.getDuration()));
     }
 
     @Override
     public void onAnimationEnd(Animator animation) {
       super.onAnimationEnd(animation);
-      sendAnimationEvent(sEventEnd);
+      sendAnimationEvent(
+          sEventEnd, mCanceledPlayTime >= 0 ? mCanceledPlayTime : animation.getDuration());
     }
 
-    private void sendAnimationEvent(String eventName) {
+    private void sendAnimationEvent(String eventName, double elapsedMillis) {
       LynxBaseUI ui = mUI.get();
       if (ui == null) {
         return;
@@ -736,10 +741,12 @@ public class TransitionAnimationManager {
       LynxBaseUI targetUI = ui instanceof UIShadowProxy ? ((UIShadowProxy) ui).getChild() : ui;
 
       if (targetUI.getEvents() != null && targetUI.getEvents().containsKey(eventName)) {
-        sEventParams.put(
+        Map<String, Object> eventParams = new HashMap<>();
+        eventParams.put(
             "animation_type", "transition-" + PropertyFactory.propertyToString(mPropName));
+        eventParams.put("elapsedTime", elapsedMillis / 1000.0);
         targetUI.getLynxContext().getEventEmitter().sendCustomEvent(
-            new LynxCustomEvent(targetUI.getSign(), eventName, sEventParams));
+            new LynxCustomEvent(targetUI.getSign(), eventName, eventParams));
       }
     }
   }

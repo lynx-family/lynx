@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "clay/gfx/animation/animation_data.h"
 #include "clay/gfx/animation/animation_event_handler.h"
 #include "clay/gfx/animation/animation_properties_util.h"
 #include "clay/gfx/animation/animator_listener_adapter.h"
@@ -39,9 +40,11 @@ class TransitionManager {
   void CancelAnimator(ClayAnimationPropertyType type);
   void CancelAllAnimators();
   void OnAnimationStart(const Animator& animation,
-                        ClayAnimationPropertyType type);
-  void OnAnimationEnd(const Animator& animation,
-                      ClayAnimationPropertyType type);
+                        ClayAnimationPropertyType type, double elapsed_time);
+  void OnAnimationEnd(const Animator& animation, ClayAnimationPropertyType type,
+                      double elapsed_time);
+  void OnAnimationCancel(const Animator& animation,
+                         ClayAnimationPropertyType type, double elapsed_time);
   template <typename T>
   bool TransitionTo(ClayAnimationPropertyType type, const T& value);
   template <typename T>
@@ -89,18 +92,22 @@ class TransitionListener : public AnimatorListenerAdapter {
         TypeEvaluator<T>::Evaluate(current_fraction, old_value_, new_value_);
     mgr_->GetTarget()->SetProperty(type_, animated_value, true);
   }
-  void OnAnimationStart(Animator& animation) override {
+  void OnAnimationStart(Animator& animation, double elapsed_time) override {
     if (notify_events_) {
-      mgr_->OnAnimationStart(animation, type_);
+      mgr_->OnAnimationStart(animation, type_, elapsed_time);
     }
   }
-  void OnAnimationEnd(Animator& animation) override {
+  void OnAnimationEnd(Animator& animation, double elapsed_time) override {
     mgr_->GetTarget()->SetProperty(type_, new_value_, false);
     if (notify_events_) {
-      mgr_->OnAnimationEnd(animation, type_);
+      mgr_->OnAnimationEnd(animation, type_, elapsed_time);
     }
   }
-  void OnAnimationCancel(Animator& animation) override {}
+  void OnAnimationCancel(Animator& animation, double elapsed_time) override {
+    if (notify_events_) {
+      mgr_->OnAnimationCancel(animation, type_, elapsed_time);
+    }
+  }
   void SetNewValue(const T& value) { new_value_ = value; }
   T GetValue(float fraction) const {
     return TypeEvaluator<T>::Evaluate(fraction, old_value_, new_value_);
@@ -166,11 +173,13 @@ bool TransitionManager::TransitionWithTiming(
       active_transitions_[type].second =
           std::make_unique<TransitionListener<T>>(this, type, old_value, value,
                                                   notify_events);
-      active_transitions_[type].first = std::make_unique<ValueAnimator>();
+      AnimationData animation_data;
+      animation_data.duration = transition.duration;
+      animation_data.delay = transition.delay;
+      animation_data.timing_func = transition.timing_func;
+      active_transitions_[type].first =
+          std::make_unique<ValueAnimator>(animation_data);
       auto& animator = active_transitions_[type].first;
-      animator->SetDuration(transition.duration);
-      animator->SetStartDelay(transition.delay);
-      animator->SetInterpolator(Interpolator::Create(transition.timing_func));
       animator->AddUpdateListener(active_transitions_[type].second.get());
       animator->AddListener(active_transitions_[type].second.get());
       animator->SetAnimationHandler(target_->GetAnimationHandler());

@@ -1977,7 +1977,8 @@ void PageView::ReportAnimationEvent(const AnimationParams& animation_params,
   if (event_delegate_) {
     event_delegate_->OnAnimationEvent(
         EventTypeToString(animation_params.event_type),
-        animation_params.animation_name, view_id);
+        animation_params.animation_name, view_id,
+        animation_params.elapsed_time);
   }
 }
 void PageView::ReportTransitionEvent(const AnimationParams& animation_params,
@@ -1986,7 +1987,8 @@ void PageView::ReportTransitionEvent(const AnimationParams& animation_params,
   if (event_delegate_) {
     event_delegate_->OnTransitionEvent(
         EventTypeToString(animation_params.event_type),
-        animation_params.animation_name, view_id, property_type);
+        animation_params.animation_name, view_id, property_type,
+        animation_params.elapsed_time);
   }
 }
 void PageView::DispatchAnimationEvent(const AnimationParams& animation_params,

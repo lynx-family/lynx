@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/closure.h"
+#include "clay/gfx/animation/transition_manager.h"
 #include "clay/lynx_adaptor/lynx_event_dispatcher.h"
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/public/value.h"
@@ -20,6 +22,12 @@ namespace {
 
 struct TouchRecord {
   std::string name;
+  Value params;
+};
+
+struct CustomEventRecord {
+  std::string name;
+  std::string param_name;
   Value params;
 };
 
@@ -39,8 +47,12 @@ class RecordingEngineProxy : public lynx::shell::LynxEngineProxy {
   }
 
   void DispatchTaskToLynxEngine(lynx::base::closure) override {}
-  void SendCustomEvent(const std::string&, int32_t, const lynx::pub::Value&,
-                       const std::string&) override {}
+  void SendCustomEvent(const std::string& name, int32_t,
+                       const lynx::pub::Value& payload,
+                       const std::string& param_name) override {
+    custom_events.push_back(
+        {name, param_name, lynx::ValueConverter::CreateClayValue(payload)});
+  }
   void SendGestureEvent(int, int, std::string,
                         const lynx::pub::Value&) override {}
   void SendBubbleEvent(const std::string&, int32_t,
@@ -70,6 +82,7 @@ class RecordingEngineProxy : public lynx::shell::LynxEngineProxy {
 
   std::vector<TouchRecord> touches;
   std::vector<std::string> single_touch_names;
+  std::vector<CustomEventRecord> custom_events;
 };
 
 class LynxEventDispatcherTest : public ::testing::Test {
@@ -98,6 +111,63 @@ class LynxEventDispatcherTest : public ::testing::Test {
   LynxEventDispatcher dispatcher_;
   std::shared_ptr<RecordingEngineProxy> engine_;
 };
+
+TEST_F(LynxEventDispatcherTest, AnimationElapsedTimeIsSentInParams) {
+  dispatcher_.OnAnimationEvent("animationstart", "opacity", 10, 0.25);
+  dispatcher_.OnTransitionEvent("transitionend", "", 10,
+                                ClayAnimationPropertyType::kOpacity, 0.5);
+
+  ASSERT_EQ(engine_->custom_events.size(), 2u);
+  const auto& animation = engine_->custom_events[0];
+  const auto& transition = engine_->custom_events[1];
+  EXPECT_EQ(animation.param_name, "params");
+  EXPECT_EQ(transition.param_name, "params");
+  EXPECT_DOUBLE_EQ(animation.params.GetMap().at("elapsedTime").GetDouble(),
+                   0.25);
+  EXPECT_DOUBLE_EQ(transition.params.GetMap().at("elapsedTime").GetDouble(),
+                   0.5);
+}
+
+using TransitionCancellationTest = UITest;
+
+TEST_F_UI(TransitionCancellationTest, ReplacedTransitionReportsElapsedTime) {
+  constexpr auto property = ClayAnimationPropertyType::kOpacity;
+  auto engine = std::make_shared<RecordingEngineProxy>();
+  LynxEventDispatcher dispatcher;
+  dispatcher.SetEngineProxy(engine);
+  auto* previous_delegate = page_->GetEventDelegate();
+  page_->SetEventDelegate(&dispatcher);
+  page_->SetRasterAnimationEnabled(false);
+  View view(10, page_.get());
+  page_->AddChild(&view);
+  fml::ScopedCleanupClosure cleanup([&] {
+    page_->RemoveChild(&view);
+    view.Destroy();
+    page_->SetEventDelegate(previous_delegate);
+  });
+  view.SetBound(0, 0, 100, 100);
+  view.AddEventCallback("transitioncancel");
+  TransitionData transition;
+  transition.duration = 100;
+  transition.property = property;
+  view.SetTransition({transition});
+  view.OnNodeReady();
+  view.SetOpacity(0.25f);
+
+  page_->GetAnimationHandler()->DoAnimationFrame(1000);
+  const auto animators = view.TransitionMgr()->GetRunningAnimators();
+  ASSERT_EQ(animators.size(), 1u);
+  animators.front()->PauseForTest(1050);
+  view.SetOpacity(0.75f);
+
+  ASSERT_EQ(engine->custom_events.size(), 1u);
+  const auto& event = engine->custom_events.front();
+  EXPECT_EQ(event.name, "transitioncancel");
+  EXPECT_EQ(event.param_name, "params");
+  const auto& params = event.params.GetMap();
+  EXPECT_EQ(params.at("animation_type").GetString(), "transition-opacity");
+  EXPECT_DOUBLE_EQ(params.at("elapsedTime").GetDouble(), 0.05);
+}
 
 class TouchCancellationEventDispatcher : public LynxEventDispatcher {
  public:

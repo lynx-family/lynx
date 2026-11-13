@@ -57,13 +57,16 @@ namespace {
 class MockAnimatorListener : public AnimatorListener {
  public:
   // NOLINTNEXTLINE
-  MOCK_METHOD(void, OnAnimationStart, (Animator & animation), (override));
+  MOCK_METHOD(void, OnAnimationStart, (Animator & animation, double),
+              (override));
   // NOLINTNEXTLINE
-  MOCK_METHOD(void, OnAnimationCancel, (Animator & animation), (override));
+  MOCK_METHOD(void, OnAnimationCancel, (Animator & animation, double),
+              (override));
   // NOLINTNEXTLINE
-  MOCK_METHOD(void, OnAnimationEnd, (Animator & animation), (override));
+  MOCK_METHOD(void, OnAnimationEnd, (Animator & animation, double), (override));
   // NOLINTNEXTLINE
-  MOCK_METHOD(void, OnAnimationRepeat, (Animator & animation), (override));
+  MOCK_METHOD(void, OnAnimationRepeat, (Animator & animation, double),
+              (override));
 };
 
 class FixedSizeAnimatorTarget : public AnimatorTarget {
@@ -226,6 +229,26 @@ TEST_F_UI(KeyFrameTest, TransitionStartsAfterNodeReady) {
 
   EXPECT_FLOAT_EQ(animator_view_->Height(), 200.f);
   EXPECT_TRUE(animator_view_->TransitionMgr()->IsAnimationRunning(
+      ClayAnimationPropertyType::kHeight));
+}
+
+TEST_F_UI(KeyFrameTest, TransitionWithNegativeDelayStartsPartwayThrough) {
+  animator_view_->SetBound(0, 0, 100, 200);
+  TransitionData transition;
+  transition.property = ClayAnimationPropertyType::kHeight;
+  transition.duration = 160;
+  transition.delay = -80;
+  transition.timing_func.timing_func = ClayTimingFunctionType::kLinear;
+  animator_view_->SetTransition({transition});
+  animator_view_->OnNodeReady();
+  animator_view_->SetHeight(100);
+
+  auto* handler = page_->GetAnimationHandler();
+  handler->DoAnimationFrame(1000);
+  EXPECT_FLOAT_EQ(animator_view_->Height(), 150.f);
+  handler->DoAnimationFrame(1080);
+  EXPECT_FLOAT_EQ(animator_view_->Height(), 100.f);
+  EXPECT_FALSE(animator_view_->TransitionMgr()->IsAnimationRunning(
       ClayAnimationPropertyType::kHeight));
 }
 
@@ -703,7 +726,8 @@ TEST_F_UI(KeyFrameTest, AnimationStartEvent) {
       animator_view_->KeyframesMgr()->animations_.front().animator.get();
   EXPECT_EQ(animator->StartListenersCalled(), true);
 
-  EXPECT_CALL(mock_listener, OnAnimationStart(::testing::_)).Times(1);
+  EXPECT_CALL(mock_listener, OnAnimationStart(::testing::_, ::testing::_))
+      .Times(1);
   animator->AddListener(&mock_listener);
 
   int64_t frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
@@ -777,7 +801,8 @@ TEST_F_UI(KeyFrameTest, AnimationEndEvent) {
       animator_view_->KeyframesMgr()->animations_.front().animator.get();
   EXPECT_EQ(animator->StartListenersCalled(), true);
 
-  EXPECT_CALL(mock_listener, OnAnimationEnd(::testing::_)).Times(2);
+  EXPECT_CALL(mock_listener, OnAnimationEnd(::testing::_, ::testing::_))
+      .Times(2);
   animator->AddListener(&mock_listener);
 
   int64_t frame_time = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
@@ -1030,6 +1055,7 @@ TEST_F_UI(KeyFrameTest, RasterTransitionEventsRemainUIOwned) {
   ASSERT_EQ(replacement_animators.size(), 1u);
   EXPECT_TRUE(replacement_animators.front()->StartListenersCalled());
   replacement_animators.front()->DoAnimationFrame(160);
+  raster_manager->CancelAllAnimators();
   EXPECT_TRUE(raster_events.transition_events.empty());
 
   page_->GetAnimationHandler()->DoAnimationFrame(0);
@@ -1177,8 +1203,10 @@ TEST_F_UI(KeyFrameTest, ShorterSameNameUpdateAfterEndDoesNotRestart) {
   ASSERT_FALSE(animator->IsStarted());
 
   MockAnimatorListener mock_listener;
-  EXPECT_CALL(mock_listener, OnAnimationStart(::testing::_)).Times(0);
-  EXPECT_CALL(mock_listener, OnAnimationEnd(::testing::_)).Times(0);
+  EXPECT_CALL(mock_listener, OnAnimationStart(::testing::_, ::testing::_))
+      .Times(0);
+  EXPECT_CALL(mock_listener, OnAnimationEnd(::testing::_, ::testing::_))
+      .Times(0);
   animator->AddListener(&mock_listener);
 
   animation_data_.clear();
@@ -1374,8 +1402,10 @@ TEST_F_UI(KeyFrameTest, SameNameUpdateDoesNotRestartAfterFrameTimeRollback) {
   animator->DoAnimationFrame(10500);
 
   MockAnimatorListener mock_listener;
-  EXPECT_CALL(mock_listener, OnAnimationStart(::testing::_)).Times(1);
-  EXPECT_CALL(mock_listener, OnAnimationEnd(::testing::_)).Times(1);
+  EXPECT_CALL(mock_listener, OnAnimationStart(::testing::_, ::testing::_))
+      .Times(1);
+  EXPECT_CALL(mock_listener, OnAnimationEnd(::testing::_, ::testing::_))
+      .Times(1);
   animator->AddListener(&mock_listener);
 
   animation_data_.clear();

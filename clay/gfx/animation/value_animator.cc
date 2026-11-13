@@ -31,6 +31,7 @@
 #include "clay/gfx/animation/animation_handler.h"
 #include "clay/gfx/animation/animator_target.h"
 #include "clay/gfx/animation/interpolator.h"
+#include "gfx/animation/animation_timing.h"
 
 namespace clay {
 
@@ -243,30 +244,47 @@ bool ValueAnimator::ShouldPlayBackward(int iteration, bool in_reverse) const {
   }
 }
 
-/**
- * Gets the current position of the animation in time, which is equal to the
- * current time minus the time that the animation started. An animation that is
- * not yet started will return a value of zero, unless the animation has has its
- * play time set via
- * {@link #SetCurrentPlayTime(int64_t)} or {@link #SetCurrentFraction(float)},
- * in which case it will return the time that was set.
- *
- * @return The current position in time of the animation.
- */
-int64_t ValueAnimator::GetCurrentPlayTime() {
-  if (!initialized_ || (!started_ && seek_fraction_ < 0)) {
-    return 0;
+fml::TimeDelta ValueAnimator::ActiveDuration() const {
+  if (HasNoIterations() || duration_ <= 0) {
+    return fml::TimeDelta::Zero();
   }
+  const int64_t iteration_count =
+      repeat_count_ == kInfinite ? -1 : static_cast<int64_t>(repeat_count_) + 1;
+  return lynx::gfx::GetRepeatDuration(
+      iteration_count, fml::TimeDelta::FromMilliseconds(duration_));
+}
+
+double ValueAnimator::StartEventElapsedTime() const {
+  return lynx::gfx::CalculateEventTime(
+             fml::TimeDelta::FromMilliseconds(-start_delay_), ActiveDuration())
+      .ToSecondsF();
+}
+
+double ValueAnimator::EndEventElapsedTime() {
+  return repeat_count_ == kInfinite ? ActiveElapsedTime()
+                                    : ActiveDuration().ToSecondsF();
+}
+
+double ValueAnimator::ActiveElapsedTime() {
+  const auto active_duration = ActiveDuration();
   if (seek_fraction_ >= 0) {
-    return static_cast<int64_t>(duration_ * seek_fraction_);
+    const auto elapsed = fml::TimeDelta::FromMillisecondsF(
+        seek_fraction_ * static_cast<double>(duration_));
+    return lynx::gfx::CalculateEventTime(elapsed, active_duration).ToSecondsF();
   }
-  float durationScale = ResolveDurationScale();
-  if (durationScale == 0.f) {
-    durationScale = 1.f;
+  if (start_time_ < 0) {
+    return StartEventElapsedTime();
   }
-  return static_cast<int64_t>(
-      (GetAnimationHandler()->GetCurrentAnimationTime() - start_time_) /
-      durationScale);
+  const int64_t sample_time =
+      paused_ && pause_time_ >= 0
+          ? pause_time_
+          : ClampFrameTime(GetAnimationHandler()->GetCurrentAnimationTime());
+  const float duration_scale = ResolveDurationScale();
+  // start_time_ already includes the scaled delay.
+  const auto elapsed = fml::TimeDelta::FromMillisecondsF(
+      static_cast<double>(sample_time - start_time_) /
+      (duration_scale > 0.f ? duration_scale : 1.f));
+  return lynx::gfx::CalculateEventTime(elapsed, active_duration).ToSecondsF();
 }
 
 void ValueAnimator::SetStartDelay(int64_t start_delay) {
@@ -285,13 +303,13 @@ void ValueAnimator::SetInterpolator(std::unique_ptr<Interpolator> value) {
   }
 }
 
-void ValueAnimator::NotifyStartListeners() {
+void ValueAnimator::NotifyStartListeners(double elapsed_time) {
   if (!start_listeners_called_) {
     PrepareAnimation();
     start_listeners_called_ = true;
     std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
     for (AnimatorListener* listener : tmp_listeners) {
-      listener->OnAnimationStart(*this);
+      listener->OnAnimationStart(*this, elapsed_time);
     }
   }
 }
@@ -416,13 +434,14 @@ void ValueAnimator::Cancel() {
   // Only cancel if the animation is actually running or has been started and is
   // about to run Only notify listeners if the animator has actually started
   if ((started_ || running_) && !end_listeners_called_) {
+    const double elapsed_time = ActiveElapsedTime();
     // Internal listeners may need the underlying value for cleanup, but a
     // delayed animation that never reached its active phase must not emit a
     // synthetic animationstart before animationcancel.
     PrepareAnimation();
     std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
     for (AnimatorListener* listener : tmp_listeners) {
-      listener->OnAnimationCancel(*this);
+      listener->OnAnimationCancel(*this, elapsed_time);
     }
   }
   std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
@@ -615,7 +634,7 @@ void ValueAnimator::EndAnimation(bool remove) {
   if (started_ && !running_) {
     // If it's not yet running, then start listeners weren't called. Call them
     // now.
-    NotifyStartListeners();
+    NotifyStartListeners(StartEventElapsedTime());
   }
   // `running_` should remain true when forwarding.
   if (remove) {
@@ -625,9 +644,10 @@ void ValueAnimator::EndAnimation(bool remove) {
   // end_listeners_called_ will be set false when animator restart.
   if ((started_ || running_) && !end_listeners_called_) {
     end_listeners_called_ = true;
+    const double elapsed_time = EndEventElapsedTime();
     std::forward_list<AnimatorListener*> tmp_listeners = listeners_;
     for (AnimatorListener* l : tmp_listeners) {
-      l->OnAnimationEnd(*this);
+      l->OnAnimationEnd(*this, elapsed_time);
     }
   } else {
     end_listeners_called_ = true;
@@ -656,7 +676,7 @@ void ValueAnimator::StartAnimation() {
   } else {
     overall_fraction_ = 0.f;
   }
-  NotifyStartListeners();
+  NotifyStartListeners(StartEventElapsedTime());
 }
 
 /**
@@ -716,8 +736,12 @@ bool ValueAnimator::AnimateBasedOnTime(int64_t current_time,
       }
       for (int64_t iteration = first_crossed_iteration;
            iteration <= last_crossed_iteration; ++iteration) {
+        const double elapsed_time =
+            lynx::gfx::GetRepeatDuration(
+                iteration, fml::TimeDelta::FromMilliseconds(duration_))
+                .ToSecondsF();
         for (auto l : listeners_) {
-          l->OnAnimationRepeat(*this);
+          l->OnAnimationRepeat(*this, elapsed_time);
         }
       }
       done = lastIterationFinished;
@@ -765,8 +789,14 @@ void ValueAnimator::AnimateBasedOnPlayTime(int64_t current_play_time,
     lastIteration = std::min(lastIteration, repeat_count_);
 
     if (iteration != lastIteration) {
+      const int boundary =
+          iteration > lastIteration ? iteration : iteration + 1;
+      const double elapsed_time =
+          lynx::gfx::GetRepeatDuration(
+              boundary, fml::TimeDelta::FromMilliseconds(duration_))
+              .ToSecondsF();
       for (auto l : listeners_) {
-        l->OnAnimationRepeat(*this);
+        l->OnAnimationRepeat(*this, elapsed_time);
       }
     }
   }
@@ -1018,7 +1048,7 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
   PrepareAnimation();
 
   if (!start_listeners_called_) {
-    NotifyStartListeners();
+    NotifyStartListeners(StartEventElapsedTime());
   }
 
   if (last_frame_time_ < 0) {
@@ -1271,7 +1301,7 @@ void ValueAnimator::RestartAnimationIfNeeded(int64_t current_time) {
         listener->OnAnimationRemove(*this);
       }
     }
-    NotifyStartListeners();
+    NotifyStartListeners(EndEventElapsedTime());
   }
 }
 

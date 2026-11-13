@@ -3765,6 +3765,9 @@ bool BaseView::HasAnimationEvent(const ClayEventType& event_type) const {
     case kClayEventTypeTransitionEnd:
       event = event_attr::kEventTransitionEnd;
       break;
+    case kClayEventTypeTransitionCancel:
+      event = event_attr::kEventTransitionCancel;
+      break;
     default:
       return false;
   }
@@ -3773,21 +3776,21 @@ bool BaseView::HasAnimationEvent(const ClayEventType& event_type) const {
 
 void BaseView::OnTransitionEvent(const AnimationParams& animation_params,
                                  ClayAnimationPropertyType property_type) {
-  bool has_event = false;
   auto event_type = animation_params.event_type;
   switch (event_type) {
     case kClayEventTypeTransitionStart:
-      has_event = HasEvent(event_attr::kEventTransitionStart);
-      break;
     case kClayEventTypeTransitionEnd:
-      has_event = HasEvent(event_attr::kEventTransitionEnd);
+    case kClayEventTypeTransitionCancel:
       break;
     default:
       FML_DCHECK(false);
       return;
   }
+  const bool has_event = HasAnimationEvent(event_type);
 #ifdef ENABLE_RASTER_CACHE_SCALE
-  UpdateCacheStrategy();
+  if (event_type != kClayEventTypeTransitionCancel) {
+    UpdateCacheStrategy();
+  }
 #endif
 #if OS_IOS
   if (event_type == kClayEventTypeTransitionEnd &&

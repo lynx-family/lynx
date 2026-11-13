@@ -371,35 +371,42 @@ void KeyframesManager::CancelAnimator(const std::string& name) {
 void KeyframesManager::SetEventHandler(AnimationEventHandler* event_handler) {
   event_handler_ = event_handler;
 }
-void KeyframesManager::OnAnimationStart(const Animator& animation) {
+void KeyframesManager::OnAnimationStart(const Animator& animation,
+                                        double elapsed_time) {
   if (event_handler_) {
     const std::string& animation_name = animation.GetAnimationName();
     AnimationParams animation_params{
-        ClayEventType::kClayEventTypeAnimationStart, animation_name.c_str()};
+        ClayEventType::kClayEventTypeAnimationStart, animation_name.c_str(),
+        elapsed_time};
     event_handler_->OnAnimationEvent(animation_params);
   }
 }
-void KeyframesManager::OnAnimationRepeat(const Animator& animation) {
+void KeyframesManager::OnAnimationRepeat(const Animator& animation,
+                                         double elapsed_time) {
   if (event_handler_) {
     const std::string& animation_name = animation.GetAnimationName();
     AnimationParams animation_params{
-        ClayEventType::kClayEventTypeAnimationRepeat, animation_name.c_str()};
+        ClayEventType::kClayEventTypeAnimationRepeat, animation_name.c_str(),
+        elapsed_time};
     event_handler_->OnAnimationEvent(animation_params);
   }
 }
-void KeyframesManager::OnAnimationEnd(const Animator& animation) {
+void KeyframesManager::OnAnimationEnd(const Animator& animation,
+                                      double elapsed_time) {
   if (event_handler_) {
     const std::string& animation_name = animation.GetAnimationName();
     AnimationParams animation_params{ClayEventType::kClayEventTypeAnimationEnd,
-                                     animation_name.c_str()};
+                                     animation_name.c_str(), elapsed_time};
     event_handler_->OnAnimationEvent(animation_params);
   }
 }
-void KeyframesManager::OnAnimationCancel(const Animator& animation) {
+void KeyframesManager::OnAnimationCancel(const Animator& animation,
+                                         double elapsed_time) {
   if (event_handler_) {
     const std::string& animation_name = animation.GetAnimationName();
     AnimationParams animation_params{
-        ClayEventType::kClayEventTypeAnimationCancel, animation_name.c_str()};
+        ClayEventType::kClayEventTypeAnimationCancel, animation_name.c_str(),
+        elapsed_time};
     event_handler_->OnAnimationEvent(animation_params);
   }
 }
