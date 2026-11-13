@@ -400,6 +400,20 @@ void SetDataset(PlatformEventTarget* target, const lepus::Value& value) {
 
 void SetMinimumTouchTargetSize(PlatformEventTarget* target,
                                const lepus::Value& value) {
+  if (value.IsArray() && value.Array()->size() == 2) {
+    const auto& width = value.Array()->get(0);
+    const auto& height = value.Array()->get(1);
+    if (width.IsNumber() && height.IsNumber() &&
+        std::isfinite(width.Number()) && std::isfinite(height.Number()) &&
+        width.Number() >= 0. && height.Number() >= 0. &&
+        width.Number() <= std::numeric_limits<float>::max() &&
+        height.Number() <= std::numeric_limits<float>::max()) {
+      target->SetMinimumTouchTargetSize(width.Number(), height.Number());
+    } else {
+      target->SetMinimumTouchTargetSize(-1.f);
+    }
+    return;
+  }
   const double size_px = value.IsNumber() ? value.Number() : -1.;
   target->SetMinimumTouchTargetSize(
       size_px >= 0. && size_px <= std::numeric_limits<float>::max()
