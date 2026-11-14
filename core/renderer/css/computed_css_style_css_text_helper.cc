@@ -291,6 +291,13 @@ base::String ComputedCSSStyleCssTextHelper::DirectionCSSText(
              : BASE_STATIC_STRING(kDirectionLtr);
 }
 
+base::String ComputedCSSStyleCssTextHelper::PointerEventsCSSText(
+    starlight::ComputedCSSStyle* computed_css_style,
+    starlight::LayoutResultForRendering ref_layout_result) {
+  return base::String(
+      CSSDecoder::ToPointerEventsType(computed_css_style->GetPointerEvents()));
+}
+
 base::Vector<base::String>
 ComputedCSSStyleCssTextHelper::ParseBackgroundPositionArray(
     starlight::ComputedCSSStyle* computed_css_style) {
