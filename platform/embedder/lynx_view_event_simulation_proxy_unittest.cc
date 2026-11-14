@@ -89,10 +89,17 @@ TEST_F(LynxViewEventSimulationProxyTest, ForwardsKeyEvent) {
   FakeEventSimulationTarget* target = nullptr;
   auto proxy = CreateProxy(&target);
 
+  EXPECT_TRUE(proxy.SupportsKeyEvents());
   proxy.DispatchKeyEvent("keyDown", "a", "a", 4, true);
 
   EXPECT_EQ(target->key_events,
             std::vector<std::string>({"keyDown|a|a|4|repeat"}));
+}
+
+TEST_F(LynxViewEventSimulationProxyTest, MissingTargetDoesNotSupportKeyEvents) {
+  LynxViewEventSimulationProxy proxy(nullptr);
+  EXPECT_FALSE(proxy.SupportsKeyEvents());
+  proxy.DispatchKeyEvent("keyDown", "A", "", 0, false);
 }
 
 TEST_F(LynxViewEventSimulationProxyTest, EmulateTouchForwardsUnchanged) {

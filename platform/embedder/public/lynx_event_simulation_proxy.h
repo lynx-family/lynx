@@ -28,6 +28,8 @@ class LynxEventSimulationProxy {
                             float delta_y, int modifiers, int click_count) {}
   virtual void Focus(int node_id) {}
   virtual void InsertText(const std::string& text) {}
+  // Override together with DispatchKeyEvent to opt into synthetic key input.
+  virtual bool SupportsKeyEvents() const { return false; }
   // Triggers key event bindings and shortcuts; text input uses InsertText.
   virtual void DispatchKeyEvent(const std::string& type, const std::string& key,
                                 const std::string& text, int modifiers,
