@@ -16,6 +16,8 @@ InspectorInputAgent::InspectorInputAgent(
       &InspectorInputAgent::EmulateTouchFromMouseEvent;
   functions_map_["Input.dispatchMouseEvent"] =
       &InspectorInputAgent::DispatchMouseEvent;
+  functions_map_["Input.dispatchKeyEvent"] =
+      &InspectorInputAgent::DispatchKeyEvent;
   functions_map_["Input.insertText"] = &InspectorInputAgent::InsertText;
   functions_map_["Input.synthesizeTapGesture"] =
       &InspectorInputAgent::SynthesizeTapGesture;
@@ -38,6 +40,11 @@ void InspectorInputAgent::DispatchMouseEvent(
 void InspectorInputAgent::InsertText(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   devtool_mediator_->InsertText(responder, params);
+}
+
+void InspectorInputAgent::DispatchKeyEvent(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  devtool_mediator_->DispatchKeyEvent(responder, params);
 }
 
 void InspectorInputAgent::SynthesizeTapGesture(
