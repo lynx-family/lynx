@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/application_directory.h"
 #include "base/trace/native/trace_export.h"
 
 namespace lynx {
@@ -69,7 +70,6 @@ class TRACE_EXPORT TraceController {
   class Delegate {
    public:
     virtual ~Delegate() = default;
-    virtual std::string GenerateTracingFileDir() = 0;
 #ifdef OS_ANDROID
     virtual void RefreshATraceTags() = 0;
     virtual void SetIsTracingStarted(bool is_tracing_started) = 0;
@@ -91,9 +91,9 @@ class TRACE_EXPORT TraceController {
     delegate_ = std::move(delegate);
   }
   Delegate* GetDelegate() const { return delegate_.get(); }
-  // Returns the platform trace directory after the delegate is initialized.
+  // Returns the trace directory independently of the trace delegate.
   std::string GenerateTracingFileDir() const {
-    return delegate_ ? delegate_->GenerateTracingFileDir() : "";
+    return base::GetApplicationDataSubDirectory("trace");
   }
 
   virtual int StartTracing(const std::shared_ptr<TraceConfig>& config) {

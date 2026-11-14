@@ -25,12 +25,14 @@
 #include <ctime>
 #include <fstream>
 #include <functional>
+#include <iomanip>
 #include <map>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <utility>
 
+#include "base/include/file_utils.h"
 #include "base/include/log/logging.h"
 #include "base/include/notification_center.h"
 #include "base/include/thread/timed_task.h"
@@ -38,6 +40,10 @@
 #include "base/trace/native/trace_event_utils_perfetto.h"
 #include "base/trace/native/track_event_wrapper.h"
 #include "third_party/rapidjson/document.h"
+
+#if defined(_WIN32)
+#include "base/include/string/string_conversion_win.h"
+#endif
 
 PERFETTO_DEFINE_CATEGORIES();
 PERFETTO_TRACK_EVENT_STATIC_STORAGE();
@@ -196,8 +202,13 @@ void AppendTraceDataToFile(const std::string& file_path,
   if (trace_data.empty()) {
     return;
   }
+#if defined(_WIN32)
+  std::ofstream output(base::Utf16FromUtf8(file_path).c_str(),
+                       std::ios::out | std::ios::binary | std::ios::app);
+#else
   std::ofstream output(file_path,
                        std::ios::out | std::ios::binary | std::ios::app);
+#endif
   output.write(trace_data.data(), trace_data.size());
   output.flush();
 }
@@ -427,6 +438,22 @@ TraceControllerImpl::TraceControllerImpl() : TraceController() {
 
 int TraceControllerImpl::StartTracing(
     const std::shared_ptr<TraceConfig>& config) {
+  if (config->file_path.empty()) {
+    config->file_path = GenerateTraceFilePath(GenerateTracingFileDir());
+    if (config->file_path.empty()) {
+      LOGE("Application data directory is unavailable");
+      return -1;
+    }
+  }
+  int fd = -1;
+  if (config->record_mode == TraceConfig::RECORD_CONTINUOUSLY) {
+    fd = base::OpenFileDescriptor(config->file_path, O_RDWR | O_CREAT | O_TRUNC,
+                                  0600);
+    if (fd < 0) {
+      LOGE("Open trace file failed: " << config->file_path);
+      return -1;
+    }
+  }
   auto& session = CreateNewSession(config);
   session.config = config;
   last_session_ = &session;
@@ -459,18 +486,9 @@ int TraceControllerImpl::StartTracing(
   if (config->enable_compress) {
     cfg.set_compression_type(::perfetto::TraceConfig::COMPRESSION_TYPE_DEFLATE);
   }
-  // file path
-  if (config->file_path.empty() && delegate_) {
-    if (trace_file_dir_.empty()) {
-      trace_file_dir_ = GenerateTracingFileDir();
-    }
-    config->file_path = GenerateTraceFilePath(trace_file_dir_);
-  }
-
   // setup and start session
   if (config->record_mode == TraceConfig::RECORD_CONTINUOUSLY) {
     cfg.set_file_write_period_ms(config->file_write_period_ms);
-    int fd = open(config->file_path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0600);
     session.opened_fds.push_back(fd);
     session.session_impl->Setup(cfg, fd);
   } else {
@@ -581,8 +599,12 @@ bool TraceControllerImpl::StopTracing(int session_id) {
     session->opened_fds.clear();
   } else {
     std::vector<char> trace_data(session->session_impl->ReadTraceBlocking());
-    std::ofstream output(session->config->file_path,
+#if defined(_WIN32)
+    std::ofstream output(base::Utf16FromUtf8(trace_file_path).c_str(),
                          std::ios::out | std::ios::binary);
+#else
+    std::ofstream output(trace_file_path, std::ios::out | std::ios::binary);
+#endif
     output.write(&trace_data[0], trace_data.size());
     output.flush();
   }
@@ -662,6 +684,7 @@ void TraceControllerImpl::StartStartupTracingIfNeeded() {
   static constexpr const char* const kStartupDuraion = "startup_duration";
   static constexpr const char* const kEnableSystrace = "enable_systrace";
   static constexpr const char* const kResultFile = "result_file";
+  const auto config_path = GetStartupTracingConfigPath();
   const auto startup_config = this->GetStartupTracingConfig();
   if (startup_config.empty()) {
     return;
@@ -701,12 +724,14 @@ void TraceControllerImpl::StartStartupTracingIfNeeded() {
   trace_config->enable_systrace = enable_systrace;
   trace_config->is_startup_tracing = true;
   const int session_id = this->StartTracing(trace_config);
+  if (session_id == -1) {
+    return;
+  }
   LOGD("Lynx Startup Trace started");
-  auto stop_startup_tracing = [this, session_id]() {
+  auto stop_startup_tracing = [this, session_id, config_path]() {
     this->StopTracing(session_id);
     LOGD("Lynx Startup Trace stopped");
-    const auto config_path = this->trace_file_dir_ + kStartupTracingFile;
-    if (!remove(config_path.c_str())) {
+    if (!base::RemoveFile(config_path)) {
       LOGD("Lynx Startup Trace config file removed");
     } else {
       LOGD("Lynx Startup Trace config file remove fail");
@@ -717,14 +742,16 @@ void TraceControllerImpl::StartStartupTracingIfNeeded() {
 }
 
 void TraceControllerImpl::SetStartupTracingConfig(std::string config) {
-  if (trace_file_dir_.empty()) {
-    trace_file_dir_ = GenerateTracingFileDir();
-    if (trace_file_dir_.empty()) {
-      return;
-    }
+  const auto trace_config_path = GetStartupTracingConfigPath();
+  if (trace_config_path.empty()) {
+    return;
   }
-  const std::string trace_config_path = trace_file_dir_ + kStartupTracingFile;
+#if defined(_WIN32)
+  std::ofstream output(base::Utf16FromUtf8(trace_config_path).c_str(),
+                       std::ios::out | std::ios::binary);
+#else
   std::ofstream output(trace_config_path, std::ios::out | std::ios::binary);
+#endif
   if (output.is_open()) {
     output.write(config.data(), config.size());
     output.flush();
@@ -735,15 +762,16 @@ void TraceControllerImpl::SetStartupTracingConfig(std::string config) {
 }
 
 std::string TraceControllerImpl::GetStartupTracingConfig() {
-  if (trace_file_dir_.empty()) {
-    trace_file_dir_ = GenerateTracingFileDir();
-    if (trace_file_dir_.empty()) {
-      return "";
-    }
+  const auto trace_config_path = GetStartupTracingConfigPath();
+  if (trace_config_path.empty()) {
+    return "";
   }
-  const std::string trace_config_path = trace_file_dir_ + kStartupTracingFile;
+#if defined(_WIN32)
+  std::ifstream input(base::Utf16FromUtf8(trace_config_path).c_str(),
+                      std::ios::in | std::ios::binary);
+#else
   std::ifstream input(trace_config_path, std::ios::in | std::ios::binary);
-
+#endif
   if (input.is_open()) {
     std::string config((std::istreambuf_iterator<char>(input)),
                        std::istreambuf_iterator<char>());
@@ -753,6 +781,17 @@ std::string TraceControllerImpl::GetStartupTracingConfig() {
     LOGE("Read trace_config.json failed!");
     return "";
   }
+}
+
+std::string TraceControllerImpl::GetStartupTracingConfigPath() const {
+  auto directory = GenerateTracingFileDir();
+  if (directory.empty()) {
+    return "";
+  }
+  if (directory.back() != '/') {
+    directory += '/';
+  }
+  return directory + "trace-config.json";
 }
 
 std::string TraceControllerImpl::GetStartupTracingFilePath() {
@@ -785,6 +824,9 @@ TraceControllerImpl::TracingSession& TraceControllerImpl::CreateNewSession(
 
 std::string TraceControllerImpl::GenerateTraceFilePath(
     const std::string& file_dir) {
+  if (file_dir.empty()) {
+    return "";
+  }
   std::string file_path = file_dir;
   if (file_path.back() != '/') {
     file_path.append("/");
@@ -798,8 +840,9 @@ std::string TraceControllerImpl::GenerateTraceFilePath(
   struct tm* tm = localtime(&now);
   std::ostringstream file_name;
   file_name << "lynx-profile-trace-" << pthd_id << "-" << tm->tm_year + 1900
-            << "-" << tm->tm_mon + 1 << "-" << tm->tm_mday << "-" << tm->tm_hour
-            << tm->tm_min << tm->tm_sec;
+            << "-" << tm->tm_mon + 1 << "-" << tm->tm_mday << "-"
+            << std::setfill('0') << std::setw(2) << tm->tm_hour << std::setw(2)
+            << tm->tm_min << std::setw(2) << tm->tm_sec;
 
   file_path.append(file_name.str());
   return file_path;
