@@ -1551,6 +1551,7 @@ export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
   subscribeSessionStorage(key: string, callback: SessionStorageCallback): number;
   unsubscribeSessionStorage(key: string, listenerId: number): void;
   getNativePtr(): bigint;
+  destroy(): void;
   getLastScriptUrl(): string | undefined;
   moduleFactory(): LynxModuleManager;
   runtimeOptions(): LynxBackgroundRuntimeOptions;

@@ -52,6 +52,18 @@ typedef struct {
 LYNX_RUNTIME_C_API void LynxRuntimeWrapperAddLifecycleListener(
     uint64_t wrapper, LynxRuntimeLifecycleListener* listener);
 
+// Copies the listener and takes ownership of user_data only on success (1).
+// Call on UI with a live, unattached LynxBackgroundRuntime. Attach/detach run
+// on JS. on_release runs exactly once when the registration is discarded,
+// including when the runtime is destroyed before it attaches. It may run on
+// either UI or JS and must not access platform N-API references. An attached
+// environment is detached before release. No callback runs after release.
+// Returns 0 for invalid arguments or an unavailable runtime; ownership then
+// remains with the caller. Keep the callback library loaded until release.
+LYNX_RUNTIME_C_API int32_t LynxRuntimeWrapperAddOwnedLifecycleListener(
+    uint64_t wrapper, const LynxRuntimeLifecycleListener* listener,
+    void (*on_release)(void* user_data));
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
