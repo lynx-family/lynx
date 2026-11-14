@@ -26,6 +26,12 @@ NSString *const deprecatedStreamingFlag = @"useStreaming";
 - (void)invokeStreamingWithRequest:(LynxHttpRequest *)request
                           callback:(LynxHttpCallback)callback
                       withDelegate:(LynxHttpStreamingDelegate *)delegate {
+  [self invokeCancelableStreamingWithRequest:request callback:callback withDelegate:delegate];
+}
+
+- (dispatch_block_t)invokeCancelableStreamingWithRequest:(LynxHttpRequest *)request
+                                                callback:(LynxHttpCallback)callback
+                                            withDelegate:(LynxHttpStreamingDelegate *)delegate {
   static NSOperationQueue *delegateQueue;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
@@ -50,9 +56,17 @@ NSString *const deprecatedStreamingFlag = @"useStreaming";
   NSURLSessionDataTask *dataTask =
       [session dataTaskWithRequest:[LynxHttpService convertToNSRequest:request]];
   [dataTask resume];
+  return ^{
+    [dataTask cancel];
+  };
 }
 
 - (void)invokeWithRequest:(LynxHttpRequest *)request callback:(LynxHttpCallback)callback {
+  [self invokeCancelableWithRequest:request callback:callback];
+}
+
+- (dispatch_block_t)invokeCancelableWithRequest:(LynxHttpRequest *)request
+                                       callback:(LynxHttpCallback)callback {
   NSURLSession *session = [NSURLSession sharedSession];
   NSURLSessionDataTask *dataTask =
       [session dataTaskWithRequest:[LynxHttpService convertToNSRequest:request]
@@ -75,6 +89,9 @@ NSString *const deprecatedStreamingFlag = @"useStreaming";
                  }];
 
   [dataTask resume];
+  return ^{
+    [dataTask cancel];
+  };
 }
 
 - (BOOL)setHttpInterceptor:(id<LynxHttpInterceptor>)interceptor {
