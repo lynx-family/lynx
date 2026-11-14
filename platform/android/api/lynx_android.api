@@ -2573,10 +2573,16 @@ public interface com::lynx::tasm::service::ILynxExtensionService {
   public void com.lynx.tasm.service.ILynxExtensionService.onLynxViewDestroy(LynxContext context);
 }
 
+public interface com::lynx::tasm::service::ILynxHttpRequestOperation {
+  public void com.lynx.tasm.service.ILynxHttpRequestOperation.cancel();
+}
+
 public interface com::lynx::tasm::service::ILynxHttpService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxHttpService.getServiceClass();
   public void com.lynx.tasm.service.ILynxHttpService.requestStreaming(@NonNull HttpRequest request, @NonNull final LynxHttpRequestCallback callback, @NonNull HttpStreamingDelegate delegate);
   public void com.lynx.tasm.service.ILynxHttpService.request(@NonNull HttpRequest request, @NonNull final LynxHttpRequestCallback callback);
+  public default ILynxHttpRequestOperation com.lynx.tasm.service.ILynxHttpService.requestStreamingCancelable(@NonNull HttpRequest request, @NonNull final LynxHttpRequestCallback callback, @NonNull HttpStreamingDelegate delegate);
+  public default ILynxHttpRequestOperation com.lynx.tasm.service.ILynxHttpService.requestCancelable(@NonNull HttpRequest request, @NonNull final LynxHttpRequestCallback callback);
 }
 
 public interface com::lynx::tasm::service::ILynxI18nService {
@@ -5838,6 +5844,7 @@ public class com::lynx::jsbridge::LynxFetchModule : com.lynx.jsbridge.LynxModule
   public final String com.lynx.jsbridge.LynxFetchModule.NAME NAME;
   public com.lynx.jsbridge.LynxFetchModule.LynxFetchModule(Context context, Object sender);
   public void com.lynx.jsbridge.LynxFetchModule.fetch(final ReadableMap request, final Callback resolve, final Callback reject);
+  public void com.lynx.jsbridge.LynxFetchModule.cancel(final String requestId);
 }
 
 public class com::lynx::jsbridge::network::LynxFetchModuleEventSender :  {

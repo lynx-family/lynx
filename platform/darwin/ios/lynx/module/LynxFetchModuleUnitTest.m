@@ -15,6 +15,7 @@
 - (void)fetch:(NSDictionary *)request
       resolve:(LynxCallbackBlock)resolve
        reject:(LynxCallbackBlock)reject;
+- (void)cancel:(NSString *)requestId;
 @end
 
 @interface LynxNetworkRequestObserverMock : NSObject <LynxNetworkRequestObserver>
@@ -140,6 +141,37 @@
 
 @end
 
+@interface LynxCancelableServiceHttpMock : LynxServiceHttpMock
+@property(nonatomic, copy) LynxHttpCallback pendingCallback;
+@property(nonatomic, strong) LynxHttpStreamingDelegate *pendingDelegate;
+@property(nonatomic, assign) NSInteger cancelCount;
+@end
+
+@implementation LynxCancelableServiceHttpMock
+
+- (dispatch_block_t)invokeCancelableWithRequest:(LynxHttpRequest *)request
+                                       callback:(LynxHttpCallback)callback {
+  self.lastRequest = request;
+  self.pendingCallback = callback;
+  return ^{
+    self.cancelCount++;
+  };
+}
+
+- (dispatch_block_t)invokeCancelableStreamingWithRequest:(LynxHttpRequest *)request
+                                                callback:(LynxHttpCallback)callback
+                                            withDelegate:(LynxHttpStreamingDelegate *)delegate {
+  self.lastRequest = request;
+  self.usedStreaming = YES;
+  self.pendingCallback = callback;
+  self.pendingDelegate = delegate;
+  return ^{
+    self.cancelCount++;
+  };
+}
+
+@end
+
 @interface LynxFetchModuleUnitTest : XCTestCase
 @end
 
@@ -216,6 +248,119 @@
   XCTAssertEqual(_sender.globalEvents.count, 2u);
   XCTAssertEqualObjects(_sender.globalEvents[0][@"params"][0][@"event"], @"onData");
   XCTAssertEqualObjects(_sender.globalEvents[1][@"params"][0][@"event"], @"onEnd");
+}
+
+- (void)testCancelWithoutCancelableHttpServiceIsNoOp {
+  __block NSDictionary *result = nil;
+
+  [_module fetch:@{
+    @"requestId" : @"1",
+    @"url" : @"https://example.com/request",
+    @"method" : @"GET",
+  }
+      resolve:^(id value) {
+        result = value;
+      }
+      reject:^(id error) {
+        XCTFail(@"Unexpected Fetch rejection: %@", error);
+      }];
+  [_module cancel:@"1"];
+
+  XCTAssertNotNil(result);
+}
+
+@end
+
+@interface LynxFetchModuleCancelUnitTest : XCTestCase
+@end
+
+@implementation LynxFetchModuleCancelUnitTest {
+  LynxFetchModuleEventSenderMock *_sender;
+  LynxCancelableServiceHttpMock *_httpService;
+  LynxFetchModule *_module;
+  id _lynxServicesMock;
+}
+
+- (void)setUp {
+  [super setUp];
+  _sender = [[LynxFetchModuleEventSenderMock alloc] init];
+  _httpService = [[LynxCancelableServiceHttpMock alloc] init];
+  _module = [[LynxFetchModule alloc] initWithParam:_sender];
+  _lynxServicesMock = OCMClassMock(LynxServices.class);
+  OCMStub(
+      ClassMethod([_lynxServicesMock getInstanceWithProtocol:@protocol(LynxServiceHttpProtocol)]))
+      .andReturn(_httpService);
+}
+
+- (void)tearDown {
+  [_lynxServicesMock stopMocking];
+  [super tearDown];
+}
+
+- (void)fetchWithRequestId:(NSString *)requestId
+                 streaming:(BOOL)streaming
+                   resolve:(LynxCallbackBlock)resolve {
+  [_module fetch:@{
+    @"requestId" : requestId,
+    @"url" : @"https://example.com/request",
+    @"method" : @"GET",
+    @"lynxExtension" : @{@"enableFetchAPIStandardStreaming" : @(streaming)},
+  }
+         resolve:resolve
+          reject:^(id error) {
+            XCTFail(@"Unexpected Fetch rejection: %@", error);
+          }];
+}
+
+- (void)testCancelPendingRequestInvokesCancelBlockOnce {
+  [self fetchWithRequestId:@"1"
+                 streaming:NO
+                   resolve:^(id value){
+                   }];
+  XCTAssertNotNil(_httpService.pendingCallback);
+  [_module cancel:@"unknown"];
+  XCTAssertEqual(_httpService.cancelCount, 0);
+
+  [_module cancel:@"1"];
+  [_module cancel:@"1"];
+
+  XCTAssertEqual(_httpService.cancelCount, 1);
+}
+
+- (void)testCancelFinishedRequestIsNoOp {
+  __block NSDictionary *result = nil;
+  [self fetchWithRequestId:@"1"
+                 streaming:NO
+                   resolve:^(id value) {
+                     result = value;
+                   }];
+
+  _httpService.pendingCallback([_httpService response]);
+  [_module cancel:@"1"];
+
+  XCTAssertNotNil(result);
+  XCTAssertEqual(_httpService.cancelCount, 0);
+}
+
+- (void)testCancelStreamingRequestUntilEnd {
+  [self fetchWithRequestId:@"1"
+                 streaming:YES
+                   resolve:^(id value){
+                   }];
+  XCTAssertTrue(_httpService.usedStreaming);
+  // A streaming request is still in flight after the response is received.
+  _httpService.pendingCallback([_httpService response]);
+  [_module cancel:@"1"];
+  XCTAssertEqual(_httpService.cancelCount, 1);
+
+  [self fetchWithRequestId:@"2"
+                 streaming:YES
+                   resolve:^(id value){
+                   }];
+  _httpService.pendingCallback([_httpService response]);
+  [_httpService.pendingDelegate onEnd];
+  [_module cancel:@"2"];
+  XCTAssertEqual(_httpService.cancelCount, 1);
 }
 
 @end

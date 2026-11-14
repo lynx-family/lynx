@@ -3609,6 +3609,8 @@ public protocol LynxServiceHttpProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceHttpProtocol-p::invokeWithRequest:callback:(LynxHttpRequest *request,[callback] LynxHttpCallback callback);
   public void LynxServiceHttpProtocol-p::invokeStreamingWithRequest:callback:withDelegate:(LynxHttpRequest *request,[callback] LynxHttpCallback callback,[withDelegate] LynxHttpStreamingDelegate *delegate);
   public BOOL LynxServiceHttpProtocol-p::setHttpInterceptor:(id< LynxHttpInterceptor > interceptor);
+  public dispatch_block_t LynxServiceHttpProtocol-p::invokeCancelableWithRequest:callback:(LynxHttpRequest *request,[callback] LynxHttpCallback callback);
+  public dispatch_block_t LynxServiceHttpProtocol-p::invokeCancelableStreamingWithRequest:callback:withDelegate:(LynxHttpRequest *request,[callback] LynxHttpCallback callback,[withDelegate] LynxHttpStreamingDelegate *delegate);
 }
 
 public protocol LynxServiceI18nProtocol-p : <LynxServiceProtocol> {
