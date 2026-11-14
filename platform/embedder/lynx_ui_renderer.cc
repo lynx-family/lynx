@@ -71,11 +71,11 @@ KeyCodes ResolveKeyCodes(std::string_view key) {
       return codes;
     }
   }
-  // Printable ASCII keys use their lowercase code point as the logical key.
+  // Preserve the printable key label when reporting synthetic key events.
   if (key.size() == 1) {
     const unsigned char c = key[0];
     if (std::isprint(c)) {
-      return {kPlaceholderPhysical, static_cast<uint64_t>(std::tolower(c))};
+      return {kPlaceholderPhysical, static_cast<uint64_t>(c)};
     }
   }
   return kUnidentifiedKey;
