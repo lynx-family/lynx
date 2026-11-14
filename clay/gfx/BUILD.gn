@@ -58,6 +58,7 @@ source_set("gfx") {
   configs += [ "../:config" ]
 
   if (enable_skity) {
+    deps += [ "../common/graphics" ]
     sources += [
       "paint_image_skity.cc",
       "paint_image_skity.h",
