@@ -1216,6 +1216,17 @@ void LynxDevToolMediator::InsertText(
   });
 }
 
+void LynxDevToolMediator::DispatchKeyEvent(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  auto executor = ui_executor_;
+  if (!executor || !RunOnUIThread([responder, params, executor] {
+        executor->DispatchKeyEvent(responder, params);
+      })) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Input UI task runner is unavailable");
+  }
+}
+
 void LynxDevToolMediator::SynthesizeTapGesture(
     const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
   RunOnUIThread([responder, params, executor = ui_executor_] {

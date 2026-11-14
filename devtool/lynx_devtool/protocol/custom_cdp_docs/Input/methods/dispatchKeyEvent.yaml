@@ -1,0 +1,75 @@
+summary: Dispatches a synthetic key event to the current focus of a Clay desktop LynxView.
+parameters:
+  - name: type
+    type: string
+    enum: [keyDown, rawKeyDown, keyUp]
+    description: Event type to dispatch. keyDown and rawKeyDown both dispatch a key-down event. The upstream char type returns a CDP server error; use Input.insertText to insert text.
+  - name: key
+    type: string
+    description: Required non-empty key without NUL characters. Printable ASCII preserves its case. Named keys use the renderer's existing key mapping; unsupported keys are reported as Unidentified.
+  - name: text
+    type: string
+    optional: true
+    default: ''
+    description: Accepted for protocol compatibility but does not insert text. Use Input.insertText for text input.
+  - name: modifiers
+    type: integer
+    optional: true
+    default: 0
+    minimum: 0
+    maximum: 15
+    description: Modifier bit field. Only 0 is supported; any non-zero value in the valid 0..15 range returns a CDP server error.
+  - name: autoRepeat
+    type: boolean
+    optional: true
+    default: false
+    description: Dispatches a repeated key-down event when true. Ignored for keyUp, which always dispatches a key-up event without repeat.
+  - name: commands
+    type: array
+    optional: true
+    description: Array of strings. Omission or an empty array is accepted; a non-empty array returns a CDP server error.
+returns: []
+events: []
+notes:
+  - This method is supported by the default public embedder keyboard simulation proxy on Clay desktop macOS, Windows, and windowless renderers. Other platforms or custom proxies must provide keyboard simulation support; unsupported targets return a CDP server error.
+  - Proxies installed through the legacy C callbacks setter do not provide keyboard callbacks and do not advertise keyboard support.
+  - Send the request to the intended LynxView session. The method uses that view's existing focus and does not activate the native window or choose a node. Use DOM.focus before sending keys when an editable control must receive the event.
+  - keyDown and rawKeyDown report keydown; keyUp reports keyup. autoRepeat affects down events only. The page event reports key, repeat, target, and currentTarget.
+  - Key requests do not commit text, even when text is supplied. Existing focused-control actions still run; for example, Backspace deletes text and ArrowLeft moves the caret.
+  - Named keys include Enter, Backspace, Delete, Tab, Escape, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Home, End, Shift, Control, Alt, and Meta. Function keys, PageUp, PageDown, non-ASCII characters, and other unmapped names are reported as Unidentified.
+  - Sending a modifier key by itself uses existing renderer behavior, but modifier payload fields and complete combination-key behavior are not supported.
+  - Extra upstream fields such as code, windowsVirtualKeyCode, nativeVirtualKeyCode, timestamp, location, isKeypad, isSystemKey, and unmodifiedText are not consumed. key remains required; code or virtual key codes do not provide a fallback.
+  - Invalid parameter types, invalid type values, an empty key, NUL in key, or modifiers outside 0..15 return an invalid-parameters error. char, non-zero modifiers, non-empty commands, and unavailable targets return a server error. Rejected requests do not dispatch a key event.
+  - A successful response has an empty result and means the request was accepted and handed to the renderer. It does not guarantee that page script or rendering has completed; wait for the expected page state.
+examples:
+  - title: Dispatch an uppercase key-down event
+    request:
+      id: 1
+      method: Input.dispatchKeyEvent
+      params:
+        type: keyDown
+        key: A
+    response:
+      id: 1
+      result: {}
+  - title: Dispatch a repeated Backspace
+    request:
+      id: 2
+      method: Input.dispatchKeyEvent
+      params:
+        type: rawKeyDown
+        key: Backspace
+        autoRepeat: true
+    response:
+      id: 2
+      result: {}
+  - title: Release Backspace
+    request:
+      id: 3
+      method: Input.dispatchKeyEvent
+      params:
+        type: keyUp
+        key: Backspace
+    response:
+      id: 3
+      result: {}
