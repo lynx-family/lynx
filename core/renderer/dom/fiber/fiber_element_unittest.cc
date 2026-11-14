@@ -23532,6 +23532,30 @@ TEST_P(FiberElementTest, TestGetComputedStyleByKey) {
   EXPECT_TRUE(page->GetComputedStyleByKey("opacity").StdString() == "0.9");
 }
 
+TEST_P(FiberElementTest, TestGetComputedStyleByKeyPointerEvents) {
+  for (const bool enable_new_styling_pipeline : {false, true}) {
+    SCOPED_TRACE(enable_new_styling_pipeline);
+    lynx::base::AutoReset<bool> styling_pipeline(
+        &manager->enable_new_styling_pipeline_, enable_new_styling_pipeline);
+    auto page = manager->CreateFiberPage("page", 11);
+    manager->SetFiberPageElement(page);
+    auto view = manager->CreateFiberView();
+    page->InsertNode(view);
+    page->FlushActionsAsRoot();
+
+    EXPECT_EQ(view->GetComputedStyleByKey("pointer-events").StdString(),
+              "auto");
+    for (const auto* value : {"auto", "none", "auto"}) {
+      SCOPED_TRACE(value);
+      view->SetRawInlineStyles(std::string("pointer-events: ") + value + ";");
+      page->FlushActionsAsRoot();
+      auto computed_value = view->GetComputedStyleByKey("pointer-events");
+      ASSERT_TRUE(computed_value.IsString());
+      EXPECT_EQ(computed_value.StdString(), value);
+    }
+  }
+}
+
 TEST_P(FiberElementTest, TestGetComputedStyleByKeyCustomProperties) {
   lynx::base::AutoReset<bool> css_inline_config(
       &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
