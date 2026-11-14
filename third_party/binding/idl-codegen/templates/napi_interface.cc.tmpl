@@ -8,6 +8,11 @@
 #include <utility>
 
 #include "base/include/vector.h"
+{% for method in methods if not method.from_shared %}
+{% for argument in method.arguments if argument.is_canvas_round_rect_radii %}
+#include "third_party/binding/napi/canvas_round_rect_radii.h"
+{% endfor %}
+{% endfor %}
 
 {% for filename in hardcoded_includes %}
 {% if filename.startswith('<') %}
