@@ -101,7 +101,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   // Return scroll offset including overscroll
   FloatPoint TotalScrollOffset();
 
-  void CorrectScrollOffset();
+  void CorrectScrollOffset(bool use_logical_offset = false);
 
   void HandleSticky();
   void EnableSticky();
@@ -130,6 +130,9 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   virtual void CalculateOverFlow();
 
   void ResetScroll() override { OnScrollUpdate(0); }
+  void OnScrollDirectionReset() override {
+    last_scroll_offset_ = TotalScrollOffset();
+  }
 
   std::unique_ptr<ScrollEventCallbackManager> callback_manager_;
 

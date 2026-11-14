@@ -117,6 +117,7 @@ class Scrollable : public WithTypeInfo<Scrollable, BaseView>,
 
   virtual void OnScrollStatusChange(ScrollStatus old_status) {}
   virtual void OnBounceEnd(bool canceled) {}
+  virtual void OnScrollDirectionReset() {}
 
   void NotifyScrolled();
 
