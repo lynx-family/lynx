@@ -337,9 +337,29 @@ TEST(LynxUIRendererTest, NamedKeysMapToClayKeyCodes) {
   EXPECT_EQ(renderer.key_events[1].logical, clay::keycodes::kLogicalBackspace);
   EXPECT_EQ(renderer.key_events[2].logical, clay::keycodes::kLogicalArrowLeft);
   EXPECT_EQ(renderer.key_events[3].logical, clay::keycodes::kLogicalMetaLeft);
-  EXPECT_EQ(renderer.key_events[4].logical, clay::keycodes::kLogicalKeyA);
+  EXPECT_EQ(renderer.key_events[4].logical, static_cast<uint64_t>('A'));
   EXPECT_EQ(renderer.key_events[5].logical,
             clay::keycodes::kLogicalUnidentified);
+}
+
+TEST(LynxUIRendererTest, PrintableKeyLabelsPreserveCaseWithoutCommittingText) {
+  lynx_view_builder_t builder = {};
+  CapturingLynxUIRenderer renderer(&builder);
+  const std::vector<std::string> keys = {"a", "A", "@", " "};
+  for (const auto& key : keys) {
+    renderer.DispatchKeyEvent("keyDown", key, key, 0, false);
+    renderer.DispatchKeyEvent("keyUp", key, "", 0, true);
+  }
+  ASSERT_EQ(renderer.key_events.size(), keys.size() * 2);
+  for (size_t index = 0; index < keys.size(); ++index) {
+    for (size_t phase = 0; phase < 2; ++phase) {
+      const auto& event = renderer.key_events[index * 2 + phase];
+      EXPECT_EQ(event.logical, static_cast<uint64_t>(keys[index][0]));
+      EXPECT_EQ(event.character, nullptr);
+      EXPECT_EQ(event.type,
+                phase == 0 ? kClayKeyEventTypeDown : kClayKeyEventTypeUp);
+    }
+  }
 }
 }  // namespace
 }  // namespace embedder
