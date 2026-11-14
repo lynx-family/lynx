@@ -35,6 +35,17 @@ SPECS_REPO_GITHUB_APP_TOKEN_ENV = 'SPECS_REPO_GITHUB_APP_TOKEN'
 PUBLISH_RETRY_ATTEMPTS = 3
 PUBLISH_RETRY_INITIAL_DELAY_SECONDS = 30
 
+# Shared by preparation, lint, and publishing; keep dependency order.
+PUBLISH_COMPONENTS = (
+    'LynxServiceAPI',
+    'LynxBase',
+    'Lynx',
+    'BaseDevtool',
+    'LynxDevtool',
+    'LynxService',
+    'XElement',
+)
+
 def run_command(command, check=True, env=None):
     # When the "command" is a multi-line command, only the status of the last line of the command is checked.
     # Therefore, it is necessary to add "set -e" to ensure that any error in any line of the command will cause the script to exit immediately.
@@ -271,19 +282,12 @@ def get_enable_trace_param(version: str) -> str:
         return '--enable-trace'
     return ''
 
-def prepare_cocoapods_publish_source(
-        version,
-        tag,
-        component,
-        storage_type=STORAGE_TYPE_GITHUB_RELEASE):
-    validate_storage_type_options(storage_type)
-
+def prepare_cocoapods_build_metadata(
+        version, component='all', components_manifest=None):
     root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    # change to root path
     os.chdir(root_path)
 
-    print('Start prepare cocoapods publish source')
+    print('Start prepare cocoapods build metadata')
     print('1. Replace lynx version')
     replace_lynx_version(version)
 
@@ -292,6 +296,26 @@ def prepare_cocoapods_publish_source(
 
     print('3. Generate lynx_core.js')
     run_command(f'python3 tools/js_tools/build.py --platform ios --release_output platform/darwin/ios/JSAssets/release/lynx_core.js --dev_output platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js --version {version}')
+
+    if components_manifest:
+        components = list(PUBLISH_COMPONENTS) if component == 'all' else [component]
+        for name in components:
+            if not (Path(root_path) / f'{name}.podspec').is_file():
+                raise FileNotFoundError(f'Missing generated podspec: {name}.podspec')
+        manifest_path = Path(components_manifest)
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(json.dumps(components, indent=2) + '\n', encoding='utf8')
+
+    return root_path
+
+def prepare_cocoapods_publish_source(
+        version,
+        tag,
+        component,
+        storage_type=STORAGE_TYPE_GITHUB_RELEASE,
+        components_manifest=None):
+    validate_storage_type_options(storage_type)
+    root_path = prepare_cocoapods_build_metadata(version, component, components_manifest)
 
     print('4. Generate zip files')
     generate_zip_file(root_path, tag, component)
@@ -327,13 +351,8 @@ def run_pod_lint(component):
     
     if component == 'all':
         # skip lint and push pod to local pod source
-        pod_lint_component('LynxServiceAPI',local_pod_source_name)
-        pod_lint_component('LynxBase',local_pod_source_name)
-        pod_lint_component('Lynx',local_pod_source_name)
-        pod_lint_component('BaseDevtool',local_pod_source_name)
-        pod_lint_component('LynxDevtool',local_pod_source_name)
-        pod_lint_component('LynxService',local_pod_source_name)
-        pod_lint_component('XElement',local_pod_source_name)
+        for name in PUBLISH_COMPONENTS:
+            pod_lint_component(name, local_pod_source_name)
     else:
         pod_lint_component(component,'local_pod_source_name')
         
@@ -433,14 +452,8 @@ def publish_to_specs_repo(component, sources, repo_name, repo_url):
     skip_pod_lint('private')
 
     if component == 'all':
-        # publish in order: LynxServiceAPI -> LynxBase -> Lynx -> BaseDevtool -> LynxDevtool -> LynxService
-        publish_component('LynxServiceAPI', sources, repo_name, repo_path, git_auth_env)
-        publish_component('LynxBase', sources, repo_name, repo_path, git_auth_env)
-        publish_component('Lynx', sources, repo_name, repo_path, git_auth_env)
-        publish_component('BaseDevtool', sources, repo_name, repo_path, git_auth_env)
-        publish_component('LynxDevtool', sources, repo_name, repo_path, git_auth_env)
-        publish_component('LynxService', sources, repo_name, repo_path, git_auth_env)
-        publish_component('XElement', sources, repo_name, repo_path, git_auth_env)
+        for name in PUBLISH_COMPONENTS:
+            publish_component(name, sources, repo_name, repo_path, git_auth_env)
     else:
         publish_component(component, sources, repo_name, repo_path, git_auth_env)
 
@@ -450,13 +463,8 @@ def publish_to_local(component, local_source_name):
     
     skip_pod_lint('private')
     if component == 'all':
-        publish_component_to_local_source('LynxServiceAPI', local_source_name)
-        publish_component_to_local_source('LynxBase',local_source_name)
-        publish_component_to_local_source('Lynx',local_source_name)
-        publish_component_to_local_source('BaseDevtool',local_source_name)
-        publish_component_to_local_source('LynxDevtool',local_source_name)
-        publish_component_to_local_source('LynxService',local_source_name)
-        publish_component_to_local_source('XElement',local_source_name)
+        for name in PUBLISH_COMPONENTS:
+            publish_component_to_local_source(name, local_source_name)
     else:
         publish_component_to_local_source(component, local_source_name)
 
@@ -471,6 +479,15 @@ def main():
     parser.add_argument('--component', type=str, help='the component to publish', required=True)
     parser.add_argument(
         "--prepare-source", action="store_true", help="Prepare the source for publishing"
+    )
+    parser.add_argument(
+        "--prepare-build-metadata",
+        action="store_true",
+        help="Generate versioned podspecs and iOS JavaScript resources",
+    )
+    parser.add_argument(
+        '--components-manifest',
+        help='Write the selected component names as JSON during preparation',
     )
     # When publishing a dev version, the tag does not match the version. The version is formatted as version="{tag}-dev"
     parser.add_argument('--tag', type=str, help='the release tag of lynx', required=False)
@@ -495,9 +512,13 @@ def main():
                 args.tag,
                 args.component,
                 args.storage_type,
+                args.components_manifest,
             )
         except ValueError as error:
             parser.error(str(error))
+    elif args.prepare_build_metadata:
+        prepare_cocoapods_build_metadata(
+            args.version, args.component, args.components_manifest)
     elif args.publish:
         try:
             validate_publish_options()
@@ -509,7 +530,8 @@ def main():
     elif args.publish_local:
         publish_to_local(args.component, args.publish_local)
     else:
-        print('Please specify --prepare-source , --publish, --pod_lint or --publish_local')
+        print('Please specify --prepare-source, --prepare-build-metadata, '
+              '--publish, --pod_lint or --publish_local')
         exit(1)
 
 
