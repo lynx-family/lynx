@@ -31,6 +31,7 @@ class InspectorInputAgent : public CDPDomainAgentBase {
 
   DECLARE_DEVTOOL_CDP_METHOD(EmulateTouchFromMouseEvent);
   DECLARE_DEVTOOL_CDP_METHOD(DispatchMouseEvent);
+  DECLARE_DEVTOOL_CDP_METHOD(DispatchKeyEvent);
   DECLARE_DEVTOOL_CDP_METHOD(InsertText);
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizeTapGesture);
   DECLARE_DEVTOOL_CDP_METHOD(SynthesizePinchGesture);

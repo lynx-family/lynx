@@ -485,6 +485,94 @@ void InputRequestHandler::InsertText(
   responder->SendSuccess();
 }
 
+void InputRequestHandler::DispatchKeyEvent(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  std::string type;
+  if (!params.isObject() || !ReadStringParam(params["type"], type) ||
+      (type != "keyDown" && type != "rawKeyDown" && type != "keyUp" &&
+       type != "char")) {
+    responder->SendError(
+        CDPErrorCode::InvalidParams,
+        "Invalid params: expected type keyDown, rawKeyDown, keyUp, or char");
+    return;
+  }
+
+  std::string key;
+  std::string text;
+  if ((params.isMember("key") && !ReadStringParam(params["key"], key)) ||
+      (params.isMember("text") && !ReadStringParam(params["text"], text))) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid params: expected string key and text");
+    return;
+  }
+  int modifiers = 0;
+  if (params.isMember("modifiers") &&
+      (!ReadIntParam(params["modifiers"], modifiers) || modifiers < 0 ||
+       modifiers > 15)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid params: modifiers must be an integer 0..15");
+    return;
+  }
+  bool auto_repeat = false;
+  if (params.isMember("autoRepeat") &&
+      !ReadBoolParam(params["autoRepeat"], auto_repeat)) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid params: expected boolean autoRepeat");
+    return;
+  }
+  if (params.isMember("commands")) {
+    if (!params["commands"].isArray()) {
+      responder->SendError(CDPErrorCode::InvalidParams,
+                           "Invalid params: expected array of string commands");
+      return;
+    }
+    for (const auto& command : params["commands"]) {
+      if (!command.isString()) {
+        responder->SendError(
+            CDPErrorCode::InvalidParams,
+            "Invalid params: expected array of string commands");
+        return;
+      }
+    }
+  }
+
+  if (type == "char") {
+    responder->SendError(
+        CDPErrorCode::ServerError,
+        "Not implemented: Input.dispatchKeyEvent char; use Input.insertText");
+    return;
+  }
+  if (key.empty() || key.find('\0') != std::string::npos) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid params: expected non-empty key without NUL");
+    return;
+  }
+  if (modifiers != 0) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Not implemented: Input.dispatchKeyEvent modifiers");
+    return;
+  }
+  if (params.isMember("commands") && !params["commands"].empty()) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Not implemented: Input.dispatchKeyEvent commands");
+    return;
+  }
+  if (!devtool_platform_facade_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Input target is unavailable");
+    return;
+  }
+  // Key events do not commit text. The renderer accepts text for compatibility
+  // with the existing simulation proxy, but text input uses Input.insertText.
+  if (!devtool_platform_facade_->DispatchKeyEvent(type, key, text, modifiers,
+                                                  auto_repeat)) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Not implemented: Input.dispatchKeyEvent");
+    return;
+  }
+  responder->SendSuccess();
+}
+
 void InputRequestHandler::EnsureSyntheticGestureController(
     const fml::RefPtr<fml::TaskRunner>& task_runner) {
   if (synthetic_gesture_controller_) {
