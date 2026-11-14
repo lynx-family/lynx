@@ -43,6 +43,30 @@ TEST(NativeViewTest, TextureRegistry) {
   });
 }
 
+class NativeViewRasterSnapshotTest : public UITest {};
+
+TEST_F_UI(NativeViewRasterSnapshotTest, RejectsInvalidRequests) {
+  auto* native_view = new NativeView(1, "test-platform", page_.get());
+  page_->AddChild(native_view);
+
+  int callback_count = 0;
+  auto callback = [&callback_count](GrDataPtr data, int32_t width,
+                                    int32_t height, bool snapshot_only) {
+    ++callback_count;
+    EXPECT_FALSE(data);
+    EXPECT_EQ(width, 0);
+    EXPECT_EQ(height, 0);
+    EXPECT_FALSE(snapshot_only);
+  };
+
+  native_view->RequestSubtreeRasterSnapshot(1.f, callback);
+  native_view->SetWidth(100.f);
+  native_view->SetHeight(100.f);
+  native_view->RequestSubtreeRasterSnapshot(0.f, callback);
+
+  EXPECT_EQ(callback_count, 2);
+}
+
 class NativeViewHitTestTest : public UITest {};
 
 class MapMarkerViewTest : public UITest {};
