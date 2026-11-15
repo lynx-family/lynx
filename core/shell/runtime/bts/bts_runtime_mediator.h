@@ -279,7 +279,7 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   // ExternalResourceLoader will use weak_from_this() internally
   std::shared_ptr<ExternalResourceLoader> external_resource_loader_;
   std::weak_ptr<runtime::js::JsBundleHolder> weak_js_bundle_holder_;
-  std::shared_ptr<tasm::LazyBundleLoader> lazy_bundle_loader_;
+  std::weak_ptr<tasm::LazyBundleLoader> lazy_bundle_loader_;
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_;
   bool runtime_standalone_mode_;
   std::shared_ptr<tasm::WhiteBoardDelegate> white_board_delegate_;

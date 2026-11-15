@@ -201,8 +201,8 @@ void BTSRuntimeMediator::FetchBundle(
         response_promise) {
   // Registered bundles are shared through the loader's thread-safe cache, so a
   // cache hit can complete on the JS thread without waiting for the engine.
-  if (lazy_bundle_loader_) {
-    auto bundle = lazy_bundle_loader_->GetTemplateBundle(bundle_url);
+  if (auto loader = lazy_bundle_loader_.lock()) {
+    auto bundle = loader->GetTemplateBundle(bundle_url);
     if (bundle) {
 #if ENABLE_TESTBENCH_RECORDER
       if (!runtime_standalone_mode_ &&
@@ -221,7 +221,8 @@ void BTSRuntimeMediator::FetchBundle(
     }
   }
   if (runtime_standalone_mode_) {
-    if (!lazy_bundle_loader_) {
+    auto loader = lazy_bundle_loader_.lock();
+    if (!loader) {
       response_promise->SetValue(
           {.url = bundle_url,
            .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED,
@@ -229,7 +230,7 @@ void BTSRuntimeMediator::FetchBundle(
                "fetchBundle not supported: lazy bundle loader is null"});
       return;
     }
-    lazy_bundle_loader_->FetchBundle(tasm::lazy_bundle::LynxLazyBundleRequest{
+    loader->FetchBundle(tasm::lazy_bundle::LynxLazyBundleRequest{
         .url = bundle_url,
         .resource_type = pub::LynxResourceType::kLazyBundle,
         .response_promise = response_promise});
