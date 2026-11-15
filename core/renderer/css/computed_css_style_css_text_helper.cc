@@ -660,7 +660,7 @@ base::String ComputedCSSStyleCssTextHelper::Uint32ToRGBString(
   uint32_t blue = color_value & 0xFF;
 
   if (alpha != 255) {
-    result += "argb(";
+    result += "rgba(";
   } else {
     result += "rgb(";
   }
@@ -671,7 +671,7 @@ base::String ComputedCSSStyleCssTextHelper::Uint32ToRGBString(
   result += std::to_string(blue);
   if (alpha != 255) {
     result += ", ";
-    result += std::to_string(alpha / 255);
+    result += CSSDecoder::NumberToString(alpha / 255.0);
   }
   result += ')';
   return base::String(result);

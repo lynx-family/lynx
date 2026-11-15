@@ -8,6 +8,7 @@
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
 
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/text_attributes.h"
@@ -42,6 +43,87 @@ TEST(ComputedCSSStyleCssTextHelperTest, Uint32ToRGBString) {
   EXPECT_EQ(helper.Uint32ToRGBString(0xFF0000FF), "rgb(0, 0, 255)");
   EXPECT_EQ(helper.Uint32ToRGBString(0xFF00FF00), "rgb(0, 255, 0)");
   EXPECT_EQ(helper.Uint32ToRGBString(0xFFFFFFFF), "rgb(255, 255, 255)");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, Uint32ToRGBStringTranslucentColors) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  const struct {
+    uint32_t color;
+    const char* expected;
+  } cases[] = {
+      {0x00000000, "rgba(0, 0, 0, 0)"},
+      {0x00123456, "rgba(18, 52, 86, 0)"},
+      {0x01123456, "rgba(18, 52, 86, 0.003922)"},
+      {0x0C123456, "rgba(18, 52, 86, 0.047059)"},
+      {0x7F123456, "rgba(18, 52, 86, 0.498039)"},
+      {0x80123456, "rgba(18, 52, 86, 0.501961)"},
+      {0xD0123456, "rgba(18, 52, 86, 0.815686)"},
+      {0xFE123456, "rgba(18, 52, 86, 0.996078)"},
+      {0xFF123456, "rgb(18, 52, 86)"},
+  };
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.color);
+    EXPECT_EQ(helper.Uint32ToRGBString(test.color), test.expected);
+  }
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest,
+     Uint32ToRGBStringAlphaValuesAreParseable) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  for (uint32_t alpha = 0; alpha <= 255; ++alpha) {
+    SCOPED_TRACE(alpha);
+    CSSColor parsed;
+    ASSERT_TRUE(CSSColor::Parse(
+        helper.Uint32ToRGBString((alpha << 24) | 0x123456).str(), parsed));
+    EXPECT_EQ(parsed.r_, 0x12);
+    EXPECT_EQ(parsed.g_, 0x34);
+    EXPECT_EQ(parsed.b_, 0x56);
+    EXPECT_NEAR(parsed.a_, alpha / 255.0, 0.000001);
+  }
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, ColorPropertiesSerializeAlpha) {
+  auto helper = ComputedCSSStyleCssTextHelper();
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.background_data_);
+  computed_css_style.text_attributes_ = starlight::TextAttributes(14);
+  starlight::CSSStyleUtils::PrepareOptional(
+      computed_css_style.layout_computed_style_.surround_data_.border_data_);
+  auto& border =
+      *computed_css_style.layout_computed_style_.surround_data_.border_data_;
+  const struct {
+    uint32_t color;
+    const char* expected;
+  } cases[] = {
+      {0x80123456, "rgba(18, 52, 86, 0.501961)"},
+      {0x00123456, "rgba(18, 52, 86, 0)"},
+      {0xFF123456, "rgb(18, 52, 86)"},
+  };
+  for (const auto& test : cases) {
+    SCOPED_TRACE(test.color);
+    computed_css_style.background_data_->color = test.color;
+    computed_css_style.text_attributes_->color = test.color;
+    border.color_top = test.color;
+    border.color_right = test.color;
+    border.color_bottom = test.color;
+    border.color_left = test.color;
+    for (const auto id :
+         {kPropertyIDColor, kPropertyIDBackgroundColor,
+          kPropertyIDBorderTopColor, kPropertyIDBorderRightColor,
+          kPropertyIDBorderBottomColor, kPropertyIDBorderLeftColor}) {
+      SCOPED_TRACE(id);
+      EXPECT_EQ(
+          helper.GetComputedStyleByPropertyID(
+              id, &computed_css_style, starlight::LayoutResultForRendering()),
+          test.expected);
+    }
+    const std::string expected = test.expected;
+    EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                  kPropertyIDBorderColor, &computed_css_style,
+                  starlight::LayoutResultForRendering()),
+              expected + " " + expected + " " + expected + " " + expected);
+  }
 }
 
 TEST(ComputedCSSStyleCssTextHelperTest, ConcatStringsWithWhitespace) {
