@@ -5,6 +5,8 @@
 #include "core/renderer/starlight/layout/grid_layout_algorithm.h"
 
 #include <algorithm>
+#include <cmath>
+#include <numeric>
 #include <utility>
 
 #include "core/renderer/starlight/layout/layout_object.h"
@@ -17,6 +19,30 @@ using namespace logic_direction_utils;  // NOLINT
 
 GridLayoutAlgorithm::GridLayoutAlgorithm(LayoutObject* container)
     : LayoutAlgorithm(container) {}
+
+void GridLayoutAlgorithm::InitializeWithCompose(
+    const ComposeConstraints& constraints) {
+  UpdateComposeTrackConstraints(constraints);
+  LayoutAlgorithm::InitializeWithCompose(constraints);
+}
+
+void GridLayoutAlgorithm::UpdateWithCompose(
+    const ComposeConstraints& constraints) {
+  UpdateComposeTrackConstraints(constraints);
+  // Recompute placement against the tracks and child styles for this measure.
+  grid_item_infos_.clear();
+  has_placement_ = false;
+  LayoutAlgorithm::InitializeWithCompose(constraints);
+  Reset();
+}
+
+void GridLayoutAlgorithm::UpdateComposeTrackConstraints(
+    const ComposeConstraints& constraints) {
+  // Shared track sizing uses a size and measure mode.
+  auto track_constraints = constraints.ToCssConstraints();
+  property_utils::ApplyMinMaxToConstraints(track_constraints, *container_);
+  UpdateAvailableSizeAndMode(track_constraints);
+}
 
 void GridLayoutAlgorithm::InitializeAlgorithmEnv() {
   inline_gap_size_ = CalculateFloatSizeFromLength(GapStyle(InlineAxis()),
@@ -305,6 +331,49 @@ void GridLayoutAlgorithm::PlaceGridItems() {
 
 void GridLayoutAlgorithm::PrePlaceGridItems(PlaceItemCache& place_item) {
   grid_item_infos_.reserve(inflow_items_.size());
+  if (container_->IsComposeLayout()) {
+    PrePlaceComposeGridItems();
+  } else {
+    PrePlaceCssGridItems();
+  }
+
+  inline_track_count_ = static_cast<int32_t>(
+      ExplicitTrackMinTrackSizingFunction(InlineAxis()).size());
+  block_track_count_ = static_cast<int32_t>(
+      ExplicitTrackMinTrackSizingFunction(BlockAxis()).size());
+  for (auto& item_info : grid_item_infos_) {
+    UpdateGridTrackCountIfNeeded(InlineAxis(),
+                                 item_info.EndLine(InlineAxis()) - 1);
+    UpdateGridTrackCountIfNeeded(InlineAxis(),
+                                 item_info.SpanSize(InlineAxis()));
+    UpdateGridTrackCountIfNeeded(BlockAxis(),
+                                 item_info.EndLine(BlockAxis()) - 1);
+    UpdateGridTrackCountIfNeeded(BlockAxis(), item_info.SpanSize(BlockAxis()));
+
+    if (item_info.IsNoneAxisAuto()) {
+      place_item.emplace_back(&item_info);
+    }
+  }
+}
+
+void GridLayoutAlgorithm::PrePlaceComposeGridItems() {
+  const auto row_end =
+      static_cast<int32_t>(
+          ExplicitTrackMinTrackSizingFunction(kVertical).size()) +
+      1;
+  const auto column_end =
+      static_cast<int32_t>(
+          ExplicitTrackMinTrackSizingFunction(kHorizontal).size()) +
+      1;
+  for (auto* item : inflow_items_) {
+    GridItemInfo info(item);
+    info.InitSpanInfo(kVertical, row_end, 0);
+    info.InitSpanInfo(kHorizontal, column_end, 0);
+    grid_item_infos_.emplace_back(info);
+  }
+}
+
+void GridLayoutAlgorithm::PrePlaceCssGridItems() {
   grid_absolutely_positioned_item_infos_.reserve(
       absolute_or_fixed_items_.size());
 
@@ -381,31 +450,15 @@ void GridLayoutAlgorithm::PrePlaceGridItems(PlaceItemCache& place_item) {
 
     grid_absolutely_positioned_item_infos_.emplace_back(item_info);
   }
-
-  inline_track_count_ = static_cast<int32_t>(
-      ExplicitTrackMinTrackSizingFunction(InlineAxis()).size());
-  block_track_count_ = static_cast<int32_t>(
-      ExplicitTrackMinTrackSizingFunction(BlockAxis()).size());
-  for (auto& item_info : grid_item_infos_) {
-    inline_track_count_ =
-        std::max(inline_track_count_, item_info.EndLine(InlineAxis()) - 1);
-    inline_track_count_ =
-        std::max(inline_track_count_, item_info.SpanSize(InlineAxis()));
-    block_track_count_ =
-        std::max(block_track_count_, item_info.EndLine(BlockAxis()) - 1);
-    block_track_count_ =
-        std::max(block_track_count_, item_info.SpanSize(BlockAxis()));
-
-    if (item_info.IsNoneAxisAuto()) {
-      place_item.emplace_back(&item_info);
-    }
-  }
 }
 
 int32_t GridLayoutAlgorithm::FindNextAvailablePosition(
     Dimension locked_dimension, int32_t locked_start, int32_t locked_span,
     int32_t not_locked_initial_start, int32_t not_locked_span,
     int32_t not_locked_max_size, const PlaceItemCache& place_item) {
+  if (not_locked_initial_start > not_locked_max_size - not_locked_span) {
+    return kGridLineUnDefine;
+  }
   Dimension not_locked_dimension =
       locked_dimension == kHorizontal ? kVertical : kHorizontal;
   std::vector<int> line_mark(not_locked_max_size + 1, 0);
@@ -423,12 +476,22 @@ int32_t GridLayoutAlgorithm::FindNextAvailablePosition(
       continue;
     }
 
-    if (item_info.EndLine(not_locked_dimension) <= not_locked_initial_start) {
+    const int32_t start = item_info.StartLine(not_locked_dimension);
+    int32_t end = item_info.EndLine(not_locked_dimension);
+    if (container_->IsComposeLayout()) {
+      // Compose may search explicit tracks while placed items extend into
+      // implicit tracks. Retain their occupancy inside the search range.
+      end = std::min(end, not_locked_max_size);
+      if (start >= not_locked_max_size) {
+        continue;
+      }
+    }
+    if (end <= not_locked_initial_start) {
       continue;
     }
 
-    line_mark[item_info.StartLine(not_locked_dimension)] += 1;
-    line_mark[item_info.EndLine(not_locked_dimension)] -= 1;
+    line_mark[start] += 1;
+    line_mark[end] -= 1;
   }
 
   int current_item_count = 0;
@@ -546,9 +609,17 @@ void GridLayoutAlgorithm::PlaceGridItemsWithBothAxesAuto(
     cursor.main_line = kGridLineStart;
     cursor.cross_line = kGridLineStart;
   }
-  const int32_t main_axis_track_count =
-      GridTrackCount(auto_placement_main_axis_);
   const int32_t main_axis_span = item_info.SpanSize(auto_placement_main_axis_);
+  int32_t main_axis_track_count = GridTrackCount(auto_placement_main_axis_);
+  if (container_->IsComposeLayout()) {
+    const auto count =
+        ExplicitTrackMinTrackSizingFunction(auto_placement_main_axis_).size();
+    // Compose wraps against explicit tracks. Without explicit tracks, flow
+    // continues in its primary direction and grows only the tracks it uses.
+    main_axis_track_count =
+        count == 0 ? main_axis_track_count + main_axis_span
+                   : std::max(static_cast<int32_t>(count), main_axis_span);
+  }
   const int32_t cross_axis_span =
       item_info.SpanSize(auto_placement_cross_axis_);
 
@@ -572,6 +643,8 @@ void GridLayoutAlgorithm::PlaceGridItemsWithBothAxesAuto(
                             cursor.main_line + main_axis_span);
   item_info.SetSpanPosition(auto_placement_cross_axis_, cursor.cross_line,
                             cursor.cross_line + cross_axis_span);
+  UpdateGridTrackCountIfNeeded(auto_placement_main_axis_,
+                               cursor.main_line + main_axis_span - 1);
   UpdateGridTrackCountIfNeeded(auto_placement_cross_axis_,
                                cursor.cross_line + cross_axis_span - 1);
   place_item.emplace_back(&item_info);
@@ -704,7 +777,7 @@ void GridLayoutAlgorithm::InitTrackSize(Dimension dimension,
       case NLengthType::kNLengthPercentage:
       case NLengthType::kNLengthCalc: {
         const auto resolved_unit = NLengthToLayoutUnit(
-            min_track_sizing_function[idx], PercentBase(dimension));
+            min_track_sizing_function[idx], TrackPercentBase(dimension));
         base_size[idx] =
             resolved_unit.IsDefinite() ? resolved_unit.ToFloat() : 0.f;
         break;
@@ -724,7 +797,7 @@ void GridLayoutAlgorithm::InitTrackSize(Dimension dimension,
       case NLengthType::kNLengthPercentage:
       case NLengthType::kNLengthCalc:
         grow_limit[idx] = NLengthToLayoutUnit(max_track_sizing_function[idx],
-                                              PercentBase(dimension));
+                                              TrackPercentBase(dimension));
         // In all cases, if the growth limit is less than the base size,
         // increase the growth limit to match the base size.
         if (grow_limit[idx].IsDefinite() &&
@@ -763,7 +836,7 @@ void GridLayoutAlgorithm::CalcInlineAxisSizeContributions(
           MaxTrackSizingFunction(dis)[idx - 1].IsUnitOrResolvableValue()) {
         size = size +
                NLengthToLayoutUnit(MaxTrackSizingFunction(dis)[idx - 1],
-                                   PercentBase(dis)) +
+                                   TrackPercentBase(dis)) +
                (idx == start ? 0 : GridGapSize(dis));
       } else {
         only_cross_fixed_tracks = false;
@@ -794,9 +867,12 @@ void GridLayoutAlgorithm::CalcInlineAxisSizeContributions(
     // gaps spanned by such items; otherwise ignore the effects of track
     // alignment in this estimation.
 
-    auto child_constraints =
-        property_utils::GenerateDefaultConstraints(*child, constraints);
-    FloatSize layout_size = child->UpdateMeasure(child_constraints, false);
+    const auto layout_size =
+        container_->IsComposeLayout()
+            ? MeasureComposeGridItem(*child, constraints, false)
+            : child->UpdateMeasure(property_utils::GenerateDefaultConstraints(
+                                       *child, constraints),
+                                   false);
 
     child->GetBoxInfo()->UpdateBoxData(constraints, *child,
                                        child->GetLayoutConfigs());
@@ -827,10 +903,12 @@ void GridLayoutAlgorithm::CalcBlockAxisSizeContributions(
       // sizes.
       constraints[InlineAxis()] = OneSideConstraint::Definite(
           item_info.ContainingBlock()[InlineAxis()].Size());
-      auto child_constraints =
-          property_utils::GenerateDefaultConstraints(*child, constraints);
-      const FloatSize layout_size =
-          child->UpdateMeasure(child_constraints, false);
+      const auto layout_size =
+          container_->IsComposeLayout()
+              ? MeasureComposeGridItem(*child, constraints, false)
+              : child->UpdateMeasure(property_utils::GenerateDefaultConstraints(
+                                         *child, constraints),
+                                     false);
       item_size.SetMaxContentBorderSize(BlockAxis(), layout_size.height_);
       item_size.SetMinContentBorderSize(BlockAxis(), 0.f);
     }
@@ -840,6 +918,7 @@ void GridLayoutAlgorithm::CalcBlockAxisSizeContributions(
 void GridLayoutAlgorithm::MaximizeTracks(
     Dimension dimension, std::vector<float>& base_size,
     const std::vector<LayoutUnit>& grow_limit) const {
+  if (base_size.empty()) return;
   if (!container_->GetLayoutConfigs().IsGridNewQuirksMode()) {
     float total_base_size_sum = 0.f;
     float free_space = 0.f;
@@ -1716,10 +1795,40 @@ void GridLayoutAlgorithm::ExpandFlexibleTracksAndStretchAutoTracks(
   total_base_size_sum += GridGapSize(dimension) * (grid_track_count - 1);
 
   // Expand Flexible Tracks
-  if (has_flexible_track) {
+  const auto mode = container_constraints_[dimension].Mode();
+  if (has_flexible_track && container_->IsComposeLayout() &&
+      !IsSLIndefiniteMode(mode)) {
+    const float remaining_space =
+        container_constraints_[dimension].Size() - total_base_size_sum;
+    const double total_weight =
+        std::accumulate(flex_factor.begin(), flex_factor.end(), 0.0);
+    if (remaining_space > 0.f && total_weight > 0.0) {
+      // Compose distributes only the remaining space on top of the bases.
+      // Round cumulative shares in physical pixels so rounding does not
+      // accumulate across tracks.
+      const double pixels = container_style_->PhysicalPixelsPerLayoutUnit();
+      double accumulated_weight = 0.0;
+      float distributed = 0.f;
+      for (int32_t idx = 0; idx < grid_track_count; ++idx) {
+        if (flex_factor[idx] <= 0.f) continue;
+        accumulated_weight += flex_factor[idx];
+        const double target =
+            accumulated_weight / total_weight * remaining_space;
+        const float rounded =
+            accumulated_weight == total_weight
+                ? remaining_space
+                : std::min(
+                      remaining_space,
+                      static_cast<float>(std::round(target * pixels) / pixels));
+        base_size[idx] += rounded - distributed;
+        distributed = rounded;
+      }
+      total_base_size_sum += distributed;
+    }
+  } else if (has_flexible_track && !container_->IsComposeLayout()) {
     float a_space_to_fill = 0.f;
     float flex_fraction = 0.f;
-    if (IsSLDefiniteMode(container_constraints_[dimension].Mode())) {
+    if (IsSLDefiniteMode(mode)) {
       const float free_space =
           container_constraints_[dimension].Size() - total_base_size_sum;
       if (base::FloatsLarger(free_space, 0)) {
@@ -1926,8 +2035,14 @@ void GridLayoutAlgorithm::UpdateContainerSize(Dimension dimension,
   track_size_sum = property_utils::ApplyMinMaxToSpecificSize(
       track_size_sum, container_, dimension);
 
-  if (container_->GetLayoutConfigs().IsGridNewQuirksMode() &&
-      IsSLAtMostMode(container_constraints_[dimension].Mode())) {
+  if (container_->IsComposeLayout()) {
+    DCHECK(compose_constraints_.has_value());
+    track_size_sum =
+        dimension == kHorizontal
+            ? compose_constraints_->ConstrainWidth(track_size_sum)
+            : compose_constraints_->ConstrainHeight(track_size_sum);
+  } else if (container_->GetLayoutConfigs().IsGridNewQuirksMode() &&
+             IsSLAtMostMode(container_constraints_[dimension].Mode())) {
     track_size_sum =
         std::min(track_size_sum, container_constraints_[dimension].Size());
   }
@@ -1948,35 +2063,38 @@ void GridLayoutAlgorithm::UpdateContainerSize(Dimension dimension,
 void GridLayoutAlgorithm::MeasureGridItems() {
   for (const GridItemInfo& item_info : grid_item_infos_) {
     auto* child = item_info.Item();
-    auto* child_style = child->GetCSSStyle();
-
     const Constraints& container_constraints = item_info.ContainingBlock();
-    auto child_constraints = property_utils::GenerateDefaultConstraints(
-        *child, container_constraints);
+    if (container_->IsComposeLayout()) {
+      MeasureComposeGridItem(*child, container_constraints, true);
+    } else {
+      auto* child_style = child->GetCSSStyle();
+      auto child_constraints = property_utils::GenerateDefaultConstraints(
+          *child, container_constraints);
 
-    if (IsSLAtMostMode(child_constraints[BlockAxis()].Mode()) &&
-        ((child_style->GetAlignSelf() == FlexAlignType::kAuto &&
-          container_style_->GetAlignItems() == FlexAlignType::kStretch) ||
-         (child_style->GetAlignSelf() == FlexAlignType::kStretch))) {
-      if (!GetMargin(child_style, BlockFront()).IsAuto() &&
-          !GetMargin(child_style, BlockBack()).IsAuto()) {
-        child_constraints[BlockAxis()] =
-            OneSideConstraint::Definite(child_constraints[BlockAxis()].Size());
+      if (IsSLAtMostMode(child_constraints[BlockAxis()].Mode()) &&
+          ((child_style->GetAlignSelf() == FlexAlignType::kAuto &&
+            container_style_->GetAlignItems() == FlexAlignType::kStretch) ||
+           (child_style->GetAlignSelf() == FlexAlignType::kStretch))) {
+        if (!GetMargin(child_style, BlockFront()).IsAuto() &&
+            !GetMargin(child_style, BlockBack()).IsAuto()) {
+          child_constraints[BlockAxis()] = OneSideConstraint::Definite(
+              child_constraints[BlockAxis()].Size());
+        }
       }
-    }
 
-    if (IsSLAtMostMode(child_constraints[InlineAxis()].Mode()) &&
-        ((child_style->GetJustifySelfType() == JustifyType::kAuto &&
-          container_style_->GetJustifyItemsType() == JustifyType::kStretch) ||
-         (child_style->GetJustifySelfType() == JustifyType::kStretch))) {
-      if (!GetMargin(child_style, InlineFront()).IsAuto() &&
-          !GetMargin(child_style, InlineBack()).IsAuto()) {
-        child_constraints[InlineAxis()] =
-            OneSideConstraint::Definite(child_constraints[InlineAxis()].Size());
+      if (IsSLAtMostMode(child_constraints[InlineAxis()].Mode()) &&
+          ((child_style->GetJustifySelfType() == JustifyType::kAuto &&
+            container_style_->GetJustifyItemsType() == JustifyType::kStretch) ||
+           (child_style->GetJustifySelfType() == JustifyType::kStretch))) {
+        if (!GetMargin(child_style, InlineFront()).IsAuto() &&
+            !GetMargin(child_style, InlineBack()).IsAuto()) {
+          child_constraints[InlineAxis()] = OneSideConstraint::Definite(
+              child_constraints[InlineAxis()].Size());
+        }
       }
-    }
 
-    child->UpdateMeasure(child_constraints, true);
+      child->UpdateMeasure(child_constraints, true);
+    }
     //  resolve margin auto
     ResolveAutoMargins(child, container_constraints[InlineAxis()].Size(),
                        InlineAxis());
@@ -1985,8 +2103,41 @@ void GridLayoutAlgorithm::MeasureGridItems() {
   }
 }
 
+FloatSize GridLayoutAlgorithm::MeasureComposeGridItem(
+    LayoutObject& child, const Constraints& available, bool final_measure) {
+  // A definite grid area supplies an upper bound for its child.
+  const auto max_size = [&available](Dimension axis) {
+    const auto& side = available[axis];
+    return IsSLIndefiniteMode(side.Mode()) ? ComposeConstraints::kInfinity
+                                           : std::max(0.f, side.Size());
+  };
+  const ComposeConstraints bounds{0.f, max_size(kHorizontal), 0.f,
+                                  max_size(kVertical)};
+  child.UpdateMeasureWithComposeConstraints(bounds, final_measure);
+  return FloatSize(child.GetBorderBoundWidth(), child.GetBorderBoundHeight(),
+                   child.GetBaseline());
+}
+
 float GridLayoutAlgorithm::GridTrackCount(Dimension dimension) const {
   return dimension == InlineAxis() ? inline_track_count_ : block_track_count_;
+}
+
+LayoutUnit GridLayoutAlgorithm::TrackPercentBase(Dimension dimension) {
+  auto base = PercentBase(dimension);
+  if (!container_->IsComposeLayout()) return base;
+  if (base.IsIndefinite() &&
+      IsSLAtMostMode(container_constraints_[dimension].Mode())) {
+    base = LayoutUnit(container_constraints_[dimension].Size());
+  }
+  if (base.IsIndefinite()) return base;
+  // Compose percentages use the space remaining after gutters, including
+  // implicit tracks. Ordinary CSS percentages retain their containing-block
+  // base.
+  const auto count = MinTrackSizingFunction(dimension).size();
+  const float gap =
+      dimension == InlineAxis() ? inline_gap_size_ : block_gap_size_;
+  return LayoutUnit(
+      std::max(0.f, base.ToFloat() - gap * (count > 0 ? count - 1 : 0)));
 }
 
 float GridLayoutAlgorithm::GridGapSize(Dimension dimension) const {

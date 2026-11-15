@@ -35,7 +35,8 @@ class LayoutAlgorithm : public DirectionSelector {
 
   void Initialize(const Constraints& constraints,
                   const SLNodeSet* fixed_node_set = nullptr);
-  void InitializeWithCompose(const ComposeConstraints& constraints);
+  virtual void InitializeWithCompose(const ComposeConstraints& constraints);
+  virtual void UpdateWithCompose(const ComposeConstraints& constraints);
   FloatSize SizeDetermination();
   virtual void Alignment();
 

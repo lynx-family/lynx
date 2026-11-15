@@ -28,6 +28,12 @@ class GridLayoutAlgorithm : public LayoutAlgorithm {
   void SetContainerBaseline() override{};
 
  private:
+  void InitializeWithCompose(const ComposeConstraints& constraints) override;
+  void UpdateWithCompose(const ComposeConstraints& constraints) override;
+  void UpdateComposeTrackConstraints(const ComposeConstraints& constraints);
+  void PrePlaceComposeGridItems();
+  void PrePlaceCssGridItems();
+
   // The auto-placement cursor defines the current “insertion point” in the
   // grid, specified as a pair of row and column grid lines.
   struct PlacementCursor {
@@ -62,6 +68,7 @@ class GridLayoutAlgorithm : public LayoutAlgorithm {
   void GridItemSizing();
   void InitTrackSize(Dimension dimension, std::vector<float>& base_size,
                      std::vector<LayoutUnit>& grow_limit);
+  LayoutUnit TrackPercentBase(Dimension dimension);
   void CalcInlineAxisSizeContributions(MeasureItemCache& item_size_infos);
   void CalcBlockAxisSizeContributions(MeasureItemCache& item_size_infos);
   void ResolveIntrinsicTrackSizes(Dimension dimension,
@@ -98,6 +105,9 @@ class GridLayoutAlgorithm : public LayoutAlgorithm {
   }
   // measure grid items with containing block.
   void MeasureGridItems();
+  FloatSize MeasureComposeGridItem(LayoutObject& child,
+                                   const Constraints& available,
+                                   bool final_measure);
 
   // alignment
   float InlineAxisAlignment(const GridItemInfo& item_info);

@@ -31,7 +31,7 @@ class BoxLayoutAlgorithmTest : public ::testing::Test {
   // and CSS parents see percentage/size styles as hints.
   void SetModifiers(LayoutObject* node, ComposeLayoutModifiers modifiers) {
     node->SetComposeLayout(true);
-    node->SetLayoutModifiers(
+    node->SetComposeLayoutModifiers(
         modifiers.empty() ? nullptr
                           : std::make_shared<const ComposeLayoutModifiers>(
                                 std::move(modifiers)));
@@ -745,6 +745,23 @@ TEST_F(BoxLayoutAlgorithmTest, ComposePaddingCannotExpandPastMaximum) {
   auto* css_child = CreateNode();
   auto* css_box = CreatePaddedBox(css_child);
   const auto css_size = css_box->UpdateMeasureByPlatform(
+      {OneSideConstraint::AtMost(10), OneSideConstraint::AtMost(3)}, true);
+  EXPECT_FLOAT_EQ(12, css_size.width_);
+  EXPECT_FLOAT_EQ(4, css_size.height_);
+}
+
+TEST_F(BoxLayoutAlgorithmTest, ComposeConstraintsLimitNativeLeafPadding) {
+  auto* leaf = CreateNode();
+  auto* style = leaf->GetCSSMutableStyle();
+  style->SetPaddingLeft(NLength::MakeUnitNLength(12));
+  style->SetPaddingTop(NLength::MakeUnitNLength(4));
+
+  const auto compose_size =
+      leaf->UpdateMeasureWithComposeConstraints({0, 10, 0, 3}, true);
+  EXPECT_FLOAT_EQ(10, compose_size.width_);
+  EXPECT_FLOAT_EQ(3, compose_size.height_);
+
+  const auto css_size = leaf->UpdateMeasureByPlatform(
       {OneSideConstraint::AtMost(10), OneSideConstraint::AtMost(3)}, true);
   EXPECT_FLOAT_EQ(12, css_size.width_);
   EXPECT_FLOAT_EQ(4, css_size.height_);

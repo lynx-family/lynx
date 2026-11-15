@@ -57,6 +57,10 @@ void LayoutAlgorithm::InitializeWithCompose(
   InitializeAlgorithmEnv();
 }
 
+void LayoutAlgorithm::UpdateWithCompose(const ComposeConstraints& constraints) {
+  InitializeWithCompose(constraints);
+}
+
 void LayoutAlgorithm::InitializeChildren(const SLNodeSet* fixed_node_set) {
   bool need_order = false;
   const auto container_display = container_->GetCSSStyle()->GetDisplay(

@@ -141,6 +141,588 @@ TEST_F(GridGeometryTest, RtlPlacement) {
   EXPECT_EQ(1, second.count);
 }
 
+TEST_F(GridGeometryTest, ComposeGridUsesNativeTracksAndHonorsOuterRange) {
+  MeasureContext a, b;
+  auto* grid = CreateGrid(220, 80, {100, 100}, {80});
+  grid->GetCSSMutableStyle()->SetColumnGap(NLength::MakePercentageNLength(10));
+  grid->SetComposeLayout(true);
+  auto* first = CreateMeasuredItem(60, 40, &a);
+  auto* second = CreateMeasuredItem(80, 50, &b);
+  first->SetComposeLayout(true);
+  second->SetComposeLayout(true);
+  grid->AppendChild(first);
+  grid->AppendChild(second);
+  const auto size =
+      grid->UpdateMeasureWithComposeConstraints({220, 220, 80, 80}, true);
+  grid->UpdateAlignment();
+  EXPECT_FLOAT_EQ(220, size.width_);
+  EXPECT_FLOAT_EQ(80, size.height_);
+  EXPECT_FLOAT_EQ(122, second->GetBorderBoundLeftFromParentPaddingBound());
+  const auto next =
+      grid->UpdateMeasureWithComposeConstraints({140, 140, 60, 60}, true);
+  grid->UpdateAlignment();
+  EXPECT_FLOAT_EQ(140, next.width_);
+  EXPECT_FLOAT_EQ(60, next.height_);
+  EXPECT_FLOAT_EQ(0, first->GetBorderBoundLeftFromParentPaddingBound());
+  EXPECT_FLOAT_EQ(114, second->GetBorderBoundLeftFromParentPaddingBound());
+}
+
+TEST_F(GridGeometryTest, ComposeGridMeasuresWithReplacedLayoutStyle) {
+  MeasureContext first, second;
+  auto* grid = CreateGrid(200, 80, {40, 40}, {30}, 10);
+  grid->SetComposeLayout(true);
+  grid->AppendChild(CreateMeasuredItem(10, 10, &first));
+  auto* child = CreateMeasuredItem(10, 10, &second);
+  grid->AppendChild(child);
+  const ComposeConstraints bounds{200, 200, 80, 80};
+  grid->UpdateMeasureWithComposeConstraints(bounds, true);
+  grid->UpdateAlignment();
+  EXPECT_FLOAT_EQ(50, child->GetBorderBoundLeftFromParentPaddingBound());
+
+  auto* updated_style = CreateStyle()->GetLayoutComputedStyle();
+  updated_style->CopyFrom(*grid->GetCSSStyle());
+  updated_style->SetColumnGap(NLength::MakeUnitNLength(25));
+  grid->SetLayoutStyle(updated_style);
+  grid->UpdateMeasureWithComposeConstraints(bounds, true);
+  grid->UpdateAlignment();
+  EXPECT_FLOAT_EQ(65, child->GetBorderBoundLeftFromParentPaddingBound());
+}
+
+TEST_F(GridGeometryTest, ComposeGridPassesTrackBoundsToChildOnRemeasure) {
+  auto* grid = CreateGrid(0, 0, {}, {40}, 10);
+  grid->SetComposeLayout(true);
+  auto* style = grid->GetCSSMutableStyle();
+  style->SetWidth(NLength::MakeAutoNLength());
+  style->SetHeight(NLength::MakeAutoNLength());
+  style->SetPaddingLeft(NLength::MakeUnitNLength(8));
+  style->SetPaddingRight(NLength::MakeUnitNLength(12));
+  style->SetPaddingTop(NLength::MakeUnitNLength(6));
+  auto* tracks = style->grid_data_.Access();
+  const auto half = NLength::MakePercentageNLength(50);
+  tracks->grid_template_columns_min_track_sizing_function_ = {half, half};
+  tracks->grid_template_columns_max_track_sizing_function_ = {half, half};
+
+  ComposeConstraints final_child_bounds;
+  auto* child = CreateNode(CreateStyle());
+  child->SetComposeLayout(true);
+  child->GetCSSMutableStyle()->grid_data_.Access()->grid_column_start_ = 2;
+  child->SetContext(&final_child_bounds);
+  child->SetSLComposeMeasureFunc(
+      [](void* context, const ComposeConstraints& bounds, bool final_measure) {
+        if (final_measure) {
+          *static_cast<ComposeConstraints*>(context) = bounds;
+        }
+        return FloatSize(bounds.ConstrainWidth(25), bounds.ConstrainHeight(12));
+      });
+  grid->AppendChild(child);
+
+  for (float max_width : {150.f, 230.f}) {
+    SCOPED_TRACE(max_width);
+    const auto size = grid->UpdateMeasureWithComposeConstraints(
+        {110, max_width, 46, 46}, true);
+    grid->UpdateAlignment();
+
+    const float track_width = (max_width - 8 - 12 - 10) / 2;
+    const ComposeConstraints expected_child_bounds{0, track_width, 0, 40};
+    EXPECT_EQ(expected_child_bounds, final_child_bounds);
+    EXPECT_FLOAT_EQ(max_width, size.width_);
+    EXPECT_FLOAT_EQ(track_width + 10 + 8,
+                    child->GetBorderBoundLeftFromParentPaddingBound());
+  }
+}
+
+TEST_F(GridGeometryTest, GridContainerSelectsChildMeasurementMode) {
+  for (bool compose : {false, true}) {
+    SCOPED_TRACE(compose);
+    auto* grid = CreateGrid(100, 80, {100}, {80});
+    grid->SetComposeLayout(compose);
+    MeasureContext measurement;
+    auto* child = CreateMeasuredItem(60, 40, &measurement);
+    child->SetComposeLayoutModifiers(std::make_shared<ComposeLayoutModifiers>(
+        ComposeLayoutModifiers{{ComposeLayoutModifier::Type::kFill,
+                                ComposeLayoutModifier::kWidth, 0.5}}));
+    grid->AppendChild(child);
+
+    if (compose) {
+      grid->UpdateMeasureWithComposeConstraints({100, 100, 80, 80}, true);
+    } else {
+      Layout(grid);
+    }
+    EXPECT_FLOAT_EQ(compose ? 50.f : 60.f, child->GetBorderBoundWidth());
+  }
+}
+
+TEST_F(GridGeometryTest, OnlyCssGridStretchesAutoSizedChildren) {
+  for (bool compose : {false, true}) {
+    SCOPED_TRACE(compose);
+    auto* grid = CreateGrid(100, 80, {100}, {80});
+    grid->SetComposeLayout(compose);
+    auto* child = CreateNode(CreateStyle());
+    auto* style = child->GetCSSMutableStyle();
+    style->SetAlignSelf(FlexAlignType::kStretch);
+    style->grid_data_.Access()->justify_self_ = JustifyType::kStretch;
+    MeasureContext measurement{FloatSize(60, 40)};
+    child->SetContext(&measurement);
+    child->SetSLMeasureFunc(CountingMeasure);
+    grid->AppendChild(child);
+
+    if (compose) {
+      grid->UpdateMeasureWithComposeConstraints({100, 100, 80, 80}, true);
+    } else {
+      Layout(grid);
+    }
+    EXPECT_FLOAT_EQ(compose ? 60.f : 100.f, child->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(compose ? 40.f : 80.f, child->GetBorderBoundHeight());
+  }
+}
+
+TEST_F(GridGeometryTest, CssGridMeasuresOutOfFlowChildren) {
+  MeasureContext absolute, in_flow;
+  auto* grid = CreateGrid(220, 80, {100, 100}, {80}, 20);
+  auto* positioned = CreateMeasuredItem(60, 40, &absolute);
+  positioned->GetCSSMutableStyle()->SetPosition(PositionType::kAbsolute);
+  grid->AppendChild(positioned);
+  auto* child = CreateMeasuredItem(60, 40, &in_flow);
+  grid->AppendChild(child);
+
+  Layout(grid);
+
+  EXPECT_GT(absolute.count, 0);
+  EXPECT_FLOAT_EQ(60, positioned->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(0, child->GetBorderBoundLeftFromParentPaddingBound());
+}
+
+TEST_F(GridGeometryTest, ComposeGridPlacesChildrenInSourceOrder) {
+  for (bool compose : {false, true}) {
+    SCOPED_TRACE(compose);
+    MeasureContext first_measure, second_measure;
+    auto* grid = CreateGrid(220, 80, {100, 100}, {80}, 20);
+    grid->SetComposeLayout(compose);
+    auto* first = CreateMeasuredItem(60, 40, &first_measure);
+    auto* second = CreateMeasuredItem(60, 40, &second_measure);
+    first->SetComposeLayout(compose);
+    second->SetComposeLayout(compose);
+    first->GetCSSMutableStyle()->flex_data_.Access()->order_ = 1;
+    grid->AppendChild(first);
+    grid->AppendChild(second);
+
+    if (compose) {
+      grid->UpdateMeasureWithComposeConstraints({220, 220, 80, 80}, true);
+      grid->UpdateAlignment();
+    } else {
+      Layout(grid);
+    }
+
+    EXPECT_FLOAT_EQ(compose ? 0.f : 120.f,
+                    first->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(compose ? 120.f : 0.f,
+                    second->GetBorderBoundLeftFromParentPaddingBound());
+  }
+}
+
+TEST_F(GridGeometryTest, ComposeGridAppliesOrderedModifiersWithinCellBounds) {
+  auto* grid = CreateGrid(0, 80, {100, 100}, {80}, 20);
+  grid->GetCSSMutableStyle()->SetWidth(NLength::MakeAutoNLength());
+  grid->SetComposeLayout(true);
+  grid->SetComposeLayoutModifiers(std::make_shared<ComposeLayoutModifiers>(
+      ComposeLayoutModifiers{{ComposeLayoutModifier::Type::kFill,
+                              ComposeLayoutModifier::kWidth, 0.5}}));
+
+  auto* child = CreateNode(CreateStyle());
+  child->SetComposeLayout(true);
+  child->SetComposeLayoutModifiers(
+      std::make_shared<ComposeLayoutModifiers>(ComposeLayoutModifiers{
+          {ComposeLayoutModifier::Type::kFill, ComposeLayoutModifier::kWidth,
+           0.5},
+          {ComposeLayoutModifier::Type::kSize, ComposeLayoutModifier::kWidth,
+           90},
+          {ComposeLayoutModifier::Type::kAspectRatio, 0, 2}}));
+  child->SetSLComposeMeasureFunc(
+      [](void*, const ComposeConstraints& constraints, bool) {
+        return FloatSize(constraints.min_width, constraints.min_height);
+      });
+  grid->AppendChild(child);
+
+  auto* filled_child = CreateNode(CreateStyle());
+  filled_child->SetComposeLayout(true);
+  filled_child->SetComposeLayoutModifiers(
+      std::make_shared<ComposeLayoutModifiers>(
+          ComposeLayoutModifiers{{ComposeLayoutModifier::Type::kFill,
+                                  ComposeLayoutModifier::kWidth, 1},
+                                 {ComposeLayoutModifier::Type::kFill,
+                                  ComposeLayoutModifier::kHeight, 1}}));
+  filled_child->SetSLComposeMeasureFunc(child->GetSLComposeMeasureFunc());
+  grid->AppendChild(filled_child);
+
+  const auto size =
+      grid->UpdateMeasureWithComposeConstraints({0, 440, 80, 80}, true);
+  grid->UpdateAlignment();
+  EXPECT_FLOAT_EQ(220, size.width_);
+  EXPECT_FLOAT_EQ(50, child->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(25, child->GetBorderBoundHeight());
+  EXPECT_FLOAT_EQ(100, filled_child->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(80, filled_child->GetBorderBoundHeight());
+
+  filled_child->SetComposeLayoutModifiers(
+      std::make_shared<ComposeLayoutModifiers>(
+          ComposeLayoutModifiers{{ComposeLayoutModifier::Type::kSize,
+                                  ComposeLayoutModifier::kWidth, 60}}));
+  grid->UpdateMeasureWithComposeConstraints({0, 440, 80, 80}, true);
+  EXPECT_FLOAT_EQ(60, filled_child->GetBorderBoundWidth());
+}
+
+TEST_F(GridGeometryTest, ComposeGridWrapsWithinWidthRange) {
+  auto* grid = CreateGrid(200, 80, {100, 100}, {80});
+  grid->SetComposeLayout(true);
+  float widths[] = {10, 90};
+  for (auto& width : widths) {
+    auto* child = CreateNode(CreateStyle());
+    child->SetComposeLayout(true);
+    auto* style = child->GetCSSMutableStyle();
+    style->SetWidth(NLength::MakeFitContentNLength());
+    style->SetMinWidth(NLength::MakeUnitNLength(30));
+    style->SetMaxWidth(NLength::MakeUnitNLength(70));
+    child->SetContext(&width);
+    child->SetSLComposeMeasureFunc(
+        [](void* context, const ComposeConstraints& constraints, bool) {
+          return FloatSize(*static_cast<float*>(context),
+                           constraints.min_height);
+        });
+    grid->AppendChild(child);
+  }
+  grid->UpdateMeasureWithComposeConstraints({200, 200, 80, 80}, true);
+  auto* first = static_cast<LayoutObject*>(grid->FirstChild());
+  auto* second = static_cast<LayoutObject*>(first->Next());
+  EXPECT_FLOAT_EQ(30, first->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(70, second->GetBorderBoundWidth());
+}
+
+TEST_F(GridGeometryTest, ComposePercentagesSubtractGapsButCssIsUnchanged) {
+  for (bool compose : {false, true}) {
+    MeasureContext a, b;
+    auto* grid = CreateGrid(234, 104, {}, {80}, 20);
+    grid->SetComposeLayout(compose);
+    auto* style = grid->GetCSSMutableStyle();
+    style->SetBoxSizing(BoxSizingType::kBorderBox);
+    style->SetPaddingLeft(NLength::MakeUnitNLength(3));
+    style->SetPaddingRight(NLength::MakeUnitNLength(7));
+    style->SetPaddingTop(NLength::MakeUnitNLength(5));
+    style->SetPaddingBottom(NLength::MakeUnitNLength(9));
+    style->SetBorderLeftWidth(1);
+    style->SetBorderRightWidth(3);
+    style->SetBorderTopWidth(2);
+    style->SetBorderBottomWidth(8);
+    auto* data = style->grid_data_.Access();
+    for (int i = 0; i < 2; ++i) {
+      data->grid_template_columns_min_track_sizing_function_.push_back(
+          NLength::MakePercentageNLength(50));
+      data->grid_template_columns_max_track_sizing_function_.push_back(
+          NLength::MakePercentageNLength(50));
+    }
+    auto* first = CreateMeasuredItem(10, 10, &a);
+    auto* second = CreateMeasuredItem(10, 10, &b);
+    second->GetCSSMutableStyle()->SetMarginLeft(NLength::MakeUnitNLength(2));
+    grid->AppendChild(first);
+    grid->AppendChild(second);
+    if (compose) {
+      grid->UpdateMeasureWithComposeConstraints({234, 234, 104, 104}, true);
+      grid->UpdateAlignment();
+    } else {
+      Layout(grid);
+    }
+    // Content width: 234 - (3+7 padding) - (1+3 borders) = 220.
+    // Compose: (220-20)*50%=100. CSS: 220*50%=110.
+    // This getter's origin is the parent's padding edge, excluding its border.
+    EXPECT_FLOAT_EQ((compose ? 100 : 110) + 20 + 3 + 2,
+                    second->GetBorderBoundLeftFromParentPaddingBound());
+  }
+}
+
+TEST_F(GridGeometryTest, ComposeImplicitFlowGrowsInTheSelectedDirection) {
+  for (bool row : {false, true}) {
+    MeasureContext a, b, c;
+    auto* grid = CreateGrid(300, 200, {}, {}, 0, 0);
+    grid->SetComposeLayout(true);
+    grid->GetCSSMutableStyle()->grid_data_.Access()->grid_auto_flow_ =
+        row ? GridAutoFlowType::kRow : GridAutoFlowType::kColumn;
+    auto* first = CreateMeasuredItem(20, 10, &a);
+    auto* second = CreateMeasuredItem(20, 10, &b);
+    auto* third = CreateMeasuredItem(20, 10, &c);
+    grid->AppendChild(first);
+    grid->AppendChild(second);
+    grid->AppendChild(third);
+    grid->UpdateMeasureWithComposeConstraints({300, 300, 200, 200}, true);
+    grid->UpdateAlignment();
+    if (row) {
+      EXPECT_FLOAT_EQ(first->GetBorderBoundTopFromParentPaddingBound(),
+                      third->GetBorderBoundTopFromParentPaddingBound());
+      EXPECT_GT(third->GetBorderBoundLeftFromParentPaddingBound(),
+                second->GetBorderBoundLeftFromParentPaddingBound());
+    } else {
+      EXPECT_FLOAT_EQ(first->GetBorderBoundLeftFromParentPaddingBound(),
+                      third->GetBorderBoundLeftFromParentPaddingBound());
+      EXPECT_GT(third->GetBorderBoundTopFromParentPaddingBound(),
+                second->GetBorderBoundTopFromParentPaddingBound());
+    }
+  }
+}
+
+TEST_F(GridGeometryTest, EmptyComposeGridUsesLeafMeasurement) {
+  auto* grid = CreateGrid(0, 0, {80, 100}, {30, 40}, 8, 6);
+  auto* style = grid->GetCSSMutableStyle();
+  style->SetWidth(NLength::MakeAutoNLength());
+  style->SetHeight(NLength::MakeAutoNLength());
+  grid->SetComposeLayout(true);
+  const ComposeConstraints constraints;
+  const auto empty =
+      grid->UpdateMeasureWithComposeConstraints(constraints, true);
+  EXPECT_FLOAT_EQ(0, empty.width_);
+  EXPECT_FLOAT_EQ(0, empty.height_);
+
+  MeasureContext measurement;
+  auto* child = CreateMeasuredItem(20, 10, &measurement);
+  child->SetComposeLayout(true);
+  grid->AppendChild(child);
+  grid->MarkDirty();
+  const auto populated =
+      grid->UpdateMeasureWithComposeConstraints(constraints, true);
+  ASSERT_FLOAT_EQ(188, populated.width_);
+  ASSERT_FLOAT_EQ(76, populated.height_);
+
+  grid->RemoveChild(child);
+  grid->MarkDirty();
+  const auto after_removal =
+      grid->UpdateMeasureWithComposeConstraints(constraints, true);
+  EXPECT_FLOAT_EQ(0, after_removal.width_);
+  EXPECT_FLOAT_EQ(0, after_removal.height_);
+  child->SetBorderBoundLeftFromParentPaddingBound(50);
+  grid->UpdateAlignment();
+  EXPECT_FLOAT_EQ(50, child->GetBorderBoundLeftFromParentPaddingBound());
+}
+
+TEST_F(GridGeometryTest, ComposeFlowWrapsAtExplicitTracksDespiteImplicitItems) {
+  MeasureContext a, b, c, d;
+  auto* grid = CreateGrid(400, 100, {80, 100}, {30, 40}, 10, 6);
+  grid->SetComposeLayout(true);
+  auto* positioned = CreateMeasuredItem(10, 10, &a);
+  positioned->GetCSSMutableStyle()->grid_data_.Access()->grid_column_start_ = 4;
+  positioned->GetCSSMutableStyle()->grid_data_.Access()->grid_row_start_ = 1;
+  grid->AppendChild(positioned);
+  auto* first = CreateMeasuredItem(10, 10, &b);
+  auto* second = CreateMeasuredItem(10, 10, &c);
+  auto* third = CreateMeasuredItem(10, 10, &d);
+  grid->AppendChild(first);
+  grid->AppendChild(second);
+  grid->AppendChild(third);
+  grid->UpdateMeasureWithComposeConstraints({400, 400, 100, 100}, true);
+  grid->UpdateAlignment();
+  EXPECT_FLOAT_EQ(0, first->GetBorderBoundLeftFromParentPaddingBound());
+  EXPECT_FLOAT_EQ(90, second->GetBorderBoundLeftFromParentPaddingBound());
+  EXPECT_FLOAT_EQ(0, third->GetBorderBoundLeftFromParentPaddingBound());
+  EXPECT_FLOAT_EQ(36, third->GetBorderBoundTopFromParentPaddingBound());
+}
+
+TEST_F(GridGeometryTest, ComposePercentageAndFlexTracksUseBoundedMaxSize) {
+  for (bool percentage : {false, true}) {
+    MeasureContext a, b;
+    auto* grid = CreateGrid(0, 20, {}, {20}, 20);
+    grid->SetComposeLayout(true);
+    auto* style = grid->GetCSSMutableStyle();
+    style->SetWidth(NLength::MakeAutoNLength());
+    auto* data = style->grid_data_.Access();
+    for (int i = 1; i <= 2; ++i) {
+      const auto track = percentage ? NLength::MakePercentageNLength(50)
+                                    : NLength::MakeFrNLength(i);
+      data->grid_template_columns_min_track_sizing_function_.push_back(track);
+      data->grid_template_columns_max_track_sizing_function_.push_back(track);
+    }
+    grid->AppendChild(CreateMeasuredItem(10, 10, &a));
+    auto* second = CreateMeasuredItem(10, 10, &b);
+    grid->AppendChild(second);
+    const auto size =
+        grid->UpdateMeasureWithComposeConstraints({0, 220, 20, 20}, true);
+    grid->UpdateAlignment();
+    EXPECT_FLOAT_EQ(220, size.width_);
+    EXPECT_FLOAT_EQ(percentage ? 120.f : 87.f,
+                    second->GetBorderBoundLeftFromParentPaddingBound());
+  }
+}
+
+TEST_F(GridGeometryTest, BoundedFlexTracksUseComposeOrCssDistribution) {
+  for (bool compose : {false, true}) {
+    for (float weight : {0.25f, 1.f}) {
+      SCOPED_TRACE(compose);
+      SCOPED_TRACE(weight);
+      auto* grid = CreateGrid(131, 20, {}, {20}, 10);
+      grid->SetComposeLayout(compose);
+      auto* data = grid->GetCSSMutableStyle()->grid_data_.Access();
+      data->grid_template_columns_min_track_sizing_function_ = {
+          NLength::MakeUnitNLength(30), NLength::MakeUnitNLength(50)};
+      data->grid_template_columns_max_track_sizing_function_ = {
+          NLength::MakeFrNLength(weight), NLength::MakeFrNLength(weight)};
+
+      MeasureContext a, b;
+      grid->AppendChild(CreateMeasuredItem(10, 10, &a));
+      auto* second = CreateMeasuredItem(10, 10, &b);
+      grid->AppendChild(second);
+      if (compose) {
+        grid->UpdateMeasureWithComposeConstraints({131, 131, 20, 20}, true);
+        grid->UpdateAlignment();
+      } else {
+        Layout(grid);
+      }
+
+      // Compose adds 21 and 20 to the two bases. CSS uses its original
+      // partial-fill and flex sizing rules.
+      EXPECT_FLOAT_EQ(compose ? 61.f : (weight < 1.f ? 40.f : 70.5f),
+                      second->GetBorderBoundLeftFromParentPaddingBound());
+    }
+  }
+}
+
+TEST_F(GridGeometryTest, UnboundedComposeFlexTracksKeepTheirBaseSizes) {
+  for (bool compose : {false, true}) {
+    SCOPED_TRACE(compose);
+    auto* grid = CreateGrid(0, 20, {}, {20}, 10);
+    grid->SetComposeLayout(compose);
+    auto* style = grid->GetCSSMutableStyle();
+    style->SetWidth(NLength::MakeAutoNLength());
+    auto* data = style->grid_data_.Access();
+    data->grid_template_columns_min_track_sizing_function_ = {
+        NLength::MakeUnitNLength(30), NLength::MakeUnitNLength(50)};
+    data->grid_template_columns_max_track_sizing_function_ = {
+        NLength::MakeFrNLength(1), NLength::MakeFrNLength(2)};
+
+    MeasureContext a, b;
+    grid->AppendChild(CreateMeasuredItem(10, 10, &a));
+    auto* second = CreateMeasuredItem(10, 10, &b);
+    grid->AppendChild(second);
+
+    if (compose) {
+      grid->UpdateMeasureWithComposeConstraints(
+          {310, ComposeConstraints::kInfinity, 20, 20}, true);
+      grid->UpdateAlignment();
+    } else {
+      style->SetMinWidth(NLength::MakeUnitNLength(310));
+      Layout(grid);
+    }
+    EXPECT_FLOAT_EQ(310, grid->GetBorderBoundWidth());
+    // Compose keeps the first column at 30 plus the 10-unit gap. CSS
+    // redistributes 300 across the two flexible columns.
+    EXPECT_FLOAT_EQ(compose ? 40.f : 110.f,
+                    second->GetBorderBoundLeftFromParentPaddingBound());
+  }
+}
+
+TEST_F(GridGeometryTest, CssFlowUsesImplicitTracksForAutoPlacement) {
+  MeasureContext a, b, c, d;
+  auto* grid = CreateGrid(400, 100, {80, 100}, {30, 40}, 10, 6);
+  auto* positioned = CreateMeasuredItem(10, 10, &a);
+  positioned->GetCSSMutableStyle()->grid_data_.Access()->grid_column_start_ = 4;
+  positioned->GetCSSMutableStyle()->grid_data_.Access()->grid_row_start_ = 1;
+  grid->AppendChild(positioned);
+  grid->AppendChild(CreateMeasuredItem(10, 10, &b));
+  grid->AppendChild(CreateMeasuredItem(10, 10, &c));
+  auto* third = CreateMeasuredItem(10, 10, &d);
+  grid->AppendChild(third);
+  Layout(grid);
+  EXPECT_FLOAT_EQ(200, third->GetBorderBoundLeftFromParentPaddingBound());
+  EXPECT_FLOAT_EQ(0, third->GetBorderBoundTopFromParentPaddingBound());
+}
+
+TEST_F(GridGeometryTest, ComposeAutoColumnAndCssLeadingImplicitColumn) {
+  for (bool compose : {false, true}) {
+    SCOPED_TRACE(compose);
+    MeasureContext a, b;
+    auto* grid = CreateGrid(200, 60, {50, 60}, {40}, 10);
+    grid->SetComposeLayout(compose);
+    auto* tracks = grid->GetCSSMutableStyle()->grid_data_.Access();
+    const auto implicit_width = NLength::MakeUnitNLength(25);
+    tracks->grid_auto_columns_min_track_sizing_function_ = {implicit_width};
+    tracks->grid_auto_columns_max_track_sizing_function_ = {implicit_width};
+    auto* backward = CreateMeasuredItem(20, 10, &a);
+    auto* first_track = CreateMeasuredItem(10, 10, &b);
+    backward->SetComposeLayout(compose);
+    first_track->SetComposeLayout(compose);
+    auto* backward_style = backward->GetCSSMutableStyle()->grid_data_.Access();
+    if (!compose) {
+      backward_style->grid_column_start_ = -4;
+    }
+    backward_style->grid_row_start_ = 1;
+    auto* first_style = first_track->GetCSSMutableStyle()->grid_data_.Access();
+    first_style->grid_column_start_ = 1;
+    first_style->grid_row_start_ = 1;
+    grid->AppendChild(first_track);
+    grid->AppendChild(backward);
+    if (compose) {
+      grid->UpdateMeasureWithComposeConstraints({200, 200, 60, 60}, true);
+      grid->UpdateAlignment();
+    } else {
+      Layout(grid);
+    }
+    EXPECT_FLOAT_EQ(compose ? 60.f : 0.f,
+                    backward->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(0, backward->GetBorderBoundTopFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(compose ? 0.f : 35.f,
+                    first_track->GetBorderBoundLeftFromParentPaddingBound());
+  }
+}
+
+TEST_F(GridGeometryTest, ComposeAutoRowSearchesInFixedColumn) {
+  MeasureContext a, b;
+  auto* grid = CreateGrid(200, 100, {50, 60}, {30, 40}, 10, 6);
+  grid->SetComposeLayout(true);
+  auto* first_cell = CreateMeasuredItem(10, 10, &a);
+  first_cell->SetComposeLayout(true);
+  auto* first_style = first_cell->GetCSSMutableStyle()->grid_data_.Access();
+  first_style->grid_row_start_ = 1;
+  first_style->grid_column_start_ = 1;
+  grid->AppendChild(first_cell);
+
+  auto* backward = CreateMeasuredItem(10, 10, &b);
+  backward->SetComposeLayout(true);
+  auto* backward_style = backward->GetCSSMutableStyle()->grid_data_.Access();
+  backward_style->grid_column_start_ = 1;
+  grid->AppendChild(backward);
+
+  grid->UpdateMeasureWithComposeConstraints({200, 200, 100, 100}, true);
+  grid->UpdateAlignment();
+  EXPECT_FLOAT_EQ(0, backward->GetBorderBoundLeftFromParentPaddingBound());
+  EXPECT_FLOAT_EQ(36, backward->GetBorderBoundTopFromParentPaddingBound());
+}
+
+TEST_F(GridGeometryTest, SpanningOccupancySurvivesComposeSearchClipping) {
+  for (bool compose : {false, true}) {
+    MeasureContext a, b, c, d;
+    auto* grid = CreateGrid(400, 100, {80, 100}, {30, 40}, 10, 6);
+    grid->SetComposeLayout(compose);
+    auto* positioned = CreateMeasuredItem(10, 10, &a);
+    auto* data = positioned->GetCSSMutableStyle()->grid_data_.Access();
+    data->grid_column_start_ = 2;
+    data->grid_column_end_ = 7;
+    data->grid_row_start_ = 1;
+    grid->AppendChild(positioned);
+    auto* first = CreateMeasuredItem(10, 10, &b);
+    auto* second = CreateMeasuredItem(10, 10, &c);
+    auto* third = CreateMeasuredItem(10, 10, &d);
+    grid->AppendChild(first);
+    grid->AppendChild(second);
+    grid->AppendChild(third);
+    if (compose) {
+      grid->UpdateMeasureWithComposeConstraints({400, 400, 100, 100}, true);
+      grid->UpdateAlignment();
+    } else {
+      Layout(grid);
+    }
+    EXPECT_FLOAT_EQ(0, first->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(0, first->GetBorderBoundTopFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(0, second->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(36, second->GetBorderBoundTopFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(90, third->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(36, third->GetBorderBoundTopFromParentPaddingBound());
+  }
+}
+
 }  // namespace
 }  // namespace starlight
 }  // namespace lynx

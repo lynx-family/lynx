@@ -1259,7 +1259,7 @@ class Element : public lepus::RefCounted,
   void UpdateTagToLayoutBundle();
 
   void UpdateLayoutNodeByBundle();
-  void SetLayoutModifiers(
+  void SetComposeLayoutModifiers(
       std::shared_ptr<const starlight::ComposeLayoutModifiers> modifiers);
 
   void MarkCustomPropertiesDirty() { custom_properties_ = nullptr; }
