@@ -13,9 +13,13 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.test.annotation.UiThreadTest;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.react.bridge.JavaOnlyArray;
@@ -28,6 +32,7 @@ import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.StyleConstants;
+import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.list.container.ListContainerProxy;
 import com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
@@ -274,6 +279,22 @@ public class UIListContainerTest {
     Field field = NestedScrollContainerView.class.getDeclaredField("mLynxSnapHelper");
     field.setAccessible(true);
     return (LynxSnapHelper) field.get(uiList.getView());
+  }
+
+  @Test
+  public void testAccessibilityCollectionInfoHasItemCount() throws Exception {
+    // Enable the accessibility helper (page config enableA11y), as the delegate needs it.
+    LynxContext context = spy(lynxContext);
+    LynxAccessibilityWrapper wrapper = mock(LynxAccessibilityWrapper.class);
+    when(wrapper.enableHelper()).thenReturn(true);
+    when(context.getLynxAccessibilityWrapper()).thenReturn(wrapper);
+    UIListContainer uiList = new UIListContainer(context);
+    setItemKeys(uiList, JavaOnlyArray.of("item-0", "item-1", "item-2"));
+
+    AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain();
+    ViewCompat.onInitializeAccessibilityNodeInfo(uiList.getView(), info);
+    assertNotNull(info.getCollectionInfo());
+    assertEquals(3, info.getCollectionInfo().getRowCount());
   }
 
   private void setItemKeys(UIListContainer uiList, JavaOnlyArray itemKeys) throws Exception {

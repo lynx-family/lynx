@@ -4,18 +4,28 @@
 
 package com.lynx.tasm.behavior.shadow.text;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import android.view.View;
+import com.lynx.tasm.EventEmitter;
+import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.event.EventTargetBase;
 import com.lynx.tasm.event.EventsListener;
+import com.lynx.tasm.event.LynxTouchEvent;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 public class EventTargetSpanTest {
   private EventTargetSpan createSpan(int sign) {
@@ -80,5 +90,35 @@ public class EventTargetSpanTest {
 
     assertFalse(target.hasEventListener("tap"));
     assertTrue(target.parentResponder().hasEventListener("tap"));
+  }
+
+  // A text view whose context is the given Lynx context, as Lynx creates its views.
+  private static View createWidget(EventEmitter emitter) {
+    LynxContext context = mock(LynxContext.class);
+    when(context.getEventEmitter()).thenReturn(emitter);
+    View widget = mock(View.class);
+    when(widget.getContext()).thenReturn(context);
+    return widget;
+  }
+
+  @Test
+  public void onClickSendsTapToTheSpan() {
+    Map<String, EventsListener> events = new HashMap<>();
+    events.put("tap", null);
+    EventEmitter emitter = mock(EventEmitter.class);
+    createSpan(7, events).onClick(createWidget(emitter));
+
+    ArgumentCaptor<LynxTouchEvent> event = ArgumentCaptor.forClass(LynxTouchEvent.class);
+    verify(emitter).sendTouchEvent(event.capture());
+    assertEquals(7, event.getValue().getTag());
+    assertEquals("tap", event.getValue().getName());
+  }
+
+  @Test
+  public void onClickWithoutTapListenerSendsNothing() {
+    EventEmitter emitter = mock(EventEmitter.class);
+    createSpan(7).onClick(createWidget(emitter));
+
+    verify(emitter, never()).sendTouchEvent(any());
   }
 }

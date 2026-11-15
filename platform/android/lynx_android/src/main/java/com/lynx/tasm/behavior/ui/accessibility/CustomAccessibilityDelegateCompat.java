@@ -27,6 +27,8 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIShadowProxy;
+import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
+import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxDetailEvent;
 import com.lynx.tasm.event.LynxTouchEvent;
@@ -129,6 +131,7 @@ public class CustomAccessibilityDelegateCompat extends AccessibilityDelegateComp
       setTraversalOrder(ui, info);
       setTraitsIfNeeded(ui, info);
       setRoleDescriptionIfNeeded(ui, info);
+      setCollectionItemInfoIfNeeded(ui, info);
     }
     if (DEBUG) {
       LLog.i(TAG,
@@ -234,6 +237,20 @@ public class CustomAccessibilityDelegateCompat extends AccessibilityDelegateComp
       put("progressbar", android.widget.ProgressBar.class.getName());
     }
   };
+
+  /**
+   * Set the position of a list-container's item, so screen readers can say "2 of 5".
+   */
+  private void setCollectionItemInfoIfNeeded(LynxUI ui, AccessibilityNodeInfoCompat info) {
+    if (ui instanceof UIComponent && ui.getParentBaseUI() instanceof UIListContainer) {
+      int index = ((UIListContainer) ui.getParentBaseUI())
+                      .getIndexFromItemKey(((UIComponent) ui).getItemKey());
+      if (index >= 0) {
+        info.setCollectionItemInfo(
+            AccessibilityNodeInfoCompat.CollectionItemInfoCompat.obtain(index, 1, 0, 1, false));
+      }
+    }
+  }
 
   private void setRoleDescriptionIfNeeded(LynxUI ui, AccessibilityNodeInfoCompat info) {
     if (ui != null && info != null) {

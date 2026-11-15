@@ -4,6 +4,9 @@
 
 package com.lynx.tasm.behavior.shadow.text;
 
+import static com.lynx.tasm.event.LynxTouchEvent.EVENT_CLICK;
+import static com.lynx.tasm.event.LynxTouchEvent.EVENT_TAP;
+
 import android.graphics.Matrix;
 import android.text.TextPaint;
 import android.text.style.ClickableSpan;
@@ -11,11 +14,13 @@ import android.view.MotionEvent;
 import android.view.View;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.event.EventTargetBase;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxEventDetail;
+import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
@@ -62,8 +67,27 @@ public class EventTargetSpan extends ClickableSpan implements EventTarget {
     }
   }
 
+  // Only called when a screen reader opens the span as a link; touches use the touch dispatcher.
   @Override
-  public void onClick(View widget) {}
+  public void onClick(View widget) {
+    if (mEvents != null && widget.getContext() instanceof LynxContext) {
+      LynxContext context = (LynxContext) widget.getContext();
+      int[] location = new int[2];
+      widget.getLocationOnScreen(location);
+      LynxTouchEvent.Point localPoint =
+          new LynxTouchEvent.Point(widget.getWidth() / 2f, widget.getHeight() / 2f);
+      LynxTouchEvent.Point globalPoint = new LynxTouchEvent.Point(
+          location[0] + widget.getWidth() / 2f, location[1] + widget.getHeight() / 2f);
+      if (mEvents.containsKey(EVENT_TAP)) {
+        context.getEventEmitter().sendTouchEvent(
+            new LynxTouchEvent(mSign, EVENT_TAP, localPoint, localPoint, globalPoint));
+      }
+      if (mEvents.containsKey(EVENT_CLICK)) {
+        context.getEventEmitter().sendTouchEvent(
+            new LynxTouchEvent(mSign, EVENT_CLICK, localPoint, localPoint, globalPoint));
+      }
+    }
+  }
 
   @Override
   public void updateDrawState(TextPaint ds) {}
