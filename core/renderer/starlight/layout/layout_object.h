@@ -110,9 +110,9 @@ class LayoutObject : public ContainerNode {
   void SetComposeLayout(bool value) { compose_layout_ = value; }
   bool IsComposeLayout() const { return compose_layout_; }
 
-  bool SetLayoutModifiers(
+  bool SetComposeLayoutModifiers(
       std::shared_ptr<const ComposeLayoutModifiers> modifiers);
-  const ComposeLayoutModifiers* GetLayoutModifiers() const {
+  const ComposeLayoutModifiers* GetComposeLayoutModifiers() const {
     return layout_modifiers_.get();
   }
 
@@ -141,6 +141,10 @@ class LayoutObject : public ContainerNode {
   bool GetFinalMeasure() const { return final_measure_; }
 
   void SetLayoutStyle(LayoutComputedStyle* layout_style) {
+    if (IsComposeLayout() && css_style_ != layout_style) {
+      // A parent can resolve its child's style between Compose measurements.
+      RemoveAlgorithm();
+    }
     css_style_ = layout_style;
   }
   const LayoutComputedStyle* GetCSSStyle() const { return css_style_; }
@@ -342,15 +346,6 @@ class LayoutObject : public ContainerNode {
   void UpdateMeasureWithMeasureFunc(const Constraints& constraints,
                                     bool final_measure);
 
-  // CSS parents resolve border-box constraints before entering Compose.
-  FloatSize UpdateMeasureWithCompose(const Constraints& constraints,
-                                     bool final_measure);
-
-  // Shares Compose measurement after the entry point resolves the border box.
-  // Preserve the caller's percentage bases and apply padding/border only once.
-  void UpdateMeasureWithResolvedComposeConstraints(
-      const ComposeConstraints& border, bool final_measure);
-
   // Shared measurement core; the CSS and Compose entries own their caches.
   void UpdateMeasureInternal(
       const Constraints& constraints, bool final_measure,
@@ -415,6 +410,15 @@ class LayoutObject : public ContainerNode {
   float pos_right_ = 0;
   float pos_top_ = 0;
   float pos_bottom_ = 0;
+
+ private:
+  // Applies the modifier chain to the border box. Margin-box inputs also
+  // initialize the box model and resolve native size hints.
+  ComposeConstraints ApplyComposeLayoutModifiers(ComposeConstraints bounds,
+                                                 BoundType bound_type);
+  // Measures with the resolved border box without reapplying modifiers.
+  void MeasureComposeBorderBox(const ComposeConstraints& border,
+                               bool final_measure);
 };
 
 }  // namespace starlight

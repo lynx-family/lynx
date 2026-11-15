@@ -1150,6 +1150,260 @@ TEST_P(ModifierElementTest, WrapContentWidthMeasuresRowAndColumnChildren) {
   }
 }
 
+TEST_P(ModifierElementTest, GridPlacementParentDataFollowsModifierFrames) {
+  auto page = CreateComposePage();
+  auto grid = CreateComposeHandle(manager);
+  auto grid_style = AppendTestStyle({}, kPropertyIDDisplay, "grid");
+  grid_style = AppendTestStyle(grid_style, kPropertyIDGridTemplateColumns,
+                               "60px 70px 80px");
+  grid_style =
+      AppendTestStyle(grid_style, kPropertyIDGridTemplateRows, "40px 50px");
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(grid.get(), grid_style, nullptr)
+                  .success);
+  page->InsertNode(grid->mount_root());
+  auto item = CreateComposeHandle(manager);
+  auto placement = AppendTestStyle({}, kPropertyIDGridColumnStart, "2");
+  placement = AppendTestStyle(placement, kPropertyIDGridColumnEnd, "auto");
+  placement = AppendTestStyle(placement, kPropertyIDGridColumnSpan, "2");
+  placement = AppendTestStyle(placement, kPropertyIDGridRowStart, "1");
+  placement = AppendTestStyle(placement, kPropertyIDGridRowSpan, "2");
+  for (bool padding_first : {false, true}) {
+    auto source = padding_first
+                      ? AppendTestStyle(AppendTestPadding({}),
+                                        kPropertyIDGridColumnStart, "2")
+                      : AppendTestPadding(placement);
+    if (padding_first) {
+      source = AppendTestStyle(source, kPropertyIDGridColumnEnd, "auto");
+      source = AppendTestStyle(source, kPropertyIDGridColumnSpan, "2");
+      source = AppendTestStyle(source, kPropertyIDGridRowStart, "1");
+      source = AppendTestStyle(source, kPropertyIDGridRowSpan, "2");
+    }
+    ASSERT_TRUE(
+        ComposeModifierApplicator::Apply(item.get(), source, nullptr).success);
+    grid->content_element()->InsertNode(item->mount_root());
+    FlushAndLayout(page);
+    const auto* root_style = item->mount_root()->slnode()->GetCSSStyle();
+    EXPECT_EQ(2, root_style->GetGridColumnStart());
+    EXPECT_EQ(2, root_style->GetGridColumnSpan());
+    EXPECT_EQ(1, root_style->GetGridRowStart());
+    EXPECT_EQ(2, root_style->GetGridRowSpan());
+    EXPECT_FLOAT_EQ(60, item->mount_root()
+                            ->slnode()
+                            ->GetBorderBoundLeftFromParentPaddingBound());
+    grid->content_element()->RemoveNode(item->mount_root());
+  }
+}
+
+TEST_P(ModifierElementTest, ComposeParentLayoutAppliesGridCssBeforeMeasure) {
+  for (bool new_style_pipeline : {false, true}) {
+    SCOPED_TRACE(new_style_pipeline);
+    manager->GetConfig()->SetEnableNewStylingPipeline(new_style_pipeline);
+    auto page = CreateComposePage();
+    auto runtime = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    runtime->Initialize();
+    runtime->SetGlobalData(
+        BASE_STATIC_STRING(tasm::kTemplateAssembler),
+        lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+    Renderer::RegisterBuiltin(runtime.get(), ArchOption::FIBER_ARCH);
+    runtime->SetGlobalData("gridPageId", lepus::Value(page->impl_id()));
+    const std::pair<const char*, CSSPropertyID> style_properties[] = {
+        {"gridRowStartId", kPropertyIDGridRowStart},
+        {"gridColumnStartId", kPropertyIDGridColumnStart},
+        {"gridRowSpanId", kPropertyIDGridRowSpan},
+        {"gridColumnSpanId", kPropertyIDGridColumnSpan},
+        {"gridJustifyId", kPropertyIDJustifySelf},
+        {"gridAlignId", kPropertyIDAlignSelf},
+    };
+    for (const auto& [name, id] : style_properties) {
+      runtime->SetGlobalData(name, lepus::Value(static_cast<int>(id)));
+    }
+    const std::string script = R"JS(
+      globalThis.owner = __CreateCompose(gridPageId, 1);
+      globalThis.grid = __CreateCompose(gridPageId, 1);
+      globalThis.gridItem = __CreateCompose(gridPageId, 1);
+      globalThis.positionedItem = __CreateCompose(gridPageId, 1);
+      globalThis.gridFlow = 'row';
+      globalThis.columnGap = 10;
+      globalThis.rowGap = 0;
+      globalThis.gridConfigCalls = 0;
+      globalThis.gridConfigBounds = [];
+      globalThis.gridItemColumn = '-2';
+      let appliedGridItemColumn = gridItemColumn;
+      __SetComposeModifier(owner, {op: 9, specifiedAxes: 3, fraction: 1});
+      __SetCustomLayout(owner, (minW, maxW, minH, maxH) => {
+        ++gridConfigCalls;
+        gridConfigBounds = [minW, maxW, minH, maxH];
+        __SetInlineStyles(grid, {
+          'display': 'grid',
+          'justify-items': 'start',
+          'align-items': 'start',
+          'grid-template-columns': maxW > 100 ? '40px 40px 40px' : '40px',
+          'grid-template-rows': '30px 30px',
+          'grid-column-gap': columnGap,
+          'grid-row-gap': rowGap,
+          'grid-auto-flow': gridFlow
+        });
+        if (gridItemColumn !== appliedGridItemColumn) {
+          __SetComposeModifier(gridItem,
+            gridItemStyles('1', gridItemColumn, 1, 'start', padding));
+          appliedGridItemColumn = gridItemColumn;
+        }
+        __ResolveElementSubtree(grid);
+        return __MeasureElement(owner, grid, minW, maxW, minH, maxH);
+      }, () => {
+        __PlaceElement(owner, grid, 0, 0, 0);
+        return true;
+      });
+      globalThis.gridItemStyles = (row, column, span, alignment, previous) =>
+        [
+          [gridRowStartId, row],
+          [gridColumnStartId, column],
+          [gridRowSpanId, span],
+          [gridColumnSpanId, span],
+          [gridJustifyId, alignment],
+          [gridAlignId, alignment]
+        ].reduce((previous, [propertyId, value]) => ({
+          op: typeof value === 'number' ? 2 : 3, propertyId, value, previous
+        }), previous);
+      const padding = {op: 7, start: 2, top: 2, end: 2, bottom: 2};
+      __SetComposeModifier(gridItem, gridItemStyles('1', '-2', 1, 'start', padding));
+      __SetComposeModifier(positionedItem, gridItemStyles('2', '2', 1, 'start'));
+      __InsertElementAt(grid, gridItem, 0);
+      __InsertElementAt(grid, positionedItem, 1);
+      __InsertElementAt(grid, __CreateCompose(gridPageId, 1), 2);
+      __InsertElementAt(grid, __CreateCompose(gridPageId, 1), 3);
+      __InsertElementAt(owner, grid, 0);
+      owner;
+    )JS";
+    auto eval = [&](const std::string& source) {
+      lepus::Value value;
+      EXPECT_TRUE(runtime::MTSRuntime::ToQuickContext(runtime.get())
+                      ->EvalBuf(source.c_str(), source.size(), value,
+                                "compose-grid-parent-data.js"));
+      return value;
+    };
+    auto owner = GetComposeMountRootOrFiberElementFromValue(eval(script));
+    ASSERT_TRUE(owner);
+    ASSERT_EQ(1, owner->GetChildCount());
+    auto* grid = owner->GetChildAt(0);
+    page->InsertNode(owner);
+
+    auto flush = [&] {
+      auto options = std::make_shared<PipelineOptions>();
+      manager->OnPatchFinish(options, page.get());
+    };
+    auto resize = [&](float width) {
+      manager->UpdateViewport(width, SLMeasureModeDefinite, 100,
+                              SLMeasureModeDefinite, false);
+      flush();
+    };
+    resize(80);
+    auto* child = grid->GetChildAt(0)->slnode();
+    auto* positioned_child = grid->GetChildAt(1)->slnode();
+    auto* auto_child = grid->GetChildAt(3)->slnode();
+    ASSERT_TRUE(grid->GetChildAt(0)->is_modifier());
+    EXPECT_EQ(-2, child->GetCSSStyle()->GetGridColumnStart());
+    EXPECT_EQ(2, positioned_child->GetCSSStyle()->GetGridRowStart());
+    EXPECT_EQ(2, positioned_child->GetCSSStyle()->GetGridColumnStart());
+    EXPECT_EQ(1, positioned_child->GetCSSStyle()->GetGridRowSpan());
+    EXPECT_EQ(1, positioned_child->GetCSSStyle()->GetGridColumnSpan());
+    EXPECT_EQ(starlight::JustifyType::kStart,
+              positioned_child->GetCSSStyle()->GetJustifySelfType());
+    EXPECT_EQ(starlight::FlexAlignType::kStart,
+              positioned_child->GetCSSStyle()->GetAlignSelf());
+    for (const float width : {80.f, 160.f, 80.f}) {
+      SCOPED_TRACE(width);
+      resize(width);
+      EXPECT_FLOAT_EQ(width > 100 ? 100.f : 0.f,
+                      child->GetBorderBoundLeftFromParentPaddingBound());
+      EXPECT_EQ(child, grid->GetChildAt(0)->slnode());
+    }
+
+    resize(160);
+    EXPECT_FLOAT_EQ(
+        50, positioned_child->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(
+        30, positioned_child->GetBorderBoundTopFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(50, auto_child->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(0, auto_child->GetBorderBoundTopFromParentPaddingBound());
+    const auto config_calls = eval("gridConfigCalls").Number();
+    const auto bounds = eval("gridConfigBounds.join(',')").StdString();
+    ASSERT_EQ("160,160,100,100", bounds);
+    EXPECT_FLOAT_EQ(160, grid->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(100, grid->slnode()->GetBorderBoundHeight());
+    eval("gridFlow = 'column'; columnGap = 14; rowGap = 7.5;");
+    flush();
+    EXPECT_EQ(config_calls, eval("gridConfigCalls").Number());
+    eval("__InvalidateLayout(owner);");
+    EXPECT_EQ(config_calls, eval("gridConfigCalls").Number());
+    flush();
+    EXPECT_GT(eval("gridConfigCalls").Number(), config_calls);
+    EXPECT_EQ(bounds, eval("gridConfigBounds.join(',')").StdString());
+    EXPECT_FLOAT_EQ(
+        54, positioned_child->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(
+        37.5, positioned_child->GetBorderBoundTopFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(108, child->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(0, auto_child->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(37.5,
+                    auto_child->GetBorderBoundTopFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(160, grid->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(100, grid->slnode()->GetBorderBoundHeight());
+    EXPECT_EQ(positioned_child, grid->GetChildAt(1)->slnode());
+    const auto* grid_style = grid->slnode()->GetCSSStyle();
+    EXPECT_EQ(3U, grid_style->GetGridTemplateColumns().size());
+    EXPECT_EQ(starlight::GridAutoFlowType::kColumn,
+              grid_style->GetGridAutoFlow());
+
+    // A child style update must also invalidate placement at the same size.
+    const auto previous_calls = eval("gridConfigCalls").Number();
+    eval(
+        "__SetComposeModifier(positionedItem, gridItemStyles('2', 'auto', 1, "
+        "'end'));");
+    flush();
+    EXPECT_GT(eval("gridConfigCalls").Number(), previous_calls);
+    EXPECT_EQ(bounds, eval("gridConfigBounds.join(',')").StdString());
+    EXPECT_EQ(0, positioned_child->GetCSSStyle()->GetGridColumnStart());
+    EXPECT_FLOAT_EQ(
+        40, positioned_child->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_FLOAT_EQ(
+        67.5, positioned_child->GetBorderBoundTopFromParentPaddingBound());
+
+    // Modifier replacement clears the old styles on the retained carrier.
+    eval("__SetComposeModifier(positionedItem, null);");
+    flush();
+    EXPECT_EQ(0, positioned_child->GetCSSStyle()->GetGridRowStart());
+    EXPECT_EQ(0, positioned_child->GetCSSStyle()->GetGridColumnStart());
+    EXPECT_EQ(starlight::JustifyType::kAuto,
+              positioned_child->GetCSSStyle()->GetJustifySelfType());
+    EXPECT_FLOAT_EQ(
+        0, positioned_child->GetBorderBoundTopFromParentPaddingBound());
+
+    // A measure-time placement change reuses the content of a padded item.
+    const auto content =
+        GetComposeContentOrFiberElementFromValue(eval("gridItem"));
+    eval("gridItemColumn = 'auto'; __InvalidateLayout(owner);");
+    flush();
+    auto* mount = grid->GetChildAt(0);
+    ASSERT_TRUE(mount->is_modifier());
+    EXPECT_EQ(content.get(), mount->GetChildAt(0));
+    EXPECT_EQ(0, mount->slnode()->GetCSSStyle()->GetGridColumnStart());
+    EXPECT_FLOAT_EQ(
+        0, mount->slnode()->GetBorderBoundLeftFromParentPaddingBound());
+    eval("gridItemColumn = '-2'; __InvalidateLayout(owner);");
+    flush();
+    mount = grid->GetChildAt(0);
+    EXPECT_EQ(content.get(), mount->GetChildAt(0));
+    EXPECT_EQ(-2, mount->slnode()->GetCSSStyle()->GetGridColumnStart());
+    EXPECT_FLOAT_EQ(
+        108, mount->slnode()->GetBorderBoundLeftFromParentPaddingBound());
+    EXPECT_EQ(bounds, eval("gridConfigBounds.join(',')").StdString());
+    eval("__SetCustomLayout(owner, null, null);");
+    page->RemoveNode(owner);
+  }
+}
+
 TEST_P(ModifierElementTest, SizeRangePreservesSizePaddingAndRepeatedOrder) {
   auto page = CreateComposePage();
   struct Case {

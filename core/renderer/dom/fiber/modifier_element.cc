@@ -205,6 +205,12 @@ bool IsParentDataStyle(CSSPropertyID id) {
     case kPropertyIDAlignSelf:
     case kPropertyIDJustifySelf:
     case kPropertyIDXBoxMatchParentSize:
+    case kPropertyIDGridRowStart:
+    case kPropertyIDGridRowEnd:
+    case kPropertyIDGridRowSpan:
+    case kPropertyIDGridColumnStart:
+    case kPropertyIDGridColumnEnd:
+    case kPropertyIDGridColumnSpan:
       return true;
     default:
       return false;
@@ -943,13 +949,13 @@ void ApplyLayoutOperations(
     }
   }
   if (!layout_in_element) {
-    owner->SetLayoutModifiers(nullptr);
+    owner->SetComposeLayoutModifiers(nullptr);
     return;
   }
   for (size_t index = 0; index <= plan.frame_count; ++index) {
     auto& modifiers = plan.layout_modifiers[index];
     LayoutCarrierAt(index, owner, frames)
-        ->SetLayoutModifiers(
+        ->SetComposeLayoutModifiers(
             modifiers.empty() ? nullptr
                               : std::make_shared<const ComposeLayoutModifiers>(
                                     std::move(modifiers)));
