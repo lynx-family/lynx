@@ -118,6 +118,14 @@ class LayoutObject : public ContainerNode {
 
   SLAlignmentFunc GetSLAlignmentFunc() const;
 
+  void SetPlacementOffsetFunctions(PlacementOffsetFunctions functions);
+  bool HasPlacementOffsetFunctions() const {
+    return placement_offset_ != nullptr;
+  }
+  void InvalidatePlacement();
+  void ResolvePlacementOffset();
+  void UpdatePlacementOffsets();
+
   FloatSize UpdateMeasureByPlatform(const Constraints& constraints,
                                     bool final_measure);
   void AlignmentByPlatform(float offset_top, float offset_left);
@@ -370,6 +378,12 @@ class LayoutObject : public ContainerNode {
   bool compose_layout_ = false;
   SLRequestLayoutFunc request_layout_func_ = nullptr;
   SLAlignmentFunc alignment_func_ = nullptr;
+  struct PlacementOffsetState {
+    PlacementOffsetFunctions functions;
+    PlacementOffset applied;
+  };
+  std::unique_ptr<PlacementOffsetState> placement_offset_;
+  bool placement_dirty_ = false;
   SLCanReuseLayoutWithSameSizeAsGivenConstraintFunc can_reuse_layout_func_ =
       nullptr;
 

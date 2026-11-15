@@ -280,6 +280,13 @@ Element* WrappedContent(Element* root) {
   return root;
 }
 
+void AcknowledgeLayout(Element* element) {
+  if (element->slnode()) element->slnode()->MarkUpdated();
+  for (const auto& child : element->children()) {
+    AcknowledgeLayout(child.get());
+  }
+}
+
 }  // namespace
 
 class ModifierElementTest : public FiberElementTest {
@@ -1568,6 +1575,119 @@ TEST_P(ModifierElementTest, SizeRangeRejectsInvalidIrBeforeChangingTopology) {
             .success);
     EXPECT_EQ(root, handle->mount_root());
   }
+}
+
+TEST_P(ModifierElementTest,
+       PixelOffsetPlacementIsDeferredAndInvalidatesWithoutRemeasuring) {
+  for (double pixels : {1.0, 2.5}) {
+    auto page = CreateComposePage(1, pixels);
+    auto runtime = runtime::MTSRuntime::CreateContext(
+        runtime::ContextType::LepusNGContextType);
+    runtime->Initialize();
+    runtime->SetGlobalData(
+        BASE_STATIC_STRING(tasm::kTemplateAssembler),
+        lepus::Value(static_cast<runtime::MTSRuntime::Delegate*>(tasm.get())));
+    Renderer::RegisterBuiltin(runtime.get(), ArchOption::FIBER_ARCH);
+    auto eval = [&](const std::string& source) {
+      lepus::Value result;
+      EXPECT_TRUE(runtime::MTSRuntime::ToQuickContext(runtime.get())
+                      ->EvalBuf(source.data(), source.size(), result,
+                                "pixel_offset.js"));
+      return result;
+    };
+    auto parent = CreateComposeHandle(manager);
+    auto item = CreateComposeHandle(manager);
+    auto tail = CreateComposeHandle(manager);
+    runtime->SetGlobalData("pixelParent", lepus::Value(parent));
+    runtime->SetGlobalData("pixelItem", lepus::Value(item));
+    runtime->SetGlobalData("pixelTail", lepus::Value(tail));
+    runtime->SetGlobalData("pixelScale", lepus::Value(pixels));
+    eval(R"JS(
+      globalThis.pixelReads = 0;
+      globalThis.pixelMeasures = 0;
+      globalThis.pixelX = 17;
+      globalThis.pixelY = -9;
+      __SetComposeModifier(pixelItem, {
+        op:14, resolve: function(carrier) {
+          globalThis.pixelCarrier = carrier;
+          pixelReads++;
+          return {x:pixelX,y:pixelY};
+        }, previous:{op:8,specifiedAxes:3,width:20,height:10}
+      });
+      __SetComposeModifier(pixelTail,
+        {op:8,specifiedAxes:3,width:30,height:12});
+      __SetCustomLayout(pixelParent, function() {
+        pixelMeasures++;
+        let children = __GetChildren(pixelParent);
+        __MeasureElement(pixelParent, children[0],
+          20*pixelScale,20*pixelScale,10*pixelScale,10*pixelScale);
+        __MeasureElement(pixelParent, children[1],
+          30*pixelScale,30*pixelScale,12*pixelScale,12*pixelScale);
+        return {width:100*pixelScale,height:30*pixelScale};
+      }, function() {
+        let children = __GetChildren(pixelParent);
+        __PlaceElement(pixelParent,children[0],0,0,0);
+        __PlaceElement(pixelParent,children[1],20*pixelScale,0,0);
+        return true;
+      });
+    )JS");
+    EXPECT_EQ(0, eval("pixelReads").Number());
+    parent->content_element()->InsertNode(item->mount_root());
+    parent->content_element()->InsertNode(tail->mount_root());
+    page->InsertNode(parent->mount_root());
+    FlushAndLayout(page);
+    auto* parent_layout = parent->content_element()->slnode();
+    auto* item_layout = item->content_element()->slnode();
+    EXPECT_FLOAT_EQ(20, item->mount_root()->slnode()->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(10, item->mount_root()->slnode()->GetBorderBoundHeight());
+    EXPECT_FLOAT_EQ(17 / pixels, LeftFromAncestor(item_layout, parent_layout));
+    EXPECT_FLOAT_EQ(-9 / pixels, TopFromAncestor(item_layout, parent_layout));
+    EXPECT_FLOAT_EQ(
+        20, LeftFromAncestor(tail->content_element()->slnode(), parent_layout));
+    const double measurements = eval("pixelMeasures").Number();
+    for (int direction : {1, -1, 1}) {
+      AcknowledgeLayout(page.get());
+      EXPECT_FALSE(page->slnode()->IsDirty());
+      EXPECT_FALSE(parent_layout->IsDirty());
+      runtime->SetGlobalData("pixelX", lepus::Value(23 * direction));
+      runtime->SetGlobalData("pixelY", lepus::Value(14));
+      eval("__InvalidatePlacement(pixelCarrier)");
+      EXPECT_FALSE(page->slnode()->IsDirty());
+      EXPECT_FALSE(parent_layout->IsDirty());
+      FlushAndLayout(page);
+      EXPECT_EQ(measurements, eval("pixelMeasures").Number());
+      EXPECT_FLOAT_EQ(23 * direction / pixels,
+                      LeftFromAncestor(item_layout, parent_layout));
+      EXPECT_FLOAT_EQ(14 / pixels, TopFromAncestor(item_layout, parent_layout));
+      EXPECT_FLOAT_EQ(20, LeftFromAncestor(tail->content_element()->slnode(),
+                                           parent_layout));
+    }
+    const double reads = eval("pixelReads").Number();
+    eval(
+        "__SetComposeModifier(pixelItem,{op:8,specifiedAxes:3,width:20,height:"
+        "10})");
+    FlushAndLayout(page);
+    EXPECT_FLOAT_EQ(0, LeftFromAncestor(item_layout, parent_layout));
+    EXPECT_FLOAT_EQ(0, TopFromAncestor(item_layout, parent_layout));
+    EXPECT_EQ(reads, eval("pixelReads").Number());
+  }
+}
+
+TEST_P(ModifierElementTest,
+       PixelOffsetRejectsInvalidResolverWithoutReplacingTheCurrentChain) {
+  auto page = CreateComposePage();
+  auto item = CreateComposeHandle(manager);
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                  item.get(), AppendTestSize({}, 20, 10), nullptr)
+                  .success);
+  auto root = item->mount_root();
+  auto operation = lepus::Dictionary::Create();
+  operation->SetValue("op", lepus::Value(14));
+  operation->SetValue("resolve", lepus::Value(42));
+  auto result = ComposeModifierApplicator::Apply(
+      item.get(), lepus::Value(operation), nullptr);
+  EXPECT_FALSE(result.success);
+  EXPECT_EQ(root, item->mount_root());
 }
 
 TEST_P(ModifierElementTest, OffsetPreservesRowSlotAcrossUpdatesAndDirection) {

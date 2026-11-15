@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_string.h"
@@ -19,6 +20,7 @@ namespace lynx {
 namespace tasm {
 
 class CustomLayout;
+class ComposeOffsetPlacement;
 class ComposeModifierApplicator;
 class ElementManager;
 class TemplateAssembler;
@@ -79,10 +81,12 @@ class ComposeElementHandle final : public lepus::RefCounted {
   }
 
   void ClearCustomLayout();
+  void ClearPlacementOffsets();
 
   fml::RefPtr<Element> content_element_;
   fml::RefPtr<Element> mount_root_;
   std::shared_ptr<CustomLayout> custom_layout_;
+  std::vector<std::shared_ptr<ComposeOffsetPlacement>> placement_offsets_;
 };
 
 }  // namespace tasm

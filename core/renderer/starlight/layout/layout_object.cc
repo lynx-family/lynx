@@ -149,6 +149,28 @@ SLAlignmentFunc LayoutObject::GetSLAlignmentFunc() const {
   return alignment_func_;
 }
 
+void LayoutObject::SetPlacementOffsetFunctions(
+    PlacementOffsetFunctions functions) {
+  if (placement_offset_) {
+    offset_left_ -= placement_offset_->applied.x;
+    offset_top_ -= placement_offset_->applied.y;
+  }
+  if (functions.resolve) {
+    placement_offset_ = std::make_unique<PlacementOffsetState>();
+    placement_offset_->functions = functions;
+  } else {
+    placement_offset_.reset();
+  }
+  InvalidatePlacement();
+}
+
+void LayoutObject::InvalidatePlacement() {
+  for (auto* node = this; node && !node->placement_dirty_;
+       node = node->ParentLayoutObject()) {
+    node->placement_dirty_ = true;
+  }
+}
+
 void LayoutObject::RemoveAlgorithm() {
   if (algorithm_) {
     if (IsComposeLayout()) {
@@ -372,6 +394,15 @@ BoxInfo* LayoutObject::GetBoxInfo() { return &box_info_; }
 const BoxInfo* LayoutObject::GetBoxInfo() const { return &box_info_; }
 
 void LayoutObject::ReLayout(const SLNodeSet* fixed_node_set) {
+  if (placement_dirty_ && !IsDirty()) {
+    // The previous measure pass may have released its native algorithms. Pixel
+    // offsets need only the stored placement bases, not a new parent measure
+    // or alignment pass. Any structural/style/viewport change marks the root
+    // dirty and uses the complete layout path below.
+    UpdatePlacementOffsets();
+    RoundToPixelGrid(offset_left_, offset_top_, 0.f, 0.f, false);
+    return;
+  }
   Constraints constraints;
   UpdateConstraintsForViewport(constraints);
   MarkDirty();
@@ -519,12 +550,14 @@ bool LayoutObject::GetHasNewLayout() const {
 }
 
 void LayoutObject::SetBorderBoundTopFromParentPaddingBound(float offset_top) {
+  if (placement_offset_) placement_offset_->applied.y = 0;
   if (!base::FloatsEqual(offset_top_, offset_top)) {
     MarkHasNewLayout();
     offset_top_ = offset_top;
   }
 }
 void LayoutObject::SetBorderBoundLeftFromParentPaddingBound(float offset_left) {
+  if (placement_offset_) placement_offset_->applied.x = 0;
   if (!base::FloatsEqual(offset_left_, offset_left)) {
     MarkHasNewLayout();
     offset_left_ = offset_left;
@@ -1114,14 +1147,48 @@ void LayoutObject::UpdateMeasureWithLeafNode(const Constraints& constraints) {
   SetBorderBoundHeight(ClampExactHeight(height_to_set));
 }
 
+void LayoutObject::ResolvePlacementOffset() {
+  if (placement_offset_) {
+    const auto functions = placement_offset_->functions;
+    const float base_left = offset_left_ - placement_offset_->applied.x;
+    const float base_top = offset_top_ - placement_offset_->applied.y;
+    const auto offset = functions.resolve(functions.context);
+    // Resolving can synchronously detach or replace the owner. Do not apply
+    // values from an expired binding to the replacement.
+    if (placement_offset_ &&
+        placement_offset_->functions.context == functions.context &&
+        placement_offset_->functions.resolve == functions.resolve) {
+      placement_offset_->applied = offset;
+      if (base::FloatsNotEqual(offset_left_, base_left + offset.x) ||
+          base::FloatsNotEqual(offset_top_, base_top + offset.y)) {
+        offset_left_ = base_left + offset.x;
+        offset_top_ = base_top + offset.y;
+        MarkHasNewLayout();
+      }
+    }
+  }
+}
+
+void LayoutObject::UpdatePlacementOffsets() {
+  if (!placement_dirty_) return;
+  placement_dirty_ = false;
+  ResolvePlacementOffset();
+  for (Node* child = FirstChild(); child; child = child->Next()) {
+    static_cast<LayoutObject*>(child)->UpdatePlacementOffsets();
+  }
+}
+
 void LayoutObject::UpdateAlignment() {
+  const bool placement_dirty = placement_dirty_;
+  placement_dirty_ = false;
+  ResolvePlacementOffset();
   double border_box_offset_left = GetBorderBoundLeftFromParentPaddingBound();
   double border_box_offset_top = GetBorderBoundTopFromParentPaddingBound();
 
   if (!measured_position_.Reset(border_box_offset_left, border_box_offset_top,
                                 border_box_offset_left + offset_width_,
                                 border_box_offset_top + offset_height_) &&
-      !IsDirty() && !IsComposeLayout()) {
+      !IsDirty() && !IsComposeLayout() && !placement_dirty) {
     return;
   }
   if (alignment_func_) {

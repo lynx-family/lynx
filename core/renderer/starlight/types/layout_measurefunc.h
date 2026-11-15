@@ -59,6 +59,18 @@ struct CustomLayoutFunctions {
   SLComposeMeasureFunc compose_measure = nullptr;
 };
 
+// Placement-only displacement in layout units. It does not participate in
+// measurement and is applied after the parent assigns the ordinary position.
+struct PlacementOffset {
+  float x = 0;
+  float y = 0;
+};
+
+struct PlacementOffsetFunctions {
+  void* context = nullptr;
+  PlacementOffset (*resolve)(void*) = nullptr;
+};
+
 }  // namespace starlight
 }  // namespace lynx
 

@@ -136,5 +136,17 @@ lepus::Value RendererFunctions::FiberInvalidateLayout(runtime::MTSContext* ctx,
   return lepus::Value();
 }
 
+lepus::Value RendererFunctions::FiberInvalidatePlacement(
+    runtime::MTSContext* ctx, lepus::Value* argv, int argc) {
+  auto* runtime = runtime::MTSRuntime::ToContext(ctx);
+  auto* owner = argc ? LayoutChild(argv[0]) : nullptr;
+  if (argc != 1 || !Owns(runtime, owner) || !owner->slnode() ||
+      !owner->slnode()->HasPlacementOffsetFunctions())
+    return Error(runtime);
+  owner->slnode()->InvalidatePlacement();
+  owner->element_manager()->SetNeedsLayout();
+  return lepus::Value();
+}
+
 }  // namespace tasm
 }  // namespace lynx
