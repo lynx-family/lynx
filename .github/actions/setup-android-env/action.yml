@@ -6,13 +6,13 @@ runs:
   using: composite
   steps:
     - name: Setup Java SDK
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@e9fbacdec3bb3b6036605a3e6f7995d66773a8c6 # v3
       with:
         java-version: 11
         distribution: 'zulu'
         cache: 'gradle'
     - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+      uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
       with:
         cmdline-tools-version: 9862592
         include-emulator: false

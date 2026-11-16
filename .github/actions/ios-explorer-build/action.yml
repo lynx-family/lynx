@@ -19,7 +19,7 @@ runs:
     - name: Setup Ruby Cache
       uses: ./lynx/.github/actions/ios-common-deps
     - name: Install iOS Dependencies
-      uses: nick-fields/retry@v2
+      uses: nick-fields/retry@14672906e672a08bd6eeb15720e9ed3ce869cdd4 # v2
       with:
         timeout_minutes: 20
         max_attempts: 3
