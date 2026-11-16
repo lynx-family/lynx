@@ -130,6 +130,16 @@ void ScrollCoordinator::AddEventCallback(const char* event) {
   }
 }
 
+bool ScrollCoordinator::IsAtBorder(bool is_start) {
+  return is_start ? ScrollY() <= 0
+                  : scroll_view_->GetState() ==
+                        ScrollCoordinatorScrollView::State::FULLY_FOLD;
+}
+
+float ScrollCoordinator::ScrollY() {
+  return scroll_view_->GetScrollOffset().y();
+}
+
 void ScrollCoordinator::SetAttribute(const char* attr_c,
                                      const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
