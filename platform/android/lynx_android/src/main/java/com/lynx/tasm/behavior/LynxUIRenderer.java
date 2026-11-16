@@ -44,6 +44,8 @@ import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxPageLoadListener;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.render.NativePaintingContext;
 import com.lynx.tasm.behavior.shadow.LayoutTick;
@@ -59,7 +61,9 @@ import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 enum BoxModelOffset {
   PAD_LEFT,
@@ -611,6 +615,20 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   // use view.draw
   @Override
   public void drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas) {
+    // "path" records which way the view was drawn: pixel_copy, view_draw_pixel_copy_off,
+    // view_draw_pre_o, view_draw_no_view_root or invisible.
+    Map<String, String> args =
+        traceArgs("view_w_px", view.getWidth(), "view_h_px", view.getHeight());
+    traceBegin(TraceEventDef.LYNX_UI_RENDERER_DRAW_VIEW_TO_BITMAP, null);
+    try {
+      drawViewToBitmapTraced(view, bitmap, canvas, args);
+    } finally {
+      traceEnd(TraceEventDef.LYNX_UI_RENDERER_DRAW_VIEW_TO_BITMAP, args);
+    }
+  }
+
+  private void drawViewToBitmapTraced(
+      View view, Bitmap bitmap, Canvas canvas, @Nullable Map<String, String> args) {
     try {
       // pixel copy for e2e and some special circumstances, switch off by default
       // Above Android 8.0, use PixelCopy
@@ -618,6 +636,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
         View rootView = view.getRootView();
         Object viewRoot = rootView.getParent();
         if (viewRoot == null) {
+          putTraceArg(args, "path", "view_draw_no_view_root");
           view.draw(canvas);
           return;
         }
@@ -659,8 +678,10 @@ public class LynxUIRenderer implements ILynxUIRenderer {
 
         int copyWidth = Math.max(0, srcRect.width());
         int copyHeight = Math.max(0, srcRect.height());
+        putTraceArg(args, "path", "pixel_copy");
         if (copyWidth <= 0 || copyHeight <= 0) {
           // Fully invisible: clear and return
+          putTraceArg(args, "path", "invisible");
           canvas.drawColor(Color.TRANSPARENT);
           return;
         }
@@ -669,23 +690,34 @@ public class LynxUIRenderer implements ILynxUIRenderer {
         Bitmap copyBitmap = Bitmap.createBitmap(copyWidth, copyHeight, Bitmap.Config.ARGB_8888);
 
         LynxUIRenderer.startPixelCopyHandlerThreadIfNecessary();
-        synchronized (mSyncObject) {
-          PixelCopy.request(
-              surface, srcRect, copyBitmap, new PixelCopy.OnPixelCopyFinishedListener() {
-                @Override
-                public void onPixelCopyFinished(int copyResult) {
-                  synchronized (mSyncObject) {
-                    mSyncObject.notify();
+        // Written by the PixelCopier thread before notify(); read after wait() under the lock.
+        final int[] copyResult = {Integer.MIN_VALUE};
+        traceBegin(TraceEventDef.LYNX_UI_RENDERER_PIXEL_COPY_WAIT, null);
+        try {
+          synchronized (mSyncObject) {
+            PixelCopy.request(
+                surface, srcRect, copyBitmap, new PixelCopy.OnPixelCopyFinishedListener() {
+                  @Override
+                  public void onPixelCopyFinished(int result) {
+                    synchronized (mSyncObject) {
+                      copyResult[0] = result;
+                      mSyncObject.notify();
+                    }
                   }
-                }
-              }, new Handler(mPixelCopyHandlerThread.getLooper()));
-          try {
-            // causes the current thread to wait up to 10 seconds until the PixelCopy operation
-            // is completed and the thread is notified.
-            mSyncObject.wait(10000);
-          } catch (InterruptedException e) {
-            LLog.e("DevTool Screenshot", e.toString());
+                }, new Handler(mPixelCopyHandlerThread.getLooper()));
+            try {
+              // causes the current thread to wait up to 10 seconds until the PixelCopy operation
+              // is completed and the thread is notified.
+              mSyncObject.wait(10000);
+            } catch (InterruptedException e) {
+              LLog.e("DevTool Screenshot", e.toString());
+            }
           }
+        } finally {
+          // "none": wait() returned before the callback ran (timeout or interrupt).
+          traceEnd(TraceEventDef.LYNX_UI_RENDERER_PIXEL_COPY_WAIT,
+              traceArgs("src_w_px", copyWidth, "src_h_px", copyHeight, "result",
+                  copyResult[0] == Integer.MIN_VALUE ? "none" : String.valueOf(copyResult[0])));
         }
         // Draw visible region onto the large bitmap at the correct offset; leave other areas blank
         int drawX = srcRect.left - location[0];
@@ -693,10 +725,52 @@ public class LynxUIRenderer implements ILynxUIRenderer {
         canvas.drawBitmap(copyBitmap, drawX, drawY, null);
         copyBitmap.recycle();
       } else {
+        putTraceArg(args, "path",
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.O ? "view_draw_pre_o"
+                                                          : "view_draw_pixel_copy_off");
         view.draw(canvas);
       }
     } catch (Throwable e) {
+      putTraceArg(args, "error", e.getClass().getSimpleName());
       e.printStackTrace();
+    }
+  }
+
+  // Screenshot trace helpers. Args are built only while tracing is enabled; null means no args,
+  // because TraceEvent does not accept a null map.
+  private static final String TRACE_CATEGORY = "lynx";
+
+  @Nullable
+  private static Map<String, String> traceArgs(Object... keyValues) {
+    if (!TraceEvent.enableTrace()) {
+      return null;
+    }
+    Map<String, String> args = new HashMap<>();
+    for (int i = 0; i + 1 < keyValues.length; i += 2) {
+      args.put(String.valueOf(keyValues[i]), String.valueOf(keyValues[i + 1]));
+    }
+    return args;
+  }
+
+  private static void putTraceArg(@Nullable Map<String, String> args, String key, Object value) {
+    if (args != null) {
+      args.put(key, String.valueOf(value));
+    }
+  }
+
+  private static void traceBegin(String name, @Nullable Map<String, String> args) {
+    if (args == null) {
+      TraceEvent.beginSection(name);
+    } else {
+      TraceEvent.beginSection(name, args);
+    }
+  }
+
+  private static void traceEnd(String name, @Nullable Map<String, String> args) {
+    if (args == null) {
+      TraceEvent.endSection(name);
+    } else {
+      TraceEvent.endSection(TRACE_CATEGORY, name, args);
     }
   }
 

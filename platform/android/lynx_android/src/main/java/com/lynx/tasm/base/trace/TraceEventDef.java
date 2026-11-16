@@ -62,6 +62,52 @@ public class TraceEventDef {
 
   public static final String DEVTOOL_INIT = "LynxDevtool initialized";
 
+  // ScreenCast pipeline. A name is "ScreenCast.<Stage>" or "ScreenCast.<Stage>.<Step>" and nests
+  // the same way in a trace; the constant is the name in upper snake case.
+  /**
+   * @trace_description: Capture pixels for one ScreenCast frame on the UI thread.
+   */
+  public static final String SCREENCAST_CAPTURE = "ScreenCast.Capture";
+  /**
+   * @trace_description: Scale one captured ScreenCast frame.
+   */
+  public static final String SCREENCAST_SCALE = "ScreenCast.Scale";
+  /**
+   * @trace_description: Encode one ScreenCast frame: compression and Base64.
+   */
+  public static final String SCREENCAST_ENCODE = "ScreenCast.Encode";
+  /**
+   * @trace_description: Compress one ScreenCast frame to JPEG or PNG.
+   */
+  public static final String SCREENCAST_ENCODE_COMPRESS = "ScreenCast.Encode.Compress";
+  /**
+   * @trace_description: Base64-convert one compressed ScreenCast frame.
+   */
+  public static final String SCREENCAST_ENCODE_BASE64 = "ScreenCast.Encode.Base64";
+  /**
+   * @trace_description: Compare one ScreenCast frame with the previously sent frame.
+   */
+  public static final String SCREENCAST_DIFF = "ScreenCast.Diff";
+  /**
+   * @trace_description: Send one ScreenCast frame through the DevTool protocol.
+   */
+  public static final String SCREENCAST_SEND = "ScreenCast.Send";
+  /**
+   * @trace_description: The DevTool frontend acknowledged the last ScreenCast frame sent.
+   */
+  public static final String SCREENCAST_ACK = "ScreenCast.Ack";
+
+  // LynxUIRenderer also takes card preview screenshots, so its events keep the class name.
+  /**
+   * @trace_description: Draw one view into a bitmap, by PixelCopy or View.draw.
+   */
+  public static final String LYNX_UI_RENDERER_DRAW_VIEW_TO_BITMAP =
+      "LynxUIRenderer.DrawViewToBitmap";
+  /**
+   * @trace_description: Block the calling thread until a PixelCopy request finishes.
+   */
+  public static final String LYNX_UI_RENDERER_PIXEL_COPY_WAIT = "LynxUIRenderer.PixelCopyWait";
+
   public static final String CANCEL_RESOURCE_PREFETCH = "cancelResourcePrefetch";
   public static final String REQUEST_RESOURCE_PREFETCH = "requestResourcePrefetch";
   public static final String ENGINE_BUILDER_BUILD = "LynxEngineBuilder.build";
