@@ -16,6 +16,16 @@ namespace clay {
 SharedImageSink::SharedImageSink(UpdateFrontMode update_front_mode)
     : update_front_mode_(update_front_mode) {}
 
+fml::RefPtr<SharedImageRepresentation>
+SharedImageSink::GetProducerRepresentation(SharedImageBacking*) {
+  return nullptr;
+}
+
+std::optional<fml::RefPtr<SharedImageBacking>> SharedImageSink::TryUpdateFront(
+    bool, const FrontRelease&) {
+  return std::nullopt;
+}
+
 SharedImageSinkManaged::SharedImageSinkManaged(
     BufferMode buffer_mode, const SharedImageFactory& shared_image_factory,
     UpdateFrontMode update_front_mode)
@@ -95,6 +105,29 @@ fml::RefPtr<SharedImageBacking> SharedImageSinkManaged::UpdateFrontToLatest(
   curr_front.is_current = true;
 
   return curr_front.shared_image;
+}
+
+std::optional<fml::RefPtr<SharedImageBacking>>
+SharedImageSinkManaged::TryUpdateFront(bool latest,
+                                       const FrontRelease& release_front) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (capacity_ == BufferMode::kSingleBuffer) return std::nullopt;
+  if (front_backings_.empty() ||
+      (front_backings_.size() == 1 && front_backings_.front().is_current))
+    return fml::RefPtr<SharedImageBacking>();
+
+  std::unique_ptr<FenceSync> fence;
+  if (!release_front(fence)) return fml::RefPtr<SharedImageBacking>();
+  InternalReleaseCurrentFront(std::move(fence));
+  if (latest) {
+    while (front_backings_.size() > 1) {
+      front_backings_.front().is_current = true;
+      InternalReleaseCurrentFront(nullptr);
+    }
+  }
+  auto& front = front_backings_.front();
+  front.is_current = true;
+  return front.shared_image;
 }
 
 void SharedImageSinkManaged::ReleaseFront(

@@ -30,6 +30,16 @@ The implementation keeps these concerns separate:
 - mapping global Clay coordinates into the local surface
 - positioning and clipping the UIKit wrapper
 
+With the display compositor enabled, texture-only frames keep GPU composition
+and output surface work on Raster. Completed textures are handed to Platform
+for CALayer publication; a detached or replaced output cannot publish an old
+texture. The first frame with a platform view layer selects the existing
+onscreen hybrid path. Raster draws the background and overlay textures;
+Platform presents them with the UIKit wrappers in composition order. The
+hybrid path stays selected for the page to avoid switching output ownership
+while earlier platform presentations are still queued. The SharedImage export
+target does not take this onscreen fallback.
+
 ## 2. Terms
 
 - `overlay_rect`

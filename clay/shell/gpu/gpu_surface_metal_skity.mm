@@ -221,14 +221,39 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
     return nullptr;
   }
 
-  auto surface = CreateSurfaceFromMetalTexture(context_, frame_info, mtl_texture,
-                                               static_cast<uint32_t>(msaa_samples_));
+  std::shared_ptr<skity::GPUSurface> surface;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  const auto texture_key = (__bridge const void*)mtl_texture;
+  const bool reusable = delegate_->AllowsRenderTargetReuse(texture_lifetime->texture_info()) &&
+                        mtl_texture.device == skity::MTLContextGetDevice(context_.get()) &&
+                        mtl_texture.width == frame_info.x && mtl_texture.height == frame_info.y;
+  if (reusable) {
+    auto found = texture_surfaces_.find(texture_key);
+    if (found != texture_surfaces_.end()) surface = found->second.lock();
+  }
+#endif
   if (!surface) {
-    FML_LOG(ERROR) << "Could not create gpuSurface from the CAMetalLayer.";
-    return nullptr;
+    surface = CreateSurfaceFromMetalTexture(context_, frame_info, mtl_texture,
+                                            static_cast<uint32_t>(msaa_samples_));
+    if (!surface) {
+      FML_LOG(ERROR) << "Could not create gpuSurface from the CAMetalLayer.";
+      return nullptr;
+    }
+    surface = KeepMTLTextureAliveWithSurface(std::move(surface), texture_lifetime);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    if (reusable) {
+      for (auto it = texture_surfaces_.begin(); it != texture_surfaces_.end();) {
+        if (it->second.expired()) {
+          it = texture_surfaces_.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      texture_surfaces_[texture_key] = surface;
+    }
+#endif
   }
   int64_t texture_id = texture_lifetime->texture_id();
-  surface = KeepMTLTextureAliveWithSurface(std::move(surface), texture_lifetime);
 
   auto encode_callback = [this, texture_id, surface, frame_info](SurfaceFrame& surface_frame,
                                                                  skity::Canvas* canvas) -> bool {
@@ -298,9 +323,24 @@ clay::GrContextPtr GPUSurfaceMetalSkity::GetContextPtr() { return context_; }
 
 // |Surface|
 std::unique_ptr<GLContextResult> GPUSurfaceMetalSkity::MakeRenderContextCurrent() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  return delegate_->MakeRenderContextCurrent();
+#else
   // This backend has no such concept.
   return std::make_unique<GLContextDefaultResult>(true);
+#endif
 }
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+bool GPUSurfaceMetalSkity::SupportsTexturePresentation() const {
+  return delegate_->SupportsTexturePresentation();
+}
+std::shared_ptr<const display::GPUCompletion> GPUSurfaceMetalSkity::PresentSharedImage(
+    std::shared_ptr<const display::OutputTexture> image) {
+  return delegate_->PresentSharedImage(std::move(image));
+}
+void GPUSurfaceMetalSkity::DetachPresentation() { delegate_->DetachPresentation(); }
+#endif
 
 bool GPUSurfaceMetalSkity::AllowsDrawingWhenGpuDisabled() const {
   return delegate_->AllowsDrawingWhenGpuDisabled();

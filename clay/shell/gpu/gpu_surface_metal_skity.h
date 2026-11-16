@@ -43,6 +43,13 @@ class GPUSurfaceMetalSkity : public Surface {
   // MTLTexture for each drawable
   std::map<intptr_t, skity::Rect> damage_;
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // The slot/frame owns the surface and its native lease. This index must not
+  // keep retired pool storage alive or form a lease chain on cache hits.
+  std::map<GPUMTLTextureHandle, std::weak_ptr<skity::GPUSurface>>
+      texture_surfaces_;
+#endif
+
   // Memoize the previous frame size
   // If changed, damage history should be reset
   skity::Vec2 size_ = {0, 0};
@@ -64,6 +71,13 @@ class GPUSurfaceMetalSkity : public Surface {
 
   // |Surface|
   bool AllowsDrawingWhenGpuDisabled() const override;
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  bool SupportsTexturePresentation() const override;
+  std::shared_ptr<const display::GPUCompletion> PresentSharedImage(
+      std::shared_ptr<const display::OutputTexture> image) override;
+  void DetachPresentation() override;
+#endif
 
   std::unique_ptr<SurfaceFrame> AcquireFrameFromCAMetalLayer(
       const skity::Vec2& frame_info);

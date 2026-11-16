@@ -43,6 +43,12 @@ class ResourceLoaderIntercept;
 namespace clay {
 
 class OutputSurface;
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+namespace display {
+class DisplayTarget;
+class TextureBudget;
+}  // namespace display
+#endif
 
 //------------------------------------------------------------------------------
 /// @brief      Platform views are created by the shell on the platform task
@@ -445,6 +451,18 @@ class PlatformView {
   virtual bool IsOutputSurfaceThreadSafe() const { return false; }
 
   virtual fml::RefPtr<OutputSurface> GetOutputSurface() const = 0;
+
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // The Raster producer does not depend on an attached native window.
+  virtual fml::RefPtr<OutputSurface> GetRasterOutputSurface() const;
+  using DisplayTargetFactory =
+      std::function<std::unique_ptr<display::DisplayTarget>()>;
+  // Capture host state on Platform; create and use the GPU target on Raster.
+  virtual DisplayTargetFactory CreateDisplayTargetFactory(
+      std::shared_ptr<display::TextureBudget> budget) const;
+  virtual fml::RefPtr<OutputSurface> GetHybridOutputSurface() const;
+  virtual fml::closure GetHybridOutputActivation() const { return {}; }
+#endif
 
  protected:
   const std::shared_ptr<clay::ServiceManager> service_manager_;

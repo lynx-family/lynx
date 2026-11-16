@@ -58,6 +58,14 @@ MTLImageRepresentation::MTLImageRepresentation(id<MTLDevice> device, id<MTLComma
     : SharedImageRepresentation(std::move(backing)), device_(device), queue_(queue) {}
 
 MTLImageRepresentation::~MTLImageRepresentation() {
+  if (ReadComplete()) {
+    // The staged batch's captured write completions already cover every read.
+    // Keep the CV view until that proof, rather than relying on MTLTexture alone.
+    cv_texture_.Reset();
+    texture_.reset();
+    if (storage_manager_) storage_manager_->FlushStorageRecycle();
+    return;
+  }
   id<MTLTexture> tex = GetMTLTexture();
   if (tex == nil) {
     return;
@@ -65,7 +73,6 @@ MTLImageRepresentation::~MTLImageRepresentation() {
   auto command_buffer = fml::scoped_nsprotocol<id<MTLCommandBuffer>>([queue_ commandBuffer]);
   fml::RefPtr<RepresentationStorageManager> temp_mlt_storage_manager = storage_manager_;
   [command_buffer.get() addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer) {
-    // GPU work is complete，safely release texture.
     if (temp_mlt_storage_manager) {
       static_cast<MTLStorageManager*>(temp_mlt_storage_manager.get())->FlushStorageRecycle();
     }
@@ -140,11 +147,19 @@ bool MTLImageRepresentation::GetMTLTextureFromCVPixelBuffer() {
     return false;
   }
   texture_.reset(CVMetalTextureGetTexture(out_texture));
-  CFRelease(out_texture);
+  cv_texture_.Reset(out_texture);
   return true;
 }
 
 bool MTLImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
+  InvalidateReadCompletion(true);
+  return BeginReadInternal(out);
+}
+bool MTLImageRepresentation::BeginSkityRead(ClaySharedImageReadResult* out) {
+  InvalidateReadCompletion(false);
+  return BeginReadInternal(out);
+}
+bool MTLImageRepresentation::BeginReadInternal(ClaySharedImageReadResult* out) {
   id<MTLTexture> texture = GetMTLTexture();
   if (texture == nil) {
     return false;
@@ -164,6 +179,7 @@ bool MTLImageRepresentation::BeginRead(ClaySharedImageReadResult* out) {
 
 bool MTLImageRepresentation::EndRead() { return true; }
 bool MTLImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
+  InvalidateReadCompletion(true);
   id<MTLTexture> texture = GetMTLTexture();
   if (texture == nil) {
     return false;
@@ -180,12 +196,33 @@ bool MTLImageRepresentation::BeginWrite(ClaySharedImageWriteResult* out) {
   };
   return true;
 }
-bool MTLImageRepresentation::EndWrite() { return true; }
+bool MTLImageRepresentation::EndWrite() {
+  InvalidateReadCompletion(true);
+  return true;
+}
+
+void MTLImageRepresentation::InvalidateReadCompletion(bool untracked) {
+  if (untracked) untracked_access_ = true;
+  ++read_epoch_;
+}
+
+bool MTLImageRepresentation::ReadComplete() const {
+  return !untracked_access_ && read_epoch_ == completed_read_epoch_;
+}
+
+std::function<void()> MTLImageRepresentation::TrackRead(bool staged) {
+  InvalidateReadCompletion(!staged);
+  if (!staged || untracked_access_) return {};
+  const uint64_t epoch = read_epoch_;
+  return
+      [representation = fml::Ref(this), epoch] { representation->completed_read_epoch_ = epoch; };
+}
 
 void MTLImageRepresentation::ConsumeFence(std::unique_ptr<FenceSync> fence_sync) {
   if (!fence_sync) {
     return;
   }
+  InvalidateReadCompletion(true);
   if (@available(macos 10.14, ios 12.0, tvos 12.0, *)) {
     if (fence_sync->GetType() == FenceSync::Type::kMetalEvent) {
       MTLSharedEventFenceSync* mtl_fence_sync =
@@ -201,6 +238,9 @@ void MTLImageRepresentation::ConsumeFence(std::unique_ptr<FenceSync> fence_sync)
 }
 
 std::unique_ptr<FenceSync> MTLImageRepresentation::ProduceFence() {
+  // The staged batch has already completed its GPU reads. Returning the front
+  // does not need another command buffer merely to signal the same ordering.
+  if (ReadComplete()) return nullptr;
   std::unique_ptr<FenceSync> fence_sync;
   if (@available(macos 10.14, ios 12.0, tvos 12.0, *)) {
     if (event_ == nil) {

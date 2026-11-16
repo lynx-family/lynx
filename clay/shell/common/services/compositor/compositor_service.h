@@ -5,6 +5,7 @@
 #ifndef CLAY_SHELL_COMMON_SERVICES_COMPOSITOR_COMPOSITOR_SERVICE_H_
 #define CLAY_SHELL_COMMON_SERVICES_COMPOSITOR_COMPOSITOR_SERVICE_H_
 
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -27,13 +28,14 @@ class CompositorService
  public:
   bool SubmitFrame(clay::GrContextPtr context,
                    std::unique_ptr<SurfaceFrame> background_frame,
-                   std::unique_ptr<CompositorState> compositor_state);
+                   std::unique_ptr<CompositorState> compositor_state,
+                   std::shared_ptr<const std::atomic_bool> current = nullptr);
 
   static std::shared_ptr<CompositorService> Create();
 
-  // Drop display-only overlays before changing the output surface. Native
-  // platform views keep their ownership and composition parameters.
-  void ResetPlatformOverlays();
+  // Drop overlays before changing the output surface. When composition ends,
+  // also retire the last native view ordering through the presenter.
+  void ResetPlatformOverlays(bool end_composition = false);
 
  private:
   // |clay::Service|

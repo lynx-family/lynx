@@ -23,6 +23,8 @@ class MTLCompleteFenceSync final : public FenceSync {
 
   Type GetType() const override;
 
+  id<MTLCommandBuffer> CommandBuffer() const { return buffer_; }
+
   ~MTLCompleteFenceSync() override;
 
  private:
@@ -40,6 +42,8 @@ class API_AVAILABLE(macos(10.14), ios(12.0),
   bool ClientWait() override;
 
   Type GetType() const override;
+
+  id<MTLCommandBuffer> CommandBuffer() const { return buffer_; }
 
   id<MTLSharedEvent> Event() const { return event_; }
 

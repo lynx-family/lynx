@@ -29,6 +29,7 @@ class API_AVAILABLE(macos(10.6), ios(11.0),
   ~SkityMTLImageRepresentation() override;
 
   std::shared_ptr<SkityImage> GetSkityImage() override;
+  std::shared_ptr<SkityImage> GetSkityImageForTrackedRead() override;
   bool EndRead() override;
 
   void ConsumeFence(std::unique_ptr<FenceSync> fence_sync) override;
@@ -37,8 +38,10 @@ class API_AVAILABLE(macos(10.6), ios(11.0),
   fml::RefPtr<RepresentationStorageManager> GetTextureManager() const override;
   void SetTextureManager(
       fml::RefPtr<RepresentationStorageManager> storage_manager) override;
+  std::function<void()> TrackRead(bool staged) override;
 
  private:
+  std::shared_ptr<SkityImage> MakeSkityImage(bool tracked);
   GrContext* skity_context_;
   fml::RefPtr<MTLImageRepresentation> mtl_image_representation_;
 };

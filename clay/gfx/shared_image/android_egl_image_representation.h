@@ -9,6 +9,7 @@
 #include <EGL/eglext.h>
 
 #include <memory>
+#include <optional>
 
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_representation.h"
@@ -21,17 +22,18 @@ class SurfaceTextureImageBacking;
 
 class AndroidEGLFenceSync final : public FenceSync {
  public:
-  AndroidEGLFenceSync();
+  explicit AndroidEGLFenceSync(bool export_native = true);
 
   ~AndroidEGLFenceSync() override;
 
   int32_t GetSyncFD() { return GetCurrentFD(); }
 
   bool ClientWait() override;
+  std::optional<bool> IsSignaled();
 
   Type GetType() const override { return Type::kEGL; }
 
-  void ServerWait();
+  bool ServerWait();
 
   static bool CheckEGLFenceSupported();
   static bool CheckAndroidNativeFenceSupported();

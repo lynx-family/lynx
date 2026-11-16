@@ -5,6 +5,7 @@
 #ifndef CLAY_SHELL_COMMON_SERVICES_RASTER_FRAME_SERVICE_H_
 #define CLAY_SHELL_COMMON_SERVICES_RASTER_FRAME_SERVICE_H_
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 
@@ -16,10 +17,16 @@
 #include "clay/shell/common/services/ui_frame_service.h"
 #include "clay/shell/common/services/vsync_waiter_service.h"
 #include "clay/shell/common/vsync_waiter.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/shell/common/display/production_opportunity.h"
+#include "clay/shell/common/services/display_compositor_service.h"
+#include "clay/shell/common/services/display_frame_service.h"
+#endif
 
 namespace clay {
 
 class Scheduler;
+class OutputSurface;
 
 class RasterFrameService
     : public clay::Service<RasterFrameService, clay::Owner::kRaster>,
@@ -28,6 +35,20 @@ class RasterFrameService
   static std::shared_ptr<RasterFrameService> Create();
 
   void SetOutputSurfaceValid(bool valid);
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void SetProductionBinding(display::RasterBindingKey binding);
+  void ForceBeginFrameForBinding(display::RasterBindingKey binding);
+  void CommitWithNoUpdatesForBinding(display::RasterBindingKey binding);
+  void SetProductionAvailable(bool available);
+  void SetRasterViewportValid(bool valid);
+  void SetHybridOutputSurface(
+      fml::RefPtr<OutputSurface> output,
+      std::shared_ptr<const std::atomic_bool> current = nullptr,
+      fml::closure activate = nullptr);
+  bool IsHybridCompositionActive() const { return hybrid_composition_active_; }
+  void RequestContentFrame(display::RasterBindingKey binding);
+  bool CanDraw() const override;
+#endif
   void SetMeaningfulLayout(bool meaningful_layout);
   void SetVsyncSourceActive(bool active);
   bool IsVsyncSourceActive() const { return vsync_source_active_; }
@@ -90,9 +111,29 @@ class RasterFrameService
   void StopSchedulerAndCleanLayerTree();
   void CreateVsyncWaiter(VsyncRequestCallback custom_vsync_request);
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void ResetProductionState();
+  void ResetHybridComposition();
+  bool HasPendingProduction() const {
+    return full_production_pending_ || content_production_pending_;
+  }
+
+  display::RasterBindingKey production_binding_;
+  bool production_available_ = false, raster_viewport_valid_ = false;
+  void UpdateProductionAvailability();
+  display::ProductionOpportunity production_opportunity_;
+  bool full_production_pending_ = false;
+  bool content_production_pending_ = false;
+  bool preparing_production_ = false;
+  bool hybrid_composition_active_ = false;
+#endif
   Rasterizer* rasterizer_ = nullptr;
   std::unique_ptr<Scheduler> scheduler_;
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  Puppet<Owner::kRaster, DisplayFrameService> display_clock_;
+  Puppet<Owner::kRaster, DisplayCompositorService> display_service_;
+#endif
   std::shared_ptr<VsyncWaiter> vsync_waiter_;
   fml::RefPtr<fml::TaskRunner> raster_task_runner_;
   clay::Puppet<clay::Owner::kRaster, VsyncWaiterService> vsync_waiter_service_;

@@ -27,11 +27,19 @@
 
 namespace clay {
 
-AndroidEGLFenceSync::AndroidEGLFenceSync() {
+std::optional<bool> AndroidEGLFenceSync::IsSignaled() {
+  if (fence_ == EGL_NO_SYNC_KHR || !eglClientWaitSyncKHR) return std::nullopt;
+  auto result = eglClientWaitSyncKHR(display, fence_, 0, 0);
+  if (result == EGL_CONDITION_SATISFIED_KHR) return true;
+  if (result == EGL_TIMEOUT_EXPIRED_KHR) return false;
+  return std::nullopt;
+}
+
+AndroidEGLFenceSync::AndroidEGLFenceSync(bool export_native) {
   FML_DCHECK(display != EGL_NO_DISPLAY);
   FML_DCHECK(eglCreateSyncKHR);
   if (CheckEGLFenceSupported()) {
-    if (CheckAndroidNativeFenceSupported()) {
+    if (export_native && CheckAndroidNativeFenceSupported()) {
       fence_ =
           eglCreateSyncKHR(display, EGL_SYNC_NATIVE_FENCE_ANDROID, nullptr);
     } else {
@@ -87,17 +95,17 @@ bool AndroidEGLFenceSync::ClientWait() {
   return result == EGL_CONDITION_SATISFIED_KHR;
 }
 
-void AndroidEGLFenceSync::ServerWait() {
+bool AndroidEGLFenceSync::ServerWait() {
   if (fence_ == EGL_NO_SYNC_KHR) {
-    return;
+    return false;
   }
   FML_DCHECK(eglWaitSyncKHR);
   EGLint result = eglWaitSyncKHR(display, fence_, 0);
   if (result == EGL_FALSE) {
     FML_LOG(ERROR) << "Failed to eglWaitSyncKHR in EGL env, error: "
                    << eglGetError();
-    ClientWait();
   }
+  return result == EGL_TRUE;
 }
 
 // static
@@ -307,7 +315,9 @@ void NativeBufferEGLImageRepresentation::ConsumeFence(
   if (fence_sync->GetType() == FenceSync::Type::kEGL) {
     AndroidEGLFenceSync* egl_fence_sync =
         static_cast<AndroidEGLFenceSync*>(fence_sync.get());
-    egl_fence_sync->ServerWait();
+    if (!egl_fence_sync->ServerWait()) {
+      egl_fence_sync->ClientWait();
+    }
     return;
   } else if (fence_sync->GetType() == FenceSync::Type::kVulkan) {
     // Try server wait.

@@ -25,6 +25,9 @@
 #include "clay/flow/layers/layer.h"
 #include "clay/flow/layers/opacity_layer.h"
 #include "clay/flow/raster_cache.h"
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/flow/compositor/frame_types.h"
+#endif
 
 namespace clay {
 
@@ -57,6 +60,21 @@ class LayerTree {
   void Paint(CompositorContext::ScopedFrame& frame,
              bool ignore_raster_cache = false) const;
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void SetSegmentRecorder(display::SegmentRecorder* recorder) {
+    segment_recorder_ = recorder;
+  }
+  void SetStagedIdentity(display::RasterBindingKey binding, uint64_t version) {
+    staged_binding_ = binding;
+    staged_layout_version_ = version;
+  }
+  const display::RasterBindingKey& StagedBinding() const {
+    return staged_binding_;
+  }
+  uint64_t StagedLayoutVersion() const { return staged_layout_version_; }
+  void SetHasScrollUpdates(bool value) { has_scroll_updates_ = value; }
+  bool HasScrollUpdates() const { return has_scroll_updates_; }
+#endif
   Layer* root_layer() const { return root_layer_.get(); }
 
   void set_root_layer(std::shared_ptr<Layer> root_layer) {
@@ -158,6 +176,12 @@ class LayerTree {
   }
 
  private:
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  display::SegmentRecorder* segment_recorder_ = nullptr;
+  uint64_t staged_layout_version_ = 0;
+  display::RasterBindingKey staged_binding_;
+  bool has_scroll_updates_ = false;
+#endif
   void MarkFrameTimingsForPipelineIfNeeded();
 
   std::shared_ptr<Layer> root_layer_;

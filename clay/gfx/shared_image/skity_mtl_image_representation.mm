@@ -38,10 +38,18 @@ SkityMTLImageRepresentation::SkityMTLImageRepresentation(
 SkityMTLImageRepresentation::~SkityMTLImageRepresentation() = default;
 
 std::shared_ptr<SkityImage> SkityMTLImageRepresentation::GetSkityImage() {
+  return MakeSkityImage(false);
+}
+std::shared_ptr<SkityImage> SkityMTLImageRepresentation::GetSkityImageForTrackedRead() {
+  return MakeSkityImage(true);
+}
+std::shared_ptr<SkityImage> SkityMTLImageRepresentation::MakeSkityImage(bool tracked) {
   skity::Vec2 size = mtl_image_representation_->GetSize();
 
   ClaySharedImageReadResult result;
-  if (!mtl_image_representation_->BeginRead(&result)) {
+  const bool began = tracked ? mtl_image_representation_->BeginSkityRead(&result)
+                             : mtl_image_representation_->BeginRead(&result);
+  if (!began) {
     return nullptr;
   }
   FML_DCHECK(result.struct_size == sizeof(result));
@@ -78,6 +86,10 @@ fml::RefPtr<RepresentationStorageManager> SkityMTLImageRepresentation::GetTextur
 void SkityMTLImageRepresentation::SetTextureManager(
     fml::RefPtr<RepresentationStorageManager> storage_manager) {
   mtl_image_representation_->SetTextureManager(storage_manager);
+}
+
+std::function<void()> SkityMTLImageRepresentation::TrackRead(bool staged) {
+  return mtl_image_representation_->TrackRead(staged);
 }
 
 }  // namespace clay

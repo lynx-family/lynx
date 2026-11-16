@@ -49,6 +49,9 @@ void Scrollable::RemoveScrollListener(Listener* listener) {
 void Scrollable::RemoveAllScrollListener() { listeners_.clear(); }
 
 void Scrollable::NotifyScrolled() {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  page_view_->MarkScrollUpdate();
+#endif
   listeners_.remove_if([](const auto& entry) { return !entry; });
   // Callbacks may remove listeners or destroy the scrollable itself.
   std::vector<fml::WeakPtr<Listener>> listeners(listeners_.begin(),
@@ -111,6 +114,9 @@ FloatPoint Scrollable::DoOverscroll(FloatPoint delta) {
 
 void Scrollable::SetOverscrollOffset(FloatPoint offset) {
   if (overscroll_offset_ != offset) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    page_view_->MarkScrollUpdate();
+#endif
     auto old_offset = clamped_overscroll_offset_;
     overscroll_offset_ = offset;
     clamped_overscroll_offset_ = RubberBandDistance(offset, Width(), Height());
@@ -121,6 +127,9 @@ void Scrollable::SetOverscrollOffset(FloatPoint offset) {
 
 void Scrollable::SetClampedOverscrollOffset(FloatPoint offset) {
   if (clamped_overscroll_offset_ != offset) {
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+    page_view_->MarkScrollUpdate();
+#endif
     auto old_offset = clamped_overscroll_offset_;
     clamped_overscroll_offset_ = offset;
     overscroll_offset_ =

@@ -42,8 +42,12 @@
 #include "clay/shell/common/shell_common_rendering_backend.h"
 #include "clay/ui/common/render_settings.h"
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+#include "clay/shell/common/display/staged_rasterizer.h"
+#endif
 namespace clay {
 class GpuResourceCache;
+class OutputSurface;
 class ServiceManager;
 }  // namespace clay
 
@@ -165,6 +169,39 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
 
   std::shared_ptr<DrawableImageRegistry> GetDrawableImageRegistry();
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  void SetHybridOutputSurface(fml::RefPtr<OutputSurface> output,
+                              std::shared_ptr<const std::atomic_bool> current,
+                              fml::closure activate);
+  bool HasHybridOutputSurface() const;
+  void TeardownHybridSurface();
+  void DrawHybrid(std::shared_ptr<LayerTree> tree,
+                  std::unique_ptr<FrameTimingsRecorder> recorder);
+  bool SetupStagedOutput(std::unique_ptr<display::RasterOutputSurface> surface,
+                         display::RasterBindingKey binding,
+                         std::shared_ptr<display::FrameMailbox> mailbox,
+                         std::function<void()> wake);
+  display::ProductionOutcome RasterizeToOutputs(
+      std::shared_ptr<LayerTree> tree,
+      std::unique_ptr<FrameTimingsRecorder> recorder);
+  void RequestRetainedFrame();
+  bool MarkDynamicSegmentsDirty(int64_t image_id);
+  display::ProductionOutcome ProducePendingContent();
+  void ScreenshotCompositorFrameAsync(
+      std::shared_ptr<const display::CompositorFrame> frame,
+      uint32_t background, std::function<void(ScreenshotData)> callback,
+      unsigned attempt = 0);
+  void UpdateStagedOutputConfig(display::OutputConfig config);
+  void ReleaseStagedResources(std::function<void()> drained,
+                              bool retain_production_context = false);
+  void OnDisplayPresented(display::RasterBindingKey binding, uint64_t layout,
+                          int64_t submission_time_ms);
+  void InvalidateStagedUploads();
+  void MakeStagedRasterSnapshot(
+      std::shared_ptr<LayerTree> tree,
+      std::function<void(fml::RefPtr<PaintImage>)> callback,
+      unsigned attempt = 0);
+#endif
   using LayerTreeDiscardCallback = std::function<bool(clay::LayerTree&)>;
 
   //----------------------------------------------------------------------------
@@ -346,6 +383,15 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   const clay::Puppet<clay::Owner::kRaster, CompositorService>
       compositor_service_;
 
+#ifdef ENABLE_CLAY_DISPLAY_COMPOSITOR
+  // Keep the native delegate alive until after its GPU surface is released.
+  fml::RefPtr<OutputSurface> hybrid_output_;
+  std::shared_ptr<const std::atomic_bool> hybrid_output_current_;
+  fml::closure activate_hybrid_output_;
+  std::unique_ptr<display::StagedRasterizer> staged_;
+  std::unique_ptr<display::RasterOutputSurface> suspended_staged_surface_;
+  uint64_t staged_epoch_ = 0;
+#endif
   std::unique_ptr<Surface> surface_;
   std::unique_ptr<clay::CompositorContext> compositor_context_;
   // This is the last successfully rasterized layer tree.

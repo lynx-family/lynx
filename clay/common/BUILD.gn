@@ -36,6 +36,18 @@ source_set("common") {
   deps = [ "../fml:fml" ]
   public_deps = [ "vsync:vsync_callback" ]
 
+  if (clay_enable_display_compositor && (is_android || is_ios)) {
+    sources += [
+      "raster_binding.cc",
+      "raster_binding.h",
+      "raster_thread_group.cc",
+      "raster_thread_group.h",
+      "render_service_runtime.cc",
+      "render_service_runtime.h",
+    ]
+    deps += [ "../flow/compositor:frame_protocol" ]
+  }
+
   include_dirs = [ "//third_party/boringssl/src/include" ]
 
   if (is_win || is_linux || is_mac || (is_android && is_headless)) {

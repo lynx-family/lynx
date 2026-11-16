@@ -73,8 +73,10 @@ bool SubmitBackgroundOnRasterIfNeeded(bool did_encode,
 
 bool CompositorService::SubmitFrame(
     clay::GrContextPtr context, std::unique_ptr<SurfaceFrame> background_frame,
-    std::unique_ptr<CompositorState> compositor_state) {
+    std::unique_ptr<CompositorState> compositor_state,
+    std::shared_ptr<const std::atomic_bool> current) {
   TRACE_EVENT("clay", "CompositorService::SubmitFrame");
+  if (current && !current->load()) return false;
 
   // Headless backends can submit frames without a platform overlay service.
   if (overlay_service_) {
@@ -87,11 +89,35 @@ bool CompositorService::SubmitFrame(
 
   const bool has_composition_order =
       !compositor_state->GetCompositionOrder().empty();
-  if (!has_composition_order && !had_hybrid_composited_) {
+#if OS_IOS
+  // Keep each legacy drawable publish guarded on Platform once this binding
+  // uses hybrid composition, even after its views have been removed.
+  const bool direct_raster_submit = !current;
+#else
+  const bool direct_raster_submit = true;
+#endif
+  if (direct_raster_submit && !has_composition_order &&
+      !had_hybrid_composited_) {
     had_hybrid_composited_ = false;
     return background_frame->Submit();
   }
 
+#if !OS_IOS
+  if (current && !has_composition_order) {
+    // Keep the legacy presenter's view-disposal pass after a mixed frame.
+    // With no native layers to order, submit the background on Raster.
+    if (!background_frame->Submit()) return false;
+    presenter_service_.Act(
+        [current = std::move(current),
+         overlays = RemoveUnusedSurfaces()](auto& presenter) mutable {
+          if (!current->load()) return;
+          PresentFrame frame;
+          frame.unused_overlays = std::move(overlays);
+          presenter.Present(frame);
+        });
+    return true;
+  }
+#endif
   had_hybrid_composited_ = true;
 
   bool did_encode = true;
@@ -185,10 +211,11 @@ bool CompositorService::SubmitFrame(
   }
 
   presenter_service_.Act([did_encode, present_frame = std::move(present_frame),
-                          present_latch](auto& impl) mutable {
+                          present_latch,
+                          current = std::move(current)](auto& impl) mutable {
     // We do `did_encode` check here because present_frame needs to be
     // destructed in Platform thread
-    if (did_encode) {
+    if (did_encode && (!current || current->load())) {
       impl.Present(present_frame);
     }
     if (present_latch) {
@@ -274,7 +301,7 @@ CompositorService::RemoveUnusedSurfaces() {
 
 void CompositorService::RecycleSurfaces() { available_layer_index_ = 0; }
 
-void CompositorService::ResetPlatformOverlays() {
+void CompositorService::ResetPlatformOverlays(bool end_composition) {
   std::vector<std::shared_ptr<PlatformOverlay>> overlays;
   overlays.reserve(compositor_surfaces_.size());
   for (auto& surface : compositor_surfaces_) {
@@ -285,7 +312,14 @@ void CompositorService::ResetPlatformOverlays() {
   compositor_surfaces_.clear();
   available_layer_index_ = 0;
   had_hybrid_composited_ = false;
-  presenter_service_.Act([overlays = std::move(overlays)](auto& presenter) {
+  presenter_service_.Act([overlays = std::move(overlays),
+                          end_composition](auto& presenter) mutable {
+    if (end_composition) {
+      PresentFrame frame;
+      frame.unused_overlays = std::move(overlays);
+      presenter.Present(frame);
+      return;
+    }
     presenter.DisposeOverlays(overlays);
   });
 }

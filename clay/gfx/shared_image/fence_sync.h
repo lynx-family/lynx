@@ -19,6 +19,7 @@ class FenceSync {
     kMetalEvent,
     kClientWaitOnly,
     kVulkan,
+    kMetalComplete,
   };
 
   FenceSync() = default;
