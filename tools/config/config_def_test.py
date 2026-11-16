@@ -27,6 +27,7 @@ class ConfigPlatformTagsTest(unittest.TestCase):
             bind_member_to="",
             read_settings=False,
             read_native=False,
+            type_package_since="",
             export=True,
         )
 
