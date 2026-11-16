@@ -30,7 +30,7 @@ class InspectorAgent : public CDPDomainAgentBase {
                                const Json::Value& params);
 
   DECLARE_DEVTOOL_CDP_METHOD(Enable);
-  DECLARE_DEVTOOL_CDP_METHOD(Detached);
+  DECLARE_DEVTOOL_CDP_METHOD(Disable);
 
   std::map<std::string, InspectorAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;

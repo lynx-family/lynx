@@ -1143,28 +1143,45 @@ TEST_F(DevToolMediatorTest, SendCDPEventString) {
             "{\n   \"method\" : \"DOM.documentUpdated\"\n}\n");
 }
 
-TEST_F(DevToolMediatorTest, InspectorDetachedEmitsEventAndReturnsSuccess) {
+TEST_F(DevToolMediatorTest, InspectorDisableReturnsSuccess) {
+  class InspectorResponseSender : public devtool::MessageSenderMock {
+   public:
+    using devtool::MessageSenderMock::SendMessage;
+
+    void SendMessage(const std::string& type,
+                     const Json::Value& message) override {
+      EXPECT_EQ(type, "CDP");
+      messages_.push_back(message);
+    }
+
+    std::vector<Json::Value> messages_;
+  };
+  auto response_sender = std::make_shared<InspectorResponseSender>();
   auto listener_sender =
       std::make_shared<devtool::CDPEventListenerSenderMock>();
   devtool_mediator_->AddCDPEventListener("InspectorTest", listener_sender);
   devtool::InspectorAgent agent(devtool_mediator_);
   Json::Value message(Json::objectValue);
-  message["method"] = "Inspector.detached";
+  message["method"] = "Inspector.disable";
 
-  agent.CallMethod(std::make_shared<devtool::CDPResponder>(message_sender_, 2),
+  agent.CallMethod(std::make_shared<devtool::CDPResponder>(response_sender, 2),
                    message);
 
-  Json::Value response;
-  Json::Reader reader;
-  ASSERT_TRUE(reader.parse(
-      devtool::MockReceiver::GetInstance().received_message_.second, response));
+  ASSERT_EQ(response_sender->messages_.size(), 1u);
+  const auto& response = response_sender->messages_[0];
   EXPECT_EQ(response["id"].asInt64(), 2);
   EXPECT_EQ(response["result"], Json::Value(Json::objectValue));
+  EXPECT_FALSE(response.isMember("error"));
+  EXPECT_FALSE(response.isMember("method"));
 
-  Json::Value event;
-  ASSERT_TRUE(reader.parse(listener_sender->received_msg_.second, event));
-  EXPECT_EQ(event["method"], "Inspector.detached");
-  EXPECT_EQ(event["params"]["reason"], "");
+  FlushDevToolTasks();
+  cdp_event_listener_thread_->Join();
+  EXPECT_TRUE(
+      devtool::MockReceiver::GetInstance().received_message_.first.empty());
+  EXPECT_TRUE(
+      devtool::MockReceiver::GetInstance().received_message_.second.empty());
+  EXPECT_TRUE(listener_sender->received_msg_.first.empty());
+  EXPECT_TRUE(listener_sender->received_msg_.second.empty());
 }
 
 TEST_F(DevToolMediatorTest, NetworkCaptureEnqueuedAfterDisableIsDropped) {

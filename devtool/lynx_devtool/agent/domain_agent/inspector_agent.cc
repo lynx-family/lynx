@@ -14,7 +14,7 @@ InspectorAgent::InspectorAgent(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
     : devtool_mediator_(devtool_mediator) {
   functions_map_["Inspector.enable"] = &InspectorAgent::Enable;
-  functions_map_["Inspector.detached"] = &InspectorAgent::Detached;
+  functions_map_["Inspector.disable"] = &InspectorAgent::Disable;
 }
 
 void InspectorAgent::Enable(const std::shared_ptr<CDPResponder>& responder,
@@ -22,12 +22,8 @@ void InspectorAgent::Enable(const std::shared_ptr<CDPResponder>& responder,
   responder->SendSuccess();
 }
 
-void InspectorAgent::Detached(const std::shared_ptr<CDPResponder>& responder,
-                              const Json::Value&) {
-  Json::Value event(Json::objectValue);
-  event["method"] = "Inspector.detached";
-  event["params"]["reason"] = "";
-  devtool_mediator_->SendCDPEvent(event);
+void InspectorAgent::Disable(const std::shared_ptr<CDPResponder>& responder,
+                             const Json::Value&) {
   responder->SendSuccess();
 }
 
