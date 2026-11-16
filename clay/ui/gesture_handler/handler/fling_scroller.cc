@@ -43,14 +43,12 @@ void FlingScroller::OnAnimationStart(Animator& animation) {}
 
 void FlingScroller::OnAnimationEnd(Animator& animation) {
   current_fling_state_ = static_cast<uint8_t>(FlingState::IDLE);
-  auto callback = callback_;
-  callback(static_cast<uint8_t>(FlingState::IDLE), 0.f, 0.f);
+  callback_(static_cast<uint8_t>(FlingState::IDLE), 0.f, 0.f);
 }
 
 void FlingScroller::OnAnimationCancel(Animator& animation) {
   current_fling_state_ = static_cast<uint8_t>(FlingState::IDLE);
-  auto callback = callback_;
-  callback(static_cast<uint8_t>(FlingState::IDLE), 0.f, 0.f);
+  callback_(static_cast<uint8_t>(FlingState::IDLE), 0.f, 0.f);
 }
 void FlingScroller::OnAnimationRepeat(Animator& animation) {}
 
@@ -68,9 +66,8 @@ void FlingScroller::OnAnimationUpdate(ValueAnimator& animation) {
   float delta_x = (velocity_x_ * (1.0f - progress) / 1000) * delta_time;
   float delta_y = (velocity_y_ * (1.0f - progress) / 1000) * delta_time;
   current_fling_state_ = static_cast<uint8_t>(FlingState::FLING);
-  last_time_ = current_time;
-  auto callback = callback_;
-  callback(static_cast<uint8_t>(FlingState::FLING), -delta_x, -delta_y);
+  callback_(static_cast<uint8_t>(FlingState::FLING), -delta_x, -delta_y);
+  last_time_ = fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
 }
 
 void FlingScroller::Start(float velocity_x, float velocity_y,
