@@ -28,7 +28,8 @@ EGLDisplay GetSurfacelessDisplay() {
     return EGL_NO_DISPLAY;
   }
   return get_platform_display(EGL_PLATFORM_SURFACELESS_MESA,
-                              EGL_DEFAULT_DISPLAY, nullptr);
+                              reinterpret_cast<void*>(EGL_DEFAULT_DISPLAY),
+                              /*attrib_list=*/nullptr);
 }
 
 }  // namespace
