@@ -56,6 +56,13 @@ bool VulkanFenceHelper::WaitForFence() {
   return true;
 }
 
+VkResult VulkanFenceHelper::GetFenceStatus() {
+  std::unique_lock<std::mutex> lock(valid_mutex_);
+  if (!is_valid_ || fence_ == VK_NULL_HANDLE)
+    return VK_ERROR_INITIALIZATION_FAILED;
+  return VulkanHelper::GetInstance().GetFenceStatus(device_, fence_);
+}
+
 bool VulkanFenceHelper::WaitSemaphore() {
   std::unique_lock<std::mutex> lock(valid_mutex_);
   if (!is_valid_) {
