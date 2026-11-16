@@ -26,3 +26,4 @@ if __name__ == "__main__":
     if not args.patterns:
         args.patterns = ["*.log", "*.png", "*.jpg", "*.jpeg", "ui_scene_*", "*_dump.json", "*.zip", "*.exec", "./screenshot/*.png"]
     clean_files(args.patterns)
+    print(2222)
