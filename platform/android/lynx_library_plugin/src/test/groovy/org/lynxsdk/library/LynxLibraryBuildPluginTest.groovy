@@ -11,13 +11,59 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+
 import static org.junit.Assert.assertEquals
 import static org.junit.Assert.assertFalse
+import static org.junit.Assert.assertNull
 import static org.junit.Assert.assertTrue
 
 class LynxLibraryBuildPluginTest {
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder()
+
+    // readAarManifest returns the top-level META-INF/lynx/lynx.lib.json content.
+    // This covers the AAR-reading half of scanAarLibraries; the artifact-view
+    // enumeration half depends on a real AGP resolution and is covered end-to-end.
+    @Test
+    void readAarManifestReadsTopLevelEntry() {
+        String json = '{"platforms":{"android":{"packageName":"com.example.aar"}}}'
+        File aar = writeAar(['META-INF/lynx/lynx.lib.json': json])
+
+        assertEquals(json, LynxLibraryBuildPlugin.readAarManifest(aar))
+    }
+
+    // An AAR without the manifest entry (e.g. any unrelated dependency) yields
+    // null so scanAarLibraries simply skips it.
+    @Test
+    void readAarManifestReturnsNullWhenEntryAbsent() {
+        File aar = writeAar(['classes.jar': 'stub'])
+
+        assertNull(LynxLibraryBuildPlugin.readAarManifest(aar))
+    }
+
+    // A non-zip / corrupt file is tolerated (returns null) rather than throwing,
+    // keeping the consumer build alive.
+    @Test
+    void readAarManifestReturnsNullForNonZipFile() {
+        File notAar = temporaryFolder.newFile('broken.aar')
+        notAar.text = 'not a zip'
+
+        assertNull(LynxLibraryBuildPlugin.readAarManifest(notAar))
+    }
+
+    private File writeAar(Map<String, String> entries) {
+        File aar = temporaryFolder.newFile("lib-${System.nanoTime()}.aar")
+        new ZipOutputStream(new FileOutputStream(aar)).withCloseable { zip ->
+            entries.each { String path, String content ->
+                zip.putNextEntry(new ZipEntry(path))
+                zip.write(content.getBytes('UTF-8'))
+                zip.closeEntry()
+            }
+        }
+        aar
+    }
 
     @Test
     void regeneratesRegistryWhenManifestChanges() {
