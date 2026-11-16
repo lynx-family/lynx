@@ -741,8 +741,26 @@ std::string CSSValue::SubstitutionResolved(
   const std::string& raw_value = css_value.AsStdString();
   const auto& var_refs = css_value.optionals_.Get<VarReferenceField>();
 
-  if (var_refs.empty()) {
-    return raw_value;
+  if (var_refs.size() <= 1) {
+    if (var_refs.empty()) {
+      return raw_value;
+    }
+    // Resolve an entire-value reference or its fallback with one lookup and
+    // without allocating a concatenation buffer. Compound values retain the
+    // existing loop without another size check on their common path.
+    const auto& reference = var_refs.front();
+    if (reference.start == 0 && reference.end == raw_value.size()) {
+      const std::string name(reference.Name(raw_value));
+      auto current = custom_properties.find(name);
+      ReportCustomPropertyDependency(
+          name, current == custom_properties.end() ? nullptr : &current->second,
+          handle_func);
+      if (current != custom_properties.end()) {
+        return StripImportantFromString(current->second.AsStdString());
+      }
+      return StripImportantFromString(
+          ResolveFallbackResolved(reference, custom_properties, handle_func));
+    }
   }
 
   std::string result;
