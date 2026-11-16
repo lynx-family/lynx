@@ -143,6 +143,7 @@ struct TextStyle {
   // to use custom leading as a ratio of font size.
   std::optional<double> strut_leading;
   std::optional<bool> enable_text_bounds;
+  std::optional<bool> tail_color_convert;
 #ifdef CLAY_ENABLE_TTTEXT
   std::optional<float> stroke_width;
   std::optional<Color> stroke_color;
@@ -179,7 +180,8 @@ struct TextStyle {
            this->foreground_id == style.foreground_id &&
            this->keep_trailing_spaces == style.keep_trailing_spaces &&
            this->align_type == style.align_type &&
-           this->enable_text_bounds == style.enable_text_bounds;
+           this->enable_text_bounds == style.enable_text_bounds &&
+           this->tail_color_convert == style.tail_color_convert;
   }
 };
 
