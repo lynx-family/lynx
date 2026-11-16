@@ -2690,6 +2690,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
 
   private void destroyNative() {
     mDestroying = true;
+    LynxHostScriptViewHooks.clearViewUrl(mLogContext.viewId);
     LLog.i(TAG, "destroyNative url " + getTemplateUrl() + " in " + this.toString());
     if (mDevTool != null) {
       mDevTool.destroy();
