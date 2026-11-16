@@ -181,10 +181,37 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
   if (!context) {
     return;
   }
+  auto* inline_text = parent_ && parent_->IsInlineTextShadowNode()
+                          ? static_cast<InlineTextShadowNode*>(parent_)
+                          : nullptr;
+  const bool should_trim = inline_text && inline_text->ShouldTrimText();
+  size_t text_start = 0;
+  size_t text_end = origin_text_.size();
+  if (should_trim) {
+    constexpr char16_t kTrimWhitespace[] = u" \t\n\r\f\v";
+    text_start =
+        std::min(text_end, origin_text_.find_first_not_of(kTrimWhitespace));
+    if (text_start < text_end) {
+      text_end = origin_text_.find_last_not_of(kTrimWhitespace) + 1;
+    }
+  }
 #ifndef CLAY_ENABLE_TTTEXT
-  text_ = ProcessWordBreakIfNeed(origin_text_);
+  if (text_start == 0 && text_end == origin_text_.size()) {
+    text_ = ProcessWordBreakIfNeed(origin_text_);
+    text_end = text_.size();
+  } else {
+    const size_t length = text_end - text_start;
+    auto processed =
+        ProcessWordBreakIfNeed(origin_text_.substr(text_start, length));
+    text_ = origin_text_;
+    text_.replace(text_start, length, processed);
+    text_end = text_start + processed.size();
+  }
 #endif
-  auto need_text_indent = IfNeedTextIndent();
+  // Trim the full raw run before applying the current truncation limit.
+  text_end = std::min(text_end, GetEndIndex());
+  text_start = std::min(text_start, text_end);
+  auto text = text_.substr(text_start, text_end - text_start);
   LayoutContextText* text_context = static_cast<LayoutContextText*>(context);
   inline_emoji_text_ranges_.clear();
   layout_text_utf16_to_raw_end_indices_.clear();
@@ -198,18 +225,25 @@ void RawTextShadowNode::TextLayout(LayoutContext* context) {
   if (text_style.has_value() && text_style->white_space.has_value() &&
       (text_style->white_space == WhiteSpace::kNoWrap ||
        text_style->white_space == WhiteSpace::kNormal)) {
-    auto text = CollapsesWhitespaces(text_.substr(0, GetEndIndex()),
-                                     &layout_text_utf16_to_raw_end_indices_,
-                                     &layout_text_utf32_to_raw_end_indices_);
-    AddTextWithInlineEmoji(text_context, text, need_text_indent);
+    text = CollapsesWhitespaces(text, &layout_text_utf16_to_raw_end_indices_,
+                                &layout_text_utf32_to_raw_end_indices_);
   } else {
-    auto text = text_.substr(0, GetEndIndex());
     BuildIdentityLayoutTextMapping(text);
-    AddTextWithInlineEmoji(text_context, text, need_text_indent);
   }
-  if (parent_ && parent_->IsInlineTextShadowNode()) {
+  if (text_start != 0) {
+    for (auto& index : layout_text_utf16_to_raw_end_indices_) {
+      index += text_start;
+    }
+    for (auto& index : layout_text_utf32_to_raw_end_indices_) {
+      index += text_start;
+    }
+  }
+  if (!should_trim || !text.empty()) {
+    AddTextWithInlineEmoji(text_context, text, IfNeedTextIndent());
+  }
+  if (inline_text) {
     auto end = text_context->TextSizeIncludingPlaceholders();
-    static_cast<InlineTextShadowNode*>(parent_)->AddTextRange(start, end);
+    inline_text->AddTextRange(start, end);
   }
 }
 
